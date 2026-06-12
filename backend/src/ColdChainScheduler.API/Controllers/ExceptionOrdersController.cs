@@ -24,7 +24,7 @@ public class ExceptionOrdersController : ControllerBase
         _logService = logService;
     }
 
-    private static ExceptionOrderDto MapToDto(ExceptionOrder order)
+    private static ExceptionOrderDto MapToDto(ExceptionOrder order, List<StatusChangeLogDto>? history = null)
     {
         return new ExceptionOrderDto
         {
@@ -46,7 +46,8 @@ public class ExceptionOrdersController : ControllerBase
             ResolvedBy = order.ResolvedBy,
             ResolvedAt = order.ResolvedAt,
             CreatedAt = order.CreatedAt,
-            UpdatedAt = order.UpdatedAt
+            UpdatedAt = order.UpdatedAt,
+            StatusHistory = history ?? new List<StatusChangeLogDto>()
         };
     }
 
@@ -71,7 +72,7 @@ public class ExceptionOrdersController : ControllerBase
             query = query.Where(e => e.Resolution == resolution.Value);
 
         var orders = await query.OrderByDescending(e => e.CreatedAt).ToListAsync();
-        var dtos = orders.Select(MapToDto).ToList();
+        var dtos = orders.Select(o => MapToDto(o)).ToList();
         return Ok(ApiResponse.Ok(dtos));
     }
 
@@ -83,7 +84,45 @@ public class ExceptionOrdersController : ControllerBase
             .Include(e => e.ProductTag)
             .FirstOrDefaultAsync(e => e.Id == id);
         if (order == null) return Ok(ApiResponse.Fail<ExceptionOrderDto>($"异常工单 {id} 不存在"));
-        return Ok(ApiResponse.Ok(MapToDto(order)));
+
+        var statusHistory = await _logService.GetEntityHistoryAsync("ExceptionOrder", id);
+        var arrivalHistory = order.ArrivalListId.HasValue
+            ? await _logService.GetEntityHistoryAsync("ArrivalListItem", order.ArrivalListId.Value)
+            : Enumerable.Empty<StatusChangeLog>();
+
+        var historyDtos = new List<StatusChangeLogDto>();
+        foreach (var log in statusHistory)
+        {
+            historyDtos.Add(new StatusChangeLogDto
+            {
+                Id = log.Id,
+                EntityId = log.EntityId,
+                EntityType = log.EntityType,
+                FromStatus = log.OldStatus,
+                ToStatus = log.NewStatus,
+                ChangedBy = log.ChangedBy,
+                ChangedAt = log.ChangedAt,
+                Remark = log.Reason
+            });
+        }
+        foreach (var log in arrivalHistory)
+        {
+            historyDtos.Add(new StatusChangeLogDto
+            {
+                Id = log.Id,
+                EntityId = log.EntityId,
+                EntityType = "自提状态",
+                FromStatus = log.OldStatus,
+                ToStatus = log.NewStatus,
+                ChangedBy = log.ChangedBy,
+                ChangedAt = log.ChangedAt,
+                Remark = log.Reason
+            });
+        }
+
+        historyDtos = historyDtos.OrderByDescending(h => h.ChangedAt).ToList();
+
+        return Ok(ApiResponse.Ok(MapToDto(order, historyDtos)));
     }
 
     [HttpPost]

@@ -16,5 +16,5 @@ export const getExceptionOrder = (id: number) =>
 export const createExceptionOrder = (data: Partial<ExceptionOrder>) =>
   client.post<ApiResponse<ExceptionOrder>>('/exception-orders', data);
 
-export const resolveExceptionOrder = (id: number, data: Partial<ExceptionOrder>) =>
+export const resolveExceptionOrder = (id: number, data: { resolution: ExceptionResolution; resolutionNotes: string; resolvedBy: string }) =>
   client.post<ApiResponse<ExceptionOrder>>(`/exception-orders/${id}/resolve`, data);

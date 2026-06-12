@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Table, Modal, Form, Input, Select, Typography, Space, message, Tag, Descriptions } from 'antd';
-import { PlusOutlined, EyeOutlined } from '@ant-design/icons';
+import { Button, Table, Modal, Form, Input, Select, Typography, Space, message, Tag, Descriptions, Timeline, Empty } from 'antd';
+import { PlusOutlined, EyeOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { ExceptionOrder, GroupBatch } from '../types';
 import { ExceptionType, ExceptionSeverity, ExceptionResolution } from '../types';
-import { getExceptionOrders, createExceptionOrder, resolveExceptionOrder } from '../api/exceptionOrders';
+import { getExceptionOrders, createExceptionOrder, resolveExceptionOrder, getExceptionOrder } from '../api/exceptionOrders';
 import { getGroupBatches } from '../api/groupBatches';
 import StatusBadge from '../components/StatusBadge';
 
@@ -91,15 +91,25 @@ const ExceptionOrders: React.FC = () => {
     }
   };
 
+  const [detailLoading, setDetailLoading] = useState(false);
+
   const handleOpenResolve = (record: ExceptionOrder) => {
     setCurrentOrder(record);
     resolveForm.resetFields();
     setResolveModalOpen(true);
   };
 
-  const handleOpenDetail = (record: ExceptionOrder) => {
-    setCurrentOrder(record);
-    setDetailModalOpen(true);
+  const handleOpenDetail = async (record: ExceptionOrder) => {
+    setDetailLoading(true);
+    try {
+      const res = await getExceptionOrder(record.id);
+      setCurrentOrder(res.data.data);
+      setDetailModalOpen(true);
+    } catch {
+      message.error('获取异常单详情失败');
+    } finally {
+      setDetailLoading(false);
+    }
   };
 
   const handleResolve = async () => {
@@ -278,16 +288,17 @@ const ExceptionOrders: React.FC = () => {
       <Modal
         title="异常单详情"
         open={detailModalOpen}
+        confirmLoading={detailLoading}
         onCancel={() => { setDetailModalOpen(false); setCurrentOrder(null); }}
         footer={[
           currentOrder?.resolution === ExceptionResolution.Pending && (
-            <Button key="resolve" type="primary" onClick={() => { setDetailModalOpen(false); handleOpenResolve(currentOrder!); }}>
+            <Button key="resolve" type="primary" loading={detailLoading} onClick={() => { setDetailModalOpen(false); handleOpenResolve(currentOrder!); }}>
               处理此异常单
             </Button>
           ),
           <Button key="close" onClick={() => { setDetailModalOpen(false); setCurrentOrder(null); }}>关闭</Button>,
         ]}
-        width={800}
+        width={900}
         destroyOnClose
       >
         {currentOrder && (
@@ -336,6 +347,60 @@ const ExceptionOrders: React.FC = () => {
               <Paragraph style={{ marginTop: 8, padding: 12, background: '#e6f7ff', borderRadius: 4 }}>
                 {currentOrder.resolutionNotes || '未填写'}
               </Paragraph>
+            </div>
+
+            <div style={{ marginTop: 8 }}>
+              <Text strong style={{ fontSize: 14, color: '#722ed1' }}>
+                <ClockCircleOutlined style={{ marginRight: 4 }} />
+                状态变更历史（含自提状态留痕）
+              </Text>
+              <div style={{ marginTop: 12, padding: 16, background: '#f9f0ff', borderRadius: 4 }}>
+                {currentOrder.statusHistory && currentOrder.statusHistory.length > 0 ? (
+                  <Timeline
+                    mode="left"
+                    items={currentOrder.statusHistory.map((log) => ({
+                      color: log.fromStatus ? 'blue' : 'green',
+                      label: (
+                        <Space direction="vertical" size={0} style={{ width: 140 }}>
+                          <Text type="secondary" style={{ fontSize: 11 }}>
+                            {dayjs(log.changedAt).format('MM-DD HH:mm')}
+                          </Text>
+                          <Tag color="purple" style={{ fontSize: 11 }}>
+                            {log.entityType}
+                          </Tag>
+                        </Space>
+                      ),
+                      children: (
+                        <div>
+                          <Space size={8}>
+                            {log.fromStatus && (
+                              <>
+                                <Tag>{log.fromStatus}</Tag>
+                                <Text type="secondary">→</Text>
+                              </>
+                            )}
+                            <Tag color="blue">{log.toStatus}</Tag>
+                          </Space>
+                          <div style={{ marginTop: 4 }}>
+                            {log.remark && (
+                              <Text type="secondary" style={{ fontSize: 12 }}>
+                                原因：{log.remark}
+                              </Text>
+                            )}
+                            {log.changedBy && (
+                              <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>
+                                操作人：{log.changedBy}
+                              </Text>
+                            )}
+                          </div>
+                        </div>
+                      ),
+                    }))}
+                  />
+                ) : (
+                  <Empty description="暂无状态变更记录" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                )}
+              </div>
             </div>
           </Space>
         )}

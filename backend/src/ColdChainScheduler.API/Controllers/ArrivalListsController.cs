@@ -205,9 +205,18 @@ public class ArrivalListsController : ControllerBase
         if (item.PickupStatus == PickupStatus.OverdueUncollected)
             return Ok(ApiResponse.Fail("该商品已超时未取，无法自提"));
 
+        var oldStatus = item.PickupStatus;
         item.PickupStatus = PickupStatus.PickedUp;
         item.PickupTime = DateTime.UtcNow;
         await _context.SaveChangesAsync();
+
+        await _logService.LogStatusChange(
+            "ArrivalListItem",
+            item.Id,
+            oldStatus?.ToString(),
+            PickupStatus.PickedUp.ToString(),
+            null,
+            "用户已完成自提");
 
         return Ok(ApiResponse.Ok("自提成功"));
     }

@@ -185,6 +185,7 @@ export interface ExceptionOrder {
   resolvedAt?: string | null;
   createdAt: string;
   updatedAt?: string | null;
+  statusHistory: StatusChangeLog[];
 }
 
 export interface ApiResponse<T> {

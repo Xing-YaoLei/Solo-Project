@@ -22,4 +22,5 @@ public class ExceptionOrderDto
     public DateTime? ResolvedAt { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
+    public List<StatusChangeLogDto> StatusHistory { get; set; } = new();
 }

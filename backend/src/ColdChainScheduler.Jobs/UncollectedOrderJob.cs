@@ -1,5 +1,6 @@
 using ColdChainScheduler.Domain.Entities;
 using ColdChainScheduler.Domain.Enums;
+using ColdChainScheduler.Domain.Interfaces;
 using ColdChainScheduler.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -10,11 +11,16 @@ public class UncollectedOrderJob
 {
     private readonly AppDbContext _context;
     private readonly ILogger<UncollectedOrderJob> _logger;
+    private readonly IStatusChangeLogService _logService;
 
-    public UncollectedOrderJob(AppDbContext context, ILogger<UncollectedOrderJob> logger)
+    public UncollectedOrderJob(
+        AppDbContext context,
+        ILogger<UncollectedOrderJob> logger,
+        IStatusChangeLogService logService)
     {
         _context = context;
         _logger = logger;
+        _logService = logService;
     }
 
     public async Task ExecuteAsync()
@@ -47,6 +53,7 @@ public class UncollectedOrderJob
             existingUncollectedOrders.Select(x => $"{x.ArrivalListId}_{x.ProductTagId}"));
 
         var newOrders = new List<ExceptionOrder>();
+        var logEntries = new List<(ExceptionOrder Order, ArrivalListItem Item, PickupStatus? OldStatus)>();
         var today = DateTime.UtcNow.ToString("yyyyMMdd");
         var maxOrderNoSuffix = await _context.ExceptionOrders
             .Where(e => e.OrderNo.StartsWith($"EX-{today}-"))
@@ -72,6 +79,7 @@ public class UncollectedOrderJob
             if (existingSet.Contains(key))
                 continue;
 
+            var oldPickupStatus = item.PickupStatus;
             item.PickupStatus = PickupStatus.OverdueUncollected;
 
             var orderNo = $"EX-{today}-{orderIndex:D4}";
@@ -154,6 +162,7 @@ public class UncollectedOrderJob
             };
 
             newOrders.Add(order);
+            logEntries.Add((order, item, oldPickupStatus));
             existingSet.Add(key);
         }
 
@@ -162,6 +171,26 @@ public class UncollectedOrderJob
             _context.ExceptionOrders.AddRange(newOrders);
             await _context.SaveChangesAsync();
             _logger.LogInformation("自动标记 {Count} 条商品为超时未取货，并创建对应异常工单", newOrders.Count);
+
+            var logTasks = new List<Task>();
+            foreach (var entry in logEntries)
+            {
+                logTasks.Add(_logService.LogStatusChange(
+                    "ArrivalListItem",
+                    entry.Item.Id,
+                    entry.OldStatus?.ToString(),
+                    PickupStatus.OverdueUncollected.ToString(),
+                    "系统",
+                    "自提超时自动标记为逾期未取"));
+                logTasks.Add(_logService.LogStatusChange(
+                    "ExceptionOrder",
+                    entry.Order.Id,
+                    null,
+                    ExceptionResolution.Pending.ToString(),
+                    "系统",
+                    "自提超时自动生成异常工单"));
+            }
+            await Task.WhenAll(logTasks);
         }
         else
         {
