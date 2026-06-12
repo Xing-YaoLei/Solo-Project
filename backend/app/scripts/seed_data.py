@@ -13,6 +13,30 @@ from app.models import StorePoint, Device, Person, CleaningRecord, StatusLog
 from app import schemas
 
 
+SOURCE_CHANNEL_MAP = {
+    "routine_inspection": schemas.SourceChannel.ROUTINE_INSPECTION,
+    "device_alert": schemas.SourceChannel.DEVICE_ALERT,
+    "manual_report": schemas.SourceChannel.MANUAL_REPORT,
+    "store_request": schemas.SourceChannel.STORE_REQUEST,
+}
+
+CLEANING_STATUS_MAP = {
+    "draft": schemas.CleaningStatus.DRAFT,
+    "pending_review": schemas.CleaningStatus.PENDING_REVIEW,
+    "supplement_info": schemas.CleaningStatus.SUPPLEMENT_INFO,
+    "reviewing": schemas.CleaningStatus.REVIEWING,
+    "completed": schemas.CleaningStatus.COMPLETED,
+    "closed": schemas.CleaningStatus.CLOSED,
+}
+
+CLOSE_REASON_MAP = {
+    "qualified": schemas.CloseReason.QUALIFIED,
+    "device_replaced": schemas.CloseReason.DEVICE_REPLACED,
+    "point_closed": schemas.CloseReason.POINT_CLOSED,
+    "other": schemas.CloseReason.OTHER,
+}
+
+
 def seed():
     db = SessionLocal()
     try:
@@ -251,8 +275,8 @@ def seed():
                 record_no=rd["record_no"],
                 store_point_id=device.store_point_id,
                 device_id=device.id,
-                source_channel=rd["source"],
-                status=rd["status"],
+                source_channel=SOURCE_CHANNEL_MAP[rd["source"]],
+                status=CLEANING_STATUS_MAP[rd["status"]],
                 cleaning_date=created_at,
                 cleaning_person_id=person_map[rd["cleaner"]].id if rd["cleaner"] else None,
                 cleaning_items=default_items,
@@ -264,7 +288,7 @@ def seed():
                 review_photos=[],
                 inspection_result=rd["review_result"],
                 qualified_rate=rd.get("qualified_rate"),
-                close_reason=rd.get("close_reason"),
+                close_reason=CLOSE_REASON_MAP.get(rd.get("close_reason")),
                 close_remarks=rd.get("review_remarks") if rd["status"] == "closed" else None,
                 closed_at=created_at + timedelta(hours=3) if rd["status"] == "closed" else None,
                 closed_by_id=person_map["E004"].id if rd["status"] == "closed" else None,
@@ -311,22 +335,24 @@ def seed():
 
 
 def get_status_flow(target_status: str):
+    S = CLEANING_STATUS_MAP
     flows = {
-        "draft": [(None, "draft")],
-        "pending_review": [(None, "draft"), ("draft", "pending_review")],
-        "supplement_info": [(None, "draft"), ("draft", "pending_review"),
-                            ("pending_review", "reviewing"), ("reviewing", "supplement_info")],
-        "reviewing": [(None, "draft"), ("draft", "pending_review"), ("pending_review", "reviewing")],
-        "completed": [(None, "draft"), ("draft", "pending_review"),
-                      ("pending_review", "reviewing"), ("reviewing", "completed")],
-        "closed": [(None, "draft"), ("draft", "pending_review"),
-                   ("pending_review", "reviewing"), ("reviewing", "completed"),
-                   ("completed", "closed")],
+        "draft": [(None, S["draft"])],
+        "pending_review": [(None, S["draft"]), (S["draft"], S["pending_review"])],
+        "supplement_info": [(None, S["draft"]), (S["draft"], S["pending_review"]),
+                            (S["pending_review"], S["reviewing"]), (S["reviewing"], S["supplement_info"])],
+        "reviewing": [(None, S["draft"]), (S["draft"], S["pending_review"]), (S["pending_review"], S["reviewing"])],
+        "completed": [(None, S["draft"]), (S["draft"], S["pending_review"]),
+                      (S["pending_review"], S["reviewing"]), (S["reviewing"], S["completed"])],
+        "closed": [(None, S["draft"]), (S["draft"], S["pending_review"]),
+                   (S["pending_review"], S["reviewing"]), (S["reviewing"], S["completed"]),
+                   (S["completed"], S["closed"])],
     }
-    return flows.get(target_status, [(None, "draft")])
+    return flows.get(target_status, [(None, S["draft"])])
 
 
-def get_status_remark(status: str, rd: dict):
+def get_status_remark(status, rd: dict):
+    status_val = status.value if hasattr(status, 'value') else status
     remarks = {
         "draft": "创建清洁单据",
         "pending_review": "提交复核申请",
@@ -335,7 +361,7 @@ def get_status_remark(status: str, rd: dict):
         "completed": "复核完成，单据归档",
         "closed": f"关闭原因: {rd.get('close_reason', 'qualified')}",
     }
-    return remarks.get(status, "")
+    return remarks.get(status_val, "")
 
 
 if __name__ == "__main__":
