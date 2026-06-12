@@ -59,18 +59,21 @@ func end_game() -> void:
 	game_completed.emit(current_score, current_accuracy)
 	unlock_next_level(current_level_id)
 	save_progress()
+	change_scene("Result")
 
-func add_question_result(is_correct: bool, score: int, question_type: String) -> void:
+func add_question_result(is_correct: bool, score: int, question_type: String, extra: Dictionary = {}) -> void:
 	total_questions += 1
 	if is_correct:
 		correct_questions += 1
 		current_score += score
 	var key: String = "%s_%d" % [question_type, total_questions]
-	gameplay_data[key] = {
+	var data: Dictionary = {
 		"type": question_type,
 		"is_correct": is_correct,
 		"score": score
 	}
+	data.merge(extra)
+	gameplay_data[key] = data
 
 func unlock_next_level(completed_level_id: String) -> void:
 	var levels: Array = DataManager.get_levels()

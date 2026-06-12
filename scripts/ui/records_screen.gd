@@ -12,6 +12,8 @@ extends Control
 @onready var loss_rate_tree: Tree = $Background/TabContainer/LossRateTab/VBoxContainer/LossRateTree
 @onready var loss_rate_chart: Control = $Background/TabContainer/LossRateTab/VBoxContainer/LossRateChart
 
+var _draw_connected: bool = false
+
 func _ready() -> void:
 	setup_connections()
 	load_all_data()
@@ -28,12 +30,12 @@ func load_all_data() -> void:
 
 func load_records() -> void:
 	records_tree.clear()
-	records_tree.set_column_titles(0, "时间")
-	records_tree.set_column_titles(1, "关卡")
-	records_tree.set_column_titles(2, "模式")
-	records_tree.set_column_titles(3, "得分")
-	records_tree.set_column_titles(4, "正确率")
-	records_tree.set_column_titles(5, "题数")
+	records_tree.set_column_title(0, "时间")
+	records_tree.set_column_title(1, "关卡")
+	records_tree.set_column_title(2, "模式")
+	records_tree.set_column_title(3, "得分")
+	records_tree.set_column_title(4, "正确率")
+	records_tree.set_column_title(5, "题数")
 	
 	var records: Array = DataManager.get_training_records(50)
 	var mode_names: Dictionary = {0: "训练", 1: "自由练习"}
@@ -72,12 +74,12 @@ func load_records() -> void:
 
 func load_statistics() -> void:
 	stats_tree.clear()
-	stats_tree.set_column_titles(0, "关卡")
-	stats_tree.set_column_titles(1, "训练次数")
-	stats_tree.set_column_titles(2, "平均得分")
-	stats_tree.set_column_titles(3, "平均正确率")
-	stats_tree.set_column_titles(4, "最高分")
-	stats_tree.set_column_titles(5, "状态")
+	stats_tree.set_column_title(0, "关卡")
+	stats_tree.set_column_title(1, "训练次数")
+	stats_tree.set_column_title(2, "平均得分")
+	stats_tree.set_column_title(3, "平均正确率")
+	stats_tree.set_column_title(4, "最高分")
+	stats_tree.set_column_title(5, "状态")
 	
 	var records: Array = DataManager.get_training_records()
 	var level_stats: Dictionary = {}
@@ -145,12 +147,12 @@ func load_statistics() -> void:
 
 func load_loss_rate_stats() -> void:
 	loss_rate_tree.clear()
-	loss_rate_tree.set_column_titles(0, "门店")
-	loss_rate_tree.set_column_titles(1, "经理")
-	loss_rate_tree.set_column_titles(2, "目标损耗率")
-	loss_rate_tree.set_column_titles(3, "训练次数")
-	loss_rate_tree.set_column_titles(4, "正确判断")
-	loss_rate_tree.set_column_titles(5, "正确率")
+	loss_rate_tree.set_column_title(0, "门店")
+	loss_rate_tree.set_column_title(1, "经理")
+	loss_rate_tree.set_column_title(2, "目标损耗率")
+	loss_rate_tree.set_column_title(3, "训练次数")
+	loss_rate_tree.set_column_title(4, "正确判断")
+	loss_rate_tree.set_column_title(5, "正确率")
 	
 	var stats: Dictionary = DataManager.get_loss_rate_statistics()
 	var sorted_stores: Array = []
@@ -187,10 +189,21 @@ func load_loss_rate_stats() -> void:
 			item.set_color(0, Color(0.8, 0.3, 0.3, 1))
 
 func draw_loss_rate_chart() -> void:
-	loss_rate_chart.draw.connect(_on_chart_draw)
+	if not _draw_connected:
+		var draw_script: GDScript = GDScript.new()
+		draw_script.source_code = """
+extends Control
+var parent_ref = null
+func _draw():
+	if parent_ref:
+		parent_ref.render_loss_rate_chart(self)
+"""
+		loss_rate_chart.set_script(draw_script)
+		loss_rate_chart.parent_ref = self
+		_draw_connected = true
 	loss_rate_chart.queue_redraw()
 
-func _on_chart_draw() -> void:
+func render_loss_rate_chart(draw_node: Control) -> void:
 	var stats: Dictionary = DataManager.get_loss_rate_statistics()
 	var stores: Array = []
 	for store_id in stats:
@@ -206,7 +219,7 @@ func _on_chart_draw() -> void:
 	if stores.is_empty():
 		return
 	
-	var size: Vector2 = loss_rate_chart.size
+	var size: Vector2 = draw_node.size
 	var padding: float = 50
 	var chart_width: float = size.x - padding * 2
 	var chart_height: float = size.y - padding * 2
@@ -218,7 +231,7 @@ func _on_chart_draw() -> void:
 		var bar_x: float = padding + i * (bar_width + bar_gap) + bar_gap / 2
 		var target_height: float = (stores[i]["target"] / max_value) * chart_height
 		
-		loss_rate_chart.draw_rect(
+		draw_node.draw_rect(
 			Rect2(bar_x, padding + chart_height - target_height, bar_width, target_height),
 			Color(0.7, 0.5, 0.3, 1)
 		)
@@ -233,62 +246,66 @@ func _on_chart_draw() -> void:
 			acc = float(correct) / float(records.size()) * 100.0
 		var acc_height: float = (acc / 100.0) * chart_height * 0.3
 		
-		loss_rate_chart.draw_rect(
+		draw_node.draw_rect(
 			Rect2(bar_x + 5, padding + chart_height - target_height - acc_height - 5, bar_width - 10, acc_height),
 			Color(0.3, 0.6, 0.3, 1)
 		)
 		
-		loss_rate_chart.draw_string(
-			ThemeDB.fallback_font,
-			Vector2(bar_x + bar_width / 2 - 30, size.y - padding + 20),
-			stores[i]["name"],
-			HORIZONTAL_ALIGNMENT_LEFT,
-			-1,
-			12,
-			Color(0.2, 0.1, 0.05, 1)
-		)
-		
-		loss_rate_chart.draw_string(
-			ThemeDB.fallback_font,
-			Vector2(bar_x + bar_width / 2 - 25, padding + chart_height - target_height - 10),
-			"%.1f%%" % stores[i]["target"],
-			HORIZONTAL_ALIGNMENT_LEFT,
-			-1,
-			11,
-			Color(0.5, 0.3, 0.1, 1)
-		)
+		var font: Font = draw_node.get_theme_default_font()
+		if font:
+			draw_node.draw_string(
+				font,
+				Vector2(bar_x + bar_width / 2 - 30, size.y - padding + 20),
+				stores[i]["name"],
+				HORIZONTAL_ALIGNMENT_LEFT,
+				-1,
+				12,
+				Color(0.2, 0.1, 0.05, 1)
+			)
+			
+			draw_node.draw_string(
+				font,
+				Vector2(bar_x + bar_width / 2 - 25, padding + chart_height - target_height - 10),
+				"%.1f%%" % stores[i]["target"],
+				HORIZONTAL_ALIGNMENT_LEFT,
+				-1,
+				11,
+				Color(0.5, 0.3, 0.1, 1)
+			)
 	
-	loss_rate_chart.draw_line(
+	draw_node.draw_line(
 		Vector2(padding, padding),
 		Vector2(padding, padding + chart_height),
 		Color(0.5, 0.4, 0.3, 1),
 		2
 	)
-	loss_rate_chart.draw_line(
+	draw_node.draw_line(
 		Vector2(padding, padding + chart_height),
 		Vector2(size.x - padding, padding + chart_height),
 		Color(0.5, 0.4, 0.3, 1),
 		2
 	)
 	
-	loss_rate_chart.draw_string(
-		ThemeDB.fallback_font,
-		Vector2(10, padding + 10),
-		"目标损耗率",
-		HORIZONTAL_ALIGNMENT_LEFT,
-		-1,
-		12,
-		Color(0.7, 0.5, 0.3, 1)
-	)
-	loss_rate_chart.draw_string(
-		ThemeDB.fallback_font,
-		Vector2(10, padding + 30),
-		"判断正确率",
-		HORIZONTAL_ALIGNMENT_LEFT,
-		-1,
-		12,
-		Color(0.3, 0.6, 0.3, 1)
-	)
+	var font: Font = draw_node.get_theme_default_font()
+	if font:
+		draw_node.draw_string(
+			font,
+			Vector2(10, padding + 10),
+			"目标损耗率",
+			HORIZONTAL_ALIGNMENT_LEFT,
+			-1,
+			12,
+			Color(0.7, 0.5, 0.3, 1)
+		)
+		draw_node.draw_string(
+			font,
+			Vector2(10, padding + 30),
+			"判断正确率",
+			HORIZONTAL_ALIGNMENT_LEFT,
+			-1,
+			12,
+			Color(0.3, 0.6, 0.3, 1)
+		)
 
 func _on_back_pressed() -> void:
 	AudioManager.play_click()

@@ -160,7 +160,7 @@ func load_default_data() -> void:
 			},
 			{
 				"id": "ro_003",
-				"type": "store_selection",
+				"type": "review_opinion",
 				"difficulty": 1,
 				"description": "门店报损纸杯200个，原因是运输途中破损，正确的复核意见是？",
 				"options": [
@@ -175,7 +175,7 @@ func load_default_data() -> void:
 			},
 			{
 				"id": "ro_004",
-				"type": "store_selection",
+				"type": "review_opinion",
 				"difficulty": 2,
 				"description": "门店报损糕点10份，原因是制作错误报废，正确的复核意见是？",
 				"options": [
@@ -410,6 +410,18 @@ func add_question(question: Dictionary) -> void:
 	questions_data[qtype].append(question)
 	save_data()
 	data_updated.emit("questions")
+
+func delete_level(level_id: String) -> void:
+	if levels_data.has(level_id):
+		levels_data.erase(level_id)
+		save_data()
+		data_updated.emit("levels")
+
+func delete_store(store_id: String) -> void:
+	if stores_data.has(store_id):
+		stores_data.erase(store_id)
+		save_data()
+		data_updated.emit("stores")
 
 func delete_question(question_id: String) -> void:
 	for qtype in questions_data:

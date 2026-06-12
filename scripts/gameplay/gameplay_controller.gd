@@ -7,7 +7,8 @@ signal game_finished(score, accuracy)
 @onready var level_label: Label = $Background/TopBar/LevelLabel
 @onready var score_label: Label = $Background/TopBar/ScoreLabel
 @onready var time_label: Label = $Background/TopBar/TimeLabel
-@onready var question_container: Control = $Background/QuestionContainer
+@onready var question_panel: PanelContainer = $Background/QuestionContainer
+@onready var question_margin: MarginContainer = $Background/QuestionContainer/MarginContainer
 @onready var question_number_label: Label = $Background/QuestionInfo/QuestionNumberLabel
 @onready var question_type_label: Label = $Background/QuestionInfo/QuestionTypeLabel
 @onready var next_btn: Button = $Background/BottomBar/NextBtn
@@ -47,7 +48,6 @@ func setup_connections() -> void:
 func setup_timer() -> void:
 	add_child(game_timer)
 	game_timer.wait_time = 1.0
-	game_timer.timeout.connect(_update_time_display)
 
 func load_level_questions() -> void:
 	var level: Dictionary = DataManager.get_level(GameManager.current_level_id)
@@ -60,6 +60,7 @@ func load_level_questions() -> void:
 
 func start_game() -> void:
 	current_question_index = 0
+	_update_time_display()
 	game_timer.start()
 	show_question()
 	update_ui()
@@ -79,10 +80,15 @@ func show_question() -> void:
 		current_question_widget.queue_free()
 		current_question_widget = null
 	
+	for child in question_margin.get_children():
+		child.queue_free()
+	
 	var qtype: String = current_question.get("type", "review_opinion")
 	current_question_widget = create_question_widget(qtype)
 	if current_question_widget:
-		question_container.add_child(current_question_widget)
+		current_question_widget.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		current_question_widget.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		question_margin.add_child(current_question_widget)
 	
 	update_question_info()
 
@@ -285,6 +291,12 @@ func _on_option_selected(option: Dictionary, button: Button) -> void:
 	AudioManager.play_click()
 	var is_correct: bool = option.get("correct", false)
 	var score: int = current_question.get("score", 0)
+	var extra: Dictionary = {}
+	var qtype: String = current_question.get("type", "")
+	if qtype == "store_selection":
+		var sid: String = option.get("store_id", "")
+		if sid != "":
+			extra["store_id"] = sid
 	
 	if is_correct:
 		button.add_theme_color_override("font_color", Color(1, 1, 1, 1))
@@ -295,22 +307,29 @@ func _on_option_selected(option: Dictionary, button: Button) -> void:
 		highlight_correct_option()
 	
 	show_feedback(is_correct)
-	submit_answer(is_correct, score)
+	submit_answer(is_correct, score, extra)
 
 func highlight_correct_option() -> void:
 	if not current_question_widget:
 		return
 	
 	var options: Array = current_question.get("options", [])
-	var buttons: Array = current_question_widget.get_children()
+	var correct_opt_id: String = ""
+	for opt in options:
+		if opt.get("correct", false):
+			correct_opt_id = opt.get("id", "")
+			break
 	
-	for i in range(options.size()):
-		if options[i].get("correct", false):
-			var btn_idx: int = i + 3
-			if btn_idx < buttons.size() and buttons[btn_idx] is Button:
-				var correct_btn: Button = buttons[btn_idx]
-				correct_btn.add_theme_color_override("font_color", Color(1, 1, 1, 1))
-				correct_btn.add_theme_stylebox_override("normal", create_highlight_style())
+	if correct_opt_id == "":
+		return
+	
+	for child in current_question_widget.get_children():
+		if child is Button:
+			var btn_text: String = child.text
+			if btn_text.begins_with(correct_opt_id + "."):
+				child.add_theme_color_override("font_color", Color(1, 1, 1, 1))
+				child.add_theme_stylebox_override("normal", create_highlight_style())
+				break
 
 func _on_sort_item_selected(item: Dictionary, button: Button, widget: Control) -> void:
 	if is_question_answered:
@@ -428,13 +447,13 @@ func highlight_sorting_result(selected_order: Array, correct_order: Array) -> vo
 								btn.add_theme_stylebox_override("normal", create_wrong_style())
 							break
 
-func submit_answer(is_correct: bool, score: int) -> void:
+func submit_answer(is_correct: bool, score: int, extra: Dictionary = {}) -> void:
 	is_question_answered = true
 	submit_btn.disabled = true
 	next_btn.disabled = false
 	
 	var actual_score: int = score if is_correct else 0
-	GameManager.add_question_result(is_correct, actual_score, current_question.get("type", ""))
+	GameManager.add_question_result(is_correct, actual_score, current_question.get("type", ""), extra)
 	
 	if is_correct:
 		AudioManager.play_correct()
@@ -532,8 +551,8 @@ func _on_back_pressed() -> void:
 	var dialog: ConfirmationDialog = ConfirmationDialog.new()
 	dialog.title = "确认退出"
 	dialog.dialog_text = "确定要退出当前训练吗？进度将不会保存。"
-	dialog.ok_button_text = "确定退出"
-	dialog.cancel_button_text = "继续训练"
+	dialog.get_ok_button().text = "确定退出"
+	dialog.get_cancel_button().text = "继续训练"
 	add_child(dialog)
 	dialog.confirmed.connect(func(): 
 		game_timer.stop()
@@ -543,6 +562,7 @@ func _on_back_pressed() -> void:
 
 func _on_timer_tick() -> void:
 	time_remaining -= 1.0
+	_update_time_display()
 	if time_remaining <= 0:
 		time_remaining = 0
 		finish_game()
@@ -572,6 +592,5 @@ func update_question_info() -> void:
 func finish_game() -> void:
 	game_timer.stop()
 	AudioManager.play_complete()
-	GameManager.end_game()
 	game_finished.emit(GameManager.current_score, GameManager.current_accuracy)
-	GameManager.change_scene("Result")
+	GameManager.end_game()

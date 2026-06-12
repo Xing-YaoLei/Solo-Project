@@ -3,13 +3,13 @@ extends Control
 @onready var back_btn: Button = $Background/TopBar/BackBtn
 @onready var title_label: Label = $Background/TopBar/TitleLabel
 @onready var mode_label: Label = $Background/TopBar/ModeLabel
-@onready var levels_container: GridContainer = $Background/ScrollContainer/LevelsContainer
+@onready var levels_container: GridContainer = $Background/HSplitContainer/ScrollContainer/LevelsContainer
 @onready var start_btn: Button = $Background/BottomBar/StartBtn
-@onready var info_panel: PanelContainer = $Background/InfoPanel
-@onready var info_title: Label = $Background/InfoPanel/MarginContainer/VBoxContainer/InfoTitle
-@onready var info_desc: Label = $Background/InfoPanel/MarginContainer/VBoxContainer/InfoDesc
-@onready var info_detail: Label = $Background/InfoPanel/MarginContainer/VBoxContainer/InfoDetail
-@onready var info_types: Label = $Background/InfoPanel/MarginContainer/VBoxContainer/InfoTypes
+@onready var info_panel: PanelContainer = $Background/HSplitContainer/InfoPanel
+@onready var info_title: Label = $Background/HSplitContainer/InfoPanel/MarginContainer/VBoxContainer/InfoTitle
+@onready var info_desc: Label = $Background/HSplitContainer/InfoPanel/MarginContainer/VBoxContainer/InfoDesc
+@onready var info_detail: Label = $Background/HSplitContainer/InfoPanel/MarginContainer/VBoxContainer/InfoDetail
+@onready var info_types: Label = $Background/HSplitContainer/InfoPanel/MarginContainer/VBoxContainer/InfoTypes
 
 var selected_level_id: String = ""
 var level_buttons: Dictionary = {}

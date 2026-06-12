@@ -15,10 +15,10 @@ extends Control
 @onready var level_time_spin: SpinBox = $Background/TabContainer/LevelsTab/VBoxContainer/FormGrid/LevelTimeSpin
 @onready var level_pass_spin: SpinBox = $Background/TabContainer/LevelsTab/VBoxContainer/FormGrid/LevelPassSpin
 @onready var level_enabled_check: CheckBox = $Background/TabContainer/LevelsTab/VBoxContainer/FormGrid/LevelEnabledCheck
-@onready var level_qtype_check1: CheckBox = $Background/TabContainer/LevelsTab/VBoxContainer/FormGrid/LevelQTypeCheck1
-@onready var level_qtype_check2: CheckBox = $Background/TabContainer/LevelsTab/VBoxContainer/FormGrid/LevelQTypeCheck2
-@onready var level_qtype_check3: CheckBox = $Background/TabContainer/LevelsTab/VBoxContainer/FormGrid/LevelQTypeCheck3
-@onready var level_qtype_check4: CheckBox = $Background/TabContainer/LevelsTab/VBoxContainer/FormGrid/LevelQTypeCheck4
+@onready var level_qtype_check1: CheckBox = $Background/TabContainer/LevelsTab/VBoxContainer/FormGrid/QTypesBox/LevelQTypeCheck1
+@onready var level_qtype_check2: CheckBox = $Background/TabContainer/LevelsTab/VBoxContainer/FormGrid/QTypesBox/LevelQTypeCheck2
+@onready var level_qtype_check3: CheckBox = $Background/TabContainer/LevelsTab/VBoxContainer/FormGrid/QTypesBox/LevelQTypeCheck3
+@onready var level_qtype_check4: CheckBox = $Background/TabContainer/LevelsTab/VBoxContainer/FormGrid/QTypesBox/LevelQTypeCheck4
 
 @onready var questions_tree: Tree = $Background/TabContainer/QuestionsTab/VBoxContainer/QuestionsTree
 @onready var question_type_option: OptionButton = $Background/TabContainer/QuestionsTab/VBoxContainer/ButtonRow/QuestionTypeOption
@@ -34,7 +34,7 @@ extends Control
 @onready var store_name_input: LineEdit = $Background/TabContainer/StoresTab/VBoxContainer/FormGrid/StoreNameInput
 @onready var store_manager_input: LineEdit = $Background/TabContainer/StoresTab/VBoxContainer/FormGrid/StoreManagerInput
 @onready var store_location_input: LineEdit = $Background/TabContainer/StoresTab/VBoxContainer/FormGrid/StoreLocationInput
-@onready var store_loss_rate_spin: SpinBox = $Background/TabContainer/StoresTab/VBoxContainer/FormGrid/StoreLossRateSpin
+@onready var store_loss_rate_spin: DoubleSpinBox = $Background/TabContainer/StoresTab/VBoxContainer/FormGrid/StoreLossRateSpin
 
 @onready var config_mode_option: OptionButton = $Background/TabContainer/SystemTab/VBoxContainer/ConfigGrid/ConfigModeOption
 @onready var config_open_start: LineEdit = $Background/TabContainer/SystemTab/VBoxContainer/ConfigGrid/ConfigOpenStart
@@ -94,10 +94,10 @@ func load_all_data() -> void:
 
 func load_levels() -> void:
 	levels_tree.clear()
-	levels_tree.set_column_titles(0, "关卡ID")
-	levels_tree.set_column_titles(1, "名称")
-	levels_tree.set_column_titles(2, "难度")
-	levels_tree.set_column_titles(3, "状态")
+	levels_tree.set_column_title(0, "关卡ID")
+	levels_tree.set_column_title(1, "名称")
+	levels_tree.set_column_title(2, "难度")
+	levels_tree.set_column_title(3, "状态")
 	
 	var levels: Array = DataManager.get_levels()
 	for level in levels:
@@ -110,9 +110,9 @@ func load_levels() -> void:
 
 func load_questions(qtype: String) -> void:
 	questions_tree.clear()
-	questions_tree.set_column_titles(0, "题目ID")
-	questions_tree.set_column_titles(1, "描述")
-	questions_tree.set_column_titles(2, "分值")
+	questions_tree.set_column_title(0, "题目ID")
+	questions_tree.set_column_title(1, "描述")
+	questions_tree.set_column_title(2, "分值")
 	
 	var questions: Array = DataManager.get_questions_by_type(qtype)
 	for q in questions:
@@ -124,10 +124,10 @@ func load_questions(qtype: String) -> void:
 
 func load_stores() -> void:
 	stores_tree.clear()
-	stores_tree.set_column_titles(0, "门店ID")
-	stores_tree.set_column_titles(1, "名称")
-	stores_tree.set_column_titles(2, "经理")
-	stores_tree.set_column_titles(3, "目标损耗率")
+	stores_tree.set_column_title(0, "门店ID")
+	stores_tree.set_column_title(1, "名称")
+	stores_tree.set_column_title(2, "经理")
+	stores_tree.set_column_title(3, "目标损耗率")
 	
 	var stores: Array = DataManager.get_stores()
 	for store in stores:
@@ -229,6 +229,19 @@ func _on_delete_level() -> void:
 	if selected_level_id == "":
 		return
 	AudioManager.play_click()
+	var dialog: ConfirmationDialog = ConfirmationDialog.new()
+	dialog.title = "确认删除"
+	dialog.dialog_text = "确定要删除关卡「%s」吗？" % level_name_input.text
+	dialog.get_ok_button().text = "删除"
+	dialog.get_cancel_button().text = "取消"
+	add_child(dialog)
+	dialog.confirmed.connect(func():
+		DataManager.delete_level(selected_level_id)
+		selected_level_id = ""
+		clear_level_form()
+		load_levels()
+	)
+	dialog.popup_centered()
 
 func _on_question_selected() -> void:
 	AudioManager.play_click()
@@ -242,7 +255,45 @@ func _on_add_question() -> void:
 	AudioManager.play_click()
 
 func _on_delete_question() -> void:
+	var selected: TreeItem = questions_tree.get_selected()
+	if not selected:
+		return
 	AudioManager.play_click()
+	var question_id: String = selected.get_meta("question_id", "")
+	if question_id == "":
+		return
+	var dialog: ConfirmationDialog = ConfirmationDialog.new()
+	dialog.title = "确认删除"
+	dialog.dialog_text = "确定要删除题目「%s」吗？" % question_id
+	dialog.get_ok_button().text = "删除"
+	dialog.get_cancel_button().text = "取消"
+	add_child(dialog)
+	dialog.confirmed.connect(func():
+		DataManager.delete_question(question_id)
+		var types: Array = ["review_opinion", "store_selection", "amount_sorting", "approval_record"]
+		load_questions(types[question_type_option.selected])
+	)
+	dialog.popup_centered()
+
+func clear_level_form() -> void:
+	level_id_input.text = ""
+	level_name_input.text = ""
+	level_desc_input.text = ""
+	level_difficulty_spin.value = 1
+	level_time_spin.value = 300
+	level_pass_spin.value = 60
+	level_enabled_check.button_pressed = true
+	level_qtype_check1.button_pressed = false
+	level_qtype_check2.button_pressed = false
+	level_qtype_check3.button_pressed = false
+	level_qtype_check4.button_pressed = false
+
+func clear_store_form() -> void:
+	store_id_input.text = ""
+	store_name_input.text = ""
+	store_manager_input.text = ""
+	store_location_input.text = ""
+	store_loss_rate_spin.value = 3.0
 
 func _on_store_selected() -> void:
 	AudioManager.play_click()
@@ -294,6 +345,19 @@ func _on_delete_store() -> void:
 	if selected_store_id == "":
 		return
 	AudioManager.play_click()
+	var dialog: ConfirmationDialog = ConfirmationDialog.new()
+	dialog.title = "确认删除"
+	dialog.dialog_text = "确定要删除门店「%s」吗？" % store_name_input.text
+	dialog.get_ok_button().text = "删除"
+	dialog.get_cancel_button().text = "取消"
+	add_child(dialog)
+	dialog.confirmed.connect(func():
+		DataManager.delete_store(selected_store_id)
+		selected_store_id = ""
+		clear_store_form()
+		load_stores()
+	)
+	dialog.popup_centered()
 
 func _on_save_config() -> void:
 	AudioManager.play_click()
