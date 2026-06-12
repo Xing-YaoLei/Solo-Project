@@ -1,0 +1,188 @@
+[gd_scene load_steps=3 format=3 uid="uid://records_scene"]
+
+[ext_resource type="Script" path="res://scripts/ui/records_screen.gd" id="1_script"]
+[ext_resource type="Theme" path="res://themes/theme.tres" id="2_theme"]
+
+[node name="Records" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("2_theme")
+script = ExtResource("1_script")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.96, 0.88, 0.78, 1)
+
+[node name="TopBar" type="HBoxContainer" parent="Background"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 20.0
+offset_top = 15.0
+offset_right = -20.0
+offset_bottom = 65.0
+grow_horizontal = 2
+theme_override_constants/separation = 20
+
+[node name="BackBtn" type="Button" parent="Background/TopBar"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "← 返回"
+custom_minimum_size = Vector2(100, 40)
+
+[node name="TitleLabel" type="Label" parent="Background/TopBar"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "📊 训练记录与复盘"
+size_flags_horizontal = 3
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.4, 0.2, 0.08, 1)
+
+[node name="TabContainer" type="TabContainer" parent="Background"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = 80.0
+offset_right = -20.0
+offset_bottom = -20.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 16
+
+[node name="RecordsTab" type="ScrollContainer" parent="Background/TabContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Background/TabContainer/RecordsTab"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 15
+
+[node name="Label" type="Label" parent="Background/TabContainer/RecordsTab/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "📋 历史训练记录"
+theme_override_colors/font_color = Color(0.4, 0.2, 0.08, 1)
+
+[node name="RecordsTree" type="Tree" parent="Background/TabContainer/RecordsTab/VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+columns = 6
+column_titles_visible = true
+
+[node name="StatsTab" type="ScrollContainer" parent="Background/TabContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Background/TabContainer/StatsTab"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 15
+
+[node name="OverviewPanel" type="PanelContainer" parent="Background/TabContainer/StatsTab/VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="MarginContainer" type="MarginContainer" parent="Background/TabContainer/StatsTab/VBoxContainer/OverviewPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 15
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 15
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Background/TabContainer/StatsTab/VBoxContainer/OverviewPanel/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Label" type="Label" parent="Background/TabContainer/StatsTab/VBoxContainer/OverviewPanel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "📈 总体统计概览"
+theme_override_colors/font_color = Color(0.4, 0.2, 0.08, 1)
+
+[node name="TotalGamesLabel" type="Label" parent="Background/TabContainer/StatsTab/VBoxContainer/OverviewPanel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "🎮 总训练次数：0 次"
+
+[node name="AvgAccuracyLabel" type="Label" parent="Background/TabContainer/StatsTab/VBoxContainer/OverviewPanel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "📊 平均正确率：0.0%"
+
+[node name="AvgScoreLabel" type="Label" parent="Background/TabContainer/StatsTab/VBoxContainer/OverviewPanel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "🏆 平均得分：0.0 分"
+
+[node name="BestScoreLabel" type="Label" parent="Background/TabContainer/StatsTab/VBoxContainer/OverviewPanel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "⭐ 最高得分：0 分"
+
+[node name="Label2" type="Label" parent="Background/TabContainer/StatsTab/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "📋 关卡详细统计"
+theme_override_colors/font_color = Color(0.4, 0.2, 0.08, 1)
+
+[node name="StatsTree" type="Tree" parent="Background/TabContainer/StatsTab/VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+columns = 6
+column_titles_visible = true
+
+[node name="LossRateTab" type="ScrollContainer" parent="Background/TabContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Background/TabContainer/LossRateTab"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 15
+
+[node name="Label" type="Label" parent="Background/TabContainer/LossRateTab/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "📉 门店损耗率复盘分析"
+theme_override_colors/font_color = Color(0.4, 0.2, 0.08, 1)
+
+[node name="LossRateChart" type="Control" parent="Background/TabContainer/LossRateTab/VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 280)
+
+[node name="Label2" type="Label" parent="Background/TabContainer/LossRateTab/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "📋 门店详细数据"
+theme_override_colors/font_color = Color(0.4, 0.2, 0.08, 1)
+
+[node name="LossRateTree" type="Tree" parent="Background/TabContainer/LossRateTab/VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+columns = 6
+column_titles_visible = true

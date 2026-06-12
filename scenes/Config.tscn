@@ -1,0 +1,468 @@
+[gd_scene load_steps=3 format=3 uid="uid://config_scene"]
+
+[ext_resource type="Script" path="res://scripts/ui/config_screen.gd" id="1_script"]
+[ext_resource type="Theme" path="res://themes/theme.tres" id="2_theme"]
+
+[node name="Config" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("2_theme")
+script = ExtResource("1_script")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.96, 0.88, 0.78, 1)
+
+[node name="TopBar" type="HBoxContainer" parent="Background"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 20.0
+offset_top = 15.0
+offset_right = -20.0
+offset_bottom = 65.0
+grow_horizontal = 2
+theme_override_constants/separation = 20
+
+[node name="BackBtn" type="Button" parent="Background/TopBar"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "← 返回"
+custom_minimum_size = Vector2(100, 40)
+
+[node name="TitleLabel" type="Label" parent="Background/TopBar"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "⚙️ 系统配置"
+size_flags_horizontal = 3
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.4, 0.2, 0.08, 1)
+
+[node name="TabContainer" type="TabContainer" parent="Background"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = 80.0
+offset_right = -20.0
+offset_bottom = -20.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 16
+
+[node name="LevelsTab" type="ScrollContainer" parent="Background/TabContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Background/TabContainer/LevelsTab"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 15
+
+[node name="ButtonRow" type="HBoxContainer" parent="Background/TabContainer/LevelsTab/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="AddLevelBtn" type="Button" parent="Background/TabContainer/LevelsTab/VBoxContainer/ButtonRow"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "➕ 新增关卡"
+custom_minimum_size = Vector2(120, 36)
+
+[node name="SaveLevelBtn" type="Button" parent="Background/TabContainer/LevelsTab/VBoxContainer/ButtonRow"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "💾 保存修改"
+custom_minimum_size = Vector2(120, 36)
+
+[node name="DeleteLevelBtn" type="Button" parent="Background/TabContainer/LevelsTab/VBoxContainer/ButtonRow"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "🗑️ 删除关卡"
+custom_minimum_size = Vector2(120, 36)
+
+[node name="Spacer" type="Control" parent="Background/TabContainer/LevelsTab/VBoxContainer/ButtonRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="LevelsTree" type="Tree" parent="Background/TabContainer/LevelsTab/VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+custom_minimum_size = Vector2(0, 200)
+columns = 4
+column_titles_visible = true
+
+[node name="FormGrid" type="GridContainer" parent="Background/TabContainer/LevelsTab/VBoxContainer"]
+layout_mode = 2
+columns = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 15
+theme_override_constants/v_separation = 10
+
+[node name="Label" type="Label" parent="Background/TabContainer/LevelsTab/VBoxContainer/FormGrid"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "关卡ID："
+
+[node name="LevelIdInput" type="LineEdit" parent="Background/TabContainer/LevelsTab/VBoxContainer/FormGrid"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+placeholder_text = "level_x"
+
+[node name="Label2" type="Label" parent="Background/TabContainer/LevelsTab/VBoxContainer/FormGrid"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "关卡名称："
+
+[node name="LevelNameInput" type="LineEdit" parent="Background/TabContainer/LevelsTab/VBoxContainer/FormGrid"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+placeholder_text = "请输入关卡名称"
+
+[node name="Label3" type="Label" parent="Background/TabContainer/LevelsTab/VBoxContainer/FormGrid"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "关卡描述："
+
+[node name="LevelDescInput" type="LineEdit" parent="Background/TabContainer/LevelsTab/VBoxContainer/FormGrid"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+placeholder_text = "请输入关卡描述"
+
+[node name="Label4" type="Label" parent="Background/TabContainer/LevelsTab/VBoxContainer/FormGrid"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "难度等级："
+
+[node name="LevelDifficultySpin" type="SpinBox" parent="Background/TabContainer/LevelsTab/VBoxContainer/FormGrid"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+min_value = 1.0
+max_value = 5.0
+value = 1.0
+
+[node name="Label5" type="Label" parent="Background/TabContainer/LevelsTab/VBoxContainer/FormGrid"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "时间限制(秒)："
+
+[node name="LevelTimeSpin" type="SpinBox" parent="Background/TabContainer/LevelsTab/VBoxContainer/FormGrid"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+min_value = 60.0
+max_value = 3600.0
+value = 300.0
+
+[node name="Label6" type="Label" parent="Background/TabContainer/LevelsTab/VBoxContainer/FormGrid"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "通过分数："
+
+[node name="LevelPassSpin" type="SpinBox" parent="Background/TabContainer/LevelsTab/VBoxContainer/FormGrid"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+min_value = 0.0
+max_value = 1000.0
+value = 60.0
+
+[node name="Label7" type="Label" parent="Background/TabContainer/LevelsTab/VBoxContainer/FormGrid"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "启用关卡："
+
+[node name="LevelEnabledCheck" type="CheckBox" parent="Background/TabContainer/LevelsTab/VBoxContainer/FormGrid"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "启用"
+button_pressed = true
+
+[node name="Label8" type="Label" parent="Background/TabContainer/LevelsTab/VBoxContainer/FormGrid"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "包含题型："
+
+[node name="QTypesBox" type="VBoxContainer" parent="Background/TabContainer/LevelsTab/VBoxContainer/FormGrid"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="LevelQTypeCheck1" type="CheckBox" parent="Background/TabContainer/LevelsTab/VBoxContainer/FormGrid/QTypesBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "复核意见识别"
+button_pressed = true
+
+[node name="LevelQTypeCheck2" type="CheckBox" parent="Background/TabContainer/LevelsTab/VBoxContainer/FormGrid/QTypesBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "责任门店选择"
+button_pressed = true
+
+[node name="LevelQTypeCheck3" type="CheckBox" parent="Background/TabContainer/LevelsTab/VBoxContainer/FormGrid/QTypesBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "成本金额排序"
+
+[node name="LevelQTypeCheck4" type="CheckBox" parent="Background/TabContainer/LevelsTab/VBoxContainer/FormGrid/QTypesBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "审批记录处理"
+
+[node name="QuestionsTab" type="ScrollContainer" parent="Background/TabContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Background/TabContainer/QuestionsTab"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 15
+
+[node name="ButtonRow" type="HBoxContainer" parent="Background/TabContainer/QuestionsTab/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="QuestionTypeOption" type="OptionButton" parent="Background/TabContainer/QuestionsTab/VBoxContainer/ButtonRow"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+custom_minimum_size = Vector2(180, 36)
+
+[node name="AddQuestionBtn" type="Button" parent="Background/TabContainer/QuestionsTab/VBoxContainer/ButtonRow"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "➕ 新增题目"
+custom_minimum_size = Vector2(120, 36)
+
+[node name="DeleteQuestionBtn" type="Button" parent="Background/TabContainer/QuestionsTab/VBoxContainer/ButtonRow"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "🗑️ 删除题目"
+custom_minimum_size = Vector2(120, 36)
+
+[node name="Spacer" type="Control" parent="Background/TabContainer/QuestionsTab/VBoxContainer/ButtonRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="QuestionsTree" type="Tree" parent="Background/TabContainer/QuestionsTab/VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+custom_minimum_size = Vector2(0, 300)
+columns = 3
+column_titles_visible = true
+
+[node name="HintLabel" type="Label" parent="Background/TabContainer/QuestionsTab/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "💡 提示：题目的详细编辑功能可通过扩展编辑器实现"
+theme_override_colors/font_color = Color(0.5, 0.4, 0.3, 1)
+
+[node name="StoresTab" type="ScrollContainer" parent="Background/TabContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Background/TabContainer/StoresTab"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 15
+
+[node name="ButtonRow" type="HBoxContainer" parent="Background/TabContainer/StoresTab/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="AddStoreBtn" type="Button" parent="Background/TabContainer/StoresTab/VBoxContainer/ButtonRow"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "➕ 新增门店"
+custom_minimum_size = Vector2(120, 36)
+
+[node name="SaveStoreBtn" type="Button" parent="Background/TabContainer/StoresTab/VBoxContainer/ButtonRow"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "💾 保存修改"
+custom_minimum_size = Vector2(120, 36)
+
+[node name="DeleteStoreBtn" type="Button" parent="Background/TabContainer/StoresTab/VBoxContainer/ButtonRow"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "🗑️ 删除门店"
+custom_minimum_size = Vector2(120, 36)
+
+[node name="Spacer" type="Control" parent="Background/TabContainer/StoresTab/VBoxContainer/ButtonRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="StoresTree" type="Tree" parent="Background/TabContainer/StoresTab/VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+custom_minimum_size = Vector2(0, 200)
+columns = 4
+column_titles_visible = true
+
+[node name="FormGrid" type="GridContainer" parent="Background/TabContainer/StoresTab/VBoxContainer"]
+layout_mode = 2
+columns = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 15
+theme_override_constants/v_separation = 10
+
+[node name="Label" type="Label" parent="Background/TabContainer/StoresTab/VBoxContainer/FormGrid"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "门店ID："
+
+[node name="StoreIdInput" type="LineEdit" parent="Background/TabContainer/StoresTab/VBoxContainer/FormGrid"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+placeholder_text = "store_xxx"
+
+[node name="Label2" type="Label" parent="Background/TabContainer/StoresTab/VBoxContainer/FormGrid"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "门店名称："
+
+[node name="StoreNameInput" type="LineEdit" parent="Background/TabContainer/StoresTab/VBoxContainer/FormGrid"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+placeholder_text = "请输入门店名称"
+
+[node name="Label3" type="Label" parent="Background/TabContainer/StoresTab/VBoxContainer/FormGrid"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "门店经理："
+
+[node name="StoreManagerInput" type="LineEdit" parent="Background/TabContainer/StoresTab/VBoxContainer/FormGrid"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+placeholder_text = "请输入经理姓名"
+
+[node name="Label4" type="Label" parent="Background/TabContainer/StoresTab/VBoxContainer/FormGrid"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "门店地址："
+
+[node name="StoreLocationInput" type="LineEdit" parent="Background/TabContainer/StoresTab/VBoxContainer/FormGrid"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+placeholder_text = "请输入门店地址"
+
+[node name="Label5" type="Label" parent="Background/TabContainer/StoresTab/VBoxContainer/FormGrid"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "目标损耗率(%)："
+
+[node name="StoreLossRateSpin" type="DoubleSpinBox" parent="Background/TabContainer/StoresTab/VBoxContainer/FormGrid"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+min_value = 0.0
+max_value = 10.0
+step = 0.1
+value = 3.0
+
+[node name="SystemTab" type="ScrollContainer" parent="Background/TabContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Background/TabContainer/SystemTab"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 20
+
+[node name="ConfigGrid" type="GridContainer" parent="Background/TabContainer/SystemTab/VBoxContainer"]
+layout_mode = 2
+columns = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 20
+theme_override_constants/v_separation = 15
+
+[node name="Label" type="Label" parent="Background/TabContainer/SystemTab/VBoxContainer/ConfigGrid"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "训练模式："
+
+[node name="ConfigModeOption" type="OptionButton" parent="Background/TabContainer/SystemTab/VBoxContainer/ConfigGrid"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+
+[node name="Label2" type="Label" parent="Background/TabContainer/SystemTab/VBoxContainer/ConfigGrid"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "开放时间开始："
+
+[node name="ConfigOpenStart" type="LineEdit" parent="Background/TabContainer/SystemTab/VBoxContainer/ConfigGrid"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+placeholder_text = "09:00"
+
+[node name="Label3" type="Label" parent="Background/TabContainer/SystemTab/VBoxContainer/ConfigGrid"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "开放时间结束："
+
+[node name="ConfigOpenEnd" type="LineEdit" parent="Background/TabContainer/SystemTab/VBoxContainer/ConfigGrid"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+placeholder_text = "18:00"
+
+[node name="Label4" type="Label" parent="Background/TabContainer/SystemTab/VBoxContainer/ConfigGrid"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "启用音效："
+
+[node name="ConfigSoundCheck" type="CheckBox" parent="Background/TabContainer/SystemTab/VBoxContainer/ConfigGrid"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "启用"
+button_pressed = true
+
+[node name="Label5" type="Label" parent="Background/TabContainer/SystemTab/VBoxContainer/ConfigGrid"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "音乐音量："
+
+[node name="ConfigMusicSlider" type="HSlider" parent="Background/TabContainer/SystemTab/VBoxContainer/ConfigGrid"]
+layout_mode = 2
+min_value = 0.0
+max_value = 100.0
+value = 70.0
+step = 1.0
+
+[node name="Label6" type="Label" parent="Background/TabContainer/SystemTab/VBoxContainer/ConfigGrid"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "音效音量："
+
+[node name="ConfigSfxSlider" type="HSlider" parent="Background/TabContainer/SystemTab/VBoxContainer/ConfigGrid"]
+layout_mode = 2
+min_value = 0.0
+max_value = 100.0
+value = 80.0
+step = 1.0
+
+[node name="SaveConfigBtn" type="Button" parent="Background/TabContainer/SystemTab/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "💾 保存系统配置"
+custom_minimum_size = Vector2(200, 50)

@@ -1,0 +1,183 @@
+[gd_scene load_steps=3 format=3 uid="uid://gameplay_scene"]
+
+[ext_resource type="Script" path="res://scripts/gameplay/gameplay_controller.gd" id="1_script"]
+[ext_resource type="Theme" path="res://themes/theme.tres" id="2_theme"]
+
+[node name="Gameplay" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("2_theme")
+script = ExtResource("1_script")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.96, 0.88, 0.78, 1)
+
+[node name="TopBar" type="HBoxContainer" parent="Background"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 20.0
+offset_top = 15.0
+offset_right = -20.0
+offset_bottom = 65.0
+grow_horizontal = 2
+theme_override_constants/separation = 20
+
+[node name="BackBtn" type="Button" parent="Background/TopBar"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "← 退出"
+custom_minimum_size = Vector2(100, 40)
+
+[node name="LevelLabel" type="Label" parent="Background/TopBar"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "📋 新手入门"
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.4, 0.2, 0.08, 1)
+
+[node name="ScoreLabel" type="Label" parent="Background/TopBar"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "🏆 0分"
+horizontal_alignment = 2
+custom_minimum_size = Vector2(150, 0)
+
+[node name="TimeLabel" type="Label" parent="Background/TopBar"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "⏱ 05:00"
+horizontal_alignment = 2
+custom_minimum_size = Vector2(120, 0)
+
+[node name="QuestionInfo" type="HBoxContainer" parent="Background"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 20.0
+offset_top = 80.0
+offset_right = -20.0
+offset_bottom = 110.0
+grow_horizontal = 2
+theme_override_constants/separation = 30
+
+[node name="QuestionNumberLabel" type="Label" parent="Background/QuestionInfo"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "第 1 / 8 题"
+
+[node name="QuestionTypeLabel" type="Label" parent="Background/QuestionInfo"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "📝 复核意见识别"
+size_flags_horizontal = 3
+horizontal_alignment = 2
+theme_override_colors/font_color = Color(0.7, 0.4, 0.1, 1)
+
+[node name="QuestionContainer" type="PanelContainer" parent="Background"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+offset_left = 20.0
+offset_top = 120.0
+offset_right = -20.0
+offset_bottom = -200.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="MarginContainer" type="MarginContainer" parent="Background/QuestionContainer"]
+layout_mode = 2
+theme_override_constants/margin_left = 30
+theme_override_constants/margin_top = 30
+theme_override_constants/margin_right = 30
+theme_override_constants/margin_bottom = 30
+
+[node name="Placeholder" type="Control" parent="Background/QuestionContainer/MarginContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="FeedbackPanel" type="PanelContainer" parent="Background"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 20.0
+offset_top = -180.0
+offset_right = -20.0
+offset_bottom = -80.0
+grow_horizontal = 2
+grow_vertical = 0
+anchor_top = 1.0
+visible = false
+
+[node name="MarginContainer" type="MarginContainer" parent="Background/FeedbackPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 15
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 15
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Background/FeedbackPanel/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="FeedbackLabel" type="Label" parent="Background/FeedbackPanel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "✅ 回答正确！"
+theme_override_colors/font_color = Color(0.2, 0.6, 0.2, 1)
+
+[node name="FeedbackReason" type="Label" parent="Background/FeedbackPanel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "📌 解析："
+autowrap_mode = 3
+
+[node name="AbnormalReason" type="Label" parent="Background/FeedbackPanel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "⚠️ 异常提示："
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.8, 0.4, 0.1, 1)
+visible = false
+
+[node name="BottomBar" type="HBoxContainer" parent="Background"]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = -65.0
+offset_right = -20.0
+offset_bottom = -15.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_constants/separation = 20
+
+[node name="Spacer" type="Control" parent="Background/BottomBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SubmitBtn" type="Button" parent="Background/BottomBar"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "✅ 提交答案"
+custom_minimum_size = Vector2(160, 50)
+
+[node name="NextBtn" type="Button" parent="Background/BottomBar"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "▶️ 下一题"
+custom_minimum_size = Vector2(160, 50)
+disabled = true

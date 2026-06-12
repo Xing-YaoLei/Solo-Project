@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <rect width="128" height="128" rx="16" fill="#8B4513"/>
+  <circle cx="64" cy="64" r="48" fill="#D2691E"/>
+  <path d="M40 48 L40 80 Q40 90 50 90 L78 90 Q88 90 88 80 L88 48 Z" fill="#F5DEB3" stroke="#8B4513" stroke-width="3"/>
+  <ellipse cx="64" cy="48" rx="28" ry="8" fill="#D2B48C" stroke="#8B4513" stroke-width="2"/>
+  <path d="M88 58 Q100 58 100 68 Q100 78 88 78" fill="none" stroke="#8B4513" stroke-width="4"/>
+  <path d="M52 60 Q56 55 60 60 Q64 55 68 60 Q72 55 76 60" stroke="#654321" stroke-width="2" fill="none"/>
+  <text x="64" y="115" text-anchor="middle" fill="#FFF" font-size="16" font-family="Arial" font-weight="bold">复核</text>
+</svg>
