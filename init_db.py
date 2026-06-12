@@ -7,6 +7,8 @@ from db.connection import engine, Session
 from db.models import Base
 from db.models import (
     RawReceipt, RawInventory, RawPos, Supplier, BatchInfo, ProductBom,
+    CleanedInventory, InventoryLedger, MaterialDailyUsage, AlertRecord,
+    ReviewMaterial, AlertThreshold,
 )
 
 
@@ -168,12 +170,44 @@ def seed_batches(session):
     print(f"批次数据已插入: {batch_count} 条")
 
 
+def reset_cleaned_and_derived(session):
+    from sqlalchemy import delete
+    print("清理旧的清洗层和派生数据...")
+
+    tables = [
+        ("CleanedInventory", delete(CleanedInventory)),
+        ("InventoryLedger", delete(InventoryLedger)),
+        ("MaterialDailyUsage", delete(MaterialDailyUsage)),
+        ("AlertRecord", delete(AlertRecord)),
+        ("ReviewMaterial", delete(ReviewMaterial)),
+    ]
+    total_deleted = 0
+    for name, stmt in tables:
+        result = session.execute(stmt)
+        deleted = getattr(result, 'rowcount', 0)
+        total_deleted += deleted
+        print(f"  清理 {name}: {deleted} 行")
+
+    existing_raw_inv = session.query(RawInventory).count()
+    if existing_raw_inv > 0:
+        result = session.execute(delete(RawInventory))
+        deleted = getattr(result, 'rowcount', 0)
+        print(f"  清理 RawInventory: {deleted} 行")
+        total_deleted += deleted
+
+    for raw_model, raw_name in [(RawReceipt, "RawReceipt"), (RawPos, "RawPos")]:
+        count_before = session.query(raw_model).count()
+        session.execute(delete(raw_model))
+        print(f"  清理 {raw_name}: {count_before} 行")
+        total_deleted += count_before
+
+    session.flush()
+    print(f"  总计清理: {total_deleted} 行\n")
+    return total_deleted
+
+
 def seed_raw_inventory(session):
     today = date.today()
-    existing = session.query(RawInventory).filter(RawInventory.snapshot_date >= today).count()
-    if existing > 0:
-        print(f"原始库存数据已存在 (今日 {existing} 条)，跳过")
-        return
 
     batch_map = {}
     for b in session.query(BatchInfo).all():
@@ -285,10 +319,6 @@ def seed_raw_inventory(session):
 
 
 def seed_raw_receipts(session):
-    existing = session.query(RawReceipt).count()
-    if existing > 500:
-        print(f"会员小票数据已存在 ({existing} 条)，跳过")
-        return
 
     today = date.today()
     count = 0
@@ -327,10 +357,6 @@ def seed_raw_receipts(session):
 
 
 def seed_raw_pos(session):
-    existing = session.query(RawPos).count()
-    if existing > 500:
-        print(f"POS流水数据已存在 ({existing} 条)，跳过")
-        return
 
     today = date.today()
     count = 0
@@ -371,6 +397,7 @@ def main():
 
     session = Session()
     try:
+        reset_cleaned_and_derived(session)
         seed_suppliers(session)
         seed_bom(session)
         seed_batches(session)
@@ -386,19 +413,34 @@ def main():
         from etl.caliber_match import caliber_match
 
         receipt_count = clean_receipts(session)
-        print(f"  会员小票清洗: {receipt_count} 条消耗流水")
+        print(f"  会员小票清洗 → 消耗流水: {receipt_count} 条")
         pos_count = clean_pos(session)
-        print(f"  POS流水清洗: {pos_count} 条 → 已按BOM展开为物料消耗")
+        print(f"  POS流水清洗(BOM展开) → 消耗流水: {pos_count} 条")
         inv_count = clean_inventory(session)
         print(f"  库存清洗: {inv_count} 条快照")
         ledger_count = generate_inventory_ledger_from_snapshots(session)
-        print(f"  库存快照差异生成: {ledger_count} 条出入库流水")
+        print(f"  库存差异生成 → 入/出/调流水: {ledger_count} 条")
         usage_count = caliber_match(session)
-        print(f"  口径匹配: {usage_count} 条日均用量记录")
+        print(f"  口径匹配 → 日均用量: {usage_count} 条\n")
 
+        from sqlalchemy import func
+        type_stats = (
+            session.query(
+                InventoryLedger.transaction_type,
+                func.count(InventoryLedger.id).label("cnt"),
+            )
+            .group_by(InventoryLedger.transaction_type)
+            .all()
+        )
+        type_cn = {"inbound": "入库", "outbound": "出库", "consumption": "消耗", "adjust": "调整"}
+        print("【库存台账四类流水统计】")
+        for t, c in type_stats:
+            print(f"  · {type_cn.get(t, t)}: {c} 条")
         session.commit()
         print("\n" + "=" * 60)
         print("数据初始化 + ETL 清洗完成！")
+        print("=" * 60)
+        print("提示: 启动 app.py 后访问 /detail 可查看完整台账")
         print("=" * 60)
     except Exception as e:
         session.rollback()

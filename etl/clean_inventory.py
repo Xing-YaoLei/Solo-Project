@@ -76,7 +76,7 @@ def generate_inventory_ledger_from_snapshots(session):
         grouped_by_mat.setdefault(key_mat, []).append(r)
 
     existing_set = set(
-        (r.store_code, r.material_code, r.batch_no, r.transaction_date, r.transaction_type)
+        (r.store_code, r.material_code, r.batch_no or "", r.transaction_date.isoformat(), r.transaction_type)
         for r in session.query(
             InventoryLedger.store_code,
             InventoryLedger.material_code,
@@ -101,7 +101,6 @@ def generate_inventory_ledger_from_snapshots(session):
         supplier_code = supplier_map.get(key_batch)
         material_name = snapshots_sorted[0].material_name
         unit = snapshots_sorted[0].unit
-
         avg_daily_consume = daily_consumption_map.get((store_code, material_code), 0.0)
 
         for i in range(1, len(snapshots_sorted)):
@@ -115,31 +114,34 @@ def generate_inventory_ledger_from_snapshots(session):
                 continue
 
             txn_date = curr.snapshot_date
-            days_between = (curr.snapshot_date - prev.snapshot_date).days
-            if days_between <= 0:
-                days_between = 1
-
-            expected_consume = avg_daily_consume * days_between if avg_daily_consume > 0 else 0.0
+            days_between = max(1, (curr.snapshot_date - prev.snapshot_date).days)
+            expected_consume = avg_daily_consume * days_between
 
             if delta > 0:
                 txn_type = "inbound"
                 txn_qty = delta
             else:
                 abs_delta = abs(delta)
-                if avg_daily_consume > 0 and abs_delta > expected_consume * 2.5:
+                if avg_daily_consume <= 0:
                     txn_type = "outbound"
-                    txn_qty = abs_delta - expected_consume
-                elif avg_daily_consume > 0 and abs_delta < expected_consume * 0.5:
+                    txn_qty = abs_delta
+                elif abs_delta > expected_consume * 1.15:
+                    txn_type = "outbound"
+                    txn_qty = max(abs_delta - expected_consume, 0.01)
+                elif abs_delta < expected_consume * 0.85:
                     txn_type = "adjust"
-                    txn_qty = abs(expected_consume - abs_delta)
+                    txn_qty = max(abs(expected_consume - abs_delta), 0.01)
                 else:
                     continue
 
-            dedup_key = (store_code, material_code, batch_no, txn_date, txn_type)
+            if txn_qty < 1e-6:
+                continue
+
+            dedup_key = (store_code, material_code, batch_no or "", txn_date.isoformat(), txn_type)
             if dedup_key in existing_set:
                 continue
 
-            ledger = InventoryLedger(
+            session.add(InventoryLedger(
                 store_code=store_code,
                 material_code=material_code,
                 material_name=material_name,
@@ -149,8 +151,7 @@ def generate_inventory_ledger_from_snapshots(session):
                 batch_no=batch_no,
                 supplier_code=supplier_code,
                 transaction_date=txn_date,
-            )
-            session.add(ledger)
+            ))
             existing_set.add(dedup_key)
             inserted += 1
 
@@ -174,31 +175,39 @@ def generate_inventory_ledger_from_snapshots(session):
             prev_total = sum(float(s.stock_qty) if s.stock_qty else 0.0 for s in by_date[prev_date])
             curr_total = sum(float(s.stock_qty) if s.stock_qty else 0.0 for s in by_date[curr_date])
             delta = curr_total - prev_total
-
-            days_between = (curr_date - prev_date).days
-            if days_between <= 0:
-                days_between = 1
-
-            expected_consume = avg_daily_consume * days_between if avg_daily_consume > 0 else 0.0
+            days_between = max(1, (curr_date - prev_date).days)
+            expected_consume = avg_daily_consume * days_between
             actual_change = -delta
 
-            if expected_consume > 0 and abs(actual_change - expected_consume) / expected_consume > 0.3:
-                adjust_qty = actual_change - expected_consume
-                if abs(adjust_qty) > 1e-6:
-                    dedup_key = (store_code, material_code, None, curr_date, "adjust")
-                    if dedup_key not in existing_set:
-                        ledger = InventoryLedger(
-                            store_code=store_code,
-                            material_code=material_code,
-                            material_name=material_name,
-                            transaction_type="adjust",
-                            quantity=Decimal(str(round(abs(adjust_qty), 5))),
-                            unit=unit,
-                            transaction_date=curr_date,
-                        )
-                        session.add(ledger)
-                        existing_set.add(dedup_key)
-                        inserted += 1
+            if avg_daily_consume <= 0:
+                continue
+            if expected_consume <= 0:
+                continue
+
+            diff_ratio = abs(actual_change - expected_consume) / expected_consume
+            if diff_ratio <= 0.15:
+                continue
+
+            adjust_qty = actual_change - expected_consume
+            if abs(adjust_qty) < 0.01:
+                continue
+
+            _batch_tag = ""
+            dedup_key = (store_code, material_code, _batch_tag, curr_date.isoformat(), "adjust")
+            if dedup_key in existing_set:
+                continue
+
+            session.add(InventoryLedger(
+                store_code=store_code,
+                material_code=material_code,
+                material_name=material_name,
+                transaction_type="adjust",
+                quantity=Decimal(str(round(abs(adjust_qty), 5))),
+                unit=unit,
+                transaction_date=curr_date,
+            ))
+            existing_set.add(dedup_key)
+            inserted += 1
 
     session.flush()
     return inserted
