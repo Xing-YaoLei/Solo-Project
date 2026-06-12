@@ -54,9 +54,9 @@ export interface LossReport {
   abnormal_type?: AbnormalType;
   loss_rate: number;
   store_id: number;
-  store_name: string;
+  store_name?: string;
   created_by: number;
-  creator_name: string;
+  creator_name?: string;
   responsible_staff_id?: number;
   responsible_staff_name?: string;
   created_at: string;
@@ -80,7 +80,7 @@ export interface Review {
   review_time: string;
   loss_report_id: number;
   reviewer_id: number;
-  reviewer_name: string;
+  reviewer_name?: string;
 }
 
 export interface Approval {
@@ -90,7 +90,7 @@ export interface Approval {
   approval_time: string;
   loss_report_id: number;
   approver_id: number;
-  approver_name: string;
+  approver_name?: string;
 }
 
 export interface Communication {
@@ -99,8 +99,8 @@ export interface Communication {
   message_type: string;
   loss_report_id: number;
   sender_id: number;
-  sender_name: string;
-  sender_role: string;
+  sender_name?: string;
+  sender_role?: string;
   reply_to_id?: number;
   created_at: string;
 }
