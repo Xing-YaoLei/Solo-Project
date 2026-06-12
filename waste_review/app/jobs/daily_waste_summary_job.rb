@@ -32,7 +32,7 @@ class DailyWasteSummaryJob
             severity: :high,
             impact_scope: "近7天日均损耗: ¥#{sprintf('%.2f', avg_cost)}，今日损耗: ¥#{sprintf('%.2f', daily_cost)}，超出2倍预警",
             responsibility_attribution: "#{store.name} - #{store.region || '未分配区域'}",
-            handling_result: ""
+            handling_result: "待处理：日损耗异常，超出近7天日均2倍以上，请门店核查原因并提交整改措施。"
           )
           abnormal_created += 1
           Rails.logger.warn("Created abnormal report ##{abnormal.id} for #{store.name} due to unusually high waste")

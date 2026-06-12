@@ -55,7 +55,17 @@
           </td>
           <td class="px-4 py-3 text-sm text-gray-700 max-w-xs truncate"><%= report.impact_scope.presence || "-" %></td>
           <td class="px-4 py-3 text-sm text-gray-700"><%= report.responsibility_attribution.presence || "-" %></td>
-          <td class="px-4 py-3 text-sm text-gray-700"><%= report.handling_result.presence || "-" %></td>
+          <td class="px-4 py-3 text-sm text-gray-700 max-w-xs">
+            <% if report.handling_result.present? %>
+              <% if report.resolved? %>
+                <span class="font-medium text-green-700"><%= report.handling_result %></span>
+              <% else %>
+                <span class="text-amber-700"><%= report.handling_result %></span>
+              <% end %>
+            <% else %>
+              <span class="text-gray-400">-</span>
+            <% end %>
+          </td>
           <td class="px-4 py-3 text-sm">
             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
               <%= report.resolved? ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' %>">

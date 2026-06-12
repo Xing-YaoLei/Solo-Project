@@ -15,6 +15,7 @@ class AbnormalReport < ApplicationRecord
 
   delegate :store_name, :report_date, :total_cost, :waste_rate, to: :waste_report, allow_nil: true
 
+  before_validation :set_default_handling_result, on: :create
   before_save :set_resolved_at, if: :will_save_change_to_resolved?
 
   def resolve!(handling_result = nil, operator = "system")
@@ -60,15 +61,26 @@ class AbnormalReport < ApplicationRecord
     item_names = waste_report.waste_items.pluck(:product_name).join('、')
     reasons = waste_report.waste_items.pluck(:waste_reason).uniq.join('、')
 
+    severity_text = { low: '低级别', medium: '中级别', high: '高级别' }[severity]
+
     create!(
       waste_report: waste_report,
       severity: severity,
       impact_scope: "涉及产品: #{item_names}，损耗原因: #{reasons}，总成本: ¥#{sprintf('%.2f', waste_report.total_cost)}",
-      responsibility_attribution: "#{waste_report.store_name} - #{waste_report.store_region || '未分配区域'}"
+      responsibility_attribution: "#{waste_report.store_name} - #{waste_report.store_region || '未分配区域'}",
+      handling_result: "待处理：损耗率#{severity_text}（#{waste_report.waste_rate}%），请#{waste_report.store_name}店长在3个工作日内提交损耗原因分析及整改方案，区域经理复核后结案。"
     )
   end
 
   private
+
+  def set_default_handling_result
+    if handling_result.blank?
+      severity_label = { low: '低级别', medium: '中级别', high: '高级别' }[severity&.to_sym] || '异常'
+      store_label = waste_report ? waste_report.store_name : '相关门店'
+      self.handling_result = "待处理：损耗率#{severity_label}，请#{store_label}店长核实具体情况，分析损耗原因并提交改进措施，区域经理确认后结案。"
+    end
+  end
 
   def set_resolved_at
     self.resolved_at = Time.current if resolved? && resolved_at.nil?

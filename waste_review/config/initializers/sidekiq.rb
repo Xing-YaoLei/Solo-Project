@@ -20,15 +20,13 @@ module SidekiqSafe
   def self.perform_async(job_class, *args)
     begin
       job_class.perform_async(*args)
-    rescue RedisClient::CannotConnectError, Errno::ECONNREFUSED => e
-      Rails.logger.warn "Redis unavailable, executing #{job_class} inline: #{e.message}"
-      job_class.new.perform(*args)
     rescue StandardError => e
-      Rails.logger.error "Failed to queue #{job_class}: #{e.message}"
+      Rails.logger.warn "Failed to queue #{job_class} via Sidekiq (#{e.class}: #{e.message}), executing inline instead"
       begin
         job_class.new.perform(*args)
       rescue StandardError => inner_e
-        Rails.logger.error "Inline execution also failed: #{inner_e.message}"
+        Rails.logger.error "Inline execution of #{job_class} also failed: #{inner_e.message}"
+        Rails.logger.error inner_e.backtrace.first(5).join("\n") if inner_e.backtrace
       end
     end
   end

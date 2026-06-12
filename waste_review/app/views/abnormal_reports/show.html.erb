@@ -49,7 +49,17 @@
     </div>
     <div class="col-span-2 md:col-span-3">
       <span class="text-sm text-gray-500">处理结果</span>
-      <p class="text-gray-900 mt-1"><%= @abnormal_report.handling_result.presence || "-" %></p>
+      <p class="mt-1">
+        <% if @abnormal_report.handling_result.present? %>
+          <% if @abnormal_report.resolved? %>
+            <span class="font-medium text-green-700"><%= @abnormal_report.handling_result %></span>
+          <% else %>
+            <span class="text-amber-700 bg-amber-50 px-2 py-1 rounded"><%= @abnormal_report.handling_result %></span>
+          <% end %>
+        <% else %>
+          <span class="text-gray-400">-</span>
+        <% end %>
+      </p>
     </div>
   </div>
 </div>

@@ -20,7 +20,7 @@ class WasteReport < ApplicationRecord
   validates :status, inclusion: { in: statuses.keys }
 
   after_create :log_initial_status
-  after_save :log_status_change, if: :saved_change_to_status?
+  after_save :log_status_change, if: :should_log_status_change?
   after_save :trigger_anomaly_detection, if: :should_detect_anomaly?
   after_commit :recalculate_totals, on: [:create], unless: :skip_recalculation
   attr_accessor :skip_recalculation
@@ -110,13 +110,19 @@ class WasteReport < ApplicationRecord
     )
   end
 
-  def log_status_change
-    return if @status_change_logged
+  def should_log_status_change?
+    return false if @status_change_logged
+    return false if previously_new_record?
+    return false unless saved_change_to_status?
 
     old_status = saved_change_to_status.first
     new_status = saved_change_to_status.last
+    old_status != new_status
+  end
 
-    return if old_status == new_status
+  def log_status_change
+    old_status = saved_change_to_status.first
+    new_status = saved_change_to_status.last
 
     status_logs.create!(
       from_status: old_status,

@@ -35,7 +35,7 @@ waste_reports = []
   report = WasteReport.create!(
     store: store,
     report_date: (Date.current - i.days),
-    status: statuses[i % statuses.size],
+    status: :submitted,
     total_cost: 0,
     reporter: reporters[i % reporters.size],
     notes: i.even? ? "常规损耗" : "需重点关注"
@@ -57,6 +57,23 @@ waste_reports = []
   end
 
   report.recalculate_totals!
+
+  target_status = statuses[i % statuses.size]
+  case target_status
+  when 'reviewing'
+    report.transition_to!(:reviewing, '系统初始化', '批量导入数据')
+  when 'approved'
+    report.transition_to!(:reviewing, '系统初始化', '批量导入数据')
+    report.transition_to!(:approved, '区域经理', '复核通过')
+  when 'rejected'
+    report.transition_to!(:reviewing, '系统初始化', '批量导入数据')
+    report.transition_to!(:rejected, '区域经理', '复核驳回，需补充说明')
+  when 'settled'
+    report.transition_to!(:reviewing, '系统初始化', '批量导入数据')
+    report.transition_to!(:approved, '区域经理', '复核通过')
+    report.transition_to!(:settled, '财务系统', '月度结算完成')
+  end
+
   waste_reports << report
 end
 
