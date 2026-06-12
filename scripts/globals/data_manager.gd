@@ -10,6 +10,7 @@ var levels_data: Dictionary = {}
 var questions_data: Dictionary = {}
 var stores_data: Dictionary = {}
 var rewards_data: Dictionary = {}
+var assets_data: Dictionary = {}
 var config_data: Dictionary = {}
 var training_records: Array = []
 
@@ -123,6 +124,51 @@ func load_default_data() -> void:
 			"description": "5分钟内完成关卡",
 			"icon": "⚡",
 			"condition": "time_used <= 300"
+		}
+	}
+	
+	assets_data = {
+		"snd_click": {
+			"id": "snd_click",
+			"name": "按钮点击",
+			"type": "sound",
+			"path": "assets/sounds/click.wav",
+			"description": "界面按钮点击音效"
+		},
+		"snd_correct": {
+			"id": "snd_correct",
+			"name": "回答正确",
+			"type": "sound",
+			"path": "assets/sounds/correct.wav",
+			"description": "答对时播放的鼓励音效"
+		},
+		"snd_wrong": {
+			"id": "snd_wrong",
+			"name": "回答错误",
+			"type": "sound",
+			"path": "assets/sounds/wrong.wav",
+			"description": "答错时播放的提示音效"
+		},
+		"snd_complete": {
+			"id": "snd_complete",
+			"name": "关卡完成",
+			"type": "sound",
+			"path": "assets/sounds/complete.wav",
+			"description": "完成关卡时播放的庆祝音效"
+		},
+		"img_bg_main": {
+			"id": "img_bg_main",
+			"name": "主界面背景",
+			"type": "image",
+			"path": "assets/images/bg_main.png",
+			"description": "主菜单背景图"
+		},
+		"img_icon_coffee": {
+			"id": "img_icon_coffee",
+			"name": "咖啡图标",
+			"type": "image",
+			"path": "assets/images/icon_coffee.png",
+			"description": "咖啡杯图标"
 		}
 	}
 	
@@ -337,6 +383,9 @@ func load_saved_data() -> void:
 				if data.has("rewards"):
 					for key in data["rewards"]:
 						rewards_data[key] = data["rewards"][key]
+				if data.has("assets"):
+					for key in data["assets"]:
+						assets_data[key] = data["assets"][key]
 				if data.has("config"):
 					config_data.merge(data["config"])
 				if data.has("training_records"):
@@ -349,6 +398,7 @@ func save_data() -> void:
 		"questions": questions_data,
 		"stores": stores_data,
 		"rewards": rewards_data,
+		"assets": assets_data,
 		"config": config_data,
 		"training_records": training_records
 	}
@@ -471,6 +521,26 @@ func delete_reward(reward_id: String) -> void:
 		rewards_data.erase(reward_id)
 		save_data()
 		data_updated.emit("rewards")
+
+func get_assets() -> Array:
+	var result: Array = []
+	for key in assets_data:
+		result.append(assets_data[key])
+	return result
+
+func get_asset(asset_id: String) -> Dictionary:
+	return assets_data.get(asset_id, {}).duplicate()
+
+func update_asset(asset_id: String, asset_data: Dictionary) -> void:
+	assets_data[asset_id] = asset_data
+	save_data()
+	data_updated.emit("assets")
+
+func delete_asset(asset_id: String) -> void:
+	if assets_data.has(asset_id):
+		assets_data.erase(asset_id)
+		save_data()
+		data_updated.emit("assets")
 
 func get_config() -> Dictionary:
 	return config_data.duplicate()

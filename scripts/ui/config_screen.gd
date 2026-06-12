@@ -66,6 +66,17 @@ var reward_add_btn: Button = null
 var reward_save_btn: Button = null
 var reward_delete_btn: Button = null
 
+var assets_tree: Tree = null
+var asset_id_input: LineEdit = null
+var asset_name_input: LineEdit = null
+var asset_type_option: OptionButton = null
+var asset_path_input: LineEdit = null
+var asset_desc_input: TextEdit = null
+var asset_add_btn: Button = null
+var asset_save_btn: Button = null
+var asset_delete_btn: Button = null
+var selected_asset_id: String = ""
+
 func _ready() -> void:
 	setup_option_buttons()
 	build_question_editor()
@@ -119,6 +130,7 @@ func load_all_data() -> void:
 	load_questions("review_opinion")
 	load_stores()
 	load_rewards()
+	load_assets()
 	load_config()
 
 func build_question_editor() -> void:
@@ -354,108 +366,127 @@ func build_assets_tab() -> void:
 	var vbox: VBoxContainer = VBoxContainer.new()
 	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	vbox.add_theme_constant_override("separation", 15)
+	vbox.add_theme_constant_override("separation", 12)
 	assets_tab.add_child(vbox)
 	
-	var title: Label = Label.new()
-	title.text = "📁 游戏素材管理"
-	title.add_theme_font_size_override("font_size", 20)
-	title.add_theme_color_override("font_color", Color(0.4, 0.2, 0.08, 1))
-	vbox.add_child(title)
+	var btn_row: HBoxContainer = HBoxContainer.new()
+	btn_row.add_theme_constant_override("separation", 10)
+	vbox.add_child(btn_row)
 	
-	var hint: Label = Label.new()
-	hint.text = "素材文件存放目录：assets/sounds/ 和 assets/images/"
-	hint.add_theme_font_size_override("font_size", 14)
-	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	vbox.add_child(hint)
+	asset_add_btn = Button.new()
+	asset_add_btn.text = "➕ 新增素材"
+	asset_add_btn.add_theme_font_size_override("font_size", 14)
+	asset_add_btn.custom_minimum_size = Vector2(120, 36)
+	btn_row.add_child(asset_add_btn)
 	
-	var sound_panel: PanelContainer = PanelContainer.new()
-	sound_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	vbox.add_child(sound_panel)
+	asset_save_btn = Button.new()
+	asset_save_btn.text = "💾 保存修改"
+	asset_save_btn.add_theme_font_size_override("font_size", 14)
+	asset_save_btn.custom_minimum_size = Vector2(120, 36)
+	btn_row.add_child(asset_save_btn)
 	
-	var sound_margin: MarginContainer = MarginContainer.new()
-	sound_margin.add_theme_constant_override("margin_left", 15)
-	sound_margin.add_theme_constant_override("margin_right", 15)
-	sound_margin.add_theme_constant_override("margin_top", 12)
-	sound_margin.add_theme_constant_override("margin_bottom", 12)
-	sound_panel.add_child(sound_margin)
+	asset_delete_btn = Button.new()
+	asset_delete_btn.text = "🗑️ 删除素材"
+	asset_delete_btn.add_theme_font_size_override("font_size", 14)
+	asset_delete_btn.custom_minimum_size = Vector2(120, 36)
+	btn_row.add_child(asset_delete_btn)
 	
-	var sound_vbox: VBoxContainer = VBoxContainer.new()
-	sound_vbox.add_theme_constant_override("separation", 6)
-	sound_margin.add_child(sound_vbox)
+	var btn_spacer: Control = Control.new()
+	btn_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	btn_row.add_child(btn_spacer)
 	
-	var sound_title: Label = Label.new()
-	sound_title.text = "🔊 音效素材"
-	sound_title.add_theme_font_size_override("font_size", 16)
-	sound_vbox.add_child(sound_title)
+	assets_tree = Tree.new()
+	assets_tree.columns = 4
+	assets_tree.column_titles_visible = true
+	assets_tree.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	assets_tree.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	assets_tree.custom_minimum_size = Vector2(0, 200)
+	vbox.add_child(assets_tree)
 	
-	var sound_files: Array = [
-		["click.wav", "按钮点击音效", "约 0.2 秒"],
-		["correct.wav", "回答正确音效", "约 0.5 秒"],
-		["wrong.wav", "回答错误音效", "约 0.5 秒"],
-		["complete.wav", "关卡完成音效", "约 1.0 秒"]
-	]
-	for sf in sound_files:
-		var row: HBoxContainer = HBoxContainer.new()
-		row.add_theme_constant_override("separation", 10)
-		sound_vbox.add_child(row)
-		
-		var name_lb: Label = Label.new()
-		name_lb.text = "📄 " + sf[0]
-		name_lb.add_theme_font_size_override("font_size", 13)
-		name_lb.custom_minimum_size = Vector2(150, 0)
-		row.add_child(name_lb)
-		
-		var desc_lb: Label = Label.new()
-		desc_lb.text = sf[1]
-		desc_lb.add_theme_font_size_override("font_size", 13)
-		desc_lb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(desc_lb)
-		
-		var dur_lb: Label = Label.new()
-		dur_lb.text = sf[2]
-		dur_lb.add_theme_font_size_override("font_size", 13)
-		dur_lb.custom_minimum_size = Vector2(100, 0)
-		row.add_child(dur_lb)
+	var edit_panel: PanelContainer = PanelContainer.new()
+	edit_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vbox.add_child(edit_panel)
 	
-	var tip: Label = Label.new()
-	tip.text = "💡 将音效文件放入 assets/sounds/ 目录即可自动加载，支持 WAV、MP3、OGG 格式"
-	tip.add_theme_font_size_override("font_size", 12)
-	tip.add_theme_color_override("font_color", Color(0.5, 0.4, 0.3, 1))
-	sound_vbox.add_child(tip)
+	var edit_margin: MarginContainer = MarginContainer.new()
+	edit_margin.add_theme_constant_override("margin_left", 15)
+	edit_margin.add_theme_constant_override("margin_right", 15)
+	edit_margin.add_theme_constant_override("margin_top", 12)
+	edit_margin.add_theme_constant_override("margin_bottom", 12)
+	edit_panel.add_child(edit_margin)
 	
-	var img_panel: PanelContainer = PanelContainer.new()
-	img_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	vbox.add_child(img_panel)
+	var edit_vbox: VBoxContainer = VBoxContainer.new()
+	edit_vbox.add_theme_constant_override("separation", 8)
+	edit_margin.add_child(edit_vbox)
 	
-	var img_margin: MarginContainer = MarginContainer.new()
-	img_margin.add_theme_constant_override("margin_left", 15)
-	img_margin.add_theme_constant_override("margin_right", 15)
-	img_margin.add_theme_constant_override("margin_top", 12)
-	img_margin.add_theme_constant_override("margin_bottom", 12)
-	img_panel.add_child(img_margin)
+	var edit_title: Label = Label.new()
+	edit_title.text = "✏️ 素材编辑"
+	edit_title.add_theme_font_size_override("font_size", 16)
+	edit_title.add_theme_color_override("font_color", Color(0.4, 0.2, 0.08, 1))
+	edit_vbox.add_child(edit_title)
 	
-	var img_vbox: VBoxContainer = VBoxContainer.new()
-	img_vbox.add_theme_constant_override("separation", 6)
-	img_margin.add_child(img_vbox)
+	var top_grid: GridContainer = GridContainer.new()
+	top_grid.columns = 4
+	top_grid.add_theme_constant_override("h_separation", 12)
+	top_grid.add_theme_constant_override("v_separation", 6)
+	edit_vbox.add_child(top_grid)
 	
-	var img_title: Label = Label.new()
-	img_title.text = "🖼️ 图片素材"
-	img_title.add_theme_font_size_override("font_size", 16)
-	img_vbox.add_child(img_title)
+	var id_lb: Label = Label.new()
+	id_lb.text = "素材ID："
+	id_lb.add_theme_font_size_override("font_size", 13)
+	top_grid.add_child(id_lb)
 	
-	var img_tip: Label = Label.new()
-	img_tip.text = "图片素材存放在 assets/images/ 目录，支持 PNG、JPG、SVG 格式\n目前游戏使用纯代码UI + emoji图标，无需额外图片资源"
-	img_tip.add_theme_font_size_override("font_size", 13)
-	img_tip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	img_vbox.add_child(img_tip)
+	asset_id_input = LineEdit.new()
+	asset_id_input.placeholder_text = "如：bg_coffee"
+	asset_id_input.add_theme_font_size_override("font_size", 13)
+	top_grid.add_child(asset_id_input)
 	
-	var refresh_btn: Button = Button.new()
-	refresh_btn.text = "🔄 刷新素材列表"
-	refresh_btn.add_theme_font_size_override("font_size", 14)
-	refresh_btn.custom_minimum_size = Vector2(180, 40)
-	refresh_btn.pressed.connect(_on_refresh_assets)
-	vbox.add_child(refresh_btn)
+	var name_lb: Label = Label.new()
+	name_lb.text = "名称："
+	name_lb.add_theme_font_size_override("font_size", 13)
+	top_grid.add_child(name_lb)
+	
+	asset_name_input = LineEdit.new()
+	asset_name_input.placeholder_text = "如：咖啡背景图"
+	asset_name_input.add_theme_font_size_override("font_size", 13)
+	top_grid.add_child(asset_name_input)
+	
+	var type_lb: Label = Label.new()
+	type_lb.text = "类型："
+	type_lb.add_theme_font_size_override("font_size", 13)
+	top_grid.add_child(type_lb)
+	
+	asset_type_option = OptionButton.new()
+	asset_type_option.add_item("音效", 0)
+	asset_type_option.add_item("图片", 1)
+	asset_type_option.add_item("动画", 2)
+	asset_type_option.add_item("其他", 3)
+	asset_type_option.add_theme_font_size_override("font_size", 13)
+	top_grid.add_child(asset_type_option)
+	
+	var path_lb: Label = Label.new()
+	path_lb.text = "路径："
+	path_lb.add_theme_font_size_override("font_size", 13)
+	top_grid.add_child(path_lb)
+	
+	asset_path_input = LineEdit.new()
+	asset_path_input.placeholder_text = "如：assets/sounds/click.wav"
+	asset_path_input.add_theme_font_size_override("font_size", 13)
+	top_grid.add_child(asset_path_input)
+	
+	var desc_lb: Label = Label.new()
+	desc_lb.text = "说明："
+	desc_lb.add_theme_font_size_override("font_size", 13)
+	edit_vbox.add_child(desc_lb)
+	
+	asset_desc_input = TextEdit.new()
+	asset_desc_input.custom_minimum_size = Vector2(0, 60)
+	asset_desc_input.add_theme_font_size_override("font_size", 13)
+	edit_vbox.add_child(asset_desc_input)
+	
+	asset_add_btn.pressed.connect(_on_add_asset)
+	asset_save_btn.pressed.connect(_on_save_asset)
+	asset_delete_btn.pressed.connect(_on_delete_asset)
+	assets_tree.item_selected.connect(_on_asset_selected)
 
 func load_levels() -> void:
 	levels_tree.clear()
@@ -608,16 +639,10 @@ func _on_delete_level() -> void:
 	)
 	dialog.popup_centered()
 
-func _on_question_selected() -> void:
-	AudioManager.play_click()
-
 func _on_question_type_changed(index: int) -> void:
 	AudioManager.play_click()
 	var types: Array = ["review_opinion", "store_selection", "amount_sorting", "approval_record"]
 	load_questions(types[index])
-
-func _on_add_question() -> void:
-	AudioManager.play_click()
 
 func _on_delete_question() -> void:
 	var selected: TreeItem = questions_tree.get_selected()
@@ -948,10 +973,96 @@ func _on_delete_reward() -> void:
 	)
 	dialog.popup_centered()
 
-func _on_refresh_assets() -> void:
+func load_assets() -> void:
+	if not assets_tree:
+		return
+	assets_tree.clear()
+	assets_tree.set_column_title(0, "素材ID")
+	assets_tree.set_column_title(1, "名称")
+	assets_tree.set_column_title(2, "类型")
+	assets_tree.set_column_title(3, "路径")
+	
+	var assets: Array = DataManager.get_assets()
+	var type_names: Dictionary = {"sound": "🔊音效", "image": "🖼️图片", "animation": "🎬动画", "other": "📄其他"}
+	for asset in assets:
+		var item: TreeItem = assets_tree.create_item()
+		item.set_text(0, asset["id"])
+		item.set_text(1, asset.get("name", ""))
+		item.set_text(2, type_names.get(asset.get("type", ""), asset.get("type", "")))
+		item.set_text(3, asset.get("path", ""))
+		item.set_meta("asset_id", asset["id"])
+
+func _on_asset_selected() -> void:
 	AudioManager.play_click()
-	var dialog: AcceptDialog = AcceptDialog.new()
-	dialog.title = "素材刷新"
-	dialog.dialog_text = "素材列表已刷新\n\n音效目录：assets/sounds/\n图片目录：assets/images/"
+	var selected: TreeItem = assets_tree.get_selected()
+	if not selected:
+		return
+	selected_asset_id = selected.get_meta("asset_id", "")
+	var asset: Dictionary = DataManager.get_asset(selected_asset_id)
+	if asset.is_empty():
+		return
+	
+	if asset_id_input:
+		asset_id_input.text = asset.get("id", "")
+	if asset_name_input:
+		asset_name_input.text = asset.get("name", "")
+	if asset_type_option:
+		var type_map: Dictionary = {"sound": 0, "image": 1, "animation": 2, "other": 3}
+		asset_type_option.selected = type_map.get(asset.get("type", "other"), 3)
+	if asset_path_input:
+		asset_path_input.text = asset.get("path", "")
+	if asset_desc_input:
+		asset_desc_input.text = asset.get("description", "")
+
+func _on_add_asset() -> void:
+	AudioManager.play_click()
+	if asset_id_input:
+		asset_id_input.text = ""
+	if asset_name_input:
+		asset_name_input.text = ""
+	if asset_type_option:
+		asset_type_option.selected = 0
+	if asset_path_input:
+		asset_path_input.text = ""
+	if asset_desc_input:
+		asset_desc_input.text = ""
+	selected_asset_id = ""
+
+func _on_save_asset() -> void:
+	AudioManager.play_click()
+	if not asset_id_input or not asset_name_input:
+		return
+	
+	var aid: String = asset_id_input.text.strip_edges()
+	if aid == "":
+		return
+	
+	var type_values: Array = ["sound", "image", "animation", "other"]
+	var asset: Dictionary = {
+		"id": aid,
+		"name": asset_name_input.text,
+		"type": type_values[asset_type_option.selected] if asset_type_option else "other",
+		"path": asset_path_input.text if asset_path_input else "",
+		"description": asset_desc_input.text if asset_desc_input else ""
+	}
+	
+	DataManager.update_asset(aid, asset)
+	selected_asset_id = aid
+	load_assets()
+
+func _on_delete_asset() -> void:
+	if selected_asset_id == "":
+		return
+	AudioManager.play_click()
+	var dialog: ConfirmationDialog = ConfirmationDialog.new()
+	dialog.title = "确认删除"
+	dialog.dialog_text = "确定要删除素材「%s」吗？" % selected_asset_id
+	dialog.get_ok_button().text = "删除"
+	dialog.get_cancel_button().text = "取消"
 	add_child(dialog)
+	dialog.confirmed.connect(func():
+		DataManager.delete_asset(selected_asset_id)
+		selected_asset_id = ""
+		load_assets()
+	)
 	dialog.popup_centered()
