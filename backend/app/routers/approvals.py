@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import List
 from app.database import get_db
 from app import models, schemas
@@ -40,8 +40,12 @@ def create_approval(
     db.commit()
     db.refresh(approval)
     
+    approval = db.query(models.Approval).options(
+        joinedload(models.Approval.approver)
+    ).filter(models.Approval.id == approval.id).first()
+    
     response = schemas.ApprovalResponse.model_validate(approval)
-    response.approver_name = current_user.full_name
+    response.approver_name = approval.approver.full_name if approval.approver else ''
     
     return response
 
@@ -55,10 +59,13 @@ def list_approvals(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    query = db.query(models.Approval)
+    query = db.query(models.Approval).options(
+        joinedload(models.Approval.approver),
+        joinedload(models.Approval.loss_report)
+    )
     
     if current_user.role == models.UserRole.STAFF:
-        query = query.join(models.LossReport).filter(
+        query = query.join(models.LossReport, models.Approval.loss_report_id == models.LossReport.id).filter(
             models.LossReport.store_id == current_user.store_id
         )
     
@@ -72,8 +79,7 @@ def list_approvals(
     result_list = []
     for approval in approvals:
         a = schemas.ApprovalResponse.model_validate(approval)
-        if approval.approver:
-            a.approver_name = approval.approver.full_name
+        a.approver_name = approval.approver.full_name if approval.approver else ''
         result_list.append(a)
     
     return result_list
@@ -85,7 +91,10 @@ def get_approval(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    approval = db.query(models.Approval).filter(models.Approval.id == approval_id).first()
+    approval = db.query(models.Approval).options(
+        joinedload(models.Approval.approver),
+        joinedload(models.Approval.loss_report)
+    ).filter(models.Approval.id == approval_id).first()
     if not approval:
         raise HTTPException(status_code=404, detail="Approval not found")
     
@@ -94,8 +103,7 @@ def get_approval(
             raise HTTPException(status_code=403, detail="Access denied")
     
     response = schemas.ApprovalResponse.model_validate(approval)
-    if approval.approver:
-        response.approver_name = approval.approver.full_name
+    response.approver_name = approval.approver.full_name if approval.approver else ''
     
     return response
 

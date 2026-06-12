@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import List
 from app.database import get_db
 from app import models, schemas
@@ -51,8 +51,12 @@ def create_review(
     db.commit()
     db.refresh(review)
     
+    review = db.query(models.Review).options(
+        joinedload(models.Review.reviewer)
+    ).filter(models.Review.id == review.id).first()
+    
     response = schemas.ReviewResponse.model_validate(review)
-    response.reviewer_name = current_user.full_name
+    response.reviewer_name = review.reviewer.full_name if review.reviewer else ''
     
     return response
 
@@ -66,10 +70,13 @@ def list_reviews(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    query = db.query(models.Review)
+    query = db.query(models.Review).options(
+        joinedload(models.Review.reviewer),
+        joinedload(models.Review.loss_report)
+    )
     
     if current_user.role == models.UserRole.STAFF:
-        query = query.join(models.LossReport).filter(
+        query = query.join(models.LossReport, models.Review.loss_report_id == models.LossReport.id).filter(
             models.LossReport.store_id == current_user.store_id
         )
     
@@ -83,8 +90,7 @@ def list_reviews(
     result_list = []
     for review in reviews:
         r = schemas.ReviewResponse.model_validate(review)
-        if review.reviewer:
-            r.reviewer_name = review.reviewer.full_name
+        r.reviewer_name = review.reviewer.full_name if review.reviewer else ''
         result_list.append(r)
     
     return result_list
@@ -96,7 +102,10 @@ def get_review(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    review = db.query(models.Review).filter(models.Review.id == review_id).first()
+    review = db.query(models.Review).options(
+        joinedload(models.Review.reviewer),
+        joinedload(models.Review.loss_report)
+    ).filter(models.Review.id == review_id).first()
     if not review:
         raise HTTPException(status_code=404, detail="Review not found")
     
@@ -105,8 +114,7 @@ def get_review(
             raise HTTPException(status_code=403, detail="Access denied")
     
     response = schemas.ReviewResponse.model_validate(review)
-    if review.reviewer:
-        response.reviewer_name = review.reviewer.full_name
+    response.reviewer_name = review.reviewer.full_name if review.reviewer else ''
     
     return response
 
@@ -128,8 +136,11 @@ def update_review(
     db.commit()
     db.refresh(review)
     
+    review = db.query(models.Review).options(
+        joinedload(models.Review.reviewer)
+    ).filter(models.Review.id == review.id).first()
+    
     response = schemas.ReviewResponse.model_validate(review)
-    if review.reviewer:
-        response.reviewer_name = review.reviewer.full_name
+    response.reviewer_name = review.reviewer.full_name if review.reviewer else ''
     
     return response

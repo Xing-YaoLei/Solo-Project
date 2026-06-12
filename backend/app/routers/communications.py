@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import List
 from app.database import get_db
 from app import models, schemas
@@ -34,9 +34,13 @@ def create_communication(
     db.commit()
     db.refresh(comm)
     
+    comm = db.query(models.Communication).options(
+        joinedload(models.Communication.sender)
+    ).filter(models.Communication.id == comm.id).first()
+    
     response = schemas.CommunicationResponse.model_validate(comm)
-    response.sender_name = current_user.full_name
-    response.sender_role = current_user.role
+    response.sender_name = comm.sender.full_name if comm.sender else ''
+    response.sender_role = comm.sender.role if comm.sender else ''
     
     return response
 
@@ -61,16 +65,17 @@ def list_communications(
            current_user.id != report.responsible_staff_id:
             raise HTTPException(status_code=403, detail="Access denied")
     
-    comms = db.query(models.Communication).filter(
+    comms = db.query(models.Communication).options(
+        joinedload(models.Communication.sender)
+    ).filter(
         models.Communication.loss_report_id == loss_report_id
     ).order_by(models.Communication.created_at.asc()).offset(skip).limit(limit).all()
     
     result = []
     for comm in comms:
         c = schemas.CommunicationResponse.model_validate(comm)
-        if comm.sender:
-            c.sender_name = comm.sender.full_name
-            c.sender_role = comm.sender.role
+        c.sender_name = comm.sender.full_name if comm.sender else ''
+        c.sender_role = comm.sender.role if comm.sender else ''
         result.append(c)
     
     return result

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
-from sqlalchemy import func, desc, and_
+from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import func, desc, and_, or_
 from typing import List, Optional
 from datetime import datetime, timedelta
 from app.database import get_db
@@ -76,12 +76,16 @@ def create_loss_report(
     db.commit()
     db.refresh(report)
     
+    report = db.query(models.LossReport).options(
+        joinedload(models.LossReport.creator),
+        joinedload(models.LossReport.store),
+        joinedload(models.LossReport.responsible_staff)
+    ).filter(models.LossReport.id == report.id).first()
+    
     response = schemas.LossReportResponse.model_validate(report)
-    response.creator_name = current_user.full_name
-    if report.store:
-        response.store_name = report.store.name
-    if report.responsible_staff:
-        response.responsible_staff_name = report.responsible_staff.full_name
+    response.creator_name = report.creator.full_name if report.creator else ''
+    response.store_name = report.store.name if report.store else ''
+    response.responsible_staff_name = report.responsible_staff.full_name if report.responsible_staff else ''
     
     return response
 
@@ -138,17 +142,20 @@ def list_loss_reports(
     if date_to:
         query = query.filter(models.LossReport.loss_date <= date_to)
     
+    query = query.options(
+        joinedload(models.LossReport.creator),
+        joinedload(models.LossReport.store),
+        joinedload(models.LossReport.responsible_staff)
+    )
+    
     reports = query.order_by(desc(models.LossReport.created_at)).offset(skip).limit(limit).all()
     
     result = []
     for report in reports:
         response = schemas.LossReportResponse.model_validate(report)
-        if report.creator:
-            response.creator_name = report.creator.full_name
-        if report.store:
-            response.store_name = report.store.name
-        if report.responsible_staff:
-            response.responsible_staff_name = report.responsible_staff.full_name
+        response.creator_name = report.creator.full_name if report.creator else ''
+        response.store_name = report.store.name if report.store else ''
+        response.responsible_staff_name = report.responsible_staff.full_name if report.responsible_staff else ''
         result.append(response)
     
     return result
@@ -160,7 +167,14 @@ def get_loss_report(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    report = db.query(models.LossReport).filter(models.LossReport.id == report_id).first()
+    report = db.query(models.LossReport).options(
+        joinedload(models.LossReport.creator),
+        joinedload(models.LossReport.store),
+        joinedload(models.LossReport.responsible_staff),
+        joinedload(models.LossReport.reviews).joinedload(models.Review.reviewer),
+        joinedload(models.LossReport.approvals).joinedload(models.Approval.approver),
+        joinedload(models.LossReport.communications).joinedload(models.Communication.sender)
+    ).filter(models.LossReport.id == report_id).first()
     if not report:
         raise HTTPException(status_code=404, detail="Loss report not found")
     
@@ -171,33 +185,27 @@ def get_loss_report(
             raise HTTPException(status_code=403, detail="Access denied")
     
     response = schemas.LossReportDetail.model_validate(report)
-    if report.creator:
-        response.creator_name = report.creator.full_name
-    if report.store:
-        response.store_name = report.store.name
-    if report.responsible_staff:
-        response.responsible_staff_name = report.responsible_staff.full_name
+    response.creator_name = report.creator.full_name if report.creator else ''
+    response.store_name = report.store.name if report.store else ''
+    response.responsible_staff_name = report.responsible_staff.full_name if report.responsible_staff else ''
     
     response.reviews = []
     for review in report.reviews:
         r = schemas.ReviewResponse.model_validate(review)
-        if review.reviewer:
-            r.reviewer_name = review.reviewer.full_name
+        r.reviewer_name = review.reviewer.full_name if review.reviewer else ''
         response.reviews.append(r)
     
     response.approvals = []
     for approval in report.approvals:
         a = schemas.ApprovalResponse.model_validate(approval)
-        if approval.approver:
-            a.approver_name = approval.approver.full_name
+        a.approver_name = approval.approver.full_name if approval.approver else ''
         response.approvals.append(a)
     
     response.communications = []
     for comm in report.communications:
         c = schemas.CommunicationResponse.model_validate(comm)
-        if comm.sender:
-            c.sender_name = comm.sender.full_name
-            c.sender_role = comm.sender.role
+        c.sender_name = comm.sender.full_name if comm.sender else ''
+        c.sender_role = comm.sender.role if comm.sender else ''
         response.communications.append(c)
     
     return response
@@ -229,13 +237,16 @@ def update_loss_report(
     db.commit()
     db.refresh(report)
     
+    report = db.query(models.LossReport).options(
+        joinedload(models.LossReport.creator),
+        joinedload(models.LossReport.store),
+        joinedload(models.LossReport.responsible_staff)
+    ).filter(models.LossReport.id == report.id).first()
+    
     response = schemas.LossReportResponse.model_validate(report)
-    if report.creator:
-        response.creator_name = report.creator.full_name
-    if report.store:
-        response.store_name = report.store.name
-    if report.responsible_staff:
-        response.responsible_staff_name = report.responsible_staff.full_name
+    response.creator_name = report.creator.full_name if report.creator else ''
+    response.store_name = report.store.name if report.store else ''
+    response.responsible_staff_name = report.responsible_staff.full_name if report.responsible_staff else ''
     
     return response
 
@@ -318,6 +329,3 @@ def delete_loss_report(
     db.commit()
     
     return {"message": "Report deleted successfully"}
-
-
-from sqlalchemy import or_
