@@ -22,7 +22,7 @@ class DailyWasteSummaryJob
       seven_day_ago = today - 7.days
       recent_reports = store.waste_reports.where(report_date: seven_day_ago..today.yesterday)
       daily_groups = recent_reports.group("DATE(report_date)").sum(:total_cost)
-      daily_avg = daily_groups.empty? ? 0 : daily_groups.values.sum / daily_groups.size
+      avg_cost = daily_groups.empty? ? 0 : daily_groups.values.sum / daily_groups.size
 
       if avg_cost.positive? && daily_cost > avg_cost * 2
         latest_report = daily_reports.order(total_cost: :desc).first

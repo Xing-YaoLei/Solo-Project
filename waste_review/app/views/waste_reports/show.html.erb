@@ -176,9 +176,13 @@
           <div class="flex-shrink-0 w-3 h-3 mt-1.5 rounded-full bg-blue-500"></div>
           <div class="flex-1">
             <div class="flex items-center gap-2">
-              <%= render "waste_reports/status_badge", status: log.from_status %>
+              <% if log.from_status.present? %>
+                <%= render "waste_reports/status_badge", status: log.from_status_text %>
+              <% else %>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500">初始</span>
+              <% end %>
               <span class="text-gray-400">→</span>
-              <%= render "waste_reports/status_badge", status: log.to_status %>
+              <%= render "waste_reports/status_badge", status: log.to_status_text %>
             </div>
             <div class="mt-1 flex items-center gap-4 text-sm text-gray-500">
               <span>操作人: <%= log.operator %></span>

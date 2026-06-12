@@ -43,7 +43,7 @@
   </div>
 
   <div class="flex gap-3">
-    <%= f.submit class: "bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 cursor-pointer" %>
+    <%= f.submit (waste_report.new_record? ? "创建报损单" : "更新报损单"), class: "bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 cursor-pointer" %>
     <%= link_to "取消", waste_reports_path, class: "bg-gray-200 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-300" %>
   </div>
 <% end %>

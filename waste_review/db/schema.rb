@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_13_000002) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_13_000003) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -49,11 +49,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_13_000002) do
 
   create_table "status_logs", force: :cascade do |t|
     t.datetime "created_at", precision: nil
-    t.integer "from_status"
+    t.string "from_status"
     t.text "note"
     t.string "operator"
-    t.integer "to_status"
+    t.string "to_status"
     t.bigint "waste_report_id", null: false
+    t.index ["from_status"], name: "index_status_logs_on_from_status"
+    t.index ["to_status"], name: "index_status_logs_on_to_status"
     t.index ["waste_report_id"], name: "index_status_logs_on_waste_report_id"
   end
 

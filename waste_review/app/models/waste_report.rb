@@ -19,6 +19,7 @@ class WasteReport < ApplicationRecord
   validates :reporter, presence: true
   validates :status, inclusion: { in: statuses.keys }
 
+  after_create :log_initial_status
   after_save :log_status_change, if: :saved_change_to_status?
   after_save :trigger_anomaly_detection, if: :should_detect_anomaly?
   after_commit :recalculate_totals, on: [:create], unless: :skip_recalculation
@@ -48,14 +49,20 @@ class WasteReport < ApplicationRecord
   def transition_to!(new_status, operator = "system", note = nil)
     return false unless can_transition_to?(new_status)
 
+    old_status = status.to_s
+    new_status_s = new_status.to_s
+
+    return false if old_status == new_status_s
+
     transaction do
+      @status_change_logged = true
       status_logs.create!(
-        from_status: status_before_last_save || status,
-        to_status: new_status,
+        from_status: old_status,
+        to_status: new_status_s,
         operator: operator,
         note: note
       )
-      update!(status: new_status)
+      update!(status: new_status_s)
     end
     true
   end
@@ -94,12 +101,26 @@ class WasteReport < ApplicationRecord
     end
   end
 
+  def log_initial_status
+    status_logs.create!(
+      from_status: nil,
+      to_status: status.to_s,
+      operator: current_operator,
+      note: "创建报损单"
+    )
+  end
+
   def log_status_change
-    return if status_logs.where(to_status: status).exists?
+    return if @status_change_logged
+
+    old_status = saved_change_to_status.first
+    new_status = saved_change_to_status.last
+
+    return if old_status == new_status
 
     status_logs.create!(
-      from_status: status_before_last_save,
-      to_status: status,
+      from_status: old_status,
+      to_status: new_status,
       operator: current_operator
     )
   end

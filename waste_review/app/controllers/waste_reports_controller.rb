@@ -33,7 +33,8 @@ class WasteReportsController < ApplicationController
   end
 
   def new
-    @waste_report = WasteReport.new(store: Store.first, report_date: Date.today, reporter: Current.user&.name)
+    default_reporter = defined?(Current) && Current.respond_to?(:user) && Current.user&.respond_to?(:name) ? Current.user.name : nil
+    @waste_report = WasteReport.new(store: Store.first, report_date: Date.today, reporter: default_reporter)
     3.times { @waste_report.waste_items.build }
   end
 
