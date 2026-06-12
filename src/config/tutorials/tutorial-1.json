@@ -1,0 +1,51 @@
+{
+  "id": "tutorial-1",
+  "name": "新手指引",
+  "steps": [
+    {
+      "id": "step-1",
+      "title": "欢迎来到咖啡小镇",
+      "content": "在这里，你将扮演咖啡店店长，通过管理会员来提升续费率。让我们开始学习吧！",
+      "position": "top"
+    },
+    {
+      "id": "step-2",
+      "title": "任务面板",
+      "content": "左侧显示当前任务，包括任务描述和时间限制。仔细阅读任务要求。",
+      "targetElement": "task-panel",
+      "position": "right"
+    },
+    {
+      "id": "step-3",
+      "title": "线索分析",
+      "content": "中间面板显示可用线索。点击线索卡片查看详细信息，找出关键信息。",
+      "targetElement": "clue-panel",
+      "position": "left"
+    },
+    {
+      "id": "step-4",
+      "title": "做出决策",
+      "content": "分析完所有线索后，点击\"开始决策\"按钮，选择你认为最佳的方案。",
+      "targetElement": "decision-panel",
+      "position": "left"
+    },
+    {
+      "id": "step-5",
+      "title": "犹豫点记录",
+      "content": "系统会自动记录你在每个线索和决策上的思考时间，超过5秒会标记为犹豫点。",
+      "position": "top"
+    },
+    {
+      "id": "step-6",
+      "title": "失败回放",
+      "content": "每次失败都会保留回放记录，你可以在会员档案中查看最近3次失败回放，分析犹豫点。",
+      "position": "top"
+    },
+    {
+      "id": "step-7",
+      "title": "准备开始",
+      "content": "你已经了解了基本玩法。记住：仔细分析线索，做出明智决策，提升会员续费率！祝你好运！",
+      "position": "top"
+    }
+  ]
+}

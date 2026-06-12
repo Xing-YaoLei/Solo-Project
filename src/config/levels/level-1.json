@@ -1,0 +1,10 @@
+{
+  "id": "level-1",
+  "name": "入门训练",
+  "difficulty": 1,
+  "minScore": 300,
+  "description": "学习基本的会员管理技巧，包括优惠券提醒、退款处理和续充时机。",
+  "taskIds": ["task-001", "task-002", "task-003"],
+  "backgroundStory": "欢迎来到咖啡小镇！作为新上任的店长，你需要学习如何管理会员。完成3个基础任务来证明你的能力。",
+  "unlockHint": "完成第一关后解锁第二关"
+}

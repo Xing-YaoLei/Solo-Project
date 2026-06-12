@@ -1,0 +1,10 @@
+{
+  "id": "level-3",
+  "name": "大师之路",
+  "difficulty": 3,
+  "minScore": 500,
+  "description": "综合运用所有技巧，处理复杂的多维度会员管理场景。",
+  "taskIds": ["task-001", "task-003", "task-004", "task-005"],
+  "backgroundStory": "你已经是资深店长了！现在面对综合挑战，证明你有能力成为咖啡大师。",
+  "unlockHint": "恭喜你完成所有关卡！"
+}

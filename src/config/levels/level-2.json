@@ -1,0 +1,10 @@
+{
+  "id": "level-2",
+  "name": "进阶挑战",
+  "difficulty": 2,
+  "minScore": 400,
+  "description": "处理更复杂的会员问题，包括沉睡会员唤醒和消费模式分析。",
+  "taskIds": ["task-004", "task-005"],
+  "backgroundStory": "你的表现不错！现在来处理一些更具挑战性的会员问题，展示你的分析能力。",
+  "unlockHint": "完成第二关后解锁第三关"
+}
