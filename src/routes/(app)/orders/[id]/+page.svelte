@@ -70,6 +70,7 @@
 		retry: '重试',
 		supplement: '补录',
 		escalate: '升级',
+		timeout_trigger: '超时触发',
 		close: '关闭'
 	};
 

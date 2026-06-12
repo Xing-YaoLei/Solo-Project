@@ -1,8 +1,9 @@
 import { z } from 'zod';
-import { createTRPCRouter, protectedProcedure, publicProcedure } from '../trpc';
+import { createTRPCRouter, protectedProcedure } from '../trpc';
 import { db } from '$lib/server/db';
-import { refundOrderTable, refundLogTable, userTable } from '$lib/server/db/schema';
-import { eq, and, desc, like, gte, lte, isNull, count, sql } from 'drizzle-orm';
+import { refundOrderTable, refundLogTable } from '$lib/server/db/schema';
+import { eq, and, desc, gte, lte, count, sql } from 'drizzle-orm';
+import { getDueAt, checkAndProcessTimeouts } from '../timeout';
 
 export const refundRouter = createTRPCRouter({
 	createOrder: protectedProcedure
@@ -19,17 +20,20 @@ export const refundRouter = createTRPCRouter({
 			})
 		)
 		.mutation(async ({ input, ctx }) => {
+			const dueAt = await getDueAt('pending');
+
 			const result = await db.insert(refundOrderTable).values({
 				...input,
 				status: 'pending',
 				currentHandlerId: ctx.user.id,
-				currentHandlerName: ctx.user.realName || ctx.user.username
+				currentHandlerName: ctx.user.realName || ctx.user.username,
+				dueAt
 			}).returning();
 
 			await db.insert(refundLogTable).values({
 				refundOrderId: result[0].id,
 				actionType: 'create',
-				actionDetail: '创建售后单',
+				actionDetail: `创建售后单${dueAt ? '，处理截止: ' + dueAt.toISOString() : ''}`,
 				newStatus: 'pending',
 				operatorId: ctx.user.id,
 				operatorName: ctx.user.realName || ctx.user.username
@@ -52,6 +56,8 @@ export const refundRouter = createTRPCRouter({
 			})
 		)
 		.query(async ({ input }) => {
+			await checkAndProcessTimeouts();
+
 			const whereConditions = [];
 
 			if (input.status) {
@@ -141,6 +147,7 @@ export const refundRouter = createTRPCRouter({
 			}
 
 			const newStatus = 'processing';
+			const dueAt = await getDueAt('processing');
 
 			await db
 				.update(refundOrderTable)
@@ -148,6 +155,7 @@ export const refundRouter = createTRPCRouter({
 					responsibility: input.responsibility,
 					issueTag: input.issueTag,
 					status: newStatus,
+					dueAt,
 					updatedAt: new Date()
 				})
 				.where(eq(refundOrderTable.id, input.orderId));
@@ -155,7 +163,7 @@ export const refundRouter = createTRPCRouter({
 			await db.insert(refundLogTable).values({
 				refundOrderId: input.orderId,
 				actionType: 'assign_responsibility',
-				actionDetail: `责任归属: ${input.responsibility}${input.issueTag ? `, 问题标签: ${input.issueTag}` : ''}`,
+				actionDetail: `责任归属: ${input.responsibility}${input.issueTag ? `, 问题标签: ${input.issueTag}` : ''}${dueAt ? '，处理截止: ' + dueAt.toISOString() : ''}`,
 				oldStatus: oldOrder[0].status,
 				newStatus,
 				operatorId: ctx.user.id,
@@ -186,11 +194,14 @@ export const refundRouter = createTRPCRouter({
 				throw new Error('售后单不存在');
 			}
 
+			const dueAt = await getDueAt(oldOrder[0].status);
+
 			await db
 				.update(refundOrderTable)
 				.set({
 					currentHandlerId: input.newHandlerId,
 					currentHandlerName: input.newHandlerName,
+					dueAt,
 					updatedAt: new Date()
 				})
 				.where(eq(refundOrderTable.id, input.orderId));
@@ -198,7 +209,7 @@ export const refundRouter = createTRPCRouter({
 			await db.insert(refundLogTable).values({
 				refundOrderId: input.orderId,
 				actionType: 'transfer',
-				actionDetail: `转派给: ${input.newHandlerName}`,
+				actionDetail: `转派给: ${input.newHandlerName}${dueAt ? '，重置截止: ' + dueAt.toISOString() : ''}`,
 				oldHandlerId: oldOrder[0].currentHandlerId,
 				newHandlerId: input.newHandlerId,
 				operatorId: ctx.user.id,
@@ -262,11 +273,13 @@ export const refundRouter = createTRPCRouter({
 			}
 
 			const newStatus = 'processing';
+			const dueAt = await getDueAt('processing');
 
 			await db
 				.update(refundOrderTable)
 				.set({
 					status: newStatus,
+					dueAt,
 					updatedAt: new Date()
 				})
 				.where(eq(refundOrderTable.id, input.orderId));
@@ -274,7 +287,7 @@ export const refundRouter = createTRPCRouter({
 			await db.insert(refundLogTable).values({
 				refundOrderId: input.orderId,
 				actionType: 'retry',
-				actionDetail: `重试处理，原因: ${input.reason}`,
+				actionDetail: `重试处理，原因: ${input.reason}${dueAt ? '，处理截止: ' + dueAt.toISOString() : ''}`,
 				oldStatus: oldOrder[0].status,
 				newStatus,
 				operatorId: ctx.user.id,
@@ -328,10 +341,13 @@ export const refundRouter = createTRPCRouter({
 				throw new Error('售后单不存在');
 			}
 
+			const dueAt = await getDueAt('escalated');
+
 			await db
 				.update(refundOrderTable)
 				.set({
 					status: 'escalated',
+					dueAt,
 					updatedAt: new Date()
 				})
 				.where(eq(refundOrderTable.id, input.orderId));
@@ -339,7 +355,7 @@ export const refundRouter = createTRPCRouter({
 			await db.insert(refundLogTable).values({
 				refundOrderId: input.orderId,
 				actionType: 'escalate',
-				actionDetail: `升级处理 (第${input.level}级): ${input.reason}，升级至: ${input.escalateTo}`,
+				actionDetail: `升级处理 (第${input.level}级): ${input.reason}，升级至: ${input.escalateTo}${dueAt ? '，处理截止: ' + dueAt.toISOString() : ''}`,
 				oldStatus: oldOrder[0].status,
 				newStatus: 'escalated',
 				operatorId: ctx.user.id,
@@ -375,6 +391,7 @@ export const refundRouter = createTRPCRouter({
 					status: 'closed',
 					followupResult: input.result,
 					closedAt: new Date(),
+					dueAt: null,
 					updatedAt: new Date()
 				})
 				.where(eq(refundOrderTable.id, input.orderId));
@@ -402,6 +419,8 @@ export const refundRouter = createTRPCRouter({
 			})
 		)
 		.query(async ({ input, ctx }) => {
+			await checkAndProcessTimeouts();
+
 			const whereConditions = [eq(refundOrderTable.currentHandlerId, ctx.user.id)];
 
 			if (input.status) {
@@ -432,5 +451,10 @@ export const refundRouter = createTRPCRouter({
 				page: input.page,
 				pageSize: input.pageSize
 			};
-		})
+		}),
+
+	checkTimeouts: protectedProcedure.mutation(async () => {
+		const count = await checkAndProcessTimeouts();
+		return { processed: count };
+	})
 });

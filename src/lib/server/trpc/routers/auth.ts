@@ -6,11 +6,12 @@ import { eq } from 'drizzle-orm';
 import { Argon2id } from 'oslo/password';
 import { lucia } from '$lib/server/lucia';
 import { generateId } from 'lucia';
+import { TRPCError } from '@trpc/server';
 
 export const authRouter = createTRPCRouter({
 	login: publicProcedure
 		.input(z.object({ username: z.string(), password: z.string() }))
-		.mutation(async ({ input, ctx }) => {
+		.mutation(async ({ input }) => {
 			const users = await db
 				.select()
 				.from(userTable)
@@ -48,7 +49,9 @@ export const authRouter = createTRPCRouter({
 		}),
 
 	logout: protectedProcedure.mutation(async ({ ctx }) => {
-		await lucia.invalidateSession(ctx.session?.id || '');
+		if (ctx.sessionId) {
+			await lucia.invalidateSession(ctx.sessionId);
+		}
 		const sessionCookie = lucia.createBlankSessionCookie();
 		return {
 			sessionCookie: {

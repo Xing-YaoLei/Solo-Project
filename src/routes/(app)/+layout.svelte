@@ -3,7 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { getTrpcClient } from '$lib/trpc';
 
-	let { data } = $props();
+	let { data, children } = $props();
 
 	let user = $state<any>(null);
 
@@ -45,13 +45,13 @@
 		</div>
 		<nav class="sidebar-nav">
 			{#each navItems as item}
-				<div
+				<button
 					class="sidebar-nav-item {isActive(item.path) ? 'active' : ''}"
 					onclick={() => goto(item.path)}
 				>
 					<span>{item.icon}</span>
 					<span>{item.label}</span>
-				</div>
+				</button>
 			{/each}
 		</nav>
 	</aside>
@@ -76,7 +76,7 @@
 		</header>
 
 		<main class="page-content">
-			{@render children?.()}
+			{@render children()}
 		</main>
 	</div>
 </div>

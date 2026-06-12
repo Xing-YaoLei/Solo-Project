@@ -1,9 +1,13 @@
-import type { User } from 'lucia';
-
 declare global {
 	namespace App {
 		interface Locals {
-			user: User | null;
+			user: {
+				id: string;
+				username: string;
+				role: string;
+				realName?: string | null;
+				region?: string | null;
+			} | null;
 			session: { id: string; userId: string; expiresAt: Date; fresh: boolean } | null;
 		}
 	}

@@ -1,18 +1,23 @@
 import { initTRPC, TRPCError } from '@trpc/server';
-import superjson from 'superjson';
 import { ZodError } from 'zod';
-import type { User } from 'lucia';
 
 export const createTRPCContext = async (opts: {
-	user: User | null;
+	user: {
+		id: string;
+		username: string;
+		role: string;
+		realName?: string | null;
+		region?: string | null;
+	} | null;
+	sessionId: string | null;
 }) => {
 	return {
-		user: opts.user
+		user: opts.user,
+		sessionId: opts.sessionId
 	};
 };
 
 const t = initTRPC.context<typeof createTRPCContext>().create({
-	transformer: superjson,
 	errorFormatter({ shape, error }) {
 		return {
 			...shape,
@@ -32,7 +37,8 @@ export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
 	}
 	return next({
 		ctx: {
-			user: ctx.user
+			user: ctx.user,
+			sessionId: ctx.sessionId
 		}
 	});
 });
