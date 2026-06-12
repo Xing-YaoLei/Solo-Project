@@ -125,6 +125,7 @@ def init_test_data(db: Session = Depends(get_db)):
         phone="13800138000"
     )
     db.add(manager)
+    db.flush()
 
     staffs = [
         models.User(username="staff1", email="staff1@coffee.com", hashed_password=get_password_hash("123456"),
@@ -139,10 +140,237 @@ def init_test_data(db: Session = Depends(get_db)):
                     full_name="刘店员", role=models.UserRole.STAFF, phone="13800138005", store_id=5),
     ]
     db.add_all(staffs)
+    db.flush()
+
+    from datetime import datetime, timedelta
+    now = datetime.now()
+
+    reports = [
+        models.LossReport(
+            report_no=f"LR{now.strftime('%Y%m%d')}000001",
+            title="牛奶原料报损",
+            category=models.LossCategory.RAW_MATERIAL,
+            loss_date=now - timedelta(days=2),
+            cost_amount=1500.00,
+            sale_amount=3000.00,
+            quantity=50,
+            unit="L",
+            description="冷链运输故障导致牛奶变质",
+            store_id=1,
+            created_by=2,
+            responsible_staff_id=2,
+            status=models.LossStatus.PENDING_REVIEW,
+            is_abnormal=False,
+            loss_rate=1.5,
+        ),
+        models.LossReport(
+            report_no=f"LR{now.strftime('%Y%m%d')}000002",
+            title="咖啡机故障咖啡豆报损",
+            category=models.LossCategory.RAW_MATERIAL,
+            loss_date=now - timedelta(days=1),
+            cost_amount=800.00,
+            sale_amount=1600.00,
+            quantity=20,
+            unit="kg",
+            description="咖啡机压力不稳定导致咖啡豆萃取失败",
+            store_id=1,
+            created_by=2,
+            responsible_staff_id=2,
+            status=models.LossStatus.REVIEWED,
+            is_abnormal=False,
+            loss_rate=0.8,
+        ),
+        models.LossReport(
+            report_no=f"LR{now.strftime('%Y%m%d')}000003",
+            title="月饼礼盒过期报损",
+            category=models.LossCategory.FINISHED_PRODUCT,
+            loss_date=now,
+            cost_amount=6000.00,
+            sale_amount=12000.00,
+            quantity=100,
+            unit="盒",
+            description="中秋礼盒未及时销售过期，金额较大",
+            store_id=1,
+            created_by=2,
+            responsible_staff_id=2,
+            status=models.LossStatus.FOLLOWING,
+            is_abnormal=True,
+            abnormal_type=models.AbnormalType.LARGE_AMOUNT,
+            loss_rate=6.0,
+        ),
+        models.LossReport(
+            report_no=f"LR{now.strftime('%Y%m%d')}000004",
+            title="打包杯破损",
+            category=models.LossCategory.PACKAGING,
+            loss_date=now - timedelta(days=3),
+            cost_amount=500.00,
+            sale_amount=1000.00,
+            quantity=500,
+            unit="个",
+            description="仓库搬运时打包杯箱子掉落破损",
+            store_id=2,
+            created_by=3,
+            responsible_staff_id=3,
+            status=models.LossStatus.PENDING_APPROVAL,
+            is_abnormal=False,
+            loss_rate=0.4,
+        ),
+        models.LossReport(
+            report_no=f"LR{now.strftime('%Y%m%d')}000005",
+            title="冰淇淋机故障原料报损",
+            category=models.LossCategory.EQUIPMENT,
+            loss_date=now - timedelta(days=5),
+            cost_amount=2500.00,
+            sale_amount=5000.00,
+            quantity=1,
+            unit="台",
+            description="冰淇淋机压缩机损坏，维修期间原料融化",
+            store_id=3,
+            created_by=4,
+            responsible_staff_id=4,
+            status=models.LossStatus.APPROVED,
+            is_abnormal=False,
+            loss_rate=1.7,
+        ),
+    ]
+    db.add_all(reports)
+    db.flush()
+
+    reviews = [
+        models.Review(
+            review_opinion="经核实，冷链运输故障属于不可抗力因素，责任认定合理，建议后续加强运输环节监控。",
+            result=models.ReviewResult.CONFIRMED,
+            verified_amount=1500.00,
+            cost_verified=True,
+            store_verified=True,
+            follow_up_days=3,
+            loss_report_id=2,
+            reviewer_id=1,
+            review_time=now - timedelta(days=1, hours=2),
+        ),
+        models.Review(
+            review_opinion="金额较大，需要责任人跟进整改，查明具体原因并提交改进措施。",
+            result=models.ReviewResult.NEEDS_FOLLOW_UP,
+            verified_amount=6000.00,
+            cost_verified=True,
+            store_verified=True,
+            follow_up_days=7,
+            loss_report_id=3,
+            reviewer_id=1,
+            review_time=now - timedelta(hours=5),
+        ),
+        models.Review(
+            review_opinion="搬运操作不规范导致的破损，建议加强仓库管理培训。",
+            result=models.ReviewResult.CONFIRMED,
+            verified_amount=500.00,
+            cost_verified=True,
+            store_verified=True,
+            follow_up_days=3,
+            loss_report_id=4,
+            reviewer_id=1,
+            review_time=now - timedelta(days=2, hours=3),
+        ),
+        models.Review(
+            review_opinion="设备故障属于正常损耗，已安排维修，同意上报审批。",
+            result=models.ReviewResult.CONFIRMED,
+            verified_amount=2500.00,
+            cost_verified=True,
+            store_verified=True,
+            follow_up_days=3,
+            loss_report_id=5,
+            reviewer_id=1,
+            review_time=now - timedelta(days=4, hours=6),
+        ),
+    ]
+    db.add_all(reviews)
+    db.flush()
+
+    approvals = [
+        models.Approval(
+            approval_opinion="情况属实，设备故障不可避免，同意报损。后续请定期检查设备状态。",
+            result=models.ApprovalResult.APPROVED,
+            loss_report_id=5,
+            approver_id=1,
+            approval_time=now - timedelta(days=3, hours=10),
+        ),
+    ]
+    db.add_all(approvals)
+    db.flush()
+
+    communications = [
+        models.Communication(
+            message="已联系供应商，他们承认运输过程中温控设备出现问题，愿意承担50%损失。",
+            message_type="comment",
+            loss_report_id=1,
+            sender_id=2,
+            created_at=now - timedelta(days=1, hours=20),
+        ),
+        models.Communication(
+            message="好的，收到。请与供应商保持沟通，尽快落实赔偿事宜。",
+            message_type="comment",
+            loss_report_id=1,
+            sender_id=1,
+            created_at=now - timedelta(days=1, hours=18),
+        ),
+        models.Communication(
+            message="正在盘点剩余库存，预计明天可以完成整改报告。",
+            message_type="comment",
+            loss_report_id=3,
+            sender_id=2,
+            created_at=now - timedelta(hours=3),
+        ),
+        models.Communication(
+            message="好的，请在整改报告中说明改进措施，避免类似问题再次发生。",
+            message_type="comment",
+            loss_report_id=3,
+            sender_id=1,
+            created_at=now - timedelta(hours=2),
+        ),
+    ]
+    db.add_all(communications)
+    db.flush()
+
+    todo_items = [
+        models.TodoItem(
+            title="跟进报损单: 牛奶原料报损",
+            description="复核意见: 经核实，冷链运输故障属于不可抗力因素，责任认定合理。",
+            loss_report_id=1,
+            assignee_id=2,
+            created_by=1,
+            is_completed=False,
+        ),
+        models.TodoItem(
+            title="跟进报损单: 月饼礼盒过期报损（异常）",
+            description="复核意见: 金额较大，需要责任人跟进整改，查明具体原因并提交改进措施。",
+            loss_report_id=3,
+            assignee_id=2,
+            created_by=1,
+            is_completed=False,
+        ),
+        models.TodoItem(
+            title="提交报损单整改报告",
+            description="针对月饼礼盒过期问题，提交改进措施和预防方案。",
+            loss_report_id=3,
+            assignee_id=2,
+            created_by=1,
+            is_completed=False,
+        ),
+    ]
+    db.add_all(todo_items)
+
     db.commit()
 
     return {"message": "Test data initialized successfully",
             "accounts": {
                 "manager": {"username": "manager", "password": "123456"},
                 "staff": {"username": "staff1", "password": "123456"}
+            },
+            "data_summary": {
+                "stores": 5,
+                "users": 6,
+                "loss_reports": 5,
+                "reviews": 4,
+                "approvals": 1,
+                "communications": 4,
+                "todo_items": 3,
             }}
