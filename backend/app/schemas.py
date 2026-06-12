@@ -112,8 +112,8 @@ class LossReportResponse(LossReportBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
     created_by: int
-    creator_name: str
-    store_name: str
+    creator_name: Optional[str] = None
+    store_name: Optional[str] = None
     responsible_staff_name: Optional[str] = None
 
     class Config:
@@ -144,7 +144,7 @@ class ReviewResponse(ReviewBase):
     review_time: datetime
     loss_report_id: int
     reviewer_id: int
-    reviewer_name: str
+    reviewer_name: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -164,7 +164,7 @@ class ApprovalResponse(ApprovalBase):
     approval_time: datetime
     loss_report_id: int
     approver_id: int
-    approver_name: str
+    approver_name: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -185,8 +185,8 @@ class CommunicationResponse(CommunicationBase):
     id: int
     created_at: datetime
     sender_id: int
-    sender_name: str
-    sender_role: str
+    sender_name: Optional[str] = None
+    sender_role: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -209,7 +209,8 @@ class TodoItemResponse(TodoItemBase):
     is_completed: bool
     completed_at: Optional[datetime] = None
     created_at: datetime
-    assignee_name: str
+    assignee_name: Optional[str] = None
+    loss_report_no: Optional[str] = None
 
     class Config:
         from_attributes = True

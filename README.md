@@ -382,6 +382,57 @@ npm run build
 npm run preview
 ```
 
+## 故障排除
+
+### 启动脚本权限问题
+如果遇到 `permission denied` 错误：
+
+**Linux/Mac:**
+```bash
+cd backend
+chmod +x start.sh start_celery.sh start_celery_beat.sh
+cd ../frontend
+chmod +x start.sh
+```
+
+**Windows:**
+- 右键点击脚本文件，选择「属性」→「解除锁定」
+- 或使用 PowerShell 运行：`Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`
+
+### 数据库连接问题
+1. 确保 PostgreSQL 服务已启动
+2. 检查 `.env` 文件中的 `DATABASE_URL` 配置是否正确
+3. 确保数据库 `coffee_loss` 已创建
+4. 确认数据库用户权限
+
+### Redis 连接问题
+1. 确保 Redis 服务已启动：`redis-server`
+2. 检查 `.env` 文件中的 `REDIS_URL` 配置
+3. 测试连接：`redis-cli ping`
+
+### 前端代理问题
+如果前端无法调用后端 API：
+1. 确保后端服务已启动并运行在 8000 端口
+2. 检查 `vite.config.ts` 中的代理配置
+3. 清除浏览器缓存和 Cookie
+
+### 端口占用问题
+如果端口被占用：
+- 后端：修改启动命令 `uvicorn app.main:app --reload --port 8001`
+- 前端：修改 `vite.config.ts` 中的端口配置
+
+### 常见错误
+
+| 错误 | 解决方案 |
+|------|---------|
+| `ImportError: cannot import name 'or_'` | 已修复，确保使用最新代码 |
+| `NameError: name 'or_' is not defined` | 已修复，确保 `from sqlalchemy import func, desc, and_, or_` |
+| `AttributeError: 'NoneType' object has no attribute 'full_name'` | 已修复，使用 `joinedload` 预先加载关联数据 |
+| `ProgrammingError: relation "users" does not exist` | 首次启动会自动创建表，或检查数据库连接 |
+| `InvalidRequestError: Object '...' is already attached to session` | 已修复，创建后重新查询获取完整对象 |
+
+---
+
 ## 生产部署建议
 
 ### 后端部署

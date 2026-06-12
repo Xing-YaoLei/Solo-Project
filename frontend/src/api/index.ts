@@ -10,6 +10,7 @@ import {
   DashboardStats,
   LossTrendItem,
   StoreLossRank,
+  TodoItem,
 } from '@/types';
 
 export interface LoginParams {
@@ -147,4 +148,23 @@ export const statisticsAPI = {
     api.get<StoreLossRank[]>('/statistics/store-ranking', { params }),
 
   getThreshold: () => api.get<{ threshold: number }>('/statistics/threshold'),
+};
+
+export const todoAPI = {
+  getTodos: (params?: { is_completed?: boolean; loss_report_id?: number; my_only?: boolean }) =>
+    api.get<TodoItem[]>('/todos', { params }),
+
+  getTodo: (id: number) => api.get<TodoItem>(`/todos/${id}`),
+
+  createTodo: (data: {
+    title: string;
+    description?: string;
+    due_date?: string;
+    loss_report_id: number;
+    assignee_id: number;
+  }) => api.post<TodoItem>('/todos', data),
+
+  toggleTodo: (id: number) => api.put<TodoItem>(`/todos/${id}/toggle`),
+
+  deleteTodo: (id: number) => api.delete(`/todos/${id}`),
 };

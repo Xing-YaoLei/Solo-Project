@@ -105,6 +105,20 @@ export interface Communication {
   created_at: string;
 }
 
+export interface TodoItem {
+  id: number;
+  title: string;
+  description?: string;
+  due_date?: string;
+  loss_report_id: number;
+  loss_report_no?: string;
+  assignee_id: number;
+  assignee_name?: string;
+  is_completed: boolean;
+  completed_at?: string;
+  created_at: string;
+}
+
 export interface LossTrendItem {
   date: string;
   loss_amount: number;

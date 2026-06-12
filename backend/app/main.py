@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import Base, engine
-from app.routers import auth, stores, loss_reports, reviews, approvals, statistics, communications
+from app.routers import auth, stores, loss_reports, reviews, approvals, statistics, communications, todo_items
 from app.config import settings
 
 Base.metadata.create_all(bind=engine)
@@ -27,6 +27,7 @@ app.include_router(reviews.router, prefix="/api/reviews", tags=["复核管理"])
 app.include_router(approvals.router, prefix="/api/approvals", tags=["审批管理"])
 app.include_router(statistics.router, prefix="/api/statistics", tags=["统计分析"])
 app.include_router(communications.router, prefix="/api/communications", tags=["沟通记录"])
+app.include_router(todo_items.router, prefix="/api/todos", tags=["待办事项"])
 
 
 @app.get("/api/health")
