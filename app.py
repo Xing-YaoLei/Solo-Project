@@ -487,14 +487,18 @@ def render_share_panel(user: User, filters: dict):
             ttl_hours=ttl,
             include_metric_footer=include_footer,
         )
-        token = mgr.serializer.dumps(payload.__dict__)
-        base_url = st.secrets.get("base_url", "http://localhost:8501") if hasattr(st, "secrets") and "base_url" in st.secrets else "http://localhost:8501"
+        token = mgr.dumps_payload(payload)
+        try:
+            base_url = st.secrets["base_url"]
+        except Exception:
+            base_url = "http://localhost:8501"
         url = f"{base_url}/?share={token}"
         st.sidebar.success("链接已生成：")
         st.sidebar.code(url, language=None)
         st.sidebar.caption(
             f"分享的权限角色：{payload.owner_role}，"
-            f"可查看门店：{'全部' if user.has_permission('view_all_stores') else payload.allowed_stores}"
+            f"可查看门店：{payload.allowed_stores if payload.allowed_stores else '（admin 全部门店）'}，"
+            f"口径版本：{payload.metric_version}"
         )
 
 

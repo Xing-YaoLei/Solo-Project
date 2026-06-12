@@ -5,14 +5,44 @@ import hashlib
 import hmac
 import json
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timedelta
-from typing import Optional
+from datetime import date, datetime, timedelta
+from typing import Any, Optional
 
 from itsdangerous import URLSafeSerializer, BadSignature
 
 from src.auth.permissions import User
 from src.config import app_config
 from src.business.metric_versions import get_metric_version
+
+
+def _json_friendly(obj: Any) -> Any:
+    if isinstance(obj, (datetime, date)):
+        return obj.isoformat()
+    if isinstance(obj, dict):
+        return {k: _json_friendly(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_json_friendly(v) for v in obj]
+    return obj
+
+
+def _restore_date_like(obj: Any) -> Any:
+    if isinstance(obj, dict):
+        result = {}
+        for k, v in obj.items():
+            if k in ("start_date", "end_date", "effective_date") and isinstance(v, str):
+                try:
+                    if "T" in v:
+                        result[k] = datetime.fromisoformat(v)
+                    else:
+                        result[k] = date.fromisoformat(v)
+                    continue
+                except (ValueError, TypeError):
+                    pass
+            result[k] = _restore_date_like(v)
+        return result
+    if isinstance(obj, (list, tuple)):
+        return [_restore_date_like(v) for v in obj]
+    return obj
 
 
 @dataclass
@@ -71,6 +101,9 @@ class ShareManager:
     def __init__(self):
         self.serializer = URLSafeSerializer(app_config.app_secret_key, salt="share-coffee-loss")
 
+    def dumps_payload(self, payload: SharePayload) -> str:
+        return self.serializer.dumps(_json_friendly(asdict(payload)))
+
     def create_token(self, owner_user: User, ttl_hours: int = 24, **kwargs) -> str:
         allowed_stores = list(owner_user.stores) if owner_user.stores else []
         if owner_user.role == "admin" and not allowed_stores:
@@ -83,12 +116,12 @@ class ShareManager:
             expires_at=(datetime.now() + timedelta(hours=ttl_hours)).isoformat(),
             **kwargs,
         )
-        token = self.serializer.dumps(asdict(payload))
-        return token
+        return self.dumps_payload(payload)
 
     def parse_token(self, token: str) -> Optional[SharePayload]:
         try:
             data = self.serializer.loads(token)
+            data = _restore_date_like(data)
             payload = SharePayload(**data)
             if payload.is_expired():
                 return None
