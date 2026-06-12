@@ -1,13 +1,16 @@
-import { _decorator, Component, director, Scene, Node, find, game } from 'cc';
+import { _decorator, Component, director, Scene, Node, find, game, sys } from 'cc';
 import { SceneBuilder } from './utils/SceneBuilder';
 import { loadAllConfigs } from './config/GameConfigs';
 import { ConfigManager, ConfigKeys } from './core/ConfigManager';
 import { EventManager, GameEvents } from './core/EventManager';
+import { GameMain } from './scenes/GameMain';
+import { MainMenu } from './ui/MainMenu';
 const { ccclass } = _decorator;
 
 @ccclass('Bootstrap')
 export class Bootstrap extends Component {
     public static _bootstrapped: boolean = false;
+    public static _bootstrapAttempts: number = 0;
 
     onLoad() {
         this.doBootstrap();
@@ -17,14 +20,20 @@ export class Bootstrap extends Component {
         this.doBootstrap();
     }
 
+    lateUpdate() {
+        if (!Bootstrap._bootstrapped && Bootstrap._bootstrapAttempts < 10) {
+            Bootstrap._bootstrapAttempts++;
+            this.scheduleOnce(() => this.doBootstrap(), 0.1 * Bootstrap._bootstrapAttempts);
+        }
+    }
+
     private doBootstrap(): void {
         if (Bootstrap._bootstrapped) return;
-        Bootstrap._bootstrapped = true;
 
-        console.log('[Bootstrap] ============== 启动咖啡供应链游戏 ==============');
+        console.log(`[Bootstrap] ============ 第${Bootstrap._bootstrapAttempts + 1}次启动尝试 ============`);
         const scene = director.getScene();
         if (!scene) {
-            console.error('[Bootstrap] 没有活动场景');
+            console.warn('[Bootstrap] 没有活动场景，稍后重试');
             return;
         }
 
@@ -41,33 +50,49 @@ export class Bootstrap extends Component {
             }
         }
 
-        const existingMainMenu = find('Canvas/MainMenuRoot', scene);
-        if (!existingMainMenu) {
-            this.buildMainMenu(scene);
+        const canvas = find('Canvas', scene);
+        const hasGameMain = canvas?.getComponentInChildren(GameMain);
+        const hasMainMenu = canvas?.getComponentInChildren(MainMenu);
+        const hasOurComponents = hasGameMain || hasMainMenu;
+
+        if (hasOurComponents) {
+            console.log('[Bootstrap] 场景已有业务组件，跳过构建');
+            Bootstrap._bootstrapped = true;
+            return;
         }
+
+        console.log('[Bootstrap] 场景为空白壳，开始动态构建主菜单...');
+        this.buildMainMenu(scene);
+        Bootstrap._bootstrapped = true;
     }
 
     private buildMainMenu(scene: Scene): void {
         const existingCanvas = find('Canvas', scene);
         if (existingCanvas && existingCanvas.active) {
+            console.log('[Bootstrap] 隐藏旧 Canvas:', existingCanvas.name);
             existingCanvas.active = false;
         }
 
-        console.log('[Bootstrap] 开始构建主菜单场景...');
+        console.log('[Bootstrap] 调用 SceneBuilder.buildMainMenuScene...');
         SceneBuilder.buildMainMenuScene(scene, (startLevelId?: string) => {
-            console.log(`[Bootstrap] 进入游戏场景${startLevelId ? '，关卡:' + startLevelId : ''}`);
+            console.log(`[Bootstrap] 进入游戏场景，关卡: ${startLevelId || 'level_1'}`);
             const s = director.getScene();
             if (s) {
-                const canvas = find('Canvas', s);
-                if (canvas) canvas.active = false;
+                const oldCanvas = find('Canvas', s);
+                if (oldCanvas) {
+                    console.log('[Bootstrap] 销毁旧 Canvas 准备构建游戏场景');
+                    oldCanvas.active = false;
+                }
                 SceneBuilder.buildGameScene(s, startLevelId || 'level_1');
             }
         });
 
-        EventManager.getInstance().emit(GameEvents.SHOW_TOAST, {
-            message: '欢迎来到咖啡供应链模拟',
-            type: 'info'
-        });
+        this.scheduleOnce(() => {
+            EventManager.getInstance().emit(GameEvents.SHOW_TOAST, {
+                message: '欢迎来到咖啡供应链模拟',
+                type: 'info'
+            });
+        }, 0.5);
     }
 }
 
@@ -86,7 +111,17 @@ export function bootstrapInstantiate(): Bootstrap {
 
 game.onPostBaseInitDelegate.add(() => {
     console.log('[Bootstrap] game.onPostBaseInitDelegate 触发');
-    setTimeout(() => bootstrapInstantiate(), 100);
+    setTimeout(() => {
+        try {
+            bootstrapInstantiate();
+        } catch (e) {
+            console.error('[Bootstrap] 实例化失败:', e);
+        }
+    }, 100);
 });
+
+if (typeof window !== 'undefined') {
+    (window as any).__coffeeBootstrap = bootstrapInstantiate;
+}
 
 export default Bootstrap;

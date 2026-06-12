@@ -25,8 +25,29 @@ import { Store } from '../models/Store';
 import { Supplier } from '../models/Supplier';
 import { LevelConfig } from '../models/Level';
 import { loadAllConfigs } from '../config/GameConfigs';
+import { TiledMapParser, TiledMapData, TiledStoreObject, TiledDropZone } from './TiledMapParser';
+import { MAP_TMX_XML } from '../config/mapTmxData';
 
 export class SceneBuilder {
+    private static _tiledMapData: TiledMapData | null = null;
+
+    public static getTiledMapData(): TiledMapData {
+        if (!this._tiledMapData) {
+            try {
+                this._tiledMapData = TiledMapParser.parseMapXml(MAP_TMX_XML);
+                console.log('[SceneBuilder] Tiled map 解析成功:',
+                    `${this._tiledMapData.stores.length} 门店, ${this._tiledMapData.dropZones.length} 投放区`);
+            } catch (e) {
+                console.error('[SceneBuilder] Tiled map 解析失败:', e);
+                this._tiledMapData = {
+                    mapWidth: 1920, mapHeight: 1280, tileWidth: 64, tileHeight: 64,
+                    stores: [], dropZones: []
+                };
+            }
+        }
+        return this._tiledMapData;
+    }
+
     public static buildMainMenuScene(scene: Scene, onStartLevelCb?: (levelId: string) => void): Node {
         if (!ConfigManager.getInstance().isLoaded()) {
             loadAllConfigs();
@@ -346,56 +367,149 @@ export class SceneBuilder {
 
     private static createStoreMap(parent: Node): Node {
         const storeMap = this.createNode('StoreMap', parent, new Vec3(0, 0, 0));
-        this.addUITransform(storeMap, 1200, 700);
+        const mapW = 1200;
+        const mapH = 700;
+        this.addUITransform(storeMap, mapW, mapH);
         this.addSprite(storeMap, new Color(35, 25, 18, 150), 1);
 
-        const title = this.createNode('Title', storeMap, new Vec3(0, 320, 0));
+        const title = this.createNode('Title', storeMap, new Vec3(0, mapH / 2 - 30, 0));
         this.addUITransform(title, 400, 30);
-        this.addLabel(title, '连锁门店地图', 22, new Color(200, 170, 120));
+        this.addLabel(title, '连锁门店地图 (Tiled)', 22, new Color(200, 170, 120));
 
+        const tiledData = this.getTiledMapData();
         const stores = ConfigManager.getInstance().getListConfig<Store>(ConfigKeys.STORES);
-        const positions = [
-            new Vec3(-400, 150, 0),
-            new Vec3(300, 100, 0),
-            new Vec3(-150, -150, 0)
-        ];
+
+        const scaleX = mapW / tiledData.mapWidth;
+        const scaleY = mapH / tiledData.mapHeight;
+        const scale = Math.min(scaleX, scaleY) * 0.9;
+
+        const storeNodeMap: Map<string, Node> = new Map();
+        const dropZoneNodeMap: Map<string, Node> = new Map();
+
+        const tiledStoreById: Map<string, TiledStoreObject> = new Map();
+        tiledData.stores.forEach(s => tiledStoreById.set(s.storeId, s));
+
+        const tiledDropByTarget: Map<string, TiledDropZone> = new Map();
+        tiledData.dropZones.forEach(d => tiledDropByTarget.set(d.targetStoreId, d));
 
         stores.forEach((store, index) => {
-            const pos = positions[index] || new Vec3(0, 0, 0);
+            let pos: Vec3;
+            let width = 180;
+            let height = 120;
+
+            const tiledStore = tiledStoreById.get(store.id);
+            if (tiledStore) {
+                pos = new Vec3(tiledStore.position.x * scale, tiledStore.position.y * scale, 0);
+                width = Math.max(140, tiledStore.width * scale * 0.9);
+                height = Math.max(100, tiledStore.height * scale * 0.9);
+                console.log(`[SceneBuilder] Tiled 门店 ${store.id}: (${pos.x.toFixed(0)}, ${pos.y.toFixed(0)})`);
+            } else {
+                const fallback = [
+                    new Vec3(-400, 150, 0),
+                    new Vec3(300, 100, 0),
+                    new Vec3(-150, -150, 0)
+                ];
+                pos = fallback[index] || new Vec3(0, 0, 0);
+                console.log(`[SceneBuilder] 门店 ${store.id} 无 Tiled 坐标，使用 fallback`);
+            }
+
             const storeNode = this.createNode(`store_${store.id}`, storeMap, pos);
-            this.addUITransform(storeNode, 180, 120);
-            this.addSprite(storeNode, new Color(70, 50, 40, 220), 1);
+            this.addUITransform(storeNode, width, height);
+            const bgColor = store.id.includes('warehouse')
+                ? new Color(90, 60, 30, 230)
+                : new Color(70, 50, 40, 220);
+            this.addSprite(storeNode, bgColor, 1);
 
             const comp = storeNode.addComponent(StoreNode);
 
-            const nameNode = this.createNode('NameLabel', storeNode, new Vec3(0, 25, 0));
-            this.addUITransform(nameNode, 160, 28);
+            const nameNode = this.createNode('NameLabel', storeNode, new Vec3(0, height / 2 - 25, 0));
+            this.addUITransform(nameNode, width - 20, 28);
             this.addLabel(nameNode, store.name, 18, new Color(220, 200, 150));
             comp.nameLabel = nameNode.getComponent(Label);
 
-            const statusNode = this.createNode('StatusLabel', storeNode, new Vec3(0, -5, 0));
+            const statusNode = this.createNode('StatusLabel', storeNode, new Vec3(0, 0, 0));
             this.addUITransform(statusNode, 100, 22);
             this.addLabel(statusNode, store.isOpen ? '营业中' : '休息中', 14, new Color(100, 200, 100));
             comp.statusLabel = statusNode.getComponent(Label);
 
-            const hintNode = this.createNode('HintLabel', storeNode, new Vec3(0, -35, 0));
-            this.addUITransform(hintNode, 160, 20);
-            this.addLabel(hintNode, '← 拖供应商到此处下单', 12, new Color(180, 180, 180));
+            const hintNode = this.createNode('HintLabel', storeNode, new Vec3(0, -height / 2 + 25, 0));
+            this.addUITransform(hintNode, width - 20, 20);
+            this.addLabel(hintNode, '↓ 拖供应商到虚线区下单', 12, new Color(200, 200, 150));
 
             const highlight = this.createNode('Highlight', storeNode, new Vec3(0, 0, -1));
-            this.addUITransform(highlight, 200, 140);
+            this.addUITransform(highlight, width + 20, height + 20);
             const hlSprite = this.addSprite(highlight, new Color(255, 220, 100, 100), 1);
             highlight.active = false;
             comp.highlightNode = highlight;
 
-            const alert = this.createNode('AlertIndicator', storeNode, new Vec3(80, 45, 0));
+            const alert = this.createNode('AlertIndicator', storeNode, new Vec3(width / 2 - 10, height / 2 - 10, 0));
             this.addUITransform(alert, 20, 20);
             this.addSprite(alert, new Color(255, 80, 80, 255), 1);
             alert.active = false;
             comp.alertIndicator = alert.getComponent(Sprite);
 
             comp.setStoreData(store);
+            storeNodeMap.set(store.id, storeNode);
         });
+
+        tiledData.dropZones.forEach((dropZone) => {
+            const targetStoreId = dropZone.targetStoreId;
+            const storeNode = storeNodeMap.get(targetStoreId);
+            if (!storeNode) return;
+
+            let pos: Vec3;
+            let width = 200;
+            let height = 140;
+
+            const tiledDrop = tiledDropByTarget.get(targetStoreId);
+            if (tiledDrop) {
+                pos = new Vec3(tiledDrop.position.x * scale, tiledDrop.position.y * scale, 0);
+                width = Math.max(160, tiledDrop.width * scale * 1.1);
+                height = Math.max(120, tiledDrop.height * scale * 1.1);
+            } else {
+                const storePos = storeNode.position;
+                pos = new Vec3(storePos.x, storePos.y - 100, 0);
+            }
+
+            const dropNode = this.createNode(`drop_${targetStoreId}`, storeMap, pos);
+            this.addUITransform(dropNode, width, height);
+
+            const dropGraphics = dropNode.addComponent(Graphics);
+            dropGraphics.lineWidth = 3;
+            dropGraphics.strokeColor = new Color(100, 200, 255, 150);
+            dropGraphics.fillColor = new Color(100, 200, 255, 20);
+            dropGraphics.rect(-width / 2, -height / 2, width, height);
+            dropGraphics.fill();
+            dropGraphics.stroke();
+
+            const hintLabel = this.createNode('DropHint', dropNode, new Vec3(0, 0, 0));
+            this.addUITransform(hintLabel, width - 10, 30);
+            const hintComp = this.addLabel(hintLabel, '供应商投放区', 14, new Color(150, 220, 255));
+            hintComp.horizontalAlign = Label.HorizontalAlign.CENTER;
+
+            const highlightDrop = this.createNode('Highlight', dropNode, new Vec3(0, 0, -1));
+            this.addUITransform(highlightDrop, width + 20, height + 20);
+            const hlS = this.addSprite(highlightDrop, new Color(255, 220, 100, 80), 1);
+            highlightDrop.active = false;
+
+            dropNode.on('highlight_start', () => {
+                highlightDrop.active = true;
+                hintComp.string = '↑ 释放鼠标完成下单';
+                hintComp.color = new Color(255, 220, 100);
+            });
+            dropNode.on('highlight_end', () => {
+                highlightDrop.active = false;
+                hintComp.string = '供应商投放区';
+                hintComp.color = new Color(150, 220, 255);
+            });
+
+            dropNode.name = targetStoreId;
+            dropZoneNodeMap.set(targetStoreId, dropNode);
+            console.log(`[SceneBuilder] Tiled 投放区 ${targetStoreId}: (${pos.x.toFixed(0)}, ${pos.y.toFixed(0)})`);
+        });
+
+        (storeMap as any)._storeNodeMap = storeNodeMap;
+        (storeMap as any)._dropZoneNodeMap = dropZoneNodeMap;
 
         return storeMap;
     }
@@ -1031,6 +1145,16 @@ export class SceneBuilder {
         const comp = supplierPanel.getComponent(SupplierPanel);
         if (!comp) return;
 
+        const dropZoneMap = (storeMap as any)._dropZoneNodeMap as Map<string, Node> | undefined;
+        if (dropZoneMap && dropZoneMap.size > 0) {
+            console.log('[SceneBuilder] 使用 Tiled drop_zone 作为拖拽目标，共', dropZoneMap.size, '个');
+            dropZoneMap.forEach((node, storeId) => {
+                comp.registerDropTarget(storeId, node);
+            });
+            return;
+        }
+
+        console.log('[SceneBuilder] 使用 fallback store_ 节点作为拖拽目标');
         storeMap.children.forEach((child: Node) => {
             if (child.name.startsWith('store_')) {
                 const storeId = child.name.replace('store_', '');

@@ -155,12 +155,26 @@ export class GameMain extends Component {
         const supplierPanelComp = this.supplierPanel?.getComponent(SupplierPanel);
         if (!supplierPanelComp) return;
 
+        const dropZoneMap = this.storeMap ? (this.storeMap as any)._dropZoneNodeMap as Map<string, Node> | undefined : undefined;
         const stores = ConfigManager.getInstance().getListConfig<Store>(ConfigKeys.STORES);
+
         stores.forEach((store, index) => {
+            let dropTargetNode: Node | null = null;
+
+            if (dropZoneMap && dropZoneMap.has(store.id)) {
+                dropTargetNode = dropZoneMap.get(store.id) || null;
+                console.log(`[GameMain] 使用 Tiled drop_zone: ${store.id}`);
+            }
+
+            if (!dropTargetNode && this.storeMap) {
+                dropTargetNode = this.storeMap.getChildByName(`store_${store.id}`) || null;
+            }
+
             let storeNode = this.storeNodes[index];
             if (!storeNode && this.storeMap) {
                 storeNode = this.storeMap.getChildByName(`store_${store.id}`);
             }
+
             if (storeNode) {
                 let comp = storeNode.getComponent(StoreNode);
                 if (!comp) {
@@ -168,7 +182,11 @@ export class GameMain extends Component {
                 }
                 comp.setStoreData(store);
                 this._storeNodeComps.set(store.id, comp);
-                supplierPanelComp.registerDropTarget(store.id, storeNode);
+            }
+
+            const targetNode = dropTargetNode || storeNode;
+            if (targetNode) {
+                supplierPanelComp.registerDropTarget(store.id, targetNode);
             }
         });
     }

@@ -130,7 +130,7 @@
     "difficulty": 3,
     "description": "处理突发事件和批次短缺，考验应急能力",
     "durationDays": 25,
-    "stores": ["store_main", "store_branch_1"],
+    "stores": ["store_main", "store_north"],
     "initialCapital": 30000,
     "initialInventory": {
       "arabica_beans": 50,
@@ -196,7 +196,7 @@
     "difficulty": 4,
     "description": "同时管理多家门店，优化整体供应链",
     "durationDays": 30,
-    "stores": ["store_main", "store_branch_1", "store_branch_2"],
+    "stores": ["store_main", "store_north", "store_east"],
     "initialCapital": 50000,
     "initialInventory": {
       "arabica_beans": 80,
