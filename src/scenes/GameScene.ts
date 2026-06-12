@@ -457,12 +457,19 @@ export class GameScene extends BaseScene {
 
     this.gameStore.getState().makeDecision(currentPoint.id, decision);
 
-    const nextIndex = this.findNextIncompletePoint();
-    if (nextIndex >= 0) {
-      this.time.delayedCall(500, () => {
-        this.selectPoint(nextIndex);
-      });
-    }
+    this.time.delayedCall(500, () => {
+      const updatedState = this.gameStore.getState();
+      const allCompleted = updatedState.points.every(p => p.isCompleted);
+
+      if (allCompleted) {
+        this.gameStore.getState().endGame();
+      } else {
+        const nextIndex = this.findNextIncompletePoint();
+        if (nextIndex >= 0) {
+          this.selectPoint(nextIndex);
+        }
+      }
+    });
 
     this.updateUI();
   }
@@ -577,10 +584,14 @@ export class GameScene extends BaseScene {
   }
 
   private setupKeyboardNavigation(): void {
-    this.input.keyboard!.on('keydown-UP', () => {
-      if (!this.keyboardNavigationEnabled) return;
+    const canOperate = () => {
       const state = this.gameStore.getState();
-      if (state.phase !== 'playing') return;
+      return state.phase === 'playing' || state.phase === 'inspecting';
+    };
+
+    this.input.keyboard!.on('keydown-UP', () => {
+      if (!this.keyboardNavigationEnabled || !canOperate()) return;
+      const state = this.gameStore.getState();
 
       let newIndex = this.selectedPointIndex - 1;
       while (newIndex >= 0 && state.points[newIndex]?.isCompleted) {
@@ -589,13 +600,15 @@ export class GameScene extends BaseScene {
       if (newIndex >= 0) {
         this.playSound('click');
         this.selectPoint(newIndex);
+        if (state.phase === 'inspecting') {
+          this.gameStore.getState().setPhase('playing');
+        }
       }
     });
 
     this.input.keyboard!.on('keydown-DOWN', () => {
-      if (!this.keyboardNavigationEnabled) return;
+      if (!this.keyboardNavigationEnabled || !canOperate()) return;
       const state = this.gameStore.getState();
-      if (state.phase !== 'playing') return;
 
       let newIndex = this.selectedPointIndex + 1;
       while (newIndex < state.points.length && state.points[newIndex]?.isCompleted) {
@@ -604,69 +617,95 @@ export class GameScene extends BaseScene {
       if (newIndex < state.points.length) {
         this.playSound('click');
         this.selectPoint(newIndex);
+        if (state.phase === 'inspecting') {
+          this.gameStore.getState().setPhase('playing');
+        }
       }
     });
 
     this.input.keyboard!.on('keydown-ENTER', () => {
       const state = this.gameStore.getState();
-      if (state.phase !== 'playing') return;
+      if (!canOperate()) return;
+
       const currentPoint = state.points.find(p => p.id === state.currentPointId);
       if (currentPoint && !currentPoint.isCompleted) {
-        this.gameStore.getState().setPhase('inspecting');
+        if (state.phase === 'playing') {
+          this.gameStore.getState().setPhase('inspecting');
+          this.playSound('click');
+          this.highlightSelectedPoint();
+        }
       }
     });
 
     this.input.keyboard!.on('keydown-ONE', () => {
-      const state = this.gameStore.getState();
-      if (state.phase === 'playing') this.makeDecision('normal');
+      if (!canOperate()) return;
+      this.makeDecision('normal');
     });
 
     this.input.keyboard!.on('keydown-TWO', () => {
-      const state = this.gameStore.getState();
-      if (state.phase === 'playing') this.makeDecision('need_clean');
+      if (!canOperate()) return;
+      this.makeDecision('need_clean');
     });
 
     this.input.keyboard!.on('keydown-THREE', () => {
-      const state = this.gameStore.getState();
-      if (state.phase === 'playing') this.makeDecision('fault');
+      if (!canOperate()) return;
+      this.makeDecision('fault');
     });
 
     this.input.keyboard!.on('keydown-Q', () => {
       const state = this.gameStore.getState();
-      if (state.phase === 'playing' && state.items[0]?.currentCooldown === 0) {
+      if (canOperate() && state.items[0]?.currentCooldown === 0) {
         this.gameStore.getState().useItem(state.items[0].id);
       }
     });
 
     this.input.keyboard!.on('keydown-W', () => {
       const state = this.gameStore.getState();
-      if (state.phase === 'playing' && state.items[1]?.currentCooldown === 0) {
+      if (canOperate() && state.items[1]?.currentCooldown === 0) {
         this.gameStore.getState().useItem(state.items[1].id);
       }
     });
 
     this.input.keyboard!.on('keydown-E', () => {
       const state = this.gameStore.getState();
-      if (state.phase === 'playing' && state.items[2]?.currentCooldown === 0) {
+      if (canOperate() && state.items[2]?.currentCooldown === 0) {
         this.gameStore.getState().useItem(state.items[2].id);
       }
     });
 
     this.input.keyboard!.on('keydown-R', () => {
       const state = this.gameStore.getState();
-      if (state.phase === 'playing' && state.items[3]?.currentCooldown === 0) {
+      if (canOperate() && state.items[3]?.currentCooldown === 0) {
         this.gameStore.getState().useItem(state.items[3].id);
       }
     });
 
     this.input.keyboard!.on('keydown-ESC', () => {
       const state = this.gameStore.getState();
-      if (state.phase === 'playing') {
+      if (state.phase === 'playing' || state.phase === 'inspecting') {
         this.gameStore.getState().pauseGame();
       } else if (state.phase === 'paused') {
         this.gameStore.getState().resumeGame();
       }
     });
+  }
+
+  private highlightSelectedPoint(): void {
+    const state = this.gameStore.getState();
+    const currentPoint = state.points.find(p => p.id === state.currentPointId);
+    if (!currentPoint) return;
+
+    const card = this.pointCards.get(currentPoint.id);
+    if (card) {
+      this.tweens.add({
+        targets: card,
+        scale: 1.03,
+        duration: 150,
+        yoyo: true,
+        repeat: 2,
+        ease: 'Sine.InOut',
+      });
+    }
   }
 
   private setupStoreSubscriptions(): void {
