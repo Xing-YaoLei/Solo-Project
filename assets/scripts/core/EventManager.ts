@@ -66,6 +66,7 @@ export const GameEvents = {
     SUPPLIER_DRAG_START: 'supplier_drag_start',
     SUPPLIER_DRAG_END: 'supplier_drag_end',
     SUPPLIER_DROPPED: 'supplier_dropped',
+    SUPPLIER_HOVER: 'supplier_hover',
 
     RANDOM_EVENT_TRIGGERED: 'random_event_triggered',
     RANDOM_EVENT_RESOLVED: 'random_event_resolved',

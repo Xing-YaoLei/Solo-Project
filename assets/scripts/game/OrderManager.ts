@@ -174,11 +174,11 @@ export class OrderManager {
             return false;
         }
 
-        order.status = OrderStatus.CANCELLED;
-        order.cancelledReason = reason;
-
         const refundRatio = order.status === OrderStatus.PENDING ? 1 : 0.5;
         GameManager.getInstance().addCapital(Math.floor(order.totalAmount * refundRatio));
+
+        order.status = OrderStatus.CANCELLED;
+        order.cancelledReason = reason;
 
         this._pendingDeliveries.delete(orderId);
         EventManager.getInstance().emit(GameEvents.ORDER_STATUS_CHANGED, order);

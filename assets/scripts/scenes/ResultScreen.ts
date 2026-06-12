@@ -156,6 +156,7 @@ export class ResultScreen extends Component {
 
     onLoad() {
         EventManager.getInstance().on(GameEvents.GAME_END, this.onGameEnd.bind(this));
+        this.node.on('setup_result', (result: LevelResult) => this.onGameEnd(result), this);
 
         if (this.continueBtn) {
             this.continueBtn.node.on(Button.EventType.CLICK, this.onContinue, this);

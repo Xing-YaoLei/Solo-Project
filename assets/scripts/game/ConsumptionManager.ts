@@ -7,7 +7,7 @@ import { UsageType } from '../models/UsageRecord';
 import { Ingredient } from '../models/Ingredient';
 import { RandomEventManager } from './RandomEventManager';
 
-export class ConsumptionSimulator {
+export class ConsumptionManager {
     private static _instance: ConsumptionManager | null = null;
 
     private _baseConsumption: Record<string, number> = {};
@@ -120,5 +120,3 @@ export class ConsumptionSimulator {
         this._currentStoreId = '';
     }
 }
-
-export type ConsumptionManager = ConsumptionSimulator;

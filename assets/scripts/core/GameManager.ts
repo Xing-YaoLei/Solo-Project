@@ -2,6 +2,7 @@ import { EventManager, GameEvents } from './EventManager';
 import { TimeManager } from './TimeManager';
 import { ConfigManager, ConfigKeys } from './ConfigManager';
 import { GameStats, LevelResult, PlayerCardPoint } from '../models/GameStats';
+import { LevelConfig } from '../models/Level';
 
 export class GameManager {
     private static _instance: GameManager | null = null;
@@ -35,7 +36,7 @@ export class GameManager {
     }
 
     public startLevel(levelId: string): void {
-        const levelConfig = ConfigManager.getInstance().findById(ConfigKeys.LEVELS, levelId);
+        const levelConfig = ConfigManager.getInstance().findById<LevelConfig>(ConfigKeys.LEVELS, levelId);
         if (!levelConfig) {
             console.error(`[GameManager] Level ${levelId} not found`);
             return;

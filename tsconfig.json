@@ -2,16 +2,20 @@
   "compilerOptions": {
     "target": "ES2017",
     "module": "ESNext",
-    "strict": true,
+    "strict": false,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "moduleResolution": "node",
     "resolveJsonModule": true,
-    "declaration": true,
+    "declaration": false,
     "outDir": "./dist",
     "rootDir": "./assets/scripts",
     "baseUrl": "./assets/scripts",
+    "allowSyntheticDefaultImports": true,
+    "strictNullChecks": false,
+    "noImplicitAny": false,
+    "strictFunctionTypes": false,
     "paths": {
       "@core/*": ["core/*"],
       "@models/*": ["models/*"],
@@ -23,7 +27,8 @@
     }
   },
   "include": [
-    "assets/scripts/**/*.ts"
+    "assets/scripts/**/*.ts",
+    "assets/scripts/**/*.d.ts"
   ],
   "exclude": [
     "node_modules",

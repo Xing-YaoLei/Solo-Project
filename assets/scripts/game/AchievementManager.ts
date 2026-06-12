@@ -20,7 +20,7 @@ export class AchievementManager {
                 achievementId: id,
                 progress: data.progress,
                 isUnlocked: data.unlocked,
-                unlockedTime: data.unlockedTime
+                unlockedTime: data.unlockedTime || 0
             });
         }
     }
@@ -100,12 +100,13 @@ export class AchievementManager {
             pa = {
                 achievementId,
                 progress: 0,
-                isUnlocked: false
+                isUnlocked: false,
+                unlockedTime: 0
             };
             this._playerAchievements.set(achievementId, pa);
         }
 
-        if (pa.progress !== progress && !pa.isUnlocked) {
+        if (pa && pa.progress !== progress && !pa.isUnlocked) {
             pa.progress = progress;
             EventManager.getInstance().emit(GameEvents.ACHIEVEMENT_PROGRESS, {
                 achievementId,
