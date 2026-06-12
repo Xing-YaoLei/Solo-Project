@@ -4,10 +4,12 @@ from typing import Optional
 
 from app.database import get_db
 from app.services.duckdb_service import DuckDBService
+from app.services.review_service import ReviewService
 
 router = APIRouter(prefix="/api/reports", tags=["reports"])
 
 duckdb_service = DuckDBService()
+review_service = ReviewService()
 
 
 @router.get("/funnel")
@@ -36,9 +38,9 @@ def get_inspection_pass_rate(
 
 @router.get("/offline-equipments")
 def get_offline_equipments(
-    threshold_days: int = Query(7, description="离线阈值天数"),
+    db: Session = Depends(get_db),
 ):
-    data = duckdb_service.get_offline_equipments(threshold_days)
+    data = review_service.get_offline_equipments(db)
     return {"code": 0, "message": "success", "data": data}
 
 
@@ -50,4 +52,14 @@ def get_store_list(
     status_filter: Optional[str] = Query(None),
 ):
     data = duckdb_service.get_store_list_with_stats(page, page_size, keyword, status_filter)
+    return {"code": 0, "message": "success", "data": data}
+
+
+@router.get("/review-material")
+def get_review_material(
+    start_date: Optional[str] = Query(None, description="复盘开始日期 YYYY-MM-DD"),
+    end_date: Optional[str] = Query(None, description="复盘结束日期 YYYY-MM-DD"),
+    db: Session = Depends(get_db),
+):
+    data = review_service.generate_review_material(db, start_date, end_date)
     return {"code": 0, "message": "success", "data": data}

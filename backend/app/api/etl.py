@@ -1,51 +1,14 @@
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from sqlalchemy.orm import Session
-import pandas as pd
 import tempfile
 import os
 
 from app.database import get_db
-from app.models import Equipment, Store, CleaningRecord, InspectionRecord
+from app.models import Equipment, Store, CleaningRecord
 from app.etl import MemberReceiptETL, PosFlowETL, InventoryETL, DataCalibration
-from app.services.duckdb_service import DuckDBService
+from app.services.sync_service import sync_to_duckdb
 
 router = APIRouter(prefix="/api/etl", tags=["etl"])
-
-duckdb_service = DuckDBService()
-
-
-def _sync_to_duckdb(db: Session):
-    equipments = db.query(Equipment).all()
-    stores = db.query(Store).all()
-    cleaning_records = db.query(CleaningRecord).all()
-    inspection_records = db.query(InspectionRecord).all()
-
-    equip_df = pd.DataFrame([{
-        "id": e.id, "equipment_code": e.equipment_code, "equipment_name": e.equipment_name,
-        "equipment_type": e.equipment_type, "store_id": e.store_id, "status": e.status,
-        "last_cleaning_date": e.last_cleaning_date, "next_cleaning_date": e.next_cleaning_date,
-        "cleaning_cycle_days": e.cleaning_cycle_days
-    } for e in equipments])
-
-    store_df = pd.DataFrame([{
-        "id": s.id, "store_code": s.store_code, "store_name": s.store_name,
-        "city": s.city, "district": s.district, "status": s.status
-    } for s in stores])
-
-    cleaning_df = pd.DataFrame([{
-        "id": r.id, "record_code": r.record_code, "equipment_id": r.equipment_id,
-        "store_id": r.store_id, "cleaning_date": r.cleaning_date,
-        "cleaning_type": r.cleaning_type, "operator": r.operator,
-        "cleaning_result": r.cleaning_result, "source": r.source
-    } for r in cleaning_records])
-
-    inspection_df = pd.DataFrame([{
-        "id": r.id, "record_code": r.record_code, "equipment_id": r.equipment_id,
-        "store_id": r.store_id, "inspection_date": r.inspection_date,
-        "inspection_type": r.inspection_type, "passed": r.passed, "score": r.score
-    } for r in inspection_records])
-
-    duckdb_service.sync_from_db(cleaning_df, inspection_df, equip_df, store_df)
 
 
 @router.post("/member-receipt")
@@ -94,7 +57,7 @@ async def import_member_receipt(
                     inserted += 1
 
         db.commit()
-        _sync_to_duckdb(db)
+        sync_to_duckdb(db)
 
         return {"code": 0, "message": "success", "data": {"inserted": inserted, "total": len(records)}}
     except Exception as e:
@@ -146,7 +109,7 @@ async def import_pos_flow(
                     inserted += 1
 
         db.commit()
-        _sync_to_duckdb(db)
+        sync_to_duckdb(db)
 
         return {"code": 0, "message": "success", "data": {"inserted": inserted, "total": len(records)}}
     except Exception as e:
@@ -217,7 +180,7 @@ async def import_inventory(
                 created += 1
 
         db.commit()
-        _sync_to_duckdb(db)
+        sync_to_duckdb(db)
 
         return {"code": 0, "message": "success", "data": {"created": created, "updated": updated, "total": len(equipment_updates)}}
     except Exception as e:
@@ -227,7 +190,7 @@ async def import_inventory(
 @router.post("/sync-duckdb")
 def sync_duckdb(db: Session = Depends(get_db)):
     try:
-        _sync_to_duckdb(db)
+        sync_to_duckdb(db)
         return {"code": 0, "message": "success"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -9,6 +9,7 @@ import type {
   ThresholdConfig,
   EquipmentRemark,
   ApiResponse,
+  ReviewMaterial,
 } from '../types';
 
 const api = axios.create({
@@ -34,10 +35,8 @@ export const reportsApi = {
   getInspectionPassRate: (params?: { start_date?: string; end_date?: string }) =>
     api.get<any, ApiResponse<InspectionPassRate>>('/reports/inspection-pass-rate', { params }),
 
-  getOfflineEquipments: (threshold_days?: number) =>
-    api.get<any, ApiResponse<OfflineEquipment[]>>('/reports/offline-equipments', {
-      params: { threshold_days },
-    }),
+  getOfflineEquipments: () =>
+    api.get<any, ApiResponse<OfflineEquipment[]>>('/reports/offline-equipments'),
 
   getStores: (params?: {
     page?: number;
@@ -46,6 +45,9 @@ export const reportsApi = {
     status_filter?: string;
   }) =>
     api.get<any, ApiResponse<PageResult<StoreWithStats>>>('/reports/stores', { params }),
+
+  getReviewMaterial: (params?: { start_date?: string; end_date?: string }) =>
+    api.get<any, ApiResponse<ReviewMaterial>>('/reports/review-material', { params }),
 };
 
 export const thresholdsApi = {

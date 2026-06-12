@@ -9,6 +9,7 @@ import random
 from app.database import SessionLocal, engine, Base
 from app.models import Store, Equipment, CleaningRecord, InspectionRecord, ThresholdConfig, EquipmentRemark
 from app.services.threshold_service import ThresholdService
+from app.services.sync_service import sync_to_duckdb
 
 
 def init_data():
@@ -149,11 +150,13 @@ def init_data():
                 db.add(remark)
 
         db.commit()
+        sync_to_duckdb(db)
         print(f"Successfully initialized data:")
         print(f"  - Stores: {len(stores)}")
         print(f"  - Equipments: {len(equipments)}")
         print(f"  - Cleaning records: {record_id - len(equipments)}")
         print(f"  - Threshold configs: {db.query(ThresholdConfig).count()}")
+        print(f"  - DuckDB synced successfully.")
 
     except Exception as e:
         db.rollback()

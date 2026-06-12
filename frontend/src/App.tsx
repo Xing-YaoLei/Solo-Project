@@ -11,6 +11,7 @@ import CleaningFunnelChart from './components/CleaningFunnelChart';
 import EquipmentStatusChart from './components/EquipmentStatusChart';
 import StoreListTable from './components/StoreListTable';
 import ThresholdPanel from './components/ThresholdPanel';
+import ReviewMaterialPanel from './components/ReviewMaterialPanel';
 
 const { Header, Content, Sider } = Layout;
 const { Title } = Typography;
@@ -98,6 +99,12 @@ const App: React.FC = () => {
             </Col>
             <Col xs={24} lg={8}>
               <ThresholdPanel />
+            </Col>
+          </Row>
+
+          <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+            <Col span={24}>
+              <ReviewMaterialPanel />
             </Col>
           </Row>
         </Content>

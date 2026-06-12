@@ -36,7 +36,10 @@ export interface OfflineEquipment extends Equipment {
   store_code?: string;
   store_name?: string;
   city?: string;
+  district?: string;
   days_since_clean: number;
+  is_warning?: boolean;
+  remarks?: EquipmentRemark[];
 }
 
 export interface FunnelStage {
@@ -94,3 +97,47 @@ export interface PageResult<T> {
   page_size: number;
   items: T[];
 }
+
+export interface FailedInspection {
+  id: number;
+  record_code: string;
+  equipment_id: number;
+  equipment_code: string;
+  equipment_name: string;
+  store_id: number;
+  store_code: string;
+  store_name: string;
+  city?: string;
+  inspection_date: string;
+  inspector?: string;
+  inspection_type?: string;
+  score: number;
+  issues_found?: string;
+  improvement_suggestions?: string;
+}
+
+export interface ProblematicStore {
+  store_id: number;
+  store_code: string;
+  store_name: string;
+  city?: string;
+  inspection_total: number;
+  inspection_passed: number;
+  pass_rate: number;
+  below_threshold: boolean;
+}
+
+export interface ReviewMaterial {
+  generated_at: string;
+  period: { start_date?: string; end_date?: string };
+  thresholds_used: Record<string, number>;
+  summary: string[];
+  overall_metrics: InspectionPassRate;
+  funnel: FunnelStage[];
+  equipment_status_distribution: EquipmentStatusItem[];
+  offline_equipments: OfflineEquipment[];
+  failed_inspections: FailedInspection[];
+  problematic_stores: ProblematicStore[];
+  review_conclusion: string;
+}
+

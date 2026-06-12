@@ -5,6 +5,7 @@ from app.config import settings
 from app.database import engine, Base, SessionLocal
 from app.api import api_router
 from app.services.threshold_service import ThresholdService
+from app.services.sync_service import sync_to_duckdb
 from app.models import *
 
 Base.metadata.create_all(bind=engine)
@@ -27,6 +28,7 @@ def startup_event():
     db = SessionLocal()
     try:
         ThresholdService.init_defaults(db)
+        sync_to_duckdb(db)
     finally:
         db.close()
 
