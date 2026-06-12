@@ -6,7 +6,7 @@ from decimal import Decimal
 from db.connection import engine, Session
 from db.models import Base
 from db.models import (
-    RawReceipt, RawInventory, RawPos, Supplier, BatchInfo,
+    RawReceipt, RawInventory, RawPos, Supplier, BatchInfo, ProductBom,
 )
 
 
@@ -46,15 +46,18 @@ SUPPLIERS = [
 ]
 
 PRODUCTS = [
-    ("PRD001", "美式咖啡", ["MAT001"]),
-    ("PRD002", "拿铁", ["MAT001", "MAT003"]),
-    ("PRD003", "卡布奇诺", ["MAT001", "MAT003"]),
-    ("PRD004", "焦糖玛奇朵", ["MAT001", "MAT003", "MAT009"]),
-    ("PRD005", "摩卡", ["MAT001", "MAT003", "MAT011"]),
-    ("PRD006", "燕麦拿铁", ["MAT001", "MAT005"]),
-    ("PRD007", "抹茶拿铁", ["MAT003", "MAT012"]),
-    ("PRD008", "热巧克力", ["MAT003", "MAT011", "MAT014"]),
+    ("PRD001", "美式咖啡", [("MAT001", 0.02, "kg"), ("MAT015", 1, "个")]),
+    ("PRD002", "拿铁", [("MAT001", 0.018, "kg"), ("MAT003", 0.2, "L"), ("MAT015", 1, "个")]),
+    ("PRD003", "卡布奇诺", [("MAT001", 0.02, "kg"), ("MAT003", 0.15, "L"), ("MAT015", 1, "个")]),
+    ("PRD004", "焦糖玛奇朵", [("MAT001", 0.018, "kg"), ("MAT003", 0.2, "L"), ("MAT009", 0.02, "L"), ("MAT015", 1, "个")]),
+    ("PRD005", "摩卡", [("MAT001", 0.018, "kg"), ("MAT003", 0.18, "L"), ("MAT011", 0.02, "kg"), ("MAT015", 1, "个")]),
+    ("PRD006", "燕麦拿铁", [("MAT001", 0.018, "kg"), ("MAT005", 0.25, "L"), ("MAT015", 1, "个")]),
+    ("PRD007", "抹茶拿铁", [("MAT003", 0.2, "L"), ("MAT012", 0.015, "kg"), ("MAT015", 1, "个")]),
+    ("PRD008", "热巧克力", [("MAT003", 0.2, "L"), ("MAT011", 0.025, "kg"), ("MAT014", 0.015, "kg"), ("MAT015", 1, "个")]),
 ]
+
+
+PRODUCT_BOM = PRODUCTS
 
 
 def init_db():
@@ -79,6 +82,29 @@ def seed_suppliers(session):
         ))
     session.flush()
     print(f"供应商数据已插入: {len(SUPPLIERS)} 条")
+
+
+def seed_bom(session):
+    existing = session.query(ProductBom).count()
+    if existing > 0:
+        print(f"产品BOM数据已存在 ({existing} 条)，跳过")
+        return
+    mat_name_map = {code: name for code, name, _, _, _ in MATERIALS}
+    count = 0
+    for product_code, product_name, bom_items in PRODUCT_BOM:
+        for mat_code, usage_qty, unit in bom_items:
+            mat_name = mat_name_map.get(mat_code, mat_code)
+            session.add(ProductBom(
+                product_code=product_code,
+                product_name=product_name,
+                material_code=mat_code,
+                material_name=mat_name,
+                usage_qty=Decimal(str(usage_qty)),
+                unit=unit,
+            ))
+            count += 1
+    session.flush()
+    print(f"产品BOM数据已插入: {count} 条")
 
 
 def seed_batches(session):
@@ -235,7 +261,7 @@ def seed_raw_receipts(session):
                     hours=random.randint(8, 21),
                     minutes=random.randint(0, 59),
                 )
-                for mat_code in prod[2]:
+                for mat_code, _, _ in prod[2]:
                     mat_info = next((m for m in MATERIALS if m[0] == mat_code), None)
                     if mat_info:
                         qty = random.uniform(0.01, 0.2) if mat_info[3] > 100 else random.uniform(0.05, 0.5)
@@ -304,6 +330,7 @@ def main():
     session = Session()
     try:
         seed_suppliers(session)
+        seed_bom(session)
         seed_batches(session)
         seed_raw_inventory(session)
         seed_raw_receipts(session)

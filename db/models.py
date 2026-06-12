@@ -187,3 +187,20 @@ class ReviewMaterial(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     alert_record_id = Column(Integer, ForeignKey("alert_record.id"))
     alert_record = relationship("AlertRecord")
+
+
+class ProductBom(Base):
+    __tablename__ = "product_bom"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    product_code = Column(String(64), nullable=False)
+    product_name = Column(String(128))
+    material_code = Column(String(64), nullable=False)
+    material_name = Column(String(128))
+    usage_qty = Column(Numeric(12, 5), nullable=False)
+    unit = Column(String(16))
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        dict(postgresql_unique_constraints=[{"name": "uq_prod_mat", "columns": ["product_code", "material_code"]}])
+    )

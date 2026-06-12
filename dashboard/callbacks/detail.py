@@ -53,28 +53,25 @@ def register_detail_callbacks(app):
     def update_detail_tables(store_code, active_tab):
         session = Session()
         try:
-            inv_df = get_inventory_df(session, store_code=store_code)
-            if not inv_df.empty:
-                latest_date = inv_df["snapshot_date"].max()
-                inv_df = inv_df[inv_df["snapshot_date"] == latest_date]
+            ledger_df = get_inventory_ledger_df(session, store_code=store_code)
             inv_cols = [
+                {"name": "日期", "id": "transaction_date"},
                 {"name": "门店编码", "id": "store_code"},
                 {"name": "物料编码", "id": "material_code"},
                 {"name": "物料名称", "id": "material_name"},
-                {"name": "批次号", "id": "batch_no"},
-                {"name": "库存数量", "id": "stock_qty"},
+                {"name": "类型", "id": "transaction_type"},
+                {"name": "数量", "id": "quantity"},
                 {"name": "单位", "id": "unit"},
-                {"name": "安全库存", "id": "safety_stock"},
-                {"name": "仓库", "id": "warehouse_code"},
+                {"name": "批次号", "id": "batch_no"},
+                {"name": "供应商", "id": "supplier_code"},
             ]
             inv_style = [
-                {
-                    "if": {"filter_query": "{stock_qty} < {safety_stock}"},
-                    "backgroundColor": "#ffcccc",
-                    "color": "#cc0000",
-                },
+                {"if": {"filter_query": "{transaction_type} = '消耗'"}, "backgroundColor": "#fdebd0", "color": "#d35400"},
+                {"if": {"filter_query": "{transaction_type} = '入库'"}, "backgroundColor": "#d5f5e3", "color": "#27ae60"},
+                {"if": {"filter_query": "{transaction_type} = '出库'"}, "backgroundColor": "#fadbd8", "color": "#c0392b"},
+                {"if": {"filter_query": "{transaction_type} = '调整'"}, "backgroundColor": "#d6eaf8", "color": "#2874a6"},
             ]
-            inv_data = inv_df.to_dict("records") if not inv_df.empty else []
+            inv_data = ledger_df.to_dict("records") if not ledger_df.empty else []
 
             batch_df = get_batch_df(session, store_code=store_code)
             batch_cols = [

@@ -5,15 +5,34 @@ import plotly.express as px
 from dash import Input, Output, State, no_update
 from sqlalchemy import func
 
+from config import DEFAULT_TURNOVER_ALERT_DAYS
 from db.connection import Session
 from db.models import (
-    CleanedInventory, MaterialDailyUsage, BatchInfo,
+    CleanedInventory, MaterialDailyUsage, BatchInfo, AlertThreshold,
 )
 from etl.clean_inventory import (
     get_inventory_df, get_batch_df, get_stores_list, get_materials_list,
 )
 from etl.caliber_match import get_usage_df
 from dashboard.components.inventory_ledger import create_inventory_trend_chart
+
+
+def _get_turnover_threshold(session, store_code, material_code):
+    threshold = DEFAULT_TURNOVER_ALERT_DAYS
+    if store_code and material_code:
+        row = (
+            session.query(AlertThreshold)
+            .filter(
+                AlertThreshold.store_code == store_code,
+                AlertThreshold.material_code == material_code,
+                AlertThreshold.threshold_type == "turnover",
+                AlertThreshold.is_active == True,
+            )
+            .first()
+        )
+        if row:
+            threshold = float(row.threshold_value)
+    return threshold
 
 
 _LAYOUT_COMMON = dict(
@@ -126,6 +145,7 @@ def register_trend_callbacks(app):
             else:
                 usage_fig.update_layout(title="日均用量趋势（暂无数据）", **_LAYOUT_COMMON)
 
+            turnover_threshold = _get_turnover_threshold(session, store_code, material_code)
             turnover_fig = go.Figure()
             if not usage_df.empty and "turnover_days" in usage_df.columns:
                 turnover_grouped = usage_df.groupby("usage_date", as_index=False)["turnover_days"].mean()
@@ -139,8 +159,8 @@ def register_trend_callbacks(app):
                         title="周转天数趋势",
                     )
                     turnover_fig.add_hline(
-                        y=7, line_dash="dash", line_color="red",
-                        annotation_text="预警阈值 7天",
+                        y=turnover_threshold, line_dash="dash", line_color="red",
+                        annotation_text=f"预警阈值 {turnover_threshold:.0f}天",
                     )
                     turnover_fig.update_layout(
                         xaxis_title="日期",

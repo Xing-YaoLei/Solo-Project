@@ -43,13 +43,18 @@ def create_inventory_overview_chart(df):
 
 
 def create_inventory_trend_chart(df):
+    hover_cols = ["stock_qty"]
+    if "batch_no" in df.columns:
+        hover_cols.append("batch_no")
+    if "unit" in df.columns:
+        hover_cols.append("unit")
     fig = px.line(
         df,
         x="snapshot_date",
         y="stock_qty",
         color="material_name",
         markers=True,
-        hover_data=["batch_no"],
+        hover_data=hover_cols,
     )
     fig.update_layout(
         title="库存变动趋势",
