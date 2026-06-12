@@ -5,10 +5,12 @@ import { useReplay } from '@/hooks/useReplay';
 import type { FailureReplay } from '@/types/game';
 
 interface ReplayPlayerProps {
-  recordId: string;
+  recordId?: string;
+  replays?: FailureReplay[];
+  showReplaySelector?: boolean;
 }
 
-export function ReplayPlayer({ recordId }: ReplayPlayerProps) {
+export function ReplayPlayer({ recordId, replays: propReplays, showReplaySelector = true }: ReplayPlayerProps) {
   const {
     replays,
     currentReplay,
@@ -27,7 +29,7 @@ export function ReplayPlayer({ recordId }: ReplayPlayerProps) {
     formatTime,
     getHesitationPointsInRange,
     hasReplays,
-  } = useReplay({ recordId });
+  } = useReplay({ recordId, replays: propReplays });
 
   const [visibleHesitations, setVisibleHesitations] = useState<ReturnType<typeof getHesitationPointsInRange>>([]);
 
@@ -51,21 +53,23 @@ export function ReplayPlayer({ recordId }: ReplayPlayerProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2 mb-4">
-        {replays.map((_, index) => (
-          <button
-            key={index}
-            onClick={() => selectReplay(index)}
-            className={`px-4 py-2 rounded-lg font-semibold transition-all ${
-              currentReplayIndex === index
-                ? 'bg-[#FF8F00] text-[#3E2723]'
-                : 'bg-[#4E342E]/50 text-[#8D6E63] hover:bg-[#5D4037]/50'
-            }`}
-          >
-            回放 {index + 1}
-          </button>
-        ))}
-      </div>
+      {showReplaySelector && replays.length > 1 && (
+        <div className="flex gap-2 mb-4">
+          {replays.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => selectReplay(index)}
+              className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+                currentReplayIndex === index
+                  ? 'bg-[#FF8F00] text-[#3E2723]'
+                  : 'bg-[#4E342E]/50 text-[#8D6E63] hover:bg-[#5D4037]/50'
+              }`}
+            >
+              回放 {index + 1}
+            </button>
+          ))}
+        </div>
+      )}
 
       {currentReplay && (
         <>

@@ -3,15 +3,16 @@ import type { FailureReplay, ReplayEvent, HesitationPoint } from '@/types/game';
 import { getReplaysForRecord, getTotalReplayDuration, formatReplayTime } from '@/utils/replay';
 
 interface UseReplayOptions {
-  recordId: string;
+  recordId?: string;
+  replays?: FailureReplay[];
   autoPlay?: boolean;
   speed?: number;
 }
 
 export function useReplay(options: UseReplayOptions) {
-  const { recordId, autoPlay = false, speed: initialSpeed = 1 } = options;
+  const { recordId, replays: externalReplays, autoPlay = false, speed: initialSpeed = 1 } = options;
   
-  const [replays, setReplays] = useState<FailureReplay[]>([]);
+  const [internalReplays, setInternalReplays] = useState<FailureReplay[]>([]);
   const [currentReplayIndex, setCurrentReplayIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -22,13 +23,19 @@ export function useReplay(options: UseReplayOptions) {
   const startTimeRef = useRef<number>(0);
   const pausedTimeRef = useRef<number>(0);
 
+  const replays = externalReplays || internalReplays;
   const currentReplay = replays[currentReplayIndex];
   const totalDuration = currentReplay ? getTotalReplayDuration(currentReplay) : 0;
 
   useEffect(() => {
-    const loadedReplays = getReplaysForRecord(recordId);
-    setReplays(loadedReplays);
-  }, [recordId]);
+    if (externalReplays) {
+      return;
+    }
+    if (recordId) {
+      const loadedReplays = getReplaysForRecord(recordId);
+      setInternalReplays(loadedReplays);
+    }
+  }, [recordId, externalReplays]);
 
   const findEventAtTime = useCallback((replay: FailureReplay, time: number): ReplayEvent | null => {
     if (!replay.timeline.length) return null;

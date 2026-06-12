@@ -12,9 +12,8 @@ import {
 import { MemberProfileCard } from '@/components/member/MemberProfileCard';
 import { TransactionList } from '@/components/member/TransactionList';
 import { ReplayPlayer } from '@/components/member/ReplayPlayer';
-import { storage } from '@/utils/storage';
 import { getReplaysForMember } from '@/utils/replay';
-import type { GameRecord, FailureReplay } from '@/types/game';
+import type { FailureReplay } from '@/types/game';
 import type { Member } from '@/types/member';
 import type { MemberStats, Transaction, Refund, Benefit } from '@/types/member';
 
@@ -27,7 +26,6 @@ export default function MemberProfile() {
   const [memberStats, setMemberStats] = useState<MemberStats | null>(null);
   const [memberRefunds, setMemberRefunds] = useState<Refund[]>([]);
   const [memberBenefits, setMemberBenefits] = useState<Benefit[]>([]);
-  const [memberRecords, setMemberRecords] = useState<GameRecord[]>([]);
   const [memberReplays, setMemberReplays] = useState<FailureReplay[]>([]);
 
   useEffect(() => {
@@ -35,14 +33,11 @@ export default function MemberProfile() {
       const stats = getMemberStatsById(selectedMember.id);
       const refunds = getRefundsByMemberId(selectedMember.id);
       const benefits = getBenefitsByMemberId(selectedMember.id);
-      const allRecords = storage.loadRecords<GameRecord[]>([]);
-      const memberFilteredRecords = allRecords.filter((r) => r.memberId === selectedMember.id);
       const replays = getReplaysForMember(selectedMember.id);
 
       setMemberStats(stats || null);
       setMemberRefunds(refunds);
       setMemberBenefits(benefits);
-      setMemberRecords(memberFilteredRecords);
       setMemberReplays(replays);
     }
   }, [selectedMember]);
@@ -261,135 +256,89 @@ export default function MemberProfile() {
                           initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -20 }}
-                          className="space-y-6"
+                          className="glass-card rounded-2xl p-6"
                         >
-                          <div className="glass-card rounded-2xl p-6">
-                            <div className="flex items-center justify-between mb-4">
-                              <div>
-                                <h3 className="text-lg font-semibold text-[#FFF8E1]">失败回放记录</h3>
-                                <p className="text-sm text-[#8D6E63] mt-1">
-                                  查看该会员相关任务的失败决策回放，分析犹豫点和错误原因
-                                </p>
-                              </div>
-                              <div className="flex items-center gap-2 px-3 py-1.5 bg-[#EF5350]/10 rounded-full">
-                                <AlertTriangle className="w-4 h-4 text-[#EF5350]" />
-                                <span className="text-sm text-[#EF5350] font-medium">
-                                  {memberReplays.length}/3 次
-                                </span>
-                              </div>
+                          <div className="flex items-center justify-between mb-6">
+                            <div>
+                              <h3 className="text-lg font-semibold text-[#FFF8E1]">失败回放记录</h3>
+                              <p className="text-sm text-[#8D6E63] mt-1">
+                                查看该会员相关任务的失败决策回放，分析犹豫点和错误原因
+                              </p>
                             </div>
-
-                            {memberReplays.length > 0 ? (
-                              <div className="space-y-4">
-                                {memberReplays.map((replay, index) => (
-                                  <div
-                                    key={replay.id}
-                                    className="p-4 bg-[#4E342E]/50 rounded-xl border border-[#5D4037]/50"
-                                  >
-                                    <div className="flex items-center justify-between mb-4">
-                                      <div>
-                                        <p className="font-medium text-[#FFF8E1]">
-                                          失败回放 #{index + 1}
-                                        </p>
-                                        <p className="text-sm text-[#8D6E63]">
-                                          {new Date(replay.createdAt).toLocaleString()}
-                                        </p>
-                                      </div>
-                                      <div className="text-right">
-                                        <div className="flex items-center gap-1 mb-1">
-                                          {replay.hesitationPoints.length > 0 && (
-                                            <>
-                                              <AlertTriangle className="w-3 h-3 text-[#FFA726]" />
-                                              <span className="text-xs text-[#FFA726]">
-                                                {replay.hesitationPoints.length} 个犹豫点
-                                              </span>
-                                            </>
-                                          )}
-                                        </div>
-                                        <p className="text-xs text-[#8D6E63]">
-                                          {Math.round(
-                                            (replay.timeline[replay.timeline.length - 1]?.timestamp -
-                                              replay.timeline[0]?.timestamp) /
-                                              1000
-                                          )}{' '}
-                                          秒
-                                        </p>
-                                      </div>
-                                    </div>
-
-                                    {replay.hesitationPoints.length > 0 && (
-                                      <div className="mb-4 p-3 bg-[#FFA726]/10 rounded-lg border border-[#FFA726]/30">
-                                        <p className="text-xs text-[#FFA726] font-medium mb-2 flex items-center gap-1">
-                                          <AlertTriangle className="w-3 h-3" />
-                                          犹豫点标记
-                                        </p>
-                                        <div className="space-y-1">
-                                          {replay.hesitationPoints.slice(0, 3).map((point, i) => (
-                                            <div
-                                              key={i}
-                                              className="flex items-center justify-between text-xs"
-                                            >
-                                              <span className="text-[#D7CCC8]">
-                                                {point.description}
-                                              </span>
-                                              <span className="text-[#FFA726]">
-                                                {(point.duration / 1000).toFixed(1)}s
-                                              </span>
-                                            </div>
-                                          ))}
-                                        </div>
-                                      </div>
-                                    )}
-
-                                    <ReplayPlayer recordId={replay.recordId} />
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <div className="text-center py-12 text-[#8D6E63]">
-                                <History className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                                <p>暂无失败回放</p>
-                                <p className="text-xs mt-1">
-                                  完成游戏任务失败后会在这里保存回放，最多保留3次
-                                </p>
-                              </div>
-                            )}
+                            <div className="flex items-center gap-2 px-3 py-1.5 bg-[#EF5350]/10 rounded-full">
+                              <AlertTriangle className="w-4 h-4 text-[#EF5350]" />
+                              <span className="text-sm text-[#EF5350] font-medium">
+                                {memberReplays.length}/3 次
+                              </span>
+                            </div>
                           </div>
 
-                          {memberRecords.length > 0 && (
-                            <div className="glass-card rounded-2xl p-6">
-                              <h3 className="text-lg font-semibold text-[#FFF8E1] mb-4">训练记录</h3>
-                              <div className="space-y-3">
-                                {memberRecords.map((record, index) => (
-                                  <div
-                                    key={record.id}
-                                    className="flex items-center justify-between p-3 bg-[#4E342E]/30 rounded-lg"
-                                  >
+                          {memberReplays.length > 0 ? (
+                            <div className="space-y-6">
+                              {memberReplays.map((replay, index) => (
+                                <div
+                                  key={replay.id}
+                                  className="p-5 bg-[#4E342E]/50 rounded-xl border border-[#5D4037]/50"
+                                >
+                                  <div className="flex items-center justify-between mb-4">
                                     <div>
-                                      <p className="text-sm font-medium text-[#FFF8E1]">
-                                        第 {index + 1} 次训练
+                                      <p className="font-medium text-[#FFF8E1]">
+                                        失败回放 #{index + 1}
                                       </p>
-                                      <p className="text-xs text-[#8D6E63]">
-                                        {new Date(record.playedAt).toLocaleDateString()}
+                                      <p className="text-sm text-[#8D6E63]">
+                                        {new Date(replay.createdAt).toLocaleString()}
                                       </p>
                                     </div>
                                     <div className="text-right">
-                                      <p className="text-sm font-bold text-[#FF8F00]">
-                                        {record.score} 分
-                                      </p>
-                                      <p className="text-xs text-[#8D6E63]">
-                                        正确率{' '}
-                                        {Math.round(
-                                          (record.correctCount /
-                                            (record.correctCount + record.wrongCount)) *
-                                            100
-                                        ) || 0}
-                                        %
-                                      </p>
+                                      {replay.hesitationPoints.length > 0 && (
+                                        <div className="flex items-center gap-1">
+                                          <AlertTriangle className="w-3 h-3 text-[#FFA726]" />
+                                          <span className="text-xs text-[#FFA726] font-medium">
+                                            {replay.hesitationPoints.length} 个犹豫点
+                                          </span>
+                                        </div>
+                                      )}
                                     </div>
                                   </div>
-                                ))}
-                              </div>
+
+                                  {replay.hesitationPoints.length > 0 && (
+                                    <div className="mb-4 p-3 bg-[#FFA726]/10 rounded-lg border border-[#FFA726]/30">
+                                      <p className="text-xs text-[#FFA726] font-medium mb-2 flex items-center gap-1">
+                                        <AlertTriangle className="w-3 h-3" />
+                                        犹豫点标记
+                                      </p>
+                                      <div className="space-y-1">
+                                        {replay.hesitationPoints.map((point, i) => (
+                                          <div
+                                            key={i}
+                                            className="flex items-center justify-between text-xs"
+                                          >
+                                            <span className="text-[#D7CCC8]">
+                                              {point.description}
+                                            </span>
+                                            <span className="text-[#FFA726]">
+                                              {(point.duration / 1000).toFixed(1)}s
+                                            </span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  <ReplayPlayer
+                                    replays={[replay]}
+                                    showReplaySelector={false}
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-center py-16 text-[#8D6E63]">
+                              <Play className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                              <p>暂无失败回放</p>
+                              <p className="text-xs mt-2">
+                                完成游戏任务失败后会在这里保存回放，每个会员最多保留3次
+                              </p>
                             </div>
                           )}
                         </motion.div>

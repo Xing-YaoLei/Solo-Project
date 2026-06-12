@@ -227,10 +227,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
       };
 
       const fullEvents = [...replayEvents, event, taskEndEvent];
-      const record = createGameRecord(get(), newHistory, false);
-      const replay = createReplay(currentRecordId, currentTask.memberId, fullEvents, newHistory);
+      const taskDecisionLogs = [log];
+      const replay = createReplay(currentRecordId, currentTask.memberId, fullEvents, taskDecisionLogs);
       saveReplay(replay);
-      saveGameRecord(record);
     }
 
     set({
@@ -245,29 +244,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   nextTask: () => {
-    const { tasks, currentTaskId, replayEvents, currentRecordId, decisionHistory, score } = get();
+    const state = get();
+    const { tasks, currentTaskId, decisionHistory, score, currentRecordId } = state;
     const currentIndex = tasks.findIndex((t) => t.id === currentTaskId);
-    
+
     if (currentIndex < tasks.length - 1) {
-      const nextTask = tasks[currentIndex + 1];
-      get().startTask(nextTask.id);
+      const nextTaskData = tasks[currentIndex + 1];
+      state.startTask(nextTaskData.id);
       return true;
     } else {
-      const now = Date.now();
-      const taskEndEvent: ReplayEvent = {
-        timestamp: now,
-        type: 'task_end',
-        data: { success: true, finalScore: score },
-      };
-
-      const fullEvents = [...replayEvents, taskEndEvent];
-      const record = createGameRecord(get(), decisionHistory, true);
+      const record = createGameRecord(state, decisionHistory, true);
       saveGameRecord(record);
-      
-      if (decisionHistory.some((d) => !d.isCorrect) && tasks[0]) {
-        const replay = createReplay(currentRecordId!, tasks[0].memberId, fullEvents, decisionHistory);
-        saveReplay(replay);
-      }
 
       set({ isGameOver: true });
       return false;
@@ -279,16 +266,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   endGame: (isWin: boolean) => {
     const state = get();
-    const { replayEvents, currentRecordId, decisionHistory, tasks } = state;
-    
-    if (currentRecordId && replayEvents.length > 0 && tasks.length > 0) {
+    const { currentRecordId, decisionHistory, replayEvents } = state;
+
+    if (currentRecordId && replayEvents.length > 0) {
       const record = createGameRecord(state, decisionHistory, isWin);
       saveGameRecord(record);
-      
-      const replay = createReplay(currentRecordId, tasks[0].memberId, replayEvents, decisionHistory);
-      saveReplay(replay);
     }
-    
+
     set({ isGameOver: true });
   },
 
@@ -367,20 +351,23 @@ function createGameRecord(
     : 0;
 
   const errorCategories: Record<string, number> = {};
+  const memberIds = new Set<string>();
   decisionHistory.forEach((d) => {
     if (!d.isCorrect) {
       const category = state.tasks.find((t) => t.id === d.taskId)?.errorCategory || 'unknown';
       errorCategories[category] = (errorCategories[category] || 0) + 1;
     }
+    const task = state.tasks.find((t) => t.id === d.taskId);
+    if (task) {
+      memberIds.add(task.memberId);
+    }
   });
-
-  const memberId = state.tasks.length > 0 ? state.tasks[0].memberId : '';
 
   return {
     id: state.currentRecordId!,
     playerId: 'player-1',
     levelId: state.currentLevelId!,
-    memberId,
+    memberId: Array.from(memberIds)[0] || '',
     score: state.score + (isWin ? 200 : 0),
     correctCount,
     wrongCount,

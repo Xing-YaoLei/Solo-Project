@@ -50,7 +50,7 @@ export default function GameScene() {
     tasks,
   } = useGameStore();
 
-  const { player, unlockLevel, updateTotalScore } = usePlayerStore();
+  const { player, loadPlayer, initPlayer, unlockLevel, updateTotalScore } = usePlayerStore();
 
   const [selectedClueId, setSelectedClueId] = useState<string | null>(null);
   const [showDecisionPanel, setShowDecisionPanel] = useState(false);
@@ -65,22 +65,37 @@ export default function GameScene() {
   const [showPauseMenu, setShowPauseMenu] = useState(false);
   const [showGameResult, setShowGameResult] = useState(false);
   const [hasNextTask, setHasNextTask] = useState(true);
+  const [isLevelLoaded, setIsLevelLoaded] = useState(false);
 
   useGameLoop({
     autoTick: true,
   });
 
   useEffect(() => {
-    if (levelId && player) {
+    loadPlayer();
+  }, [loadPlayer]);
+
+  useEffect(() => {
+    if (!player) {
+      initPlayer();
+    }
+  }, [player, initPlayer]);
+
+  useEffect(() => {
+    if (levelId && player && !isLevelLoaded) {
       const levelConfig = levelConfigs[levelId];
       if (levelConfig) {
         loadLevel(levelId, levelConfig.taskIds);
+        setIsLevelLoaded(true);
       }
     }
+  }, [levelId, player, isLevelLoaded, loadLevel]);
+
+  useEffect(() => {
     return () => {
       resetGame();
     };
-  }, [levelId, player, loadLevel, resetGame]);
+  }, [resetGame]);
 
   useEffect(() => {
     if (tasks.length > 0 && !currentTask) {
