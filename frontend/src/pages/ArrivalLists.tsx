@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Table, Modal, Form, Input, Select, Typography, Space, message, Tag } from 'antd';
+import { Button, Table, Modal, Form, Input, Select, Typography, Space, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { ArrivalList, GroupBatch, ArrivalListItem } from '../types';
@@ -9,12 +9,6 @@ import { getGroupBatches } from '../api/groupBatches';
 import StatusBadge from '../components/StatusBadge';
 
 const { Title } = Typography;
-
-const pickupStatusConfig: Record<PickupStatus, { color: string; label: string }> = {
-  [PickupStatus.PendingPickup]: { color: 'orange', label: '待自提' },
-  [PickupStatus.PickedUp]: { color: 'green', label: '已自提' },
-  [PickupStatus.OverdueUncollected]: { color: 'red', label: '逾期未提' },
-};
 
 const ArrivalLists: React.FC = () => {
   const [data, setData] = useState<ArrivalList[]>([]);
@@ -73,12 +67,6 @@ const ArrivalLists: React.FC = () => {
     }
   };
 
-  const renderPickupStatus = (status: PickupStatus) => {
-    const config = pickupStatusConfig[status];
-    if (!config) return <Tag>{status}</Tag>;
-    return <Tag color={config.color}>{config.label}</Tag>;
-  };
-
   const itemColumns = (arrivalListId: number) => [
     { title: '商品标签', dataIndex: 'productTagName', key: 'productTagName' },
     { title: '预期数量', dataIndex: 'expectedQuantity', key: 'expectedQuantity' },
@@ -95,7 +83,7 @@ const ArrivalLists: React.FC = () => {
       title: '自提状态',
       dataIndex: 'pickupStatus',
       key: 'pickupStatus',
-      render: (status: PickupStatus) => renderPickupStatus(status),
+      render: (status: PickupStatus) => status ? <StatusBadge status={status} type="pickup" /> : '-',
     },
     {
       title: '自提时间',

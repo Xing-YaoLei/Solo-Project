@@ -162,7 +162,9 @@ public class ArrivalListsController : ControllerBase
     [HttpPost("{id}/inspect")]
     public async Task<ActionResult<ApiResponse<object>>> Inspect(int id)
     {
-        var list = await _context.ArrivalLists.FindAsync(id);
+        var list = await _context.ArrivalLists
+            .Include(a => a.Items)
+            .FirstOrDefaultAsync(a => a.Id == id);
         if (list == null) return Ok(ApiResponse.Fail($"到货清单 {id} 不存在"));
 
         if (list.ArrivalStatus != ArrivalStatus.Arrived && list.ArrivalStatus != ArrivalStatus.PartialArrival)
@@ -170,6 +172,18 @@ public class ArrivalListsController : ControllerBase
 
         var oldStatus = list.ArrivalStatus.ToString();
         list.ArrivalStatus = ArrivalStatus.Inspected;
+
+        if (list.Items != null && list.Items.Any())
+        {
+            foreach (var item in list.Items)
+            {
+                if (item.PickupStatus == null || item.PickupStatus == PickupStatus.PendingPickup)
+                {
+                    item.PickupStatus = PickupStatus.PendingPickup;
+                }
+            }
+        }
+
         await _context.SaveChangesAsync();
 
         await _logService.LogStatusChange("ArrivalList", id, oldStatus, ArrivalStatus.Inspected.ToString(), null, "验收完成");

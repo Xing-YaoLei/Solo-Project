@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Table, Modal, Form, Input, Select, Typography, Space, message } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import { Button, Table, Modal, Form, Input, Select, Typography, Space, message, Tag, Descriptions } from 'antd';
+import { PlusOutlined, EyeOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { ExceptionOrder, GroupBatch } from '../types';
 import { ExceptionType, ExceptionSeverity, ExceptionResolution } from '../types';
@@ -8,7 +8,7 @@ import { getExceptionOrders, createExceptionOrder, resolveExceptionOrder } from 
 import { getGroupBatches } from '../api/groupBatches';
 import StatusBadge from '../components/StatusBadge';
 
-const { Title } = Typography;
+const { Title, Text, Paragraph } = Typography;
 
 const exceptionTypeOptions = [
   { value: ExceptionType.Uncollected, label: '未取货' },
@@ -39,6 +39,7 @@ const ExceptionOrders: React.FC = () => {
   const [filters, setFilters] = useState<{ exceptionType?: ExceptionType; severity?: ExceptionSeverity; resolution?: ExceptionResolution }>({});
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [resolveModalOpen, setResolveModalOpen] = useState(false);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [currentOrder, setCurrentOrder] = useState<ExceptionOrder | null>(null);
   const [createForm] = Form.useForm();
   const [resolveForm] = Form.useForm();
@@ -96,6 +97,11 @@ const ExceptionOrders: React.FC = () => {
     setResolveModalOpen(true);
   };
 
+  const handleOpenDetail = (record: ExceptionOrder) => {
+    setCurrentOrder(record);
+    setDetailModalOpen(true);
+  };
+
   const handleResolve = async () => {
     if (!currentOrder) return;
     try {
@@ -112,39 +118,79 @@ const ExceptionOrders: React.FC = () => {
   };
 
   const columns = [
-    { title: '异常单号', dataIndex: 'exceptionNo', key: 'exceptionNo' },
-    { title: '批次号', dataIndex: 'batchNo', key: 'batchNo' },
+    { title: '异常单号', dataIndex: 'exceptionNo', key: 'exceptionNo', width: 140 },
+    { title: '批次号', dataIndex: 'batchNo', key: 'batchNo', width: 120 },
     {
       title: '异常类型',
       dataIndex: 'exceptionType',
       key: 'exceptionType',
+      width: 100,
       render: (val: ExceptionType) => exceptionTypeOptions.find((o) => o.value === val)?.label || val,
     },
     {
       title: '严重程度',
       dataIndex: 'severity',
       key: 'severity',
+      width: 90,
       render: (val: ExceptionSeverity) => <StatusBadge status={val} type="severity" />,
     },
-    { title: '影响范围', dataIndex: 'impactDescription', key: 'impactDescription', ellipsis: true },
-    { title: '责任归属', dataIndex: 'responsibility', key: 'responsibility' },
+    {
+      title: '影响范围',
+      dataIndex: 'impactDescription',
+      key: 'impactDescription',
+      ellipsis: true,
+      width: 220,
+      render: (val: string) => (
+        <Text ellipsis={{ tooltip: val }} style={{ maxWidth: 200 }}>
+          {val}
+        </Text>
+      ),
+    },
+    {
+      title: '责任归属',
+      dataIndex: 'responsibility',
+      key: 'responsibility',
+      ellipsis: true,
+      width: 180,
+      render: (val: string) => (
+        <Text ellipsis={{ tooltip: val }} style={{ maxWidth: 160 }}>
+          {val}
+        </Text>
+      ),
+    },
     {
       title: '处理结果',
-      dataIndex: 'resolution',
-      key: 'resolution',
-      render: (val: ExceptionResolution) => <StatusBadge status={val} type="resolution" />,
+      dataIndex: 'resolutionNotes',
+      key: 'resolutionNotes',
+      ellipsis: true,
+      width: 200,
+      render: (val: string, record: ExceptionOrder) => (
+        <Space direction="vertical" size={2} style={{ width: '100%' }}>
+          <StatusBadge status={record.resolution} type="resolution" />
+          {val && (
+            <Text type="secondary" ellipsis={{ tooltip: val }} style={{ maxWidth: 180, fontSize: 12 }}>
+              {val}
+            </Text>
+          )}
+        </Space>
+      ),
     },
     {
       title: '创建时间',
       dataIndex: 'createdAt',
       key: 'createdAt',
+      width: 150,
       render: (val: string) => dayjs(val).format('YYYY-MM-DD HH:mm'),
     },
     {
       title: '操作',
       key: 'action',
+      width: 130,
       render: (_: unknown, record: ExceptionOrder) => (
         <Space>
+          <Button size="small" icon={<EyeOutlined />} onClick={() => handleOpenDetail(record)}>
+            详情
+          </Button>
           {record.resolution === ExceptionResolution.Pending && (
             <Button type="primary" size="small" onClick={() => handleOpenResolve(record)}>处理</Button>
           )}
@@ -192,7 +238,7 @@ const ExceptionOrders: React.FC = () => {
         rowKey="id"
         loading={loading}
         pagination={{ pageSize: 10 }}
-        scroll={{ x: 1100 }}
+        scroll={{ x: 1350 }}
       />
 
       <Modal
@@ -218,12 +264,81 @@ const ExceptionOrders: React.FC = () => {
             <Select options={severityOptions} />
           </Form.Item>
           <Form.Item name="impactDescription" label="影响范围" rules={[{ required: true, message: '请输入影响范围' }]}>
-            <Input.TextArea rows={3} />
+            <Input.TextArea rows={3} placeholder="请描述受影响的商品、数量、批次等信息" />
           </Form.Item>
           <Form.Item name="responsibility" label="责任归属" rules={[{ required: true, message: '请输入责任归属' }]}>
-            <Input />
+            <Input.TextArea rows={2} placeholder="请说明责任方及判定依据" />
+          </Form.Item>
+          <Form.Item name="resolutionNotes" label="处理建议">
+            <Input.TextArea rows={3} placeholder="请填写初步的处理建议" />
           </Form.Item>
         </Form>
+      </Modal>
+
+      <Modal
+        title="异常单详情"
+        open={detailModalOpen}
+        onCancel={() => { setDetailModalOpen(false); setCurrentOrder(null); }}
+        footer={[
+          currentOrder?.resolution === ExceptionResolution.Pending && (
+            <Button key="resolve" type="primary" onClick={() => { setDetailModalOpen(false); handleOpenResolve(currentOrder!); }}>
+              处理此异常单
+            </Button>
+          ),
+          <Button key="close" onClick={() => { setDetailModalOpen(false); setCurrentOrder(null); }}>关闭</Button>,
+        ]}
+        width={800}
+        destroyOnClose
+      >
+        {currentOrder && (
+          <Space direction="vertical" size="large" style={{ width: '100%' }}>
+            <Descriptions bordered column={2} size="small">
+              <Descriptions.Item label="异常单号">{currentOrder.exceptionNo}</Descriptions.Item>
+              <Descriptions.Item label="关联批次">{currentOrder.batchNo}</Descriptions.Item>
+              <Descriptions.Item label="异常类型">
+                {exceptionTypeOptions.find((o) => o.value === currentOrder.exceptionType)?.label}
+              </Descriptions.Item>
+              <Descriptions.Item label="严重程度">
+                <StatusBadge status={currentOrder.severity} type="severity" />
+              </Descriptions.Item>
+              <Descriptions.Item label="当前状态">
+                <StatusBadge status={currentOrder.resolution} type="resolution" />
+              </Descriptions.Item>
+              <Descriptions.Item label="创建时间">
+                {dayjs(currentOrder.createdAt).format('YYYY-MM-DD HH:mm')}
+              </Descriptions.Item>
+              {currentOrder.resolvedAt && (
+                <>
+                  <Descriptions.Item label="处理人">{currentOrder.resolvedBy}</Descriptions.Item>
+                  <Descriptions.Item label="处理时间">
+                    {dayjs(currentOrder.resolvedAt).format('YYYY-MM-DD HH:mm')}
+                  </Descriptions.Item>
+                </>
+              )}
+            </Descriptions>
+
+            <div>
+              <Text strong style={{ fontSize: 14, color: '#faad14' }}>影响范围</Text>
+              <Paragraph style={{ marginTop: 8, padding: 12, background: '#fffbe6', borderRadius: 4 }}>
+                {currentOrder.impactDescription || '无'}
+              </Paragraph>
+            </div>
+
+            <div>
+              <Text strong style={{ fontSize: 14, color: '#fa541c' }}>责任归属</Text>
+              <Paragraph style={{ marginTop: 8, padding: 12, background: '#fff1f0', borderRadius: 4 }}>
+                {currentOrder.responsibility || '未填写'}
+              </Paragraph>
+            </div>
+
+            <div>
+              <Text strong style={{ fontSize: 14, color: '#1890ff' }}>处理结果</Text>
+              <Paragraph style={{ marginTop: 8, padding: 12, background: '#e6f7ff', borderRadius: 4 }}>
+                {currentOrder.resolutionNotes || '未填写'}
+              </Paragraph>
+            </div>
+          </Space>
+        )}
       </Modal>
 
       <Modal
@@ -232,18 +347,43 @@ const ExceptionOrders: React.FC = () => {
         onOk={handleResolve}
         onCancel={() => { setResolveModalOpen(false); resolveForm.resetFields(); setCurrentOrder(null); }}
         destroyOnClose
+        width={700}
       >
-        <Form form={resolveForm} layout="vertical">
-          <Form.Item name="resolution" label="处理结果" rules={[{ required: true, message: '请选择处理结果' }]}>
-            <Select options={resolutionOptions.filter((o) => o.value !== ExceptionResolution.Pending)} />
-          </Form.Item>
-          <Form.Item name="resolutionNotes" label="处理说明" rules={[{ required: true, message: '请输入处理说明' }]}>
-            <Input.TextArea rows={4} />
-          </Form.Item>
-          <Form.Item name="resolvedBy" label="处理人" rules={[{ required: true, message: '请输入处理人' }]}>
-            <Input />
-          </Form.Item>
-        </Form>
+        {currentOrder && (
+          <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+            <div style={{ padding: 12, background: '#fafafa', borderRadius: 4 }}>
+              <Text type="secondary">当前异常单：</Text>
+              <Tag color="blue">{currentOrder.exceptionNo}</Tag>
+              <Text type="secondary">批次：</Text>
+              <span>{currentOrder.batchNo}</span>
+            </div>
+            <div style={{ padding: 12, background: '#fffbe6', borderRadius: 4 }}>
+              <Text strong style={{ color: '#faad14' }}>影响范围：</Text>
+              <Paragraph style={{ marginTop: 4, marginBottom: 0 }}>{currentOrder.impactDescription || '无'}</Paragraph>
+            </div>
+            <div style={{ padding: 12, background: '#fff1f0', borderRadius: 4 }}>
+              <Text strong style={{ color: '#fa541c' }}>责任归属：</Text>
+              <Paragraph style={{ marginTop: 4, marginBottom: 0 }}>{currentOrder.responsibility || '无'}</Paragraph>
+            </div>
+            {currentOrder.resolutionNotes && currentOrder.resolution === ExceptionResolution.Pending && (
+              <div style={{ padding: 12, background: '#f6ffed', borderRadius: 4 }}>
+                <Text strong style={{ color: '#52c41a' }}>建议处理方案（系统自动生成）：</Text>
+                <Paragraph style={{ marginTop: 4, marginBottom: 0 }}>{currentOrder.resolutionNotes}</Paragraph>
+              </div>
+            )}
+            <Form form={resolveForm} layout="vertical" style={{ marginTop: 16 }}>
+              <Form.Item name="resolution" label="处理结果" rules={[{ required: true, message: '请选择处理结果' }]}>
+                <Select options={resolutionOptions.filter((o) => o.value !== ExceptionResolution.Pending)} />
+              </Form.Item>
+              <Form.Item name="resolutionNotes" label="处理说明" rules={[{ required: true, message: '请输入处理说明' }]}>
+                <Input.TextArea rows={4} placeholder="请详细说明处理过程和结果" />
+              </Form.Item>
+              <Form.Item name="resolvedBy" label="处理人" rules={[{ required: true, message: '请输入处理人' }]}>
+                <Input placeholder="请输入处理人姓名" />
+              </Form.Item>
+            </Form>
+          </Space>
+        )}
       </Modal>
     </Space>
   );

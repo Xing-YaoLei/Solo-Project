@@ -6,6 +6,7 @@ import {
   SettlementStatus,
   ExceptionSeverity,
   ExceptionResolution,
+  PickupStatus,
 } from '../types';
 
 const batchStatusConfig: Record<BatchStatus, { color: string; label: string }> = {
@@ -49,7 +50,13 @@ const resolutionConfig: Record<ExceptionResolution, { color: string; label: stri
   [ExceptionResolution.Compromised]: { color: 'orange', label: '协商' },
 };
 
-type StatusType = BatchStatus | ArrivalStatus | SettlementStatus | ExceptionSeverity | ExceptionResolution;
+const pickupStatusConfig: Record<PickupStatus, { color: string; label: string }> = {
+  [PickupStatus.PendingPickup]: { color: 'orange', label: '待自提' },
+  [PickupStatus.PickedUp]: { color: 'green', label: '已自提' },
+  [PickupStatus.OverdueUncollected]: { color: 'red', label: '逾期未提' },
+};
+
+type StatusType = BatchStatus | ArrivalStatus | SettlementStatus | ExceptionSeverity | ExceptionResolution | PickupStatus;
 
 const allConfigs: Record<string, Record<string, { color: string; label: string }>> = {
   batch: batchStatusConfig,
@@ -57,11 +64,12 @@ const allConfigs: Record<string, Record<string, { color: string; label: string }
   settlement: settlementStatusConfig,
   severity: severityConfig,
   resolution: resolutionConfig,
+  pickup: pickupStatusConfig,
 };
 
 interface StatusBadgeProps {
   status: StatusType;
-  type: 'batch' | 'arrival' | 'settlement' | 'severity' | 'resolution';
+  type: 'batch' | 'arrival' | 'settlement' | 'severity' | 'resolution' | 'pickup';
 }
 
 const StatusBadge: React.FC<StatusBadgeProps> = ({ status, type }) => {
