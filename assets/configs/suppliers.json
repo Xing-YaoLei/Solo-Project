@@ -1,0 +1,203 @@
+[
+  {
+    "id": "supplier_bean_king",
+    "name": "豆王咖啡",
+    "rating": "gold",
+    "categories": ["coffee_bean"],
+    "deliveryFee": 50,
+    "freeDeliveryThreshold": 2000,
+    "responseTimeMinutes": 0.5,
+    "reliabilityScore": 95,
+    "icon": "textures/suppliers/bean_king",
+    "description": "专业咖啡豆供应商，品质稳定",
+    "isActive": true,
+    "items": [
+      {
+        "ingredientId": "arabica_beans",
+        "price": 115,
+        "minOrderQuantity": 10,
+        "maxOrderQuantity": 200,
+        "leadTimeDays": 2,
+        "discountThreshold": 50,
+        "discountRate": 0.05
+      },
+      {
+        "ingredientId": "robusta_beans",
+        "price": 75,
+        "minOrderQuantity": 10,
+        "maxOrderQuantity": 200,
+        "leadTimeDays": 2,
+        "discountThreshold": 50,
+        "discountRate": 0.05
+      }
+    ]
+  },
+  {
+    "id": "supplier_dairy_plus",
+    "name": "优鲜乳业",
+    "rating": "platinum",
+    "categories": ["milk"],
+    "deliveryFee": 30,
+    "freeDeliveryThreshold": 500,
+    "responseTimeMinutes": 0.3,
+    "reliabilityScore": 98,
+    "icon": "textures/suppliers/dairy_plus",
+    "description": "本地乳制品供应商，当日配送",
+    "isActive": true,
+    "items": [
+      {
+        "ingredientId": "fresh_milk",
+        "price": 11,
+        "minOrderQuantity": 20,
+        "maxOrderQuantity": 500,
+        "leadTimeDays": 1,
+        "discountThreshold": 100,
+        "discountRate": 0.08
+      },
+      {
+        "ingredientId": "oat_milk",
+        "price": 17,
+        "minOrderQuantity": 10,
+        "maxOrderQuantity": 200,
+        "leadTimeDays": 1,
+        "discountThreshold": 50,
+        "discountRate": 0.05
+      }
+    ]
+  },
+  {
+    "id": "supplier_flavor_world",
+    "name": "风味世界",
+    "rating": "silver",
+    "categories": ["syrup", "sugar"],
+    "deliveryFee": 40,
+    "freeDeliveryThreshold": 800,
+    "responseTimeMinutes": 1,
+    "reliabilityScore": 90,
+    "icon": "textures/suppliers/flavor_world",
+    "description": "糖浆和调味品专业供应商",
+    "isActive": true,
+    "items": [
+      {
+        "ingredientId": "vanilla_syrup",
+        "price": 42,
+        "minOrderQuantity": 5,
+        "maxOrderQuantity": 100,
+        "leadTimeDays": 2,
+        "discountThreshold": 20,
+        "discountRate": 0.06
+      },
+      {
+        "ingredientId": "caramel_syrup",
+        "price": 45,
+        "minOrderQuantity": 5,
+        "maxOrderQuantity": 100,
+        "leadTimeDays": 2,
+        "discountThreshold": 20,
+        "discountRate": 0.06
+      },
+      {
+        "ingredientId": "white_sugar",
+        "price": 7.5,
+        "minOrderQuantity": 10,
+        "maxOrderQuantity": 200,
+        "leadTimeDays": 2,
+        "discountThreshold": 50,
+        "discountRate": 0.1
+      }
+    ]
+  },
+  {
+    "id": "supplier_pack_master",
+    "name": "包材大师",
+    "rating": "bronze",
+    "categories": ["cup", "lid"],
+    "deliveryFee": 60,
+    "freeDeliveryThreshold": 1500,
+    "responseTimeMinutes": 2,
+    "reliabilityScore": 85,
+    "icon": "textures/suppliers/pack_master",
+    "description": "一次性包装材料供应商",
+    "isActive": true,
+    "items": [
+      {
+        "ingredientId": "paper_cup_m",
+        "price": 1.0,
+        "minOrderQuantity": 100,
+        "maxOrderQuantity": 5000,
+        "leadTimeDays": 3,
+        "discountThreshold": 1000,
+        "discountRate": 0.1
+      },
+      {
+        "ingredientId": "paper_cup_l",
+        "price": 1.3,
+        "minOrderQuantity": 100,
+        "maxOrderQuantity": 5000,
+        "leadTimeDays": 3,
+        "discountThreshold": 1000,
+        "discountRate": 0.1
+      },
+      {
+        "ingredientId": "cup_lid",
+        "price": 0.4,
+        "minOrderQuantity": 200,
+        "maxOrderQuantity": 10000,
+        "leadTimeDays": 3,
+        "discountThreshold": 2000,
+        "discountRate": 0.12
+      }
+    ]
+  },
+  {
+    "id": "supplier_all_in_one",
+    "name": "一站式供应",
+    "rating": "silver",
+    "categories": ["coffee_bean", "milk", "syrup", "cup", "lid", "sugar"],
+    "deliveryFee": 80,
+    "freeDeliveryThreshold": 3000,
+    "responseTimeMinutes": 1.5,
+    "reliabilityScore": 88,
+    "icon": "textures/suppliers/all_in_one",
+    "description": "综合供应商，价格略高但品类齐全",
+    "isActive": true,
+    "items": [
+      {
+        "ingredientId": "arabica_beans",
+        "price": 125,
+        "minOrderQuantity": 5,
+        "maxOrderQuantity": 100,
+        "leadTimeDays": 3,
+        "discountThreshold": 30,
+        "discountRate": 0.03
+      },
+      {
+        "ingredientId": "fresh_milk",
+        "price": 13,
+        "minOrderQuantity": 10,
+        "maxOrderQuantity": 200,
+        "leadTimeDays": 2,
+        "discountThreshold": 50,
+        "discountRate": 0.03
+      },
+      {
+        "ingredientId": "vanilla_syrup",
+        "price": 48,
+        "minOrderQuantity": 3,
+        "maxOrderQuantity": 50,
+        "leadTimeDays": 3,
+        "discountThreshold": 15,
+        "discountRate": 0.03
+      },
+      {
+        "ingredientId": "paper_cup_m",
+        "price": 1.25,
+        "minOrderQuantity": 50,
+        "maxOrderQuantity": 2000,
+        "leadTimeDays": 3,
+        "discountThreshold": 500,
+        "discountRate": 0.05
+      }
+    ]
+  }
+]

@@ -1,0 +1,136 @@
+[
+  {
+    "id": "ach_first_level",
+    "name": "初出茅庐",
+    "description": "完成第一个关卡",
+    "icon": "textures/achievements/first_level",
+    "rarity": "common",
+    "conditions": [
+      {
+        "type": "complete_level",
+        "params": { "target": 1 }
+      }
+    ],
+    "rewards": {
+      "coins": 500,
+      "item_instant_delivery": 2
+    }
+  },
+  {
+    "id": "ach_perfect_stock",
+    "name": "账实相符",
+    "description": "累计完成5次完美盘点",
+    "icon": "textures/achievements/perfect_stock",
+    "rarity": "common",
+    "conditions": [
+      {
+        "type": "perfect_inventory",
+        "params": { "target": 5 }
+      }
+    ],
+    "rewards": {
+      "coins": 800,
+      "item_inventory_check_boost": 3
+    }
+  },
+  {
+    "id": "ach_no_shortage",
+    "name": "未雨绸缪",
+    "description": "在一个关卡中完全没有缺货",
+    "icon": "textures/achievements/no_shortage",
+    "rarity": "rare",
+    "conditions": [
+      {
+        "type": "no_shortage",
+        "params": { "target": 1 }
+      }
+    ],
+    "rewards": {
+      "coins": 1500,
+      "item_emergency_supply": 2
+    }
+  },
+  {
+    "id": "ach_cost_saver",
+    "name": "精打细算",
+    "description": "单关卡采购花费不超过20000",
+    "icon": "textures/achievements/cost_saver",
+    "rarity": "rare",
+    "conditions": [
+      {
+        "type": "cost_saver",
+        "params": { "target": 80000 }
+      }
+    ],
+    "rewards": {
+      "coins": 1200,
+      "item_price_lock": 2
+    }
+  },
+  {
+    "id": "ach_turnover_master",
+    "name": "流转高手",
+    "description": "平均周转天数低于5天",
+    "icon": "textures/achievements/turnover_master",
+    "rarity": "epic",
+    "conditions": [
+      {
+        "type": "high_turnover",
+        "params": { "target": 25 }
+      }
+    ],
+    "rewards": {
+      "coins": 2500,
+      "item_batch_reserve": 3
+    }
+  },
+  {
+    "id": "ach_speed_runner",
+    "name": "效率专家",
+    "description": "在5分钟内完成一个关卡",
+    "icon": "textures/achievements/speed_runner",
+    "rarity": "epic",
+    "conditions": [
+      {
+        "type": "speed_delivery",
+        "params": { "target": 300 }
+      }
+    ],
+    "rewards": {
+      "coins": 3000,
+      "item_time_extend": 1
+    }
+  },
+  {
+    "id": "ach_chain_master",
+    "name": "连锁大师",
+    "description": "通关所有关卡",
+    "icon": "textures/achievements/chain_master",
+    "rarity": "legendary",
+    "conditions": [
+      {
+        "type": "complete_level",
+        "params": { "target": 4 }
+      }
+    ],
+    "rewards": {
+      "coins": 10000
+    }
+  },
+  {
+    "id": "ach_veteran",
+    "name": "资深店长",
+    "description": "累计完成10个关卡",
+    "icon": "textures/achievements/veteran",
+    "rarity": "rare",
+    "conditions": [
+      {
+        "type": "veteran",
+        "params": { "target": 10 }
+      }
+    ],
+    "rewards": {
+      "coins": 2000
+    }
+  }
+]

@@ -1,0 +1,12 @@
+{
+  "name": "coffee-supply-chain-game",
+  "version": "1.0.0",
+  "description": "连锁咖啡原料补货经营模拟游戏",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

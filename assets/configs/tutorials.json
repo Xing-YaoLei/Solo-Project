@@ -1,0 +1,122 @@
+[
+  {
+    "id": "tutorial_supplier_intro",
+    "name": "供应商介绍",
+    "triggerCondition": "first_game_start",
+    "steps": [
+      {
+        "id": "tut_1_1",
+        "title": "欢迎来到咖啡小镇！",
+        "content": "你将作为连锁咖啡店的店长，负责管理原料的采购和库存。让我们从了解供应商开始吧！",
+        "highlightType": "none",
+        "autoNext": false
+      },
+      {
+        "id": "tut_1_2",
+        "title": "查看供应商列表",
+        "content": "点击左侧的供应商卡片，查看每个供应商提供的原料、价格和配送信息。注意比较不同供应商的价格优势！",
+        "targetNodePath": "Canvas/SupplierPanel",
+        "highlightType": "area",
+        "autoNext": false,
+        "requireAction": "supplier_hover"
+      },
+      {
+        "id": "tut_1_3",
+        "title": "拖拽下单",
+        "content": "把供应商卡片拖拽到门店区域，就可以创建采购订单。试试把「优鲜乳业」拖到主店位置吧！",
+        "targetNodePath": "Canvas/SupplierPanel/supplier_dairy_plus",
+        "highlightType": "node",
+        "autoNext": false,
+        "requireAction": "supplier_drag"
+      },
+      {
+        "id": "tut_1_4",
+        "title": "查看库存状态",
+        "content": "右侧面板显示当前库存情况。红色表示库存低于安全线，需要及时补货。绿色表示库存充足。",
+        "targetNodePath": "Canvas/InventoryPanel",
+        "highlightType": "area",
+        "autoNext": false,
+        "requireAction": "inventory_click"
+      },
+      {
+        "id": "tut_1_5",
+        "title": "关注领用记录",
+        "content": "领用记录会实时显示原料消耗情况。根据消耗速度，合理安排补货节奏是关键！",
+        "targetNodePath": "Canvas/UsageRecordPanel",
+        "highlightType": "area",
+        "autoNext": false,
+        "requireAction": "usage_scroll"
+      },
+      {
+        "id": "tut_1_6",
+        "title": "准备开始！",
+        "content": "现在你已经了解了基本操作。记住：及时补货、控制成本、精确盘点。祝你经营顺利！",
+        "highlightType": "none",
+        "autoNext": true,
+        "nextDelay": 3
+      }
+    ]
+  },
+  {
+    "id": "tutorial_inventory_check",
+    "name": "盘点指引",
+    "triggerCondition": "day_5_reached",
+    "steps": [
+      {
+        "id": "tut_2_1",
+        "title": "定期盘点",
+        "content": "每到一定时间需要进行库存盘点，核对系统库存与实际库存是否一致。",
+        "highlightType": "none",
+        "autoNext": false
+      },
+      {
+        "id": "tut_2_2",
+        "title": "开始盘点",
+        "content": "点击「盘点」按钮，输入实际库存数量。系统会自动计算差异并生成盘点报告。",
+        "targetNodePath": "Canvas/TopBar/CheckButton",
+        "highlightType": "node",
+        "autoNext": false,
+        "requireAction": "check_click"
+      },
+      {
+        "id": "tut_2_3",
+        "title": "处理差异",
+        "content": "如果发现差异，需要分析原因并调整库存。差异太大可能会影响关卡评分哦！",
+        "highlightType": "none",
+        "autoNext": true,
+        "nextDelay": 3
+      }
+    ]
+  },
+  {
+    "id": "tutorial_random_event",
+    "name": "突发事件应对",
+    "triggerCondition": "first_random_event",
+    "steps": [
+      {
+        "id": "tut_3_1",
+        "title": "突发事件！",
+        "content": "经营过程中可能会遇到各种突发事件，比如批次短缺、价格波动等。",
+        "highlightType": "none",
+        "autoNext": false
+      },
+      {
+        "id": "tut_3_2",
+        "title": "批次短缺",
+        "content": "当发生批次短缺时，部分订单可能无法足量送达。你可以使用道具或寻找替代供应商来应对。",
+        "targetNodePath": "Canvas/EventBanner",
+        "highlightType": "area",
+        "autoNext": false,
+        "requireAction": "event_click"
+      },
+      {
+        "id": "tut_3_3",
+        "title": "灵活应对",
+        "content": "保持冷静，合理利用道具和备用供应商，尽量减少突发事件的影响！",
+        "highlightType": "none",
+        "autoNext": true,
+        "nextDelay": 3
+      }
+    ]
+  }
+]

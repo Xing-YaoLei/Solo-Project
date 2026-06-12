@@ -1,0 +1,25 @@
+{
+  "engine": "cocos-creator-js",
+  "packages": "packages",
+  "name": "coffee-supply-chain-game",
+  "id": "coffee-supply-chain-game-id",
+  "version": "3.8.0",
+  "type": "2d",
+  "modules": [
+    "2d",
+    "ui",
+    "animation",
+    "audio",
+    "particle",
+    "tilemap",
+    "physics-2d"
+  ],
+  "orientation": {
+    "landscape": true,
+    "portrait": false
+  },
+  "screen": {
+    "width": 1920,
+    "height": 1080
+  }
+}

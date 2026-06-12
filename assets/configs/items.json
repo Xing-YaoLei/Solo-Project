@@ -1,0 +1,76 @@
+[
+  {
+    "id": "item_instant_delivery",
+    "name": "加急配送",
+    "type": "instant_delivery",
+    "description": "将当前在途订单立即送达",
+    "icon": "textures/items/instant_delivery",
+    "cooldownSeconds": 120,
+    "maxStack": 5,
+    "effectParams": {
+      "deliveryCount": 1
+    }
+  },
+  {
+    "id": "item_batch_reserve",
+    "name": "优先备货",
+    "type": "batch_reserve",
+    "description": "指定原料优先备货，避免批次短缺",
+    "icon": "textures/items/batch_reserve",
+    "cooldownSeconds": 180,
+    "maxStack": 3,
+    "effectParams": {
+      "ingredientCount": 2,
+      "durationMinutes": 5
+    }
+  },
+  {
+    "id": "item_price_lock",
+    "name": "价格锁定",
+    "type": "price_lock",
+    "description": "在一段时间内锁定采购价格",
+    "icon": "textures/items/price_lock",
+    "cooldownSeconds": 300,
+    "maxStack": 3,
+    "effectParams": {
+      "durationMinutes": 3,
+      "discountRate": 0.05
+    }
+  },
+  {
+    "id": "item_emergency_supply",
+    "name": "应急补给",
+    "type": "emergency_supply",
+    "description": "立即获得一批常用原料",
+    "icon": "textures/items/emergency_supply",
+    "cooldownSeconds": 240,
+    "maxStack": 3,
+    "effectParams": {
+      "supplyRatio": 0.3
+    }
+  },
+  {
+    "id": "item_inventory_check_boost",
+    "name": "快速盘点",
+    "type": "inventory_check_boost",
+    "description": "自动完成一次精确盘点",
+    "icon": "textures/items/inventory_check",
+    "cooldownSeconds": 150,
+    "maxStack": 5,
+    "effectParams": {
+      "accuracyBonus": 10
+    }
+  },
+  {
+    "id": "item_time_extend",
+    "name": "时间延长",
+    "type": "time_extend",
+    "description": "延长关卡时间限制",
+    "icon": "textures/items/time_extend",
+    "cooldownSeconds": 600,
+    "maxStack": 2,
+    "effectParams": {
+      "extraDays": 3
+    }
+  }
+]

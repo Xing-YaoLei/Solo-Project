@@ -1,0 +1,35 @@
+[
+  {
+    "id": "store_main",
+    "name": "咖啡小镇主店",
+    "address": "市中心商业街88号",
+    "tileX": 10,
+    "tileY": 8,
+    "level": 1,
+    "dailyCustomerBase": 300,
+    "storageCapacity": 5000,
+    "isOpen": true
+  },
+  {
+    "id": "store_branch_1",
+    "name": "咖啡小镇科技园店",
+    "address": "科技园区A栋1楼",
+    "tileX": 18,
+    "tileY": 5,
+    "level": 1,
+    "dailyCustomerBase": 200,
+    "storageCapacity": 3000,
+    "isOpen": true
+  },
+  {
+    "id": "store_branch_2",
+    "name": "咖啡小镇大学城店",
+    "address": "大学城东门旁",
+    "tileX": 5,
+    "tileY": 15,
+    "level": 1,
+    "dailyCustomerBase": 250,
+    "storageCapacity": 3500,
+    "isOpen": true
+  }
+]

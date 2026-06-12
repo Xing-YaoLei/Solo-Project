@@ -1,0 +1,116 @@
+[
+  {
+    "id": "event_bean_shortage",
+    "type": "batch_shortage",
+    "name": "咖啡豆供应紧张",
+    "description": "咖啡豆产区受到影响，部分批次出现缺货",
+    "icon": "textures/events/bean_shortage",
+    "minDurationMinutes": 2,
+    "maxDurationMinutes": 5,
+    "severity": "medium",
+    "affectedIngredients": ["arabica_beans", "robusta_beans"],
+    "affectedSuppliers": ["supplier_bean_king"],
+    "effectParams": {
+      "shortageRate": 0.4,
+      "priceIncrease": 0.15
+    }
+  },
+  {
+    "id": "event_milk_shortage",
+    "type": "batch_shortage",
+    "name": "鲜奶供应不足",
+    "description": "本地牧场产量下降，鲜奶供应减少",
+    "icon": "textures/events/milk_shortage",
+    "minDurationMinutes": 1,
+    "maxDurationMinutes": 3,
+    "severity": "high",
+    "affectedIngredients": ["fresh_milk"],
+    "affectedSuppliers": ["supplier_dairy_plus"],
+    "effectParams": {
+      "shortageRate": 0.5,
+      "priceIncrease": 0.25
+    }
+  },
+  {
+    "id": "event_supplier_delay",
+    "type": "supplier_delay",
+    "name": "物流延误",
+    "description": "交通拥堵导致配送延迟",
+    "icon": "textures/events/supplier_delay",
+    "minDurationMinutes": 1,
+    "maxDurationMinutes": 2,
+    "severity": "low",
+    "effectParams": {
+      "delayMultiplier": 2
+    }
+  },
+  {
+    "id": "event_price_surge",
+    "type": "price_fluctuation",
+    "name": "原料价格波动",
+    "description": "国际市场波动导致原料价格上涨",
+    "icon": "textures/events/price_surge",
+    "minDurationMinutes": 3,
+    "maxDurationMinutes": 6,
+    "severity": "medium",
+    "effectParams": {
+      "priceIncrease": 0.12
+    }
+  },
+  {
+    "id": "event_demand_surge",
+    "type": "surge_demand",
+    "name": "需求激增",
+    "description": "附近举办活动，客流量大幅增加",
+    "icon": "textures/events/demand_surge",
+    "minDurationMinutes": 2,
+    "maxDurationMinutes": 4,
+    "severity": "high",
+    "effectParams": {
+      "demandMultiplier": 1.6
+    }
+  },
+  {
+    "id": "event_quality_issue",
+    "type": "quality_issue",
+    "name": "质量问题",
+    "description": "一批原料出现质量问题需要退货",
+    "icon": "textures/events/quality_issue",
+    "minDurationMinutes": 1,
+    "maxDurationMinutes": 2,
+    "severity": "medium",
+    "affectedIngredients": ["vanilla_syrup", "caramel_syrup"],
+    "effectParams": {
+      "returnRate": 0.3
+    }
+  },
+  {
+    "id": "event_equipment_failure",
+    "type": "equipment_failure",
+    "name": "设备故障",
+    "description": "存储设备故障，部分原料损耗",
+    "icon": "textures/events/equipment_failure",
+    "minDurationMinutes": 1,
+    "maxDurationMinutes": 1,
+    "severity": "medium",
+    "effectParams": {
+      "wasteRate": 0.1
+    }
+  },
+  {
+    "id": "event_cup_shortage",
+    "type": "batch_shortage",
+    "name": "包材短缺",
+    "description": "包装材料供应商产能不足",
+    "icon": "textures/events/cup_shortage",
+    "minDurationMinutes": 2,
+    "maxDurationMinutes": 4,
+    "severity": "low",
+    "affectedIngredients": ["paper_cup_m", "paper_cup_l", "cup_lid"],
+    "affectedSuppliers": ["supplier_pack_master"],
+    "effectParams": {
+      "shortageRate": 0.25,
+      "priceIncrease": 0.1
+    }
+  }
+]

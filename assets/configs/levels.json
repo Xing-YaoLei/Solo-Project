@@ -1,0 +1,259 @@
+[
+  {
+    "id": "level_1",
+    "name": "新手入门",
+    "difficulty": 1,
+    "description": "熟悉基础操作，学习查看库存和下单补货",
+    "durationDays": 15,
+    "stores": ["store_main"],
+    "initialCapital": 15000,
+    "initialInventory": {
+      "arabica_beans": 30,
+      "robusta_beans": 15,
+      "fresh_milk": 80,
+      "oat_milk": 20,
+      "vanilla_syrup": 15,
+      "caramel_syrup": 10,
+      "paper_cup_m": 800,
+      "paper_cup_l": 500,
+      "cup_lid": 1500,
+      "white_sugar": 25
+    },
+    "dailyConsumptionRate": {
+      "arabica_beans": 5,
+      "robusta_beans": 2,
+      "fresh_milk": 20,
+      "oat_milk": 4,
+      "vanilla_syrup": 2,
+      "caramel_syrup": 1.5,
+      "paper_cup_m": 120,
+      "paper_cup_l": 80,
+      "cup_lid": 220,
+      "white_sugar": 3
+    },
+    "consumptionFluctuation": 0.15,
+    "randomEventChance": 0.05,
+    "objectives": [
+      {
+        "id": "obj_no_shortage_1",
+        "type": "no_shortage",
+        "targetValue": 1,
+        "description": "运营期间不出现原料缺货",
+        "weight": 40
+      },
+      {
+        "id": "obj_stock_accuracy_1",
+        "type": "stock_accuracy",
+        "targetValue": 90,
+        "description": "盘点准确率达到90%以上",
+        "weight": 30
+      },
+      {
+        "id": "obj_timely_restock_1",
+        "type": "timely_restock",
+        "targetValue": 90,
+        "description": "及时补货率达到90%",
+        "weight": 30
+      }
+    ],
+    "unlockConditions": []
+  },
+  {
+    "id": "level_2",
+    "name": "稳步经营",
+    "difficulty": 2,
+    "description": "应对更大的需求波动，学习成本控制",
+    "durationDays": 20,
+    "stores": ["store_main"],
+    "initialCapital": 20000,
+    "initialInventory": {
+      "arabica_beans": 40,
+      "robusta_beans": 20,
+      "fresh_milk": 100,
+      "oat_milk": 30,
+      "vanilla_syrup": 20,
+      "caramel_syrup": 15,
+      "paper_cup_m": 1000,
+      "paper_cup_l": 700,
+      "cup_lid": 2000,
+      "white_sugar": 30
+    },
+    "dailyConsumptionRate": {
+      "arabica_beans": 8,
+      "robusta_beans": 3,
+      "fresh_milk": 30,
+      "oat_milk": 6,
+      "vanilla_syrup": 3,
+      "caramel_syrup": 2,
+      "paper_cup_m": 180,
+      "paper_cup_l": 120,
+      "cup_lid": 320,
+      "white_sugar": 5
+    },
+    "consumptionFluctuation": 0.2,
+    "randomEventChance": 0.1,
+    "objectives": [
+      {
+        "id": "obj_cost_control_2",
+        "type": "cost_control",
+        "targetValue": 80,
+        "description": "采购成本控制在预算内",
+        "weight": 25
+      },
+      {
+        "id": "obj_no_shortage_2",
+        "type": "no_shortage",
+        "targetValue": 1,
+        "description": "运营期间不出现原料缺货",
+        "weight": 30
+      },
+      {
+        "id": "obj_stock_accuracy_2",
+        "type": "stock_accuracy",
+        "targetValue": 95,
+        "description": "盘点准确率达到95%以上",
+        "weight": 25
+      },
+      {
+        "id": "obj_turnover_2",
+        "type": "turnover_rate",
+        "targetValue": 7,
+        "description": "平均周转天数不超过7天",
+        "weight": 20
+      }
+    ],
+    "unlockConditions": ["level_1"]
+  },
+  {
+    "id": "level_3",
+    "name": "危机应对",
+    "difficulty": 3,
+    "description": "处理突发事件和批次短缺，考验应急能力",
+    "durationDays": 25,
+    "stores": ["store_main", "store_branch_1"],
+    "initialCapital": 30000,
+    "initialInventory": {
+      "arabica_beans": 50,
+      "robusta_beans": 25,
+      "fresh_milk": 120,
+      "oat_milk": 40,
+      "vanilla_syrup": 25,
+      "caramel_syrup": 20,
+      "paper_cup_m": 1200,
+      "paper_cup_l": 800,
+      "cup_lid": 2500,
+      "white_sugar": 40
+    },
+    "dailyConsumptionRate": {
+      "arabica_beans": 12,
+      "robusta_beans": 5,
+      "fresh_milk": 45,
+      "oat_milk": 10,
+      "vanilla_syrup": 5,
+      "caramel_syrup": 3,
+      "paper_cup_m": 250,
+      "paper_cup_l": 170,
+      "cup_lid": 450,
+      "white_sugar": 8
+    },
+    "consumptionFluctuation": 0.25,
+    "randomEventChance": 0.2,
+    "objectives": [
+      {
+        "id": "obj_no_shortage_3",
+        "type": "no_shortage",
+        "targetValue": 1,
+        "description": "运营期间不出现原料缺货",
+        "weight": 35
+      },
+      {
+        "id": "obj_stock_accuracy_3",
+        "type": "stock_accuracy",
+        "targetValue": 95,
+        "description": "盘点准确率达到95%以上",
+        "weight": 25
+      },
+      {
+        "id": "obj_turnover_3",
+        "type": "turnover_rate",
+        "targetValue": 5,
+        "description": "平均周转天数不超过5天",
+        "weight": 20
+      },
+      {
+        "id": "obj_cost_control_3",
+        "type": "cost_control",
+        "targetValue": 85,
+        "description": "采购成本控制得分85分以上",
+        "weight": 20
+      }
+    ],
+    "unlockConditions": ["level_2"]
+  },
+  {
+    "id": "level_4",
+    "name": "连锁管理",
+    "difficulty": 4,
+    "description": "同时管理多家门店，优化整体供应链",
+    "durationDays": 30,
+    "stores": ["store_main", "store_branch_1", "store_branch_2"],
+    "initialCapital": 50000,
+    "initialInventory": {
+      "arabica_beans": 80,
+      "robusta_beans": 40,
+      "fresh_milk": 180,
+      "oat_milk": 60,
+      "vanilla_syrup": 40,
+      "caramel_syrup": 30,
+      "paper_cup_m": 2000,
+      "paper_cup_l": 1400,
+      "cup_lid": 4000,
+      "white_sugar": 60
+    },
+    "dailyConsumptionRate": {
+      "arabica_beans": 18,
+      "robusta_beans": 8,
+      "fresh_milk": 65,
+      "oat_milk": 15,
+      "vanilla_syrup": 8,
+      "caramel_syrup": 5,
+      "paper_cup_m": 380,
+      "paper_cup_l": 260,
+      "cup_lid": 700,
+      "white_sugar": 12
+    },
+    "consumptionFluctuation": 0.3,
+    "randomEventChance": 0.25,
+    "objectives": [
+      {
+        "id": "obj_no_shortage_4",
+        "type": "no_shortage",
+        "targetValue": 1,
+        "description": "所有门店不出现原料缺货",
+        "weight": 30
+      },
+      {
+        "id": "obj_stock_accuracy_4",
+        "type": "stock_accuracy",
+        "targetValue": 97,
+        "description": "盘点准确率达到97%以上",
+        "weight": 25
+      },
+      {
+        "id": "obj_turnover_4",
+        "type": "turnover_rate",
+        "targetValue": 4,
+        "description": "平均周转天数不超过4天",
+        "weight": 25
+      },
+      {
+        "id": "obj_cost_control_4",
+        "type": "cost_control",
+        "targetValue": 90,
+        "description": "采购成本控制得分90分以上",
+        "weight": 20
+      }
+    ],
+    "unlockConditions": ["level_3"]
+  }
+]

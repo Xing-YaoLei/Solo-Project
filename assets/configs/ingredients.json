@@ -1,0 +1,112 @@
+[
+  {
+    "id": "arabica_beans",
+    "name": "阿拉比卡咖啡豆",
+    "category": "coffee_bean",
+    "unit": "kg",
+    "unitPrice": 120,
+    "shelfLifeDays": 60,
+    "safetyStockLevel": 20,
+    "description": "优质阿拉比卡咖啡豆，香气浓郁",
+    "icon": "textures/ingredients/arabica_beans"
+  },
+  {
+    "id": "robusta_beans",
+    "name": "罗布斯塔咖啡豆",
+    "category": "coffee_bean",
+    "unit": "kg",
+    "unitPrice": 80,
+    "shelfLifeDays": 90,
+    "safetyStockLevel": 15,
+    "description": "罗布斯塔咖啡豆，咖啡因含量高",
+    "icon": "textures/ingredients/robusta_beans"
+  },
+  {
+    "id": "fresh_milk",
+    "name": "鲜牛奶",
+    "category": "milk",
+    "unit": "L",
+    "unitPrice": 12,
+    "shelfLifeDays": 7,
+    "safetyStockLevel": 50,
+    "description": "新鲜全脂牛奶，需冷藏保存",
+    "icon": "textures/ingredients/fresh_milk"
+  },
+  {
+    "id": "oat_milk",
+    "name": "燕麦奶",
+    "category": "milk",
+    "unit": "L",
+    "unitPrice": 18,
+    "shelfLifeDays": 30,
+    "safetyStockLevel": 20,
+    "description": "植物基燕麦奶，适合乳糖不耐受顾客",
+    "icon": "textures/ingredients/oat_milk"
+  },
+  {
+    "id": "vanilla_syrup",
+    "name": "香草糖浆",
+    "category": "syrup",
+    "unit": "L",
+    "unitPrice": 45,
+    "shelfLifeDays": 180,
+    "safetyStockLevel": 10,
+    "description": "经典香草风味糖浆",
+    "icon": "textures/ingredients/vanilla_syrup"
+  },
+  {
+    "id": "caramel_syrup",
+    "name": "焦糖糖浆",
+    "category": "syrup",
+    "unit": "L",
+    "unitPrice": 48,
+    "shelfLifeDays": 180,
+    "safetyStockLevel": 8,
+    "description": "浓郁焦糖风味糖浆",
+    "icon": "textures/ingredients/caramel_syrup"
+  },
+  {
+    "id": "paper_cup_m",
+    "name": "中号纸杯",
+    "category": "cup",
+    "unit": "个",
+    "unitPrice": 1.2,
+    "shelfLifeDays": 365,
+    "safetyStockLevel": 500,
+    "description": "12oz中号一次性纸杯",
+    "icon": "textures/ingredients/paper_cup_m"
+  },
+  {
+    "id": "paper_cup_l",
+    "name": "大号纸杯",
+    "category": "cup",
+    "unit": "个",
+    "unitPrice": 1.5,
+    "shelfLifeDays": 365,
+    "safetyStockLevel": 400,
+    "description": "16oz大号一次性纸杯",
+    "icon": "textures/ingredients/paper_cup_l"
+  },
+  {
+    "id": "cup_lid",
+    "name": "杯盖",
+    "category": "lid",
+    "unit": "个",
+    "unitPrice": 0.5,
+    "shelfLifeDays": 365,
+    "safetyStockLevel": 1000,
+    "description": "适配中大号纸杯的杯盖",
+    "icon": "textures/ingredients/cup_lid"
+  },
+  {
+    "id": "white_sugar",
+    "name": "白砂糖",
+    "category": "sugar",
+    "unit": "kg",
+    "unitPrice": 8,
+    "shelfLifeDays": 365,
+    "safetyStockLevel": 15,
+    "description": "优质白砂糖",
+    "icon": "textures/ingredients/white_sugar"
+  }
+]
