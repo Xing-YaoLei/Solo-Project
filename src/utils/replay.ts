@@ -13,30 +13,59 @@ export function createReplay(
 ): FailureReplay {
   const hesitationPoints: HesitationPoint[] = [];
 
-  let lastEventTime = 0;
-  events.forEach((event) => {
-    const duration = event.timestamp - lastEventTime;
-    if (duration >= HESITATION_THRESHOLD) {
-      const clueId = event.type === 'clue_view' ? (event.data.clueId as string) : undefined;
-      hesitationPoints.push({
-        timestamp: lastEventTime,
-        duration,
-        clueId,
-        description: getHesitationDescription(event.type, duration),
-      });
-    }
-    lastEventTime = event.timestamp;
-  });
+  if (events.length > 0) {
+    const taskStartEvent = events.find((e) => e.type === 'task_start');
+    const clueViewEvents = events.filter((e) => e.type === 'clue_view');
+    const decisionStartEvent = events.find((e) => e.type === 'decision_start');
+    const decisionMadeEvent = events.find((e) => e.type === 'decision_made');
 
-  decisionLogs.forEach((log) => {
-    if (log.hesitationTime >= HESITATION_THRESHOLD) {
-      hesitationPoints.push({
-        timestamp: new Date(log.madeAt).getTime() - log.hesitationTime,
-        duration: log.hesitationTime,
-        description: `决策犹豫: ${log.hesitationTime / 1000}秒`,
-      });
+    if (taskStartEvent && clueViewEvents.length > 0) {
+      const firstClueTime = clueViewEvents[0].timestamp;
+      const duration = firstClueTime - taskStartEvent.timestamp;
+      if (duration >= HESITATION_THRESHOLD) {
+        hesitationPoints.push({
+          timestamp: taskStartEvent.timestamp,
+          duration,
+          description: `阅读任务描述犹豫 ${Math.floor(duration / 1000)} 秒`,
+        });
+      }
     }
-  });
+
+    for (let i = 0; i < clueViewEvents.length - 1; i++) {
+      const duration = clueViewEvents[i + 1].timestamp - clueViewEvents[i].timestamp;
+      if (duration >= HESITATION_THRESHOLD) {
+        hesitationPoints.push({
+          timestamp: clueViewEvents[i].timestamp,
+          duration,
+          clueId: clueViewEvents[i + 1].data.clueId as string,
+          description: `分析线索犹豫 ${Math.floor(duration / 1000)} 秒`,
+        });
+      }
+    }
+
+    if (clueViewEvents.length > 0 && decisionStartEvent) {
+      const lastClueTime = clueViewEvents[clueViewEvents.length - 1].timestamp;
+      const duration = decisionStartEvent.timestamp - lastClueTime;
+      if (duration >= HESITATION_THRESHOLD) {
+        hesitationPoints.push({
+          timestamp: lastClueTime,
+          duration,
+          description: `线索分析后思考犹豫 ${Math.floor(duration / 1000)} 秒`,
+        });
+      }
+    }
+
+    if (decisionStartEvent && decisionMadeEvent) {
+      const duration = decisionMadeEvent.timestamp - decisionStartEvent.timestamp;
+      if (duration >= HESITATION_THRESHOLD) {
+        hesitationPoints.push({
+          timestamp: decisionStartEvent.timestamp,
+          duration,
+          description: `做出最终决策犹豫 ${Math.floor(duration / 1000)} 秒`,
+        });
+      }
+    }
+  }
 
   hesitationPoints.sort((a, b) => a.timestamp - b.timestamp);
 
@@ -49,18 +78,6 @@ export function createReplay(
     hesitationPoints,
     createdAt: new Date().toISOString(),
   };
-}
-
-function getHesitationDescription(eventType: string, duration: number): string {
-  const seconds = Math.floor(duration / 1000);
-  const descriptions: Record<string, string> = {
-    clue_view: `分析线索犹豫 ${seconds} 秒`,
-    decision_start: `决策思考犹豫 ${seconds} 秒`,
-    decision_made: `最终决定犹豫 ${seconds} 秒`,
-    task_start: `任务开始犹豫 ${seconds} 秒`,
-    task_end: `任务结束犹豫 ${seconds} 秒`,
-  };
-  return descriptions[eventType] || `犹豫 ${seconds} 秒`;
 }
 
 export function saveReplay(replay: FailureReplay): void {
@@ -89,11 +106,12 @@ export function getReplaysForRecord(recordId: string): FailureReplay[] {
     .sort((a, b) => a.replayIndex - b.replayIndex);
 }
 
-export function getReplaysForMember(memberId: string): FailureReplay[] {
+export function getReplaysForMember(memberId: string, limit: number = MAX_REPLAYS_PER_MEMBER): FailureReplay[] {
   const replays = storage.loadReplays<FailureReplay[]>([]);
   return replays
     .filter((r) => r.memberId === memberId)
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, limit);
 }
 
 export function getReplayTimeline(replay: FailureReplay, currentTime: number): ReplayEvent | null {
