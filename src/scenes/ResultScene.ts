@@ -62,8 +62,8 @@ export class ResultScene extends BaseScene {
   private createResultHeader(): void {
     const isSuccess = this.result.accuracyRate >= 0.6 && !this.result.isTimeOut;
 
-    const icon = this.add.text(this.centerX, 80, isSuccess ? '🏆' : '💪', {
-      fontSize: '72px',
+    const icon = this.add.text(this.centerX, 55, isSuccess ? '🏆' : '💪', {
+      fontSize: '52px',
     }).setOrigin(0.5);
 
     this.tweens.add({
@@ -75,30 +75,30 @@ export class ResultScene extends BaseScene {
       ease: 'Sine.InOut',
     });
 
-    const title = this.add.text(this.centerX, 150, isSuccess ? '巡检完成！' : '任务结束', {
+    const title = this.add.text(this.centerX, 100, isSuccess ? '巡检完成！' : '任务结束', {
       fontFamily: 'Inter, sans-serif',
-      fontSize: '42px',
+      fontSize: '32px',
       fontStyle: 'bold',
       color: isSuccess ? '#4CAF50' : '#FF9800',
     }).setOrigin(0.5);
 
     const subtitle = this.add.text(
       this.centerX,
-      190,
+      130,
       this.result.isTimeOut ? '⏰ 时间耗尽，未能完成所有点位' : `🎉 完成 ${this.result.completedPoints}/${this.result.totalPoints} 个点位`,
       {
         fontFamily: 'Inter, sans-serif',
-        fontSize: '18px',
+        fontSize: '14px',
         color: '#AAAAAA',
       }
     ).setOrigin(0.5);
   }
 
   private createStatCards(): void {
-    const startY = 260;
-    const cardWidth = 220;
-    const cardHeight = 140;
-    const spacing = 30;
+    const startY = 195;
+    const cardWidth = 180;
+    const cardHeight = 90;
+    const spacing = 25;
     const totalWidth = cardWidth * 3 + spacing * 2;
     const startX = this.centerX - totalWidth / 2 + cardWidth / 2;
 
@@ -124,7 +124,7 @@ export class ResultScene extends BaseScene {
         color: 0xFFC107,
         subtext: this.trackingRules.trackDecisionTime
           ? `平均 ${Math.round(this.result.averageDecisionTime)}秒/判断`
-          : '完成全部巡检任务',
+          : '完成全部巡检',
       },
     ];
 
@@ -146,30 +146,30 @@ export class ResultScene extends BaseScene {
 
     const bg = this.add.graphics();
     bg.fillStyle(0x2D2D2D, 0.95);
-    bg.fillRoundedRect(-width / 2, -height / 2, width, height, 16);
+    bg.fillRoundedRect(-width / 2, -height / 2, width, height, 12);
     bg.lineStyle(2, stat.color, 0.5);
-    bg.strokeRoundedRect(-width / 2, -height / 2, width, height, 16);
+    bg.strokeRoundedRect(-width / 2, -height / 2, width, height, 12);
 
-    const icon = this.add.text(-width / 2 + 20, -height / 2 + 25, stat.icon, {
-      fontSize: '28px',
+    const icon = this.add.text(-width / 2 + 15, -height / 2 + 15, stat.icon, {
+      fontSize: '22px',
     }).setOrigin(0);
 
-    const label = this.add.text(0, -height / 2 + 30, stat.label, {
+    const label = this.add.text(0, -height / 2 + 20, stat.label, {
       fontFamily: 'Inter, sans-serif',
-      fontSize: '14px',
+      fontSize: '12px',
       color: '#888888',
     }).setOrigin(0.5);
 
-    const value = this.add.text(0, 10, stat.value, {
+    const value = this.add.text(0, 5, stat.value, {
       fontFamily: 'Inter, sans-serif',
-      fontSize: '36px',
+      fontSize: '28px',
       fontStyle: 'bold',
       color: `#${stat.color.toString(16).padStart(6, '0')}`,
     }).setOrigin(0.5);
 
-    const subtext = this.add.text(0, height / 2 - 25, stat.subtext, {
+    const subtext = this.add.text(0, height / 2 - 15, stat.subtext, {
       fontFamily: 'Inter, sans-serif',
-      fontSize: '12px',
+      fontSize: '11px',
       color: '#666666',
     }).setOrigin(0.5);
 
@@ -188,18 +188,18 @@ export class ResultScene extends BaseScene {
   }
 
   private createAnalysisSection(): void {
-    const sectionY = 450;
+    const sectionY = 310;
 
     const title = this.add.text(60, sectionY, '📊 详细分析', {
       fontFamily: 'Inter, sans-serif',
-      fontSize: '22px',
+      fontSize: '18px',
       fontStyle: 'bold',
       color: '#FFFFFF',
     }).setOrigin(0);
 
     const line = this.add.graphics();
     line.lineStyle(2, 0xFF6F00, 0.5);
-    line.lineBetween(60, sectionY + 35, this.width - 60, sectionY + 35);
+    line.lineBetween(60, sectionY + 28, this.width - 60, sectionY + 28);
 
     const hasStuck = this.trackingRules.trackDecisionTime;
     const hasError = this.trackingRules.trackErrorTypes;
@@ -214,16 +214,16 @@ export class ResultScene extends BaseScene {
     if (hasEvents) analysisCards.push({ fn: this.createEventAnalysis.bind(this), condition: true });
 
     if (analysisCards.length === 0) {
-      const message = this.add.text(this.centerX, sectionY + 100, '🔒 分析功能已在配置中关闭', {
+      const message = this.add.text(this.centerX, sectionY + 70, '🔒 分析功能已在配置中关闭', {
         fontFamily: 'Inter, sans-serif',
-        fontSize: '16px',
+        fontSize: '14px',
         color: '#666666',
       }).setOrigin(0.5);
       return;
     }
 
-    const cardWidth = 300;
-    const cardSpacing = 40;
+    const cardWidth = 280;
+    const cardSpacing = 30;
     const perRow = 2;
     const totalWidth = perRow * cardWidth + (perRow - 1) * cardSpacing;
     const startX = this.centerX - totalWidth / 2 + cardWidth / 2;
@@ -232,7 +232,7 @@ export class ResultScene extends BaseScene {
       const row = Math.floor(index / perRow);
       const col = index % perRow;
       const x = startX + col * (cardWidth + cardSpacing);
-      const y = sectionY + 70 + row * 130;
+      const y = sectionY + 55 + row * 100;
       card.fn(x, y);
     });
   }
@@ -241,89 +241,110 @@ export class ResultScene extends BaseScene {
     const container = this.add.container(0, 0);
     container.setPosition(x, y);
 
-    const title = this.add.text(-130, -40, '⏳ 卡点分析', {
+    const cardWidth = 280;
+    const cardHeight = 80;
+    const halfW = cardWidth / 2;
+    const halfH = cardHeight / 2;
+
+    const bg = this.add.graphics();
+    bg.fillStyle(0x2D2D2D, 0.95);
+    bg.fillRoundedRect(-halfW, -halfH, cardWidth, cardHeight, 10);
+    bg.lineStyle(2, 0xFF9800, 0.3);
+    bg.strokeRoundedRect(-halfW, -halfH, cardWidth, cardHeight, 10);
+
+    const title = this.add.text(-halfW + 12, -halfH + 10, '⏳ 卡点分析', {
       fontFamily: 'Inter, sans-serif',
-      fontSize: '16px',
+      fontSize: '14px',
       fontStyle: 'bold',
       color: '#FF9800',
     }).setOrigin(0);
 
     if (this.result.stuckPoints.length === 0) {
-      const message = this.add.text(-130, 0, '✅ 没有卡点，判断流畅！', {
+      const message = this.add.text(-halfW + 12, 0, '✅ 判断流畅，没有卡点', {
         fontFamily: 'Inter, sans-serif',
-        fontSize: '14px',
+        fontSize: '12px',
         color: '#4CAF50',
-      }).setOrigin(0);
-      container.add([title, message]);
+      }).setOrigin(0, 0.5);
+      container.add([bg, title, message]);
       return;
     }
 
     const message = this.add.text(
-      -130,
+      -halfW + 12,
       0,
       `发现 ${this.result.stuckPoints.length} 个卡点`,
       {
         fontFamily: 'Inter, sans-serif',
-        fontSize: '14px',
+        fontSize: '12px',
         color: '#FF9800',
       }
-    ).setOrigin(0);
+    ).setOrigin(0, 0.5);
 
     const stuckTrackings = this.result.pointTrackings.filter(t =>
       this.result.stuckPoints.includes(t.pointId)
     );
 
-    let detailY = 25;
-    stuckTrackings.slice(0, 2).forEach((tracking) => {
+    let detailY = halfH - 12;
+    stuckTrackings.slice(0, 1).forEach((tracking) => {
       const point = this.gameStore.getState().points.find(p => p.id === tracking.pointId);
       if (!point) return;
 
-      const dot = this.add.circle(-120, detailY, 4, 0xFF9800, 1);
+      const dot = this.add.circle(-halfW + 20, detailY, 3, 0xFF9800, 1);
       const text = this.add.text(
-        -105,
+        -halfW + 30,
         detailY,
-        `${point.name} - 犹豫 ${Math.round(tracking.decisionTime)}秒`,
+        `${point.name} · ${Math.round(tracking.decisionTime)}秒`,
         {
           fontFamily: 'Inter, sans-serif',
-          fontSize: '12px',
+          fontSize: '11px',
           color: '#AAAAAA',
         }
       ).setOrigin(0, 0.5);
 
       container.add([dot, text]);
-      detailY += 20;
     });
 
-    if (stuckTrackings.length > 2) {
-      const more = this.add.text(-105, detailY, `... 还有 ${stuckTrackings.length - 2} 个`, {
+    if (stuckTrackings.length > 1) {
+      const more = this.add.text(-halfW + 30, detailY, `... 还有 ${stuckTrackings.length - 1} 个`, {
         fontFamily: 'Inter, sans-serif',
-        fontSize: '12px',
+        fontSize: '11px',
         color: '#666666',
       }).setOrigin(0, 0.5);
       container.add(more);
     }
 
-    container.add([title, message]);
+    container.add([bg, title, message]);
   }
 
   private createErrorAnalysis(x: number, y: number): void {
     const container = this.add.container(0, 0);
     container.setPosition(x, y);
 
-    const title = this.add.text(-130, -40, '❌ 错误分析', {
+    const cardWidth = 280;
+    const cardHeight = 80;
+    const halfW = cardWidth / 2;
+    const halfH = cardHeight / 2;
+
+    const bg = this.add.graphics();
+    bg.fillStyle(0x2D2D2D, 0.95);
+    bg.fillRoundedRect(-halfW, -halfH, cardWidth, cardHeight, 10);
+    bg.lineStyle(2, 0xD32F2F, 0.3);
+    bg.strokeRoundedRect(-halfW, -halfH, cardWidth, cardHeight, 10);
+
+    const title = this.add.text(-halfW + 12, -halfH + 10, '❌ 错误分析', {
       fontFamily: 'Inter, sans-serif',
-      fontSize: '16px',
+      fontSize: '14px',
       fontStyle: 'bold',
       color: '#D32F2F',
     }).setOrigin(0);
 
     if (this.result.errorPoints.length === 0) {
-      const message = this.add.text(-130, 0, '🎉 全部判断正确！', {
+      const message = this.add.text(-halfW + 12, 0, '🎉 全部判断正确！', {
         fontFamily: 'Inter, sans-serif',
-        fontSize: '14px',
+        fontSize: '12px',
         color: '#4CAF50',
-      }).setOrigin(0);
-      container.add([title, message]);
+      }).setOrigin(0, 0.5);
+      container.add([bg, title, message]);
       return;
     }
 
@@ -340,76 +361,86 @@ export class ResultScene extends BaseScene {
       });
 
     const message = this.add.text(
-      -130,
+      -halfW + 12,
       0,
       `共 ${this.result.errorPoints.length} 个错误判断`,
       {
         fontFamily: 'Inter, sans-serif',
-        fontSize: '14px',
+        fontSize: '12px',
         color: '#D32F2F',
       }
-    ).setOrigin(0);
+    ).setOrigin(0, 0.5);
 
-    let detailY = 25;
-    const errorList = Object.entries(errorTypes).slice(0, 2);
-    errorList.forEach(([type, data]) => {
+    const errorList = Object.entries(errorTypes).slice(0, 1);
+    if (errorList.length > 0) {
+      const [type, data] = errorList[0];
       const percentage = Math.round((data.count / this.result.errorPoints.length) * 100);
 
       const barBg = this.add.graphics();
       barBg.fillStyle(0x3D3D3D, 1);
-      barBg.fillRoundedRect(-130, detailY, 200, 16, 8);
+      barBg.fillRoundedRect(-halfW + 12, halfH - 20, cardWidth - 24, 14, 7);
 
       const barFill = this.add.graphics();
       barFill.fillStyle(0xD32F2F, 0.8);
-      barFill.fillRoundedRect(-130, detailY, 200 * (percentage / 100), 16, 8);
+      barFill.fillRoundedRect(-halfW + 12, halfH - 20, (cardWidth - 24) * (percentage / 100), 14, 7);
 
-      const label = this.add.text(-125, detailY + 8, data.label, {
+      const label = this.add.text(-halfW + 16, halfH - 13, data.label, {
         fontFamily: 'Inter, sans-serif',
-        fontSize: '11px',
+        fontSize: '10px',
         color: '#FFFFFF',
       }).setOrigin(0, 0.5);
 
-      const countText = this.add.text(60, detailY + 8, `${data.count}次`, {
+      const countText = this.add.text(halfW - 16, halfH - 13, `${data.count}次`, {
         fontFamily: 'Inter, sans-serif',
-        fontSize: '11px',
+        fontSize: '10px',
         fontStyle: 'bold',
         color: '#FFFFFF',
       }).setOrigin(1, 0.5);
 
       container.add([barBg, barFill, label, countText]);
-      detailY += 22;
-    });
 
-    if (Object.entries(errorTypes).length > 2) {
-      const more = this.add.text(-125, detailY, `... 还有 ${Object.entries(errorTypes).length - 2} 种`, {
-        fontFamily: 'Inter, sans-serif',
-        fontSize: '12px',
-        color: '#666666',
-      }).setOrigin(0, 0.5);
-      container.add(more);
+      if (Object.entries(errorTypes).length > 1) {
+        const more = this.add.text(halfW - 16, halfH - 30, `+${Object.entries(errorTypes).length - 1}种`, {
+          fontFamily: 'Inter, sans-serif',
+          fontSize: '10px',
+          color: '#666666',
+        }).setOrigin(1, 0.5);
+        container.add(more);
+      }
     }
 
-    container.add([title, message]);
+    container.add([bg, title, message]);
   }
 
   private createItemUsageAnalysis(x: number, y: number): void {
     const container = this.add.container(0, 0);
     container.setPosition(x, y);
 
-    const title = this.add.text(-130, -40, '🎒 道具使用', {
+    const cardWidth = 280;
+    const cardHeight = 80;
+    const halfW = cardWidth / 2;
+    const halfH = cardHeight / 2;
+
+    const bg = this.add.graphics();
+    bg.fillStyle(0x2D2D2D, 0.95);
+    bg.fillRoundedRect(-halfW, -halfH, cardWidth, cardHeight, 10);
+    bg.lineStyle(2, 0x9C27B0, 0.3);
+    bg.strokeRoundedRect(-halfW, -halfH, cardWidth, cardHeight, 10);
+
+    const title = this.add.text(-halfW + 12, -halfH + 10, '🎒 道具使用', {
       fontFamily: 'Inter, sans-serif',
-      fontSize: '16px',
+      fontSize: '14px',
       fontStyle: 'bold',
       color: '#9C27B0',
     }).setOrigin(0);
 
     if (this.result.itemUsages.length === 0) {
-      const message = this.add.text(-130, 0, '📭 本局未使用任何道具', {
+      const message = this.add.text(-halfW + 12, 0, '📭 本局未使用道具', {
         fontFamily: 'Inter, sans-serif',
-        fontSize: '14px',
+        fontSize: '12px',
         color: '#888888',
-      }).setOrigin(0);
-      container.add([title, message]);
+      }).setOrigin(0, 0.5);
+      container.add([bg, title, message]);
       return;
     }
 
@@ -426,70 +457,79 @@ export class ResultScene extends BaseScene {
     const configItems = this.configStore.getState().items;
 
     const message = this.add.text(
-      -130,
+      -halfW + 12,
       0,
-      `共使用 ${this.result.itemUsages.length} 次道具`,
+      `共使用 ${this.result.itemUsages.length} 次`,
       {
         fontFamily: 'Inter, sans-serif',
-        fontSize: '14px',
+        fontSize: '12px',
         color: '#9C27B0',
       }
-    ).setOrigin(0);
+    ).setOrigin(0, 0.5);
 
-    let detailY = 25;
-    Object.entries(itemCounts).slice(0, 2).forEach(([itemId, count]) => {
+    let detailY = halfH - 12;
+    Object.entries(itemCounts).slice(0, 1).forEach(([itemId, count]) => {
       const itemConfig = configItems.find(i => i.id === itemId);
       if (!itemConfig) return;
 
       const effective = effectiveCounts[itemId] || 0;
-      const label = `${itemConfig.icon} ${itemConfig.name}`;
 
-      const dot = this.add.circle(-120, detailY, 4, 0x9C27B0, 1);
+      const dot = this.add.circle(-halfW + 20, detailY, 3, 0x9C27B0, 1);
       const text = this.add.text(
-        -105,
+        -halfW + 30,
         detailY,
-        `${label} - ${count}次${effective > 0 ? ` (有效${effective}次)` : ''}`,
+        `${itemConfig.icon} ${itemConfig.name} · ${count}次${effective > 0 ? `(有效${effective}次)` : ''}`,
         {
           fontFamily: 'Inter, sans-serif',
-          fontSize: '12px',
+          fontSize: '11px',
           color: '#AAAAAA',
         }
       ).setOrigin(0, 0.5);
 
       container.add([dot, text]);
-      detailY += 20;
     });
 
-    if (Object.entries(itemCounts).length > 2) {
-      const more = this.add.text(-105, detailY, `... 还有 ${Object.entries(itemCounts).length - 2} 种`, {
+    if (Object.entries(itemCounts).length > 1) {
+      const more = this.add.text(-halfW + 30, detailY, `... 还有 ${Object.entries(itemCounts).length - 1} 种`, {
         fontFamily: 'Inter, sans-serif',
-        fontSize: '12px',
+        fontSize: '11px',
         color: '#666666',
       }).setOrigin(0, 0.5);
       container.add(more);
     }
 
-    container.add([title, message]);
+    container.add([bg, title, message]);
   }
 
   private createEventAnalysis(x: number, y: number): void {
     const container = this.add.container(0, 0);
     container.setPosition(x, y);
 
-    const title = this.add.text(-130, -40, '⚡ 事件处理', {
+    const cardWidth = 280;
+    const cardHeight = 80;
+    const halfW = cardWidth / 2;
+    const halfH = cardHeight / 2;
+
+    const bg = this.add.graphics();
+    bg.fillStyle(0x2D2D2D, 0.95);
+    bg.fillRoundedRect(-halfW, -halfH, cardWidth, cardHeight, 10);
+    bg.lineStyle(2, 0x2196F3, 0.3);
+    bg.strokeRoundedRect(-halfW, -halfH, cardWidth, cardHeight, 10);
+
+    const title = this.add.text(-halfW + 12, -halfH + 10, '⚡ 事件处理', {
       fontFamily: 'Inter, sans-serif',
-      fontSize: '16px',
+      fontSize: '14px',
       fontStyle: 'bold',
       color: '#2196F3',
     }).setOrigin(0);
 
     if (this.result.events.length === 0) {
-      const message = this.add.text(-130, 0, '🛡️ 本局未触发突发事件', {
+      const message = this.add.text(-halfW + 12, 0, '🛡️ 本局未触发事件', {
         fontFamily: 'Inter, sans-serif',
-        fontSize: '14px',
+        fontSize: '12px',
         color: '#888888',
-      }).setOrigin(0);
-      container.add([title, message]);
+      }).setOrigin(0, 0.5);
+      container.add([bg, title, message]);
       return;
     }
 
@@ -498,49 +538,48 @@ export class ResultScene extends BaseScene {
       : 0;
 
     const message = this.add.text(
-      -130,
+      -halfW + 12,
       0,
-      `触发 ${this.result.events.length} 次事件 · 平均响应 ${avgResponseTime.toFixed(1)}秒`,
+      `触发 ${this.result.events.length} 次 · 平均响应 ${avgResponseTime.toFixed(1)}秒`,
       {
         fontFamily: 'Inter, sans-serif',
-        fontSize: '14px',
+        fontSize: '11px',
         color: '#2196F3',
       }
-    ).setOrigin(0);
+    ).setOrigin(0, 0.5);
 
-    let detailY = 25;
-    this.result.events.slice(0, 2).forEach((event, index) => {
+    let detailY = halfH - 12;
+    this.result.events.slice(0, 1).forEach((event, index) => {
       const choiceLabel = event.playerChoice === 'remote_restart' ? '远程重启'
         : event.playerChoice === 'onsite' ? '现场处理'
         : event.playerChoice === 'ignore' ? '忽略'
         : event.playerChoice;
 
-      const dot = this.add.circle(-120, detailY, 4, 0x2196F3, 1);
+      const dot = this.add.circle(-halfW + 20, detailY, 3, 0x2196F3, 1);
       const text = this.add.text(
-        -105,
+        -halfW + 30,
         detailY,
-        `事件${index + 1} - ${choiceLabel} (${event.choiceTime.toFixed(1)}秒)`,
+        `事件${index + 1} · ${choiceLabel} · ${event.choiceTime.toFixed(1)}秒`,
         {
           fontFamily: 'Inter, sans-serif',
-          fontSize: '12px',
+          fontSize: '11px',
           color: '#AAAAAA',
         }
       ).setOrigin(0, 0.5);
 
       container.add([dot, text]);
-      detailY += 20;
     });
 
-    if (this.result.events.length > 2) {
-      const more = this.add.text(-105, detailY, `... 还有 ${this.result.events.length - 2} 个事件`, {
+    if (this.result.events.length > 1) {
+      const more = this.add.text(-halfW + 30, detailY, `... 还有 ${this.result.events.length - 1} 个事件`, {
         fontFamily: 'Inter, sans-serif',
-        fontSize: '12px',
+        fontSize: '11px',
         color: '#666666',
       }).setOrigin(0, 0.5);
       container.add(more);
     }
 
-    container.add([title, message]);
+    container.add([bg, title, message]);
   }
 
   private getErrorTypeLabel(errorType: string): string {
@@ -557,7 +596,7 @@ export class ResultScene extends BaseScene {
   }
 
   private createTimeline(): void {
-    const timelineY = 630;
+    const timelineY = 530;
     const hasTrackingData = this.result.pointTrackings.length > 0;
 
     if (!hasTrackingData) {
@@ -566,14 +605,14 @@ export class ResultScene extends BaseScene {
 
     const title = this.add.text(60, timelineY, '📈 操作时间线', {
       fontFamily: 'Inter, sans-serif',
-      fontSize: '22px',
+      fontSize: '18px',
       fontStyle: 'bold',
       color: '#FFFFFF',
     }).setOrigin(0);
 
     const line = this.add.graphics();
     line.lineStyle(2, 0xFF6F00, 0.5);
-    line.lineBetween(60, timelineY + 35, this.width - 60, timelineY + 35);
+    line.lineBetween(60, timelineY + 28, this.width - 60, timelineY + 28);
 
     const timelineWidth = this.width - 120;
     const startX = 60;
@@ -583,7 +622,7 @@ export class ResultScene extends BaseScene {
 
     trackings.forEach((tracking, index) => {
       const x = startX + index * step + step / 2;
-      const y = timelineY + 35;
+      const y = timelineY + 28;
 
       const isStuck = this.result.stuckPoints.includes(tracking.pointId);
       const hasStuckData = this.trackingRules.trackDecisionTime && isStuck;
@@ -600,20 +639,20 @@ export class ResultScene extends BaseScene {
         color = 0x4CAF50;
       }
 
-      const dotSize = hasStuckData ? 8 : 6;
+      const dotSize = hasStuckData ? 7 : 5;
       const dot = this.add.circle(x, y, dotSize, color, 1);
 
       if (index % 2 === 0) {
-        const labelY = y + (index % 4 === 0 ? 40 : 60);
+        const labelY = y + (index % 4 === 0 ? 28 : 42);
         const label = this.add.text(x, labelY, `#${index + 1}`, {
           fontFamily: 'Inter, sans-serif',
-          fontSize: '10px',
+          fontSize: '9px',
           color: '#888888',
         }).setOrigin(0.5);
 
         const connector = this.add.graphics();
         connector.lineStyle(1, color, 0.5);
-        connector.lineBetween(x, y + 8, x, labelY - 12);
+        connector.lineBetween(x, y + 6, x, labelY - 10);
 
         dot.setAlpha(0);
         label.setAlpha(0);
@@ -629,7 +668,7 @@ export class ResultScene extends BaseScene {
       }
     });
 
-    const legend = this.add.container(this.width - 60, timelineY + 80);
+    const legend = this.add.container(this.width - 60, timelineY + 65);
     const legendItems: Array<{ label: string; color: number }> = [];
 
     if (!this.trackingRules.trackErrorTypes) {
@@ -642,12 +681,12 @@ export class ResultScene extends BaseScene {
       legendItems.push({ label: '错误', color: 0xD32F2F });
     }
 
-    const totalWidth = legendItems.length * 70;
+    const totalWidth = legendItems.length * 60;
     legendItems.forEach((item, i) => {
-      const x = -totalWidth + i * 70 + 35;
+      const x = -totalWidth + i * 60 + 30;
       const text = this.add.text(x, 0, `● ${item.label}`, {
         fontFamily: 'Inter, sans-serif',
-        fontSize: '12px',
+        fontSize: '10px',
         color: `#${item.color.toString(16).padStart(6, '0')}`,
       }).setOrigin(0.5);
       legend.add(text);
@@ -655,13 +694,13 @@ export class ResultScene extends BaseScene {
   }
 
   private createActionButtons(): void {
-    const buttonY = this.height - 80;
+    const buttonY = this.height - 55;
 
     const restartBtn = this.addButton(
-      this.centerX - 120,
+      this.centerX - 110,
       buttonY,
-      200,
-      55,
+      180,
+      45,
       '🔄 再来一局',
       () => {
         this.playSound('click');
@@ -678,10 +717,10 @@ export class ResultScene extends BaseScene {
     );
 
     const homeBtn = this.addButton(
-      this.centerX + 120,
+      this.centerX + 110,
       buttonY,
-      200,
-      55,
+      180,
+      45,
       '🏠 返回主页',
       () => {
         this.playSound('click');
