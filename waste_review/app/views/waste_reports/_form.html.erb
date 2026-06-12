@@ -1,0 +1,49 @@
+<%= form_with model: waste_report, class: "space-y-6" do |f| %>
+  <div class="bg-white rounded-lg shadow p-6">
+    <h3 class="text-lg font-semibold text-gray-800 mb-4">基本信息</h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <%= f.label :store_id, "门店", class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= f.select :store_id, @stores.map { |s| [s.name, s.id] }, {}, class: "w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500" %>
+      </div>
+      <div>
+        <%= f.label :report_date, "报损日期", class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= f.date_field :report_date, class: "w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500" %>
+      </div>
+      <div>
+        <%= f.label :reporter, "报损人", class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= f.text_field :reporter, class: "w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500" %>
+      </div>
+      <div>
+        <%= f.label :notes, "备注", class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= f.text_area :notes, rows: 1, class: "w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500" %>
+      </div>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-lg shadow p-6" data-controller="nested-form">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-lg font-semibold text-gray-800">报损明细</h3>
+      <button type="button" data-action="click->nested-form#add" class="bg-green-600 text-white px-3 py-1.5 rounded-md hover:bg-green-700 text-sm">
+        + 添加项目
+      </button>
+    </div>
+
+    <div data-nested-form-target="container" class="space-y-3">
+      <%= f.fields_for :waste_items do |item_form| %>
+        <%= render "waste_item_fields", f: item_form %>
+      <% end %>
+    </div>
+
+    <template data-nested-form-target="template">
+      <%= f.fields_for :waste_items, WasteItem.new, child_index: "NEW_RECORD" do |item_form| %>
+        <%= render "waste_item_fields", f: item_form %>
+      <% end %>
+    </template>
+  </div>
+
+  <div class="flex gap-3">
+    <%= f.submit class: "bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 cursor-pointer" %>
+    <%= link_to "取消", waste_reports_path, class: "bg-gray-200 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-300" %>
+  </div>
+<% end %>

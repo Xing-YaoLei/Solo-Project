@@ -1,0 +1,7 @@
+<% content_for :page_title, "编辑报损单 ##{@waste_report.id}" %>
+
+<div class="mb-6">
+  <h1 class="text-2xl font-bold text-gray-900">编辑报损单 #<%= @waste_report.id %></h1>
+</div>
+
+<%= render "form", waste_report: @waste_report %>

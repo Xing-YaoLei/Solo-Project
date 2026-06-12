@@ -1,0 +1,11 @@
+zh-CN:
+  status:
+    submitted: "已提交"
+    reviewing: "复核中"
+    approved: "已审批"
+    rejected: "已驳回"
+    settled: "已结算"
+  severity:
+    low: "低"
+    medium: "中"
+    high: "高"

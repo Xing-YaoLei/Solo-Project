@@ -1,0 +1,19 @@
+<%= form_with model: [waste_report, CostEntry.new], class: "flex flex-wrap items-end gap-3" do |f| %>
+  <div class="flex flex-col">
+    <%= f.label :cost_type, "成本类型", class: "text-xs font-medium text-gray-600 mb-1" %>
+    <%= f.select :cost_type, [["物料成本", "material"], ["人工成本", "labor"], ["处置成本", "disposal"]], {}, class: "border border-gray-300 rounded-md px-2 py-1.5 text-sm" %>
+  </div>
+  <div class="flex flex-col">
+    <%= f.label :responsible_store_id, "责任门店", class: "text-xs font-medium text-gray-600 mb-1" %>
+    <%= f.select :responsible_store_id, Store.active.map { |s| [s.name, s.id] }, { include_blank: "无" }, class: "border border-gray-300 rounded-md px-2 py-1.5 text-sm" %>
+  </div>
+  <div class="flex flex-col">
+    <%= f.label :amount, "金额", class: "text-xs font-medium text-gray-600 mb-1" %>
+    <%= f.number_field :amount, step: 0.01, class: "border border-gray-300 rounded-md px-2 py-1.5 text-sm w-28" %>
+  </div>
+  <div class="flex flex-col">
+    <%= f.label :note, "备注", class: "text-xs font-medium text-gray-600 mb-1" %>
+    <%= f.text_field :note, class: "border border-gray-300 rounded-md px-2 py-1.5 text-sm w-40" %>
+  </div>
+  <%= f.submit "添加", class: "bg-blue-600 text-white px-3 py-1.5 rounded-md hover:bg-blue-700 text-sm cursor-pointer" %>
+<% end %>

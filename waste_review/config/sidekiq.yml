@@ -1,0 +1,9 @@
+:concurrency: 5
+:queues:
+  - default
+  - mailers
+  - low
+:schedule:
+  daily_waste_summary:
+    cron: "0 8 * * *"
+    class: DailyWasteSummaryJob

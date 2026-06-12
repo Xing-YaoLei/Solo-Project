@@ -1,0 +1,195 @@
+<% content_for :page_title, "报损单 ##{@waste_report.id}" %>
+
+<div class="flex items-center justify-between mb-6">
+  <div class="flex items-center gap-3">
+    <h1 class="text-2xl font-bold text-gray-900">报损单 #<%= @waste_report.id %></h1>
+    <%= render "status_badge", status: @waste_report.status %>
+  </div>
+  <div class="flex gap-2">
+    <%= link_to "下载CSV", download_waste_report_path(@waste_report, format: :csv), class: "bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 text-sm" %>
+    <% if @waste_report.submitted? %>
+      <%= button_to "提交复核", review_waste_report_path(@waste_report), method: :post, class: "bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm cursor-pointer" %>
+    <% end %>
+    <% if @waste_report.reviewing? %>
+      <%= button_to "通过", approve_waste_report_path(@waste_report), method: :post, class: "bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm cursor-pointer" %>
+      <%= button_to "驳回", reject_waste_report_path(@waste_report), method: :post, class: "bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 text-sm cursor-pointer" %>
+    <% end %>
+    <% if @waste_report.approved? %>
+      <%= button_to "结算", settle_waste_report_path(@waste_report), method: :post, class: "bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 text-sm cursor-pointer" %>
+    <% end %>
+  </div>
+</div>
+
+<div class="bg-white rounded-lg shadow p-6 mb-6">
+  <h3 class="text-lg font-semibold text-gray-800 mb-4">基本信息</h3>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div>
+      <span class="text-sm text-gray-500">门店</span>
+      <p class="text-gray-900 font-medium"><%= @waste_report.store_name %></p>
+    </div>
+    <div>
+      <span class="text-sm text-gray-500">报损日期</span>
+      <p class="text-gray-900 font-medium"><%= @waste_report.report_date %></p>
+    </div>
+    <div>
+      <span class="text-sm text-gray-500">报损人</span>
+      <p class="text-gray-900 font-medium"><%= @waste_report.reporter %></p>
+    </div>
+    <div>
+      <span class="text-sm text-gray-500">备注</span>
+      <p class="text-gray-900 font-medium"><%= @waste_report.notes.presence || "-" %></p>
+    </div>
+  </div>
+</div>
+
+<div class="bg-white rounded-lg shadow mb-6">
+  <div class="px-6 py-4 border-b border-gray-200">
+    <h3 class="text-lg font-semibold text-gray-800">报损明细</h3>
+  </div>
+  <table class="min-w-full divide-y divide-gray-200">
+    <thead class="bg-gray-50">
+      <tr>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">产品名称</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">SKU</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">数量</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">单位</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">单价</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">小计</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">损耗原因</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">类别</th>
+      </tr>
+    </thead>
+    <tbody class="bg-white divide-y divide-gray-200">
+      <% @waste_report.waste_items.each do |item| %>
+        <tr class="hover:bg-gray-50">
+          <td class="px-4 py-3 text-sm text-gray-900"><%= item.product_name %></td>
+          <td class="px-4 py-3 text-sm text-gray-500"><%= item.product_sku.presence || "-" %></td>
+          <td class="px-4 py-3 text-sm text-gray-900"><%= item.quantity %></td>
+          <td class="px-4 py-3 text-sm text-gray-500"><%= item.unit.presence || "-" %></td>
+          <td class="px-4 py-3 text-sm text-gray-900">¥<%= number_to_currency(item.unit_cost, unit: '', precision: 2) %></td>
+          <td class="px-4 py-3 text-sm text-gray-900 font-medium">¥<%= number_to_currency(item.subtotal, unit: '', precision: 2) %></td>
+          <td class="px-4 py-3 text-sm text-gray-500"><%= item.waste_reason %></td>
+          <td class="px-4 py-3 text-sm text-gray-500"><%= item.category.presence || "-" %></td>
+        </tr>
+      <% end %>
+    </tbody>
+    <tfoot class="bg-gray-50">
+      <tr>
+        <td colspan="5" class="px-4 py-3 text-sm font-semibold text-gray-700 text-right">合计</td>
+        <td class="px-4 py-3 text-sm font-bold text-gray-900">¥<%= number_to_currency(@waste_report.waste_items.sum(:subtotal), unit: '', precision: 2) %></td>
+        <td colspan="2"></td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+
+<div class="bg-white rounded-lg shadow mb-6">
+  <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+    <h3 class="text-lg font-semibold text-gray-800">成本条目</h3>
+  </div>
+  <table class="min-w-full divide-y divide-gray-200">
+    <thead class="bg-gray-50">
+      <tr>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">成本类型</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">责任门店</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">金额</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">备注</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase"></th>
+      </tr>
+    </thead>
+    <tbody class="bg-white divide-y divide-gray-200">
+      <% @waste_report.cost_entries.each do |entry| %>
+        <tr class="hover:bg-gray-50">
+          <td class="px-4 py-3 text-sm text-gray-900">
+            <%= case entry.cost_type
+               when 'material' then '物料成本'
+               when 'labor' then '人工成本'
+               when 'disposal' then '处置成本'
+               else entry.cost_type
+               end %>
+          </td>
+          <td class="px-4 py-3 text-sm text-gray-500"><%= entry.responsible_store&.name.presence || "-" %></td>
+          <td class="px-4 py-3 text-sm text-gray-900">¥<%= number_to_currency(entry.amount, unit: '', precision: 2) %></td>
+          <td class="px-4 py-3 text-sm text-gray-500"><%= entry.note.presence || "-" %></td>
+          <td class="px-4 py-3 text-sm">
+            <%= button_to "删除", waste_report_cost_entry_path(@waste_report, entry), method: :delete, class: "text-red-600 hover:text-red-800 text-sm cursor-pointer" %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+  <div class="p-4 border-t border-gray-200">
+    <%= render "cost_entries/form", waste_report: @waste_report %>
+  </div>
+</div>
+
+<div class="bg-white rounded-lg shadow mb-6">
+  <div class="px-6 py-4 border-b border-gray-200">
+    <h3 class="text-lg font-semibold text-gray-800">复核意见</h3>
+  </div>
+  <table class="min-w-full divide-y divide-gray-200">
+    <thead class="bg-gray-50">
+      <tr>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">复核人</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">意见</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">结果</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">时间</th>
+      </tr>
+    </thead>
+    <tbody class="bg-white divide-y divide-gray-200">
+      <% @waste_report.review_opinions.each do |opinion| %>
+        <tr class="hover:bg-gray-50">
+          <td class="px-4 py-3 text-sm text-gray-900"><%= opinion.reviewer %></td>
+          <td class="px-4 py-3 text-sm text-gray-700"><%= opinion.opinion.presence || "-" %></td>
+          <td class="px-4 py-3 text-sm">
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+              <%= case opinion.result
+                 when 'approved' then 'bg-green-100 text-green-800'
+                 when 'rejected' then 'bg-red-100 text-red-800'
+                 else 'bg-yellow-100 text-yellow-800'
+                 end %>">
+              <%= case opinion.result
+                 when 'approved' then '通过'
+                 when 'rejected' then '驳回'
+                 else '待处理'
+                 end %>
+            </span>
+          </td>
+          <td class="px-4 py-3 text-sm text-gray-500"><%= opinion.created_at&.strftime("%Y-%m-%d %H:%M") %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+  <div class="p-4 border-t border-gray-200">
+    <%= render "review_opinions/form", waste_report: @waste_report %>
+  </div>
+</div>
+
+<div class="bg-white rounded-lg shadow">
+  <div class="px-6 py-4 border-b border-gray-200">
+    <h3 class="text-lg font-semibold text-gray-800">状态日志</h3>
+  </div>
+  <div class="p-6">
+    <div class="space-y-4">
+      <% @waste_report.status_logs.order(created_at: :desc).each do |log| %>
+        <div class="flex items-start gap-4">
+          <div class="flex-shrink-0 w-3 h-3 mt-1.5 rounded-full bg-blue-500"></div>
+          <div class="flex-1">
+            <div class="flex items-center gap-2">
+              <%= render "waste_reports/status_badge", status: log.from_status %>
+              <span class="text-gray-400">→</span>
+              <%= render "waste_reports/status_badge", status: log.to_status %>
+            </div>
+            <div class="mt-1 flex items-center gap-4 text-sm text-gray-500">
+              <span>操作人: <%= log.operator %></span>
+              <% if log.note.present? %>
+                <span>备注: <%= log.note %></span>
+              <% end %>
+              <span><%= log.created_at&.strftime("%Y-%m-%d %H:%M") %></span>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

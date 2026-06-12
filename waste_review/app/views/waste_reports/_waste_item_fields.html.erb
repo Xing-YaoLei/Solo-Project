@@ -1,0 +1,36 @@
+<div class="flex items-start gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200" data-new-record="<%= f.object.new_record? %>">
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-3 flex-1">
+    <div>
+      <%= f.label :product_name, "产品名称", class: "block text-xs font-medium text-gray-600 mb-1" %>
+      <%= f.text_field :product_name, class: "w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:ring-blue-500 focus:border-blue-500" %>
+    </div>
+    <div>
+      <%= f.label :product_sku, "SKU", class: "block text-xs font-medium text-gray-600 mb-1" %>
+      <%= f.text_field :product_sku, class: "w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:ring-blue-500 focus:border-blue-500" %>
+    </div>
+    <div>
+      <%= f.label :quantity, "数量", class: "block text-xs font-medium text-gray-600 mb-1" %>
+      <%= f.number_field :quantity, min: 1, class: "w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:ring-blue-500 focus:border-blue-500" %>
+    </div>
+    <div>
+      <%= f.label :unit, "单位", class: "block text-xs font-medium text-gray-600 mb-1" %>
+      <%= f.text_field :unit, class: "w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:ring-blue-500 focus:border-blue-500" %>
+    </div>
+    <div>
+      <%= f.label :unit_cost, "单价", class: "block text-xs font-medium text-gray-600 mb-1" %>
+      <%= f.number_field :unit_cost, step: 0.01, min: 0, class: "w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:ring-blue-500 focus:border-blue-500" %>
+    </div>
+    <div>
+      <%= f.label :waste_reason, "损耗原因", class: "block text-xs font-medium text-gray-600 mb-1" %>
+      <%= f.select :waste_reason, WasteItem::WASTE_REASONS, { include_blank: "请选择原因" }, class: "w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:ring-blue-500 focus:border-blue-500" %>
+    </div>
+    <div>
+      <%= f.label :category, "类别", class: "block text-xs font-medium text-gray-600 mb-1" %>
+      <%= f.select :category, WasteItem::CATEGORIES, { include_blank: "请选择类别" }, class: "w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:ring-blue-500 focus:border-blue-500" %>
+    </div>
+  </div>
+  <button type="button" data-action="click->nested-form#remove" class="mt-5 text-red-500 hover:text-red-700 text-sm flex-shrink-0">
+    ✕
+  </button>
+  <%= f.hidden_field :_destroy, data: { nested_form_target: "destroy" } %>
+</div>

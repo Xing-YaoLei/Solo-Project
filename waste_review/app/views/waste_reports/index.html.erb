@@ -1,0 +1,121 @@
+<% content_for :page_title, "报损单管理" %>
+
+<div class="flex items-center justify-between mb-6">
+  <h1 class="text-2xl font-bold text-gray-900">报损单列表</h1>
+  <div class="flex gap-2">
+    <%= link_to "导出CSV", waste_reports_path(params.permit(:status, :store_id, :start_date, :end_date).merge(format: :csv)), class: "bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm" %>
+    <%= link_to "后台导出", waste_reports_path(params.permit(:status, :store_id, :start_date, :end_date).merge(async: "true")), class: "bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 text-sm" %>
+    <%= link_to "新建报损单", new_waste_report_path, class: "bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm" %>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+  <div class="bg-white rounded-lg shadow p-4">
+    <p class="text-xs text-gray-500 mb-1">记录数</p>
+    <p class="text-xl font-bold text-gray-900"><%= @stats[:total_count] %></p>
+  </div>
+  <div class="bg-white rounded-lg shadow p-4">
+    <p class="text-xs text-gray-500 mb-1">总成本</p>
+    <p class="text-xl font-bold text-gray-900">¥<%= number_to_currency(@stats[:total_cost], unit: '', precision: 2) %></p>
+  </div>
+  <div class="bg-white rounded-lg shadow p-4">
+    <p class="text-xs text-gray-500 mb-1">平均损耗率</p>
+    <p class="text-xl font-bold <%= @stats[:avg_waste_rate] > 5 ? 'text-red-600' : 'text-gray-900' %>"><%= @stats[:avg_waste_rate] %>%</p>
+  </div>
+  <div class="bg-white rounded-lg shadow p-4">
+    <p class="text-xs text-gray-500 mb-1">异常单</p>
+    <p class="text-xl font-bold <%= @stats[:abnormal_count] > 0 ? 'text-red-600' : 'text-gray-900' %>"><%= @stats[:abnormal_count] %></p>
+  </div>
+</div>
+
+<div class="bg-white rounded-lg shadow p-4 mb-6">
+  <%= form_with url: waste_reports_path, method: :get, class: "flex flex-wrap items-end gap-4", data: { turbo_frame: "waste_reports" } do |f| %>
+    <div class="flex flex-col">
+      <label class="text-sm font-medium text-gray-700 mb-1">状态</label>
+      <%= f.select :status, WasteReport.statuses.keys.map { |s| [t("status.#{s}", default: s), s] }, { include_blank: "全部" }, class: "border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500" %>
+    </div>
+    <div class="flex flex-col">
+      <label class="text-sm font-medium text-gray-700 mb-1">门店</label>
+      <%= f.select :store_id, Store.active.map { |s| [s.name, s.id] }, { include_blank: "全部" }, class: "border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500" %>
+    </div>
+    <div class="flex flex-col">
+      <label class="text-sm font-medium text-gray-700 mb-1">开始日期</label>
+      <%= f.date_field :start_date, value: params[:start_date], class: "border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500" %>
+    </div>
+    <div class="flex flex-col">
+      <label class="text-sm font-medium text-gray-700 mb-1">结束日期</label>
+      <%= f.date_field :end_date, value: params[:end_date], class: "border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500" %>
+    </div>
+    <div class="flex gap-2">
+      <%= f.submit "搜索", class: "bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-sm cursor-pointer" %>
+      <%= link_to "重置", waste_reports_path, class: "bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 text-sm" %>
+    </div>
+  <% end %>
+</div>
+
+<%= turbo_frame_tag "waste_reports" do %>
+  <div class="bg-white rounded-lg shadow overflow-hidden">
+    <table class="min-w-full divide-y divide-gray-200">
+      <thead class="bg-gray-50">
+        <tr>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">报损单号</th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">门店名称</th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">报损日期</th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">报损人</th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">状态</th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">损耗率%</th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">总成本</th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">异常</th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">操作</th>
+        </tr>
+      </thead>
+      <tbody class="bg-white divide-y divide-gray-200">
+        <% @waste_reports.each do |report| %>
+          <tr class="hover:bg-gray-50 <%= report.abnormal? ? 'bg-red-50' : '' %>" id="waste_report_<%= report.id %>">
+            <td class="px-4 py-3 text-sm font-medium text-gray-900">#<%= report.id %></td>
+            <td class="px-4 py-3 text-sm text-gray-700"><%= report.store_name %></td>
+            <td class="px-4 py-3 text-sm text-gray-500"><%= report.report_date %></td>
+            <td class="px-4 py-3 text-sm text-gray-500"><%= report.reporter %></td>
+            <td class="px-4 py-3 text-sm"><%= render "status_badge", status: report.status %></td>
+            <td class="px-4 py-3 text-sm <%= report.abnormal? ? 'text-red-600 font-medium' : 'text-gray-900' %>"><%= report.waste_rate %>%</td>
+            <td class="px-4 py-3 text-sm text-gray-900">¥<%= number_to_currency(report.total_cost, unit: '', precision: 2) %></td>
+            <td class="px-4 py-3 text-sm">
+              <% if report.abnormal_report.present? %>
+                <% severity_label = case report.abnormal_report.severity
+                                   when 'low' then '低'
+                                   when 'medium' then '中'
+                                   when 'high' then '高'
+                                   else report.abnormal_report.severity
+                                   end %>
+                <%= link_to abnormal_report_path(report.abnormal_report), class: "text-red-600 hover:text-red-800" do %>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+                    <%= severity_label %>
+                  </span>
+                <% end %>
+              <% else %>
+                <span class="text-gray-400 text-xs">-</span>
+              <% end %>
+            </td>
+            <td class="px-4 py-3 text-sm space-x-2">
+              <%= link_to "查看", waste_report_path(report), class: "text-blue-600 hover:text-blue-800" %>
+              <% if report.submitted? %>
+                <%= link_to "编辑", edit_waste_report_path(report), class: "text-yellow-600 hover:text-yellow-800" %>
+                <%= button_to "复核", review_waste_report_path(report), method: :post, class: "text-blue-600 hover:text-blue-800 cursor-pointer" %>
+              <% end %>
+              <% if report.reviewing? %>
+                <%= button_to "通过", approve_waste_report_path(report), method: :post, class: "text-green-600 hover:text-green-800 cursor-pointer" %>
+                <%= button_to "驳回", reject_waste_report_path(report), method: :post, class: "text-red-600 hover:text-red-800 cursor-pointer" %>
+              <% end %>
+              <% if report.approved? %>
+                <%= button_to "结算", settle_waste_report_path(report), method: :post, class: "text-gray-600 hover:text-gray-800 cursor-pointer" %>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+    <% if @waste_reports.empty? %>
+      <div class="p-8 text-center text-gray-500">暂无报损单数据</div>
+    <% end %>
+  </div>
+<% end %>

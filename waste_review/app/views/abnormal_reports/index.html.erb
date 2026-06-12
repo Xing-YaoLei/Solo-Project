@@ -1,0 +1,75 @@
+<% content_for :page_title, "异常单管理" %>
+
+<div class="mb-6">
+  <h1 class="text-2xl font-bold text-gray-900">异常单列表</h1>
+</div>
+
+<div class="bg-white rounded-lg shadow p-4 mb-6">
+  <%= form_with url: abnormal_reports_path, method: :get, class: "flex flex-wrap items-end gap-4" do |f| %>
+    <div class="flex flex-col">
+      <label class="text-sm font-medium text-gray-700 mb-1">严重程度</label>
+      <%= f.select :severity, AbnormalReport.severities.keys.map { |s| [t("severity.#{s}", default: s), s] }, { include_blank: "全部" }, class: "border border-gray-300 rounded-md px-3 py-2 text-sm" %>
+    </div>
+    <div class="flex flex-col">
+      <label class="text-sm font-medium text-gray-700 mb-1">是否解决</label>
+      <%= f.select :resolved, [["未解决", "false"], ["已解决", "true"]], { include_blank: "全部" }, class: "border border-gray-300 rounded-md px-3 py-2 text-sm" %>
+    </div>
+    <div>
+      <%= f.submit "搜索", class: "bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-sm cursor-pointer" %>
+    </div>
+  <% end %>
+</div>
+
+<div class="bg-white rounded-lg shadow overflow-hidden">
+  <table class="min-w-full divide-y divide-gray-200">
+    <thead class="bg-gray-50">
+      <tr>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">关联报损单</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">严重程度</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">影响范围</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">责任归属</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">处理结果</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">是否解决</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">操作</th>
+      </tr>
+    </thead>
+    <tbody class="bg-white divide-y divide-gray-200">
+      <% @abnormal_reports.each do |report| %>
+        <tr class="hover:bg-gray-50 <%= 'bg-red-50' unless report.resolved? %>">
+          <td class="px-4 py-3 text-sm">
+            <%= link_to "##{report.waste_report_id}", waste_report_path(report.waste_report), class: "text-blue-600 hover:text-blue-800 font-medium" %>
+          </td>
+          <td class="px-4 py-3 text-sm">
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+              <%= case report.severity
+                 when 'low' then 'bg-yellow-100 text-yellow-800'
+                 when 'medium' then 'bg-orange-100 text-orange-800'
+                 when 'high' then 'bg-red-100 text-red-800'
+                 end %>">
+              <%= case report.severity
+                 when 'low' then '低'
+                 when 'medium' then '中'
+                 when 'high' then '高'
+                 end %>
+            </span>
+          </td>
+          <td class="px-4 py-3 text-sm text-gray-700 max-w-xs truncate"><%= report.impact_scope.presence || "-" %></td>
+          <td class="px-4 py-3 text-sm text-gray-700"><%= report.responsibility_attribution.presence || "-" %></td>
+          <td class="px-4 py-3 text-sm text-gray-700"><%= report.handling_result.presence || "-" %></td>
+          <td class="px-4 py-3 text-sm">
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+              <%= report.resolved? ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' %>">
+              <%= report.resolved? ? "已解决" : "未解决" %>
+            </span>
+          </td>
+          <td class="px-4 py-3 text-sm space-x-2">
+            <%= link_to "查看", abnormal_report_path(report), class: "text-blue-600 hover:text-blue-800" %>
+            <% unless report.resolved? %>
+              <%= button_to "解决", resolve_abnormal_report_path(report), method: :post, class: "text-green-600 hover:text-green-800 cursor-pointer" %>
+            <% end %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>

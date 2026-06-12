@@ -1,0 +1,183 @@
+<% content_for :page_title, "仪表盘" %>
+
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+  <div class="bg-white rounded-lg shadow p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-gray-500 text-sm font-medium">本月整体损耗率</h3>
+      <span class="text-2xl">📊</span>
+    </div>
+    <% overall_rate = WasteReport.overall_waste_rate(Date.current.beginning_of_month, Date.current.end_of_month) %>
+    <div class="flex items-baseline gap-2">
+      <span class="text-3xl font-bold <%= overall_rate > 5 ? 'text-red-600' : 'text-gray-900' %>"><%= overall_rate %>%</span>
+      <% if overall_rate > 5 %>
+        <span class="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded">异常</span>
+      <% end %>
+    </div>
+    <p class="text-xs text-gray-500 mt-2">阈值: 5%</p>
+    <%= link_to "详细分析", statistics_waste_reports_path, class: "text-xs text-blue-600 hover:text-blue-800 mt-2 block" %>
+  </div>
+
+  <div class="bg-white rounded-lg shadow p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-gray-500 text-sm font-medium">报损单总数</h3>
+      <span class="text-2xl">📋</span>
+    </div>
+    <div class="flex items-center gap-4">
+      <span class="text-3xl font-bold text-gray-900"><%= WasteReport.count %></span>
+    </div>
+    <div class="flex flex-wrap gap-1 mt-3">
+      <% WasteReport.statuses.each do |name, value| %>
+        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
+          <%= case name
+             when 'submitted' then 'bg-yellow-100 text-yellow-800'
+             when 'reviewing' then 'bg-blue-100 text-blue-800'
+             when 'approved' then 'bg-green-100 text-green-800'
+             when 'rejected' then 'bg-red-100 text-red-800'
+             when 'settled' then 'bg-gray-100 text-gray-800'
+             end %>">
+          <%= t("status.#{name}", default: name) %>: <%= @status_counts[value] || 0 %>
+        </span>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-lg shadow p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-gray-500 text-sm font-medium">本月报损成本</h3>
+      <span class="text-2xl">💰</span>
+    </div>
+    <span class="text-3xl font-bold text-gray-900">¥<%= number_to_currency(@monthly_cost, unit: '', precision: 2) %></span>
+    <% prev_month_cost = WasteReport.where(report_date: 1.month.ago.all_month).sum(:total_cost) %>
+    <% if prev_month_cost > 0 %>
+      <% change = ((@monthly_cost - prev_month_cost) / prev_month_cost * 100).round(1) %>
+      <p class="text-xs <%= change > 0 ? 'text-red-500' : 'text-green-500' %> mt-2">
+        <%= change > 0 ? '↑' : '↓' %> <%= change.abs %>% 较上月
+      </p>
+    <% end %>
+  </div>
+
+  <div class="bg-white rounded-lg shadow p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-gray-500 text-sm font-medium">异常单未处理</h3>
+      <span class="text-2xl">⚠️</span>
+    </div>
+    <span class="text-3xl font-bold <%= @abnormal_count > 0 ? 'text-red-600' : 'text-gray-900' %>"><%= @abnormal_count %></span>
+    <% if @abnormal_count > 0 %>
+      <%= link_to "立即处理", abnormal_reports_path(resolved: "false"), class: "text-xs text-blue-600 hover:text-blue-800 mt-2 block" %>
+    <% end %>
+    <p class="text-xs text-gray-500 mt-2">
+      解决率: <%= AbnormalReport.resolution_rate %>%
+    </p>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+  <div class="bg-white rounded-lg shadow">
+    <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+      <h3 class="text-lg font-semibold text-gray-800">待处理报损单</h3>
+      <%= link_to "查看全部", waste_reports_path(status: :submitted), class: "text-sm text-blue-600 hover:text-blue-800" %>
+    </div>
+    <% pending_reports = WasteReport.submitted.includes(:store).order(created_at: :desc).limit(5) %>
+    <% if pending_reports.any? %>
+      <div class="divide-y divide-gray-100">
+        <% pending_reports.each do |report| %>
+          <div class="px-6 py-4 hover:bg-gray-50">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-sm font-medium text-gray-900"><%= report.store_name %> - <%= report.report_date %></p>
+                <p class="text-xs text-gray-500">报损人: <%= report.reporter %> · 金额: ¥<%= number_to_currency(report.total_cost, unit: '', precision: 2) %></p>
+              </div>
+              <div class="flex gap-2">
+                <%= link_to "查看", waste_report_path(report), class: "text-sm text-blue-600 hover:text-blue-800" %>
+                <%= button_to "复核", review_waste_report_path(report), method: :post, class: "text-sm text-green-600 hover:text-green-800 cursor-pointer" %>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="p-8 text-center text-gray-500">暂无待处理报损单</div>
+    <% end %>
+  </div>
+
+  <div class="bg-white rounded-lg shadow">
+    <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+      <h3 class="text-lg font-semibold text-gray-800">未解决异常单</h3>
+      <%= link_to "查看全部", abnormal_reports_path(resolved: "false"), class: "text-sm text-blue-600 hover:text-blue-800" %>
+    </div>
+    <% unresolved_abnormals = AbnormalReport.unresolved.includes(waste_report: :store).order(created_at: :desc).limit(5) %>
+    <% if unresolved_abnormals.any? %>
+      <div class="divide-y divide-gray-100">
+        <% unresolved_abnormals.each do |abnormal| %>
+          <div class="px-6 py-4 hover:bg-gray-50">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
+                  <%= case abnormal.severity
+                     when 'low' then 'bg-yellow-100 text-yellow-800'
+                     when 'medium' then 'bg-orange-100 text-orange-800'
+                     when 'high' then 'bg-red-100 text-red-800'
+                     end %>">
+                  <%= case abnormal.severity
+                     when 'low' then '低'
+                     when 'medium' then '中'
+                     when 'high' then '高'
+                     end %>
+                </span>
+                <div>
+                  <p class="text-sm font-medium text-gray-900"><%= abnormal.store_name %></p>
+                  <p class="text-xs text-gray-500">损耗率: <%= abnormal.waste_rate %>% · 待处理 <%= abnormal.days_pending %>天</p>
+                </div>
+              </div>
+              <%= link_to "处理", abnormal_report_path(abnormal), class: "text-sm text-blue-600 hover:text-blue-800" %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="p-8 text-center text-gray-500">🎉 暂无未解决异常单</div>
+    <% end %>
+  </div>
+</div>
+
+<div class="bg-white rounded-lg shadow">
+  <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+    <h3 class="text-lg font-semibold text-gray-800">最近报损单</h3>
+    <%= link_to "新建报损单", new_waste_report_path, class: "bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-sm" %>
+  </div>
+  <table class="min-w-full divide-y divide-gray-200">
+    <thead class="bg-gray-50">
+      <tr>
+        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">单号</th>
+        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">门店</th>
+        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">日期</th>
+        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">报损人</th>
+        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">状态</th>
+        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">损耗率</th>
+        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">总成本</th>
+        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">操作</th>
+      </tr>
+    </thead>
+    <tbody class="bg-white divide-y divide-gray-200">
+      <% @recent_reports.each do |report| %>
+        <tr class="hover:bg-gray-50 <%= report.abnormal? ? 'bg-red-50' : '' %>">
+          <td class="px-6 py-4 text-sm font-medium text-gray-900">#<%= report.id %></td>
+          <td class="px-6 py-4 text-sm text-gray-900"><%= report.store_name %></td>
+          <td class="px-6 py-4 text-sm text-gray-500"><%= report.report_date %></td>
+          <td class="px-6 py-4 text-sm text-gray-500"><%= report.reporter %></td>
+          <td class="px-6 py-4 text-sm"><%= render "waste_reports/status_badge", status: report.status %></td>
+          <td class="px-6 py-4 text-sm <%= report.abnormal? ? 'text-red-600 font-medium' : 'text-gray-900' %>">
+            <%= report.waste_rate %>%
+            <% if report.abnormal? %>
+              <span class="text-xs bg-red-100 text-red-800 px-1.5 py-0.5 rounded ml-1">异常</span>
+            <% end %>
+          </td>
+          <td class="px-6 py-4 text-sm text-gray-900">¥<%= number_to_currency(report.total_cost, unit: '', precision: 2) %></td>
+          <td class="px-6 py-4 text-sm">
+            <%= link_to "查看", waste_report_path(report), class: "text-blue-600 hover:text-blue-800" %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>
