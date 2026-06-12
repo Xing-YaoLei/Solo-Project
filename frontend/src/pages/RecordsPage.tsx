@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
-import { Plus, Search, Filter, WifiOff } from 'lucide-react'
+import { Plus, Search, WifiOff, AlertCircle, RefreshCw } from 'lucide-react'
 import { cleaningApi, statisticsApi } from '@/lib/api'
 import { StatusBadge } from '@/components/StatusBadge'
 import { OfflineAlert } from '@/components/OfflineAlert'
@@ -28,6 +28,7 @@ export default function RecordsPage() {
   const [records, setRecords] = useState<CleaningRecord[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<CleaningStatus | 'all'>('all')
   const [offlineOnly, setOfflineOnly] = useState(false)
   const [search, setSearch] = useState('')
@@ -39,6 +40,7 @@ export default function RecordsPage() {
 
   const loadData = async () => {
     setLoading(true)
+    setError(null)
     try {
       const params: Record<string, any> = {}
       if (statusFilter !== 'all') params.status = statusFilter
@@ -51,19 +53,10 @@ export default function RecordsPage() {
       setRecords(recordsRes.data.items)
       setTotal(recordsRes.data.total)
       setStats(statsRes.data)
-    } catch (e) {
+    } catch (e: any) {
+      const msg = e?.response?.data?.detail || e?.message || '加载失败，请检查后端服务'
+      setError(msg)
       console.error(e)
-      const mockRecords = generateMockRecords()
-      setRecords(mockRecords)
-      setTotal(mockRecords.length)
-      setStats({
-        total_records: mockRecords.length,
-        completed_count: mockRecords.filter(r => r.status === 'completed').length,
-        reviewing_count: mockRecords.filter(r => r.status === 'reviewing').length,
-        supplement_count: mockRecords.filter(r => r.status === 'supplement_info').length,
-        closed_count: mockRecords.filter(r => r.status === 'closed').length,
-        avg_qualified_rate: 87.5,
-      })
     } finally {
       setLoading(false)
     }
@@ -93,6 +86,19 @@ export default function RecordsPage() {
           新建单据
         </button>
       </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-red-800">加载失败</p>
+            <p className="text-sm text-red-700 mt-1">{error}</p>
+          </div>
+          <button onClick={loadData} className="btn-secondary text-sm gap-1">
+            <RefreshCw className="w-4 h-4" /> 重试
+          </button>
+        </div>
+      )}
 
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -224,44 +230,4 @@ function StatCard({ label, value, color }: { label: string; value: number; color
       <div className="text-2xl font-bold mt-1">{value}</div>
     </div>
   )
-}
-
-function generateMockRecords(): CleaningRecord[] {
-  const statuses: CleaningStatus[] = ['draft', 'pending_review', 'supplement_info', 'reviewing', 'completed', 'closed']
-  const channels: any = ['routine_inspection', 'device_alert', 'manual_report', 'store_request']
-  const pointNames = ['南京路旗舰店', '浦东机场店', '人民广场店', '徐家汇店', '静安寺店', '陆家嘴店']
-  const deviceNames = ['意式咖啡机A1', '意式咖啡机B2', '冷萃机C1', '磨豆机D1', '开水机E1', '制冰机F1']
-
-  return Array.from({ length: 12 }, (_, i) => {
-    const status = statuses[i % statuses.length]
-    const isOffline = i % 4 === 0
-    return {
-      id: i + 1,
-      record_no: `CL20250612${String(1000 + i).padStart(4, '0')}`,
-      store_point_id: (i % 6) + 1,
-      device_id: (i % 6) + 1,
-      source_channel: channels[i % 4],
-      status,
-      cleaning_items: [],
-      cleaning_photos: [],
-      review_photos: [],
-      is_device_offline: isOffline,
-      offline_handled: isOffline && i % 8 === 0,
-      qualified_rate: status === 'completed' || status === 'closed' ? 80 + (i % 20) : undefined,
-      created_at: new Date(Date.now() - i * 3600000).toISOString(),
-      store_point: {
-        id: (i % 6) + 1,
-        name: pointNames[i % 6],
-        store_code: `ST${String(i + 1).padStart(4, '0')}`,
-        status: 'active',
-      },
-      device: {
-        id: (i % 6) + 1,
-        device_code: `DEV${String(i + 1).padStart(4, '0')}`,
-        device_name: deviceNames[i % 6],
-        status: isOffline ? 'offline' : 'online',
-      },
-      status_logs: [],
-    } as CleaningRecord
-  })
 }

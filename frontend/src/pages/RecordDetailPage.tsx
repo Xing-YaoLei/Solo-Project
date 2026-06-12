@@ -14,6 +14,8 @@ import {
   FileText,
   X,
   AlertTriangle,
+  AlertCircle,
+  RefreshCw,
 } from 'lucide-react'
 import { cleaningApi } from '@/lib/api'
 import { StatusBadge } from '@/components/StatusBadge'
@@ -34,6 +36,7 @@ export default function RecordDetailPage() {
   const navigate = useNavigate()
   const [record, setRecord] = useState<CleaningRecord | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [showReviewModal, setShowReviewModal] = useState(false)
   const [showCloseModal, setShowCloseModal] = useState(false)
   const [reviewResult, setReviewResult] = useState('')
@@ -49,11 +52,14 @@ export default function RecordDetailPage() {
 
   const loadRecord = async (id: number) => {
     setLoading(true)
+    setError(null)
     try {
       const res = await cleaningApi.get(id)
       setRecord(res.data)
-    } catch {
-      setRecord(generateMockRecord(id))
+    } catch (e: any) {
+      const msg = e?.response?.data?.detail || e?.message || '加载单据失败，请检查后端服务'
+      setError(msg)
+      console.error(e)
     } finally {
       setLoading(false)
     }
@@ -65,10 +71,9 @@ export default function RecordDetailPage() {
     try {
       await cleaningApi.submitReview(record.id)
       await loadRecord(record.id)
-    } catch {
-      if (record) {
-        setRecord({ ...record, status: 'pending_review' })
-      }
+    } catch (e: any) {
+      const msg = e?.response?.data?.detail || e?.message || '提交复核失败'
+      setError(msg)
     } finally {
       setProcessing(false)
     }
@@ -80,8 +85,9 @@ export default function RecordDetailPage() {
     try {
       await cleaningApi.startReview(record.id)
       await loadRecord(record.id)
-    } catch {
-      if (record) setRecord({ ...record, status: 'reviewing' })
+    } catch (e: any) {
+      const msg = e?.response?.data?.detail || e?.message || '开始复核失败'
+      setError(msg)
     } finally {
       setProcessing(false)
     }
@@ -102,16 +108,9 @@ export default function RecordDetailPage() {
       setReviewResult('')
       setReviewRemarks('')
       setNeedSupplement(false)
-    } catch {
-      if (record) {
-        setRecord({
-          ...record,
-          status: needSupplement ? 'supplement_info' : 'completed',
-          review_result: reviewResult,
-          review_remarks: reviewRemarks,
-        })
-      }
-      setShowReviewModal(false)
+    } catch (e: any) {
+      const msg = e?.response?.data?.detail || e?.message || '提交复核结果失败'
+      setError(msg)
     } finally {
       setProcessing(false)
     }
@@ -127,17 +126,9 @@ export default function RecordDetailPage() {
       })
       await loadRecord(record.id)
       setShowCloseModal(false)
-    } catch {
-      if (record) {
-        setRecord({
-          ...record,
-          status: 'closed',
-          close_reason: closeReason,
-          close_remarks: closeRemarks,
-          closed_at: new Date().toISOString(),
-        })
-      }
-      setShowCloseModal(false)
+    } catch (e: any) {
+      const msg = e?.response?.data?.detail || e?.message || '关闭单据失败'
+      setError(msg)
     } finally {
       setProcessing(false)
     }
@@ -148,13 +139,31 @@ export default function RecordDetailPage() {
     try {
       await cleaningApi.handleOffline(record.id, '现场确认已恢复')
       await loadRecord(record.id)
-    } catch {
-      if (record) setRecord({ ...record, offline_handled: true, offline_remarks: '现场确认已恢复' })
+    } catch (e: any) {
+      const msg = e?.response?.data?.detail || e?.message || '处理离线异常失败'
+      setError(msg)
     }
   }
 
   if (loading) {
     return <div className="p-8 text-center text-gray-500">加载中...</div>
+  }
+  if (error && !record) {
+    return (
+      <div className="p-8">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-3" />
+          <p className="text-lg font-medium text-red-800">加载失败</p>
+          <p className="text-sm text-red-600 mt-2">{error}</p>
+          <button
+            onClick={() => recordId && loadRecord(Number(recordId))}
+            className="btn-primary mt-4 gap-2"
+          >
+            <RefreshCw className="w-4 h-4" /> 重新加载
+          </button>
+        </div>
+      </div>
+    )
   }
   if (!record) {
     return <div className="p-8 text-center text-gray-500">单据不存在</div>
@@ -165,6 +174,19 @@ export default function RecordDetailPage() {
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-red-800">操作失败</p>
+            <p className="text-sm text-red-700 mt-1">{error}</p>
+          </div>
+          <button onClick={() => setError(null)} className="text-sm text-red-600 hover:text-red-800">
+            关闭
+          </button>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
           <button
@@ -577,68 +599,3 @@ function Modal({ title, children, onClose }: { title: string; children: React.Re
   )
 }
 
-function generateMockRecord(id: number): CleaningRecord {
-  const statuses: any = ['draft', 'pending_review', 'supplement_info', 'reviewing', 'completed', 'closed']
-  const status = statuses[id % 6]
-  const isOffline = id % 3 === 0
-  return {
-    id,
-    record_no: `CL20250612${String(1000 + id).padStart(4, '0')}`,
-    store_point_id: 1,
-    device_id: 1,
-    source_channel: id % 2 === 0 ? 'routine_inspection' : 'device_alert',
-    status,
-    cleaning_date: new Date().toISOString(),
-    cleaning_person_id: 1,
-    cleaning_items: [
-      { name: '冲煮头清洁', completed: true },
-      { name: '蒸汽棒清洁', completed: true },
-      { name: '滴水盘清洁', completed: true },
-      { name: '豆仓清洁', completed: false, remarks: '豆仓较满待处理' },
-      { name: '外壳擦拭', completed: true },
-      { name: '废水桶清理', completed: true },
-    ],
-    cleaning_photos: [],
-    cleaning_remarks: '设备使用频繁，部分位置污渍较重',
-    reviewer_id: status === 'reviewing' || status === 'completed' || status === 'closed' ? 3 : undefined,
-    review_date: status === 'completed' || status === 'closed' ? new Date().toISOString() : undefined,
-    review_result: status === 'completed' || status === 'closed' ? 'qualified' : undefined,
-    review_remarks: status === 'completed' ? '整体清洁合格，注意豆仓下次清理' : undefined,
-    review_photos: [],
-    inspection_result: status === 'completed' ? 'qualified' : undefined,
-    qualified_rate: status === 'completed' || status === 'closed' ? 83.33 : undefined,
-    close_reason: status === 'closed' ? 'qualified' : undefined,
-    close_remarks: status === 'closed' ? '归档' : undefined,
-    closed_at: status === 'closed' ? new Date().toISOString() : undefined,
-    closed_by_id: status === 'closed' ? 3 : undefined,
-    is_device_offline: isOffline,
-    offline_handled: isOffline && id % 6 === 0,
-    offline_remarks: isOffline && id % 6 === 0 ? '已确认现场网络恢复' : undefined,
-    supplement_notes: status === 'supplement_info' ? '请补充蒸汽棒清洁照片' : undefined,
-    created_at: new Date(Date.now() - id * 3600000).toISOString(),
-    store_point: {
-      id: 1, name: '南京路旗舰店', store_code: 'ST0001', status: 'active',
-      address: '南京东路100号', region: '黄浦区', contact_person: '张经理', contact_phone: '13800138001',
-    },
-    device: {
-      id: 1, device_code: 'DEV101', device_name: '意式咖啡机A1', device_type: 'espresso_machine',
-      status: isOffline ? 'offline' : 'online',
-      last_heartbeat: isOffline ? new Date(Date.now() - 7200000).toISOString() : new Date().toISOString(),
-    },
-    cleaning_person: { id: 1, name: '陈师傅', employee_id: 'E001', department: '运维部', is_active: true },
-    reviewer: status === 'reviewing' || status === 'completed' || status === 'closed'
-      ? { id: 3, name: '周主管', employee_id: 'E003', department: '质检部', is_active: true }
-      : undefined,
-    closed_by: status === 'closed'
-      ? { id: 3, name: '周主管', employee_id: 'E003', department: '质检部', is_active: true }
-      : undefined,
-    status_logs: [
-      { id: 1, cleaning_record_id: id, to_status: 'draft', created_at: new Date(Date.now() - id * 3600000).toISOString() },
-      { id: 2, cleaning_record_id: id, from_status: 'draft', to_status: 'pending_review', created_at: new Date(Date.now() - id * 3600000 + 1800000).toISOString() },
-      ...(status !== 'pending_review' ? [{
-        id: 3, cleaning_record_id: id, from_status: 'pending_review' as any, to_status: 'reviewing' as any,
-        created_at: new Date(Date.now() - id * 3600000 + 2400000).toISOString(),
-      }] : []),
-    ],
-  } as CleaningRecord
-}

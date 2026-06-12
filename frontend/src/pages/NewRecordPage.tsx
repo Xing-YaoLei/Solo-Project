@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { ArrowLeft, Save, Send, MapPin, Cpu, ClipboardCheck, User } from 'lucide-react'
+import { ArrowLeft, Save, Send, MapPin, Cpu, ClipboardCheck, User, AlertCircle } from 'lucide-react'
 import { cleaningApi, pointsApi, devicesApi, personsApi } from '@/lib/api'
 import { OfflineAlert } from '@/components/OfflineAlert'
 import {
@@ -36,6 +36,8 @@ export default function NewRecordPage() {
   const [reviewResult, setReviewResult] = useState('')
   const [reviewRemarks, setReviewRemarks] = useState('')
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     loadBaseData()
@@ -45,8 +47,10 @@ export default function NewRecordPage() {
     if (selectedPointId) {
       devicesApi.list({ store_point_id: selectedPointId }).then((res) => {
         setDevices(res.data)
-      }).catch(() => {
-        setDevices(generateMockDevices(selectedPointId))
+      }).catch((e: any) => {
+        const msg = e?.response?.data?.detail || e?.message || '加载设备列表失败'
+        setError(msg)
+        setDevices([])
       })
     } else {
       setDevices([])
@@ -55,6 +59,8 @@ export default function NewRecordPage() {
   }, [selectedPointId])
 
   const loadBaseData = async () => {
+    setLoading(true)
+    setError(null)
     try {
       const [pointsRes, personsRes] = await Promise.all([
         pointsApi.list(),
@@ -62,10 +68,11 @@ export default function NewRecordPage() {
       ])
       setPoints(pointsRes.data)
       setPersons(personsRes.data)
-    } catch {
-      setPoints(generateMockPoints())
-      setPersons(generateMockPersons())
-      setDevices(generateMockDevices(1))
+    } catch (e: any) {
+      const msg = e?.response?.data?.detail || e?.message || '加载基础数据失败，请检查后端服务'
+      setError(msg)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -117,9 +124,9 @@ export default function NewRecordPage() {
         await cleaningApi.submitReview(recordId)
       }
       navigate({ to: '/records/$recordId', params: { recordId: String(recordId) } })
-    } catch {
-      const mockId = Date.now()
-      navigate({ to: '/records/$recordId', params: { recordId: String(mockId) } })
+    } catch (e: any) {
+      const msg = e?.response?.data?.detail || e?.message || '保存失败，请检查后端服务'
+      setError(msg)
     } finally {
       setSaving(false)
     }
@@ -147,6 +154,27 @@ export default function NewRecordPage() {
         />
       )}
 
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-red-800">操作失败</p>
+            <p className="text-sm text-red-700 mt-1">{error}</p>
+          </div>
+          <button onClick={() => setError(null)} className="text-sm text-red-600 hover:text-red-800">
+            关闭
+          </button>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="py-16 text-center text-gray-500">加载中...</div>
+      ) : points.length === 0 ? (
+        <div className="py-16 text-center text-gray-500">
+          <p>暂无点位数据</p>
+          <p className="text-sm mt-1">请先在后端初始化点位和设备数据</p>
+        </div>
+      ) : (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <div className="card">
@@ -428,32 +456,9 @@ export default function NewRecordPage() {
           </div>
         </div>
       </div>
+      )}
     </div>
   )
 }
 
-function generateMockPoints(): StorePoint[] {
-  return [
-    { id: 1, name: '南京路旗舰店', store_code: 'ST0001', address: '南京东路100号', region: '黄浦区', status: 'active', contact_person: '张经理', contact_phone: '13800138001' },
-    { id: 2, name: '浦东机场店', store_code: 'ST0002', address: '浦东机场T2航站楼', region: '浦东新区', status: 'active', contact_person: '李主管', contact_phone: '13800138002' },
-    { id: 3, name: '人民广场店', store_code: 'ST0003', address: '人民大道120号', region: '黄浦区', status: 'active', contact_person: '王店长', contact_phone: '13800138003' },
-    { id: 4, name: '徐家汇店', store_code: 'ST0004', address: '虹桥路1号', region: '徐汇区', status: 'active', contact_person: '赵店长', contact_phone: '13800138004' },
-  ]
-}
 
-function generateMockDevices(pointId: number): Device[] {
-  return [
-    { id: pointId * 10 + 1, device_code: `DEV${pointId}01`, device_name: '意式咖啡机A1', device_type: 'espresso_machine', store_point_id: pointId, status: 'online', last_heartbeat: new Date().toISOString() },
-    { id: pointId * 10 + 2, device_code: `DEV${pointId}02`, device_name: '意式咖啡机B2', device_type: 'espresso_machine', store_point_id: pointId, status: 'online' },
-    { id: pointId * 10 + 3, device_code: `DEV${pointId}03`, device_name: '冷萃机C1', device_type: 'cold_brew', store_point_id: pointId, status: 'offline', last_heartbeat: new Date(Date.now() - 3600000 * 2).toISOString(), remarks: '网络故障' },
-    { id: pointId * 10 + 4, device_code: `DEV${pointId}04`, device_name: '磨豆机D1', device_type: 'grinder', store_point_id: pointId, status: 'online' },
-  ]
-}
-
-function generateMockPersons(): Person[] {
-  return [
-    { id: 1, name: '陈师傅', employee_id: 'E001', role: '清洁工程师', department: '运维部', phone: '13900139001', is_active: true },
-    { id: 2, name: '刘师傅', employee_id: 'E002', role: '清洁工程师', department: '运维部', phone: '13900139002', is_active: true },
-    { id: 3, name: '周主管', employee_id: 'E003', role: '复核主管', department: '质检部', phone: '13900139003', is_active: true },
-  ]
-}

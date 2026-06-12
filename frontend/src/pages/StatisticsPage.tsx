@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { BarChart3, TrendingUp, Users, GitBranch, FileText, Target } from 'lucide-react'
+import { BarChart3, TrendingUp, Users, GitBranch, FileText, Target, AlertCircle, RefreshCw } from 'lucide-react'
 import { statisticsApi } from '@/lib/api'
 import { cn, SOURCE_CHANNEL_LABELS, CLOSE_REASON_LABELS } from '@/lib/utils'
 import type {
@@ -15,6 +15,7 @@ export default function StatisticsPage() {
   const [byPerson, setByPerson] = useState<StatisticsByPerson[]>([])
   const [byCloseReason, setByCloseReason] = useState<StatisticsByCloseReason[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     loadData()
@@ -22,6 +23,7 @@ export default function StatisticsPage() {
 
   const loadData = async () => {
     setLoading(true)
+    setError(null)
     try {
       const [s, c, p, r] = await Promise.all([
         statisticsApi.summary(),
@@ -33,39 +35,30 @@ export default function StatisticsPage() {
       setByChannel(c.data)
       setByPerson(p.data)
       setByCloseReason(r.data)
-    } catch {
-      setSummary({
-        total_records: 156,
-        completed_count: 128,
-        reviewing_count: 8,
-        supplement_count: 6,
-        closed_count: 114,
-        avg_qualified_rate: 89.6,
-      })
-      setByChannel([
-        { channel: 'routine_inspection', count: 98, qualified_rate: 92.3 },
-        { channel: 'device_alert', count: 28, qualified_rate: 78.5 },
-        { channel: 'manual_report', count: 18, qualified_rate: 85.0 },
-        { channel: 'store_request', count: 12, qualified_rate: 90.2 },
-      ])
-      setByPerson([
-        { person_id: 1, person_name: '陈师傅', total: 45, completed: 42, qualified_rate: 93.5 },
-        { person_id: 2, person_name: '刘师傅', total: 38, completed: 34, qualified_rate: 88.2 },
-        { person_id: 3, person_name: '王师傅', total: 32, completed: 29, qualified_rate: 85.7 },
-        { person_id: 4, person_name: '李师傅', total: 25, completed: 23, qualified_rate: 91.0 },
-      ])
-      setByCloseReason([
-        { reason: 'qualified', count: 98 },
-        { reason: 'device_replaced', count: 8 },
-        { reason: 'point_closed', count: 4 },
-        { reason: 'other', count: 4 },
-      ])
+    } catch (e: any) {
+      const msg = e?.response?.data?.detail || e?.message || '加载统计数据失败'
+      setError(msg)
     } finally {
       setLoading(false)
     }
   }
 
   if (loading) return <div className="p-8 text-center text-gray-500">加载中...</div>
+
+  if (error) {
+    return (
+      <div className="p-8">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-8 text-center">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-3" />
+          <p className="text-lg font-medium text-red-800">加载失败</p>
+          <p className="text-sm text-red-600 mt-2">{error}</p>
+          <button onClick={loadData} className="btn-primary mt-4 gap-2">
+            <RefreshCw className="w-4 h-4" /> 重新加载
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   const channelMax = Math.max(...byChannel.map((c) => c.count), 1)
   const personMax = Math.max(...byPerson.map((p) => p.total), 1)
