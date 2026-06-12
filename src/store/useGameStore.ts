@@ -22,10 +22,11 @@ interface GameStore extends GameState {
   currentTaskClues: Clue[];
   currentTaskDecisions: Decision[];
   comboCount: number;
-  replayEvents: ReplayEvent[];
+  taskReplayEvents: Record<string, ReplayEvent[]>;
+  taskRecordIds: Record<string, string>;
   decisionStartTime: number | null;
   currentRecordId: string | null;
-  
+
   loadLevel: (levelId: string, taskIds: string[]) => void;
   startTask: (taskId: string) => void;
   viewClue: (clueId: string) => void;
@@ -62,7 +63,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   currentTaskClues: [],
   currentTaskDecisions: [],
   comboCount: 0,
-  replayEvents: [],
+  taskReplayEvents: {},
+  taskRecordIds: {},
   decisionStartTime: null,
   currentRecordId: null,
 
@@ -70,12 +72,19 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const levelTasks = mockTasks.filter((t) => taskIds.includes(t.id));
     const levelClueIds = levelTasks.flatMap((t) => t.clueIds);
     const levelDecisionIds = levelTasks.flatMap((t) => t.decisionIds);
-    
+
     const levelClues = mockClues.filter((c) => levelClueIds.includes(c.id));
     const levelDecisions = mockDecisions.filter((d) => levelDecisionIds.includes(d.id));
-    
+
+    const taskRecordIds: Record<string, string> = {};
+    const taskReplayEvents: Record<string, ReplayEvent[]> = {};
+    levelTasks.forEach((task) => {
+      taskRecordIds[task.id] = generateId();
+      taskReplayEvents[task.id] = [];
+    });
+
     const recordId = generateId();
-    
+
     set({
       currentLevelId: levelId,
       tasks: levelTasks,
@@ -83,7 +92,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       decisions: levelDecisions,
       score: 0,
       comboCount: 0,
-      replayEvents: [],
+      taskReplayEvents,
+      taskRecordIds,
       decisionHistory: [],
       viewedClues: [],
       hesitationStartTimes: {},
@@ -92,7 +102,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   startTask: (taskId: string) => {
-    const { tasks, clues, decisions, replayEvents } = get();
+    const { tasks, clues, decisions, taskReplayEvents } = get();
     const task = tasks.find((t) => t.id === taskId);
     if (!task) return;
 
@@ -105,6 +115,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       data: { taskId, taskTitle: task.title },
     };
 
+    const currentTaskEvents = taskReplayEvents[taskId] || [];
+
     set({
       currentTaskId: taskId,
       currentTask: task,
@@ -116,49 +128,63 @@ export const useGameStore = create<GameStore>((set, get) => ({
       decisionStartTime: null,
       isPaused: false,
       isGameOver: false,
-      replayEvents: [...replayEvents, event],
+      taskReplayEvents: {
+        ...taskReplayEvents,
+        [taskId]: [...currentTaskEvents, event],
+      },
     });
   },
 
   viewClue: (clueId: string) => {
-    const { viewedClues, hesitationStartTimes, replayEvents } = get();
+    const { viewedClues, hesitationStartTimes, taskReplayEvents, currentTaskId } = get();
     const now = Date.now();
-    
+
     const event: ReplayEvent = {
       timestamp: now,
       type: 'clue_view',
       data: { clueId },
     };
 
-    if (!viewedClues.includes(clueId)) {
+    if (!viewedClues.includes(clueId) && currentTaskId) {
+      const currentTaskEvents = taskReplayEvents[currentTaskId] || [];
       set({
         viewedClues: [...viewedClues, clueId],
         hesitationStartTimes: {
           ...hesitationStartTimes,
           [clueId]: now,
         },
-        replayEvents: [...replayEvents, event],
+        taskReplayEvents: {
+          ...taskReplayEvents,
+          [currentTaskId]: [...currentTaskEvents, event],
+        },
       });
     }
   },
 
   startDecision: () => {
-    const { replayEvents } = get();
+    const { taskReplayEvents, currentTaskId } = get();
     const now = Date.now();
-    
+
     const event: ReplayEvent = {
       timestamp: now,
       type: 'decision_start',
       data: {},
     };
 
-    set({
-      decisionStartTime: now,
-      replayEvents: [...replayEvents, event],
-    });
+    if (currentTaskId) {
+      const currentTaskEvents = taskReplayEvents[currentTaskId] || [];
+      set({
+        decisionStartTime: now,
+        taskReplayEvents: {
+          ...taskReplayEvents,
+          [currentTaskId]: [...currentTaskEvents, event],
+        },
+      });
+    }
   },
 
   makeDecision: (decisionId: string) => {
+    const state = get();
     const {
       currentTask,
       currentTaskDecisions,
@@ -168,11 +194,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
       comboCount,
       timeRemaining,
       decisionHistory,
-      replayEvents,
-      currentRecordId,
-    } = get();
+      taskReplayEvents,
+      taskRecordIds,
+      currentTaskId,
+    } = state;
 
-    if (!currentTask || !decisionStartTime || !currentRecordId) {
+    if (!currentTask || !decisionStartTime || !currentTaskId) {
+      return { isCorrect: false, points: 0 };
+    }
+
+    const taskRecordId = taskRecordIds[currentTaskId];
+    if (!taskRecordId) {
       return { isCorrect: false, points: 0 };
     }
 
@@ -181,7 +213,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     const now = Date.now();
     const hesitationTime = now - decisionStartTime;
-    
+
     const clueHesitation = Object.entries(hesitationStartTimes).reduce((total, [, startTime]) => {
       return total + (now - startTime);
     }, 0);
@@ -208,7 +240,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     const log: DecisionLog = {
       id: generateId(),
-      recordId: currentRecordId,
+      recordId: taskRecordId,
       taskId: currentTask.id,
       decisionId,
       isCorrect,
@@ -218,6 +250,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     };
 
     const newHistory = [...decisionHistory, log];
+    const currentTaskEvents = taskReplayEvents[currentTaskId] || [];
+    const updatedTaskEvents = [...currentTaskEvents, event];
 
     if (!isCorrect) {
       const taskEndEvent: ReplayEvent = {
@@ -226,17 +260,26 @@ export const useGameStore = create<GameStore>((set, get) => ({
         data: { success: false, errorReason },
       };
 
-      const fullEvents = [...replayEvents, event, taskEndEvent];
+      const fullEvents = [...updatedTaskEvents, taskEndEvent];
       const taskDecisionLogs = [log];
-      const replay = createReplay(currentRecordId, currentTask.memberId, fullEvents, taskDecisionLogs);
+      const replay = createReplay(taskRecordId, currentTask.memberId, fullEvents, taskDecisionLogs);
       saveReplay(replay);
+
+      const taskRecord = createTaskGameRecord(state, log, currentTask, points, false);
+      saveGameRecord(taskRecord);
+    } else {
+      const taskRecord = createTaskGameRecord(state, log, currentTask, points, true);
+      saveGameRecord(taskRecord);
     }
 
     set({
       score: score + points,
       comboCount: newComboCount,
       decisionHistory: newHistory,
-      replayEvents: [...replayEvents, event],
+      taskReplayEvents: {
+        ...taskReplayEvents,
+        [currentTaskId]: updatedTaskEvents,
+      },
       decisionStartTime: null,
     });
 
@@ -245,7 +288,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   nextTask: () => {
     const state = get();
-    const { tasks, currentTaskId, decisionHistory, score, currentRecordId } = state;
+    const { tasks, currentTaskId } = state;
     const currentIndex = tasks.findIndex((t) => t.id === currentTaskId);
 
     if (currentIndex < tasks.length - 1) {
@@ -253,9 +296,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
       state.startTask(nextTaskData.id);
       return true;
     } else {
-      const record = createGameRecord(state, decisionHistory, true);
-      saveGameRecord(record);
-
       set({ isGameOver: true });
       return false;
     }
@@ -265,14 +305,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
   resumeGame: () => set({ isPaused: false }),
 
   endGame: (isWin: boolean) => {
-    const state = get();
-    const { currentRecordId, decisionHistory, replayEvents } = state;
-
-    if (currentRecordId && replayEvents.length > 0) {
-      const record = createGameRecord(state, decisionHistory, isWin);
-      saveGameRecord(record);
-    }
-
     set({ isGameOver: true });
   },
 
@@ -298,7 +330,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       currentTaskClues: [],
       currentTaskDecisions: [],
       comboCount: 0,
-      replayEvents: [],
+      taskReplayEvents: {},
+      taskRecordIds: {},
       decisionStartTime: null,
       currentRecordId: null,
     });
@@ -372,6 +405,32 @@ function createGameRecord(
     correctCount,
     wrongCount,
     avgDecisionTime: avgTime,
+    playedAt: new Date().toISOString(),
+    errorCategories,
+  };
+}
+
+function createTaskGameRecord(
+  state: GameStore,
+  decisionLog: DecisionLog,
+  task: Task,
+  points: number,
+  isCorrect: boolean
+): GameRecord {
+  const errorCategories: Record<string, number> = {};
+  if (!isCorrect) {
+    errorCategories[task.errorCategory as string] = 1;
+  }
+
+  return {
+    id: state.taskRecordIds[task.id]!,
+    playerId: 'player-1',
+    levelId: state.currentLevelId!,
+    memberId: task.memberId,
+    score: points,
+    correctCount: isCorrect ? 1 : 0,
+    wrongCount: isCorrect ? 0 : 1,
+    avgDecisionTime: decisionLog.hesitationTime,
     playedAt: new Date().toISOString(),
     errorCategories,
   };

@@ -66,6 +66,7 @@ export default function GameScene() {
   const [showGameResult, setShowGameResult] = useState(false);
   const [hasNextTask, setHasNextTask] = useState(true);
   const [isLevelLoaded, setIsLevelLoaded] = useState(false);
+  const [hasTriedLoadPlayer, setHasTriedLoadPlayer] = useState(false);
 
   useGameLoop({
     autoTick: true,
@@ -73,13 +74,14 @@ export default function GameScene() {
 
   useEffect(() => {
     loadPlayer();
+    setHasTriedLoadPlayer(true);
   }, [loadPlayer]);
 
   useEffect(() => {
-    if (!player) {
+    if (hasTriedLoadPlayer && !player) {
       initPlayer();
     }
-  }, [player, initPlayer]);
+  }, [hasTriedLoadPlayer, player, initPlayer]);
 
   useEffect(() => {
     if (levelId && player && !isLevelLoaded) {
