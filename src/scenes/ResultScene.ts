@@ -1,9 +1,11 @@
 import Phaser from 'phaser';
 import { BaseScene } from './BaseScene';
 import type { GameResult, PointTracking } from '@/types/tracking';
+import type { TrackingRule } from '@/types/config';
 
 export class ResultScene extends BaseScene {
   private result!: GameResult;
+  private trackingRules!: TrackingRule;
 
   constructor() {
     super('ResultScene');
@@ -15,6 +17,7 @@ export class ResultScene extends BaseScene {
 
     const state = this.gameStore.getState();
     this.result = state.result!;
+    this.trackingRules = this.configStore.getState().tracking;
 
     this.createResultBackground();
     this.createResultHeader();
@@ -119,7 +122,9 @@ export class ResultScene extends BaseScene {
         value: this.result.finalScore.toString(),
         icon: '⭐',
         color: 0xFFC107,
-        subtext: `平均 ${Math.round(this.result.averageDecisionTime)}秒/判断`,
+        subtext: this.trackingRules.trackDecisionTime
+          ? `平均 ${Math.round(this.result.averageDecisionTime)}秒/判断`
+          : '完成全部巡检任务',
       },
     ];
 
@@ -196,8 +201,23 @@ export class ResultScene extends BaseScene {
     line.lineStyle(2, 0xFF6F00, 0.5);
     line.lineBetween(60, sectionY + 35, this.width - 60, sectionY + 35);
 
-    this.createStuckAnalysis(80, sectionY + 70);
-    this.createErrorAnalysis(400, sectionY + 70);
+    const hasStuck = this.trackingRules.trackDecisionTime;
+    const hasError = this.trackingRules.trackErrorTypes;
+
+    if (hasStuck && hasError) {
+      this.createStuckAnalysis(80, sectionY + 70);
+      this.createErrorAnalysis(400, sectionY + 70);
+    } else if (hasStuck && !hasError) {
+      this.createStuckAnalysis(80, sectionY + 70);
+    } else if (!hasStuck && hasError) {
+      this.createErrorAnalysis(80, sectionY + 70);
+    } else {
+      const message = this.add.text(this.centerX, sectionY + 100, '🔒 分析功能已在配置中关闭', {
+        fontFamily: 'Inter, sans-serif',
+        fontSize: '16px',
+        color: '#666666',
+      }).setOrigin(0.5);
+    }
   }
 
   private createStuckAnalysis(x: number, y: number): void {
@@ -358,6 +378,11 @@ export class ResultScene extends BaseScene {
 
   private createTimeline(): void {
     const timelineY = 630;
+    const hasTrackingData = this.result.pointTrackings.length > 0;
+
+    if (!hasTrackingData) {
+      return;
+    }
 
     const title = this.add.text(60, timelineY, '📈 操作时间线', {
       fontFamily: 'Inter, sans-serif',
@@ -381,11 +406,14 @@ export class ResultScene extends BaseScene {
       const y = timelineY + 35;
 
       const isStuck = this.result.stuckPoints.includes(tracking.pointId);
+      const hasStuckData = this.trackingRules.trackDecisionTime && isStuck;
+      const hasErrorData = this.trackingRules.trackErrorTypes && !tracking.isCorrect;
       const color = tracking.isCorrect
-        ? (isStuck ? 0xFF9800 : 0x4CAF50)
+        ? (hasStuckData ? 0xFF9800 : 0x4CAF50)
         : 0xD32F2F;
 
-      const dot = this.add.circle(x, y, isStuck ? 8 : 6, color, 1);
+      const dotSize = hasStuckData ? 8 : 6;
+      const dot = this.add.circle(x, y, dotSize, color, 1);
 
       if (index % 2 === 0) {
         const labelY = y + (index % 4 === 0 ? 40 : 60);
@@ -414,26 +442,26 @@ export class ResultScene extends BaseScene {
     });
 
     const legend = this.add.container(this.width - 60, timelineY + 80);
+    const legendItems: Array<{ label: string; color: number }> = [];
 
-    const correctLegend = this.add.text(-120, 0, '● 正确', {
-      fontFamily: 'Inter, sans-serif',
-      fontSize: '12px',
-      color: '#4CAF50',
-    }).setOrigin(1);
+    legendItems.push({ label: '正确', color: 0x4CAF50 });
+    if (this.trackingRules.trackDecisionTime) {
+      legendItems.push({ label: '卡点', color: 0xFF9800 });
+    }
+    if (this.trackingRules.trackErrorTypes) {
+      legendItems.push({ label: '错误', color: 0xD32F2F });
+    }
 
-    const stuckLegend = this.add.text(-40, 0, '● 卡点', {
-      fontFamily: 'Inter, sans-serif',
-      fontSize: '12px',
-      color: '#FF9800',
-    }).setOrigin(1);
-
-    const errorLegend = this.add.text(40, 0, '● 错误', {
-      fontFamily: 'Inter, sans-serif',
-      fontSize: '12px',
-      color: '#D32F2F',
-    }).setOrigin(1);
-
-    legend.add([correctLegend, stuckLegend, errorLegend]);
+    const totalWidth = legendItems.length * 70;
+    legendItems.forEach((item, i) => {
+      const x = -totalWidth + i * 70 + 35;
+      const text = this.add.text(x, 0, `● ${item.label}`, {
+        fontFamily: 'Inter, sans-serif',
+        fontSize: '12px',
+        color: `#${item.color.toString(16).padStart(6, '0')}`,
+      }).setOrigin(0.5);
+      legend.add(text);
+    });
   }
 
   private createActionButtons(): void {

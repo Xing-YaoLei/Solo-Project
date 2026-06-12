@@ -23,33 +23,95 @@ export const useTrackingStore = create<TrackingState>((set, get) => ({
   eventTrackings: [],
   operationPath: [],
 
-  recordPointView: (pointId) =>
+  recordPointView: (pointId) => {
+    const config = useConfigStore.getState();
+    if (!config.tracking.trackOperationPath) return;
+
     set((state) => ({
       operationPath: [...state.operationPath, `view:${pointId}:${Date.now()}`],
-    })),
+    }));
+  },
 
-  recordPointDecision: (tracking) =>
-    set((state) => ({
-      pointTrackings: [...state.pointTrackings, tracking],
-      operationPath: [...state.operationPath, `decision:${tracking.pointId}:${Date.now()}`],
-    })),
+  recordPointDecision: (tracking) => {
+    const config = useConfigStore.getState();
+    const rules = config.tracking;
 
-  recordItemUsage: (tracking) =>
-    set((state) => ({
-      itemUsages: [...state.itemUsages, tracking],
-      operationPath: [...state.operationPath, `item:${tracking.itemId}:${Date.now()}`],
-    })),
+    const shouldRecordDecision = rules.trackDecisionTime || rules.trackErrorTypes;
+    if (!shouldRecordDecision && !rules.trackOperationPath) return;
 
-  recordEvent: (tracking) =>
-    set((state) => ({
-      eventTrackings: [...state.eventTrackings, tracking],
-      operationPath: [...state.operationPath, `event:${tracking.eventId}:${Date.now()}`],
-    })),
+    set((state) => {
+      const newState: Partial<TrackingState> = {};
 
-  recordOperation: (operation) =>
+      if (shouldRecordDecision) {
+        const filteredTracking = { ...tracking };
+        if (!rules.trackDecisionTime) {
+          filteredTracking.decisionTime = 0;
+          filteredTracking.decisionSwitchCount = 0;
+        }
+        if (!rules.trackErrorTypes) {
+          filteredTracking.errorType = undefined;
+        }
+        newState.pointTrackings = [...state.pointTrackings, filteredTracking];
+      }
+
+      if (rules.trackOperationPath) {
+        newState.operationPath = [...state.operationPath, `decision:${tracking.pointId}:${Date.now()}`];
+      }
+
+      return newState;
+    });
+  },
+
+  recordItemUsage: (tracking) => {
+    const config = useConfigStore.getState();
+    const rules = config.tracking;
+
+    if (!rules.trackItemUsage && !rules.trackOperationPath) return;
+
+    set((state) => {
+      const newState: Partial<TrackingState> = {};
+
+      if (rules.trackItemUsage) {
+        newState.itemUsages = [...state.itemUsages, tracking];
+      }
+
+      if (rules.trackOperationPath) {
+        newState.operationPath = [...state.operationPath, `item:${tracking.itemId}:${Date.now()}`];
+      }
+
+      return newState;
+    });
+  },
+
+  recordEvent: (tracking) => {
+    const config = useConfigStore.getState();
+    const rules = config.tracking;
+
+    if (!rules.trackEventHandling && !rules.trackOperationPath) return;
+
+    set((state) => {
+      const newState: Partial<TrackingState> = {};
+
+      if (rules.trackEventHandling) {
+        newState.eventTrackings = [...state.eventTrackings, tracking];
+      }
+
+      if (rules.trackOperationPath) {
+        newState.operationPath = [...state.operationPath, `event:${tracking.eventId}:${Date.now()}`];
+      }
+
+      return newState;
+    });
+  },
+
+  recordOperation: (operation) => {
+    const config = useConfigStore.getState();
+    if (!config.tracking.trackOperationPath) return;
+
     set((state) => ({
       operationPath: [...state.operationPath, `${operation}:${Date.now()}`],
-    })),
+    }));
+  },
 
   generateResult: (totalPoints, completedPoints, totalTime, timeUsed, isTimeOut, finalScore) => {
     const state = get();
@@ -59,19 +121,28 @@ export const useTrackingStore = create<TrackingState>((set, get) => ({
     const correctDecisions = state.pointTrackings.filter((t) => t.isCorrect).length;
     const accuracyRate = completedPoints > 0 ? correctDecisions / completedPoints : 0;
 
-    const decisionTimes = state.pointTrackings.map((t) => t.decisionTime);
-    const averageDecisionTime =
-      decisionTimes.length > 0
-        ? decisionTimes.reduce((a, b) => a + b, 0) / decisionTimes.length
-        : 0;
+    let averageDecisionTime = 0;
+    if (trackingRules.trackDecisionTime) {
+      const decisionTimes = state.pointTrackings.map((t) => t.decisionTime);
+      averageDecisionTime =
+        decisionTimes.length > 0
+          ? decisionTimes.reduce((a, b) => a + b, 0) / decisionTimes.length
+          : 0;
+    }
 
-    const stuckPoints = state.pointTrackings
-      .filter((t) => t.decisionTime > trackingRules.stuckThreshold || t.decisionSwitchCount > 2)
-      .map((t) => t.pointId);
+    let stuckPoints: string[] = [];
+    if (trackingRules.trackDecisionTime) {
+      stuckPoints = state.pointTrackings
+        .filter((t) => t.decisionTime > trackingRules.stuckThreshold || t.decisionSwitchCount > 2)
+        .map((t) => t.pointId);
+    }
 
-    const errorPoints = state.pointTrackings
-      .filter((t) => !t.isCorrect)
-      .map((t) => t.pointId);
+    let errorPoints: string[] = [];
+    if (trackingRules.trackErrorTypes) {
+      errorPoints = state.pointTrackings
+        .filter((t) => !t.isCorrect)
+        .map((t) => t.pointId);
+    }
 
     return {
       totalPoints,
@@ -83,9 +154,9 @@ export const useTrackingStore = create<TrackingState>((set, get) => ({
       averageDecisionTime,
       stuckPoints,
       errorPoints,
-      pointTrackings: state.pointTrackings,
-      itemUsages: state.itemUsages,
-      events: state.eventTrackings,
+      pointTrackings: trackingRules.trackDecisionTime || trackingRules.trackErrorTypes ? state.pointTrackings : [],
+      itemUsages: trackingRules.trackItemUsage ? state.itemUsages : [],
+      events: trackingRules.trackEventHandling ? state.eventTrackings : [],
       isTimeOut,
       finalScore,
     };
