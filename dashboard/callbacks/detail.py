@@ -35,6 +35,11 @@ def register_detail_callbacks(app):
         [
             Output("detail-inventory-table", "data"),
             Output("detail-inventory-table", "columns"),
+            Output("detail-inventory-table", "style_data_conditional"),
+            Output("kpi-inbound-count", "children"),
+            Output("kpi-outbound-count", "children"),
+            Output("kpi-consume-count", "children"),
+            Output("kpi-adjust-count", "children"),
             Output("detail-batch-table", "data"),
             Output("detail-batch-table", "columns"),
             Output("detail-supplier-table", "data"),
@@ -46,11 +51,11 @@ def register_detail_callbacks(app):
         ],
         [
             Input("detail-store-filter", "value"),
-            Input("detail-tab-selector", "value"),
+            Input("detail-ledger-type-filter", "value"),
         ],
         prevent_initial_call=False,
     )
-    def update_detail_tables(store_code, active_tab):
+    def update_detail_tables(store_code, ledger_type):
         session = Session()
         try:
             ledger_df = get_inventory_ledger_df(session, store_code=store_code)
@@ -66,11 +71,25 @@ def register_detail_callbacks(app):
                 {"name": "供应商", "id": "supplier_code"},
             ]
             inv_style = [
-                {"if": {"filter_query": "{transaction_type} = '消耗'"}, "backgroundColor": "#fdebd0", "color": "#d35400"},
-                {"if": {"filter_query": "{transaction_type} = '入库'"}, "backgroundColor": "#d5f5e3", "color": "#27ae60"},
-                {"if": {"filter_query": "{transaction_type} = '出库'"}, "backgroundColor": "#fadbd8", "color": "#c0392b"},
-                {"if": {"filter_query": "{transaction_type} = '调整'"}, "backgroundColor": "#d6eaf8", "color": "#2874a6"},
+                {"if": {"filter_query": "{transaction_type} = '消耗'"}, "backgroundColor": "#fff3e6", "color": "#d35400"},
+                {"if": {"filter_query": "{transaction_type} = '入库'"}, "backgroundColor": "#e8f8f0", "color": "#27ae60"},
+                {"if": {"filter_query": "{transaction_type} = '出库'"}, "backgroundColor": "#fdeaea", "color": "#c0392b"},
+                {"if": {"filter_query": "{transaction_type} = '调整'"}, "backgroundColor": "#eaf2f8", "color": "#2874a6"},
             ]
+
+            if not ledger_df.empty:
+                inbound_count = (ledger_df["transaction_type"] == "入库").sum()
+                outbound_count = (ledger_df["transaction_type"] == "出库").sum()
+                consume_count = (ledger_df["transaction_type"] == "消耗").sum()
+                adjust_count = (ledger_df["transaction_type"] == "调整").sum()
+                if ledger_type and ledger_type != "all":
+                    ledger_df = ledger_df[ledger_df["transaction_type"] == ledger_type]
+            else:
+                inbound_count = 0
+                outbound_count = 0
+                consume_count = 0
+                adjust_count = 0
+
             inv_data = ledger_df.to_dict("records") if not ledger_df.empty else []
 
             batch_df = get_batch_df(session, store_code=store_code)
@@ -169,7 +188,8 @@ def register_detail_callbacks(app):
                 ]
 
             return (
-                inv_data, inv_cols,
+                inv_data, inv_cols, inv_style,
+                inbound_count, outbound_count, consume_count, adjust_count,
                 batch_data, batch_cols,
                 supplier_data, supplier_cols,
                 review_data, review_cols,

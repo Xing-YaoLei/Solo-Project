@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, date
 from decimal import Decimal
 
 import pandas as pd
@@ -48,8 +48,6 @@ def clean_inventory(session):
 
     session.commit()
 
-    generate_inventory_ledger_from_snapshots(session)
-
     return inserted
 
 
@@ -69,12 +67,15 @@ def generate_inventory_ledger_from_snapshots(session):
     if not all_rows:
         return 0
 
-    grouped = {}
+    grouped_by_batch = {}
+    grouped_by_mat = {}
     for r in all_rows:
-        key = (r.store_code, r.material_code, r.batch_no)
-        grouped.setdefault(key, []).append(r)
+        key_batch = (r.store_code, r.material_code, r.batch_no)
+        grouped_by_batch.setdefault(key_batch, []).append(r)
+        key_mat = (r.store_code, r.material_code)
+        grouped_by_mat.setdefault(key_mat, []).append(r)
 
-    existing_dates = set(
+    existing_set = set(
         (r.store_code, r.material_code, r.batch_no, r.transaction_date, r.transaction_type)
         for r in session.query(
             InventoryLedger.store_code,
@@ -90,13 +91,18 @@ def generate_inventory_ledger_from_snapshots(session):
         key = (b.store_code, b.material_code, b.batch_no)
         supplier_map[key] = b.supplier_code
 
+    daily_consumption_map = _compute_daily_consumption_avg(session)
+
     inserted = 0
-    for key, snapshots in grouped.items():
-        store_code, material_code, batch_no = key
+
+    for key_batch, snapshots in grouped_by_batch.items():
+        store_code, material_code, batch_no = key_batch
         snapshots_sorted = sorted(snapshots, key=lambda x: x.snapshot_date)
-        supplier_code = supplier_map.get(key)
+        supplier_code = supplier_map.get(key_batch)
         material_name = snapshots_sorted[0].material_name
         unit = snapshots_sorted[0].unit
+
+        avg_daily_consume = daily_consumption_map.get((store_code, material_code), 0.0)
 
         for i in range(1, len(snapshots_sorted)):
             prev = snapshots_sorted[i - 1]
@@ -109,16 +115,28 @@ def generate_inventory_ledger_from_snapshots(session):
                 continue
 
             txn_date = curr.snapshot_date
-            dedup_key = (store_code, material_code, batch_no, txn_date)
+            days_between = (curr.snapshot_date - prev.snapshot_date).days
+            if days_between <= 0:
+                days_between = 1
+
+            expected_consume = avg_daily_consume * days_between if avg_daily_consume > 0 else 0.0
 
             if delta > 0:
                 txn_type = "inbound"
                 txn_qty = delta
             else:
-                txn_type = "outbound"
-                txn_qty = abs(delta)
+                abs_delta = abs(delta)
+                if avg_daily_consume > 0 and abs_delta > expected_consume * 2.5:
+                    txn_type = "outbound"
+                    txn_qty = abs_delta - expected_consume
+                elif avg_daily_consume > 0 and abs_delta < expected_consume * 0.5:
+                    txn_type = "adjust"
+                    txn_qty = abs(expected_consume - abs_delta)
+                else:
+                    continue
 
-            if (store_code, material_code, batch_no, txn_date, txn_type) in existing_dates:
+            dedup_key = (store_code, material_code, batch_no, txn_date, txn_type)
+            if dedup_key in existing_set:
                 continue
 
             ledger = InventoryLedger(
@@ -133,11 +151,85 @@ def generate_inventory_ledger_from_snapshots(session):
                 transaction_date=txn_date,
             )
             session.add(ledger)
-            existing_dates.add((store_code, material_code, batch_no, txn_date, txn_type))
+            existing_set.add(dedup_key)
             inserted += 1
+
+    for key_mat, snapshots in grouped_by_mat.items():
+        store_code, material_code = key_mat
+        by_date = {}
+        for s in snapshots:
+            by_date.setdefault(s.snapshot_date, []).append(s)
+
+        dates_sorted = sorted(by_date.keys())
+        if len(dates_sorted) < 2:
+            continue
+
+        material_name = snapshots[0].material_name
+        unit = snapshots[0].unit
+        avg_daily_consume = daily_consumption_map.get((store_code, material_code), 0.0)
+
+        for i in range(1, len(dates_sorted)):
+            prev_date = dates_sorted[i - 1]
+            curr_date = dates_sorted[i]
+            prev_total = sum(float(s.stock_qty) if s.stock_qty else 0.0 for s in by_date[prev_date])
+            curr_total = sum(float(s.stock_qty) if s.stock_qty else 0.0 for s in by_date[curr_date])
+            delta = curr_total - prev_total
+
+            days_between = (curr_date - prev_date).days
+            if days_between <= 0:
+                days_between = 1
+
+            expected_consume = avg_daily_consume * days_between if avg_daily_consume > 0 else 0.0
+            actual_change = -delta
+
+            if expected_consume > 0 and abs(actual_change - expected_consume) / expected_consume > 0.3:
+                adjust_qty = actual_change - expected_consume
+                if abs(adjust_qty) > 1e-6:
+                    dedup_key = (store_code, material_code, None, curr_date, "adjust")
+                    if dedup_key not in existing_set:
+                        ledger = InventoryLedger(
+                            store_code=store_code,
+                            material_code=material_code,
+                            material_name=material_name,
+                            transaction_type="adjust",
+                            quantity=Decimal(str(round(abs(adjust_qty), 5))),
+                            unit=unit,
+                            transaction_date=curr_date,
+                        )
+                        session.add(ledger)
+                        existing_set.add(dedup_key)
+                        inserted += 1
 
     session.flush()
     return inserted
+
+
+def _compute_daily_consumption_avg(session, days=14):
+    from datetime import timedelta
+    from sqlalchemy import func
+
+    cutoff = date.today() - timedelta(days=days)
+    rows = (
+        session.query(
+            InventoryLedger.store_code,
+            InventoryLedger.material_code,
+            func.avg(InventoryLedger.quantity).label("avg_qty"),
+        )
+        .filter(
+            InventoryLedger.transaction_type == "consumption",
+            InventoryLedger.transaction_date >= cutoff,
+        )
+        .group_by(
+            InventoryLedger.store_code,
+            InventoryLedger.material_code,
+        )
+        .all()
+    )
+    result = {}
+    for r in rows:
+        key = (r.store_code, r.material_code)
+        result[key] = float(r.avg_qty) if r.avg_qty else 0.0
+    return result
 
 
 def get_inventory_df(session, store_code=None, snapshot_date=None):

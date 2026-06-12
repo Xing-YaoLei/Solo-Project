@@ -181,49 +181,91 @@ def seed_raw_inventory(session):
         batch_map.setdefault(key, []).append(b)
 
     count = 0
-    for store in STORES:
-        for mat_code, mat_name, unit, _, safety_stock in MATERIALS:
+
+    history_days = 15
+    history_stores = STORES[:3]
+    history_materials = MATERIALS[:10]
+
+    for store in history_stores:
+        for mat_code, mat_name, unit, _, safety_stock in history_materials:
             key = (store, mat_code)
-            if key in batch_map:
-                for batch in batch_map[key]:
-                    qty = float(batch.current_qty) * random.uniform(0.8, 1.2)
+            batches = batch_map.get(key, [])
+            if not batches:
+                continue
+
+            daily_batch_qty = {}
+            for batch in batches:
+                batch_key = (store, mat_code, batch.batch_no)
+                start_qty = float(batch.initial_qty) if batch.initial_qty else float(batch.current_qty)
+                daily_qty_list = []
+                current_qty = start_qty
+
+                for day_offset in range(history_days - 1, -1, -1):
+                    snap_date = today - timedelta(days=day_offset)
+                    daily_consume = random.uniform(0.5, 3.0)
+                    current_qty = max(current_qty - daily_consume, 0.1)
+
+                    if day_offset in [10, 5] and random.random() < 0.6:
+                        restock_qty = random.uniform(20, 50) if "纸杯" not in mat_name else random.uniform(500, 1500)
+                        current_qty += restock_qty
+
+                    if day_offset == 7 and random.random() < 0.3:
+                        adjust_qty = random.uniform(-5, 5) if "纸杯" not in mat_name else random.uniform(-50, 50)
+                        current_qty = max(current_qty + adjust_qty, 0.1)
+
+                    daily_qty_list.append((snap_date, current_qty))
+
+                daily_batch_qty[batch_key] = daily_qty_list
+
+            for batch_key, daily_qty_list in daily_batch_qty.items():
+                s_code, m_code, b_no = batch_key
+                for snap_date, qty in daily_qty_list:
                     session.add(RawInventory(
-                        store_code=store,
-                        material_code=mat_code,
+                        store_code=s_code,
+                        material_code=m_code,
                         material_name=mat_name,
-                        batch_no=batch.batch_no,
-                        stock_qty=Decimal(str(round(max(qty, 0.1), 3))),
+                        batch_no=b_no,
+                        stock_qty=Decimal(str(round(qty, 3))),
                         unit=unit,
                         safety_stock=Decimal(str(safety_stock)),
-                        warehouse_code=f"WH{store[-2:]}",
-                        snapshot_date=today,
-                        raw_source="ERP系统",
-                    ))
-                    count += 1
-            else:
-                for _ in range(random.randint(1, 2)):
-                    stock_qty = random.uniform(safety_stock * 0.5, safety_stock * 5)
-                    batch_no = f"B{mat_code[-3:]}{store[-3:]}{today.strftime('%Y%m%d')}{random.randint(0,9)}"
-                    session.add(RawInventory(
-                        store_code=store,
-                        material_code=mat_code,
-                        material_name=mat_name,
-                        batch_no=batch_no,
-                        stock_qty=Decimal(str(round(stock_qty, 3))),
-                        unit=unit,
-                        safety_stock=Decimal(str(safety_stock)),
-                        warehouse_code=f"WH{store[-2:]}",
-                        snapshot_date=today,
+                        warehouse_code=f"WH{s_code[-2:]}",
+                        snapshot_date=snap_date,
                         raw_source="ERP系统",
                     ))
                     count += 1
 
-    for days_back in range(1, 15):
-        snap_date = today - timedelta(days=days_back)
-        for store in STORES[:3]:
-            for mat_code, mat_name, unit, _, safety_stock in MATERIALS[:8]:
+    for store in STORES:
+        for mat_code, mat_name, unit, _, safety_stock in MATERIALS:
+            key = (store, mat_code)
+            batches = batch_map.get(key, [])
+            if not batches:
+                continue
+            for batch in batches:
+                if store in history_stores and (mat_code, mat_name, unit, _, safety_stock) in history_materials:
+                    continue
+                qty = float(batch.current_qty) * random.uniform(0.8, 1.2)
+                session.add(RawInventory(
+                    store_code=store,
+                    material_code=mat_code,
+                    material_name=mat_name,
+                    batch_no=batch.batch_no,
+                    stock_qty=Decimal(str(round(max(qty, 0.1), 3))),
+                    unit=unit,
+                    safety_stock=Decimal(str(safety_stock)),
+                    warehouse_code=f"WH{store[-2:]}",
+                    snapshot_date=today,
+                    raw_source="ERP系统",
+                ))
+                count += 1
+
+    for store in STORES:
+        for mat_code, mat_name, unit, _, safety_stock in MATERIALS:
+            key = (store, mat_code)
+            if key in batch_map:
+                continue
+            for _ in range(random.randint(1, 2)):
                 stock_qty = random.uniform(safety_stock * 0.5, safety_stock * 5)
-                batch_no = f"B{mat_code[-3:]}{store[-3:]}{snap_date.strftime('%Y%m%d')}"
+                batch_no = f"B{mat_code[-3:]}{store[-3:]}{today.strftime('%Y%m%d')}{random.randint(0,9)}"
                 session.add(RawInventory(
                     store_code=store,
                     material_code=mat_code,
@@ -233,13 +275,13 @@ def seed_raw_inventory(session):
                     unit=unit,
                     safety_stock=Decimal(str(safety_stock)),
                     warehouse_code=f"WH{store[-2:]}",
-                    snapshot_date=snap_date,
+                    snapshot_date=today,
                     raw_source="ERP系统",
                 ))
                 count += 1
 
     session.flush()
-    print(f"原始库存数据已插入: {count} 条")
+    print(f"原始库存数据已插入: {count} 条 (含{history_days}天历史快照)")
 
 
 def seed_raw_receipts(session):
