@@ -433,6 +433,45 @@ func delete_question(question_id: String) -> void:
 				data_updated.emit("questions")
 				return
 
+func get_question(question_id: String, qtype: String) -> Dictionary:
+	var questions: Array = questions_data.get(qtype, [])
+	for q in questions:
+		if q.get("id", "") == question_id:
+			return q.duplicate()
+	return {}
+
+func update_question(question_id: String, question_data: Dictionary, qtype: String) -> void:
+	if not questions_data.has(qtype):
+		questions_data[qtype] = []
+	
+	var questions: Array = questions_data[qtype]
+	var found: bool = false
+	for i in range(questions.size()):
+		if questions[i].get("id", "") == question_id:
+			questions[i] = question_data
+			found = true
+			break
+	
+	if not found:
+		questions.append(question_data)
+	
+	save_data()
+	data_updated.emit("questions")
+
+func get_reward(reward_id: String) -> Dictionary:
+	return rewards_data.get(reward_id, {}).duplicate()
+
+func update_reward(reward_id: String, reward_data: Dictionary) -> void:
+	rewards_data[reward_id] = reward_data
+	save_data()
+	data_updated.emit("rewards")
+
+func delete_reward(reward_id: String) -> void:
+	if rewards_data.has(reward_id):
+		rewards_data.erase(reward_id)
+		save_data()
+		data_updated.emit("rewards")
+
 func get_config() -> Dictionary:
 	return config_data.duplicate()
 

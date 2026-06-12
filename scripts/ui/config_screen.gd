@@ -34,7 +34,7 @@ extends Control
 @onready var store_name_input: LineEdit = $Background/TabContainer/StoresTab/VBoxContainer/FormGrid/StoreNameInput
 @onready var store_manager_input: LineEdit = $Background/TabContainer/StoresTab/VBoxContainer/FormGrid/StoreManagerInput
 @onready var store_location_input: LineEdit = $Background/TabContainer/StoresTab/VBoxContainer/FormGrid/StoreLocationInput
-@onready var store_loss_rate_spin: DoubleSpinBox = $Background/TabContainer/StoresTab/VBoxContainer/FormGrid/StoreLossRateSpin
+@onready var store_loss_rate_spin: SpinBox = $Background/TabContainer/StoresTab/VBoxContainer/FormGrid/StoreLossRateSpin
 
 @onready var config_mode_option: OptionButton = $Background/TabContainer/SystemTab/VBoxContainer/ConfigGrid/ConfigModeOption
 @onready var config_open_start: LineEdit = $Background/TabContainer/SystemTab/VBoxContainer/ConfigGrid/ConfigOpenStart
@@ -46,10 +46,32 @@ extends Control
 
 var selected_level_id: String = ""
 var selected_store_id: String = ""
+var selected_question_id: String = ""
+var selected_reward_id: String = ""
+
+var question_edit_panel: PanelContainer = null
+var question_desc_input: TextEdit = null
+var question_score_spin: SpinBox = null
+var question_difficulty_spin: SpinBox = null
+var options_container: VBoxContainer = null
+var question_save_btn: Button = null
+
+var rewards_tree: Tree = null
+var reward_id_input: LineEdit = null
+var reward_name_input: LineEdit = null
+var reward_desc_input: LineEdit = null
+var reward_icon_input: LineEdit = null
+var reward_condition_input: LineEdit = null
+var reward_add_btn: Button = null
+var reward_save_btn: Button = null
+var reward_delete_btn: Button = null
 
 func _ready() -> void:
-	setup_connections()
 	setup_option_buttons()
+	build_question_editor()
+	build_rewards_tab()
+	build_assets_tab()
+	setup_connections()
 	load_all_data()
 
 func setup_connections() -> void:
@@ -69,6 +91,12 @@ func setup_connections() -> void:
 	add_store_btn.pressed.connect(_on_add_store)
 	save_store_btn.pressed.connect(_on_save_store)
 	delete_store_btn.pressed.connect(_on_delete_store)
+	
+	if rewards_tree and reward_add_btn and reward_save_btn and reward_delete_btn:
+		rewards_tree.item_selected.connect(_on_reward_selected)
+		reward_add_btn.pressed.connect(_on_add_reward)
+		reward_save_btn.pressed.connect(_on_save_reward)
+		reward_delete_btn.pressed.connect(_on_delete_reward)
 	
 	save_config_btn.pressed.connect(_on_save_config)
 	config_music_slider.value_changed.connect(_on_music_volume_changed)
@@ -90,7 +118,344 @@ func load_all_data() -> void:
 	load_levels()
 	load_questions("review_opinion")
 	load_stores()
+	load_rewards()
 	load_config()
+
+func build_question_editor() -> void:
+	var questions_vbox: VBoxContainer = questions_tree.get_parent()
+	for child in questions_vbox.get_children():
+		if child.name == "HintLabel":
+			child.queue_free()
+			break
+	
+	question_edit_panel = PanelContainer.new()
+	question_edit_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	question_edit_panel.custom_minimum_size = Vector2(0, 280)
+	questions_vbox.add_child(question_edit_panel)
+	
+	var margin: MarginContainer = MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 15)
+	margin.add_theme_constant_override("margin_right", 15)
+	margin.add_theme_constant_override("margin_top", 12)
+	margin.add_theme_constant_override("margin_bottom", 12)
+	question_edit_panel.add_child(margin)
+	
+	var vbox: VBoxContainer = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 8)
+	margin.add_child(vbox)
+	
+	var title: Label = Label.new()
+	title.text = "✏️ 题目编辑"
+	title.add_theme_font_size_override("font_size", 16)
+	title.add_theme_color_override("font_color", Color(0.4, 0.2, 0.08, 1))
+	vbox.add_child(title)
+	
+	var info_grid: GridContainer = GridContainer.new()
+	info_grid.columns = 2
+	info_grid.add_theme_constant_override("h_separation", 15)
+	info_grid.add_theme_constant_override("v_separation", 6)
+	vbox.add_child(info_grid)
+	
+	var diff_label: Label = Label.new()
+	diff_label.text = "难度："
+	diff_label.add_theme_font_size_override("font_size", 13)
+	info_grid.add_child(diff_label)
+	
+	question_difficulty_spin = SpinBox.new()
+	question_difficulty_spin.min_value = 1
+	question_difficulty_spin.max_value = 5
+	question_difficulty_spin.step = 1
+	question_difficulty_spin.add_theme_font_size_override("font_size", 13)
+	info_grid.add_child(question_difficulty_spin)
+	
+	var score_label: Label = Label.new()
+	score_label.text = "分值："
+	score_label.add_theme_font_size_override("font_size", 13)
+	info_grid.add_child(score_label)
+	
+	question_score_spin = SpinBox.new()
+	question_score_spin.min_value = 5
+	question_score_spin.max_value = 100
+	question_score_spin.step = 5
+	question_score_spin.value = 10
+	question_score_spin.add_theme_font_size_override("font_size", 13)
+	info_grid.add_child(question_score_spin)
+	
+	var desc_label: Label = Label.new()
+	desc_label.text = "题目描述："
+	desc_label.add_theme_font_size_override("font_size", 13)
+	vbox.add_child(desc_label)
+	
+	question_desc_input = TextEdit.new()
+	question_desc_input.custom_minimum_size = Vector2(0, 60)
+	question_desc_input.add_theme_font_size_override("font_size", 13)
+	vbox.add_child(question_desc_input)
+	
+	var opts_label: Label = Label.new()
+	opts_label.text = "选项（勾选正确选项）："
+	opts_label.add_theme_font_size_override("font_size", 13)
+	vbox.add_child(opts_label)
+	
+	options_container = VBoxContainer.new()
+	options_container.add_theme_constant_override("separation", 5)
+	options_container.custom_minimum_size = Vector2(0, 80)
+	vbox.add_child(options_container)
+	
+	var btn_row: HBoxContainer = HBoxContainer.new()
+	btn_row.add_theme_constant_override("separation", 10)
+	vbox.add_child(btn_row)
+	
+	var add_opt_btn: Button = Button.new()
+	add_opt_btn.text = "➕ 增加选项"
+	add_opt_btn.add_theme_font_size_override("font_size", 13)
+	add_opt_btn.custom_minimum_size = Vector2(120, 32)
+	add_opt_btn.pressed.connect(_on_add_option_pressed)
+	btn_row.add_child(add_opt_btn)
+	
+	var spacer: Control = Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	btn_row.add_child(spacer)
+	
+	question_save_btn = Button.new()
+	question_save_btn.text = "💾 保存题目"
+	question_save_btn.add_theme_font_size_override("font_size", 14)
+	question_save_btn.custom_minimum_size = Vector2(130, 36)
+	question_save_btn.pressed.connect(_on_save_question)
+	btn_row.add_child(question_save_btn)
+	
+	for i in range(4):
+		_add_option_row()
+
+func _add_option_row() -> void:
+	if not options_container:
+		return
+	var row: HBoxContainer = HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	options_container.add_child(row)
+	
+	var correct_check: CheckBox = CheckBox.new()
+	correct_check.text = "正确"
+	correct_check.add_theme_font_size_override("font_size", 12)
+	correct_check.custom_minimum_size = Vector2(50, 0)
+	row.add_child(correct_check)
+	
+	var opt_id: LineEdit = LineEdit.new()
+	opt_id.placeholder_text = "选项ID"
+	opt_id.add_theme_font_size_override("font_size", 12)
+	opt_id.custom_minimum_size = Vector2(60, 0)
+	opt_id.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	row.add_child(opt_id)
+	
+	var opt_text: LineEdit = LineEdit.new()
+	opt_text.placeholder_text = "选项内容"
+	opt_text.add_theme_font_size_override("font_size", 12)
+	opt_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(opt_text)
+	
+	var del_btn: Button = Button.new()
+	del_btn.text = "×"
+	del_btn.add_theme_font_size_override("font_size", 12)
+	del_btn.custom_minimum_size = Vector2(30, 28)
+	del_btn.pressed.connect(func(): row.queue_free())
+	row.add_child(del_btn)
+
+func build_rewards_tab() -> void:
+	var rewards_tab: ScrollContainer = ScrollContainer.new()
+	rewards_tab.name = "RewardsTab"
+	rewards_tab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	rewards_tab.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	tab_container.add_child(rewards_tab)
+	tab_container.set_tab_title(tab_container.get_tab_count() - 1, "🎁 奖励配置")
+	
+	var vbox: VBoxContainer = VBoxContainer.new()
+	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	vbox.add_theme_constant_override("separation", 12)
+	rewards_tab.add_child(vbox)
+	
+	var btn_row: HBoxContainer = HBoxContainer.new()
+	btn_row.add_theme_constant_override("separation", 10)
+	vbox.add_child(btn_row)
+	
+	reward_add_btn = Button.new()
+	reward_add_btn.text = "➕ 新增奖励"
+	reward_add_btn.add_theme_font_size_override("font_size", 14)
+	reward_add_btn.custom_minimum_size = Vector2(120, 36)
+	btn_row.add_child(reward_add_btn)
+	
+	reward_save_btn = Button.new()
+	reward_save_btn.text = "💾 保存修改"
+	reward_save_btn.add_theme_font_size_override("font_size", 14)
+	reward_save_btn.custom_minimum_size = Vector2(120, 36)
+	btn_row.add_child(reward_save_btn)
+	
+	reward_delete_btn = Button.new()
+	reward_delete_btn.text = "🗑️ 删除奖励"
+	reward_delete_btn.add_theme_font_size_override("font_size", 14)
+	reward_delete_btn.custom_minimum_size = Vector2(120, 36)
+	btn_row.add_child(reward_delete_btn)
+	
+	var spacer: Control = Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	btn_row.add_child(spacer)
+	
+	rewards_tree = Tree.new()
+	rewards_tree.columns = 3
+	rewards_tree.column_titles_visible = true
+	rewards_tree.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	rewards_tree.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	rewards_tree.custom_minimum_size = Vector2(0, 200)
+	vbox.add_child(rewards_tree)
+	
+	var form_panel: PanelContainer = PanelContainer.new()
+	form_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vbox.add_child(form_panel)
+	
+	var form_margin: MarginContainer = MarginContainer.new()
+	form_margin.add_theme_constant_override("margin_left", 15)
+	form_margin.add_theme_constant_override("margin_right", 15)
+	form_margin.add_theme_constant_override("margin_top", 12)
+	form_margin.add_theme_constant_override("margin_bottom", 12)
+	form_panel.add_child(form_margin)
+	
+	var form_grid: GridContainer = GridContainer.new()
+	form_grid.columns = 2
+	form_grid.add_theme_constant_override("h_separation", 15)
+	form_grid.add_theme_constant_override("v_separation", 8)
+	form_margin.add_child(form_grid)
+	
+	var rlabels: Array = ["奖励ID：", "奖励名称：", "奖励描述：", "图标(emoji)：", "获得条件："]
+	var rinputs: Array = [null, null, null, null, null]
+	for i in range(rlabels.size()):
+		var lb: Label = Label.new()
+		lb.text = rlabels[i]
+		lb.add_theme_font_size_override("font_size", 13)
+		form_grid.add_child(lb)
+		
+		var input: LineEdit = LineEdit.new()
+		input.add_theme_font_size_override("font_size", 13)
+		form_grid.add_child(input)
+		rinputs[i] = input
+	
+	reward_id_input = rinputs[0]
+	reward_name_input = rinputs[1]
+	reward_desc_input = rinputs[2]
+	reward_icon_input = rinputs[3]
+	reward_condition_input = rinputs[4]
+
+func build_assets_tab() -> void:
+	var assets_tab: ScrollContainer = ScrollContainer.new()
+	assets_tab.name = "AssetsTab"
+	assets_tab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	assets_tab.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	tab_container.add_child(assets_tab)
+	tab_container.set_tab_title(tab_container.get_tab_count() - 1, "🖼️ 素材管理")
+	
+	var vbox: VBoxContainer = VBoxContainer.new()
+	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	vbox.add_theme_constant_override("separation", 15)
+	assets_tab.add_child(vbox)
+	
+	var title: Label = Label.new()
+	title.text = "📁 游戏素材管理"
+	title.add_theme_font_size_override("font_size", 20)
+	title.add_theme_color_override("font_color", Color(0.4, 0.2, 0.08, 1))
+	vbox.add_child(title)
+	
+	var hint: Label = Label.new()
+	hint.text = "素材文件存放目录：assets/sounds/ 和 assets/images/"
+	hint.add_theme_font_size_override("font_size", 14)
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	vbox.add_child(hint)
+	
+	var sound_panel: PanelContainer = PanelContainer.new()
+	sound_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vbox.add_child(sound_panel)
+	
+	var sound_margin: MarginContainer = MarginContainer.new()
+	sound_margin.add_theme_constant_override("margin_left", 15)
+	sound_margin.add_theme_constant_override("margin_right", 15)
+	sound_margin.add_theme_constant_override("margin_top", 12)
+	sound_margin.add_theme_constant_override("margin_bottom", 12)
+	sound_panel.add_child(sound_margin)
+	
+	var sound_vbox: VBoxContainer = VBoxContainer.new()
+	sound_vbox.add_theme_constant_override("separation", 6)
+	sound_margin.add_child(sound_vbox)
+	
+	var sound_title: Label = Label.new()
+	sound_title.text = "🔊 音效素材"
+	sound_title.add_theme_font_size_override("font_size", 16)
+	sound_vbox.add_child(sound_title)
+	
+	var sound_files: Array = [
+		["click.wav", "按钮点击音效", "约 0.2 秒"],
+		["correct.wav", "回答正确音效", "约 0.5 秒"],
+		["wrong.wav", "回答错误音效", "约 0.5 秒"],
+		["complete.wav", "关卡完成音效", "约 1.0 秒"]
+	]
+	for sf in sound_files:
+		var row: HBoxContainer = HBoxContainer.new()
+		row.add_theme_constant_override("separation", 10)
+		sound_vbox.add_child(row)
+		
+		var name_lb: Label = Label.new()
+		name_lb.text = "📄 " + sf[0]
+		name_lb.add_theme_font_size_override("font_size", 13)
+		name_lb.custom_minimum_size = Vector2(150, 0)
+		row.add_child(name_lb)
+		
+		var desc_lb: Label = Label.new()
+		desc_lb.text = sf[1]
+		desc_lb.add_theme_font_size_override("font_size", 13)
+		desc_lb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(desc_lb)
+		
+		var dur_lb: Label = Label.new()
+		dur_lb.text = sf[2]
+		dur_lb.add_theme_font_size_override("font_size", 13)
+		dur_lb.custom_minimum_size = Vector2(100, 0)
+		row.add_child(dur_lb)
+	
+	var tip: Label = Label.new()
+	tip.text = "💡 将音效文件放入 assets/sounds/ 目录即可自动加载，支持 WAV、MP3、OGG 格式"
+	tip.add_theme_font_size_override("font_size", 12)
+	tip.add_theme_color_override("font_color", Color(0.5, 0.4, 0.3, 1))
+	sound_vbox.add_child(tip)
+	
+	var img_panel: PanelContainer = PanelContainer.new()
+	img_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vbox.add_child(img_panel)
+	
+	var img_margin: MarginContainer = MarginContainer.new()
+	img_margin.add_theme_constant_override("margin_left", 15)
+	img_margin.add_theme_constant_override("margin_right", 15)
+	img_margin.add_theme_constant_override("margin_top", 12)
+	img_margin.add_theme_constant_override("margin_bottom", 12)
+	img_panel.add_child(img_margin)
+	
+	var img_vbox: VBoxContainer = VBoxContainer.new()
+	img_vbox.add_theme_constant_override("separation", 6)
+	img_margin.add_child(img_vbox)
+	
+	var img_title: Label = Label.new()
+	img_title.text = "🖼️ 图片素材"
+	img_title.add_theme_font_size_override("font_size", 16)
+	img_vbox.add_child(img_title)
+	
+	var img_tip: Label = Label.new()
+	img_tip.text = "图片素材存放在 assets/images/ 目录，支持 PNG、JPG、SVG 格式\n目前游戏使用纯代码UI + emoji图标，无需额外图片资源"
+	img_tip.add_theme_font_size_override("font_size", 13)
+	img_tip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	img_vbox.add_child(img_tip)
+	
+	var refresh_btn: Button = Button.new()
+	refresh_btn.text = "🔄 刷新素材列表"
+	refresh_btn.add_theme_font_size_override("font_size", 14)
+	refresh_btn.custom_minimum_size = Vector2(180, 40)
+	refresh_btn.pressed.connect(_on_refresh_assets)
+	vbox.add_child(refresh_btn)
 
 func load_levels() -> void:
 	levels_tree.clear()
@@ -380,3 +745,213 @@ func _on_sfx_volume_changed(value: float) -> void:
 
 func _on_sound_toggled(enabled: bool) -> void:
 	AudioManager.set_sound_enabled(enabled)
+
+func load_rewards() -> void:
+	if not rewards_tree:
+		return
+	rewards_tree.clear()
+	rewards_tree.set_column_title(0, "奖励ID")
+	rewards_tree.set_column_title(1, "图标")
+	rewards_tree.set_column_title(2, "名称")
+	
+	var rewards: Array = DataManager.get_rewards()
+	for reward in rewards:
+		var item: TreeItem = rewards_tree.create_item()
+		item.set_text(0, reward["id"])
+		item.set_text(1, reward.get("icon", "🎁"))
+		item.set_text(2, reward["name"])
+		item.set_meta("reward_id", reward["id"])
+
+func _on_add_option_pressed() -> void:
+	AudioManager.play_click()
+	_add_option_row()
+
+func clear_question_form() -> void:
+	if question_desc_input:
+		question_desc_input.text = ""
+	if question_score_spin:
+		question_score_spin.value = 10
+	if question_difficulty_spin:
+		question_difficulty_spin.value = 1
+	if options_container:
+		for child in options_container.get_children():
+			child.queue_free()
+		for i in range(4):
+			_add_option_row()
+
+func _get_current_question_type() -> String:
+	var types: Array = ["review_opinion", "store_selection", "amount_sorting", "approval_record"]
+	return types[question_type_option.selected]
+
+func _on_question_selected() -> void:
+	AudioManager.play_click()
+	var selected: TreeItem = questions_tree.get_selected()
+	if not selected:
+		return
+	selected_question_id = selected.get_meta("question_id", "")
+	var qtype: String = _get_current_question_type()
+	var question: Dictionary = DataManager.get_question(selected_question_id, qtype)
+	if question.is_empty():
+		return
+	
+	if question_desc_input:
+		question_desc_input.text = question.get("description", "")
+	if question_score_spin:
+		question_score_spin.value = question.get("score", 10)
+	if question_difficulty_spin:
+		question_difficulty_spin.value = question.get("difficulty", 1)
+	
+	if options_container:
+		for child in options_container.get_children():
+			child.queue_free()
+		
+		var options: Array = question.get("options", [])
+		var correct_opts: Array = question.get("correct_options", [])
+		for opt in options:
+			_add_option_row()
+			var last_row: HBoxContainer = options_container.get_child(options_container.get_child_count() - 1)
+			if last_row and last_row.get_child_count() >= 3:
+				var check: CheckBox = last_row.get_child(0)
+				var id_input: LineEdit = last_row.get_child(1)
+				var text_input: LineEdit = last_row.get_child(2)
+				if check:
+					check.button_pressed = correct_opts.has(opt.get("id", ""))
+				if id_input:
+					id_input.text = opt.get("id", "")
+				if text_input:
+					text_input.text = opt.get("text", "")
+
+func _on_add_question() -> void:
+	AudioManager.play_click()
+	clear_question_form()
+	selected_question_id = ""
+
+func _on_save_question() -> void:
+	AudioManager.play_click()
+	if not options_container or not question_desc_input:
+		return
+	
+	var qtype: String = _get_current_question_type()
+	var options: Array = []
+	var correct_opts: Array = []
+	
+	for i in range(options_container.get_child_count()):
+		var row: HBoxContainer = options_container.get_child(i)
+		if row and row.get_child_count() >= 3:
+			var check: CheckBox = row.get_child(0)
+			var id_input: LineEdit = row.get_child(1)
+			var text_input: LineEdit = row.get_child(2)
+			var opt_id: String = id_input.text if id_input else ""
+			var opt_text: String = text_input.text if text_input else ""
+			if opt_text == "" and opt_id == "":
+				continue
+			options.append({"id": opt_id, "text": opt_text})
+			if check and check.button_pressed:
+				correct_opts.append(opt_id)
+	
+	if options.size() == 0:
+		return
+	
+	var qid: String = selected_question_id
+	if qid == "":
+		var type_prefix: Dictionary = {
+			"review_opinion": "ro",
+			"store_selection": "ss",
+			"amount_sorting": "as",
+			"approval_record": "ar"
+		}
+		var prefix: String = type_prefix.get(qtype, "q")
+		var existing: Array = DataManager.get_questions_by_type(qtype)
+		qid = "%s_%03d" % [prefix, existing.size() + 10]
+	
+	var question: Dictionary = {
+		"id": qid,
+		"type": qtype,
+		"description": question_desc_input.text,
+		"score": int(question_score_spin.value) if question_score_spin else 10,
+		"difficulty": int(question_difficulty_spin.value) if question_difficulty_spin else 1,
+		"options": options,
+		"correct_options": correct_opts,
+		"abnormal_reason": ""
+	}
+	
+	DataManager.update_question(qid, question, qtype)
+	selected_question_id = qid
+	load_questions(qtype)
+
+func _on_reward_selected() -> void:
+	AudioManager.play_click()
+	var selected: TreeItem = rewards_tree.get_selected()
+	if not selected:
+		return
+	selected_reward_id = selected.get_meta("reward_id", "")
+	var reward: Dictionary = DataManager.get_reward(selected_reward_id)
+	if reward.is_empty():
+		return
+	
+	if reward_id_input:
+		reward_id_input.text = reward.get("id", "")
+	if reward_name_input:
+		reward_name_input.text = reward.get("name", "")
+	if reward_desc_input:
+		reward_desc_input.text = reward.get("description", "")
+	if reward_icon_input:
+		reward_icon_input.text = reward.get("icon", "🎁")
+	if reward_condition_input:
+		reward_condition_input.text = str(reward.get("condition", ""))
+
+func _on_add_reward() -> void:
+	AudioManager.play_click()
+	var rewards: Array = DataManager.get_rewards()
+	var new_id: String = "reward_%02d" % (rewards.size() + 5)
+	var new_reward: Dictionary = {
+		"id": new_id,
+		"name": "新奖励",
+		"description": "奖励描述",
+		"icon": "🎁",
+		"condition": "完成训练"
+	}
+	DataManager.update_reward(new_id, new_reward)
+	selected_reward_id = new_id
+	load_rewards()
+
+func _on_save_reward() -> void:
+	if selected_reward_id == "":
+		return
+	AudioManager.play_click()
+	
+	var reward: Dictionary = {
+		"id": reward_id_input.text if reward_id_input else "",
+		"name": reward_name_input.text if reward_name_input else "",
+		"description": reward_desc_input.text if reward_desc_input else "",
+		"icon": reward_icon_input.text if reward_icon_input else "🎁",
+		"condition": reward_condition_input.text if reward_condition_input else ""
+	}
+	
+	DataManager.update_reward(selected_reward_id, reward)
+	load_rewards()
+
+func _on_delete_reward() -> void:
+	if selected_reward_id == "":
+		return
+	AudioManager.play_click()
+	var dialog: ConfirmationDialog = ConfirmationDialog.new()
+	dialog.title = "确认删除"
+	dialog.dialog_text = "确定要删除奖励「%s」吗？" % selected_reward_id
+	dialog.get_ok_button().text = "删除"
+	dialog.get_cancel_button().text = "取消"
+	add_child(dialog)
+	dialog.confirmed.connect(func():
+		DataManager.delete_reward(selected_reward_id)
+		selected_reward_id = ""
+		load_rewards()
+	)
+	dialog.popup_centered()
+
+func _on_refresh_assets() -> void:
+	AudioManager.play_click()
+	var dialog: AcceptDialog = AcceptDialog.new()
+	dialog.title = "素材刷新"
+	dialog.dialog_text = "素材列表已刷新\n\n音效目录：assets/sounds/\n图片目录：assets/images/"
+	add_child(dialog)
+	dialog.popup_centered()

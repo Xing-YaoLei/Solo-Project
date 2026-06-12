@@ -370,7 +370,7 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 14
 text = "目标损耗率(%)："
 
-[node name="StoreLossRateSpin" type="DoubleSpinBox" parent="Background/TabContainer/StoresTab/VBoxContainer/FormGrid"]
+[node name="StoreLossRateSpin" type="SpinBox" parent="Background/TabContainer/StoresTab/VBoxContainer/FormGrid"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 14
 min_value = 0.0
