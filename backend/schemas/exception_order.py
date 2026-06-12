@@ -36,6 +36,7 @@ class ExceptionOrderCreate(ExceptionOrderBase):
 class ExceptionOrderUpdate(ExceptionOrderBase):
     group_batch_id: Optional[int] = Field(None, description="团单ID")
     exception_no: Optional[str] = Field(None, max_length=32, description="异常单号")
+    change_reason: Optional[str] = Field(None, description="变更原因")
 
 
 class ExceptionOrderProcess(BaseSchema):

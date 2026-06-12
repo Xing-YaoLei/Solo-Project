@@ -67,6 +67,23 @@ class GroupBatchService:
         if not batch:
             return None
         update_data = data.model_dump(exclude_unset=True)
+        
+        if "status" in update_data:
+            old_status = batch.status
+            new_status = update_data["status"]
+            if old_status != new_status:
+                if new_status == GroupBatchStatus.ARRIVED and not batch.actual_arrival_time:
+                    batch.actual_arrival_time = datetime.now()
+                StatusLogService.create_log(
+                    db=db,
+                    related_type="group_batch",
+                    related_id=batch.id,
+                    old_status=old_status,
+                    new_status=new_status,
+                    change_reason=getattr(data, "change_reason", "更新团单信息") or "更新团单信息",
+                    operator=getattr(data, "operator", None),
+                )
+        
         for key, value in update_data.items():
             setattr(batch, key, value)
         db.flush()

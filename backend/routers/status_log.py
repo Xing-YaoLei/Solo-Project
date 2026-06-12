@@ -9,7 +9,7 @@ router = APIRouter(prefix="/status-logs", tags=["状态日志"])
 
 @router.get("", response_model=ApiResponse[list[StatusLogResponse]])
 def list_status_logs(
-    related_type: str = Query(..., description="关联类型: group_batch/arrival_list/pickup_code/after_sale/exception"),
+    related_type: str = Query(..., description="关联类型: group_batch/arrival_list/pickup_code/after_sale/exception_order"),
     related_id: int = Query(..., description="关联ID"),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),

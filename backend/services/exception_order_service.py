@@ -70,7 +70,7 @@ class ExceptionOrderService:
         db.flush()
         StatusLogService.create_log(
             db=db,
-            related_type="exception",
+            related_type="exception_order",
             related_id=exception.id,
             old_status=None,
             new_status=exception.status,
@@ -134,7 +134,7 @@ class ExceptionOrderService:
         if old_status != data.status:
             StatusLogService.create_log(
                 db=db,
-                related_type="exception",
+                related_type="exception_order",
                 related_id=exception.id,
                 old_status=old_status,
                 new_status=data.status,
@@ -155,6 +155,21 @@ class ExceptionOrderService:
         if not exception:
             return None
         update_data = data.model_dump(exclude_unset=True)
+        
+        if "status" in update_data:
+            old_status = exception.status
+            new_status = update_data["status"]
+            if old_status != new_status:
+                StatusLogService.create_log(
+                    db=db,
+                    related_type="exception_order",
+                    related_id=exception.id,
+                    old_status=old_status,
+                    new_status=new_status,
+                    change_reason=getattr(data, "change_reason", "更新异常单信息") or "更新异常单信息",
+                    operator=getattr(data, "processor", None),
+                )
+        
         for key, value in update_data.items():
             setattr(exception, key, value)
         db.flush()

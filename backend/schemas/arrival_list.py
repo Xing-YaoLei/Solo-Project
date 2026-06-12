@@ -30,6 +30,7 @@ class ArrivalListCreate(ArrivalListBase):
 class ArrivalListUpdate(ArrivalListBase):
     group_batch_id: Optional[int] = Field(None, description="团单ID")
     product_id: Optional[int] = Field(None, description="商品ID")
+    change_reason: Optional[str] = Field(None, description="变更原因")
 
 
 class ArrivalConfirm(BaseSchema):

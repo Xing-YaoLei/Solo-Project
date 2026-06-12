@@ -35,6 +35,7 @@ class GroupBatchCreate(GroupBatchBase):
 class GroupBatchUpdate(GroupBatchBase):
     batch_no: Optional[str] = Field(None, max_length=32, description="团单号")
     name: Optional[str] = Field(None, max_length=128, description="团单名称")
+    change_reason: Optional[str] = Field(None, description="变更原因")
 
 
 class GroupBatchStatusUpdate(BaseSchema):

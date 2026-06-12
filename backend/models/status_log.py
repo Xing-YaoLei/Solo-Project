@@ -5,7 +5,7 @@ from models.base import BaseModel
 class StatusLog(BaseModel):
     __tablename__ = "status_logs"
 
-    related_type = Column(String(32), index=True, comment="关联类型: group_batch/arrival_list/pickup_code/after_sale/exception")
+    related_type = Column(String(32), index=True, comment="关联类型: group_batch/arrival_list/pickup_code/after_sale/exception_order")
     related_id = Column(Integer, index=True, comment="关联ID")
     old_status = Column(String(64), comment="原状态")
     new_status = Column(String(64), comment="新状态")

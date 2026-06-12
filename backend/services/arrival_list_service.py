@@ -73,6 +73,21 @@ class ArrivalListService:
         if not arrival:
             return None
         update_data = data.model_dump(exclude_unset=True)
+        
+        if "status" in update_data:
+            old_status = arrival.status
+            new_status = update_data["status"]
+            if old_status != new_status:
+                StatusLogService.create_log(
+                    db=db,
+                    related_type="arrival_list",
+                    related_id=arrival.id,
+                    old_status=old_status,
+                    new_status=new_status,
+                    change_reason=getattr(data, "change_reason", "更新到货信息") or "更新到货信息",
+                    operator=getattr(data, "warehouse_operator", None),
+                )
+        
         for key, value in update_data.items():
             setattr(arrival, key, value)
         arrival.shortage_quantity = max(0, arrival.expected_quantity - arrival.actual_quantity)
