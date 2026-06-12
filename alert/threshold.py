@@ -26,13 +26,30 @@ def update_threshold(session, threshold_id, new_value, updated_by):
     return threshold
 
 
-def create_threshold(session, material_code, store_code, threshold_type, threshold_value):
+def create_threshold(session, material_code, store_code, threshold_type, threshold_value, updated_by="system"):
+    old_rows = (
+        session.query(AlertThreshold)
+        .filter(
+            AlertThreshold.store_code == store_code,
+            AlertThreshold.material_code == material_code,
+            AlertThreshold.threshold_type == threshold_type,
+            AlertThreshold.is_active == True,
+        )
+        .all()
+    )
+    for r in old_rows:
+        r.is_active = False
+        r.updated_by = updated_by
+        r.updated_at = datetime.utcnow()
+    session.flush()
+
     threshold = AlertThreshold(
         material_code=material_code,
         store_code=store_code,
         threshold_type=threshold_type,
         threshold_value=Decimal(str(threshold_value)),
         is_active=True,
+        updated_by=updated_by,
     )
     session.add(threshold)
     session.flush()

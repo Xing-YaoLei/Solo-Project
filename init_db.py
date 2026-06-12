@@ -335,9 +335,28 @@ def main():
         seed_raw_inventory(session)
         seed_raw_receipts(session)
         seed_raw_pos(session)
+        session.flush()
+
+        print("\n开始执行 ETL 清洗...")
+        from etl.clean_receipts import clean_receipts
+        from etl.clean_inventory import clean_inventory, generate_inventory_ledger_from_snapshots
+        from etl.clean_pos import clean_pos
+        from etl.caliber_match import caliber_match
+
+        receipt_count = clean_receipts(session)
+        print(f"  会员小票清洗: {receipt_count} 条消耗流水")
+        pos_count = clean_pos(session)
+        print(f"  POS流水清洗: {pos_count} 条 → 已按BOM展开为物料消耗")
+        inv_count = clean_inventory(session)
+        print(f"  库存清洗: {inv_count} 条快照")
+        ledger_count = generate_inventory_ledger_from_snapshots(session)
+        print(f"  库存快照差异生成: {ledger_count} 条出入库流水")
+        usage_count = caliber_match(session)
+        print(f"  口径匹配: {usage_count} 条日均用量记录")
+
         session.commit()
         print("\n" + "=" * 60)
-        print("数据初始化完成！")
+        print("数据初始化 + ETL 清洗完成！")
         print("=" * 60)
     except Exception as e:
         session.rollback()

@@ -28,6 +28,7 @@ def _get_turnover_threshold(session, store_code, material_code):
                 AlertThreshold.threshold_type == "turnover",
                 AlertThreshold.is_active == True,
             )
+            .order_by(AlertThreshold.updated_at.desc())
             .first()
         )
         if row:

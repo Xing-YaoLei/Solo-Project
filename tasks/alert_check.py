@@ -19,6 +19,7 @@ def _get_threshold(session, store_code, material_code, threshold_type):
             AlertThreshold.threshold_type == threshold_type,
             AlertThreshold.is_active == True,
         )
+        .order_by(AlertThreshold.updated_at.desc())
         .first()
     )
     if threshold:

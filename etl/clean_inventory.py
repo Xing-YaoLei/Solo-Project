@@ -5,7 +5,7 @@ import pandas as pd
 from sqlalchemy import func
 
 from db.connection import Session
-from db.models import RawInventory, CleanedInventory
+from db.models import RawInventory, CleanedInventory, InventoryLedger, BatchInfo
 
 
 def clean_inventory(session):
@@ -47,6 +47,96 @@ def clean_inventory(session):
         row.is_cleaned = True
 
     session.commit()
+
+    generate_inventory_ledger_from_snapshots(session)
+
+    return inserted
+
+
+def generate_inventory_ledger_from_snapshots(session):
+    from sqlalchemy import func
+
+    all_rows = (
+        session.query(CleanedInventory)
+        .order_by(
+            CleanedInventory.store_code,
+            CleanedInventory.material_code,
+            CleanedInventory.batch_no,
+            CleanedInventory.snapshot_date,
+        )
+        .all()
+    )
+    if not all_rows:
+        return 0
+
+    grouped = {}
+    for r in all_rows:
+        key = (r.store_code, r.material_code, r.batch_no)
+        grouped.setdefault(key, []).append(r)
+
+    existing_dates = set(
+        (r.store_code, r.material_code, r.batch_no, r.transaction_date, r.transaction_type)
+        for r in session.query(
+            InventoryLedger.store_code,
+            InventoryLedger.material_code,
+            InventoryLedger.batch_no,
+            InventoryLedger.transaction_date,
+            InventoryLedger.transaction_type,
+        ).filter(InventoryLedger.transaction_type.in_(["inbound", "outbound", "adjust"])).all()
+    )
+
+    supplier_map = {}
+    for b in session.query(BatchInfo).all():
+        key = (b.store_code, b.material_code, b.batch_no)
+        supplier_map[key] = b.supplier_code
+
+    inserted = 0
+    for key, snapshots in grouped.items():
+        store_code, material_code, batch_no = key
+        snapshots_sorted = sorted(snapshots, key=lambda x: x.snapshot_date)
+        supplier_code = supplier_map.get(key)
+        material_name = snapshots_sorted[0].material_name
+        unit = snapshots_sorted[0].unit
+
+        for i in range(1, len(snapshots_sorted)):
+            prev = snapshots_sorted[i - 1]
+            curr = snapshots_sorted[i]
+            prev_qty = float(prev.stock_qty) if prev.stock_qty else 0.0
+            curr_qty = float(curr.stock_qty) if curr.stock_qty else 0.0
+            delta = curr_qty - prev_qty
+
+            if abs(delta) < 1e-6:
+                continue
+
+            txn_date = curr.snapshot_date
+            dedup_key = (store_code, material_code, batch_no, txn_date)
+
+            if delta > 0:
+                txn_type = "inbound"
+                txn_qty = delta
+            else:
+                txn_type = "outbound"
+                txn_qty = abs(delta)
+
+            if (store_code, material_code, batch_no, txn_date, txn_type) in existing_dates:
+                continue
+
+            ledger = InventoryLedger(
+                store_code=store_code,
+                material_code=material_code,
+                material_name=material_name,
+                transaction_type=txn_type,
+                quantity=Decimal(str(round(txn_qty, 5))),
+                unit=unit,
+                batch_no=batch_no,
+                supplier_code=supplier_code,
+                transaction_date=txn_date,
+            )
+            session.add(ledger)
+            existing_dates.add((store_code, material_code, batch_no, txn_date, txn_type))
+            inserted += 1
+
+    session.flush()
     return inserted
 
 
