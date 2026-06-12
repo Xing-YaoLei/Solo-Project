@@ -62,17 +62,27 @@ class User:
     stores: list[str] = field(default_factory=list)
 
     def has_permission(self, perm: str) -> bool:
+        if perm == "view_all_stores":
+            if self.role == "admin":
+                return True
+            return self.stores is None or len(self.stores) == 0
         return PERMISSIONS.get(self.role, {}).get(perm, False)
 
     def can_access_store(self, store_id: str) -> bool:
-        if self.has_permission("view_all_stores"):
+        if self.role == "admin":
             return True
-        return store_id in self.stores
+        if self.stores and len(self.stores) > 0:
+            return store_id in self.stores
+        return self.has_permission("view_all_stores")
 
     def can_access_stores(self, store_ids: list[str]) -> list[str]:
+        if self.role == "admin":
+            return list(store_ids)
+        if self.stores and len(self.stores) > 0:
+            return [sid for sid in store_ids if sid in self.stores]
         if self.has_permission("view_all_stores"):
             return list(store_ids)
-        return [sid for sid in store_ids if sid in self.stores]
+        return []
 
 
 DEFAULT_USERS = [

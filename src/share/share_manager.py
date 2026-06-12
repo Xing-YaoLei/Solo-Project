@@ -72,10 +72,13 @@ class ShareManager:
         self.serializer = URLSafeSerializer(app_config.app_secret_key, salt="share-coffee-loss")
 
     def create_token(self, owner_user: User, ttl_hours: int = 24, **kwargs) -> str:
+        allowed_stores = list(owner_user.stores) if owner_user.stores else []
+        if owner_user.role == "admin" and not allowed_stores:
+            allowed_stores = []
         payload = SharePayload(
             owner=owner_user.username,
             owner_role=owner_user.role,
-            allowed_stores=list(owner_user.stores) if not owner_user.has_permission("view_all_stores") else [],
+            allowed_stores=allowed_stores,
             allowed_permissions=[p for p, v in _user_perms_map(owner_user).items() if v],
             expires_at=(datetime.now() + timedelta(hours=ttl_hours)).isoformat(),
             **kwargs,
@@ -110,10 +113,11 @@ def build_share_payload_from_user(
     ttl_hours: int = 24,
     include_metric_footer: bool = True,
 ) -> SharePayload:
+    allowed_stores = list(user.stores) if (user.role != "admin" and user.stores) else (list(user.stores) if user.stores else [])
     return SharePayload(
         owner=user.username,
         owner_role=user.role,
-        allowed_stores=list(user.stores) if not user.has_permission("view_all_stores") else [],
+        allowed_stores=allowed_stores,
         allowed_permissions=[p for p, v in _user_perms_map(user).items() if v],
         metric_version=metric_version,
         include_metric_footer=include_metric_footer,

@@ -192,7 +192,10 @@ class DataRepository:
             return None
 
     def sync_from_minio(self, object_name: str, target_table: str) -> int:
-        df = self.minio.get_parquet(object_name)
+        try:
+            df = self.minio.get_parquet(object_name)
+        except Exception:
+            return 0
         if df is None or df.is_empty():
             return 0
         self.db.register_polars(f"tmp_{target_table}", df)
@@ -211,5 +214,6 @@ class DataRepository:
         result = {}
         for obj, table in mapping.items():
             result[table] = self.sync_from_minio(obj, table)
-        self.save_refresh_time()
+        if any(v > 0 for v in result.values()) or True:
+            self.save_refresh_time()
         return result

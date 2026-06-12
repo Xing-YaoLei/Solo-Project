@@ -114,38 +114,62 @@ def _time_ago(dt: datetime) -> str:
     return f"{sec // 86400}天前"
 
 
-def render_sidebar_filters(repo: DataRepository, user: User):
+def render_sidebar_filters(
+    repo: DataRepository,
+    user: User,
+    locked_metric_version: Optional[str] = None,
+    locked_stores: Optional[list[str]] = None,
+    locked_date_range: Optional[tuple] = None,
+):
     with st.sidebar:
         st.header("📊 筛选条件")
         all_stores_df = repo.get_stores()
         all_stores = list(zip(all_stores_df["store_id"].to_list(), all_stores_df["store_name"].to_list()))
         accessible_ids = user.can_access_stores([s[0] for s in all_stores])
-        store_options = [f"{sid} - {sname}" for sid, sname in all_stores if sid in accessible_ids]
+        effective_accessible = accessible_ids
+        if locked_stores:
+            effective_accessible = [s for s in accessible_ids if s in locked_stores]
+        store_options = [f"{sid} - {sname}" for sid, sname in all_stores if sid in effective_accessible]
+        default_stores = store_options
+        if locked_stores:
+            default_stores = [f"{sid} - {sname}" for sid, sname in all_stores if sid in locked_stores and sid in effective_accessible]
         selected_store_labels = st.multiselect(
             "门店",
             options=store_options,
-            default=store_options,
+            default=default_stores,
+            disabled=locked_stores is not None,
         )
-        selected_store_ids = [label.split(" - ")[0] for label in selected_store_labels] if selected_store_labels else accessible_ids
+        selected_store_ids = [label.split(" - ")[0] for label in selected_store_labels] if selected_store_labels else effective_accessible
+        if locked_stores:
+            selected_store_ids = [s for s in selected_store_ids if s in locked_stores]
 
         default_end = date.today()
         default_start = default_end - timedelta(days=29)
+        if locked_date_range:
+            default_start, default_end = locked_date_range
         date_range = st.date_input(
             "日期范围",
             value=(default_start, default_end),
-            max_value=default_end,
+            max_value=date.today(),
+            disabled=locked_date_range is not None,
         )
         start_date = date_range[0]
         end_date = date_range[1] if len(date_range) > 1 else default_end
 
         versions = get_all_metric_versions()
         version_options = {v.version: f"{v.version} - {v.description}" for v in versions}
+        default_idx = 0
+        if locked_metric_version and locked_metric_version in version_options:
+            default_idx = list(version_options.keys()).index(locked_metric_version)
         version_label = st.selectbox(
             "损耗率口径版本",
             options=list(version_options.keys()),
             format_func=lambda v: version_options[v],
-            index=0,
+            index=default_idx,
+            disabled=locked_metric_version is not None,
         )
+        if locked_metric_version:
+            version_label = locked_metric_version
         mv = get_metric_version(version_label)
         if mv:
             st.info(f"公式：{mv.formula}\n\n生效日期：{mv.effective_date.isoformat()}")
@@ -156,7 +180,7 @@ def render_sidebar_filters(repo: DataRepository, user: User):
                     st.text(explain_version_change(vs[i-1].version, vs[i].version))
                     st.markdown("---")
 
-        freq = st.radio("趋势粒度", ["日", "周", "月"], horizontal=True)
+        freq = st.radio("趋势粒度", ["日", "周", "月"], horizontal=True, disabled=locked_date_range is not None)
         freq_map = {"日": "day", "周": "week", "月": "month"}
         selected_freq = freq_map[freq]
 
@@ -251,7 +275,13 @@ def render_reason_chart(reason_df, share_payload: Optional[SharePayload]):
         st.caption(f"📝 {share_payload.get_formula_footer()}")
 
 
-def render_review_detail(loss_df: pl.DataFrame, user: User, repo: DataRepository):
+def render_review_detail(
+    loss_df: pl.DataFrame,
+    user: User,
+    repo: DataRepository,
+    delivery_df: pl.DataFrame | None = None,
+    receipts_df: pl.DataFrame | None = None,
+):
     st.subheader("📝 复核意见明细")
     if not user.has_permission("view_review_detail"):
         st.warning("您当前权限无法查看复核意见明细。")
@@ -260,17 +290,134 @@ def render_review_detail(loss_df: pl.DataFrame, user: User, repo: DataRepository
         st.info("暂无数据")
         return
     cols = [
-        "report_no", "report_date", "store_name", "sku_name",
+        "id", "report_no", "report_date", "store_id", "store_name",
+        "sku_id", "sku_name",
         "loss_quantity", "unit", "loss_amount", "loss_reason",
         "review_status", "reviewer", "review_comment", "review_date",
     ]
     available = [c for c in cols if c in loss_df.columns]
+    display_cols = [c for c in available if c not in ("id", "store_id", "sku_id")]
     display = loss_df.select(available).sort("report_date", descending=True)
-    if display.height > 200:
-        st.dataframe(display.head(200).to_pandas(), width="stretch", hide_index=True)
-        st.caption(f"仅展示最近 200 条，共 {display.height} 条")
+    display_view = display.select(display_cols)
+    if display_view.height > 200:
+        st.dataframe(display_view.head(200).to_pandas(), width="stretch", hide_index=True, on_select="rerun", selection_mode="single-row")
+        st.caption(f"仅展示最近 200 条，共 {display_view.height} 条")
     else:
-        st.dataframe(display.to_pandas(), width="stretch", hide_index=True)
+        event = st.dataframe(display_view.to_pandas(), width="stretch", hide_index=True, on_select="rerun", selection_mode="single-row")
+
+    selected_idx = None
+    try:
+        sel = st.session_state.get("selection", None)
+        if sel and hasattr(sel, "rows") and sel.rows:
+            selected_idx = sel.rows[0]
+    except Exception:
+        pass
+    try:
+        from streamlit.dataframe_selection import DataframeSelection
+        for k in st.session_state:
+            v = st.session_state[k]
+            if isinstance(v, DataframeSelection) and hasattr(v, "selection") and v.selection.rows:
+                selected_idx = v.selection.rows[0]
+                break
+    except Exception:
+        pass
+    try:
+        for k, v in st.session_state.items():
+            if isinstance(v, dict) and "rows" in v and v["rows"]:
+                selected_idx = v["rows"][0]
+                break
+    except Exception:
+        pass
+
+    selected_row = None
+    try:
+        sels = st.dataframe(display_view, on_select="ignore")
+    except Exception:
+        pass
+
+    if display_view.height > 0:
+        st.markdown("---")
+        report_options = display_view["report_no"].to_list()
+        if report_options:
+            chosen_report = st.selectbox(
+                "🔎 选择要追溯来源的报损单",
+                options=report_options,
+                index=0,
+                format_func=lambda x: f"{x} | {display_view.filter(pl.col('report_no') == x)['store_name'][0]} | {display_view.filter(pl.col('report_no') == x)['sku_name'][0]}",
+                key="trace_report_select",
+            )
+            if chosen_report:
+                row_mask = display.filter(pl.col("report_no") == chosen_report)
+                if not row_mask.is_empty():
+                    selected_row = row_mask.row(0, named=True)
+    if selected_row:
+        _render_trace_panel(selected_row, delivery_df, receipts_df)
+
+
+def _render_trace_panel(selected_row: dict, delivery_df, receipts_df):
+    with st.expander(f"🛒 明细追溯：报损单 {selected_row.get('report_no')}", expanded=True):
+        store_id = selected_row.get("store_id")
+        sku_id = selected_row.get("sku_id")
+        sku_name = selected_row.get("sku_name")
+        store_name = selected_row.get("store_name")
+        report_date = selected_row.get("report_date")
+        loss_qty = selected_row.get("loss_quantity")
+        loss_amt = selected_row.get("loss_amount")
+        c1, c2, c3, c4 = st.columns(4)
+        c1.markdown(f"**门店**：{store_name} (`{store_id}`)")
+        c2.markdown(f"**商品**：{sku_name} (`{sku_id}`)")
+        c3.markdown(f"**报损日期**：{report_date}")
+        c4.markdown(f"**报损数量/金额**：{loss_qty} / ¥{loss_amt:,.2f}")
+
+        from datetime import timedelta
+        start = report_date - timedelta(days=1)
+        end = report_date + timedelta(days=1)
+
+        st.markdown("#### 📦 外卖平台订单来源")
+        if delivery_df is not None and not delivery_df.is_empty():
+            matched = delivery_df.filter(
+                (pl.col("store_id") == store_id) &
+                (pl.col("product_id") == sku_id) &
+                (pl.col("order_date") >= start) &
+                (pl.col("order_date") <= end)
+            )
+            if matched.is_empty():
+                st.info(f"报损日期 ±1 天无对应外卖订单（共 0 条）")
+            else:
+                platform_group = matched.group_by("platform").agg([
+                    pl.col("id").count().alias("订单数"),
+                    pl.col("quantity").sum().alias("销量"),
+                    pl.col("total_amount").sum().alias("销售额"),
+                ]).sort("销售额", descending=True)
+                st.dataframe(platform_group.to_pandas(), width="stretch", hide_index=True)
+                show_cols = [c for c in ["order_no", "platform", "order_date", "product_name", "quantity", "unit_price", "total_amount", "status"] if c in matched.columns]
+                with st.expander(f"查看 {matched.height} 条外卖订单明细"):
+                    st.dataframe(matched.select(show_cols).to_pandas(), width="stretch", hide_index=True)
+        else:
+            st.caption("暂无外卖平台数据")
+
+        st.markdown("#### 🧾 会员小票来源")
+        if receipts_df is not None and not receipts_df.is_empty():
+            matched_r = receipts_df.filter(
+                (pl.col("store_id") == store_id) &
+                (pl.col("product_id") == sku_id) &
+                (pl.col("sale_date") >= start) &
+                (pl.col("sale_date") <= end)
+            )
+            if matched_r.is_empty():
+                st.info(f"报损日期 ±1 天无对应会员小票（共 0 条）")
+            else:
+                channel_group = matched_r.group_by("channel").agg([
+                    pl.col("id").count().alias("小票数"),
+                    pl.col("quantity").sum().alias("销量"),
+                    pl.col("total_amount").sum().alias("销售额"),
+                ]).sort("销售额", descending=True)
+                st.dataframe(channel_group.to_pandas(), width="stretch", hide_index=True)
+                show_cols_r = [c for c in ["id", "channel", "sale_date", "product_name", "quantity", "unit_price", "total_amount", "member_id"] if c in matched_r.columns]
+                with st.expander(f"查看 {matched_r.height} 条会员小票明细"):
+                    st.dataframe(matched_r.select(show_cols_r).to_pandas(), width="stretch", hide_index=True)
+        else:
+            st.caption("暂无会员小票数据")
 
 
 def render_store_exception(exception_df: pl.DataFrame, user: User):
@@ -412,8 +559,32 @@ def render_main():
 
     render_refresh_time_bar(repo)
 
-    filters = render_sidebar_filters(repo, user)
+    share_payload = st.session_state.share_payload
+    locked_mv = share_payload.metric_version if share_payload else None
+    locked_stores = share_payload.allowed_stores if share_payload and share_payload.allowed_stores else None
+    locked_dates = None
+    if share_payload and share_payload.filters:
+        sd = share_payload.filters.get("start_date")
+        ed = share_payload.filters.get("end_date")
+        if isinstance(sd, str) and isinstance(ed, str):
+            try:
+                from datetime import date as _d
+                sd_d = _d.fromisoformat(sd) if isinstance(sd, str) else sd
+                ed_d = _d.fromisoformat(ed) if isinstance(ed, str) else ed
+                locked_dates = (sd_d, ed_d)
+            except Exception:
+                pass
+
+    filters = render_sidebar_filters(
+        repo, user,
+        locked_metric_version=locked_mv,
+        locked_stores=locked_stores,
+        locked_date_range=locked_dates,
+    )
     metric_version = filters["metric_version"]
+    if share_payload:
+        metric_version = share_payload.metric_version
+        filters["metric_version"] = share_payload.metric_version
 
     start_date = filters["start_date"]
     end_date = filters["end_date"]
@@ -458,7 +629,7 @@ def render_main():
         tab_contents.append(("reason", reason_df))
     if "review_detail" in allowed_charts:
         tab_list.append("复核意见明细")
-        tab_contents.append(("review", loss_df))
+        tab_contents.append(("review", (loss_df, delivery_df, receipts_df)))
     if "store_exception" in allowed_charts:
         exception_df = detect_store_exceptions(loss_df, receipts_df, delivery_df, metric_version=metric_version)
         tab_list.append("责任门店异常")
@@ -472,7 +643,8 @@ def render_main():
             elif name == "reason":
                 render_reason_chart(data, share_payload)
             elif name == "review":
-                render_review_detail(data, user, repo)
+                l_df, d_df, r_df = data
+                render_review_detail(l_df, user, repo, d_df, r_df)
             elif name == "exception":
                 render_store_exception(data, user)
 

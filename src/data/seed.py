@@ -269,9 +269,44 @@ def seed_all_data(start_date: Optional[date] = None, end_date: Optional[date] = 
     }
 
 
+def _write_refresh_time_now() -> None:
+    from datetime import datetime
+    import json
+    import os
+    from src.config import app_config
+
+    try:
+        os.makedirs(os.path.dirname(app_config.refresh_cache_path), exist_ok=True)
+        with open(app_config.refresh_cache_path, "w", encoding="utf-8") as f:
+            json.dump({"last_refresh": datetime.now().isoformat()}, f)
+    except Exception:
+        pass
+
+
+def _has_refresh_time() -> bool:
+    import json
+    import os
+    from src.config import app_config
+    if not os.path.exists(app_config.refresh_cache_path):
+        return False
+    try:
+        with open(app_config.refresh_cache_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            return "last_refresh" in data and bool(data["last_refresh"])
+    except Exception:
+        return False
+
+
 def ensure_seeded() -> dict:
+    from src.auth import init_default_users
+
+    init_default_users()
     db = DuckDBManager()
     cnt = db.query_df("SELECT COUNT(*) AS c FROM loss_report")["c"][0]
     if cnt and cnt > 0:
+        if not _has_refresh_time():
+            _write_refresh_time_now()
         return {"already_seeded": True, "loss_report": int(cnt)}
-    return seed_all_data()
+    result = seed_all_data()
+    _write_refresh_time_now()
+    return result
