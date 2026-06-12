@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useState } from 'react';
 import { Layout, Typography, Space, Tag, Row, Col } from 'antd';
 import {
   DashboardOutlined,
@@ -17,6 +17,12 @@ const { Header, Content, Sider } = Layout;
 const { Title } = Typography;
 
 const App: React.FC = () => {
+  const [refreshToken, setRefreshToken] = useState(0);
+
+  const handleThresholdSaved = useCallback(() => {
+    setRefreshToken((t) => t + 1);
+  }, []);
+
   const menuItems = [
     { key: 'dashboard', icon: <DashboardOutlined />, label: '数据复盘', active: true },
     { key: 'equipment', icon: <ToolOutlined />, label: '设备管理' },
@@ -86,25 +92,25 @@ const App: React.FC = () => {
 
           <Row gutter={[16, 16]}>
             <Col xs={24} lg={14}>
-              <CleaningFunnelChart />
+              <CleaningFunnelChart refreshToken={refreshToken} />
             </Col>
             <Col xs={24} lg={10}>
-              <EquipmentStatusChart />
+              <EquipmentStatusChart refreshToken={refreshToken} />
             </Col>
           </Row>
 
           <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
             <Col xs={24} lg={16}>
-              <StoreListTable />
+              <StoreListTable refreshToken={refreshToken} />
             </Col>
             <Col xs={24} lg={8}>
-              <ThresholdPanel />
+              <ThresholdPanel onSaved={handleThresholdSaved} />
             </Col>
           </Row>
 
           <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
             <Col span={24}>
-              <ReviewMaterialPanel />
+              <ReviewMaterialPanel refreshToken={refreshToken} />
             </Col>
           </Row>
         </Content>

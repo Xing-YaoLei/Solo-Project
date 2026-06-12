@@ -8,9 +8,10 @@ const { Title, Text } = Typography;
 
 interface ThresholdPanelProps {
   className?: string;
+  onSaved?: () => void;
 }
 
-const ThresholdPanel: React.FC<ThresholdPanelProps> = ({ className }) => {
+const ThresholdPanel: React.FC<ThresholdPanelProps> = ({ className, onSaved }) => {
   const [thresholds, setThresholds] = useState<ThresholdConfig[]>([]);
   const [loading, setLoading] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -29,63 +30,7 @@ const ThresholdPanel: React.FC<ThresholdPanelProps> = ({ className }) => {
       setThresholds(Array.isArray(res) ? res : []);
     } catch (error) {
       console.error('Failed to fetch thresholds:', error);
-      setThresholds([
-        {
-          id: 1,
-          config_key: 'cleaning_cycle_days',
-          config_name: '清洁周期阈值',
-          config_value: 7,
-          config_unit: '天',
-          description: '设备正常清洁周期，超过此天数未清洁视为异常',
-          category: 'cleaning',
-          created_at: '2024-01-01 00:00:00',
-          updated_at: '2024-01-01 00:00:00',
-        },
-        {
-          id: 2,
-          config_key: 'offline_warning_days',
-          config_name: '离线预警天数',
-          config_value: 3,
-          config_unit: '天',
-          description: '设备连续未清洁超过此天数触发预警',
-          category: 'warning',
-          created_at: '2024-01-01 00:00:00',
-          updated_at: '2024-01-01 00:00:00',
-        },
-        {
-          id: 3,
-          config_key: 'inspection_pass_rate',
-          config_name: '巡检合格率阈值',
-          config_value: 90,
-          config_unit: '%',
-          description: '巡检合格率低于此值视为异常',
-          category: 'inspection',
-          created_at: '2024-01-01 00:00:00',
-          updated_at: '2024-01-01 00:00:00',
-        },
-        {
-          id: 4,
-          config_key: 'maintenance_cycle_days',
-          config_name: '维护周期阈值',
-          config_value: 30,
-          config_unit: '天',
-          description: '设备深度维护周期',
-          category: 'maintenance',
-          created_at: '2024-01-01 00:00:00',
-          updated_at: '2024-01-01 00:00:00',
-        },
-        {
-          id: 5,
-          config_key: 'equipment_offline_hours',
-          config_name: '设备离线时长阈值',
-          config_value: 24,
-          config_unit: '小时',
-          description: '设备离线超过此时长触发告警',
-          category: 'warning',
-          created_at: '2024-01-01 00:00:00',
-          updated_at: '2024-01-01 00:00:00',
-        },
-      ]);
+      setThresholds([]);
     } finally {
       setLoading(false);
     }
@@ -107,6 +52,7 @@ const ThresholdPanel: React.FC<ThresholdPanelProps> = ({ className }) => {
       message.success('阈值更新成功');
       setEditModalVisible(false);
       fetchThresholds();
+      onSaved?.();
     } catch (error) {
       message.error('阈值更新失败');
     } finally {

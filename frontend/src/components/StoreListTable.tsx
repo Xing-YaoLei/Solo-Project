@@ -10,9 +10,10 @@ const { Option } = Select;
 
 interface StoreListTableProps {
   className?: string;
+  refreshToken?: number;
 }
 
-const StoreListTable: React.FC<StoreListTableProps> = ({ className }) => {
+const StoreListTable: React.FC<StoreListTableProps> = ({ className, refreshToken }) => {
   const [data, setData] = useState<StoreWithStats[]>([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
@@ -26,7 +27,7 @@ const StoreListTable: React.FC<StoreListTableProps> = ({ className }) => {
 
   useEffect(() => {
     fetchData();
-  }, [page, pageSize, keyword, statusFilter]);
+  }, [page, pageSize, keyword, statusFilter, refreshToken]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -41,22 +42,8 @@ const StoreListTable: React.FC<StoreListTableProps> = ({ className }) => {
       setTotal(res.data?.total || 0);
     } catch (error) {
       console.error('Failed to fetch store list:', error);
-      const mockData: StoreWithStats[] = Array.from({ length: 20 }, (_, i) => ({
-        id: i + 1,
-        store_code: `S${1001 + i}`,
-        store_name: `${['北京', '上海', '广州', '深圳'][i % 4]}第${i + 1}店`,
-        city: ['北京', '上海', '广州', '深圳'][i % 4],
-        district: ['朝阳区', '浦东新区', '天河区', '南山区'][i % 4],
-        status: i % 5 === 0 ? 'inactive' : 'active',
-        equipment_count: 5 + (i % 4),
-        normal_count: 4 + (i % 3),
-        offline_count: i % 3 === 0 ? 1 : 0,
-        maintenance_count: i % 4 === 0 ? 1 : 0,
-        cleaning_count: 20 + i * 3,
-        pass_rate: 85 + (i % 15),
-      }));
-      setData(mockData.slice((page - 1) * pageSize, page * pageSize));
-      setTotal(mockData.length);
+      setData([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }

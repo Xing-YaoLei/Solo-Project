@@ -11,6 +11,7 @@ const { Option } = Select;
 
 interface EquipmentStatusChartProps {
   className?: string;
+  refreshToken?: number;
 }
 
 const statusConfig: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
@@ -20,7 +21,7 @@ const statusConfig: Record<string, { label: string; color: string; icon: React.R
   fault: { label: '故障', color: 'volcano', icon: <AlertOutlined /> },
 };
 
-const EquipmentStatusChart: React.FC<EquipmentStatusChartProps> = ({ className }) => {
+const EquipmentStatusChart: React.FC<EquipmentStatusChartProps> = ({ className, refreshToken }) => {
   const [statusData, setStatusData] = useState<EquipmentStatusItem[]>([]);
   const [offlineEquipments, setOfflineEquipments] = useState<OfflineEquipment[]>([]);
   const [loading, setLoading] = useState(false);
@@ -32,7 +33,7 @@ const EquipmentStatusChart: React.FC<EquipmentStatusChartProps> = ({ className }
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [refreshToken]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -45,39 +46,8 @@ const EquipmentStatusChart: React.FC<EquipmentStatusChartProps> = ({ className }
       setOfflineEquipments(offlineRes.data || []);
     } catch (error) {
       console.error('Failed to fetch equipment status:', error);
-      setStatusData([
-        { status: 'normal', count: 85, percentage: 70.83 },
-        { status: 'offline', count: 25, percentage: 20.83 },
-        { status: 'maintenance', count: 10, percentage: 8.34 },
-      ]);
-      setOfflineEquipments([
-        {
-          id: 1,
-          equipment_code: 'E1001',
-          equipment_name: '意式咖啡机',
-          equipment_type: 'coffee_machine',
-          store_id: 1,
-          store_code: 'S1001',
-          store_name: '北京第1店',
-          city: '北京',
-          status: 'offline',
-          days_since_clean: 15,
-          cleaning_cycle_days: 7,
-        },
-        {
-          id: 2,
-          equipment_code: 'E1002',
-          equipment_name: '磨豆机',
-          equipment_type: 'grinder',
-          store_id: 1,
-          store_code: 'S1001',
-          store_name: '北京第1店',
-          city: '北京',
-          status: 'maintenance',
-          days_since_clean: 10,
-          cleaning_cycle_days: 7,
-        },
-      ]);
+      setStatusData([]);
+      setOfflineEquipments([]);
     } finally {
       setLoading(false);
     }

@@ -35,7 +35,9 @@ def sync_to_duckdb(db: Session):
     inspection_df = pd.DataFrame([{
         "id": r.id, "record_code": r.record_code, "equipment_id": r.equipment_id,
         "store_id": r.store_id, "inspection_date": r.inspection_date,
-        "inspection_type": r.inspection_type, "passed": r.passed, "score": r.score
+        "inspector": r.inspector, "inspection_type": r.inspection_type,
+        "passed": r.passed, "score": r.score,
+        "issues_found": r.issues_found, "improvement_suggestions": r.improvement_suggestions
     } for r in inspection_records]) if inspection_records else pd.DataFrame()
 
     duckdb_service.sync_from_db(cleaning_df, inspection_df, equip_df, store_df)

@@ -39,9 +39,12 @@ class DuckDBService:
                 equipment_id INTEGER,
                 store_id INTEGER,
                 inspection_date TIMESTAMP,
+                inspector VARCHAR,
                 inspection_type VARCHAR,
                 passed BOOLEAN,
-                score FLOAT
+                score FLOAT,
+                issues_found TEXT,
+                improvement_suggestions TEXT
             )
         """)
         self.con.execute("""
@@ -70,26 +73,28 @@ class DuckDBService:
 
     def sync_from_db(self, cleaning_df: pd.DataFrame, inspection_df: pd.DataFrame,
                      equipment_df: pd.DataFrame, store_df: pd.DataFrame):
+        self.con.execute("DROP TABLE IF EXISTS cleaning_records")
+        self.con.execute("DROP TABLE IF EXISTS inspection_records")
+        self.con.execute("DROP TABLE IF EXISTS equipments")
+        self.con.execute("DROP TABLE IF EXISTS stores")
+        self._init_tables()
+
         if not cleaning_df.empty:
-            self.con.execute("DELETE FROM cleaning_records")
             self.con.register("cleaning_tmp", cleaning_df)
             self.con.execute("INSERT INTO cleaning_records SELECT * FROM cleaning_tmp")
             self.con.unregister("cleaning_tmp")
 
         if not inspection_df.empty:
-            self.con.execute("DELETE FROM inspection_records")
             self.con.register("inspection_tmp", inspection_df)
             self.con.execute("INSERT INTO inspection_records SELECT * FROM inspection_tmp")
             self.con.unregister("inspection_tmp")
 
         if not equipment_df.empty:
-            self.con.execute("DELETE FROM equipments")
             self.con.register("equip_tmp", equipment_df)
             self.con.execute("INSERT INTO equipments SELECT * FROM equip_tmp")
             self.con.unregister("equip_tmp")
 
         if not store_df.empty:
-            self.con.execute("DELETE FROM stores")
             self.con.register("store_tmp", store_df)
             self.con.execute("INSERT INTO stores SELECT * FROM store_tmp")
             self.con.unregister("store_tmp")

@@ -36,19 +36,22 @@ const { RangePicker } = DatePicker;
 
 interface ReviewMaterialPanelProps {
   className?: string;
+  refreshToken?: number;
 }
 
-const ReviewMaterialPanel: React.FC<ReviewMaterialPanelProps> = ({ className }) => {
+const ReviewMaterialPanel: React.FC<ReviewMaterialPanelProps> = ({ className, refreshToken }) => {
   const [material, setMaterial] = useState<ReviewMaterial | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
 
   useEffect(() => {
     fetchMaterial();
-  }, [dateRange]);
+  }, [dateRange, refreshToken]);
 
   const fetchMaterial = async () => {
     setLoading(true);
+    setError(null);
     try {
       const params = dateRange
         ? {
@@ -60,11 +63,17 @@ const ReviewMaterialPanel: React.FC<ReviewMaterialPanelProps> = ({ className }) 
       if (res && res.data) {
         setMaterial(res.data);
       } else {
-        setMaterial(buildMockMaterial());
+        setMaterial(null);
+        setError('复盘材料为空，请先完成数据初始化或导入业务数据。');
       }
-    } catch (error) {
-      console.error('Failed to fetch review material:', error);
-      setMaterial(buildMockMaterial());
+    } catch (err: any) {
+      console.error('Failed to fetch review material:', err);
+      setMaterial(null);
+      setError(
+        err?.response?.data?.message ||
+          err?.message ||
+          '复盘材料加载失败，请检查后端服务是否已启动并完成数据初始化。'
+      );
     } finally {
       setLoading(false);
     }
@@ -231,6 +240,42 @@ const ReviewMaterialPanel: React.FC<ReviewMaterialPanelProps> = ({ className }) 
         '本期需重点关注：巡检合格率 88.57% 未达 90% 阈值；存在 3 台离线/超期未清洁设备；存在 2 条不合格巡检记录。建议针对性加强培训和巡检频次。',
     };
   };
+
+  if (error && !material) {
+    return (
+      <Card
+        className={className}
+        title={
+          <Space>
+            <FileTextOutlined />
+            <span>设备清洁复盘材料</span>
+          </Space>
+        }
+        loading={loading}
+        extra={
+          <Button size="small" icon={<ReloadOutlined />} onClick={fetchMaterial}>
+            重新加载
+          </Button>
+        }
+      >
+        <Alert
+          type="error"
+          showIcon
+          message="复盘材料加载失败"
+          description={error}
+          action={
+            <Button size="small" type="primary" onClick={fetchMaterial}>
+              重试
+            </Button>
+          }
+        />
+        <Empty
+          style={{ marginTop: 24 }}
+          description="暂无复盘数据，请先完成数据初始化或导入业务数据"
+        />
+      </Card>
+    );
+  }
 
   if (!material) return null;
 

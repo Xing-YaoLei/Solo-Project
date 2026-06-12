@@ -184,7 +184,7 @@ class ReviewService:
 
         problematic_stores = []
         for row in store_stats_result:
-            pass_rate = float(row[5]) if row[5] else 0
+            pass_rate = float(row[6]) if row[6] else 0
             if pass_rate < pass_rate_threshold:
                 problematic_stores.append({
                     "store_id": row[0],

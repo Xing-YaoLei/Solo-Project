@@ -10,9 +10,10 @@ const { RangePicker } = DatePicker;
 
 interface CleaningFunnelChartProps {
   className?: string;
+  refreshToken?: number;
 }
 
-const CleaningFunnelChart: React.FC<CleaningFunnelChartProps> = ({ className }) => {
+const CleaningFunnelChart: React.FC<CleaningFunnelChartProps> = ({ className, refreshToken }) => {
   const [funnelData, setFunnelData] = useState<FunnelStage[]>([]);
   const [passRate, setPassRate] = useState<InspectionPassRate | null>(null);
   const [loading, setLoading] = useState(false);
@@ -20,7 +21,7 @@ const CleaningFunnelChart: React.FC<CleaningFunnelChartProps> = ({ className }) 
 
   useEffect(() => {
     fetchData();
-  }, [dateRange]);
+  }, [dateRange, refreshToken]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -41,20 +42,8 @@ const CleaningFunnelChart: React.FC<CleaningFunnelChartProps> = ({ className }) 
       setPassRate(passRateRes.data || null);
     } catch (error) {
       console.error('Failed to fetch funnel data:', error);
-      setFunnelData([
-        { stage: '总设备数', count: 120 },
-        { stage: '待清洁设备', count: 45 },
-        { stage: '已派单设备', count: 38 },
-        { stage: '已完成清洁', count: 35 },
-        { stage: '巡检合格', count: 32 },
-      ]);
-      setPassRate({
-        total: 35,
-        passed: 32,
-        failed: 3,
-        pass_rate: 91.43,
-        avg_score: 88.5,
-      });
+      setFunnelData([]);
+      setPassRate(null);
     } finally {
       setLoading(false);
     }
