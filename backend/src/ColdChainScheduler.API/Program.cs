@@ -61,6 +61,22 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var dbContext = services.GetRequiredService<AppDbContext>();
+        dbContext.Database.EnsureCreated();
+    }
+    catch (Exception ex)
+    {
+        var loggerFactory = services.GetRequiredService<ILoggerFactory>();
+        var logger = loggerFactory.CreateLogger("Program");
+        logger.LogError(ex, "数据库初始化失败");
+    }
+}
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();

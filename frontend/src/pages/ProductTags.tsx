@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Button, Table, Modal, Form, Input, InputNumber, Select, Popconfirm, Typography, Space, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
+import dayjs from 'dayjs';
 import type { ProductTag } from '../types';
 import { getProductTags, createProductTag, updateProductTag, deleteProductTag } from '../api/productTags';
 
@@ -106,6 +107,12 @@ const ProductTags: React.FC = () => {
           disabled
         />
       ),
+    },
+    {
+      title: '创建时间',
+      dataIndex: 'createdAt',
+      key: 'createdAt',
+      render: (val: string) => val ? dayjs(val).format('YYYY-MM-DD HH:mm') : '-',
     },
     {
       title: '操作',

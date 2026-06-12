@@ -1,3 +1,5 @@
+using ColdChainScheduler.API.Dtos;
+using ColdChainScheduler.Domain.Common;
 using ColdChainScheduler.Domain.Entities;
 using ColdChainScheduler.Domain.Enums;
 using ColdChainScheduler.Domain.Interfaces;
@@ -8,30 +10,56 @@ using Microsoft.EntityFrameworkCore;
 namespace ColdChainScheduler.API.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/exception-orders")]
 public class ExceptionOrdersController : ControllerBase
 {
-    private readonly IRepository<ExceptionOrder> _repository;
-    private readonly IStatusChangeLogService _logService;
     private readonly AppDbContext _context;
+    private readonly IStatusChangeLogService _logService;
 
     public ExceptionOrdersController(
-        IRepository<ExceptionOrder> repository,
-        IStatusChangeLogService logService,
-        AppDbContext context)
+        AppDbContext context,
+        IStatusChangeLogService logService)
     {
-        _repository = repository;
-        _logService = logService;
         _context = context;
+        _logService = logService;
+    }
+
+    private static ExceptionOrderDto MapToDto(ExceptionOrder order)
+    {
+        return new ExceptionOrderDto
+        {
+            Id = order.Id,
+            ExceptionNo = order.OrderNo,
+            GroupBatchId = order.GroupBatchId,
+            BatchNo = order.GroupBatch?.BatchNo ?? string.Empty,
+            ArrivalListId = order.ArrivalListId,
+            ProductTagId = order.ProductTagId,
+            ProductTagName = order.ProductTag?.ProductName,
+            CustomerName = order.CustomerName,
+            CustomerPhone = order.CustomerPhone,
+            ExceptionType = order.ExceptionType,
+            Severity = order.Severity,
+            ImpactDescription = order.ImpactDescription,
+            Responsibility = order.Responsibility,
+            Resolution = order.Resolution,
+            ResolutionNotes = order.ResolutionNotes,
+            ResolvedBy = order.ResolvedBy,
+            ResolvedAt = order.ResolvedAt,
+            CreatedAt = order.CreatedAt,
+            UpdatedAt = order.UpdatedAt
+        };
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<ExceptionOrder>>> GetAll(
+    public async Task<ActionResult<ApiResponse<List<ExceptionOrderDto>>>> GetAll(
         [FromQuery] ExceptionType? exceptionType,
         [FromQuery] ExceptionSeverity? severity,
         [FromQuery] ExceptionResolution? resolution)
     {
-        var query = _context.ExceptionOrders.AsQueryable();
+        var query = _context.ExceptionOrders
+            .Include(e => e.GroupBatch)
+            .Include(e => e.ProductTag)
+            .AsQueryable();
 
         if (exceptionType.HasValue)
             query = query.Where(e => e.ExceptionType == exceptionType.Value);
@@ -43,38 +71,46 @@ public class ExceptionOrdersController : ControllerBase
             query = query.Where(e => e.Resolution == resolution.Value);
 
         var orders = await query.OrderByDescending(e => e.CreatedAt).ToListAsync();
-        return Ok(orders);
+        var dtos = orders.Select(MapToDto).ToList();
+        return Ok(ApiResponse.Ok(dtos));
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<ExceptionOrder>> GetById(int id)
+    public async Task<ActionResult<ApiResponse<ExceptionOrderDto>>> GetById(int id)
     {
-        var order = await _repository.GetByIdAsync(id);
-        if (order == null) return NotFound(new { message = $"异常工单 {id} 不存在" });
-        return Ok(order);
+        var order = await _context.ExceptionOrders
+            .Include(e => e.GroupBatch)
+            .Include(e => e.ProductTag)
+            .FirstOrDefaultAsync(e => e.Id == id);
+        if (order == null) return Ok(ApiResponse.Fail<ExceptionOrderDto>($"异常工单 {id} 不存在"));
+        return Ok(ApiResponse.Ok(MapToDto(order)));
     }
 
     [HttpPost]
-    public async Task<ActionResult<ExceptionOrder>> Create(ExceptionOrder order)
+    public async Task<ActionResult<ApiResponse<ExceptionOrderDto>>> Create(ExceptionOrder order)
     {
         order.CreatedAt = DateTime.UtcNow;
         order.Resolution = ExceptionResolution.Pending;
-        await _repository.AddAsync(order);
-        await _repository.SaveChangesAsync();
+        _context.ExceptionOrders.Add(order);
+        await _context.SaveChangesAsync();
 
         await _logService.LogStatusChange("ExceptionOrder", order.Id, null, ExceptionResolution.Pending.ToString(), null, "创建异常工单");
 
-        return CreatedAtAction(nameof(GetById), new { id = order.Id }, order);
+        var created = await _context.ExceptionOrders
+            .Include(e => e.GroupBatch)
+            .Include(e => e.ProductTag)
+            .FirstOrDefaultAsync(e => e.Id == order.Id);
+        return Ok(ApiResponse.Ok(MapToDto(created!), "创建成功"));
     }
 
     [HttpPut("{id}")]
-    public async Task<ActionResult> Update(int id, ExceptionOrder updated)
+    public async Task<ActionResult<ApiResponse<object>>> Update(int id, ExceptionOrder updated)
     {
-        var order = await _repository.GetByIdAsync(id);
-        if (order == null) return NotFound(new { message = $"异常工单 {id} 不存在" });
+        var order = await _context.ExceptionOrders.FindAsync(id);
+        if (order == null) return Ok(ApiResponse.Fail($"异常工单 {id} 不存在"));
 
         if (order.Resolution != ExceptionResolution.Pending)
-            return BadRequest(new { message = "只有待处理的异常工单可以修改" });
+            return Ok(ApiResponse.Fail("只有待处理的异常工单可以修改"));
 
         order.GroupBatchId = updated.GroupBatchId;
         order.ArrivalListId = updated.ArrivalListId;
@@ -86,32 +122,31 @@ public class ExceptionOrdersController : ControllerBase
         order.ImpactDescription = updated.ImpactDescription;
         order.Responsibility = updated.Responsibility;
 
-        await _repository.UpdateAsync(order);
-        await _repository.SaveChangesAsync();
+        await _context.SaveChangesAsync();
 
-        return NoContent();
+        return Ok(ApiResponse.Ok("更新成功"));
     }
 
     [HttpDelete("{id}")]
-    public async Task<ActionResult> Delete(int id)
+    public async Task<ActionResult<ApiResponse<object>>> Delete(int id)
     {
-        var order = await _repository.GetByIdAsync(id);
-        if (order == null) return NotFound(new { message = $"异常工单 {id} 不存在" });
+        var order = await _context.ExceptionOrders.FindAsync(id);
+        if (order == null) return Ok(ApiResponse.Fail($"异常工单 {id} 不存在"));
 
-        await _repository.DeleteAsync(order);
-        await _repository.SaveChangesAsync();
+        _context.ExceptionOrders.Remove(order);
+        await _context.SaveChangesAsync();
 
-        return NoContent();
+        return Ok(ApiResponse.Ok("删除成功"));
     }
 
     [HttpPost("{id}/resolve")]
-    public async Task<ActionResult> Resolve(int id, [FromBody] ResolveRequest request)
+    public async Task<ActionResult<ApiResponse<object>>> Resolve(int id, [FromBody] ResolveExceptionRequest request)
     {
-        var order = await _repository.GetByIdAsync(id);
-        if (order == null) return NotFound(new { message = $"异常工单 {id} 不存在" });
+        var order = await _context.ExceptionOrders.FindAsync(id);
+        if (order == null) return Ok(ApiResponse.Fail($"异常工单 {id} 不存在"));
 
         if (order.Resolution != ExceptionResolution.Pending)
-            return BadRequest(new { message = "只有待处理的异常工单可以处理" });
+            return Ok(ApiResponse.Fail("只有待处理的异常工单可以处理"));
 
         var oldResolution = order.Resolution.ToString();
         order.Resolution = request.Resolution;
@@ -119,16 +154,15 @@ public class ExceptionOrdersController : ControllerBase
         order.ResolvedBy = request.ResolvedBy;
         order.ResolvedAt = DateTime.UtcNow;
 
-        await _repository.UpdateAsync(order);
-        await _repository.SaveChangesAsync();
+        await _context.SaveChangesAsync();
 
         await _logService.LogStatusChange("ExceptionOrder", id, oldResolution, request.Resolution.ToString(), request.ResolvedBy, "处理异常工单");
 
-        return NoContent();
+        return Ok(ApiResponse.Ok("处理成功"));
     }
 }
 
-public class ResolveRequest
+public class ResolveExceptionRequest
 {
     public ExceptionResolution Resolution { get; set; }
     public string? ResolutionNotes { get; set; }

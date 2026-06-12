@@ -1,20 +1,17 @@
 using ColdChainScheduler.Domain.Enums;
+namespace ColdChainScheduler.API.Dtos;
 
-namespace ColdChainScheduler.Domain.Entities;
-
-public class ArrivalListItem
+public class ArrivalListItemDto
 {
     public int Id { get; set; }
     public int ArrivalListId { get; set; }
     public int ProductTagId { get; set; }
-    public int ExpectedQty { get; set; }
-    public int? ActualQty { get; set; }
+    public string ProductTagName { get; set; } = string.Empty;
+    public int ExpectedQuantity { get; set; }
+    public int? ActualQuantity { get; set; }
     public decimal? Temperature { get; set; }
     public string? Condition { get; set; }
-    public string? Notes { get; set; }
+    public string? Remark { get; set; }
     public PickupStatus? PickupStatus { get; set; }
     public DateTime? PickupTime { get; set; }
-
-    public ArrivalList ArrivalList { get; set; } = null!;
-    public ProductTag ProductTag { get; set; } = null!;
 }

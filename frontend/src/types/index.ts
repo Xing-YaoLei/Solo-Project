@@ -46,20 +46,26 @@ export enum ExceptionType {
   QuantityMismatch = 'QuantityMismatch',
 }
 
+export enum PickupStatus {
+  PendingPickup = 'PendingPickup',
+  PickedUp = 'PickedUp',
+  OverdueUncollected = 'OverdueUncollected',
+}
+
 export interface ProductTag {
   id: number;
   tagCode: string;
   productName: string;
-  category: string;
-  storageTempMin: number;
-  storageTempMax: number;
-  shelfLifeHours: number;
-  unit: string;
+  category?: string | null;
+  storageTempMin?: number | null;
+  storageTempMax?: number | null;
+  shelfLifeHours?: number | null;
+  unit?: string | null;
   unitPrice: number;
-  description: string;
+  description?: string | null;
   isActive: boolean;
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string | null;
 }
 
 export interface SettlementSheetItem {
@@ -70,7 +76,7 @@ export interface SettlementSheetItem {
   quantity: number;
   unitPrice: number;
   subtotal: number;
-  caliberNote: string;
+  caliberNote?: string | null;
 }
 
 export interface SettlementSheet {
@@ -78,14 +84,16 @@ export interface SettlementSheet {
   sheetNo: string;
   groupBatchId: number;
   batchNo: string;
+  leaderTierId: number;
   leaderTierName: string;
   totalAmount: number;
   itemCount: number;
   status: SettlementStatus;
-  caliberDescription: string;
+  caliberDescription?: string | null;
   items: SettlementSheetItem[];
+  settledAt?: string | null;
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string | null;
 }
 
 export interface GroupBatch {
@@ -93,14 +101,16 @@ export interface GroupBatch {
   batchNo: string;
   batchName: string;
   leaderName: string;
+  leaderPhone?: string | null;
   leaderTierId: number;
   leaderTierName: string;
   startTime: string;
   endTime: string;
-  deliveryTime: string;
+  deliveryTime?: string | null;
   status: BatchStatus;
+  notes?: string | null;
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string | null;
 }
 
 export interface ArrivalListItem {
@@ -109,10 +119,12 @@ export interface ArrivalListItem {
   productTagId: number;
   productTagName: string;
   expectedQuantity: number;
-  actualQuantity: number;
-  temperature: number;
-  condition: string;
-  remark: string;
+  actualQuantity?: number | null;
+  temperature?: number | null;
+  condition?: string | null;
+  remark?: string | null;
+  pickupStatus?: PickupStatus | null;
+  pickupTime?: string | null;
 }
 
 export interface ArrivalList {
@@ -121,11 +133,12 @@ export interface ArrivalList {
   groupBatchId: number;
   batchNo: string;
   arrivalTime: string;
-  receiver: string;
+  receiver?: string | null;
   status: ArrivalStatus;
+  notes?: string | null;
   items: ArrivalListItem[];
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string | null;
 }
 
 export interface LeaderTier {
@@ -134,21 +147,22 @@ export interface LeaderTier {
   tierCode: string;
   minOrderAmount: number;
   commissionRate: number;
+  description?: string | null;
   sortOrder: number;
   isActive: boolean;
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string | null;
 }
 
 export interface StatusChangeLog {
   id: number;
   entityId: number;
   entityType: string;
-  fromStatus: string;
+  fromStatus?: string | null;
   toStatus: string;
-  changedBy: string;
+  changedBy?: string | null;
   changedAt: string;
-  remark: string;
+  remark?: string | null;
 }
 
 export interface ExceptionOrder {
@@ -156,16 +170,21 @@ export interface ExceptionOrder {
   exceptionNo: string;
   groupBatchId: number;
   batchNo: string;
+  arrivalListId?: number | null;
+  productTagId?: number | null;
+  productTagName?: string | null;
+  customerName?: string | null;
+  customerPhone?: string | null;
   exceptionType: ExceptionType;
   severity: ExceptionSeverity;
-  impactDescription: string;
-  responsibility: string;
+  impactDescription?: string | null;
+  responsibility?: string | null;
   resolution: ExceptionResolution;
-  resolutionNotes: string;
-  resolvedBy: string;
-  resolvedAt: string;
+  resolutionNotes?: string | null;
+  resolvedBy?: string | null;
+  resolvedAt?: string | null;
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string | null;
 }
 
 export interface ApiResponse<T> {

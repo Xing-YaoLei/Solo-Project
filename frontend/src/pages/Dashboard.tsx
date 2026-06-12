@@ -9,7 +9,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import type { GroupBatch, ExceptionOrder } from '../types';
-import { BatchStatus, ExceptionResolution } from '../types';
+import { BatchStatus, ArrivalStatus, SettlementStatus, ExceptionResolution } from '../types';
 import { getGroupBatches } from '../api/groupBatches';
 import { getExceptionOrders } from '../api/exceptionOrders';
 import { getSettlementSheets } from '../api/settlementSheets';
@@ -48,8 +48,8 @@ const Dashboard: React.FC = () => {
 
       setStats({
         activeBatchCount: batchData.filter((b) => b.status === BatchStatus.Open || b.status === BatchStatus.Delivering).length,
-        pendingInspectionCount: arrivalData.filter((a) => a.status === 'Pending' || a.status === 'Arrived').length,
-        pendingSettlementCount: settlementData.filter((s) => s.status === 'Pending' || s.status === 'Calculating').length,
+        pendingInspectionCount: arrivalData.filter((a) => a.status === ArrivalStatus.Pending || a.status === ArrivalStatus.Arrived).length,
+        pendingSettlementCount: settlementData.filter((s) => s.status === SettlementStatus.Pending || s.status === SettlementStatus.Calculating).length,
         pendingExceptionCount: exceptionData.filter((e) => e.resolution === ExceptionResolution.Pending).length,
       });
     } catch {

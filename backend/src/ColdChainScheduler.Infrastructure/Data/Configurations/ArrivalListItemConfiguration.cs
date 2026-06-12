@@ -12,6 +12,8 @@ public class ArrivalListItemConfiguration : IEntityTypeConfiguration<ArrivalList
         builder.HasKey(i => i.Id);
         builder.Property(i => i.Temperature).HasColumnType("decimal(18,2)");
         builder.Property(i => i.Condition).HasMaxLength(200);
+        builder.Property(i => i.PickupStatus);
+        builder.Property(i => i.PickupTime);
         builder.HasOne(i => i.ProductTag)
             .WithMany()
             .HasForeignKey(i => i.ProductTagId)

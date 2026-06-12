@@ -1,10 +1,11 @@
+using ColdChainScheduler.Domain.Common;
 using ColdChainScheduler.Domain.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ColdChainScheduler.API.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/export")]
 public class ExportController : ControllerBase
 {
     private readonly IExportService _exportService;
@@ -33,21 +34,47 @@ public class ExportController : ControllerBase
     }
 
     [HttpPost("exceptions")]
-    public async Task<IActionResult> ExportExceptions([FromBody] int[] orderIds)
+    public async Task<IActionResult> ExportExceptions([FromBody] ExportExceptionsRequest request)
     {
-        if (orderIds == null || orderIds.Length == 0)
-            return BadRequest(new { message = "请选择要导出的异常工单" });
+        if (request == null || request.Ids == null || request.Ids.Length == 0)
+            return Ok(ApiResponse.Fail("请选择要导出的异常工单"));
 
-        var bytes = await _exportService.ExportExceptionOrdersAsync(orderIds);
+        var bytes = await _exportService.ExportExceptionOrdersAsync(request.Ids);
         return File(bytes,
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             $"异常工单_{DateTime.Now:yyyyMMddHHmmss}.xlsx");
     }
 
-    [HttpGet("caliber/{type}")]
-    public IActionResult GetCaliberDescription(string type)
+    [HttpGet("caliber-description/{type}")]
+    public ActionResult<ApiResponse<string>> GetCaliberDescription(string type)
     {
         var description = _exportService.GetCaliberDescription(type);
-        return Ok(new { exportType = type, caliberDescription = description });
+        return Ok(ApiResponse.Ok(description));
     }
+
+    [HttpGet("settlement/{id}/caliber")]
+    public ActionResult<ApiResponse<string>> GetSettlementCaliber(int id)
+    {
+        var description = _exportService.GetCaliberDescription("settlement");
+        return Ok(ApiResponse.Ok(description));
+    }
+
+    [HttpGet("arrival/{id}/caliber")]
+    public ActionResult<ApiResponse<string>> GetArrivalCaliber(int id)
+    {
+        var description = _exportService.GetCaliberDescription("arrival");
+        return Ok(ApiResponse.Ok(description));
+    }
+
+    [HttpGet("exceptions/caliber")]
+    public ActionResult<ApiResponse<string>> GetExceptionsCaliber()
+    {
+        var description = _exportService.GetCaliberDescription("exception");
+        return Ok(ApiResponse.Ok(description));
+    }
+}
+
+public class ExportExceptionsRequest
+{
+    public int[] Ids { get; set; } = Array.Empty<int>();
 }

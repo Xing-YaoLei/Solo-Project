@@ -12,3 +12,6 @@ export const createArrivalList = (data: Partial<ArrivalList>) =>
 
 export const inspectArrivalList = (id: number, data?: Partial<ArrivalList>) =>
   client.post<ApiResponse<ArrivalList>>(`/arrival-lists/${id}/inspect`, data);
+
+export const pickupArrivalList = (id: number, data: { itemId: number; pickupStatus: string }) =>
+  client.post<ApiResponse<ArrivalList>>(`/arrival-lists/${id}/pickup`, data);

@@ -1,49 +1,73 @@
+using ColdChainScheduler.API.Dtos;
+using ColdChainScheduler.Domain.Common;
 using ColdChainScheduler.Domain.Entities;
-using ColdChainScheduler.Domain.Interfaces;
+using ColdChainScheduler.Infrastructure.Data;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace ColdChainScheduler.API.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/leader-tiers")]
 public class LeaderTiersController : ControllerBase
 {
-    private readonly IRepository<LeaderTier> _repository;
+    private readonly AppDbContext _context;
 
-    public LeaderTiersController(IRepository<LeaderTier> repository)
+    public LeaderTiersController(AppDbContext context)
     {
-        _repository = repository;
+        _context = context;
+    }
+
+    private static LeaderTierDto MapToDto(LeaderTier tier)
+    {
+        return new LeaderTierDto
+        {
+            Id = tier.Id,
+            TierName = tier.TierName,
+            TierCode = tier.TierCode,
+            MinOrderAmount = tier.MinOrderAmount,
+            CommissionRate = tier.CommissionRate,
+            Description = tier.Description,
+            SortOrder = tier.SortOrder,
+            IsActive = tier.IsActive,
+            CreatedAt = tier.CreatedAt,
+            UpdatedAt = tier.UpdatedAt
+        };
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<LeaderTier>>> GetAll()
+    public async Task<ActionResult<ApiResponse<List<LeaderTierDto>>>> GetAll()
     {
-        var tiers = await _repository.GetAllAsync();
-        return Ok(tiers);
+        var tiers = await _context.LeaderTiers
+            .OrderBy(t => t.SortOrder)
+            .ThenByDescending(t => t.CreatedAt)
+            .ToListAsync();
+        var dtos = tiers.Select(MapToDto).ToList();
+        return Ok(ApiResponse.Ok(dtos));
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<LeaderTier>> GetById(int id)
+    public async Task<ActionResult<ApiResponse<LeaderTierDto>>> GetById(int id)
     {
-        var tier = await _repository.GetByIdAsync(id);
-        if (tier == null) return NotFound(new { message = $"团长等级 {id} 不存在" });
-        return Ok(tier);
+        var tier = await _context.LeaderTiers.FindAsync(id);
+        if (tier == null) return Ok(ApiResponse.Fail<LeaderTierDto>($"团长等级 {id} 不存在"));
+        return Ok(ApiResponse.Ok(MapToDto(tier)));
     }
 
     [HttpPost]
-    public async Task<ActionResult<LeaderTier>> Create(LeaderTier tier)
+    public async Task<ActionResult<ApiResponse<LeaderTierDto>>> Create(LeaderTier tier)
     {
         tier.CreatedAt = DateTime.UtcNow;
-        await _repository.AddAsync(tier);
-        await _repository.SaveChangesAsync();
-        return CreatedAtAction(nameof(GetById), new { id = tier.Id }, tier);
+        _context.LeaderTiers.Add(tier);
+        await _context.SaveChangesAsync();
+        return Ok(ApiResponse.Ok(MapToDto(tier), "创建成功"));
     }
 
     [HttpPut("{id}")]
-    public async Task<ActionResult> Update(int id, LeaderTier updated)
+    public async Task<ActionResult<ApiResponse<object>>> Update(int id, LeaderTier updated)
     {
-        var tier = await _repository.GetByIdAsync(id);
-        if (tier == null) return NotFound(new { message = $"团长等级 {id} 不存在" });
+        var tier = await _context.LeaderTiers.FindAsync(id);
+        if (tier == null) return Ok(ApiResponse.Fail($"团长等级 {id} 不存在"));
 
         tier.TierName = updated.TierName;
         tier.TierCode = updated.TierCode;
@@ -53,21 +77,20 @@ public class LeaderTiersController : ControllerBase
         tier.SortOrder = updated.SortOrder;
         tier.IsActive = updated.IsActive;
 
-        await _repository.UpdateAsync(tier);
-        await _repository.SaveChangesAsync();
+        await _context.SaveChangesAsync();
 
-        return NoContent();
+        return Ok(ApiResponse.Ok("更新成功"));
     }
 
     [HttpDelete("{id}")]
-    public async Task<ActionResult> Delete(int id)
+    public async Task<ActionResult<ApiResponse<object>>> Delete(int id)
     {
-        var tier = await _repository.GetByIdAsync(id);
-        if (tier == null) return NotFound(new { message = $"团长等级 {id} 不存在" });
+        var tier = await _context.LeaderTiers.FindAsync(id);
+        if (tier == null) return Ok(ApiResponse.Fail($"团长等级 {id} 不存在"));
 
-        await _repository.DeleteAsync(tier);
-        await _repository.SaveChangesAsync();
+        _context.LeaderTiers.Remove(tier);
+        await _context.SaveChangesAsync();
 
-        return NoContent();
+        return Ok(ApiResponse.Ok("删除成功"));
     }
 }

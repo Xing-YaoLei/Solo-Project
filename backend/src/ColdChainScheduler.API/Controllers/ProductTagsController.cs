@@ -1,51 +1,76 @@
+using ColdChainScheduler.API.Dtos;
+using ColdChainScheduler.Domain.Common;
 using ColdChainScheduler.Domain.Entities;
 using ColdChainScheduler.Domain.Interfaces;
+using ColdChainScheduler.Infrastructure.Data;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace ColdChainScheduler.API.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/product-tags")]
 public class ProductTagsController : ControllerBase
 {
-    private readonly IRepository<ProductTag> _repository;
+    private readonly AppDbContext _context;
     private readonly IStatusChangeLogService _logService;
 
-    public ProductTagsController(IRepository<ProductTag> repository, IStatusChangeLogService logService)
+    public ProductTagsController(AppDbContext context, IStatusChangeLogService logService)
     {
-        _repository = repository;
+        _context = context;
         _logService = logService;
     }
 
-    [HttpGet]
-    public async Task<ActionResult<IEnumerable<ProductTag>>> GetAll()
+    private static ProductTagDto MapToDto(ProductTag tag)
     {
-        var tags = await _repository.GetAllAsync();
-        return Ok(tags);
+        return new ProductTagDto
+        {
+            Id = tag.Id,
+            TagCode = tag.TagCode,
+            ProductName = tag.ProductName,
+            Category = tag.Category,
+            StorageTempMin = tag.StorageTempMin,
+            StorageTempMax = tag.StorageTempMax,
+            ShelfLifeHours = tag.ShelfLifeHours,
+            Unit = tag.Unit,
+            UnitPrice = tag.UnitPrice,
+            Description = tag.Description,
+            IsActive = tag.IsActive,
+            CreatedAt = tag.CreatedAt,
+            UpdatedAt = tag.UpdatedAt
+        };
+    }
+
+    [HttpGet]
+    public async Task<ActionResult<ApiResponse<List<ProductTagDto>>>> GetAll()
+    {
+        var tags = await _context.ProductTags.OrderByDescending(t => t.CreatedAt).ToListAsync();
+        var dtos = tags.Select(MapToDto).ToList();
+        return Ok(ApiResponse.Ok(dtos));
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<ProductTag>> GetById(int id)
+    public async Task<ActionResult<ApiResponse<ProductTagDto>>> GetById(int id)
     {
-        var tag = await _repository.GetByIdAsync(id);
-        if (tag == null) return NotFound(new { message = $"商品标签 {id} 不存在" });
-        return Ok(tag);
+        var tag = await _context.ProductTags.FindAsync(id);
+        if (tag == null) return Ok(ApiResponse.Fail<ProductTagDto>($"商品标签 {id} 不存在"));
+        return Ok(ApiResponse.Ok(MapToDto(tag)));
     }
 
     [HttpPost]
-    public async Task<ActionResult<ProductTag>> Create(ProductTag tag)
+    public async Task<ActionResult<ApiResponse<ProductTagDto>>> Create(ProductTag tag)
     {
         tag.CreatedAt = DateTime.UtcNow;
-        await _repository.AddAsync(tag);
-        await _repository.SaveChangesAsync();
-        return CreatedAtAction(nameof(GetById), new { id = tag.Id }, tag);
+        _context.ProductTags.Add(tag);
+        await _context.SaveChangesAsync();
+        return Ok(ApiResponse.Ok(MapToDto(tag), "创建成功"));
     }
 
     [HttpPut("{id}")]
-    public async Task<ActionResult> Update(int id, ProductTag updated)
+    public async Task<ActionResult<ApiResponse<object>>> Update(int id, ProductTag updated)
     {
-        var tag = await _repository.GetByIdAsync(id);
-        if (tag == null) return NotFound(new { message = $"商品标签 {id} 不存在" });
+        var tag = await _context.ProductTags.FindAsync(id);
+        if (tag == null) return Ok(ApiResponse.Fail($"商品标签 {id} 不存在"));
 
         var oldIsActive = tag.IsActive;
 
@@ -60,8 +85,7 @@ public class ProductTagsController : ControllerBase
         tag.Description = updated.Description;
         tag.IsActive = updated.IsActive;
 
-        await _repository.UpdateAsync(tag);
-        await _repository.SaveChangesAsync();
+        await _context.SaveChangesAsync();
 
         if (oldIsActive != updated.IsActive)
         {
@@ -72,20 +96,20 @@ public class ProductTagsController : ControllerBase
                 null, "通过API更新");
         }
 
-        return NoContent();
+        return Ok(ApiResponse.Ok("更新成功"));
     }
 
     [HttpDelete("{id}")]
-    public async Task<ActionResult> Delete(int id)
+    public async Task<ActionResult<ApiResponse<object>>> Delete(int id)
     {
-        var tag = await _repository.GetByIdAsync(id);
-        if (tag == null) return NotFound(new { message = $"商品标签 {id} 不存在" });
+        var tag = await _context.ProductTags.FindAsync(id);
+        if (tag == null) return Ok(ApiResponse.Fail($"商品标签 {id} 不存在"));
 
-        await _repository.DeleteAsync(tag);
-        await _repository.SaveChangesAsync();
+        _context.ProductTags.Remove(tag);
+        await _context.SaveChangesAsync();
 
         await _logService.LogStatusChange("ProductTag", id, "Active", "Deleted", null, "通过API删除");
 
-        return NoContent();
+        return Ok(ApiResponse.Ok("删除成功"));
     }
 }

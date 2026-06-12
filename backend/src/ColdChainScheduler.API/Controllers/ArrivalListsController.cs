@@ -1,59 +1,122 @@
+using ColdChainScheduler.API.Dtos;
+using ColdChainScheduler.Domain.Common;
 using ColdChainScheduler.Domain.Entities;
 using ColdChainScheduler.Domain.Enums;
 using ColdChainScheduler.Domain.Interfaces;
+using ColdChainScheduler.Infrastructure.Data;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace ColdChainScheduler.API.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/arrival-lists")]
 public class ArrivalListsController : ControllerBase
 {
-    private readonly IRepository<ArrivalList> _repository;
+    private readonly AppDbContext _context;
     private readonly IStatusChangeLogService _logService;
 
-    public ArrivalListsController(IRepository<ArrivalList> repository, IStatusChangeLogService logService)
+    public ArrivalListsController(AppDbContext context, IStatusChangeLogService logService)
     {
-        _repository = repository;
+        _context = context;
         _logService = logService;
     }
 
-    [HttpGet]
-    public async Task<ActionResult<IEnumerable<ArrivalList>>> GetAll()
+    private static ArrivalListItemDto MapItemToDto(ArrivalListItem item)
     {
-        var lists = await _repository.GetAllAsync();
-        return Ok(lists);
+        return new ArrivalListItemDto
+        {
+            Id = item.Id,
+            ArrivalListId = item.ArrivalListId,
+            ProductTagId = item.ProductTagId,
+            ProductTagName = item.ProductTag?.ProductName ?? string.Empty,
+            ExpectedQuantity = item.ExpectedQty,
+            ActualQuantity = item.ActualQty,
+            Temperature = item.Temperature,
+            Condition = item.Condition,
+            Remark = item.Notes,
+            PickupStatus = item.PickupStatus,
+            PickupTime = item.PickupTime
+        };
+    }
+
+    private static ArrivalListDto MapToDto(ArrivalList list)
+    {
+        return new ArrivalListDto
+        {
+            Id = list.Id,
+            ListNo = list.ListNo,
+            GroupBatchId = list.GroupBatchId,
+            BatchNo = list.GroupBatch?.BatchNo ?? string.Empty,
+            ArrivalTime = list.ArrivalTime,
+            Receiver = list.Receiver,
+            Status = list.ArrivalStatus,
+            Notes = list.Notes,
+            Items = list.Items.Select(MapItemToDto).ToList(),
+            CreatedAt = list.CreatedAt,
+            UpdatedAt = list.UpdatedAt
+        };
+    }
+
+    [HttpGet]
+    public async Task<ActionResult<ApiResponse<List<ArrivalListDto>>>> GetAll()
+    {
+        var lists = await _context.ArrivalLists
+            .Include(a => a.GroupBatch)
+            .Include(a => a.Items).ThenInclude(i => i.ProductTag)
+            .OrderByDescending(a => a.CreatedAt)
+            .ToListAsync();
+        var dtos = lists.Select(MapToDto).ToList();
+        return Ok(ApiResponse.Ok(dtos));
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<ArrivalList>> GetById(int id)
+    public async Task<ActionResult<ApiResponse<ArrivalListDto>>> GetById(int id)
     {
-        var list = await _repository.GetByIdAsync(id);
-        if (list == null) return NotFound(new { message = $"到货清单 {id} 不存在" });
-        return Ok(list);
+        var list = await _context.ArrivalLists
+            .Include(a => a.GroupBatch)
+            .Include(a => a.Items).ThenInclude(i => i.ProductTag)
+            .FirstOrDefaultAsync(a => a.Id == id);
+        if (list == null) return Ok(ApiResponse.Fail<ArrivalListDto>($"到货清单 {id} 不存在"));
+        return Ok(ApiResponse.Ok(MapToDto(list)));
     }
 
     [HttpPost]
-    public async Task<ActionResult<ArrivalList>> Create(ArrivalList list)
+    public async Task<ActionResult<ApiResponse<ArrivalListDto>>> Create(ArrivalList list)
     {
         list.CreatedAt = DateTime.UtcNow;
         list.ArrivalStatus = ArrivalStatus.Pending;
-        await _repository.AddAsync(list);
-        await _repository.SaveChangesAsync();
+
+        if (list.Items != null && list.Items.Any())
+        {
+            foreach (var item in list.Items)
+            {
+                item.PickupStatus = PickupStatus.PendingPickup;
+            }
+        }
+
+        _context.ArrivalLists.Add(list);
+        await _context.SaveChangesAsync();
 
         await _logService.LogStatusChange("ArrivalList", list.Id, null, ArrivalStatus.Pending.ToString(), null, "创建到货清单");
 
-        return CreatedAtAction(nameof(GetById), new { id = list.Id }, list);
+        var created = await _context.ArrivalLists
+            .Include(a => a.GroupBatch)
+            .Include(a => a.Items).ThenInclude(i => i.ProductTag)
+            .FirstOrDefaultAsync(a => a.Id == list.Id);
+        return Ok(ApiResponse.Ok(MapToDto(created!), "创建成功"));
     }
 
     [HttpPut("{id}")]
-    public async Task<ActionResult> Update(int id, ArrivalList updated)
+    public async Task<ActionResult<ApiResponse<object>>> Update(int id, ArrivalList updated)
     {
-        var list = await _repository.GetByIdAsync(id);
-        if (list == null) return NotFound(new { message = $"到货清单 {id} 不存在" });
+        var list = await _context.ArrivalLists
+            .Include(a => a.Items)
+            .FirstOrDefaultAsync(a => a.Id == id);
+        if (list == null) return Ok(ApiResponse.Fail($"到货清单 {id} 不存在"));
 
         if (list.ArrivalStatus == ArrivalStatus.Inspected)
-            return BadRequest(new { message = "已验收的到货清单不能修改" });
+            return Ok(ApiResponse.Fail("已验收的到货清单不能修改"));
 
         list.ListNo = updated.ListNo;
         list.GroupBatchId = updated.GroupBatchId;
@@ -63,49 +126,80 @@ public class ArrivalListsController : ControllerBase
 
         if (updated.Items != null)
         {
-            list.Items = updated.Items;
+            _context.ArrivalListItems.RemoveRange(list.Items);
+            foreach (var item in updated.Items)
+            {
+                item.ArrivalListId = id;
+                if (item.PickupStatus == null)
+                    item.PickupStatus = PickupStatus.PendingPickup;
+                _context.ArrivalListItems.Add(item);
+            }
         }
 
-        await _repository.UpdateAsync(list);
-        await _repository.SaveChangesAsync();
+        await _context.SaveChangesAsync();
 
-        return NoContent();
+        return Ok(ApiResponse.Ok("更新成功"));
     }
 
     [HttpDelete("{id}")]
-    public async Task<ActionResult> Delete(int id)
+    public async Task<ActionResult<ApiResponse<object>>> Delete(int id)
     {
-        var list = await _repository.GetByIdAsync(id);
-        if (list == null) return NotFound(new { message = $"到货清单 {id} 不存在" });
+        var list = await _context.ArrivalLists.FindAsync(id);
+        if (list == null) return Ok(ApiResponse.Fail($"到货清单 {id} 不存在"));
 
         if (list.ArrivalStatus == ArrivalStatus.Inspected)
-            return BadRequest(new { message = "已验收的到货清单不能删除" });
+            return Ok(ApiResponse.Fail("已验收的到货清单不能删除"));
 
         var oldStatus = list.ArrivalStatus.ToString();
-        await _repository.DeleteAsync(list);
-        await _repository.SaveChangesAsync();
+        _context.ArrivalLists.Remove(list);
+        await _context.SaveChangesAsync();
 
         await _logService.LogStatusChange("ArrivalList", id, oldStatus, "Deleted", null, "删除到货清单");
 
-        return NoContent();
+        return Ok(ApiResponse.Ok("删除成功"));
     }
 
     [HttpPost("{id}/inspect")]
-    public async Task<ActionResult> Inspect(int id)
+    public async Task<ActionResult<ApiResponse<object>>> Inspect(int id)
     {
-        var list = await _repository.GetByIdAsync(id);
-        if (list == null) return NotFound(new { message = $"到货清单 {id} 不存在" });
+        var list = await _context.ArrivalLists.FindAsync(id);
+        if (list == null) return Ok(ApiResponse.Fail($"到货清单 {id} 不存在"));
 
         if (list.ArrivalStatus != ArrivalStatus.Arrived && list.ArrivalStatus != ArrivalStatus.PartialArrival)
-            return BadRequest(new { message = "只有已到货或部分到货的清单可以验收" });
+            return Ok(ApiResponse.Fail("只有已到货或部分到货的清单可以验收"));
 
         var oldStatus = list.ArrivalStatus.ToString();
         list.ArrivalStatus = ArrivalStatus.Inspected;
-        await _repository.UpdateAsync(list);
-        await _repository.SaveChangesAsync();
+        await _context.SaveChangesAsync();
 
         await _logService.LogStatusChange("ArrivalList", id, oldStatus, ArrivalStatus.Inspected.ToString(), null, "验收完成");
 
-        return NoContent();
+        return Ok(ApiResponse.Ok("验收成功"));
     }
+
+    [HttpPost("{id}/pickup")]
+    public async Task<ActionResult<ApiResponse<object>>> Pickup(int id, [FromBody] PickupRequest request)
+    {
+        var item = await _context.ArrivalListItems
+            .Include(i => i.ArrivalList)
+            .FirstOrDefaultAsync(i => i.Id == request.ItemId && i.ArrivalListId == id);
+        if (item == null) return Ok(ApiResponse.Fail("到货明细不存在"));
+
+        if (item.PickupStatus == PickupStatus.PickedUp)
+            return Ok(ApiResponse.Fail("该商品已自提"));
+
+        if (item.PickupStatus == PickupStatus.OverdueUncollected)
+            return Ok(ApiResponse.Fail("该商品已超时未取，无法自提"));
+
+        item.PickupStatus = PickupStatus.PickedUp;
+        item.PickupTime = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        return Ok(ApiResponse.Ok("自提成功"));
+    }
+}
+
+public class PickupRequest
+{
+    public int ItemId { get; set; }
 }

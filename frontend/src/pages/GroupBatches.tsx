@@ -184,6 +184,9 @@ const GroupBatches: React.FC = () => {
           <Form.Item name="leaderName" label="团长" rules={[{ required: true, message: '请输入团长名称' }]}>
             <Input />
           </Form.Item>
+          <Form.Item name="leaderPhone" label="团长电话">
+            <Input />
+          </Form.Item>
           <Form.Item name="leaderTierId" label="团长等级" rules={[{ required: true, message: '请选择团长等级' }]}>
             <Select>
               {leaderTiers.map((t) => (

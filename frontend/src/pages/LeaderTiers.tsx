@@ -86,6 +86,7 @@ const LeaderTiers: React.FC = () => {
       render: (v: number) => `${v}%`,
     },
     { title: '排序', dataIndex: 'sortOrder', key: 'sortOrder' },
+    { title: '描述', dataIndex: 'description', key: 'description', ellipsis: true },
     {
       title: '状态',
       dataIndex: 'isActive',
@@ -154,6 +155,9 @@ const LeaderTiers: React.FC = () => {
           </Form.Item>
           <Form.Item name="sortOrder" label="排序" rules={[{ required: true, message: '请输入排序' }]}>
             <InputNumber min={0} style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item name="description" label="描述">
+            <Input.TextArea rows={3} />
           </Form.Item>
           <Form.Item name="isActive" label="状态" initialValue={true}>
             <Select options={[{ value: true, label: '启用' }, { value: false, label: '停用' }]} />

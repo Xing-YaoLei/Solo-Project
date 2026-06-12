@@ -2,13 +2,13 @@ import client from './client';
 import type { ApiResponse } from '../types';
 
 export const exportSettlementSheet = (id: number) =>
-  client.get(`/settlement-sheets/${id}/export`, { responseType: 'blob' });
+  client.get(`/export/settlement/${id}`, { responseType: 'blob' });
 
 export const exportArrivalList = (id: number) =>
-  client.get(`/arrival-lists/${id}/export`, { responseType: 'blob' });
+  client.get(`/export/arrival/${id}`, { responseType: 'blob' });
 
 export const exportExceptionOrders = (ids: number[]) =>
-  client.post('/exception-orders/export', { ids }, { responseType: 'blob' });
+  client.post('/export/exceptions', { ids }, { responseType: 'blob' });
 
 export const getCaliberDescription = (type: string) =>
   client.get<ApiResponse<string>>(`/export/caliber-description/${type}`);
