@@ -1,0 +1,20 @@
+import sys
+sys.path.insert(0, '.')
+from app.services.mock_data import generate_mock_data
+
+r = generate_mock_data()
+print('=' * 50)
+print('Mock data initialized successfully!')
+print('=' * 50)
+print(f'  Stores:        {len(r["stores"])}')
+print(f'  Equipments:    {len(r["equipments"])}')
+print(f'  Clean metrics: {r["clean_metrics_count"]}')
+print(f'  Inventory:     {r["inventory_versions"]}')
+print(f'  POS records:   {r["pos_versions"]}')
+print(f'  Receipts:      {r["member_receipts"]}')
+print(f'  Faults:        {len(r["fault_records"])}')
+print(f'  Tasks:         {len(r["rectification_tasks"])}')
+print(f'  Rechecks:      {len(r["recheck_results"])}')
+print(f'  Inspections:   {len(r["inspection_records"])}')
+print(f'  Trends:        {len(r["inspection_trends"])}')
+print('=' * 50)
