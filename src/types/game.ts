@@ -71,6 +71,7 @@ export interface GameRecord {
   id: string;
   playerId: string;
   levelId: string;
+  memberId: string;
   score: number;
   correctCount: number;
   wrongCount: number;
@@ -93,6 +94,7 @@ export interface DecisionLog {
 export interface FailureReplay {
   id: string;
   recordId: string;
+  memberId: string;
   replayIndex: number;
   timeline: ReplayEvent[];
   hesitationPoints: HesitationPoint[];

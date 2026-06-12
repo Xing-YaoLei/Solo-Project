@@ -228,7 +228,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
       const fullEvents = [...replayEvents, event, taskEndEvent];
       const record = createGameRecord(get(), newHistory, false);
-      const replay = createReplay(currentRecordId, fullEvents, newHistory);
+      const replay = createReplay(currentRecordId, currentTask.memberId, fullEvents, newHistory);
       saveReplay(replay);
       saveGameRecord(record);
     }
@@ -264,8 +264,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const record = createGameRecord(get(), decisionHistory, true);
       saveGameRecord(record);
       
-      if (decisionHistory.some((d) => !d.isCorrect)) {
-        const replay = createReplay(currentRecordId!, fullEvents, decisionHistory);
+      if (decisionHistory.some((d) => !d.isCorrect) && tasks[0]) {
+        const replay = createReplay(currentRecordId!, tasks[0].memberId, fullEvents, decisionHistory);
         saveReplay(replay);
       }
 
@@ -278,13 +278,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
   resumeGame: () => set({ isPaused: false }),
 
   endGame: (isWin: boolean) => {
-    const { replayEvents, currentRecordId, decisionHistory } = get();
+    const state = get();
+    const { replayEvents, currentRecordId, decisionHistory, tasks } = state;
     
-    if (currentRecordId && replayEvents.length > 0) {
-      const record = createGameRecord(get(), decisionHistory, isWin);
+    if (currentRecordId && replayEvents.length > 0 && tasks.length > 0) {
+      const record = createGameRecord(state, decisionHistory, isWin);
       saveGameRecord(record);
       
-      const replay = createReplay(currentRecordId, replayEvents, decisionHistory);
+      const replay = createReplay(currentRecordId, tasks[0].memberId, replayEvents, decisionHistory);
       saveReplay(replay);
     }
     
@@ -373,10 +374,13 @@ function createGameRecord(
     }
   });
 
+  const memberId = state.tasks.length > 0 ? state.tasks[0].memberId : '';
+
   return {
     id: state.currentRecordId!,
     playerId: 'player-1',
     levelId: state.currentLevelId!,
+    memberId,
     score: state.score + (isWin ? 200 : 0),
     correctCount,
     wrongCount,

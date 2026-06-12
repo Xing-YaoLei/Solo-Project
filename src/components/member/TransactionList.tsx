@@ -1,6 +1,8 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowUpRight, ArrowDownLeft, RefreshCw, Gift } from 'lucide-react';
 import type { Transaction, Member } from '@/types/member';
+import { getTransactionsByMemberId } from '@/data/mockMembers';
 import { formatDateTime } from '@/utils/scoring';
 
 interface TransactionListProps {
@@ -42,7 +44,16 @@ const statusLabels: Record<string, string> = {
 };
 
 export function TransactionList({ transactions, member }: TransactionListProps) {
-  const displayTransactions = transactions || [];
+  const [memberTransactions, setMemberTransactions] = useState<Transaction[]>([]);
+
+  useEffect(() => {
+    if (member) {
+      const txs = getTransactionsByMemberId(member.id);
+      setMemberTransactions(txs);
+    }
+  }, [member]);
+
+  const displayTransactions = transactions || memberTransactions;
   
   if (displayTransactions.length === 0) {
     return (

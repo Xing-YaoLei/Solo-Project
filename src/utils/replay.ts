@@ -3,10 +3,11 @@ import { generateId } from './scoring';
 import { storage } from './storage';
 
 const HESITATION_THRESHOLD = 5000;
-const MAX_REPLAYS = 3;
+const MAX_REPLAYS_PER_MEMBER = 3;
 
 export function createReplay(
   recordId: string,
+  memberId: string,
   events: ReplayEvent[],
   decisionLogs: DecisionLog[]
 ): FailureReplay {
@@ -42,6 +43,7 @@ export function createReplay(
   return {
     id: generateId(),
     recordId,
+    memberId,
     replayIndex: 0,
     timeline: events,
     hesitationPoints,
@@ -63,16 +65,21 @@ function getHesitationDescription(eventType: string, duration: number): string {
 
 export function saveReplay(replay: FailureReplay): void {
   const replays = storage.loadReplays<FailureReplay[]>([]);
-  const memberReplays = replays.filter((r) => r.recordId === replay.recordId);
-  
-  replay.replayIndex = memberReplays.length % MAX_REPLAYS;
-  
-  const otherReplays = replays.filter(
-    (r) => !(r.recordId === replay.recordId && r.replayIndex === replay.replayIndex)
-  );
-  
-  otherReplays.push(replay);
-  storage.saveReplays(otherReplays);
+  const memberReplays = replays
+    .filter((r) => r.memberId === replay.memberId)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  if (memberReplays.length >= MAX_REPLAYS_PER_MEMBER) {
+    const oldestReplay = memberReplays[memberReplays.length - 1];
+    const filteredReplays = replays.filter((r) => r.id !== oldestReplay.id);
+    replay.replayIndex = oldestReplay.replayIndex;
+    filteredReplays.push(replay);
+    storage.saveReplays(filteredReplays);
+  } else {
+    replay.replayIndex = memberReplays.length;
+    replays.push(replay);
+    storage.saveReplays(replays);
+  }
 }
 
 export function getReplaysForRecord(recordId: string): FailureReplay[] {
@@ -80,6 +87,13 @@ export function getReplaysForRecord(recordId: string): FailureReplay[] {
   return replays
     .filter((r) => r.recordId === recordId)
     .sort((a, b) => a.replayIndex - b.replayIndex);
+}
+
+export function getReplaysForMember(memberId: string): FailureReplay[] {
+  const replays = storage.loadReplays<FailureReplay[]>([]);
+  return replays
+    .filter((r) => r.memberId === memberId)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
 export function getReplayTimeline(replay: FailureReplay, currentTime: number): ReplayEvent | null {
