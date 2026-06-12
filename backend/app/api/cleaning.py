@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 from sqlalchemy import func
 from typing import List, Optional
 from datetime import datetime
@@ -15,7 +15,7 @@ def generate_record_no() -> str:
     return f"CL{datetime.now().strftime('%Y%m%d')}{uuid.uuid4().hex[:6].upper()}"
 
 
-def _eager_options():
+def _detail_eager_options():
     return [
         joinedload(CleaningRecord.store_point),
         joinedload(CleaningRecord.device),
@@ -26,8 +26,19 @@ def _eager_options():
     ]
 
 
+def _list_eager_options():
+    return [
+        joinedload(CleaningRecord.store_point),
+        joinedload(CleaningRecord.device),
+        joinedload(CleaningRecord.cleaning_person),
+        joinedload(CleaningRecord.reviewer),
+        joinedload(CleaningRecord.closed_by),
+        selectinload(CleaningRecord.status_logs),
+    ]
+
+
 def _load_record(db: Session, record_id: int) -> Optional[CleaningRecord]:
-    return db.query(CleaningRecord).options(*_eager_options()).filter(CleaningRecord.id == record_id).first()
+    return db.query(CleaningRecord).options(*_detail_eager_options()).filter(CleaningRecord.id == record_id).first()
 
 
 def add_status_log(db: Session, record_id: int, from_status: Optional[schemas.CleaningStatus],
@@ -53,20 +64,26 @@ def list_records(
     limit: int = 50,
     db: Session = Depends(get_db),
 ):
-    query = db.query(CleaningRecord).options(*_eager_options())
+    count_query = db.query(CleaningRecord)
+    list_query = db.query(CleaningRecord).options(*_list_eager_options())
     if status:
-        query = query.filter(CleaningRecord.status == status)
+        count_query = count_query.filter(CleaningRecord.status == status)
+        list_query = list_query.filter(CleaningRecord.status == status)
     if store_point_id:
-        query = query.filter(CleaningRecord.store_point_id == store_point_id)
+        count_query = count_query.filter(CleaningRecord.store_point_id == store_point_id)
+        list_query = list_query.filter(CleaningRecord.store_point_id == store_point_id)
     if device_id:
-        query = query.filter(CleaningRecord.device_id == device_id)
+        count_query = count_query.filter(CleaningRecord.device_id == device_id)
+        list_query = list_query.filter(CleaningRecord.device_id == device_id)
     if source_channel:
-        query = query.filter(CleaningRecord.source_channel == source_channel)
+        count_query = count_query.filter(CleaningRecord.source_channel == source_channel)
+        list_query = list_query.filter(CleaningRecord.source_channel == source_channel)
     if is_device_offline is not None:
-        query = query.filter(CleaningRecord.is_device_offline == is_device_offline)
+        count_query = count_query.filter(CleaningRecord.is_device_offline == is_device_offline)
+        list_query = list_query.filter(CleaningRecord.is_device_offline == is_device_offline)
 
-    total = query.count()
-    items = query.order_by(CleaningRecord.created_at.desc()).offset(skip).limit(limit).unique().all()
+    total = count_query.count()
+    items = list_query.order_by(CleaningRecord.created_at.desc()).offset(skip).limit(limit).all()
     return schemas.CleaningRecordList(total=total, items=items)
 
 
