@@ -203,27 +203,45 @@ export class ResultScene extends BaseScene {
 
     const hasStuck = this.trackingRules.trackDecisionTime;
     const hasError = this.trackingRules.trackErrorTypes;
+    const hasItems = this.trackingRules.trackItemUsage;
+    const hasEvents = this.trackingRules.trackEventHandling;
 
-    if (hasStuck && hasError) {
-      this.createStuckAnalysis(80, sectionY + 70);
-      this.createErrorAnalysis(400, sectionY + 70);
-    } else if (hasStuck && !hasError) {
-      this.createStuckAnalysis(80, sectionY + 70);
-    } else if (!hasStuck && hasError) {
-      this.createErrorAnalysis(80, sectionY + 70);
-    } else {
+    const analysisCards: Array<{ fn: (x: number, y: number) => void; condition: boolean }> = [];
+
+    if (hasStuck) analysisCards.push({ fn: this.createStuckAnalysis.bind(this), condition: true });
+    if (hasError) analysisCards.push({ fn: this.createErrorAnalysis.bind(this), condition: true });
+    if (hasItems) analysisCards.push({ fn: this.createItemUsageAnalysis.bind(this), condition: true });
+    if (hasEvents) analysisCards.push({ fn: this.createEventAnalysis.bind(this), condition: true });
+
+    if (analysisCards.length === 0) {
       const message = this.add.text(this.centerX, sectionY + 100, '🔒 分析功能已在配置中关闭', {
         fontFamily: 'Inter, sans-serif',
         fontSize: '16px',
         color: '#666666',
       }).setOrigin(0.5);
+      return;
     }
+
+    const cardWidth = 300;
+    const cardSpacing = 40;
+    const perRow = 2;
+    const totalWidth = perRow * cardWidth + (perRow - 1) * cardSpacing;
+    const startX = this.centerX - totalWidth / 2 + cardWidth / 2;
+
+    analysisCards.forEach((card, index) => {
+      const row = Math.floor(index / perRow);
+      const col = index % perRow;
+      const x = startX + col * (cardWidth + cardSpacing);
+      const y = sectionY + 70 + row * 130;
+      card.fn(x, y);
+    });
   }
 
   private createStuckAnalysis(x: number, y: number): void {
-    const container = this.add.container(x, y);
+    const container = this.add.container(0, 0);
+    container.setPosition(x, y);
 
-    const title = this.add.text(0, 0, '⏳ 卡点分析', {
+    const title = this.add.text(-130, -40, '⏳ 卡点分析', {
       fontFamily: 'Inter, sans-serif',
       fontSize: '16px',
       fontStyle: 'bold',
@@ -231,7 +249,7 @@ export class ResultScene extends BaseScene {
     }).setOrigin(0);
 
     if (this.result.stuckPoints.length === 0) {
-      const message = this.add.text(0, 30, '✅ 没有卡点，判断流畅！', {
+      const message = this.add.text(-130, 0, '✅ 没有卡点，判断流畅！', {
         fontFamily: 'Inter, sans-serif',
         fontSize: '14px',
         color: '#4CAF50',
@@ -241,8 +259,8 @@ export class ResultScene extends BaseScene {
     }
 
     const message = this.add.text(
+      -130,
       0,
-      30,
       `发现 ${this.result.stuckPoints.length} 个卡点`,
       {
         fontFamily: 'Inter, sans-serif',
@@ -255,14 +273,14 @@ export class ResultScene extends BaseScene {
       this.result.stuckPoints.includes(t.pointId)
     );
 
-    let detailY = 55;
-    stuckTrackings.slice(0, 3).forEach((tracking) => {
+    let detailY = 25;
+    stuckTrackings.slice(0, 2).forEach((tracking) => {
       const point = this.gameStore.getState().points.find(p => p.id === tracking.pointId);
       if (!point) return;
 
-      const dot = this.add.circle(10, detailY, 5, 0xFF9800, 1);
+      const dot = this.add.circle(-120, detailY, 4, 0xFF9800, 1);
       const text = this.add.text(
-        25,
+        -105,
         detailY,
         `${point.name} - 犹豫 ${Math.round(tracking.decisionTime)}秒`,
         {
@@ -270,18 +288,18 @@ export class ResultScene extends BaseScene {
           fontSize: '12px',
           color: '#AAAAAA',
         }
-      ).setOrigin(0);
+      ).setOrigin(0, 0.5);
 
       container.add([dot, text]);
-      detailY += 22;
+      detailY += 20;
     });
 
-    if (stuckTrackings.length > 3) {
-      const more = this.add.text(25, detailY, `... 还有 ${stuckTrackings.length - 3} 个`, {
+    if (stuckTrackings.length > 2) {
+      const more = this.add.text(-105, detailY, `... 还有 ${stuckTrackings.length - 2} 个`, {
         fontFamily: 'Inter, sans-serif',
         fontSize: '12px',
         color: '#666666',
-      }).setOrigin(0);
+      }).setOrigin(0, 0.5);
       container.add(more);
     }
 
@@ -289,9 +307,10 @@ export class ResultScene extends BaseScene {
   }
 
   private createErrorAnalysis(x: number, y: number): void {
-    const container = this.add.container(x, y);
+    const container = this.add.container(0, 0);
+    container.setPosition(x, y);
 
-    const title = this.add.text(0, 0, '❌ 错误分析', {
+    const title = this.add.text(-130, -40, '❌ 错误分析', {
       fontFamily: 'Inter, sans-serif',
       fontSize: '16px',
       fontStyle: 'bold',
@@ -299,7 +318,7 @@ export class ResultScene extends BaseScene {
     }).setOrigin(0);
 
     if (this.result.errorPoints.length === 0) {
-      const message = this.add.text(0, 30, '🎉 全部判断正确！', {
+      const message = this.add.text(-130, 0, '🎉 全部判断正确！', {
         fontFamily: 'Inter, sans-serif',
         fontSize: '14px',
         color: '#4CAF50',
@@ -321,8 +340,8 @@ export class ResultScene extends BaseScene {
       });
 
     const message = this.add.text(
+      -130,
       0,
-      30,
       `共 ${this.result.errorPoints.length} 个错误判断`,
       {
         fontFamily: 'Inter, sans-serif',
@@ -331,25 +350,26 @@ export class ResultScene extends BaseScene {
       }
     ).setOrigin(0);
 
-    let detailY = 55;
-    Object.entries(errorTypes).forEach(([type, data]) => {
+    let detailY = 25;
+    const errorList = Object.entries(errorTypes).slice(0, 2);
+    errorList.forEach(([type, data]) => {
       const percentage = Math.round((data.count / this.result.errorPoints.length) * 100);
 
       const barBg = this.add.graphics();
       barBg.fillStyle(0x3D3D3D, 1);
-      barBg.fillRoundedRect(0, detailY, 200, 18, 9);
+      barBg.fillRoundedRect(-130, detailY, 200, 16, 8);
 
       const barFill = this.add.graphics();
       barFill.fillStyle(0xD32F2F, 0.8);
-      barFill.fillRoundedRect(0, detailY, 200 * (percentage / 100), 18, 9);
+      barFill.fillRoundedRect(-130, detailY, 200 * (percentage / 100), 16, 8);
 
-      const label = this.add.text(5, detailY + 9, data.label, {
+      const label = this.add.text(-125, detailY + 8, data.label, {
         fontFamily: 'Inter, sans-serif',
         fontSize: '11px',
         color: '#FFFFFF',
       }).setOrigin(0, 0.5);
 
-      const countText = this.add.text(195, detailY + 9, `${data.count}次`, {
+      const countText = this.add.text(60, detailY + 8, `${data.count}次`, {
         fontFamily: 'Inter, sans-serif',
         fontSize: '11px',
         fontStyle: 'bold',
@@ -357,8 +377,168 @@ export class ResultScene extends BaseScene {
       }).setOrigin(1, 0.5);
 
       container.add([barBg, barFill, label, countText]);
-      detailY += 25;
+      detailY += 22;
     });
+
+    if (Object.entries(errorTypes).length > 2) {
+      const more = this.add.text(-125, detailY, `... 还有 ${Object.entries(errorTypes).length - 2} 种`, {
+        fontFamily: 'Inter, sans-serif',
+        fontSize: '12px',
+        color: '#666666',
+      }).setOrigin(0, 0.5);
+      container.add(more);
+    }
+
+    container.add([title, message]);
+  }
+
+  private createItemUsageAnalysis(x: number, y: number): void {
+    const container = this.add.container(0, 0);
+    container.setPosition(x, y);
+
+    const title = this.add.text(-130, -40, '🎒 道具使用', {
+      fontFamily: 'Inter, sans-serif',
+      fontSize: '16px',
+      fontStyle: 'bold',
+      color: '#9C27B0',
+    }).setOrigin(0);
+
+    if (this.result.itemUsages.length === 0) {
+      const message = this.add.text(-130, 0, '📭 本局未使用任何道具', {
+        fontFamily: 'Inter, sans-serif',
+        fontSize: '14px',
+        color: '#888888',
+      }).setOrigin(0);
+      container.add([title, message]);
+      return;
+    }
+
+    const itemCounts: Record<string, number> = {};
+    const effectiveCounts: Record<string, number> = {};
+
+    this.result.itemUsages.forEach(usage => {
+      itemCounts[usage.itemId] = (itemCounts[usage.itemId] || 0) + 1;
+      if (usage.effectApplied) {
+        effectiveCounts[usage.itemId] = (effectiveCounts[usage.itemId] || 0) + 1;
+      }
+    });
+
+    const configItems = this.configStore.getState().items;
+
+    const message = this.add.text(
+      -130,
+      0,
+      `共使用 ${this.result.itemUsages.length} 次道具`,
+      {
+        fontFamily: 'Inter, sans-serif',
+        fontSize: '14px',
+        color: '#9C27B0',
+      }
+    ).setOrigin(0);
+
+    let detailY = 25;
+    Object.entries(itemCounts).slice(0, 2).forEach(([itemId, count]) => {
+      const itemConfig = configItems.find(i => i.id === itemId);
+      if (!itemConfig) return;
+
+      const effective = effectiveCounts[itemId] || 0;
+      const label = `${itemConfig.icon} ${itemConfig.name}`;
+
+      const dot = this.add.circle(-120, detailY, 4, 0x9C27B0, 1);
+      const text = this.add.text(
+        -105,
+        detailY,
+        `${label} - ${count}次${effective > 0 ? ` (有效${effective}次)` : ''}`,
+        {
+          fontFamily: 'Inter, sans-serif',
+          fontSize: '12px',
+          color: '#AAAAAA',
+        }
+      ).setOrigin(0, 0.5);
+
+      container.add([dot, text]);
+      detailY += 20;
+    });
+
+    if (Object.entries(itemCounts).length > 2) {
+      const more = this.add.text(-105, detailY, `... 还有 ${Object.entries(itemCounts).length - 2} 种`, {
+        fontFamily: 'Inter, sans-serif',
+        fontSize: '12px',
+        color: '#666666',
+      }).setOrigin(0, 0.5);
+      container.add(more);
+    }
+
+    container.add([title, message]);
+  }
+
+  private createEventAnalysis(x: number, y: number): void {
+    const container = this.add.container(0, 0);
+    container.setPosition(x, y);
+
+    const title = this.add.text(-130, -40, '⚡ 事件处理', {
+      fontFamily: 'Inter, sans-serif',
+      fontSize: '16px',
+      fontStyle: 'bold',
+      color: '#2196F3',
+    }).setOrigin(0);
+
+    if (this.result.events.length === 0) {
+      const message = this.add.text(-130, 0, '🛡️ 本局未触发突发事件', {
+        fontFamily: 'Inter, sans-serif',
+        fontSize: '14px',
+        color: '#888888',
+      }).setOrigin(0);
+      container.add([title, message]);
+      return;
+    }
+
+    const avgResponseTime = this.result.events.length > 0
+      ? this.result.events.reduce((sum, e) => sum + e.choiceTime, 0) / this.result.events.length
+      : 0;
+
+    const message = this.add.text(
+      -130,
+      0,
+      `触发 ${this.result.events.length} 次事件 · 平均响应 ${avgResponseTime.toFixed(1)}秒`,
+      {
+        fontFamily: 'Inter, sans-serif',
+        fontSize: '14px',
+        color: '#2196F3',
+      }
+    ).setOrigin(0);
+
+    let detailY = 25;
+    this.result.events.slice(0, 2).forEach((event, index) => {
+      const choiceLabel = event.playerChoice === 'remote_restart' ? '远程重启'
+        : event.playerChoice === 'onsite' ? '现场处理'
+        : event.playerChoice === 'ignore' ? '忽略'
+        : event.playerChoice;
+
+      const dot = this.add.circle(-120, detailY, 4, 0x2196F3, 1);
+      const text = this.add.text(
+        -105,
+        detailY,
+        `事件${index + 1} - ${choiceLabel} (${event.choiceTime.toFixed(1)}秒)`,
+        {
+          fontFamily: 'Inter, sans-serif',
+          fontSize: '12px',
+          color: '#AAAAAA',
+        }
+      ).setOrigin(0, 0.5);
+
+      container.add([dot, text]);
+      detailY += 20;
+    });
+
+    if (this.result.events.length > 2) {
+      const more = this.add.text(-105, detailY, `... 还有 ${this.result.events.length - 2} 个事件`, {
+        fontFamily: 'Inter, sans-serif',
+        fontSize: '12px',
+        color: '#666666',
+      }).setOrigin(0, 0.5);
+      container.add(more);
+    }
 
     container.add([title, message]);
   }
@@ -408,9 +588,17 @@ export class ResultScene extends BaseScene {
       const isStuck = this.result.stuckPoints.includes(tracking.pointId);
       const hasStuckData = this.trackingRules.trackDecisionTime && isStuck;
       const hasErrorData = this.trackingRules.trackErrorTypes && !tracking.isCorrect;
-      const color = tracking.isCorrect
-        ? (hasStuckData ? 0xFF9800 : 0x4CAF50)
-        : 0xD32F2F;
+
+      let color: number;
+      if (!this.trackingRules.trackErrorTypes) {
+        color = 0x2196F3;
+      } else if (!tracking.isCorrect) {
+        color = 0xD32F2F;
+      } else if (hasStuckData) {
+        color = 0xFF9800;
+      } else {
+        color = 0x4CAF50;
+      }
 
       const dotSize = hasStuckData ? 8 : 6;
       const dot = this.add.circle(x, y, dotSize, color, 1);
@@ -444,11 +632,13 @@ export class ResultScene extends BaseScene {
     const legend = this.add.container(this.width - 60, timelineY + 80);
     const legendItems: Array<{ label: string; color: number }> = [];
 
-    legendItems.push({ label: '正确', color: 0x4CAF50 });
-    if (this.trackingRules.trackDecisionTime) {
-      legendItems.push({ label: '卡点', color: 0xFF9800 });
-    }
-    if (this.trackingRules.trackErrorTypes) {
+    if (!this.trackingRules.trackErrorTypes) {
+      legendItems.push({ label: '已完成', color: 0x2196F3 });
+    } else {
+      legendItems.push({ label: '正确', color: 0x4CAF50 });
+      if (this.trackingRules.trackDecisionTime) {
+        legendItems.push({ label: '卡点', color: 0xFF9800 });
+      }
       legendItems.push({ label: '错误', color: 0xD32F2F });
     }
 
