@@ -17,6 +17,7 @@ async function seed() {
 
 	console.log('👤 创建管理员用户...');
 	const adminId = generateId(15);
+	const leaderId = generateId(15);
 	const operatorId1 = generateId(15);
 	const operatorId2 = generateId(15);
 	const passwordHash = await new Argon2id().hash('admin123');
@@ -28,6 +29,14 @@ async function seed() {
 			passwordHash,
 			role: 'admin',
 			realName: '系统管理员',
+			region: '华东区'
+		},
+		{
+			id: leaderId,
+			username: 'leader',
+			passwordHash,
+			role: 'leader',
+			realName: '王主管',
 			region: '华东区'
 		},
 		{
@@ -129,7 +138,8 @@ async function seed() {
 			status: 'pending',
 			currentHandlerId: adminId,
 			currentHandlerName: '系统管理员',
-			createdAt: new Date(now.getTime() - 30 * 60 * 1000)
+			createdAt: new Date(now.getTime() - 30 * 60 * 1000),
+			dueAt: new Date(now.getTime() + 90 * 60 * 1000)
 		},
 		{
 			orderNo: 'RT202606130002',
@@ -145,7 +155,8 @@ async function seed() {
 			issueTag: '商品质量',
 			currentHandlerId: operatorId1,
 			currentHandlerName: '张运营',
-			createdAt: new Date(now.getTime() - 3 * 60 * 60 * 1000)
+			createdAt: new Date(now.getTime() - 3 * 60 * 60 * 1000),
+			dueAt: new Date(now.getTime() - 30 * 60 * 1000)
 		},
 		{
 			orderNo: 'RT202606120003',
@@ -159,9 +170,10 @@ async function seed() {
 			status: 'escalated',
 			responsibility: '物流责任',
 			issueTag: '配送延迟',
-			currentHandlerId: adminId,
-			currentHandlerName: '系统管理员',
-			createdAt: new Date(now.getTime() - 28 * 60 * 60 * 1000)
+			currentHandlerId: leaderId,
+			currentHandlerName: '王主管',
+			createdAt: new Date(now.getTime() - 28 * 60 * 60 * 1000),
+			dueAt: new Date(now.getTime() + 20 * 60 * 60 * 1000)
 		},
 		{
 			orderNo: 'RT202606100004',
@@ -179,7 +191,8 @@ async function seed() {
 			currentHandlerId: operatorId1,
 			currentHandlerName: '张运营',
 			createdAt: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000),
-			closedAt: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000)
+			closedAt: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000),
+			dueAt: null
 		},
 		{
 			orderNo: 'RT202606110005',
@@ -197,7 +210,8 @@ async function seed() {
 			currentHandlerId: operatorId2,
 			currentHandlerName: '李运营',
 			createdAt: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000),
-			closedAt: new Date(now.getTime() - 20 * 60 * 60 * 1000)
+			closedAt: new Date(now.getTime() - 20 * 60 * 60 * 1000),
+			dueAt: null
 		}
 	];
 
@@ -232,9 +246,11 @@ async function seed() {
 			await db.insert(refundLogTable).values({
 				refundOrderId: orderId,
 				actionType: 'escalate',
-				actionDetail: '升级处理 (第1级): 处理超时，升级至: 系统管理员',
+				actionDetail: '升级处理 (第1级): 处理超时，升级至: 王主管（leader），分派给: 王主管',
 				oldStatus: 'processing',
 				newStatus: 'escalated',
+				oldHandlerId: operatorId1,
+				newHandlerId: leaderId,
 				operatorId: operatorId1,
 				operatorName: '张运营',
 				createdAt: new Date((order.createdAt as Date).getTime() + 26 * 60 * 60 * 1000)
@@ -269,6 +285,7 @@ async function seed() {
 
 	console.log('\n🎉 数据库初始化完成！');
 	console.log('👤 管理员账号: admin / admin123');
+	console.log('👤 主管账号: leader / admin123');
 	console.log('👤 运营账号: operator1 / admin123');
 	console.log('👤 运营账号: operator2 / admin123');
 

@@ -1,9 +1,9 @@
 import { z } from 'zod';
 import { createTRPCRouter, protectedProcedure } from '../trpc';
 import { db } from '$lib/server/db';
-import { refundOrderTable, refundLogTable } from '$lib/server/db/schema';
-import { eq, and, desc, gte, lte, count, sql } from 'drizzle-orm';
-import { getDueAt, checkAndProcessTimeouts } from '../timeout';
+import { refundOrderTable, refundLogTable, userTable } from '$lib/server/db/schema';
+import { eq, and, desc, gte, lte, count, sql, or, ilike } from 'drizzle-orm';
+import { getDueAt, checkAndProcessTimeouts, resolveEscalationTargetWithFallback } from '../timeout';
 
 export const refundRouter = createTRPCRouter({
 	createOrder: protectedProcedure
@@ -327,6 +327,7 @@ export const refundRouter = createTRPCRouter({
 				reason: z.string(),
 				escalateTo: z.string(),
 				level: z.number(),
+				escalateToUserId: z.string().optional(),
 				remark: z.string().optional()
 			})
 		)
@@ -341,12 +342,67 @@ export const refundRouter = createTRPCRouter({
 				throw new Error('售后单不存在');
 			}
 
+			let newHandlerId = oldOrder[0].currentHandlerId;
+			let newHandlerName = oldOrder[0].currentHandlerName;
+			let targetNote = '';
+
+			if (input.escalateToUserId) {
+				const targetUser = await db
+					.select()
+					.from(userTable)
+					.where(eq(userTable.id, input.escalateToUserId))
+					.limit(1);
+				if (targetUser.length > 0) {
+					newHandlerId = targetUser[0].id;
+					newHandlerName = targetUser[0].realName || targetUser[0].username;
+					targetNote = `，分派给: ${newHandlerName}`;
+				}
+			} else {
+				const roleMatch = await db
+					.select()
+					.from(userTable)
+					.where(or(eq(userTable.role, input.escalateTo), ilike(userTable.role, '%' + input.escalateTo + '%')))
+					.limit(1);
+				if (roleMatch.length > 0) {
+					newHandlerId = roleMatch[0].id;
+					newHandlerName = roleMatch[0].realName || roleMatch[0].username;
+					targetNote = `（角色匹配「${roleMatch[0].role}」），分派给: ${newHandlerName}`;
+				} else {
+					const nameMatch = await db
+						.select()
+						.from(userTable)
+						.where(or(
+							ilike(userTable.username, '%' + input.escalateTo + '%'),
+							ilike(userTable.realName, '%' + input.escalateTo + '%')
+						))
+						.limit(1);
+					if (nameMatch.length > 0) {
+						newHandlerId = nameMatch[0].id;
+						newHandlerName = nameMatch[0].realName || nameMatch[0].username;
+						targetNote = `（姓名匹配），分派给: ${newHandlerName}`;
+					} else {
+						const admins = await db
+							.select()
+							.from(userTable)
+							.where(eq(userTable.role, 'admin'))
+							.limit(1);
+						if (admins.length > 0) {
+							newHandlerId = admins[0].id;
+							newHandlerName = admins[0].realName || admins[0].username;
+							targetNote = `（未找到匹配目标，已 fallback 管理员），分派给: ${newHandlerName}`;
+						}
+					}
+				}
+			}
+
 			const dueAt = await getDueAt('escalated');
 
 			await db
 				.update(refundOrderTable)
 				.set({
 					status: 'escalated',
+					currentHandlerId: newHandlerId,
+					currentHandlerName: newHandlerName,
 					dueAt,
 					updatedAt: new Date()
 				})
@@ -355,15 +411,17 @@ export const refundRouter = createTRPCRouter({
 			await db.insert(refundLogTable).values({
 				refundOrderId: input.orderId,
 				actionType: 'escalate',
-				actionDetail: `升级处理 (第${input.level}级): ${input.reason}，升级至: ${input.escalateTo}${dueAt ? '，处理截止: ' + dueAt.toISOString() : ''}`,
+				actionDetail: `升级处理 (第${input.level}级): ${input.reason}，升级至: ${input.escalateTo}${targetNote}${dueAt ? '，处理截止: ' + dueAt.toISOString() : ''}`,
 				oldStatus: oldOrder[0].status,
 				newStatus: 'escalated',
+				oldHandlerId: oldOrder[0].currentHandlerId,
+				newHandlerId,
 				operatorId: ctx.user.id,
 				operatorName: ctx.user.realName || ctx.user.username,
 				remark: input.remark
 			});
 
-			return { success: true };
+			return { success: true, newHandlerId, newHandlerName };
 		}),
 
 	closeOrder: protectedProcedure
