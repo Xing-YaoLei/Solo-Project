@@ -1,0 +1,21 @@
+import os
+
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/coffee_replenish")
+
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+
+CELERY_BROKER_URL = REDIS_URL
+CELERY_RESULT_BACKEND = REDIS_URL
+
+DASH_HOST = os.getenv("DASH_HOST", "0.0.0.0")
+DASH_PORT = int(os.getenv("DASH_PORT", "8050"))
+
+SYNC_CRONTAB_MINUTE = os.getenv("SYNC_CRONTAB_MINUTE", "0")
+SYNC_CRONTAB_HOUR = os.getenv("SYNC_CRONTAB_HOUR", "6")
+
+ALERT_CRONTAB_MINUTE = os.getenv("ALERT_CRONTAB_MINUTE", "30")
+ALERT_CRONTAB_HOUR = os.getenv("ALERT_CRONTAB_HOUR", "6")
+
+DEFAULT_TURNOVER_ALERT_DAYS = int(os.getenv("DEFAULT_TURNOVER_ALERT_DAYS", "7"))
+DEFAULT_EXPIRY_ALERT_DAYS = int(os.getenv("DEFAULT_EXPIRY_ALERT_DAYS", "30"))
+DEFAULT_STOCKOUT_ALERT_RATIO = float(os.getenv("DEFAULT_STOCKOUT_ALERT_RATIO", "0.2"))
