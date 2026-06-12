@@ -1,6 +1,7 @@
 from celery_app import celery
 from database import SessionLocal
 from services.report_service import ReportService
+from config import settings
 from datetime import date
 import pandas as pd
 import io
@@ -43,9 +44,9 @@ def generate_performance_report(
         with open(file_path, "wb") as f:
             f.write(output.getvalue())
 
-        download_url = f"/api/reports/export/download/{filename}"
+        download_url = f"{settings.API_V1_PREFIX}/reports/export/download/{filename}"
 
-        logger.info(f"报表生成成功: {file_path}")
+        logger.info(f"报表生成成功: {file_path}, download_url: {download_url}")
         return {
             "status": "success",
             "file_path": file_path,
