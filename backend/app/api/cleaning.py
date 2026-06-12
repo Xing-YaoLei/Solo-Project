@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from typing import List, Optional
 from datetime import datetime
@@ -13,6 +13,21 @@ router = APIRouter()
 
 def generate_record_no() -> str:
     return f"CL{datetime.now().strftime('%Y%m%d')}{uuid.uuid4().hex[:6].upper()}"
+
+
+def _eager_options():
+    return [
+        joinedload(CleaningRecord.store_point),
+        joinedload(CleaningRecord.device),
+        joinedload(CleaningRecord.cleaning_person),
+        joinedload(CleaningRecord.reviewer),
+        joinedload(CleaningRecord.closed_by),
+        joinedload(CleaningRecord.status_logs),
+    ]
+
+
+def _load_record(db: Session, record_id: int) -> Optional[CleaningRecord]:
+    return db.query(CleaningRecord).options(*_eager_options()).filter(CleaningRecord.id == record_id).first()
 
 
 def add_status_log(db: Session, record_id: int, from_status: Optional[schemas.CleaningStatus],
@@ -38,7 +53,7 @@ def list_records(
     limit: int = 50,
     db: Session = Depends(get_db),
 ):
-    query = db.query(CleaningRecord)
+    query = db.query(CleaningRecord).options(*_eager_options())
     if status:
         query = query.filter(CleaningRecord.status == status)
     if store_point_id:
@@ -51,13 +66,13 @@ def list_records(
         query = query.filter(CleaningRecord.is_device_offline == is_device_offline)
 
     total = query.count()
-    items = query.order_by(CleaningRecord.created_at.desc()).offset(skip).limit(limit).all()
+    items = query.order_by(CleaningRecord.created_at.desc()).offset(skip).limit(limit).unique().all()
     return schemas.CleaningRecordList(total=total, items=items)
 
 
 @router.get("/{record_id}", response_model=schemas.CleaningRecord)
 def get_record(record_id: int, db: Session = Depends(get_db)):
-    record = db.query(CleaningRecord).filter(CleaningRecord.id == record_id).first()
+    record = _load_record(db, record_id)
     if not record:
         raise HTTPException(status_code=404, detail="清洁单据不存在")
     return record
@@ -79,13 +94,12 @@ def create_record(record_in: schemas.CleaningRecordCreate, db: Session = Depends
     add_status_log(db, record.id, None, schemas.CleaningStatus.DRAFT)
 
     db.commit()
-    db.refresh(record)
-    return record
+    return _load_record(db, record.id)
 
 
 @router.put("/{record_id}", response_model=schemas.CleaningRecord)
 def update_record(record_id: int, record_in: schemas.CleaningRecordUpdate, db: Session = Depends(get_db)):
-    record = db.query(CleaningRecord).filter(CleaningRecord.id == record_id).first()
+    record = _load_record(db, record_id)
     if not record:
         raise HTTPException(status_code=404, detail="清洁单据不存在")
     if record.status == schemas.CleaningStatus.CLOSED:
@@ -102,13 +116,12 @@ def update_record(record_id: int, record_in: schemas.CleaningRecordUpdate, db: S
         record.status = new_status
 
     db.commit()
-    db.refresh(record)
-    return record
+    return _load_record(db, record_id)
 
 
 @router.post("/{record_id}/submit-review", response_model=schemas.CleaningRecord)
 def submit_for_review(record_id: int, db: Session = Depends(get_db)):
-    record = db.query(CleaningRecord).filter(CleaningRecord.id == record_id).first()
+    record = _load_record(db, record_id)
     if not record:
         raise HTTPException(status_code=404, detail="清洁单据不存在")
     if record.status not in [schemas.CleaningStatus.DRAFT, schemas.CleaningStatus.SUPPLEMENT_INFO]:
@@ -117,13 +130,12 @@ def submit_for_review(record_id: int, db: Session = Depends(get_db)):
     add_status_log(db, record.id, record.status, schemas.CleaningStatus.PENDING_REVIEW, remarks="提交复核")
     record.status = schemas.CleaningStatus.PENDING_REVIEW
     db.commit()
-    db.refresh(record)
-    return record
+    return _load_record(db, record_id)
 
 
 @router.post("/{record_id}/start-review", response_model=schemas.CleaningRecord)
 def start_review(record_id: int, db: Session = Depends(get_db)):
-    record = db.query(CleaningRecord).filter(CleaningRecord.id == record_id).first()
+    record = _load_record(db, record_id)
     if not record:
         raise HTTPException(status_code=404, detail="清洁单据不存在")
     if record.status != schemas.CleaningStatus.PENDING_REVIEW:
@@ -132,13 +144,12 @@ def start_review(record_id: int, db: Session = Depends(get_db)):
     add_status_log(db, record.id, record.status, schemas.CleaningStatus.REVIEWING, remarks="开始复核")
     record.status = schemas.CleaningStatus.REVIEWING
     db.commit()
-    db.refresh(record)
-    return record
+    return _load_record(db, record_id)
 
 
 @router.post("/{record_id}/review", response_model=schemas.CleaningRecord)
 def review_record(record_id: int, review_in: schemas.CleaningRecordReview, db: Session = Depends(get_db)):
-    record = db.query(CleaningRecord).filter(CleaningRecord.id == record_id).first()
+    record = _load_record(db, record_id)
     if not record:
         raise HTTPException(status_code=404, detail="清洁单据不存在")
     if record.status != schemas.CleaningStatus.REVIEWING:
@@ -162,16 +173,15 @@ def review_record(record_id: int, review_in: schemas.CleaningRecordReview, db: S
         record.status = schemas.CleaningStatus.COMPLETED
 
     db.commit()
-    db.refresh(record)
-    return record
+    return _load_record(db, record_id)
 
 
 @router.post("/{record_id}/close", response_model=schemas.CleaningRecord)
 def close_record(record_id: int, close_in: schemas.CleaningRecordClose, db: Session = Depends(get_db)):
-    record = db.query(CleaningRecord).filter(CleaningRecord.id == record_id).first()
+    record = _load_record(db, record_id)
     if not record:
         raise HTTPException(status_code=404, detail="清洁单据不存在")
-    if record.status not in [schemas.CleaningStatus.COMPLETED, schemas.CleaningStatus.CLOSED]:
+    if record.status not in [schemas.CleaningStatus.COMPLETED, schemas.CleaningStatus.SUPPLEMENT_INFO, schemas.CleaningStatus.DRAFT]:
         raise HTTPException(status_code=400, detail=f"当前状态 {record.status} 不可关闭")
 
     add_status_log(db, record.id, record.status, schemas.CleaningStatus.CLOSED, remarks=close_in.close_remarks)
@@ -181,8 +191,7 @@ def close_record(record_id: int, close_in: schemas.CleaningRecordClose, db: Sess
     record.closed_at = datetime.utcnow()
 
     db.commit()
-    db.refresh(record)
-    return record
+    return _load_record(db, record_id)
 
 
 @router.post("/{record_id}/handle-offline")

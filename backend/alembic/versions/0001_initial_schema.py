@@ -134,7 +134,6 @@ def upgrade() -> None:
         sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
         sa.ForeignKeyConstraint(['cleaning_person_id'], ['persons.id'], ),
         sa.ForeignKeyConstraint(['closed_by_id'], ['persons.id'], ),
-        sa.Column('reviewer_id', sa.Integer(), nullable=True),
         sa.ForeignKeyConstraint(['reviewer_id'], ['persons.id'], ),
         sa.ForeignKeyConstraint(['device_id'], ['devices.id'], ),
         sa.ForeignKeyConstraint(['store_point_id'], ['store_points.id'], ),
