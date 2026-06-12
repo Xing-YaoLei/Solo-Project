@@ -1,0 +1,174 @@
+{
+  "bundle-vers": {
+    "remote": {
+      "internal": {
+        "version": "1.0.0",
+        "compressionType": "merge_depends",
+        "isRemoteBundle": false
+      }
+    },
+    "local": {
+      "internal": {
+        "version": "1.0.0",
+        "compressionType": "merge_depends",
+        "isRemoteBundle": false
+      }
+    }
+  },
+  "design-resolution": {
+    "width": 1920,
+    "height": 1080,
+    "fitWidth": true,
+    "fitHeight": true
+  },
+  "excluded-modules": [],
+  "facebook": {
+    "appID": "",
+    "audience": {
+      "enable": false
+    },
+    "enable": false,
+    "live": {
+      "enable": false
+    }
+  },
+  "general": {
+    "splashScreen": {
+      "base64": "",
+      "delayTime": 0,
+      "displayDuration": 3,
+      "fixedWidth": 1280,
+      "fit": "width",
+      "invert": false,
+      "path": "",
+      "totalTime": 4,
+      "src": "",
+      "backgroundColor": "#4a4a4a",
+      "watermark": {
+        "path": "",
+        "src": ""
+      },
+      "screenFitAdaption": {
+        "enable": true,
+        "landscape": 2,
+        "portrait": 2
+      },
+      "skipByDimming": false,
+      "skipButton": false,
+      "versionInfo": false,
+      "waitForCoverSheetDestroyed": false
+    },
+    "startScene": "3f6e8212-3f6e-3f6e-3f6e-3f6e82120000",
+    "useSplashScreen": false
+  },
+  "modules": {
+    "cacheMode": "black-list",
+    "cacheIds": []
+  },
+  "physics": {
+    "collisionMatrix": {
+      "0": true,
+      "1": true,
+      "2": true,
+      "3": true,
+      "4": true,
+      "5": true,
+      "6": true,
+      "7": true,
+      "8": true,
+      "9": true,
+      "10": true,
+      "11": true,
+      "12": true,
+      "13": true,
+      "14": true,
+      "15": true,
+      "16": true,
+      "17": true,
+      "18": true,
+      "19": true,
+      "20": true,
+      "21": true,
+      "22": true,
+      "23": true,
+      "24": true,
+      "25": true,
+      "26": true,
+      "27": true,
+      "28": true,
+      "29": true,
+      "30": true,
+      "31": true
+    },
+    "gravity": {
+      "x": 0,
+      "y": -980
+    },
+    "enabled": false,
+    "allowSleep": true,
+    "sleepThreshold": 0.1,
+    "autoSimulation": true
+  },
+  "render-pipeline": {
+    "pipeline": "builtin-forward",
+    "useDeferred": false
+  },
+  "screen": {
+    "width": 1920,
+    "height": 1080,
+    "orientation": "landscape_left",
+    "frameRate": 60,
+    "showFPS": false,
+    "model": {
+      "landscape": true,
+      "portrait": false
+    },
+    "mac": {
+      "width": 1280,
+      "height": 720,
+      "center": true,
+      "resizable": false,
+      "fullScreen": false
+    },
+    "win32": {
+      "width": 1280,
+      "height": 720,
+      "center": true,
+      "resizable": false,
+      "fullScreen": false
+    },
+    "ios": {
+      "supportedOrientations": {
+        "portrait": false,
+        "portraitUpsideDown": false,
+        "landscapeLeft": true,
+        "landscapeRight": true
+      },
+      "statusBarHidden": true
+    },
+    "android": {
+      "statusBarHidden": true,
+      "displayCutout": false,
+      "immersiveMode": true,
+      "immersiveModeSticky": false,
+      "supportedOrientations": {
+        "portrait": false,
+        "landscapeLeft": true,
+        "landscapeRight": true,
+        "portraitUpsideDown": false
+      },
+      "screenOrientation": 6
+    },
+    "webOrientation": "landscape_left"
+  },
+  "customJointTextureLayouts": [],
+  "group-list": [
+    "Node Space",
+    "World Space"
+  ],
+  "2d": {
+    "enableFlatBuffer": false
+  },
+  "textureCompressionFormats": {},
+  "userData": {}
+}

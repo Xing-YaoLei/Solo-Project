@@ -1,11 +1,23 @@
 [
   {
+    "__type__": "cc.SceneAsset",
+    "_name": "GameScene",
+    "_objFlags": 0,
+    "_native": "",
+    "scene": {
+      "__id__": 1
+    }
+  },
+  {
     "__type__": "cc.Scene",
     "_name": "GameScene",
     "_objFlags": 0,
-    "__editorExtras__": {},
     "_parent": null,
-    "_children": [],
+    "_children": [
+      {
+        "__id__": 9
+      }
+    ],
     "_active": true,
     "_components": [],
     "_prefab": null,
@@ -38,35 +50,35 @@
     },
     "autoReleaseAssets": false,
     "_globals": {
-      "__id__": 1
+      "__id__": 2
     },
-    "_id": "game-scene-empty"
+    "_id": "game-scene-root"
   },
   {
     "__type__": "cc.SceneGlobals",
     "ambient": {
-      "__id__": 2
-    },
-    "shadows": {
       "__id__": 3
     },
-    "_skybox": {
+    "shadows": {
       "__id__": 4
     },
-    "fog": {
+    "_skybox": {
       "__id__": 5
     },
-    "octree": {
+    "fog": {
       "__id__": 6
     },
-    "skin": {
+    "octree": {
       "__id__": 7
+    },
+    "skin": {
+      "__id__": 8
     },
     "lightProbeInfo": null,
     "postSettings": null,
     "bakedWithStationaryMainLight": false,
     "bakedWithHighpLightmap": false,
-    "_id": "globals"
+    "_id": "scene-globals"
   },
   {
     "__type__": "cc.AmbientInfo",
@@ -115,7 +127,7 @@
       "z": 0.2,
       "w": 1
     },
-    "_id": "ambient"
+    "_id": "ambient-info"
   },
   {
     "__type__": "cc.ShadowsInfo",
@@ -129,42 +141,44 @@
     },
     "_distance": 0,
     "_shadowColor": {
-      "__type__": "cc.Vec4",
-      "x": 0,
-      "y": 0,
-      "z": 0,
-      "w": 0.5
+      "__type__": "cc.Color",
+      "r": 76,
+      "g": 76,
+      "b": 76,
+      "a": 255
     },
     "_maxReceived": 4,
     "_size": {
       "__type__": "cc.Vec2",
       "x": 512,
       "y": 512
-    }
+    },
+    "_id": "shadows-info"
   },
   {
     "__type__": "cc.SkyboxInfo",
     "_envLightingType": 0,
     "_envmap": null,
     "_envmapLDR": null,
+    "_diffuseMapHDR": null,
     "_diffuseMapLDR": null,
-    "_diffuseMap": null,
     "_enabled": false,
     "_useHDR": true,
     "_editableMaterial": null,
     "_reflectionHDR": null,
     "_reflectionLDR": null,
-    "_rotationAngle": 0
+    "_rotationAngle": 0,
+    "_id": "skybox-info"
   },
   {
     "__type__": "cc.FogInfo",
     "_type": 0,
     "_fogColor": {
-      "__type__": "cc.Vec4",
-      "x": 0.5,
-      "y": 0.5,
-      "z": 0.5,
-      "w": 1
+      "__type__": "cc.Color",
+      "r": 200,
+      "g": 200,
+      "b": 200,
+      "a": 255
     },
     "_enabled": false,
     "_fogDensity": 0.3,
@@ -173,7 +187,8 @@
     "_fogAtten": 5,
     "_fogTop": 1.5,
     "_fogRange": 1.2,
-    "_accurate": false
+    "_accurate": false,
+    "_id": "fog-info"
   },
   {
     "__type__": "cc.OctreeInfo",
@@ -190,27 +205,99 @@
       "y": 1024,
       "z": 1024
     },
-    "_depth": 8
+    "_depth": 8,
+    "_id": "octree-info"
   },
   {
     "__type__": "cc.SkinInfo",
     "_enabled": false,
     "_blurRadius": 0.01,
-    "_sssIntensity": 3
+    "_sssIntensity": 3,
+    "_id": "skin-info"
   },
   {
-    "__type__": "cc.LightProbeInfo",
-    "_giScale": 1,
-    "_giSamples": 1024,
-    "_bounces": 2,
-    "_reduceRinging": 0,
-    "_showProbe": true,
-    "_showWireframe": true,
-    "_showConvex": false,
-    "_data": null
+    "__type__": "cc.Node",
+    "_name": "Canvas",
+    "_objFlags": 0,
+    "__editorExtras__": {},
+    "_parent": {
+      "__id__": 1
+    },
+    "_children": [],
+    "_active": true,
+    "_components": [
+      {
+        "__id__": 10
+      },
+      {
+        "__id__": 11
+      },
+      {
+        "__id__": 12
+      }
+    ],
+    "_prefab": null,
+    "_lpos": {
+      "__type__": "cc.Vec3",
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "_lrot": {
+      "__type__": "cc.Quat",
+      "x": 0,
+      "y": 0,
+      "z": 0,
+      "w": 1
+    },
+    "_lscale": {
+      "__type__": "cc.Vec3",
+      "x": 1,
+      "y": 1,
+      "z": 1
+    },
+    "_mobility": 0,
+    "_layer": 33554432,
+    "_euler": {
+      "__type__": "cc.Vec3",
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "_id": "canvas-game-scene"
   },
   {
-    "__type__": "cc.PostSettingsInfo",
-    "_toneMappingType": 0
+    "__type__": "cc.UITransform",
+    "name": "",
+    "_type": 4,
+    "_contentSize": {
+      "__type__": "cc.Size",
+      "width": 1920,
+      "height": 1080
+    },
+    "_anchorPoint": {
+      "__type__": "cc.Vec2",
+      "x": 0.5,
+      "y": 0.5
+    },
+    "_id": "canvas-ui-transform"
+  },
+  {
+    "__type__": "cc.Canvas",
+    "_cameraComponent": null,
+    "_alignCanvasWithScreen": true,
+    "_id": "canvas-component"
+  },
+  {
+    "__type__": "cc.Script",
+    "_name": "",
+    "_objFlags": 0,
+    "node": {
+      "__id__": 9
+    },
+    "_enabled": true,
+    "__prefab": null,
+    "_script": "00846def-0084-0084-0084-00846def0000",
+    "_id": "canvas-loader-component"
   }
 ]
