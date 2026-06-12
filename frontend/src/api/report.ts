@@ -1,4 +1,4 @@
-import api, { PageResult } from './client'
+import api from './client'
 import { DeliveryPerformance, TrendData } from '../types'
 
 export const reportApi = {

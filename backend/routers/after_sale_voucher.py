@@ -81,24 +81,23 @@ def update_after_sale_voucher(
     if not voucher:
         raise HTTPException(status_code=404, detail="售后凭证不存在")
     update_data = data.model_dump(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(voucher, key, value)
+    
     if "status" in update_data:
-        old_status = None
-        for attr, val in vars(voucher).items():
-            if attr == "status" and val != update_data["status"]:
-                old_status = val
-                break
-        if old_status and old_status != update_data["status"]:
+        old_status = voucher.status
+        new_status = update_data["status"]
+        if old_status != new_status:
             StatusLogService.create_log(
                 db=db,
                 related_type="after_sale",
                 related_id=voucher.id,
                 old_status=old_status,
-                new_status=update_data["status"],
+                new_status=new_status,
                 change_reason="更新售后状态",
                 operator=data.processor,
             )
+    
+    for key, value in update_data.items():
+        setattr(voucher, key, value)
     db.commit()
     return ApiResponse.success(voucher, message="更新成功")
 

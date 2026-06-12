@@ -1,11 +1,14 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from database import get_db
 from schemas import ApiResponse
 from services import ReportService
 from tasks import generate_performance_report
+from tasks.export_tasks import EXPORT_DIR
 from datetime import date
 from typing import Optional
+import os
 
 router = APIRouter(prefix="/reports", tags=["报表"])
 
@@ -53,3 +56,21 @@ def get_export_status(task_id: str):
         return ApiResponse.success({"state": task.state, "status": "生成完成", "result": task.result})
     else:
         return ApiResponse.error(message=f"任务失败: {str(task.info)}")
+
+
+@router.get("/export/download/{filename}")
+def download_report(filename: str):
+    """
+    下载生成的Excel报表文件
+    """
+    safe_filename = os.path.basename(filename)
+    file_path = os.path.join(EXPORT_DIR, safe_filename)
+
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="报表文件不存在或已过期")
+
+    return FileResponse(
+        path=file_path,
+        filename=safe_filename,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )

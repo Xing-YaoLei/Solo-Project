@@ -7,9 +7,6 @@ import dayjs from 'dayjs'
 import { groupBatchApi, statusLogApi, arrivalListApi, productApi } from '../../api'
 import {
   GroupBatchStatusMap,
-  ArrivalListStatusMap,
-  PickupCodeStatusMap,
-  ExceptionOrderStatusMap,
   StatusColorMap,
   ProductTagTypeMap,
   ArrivalList,

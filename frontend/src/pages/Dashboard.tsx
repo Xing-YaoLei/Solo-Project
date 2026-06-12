@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { Row, Col, Card, Table, Tag, Button, Space } from 'antd'
-import { ArrowUpOutlined, ArrowDownOutlined, WarningOutlined, InboxOutlined, QrcodeOutlined, FileTextOutlined } from '@ant-design/icons'
+import { ArrowUpOutlined, ArrowDownOutlined, WarningOutlined, InboxOutlined, FileTextOutlined } from '@ant-design/icons'
 import { useNavigate } from '@tanstack/react-router'
 import { reportApi, groupBatchApi, exceptionOrderApi } from '../api'
 import { GroupBatchStatusMap, ExceptionOrderStatusMap, StatusColorMap } from '../types'

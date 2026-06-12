@@ -9,7 +9,6 @@ import { GroupBatch, GroupBatchStatusMap, StatusColorMap } from '../../types'
 import { useAppStore } from '../../store'
 import StatusBadge from '../../components/StatusBadge'
 
-const { RangePicker } = DatePicker
 const { Option } = Select
 
 export default function GroupBatchList() {

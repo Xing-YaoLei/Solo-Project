@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
-import { Card, Row, Col, Statistic, DatePicker, Button, Space, Alert, Table, Tag, Progress, message, Spin, Typography, Divider } from 'antd'
+import { Card, Row, Col, Statistic, DatePicker, Button, Space, Alert, Tag, Progress, message, Spin, Typography, Divider } from 'antd'
 import { ExportOutlined, ReloadOutlined, InfoCircleOutlined, CheckCircleOutlined, ClockCircleOutlined, WarningOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import ReactECharts from 'echarts-for-react'
@@ -8,7 +8,7 @@ import { reportApi } from '../api'
 import { DeliveryPerformance, TrendData } from '../types'
 
 const { RangePicker } = DatePicker
-const { Title, Text, Paragraph } = Typography
+const { Text } = Typography
 
 export default function ReportPage() {
   const [dateRange, setDateRange] = useState<[dayjs.Dayjs, dayjs.Dayjs]>([
@@ -45,7 +45,7 @@ export default function ReportPage() {
   })
 
   useEffect(() => {
-    let interval: NodeJS.Timeout
+    let interval: ReturnType<typeof setInterval>
     if (exportTaskId && exportStatus !== 'SUCCESS' && exportStatus !== 'FAILURE') {
       interval = setInterval(async () => {
         try {
@@ -54,8 +54,12 @@ export default function ReportPage() {
           if (status.state === 'SUCCESS') {
             setExportProgress(100)
             message.success('报表生成成功！')
-            if (status.result?.download_url) {
-              window.open(status.result.download_url, '_blank')
+            const result = status.result
+            const downloadPath = result?.download_url || result?.file_path
+            if (downloadPath) {
+              window.open(downloadPath, '_blank')
+            } else if (result) {
+              console.warn('导出任务完成但未找到下载路径:', result)
             }
             clearInterval(interval)
           } else if (status.state === 'FAILURE') {

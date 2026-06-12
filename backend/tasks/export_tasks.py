@@ -5,8 +5,12 @@ from datetime import date
 import pandas as pd
 import io
 import logging
+import os
 
 logger = logging.getLogger(__name__)
+
+EXPORT_DIR = os.environ.get("EXPORT_DIR", "/tmp/groupbuy_exports")
+os.makedirs(EXPORT_DIR, exist_ok=True)
 
 
 @celery.task(bind=True, name="generate_performance_report")
@@ -34,12 +38,20 @@ def generate_performance_report(
             caliber_df.to_excel(writer, sheet_name="统计口径", index=False)
 
         output.seek(0)
-        file_path = f"/tmp/performance_report_{self.request.id}.xlsx"
+        filename = f"performance_report_{self.request.id}.xlsx"
+        file_path = os.path.join(EXPORT_DIR, filename)
         with open(file_path, "wb") as f:
             f.write(output.getvalue())
 
+        download_url = f"/api/reports/export/download/{filename}"
+
         logger.info(f"报表生成成功: {file_path}")
-        return {"status": "success", "file_path": file_path}
+        return {
+            "status": "success",
+            "file_path": file_path,
+            "download_url": download_url,
+            "filename": filename,
+        }
     except Exception as e:
         logger.error(f"生成报表失败: {e}")
         self.retry(exc=e, countdown=60, max_retries=2)
