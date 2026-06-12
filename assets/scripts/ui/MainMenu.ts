@@ -33,6 +33,9 @@ export class MainMenu extends Component {
     @property
     public itemHeight: number = 140;
 
+    @property([Button])
+    public levelButtons: Button[] = [];
+
     private _isInited: boolean = false;
 
     onLoad() {

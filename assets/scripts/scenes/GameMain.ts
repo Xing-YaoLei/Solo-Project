@@ -62,6 +62,11 @@ export class GameMain extends Component {
     @property(Node)
     public itemBar: Node | null = null;
 
+    @property(Node)
+    public orderDialog: Node | null = null;
+
+    public startLevelId: string = 'level_1';
+
     @property([Node])
     public storeNodes: Node[] = [];
 
@@ -115,6 +120,9 @@ export class GameMain extends Component {
         }
 
         this._isLoaded = true;
+        if (this.startLevelId) {
+            this._currentLevelId = this.startLevelId;
+        }
         this.initManagers();
         this.bindStoreNodesToSupplierPanel();
         this.startLevel(this._currentLevelId);
@@ -132,6 +140,7 @@ export class GameMain extends Component {
         if (!this.resultScreen) this.resultScreen = find('Canvas/ResultScreen');
         if (!this.inventoryCheckDialog) this.inventoryCheckDialog = find('Canvas/InventoryCheckDialog');
         if (!this.itemBar) this.itemBar = find('Canvas/ItemBar');
+        if (!this.orderDialog) this.orderDialog = find('Canvas/OrderDialog');
 
         if (this.storeMap && this.storeNodes.length === 0) {
             this.storeMap.children.forEach((child: Node) => {

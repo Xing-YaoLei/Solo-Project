@@ -19,15 +19,108 @@ import { OrderDialog, OrderItemEditor } from '../scenes/OrderDialog';
 import { ToastManager } from './ToastManager';
 import { ScreenShake } from './ScreenShake';
 import { TopBar } from '../ui/TopBar';
+import { MainMenu } from '../ui/MainMenu';
 import { ConfigManager, ConfigKeys } from '../core/ConfigManager';
 import { Store } from '../models/Store';
 import { Supplier } from '../models/Supplier';
+import { LevelConfig } from '../models/Level';
 import { loadAllConfigs } from '../config/GameConfigs';
 
 export class SceneBuilder {
-    public static buildGameScene(scene: Scene): Node {
+    public static buildMainMenuScene(scene: Scene, onStartLevelCb?: (levelId: string) => void): Node {
         if (!ConfigManager.getInstance().isLoaded()) {
             loadAllConfigs();
+        }
+
+        const canvas = this.createNode('Canvas', scene, new Vec3(960, 540, 0));
+        this.addUITransform(canvas, 1920, 1080);
+        this.addCanvasComponent(canvas);
+
+        const bg = this.createNode('Background', canvas, new Vec3(0, 0, -10));
+        this.addUITransform(bg, 2000, 1200);
+        const bgS = this.addSprite(bg, new Color(40, 28, 20, 255), 1);
+        bgS.sizeMode = Sprite.SizeMode.CUSTOM;
+
+        const titleNode = this.createNode('Title', canvas, new Vec3(0, 300, 0));
+        this.addUITransform(titleNode, 800, 120);
+        const titleLabel = this.addLabel(titleNode, '☕ 咖啡供应链模拟', 56, new Color(220, 180, 100));
+        titleLabel.fontSize = 56;
+        titleLabel.lineHeight = 60;
+
+        const subNode = this.createNode('Subtitle', canvas, new Vec3(0, 200, 0));
+        this.addUITransform(subNode, 800, 50);
+        const subLabel = this.addLabel(subNode, '连锁咖啡原料补货经营模拟 · 训练你的补货判断力', 22, new Color(200, 180, 140));
+
+        const levels = ConfigManager.getInstance().getListConfig<LevelConfig>(ConfigKeys.LEVELS);
+
+        const container = this.createNode('LevelButtons', canvas, new Vec3(0, -50, 0));
+        this.addUITransform(container, 900, 500);
+
+        const mainMenu = container.addComponent(MainMenu);
+        const levelButtons: Button[] = [];
+
+        const cols = Math.min(3, levels.length);
+        const rowH = 180;
+        const colW = 280;
+
+        levels.forEach((level, idx) => {
+            const row = Math.floor(idx / cols);
+            const col = idx % cols;
+            const totalCols = Math.min(cols, levels.length);
+            const startX = -colW * ((totalCols - 1) / 2);
+
+            const btnNode = this.createNode(`LevelBtn_${level.id}`, container, new Vec3(startX + col * colW, 150 - row * rowH, 0));
+            this.addUITransform(btnNode, 260, 160);
+            const btn = this.addButton(btnNode, new Color(70, 50, 40, 240));
+            levelButtons.push(btn);
+
+            const nameN = this.createNode('Name', btnNode, new Vec3(0, 50, 0));
+            this.addUITransform(nameN, 240, 40);
+            this.addLabel(nameN, level.name, 22, new Color(255, 240, 200));
+
+            const descN = this.createNode('Desc', btnNode, new Vec3(0, 0, 0));
+            this.addUITransform(descN, 240, 40);
+            const descL = this.addLabel(descN, level.description || '', 14, new Color(200, 200, 180));
+            descL.overflow = Label.Overflow.SHRINK;
+
+            const diffN = this.createNode('Difficulty', btnNode, new Vec3(0, -50, 0));
+            this.addUITransform(diffN, 240, 30);
+            const diffColor = (level.difficulty as number) <= 1 ? new Color(80, 200, 120)
+                : (level.difficulty as number) >= 3 ? new Color(220, 80, 80)
+                : new Color(230, 180, 60);
+            const diffTextFor: Record<number, string> = { 1: '简单', 2: '普通', 3: '困难' };
+            const infoText = `${diffTextFor[level.difficulty as number] || '普通'} | ${level.durationDays}天 | 资金¥${level.initialCapital}`;
+            this.addLabel(diffN, infoText, 13, diffColor);
+
+            btn.node.on(Button.EventType.CLICK, () => {
+                if (onStartLevelCb) {
+                    onStartLevelCb(level.id);
+                } else {
+                    SceneBuilder.buildGameScene(scene, level.id);
+                }
+            });
+        });
+
+        mainMenu.levelButtons = levelButtons;
+        mainMenu['_levelIds'] = levels.map(l => l.id);
+
+        const footer = this.createNode('Footer', canvas, new Vec3(0, -440, 0));
+        this.addUITransform(footer, 1000, 40);
+        this.addLabel(footer, '选择关卡开始游戏 · 拖拽供应商卡片到门店完成下单', 16, new Color(150, 130, 100));
+
+        return canvas;
+    }
+
+    public static buildGameScene(scene: Scene, startLevelId: string = 'level_1'): Node {
+        if (!ConfigManager.getInstance().isLoaded()) {
+            loadAllConfigs();
+        }
+
+        // 清理原有 canvas（如果是 buildMainMenuScene 后复用 scene）
+        const oldCanvas = scene.getChildByName('Canvas');
+        if (oldCanvas) {
+            oldCanvas.removeFromParent();
+            oldCanvas.destroy();
         }
 
         const canvas = this.createNode('Canvas', scene, new Vec3(960, 540, 0));
@@ -47,8 +140,10 @@ export class SceneBuilder {
         const tutorialLayer = this.createTutorialLayer(canvas);
         const resultScreen = this.createResultScreen(canvas);
         const inventoryCheckDialog = this.createInventoryCheckDialog(canvas);
+        const orderDialog = this.createOrderDialog(canvas);
 
-        this.createOrderDialog(canvas);
+        supplierPanel.orderDialog = orderDialog;
+
         this.createToastManager(canvas);
         this.createScreenShake(canvas);
 
@@ -66,6 +161,8 @@ export class SceneBuilder {
         gameMain.tutorialLayer = tutorialLayer;
         gameMain.resultScreen = resultScreen;
         gameMain.inventoryCheckDialog = inventoryCheckDialog;
+        gameMain.orderDialog = orderDialog;
+        gameMain.startLevelId = startLevelId;
 
         this.bindTopBarActions(topBar, inventoryCheckDialog, gameMain);
 
@@ -879,7 +976,7 @@ export class SceneBuilder {
     }
 
     private static createOrderDialog(parent: Node): Node {
-        return this.createNode('OrderDialogHolder', parent, Vec3.ZERO);
+        return this.createOrderDialogForPanel(parent);
     }
 
     private static createToastManager(parent: Node): void {

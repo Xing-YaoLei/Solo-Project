@@ -1,52 +1,92 @@
-import { EventManager } from './core/EventManager';
+import { _decorator, Component, director, Scene, Node, find, game } from 'cc';
+import { SceneBuilder } from './utils/SceneBuilder';
+import { loadAllConfigs } from './config/GameConfigs';
 import { ConfigManager, ConfigKeys } from './core/ConfigManager';
-import { GameManager } from './core/GameManager';
-import { TimeManager } from './core/TimeManager';
-import { InventoryManager } from './game/InventoryManager';
-import { OrderManager } from './game/OrderManager';
-import { LevelManager } from './game/LevelManager';
-import { AchievementManager } from './game/AchievementManager';
-import { RandomEventManager } from './game/RandomEventManager';
-import { ItemManager } from './game/ItemManager';
-import { ConsumptionManager } from './game/ConsumptionManager';
+import { EventManager, GameEvents } from './core/EventManager';
+const { ccclass } = _decorator;
 
-(globalThis as any).__EVENT_MANAGER_CLASS__ = EventManager;
-(globalThis as any).__CONFIG_MANAGER_CLASS__ = ConfigManager;
-(globalThis as any).__GAME_MANAGER_CLASS__ = GameManager;
-(globalThis as any).__TIME_MANAGER_CLASS__ = TimeManager;
-(globalThis as any).__INVENTORY_MANAGER_CLASS__ = InventoryManager;
-(globalThis as any).__ORDER_MANAGER_CLASS__ = OrderManager;
-(globalThis as any).__LEVEL_MANAGER_CLASS__ = LevelManager;
-(globalThis as any).__ACHIEVEMENT_MANAGER_CLASS__ = AchievementManager;
-(globalThis as any).__RANDOM_EVENT_MANAGER_CLASS__ = RandomEventManager;
-(globalThis as any).__ITEM_MANAGER_CLASS__ = ItemManager;
-(globalThis as any).__CONSUMPTION_MANAGER_CLASS__ = ConsumptionManager;
+@ccclass('Bootstrap')
+export class Bootstrap extends Component {
+    public static _bootstrapped: boolean = false;
 
-(globalThis as any).__EVENT_MANAGER__ = EventManager.getInstance();
-(globalThis as any).__CONFIG_MANAGER__ = ConfigManager.getInstance();
-(globalThis as any).__GAME_MANAGER__ = GameManager.getInstance();
-(globalThis as any).__TIME_MANAGER__ = TimeManager.getInstance();
-(globalThis as any).__INVENTORY_MANAGER__ = InventoryManager.getInstance();
-(globalThis as any).__ORDER_MANAGER__ = OrderManager.getInstance();
-(globalThis as any).__LEVEL_MANAGER__ = LevelManager.getInstance();
-(globalThis as any).__ACHIEVEMENT_MANAGER__ = AchievementManager.getInstance();
-(globalThis as any).__RANDOM_EVENT_MANAGER__ = RandomEventManager.getInstance();
-(globalThis as any).__ITEM_MANAGER__ = ItemManager.getInstance();
-(globalThis as any).__CONSUMPTION_MANAGER__ = ConsumptionManager.getInstance();
+    onLoad() {
+        this.doBootstrap();
+    }
 
-export const GameBootstrap = {
-    EventManager,
-    ConfigManager,
-    ConfigKeys,
-    GameManager,
-    TimeManager,
-    InventoryManager,
-    OrderManager,
-    LevelManager,
-    AchievementManager,
-    RandomEventManager,
-    ItemManager,
-    ConsumptionManager
-};
+    start() {
+        this.doBootstrap();
+    }
 
-export default GameBootstrap;
+    private doBootstrap(): void {
+        if (Bootstrap._bootstrapped) return;
+        Bootstrap._bootstrapped = true;
+
+        console.log('[Bootstrap] ============== 启动咖啡供应链游戏 ==============');
+        const scene = director.getScene();
+        if (!scene) {
+            console.error('[Bootstrap] 没有活动场景');
+            return;
+        }
+
+        if (!ConfigManager.getInstance().isLoaded()) {
+            try {
+                loadAllConfigs();
+                const levels = ConfigManager.getInstance().getListConfig(ConfigKeys.LEVELS);
+                const ingredients = ConfigManager.getInstance().getListConfig(ConfigKeys.INGREDIENTS);
+                const suppliers = ConfigManager.getInstance().getListConfig(ConfigKeys.SUPPLIERS);
+                console.log(`[Bootstrap] 配置加载成功: ${levels.length}关卡, ${ingredients.length}原料, ${suppliers.length}供应商`);
+            } catch (e) {
+                console.error('[Bootstrap] 配置加载失败:', e);
+                return;
+            }
+        }
+
+        const existingMainMenu = find('Canvas/MainMenuRoot', scene);
+        if (!existingMainMenu) {
+            this.buildMainMenu(scene);
+        }
+    }
+
+    private buildMainMenu(scene: Scene): void {
+        const existingCanvas = find('Canvas', scene);
+        if (existingCanvas && existingCanvas.active) {
+            existingCanvas.active = false;
+        }
+
+        console.log('[Bootstrap] 开始构建主菜单场景...');
+        SceneBuilder.buildMainMenuScene(scene, (startLevelId?: string) => {
+            console.log(`[Bootstrap] 进入游戏场景${startLevelId ? '，关卡:' + startLevelId : ''}`);
+            const s = director.getScene();
+            if (s) {
+                const canvas = find('Canvas', s);
+                if (canvas) canvas.active = false;
+                SceneBuilder.buildGameScene(s, startLevelId || 'level_1');
+            }
+        });
+
+        EventManager.getInstance().emit(GameEvents.SHOW_TOAST, {
+            message: '欢迎来到咖啡供应链模拟',
+            type: 'info'
+        });
+    }
+}
+
+export function bootstrapInstantiate(): Bootstrap {
+    const scene = director.getScene();
+    const existing = find('Bootstrap', scene);
+    if (existing) {
+        let comp = existing.getComponent('Bootstrap') as Bootstrap | null;
+        if (!comp) comp = existing.addComponent(Bootstrap);
+        return comp;
+    }
+    const bootNode = new Node('Bootstrap');
+    scene?.addChild(bootNode);
+    return bootNode.addComponent(Bootstrap);
+}
+
+game.onPostBaseInitDelegate.add(() => {
+    console.log('[Bootstrap] game.onPostBaseInitDelegate 触发');
+    setTimeout(() => bootstrapInstantiate(), 100);
+});
+
+export default Bootstrap;

@@ -153,6 +153,163 @@ export class ResultScreen extends Component {
     public cardPointHeight: number = 36;
 
     private _result: LevelResult | null = null;
+    private _dynamicObjectiveTemplate: Node | null = null;
+    private _dynamicCardPointTemplate: Node | null = null;
+    private _dynamicAchievementTemplate: Node | null = null;
+    private _templatesCreated: boolean = false;
+
+    public createDynamicTemplates(): void {
+        if (this._templatesCreated) return;
+
+        // Objective template
+        {
+            const root = new Node('ObjectiveItemTemplate');
+            const ui = root.addComponent(UITransform);
+            ui.setContentSize(680, this.objectiveItemHeight);
+            ui.setAnchorPoint(0.5, 0.5);
+            const bg = root.addComponent(Sprite);
+            bg.sizeMode = Sprite.SizeMode.CUSTOM;
+            bg.color = new Color(40, 50, 35, 180);
+            bg.type = Sprite.Type.SIMPLE;
+            const item = root.addComponent(ObjectiveScoreItem);
+
+            const nameNode = new Node('NameLabel');
+            nameNode.setParent(root);
+            nameNode.setPosition(new Vec3(-330, 0, 0));
+            const nui = nameNode.addComponent(UITransform);
+            nui.setContentSize(260, 24);
+            nui.setAnchorPoint(0, 0.5);
+            const nl = nameNode.addComponent(Label);
+            nl.string = '';
+            nl.fontSize = 14;
+            nl.lineHeight = 14;
+            nl.color = new Color(255, 240, 220);
+            nl.horizontalAlign = Label.HorizontalAlign.LEFT;
+            nl.isSystemFontUsed = true;
+            item.nameLabel = nl;
+
+            const scoreNode = new Node('ScoreLabel');
+            scoreNode.setParent(root);
+            scoreNode.setPosition(new Vec3(320, 0, 0));
+            const sui = scoreNode.addComponent(UITransform);
+            sui.setContentSize(80, 24);
+            sui.setAnchorPoint(1, 0.5);
+            const sl = scoreNode.addComponent(Label);
+            sl.string = '';
+            sl.fontSize = 14;
+            sl.lineHeight = 14;
+            sl.color = Color.WHITE;
+            sl.horizontalAlign = Label.HorizontalAlign.RIGHT;
+            sl.isSystemFontUsed = true;
+            item.scoreLabel = sl;
+
+            const barBg = new Node('BarBg');
+            barBg.setParent(root);
+            barBg.setPosition(new Vec3(0, 0, 0));
+            const bbgUI = barBg.addComponent(UITransform);
+            bbgUI.setContentSize(200, 12);
+            const bbgS = barBg.addComponent(Sprite);
+            bbgS.sizeMode = Sprite.SizeMode.CUSTOM;
+            bbgS.color = new Color(30, 30, 30, 200);
+            const barNode = new Node('ProgressBar');
+            barNode.setParent(barBg);
+            barNode.setPosition(new Vec3(-100, 0, 0));
+            const bUI = barNode.addComponent(UITransform);
+            bUI.setContentSize(200, 12);
+            bUI.setAnchorPoint(0, 0.5);
+            const barS = barNode.addComponent(Sprite);
+            barS.sizeMode = Sprite.SizeMode.CUSTOM;
+            barS.color = new Color(80, 200, 80, 255);
+            barS.type = Sprite.Type.SIMPLE;
+            item.progressBar = barS;
+
+            this._dynamicObjectiveTemplate = root;
+        }
+
+        // CardPoint template
+        {
+            const root = new Node('CardPointTemplate');
+            const ui = root.addComponent(UITransform);
+            ui.setContentSize(680, this.cardPointHeight);
+            ui.setAnchorPoint(0.5, 0.5);
+            const item = root.addComponent(CardPointItem);
+
+            const iconNode = new Node('TypeIcon');
+            iconNode.setParent(root);
+            iconNode.setPosition(new Vec3(-330, 0, 0));
+            const iui = iconNode.addComponent(UITransform);
+            iui.setContentSize(8, this.cardPointHeight);
+            const icon = iconNode.addComponent(Sprite);
+            icon.sizeMode = Sprite.SizeMode.CUSTOM;
+            icon.color = new Color(255, 255, 255);
+            icon.type = Sprite.Type.SIMPLE;
+            item.typeIcon = icon;
+
+            const timeNode = new Node('TimeLabel');
+            timeNode.setParent(root);
+            timeNode.setPosition(new Vec3(-310, 0, 0));
+            const tui = timeNode.addComponent(UITransform);
+            tui.setContentSize(70, 20);
+            tui.setAnchorPoint(0, 0.5);
+            const tl = timeNode.addComponent(Label);
+            tl.string = '';
+            tl.fontSize = 12;
+            tl.lineHeight = 12;
+            tl.color = new Color(180, 200, 255);
+            tl.horizontalAlign = Label.HorizontalAlign.LEFT;
+            tl.isSystemFontUsed = true;
+            item.timeLabel = tl;
+
+            const descNode = new Node('DescLabel');
+            descNode.setParent(root);
+            descNode.setPosition(new Vec3(-230, 0, 0));
+            const dui = descNode.addComponent(UITransform);
+            dui.setContentSize(540, 28);
+            dui.setAnchorPoint(0, 0.5);
+            const dl = descNode.addComponent(Label);
+            dl.string = '';
+            dl.fontSize = 13;
+            dl.lineHeight = 13;
+            dl.color = new Color(230, 230, 230);
+            dl.horizontalAlign = Label.HorizontalAlign.LEFT;
+            dl.overflow = Label.Overflow.SHRINK;
+            dl.isSystemFontUsed = true;
+            item.descLabel = dl;
+
+            this._dynamicCardPointTemplate = root;
+        }
+
+        // Achievement template
+        {
+            const root = new Node('AchievementTemplate');
+            const ui = root.addComponent(UITransform);
+            ui.setContentSize(140, 70);
+            ui.setAnchorPoint(0.5, 0.5);
+            const bg = root.addComponent(Sprite);
+            bg.sizeMode = Sprite.SizeMode.CUSTOM;
+            bg.color = new Color(100, 80, 30, 180);
+            bg.type = Sprite.Type.SIMPLE;
+
+            const labelNode = new Node('AchievementLabel');
+            labelNode.setParent(root);
+            labelNode.setPosition(new Vec3(0, 0, 0));
+            const lui = labelNode.addComponent(UITransform);
+            lui.setContentSize(130, 50);
+            const ll = labelNode.addComponent(Label);
+            ll.string = '';
+            ll.fontSize = 12;
+            ll.lineHeight = 16;
+            ll.color = new Color(255, 240, 180);
+            ll.horizontalAlign = Label.HorizontalAlign.CENTER;
+            ll.verticalAlign = Label.VerticalAlign.MIDDLE;
+            ll.overflow = Label.Overflow.SHRINK;
+            ll.isSystemFontUsed = true;
+
+            this._dynamicAchievementTemplate = root;
+        }
+
+        this._templatesCreated = true;
+    }
 
     onLoad() {
         EventManager.getInstance().on(GameEvents.GAME_END, this.onGameEnd.bind(this));
@@ -168,6 +325,7 @@ export class ResultScreen extends Component {
             this.backBtn.node.on(Button.EventType.CLICK, this.onBack, this);
         }
 
+        this.createDynamicTemplates();
         this.hide();
     }
 
@@ -244,7 +402,10 @@ export class ResultScreen extends Component {
     }
 
     private buildObjectives(): void {
-        if (!this._result || !this.objectivesContainer || !this.objectiveItemPrefab || !this._result.levelId) return;
+        if (!this._result || !this.objectivesContainer || !this._result.levelId) return;
+        if (!this._templatesCreated) this.createDynamicTemplates();
+        const prefab = this.objectiveItemPrefab || this._dynamicObjectiveTemplate;
+        if (!prefab) return;
 
         this.objectivesContainer.removeAllChildren();
 
@@ -255,14 +416,16 @@ export class ResultScreen extends Component {
 
         const uiTransform = this.objectivesContainer.getComponent(UITransform);
         if (uiTransform) {
-            const totalHeight = level.objectives.length * (this.objectiveItemHeight + this.objectiveItemGap) + this.objectiveItemGap;
+            const totalHeight = Math.max(1, level.objectives.length) * (this.objectiveItemHeight + this.objectiveItemGap) + this.objectiveItemGap;
             uiTransform.setContentSize(uiTransform.contentSize.width, totalHeight);
         }
 
         for (const obj of level.objectives) {
             const score = this._result.objectiveScores[obj.id] || 0;
 
-            const itemNode = instantiate(this.objectiveItemPrefab);
+            const itemNode = this.objectiveItemPrefab
+                ? instantiate(this.objectiveItemPrefab)
+                : (this._dynamicObjectiveTemplate ? instantiate(this._dynamicObjectiveTemplate) : new Node());
             itemNode.setParent(this.objectivesContainer);
             itemNode.setPosition(new Vec3(0, yOffset, 0));
 
@@ -276,7 +439,10 @@ export class ResultScreen extends Component {
     }
 
     private buildCardPoints(): void {
-        if (!this._result || !this.cardPointsContainer || !this.cardPointItemPrefab) return;
+        if (!this._result || !this.cardPointsContainer) return;
+        if (!this._templatesCreated) this.createDynamicTemplates();
+        const prefab = this.cardPointItemPrefab || this._dynamicCardPointTemplate;
+        if (!prefab) return;
 
         this.cardPointsContainer.removeAllChildren();
 
@@ -289,8 +455,25 @@ export class ResultScreen extends Component {
             uiTransform.setContentSize(uiTransform.contentSize.width, Math.max(100, totalHeight));
         }
 
+        if (points.length === 0) {
+            const emptyNode = new Node('EmptyLabel');
+            emptyNode.setParent(this.cardPointsContainer);
+            emptyNode.setPosition(new Vec3(0, -this.cardPointHeight, 0));
+            const eui = emptyNode.addComponent(UITransform);
+            eui.setContentSize(600, 30);
+            const el = emptyNode.addComponent(Label);
+            el.string = '本关卡无卡点记录，完美通关！';
+            el.fontSize = 13;
+            el.lineHeight = 13;
+            el.color = new Color(150, 200, 150);
+            el.isSystemFontUsed = true;
+            return;
+        }
+
         for (const point of points) {
-            const itemNode = instantiate(this.cardPointItemPrefab);
+            const itemNode = this.cardPointItemPrefab
+                ? instantiate(this.cardPointItemPrefab)
+                : (this._dynamicCardPointTemplate ? instantiate(this._dynamicCardPointTemplate) : new Node());
             itemNode.setParent(this.cardPointsContainer);
             itemNode.setPosition(new Vec3(0, yOffset, 0));
 
@@ -304,7 +487,10 @@ export class ResultScreen extends Component {
     }
 
     private buildAchievements(): void {
-        if (!this._result || !this.achievementsContainer || !this.achievementItemPrefab) return;
+        if (!this._result || !this.achievementsContainer) return;
+        if (!this._templatesCreated) this.createDynamicTemplates();
+        const prefab = this.achievementItemPrefab || this._dynamicAchievementTemplate;
+        if (!prefab) return;
 
         this.achievementsContainer.removeAllChildren();
 
@@ -313,12 +499,35 @@ export class ResultScreen extends Component {
             .map(id => ConfigManager.getInstance().findById<AchievementConfig>(ConfigKeys.ACHIEVEMENTS, id))
             .filter(Boolean) as AchievementConfig[];
 
+        const cols = 5;
+        const colW = 150;
+        const rowH = 80;
+
         for (let i = 0; i < achievements.length; i++) {
-            const itemNode = instantiate(this.achievementItemPrefab);
+            const itemNode = this.achievementItemPrefab
+                ? instantiate(this.achievementItemPrefab)
+                : (this._dynamicAchievementTemplate ? instantiate(this._dynamicAchievementTemplate) : new Node());
             itemNode.setParent(this.achievementsContainer);
+            const col = i % cols;
+            const row = Math.floor(i / cols);
+            itemNode.setPosition(new Vec3(-colW * 2 + col * colW, -rowH / 2 - row * rowH - 10, 0));
 
             const label = itemNode.getComponentInChildren(Label);
             if (label) label.string = achievements[i].name;
+        }
+
+        if (achievements.length === 0) {
+            const emptyNode = new Node('EmptyLabel');
+            emptyNode.setParent(this.achievementsContainer);
+            emptyNode.setPosition(new Vec3(0, -30, 0));
+            const eui = emptyNode.addComponent(UITransform);
+            eui.setContentSize(600, 30);
+            const el = emptyNode.addComponent(Label);
+            el.string = '暂无解锁成就，继续努力！';
+            el.fontSize = 13;
+            el.lineHeight = 13;
+            el.color = new Color(180, 180, 150);
+            el.isSystemFontUsed = true;
         }
     }
 

@@ -41,6 +41,7 @@ declare module 'cc' {
     export type Layout = any;
     export const Layout: any;
     export const director: any;
+    export const game: any;
     export const find: any;
     export type Prefab = any;
     export const Prefab: any;

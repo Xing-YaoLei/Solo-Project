@@ -137,6 +137,110 @@ export class InventoryCheckDialog extends Component {
 
     private _storeId: string = 'store_main';
     private _checkItems: InventoryCheckItem[] = [];
+    private _dynamicTemplateNode: Node | null = null;
+    private _dynamicTemplateCreated: boolean = false;
+
+    public createDynamicTemplate(): Node {
+        if (this._dynamicTemplateNode) return this._dynamicTemplateNode;
+
+        const root = new Node('CheckItemTemplate');
+        const uiTransform = root.addComponent(UITransform);
+        uiTransform.setContentSize(620, this.itemHeight);
+        uiTransform.setAnchorPoint(0.5, 0.5);
+        const statusBg = root.addComponent(Sprite);
+        statusBg.sizeMode = Sprite.SizeMode.CUSTOM;
+        statusBg.color = new Color(55, 45, 35, 150);
+        statusBg.type = Sprite.Type.SIMPLE;
+        const item = root.addComponent(InventoryCheckItem);
+        item.statusBg = statusBg;
+
+        const nameNode = new Node('NameLabel');
+        nameNode.setParent(root);
+        nameNode.setPosition(new Vec3(-280, 0, 0));
+        const nameUI = nameNode.addComponent(UITransform);
+        nameUI.setContentSize(120, 22);
+        nameUI.setAnchorPoint(0, 0.5);
+        const nameLabel = nameNode.addComponent(Label);
+        nameLabel.string = '';
+        nameLabel.fontSize = 15;
+        nameLabel.lineHeight = 15;
+        nameLabel.color = new Color(255, 240, 220);
+        nameLabel.horizontalAlign = Label.HorizontalAlign.LEFT;
+        nameLabel.isSystemFontUsed = true;
+        item.nameLabel = nameLabel;
+
+        const systemNode = new Node('SystemQtyLabel');
+        systemNode.setParent(root);
+        systemNode.setPosition(new Vec3(-140, 0, 0));
+        const systemUI = systemNode.addComponent(UITransform);
+        systemUI.setContentSize(70, 22);
+        systemUI.setAnchorPoint(0, 0.5);
+        const systemLabel = systemNode.addComponent(Label);
+        systemLabel.string = '';
+        systemLabel.fontSize = 14;
+        systemLabel.lineHeight = 14;
+        systemLabel.color = new Color(180, 180, 255);
+        systemLabel.horizontalAlign = Label.HorizontalAlign.LEFT;
+        systemLabel.isSystemFontUsed = true;
+        item.systemQtyLabel = systemLabel;
+
+        const unitNode = new Node('UnitLabel');
+        unitNode.setParent(root);
+        unitNode.setPosition(new Vec3(-70, 0, 0));
+        const unitUI = unitNode.addComponent(UITransform);
+        unitUI.setContentSize(40, 20);
+        unitUI.setAnchorPoint(0, 0.5);
+        const unitLabel = unitNode.addComponent(Label);
+        unitLabel.string = '';
+        unitLabel.fontSize = 12;
+        unitLabel.lineHeight = 12;
+        unitLabel.color = new Color(150, 150, 150);
+        unitLabel.horizontalAlign = Label.HorizontalAlign.LEFT;
+        unitLabel.isSystemFontUsed = true;
+        item.unitLabel = unitLabel;
+
+        const editBg = new Node('EditBg');
+        editBg.setParent(root);
+        editBg.setPosition(new Vec3(30, 0, 0));
+        const editBgUI = editBg.addComponent(UITransform);
+        editBgUI.setContentSize(100, 30);
+        const editBgSprite = editBg.addComponent(Sprite);
+        editBgSprite.sizeMode = Sprite.SizeMode.CUSTOM;
+        editBgSprite.color = new Color(80, 70, 60, 200);
+        editBgSprite.type = Sprite.Type.SIMPLE;
+        const editNode = new Node('ActualQtyEdit');
+        editNode.setParent(editBg);
+        const editUI = editNode.addComponent(UITransform);
+        editUI.setContentSize(100, 30);
+        const editBox = editNode.addComponent(EditBox);
+        editBox.string = '0';
+        editBox.fontSize = 14;
+        editBox.fontColor = Color.WHITE;
+        editBox.placeholder = '';
+        editBox.inputMode = EditBox.InputMode.NUMERIC;
+        editBox.maxLength = 6;
+        editBox.returnType = EditBox.KeyboardReturnType.DONE;
+        item.actualQtyEdit = editBox;
+
+        const diffNode = new Node('DifferenceLabel');
+        diffNode.setParent(root);
+        diffNode.setPosition(new Vec3(220, 0, 0));
+        const diffUI = diffNode.addComponent(UITransform);
+        diffUI.setContentSize(100, 22);
+        diffUI.setAnchorPoint(1, 0.5);
+        const diffLabel = diffNode.addComponent(Label);
+        diffLabel.string = '';
+        diffLabel.fontSize = 14;
+        diffLabel.lineHeight = 14;
+        diffLabel.color = Color.WHITE;
+        diffLabel.horizontalAlign = Label.HorizontalAlign.RIGHT;
+        diffLabel.isSystemFontUsed = true;
+        item.differenceLabel = diffLabel;
+
+        this._dynamicTemplateNode = root;
+        this._dynamicTemplateCreated = true;
+        return root;
+    }
 
     onLoad() {
         if (this.confirmBtn) {
@@ -146,6 +250,7 @@ export class InventoryCheckDialog extends Component {
             this.cancelBtn.node.on(Button.EventType.CLICK, this.onCancel, this);
         }
 
+        this.createDynamicTemplate();
         this.hide();
     }
 
@@ -173,7 +278,10 @@ export class InventoryCheckDialog extends Component {
     }
 
     private buildCheckList(): void {
-        if (!this.itemsContainer || !this.checkItemPrefab) return;
+        if (!this.itemsContainer) return;
+        if (!this._dynamicTemplateCreated) this.createDynamicTemplate();
+        const prefab = this.checkItemPrefab || this._dynamicTemplateNode;
+        if (!prefab) return;
 
         this.itemsContainer.removeAllChildren();
         this._checkItems = [];
@@ -183,7 +291,7 @@ export class InventoryCheckDialog extends Component {
 
         const uiTransform = this.itemsContainer.getComponent(UITransform);
         if (uiTransform) {
-            const totalHeight = ingredients.length * (this.itemHeight + this.itemGap) + this.itemGap;
+            const totalHeight = Math.max(1, ingredients.length) * (this.itemHeight + this.itemGap) + this.itemGap;
             uiTransform.setContentSize(uiTransform.contentSize.width, totalHeight);
         }
 
@@ -191,7 +299,9 @@ export class InventoryCheckDialog extends Component {
             const systemQty = InventoryManager.getInstance().getTotalQuantity(this._storeId, ingredient.id);
             if (systemQty <= 0) continue;
 
-            const itemNode = instantiate(this.checkItemPrefab);
+            const itemNode = this.checkItemPrefab
+                ? instantiate(this.checkItemPrefab)
+                : (this._dynamicTemplateNode ? instantiate(this._dynamicTemplateNode) : new Node());
             itemNode.setParent(this.itemsContainer);
             itemNode.setPosition(new Vec3(0, yOffset, 0));
 
@@ -202,6 +312,20 @@ export class InventoryCheckDialog extends Component {
             }
 
             yOffset -= this.itemHeight + this.itemGap;
+        }
+
+        if (this._checkItems.length === 0) {
+            const emptyNode = new Node('EmptyLabel');
+            emptyNode.setParent(this.itemsContainer);
+            emptyNode.setPosition(new Vec3(0, -this.itemHeight, 0));
+            const emptyUI = emptyNode.addComponent(UITransform);
+            emptyUI.setContentSize(600, 30);
+            const emptyLabel = emptyNode.addComponent(Label);
+            emptyLabel.string = '当前门店无库存，无需盘点';
+            emptyLabel.fontSize = 14;
+            emptyLabel.lineHeight = 14;
+            emptyLabel.color = new Color(180, 180, 180);
+            emptyLabel.isSystemFontUsed = true;
         }
     }
 
