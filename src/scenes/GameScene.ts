@@ -270,9 +270,8 @@ export class GameScene extends Phaser.Scene {
     const consumablesNeedingSupply = gameState.consumables.filter(
       (c) => c.currentStock <= c.safetyStock * 2
     );
-    const target = consumablesNeedingSupply[this.selectedConsumableIndex % Math.max(1, consumablesNeedingSupply.length)];
 
-    if (!target) {
+    if (consumablesNeedingSupply.length === 0) {
       this.phasePanel.add(
         this.add.text(width / 2, height / 2, '当前库存充足，无需领用', {
           fontSize: '18px', color: '#81c784', fontFamily: 'Arial',
@@ -281,6 +280,20 @@ export class GameScene extends Phaser.Scene {
       this.time.delayedCall(1500, () => this.startPhase('INVENTORY_CHECK'));
       return;
     }
+
+    if (this.selectedConsumableIndex >= consumablesNeedingSupply.length) {
+      this.selectedConsumableIndex = 0;
+      this.startPhase('INVENTORY_CHECK');
+      return;
+    }
+
+    const target = consumablesNeedingSupply[this.selectedConsumableIndex];
+
+    this.phasePanel.add(
+      this.add.text(width / 2 - 150, panelY + 20, `进度: ${this.selectedConsumableIndex + 1}/${consumablesNeedingSupply.length}`, {
+        fontSize: '13px', color: '#78909c', fontFamily: 'Arial',
+      })
+    );
 
     const daysUntilShortage = target.dailyUsage > 0 ? target.currentStock / target.dailyUsage : 999;
 
@@ -462,7 +475,9 @@ export class GameScene extends Phaser.Scene {
 
     const shortage = consumable.maxStock - consumable.currentStock;
     const daysUntilShortage = consumable.dailyUsage > 0 ? consumable.currentStock / consumable.dailyUsage : 999;
-    const neededForSafety = Math.max(0, consumable.safetyStock * 2 - consumable.currentStock + consumable.dailyUsage * supplier.leadTime);
+    const safetyAndLeadTimeNeed = Math.max(0, consumable.safetyStock * 2 - consumable.currentStock + consumable.dailyUsage * supplier.leadTime);
+    const minNeeded = Math.max(supplier.minOrderQty, Math.ceil(safetyAndLeadTimeNeed));
+    const correctQty = Math.min(minNeeded, shortage);
 
     this.phasePanel.add(
       this.add.text(width / 2, panelY + 25, `领用操作 - ${consumable.name}`, {
@@ -475,7 +490,8 @@ export class GameScene extends Phaser.Scene {
       `安全库存: ${consumable.safetyStock}${consumable.unit}`,
       `日消耗: ${consumable.dailyUsage}${consumable.unit}/天`,
       `预计${daysUntilShortage.toFixed(1)}天后断货`,
-      `供应商: ${supplier.name}（${supplier.leadTime}天到货）`,
+      `供应商: ${supplier.name}（${supplier.leadTime}天到货，最低起订${supplier.minOrderQty}${consumable.unit}）`,
+      `交期内消耗量: ${consumable.dailyUsage * supplier.leadTime}${consumable.unit}`,
     ];
     infoLines.forEach((line, i) => {
       this.phasePanel.add(
@@ -486,29 +502,30 @@ export class GameScene extends Phaser.Scene {
     });
 
     this.phasePanel.add(
-      this.add.text(60, panelY + 180, `建议领用量: ${Math.ceil(neededForSafety)}${consumable.unit}`, {
-        fontSize: '14px', color: '#ffb74d', fontFamily: 'Arial', fontStyle: 'bold',
+      this.add.text(60, panelY + 200, `建议领用量（含安全库存${consumable.safetyStock * 2} + 交期消耗${consumable.dailyUsage * supplier.leadTime} + 满足最低起订${supplier.minOrderQty}）: ${correctQty}${consumable.unit}`, {
+        fontSize: '13px', color: '#ffb74d', fontFamily: 'Arial', fontStyle: 'bold',
+        wordWrap: { width: width - 100 },
       })
     );
 
     const qtyOptions = [
       { label: '少量补货', qty: supplier.minOrderQty },
-      { label: '安全补货', qty: Math.ceil(neededForSafety) },
+      { label: '✓ 安全补货（推荐）', qty: correctQty, recommended: true },
       { label: '满仓补货', qty: shortage },
-    ].filter((opt) => opt.qty > 0);
+    ].filter((opt) => opt.qty > 0 && opt.qty <= shortage);
 
     qtyOptions.forEach((opt, i) => {
-      const btn = this.add.text(width / 2 - 120 + i * 120, panelY + 220, `${opt.label}\n${opt.qty}${consumable.unit}`, {
+      const btn = this.add.text(width / 2 - 120 + i * 120, panelY + 250, `${opt.label}\n${opt.qty}${consumable.unit}`, {
         fontSize: '12px', color: '#ffffff', fontFamily: 'Arial',
-        backgroundColor: '#2d5f8a',
+        backgroundColor: (opt as any).recommended ? '#1b5e20' : '#2d5f8a',
         padding: { x: 8, y: 6 },
         align: 'center',
       }).setOrigin(0.5).setInteractive({ useHandCursor: true });
 
-      btn.on('pointerover', () => btn.setStyle({ backgroundColor: '#3a7cb8' }));
-      btn.on('pointerout', () => btn.setStyle({ backgroundColor: '#2d5f8a' }));
+      btn.on('pointerover', () => btn.setStyle({ backgroundColor: (opt as any).recommended ? '#2e7d32' : '#3a7cb8' }));
+      btn.on('pointerout', () => btn.setStyle({ backgroundColor: (opt as any).recommended ? '#1b5e20' : '#2d5f8a' }));
       btn.on('pointerdown', () => {
-        this.handleRequisition(supplier, consumable, opt.qty, neededForSafety);
+        this.handleRequisition(supplier, consumable, opt.qty, correctQty);
       });
       this.phasePanel.add(btn);
     });
@@ -520,18 +537,15 @@ export class GameScene extends Phaser.Scene {
     qty: number,
     correctQty: number,
   ): void {
-    let isCorrect = true;
+    const isCorrect = qty === correctQty;
     let errorType: ErrorType | undefined;
 
-    if (qty < supplier.minOrderQty) {
-      isCorrect = false;
-      errorType = 'UNDER_ORDER';
-    } else if (qty > consumable.maxStock - consumable.currentStock) {
-      isCorrect = false;
-      errorType = 'OVER_ORDER';
-    } else if (qty < correctQty * 0.8) {
-      isCorrect = false;
-      errorType = 'UNDER_ORDER';
+    if (!isCorrect) {
+      if (qty < correctQty) {
+        errorType = 'UNDER_ORDER';
+      } else {
+        errorType = 'OVER_ORDER';
+      }
     }
 
     gameState.requisitionHistory.push({
@@ -567,7 +581,16 @@ export class GameScene extends Phaser.Scene {
     this.updateHUD();
 
     this.time.delayedCall(1000, () => {
-      this.startPhase('INVENTORY_CHECK');
+      this.selectedConsumableIndex++;
+      const consumablesNeedingSupply = gameState.consumables.filter(
+        (c) => c.currentStock <= c.safetyStock * 2
+      );
+      if (this.selectedConsumableIndex < consumablesNeedingSupply.length) {
+        this.startPhase('SUPPLIER_SELECT');
+      } else {
+        this.selectedConsumableIndex = 0;
+        this.startPhase('INVENTORY_CHECK');
+      }
     });
   }
 
@@ -577,14 +600,14 @@ export class GameScene extends Phaser.Scene {
 
     const panelBg = this.add.graphics();
     panelBg.fillStyle(0x1e293b, 0.95);
-    panelBg.fillRoundedRect(30, panelY, width - 60, 320, 12);
+    panelBg.fillRoundedRect(30, panelY, width - 60, 400, 12);
     this.phasePanel.add(panelBg);
 
     const lowStockItems = gameState.consumables.filter((c) => c.currentStock <= c.safetyStock * 1.5);
     const pool = lowStockItems.length > 0 ? lowStockItems : gameState.consumables;
     const randomItem = pool[Math.floor(Math.random() * pool.length)];
     const actualQty = randomItem.currentStock;
-    const discrepancy = Math.random() > 0.5 ? Math.floor(Math.random() * 8) : 0;
+    const discrepancy = Math.random() > 0.5 ? Math.floor(Math.random() * 6) + 2 : 0;
     const reportedQty = actualQty + discrepancy;
 
     this.phasePanel.add(
@@ -599,49 +622,95 @@ export class GameScene extends Phaser.Scene {
       }).setOrigin(0.5)
     );
 
+    const sysBox = this.add.graphics();
+    sysBox.fillStyle(0x1a3352, 1);
+    sysBox.fillRoundedRect(width / 2 - 200, panelY + 75, 180, 80, 6);
+    sysBox.lineStyle(1, 0x4fc3f7, 0.3);
+    sysBox.strokeRoundedRect(width / 2 - 200, panelY + 75, 180, 80, 6);
+    this.phasePanel.add(sysBox);
+
     this.phasePanel.add(
-      this.add.text(width / 2, panelY + 85, `系统记录: ${reportedQty}${randomItem.unit}`, {
-        fontSize: '16px', color: '#ffffff', fontFamily: 'Arial',
+      this.add.text(width / 2 - 110, panelY + 90, '系统记录', {
+        fontSize: '12px', color: '#78909c', fontFamily: 'Arial',
+      }).setOrigin(0.5)
+    );
+    this.phasePanel.add(
+      this.add.text(width / 2 - 110, panelY + 120, `${reportedQty}${randomItem.unit}`, {
+        fontSize: '22px', color: '#4fc3f7', fontFamily: 'Arial', fontStyle: 'bold',
+      }).setOrigin(0.5)
+    );
+
+    const phyBox = this.add.graphics();
+    phyBox.fillStyle(0x2e1a1a, 1);
+    phyBox.fillRoundedRect(width / 2 + 20, panelY + 75, 180, 80, 6);
+    phyBox.lineStyle(1, discrepancy !== 0 ? 0xff5722 : 0x4caf50, 0.5);
+    phyBox.strokeRoundedRect(width / 2 + 20, panelY + 75, 180, 80, 6);
+    this.phasePanel.add(phyBox);
+
+    this.phasePanel.add(
+      this.add.text(width / 2 + 110, panelY + 90, '实物盘点', {
+        fontSize: '12px', color: '#78909c', fontFamily: 'Arial',
+      }).setOrigin(0.5)
+    );
+    this.phasePanel.add(
+      this.add.text(width / 2 + 110, panelY + 120, `${actualQty}${randomItem.unit}`, {
+        fontSize: '22px', color: discrepancy !== 0 ? '#ff5722' : '#ffffff', fontFamily: 'Arial', fontStyle: 'bold',
+      }).setOrigin(0.5)
+    );
+
+    const hasDiscrepancy = discrepancy !== 0;
+    const hintText = hasDiscrepancy
+      ? `⚠ 差异: 系统${reportedQty}${randomItem.unit} vs 实物${actualQty}${randomItem.unit}，请上报"有差异"`
+      : `✓ 系统记录与实物完全一致，可确认"一致"`;
+    this.phasePanel.add(
+      this.add.text(width / 2, panelY + 175, hintText, {
+        fontSize: '12px', color: hasDiscrepancy ? '#ff9800' : '#4caf50', fontFamily: 'Arial',
       }).setOrigin(0.5)
     );
 
     this.phasePanel.add(
-      this.add.text(width / 2, panelY + 115, '实际盘点数量是否与系统一致？', {
-        fontSize: '14px', color: '#ffb74d', fontFamily: 'Arial',
+      this.add.text(width / 2, panelY + 200, '根据以上两个数据，选择盘点结果：', {
+        fontSize: '13px', color: '#ffb74d', fontFamily: 'Arial',
       }).setOrigin(0.5)
     );
 
-    const btnYes = this.add.text(width / 2 - 80, panelY + 160, '一致', {
+    const btnYes = this.add.text(width / 2 - 80, panelY + 245, '一致', {
       fontSize: '16px', color: '#ffffff', fontFamily: 'Arial',
       backgroundColor: '#27ae60',
       padding: { x: 20, y: 10 },
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
 
-    const btnNo = this.add.text(width / 2 + 80, panelY + 160, '有差异', {
+    const btnNo = this.add.text(width / 2 + 80, panelY + 245, '有差异', {
       fontSize: '16px', color: '#ffffff', fontFamily: 'Arial',
       backgroundColor: '#c0392b',
       padding: { x: 20, y: 10 },
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
 
     btnYes.on('pointerdown', () => {
-      const hasDiscrepancy = discrepancy !== 0;
       const isCorrect = !hasDiscrepancy;
       this.handleInventoryCheck(randomItem.id, reportedQty, actualQty, isCorrect, hasDiscrepancy ? 'INVENTORY_MISMATCH' : undefined);
     });
 
     btnNo.on('pointerdown', () => {
-      const isCorrect = discrepancy !== 0;
-      this.handleInventoryCheck(randomItem.id, reportedQty, actualQty, isCorrect, discrepancy === 0 ? 'INVENTORY_MISMATCH' : undefined);
+      const isCorrect = hasDiscrepancy;
+      this.handleInventoryCheck(randomItem.id, reportedQty, actualQty, isCorrect, !hasDiscrepancy ? 'INVENTORY_MISMATCH' : undefined);
     });
 
     this.phasePanel.add([btnYes, btnNo]);
 
-    if (discrepancy !== 0) {
-      const hint = this.add.text(width / 2, panelY + 210, '💡 提示：仔细核对实物数量', {
-        fontSize: '12px', color: '#78909c', fontFamily: 'Arial',
-      }).setOrigin(0.5);
-      this.phasePanel.add(hint);
-    }
+    const expLines = [
+      '💡 盘点训练要点：',
+      '① 对比"系统记录"和"实物盘点"两个数值',
+      '② 如有任何差异（多或少），选择"有差异"',
+      '③ 两数完全相同，选择"一致"',
+    ];
+    expLines.forEach((line, i) => {
+      this.phasePanel.add(
+        this.add.text(60, panelY + 295 + i * 18, line, {
+          fontSize: '11px', color: '#546e7a', fontFamily: 'Arial',
+        })
+      );
+    });
   }
 
   private handleInventoryCheck(
@@ -675,9 +744,85 @@ export class GameScene extends Phaser.Scene {
     const height = this.scale.height;
     const panelY = 70;
 
+    const todaySteps = gameState.currentSession!.steps.filter(
+      (s) => s.gameDay === gameState.gameDay
+    );
+    const correctCount = todaySteps.filter((s) => s.isCorrect).length;
+    const wrongCount = todaySteps.filter((s) => !s.isCorrect).length;
+    const todayOrders = gameState.requisitionHistory.filter((r) => r.gameDay === gameState.gameDay);
+    const inventorySteps = todaySteps.filter((s) => s.type === 'INVENTORY_CHECK');
+
+    let contentHeight = 60;
+    const summaryLines: { text: string; color: string }[] = [
+      { text: `操作正确: ${correctCount}次 | 操作失误: ${wrongCount}次 | 得分: ${gameState.score}`, color: '#b0bec5' },
+      { text: '', color: '#b0bec5' },
+      { text: '━━━━━ 今日领用记录 ━━━━━', color: '#4fc3f7' },
+    ];
+    contentHeight += 40;
+
+    if (todayOrders.length === 0) {
+      summaryLines.push({ text: '  （今日无领用操作）', color: '#546e7a' });
+      contentHeight += 20;
+    } else {
+      todayOrders.forEach((r) => {
+        const c = gameState.consumables.find((item) => item.id === r.consumableId);
+        const s = gameState.suppliers.find((sup) => sup.id === r.supplierId);
+        const statusIcon = r.isCorrect ? '✓' : '✗';
+        const statusColor = r.isCorrect ? '#4caf50' : '#ff5722';
+        summaryLines.push({ text: `  ${statusIcon} ${c?.name}: ${r.qty}${c?.unit}（${s?.name}）`, color: statusColor });
+        contentHeight += 20;
+      });
+    }
+
+    summaryLines.push({ text: '', color: '#b0bec5' });
+    summaryLines.push({ text: '━━━━━ 今日盘点结果 ━━━━━', color: '#ffb74d' });
+    contentHeight += 40;
+
+    if (inventorySteps.length === 0) {
+      summaryLines.push({ text: '  （今日无盘点操作）', color: '#546e7a' });
+      contentHeight += 20;
+    } else {
+      inventorySteps.forEach((s) => {
+        const d = s.data as any;
+        const c = gameState.consumables.find((item) => item.id === d.consumableId);
+        const mismatch = d.reportedQty !== d.actualQty;
+        const statusIcon = s.isCorrect ? '✓' : '✗';
+        const statusColor = s.isCorrect ? '#4caf50' : '#ff5722';
+        const detail = mismatch ? `差异: 系统${d.reportedQty} vs 实物${d.actualQty}` : `一致: ${d.actualQty}${c?.unit}`;
+        summaryLines.push({ text: `  ${statusIcon} ${c?.name}: ${detail}`, color: statusColor });
+        contentHeight += 20;
+      });
+    }
+
+    summaryLines.push({ text: '', color: '#b0bec5' });
+    summaryLines.push({ text: '━━━━━ 当前库存状态 ━━━━━', color: '#b0bec5' });
+    contentHeight += 40;
+
+    gameState.consumables.forEach((c) => {
+      const status = c.currentStock <= c.safetyStock ? '⚠️ 低于安全线' : c.currentStock <= c.safetyStock * 1.5 ? '⚡ 接近安全线' : '✅ 正常';
+      const color = c.currentStock <= c.safetyStock ? '#ff5722' : c.currentStock <= c.safetyStock * 1.5 ? '#ffb74d' : '#b0bec5';
+      summaryLines.push({ text: `  ${c.name}: ${c.currentStock}${c.unit}（安全: ${c.safetyStock}${c.unit}） ${status}`, color });
+      contentHeight += 20;
+    });
+
+    const pendingOrders = gameState.requisitionHistory.filter((r) => !r.arrived);
+    if (pendingOrders.length > 0) {
+      summaryLines.push({ text: '', color: '#b0bec5' });
+      summaryLines.push({ text: '━━━━━ 在途订单 ━━━━━', color: '#81c784' });
+      contentHeight += 40;
+      pendingOrders.forEach((r) => {
+        const c = gameState.consumables.find((item) => item.id === r.consumableId);
+        const s = gameState.suppliers.find((sup) => sup.id === r.supplierId);
+        const daysLeft = s ? s.leadTime - (gameState.gameDay - r.gameDay) : '?';
+        summaryLines.push({ text: `  ${c?.name || r.consumableId}: ${r.qty}${c?.unit || ''} → ${daysLeft}天后到（${s?.name}）`, color: '#81c784' });
+        contentHeight += 20;
+      });
+    }
+
+    const panelH = Math.min(contentHeight + 80, height - panelY - 100);
     const panelBg = this.add.graphics();
     panelBg.fillStyle(0x1e293b, 0.95);
-    panelBg.fillRoundedRect(30, panelY, width - 60, height - panelY - 100, 12);
+    panelBg.fillRoundedRect(30, panelY, width - 60, panelH, 12);
     this.phasePanel.add(panelBg);
 
     this.phasePanel.add(
@@ -686,46 +831,18 @@ export class GameScene extends Phaser.Scene {
       }).setOrigin(0.5)
     );
 
-    const todaySteps = gameState.currentSession!.steps.filter(
-      (s) => s.gameDay === gameState.gameDay
-    );
-    const correctCount = todaySteps.filter((s) => s.isCorrect).length;
-    const wrongCount = todaySteps.filter((s) => !s.isCorrect).length;
-
-    const summaryLines: { text: string; color: string }[] = [
-      { text: `操作正确: ${correctCount}次`, color: '#b0bec5' },
-      { text: `操作失误: ${wrongCount}次`, color: wrongCount > 0 ? '#ff5722' : '#b0bec5' },
-      { text: `当前得分: ${gameState.score}`, color: '#b0bec5' },
-      { text: '', color: '#b0bec5' },
-      { text: '库存状态:', color: '#b0bec5' },
-    ];
-    gameState.consumables.forEach((c) => {
-      const status = c.currentStock <= c.safetyStock ? '⚠️ 低于安全线' : c.currentStock <= c.safetyStock * 1.5 ? '⚡ 接近安全线' : '✅ 正常';
-      const color = c.currentStock <= c.safetyStock ? '#ff5722' : c.currentStock <= c.safetyStock * 1.5 ? '#ffb74d' : '#b0bec5';
-      summaryLines.push({ text: `  ${c.name}: ${c.currentStock}${c.unit} ${status}`, color });
-    });
-
-    const pendingOrders = gameState.requisitionHistory.filter((r) => !r.arrived);
-    if (pendingOrders.length > 0) {
-      summaryLines.push({ text: '', color: '#b0bec5' });
-      summaryLines.push({ text: '在途订单:', color: '#4fc3f7' });
-      pendingOrders.forEach((r) => {
-        const c = gameState.consumables.find((item) => item.id === r.consumableId);
-        const s = gameState.suppliers.find((sup) => sup.id === r.supplierId);
-        const daysLeft = s ? s.leadTime - (gameState.gameDay - r.gameDay) : '?';
-        summaryLines.push({ text: `  ${c?.name || r.consumableId}: ${r.qty}${c?.unit || ''} 预计${daysLeft}天后到货`, color: '#81c784' });
-      });
-    }
-
     summaryLines.forEach((item, i) => {
+      const yPos = panelY + 60 + i * 20;
+      if (yPos > panelY + panelH - 50) return;
       this.phasePanel.add(
-        this.add.text(60, panelY + 60 + i * 20, item.text, {
-          fontSize: '12px', color: item.color, fontFamily: 'Arial',
+        this.add.text(60, yPos, item.text, {
+          fontSize: '11px', color: item.color, fontFamily: 'Arial',
         })
       );
     });
 
-    const nextBtn = this.add.text(width / 2, panelY + height - panelY - 140, '进入下一天', {
+    const nextBtnY = Math.min(panelY + panelH - 40, height - 90);
+    const nextBtn = this.add.text(width / 2, nextBtnY, '进入下一天 →', {
       fontSize: '16px', color: '#ffffff', fontFamily: 'Arial',
       backgroundColor: '#27ae60',
       padding: { x: 24, y: 10 },
