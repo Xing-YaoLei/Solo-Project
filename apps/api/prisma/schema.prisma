@@ -1,0 +1,213 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RefundStatus {
+  PENDING
+  ASSIGNED
+  PROCESSING
+  EVIDENCE_UPLOADED
+  REVIEWING
+  APPROVED
+  REJECTED
+  RETRY
+  SUPPLEMENT
+  CLOSED
+  TIMEOUT
+}
+
+enum ResponsibilityParty {
+  PLATFORM
+  MERCHANT
+  LOGISTICS
+  CUSTOMER
+  SUPPLIER
+  OTHER
+}
+
+enum TimelineAction {
+  CREATED
+  ASSIGNED
+  STATUS_CHANGED
+  EVIDENCE_UPLOADED
+  EVIDENCE_DELETED
+  RETRY_REQUESTED
+  SUPPLEMENT_REQUESTED
+  RESPONSIBILITY_ASSIGNED
+  NOTE_ADDED
+  TIMEOUT_WARNING
+  TIMEOUT
+  CLOSED
+  REOPENED
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  OPERATOR
+  VIEWER
+}
+
+enum ReminderChannel {
+  IN_APP
+  EMAIL
+  SMS
+  WECHAT
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  phone     String?
+  role      UserRole @default(OPERATOR)
+  region    String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assignedOrders   RefundOrder[]   @relation("Assignee")
+  createdOrders    RefundOrder[]   @relation("Creator")
+  uploadedEvidences RefundEvidence[] @relation("Uploader")
+  operatedTimelines RefundTimeline[] @relation("Operator")
+  receivedReminders RefundReminder[] @relation("Recipient")
+  rules            ResponsibilityRule[]
+}
+
+model RefundOrder {
+  id                   String             @id @default(uuid())
+  orderNo              String
+  customerName         String
+  customerPhone        String
+  region               String
+  community            String
+  groupLeader          String?
+  productName          String
+  productSku           String?
+  quantity             Int                @default(1)
+  unitPrice            Decimal            @default(0)
+  refundAmount         Decimal            @default(0)
+  reason               String
+  problemTags          String[]           @default([])
+  status               RefundStatus       @default(PENDING)
+  visitResult          String?
+  responsibility       ResponsibilityParty?
+  assigneeId           String?
+  deadline             DateTime
+  actualClosedAt       DateTime?
+  handlingDurationMinutes Int?
+  isUrgent             Boolean            @default(false)
+  isTimeout            Boolean            @default(false)
+  timeoutCount         Int                @default(0)
+  note                 String?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  createdById          String?
+
+  assignee   User?              @relation("Assignee", fields: [assigneeId], references: [id])
+  createdBy  User?              @relation("Creator", fields: [createdById], references: [id])
+  evidences  RefundEvidence[]
+  timelines  RefundTimeline[]
+  reminders  RefundReminder[]
+
+  @@index([status])
+  @@index([region])
+  @@index([assigneeId])
+  @@index([deadline])
+  @@index([createdAt])
+  @@index([isTimeout])
+}
+
+model RefundEvidence {
+  id            String   @id @default(uuid())
+  refundOrderId String
+  fileName      String
+  fileUrl       String
+  fileType      String
+  fileSize      Int
+  uploadedById  String
+  note          String?
+  createdAt     DateTime @default(now())
+
+  refundOrder RefundOrder @relation(fields: [refundOrderId], references: [id], onDelete: Cascade)
+  uploadedBy  User        @relation("Uploader", fields: [uploadedById], references: [id])
+}
+
+model RefundTimeline {
+  id            String         @id @default(uuid())
+  refundOrderId String
+  action        TimelineAction
+  oldStatus     RefundStatus?
+  newStatus     RefundStatus?
+  oldValue      String?
+  newValue      String?
+  note          String?
+  operatorId    String?
+  createdAt     DateTime       @default(now())
+
+  refundOrder RefundOrder @relation(fields: [refundOrderId], references: [id], onDelete: Cascade)
+  operator    User?       @relation("Operator", fields: [operatorId], references: [id])
+
+  @@index([refundOrderId])
+  @@index([createdAt])
+}
+
+model RefundReminder {
+  id            String          @id @default(uuid())
+  refundOrderId String
+  recipientId   String
+  message       String
+  channel       ReminderChannel @default(IN_APP)
+  sentAt        DateTime        @default(now())
+  readAt        DateTime?
+
+  refundOrder RefundOrder @relation(fields: [refundOrderId], references: [id], onDelete: Cascade)
+  recipient   User        @relation("Recipient", fields: [recipientId], references: [id])
+
+  @@index([refundOrderId])
+  @@index([recipientId])
+  @@index([readAt])
+}
+
+model VisitResult {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  name        String
+  description String?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ProblemTag {
+  id            String   @id @default(uuid())
+  name          String   @unique
+  color         String   @default("#3b82f6")
+  thresholdDays Int      @default(7)
+  sortOrder     Int      @default(0)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model ResponsibilityRule {
+  id             String              @id @default(uuid())
+  name           String
+  problemTags    String[]            @default([])
+  visitResults   String[]            @default([])
+  regions        String[]            @default([])
+  responsibility ResponsibilityParty
+  assigneeId     String?
+  priority       Int                 @default(0)
+  isActive       Boolean             @default(true)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  assignee User? @relation(fields: [assigneeId], references: [id])
+}

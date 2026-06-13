@@ -1,0 +1,18 @@
+{
+  "name": "solo-project",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "pnpm@9.0.0",
+  "scripts": {
+    "dev": "pnpm -r --parallel run dev",
+    "dev:web": "pnpm --filter @solo/web run dev",
+    "dev:api": "pnpm --filter @solo/api run start:dev",
+    "build": "pnpm -r run build",
+    "db:migrate": "pnpm --filter @solo/api run prisma migrate dev",
+    "db:generate": "pnpm --filter @solo/api run prisma generate",
+    "db:seed": "pnpm --filter @solo/api run prisma db seed"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}

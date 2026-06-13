@@ -1,0 +1,49 @@
+export declare enum RefundStatus {
+    PENDING = "PENDING",
+    ASSIGNED = "ASSIGNED",
+    PROCESSING = "PROCESSING",
+    EVIDENCE_UPLOADED = "EVIDENCE_UPLOADED",
+    REVIEWING = "REVIEWING",
+    APPROVED = "APPROVED",
+    REJECTED = "REJECTED",
+    RETRY = "RETRY",
+    SUPPLEMENT = "SUPPLEMENT",
+    CLOSED = "CLOSED",
+    TIMEOUT = "TIMEOUT"
+}
+export declare enum ResponsibilityParty {
+    PLATFORM = "PLATFORM",
+    MERCHANT = "MERCHANT",
+    LOGISTICS = "LOGISTICS",
+    CUSTOMER = "CUSTOMER",
+    SUPPLIER = "SUPPLIER",
+    OTHER = "OTHER"
+}
+export declare enum TimelineAction {
+    CREATED = "CREATED",
+    ASSIGNED = "ASSIGNED",
+    STATUS_CHANGED = "STATUS_CHANGED",
+    EVIDENCE_UPLOADED = "EVIDENCE_UPLOADED",
+    EVIDENCE_DELETED = "EVIDENCE_DELETED",
+    RETRY_REQUESTED = "RETRY_REQUESTED",
+    SUPPLEMENT_REQUESTED = "SUPPLEMENT_REQUESTED",
+    RESPONSIBILITY_ASSIGNED = "RESPONSIBILITY_ASSIGNED",
+    NOTE_ADDED = "NOTE_ADDED",
+    TIMEOUT_WARNING = "TIMEOUT_WARNING",
+    TIMEOUT = "TIMEOUT",
+    CLOSED = "CLOSED",
+    REOPENED = "REOPENED"
+}
+export declare enum UserRole {
+    ADMIN = "ADMIN",
+    MANAGER = "MANAGER",
+    OPERATOR = "OPERATOR",
+    VIEWER = "VIEWER"
+}
+export declare enum ReminderChannel {
+    IN_APP = "IN_APP",
+    EMAIL = "EMAIL",
+    SMS = "SMS",
+    WECHAT = "WECHAT"
+}
+//# sourceMappingURL=enums.d.ts.map
