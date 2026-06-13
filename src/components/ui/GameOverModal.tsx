@@ -39,14 +39,13 @@ export default function GameOverModal({ onReplay, onHome }: GameOverModalProps) 
   const saveRecord = useGameStore((state) => state.saveRecord);
   const resetGame = useGameStore((state) => state.resetGame);
 
+  const onTimeRate = useGameStore((state) => state.onTimeRate);
+
   const timeUsed = totalTime - timeRemaining;
-  const totalProducts = products.filter((p) => !p.isDefective).length;
+  const totalProducts = products.length;
   const accuracy = correctCount + wrongCount > 0
     ? Math.round((correctCount / (correctCount + wrongCount)) * 100)
     : 0;
-  const onTimeRate = totalProducts > 0
-    ? Math.round((correctCount / totalProducts) * 100)
-    : 100;
 
   const isWin = onTimeRate >= 70;
 
