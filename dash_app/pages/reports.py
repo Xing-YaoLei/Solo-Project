@@ -7,7 +7,6 @@ from dash import dcc, html, Input, Output, State, dash_table, callback, no_updat
 import dash_bootstrap_components as dbc
 
 from dash_app.components import (
-    create_layout,
     default_date_range,
     create_filter_bar,
     create_stat_card,
@@ -703,12 +702,8 @@ def layout():
     start_date, end_date = default_date_range(30)
     region_options = _get_region_options()
     extra_filters = _build_extra_filters()
-    sidebar = create_layout("reports")
-
     return html.Div([
-        sidebar,
-        html.Div([
-            dcc.Store(id="reports-current-appt-store"),
+        dcc.Store(id="reports-current-appt-store"),
             dcc.Store(id="reports-current-sched-store"),
             dcc.Store(id="reports-compare-appt-store"),
             dcc.Store(id="reports-compare-sched-store"),
@@ -797,8 +792,7 @@ def layout():
 
             html.Div(id="reports-region-table"),
 
-        ], className="main-content"),
-    ], className="app-container")
+        ])
 
 
 def register_callbacks(app):

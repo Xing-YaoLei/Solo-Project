@@ -2,8 +2,8 @@ from typing import List, Dict, Any
 from datetime import date, timedelta
 import random
 
-from utils.database import get_session
-from models import Region, Coach, Member
+from utils.db_adapter import get_session
+from utils.db_adapter import Region, Coach, Member
 
 
 def get_date_range(start_date: date = None, end_date: date = None, days: int = 30):
@@ -103,7 +103,7 @@ def mock_fetch_schedules(start_date: date, end_date: date) -> List[Dict[str, Any
 
 
 def mock_fetch_appointments(start_date: date, end_date: date) -> List[Dict[str, Any]]:
-    from models import CourseSchedule
+    from utils.db_adapter import CourseSchedule
 
     session = get_session()
     try:
@@ -238,7 +238,7 @@ def mock_fetch_bodytest_records(start_date: date, end_date: date) -> List[Dict[s
 
 
 def mock_fetch_reschedule_records(start_date: date, end_date: date) -> List[Dict[str, Any]]:
-    from models import Appointment, CourseSchedule
+    from utils.db_adapter import Appointment, CourseSchedule
 
     session = get_session()
     try:

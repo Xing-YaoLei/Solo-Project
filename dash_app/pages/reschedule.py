@@ -7,7 +7,6 @@ from dash import dcc, html, dash_table, Input, Output, callback
 import dash_bootstrap_components as dbc
 
 from dash_app.components import (
-    create_layout,
     default_date_range,
     create_filter_bar,
     create_stat_card,
@@ -740,7 +739,6 @@ def _create_reschedule_table(reschedule_df, appointments_df):
 def layout():
     start_date, end_date = default_date_range(30)
     region_options = _get_region_options()
-    sidebar = create_layout("reschedule")
 
     try:
         all_reschedule_df = get_reschedule_df(
@@ -753,105 +751,101 @@ def layout():
     extra_filters = _build_extra_filters(all_reschedule_df)
 
     return html.Div([
-        sidebar,
+        html.Div([
+            html.H1("🔄 改约记录与口径解释"),
+            html.P(f"数据范围: {start_date} ~ {end_date} | 分析预约改约情况及业务口径说明"),
+        ], className="page-header"),
+
+        create_filter_bar(
+            start_date_default=start_date,
+            end_date_default=end_date,
+            region_options=region_options,
+            extra_filters=extra_filters,
+            show_compare=False,
+        ),
+
+        html.Div(id="reschedule-stats-grid", className="stats-grid"),
+
         html.Div([
             html.Div([
-                html.H1("🔄 改约记录与口径解释"),
-                html.P(f"数据范围: {start_date} ~ {end_date} | 分析预约改约情况及业务口径说明"),
-            ], className="page-header"),
+                html.Div([
+                    html.Div("改约趋势与预约对比", className="card-title"),
+                    html.Div("每日改约数与总预约数双轴对比，观察改约波动", className="card-subtitle"),
+                ], className="card-header"),
+                html.Div(id="reschedule-trend-chart", className="chart-container"),
+            ], className="card"),
+        ]),
 
-            create_filter_bar(
-                start_date_default=start_date,
-                end_date_default=end_date,
-                region_options=region_options,
-                extra_filters=extra_filters,
-                show_compare=False,
-            ),
-
-            html.Div(id="reschedule-stats-grid", className="stats-grid"),
-
+        html.Div([
             html.Div([
                 html.Div([
                     html.Div([
-                        html.Div("改约趋势与预约对比", className="card-title"),
-                        html.Div("每日改约数与总预约数双轴对比，观察改约波动", className="card-subtitle"),
+                        html.Div("改约原因分布", className="card-title"),
+                        html.Div("各原因占比构成分析", className="card-subtitle"),
                     ], className="card-header"),
-                    html.Div(id="reschedule-trend-chart", className="chart-container"),
+                    dcc.Graph(id="reschedule-reason-pie", config={"displayModeBar": False},
+                              style={"height": "340px"}),
                 ], className="card"),
             ]),
-
             html.Div([
                 html.Div([
                     html.Div([
-                        html.Div([
-                            html.Div("改约原因分布", className="card-title"),
-                            html.Div("各原因占比构成分析", className="card-subtitle"),
-                        ], className="card-header"),
-                        dcc.Graph(id="reschedule-reason-pie", config={"displayModeBar": False},
-                                  style={"height": "340px"}),
-                    ], className="card"),
-                ]),
-                html.Div([
-                    html.Div([
-                        html.Div([
-                            html.Div("改约类型堆叠图", className="card-title"),
-                            html.Div("会员/教练/系统发起改约每日分布", className="card-subtitle"),
-                        ], className="card-header"),
-                        dcc.Graph(id="reschedule-type-stacked", config={"displayModeBar": False},
-                                  style={"height": "340px"}),
-                    ], className="card"),
-                ]),
-            ], className="grid-2"),
-
-            html.Div([
-                html.Div([
-                    html.Div([
-                        html.Div([
-                            html.Div("改约提前天数分布", className="card-title"),
-                            html.Div("从发起改约到原预约日的提前天数统计", className="card-subtitle"),
-                        ], className="card-header"),
-                        dcc.Graph(id="reschedule-days-hist", config={"displayModeBar": False},
-                                  style={"height": "340px"}),
-                    ], className="card"),
-                ]),
-                html.Div([
-                    html.Div([
-                        html.Div([
-                            html.Div("按区域改约率对比", className="card-title"),
-                            html.Div("各门店改约率横向对比", className="card-subtitle"),
-                        ], className="card-header"),
-                        dcc.Graph(id="reschedule-region-rate", config={"displayModeBar": False},
-                                  style={"height": "340px"}),
-                    ], className="card"),
-                ]),
-            ], className="grid-2"),
-
-            html.Div([
-                html.Div([
-                    html.Div([
-                        html.Div([
-                            html.Div("改约原因口径解释", className="card-title"),
-                            html.Div("各改约原因的业务定义与统计数据", className="card-subtitle"),
-                        ], className="card-header"),
-                        html.Div(id="reschedule-caliber-cards", className="row"),
-                    ], className="card"),
-                ]),
+                        html.Div("改约类型堆叠图", className="card-title"),
+                        html.Div("会员/教练/系统发起改约每日分布", className="card-subtitle"),
+                    ], className="card-header"),
+                    dcc.Graph(id="reschedule-type-stacked", config={"displayModeBar": False},
+                              style={"height": "340px"}),
+                ], className="card"),
             ]),
+        ], className="grid-2"),
 
+        html.Div([
             html.Div([
                 html.Div([
                     html.Div([
-                        html.Div([
-                            html.Div("改约明细表", className="card-title"),
-                            html.Div("点击预约编号可跳转至对应预约记录（新标签页打开）", className="card-subtitle"),
-                        ], className="card-header"),
-                        html.Div(id="reschedule-detail-table-container"),
-                    ], className="card"),
-                ]),
+                        html.Div("改约提前天数分布", className="card-title"),
+                        html.Div("从发起改约到原预约日的提前天数统计", className="card-subtitle"),
+                    ], className="card-header"),
+                    dcc.Graph(id="reschedule-days-hist", config={"displayModeBar": False},
+                              style={"height": "340px"}),
+                ], className="card"),
             ]),
+            html.Div([
+                html.Div([
+                    html.Div([
+                        html.Div("按区域改约率对比", className="card-title"),
+                        html.Div("各门店改约率横向对比", className="card-subtitle"),
+                    ], className="card-header"),
+                    dcc.Graph(id="reschedule-region-rate", config={"displayModeBar": False},
+                              style={"height": "340px"}),
+                ], className="card"),
+            ]),
+        ], className="grid-2"),
 
-        ], className="main-content"),
-    ], className="app-container")
+        html.Div([
+            html.Div([
+                html.Div([
+                    html.Div([
+                        html.Div("改约原因口径解释", className="card-title"),
+                        html.Div("各改约原因的业务定义与统计数据", className="card-subtitle"),
+                    ], className="card-header"),
+                    html.Div(id="reschedule-caliber-cards", className="row"),
+                ], className="card"),
+            ]),
+        ]),
+
+        html.Div([
+            html.Div([
+                html.Div([
+                    html.Div([
+                        html.Div("改约明细表", className="card-title"),
+                        html.Div("点击预约编号可跳转至对应预约记录（新标签页打开）", className="card-subtitle"),
+                    ], className="card-header"),
+                    html.Div(id="reschedule-detail-table-container"),
+                ], className="card"),
+            ]),
+        ]),
+    ])
 
 
 def register_callbacks(app):

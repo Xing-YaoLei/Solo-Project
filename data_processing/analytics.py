@@ -10,26 +10,43 @@ from utils.db_adapter import (
 )
 
 
-def _query_to_df(query, session=None):
-    own_session = False
-    if session is None:
-        session = get_session()
-        own_session = True
-    try:
-        result = session.execute(query)
-        columns = list(result.keys())
-        data = [dict(zip(columns, row)) for row in result.fetchall()]
-        return pd.DataFrame(data, columns=columns)
-    finally:
-        if own_session:
-            session.close()
+def _orm_query_to_df(query, session):
+    from sqlalchemy.orm import class_mapper
+    needs_expand = False
+    mapper = None
+    if len(query.column_descriptions) == 1:
+        desc = query.column_descriptions[0]
+        entity = desc.get("entity")
+        expr = desc.get("expr")
+        if entity is not None and entity is expr:
+            try:
+                mapper = class_mapper(entity)
+                needs_expand = True
+            except Exception:
+                pass
+
+    if needs_expand and mapper:
+        cols = [c for c in mapper.columns]
+        query = query.with_entities(*cols)
+
+    result = session.execute(query.statement)
+    columns = list(result.keys())
+    data = [dict(zip(columns, row)) for row in result.fetchall()]
+    return pd.DataFrame(data, columns=columns) if data else pd.DataFrame(columns=columns)
+
+
+def _sql_to_df(statement, session):
+    result = session.execute(statement)
+    columns = list(result.keys())
+    data = [dict(zip(columns, row)) for row in result.fetchall()]
+    return pd.DataFrame(data, columns=columns) if data else pd.DataFrame(columns=columns)
 
 
 def get_regions_df() -> pd.DataFrame:
     session = get_session()
     try:
         query = session.query(Region)
-        return _query_to_df(query.statement, session)
+        return _orm_query_to_df(query, session)
     finally:
         session.close()
 
@@ -38,7 +55,7 @@ def get_coaches_df() -> pd.DataFrame:
     session = get_session()
     try:
         query = session.query(Coach)
-        return _query_to_df(query.statement, session)
+        return _orm_query_to_df(query, session)
     finally:
         session.close()
 
@@ -79,7 +96,7 @@ def get_appointments_df(start_date: date, end_date: date,
         )
         if region_ids:
             query = query.filter(Appointment.region_id.in_(region_ids))
-        df = _query_to_df(query.statement, session)
+        df = _orm_query_to_df(query, session)
         if not df.empty:
             df["appointment_date"] = pd.to_datetime(df["appointment_date"]).dt.date
             df["start_time_str"] = df["start_time"].astype(str)
@@ -123,7 +140,7 @@ def get_schedules_df(start_date: date, end_date: date,
         )
         if region_ids:
             query = query.filter(CourseSchedule.region_id.in_(region_ids))
-        df = _query_to_df(query.statement, session)
+        df = _orm_query_to_df(query, session)
         if not df.empty:
             df["course_date"] = pd.to_datetime(df["course_date"]).dt.date
             df["start_time_str"] = df["start_time"].astype(str)
@@ -160,7 +177,7 @@ def get_attendance_df(start_date: date, end_date: date,
         )
         if region_ids:
             query = query.filter(AttendanceRecord.region_id.in_(region_ids))
-        df = _query_to_df(query.statement, session)
+        df = _orm_query_to_df(query, session)
         if not df.empty:
             df["appointment_date"] = pd.to_datetime(df["appointment_date"]).dt.date
         return df
@@ -175,7 +192,7 @@ def get_reschedule_df(start_date: date, end_date: date) -> pd.DataFrame:
             ((RescheduleRecord.old_date >= start_date) & (RescheduleRecord.old_date <= end_date)) |
             ((RescheduleRecord.new_date >= start_date) & (RescheduleRecord.new_date <= end_date))
         )
-        df = _query_to_df(query.statement, session)
+        df = _orm_query_to_df(query, session)
         if not df.empty:
             df["old_date"] = pd.to_datetime(df["old_date"]).dt.date
             df["new_date"] = pd.to_datetime(df["new_date"]).dt.date
@@ -199,7 +216,7 @@ def get_access_df(start_date: date, end_date: date,
         )
         if region_ids:
             query = query.filter(AccessRecord.region_id.in_(region_ids))
-        df = _query_to_df(query.statement, session)
+        df = _orm_query_to_df(query, session)
         if not df.empty:
             df["access_date"] = pd.to_datetime(df["access_date"]).dt.date
             df["access_time"] = pd.to_datetime(df["access_time"])
@@ -242,7 +259,7 @@ def get_conflicts_df(start_date: date, end_date: date) -> pd.DataFrame:
             ConflictRecord.conflict_date >= start_date,
             ConflictRecord.conflict_date <= end_date
         )
-        df = _query_to_df(query.statement, session)
+        df = _orm_query_to_df(query, session)
         if not df.empty:
             df["conflict_date"] = pd.to_datetime(df["conflict_date"]).dt.date
             df["detected_at"] = pd.to_datetime(df["detected_at"])
@@ -519,6 +536,30 @@ def detect_conflicts(appointments_df: pd.DataFrame, schedules_df: pd.DataFrame,
                 "appointment_no_1": row.get("appointment_no"),
                 "appointment_no_2": row.get("next_appt_no"),
                 "description": f"会员ID={row.get('member_id')} 课程重叠: {row.get('start_time')}-{row.get('end_time')} 与 {row.get('next_start')}",
+                "severity": "warning",
+            })
+
+    if not schedules_df.empty and "max_capacity" in schedules_df.columns and "actual_capacity" in schedules_df.columns:
+        overloaded = schedules_df[schedules_df["actual_capacity"] > schedules_df["max_capacity"]]
+        for _, row in overloaded.iterrows():
+            try:
+                ct_st = datetime.strptime(str(row["start_time"]), "%H:%M:%S").time()
+            except:
+                ct_st = time(0, 0)
+            try:
+                ct_et = datetime.strptime(str(row["end_time"]), "%H:%M:%S").time()
+            except:
+                ct_et = time(0, 0)
+            conflicts.append({
+                "conflict_no": f"CF{datetime.now().strftime('%Y%m%d%H%M%S')}{len(conflicts):05d}",
+                "conflict_type": "capacity_overload",
+                "region_id": row.get("region_id"),
+                "coach_id": row.get("coach_id"),
+                "conflict_date": row.get("course_date"),
+                "conflict_start_time": ct_st,
+                "conflict_end_time": ct_et,
+                "schedule_no_1": row.get("schedule_no"),
+                "description": f"时段超容: 实际{row.get('actual_capacity')}/{row.get('max_capacity')}",
                 "severity": "warning",
             })
 

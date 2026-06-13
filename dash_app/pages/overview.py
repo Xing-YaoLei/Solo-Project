@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
-from dash import dcc, html, Input, Output, State, dash_table, callback
+from dash import dcc, html, Input, Output, State, dash_table, callback, callback_context
 import dash_bootstrap_components as dbc
 
 from dash_app.components import (
@@ -24,6 +24,7 @@ from data_processing import (
     compute_period_over_period,
     get_multi_region_comparison,
 )
+from sync_tasks.base_sync import get_batch_history, get_batch_data_preview
 
 PRIMARY_COLOR = "#1e88e5"
 COLORS = {
@@ -366,65 +367,77 @@ def _create_time_heatmap(appointments_df):
 def layout():
     start_date, end_date = default_date_range(30)
     region_options = _get_region_options()
-    sidebar = create_layout("overview")
 
     return html.Div([
-        sidebar,
+        html.Div([
+            html.H1("📊 预约趋势概览"),
+            html.P(f"数据范围: {start_date} ~ {end_date} | 实时同步健身私教预约数据"),
+        ], className="page-header"),
+
+        create_filter_bar(
+            start_date_default=start_date,
+            end_date_default=end_date,
+            region_options=region_options,
+            show_compare=True,
+        ),
+
+        html.Div(id="overview-stats-grid", className="stats-grid"),
+
         html.Div([
             html.Div([
-                html.H1("📊 预约趋势概览"),
-                html.P(f"数据范围: {start_date} ~ {end_date} | 实时同步健身私教预约数据"),
-            ], className="page-header"),
+                html.Div([
+                    html.Div("预约趋势折线图", className="card-title"),
+                    html.Div("每日预约数变化趋势，支持同环比对比", className="card-subtitle"),
+                ], className="card-header"),
+                html.Div(id="overview-trend-chart", className="chart-container"),
+            ], className="card"),
+        ]),
 
-            create_filter_bar(
-                start_date_default=start_date,
-                end_date_default=end_date,
-                region_options=region_options,
-                show_compare=True,
-            ),
-
-            html.Div(id="overview-stats-grid", className="stats-grid"),
+        html.Div([
+            html.Div([
+                html.Div([
+                    html.Div("区域预约分布", className="card-title"),
+                    html.Div("按门店区域统计预约构成", className="card-subtitle"),
+                ], className="card-header"),
+                html.Div(id="overview-region-chart", className="chart-container"),
+            ], className="card"),
 
             html.Div([
                 html.Div([
-                    html.Div([
-                        html.Div("预约趋势折线图", className="card-title"),
-                        html.Div("每日预约数变化趋势，支持同环比对比", className="card-subtitle"),
-                    ], className="card-header"),
-                    html.Div(id="overview-trend-chart", className="chart-container"),
-                ], className="card"),
-            ]),
+                    html.Div("时段分布热力图", className="card-title"),
+                    html.Div("星期 × 时段 预约密度分布", className="card-subtitle"),
+                ], className="card-header"),
+                html.Div(id="overview-time-chart", className="chart-container"),
+            ], className="card"),
+        ], className="grid-2"),
 
+        html.Div([
             html.Div([
                 html.Div([
-                    html.Div([
-                        html.Div("区域预约分布", className="card-title"),
-                        html.Div("按门店区域统计预约构成", className="card-subtitle"),
-                    ], className="card-header"),
-                    html.Div(id="overview-region-chart", className="chart-container"),
-                ], className="card"),
+                    html.Div("预约明细数据", className="card-title"),
+                    html.Div("支持排序、筛选与分页", className="card-subtitle"),
+                ], className="card-header"),
+                html.Div(id="overview-detail-table-container"),
+            ], className="card"),
+        ]),
 
-                html.Div([
-                    html.Div([
-                        html.Div("时段分布热力图", className="card-title"),
-                        html.Div("星期 × 时段 预约密度分布", className="card-subtitle"),
-                    ], className="card-header"),
-                    html.Div(id="overview-time-chart", className="chart-container"),
-                ], className="card"),
-            ], className="grid-2"),
-
+        html.Div([
             html.Div([
                 html.Div([
-                    html.Div([
-                        html.Div("预约明细数据", className="card-title"),
-                        html.Div("支持排序、筛选与分页", className="card-subtitle"),
-                    ], className="card-header"),
-                    html.Div(id="overview-detail-table-container"),
-                ], className="card"),
-            ]),
-
-        ], className="main-content"),
-    ], className="app-container")
+                    html.Div("同步批次回看", className="card-title"),
+                    html.Div("查看各数据源的同步批次记录，点击批次号查看数据快照", className="card-subtitle"),
+                    html.Button("🔄 同步数据", id="overview-sync-btn",
+                                n_clicks=0, className="btn btn-primary btn-sm",
+                                style={"marginLeft": "12px"}),
+                ], className="card-header"),
+                dcc.Loading(
+                    html.Div(id="overview-batch-table-container"),
+                    color=PRIMARY_COLOR,
+                ),
+                html.Div(id="overview-sync-toast"),
+            ], className="card"),
+        ]),
+    ])
 
 
 def register_callbacks(app):
@@ -547,6 +560,69 @@ def register_callbacks(app):
             detail_table = create_data_table(display_df, "overview-detail", page_size=15)
 
         return stat_cards, trend_chart, region_chart, time_chart, detail_table
+
+    @app.callback(
+        Output("overview-batch-table-container", "children"),
+        Output("overview-sync-toast", "children"),
+        Input("overview-sync-btn", "n_clicks"),
+        prevent_initial_call=False,
+    )
+    def update_batch_table(sync_clicks):
+        trigger = callback_context.triggered[0]["prop_id"] if callback_context.triggered else ""
+        toast = None
+
+        if trigger == "overview-sync-btn.n_clicks" and sync_clicks:
+            try:
+                from sync_tasks.run_sync import run_full_sync
+                results = run_full_sync(days=60)
+                total = sum(r.get("success", 0) for r in results)
+                toast = html.Div(
+                    f"✅ 同步完成，共写入 {total} 条记录",
+                    style={
+                        "position": "fixed", "top": "20px", "right": "20px",
+                        "background": COLORS["success"], "color": "#fff",
+                        "padding": "12px 20px", "borderRadius": "6px",
+                        "zIndex": "9999", "boxShadow": "0 4px 12px rgba(0,0,0,0.15)",
+                        "fontWeight": "500",
+                    }
+                )
+            except Exception as e:
+                toast = html.Div(
+                    f"❌ 同步失败: {str(e)}",
+                    style={
+                        "position": "fixed", "top": "20px", "right": "20px",
+                        "background": COLORS["danger"], "color": "#fff",
+                        "padding": "12px 20px", "borderRadius": "6px",
+                        "zIndex": "9999", "boxShadow": "0 4px 12px rgba(0,0,0,0.15)",
+                        "fontWeight": "500",
+                    }
+                )
+
+        batches = get_batch_history(limit=50)
+        if not batches:
+            return render_empty("暂无同步批次记录，点击「同步数据」开始取数"), toast
+
+        batch_df = pd.DataFrame(batches)
+        display_cols = {
+            "batch_no": "批次号",
+            "source_type": "数据源",
+            "status": "状态",
+            "total_count": "总数",
+            "success_count": "成功",
+            "fail_count": "失败",
+            "start_time": "开始时间",
+            "end_time": "结束时间",
+            "data_range_start": "数据起始",
+            "data_range_end": "数据截止",
+        }
+        for old, new in display_cols.items():
+            if old in batch_df.columns:
+                batch_df[new] = batch_df[old].astype(str)
+        keep = [v for v in display_cols.values() if v in batch_df.columns]
+        batch_df = batch_df[keep]
+
+        table = create_data_table(batch_df, "overview-batch", page_size=10)
+        return table, toast
 
 
 def register_page():

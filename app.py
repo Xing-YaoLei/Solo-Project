@@ -12,14 +12,27 @@ from utils.db_adapter import DB_TYPE, init_db, seed_test_data
 
 
 def create_app():
+    init_db()
+
     if DB_TYPE == "sqlite":
-        db_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fitness_pt.db")
-        if not os.path.exists(db_file):
-            print(f"SQLite数据库不存在，正在初始化并生成测试数据...")
-            init_db()
-            seed_test_data(days=60)
+        from utils.db_adapter import SessionLocal, Region
+        session = SessionLocal()
+        try:
+            region_count = session.query(Region).count()
+            if region_count == 0:
+                print(f"数据库为空，正在生成测试数据...")
+                seed_test_data(days=60)
+        finally:
+            session.close()
     else:
-        init_db()
+        from utils.db_adapter import SessionLocal, Region
+        session = SessionLocal()
+        try:
+            region_count = session.query(Region).count()
+            if region_count == 0:
+                print(f"PostgreSQL 数据库为空，请使用 Celery 同步任务或手动导入数据")
+        finally:
+            session.close()
 
     app = Dash(
         __name__,
@@ -113,7 +126,7 @@ if __name__ == "__main__":
     app = create_app()
     print(f"\n🚀 启动健身私教预约趋势看板 (数据库: {DB_TYPE})")
     print(f"📊 访问地址: http://{dash_config.HOST}:{dash_config.PORT}")
-    app.run_server(
+    app.run(
         host=dash_config.HOST,
         port=dash_config.PORT,
         debug=dash_config.DEBUG,

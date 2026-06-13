@@ -1,11 +1,19 @@
 import uuid
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from typing import Optional, List, Dict, Any
 from contextlib import contextmanager
 
-from utils.database import get_session
-from models import SyncBatch
+from utils.db_adapter import get_session, DB_TYPE
+from utils.db_adapter import SyncBatch
 from config import sync_config
+
+
+def get_date_range(start_date: date = None, end_date: date = None, days: int = 30):
+    if not end_date:
+        end_date = date.today()
+    if not start_date:
+        start_date = end_date - timedelta(days=days)
+    return start_date, end_date
 
 
 def generate_batch_no(source_type: str) -> str:
@@ -60,8 +68,6 @@ def batch_manager(source_type: str, data_start: Optional[date] = None,
 
 def upsert_records(session, model, records: List[Dict[str, Any]],
                    unique_keys: List[str], batch_no: str, ctx: Dict):
-    from sqlalchemy.dialects.postgresql import insert
-
     if not records:
         return
 
@@ -70,20 +76,7 @@ def upsert_records(session, model, records: List[Dict[str, Any]],
 
     ctx["total_count"] += len(records)
 
-    stmt = insert(model).values(records)
-    update_dict = {k: stmt.excluded[k] for k in records[0].keys() if k not in unique_keys}
-
-    try:
-        result = session.execute(
-            stmt.on_conflict_do_update(
-                index_elements=unique_keys,
-                set_=update_dict
-            )
-        )
-        session.commit()
-        ctx["success_count"] += len(records)
-    except Exception as e:
-        session.rollback()
+    if DB_TYPE == "sqlite":
         for record in records:
             try:
                 filters = {k: record[k] for k in unique_keys if k in record}
@@ -99,6 +92,38 @@ def upsert_records(session, model, records: List[Dict[str, Any]],
                 ctx["fail_count"] += 1
                 ctx["errors"].append(f"Record error: {str(inner_e)}")
         session.commit()
+    else:
+        from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+        stmt = pg_insert(model).values(records)
+        update_dict = {k: stmt.excluded[k] for k in records[0].keys() if k not in unique_keys}
+
+        try:
+            session.execute(
+                stmt.on_conflict_do_update(
+                    index_elements=unique_keys,
+                    set_=update_dict
+                )
+            )
+            session.commit()
+            ctx["success_count"] += len(records)
+        except Exception as e:
+            session.rollback()
+            for record in records:
+                try:
+                    filters = {k: record[k] for k in unique_keys if k in record}
+                    existing = session.query(model).filter_by(**filters).first()
+                    if existing:
+                        for k, v in record.items():
+                            setattr(existing, k, v)
+                    else:
+                        obj = model(**record)
+                        session.add(obj)
+                    ctx["success_count"] += 1
+                except Exception as inner_e:
+                    ctx["fail_count"] += 1
+                    ctx["errors"].append(f"Record error: {str(inner_e)}")
+            session.commit()
 
 
 def get_batch_history(source_type: Optional[str] = None, limit: int = 100) -> List[Dict]:
@@ -129,7 +154,7 @@ def get_batch_history(source_type: Optional[str] = None, limit: int = 100) -> Li
 
 
 def get_batch_data_preview(batch_no: str, source_type: str, limit: int = 50) -> List[Dict]:
-    from models import (
+    from utils.db_adapter import (
         CourseSchedule, Appointment, RescheduleRecord,
         AccessRecord, BodyTestRecord
     )

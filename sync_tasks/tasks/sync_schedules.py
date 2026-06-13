@@ -8,7 +8,7 @@ from datetime import date, timedelta
 from sync_tasks.celery_app import app
 from sync_tasks.base_sync import batch_manager, upsert_records, get_date_range
 from sync_tasks.data_sources import mock_fetch_schedules
-from models import CourseSchedule
+from utils.db_adapter import CourseSchedule
 from config import sync_config
 
 

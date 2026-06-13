@@ -544,100 +544,94 @@ def layout():
     start_date_default, end_date_default = default_date_range(30)
     region_options = _build_region_options()
 
-    sidebar = create_layout("conflicts")
-
     extra_filters = _build_extra_filters()
-    filter_bar = create_filter_bar(
-        start_date_default=start_date_default,
-        end_date_default=end_date_default,
-        region_options=region_options,
-        extra_filters=extra_filters,
-        show_compare=False,
-    )
 
     return html.Div([
-        sidebar,
         html.Div([
-            html.Div([
-                html.H1("⚠️ 冲突检测"),
-                html.P("检测并分析教练双约、会员双约及超容等预约冲突"),
-            ], className="page-header"),
+            html.H1("⚠️ 冲突检测"),
+            html.P("检测并分析教练双约、会员双约及超容等预约冲突"),
+        ], className="page-header"),
 
-            filter_bar,
+        create_filter_bar(
+            start_date_default=start_date_default,
+            end_date_default=end_date_default,
+            region_options=region_options,
+            extra_filters=extra_filters,
+            show_compare=False,
+        ),
 
-            dcc.Loading(
-                id="conflicts-loading",
-                type="circle",
-                color=PRIMARY,
-                children=[
-                    html.Div(id="conflicts-kpi-container"),
+        dcc.Loading(
+            id="conflicts-loading",
+            type="circle",
+            color=PRIMARY,
+            children=[
+                html.Div(id="conflicts-kpi-container"),
+                html.Div([
                     html.Div([
                         html.Div([
                             html.Div([
-                                html.Div([
-                                    html.Div("冲突类型分布", className="card-title"),
-                                ], className="card-header"),
-                                dcc.Graph(id="conflicts-type-pie", config={"displayModeBar": False},
-                                          style={"height": "300px"}),
-                            ], className="card"),
-                        ]),
-                        html.Div([
-                            html.Div([
-                                html.Div([
-                                    html.Div("冲突趋势", className="card-title"),
-                                ], className="card-header"),
-                                dcc.Graph(id="conflicts-trend-line", config={"displayModeBar": False},
-                                          style={"height": "300px"}),
-                            ], className="card"),
-                        ]),
-                        html.Div([
-                            html.Div([
-                                html.Div([
-                                    html.Div("严重程度分布", className="card-title"),
-                                ], className="card-header"),
-                                dcc.Graph(id="conflicts-severity-bar", config={"displayModeBar": False},
-                                          style={"height": "300px"}),
-                            ], className="card"),
-                        ]),
-                    ], className="grid-3"),
-
-                    html.Div([
-                        html.Div([
-                            html.Div([
-                                html.Div([
-                                    html.Div("冲突明细", className="card-title"),
-                                    html.Div("点击行查看详情", className="card-subtitle"),
-                                ], className="card-header"),
-                                html.Div(id="conflicts-table-container"),
-                            ], className="card"),
-                        ]),
+                                html.Div("冲突类型分布", className="card-title"),
+                            ], className="card-header"),
+                            dcc.Graph(id="conflicts-type-pie", config={"displayModeBar": False},
+                                      style={"height": "300px"}),
+                        ], className="card"),
                     ]),
-                ],
-            ),
+                    html.Div([
+                        html.Div([
+                            html.Div([
+                                html.Div("冲突趋势", className="card-title"),
+                            ], className="card-header"),
+                            dcc.Graph(id="conflicts-trend-line", config={"displayModeBar": False},
+                                      style={"height": "300px"}),
+                        ], className="card"),
+                    ]),
+                    html.Div([
+                        html.Div([
+                            html.Div([
+                                html.Div("严重程度分布", className="card-title"),
+                            ], className="card-header"),
+                            dcc.Graph(id="conflicts-severity-bar", config={"displayModeBar": False},
+                                      style={"height": "300px"}),
+                        ], className="card"),
+                    ]),
+                ], className="grid-3"),
 
-            html.Div(
-                id="conflict-detail-modal",
-                style={"display": "none"},
-                children=[
-                    html.Div(
-                        className="modal-overlay",
-                        id="conflict-modal-overlay",
-                        children=[
-                            html.Div(
-                                className="modal-content",
-                                id="conflict-modal-body-container",
-                                children=_empty_modal_body(),
-                            ),
-                        ],
-                    ),
-                ],
-            ),
+                html.Div([
+                    html.Div([
+                        html.Div([
+                            html.Div([
+                                html.Div("冲突明细", className="card-title"),
+                                html.Div("点击行查看详情", className="card-subtitle"),
+                            ], className="card-header"),
+                            html.Div(id="conflicts-table-container"),
+                        ], className="card"),
+                    ]),
+                ]),
+            ],
+        ),
 
-            dcc.Store(id="conflicts-data-store"),
-            dcc.Store(id="conflicts-appointments-store"),
-            html.Div(id="conflicts-detect-toast", style={"display": "none"}),
-        ], className="main-content"),
-    ], className="app-container")
+        html.Div(
+            id="conflict-detail-modal",
+            style={"display": "none"},
+            children=[
+                html.Div(
+                    className="modal-overlay",
+                    id="conflict-modal-overlay",
+                    children=[
+                        html.Div(
+                            className="modal-content",
+                            id="conflict-modal-body-container",
+                            children=_empty_modal_body(),
+                        ),
+                    ],
+                ),
+            ],
+        ),
+
+        dcc.Store(id="conflicts-data-store"),
+        dcc.Store(id="conflicts-appointments-store"),
+        html.Div(id="conflicts-detect-toast", style={"display": "none"}),
+    ])
 
 
 def register_callbacks(app):

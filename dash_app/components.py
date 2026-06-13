@@ -150,6 +150,7 @@ def create_data_table(
     clickable: bool = False,
     hidden_cols: list = None
 ) -> dash_table.DataTable:
+    from datetime import date, time, datetime
     hidden_cols = hidden_cols or []
     if df.empty:
         columns = []
@@ -159,7 +160,12 @@ def create_data_table(
             {"name": col, "id": col, "hideable": True}
             for col in df.columns if col not in hidden_cols
         ]
-        data = df.to_dict("records")
+        display_df = df.copy()
+        for col in display_df.columns:
+            display_df[col] = display_df[col].apply(
+                lambda v: str(v) if isinstance(v, (date, time, datetime)) else ("" if v is None or (isinstance(v, float) and __import__('math').isnan(v)) else v)
+            )
+        data = display_df.to_dict("records")
 
     style = {"style_cell": {"textAlign": "left", "padding": "10px", "fontSize": "13px"}}
     if clickable:
