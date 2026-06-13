@@ -608,6 +608,15 @@ def render_data_import():
 
     st.markdown('<div class="main-header">📥 数据导入</div>', unsafe_allow_html=True)
 
+    st.markdown("### 快速生成示例数据")
+    c1, c2 = st.columns([1, 3])
+    with c1:
+        if st.button("🎯 生成示例数据并运行ETL", type="primary", use_container_width=True):
+            generate_sample_data()
+    st.info("点击按钮将自动生成库存、点评、预约、充值、服务卡、排班等示例数据并运行完整 ETL，数据将追加累积到现有数据中。")
+
+    st.markdown("---")
+
     data_type_map = {
         "库存表": "inventory",
         "点评记录": "reviews",
@@ -752,7 +761,8 @@ def main():
         with col1:
             if st.button("🎯 生成示例数据并运行ETL", type="primary"):
                 generate_sample_data()
-        return
+        if role == "management" and page == "数据总览":
+            return
 
     if page == "数据总览" and role == "management":
         render_management_overview()
