@@ -1,0 +1,154 @@
+[gd_scene load_steps=2 format=3 uid="uid://d8m2n5v7z9wxy"]
+
+[ext_resource type="Script" path="res://scripts/ui/result_screen.gd" id="1_resultscreen"]
+
+[node name="ResultScreen" type="Control"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_resultscreen")
+
+[node name="Background" type="ColorRect" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.93, 0.89, 0.83, 1)
+
+[node name="MainPanel" type="PanelContainer" parent="."]
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -400.0
+offset_top = -280.0
+offset_right = 400.0
+offset_bottom = 280.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MainPanel"]
+theme_override_constants/separation = 15
+
+[node name="ResultTitle" type="Label" parent="MainPanel/VBoxContainer"]
+theme_override_colors/font_color = Color(0.5, 0.35, 0.25, 1)
+theme_override_font_sizes/font_size = 32
+text = "游戏结算"
+horizontal_alignment = 1
+
+[node name="ResultStatus" type="Label" parent="MainPanel/VBoxContainer"]
+theme_override_colors/font_color = Color(0.3, 0.6, 0.3, 1)
+theme_override_font_sizes/font_size = 20
+text = "🎉 挑战成功！"
+horizontal_alignment = 1
+
+[node name="ScoreDisplay" type="HBoxContainer" parent="MainPanel/VBoxContainer"]
+alignment = 1
+theme_override_constants/separation = 20
+
+[node name="ScorePanel" type="PanelContainer" parent="MainPanel/VBoxContainer/ScoreDisplay"]
+
+[node name="ScoreVBox" type="VBoxContainer" parent="MainPanel/VBoxContainer/ScoreDisplay/ScorePanel"]
+theme_override_constants/separation = 5
+
+[node name="ScoreLabel" type="Label" parent="MainPanel/VBoxContainer/ScoreDisplay/ScorePanel/ScoreVBox"]
+theme_override_colors/font_color = Color(0.6, 0.4, 0.2, 1)
+theme_override_font_sizes/font_size = 14
+text = "总得分"
+horizontal_alignment = 1
+
+[node name="ScoreValue" type="Label" parent="MainPanel/VBoxContainer/ScoreDisplay/ScorePanel/ScoreVBox"]
+theme_override_colors/font_color = Color(0.8, 0.5, 0.2, 1)
+theme_override_font_sizes/font_size = 28
+text = "0"
+horizontal_alignment = 1
+
+[node name="ComboPanel" type="PanelContainer" parent="MainPanel/VBoxContainer/ScoreDisplay"]
+
+[node name="ComboVBox" type="VBoxContainer" parent="MainPanel/VBoxContainer/ScoreDisplay/ComboPanel"]
+theme_override_constants/separation = 5
+
+[node name="ComboLabel" type="Label" parent="MainPanel/VBoxContainer/ScoreDisplay/ComboPanel/ComboVBox"]
+theme_override_colors/font_color = Color(0.6, 0.4, 0.2, 1)
+theme_override_font_sizes/font_size = 14
+text = "最高连击"
+horizontal_alignment = 1
+
+[node name="ComboValue" type="Label" parent="MainPanel/VBoxContainer/ScoreDisplay/ComboPanel/ComboVBox"]
+theme_override_colors/font_color = Color(0.8, 0.3, 0.2, 1)
+theme_override_font_sizes/font_size = 28
+text = "0"
+horizontal_alignment = 1
+
+[node name="StatsGrid" type="GridContainer" parent="MainPanel/VBoxContainer"]
+columns = 2
+theme_override_constants/h_separation = 15
+theme_override_constants/v_separation = 10
+
+[node name="TimeLabel" type="Label" parent="MainPanel/VBoxContainer/StatsGrid"]
+theme_override_colors/font_color = Color(0.5, 0.4, 0.35, 1)
+text = "完成时间:"
+
+[node name="TimeValue" type="Label" parent="MainPanel/VBoxContainer/StatsGrid"]
+theme_override_colors/font_color = Color(0.3, 0.5, 0.3, 1)
+text = "00:00"
+horizontal_alignment = 2
+
+[node name="ServedLabel" type="Label" parent="MainPanel/VBoxContainer/StatsGrid"]
+theme_override_colors/font_color = Color(0.5, 0.4, 0.35, 1)
+text = "服务顾客:"
+
+[node name="ServedValue" type="Label" parent="MainPanel/VBoxContainer/StatsGrid"]
+theme_override_colors/font_color = Color(0.3, 0.5, 0.7, 1)
+text = "0 / 0"
+horizontal_alignment = 2
+
+[node name="CompletionLabel" type="Label" parent="MainPanel/VBoxContainer/StatsGrid"]
+theme_override_colors/font_color = Color(0.5, 0.4, 0.35, 1)
+text = "消课率:"
+
+[node name="CompletionValue" type="Label" parent="MainPanel/VBoxContainer/StatsGrid"]
+theme_override_colors/font_color = Color(0.3, 0.5, 0.3, 1)
+text = "0%"
+horizontal_alignment = 2
+
+[node name="ProjectsLabel" type="Label" parent="MainPanel/VBoxContainer/StatsGrid"]
+theme_override_colors/font_color = Color(0.5, 0.4, 0.35, 1)
+text = "完成项目:"
+
+[node name="ProjectsValue" type="Label" parent="MainPanel/VBoxContainer/StatsGrid"]
+theme_override_colors/font_color = Color(0.7, 0.4, 0.3, 1)
+text = "0"
+horizontal_alignment = 2
+
+[node name="StuckPointsLabel" type="Label" parent="MainPanel/VBoxContainer"]
+theme_override_colors/font_color = Color(0.5, 0.4, 0.35, 1)
+theme_override_font_sizes/font_size = 14
+text = "玩家卡点分析:"
+
+[node name="StuckPointsContainer" type="ScrollContainer" parent="MainPanel/VBoxContainer"]
+custom_minimum_size = Vector2(0, 80)
+
+[node name="StuckPointsVBox" type="VBoxContainer" parent="MainPanel/VBoxContainer/StuckPointsContainer"]
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="AchievementsLabel" type="Label" parent="MainPanel/VBoxContainer"]
+theme_override_colors/font_color = Color(0.5, 0.4, 0.35, 1)
+theme_override_font_sizes/font_size = 14
+text = "解锁成就:"
+
+[node name="AchievementsContainer" type="HBoxContainer" parent="MainPanel/VBoxContainer"]
+alignment = 1
+theme_override_constants/separation = 8
+
+[node name="ButtonsHBox" type="HBoxContainer" parent="MainPanel/VBoxContainer"]
+alignment = 1
+theme_override_constants/separation = 15
+
+[node name="ReplayButton" type="Button" parent="MainPanel/VBoxContainer/ButtonsHBox"]
+custom_minimum_size = Vector2(100, 35)
+text = "查看回放"
+
+[node name="RetryButton" type="Button" parent="MainPanel/VBoxContainer/ButtonsHBox"]
+custom_minimum_size = Vector2(100, 35)
+text = "再来一局"
+
+[node name="MenuButton" type="Button" parent="MainPanel/VBoxContainer/ButtonsHBox"]
+custom_minimum_size = Vector2(100, 35)
+text = "返回主菜单"

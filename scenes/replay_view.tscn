@@ -1,0 +1,157 @@
+[gd_scene load_steps=2 format=3 uid="uid://e4n6t2u8v0wxz"]
+
+[ext_resource type="Script" path="res://scripts/ui/replay_view.gd" id="1_replayview"]
+
+[node name="ReplayView" type="Control"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_replayview")
+
+[node name="Background" type="ColorRect" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.9, 0.87, 0.8, 1)
+
+[node name="TitleLabel" type="Label" parent="."]
+anchor_left = 0.5
+anchor_top = 0.05
+anchor_right = 0.5
+anchor_bottom = 0.05
+offset_left = -200.0
+offset_top = -25.0
+offset_right = 200.0
+offset_bottom = 25.0
+theme_override_colors/font_color = Color(0.5, 0.35, 0.25, 1)
+theme_override_font_sizes/font_size = 28
+text = "回防练习"
+horizontal_alignment = 1
+
+[node name="ReplayListPanel" type="PanelContainer" parent="."]
+anchor_left = 0.05
+anchor_top = 0.12
+anchor_right = 0.45
+anchor_bottom = 0.55
+
+[node name="VBoxContainer" type="VBoxContainer" parent="ReplayListPanel"]
+theme_override_constants/separation = 8
+
+[node name="ListTitle" type="Label" parent="ReplayListPanel/VBoxContainer"]
+theme_override_colors/font_color = Color(0.4, 0.3, 0.25, 1)
+theme_override_font_sizes/font_size = 16
+text = "失败回放记录"
+
+[node name="ReplayList" type="ItemList" parent="ReplayListPanel/VBoxContainer"]
+size_flags_vertical = 3
+
+[node name="ReplayInfo" type="PanelContainer" parent="."]
+anchor_left = 0.05
+anchor_top = 0.58
+anchor_right = 0.45
+anchor_bottom = 0.9
+
+[node name="InfoVBox" type="VBoxContainer" parent="ReplayInfo"]
+theme_override_constants/separation = 6
+
+[node name="InfoTitle" type="Label" parent="ReplayInfo/InfoVBox"]
+theme_override_colors/font_color = Color(0.4, 0.3, 0.25, 1)
+theme_override_font_sizes/font_size = 16
+text = "回放详情"
+
+[node name="InfoScore" type="Label" parent="ReplayInfo/InfoVBox"]
+theme_override_colors/font_color = Color(0.6, 0.4, 0.2, 1)
+text = "最终得分: 0"
+
+[node name="InfoFailReason" type="Label" parent="ReplayInfo/InfoVBox"]
+theme_override_colors/font_color = Color(0.8, 0.3, 0.2, 1)
+text = "失败原因: -"
+
+[node name="InfoSteps" type="Label" parent="ReplayInfo/InfoVBox"]
+theme_override_colors/font_color = Color(0.4, 0.4, 0.4, 1)
+text = "操作步数: 0"
+
+[node name="ComparePanel" type="PanelContainer" parent="."]
+anchor_left = 0.5
+anchor_top = 0.12
+anchor_right = 0.95
+anchor_bottom = 0.55
+
+[node name="CompareVBox" type="VBoxContainer" parent="ComparePanel"]
+theme_override_constants/separation = 8
+
+[node name="CompareTitle" type="Label" parent="ComparePanel/CompareVBox"]
+theme_override_colors/font_color = Color(0.4, 0.3, 0.25, 1)
+theme_override_font_sizes/font_size = 16
+text = "选择两次回放对比"
+
+[node name="SelectRow" type="HBoxContainer" parent="ComparePanel/CompareVBox"]
+theme_override_constants/separation = 10
+
+[node name="Compare1Button" type="OptionButton" parent="ComparePanel/CompareVBox/SelectRow"]
+size_flags_horizontal = 3
+text = "回放 1"
+
+[node name="VSLabel" type="Label" parent="ComparePanel/CompareVBox/SelectRow"]
+theme_override_colors/font_color = Color(0.6, 0.4, 0.3, 1)
+text = "VS"
+
+[node name="Compare2Button" type="OptionButton" parent="ComparePanel/CompareVBox/SelectRow"]
+size_flags_horizontal = 3
+text = "回放 2"
+
+[node name="CompareButton" type="Button" parent="ComparePanel/CompareVBox"]
+text = "开始对比"
+
+[node name="CompareResult" type="ScrollContainer" parent="ComparePanel/CompareVBox"]
+size_flags_vertical = 3
+
+[node name="CompareResultVBox" type="VBoxContainer" parent="ComparePanel/CompareResult"]
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="PlaybackPanel" type="PanelContainer" parent="."]
+anchor_left = 0.5
+anchor_top = 0.58
+anchor_right = 0.95
+anchor_bottom = 0.9
+
+[node name="PlaybackVBox" type="VBoxContainer" parent="PlaybackPanel"]
+theme_override_constants/separation = 8
+
+[node name="PlaybackTitle" type="Label" parent="PlaybackPanel/PlaybackVBox"]
+theme_override_colors/font_color = Color(0.4, 0.3, 0.25, 1)
+theme_override_font_sizes/font_size = 16
+text = "步骤回放"
+
+[node name="StepInfo" type="Label" parent="PlaybackPanel/PlaybackVBox"]
+theme_override_colors/font_color = Color(0.3, 0.5, 0.3, 1)
+text = "步骤: 0 / 0"
+horizontal_alignment = 1
+
+[node name="StepDisplay" type="PanelContainer" parent="PlaybackPanel/PlaybackVBox"]
+size_flags_vertical = 3
+custom_minimum_size = Vector2(0, 100)
+
+[node name="StepContent" type="Label" parent="PlaybackPanel/StepDisplay"]
+text = "选择一个回放开始浏览"
+autowrap_mode = 3
+
+[node name="PlaybackControls" type="HBoxContainer" parent="PlaybackPanel/PlaybackVBox"]
+alignment = 1
+theme_override_constants/separation = 10
+
+[node name="PrevButton" type="Button" parent="PlaybackPanel/PlaybackVBox/PlaybackControls"]
+text = "⏮ 上一步"
+
+[node name="NextButton" type="Button" parent="PlaybackPanel/PlaybackVBox/PlaybackControls"]
+text = "下一步 ⏭"
+
+[node name="BackButton" type="Button" parent="."]
+anchor_left = 0.5
+anchor_top = 0.93
+anchor_right = 0.5
+anchor_bottom = 0.93
+offset_left = -60.0
+offset_top = -20.0
+offset_right = 60.0
+offset_bottom = 20.0
+text = "返回"

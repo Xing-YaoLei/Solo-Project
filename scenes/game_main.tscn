@@ -1,0 +1,320 @@
+[gd_scene load_steps=2 format=3 uid="uid://c2x9k4n6b7v89"]
+
+[ext_resource type="Script" path="res://scripts/game/game_main.gd" id="1_gamemain"]
+
+[node name="GameMain" type="Control"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_gamemain")
+
+[node name="Background" type="ColorRect" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.92, 0.88, 0.82, 1)
+
+[node name="TopBar" type="PanelContainer" parent="."]
+anchor_right = 1.0
+offset_bottom = 60.0
+
+[node name="HBoxContainer" type="HBoxContainer" parent="TopBar"]
+theme_override_constants/separation = 20
+
+[node name="TimerLabel" type="Label" parent="TopBar/HBoxContainer"]
+theme_override_colors/font_color = Color(0.4, 0.3, 0.25, 1)
+theme_override_font_sizes/font_size = 18
+text = "⏱ 00:00"
+vertical_alignment = 1
+
+[node name="ScoreLabel" type="Label" parent="TopBar/HBoxContainer"]
+theme_override_colors/font_color = Color(0.6, 0.4, 0.2, 1)
+theme_override_font_sizes/font_size = 18
+text = "💰 0"
+vertical_alignment = 1
+
+[node name="ComboLabel" type="Label" parent="TopBar/HBoxContainer"]
+theme_override_colors/font_color = Color(0.8, 0.4, 0.2, 1)
+theme_override_font_sizes/font_size = 18
+text = "🔥 x0"
+vertical_alignment = 1
+
+[node name="LevelLabel" type="Label" parent="TopBar/HBoxContainer"]
+theme_override_colors/font_color = Color(0.3, 0.5, 0.3, 1)
+theme_override_font_sizes/font_size = 18
+text = "第1关"
+vertical_alignment = 1
+
+[node name="Spacer" type="Control" parent="TopBar/HBoxContainer"]
+custom_minimum_size = Vector2(100, 0)
+size_flags_horizontal = 3
+
+[node name="PauseButton" type="Button" parent="TopBar/HBoxContainer"]
+text = "暂停"
+
+[node name="LeftPanel" type="PanelContainer" parent="."]
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_top = 70.0
+offset_bottom = -10.0
+offset_left = 10.0
+offset_right = 320.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="LeftPanel"]
+theme_override_constants/separation = 10
+
+[node name="CustomerTitle" type="Label" parent="LeftPanel/VBoxContainer"]
+theme_override_colors/font_color = Color(0.4, 0.3, 0.25, 1)
+theme_override_font_sizes/font_size = 16
+text = "等待中的顾客"
+horizontal_alignment = 1
+
+[node name="CustomerList" type="ScrollContainer" parent="LeftPanel/VBoxContainer"]
+size_flags_vertical = 3
+
+[node name="CustomerContainer" type="VBoxContainer" parent="LeftPanel/CustomerList"]
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="CenterArea" type="Control" parent="."]
+anchor_left = 0.0
+anchor_top = 1.0
+anchor_right = 0.0
+anchor_bottom = 1.0
+offset_left = 330.0
+offset_top = 70.0
+offset_right = -330.0
+offset_bottom = -10.0
+
+[node name="ProjectSlots" type="HBoxContainer" parent="CenterArea"]
+anchor_right = 1.0
+offset_bottom = 200.0
+alignment = 1
+theme_override_constants/separation = 20
+
+[node name="Slot1" type="PanelContainer" parent="CenterArea/ProjectSlots"]
+custom_minimum_size = Vector2(180, 180)
+size_flags_vertical = 4
+
+[node name="SlotContent" type="VBoxContainer" parent="CenterArea/ProjectSlots/Slot1"]
+alignment = 1
+theme_override_constants/separation = 8
+
+[node name="SlotLabel" type="Label" parent="CenterArea/ProjectSlots/Slot1/SlotContent"]
+theme_override_colors/font_color = Color(0.5, 0.45, 0.4, 1)
+text = "工位 1"
+horizontal_alignment = 1
+
+[node name="Slot2" type="PanelContainer" parent="CenterArea/ProjectSlots"]
+custom_minimum_size = Vector2(180, 180)
+size_flags_vertical = 4
+
+[node name="SlotContent" type="VBoxContainer" parent="CenterArea/ProjectSlots/Slot2"]
+alignment = 1
+theme_override_constants/separation = 8
+
+[node name="SlotLabel" type="Label" parent="CenterArea/ProjectSlots/Slot2/SlotContent"]
+theme_override_colors/font_color = Color(0.5, 0.45, 0.4, 1)
+text = "工位 2"
+horizontal_alignment = 1
+
+[node name="Slot3" type="PanelContainer" parent="CenterArea/ProjectSlots"]
+custom_minimum_size = Vector2(180, 180)
+size_flags_vertical = 4
+
+[node name="SlotContent" type="VBoxContainer" parent="CenterArea/ProjectSlots/Slot3"]
+alignment = 1
+theme_override_constants/separation = 8
+
+[node name="SlotLabel" type="Label" parent="CenterArea/ProjectSlots/Slot3/SlotContent"]
+theme_override_colors/font_color = Color(0.5, 0.45, 0.4, 1)
+text = "工位 3"
+horizontal_alignment = 1
+
+[node name="ReviewArea" type="PanelContainer" parent="CenterArea"]
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_top = 220.0
+offset_bottom = -10.0
+
+[node name="ReviewVBox" type="VBoxContainer" parent="CenterArea/ReviewArea"]
+alignment = 1
+theme_override_constants/separation = 8
+
+[node name="ReviewTitle" type="Label" parent="CenterArea/ReviewArea/ReviewVBox"]
+theme_override_colors/font_color = Color(0.4, 0.3, 0.25, 1)
+theme_override_font_sizes/font_size = 16
+text = "评价标签"
+horizontal_alignment = 1
+
+[node name="ReviewTagsContainer" type="HBoxContainer" parent="CenterArea/ReviewArea/ReviewVBox"]
+alignment = 1
+theme_override_constants/separation = 8
+
+[node name="RightPanel" type="PanelContainer" parent="."]
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -320.0
+offset_top = 70.0
+offset_right = -10.0
+offset_bottom = -10.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="RightPanel"]
+theme_override_constants/separation = 10
+
+[node name="SupplyTitle" type="Label" parent="RightPanel/VBoxContainer"]
+theme_override_colors/font_color = Color(0.4, 0.3, 0.25, 1)
+theme_override_font_sizes/font_size = 16
+text = "耗材库存"
+horizontal_alignment = 1
+
+[node name="SupplyList" type="VBoxContainer" parent="RightPanel/VBoxContainer"]
+theme_override_constants/separation = 6
+
+[node name="ShampooRow" type="HBoxContainer" parent="RightPanel/VBoxContainer/SupplyList"]
+theme_override_constants/separation = 8
+
+[node name="ShampooIcon" type="Label" parent="RightPanel/VBoxContainer/SupplyList/ShampooRow"]
+text = "🧴"
+
+[node name="ShampooName" type="Label" parent="RightPanel/VBoxContainer/SupplyList/ShampooRow"]
+size_flags_horizontal = 3
+text = "洗发水"
+
+[node name="ShampooBar" type="ProgressBar" parent="RightPanel/VBoxContainer/SupplyList/ShampooRow"]
+custom_minimum_size = Vector2(80, 12)
+size_flags_horizontal = 3
+value = 100.0
+
+[node name="ConditionerRow" type="HBoxContainer" parent="RightPanel/VBoxContainer/SupplyList"]
+theme_override_constants/separation = 8
+
+[node name="ConditionerIcon" type="Label" parent="RightPanel/VBoxContainer/SupplyList/ConditionerRow"]
+text = "💆"
+
+[node name="ConditionerName" type="Label" parent="RightPanel/VBoxContainer/SupplyList/ConditionerRow"]
+size_flags_horizontal = 3
+text = "护发素"
+
+[node name="ConditionerBar" type="ProgressBar" parent="RightPanel/VBoxContainer/SupplyList/ConditionerRow"]
+custom_minimum_size = Vector2(80, 12)
+size_flags_horizontal = 3
+value = 100.0
+
+[node name="HairColorRow" type="HBoxContainer" parent="RightPanel/VBoxContainer/SupplyList"]
+theme_override_constants/separation = 8
+
+[node name="HairColorIcon" type="Label" parent="RightPanel/VBoxContainer/SupplyList/HairColorRow"]
+text = "🎨"
+
+[node name="HairColorName" type="Label" parent="RightPanel/VBoxContainer/SupplyList/HairColorRow"]
+size_flags_horizontal = 3
+text = "染发剂"
+
+[node name="HairColorBar" type="ProgressBar" parent="RightPanel/VBoxContainer/SupplyList/HairColorRow"]
+custom_minimum_size = Vector2(80, 12)
+size_flags_horizontal = 3
+value = 100.0
+
+[node name="PermRow" type="HBoxContainer" parent="RightPanel/VBoxContainer/SupplyList"]
+theme_override_constants/separation = 8
+
+[node name="PermIcon" type="Label" parent="RightPanel/VBoxContainer/SupplyList/PermRow"]
+text = "🌀"
+
+[node name="PermName" type="Label" parent="RightPanel/VBoxContainer/SupplyList/PermRow"]
+size_flags_horizontal = 3
+text = "烫发液"
+
+[node name="PermBar" type="ProgressBar" parent="RightPanel/VBoxContainer/SupplyList/PermRow"]
+custom_minimum_size = Vector2(80, 12)
+size_flags_horizontal = 3
+value = 100.0
+
+[node name="ItemsTitle" type="Label" parent="RightPanel/VBoxContainer"]
+theme_override_colors/font_color = Color(0.4, 0.3, 0.25, 1)
+theme_override_font_sizes/font_size = 16
+text = "道具"
+horizontal_alignment = 1
+
+[node name="ItemsContainer" type="GridContainer" parent="RightPanel/VBoxContainer"]
+columns = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="ItemSpeedBoost" type="Button" parent="RightPanel/VBoxContainer/ItemsContainer"]
+custom_minimum_size = Vector2(80, 50)
+text = "⚡ 加速"
+
+[node name="ItemSupplyRefill" type="Button" parent="RightPanel/VBoxContainer/ItemsContainer"]
+custom_minimum_size = Vector2(80, 50)
+text = "📦 补货"
+
+[node name="ItemCharm" type="Button" parent="RightPanel/VBoxContainer/ItemsContainer"]
+custom_minimum_size = Vector2(80, 50)
+text = "✨ 魅力"
+
+[node name="ItemTimeFreeze" type="Button" parent="RightPanel/VBoxContainer/ItemsContainer"]
+custom_minimum_size = Vector2(80, 50)
+text = "❄️ 冻结"
+
+[node name="RechargeTitle" type="Label" parent="RightPanel/VBoxContainer"]
+theme_override_colors/font_color = Color(0.4, 0.3, 0.25, 1)
+theme_override_font_sizes/font_size = 16
+text = "充值流水（可拖拽）"
+horizontal_alignment = 1
+
+[node name="RechargeList" type="ScrollContainer" parent="RightPanel/VBoxContainer"]
+size_flags_vertical = 3
+
+[node name="RechargeContainer" type="VBoxContainer" parent="RightPanel/RechargeList"]
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="WarningOverlay" type="CanvasLayer" parent="."]
+visible = false
+
+[node name="WarningFlash" type="ColorRect" parent="WarningOverlay"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(1, 0.3, 0.3, 0.2)
+
+[node name="WarningLabel" type="Label" parent="WarningOverlay"]
+anchor_left = 0.5
+anchor_top = 0.3
+anchor_right = 0.5
+anchor_bottom = 0.3
+offset_left = -200.0
+offset_top = -30.0
+offset_right = 200.0
+offset_bottom = 30.0
+theme_override_colors/font_color = Color(1, 0.2, 0.2, 1)
+theme_override_font_sizes/font_size = 28
+text = "⚠️ 耗材异常警告！"
+horizontal_alignment = 1
+
+[node name="PausePanel" type="PanelContainer" parent="."]
+visible = false
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -150.0
+offset_top = -100.0
+offset_right = 150.0
+offset_bottom = 100.0
+
+[node name="PauseVBox" type="VBoxContainer" parent="PausePanel"]
+alignment = 1
+theme_override_constants/separation = 15
+
+[node name="PauseTitle" type="Label" parent="PausePanel/PauseVBox"]
+theme_override_font_sizes/font_size = 24
+text = "游戏暂停"
+horizontal_alignment = 1
+
+[node name="ResumeButton" type="Button" parent="PausePanel/PauseVBox"]
+text = "继续游戏"
+
+[node name="QuitButton" type="Button" parent="PausePanel/PauseVBox"]
+text = "返回主菜单"

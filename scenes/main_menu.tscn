@@ -1,0 +1,163 @@
+[gd_scene load_steps=2 format=3 uid="uid://bq1x7k2m8c456"]
+
+[ext_resource type="Script" path="res://scripts/ui/main_menu.gd" id="1_mainmenu"]
+
+[node name="MainMenu" type="Control"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_mainmenu")
+
+[node name="Background" type="ColorRect" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.95, 0.92, 0.88, 1)
+
+[node name="TitleLabel" type="Label" parent="."]
+anchor_left = 0.5
+anchor_top = 0.2
+anchor_right = 0.5
+anchor_bottom = 0.2
+offset_left = -300.0
+offset_top = -60.0
+offset_right = 300.0
+offset_bottom = 60.0
+theme_override_colors/font_color = Color(0.5, 0.35, 0.25, 1)
+theme_override_font_sizes/font_size = 48
+text = "美业门店回访调度"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="SubtitleLabel" type="Label" parent="."]
+anchor_left = 0.5
+anchor_top = 0.28
+anchor_right = 0.5
+anchor_bottom = 0.28
+offset_left = -200.0
+offset_top = -20.0
+offset_right = 200.0
+offset_bottom = 20.0
+theme_override_colors/font_color = Color(0.6, 0.5, 0.4, 1)
+theme_override_font_sizes/font_size = 20
+text = "顾客回访调度解谜游戏"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="DifficultyPanel" type="PanelContainer" parent="."]
+anchor_left = 0.5
+anchor_top = 0.4
+anchor_right = 0.5
+anchor_bottom = 0.4
+offset_left = -250.0
+offset_top = -40.0
+offset_right = 250.0
+offset_bottom = 120.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="DifficultyPanel"]
+theme_override_constants/separation = 10
+
+[node name="DifficultyLabel" type="Label" parent="DifficultyPanel/VBoxContainer"]
+theme_override_colors/font_color = Color(0.4, 0.3, 0.25, 1)
+theme_override_font_sizes/font_size = 18
+text = "选择难度"
+horizontal_alignment = 1
+
+[node name="DifficultyButtons" type="HBoxContainer" parent="DifficultyPanel/VBoxContainer"]
+theme_override_constants/separation = 10
+alignment = 1
+
+[node name="EasyButton" type="Button" parent="DifficultyPanel/VBoxContainer/DifficultyButtons"]
+custom_minimum_size = Vector2(100, 40)
+text = "简单"
+
+[node name="NormalButton" type="Button" parent="DifficultyPanel/VBoxContainer/DifficultyButtons"]
+custom_minimum_size = Vector2(100, 40)
+text = "普通"
+
+[node name="HardButton" type="Button" parent="DifficultyPanel/VBoxContainer/DifficultyButtons"]
+custom_minimum_size = Vector2(100, 40)
+text = "困难"
+
+[node name="StartButton" type="Button" parent="."]
+anchor_left = 0.5
+anchor_top = 0.55
+anchor_right = 0.5
+anchor_bottom = 0.55
+offset_left = -100.0
+offset_top = -25.0
+offset_right = 100.0
+offset_bottom = 25.0
+theme_override_font_sizes/font_size = 20
+text = "开始游戏"
+
+[node name="ReplayButton" type="Button" parent="."]
+anchor_left = 0.5
+anchor_top = 0.63
+anchor_right = 0.5
+anchor_bottom = 0.63
+offset_left = -100.0
+offset_top = -25.0
+offset_right = 100.0
+offset_bottom = 25.0
+text = "回放练习"
+
+[node name="HelpButton" type="Button" parent="."]
+anchor_left = 0.5
+anchor_top = 0.71
+anchor_right = 0.5
+anchor_bottom = 0.71
+offset_left = -100.0
+offset_top = -25.0
+offset_right = 100.0
+offset_bottom = 25.0
+text = "游戏说明"
+
+[node name="HighScoreLabel" type="Label" parent="."]
+anchor_left = 0.5
+anchor_top = 0.85
+anchor_right = 0.5
+anchor_bottom = 0.85
+offset_left = -200.0
+offset_top = -15.0
+offset_right = 200.0
+offset_bottom = 15.0
+theme_override_colors/font_color = Color(0.5, 0.4, 0.35, 1)
+theme_override_font_sizes/font_size = 16
+text = "最高分: 0"
+horizontal_alignment = 1
+
+[node name="HelpPanel" type="PanelContainer" parent="."]
+visible = false
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -300.0
+offset_top = -200.0
+offset_right = 300.0
+offset_bottom = 200.0
+
+[node name="HelpContent" type="VBoxContainer" parent="HelpPanel"]
+theme_override_constants/separation = 8
+
+[node name="HelpTitle" type="Label" parent="HelpPanel/HelpContent"]
+theme_override_colors/font_color = Color(0.4, 0.3, 0.25, 1)
+theme_override_font_sizes/font_size = 20
+text = "游戏说明"
+horizontal_alignment = 1
+
+[node name="HelpText" type="Label" parent="HelpPanel/HelpContent"]
+theme_override_colors/font_color = Color(0.3, 0.25, 0.2, 1)
+theme_override_font_sizes/font_size = 14
+autowrap_mode = 3
+text = "欢迎来到美业门店回访调度游戏！
+
+• 拖拽充值流水卡到顾客身上提升满意度
+• 及时处理顾客的项目卡项服务请求
+• 注意观察评价标签的变化
+• 管理耗材库存，应对突发异常
+• 在限时内完成所有项目卡项即可通关
+
+提示：连续成功服务顾客可以获得连击加分！"
+
+[node name="CloseHelpButton" type="Button" parent="HelpPanel/HelpContent"]
+text = "关闭"
