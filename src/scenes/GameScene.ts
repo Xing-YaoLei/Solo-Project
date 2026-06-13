@@ -367,8 +367,34 @@ export class GameScene extends Phaser.Scene {
 
     const daysUntilShortage = consumable.dailyUsage > 0 ? consumable.currentStock / consumable.dailyUsage : 999;
     const canArriveInTime = supplier.leadTime < daysUntilShortage;
+    const shortage = consumable.maxStock - consumable.currentStock;
+    const minOrderFitsCapacity = supplier.minOrderQty <= shortage;
 
-    if (!canArriveInTime) {
+    if (!canArriveInTime && !minOrderFitsCapacity) {
+      const alertText = this.add.text(x, y + 140, '⚠ 交期+容量都不满足', {
+        fontSize: '11px', color: '#d32f2f', fontFamily: 'Arial', fontStyle: 'bold',
+      }).setOrigin(0.5);
+      this.phasePanel.add(alertText);
+      this.tweens.add({
+        targets: alertText,
+        alpha: { from: 1, to: 0.3 },
+        duration: 400,
+        yoyo: true,
+        repeat: -1,
+      });
+    } else if (!minOrderFitsCapacity) {
+      const alertText = this.add.text(x, y + 140, `⚠ 最低起订${supplier.minOrderQty}${consumable.unit}超仓(${shortage})`, {
+        fontSize: '10px', color: '#ff5722', fontFamily: 'Arial',
+      }).setOrigin(0.5);
+      this.phasePanel.add(alertText);
+      this.tweens.add({
+        targets: alertText,
+        alpha: { from: 1, to: 0.3 },
+        duration: 600,
+        yoyo: true,
+        repeat: -1,
+      });
+    } else if (!canArriveInTime) {
       const alertText = this.add.text(x, y + 140, '⚠ 交期可能来不及', {
         fontSize: '11px', color: '#ff5722', fontFamily: 'Arial',
       }).setOrigin(0.5);
@@ -476,8 +502,8 @@ export class GameScene extends Phaser.Scene {
     const shortage = consumable.maxStock - consumable.currentStock;
     const daysUntilShortage = consumable.dailyUsage > 0 ? consumable.currentStock / consumable.dailyUsage : 999;
     const safetyAndLeadTimeNeed = Math.max(0, consumable.safetyStock * 2 - consumable.currentStock + consumable.dailyUsage * supplier.leadTime);
-    const minNeeded = Math.max(supplier.minOrderQty, Math.ceil(safetyAndLeadTimeNeed));
-    const correctQty = Math.min(minNeeded, shortage);
+    const correctQty = Math.max(supplier.minOrderQty, Math.ceil(safetyAndLeadTimeNeed));
+    const hasValidOption = correctQty <= shortage;
 
     this.phasePanel.add(
       this.add.text(width / 2, panelY + 25, `领用操作 - ${consumable.name}`, {
@@ -501,29 +527,59 @@ export class GameScene extends Phaser.Scene {
       );
     });
 
-    this.phasePanel.add(
-      this.add.text(60, panelY + 200, `建议领用量（含安全库存${consumable.safetyStock * 2} + 交期消耗${consumable.dailyUsage * supplier.leadTime} + 满足最低起订${supplier.minOrderQty}）: ${correctQty}${consumable.unit}`, {
-        fontSize: '13px', color: '#ffb74d', fontFamily: 'Arial', fontStyle: 'bold',
-        wordWrap: { width: width - 100 },
-      })
-    );
+    if (hasValidOption) {
+      this.phasePanel.add(
+        this.add.text(60, panelY + 200, `建议领用量（含安全库存${consumable.safetyStock * 2} + 交期消耗${consumable.dailyUsage * supplier.leadTime} + 满足最低起订${supplier.minOrderQty}）: ${correctQty}${consumable.unit}  ✓ 合规`, {
+          fontSize: '13px', color: '#4caf50', fontFamily: 'Arial', fontStyle: 'bold',
+          wordWrap: { width: width - 100 },
+        })
+      );
+    } else {
+      const warnBg = this.add.graphics();
+      warnBg.fillStyle(0xb71c1c, 0.7);
+      warnBg.fillRoundedRect(50, panelY + 190, width - 100, 40, 4);
+      this.phasePanel.add(warnBg);
+      this.phasePanel.add(
+        this.add.text(width / 2, panelY + 210, `⚠ 该供应商无法生成合规记录：最低起订${supplier.minOrderQty}${consumable.unit} > 仓库剩余容量${shortage}${consumable.unit}`, {
+          fontSize: '12px', color: '#ff8a80', fontFamily: 'Arial', fontStyle: 'bold',
+        }).setOrigin(0.5)
+      );
+    }
 
-    const qtyOptions = [
+    const qtyOptions: { label: string; qty: number; recommended?: boolean; warning?: boolean }[] = [
       { label: '少量补货', qty: supplier.minOrderQty },
-      { label: '✓ 安全补货（推荐）', qty: correctQty, recommended: true },
-      { label: '满仓补货', qty: shortage },
-    ].filter((opt) => opt.qty > 0 && opt.qty <= shortage);
+      {
+        label: hasValidOption ? '✓ 安全补货（推荐）' : '✗ 安全目标（超仓）',
+        qty: correctQty,
+        recommended: hasValidOption,
+        warning: !hasValidOption,
+      },
+      { label: '满仓补货', qty: Math.max(1, shortage) },
+    ].filter((opt) => {
+      if (opt.qty <= 0) return false;
+      return true;
+    });
 
     qtyOptions.forEach((opt, i) => {
-      const btn = this.add.text(width / 2 - 120 + i * 120, panelY + 250, `${opt.label}\n${opt.qty}${consumable.unit}`, {
+      const btnColor = opt.recommended
+        ? '#1b5e20'
+        : opt.warning
+          ? '#5d1f1f'
+          : '#2d5f8a';
+      const hoverColor = opt.recommended
+        ? '#2e7d32'
+        : opt.warning
+          ? '#7f2a2a'
+          : '#3a7cb8';
+      const btn = this.add.text(width / 2 - 120 + i * 120, panelY + 255, `${opt.label}\n${opt.qty}${consumable.unit}`, {
         fontSize: '12px', color: '#ffffff', fontFamily: 'Arial',
-        backgroundColor: (opt as any).recommended ? '#1b5e20' : '#2d5f8a',
+        backgroundColor: btnColor,
         padding: { x: 8, y: 6 },
         align: 'center',
       }).setOrigin(0.5).setInteractive({ useHandCursor: true });
 
-      btn.on('pointerover', () => btn.setStyle({ backgroundColor: (opt as any).recommended ? '#2e7d32' : '#3a7cb8' }));
-      btn.on('pointerout', () => btn.setStyle({ backgroundColor: (opt as any).recommended ? '#1b5e20' : '#2d5f8a' }));
+      btn.on('pointerover', () => btn.setStyle({ backgroundColor: hoverColor }));
+      btn.on('pointerout', () => btn.setStyle({ backgroundColor: btnColor }));
       btn.on('pointerdown', () => {
         this.handleRequisition(supplier, consumable, opt.qty, correctQty);
       });
@@ -537,12 +593,15 @@ export class GameScene extends Phaser.Scene {
     qty: number,
     correctQty: number,
   ): void {
-    const isCorrect = qty === correctQty;
+    const shortage = consumable.maxStock - consumable.currentStock;
+    const isCorrect = qty === correctQty && qty <= shortage;
     let errorType: ErrorType | undefined;
 
     if (!isCorrect) {
       if (qty < correctQty) {
         errorType = 'UNDER_ORDER';
+      } else if (qty > shortage) {
+        errorType = 'OVER_ORDER';
       } else {
         errorType = 'OVER_ORDER';
       }
