@@ -209,23 +209,8 @@ export const useGameStore = create<GameState & GameActions>()((set, get) => ({
         return { activeEvent: null, shieldActive: false, eventsHandledSuccess: state.eventsHandledSuccess + 1 }
       }
 
-      const bottlenecks = !correct
-        ? [
-            ...state.bottlenecks,
-            {
-              id: crypto.randomUUID(),
-              sessionId: '',
-              type: 'event-fail' as const,
-              timestamp: Date.now(),
-              duration: 0,
-              description: `事件处理失败: ${eventConfig.type}`,
-            },
-          ]
-        : state.bottlenecks
-
       return {
         activeEvent: null,
-        bottlenecks,
         eventsHandledSuccess: correct ? state.eventsHandledSuccess + 1 : state.eventsHandledSuccess,
         eventsHandledFail: correct ? state.eventsHandledFail : state.eventsHandledFail + 1,
       }

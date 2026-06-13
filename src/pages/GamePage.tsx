@@ -90,8 +90,11 @@ export default function GamePage() {
   const actionTimestamps = useRef<Map<string, number>>(new Map())
   const timerStartedRef = useRef(false)
   const levelStartedRef = useRef(false)
+  const settleInProgressRef = useRef(false)
 
   const handleTimeout = useCallback(() => {
+    if (settleInProgressRef.current) return
+    settleInProgressRef.current = true
     try {
       const session = completeLevel()
       addSession(session)
@@ -104,9 +107,9 @@ export default function GamePage() {
         sessionId: session.id,
       }))
       addBottlenecks(bns)
-      navigate(`/settlement/${levelId}`, { state: { sessionId: session.id } })
+      navigate('/settlement/' + levelId, { state: { sessionId: session.id } })
     } catch {
-      navigate(`/settlement/${levelId}`)
+      navigate('/settlement/' + levelId)
     }
   }, [completeLevel, navigate, levelId, addSession, addTechnicianOutput, addBottlenecks])
 
@@ -124,11 +127,13 @@ export default function GamePage() {
     const config = levels.find((l) => l.id === levelId)
     if (config && !levelStartedRef.current) {
       levelStartedRef.current = true
+      settleInProgressRef.current = false
       resetGame()
       startLevel(config)
       setSelectedTechId(null)
       setSelectedInventoryItems([])
       setPendingInventory(null)
+      setInventoryValidationError(null)
       timerStartedRef.current = false
     }
   }, [levelId, levels, startLevel, resetGame])
@@ -141,10 +146,10 @@ export default function GamePage() {
   }, [phase, currentLevel, timer])
 
   useEffect(() => {
-    if (timer.isRunning) {
+    if (timerStartedRef.current) {
       setTimeRemaining(timer.timeRemaining)
     }
-  }, [timer.timeRemaining, timer.isRunning, setTimeRemaining])
+  }, [timer.timeRemaining, timerStartedRef, setTimeRemaining])
 
   const inventoryTask = currentLevel?.tasks.find((t) => t.type === 'inventory-requisition')
   const requiredItemCount = inventoryTask?.params.itemCount ?? 3
@@ -158,11 +163,10 @@ export default function GamePage() {
     if (!currentLevel) return
 
     if (allRecordsMatched && phase === 'matching') {
-      timer.pause()
       setPhase('inventory')
       addToast('匹配完成！请进行库存领用', 'info')
     }
-  }, [allRecordsMatched, phase, currentLevel, setPhase, addToast, timer])
+  }, [allRecordsMatched, phase, currentLevel, setPhase, addToast])
 
   useEffect(() => {
     if (phase === 'inventory' && pendingInventory === null) {
@@ -185,7 +189,9 @@ export default function GamePage() {
   }, [phase, pendingInventory, records, technicians])
 
   const validateInventorySelection = useCallback(() => {
-    if (!pendingInventory) return { valid: true, message: '' }
+    if (!pendingInventory) {
+      return { valid: false, message: '库存领用信息加载中...' }
+    }
 
     if (selectedInventoryItems.length < requiredItemCount) {
       return { valid: false, message: '还需要选择 ' + (requiredItemCount - selectedInventoryItems.length) + ' 件耗材' }
@@ -209,38 +215,6 @@ export default function GamePage() {
 
     return { valid: true, message: '' }
   }, [pendingInventory, selectedInventoryItems, inventory, requiredItemCount])
-
-  const inventoryDone = useMemo(() => {
-    if (!inventoryTask) return true
-    if (phase === 'inventory') {
-      const validation = validateInventorySelection()
-      return validation.valid
-    }
-    return false
-  }, [phase, inventoryTask, validateInventorySelection])
-
-  useEffect(() => {
-    if (!currentLevel) return
-    if (phase === 'inventory' && inventoryDone) {
-      setPhase('settlement')
-      addToast('库存领用完成！进入结算', 'success')
-      timer.pause()
-      setTimeout(() => {
-        const session = completeLevel()
-        addSession(session)
-        const outputs = useGameStore.getState().technicianOutputs
-        for (const output of outputs) {
-          addTechnicianOutput(output)
-        }
-        const bns = useGameStore.getState().bottlenecks.map((b) => ({
-          ...b,
-          sessionId: session.id,
-        }))
-        addBottlenecks(bns)
-        navigate(`/settlement/${levelId}`, { state: { sessionId: session.id } })
-      }, 1500)
-    }
-  }, [phase, inventoryDone, currentLevel, completeLevel, navigate, levelId, addToast, addSession, addTechnicianOutput, addBottlenecks, setPhase, timer])
 
   const getRequiredCategories = (service: string): string[] => {
     const map: Record<string, string[]> = {
@@ -376,28 +350,36 @@ export default function GamePage() {
   )
 
   const handleProceedToSettlement = useCallback(() => {
+    if (settleInProgressRef.current) return
+
     const validation = validateInventorySelection()
     if (!validation.valid) {
       setInventoryValidationError(validation.message)
       addToast(validation.message, 'error')
       return
     }
+
+    settleInProgressRef.current = true
+    timer.pause()
     setPhase('settlement')
     addToast('库存领用完成！进入结算', 'success')
-    timer.pause()
     setTimeout(() => {
-      const session = completeLevel()
-      addSession(session)
-      const outputs = useGameStore.getState().technicianOutputs
-      for (const output of outputs) {
-        addTechnicianOutput(output)
+      try {
+        const session = completeLevel()
+        addSession(session)
+        const outputs = useGameStore.getState().technicianOutputs
+        for (const output of outputs) {
+          addTechnicianOutput(output)
+        }
+        const bns = useGameStore.getState().bottlenecks.map((b) => ({
+          ...b,
+          sessionId: session.id,
+        }))
+        addBottlenecks(bns)
+        navigate('/settlement/' + levelId, { state: { sessionId: session.id } })
+      } catch {
+        navigate('/settlement/' + levelId)
       }
-      const bns = useGameStore.getState().bottlenecks.map((b) => ({
-        ...b,
-        sessionId: session.id,
-      }))
-      addBottlenecks(bns)
-      navigate('/settlement/' + levelId, { state: { sessionId: session.id } })
     }, 1500)
   }, [validateInventorySelection, setPhase, addToast, completeLevel, addSession, addTechnicianOutput, addBottlenecks, navigate, levelId, timer])
 
