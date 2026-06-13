@@ -14,6 +14,32 @@ def _read_sql(query: str, params: dict | None = None) -> pd.DataFrame:
         return pd.DataFrame(rows, columns=columns)
 
 
+def get_store_list() -> pd.DataFrame:
+    query = """
+        SELECT DISTINCT store_id,
+               (SELECT COUNT(*) FROM appointments a WHERE a.store_id = s.store_id) AS appointment_count,
+               (SELECT COUNT(*) FROM cashier_records cr WHERE cr.store_id = s.store_id) AS cashier_count
+        FROM (
+            SELECT store_id FROM appointments
+            UNION
+            SELECT store_id FROM inventory
+            UNION
+            SELECT store_id FROM cashier_records
+            UNION
+            SELECT store_id FROM users
+        ) s
+        ORDER BY store_id
+    """
+    return _read_sql(query)
+
+
+def get_store_name_map() -> dict:
+    df = get_store_list()
+    if df.empty:
+        return {}
+    return {row["store_id"]: f"门店-{row['store_id']}" for _, row in df.iterrows()}
+
+
 def get_appointments(store_id: str, start_date: datetime | None = None, end_date: datetime | None = None) -> pd.DataFrame:
     query = """
         SELECT a.*,
@@ -41,6 +67,34 @@ def get_appointments(store_id: str, start_date: datetime | None = None, end_date
         query += " AND a.appointment_time <= :end_date"
         params["end_date"] = end_date
     query += " ORDER BY a.appointment_time"
+    return _read_sql(query, params)
+
+
+def get_all_appointments_raw(store_id: str, start_date: datetime | None = None, end_date: datetime | None = None) -> pd.DataFrame:
+    query = """
+        SELECT a.*,
+               cr.id AS cashier_record_id,
+               cr.amount AS cashier_amount,
+               cr.payment_method,
+               cr.transaction_time,
+               cr.transaction_type,
+               cr.remark AS cashier_remark,
+               rr.rating AS review_rating,
+               rr.review_content,
+               rr.reviewed_at
+        FROM appointments a
+        LEFT JOIN cashier_records cr ON cr.appointment_id = a.id
+        LEFT JOIN review_records rr ON rr.appointment_id = a.id
+        WHERE a.store_id = :store_id
+    """
+    params: dict = {"store_id": store_id}
+    if start_date:
+        query += " AND a.appointment_time >= :start_date"
+        params["start_date"] = start_date
+    if end_date:
+        query += " AND a.appointment_time <= :end_date"
+        params["end_date"] = end_date
+    query += " ORDER BY a.customer_id, a.appointment_time"
     return _read_sql(query, params)
 
 
@@ -166,8 +220,34 @@ def get_attendance_summary(store_id: str, start_date: datetime | None = None, en
 
 def get_anomaly_reminders(store_id: str) -> pd.DataFrame:
     query = """
-        SELECT * FROM appointments
-        WHERE store_id = :store_id AND is_anomaly = TRUE
-        ORDER BY appointment_time
+        SELECT a.*,
+               cr.id AS cashier_record_id,
+               cr.amount AS cashier_amount,
+               cr.transaction_time,
+               cr.transaction_type,
+               cr.payment_method,
+               rr.rating AS review_rating,
+               rr.reviewed_at
+        FROM appointments a
+        LEFT JOIN cashier_records cr ON cr.appointment_id = a.id
+        LEFT JOIN review_records rr ON rr.appointment_id = a.id
+        WHERE a.store_id = :store_id
+        ORDER BY a.appointment_time
     """
     return _read_sql(query, {"store_id": store_id})
+
+
+def get_cashier_by_appointment(store_id: str, appointment_ids: list[int]) -> pd.DataFrame:
+    if not appointment_ids:
+        return pd.DataFrame()
+    query = f"""
+        SELECT cr.*, a.customer_name, a.service_item, a.appointment_time
+        FROM cashier_records cr
+        LEFT JOIN appointments a ON cr.appointment_id = a.id
+        WHERE cr.store_id = :store_id AND cr.appointment_id IN ({','.join(':aid_' + str(i) for i in range(len(appointment_ids)))})
+        ORDER BY cr.transaction_time
+    """
+    params: dict = {"store_id": store_id}
+    for i, aid in enumerate(appointment_ids):
+        params[f"aid_{i}"] = aid
+    return _read_sql(query, params)

@@ -1,6 +1,8 @@
 import dash
+import pandas as pd
 from dash import Input, Output, State, dcc, html
-from flask import session
+from dash.exceptions import PreventUpdate
+from flask import jsonify, redirect, request, session
 
 from app.charts import (
     build_anomaly_reminder_chart,
@@ -8,7 +10,9 @@ from app.charts import (
     build_conflict_trend_chart,
     build_reschedule_composition_chart,
 )
+from db.queries import get_all_appointments_raw, get_store_list
 from services.risk_analysis import (
+    ATTENDANCE_CALIBER_DEFINITION,
     compute_anomaly_reminders,
     compute_attendance_summary,
     compute_conflict_trend,
@@ -16,9 +20,17 @@ from services.risk_analysis import (
     get_refresh_timestamp,
 )
 from utils.auth import (
+    ROLE_HIERARCHY,
+    ROLE_LABELS,
+    clear_user_session,
+    create_share_link,
+    get_current_username,
+    get_current_user_role,
+    get_share_info,
     get_visible_store_id,
     has_permission,
-    require_permission,
+    list_all_roles,
+    set_user_session,
     validate_share_access,
 )
 from utils.csv_export import (
@@ -35,6 +47,7 @@ app = dash.Dash(
     __name__,
     external_stylesheets=external_stylesheets,
     suppress_callback_exceptions=True,
+    serve_locally=True,
 )
 app.title = "美业门店顾客预约风险监测"
 server = app.server
@@ -42,45 +55,197 @@ server = app.server
 server.secret_key = "change-me-in-production"
 
 
+@server.route("/api/login", methods=["POST"])
+def api_login():
+    data = request.get_json(silent=True) or request.form
+    username = (data.get("username") or "demo_user").strip()
+    role = (data.get("role") or "viewer").strip()
+    store_id = data.get("store_id") or None
+    set_user_session(username, role, store_id)
+    return jsonify({
+        "success": True,
+        "username": username,
+        "role": role,
+        "role_label": ROLE_LABELS.get(role, role),
+        "store_id": store_id,
+    })
+
+
+@server.route("/api/logout", methods=["POST", "GET"])
+def api_logout():
+    clear_user_session()
+    return redirect("/")
+
+
+@server.route("/api/share/create", methods=["POST"])
+def api_create_share():
+    data = request.get_json(silent=True) or request.form
+    target_role = (data.get("target_role") or "viewer").strip()
+    target_store_id = data.get("store_id") or None
+    expires = int(data.get("expires_minutes") or 60)
+    return jsonify(create_share_link(target_role, target_store_id, expires_minutes=expires))
+
+
+@server.route("/api/share/info", methods=["GET"])
+def api_share_info():
+    token = request.args.get("share_token") or ""
+    info = get_share_info(token)
+    return jsonify({"success": bool(info), **(info or {})})
+
+
+@server.route("/api/roles", methods=["GET"])
+def api_roles():
+    return jsonify({"roles": list_all_roles()})
+
+
+@server.route("/api/me", methods=["GET"])
+def api_me():
+    return jsonify({
+        "username": get_current_username(),
+        "role": get_current_user_role(),
+        "role_label": ROLE_LABELS.get(get_current_user_role(), get_current_user_role()),
+        "store_id": session.get("store_id"),
+        "permissions": sorted(list(utils.auth.ROLE_PERMISSIONS.get(get_current_user_role(), set()))),
+        "share_context": session.get("share_context"),
+    })
+
+
+import utils.auth  # noqa: E402,F811
+
+
+@server.before_request
+def enforce_role_on_share():
+    share_token = request.args.get("share_token")
+    if share_token and request.path == "/":
+        if not validate_share_access(share_token):
+            from flask import abort
+            abort(403, description=f"分享链接无效或权限受限（token: {share_token[:8]}...）")
+
+
 def _render_download_buttons() -> html.Div:
+    can_export = has_permission("export_csv")
+    base_btn_cls = "btn-outline-primary"
+    warn_btn_cls = "btn-outline-warning"
+    danger_btn_cls = "btn-outline-danger"
+    disabled = {} if can_export else {"disabled": True, "style": {"cursor": "not-allowed", "opacity": 0.6}}
+    title_suffix = "" if can_export else " (当前角色无权限)"
+
     return html.Div([
-        html.Button("下载冲突趋势CSV", id="btn-dl-conflict", n_clicks=0,
-                     className="btn btn-outline-primary btn-sm me-2"),
-        html.Button("下载改约构成CSV", id="btn-dl-reschedule", n_clicks=0,
-                     className="btn btn-outline-primary btn-sm me-2"),
-        html.Button("下载到场明细CSV", id="btn-dl-attendance", n_clicks=0,
-                     className="btn btn-outline-primary btn-sm me-2"),
-        html.Button("下载异常标注CSV", id="btn-dl-anomaly", n_clicks=0,
-                     className="btn btn-outline-warning btn-sm me-2"),
-        html.Button("下载完整报告", id="btn-dl-full", n_clicks=0,
-                     className="btn btn-outline-danger btn-sm"),
+        html.Button(f"下载冲突趋势CSV{title_suffix}", id="btn-dl-conflict", n_clicks=0,
+                     className=f"btn {base_btn_cls} btn-sm me-2", **disabled),
+        html.Button(f"下载改约构成CSV{title_suffix}", id="btn-dl-reschedule", n_clicks=0,
+                     className=f"btn {base_btn_cls} btn-sm me-2", **disabled),
+        html.Button(f"下载到场明细CSV{title_suffix}", id="btn-dl-attendance", n_clicks=0,
+                     className=f"btn {base_btn_cls} btn-sm me-2", **disabled),
+        html.Button(f"下载异常标注CSV{title_suffix}", id="btn-dl-anomaly", n_clicks=0,
+                     className=f"btn {warn_btn_cls} btn-sm me-2", **disabled),
+        html.Button(f"下载完整报告{title_suffix}", id="btn-dl-full", n_clicks=0,
+                     className=f"btn {danger_btn_cls} btn-sm", **disabled),
     ], style={"marginBottom": "16px"})
 
 
+def _render_share_panel() -> html.Div:
+    can_share = has_permission("share_view")
+    role_options = []
+    for role, label in ROLE_LABELS.items():
+        if ROLE_HIERARCHY.get(role, 99) <= ROLE_HIERARCHY.get(get_current_user_role(), 0):
+            role_options.append({"label": f"{label}（{role}）", "value": role})
+
+    share_disabled = {} if can_share else {"disabled": True, "style": {"opacity": 0.6}}
+    title = "创建分享视图（店长及以上可分享）" if can_share else "分享视图（当前角色无分享权限）"
+
+    return html.Div(className="card p-3 mb-3", children=[
+        html.H6(title, className="mb-2"),
+        html.Div(className="row g-2", children=[
+            html.Div(className="col-md-4", children=[
+                html.Label("目标角色", className="form-label form-label-sm"),
+                dcc.Dropdown(id="share-role-select", options=role_options,
+                             value="viewer", className="form-select form-select-sm",
+                             disabled=not can_share),
+            ]),
+            html.Div(className="col-md-3", children=[
+                html.Label("有效期(分钟)", className="form-label form-label-sm"),
+                dcc.Input(id="share-expires", type="number", value=60, min=5, max=10080,
+                          className="form-control form-control-sm"),
+            ]),
+            html.Div(className="col-md-2 d-flex align-items-end", children=[
+                html.Button("生成分享链接", id="btn-create-share", n_clicks=0,
+                            className="btn btn-sm btn-success", **share_disabled),
+            ]),
+            html.Div(className="col-md-3 d-flex align-items-end", children=[
+                html.Span(id="share-result", className="text-success small", style={"wordBreak": "break-all"}),
+            ]),
+        ]),
+    ])
+
+
+def _render_login_panel() -> html.Div:
+    return html.Div(className="card p-3 mb-3", children=[
+        html.H6("角色会话切换（演示用）", className="mb-2"),
+        html.Div(className="row g-2", children=[
+            html.Div(className="col-md-3", children=[
+                html.Label("用户名", className="form-label form-label-sm"),
+                dcc.Input(id="login-username", type="text", value="demo_manager",
+                          className="form-control form-control-sm"),
+            ]),
+            html.Div(className="col-md-3", children=[
+                html.Label("角色", className="form-label form-label-sm"),
+                dcc.Dropdown(id="login-role-select",
+                             options=[
+                                 {"label": "管理员(admin)", "value": "admin"},
+                                 {"label": "店长(store_manager)", "value": "store_manager"},
+                                 {"label": "员工(staff)", "value": "staff"},
+                                 {"label": "查看者(viewer)", "value": "viewer"},
+                             ],
+                             value="store_manager",
+                             className="form-select form-select-sm"),
+            ]),
+            html.Div(className="col-md-3", children=[
+                html.Label("默认门店", className="form-label form-label-sm"),
+                dcc.Input(id="login-store-id", type="text", value="S001",
+                          className="form-control form-control-sm"),
+            ]),
+            html.Div(className="col-md-3 d-flex align-items-end gap-2", children=[
+                html.Button("登录", id="btn-login", n_clicks=0, className="btn btn-sm btn-primary flex-grow-1"),
+                html.Button("退出", id="btn-logout", n_clicks=0, className="btn btn-sm btn-outline-secondary"),
+            ]),
+        ]),
+        html.Div(id="login-status", className="mt-2 small text-muted"),
+    ])
+
+
 def _render_permission_denied(msg: str = "权限不足") -> html.Div:
-    return html.Div([
-        html.H3(msg, className="text-danger"),
-        html.P("您当前角色无权查看此内容，请联系管理员。"),
+    return html.Div(className="card p-5 text-center", children=[
+        html.H3(msg, className="text-danger mb-3"),
+        html.P("您当前角色无权查看此内容或分享链接已失效，请使用有权限的账号登录。"),
+        html.A("返回首页", href="/", className="btn btn-secondary mt-3"),
     ])
 
 
 app.layout = html.Div([
-    dcc.Store(id="store-id-store", storage_type="session"),
-    dcc.Store(id="share-token-store", storage_type="session"),
+    dcc.Location(id="app-location", refresh=False),
+    dcc.Store(id="store-options-store", storage_type="memory"),
+    dcc.Store(id="selected-store-holder", storage_type="session"),
+    dcc.Interval(id="poll-refresh", interval=60000, n_intervals=0),
+    dcc.Store(id="share-token-from-url"),
 
     html.Nav(className="navbar navbar-dark bg-dark px-3", children=[
         html.Span("美业门店顾客预约风险监测", className="navbar-brand mb-0 h5"),
-        html.Div([
-            html.Span(id="user-role-badge", className="badge bg-light text-dark me-2"),
+        html.Div(className="d-flex align-items-center gap-3", children=[
+            html.Span(id="user-role-badge", className="badge bg-light text-dark"),
+            html.Span(id="store-badge", className="badge bg-secondary"),
             html.Span(id="last-refresh-time", className="text-light", style={"fontSize": "13px"}),
-        ], className="d-flex align-items-center"),
+        ]),
     ]),
 
     html.Div(className="container-fluid p-3", children=[
+        _render_login_panel(),
+        _render_share_panel(),
+
         html.Div(className="row mb-3", children=[
             html.Div(className="col-md-3", children=[
                 html.Label("选择门店", className="form-label"),
-                dcc.Dropdown(id="store-selector", placeholder="选择门店", className="form-select"),
+                dcc.Dropdown(id="store-selector", placeholder="加载门店中...", className="form-select"),
             ]),
             html.Div(className="col-md-3", children=[
                 html.Label("时间范围", className="form-label"),
@@ -115,8 +280,9 @@ app.layout = html.Div([
         html.Div(className="row mt-3", children=[
             html.Div(className="col-12", children=[
                 html.Div(className="card p-3", children=[
-                    html.H5("指标定义说明（到场率口径）", className="mb-2"),
-                    html.Table(id="caliber-definition-table", className="table table-sm table-bordered"),
+                    html.H5("指标定义说明（到场率口径 + 追溯路径）", className="mb-2"),
+                    html.Table(id="caliber-definition-table",
+                               className="table table-sm table-bordered table-hover"),
                 ]),
             ]),
         ]),
@@ -130,6 +296,46 @@ app.layout = html.Div([
 ])
 
 
+def _fetch_store_options() -> list[dict]:
+    try:
+        df = get_store_list()
+    except Exception:
+        df = pd.DataFrame()
+    if df.empty:
+        return [
+            {"label": "S001 旗舰店(演示)", "value": "S001"},
+            {"label": "S002 朝阳店(演示)", "value": "S002"},
+        ]
+    opts = []
+    for _, r in df.iterrows():
+        sid = r["store_id"]
+        label = f"{sid}（{int(r.get('appointment_count') or 0)}条预约）"
+        opts.append({"label": label, "value": sid})
+    return opts
+
+
+@app.callback(
+    [Output("store-selector", "options"), Output("store-selector", "placeholder")],
+    [Input("app-location", "pathname"), Input("btn-login", "n_clicks")],
+)
+def load_store_options(_pathname, _n):
+    opts = _fetch_store_options()
+    placeholder = f"请选择门店（共 {len(opts)} 个门店）"
+    return opts, placeholder
+
+
+@app.callback(
+    Output("selected-store-holder", "data"),
+    [Input("store-selector", "value")],
+    [State("login-store-id", "value")],
+    prevent_initial_call=False,
+)
+def sync_store_selection(selected, login_store):
+    if selected:
+        return {"value": selected}
+    return {"value": login_store or "S001"}
+
+
 @app.callback(
     [
         Output("conflict-trend-chart", "children"),
@@ -137,22 +343,43 @@ app.layout = html.Div([
         Output("attendance-detail-chart", "children"),
         Output("anomaly-reminder-chart", "children"),
         Output("last-refresh-time", "children"),
+        Output("store-badge", "children"),
         Output("user-role-badge", "children"),
         Output("caliber-definition-table", "children"),
+        Output("download-section", "children"),
+        Output("refresh-status", "children"),
     ],
     [
         Input("btn-refresh", "n_clicks"),
         Input("store-selector", "value"),
+        Input("poll-refresh", "n_intervals"),
+        Input("selected-store-holder", "modified_timestamp"),
     ],
-    [State("date-range", "start_date"), State("date-range", "end_date")],
+    [State("selected-store-holder", "data"), State("login-store-id", "value")],
 )
-def update_dashboard(n_clicks, store_id, start_date, end_date):
-    from datetime import datetime as dt
+def update_dashboard(refresh_clicks, selected_store, _poll, _ts_mod, holder_data, login_store_default):
+    role = get_current_user_role()
+    role_label = ROLE_LABELS.get(role, role)
+    username = get_current_username() or "未登录"
+    user_badge = f"{username} · {role_label}"
 
-    visible_store = get_visible_store_id(store_id)
-    if store_id and visible_store is None:
-        denied = _render_permission_denied()
-        return denied, denied, denied, denied, "", "无权限", []
+    requested = None
+    if isinstance(holder_data, dict) and holder_data.get("value"):
+        requested = holder_data["value"]
+    elif selected_store:
+        requested = selected_store
+    else:
+        requested = login_store_default or "S001"
+
+    visible_store = get_visible_store_id(requested)
+    if requested and visible_store is None:
+        denied = _render_permission_denied(
+            f"角色「{role_label}」无权访问门店「{requested}」"
+        )
+        return (
+            denied, denied, denied, denied, "",
+            f"门店受限", user_badge, [], _render_download_buttons(), "权限校验不通过"
+        )
 
     conflict_result = compute_conflict_trend(store_id=visible_store)
     reschedule_result = compute_reschedule_composition(store_id=visible_store)
@@ -160,48 +387,149 @@ def update_dashboard(n_clicks, store_id, start_date, end_date):
     anomaly_result = compute_anomaly_reminders(store_id=visible_store)
     refresh_time = get_refresh_timestamp()
 
-    role = session.get("user_role", "viewer")
-    role_labels = {"admin": "管理员", "store_manager": "店长", "staff": "员工", "viewer": "查看者"}
-
     conflict_chart = build_conflict_trend_chart(conflict_result["data"], conflict_result["caliber"])
     reschedule_chart = build_reschedule_composition_chart(reschedule_result["data"], reschedule_result["caliber"])
     attendance_chart = build_attendance_detail_chart(
         attendance_result["data"], attendance_result.get("daily_rates", []), attendance_result["caliber"]
     )
-    anomaly_chart = build_anomaly_reminder_chart(
-        anomaly_result["data"], anomaly_result.get("breakdown", []), anomaly_result["caliber"]
-    )
+    anomaly_chart = _build_anomaly_enhanced(anomaly_result)
 
-    from services.risk_analysis import ATTENDANCE_CALIBER_DEFINITION
+    store_badge = f"门店: {visible_store}" if visible_store else "门店: 未指定"
+
     caliber_rows = [
-        html.Thead(html.Tr([html.Th("指标名称"), html.Th("口径定义")])),
+        html.Thead(html.Tr([html.Th("指标名称"), html.Th("口径定义 / 追溯路径")])),
         html.Tbody([
             html.Tr([html.Td(k), html.Td(v)]) for k, v in ATTENDANCE_CALIBER_DEFINITION.items()
         ]),
     ]
+
+    status_text = "最近刷新: " + refresh_time
 
     return (
         conflict_chart,
         reschedule_chart,
         attendance_chart,
         anomaly_chart,
-        f"最近刷新: {refresh_time}",
-        role_labels.get(role, role),
+        status_text,
+        store_badge,
+        user_badge,
         caliber_rows,
+        _render_download_buttons(),
+        status_text,
     )
+
+
+def _build_anomaly_enhanced(anomaly_result: dict) -> html.Div:
+    records = anomaly_result.get("data") or []
+    breakdown = anomaly_result.get("breakdown") or []
+    caliber = anomaly_result.get("caliber") or {}
+
+    import plotly.graph_objects as go
+
+    table_headers = [
+        "顾客", "服务项目", "预约时间", "异常原因", "异常详情",
+        "改约次数", "到场状态", "收银ID", "金额", "支付方式", "评分",
+    ]
+
+    rows = []
+    for r in records:
+        rows.append(html.Tr([
+            html.Td(str(r.get("customer_name", ""))),
+            html.Td(str(r.get("service_item", ""))),
+            html.Td(str(r.get("appointment_time", ""))[:16]),
+            html.Td(str(r.get("anomaly_reason", "")), style={"color": "#d63031", "fontWeight": 600}),
+            html.Td(str(r.get("anomaly_detail", ""))[:40], title=str(r.get("anomaly_detail", ""))),
+            html.Td(str(r.get("reschedule_count", 0))),
+            html.Td(str(r.get("attendance_status", ""))),
+            html.Td(str(r.get("cashier_record_id", "")),
+                    title=f"追溯: SELECT * FROM cashier_records WHERE id={r.get('cashier_record_id')}"),
+            html.Td(str(r.get("cashier_amount", ""))),
+            html.Td(str(r.get("payment_method", ""))),
+            html.Td(str(r.get("review_rating", ""))),
+        ]))
+
+    if not rows:
+        rows.append(html.Tr(html.Td("（当前门店暂无异常记录，或数据未初始化）", colSpan=len(table_headers))))
+
+    table_component = html.Table(
+        [html.Thead(html.Tr([html.Th(h) for h in table_headers]))] +
+        [html.Tbody(rows)],
+        style={"width": "100%", "borderCollapse": "collapse", "fontSize": "12px"},
+        className="table table-sm table-bordered table-hover",
+    )
+
+    breakdown_chart = dcc.Graph()
+    if breakdown:
+        fig = go.Figure()
+        fig.add_trace(go.Bar(
+            x=[b["reason"] for b in breakdown],
+            y=[b["count"] for b in breakdown],
+            marker_color=["#e17055", "#d63031", "#fdcb6e", "#6c5ce7"],
+        ))
+        fig.update_layout(title="异常原因分布", template="plotly_white", height=240,
+                          xaxis_title="异常原因", yaxis_title="数量", margin=dict(l=30, r=10, t=40, b=120),
+                          xaxis_tickangle=-15)
+        breakdown_chart = dcc.Graph(figure=fig)
+    else:
+        empty = go.Figure()
+        empty.add_annotation(text="暂无异常数据", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False)
+        empty.update_layout(title="异常原因分布", height=240)
+        breakdown_chart = dcc.Graph(figure=empty)
+
+    calibers_html = html.Div([
+        html.Small(f"口径: {caliber.get('异常标注', '')}"),
+        html.Br(),
+        html.Small(className="text-muted",
+                   children="可追溯字段: cashier_record_id → 收银流水主键; review_rating → 点评表评分"),
+    ])
+
+    return html.Div([
+        html.H4("提醒名单异常标注", style={"fontSize": "16px", "marginBottom": "8px"}),
+        calibers_html,
+        html.Hr(style={"margin": "8px 0"}),
+        breakdown_chart,
+        html.Details([
+            html.Summary(f"异常名单明细 ({len(records)} 条，含收银流水追溯字段)",
+                         style={"cursor": "pointer", "fontSize": "13px", "margin": "8px 0"}),
+            html.Div(table_component, style={"maxHeight": "320px", "overflowY": "auto"}),
+        ], open=True),
+    ])
+
+
+def _get_attendance_trace(store_id: str | None) -> list[dict]:
+    if not store_id:
+        return []
+    try:
+        df = get_all_appointments_raw(store_id)
+    except Exception:
+        return []
+    if df.empty:
+        return []
+    cols = [
+        "id", "cashier_record_id", "amount", "payment_method",
+        "transaction_time", "transaction_type", "review_rating", "reviewed_at",
+    ]
+    present = [c for c in cols if c in df.columns]
+    df = df[present].rename(columns={
+        "id": "appointment_id",
+        "amount": "cashier_amount",
+    }).where(pd.notna(df[present]), None)
+    return df.to_dict("records")
 
 
 @app.callback(
     Output("download-conflict", "data"),
     Input("btn-dl-conflict", "n_clicks"),
-    State("store-selector", "value"),
+    [State("store-selector", "value"), State("selected-store-holder", "data")],
     prevent_initial_call=True,
 )
-def download_conflict_csv(n_clicks, store_id):
+def download_conflict_csv(n_clicks, selected, holder):
     if not has_permission("export_csv"):
-        return dash.no_update
-    visible_store = get_visible_store_id(store_id)
-    result = compute_conflict_trend(store_id=visible_store)
+        raise PreventUpdate
+    store_id = get_visible_store_id(
+        (holder or {}).get("value") if isinstance(holder, dict) else selected
+    )
+    result = compute_conflict_trend(store_id=store_id)
     content = export_conflict_trend_csv(result["data"], result["caliber"])
     return dict(content=content, filename="冲突检测趋势.csv", type="text/csv")
 
@@ -209,14 +537,16 @@ def download_conflict_csv(n_clicks, store_id):
 @app.callback(
     Output("download-reschedule", "data"),
     Input("btn-dl-reschedule", "n_clicks"),
-    State("store-selector", "value"),
+    [State("store-selector", "value"), State("selected-store-holder", "data")],
     prevent_initial_call=True,
 )
-def download_reschedule_csv(n_clicks, store_id):
+def download_reschedule_csv(n_clicks, selected, holder):
     if not has_permission("export_csv"):
-        return dash.no_update
-    visible_store = get_visible_store_id(store_id)
-    result = compute_reschedule_composition(store_id=visible_store)
+        raise PreventUpdate
+    store_id = get_visible_store_id(
+        (holder or {}).get("value") if isinstance(holder, dict) else selected
+    )
+    result = compute_reschedule_composition(store_id=store_id)
     content = export_reschedule_composition_csv(result["data"], result["caliber"])
     return dict(content=content, filename="改约记录构成.csv", type="text/csv")
 
@@ -224,48 +554,59 @@ def download_reschedule_csv(n_clicks, store_id):
 @app.callback(
     Output("download-attendance", "data"),
     Input("btn-dl-attendance", "n_clicks"),
-    State("store-selector", "value"),
+    [State("store-selector", "value"), State("selected-store-holder", "data")],
     prevent_initial_call=True,
 )
-def download_attendance_csv(n_clicks, store_id):
+def download_attendance_csv(n_clicks, selected, holder):
     if not has_permission("export_csv"):
-        return dash.no_update
-    visible_store = get_visible_store_id(store_id)
-    result = compute_attendance_summary(store_id=visible_store)
-    content = export_attendance_detail_csv(result["data"], result.get("daily_rates", []), result["caliber"])
+        raise PreventUpdate
+    store_id = get_visible_store_id(
+        (holder or {}).get("value") if isinstance(holder, dict) else selected
+    )
+    result = compute_attendance_summary(store_id=store_id)
+    trace = _get_attendance_trace(store_id)
+    content = export_attendance_detail_csv(
+        result["data"], result.get("daily_rates", []), result["caliber"], trace_rows=trace
+    )
     return dict(content=content, filename="到场状态明细.csv", type="text/csv")
 
 
 @app.callback(
     Output("download-anomaly", "data"),
     Input("btn-dl-anomaly", "n_clicks"),
-    State("store-selector", "value"),
+    [State("store-selector", "value"), State("selected-store-holder", "data")],
     prevent_initial_call=True,
 )
-def download_anomaly_csv(n_clicks, store_id):
+def download_anomaly_csv(n_clicks, selected, holder):
     if not has_permission("export_csv"):
-        return dash.no_update
-    visible_store = get_visible_store_id(store_id)
-    result = compute_anomaly_reminders(store_id=visible_store)
-    content = export_anomaly_reminder_csv(result["data"], result.get("breakdown", []), result["caliber"])
+        raise PreventUpdate
+    store_id = get_visible_store_id(
+        (holder or {}).get("value") if isinstance(holder, dict) else selected
+    )
+    result = compute_anomaly_reminders(store_id=store_id)
+    content = export_anomaly_reminder_csv(
+        result["data"], result.get("breakdown", []), result["caliber"]
+    )
     return dict(content=content, filename="提醒名单异常标注.csv", type="text/csv")
 
 
 @app.callback(
     Output("download-full", "data"),
     Input("btn-dl-full", "n_clicks"),
-    State("store-selector", "value"),
+    [State("store-selector", "value"), State("selected-store-holder", "data")],
     prevent_initial_call=True,
 )
-def download_full_csv(n_clicks, store_id):
+def download_full_csv(n_clicks, selected, holder):
     if not has_permission("export_csv"):
-        return dash.no_update
-    visible_store = get_visible_store_id(store_id)
-
-    conflict = compute_conflict_trend(store_id=visible_store)
-    reschedule = compute_reschedule_composition(store_id=visible_store)
-    attendance = compute_attendance_summary(store_id=visible_store)
-    anomaly = compute_anomaly_reminders(store_id=visible_store)
+        raise PreventUpdate
+    store_id = get_visible_store_id(
+        (holder or {}).get("value") if isinstance(holder, dict) else selected
+    )
+    conflict = compute_conflict_trend(store_id=store_id)
+    reschedule = compute_reschedule_composition(store_id=store_id)
+    attendance = compute_attendance_summary(store_id=store_id)
+    anomaly = compute_anomaly_reminders(store_id=store_id)
+    trace = _get_attendance_trace(store_id)
 
     content = export_full_report_csv(
         conflict_data=conflict["data"],
@@ -278,16 +619,84 @@ def download_full_csv(n_clicks, store_id):
         anomaly_data=anomaly["data"],
         anomaly_breakdown=anomaly.get("breakdown", []),
         anomaly_caliber=anomaly["caliber"],
+        attendance_trace=trace,
     )
     return dict(content=content, filename="预约风险监测完整报告.csv", type="text/csv")
 
 
-@server.before_request
-def enforce_role_on_share():
-    from flask import request
+@app.callback(
+    Output("login-status", "children"),
+    [Input("btn-login", "n_clicks"), Input("btn-logout", "n_clicks")],
+    [State("login-username", "value"),
+     State("login-role-select", "value"),
+     State("login-store-id", "value")],
+    prevent_initial_call=False,
+)
+def handle_login_actions(login_clicks, logout_clicks, username, role, store_id):
+    ctx = dash.callback_context
+    if not ctx.triggered:
+        return (f"当前: {get_current_username() or '未登录'} "
+                f"/ {ROLE_LABELS.get(get_current_user_role(), 'viewer')}")
+    trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
+    if trigger_id == "btn-logout":
+        clear_user_session()
+        return "已退出登录，切换为匿名查看者角色"
+    if trigger_id == "btn-login":
+        set_user_session(username or "demo", role or "viewer", store_id)
+        return (f"已登录: {username} / {ROLE_LABELS.get(role, role)}"
+                f" / 默认门店: {store_id}")
+    return ""
 
-    share_token = request.args.get("share_token")
-    if share_token:
-        if not validate_share_access(share_token):
-            from flask import abort
-            abort(403)
+
+@app.callback(
+    Output("share-result", "children"),
+    Input("btn-create-share", "n_clicks"),
+    [State("share-role-select", "value"),
+     State("share-expires", "value"),
+     State("store-selector", "value"),
+     State("selected-store-holder", "data")],
+    prevent_initial_call=True,
+)
+def handle_create_share(n_clicks, target_role, expires, store_value, holder):
+    if not has_permission("share_view"):
+        return html.Span("当前角色无分享权限", className="text-danger")
+    target_store = (holder or {}).get("value") if isinstance(holder, dict) else store_value
+    target_store = get_visible_store_id(target_store)
+    try:
+        url = request.host_url.rstrip("/") + "/"
+        import hashlib, secrets, time
+        token = hashlib.sha256(f"{secrets.token_urlsafe(16)}{time.time()}".encode()).hexdigest()[:24]
+        from datetime import datetime, timedelta
+        expires_dt = datetime.utcnow() + timedelta(minutes=int(expires or 60))
+        from utils.auth import _share_token_store
+        _share_token_store[token] = {
+            "token": token,
+            "role": target_role,
+            "store_id": target_store,
+            "expires_at": expires_dt.isoformat(),
+            "created_at": datetime.utcnow().isoformat(),
+            "created_by": get_current_username(),
+            "owner_role": get_current_user_role(),
+            "permissions": sorted(utils.auth.ROLE_PERMISSIONS.get(target_role, set())),
+        }
+        share_url = f"{url}?share_token={token}"
+        labels = [utils.auth.PERMISSION_LABELS.get(p, p)
+                  for p in utils.auth.ROLE_PERMISSIONS.get(target_role, set())]
+        return html.Div([
+            html.Div([
+                html.Strong("分享链接："),
+                dcc.Input(value=share_url, readOnly=True, style={"width": "100%"}),
+            ]),
+            html.Div(className="text-muted small", children=[
+                f"有效期至 {expires_dt.strftime('%Y-%m-%d %H:%M UTC')}; "
+                f"角色: {ROLE_LABELS.get(target_role, target_role)}; "
+                f"权限: {', '.join(labels)}",
+            ]),
+            html.Div(className="small mt-1", children=[
+                "证明: 分享视图受店长权限限制 — 访问此链接将强制以"
+                f"「{ROLE_LABELS.get(target_role, target_role)}」运行，"
+                "若 target_role > owner_role 则会被 validate_share_access 拒绝 (403)。",
+            ]),
+        ])
+    except Exception as e:
+        return html.Span(f"生成失败: {e}", className="text-danger")
