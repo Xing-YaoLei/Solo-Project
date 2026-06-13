@@ -45,6 +45,14 @@ class PickupOrder < ApplicationRecord
   scope :date_range, ->(start_date, end_date) { where(created_at: start_date.beginning_of_day..end_date.end_of_day) if start_date && end_date }
   scope :with_shortage, -> { where(has_shortage: true) }
 
+  def self.ransackable_attributes(auth_object = nil)
+    ["created_at", "customer_name", "customer_phone", "has_shortage", "id", "operator_id", "pickup_code", "reviewer_id", "source", "status", "updated_at"]
+  end
+
+  def self.ransackable_associations(auth_object = nil)
+    ["activity_logs", "after_sales_proofs", "operator", "pickup_items", "reviewer", "shortage_records"]
+  end
+
   aasm column: 'status' do
     state :pending, initial: true
     state :submitted

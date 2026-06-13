@@ -16,6 +16,7 @@ gem "aasm"
 gem "ransack"
 gem "kaminari"
 gem "date_validator"
+gem "groupdate"
 
 gem "tzinfo-data", platforms: %i[ windows jruby ]
 

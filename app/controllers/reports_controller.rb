@@ -40,7 +40,7 @@ class ReportsController < ApplicationController
     @product_tags = @aggregated[:by_product_tag]
     @shortage_trend = ShortageRecord.includes(:pickup_order)
                                      .where(created_at: @start_date.beginning_of_day..@end_date.end_of_day)
-                                     .group_by_day(:created_at)
+                                     .group_by_day(:created_at, range: @start_date..@end_date)
                                      .count
   end
 end

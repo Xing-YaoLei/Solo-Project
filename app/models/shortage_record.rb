@@ -15,6 +15,14 @@ class ShortageRecord < ApplicationRecord
   scope :pending, -> { where(status: 'pending') }
   scope :handled, -> { where(status: 'handled') }
 
+  def pending?
+    status == 'pending'
+  end
+
+  def handled?
+    status == 'handled'
+  end
+
   def reason_display
     reason
   end

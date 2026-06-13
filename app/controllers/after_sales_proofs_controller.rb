@@ -3,7 +3,8 @@ class AfterSalesProofsController < ApplicationController
   before_action :set_after_sales_proof, only: [:update, :destroy]
 
   def create
-    @pickup_order = PickupOrder.find(params[:pickup_order_id])
+    pickup_order_id = params[:pickup_order_id] || params.dig(:after_sales_proof, :pickup_order_id)
+    @pickup_order = PickupOrder.find(pickup_order_id)
     @after_sales_proof = @pickup_order.after_sales_proofs.new(after_sales_proof_params)
     @after_sales_proof.uploaded_by = current_user
     if @after_sales_proof.save

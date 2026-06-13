@@ -17,17 +17,64 @@
     </div>
 
     <div class="px-4 py-5 sm:p-6">
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
-        <% @abnormal_reasons.each do |reason, count| %>
-          <div class="bg-red-50 p-4 rounded-lg border border-red-100 text-center">
-            <div class="text-sm font-medium text-red-600"><%= reason %></div>
-            <div class="mt-1 text-2xl font-bold text-red-900"><%= count %></div>
-            <div class="text-xs text-red-500 mt-1">
-              <%= percentage(count, @abnormal_reasons.values.sum) %>
+      <% if @abnormal_reasons.any? %>
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
+          <% @abnormal_reasons.each do |reason, count| %>
+            <%= link_to pickup_orders_path(q: { created_at_gteq: @start_date, created_at_lteq: @end_date }), class: "block bg-red-50 p-4 rounded-lg border border-red-100 text-center hover:bg-red-100 transition-colors" do %>
+              <div class="text-sm font-medium text-red-600"><%= reason %></div>
+              <div class="mt-1 text-2xl font-bold text-red-900"><%= count %></div>
+              <div class="text-xs text-red-500 mt-1">
+                <%= percentage(count, @abnormal_reasons.values.sum) %>
+              </div>
+              <div class="text-xs text-red-400 mt-2">点击查看单据 →</div>
+            <% end %>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="text-center py-8 text-gray-500">
+          <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <p class="mt-2">所选时间范围内无异常记录</p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="bg-white shadow rounded-lg">
+    <div class="px-4 py-5 border-b border-gray-200 sm:px-6">
+      <h3 class="text-lg leading-6 font-medium text-gray-900">短少趋势（按天）</h3>
+    </div>
+    <div class="px-4 py-5 sm:p-6">
+      <% if @shortage_trend.values.sum > 0 %>
+        <div class="flex items-end space-x-2 h-48">
+          <% max_count = @shortage_trend.values.max || 1 %>
+          <% @shortage_trend.each do |date, count| %>
+            <% height_pct = max_count > 0 ? (count.to_f / max_count * 100).to_i : 0 %>
+            <div class="flex-1 flex flex-col items-center group">
+              <div class="w-full flex justify-center">
+                <div class="relative">
+                  <div class="group-hover:opacity-100 opacity-0 absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap transition-opacity z-10">
+                    <%= date.strftime('%m-%d') %>: <%= count %>件
+                  </div>
+                </div>
+              </div>
+              <div class="w-full flex justify-center">
+                <div class="bg-red-400 hover:bg-red-500 transition-colors rounded-t w-full max-w-[32px]" style="height: <%= [height_pct * 1.6, 4].max %>px;"></div>
+              </div>
+              <div class="mt-2 text-xs text-gray-500 truncate w-full text-center"><%= date.strftime('%m/%d') %></div>
             </div>
-          </div>
-        <% end %>
-      </div>
+          <% end %>
+        </div>
+        <div class="mt-4 flex justify-between text-xs text-gray-500">
+          <span>共 <%= @shortage_trend.count %> 天</span>
+          <span>累计短少 <%= @shortage_trend.values.sum %> 件</span>
+        </div>
+      <% else %>
+        <div class="text-center py-8 text-gray-500">
+          <p>所选时间范围内无短少趋势数据</p>
+        </div>
+      <% end %>
     </div>
   </div>
 
@@ -36,14 +83,20 @@
       <h3 class="text-lg leading-6 font-medium text-gray-900">商品标签统计</h3>
     </div>
     <div class="px-4 py-5 sm:p-6">
-      <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
-        <% @product_tags.first(24).each do |tag, count| %>
-          <div class="bg-indigo-50 p-4 rounded-lg border border-indigo-100 text-center">
-            <div class="text-sm font-medium text-indigo-600 truncate" title="<%= tag %>"><%= tag %></div>
-            <div class="mt-1 text-xl font-bold text-indigo-900"><%= count %></div>
-          </div>
-        <% end %>
-      </div>
+      <% if @product_tags.any? %>
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
+          <% @product_tags.first(24).each do |tag, count| %>
+            <div class="bg-indigo-50 p-4 rounded-lg border border-indigo-100 text-center">
+              <div class="text-sm font-medium text-indigo-600 truncate" title="<%= tag %>"><%= tag %></div>
+              <div class="mt-1 text-xl font-bold text-indigo-900"><%= count %></div>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="text-center py-8 text-gray-500">
+          <p>所选时间范围内无商品标签数据</p>
+        </div>
+      <% end %>
     </div>
   </div>
 </div>

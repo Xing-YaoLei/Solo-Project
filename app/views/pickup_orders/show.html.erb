@@ -209,8 +209,11 @@
                         <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full <%= sr.status == 'handled' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' %>">
                           <%= sr.status_display %>
                         </span>
-                        <% if sr.pending? && current_user.reviewer? %>
-                          <%= button_to "处理", handle_shortage_record_path(sr), method: :patch, params: { handling_method: '退款', compensation_amount: sr.pickup_item&.unit_price.to_f * sr.shortage_quantity }, class: "ml-2 px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700" %>
+                        <% if sr.pending? && (current_user.reviewer? || current_user.admin?) %>
+                          <%= form_tag "/shortage_records/#{sr.id}/handle", method: :patch, class: "inline-block ml-2" do %>
+                            <%= hidden_field_tag :handling_method, '退款' %>
+                            <%= submit_tag "处理", class: "px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700" %>
+                          <% end %>
                         <% end %>
                       </td>
                     </tr>

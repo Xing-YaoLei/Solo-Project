@@ -3,7 +3,8 @@ class PickupItemsController < ApplicationController
   before_action :set_pickup_item, only: [:update, :destroy]
 
   def create
-    @pickup_order = PickupOrder.find(params[:pickup_order_id])
+    pickup_order_id = params[:pickup_order_id] || params.dig(:pickup_item, :pickup_order_id)
+    @pickup_order = PickupOrder.find(pickup_order_id)
     @pickup_item = @pickup_order.pickup_items.new(pickup_item_params)
     if @pickup_item.save
       @pickup_order.log_activity('add_item', user: current_user, details: "添加商品: #{@pickup_item.product_name}")
