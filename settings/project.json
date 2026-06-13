@@ -1,0 +1,15 @@
+{
+  "general": {
+    "designResolution": {
+      "width": 1280,
+      "height": 720,
+      "fitWidth": false,
+      "fitHeight": true
+    },
+    "startScene": "scene://main",
+    "renderPipeline": ""
+  },
+  "scripting": {
+    "enableOverride": true
+  }
+}

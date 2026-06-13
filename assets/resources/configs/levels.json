@@ -1,0 +1,94 @@
+{
+  "levels": [
+    {
+      "id": "level_01",
+      "name": "初级接待",
+      "description": "基础时段安排，2个工位，4位顾客",
+      "difficulty": 1,
+      "timeLimitSeconds": 120,
+      "stationCount": 2,
+      "customerIds": ["cust_001", "cust_002", "cust_003", "cust_004"],
+      "passConditions": {
+        "minArrivalRate": 0.75,
+        "maxConflictCount": 0,
+        "maxOverbookCount": 0
+      },
+      "capacityRuleId": "rule_basic",
+      "scenarioId": "scenario_morning",
+      "hintEnabled": true,
+      "hintAdvanceSeconds": 5
+    },
+    {
+      "id": "level_02",
+      "name": "午间高峰",
+      "description": "午间高峰时段，3个工位，7位顾客",
+      "difficulty": 2,
+      "timeLimitSeconds": 90,
+      "stationCount": 3,
+      "customerIds": ["cust_001", "cust_002", "cust_003", "cust_004", "cust_005", "cust_006", "cust_007"],
+      "passConditions": {
+        "minArrivalRate": 0.7,
+        "maxConflictCount": 1,
+        "maxOverbookCount": 0
+      },
+      "capacityRuleId": "rule_standard",
+      "scenarioId": "scenario_noon_rush",
+      "hintEnabled": true,
+      "hintAdvanceSeconds": 4
+    },
+    {
+      "id": "level_03",
+      "name": "全日运营",
+      "description": "全天运营，4个工位，12位顾客，时段冲突频繁",
+      "difficulty": 3,
+      "timeLimitSeconds": 75,
+      "stationCount": 4,
+      "customerIds": ["cust_001", "cust_002", "cust_003", "cust_004", "cust_005", "cust_006", "cust_007", "cust_008", "cust_009", "cust_010", "cust_011", "cust_012"],
+      "passConditions": {
+        "minArrivalRate": 0.65,
+        "maxConflictCount": 2,
+        "maxOverbookCount": 0
+      },
+      "capacityRuleId": "rule_advanced",
+      "scenarioId": "scenario_full_day",
+      "hintEnabled": true,
+      "hintAdvanceSeconds": 3
+    },
+    {
+      "id": "level_04",
+      "name": "突发应变",
+      "description": "突发预约变更，3个工位，8位顾客含2位临时到店",
+      "difficulty": 4,
+      "timeLimitSeconds": 60,
+      "stationCount": 3,
+      "customerIds": ["cust_001", "cust_002", "cust_003", "cust_004", "cust_005", "cust_006", "cust_walk_001", "cust_walk_002"],
+      "passConditions": {
+        "minArrivalRate": 0.6,
+        "maxConflictCount": 1,
+        "maxOverbookCount": 0
+      },
+      "capacityRuleId": "rule_advanced",
+      "scenarioId": "scenario_walk_in",
+      "hintEnabled": true,
+      "hintAdvanceSeconds": 2
+    },
+    {
+      "id": "level_05",
+      "name": "极限挑战",
+      "description": "极限运营，5个工位，18位顾客，含取消和迟到",
+      "difficulty": 5,
+      "timeLimitSeconds": 45,
+      "stationCount": 5,
+      "customerIds": ["cust_001", "cust_002", "cust_003", "cust_004", "cust_005", "cust_006", "cust_007", "cust_008", "cust_009", "cust_010", "cust_011", "cust_012", "cust_walk_001", "cust_walk_002", "cust_late_001", "cust_late_002", "cust_cancel_001", "cust_cancel_002"],
+      "passConditions": {
+        "minArrivalRate": 0.55,
+        "maxConflictCount": 2,
+        "maxOverbookCount": 1
+      },
+      "capacityRuleId": "rule_expert",
+      "scenarioId": "scenario_extreme",
+      "hintEnabled": true,
+      "hintAdvanceSeconds": 1
+    }
+  ]
+}

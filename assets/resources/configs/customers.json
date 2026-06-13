@@ -1,0 +1,31 @@
+{
+  "customers": [
+    {"id": "cust_001", "name": "张小姐", "phone": "138****1001", "serviceId": "svc_haircut", "preferredTime": "09:00", "arrivalStatus": "arrived", "vip": false},
+    {"id": "cust_002", "name": "李女士", "phone": "139****2002", "serviceId": "svc_color", "preferredTime": "09:30", "arrivalStatus": "arrived", "vip": true},
+    {"id": "cust_003", "name": "王小姐", "phone": "137****3003", "serviceId": "svc_haircut", "preferredTime": "10:00", "arrivalStatus": "pending", "vip": false},
+    {"id": "cust_004", "name": "赵女士", "phone": "136****4004", "serviceId": "svc_permaline", "preferredTime": "10:30", "arrivalStatus": "pending", "vip": false},
+    {"id": "cust_005", "name": "刘小姐", "phone": "135****5005", "serviceId": "svc_nail", "preferredTime": "11:00", "arrivalStatus": "pending", "vip": false},
+    {"id": "cust_006", "name": "陈女士", "phone": "134****6006", "serviceId": "svc_eyebrow", "preferredTime": "11:30", "arrivalStatus": "pending", "vip": true},
+    {"id": "cust_007", "name": "杨小姐", "phone": "133****7007", "serviceId": "svc_facial", "preferredTime": "13:00", "arrivalStatus": "pending", "vip": false},
+    {"id": "cust_008", "name": "周女士", "phone": "132****8008", "serviceId": "svc_haircut", "preferredTime": "13:30", "arrivalStatus": "pending", "vip": false},
+    {"id": "cust_009", "name": "吴小姐", "phone": "131****9009", "serviceId": "svc_color", "preferredTime": "14:00", "arrivalStatus": "pending", "vip": true},
+    {"id": "cust_010", "name": "郑女士", "phone": "130****0010", "serviceId": "svc_permaline", "preferredTime": "14:30", "arrivalStatus": "pending", "vip": false},
+    {"id": "cust_011", "name": "孙小姐", "phone": "158****1011", "serviceId": "svc_facial", "preferredTime": "15:00", "arrivalStatus": "pending", "vip": false},
+    {"id": "cust_012", "name": "马女士", "phone": "159****2012", "serviceId": "svc_nail", "preferredTime": "15:30", "arrivalStatus": "pending", "vip": false},
+    {"id": "cust_walk_001", "name": "临时顾客A", "phone": "", "serviceId": "svc_express", "preferredTime": "", "arrivalStatus": "walk_in", "vip": false},
+    {"id": "cust_walk_002", "name": "临时顾客B", "phone": "", "serviceId": "svc_eyebrow", "preferredTime": "", "arrivalStatus": "walk_in", "vip": false},
+    {"id": "cust_late_001", "name": "迟到的何小姐", "phone": "150****3001", "serviceId": "svc_haircut", "preferredTime": "09:00", "arrivalStatus": "late", "vip": false, "lateMinutes": 18},
+    {"id": "cust_late_002", "name": "迟到的钱女士", "phone": "151****4002", "serviceId": "svc_color", "preferredTime": "10:00", "arrivalStatus": "late", "vip": true, "lateMinutes": 25},
+    {"id": "cust_cancel_001", "name": "取消的冯小姐", "phone": "152****5003", "serviceId": "svc_facial", "preferredTime": "11:00", "arrivalStatus": "cancelled", "vip": false},
+    {"id": "cust_cancel_002", "name": "取消的蒋女士", "phone": "153****6004", "serviceId": "svc_nail", "preferredTime": "14:00", "arrivalStatus": "cancelled", "vip": false}
+  ],
+  "services": [
+    {"id": "svc_haircut", "name": "剪发", "durationMinutes": 60, "category": "hair"},
+    {"id": "svc_color", "name": "染发", "durationMinutes": 120, "category": "hair"},
+    {"id": "svc_permaline", "name": "烫发", "durationMinutes": 120, "category": "hair"},
+    {"id": "svc_facial", "name": "面部护理", "durationMinutes": 60, "category": "beauty"},
+    {"id": "svc_nail", "name": "美甲", "durationMinutes": 30, "category": "nail"},
+    {"id": "svc_eyebrow", "name": "修眉", "durationMinutes": 30, "category": "beauty"},
+    {"id": "svc_express", "name": "快速造型", "durationMinutes": 30, "category": "hair"}
+  ]
+}

@@ -1,0 +1,132 @@
+{
+  "capacityRules": [
+    {
+      "id": "rule_basic",
+      "name": "基础容量规则",
+      "description": "每个工位同一时段只能服务1位顾客",
+      "rules": [
+        {
+          "type": "station_capacity",
+          "maxConcurrentPerStation": 1,
+          "allowOverbook": false
+        },
+        {
+          "type": "service_duration",
+          "defaultMinutes": 60,
+          "bufferMinutes": 5
+        },
+        {
+          "type": "arrival_window",
+          "lateThresholdMinutes": 15,
+          "noShowThresholdMinutes": 30
+        }
+      ]
+    },
+    {
+      "id": "rule_standard",
+      "name": "标准容量规则",
+      "description": "支持短时服务并行，增加缓冲时间",
+      "rules": [
+        {
+          "type": "station_capacity",
+          "maxConcurrentPerStation": 1,
+          "allowOverbook": false
+        },
+        {
+          "type": "service_duration",
+          "defaultMinutes": 60,
+          "shortServiceMinutes": 30,
+          "bufferMinutes": 10
+        },
+        {
+          "type": "arrival_window",
+          "lateThresholdMinutes": 10,
+          "noShowThresholdMinutes": 20
+        },
+        {
+          "type": "short_service_concurrent",
+          "maxShortPerStation": 2,
+          "shortServiceIds": ["svc_express", "svc_eyebrow"]
+        }
+      ]
+    },
+    {
+      "id": "rule_advanced",
+      "name": "高级容量规则",
+      "description": "支持技师共享和弹性时段",
+      "rules": [
+        {
+          "type": "station_capacity",
+          "maxConcurrentPerStation": 1,
+          "allowOverbook": false
+        },
+        {
+          "type": "technician_sharing",
+          "maxStationsPerTechnician": 2,
+          "sharedServiceIds": ["svc_nail", "svc_eyebrow"]
+        },
+        {
+          "type": "service_duration",
+          "defaultMinutes": 60,
+          "shortServiceMinutes": 30,
+          "longServiceMinutes": 120,
+          "bufferMinutes": 8
+        },
+        {
+          "type": "arrival_window",
+          "lateThresholdMinutes": 10,
+          "noShowThresholdMinutes": 20,
+          "earlyThresholdMinutes": 10
+        },
+        {
+          "type": "flexible_slot",
+          "allowSlotAdjust": true,
+          "maxAdjustMinutes": 15
+        }
+      ]
+    },
+    {
+      "id": "rule_expert",
+      "name": "专家容量规则",
+      "description": "含取消/迟到处理、超售容限",
+      "rules": [
+        {
+          "type": "station_capacity",
+          "maxConcurrentPerStation": 1,
+          "allowOverbook": true,
+          "overbookLimit": 1,
+          "overbookCondition": "waitlist_only"
+        },
+        {
+          "type": "technician_sharing",
+          "maxStationsPerTechnician": 2,
+          "sharedServiceIds": ["svc_nail", "svc_eyebrow", "svc_express"]
+        },
+        {
+          "type": "service_duration",
+          "defaultMinutes": 60,
+          "shortServiceMinutes": 30,
+          "longServiceMinutes": 120,
+          "bufferMinutes": 5
+        },
+        {
+          "type": "arrival_window",
+          "lateThresholdMinutes": 10,
+          "noShowThresholdMinutes": 15,
+          "earlyThresholdMinutes": 15,
+          "cancelThresholdMinutes": 30
+        },
+        {
+          "type": "flexible_slot",
+          "allowSlotAdjust": true,
+          "maxAdjustMinutes": 20
+        },
+        {
+          "type": "waitlist",
+          "maxWaitlistSize": 3,
+          "autoPromoteOnCancel": true
+        }
+      ]
+    }
+  ]
+}

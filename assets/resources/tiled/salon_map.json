@@ -1,0 +1,96 @@
+{
+  "compressionlevel": -1,
+  "height": 15,
+  "infinite": false,
+  "layers": [
+    {
+      "data": [
+        1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+        1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+        1,0,2,2,0,0,3,3,0,0,2,2,0,0,3,3,0,0,0,1,
+        1,0,2,2,0,0,3,3,0,0,2,2,0,0,3,3,0,0,0,1,
+        1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+        1,0,4,4,4,0,5,5,5,0,0,0,6,6,6,0,0,0,0,1,
+        1,0,4,4,4,0,5,5,5,0,0,0,6,6,6,0,0,0,0,1,
+        1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+        1,0,7,0,0,0,7,0,0,0,7,0,0,0,7,0,0,0,0,1,
+        1,0,8,8,0,0,8,8,0,0,8,8,0,0,8,8,0,0,0,1,
+        1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+        1,0,0,0,0,0,9,9,9,9,9,0,0,0,0,0,0,0,0,1,
+        1,0,0,0,0,0,9,9,9,9,9,0,0,0,0,0,0,0,0,1,
+        1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+        1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
+      ],
+      "height": 15,
+      "id": 1,
+      "name": "floor_plan",
+      "opacity": 1,
+      "type": "tilelayer",
+      "visible": true,
+      "width": 20,
+      "x": 0,
+      "y": 0
+    },
+    {
+      "objects": [
+        {"id": 1, "name": "station_1", "type": "work_station", "x": 48, "y": 96, "width": 64, "height": 64, "properties": {"index": 1}},
+        {"id": 2, "name": "station_2", "type": "work_station", "x": 192, "y": 96, "width": 64, "height": 64, "properties": {"index": 2}},
+        {"id": 3, "name": "station_3", "type": "work_station", "x": 336, "y": 96, "width": 64, "height": 64, "properties": {"index": 3}},
+        {"id": 4, "name": "station_4", "type": "work_station", "x": 48, "y": 192, "width": 64, "height": 64, "properties": {"index": 4}},
+        {"id": 5, "name": "station_5", "type": "work_station", "x": 336, "y": 192, "width": 64, "height": 64, "properties": {"index": 5}},
+        {"id": 6, "name": "waiting_area", "type": "waiting", "x": 96, "y": 320, "width": 256, "height": 96, "properties": {"capacity": 8}},
+        {"id": 7, "name": "reception", "type": "reception", "x": 160, "y": 416, "width": 128, "height": 64, "properties": {}},
+        {"id": 8, "name": "entrance", "type": "entrance", "x": 192, "y": 448, "width": 64, "height": 32, "properties": {}}
+      ],
+      "height": 15,
+      "id": 2,
+      "name": "objects",
+      "opacity": 1,
+      "type": "objectgroup",
+      "visible": true,
+      "width": 20,
+      "x": 0,
+      "y": 0
+    },
+    {
+      "draworder": "topdown",
+      "id": 3,
+      "name": "customer_spawn",
+      "objects": [
+        {"id": 10, "name": "spawn_1", "type": "spawn", "x": 208, "y": 448, "width": 32, "height": 32},
+        {"id": 11, "name": "spawn_2", "type": "spawn", "x": 176, "y": 448, "width": 32, "height": 32},
+        {"id": 12, "name": "spawn_3", "type": "spawn", "x": 240, "y": 448, "width": 32, "height": 32}
+      ],
+      "opacity": 1,
+      "type": "objectgroup",
+      "visible": true,
+      "x": 0,
+      "y": 0
+    }
+  ],
+  "nextlayerid": 4,
+  "nextobjectid": 13,
+  "orientation": "orthogonal",
+  "renderorder": "right-down",
+  "tiledversion": "1.10.2",
+  "tileheight": 32,
+  "tilesets": [
+    {
+      "columns": 3,
+      "firstgid": 1,
+      "image": "salon_tiles.png",
+      "imageheight": 96,
+      "imagewidth": 96,
+      "margin": 0,
+      "name": "salon",
+      "spacing": 0,
+      "tilecount": 9,
+      "tileheight": 32,
+      "tilewidth": 32
+    }
+  ],
+  "tilewidth": 32,
+  "type": "map",
+  "version": "1.10",
+  "width": 20
+}

@@ -1,0 +1,82 @@
+{
+  "scenarios": [
+    {
+      "id": "scenario_morning",
+      "name": "早间营业",
+      "timeRange": {"start": "09:00", "end": "12:00"},
+      "slotIntervalMinutes": 30,
+      "events": [
+        {"time": "09:00", "type": "shop_open", "description": "门店开门"},
+        {"time": "09:05", "type": "customer_arrive", "customerId": "cust_001"},
+        {"time": "09:10", "type": "customer_arrive", "customerId": "cust_002"},
+        {"time": "09:45", "type": "arrival_check", "description": "检查10:00预约顾客到场状态"},
+        {"time": "10:15", "type": "arrival_check", "description": "检查10:30预约顾客到场状态"}
+      ]
+    },
+    {
+      "id": "scenario_noon_rush",
+      "name": "午间高峰",
+      "timeRange": {"start": "11:00", "end": "14:00"},
+      "slotIntervalMinutes": 30,
+      "events": [
+        {"time": "11:00", "type": "shop_open", "description": "午间营业开始"},
+        {"time": "11:05", "type": "batch_arrive", "customerIds": ["cust_005", "cust_006"]},
+        {"time": "11:30", "type": "arrival_check", "description": "午间第一波到场检查"},
+        {"time": "12:00", "type": "peak_start", "description": "高峰开始"},
+        {"time": "12:30", "type": "arrival_check", "description": "高峰时段到场检查"},
+        {"time": "13:00", "type": "customer_arrive", "customerId": "cust_007"},
+        {"time": "13:30", "type": "arrival_check", "description": "午间末波到场检查"}
+      ]
+    },
+    {
+      "id": "scenario_full_day",
+      "name": "全日运营",
+      "timeRange": {"start": "09:00", "end": "18:00"},
+      "slotIntervalMinutes": 30,
+      "events": [
+        {"time": "09:00", "type": "shop_open", "description": "门店开门"},
+        {"time": "09:05", "type": "customer_arrive", "customerId": "cust_001"},
+        {"time": "10:00", "type": "arrival_check", "description": "上午到场检查"},
+        {"time": "11:00", "type": "peak_start", "description": "上午高峰"},
+        {"time": "12:00", "type": "arrival_check", "description": "午间到场检查"},
+        {"time": "14:00", "type": "arrival_check", "description": "下午到场检查"},
+        {"time": "15:00", "type": "peak_start", "description": "下午高峰"},
+        {"time": "16:00", "type": "arrival_check", "description": "傍晚到场检查"},
+        {"time": "17:00", "type": "final_check", "description": "收盘检查"}
+      ]
+    },
+    {
+      "id": "scenario_walk_in",
+      "name": "临时到店",
+      "timeRange": {"start": "09:00", "end": "17:00"},
+      "slotIntervalMinutes": 30,
+      "events": [
+        {"time": "09:00", "type": "shop_open", "description": "门店开门"},
+        {"time": "10:30", "type": "walk_in", "customerId": "cust_walk_001", "description": "临时顾客到店"},
+        {"time": "11:00", "type": "arrival_check", "description": "到场检查"},
+        {"time": "13:00", "type": "walk_in", "customerId": "cust_walk_002", "description": "临时顾客到店"},
+        {"time": "14:00", "type": "arrival_check", "description": "下午到场检查"},
+        {"time": "15:00", "type": "arrival_check", "description": "傍晚到场检查"}
+      ]
+    },
+    {
+      "id": "scenario_extreme",
+      "name": "极限运营",
+      "timeRange": {"start": "09:00", "end": "20:00"},
+      "slotIntervalMinutes": 30,
+      "events": [
+        {"time": "09:00", "type": "shop_open", "description": "门店开门"},
+        {"time": "09:10", "type": "customer_arrive", "customerId": "cust_001"},
+        {"time": "09:20", "type": "late_arrival", "customerId": "cust_late_001", "lateMinutes": 18},
+        {"time": "10:00", "type": "late_arrival", "customerId": "cust_late_002", "lateMinutes": 25},
+        {"time": "11:00", "type": "cancel", "customerId": "cust_cancel_001"},
+        {"time": "14:00", "type": "cancel", "customerId": "cust_cancel_002"},
+        {"time": "10:30", "type": "walk_in", "customerId": "cust_walk_001"},
+        {"time": "13:30", "type": "walk_in", "customerId": "cust_walk_002"},
+        {"time": "12:00", "type": "peak_start", "description": "午间高峰"},
+        {"time": "15:00", "type": "peak_start", "description": "下午高峰"},
+        {"time": "18:00", "type": "arrival_check", "description": "晚间到场检查"}
+      ]
+    }
+  ]
+}
