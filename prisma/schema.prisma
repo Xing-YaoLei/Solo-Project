@@ -1,0 +1,163 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  MANAGER
+  TECHNICIAN
+}
+
+enum BatchType {
+  INVENTORY
+  TRANSACTION
+  REVIEW
+}
+
+enum BatchStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum TransactionStatus {
+  PAID
+  REFUNDED
+}
+
+enum OrderStatus {
+  CREATED
+  IN_SERVICE
+  COMPLETED
+  PAID
+  REVIEWED
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  role      UserRole
+  avatarUrl String?  @map("avatar_url")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  batches      ImportBatch[]    @relation("BatchImporter")
+  orders       HandOrder[]
+  notedUsages  InventoryUsage[] @relation("NotedBy")
+
+  @@map("user")
+}
+
+model ImportBatch {
+  id           String       @id @default(uuid())
+  batchNo      String       @unique @map("batch_no")
+  type         BatchType
+  fileName     String       @map("file_name")
+  recordCount  Int          @default(0) @map("record_count")
+  importedBy   String       @map("imported_by")
+  importedAt   DateTime     @default(now()) @map("imported_at")
+  status       BatchStatus  @default(PENDING)
+  errorMessage String?      @map("error_message")
+
+  importer     User         @relation("BatchImporter", fields: [importedBy], references: [id])
+  inventories  Inventory[]
+  transactions Transaction[]
+  reviews      Review[]
+
+  @@map("import_batch")
+}
+
+model Inventory {
+  id            String            @id @default(uuid())
+  batchId       String            @map("batch_id")
+  skuCode       String            @map("sku_code")
+  productName   String            @map("product_name")
+  category      String
+  unit          String
+  stockQuantity Decimal           @db.Decimal(10, 2) @map("stock_quantity")
+  unitPrice     Decimal           @db.Decimal(10, 2) @map("unit_price")
+  importedAt    DateTime          @default(now()) @map("imported_at")
+
+  batch         ImportBatch       @relation(fields: [batchId], references: [id])
+  usages        InventoryUsage[]
+
+  @@map("inventory")
+}
+
+model Transaction {
+  id              String            @id @default(uuid())
+  batchId         String            @map("batch_id")
+  orderNo         String            @unique @map("order_no")
+  handNo          String            @map("hand_no")
+  technicianId    String            @map("technician_id")
+  serviceItem     String            @map("service_item")
+  amount          Decimal           @db.Decimal(10, 2)
+  paymentMethod   String            @map("payment_method")
+  transactionTime DateTime          @map("transaction_time")
+  status          TransactionStatus @default(PAID)
+
+  batch           ImportBatch       @relation(fields: [batchId], references: [id])
+  technician      User              @relation(fields: [technicianId], references: [id])
+  order           HandOrder?        @relation(fields: [orderNo], references: [handNo])
+  review          Review?
+
+  @@map("transaction")
+}
+
+model Review {
+  id              String    @id @default(uuid())
+  batchId         String    @map("batch_id")
+  orderNo         String    @map("order_no")
+  rating          Int
+  content         String?
+  hasBeforePhoto  Boolean   @default(false) @map("has_before_photo")
+  hasAfterPhoto   Boolean   @default(false) @map("has_after_photo")
+  followUpScript  String?   @map("follow_up_script")
+  responded       Boolean   @default(false)
+  reviewedAt      DateTime  @map("reviewed_at")
+
+  batch           ImportBatch @relation(fields: [batchId], references: [id])
+  transaction     Transaction @relation(fields: [orderNo], references: [orderNo])
+
+  @@map("review")
+}
+
+model HandOrder {
+  id            String            @id @default(uuid())
+  handNo        String            @unique @map("hand_no")
+  technicianId  String            @map("technician_id")
+  customerName  String?           @map("customer_name")
+  serviceItems  String[]          @default([]) @map("service_items")
+  totalAmount   Decimal           @db.Decimal(10, 2) @default(0) @map("total_amount")
+  status        OrderStatus       @default(CREATED)
+  createdAt     DateTime          @default(now()) @map("created_at")
+  completedAt   DateTime?         @map("completed_at")
+
+  technician    User              @relation(fields: [technicianId], references: [id])
+  transactions  Transaction[]
+  inventoryItems InventoryUsage[]
+
+  @@map("hand_order")
+}
+
+model InventoryUsage {
+  id           String   @id @default(uuid())
+  orderId      String   @map("order_id")
+  inventoryId  String   @map("inventory_id")
+  quantity     Decimal  @db.Decimal(10, 2)
+  isAbnormal   Boolean  @default(false) @map("is_abnormal")
+  abnormalNote String?  @map("abnormal_note")
+  notedBy      String?  @map("noted_by")
+  notedAt      DateTime? @map("noted_at")
+
+  order        HandOrder  @relation(fields: [orderId], references: [id])
+  inventory    Inventory  @relation(fields: [inventoryId], references: [id])
+  noteTaker    User?      @relation("NotedBy", fields: [notedBy], references: [id])
+
+  @@map("inventory_usage")
+}
