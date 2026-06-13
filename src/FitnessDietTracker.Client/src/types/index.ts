@@ -140,7 +140,7 @@ export interface InterruptionLog {
   reason?: string;
   actionTaken?: string;
   closedAt?: string;
-  operatorId: number;
+  operatorId?: number;
   operatorName: string;
   createdAt: string;
   remarks?: string;

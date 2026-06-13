@@ -1,4 +1,5 @@
 using FitnessDietTracker.API.Data;
+using FitnessDietTracker.API.Dtos;
 using FitnessDietTracker.API.Enums;
 using FitnessDietTracker.API.Models;
 using FitnessDietTracker.API.Services;
@@ -75,7 +76,7 @@ public class CheckInJobService : ICheckInJobService
                         InterruptionId = interruption.Id,
                         ActionType = "系统检测到打卡中断",
                         Reason = $"连续 {daysWithoutCheckIn} 天未打卡",
-                        OperatorId = 0,
+                        OperatorId = null,
                         CreatedAt = DateTime.UtcNow,
                         Remarks = "Hangfire 定时任务自动检测生成"
                     };
@@ -94,7 +95,7 @@ public class CheckInJobService : ICheckInJobService
                             Content = content,
                             RelatedId = interruption.Id,
                             RelatedType = "CheckInInterruption",
-                            CreatedBy = 0
+                            CreatedBy = null
                         });
 
                         _logger.LogInformation(
@@ -130,7 +131,7 @@ public class CheckInJobService : ICheckInJobService
                             Content = content,
                             RelatedId = existingInterruption.Id,
                             RelatedType = "CheckInInterruption",
-                            CreatedBy = 0
+                            CreatedBy = null
                         });
                     }
                 }

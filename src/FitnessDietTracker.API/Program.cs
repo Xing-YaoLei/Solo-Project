@@ -76,7 +76,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI(c =>
     {
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "Fitness Diet Tracker API v1");
-        c.RoutePrefix = "swagger";
+        c.RoutePrefix = string.Empty;
     });
 }
 
@@ -88,11 +88,11 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-
 app.MapHangfireDashboard("/hangfire", new DashboardOptions
 {
     DashboardTitle = "Fitness Diet Tracker - Hangfire Dashboard",
-    Authorization = new[] { new NoAuthorizationFilter() }
+    Authorization = new[] { new NoAuthorizationFilter() },
+    IgnoreAntiforgeryToken = true
 });
 
 using (var scope = app.Services.CreateScope())

@@ -76,6 +76,13 @@ public class AppDbContext : DbContext
             .HasForeignKey(l => l.InterruptionId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        modelBuilder.Entity<InterruptionLog>()
+            .HasOne(l => l.Operator)
+            .WithMany()
+            .HasForeignKey(l => l.OperatorId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.Restrict);
+
         modelBuilder.Entity<ExportRecord>()
             .HasOne(e => e.Operator)
             .WithMany()
@@ -92,6 +99,7 @@ public class AppDbContext : DbContext
             .HasOne(n => n.Creator)
             .WithMany()
             .HasForeignKey(n => n.CreatedBy)
+            .IsRequired(false)
             .OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder.Entity<Notification>().HasIndex(n => new { n.UserId, n.Status });

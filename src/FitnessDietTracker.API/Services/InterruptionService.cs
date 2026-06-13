@@ -140,7 +140,7 @@ public class InterruptionService : IInterruptionService
 
     private async Task<CheckInInterruptionDto> MapToDtoAsync(CheckInInterruption i)
     {
-        var operatorIds = i.Logs?.Select(l => l.OperatorId).Where(id => id > 0).Distinct().ToList()
+        var operatorIds = i.Logs?.Select(l => l.OperatorId).Where(id => id.HasValue && id.Value > 0).Distinct().Select(id => id.Value).ToList()
             ?? new List<int>();
 
         var operatorUsers = await _context.Users
@@ -170,9 +170,9 @@ public class InterruptionService : IInterruptionService
                 ActionTaken = l.ActionTaken,
                 ClosedAt = l.ClosedAt,
                 OperatorId = l.OperatorId,
-                OperatorName = l.OperatorId == 0
+                OperatorName = !l.OperatorId.HasValue
                     ? "系统"
-                    : operatorUsers.ContainsKey(l.OperatorId) ? operatorUsers[l.OperatorId] : "未知",
+                    : operatorUsers.ContainsKey(l.OperatorId.Value) ? operatorUsers[l.OperatorId.Value] : "未知",
                 CreatedAt = l.CreatedAt,
                 Remarks = l.Remarks
             }).ToList() ?? new()
