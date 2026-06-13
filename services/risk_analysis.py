@@ -46,16 +46,39 @@ def _detect_too_many_reschedule(df: pd.DataFrame) -> pd.DataFrame:
         return pd.DataFrame()
     df = df.copy()
     df["appt_date"] = pd.to_datetime(df["appointment_time"]).dt.date
+
+    trace_cols = [
+        "id", "service_item", "appointment_time", "attendance_status",
+        "reschedule_count", "cashier_record_id", "cashier_amount", "payment_method",
+        "transaction_time", "transaction_type", "cashier_remark",
+        "review_rating", "review_content", "reviewed_at",
+    ]
+    present_trace = [c for c in trace_cols if c in df.columns]
+
+    def _first_row(g):
+        return g.iloc[0]
+
     grp = df.groupby(["customer_id", "customer_name", "appt_date"]).agg(
         daily_reschedule_total=("reschedule_count", "sum"),
         appointment_list=("id", lambda x: list(x)),
+        **{
+            c: (c, _first_row)
+            for c in present_trace
+        },
     ).reset_index()
+
     bad = grp[grp["daily_reschedule_total"] >= 3].copy()
+    if bad.empty:
+        return pd.DataFrame()
+
+    bad = bad.rename(columns={"id": "appointment_id"})
     bad["anomaly_reason"] = "改约过多(单日改约>=3次)"
     bad["anomaly_detail"] = bad.apply(
         lambda r: f"顾客{r['customer_name']}在{r['appt_date']}当日共改约{r['daily_reschedule_total']}次",
         axis=1,
     )
+    if "appt_date" in bad.columns:
+        bad = bad.drop(columns=["appt_date"])
     return bad
 
 
@@ -65,6 +88,35 @@ def _detect_consecutive_not_arrived(df: pd.DataFrame) -> pd.DataFrame:
         return pd.DataFrame()
     df = df.copy()
     df = df.sort_values(["customer_id", "appointment_time"]).reset_index(drop=True)
+
+    def _build_hit_record(start_row, end_row, cid, streak, idx_start, idx_end, grp_df):
+        return {
+            "customer_id": cid,
+            "customer_name": start_row.get("customer_name"),
+            "anomaly_reason": "连续未到场(>=2次)",
+            "anomaly_detail": (
+                f"顾客{start_row.get('customer_name')}从"
+                f"{pd.to_datetime(start_row['appointment_time']).strftime('%Y-%m-%d %H:%M')}到"
+                f"{pd.to_datetime(end_row['appointment_time']).strftime('%Y-%m-%d %H:%M')}"
+                f"连续{streak}次未到场"
+            ),
+            "appointment_ids": list(grp_df.loc[idx_start : idx_end, "id"].astype(int).tolist()),
+            "appointment_id": int(grp_df.iloc[idx_start]["id"]),
+            "service_item": start_row.get("service_item"),
+            "appointment_time": start_row.get("appointment_time"),
+            "reschedule_count": int(start_row.get("reschedule_count") or 0),
+            "attendance_status": start_row.get("attendance_status"),
+            "cashier_record_id": start_row.get("cashier_record_id"),
+            "cashier_amount": start_row.get("cashier_amount"),
+            "payment_method": start_row.get("payment_method"),
+            "transaction_time": start_row.get("transaction_time"),
+            "transaction_type": start_row.get("transaction_type"),
+            "cashier_remark": start_row.get("cashier_remark"),
+            "review_rating": start_row.get("review_rating"),
+            "review_content": start_row.get("review_content"),
+            "reviewed_at": start_row.get("reviewed_at"),
+        }
+
     hits = []
     for cid, grp in df.groupby("customer_id"):
         grp = grp.reset_index(drop=True)
@@ -78,47 +130,15 @@ def _detect_consecutive_not_arrived(df: pd.DataFrame) -> pd.DataFrame:
                 streak += 1
             else:
                 if streak >= 2:
-                    start = grp.iloc[first_idx]
-                    end = grp.iloc[i - 1]
-                    hits.append({
-                        "customer_id": cid,
-                        "customer_name": start.get("customer_name"),
-                        "anomaly_reason": "连续未到场(>=2次)",
-                        "anomaly_detail": (
-                            f"顾客{start.get('customer_name')}从"
-                            f"{pd.to_datetime(start['appointment_time']).strftime('%Y-%m-%d %H:%M')}到"
-                            f"{pd.to_datetime(end['appointment_time']).strftime('%Y-%m-%d %H:%M')}"
-                            f"连续{streak}次未到场"
-                        ),
-                        "appointment_ids": list(grp.loc[first_idx : i - 1, "id"].astype(int).tolist()),
-                        "appointment_id": int(grp.iloc[first_idx]["id"]),
-                        "service_item": start.get("service_item"),
-                        "appointment_time": start.get("appointment_time"),
-                        "reschedule_count": int(start.get("reschedule_count") or 0),
-                        "attendance_status": start.get("attendance_status"),
-                    })
+                    hits.append(_build_hit_record(
+                        grp.iloc[first_idx], grp.iloc[i - 1], cid, streak, first_idx, i - 1, grp
+                    ))
                 streak = 0
                 first_idx = -1
         if streak >= 2:
-            start = grp.iloc[first_idx]
-            end = grp.iloc[-1]
-            hits.append({
-                "customer_id": cid,
-                "customer_name": start.get("customer_name"),
-                "anomaly_reason": "连续未到场(>=2次)",
-                "anomaly_detail": (
-                    f"顾客{start.get('customer_name')}从"
-                    f"{pd.to_datetime(start['appointment_time']).strftime('%Y-%m-%d %H:%M')}到"
-                    f"{pd.to_datetime(end['appointment_time']).strftime('%Y-%m-%d %H:%M')}"
-                    f"连续{streak}次未到场"
-                ),
-                "appointment_ids": list(grp.loc[first_idx :, "id"].astype(int).tolist()),
-                "appointment_id": int(grp.iloc[first_idx]["id"]),
-                "service_item": start.get("service_item"),
-                "appointment_time": start.get("appointment_time"),
-                "reschedule_count": int(start.get("reschedule_count") or 0),
-                "attendance_status": start.get("attendance_status"),
-            })
+            hits.append(_build_hit_record(
+                grp.iloc[first_idx], grp.iloc[-1], cid, streak, first_idx, len(grp) - 1, grp
+            ))
     return pd.DataFrame(hits)
 
 
@@ -159,6 +179,15 @@ def _detect_inventory_shortage(df: pd.DataFrame, inv_df: pd.DataFrame, now: date
                 "appointment_time": row.get("appointment_time"),
                 "reschedule_count": int(row.get("reschedule_count") or 0),
                 "attendance_status": row.get("attendance_status"),
+                "cashier_record_id": row.get("cashier_record_id"),
+                "cashier_amount": row.get("cashier_amount"),
+                "payment_method": row.get("payment_method"),
+                "transaction_time": row.get("transaction_time"),
+                "transaction_type": row.get("transaction_type"),
+                "cashier_remark": row.get("cashier_remark"),
+                "review_rating": row.get("review_rating"),
+                "review_content": row.get("review_content"),
+                "reviewed_at": row.get("reviewed_at"),
             })
     return pd.DataFrame(hits)
 
@@ -182,6 +211,11 @@ def _detect_low_rate_not_arrived(df: pd.DataFrame) -> pd.DataFrame:
         axis=1,
     )
     bad["appointment_id"] = bad["id"].astype(int)
+    rename_map = {}
+    if "amount" in bad.columns and "cashier_amount" not in bad.columns:
+        rename_map["amount"] = "cashier_amount"
+    if rename_map:
+        bad = bad.rename(columns=rename_map)
     return bad
 
 

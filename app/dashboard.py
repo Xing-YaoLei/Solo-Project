@@ -22,6 +22,8 @@ from services.risk_analysis import (
 from utils.auth import (
     ROLE_HIERARCHY,
     ROLE_LABELS,
+    ROLE_PERMISSIONS,
+    PERMISSION_LABELS,
     clear_user_session,
     create_share_link,
     get_current_username,
@@ -54,6 +56,8 @@ server = app.server
 
 server.secret_key = "change-me-in-production"
 
+_ALLOWED_LOGIN_ROLES = {"admin", "store_manager", "staff", "viewer"}
+
 
 @server.route("/api/login", methods=["POST"])
 def api_login():
@@ -61,6 +65,21 @@ def api_login():
     username = (data.get("username") or "demo_user").strip()
     role = (data.get("role") or "viewer").strip()
     store_id = data.get("store_id") or None
+
+    if role not in _ALLOWED_LOGIN_ROLES:
+        return jsonify({"success": False, "error": f"非法角色: {role}"}), 400
+
+    current_role = get_current_user_role()
+    current_level = ROLE_HIERARCHY.get(current_role, 0)
+    target_level = ROLE_HIERARCHY.get(role, 0)
+
+    if current_level > 0 and target_level > current_level:
+        return jsonify({
+            "success": False,
+            "error": f"当前角色「{ROLE_LABELS.get(current_role, current_role)}」"
+                     f"无法提升为「{ROLE_LABELS.get(role, role)}」"
+        }), 403
+
     set_user_session(username, role, store_id)
     return jsonify({
         "success": True,
@@ -105,12 +124,9 @@ def api_me():
         "role": get_current_user_role(),
         "role_label": ROLE_LABELS.get(get_current_user_role(), get_current_user_role()),
         "store_id": session.get("store_id"),
-        "permissions": sorted(list(utils.auth.ROLE_PERMISSIONS.get(get_current_user_role(), set()))),
+        "permissions": sorted(list(ROLE_PERMISSIONS.get(get_current_user_role(), set()))),
         "share_context": session.get("share_context"),
     })
-
-
-import utils.auth  # noqa: E402,F811
 
 
 @server.before_request
@@ -120,63 +136,7 @@ def enforce_role_on_share():
         if not validate_share_access(share_token):
             from flask import abort
             abort(403, description=f"分享链接无效或权限受限（token: {share_token[:8]}...）")
-
-
-def _render_download_buttons() -> html.Div:
-    can_export = has_permission("export_csv")
-    base_btn_cls = "btn-outline-primary"
-    warn_btn_cls = "btn-outline-warning"
-    danger_btn_cls = "btn-outline-danger"
-    disabled = {} if can_export else {"disabled": True, "style": {"cursor": "not-allowed", "opacity": 0.6}}
-    title_suffix = "" if can_export else " (当前角色无权限)"
-
-    return html.Div([
-        html.Button(f"下载冲突趋势CSV{title_suffix}", id="btn-dl-conflict", n_clicks=0,
-                     className=f"btn {base_btn_cls} btn-sm me-2", **disabled),
-        html.Button(f"下载改约构成CSV{title_suffix}", id="btn-dl-reschedule", n_clicks=0,
-                     className=f"btn {base_btn_cls} btn-sm me-2", **disabled),
-        html.Button(f"下载到场明细CSV{title_suffix}", id="btn-dl-attendance", n_clicks=0,
-                     className=f"btn {base_btn_cls} btn-sm me-2", **disabled),
-        html.Button(f"下载异常标注CSV{title_suffix}", id="btn-dl-anomaly", n_clicks=0,
-                     className=f"btn {warn_btn_cls} btn-sm me-2", **disabled),
-        html.Button(f"下载完整报告{title_suffix}", id="btn-dl-full", n_clicks=0,
-                     className=f"btn {danger_btn_cls} btn-sm", **disabled),
-    ], style={"marginBottom": "16px"})
-
-
-def _render_share_panel() -> html.Div:
-    can_share = has_permission("share_view")
-    role_options = []
-    for role, label in ROLE_LABELS.items():
-        if ROLE_HIERARCHY.get(role, 99) <= ROLE_HIERARCHY.get(get_current_user_role(), 0):
-            role_options.append({"label": f"{label}（{role}）", "value": role})
-
-    share_disabled = {} if can_share else {"disabled": True, "style": {"opacity": 0.6}}
-    title = "创建分享视图（店长及以上可分享）" if can_share else "分享视图（当前角色无分享权限）"
-
-    return html.Div(className="card p-3 mb-3", children=[
-        html.H6(title, className="mb-2"),
-        html.Div(className="row g-2", children=[
-            html.Div(className="col-md-4", children=[
-                html.Label("目标角色", className="form-label form-label-sm"),
-                dcc.Dropdown(id="share-role-select", options=role_options,
-                             value="viewer", className="form-select form-select-sm",
-                             disabled=not can_share),
-            ]),
-            html.Div(className="col-md-3", children=[
-                html.Label("有效期(分钟)", className="form-label form-label-sm"),
-                dcc.Input(id="share-expires", type="number", value=60, min=5, max=10080,
-                          className="form-control form-control-sm"),
-            ]),
-            html.Div(className="col-md-2 d-flex align-items-end", children=[
-                html.Button("生成分享链接", id="btn-create-share", n_clicks=0,
-                            className="btn btn-sm btn-success", **share_disabled),
-            ]),
-            html.Div(className="col-md-3 d-flex align-items-end", children=[
-                html.Span(id="share-result", className="text-success small", style={"wordBreak": "break-all"}),
-            ]),
-        ]),
-    ])
+    session.permanent = False
 
 
 def _render_login_panel() -> html.Div:
@@ -226,8 +186,8 @@ app.layout = html.Div([
     dcc.Location(id="app-location", refresh=False),
     dcc.Store(id="store-options-store", storage_type="memory"),
     dcc.Store(id="selected-store-holder", storage_type="session"),
+    dcc.Store(id="current-role-store", storage_type="session", data={"role": "viewer"}),
     dcc.Interval(id="poll-refresh", interval=60000, n_intervals=0),
-    dcc.Store(id="share-token-from-url"),
 
     html.Nav(className="navbar navbar-dark bg-dark px-3", children=[
         html.Span("美业门店顾客预约风险监测", className="navbar-brand mb-0 h5"),
@@ -240,7 +200,8 @@ app.layout = html.Div([
 
     html.Div(className="container-fluid p-3", children=[
         _render_login_panel(),
-        _render_share_panel(),
+
+        html.Div(id="share-panel-placeholder", className="mb-3"),
 
         html.Div(className="row mb-3", children=[
             html.Div(className="col-md-3", children=[
@@ -257,7 +218,7 @@ app.layout = html.Div([
             ]),
         ]),
 
-        html.Div(id="download-section", children=_render_download_buttons()),
+        html.Div(id="download-section", className="mb-3"),
 
         html.Div(className="row", children=[
             html.Div(className="col-md-6", children=[
@@ -314,6 +275,68 @@ def _fetch_store_options() -> list[dict]:
     return opts
 
 
+def _build_download_buttons(can_export: bool) -> html.Div:
+    base_btn_cls = "btn-outline-primary"
+    warn_btn_cls = "btn-outline-warning"
+    danger_btn_cls = "btn-outline-danger"
+    disabled = {} if can_export else {"disabled": True, "style": {"cursor": "not-allowed", "opacity": 0.6}}
+    title_suffix = "" if can_export else " (当前角色无权限)"
+
+    return html.Div([
+        html.Button(f"下载冲突趋势CSV{title_suffix}", id="btn-dl-conflict", n_clicks=0,
+                     className=f"btn {base_btn_cls} btn-sm me-2", **disabled),
+        html.Button(f"下载改约构成CSV{title_suffix}", id="btn-dl-reschedule", n_clicks=0,
+                     className=f"btn {base_btn_cls} btn-sm me-2", **disabled),
+        html.Button(f"下载到场明细CSV{title_suffix}", id="btn-dl-attendance", n_clicks=0,
+                     className=f"btn {base_btn_cls} btn-sm me-2", **disabled),
+        html.Button(f"下载异常标注CSV{title_suffix}", id="btn-dl-anomaly", n_clicks=0,
+                     className=f"btn {warn_btn_cls} btn-sm me-2", **disabled),
+        html.Button(f"下载完整报告{title_suffix}", id="btn-dl-full", n_clicks=0,
+                     className=f"btn {danger_btn_cls} btn-sm", **disabled),
+    ], style={"marginBottom": "16px"})
+
+
+def _build_share_panel(current_role: str, share_result: html.Div | None = None) -> html.Div:
+    can_share = "share_view" in ROLE_PERMISSIONS.get(current_role, set())
+    current_level = ROLE_HIERARCHY.get(current_role, 0)
+
+    role_options = []
+    for role, label in ROLE_LABELS.items():
+        if ROLE_HIERARCHY.get(role, 99) <= current_level:
+            role_options.append({"label": f"{label}（{role}）", "value": role})
+
+    share_disabled = {} if can_share else {"disabled": True, "style": {"opacity": 0.6}}
+    title = "创建分享视图（店长及以上可分享）" if can_share else "分享视图（当前角色无分享权限）"
+
+    result = share_result or html.Span("", id="share-result")
+
+    return html.Div(className="card p-3 mb-3", children=[
+        html.H6(title, className="mb-2"),
+        html.Div(className="row g-2", children=[
+            html.Div(className="col-md-4", children=[
+                html.Label("目标角色", className="form-label form-label-sm"),
+                dcc.Dropdown(id="share-role-select", options=role_options,
+                             value=role_options[0]["value"] if role_options else "viewer",
+                             className="form-select form-select-sm",
+                             disabled=not can_share),
+            ]),
+            html.Div(className="col-md-3", children=[
+                html.Label("有效期(分钟)", className="form-label form-label-sm"),
+                dcc.Input(id="share-expires", type="number", value=60, min=5, max=10080,
+                          className="form-control form-control-sm", **share_disabled),
+            ]),
+            html.Div(className="col-md-2 d-flex align-items-end", children=[
+                html.Button("生成分享链接", id="btn-create-share", n_clicks=0,
+                            className="btn btn-sm btn-success", **share_disabled),
+            ]),
+            html.Div(className="col-md-3 d-flex align-items-end", children=[
+                html.Div(id="share-result", className="small", style={"wordBreak": "break-all", "width": "100%"},
+                         children=result),
+            ]),
+        ]),
+    ])
+
+
 @app.callback(
     [Output("store-selector", "options"), Output("store-selector", "placeholder")],
     [Input("app-location", "pathname"), Input("btn-login", "n_clicks")],
@@ -347,6 +370,7 @@ def sync_store_selection(selected, login_store):
         Output("user-role-badge", "children"),
         Output("caliber-definition-table", "children"),
         Output("download-section", "children"),
+        Output("share-panel-placeholder", "children"),
         Output("refresh-status", "children"),
     ],
     [
@@ -354,10 +378,16 @@ def sync_store_selection(selected, login_store):
         Input("store-selector", "value"),
         Input("poll-refresh", "n_intervals"),
         Input("selected-store-holder", "modified_timestamp"),
+        Input("btn-login", "n_clicks"),
+        Input("btn-logout", "n_clicks"),
     ],
     [State("selected-store-holder", "data"), State("login-store-id", "value")],
 )
-def update_dashboard(refresh_clicks, selected_store, _poll, _ts_mod, holder_data, login_store_default):
+def update_dashboard(
+    refresh_clicks, selected_store, _poll, _ts_mod,
+    _login_clicks, _logout_clicks,
+    holder_data, login_store_default,
+):
     role = get_current_user_role()
     role_label = ROLE_LABELS.get(role, role)
     username = get_current_username() or "未登录"
@@ -378,7 +408,9 @@ def update_dashboard(refresh_clicks, selected_store, _poll, _ts_mod, holder_data
         )
         return (
             denied, denied, denied, denied, "",
-            f"门店受限", user_badge, [], _render_download_buttons(), "权限校验不通过"
+            f"门店受限", user_badge, [],
+            _build_download_buttons(False), _build_share_panel(role),
+            "权限校验不通过"
         )
 
     conflict_result = compute_conflict_trend(store_id=visible_store)
@@ -404,6 +436,7 @@ def update_dashboard(refresh_clicks, selected_store, _poll, _ts_mod, holder_data
     ]
 
     status_text = "最近刷新: " + refresh_time
+    can_export = has_permission("export_csv")
 
     return (
         conflict_chart,
@@ -414,7 +447,8 @@ def update_dashboard(refresh_clicks, selected_store, _poll, _ts_mod, holder_data
         store_badge,
         user_badge,
         caliber_rows,
-        _render_download_buttons(),
+        _build_download_buttons(can_export),
+        _build_share_panel(role),
         status_text,
     )
 
@@ -428,11 +462,12 @@ def _build_anomaly_enhanced(anomaly_result: dict) -> html.Div:
 
     table_headers = [
         "顾客", "服务项目", "预约时间", "异常原因", "异常详情",
-        "改约次数", "到场状态", "收银ID", "金额", "支付方式", "评分",
+        "改约次数", "到场状态", "预约ID", "收银ID", "金额", "支付方式", "评分",
     ]
 
     rows = []
     for r in records:
+        appt_id = r.get("appointment_id") or r.get("id")
         rows.append(html.Tr([
             html.Td(str(r.get("customer_name", ""))),
             html.Td(str(r.get("service_item", ""))),
@@ -441,8 +476,9 @@ def _build_anomaly_enhanced(anomaly_result: dict) -> html.Div:
             html.Td(str(r.get("anomaly_detail", ""))[:40], title=str(r.get("anomaly_detail", ""))),
             html.Td(str(r.get("reschedule_count", 0))),
             html.Td(str(r.get("attendance_status", ""))),
+            html.Td(str(appt_id)),
             html.Td(str(r.get("cashier_record_id", "")),
-                    title=f"追溯: SELECT * FROM cashier_records WHERE id={r.get('cashier_record_id')}"),
+                    title=f"SELECT * FROM cashier_records WHERE id={r.get('cashier_record_id')}"),
             html.Td(str(r.get("cashier_amount", ""))),
             html.Td(str(r.get("payment_method", ""))),
             html.Td(str(r.get("review_rating", ""))),
@@ -480,7 +516,7 @@ def _build_anomaly_enhanced(anomaly_result: dict) -> html.Div:
         html.Small(f"口径: {caliber.get('异常标注', '')}"),
         html.Br(),
         html.Small(className="text-muted",
-                   children="可追溯字段: cashier_record_id → 收银流水主键; review_rating → 点评表评分"),
+                   children="可追溯字段: cashier_record_id→收银流水主键; cashier_amount→交易金额; review_rating→点评评分"),
     ])
 
     return html.Div([
@@ -506,13 +542,12 @@ def _get_attendance_trace(store_id: str | None) -> list[dict]:
     if df.empty:
         return []
     cols = [
-        "id", "cashier_record_id", "amount", "payment_method",
+        "id", "cashier_record_id", "cashier_amount", "payment_method",
         "transaction_time", "transaction_type", "review_rating", "reviewed_at",
     ]
     present = [c for c in cols if c in df.columns]
     df = df[present].rename(columns={
         "id": "appointment_id",
-        "amount": "cashier_amount",
     }).where(pd.notna(df[present]), None)
     return df.to_dict("records")
 
@@ -642,7 +677,15 @@ def handle_login_actions(login_clicks, logout_clicks, username, role, store_id):
         clear_user_session()
         return "已退出登录，切换为匿名查看者角色"
     if trigger_id == "btn-login":
-        set_user_session(username or "demo", role or "viewer", store_id)
+        if role not in _ALLOWED_LOGIN_ROLES:
+            return f"登录失败：非法角色 {role}"
+        current_role = get_current_user_role()
+        current_level = ROLE_HIERARCHY.get(current_role, 0)
+        target_level = ROLE_HIERARCHY.get(role, 0)
+        if current_level > 0 and target_level > current_level:
+            return (f"登录失败：当前角色「{ROLE_LABELS.get(current_role, current_role)}」"
+                    f"无法提升为「{ROLE_LABELS.get(role, role)}」")
+        set_user_session(username or "demo", role, store_id)
         return (f"已登录: {username} / {ROLE_LABELS.get(role, role)}"
                 f" / 默认门店: {store_id}")
     return ""
@@ -660,43 +703,40 @@ def handle_login_actions(login_clicks, logout_clicks, username, role, store_id):
 def handle_create_share(n_clicks, target_role, expires, store_value, holder):
     if not has_permission("share_view"):
         return html.Span("当前角色无分享权限", className="text-danger")
+    if not target_role or target_role not in ROLE_LABELS:
+        return html.Span("请选择有效的目标角色", className="text-danger")
     target_store = (holder or {}).get("value") if isinstance(holder, dict) else store_value
     target_store = get_visible_store_id(target_store)
+
     try:
-        url = request.host_url.rstrip("/") + "/"
-        import hashlib, secrets, time
-        token = hashlib.sha256(f"{secrets.token_urlsafe(16)}{time.time()}".encode()).hexdigest()[:24]
-        from datetime import datetime, timedelta
-        expires_dt = datetime.utcnow() + timedelta(minutes=int(expires or 60))
-        from utils.auth import _share_token_store
-        _share_token_store[token] = {
-            "token": token,
-            "role": target_role,
-            "store_id": target_store,
-            "expires_at": expires_dt.isoformat(),
-            "created_at": datetime.utcnow().isoformat(),
-            "created_by": get_current_username(),
-            "owner_role": get_current_user_role(),
-            "permissions": sorted(utils.auth.ROLE_PERMISSIONS.get(target_role, set())),
-        }
-        share_url = f"{url}?share_token={token}"
-        labels = [utils.auth.PERMISSION_LABELS.get(p, p)
-                  for p in utils.auth.ROLE_PERMISSIONS.get(target_role, set())]
-        return html.Div([
-            html.Div([
-                html.Strong("分享链接："),
-                dcc.Input(value=share_url, readOnly=True, style={"width": "100%"}),
-            ]),
-            html.Div(className="text-muted small", children=[
-                f"有效期至 {expires_dt.strftime('%Y-%m-%d %H:%M UTC')}; "
-                f"角色: {ROLE_LABELS.get(target_role, target_role)}; "
-                f"权限: {', '.join(labels)}",
-            ]),
-            html.Div(className="small mt-1", children=[
-                "证明: 分享视图受店长权限限制 — 访问此链接将强制以"
-                f"「{ROLE_LABELS.get(target_role, target_role)}」运行，"
-                "若 target_role > owner_role 则会被 validate_share_access 拒绝 (403)。",
-            ]),
-        ])
+        result = create_share_link(
+            target_role=target_role,
+            target_store_id=target_store,
+            expires_minutes=int(expires or 60),
+        )
     except Exception as e:
         return html.Span(f"生成失败: {e}", className="text-danger")
+
+    if not result.get("success"):
+        return html.Span(f"生成失败: {result.get('error', '未知错误')}", className="text-danger")
+
+    labels = [PERMISSION_LABELS.get(p, p) for p in result.get("permissions", [])]
+    expires_at = result.get("expires_at", "")
+
+    return html.Div([
+        html.Div([
+            html.Strong("分享链接："),
+            dcc.Input(value=result["share_url"], readOnly=True, style={"width": "100%"}),
+        ]),
+        html.Div(className="text-muted small", children=[
+            f"有效期至 {expires_at.replace('T', ' ')}; "
+            f"角色: {result.get('target_role_label', target_role)}; "
+            f"权限: {', '.join(labels)}",
+        ]),
+        html.Div(className="small mt-1 text-success", children=[
+            "证明: 此分享通过 create_share_link() 生成，强制以"
+            f"「{result.get('target_role_label', target_role)}」运行；"
+            "before_request 拦截 validate_share_access 不可绕过；"
+            "若 target_role 权限高于分享者则已被拒绝。",
+        ]),
+    ])
