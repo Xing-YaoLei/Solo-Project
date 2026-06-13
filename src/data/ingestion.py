@@ -40,6 +40,10 @@ POST_INGEST_HOOKS = {
 class DataIngestionPipeline:
     """数据摄入管道：MinIO 存储 + 清洗入库"""
 
+    STORAGE_STATUS_STORED = "stored"        # 已入 MinIO + DuckDB
+    STORAGE_STATUS_DUCKDB_ONLY = "duckdb_only"  # 仅入 DuckDB（MinIO 不可用/上传失败）
+    STORAGE_STATUS_SKIPPED = "skipped"      # 显式跳过 MinIO
+
     def ingest(
         self,
         raw_bytes: bytes,
@@ -56,11 +60,16 @@ class DataIngestionPipeline:
             skip_minio: 是否跳过 MinIO 存储（MinIO 不可用时降级）
 
         Returns:
-            包含统计信息的字典
+            包含统计信息的字典。关键字段：
+              storage_status: stored / duckdb_only / skipped
+              minio_stored:   bool (是否实际存入 MinIO)
+              minio_object:   str  (仅当 stored 时存在)
+              minio_error:    str  (仅当 duckdb_only 且上传失败时存在)
         """
         result: Dict[str, Any] = {
             "table": table_name,
             "file_name": file_name,
+            "storage_status": self.STORAGE_STATUS_DUCKDB_ONLY,
             "minio_stored": False,
             "raw_rows": 0,
             "cleaned_rows": 0,
@@ -69,21 +78,40 @@ class DataIngestionPipeline:
             "errors": [],
         }
 
-        # Step 1: 存 MinIO
-        if not skip_minio:
+        # Step 1: 存 MinIO（准确判断三种状态）
+        if skip_minio:
+            result["storage_status"] = self.STORAGE_STATUS_SKIPPED
+            result["minio_stored"] = False
+            logger.info("已显式跳过 MinIO 存储: %s", file_name)
+        else:
             try:
                 object_name = self._build_minio_path(table_name, file_name)
-                minio_client.upload_bytes(
+                upload_ok = minio_client.upload_bytes(
                     object_name=object_name,
                     data=raw_bytes,
                     content_type=self._guess_content_type(file_name),
                 )
-                result["minio_stored"] = True
-                result["minio_object"] = object_name
-                logger.info("原始文件已存入 MinIO: %s", object_name)
+                if upload_ok:
+                    result["storage_status"] = self.STORAGE_STATUS_STORED
+                    result["minio_stored"] = True
+                    result["minio_object"] = object_name
+                    logger.info("原始文件已存入 MinIO: %s", object_name)
+                else:
+                    result["storage_status"] = self.STORAGE_STATUS_DUCKDB_ONLY
+                    result["minio_stored"] = False
+                    minio_err_msg = "MinIO 服务不可用或上传返回失败"
+                    result["minio_error"] = minio_err_msg
+                    result["errors"].append(f"MinIO存储失败: {minio_err_msg}")
+                    logger.warning(
+                        "MinIO 上传失败（upload_bytes returned False），"
+                        "降级为仅入 DuckDB: %s", file_name
+                    )
             except Exception as e:
-                logger.warning("MinIO 存储失败，继续后续流程: %s", e)
-                result["errors"].append(f"MinIO存储失败: {e}")
+                result["storage_status"] = self.STORAGE_STATUS_DUCKDB_ONLY
+                result["minio_stored"] = False
+                result["minio_error"] = str(e)
+                result["errors"].append(f"MinIO存储异常: {e}")
+                logger.warning("MinIO 存储异常，降级为仅入 DuckDB: %s: %s", file_name, e)
 
         # Step 2: 加载为 DataFrame
         try:

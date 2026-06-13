@@ -291,34 +291,72 @@ class RiskEngine:
         return df, alerts
 
     def _persist_material_abnormalities(self, df: pl.DataFrame, alerts: List[AlertRecord]) -> None:
-        """持久化耗材异常检测结果：回写 usage_ratio、is_abnormal、anomaly_reason 到 material_usage 表"""
+        """持久化耗材异常检测结果：回写 usage_ratio、is_abnormal、anomaly_reason 到 material_usage 表
+
+        关键实现说明：
+            绝对不能使用 "部分列 upsert" (DELETE+INSERT) 方式，否则会丢失原有 NOT NULL 列
+            （store_id, order_id, material_code, material_name, usage_quantity 等）。
+            必须使用 UPDATE 方式按 usage_id 批量更新目标列。
+        """
         try:
             update_cols = [c for c in [
                 "usage_id", "usage_ratio", "is_abnormal", "anomaly_reason"
             ] if c in df.columns]
 
-            if len(update_cols) >= 2 and "usage_id" in update_cols:
+            if len(update_cols) >= 2 and "usage_id" in update_cols and df.height > 0:
+                update_df = df.select(update_cols)
+
                 try:
-                    update_df = df.select(update_cols)
-                    duckdb_manager.insert_dataframe(
-                        "material_usage", update_df, if_exists="upsert"
-                    )
-                except Exception as e:
-                    logger.warning("批量 upsert 耗材异常失败，降级为逐条更新: %s", e)
-                    for row in df.select(update_cols).iter_rows(named=True):
-                        duckdb_manager.execute(
-                            """
+                    temp_table = "__temp_mat_updates_"
+                    conn = duckdb_manager.conn
+                    conn.register(temp_table, update_df.to_arrow())
+
+                    set_clauses = []
+                    update_fields = []
+                    if "usage_ratio" in update_cols:
+                        set_clauses.append(f"usage_ratio = {temp_table}.usage_ratio")
+                    if "is_abnormal" in update_cols:
+                        set_clauses.append(f"is_abnormal = {temp_table}.is_abnormal")
+                    if "anomaly_reason" in update_cols:
+                        set_clauses.append(f"anomaly_reason = {temp_table}.anomaly_reason")
+
+                    if set_clauses:
+                        set_sql = ", ".join(set_clauses)
+                        update_sql = f"""
                             UPDATE material_usage
-                               SET usage_ratio = ?,
-                                   is_abnormal = ?,
-                                   anomaly_reason = ?
-                             WHERE usage_id = ?
-                            """,
-                            [row.get("usage_ratio"),
-                             bool(row.get("is_abnormal", False)),
-                             row.get("anomaly_reason"),
-                             row.get("usage_id")]
+                               SET {set_sql}
+                              FROM {temp_table}
+                             WHERE material_usage.usage_id = {temp_table}.usage_id
+                        """
+                        conn.execute(update_sql)
+                        logger.info(
+                            "批量 UPDATE 耗材异常检测结果: %d 行 (列: %s)",
+                            update_df.height,
+                            [c for c in update_cols if c != "usage_id"],
                         )
+                    conn.unregister(temp_table)
+                except Exception as e:
+                    logger.warning(
+                        "批量 UPDATE 耗材异常失败，降级为逐条 UPDATE: %s", e
+                    )
+                    for row in update_df.iter_rows(named=True):
+                        sets = []
+                        params = []
+                        if "usage_ratio" in update_cols:
+                            sets.append("usage_ratio = ?")
+                            params.append(row.get("usage_ratio"))
+                        if "is_abnormal" in update_cols:
+                            sets.append("is_abnormal = ?")
+                            params.append(bool(row.get("is_abnormal", False)))
+                        if "anomaly_reason" in update_cols:
+                            sets.append("anomaly_reason = ?")
+                            params.append(row.get("anomaly_reason"))
+                        if sets:
+                            params.append(row.get("usage_id"))
+                            duckdb_manager.execute(
+                                f"UPDATE material_usage SET {', '.join(sets)} WHERE usage_id = ?",
+                                params,
+                            )
 
             for alert in alerts:
                 existing = duckdb_manager.query(

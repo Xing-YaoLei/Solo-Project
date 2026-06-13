@@ -516,7 +516,13 @@ def render_dashboard_page():
 
 
 def _render_uploader(table_name: str, label: str, icon: str, key: str):
-    """通用数据上传组件：上传→MinIO存储→清洗→DuckDB入库"""
+    """通用数据上传组件：上传→MinIO存储→清洗→DuckDB入库
+
+    存储状态会准确区分：
+    - 🟢 已入 MinIO + DuckDB (storage_status = "stored")
+    - 🟡 仅入 DuckDB，MinIO 未成功 (storage_status = "duckdb_only")
+    - ⚪ 仅入 DuckDB，已跳过 MinIO (storage_status = "skipped")
+    """
     st.subheader(f"{icon} {label}")
     uploaded = st.file_uploader(
         f"上传{label}文件",
@@ -542,18 +548,39 @@ def _render_uploader(table_name: str, label: str, icon: str, key: str):
                     table_name=table_name,
                 )
 
+            storage_status = result.get("storage_status", "duckdb_only")
+            minio_obj = result.get("minio_object", "")
+            minio_error = result.get("minio_error", "")
+
             if result["inserted_rows"] > 0:
                 st.success(
                     f"✅ 导入成功！入库 {result['inserted_rows']} 行 | "
                     f"原始 {result['raw_rows']} 行 → 清洗后 {result['cleaned_rows']} 行 | "
                     f"去重 {result['removed_duplicates']} 条"
                 )
-                if result["minio_stored"]:
-                    st.info(f"📁 原始文件已存入 MinIO: `{result.get('minio_object', '')}`")
-                else:
-                    st.warning("⚠️ MinIO 存储未成功，数据已直接入库")
+
+                if storage_status == "stored":
+                    st.success(
+                        f"� 对象存储：已存入 MinIO → `{minio_obj}`"
+                    )
+                elif storage_status == "duckdb_only":
+                    msg = "🟡 对象存储：未成功（降级为仅入 DuckDB）"
+                    if minio_error:
+                        msg += f"，原因：{minio_error}"
+                    st.warning(msg)
+                    st.info(
+                        "💡 提示：该批次数据已完成清洗入库，可在仪表盘中查看。"
+                        "如需长期归档原始文件，请检查 MinIO 服务配置后重试。"
+                    )
+                elif storage_status == "skipped":
+                    st.info(
+                        "⚪ 对象存储：已显式跳过（数据已直接入库 DuckDB）"
+                    )
+
                 if result["errors"]:
                     for err in result["errors"]:
+                        if err.startswith("MinIO"):
+                            continue
                         st.warning(f"⚠️ {err}")
                 st.cache_data.clear()
             else:
