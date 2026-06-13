@@ -4,19 +4,21 @@ class PickupOrdersController < ApplicationController
   before_action :set_ransack, only: [:index, :closed]
 
   def index
-    @pickup_orders = @q.result.includes(:operator, :reviewer, :pickup_items)
-                          .active
-                          .order(created_at: :desc)
-                          .page(params[:page])
-                          .per(20)
+    scope = @q.result.includes(:operator, :reviewer, :pickup_items)
+    has_status_filter = params[:q]&.key?(:status_eq) && params[:q][:status_eq].present?
+    scope = scope.active unless has_status_filter || params[:all_status] == '1'
+    @pickup_orders = scope.order(created_at: :desc)
+                           .page(params[:page])
+                           .per(20)
   end
 
   def closed
-    @pickup_orders = @q.result.includes(:operator, :reviewer, :pickup_items)
-                          .closed
-                          .order(created_at: :desc)
-                          .page(params[:page])
-                          .per(20)
+    scope = @q.result.includes(:operator, :reviewer, :pickup_items)
+    has_status_filter = params[:q]&.key?(:status_eq) && params[:q][:status_eq].present?
+    scope = scope.closed unless has_status_filter
+    @pickup_orders = scope.order(created_at: :desc)
+                           .page(params[:page])
+                           .per(20)
     render :index
   end
 
@@ -142,7 +144,12 @@ class PickupOrdersController < ApplicationController
   end
 
   def set_ransack
-    @q = PickupOrder.ransack(params[:q])
+    q_params = params[:q]&.dup || {}
+    if q_params[:created_at_lteq].present?
+      date = q_params[:created_at_lteq].to_date rescue nil
+      q_params[:created_at_lteq] = date.end_of_day if date
+    end
+    @q = PickupOrder.ransack(q_params)
   end
 
   def pickup_order_params

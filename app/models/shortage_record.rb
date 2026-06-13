@@ -15,6 +15,14 @@ class ShortageRecord < ApplicationRecord
   scope :pending, -> { where(status: 'pending') }
   scope :handled, -> { where(status: 'handled') }
 
+  def self.ransackable_attributes(auth_object = nil)
+    ["compensation_amount", "created_at", "handled_at", "handling_method", "id", "pickup_item_id", "pickup_order_id", "reason", "remark", "status", "updated_at"]
+  end
+
+  def self.ransackable_associations(auth_object = nil)
+    ["handled_by", "pickup_item", "pickup_order"]
+  end
+
   def pending?
     status == 'pending'
   end

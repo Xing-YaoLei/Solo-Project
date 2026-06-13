@@ -30,9 +30,17 @@ class ShortageRecordsController < ApplicationController
 
   def handle
     if @shortage_record.pending?
-      handling_method = params[:handling_method] || shortage_record_params[:handling_method] || '退款'
-      compensation_amount = params[:compensation_amount] || shortage_record_params[:compensation_amount]
-      remark = params[:remark] || shortage_record_params[:remark]
+      handling_method = params[:handling_method]
+      compensation_amount = params[:compensation_amount]
+      remark = params[:remark]
+      
+      if params[:shortage_record].present?
+        handling_method ||= params[:shortage_record][:handling_method]
+        compensation_amount ||= params[:shortage_record][:compensation_amount]
+        remark ||= params[:shortage_record][:remark]
+      end
+      
+      handling_method ||= '退款'
       
       if compensation_amount.blank? && @shortage_record.pickup_item
         compensation_amount = @shortage_record.pickup_item.unit_price.to_f * @shortage_record.shortage_quantity

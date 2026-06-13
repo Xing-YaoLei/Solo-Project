@@ -23,9 +23,11 @@
             <tr>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">处理人</th>
               <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">处理总数</th>
+              <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">已完成</th>
               <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">准时完成</th>
               <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">延迟</th>
               <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">准时率</th>
+              <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">短少记录</th>
               <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">操作</th>
             </tr>
           </thead>
@@ -35,16 +37,29 @@
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                   <%= name %>
                 </td>
-                <td class="px-6 py-4 text-sm text-gray-900 text-center"><%= stats[:total] %></td>
+                <td class="px-6 py-4 text-sm text-gray-900 text-center">
+                  <%= link_to stats[:total], pickup_orders_path(q: { operator_id_eq: stats[:id], created_at_gteq: @start_date, created_at_lteq: @end_date }, all_status: 1), class: "text-indigo-600 hover:text-indigo-900 font-bold" %>
+                </td>
+                <td class="px-6 py-4 text-sm text-gray-900 text-center"><%= stats[:completed] %></td>
                 <td class="px-6 py-4 text-sm text-green-600 text-center font-medium"><%= stats[:on_time] %></td>
-                <td class="px-6 py-4 text-sm text-yellow-600 text-center font-medium"><%= stats[:total] - stats[:on_time] %></td>
+                <td class="px-6 py-4 text-sm text-yellow-600 text-center font-medium"><%= stats[:completed] - stats[:on_time] %></td>
                 <td class="px-6 py-4 text-sm text-center">
                   <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full <%= stats[:rate] >= 90 ? 'bg-green-100 text-green-800' : stats[:rate] >= 70 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800' %>">
                     <%= stats[:rate] %>%
                   </span>
                 </td>
                 <td class="px-6 py-4 text-sm text-center">
-                  <%= link_to "查看单据", pickup_orders_path(q: { operator_id_eq: User.find_by(name: name)&.id, created_at_gteq: @start_date, created_at_lteq: @end_date }), class: "text-indigo-600 hover:text-indigo-900" %>
+                  <% if @operator_shortage[name].to_i > 0 %>
+                    <%= link_to @operator_shortage[name], pickup_orders_path(q: { operator_id_eq: stats[:id], has_shortage_eq: true, created_at_gteq: @start_date, created_at_lteq: @end_date }, all_status: 1), class: "text-red-600 hover:text-red-900 font-bold" %>
+                  <% else %>
+                    <span class="text-gray-400">0</span>
+                  <% end %>
+                </td>
+                <td class="px-6 py-4 text-sm text-center space-x-2">
+                  <%= link_to "全部单据", pickup_orders_path(q: { operator_id_eq: stats[:id], created_at_gteq: @start_date, created_at_lteq: @end_date }, all_status: 1), class: "text-indigo-600 hover:text-indigo-900" %>
+                  <% if @operator_shortage[name].to_i > 0 %>
+                    <%= link_to "短少单据", pickup_orders_path(q: { operator_id_eq: stats[:id], has_shortage_eq: true, created_at_gteq: @start_date, created_at_lteq: @end_date }, all_status: 1), class: "text-red-600 hover:text-red-900" %>
+                  <% end %>
                 </td>
               </tr>
             <% end %>
@@ -66,11 +81,10 @@
       <% if @source_performance.any? %>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <% @source_performance.each do |source, count| %>
-            <% next if source == 'all' %>
-            <%= link_to pickup_orders_path(q: { source_eq: source, created_at_gteq: @start_date, created_at_lteq: @end_date }), class: "block bg-blue-50 p-4 rounded-lg border border-blue-100 text-center hover:bg-blue-100 transition-colors" do %>
+            <%= link_to pickup_orders_path(q: { source_eq: source, created_at_gteq: @start_date, created_at_lteq: @end_date }, all_status: 1), class: "block bg-blue-50 p-4 rounded-lg border border-blue-100 text-center hover:bg-blue-100 transition-colors" do %>
               <div class="text-sm font-medium text-blue-600"><%= source %></div>
               <div class="mt-1 text-2xl font-bold text-blue-900"><%= count %></div>
-              <div class="text-xs text-blue-500 mt-1"><%= percentage(count, @aggregated[:total_orders]) %></div>
+              <div class="text-xs text-blue-500 mt-1"><%= percentage(count, @total_orders) %></div>
               <div class="text-xs text-blue-400 mt-2">点击查看单据 →</div>
             <% end %>
           <% end %>

@@ -18,16 +18,57 @@
 
     <div class="px-4 py-5 sm:p-6">
       <% if @abnormal_reasons.any? %>
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
+        <div class="space-y-6">
           <% @abnormal_reasons.each do |reason, count| %>
-            <%= link_to pickup_orders_path(q: { created_at_gteq: @start_date, created_at_lteq: @end_date }), class: "block bg-red-50 p-4 rounded-lg border border-red-100 text-center hover:bg-red-100 transition-colors" do %>
-              <div class="text-sm font-medium text-red-600"><%= reason %></div>
-              <div class="mt-1 text-2xl font-bold text-red-900"><%= count %></div>
-              <div class="text-xs text-red-500 mt-1">
-                <%= percentage(count, @abnormal_reasons.values.sum) %>
+            <div class="border border-red-100 rounded-lg overflow-hidden">
+              <div class="bg-red-50 px-4 py-3 flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                  <span class="text-sm font-medium text-red-600"><%= reason %></span>
+                  <span class="px-2 py-0.5 bg-red-100 text-red-800 rounded text-xs font-bold"><%= count %> 条</span>
+                  <span class="text-xs text-red-500"><%= percentage(count, @shortage_total) %></span>
+                </div>
+                <%= link_to "查看全部 →", pickup_orders_path(q: { shortage_records_reason_eq: reason, created_at_gteq: @start_date, created_at_lteq: @end_date }, all_status: 1), class: "text-sm text-indigo-600 hover:text-indigo-900 font-medium" %>
               </div>
-              <div class="text-xs text-red-400 mt-2">点击查看单据 →</div>
-            <% end %>
+              <% orders = @abnormal_orders_by_reason[reason] %>
+              <% if orders.present? %>
+                <table class="min-w-full divide-y divide-gray-200">
+                  <thead class="bg-gray-50">
+                    <tr>
+                      <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">自提码</th>
+                      <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">客户</th>
+                      <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">来源</th>
+                      <th class="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">短少件数</th>
+                      <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">处理人</th>
+                      <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">状态</th>
+                      <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody class="bg-white divide-y divide-gray-200">
+                    <% orders.each do |order| %>
+                      <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-2 text-sm font-medium text-indigo-600">
+                          <%= link_to order.pickup_code, order %>
+                        </td>
+                        <td class="px-4 py-2 text-sm text-gray-900"><%= order.customer_name %></td>
+                        <td class="px-4 py-2 text-sm text-gray-500"><%= order.source %></td>
+                        <td class="px-4 py-2 text-sm text-center text-red-600 font-medium"><%= order.total_shortage_count %></td>
+                        <td class="px-4 py-2 text-sm text-gray-500"><%= order.operator&.name || '-' %></td>
+                        <td class="px-4 py-2">
+                          <span class="px-2 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full <%= status_badge_class(order.status) %>">
+                            <%= order.status_display %>
+                          </span>
+                        </td>
+                        <td class="px-4 py-2 text-sm text-right">
+                          <%= link_to "查看", order, class: "text-indigo-600 hover:text-indigo-900" %>
+                        </td>
+                      </tr>
+                    <% end %>
+                  </tbody>
+                </table>
+              <% else %>
+                <div class="px-4 py-3 text-sm text-gray-500">暂无相关单据</div>
+              <% end %>
+            </div>
           <% end %>
         </div>
       <% else %>
