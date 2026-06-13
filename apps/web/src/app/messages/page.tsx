@@ -14,8 +14,8 @@ import { useRouter } from 'next/navigation';
 
 function inferTypeFromMessage(message: string): string {
   if (!message) return 'NOTIFICATION';
-  if (message.includes('超时') || message.includes('已超')) return 'TIMEOUT';
   if (message.includes('预警') || message.includes('即将')) return 'TIMEOUT_WARNING';
+  if (message.includes('超时') || message.includes('已超')) return 'TIMEOUT';
   if (message.includes('分派') || message.includes('分配')) return 'ASSIGNED';
   if (message.includes('重试')) return 'RETRY';
   if (message.includes('补录')) return 'SUPPLEMENT';

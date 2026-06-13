@@ -19,7 +19,7 @@ import {
   History,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { apiEndpoints } from '@/lib/api';
+import { apiEndpoints, setOperatorId } from '@/lib/api';
 import { UserRole } from '@solo/shared';
 
 interface NavItem {
@@ -83,6 +83,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       }
       setCurrentUser(user);
       localStorage.setItem('operatorId', user.id);
+      setOperatorId(user.id);
 
       const fetchUnread = async () => {
         try {
