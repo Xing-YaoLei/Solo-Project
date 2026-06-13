@@ -1,8 +1,8 @@
-import { _decorator, Component, Node, Label, Button, Color, Prefab, instantiate } from "cc";
+import { _decorator, Component, Node, Label, Button, Color, Prefab, instantiate, UITransform, Layout } from "cc";
 import { ScoreRecord, ErrorCause } from "../game/ScoreManager";
 import { AppointmentSystem } from "../appointment/AppointmentSystem";
 import { FailedFragment, FailedFragmentStore } from "../replay/FailedFragment";
-import { ReplaySession } from "../replay/ReplayTypes";
+import { ReplaySession, ReplayAction, ReplayActionType } from "../replay/ReplayTypes";
 
 const { ccclass, property } = _decorator;
 
@@ -58,7 +58,7 @@ export class SettlementPage extends Component {
     onReplay(callback: () => void): void { this._onReplay.push(callback); }
     onStatistics(callback: () => void): void { this._onStatistics.push(callback); }
 
-    show(record: ScoreRecord, fragmentStore: FailedFragmentStore): void {
+    show(record: ScoreRecord, fragmentStore: FailedFragmentStore, session: ReplaySession | null = null): void {
         this.node.active = true;
 
         if (this.titleLabel) {
@@ -84,6 +84,7 @@ export class SettlementPage extends Component {
 
         this._renderErrorDetails(record.errorCauses);
         this._renderCapacityErrors(record.errorCauses);
+        this._renderGameProcess(record.errorCauses, session);
         this._renderFailedFragments(record.levelId, fragmentStore);
         this._setupButtons(record);
     }
@@ -144,19 +145,122 @@ export class SettlementPage extends Component {
         const headerLabel = header.addComponent(Label);
         headerLabel.string = "=== 容量规则相关错因 ===";
         headerLabel.color = Color.RED;
+        headerLabel.fontSize = 16;
         capacitySection.addChild(header);
 
         for (const err of capacityErrors) {
             const detail = new Node("capacity_error");
+            const detailTransform = detail.addComponent(UITransform);
+            detailTransform.contentSize.set(380, 25);
             const detailLabel = detail.addComponent(Label);
             const categoryText = this._categoryToText(err.category);
             detailLabel.string = `[${categoryText}] ${err.description} (规则: ${err.relatedRule})`;
             detailLabel.color = new Color(200, 50, 50);
+            detailLabel.fontSize = 12;
+            detailLabel.horizontalAlign = Label.HorizontalAlign.LEFT;
             capacitySection.addChild(detail);
         }
 
         if (this.errorDetailContainer) {
             this.errorDetailContainer.addChild(capacitySection);
+        }
+    }
+
+    private _renderGameProcess(causes: ErrorCause[], session: ReplaySession | null): void {
+        if (!this.errorDetailContainer) return;
+
+        const processSection = new Node("game_process_section");
+        const header = new Node("header");
+        const headerLabel = header.addComponent(Label);
+        headerLabel.string = "=== 本局错误过程 ===";
+        headerLabel.color = Color.ORANGE;
+        headerLabel.fontSize = 16;
+        processSection.addChild(header);
+
+        let hasContent = false;
+
+        if (session && session.actions) {
+            const arrivalMisjudges = session.actions.filter(
+                a => a.type === ReplayActionType.ARRIVAL_CHECK && a.isCorrect === false
+            );
+            const conflicts = session.actions.filter(
+                a => a.type === ReplayActionType.CONFLICT_OCCURRED
+            );
+
+            if (arrivalMisjudges.length > 0) {
+                hasContent = true;
+                const subHeader = new Node("arrival_header");
+                const subLabel = subHeader.addComponent(Label);
+                subLabel.string = `到场误判 (${arrivalMisjudges.length}项):`;
+                subLabel.color = new Color(255, 200, 0);
+                subLabel.fontSize = 14;
+                subLabel.horizontalAlign = Label.HorizontalAlign.LEFT;
+                processSection.addChild(subHeader);
+
+                for (const action of arrivalMisjudges) {
+                    const detail = new Node("misjudge");
+                    const detailTransform = detail.addComponent(UITransform);
+                    detailTransform.contentSize.set(380, 22);
+                    const detailLabel = detail.addComponent(Label);
+                    const customerName = this._getCustomerName(action.customerId, session);
+                    detailLabel.string = `  × ${customerName}: 判定为「${this._statusText(action.newStatus || "")}」，正确应为「${this._statusText(action.previousStatus || "")}」`;
+                    detailLabel.color = new Color(255, 150, 0);
+                    detailLabel.fontSize = 12;
+                    detailLabel.horizontalAlign = Label.HorizontalAlign.LEFT;
+                    processSection.addChild(detail);
+                }
+            }
+
+            if (conflicts.length > 0) {
+                hasContent = true;
+                const subHeader = new Node("conflict_header");
+                const subLabel = subHeader.addComponent(Label);
+                subLabel.string = `时段冲突 (${conflicts.length}项):`;
+                subLabel.color = new Color(255, 100, 0);
+                subLabel.fontSize = 14;
+                subLabel.horizontalAlign = Label.HorizontalAlign.LEFT;
+                processSection.addChild(subHeader);
+
+                for (const action of conflicts) {
+                    const detail = new Node("conflict");
+                    const detailTransform = detail.addComponent(UITransform);
+                    detailTransform.contentSize.set(380, 22);
+                    const detailLabel = detail.addComponent(Label);
+                    const customerName = this._getCustomerName(action.customerId, session);
+                    detailLabel.string = `  × ${customerName} → 工位${(action.stationIndex ?? -1) + 1} ${action.time}: ${action.conflictMessage}`;
+                    detailLabel.color = new Color(255, 100, 0);
+                    detailLabel.fontSize = 12;
+                    detailLabel.horizontalAlign = Label.HorizontalAlign.LEFT;
+                    processSection.addChild(detail);
+                }
+            }
+        }
+
+        if (!hasContent) {
+            const noError = new Node("no_error");
+            const noErrorLabel = noError.addComponent(Label);
+            noErrorLabel.string = "本局无错误过程";
+            noErrorLabel.color = Color.GREEN;
+            noErrorLabel.fontSize = 14;
+            processSection.addChild(noError);
+        }
+
+        this.errorDetailContainer.addChild(processSection);
+    }
+
+    private _getCustomerName(customerId: string, session: ReplaySession): string {
+        return customerId;
+    }
+
+    private _statusText(status: string): string {
+        switch (status) {
+            case "arrived": return "已到场";
+            case "late": return "迟到";
+            case "no_show": return "未到场";
+            case "cancelled": return "已取消";
+            case "walk_in": return "临时到店";
+            case "pending": return "待确认";
+            default: return status;
         }
     }
 

@@ -1,4 +1,4 @@
-import { _decorator, Component, JsonAsset, assetManager, Node } from "cc";
+import { _decorator, Component, JsonAsset, resources, Node } from "cc";
 import { LevelsConfig, ScenariosConfig } from "../game/LevelConfig";
 import { CapacityRuleData } from "../appointment/CapacityRule";
 import { CustomerData } from "../appointment/Customer";
@@ -53,12 +53,14 @@ export class ConfigLoader extends Component {
     private _loadJson<T>(path: string): Promise<void> {
         this._pending.add(path);
         return new Promise<void>((resolve, reject) => {
-            assetManager.resources?.load(path, JsonAsset, (err: Error | null, asset: JsonAsset) => {
+            resources.load(path, JsonAsset, (err: Error | null, asset: JsonAsset) => {
                 if (err) {
                     this._pending.delete(path);
+                    console.warn(`加载配置失败 [${path}]: ${err.message}`);
                     reject(err);
                     return;
                 }
+                console.log(`✓ 加载配置成功 [${path}]`);
                 this._loaded.set(path, asset.json as T);
                 this._pending.delete(path);
                 resolve();

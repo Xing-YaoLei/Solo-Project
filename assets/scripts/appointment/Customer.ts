@@ -13,7 +13,7 @@ export interface CustomerData {
     phone: string;
     serviceId: string;
     preferredTime: string;
-    arrivalStatus: ArrivalStatus;
+    arrivalStatus: ArrivalStatus | string;
     vip: boolean;
     lateMinutes?: number;
 }
@@ -38,10 +38,25 @@ export class Customer {
         c.phone = data.phone;
         c.serviceId = data.serviceId;
         c.preferredTime = data.preferredTime;
-        c.arrivalStatus = data.arrivalStatus;
+        c.arrivalStatus = Customer._parseArrivalStatus(data.arrivalStatus);
         c.vip = data.vip;
         c.lateMinutes = data.lateMinutes || 0;
         return c;
+    }
+
+    private static _parseArrivalStatus(status: ArrivalStatus | string): ArrivalStatus {
+        if (typeof status === "string") {
+            switch (status) {
+                case "pending": return ArrivalStatus.PENDING;
+                case "arrived": return ArrivalStatus.ARRIVED;
+                case "late": return ArrivalStatus.LATE;
+                case "no_show": return ArrivalStatus.NO_SHOW;
+                case "cancelled": return ArrivalStatus.CANCELLED;
+                case "walk_in": return ArrivalStatus.WALK_IN;
+                default: return ArrivalStatus.PENDING;
+            }
+        }
+        return status;
     }
 
     isArrived(): boolean {

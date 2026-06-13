@@ -571,12 +571,48 @@ export class TrainingFlowBootstrap extends Component {
     private _loadConfigsAndStart(): void {
         if (!this._configLoader || !this._levelManager) return;
 
-        console.log("正在加载配置...");
+        console.log("正在从 assets/resources/configs 加载配置...");
 
-        this._simulateConfigLoad(() => {
-            console.log("配置加载完成，启动训练流程...");
-            this._startFirstLevel();
-        });
+        this._configLoader.loadAll()
+            .then(() => {
+                console.log("✓ 配置文件加载成功");
+                this._applyLoadedConfigs();
+                console.log("配置加载完成，启动训练流程...");
+                this._startFirstLevel();
+            })
+            .catch((err) => {
+                console.warn(`✗ 配置文件加载失败，使用内置模拟配置: ${err}`);
+                this._simulateConfigLoad(() => {
+                    console.log("模拟配置加载完成，启动训练流程...");
+                    this._startFirstLevel();
+                });
+            });
+    }
+
+    private _applyLoadedConfigs(): void {
+        if (!this._configLoader || !this._levelManager) return;
+
+        const levelsConfig = this._configLoader.getLevelsConfig();
+        const scenariosConfig = this._configLoader.getScenariosConfig();
+        const capacityRulesConfig = this._configLoader.getCapacityRulesConfig();
+        const customersConfig = this._configLoader.getCustomersConfig();
+
+        if (levelsConfig) {
+            this._levelManager.loadLevelsConfig(levelsConfig);
+            console.log(`  - 加载关卡配置: ${levelsConfig.levels.length} 个关卡`);
+        }
+        if (scenariosConfig) {
+            this._levelManager.loadScenariosConfig(scenariosConfig);
+            console.log(`  - 加载场景配置: ${scenariosConfig.scenarios.length} 个场景`);
+        }
+        if (capacityRulesConfig) {
+            this._levelManager.loadCapacityRulesConfig(capacityRulesConfig);
+            console.log(`  - 加载容量规则配置: ${capacityRulesConfig.capacityRules.length} 套规则`);
+        }
+        if (customersConfig) {
+            this._levelManager.loadCustomersConfig(customersConfig);
+            console.log(`  - 加载顾客配置: ${customersConfig.customers.length} 位顾客, ${customersConfig.services.length} 种服务`);
+        }
     }
 
     private _simulateConfigLoad(callback: () => void): void {
@@ -724,6 +760,18 @@ export class TrainingFlowBootstrap extends Component {
                 for (const c of conflicts) {
                     this._conflictHint.showConflictHint(c);
                 }
+
+                if (this._replaySystem && conflicts.length > 0) {
+                    this._replaySystem.recordAction({
+                        type: ReplayActionType.CONFLICT_OCCURRED,
+                        customerId: this._selectedCustomerId,
+                        stationIndex,
+                        time,
+                        conflictMessage: conflicts.map(c => `${c.type}: ${c.message}`).join("; "),
+                        timestamp: Date.now(),
+                        gameTime: this._gameManager.gameTime
+                    });
+                }
             }
         }
     }
@@ -761,20 +809,23 @@ export class TrainingFlowBootstrap extends Component {
 
         if (pending.length > 0) {
             const customer = pending[0];
-            this._gameManager.judgeArrival(customer.id, status);
-            console.log(`顾客 ${customer.name} 判定为: ${status}`);
+            const correctStatus = customer.arrivalStatus;
+            const isCorrect = correctStatus === status;
 
             if (this._replaySystem) {
                 this._replaySystem.recordAction({
                     type: ReplayActionType.ARRIVAL_CHECK,
                     customerId: customer.id,
-                    previousStatus: customer.arrivalStatus,
+                    previousStatus: correctStatus,
                     newStatus: status,
-                    isCorrect: customer.arrivalStatus === status,
+                    isCorrect: isCorrect,
                     timestamp: Date.now(),
                     gameTime: this._gameManager.gameTime
                 });
             }
+
+            this._gameManager.judgeArrival(customer.id, status);
+            console.log(`顾客 ${customer.name} 判定为: ${status}, 正确: ${isCorrect}`);
 
             this._refreshUI();
         }
@@ -825,6 +876,7 @@ export class TrainingFlowBootstrap extends Component {
         if (!this._gameManager || !this._settlementPage || !this._failedFragmentStore) return;
 
         const record = this._gameManager.finishLevel();
+        const session = this._replaySystem?.currentSession ?? null;
 
         if (!this._settlementProcessed) {
             this._settlementProcessed = true;
@@ -844,9 +896,14 @@ export class TrainingFlowBootstrap extends Component {
             for (const err of record.errorCauses) {
                 console.log(`  - [${err.category}] ${err.description}`);
             }
+            if (session) {
+                const misjudges = session.actions.filter(a => a.type === ReplayActionType.ARRIVAL_CHECK && a.isCorrect === false);
+                const conflicts = session.actions.filter(a => a.type === ReplayActionType.CONFLICT_OCCURRED);
+                console.log(`到场误判: ${misjudges.length}项, 时段冲突: ${conflicts.length}项`);
+            }
         }
 
-        this._settlementPage.show(record, this._failedFragmentStore);
+        this._settlementPage.show(record, this._failedFragmentStore, session);
     }
 
     private _retryLevel(): void {
