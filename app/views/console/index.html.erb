@@ -1,0 +1,150 @@
+<% content_for :title, "核销台" %>
+
+<div class="space-y-6">
+  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+    <% [
+      { key: 'pending', label: '待提交', count: @stats[:pending], color: 'bg-gray-100 text-gray-800', border: 'border-gray-200' },
+      { key: 'submitted', label: '已提交', count: @stats[:submitted], color: 'bg-blue-100 text-blue-800', border: 'border-blue-200' },
+      { key: 'processing', label: '处理中', count: @stats[:processing], color: 'bg-yellow-100 text-yellow-800', border: 'border-yellow-200' },
+      { key: 'materials_missing', label: '缺材料', count: @stats[:materials_missing], color: 'bg-red-100 text-red-800', border: 'border-red-200' },
+      { key: 'reviewing', label: '复核中', count: @stats[:reviewing], color: 'bg-purple-100 text-purple-800', border: 'border-purple-200' },
+      { key: 'completed', label: '今日完成', count: @stats[:completed], color: 'bg-green-100 text-green-800', border: 'border-green-200' },
+      { key: 'shortage', label: '有短少', count: @stats[:shortage], color: 'bg-orange-100 text-orange-800', border: 'border-orange-200' }
+    ].each do |stat| %>
+      <%= link_to pickup_orders_path(q: { status_eq: stat[:key] }), class: "bg-white overflow-hidden shadow rounded-lg border #{stat[:border]} hover:shadow-md transition-shadow" do %>
+        <div class="p-5">
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <div class="w-12 h-12 rounded-full #{stat[:color]} flex items-center justify-center">
+                <span class="text-lg font-bold"><%= stat[:count] %></span>
+              </div>
+            </div>
+            <div class="ml-5 w-0 flex-1">
+              <dl>
+                <dt class="text-sm font-medium text-gray-500 truncate">
+                  <%= stat[:label] %>
+                </dt>
+                <dd class="text-2xl font-semibold text-gray-900">
+                  <%= stat[:count] %>
+                </dd>
+              </dl>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+
+  <div class="bg-white shadow rounded-lg">
+    <div class="px-4 py-5 border-b border-gray-200 sm:px-6">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+        <h3 class="text-lg leading-6 font-medium text-gray-900">
+          待处理单据
+        </h3>
+        <div class="mt-3 sm:mt-0">
+          <%= form_tag console_path, method: :get, class: 'flex flex-wrap gap-3 items-center' do %>
+            <%= text_field_tag 'q[pickup_code_or_customer_name_or_customer_phone_cont]', params.dig(:q, :pickup_code_or_customer_name_or_customer_phone_cont), placeholder: "搜索自提码/客户", class: "px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500" %>
+            <%= select_tag 'q[status_eq]', options_for_select(PickupOrder::STATUS_DISPLAY.map { |k, v| [v, k] }, params.dig(:q, :status_eq)), include_blank: "所有状态", class: "px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500" %>
+            <%= select_tag 'q[source_eq]', options_for_select(PickupOrder::SOURCES.map { |s| [s, s] }, params.dig(:q, :source_eq)), include_blank: "所有来源", class: "px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500" %>
+            <%= submit_tag "筛选", class: "px-3 py-1 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700" %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">自提码</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">客户</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">来源</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">商品</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">处理人</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">预计自提</th>
+            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+          <% @pickup_orders.each do |order| %>
+            <%= turbo_frame_tag dom_id(order) do %>
+              <tr class="hover:bg-gray-50 <%= 'bg-red-50' if order.has_shortage? %> <%= 'bg-yellow-50' if order.status == 'materials_missing' %>">
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="flex items-center">
+                    <div class="text-sm font-medium text-indigo-600">
+                      <%= link_to order.pickup_code, order, class: "hover:text-indigo-900" %>
+                    </div>
+                    <% if order.has_shortage? %>
+                      <span class="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                        短少
+                      </span>
+                    <% end %>
+                  </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="text-sm text-gray-900"><%= order.customer_name %></div>
+                  <% if order.customer_phone.present? %>
+                    <div class="text-sm text-gray-500"><%= order.customer_phone %></div>
+                  <% end %>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                    <%= order.source %>
+                  </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full <%= status_badge_class(order.status) %>">
+                    <%= order.full_status_display %>
+                  </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <%= order.total_items_count %> 件
+                  <% if order.total_shortage_count > 0 %>
+                    <span class="text-red-600">(缺<%= order.total_shortage_count %>件)</span>
+                  <% end %>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <%= order.operator&.name || '-' %>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <%= order.estimated_pickup_time&.strftime('%m-%d %H:%M') %>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <div class="flex justify-end space-x-2">
+                    <% if order.pending? %>
+                      <%= button_to "提交", submit_pickup_order_path(order), method: :patch, class: "px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700" %>
+                    <% elsif order.submitted? %>
+                      <%= button_to "开始处理", start_process_pickup_order_path(order), method: :patch, class: "px-2 py-1 text-xs bg-yellow-600 text-white rounded hover:bg-yellow-700" %>
+                    <% elsif order.processing? %>
+                      <div class="flex space-x-1">
+                        <%= button_to "缺材料", mark_missing_materials_pickup_order_path(order), method: :patch, class: "px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700" %>
+                        <%= button_to "提交复核", send_to_review_pickup_order_path(order), method: :patch, class: "px-2 py-1 text-xs bg-purple-600 text-white rounded hover:bg-purple-700" %>
+                      </div>
+                    <% elsif order.materials_missing? %>
+                      <%= button_to "材料已到", materials_received_pickup_order_path(order), method: :patch, class: "px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700" %>
+                    <% elsif order.reviewing? %>
+                      <% if current_user.reviewer? %>
+                        <div class="flex space-x-1">
+                          <%= button_to "通过", complete_pickup_order_path(order), method: :patch, class: "px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700" %>
+                          <%= button_to "退回", reject_review_pickup_order_path(order), method: :patch, class: "px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700", data: { confirm: "确定退回？", turbo_confirm: "确定退回？" } %>
+                        </div>
+                      <% end %>
+                    <% elsif order.completed? %>
+                      <%= button_to "关闭", close_pickup_order_path(order), method: :patch, class: "px-2 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-700" %>
+                    <% end %>
+                    <%= link_to "详情", order, class: "px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200" %>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="px-4 py-3 border-t border-gray-200 sm:px-6">
+      <%= paginate @pickup_orders %>
+    </div>
+  </div>
+</div>

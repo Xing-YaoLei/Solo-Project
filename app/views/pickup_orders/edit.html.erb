@@ -1,0 +1,83 @@
+<% content_for :title, "编辑自提核销单" %>
+
+<div class="bg-white shadow rounded-lg">
+  <div class="px-4 py-5 border-b border-gray-200 sm:px-6">
+    <h3 class="text-lg leading-6 font-medium text-gray-900">编辑自提核销单</h3>
+    <p class="mt-1 text-sm text-gray-500">自提码：<%= @pickup_order.pickup_code %></p>
+  </div>
+
+  <%= form_with model: @pickup_order, local: true, class: "px-4 py-5 sm:p-6" do |f| %>
+    <% if @pickup_order.errors.any? %>
+      <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
+        <div class="flex">
+          <div class="ml-3">
+            <h3 class="text-sm font-medium text-red-800">表单有 <%= @pickup_order.errors.count %> 个错误</h3>
+            <div class="mt-2 text-sm text-red-700">
+              <ul class="list-disc pl-5 space-y-1">
+                <% @pickup_order.errors.full_messages.each do |msg| %>
+                  <li><%= msg %></li>
+                <% end %>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
+    <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+      <div class="sm:col-span-3">
+        <%= f.label :pickup_code, "自提码", class: "block text-sm font-medium text-gray-700" %>
+        <%= f.text_field :pickup_code, required: true, class: "mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-gray-50", readonly: @pickup_order.submitted? %>
+      </div>
+
+      <div class="sm:col-span-3">
+        <%= f.label :source, "来源", class: "block text-sm font-medium text-gray-700" %>
+        <%= f.select :source, PickupOrder::SOURCES.map { |s| [s, s] }, { include_blank: "请选择来源" }, required: true, class: "mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm #{'bg-gray-50' if @pickup_order.submitted?}", readonly: @pickup_order.submitted? %>
+      </div>
+
+      <div class="sm:col-span-3">
+        <%= f.label :customer_name, "客户姓名", class: "block text-sm font-medium text-gray-700" %>
+        <%= f.text_field :customer_name, required: true, class: "mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" %>
+      </div>
+
+      <div class="sm:col-span-3">
+        <%= f.label :customer_phone, "联系电话", class: "block text-sm font-medium text-gray-700" %>
+        <%= f.text_field :customer_phone, class: "mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" %>
+      </div>
+
+      <div class="sm:col-span-3">
+        <%= f.label :estimated_pickup_time, "预计自提时间", class: "block text-sm font-medium text-gray-700" %>
+        <%= f.datetime_local_field :estimated_pickup_time, required: true, class: "mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" %>
+      </div>
+
+      <div class="sm:col-span-3">
+        <%= f.label :abnormal_reason, "异常原因", class: "block text-sm font-medium text-gray-700" %>
+        <%= f.text_field :abnormal_reason, class: "mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" %>
+      </div>
+
+      <div class="sm:col-span-6">
+        <%= f.label :notes, "备注", class: "block text-sm font-medium text-gray-700" %>
+        <%= f.text_area :notes, rows: 3, class: "mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" %>
+      </div>
+    </div>
+
+    <div class="mt-8">
+      <h4 class="text-base font-medium text-gray-900 mb-4">商品明细</h4>
+      <div id="pickup_items" class="space-y-4">
+        <%= f.fields_for :pickup_items do |item_form| %>
+          <%= render 'pickup_item_fields', f: item_form %>
+        <% end %>
+      </div>
+      <% if !@pickup_order.submitted? %>
+        <div class="mt-4">
+          <%= link_to_add_fields "添加商品", f, :pickup_items, class: "px-4 py-2 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50" %>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="mt-8 flex justify-end space-x-3">
+      <%= link_to "取消", @pickup_order, class: "px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50" %>
+      <%= f.submit "保存修改", class: "px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700" %>
+    </div>
+  <% end %>
+</div>

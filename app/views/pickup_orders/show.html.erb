@@ -1,0 +1,361 @@
+<% content_for :title, "单据详情 - #{@pickup_order.pickup_code}" %>
+
+<%= turbo_frame_tag dom_id(@pickup_order) do %>
+  <div class="space-y-6">
+    <div class="bg-white shadow rounded-lg">
+      <div class="px-4 py-5 border-b border-gray-200 sm:px-6">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center space-x-4">
+              <h2 class="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
+                <span class="bg-indigo-100 text-indigo-800 px-3 py-1 rounded text-xl font-mono"><%= @pickup_order.pickup_code %></span>
+              </h2>
+              <span class="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full <%= status_badge_class(@pickup_order.status) %>">
+                <%= @pickup_order.full_status_display %>
+              </span>
+              <% if @pickup_order.has_shortage? %>
+                <span class="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                  有短少
+                </span>
+              <% end %>
+            </div>
+            <div class="mt-2 flex flex-wrap items-center text-sm text-gray-500 space-x-4">
+              <span>客户：<strong class="text-gray-900"><%= @pickup_order.customer_name %></strong></span>
+              <% if @pickup_order.customer_phone.present? %>
+                <span>电话：<strong class="text-gray-900"><%= @pickup_order.customer_phone %></strong></span>
+              <% end %>
+              <span>来源：<span class="px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs"><%= @pickup_order.source %></span></span>
+            </div>
+          </div>
+          <div class="mt-4 md:mt-0 flex flex-wrap items-center space-x-2">
+            <%= link_to "编辑", edit_pickup_order_path(@pickup_order), class: "px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none" %>
+            <% if @pickup_order.pending? %>
+              <%= button_to "提交", submit_pickup_order_path(@pickup_order), method: :patch, class: "px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700" %>
+            <% elsif @pickup_order.submitted? %>
+              <%= button_to "开始处理", start_process_pickup_order_path(@pickup_order), method: :patch, class: "px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-yellow-600 hover:bg-yellow-700" %>
+            <% elsif @pickup_order.processing? %>
+              <%= button_to "标记缺材料", mark_missing_materials_pickup_order_path(@pickup_order), method: :patch, class: "px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700" %>
+              <%= button_to "提交复核", send_to_review_pickup_order_path(@pickup_order), method: :patch, class: "px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700" %>
+            <% elsif @pickup_order.materials_missing? %>
+              <%= button_to "材料已补充", materials_received_pickup_order_path(@pickup_order), method: :patch, class: "px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700" %>
+            <% elsif @pickup_order.reviewing? && current_user.reviewer? %>
+              <%= button_to "复核通过", complete_pickup_order_path(@pickup_order), method: :patch, class: "px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700" %>
+              <%= button_to "复核退回", reject_review_pickup_order_path(@pickup_order), method: :patch, data: { confirm: "确定退回？" }, class: "px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700" %>
+            <% elsif @pickup_order.completed? %>
+              <%= button_to "关闭单据", close_pickup_order_path(@pickup_order), method: :patch, class: "px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-gray-600 hover:bg-gray-700" %>
+            <% end %>
+          </div>
+        </div>
+
+        <div class="mt-4 grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div class="bg-gray-50 p-3 rounded-lg">
+            <div class="text-xs text-gray-500">预计自提时间</div>
+            <div class="text-sm font-medium text-gray-900"><%= @pickup_order.estimated_pickup_time&.strftime('%Y-%m-%d %H:%M') || '-' %></div>
+          </div>
+          <div class="bg-gray-50 p-3 rounded-lg">
+            <div class="text-xs text-gray-500">实际自提时间</div>
+            <div class="text-sm font-medium text-gray-900"><%= @pickup_order.actual_pickup_time&.strftime('%Y-%m-%d %H:%M') || '-' %></div>
+          </div>
+          <div class="bg-gray-50 p-3 rounded-lg">
+            <div class="text-xs text-gray-500">处理人</div>
+            <div class="text-sm font-medium text-gray-900"><%= @pickup_order.operator&.name || '-' %></div>
+          </div>
+          <div class="bg-gray-50 p-3 rounded-lg">
+            <div class="text-xs text-gray-500">复核人</div>
+            <div class="text-sm font-medium text-gray-900"><%= @pickup_order.reviewer&.name || '-' %></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="lg:col-span-2 space-y-6">
+        <div class="bg-white shadow rounded-lg">
+          <div class="px-4 py-4 border-b border-gray-200 sm:px-6 flex items-center justify-between">
+            <h3 class="text-lg leading-6 font-medium text-gray-900">商品明细</h3>
+            <% if !@pickup_order.closed? && !@pickup_order.completed? %>
+              <button type="button" onclick="toggleItemForm()" class="text-sm text-indigo-600 hover:text-indigo-900">+ 添加商品</button>
+            <% end %>
+          </div>
+
+          <div id="item-form" class="hidden px-4 py-4 border-b border-gray-200 bg-gray-50 sm:px-6">
+            <%= form_with model: @pickup_item, url: pickup_items_path, local: true do |f| %>
+              <%= f.hidden_field :pickup_order_id, value: @pickup_order.id %>
+              <div class="grid grid-cols-1 md:grid-cols-6 gap-3">
+                <div class="md:col-span-2">
+                  <%= f.label :product_name, "商品名称", class: "block text-xs font-medium text-gray-700" %>
+                  <%= f.text_field :product_name, class: "mt-1 block w-full px-2 py-1 border border-gray-300 rounded-md text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500" %>
+                </div>
+                <div>
+                  <%= f.label :product_tag, "商品标签", class: "block text-xs font-medium text-gray-700" %>
+                  <%= f.text_field :product_tag, class: "mt-1 block w-full px-2 py-1 border border-gray-300 rounded-md text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500" %>
+                </div>
+                <div>
+                  <%= f.label :expected_quantity, "应收数量", class: "block text-xs font-medium text-gray-700" %>
+                  <%= f.number_field :expected_quantity, min: 0, class: "mt-1 block w-full px-2 py-1 border border-gray-300 rounded-md text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500" %>
+                </div>
+                <div>
+                  <%= f.label :actual_quantity, "实收数量", class: "block text-xs font-medium text-gray-700" %>
+                  <%= f.number_field :actual_quantity, min: 0, class: "mt-1 block w-full px-2 py-1 border border-gray-300 rounded-md text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500" %>
+                </div>
+                <div class="flex items-end">
+                  <%= f.submit "添加", class: "w-full px-3 py-1 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700" %>
+                </div>
+              </div>
+            <% end %>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">商品标签</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">商品名称</th>
+                  <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">应收</th>
+                  <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">实收</th>
+                  <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">短少</th>
+                  <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
+                </tr>
+              </thead>
+              <tbody class="bg-white divide-y divide-gray-200">
+                <% @pickup_order.pickup_items.each do |item| %>
+                  <%= turbo_frame_tag dom_id(item) do %>
+                    <tr class="<%= 'bg-red-50' if item.status == 'shortage' %>">
+                      <td class="px-4 py-3 whitespace-nowrap">
+                        <span class="px-2 py-1 bg-indigo-100 text-indigo-800 rounded text-xs font-medium"><%= item.product_tag %></span>
+                      </td>
+                      <td class="px-4 py-3 text-sm text-gray-900">
+                        <%= item.product_name %>
+                        <% if item.product_code.present? %>
+                          <div class="text-xs text-gray-500"><%= item.product_code %></div>
+                        <% end %>
+                      </td>
+                      <td class="px-4 py-3 text-sm text-center text-gray-900"><%= item.expected_quantity %></td>
+                      <td class="px-4 py-3 text-sm text-center text-gray-900 font-medium"><%= item.actual_quantity %></td>
+                      <td class="px-4 py-3 text-sm text-center font-medium <%= item.shortage_quantity > 0 ? 'text-red-600' : 'text-gray-400' %>">
+                        <%= item.shortage_quantity > 0 ? item.shortage_quantity : '-' %>
+                      </td>
+                      <td class="px-4 py-3 whitespace-nowrap text-right text-sm">
+                        <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full <%= item.status == 'normal' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' %>">
+                          <%= item.status_display %>
+                        </span>
+                      </td>
+                    </tr>
+                  <% end %>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <% if @pickup_order.has_shortage? %>
+          <div class="bg-white shadow rounded-lg">
+            <div class="px-4 py-4 border-b border-gray-200 sm:px-6 flex items-center justify-between">
+              <h3 class="text-lg leading-6 font-medium text-red-600">到货短少记录</h3>
+              <% if !@pickup_order.closed? && !@pickup_order.completed? %>
+                <button type="button" onclick="toggleShortageForm()" class="text-sm text-red-600 hover:text-red-900">+ 添加短少</button>
+              <% end %>
+            </div>
+
+            <div id="shortage-form" class="hidden px-4 py-4 border-b border-gray-200 bg-red-50 sm:px-6">
+              <%= form_with model: @shortage_record, url: shortage_records_path, local: true do |f| %>
+                <%= f.hidden_field :pickup_order_id, value: @pickup_order.id %>
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+                  <div>
+                    <%= f.label :pickup_item_id, "商品", class: "block text-xs font-medium text-gray-700" %>
+                    <%= f.select :pickup_item_id, @pickup_order.pickup_items.where('shortage_quantity > 0').map { |i| ["#{i.product_name} (#{i.product_tag})", i.id] }, { include_blank: "选择商品" }, class: "mt-1 block w-full px-2 py-1 border border-gray-300 rounded-md text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500" %>
+                  </div>
+                  <div>
+                    <%= f.label :shortage_quantity, "短少数量", class: "block text-xs font-medium text-gray-700" %>
+                    <%= f.number_field :shortage_quantity, min: 1, class: "mt-1 block w-full px-2 py-1 border border-gray-300 rounded-md text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500" %>
+                  </div>
+                  <div>
+                    <%= f.label :reason, "原因", class: "block text-xs font-medium text-gray-700" %>
+                    <%= f.select :reason, ShortageRecord::REASONS.map { |r| [r, r] }, { include_blank: "选择原因" }, class: "mt-1 block w-full px-2 py-1 border border-gray-300 rounded-md text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500" %>
+                  </div>
+                  <div>
+                    <%= f.label :compensation_amount, "赔偿金额", class: "block text-xs font-medium text-gray-700" %>
+                    <%= f.number_field :compensation_amount, step: 0.01, class: "mt-1 block w-full px-2 py-1 border border-gray-300 rounded-md text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500" %>
+                  </div>
+                  <div class="flex items-end">
+                    <%= f.submit "添加", class: "w-full px-3 py-1 bg-red-600 text-white rounded-md text-sm hover:bg-red-700" %>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-red-50">
+                  <tr>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-red-600 uppercase tracking-wider">商品</th>
+                    <th class="px-4 py-3 text-center text-xs font-medium text-red-600 uppercase tracking-wider">短少数量</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-red-600 uppercase tracking-wider">原因</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-red-600 uppercase tracking-wider">处理方式</th>
+                    <th class="px-4 py-3 text-right text-xs font-medium text-red-600 uppercase tracking-wider">状态</th>
+                  </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                  <% @pickup_order.shortage_records.each do |sr| %>
+                    <tr>
+                      <td class="px-4 py-3 text-sm text-gray-900">
+                        <%= sr.pickup_item&.product_name %>
+                        <span class="text-xs text-gray-500">(<%= sr.pickup_item&.product_tag %>)</span>
+                      </td>
+                      <td class="px-4 py-3 text-sm text-center font-medium text-red-600"><%= sr.shortage_quantity %></td>
+                      <td class="px-4 py-3 text-sm text-gray-900"><%= sr.reason %></td>
+                      <td class="px-4 py-3 text-sm text-gray-900"><%= sr.handling_method || '-' %></td>
+                      <td class="px-4 py-3 whitespace-nowrap text-right text-sm">
+                        <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full <%= sr.status == 'handled' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' %>">
+                          <%= sr.status_display %>
+                        </span>
+                        <% if sr.pending? && current_user.reviewer? %>
+                          <%= button_to "处理", handle_shortage_record_path(sr), method: :patch, params: { handling_method: '退款', compensation_amount: sr.pickup_item&.unit_price.to_f * sr.shortage_quantity }, class: "ml-2 px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700" %>
+                        <% end %>
+                      </td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        <% end %>
+      </div>
+
+      <div class="space-y-6">
+        <div class="bg-white shadow rounded-lg">
+          <div class="px-4 py-4 border-b border-gray-200 sm:px-6 flex items-center justify-between">
+            <h3 class="text-lg leading-6 font-medium text-gray-900">售后凭证</h3>
+            <% if !@pickup_order.closed? %>
+              <button type="button" onclick="toggleProofForm()" class="text-sm text-indigo-600 hover:text-indigo-900">+ 上传</button>
+            <% end %>
+          </div>
+
+          <div id="proof-form" class="hidden px-4 py-4 border-b border-gray-200 bg-gray-50 sm:px-6">
+            <%= form_with model: @after_sales_proof, url: after_sales_proofs_path, local: true, html: { multipart: true } do |f| %>
+              <%= f.hidden_field :pickup_order_id, value: @pickup_order.id %>
+              <div class="space-y-3">
+                <div>
+                  <%= f.label :proof_type, "凭证类型", class: "block text-xs font-medium text-gray-700" %>
+                  <%= f.select :proof_type, AfterSalesProof::PROOF_TYPES.map { |t| [t, t] }, { include_blank: "选择类型" }, class: "mt-1 block w-full px-2 py-1 border border-gray-300 rounded-md text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500" %>
+                </div>
+                <div>
+                  <%= f.label :pickup_item_id, "关联商品", class: "block text-xs font-medium text-gray-700" %>
+                  <%= f.select :pickup_item_id, @pickup_order.pickup_items.map { |i| ["#{i.product_name} (#{i.product_tag})", i.id] }, { include_blank: "不关联" }, class: "mt-1 block w-full px-2 py-1 border border-gray-300 rounded-md text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500" %>
+                </div>
+                <div>
+                  <%= f.label :document, "上传凭证", class: "block text-xs font-medium text-gray-700" %>
+                  <%= f.file_field :document, class: "mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-1 file:px-3 file:border-0 file:text-sm file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" %>
+                </div>
+                <div>
+                  <%= f.label :description, "描述", class: "block text-xs font-medium text-gray-700" %>
+                  <%= f.text_area :description, rows: 2, class: "mt-1 block w-full px-2 py-1 border border-gray-300 rounded-md text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500" %>
+                </div>
+                <div>
+                  <%= f.submit "上传", class: "w-full px-3 py-1 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700" %>
+                </div>
+              </div>
+            <% end %>
+          </div>
+
+          <% if @pickup_order.after_sales_proofs.any? %>
+            <div class="divide-y divide-gray-200">
+              <% @pickup_order.after_sales_proofs.each do |proof| %>
+                <div class="p-4">
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                      <span class="px-2 py-0.5 bg-gray-100 text-gray-800 rounded text-xs font-medium"><%= proof.proof_type %></span>
+                      <% if proof.pickup_item %>
+                        <span class="text-xs text-gray-500"><%= proof.pickup_item.product_tag %></span>
+                      <% end %>
+                    </div>
+                    <span class="text-xs text-gray-400"><%= proof.created_at&.strftime('%m-%d %H:%M') %></span>
+                  </div>
+                  <% if proof.description.present? %>
+                    <p class="mt-1 text-sm text-gray-600"><%= proof.description %></p>
+                  <% end %>
+                  <% if proof.document.attached? %>
+                    <div class="mt-2">
+                      <% if proof.document.image? %>
+                        <%= image_tag url_for(proof.document.variant(resize_to_limit: [200, 200])), class: "rounded-lg border border-gray-200" %>
+                      <% else %>
+                        <%= link_to "下载凭证", url_for(proof.document), class: "text-sm text-indigo-600 hover:text-indigo-900" %>
+                      <% end %>
+                    </div>
+                  <% end %>
+                  <div class="mt-1 text-xs text-gray-400">
+                    上传人：<%= proof.uploaded_by&.name || '系统' %>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <div class="p-6 text-center text-gray-500">
+              <p>暂无售后凭证</p>
+            </div>
+          <% end %>
+        </div>
+
+        <div class="bg-white shadow rounded-lg">
+          <div class="px-4 py-4 border-b border-gray-200 sm:px-6">
+            <h3 class="text-lg leading-6 font-medium text-gray-900">操作记录</h3>
+          </div>
+          <div class="max-h-96 overflow-y-auto">
+            <% if @pickup_order.activity_logs.any? %>
+              <div class="divide-y divide-gray-200">
+                <% @pickup_order.activity_logs.order(created_at: :desc).each do |log| %>
+                  <div class="p-4">
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center space-x-2">
+                        <span class="px-2 py-0.5 bg-indigo-100 text-indigo-800 rounded text-xs font-medium"><%= log.action_display %></span>
+                      </div>
+                      <span class="text-xs text-gray-400"><%= log.timestamp_display %></span>
+                    </div>
+                    <% if log.from_status.present? && log.to_status.present? %>
+                      <div class="mt-1 text-xs text-gray-500">
+                        <%= PickupOrder::STATUS_DISPLAY[log.from_status] %> → <strong><%= PickupOrder::STATUS_DISPLAY[log.to_status] %></strong>
+                      </div>
+                    <% end %>
+                    <% if log.details.present? %>
+                      <p class="mt-1 text-sm text-gray-600"><%= log.details %></p>
+                    <% end %>
+                    <div class="mt-1 text-xs text-gray-400">
+                      操作人：<%= log.user_display %>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            <% else %>
+              <div class="p-6 text-center text-gray-500">
+                <p>暂无操作记录</p>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <% if @pickup_order.notes.present? %>
+      <div class="bg-white shadow rounded-lg">
+        <div class="px-4 py-4 border-b border-gray-200 sm:px-6">
+          <h3 class="text-lg leading-6 font-medium text-gray-900">备注</h3>
+        </div>
+        <div class="p-4">
+          <p class="text-gray-700 whitespace-pre-wrap"><%= @pickup_order.notes %></p>
+        </div>
+      </div>
+    <% end %>
+  </div>
+<% end %>
+
+<script>
+  function toggleItemForm() {
+    document.getElementById('item-form').classList.toggle('hidden');
+  }
+  function toggleProofForm() {
+    document.getElementById('proof-form').classList.toggle('hidden');
+  }
+  function toggleShortageForm() {
+    document.getElementById('shortage-form').classList.toggle('hidden');
+  }
+</script>
