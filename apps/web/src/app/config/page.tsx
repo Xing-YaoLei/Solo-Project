@@ -31,9 +31,12 @@ export default function ConfigPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const res: any = await apiEndpoints.config.getAll();
-      setVisitResults(res.visitResults || []);
-      setProblemTags(res.problemTags || []);
+      const [visitRes, tagsRes] = await Promise.all([
+        apiEndpoints.config.visitResults(),
+        apiEndpoints.config.problemTags(),
+      ]);
+      setVisitResults(visitRes || []);
+      setProblemTags(tagsRes || []);
     } catch (error) {
       console.error('Failed to fetch config:', error);
     } finally {
@@ -44,16 +47,29 @@ export default function ConfigPage() {
   const handleSave = async () => {
     try {
       if (editing?.type === 'visit') {
+        const saveData = {
+          code: formData.code,
+          name: formData.name,
+          description: formData.description,
+          sortOrder: formData.sortOrder,
+          isActive: formData.isActive,
+        };
         if (editing.id) {
-          await apiEndpoints.visitResults.update(editing.id, formData);
+          await apiEndpoints.config.updateVisitResult(editing.id, saveData);
         } else {
-          await apiEndpoints.visitResults.create(formData);
+          await apiEndpoints.config.createVisitResult(saveData);
         }
       } else if (editing?.type === 'tag') {
+        const saveData = {
+          name: formData.name,
+          color: formData.color,
+          thresholdDays: formData.thresholdDays,
+          isActive: formData.isActive,
+        };
         if (editing.id) {
-          await apiEndpoints.problemTags.update(editing.id, formData);
+          await apiEndpoints.config.updateProblemTag(editing.id, saveData);
         } else {
-          await apiEndpoints.problemTags.create(formData);
+          await apiEndpoints.config.createProblemTag(saveData);
         }
       }
       setEditing(null);
@@ -61,6 +77,7 @@ export default function ConfigPage() {
       fetchData();
     } catch (error) {
       console.error('Save failed:', error);
+      alert('保存失败，请检查必填项');
     }
   };
 
@@ -68,13 +85,14 @@ export default function ConfigPage() {
     if (!confirm('确定要删除吗？')) return;
     try {
       if (type === 'visit') {
-        await apiEndpoints.visitResults.delete(id);
+        await apiEndpoints.config.deleteVisitResult(id);
       } else if (type === 'tag') {
-        await apiEndpoints.problemTags.delete(id);
+        await apiEndpoints.config.deleteProblemTag(id);
       }
       fetchData();
     } catch (error) {
       console.error('Delete failed:', error);
+      alert('删除失败');
     }
   };
 

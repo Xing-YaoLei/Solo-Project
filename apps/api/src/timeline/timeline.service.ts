@@ -44,6 +44,7 @@ export class TimelineService {
     operatorId?: string;
     startDate?: Date;
     endDate?: Date;
+    keyword?: string;
     page?: number;
     pageSize?: number;
   }) {
@@ -55,6 +56,14 @@ export class TimelineService {
     if (filters.operatorId) where.operatorId = filters.operatorId;
     if (filters.startDate) where.createdAt = { ...where.createdAt, gte: filters.startDate };
     if (filters.endDate) where.createdAt = { ...where.createdAt, lte: filters.endDate };
+    if (filters.keyword) {
+      where.OR = [
+        { note: { contains: filters.keyword } },
+        { oldValue: { contains: filters.keyword } },
+        { newValue: { contains: filters.keyword } },
+        { refundOrder: { orderNo: { contains: filters.keyword } } },
+      ];
+    }
 
     const [total, items] = await Promise.all([
       this.prisma.refundTimeline.count({ where }),

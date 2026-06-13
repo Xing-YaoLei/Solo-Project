@@ -28,7 +28,8 @@ export default function LogsPage() {
   useEffect(() => {
     const fetchOperators = async () => {
       const res: any = await apiEndpoints.users.list();
-      setOperators(res.items || []);
+      const data = res as any;
+      setOperators(data.items || data || []);
     };
     fetchOperators();
   }, []);
@@ -41,7 +42,6 @@ export default function LogsPage() {
     setLoading(true);
     try {
       const params = {
-        ...filters,
         action: filters.action || undefined,
         operatorId: filters.operatorId || undefined,
         startDate: filters.startDate || undefined,
@@ -50,9 +50,10 @@ export default function LogsPage() {
         page,
         pageSize: 20,
       };
-      const res: any = await apiEndpoints.timelines.list(params);
-      setLogs(res.items || []);
-      setTotal(res.total || 0);
+      const res: any = await apiEndpoints.timeline.findAll(params);
+      const data = res as any;
+      setLogs(data.items || data || []);
+      setTotal(data.total || data.length || 0);
     } catch (error) {
       console.error('Failed to fetch logs:', error);
     } finally {

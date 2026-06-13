@@ -34,15 +34,17 @@ export default function RulesPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [rulesRes, configRes, regionsRes, opsRes] = await Promise.all([
+      const [rulesRes, tagsRes, visitRes, regionsRes, opsRes] = await Promise.all([
         apiEndpoints.responsibilityRules.list(),
-        apiEndpoints.config.getAll(),
+        apiEndpoints.config.problemTags(),
+        apiEndpoints.config.visitResults(),
         apiEndpoints.users.regions(),
         apiEndpoints.users.operators(),
       ]);
-      setRules(rulesRes as ResponsibilityRule[]);
-      setProblemTags(configRes.problemTags || []);
-      setVisitResults(configRes.visitResults || []);
+      const rulesData = rulesRes as any;
+      setRules((rulesData.items || rulesData || []) as ResponsibilityRule[]);
+      setProblemTags(tagsRes || []);
+      setVisitResults(visitRes || []);
       setRegions(regionsRes as string[]);
       setOperators(opsRes as any[]);
     } catch (error) {
@@ -52,7 +54,7 @@ export default function RulesPage() {
     }
   };
 
-  const startEdit = (rule?: ResponsibilityRule) => {
+  const startEdit = (rule?: any) => {
     if (rule) {
       setEditingId(rule.id);
       setFormData({
@@ -61,8 +63,8 @@ export default function RulesPage() {
         responsibility: rule.responsibility,
         assigneeId: rule.assigneeId || '',
         problemTags: rule.problemTags || [],
-        visitResult: rule.visitResult || '',
-        region: rule.region || '',
+        visitResults: rule.visitResults || [],
+        regions: rule.regions || [],
         priority: rule.priority,
         autoAssign: rule.autoAssign ?? true,
         handlingTimeHours: rule.handlingTimeHours || 24,
@@ -76,8 +78,8 @@ export default function RulesPage() {
         responsibility: '',
         assigneeId: '',
         problemTags: [],
-        visitResult: '',
-        region: '',
+        visitResults: [],
+        regions: [],
         priority: rules.length + 1,
         autoAssign: true,
         handlingTimeHours: 24,
@@ -89,15 +91,29 @@ export default function RulesPage() {
 
   const handleSave = async () => {
     try {
+      const saveData = {
+        name: formData.name,
+        description: formData.description,
+        responsibility: formData.responsibility,
+        assigneeId: formData.assigneeId || null,
+        problemTags: formData.problemTags || [],
+        visitResults: formData.visitResults || [],
+        regions: formData.regions || [],
+        priority: formData.priority,
+        autoAssign: formData.autoAssign,
+        handlingTimeHours: formData.handlingTimeHours || 24,
+        isActive: formData.isActive,
+      };
       if (editingId) {
-        await apiEndpoints.responsibilityRules.update(editingId, formData);
+        await apiEndpoints.responsibilityRules.update(editingId, saveData);
       } else {
-        await apiEndpoints.responsibilityRules.create(formData);
+        await apiEndpoints.responsibilityRules.create(saveData);
       }
       setShowForm(false);
       fetchData();
     } catch (error) {
       console.error('Save failed:', error);
+      alert('保存失败，请检查必填项');
     }
   };
 
@@ -195,27 +211,64 @@ export default function RulesPage() {
                     })}
                   </div>
                 </div>
-                <Select
-                  label={<span className="text-xs text-gray-500">回访结果</span>}
-                  value={formData.visitResult}
-                  onChange={(e) => setFormData({ ...formData, visitResult: e.target.value })}
-                  options={[
-                    { value: '', label: '不限' },
-                    ...visitResults.filter((v) => v.isActive).map((v) => ({
-                      value: v.code,
-                      label: v.name,
-                    })),
-                  ]}
-                />
-                <Select
-                  label={<span className="text-xs text-gray-500">区域</span>}
-                  value={formData.region}
-                  onChange={(e) => setFormData({ ...formData, region: e.target.value })}
-                  options={[
-                    { value: '', label: '不限' },
-                    ...regions.map((r) => ({ value: r, label: r })),
-                  ]}
-                />
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-500">回访结果</label>
+                  <div className="flex flex-wrap gap-2 max-h-24 overflow-y-auto">
+                    {visitResults.filter((v) => v.isActive).map((vr) => {
+                      const isSelected = (formData.visitResults || []).includes(vr.code);
+                      return (
+                        <button
+                          key={vr.id}
+                          type="button"
+                          onClick={() => {
+                            const current = formData.visitResults || [];
+                            const next = isSelected
+                              ? current.filter((c: string) => c !== vr.code)
+                              : [...current, vr.code];
+                            setFormData({ ...formData, visitResults: next });
+                          }}
+                          className={cn(
+                            'px-2.5 py-1 rounded text-xs font-medium border transition-colors',
+                            isSelected
+                              ? 'bg-primary-500 text-white border-primary-500'
+                              : 'border-gray-200 text-gray-600 hover:bg-gray-50',
+                          )}
+                        >
+                          {vr.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-500">区域</label>
+                  <div className="flex flex-wrap gap-2 max-h-24 overflow-y-auto">
+                    {regions.map((r) => {
+                      const isSelected = (formData.regions || []).includes(r);
+                      return (
+                        <button
+                          key={r}
+                          type="button"
+                          onClick={() => {
+                            const current = formData.regions || [];
+                            const next = isSelected
+                              ? current.filter((c: string) => c !== r)
+                              : [...current, r];
+                            setFormData({ ...formData, regions: next });
+                          }}
+                          className={cn(
+                            'px-2.5 py-1 rounded text-xs font-medium border transition-colors',
+                            isSelected
+                              ? 'bg-primary-500 text-white border-primary-500'
+                              : 'border-gray-200 text-gray-600 hover:bg-gray-50',
+                          )}
+                        >
+                          {r}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -348,18 +401,18 @@ export default function RulesPage() {
                                 标签：{rule.problemTags.join('、')}
                               </span>
                             )}
-                            {rule.visitResult && (
+                            {rule.visitResults && rule.visitResults.length > 0 && (
                               <>
                                 <ArrowRight className="h-3 w-3 text-gray-300" />
                                 <span className="text-gray-600">
-                                  回访：{visitResults.find((v) => v.code === rule.visitResult)?.name || rule.visitResult}
+                                  回访：{rule.visitResults.map((vr: string) => visitResults.find((v) => v.code === vr)?.name || vr).join('、')}
                                 </span>
                               </>
                             )}
-                            {rule.region && (
+                            {rule.regions && rule.regions.length > 0 && (
                               <>
                                 <ArrowRight className="h-3 w-3 text-gray-300" />
-                                <span className="text-gray-600">区域：{rule.region}</span>
+                                <span className="text-gray-600">区域：{rule.regions.join('、')}</span>
                               </>
                             )}
                           </div>

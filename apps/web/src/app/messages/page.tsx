@@ -15,6 +15,8 @@ export default function MessagesPage() {
   const [messages, setMessages] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [operators, setOperators] = useState<any[]>([]);
+  const [selectedRecipient, setSelectedRecipient] = useState('');
   const [filters, setFilters] = useState({
     isRead: '',
     channel: '',
@@ -25,26 +27,40 @@ export default function MessagesPage() {
   const [total, setTotal] = useState(0);
 
   useEffect(() => {
-    fetchMessages();
-  }, [filters, page]);
+    const fetchOperators = async () => {
+      const res: any = await apiEndpoints.users.operators();
+      const data = res as any;
+      setOperators(data || []);
+      if (data && data.length > 0) {
+        setSelectedRecipient(data[0].id);
+      }
+    };
+    fetchOperators();
+  }, []);
+
+  useEffect(() => {
+    if (selectedRecipient) {
+      fetchMessages();
+    }
+  }, [filters, page, selectedRecipient]);
 
   const fetchMessages = async () => {
+    if (!selectedRecipient) return;
     setLoading(true);
     try {
       const params = {
-        ...filters,
-        isRead: filters.isRead || undefined,
+        recipientId: selectedRecipient,
+        read: filters.isRead || undefined,
         channel: filters.channel || undefined,
-        type: filters.type || undefined,
-        keyword: filters.keyword || undefined,
         page,
         pageSize: 20,
       };
       const res: any = await apiEndpoints.reminders.list(params);
-      setMessages(res.items || []);
-      setTotal(res.total || 0);
-      const countRes: any = await apiEndpoints.reminders.getUnreadCount();
-      setUnreadCount(countRes.unread || 0);
+      const data = res as any;
+      setMessages(data.items || data || []);
+      setTotal(data.total || data.length || 0);
+      const countRes: any = await apiEndpoints.reminders.unreadCount(selectedRecipient);
+      setUnreadCount(countRes?.count || 0);
     } catch (error) {
       console.error('Failed to fetch messages:', error);
     } finally {
@@ -53,8 +69,9 @@ export default function MessagesPage() {
   };
 
   const markAsRead = async (id: string) => {
+    if (!selectedRecipient) return;
     try {
-      await apiEndpoints.reminders.markAsRead(id);
+      await apiEndpoints.reminders.markAsRead(id, { recipientId: selectedRecipient });
       fetchMessages();
     } catch (error) {
       console.error('Failed to mark as read:', error);
@@ -62,8 +79,9 @@ export default function MessagesPage() {
   };
 
   const markAllAsRead = async () => {
+    if (!selectedRecipient) return;
     try {
-      await apiEndpoints.reminders.markAllAsRead();
+      await apiEndpoints.reminders.markAllAsRead(selectedRecipient);
       fetchMessages();
     } catch (error) {
       console.error('Failed to mark all as read:', error);
@@ -112,6 +130,18 @@ export default function MessagesPage() {
       <Card>
         <CardContent className="p-4">
           <div className="flex flex-wrap items-center gap-3">
+            <Select
+              value={selectedRecipient}
+              onChange={(e) => {
+                setSelectedRecipient(e.target.value);
+                setPage(1);
+              }}
+              options={[
+                { value: '', label: '选择接收人' },
+                ...operators.map((o) => ({ value: o.id, label: o.name })),
+              ]}
+              className="w-36"
+            />
             <div className="flex-1 min-w-[200px] max-w-md">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
