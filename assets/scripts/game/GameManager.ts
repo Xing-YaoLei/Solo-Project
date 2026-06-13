@@ -32,6 +32,8 @@ export class GameManager extends Component {
     private _eventIndex: number = 0;
     private _gameTime: number = 0;
     private _onPhaseChange: ((phase: GamePhase) => void)[] = [];
+    private _settled: boolean = false;
+    private _finalRecord: ScoreRecord | null = null;
 
     get phase(): GamePhase { return this._phase; }
     get appointmentSystem(): AppointmentSystem | null { return this._appointmentSystem; }
@@ -62,6 +64,9 @@ export class GameManager extends Component {
         }
 
         if (!this._levelManager.selectLevel(levelId)) return false;
+
+        this._settled = false;
+        this._finalRecord = null;
 
         const level = this._levelManager.currentLevel!;
         const scenario = this._levelManager.currentScenario!;
@@ -218,6 +223,10 @@ export class GameManager extends Component {
             throw new Error("Game not initialized");
         }
 
+        if (this._settled && this._finalRecord) {
+            return this._finalRecord;
+        }
+
         if (this._timerManager) {
             this._timerManager.stop();
         }
@@ -230,6 +239,8 @@ export class GameManager extends Component {
         }
 
         const record = this._scoreManager.finishLevel(arrivalRate, level);
+        this._finalRecord = record;
+        this._settled = true;
         this._setPhase(GamePhase.SETTLING);
         return record;
     }

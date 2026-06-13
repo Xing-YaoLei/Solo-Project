@@ -52,7 +52,7 @@
     "_globals": {
       "__id__": 6
     },
-    "_id": "43fc1cfa-c2d2-4a67-b7dd-43e7ff6c3a01"
+    "_id": "scene-main-00001"
   },
   {
     "__type__": "cc.Node",
@@ -64,6 +64,9 @@
     "_children": [
       {
         "__id__": 3
+      },
+      {
+        "__id__": 8
       }
     ],
     "_active": true,
@@ -103,7 +106,7 @@
       "y": 0,
       "z": 0
     },
-    "_id": "a62e0fc7-16c1-4e73-b789-04353b5f6023"
+    "_id": "node-canvas-00001"
   },
   {
     "__type__": "cc.Node",
@@ -147,7 +150,7 @@
       "y": 0,
       "z": 0
     },
-    "_id": "b7c4d2a7-7b5b-4f5e-a681-3b0d8e8b7e28"
+    "_id": "node-bootstrap-00001"
   },
   {
     "__type__": "cc.UITransform",
@@ -166,7 +169,7 @@
       "x": 0.5,
       "y": 0.5
     },
-    "_id": "2d0f0a48-75ce-44f8-b0df-31e1f0cfae81"
+    "_id": "comp-uitransform-00001"
   },
   {
     "__type__": "cc.Canvas",
@@ -177,33 +180,33 @@
     "__prefab": null,
     "_cameraComponent": null,
     "_alignCanvasWithScreen": true,
-    "_id": "6aa24f47-98e5-4a28-90b0-2aa9e0adf42e"
+    "_id": "comp-canvas-00001"
   },
   {
     "__type__": "cc.SceneGlobals",
     "ambient": {
-      "__id__": 8
-    },
-    "shadows": {
       "__id__": 9
     },
-    "_skybox": {
+    "shadows": {
       "__id__": 10
     },
-    "fog": {
+    "_skybox": {
       "__id__": 11
     },
-    "octree": {
+    "fog": {
       "__id__": 12
     },
-    "skin": {
+    "octree": {
       "__id__": 13
     },
-    "lightProbeInfo": {
+    "skin": {
       "__id__": 14
     },
-    "postSettings": {
+    "lightProbeInfo": {
       "__id__": 15
+    },
+    "postSettings": {
+      "__id__": 16
     },
     "bakedWithStationaryMainLight": false,
     "bakedWithHighpLightmap": false
@@ -215,8 +218,51 @@
     },
     "_enabled": true,
     "__prefab": null,
-    "__scriptAsset": null,
-    "_id": "script-component-placeholder"
+    "__scriptAsset": {
+      "__uuid__": "7a2f9c4e-1b3d-5f7a-9d8c-0e1f2a3b4c5d",
+      "__expectedType__": "cc.Script"
+    },
+    "_id": "comp-script-bootstrap-00001"
+  },
+  {
+    "__type__": "cc.Node",
+    "_name": "PersistentRoot",
+    "_objFlags": 0,
+    "parent": {
+      "__id__": 2
+    },
+    "_children": [],
+    "_active": true,
+    "_components": [],
+    "_prefab": null,
+    "_lpos": {
+      "__type__": "cc.Vec3",
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "_lrot": {
+      "__type__": "cc.Quat",
+      "x": 0,
+      "y": 0,
+      "z": 0,
+      "w": 1
+    },
+    "_lscale": {
+      "__type__": "cc.Vec3",
+      "x": 1,
+      "y": 1,
+      "z": 1
+    },
+    "_mobility": 0,
+    "_layer": 33554432,
+    "_euler": {
+      "__type__": "cc.Vec3",
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "_id": "node-persistent-00001"
   },
   {
     "__type__": "cc.AmbientInfo",

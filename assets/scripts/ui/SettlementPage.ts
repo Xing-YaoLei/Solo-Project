@@ -51,6 +51,7 @@ export class SettlementPage extends Component {
     private _onNextLevel: (() => void)[] = [];
     private _onReplay: (() => void)[] = [];
     private _onStatistics: (() => void)[] = [];
+    private _buttonsBound: boolean = false;
 
     onRetry(callback: () => void): void { this._onRetry.push(callback); }
     onNextLevel(callback: () => void): void { this._onNextLevel.push(callback); }
@@ -75,6 +76,10 @@ export class SettlementPage extends Component {
 
         if (this.conflictCountLabel) {
             this.conflictCountLabel.string = `冲突次数: ${record.conflictCount}`;
+        }
+
+        if (this.nextLevelButton) {
+            this.nextLevelButton.node.active = record.passed;
         }
 
         this._renderErrorDetails(record.errorCauses);
@@ -180,6 +185,8 @@ export class SettlementPage extends Component {
     }
 
     private _setupButtons(record: ScoreRecord): void {
+        if (this._buttonsBound) return;
+
         if (this.retryButton) {
             this.retryButton.node.on(Node.EventType.TOUCH_END, () => {
                 for (const cb of this._onRetry) cb();
@@ -187,7 +194,6 @@ export class SettlementPage extends Component {
         }
 
         if (this.nextLevelButton) {
-            this.nextLevelButton.node.active = record.passed;
             this.nextLevelButton.node.on(Node.EventType.TOUCH_END, () => {
                 for (const cb of this._onNextLevel) cb();
             });
@@ -204,6 +210,8 @@ export class SettlementPage extends Component {
                 for (const cb of this._onStatistics) cb();
             });
         }
+
+        this._buttonsBound = true;
     }
 
     private _createErrorDetailNode(cause: ErrorCause): Node {

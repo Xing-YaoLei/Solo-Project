@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, Label, Button, ScrollView, Color, Vec3, UITransform, Layout, Widget, Scrollbar, instantiate, Prefab, UIOpacity } from "cc";
+import { _decorator, Component, Node, Label, Button, ScrollView, Color, Vec3, UITransform, Layout, Widget, Scrollbar, instantiate, Prefab, UIOpacity, Sprite, SpriteFrame } from "cc";
 import { GameManager, GamePhase } from "./game/GameManager";
 import { LevelManager } from "./game/LevelManager";
 import { TimerManager } from "./game/TimerManager";
@@ -43,6 +43,7 @@ export class TrainingFlowBootstrap extends Component {
     private _timerDisplayLabel: Label | null = null;
     private _selectedCustomerLabel: Label | null = null;
     private _arrivalRateLabel: Label | null = null;
+    private _settlementProcessed: boolean = false;
 
     onLoad(): void {
         console.log("=== 美业门店预约经营模拟 - 训练流程启动 ===");
@@ -184,6 +185,13 @@ export class TrainingFlowBootstrap extends Component {
                 const slotTransform = slotNode.addComponent(UITransform);
                 slotTransform.contentSize.set(80, 60);
 
+                const bgNode = new Node("Background");
+                slotNode.addChild(bgNode);
+                const bgTransform = bgNode.addComponent(UITransform);
+                bgTransform.contentSize.set(80, 60);
+                const bgSprite = bgNode.addComponent(Sprite);
+                bgSprite.color = new Color(240, 240, 240);
+
                 const label = this._createLabel(slotNode, timeStr, 12, new Color(0, 0, 0));
                 label.node.setPosition(0, 10, 0);
 
@@ -196,6 +204,8 @@ export class TrainingFlowBootstrap extends Component {
                 slotNode.on(Node.EventType.TOUCH_START, () => {
                     this._onSlotHover(st, timeStr);
                 });
+
+                this._calendarView!.registerSlotNode(st, timeStr, slotNode);
             }
         }
     }
@@ -240,6 +250,7 @@ export class TrainingFlowBootstrap extends Component {
         this._reminderList = reminderNode.addComponent(ReminderList);
         this._reminderList!.scrollView = scrollView;
         this._reminderList!.countLabel = countLabel;
+        this._reminderList!.entryContainer = contentNode;
     }
 
     private _createArrivalJudgment(parent: Node): void {
@@ -293,6 +304,13 @@ export class TrainingFlowBootstrap extends Component {
             buttonGroup.addChild(btnNode);
             const btnTransform = btnNode.addComponent(UITransform);
             btnTransform.contentSize.set(110, 50);
+
+            const bgNode = new Node("Background");
+            btnNode.addChild(bgNode);
+            const bgTransform = bgNode.addComponent(UITransform);
+            bgTransform.contentSize.set(110, 50);
+            const bgSprite = bgNode.addComponent(Sprite);
+            bgSprite.color = s.color;
 
             const btn = btnNode.addComponent(Button);
 
@@ -362,6 +380,10 @@ export class TrainingFlowBootstrap extends Component {
         errorDetailContainer.setPosition(-250, 0, 0);
         const edcTransform = errorDetailContainer.addComponent(UITransform);
         edcTransform.contentSize.set(400, 250);
+        const edcLayout = errorDetailContainer.addComponent(Layout);
+        edcLayout.type = Layout.Type.VERTICAL;
+        edcLayout.resizeMode = Layout.ResizeMode.CONTAINER;
+        edcLayout.spacingY = 2;
 
         const fragmentsContainer = new Node("FragmentsContainer");
         settlementNode.addChild(fragmentsContainer);
@@ -392,6 +414,14 @@ export class TrainingFlowBootstrap extends Component {
             btnGroup.addChild(btnNode);
             const btnTransform = btnNode.addComponent(UITransform);
             btnTransform.contentSize.set(150, 50);
+
+            const bgNode = new Node("Background");
+            btnNode.addChild(bgNode);
+            const bgTransform = bgNode.addComponent(UITransform);
+            bgTransform.contentSize.set(150, 50);
+            const bgSprite = bgNode.addComponent(Sprite);
+            bgSprite.color = new Color(80, 80, 200);
+
             const btn = btnNode.addComponent(Button);
             this._createLabel(btnNode, config.label, 16, new Color(255, 255, 255));
             buttons[config.name] = btn;
@@ -458,6 +488,14 @@ export class TrainingFlowBootstrap extends Component {
         backBtnNode.setPosition(0, -240, 0);
         const backBtnTransform = backBtnNode.addComponent(UITransform);
         backBtnTransform.contentSize.set(150, 50);
+
+        const bgNode = new Node("Background");
+        backBtnNode.addChild(bgNode);
+        const bgTransform = bgNode.addComponent(UITransform);
+        bgTransform.contentSize.set(150, 50);
+        const bgSprite = bgNode.addComponent(Sprite);
+        bgSprite.color = new Color(100, 100, 100);
+
         const backButton = backBtnNode.addComponent(Button);
         this._createLabel(backBtnNode, "返回", 18, new Color(255, 255, 255));
 
@@ -627,6 +665,8 @@ export class TrainingFlowBootstrap extends Component {
 
     private _startLevel(levelId: string): void {
         this._currentLevelId = levelId;
+        this._selectedCustomerId = "";
+        this._settlementProcessed = false;
 
         if (this._replaySystem) {
             this._replaySystem.beginSession(levelId);
@@ -786,15 +826,25 @@ export class TrainingFlowBootstrap extends Component {
 
         const record = this._gameManager.finishLevel();
 
-        if (this._replaySystem) {
-            this._replaySystem.endSession(record.arrivalRate, record.passed);
-            this._failedFragmentStore.addFragment(this._replaySystem.currentSession!);
-        }
+        if (!this._settlementProcessed) {
+            this._settlementProcessed = true;
 
-        console.log(`=== 结算 ===`);
-        console.log(`通过: ${record.passed}`);
-        console.log(`到场率: ${(record.arrivalRate * 100).toFixed(1)}%`);
-        console.log(`冲突次数: ${record.conflictCount}`);
+            if (this._replaySystem) {
+                this._replaySystem.endSession(record.arrivalRate, record.passed);
+                if (!record.passed && this._replaySystem.currentSession) {
+                    this._failedFragmentStore.addFragment(this._replaySystem.currentSession);
+                }
+            }
+
+            console.log(`=== 结算 ===`);
+            console.log(`通过: ${record.passed}`);
+            console.log(`到场率: ${(record.arrivalRate * 100).toFixed(1)}%`);
+            console.log(`冲突次数: ${record.conflictCount}`);
+            console.log(`错误数: ${record.errorCauses.length}`);
+            for (const err of record.errorCauses) {
+                console.log(`  - [${err.category}] ${err.description}`);
+            }
+        }
 
         this._settlementPage.show(record, this._failedFragmentStore);
     }

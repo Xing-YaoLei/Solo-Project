@@ -42,17 +42,49 @@ export class CalendarView extends Component {
         this._refreshView();
     }
 
+    registerSlotNode(stationIndex: number, time: string, node: Node): void {
+        const key = `${stationIndex}_${time}`;
+        this._slotNodes.set(key, node);
+    }
+
     refresh(): void {
         this._refreshView();
+    }
+
+    private _configureSlotNode(node: Node, slot: TimeSlot): void {
+        const label = node.getComponentInChildren(Label);
+        if (!label) {
+            const labelNode = new Node("Label");
+            node.addChild(labelNode);
+            const labelComp = labelNode.addComponent(Label);
+            labelComp.string = slot.time;
+            labelComp.fontSize = 14;
+        }
+
+        node.on(Node.EventType.TOUCH_END, () => {
+            this._handleSlotClick(slot.stationIndex, slot.time);
+        });
+        node.on(Node.EventType.TOUCH_START, () => {
+            this._handleSlotHover(slot.stationIndex, slot.time);
+        });
     }
 
     private _refreshView(): void {
         if (!this._appointmentSystem) return;
 
-        this._clearSlotNodes();
-
         for (const slot of this._appointmentSystem.slots) {
-            const node = this._getOrCreateSlotNode(slot);
+            const key = slot.key;
+            let node = this._slotNodes.get(key);
+            if (!node) {
+                if (this.slotPrefab) {
+                    node = instantiate(this.slotPrefab);
+                } else {
+                    node = new Node(`slot_${key}`);
+                }
+                this.node.addChild(node);
+                this._slotNodes.set(key, node);
+                this._configureSlotNode(node, slot);
+            }
             this._applySlotStyle(node, slot);
         }
     }

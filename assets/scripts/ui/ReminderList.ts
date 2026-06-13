@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, Label, Prefab, instantiate, ScrollView, Color } from "cc";
+import { _decorator, Component, Node, Label, Prefab, instantiate, ScrollView, Color, UITransform } from "cc";
 import { Customer, ArrivalStatus } from "../appointment/Customer";
 import { AppointmentSystem } from "../appointment/AppointmentSystem";
 
@@ -24,9 +24,13 @@ export class ReminderList extends Component {
     @property(Label)
     countLabel: Label | null = null;
 
+    @property(Node)
+    entryContainer: Node | null = null;
+
     private _entries: ReminderEntry[] = [];
     private _onEntryClick: ((entry: ReminderEntry) => void)[] = [];
     private _appointmentSystem: AppointmentSystem | null = null;
+    private _entryNodes: Map<string, Node> = new Map();
 
     onEntryClick(callback: (entry: ReminderEntry) => void): void {
         this._onEntryClick.push(callback);
@@ -83,11 +87,13 @@ export class ReminderList extends Component {
     }
 
     private _renderEntries(): void {
+        const container = this.entryContainer || this.node;
         this._clearEntries();
 
         for (const entry of this._entries) {
             const node = this._createEntryNode(entry);
-            this.node.addChild(node);
+            container.addChild(node);
+            this._entryNodes.set(entry.customerId, node);
         }
     }
 
@@ -97,7 +103,14 @@ export class ReminderList extends Component {
             node = instantiate(this.entryPrefab);
         } else {
             node = new Node(`reminder_${entry.customerId}`);
-            node.addComponent(Label);
+            node.addComponent(UITransform);
+            const transform = node.getComponent(UITransform);
+            if (transform) {
+                transform.contentSize.set(360, 30);
+            }
+            const labelNode = new Node("Label");
+            node.addChild(labelNode);
+            labelNode.addComponent(Label);
         }
 
         const label = node.getComponentInChildren(Label);
@@ -105,6 +118,7 @@ export class ReminderList extends Component {
             const statusText = this._statusToText(entry.status);
             label.string = `${entry.customerName} | ${entry.preferredTime} | ${statusText}`;
             label.color = entry.isUrgent ? Color.RED : Color.BLACK;
+            label.fontSize = 14;
         }
 
         node.on(Node.EventType.TOUCH_END, () => {
@@ -117,10 +131,12 @@ export class ReminderList extends Component {
     }
 
     private _clearEntries(): void {
-        const children = this.node.children;
-        for (let i = children.length - 1; i >= 0; i--) {
-            children[i].destroy();
+        for (const [, node] of this._entryNodes) {
+            if (node && node.isValid) {
+                node.destroy();
+            }
         }
+        this._entryNodes.clear();
     }
 
     private _statusToText(status: ArrivalStatus): string {
