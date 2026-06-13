@@ -6,7 +6,7 @@
       "fitWidth": false,
       "fitHeight": true
     },
-    "startScene": "scene://main",
+    "startScene": "db://assets/scenes/main.scene",
     "renderPipeline": ""
   },
   "scripting": {
