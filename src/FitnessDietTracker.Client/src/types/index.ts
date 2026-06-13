@@ -23,6 +23,19 @@ export enum ExportFormat {
   Excel = 1
 }
 
+export enum NotificationType {
+  CheckInInterruption = 0,
+  CoachComment = 1,
+  System = 2,
+  Reminder = 3
+}
+
+export enum NotificationStatus {
+  Unread = 0,
+  Read = 1,
+  Archived = 2
+}
+
 export interface User {
   id: number;
   userName: string;
@@ -159,4 +172,20 @@ export interface ExportRecord {
   operatorId: number;
   operatorName: string;
   fileSize: number;
+}
+
+export interface Notification {
+  id: number;
+  userId: number;
+  userName: string;
+  type: NotificationType;
+  title: string;
+  content: string;
+  relatedId?: number;
+  relatedType?: string;
+  status: NotificationStatus;
+  readAt?: string;
+  createdBy?: number;
+  createdByName?: string;
+  createdAt: string;
 }

@@ -1,7 +1,9 @@
 using FitnessDietTracker.API.Data;
 using FitnessDietTracker.API.Services;
 using FitnessDietTracker.API.BackgroundJobs;
+using FitnessDietTracker.API.Helpers;
 using Hangfire;
+using Hangfire.Dashboard;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -64,24 +66,33 @@ builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<IExportService, ExportService>();
 builder.Services.AddScoped<IInterruptionService, InterruptionService>();
 builder.Services.AddScoped<ICheckInJobService, CheckInJobService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Fitness Diet Tracker API v1");
+        c.RoutePrefix = "swagger";
+    });
 }
 
 app.UseHttpsRedirection();
 app.UseCors("AllowReactApp");
+app.UseStaticFiles();
+app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
 app.MapHangfireDashboard("/hangfire", new DashboardOptions
 {
-    DashboardTitle = "Fitness Diet Tracker - Hangfire Dashboard"
+    DashboardTitle = "Fitness Diet Tracker - Hangfire Dashboard",
+    Authorization = new[] { new NoAuthorizationFilter() }
 });
 
 using (var scope = app.Services.CreateScope())

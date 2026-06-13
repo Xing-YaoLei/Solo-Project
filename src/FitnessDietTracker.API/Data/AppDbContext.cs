@@ -18,6 +18,7 @@ public class AppDbContext : DbContext
     public DbSet<CheckInInterruption> CheckInInterruptions { get; set; }
     public DbSet<InterruptionLog> InterruptionLogs { get; set; }
     public DbSet<ExportRecord> ExportRecords { get; set; }
+    public DbSet<Notification> Notifications { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -80,6 +81,21 @@ public class AppDbContext : DbContext
             .WithMany()
             .HasForeignKey(e => e.OperatorId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Notification>()
+            .HasOne(n => n.User)
+            .WithMany()
+            .HasForeignKey(n => n.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<Notification>()
+            .HasOne(n => n.Creator)
+            .WithMany()
+            .HasForeignKey(n => n.CreatedBy)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Notification>().HasIndex(n => new { n.UserId, n.Status });
+        modelBuilder.Entity<Notification>().HasIndex(n => n.CreatedAt);
 
         modelBuilder.Entity<User>().HasIndex(u => u.Email).IsUnique();
         modelBuilder.Entity<User>().HasIndex(u => u.UserName).IsUnique();

@@ -8,9 +8,10 @@ import type {
   CoachCommentHistory,
   MonthlyReview,
   CheckInInterruption,
-  ExportRecord
+  ExportRecord,
+  Notification
 } from '../types';
-import type { MealType, ExportFormat } from '../types';
+import type { MealType, ExportFormat, NotificationStatus } from '../types';
 
 const api = axios.create({
   baseURL: '/api',
@@ -146,6 +147,23 @@ export const interruptionApi = {
     newStatus?: number;
     remarks?: string;
   }) => api.put<CheckInInterruption>(`/interruptions/${id}/handle`, data).then((r) => r.data)
+};
+
+export const notificationApi = {
+  list: (userId: number, status?: NotificationStatus, page = 1, pageSize = 20) =>
+    api
+      .get<Notification[]>('/notifications', {
+        params: { userId, status, page, pageSize }
+      })
+      .then((r) => r.data),
+  unreadCount: (userId: number) =>
+    api.get<{ count: number }>('/notifications/unread-count', { params: { userId } }).then((r) => r.data),
+  markAsRead: (id: number, userId: number) =>
+    api.put(`/notifications/${id}/read`, null, { params: { userId } }).then((r) => r.data),
+  markAllAsRead: (userId: number) =>
+    api.put('/notifications/read-all', null, { params: { userId } }).then((r) => r.data),
+  create: (data: any) =>
+    api.post<Notification>('/notifications', data).then((r) => r.data)
 };
 
 export default api;
