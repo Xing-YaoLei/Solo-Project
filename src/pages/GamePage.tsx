@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { CheckCircle2, Clock, Package, AlertTriangle, Image, ArrowRight } from 'lucide-react'
+import { CheckCircle2, Clock, Package, AlertTriangle, Image, ArrowRight, X } from 'lucide-react'
 import { useGameStore } from '@/stores/useGameStore'
 import { useConfigStore } from '@/stores/useConfigStore'
 import { useUIStore } from '@/stores/useUIStore'
@@ -14,10 +14,9 @@ import { EventPanel } from '@/components/ui/EventPanel'
 import { Toast } from '@/components/ui/Toast'
 import { EffectPhoto } from '@/components/3d/EffectPhoto'
 
-
 const EFFECT_PHOTO_PAIRS: Record<string, { before: string; after: string }[]> = {
   '面部护理': [
-    { before: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=close%20up%20of%20womans%20face%20before%20facial%20treatment%20with%20visible%20skin%20imperfections%20soft%20lighting&image_size=landscape_4_3', after: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=close%20up%20of%20womans%20face%20after%20luxury%20facial%20treatment%20glowing%20radiant%20skin%20soft%20lighting&image_size=landscape_4_3' },
+    { before: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=close%20up%20of%20womans%20face%20before%20facial%20treatment%20with%20visible%20skin%20imperfections%20soft%20lighting&image_size=landscape_4_3', after: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=close%20up%20of%20womans%20face%20after%20luxury%20facial%20treatment%20glowing%20radiant%20face%20soft%20lighting&image_size=landscape_4_3' },
   ],
   '美甲': [
     { before: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=hands%20with%20natural%20ungroomed%20nails%20before%20manicure%20soft%20background&image_size=landscape_4_3', after: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=beautiful%20manicured%20hands%20with%20elegant%20nail%20art%20design%20rose%20gold%20accent%20soft%20lighting&image_size=landscape_4_3' },
@@ -69,6 +68,8 @@ export default function GamePage() {
   const completeLevel = useGameStore((s) => s.completeLevel)
   const resetGame = useGameStore((s) => s.resetGame)
   const addBottleneck = useGameStore((s) => s.addBottleneck)
+  const timeRemaining = useGameStore((s) => s.timeRemaining)
+  const setTimeRemaining = useGameStore((s) => s.setTimeRemaining)
 
   const addToast = useUIStore((s) => s.addToast)
   const showEffect = useUIStore((s) => s.showEffect)
@@ -85,7 +86,10 @@ export default function GamePage() {
   const [pendingEffect, setPendingEffect] = useState<{ before: string; after: string } | null>(null)
   const [pendingInventory, setPendingInventory] = useState<PendingInventorySelect | null>(null)
   const [selectedInventoryItems, setSelectedInventoryItems] = useState<string[]>([])
+  const [inventoryValidationError, setInventoryValidationError] = useState<string | null>(null)
   const actionTimestamps = useRef<Map<string, number>>(new Map())
+  const timerStartedRef = useRef(false)
+  const levelStartedRef = useRef(false)
 
   const handleTimeout = useCallback(() => {
     try {
@@ -112,34 +116,35 @@ export default function GamePage() {
   const events = currentLevel?.events ?? []
   const { activeEvent, isEventActive, dismissEvent } = useEventSystem(events, (event) => {
     useGameStore.setState({ activeEvent: event })
-    addToast(`突发事件: ${event.type}`, 'warning')
-    addBottleneck({
-      id: crypto.randomUUID(),
-      sessionId: '',
-      type: 'event-fail',
-      timestamp: Date.now(),
-      duration: 0,
-      description: `事件触发: ${event.type}`,
-    })
+    addToast('突发事件: ' + event.type, 'warning')
   })
 
   useEffect(() => {
     if (!levelId) return
     const config = levels.find((l) => l.id === levelId)
-    if (config) {
+    if (config && !levelStartedRef.current) {
+      levelStartedRef.current = true
       resetGame()
       startLevel(config)
       setSelectedTechId(null)
       setSelectedInventoryItems([])
       setPendingInventory(null)
+      timerStartedRef.current = false
     }
   }, [levelId, levels, startLevel, resetGame])
 
   useEffect(() => {
-    if (phase === 'matching' && currentLevel) {
+    if (phase === 'matching' && currentLevel && !timerStartedRef.current) {
+      timerStartedRef.current = true
       timer.start()
     }
   }, [phase, currentLevel, timer])
+
+  useEffect(() => {
+    if (timer.isRunning) {
+      setTimeRemaining(timer.timeRemaining)
+    }
+  }, [timer.timeRemaining, timer.isRunning, setTimeRemaining])
 
   const inventoryTask = currentLevel?.tasks.find((t) => t.type === 'inventory-requisition')
   const requiredItemCount = inventoryTask?.params.itemCount ?? 3
@@ -173,21 +178,53 @@ export default function GamePage() {
             requiredCategories,
           })
           setSelectedInventoryItems([])
+          setInventoryValidationError(null)
         }
       }
     }
   }, [phase, pendingInventory, records, technicians])
 
+  const validateInventorySelection = useCallback(() => {
+    if (!pendingInventory) return { valid: true, message: '' }
+
+    if (selectedInventoryItems.length < requiredItemCount) {
+      return { valid: false, message: '还需要选择 ' + (requiredItemCount - selectedInventoryItems.length) + ' 件耗材' }
+    }
+
+    const selectedItems = selectedInventoryItems
+      .map((id) => inventory.find((i) => i.id === id))
+      .filter(Boolean)
+    const selectedCategories = [...new Set(selectedItems.map((i) => i?.category))]
+
+    const missingCategories = pendingInventory.requiredCategories.filter(
+      (cat) => !selectedCategories.includes(cat)
+    )
+
+    if (missingCategories.length > 0) {
+      return {
+        valid: false,
+        message: '缺少必需的耗材分类: ' + missingCategories.join('、'),
+      }
+    }
+
+    return { valid: true, message: '' }
+  }, [pendingInventory, selectedInventoryItems, inventory, requiredItemCount])
+
   const inventoryDone = useMemo(() => {
     if (!inventoryTask) return true
-    return phase === 'inventory' && selectedInventoryItems.length >= requiredItemCount
-  }, [phase, selectedInventoryItems, inventoryTask, requiredItemCount])
+    if (phase === 'inventory') {
+      const validation = validateInventorySelection()
+      return validation.valid
+    }
+    return false
+  }, [phase, inventoryTask, validateInventorySelection])
 
   useEffect(() => {
     if (!currentLevel) return
     if (phase === 'inventory' && inventoryDone) {
       setPhase('settlement')
       addToast('库存领用完成！进入结算', 'success')
+      timer.pause()
       setTimeout(() => {
         const session = completeLevel()
         addSession(session)
@@ -203,7 +240,7 @@ export default function GamePage() {
         navigate(`/settlement/${levelId}`, { state: { sessionId: session.id } })
       }, 1500)
     }
-  }, [phase, inventoryDone, currentLevel, completeLevel, navigate, levelId, addToast, addSession, addTechnicianOutput, addBottlenecks, setPhase])
+  }, [phase, inventoryDone, currentLevel, completeLevel, navigate, levelId, addToast, addSession, addTechnicianOutput, addBottlenecks, setPhase, timer])
 
   const getRequiredCategories = (service: string): string[] => {
     const map: Record<string, string[]> = {
@@ -236,10 +273,11 @@ export default function GamePage() {
             type: 'hesitation',
             timestamp: now,
             duration: responseTime,
-            description: `犹豫过久: 分配 ${record.customerName} 的${record.service}用时 ${(responseTime / 1000).toFixed(1)}秒`,
+            description: '犹豫过久: 分配 ' + record.customerName + ' 的' + record.service + '用时 ' + (responseTime / 1000).toFixed(1) + '秒',
           })
         }
-        addToast(`✓ ${record.customerName} → ${technicians.find(t => t.id === technicianId)?.name}`, 'success')
+        const techName = technicians.find((t) => t.id === technicianId)?.name
+        addToast('✓ ' + record.customerName + ' → ' + techName, 'success')
         const photos = getEffectPhoto(record.service)
         setPendingEffect(photos)
         setTimeout(() => {
@@ -255,7 +293,7 @@ export default function GamePage() {
           type: 'mismatch',
           timestamp: now,
           duration: responseTime,
-          description: `匹配错误: ${record.customerName} 的${record.service}分配给了错误技师`,
+          description: '匹配错误: ' + record.customerName + ' 的' + record.service + '分配给了错误技师',
         })
         addToast('✗ 匹配失误，请重试', 'error')
       }
@@ -298,17 +336,18 @@ export default function GamePage() {
       if (!item) return
 
       if (item.status !== 'available') {
-        addToast(`${item.name} 状态异常，无法领用`, 'error')
+        addToast(item.name + ' 状态异常，无法领用', 'error')
         return
       }
 
       if (selectedInventoryItems.includes(itemId)) {
         setSelectedInventoryItems((prev) => prev.filter((id) => id !== itemId))
-        addToast(`已取消选择 ${item.name}`, 'info')
+        addToast('已取消选择 ' + item.name, 'info')
       } else {
         setSelectedInventoryItems((prev) => [...prev, itemId])
-        addToast(`已选择 ${item.name}`, 'success')
+        addToast('已选择 ' + item.name, 'success')
       }
+      setInventoryValidationError(null)
     },
     [phase, pendingInventory, inventory, selectedInventoryItems, addToast]
   )
@@ -317,12 +356,50 @@ export default function GamePage() {
     (correct: boolean) => {
       if (activeEvent) {
         handleEvent(activeEvent, correct)
-        addToast(correct ? '事件处理成功' : '事件处理失败', correct ? 'success' : 'error')
+        if (correct) {
+          addToast('事件处理成功', 'success')
+        } else {
+          addBottleneck({
+            id: crypto.randomUUID(),
+            sessionId: '',
+            type: 'event-fail',
+            timestamp: Date.now(),
+            duration: 0,
+            description: '事件处理失败: ' + activeEvent.type,
+          })
+          addToast('事件处理失败', 'error')
+        }
         dismissEvent()
       }
     },
-    [activeEvent, handleEvent, addToast, dismissEvent]
+    [activeEvent, handleEvent, addToast, addBottleneck, dismissEvent]
   )
+
+  const handleProceedToSettlement = useCallback(() => {
+    const validation = validateInventorySelection()
+    if (!validation.valid) {
+      setInventoryValidationError(validation.message)
+      addToast(validation.message, 'error')
+      return
+    }
+    setPhase('settlement')
+    addToast('库存领用完成！进入结算', 'success')
+    timer.pause()
+    setTimeout(() => {
+      const session = completeLevel()
+      addSession(session)
+      const outputs = useGameStore.getState().technicianOutputs
+      for (const output of outputs) {
+        addTechnicianOutput(output)
+      }
+      const bns = useGameStore.getState().bottlenecks.map((b) => ({
+        ...b,
+        sessionId: session.id,
+      }))
+      addBottlenecks(bns)
+      navigate('/settlement/' + levelId, { state: { sessionId: session.id } })
+    }, 1500)
+  }, [validateInventorySelection, setPhase, addToast, completeLevel, addSession, addTechnicianOutput, addBottlenecks, navigate, levelId, timer])
 
   if (!currentLevel) {
     return (
@@ -337,6 +414,11 @@ export default function GamePage() {
   const wrongRecords = records.filter((r) => r.status === 'wrong')
   const matchedTechIds = matchedRecords.map((r) => r.technicianId ?? '').filter(Boolean)
   const currentTask = currentLevel.tasks.find((t) => t.type === 'match-record')
+
+  const selectedItems = selectedInventoryItems
+    .map((id) => inventory.find((i) => i.id === id))
+    .filter(Boolean)
+  const selectedCategories = [...new Set(selectedItems.map((i) => i?.category))]
 
   return (
     <div className="w-full h-screen flex bg-[#1a0f0a] overflow-hidden relative">
@@ -370,43 +452,74 @@ export default function GamePage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
           >
-            <div className="rounded-xl border-2 border-[#B76E79] bg-[#1a0f0a]/95 backdrop-blur-md p-5 shadow-2xl min-w-[420px]">
-              <div className="flex items-center gap-3 mb-4">
-                <Package className="w-6 h-6 text-[#B76E79]" />
-                <h3 className="text-lg font-bold text-[#B76E79]">库存领用</h3>
+            <div className="rounded-xl border-2 border-[#B76E79] bg-[#1a0f0a]/95 backdrop-blur-md p-5 shadow-2xl min-w-[480px]">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <Package className="w-6 h-6 text-[#B76E79]" />
+                  <h3 className="text-lg font-bold text-[#B76E79]">库存领用</h3>
+                </div>
+                {selectedInventoryItems.length > 0 && (
+                  <button
+                    onClick={() => {
+                      setSelectedInventoryItems([])
+                      setInventoryValidationError(null)
+                    }}
+                    className="flex items-center gap-1 px-2 py-1 text-xs text-[#FFFFF0]/60 hover:text-[#FFFFF0] hover:bg-[#3E2723]/40 rounded-md transition-colors"
+                  >
+                    <X className="w-3 h-3" />
+                    清空选择
+                  </button>
+                )}
               </div>
               <div className="space-y-3">
                 <p className="text-sm text-[#FFFFF0]/80">
-                  为 <span className="text-[#B76E79] font-semibold">{technicians.find(t => t.id === pendingInventory.techId)?.name}</span> 的
+                  为 <span className="text-[#B76E79] font-semibold">{technicians.find((t) => t.id === pendingInventory.techId)?.name}</span> 的
                   <span className="text-[#B76E79] font-semibold"> {pendingInventory.service} </span>
                   领用耗材
                 </p>
                 <div className="flex items-center gap-2 text-xs text-[#FFFFF0]/60">
-                  <span>建议分类：</span>
+                  <span>必需分类：</span>
                   {pendingInventory.requiredCategories.map((cat) => (
-                    <span key={cat} className="px-2 py-0.5 rounded bg-[#B76E79]/20 text-[#B76E79]">
+                    <span
+                      key={cat}
+                      className={`px-2 py-0.5 rounded ${selectedCategories.includes(cat) ? 'bg-[#50C878]/20 text-[#50C878]' : 'bg-[#B76E79]/20 text-[#B76E79]'}`}
+                    >
+                      {selectedCategories.includes(cat) ? '✓ ' : ''}
                       {cat}
                     </span>
                   ))}
                 </div>
-                <div className="flex items-center justify-between pt-2 border-t border-[#3E2723]/40">
+
+                {inventoryValidationError && (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/30">
+                    <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
+                    <span className="text-xs text-red-400">{inventoryValidationError}</span>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between pt-3 border-t border-[#3E2723]/40">
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-[#FFFFF0]/60">已选耗材</span>
-                    <span className="px-2 py-0.5 rounded-full bg-[#50C878]/20 text-[#50C878] text-sm font-bold">
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-sm font-bold ${
+                        selectedInventoryItems.length >= requiredItemCount
+                          ? 'bg-[#50C878]/20 text-[#50C878]'
+                          : 'bg-[#3E2723]/40 text-[#FFFFF0]/70'
+                      }`}
+                    >
                       {selectedInventoryItems.length}/{requiredItemCount}
                     </span>
                   </div>
-                  {selectedInventoryItems.length >= requiredItemCount && (
-                    <motion.div
-                      initial={{ scale: 0.8, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      className="flex items-center gap-1.5 text-[#50C878] text-sm"
+                  {selectedInventoryItems.length >= requiredItemCount ? (
+                    <button
+                      onClick={handleProceedToSettlement}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#50C878] text-white text-sm font-semibold hover:bg-[#50C878]/90 transition-all shadow-lg"
                     >
                       <CheckCircle2 className="w-4 h-4" />
-                      <span>准备结算...</span>
-                      <ArrowRight className="w-4 h-4 animate-pulse" />
-                    </motion.div>
-                  )}
+                      <span>确认领用</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -418,18 +531,15 @@ export default function GamePage() {
         <div className="p-4 space-y-4">
           <div className="space-y-2">
             <h2 className="text-base font-bold text-[#B76E79]">{currentLevel.name}</h2>
-            <p className="text-xs text-[#FFFFF0]/60 leading-relaxed">
-              {currentLevel.description}
-            </p>
+            <p className="text-xs text-[#FFFFF0]/60 leading-relaxed">{currentLevel.description}</p>
           </div>
 
           <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#3E2723]/30">
             <Clock className="w-4 h-4 text-[#B76E79]" />
             <span className="text-sm text-[#FFFFF0]/80 font-mono">
-              {Math.floor(timer.timeRemaining / 60)}:
-              {String(Math.floor(timer.timeRemaining % 60)).padStart(2, '0')}
+              {Math.floor(timeRemaining / 60)}:{String(Math.floor(timeRemaining % 60)).padStart(2, '0')}
             </span>
-            {timer.isUrgent && (
+            {timeRemaining <= 10 && timeRemaining > 0 && (
               <span className="text-xs text-red-400 animate-pulse ml-auto">⚠ 时间紧迫</span>
             )}
           </div>
@@ -437,9 +547,7 @@ export default function GamePage() {
           <div className="space-y-1">
             <div className="flex items-center gap-2 mb-2">
               <AlertTriangle className="w-4 h-4 text-[#B76E79]" />
-              <span className="text-sm font-medium text-[#FFFFF0]/80">
-                当前任务
-              </span>
+              <span className="text-sm font-medium text-[#FFFFF0]/80">当前任务</span>
             </div>
             {phase === 'matching' && currentTask && (
               <p className="text-xs text-[#FFFFF0]/60 pl-6">
@@ -448,21 +556,17 @@ export default function GamePage() {
             )}
             {phase === 'inventory' && (
               <p className="text-xs text-[#FFFFF0]/60 pl-6">
-                从库存柜选择 {requiredItemCount} 件耗材完成领用
+                选择 {requiredItemCount} 件耗材，包含必需分类：{pendingInventory?.requiredCategories.join('、')}
               </p>
             )}
             {phase === 'settlement' && (
-              <p className="text-xs text-[#50C878] pl-6">
-                正在结算，请稍候...
-              </p>
+              <p className="text-xs text-[#50C878] pl-6">正在结算，请稍候...</p>
             )}
           </div>
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-[#FFFFF0]/80">
-                消费记录 ({records.length})
-              </span>
+              <span className="text-sm font-medium text-[#FFFFF0]/80">消费记录 ({records.length})</span>
               <span className="flex items-center gap-2 text-xs">
                 <span className="text-[#50C878]">✓ {matchedCount}</span>
                 <span className="text-red-400">✗ {wrongCount}</span>
@@ -474,9 +578,9 @@ export default function GamePage() {
                   key={record.id}
                   className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-[#3E2723]/20 border border-[#B76E79]/30 hover:border-[#B76E79]/60 transition-all cursor-pointer group"
                   onClick={() => {
-                    const tech = technicians.find(t => t.specialty === record.service)
+                    const tech = technicians.find((t) => t.specialty === record.service)
                     if (tech) {
-                      addToast(`💡 提示: ${record.customerName} 的服务属于「${record.service}」`, 'info')
+                      addToast('💡 提示: ' + record.customerName + ' 的服务属于「' + record.service + '」', 'info')
                     }
                   }}
                 >
@@ -527,6 +631,7 @@ export default function GamePage() {
               {inventory.slice(0, 8).map((item) => {
                 const isSelected = selectedInventoryItems.includes(item.id)
                 const isAvailable = item.status === 'available'
+                const matchesCategory = pendingInventory?.requiredCategories.includes(item.category)
                 return (
                   <div
                     key={item.id}
@@ -535,7 +640,9 @@ export default function GamePage() {
                       isSelected
                         ? 'bg-[#B76E79]/30 border-[#B76E79] text-[#FFFFF0]'
                         : isAvailable
-                          ? 'bg-[#3E2723]/20 border-[#3E2723]/30 text-[#FFFFF0]/70 hover:border-[#B76E79]/50'
+                          ? matchesCategory && phase === 'inventory'
+                            ? 'bg-[#50C878]/15 border-[#50C878]/40 text-[#FFFFF0]/80 hover:border-[#50C878]/70'
+                            : 'bg-[#3E2723]/20 border-[#3E2723]/30 text-[#FFFFF0]/70 hover:border-[#B76E79]/50'
                           : 'bg-red-500/10 border-red-500/30 text-red-400/70'
                     } ${phase === 'inventory' && isAvailable ? 'cursor-pointer' : ''}`}
                   >
@@ -543,6 +650,7 @@ export default function GamePage() {
                       <span className="truncate">{item.name}</span>
                       <span className="text-[10px] opacity-60 ml-1">×{item.quantity}</span>
                     </div>
+                    <div className="text-[9px] opacity-50 mt-0.5">{item.category}</div>
                     {item.status !== 'available' && (
                       <div className="text-[9px] text-red-400/80 mt-0.5">异常</div>
                     )}
@@ -563,9 +671,7 @@ export default function GamePage() {
               </div>
               <div className="flex items-center gap-1.5 text-[#FFFFF0]/50">
                 <span>难度</span>
-                <span className="ml-auto text-[#FFBF00] font-medium">
-                  {'★'.repeat(currentLevel.difficulty)}
-                </span>
+                <span className="ml-auto text-[#FFBF00] font-medium">{'★'.repeat(currentLevel.difficulty)}</span>
               </div>
             </div>
           </div>

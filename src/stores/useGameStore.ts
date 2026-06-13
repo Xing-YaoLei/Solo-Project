@@ -85,11 +85,14 @@ interface GameState {
   isTimerFrozen: boolean
   shieldActive: boolean
   technicianOutputs: TechnicianOutput[]
+  eventsHandledSuccess: number
+  eventsHandledFail: number
 }
 
 interface GameActions {
   startLevel: (levelConfig: LevelConfig) => void
   setPhase: (phase: GamePhase) => void
+  setTimeRemaining: (time: number) => void
   tickTimer: () => void
   matchRecord: (recordId: string, technicianId: string) => void
   handleEvent: (eventConfig: EventConfig, correct: boolean) => void
@@ -118,6 +121,8 @@ const initialState: GameState = {
   isTimerFrozen: false,
   shieldActive: false,
   technicianOutputs: [],
+  eventsHandledSuccess: 0,
+  eventsHandledFail: 0,
 }
 
 export const useGameStore = create<GameState & GameActions>()((set, get) => ({
@@ -146,11 +151,17 @@ export const useGameStore = create<GameState & GameActions>()((set, get) => ({
       isTimerFrozen: false,
       shieldActive: false,
       technicianOutputs: [],
+      eventsHandledSuccess: 0,
+      eventsHandledFail: 0,
     })
   },
 
   setPhase: (phase) => {
     set({ phase })
+  },
+
+  setTimeRemaining: (time) => {
+    set({ timeRemaining: time })
   },
 
   tickTimer: () => {
@@ -195,7 +206,7 @@ export const useGameStore = create<GameState & GameActions>()((set, get) => ({
   handleEvent: (eventConfig, correct) => {
     set((state) => {
       if (state.shieldActive && !correct) {
-        return { activeEvent: null, shieldActive: false }
+        return { activeEvent: null, shieldActive: false, eventsHandledSuccess: state.eventsHandledSuccess + 1 }
       }
 
       const bottlenecks = !correct
@@ -212,7 +223,12 @@ export const useGameStore = create<GameState & GameActions>()((set, get) => ({
           ]
         : state.bottlenecks
 
-      return { activeEvent: null, bottlenecks }
+      return {
+        activeEvent: null,
+        bottlenecks,
+        eventsHandledSuccess: correct ? state.eventsHandledSuccess + 1 : state.eventsHandledSuccess,
+        eventsHandledFail: correct ? state.eventsHandledFail : state.eventsHandledFail + 1,
+      }
     })
   },
 
@@ -316,9 +332,11 @@ export const useGameStore = create<GameState & GameActions>()((set, get) => ({
 
     const total = state.matchedCount + state.wrongCount
     const accuracy = calculateAccuracy(state.matchedCount, total)
-    const timeUsed = state.currentLevel.timeLimit - state.timeRemaining
-    const eventFails = state.bottlenecks.filter((b) => b.type === 'event-fail').length
-    const anomalyScore = Math.max(0, 1 - eventFails * 0.2)
+    const timeUsed = Math.max(0, state.currentLevel.timeLimit - state.timeRemaining)
+    const totalEvents = state.eventsHandledSuccess + state.eventsHandledFail
+    const anomalyScore = totalEvents > 0
+      ? state.eventsHandledSuccess / totalEvents
+      : 1
 
     const score = calculateScore({
       accuracy,
@@ -341,13 +359,15 @@ export const useGameStore = create<GameState & GameActions>()((set, get) => ({
       completedAt: new Date().toISOString(),
     }
 
+    const successEventsPerTech = state.technicians.length > 0
+      ? state.eventsHandledSuccess / state.technicians.length
+      : 0
+
     const technicianOutputs: TechnicianOutput[] = state.technicians.map((tech) => {
       const tasksCompleted = state.records.filter(
         (r) => r.technicianId === tech.id && r.status === 'matched'
       ).length
-      const anomaliesHandled = state.bottlenecks.filter(
-        (b) => b.type === 'event-fail'
-      ).length
+      const anomaliesHandled = Math.round(successEventsPerTech)
       const outputValue = calculateTechnicianOutput({
         tasksCompleted,
         anomaliesHandled,
