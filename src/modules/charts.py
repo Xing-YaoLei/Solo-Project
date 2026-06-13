@@ -609,8 +609,7 @@ class ChartGenerator:
             SELECT material_name,
                    COUNT(*) as usage_count,
                    SUM(CASE WHEN is_abnormal THEN 1 ELSE 0 END) as abnormal_count,
-                   AVG(CASE WHEN usage_ratio IS NOT NULL THEN usage_ratio
-                        ELSE usage_quantity / NULLIF(standard_usage_quantity, 0) END) as avg_ratio
+                   AVG(usage_quantity / NULLIF(standard_usage_quantity, 0)) as avg_ratio
             FROM material_usage
             WHERE 1=1
         """

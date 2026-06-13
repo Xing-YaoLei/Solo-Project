@@ -14,6 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from src.config import config
 from src.data import duckdb_manager
+from src.data.ingestion import ingestion_pipeline
 from src.utils.data_cleaner import DataCleaner
 from src.modules.risk_engine import RiskEngine, ThresholdConfig
 from src.modules.charts import ChartGenerator
@@ -514,124 +515,106 @@ def render_dashboard_page():
     render_details_section()
 
 
+def _render_uploader(table_name: str, label: str, icon: str, key: str):
+    """通用数据上传组件：上传→MinIO存储→清洗→DuckDB入库"""
+    st.subheader(f"{icon} {label}")
+    uploaded = st.file_uploader(
+        f"上传{label}文件",
+        type=["csv", "xlsx", "xls", "parquet", "json"],
+        key=key,
+    )
+    if uploaded is None:
+        return
+
+    try:
+        raw_bytes = uploaded.read()
+        raw_df = DataCleaner.load_dataframe(raw_bytes, uploaded.name)
+        st.success(f"读取成功：{raw_df.height} 行数据")
+
+        with st.expander("预览原始数据"):
+            st.dataframe(raw_df.head(10).to_pandas(), use_container_width=True, hide_index=True)
+
+        if st.button(f"清洗并导入{label}", type="primary", key=f"import_{key}"):
+            with st.spinner("正在执行：存MinIO → 清洗去重 → 口径匹配 → 入库..."):
+                result = ingestion_pipeline.ingest(
+                    raw_bytes=raw_bytes,
+                    file_name=uploaded.name,
+                    table_name=table_name,
+                )
+
+            if result["inserted_rows"] > 0:
+                st.success(
+                    f"✅ 导入成功！入库 {result['inserted_rows']} 行 | "
+                    f"原始 {result['raw_rows']} 行 → 清洗后 {result['cleaned_rows']} 行 | "
+                    f"去重 {result['removed_duplicates']} 条"
+                )
+                if result["minio_stored"]:
+                    st.info(f"📁 原始文件已存入 MinIO: `{result.get('minio_object', '')}`")
+                else:
+                    st.warning("⚠️ MinIO 存储未成功，数据已直接入库")
+                if result["errors"]:
+                    for err in result["errors"]:
+                        st.warning(f"⚠️ {err}")
+                st.cache_data.clear()
+            else:
+                st.error("❌ 导入失败，未写入任何数据")
+                for err in result["errors"]:
+                    st.error(f"错误：{err}")
+    except Exception as e:
+        st.error(f"处理失败：{e}")
+
+
 def render_data_import_page():
     """渲染数据导入页面"""
     st.markdown('<div class="main-header">📥 数据导入</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">上传点评记录、库存表和收银流水，系统自动清洗和入库</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">上传点评记录、库存表和收银流水，经 MinIO 存储后自动清洗入库</div>', unsafe_allow_html=True)
 
-    st.info("支持 CSV / Excel / Parquet / JSON 格式，上传后系统将自动执行：列名标准化 → 去重 → 口径匹配 → 数值/日期清洗 → 入库")
+    st.markdown("""
+    **数据流路径**：原始文件 → **MinIO 存储** → 列名标准化 → 去重 → 口径匹配 → 数值/日期清洗 → 默认列补齐 → DuckDB 入库
+    
+    支持 CSV / Excel / Parquet / JSON 格式
+    """)
 
     col1, col2 = st.columns(2)
-
     with col1:
-        st.subheader("📝 点评记录")
-        review_file = st.file_uploader(
-            "上传点评记录文件",
-            type=["csv", "xlsx", "xls", "parquet", "json"],
-            key="review_upload",
-        )
-        if review_file is not None:
-            try:
-                raw_bytes = review_file.read()
-                raw_df = DataCleaner.load_dataframe(raw_bytes, review_file.name)
-                st.success(f"读取成功：{raw_df.height} 行数据")
-
-                cleaned_df, stats = DataCleaner.clean_reviews(raw_df)
-                st.info(f"清洗完成：{stats['original_rows']} → {stats['cleaned_rows']} 行，去重 {stats['removed_duplicates']} 条")
-
-                if st.button("导入点评记录", type="primary", key="import_reviews"):
-                    duckdb_manager.insert_dataframe("reviews", cleaned_df, if_exists="upsert")
-                    engine = get_risk_engine(st.session_state.thresholds)
-                    engine.mark_review_delays()
-                    st.success(f"成功导入 {cleaned_df.height} 条点评记录")
-                    st.cache_data.clear()
-
-                with st.expander("预览清洗后数据"):
-                    st.dataframe(cleaned_df.head(20).to_pandas(), use_container_width=True, hide_index=True)
-            except Exception as e:
-                st.error(f"处理失败：{e}")
-
+        _render_uploader("reviews", "点评记录", "📝", "review_upload")
     with col2:
-        st.subheader("🏪 库存表")
-        inventory_file = st.file_uploader(
-            "上传库存表文件",
-            type=["csv", "xlsx", "xls", "parquet", "json"],
-            key="inventory_upload",
-        )
-        if inventory_file is not None:
-            try:
-                raw_bytes = inventory_file.read()
-                raw_df = DataCleaner.load_dataframe(raw_bytes, inventory_file.name)
-                st.success(f"读取成功：{raw_df.height} 行数据")
-
-                cleaned_df, stats = DataCleaner.clean_inventory(raw_df)
-                st.info(f"清洗完成：{stats['original_rows']} → {stats['cleaned_rows']} 行，去重 {stats['removed_duplicates']} 条")
-
-                if st.button("导入库存表", type="primary", key="import_inventory"):
-                    duckdb_manager.insert_dataframe("inventory", cleaned_df, if_exists="upsert")
-                    st.success(f"成功导入 {cleaned_df.height} 条库存记录")
-                    st.cache_data.clear()
-
-                with st.expander("预览清洗后数据"):
-                    st.dataframe(cleaned_df.head(20).to_pandas(), use_container_width=True, hide_index=True)
-            except Exception as e:
-                st.error(f"处理失败：{e}")
+        _render_uploader("inventory", "库存表", "🏪", "inventory_upload")
 
     st.divider()
 
     col3, col4 = st.columns(2)
-
     with col3:
-        st.subheader("💳 收银流水")
-        cashier_file = st.file_uploader(
-            "上传收银流水文件",
-            type=["csv", "xlsx", "xls", "parquet", "json"],
-            key="cashier_upload",
-        )
-        if cashier_file is not None:
-            try:
-                raw_bytes = cashier_file.read()
-                raw_df = DataCleaner.load_dataframe(raw_bytes, cashier_file.name)
-                st.success(f"读取成功：{raw_df.height} 行数据")
-
-                cleaned_df, stats = DataCleaner.clean_cashier_transactions(raw_df)
-                st.info(f"清洗完成：{stats['original_rows']} → {stats['cleaned_rows']} 行，去重 {stats['removed_duplicates']} 条")
-
-                if st.button("导入收银流水", type="primary", key="import_cashier"):
-                    duckdb_manager.insert_dataframe("cashier_transactions", cleaned_df, if_exists="upsert")
-                    st.success(f"成功导入 {cleaned_df.height} 条收银流水记录")
-                    st.cache_data.clear()
-
-                with st.expander("预览清洗后数据"):
-                    st.dataframe(cleaned_df.head(20).to_pandas(), use_container_width=True, hide_index=True)
-            except Exception as e:
-                st.error(f"处理失败：{e}")
-
+        _render_uploader("cashier_transactions", "收银流水", "💳", "cashier_upload")
     with col4:
-        st.subheader("🎫 项目卡项")
-        course_file = st.file_uploader(
-            "上传项目卡项文件",
-            type=["csv", "xlsx", "xls", "parquet", "json"],
-            key="course_upload",
-        )
-        if course_file is not None:
-            try:
-                raw_bytes = course_file.read()
-                raw_df = DataCleaner.load_dataframe(raw_bytes, course_file.name)
-                st.success(f"读取成功：{raw_df.height} 行数据")
+        _render_uploader("course_items", "项目卡项", "🎫", "course_upload")
 
-                cleaned_df, stats = DataCleaner.clean_course_items(raw_df)
-                st.info(f"清洗完成：{stats['original_rows']} → {stats['cleaned_rows']} 行，去重 {stats['removed_duplicates']} 条")
+    st.divider()
 
-                if st.button("导入项目卡项", type="primary", key="import_course"):
-                    duckdb_manager.insert_dataframe("course_items", cleaned_df, if_exists="upsert")
-                    st.success(f"成功导入 {cleaned_df.height} 条卡项记录")
-                    st.cache_data.clear()
-
-                with st.expander("预览清洗后数据"):
-                    st.dataframe(cleaned_df.head(20).to_pandas(), use_container_width=True, hide_index=True)
-            except Exception as e:
-                st.error(f"处理失败：{e}")
+    st.subheader("📂 MinIO 已存储数据")
+    try:
+        minio_sources = ingestion_pipeline.list_minio_sources()
+        if minio_sources:
+            for tbl, objects in minio_sources.items():
+                tbl_label = {"reviews": "点评记录", "inventory": "库存表",
+                             "cashier_transactions": "收银流水", "course_items": "项目卡项",
+                             "material_usage": "耗材使用"}.get(tbl, tbl)
+                with st.expander(f"{tbl_label}（{len(objects)} 个文件）"):
+                    for obj in objects:
+                        c1, c2 = st.columns([4, 1])
+                        c1.text(obj)
+                        if c2.button("重新摄入", key=f"reingest_{obj.replace('/', '_')}"):
+                            with st.spinner("从 MinIO 重新摄入..."):
+                                result = ingestion_pipeline.ingest_from_minio(obj, tbl)
+                            if result["inserted_rows"] > 0:
+                                st.success(f"重新摄入成功：{result['inserted_rows']} 行")
+                                st.cache_data.clear()
+                            else:
+                                st.error("重新摄入失败")
+        else:
+            st.info("MinIO 中暂无已存储的原始数据文件")
+    except Exception as e:
+        st.warning(f"MinIO 连接异常，无法列出数据源：{e}")
 
     st.divider()
     st.subheader("📊 数据概览")

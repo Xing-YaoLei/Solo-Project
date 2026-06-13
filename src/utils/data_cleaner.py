@@ -426,6 +426,18 @@ class DataCleaner:
         if "standard_usage_quantity" not in df.columns:
             df = df.with_columns(standard_usage_quantity=pl.col("usage_quantity"))
 
+        if "usage_ratio" not in df.columns:
+            df = df.with_columns([
+                pl.when((pl.col("standard_usage_quantity").is_not_null())
+                        & (pl.col("standard_usage_quantity") > 0))
+                .then(pl.col("usage_quantity") / pl.col("standard_usage_quantity"))
+                .otherwise(None)
+                .alias("usage_ratio")
+            ])
+
+        if "is_abnormal" not in df.columns:
+            df = df.with_columns(is_abnormal=pl.lit(False))
+
         required_cols = ["usage_id", "material_code", "material_name", "usage_quantity"]
         available_cols = [c for c in required_cols if c in df.columns]
         df = df.drop_nulls(subset=available_cols)

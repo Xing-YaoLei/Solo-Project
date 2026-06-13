@@ -291,23 +291,34 @@ class RiskEngine:
         return df, alerts
 
     def _persist_material_abnormalities(self, df: pl.DataFrame, alerts: List[AlertRecord]) -> None:
-        """持久化耗材异常检测结果"""
+        """持久化耗材异常检测结果：回写 usage_ratio、is_abnormal、anomaly_reason 到 material_usage 表"""
         try:
             update_cols = [c for c in [
-                "usage_id", "is_abnormal", "anomaly_reason"
+                "usage_id", "usage_ratio", "is_abnormal", "anomaly_reason"
             ] if c in df.columns]
-            if len(update_cols) >= 2:
-                update_df = df.select(update_cols)
-                for row in update_df.iter_rows(named=True):
-                    duckdb_manager.execute(
-                        """
-                        UPDATE material_usage SET is_abnormal = ?, anomaly_reason = ?
-                        WHERE usage_id = ?
-                        """,
-                        [bool(row.get("is_abnormal", False)),
-                         row.get("anomaly_reason"),
-                         row.get("usage_id")]
+
+            if len(update_cols) >= 2 and "usage_id" in update_cols:
+                try:
+                    update_df = df.select(update_cols)
+                    duckdb_manager.insert_dataframe(
+                        "material_usage", update_df, if_exists="upsert"
                     )
+                except Exception as e:
+                    logger.warning("批量 upsert 耗材异常失败，降级为逐条更新: %s", e)
+                    for row in df.select(update_cols).iter_rows(named=True):
+                        duckdb_manager.execute(
+                            """
+                            UPDATE material_usage
+                               SET usage_ratio = ?,
+                                   is_abnormal = ?,
+                                   anomaly_reason = ?
+                             WHERE usage_id = ?
+                            """,
+                            [row.get("usage_ratio"),
+                             bool(row.get("is_abnormal", False)),
+                             row.get("anomaly_reason"),
+                             row.get("usage_id")]
+                        )
 
             for alert in alerts:
                 existing = duckdb_manager.query(

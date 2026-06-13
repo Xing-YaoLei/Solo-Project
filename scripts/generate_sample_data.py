@@ -288,11 +288,15 @@ def main():
     material_usage_df = generate_material_usage(transactions_df, course_items_df)
 
     logger.info("写入 DuckDB 数据库...")
-    duckdb_manager.insert_dataframe("reviews", reviews_df, if_exists="replace")
-    duckdb_manager.insert_dataframe("inventory", inventory_df, if_exists="replace")
-    duckdb_manager.insert_dataframe("cashier_transactions", transactions_df, if_exists="replace")
-    duckdb_manager.insert_dataframe("course_items", course_items_df, if_exists="replace")
-    duckdb_manager.insert_dataframe("material_usage", material_usage_df, if_exists="replace")
+    for table_name, df in [
+        ("reviews", reviews_df),
+        ("inventory", inventory_df),
+        ("cashier_transactions", transactions_df),
+        ("course_items", course_items_df),
+        ("material_usage", material_usage_df),
+    ]:
+        df = duckdb_manager.align_dataframe_to_table(table_name, df)
+        duckdb_manager.insert_dataframe(table_name, df, if_exists="replace")
     duckdb_manager.execute("DELETE FROM risk_alerts")
 
     logger.info("运行风险引擎检测...")

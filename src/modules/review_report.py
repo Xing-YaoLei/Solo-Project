@@ -264,7 +264,9 @@ class ReviewReportGenerator:
             SELECT mu.material_name, mu.material_code, mu.technician_name,
                    mu.usage_quantity, mu.standard_usage_quantity, mu.is_abnormal,
                    mu.anomaly_reason, mu.transaction_date, mu.service_name,
-                   mu.usage_quantity / NULLIF(mu.standard_usage_quantity, 0) as ratio
+                   CASE WHEN mu.usage_ratio IS NOT NULL THEN mu.usage_ratio
+                        ELSE mu.usage_quantity / NULLIF(mu.standard_usage_quantity, 0)
+                   END as ratio
             FROM material_usage mu
             WHERE mu.transaction_date BETWEEN ? AND ?
         """
@@ -658,7 +660,10 @@ class ReviewReportGenerator:
         sql = """
             SELECT mu.material_name, mu.material_code, mu.technician_name,
                    mu.service_name, mu.usage_quantity, mu.standard_usage_quantity,
-                   ROUND(mu.usage_quantity * 1.0 / NULLIF(mu.standard_usage_quantity, 0), 2) as ratio,
+                   ROUND(
+                       CASE WHEN mu.usage_ratio IS NOT NULL THEN mu.usage_ratio
+                            ELSE mu.usage_quantity * 1.0 / NULLIF(mu.standard_usage_quantity, 0)
+                       END, 2) as ratio,
                    mu.transaction_date, mu.order_id, mu.anomaly_reason
             FROM material_usage mu
             WHERE mu.is_abnormal = TRUE
