@@ -78,14 +78,18 @@ export async function processBatch(
       }
     }
 
+    const errorCount = result.errors.length;
+    const allSuccess = errorCount === 0;
+    const allFailed = result.success === 0 && errorCount > 0;
+
     await prisma.importBatch.update({
       where: { id: batchId },
       data: {
-        status: result.errors.length === 0 ? "completed" : "completed",
+        status: allSuccess ? "completed" : allFailed ? "failed" : "partial",
         totalRecords,
         successCount: result.success,
-        errorCount: result.errors.length,
-        errorLog: result.errors.length > 0 ? result.errors.join("\n") : null,
+        errorCount,
+        errorLog: errorCount > 0 ? result.errors.join("\n") : null,
         processedAt: new Date(),
       },
     });

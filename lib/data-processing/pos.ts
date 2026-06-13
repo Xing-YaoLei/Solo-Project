@@ -55,25 +55,86 @@ export async function processPos(
 
       let memberId: string | undefined;
       if (record.memberNo) {
-        const member = await prisma.member.findUnique({ where: { memberNo: record.memberNo } });
-        memberId = member?.id;
+        let member = await prisma.member.findUnique({ where: { memberNo: record.memberNo } });
+        if (!member) {
+          member = await prisma.member.create({
+            data: {
+              memberNo: record.memberNo,
+              name: `会员${record.memberNo.slice(-4)}`,
+              storeId: posStoreId,
+            },
+          });
+        }
+        memberId = member.id;
       }
 
-      await prisma.transaction.create({
+      const txType = record.type.toLowerCase().includes("deposit") || record.type.includes("储值")
+        ? "deposit"
+        : record.type.toLowerCase().includes("refund") || record.type.includes("退")
+        ? "refund"
+        : "consume";
+      const paymentMethod = mapPaymentMethod(record.paymentMethod);
+      const transactedAt = new Date(record.transactionTime);
+
+      const transaction = await prisma.transaction.create({
         data: {
           memberId,
           storeId: posStoreId,
           batchId,
-          type: record.type.toLowerCase().includes("deposit") || record.type.includes("储值")
-            ? "deposit"
-            : record.type.toLowerCase().includes("refund") || record.type.includes("退")
-            ? "refund"
-            : "consume",
+          type: txType,
           amount: record.amount,
-          paymentMethod: mapPaymentMethod(record.paymentMethod),
-          transactedAt: new Date(record.transactionTime),
+          paymentMethod,
+          transactedAt,
         },
       });
+
+      if (memberId && paymentMethod === "stored_value") {
+        let account = await prisma.storedValueAccount.findFirst({
+          where: { memberId, isActive: true },
+        });
+        if (!account && txType === "deposit") {
+          account = await prisma.storedValueAccount.create({
+            data: {
+              memberId,
+              balance: 0,
+            },
+          });
+        }
+
+        if (account) {
+          const flowAmount = txType === "deposit" ? record.amount : -record.amount;
+          await prisma.accountFlow.create({
+            data: {
+              accountId: account.id,
+              transactionId: transaction.id,
+              batchId,
+              type: txType,
+              amount: flowAmount,
+              occurredAt: transactedAt,
+              source: "pos",
+            },
+          });
+
+          if (txType === "deposit") {
+            await prisma.storedValueAccount.update({
+              where: { id: account.id },
+              data: { balance: { increment: record.amount } },
+            });
+          } else if (txType === "consume") {
+            await prisma.storedValueAccount.update({
+              where: { id: account.id },
+              data: { balance: { decrement: record.amount } },
+            });
+          }
+        }
+      }
+
+      if (memberId && txType === "deposit") {
+        await prisma.member.update({
+          where: { id: memberId },
+          data: { totalStored: { increment: record.amount } },
+        });
+      }
 
       success++;
     } catch (e) {

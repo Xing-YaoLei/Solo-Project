@@ -6,7 +6,13 @@ const SESSION_COOKIE = "coffee_session";
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (pathname === "/login" || pathname.startsWith("/_next") || pathname.startsWith("/public")) {
+  if (
+    pathname === "/login" ||
+    pathname === "/api/auth/login" ||
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/public") ||
+    pathname === "/favicon.ico"
+  ) {
     return NextResponse.next();
   }
 

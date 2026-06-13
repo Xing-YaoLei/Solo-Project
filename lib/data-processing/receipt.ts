@@ -86,24 +86,33 @@ export async function processReceipts(
       });
 
       if (record.storedValueDeduction > 0) {
-        const account = await prisma.storedValueAccount.findFirst({
+        let account = await prisma.storedValueAccount.findFirst({
           where: { memberId: member.id, isActive: true },
         });
-        if (account) {
-          await prisma.accountFlow.create({
+        if (!account) {
+          account = await prisma.storedValueAccount.create({
             data: {
-              accountId: account.id,
-              type: "consume",
-              amount: -record.storedValueDeduction,
-              occurredAt: new Date(record.transactionTime),
-              source: "pos",
+              memberId: member.id,
+              balance: 0,
             },
           });
-          await prisma.storedValueAccount.update({
-            where: { id: account.id },
-            data: { balance: { decrement: record.storedValueDeduction } },
-          });
         }
+
+        await prisma.accountFlow.create({
+          data: {
+            accountId: account.id,
+            transactionId: transaction.id,
+            batchId,
+            type: "consume",
+            amount: -record.storedValueDeduction,
+            occurredAt: new Date(record.transactionTime),
+            source: "pos",
+          },
+        });
+        await prisma.storedValueAccount.update({
+          where: { id: account.id },
+          data: { balance: { decrement: record.storedValueDeduction } },
+        });
       }
 
       success++;

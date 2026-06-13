@@ -21,6 +21,20 @@ export async function GET(
           orderBy: { id: "asc" },
           take: 100,
         },
+        transactions: {
+          orderBy: { transactedAt: "desc" },
+          take: 50,
+          include: { member: { select: { name: true, memberNo: true } } },
+        },
+        flows: {
+          orderBy: { occurredAt: "desc" },
+          take: 50,
+          include: {
+            account: {
+              include: { member: { select: { name: true, memberNo: true } } },
+            },
+          },
+        },
       },
     });
 
