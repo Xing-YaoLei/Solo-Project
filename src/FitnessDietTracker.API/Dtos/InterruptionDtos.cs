@@ -36,7 +36,7 @@ public class InterruptionLogDto
     public string? Reason { get; set; }
     public string? ActionTaken { get; set; }
     public DateTime? ClosedAt { get; set; }
-    public int OperatorId { get; set; }
+    public int? OperatorId { get; set; }
     public string OperatorName { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
     public string? Remarks { get; set; }

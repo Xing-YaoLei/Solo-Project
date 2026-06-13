@@ -100,7 +100,7 @@ public class NotificationService : INotificationService
         Status = n.Status,
         ReadAt = n.ReadAt,
         CreatedBy = n.CreatedBy,
-        CreatedByName = n.Creator?.UserName,
+        CreatedByName = !n.CreatedBy.HasValue ? "系统" : (n.Creator?.UserName ?? "未知"),
         CreatedAt = n.CreatedAt
     };
 }

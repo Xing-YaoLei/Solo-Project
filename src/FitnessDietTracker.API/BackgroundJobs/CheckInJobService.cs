@@ -5,6 +5,7 @@ using FitnessDietTracker.API.Models;
 using FitnessDietTracker.API.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace FitnessDietTracker.API.BackgroundJobs;
 
