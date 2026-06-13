@@ -1,0 +1,204 @@
+<div class="card">
+  <div class="card-header">
+    <h2>新建课程消耗单</h2>
+    <%= link_to "返回列表", course_consumptions_path, class: "btn btn-outline btn-sm" %>
+  </div>
+  <div class="card-body">
+    <%= form_with model: @course_consumption do |f| %>
+      <% if @course_consumption.errors.any? %>
+        <div style="background: #fef2f2; color: #991b1b; padding: 12px; border-radius: 8px; margin-bottom: 16px; border: 1px solid #fecaca;">
+          <strong><%= pluralize(@course_consumption.errors.count, "error") %> prohibited this course_consumption from being saved:</strong>
+          <ul>
+            <% @course_consumption.errors.each do |error| %>
+              <li><%= error.full_message %></li>
+            <% end %>
+          </ul>
+        </div>
+      <% end %>
+
+      <div class="card" style="margin-bottom: 20px; border: 1px solid #e5e7eb;">
+        <div class="card-header"><h3>📋 基本信息</h3></div>
+        <div class="card-body">
+          <div class="form-row">
+            <div class="form-group">
+              <%= f.label :bill_no, "单据号" %>
+              <%= f.text_field :bill_no, readonly: true %>
+            </div>
+            <div class="form-group">
+              <%= f.label :consumption_date, "消耗日期" %>
+              <%= f.date_field :consumption_date %>
+            </div>
+            <div class="form-group">
+              <%= f.label :source_channel, "来源渠道" %>
+              <%= f.select :source_channel, CourseConsumption::SOURCE_CHANNELS.map { |s| [s, s] }, include_blank: "请选择" %>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <%= f.label :member_id, "会员" %>
+              <%= f.collection_select :member_id, Member.all, :id, :name, include_blank: "请选择会员" %>
+            </div>
+            <div class="form-group">
+              <%= f.label :trainer_id, "教练" %>
+              <%= f.collection_select :trainer_id, Trainer.active, :id, :name, include_blank: "请选择教练" %>
+            </div>
+            <div class="form-group">
+              <%= f.label :course_package_id, "课程包" %>
+              <%= f.collection_select :course_package_id, CoursePackage.all, :id, :name, include_blank: "请选择课程包" %>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <%= f.label :sessions_consumed, "消耗课时" %>
+              <%= f.number_field :sessions_consumed, min: 1 %>
+            </div>
+            <div class="form-group">
+              <%= f.label :sessions_remaining, "剩余课时" %>
+              <%= f.number_field :sessions_remaining, min: 0 %>
+            </div>
+            <div class="form-group">
+              <%= f.label :responsible_person, "责任人" %>
+              <%= f.text_field :responsible_person %>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="three-panel">
+        <div class="card" style="border: 1px solid #e5e7eb;">
+          <div class="card-header"><h3>📚 课程章节</h3></div>
+          <div class="card-body">
+            <%= f.fields_for :course_chapters do |chapter_f| %>
+              <div class="chapter-item" style="margin-bottom: 10px;">
+                <div class="chapter-info" style="width: 100%;">
+                  <%= chapter_f.text_field :title, placeholder: "章节标题", style: "width: 100%; margin-bottom: 6px; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px;" %>
+                  <%= chapter_f.text_area :content, placeholder: "章节内容", rows: 2, style: "width: 100%; margin-bottom: 6px; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; resize: vertical;" %>
+                  <div style="display: flex; gap: 8px; align-items: center;">
+                    <%= chapter_f.select :chapter_status, CourseChapter::CHAPTER_STATUSES.map { |s| [s, s] }, {}, style: "padding: 6px; border: 1px solid #d1d5db; border-radius: 6px; flex: 1;" %>
+                    <%= chapter_f.number_field :position, placeholder: "排序", min: 0, style: "width: 80px; padding: 6px; border: 1px solid #d1d5db; border-radius: 6px;" %>
+                    <% unless chapter_f.object.new_record? %>
+                      <%= chapter_f.check_box :_destroy, style: "margin: 0 4px;" %>
+                      <label style="font-size: 12px; color: #6b7280;">删除</label>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+
+        <div class="card" style="border: 1px solid #e5e7eb;">
+          <div class="card-header"><h3>📊 成绩反馈</h3></div>
+          <div class="card-body">
+            <%= f.fields_for :performance_feedbacks do |pf_f| %>
+              <div class="feedback-item" style="margin-bottom: 10px;">
+                <div class="form-row" style="grid-template-columns: 1fr 1fr; gap: 8px;">
+                  <div class="form-group" style="margin-bottom: 8px;">
+                    <%= pf_f.label :score, "分数 (0-100)", style: "font-size: 12px;" %>
+                    <%= pf_f.number_field :score, min: 0, max: 100, style: "padding: 8px; border: 1px solid #d1d5db; border-radius: 6px;" %>
+                  </div>
+                  <div class="form-group" style="margin-bottom: 8px;">
+                    <%= pf_f.label :performance_level, "等级", style: "font-size: 12px;" %>
+                    <%= pf_f.select :performance_level, PerformanceFeedback::PERFORMANCE_LEVELS.map { |s| [s, s] }, include_blank: true, style: "padding: 8px; border: 1px solid #d1d5db; border-radius: 6px;" %>
+                  </div>
+                </div>
+                <div class="form-group" style="margin-bottom: 8px;">
+                  <%= pf_f.label :body_metrics, "身体数据", style: "font-size: 12px;" %>
+                  <%= pf_f.text_field :body_metrics, placeholder: "体重/体脂率等", style: "padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; width: 100%;" %>
+                </div>
+                <div class="form-group" style="margin-bottom: 8px;">
+                  <%= pf_f.label :coach_feedback, "教练反馈", style: "font-size: 12px;" %>
+                  <%= pf_f.text_area :coach_feedback, rows: 2, style: "padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; width: 100%; resize: vertical;" %>
+                </div>
+                <div class="form-group" style="margin-bottom: 8px;">
+                  <%= pf_f.label :member_feedback, "会员反馈", style: "font-size: 12px;" %>
+                  <%= pf_f.text_area :member_feedback, rows: 2, style: "padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; width: 100%; resize: vertical;" %>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                  <%= pf_f.label :improvement_points, "改进点", style: "font-size: 12px;" %>
+                  <%= pf_f.text_area :improvement_points, rows: 2, style: "padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; width: 100%; resize: vertical;" %>
+                </div>
+                <% unless pf_f.object.new_record? %>
+                  <div style="margin-top: 8px;">
+                    <%= pf_f.check_box :_destroy %>
+                    <label style="font-size: 12px; color: #6b7280;">删除此反馈</label>
+                  </div>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+
+        <div class="card" style="border: 1px solid #e5e7eb;">
+          <div class="card-header"><h3>🔔 提醒规则</h3></div>
+          <div class="card-body">
+            <%= f.fields_for :reminder_rules do |rr_f| %>
+              <div class="feedback-item" style="margin-bottom: 10px;">
+                <div class="form-group" style="margin-bottom: 8px;">
+                  <%= rr_f.label :rule_type, "规则类型", style: "font-size: 12px;" %>
+                  <%= rr_f.select :rule_type, ReminderRule::RULE_TYPES.map { |s| [s, s] }, {}, style: "padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; width: 100%;" %>
+                </div>
+                <div class="form-row" style="grid-template-columns: 1fr 1fr; gap: 8px;">
+                  <div class="form-group" style="margin-bottom: 8px;">
+                    <%= rr_f.label :threshold_value, "阈值", style: "font-size: 12px;" %>
+                    <%= rr_f.number_field :threshold_value, style: "padding: 8px; border: 1px solid #d1d5db; border-radius: 6px;" %>
+                  </div>
+                  <div class="form-group" style="margin-bottom: 8px;">
+                    <%= rr_f.label :threshold_unit, "单位", style: "font-size: 12px;" %>
+                    <%= rr_f.text_field :threshold_unit, placeholder: "percent/hours/days", style: "padding: 8px; border: 1px solid #d1d5db; border-radius: 6px;" %>
+                  </div>
+                </div>
+                <div class="form-group" style="margin-bottom: 8px;">
+                  <%= rr_f.label :notification_method, "通知方式", style: "font-size: 12px;" %>
+                  <%= rr_f.select :notification_method, ReminderRule::NOTIFICATION_METHODS.map { |s| [s, s] }, {}, style: "padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; width: 100%;" %>
+                </div>
+                <div class="form-group" style="margin-bottom: 8px;">
+                  <%= rr_f.label :message_template, "消息模板", style: "font-size: 12px;" %>
+                  <%= rr_f.text_area :message_template, rows: 2, style: "padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; width: 100%; resize: vertical;" %>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <div>
+                    <%= rr_f.check_box :enabled, checked: rr_f.object.enabled.nil? ? true : rr_f.object.enabled %>
+                    <label style="font-size: 12px; color: #374151;">启用</label>
+                  </div>
+                  <% unless rr_f.object.new_record? %>
+                    <div>
+                      <%= rr_f.check_box :_destroy %>
+                      <label style="font-size: 12px; color: #6b7280;">删除</label>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top: 20px; border: 1px solid #e5e7eb;">
+        <div class="card-header"><h3>📝 备注</h3></div>
+        <div class="card-body">
+          <div class="form-row">
+            <div class="form-group">
+              <%= f.label :review_notes, "审核备注" %>
+              <%= f.text_area :review_notes %>
+            </div>
+            <div class="form-group">
+              <%= f.label :settlement_notes, "结算备注" %>
+              <%= f.text_area :settlement_notes %>
+            </div>
+            <div class="form-group">
+              <%= f.label :review_summary, "复盘总结" %>
+              <%= f.text_area :review_summary %>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top: 20px; display: flex; gap: 12px;">
+        <%= f.submit "保存草稿", class: "btn btn-outline" %>
+        <%= f.submit "提交审核", name: "commit", class: "btn btn-primary" %>
+        <%= link_to "取消", course_consumptions_path, class: "btn btn-secondary" %>
+      </div>
+    <% end %>
+  </div>
+</div>

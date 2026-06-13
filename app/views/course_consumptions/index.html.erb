@@ -1,0 +1,93 @@
+<div class="card">
+  <div class="card-header">
+    <h2>课程消耗单列表</h2>
+    <%= link_to "新建消耗单", new_course_consumption_path, class: "btn btn-primary btn-sm" %>
+  </div>
+  <div class="card-body">
+    <%= search_form_for @q do |f| %>
+      <div class="search-bar">
+        <div class="form-group" style="margin-bottom: 0; width: 200px;">
+          <%= f.label :bill_no_cont, "单据号" %>
+          <%= f.search_field :bill_no_cont, class: "" %>
+        </div>
+        <div class="form-group" style="margin-bottom: 0; width: 180px;">
+          <%= f.label :status_eq, "状态" %>
+          <%= f.select :status_eq, CourseConsumption.aasm.states.map { |s| [s.display_name.to_s, s.name] }, include_blank: "全部", class: "" %>
+        </div>
+        <div class="form-group" style="margin-bottom: 0; width: 180px;">
+          <%= f.label :processing_status_eq, "处理状态" %>
+          <%= f.select :processing_status_eq, CourseConsumption::PROCESSING_STATUSES.map { |s| [s, s] }, include_blank: "全部", class: "" %>
+        </div>
+        <div class="form-group" style="margin-bottom: 0; width: 180px;">
+          <%= f.label :source_channel_eq, "来源渠道" %>
+          <%= f.select :source_channel_eq, CourseConsumption::SOURCE_CHANNELS.map { |s| [s, s] }, include_blank: "全部", class: "" %>
+        </div>
+        <div class="form-group" style="margin-bottom: 0;">
+          <%= f.submit "搜索", class: "btn btn-primary btn-sm" %>
+          <%= link_to "重置", course_consumptions_path, class: "btn btn-outline btn-sm" %>
+        </div>
+      </div>
+    <% end %>
+
+    <table class="table">
+      <thead>
+        <tr>
+          <th>单据号</th>
+          <th>会员</th>
+          <th>教练</th>
+          <th>课程包</th>
+          <th>消耗日期</th>
+          <th>进度</th>
+          <th>状态</th>
+          <th>处理状态</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @course_consumptions.each do |cc| %>
+          <tr>
+            <td><%= link_to cc.bill_no, cc %></td>
+            <td><%= cc.member&.name %></td>
+            <td><%= cc.trainer&.name %></td>
+            <td><%= cc.course_package&.name %></td>
+            <td><%= cc.consumption_date %></td>
+            <td>
+              <div style="width: 80px;">
+                <div class="progress-bar">
+                  <div class="progress-bar-inner" style="width: <%= cc.progress_rate %>%"></div>
+                </div>
+                <div style="font-size: 11px; color: #6b7280; margin-top: 2px;"><%= cc.progress_rate %>%</div>
+              </div>
+            </td>
+            <td>
+              <% case cc.status %>
+              <% when "draft" %><span class="badge badge-gray"><%= cc.status_label %></span>
+              <% when "pending_review", "reviewing" %><span class="badge badge-yellow"><%= cc.status_label %></span>
+              <% when "approved", "processing" %><span class="badge badge-blue"><%= cc.status_label %></span>
+              <% when "needs_more_info", "escalated" %><span class="badge badge-red"><%= cc.status_label %></span>
+              <% when "settled", "reviewed" %><span class="badge badge-green"><%= cc.status_label %></span>
+              <% when "closed", "rejected" %><span class="badge badge-gray"><%= cc.status_label %></span>
+              <% end %>
+              <% if cc.behind_schedule? && !cc.closed? %>
+                <span class="badge badge-red" style="margin-left: 4px;">进度落后</span>
+              <% end %>
+            </td>
+            <td>
+              <% case cc.processing_status %>
+              <% when "normal" %><span class="badge badge-green"><%= cc.processing_status_label %></span>
+              <% when "needs_more_info" %><span class="badge badge-yellow"><%= cc.processing_status_label %></span>
+              <% when "escalated" %><span class="badge badge-red"><%= cc.processing_status_label %></span>
+              <% when "completed" %><span class="badge badge-blue"><%= cc.processing_status_label %></span>
+              <% end %>
+            </td>
+            <td>
+              <%= link_to "查看", cc, class: "btn btn-outline btn-sm" %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+
+    <%= paginate @course_consumptions %>
+  </div>
+</div>

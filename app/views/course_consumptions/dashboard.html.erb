@@ -1,0 +1,174 @@
+<h2 style="margin-bottom: 20px; font-size: 22px;">📊 控制台概览</h2>
+
+<div class="grid grid-4" style="margin-bottom: 20px;">
+  <div class="card stat-card">
+    <div class="stat-value" style="color: #3b82f6;"><%= @stats[:total] %></div>
+    <div class="stat-label">全部单据</div>
+  </div>
+  <div class="card stat-card">
+    <div class="stat-value" style="color: #f59e0b;"><%= @stats[:pending_review] %></div>
+    <div class="stat-label">待审核</div>
+  </div>
+  <div class="card stat-card">
+    <div class="stat-value" style="color: #10b981;"><%= @stats[:settled] + @stats[:reviewed] %></div>
+    <div class="stat-label">已结算/复盘</div>
+  </div>
+  <div class="card stat-card">
+    <div class="stat-value" style="color: #ef4444;"><%= @stats[:behind_schedule] %></div>
+    <div class="stat-label">⚠️ 进度落后</div>
+  </div>
+</div>
+
+<div class="grid grid-2" style="margin-bottom: 20px;">
+  <div class="card">
+    <div class="card-header"><h2>📋 处理状态分布</h2></div>
+    <div class="card-body">
+      <div class="grid grid-4" style="margin-bottom: 12px;">
+        <div style="text-align: center;">
+          <div style="font-size: 28px; font-weight: 700; color: #10b981;"><%= @stats[:processing] %></div>
+          <div style="font-size: 13px; color: #6b7280;">处理中(正常)</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="font-size: 28px; font-weight: 700; color: #f59e0b;"><%= @stats[:needs_more_info] %></div>
+          <div style="font-size: 13px; color: #6b7280;">📝 补资料</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="font-size: 28px; font-weight: 700; color: #ef4444;"><%= @stats[:escalated] %></div>
+          <div style="font-size: 13px; color: #6b7280;">🚨 升级复核</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="font-size: 28px; font-weight: 700; color: #3b82f6;"><%= @stats[:closed] %></div>
+          <div style="font-size: 13px; color: #6b7280;">已关闭</div>
+        </div>
+      </div>
+      <div style="font-size: 12px; color: #6b7280; background: #f9fafb; padding: 10px; border-radius: 6px;">
+        💡 完成、补资料、升级复核三类状态已独立分流，不会混在同一个池子中
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h2>🚨 进度落后单据</h2></div>
+    <div class="card-body">
+      <% if @behind_schedule.any? %>
+        <% @behind_schedule.first(5).each do |cc| %>
+          <div class="chapter-item">
+            <div class="chapter-info">
+              <div class="chapter-title"><%= link_to cc.bill_no, cc %></div>
+              <div class="chapter-content"><%= cc.member&.name %> · <%= cc.trainer&.name %></div>
+            </div>
+            <div style="text-align: right;">
+              <div class="progress-bar" style="width: 100px;">
+                <div class="progress-bar-inner" style="width: <%= cc.progress_rate %>%; background: #ef4444;"></div>
+              </div>
+              <div style="font-size: 12px; color: #ef4444; margin-top: 2px;"><%= cc.progress_rate %>%</div>
+            </div>
+          </div>
+        <% end %>
+      <% else %>
+        <div style="color: #10b981; text-align: center; padding: 20px;">✅ 暂无进度落后单据</div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<div class="grid grid-3" style="margin-bottom: 20px;">
+  <div class="card">
+    <div class="card-header"><h2>📣 来源渠道统计</h2></div>
+    <div class="card-body">
+      <% if @source_channel_stats.any? %>
+        <% @source_channel_stats.each do |channel, count| %>
+          <div style="margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px;">
+              <span><%= channel %></span>
+              <span style="font-weight: 600;"><%= count %></span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-bar-inner" style="width: <%= (count.to_f / @source_channel_stats.first.last * 100).round %>%"></div>
+            </div>
+          </div>
+        <% end %>
+      <% else %>
+        <div style="color: #9ca3af; text-align: center; padding: 20px;">暂无数据</div>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h2>👤 责任人统计</h2></div>
+    <div class="card-body">
+      <% if @responsible_stats.any? %>
+        <% @responsible_stats.first(10).each do |person, count| %>
+          <div style="margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px;">
+              <span><%= person %></span>
+              <span style="font-weight: 600;"><%= count %></span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-bar-inner" style="width: <%= (count.to_f / @responsible_stats.first.last * 100).round %%; background: linear-gradient(90deg, #8b5cf6, #ec4899);"></div>
+            </div>
+          </div>
+        <% end %>
+      <% else %>
+        <div style="color: #9ca3af; text-align: center; padding: 20px;">暂无数据</div>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h2>🏷️ 复盘标签统计</h2></div>
+    <div class="card-body">
+      <% if @tag_stats.any? %>
+        <% @tag_stats.each do |tag, count| %>
+          <div style="margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px;">
+              <span class="badge badge-purple"><%= tag %></span>
+              <span style="font-weight: 600;"><%= count %></span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-bar-inner" style="width: <%= (count.to_f / @tag_stats.first.last * 100).round %%; background: linear-gradient(90deg, #f59e0b, #ef4444);"></div>
+            </div>
+          </div>
+        <% end %>
+      <% else %>
+        <div style="color: #9ca3af; text-align: center; padding: 20px;">暂无数据</div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header"><h2>🕐 最近单据</h2></div>
+  <div class="card-body" style="padding: 0;">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>单据号</th>
+          <th>会员</th>
+          <th>教练</th>
+          <th>日期</th>
+          <th>进度</th>
+          <th>状态</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @recent_consumptions.each do |cc| %>
+          <tr>
+            <td><%= link_to cc.bill_no, cc %></td>
+            <td><%= cc.member&.name %></td>
+            <td><%= cc.trainer&.name %></td>
+            <td><%= cc.consumption_date %></td>
+            <td>
+              <div class="progress-bar" style="width: 60px;">
+                <div class="progress-bar-inner" style="width: <%= cc.progress_rate %>%"></div>
+              </div>
+            </td>
+            <td><span class="badge badge-blue"><%= cc.status_label %></span></td>
+            <td><%= link_to "查看", cc, class: "btn btn-outline btn-sm" %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>

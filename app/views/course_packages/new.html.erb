@@ -1,0 +1,21 @@
+<div class="card">
+  <div class="card-header">
+    <h2>新增课程包</h2>
+    <%= link_to "返回列表", course_packages_path, class: "btn btn-outline btn-sm" %>
+  </div>
+  <div class="card-body">
+    <%= form_with model: @course_package do |f| %>
+      <div class="form-row">
+        <div class="form-group"><%= f.label :name, "名称" %><%= f.text_field :name %></div>
+        <div class="form-group"><%= f.label :package_type, "类型" %><%= f.select :package_type, CoursePackage::PACKAGE_TYPES.map { |s| [s, s] }, include_blank: "请选择" %></div>
+        <div class="form-group"><%= f.label :total_sessions, "总课时" %><%= f.number_field :total_sessions, min: 1 %></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><%= f.label :price, "价格" %><%= f.number_field :price, step: 0.01 %></div>
+        <div class="form-group"><%= f.label :validity_days, "有效期(天)" %><%= f.number_field :validity_days, min: 1 %></div>
+      </div>
+      <div class="form-group"><%= f.label :description, "描述" %><%= f.text_area :description %></div>
+      <div style="margin-top: 20px;"><%= f.submit "保存", class: "btn btn-primary" %></div>
+    <% end %>
+  </div>
+</div>

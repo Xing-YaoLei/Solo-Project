@@ -1,0 +1,26 @@
+<div class="card">
+  <div class="card-header">
+    <h2>教练列表</h2>
+    <%= link_to "新增教练", new_trainer_path, class: "btn btn-primary btn-sm" %>
+  </div>
+  <div class="card-body" style="padding: 0;">
+    <table class="table">
+      <thead>
+        <tr><th>工号</th><th>姓名</th><th>电话</th><th>专长</th><th>状态</th><th>操作</th></tr>
+      </thead>
+      <tbody>
+        <% @trainers.each do |t| %>
+          <tr>
+            <td><%= link_to t.employee_no, t %></td>
+            <td><%= t.name %></td>
+            <td><%= t.phone %></td>
+            <td><%= t.specialty %></td>
+            <td><span class="badge <%= t.active? ? 'badge-green' : 'badge-gray' %>"><%= t.active? ? '在职' : '离职' %></span></td>
+            <td><%= link_to "编辑", edit_trainer_path(t), class: "btn btn-outline btn-sm" %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+  <div style="padding: 16px;"><%= paginate @trainers %></div>
+</div>

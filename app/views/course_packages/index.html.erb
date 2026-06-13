@@ -1,0 +1,26 @@
+<div class="card">
+  <div class="card-header">
+    <h2>课程包列表</h2>
+    <%= link_to "新增课程包", new_course_package_path, class: "btn btn-primary btn-sm" %>
+  </div>
+  <div class="card-body" style="padding: 0;">
+    <table class="table">
+      <thead>
+        <tr><th>名称</th><th>类型</th><th>总课时</th><th>价格</th><th>有效期</th><th>操作</th></tr>
+      </thead>
+      <tbody>
+        <% @course_packages.each do |cp| %>
+          <tr>
+            <td><%= link_to cp.name, cp %></td>
+            <td><span class="badge badge-purple"><%= cp.package_type %></span></td>
+            <td><%= cp.total_sessions %> 节</td>
+            <td>¥<%= cp.price %></td>
+            <td><%= cp.validity_days %> 天</td>
+            <td><%= link_to "编辑", edit_course_package_path(cp), class: "btn btn-outline btn-sm" %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+  <div style="padding: 16px;"><%= paginate @course_packages %></div>
+</div>

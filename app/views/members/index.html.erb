@@ -1,0 +1,25 @@
+<div class="card">
+  <div class="card-header">
+    <h2>会员列表</h2>
+    <%= link_to "新增会员", new_member_path, class: "btn btn-primary btn-sm" %>
+  </div>
+  <div class="card-body" style="padding: 0;">
+    <table class="table">
+      <thead>
+        <tr><th>会员号</th><th>姓名</th><th>电话</th><th>来源渠道</th><th>操作</th></tr>
+      </thead>
+      <tbody>
+        <% @members.each do |m| %>
+          <tr>
+            <td><%= link_to m.member_no, m %></td>
+            <td><%= m.name %></td>
+            <td><%= m.phone %></td>
+            <td><span class="badge badge-blue"><%= m.source_channel %></span></td>
+            <td><%= link_to "编辑", edit_member_path(m), class: "btn btn-outline btn-sm" %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+  <div style="padding: 16px;"><%= paginate @members %></div>
+</div>

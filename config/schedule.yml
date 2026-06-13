@@ -1,0 +1,9 @@
+progress_monitor:
+  cron: "0 */6 * * *"
+  class: ProgressMonitorJob
+  description: "每6小时检查进度落后的消耗单"
+
+abnormal_status:
+  cron: "0 */4 * * *"
+  class: AbnormalStatusJob
+  description: "每4小时检查异常状态消耗单"

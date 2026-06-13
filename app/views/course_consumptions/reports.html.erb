@@ -1,0 +1,171 @@
+<h2 style="margin-bottom: 20px; font-size: 22px;">📈 汇总报表</h2>
+
+<div class="card" style="margin-bottom: 20px;">
+  <div class="card-header"><h2>📅 选择日期范围</h2></div>
+  <div class="card-body">
+    <%= form_with url: reports_course_consumptions_path, method: :get, local: true do |f| %>
+      <div class="form-row">
+        <div class="form-group" style="margin-bottom: 0;">
+          <%= f.label :start_date, "开始日期" %>
+          <%= f.date_field :start_date, value: @start_date %>
+        </div>
+        <div class="form-group" style="margin-bottom: 0;">
+          <%= f.label :end_date, "结束日期" %>
+          <%= f.date_field :end_date, value: @end_date %>
+        </div>
+        <div class="form-group" style="margin-bottom: 0; display: flex; align-items: flex-end;">
+          <%= f.submit "生成报表", class: "btn btn-primary" %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<div class="grid grid-4" style="margin-bottom: 20px;">
+  <div class="card stat-card">
+    <div class="stat-value" style="color: #3b82f6;"><%= @completion_data.values.sum %></div>
+    <div class="stat-label">总消耗单数量</div>
+  </div>
+  <div class="card stat-card">
+    <div class="stat-value" style="color: #10b981;"><%= @start_date %></div>
+    <div class="stat-label">统计开始</div>
+  </div>
+  <div class="card stat-card">
+    <div class="stat-value" style="color: #8b5cf6;"><%= @end_date %></div>
+    <div class="stat-label">统计结束</div>
+  </div>
+  <div class="card stat-card">
+    <div class="stat-value" style="color: #f59e0b;"><%= (@completion_data.values.sum / ((@end_date - @start_date).to_i + 1).to_f).round(1) %></div>
+    <div class="stat-label">日均单量</div>
+  </div>
+</div>
+
+<div class="grid grid-2" style="margin-bottom: 20px;">
+  <div class="card">
+    <div class="card-header"><h2>📣 来源渠道汇总</h2></div>
+    <div class="card-body">
+      <% if @source_channel_stats.any? %>
+        <table class="table">
+          <thead>
+            <tr><th>渠道</th><th>数量</th><th>占比</th></tr>
+          </thead>
+          <tbody>
+            <% total = @source_channel_stats.sum { |_, v| v }.to_f %>
+            <% @source_channel_stats.each do |channel, count| %>
+              <tr>
+                <td><%= channel %></td>
+                <td><%= count %></td>
+                <td>
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <div class="progress-bar" style="width: 100px;">
+                      <div class="progress-bar-inner" style="width: <%= (count / total * 100).round %>%"></div>
+                    </div>
+                    <span style="font-size: 12px;"><%= (count / total * 100).round %>%</span>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      <% else %>
+        <div style="color: #9ca3af; text-align: center; padding: 20px;">暂无数据</div>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h2>👤 责任人汇总</h2></div>
+    <div class="card-body">
+      <% if @responsible_stats.any? %>
+        <table class="table">
+          <thead>
+            <tr><th>责任人</th><th>数量</th><th>占比</th></tr>
+          </thead>
+          <tbody>
+            <% total = @responsible_stats.sum { |_, v| v }.to_f %>
+            <% @responsible_stats.first(15).each do |person, count| %>
+              <tr>
+                <td><%= person %></td>
+                <td><%= count %></td>
+                <td>
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <div class="progress-bar" style="width: 100px;">
+                      <div class="progress-bar-inner" style="width: <%= (count / total * 100).round %>%"></div>
+                    </div>
+                    <span style="font-size: 12px;"><%= (count / total * 100).round %>%</span>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      <% else %>
+        <div style="color: #9ca3af; text-align: center; padding: 20px;">暂无数据</div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <div class="card-header"><h2>🏷️ 复盘标签汇总</h2></div>
+    <div class="card-body">
+      <% if @tag_stats.any? %>
+        <table class="table">
+          <thead>
+            <tr><th>标签</th><th>数量</th><th>占比</th></tr>
+          </thead>
+          <tbody>
+            <% total = @tag_stats.sum { |_, v| v }.to_f %>
+            <% @tag_stats.each do |tag, count| %>
+              <tr>
+                <td><span class="badge badge-purple"><%= tag %></span></td>
+                <td><%= count %></td>
+                <td>
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <div class="progress-bar" style="width: 100px;">
+                      <div class="progress-bar-inner" style="width: <%= (count / total * 100).round %>%"></div>
+                    </div>
+                    <span style="font-size: 12px;"><%= (count / total * 100).round %>%</span>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      <% else %>
+        <div style="color: #9ca3af; text-align: center; padding: 20px;">暂无数据</div>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h2>📊 完成率趋势</h2></div>
+    <div class="card-body">
+      <% if @completion_data.any? %>
+        <table class="table">
+          <thead>
+            <tr><th>日期</th><th>单据数</th></tr>
+          </thead>
+          <tbody>
+            <% @completion_data.reverse_each do |date, count| %>
+              <tr>
+                <td><%= date.strftime("%Y-%m-%d") %></td>
+                <td>
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <div class="progress-bar" style="width: 150px;">
+                      <div class="progress-bar-inner" style="width: <%= (count.to_f / @completion_data.values.max * 100).round %>%"></div>
+                    </div>
+                    <span style="font-weight: 600;"><%= count %></span>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      <% else %>
+        <div style="color: #9ca3af; text-align: center; padding: 20px;">暂无数据</div>
+      <% end %>
+    </div>
+  </div>
+</div>

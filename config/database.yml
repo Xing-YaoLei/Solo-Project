@@ -1,0 +1,21 @@
+default: &default
+  adapter: postgresql
+  encoding: unicode
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+  username: <%= ENV.fetch("DB_USERNAME") { `whoami`.chomp } %>
+  password: <%= ENV.fetch("DB_PASSWORD") { "" } %>
+  host: <%= ENV.fetch("DB_HOST") { "localhost" } %>
+
+development:
+  <<: *default
+  database: fitness_course_settlement_development
+
+test:
+  <<: *default
+  database: fitness_course_settlement_test
+
+production:
+  <<: *default
+  database: fitness_course_settlement_production
+  username: fitness_course_settlement
+  password: <%= ENV["DATABASE_PASSWORD"] %>

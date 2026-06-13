@@ -1,0 +1,21 @@
+<div class="card">
+  <div class="card-header">
+    <h2>课程包详情: <%= @course_package.name %></h2>
+    <div class="btn-group">
+      <%= link_to "编辑", edit_course_package_path(@course_package), class: "btn btn-outline btn-sm" %>
+      <%= link_to "列表", course_packages_path, class: "btn btn-outline btn-sm" %>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="form-row">
+      <div class="form-group"><label>名称</label><div style="font-weight: 500;"><%= @course_package.name %></div></div>
+      <div class="form-group"><label>类型</label><div><span class="badge badge-purple"><%= @course_package.package_type %></span></div></div>
+      <div class="form-group"><label>总课时</label><div style="font-weight: 500;"><%= @course_package.total_sessions %> 节</div></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>价格</label><div style="font-weight: 500;">¥<%= @course_package.price %></div></div>
+      <div class="form-group"><label>有效期</label><div style="font-weight: 500;"><%= @course_package.validity_days %> 天</div></div>
+    </div>
+    <div class="form-group"><label>描述</label><div style="font-weight: 500;"><%= @course_package.description %></div></div>
+  </div>
+</div>

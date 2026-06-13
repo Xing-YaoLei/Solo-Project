@@ -1,0 +1,93 @@
+<div class="card">
+  <div class="card-header">
+    <h2>编辑课程消耗单 <%= course_consumption.bill_no %></h2>
+    <%= link_to "返回", course_consumption_path(course_consumption), class: "btn btn-outline btn-sm" %>
+  </div>
+  <div class="card-body">
+    <%= form_with model: course_consumption do |f| %>
+      <% if course_consumption.errors.any? %>
+        <div style="background: #fef2f2; color: #991b1b; padding: 12px; border-radius: 8px; margin-bottom: 16px; border: 1px solid #fecaca;">
+          <strong><%= pluralize(course_consumption.errors.count, "error") %> 阻止了保存：</strong>
+          <ul>
+            <% course_consumption.errors.each do |error| %>
+              <li><%= error.full_message %></li>
+            <% end %>
+          </ul>
+        </div>
+      <% end %>
+
+      <div class="card" style="margin-bottom: 20px; border: 1px solid #e5e7eb;">
+        <div class="card-header"><h3>📋 基本信息</h3></div>
+        <div class="card-body">
+          <div class="form-row">
+            <div class="form-group">
+              <%= f.label :bill_no, "单据号" %>
+              <%= f.text_field :bill_no, readonly: true %>
+            </div>
+            <div class="form-group">
+              <%= f.label :consumption_date, "消耗日期" %>
+              <%= f.date_field :consumption_date %>
+            </div>
+            <div class="form-group">
+              <%= f.label :source_channel, "来源渠道" %>
+              <%= f.select :source_channel, CourseConsumption::SOURCE_CHANNELS.map { |s| [s, s] }, include_blank: "请选择" %>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <%= f.label :member_id, "会员" %>
+              <%= f.collection_select :member_id, Member.all, :id, :name, include_blank: "请选择会员" %>
+            </div>
+            <div class="form-group">
+              <%= f.label :trainer_id, "教练" %>
+              <%= f.collection_select :trainer_id, Trainer.active, :id, :name, include_blank: "请选择教练" %>
+            </div>
+            <div class="form-group">
+              <%= f.label :course_package_id, "课程包" %>
+              <%= f.collection_select :course_package_id, CoursePackage.all, :id, :name, include_blank: "请选择课程包" %>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <%= f.label :sessions_consumed, "消耗课时" %>
+              <%= f.number_field :sessions_consumed, min: 1 %>
+            </div>
+            <div class="form-group">
+              <%= f.label :sessions_remaining, "剩余课时" %>
+              <%= f.number_field :sessions_remaining, min: 0 %>
+            </div>
+            <div class="form-group">
+              <%= f.label :responsible_person, "责任人" %>
+              <%= f.text_field :responsible_person %>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom: 20px; border: 1px solid #e5e7eb;">
+        <div class="card-header"><h3>📝 备注</h3></div>
+        <div class="card-body">
+          <div class="form-row">
+            <div class="form-group">
+              <%= f.label :review_notes, "审核备注" %>
+              <%= f.text_area :review_notes %>
+            </div>
+            <div class="form-group">
+              <%= f.label :settlement_notes, "结算备注" %>
+              <%= f.text_area :settlement_notes %>
+            </div>
+            <div class="form-group">
+              <%= f.label :review_summary, "复盘总结" %>
+              <%= f.text_area :review_summary %>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top: 20px; display: flex; gap: 12px;">
+        <%= f.submit "保存修改", class: "btn btn-primary" %>
+        <%= link_to "取消", course_consumption_path(course_consumption), class: "btn btn-secondary" %>
+      </div>
+    <% end %>
+  </div>
+</div>
