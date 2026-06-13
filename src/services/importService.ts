@@ -1,7 +1,6 @@
-import { prisma } from '@/lib/prisma';
 import { generateBatchNo } from '@/utils/format';
-import { BatchType, ImportBatch, Inventory, Transaction, Review } from '@/types';
-import { getBatches, MOCK_INVENTORIES, generateMockTransactions, generateMockReviews } from './mockData';
+import { BatchType, ImportBatch, Inventory, Transaction, Review, HandOrder, InventoryUsage } from '@/types';
+import { mockStore } from './mockStore';
 import Papa from 'papaparse';
 
 const USE_MOCK = true;
@@ -12,8 +11,8 @@ export async function createBatch(
   importedBy: string
 ): Promise<ImportBatch> {
   if (USE_MOCK) {
-    return {
-      id: `batch-${Date.now()}`,
+    const batch: ImportBatch = {
+      id: `batch-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       batchNo: generateBatchNo(type),
       type,
       fileName,
@@ -22,8 +21,11 @@ export async function createBatch(
       importedAt: new Date(),
       status: 'PENDING',
     };
+    mockStore.addBatch(batch);
+    return batch;
   }
 
+  const { prisma } = await import('@/lib/prisma');
   const batch = await prisma.importBatch.create({
     data: {
       batchNo: generateBatchNo(type),
@@ -34,7 +36,7 @@ export async function createBatch(
     },
   });
 
-  return batch;
+  return batch as unknown as ImportBatch;
 }
 
 export async function processBatch(
@@ -43,25 +45,55 @@ export async function processBatch(
   type: BatchType
 ): Promise<ImportBatch> {
   if (USE_MOCK) {
-    return {
-      id: batchId,
-      batchNo: generateBatchNo(type),
-      type,
-      fileName: 'mock.csv',
-      recordCount: 20,
-      importedBy: '1',
-      importedAt: new Date(),
-      status: 'COMPLETED',
-    };
+    mockStore.updateBatch(batchId, { status: 'PROCESSING' });
+
+    try {
+      const parsed = (Papa.parse as any)(fileContent, { header: true, skipEmptyLines: true });
+      const records = parsed.data as any[];
+
+      if (type === 'INVENTORY') {
+        await processInventoryBatch(batchId, records);
+      } else if (type === 'TRANSACTION') {
+        await processTransactionBatch(batchId, records);
+      } else if (type === 'REVIEW') {
+        await processReviewBatch(batchId, records);
+      }
+
+      const batch = mockStore.batches.find(b => b.id === batchId);
+      if (batch) {
+        mockStore.updateBatch(batchId, {
+          status: 'COMPLETED',
+          recordCount: records.length,
+        });
+        return { ...batch, status: 'COMPLETED', recordCount: records.length };
+      }
+      return {
+        id: batchId,
+        batchNo: generateBatchNo(type),
+        type,
+        fileName: 'mock.csv',
+        recordCount: records.length,
+        importedBy: '1',
+        importedAt: new Date(),
+        status: 'COMPLETED',
+      };
+    } catch (error: any) {
+      mockStore.updateBatch(batchId, {
+        status: 'FAILED',
+        errorMessage: error.message,
+      });
+      throw error;
+    }
   }
 
+  const { prisma } = await import('@/lib/prisma');
   await prisma.importBatch.update({
     where: { id: batchId },
     data: { status: 'PROCESSING' },
   });
 
   try {
-    const parsed = Papa.parse(fileContent, { header: true, skipEmptyLines: true });
+    const parsed = (Papa.parse as any)(fileContent, { header: true, skipEmptyLines: true });
     const records = parsed.data as any[];
 
     if (type === 'INVENTORY') {
@@ -80,7 +112,7 @@ export async function processBatch(
       },
     });
 
-    return batch;
+    return batch as unknown as ImportBatch;
   } catch (error: any) {
     await prisma.importBatch.update({
       where: { id: batchId },
@@ -94,140 +126,150 @@ export async function processBatch(
 }
 
 async function processInventoryBatch(batchId: string, records: any[]): Promise<void> {
-  const inventories = records.map(r => ({
+  const technicians = mockStore.users.filter(u => u.role === 'TECHNICIAN');
+
+  const inventories: Inventory[] = records.map((r, index) => ({
+    id: `inv-${batchId}-${index}`,
     batchId,
-    skuCode: r.sku_code || r.skuCode,
-    productName: r.product_name || r.productName,
-    category: r.category,
-    unit: r.unit,
+    skuCode: r.sku_code || r.skuCode || `SKU-${Date.now()}-${index}`,
+    productName: r.product_name || r.productName || `产品${index + 1}`,
+    category: r.category || '未分类',
+    unit: r.unit || '个',
     stockQuantity: parseFloat(r.stock_quantity || r.stockQuantity || 0),
     unitPrice: parseFloat(r.unit_price || r.unitPrice || 0),
+    importedAt: new Date(),
   }));
 
-  await prisma.inventory.createMany({ data: inventories });
+  mockStore.addInventories(inventories);
 
-  await mergeInventoryToOrders(batchId);
+  for (const inv of inventories) {
+    const techIdx = mockStore.inventories.indexOf(inv) % technicians.length;
+    const tech = technicians[techIdx] || technicians[0];
+    const handNo = `H${Date.now()}-${Math.random().toString(36).substring(2, 8)}`.toUpperCase();
+
+    const order: HandOrder = {
+      id: `order-${inv.id}`,
+      handNo,
+      technicianId: tech.id,
+      serviceItems: [inv.productName],
+      totalAmount: inv.unitPrice,
+      status: 'CREATED',
+      createdAt: new Date(),
+      technician: tech,
+      transactions: [],
+      inventoryItems: [],
+    };
+    mockStore.upsertOrder(order);
+
+    const usage: InventoryUsage = {
+      id: `usage-${inv.id}`,
+      orderId: order.id,
+      inventoryId: inv.id,
+      quantity: Math.min(inv.stockQuantity, 1),
+      isAbnormal: false,
+      inventory: inv,
+    };
+    mockStore.addInventoryUsage(usage);
+  }
 }
 
 async function processTransactionBatch(batchId: string, records: any[]): Promise<void> {
-  const transactions = records.map(r => ({
-    batchId,
-    orderNo: r.order_no || r.orderNo,
-    handNo: r.hand_no || r.handNo,
-    technicianId: r.technician_id || r.technicianId,
-    serviceItem: r.service_item || r.serviceItem,
-    amount: parseFloat(r.amount || 0),
-    paymentMethod: r.payment_method || r.paymentMethod,
-    transactionTime: new Date(r.transaction_time || r.transactionTime),
-    status: (r.status || 'PAID') as any,
-  }));
+  const technicians = mockStore.users.filter(u => u.role === 'TECHNICIAN');
 
-  await prisma.transaction.createMany({ data: transactions });
+  const transactions: Transaction[] = records.map((r, index) => {
+    const techId = r.technician_id || r.technicianId || technicians[index % technicians.length].id;
+    const tech = mockStore.getUserById(techId);
+    return {
+      id: `trans-${batchId}-${index}`,
+      batchId,
+      orderNo: r.order_no || r.orderNo || `ORD-${Date.now()}-${index}`,
+      handNo: r.hand_no || r.handNo || `H${Date.now()}-${index}`,
+      technicianId: techId,
+      serviceItem: r.service_item || r.serviceItem || '常规服务',
+      amount: parseFloat(r.amount || 0),
+      paymentMethod: r.payment_method || r.paymentMethod || '微信',
+      transactionTime: new Date(r.transaction_time || r.transactionTime || Date.now()),
+      status: 'PAID',
+      technician: tech,
+    };
+  });
 
-  await mergeTransactionsToOrders(batchId);
+  mockStore.addTransactions(transactions);
+
+  for (const trans of transactions) {
+    const tech = mockStore.getUserById(trans.technicianId);
+    const existingOrder = mockStore.orders.find(o => o.handNo === trans.handNo);
+
+    if (existingOrder) {
+      const existingTrans = existingOrder.transactions || [];
+      const newTotal = existingTrans.reduce((s, t) => s + t.amount, 0) + trans.amount;
+      mockStore.updateOrderByHandNo(trans.handNo, {
+        status: 'PAID',
+        totalAmount: newTotal,
+        serviceItems: [...(existingOrder.serviceItems || []), trans.serviceItem],
+        completedAt: trans.transactionTime,
+        transactions: [...existingTrans, trans],
+      });
+    } else {
+      const order: HandOrder = {
+        id: `order-${trans.id}`,
+        handNo: trans.handNo,
+        technicianId: trans.technicianId,
+        serviceItems: [trans.serviceItem],
+        totalAmount: trans.amount,
+        status: 'PAID',
+        createdAt: trans.transactionTime,
+        completedAt: trans.transactionTime,
+        technician: tech,
+        transactions: [trans],
+        inventoryItems: [],
+      };
+      mockStore.upsertOrder(order);
+    }
+  }
 }
 
 async function processReviewBatch(batchId: string, records: any[]): Promise<void> {
-  const reviews = records.map(r => ({
+  const reviews: Review[] = records.map((r, index) => ({
+    id: `review-${batchId}-${index}`,
     batchId,
-    orderNo: r.order_no || r.orderNo,
-    rating: parseInt(r.rating || 0),
-    content: r.content,
+    orderNo: r.order_no || r.orderNo || `ORD-${Date.now()}-${index}`,
+    rating: parseInt(r.rating || 5),
+    content: r.content || '',
     hasBeforePhoto: (r.has_before_photo || r.hasBeforePhoto) === 'true' || r.has_before_photo === true,
     hasAfterPhoto: (r.has_after_photo || r.hasAfterPhoto) === 'true' || r.has_after_photo === true,
-    followUpScript: r.follow_up_script || r.followUpScript,
-    responded: (r.responded || r.responded) === 'true' || r.responded === true,
-    reviewedAt: new Date(r.reviewed_at || r.reviewedAt),
+    followUpScript: r.follow_up_script || r.followUpScript || null,
+    responded: (r.responded || 'false') === 'true' || r.responded === true,
+    reviewedAt: new Date(r.reviewed_at || r.reviewedAt || Date.now()),
   }));
 
-  await prisma.review.createMany({ data: reviews });
-
-  await updateOrderStatusFromReviews(batchId);
-}
-
-async function mergeInventoryToOrders(batchId: string): Promise<void> {
-  const inventories = await prisma.inventory.findMany({ where: { batchId } });
-
-  for (const inv of inventories) {
-    const existingOrders = await prisma.handOrder.findMany({
-      where: {
-        inventoryItems: {
-          some: {
-            inventory: {
-              skuCode: inv.skuCode,
-            },
-          },
-        },
-      },
-    });
-
-    if (existingOrders.length === 0) {
-      const recentOrders = await prisma.handOrder.findMany({
-        take: 1,
-        orderBy: { createdAt: 'desc' },
-      });
-
-      if (recentOrders.length > 0) {
-        await prisma.inventoryUsage.create({
-          data: {
-            orderId: recentOrders[0].id,
-            inventoryId: inv.id,
-            quantity: inv.stockQuantity.toNumber() > 0 ? Math.min(1, inv.stockQuantity.toNumber()) : 0,
-          },
-        });
-      }
-    }
-  }
-}
-
-async function mergeTransactionsToOrders(batchId: string): Promise<void> {
-  const transactions = await prisma.transaction.findMany({ where: { batchId } });
-
-  for (const trans of transactions) {
-    let order = await prisma.handOrder.findUnique({
-      where: { handNo: trans.handNo },
-    });
-
-    if (!order) {
-      order = await prisma.handOrder.create({
-        data: {
-          handNo: trans.handNo,
-          technicianId: trans.technicianId,
-          serviceItems: [trans.serviceItem],
-          totalAmount: trans.amount,
-          status: 'PAID',
-          completedAt: trans.transactionTime,
-        },
-      });
-    } else {
-      await prisma.handOrder.update({
-        where: { id: order.id },
-        data: {
-          status: 'PAID',
-          totalAmount: trans.amount,
-          serviceItems: {
-            push: trans.serviceItem,
-          },
-          completedAt: trans.transactionTime,
-        },
-      });
-    }
-  }
-}
-
-async function updateOrderStatusFromReviews(batchId: string): Promise<void> {
-  const reviews = await prisma.review.findMany({ where: { batchId } });
+  mockStore.addReviews(reviews);
 
   for (const review of reviews) {
-    const trans = await prisma.transaction.findUnique({
-      where: { orderNo: review.orderNo },
-    });
-
-    if (trans) {
-      await prisma.handOrder.updateMany({
-        where: { handNo: trans.handNo },
-        data: { status: 'REVIEWED' },
+    const matchedTrans = mockStore.transactions.find(t => t.orderNo === review.orderNo);
+    if (matchedTrans) {
+      mockStore.updateOrderByHandNo(matchedTrans.handNo, {
+        status: 'REVIEWED',
+        review,
       });
+    } else {
+      const techs = mockStore.users.filter(u => u.role === 'TECHNICIAN');
+      const tech = techs[0];
+      const handNo = `H-REV-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`.toUpperCase();
+      const order: HandOrder = {
+        id: `order-review-${review.id}`,
+        handNo,
+        technicianId: tech.id,
+        serviceItems: ['服务项目'],
+        totalAmount: 0,
+        status: 'REVIEWED',
+        createdAt: review.reviewedAt,
+        completedAt: review.reviewedAt,
+        technician: tech,
+        transactions: [],
+        review,
+      };
+      mockStore.upsertOrder(order);
     }
   }
 }
@@ -238,14 +280,15 @@ export async function getImportBatches(
   pageSize = 10
 ): Promise<{ batches: ImportBatch[]; total: number }> {
   if (USE_MOCK) {
-    const all = getBatches();
+    const all = mockStore.batches;
     const filtered = type ? all.filter(b => b.type === type) : all;
     return {
-      batches: filtered,
+      batches: filtered.slice((page - 1) * pageSize, page * pageSize),
       total: filtered.length,
     };
   }
 
+  const { prisma } = await import('@/lib/prisma');
   const where = type ? { type } : {};
   const [batches, total] = await Promise.all([
     prisma.importBatch.findMany({

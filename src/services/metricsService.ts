@@ -123,8 +123,11 @@ export async function getTechnicianRanking(
     include: {
       orders: {
         include: {
-          transactions: true,
-          review: true,
+          transactions: {
+            include: {
+              review: true,
+            },
+          },
         },
       },
     },
@@ -143,7 +146,10 @@ export async function getTechnicianRanking(
       0
     );
     const avgRating = techOrders.length > 0
-      ? techOrders.reduce((sum: number, o: any) => sum + (o.review?.rating || 0), 0) / techOrders.length
+      ? techOrders.reduce((sum: number, o: any) => {
+          const review = o.transactions.find((t: any) => t.review)?.review;
+          return sum + (review?.rating || 0);
+        }, 0) / techOrders.length
       : 0;
 
     return {
@@ -239,12 +245,17 @@ export async function getPhotoFunnel(
 
   const reviews = await prisma.review.findMany({ where });
 
-  return [
+  const stages = [
     { stage: '服务订单', value: reviews.length },
     { stage: '上传术前照', value: reviews.filter((r: any) => r.hasBeforePhoto).length },
     { stage: '上传术后照', value: reviews.filter((r: any) => r.hasAfterPhoto).length },
     { stage: '形成对比案例', value: reviews.filter((r: any) => r.hasBeforePhoto && r.hasAfterPhoto).length },
   ];
+
+  return stages.map((item, index) => ({
+    ...item,
+    conversionRate: index === 0 ? 1 : stages[index - 1].value > 0 ? item.value / stages[index - 1].value : 0,
+  }));
 }
 
 export async function getInventoryRanking(
@@ -359,8 +370,11 @@ export async function getTechnicianPersonalMetrics(
   const orders = await prisma.handOrder.findMany({
     where,
     include: {
-      transactions: true,
-      review: true,
+      transactions: {
+        include: {
+          review: true,
+        },
+      },
     },
   });
 
@@ -370,7 +384,10 @@ export async function getTechnicianPersonalMetrics(
   );
   const completedOrders = orders.filter((o: any) => o.status !== 'CREATED').length;
   const avgRating = orders.length > 0
-    ? orders.reduce((sum: number, o: any) => sum + (o.review?.rating || 0), 0) / orders.length
+    ? orders.reduce((sum: number, o: any) => {
+        const review = o.transactions.find((t: any) => t.review)?.review;
+        return sum + (review?.rating || 0);
+      }, 0) / orders.length
     : 0;
   const completionRate = orders.length > 0 ? completedOrders / orders.length : 0;
 
@@ -405,9 +422,12 @@ export async function getTechnicianOrders(
     where,
     include: {
       technician: true,
-      transactions: true,
+      transactions: {
+        include: {
+          review: true,
+        },
+      },
       inventoryItems: { include: { inventory: true } },
-      review: true,
     },
     orderBy: { createdAt: 'desc' },
   });

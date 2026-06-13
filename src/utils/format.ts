@@ -14,6 +14,7 @@ export function formatNumber(num: number): string {
 }
 
 export function formatPercent(value: number, decimals = 1): string {
+  if (value === undefined || value === null || isNaN(value)) return '0.0%';
   return `${(value * 100).toFixed(decimals)}%`;
 }
 

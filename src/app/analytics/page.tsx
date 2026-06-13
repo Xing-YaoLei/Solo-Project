@@ -11,11 +11,12 @@ import {
   FunnelData,
   InventoryRank,
   FollowupTrend,
+  PhotoFunnelData,
 } from '@/types';
 
 export default function AnalyticsPage() {
   const [consumptionData, setConsumptionData] = useState<ConsumptionData[]>([]);
-  const [photoFunnelData, setPhotoFunnelData] = useState<FunnelData[]>([]);
+  const [photoFunnelData, setPhotoFunnelData] = useState<PhotoFunnelData[]>([]);
   const [inventoryRank, setInventoryRank] = useState<InventoryRank[]>([]);
   const [followupTrend, setFollowupTrend] = useState<FollowupTrend[]>([]);
   const [consumptionDimension, setConsumptionDimension] = useState<'item' | 'amount' | 'time'>('item');

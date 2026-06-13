@@ -129,6 +129,7 @@ export interface ConsumptionData {
 export interface PhotoFunnelData {
   stage: string;
   value: number;
+  conversionRate: number;
 }
 
 export interface InventoryRank {
