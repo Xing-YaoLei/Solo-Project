@@ -1,0 +1,68 @@
+[
+  {
+    "id": "first-match",
+    "name": "首次匹配",
+    "description": "完成第一次手牌匹配",
+    "icon": "🎯",
+    "condition": {
+      "type": "accuracy",
+      "threshold": 1
+    },
+    "reward": 10
+  },
+  {
+    "id": "perfect-round",
+    "name": "完美回合",
+    "description": "单关卡达到100%准确率",
+    "icon": "💎",
+    "condition": {
+      "type": "accuracy",
+      "threshold": 100
+    },
+    "reward": 50
+  },
+  {
+    "id": "speed-demon",
+    "name": "速通达人",
+    "description": "在限定时间50%以内完成关卡",
+    "icon": "🏃",
+    "condition": {
+      "type": "time",
+      "threshold": 50
+    },
+    "reward": 30
+  },
+  {
+    "id": "event-master",
+    "name": "事件处理大师",
+    "description": "正确处理关卡中所有随机事件",
+    "icon": "🏆",
+    "condition": {
+      "type": "event",
+      "threshold": 100
+    },
+    "reward": 40
+  },
+  {
+    "id": "three-stars",
+    "name": "三星通关",
+    "description": "任意关卡获得三星评价",
+    "icon": "⭐",
+    "condition": {
+      "type": "stars",
+      "threshold": 3
+    },
+    "reward": 30
+  },
+  {
+    "id": "level-3-clear",
+    "name": "大师通关",
+    "description": "通关大师级手牌调度关卡",
+    "icon": "👑",
+    "condition": {
+      "type": "level-clear",
+      "threshold": 3
+    },
+    "reward": 100
+  }
+]

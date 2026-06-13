@@ -1,0 +1,46 @@
+[
+  {
+    "id": "hint-card",
+    "name": "提示卡",
+    "description": "揭示一条正确匹配信息",
+    "icon": "💡",
+    "cooldownMs": 30000,
+    "effect": {
+      "type": "reveal",
+      "value": 1
+    }
+  },
+  {
+    "id": "time-freeze",
+    "name": "时间冻结",
+    "description": "冻结倒计时10秒",
+    "icon": "❄️",
+    "cooldownMs": 60000,
+    "effect": {
+      "type": "freeze",
+      "value": 10000
+    }
+  },
+  {
+    "id": "auto-match",
+    "name": "自动匹配",
+    "description": "自动完成一条记录的匹配",
+    "icon": "⚡",
+    "cooldownMs": 90000,
+    "effect": {
+      "type": "auto-match",
+      "value": 1
+    }
+  },
+  {
+    "id": "shield",
+    "name": "护盾",
+    "description": "抵御一次随机事件的惩罚",
+    "icon": "🛡️",
+    "cooldownMs": 45000,
+    "effect": {
+      "type": "shield",
+      "value": 1
+    }
+  }
+]

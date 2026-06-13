@@ -1,0 +1,61 @@
+{
+  "id": "level-002",
+  "name": "进阶调度挑战",
+  "description": "面对更多记录和突发状况，考验你的调度能力与应变技巧",
+  "difficulty": 2,
+  "timeLimit": 90,
+  "passingScore": 70,
+  "requiredLevels": ["level-001"],
+  "tasks": [
+    {
+      "id": "task-002-01",
+      "levelId": "level-002",
+      "type": "match-record",
+      "params": {
+        "recordCount": 8,
+        "technicianCount": 4,
+        "allowMismatch": true
+      },
+      "order": 1
+    },
+    {
+      "id": "task-002-02",
+      "levelId": "level-002",
+      "type": "inventory-requisition",
+      "params": {
+        "itemCount": 5
+      },
+      "order": 2
+    },
+    {
+      "id": "task-002-03",
+      "levelId": "level-002",
+      "type": "timed-challenge",
+      "params": {
+        "timeLimitSeconds": 30
+      },
+      "order": 3
+    }
+  ],
+  "events": [
+    {
+      "id": "event-002-01",
+      "levelId": "level-002",
+      "type": "consumable-expired",
+      "triggerProbability": 0.4,
+      "params": {
+        "category": "护肤品"
+      }
+    },
+    {
+      "id": "event-002-02",
+      "levelId": "level-002",
+      "type": "inventory-shortage",
+      "triggerProbability": 0.3,
+      "params": {
+        "shortageAmount": 2,
+        "category": "仪器耗材"
+      }
+    }
+  ]
+}

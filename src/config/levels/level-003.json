@@ -1,0 +1,70 @@
+{
+  "id": "level-003",
+  "name": "大师级手牌调度",
+  "description": "最高难度挑战，密集记录、紧急库存与意外差错同时袭来，唯有大师方能从容应对",
+  "difficulty": 3,
+  "timeLimit": 75,
+  "passingScore": 80,
+  "requiredLevels": ["level-001", "level-002"],
+  "tasks": [
+    {
+      "id": "task-003-01",
+      "levelId": "level-003",
+      "type": "match-record",
+      "params": {
+        "recordCount": 12,
+        "technicianCount": 5,
+        "allowMismatch": true
+      },
+      "order": 1
+    },
+    {
+      "id": "task-003-02",
+      "levelId": "level-003",
+      "type": "inventory-requisition",
+      "params": {
+        "itemCount": 7
+      },
+      "order": 2
+    },
+    {
+      "id": "task-003-03",
+      "levelId": "level-003",
+      "type": "timed-challenge",
+      "params": {
+        "timeLimitSeconds": 20
+      },
+      "order": 3
+    }
+  ],
+  "events": [
+    {
+      "id": "event-003-01",
+      "levelId": "level-003",
+      "type": "consumable-expired",
+      "triggerProbability": 0.4,
+      "params": {
+        "category": "护肤品"
+      }
+    },
+    {
+      "id": "event-003-02",
+      "levelId": "level-003",
+      "type": "inventory-shortage",
+      "triggerProbability": 0.35,
+      "params": {
+        "shortageAmount": 3,
+        "category": "仪器耗材"
+      }
+    },
+    {
+      "id": "event-003-03",
+      "levelId": "level-003",
+      "type": "model-error",
+      "triggerProbability": 0.3,
+      "params": {
+        "errorMessage": "客户档案信息异常"
+      }
+    }
+  ]
+}

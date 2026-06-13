@@ -1,0 +1,42 @@
+{
+  "id": "level-001",
+  "name": "基础手牌匹配",
+  "description": "学习基本的手牌匹配流程，将消费记录分配给对应的美容师",
+  "difficulty": 1,
+  "timeLimit": 120,
+  "passingScore": 60,
+  "requiredLevels": [],
+  "tasks": [
+    {
+      "id": "task-001-01",
+      "levelId": "level-001",
+      "type": "match-record",
+      "params": {
+        "recordCount": 5,
+        "technicianCount": 3,
+        "allowMismatch": false
+      },
+      "order": 1
+    },
+    {
+      "id": "task-001-02",
+      "levelId": "level-001",
+      "type": "inventory-requisition",
+      "params": {
+        "itemCount": 3
+      },
+      "order": 2
+    }
+  ],
+  "events": [
+    {
+      "id": "event-001-01",
+      "levelId": "level-001",
+      "type": "consumable-expired",
+      "triggerProbability": 0.3,
+      "params": {
+        "category": "护肤品"
+      }
+    }
+  ]
+}
