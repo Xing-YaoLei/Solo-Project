@@ -1,0 +1,17 @@
+{
+  "batch_id": "reviews_20260614_ec7978fc",
+  "data_type": "reviews",
+  "upload_time": "20260614_030401",
+  "row_count": "2",
+  "stats": {
+    "total_reviews": 2,
+    "avg_rating": 4.5,
+    "avg_sentiment": 0.85,
+    "good_reviews": 2,
+    "neutral_reviews": 0,
+    "bad_reviews": 0,
+    "unique_technicians": 2
+  },
+  "source": "reviews_upload",
+  "anomalies": []
+}

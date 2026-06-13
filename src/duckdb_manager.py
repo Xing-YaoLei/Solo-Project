@@ -206,7 +206,32 @@ class DuckDBManager:
         except Exception:
             pass
 
+        self._sync_sequences()
+
         logger.info("Database tables initialized")
+
+    def _sync_sequences(self):
+        table_seq_map = [
+            ("inventory", "seq_inventory_id"),
+            ("reviews", "seq_reviews_id"),
+            ("appointments", "seq_appointments_id"),
+            ("recharge_transactions", "seq_recharge_id"),
+            ("service_cards", "seq_service_cards_id"),
+            ("technician_schedules", "seq_schedules_id"),
+            ("inventory_anomaly_notes", "seq_anomaly_notes_id"),
+            ("attendance_rate_metrics", "seq_attendance_metrics_id"),
+        ]
+        for table, seq in table_seq_map:
+            try:
+                max_id = self.conn.execute(
+                    f"SELECT COALESCE(MAX(id), 0) FROM {table}"
+                ).fetchone()[0]
+                if max_id > 0:
+                    self.conn.execute(f"DROP SEQUENCE IF EXISTS {seq}")
+                    self.conn.execute(f"CREATE SEQUENCE {seq} START WITH {max_id + 1}")
+                    logger.info(f"Synced sequence {seq} to start at {max_id + 1} (from {table})")
+            except Exception as e:
+                logger.warning(f"Failed to sync sequence {seq}: {e}")
 
     def register_batch(self, batch_id: str, data_type: str, source_file: str,
                        row_count: int, metadata: Optional[Dict[str, Any]] = None) -> None:
@@ -269,154 +294,134 @@ class DuckDBManager:
             pl.lit(datetime.now()).alias("updated_at"),
         ])
 
-        if "id" not in df.columns:
-            df = df.with_columns(
-                pl.int_range(1, len(df) + 1, eager=True).alias("id")
-            )
+        if "id" in df.columns:
+            df = df.drop("id")
 
         insert_cols = [
-            "id", "batch_id", "product_code", "product_name", "category",
+            "batch_id", "product_code", "product_name", "category",
             "stock_quantity", "unit_price", "cost_price", "supplier",
             "expiry_date", "store", "is_consumable", "anomaly_flag",
             "anomaly_note", "updated_at"
         ]
         df = df.select(insert_cols)
 
+        col_sql = ", ".join(insert_cols)
+
         self.conn.execute("DELETE FROM inventory WHERE batch_id = ?", [batch_id])
-        self.conn.execute("""
-            INSERT INTO inventory
-            (id, batch_id, product_code, product_name, category,
-             stock_quantity, unit_price, cost_price, supplier,
-             expiry_date, store, is_consumable, anomaly_flag,
-             anomaly_note, updated_at)
-            SELECT * FROM df
+        self.conn.execute(f"""
+            INSERT INTO inventory (id, {col_sql})
+            SELECT nextval('seq_inventory_id'), {col_sql} FROM df
         """)
         return len(df)
 
     def insert_reviews(self, df: pl.DataFrame, batch_id: str) -> int:
         df = df.with_columns(pl.lit(batch_id).alias("batch_id"))
 
-        if "id" not in df.columns:
-            df = df.with_columns(
-                pl.int_range(1, len(df) + 1, eager=True).alias("id")
-            )
+        if "id" in df.columns:
+            df = df.drop("id")
 
         insert_cols = [
-            "id", "batch_id", "customer_id", "customer_name", "order_id",
+            "batch_id", "customer_id", "customer_name", "order_id",
             "rating", "review_tags", "review_text", "technician",
             "service_item", "store", "review_date", "sentiment_score"
         ]
         df = df.select(insert_cols)
 
+        col_sql = ", ".join(insert_cols)
+
         self.conn.execute("DELETE FROM reviews WHERE batch_id = ?", [batch_id])
-        self.conn.execute("""
-            INSERT INTO reviews
-            (id, batch_id, customer_id, customer_name, order_id,
-             rating, review_tags, review_text, technician,
-             service_item, store, review_date, sentiment_score)
-            SELECT * FROM df
+        self.conn.execute(f"""
+            INSERT INTO reviews (id, {col_sql})
+            SELECT nextval('seq_reviews_id'), {col_sql} FROM df
         """)
         return len(df)
 
     def insert_appointments(self, df: pl.DataFrame, batch_id: str) -> int:
         df = df.with_columns(pl.lit(batch_id).alias("batch_id"))
 
-        if "id" not in df.columns:
-            df = df.with_columns(
-                pl.int_range(1, len(df) + 1, eager=True).alias("id")
-            )
+        if "id" in df.columns:
+            df = df.drop("id")
 
         insert_cols = [
-            "id", "batch_id", "customer_id", "customer_name", "phone",
+            "batch_id", "customer_id", "customer_name", "phone",
             "appointment_date", "appointment_time", "service_item", "category",
             "technician", "store", "status", "check_in_time", "check_out_time",
             "actual_amount", "card_used", "is_member", "attended"
         ]
         df = df.select(insert_cols)
 
+        col_sql = ", ".join(insert_cols)
+
         self.conn.execute("DELETE FROM appointments WHERE batch_id = ?", [batch_id])
-        self.conn.execute("""
-            INSERT INTO appointments
-            (id, batch_id, customer_id, customer_name, phone,
-             appointment_date, appointment_time, service_item, category,
-             technician, store, status, check_in_time, check_out_time,
-             actual_amount, card_used, is_member, attended)
-            SELECT * FROM df
+        self.conn.execute(f"""
+            INSERT INTO appointments (id, {col_sql})
+            SELECT nextval('seq_appointments_id'), {col_sql} FROM df
         """)
         return len(df)
 
     def insert_recharge(self, df: pl.DataFrame, batch_id: str) -> int:
         df = df.with_columns(pl.lit(batch_id).alias("batch_id"))
 
-        if "id" not in df.columns:
-            df = df.with_columns(
-                pl.int_range(1, len(df) + 1, eager=True).alias("id")
-            )
+        if "id" in df.columns:
+            df = df.drop("id")
 
         insert_cols = [
-            "id", "batch_id", "customer_id", "customer_name", "phone",
+            "batch_id", "customer_id", "customer_name", "phone",
             "recharge_date", "recharge_amount", "gift_amount", "payment_method",
             "store", "sales_staff", "card_type"
         ]
         df = df.select(insert_cols)
 
+        col_sql = ", ".join(insert_cols)
+
         self.conn.execute("DELETE FROM recharge_transactions WHERE batch_id = ?", [batch_id])
-        self.conn.execute("""
-            INSERT INTO recharge_transactions
-            (id, batch_id, customer_id, customer_name, phone,
-             recharge_date, recharge_amount, gift_amount, payment_method,
-             store, sales_staff, card_type)
-            SELECT * FROM df
+        self.conn.execute(f"""
+            INSERT INTO recharge_transactions (id, {col_sql})
+            SELECT nextval('seq_recharge_id'), {col_sql} FROM df
         """)
         return len(df)
 
     def insert_service_cards(self, df: pl.DataFrame, batch_id: str) -> int:
         df = df.with_columns(pl.lit(batch_id).alias("batch_id"))
 
-        if "id" not in df.columns:
-            df = df.with_columns(
-                pl.int_range(1, len(df) + 1, eager=True).alias("id")
-            )
+        if "id" in df.columns:
+            df = df.drop("id")
 
         insert_cols = [
-            "id", "batch_id", "card_code", "card_name", "category",
+            "batch_id", "card_code", "card_name", "category",
             "total_sessions", "used_sessions", "remaining_sessions",
             "original_price", "sale_price", "customer_id", "customer_name",
             "purchase_date", "expiry_date", "store"
         ]
         df = df.select(insert_cols)
 
+        col_sql = ", ".join(insert_cols)
+
         self.conn.execute("DELETE FROM service_cards WHERE batch_id = ?", [batch_id])
-        self.conn.execute("""
-            INSERT INTO service_cards
-            (id, batch_id, card_code, card_name, category,
-             total_sessions, used_sessions, remaining_sessions,
-             original_price, sale_price, customer_id, customer_name,
-             purchase_date, expiry_date, store)
-            SELECT * FROM df
+        self.conn.execute(f"""
+            INSERT INTO service_cards (id, {col_sql})
+            SELECT nextval('seq_service_cards_id'), {col_sql} FROM df
         """)
         return len(df)
 
     def insert_schedules(self, df: pl.DataFrame, batch_id: str) -> int:
         df = df.with_columns(pl.lit(batch_id).alias("batch_id"))
 
-        if "id" not in df.columns:
-            df = df.with_columns(
-                pl.int_range(1, len(df) + 1, eager=True).alias("id")
-            )
+        if "id" in df.columns:
+            df = df.drop("id")
 
         insert_cols = [
-            "id", "batch_id", "technician", "schedule_date", "shift_type",
+            "batch_id", "technician", "schedule_date", "shift_type",
             "start_time", "end_time", "store", "is_leave", "leave_reason"
         ]
         df = df.select(insert_cols)
 
+        col_sql = ", ".join(insert_cols)
+
         self.conn.execute("DELETE FROM technician_schedules WHERE batch_id = ?", [batch_id])
-        self.conn.execute("""
-            INSERT INTO technician_schedules
-            (id, batch_id, technician, schedule_date, shift_type,
-             start_time, end_time, store, is_leave, leave_reason)
-            SELECT * FROM df
+        self.conn.execute(f"""
+            INSERT INTO technician_schedules (id, {col_sql})
+            SELECT nextval('seq_schedules_id'), {col_sql} FROM df
         """)
         return len(df)
 
@@ -471,13 +476,11 @@ class DuckDBManager:
         if batch_id and "batch_id" not in df.columns:
             df = df.with_columns(pl.lit(batch_id).alias("batch_id"))
 
-        if "id" not in df.columns:
-            df = df.with_columns(
-                pl.int_range(1, len(df) + 1, eager=True).alias("id")
-            )
+        if "id" in df.columns:
+            df = df.drop("id")
 
         insert_cols = [
-            "id", "metric_date", "technician", "store",
+            "metric_date", "technician", "store",
             "total_appointments", "attended_count", "attendance_rate",
             "target_rate", "yoy_rate", "mom_rate", "batch_id",
         ]
@@ -489,9 +492,8 @@ class DuckDBManager:
         if batch_id:
             self.conn.execute("DELETE FROM attendance_rate_metrics WHERE batch_id = ?", [batch_id])
         self.conn.execute(f"""
-            INSERT INTO attendance_rate_metrics
-            ({col_sql})
-            SELECT * FROM df
+            INSERT INTO attendance_rate_metrics (id, {col_sql})
+            SELECT nextval('seq_attendance_metrics_id'), {col_sql} FROM df
         """)
         return len(df)
 

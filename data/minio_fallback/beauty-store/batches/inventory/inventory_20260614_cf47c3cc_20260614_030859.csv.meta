@@ -1,0 +1,17 @@
+{
+  "batch_id": "inventory_20260614_cf47c3cc",
+  "data_type": "inventory",
+  "upload_time": "20260614_030859",
+  "row_count": "2",
+  "stats": {
+    "total_products": 2,
+    "total_value": 149800.0,
+    "categories": 2,
+    "stores": 2,
+    "low_stock_count": 0,
+    "near_expiry_count": 0,
+    "expired_count": 0
+  },
+  "source": "inventory_upload",
+  "anomalies": []
+}

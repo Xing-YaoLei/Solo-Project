@@ -1,0 +1,3 @@
+id,customer_id,customer_name,order_id,rating,review_tags,review_text,technician,service_item,category,store,review_date,sentiment_score
+1,C001_1,顾客1-1,ORD001_1,5,服务好,很好,张技师,面部护理,面部护理,总店,2026-06-13,1.0
+2,C001_2,顾客1-2,ORD001_2,4,环境舒适,不错,李技师,身体护理,身体护理,朝阳店,2026-06-13,0.7

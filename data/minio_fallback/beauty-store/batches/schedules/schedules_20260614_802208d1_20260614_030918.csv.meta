@@ -1,0 +1,23 @@
+{
+  "batch_id": "schedules_20260614_802208d1",
+  "data_type": "schedules",
+  "upload_time": "20260614_030918",
+  "row_count": "6",
+  "stats": {
+    "total_schedules": 6,
+    "unique_technicians": 6,
+    "leave_count": 1,
+    "stores": 4
+  },
+  "source": "schedules_upload",
+  "anomalies": [
+    {
+      "type": "technician_leave",
+      "technician": "杨技师",
+      "schedule_date": "2026-06-14",
+      "leave_reason": "年假",
+      "store": "西城店",
+      "message": "技师请假: 年假"
+    }
+  ]
+}

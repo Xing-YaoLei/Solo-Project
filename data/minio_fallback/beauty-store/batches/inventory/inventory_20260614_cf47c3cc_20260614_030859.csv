@@ -1,0 +1,3 @@
+id,product_code,product_name,category,stock_quantity,unit_price,cost_price,supplier,expiry_date,store,is_consumable,anomaly_flag,anomaly_note
+1,NEW001,新商品1,面部护理,200,398.0,200.0,供应商D,2028-01-01,总店,true,false,
+2,NEW002,新商品2,身体护理,150,468.0,250.0,供应商E,2028-01-01,朝阳店,true,false,
