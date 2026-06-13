@@ -35,10 +35,10 @@ class DataProcessor:
             raise ValueError(f"Inventory missing required columns: {missing_cols}")
 
         df = df.with_columns([
-            pl.col("product_code").cast(pl.Utf8).str.strip(),
-            pl.col("product_name").cast(pl.Utf8).str.strip(),
-            pl.col("category").cast(pl.Utf8).str.strip(),
-            pl.col("store").cast(pl.Utf8).str.strip(),
+            pl.col("product_code").cast(pl.Utf8).str.strip_chars(),
+            pl.col("product_name").cast(pl.Utf8).str.strip_chars(),
+            pl.col("category").cast(pl.Utf8).str.strip_chars(),
+            pl.col("store").cast(pl.Utf8).str.strip_chars(),
             pl.col("stock_quantity").cast(pl.Int64),
             pl.col("unit_price").cast(pl.Float64),
             pl.col("cost_price").cast(pl.Float64).fill_null(0) if "cost_price" in df.columns else pl.lit(0).alias("cost_price"),
@@ -519,15 +519,23 @@ class DataProcessor:
         daily_metrics = daily_metrics.sort(["technician", "metric_date"])
 
         daily_metrics = daily_metrics.with_columns([
+            pl.lit(self.target_attendance_rate).alias("target_rate"),
             pl.col("attendance_rate").shift(365).over("technician").alias("yoy_rate"),
             pl.col("attendance_rate").shift(30).over("technician").alias("mom_rate"),
-            pl.lit(self.target_attendance_rate).alias("target_rate"),
         ])
-
-        daily_metrics = daily_metrics.with_row_index("id", offset=1)
 
         if batch_id:
             daily_metrics = daily_metrics.with_columns(pl.lit(batch_id).alias("batch_id"))
+
+        output_cols = [
+            "metric_date", "technician", "store",
+            "total_appointments", "attended_count", "attendance_rate",
+            "target_rate", "yoy_rate", "mom_rate"
+        ]
+        if batch_id:
+            output_cols.append("batch_id")
+
+        daily_metrics = daily_metrics.select(output_cols)
 
         return daily_metrics
 
@@ -619,8 +627,15 @@ class DataProcessor:
             final_score = 0.4 * text_score + 0.6 * rating_score
             return max(-1, min(1, final_score))
 
+        def _process_rows(df):
+            values = []
+            for t, r in zip(df[0], df[1]):
+                score = get_sentiment(str(t), int(r))
+                values.append(float(score))
+            return pl.Series(values, dtype=pl.Float64)
+
         return pl.map_groups(
             exprs=[text, rating],
-            function=lambda df: pl.Series([get_sentiment(str(t), int(r)) for t, r in zip(df[0], df[1])]),
+            function=_process_rows,
             return_dtype=pl.Float64,
         )

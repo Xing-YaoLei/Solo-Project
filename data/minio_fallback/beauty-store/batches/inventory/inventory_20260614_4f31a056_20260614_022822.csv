@@ -1,0 +1,5 @@
+id,product_code,product_name,category,stock_quantity,unit_price,cost_price,supplier,expiry_date,store,is_consumable,anomaly_flag,anomaly_note
+1,SKU001,玻尿酸精华液,面部护理,100,298.0,150.0,供应商A,2027-06-14,总店,true,false,
+2,SKU002,保湿面膜,面部护理,3,198.0,80.0,供应商A,2026-07-14,总店,true,false,
+3,SKU003,复方精油,身体护理,50,368.0,180.0,供应商B,2026-12-11,朝阳店,true,false,
+4,SKU004,美甲油胶,美甲美睫,2,168.0,80.0,供应商C,2026-06-04,海淀店,true,false,

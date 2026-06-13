@@ -102,7 +102,7 @@ class ETLPipeline:
         if data_type == "appointments":
             metrics_df = self.processor.calculate_attendance_metrics(result.df, batch_id)
             if not metrics_df.is_empty():
-                self.db.insert_attendance_metrics(metrics_df)
+                self.db.insert_attendance_metrics(metrics_df, batch_id)
                 logger.info(f"Inserted {len(metrics_df)} attendance metrics")
 
         return {

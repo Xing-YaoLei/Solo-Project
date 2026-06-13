@@ -2,12 +2,20 @@ import io
 import json
 from pathlib import Path
 from typing import Optional, List, Dict, Any
-from datetime import datetime
+from datetime import datetime, date
 import logging
 
 import polars as pl
 
 from .config import MinIOConfig, DATA_DIR
+
+
+def _json_default(obj: Any) -> Any:
+    if isinstance(obj, (datetime, date)):
+        return obj.isoformat()
+    if isinstance(obj, pl.DataFrame):
+        return f"[DataFrame: {len(obj)} rows]"
+    raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
 
 logger = logging.getLogger(__name__)
 
@@ -48,13 +56,21 @@ class MinioStorageClient:
         return local_path
 
     def upload_df(self, df: pl.DataFrame, object_name: str, metadata: Optional[Dict[str, Any]] = None) -> str:
-        csv_data = df.write_csv()
+        df_for_csv = df.clone()
+        for col in df_for_csv.columns:
+            dtype = df_for_csv[col].dtype
+            if isinstance(dtype, pl.List):
+                df_for_csv = df_for_csv.with_columns(
+                    pl.col(col).list.join(",").alias(col)
+                )
+
+        csv_data = df_for_csv.write_csv()
         full_object_name = f"{object_name}.csv"
         self._upload_bytes(csv_data.encode("utf-8"), full_object_name, "text/csv", metadata)
         return full_object_name
 
     def upload_json(self, data: Dict[str, Any], object_name: str, metadata: Optional[Dict[str, Any]] = None) -> str:
-        json_str = json.dumps(data, ensure_ascii=False, indent=2)
+        json_str = json.dumps(data, ensure_ascii=False, indent=2, default=_json_default)
         full_object_name = f"{object_name}.json"
         self._upload_bytes(json_str.encode("utf-8"), full_object_name, "application/json", metadata)
         return full_object_name
@@ -65,7 +81,7 @@ class MinioStorageClient:
             local_path.write_bytes(data)
             if metadata:
                 meta_path = local_path.with_suffix(local_path.suffix + ".meta")
-                meta_path.write_text(json.dumps(metadata, ensure_ascii=False, indent=2))
+                meta_path.write_text(json.dumps(metadata, ensure_ascii=False, indent=2, default=_json_default))
             logger.info(f"Saved to local: {local_path}")
             return
 

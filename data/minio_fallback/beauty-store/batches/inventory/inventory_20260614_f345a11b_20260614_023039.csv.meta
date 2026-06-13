@@ -1,0 +1,52 @@
+{
+  "batch_id": "inventory_20260614_f345a11b",
+  "data_type": "inventory",
+  "upload_time": "20260614_023039",
+  "row_count": "4",
+  "stats": {
+    "total_products": 4,
+    "total_value": 49130.0,
+    "categories": 3,
+    "stores": 3,
+    "low_stock_count": 2,
+    "near_expiry_count": 1,
+    "expired_count": 1
+  },
+  "source": "inventory_upload",
+  "anomalies": [
+    {
+      "type": "low_stock",
+      "product_code": "SKU002",
+      "product_name": "保湿面膜",
+      "stock_quantity": 3,
+      "store": "总店",
+      "message": "库存过低: 3 件"
+    },
+    {
+      "type": "low_stock",
+      "product_code": "SKU004",
+      "product_name": "美甲油胶",
+      "stock_quantity": 2,
+      "store": "海淀店",
+      "message": "库存过低: 2 件"
+    },
+    {
+      "type": "near_expiry",
+      "product_code": "SKU002",
+      "product_name": "保湿面膜",
+      "expiry_date": "2026-07-14",
+      "days_left": 30,
+      "store": "总店",
+      "message": "即将过期: 剩余 30 天"
+    },
+    {
+      "type": "expired",
+      "product_code": "SKU004",
+      "product_name": "美甲油胶",
+      "expiry_date": "2026-06-04",
+      "days_expired": 10,
+      "store": "海淀店",
+      "message": "已过期: 10 天"
+    }
+  ]
+}

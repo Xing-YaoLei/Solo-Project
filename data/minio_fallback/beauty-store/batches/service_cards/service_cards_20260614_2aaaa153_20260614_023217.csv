@@ -1,0 +1,5 @@
+id,card_code,card_name,category,total_sessions,used_sessions,remaining_sessions,original_price,sale_price,customer_id,customer_name,purchase_date,expiry_date,store
+1,CARD001,深层补水年卡,面部护理,48,12,36,3980.0,2980.0,C001,王芳,2026-05-15,2027-05-15,总店
+2,CARD002,抗衰护理季卡,面部护理,12,6,6,1680.0,1280.0,C002,李丽,2026-04-15,2027-04-15,总店
+3,CARD003,SPA放松年卡,身体护理,24,8,16,2980.0,2180.0,C003,张敏,2026-03-16,2027-03-16,朝阳店
+4,CARD004,美甲年卡,美甲美睫,24,10,14,1980.0,1580.0,C004,刘静,2026-04-30,2027-04-30,海淀店

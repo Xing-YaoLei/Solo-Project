@@ -1,0 +1,17 @@
+{
+  "batch_id": "appointments_20260614_85bd5f39",
+  "data_type": "appointments",
+  "upload_time": "20260614_023039",
+  "row_count": "8",
+  "stats": {
+    "total_appointments": 8,
+    "attended_count": 7,
+    "attendance_rate": 0.875,
+    "total_revenue": 2338.0,
+    "no_show_count": 0,
+    "member_count": 6,
+    "unique_technicians": 5
+  },
+  "source": "appointments_upload",
+  "anomalies": []
+}

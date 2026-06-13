@@ -1,0 +1,16 @@
+{
+  "batch_id": "service_cards_20260614_2aaaa153",
+  "data_type": "service_cards",
+  "upload_time": "20260614_023217",
+  "row_count": "4",
+  "stats": {
+    "total_cards": 4,
+    "total_sessions": 108,
+    "used_sessions": 36,
+    "remaining_sessions": 72,
+    "total_revenue": 8020.0,
+    "utilization_rate": 0.3333333333333333
+  },
+  "source": "cards_upload",
+  "anomalies": []
+}

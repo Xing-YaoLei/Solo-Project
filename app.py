@@ -12,7 +12,7 @@ from plotly.subplots import make_subplots
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from src.config import load_config, USER_ROLES, TECHNICIANS, STORES
+from src.config import load_config, USER_ROLES, TECHNICIANS, STORES, TECHNICIAN_STORE_MAP
 from src.etl.pipeline import ETLPipeline
 
 st.set_page_config(
@@ -388,7 +388,10 @@ def render_frontline_dashboard(technician: str):
     db = get_db()
     pipeline = get_pipeline()
 
+    technician_store = TECHNICIAN_STORE_MAP.get(technician, "总店")
+
     st.markdown(f'<div class="main-header">👩‍💼 我的工作台 - {technician}</div>', unsafe_allow_html=True)
+    st.info(f"您所在门店: **{technician_store}** | 数据范围: 仅本人消课率 + 本店耗材异常")
 
     end_date = date.today()
     start_date = end_date - timedelta(days=30)
@@ -503,9 +506,9 @@ def render_frontline_dashboard(technician: str):
     else:
         st.info("暂无消课率数据，请先导入预约数据")
 
-    st.markdown('<div class="section-title">⚠️ 耗材异常处理</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">⚠️ 耗材异常处理（本店）</div>', unsafe_allow_html=True)
 
-    anomalies = db.get_inventory_anomalies(unresolved_only=True)
+    anomalies = db.get_inventory_anomalies(store=technician_store, unresolved_only=True)
 
     anomaly_type_map = {
         "low_stock": "库存不足",
@@ -560,9 +563,12 @@ def render_frontline_dashboard(technician: str):
     else:
         st.success("暂无待处理异常")
 
-    st.markdown('<div class="section-title">➕ 登记新异常</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">➕ 登记新异常（本店商品）</div>', unsafe_allow_html=True)
 
-    inventory_df = db.query_to_df("SELECT id, product_code, product_name, category, stock_quantity, store FROM inventory WHERE anomaly_flag = FALSE")
+    inventory_df = db.execute_query(
+        "SELECT id, product_code, product_name, category, stock_quantity, store FROM inventory WHERE anomaly_flag = FALSE AND store = ?",
+        [technician_store]
+    )
     if not inventory_df.is_empty():
         col1, col2 = st.columns(2)
         with col1:
@@ -715,11 +721,18 @@ def main():
             st.session_state["technician"] = technician
 
         st.markdown("---")
-        page = st.radio(
-            "导航",
-            ["数据总览", "数据导入"] if role == "management" else ["我的工作台", "数据导入"],
-            index=0
-        )
+        if role == "management":
+            page = st.radio(
+                "导航",
+                ["数据总览", "数据导入"],
+                index=0
+            )
+        else:
+            page = st.radio(
+                "导航",
+                ["我的工作台"],
+                index=0
+            )
 
         st.markdown("---")
         if st.button("🔄 刷新数据"):
@@ -743,11 +756,11 @@ def main():
 
     if page == "数据总览" and role == "management":
         render_management_overview()
+    elif page == "数据导入" and role == "management":
+        render_data_import()
     elif page == "我的工作台" and role == "frontline":
         technician = st.session_state.get("technician", TECHNICIANS[0])
         render_frontline_dashboard(technician)
-    elif page == "数据导入":
-        render_data_import()
 
 
 if __name__ == "__main__":
