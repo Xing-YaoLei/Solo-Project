@@ -1,18 +1,17 @@
 import { generateBatchNo } from '@/utils/format';
-import { BatchType, ImportBatch, Inventory, Transaction, Review, HandOrder, InventoryUsage } from '@/types';
+import { BatchType, ImportBatch } from '@/types';
 import { mockStore } from './mockStore';
 import Papa from 'papaparse';
-
-const USE_MOCK = true;
+import { CONFIG } from './config';
 
 export async function createBatch(
   type: BatchType,
   fileName: string,
   importedBy: string
 ): Promise<ImportBatch> {
-  if (USE_MOCK) {
+  if (CONFIG.USE_MOCK) {
     const batch: ImportBatch = {
-      id: `batch-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      id: `batch-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
       batchNo: generateBatchNo(type),
       type,
       fileName,
@@ -36,7 +35,7 @@ export async function createBatch(
     },
   });
 
-  return batch as unknown as ImportBatch;
+  return normalizeBatch(batch);
 }
 
 export async function processBatch(
@@ -44,7 +43,7 @@ export async function processBatch(
   fileContent: string,
   type: BatchType
 ): Promise<ImportBatch> {
-  if (USE_MOCK) {
+  if (CONFIG.USE_MOCK) {
     mockStore.updateBatch(batchId, { status: 'PROCESSING' });
 
     try {
@@ -52,31 +51,22 @@ export async function processBatch(
       const records = parsed.data as any[];
 
       if (type === 'INVENTORY') {
-        await processInventoryBatch(batchId, records);
+        await processInventoryBatchMock(batchId, records);
       } else if (type === 'TRANSACTION') {
-        await processTransactionBatch(batchId, records);
+        await processTransactionBatchMock(batchId, records);
       } else if (type === 'REVIEW') {
-        await processReviewBatch(batchId, records);
+        await processReviewBatchMock(batchId, records);
       }
 
       const batch = mockStore.batches.find(b => b.id === batchId);
-      if (batch) {
-        mockStore.updateBatch(batchId, {
-          status: 'COMPLETED',
-          recordCount: records.length,
-        });
-        return { ...batch, status: 'COMPLETED', recordCount: records.length };
-      }
-      return {
-        id: batchId,
-        batchNo: generateBatchNo(type),
-        type,
-        fileName: 'mock.csv',
-        recordCount: records.length,
-        importedBy: '1',
-        importedAt: new Date(),
+      mockStore.updateBatch(batchId, {
         status: 'COMPLETED',
-      };
+        recordCount: records.length,
+      });
+
+      return batch
+        ? { ...batch, status: 'COMPLETED', recordCount: records.length }
+        : ({} as ImportBatch);
     } catch (error: any) {
       mockStore.updateBatch(batchId, {
         status: 'FAILED',
@@ -95,60 +85,56 @@ export async function processBatch(
   try {
     const parsed = (Papa.parse as any)(fileContent, { header: true, skipEmptyLines: true });
     const records = parsed.data as any[];
+    if (!records || records.length === 0) {
+      throw new Error('CSV 内容为空或格式错误');
+    }
 
     if (type === 'INVENTORY') {
-      await processInventoryBatch(batchId, records);
+      await processInventoryBatchPrisma(batchId, records);
     } else if (type === 'TRANSACTION') {
-      await processTransactionBatch(batchId, records);
+      await processTransactionBatchPrisma(batchId, records);
     } else if (type === 'REVIEW') {
-      await processReviewBatch(batchId, records);
+      await processReviewBatchPrisma(batchId, records);
     }
 
     const batch = await prisma.importBatch.update({
       where: { id: batchId },
-      data: {
-        status: 'COMPLETED',
-        recordCount: records.length,
-      },
+      data: { status: 'COMPLETED', recordCount: records.length },
     });
-
-    return batch as unknown as ImportBatch;
+    return normalizeBatch(batch);
   } catch (error: any) {
     await prisma.importBatch.update({
       where: { id: batchId },
-      data: {
-        status: 'FAILED',
-        errorMessage: error.message,
-      },
+      data: { status: 'FAILED', errorMessage: error.message },
     });
     throw error;
   }
 }
 
-async function processInventoryBatch(batchId: string, records: any[]): Promise<void> {
+async function processInventoryBatchMock(batchId: string, records: any[]): Promise<void> {
   const technicians = mockStore.users.filter(u => u.role === 'TECHNICIAN');
+  if (technicians.length === 0) throw new Error('没有技师用户，请先创建技师账号');
 
-  const inventories: Inventory[] = records.map((r, index) => ({
-    id: `inv-${batchId}-${index}`,
-    batchId,
-    skuCode: r.sku_code || r.skuCode || `SKU-${Date.now()}-${index}`,
-    productName: r.product_name || r.productName || `产品${index + 1}`,
-    category: r.category || '未分类',
-    unit: r.unit || '个',
-    stockQuantity: parseFloat(r.stock_quantity || r.stockQuantity || 0),
-    unitPrice: parseFloat(r.unit_price || r.unitPrice || 0),
-    importedAt: new Date(),
-  }));
+  for (let i = 0; i < records.length; i++) {
+    const r = records[i];
+    const invId = `inv-${batchId}-${i}`;
+    const inv: any = {
+      id: invId,
+      batchId,
+      skuCode: r.sku_code || r.skuCode || `SKU-${Date.now()}-${i}`,
+      productName: r.product_name || r.productName || `产品${i + 1}`,
+      category: r.category || '未分类',
+      unit: r.unit || '个',
+      stockQuantity: parseFloat(r.stock_quantity || r.stockQuantity || '0'),
+      unitPrice: parseFloat(r.unit_price || r.unitPrice || '0'),
+      importedAt: new Date(),
+    };
+    mockStore.addInventories([inv]);
 
-  mockStore.addInventories(inventories);
-
-  for (const inv of inventories) {
-    const techIdx = mockStore.inventories.indexOf(inv) % technicians.length;
-    const tech = technicians[techIdx] || technicians[0];
-    const handNo = `H${Date.now()}-${Math.random().toString(36).substring(2, 8)}`.toUpperCase();
-
-    const order: HandOrder = {
-      id: `order-${inv.id}`,
+    const tech = technicians[i % technicians.length];
+    const handNo = `H${Date.now()}${i}`.toUpperCase();
+    const order: any = {
+      id: `order-${invId}`,
       handNo,
       technicianId: tech.id,
       serviceItems: [inv.productName],
@@ -161,60 +147,55 @@ async function processInventoryBatch(batchId: string, records: any[]): Promise<v
     };
     mockStore.upsertOrder(order);
 
-    const usage: InventoryUsage = {
-      id: `usage-${inv.id}`,
+    mockStore.addInventoryUsage({
+      id: `usage-${invId}`,
       orderId: order.id,
       inventoryId: inv.id,
       quantity: Math.min(inv.stockQuantity, 1),
       isAbnormal: false,
       inventory: inv,
-    };
-    mockStore.addInventoryUsage(usage);
+    });
   }
 }
 
-async function processTransactionBatch(batchId: string, records: any[]): Promise<void> {
+async function processTransactionBatchMock(batchId: string, records: any[]): Promise<void> {
   const technicians = mockStore.users.filter(u => u.role === 'TECHNICIAN');
+  if (technicians.length === 0) throw new Error('没有技师用户，请先创建技师账号');
 
-  const transactions: Transaction[] = records.map((r, index) => {
-    const techId = r.technician_id || r.technicianId || technicians[index % technicians.length].id;
-    const tech = mockStore.getUserById(techId);
-    return {
-      id: `trans-${batchId}-${index}`,
+  for (let i = 0; i < records.length; i++) {
+    const r = records[i];
+    const techId = r.technician_id || r.technicianId || technicians[i % technicians.length].id;
+    const tech = mockStore.getUserById(techId) || technicians[0];
+    const trans: any = {
+      id: `trans-${batchId}-${i}`,
       batchId,
-      orderNo: r.order_no || r.orderNo || `ORD-${Date.now()}-${index}`,
-      handNo: r.hand_no || r.handNo || `H${Date.now()}-${index}`,
+      orderNo: r.order_no || r.orderNo || `ORD-${Date.now()}-${i}`,
+      handNo: r.hand_no || r.handNo || `H${Date.now()}${i}`,
       technicianId: techId,
       serviceItem: r.service_item || r.serviceItem || '常规服务',
-      amount: parseFloat(r.amount || 0),
+      amount: parseFloat(r.amount || '0'),
       paymentMethod: r.payment_method || r.paymentMethod || '微信',
       transactionTime: new Date(r.transaction_time || r.transactionTime || Date.now()),
       status: 'PAID',
       technician: tech,
     };
-  });
+    mockStore.addTransactions([trans]);
 
-  mockStore.addTransactions(transactions);
-
-  for (const trans of transactions) {
-    const tech = mockStore.getUserById(trans.technicianId);
     const existingOrder = mockStore.orders.find(o => o.handNo === trans.handNo);
-
     if (existingOrder) {
-      const existingTrans = existingOrder.transactions || [];
-      const newTotal = existingTrans.reduce((s, t) => s + t.amount, 0) + trans.amount;
+      const newTotal = (existingOrder.transactions || []).reduce((s: number, t: any) => s + t.amount, 0) + trans.amount;
       mockStore.updateOrderByHandNo(trans.handNo, {
         status: 'PAID',
         totalAmount: newTotal,
         serviceItems: [...(existingOrder.serviceItems || []), trans.serviceItem],
         completedAt: trans.transactionTime,
-        transactions: [...existingTrans, trans],
+        transactions: [...(existingOrder.transactions || []), trans],
       });
     } else {
-      const order: HandOrder = {
+      mockStore.upsertOrder({
         id: `order-${trans.id}`,
         handNo: trans.handNo,
-        technicianId: trans.technicianId,
+        technicianId: techId,
         serviceItems: [trans.serviceItem],
         totalAmount: trans.amount,
         status: 'PAID',
@@ -223,29 +204,32 @@ async function processTransactionBatch(batchId: string, records: any[]): Promise
         technician: tech,
         transactions: [trans],
         inventoryItems: [],
-      };
-      mockStore.upsertOrder(order);
+      } as any);
     }
   }
 }
 
-async function processReviewBatch(batchId: string, records: any[]): Promise<void> {
-  const reviews: Review[] = records.map((r, index) => ({
-    id: `review-${batchId}-${index}`,
-    batchId,
-    orderNo: r.order_no || r.orderNo || `ORD-${Date.now()}-${index}`,
-    rating: parseInt(r.rating || 5),
-    content: r.content || '',
-    hasBeforePhoto: (r.has_before_photo || r.hasBeforePhoto) === 'true' || r.has_before_photo === true,
-    hasAfterPhoto: (r.has_after_photo || r.hasAfterPhoto) === 'true' || r.has_after_photo === true,
-    followUpScript: r.follow_up_script || r.followUpScript || null,
-    responded: (r.responded || 'false') === 'true' || r.responded === true,
-    reviewedAt: new Date(r.reviewed_at || r.reviewedAt || Date.now()),
-  }));
+async function processReviewBatchMock(batchId: string, records: any[]): Promise<void> {
+  const technicians = mockStore.users.filter(u => u.role === 'TECHNICIAN');
+  if (technicians.length === 0) throw new Error('没有技师用户，请先创建技师账号');
 
-  mockStore.addReviews(reviews);
+  for (let i = 0; i < records.length; i++) {
+    const r = records[i];
+    const toBool = (v: any) => v === true || v === 'true' || v === '1' || v === 1;
+    const review: any = {
+      id: `review-${batchId}-${i}`,
+      batchId,
+      orderNo: r.order_no || r.orderNo || `ORD-${Date.now()}-${i}`,
+      rating: parseInt(r.rating || '5', 10),
+      content: r.content || null,
+      hasBeforePhoto: toBool(r.has_before_photo || r.hasBeforePhoto),
+      hasAfterPhoto: toBool(r.has_after_photo || r.hasAfterPhoto),
+      followUpScript: r.follow_up_script || r.followUpScript || null,
+      responded: toBool(r.responded),
+      reviewedAt: new Date(r.reviewed_at || r.reviewedAt || Date.now()),
+    };
+    mockStore.addReviews([review]);
 
-  for (const review of reviews) {
     const matchedTrans = mockStore.transactions.find(t => t.orderNo === review.orderNo);
     if (matchedTrans) {
       mockStore.updateOrderByHandNo(matchedTrans.handNo, {
@@ -253,10 +237,9 @@ async function processReviewBatch(batchId: string, records: any[]): Promise<void
         review,
       });
     } else {
-      const techs = mockStore.users.filter(u => u.role === 'TECHNICIAN');
-      const tech = techs[0];
-      const handNo = `H-REV-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`.toUpperCase();
-      const order: HandOrder = {
+      const tech = technicians[i % technicians.length];
+      const handNo = `H-REV-${Date.now()}${i}`.toUpperCase();
+      mockStore.upsertOrder({
         id: `order-review-${review.id}`,
         handNo,
         technicianId: tech.id,
@@ -268,10 +251,215 @@ async function processReviewBatch(batchId: string, records: any[]): Promise<void
         technician: tech,
         transactions: [],
         review,
-      };
-      mockStore.upsertOrder(order);
+        inventoryItems: [],
+      } as any);
     }
   }
+}
+
+async function processInventoryBatchPrisma(batchId: string, records: any[]): Promise<void> {
+  const { prisma, Prisma } = await import('@/lib/prisma');
+  const technicians = await prisma.user.findMany({ where: { role: 'TECHNICIAN' } });
+  if (technicians.length === 0) throw new Error('没有技师用户，请先创建技师账号');
+
+  for (let i = 0; i < records.length; i++) {
+    const r = records[i];
+    const skuCode = r.sku_code || r.skuCode || `SKU-${Date.now()}-${i}`;
+    const productName = r.product_name || r.productName || `产品${i + 1}`;
+    const category = r.category || '未分类';
+    const unit = r.unit || '个';
+    const stockQty = new Prisma.Decimal(parseFloat(r.stock_quantity || r.stockQuantity || '0'));
+    const unitPrice = new Prisma.Decimal(parseFloat(r.unit_price || r.unitPrice || '0'));
+
+    await prisma.$transaction(async (tx: any) => {
+      const inventory = await tx.inventory.create({
+        data: {
+          batchId,
+          skuCode,
+          productName,
+          category,
+          unit,
+          stockQuantity: stockQty,
+          unitPrice,
+        },
+      });
+
+      const tech = technicians[i % technicians.length];
+      const handNo = `H${Date.now()}${i}`.toUpperCase();
+
+      await tx.handOrder.upsert({
+        where: { handNo },
+        update: {},
+        create: {
+          handNo,
+          technicianId: tech.id,
+          serviceItems: [productName],
+          totalAmount: unitPrice,
+          status: 'CREATED',
+        },
+      });
+
+      const order = await tx.handOrder.findUnique({ where: { handNo } });
+      if (order) {
+        await tx.inventoryUsage.create({
+          data: {
+            orderId: order.id,
+            inventoryId: inventory.id,
+            quantity: new Prisma.Decimal(Math.min(parseFloat(r.stock_quantity || r.stockQuantity || '1'), 1)),
+            isAbnormal: false,
+          },
+        });
+      }
+    });
+  }
+}
+
+async function processTransactionBatchPrisma(batchId: string, records: any[]): Promise<void> {
+  const { prisma, Prisma } = await import('@/lib/prisma');
+  const technicians = await prisma.user.findMany({ where: { role: 'TECHNICIAN' } });
+  if (technicians.length === 0) throw new Error('没有技师用户，请先创建技师账号');
+
+  for (let i = 0; i < records.length; i++) {
+    const r = records[i];
+    const techId = r.technician_id || r.technicianId || technicians[i % technicians.length].id;
+    const orderNo = r.order_no || r.orderNo || `ORD-${Date.now()}-${i}`;
+    const handNo = r.hand_no || r.handNo || `H${Date.now()}${i}`;
+    const serviceItem = r.service_item || r.serviceItem || '常规服务';
+    const amount = new Prisma.Decimal(parseFloat(r.amount || '0'));
+    const paymentMethod = r.payment_method || r.paymentMethod || '微信';
+    const transactionTime = new Date(r.transaction_time || r.transactionTime || Date.now());
+
+    await prisma.$transaction(async (tx: any) => {
+      await tx.transaction.upsert({
+        where: { orderNo },
+        update: {
+          handNo,
+          technicianId: techId,
+          serviceItem,
+          amount,
+          paymentMethod,
+          transactionTime,
+          status: 'PAID',
+        },
+        create: {
+          batchId,
+          orderNo,
+          handNo,
+          technicianId: techId,
+          serviceItem,
+          amount,
+          paymentMethod,
+          transactionTime,
+          status: 'PAID',
+        },
+      });
+
+      const existing = await tx.handOrder.findUnique({
+        where: { handNo },
+        include: { transactions: true },
+      });
+
+      if (existing) {
+        const prevTotal = existing.transactions.reduce(
+          (s: number, t: any) => s + t.amount.toNumber(),
+          0
+        );
+        await tx.handOrder.update({
+          where: { handNo },
+          data: {
+            status: 'PAID',
+            totalAmount: new Prisma.Decimal(prevTotal + parseFloat(r.amount || '0')),
+            serviceItems: [...(existing.serviceItems || []), serviceItem],
+            completedAt: transactionTime,
+          },
+        });
+      } else {
+        await tx.handOrder.create({
+          data: {
+            handNo,
+            technicianId: techId,
+            serviceItems: [serviceItem],
+            totalAmount: amount,
+            status: 'PAID',
+            completedAt: transactionTime,
+          },
+        });
+      }
+    });
+  }
+}
+
+async function processReviewBatchPrisma(batchId: string, records: any[]): Promise<void> {
+  const { prisma } = await import('@/lib/prisma');
+  const technicians = await prisma.user.findMany({ where: { role: 'TECHNICIAN' } });
+  if (technicians.length === 0) throw new Error('没有技师用户，请先创建技师账号');
+
+  const toBool = (v: any) => v === true || v === 'true' || v === '1' || v === 1;
+
+  for (let i = 0; i < records.length; i++) {
+    const r = records[i];
+    const orderNo = r.order_no || r.orderNo || `ORD-${Date.now()}-${i}`;
+
+    await prisma.$transaction(async (tx: any) => {
+      await tx.review.upsert({
+        where: { orderNo },
+        update: {
+          rating: parseInt(r.rating || '5', 10),
+          content: r.content || null,
+          hasBeforePhoto: toBool(r.has_before_photo || r.hasBeforePhoto),
+          hasAfterPhoto: toBool(r.has_after_photo || r.hasAfterPhoto),
+          followUpScript: r.follow_up_script || r.followUpScript || null,
+          responded: toBool(r.responded),
+          reviewedAt: new Date(r.reviewed_at || r.reviewedAt || Date.now()),
+        },
+        create: {
+          batchId,
+          orderNo,
+          rating: parseInt(r.rating || '5', 10),
+          content: r.content || null,
+          hasBeforePhoto: toBool(r.has_before_photo || r.hasBeforePhoto),
+          hasAfterPhoto: toBool(r.has_after_photo || r.hasAfterPhoto),
+          followUpScript: r.follow_up_script || r.followUpScript || null,
+          responded: toBool(r.responded),
+          reviewedAt: new Date(r.reviewed_at || r.reviewedAt || Date.now()),
+        },
+      });
+
+      const matchedTrans = await tx.transaction.findUnique({ where: { orderNo } });
+      if (matchedTrans) {
+        await tx.handOrder.update({
+          where: { handNo: matchedTrans.handNo },
+          data: { status: 'REVIEWED' },
+        });
+      } else {
+        const tech = technicians[i % technicians.length];
+        const handNo = `H-REV-${Date.now()}${i}`.toUpperCase();
+        await tx.handOrder.create({
+          data: {
+            handNo,
+            technicianId: tech.id,
+            serviceItems: ['服务项目'],
+            status: 'REVIEWED',
+            completedAt: new Date(r.reviewed_at || r.reviewedAt || Date.now()),
+          },
+        });
+      }
+    });
+  }
+}
+
+function normalizeBatch(raw: any): ImportBatch {
+  return {
+    id: raw.id,
+    batchNo: raw.batchNo,
+    type: raw.type,
+    fileName: raw.fileName,
+    recordCount: raw.recordCount,
+    importedBy: raw.importedBy,
+    importedAt: raw.importedAt,
+    status: raw.status,
+    errorMessage: raw.errorMessage ?? undefined,
+  };
 }
 
 export async function getImportBatches(
@@ -279,9 +467,10 @@ export async function getImportBatches(
   page = 1,
   pageSize = 10
 ): Promise<{ batches: ImportBatch[]; total: number }> {
-  if (USE_MOCK) {
-    const all = mockStore.batches;
-    const filtered = type ? all.filter(b => b.type === type) : all;
+  if (CONFIG.USE_MOCK) {
+    const filtered = type
+      ? mockStore.batches.filter(b => b.type === type)
+      : mockStore.batches;
     return {
       batches: filtered.slice((page - 1) * pageSize, page * pageSize),
       total: filtered.length,
@@ -290,7 +479,7 @@ export async function getImportBatches(
 
   const { prisma } = await import('@/lib/prisma');
   const where = type ? { type } : {};
-  const [batches, total] = await Promise.all([
+  const [rawBatches, total] = await Promise.all([
     prisma.importBatch.findMany({
       where,
       include: { importer: true },
@@ -300,8 +489,7 @@ export async function getImportBatches(
     }),
     prisma.importBatch.count({ where }),
   ]);
-
-  return { batches: batches as unknown as ImportBatch[], total };
+  return { batches: rawBatches.map(normalizeBatch), total };
 }
 
 export async function parseCSVFile(file: File): Promise<any[]> {

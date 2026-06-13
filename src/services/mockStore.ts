@@ -6,23 +6,12 @@ import {
   Review,
   HandOrder,
   InventoryUsage,
-  BatchType,
-  BatchStatus,
-  OrderStatus,
 } from '@/types';
-import { MOCK_TECHNICIANS, MOCK_INVENTORIES } from './mockData';
-
-const MANAGER_USER: User = {
-  id: '1',
-  email: 'manager@beauty.com',
-  name: '店长',
-  role: 'MANAGER',
-  createdAt: new Date(),
-};
+import { MOCK_MANAGER, MOCK_TECHNICIANS, MOCK_INVENTORIES } from './mockConstants';
 
 class MockStore {
   private static instance: MockStore;
-  private _users: User[] = [MANAGER_USER, ...MOCK_TECHNICIANS];
+  private _users: User[] = [MOCK_MANAGER, ...MOCK_TECHNICIANS];
   private _batches: ImportBatch[] = [];
   private _inventories: Inventory[] = [...MOCK_INVENTORIES];
   private _transactions: Transaction[] = [];

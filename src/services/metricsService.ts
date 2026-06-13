@@ -1,4 +1,3 @@
-import { prisma } from '@/lib/prisma';
 import {
   DashboardMetrics,
   FunnelData,
@@ -9,7 +8,6 @@ import {
   FollowupTrend,
   TechnicianMetrics,
   HandOrder,
-  InventoryUsage,
 } from '@/types';
 import {
   getDashboardMetrics,
@@ -20,23 +18,22 @@ import {
   getInventoryRank,
   getFollowupTrend,
   getTechnicianMetrics,
-  generateMockHandOrders,
 } from './mockData';
+import { CONFIG } from './config';
 
-const USE_MOCK = true;
+const STATUS_ORDER = ['CREATED', 'IN_SERVICE', 'COMPLETED', 'PAID', 'REVIEWED'];
 
 export async function calculateDashboardMetrics(
   startDate?: Date,
   endDate?: Date
 ): Promise<DashboardMetrics> {
-  if (USE_MOCK) return getDashboardMetrics();
+  if (CONFIG.USE_MOCK) return getDashboardMetrics();
 
-  const where = startDate && endDate ? {
-    createdAt: {
-      gte: startDate,
-      lte: endDate,
-    },
-  } : {};
+  const { prisma } = await import('@/lib/prisma');
+  const where: any = {};
+  if (startDate && endDate) {
+    where.createdAt = { gte: startDate, lte: endDate };
+  }
 
   const orders = await prisma.handOrder.findMany({
     where,
@@ -44,19 +41,17 @@ export async function calculateDashboardMetrics(
   });
 
   const totalRevenue = orders.reduce(
-    (sum: number, order: any) => sum + order.transactions.reduce((s: number, t: any) => s + t.amount.toNumber(), 0),
+    (sum: number, o: any) => sum + o.transactions.reduce((s: number, t: any) => s + t.amount.toNumber(), 0),
     0
   );
   const paidOrders = orders.filter((o: any) => o.status === 'PAID' || o.status === 'REVIEWED').length;
   const totalOrders = orders.length;
-  const avgOrderValue = paidOrders > 0 ? totalRevenue / paidOrders : 0;
-  const completionRate = totalOrders > 0 ? paidOrders / totalOrders : 0;
 
   return {
     todayRevenue: totalRevenue,
     todayOrders: totalOrders,
-    avgOrderValue,
-    completionRate,
+    avgOrderValue: paidOrders > 0 ? totalRevenue / paidOrders : 0,
+    completionRate: totalOrders > 0 ? paidOrders / totalOrders : 0,
     yoyGrowth: 0.125,
   };
 }
@@ -65,15 +60,13 @@ export async function calculateFunnelData(
   startDate?: Date,
   endDate?: Date
 ): Promise<FunnelData[]> {
-  if (USE_MOCK) return getFunnelData();
+  if (CONFIG.USE_MOCK) return getFunnelData();
 
-  const where = startDate && endDate ? {
-    createdAt: {
-      gte: startDate,
-      lte: endDate,
-    },
-  } : {};
-
+  const { prisma } = await import('@/lib/prisma');
+  const where: any = {};
+  if (startDate && endDate) {
+    where.createdAt = { gte: startDate, lte: endDate };
+  }
   const orders = await prisma.handOrder.findMany({ where });
 
   const stages = [
@@ -86,13 +79,8 @@ export async function calculateFunnelData(
 
   const result: FunnelData[] = [];
   let prevValue = orders.length;
-
   stages.forEach((stage, index) => {
-    const value = orders.filter((o: any) => {
-      const statusIndex = ['CREATED', 'IN_SERVICE', 'COMPLETED', 'PAID', 'REVIEWED'].indexOf(o.status);
-      return statusIndex >= index;
-    }).length;
-
+    const value = orders.filter((o: any) => STATUS_ORDER.indexOf(o.status) >= index).length;
     result.push({
       stage: stage.label,
       value,
@@ -100,7 +88,6 @@ export async function calculateFunnelData(
     });
     prevValue = value;
   });
-
   return result;
 }
 
@@ -109,82 +96,69 @@ export async function getTechnicianRanking(
   endDate?: Date,
   sortBy: 'revenue' | 'orders' | 'rating' = 'revenue'
 ): Promise<TechnicianRank[]> {
-  if (USE_MOCK) return getTechnicianRank();
+  if (CONFIG.USE_MOCK) {
+    const ranks = getTechnicianRank();
+    if (sortBy === 'orders') return [...ranks].sort((a, b) => b.orderCount - a.orderCount);
+    if (sortBy === 'rating') return [...ranks].sort((a, b) => b.avgRating - a.avgRating);
+    return ranks;
+  }
 
-  const where = startDate && endDate ? {
-    transactionTime: {
-      gte: startDate,
-      lte: endDate,
-    },
-  } : {};
+  const { prisma } = await import('@/lib/prisma');
+  const where: any = {};
+  if (startDate && endDate) {
+    where.transactions = {
+      some: { transactionTime: { gte: startDate, lte: endDate } },
+    };
+  }
 
   const technicians = await prisma.user.findMany({
     where: { role: 'TECHNICIAN' },
     include: {
       orders: {
         include: {
-          transactions: {
-            include: {
-              review: true,
-            },
-          },
+          transactions: { include: { review: true } },
         },
       },
     },
   });
 
-  const ranks: TechnicianRank[] = technicians.map((tech: any) => {
-    const techOrders = tech.orders.filter((o: any) => {
-      if (!where.transactionTime) return true;
-      return o.transactions.some(
-        (t: any) => t.transactionTime >= where.transactionTime!.gte && t.transactionTime <= where.transactionTime!.lte
-      );
-    });
-
-    const totalRevenue = techOrders.reduce(
+  return technicians.map((tech: any) => {
+    const totalRevenue = tech.orders.reduce(
       (sum: number, o: any) => sum + o.transactions.reduce((s: number, t: any) => s + t.amount.toNumber(), 0),
       0
     );
-    const avgRating = techOrders.length > 0
-      ? techOrders.reduce((sum: number, o: any) => {
+    const avgRating = tech.orders.length > 0
+      ? tech.orders.reduce((sum: number, o: any) => {
           const review = o.transactions.find((t: any) => t.review)?.review;
           return sum + (review?.rating || 0);
-        }, 0) / techOrders.length
+        }, 0) / tech.orders.length
       : 0;
-
     return {
       id: tech.id,
       name: tech.name,
-      avatarUrl: tech.avatarUrl || undefined,
       totalRevenue,
-      orderCount: techOrders.length,
+      orderCount: tech.orders.length,
       avgRating,
     };
-  });
-
-  ranks.sort((a, b) => {
-    if (sortBy === 'revenue') return b.totalRevenue - a.totalRevenue;
+  }).sort((a, b) => {
     if (sortBy === 'orders') return b.orderCount - a.orderCount;
-    return b.avgRating - a.avgRating;
+    if (sortBy === 'rating') return b.avgRating - a.avgRating;
+    return b.totalRevenue - a.totalRevenue;
   });
-
-  return ranks;
 }
 
 export async function getConsumptionDistribution(
-  dimension: 'item' | 'amount' | 'time',
+  dimension: 'item' | 'amount' | 'time' = 'item',
   startDate?: Date,
   endDate?: Date
 ): Promise<ConsumptionData[]> {
-  if (USE_MOCK) return getConsumptionData(dimension);
+  if (CONFIG.USE_MOCK) return getConsumptionData(dimension);
 
-  const where = startDate && endDate ? {
-    transactionTime: {
-      gte: startDate,
-      lte: endDate,
-    },
-  } : {};
-
+  const { prisma } = await import('@/lib/prisma');
+  const where: any = {};
+  if (startDate && endDate) {
+    where.transactionTime = { gte: startDate, lte: endDate };
+  }
   const transactions = await prisma.transaction.findMany({ where });
 
   if (dimension === 'item') {
@@ -192,7 +166,9 @@ export async function getConsumptionDistribution(
     transactions.forEach((t: any) => {
       grouped[t.serviceItem] = (grouped[t.serviceItem] || 0) + 1;
     });
-    return Object.entries(grouped).map(([name, count]) => ({ name, value: count, count }));
+    return Object.entries(grouped)
+      .map(([name, count]) => ({ name, value: count, count }))
+      .sort((a, b) => b.value - a.value);
   }
 
   if (dimension === 'amount') {
@@ -203,10 +179,12 @@ export async function getConsumptionDistribution(
       { name: '1500-2000元', min: 1500, max: 2000 },
       { name: '2000元以上', min: 2000, max: Infinity },
     ];
-
     return ranges.map(range => {
       const count = transactions.filter(
-        (t: any) => t.amount.toNumber() >= range.min && t.amount.toNumber() < range.max
+        (t: any) => {
+          const amt = t.amount.toNumber();
+          return amt >= range.min && amt < range.max;
+        }
       ).length;
       return { name: range.name, value: count, count };
     });
@@ -220,7 +198,6 @@ export async function getConsumptionDistribution(
     { name: '16:00-18:00', min: 16, max: 18 },
     { name: '18:00后', min: 18, max: 24 },
   ];
-
   return timeRanges.map(range => {
     const count = transactions.filter((t: any) => {
       const hour = t.transactionTime.getHours();
@@ -234,15 +211,13 @@ export async function getPhotoFunnel(
   startDate?: Date,
   endDate?: Date
 ): Promise<PhotoFunnelData[]> {
-  if (USE_MOCK) return getPhotoFunnelData();
+  if (CONFIG.USE_MOCK) return getPhotoFunnelData();
 
-  const where = startDate && endDate ? {
-    reviewedAt: {
-      gte: startDate,
-      lte: endDate,
-    },
-  } : {};
-
+  const { prisma } = await import('@/lib/prisma');
+  const where: any = {};
+  if (startDate && endDate) {
+    where.reviewedAt = { gte: startDate, lte: endDate };
+  }
   const reviews = await prisma.review.findMany({ where });
 
   const stages = [
@@ -263,16 +238,10 @@ export async function getInventoryRanking(
   endDate?: Date,
   limit = 10
 ): Promise<InventoryRank[]> {
-  if (USE_MOCK) return getInventoryRank();
+  if (CONFIG.USE_MOCK) return getInventoryRank().slice(0, limit);
 
-  const where = startDate && endDate ? {
-    order: {
-      createdAt: {
-        gte: startDate,
-        lte: endDate,
-      },
-    },
-  } : {};
+  const { prisma } = await import('@/lib/prisma');
+  const where: any = {};
 
   const usages = await prisma.inventoryUsage.findMany({
     where,
@@ -280,53 +249,42 @@ export async function getInventoryRanking(
   });
 
   const grouped: Record<string, { product: any; totalUsed: number; abnormalCount: number }> = {};
-
   usages.forEach((usage: any) => {
     const invId = usage.inventoryId;
     if (!grouped[invId]) {
-      grouped[invId] = {
-        product: usage.inventory,
-        totalUsed: 0,
-        abnormalCount: 0,
-      };
+      grouped[invId] = { product: usage.inventory, totalUsed: 0, abnormalCount: 0 };
     }
     grouped[invId].totalUsed += usage.quantity.toNumber();
-    if (usage.isAbnormal) {
-      grouped[invId].abnormalCount += 1;
-    }
+    if (usage.isAbnormal) grouped[invId].abnormalCount += 1;
   });
 
-  const result: InventoryRank[] = Object.values(grouped).map(item => ({
-    id: item.product.id,
-    productName: item.product.productName,
-    category: item.product.category,
-    totalUsed: item.totalUsed,
-    abnormalCount: item.abnormalCount,
-    abnormalRate: item.totalUsed > 0 ? item.abnormalCount / item.totalUsed : 0,
-  }));
-
-  result.sort((a, b) => b.totalUsed - a.totalUsed);
-  return result.slice(0, limit);
+  return Object.values(grouped)
+    .map(item => ({
+      id: item.product.id,
+      productName: item.product.productName,
+      category: item.product.category,
+      totalUsed: item.totalUsed,
+      abnormalCount: item.abnormalCount,
+      abnormalRate: item.totalUsed > 0 ? item.abnormalCount / item.totalUsed : 0,
+    }))
+    .sort((a, b) => b.totalUsed - a.totalUsed)
+    .slice(0, limit);
 }
 
 export async function getFollowupScriptTrend(
   startDate?: Date,
   endDate?: Date
 ): Promise<FollowupTrend[]> {
-  if (USE_MOCK) return getFollowupTrend();
+  if (CONFIG.USE_MOCK) return getFollowupTrend();
 
-  const where = startDate && endDate ? {
-    reviewedAt: {
-      gte: startDate,
-      lte: endDate,
-    },
-    followUpScript: { not: null },
-  } : { followUpScript: { not: null } };
-
+  const { prisma } = await import('@/lib/prisma');
+  const where: any = { NOT: [{ followUpScript: null }, { followUpScript: '' }] };
+  if (startDate && endDate) {
+    where.reviewedAt = { gte: startDate, lte: endDate };
+  }
   const reviews = await prisma.review.findMany({ where });
 
   const grouped: Record<string, Record<string, { total: number; responded: number }>> = {};
-
   reviews.forEach((review: any) => {
     const date = review.reviewedAt.toISOString().slice(5, 10);
     const script = review.followUpScript!;
@@ -347,35 +305,26 @@ export async function getFollowupScriptTrend(
       });
     });
   });
-
   result.sort((a, b) => a.date.localeCompare(b.date));
   return result;
 }
 
-export async function getTechnicianPersonalMetrics(
+export async function calculateTechnicianMetrics(
   technicianId: string,
   startDate?: Date,
   endDate?: Date
 ): Promise<TechnicianMetrics> {
-  if (USE_MOCK) return getTechnicianMetrics(technicianId);
+  if (CONFIG.USE_MOCK) return getTechnicianMetrics(technicianId);
 
-  const where = startDate && endDate ? {
-    technicianId,
-    createdAt: {
-      gte: startDate,
-      lte: endDate,
-    },
-  } : { technicianId };
+  const { prisma } = await import('@/lib/prisma');
+  const where: any = { technicianId };
+  if (startDate && endDate) {
+    where.createdAt = { gte: startDate, lte: endDate };
+  }
 
   const orders = await prisma.handOrder.findMany({
     where,
-    include: {
-      transactions: {
-        include: {
-          review: true,
-        },
-      },
-    },
+    include: { transactions: { include: { review: true } } },
   });
 
   const totalRevenue = orders.reduce(
@@ -389,14 +338,13 @@ export async function getTechnicianPersonalMetrics(
         return sum + (review?.rating || 0);
       }, 0) / orders.length
     : 0;
-  const completionRate = orders.length > 0 ? completedOrders / orders.length : 0;
 
   return {
     totalRevenue,
     orderCount: orders.length,
     avgOrderValue: orders.length > 0 ? totalRevenue / orders.length : 0,
     avgRating,
-    completionRate,
+    completionRate: orders.length > 0 ? completedOrders / orders.length : 0,
   };
 }
 
@@ -405,34 +353,36 @@ export async function getTechnicianOrders(
   startDate?: Date,
   endDate?: Date
 ): Promise<HandOrder[]> {
-  if (USE_MOCK) {
-    const allOrders = generateMockHandOrders();
-    return allOrders.filter(o => o.technicianId === technicianId);
+  if (CONFIG.USE_MOCK) {
+    const data = (await import('./mockData')).generateMockHandOrders();
+    return data.filter(o => o.technicianId === technicianId);
   }
 
-  const where = startDate && endDate ? {
-    technicianId,
-    createdAt: {
-      gte: startDate,
-      lte: endDate,
-    },
-  } : { technicianId };
+  const { prisma } = await import('@/lib/prisma');
+  const where: any = { technicianId };
+  if (startDate && endDate) {
+    where.createdAt = { gte: startDate, lte: endDate };
+  }
 
-  const orders = await prisma.handOrder.findMany({
+  const raw = await prisma.handOrder.findMany({
     where,
     include: {
       technician: true,
-      transactions: {
-        include: {
-          review: true,
-        },
-      },
+      transactions: { include: { review: true } },
       inventoryItems: { include: { inventory: true } },
     },
     orderBy: { createdAt: 'desc' },
   });
 
-  return orders as unknown as HandOrder[];
+  return raw.map((o: any) => ({
+    ...o,
+    totalAmount: o.totalAmount.toNumber(),
+    transactions: o.transactions.map((t: any) => ({ ...t, amount: t.amount.toNumber() })),
+    inventoryItems: o.inventoryItems.map((u: any) => ({
+      ...u,
+      quantity: u.quantity.toNumber(),
+    })),
+  }));
 }
 
 export async function markInventoryAbnormal(
@@ -440,30 +390,28 @@ export async function markInventoryAbnormal(
   isAbnormal: boolean,
   note?: string,
   notedBy?: string
-): Promise<InventoryUsage> {
-  if (USE_MOCK) {
-    return {
-      id: usageId,
-      orderId: '',
-      inventoryId: '',
-      quantity: 0,
+): Promise<void> {
+  if (CONFIG.USE_MOCK) {
+    const { mockStore } = await import('./mockStore');
+    mockStore.updateInventoryUsage(usageId, {
       isAbnormal,
       abnormalNote: note,
       notedBy,
       notedAt: new Date(),
-    };
+    });
+    return;
   }
 
-  const updated = await prisma.inventoryUsage.update({
+  const { prisma } = await import('@/lib/prisma');
+  await prisma.inventoryUsage.update({
     where: { id: usageId },
     data: {
       isAbnormal,
-      abnormalNote: note,
-      notedBy,
+      abnormalNote: note ?? null,
+      notedBy: notedBy ?? null,
       notedAt: new Date(),
     },
-    include: { inventory: true },
   });
-
-  return updated as unknown as InventoryUsage;
 }
+
+export const getTechnicianPersonalMetrics = calculateTechnicianMetrics;
