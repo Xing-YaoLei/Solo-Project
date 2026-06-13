@@ -131,7 +131,7 @@ horizontal_alignment = 1
 size_flags_vertical = 3
 custom_minimum_size = Vector2(0, 100)
 
-[node name="StepContent" type="Label" parent="PlaybackPanel/StepDisplay"]
+[node name="StepContent" type="Label" parent="PlaybackPanel/PlaybackVBox/StepDisplay"]
 text = "选择一个回放开始浏览"
 autowrap_mode = 3
 

@@ -14,7 +14,7 @@ var compare2_index: int = -1
 @onready var compare_button: Button = $ComparePanel/CompareVBox/CompareButton
 @onready var compare_result_vbox: VBoxContainer = $ComparePanel/CompareResult/CompareResultVBox
 @onready var step_info: Label = $PlaybackPanel/PlaybackVBox/StepInfo
-@onready var step_content: Label = $PlaybackPanel/StepDisplay/StepContent
+@onready var step_content: Label = $PlaybackPanel/PlaybackVBox/StepDisplay/StepContent
 @onready var prev_button: Button = $PlaybackPanel/PlaybackVBox/PlaybackControls/PrevButton
 @onready var next_button: Button = $PlaybackPanel/PlaybackVBox/PlaybackControls/NextButton
 @onready var back_button: Button = $BackButton
@@ -28,6 +28,8 @@ func _ready() -> void:
 func _setup_signals() -> void:
 	replay_list.item_selected.connect(_on_replay_selected)
 	compare_button.pressed.connect(_on_compare_pressed)
+	compare1_button.item_selected.connect(_on_compare1_selected)
+	compare2_button.item_selected.connect(_on_compare2_selected)
 	prev_button.pressed.connect(_on_prev_pressed)
 	next_button.pressed.connect(_on_next_pressed)
 	back_button.pressed.connect(_on_back_pressed)
@@ -77,6 +79,12 @@ func _populate_compare_options() -> void:
 	compare1_button.disabled = false
 	compare2_button.disabled = false
 	compare_button.disabled = replays.size() < 2
+
+func _on_compare1_selected(index: int) -> void:
+	compare1_index = index
+
+func _on_compare2_selected(index: int) -> void:
+	compare2_index = index
 
 func _on_replay_selected(index: int) -> void:
 	selected_replay_index = index

@@ -769,10 +769,27 @@ func _end_game(success: bool) -> void:
 	Analytics.save_session_data()
 	
 	if not success:
+		var fail_reason = ""
+		if GameState.projects_failed >= 3:
+			fail_reason = "项目失败次数过多"
+		elif game_timer >= GAME_DURATION and GameState.projects_completed < TARGET_PROJECTS:
+			fail_reason = "时间内未完成目标（%d/%d）" % [GameState.projects_completed, TARGET_PROJECTS]
+		elif _is_any_supply_empty():
+			fail_reason = "耗材耗尽"
+		else:
+			fail_reason = "未达标"
+		
+		ReplayManager.set_failed_project({}, fail_reason)
 		ReplayManager.stop_recording()
 		ReplayManager.save_replay()
 	
 	GameState.end_game(success)
+
+func _is_any_supply_empty() -> bool:
+	for supply_type in GameState.supplies.keys():
+		if GameState.get_supply_stock(supply_type) <= 0:
+			return true
+	return false
 
 func _on_game_ended(result_data: Dictionary) -> void:
 	call_deferred("_goto_result_screen")

@@ -186,26 +186,29 @@ func compare_replays(index1: int, index2: int) -> Dictionary:
 	for i in range(max_steps):
 		var s1 = steps1[i] if i < steps1.size() else null
 		var s2 = steps2[i] if i < steps2.size() else null
+		var s1_str = _format_step_safe(s1)
+		var s2_str = _format_step_safe(s2)
+		
 		if s1 == null or s2 == null:
 			comparison["key_differences"].append({
 				"step": i,
 				"type": "missing",
-				"replay1_action": _format_step(s1),
-				"replay2_action": _format_step(s2)
+				"replay1_action": s1_str,
+				"replay2_action": s2_str
 			})
-		elif s1.get("type", "") != s2.get("type", ""):
+		elif _get_step_type_safe(s1) != _get_step_type_safe(s2):
 			comparison["key_differences"].append({
 				"step": i,
 				"type": "type_diff",
-				"replay1_action": _format_step(s1),
-				"replay2_action": _format_step(s2)
+				"replay1_action": s1_str,
+				"replay2_action": s2_str
 			})
-		elif _get_step_action(s1) != _get_step_action(s2):
+		elif _get_step_action_safe(s1) != _get_step_action_safe(s2):
 			comparison["key_differences"].append({
 				"step": i,
 				"type": "action_diff",
-				"replay1_action": _format_step(s1),
-				"replay2_action": _format_step(s2)
+				"replay1_action": s1_str,
+				"replay2_action": s2_str
 			})
 	
 	return comparison
@@ -239,7 +242,29 @@ func _get_step_action(step: Dictionary) -> String:
 	var data = step.get("data", {})
 	return data.get("action", "")
 
+func _get_step_type_safe(step) -> String:
+	if step == null:
+		return ""
+	return step.get("type", "")
+
+func _get_step_action_safe(step) -> String:
+	if step == null:
+		return ""
+	var data = step.get("data", {})
+	return data.get("action", "")
+
 func _format_step(step: Dictionary) -> String:
+	if step == null:
+		return "(无动作)"
+	var step_type = step.get("type", "unknown")
+	var data = step.get("data", {})
+	var action = data.get("action", "")
+	var time_val = step.get("time", 0)
+	var minutes = int(time_val) / 60
+	var seconds = int(time_val) % 60
+	return "[%02d:%02d] %s:%s" % [minutes, seconds, step_type, action]
+
+func _format_step_safe(step) -> String:
 	if step == null:
 		return "(无动作)"
 	var step_type = step.get("type", "unknown")
