@@ -60,5 +60,13 @@ func emit_game_ended(result_data: Dictionary) -> void:
 	game_ended.emit(result_data)
 	emit_analytics("game_ended", {"score": result_data.get("score", 0), "success": result_data.get("success", false)})
 
+func emit_recharge_completed(recharge_data: Dictionary) -> void:
+	recharge_completed.emit(recharge_data)
+	emit_analytics("recharge_completed", {"amount": recharge_data.get("amount", 0)})
+
+func emit_project_failed(project_data: Dictionary, reason: String) -> void:
+	project_failed.emit(project_data, reason)
+	emit_analytics("project_failed", {"id": project_data.get("id", ""), "reason": reason})
+
 func emit_analytics(event_name: String, event_data: Dictionary = {}) -> void:
 	analytics_event.emit(event_name, event_data)

@@ -73,7 +73,7 @@ func _init_achievements() -> void:
 	}
 
 func start_game(difficulty: String = "normal") -> void:
-	current_state = GameState.PLAYING
+	current_state = State.PLAYING
 	current_difficulty = difficulty
 	score = 0
 	combo = 0
@@ -99,21 +99,21 @@ func start_game(difficulty: String = "normal") -> void:
 	EventBus.emit_game_started(difficulty)
 
 func pause_game() -> void:
-	if current_state == GameState.PLAYING:
-		current_state = GameState.PAUSED
+	if current_state == State.PLAYING:
+		current_state = State.PAUSED
 		pause_time = Time.get_ticks_msec() / 1000.0
 		EventBus.game_paused.emit()
 
 func resume_game() -> void:
-	if current_state == GameState.PAUSED:
+	if current_state == State.PAUSED:
 		var paused_duration = Time.get_ticks_msec() / 1000.0 - pause_time
 		start_time += paused_duration
 		last_action_time += paused_duration
-		current_state = GameState.PLAYING
+		current_state = State.PLAYING
 		EventBus.game_resumed.emit()
 
 func end_game(success: bool) -> void:
-	current_state = GameState.RESULT
+	current_state = State.RESULT
 	elapsed_time = Time.get_ticks_msec() / 1000.0 - start_time
 	
 	var result_data = {

@@ -3,6 +3,7 @@ extends Control
 const MAX_SLOTS: int = 3
 const ANOMALY_CHECK_INTERVAL: float = 15.0
 const GAME_DURATION: float = 180.0
+const TARGET_PROJECTS: int = 10
 
 var game_timer: float = 0.0
 var customer_spawn_timer: float = 0.0
@@ -24,6 +25,7 @@ var active_buffs: Dictionary = {}
 var dragged_recharge: Dictionary = {}
 var is_dragging_recharge: bool = false
 var drag_start_pos: Vector2 = Vector2.ZERO
+var drag_original_parent: Node = null
 
 var anomaly_handler_count: int = 0
 
@@ -33,8 +35,8 @@ var anomaly_handler_count: int = 0
 @onready var level_label: Label = $TopBar/HBoxContainer/LevelLabel
 @onready var pause_button: Button = $TopBar/HBoxContainer/PauseButton
 
-@onready var customer_container: VBoxContainer = $LeftPanel/CustomerList/CustomerContainer
-@onready var recharge_container: VBoxContainer = $RightPanel/RechargeList/RechargeContainer
+@onready var customer_container: VBoxContainer = $LeftPanel/LeftVBox/CustomerList/CustomerContainer
+@onready var recharge_container: VBoxContainer = $RightPanel/RightVBox/RechargeList/RechargeContainer
 
 @onready var project_slot1: PanelContainer = $CenterArea/ProjectSlots/Slot1
 @onready var project_slot2: PanelContainer = $CenterArea/ProjectSlots/Slot2
@@ -42,15 +44,15 @@ var anomaly_handler_count: int = 0
 
 @onready var review_tags_container: HBoxContainer = $CenterArea/ReviewArea/ReviewVBox/ReviewTagsContainer
 
-@onready var shampoo_bar: ProgressBar = $RightPanel/VBoxContainer/SupplyList/ShampooRow/ShampooBar
-@onready var conditioner_bar: ProgressBar = $RightPanel/VBoxContainer/SupplyList/ConditionerRow/ConditionerBar
-@onready var hair_color_bar: ProgressBar = $RightPanel/VBoxContainer/SupplyList/HairColorRow/HairColorBar
-@onready var perm_bar: ProgressBar = $RightPanel/VBoxContainer/SupplyList/PermRow/PermBar
+@onready var shampoo_bar: ProgressBar = $RightPanel/RightVBox/SupplyList/ShampooRow/ShampooBar
+@onready var conditioner_bar: ProgressBar = $RightPanel/RightVBox/SupplyList/ConditionerRow/ConditionerBar
+@onready var hair_color_bar: ProgressBar = $RightPanel/RightVBox/SupplyList/HairColorRow/HairColorBar
+@onready var perm_bar: ProgressBar = $RightPanel/RightVBox/SupplyList/PermRow/PermBar
 
-@onready var item_speed_boost: Button = $RightPanel/VBoxContainer/ItemsContainer/ItemSpeedBoost
-@onready var item_supply_refill: Button = $RightPanel/VBoxContainer/ItemsContainer/ItemSupplyRefill
-@onready var item_charm: Button = $RightPanel/VBoxContainer/ItemsContainer/ItemCharm
-@onready var item_time_freeze: Button = $RightPanel/VBoxContainer/ItemsContainer/ItemTimeFreeze
+@onready var item_speed_boost: Button = $RightPanel/RightVBox/ItemsContainer/ItemSpeedBoost
+@onready var item_supply_refill: Button = $RightPanel/RightVBox/ItemsContainer/ItemSupplyRefill
+@onready var item_charm: Button = $RightPanel/RightVBox/ItemsContainer/ItemCharm
+@onready var item_time_freeze: Button = $RightPanel/RightVBox/ItemsContainer/ItemTimeFreeze
 
 @onready var warning_overlay: CanvasLayer = $WarningOverlay
 @onready var warning_flash: ColorRect = $WarningOverlay/WarningFlash
@@ -135,7 +137,9 @@ func _update_timer() -> void:
 	var remaining = max(0, GAME_DURATION - game_timer)
 	var minutes = int(remaining) / 60
 	var seconds = int(remaining) % 60
-	timer_label.text = "⏱ %02d:%02d" % [minutes, seconds]
+	var target = TARGET_PROJECTS
+	var completed = GameState.projects_completed
+	timer_label.text = "⏱ %02d:%02d  项目:%d/%d" % [minutes, seconds, completed, target]
 
 func _update_customer_spawn(delta: float) -> void:
 	customer_spawn_timer -= delta
@@ -370,6 +374,9 @@ func _on_project_completed(project: ProjectCard) -> void:
 	_check_achievements()
 	_update_ui()
 	ReplayManager.record_project_action("complete", {"id": project.id, "score": score})
+	
+	if GameState.projects_completed >= TARGET_PROJECTS:
+		_end_game(true)
 
 func _on_project_failed(project: ProjectCard) -> void:
 	GameState.reset_combo()
@@ -518,8 +525,13 @@ func _on_recharge_gui_input(event: InputEvent, panel: PanelContainer) -> void:
 		is_dragging_recharge = true
 		dragged_recharge = panel.get_meta("recharge_data", {})
 		drag_start_pos = panel.position
+		drag_original_parent = panel.get_parent()
 		panel.modulate = Color(1, 1, 1, 0.7)
 		GameState.register_action()
+		
+		var mouse_pos = get_global_mouse_position()
+		panel.reparent(self)
+		panel.global_position = mouse_pos - panel.size / 2
 		
 	elif event is InputEventMouseButton and not event.pressed and event.button_index == MOUSE_BUTTON_LEFT and is_dragging_recharge:
 		is_dragging_recharge = false
@@ -528,14 +540,11 @@ func _on_recharge_gui_input(event: InputEvent, panel: PanelContainer) -> void:
 		
 	elif event is InputEventMouseMotion and is_dragging_recharge:
 		var mouse_pos = get_global_mouse_position()
-		var local_pos = recharge_container.get_global_transform().affine_inverse() * mouse_pos
-		panel.position = Vector2(
-			clamp(local_pos.x - panel.size.x / 2, 0, recharge_container.size.x - panel.size.x),
-			clamp(local_pos.y - panel.size.y / 2, -50, recharge_container.size.y + 50)
-		)
+		panel.global_position = mouse_pos - panel.size / 2
 
 func _check_recharge_drop(panel: PanelContainer) -> void:
 	var mouse_pos = get_global_mouse_position()
+	var dropped_on_customer = false
 	
 	for customer_id in customer_nodes.keys():
 		var data = customer_nodes[customer_id]
@@ -544,9 +553,12 @@ func _check_recharge_drop(panel: PanelContainer) -> void:
 		if rect.has_point(mouse_pos):
 			_apply_recharge_to_customer(customer_id)
 			_remove_recharge_panel(panel)
-			return
+			dropped_on_customer = true
+			break
 	
-	panel.position = drag_start_pos
+	if not dropped_on_customer:
+		panel.reparent(recharge_container)
+		panel.position = drag_start_pos
 
 func _remove_recharge_panel(panel: PanelContainer) -> void:
 	if panel in recharge_nodes:
@@ -555,7 +567,7 @@ func _remove_recharge_panel(panel: PanelContainer) -> void:
 		panel.queue_free()
 	
 	if recharge_nodes.size() < 3:
-		_add_recharge_card()
+		call_deferred("_add_recharge_card")
 
 func _remove_dragged_recharge() -> void:
 	for panel in recharge_nodes:
@@ -594,7 +606,7 @@ func _show_warning(supply_type: String, duration: float) -> void:
 		"perm_solution": "烫发液"
 	}
 	var name = supply_names.get(supply_type, "耗材")
-	warning_label.text = "⚠️ %s即将异常！%.0f秒后触发 - 点击警告解除" % [name, duration]
+	warning_label.text = "⚠️ %s即将异常！%.0f秒内点击警告解除！" % [name, duration]
 
 func _update_warning(delta: float) -> void:
 	if not warning_visible:
@@ -617,7 +629,7 @@ func _update_warning(delta: float) -> void:
 		"perm_solution": "烫发液"
 	}
 	var name = supply_names.get(current_warning_supply, "耗材")
-	warning_label.text = "⚠️ %s即将异常！%.0f秒后触发 - 点击警告解除" % [name, warning_timer]
+	warning_label.text = "⚠️ %s即将异常！%.0f秒内点击警告解除！" % [name, warning_timer]
 
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT and warning_visible:
@@ -713,7 +725,6 @@ func _update_item_buttons() -> void:
 func _update_single_item_button(button: Button, item_id: String) -> void:
 	var cooldown = GameState.item_cooldowns.get(item_id, 0)
 	var item = GameState.items.get(item_id, {})
-	var max_cooldown = item.get("cooldown", 30)
 	if cooldown > 0:
 		button.disabled = true
 		button.text = "%s %.0fs" % [item.get("icon", ""), cooldown]
@@ -748,18 +759,25 @@ func _check_achievements() -> void:
 
 func _check_game_end() -> void:
 	if game_timer >= GAME_DURATION:
-		_end_game(true)
+		_end_game(GameState.projects_completed >= TARGET_PROJECTS)
 
 func _end_game(success: bool) -> void:
+	if not is_running:
+		return
 	is_running = false
-	GameState.end_game(success)
+	
 	Analytics.save_session_data()
 	
 	if not success:
 		ReplayManager.stop_recording()
 		ReplayManager.save_replay()
+	
+	GameState.end_game(success)
 
 func _on_game_ended(result_data: Dictionary) -> void:
+	call_deferred("_goto_result_screen")
+
+func _goto_result_screen() -> void:
 	get_tree().change_scene_to_file("res://scenes/result_screen.tscn")
 
 func _on_pause_pressed() -> void:

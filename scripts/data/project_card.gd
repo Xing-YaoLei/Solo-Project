@@ -67,7 +67,7 @@ func _setup_by_type() -> void:
 			duration = 45.0
 			remaining_time = 45.0
 			base_score = 180
-			supplies_needed = {"conditioner": 10, "treatment": 5}
+			supplies_needed = {"conditioner": 10, "perm_solution": 2}
 			difficulty = 2
 		_:
 			name = "基础服务"
@@ -103,7 +103,7 @@ func fail(reason: String) -> void:
 	is_active = false
 	is_failed = true
 	fail_reason = reason
-	EventBus.project_failed.emit(to_dict(), reason)
+	EventBus.emit_project_failed(to_dict(), reason)
 
 func get_progress() -> float:
 	return progress

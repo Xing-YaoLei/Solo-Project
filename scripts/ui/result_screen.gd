@@ -36,16 +36,6 @@ func _populate_results() -> void:
 	var stuck_points = []
 	var unlocked_achievements = []
 	
-	var events = Analytics.get_events_by_name("game_ended")
-	if events.size() > 0:
-		var last_event = events[events.size() - 1]
-		var event_data = last_event.get("event_data", {})
-		success = event_data.get("success", false)
-		score = event_data.get("score", 0)
-	else:
-		success = GameState.score > 0
-		score = GameState.score
-	
 	score = GameState.score
 	max_combo = GameState.max_combo
 	elapsed_time = GameState.elapsed_time
@@ -53,6 +43,7 @@ func _populate_results() -> void:
 	customers_total = GameState.customers_total
 	projects_completed = GameState.projects_completed
 	projects_failed = GameState.projects_failed
+	success = GameState.current_state == GameState.State.RESULT and projects_completed >= 10
 	
 	if projects_completed + projects_failed > 0:
 		completion_rate = float(projects_completed) / float(projects_completed + projects_failed)

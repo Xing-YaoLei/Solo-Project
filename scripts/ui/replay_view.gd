@@ -43,8 +43,10 @@ func _populate_replay_list() -> void:
 	for i in range(replays.size()):
 		var replay = replays[i]
 		var score = replay.get("final_score", 0)
-		var fail_reason = replay.get("fail_reason", "未知")
-		var text = "#%d  得分:%d  原因:%s" % [i + 1, score, fail_reason]
+		var fail_reason = replay.get("fail_reason", "未达标")
+		var completed = replay.get("projects_completed", 0)
+		var steps = replay.get("steps", []).size()
+		var text = "#%d  得分:%d  完成:%d  步数:%d  原因:%s" % [i + 1, score, completed, steps, fail_reason]
 		replay_list.add_item(text)
 
 func _populate_compare_options() -> void:
@@ -189,7 +191,11 @@ func _show_comparison_result(comparison: Dictionary) -> void:
 	var steps2 = comparison.get("replay2_steps", 0)
 	var reason1 = comparison.get("replay1_fail_reason", "")
 	var reason2 = comparison.get("replay2_fail_reason", "")
+	var completed1 = comparison.get("replay1_completed", 0)
+	var completed2 = comparison.get("replay2_completed", 0)
 	var differences = comparison.get("key_differences", [])
+	var summary1 = comparison.get("action_summary1", {})
+	var summary2 = comparison.get("action_summary2", {})
 	
 	var title = Label.new()
 	title.text = "📊 对比结果"
@@ -202,38 +208,64 @@ func _show_comparison_result(comparison: Dictionary) -> void:
 	score_row.theme_override_font_sizes.font_size = 12
 	compare_result_vbox.add_child(score_row)
 	
+	var completed_row = Label.new()
+	completed_row.text = "完成项目: %d vs %d" % [completed1, completed2]
+	completed_row.theme_override_font_sizes.font_size = 12
+	compare_result_vbox.add_child(completed_row)
+	
 	var steps_row = Label.new()
-	steps_row.text = "步数: %d vs %d" % [steps1, steps2]
+	steps_row.text = "操作步数: %d vs %d" % [steps1, steps2]
 	steps_row.theme_override_font_sizes.font_size = 12
 	compare_result_vbox.add_child(steps_row)
 	
+	var summary1_label = Label.new()
+	summary1_label.text = "回放1动作: 顾客%d 项目%d 充值%d 道具%d" % [
+		summary1.get("customer_count", 0),
+		summary1.get("project_count", 0),
+		summary1.get("recharge_count", 0),
+		summary1.get("item_count", 0)
+	]
+	summary1_label.theme_override_font_sizes.font_size = 11
+	compare_result_vbox.add_child(summary1_label)
+	
+	var summary2_label = Label.new()
+	summary2_label.text = "回放2动作: 顾客%d 项目%d 充值%d 道具%d" % [
+		summary2.get("customer_count", 0),
+		summary2.get("project_count", 0),
+		summary2.get("recharge_count", 0),
+		summary2.get("item_count", 0)
+	]
+	summary2_label.theme_override_font_sizes.font_size = 11
+	compare_result_vbox.add_child(summary2_label)
+	
 	var reason1_label = Label.new()
-	reason1_label.text = "回放1失败: " + reason1
+	reason1_label.text = "回放1失败: " + (reason1 if reason1 != "" else "未达标")
 	reason1_label.theme_override_colors.font_color = Color(0.8, 0.4, 0.3, 1)
 	reason1_label.theme_override_font_sizes.font_size = 11
 	compare_result_vbox.add_child(reason1_label)
 	
 	var reason2_label = Label.new()
-	reason2_label.text = "回放2失败: " + reason2
+	reason2_label.text = "回放2失败: " + (reason2 if reason2 != "" else "未达标")
 	reason2_label.theme_override_colors.font_color = Color(0.8, 0.4, 0.3, 1)
 	reason2_label.theme_override_font_sizes.font_size = 11
 	compare_result_vbox.add_child(reason2_label)
 	
 	if differences.size() > 0:
 		var diff_title = Label.new()
-		diff_title.text = "\n🔍 关键差异 (前5条):"
+		diff_title.text = "\n🔍 关键差异 (前8条):"
 		diff_title.theme_override_colors.font_color = Color(0.4, 0.4, 0.6, 1)
 		diff_title.theme_override_font_sizes.font_size = 12
 		compare_result_vbox.add_child(diff_title)
 		
-		for i in range(min(differences.size(), 5)):
+		for i in range(min(differences.size(), 8)):
 			var diff = differences[i]
 			var step_idx = diff.get("step", 0)
-			var t1 = diff.get("replay1_type", "")
-			var t2 = diff.get("replay2_type", "")
+			var a1 = diff.get("replay1_action", "")
+			var a2 = diff.get("replay2_action", "")
 			var diff_label = Label.new()
-			diff_label.text = "  第%d步: %s vs %s" % [step_idx + 1, t1, t2]
+			diff_label.text = "  第%d步:\n    回放1: %s\n    回放2: %s" % [step_idx + 1, a1, a2]
 			diff_label.theme_override_font_sizes.font_size = 10
+			diff_label.autowrap_mode = 3
 			compare_result_vbox.add_child(diff_label)
 
 func _show_compare_result_message(msg: String) -> void:

@@ -51,33 +51,33 @@ size_flags_horizontal = 3
 text = "暂停"
 
 [node name="LeftPanel" type="PanelContainer" parent="."]
-anchor_top = 1.0
+anchor_top = 0.0
 anchor_bottom = 1.0
 offset_top = 70.0
 offset_bottom = -10.0
 offset_left = 10.0
 offset_right = 320.0
 
-[node name="VBoxContainer" type="VBoxContainer" parent="LeftPanel"]
+[node name="LeftVBox" type="VBoxContainer" parent="LeftPanel"]
 theme_override_constants/separation = 10
 
-[node name="CustomerTitle" type="Label" parent="LeftPanel/VBoxContainer"]
+[node name="CustomerTitle" type="Label" parent="LeftPanel/LeftVBox"]
 theme_override_colors/font_color = Color(0.4, 0.3, 0.25, 1)
 theme_override_font_sizes/font_size = 16
 text = "等待中的顾客"
 horizontal_alignment = 1
 
-[node name="CustomerList" type="ScrollContainer" parent="LeftPanel/VBoxContainer"]
+[node name="CustomerList" type="ScrollContainer" parent="LeftPanel/LeftVBox"]
 size_flags_vertical = 3
 
-[node name="CustomerContainer" type="VBoxContainer" parent="LeftPanel/CustomerList"]
+[node name="CustomerContainer" type="VBoxContainer" parent="LeftPanel/LeftVBox/CustomerList"]
 size_flags_horizontal = 3
 theme_override_constants/separation = 8
 
 [node name="CenterArea" type="Control" parent="."]
 anchor_left = 0.0
-anchor_top = 1.0
-anchor_right = 0.0
+anchor_right = 1.0
+anchor_top = 0.0
 anchor_bottom = 1.0
 offset_left = 330.0
 offset_top = 70.0
@@ -86,7 +86,7 @@ offset_bottom = -10.0
 
 [node name="ProjectSlots" type="HBoxContainer" parent="CenterArea"]
 anchor_right = 1.0
-offset_bottom = 200.0
+offset_bottom = 280.0
 alignment = 1
 theme_override_constants/separation = 20
 
@@ -131,9 +131,9 @@ horizontal_alignment = 1
 
 [node name="ReviewArea" type="PanelContainer" parent="CenterArea"]
 anchor_top = 1.0
+anchor_right = 1.0
 anchor_bottom = 1.0
-offset_top = 220.0
-offset_bottom = -10.0
+offset_top = 300.0
 
 [node name="ReviewVBox" type="VBoxContainer" parent="CenterArea/ReviewArea"]
 alignment = 1
@@ -151,123 +151,122 @@ theme_override_constants/separation = 8
 
 [node name="RightPanel" type="PanelContainer" parent="."]
 anchor_left = 1.0
-anchor_top = 1.0
+anchor_top = 0.0
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_left = -320.0
 offset_top = 70.0
-offset_right = -10.0
 offset_bottom = -10.0
 
-[node name="VBoxContainer" type="VBoxContainer" parent="RightPanel"]
+[node name="RightVBox" type="VBoxContainer" parent="RightPanel"]
 theme_override_constants/separation = 10
 
-[node name="SupplyTitle" type="Label" parent="RightPanel/VBoxContainer"]
+[node name="SupplyTitle" type="Label" parent="RightPanel/RightVBox"]
 theme_override_colors/font_color = Color(0.4, 0.3, 0.25, 1)
 theme_override_font_sizes/font_size = 16
 text = "耗材库存"
 horizontal_alignment = 1
 
-[node name="SupplyList" type="VBoxContainer" parent="RightPanel/VBoxContainer"]
+[node name="SupplyList" type="VBoxContainer" parent="RightPanel/RightVBox"]
 theme_override_constants/separation = 6
 
-[node name="ShampooRow" type="HBoxContainer" parent="RightPanel/VBoxContainer/SupplyList"]
+[node name="ShampooRow" type="HBoxContainer" parent="RightPanel/RightVBox/SupplyList"]
 theme_override_constants/separation = 8
 
-[node name="ShampooIcon" type="Label" parent="RightPanel/VBoxContainer/SupplyList/ShampooRow"]
+[node name="ShampooIcon" type="Label" parent="RightPanel/RightVBox/SupplyList/ShampooRow"]
 text = "🧴"
 
-[node name="ShampooName" type="Label" parent="RightPanel/VBoxContainer/SupplyList/ShampooRow"]
+[node name="ShampooName" type="Label" parent="RightPanel/RightVBox/SupplyList/ShampooRow"]
 size_flags_horizontal = 3
 text = "洗发水"
 
-[node name="ShampooBar" type="ProgressBar" parent="RightPanel/VBoxContainer/SupplyList/ShampooRow"]
+[node name="ShampooBar" type="ProgressBar" parent="RightPanel/RightVBox/SupplyList/ShampooRow"]
 custom_minimum_size = Vector2(80, 12)
 size_flags_horizontal = 3
 value = 100.0
 
-[node name="ConditionerRow" type="HBoxContainer" parent="RightPanel/VBoxContainer/SupplyList"]
+[node name="ConditionerRow" type="HBoxContainer" parent="RightPanel/RightVBox/SupplyList"]
 theme_override_constants/separation = 8
 
-[node name="ConditionerIcon" type="Label" parent="RightPanel/VBoxContainer/SupplyList/ConditionerRow"]
+[node name="ConditionerIcon" type="Label" parent="RightPanel/RightVBox/SupplyList/ConditionerRow"]
 text = "💆"
 
-[node name="ConditionerName" type="Label" parent="RightPanel/VBoxContainer/SupplyList/ConditionerRow"]
+[node name="ConditionerName" type="Label" parent="RightPanel/RightVBox/SupplyList/ConditionerRow"]
 size_flags_horizontal = 3
 text = "护发素"
 
-[node name="ConditionerBar" type="ProgressBar" parent="RightPanel/VBoxContainer/SupplyList/ConditionerRow"]
+[node name="ConditionerBar" type="ProgressBar" parent="RightPanel/RightVBox/SupplyList/ConditionerRow"]
 custom_minimum_size = Vector2(80, 12)
 size_flags_horizontal = 3
 value = 100.0
 
-[node name="HairColorRow" type="HBoxContainer" parent="RightPanel/VBoxContainer/SupplyList"]
+[node name="HairColorRow" type="HBoxContainer" parent="RightPanel/RightVBox/SupplyList"]
 theme_override_constants/separation = 8
 
-[node name="HairColorIcon" type="Label" parent="RightPanel/VBoxContainer/SupplyList/HairColorRow"]
+[node name="HairColorIcon" type="Label" parent="RightPanel/RightVBox/SupplyList/HairColorRow"]
 text = "🎨"
 
-[node name="HairColorName" type="Label" parent="RightPanel/VBoxContainer/SupplyList/HairColorRow"]
+[node name="HairColorName" type="Label" parent="RightPanel/RightVBox/SupplyList/HairColorRow"]
 size_flags_horizontal = 3
 text = "染发剂"
 
-[node name="HairColorBar" type="ProgressBar" parent="RightPanel/VBoxContainer/SupplyList/HairColorRow"]
+[node name="HairColorBar" type="ProgressBar" parent="RightPanel/RightVBox/SupplyList/HairColorRow"]
 custom_minimum_size = Vector2(80, 12)
 size_flags_horizontal = 3
 value = 100.0
 
-[node name="PermRow" type="HBoxContainer" parent="RightPanel/VBoxContainer/SupplyList"]
+[node name="PermRow" type="HBoxContainer" parent="RightPanel/RightVBox/SupplyList"]
 theme_override_constants/separation = 8
 
-[node name="PermIcon" type="Label" parent="RightPanel/VBoxContainer/SupplyList/PermRow"]
+[node name="PermIcon" type="Label" parent="RightPanel/RightVBox/SupplyList/PermRow"]
 text = "🌀"
 
-[node name="PermName" type="Label" parent="RightPanel/VBoxContainer/SupplyList/PermRow"]
+[node name="PermName" type="Label" parent="RightPanel/RightVBox/SupplyList/PermRow"]
 size_flags_horizontal = 3
 text = "烫发液"
 
-[node name="PermBar" type="ProgressBar" parent="RightPanel/VBoxContainer/SupplyList/PermRow"]
+[node name="PermBar" type="ProgressBar" parent="RightPanel/RightVBox/SupplyList/PermRow"]
 custom_minimum_size = Vector2(80, 12)
 size_flags_horizontal = 3
 value = 100.0
 
-[node name="ItemsTitle" type="Label" parent="RightPanel/VBoxContainer"]
+[node name="ItemsTitle" type="Label" parent="RightPanel/RightVBox"]
 theme_override_colors/font_color = Color(0.4, 0.3, 0.25, 1)
 theme_override_font_sizes/font_size = 16
 text = "道具"
 horizontal_alignment = 1
 
-[node name="ItemsContainer" type="GridContainer" parent="RightPanel/VBoxContainer"]
+[node name="ItemsContainer" type="GridContainer" parent="RightPanel/RightVBox"]
 columns = 2
 theme_override_constants/h_separation = 8
 theme_override_constants/v_separation = 8
 
-[node name="ItemSpeedBoost" type="Button" parent="RightPanel/VBoxContainer/ItemsContainer"]
+[node name="ItemSpeedBoost" type="Button" parent="RightPanel/RightVBox/ItemsContainer"]
 custom_minimum_size = Vector2(80, 50)
 text = "⚡ 加速"
 
-[node name="ItemSupplyRefill" type="Button" parent="RightPanel/VBoxContainer/ItemsContainer"]
+[node name="ItemSupplyRefill" type="Button" parent="RightPanel/RightVBox/ItemsContainer"]
 custom_minimum_size = Vector2(80, 50)
 text = "📦 补货"
 
-[node name="ItemCharm" type="Button" parent="RightPanel/VBoxContainer/ItemsContainer"]
+[node name="ItemCharm" type="Button" parent="RightPanel/RightVBox/ItemsContainer"]
 custom_minimum_size = Vector2(80, 50)
 text = "✨ 魅力"
 
-[node name="ItemTimeFreeze" type="Button" parent="RightPanel/VBoxContainer/ItemsContainer"]
+[node name="ItemTimeFreeze" type="Button" parent="RightPanel/RightVBox/ItemsContainer"]
 custom_minimum_size = Vector2(80, 50)
 text = "❄️ 冻结"
 
-[node name="RechargeTitle" type="Label" parent="RightPanel/VBoxContainer"]
+[node name="RechargeTitle" type="Label" parent="RightPanel/RightVBox"]
 theme_override_colors/font_color = Color(0.4, 0.3, 0.25, 1)
 theme_override_font_sizes/font_size = 16
 text = "充值流水（可拖拽）"
 horizontal_alignment = 1
 
-[node name="RechargeList" type="ScrollContainer" parent="RightPanel/VBoxContainer"]
+[node name="RechargeList" type="ScrollContainer" parent="RightPanel/RightVBox"]
 size_flags_vertical = 3
 
-[node name="RechargeContainer" type="VBoxContainer" parent="RightPanel/RechargeList"]
+[node name="RechargeContainer" type="VBoxContainer" parent="RightPanel/RightVBox/RechargeList"]
 size_flags_horizontal = 3
 theme_override_constants/separation = 6
 
@@ -284,12 +283,12 @@ anchor_left = 0.5
 anchor_top = 0.3
 anchor_right = 0.5
 anchor_bottom = 0.3
-offset_left = -200.0
+offset_left = -300.0
 offset_top = -30.0
-offset_right = 200.0
+offset_right = 300.0
 offset_bottom = 30.0
 theme_override_colors/font_color = Color(1, 0.2, 0.2, 1)
-theme_override_font_sizes/font_size = 28
+theme_override_font_sizes/font_size = 24
 text = "⚠️ 耗材异常警告！"
 horizontal_alignment = 1
 

@@ -11,20 +11,29 @@ var playback_speed: float = 1.0
 
 var current_recording: Dictionary = {}
 var is_recording: bool = false
+var has_failure: bool = false
 
 func _ready() -> void:
 	EventBus.project_failed.connect(_on_project_failed)
 	EventBus.game_started.connect(_on_game_started)
+	EventBus.game_ended.connect(_on_game_ended)
 
 func _on_game_started(difficulty: String) -> void:
 	start_recording()
+	has_failure = false
 
 func _on_project_failed(project_data: Dictionary, reason: String) -> void:
-	stop_recording()
-	save_replay()
+	has_failure = true
+
+func _on_game_ended(result_data: Dictionary) -> void:
+	var success = result_data.get("success", false)
+	if not success and is_recording:
+		stop_recording()
+		save_replay()
 
 func start_recording() -> void:
 	is_recording = true
+	has_failure = false
 	current_recording = {
 		"id": "replay_" + str(Time.get_unix_time_from_system()),
 		"timestamp": Time.get_datetime_string_from_system(),
@@ -32,12 +41,20 @@ func start_recording() -> void:
 		"steps": [],
 		"final_score": 0,
 		"failed_project": null,
-		"fail_reason": ""
+		"fail_reason": "",
+		"customers_served": 0,
+		"projects_completed": 0,
+		"projects_failed": 0
 	}
 
 func stop_recording() -> void:
+	if not is_recording:
+		return
 	is_recording = false
 	current_recording["final_score"] = GameState.score
+	current_recording["customers_served"] = GameState.customers_served
+	current_recording["projects_completed"] = GameState.projects_completed
+	current_recording["projects_failed"] = GameState.projects_failed
 
 func record_step(step_type: String, step_data: Dictionary) -> void:
 	if not is_recording:
@@ -64,16 +81,23 @@ func record_item_usage(item_id: String) -> void:
 	record_step("item", {"action": "used", "item_id": item_id})
 
 func set_failed_project(project_data: Dictionary, reason: String) -> void:
-	if current_recording:
+	if current_recording and current_recording.size() > 0:
 		current_recording["failed_project"] = project_data
 		current_recording["fail_reason"] = reason
 
 func save_replay() -> void:
-	if current_recording and current_recording["steps"].size() > 0:
-		replays.append(current_recording.duplicate(true))
-		if replays.size() > MAX_REPLAYS:
-			replays.pop_front()
-	EventBus.replay_recorded.emit(current_recording)
+	if current_recording.is_empty():
+		return
+	if current_recording["steps"].size() == 0:
+		return
+	
+	var replay_to_save = current_recording.duplicate(true)
+	replays.append(replay_to_save)
+	
+	if replays.size() > MAX_REPLAYS:
+		replays.pop_front()
+	
+	EventBus.replay_recorded.emit(replay_to_save)
 
 func get_replays() -> Array:
 	return replays.duplicate()
@@ -106,8 +130,9 @@ func step_playback_forward() -> Dictionary:
 	if current_replay_index < 0 or current_replay_index >= replays.size():
 		return {}
 	var replay = replays[current_replay_index]
-	if playback_step < replay["steps"].size():
-		var step = replay["steps"][playback_step]
+	var steps = replay.get("steps", [])
+	if playback_step < steps.size():
+		var step = steps[playback_step]
 		playback_step += 1
 		EventBus.playback_step.emit(playback_step - 1, step)
 		return step
@@ -119,7 +144,8 @@ func step_playback_backward() -> Dictionary:
 	if playback_step > 0:
 		playback_step -= 1
 		var replay = replays[current_replay_index]
-		var step = replay["steps"][playback_step]
+		var steps = replay.get("steps", [])
+		var step = steps[playback_step]
 		EventBus.playback_step.emit(playback_step, step)
 		return step
 	return {}
@@ -129,7 +155,7 @@ func get_current_playback_step() -> int:
 
 func get_total_steps() -> int:
 	if current_replay_index >= 0 and current_replay_index < replays.size():
-		return replays[current_replay_index]["steps"].size()
+		return replays[current_replay_index].get("steps", []).size()
 	return 0
 
 func compare_replays(index1: int, index2: int) -> Dictionary:
@@ -137,29 +163,92 @@ func compare_replays(index1: int, index2: int) -> Dictionary:
 	var replay2 = get_replay(index2)
 	if replay1.is_empty() or replay2.is_empty():
 		return {}
+	
+	var steps1: Array = replay1.get("steps", [])
+	var steps2: Array = replay2.get("steps", [])
+	
 	var comparison = {
 		"replay1_score": replay1.get("final_score", 0),
 		"replay2_score": replay2.get("final_score", 0),
-		"replay1_steps": replay1.get("steps", []).size(),
-		"replay2_steps": replay2.get("steps", []).size(),
+		"replay1_steps": steps1.size(),
+		"replay2_steps": steps2.size(),
 		"replay1_fail_reason": replay1.get("fail_reason", ""),
 		"replay2_fail_reason": replay2.get("fail_reason", ""),
+		"replay1_completed": replay1.get("projects_completed", 0),
+		"replay2_completed": replay2.get("projects_completed", 0),
 		"time_difference": 0,
-		"key_differences": []
+		"key_differences": [],
+		"action_summary1": _summarize_actions(steps1),
+		"action_summary2": _summarize_actions(steps2)
 	}
-	var steps1 = replay1.get("steps", [])
-	var steps2 = replay2.get("steps", [])
+	
 	var max_steps = max(steps1.size(), steps2.size())
 	for i in range(max_steps):
 		var s1 = steps1[i] if i < steps1.size() else null
 		var s2 = steps2[i] if i < steps2.size() else null
-		if s1 and s2 and s1.get("type", "") != s2.get("type", ""):
+		if s1 == null or s2 == null:
 			comparison["key_differences"].append({
 				"step": i,
-				"replay1_type": s1.get("type", ""),
-				"replay2_type": s2.get("type", "")
+				"type": "missing",
+				"replay1_action": _format_step(s1),
+				"replay2_action": _format_step(s2)
 			})
+		elif s1.get("type", "") != s2.get("type", ""):
+			comparison["key_differences"].append({
+				"step": i,
+				"type": "type_diff",
+				"replay1_action": _format_step(s1),
+				"replay2_action": _format_step(s2)
+			})
+		elif _get_step_action(s1) != _get_step_action(s2):
+			comparison["key_differences"].append({
+				"step": i,
+				"type": "action_diff",
+				"replay1_action": _format_step(s1),
+				"replay2_action": _format_step(s2)
+			})
+	
 	return comparison
+
+func _summarize_actions(steps: Array) -> Dictionary:
+	var summary = {
+		"customer_count": 0,
+		"project_count": 0,
+		"recharge_count": 0,
+		"item_count": 0,
+		"anomaly_count": 0
+	}
+	for step in steps:
+		var step_type = step.get("type", "")
+		match step_type:
+			"customer":
+				summary["customer_count"] += 1
+			"project":
+				summary["project_count"] += 1
+			"recharge":
+				summary["recharge_count"] += 1
+			"item":
+				summary["item_count"] += 1
+			"anomaly":
+				summary["anomaly_count"] += 1
+	return summary
+
+func _get_step_action(step: Dictionary) -> String:
+	if step == null:
+		return ""
+	var data = step.get("data", {})
+	return data.get("action", "")
+
+func _format_step(step: Dictionary) -> String:
+	if step == null:
+		return "(无动作)"
+	var step_type = step.get("type", "unknown")
+	var data = step.get("data", {})
+	var action = data.get("action", "")
+	var time_val = step.get("time", 0)
+	var minutes = int(time_val) / 60
+	var seconds = int(time_val) % 60
+	return "[%02d:%02d] %s:%s" % [minutes, seconds, step_type, action]
 
 func clear_replays() -> void:
 	replays.clear()

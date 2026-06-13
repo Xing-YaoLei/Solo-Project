@@ -1,8 +1,3 @@
-extends Node
-
-func _ready() -> void:
-	pass
-
 class_name RechargeCard
 extends Control
 
@@ -12,7 +7,7 @@ var drag_offset: Vector2 = Vector2.ZERO
 var original_position: Vector2 = Vector2.ZERO
 
 signal card_dragged(card_data, position)
-var card_dropped: Signal = Signal()
+signal card_dropped
 signal card_released(card_data, position)
 
 func _init() -> void:
