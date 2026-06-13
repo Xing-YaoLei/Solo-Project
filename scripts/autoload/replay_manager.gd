@@ -74,8 +74,11 @@ func record_customer_action(action: String, customer_data: Dictionary) -> void:
 func record_project_action(action: String, project_data: Dictionary) -> void:
 	record_step("project", {"action": action, "project": project_data})
 
-func record_recharge_action(action: String, recharge_data: Dictionary) -> void:
-	record_step("recharge", {"action": action, "recharge": recharge_data})
+func record_recharge_action(action: String, recharge_data: Dictionary, target_customer: Dictionary = {}) -> void:
+	var step_data: Dictionary = {"action": action, "recharge": recharge_data}
+	if not target_customer.is_empty():
+		step_data["target_customer"] = target_customer
+	record_step("recharge", step_data)
 
 func record_item_usage(item_id: String) -> void:
 	record_step("item", {"action": "used", "item_id": item_id})
@@ -225,7 +228,8 @@ func _get_choice_key(step) -> String:
 			return "project:%s:%s:%s" % [action, p.get("id", ""), p.get("name", "")]
 		"recharge":
 			var r = data.get("recharge", {})
-			return "recharge:%s:%s:%s:%s" % [action, r.get("id", ""), str(r.get("amount", 0)), data.get("customer_id", "")]
+			var target = data.get("target_customer", {})
+			return "recharge:%s:%s:%s:%s" % [action, r.get("id", ""), str(r.get("amount", 0)), target.get("id", "")]
 		"item":
 			return "item:%s:%s" % [action, data.get("item_id", "")]
 		"anomaly":
@@ -283,12 +287,15 @@ func _format_choice_safe(step) -> String:
 			var r = data.get("recharge", {})
 			var amount = r.get("amount", 0)
 			var rname = r.get("customer_name", "未知")
-			var target_cid = data.get("customer_id", "")
+			var target = data.get("target_customer", {})
+			var target_id = target.get("id", "")
+			var target_name = target.get("name", "")
+			var target_display = target_name if target_name != "" else target_id
 			match action:
 				"used":
-					return prefix + "充值使用: ¥%.0f (%s) → 顾客:%s" % [amount, rname, target_cid]
+					return prefix + "充值使用: ¥%.0f 卡[%s] → %s" % [amount, rname, target_display]
 				_:
-					return prefix + "充值%s: ¥%.0f" % [action, amount]
+					return prefix + "充值%s: ¥%.0f 卡[%s]" % [action, amount, rname]
 		"item":
 			var item_id = data.get("item_id", "")
 			var item_names = {

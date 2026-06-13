@@ -169,13 +169,15 @@ func _format_step_detail(step: Dictionary) -> String:
 			var r = data.get("recharge", {})
 			var amount = r.get("amount", 0)
 			var rname = r.get("customer_name", "未知")
+			var rid = r.get("id", "")
 			var bonus = r.get("bonus_percent", 0) * 100
-			var target_name = data.get("customer_name", data.get("customer_id", ""))
+			var target = data.get("target_customer", {})
+			var target_name = target.get("name", target.get("id", ""))
 			match action:
 				"used":
-					desc += "▶ 使用充值卡\n金额: ¥%.0f (赠送%.0f%%)\n持卡人: %s\n使用给: %s" % [amount, bonus, rname, target_name]
+					desc += "▶ 使用充值卡\n卡号: %s\n金额: ¥%.0f (赠送%.0f%%)\n持卡人: %s\n使用给: %s" % [rid, amount, bonus, rname, target_name]
 				_:
-					desc += "充值%s: ¥%.0f" % [action, amount]
+					desc += "充值%s: ¥%.0f 卡[%s]" % [action, amount, rname]
 		"item":
 			var item_id = data.get("item_id", "")
 			var item_names = {

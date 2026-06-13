@@ -248,10 +248,9 @@ func _apply_recharge_to_customer(customer_id: String) -> void:
 		_update_customer_display(customer_id)
 		
 		EventBus.emit_recharge_completed(dragged_recharge)
-		ReplayManager.record_recharge_action("used", {
-			"recharge": dragged_recharge,
-			"customer_id": customer_id,
-			"customer_name": customer.name
+		ReplayManager.record_recharge_action("used", dragged_recharge, {
+			"id": customer_id,
+			"name": customer.name
 		})
 		
 		_remove_dragged_recharge()
