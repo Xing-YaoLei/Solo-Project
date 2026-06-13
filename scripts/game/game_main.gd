@@ -221,12 +221,19 @@ func _create_customer_node(customer: CustomerData) -> void:
 
 func _on_customer_gui_input(event: InputEvent, customer_id: String) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		var cdata = _get_customer_record_data(customer_id)
 		if is_dragging_recharge:
 			_apply_recharge_to_customer(customer_id)
 		else:
 			_start_project_for_customer(customer_id)
 		GameState.register_action()
-		ReplayManager.record_customer_action("click", {"id": customer_id})
+		ReplayManager.record_customer_action("click", cdata)
+
+func _get_customer_record_data(customer_id: String) -> Dictionary:
+	if customer_id in customer_nodes:
+		var customer: CustomerData = customer_nodes[customer_id]["customer"]
+		return customer.to_dict()
+	return {"id": customer_id, "name": "未知", "type": "", "wanted_projects": []}
 
 func _apply_recharge_to_customer(customer_id: String) -> void:
 	if customer_id in customer_nodes and not dragged_recharge.is_empty():
@@ -243,7 +250,8 @@ func _apply_recharge_to_customer(customer_id: String) -> void:
 		EventBus.emit_recharge_completed(dragged_recharge)
 		ReplayManager.record_recharge_action("used", {
 			"recharge": dragged_recharge,
-			"customer_id": customer_id
+			"customer_id": customer_id,
+			"customer_name": customer.name
 		})
 		
 		_remove_dragged_recharge()
@@ -373,7 +381,7 @@ func _on_project_completed(project: ProjectCard) -> void:
 	_update_review_tags(project.customer_id)
 	_check_achievements()
 	_update_ui()
-	ReplayManager.record_project_action("complete", {"id": project.id, "score": score})
+	ReplayManager.record_project_action("complete", project.to_dict().merged({"score": score}))
 	
 	if GameState.projects_completed >= TARGET_PROJECTS:
 		_end_game(true)
@@ -382,7 +390,7 @@ func _on_project_failed(project: ProjectCard) -> void:
 	GameState.reset_combo()
 	GameState.projects_failed += 1
 	ReplayManager.set_failed_project(project.to_dict(), project.fail_reason)
-	ReplayManager.record_project_action("fail", {"id": project.id, "reason": project.fail_reason})
+	ReplayManager.record_project_action("fail", project.to_dict())
 	_update_ui()
 
 func _clear_project_slot(project: ProjectCard) -> void:
@@ -418,7 +426,7 @@ func _update_customers(delta: float) -> void:
 			to_remove.append(customer_id)
 			GameState.reset_combo()
 			GameState.projects_failed += 1
-			ReplayManager.record_customer_action("leave", {"id": customer_id, "reason": "patience"})
+			ReplayManager.record_customer_action("leave", _get_customer_record_data(customer_id).merged({"reason": "patience"}))
 	
 	for customer_id in to_remove:
 		_remove_customer(customer_id)

@@ -186,32 +186,137 @@ func compare_replays(index1: int, index2: int) -> Dictionary:
 	for i in range(max_steps):
 		var s1 = steps1[i] if i < steps1.size() else null
 		var s2 = steps2[i] if i < steps2.size() else null
-		var s1_str = _format_step_safe(s1)
-		var s2_str = _format_step_safe(s2)
 		
 		if s1 == null or s2 == null:
 			comparison["key_differences"].append({
 				"step": i,
 				"type": "missing",
-				"replay1_action": s1_str,
-				"replay2_action": s2_str
+				"replay1_detail": _format_choice_safe(s1),
+				"replay2_detail": _format_choice_safe(s2)
 			})
-		elif _get_step_type_safe(s1) != _get_step_type_safe(s2):
+			continue
+		
+		var key1 = _get_choice_key(s1)
+		var key2 = _get_choice_key(s2)
+		
+		if key1 != key2:
 			comparison["key_differences"].append({
 				"step": i,
-				"type": "type_diff",
-				"replay1_action": s1_str,
-				"replay2_action": s2_str
-			})
-		elif _get_step_action_safe(s1) != _get_step_action_safe(s2):
-			comparison["key_differences"].append({
-				"step": i,
-				"type": "action_diff",
-				"replay1_action": s1_str,
-				"replay2_action": s2_str
+				"type": "choice_diff",
+				"replay1_detail": _format_choice_safe(s1),
+				"replay2_detail": _format_choice_safe(s2)
 			})
 	
 	return comparison
+
+func _get_choice_key(step) -> String:
+	if step == null:
+		return ""
+	var step_type = step.get("type", "")
+	var data = step.get("data", {})
+	var action = data.get("action", "")
+	
+	match step_type:
+		"customer":
+			var c = data.get("customer", {})
+			return "customer:%s:%s:%s" % [action, c.get("id", ""), c.get("name", "")]
+		"project":
+			var p = data.get("project", {})
+			return "project:%s:%s:%s" % [action, p.get("id", ""), p.get("name", "")]
+		"recharge":
+			var r = data.get("recharge", {})
+			return "recharge:%s:%s:%s:%s" % [action, r.get("id", ""), str(r.get("amount", 0)), data.get("customer_id", "")]
+		"item":
+			return "item:%s:%s" % [action, data.get("item_id", "")]
+		"anomaly":
+			return "anomaly:%s:%s" % [data.get("type", ""), action]
+		_:
+			return "%s:%s" % [step_type, action]
+
+func _format_choice_safe(step) -> String:
+	if step == null:
+		return "(无动作)"
+	var step_type = step.get("type", "")
+	var data = step.get("data", {})
+	var action = data.get("action", "")
+	var time_val = step.get("time", 0)
+	var minutes = int(time_val) / 60
+	var seconds = int(time_val) % 60
+	var prefix = "[%02d:%02d] " % [minutes, seconds]
+	
+	match step_type:
+		"customer":
+			var c = data.get("customer", {})
+			var cname = c.get("name", "未知")
+			var ctype = c.get("type", "")
+			var wanted = c.get("wanted_projects", [])
+			var wanted_str = ""
+			if wanted.size() > 0:
+				wanted_str = wanted[0]
+			match action:
+				"spawn":
+					return prefix + "顾客进店: %s (%s) 想做[%s]" % [cname, ctype, wanted_str]
+				"click":
+					return prefix + "点击顾客: %s (%s) 想做[%s]" % [cname, ctype, wanted_str]
+				"leave":
+					var reason = data.get("reason", "")
+					return prefix + "顾客离开: %s 原因:%s" % [cname, reason]
+				_:
+					return prefix + "顾客%s: %s" % [action, cname]
+		"project":
+			var p = data.get("project", {})
+			var pname = p.get("name", "未知")
+			var ptype = p.get("type", "")
+			var cid = p.get("customer_id", "")
+			match action:
+				"start":
+					return prefix + "开始项目: %s (%s) 顾客:%s" % [pname, ptype, cid]
+				"complete":
+					var score = p.get("score", 0) if p is Dictionary else data.get("score", 0)
+					return prefix + "完成项目: %s 得分:%s" % [pname, str(score)]
+				"fail":
+					var reason = data.get("reason", p.get("fail_reason", ""))
+					return prefix + "项目失败: %s 原因:%s" % [pname, reason]
+				_:
+					return prefix + "项目%s: %s" % [action, pname]
+		"recharge":
+			var r = data.get("recharge", {})
+			var amount = r.get("amount", 0)
+			var rname = r.get("customer_name", "未知")
+			var target_cid = data.get("customer_id", "")
+			match action:
+				"used":
+					return prefix + "充值使用: ¥%.0f (%s) → 顾客:%s" % [amount, rname, target_cid]
+				_:
+					return prefix + "充值%s: ¥%.0f" % [action, amount]
+		"item":
+			var item_id = data.get("item_id", "")
+			var item_names = {
+				"speed_boost": "加速药水",
+				"supply_refill": "紧急补货",
+				"charm": "魅力加成",
+				"time_freeze": "时间冻结"
+			}
+			var iname = item_names.get(item_id, item_id)
+			return prefix + "使用道具: %s" % iname
+		"anomaly":
+			var atype = data.get("type", "")
+			var supply_names = {
+				"shampoo": "洗发水",
+				"conditioner": "护发素",
+				"hair_color": "染发剂",
+				"perm_solution": "烫发液"
+			}
+			var sname = supply_names.get(atype, atype)
+			match action:
+				"resolved_manual":
+					return prefix + "解除异常: %s" % sname
+				"triggered":
+					return prefix + "异常触发: %s" % sname
+				_:
+					return prefix + "异常%s: %s" % [action, sname]
+		_:
+			return prefix + "%s:%s" % [step_type, action]
 
 func _summarize_actions(steps: Array) -> Dictionary:
 	var summary = {
@@ -235,45 +340,6 @@ func _summarize_actions(steps: Array) -> Dictionary:
 			"anomaly":
 				summary["anomaly_count"] += 1
 	return summary
-
-func _get_step_action(step: Dictionary) -> String:
-	if step == null:
-		return ""
-	var data = step.get("data", {})
-	return data.get("action", "")
-
-func _get_step_type_safe(step) -> String:
-	if step == null:
-		return ""
-	return step.get("type", "")
-
-func _get_step_action_safe(step) -> String:
-	if step == null:
-		return ""
-	var data = step.get("data", {})
-	return data.get("action", "")
-
-func _format_step(step: Dictionary) -> String:
-	if step == null:
-		return "(无动作)"
-	var step_type = step.get("type", "unknown")
-	var data = step.get("data", {})
-	var action = data.get("action", "")
-	var time_val = step.get("time", 0)
-	var minutes = int(time_val) / 60
-	var seconds = int(time_val) % 60
-	return "[%02d:%02d] %s:%s" % [minutes, seconds, step_type, action]
-
-func _format_step_safe(step) -> String:
-	if step == null:
-		return "(无动作)"
-	var step_type = step.get("type", "unknown")
-	var data = step.get("data", {})
-	var action = data.get("action", "")
-	var time_val = step.get("time", 0)
-	var minutes = int(time_val) / 60
-	var seconds = int(time_val) % 60
-	return "[%02d:%02d] %s:%s" % [minutes, seconds, step_type, action]
 
 func clear_replays() -> void:
 	replays.clear()

@@ -116,45 +116,95 @@ func _update_step_display() -> void:
 	
 	if current_step >= 0 and current_step < total_steps:
 		var step = steps[current_step]
-		var step_type = step.get("type", "unknown")
-		var step_data = step.get("data", {})
-		var step_time = step.get("time", 0)
-		
-		var desc = ""
-		var minutes = int(step_time) / 60
-		var seconds = int(step_time) % 60
-		desc += "时间: %02d:%02d\n" % [minutes, seconds]
-		desc += "类型: %s\n" % step_type
-		
-		match step_type:
-			"customer":
-				var action = step_data.get("action", "")
-				var customer = step_data.get("customer", {})
-				var cname = customer.get("name", "未知")
-				desc += "动作: 顾客 %s - %s" % [cname, action]
-			"project":
-				var action = step_data.get("action", "")
-				var project = step_data.get("project", {})
-				var pname = project.get("name", "未知")
-				desc += "动作: 项目 %s - %s" % [pname, action]
-			"recharge":
-				var action = step_data.get("action", "")
-				var recharge = step_data.get("recharge", {})
-				var amount = recharge.get("amount", 0)
-				desc += "动作: 充值 ¥%.0f - %s" % [amount, action]
-			"item":
-				var item_id = step_data.get("item_id", "")
-				desc += "动作: 使用道具 %s" % item_id
-			"anomaly":
-				var type = step_data.get("type", "")
-				var action = step_data.get("action", "")
-				desc += "动作: 耗材异常 %s - %s" % [type, action]
-			_:
-				desc += "数据: " + str(step_data)
-		
-		step_content.text = desc
+		step_content.text = _format_step_detail(step)
 	else:
 		step_content.text = "无更多步骤"
+
+func _format_step_detail(step: Dictionary) -> String:
+	var step_type = step.get("type", "")
+	var data = step.get("data", {})
+	var action = data.get("action", "")
+	var time_val = step.get("time", 0)
+	var minutes = int(time_val) / 60
+	var seconds = int(time_val) % 60
+	var desc = "时间: %02d:%02d\n" % [minutes, seconds]
+	
+	match step_type:
+		"customer":
+			var c = data.get("customer", {})
+			var cname = c.get("name", "未知")
+			var ctype = c.get("type", "")
+			var patience = c.get("patience", 0)
+			var max_patience = c.get("max_patience", 0)
+			var wanted = c.get("wanted_projects", [])
+			var wanted_str = ", ".join(wanted) if wanted.size() > 0 else "无"
+			match action:
+				"spawn":
+					desc += "顾客进店\n名字: %s\n类型: %s\n耐心: %.0f/%.0f\n想做: %s" % [cname, ctype, patience, max_patience, wanted_str]
+				"click":
+					desc += "▶ 点击顾客\n名字: %s\n类型: %s\n想做: %s" % [cname, ctype, wanted_str]
+				"leave":
+					var reason = data.get("reason", "")
+					desc += "✖ 顾客离开\n名字: %s\n原因: %s" % [cname, reason]
+				_:
+					desc += "顾客%s: %s" % [action, cname]
+		"project":
+			var p = data.get("project", {})
+			var pname = p.get("name", "未知")
+			var ptype = p.get("type", "")
+			var cid = p.get("customer_id", "")
+			var duration = p.get("duration", 0)
+			match action:
+				"start":
+					desc += "▶ 开始项目\n项目: %s\n类型: %s\n时长: %.0fs\n顾客: %s" % [pname, ptype, duration, cid]
+				"complete":
+					var score = data.get("score", p.get("score", 0))
+					desc += "✔ 完成项目\n项目: %s\n得分: %s" % [pname, str(score)]
+				"fail":
+					var reason = data.get("reason", p.get("fail_reason", ""))
+					desc += "✖ 项目失败\n项目: %s\n原因: %s" % [pname, reason]
+				_:
+					desc += "项目%s: %s" % [action, pname]
+		"recharge":
+			var r = data.get("recharge", {})
+			var amount = r.get("amount", 0)
+			var rname = r.get("customer_name", "未知")
+			var bonus = r.get("bonus_percent", 0) * 100
+			var target_name = data.get("customer_name", data.get("customer_id", ""))
+			match action:
+				"used":
+					desc += "▶ 使用充值卡\n金额: ¥%.0f (赠送%.0f%%)\n持卡人: %s\n使用给: %s" % [amount, bonus, rname, target_name]
+				_:
+					desc += "充值%s: ¥%.0f" % [action, amount]
+		"item":
+			var item_id = data.get("item_id", "")
+			var item_names = {
+				"speed_boost": "加速药水 ⚡",
+				"supply_refill": "紧急补货 📦",
+				"charm": "魅力加成 ✨",
+				"time_freeze": "时间冻结 ❄️"
+			}
+			desc += "▶ 使用道具: %s" % item_names.get(item_id, item_id)
+		"anomaly":
+			var atype = data.get("type", "")
+			var supply_names = {
+				"shampoo": "洗发水",
+				"conditioner": "护发素",
+				"hair_color": "染发剂",
+				"perm_solution": "烫发液"
+			}
+			var sname = supply_names.get(atype, atype)
+			match action:
+				"resolved_manual":
+					desc += "✔ 解除异常: %s" % sname
+				"triggered":
+					desc += "⚠ 异常触发: %s" % sname
+				_:
+					desc += "异常%s: %s" % [action, sname]
+		_:
+			desc += str(data)
+	
+	return desc
 
 func _on_prev_pressed() -> void:
 	if selected_replay_index < 0:
@@ -227,7 +277,7 @@ func _show_comparison_result(comparison: Dictionary) -> void:
 	compare_result_vbox.add_child(steps_row)
 	
 	var summary1_label = Label.new()
-	summary1_label.text = "回放1动作: 顾客%d 项目%d 充值%d 道具%d" % [
+	summary1_label.text = "回放1: 顾客%d 项目%d 充值%d 道具%d" % [
 		summary1.get("customer_count", 0),
 		summary1.get("project_count", 0),
 		summary1.get("recharge_count", 0),
@@ -237,7 +287,7 @@ func _show_comparison_result(comparison: Dictionary) -> void:
 	compare_result_vbox.add_child(summary1_label)
 	
 	var summary2_label = Label.new()
-	summary2_label.text = "回放2动作: 顾客%d 项目%d 充值%d 道具%d" % [
+	summary2_label.text = "回放2: 顾客%d 项目%d 充值%d 道具%d" % [
 		summary2.get("customer_count", 0),
 		summary2.get("project_count", 0),
 		summary2.get("recharge_count", 0),
@@ -260,21 +310,59 @@ func _show_comparison_result(comparison: Dictionary) -> void:
 	
 	if differences.size() > 0:
 		var diff_title = Label.new()
-		diff_title.text = "\n🔍 关键差异 (前8条):"
+		diff_title.text = "\n🔍 选择差异 (共%d处):" % differences.size()
 		diff_title.theme_override_colors.font_color = Color(0.4, 0.4, 0.6, 1)
 		diff_title.theme_override_font_sizes.font_size = 12
 		compare_result_vbox.add_child(diff_title)
 		
-		for i in range(min(differences.size(), 8)):
+		var show_count = min(differences.size(), 15)
+		for i in range(show_count):
 			var diff = differences[i]
 			var step_idx = diff.get("step", 0)
-			var a1 = diff.get("replay1_action", "")
-			var a2 = diff.get("replay2_action", "")
-			var diff_label = Label.new()
-			diff_label.text = "  第%d步:\n    回放1: %s\n    回放2: %s" % [step_idx + 1, a1, a2]
-			diff_label.theme_override_font_sizes.font_size = 10
-			diff_label.autowrap_mode = 3
-			compare_result_vbox.add_child(diff_label)
+			var diff_type = diff.get("type", "")
+			var d1 = diff.get("replay1_detail", "(无)")
+			var d2 = diff.get("replay2_detail", "(无)")
+			
+			var type_label = Label.new()
+			match diff_type:
+				"missing":
+					type_label.text = "  第%d步 [缺少]" % (step_idx + 1)
+					type_label.theme_override_colors.font_color = Color(0.6, 0.4, 0.4, 1)
+				"choice_diff":
+					type_label.text = "  第%d步 [选择不同]" % (step_idx + 1)
+					type_label.theme_override_colors.font_color = Color(0.7, 0.3, 0.2, 1)
+				_:
+					type_label.text = "  第%d步 [差异]" % (step_idx + 1)
+					type_label.theme_override_colors.font_color = Color(0.5, 0.4, 0.3, 1)
+			type_label.theme_override_font_sizes.font_size = 11
+			compare_result_vbox.add_child(type_label)
+			
+			var r1_label = Label.new()
+			r1_label.text = "    回放1: %s" % d1
+			r1_label.theme_override_colors.font_color = Color(0.3, 0.4, 0.6, 1)
+			r1_label.theme_override_font_sizes.font_size = 10
+			r1_label.autowrap_mode = 3
+			compare_result_vbox.add_child(r1_label)
+			
+			var r2_label = Label.new()
+			r2_label.text = "    回放2: %s" % d2
+			r2_label.theme_override_colors.font_color = Color(0.5, 0.3, 0.3, 1)
+			r2_label.theme_override_font_sizes.font_size = 10
+			r2_label.autowrap_mode = 3
+			compare_result_vbox.add_child(r2_label)
+		
+		if differences.size() > show_count:
+			var more = Label.new()
+			more.text = "  ...还有%d处差异" % (differences.size() - show_count)
+			more.theme_override_colors.font_color = Color(0.5, 0.5, 0.5, 1)
+			more.theme_override_font_sizes.font_size = 10
+			compare_result_vbox.add_child(more)
+	else:
+		var no_diff = Label.new()
+		no_diff.text = "\n✅ 两次操作选择完全一致"
+		no_diff.theme_override_colors.font_color = Color(0.3, 0.6, 0.3, 1)
+		no_diff.theme_override_font_sizes.font_size = 12
+		compare_result_vbox.add_child(no_diff)
 
 func _show_compare_result_message(msg: String) -> void:
 	for child in compare_result_vbox.get_children():
