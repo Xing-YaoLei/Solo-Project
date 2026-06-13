@@ -29,9 +29,11 @@ from utils.auth import (
     get_current_username,
     get_current_user_role,
     get_share_info,
+    get_share_role,
     get_visible_store_id,
     has_permission,
     is_authenticated,
+    is_share_mode,
     list_all_roles,
     set_user_session,
     validate_share_access,
@@ -58,10 +60,20 @@ server = app.server
 server.secret_key = "change-me-in-production"
 
 _ALLOWED_LOGIN_ROLES = {"admin", "store_manager", "staff", "viewer"}
+_ADMIN_USERNAME_PREFIX = "admin_"
+_ANONYMOUS_ADMIN_REQUIRED_USERNAMES = {"admin", "administrator", "root"}
 
 
 @server.route("/api/login", methods=["POST"])
 def api_login():
+    if is_share_mode():
+        share_role = get_share_role() or "viewer"
+        return jsonify({
+            "success": False,
+            "error": (f"当前处于分享视图（角色：{ROLE_LABELS.get(share_role, share_role)}），"
+                      "分享视图内禁止切换角色，请在原始会话中登录")
+        }), 403
+
     data = request.get_json(silent=True) or request.form
     username = (data.get("username") or "demo_user").strip()
     role = (data.get("role") or "viewer").strip()
@@ -69,6 +81,17 @@ def api_login():
 
     if role not in _ALLOWED_LOGIN_ROLES:
         return jsonify({"success": False, "error": f"非法角色: {role}"}), 400
+
+    if role == "admin":
+        normalized = username.lower()
+        if (not normalized.startswith(_ADMIN_USERNAME_PREFIX)
+                and normalized not in _ANONYMOUS_ADMIN_REQUIRED_USERNAMES):
+            return jsonify({
+                "success": False,
+                "error": (f"未认证请求不允许直接使用管理员身份；"
+                          f"管理员用户名需以 '{_ADMIN_USERNAME_PREFIX}' 开头 "
+                          f"或为 {sorted(_ANONYMOUS_ADMIN_REQUIRED_USERNAMES)} 之一")
+            }), 403
 
     if is_authenticated():
         current_role = get_current_user_role()
@@ -140,14 +163,24 @@ def enforce_role_on_share():
     session.permanent = False
 
 
-def _render_login_panel() -> html.Div:
+def _render_login_panel(disabled: bool = False, share_role: str | None = None) -> html.Div:
+    lock_msg = ""
+    if disabled:
+        label = ROLE_LABELS.get(share_role, share_role or "分享查看者")
+        lock_msg = f"（分享视图 · 角色受限为「{label}」，禁止切换）"
+
+    status_default = (f"当前: {get_current_username() or '未登录'} "
+                      f"/ {ROLE_LABELS.get(get_current_user_role(), 'viewer')}{lock_msg}")
+    title_cls = "mb-2" + (" text-warning" if disabled else "")
+
     return html.Div(className="card p-3 mb-3", children=[
-        html.H6("角色会话切换（演示用）", className="mb-2"),
+        html.H6(f"角色会话切换（演示用）{lock_msg}", className=title_cls),
         html.Div(className="row g-2", children=[
             html.Div(className="col-md-3", children=[
                 html.Label("用户名", className="form-label form-label-sm"),
                 dcc.Input(id="login-username", type="text", value="demo_manager",
-                          className="form-control form-control-sm"),
+                          className="form-control form-control-sm",
+                          disabled=disabled),
             ]),
             html.Div(className="col-md-3", children=[
                 html.Label("角色", className="form-label form-label-sm"),
@@ -159,19 +192,26 @@ def _render_login_panel() -> html.Div:
                                  {"label": "查看者(viewer)", "value": "viewer"},
                              ],
                              value="store_manager",
-                             className="form-select form-select-sm"),
+                             className="form-select form-select-sm",
+                             disabled=disabled),
             ]),
             html.Div(className="col-md-3", children=[
                 html.Label("默认门店", className="form-label form-label-sm"),
                 dcc.Input(id="login-store-id", type="text", value="S001",
-                          className="form-control form-control-sm"),
+                          className="form-control form-control-sm",
+                          disabled=disabled),
             ]),
             html.Div(className="col-md-3 d-flex align-items-end gap-2", children=[
-                html.Button("登录", id="btn-login", n_clicks=0, className="btn btn-sm btn-primary flex-grow-1"),
-                html.Button("退出", id="btn-logout", n_clicks=0, className="btn btn-sm btn-outline-secondary"),
+                html.Button("登录", id="btn-login", n_clicks=0,
+                            className="btn btn-sm btn-primary flex-grow-1",
+                            disabled=disabled),
+                html.Button("退出", id="btn-logout", n_clicks=0,
+                            className="btn btn-sm btn-outline-secondary",
+                            disabled=disabled),
             ]),
         ]),
-        html.Div(id="login-status", className="mt-2 small text-muted"),
+        html.Div(id="login-status", className="mt-2 small " + ("text-warning" if disabled else "text-muted"),
+                 children=status_default),
     ])
 
 
@@ -200,7 +240,7 @@ app.layout = html.Div([
     ]),
 
     html.Div(className="container-fluid p-3", children=[
-        _render_login_panel(),
+        html.Div(id="login-panel-placeholder", className="mb-3"),
 
         html.Div(id="share-panel-placeholder", className="mb-3"),
 
@@ -372,6 +412,7 @@ def sync_store_selection(selected, login_store):
         Output("download-section", "children"),
         Output("share-panel-placeholder", "children"),
         Output("refresh-status", "children"),
+        Output("login-panel-placeholder", "children"),
     ],
     [
         Input("btn-refresh", "n_clicks"),
@@ -393,6 +434,10 @@ def update_dashboard(
     username = get_current_username() or "未登录"
     user_badge = f"{username} · {role_label}"
 
+    in_share = is_share_mode()
+    share_role_label = get_share_role()
+    login_panel = _render_login_panel(disabled=in_share, share_role=share_role_label)
+
     requested = None
     if isinstance(holder_data, dict) and holder_data.get("value"):
         requested = holder_data["value"]
@@ -410,7 +455,8 @@ def update_dashboard(
             denied, denied, denied, denied, "",
             f"门店受限", user_badge, [],
             _build_download_buttons(False), _build_share_panel(role),
-            "权限校验不通过"
+            "权限校验不通过",
+            login_panel,
         )
 
     conflict_result = compute_conflict_trend(store_id=visible_store)
@@ -450,6 +496,7 @@ def update_dashboard(
         _build_download_buttons(can_export),
         _build_share_panel(role),
         status_text,
+        login_panel,
     )
 
 
@@ -669,6 +716,18 @@ def download_full_csv(n_clicks, selected, holder):
 )
 def handle_login_actions(login_clicks, logout_clicks, username, role, store_id):
     ctx = dash.callback_context
+
+    if is_share_mode():
+        sr = get_share_role() or "viewer"
+        lock_msg = (f"当前处于分享视图（角色：{ROLE_LABELS.get(sr, sr)}），"
+                    "禁止切换角色；请在原始会话中重新登录")
+        if not ctx.triggered:
+            return lock_msg
+        tid = ctx.triggered[0]["prop_id"].split(".")[0]
+        if tid == "btn-logout":
+            clear_user_session()
+        return lock_msg
+
     if not ctx.triggered:
         return (f"当前: {get_current_username() or '未登录'} "
                 f"/ {ROLE_LABELS.get(get_current_user_role(), 'viewer')}")
@@ -679,6 +738,12 @@ def handle_login_actions(login_clicks, logout_clicks, username, role, store_id):
     if trigger_id == "btn-login":
         if role not in _ALLOWED_LOGIN_ROLES:
             return f"登录失败：非法角色 {role}"
+        if role == "admin":
+            normalized = (username or "").lower()
+            if (not normalized.startswith(_ADMIN_USERNAME_PREFIX)
+                    and normalized not in _ANONYMOUS_ADMIN_REQUIRED_USERNAMES):
+                return (f"登录失败：管理员身份要求用户名以 '{_ADMIN_USERNAME_PREFIX}' 开头"
+                        f" 或为 {sorted(_ANONYMOUS_ADMIN_REQUIRED_USERNAMES)} 之一")
         if is_authenticated():
             current_role = get_current_user_role()
             current_level = ROLE_HIERARCHY.get(current_role, 0)

@@ -44,6 +44,15 @@ def is_authenticated() -> bool:
     return session.get("login_time") is not None
 
 
+def is_share_mode() -> bool:
+    return session.get("share_context") is not None
+
+
+def get_share_role() -> str | None:
+    ctx = session.get("share_context")
+    return ctx.get("role") if isinstance(ctx, dict) else None
+
+
 def get_current_user_store_id() -> str | None:
     return session.get("store_id")
 
