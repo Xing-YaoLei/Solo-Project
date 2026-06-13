@@ -40,6 +40,10 @@ def get_current_user_role() -> str:
     return session.get("user_role", "viewer")
 
 
+def is_authenticated() -> bool:
+    return session.get("login_time") is not None
+
+
 def get_current_user_store_id() -> str | None:
     return session.get("store_id")
 

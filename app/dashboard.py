@@ -31,6 +31,7 @@ from utils.auth import (
     get_share_info,
     get_visible_store_id,
     has_permission,
+    is_authenticated,
     list_all_roles,
     set_user_session,
     validate_share_access,
@@ -69,16 +70,16 @@ def api_login():
     if role not in _ALLOWED_LOGIN_ROLES:
         return jsonify({"success": False, "error": f"非法角色: {role}"}), 400
 
-    current_role = get_current_user_role()
-    current_level = ROLE_HIERARCHY.get(current_role, 0)
-    target_level = ROLE_HIERARCHY.get(role, 0)
-
-    if current_level > 0 and target_level > current_level:
-        return jsonify({
-            "success": False,
-            "error": f"当前角色「{ROLE_LABELS.get(current_role, current_role)}」"
-                     f"无法提升为「{ROLE_LABELS.get(role, role)}」"
-        }), 403
+    if is_authenticated():
+        current_role = get_current_user_role()
+        current_level = ROLE_HIERARCHY.get(current_role, 0)
+        target_level = ROLE_HIERARCHY.get(role, 0)
+        if target_level > current_level:
+            return jsonify({
+                "success": False,
+                "error": f"当前角色「{ROLE_LABELS.get(current_role, current_role)}」"
+                         f"无法提升为「{ROLE_LABELS.get(role, role)}」，请先退出登录"
+            }), 403
 
     set_user_session(username, role, store_id)
     return jsonify({
@@ -296,7 +297,7 @@ def _build_download_buttons(can_export: bool) -> html.Div:
     ], style={"marginBottom": "16px"})
 
 
-def _build_share_panel(current_role: str, share_result: html.Div | None = None) -> html.Div:
+def _build_share_panel(current_role: str) -> html.Div:
     can_share = "share_view" in ROLE_PERMISSIONS.get(current_role, set())
     current_level = ROLE_HIERARCHY.get(current_role, 0)
 
@@ -307,8 +308,6 @@ def _build_share_panel(current_role: str, share_result: html.Div | None = None) 
 
     share_disabled = {} if can_share else {"disabled": True, "style": {"opacity": 0.6}}
     title = "创建分享视图（店长及以上可分享）" if can_share else "分享视图（当前角色无分享权限）"
-
-    result = share_result or html.Span("", id="share-result")
 
     return html.Div(className="card p-3 mb-3", children=[
         html.H6(title, className="mb-2"),
@@ -330,8 +329,9 @@ def _build_share_panel(current_role: str, share_result: html.Div | None = None) 
                             className="btn btn-sm btn-success", **share_disabled),
             ]),
             html.Div(className="col-md-3 d-flex align-items-end", children=[
-                html.Div(id="share-result", className="small", style={"wordBreak": "break-all", "width": "100%"},
-                         children=result),
+                html.Div(id="share-result",
+                         className="small",
+                         style={"wordBreak": "break-all", "width": "100%"}),
             ]),
         ]),
     ])
@@ -679,12 +679,13 @@ def handle_login_actions(login_clicks, logout_clicks, username, role, store_id):
     if trigger_id == "btn-login":
         if role not in _ALLOWED_LOGIN_ROLES:
             return f"登录失败：非法角色 {role}"
-        current_role = get_current_user_role()
-        current_level = ROLE_HIERARCHY.get(current_role, 0)
-        target_level = ROLE_HIERARCHY.get(role, 0)
-        if current_level > 0 and target_level > current_level:
-            return (f"登录失败：当前角色「{ROLE_LABELS.get(current_role, current_role)}」"
-                    f"无法提升为「{ROLE_LABELS.get(role, role)}」")
+        if is_authenticated():
+            current_role = get_current_user_role()
+            current_level = ROLE_HIERARCHY.get(current_role, 0)
+            target_level = ROLE_HIERARCHY.get(role, 0)
+            if target_level > current_level:
+                return (f"登录失败：当前角色「{ROLE_LABELS.get(current_role, current_role)}」"
+                        f"无法提升为「{ROLE_LABELS.get(role, role)}」，请先退出登录")
         set_user_session(username or "demo", role, store_id)
         return (f"已登录: {username} / {ROLE_LABELS.get(role, role)}"
                 f" / 默认门店: {store_id}")
