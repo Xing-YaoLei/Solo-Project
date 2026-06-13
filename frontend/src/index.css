@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue',
+    Arial, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  background-color: #f5f7fa;
+}
+
+.progress-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.progress-behind {
+  background-color: #fef2f2;
+  color: #dc2626;
+}
+
+.progress-on-track {
+  background-color: #f0fdf4;
+  color: #16a34a;
+}
+
+.progress-ahead {
+  background-color: #eff6ff;
+  color: #2563eb;
+}
