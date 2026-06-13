@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard,
   ListTodo,
@@ -16,6 +16,7 @@ import {
   X,
   FileText,
   Shield,
+  History,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { apiEndpoints } from '@/lib/api';
@@ -46,37 +47,56 @@ const navItems: NavItem[] = [
     roles: [UserRole.ADMIN, UserRole.MANAGER],
   },
   { href: '/analysis', label: '复盘分析', icon: BarChart3 },
-  { href: '/timeline', label: '操作日志', icon: FileText },
+  { href: '/messages', label: '消息中心', icon: Bell },
+  { href: '/logs', label: '操作日志', icon: History },
 ];
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
   const [currentUser, setCurrentUser] = useState<any>(null);
 
   useEffect(() => {
-    const mockUser = {
-      id: 'mock-operator-id',
-      name: '张经理',
-      email: 'zhang.manager@solo.com',
-      role: UserRole.MANAGER,
-      region: '华东区',
-    };
-    setCurrentUser(mockUser);
-    localStorage.setItem('operatorId', mockUser.id);
-
-    const fetchUnread = async () => {
+    const initUser = async () => {
+      let user = null;
       try {
-        const res: any = await apiEndpoints.reminders.unreadCount(mockUser.id);
-        setUnreadCount(res.count || 0);
+        const users: any = await apiEndpoints.users.operators();
+        const managers = users?.filter?.((u: any) => u.role === UserRole.MANAGER || u.role === UserRole.ADMIN) || [];
+        const operators = users || [];
+        user = managers[0] || operators[0] || {
+          id: '0ef65860-5b23-4cc4-a2c2-ee0037a1c0bf',
+          name: '系统管理员',
+          email: 'admin@solo.com',
+          role: UserRole.ADMIN,
+          region: '总部',
+        };
       } catch (e) {
-        console.log('Failed to fetch unread count');
+        user = {
+          id: '0ef65860-5b23-4cc4-a2c2-ee0037a1c0bf',
+          name: '系统管理员',
+          email: 'admin@solo.com',
+          role: UserRole.ADMIN,
+          region: '总部',
+        };
       }
+      setCurrentUser(user);
+      localStorage.setItem('operatorId', user.id);
+
+      const fetchUnread = async () => {
+        try {
+          const res: any = await apiEndpoints.reminders.unreadCount(user.id);
+          setUnreadCount(res.count || 0);
+        } catch (e) {
+          console.log('Failed to fetch unread count');
+        }
+      };
+      fetchUnread();
+      const interval = setInterval(fetchUnread, 30000);
+      return () => clearInterval(interval);
     };
-    fetchUnread();
-    const interval = setInterval(fetchUnread, 30000);
-    return () => clearInterval(interval);
+    initUser();
   }, []);
 
   const canAccess = (item: NavItem) => {
@@ -166,7 +186,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
           <div className="flex items-center gap-4">
             <Link
-              href="/reminders"
+              href="/messages"
               className="relative rounded-lg p-2 text-gray-500 hover:bg-gray-100"
             >
               <Bell className="h-5 w-5" />

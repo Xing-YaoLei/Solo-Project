@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Bell, Check, CheckCheck, Clock, AlertTriangle, User, Filter, Search } from 'lucide-react';
+import { Bell, Check, CheckCheck, Clock, AlertTriangle, User, Filter, Search, ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -10,8 +10,32 @@ import { Input, Select } from '@/components/ui/Input';
 import { apiEndpoints } from '@/lib/api';
 import { formatDate, cn } from '@/lib/utils';
 import { ReminderChannel } from '@solo/shared';
+import { useRouter } from 'next/navigation';
+
+function inferTypeFromMessage(message: string): string {
+  if (!message) return 'NOTIFICATION';
+  if (message.includes('超时') || message.includes('已超')) return 'TIMEOUT';
+  if (message.includes('预警') || message.includes('即将')) return 'TIMEOUT_WARNING';
+  if (message.includes('分派') || message.includes('分配')) return 'ASSIGNED';
+  if (message.includes('重试')) return 'RETRY';
+  if (message.includes('补录')) return 'SUPPLEMENT';
+  return 'NOTIFICATION';
+}
+
+function getTitleFromMessage(message: string, type: string): string {
+  const typeTitles: Record<string, string> = {
+    TIMEOUT: '处理超时提醒',
+    TIMEOUT_WARNING: '超时预警通知',
+    ASSIGNED: '新任务分派通知',
+    RETRY: '重试处理通知',
+    SUPPLEMENT: '补录信息通知',
+  };
+  if (typeTitles[type]) return typeTitles[type];
+  return message?.slice(0, 30) || '系统通知';
+}
 
 export default function MessagesPage() {
+  const router = useRouter();
   const [messages, setMessages] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -57,8 +81,32 @@ export default function MessagesPage() {
       };
       const res: any = await apiEndpoints.reminders.list(params);
       const data = res as any;
-      setMessages(data.items || data || []);
-      setTotal(data.total || data.length || 0);
+      const rawItems = data.items || data || [];
+      let mappedItems = rawItems.map((item: any) => {
+        const type = inferTypeFromMessage(item.message);
+        return {
+          ...item,
+          isRead: item.readAt != null,
+          type,
+          title: getTitleFromMessage(item.message, type),
+          orderNo: item.refundOrder?.orderNo,
+          refundOrderId: item.refundOrder?.id,
+          orderStatus: item.refundOrder?.status,
+        };
+      });
+      if (filters.type) {
+        mappedItems = mappedItems.filter((m: any) => m.type === filters.type);
+      }
+      if (filters.keyword) {
+        const kw = filters.keyword.toLowerCase();
+        mappedItems = mappedItems.filter((m: any) =>
+          (m.message?.toLowerCase() || '').includes(kw) ||
+          (m.title?.toLowerCase() || '').includes(kw) ||
+          (m.orderNo?.toLowerCase() || '').includes(kw),
+        );
+      }
+      setMessages(mappedItems);
+      setTotal(mappedItems.length);
       const countRes: any = await apiEndpoints.reminders.unreadCount(selectedRecipient);
       setUnreadCount(countRes?.count || 0);
     } catch (error) {
@@ -88,6 +136,11 @@ export default function MessagesPage() {
     }
   };
 
+  const openOrder = (orderId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (orderId) router.push(`/orders/${orderId}`);
+  };
+
   const getChannelIcon = (channel: string) => {
     const icons: Record<string, any> = {
       [ReminderChannel.IN_APP]: <Bell className="h-4 w-4" />,
@@ -106,6 +159,30 @@ export default function MessagesPage() {
       [ReminderChannel.WECHAT]: '微信',
     };
     return labels[channel] || channel;
+  };
+
+  const getTypeLabel = (type: string) => {
+    const labels: Record<string, string> = {
+      TIMEOUT: '超时',
+      TIMEOUT_WARNING: '预警',
+      ASSIGNED: '分派',
+      RETRY: '重试',
+      SUPPLEMENT: '补录',
+      NOTIFICATION: '通知',
+    };
+    return labels[type] || type;
+  };
+
+  const getTypeBadgeVariant = (type: string) => {
+    const variants: Record<string, string> = {
+      TIMEOUT: 'danger',
+      TIMEOUT_WARNING: 'warning',
+      ASSIGNED: 'primary',
+      RETRY: 'secondary',
+      SUPPLEMENT: 'secondary',
+      NOTIFICATION: 'outline',
+    };
+    return variants[type] || 'outline';
   };
 
   return (
@@ -197,6 +274,7 @@ export default function MessagesPage() {
                 { value: 'ASSIGNED', label: '分派通知' },
                 { value: 'RETRY', label: '重试通知' },
                 { value: 'SUPPLEMENT', label: '补录通知' },
+                { value: 'NOTIFICATION', label: '系统通知' },
               ]}
               className="w-32"
             />
@@ -251,21 +329,8 @@ export default function MessagesPage() {
                           )}
                           <h4 className="font-medium text-gray-900 truncate">{msg.title}</h4>
                           {msg.type && (
-                            <Badge
-                              variant={
-                                msg.type === 'TIMEOUT'
-                                  ? 'danger'
-                                  : msg.type === 'TIMEOUT_WARNING'
-                                  ? 'warning'
-                                  : 'secondary'
-                              }
-                              size="sm"
-                            >
-                              {msg.type === 'TIMEOUT'
-                                ? '超时'
-                                : msg.type === 'TIMEOUT_WARNING'
-                                ? '预警'
-                                : msg.type}
+                            <Badge variant={getTypeBadgeVariant(msg.type)} size="sm">
+                              {getTypeLabel(msg.type)}
                             </Badge>
                           )}
                         </div>
@@ -281,18 +346,22 @@ export default function MessagesPage() {
                         </div>
                       </div>
                       <p className="mt-1 text-sm text-gray-600 line-clamp-2">{msg.message}</p>
-                      {msg.orderNo && (
-                        <div className="mt-2 flex items-center gap-2">
-                          <Badge variant="secondary" size="sm">
-                            相关售后单：{msg.orderNo}
-                          </Badge>
-                          {msg.recipient && (
-                            <span className="text-xs text-gray-500">
-                              接收人：{msg.recipient.name}
-                            </span>
-                          )}
-                        </div>
-                      )}
+                      <div className="mt-2 flex items-center gap-2 flex-wrap">
+                        {msg.orderNo && (
+                          <button
+                            onClick={(e) => openOrder(msg.refundOrderId, e)}
+                            className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-700 hover:bg-gray-200 transition-colors"
+                          >
+                            相关售后单：#{msg.orderNo}
+                            <ExternalLink className="h-3 w-3" />
+                          </button>
+                        )}
+                        {msg.recipient?.name && (
+                          <span className="text-xs text-gray-500">
+                            接收人：{msg.recipient.name}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     {!msg.isRead && (
                       <Button

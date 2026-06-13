@@ -24,7 +24,8 @@ export default function RulesPage() {
     isActive: true,
     priority: 1,
     problemTags: [],
-    autoAssign: true,
+    visitResults: [],
+    regions: [],
   });
 
   useEffect(() => {
@@ -59,30 +60,24 @@ export default function RulesPage() {
       setEditingId(rule.id);
       setFormData({
         name: rule.name,
-        description: rule.description,
         responsibility: rule.responsibility,
         assigneeId: rule.assigneeId || '',
         problemTags: rule.problemTags || [],
         visitResults: rule.visitResults || [],
         regions: rule.regions || [],
         priority: rule.priority,
-        autoAssign: rule.autoAssign ?? true,
-        handlingTimeHours: rule.handlingTimeHours || 24,
         isActive: rule.isActive,
       });
     } else {
       setEditingId(null);
       setFormData({
         name: '',
-        description: '',
         responsibility: '',
         assigneeId: '',
         problemTags: [],
         visitResults: [],
         regions: [],
         priority: rules.length + 1,
-        autoAssign: true,
-        handlingTimeHours: 24,
         isActive: true,
       });
     }
@@ -93,15 +88,12 @@ export default function RulesPage() {
     try {
       const saveData = {
         name: formData.name,
-        description: formData.description,
         responsibility: formData.responsibility,
         assigneeId: formData.assigneeId || null,
         problemTags: formData.problemTags || [],
         visitResults: formData.visitResults || [],
         regions: formData.regions || [],
         priority: formData.priority,
-        autoAssign: formData.autoAssign,
-        handlingTimeHours: formData.handlingTimeHours || 24,
         isActive: formData.isActive,
       };
       if (editingId) {
@@ -272,7 +264,7 @@ export default function RulesPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <Select
                 label="责任归属"
                 value={formData.responsibility}
@@ -294,25 +286,9 @@ export default function RulesPage() {
                   })),
                 ]}
               />
-              <Input
-                type="number"
-                label="标准处理时限（小时）"
-                value={formData.handlingTimeHours}
-                onChange={(e) => setFormData({ ...formData, handlingTimeHours: Number(e.target.value) })}
-                min={1}
-              />
             </div>
 
             <div className="flex items-center gap-6">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={formData.autoAssign}
-                  onChange={(e) => setFormData({ ...formData, autoAssign: e.target.checked })}
-                  className="h-4 w-4 rounded border-gray-300 text-primary-600"
-                />
-                <span className="text-sm text-gray-700">自动指派</span>
-              </label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
@@ -323,12 +299,6 @@ export default function RulesPage() {
                 <span className="text-sm text-gray-700">启用规则</span>
               </label>
             </div>
-
-            <Input
-              label="规则描述（可选）"
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            />
 
             <div className="flex justify-end gap-3">
               <Button variant="ghost" onClick={() => setShowForm(false)}>
@@ -386,13 +356,7 @@ export default function RulesPage() {
                             {!rule.isActive && (
                               <Badge variant="secondary" size="sm">已停用</Badge>
                             )}
-                            {rule.autoAssign && (
-                              <Badge variant="primary" size="sm">自动指派</Badge>
-                            )}
                           </div>
-                          {rule.description && (
-                            <p className="text-sm text-gray-500 mb-2">{rule.description}</p>
-                          )}
 
                           <div className="flex flex-wrap items-center gap-2 text-xs">
                             <span className="text-gray-500">匹配：</span>
@@ -434,12 +398,6 @@ export default function RulesPage() {
                                 <span className="font-medium text-gray-700">
                                   {operators.find((o) => o.id === rule.assigneeId)?.name || rule.assigneeId}
                                 </span>
-                              </div>
-                            )}
-                            {rule.handlingTimeHours && (
-                              <div className="flex items-center gap-1.5">
-                                <Clock className="h-3.5 w-3.5 text-gray-400" />
-                                <span>{rule.handlingTimeHours} 小时</span>
                               </div>
                             )}
                           </div>
