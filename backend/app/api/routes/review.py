@@ -3,6 +3,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
+from sqlalchemy import extract
 import os
 import tempfile
 import pandas as pd
@@ -43,8 +44,8 @@ def monthly_review(
             month_records = db.query(ProgressRecord).filter(
                 ProgressRecord.course_id == course.id,
                 ProgressRecord.member_id == cm.member_id,
-                db.extract("year", ProgressRecord.created_at) == query.year,
-                db.extract("month", ProgressRecord.created_at) == query.month
+                extract("year", ProgressRecord.created_at) == query.year,
+                extract("month", ProgressRecord.created_at) == query.month
             ).all()
 
             consumed_sessions = sum(r.consumed_sessions for r in month_records) if month_records else 0

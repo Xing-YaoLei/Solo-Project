@@ -16,6 +16,10 @@ def check_progress_behind():
         course_members = db.query(CourseMember).all()
         notifications_created = 0
 
+        admins_and_managers = db.query(User).filter(
+            User.role.in_([UserRole.ADMIN, UserRole.MANAGER])
+        ).all()
+
         for cm in course_members:
             expected = cm.expected_progress_rate
             actual = cm.actual_progress_rate
@@ -26,26 +30,46 @@ def check_progress_behind():
                 if not course:
                     continue
 
-                existing = db.query(Notification).filter(
-                    Notification.course_id == cm.course_id,
-                    Notification.member_id == cm.member_id,
-                    Notification.status.in_([
-                        NotificationStatus.PENDING,
-                        NotificationStatus.PROCESSING
-                    ])
-                ).first()
+                member = db.query(User).filter(User.id == cm.member_id).first()
+                sender_admin = db.query(User).filter(User.role == UserRole.ADMIN).first()
+                from_user_id = sender_admin.id if sender_admin else course.trainer_id
 
-                if not existing:
-                    member = db.query(User).filter(User.id == cm.member_id).first()
-                    admin = db.query(User).filter(User.role == UserRole.ADMIN).first()
-                    from_user_id = admin.id if admin else course.trainer_id
+                notify_user_ids = set()
+                notify_user_ids.add(course.trainer_id)
+                for u in admins_and_managers:
+                    notify_user_ids.add(u.id)
+
+                for to_user_id in notify_user_ids:
+                    existing = db.query(Notification).filter(
+                        Notification.course_id == cm.course_id,
+                        Notification.member_id == cm.member_id,
+                        Notification.to_user_id == to_user_id,
+                        Notification.status.in_([
+                            NotificationStatus.PENDING,
+                            NotificationStatus.PROCESSING
+                        ])
+                    ).first()
+
+                    if existing:
+                        continue
+
+                    role_tag = "相关角色"
+                    to_user = db.query(User).filter(User.id == to_user_id).first()
+                    if to_user:
+                        role_map = {
+                            "admin": "管理员",
+                            "manager": "运营经理",
+                            "trainer": "教练",
+                            "member": "学员",
+                        }
+                        role_tag = role_map.get(to_user.role, "相关角色")
 
                     notification = Notification(
                         course_id=cm.course_id,
                         from_user_id=from_user_id,
-                        to_user_id=course.trainer_id,
+                        to_user_id=to_user_id,
                         member_id=cm.member_id,
-                        title=f"进度落后提醒 - {course.name}",
+                        title=f"进度落后提醒【{role_tag}】- {course.name}",
                         content=(
                             f"学员【{member.full_name if member else '未知'}】在课程【{course.name}】中"
                             f"进度落后{round(gap, 2)}%。预期进度: {expected}%, 实际进度: {actual}%。"
@@ -62,6 +86,7 @@ def check_progress_behind():
         return {
             "message": "进度落后检测完成",
             "notifications_created": notifications_created,
+            "notified_roles_count": len(admins_and_managers) + 1,
             "scanned_members": len(course_members)
         }
     finally:

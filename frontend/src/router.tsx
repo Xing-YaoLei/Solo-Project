@@ -1,5 +1,4 @@
 import { createRouter, createRootRoute, createRoute, createBrowserRouter, Outlet, Navigate } from '@tanstack/react-router';
-import App from './App';
 import LoginPage from './pages/Login';
 import Layout from './components/Layout';
 import DashboardPage from './pages/Dashboard';
@@ -9,8 +8,12 @@ import RecordsPage from './pages/Records';
 import ReviewPage from './pages/Review';
 import NotificationsPage from './pages/Notifications';
 
+function RootComponent() {
+  return <Outlet />;
+}
+
 const rootRoute = createRootRoute({
-  component: App,
+  component: RootComponent,
 });
 
 const loginRoute = createRoute({
