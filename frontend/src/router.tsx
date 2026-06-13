@@ -1,4 +1,10 @@
-import { createRouter, createRootRoute, createRoute, createBrowserRouter, Outlet, Navigate } from '@tanstack/react-router';
+import {
+  createRouter,
+  createRootRoute,
+  createRoute,
+  Outlet,
+  redirect,
+} from '@tanstack/react-router';
 import LoginPage from './pages/Login';
 import Layout from './components/Layout';
 import DashboardPage from './pages/Dashboard';
@@ -8,12 +14,8 @@ import RecordsPage from './pages/Records';
 import ReviewPage from './pages/Review';
 import NotificationsPage from './pages/Notifications';
 
-function RootComponent() {
-  return <Outlet />;
-}
-
 const rootRoute = createRootRoute({
-  component: RootComponent,
+  component: Outlet,
 });
 
 const loginRoute = createRoute({
@@ -25,19 +27,21 @@ const loginRoute = createRoute({
 const protectedRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: 'protected',
-  component: () => {
+  beforeLoad: () => {
     const token = localStorage.getItem('access_token');
     if (!token) {
-      return <Navigate to="/login" />;
+      throw redirect({ to: '/login' });
     }
-    return <Layout><Outlet /></Layout>;
   },
+  component: () => <Layout><Outlet /></Layout>,
 });
 
 const indexRoute = createRoute({
   getParentRoute: () => protectedRoute,
   path: '/',
-  component: () => <Navigate to="/dashboard" />,
+  beforeLoad: () => {
+    throw redirect({ to: '/dashboard' });
+  },
 });
 
 const dashboardRoute = createRoute({
@@ -89,7 +93,7 @@ const routeTree = rootRoute.addChildren([
   ]),
 ]);
 
-export const router = createBrowserRouter({ routeTree });
+export const router = createRouter({ routeTree });
 
 declare module '@tanstack/react-router' {
   interface Register {
