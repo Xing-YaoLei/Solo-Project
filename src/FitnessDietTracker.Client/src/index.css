@@ -1,0 +1,105 @@
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  background: #f5f7fa;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #fff;
+  padding: 0 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.app-logo {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1677ff;
+}
+
+.app-content {
+  padding: 24px;
+}
+
+.app-sider {
+  background: #001529;
+}
+
+.record-card {
+  margin-bottom: 16px;
+}
+
+.meal-tag {
+  font-size: 12px;
+}
+
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.photo-grid img {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.stat-card {
+  text-align: center;
+}
+
+.stat-value {
+  font-size: 28px;
+  font-weight: 600;
+  color: #1677ff;
+}
+
+.stat-label {
+  font-size: 13px;
+  color: #666;
+  margin-top: 4px;
+}
+
+.diff-positive {
+  color: #52c41a;
+}
+
+.diff-negative {
+  color: #ff4d4f;
+}
+
+.history-item {
+  padding: 12px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.history-item:last-child {
+  border-bottom: none;
+}
+
+.comment-diff {
+  font-family: monospace;
+  font-size: 13px;
+  padding: 8px;
+  background: #fafafa;
+  border-radius: 4px;
+  margin-top: 4px;
+}
+
+.export-filter-card {
+  margin-bottom: 16px;
+}
+
+.interruption-timeline {
+  padding: 16px 0;
+}
