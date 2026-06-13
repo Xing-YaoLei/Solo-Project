@@ -500,7 +500,10 @@ func load_levels() -> void:
 		var item: TreeItem = levels_tree.create_item()
 		item.set_text(0, level["id"])
 		item.set_text(1, level["name"])
-		item.set_text(2, "★" * int(level["difficulty"]))
+		var difficulty_stars: String = ""
+		for i in range(int(level["difficulty"])):
+			difficulty_stars += "★"
+		item.set_text(2, difficulty_stars)
 		item.set_text(3, "启用" if level.get("enabled", true) else "禁用")
 		item.set_meta("level_id", level["id"])
 
