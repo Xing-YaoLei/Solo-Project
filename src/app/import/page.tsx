@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import AppLayout from '@/components/Layout/AppLayout';
+import { useAuth } from '@/contexts/AuthContext';
 import { motion } from 'framer-motion';
 import {
   Upload,
@@ -11,6 +12,7 @@ import {
   CheckCircle,
   XCircle,
   Loader2,
+  AlertTriangle,
 } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import { ImportBatch, BatchType } from '@/types';
@@ -23,10 +25,13 @@ import {
 import { cn } from '@/utils/cn';
 
 export default function ImportPage() {
+  const { user, hasPermission } = useAuth();
   const [selectedType, setSelectedType] = useState<BatchType>('INVENTORY');
   const [batches, setBatches] = useState<ImportBatch[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [lastMessage, setLastMessage] = useState<string | null>(null);
 
   const types: { key: BatchType; label: string; icon: any; description: string }[] = [
     { key: 'INVENTORY', label: '库存表', icon: Database, description: '导入产品库存数据' },
@@ -51,31 +56,48 @@ export default function ImportPage() {
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
     if (!file) return;
+    if (!user) {
+      setError('请先登录后再导入数据');
+      return;
+    }
+    if (!hasPermission(['MANAGER'])) {
+      setError('仅管理层可导入数据，请联系店长');
+      return;
+    }
 
     setIsUploading(true);
     setUploadSuccess(false);
+    setError(null);
+    setLastMessage(null);
 
     try {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('type', selectedType);
+      formData.append('importedBy', user.id);
+      formData.append('importerEmail', user.email);
 
       const response = await fetch('/api/import/upload', {
         method: 'POST',
         body: formData,
       });
 
+      const data = await response.json();
+
       if (response.ok) {
         setUploadSuccess(true);
+        setLastMessage(data.errorMessage || '批次处理完成');
         fetchBatches();
-        setTimeout(() => setUploadSuccess(false), 3000);
+        setTimeout(() => setUploadSuccess(false), 5000);
+      } else {
+        setError(data.error || '导入失败，请检查文件格式');
       }
-    } catch (error) {
-      console.error('Upload failed:', error);
+    } catch (e: any) {
+      setError(e.message || '上传失败');
     } finally {
       setIsUploading(false);
     }
-  }, [selectedType]);
+  }, [selectedType, user, hasPermission]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -93,6 +115,34 @@ export default function ImportPage() {
           </h1>
           <p className="text-dark-500">批量导入库存、收银流水与点评记录</p>
         </div>
+
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="card p-4 mb-6 border border-red-200 bg-red-50 flex items-start gap-3"
+          >
+            <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div className="text-red-700 text-sm">{error}</div>
+            <button
+              onClick={() => setError(null)}
+              className="ml-auto text-red-400 hover:text-red-600"
+            >
+              <XCircle className="w-4 h-4" />
+            </button>
+          </motion.div>
+        )}
+
+        {lastMessage && uploadSuccess && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="card p-4 mb-6 border border-green-200 bg-green-50 flex items-start gap-3"
+          >
+            <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+            <div className="text-green-800 text-sm whitespace-pre-wrap">{lastMessage}</div>
+          </motion.div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           {types.map((type, index) => {

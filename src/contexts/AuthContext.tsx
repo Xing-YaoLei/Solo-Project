@@ -5,7 +5,7 @@ import { User, UserRole } from '@/types';
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   isLoading: boolean;
   hasPermission: (requiredRole: UserRole[]) => boolean;
@@ -13,36 +13,15 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const MOCK_USERS: User[] = [
-  {
-    id: '1',
-    email: 'manager@beauty.com',
-    name: '张店长',
-    role: 'MANAGER',
-    createdAt: new Date('2024-01-01'),
-  },
-  {
-    id: '2',
-    email: 'tech1@beauty.com',
-    name: '李美容师',
-    role: 'TECHNICIAN',
-    createdAt: new Date('2024-01-01'),
-  },
-  {
-    id: '3',
-    email: 'tech2@beauty.com',
-    name: '王美容师',
-    role: 'TECHNICIAN',
-    createdAt: new Date('2024-01-01'),
-  },
-  {
-    id: '4',
-    email: 'tech3@beauty.com',
-    name: '陈美容师',
-    role: 'TECHNICIAN',
-    createdAt: new Date('2024-01-01'),
-  },
-];
+const normalizeUser = (raw: any): User => ({
+  id: String(raw.id),
+  email: raw.email,
+  name: raw.name,
+  role: (raw.role as UserRole),
+  createdAt: raw.createdAt instanceof Date
+    ? raw.createdAt
+    : new Date(raw.createdAt),
+});
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -53,10 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
-        setUser({
-          ...parsed,
-          createdAt: new Date(parsed.createdAt),
-        });
+        setUser(normalizeUser(parsed));
       } catch (e) {
         localStorage.removeItem('auth_user');
       }
@@ -64,19 +40,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(false);
   }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (
+    email: string,
+    password: string,
+  ): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 800));
-
-    const foundUser = MOCK_USERS.find(u => u.email === email);
-    if (foundUser && password === '123456') {
-      setUser(foundUser);
-      localStorage.setItem('auth_user', JSON.stringify(foundUser));
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (res.ok && data.user) {
+        const normalized = normalizeUser(data.user);
+        setUser(normalized);
+        localStorage.setItem('auth_user', JSON.stringify(normalized));
+        return { success: true };
+      }
+      return { success: false, error: data.error || '登录失败' };
+    } catch (e: any) {
+      return {
+        success: false,
+        error: e.message || '网络错误，请稍后重试',
+      };
+    } finally {
       setIsLoading(false);
-      return true;
     }
-    setIsLoading(false);
-    return false;
   };
 
   const logout = () => {

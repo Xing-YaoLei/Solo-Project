@@ -29,8 +29,8 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
 
-    const success = await login(email, password);
-    if (success) {
+    const result = await login(email, password);
+    if (result.success) {
       const userData = JSON.parse(localStorage.getItem('auth_user') || '{}');
       if (userData.role === 'MANAGER') {
         router.push('/dashboard');
@@ -38,7 +38,7 @@ export default function LoginPage() {
         router.push('/my-orders');
       }
     } else {
-      setError('邮箱或密码错误，请重试');
+      setError(result.error || '邮箱或密码错误，请重试');
     }
   };
 
