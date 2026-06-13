@@ -118,14 +118,78 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   endGame: () => {
-    const { correctCount, wrongCount, products } = get();
-    const totalCount = products.filter((p) => !p.isDefective).length;
-    const onTimeRate = calculateOnTimeRate(correctCount, totalCount);
+    const { products, processedProductIds, settlements } = get();
+    let finalCorrectCount = 0;
+    let finalWrongCount = 0;
+    const additionalErrors: ProductError[] = [];
+    const additionalFrames: Omit<ReplayFrame, 'time'>[] = [];
+
+    products.forEach((product) => {
+      if (processedProductIds.includes(product.id)) {
+        return;
+      }
+
+      if (!product.isDefective) {
+        const settlement = settlements.find((s) =>
+          s.productIds.includes(product.id)
+        );
+        finalWrongCount += 1;
+        additionalErrors.push({
+          productId: product.id,
+          productName: product.name,
+          errorType: 'unprocessed_normal',
+          expectedSettlement: settlement?.id || 'unknown',
+          actualSettlement: undefined,
+        });
+        additionalFrames.push({
+          action: 'error',
+          productId: product.id,
+          settlementId: settlement?.id,
+          isCorrect: false,
+          position_x: product.position.x,
+          position_y: product.position.y,
+          position_z: product.position.z,
+          errorType: 'unprocessed_normal',
+        });
+      } else {
+        finalWrongCount += 1;
+        additionalErrors.push({
+          productId: product.id,
+          productName: product.name,
+          errorType: 'unprocessed_defect',
+          expectedSettlement: 'mark_as_defective',
+          actualSettlement: undefined,
+        });
+        additionalFrames.push({
+          action: 'error',
+          productId: product.id,
+          isCorrect: false,
+          position_x: product.position.x,
+          position_y: product.position.y,
+          position_z: product.position.z,
+          errorType: 'unprocessed_defect',
+        });
+      }
+    });
+
+    additionalFrames.forEach((frame) => {
+      get().recordAction(frame);
+    });
+
+    const stateBefore = get();
+    const totalCorrect = stateBefore.correctCount + finalCorrectCount;
+    const totalWrong = stateBefore.wrongCount + finalWrongCount;
+    const totalProducts = products.length;
+    const validCorrect = Math.min(totalCorrect, totalProducts);
+    const onTimeRate = calculateOnTimeRate(validCorrect, totalProducts);
 
     set((state) => ({
       phase: 'finished',
+      correctCount: totalCorrect,
+      wrongCount: totalWrong,
+      productErrors: [...state.productErrors, ...additionalErrors],
       score: calculateScore(
-        correctCount,
+        validCorrect,
         state.timeRemaining,
         state.difficulty
       ),
@@ -261,31 +325,72 @@ export const useGameStore = create<GameState>((set, get) => ({
   updateWarning: () => {
     const { timeRemaining, products, processedProductIds, difficulty } = get();
     const config = getDifficultyConfig(difficulty);
-    const defectiveProducts = products.filter((p) => p.isDefective);
 
-    const warningProductIds = shouldTriggerWarning(
-      timeRemaining,
-      config.warningTimeThreshold,
-      defectiveProducts,
-      processedProductIds
+    const unprocessedProducts = products.filter(
+      (p) => !processedProductIds.includes(p.id)
     );
 
-    const intensity =
-      warningProductIds.length > 0
-        ? Math.max(
-            0.3,
-            Math.min(1, 1 - timeRemaining / config.warningTimeThreshold)
+    const defectiveProducts = products.filter((p) => p.isDefective);
+    const unprocessedDefective = defectiveProducts.filter(
+      (p) => !processedProductIds.includes(p.id)
+    );
+
+    const shortageProducts = defectiveProducts.filter(
+      (p) => p.defectType === 'shortage' && !processedProductIds.includes(p.id)
+    );
+
+    let warningProductIds: string[] = [];
+    let warningIntensity = 0;
+
+    if (timeRemaining <= config.warningTimeThreshold) {
+      warningProductIds = unprocessedDefective.map((p) => p.id);
+      warningIntensity =
+        unprocessedDefective.length > 0
+          ? Math.max(
+              0.3,
+              Math.min(
+                1,
+                1 - timeRemaining / config.warningTimeThreshold
+              )
+            )
+          : 0;
+    }
+
+    if (
+      timeRemaining <= config.warningTimeThreshold * 0.6 &&
+      unprocessedProducts.length > 0
+    ) {
+      const normalUnprocessed = products.filter(
+        (p) =>
+          !p.isDefective &&
+          !processedProductIds.includes(p.id) &&
+          !warningProductIds.includes(p.id)
+      );
+      warningProductIds = [...warningProductIds, ...normalUnprocessed.map((p) => p.id)];
+      warningIntensity = Math.max(
+        warningIntensity,
+        Math.max(
+          0.5,
+          Math.min(
+            1,
+            1 - timeRemaining / (config.warningTimeThreshold * 0.6)
           )
-        : 0;
+        )
+      );
+    }
+
+    const shortageCount = shortageProducts.length;
 
     set({
       warning: {
         active: warningProductIds.length > 0,
         productIds: warningProductIds,
-        intensity,
+        intensity: warningIntensity,
         message:
           warningProductIds.length > 0
-            ? `注意！还有 ${warningProductIds.length} 个异常商品未处理`
+            ? shortageCount > 0
+              ? `⚠️ 到货短少 ${shortageCount} 件待处理 + ${warningProductIds.length} 件未完成`
+              : `还有 ${warningProductIds.length} 件商品未处理`
             : '',
       },
       products: products.map((p) => ({
@@ -296,14 +401,22 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     if (warningProductIds.length > 0) {
       warningProductIds.forEach((pid) => {
-        get().recordAction({
-          action: 'warning',
-          productId: pid,
-          isCorrect: false,
-          position_x: 0,
-          position_y: 0,
-          position_z: 0,
-        });
+        const alreadyRecorded = get().replayData.some(
+          (f) =>
+            f.action === 'warning' &&
+            f.productId === pid &&
+            Math.abs(get().totalTime - get().timeRemaining - f.time) < 2
+        );
+        if (!alreadyRecorded) {
+          get().recordAction({
+            action: 'warning',
+            productId: pid,
+            isCorrect: false,
+            position_x: 0,
+            position_y: 0,
+            position_z: 0,
+          });
+        }
       });
     }
   },
@@ -369,13 +482,14 @@ export const useGameStore = create<GameState>((set, get) => ({
       products,
     } = get();
 
-    const totalCount = products.filter((p) => !p.isDefective).length;
-    const onTimeRate = calculateOnTimeRate(correctCount, totalCount);
+    const totalProducts = products.length;
+    const validCorrect = Math.min(correctCount, totalProducts);
+    const onTimeRate = calculateOnTimeRate(validCorrect, totalProducts);
 
     return {
       id: `record_${Date.now()}`,
       score,
-      correctCount,
+      correctCount: validCorrect,
       wrongCount,
       onTimeRate,
       errors: productErrors.map((e) => e.errorType),

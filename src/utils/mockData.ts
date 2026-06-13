@@ -71,25 +71,82 @@ export const generateSettlements = (
   const settlements: Settlement[] = [];
   const customerNames = ['张先生', '李女士', '王阿姨', '赵叔叔', '陈小姐'];
 
+  const validProducts = products.filter((p) => !p.isDefective);
+
+  const batchToSettlements: Record<number, string[]> = {};
+  batches.forEach((b) => {
+    batchToSettlements[b.id] = [];
+  });
+
   for (let i = 0; i < count; i++) {
     const batch = batches[i % batches.length];
-    const batchProducts = products.filter((p) => p.batchId === batch.id && !p.isDefective);
-    const productCount = Math.max(1, Math.floor(batchProducts.length / 2) + Math.floor(Math.random() * 3));
-    const selectedProducts = batchProducts.slice(0, Math.min(productCount, batchProducts.length));
-    const totalAmount = selectedProducts.reduce((sum, p) => sum + p.price * p.quantity, 0);
-
-    settlements.push({
-      id: generateId('settle'),
-      batchId: batch.id,
-      productIds: selectedProducts.map((p) => p.id),
-      totalAmount: Math.round(totalAmount * 100) / 100,
-      status: 'pending',
-      customerName: customerNames[i % customerNames.length],
-      pickupCode: `T${String(1000 + i * 7).padStart(4, '0')}`,
-    });
+    batchToSettlements[batch.id].push(customerNames[i % customerNames.length]);
   }
 
-  return settlements;
+  const settlementTemplates: Array<{
+    batchId: number;
+    index: number;
+    customerName: string;
+  }> = [];
+  batches.forEach((batch) => {
+    const sList = batchToSettlements[batch.id];
+    sList.forEach((name, idx) => {
+      settlementTemplates.push({
+        batchId: batch.id,
+        index: idx,
+        customerName: name,
+      });
+    });
+  });
+
+  const batchProductsGroup: Record<number, Product[]> = {};
+  batches.forEach((b) => {
+    batchProductsGroup[b.id] = validProducts.filter(
+      (p) => p.batchId === b.id
+    );
+  });
+
+  settlementTemplates.forEach((template) => {
+    const batchProducts = batchProductsGroup[template.batchId];
+    settlements.push({
+      id: generateId('settle'),
+      batchId: template.batchId,
+      productIds: [],
+      totalAmount: 0,
+      status: 'pending',
+      customerName: template.customerName,
+      pickupCode: `T${String(
+        1000 + settlements.length * 7
+      ).padStart(4, '0')}`,
+    });
+  });
+
+  batches.forEach((batch) => {
+    const batchProducts = batchProductsGroup[batch.id];
+    const batchSettlements = settlements.filter(
+      (s) => s.batchId === batch.id
+    );
+
+    if (batchSettlements.length === 0 || batchProducts.length === 0) return;
+
+    batchProducts.forEach((product, idx) => {
+      const targetSettlement =
+        batchSettlements[idx % batchSettlements.length];
+      targetSettlement.productIds.push(product.id);
+    });
+
+    batchSettlements.forEach((s) => {
+      s.totalAmount = Math.round(
+        s.productIds
+          .reduce((sum, pid) => {
+            const p = products.find((pp) => pp.id === pid);
+            return sum + (p ? p.price * p.quantity : 0);
+          }, 0) * 100
+      ) / 100;
+    });
+  });
+
+  return settlements.filter((s) => s.productIds.length > 0);
 };
 
 export const generateGameData = (difficulty: Difficulty) => {

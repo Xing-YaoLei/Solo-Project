@@ -97,6 +97,8 @@ export const ERROR_TYPE_LABELS: Record<string, string> = {
   damaged: '包装破损',
   wrong_settlement: '结算单错误',
   unprocessed_defect: '缺损未处理',
+  unprocessed_normal: '超时未核销',
+  unknown: '未知错误',
 };
 
 export const STORAGE_KEYS = {

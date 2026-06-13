@@ -52,7 +52,7 @@ export default function GameHUD({
   const [showWarningFlash, setShowWarningFlash] = useState(false);
 
   const selectedProduct = products.find((p) => p.id === selectedProductId);
-  const totalProducts = products.filter((p) => !p.isDefective).length;
+  const totalProducts = products.length;
   const progress = totalProducts > 0
     ? Math.round(((correctCount + wrongCount) / totalProducts) * 100)
     : 0;
