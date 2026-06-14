@@ -139,10 +139,12 @@ export default function QuestionPanel() {
           </h2>
           <p className="text-gray-400 text-lg mb-8">{question.description}</p>
 
-          {question.type === 'multiple' && (
+          {(question.type === 'multiple' || question.type === 'schedule') && (
             <div className="mb-6 px-4 py-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-300 flex items-center gap-2">
               <Lightbulb className="w-5 h-5" />
-              这是一道多选题，请选择所有正确答案
+              {question.type === 'multiple'
+                ? '这是一道多选题，请选择所有正确答案'
+                : '这是一道排程题，请选择所有合理的安排方案'}
             </div>
           )}
 

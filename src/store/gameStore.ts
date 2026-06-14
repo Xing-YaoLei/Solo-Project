@@ -125,7 +125,7 @@ export const useGameStore = create<GameStore>()(
         if (!question || get().showResult) return;
         if (get().isQuestionAnswered(question.id)) return;
 
-        if (question.type === 'single' || question.type === 'schedule') {
+        if (question.type === 'single') {
           set({ selectedAnswers: [answerIndex] });
         } else {
           set((state) => {
