@@ -16,7 +16,7 @@ from sync_tasks.data_sources import (
 )
 from utils.db_adapter import (
     CourseSchedule, Appointment, AccessRecord,
-    BodyTestRecord, RescheduleRecord, DB_TYPE,
+    BodyTestRecord, RescheduleRecord, DB_TYPE, get_session,
 )
 from config import sync_config
 
@@ -64,6 +64,19 @@ def run_sync_task(source_type: str,
     task_def = next((t for t in SYNC_TASK_DEFS if t["source_type"] == source_type), None)
     if not task_def:
         return {"error": f"Unknown source_type: {source_type}"}
+
+    from utils.db_adapter import SyncBatch
+    session = get_session()
+    try:
+        stuck = session.query(SyncBatch).filter(
+            SyncBatch.source_type == source_type,
+            SyncBatch.status == "running"
+        ).all()
+        for b in stuck:
+            session.delete(b)
+        session.commit()
+    finally:
+        session.close()
 
     with batch_manager(source_type, start_date, end_date) as ctx:
         batch_no = ctx["batch_no"]

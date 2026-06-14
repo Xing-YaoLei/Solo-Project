@@ -14,6 +14,7 @@ from data_processing.analytics import (
     calculate_hourly_distribution,
     get_prev_period_dates,
     detect_conflicts,
+    inject_overload_schedules,
     analyze_reschedule_impact,
     get_multi_region_comparison,
 )
@@ -34,6 +35,7 @@ __all__ = [
     "calculate_hourly_distribution",
     "get_prev_period_dates",
     "detect_conflicts",
+    "inject_overload_schedules",
     "analyze_reschedule_impact",
     "get_multi_region_comparison",
 ]

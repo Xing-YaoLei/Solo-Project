@@ -11,7 +11,7 @@ from dash_app.components import (
 )
 from data_processing import (
     get_conflicts_df, detect_conflicts, get_appointments_df,
-    get_schedules_df, get_regions_df
+    get_schedules_df, get_regions_df, inject_overload_schedules,
 )
 
 
@@ -244,6 +244,7 @@ def _prepare_table_df(conflicts_df: pd.DataFrame) -> pd.DataFrame:
         "region_name", "description", "status",
         "conflict_type", "severity", "is_resolved",
         "appointment_no_1", "appointment_no_2",
+        "schedule_no_1", "schedule_no_2",
     ]
     for c in display_cols:
         if c not in df.columns:
@@ -761,12 +762,14 @@ def register_callbacks(app):
         trigger_id = _get_trigger_id()
         if detect_clicks and trigger_id == "conflicts-detect-btn":
             try:
+                overload_count = inject_overload_schedules(overload_ratio=0.08, max_overload=3)
                 schedules_df = get_schedules_df(start_date, end_date)
                 detected = detect_conflicts(appointments_df, schedules_df, persist=True)
                 if not detected.empty:
                     conflicts_df = get_conflicts_df(start_date, end_date)
+                    msg = f"✅ 检测完成，超容样本 {overload_count} 条，发现 {len(detected)} 个冲突"
                     toast_msg = html.Div(
-                        f"✅ 检测完成，发现 {len(detected)} 个冲突",
+                        msg,
                         style={
                             "position": "fixed", "top": "20px", "right": "20px",
                             "background": SUCCESS, "color": "#fff",
@@ -869,7 +872,10 @@ def register_callbacks(app):
             appointments_df = pd.DataFrame(appt_data) if appt_data else pd.DataFrame()
 
             full_conflict = {}
-            if "appointment_no_1" not in conflict_row and conflict_row.get("conflict_no"):
+            ctype = str(conflict_row.get("conflict_type", ""))
+            has_sch_no = conflict_row.get("schedule_no_1") and pd.notna(conflict_row.get("schedule_no_1"))
+            if (ctype == "capacity_exceeded" and not has_sch_no) or \
+               ("appointment_no_1" not in conflict_row and conflict_row.get("conflict_no")):
                 try:
                     conflicts_df = get_conflicts_df(
                         date.fromisoformat("2000-01-01"),

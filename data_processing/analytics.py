@@ -450,6 +450,37 @@ def get_prev_period_dates(current_start: date, current_end: date,
     return prev_start, prev_end
 
 
+def inject_overload_schedules(overload_ratio: float = 0.08,
+                              max_overload: int = 3) -> int:
+    import random as _random
+    session = get_session()
+    try:
+        query = session.query(CourseSchedule).filter(
+            CourseSchedule.max_capacity >= 1,
+            CourseSchedule.actual_capacity <= CourseSchedule.max_capacity,
+        )
+        count = query.count()
+        if count == 0:
+            return 0
+
+        targets = query.all()
+        n_update = max(1, int(count * overload_ratio))
+        selected = _random.sample(targets, min(n_update, len(targets)))
+        updated = 0
+        for sched in selected:
+            extra = _random.randint(1, max_overload)
+            new_actual = sched.max_capacity + extra
+            sched.actual_capacity = new_actual
+            updated += 1
+        session.commit()
+        return updated
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
+
+
 def detect_conflicts(appointments_df: pd.DataFrame, schedules_df: pd.DataFrame,
                      persist: bool = False) -> pd.DataFrame:
     conflicts = []
