@@ -383,7 +383,12 @@ def seed_test_data(days: int = 60):
                     schedule_no = f"SCH{current.strftime('%Y%m%d')}{schedule_counter:06d}"
                     schedule_counter += 1
                     max_cap = random.choices([1, 1, 1, 2], weights=[70, 15, 10, 5])[0]
-                    actual = random.randint(0, max_cap) if random.random() < 0.82 else 0
+                    if random.random() < 0.055:
+                        actual = max_cap + random.randint(1, 3)
+                    elif random.random() < 0.82:
+                        actual = random.randint(0, max_cap)
+                    else:
+                        actual = 0
 
                     status_choices = ["scheduled", "completed", "cancelled"]
                     if current < end_date - timedelta(days=1):

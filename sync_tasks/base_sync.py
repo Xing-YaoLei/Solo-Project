@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, time
 from typing import Optional, List, Dict, Any
 from contextlib import contextmanager
 
@@ -66,6 +66,34 @@ def batch_manager(source_type: str, data_start: Optional[date] = None,
         session.close()
 
 
+def _coerce_time_fields(record):
+    import re as _re
+    for k, v in list(record.items()):
+        if isinstance(v, str) and v and _re.match(r"^\d{2}:\d{2}(:\d{2})?$", v):
+            try:
+                parts = v.split(":")
+                if len(parts) == 2:
+                    record[k] = time(int(parts[0]), int(parts[1]))
+                else:
+                    record[k] = time(int(parts[0]), int(parts[1]), int(parts[2]))
+            except Exception:
+                pass
+        elif isinstance(v, str) and v and _re.match(r"^\d{4}-\d{2}-\d{2}$", v):
+            try:
+                record[k] = date.fromisoformat(v)
+            except Exception:
+                pass
+        elif isinstance(v, str) and v and _re.match(r"^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}", v):
+            try:
+                vclean = v.replace("T", " ")
+                if "." in vclean:
+                    vclean = vclean.split(".")[0]
+                record[k] = datetime.fromisoformat(vclean)
+            except Exception:
+                pass
+    return record
+
+
 def upsert_records(session, model, records: List[Dict[str, Any]],
                    unique_keys: List[str], batch_no: str, ctx: Dict):
     if not records:
@@ -73,6 +101,7 @@ def upsert_records(session, model, records: List[Dict[str, Any]],
 
     for record in records:
         record["batch_no"] = batch_no
+        _coerce_time_fields(record)
 
     ctx["total_count"] += len(records)
 

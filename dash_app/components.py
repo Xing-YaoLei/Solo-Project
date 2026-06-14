@@ -148,7 +148,8 @@ def create_data_table(
     id_prefix: str,
     page_size: int = 20,
     clickable: bool = False,
-    hidden_cols: list = None
+    hidden_cols: list = None,
+    extra_style_cond: list = None,
 ) -> dash_table.DataTable:
     from datetime import date, time, datetime
     hidden_cols = hidden_cols or []
@@ -167,15 +168,14 @@ def create_data_table(
             )
         data = display_df.to_dict("records")
 
-    style = {"style_cell": {"textAlign": "left", "padding": "10px", "fontSize": "13px"}}
+    style_data_cond = list(extra_style_cond) if extra_style_cond else []
     if clickable:
-        style["style_data"] = {"cursor": "pointer", "selector": "td"}
-        style["style_data_conditional"] = [{
+        style_data_cond.append({
             "if": {"state": "active"},
-            "backgroundColor": "#e3f2fd"
-        }]
+            "backgroundColor": "#e3f2fd",
+        })
 
-    return dash_table.DataTable(
+    kwargs = dict(
         id=f"{id_prefix}-table",
         columns=columns,
         data=data,
@@ -192,8 +192,14 @@ def create_data_table(
             "color": "#757575",
             "borderBottom": "2px solid #e0e0e0"
         },
-        **style
+        style_cell={"textAlign": "left", "padding": "10px", "fontSize": "13px"},
     )
+    if clickable:
+        kwargs["style_data"] = {"cursor": "pointer"}
+    if style_data_cond:
+        kwargs["style_data_conditional"] = style_data_cond
+
+    return dash_table.DataTable(**kwargs)
 
 
 def render_empty(message: str = "暂无数据") -> html.Div:

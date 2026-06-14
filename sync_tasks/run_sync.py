@@ -16,7 +16,7 @@ from sync_tasks.data_sources import (
 )
 from utils.db_adapter import (
     CourseSchedule, Appointment, AccessRecord,
-    BodyTestRecord, RescheduleRecord,
+    BodyTestRecord, RescheduleRecord, DB_TYPE,
 )
 from config import sync_config
 
@@ -71,7 +71,7 @@ def run_sync_task(source_type: str,
 
         all_records = task_def["fetch_fn"](start_date, end_date)
 
-        batch_size = sync_config.BATCH_SIZE
+        batch_size = sync_config.BATCH_SIZE if DB_TYPE != "sqlite" else 30
         for i in range(0, len(all_records), batch_size):
             chunk = all_records[i:i + batch_size]
             upsert_records(

@@ -27,7 +27,7 @@ TEXT_SECONDARY = "#757575"
 CONFLICT_TYPE_MAP = {
     "coach_double_book": ("教练双约", DANGER),
     "member_double_book": ("会员双约", WARNING),
-    "capacity_overload": ("超容", INFO),
+    "capacity_exceeded": ("超容", WARNING),
 }
 
 SEVERITY_MAP = {
@@ -57,7 +57,7 @@ def _build_conflict_type_options():
     return [
         {"label": "教练双约", "value": "coach_double_book"},
         {"label": "会员双约", "value": "member_double_book"},
-        {"label": "超容", "value": "capacity_overload"},
+        {"label": "超容", "value": "capacity_exceeded"},
     ]
 
 
@@ -336,20 +336,33 @@ def _create_conflicts_table(conflicts_df: pd.DataFrame):
     )
 
 
-def _build_appointment_card(appt_row: dict, card_title: str, highlight: bool = False):
-    border_color = PRIMARY if not highlight else DANGER
-    bg_color = PRIMARY_LIGHT if highlight else "#fff"
+def _build_appointment_card(appt_row: dict, card_title: str, highlight: bool = False, anomaly: bool = False):
+    if anomaly:
+        border_color = DANGER
+        bg_color = "#fff5f5"
+        border_width = "2px"
+    elif highlight:
+        border_color = DANGER
+        bg_color = PRIMARY_LIGHT
+        border_width = "1px"
+    else:
+        border_color = PRIMARY
+        bg_color = "#fff"
+        border_width = "1px"
+
+    badge_label = "⚠️ 异常样本" if anomaly else ("⚠️ 异常样本" if highlight else None)
+    badge_class = "badge-danger" if anomaly else ("badge-warning" if highlight else None)
 
     return html.Div([
         html.Div([
             html.Strong(card_title, style={"fontSize": "15px", "color": PRIMARY_DARK}),
             html.Div([
                 html.Span(
-                    "⚠️ 异常样本",
-                    className="badge badge-danger",
+                    badge_label,
+                    className=f"badge {badge_class}",
                     style={"marginLeft": "8px"}
                 ),
-            ]) if highlight else None,
+            ]) if badge_label else None,
         ], className="modal-header", style={"marginBottom": "12px"}),
         html.Div([
             html.Div([
@@ -392,14 +405,143 @@ def _build_appointment_card(appt_row: dict, card_title: str, highlight: bool = F
             ]),
         ]),
     ], style={
-        "border": f"2px solid {border_color}",
+        "border": f"{border_width} solid {border_color}",
         "borderRadius": "8px",
         "padding": "16px",
         "background": bg_color,
+        "boxShadow": f"0 0 0 2px {border_color}22" if anomaly else None,
     })
 
 
 def _create_modal_body(conflict_row: dict, appointments_df: pd.DataFrame):
+    ctype = conflict_row.get("conflict_type")
+    ctype_label = _conflict_type_label(ctype)
+    sev_label = _severity_label(conflict_row.get("severity", "-"))
+    sev_color = _severity_color(conflict_row.get("severity", "-"))
+
+    desc_block = html.Div([
+        html.Label("描述", style={"fontSize": "12px", "color": TEXT_SECONDARY}),
+        html.Div(
+            str(conflict_row.get("description", "-")),
+            style={"marginTop": "4px", "padding": "10px",
+                   "background": "#fafafa", "borderRadius": "6px",
+                   "fontSize": "13px"}
+        ),
+    ])
+
+    header = [
+        html.Div([
+            html.H3(f"冲突详情 - {conflict_row.get('conflict_no', '')}"),
+            html.Button("✕", id="conflict-modal-close-btn",
+                        className="btn btn-outline btn-sm",
+                        style={"border": "none", "fontSize": "18px"}),
+        ], className="modal-header"),
+        html.Div([
+            html.Div([
+                html.Label("冲突类型", style={"fontSize": "12px", "color": TEXT_SECONDARY}),
+                html.Span(
+                    ctype_label,
+                    className="badge badge-primary",
+                    style={"marginLeft": "8px", "fontSize": "13px"}
+                ),
+            ], style={"marginBottom": "8px"}),
+            html.Div([
+                html.Label("严重程度", style={"fontSize": "12px", "color": TEXT_SECONDARY}),
+                html.Span(
+                    f"● {sev_label}",
+                    style={"marginLeft": "8px", "color": sev_color, "fontWeight": "600"}
+                ),
+            ], style={"marginBottom": "8px"}),
+            desc_block,
+        ], style={"marginBottom": "20px"}),
+    ]
+
+    if ctype == "capacity_exceeded":
+        schedule_no = conflict_row.get("schedule_no_1")
+        member_cards = []
+        related_appts = pd.DataFrame()
+        if not appointments_df.empty and schedule_no and "schedule_no" in appointments_df.columns:
+            related_appts = appointments_df[appointments_df["schedule_no"] == schedule_no]
+
+        actual_val = None
+        max_val = None
+        desc_str = str(conflict_row.get("description", ""))
+        try:
+            m = __import__("re").search(r"实际(\d+)/(\d+)", desc_str)
+            if m:
+                actual_val, max_val = int(m.group(1)), int(m.group(2))
+        except Exception:
+            pass
+        if actual_val is None:
+            actual_val = len(related_appts)
+            max_val = max(1, actual_val - 1) if actual_val > 1 else 1
+
+        util_pct = min(100, int(actual_val / max_val * 100)) if max_val else 0
+
+        anomaly_block = html.Div([
+            html.H4("异常样本 - 超容明细", style={
+                "fontSize": "16px", "fontWeight": "600",
+                "marginBottom": "16px", "paddingBottom": "8px",
+                "borderBottom": "1px solid #e0e0e0",
+                "color": DANGER,
+            }),
+            html.Div([
+                html.Div([
+                    html.Label("时段容量上限", style={"fontSize": "12px", "color": TEXT_SECONDARY}),
+                    html.Div(f"{max_val} 人", style={"fontSize": "22px", "fontWeight": "600"}),
+                ], style={"flex": 1, "padding": "16px",
+                          "background": "#fff7f7", "borderRadius": "6px",
+                          "border": f"1px solid {DANGER}22"}),
+                html.Div([
+                    html.Label("实际预约数", style={"fontSize": "12px", "color": TEXT_SECONDARY}),
+                    html.Div(f"{actual_val} 人",
+                             style={"fontSize": "22px", "fontWeight": "600", "color": DANGER}),
+                ], style={"flex": 1, "padding": "16px",
+                          "background": "#fff7f7", "borderRadius": "6px",
+                          "border": f"1px solid {DANGER}22"}),
+                html.Div([
+                    html.Label("超员", style={"fontSize": "12px", "color": TEXT_SECONDARY}),
+                    html.Div(f"+{max(0, actual_val - max_val)} 人",
+                             style={"fontSize": "22px", "fontWeight": "600", "color": DANGER}),
+                ], style={"flex": 1, "padding": "16px",
+                          "background": "#fff7f7", "borderRadius": "6px",
+                          "border": f"1px solid {DANGER}22"}),
+            ], style={"display": "flex", "gap": "12px", "marginBottom": "16px"}),
+            html.Div([
+                html.Div([
+                    html.Div(style={
+                        "width": f"{util_pct}%",
+                        "height": "14px",
+                        "background": DANGER if util_pct > 100 else WARNING,
+                        "borderRadius": "7px",
+                        "transition": "width .3s",
+                    }),
+                ], style={
+                    "width": "100%", "background": "#f0f0f0",
+                    "borderRadius": "7px", "overflow": "hidden",
+                }),
+                html.Div(f"利用率 {util_pct}%",
+                         style={"marginTop": "6px", "fontSize": "12px",
+                                "color": TEXT_SECONDARY, "textAlign": "right"}),
+            ], style={"marginBottom": "20px"}),
+
+            html.Div([
+                html.Label(f"本时段全部 {len(related_appts)} 条预约（均为异常样本）",
+                           style={"fontSize": "13px", "fontWeight": "500",
+                                  "marginBottom": "10px", "color": DANGER}),
+                html.Div([
+                    _build_appointment_card(row.to_dict(), f"异常预约 #{i+1}", highlight=True, anomaly=True)
+                    for i, (_, row) in enumerate(related_appts.iterrows())
+                ] if not related_appts.empty else [html.Div(
+                    "⚠️ 未匹配到预约明细，可能是种子数据与同步数据批次不同",
+                    style={"padding": "16px", "background": "#fff8e1",
+                           "borderRadius": "6px", "color": "#795548", "fontSize": "13px"}
+                )], style={"display": "flex", "flexDirection": "column", "gap": "12px"}),
+            ]),
+        ])
+
+        return header + [anomaly_block]
+
     appt_no_1 = conflict_row.get("appointment_no_1")
     appt_no_2 = conflict_row.get("appointment_no_2")
 
@@ -445,51 +587,12 @@ def _create_modal_body(conflict_row: dict, appointments_df: pd.DataFrame):
             "status": "unknown",
         }
 
-    ctype_label = _conflict_type_label(conflict_row.get("conflict_type", "-"))
-    sev_label = _severity_label(conflict_row.get("severity", "-"))
-    sev_color = _severity_color(conflict_row.get("severity", "-"))
-
-    return [
-        html.Div([
-            html.H3(f"冲突详情 - {conflict_row.get('conflict_no', '')}"),
-            html.Button("✕", id="conflict-modal-close-btn",
-                        className="btn btn-outline btn-sm",
-                        style={"border": "none", "fontSize": "18px"}),
-        ], className="modal-header"),
-
-        html.Div([
-            html.Div([
-                html.Label("冲突类型", style={"fontSize": "12px", "color": TEXT_SECONDARY}),
-                html.Span(
-                    ctype_label,
-                    className="badge badge-primary",
-                    style={"marginLeft": "8px", "fontSize": "13px"}
-                ),
-            ], style={"marginBottom": "8px"}),
-            html.Div([
-                html.Label("严重程度", style={"fontSize": "12px", "color": TEXT_SECONDARY}),
-                html.Span(
-                    f"● {sev_label}",
-                    style={"marginLeft": "8px", "color": sev_color, "fontWeight": "600"}
-                ),
-            ], style={"marginBottom": "8px"}),
-            html.Div([
-                html.Label("描述", style={"fontSize": "12px", "color": TEXT_SECONDARY}),
-                html.Div(
-                    str(conflict_row.get("description", "-")),
-                    style={"marginTop": "4px", "padding": "10px",
-                           "background": "#fafafa", "borderRadius": "6px",
-                           "fontSize": "13px"}
-                ),
-            ]),
-        ], style={"marginBottom": "20px"}),
-
+    return header + [
         html.H4("冲突双方预约明细", style={
             "fontSize": "16px", "fontWeight": "600",
             "marginBottom": "16px", "paddingBottom": "8px",
             "borderBottom": "1px solid #e0e0e0"
         }),
-
         html.Div([
             _build_appointment_card(appt1_row, "预约 1", highlight=highlight1),
             html.Div(

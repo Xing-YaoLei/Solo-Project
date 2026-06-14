@@ -4,6 +4,7 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from dash import dcc, html, Input, Output, State, dash_table, callback, callback_context
+from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
 
 from dash_app.components import (
@@ -35,6 +36,7 @@ COLORS = {
     "info": "#00acc1",
     "secondary": "#78909c",
 }
+TEXT_SECONDARY = "#6c757d"
 
 
 def _get_region_options():
@@ -437,6 +439,42 @@ def layout():
                 html.Div(id="overview-sync-toast"),
             ], className="card"),
         ]),
+
+        dcc.Store(id="overview-batch-rows-store"),
+
+        html.Div(
+            id="overview-batch-modal",
+            style={"display": "none"},
+            children=[
+                html.Div(
+                    className="modal-overlay",
+                    id="overview-batch-modal-overlay",
+                    children=[
+                        html.Div(
+                            className="modal-content",
+                            style={"maxWidth": "1100px", "maxHeight": "85vh", "width": "95%"},
+                            children=[
+                                html.Div([
+                                    html.H3("📦 批次数据快照", id="overview-batch-modal-title"),
+                                    html.Button("✕", id="overview-batch-modal-close-btn",
+                                                className="btn btn-outline btn-sm",
+                                                style={"border": "none", "fontSize": "18px"}),
+                                ], className="modal-header"),
+                                html.Div(id="overview-batch-meta-bar", style={
+                                    "padding": "12px 20px", "background": "#f5f7fa",
+                                    "borderBottom": "1px solid #eef2f7", "display": "flex",
+                                    "gap": "20px", "flexWrap": "wrap",
+                                }),
+                                html.Div(
+                                    id="overview-batch-snapshot-container",
+                                    style={"overflow": "auto", "padding": "20px"},
+                                ),
+                            ]
+                        )
+                    ]
+                )
+            ]
+        ),
     ])
 
 
@@ -533,9 +571,14 @@ def register_callbacks(app):
             detail_table = render_empty("暂无预约明细数据")
         else:
             display_df = appointments_df.copy()
-            if "status" in display_df.columns:
-                from dash_app.components import status_badge
-                display_df["状态"] = display_df["status"].apply(lambda s: status_badge(s))
+            status_label_map = {
+                "booked": "已预约", "attended": "已到场",
+                "cancelled": "已取消", "no_show": "未到场",
+                "scheduled": "已排期", "completed": "已完成",
+            }
+            display_df["状态"] = display_df["status"].apply(
+                lambda s: status_label_map.get(str(s).lower() if s else s, s)
+            )
             cols_rename = {
                 "appointment_no": "预约编号",
                 "appointment_date": "预约日期",
@@ -557,13 +600,32 @@ def register_callbacks(app):
             keep_cols = [c for c in keep_cols if c in display_df.columns]
             display_df = display_df[keep_cols]
 
-            detail_table = create_data_table(display_df, "overview-detail", page_size=15)
+            style_map = {
+                "已到场": "#43a047",
+                "已预约": "#1e88e5",
+                "已取消": "#e53935",
+                "未到场": "#fb8c00",
+                "已排期": "#78909c",
+                "已完成": "#43a047",
+            }
+            style_cond = []
+            for label, color in style_map.items():
+                style_cond.append({
+                    "if": {"filter_query": f"{{状态}} = '{label}'"},
+                    "color": color, "fontWeight": "600",
+                })
+
+            detail_table = create_data_table(
+                display_df, "overview-detail", page_size=15,
+                extra_style_cond=style_cond,
+            )
 
         return stat_cards, trend_chart, region_chart, time_chart, detail_table
 
     @app.callback(
         Output("overview-batch-table-container", "children"),
         Output("overview-sync-toast", "children"),
+        Output("overview-batch-rows-store", "data"),
         Input("overview-sync-btn", "n_clicks"),
         prevent_initial_call=False,
     )
@@ -600,9 +662,10 @@ def register_callbacks(app):
 
         batches = get_batch_history(limit=50)
         if not batches:
-            return render_empty("暂无同步批次记录，点击「同步数据」开始取数"), toast
+            return render_empty("暂无同步批次记录，点击「同步数据」开始取数"), toast, []
 
         batch_df = pd.DataFrame(batches)
+        store_data = batch_df.to_dict("records")
         display_cols = {
             "batch_no": "批次号",
             "source_type": "数据源",
@@ -622,7 +685,118 @@ def register_callbacks(app):
         batch_df = batch_df[keep]
 
         table = create_data_table(batch_df, "overview-batch", page_size=10)
-        return table, toast
+        return table, toast, store_data
+
+    @app.callback(
+        Output("overview-batch-modal", "style"),
+        Output("overview-batch-modal-title", "children"),
+        Output("overview-batch-meta-bar", "children"),
+        Output("overview-batch-snapshot-container", "children"),
+        Input("overview-batch-table", "active_cell"),
+        Input("overview-batch-modal-close-btn", "n_clicks"),
+        Input("overview-batch-modal-overlay", "n_clicks"),
+        State("overview-batch-rows-store", "data"),
+        State("overview-batch-table", "data"),
+        prevent_initial_call=True,
+    )
+    def toggle_batch_modal(active_cell, close_clicks, overlay_clicks, store_rows, table_data):
+        trigger = callback_context.triggered[0]["prop_id"] if callback_context.triggered else ""
+        if trigger in ("overview-batch-modal-close-btn.n_clicks", "overview-batch-modal-overlay.n_clicks"):
+            return {"display": "none"}, "", [], html.Div()
+
+        if trigger != "overview-batch-table.active_cell" or not active_cell:
+            raise PreventUpdate
+
+        col_id = str(active_cell.get("column_id", ""))
+        row_idx = active_cell.get("row", -1)
+        if col_id != "批次号" or row_idx < 0 or not table_data or row_idx >= len(table_data):
+            raise PreventUpdate
+
+        table_row = table_data[row_idx]
+        batch_no = table_row.get("批次号")
+        source_label = table_row.get("数据源", "")
+        source_type_map = {
+            "课程排期": "schedule", "预约记录": "appointment",
+            "改约记录": "reschedule", "门禁记录": "access", "体测记录": "bodytest",
+            "schedule": "schedule", "appointment": "appointment",
+            "reschedule": "reschedule", "access": "access", "bodytest": "bodytest",
+        }
+        source_type = source_type_map.get(source_label, source_label)
+        if not batch_no:
+            raise PreventUpdate
+
+        title_children = [
+            html.H3("📦 批次数据快照", style={"display": "inline", "marginRight": "12px"}),
+            html.Span(
+                str(batch_no),
+                className="badge badge-info",
+                style={"fontSize": "13px", "padding": "4px 10px", "verticalAlign": "middle"},
+            ),
+        ]
+
+        meta_children = []
+        label_map = {
+            "状态": "status", "总数": "total_count", "成功": "success_count",
+            "失败": "fail_count", "开始时间": "start_time", "结束时间": "end_time",
+            "数据起始": "data_range_start", "数据截止": "data_range_end",
+        }
+        status_color_map = {"success": COLORS["success"], "failed": COLORS["danger"],
+                            "running": PRIMARY_COLOR}
+        for cn_key, label in [("状态", "状态"), ("总数", "总数"), ("成功", "成功"),
+                               ("失败", "失败"), ("开始时间", "开始"), ("结束时间", "结束")]:
+            v = table_row.get(cn_key, "-")
+            if label == "status" or cn_key == "状态":
+                color = status_color_map.get(v, "#666")
+                meta_children.append(html.Div([
+                    html.Label("状态", style={"fontSize": "11px", "color": TEXT_SECONDARY, "display": "block"}),
+                    html.Span(str(v), style={"fontWeight": "600", "fontSize": "13px", "color": color}),
+                ]))
+            else:
+                meta_children.append(html.Div([
+                    html.Label(label, style={"fontSize": "11px", "color": TEXT_SECONDARY, "display": "block"}),
+                    html.Span(str(v), style={"fontWeight": "600", "fontSize": "13px"}),
+                ]))
+
+        try:
+            snapshot = get_batch_data_preview(str(batch_no), str(source_type), limit=50)
+        except Exception as e:
+            snapshot = []
+            meta_children.append(html.Div([
+                html.Label("错误", style={"fontSize": "11px", "color": TEXT_SECONDARY, "display": "block"}),
+                html.Span(str(e), style={"fontWeight": "600", "fontSize": "13px", "color": COLORS["danger"]}),
+            ]))
+
+        if not snapshot:
+            snapshot_html = render_empty(
+                f"该批次暂无数据快照。来源={source_type}, batch={batch_no}"
+            )
+        else:
+            snap_df = pd.DataFrame(snapshot)
+            for col in snap_df.columns:
+                snap_df[col] = snap_df[col].apply(
+                    lambda v: "" if v is None else (
+                        "True" if v is True else (
+                            "False" if v is False else (
+                                str(v) if hasattr(v, "isoformat") or not isinstance(v, (int, float, str, bool)) else v
+                            )
+                        )
+                    )
+                )
+            cols = list(snap_df.columns)
+            keep_cols = [c for c in cols if c not in ("id", "batch_no", "created_at", "updated_at")]
+            if keep_cols:
+                snap_df = snap_df[keep_cols + (["batch_no"] if "batch_no" in cols else [])]
+            snap_df.columns = [str(c) for c in snap_df.columns]
+            snapshot_html = html.Div([
+                html.Div(
+                    f"前 {min(len(snapshot), 50)} 条样本（共 {len(snapshot)} 条）",
+                    style={"marginBottom": "12px", "fontSize": "13px",
+                           "color": TEXT_SECONDARY, "fontWeight": "500"},
+                ),
+                create_data_table(snap_df, "overview-batch-snap", page_size=15),
+            ])
+
+        return {"display": "flex"}, title_children, meta_children, snapshot_html
 
 
 def register_page():

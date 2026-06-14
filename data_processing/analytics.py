@@ -552,7 +552,7 @@ def detect_conflicts(appointments_df: pd.DataFrame, schedules_df: pd.DataFrame,
                 ct_et = time(0, 0)
             conflicts.append({
                 "conflict_no": f"CF{datetime.now().strftime('%Y%m%d%H%M%S')}{len(conflicts):05d}",
-                "conflict_type": "capacity_overload",
+                "conflict_type": "capacity_exceeded",
                 "region_id": row.get("region_id"),
                 "coach_id": row.get("coach_id"),
                 "conflict_date": row.get("course_date"),
@@ -570,17 +570,27 @@ def detect_conflicts(appointments_df: pd.DataFrame, schedules_df: pd.DataFrame,
         session = get_session()
         try:
             for _, row in conflicts_df.iterrows():
+                ct = row.get("conflict_type")
+                if ct == "capacity_exceeded":
+                    keys = ["conflict_type", "conflict_date", "schedule_no_1"]
+                else:
+                    keys = ["conflict_type", "conflict_date", "appointment_no_1", "appointment_no_2"]
                 filters = {}
-                for key in ["conflict_type", "conflict_date", "appointment_no_1", "appointment_no_2"]:
-                    if pd.notna(row.get(key)):
+                for key in keys:
+                    if pd.notna(row.get(key)) and row.get(key) not in (None, ""):
                         filters[key] = row[key]
                 if not filters:
                     continue
                 existing = session.query(CRModel).filter_by(**filters).first()
                 if not existing:
-                    obj_dict = {k: (v if not isinstance(v, float) or not np.isnan(v) else None)
-                                for k, v in row.to_dict().items()
-                                if k in [c.name for c in CRModel.__table__.columns]}
+                    obj_dict = {}
+                    for k, v in row.to_dict().items():
+                        if k not in [c.name for c in CRModel.__table__.columns]:
+                            continue
+                        if isinstance(v, float) and np.isnan(v):
+                            obj_dict[k] = None
+                        else:
+                            obj_dict[k] = v
                     session.add(CRModel(**obj_dict))
             session.commit()
         except Exception as e:
