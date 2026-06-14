@@ -19,7 +19,7 @@ function ChapterCard({ chapter, position, index, onSelect }: ChapterCardProps) {
   const [hovered, setHovered] = useState(false);
   const [pressed, setPressed] = useState(false);
   
-  const iconMap: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
+  const iconMap: Record<string, React.ComponentType<any>> = {
     'BookOpen': Icons.BookOpen,
     'Calendar': Icons.Calendar,
     'Calculator': Icons.Calculator,

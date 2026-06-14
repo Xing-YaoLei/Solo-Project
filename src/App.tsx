@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { useGameStore } from './store/gameStore';
 import GameScene from './components/GameScene';
@@ -8,8 +9,18 @@ import StatsPage from './components/StatsPage';
 import TutorialOverlay from './components/TutorialOverlay';
 import MenuOverlay from './components/MenuOverlay';
 
+declare global {
+  interface Window {
+    __gameStore: typeof useGameStore;
+  }
+}
+
 function App() {
   const { currentView, showTutorial } = useGameStore();
+
+  useEffect(() => {
+    window.__gameStore = useGameStore;
+  }, []);
 
   const renderView = () => {
     switch (currentView) {

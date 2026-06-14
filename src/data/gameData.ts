@@ -199,7 +199,6 @@ const createQuestions = (chapterId: string): Question[] => {
 
 const createAssignments = (chapterId: string) => {
   const questions = createQuestions(chapterId);
-  const totalPoints = questions.reduce((sum, q) => sum + q.points, 0);
   
   return [
     {
@@ -287,14 +286,14 @@ export const chapters: Chapter[] = [
 ];
 
 export const players: Player[] = [
-  { id: '1', name: '王教练', avatar: '👨‍🏫', totalScore: 850, completionRate: 92, totalTime: 1250, level: 8 },
-  { id: '2', name: '李教练', avatar: '👩‍🏫', totalScore: 780, completionRate: 88, totalTime: 1420, level: 7 },
-  { id: '3', name: '张教练', avatar: '🧑‍🏫', totalScore: 720, completionRate: 85, totalTime: 1180, level: 6 },
-  { id: '4', name: '刘教练', avatar: '👨‍💼', totalScore: 650, completionRate: 78, totalTime: 1650, level: 5 },
-  { id: '5', name: '陈教练', avatar: '👩‍💼', totalScore: 580, completionRate: 72, totalTime: 1820, level: 4 },
-  { id: '6', name: '赵教练', avatar: '🧑‍💼', totalScore: 520, completionRate: 68, totalTime: 2100, level: 3 },
-  { id: '7', name: '孙教练', avatar: '👨‍🎓', totalScore: 450, completionRate: 62, totalTime: 2400, level: 3 },
-  { id: '8', name: '周教练', avatar: '👩‍🎓', totalScore: 380, completionRate: 55, totalTime: 2800, level: 2 },
+  { id: '1', name: '王教练', avatar: '👨‍🏫', totalScore: 850, completionRate: 92, totalTime: 750000, level: 8 },
+  { id: '2', name: '李教练', avatar: '👩‍🏫', totalScore: 780, completionRate: 88, totalTime: 852000, level: 7 },
+  { id: '3', name: '张教练', avatar: '🧑‍🏫', totalScore: 720, completionRate: 85, totalTime: 708000, level: 6 },
+  { id: '4', name: '刘教练', avatar: '👨‍💼', totalScore: 650, completionRate: 78, totalTime: 990000, level: 5 },
+  { id: '5', name: '陈教练', avatar: '👩‍💼', totalScore: 580, completionRate: 72, totalTime: 1092000, level: 4 },
+  { id: '6', name: '赵教练', avatar: '🧑‍💼', totalScore: 520, completionRate: 68, totalTime: 1260000, level: 3 },
+  { id: '7', name: '孙教练', avatar: '👨‍🎓', totalScore: 450, completionRate: 62, totalTime: 1440000, level: 3 },
+  { id: '8', name: '周教练', avatar: '👩‍🎓', totalScore: 380, completionRate: 55, totalTime: 1680000, level: 2 },
   { id: 'player', name: '你', avatar: '🏋️', totalScore: 0, completionRate: 0, totalTime: 0, level: 1 }
 ];
 

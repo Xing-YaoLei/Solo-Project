@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Trophy, BarChart3, Star, Clock } from 'lucide-react';
+import { ArrowLeft, Trophy, BarChart3, Star } from 'lucide-react';
 import { useGameStore } from '../store/gameStore';
 import AssignmentPanel from './AssignmentPanel';
 import QuestionPanel from './QuestionPanel';

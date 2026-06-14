@@ -1,15 +1,23 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Trophy, Clock, Target, ArrowLeft, Medal, Crown } from 'lucide-react';
 import { useGameStore } from '../store/gameStore';
 import { LeaderboardType } from '../types';
 
 export default function Leaderboard() {
-  const { setView, getLeaderboard, chapters } = useGameStore();
+  const setView = useGameStore(s => s.setView);
+  const getLeaderboard = useGameStore(s => s.getLeaderboard);
+  const chapters = useGameStore(s => s.chapters);
+  const players = useGameStore(s => s.players);
+  const stats = useGameStore(s => s.stats);
+
   const [type, setType] = useState<LeaderboardType>('completionRate');
   const [selectedChapter, setSelectedChapter] = useState<string | undefined>();
 
-  const leaderboardData = getLeaderboard(type, selectedChapter);
+  const leaderboardData = useMemo(() => {
+    void players; void stats;
+    return getLeaderboard(type, selectedChapter);
+  }, [type, selectedChapter, getLeaderboard, players, stats]);
 
   const getRankIcon = (rank: number) => {
     switch (rank) {
@@ -28,8 +36,17 @@ export default function Leaderboard() {
     if (type === 'completionRate') {
       return `${value}%`;
     }
-    const minutes = Math.floor(value / 60000);
-    const seconds = Math.floor((value % 60000) / 1000);
+    if (value >= Number.MAX_SAFE_INTEGER) {
+      return '--:--';
+    }
+    const totalSeconds = Math.floor(value / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    const hours = Math.floor(minutes / 60);
+    const remainMinutes = minutes % 60;
+    if (hours > 0) {
+      return `${hours}:${remainMinutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
