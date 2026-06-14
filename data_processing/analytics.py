@@ -68,6 +68,7 @@ def get_appointments_df(start_date: date, end_date: date,
             Appointment.id.label("id"),
             Appointment.appointment_no,
             Appointment.schedule_id,
+            CourseSchedule.schedule_no,
             Appointment.member_id,
             Appointment.coach_id,
             Appointment.region_id,
@@ -87,9 +88,14 @@ def get_appointments_df(start_date: date, end_date: date,
             Coach.coach_name,
             Member.member_name,
             Member.member_no.label("member_code"),
+            CourseSchedule.course_type,
+            CourseSchedule.course_name,
+            CourseSchedule.max_capacity,
+            CourseSchedule.actual_capacity,
         ).outerjoin(Region, Appointment.region_id == Region.id
         ).outerjoin(Coach, Appointment.coach_id == Coach.id
         ).outerjoin(Member, Appointment.member_id == Member.id
+        ).outerjoin(CourseSchedule, Appointment.schedule_id == CourseSchedule.id
         ).filter(
             Appointment.appointment_date >= start_date,
             Appointment.appointment_date <= end_date

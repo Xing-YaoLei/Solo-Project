@@ -767,6 +767,7 @@ def register_callbacks(app):
                 detected = detect_conflicts(appointments_df, schedules_df, persist=True)
                 if not detected.empty:
                     conflicts_df = get_conflicts_df(start_date, end_date)
+                    appointments_df = get_appointments_df(start_date, end_date)
                     msg = f"✅ 检测完成，超容样本 {overload_count} 条，发现 {len(detected)} 个冲突"
                     toast_msg = html.Div(
                         msg,
