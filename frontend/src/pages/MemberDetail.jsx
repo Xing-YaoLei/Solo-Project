@@ -182,18 +182,20 @@ function MemberDetail() {
   const handleSubmitNote = async (values) => {
     try {
       await renewalNoteAPI.create({
-        ...values,
+        title: values.title,
+        content: values.content,
+        priority: values.priority,
+        related_funnel_stage: values.related_funnel_stage,
         member_id: parseInt(id),
         source: 'manual',
-        created_by_name: '当前用户',
+        created_by_name: values.operator_name || '未命名操作员',
       })
       message.success('备注创建成功')
       setNoteModalVisible(false)
       loadNotes()
     } catch (e) {
-      message.success('备注创建成功')
-      setNoteModalVisible(false)
-      loadNotes()
+      console.error('创建备注失败:', e)
+      message.error('备注创建失败：' + (e.response?.data?.detail || e.message || '未知错误'))
     }
   }
 
@@ -555,6 +557,13 @@ function MemberDetail() {
               <Option value="contacted_members">已触达会员</Option>
               <Option value="renewed_members">已续费会员</Option>
             </Select>
+          </Form.Item>
+          <Form.Item
+            name="operator_name"
+            label="操作人姓名"
+            rules={[{ required: true, message: '请输入您的姓名用于审计追溯' }]}
+          >
+            <Input placeholder="例如：运营经理-张三" />
           </Form.Item>
         </Form>
       </Modal>

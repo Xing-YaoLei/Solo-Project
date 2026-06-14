@@ -203,21 +203,26 @@ function FunnelDashboard() {
 
   const handleSubmitNote = async (values) => {
     try {
+      if (!values.member_id) {
+        message.error('请选择关联会员')
+        return
+      }
       await renewalNoteAPI.create({
-        ...values,
-        member_id: 1,
+        title: values.title,
+        content: values.content,
+        priority: values.priority,
+        assignee_name: values.assignee_name,
         related_funnel_stage: selectedStage,
+        member_id: parseInt(values.member_id),
         source: 'manual',
-        created_by_name: '当前用户',
+        created_by_name: values.operator_name || '未命名操作员',
       })
-      message.success('备注创建成功')
+      message.success('复盘备注创建成功，已持久化到 DuckDB')
       setNoteModalVisible(false)
       loadStageNotes(selectedStage)
     } catch (e) {
       console.error('创建备注失败:', e)
-      message.success('备注创建成功')
-      setNoteModalVisible(false)
-      loadStageNotes(selectedStage)
+      message.error('复盘备注创建失败：' + (e.response?.data?.detail || e.message || '未知错误'))
     }
   }
 
@@ -694,6 +699,29 @@ function FunnelDashboard() {
           </Form.Item>
           <Form.Item name="assignee_name" label="指派给">
             <Input placeholder="负责人姓名" />
+          </Form.Item>
+          <Form.Item
+            name="member_id"
+            label="关联会员"
+            rules={[{ required: true, message: '请选择关联的会员' }]}
+            tooltip="该复盘备注关联到哪个具体会员的续费跟进"
+          >
+            <Select
+              showSearch
+              placeholder="选择关联会员（从当前漏斗阶段会员中选）"
+              optionFilterProp="label"
+              options={(stageMembers.items || []).map((m) => ({
+                value: m.member_id || m.id,
+                label: `${m.member_no || ''} ${m.name} ${m.phone ? '(' + m.phone + ')' : ''}`,
+              }))}
+            />
+          </Form.Item>
+          <Form.Item
+            name="operator_name"
+            label="操作人姓名"
+            rules={[{ required: true, message: '请输入您的姓名用于审计追溯' }]}
+          >
+            <Input placeholder="例如：运营经理-张三" />
           </Form.Item>
         </Form>
       </Modal>

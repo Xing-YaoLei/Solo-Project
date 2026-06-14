@@ -4,6 +4,16 @@ import duckdb
 from ..db.duckdb_conn import get_duckdb_connection
 
 
+def _fetch_all(cursor):
+    rows = cursor.fetchall()
+    cols = [d[0] for d in cursor.description] if cursor.description else []
+    return cols, rows
+
+
+def _rows_to_dicts(cols, rows):
+    return [dict(zip(cols, r)) for r in rows]
+
+
 def get_renewal_funnel(start_date: str = None, end_date: str = None, coach_id: int = None) -> List[Dict]:
     con = get_duckdb_connection()
 
@@ -271,60 +281,62 @@ def get_verification_records(member_id: int = None, start_date: str = None, end_
     if not start_date:
         start_date = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
 
-    conditions = ["verify_date BETWEEN ? AND ?"]
+    conditions = ["f.verify_date BETWEEN ? AND ?"]
     params = [start_date, end_date]
 
     if member_id:
-        conditions.append("member_id = ?")
+        conditions.append("f.member_id = ?")
         params.append(member_id)
 
     where_clause = " AND ".join(conditions)
 
     total = con.execute(f"""
-        SELECT COUNT(*) FROM fact_course_record WHERE {where_clause}
+        SELECT COUNT(*) FROM fact_course_record f WHERE {where_clause}
     """, params).fetchone()[0]
 
     offset = (page - 1) * page_size
 
-    data = con.execute(f"""
+    cols, rows = _fetch_all(con.execute(f"""
         SELECT
-            record_id,
-            record_no,
-            member_id,
-            membership_id,
-            course_id,
-            verification_type,
-            consume_sessions,
-            verify_time,
-            verify_date,
-            operator_name,
-            device_location
-        FROM fact_course_record
+            f.record_id,
+            f.record_no,
+            f.member_id,
+            m.name AS member_name,
+            m.member_no,
+            m.phone AS member_phone,
+            f.membership_id,
+            f.course_id,
+            c.course_no,
+            c.coach_name AS course_coach_name,
+            c.course_type,
+            c.course_date,
+            c.start_time AS course_start_time,
+            c.end_time AS course_end_time,
+            c.duration_minutes AS course_duration,
+            c.status AS course_status,
+            c.remark AS course_remark,
+            f.verification_type,
+            f.consume_sessions,
+            f.verify_time,
+            f.verify_date,
+            f.operator_name,
+            f.device_location
+        FROM fact_course_record f
+        LEFT JOIN dim_member m ON f.member_id = m.member_id
+        LEFT JOIN courses c ON f.course_id = c.course_id
         WHERE {where_clause}
-        ORDER BY verify_time DESC
+        ORDER BY f.verify_time DESC
         LIMIT ? OFFSET ?
-    """, params + [page_size, offset]).fetchall()
-
+    """, params + [page_size, offset]))
     con.close()
 
-    records = []
+    records = _rows_to_dicts(cols, rows)
     type_names = {"course": "课程核销", "access": "门禁核销", "manual": "手动核销"}
-    for row in data:
-        record_id, record_no, mem_id, membership_id, course_id, vtype, sessions, vtime, vdate, op_name, location = row
-        records.append({
-            "record_id": record_id,
-            "record_no": record_no,
-            "member_id": mem_id,
-            "membership_id": membership_id,
-            "course_id": course_id,
-            "verification_type": vtype,
-            "verification_type_name": type_names.get(vtype, vtype),
-            "consume_sessions": sessions,
-            "verify_time": str(vtime) if vtime else None,
-            "verify_date": str(vdate) if vdate else None,
-            "operator_name": op_name,
-            "device_location": location
-        })
+    for r in records:
+        r["verification_type_name"] = type_names.get(r.get("verification_type"), r.get("verification_type"))
+        for k in ["verify_time", "verify_date", "course_date"]:
+            if r.get(k):
+                r[k] = str(r[k])
 
     return {
         "total": total,

@@ -32,7 +32,9 @@ function MemberList() {
         page,
         page_size: pageSize,
       })
-      setMembers(data)
+      const normalized = Array.isArray(data) ? { total: data.length, page: 1, page_size: pageSize, items: data } : data
+      normalized.items = normalized.items.map(m => ({ ...m, id: m.member_id || m.id }))
+      setMembers(normalized)
     } catch (e) {
       console.error('加载会员列表失败:', e)
       loadMockMembers()

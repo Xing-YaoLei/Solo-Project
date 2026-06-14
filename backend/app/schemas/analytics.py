@@ -63,15 +63,27 @@ class VerificationRecord(BaseModel):
     record_id: int
     record_no: str
     member_id: int
+    member_name: Optional[str] = None
+    member_no: Optional[str] = None
+    member_phone: Optional[str] = None
     membership_id: int
-    course_id: Optional[int]
+    course_id: Optional[int] = None
+    course_no: Optional[str] = None
+    course_coach_name: Optional[str] = None
+    course_type: Optional[str] = None
+    course_date: Optional[str] = None
+    course_start_time: Optional[str] = None
+    course_end_time: Optional[str] = None
+    course_duration: Optional[int] = None
+    course_status: Optional[str] = None
+    course_remark: Optional[str] = None
     verification_type: str
     verification_type_name: str
     consume_sessions: int
-    verify_time: Optional[str]
-    verify_date: Optional[str]
-    operator_name: Optional[str]
-    device_location: Optional[str]
+    verify_time: Optional[str] = None
+    verify_date: Optional[str] = None
+    operator_name: Optional[str] = None
+    device_location: Optional[str] = None
 
 
 class VerificationRecordsResponse(PaginatedResponse):
