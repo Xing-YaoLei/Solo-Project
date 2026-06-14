@@ -1,116 +1,75 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
-from typing import List
-from ..db.database import get_db
-from ..models.warning_threshold import WarningThreshold, ThresholdAuditLog
-from ..schemas.threshold_note import (
-    WarningThresholdCreate,
-    WarningThresholdUpdate,
-    WarningThresholdResponse,
-    ThresholdAuditLogResponse,
-)
-import uuid
+from fastapi import APIRouter, HTTPException, Query
+from typing import List, Optional
+from pydantic import BaseModel
+from datetime import datetime
+from ..services import repository as repo
 
 router = APIRouter(prefix="/api/thresholds", tags=["预警阈值"])
 
 
-@router.get("", response_model=List[WarningThresholdResponse])
-def list_thresholds(db: Session = Depends(get_db)):
-    thresholds = db.query(WarningThreshold).order_by(WarningThreshold.id.asc()).all()
-    return thresholds
+class ThresholdCreate(BaseModel):
+    threshold_type: str
+    threshold_name: str
+    threshold_value: float
+    threshold_unit: Optional[str] = "天"
+    description: Optional[str] = None
+    is_enabled: Optional[int] = 1
+    created_by: Optional[str] = "system"
+    remark: Optional[str] = None
 
 
-@router.get("/{threshold_id}", response_model=WarningThresholdResponse)
-def get_threshold(threshold_id: int, db: Session = Depends(get_db)):
-    threshold = db.query(WarningThreshold).filter(WarningThreshold.id == threshold_id).first()
-    if not threshold:
+class ThresholdUpdate(BaseModel):
+    threshold_name: Optional[str] = None
+    threshold_value: Optional[float] = None
+    threshold_unit: Optional[str] = None
+    description: Optional[str] = None
+    is_enabled: Optional[int] = None
+    updated_by: Optional[str] = "system"
+    remark: Optional[str] = None
+
+
+@router.get("")
+def list_thresholds():
+    return repo.list_thresholds()
+
+
+@router.get("/type/{threshold_type}")
+def get_threshold_by_type(threshold_type: str):
+    item = repo.get_threshold_by_type(threshold_type)
+    if not item:
         raise HTTPException(status_code=404, detail="阈值配置不存在")
-    return threshold
+    return item
 
 
-@router.post("", response_model=WarningThresholdResponse)
-def create_threshold(threshold: WarningThresholdCreate, db: Session = Depends(get_db)):
-    existing = db.query(WarningThreshold).filter(
-        WarningThreshold.threshold_type == threshold.threshold_type
-    ).first()
+@router.get("/{threshold_id}")
+def get_threshold(threshold_id: int):
+    item = repo.get_threshold(threshold_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="阈值配置不存在")
+    return item
+
+
+@router.post("")
+def create_threshold_endpoint(threshold: ThresholdCreate):
+    existing = repo.get_threshold_by_type(threshold.threshold_type)
     if existing:
         raise HTTPException(status_code=400, detail="该类型阈值已存在")
-
-    db_threshold = WarningThreshold(**threshold.model_dump())
-    db.add(db_threshold)
-    db.commit()
-    db.refresh(db_threshold)
-
-    audit = ThresholdAuditLog(
-        threshold_id=db_threshold.id,
-        threshold_type=db_threshold.threshold_type,
-        new_value=db_threshold.threshold_value,
-        new_name=db_threshold.threshold_name,
-        operator_name=threshold.created_by or "system",
-        operation_type="create",
-        remark="创建阈值配置"
-    )
-    db.add(audit)
-    db.commit()
-
-    return db_threshold
+    return repo.create_threshold(threshold.model_dump())
 
 
-@router.put("/{threshold_id}", response_model=WarningThresholdResponse)
-def update_threshold(
-    threshold_id: int,
-    threshold_update: WarningThresholdUpdate,
-    db: Session = Depends(get_db)
-):
-    db_threshold = db.query(WarningThreshold).filter(
-        WarningThreshold.id == threshold_id
-    ).first()
-    if not db_threshold:
+@router.put("/{threshold_id}")
+def update_threshold_endpoint(threshold_id: int, threshold_update: ThresholdUpdate):
+    result = repo.update_threshold(threshold_id, threshold_update.model_dump(exclude_unset=True))
+    if not result:
         raise HTTPException(status_code=404, detail="阈值配置不存在")
-
-    old_value = db_threshold.threshold_value
-    old_name = db_threshold.threshold_name
-
-    update_data = threshold_update.model_dump(exclude_unset=True)
-    remark = update_data.pop("remark", None)
-
-    for key, value in update_data.items():
-        setattr(db_threshold, key, value)
-
-    db.commit()
-    db.refresh(db_threshold)
-
-    new_value = db_threshold.threshold_value
-    new_name = db_threshold.threshold_name
-
-    if old_value != new_value or old_name != new_name:
-        audit = ThresholdAuditLog(
-            threshold_id=db_threshold.id,
-            threshold_type=db_threshold.threshold_type,
-            old_value=old_value,
-            new_value=new_value,
-            old_name=old_name,
-            new_name=new_name,
-            operator_name=threshold_update.updated_by or "system",
-            operation_type="update",
-            remark=remark or "更新阈值配置"
-        )
-        db.add(audit)
-        db.commit()
-
-    return db_threshold
+    return result
 
 
-@router.get("/{threshold_id}/audit-logs", response_model=List[ThresholdAuditLogResponse])
+@router.get("/{threshold_id}/audit-logs")
 def get_audit_logs(
-    threshold_id: int,
-    db: Session = Depends(get_db),
+    threshold_id: Optional[int] = None,
+    threshold_type: Optional[str] = Query(None, description="阈值类型过滤"),
     page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
+    page_size: int = Query(50, ge=1, le=200),
 ):
-    logs = db.query(ThresholdAuditLog).filter(
-        ThresholdAuditLog.threshold_id == threshold_id
-    ).order_by(ThresholdAuditLog.created_at.desc()).offset(
-        (page - 1) * page_size
-    ).limit(page_size).all()
-    return logs
+    return repo.list_threshold_audit_logs(threshold_id, threshold_type, page, page_size)

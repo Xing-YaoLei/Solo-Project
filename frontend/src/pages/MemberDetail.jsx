@@ -157,7 +157,9 @@ function MemberDetail() {
   const loadNotes = async () => {
     try {
       const data = await memberAPI.getRenewalNotes(id, { page: 1, page_size: 10 })
-      setNotes(data)
+      setNotes(Array.isArray(data)
+        ? { total: data.length, page: 1, page_size: 10, items: data }
+        : data)
     } catch (e) {
       console.error('加载备注失败:', e)
       loadMockNotes()
@@ -426,7 +428,7 @@ function MemberDetail() {
                     },
                   ]}
                   dataSource={memberships}
-                  rowKey="id"
+                  rowKey={(r) => r.membership_id || r.id}
                   pagination={false}
                 />
               </TabPane>
@@ -436,7 +438,7 @@ function MemberDetail() {
                   size="small"
                   columns={courseColumns}
                   dataSource={courses.items}
-                  rowKey="id"
+                  rowKey={(r) => r.course_id || r.id}
                   scroll={{ x: 900 }}
                   pagination={{
                     current: courses.page,
@@ -453,7 +455,7 @@ function MemberDetail() {
                   size="small"
                   columns={transactionColumns}
                   dataSource={transactions.items}
-                  rowKey="id"
+                  rowKey={(r) => r.transaction_id || r.id}
                   scroll={{ x: 900 }}
                   pagination={{
                     current: transactions.page,
@@ -470,7 +472,7 @@ function MemberDetail() {
                   size="small"
                   columns={refundColumns}
                   dataSource={refunds.items}
-                  rowKey="id"
+                  rowKey={(r) => r.refund_id || r.id}
                   scroll={{ x: 900 }}
                   pagination={{
                     current: refunds.page,
@@ -487,7 +489,7 @@ function MemberDetail() {
                   size="small"
                   columns={accessColumns}
                   dataSource={accessRecords.items}
-                  rowKey="id"
+                  rowKey={(r) => r.record_id || r.id}
                   pagination={{
                     current: accessRecords.page,
                     pageSize: accessRecords.page_size,
@@ -508,7 +510,7 @@ function MemberDetail() {
                   size="small"
                   columns={noteColumns}
                   dataSource={notes.items}
-                  rowKey="id"
+                  rowKey={(r) => r.note_id || r.id}
                   scroll={{ x: 900 }}
                   pagination={{
                     current: notes.page,

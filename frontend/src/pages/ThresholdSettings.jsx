@@ -21,7 +21,7 @@ function ThresholdSettings() {
   const loadThresholds = async () => {
     try {
       const data = await thresholdAPI.list()
-      setThresholds(data)
+      setThresholds(Array.isArray(data) ? data : (data.items || []))
     } catch (e) {
       console.error('加载阈值配置失败:', e)
       loadMockThresholds()
@@ -102,7 +102,7 @@ function ThresholdSettings() {
   const loadAuditLogs = async (thresholdId) => {
     try {
       const data = await thresholdAPI.getAuditLogs(thresholdId)
-      setAuditLogs(data)
+      setAuditLogs(Array.isArray(data) ? data : (data.items || []))
     } catch (e) {
       console.error('加载审计日志失败:', e)
       loadMockAuditLogs()
@@ -161,6 +161,8 @@ function ThresholdSettings() {
       threshold_value: threshold.threshold_value,
       threshold_unit: threshold.threshold_unit,
       description: threshold.description,
+      operator_name: '',
+      remark: '',
     })
     setEditModalVisible(true)
   }
@@ -174,18 +176,19 @@ function ThresholdSettings() {
   const handleSubmit = async (values) => {
     try {
       await thresholdAPI.update(currentThreshold.id, {
-        ...values,
-        updated_by: '当前用户',
+        threshold_name: values.threshold_name,
+        threshold_value: values.threshold_value,
+        threshold_unit: values.threshold_unit,
+        description: values.description,
+        updated_by: values.operator_name || '未命名操作员',
         remark: values.remark,
       })
-      message.success('阈值更新成功')
+      message.success('阈值更新成功，已记录操作审计')
       setEditModalVisible(false)
       loadThresholds()
     } catch (e) {
       console.error('更新阈值失败:', e)
-      message.success('阈值更新成功')
-      setEditModalVisible(false)
-      loadThresholds()
+      message.error('更新阈值失败：' + (e.response?.data?.detail || e.message || '未知错误'))
     }
   }
 
@@ -287,8 +290,19 @@ function ThresholdSettings() {
           <Form.Item name="description" label="描述">
             <TextArea rows={3} placeholder="请输入阈值描述" />
           </Form.Item>
-          <Form.Item name="remark" label="修改说明">
-            <TextArea rows={2} placeholder="请说明修改原因（必填用于审计）" />
+          <Form.Item
+            name="operator_name"
+            label="操作人姓名"
+            rules={[{ required: true, message: '请输入您的姓名用于审计追溯' }]}
+          >
+            <Input placeholder="例如：运营经理-张三" />
+          </Form.Item>
+          <Form.Item
+            name="remark"
+            label="修改说明"
+            rules={[{ required: true, message: '请说明修改原因，必填用于审计' }]}
+          >
+            <TextArea rows={2} placeholder="例如：月底冲刺调整预警周期" />
           </Form.Item>
         </Form>
       </Modal>

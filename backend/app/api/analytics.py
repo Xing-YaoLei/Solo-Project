@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Query, Depends
-from typing import List
+from typing import List, Optional
 from ..services.analytics_service import (
     get_renewal_funnel,
     get_renewal_rate_trend,
@@ -8,6 +8,7 @@ from ..services.analytics_service import (
     get_expiring_members_list,
     get_verification_records,
 )
+from ..services import repository as repo
 from ..schemas.analytics import (
     FunnelStage,
     RenewalRateTrend,
@@ -68,3 +69,26 @@ def verification_records(
     page_size: int = Query(20, ge=1, le=100),
 ):
     return get_verification_records(member_id, start_date, end_date, page, page_size)
+
+
+@router.get("/funnel-stage-members")
+def funnel_stage_members(
+    stage: str = Query(..., description="漏斗阶段: total_members/active_members/expiring_members/contacted_members/renewed_members"),
+    start_date: str = Query(None, description="开始日期 YYYY-MM-DD"),
+    end_date: str = Query(None, description="结束日期 YYYY-MM-DD"),
+    days: int = Query(30, description="到期预警天数"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
+):
+    return repo.get_funnel_stage_members(stage, start_date, end_date, days, page, page_size)
+
+
+@router.get("/refund-reason-members")
+def refund_reason_members(
+    reason: str = Query(..., description="退款原因: injury/move_away/dissatisfied/coach_change/price_reason/time_conflict/health_reason/other"),
+    start_date: str = Query(None, description="开始日期 YYYY-MM-DD"),
+    end_date: str = Query(None, description="结束日期 YYYY-MM-DD"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
+):
+    return repo.get_refund_reason_members(reason, start_date, end_date, page, page_size)

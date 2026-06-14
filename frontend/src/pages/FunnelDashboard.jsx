@@ -25,6 +25,7 @@ function FunnelDashboard() {
   const [expiringMembers, setExpiringMembers] = useState({ total: 0, items: [] })
   const [selectedStage, setSelectedStage] = useState(null)
   const [stageDetail, setStageDetail] = useState(null)
+  const [stageMembers, setStageMembers] = useState({ total: 0, items: [] })
   const [notes, setNotes] = useState([])
   const [noteModalVisible, setNoteModalVisible] = useState(false)
   const [form] = Form.useForm()
@@ -141,10 +142,26 @@ function FunnelDashboard() {
         related_funnel_stage: stage,
         page_size: 10,
       })
-      setNotes(data)
+      setNotes(Array.isArray(data) ? data : (data.items || []))
     } catch (e) {
       console.error('加载备注失败:', e)
       loadMockNotes(stage)
+    }
+  }
+
+  const loadStageMembers = async (stage) => {
+    try {
+      const data = await analyticsAPI.getFunnelStageMembers({
+        stage,
+        start_date: dateRange[0]?.format('YYYY-MM-DD'),
+        end_date: dateRange[1]?.format('YYYY-MM-DD'),
+        days: 30,
+        page_size: 10,
+      })
+      setStageMembers(data.items ? data : { total: data.total || 0, items: data || [] })
+    } catch (e) {
+      console.error('加载阶段会员失败:', e)
+      setStageMembers({ total: 0, items: [] })
     }
   }
 
@@ -156,10 +173,27 @@ function FunnelDashboard() {
     setNotes(mockNotes)
   }
 
-  const handleStageClick = (stage) => {
+  const nameToStageMap = {
+    '总会员数': 'total_members',
+    '活跃会员': 'active_members',
+    '即将到期': 'expiring_members',
+    '已触达会员': 'contacted_members',
+    '已续费会员': 'renewed_members',
+  }
+
+  const handleStageClick = (stageOrEchartsEvent) => {
+    let stage = stageOrEchartsEvent
+    if (typeof stageOrEchartsEvent === 'object' && stageOrEchartsEvent.name) {
+      stage = nameToStageMap[stageOrEchartsEvent.name] || stageOrEchartsEvent.data?.stage || 'expiring_members'
+    }
     setSelectedStage(stage)
     setStageDetail(funnelData.find(f => f.stage === stage))
     loadStageNotes(stage)
+    loadStageMembers(stage)
+  }
+
+  const funnelOnEvents = {
+    click: (params) => handleStageClick(params),
   }
 
   const handleAddNote = () => {
@@ -235,6 +269,7 @@ function FunnelDashboard() {
           data: funnelData.map((d, i) => ({
             value: d.value,
             name: d.name,
+            stage: d.stage,
             itemStyle: {
               color: ['#1890ff', '#52c41a', '#faad14', '#722ed1', '#13c2c2'][i % 5],
             },
@@ -414,7 +449,13 @@ function FunnelDashboard() {
       title: '处理结论',
       dataIndex: 'conclusion',
       key: 'conclusion',
-      render: (val) => val ? <Tooltip title={val}>{val.slice(0, 10)}...</Tooltip> : '-',
+      render: (val) => val ? (
+        <Tooltip title={val}>
+          <span style={{ color: '#52c41a', fontWeight: 500 }}>
+            {String(val).slice(0, 15)}...
+          </span>
+        </Tooltip>
+      ) : <Tag color="default">待处理</Tag>,
     },
   ]
 
@@ -487,15 +528,19 @@ function FunnelDashboard() {
                 </Select>
               </Space>
             </div>
-            <div onClick={() => handleStageClick('expiring_members')} style={{ cursor: 'pointer' }}>
-              <ReactECharts option={getFunnelOption()} style={{ height: 400 }} />
+            <div style={{ cursor: 'pointer' }}>
+              <ReactECharts
+                option={getFunnelOption()}
+                style={{ height: 400 }}
+                onEvents={funnelOnEvents}
+              />
             </div>
 
             {selectedStage && stageDetail && (
               <div className="drilldown-panel">
                 <div className="drilldown-title">
                   <MessageOutlined style={{ color: '#1890ff' }} />
-                  {stageDetail.name} - 详细信息 & 复盘备注
+                  {stageDetail.name} - 下钻会员列表 & 复盘备注
                   <Button
                     type="primary"
                     size="small"
@@ -503,7 +548,7 @@ function FunnelDashboard() {
                     style={{ marginLeft: 'auto' }}
                     onClick={handleAddNote}
                   >
-                    添加备注
+                    添加复盘备注
                   </Button>
                 </div>
 
@@ -520,21 +565,62 @@ function FunnelDashboard() {
                       <span className="detail-value">{stageDetail.conversion_rate}%</span>
                     </div>
                   </Col>
-                  <Col span={12}>
+                  <Col span={6}>
                     <div className="detail-item">
                       <span className="detail-label">漏斗阶段</span>
                       <span className="detail-value">{stageDetail.name}</span>
                     </div>
                   </Col>
+                  <Col span={6}>
+                    <div className="detail-item">
+                      <span className="detail-label">下钻会员数</span>
+                      <span className="detail-value" style={{ color: '#1890ff' }}>
+                        {stageMembers.total} 人
+                      </span>
+                    </div>
+                  </Col>
                 </Row>
 
-                <Table
-                  size="small"
-                  columns={noteColumns}
-                  dataSource={notes}
-                  rowKey="id"
-                  pagination={false}
-                />
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: '#262626',
+                    marginBottom: 8,
+                    paddingLeft: 4,
+                    borderLeft: '3px solid #1890ff',
+                  }}>
+                    ① 该阶段会员（点击查看档案）
+                  </div>
+                  <Table
+                    size="small"
+                    columns={memberColumns}
+                    dataSource={stageMembers.items || []}
+                    rowKey={(r) => `${r.member_id}-${r.membership_no || ''}`}
+                    pagination={{ pageSize: 5, size: 'small' }}
+                    scroll={{ x: 900 }}
+                  />
+                </div>
+
+                <div>
+                  <div style={{
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: '#262626',
+                    marginBottom: 8,
+                    paddingLeft: 4,
+                    borderLeft: '3px solid #52c41a',
+                  }}>
+                    ② 复盘备注 & 处理结论
+                  </div>
+                  <Table
+                    size="small"
+                    columns={noteColumns}
+                    dataSource={notes}
+                    rowKey={(r) => r.note_id || r.id || Math.random()}
+                    pagination={{ pageSize: 5, size: 'small' }}
+                  />
+                </div>
               </div>
             )}
           </div>

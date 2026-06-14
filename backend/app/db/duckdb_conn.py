@@ -12,32 +12,72 @@ def get_duckdb_connection():
     return con
 
 
+def reset_duckdb():
+    """完全重置 DuckDB，用于可重复初始化"""
+    con = get_duckdb_connection()
+    tables = [
+        "fact_renewal_note", "fact_refund", "fact_access", "fact_course_record",
+        "fact_transaction", "dim_membership", "dim_member",
+        "threshold_audit_logs", "warning_thresholds", "courses"
+    ]
+    for t in tables:
+        con.execute(f"DROP TABLE IF EXISTS {t}")
+    try:
+        con.execute("DROP SEQUENCE IF EXISTS seq_note_id")
+        con.execute("DROP SEQUENCE IF EXISTS seq_threshold_id")
+        con.execute("DROP SEQUENCE IF EXISTS seq_audit_id")
+        con.execute("DROP SEQUENCE IF EXISTS seq_course_id")
+    except Exception:
+        pass
+    con.close()
+
+
 def init_duckdb_tables():
     con = get_duckdb_connection()
 
     con.execute("""
+        CREATE SEQUENCE IF NOT EXISTS seq_note_id START 1000
+    """)
+    con.execute("""
+        CREATE SEQUENCE IF NOT EXISTS seq_threshold_id START 100
+    """)
+    con.execute("""
+        CREATE SEQUENCE IF NOT EXISTS seq_audit_id START 1000
+    """)
+    con.execute("""
+        CREATE SEQUENCE IF NOT EXISTS seq_course_id START 1000
+    """)
+
+    con.execute("""
         CREATE TABLE IF NOT EXISTS dim_member (
-            member_id INTEGER,
-            member_no VARCHAR,
+            member_id INTEGER PRIMARY KEY,
+            member_no VARCHAR UNIQUE,
             name VARCHAR,
             phone VARCHAR,
+            gender VARCHAR,
+            birthday DATE,
             level VARCHAR,
             status VARCHAR,
             join_date DATE,
             coach_id INTEGER,
             coach_name VARCHAR,
             total_purchased_amount DOUBLE,
+            total_used_sessions INTEGER,
+            remaining_sessions INTEGER,
             last_visit_date DATE,
             next_expiry_date DATE,
             renewal_warning_days INTEGER,
-            created_at TIMESTAMP
+            address VARCHAR,
+            remark VARCHAR,
+            created_at TIMESTAMP,
+            updated_at TIMESTAMP
         )
     """)
 
     con.execute("""
         CREATE TABLE IF NOT EXISTS dim_membership (
-            membership_id INTEGER,
-            membership_no VARCHAR,
+            membership_id INTEGER PRIMARY KEY,
+            membership_no VARCHAR UNIQUE,
             member_id INTEGER,
             type VARCHAR,
             name VARCHAR,
@@ -52,14 +92,41 @@ def init_duckdb_tables():
             is_renewal INTEGER,
             transaction_id INTEGER,
             source_membership_id INTEGER,
-            created_at TIMESTAMP
+            remark VARCHAR,
+            created_at TIMESTAMP,
+            updated_at TIMESTAMP
+        )
+    """)
+
+    con.execute("""
+        CREATE TABLE IF NOT EXISTS courses (
+            course_id INTEGER PRIMARY KEY DEFAULT nextval('seq_course_id'),
+            course_no VARCHAR UNIQUE,
+            member_id INTEGER,
+            membership_id INTEGER,
+            coach_id INTEGER,
+            coach_name VARCHAR,
+            course_type VARCHAR,
+            course_date DATE,
+            start_time VARCHAR,
+            end_time VARCHAR,
+            duration_minutes INTEGER,
+            status VARCHAR,
+            actual_start_time TIMESTAMP,
+            actual_end_time TIMESTAMP,
+            is_verified INTEGER,
+            verify_time TIMESTAMP,
+            consume_sessions INTEGER,
+            remark VARCHAR,
+            created_at TIMESTAMP,
+            updated_at TIMESTAMP
         )
     """)
 
     con.execute("""
         CREATE TABLE IF NOT EXISTS fact_transaction (
-            transaction_id INTEGER,
-            transaction_no VARCHAR,
+            transaction_id INTEGER PRIMARY KEY,
+            transaction_no VARCHAR UNIQUE,
             member_id INTEGER,
             membership_id INTEGER,
             type VARCHAR,
@@ -75,14 +142,16 @@ def init_duckdb_tables():
             salesperson_name VARCHAR,
             cashier_id INTEGER,
             cashier_name VARCHAR,
-            created_at TIMESTAMP
+            remark VARCHAR,
+            created_at TIMESTAMP,
+            updated_at TIMESTAMP
         )
     """)
 
     con.execute("""
         CREATE TABLE IF NOT EXISTS fact_course_record (
-            record_id INTEGER,
-            record_no VARCHAR,
+            record_id INTEGER PRIMARY KEY,
+            record_no VARCHAR UNIQUE,
             member_id INTEGER,
             membership_id INTEGER,
             course_id INTEGER,
@@ -96,14 +165,15 @@ def init_duckdb_tables():
             verify_date DATE,
             device_id VARCHAR,
             device_location VARCHAR,
+            remark VARCHAR,
             created_at TIMESTAMP
         )
     """)
 
     con.execute("""
         CREATE TABLE IF NOT EXISTS fact_access (
-            record_id INTEGER,
-            record_no VARCHAR,
+            record_id INTEGER PRIMARY KEY,
+            record_no VARCHAR UNIQUE,
             member_id INTEGER,
             member_no VARCHAR,
             member_name VARCHAR,
@@ -114,14 +184,16 @@ def init_duckdb_tables():
             device_location VARCHAR,
             verification_method VARCHAR,
             is_success INTEGER,
+            fail_reason VARCHAR,
+            temperature VARCHAR,
             created_at TIMESTAMP
         )
     """)
 
     con.execute("""
         CREATE TABLE IF NOT EXISTS fact_refund (
-            refund_id INTEGER,
-            refund_no VARCHAR,
+            refund_id INTEGER PRIMARY KEY,
+            refund_no VARCHAR UNIQUE,
             member_id INTEGER,
             membership_id INTEGER,
             transaction_id INTEGER,
@@ -140,14 +212,49 @@ def init_duckdb_tables():
             applicant_name VARCHAR,
             approver_id INTEGER,
             approver_name VARCHAR,
-            created_at TIMESTAMP
+            remark VARCHAR,
+            created_at TIMESTAMP,
+            updated_at TIMESTAMP
+        )
+    """)
+
+    con.execute("""
+        CREATE TABLE IF NOT EXISTS warning_thresholds (
+            id INTEGER PRIMARY KEY DEFAULT nextval('seq_threshold_id'),
+            threshold_type VARCHAR UNIQUE,
+            threshold_name VARCHAR,
+            threshold_value DOUBLE,
+            threshold_unit VARCHAR,
+            description VARCHAR,
+            is_enabled INTEGER,
+            created_by VARCHAR,
+            updated_by VARCHAR,
+            created_at TIMESTAMP,
+            updated_at TIMESTAMP
+        )
+    """)
+
+    con.execute("""
+        CREATE TABLE IF NOT EXISTS threshold_audit_logs (
+            id INTEGER PRIMARY KEY DEFAULT nextval('seq_audit_id'),
+            threshold_id INTEGER,
+            threshold_type VARCHAR,
+            old_value DOUBLE,
+            new_value DOUBLE,
+            old_name VARCHAR,
+            new_name VARCHAR,
+            operator_name VARCHAR,
+            operator_id INTEGER,
+            operation_type VARCHAR,
+            remark VARCHAR,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
 
     con.execute("""
         CREATE TABLE IF NOT EXISTS fact_renewal_note (
-            note_id INTEGER,
-            note_no VARCHAR,
+            note_id INTEGER PRIMARY KEY DEFAULT nextval('seq_note_id'),
+            note_no VARCHAR UNIQUE,
             member_id INTEGER,
             membership_id INTEGER,
             source VARCHAR,
@@ -166,7 +273,9 @@ def init_duckdb_tables():
             resolved_at TIMESTAMP,
             related_funnel_stage VARCHAR,
             related_metric VARCHAR,
-            created_at TIMESTAMP
+            remark VARCHAR,
+            created_at TIMESTAMP,
+            updated_at TIMESTAMP
         )
     """)
 

@@ -15,6 +15,17 @@ function RefundAnalysis() {
   const [dateRange, setDateRange] = useState([dayjs().subtract(90, 'day'), dayjs()])
   const [detailModal, setDetailModal] = useState(false)
   const [detailMembers, setDetailMembers] = useState([])
+  const [loadingDetail, setLoadingDetail] = useState(false)
+
+  const reasonNameToCode = {}
+  refundReasons.forEach(r => { reasonNameToCode[r.name] = r.reason })
+
+  const refundChartOnEvents = {
+    click: (params) => {
+      const reason = refundReasons.find(r => r.name === params.name)
+      if (reason) handleReasonClick(reason)
+    },
+  }
 
   useEffect(() => {
     loadRefundReasons()
@@ -136,17 +147,31 @@ function RefundAnalysis() {
     }
   }
 
-  const handleReasonClick = (reason) => {
+  const handleReasonClick = async (reason) => {
     setSelectedReason(reason)
-    setDetailMembers(Array.from({ length: reason.count }, (_, i) => ({
-      id: i + 1,
-      name: `会员${i + 1}`,
-      member_no: `M202400${i + 1}`,
-      refund_amount: Math.floor(reason.total_amount / reason.count * (0.8 + Math.random() * 0.4)),
-      refund_sessions: Math.floor(reason.total_sessions / reason.count * (0.8 + Math.random() * 0.4)),
-      apply_date: dayjs().subtract(Math.floor(Math.random() * 60), 'day').format('YYYY-MM-DD'),
-    })))
     setDetailModal(true)
+    setLoadingDetail(true)
+    try {
+      const data = await analyticsAPI.getRefundReasonMembers({
+        reason: reason.reason,
+        start_date: dateRange[0]?.format('YYYY-MM-DD'),
+        end_date: dateRange[1]?.format('YYYY-MM-DD'),
+        page_size: 50,
+      })
+      setDetailMembers(data.items || data || [])
+    } catch (e) {
+      console.error('加载退款会员失败:', e)
+      setDetailMembers(Array.from({ length: reason.count }, (_, i) => ({
+        member_id: i + 1,
+        name: `会员${i + 1}`,
+        member_no: `M202400${i + 1}`,
+        refund_amount: Math.floor(reason.total_amount / reason.count * (0.8 + Math.random() * 0.4)),
+        refund_sessions: Math.floor(reason.total_sessions / reason.count * (0.8 + Math.random() * 0.4)),
+        apply_date: dayjs().subtract(Math.floor(Math.random() * 60), 'day').format('YYYY-MM-DD'),
+      })))
+    } finally {
+      setLoadingDetail(false)
+    }
   }
 
   const totalCount = refundReasons.reduce((sum, r) => sum + r.count, 0)
@@ -228,7 +253,11 @@ function RefundAnalysis() {
               <div className="chart-card-title">退款原因占比</div>
               <RangePicker value={dateRange} onChange={setDateRange} />
             </div>
-            <ReactECharts option={getPieOption()} style={{ height: 350 }} />
+            <ReactECharts
+              option={getPieOption()}
+              style={{ height: 350 }}
+              onEvents={refundChartOnEvents}
+            />
           </div>
         </Col>
         <Col span={12}>
@@ -236,7 +265,11 @@ function RefundAnalysis() {
             <div className="chart-card-header">
               <div className="chart-card-title">各原因退款金额</div>
             </div>
-            <ReactECharts option={getBarOption()} style={{ height: 350 }} />
+            <ReactECharts
+              option={getBarOption()}
+              style={{ height: 350 }}
+              onEvents={refundChartOnEvents}
+            />
           </div>
         </Col>
       </Row>
@@ -255,39 +288,55 @@ function RefundAnalysis() {
       </div>
 
       <Modal
-        title={`${selectedReason?.name} - 退款会员明细`}
+        title={`${selectedReason?.name} - 退款会员明细（${detailMembers.length}人）`}
         open={detailModal}
         onCancel={() => setDetailModal(false)}
         footer={null}
-        width={700}
+        width={900}
       >
-        <List
+        <Table
+          size="small"
+          loading={loadingDetail}
+          rowKey={(r) => r.refund_id || r.member_id || Math.random()}
           dataSource={detailMembers}
-          renderItem={(item) => (
-            <List.Item
-              actions={[
-                <Button type="link" size="small" onClick={() => navigate(`/members/${item.id}`)}>
+          pagination={{ pageSize: 5, size: 'small' }}
+          columns={[
+            { title: '会员号', dataIndex: 'member_no', key: 'member_no', width: 110 },
+            { title: '姓名', dataIndex: 'name', key: 'name', width: 90 },
+            { title: '手机号', dataIndex: 'phone', key: 'phone', width: 130 },
+            {
+              title: '等级', dataIndex: 'level', key: 'level', width: 80,
+              render: (l) => {
+                const map = { normal: 'default', silver: 'blue', gold: 'gold', platinum: 'purple' }
+                const nameMap = { normal: '普通', silver: '银卡', gold: '金卡', platinum: '钻石' }
+                return <Tag color={map[l] || 'default'}>{nameMap[l] || l}</Tag>
+              },
+            },
+            { title: '教练', dataIndex: 'coach_name', key: 'coach_name', width: 90 },
+            {
+              title: '退款金额', dataIndex: 'actual_refund_amount', key: 'actual_refund_amount', width: 110,
+              render: (v, r) => (
+                <span style={{ color: '#ff4d4f', fontWeight: 500 }}>
+                  ¥{Number(v ?? r.refund_amount ?? 0).toLocaleString()}
+                </span>
+              ),
+            },
+            { title: '退款课时', dataIndex: 'refund_sessions', key: 'refund_sessions', width: 90 },
+            { title: '申请日期', dataIndex: 'apply_date', key: 'apply_date', width: 110 },
+            {
+              title: '档案', key: 'action', width: 90, fixed: 'right',
+              render: (_, r) => (
+                <Button
+                  type="link"
+                  size="small"
+                  icon={<EyeOutlined />}
+                  onClick={() => navigate(`/members/${r.member_id || r.id}`)}
+                >
                   查看档案
                 </Button>
-              ]}
-            >
-              <List.Item.Meta
-                title={
-                  <Space>
-                    <span>{item.name}</span>
-                    <Tag color="blue">{item.member_no}</Tag>
-                  </Space>
-                }
-                description={
-                  <Space split="|" size={16}>
-                    <span>退款金额: <b style={{ color: '#ff4d4f' }}>¥{item.refund_amount.toLocaleString()}</b></span>
-                    <span>退款课时: {item.refund_sessions}节</span>
-                    <span>申请日期: {item.apply_date}</span>
-                  </Space>
-                }
-              />
-            </List.Item>
-          )}
+              ),
+            },
+          ]}
         />
       </Modal>
     </div>

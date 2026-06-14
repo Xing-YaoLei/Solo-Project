@@ -20,6 +20,8 @@ export const analyticsAPI = {
   getCoachRanking: (params) => api.get('/analytics/coach-ranking', { params }),
   getExpiringMembers: (params) => api.get('/analytics/expiring-members', { params }),
   getVerificationRecords: (params) => api.get('/analytics/verification-records', { params }),
+  getFunnelStageMembers: (params) => api.get('/analytics/funnel-stage-members', { params }),
+  getRefundReasonMembers: (params) => api.get('/analytics/refund-reason-members', { params }),
 }
 
 export const thresholdAPI = {
