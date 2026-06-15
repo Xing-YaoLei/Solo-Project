@@ -1,11 +1,8 @@
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
-import type { Role } from '@/lib/types'
-import { filterAdvisorAnomalies } from '@/lib/role-filter'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
-  const role = (searchParams.get('role') || 'admin') as Role
   const department = searchParams.get('department') || undefined
   const advisorId = searchParams.get('advisorId') || undefined
   const studentId = searchParams.get('studentId') || undefined
@@ -53,8 +50,7 @@ export async function GET(request: Request) {
       }
     })
 
-    const filtered = filterAdvisorAnomalies(data, { role, department, advisorId, studentId })
-    return NextResponse.json(filtered)
+    return NextResponse.json(data)
   } catch (error) {
     console.error('Advisor anomaly API error:', error)
     return NextResponse.json(

@@ -6,7 +6,7 @@ import StudentTrendCard from '@/components/dashboard/StudentTrendCard'
 import GradeCompositionCard from '@/components/dashboard/GradeCompositionCard'
 import MaterialDetailCard from '@/components/dashboard/MaterialDetailCard'
 import AdvisorAnomalyCard from '@/components/dashboard/AdvisorAnomalyCard'
-import { Shield, Eye, Loader2, AlertTriangle } from 'lucide-react'
+import { Shield, Eye, Loader2, AlertTriangle, FileDown } from 'lucide-react'
 import type { Role } from '@/lib/types'
 
 const roleLabels: Record<string, string> = {
@@ -31,6 +31,7 @@ export default function ShareDashboard({ token }: ShareDashboardProps) {
   const [departmentName, setDepartmentName] = useState<string | null>(null)
   const [advisorName, setAdvisorName] = useState<string | null>(null)
   const [studentName, setStudentName] = useState<string | null>(null)
+  const [exporting, setExporting] = useState(false)
 
   useEffect(() => {
     const verifyToken = async () => {
@@ -74,6 +75,46 @@ export default function ShareDashboard({ token }: ShareDashboardProps) {
     if (role === 'student') return '查看个人数据：仅本人的复核与申请记录'
     return '按角色权限查看数据'
   })()
+
+  const handleExport = async (format: 'pdf' | 'xlsx') => {
+    setExporting(true)
+    try {
+      const body: Record<string, unknown> = {
+        format,
+        role,
+        includeCaliberNote: true,
+      }
+      if (departmentId) body.department = departmentId
+      if (advisorId) body.advisorId = advisorId
+      if (studentId) body.studentId = studentId
+
+      const response = await fetch('/api/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}))
+        throw new Error(errData.error || '导出失败')
+      }
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      const dateStr = new Date().toISOString().split('T')[0]
+      a.download = `成绩复核风险监测报告_${dateStr}.${format === 'pdf' ? 'pdf' : 'xlsx'}`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error('Export failed:', err)
+    } finally {
+      setExporting(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -127,7 +168,27 @@ export default function ShareDashboard({ token }: ShareDashboardProps) {
         <h1 className="text-2xl font-bold" style={{ color: 'var(--navy)' }}>
           成绩复核风险监测
         </h1>
-        <RefreshIndicator />
+        <div className="flex items-center gap-2">
+          <RefreshIndicator />
+          <button
+            onClick={() => handleExport('pdf')}
+            disabled={exporting}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors duration-200 disabled:opacity-50"
+            style={{ backgroundColor: 'var(--navy)', color: '#FFFFFF' }}
+          >
+            <FileDown size={13} />
+            PDF
+          </button>
+          <button
+            onClick={() => handleExport('xlsx')}
+            disabled={exporting}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors duration-200 disabled:opacity-50"
+            style={{ backgroundColor: 'var(--amber)', color: '#FFFFFF' }}
+          >
+            <FileDown size={13} />
+            Excel
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-6">

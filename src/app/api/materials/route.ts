@@ -1,11 +1,8 @@
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
-import type { Role } from '@/lib/types'
-import { filterMaterialDetails, filterCampusCardRecords } from '@/lib/role-filter'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
-  const role = (searchParams.get('role') || 'admin') as Role
   const department = searchParams.get('department') || undefined
   const advisorId = searchParams.get('advisorId') || undefined
   const studentId = searchParams.get('studentId') || undefined
@@ -65,12 +62,9 @@ export async function GET(request: Request) {
       isAnomaly: d.amount === 0 || d.transactionTime.getHours() >= 22,
     }))
 
-    const filteredMaterials = filterMaterialDetails(materials, { role, department, advisorId, studentId })
-    const filteredCards = filterCampusCardRecords(cardRecords, { role, department, advisorId, studentId })
-
     return NextResponse.json({
-      materialDetails: filteredMaterials,
-      campusCardRecords: filteredCards,
+      materialDetails: materials,
+      campusCardRecords: cardRecords,
     })
   } catch (error) {
     console.error('Materials API error:', error)

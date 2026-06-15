@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { X, Check, Link2, FileDown, Loader2, Building2, User, GraduationCap } from 'lucide-react'
 import { useStore } from '@/store/use-store'
 import type { Role } from '@/lib/types'
@@ -19,31 +19,23 @@ const expiryOptions = [
   { value: 10080, label: '7 天' },
 ]
 
-const mockDepartments = [
-  { id: 'dept-001', name: '计算机科学与技术学院' },
-  { id: 'dept-002', name: '电子信息工程学院' },
-  { id: 'dept-003', name: '数学与统计学院' },
-  { id: 'dept-004', name: '物理学院' },
-]
-
-const mockAdvisors = [
-  { id: 'adv-001', name: '张明', departmentId: 'dept-001' },
-  { id: 'adv-002', name: '李华', departmentId: 'dept-001' },
-  { id: 'adv-003', name: '王强', departmentId: 'dept-002' },
-  { id: 'adv-004', name: '刘伟', departmentId: 'dept-003' },
-]
-
-const mockStudents = [
-  { id: 'stu-001', name: '陈小明', studentNo: '202201001', advisorId: 'adv-001' },
-  { id: 'stu-002', name: '赵小红', studentNo: '202201002', advisorId: 'adv-001' },
-  { id: 'stu-003', name: '王小刚', studentNo: '202201003', advisorId: 'adv-002' },
-  { id: 'stu-004', name: '李小丽', studentNo: '202202001', advisorId: 'adv-003' },
-]
-
-interface ScopeOption {
+interface DepartmentOption {
   id: string
   name: string
-  studentNo?: string
+  code: string
+}
+
+interface AdvisorOption {
+  id: string
+  name: string
+  departmentId: string
+}
+
+interface StudentOption {
+  id: string
+  name: string
+  studentNo: string
+  advisorId: string
 }
 
 export default function ShareExportModal() {
@@ -70,9 +62,66 @@ export default function ShareExportModal() {
   const [selectedAdvisor, setSelectedAdvisor] = useState('')
   const [selectedStudent, setSelectedStudent] = useState('')
 
-  const [departmentOptions, setDepartmentOptions] = useState<ScopeOption[]>([])
-  const [advisorOptions, setAdvisorOptions] = useState<ScopeOption[]>([])
-  const [studentOptions, setStudentOptions] = useState<ScopeOption[]>([])
+  const [departmentOptions, setDepartmentOptions] = useState<DepartmentOption[]>([])
+  const [advisorOptions, setAdvisorOptions] = useState<AdvisorOption[]>([])
+  const [studentOptions, setStudentOptions] = useState<StudentOption[]>([])
+  const [scopeLoading, setScopeLoading] = useState(false)
+
+  const fetchDepartments = useCallback(async () => {
+    setScopeLoading(true)
+    try {
+      const res = await fetch('/api/scopes?type=departments')
+      if (res.ok) {
+        const data = await res.json()
+        setDepartmentOptions(Array.isArray(data) ? data : [])
+      } else {
+        setDepartmentOptions([])
+      }
+    } catch {
+      setDepartmentOptions([])
+    } finally {
+      setScopeLoading(false)
+    }
+  }, [])
+
+  const fetchAdvisors = useCallback(async (deptId?: string) => {
+    setScopeLoading(true)
+    try {
+      const params = new URLSearchParams({ type: 'advisors' })
+      if (deptId) params.set('departmentId', deptId)
+      const res = await fetch(`/api/scopes?${params.toString()}`)
+      if (res.ok) {
+        const data = await res.json()
+        setAdvisorOptions(Array.isArray(data) ? data : [])
+      } else {
+        setAdvisorOptions([])
+      }
+    } catch {
+      setAdvisorOptions([])
+    } finally {
+      setScopeLoading(false)
+    }
+  }, [])
+
+  const fetchStudents = useCallback(async (advId?: string, deptId?: string) => {
+    setScopeLoading(true)
+    try {
+      const params = new URLSearchParams({ type: 'students' })
+      if (advId) params.set('advisorId', advId)
+      else if (deptId) params.set('departmentId', deptId)
+      const res = await fetch(`/api/scopes?${params.toString()}`)
+      if (res.ok) {
+        const data = await res.json()
+        setStudentOptions(Array.isArray(data) ? data : [])
+      } else {
+        setStudentOptions([])
+      }
+    } catch {
+      setStudentOptions([])
+    } finally {
+      setScopeLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
     if (!shareModalOpen) return
@@ -85,24 +134,36 @@ export default function ShareExportModal() {
     setSelectedDepartment(currentDepartment || '')
     setSelectedAdvisor(currentAdvisor || '')
     setSelectedStudent('')
-
-    setDepartmentOptions(mockDepartments.map((d) => ({ id: d.id, name: d.name })))
-
-    let filteredAdvisors = mockAdvisors
-    if (currentRole === 'dean' && currentDepartment) {
-      filteredAdvisors = mockAdvisors.filter((a) => a.departmentId === currentDepartment)
+    fetchDepartments()
+    if (currentDepartment) {
+      fetchAdvisors(currentDepartment)
     }
-    setAdvisorOptions(filteredAdvisors.map((a) => ({ id: a.id, name: a.name })))
-
-    let filteredStudents = mockStudents
-    if (currentRole === 'advisor' && currentAdvisor) {
-      filteredStudents = mockStudents.filter((s) => s.advisorId === currentAdvisor)
-    } else if (currentRole === 'dean' && currentDepartment) {
-      const deptAdvisors = mockAdvisors.filter((a) => a.departmentId === currentDepartment).map((a) => a.id)
-      filteredStudents = mockStudents.filter((s) => deptAdvisors.includes(s.advisorId))
+    if (currentAdvisor) {
+      fetchStudents(currentAdvisor)
+    } else if (currentDepartment) {
+      fetchStudents(undefined, currentDepartment)
     }
-    setStudentOptions(filteredStudents.map((s) => ({ id: s.id, name: s.name, studentNo: s.studentNo })))
-  }, [shareModalOpen, currentRole, currentDepartment, currentAdvisor])
+  }, [shareModalOpen, currentRole, currentDepartment, currentAdvisor, fetchDepartments, fetchAdvisors, fetchStudents])
+
+  useEffect(() => {
+    if (!shareModalOpen) return
+    if (selectedDepartment) {
+      fetchAdvisors(selectedDepartment)
+    } else {
+      setAdvisorOptions([])
+    }
+  }, [selectedDepartment, shareModalOpen, fetchAdvisors])
+
+  useEffect(() => {
+    if (!shareModalOpen) return
+    if (selectedAdvisor) {
+      fetchStudents(selectedAdvisor)
+    } else if (selectedDepartment) {
+      fetchStudents(undefined, selectedDepartment)
+    } else {
+      setStudentOptions([])
+    }
+  }, [selectedAdvisor, selectedDepartment, shareModalOpen, fetchStudents])
 
   if (!shareModalOpen) return null
 
@@ -161,8 +222,16 @@ export default function ShareExportModal() {
         role: currentRole,
         includeCaliberNote: includeNote,
       }
-      if (currentDepartment) body.department = currentDepartment
-      if (currentAdvisor) body.advisorId = currentAdvisor
+      if (scopeType === 'department' && selectedDepartment) {
+        body.department = selectedDepartment
+      } else if (scopeType === 'advisor' && selectedAdvisor) {
+        body.advisorId = selectedAdvisor
+      } else if (scopeType === 'student' && selectedStudent) {
+        body.studentId = selectedStudent
+      } else {
+        if (currentDepartment) body.department = currentDepartment
+        if (currentAdvisor) body.advisorId = currentAdvisor
+      }
 
       const response = await fetch('/api/export', {
         method: 'POST',
@@ -196,26 +265,6 @@ export default function ShareExportModal() {
   const showDepartment = shareRole === 'admin' || shareRole === 'dean'
   const showAdvisor = shareRole === 'admin' || shareRole === 'dean' || shareRole === 'advisor'
   const showStudent = shareRole === 'admin' || shareRole === 'dean' || shareRole === 'advisor' || shareRole === 'student'
-
-  const filteredAdvisors = selectedDepartment
-    ? advisorOptions.filter((a) => {
-        const advisor = mockAdvisors.find((ad) => ad.id === a.id)
-        return advisor?.departmentId === selectedDepartment
-      })
-    : advisorOptions
-
-  const filteredStudents = selectedAdvisor
-    ? studentOptions.filter((s) => {
-        const student = mockStudents.find((st) => st.id === s.id)
-        return student?.advisorId === selectedAdvisor
-      })
-    : selectedDepartment
-    ? studentOptions.filter((s) => {
-        const student = mockStudents.find((st) => st.id === s.id)
-        const advisor = mockAdvisors.find((a) => a.id === student?.advisorId)
-        return advisor?.departmentId === selectedDepartment
-      })
-    : studentOptions
 
   return (
     <div
@@ -364,8 +413,13 @@ export default function ShareExportModal() {
                   </label>
                   <select
                     value={selectedDepartment}
-                    onChange={(e) => setSelectedDepartment(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg text-sm border outline-none transition-colors"
+                    onChange={(e) => {
+                      setSelectedDepartment(e.target.value)
+                      setSelectedAdvisor('')
+                      setSelectedStudent('')
+                    }}
+                    disabled={scopeLoading}
+                    className="w-full px-3 py-2 rounded-lg text-sm border outline-none transition-colors disabled:opacity-50"
                     style={{ borderColor: '#E2E8F0', color: '#1E293B' }}
                   >
                     <option value="">请选择院系</option>
@@ -383,12 +437,16 @@ export default function ShareExportModal() {
                   </label>
                   <select
                     value={selectedAdvisor}
-                    onChange={(e) => setSelectedAdvisor(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg text-sm border outline-none transition-colors"
+                    onChange={(e) => {
+                      setSelectedAdvisor(e.target.value)
+                      setSelectedStudent('')
+                    }}
+                    disabled={scopeLoading}
+                    className="w-full px-3 py-2 rounded-lg text-sm border outline-none transition-colors disabled:opacity-50"
                     style={{ borderColor: '#E2E8F0', color: '#1E293B' }}
                   >
                     <option value="">请选择导师</option>
-                    {filteredAdvisors.map((a) => (
+                    {advisorOptions.map((a) => (
                       <option key={a.id} value={a.id}>{a.name}</option>
                     ))}
                   </select>
@@ -403,11 +461,12 @@ export default function ShareExportModal() {
                   <select
                     value={selectedStudent}
                     onChange={(e) => setSelectedStudent(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg text-sm border outline-none transition-colors"
+                    disabled={scopeLoading}
+                    className="w-full px-3 py-2 rounded-lg text-sm border outline-none transition-colors disabled:opacity-50"
                     style={{ borderColor: '#E2E8F0', color: '#1E293B' }}
                   >
                     <option value="">请选择学生</option>
-                    {filteredStudents.map((s) => (
+                    {studentOptions.map((s) => (
                       <option key={s.id} value={s.id}>
                         {s.name}（{s.studentNo}）
                       </option>
@@ -450,6 +509,7 @@ export default function ShareExportModal() {
                 onClick={handleGenerate}
                 disabled={
                   generating ||
+                  scopeLoading ||
                   (scopeType === 'department' && !selectedDepartment) ||
                   (scopeType === 'advisor' && !selectedAdvisor) ||
                   (scopeType === 'student' && !selectedStudent)

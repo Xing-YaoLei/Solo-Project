@@ -1,16 +1,11 @@
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
-import type { Role } from '@/lib/types'
-import { filterTrendData, filterGradeComposition, filterMaterialDetails, filterCampusCardRecords, filterAdvisorAnomalies } from '@/lib/role-filter'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
-  const role = (searchParams.get('role') || 'admin') as Role
   const department = searchParams.get('department') || undefined
   const advisorId = searchParams.get('advisorId') || undefined
   const studentId = searchParams.get('studentId') || undefined
-
-  const scope = { role, department, advisorId, studentId }
 
   try {
     const colors: Record<string, string> = {
@@ -128,11 +123,11 @@ export async function GET(request: Request) {
     })
 
     return NextResponse.json({
-      trend: filterTrendData(trend, scope),
-      composition: filterGradeComposition(composition, scope),
-      materials: filterMaterialDetails(materials, scope),
-      campusCards: filterCampusCardRecords(cards, scope),
-      anomalies: filterAdvisorAnomalies(anomalies, scope),
+      trend,
+      composition,
+      materials,
+      campusCards: cards,
+      anomalies,
     })
   } catch (error) {
     console.error('Dashboard API error:', error)
