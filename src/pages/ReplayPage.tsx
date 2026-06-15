@@ -38,7 +38,7 @@ export default function ReplayPage() {
             失败回放
           </h1>
           <p className="text-stone-400">
-            保留最近 {replays.length} 次失败记录，查看卡点帮助提升
+            保留最近 {replays.length} 次<span className="text-amber-400">申请材料失败</span>记录，查看卡点帮助提升
           </p>
         </div>
 
@@ -47,8 +47,8 @@ export default function ReplayPage() {
             <div className="w-16 h-16 bg-stone-700/50 rounded-full flex items-center justify-center mx-auto mb-4">
               <Trophy className="w-8 h-8 text-stone-500" />
             </div>
-            <p className="text-stone-400 mb-2">暂无失败记录</p>
-            <p className="text-stone-500 text-sm">完成关卡挑战后，失败记录会显示在这里</p>
+            <p className="text-stone-400 mb-2">暂无申请材料失败记录</p>
+            <p className="text-stone-500 text-sm">在材料审核阶段失败的记录会显示在这里</p>
           </div>
         ) : (
           <div className="space-y-4">

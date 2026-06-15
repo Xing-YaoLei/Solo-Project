@@ -1,4 +1,4 @@
-import { ClipboardCheck, FileCheck, FileX, AlertTriangle } from 'lucide-react';
+import { ClipboardCheck, FileCheck, FileX, AlertTriangle, CheckCircle, PlusCircle } from 'lucide-react';
 import { useGameStore } from '../../stores/useGameStore';
 import { getLevelById, getStudentById, getMaterialsByStudentId } from '../../data/levels';
 import { getMaterialTypeName } from '../../utils/helpers';
@@ -9,7 +9,15 @@ interface MaterialPanelProps {
 }
 
 export default function MaterialPanel({ isOpen, onClose }: MaterialPanelProps) {
-  const { selectedStudentId, currentLevelId, checkMaterials, showMissingModal } = useGameStore();
+  const {
+    selectedStudentId,
+    currentLevelId,
+    checkMaterials,
+    showMissingModal,
+    resolveMissingMaterial,
+    completeStudentReview,
+    completedStudents,
+  } = useGameStore();
   const level = currentLevelId ? getLevelById(currentLevelId) : null;
   const selectedStudent = selectedStudentId && level ? getStudentById(level, selectedStudentId) : null;
   const studentMaterials = selectedStudentId && level ? getMaterialsByStudentId(level, selectedStudentId) : null;
@@ -23,11 +31,25 @@ export default function MaterialPanel({ isOpen, onClose }: MaterialPanelProps) {
     }
   };
 
+  const handleResolveMaterial = (materialId: string) => {
+    if (selectedStudentId) {
+      resolveMissingMaterial(selectedStudentId, materialId);
+    }
+  };
+
+  const handleCompleteReview = () => {
+    if (selectedStudentId) {
+      completeStudentReview(selectedStudentId);
+    }
+  };
+
   if (!level) return null;
 
   const requiredCount = studentMaterials?.materials.filter((m) => m.required).length || 0;
   const submittedCount = studentMaterials?.materials.filter((m) => m.required && m.submitted).length || 0;
   const allComplete = requiredCount > 0 && submittedCount === requiredCount;
+  const isCompleted = selectedStudentId ? completedStudents.includes(selectedStudentId) : false;
+  const canComplete = allComplete && !isCompleted && selectedStudent?.hasApplied;
 
   return (
     <div
@@ -71,7 +93,12 @@ export default function MaterialPanel({ isOpen, onClose }: MaterialPanelProps) {
                   <p className="text-stone-400 text-sm">{selectedStudent.studentId}</p>
                 </div>
                 <div className="ml-auto">
-                  {allComplete ? (
+                  {isCompleted ? (
+                    <span className="px-2 py-1 bg-violet-500/20 text-violet-400 text-xs rounded-full flex items-center gap-1">
+                      <CheckCircle className="w-3 h-3" />
+                      已完成
+                    </span>
+                  ) : allComplete ? (
                     <span className="px-2 py-1 bg-emerald-500/20 text-emerald-400 text-xs rounded-full flex items-center gap-1">
                       <FileCheck className="w-3 h-3" />
                       材料齐全
@@ -132,31 +159,70 @@ export default function MaterialPanel({ isOpen, onClose }: MaterialPanelProps) {
                         </p>
                       </div>
                     </div>
-                    <span
-                      className={`text-xs px-2 py-1 rounded-full ${
-                        material.submitted
-                          ? 'bg-emerald-500/20 text-emerald-400'
-                          : material.required
-                          ? 'bg-red-500/20 text-red-400'
-                          : 'bg-stone-600/30 text-stone-400'
-                      }`}
-                    >
-                      {material.submitted ? '已提交' : '未提交'}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`text-xs px-2 py-1 rounded-full ${
+                          material.submitted
+                            ? 'bg-emerald-500/20 text-emerald-400'
+                            : material.required
+                            ? 'bg-red-500/20 text-red-400'
+                            : 'bg-stone-600/30 text-stone-400'
+                        }`}
+                      >
+                        {material.submitted ? '已提交' : '未提交'}
+                      </span>
+                      {!material.submitted && material.required && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleResolveMaterial(material.id);
+                          }}
+                          className="p-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 rounded-lg transition-all hover:scale-105"
+                          title="补全材料"
+                        >
+                          <PlusCircle className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
 
-              <button
-                onClick={handleCheck}
-                className={`w-full py-3 rounded-xl font-medium transition-all hover:scale-[1.02] active:scale-[0.98] ${
-                  allComplete
-                    ? 'bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white shadow-lg shadow-emerald-500/20'
-                    : 'bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white shadow-lg shadow-amber-500/20'
-                }`}
-              >
-                {allComplete ? '✓ 审核通过' : '检查材料完整性'}
-              </button>
+              {!selectedStudent?.hasApplied ? (
+                <div className="p-4 bg-stone-700/30 rounded-xl text-center">
+                  <p className="text-stone-400">该学生未提交复核申请</p>
+                  <p className="text-stone-500 text-sm mt-1">无需审核材料</p>
+                </div>
+              ) : isCompleted ? (
+                <div className="p-4 bg-violet-500/10 border border-violet-500/30 rounded-xl text-center">
+                  <CheckCircle className="w-8 h-8 text-violet-400 mx-auto mb-2" />
+                  <p className="text-violet-300 font-medium">该学生审核已完成</p>
+                  <p className="text-stone-500 text-sm mt-1">+20 分已获得</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <button
+                    onClick={handleCheck}
+                    className={`w-full py-3 rounded-xl font-medium transition-all hover:scale-[1.02] active:scale-[0.98] ${
+                      allComplete
+                        ? 'bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white shadow-lg shadow-emerald-500/20'
+                        : 'bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white shadow-lg shadow-amber-500/20'
+                    }`}
+                  >
+                    {allComplete ? '✓ 审核通过' : '检查材料完整性'}
+                  </button>
+                  
+                  {canComplete && (
+                    <button
+                      onClick={handleCompleteReview}
+                      className="w-full py-3 bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-500 hover:to-violet-400 text-white rounded-xl font-medium transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-violet-500/20 flex items-center justify-center gap-2"
+                    >
+                      <CheckCircle className="w-5 h-5" />
+                      完成评分 (+20 分)
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>

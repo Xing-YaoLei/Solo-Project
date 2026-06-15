@@ -12,6 +12,7 @@ import { useGameStore } from '../stores/useGameStore';
 import { useReplayStore } from '../stores/useReplayStore';
 import { getLevelById } from '../data/levels';
 import { useSettingsStore } from '../stores/useSettingsStore';
+import { useKeyboardControls } from '../hooks/useKeyboardControls';
 
 function GameTimer() {
   const { tick, isPaused, isGameOver, timeRemaining, currentLevelId, addUtilizationPoint, reviewedStudents, currentPhase } = useGameStore();
@@ -105,6 +106,8 @@ export default function GameLevel() {
   };
 
   const level = currentLevelId ? getLevelById(currentLevelId) : null;
+
+  useKeyboardControls();
 
   return (
     <div className="w-full h-screen bg-stone-950 relative overflow-hidden">

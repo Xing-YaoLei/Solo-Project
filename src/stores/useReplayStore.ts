@@ -29,6 +29,58 @@ type ReplayStore = ReplayState & ReplayActions;
 
 const MAX_REPLAYS = 3;
 
+const isMaterialFailure = (replay: ReplayRecord): boolean => {
+  if (replay.success) return false;
+  
+  const materialRelatedOps = replay.operations.filter((op) =>
+    ['check_materials', 'show_missing_modal', 'skip_material', 'resolve_material'].includes(op.type)
+  );
+  
+  const hasMissingMaterial = replay.operations.some(
+    (op) => op.type === 'check_materials' && op.payload.complete === false
+  );
+  
+  const hasSkipMaterial = replay.operations.some((op) => op.type === 'skip_material');
+  
+  return materialRelatedOps.length > 0 && (hasMissingMaterial || hasSkipMaterial);
+};
+
+const calculateMaterialStuckPoints = (replay: ReplayRecord): StuckPoint[] => {
+  const stuckPoints: StuckPoint[] = [];
+  const materialOps = replay.operations.filter((op) => op.phase === 'application');
+  
+  if (materialOps.length === 0) return stuckPoints;
+  
+  let lastOpTime = materialOps[0].timestamp;
+  
+  materialOps.forEach((op, index) => {
+    if (index > 0) {
+      const gap = op.timestamp - lastOpTime;
+      if (gap > 10000) {
+        let description = '在材料审核阶段停留过久';
+        
+        if (op.type === 'check_materials' && !op.payload.complete) {
+          description = '发现材料缺失，未能及时处理';
+        } else if (op.type === 'skip_material') {
+          description = '跳过缺失材料，扣分处理';
+        } else if (op.type === 'resolve_material') {
+          description = '补全材料耗时过长';
+        }
+        
+        stuckPoints.push({
+          timestamp: lastOpTime,
+          phase: 'application',
+          description,
+          duration: gap,
+        });
+      }
+    }
+    lastOpTime = op.timestamp;
+  });
+  
+  return stuckPoints;
+};
+
 export const useReplayStore = create<ReplayStore>()(
   persist(
     (set, get) => ({
@@ -39,8 +91,17 @@ export const useReplayStore = create<ReplayStore>()(
       currentTime: 0,
 
       saveReplay: (replay: ReplayRecord) => {
+        if (!isMaterialFailure(replay)) {
+          return;
+        }
+        
+        const enhancedReplay: ReplayRecord = {
+          ...replay,
+          stuckPoints: [...replay.stuckPoints, ...calculateMaterialStuckPoints(replay)],
+        };
+        
         const { replays } = get();
-        const newReplays = [replay, ...replays].slice(0, MAX_REPLAYS);
+        const newReplays = [enhancedReplay, ...replays].slice(0, MAX_REPLAYS);
         set({ replays: newReplays });
       },
 

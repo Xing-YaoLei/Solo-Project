@@ -102,6 +102,7 @@ export interface GameState {
   classroomUtilization: UtilizationDataPoint[];
   reviewedStudents: string[];
   scoredStudents: string[];
+  completedStudents: string[];
   showMissingMaterialModal: boolean;
   currentMissingMaterialStudent: string | null;
 }
@@ -124,6 +125,9 @@ export interface GameActions {
   tick: (delta: number) => void;
   addUtilizationPoint: (utilization: number) => void;
   addOperation: (type: string, payload: Record<string, any>, phaseOverride?: GamePhase) => void;
+  completeStudentReview: (studentId: string) => void;
+  isAllStudentsCompleted: () => boolean;
+  finishLevel: () => void;
   resetGame: () => void;
 }
 

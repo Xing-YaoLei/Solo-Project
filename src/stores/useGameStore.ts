@@ -15,6 +15,7 @@ const initialState = {
   classroomUtilization: [],
   reviewedStudents: [],
   scoredStudents: [],
+  completedStudents: [],
   showMissingMaterialModal: false,
   currentMissingMaterialStudent: null,
 };
@@ -75,6 +76,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       ],
       reviewedStudents: [],
       scoredStudents: [],
+      completedStudents: [],
       showMissingMaterialModal: false,
       currentMissingMaterialStudent: null,
     });
@@ -267,6 +269,56 @@ export const useGameStore = create<GameStore>((set, get) => ({
       phase: phaseOverride || currentPhase,
     };
     set({ operationHistory: [...operationHistory, record] });
+  },
+
+  completeStudentReview: (studentId: string) => {
+    const { completedStudents, currentPhase, checkMaterials, submitScore, currentLevelId } = get();
+    const level = currentLevelId ? getLevelById(currentLevelId) : null;
+    const transcript = level?.transcripts.find((t) => t.studentId === studentId);
+    
+    if (!completedStudents.includes(studentId)) {
+      const materialsComplete = checkMaterials(studentId);
+      
+      if (materialsComplete) {
+        if (transcript && !get().scoredStudents.includes(studentId)) {
+          const gpaScore = Math.round(transcript.gpa * 20);
+          submitScore(studentId, gpaScore);
+        }
+        
+        set({ completedStudents: [...completedStudents, studentId] });
+        set((state) => ({ score: state.score + 20 }));
+        get().addOperation('complete_student', { studentId }, currentPhase);
+        
+        if (get().isAllStudentsCompleted()) {
+          get().finishLevel();
+        }
+      }
+    }
+  },
+
+  isAllStudentsCompleted: (): boolean => {
+    const { currentLevelId, completedStudents } = get();
+    const level = currentLevelId ? getLevelById(currentLevelId) : null;
+    if (!level) return false;
+    
+    const appliedStudents = level.students.filter((s) => s.hasApplied);
+    return appliedStudents.every((s) => completedStudents.includes(s.id));
+  },
+
+  finishLevel: () => {
+    const { currentLevelId, score, timeRemaining } = get();
+    const level = currentLevelId ? getLevelById(currentLevelId) : null;
+    if (!level) return;
+
+    set({ currentPhase: 'complete' });
+    
+    const timeBonus = Math.floor(timeRemaining * 0.5);
+    set((state) => ({ score: state.score + timeBonus }));
+    
+    get().addOperation('finish_level', { timeBonus });
+    
+    const success = get().score >= level.passingScore;
+    get().completeLevel(success);
   },
 
   resetGame: () => {
