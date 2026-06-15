@@ -106,7 +106,7 @@ export const api = {
       courseId?: number;
       teacherId?: number;
     }) => http.get<CourseSchedule[]>('/schedules/weekly', { params }),
-    detectConflicts: () => http.post<{ hasConflicts: boolean; conflictCount: number; conflicts: Conflict[] }>('/schedules/detect-conflicts'),
+    detectConflicts: (semesterId: number) => http.post<Conflict[]>(`/schedules/detect-conflicts/${semesterId}`),
     checkConflict: (data: Partial<CourseSchedule>) => http.post<boolean>('/schedules/check-conflict', data),
   },
 

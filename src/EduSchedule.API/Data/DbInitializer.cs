@@ -51,6 +51,21 @@ public static class DbInitializer
             await SeedSchedulesAsync(context);
         }
 
+        if (!await context.Conflicts.AnyAsync())
+        {
+            await SeedConflictsAsync(context);
+        }
+
+        if (!await context.Transcripts.AnyAsync())
+        {
+            await SeedTranscriptsAsync(context);
+        }
+
+        if (!await context.Applications.AnyAsync())
+        {
+            await SeedApplicationsAsync(context);
+        }
+
         await context.SaveChangesAsync();
     }
 
@@ -412,15 +427,25 @@ public static class DbInitializer
     private static async Task SeedStudentsAsync(AppDbContext context)
     {
         var csDept = await context.Departments.FirstAsync(d => d.Code == "CS");
-        var user = await context.Users.FirstAsync(u => u.UserName == "student");
+
+        var studentUsers = new List<User>
+        {
+            new() { UserName = "student1", RealName = "张三", Email = "student1@edu.edu", PasswordHash = HashPassword("student123"), Role = RoleType.Student, RoleName = "学生", DepartmentId = csDept.Id, DepartmentName = csDept.Name, IsActive = true, CreatedAt = DateTime.Now },
+            new() { UserName = "student2", RealName = "李四", Email = "student2@edu.edu", PasswordHash = HashPassword("student123"), Role = RoleType.Student, RoleName = "学生", DepartmentId = csDept.Id, DepartmentName = csDept.Name, IsActive = true, CreatedAt = DateTime.Now },
+            new() { UserName = "student3", RealName = "王五", Email = "student3@edu.edu", PasswordHash = HashPassword("student123"), Role = RoleType.Student, RoleName = "学生", DepartmentId = csDept.Id, DepartmentName = csDept.Name, IsActive = true, CreatedAt = DateTime.Now },
+            new() { UserName = "student4", RealName = "赵六", Email = "student4@edu.edu", PasswordHash = HashPassword("student123"), Role = RoleType.Student, RoleName = "学生", DepartmentId = csDept.Id, DepartmentName = csDept.Name, IsActive = true, CreatedAt = DateTime.Now },
+            new() { UserName = "student5", RealName = "钱七", Email = "student5@edu.edu", PasswordHash = HashPassword("student123"), Role = RoleType.Student, RoleName = "学生", DepartmentId = csDept.Id, DepartmentName = csDept.Name, IsActive = true, CreatedAt = DateTime.Now },
+        };
+        await context.Users.AddRangeAsync(studentUsers);
+        await context.SaveChangesAsync();
 
         var students = new List<Student>
         {
-            new() { StudentNumber = "2024001", UserId = user.Id, DepartmentId = csDept.Id, Major = "计算机科学与技术", ClassName = "计科2024-1班", Grade = 2024, Gpa = 3.5, TotalCredits = 0, EnrollmentDate = new DateOnly(DateTime.Now.Year, 9, 1), ExpectedGraduationDate = new DateOnly(DateTime.Now.Year + 4, 6, 30), IsActive = true, CreatedAt = DateTime.Now },
-            new() { StudentNumber = "2024002", UserId = user.Id, DepartmentId = csDept.Id, Major = "计算机科学与技术", ClassName = "计科2024-1班", Grade = 2024, Gpa = 3.2, TotalCredits = 0, EnrollmentDate = new DateOnly(DateTime.Now.Year, 9, 1), ExpectedGraduationDate = new DateOnly(DateTime.Now.Year + 4, 6, 30), IsActive = true, CreatedAt = DateTime.Now },
-            new() { StudentNumber = "2024003", UserId = user.Id, DepartmentId = csDept.Id, Major = "计算机科学与技术", ClassName = "计科2024-1班", Grade = 2024, Gpa = 3.8, TotalCredits = 0, EnrollmentDate = new DateOnly(DateTime.Now.Year, 9, 1), ExpectedGraduationDate = new DateOnly(DateTime.Now.Year + 4, 6, 30), IsActive = true, CreatedAt = DateTime.Now },
-            new() { StudentNumber = "2024004", UserId = user.Id, DepartmentId = csDept.Id, Major = "软件工程", ClassName = "软工2024-1班", Grade = 2024, Gpa = 3.0, TotalCredits = 0, EnrollmentDate = new DateOnly(DateTime.Now.Year, 9, 1), ExpectedGraduationDate = new DateOnly(DateTime.Now.Year + 4, 6, 30), IsActive = true, CreatedAt = DateTime.Now },
-            new() { StudentNumber = "2024005", UserId = user.Id, DepartmentId = csDept.Id, Major = "软件工程", ClassName = "软工2024-1班", Grade = 2024, Gpa = 2.8, TotalCredits = 0, EnrollmentDate = new DateOnly(DateTime.Now.Year, 9, 1), ExpectedGraduationDate = new DateOnly(DateTime.Now.Year + 4, 6, 30), IsActive = true, CreatedAt = DateTime.Now },
+            new() { StudentNumber = "2024001", UserId = studentUsers[0].Id, DepartmentId = csDept.Id, Major = "计算机科学与技术", ClassName = "计科2024-1班", Grade = 2024, GPA = 3.5m, TotalCredits = 0, EnrollmentDate = new DateOnly(DateTime.Now.Year, 9, 1), ExpectedGraduationDate = new DateOnly(DateTime.Now.Year + 4, 6, 30), IsActive = true, CreatedAt = DateTime.Now },
+            new() { StudentNumber = "2024002", UserId = studentUsers[1].Id, DepartmentId = csDept.Id, Major = "计算机科学与技术", ClassName = "计科2024-1班", Grade = 2024, GPA = 3.2m, TotalCredits = 0, EnrollmentDate = new DateOnly(DateTime.Now.Year, 9, 1), ExpectedGraduationDate = new DateOnly(DateTime.Now.Year + 4, 6, 30), IsActive = true, CreatedAt = DateTime.Now },
+            new() { StudentNumber = "2024003", UserId = studentUsers[2].Id, DepartmentId = csDept.Id, Major = "计算机科学与技术", ClassName = "计科2024-1班", Grade = 2024, GPA = 3.8m, TotalCredits = 0, EnrollmentDate = new DateOnly(DateTime.Now.Year, 9, 1), ExpectedGraduationDate = new DateOnly(DateTime.Now.Year + 4, 6, 30), IsActive = true, CreatedAt = DateTime.Now },
+            new() { StudentNumber = "2024004", UserId = studentUsers[3].Id, DepartmentId = csDept.Id, Major = "软件工程", ClassName = "软工2024-1班", Grade = 2024, GPA = 3.0m, TotalCredits = 0, EnrollmentDate = new DateOnly(DateTime.Now.Year, 9, 1), ExpectedGraduationDate = new DateOnly(DateTime.Now.Year + 4, 6, 30), IsActive = true, CreatedAt = DateTime.Now },
+            new() { StudentNumber = "2024005", UserId = studentUsers[4].Id, DepartmentId = csDept.Id, Major = "软件工程", ClassName = "软工2024-1班", Grade = 2024, GPA = 2.8m, TotalCredits = 0, EnrollmentDate = new DateOnly(DateTime.Now.Year, 9, 1), ExpectedGraduationDate = new DateOnly(DateTime.Now.Year + 4, 6, 30), IsActive = true, CreatedAt = DateTime.Now },
         };
         await context.Students.AddRangeAsync(students);
         await context.SaveChangesAsync();
@@ -623,8 +648,225 @@ public static class DbInitializer
                 ApprovedAt = DateTime.Now.AddDays(-3),
                 CreatedAt = DateTime.Now.AddDays(-3),
             },
+            new()
+            {
+                ScheduleId = schedules[1].Id,
+                ApproverId = deptHead.Id,
+                Status = ApprovalStatus.Approved,
+                Comments = "同意",
+                ApprovalLevel = 1,
+                RoleWhenApproved = nameof(RoleType.DepartmentHead),
+                SubmittedAt = DateTime.Now.AddDays(-10),
+                ApprovedAt = DateTime.Now.AddDays(-8),
+                CreatedAt = DateTime.Now.AddDays(-8),
+            },
+            new()
+            {
+                ScheduleId = schedules[1].Id,
+                ApproverId = academic.Id,
+                Status = ApprovalStatus.Approved,
+                Comments = "通过",
+                ApprovalLevel = 2,
+                RoleWhenApproved = nameof(RoleType.AcademicAffairs),
+                SubmittedAt = DateTime.Now.AddDays(-8),
+                ApprovedAt = DateTime.Now.AddDays(-6),
+                CreatedAt = DateTime.Now.AddDays(-6),
+            },
         };
         await context.ApprovalRecords.AddRangeAsync(approvalRecords);
+        await context.SaveChangesAsync();
+    }
+
+    private static async Task SeedConflictsAsync(AppDbContext context)
+    {
+        var currentSemester = await context.Semesters.FirstAsync(s => s.IsCurrent);
+        var schedules = await context.CourseSchedules.Include(s => s.Course).Include(s => s.Classroom).ToListAsync();
+        var academic = await context.Users.FirstAsync(u => u.UserName == "academic");
+        var teacher1 = await context.Users.FirstAsync(u => u.UserName == "teacher");
+
+        var conflictingSchedule1 = schedules.FirstOrDefault(s => s.Course?.CourseCode == "CS101" && s.DayOfWeek == WeekDay.Monday);
+        var conflictingSchedule2 = schedules.FirstOrDefault(s => s.Course?.CourseCode == "CS201" && s.DayOfWeek == WeekDay.Monday);
+
+        if (conflictingSchedule1 != null && conflictingSchedule2 != null)
+        {
+            var conflicts = new List<Conflict>
+            {
+                new()
+                {
+                    Title = "CS101 与 CS201 教室时间冲突",
+                    Description = "计算机基础与数据结构在周一第3节使用同一教室",
+                    Type = ConflictType.ClassroomConflict,
+                    Level = ConflictLevel.High,
+                    Status = ConflictStatus.Pending,
+                    ClassroomId = conflictingSchedule1.ClassroomId,
+                    Schedule1Id = conflictingSchedule1.Id,
+                    Schedule2Id = conflictingSchedule2.Id,
+                    DayOfWeek = WeekDay.Monday,
+                    TimeSlotId = conflictingSchedule1.TimeSlotId,
+                    AssignedTo = academic.Id,
+                    CreatedAt = DateTime.Now.AddDays(-2),
+                },
+                new()
+                {
+                    Title = "MA101 与 PH101 教师时间冲突",
+                    Description = "高等数学与大学物理在周二第1节有共同教师",
+                    Type = ConflictType.TeacherConflict,
+                    Level = ConflictLevel.Medium,
+                    Status = ConflictStatus.UnderReview,
+                    ClassroomId = conflictingSchedule1.ClassroomId,
+                    Schedule1Id = schedules.First(s => s.Course?.CourseCode == "MA101").Id,
+                    Schedule2Id = schedules.First(s => s.Course?.CourseCode == "PH101").Id,
+                    DayOfWeek = WeekDay.Tuesday,
+                    TimeSlotId = schedules.First(s => s.Course?.CourseCode == "MA101").TimeSlotId,
+                    AssignedTo = teacher1.Id,
+                    CreatedAt = DateTime.Now.AddDays(-5),
+                },
+            };
+            await context.Conflicts.AddRangeAsync(conflicts);
+            await context.SaveChangesAsync();
+
+            var communications = new List<ConflictCommunication>
+            {
+                new()
+                {
+                    ConflictId = conflicts[0].Id,
+                    UserId = academic.Id,
+                    Message = "请两位课程负责人协商调整时间",
+                    Type = CommunicationType.Comment,
+                    CreatedAt = DateTime.Now.AddDays(-1),
+                },
+                new()
+                {
+                    ConflictId = conflicts[0].Id,
+                    UserId = teacher1.Id,
+                    Message = "我们可以将CS201调整到周四下午",
+                    Type = CommunicationType.Comment,
+                    CreatedAt = DateTime.Now.AddDays(-1).AddHours(2),
+                },
+            };
+            await context.ConflictCommunications.AddRangeAsync(communications);
+
+            var reviews = new List<ConflictReview>
+            {
+                new()
+                {
+                    ConflictId = conflicts[1].Id,
+                    ReviewerId = academic.Id,
+                    ReviewOpinion = "需要重新安排教师时间表",
+                    Result = ReviewResult.NeedsRevision,
+                    Suggestions = "建议调整PH101到其他时段",
+                    CreatedAt = DateTime.Now.AddDays(-3),
+                },
+            };
+            await context.ConflictReviews.AddRangeAsync(reviews);
+            await context.SaveChangesAsync();
+        }
+    }
+
+    private static async Task SeedTranscriptsAsync(AppDbContext context)
+    {
+        var currentSemester = await context.Semesters.FirstAsync(s => s.IsCurrent);
+        var students = await context.Students.ToListAsync();
+        var courses = await context.Courses.ToListAsync();
+
+        var transcripts = new List<Transcript>();
+        var random = new Random(42);
+
+        foreach (var student in students.Take(3))
+        {
+            foreach (var course in courses.Take(4))
+            {
+                var midterm = (decimal)(random.Next(50, 100));
+                var final = (decimal)(random.Next(45, 100));
+                var finalGrade = Math.Round(midterm * 0.4m + final * 0.6m, 2);
+                var isPassed = finalGrade >= 60;
+                var gradePoint = isPassed ? Math.Round((finalGrade - 50) / 10, 2) : 0;
+
+                transcripts.Add(new Transcript
+                {
+                    StudentId = student.Id,
+                    CourseId = course.Id,
+                    SemesterId = currentSemester.Id,
+                    EnrollmentId = 1,
+                    MidtermScore = midterm,
+                    FinalScore = final,
+                    AssignmentScore = (decimal)(random.Next(70, 100)),
+                    AttendanceScore = (decimal)(random.Next(80, 100)),
+                    FinalGrade = finalGrade,
+                    GradeLetter = finalGrade >= 90 ? "A" : finalGrade >= 80 ? "B" : finalGrade >= 70 ? "C" : finalGrade >= 60 ? "D" : "F",
+                    GradePoint = gradePoint,
+                    IsPublished = true,
+                    PublishedAt = DateTime.Now.AddDays(-7),
+                    Comments = isPassed ? "学习认真，成绩良好" : "需要加强学习",
+                    CreatedAt = DateTime.Now.AddDays(-10),
+                });
+            }
+        }
+        await context.Transcripts.AddRangeAsync(transcripts);
+        await context.SaveChangesAsync();
+    }
+
+    private static async Task SeedApplicationsAsync(AppDbContext context)
+    {
+        var students = await context.Students.Include(s => s.User).ToListAsync();
+        var courses = await context.Courses.ToListAsync();
+        var academic = await context.Users.FirstAsync(u => u.UserName == "academic");
+
+        var applications = new List<Application>
+        {
+            new()
+            {
+                Type = ApplicationType.CourseAdd,
+                Title = "申请加选数据结构课程",
+                Description = "希望加选CS201数据结构课程，以满足专业培养方案要求",
+                ApplicantId = students[0].UserId,
+                StudentId = students[0].Id,
+                CourseId = courses.First(c => c.CourseCode == "CS201").Id,
+                Status = ApplicationStatus.Pending,
+                CreatedAt = DateTime.Now.AddDays(-3),
+            },
+            new()
+            {
+                Type = ApplicationType.CourseDrop,
+                Title = "申请退选大学物理",
+                Description = "由于课程时间冲突，申请退选PH101大学物理",
+                ApplicantId = students[1].UserId,
+                StudentId = students[1].Id,
+                CourseId = courses.First(c => c.CourseCode == "PH101").Id,
+                Status = ApplicationStatus.Approved,
+                ProcessorId = academic.Id,
+                ProcessorComments = "同意退选",
+                ProcessedAt = DateTime.Now.AddDays(-1),
+                CreatedAt = DateTime.Now.AddDays(-5),
+            },
+            new()
+            {
+                Type = ApplicationType.PrerequisiteWaiver,
+                Title = "申请免修先修课",
+                Description = "已自学完成高等数学先修内容，申请免修",
+                ApplicantId = students[2].UserId,
+                StudentId = students[2].Id,
+                CourseId = courses.First(c => c.CourseCode == "MA101").Id,
+                Status = ApplicationStatus.UnderReview,
+                ProcessorId = academic.Id,
+                CreatedAt = DateTime.Now.AddDays(-2),
+            },
+            new()
+            {
+                Type = ApplicationType.GradeAppeal,
+                Title = "成绩复核申请",
+                Description = "对CS101期末成绩有疑问，申请复核",
+                ApplicantId = students[3].UserId,
+                StudentId = students[3].Id,
+                CourseId = courses.First(c => c.CourseCode == "CS101").Id,
+                Status = ApplicationStatus.Rejected,
+                ProcessorId = academic.Id,
+                ProcessorComments = "成绩无误，不予调整",
+                ProcessedAt = DateTime.Now.AddDays(-4),
+                CreatedAt = DateTime.Now.AddDays(-7),
+            },
+        };
+        await context.Applications.AddRangeAsync(applications);
         await context.SaveChangesAsync();
     }
 }

@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
 using EduSchedule.API.Models;
 using EduSchedule.API.Services;
 using EduSchedule.API.Enums;
+using EduSchedule.API.Data;
 
 namespace EduSchedule.API.Controllers;
 
@@ -12,22 +14,52 @@ namespace EduSchedule.API.Controllers;
 public class CoursesController : ControllerBase
 {
     private readonly ICourseService _courseService;
+    private readonly AppDbContext _context;
 
-    public CoursesController(ICourseService courseService)
+    public CoursesController(ICourseService courseService, AppDbContext context)
     {
         _courseService = courseService;
+        _context = context;
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Course>>> GetCourses(
+    public async Task<ActionResult<PaginatedResult<Course>>> GetCourses(
         [FromQuery] int? semesterId,
         [FromQuery] int? departmentId,
         [FromQuery] CourseStatus? status,
         [FromQuery] string? search,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
         CancellationToken cancellationToken)
     {
-        var courses = await _courseService.GetCoursesAsync(semesterId, departmentId, status, search, cancellationToken);
-        return Ok(courses);
+        var query = _context.Courses
+            .Include(c => c.Department)
+            .Include(c => c.Semester)
+            .Include(c => c.PrerequisiteCourse)
+            .AsQueryable();
+
+        if (semesterId.HasValue)
+            query = query.Where(c => c.SemesterId == semesterId.Value);
+
+        if (departmentId.HasValue)
+            query = query.Where(c => c.DepartmentId == departmentId.Value);
+
+        if (status.HasValue)
+            query = query.Where(c => c.Status == status.Value);
+
+        if (!string.IsNullOrWhiteSpace(search))
+            query = query.Where(c => c.Name.Contains(search) ||
+                                     c.CourseCode.Contains(search) ||
+                                     c.Description!.Contains(search));
+
+        var total = await query.CountAsync(cancellationToken);
+        var items = await query
+            .OrderBy(c => c.CourseCode)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return Ok(new PaginatedResult<Course>(items, total, page, pageSize));
     }
 
     [HttpGet("{id}")]

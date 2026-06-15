@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using EduSchedule.API.Data;
 using EduSchedule.API.Models;
 using EduSchedule.API.Services;
 using EduSchedule.API.Enums;
@@ -13,29 +15,111 @@ namespace EduSchedule.API.Controllers;
 public class ConflictsController : ControllerBase
 {
     private readonly IConflictDetectionService _conflictService;
+    private readonly AppDbContext _context;
 
-    public ConflictsController(IConflictDetectionService conflictService)
+    public ConflictsController(IConflictDetectionService conflictService, AppDbContext context)
     {
         _conflictService = conflictService;
+        _context = context;
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Conflict>>> GetConflicts(
+    public async Task<ActionResult<PaginatedResult<Conflict>>> GetConflicts(
         [FromQuery] ConflictStatus? status,
         [FromQuery] ConflictLevel? level,
         [FromQuery] int? semesterId,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
         CancellationToken cancellationToken)
     {
-        var conflicts = await _conflictService.GetConflictsAsync(status, level, semesterId, cancellationToken);
-        return Ok(conflicts);
+        var query = _context.Conflicts
+            .Include(c => c.Classroom)
+            .Include(c => c.Schedule1)
+                .ThenInclude(s => s!.Course)
+            .Include(c => c.Schedule1)
+                .ThenInclude(s => s!.Classroom)
+            .Include(c => c.Schedule2)
+                .ThenInclude(s => s!.Course)
+            .Include(c => c.Schedule2)
+                .ThenInclude(s => s!.Classroom)
+            .Include(c => c.AssignedToUser)
+            .Include(c => c.Teacher1)
+            .Include(c => c.Teacher2)
+            .AsQueryable();
+
+        if (status.HasValue)
+            query = query.Where(c => c.Status == status.Value);
+
+        if (level.HasValue)
+            query = query.Where(c => c.Level == level.Value);
+
+        if (semesterId.HasValue)
+            query = query.Where(c => c.Schedule1!.SemesterId == semesterId.Value ||
+                                     c.Schedule2!.SemesterId == semesterId.Value);
+
+        var total = await query.CountAsync(cancellationToken);
+        var items = await query
+            .OrderByDescending(c => c.Level)
+            .ThenByDescending(c => c.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return Ok(new PaginatedResult<Conflict>(items, total, page, pageSize));
     }
 
     [HttpGet("{id}")]
     public async Task<ActionResult<Conflict>> GetConflict(int id, CancellationToken cancellationToken)
     {
-        var conflict = await _conflictService.GetConflictByIdAsync(id, cancellationToken);
+        var conflict = await _context.Conflicts
+            .Include(c => c.Classroom)
+            .Include(c => c.Schedule1)
+                .ThenInclude(s => s!.Course)
+            .Include(c => c.Schedule1)
+                .ThenInclude(s => s!.Classroom)
+            .Include(c => c.Schedule1)
+                .ThenInclude(s => s!.TimeSlot)
+            .Include(c => c.Schedule2)
+                .ThenInclude(s => s!.Course)
+            .Include(c => c.Schedule2)
+                .ThenInclude(s => s!.Classroom)
+            .Include(c => c.Schedule2)
+                .ThenInclude(s => s!.TimeSlot)
+            .Include(c => c.AssignedToUser)
+            .Include(c => c.Teacher1)
+            .Include(c => c.Teacher2)
+            .Include(c => c.Communications)
+                .ThenInclude(c => c.User)
+            .Include(c => c.Reviews)
+                .ThenInclude(r => r.Reviewer)
+            .FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
+
         if (conflict == null) return NotFound();
         return Ok(conflict);
+    }
+
+    [HttpGet("{id}/communications")]
+    public async Task<ActionResult<IEnumerable<ConflictCommunication>>> GetCommunications(int id, CancellationToken cancellationToken)
+    {
+        var communications = await _context.ConflictCommunications
+            .Where(c => c.ConflictId == id)
+            .Include(c => c.User)
+            .OrderBy(c => c.CreatedAt)
+            .ToListAsync(cancellationToken);
+
+        return Ok(communications);
+    }
+
+    [HttpGet("{id}/reviews")]
+    public async Task<ActionResult<IEnumerable<ConflictReview>>> GetReviews(int id, CancellationToken cancellationToken)
+    {
+        var reviews = await _context.ConflictReviews
+            .Where(r => r.ConflictId == id)
+            .Include(r => r.Reviewer)
+            .OrderByDescending(r => r.CreatedAt)
+            .ToListAsync(cancellationToken);
+
+        return Ok(reviews);
     }
 
     [HttpPost("{id}/assign")]

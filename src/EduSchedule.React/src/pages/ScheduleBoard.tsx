@@ -134,13 +134,18 @@ const ScheduleBoard = () => {
   }
 
   const handleDetectConflict = async () => {
+    if (!semesterId) {
+      message.warning('请先选择学期')
+      return
+    }
     setDetecting(true)
     setDetectResult(null)
     try {
-      const response = await api.schedules.detectConflicts()
-      setDetectResult(response.data)
-      if (response.data.hasConflicts) {
-        message.warning(`检测到 ${response.data.conflictCount} 个冲突`)
+      const response = await api.schedules.detectConflicts(semesterId)
+      const conflicts = response.data
+      setDetectResult(conflicts)
+      if (conflicts && conflicts.length > 0) {
+        message.warning(`检测到 ${conflicts.length} 个冲突`)
       } else {
         message.success('未检测到冲突')
       }

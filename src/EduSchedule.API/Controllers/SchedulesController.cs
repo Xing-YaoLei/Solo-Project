@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using EduSchedule.API.Models;
 using EduSchedule.API.Services;
 using EduSchedule.API.Enums;
+using EduSchedule.API.Data;
 
 namespace EduSchedule.API.Controllers;
 
@@ -13,21 +15,53 @@ namespace EduSchedule.API.Controllers;
 public class SchedulesController : ControllerBase
 {
     private readonly IScheduleService _scheduleService;
+    private readonly AppDbContext _context;
 
-    public SchedulesController(IScheduleService scheduleService)
+    public SchedulesController(IScheduleService scheduleService, AppDbContext context)
     {
         _scheduleService = scheduleService;
+        _context = context;
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<CourseSchedule>>> GetSchedules(
+    public async Task<ActionResult<PaginatedResult<CourseSchedule>>> GetSchedules(
         [FromQuery] int? semesterId,
         [FromQuery] int? courseId,
         [FromQuery] int? classroomId,
+        [FromQuery] string? search,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
         CancellationToken cancellationToken)
     {
-        var schedules = await _scheduleService.GetSchedulesAsync(semesterId, courseId, classroomId, cancellationToken);
-        return Ok(schedules);
+        var query = _context.CourseSchedules
+            .Include(s => s.Course)
+            .Include(s => s.Classroom)
+            .Include(s => s.TimeSlot)
+            .Include(s => s.Semester)
+            .AsQueryable();
+
+        if (semesterId.HasValue)
+            query = query.Where(s => s.SemesterId == semesterId.Value);
+
+        if (courseId.HasValue)
+            query = query.Where(s => s.CourseId == courseId.Value);
+
+        if (classroomId.HasValue)
+            query = query.Where(s => s.ClassroomId == classroomId.Value);
+
+        if (!string.IsNullOrWhiteSpace(search))
+            query = query.Where(s => s.Course.Name.Contains(search) ||
+                                     s.Course.CourseCode.Contains(search) ||
+                                     s.Classroom.RoomNumber.Contains(search));
+
+        var total = await query.CountAsync(cancellationToken);
+        var items = await query
+            .OrderByDescending(s => s.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return Ok(new PaginatedResult<CourseSchedule>(items, total, page, pageSize));
     }
 
     [HttpGet("{id}")]

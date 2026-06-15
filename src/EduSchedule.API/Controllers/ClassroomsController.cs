@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
 using EduSchedule.API.Models;
 using EduSchedule.API.Services;
 using EduSchedule.API.Enums;
+using EduSchedule.API.Data;
 
 namespace EduSchedule.API.Controllers;
 
@@ -12,21 +14,45 @@ namespace EduSchedule.API.Controllers;
 public class ClassroomsController : ControllerBase
 {
     private readonly IClassroomService _classroomService;
+    private readonly AppDbContext _context;
 
-    public ClassroomsController(IClassroomService classroomService)
+    public ClassroomsController(IClassroomService classroomService, AppDbContext context)
     {
         _classroomService = classroomService;
+        _context = context;
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Classroom>>> GetClassrooms(
+    public async Task<ActionResult<PaginatedResult<Classroom>>> GetClassrooms(
         [FromQuery] RoomType? type,
         [FromQuery] int? minCapacity,
         [FromQuery] string? search,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
         CancellationToken cancellationToken)
     {
-        var classrooms = await _classroomService.GetClassroomsAsync(type, minCapacity, search, cancellationToken);
-        return Ok(classrooms);
+        var query = _context.Classrooms.AsQueryable();
+
+        if (type.HasValue)
+            query = query.Where(c => c.Type == type.Value);
+
+        if (minCapacity.HasValue)
+            query = query.Where(c => c.Capacity >= minCapacity.Value);
+
+        if (!string.IsNullOrWhiteSpace(search))
+            query = query.Where(c => c.RoomNumber.Contains(search) ||
+                                     c.Name.Contains(search) ||
+                                     c.Building.Contains(search));
+
+        var total = await query.CountAsync(cancellationToken);
+        var items = await query
+            .OrderBy(c => c.Building)
+            .ThenBy(c => c.RoomNumber)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return Ok(new PaginatedResult<Classroom>(items, total, page, pageSize));
     }
 
     [HttpGet("{id}")]
