@@ -209,14 +209,15 @@ def get_teacher_todos(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.require_role(models.UserRole.TEACHER, models.UserRole.ADMIN, models.UserRole.MANAGER))
 ):
+    high_risk_values = [models.RiskLevel.DANGER.value, models.RiskLevel.CRITICAL.value]
     if current_user.role in [models.UserRole.ADMIN, models.UserRole.MANAGER]:
         high_risk_progresses = db.query(models.StudyProgress).filter(
-            models.StudyProgress.risk_level.in_([models.RiskLevel.DANGER, models.RiskLevel.CRITICAL])
+            models.StudyProgress.risk_level.in_(high_risk_values)
         ).all()
     else:
         allowed_course_ids = get_teacher_course_ids(db, current_user)
         high_risk_progresses = db.query(models.StudyProgress).filter(
-            models.StudyProgress.risk_level.in_([models.RiskLevel.DANGER, models.RiskLevel.CRITICAL]),
+            models.StudyProgress.risk_level.in_(high_risk_values),
             models.StudyProgress.course_id.in_(allowed_course_ids)
         ).all()
     
@@ -238,12 +239,12 @@ def get_teacher_todos(
                         f"【{progress.course.name}】"
                         f"完成率 {progress.completion_rate}%，"
                         f"正确率 {progress.accuracy_rate}%，"
-                        f"风险等级: {progress.risk_level.value}，"
+                        f"风险等级: {progress.risk_level.value if isinstance(progress.risk_level, models.RiskLevel) else progress.risk_level}，"
                         f"上次练习: {progress.last_practice_at.strftime('%m月%d日') if progress.last_practice_at else '无'}"
                     ),
                     todo_type="risk_followup",
                     related_id=progress.id,
-                    priority=1 if progress.risk_level == models.RiskLevel.CRITICAL else 2,
+                    priority=1 if (progress.risk_level.value if isinstance(progress.risk_level, models.RiskLevel) else progress.risk_level) == models.RiskLevel.CRITICAL.value else 2,
                     is_completed=False,
                 )
                 db.add(todo)

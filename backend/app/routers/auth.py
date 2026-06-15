@@ -65,8 +65,9 @@ def login(
         )
 
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    role_value = user.role.value if isinstance(user.role, models.UserRole) else user.role
     access_token = auth.create_access_token(
-        data={"sub": user.username, "role": user.role.value},
+        data={"sub": user.username, "role": role_value},
         expires_delta=access_token_expires
     )
     return schemas.Token(access_token=access_token, user=user)

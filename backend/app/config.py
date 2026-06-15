@@ -6,7 +6,8 @@ class Settings(BaseSettings):
     APP_NAME: str = "职业教育题库练习跟进台"
     DEBUG: bool = True
 
-    DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/edu_question_bank"
+    DATABASE_URL: str = "postgresql+psycopg://postgres:postgres@localhost:5432/edu_question_bank"
+    DATABASE_URL_SQLITE: str = "sqlite:///./edu_question_bank.db"
 
     SECRET_KEY: str = "your-secret-key-here-change-in-production"
     ALGORITHM: str = "HS256"

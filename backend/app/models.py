@@ -1,8 +1,8 @@
 from sqlalchemy import (
     Column, Integer, String, Text, DateTime, Boolean,
-    ForeignKey, Float, Enum as SQLEnum, JSON
+    ForeignKey, Float, JSON
 )
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, validates
 from sqlalchemy.sql import func
 import enum
 
@@ -39,7 +39,7 @@ class User(Base):
     email = Column(String(100), unique=True, index=True)
     hashed_password = Column(String(200), nullable=False)
     full_name = Column(String(100))
-    role = Column(SQLEnum(UserRole), default=UserRole.STUDENT, nullable=False)
+    role = Column(String(20), default=UserRole.STUDENT.value, nullable=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
@@ -50,6 +50,14 @@ class User(Base):
         "Course", secondary="course_teachers", back_populates="teachers"
     )
     communications = relationship("Communication", back_populates="sender")
+
+    @validates("role")
+    def validate_role(self, key, value):
+        if isinstance(value, UserRole):
+            return value.value
+        if value not in [r.value for r in UserRole]:
+            raise ValueError(f"Invalid role: {value}")
+        return value
 
 
 class Course(Base):
@@ -120,7 +128,7 @@ class Question(Base):
     id = Column(Integer, primary_key=True, index=True)
     course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
     chapter_id = Column(Integer, ForeignKey("chapters.id"))
-    question_type = Column(SQLEnum(QuestionType), default=QuestionType.SINGLE_CHOICE)
+    question_type = Column(String(30), default=QuestionType.SINGLE_CHOICE.value)
     content = Column(Text, nullable=False)
     options = Column(JSON)
     correct_answer = Column(Text)
@@ -137,6 +145,14 @@ class Question(Base):
     )
     practice_records = relationship("PracticeRecord", back_populates="question")
 
+    @validates("question_type")
+    def validate_question_type(self, key, value):
+        if isinstance(value, QuestionType):
+            return value.value
+        if value not in [q.value for q in QuestionType]:
+            raise ValueError(f"Invalid question_type: {value}")
+        return value
+
 
 class StudyProgress(Base):
     __tablename__ = "study_progresses"
@@ -149,7 +165,7 @@ class StudyProgress(Base):
     correct_count = Column(Integer, default=0)
     accuracy_rate = Column(Float, default=0.0)
     completion_rate = Column(Float, default=0.0)
-    risk_level = Column(SQLEnum(RiskLevel), default=RiskLevel.NORMAL)
+    risk_level = Column(String(20), default=RiskLevel.NORMAL.value)
     last_practice_at = Column(DateTime(timezone=True))
     expected_completion_at = Column(DateTime(timezone=True))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -159,6 +175,14 @@ class StudyProgress(Base):
     course = relationship("Course", back_populates="study_progresses")
     risk_records = relationship("RiskRecord", back_populates="study_progress")
     reminder_records = relationship("ReminderRecord", back_populates="study_progress")
+
+    @validates("risk_level")
+    def validate_risk_level(self, key, value):
+        if isinstance(value, RiskLevel):
+            return value.value
+        if value not in [r.value for r in RiskLevel]:
+            raise ValueError(f"Invalid risk_level: {value}")
+        return value
 
 
 class PracticeRecord(Base):
@@ -188,10 +212,18 @@ class ReminderRule(Base):
     description = Column(Text)
     rule_type = Column(String(50), default="completion_rate")
     threshold = Column(Float, nullable=False)
-    risk_level = Column(SQLEnum(RiskLevel), default=RiskLevel.WARNING)
+    risk_level = Column(String(20), default=RiskLevel.WARNING.value)
     days_without_practice = Column(Integer)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    @validates("risk_level")
+    def validate_risk_level(self, key, value):
+        if isinstance(value, RiskLevel):
+            return value.value
+        if value not in [r.value for r in RiskLevel]:
+            raise ValueError(f"Invalid risk_level: {value}")
+        return value
 
 
 class ReminderRecord(Base):
@@ -212,12 +244,22 @@ class RiskRecord(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     study_progress_id = Column(Integer, ForeignKey("study_progresses.id"), nullable=False)
-    previous_level = Column(SQLEnum(RiskLevel))
-    current_level = Column(SQLEnum(RiskLevel), nullable=False)
+    previous_level = Column(String(20))
+    current_level = Column(String(20), nullable=False)
     reason = Column(Text)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     study_progress = relationship("StudyProgress", back_populates="risk_records")
+
+    @validates("previous_level", "current_level")
+    def validate_risk_levels(self, key, value):
+        if value is None:
+            return None
+        if isinstance(value, RiskLevel):
+            return value.value
+        if value not in [r.value for r in RiskLevel]:
+            raise ValueError(f"Invalid {key}: {value}")
+        return value
 
 
 class Communication(Base):
@@ -242,12 +284,22 @@ class ReviewConclusion(Base):
     reviewer_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     conclusion = Column(Text, nullable=False)
     action_plan = Column(Text)
-    risk_level_after = Column(SQLEnum(RiskLevel))
+    risk_level_after = Column(String(20))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     study_progress = relationship("StudyProgress")
     reviewer = relationship("User")
+
+    @validates("risk_level_after")
+    def validate_risk_level_after(self, key, value):
+        if value is None:
+            return None
+        if isinstance(value, RiskLevel):
+            return value.value
+        if value not in [r.value for r in RiskLevel]:
+            raise ValueError(f"Invalid risk_level_after: {value}")
+        return value
 
 
 class TodoItem(Base):

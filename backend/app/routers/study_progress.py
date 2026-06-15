@@ -10,6 +10,14 @@ from app import models, schemas, auth
 router = APIRouter(prefix="/study-progress", tags=["学习进度"])
 
 
+RISK_LEVEL_ORDER: Dict[models.RiskLevel, int] = {
+    models.RiskLevel.NORMAL: 0,
+    models.RiskLevel.WARNING: 1,
+    models.RiskLevel.DANGER: 2,
+    models.RiskLevel.CRITICAL: 3,
+}
+
+
 def get_teacher_course_ids(db: Session, teacher: models.User) -> List[int]:
     courses = db.query(models.Course).filter(
         models.Course.teachers.any(id=teacher.id)
@@ -17,26 +25,40 @@ def get_teacher_course_ids(db: Session, teacher: models.User) -> List[int]:
     return [c.id for c in courses]
 
 
-def calculate_risk_level(progress: models.StudyProgress, db: Session) -> models.RiskLevel:
+def calculate_risk_level(
+    progress: models.StudyProgress,
+    db: Session,
+    allow_skip: bool = False
+) -> models.RiskLevel:
     rules = db.query(models.ReminderRule).filter(
         models.ReminderRule.is_active == True
     ).all()
-    
-    risk_level = models.RiskLevel.NORMAL
-    
+
+    target_risk = models.RiskLevel.NORMAL
+
     for rule in rules:
         if rule.rule_type == "completion_rate":
             if progress.completion_rate < rule.threshold:
-                if rule.risk_level.value > risk_level.value:
-                    risk_level = rule.risk_level
+                if RISK_LEVEL_ORDER[rule.risk_level] > RISK_LEVEL_ORDER[target_risk]:
+                    target_risk = rule.risk_level
         elif rule.rule_type == "days_without_practice" and rule.days_without_practice:
             if progress.last_practice_at:
                 days_since = (datetime.utcnow() - progress.last_practice_at.replace(tzinfo=None)).days
                 if days_since >= rule.days_without_practice:
-                    if rule.risk_level.value > risk_level.value:
-                        risk_level = rule.risk_level
-    
-    return risk_level
+                    if RISK_LEVEL_ORDER[rule.risk_level] > RISK_LEVEL_ORDER[target_risk]:
+                        target_risk = rule.risk_level
+
+    old_risk = progress.risk_level
+    old_order = RISK_LEVEL_ORDER.get(old_risk, 0)
+    target_order = RISK_LEVEL_ORDER.get(target_risk, 0)
+
+    if target_order <= old_order:
+        return old_risk
+
+    if allow_skip:
+        return target_risk
+
+    return list(RISK_LEVEL_ORDER.keys())[old_order + 1]
 
 
 @router.get("", response_model=List[schemas.StudyProgressResponse])
@@ -68,7 +90,8 @@ def list_study_progress(
             query = query.filter(models.StudyProgress.course_id == course_id)
     
     if risk_level:
-        query = query.filter(models.StudyProgress.risk_level == risk_level)
+        risk_value = risk_level.value if isinstance(risk_level, models.RiskLevel) else risk_level
+        query = query.filter(models.StudyProgress.risk_level == risk_value)
     
     progresses = query.order_by(models.StudyProgress.updated_at.desc())\
         .offset((page - 1) * page_size)\
@@ -357,7 +380,7 @@ def get_chapter_progress(
             "correct_questions": correct_q,
             "completion_rate": completion_rate,
             "accuracy_rate": accuracy_rate,
-            "risk_level": risk.value,
+            "risk_level": risk.value if isinstance(risk, models.RiskLevel) else risk,
         })
     
     return {

@@ -62,7 +62,9 @@ def get_current_user(
 
 def require_role(*roles: models.UserRole):
     def role_dependency(current_user: models.User = Depends(get_current_user)):
-        if current_user.role not in roles:
+        role_values = {r.value for r in roles}
+        user_role = current_user.role.value if isinstance(current_user.role, models.UserRole) else current_user.role
+        if user_role not in role_values:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="权限不足"

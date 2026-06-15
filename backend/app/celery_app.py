@@ -6,6 +6,13 @@ from app.config import settings
 from app.database import SessionLocal
 from app import models
 
+RISK_LEVEL_ORDER = {
+    models.RiskLevel.NORMAL: 0,
+    models.RiskLevel.WARNING: 1,
+    models.RiskLevel.DANGER: 2,
+    models.RiskLevel.CRITICAL: 3,
+}
+
 celery = Celery(
     "edu_tasks",
     broker=settings.CELERY_BROKER_URL,
@@ -39,7 +46,7 @@ def assess_all_risks():
             for rule in rules:
                 if rule.rule_type == "completion_rate":
                     if progress.completion_rate < rule.threshold:
-                        if rule.risk_level.value > new_risk.value:
+                        if RISK_LEVEL_ORDER[rule.risk_level] > RISK_LEVEL_ORDER[new_risk]:
                             new_risk = rule.risk_level
                 elif rule.rule_type == "days_without_practice" and rule.days_without_practice:
                     if progress.last_practice_at:
@@ -47,7 +54,7 @@ def assess_all_risks():
                             datetime.utcnow() - progress.last_practice_at.replace(tzinfo=None)
                         ).days
                         if days_since >= rule.days_without_practice:
-                            if rule.risk_level.value > new_risk.value:
+                            if RISK_LEVEL_ORDER[rule.risk_level] > RISK_LEVEL_ORDER[new_risk]:
                                 new_risk = rule.risk_level
             
             if old_risk != new_risk:

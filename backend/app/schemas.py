@@ -54,18 +54,18 @@ class TagResponse(TagBase):
 
 
 class ChapterBase(BaseModel):
-    course_id: int
     name: str
     order_index: int = 0
     description: Optional[str] = None
 
 
 class ChapterCreate(ChapterBase):
-    pass
+    course_id: Optional[int] = None
 
 
 class ChapterResponse(ChapterBase):
     id: int
+    course_id: int
     question_count: int = 0
     created_at: datetime
 
