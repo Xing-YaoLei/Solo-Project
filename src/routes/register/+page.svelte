@@ -6,9 +6,10 @@
 	let email = '';
 	let password = '';
 	let confirmPassword = '';
+	let role = 'student';
 	let errorMessage = '';
 
-	const registerMutation = createMutation<{ email: string; password: string; name: string }, any>('auth.register');
+	const registerMutation = createMutation<{ email: string; password: string; name: string; role: string }, any>('auth.register');
 
 	async function handleRegister(e: Event) {
 		e.preventDefault();
@@ -20,7 +21,7 @@
 		}
 
 		try {
-			await registerMutation.mutate({ email, password, name });
+			await registerMutation.mutate({ email, password, name, role });
 			goto('/dashboard');
 		} catch (err: any) {
 			errorMessage = err?.message || '注册失败，请重试';
@@ -99,6 +100,21 @@
 					required
 					disabled={isLoading}
 				/>
+			</div>
+
+			<div>
+				<label class="label" for="role">角色</label>
+				<select
+					id="role"
+					class="input"
+					bind:value={role}
+					disabled={isLoading}
+				>
+					<option value="student">学员</option>
+					<option value="assistant">助教</option>
+					<option value="lecturer">讲师</option>
+					<option value="admin">教务</option>
+				</select>
 			</div>
 
 			<button

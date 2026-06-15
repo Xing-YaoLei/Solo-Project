@@ -36,7 +36,8 @@ export const authRouter = router({
 			z.object({
 				email: z.string().email(),
 				password: z.string().min(6),
-				name: z.string().min(1).max(100)
+				name: z.string().min(1).max(100),
+				role: z.enum(['student', 'assistant', 'lecturer', 'admin']).default('student')
 			})
 		)
 		.mutation(async ({ input, ctx }) => {
@@ -44,7 +45,8 @@ export const authRouter = router({
 				const user = await register({
 					email: input.email,
 					password: input.password,
-					name: input.name
+					name: input.name,
+					role: input.role
 				});
 
 				const session = await lucia.createSession(user.id, {});

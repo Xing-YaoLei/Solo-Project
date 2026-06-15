@@ -21,6 +21,15 @@
 		dueDate: ''
 	};
 
+	let showMaterialForm = false;
+	let newMaterial = {
+		title: '',
+		description: '',
+		fileUrl: '',
+		fileType: '',
+		fileSize: 0
+	};
+
 	const todosQuery = createQuery<any, any>('todos.list', () => ({
 		page: 1,
 		pageSize: 20,
@@ -181,6 +190,36 @@
 			todoDetailQuery?.refetch();
 		} catch (err: any) {
 			alert(err.message || '添加评论失败');
+		}
+	}
+
+	async function handleAddMaterial() {
+		if (!selectedTodoId || !newMaterial.title.trim()) {
+			alert('请输入材料标题');
+			return;
+		}
+
+		try {
+			await addMaterialMutation.mutate({
+				todoId: selectedTodoId,
+				title: newMaterial.title,
+				description: newMaterial.description || undefined,
+				fileUrl: newMaterial.fileUrl || '',
+				fileType: newMaterial.fileType || undefined,
+				fileSize: newMaterial.fileSize || undefined
+			});
+
+			showMaterialForm = false;
+			newMaterial = {
+				title: '',
+				description: '',
+				fileUrl: '',
+				fileType: '',
+				fileSize: 0
+			};
+			todoDetailQuery?.refetch();
+		} catch (err: any) {
+			alert(err.message || '上传材料失败');
 		}
 	}
 
@@ -488,12 +527,65 @@
 								{/each}
 							{/if}
 						</div>
-						<button class="btn btn-outline w-full mt-3">
-							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
-							</svg>
-							上传补充材料
-						</button>
+						{#if showMaterialForm}
+							<div class="mt-3 p-4 bg-gray-50 rounded-lg space-y-3">
+								<div>
+									<label class="label" for="materialTitle">材料标题 <span class="text-red-500">*</span></label>
+									<input
+										id="materialTitle"
+										type="text"
+										class="input"
+										bind:value={newMaterial.title}
+										placeholder="请输入材料标题"
+									/>
+								</div>
+								<div>
+									<label class="label" for="materialDesc">材料说明</label>
+									<input
+										id="materialDesc"
+										type="text"
+										class="input"
+										bind:value={newMaterial.description}
+										placeholder="请输入材料说明（选填）"
+									/>
+								</div>
+								<div>
+									<label class="label" for="materialUrl">文件链接</label>
+									<input
+										id="materialUrl"
+										type="text"
+										class="input"
+										bind:value={newMaterial.fileUrl}
+										placeholder="请输入文件 URL（选填）"
+									/>
+								</div>
+								<div class="flex items-center gap-2">
+									<button
+										on:click={handleAddMaterial}
+										disabled={$addMaterialMutation.isLoading || !newMaterial.title.trim()}
+										class="btn btn-primary text-sm"
+									>
+										{$addMaterialMutation.isLoading ? '上传中...' : '确认上传'}
+									</button>
+									<button
+										on:click={() => { showMaterialForm = false; newMaterial = { title: '', description: '', fileUrl: '', fileType: '', fileSize: 0 }; }}
+										class="btn btn-outline text-sm"
+									>
+										取消
+									</button>
+								</div>
+							</div>
+						{:else}
+							<button
+								class="btn btn-outline w-full mt-3"
+								on:click={() => showMaterialForm = true}
+							>
+								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+								</svg>
+								上传补充材料
+							</button>
+						{/if}
 					</div>
 
 					<div>

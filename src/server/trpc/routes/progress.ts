@@ -235,6 +235,7 @@ async function checkAndCreateProgressDelayTodo(
 		.limit(1);
 
 	const assigneeId = assistants[0]?.id;
+	const creatorId = ctx.user?.id || userId;
 	const todoId = generateId(15);
 
 	await ctx.db.insert(todos).values({
@@ -248,7 +249,7 @@ async function checkAndCreateProgressDelayTodo(
 		relatedCourseId: courseId,
 		assigneeId,
 		assigneeRole: 'assistant',
-		creatorId: 'system',
+		creatorId,
 		metadata: {
 			progressPercent,
 			expectedProgress: 70,
@@ -277,6 +278,7 @@ async function createExamFailedTodo(
 		.limit(1);
 
 	const assigneeId = assistants[0]?.id;
+	const creatorId = ctx.user?.id || userId;
 	const todoId = generateId(15);
 
 	await ctx.db.insert(todos).values({
@@ -290,7 +292,7 @@ async function createExamFailedTodo(
 		relatedCourseId: courseId,
 		assigneeId,
 		assigneeRole: 'assistant',
-		creatorId: 'system',
+		creatorId,
 		metadata: {
 			examName,
 			score,
