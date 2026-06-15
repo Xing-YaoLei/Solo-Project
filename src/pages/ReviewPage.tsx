@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import { ArrowLeft, TrendingUp, Clock, Award, Users, BarChart3, Activity } from 'lucide-react';
+import { useGameStore } from '../stores/useGameStore';
 import { useReplayStore } from '../stores/useReplayStore';
 import { getLevelById } from '../data/levels';
 import { getPhaseName, calculateAverageUtilization, calculatePeakUtilization, formatDate } from '../utils/helpers';
@@ -9,35 +10,36 @@ import { getPhaseName, calculateAverageUtilization, calculatePeakUtilization, fo
 export default function ReviewPage() {
   const { levelId } = useParams<{ levelId: string }>();
   const navigate = useNavigate();
+  const { currentReviewData } = useGameStore();
   const { replays } = useReplayStore();
 
   const level = levelId ? getLevelById(levelId) : null;
   
-  const latestReplay = useMemo(() => {
-    return replays.find((r) => r.levelId === levelId) || replays[0];
-  }, [replays, levelId]);
+  const reviewData = useMemo(() => {
+    return currentReviewData || replays.find((r) => r.levelId === levelId) || replays[0];
+  }, [currentReviewData, replays, levelId]);
 
   const chartData = useMemo(() => {
-    if (!latestReplay) return [];
-    return latestReplay.utilizationHistory
+    if (!reviewData) return [];
+    return reviewData.utilizationHistory
       .slice()
       .reverse()
       .map((point, index) => ({
         time: index,
         utilization: Math.round(point.utilization),
         phase: getPhaseName(point.phase),
-        timeLabel: `${Math.floor((latestReplay.duration - point.time) / 60)}:${Math.floor((latestReplay.duration - point.time) % 60).toString().padStart(2, '0')}`,
+        timeLabel: `${Math.floor((reviewData.duration - point.time) / 60)}:${Math.floor((reviewData.duration - point.time) % 60).toString().padStart(2, '0')}`,
       }));
-  }, [latestReplay]);
+  }, [reviewData]);
 
   const avgUtil = useMemo(
-    () => calculateAverageUtilization(latestReplay?.utilizationHistory || []),
-    [latestReplay]
+    () => calculateAverageUtilization(reviewData?.utilizationHistory || []),
+    [reviewData]
   );
 
   const peakUtil = useMemo(
-    () => calculatePeakUtilization(latestReplay?.utilizationHistory || []),
-    [latestReplay]
+    () => calculatePeakUtilization(reviewData?.utilizationHistory || []),
+    [reviewData]
   );
 
   const handleBack = () => {
@@ -45,8 +47,8 @@ export default function ReviewPage() {
   };
 
   const handleReplay = () => {
-    if (latestReplay) {
-      navigate(`/replay/${latestReplay.id}`);
+    if (reviewData) {
+      navigate(`/replay/${reviewData.id}`);
     }
   };
 
@@ -87,7 +89,7 @@ export default function ReviewPage() {
               <span className="text-stone-400 text-sm">最终得分</span>
             </div>
             <p className="text-3xl font-bold text-amber-400 font-serif">
-              {latestReplay?.finalScore || 0}
+              {reviewData?.finalScore || 0}
             </p>
           </div>
 
@@ -99,7 +101,7 @@ export default function ReviewPage() {
               <span className="text-stone-400 text-sm">用时</span>
             </div>
             <p className="text-3xl font-bold text-sky-400 font-mono">
-              {Math.floor((latestReplay?.duration || 0) / 60)}:{Math.floor((latestReplay?.duration || 0) % 60).toString().padStart(2, '0')}
+              {Math.floor((reviewData?.duration || 0) / 60)}:{Math.floor((reviewData?.duration || 0) % 60).toString().padStart(2, '0')}
             </p>
           </div>
 
@@ -193,20 +195,20 @@ export default function ReviewPage() {
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <span className="text-stone-400">总操作次数</span>
-                <span className="text-stone-100 font-mono">{latestReplay?.operations.length || 0}</span>
+                <span className="text-stone-100 font-mono">{reviewData?.operations.length || 0}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-stone-400">卡点次数</span>
-                <span className="text-amber-400 font-mono">{latestReplay?.stuckPoints.length || 0}</span>
+                <span className="text-amber-400 font-mono">{reviewData?.stuckPoints.length || 0}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-stone-400">数据采集点</span>
-                <span className="text-stone-100 font-mono">{latestReplay?.utilizationHistory.length || 0}</span>
+                <span className="text-stone-100 font-mono">{reviewData?.utilizationHistory.length || 0}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-stone-400">完成时间</span>
                 <span className="text-stone-100">
-                  {latestReplay ? formatDate(latestReplay.timestamp) : '-'}
+                  {reviewData ? formatDate(reviewData.timestamp) : '-'}
                 </span>
               </div>
             </div>
@@ -234,15 +236,15 @@ export default function ReviewPage() {
                 <div className="flex justify-between text-sm mb-1">
                   <span className="text-stone-400">准确度</span>
                   <span className="text-emerald-400">
-                    {latestReplay?.success ? '通过' : '未通过'}
+                    {reviewData?.success ? '通过' : '未通过'}
                   </span>
                 </div>
                 <div className="w-full h-2 bg-stone-700 rounded-full overflow-hidden">
                   <div
                     className={`h-full rounded-full transition-all duration-500 ${
-                      latestReplay?.success ? 'bg-emerald-500' : 'bg-red-500'
+                      reviewData?.success ? 'bg-emerald-500' : 'bg-red-500'
                     }`}
-                    style={{ width: `${latestReplay?.success ? 100 : 40}%` }}
+                    style={{ width: `${reviewData?.success ? 100 : 40}%` }}
                   />
                 </div>
               </div>
@@ -250,13 +252,13 @@ export default function ReviewPage() {
                 <div className="flex justify-between text-sm mb-1">
                   <span className="text-stone-400">流畅度</span>
                   <span className="text-sky-400">
-                    {(latestReplay?.stuckPoints.length || 0) === 0 ? '流畅' : (latestReplay?.stuckPoints.length || 0) === 1 ? '一般' : '需练习'}
+                    {(reviewData?.stuckPoints.length || 0) === 0 ? '流畅' : (reviewData?.stuckPoints.length || 0) === 1 ? '一般' : '需练习'}
                   </span>
                 </div>
                 <div className="w-full h-2 bg-stone-700 rounded-full overflow-hidden">
                   <div
                     className="h-full bg-sky-500 rounded-full transition-all duration-500"
-                    style={{ width: `${Math.max(0, 100 - (latestReplay?.stuckPoints.length || 0) * 30)}%` }}
+                    style={{ width: `${Math.max(0, 100 - (reviewData?.stuckPoints.length || 0) * 30)}%` }}
                   />
                 </div>
               </div>

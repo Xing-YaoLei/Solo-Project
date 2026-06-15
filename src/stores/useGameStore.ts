@@ -18,6 +18,7 @@ const initialState = {
   completedStudents: [],
   showMissingMaterialModal: false,
   currentMissingMaterialStudent: null,
+  currentReviewData: null,
 };
 
 const calculateStuckPoints = (operations: OperationRecord[]): StuckPoint[] => {
@@ -108,6 +109,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
   },
 
+  goToApplicationPhase: (studentId?: string) => {
+    const { currentPhase } = get();
+    set({ currentPhase: 'application' });
+    get().addOperation('phase_change', { from: currentPhase, to: 'application' });
+    
+    if (studentId) {
+      set({ selectedStudentId: studentId });
+      get().addOperation('select_student', { studentId }, 'application');
+    }
+  },
+
   selectStudent: (studentId: string) => {
     const { selectedStudentId, reviewedStudents, currentPhase } = get();
     
@@ -180,7 +192,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   resolveMissingMaterial: (studentId: string, materialId: string) => {
-    const { currentLevelId } = get();
+    const { currentLevelId, checkMaterials, completeStudentReview } = get();
     if (!currentLevelId) return;
 
     const level = getLevelById(currentLevelId);
@@ -194,6 +206,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
       material.submitted = true;
       set((state) => ({ score: state.score + 10 }));
       get().addOperation('resolve_material', { studentId, materialId });
+      
+      const allComplete = checkMaterials(studentId);
+      if (allComplete) {
+        get().addOperation('all_materials_resolved', { studentId });
+      }
     }
   },
 
@@ -230,7 +247,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
       utilizationHistory: classroomUtilization,
     };
 
-    set({ isGameOver: true });
+    set({ 
+      isGameOver: true,
+      currentReviewData: replay,
+    });
     get().addOperation('level_complete', { success, finalScore: score });
 
     return replay;

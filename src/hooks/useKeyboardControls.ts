@@ -21,6 +21,7 @@ export function useKeyboardControls() {
     hideMissingModal,
     skipMissingMaterial,
     currentMissingMaterialStudent,
+    checkMaterials,
   } = useGameStore();
 
   useEffect(() => {
@@ -66,10 +67,33 @@ export function useKeyboardControls() {
 
       if (e.code === 'Enter') {
         e.preventDefault();
+        
         if (showMissingMaterialModal && currentMissingMaterialStudent) {
           skipMissingMaterial(currentMissingMaterialStudent);
-        } else if (selectedStudentId && currentPhase === 'application') {
-          completeStudentReview(selectedStudentId);
+          return;
+        }
+        
+        if (selectedStudentId && currentPhase === 'application') {
+          const missing = getMissingMaterials(selectedStudentId);
+          const hasMaterials = getMaterialsByStudentId(
+            getLevelById(currentLevelId)!,
+            selectedStudentId
+          );
+          
+          if (!hasMaterials) return;
+          
+          const requiredMaterials = hasMaterials.materials.filter((m) => m.required);
+          const hasChecked = requiredMaterials.some(
+            (m) => m.submitted
+          );
+          
+          if (missing.length > 0) {
+            resolveMissingMaterial(selectedStudentId, missing[0].id);
+          } else if (missing.length === 0 && hasChecked) {
+            completeStudentReview(selectedStudentId);
+          } else {
+            checkMaterials(selectedStudentId);
+          }
         }
       }
 
@@ -86,7 +110,10 @@ export function useKeyboardControls() {
       if (e.code === 'KeyF') {
         e.preventDefault();
         if (selectedStudentId && currentPhase === 'application') {
-          completeStudentReview(selectedStudentId);
+          const missing = getMissingMaterials(selectedStudentId);
+          if (missing.length === 0) {
+            completeStudentReview(selectedStudentId);
+          }
         }
       }
 
@@ -118,5 +145,6 @@ export function useKeyboardControls() {
     hideMissingModal,
     skipMissingMaterial,
     currentMissingMaterialStudent,
+    checkMaterials,
   ]);
 }

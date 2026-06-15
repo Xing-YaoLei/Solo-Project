@@ -105,12 +105,14 @@ export interface GameState {
   completedStudents: string[];
   showMissingMaterialModal: boolean;
   currentMissingMaterialStudent: string | null;
+  currentReviewData: ReplayRecord | null;
 }
 
 export interface GameActions {
   startLevel: (levelId: string) => void;
   nextPhase: () => void;
   prevPhase: () => void;
+  goToApplicationPhase: (studentId?: string) => void;
   selectStudent: (studentId: string) => void;
   submitScore: (studentId: string, score: number) => void;
   checkMaterials: (studentId: string) => boolean;

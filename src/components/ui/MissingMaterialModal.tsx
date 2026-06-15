@@ -10,7 +10,7 @@ export default function MissingMaterialModal() {
     currentLevelId,
     hideMissingModal,
     getMissingMaterials,
-    prevPhase,
+    goToApplicationPhase,
     skipMissingMaterial,
   } = useGameStore();
 
@@ -27,7 +27,9 @@ export default function MissingMaterialModal() {
 
   const handleGoBack = () => {
     hideMissingModal();
-    prevPhase();
+    if (currentMissingMaterialStudent) {
+      goToApplicationPhase(currentMissingMaterialStudent);
+    }
   };
 
   const handleSkip = () => {
