@@ -13,6 +13,14 @@ export interface Homework {
   needsRetry: boolean;
   correctGrade: GradeFeedback;
   correctRules: ReminderRule[];
+  scoreHint: string;
+  qualityHints: string[];
+  ruleClues: { type: ReminderRule; text: string }[];
+  chapterClues: string[];
+  attemptCount: number;
+  similarityScore: number;
+  lateHours: number;
+  deadlineHoursLeft: number;
 }
 
 export interface Chapter {

@@ -36,6 +36,9 @@ class GameApp {
   private animFrameId: number = 0;
   private gradedCount = 0;
 
+  private activeGradingHomeworkId: string | null = null;
+  private timerActive = false;
+
   constructor() {
     const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
     const uiRoot = document.getElementById('uiRoot') as HTMLElement;
@@ -66,6 +69,10 @@ class GameApp {
     this.ui.setOnBack(() => {
       this.ui.setStats(this.stats);
     });
+
+    this.ui.setOnCancelGrading(() => {
+      this.closeGradingPanel();
+    });
   }
 
   private startChapter(chapterId: string): void {
@@ -74,18 +81,31 @@ class GameApp {
     this.currentResults = [];
     this.gradedCount = 0;
     this.roundStartTime = performance.now();
+    this.activeGradingHomeworkId = null;
+    this.timerActive = false;
 
     this.scene.spawnHomeworkCards(this.currentHomeworks, this.chapters);
     this.scene.showProgressWarning(false);
+    this.ui.showIdleHUD(true, this.currentHomeworks.length, 0);
 
     this.ui.setStats(this.stats);
   }
 
   private openGradingPanel(hw: Homework): void {
     if (this.currentResults.find(r => r.homeworkId === hw.id)) return;
+    if (this.timerActive) return;
+
+    this.activeGradingHomeworkId = hw.id;
     this.homeworkStartTime = performance.now();
-    this.ui.startRound(hw, this.currentChapterId, TIME_PER_HOMEWORK, this.currentHomeworks.length);
+    this.timerActive = true;
+    this.ui.startRound(hw, this.currentChapterId, TIME_PER_HOMEWORK, this.currentHomeworks.length, this.gradedCount);
     this.scene.showProgressWarning(false);
+  }
+
+  private closeGradingPanel(): void {
+    this.timerActive = false;
+    this.activeGradingHomeworkId = null;
+    this.ui.showIdleHUD(true, this.currentHomeworks.length, this.gradedCount);
   }
 
   private handleSubmit(
@@ -93,7 +113,8 @@ class GameApp {
     selectedRules: ReminderRule[],
     selectedChapterId: string | null
   ): void {
-    const activeHw = this.getCurrentActiveHomework();
+    if (!this.activeGradingHomeworkId) return;
+    const activeHw = this.currentHomeworks.find(h => h.id === this.activeGradingHomeworkId);
     if (!activeHw) return;
 
     const timeTaken = (performance.now() - this.homeworkStartTime) / 1000;
@@ -102,17 +123,22 @@ class GameApp {
 
     this.currentResults.push(result);
     this.gradedCount++;
+    this.timerActive = false;
+    this.activeGradingHomeworkId = null;
 
     this.scene.highlightCard(activeHw.id, result.isCorrect);
     this.ui.submitResult(result, this.gradedCount);
 
     if (this.gradedCount >= this.currentHomeworks.length) {
       this.finishRound();
+    } else {
+      this.ui.showIdleHUD(true, this.currentHomeworks.length, this.gradedCount);
     }
   }
 
   private handleTimeout(): void {
-    const activeHw = this.getCurrentActiveHomework();
+    if (!this.activeGradingHomeworkId) return;
+    const activeHw = this.currentHomeworks.find(h => h.id === this.activeGradingHomeworkId);
     if (!activeHw) return;
 
     const result: ChoiceResult = {
@@ -126,21 +152,23 @@ class GameApp {
     };
     this.currentResults.push(result);
     this.gradedCount++;
+    this.timerActive = false;
+    this.activeGradingHomeworkId = null;
+
     this.scene.highlightCard(activeHw.id, false);
     this.ui.submitResult(result, this.gradedCount);
 
     if (this.gradedCount >= this.currentHomeworks.length) {
       this.finishRound();
+    } else {
+      this.ui.showIdleHUD(true, this.currentHomeworks.length, this.gradedCount);
     }
-  }
-
-  private getCurrentActiveHomework(): Homework | null {
-    const gradedIds = new Set(this.currentResults.map(r => r.homeworkId));
-    return this.currentHomeworks.find(h => !gradedIds.has(h.id)) || null;
   }
 
   private finishRound(): void {
     this.scene.showProgressWarning(false);
+    this.timerActive = false;
+    this.activeGradingHomeworkId = null;
     this.stats = updateStats(this.stats, this.currentResults, this.currentChapterId);
 
     const errors = this.currentResults.filter(r => !r.isCorrect);
@@ -171,15 +199,17 @@ class GameApp {
       const dt = (now - this.lastFrameTime) / 1000;
       this.lastFrameTime = now;
 
-      this.ui.tick(dt);
+      if (this.timerActive) {
+        this.ui.tick(dt);
+      }
 
-      const remaining = this.currentHomeworks.length - this.gradedCount;
       const total = this.currentHomeworks.length;
-      if (total > 0) {
+      if (total > 0 && !this.timerActive) {
         const progress = this.gradedCount / total;
         const elapsed = (now - this.roundStartTime) / 1000;
         const totalEstimated = total * TIME_PER_HOMEWORK;
         const timePressure = elapsed / totalEstimated;
+        const remaining = total - this.gradedCount;
         if (timePressure > progress + WARNING_THRESHOLD && remaining > 0) {
           this.scene.showProgressWarning(true);
         } else {

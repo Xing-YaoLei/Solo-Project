@@ -19,27 +19,19 @@ import {
   ExecuteCodeAction
 } from '@babylonjs/core';
 import * as CANNON from 'cannon-es';
-import type { Homework, Chapter, GradeFeedback, ReminderRule } from './types';
-import { RULE_LABELS } from './models';
-
-const GRADE_COLORS: Record<GradeFeedback, string> = {
-  excellent: '#4CAF50',
-  good: '#2196F3',
-  pass: '#FF9800',
-  fail: '#F44336'
-};
-
-const RULE_COLORS: Record<ReminderRule, string> = {
-  deadline: '#9C27B0',
-  retry: '#FF5722',
-  plagiarism: '#795548',
-  late: '#607D8B'
-};
+import type { Homework, Chapter } from './types';
 
 interface CardMesh {
   mesh: Mesh;
   homework: Homework;
 }
+
+const CHAPTER_HEADER_COLORS: Record<string, string> = {
+  ch1: '#3b82f6',
+  ch2: '#10b981',
+  ch3: '#f59e0b',
+  ch4: '#8b5cf6'
+};
 
 export class GameScene {
   private engine: Engine;
@@ -183,70 +175,98 @@ export class GameScene {
     });
   }
 
-  private createCardTexture(hw: Homework, chapters: Chapter[]): DynamicTexture {
+  private roundRect(
+    ctx: CanvasRenderingContext2D,
+    rx: number, ry: number, rw: number, rh: number, rad: number
+  ): void {
+    ctx.beginPath();
+    ctx.moveTo(rx + rad, ry);
+    ctx.lineTo(rx + rw - rad, ry);
+    ctx.quadraticCurveTo(rx + rw, ry, rx + rw, ry + rad);
+    ctx.lineTo(rx + rw, ry + rh - rad);
+    ctx.quadraticCurveTo(rx + rw, ry + rh, rx + rw - rad, ry + rh);
+    ctx.lineTo(rx + rad, ry + rh);
+    ctx.quadraticCurveTo(rx, ry + rh, rx, ry + rh - rad);
+    ctx.lineTo(rx, ry + rad);
+    ctx.quadraticCurveTo(rx, ry, rx + rad, ry);
+    ctx.closePath();
+  }
+
+  private createCardTexture(hw: Homework, _chapters: Chapter[]): DynamicTexture {
     const texture = new DynamicTexture(`tex_${hw.id}`, { width: 512, height: 384 }, this.scene, false);
     const ctx = texture.getContext() as unknown as CanvasRenderingContext2D;
 
-    const chapter = chapters.find(c => c.id === hw.chapterId);
-    ctx.fillStyle = '#f8f9fa';
+    ctx.fillStyle = '#fafafa';
     ctx.fillRect(0, 0, 512, 384);
 
-    const gradeColor = GRADE_COLORS[hw.correctGrade];
-    ctx.fillStyle = gradeColor;
-    ctx.fillRect(0, 0, 512, 60);
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 28px sans-serif';
+    const headerColor = CHAPTER_HEADER_COLORS[hw.chapterId] || '#6366f1';
+    ctx.fillStyle = headerColor;
+    ctx.fillRect(0, 0, 512, 56);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 24px sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText(`📚 ${chapter?.name || hw.chapterId}`, 20, 40);
+    ctx.fillText(`� 作业 · 编号${hw.id.slice(-4).toUpperCase()}`, 20, 38);
 
-    ctx.fillStyle = '#333';
-    ctx.font = 'bold 36px sans-serif';
+    ctx.fillStyle = '#1f2937';
+    ctx.font = 'bold 30px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(`${hw.studentName} 的作业`, 256, 130);
+    ctx.fillText(`${hw.studentName} 同学的作业`, 256, 100);
 
-    ctx.font = '22px sans-serif';
-    ctx.fillStyle = '#555';
-    ctx.fillText(`提交时间: ${new Date(hw.submitTime).toLocaleDateString()}`, 256, 180);
-    ctx.fillText(`截止时间: ${new Date(hw.deadline).toLocaleDateString()}`, 256, 215);
+    ctx.fillStyle = '#6b7280';
+    ctx.font = '18px sans-serif';
+    ctx.fillText(`提交：${new Date(hw.submitTime).toLocaleDateString()}  截止：${new Date(hw.deadline).toLocaleDateString()}`, 256, 132);
 
-    const tags: { label: string; color: string }[] = [];
-    if (hw.isLate) tags.push({ label: RULE_LABELS.late, color: RULE_COLORS.late });
-    if (hw.hasPlagiarism) tags.push({ label: RULE_LABELS.plagiarism, color: RULE_COLORS.plagiarism });
-    if (hw.needsRetry) tags.push({ label: RULE_LABELS.retry, color: RULE_COLORS.retry });
-    if (hw.deadline - Date.now() < 86400000) tags.push({ label: RULE_LABELS.deadline, color: RULE_COLORS.deadline });
+    ctx.font = 'bold 22px sans-serif';
+    ctx.fillStyle = '#111827';
+    ctx.fillText(`🎯 ${hw.scoreHint}`, 256, 172);
 
-    let tagY = 260;
-    ctx.textAlign = 'center';
-    tags.forEach(tag => {
-      ctx.fillStyle = tag.color;
-      const textWidth = ctx.measureText(tag.label).width + 30;
-      const rx = 256 - textWidth / 2;
-      const ry = tagY - 22;
-      const rw = textWidth;
-      const rh = 32;
-      const rad = 8;
-      ctx.beginPath();
-      ctx.moveTo(rx + rad, ry);
-      ctx.lineTo(rx + rw - rad, ry);
-      ctx.quadraticCurveTo(rx + rw, ry, rx + rw, ry + rad);
-      ctx.lineTo(rx + rw, ry + rh - rad);
-      ctx.quadraticCurveTo(rx + rw, ry + rh, rx + rw - rad, ry + rh);
-      ctx.lineTo(rx + rad, ry + rh);
-      ctx.quadraticCurveTo(rx, ry + rh, rx, ry + rh - rad);
-      ctx.lineTo(rx, ry + rad);
-      ctx.quadraticCurveTo(rx, ry, rx + rad, ry);
-      ctx.closePath();
-      ctx.fill();
-      ctx.fillStyle = '#fff';
-      ctx.font = 'bold 18px sans-serif';
-      ctx.fillText(tag.label, 256, tagY);
-      tagY += 42;
+    ctx.textAlign = 'left';
+    ctx.font = 'bold 16px sans-serif';
+    ctx.fillStyle = '#374151';
+    ctx.fillText('解题情况：', 28, 202);
+    ctx.font = '16px sans-serif';
+    ctx.fillStyle = '#4b5563';
+    hw.qualityHints.forEach((hint, i) => {
+      ctx.fillText(`  ✔ ${hint}`, 28, 226 + i * 24);
     });
 
-    ctx.fillStyle = '#999';
-    ctx.font = 'italic 18px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.font = 'bold 16px sans-serif';
+    ctx.fillStyle = '#374151';
+    ctx.fillText('典型题型（章节线索）：', 270, 202);
+    ctx.font = '14px sans-serif';
+    ctx.fillStyle = '#4b5563';
+    hw.chapterClues.forEach((clue, i) => {
+      const short = clue.length > 20 ? clue.slice(0, 20) + '…' : clue;
+      ctx.fillText(`  • ${short}`, 270, 226 + i * 24);
+    });
+
+    let tagY = 308;
+    ctx.textAlign = 'center';
+    if (hw.ruleClues.length > 0) {
+      hw.ruleClues.forEach(clue => {
+        const clueText = clue.text.length > 30 ? clue.text.slice(0, 30) + '…' : clue.text;
+        const colorsByType: Record<string, string> = {
+          late: '#64748b',
+          plagiarism: '#78716c',
+          retry: '#ea580c',
+          deadline: '#9333ea'
+        };
+        ctx.fillStyle = colorsByType[clue.type] || '#475569';
+        const textWidth = ctx.measureText(clueText).width + 28;
+        this.roundRect(ctx, 256 - textWidth / 2, tagY - 20, textWidth, 28, 6);
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.fillText(clueText, 256, tagY);
+        tagY += 34;
+      });
+    }
+
+    ctx.fillStyle = '#9ca3af';
+    ctx.font = 'italic 14px sans-serif';
     ctx.textAlign = 'right';
-    ctx.fillText('点击开始批改', 490, 370);
+    ctx.fillText('通过题型判断章节 · 点击卡片批改 →', 494, 372);
 
     texture.update();
     return texture;

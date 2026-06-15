@@ -20,15 +20,18 @@ interface UIState {
   totalTime: number;
   gradedCount: number;
   totalHomeworks: number;
+  idleHUD: boolean;
   lastResult: ChoiceResult | null;
   stats: GameStats;
   reviewHomeworks: Homework[];
   reviewResults: ChoiceResult[];
+  timeoutFired: boolean;
 }
 
 type UIAction =
   | { type: 'SET_SCREEN'; screen: GameScreen }
-  | { type: 'START_ROUND'; homework: Homework; timeLimit: number; total: number }
+  | { type: 'START_ROUND'; homework: Homework; timeLimit: number; total: number; gradedCount: number }
+  | { type: 'SHOW_IDLE'; show: boolean; total: number; graded: number }
   | { type: 'SELECT_GRADE'; grade: GradeFeedback }
   | { type: 'TOGGLE_RULE'; rule: ReminderRule }
   | { type: 'SELECT_CHAPTER'; chapterId: string }
@@ -36,7 +39,8 @@ type UIAction =
   | { type: 'SUBMIT_RESULT'; result: ChoiceResult; gradedCount: number }
   | { type: 'SET_STATS'; stats: GameStats }
   | { type: 'START_REVIEW'; homeworks: Homework[]; results: ChoiceResult[] }
-  | { type: 'LOAD_FAILURE'; record: FailureRecord };
+  | { type: 'LOAD_FAILURE'; record: FailureRecord }
+  | { type: 'CANCEL_GRADING' };
 
 export class UIManager {
   private root: HTMLElement;
@@ -46,6 +50,7 @@ export class UIManager {
   private onStartChapterCallback: ((chapterId: string) => void) | null = null;
   private onReviewCallback: (() => void) | null = null;
   private onBackCallback: (() => void) | null = null;
+  private onCancelGradingCallback: (() => void) | null = null;
 
   constructor(root: HTMLElement) {
     this.root = root;
@@ -59,6 +64,7 @@ export class UIManager {
       totalTime: 30,
       gradedCount: 0,
       totalHomeworks: 0,
+      idleHUD: false,
       lastResult: null,
       stats: {
         totalAttempts: 0,
@@ -70,28 +76,43 @@ export class UIManager {
         errorBreakdown: { gradeErrors: 0, ruleErrors: 0, chapterErrors: 0 }
       },
       reviewHomeworks: [],
-      reviewResults: []
+      reviewResults: [],
+      timeoutFired: false
     };
     this.render();
   }
 
   private dispatch(action: UIAction): void {
+    const prevTimeRemaining = this.state.timeRemaining;
     this.state = this.reduce(this.state, action);
-    this.render();
 
-    if (action.type === 'TICK' && this.state.timeRemaining <= 0 && this.onTimeoutCallback) {
-      this.onTimeoutCallback();
+    if (action.type === 'TICK') {
+      if (prevTimeRemaining > 0 && this.state.timeRemaining <= 0 && !this.state.timeoutFired && this.onTimeoutCallback) {
+        this.state.timeoutFired = true;
+        this.onTimeoutCallback();
+        return;
+      }
     }
+    this.render();
   }
 
   private reduce(state: UIState, action: UIAction): UIState {
     switch (action.type) {
       case 'SET_SCREEN':
         return { ...state, screen: action.screen };
+      case 'SHOW_IDLE':
+        return {
+          ...state,
+          idleHUD: action.show,
+          totalHomeworks: action.total,
+          gradedCount: action.graded,
+          currentHomework: null
+        };
       case 'START_ROUND':
         return {
           ...state,
           screen: 'playing',
+          idleHUD: false,
           currentHomework: action.homework,
           selectedGrade: null,
           selectedRules: [],
@@ -99,7 +120,20 @@ export class UIManager {
           timeRemaining: action.timeLimit,
           totalTime: action.timeLimit,
           totalHomeworks: action.total,
-          lastResult: null
+          gradedCount: action.gradedCount,
+          lastResult: null,
+          timeoutFired: false
+        };
+      case 'CANCEL_GRADING':
+        return {
+          ...state,
+          idleHUD: true,
+          currentHomework: null,
+          selectedGrade: null,
+          selectedRules: [],
+          selectedChapterId: null,
+          timeRemaining: 0,
+          timeoutFired: false
         };
       case 'SELECT_GRADE':
         return { ...state, selectedGrade: action.grade };
@@ -121,6 +155,9 @@ export class UIManager {
           ...state,
           lastResult: action.result,
           gradedCount: action.gradedCount,
+          timeoutFired: false,
+          idleHUD: action.gradedCount < state.totalHomeworks ? true : false,
+          currentHomework: null,
           screen: action.gradedCount >= state.totalHomeworks ? 'result' : state.screen
         };
       case 'SET_STATS':
@@ -153,9 +190,13 @@ export class UIManager {
   setOnStartChapter(cb: (chapterId: string) => void): void { this.onStartChapterCallback = cb; }
   setOnReview(cb: () => void): void { this.onReviewCallback = cb; }
   setOnBack(cb: () => void): void { this.onBackCallback = cb; }
+  setOnCancelGrading(cb: () => void): void { this.onCancelGradingCallback = cb; }
 
-  startRound(hw: Homework, _chapterId: string, timeLimit: number, total: number): void {
-    this.dispatch({ type: 'START_ROUND', homework: hw, timeLimit, total });
+  startRound(hw: Homework, _chapterId: string, timeLimit: number, total: number, gradedCount: number): void {
+    this.dispatch({ type: 'START_ROUND', homework: hw, timeLimit, total, gradedCount });
+  }
+  showIdleHUD(show: boolean, total: number, graded: number): void {
+    this.dispatch({ type: 'SHOW_IDLE', show, total, graded });
   }
   submitResult(result: ChoiceResult, gradedCount: number): void {
     this.dispatch({ type: 'SUBMIT_RESULT', result, gradedCount });
@@ -234,7 +275,7 @@ export class UIManager {
     const tips = document.createElement('div');
     tips.style.cssText = 'margin-top:60px;max-width:600px;text-align:center;color:#718096;font-size:14px;line-height:1.8;';
     tips.innerHTML = `
-      <p>🎯 目标：限时内正确批改作业，选择合适的成绩、提醒规则和对应章节</p>
+      <p>🎯 目标：点击作业卡打开批改，限时内选择合适的成绩、规则和章节</p>
       <p>⚠️ 进度落后会有视觉提示，错误可以在结算后回看</p>
       <p>🔁 最近三次失败过程可在统计页复盘</p>
     `;
@@ -253,21 +294,33 @@ export class UIManager {
     progress.style.cssText = 'color:white;font-size:18px;font-weight:600;';
     progress.textContent = `批改进度: ${this.state.gradedCount} / ${this.state.totalHomeworks}`;
 
-    const timerWrap = document.createElement('div');
-    timerWrap.style.cssText = 'position:relative;width:200px;height:8px;background:rgba(255,255,255,0.15);border-radius:4px;overflow:hidden;';
-    const timerFill = document.createElement('div');
-    const pct = (this.state.timeRemaining / this.state.totalTime) * 100;
-    const warnColor = pct < 30 ? '#ff6b6b' : pct < 50 ? '#ffd93d' : '#6bcb77';
-    timerFill.style.cssText = `height:100%;width:${pct}%;background:${warnColor};transition:all 0.3s;border-radius:4px;`;
-    timerWrap.appendChild(timerFill);
+    if (this.state.currentHomework) {
+      const timerWrap = document.createElement('div');
+      timerWrap.style.cssText = 'position:relative;width:200px;height:8px;background:rgba(255,255,255,0.15);border-radius:4px;overflow:hidden;';
+      const timerFill = document.createElement('div');
+      const pct = (this.state.timeRemaining / this.state.totalTime) * 100;
+      const warnColor = pct < 30 ? '#ff6b6b' : pct < 50 ? '#ffd93d' : '#6bcb77';
+      timerFill.style.cssText = `height:100%;width:${pct}%;background:${warnColor};transition:all 0.3s;border-radius:4px;`;
+      timerWrap.appendChild(timerFill);
 
-    const timerText = document.createElement('div');
-    timerText.style.cssText = `color:${warnColor};font-size:22px;font-weight:700;text-align:center;margin-top:6px;font-variant-numeric:tabular-nums;`;
-    timerText.textContent = `${Math.ceil(this.state.timeRemaining)}s`;
+      const timerText = document.createElement('div');
+      timerText.style.cssText = `color:${warnColor};font-size:22px;font-weight:700;text-align:center;margin-top:6px;font-variant-numeric:tabular-nums;`;
+      timerText.textContent = `${Math.ceil(this.state.timeRemaining)}s`;
 
-    topBar.appendChild(progress);
-    topBar.appendChild(timerWrap);
-    topBar.appendChild(timerText);
+      topBar.appendChild(progress);
+      topBar.appendChild(timerWrap);
+      topBar.appendChild(timerText);
+    } else {
+      const hint = document.createElement('div');
+      hint.style.cssText = 'color:#a0aec0;font-size:14px;animation:pulse 2s ease-in-out infinite;';
+      hint.textContent = '👆 点击下方的作业卡片开始批改';
+      const style = document.createElement('style');
+      style.textContent = `@keyframes pulse { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }`;
+      topBar.appendChild(progress);
+      topBar.appendChild(hint);
+      topBar.appendChild(style);
+    }
+
     wrap.appendChild(topBar);
 
     if (this.state.currentHomework) {
@@ -294,10 +347,35 @@ export class UIManager {
     const header = document.createElement('div');
     header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;';
     const hwTitle = document.createElement('h2');
-    hwTitle.textContent = `📝 批改: ${hw.studentName} 的作业`;
+    hwTitle.textContent = `📝 批改: ${hw.studentName} 的作业 · 编号${hw.id.slice(-4).toUpperCase()}`;
     hwTitle.style.cssText = 'color:white;font-size:24px;margin:0;';
     header.appendChild(hwTitle);
     panel.appendChild(header);
+
+    const cluesBox = document.createElement('div');
+    cluesBox.style.cssText = 'background:rgba(102,126,234,0.08);border:1px solid rgba(102,126,234,0.25);padding:14px 18px;border-radius:10px;margin-bottom:22px;';
+    cluesBox.innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;font-size:14px;">
+        <div>
+          <div style="color:#a0aec0;font-size:12px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">成绩线索</div>
+          <div style="color:#ffd93d;font-weight:700;font-size:16px;">${hw.scoreHint}</div>
+          <div style="color:#cbd5e0;margin-top:6px;">${hw.qualityHints.map(h => '• ' + h).join('<br>')}</div>
+        </div>
+        <div>
+          <div style="color:#a0aec0;font-size:12px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">章节线索（通过题型判断）</div>
+          <div style="color:#cbd5e0;margin-top:6px;">${hw.chapterClues.map(c => '• ' + (c.length > 24 ? c.slice(0, 24) + '…' : c)).join('<br>')}</div>
+        </div>
+        <div>
+          <div style="color:#a0aec0;font-size:12px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">规则线索</div>
+          <div style="color:#cbd5e0;">
+            ${hw.ruleClues.length > 0
+              ? hw.ruleClues.map(c => `<div style="margin-bottom:4px;">${c.text}</div>`).join('')
+              : '<div style="color:#718096;">（无特殊线索）</div>'}
+          </div>
+        </div>
+      </div>
+    `;
+    panel.appendChild(cluesBox);
 
     const section = (label: string) => {
       const s = document.createElement('div');
@@ -389,11 +467,8 @@ export class UIManager {
     cancelBtn.textContent = '取消';
     this.styleBtn(cancelBtn);
     cancelBtn.onclick = () => {
-      this.state.currentHomework = null;
-      this.state.selectedGrade = null;
-      this.state.selectedRules = [];
-      this.state.selectedChapterId = null;
-      this.render();
+      this.dispatch({ type: 'CANCEL_GRADING' });
+      if (this.onCancelGradingCallback) this.onCancelGradingCallback();
     };
 
     const submitBtn = document.createElement('button');
@@ -594,27 +669,30 @@ export class UIManager {
       if (!hw) return;
       const card = document.createElement('div');
       card.style.cssText = 'background:rgba(244,67,54,0.08);border:1px solid rgba(244,67,54,0.3);padding:20px;border-radius:12px;';
-      const errTypeLabel = res.errorType === 'grade' ? '成绩选择错误' : res.errorType === 'rule' ? '规则选择错误' : '章节选择错误';
+      const errTypeLabel = res.errorType === 'grade' ? '成绩选择错误' : res.errorType === 'rule' ? '规则选择错误' : res.errorType === 'chapter' ? '章节选择错误' : '超时未作答';
       const chMap: Record<string, string> = { ch1: '第一章', ch2: '第二章', ch3: '第三章', ch4: '第四章' };
+      const selectedGradeLabel = res.selectedGrade ? GRADE_LABELS[res.selectedGrade] : '未选择';
+      const selectedRulesLabel = res.selectedRules.length > 0 ? res.selectedRules.map(r => RULE_LABELS[r]).join('、') : '未选择';
+      const selectedChapterLabel = res.selectedChapterId ? chMap[res.selectedChapterId] : '未选择';
       card.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
           <div>
             <div style="color:white;font-size:18px;font-weight:700;">错误 #${i + 1}: ${hw.studentName} 的作业</div>
-            <div style="color:#ff6b6b;font-size:13px;margin-top:4px;">❌ ${errTypeLabel}</div>
+            <div style="color:#ff6b6b;font-size:13px;margin-top:4px;">❌ ${errTypeLabel} · 耗时 ${res.timeTaken.toFixed(1)}s</div>
           </div>
           <div style="color:#718096;font-size:12px;">${chMap[hw.chapterId] || hw.chapterId}</div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:14px;">
           <div style="background:rgba(255,255,255,0.04);padding:12px;border-radius:8px;">
-            <div style="color:#718096;font-size:12px;margin-bottom:6px;">你的选择</div>
-            <div style="color:#ff6b6b;">成绩: ${res.selectedGrade ? GRADE_LABELS[res.selectedGrade] : '-'}</div>
-            <div style="color:#ff6b6b;">规则: ${res.selectedRules.map(r => RULE_LABELS[r]).join('、') || '-'}</div>
-            <div style="color:#ff6b6b;">章节: ${res.selectedChapterId ? chMap[res.selectedChapterId] : '-'}</div>
+            <div style="color:#718096;font-size:12px;margin-bottom:6px;">你的真实选择</div>
+            <div style="color:#ff6b6b;">成绩: ${selectedGradeLabel}</div>
+            <div style="color:#ff6b6b;">规则: ${selectedRulesLabel}</div>
+            <div style="color:#ff6b6b;">章节: ${selectedChapterLabel}</div>
           </div>
           <div style="background:rgba(107,203,119,0.08);padding:12px;border-radius:8px;">
             <div style="color:#718096;font-size:12px;margin-bottom:6px;">正确答案</div>
             <div style="color:#6bcb77;">成绩: ${GRADE_LABELS[hw.correctGrade]}</div>
-            <div style="color:#6bcb77;">规则: ${hw.correctRules.map(r => RULE_LABELS[r]).join('、') || '-'}</div>
+            <div style="color:#6bcb77;">规则: ${hw.correctRules.map(r => RULE_LABELS[r]).join('、') || '无'}</div>
             <div style="color:#6bcb77;">章节: ${chMap[hw.chapterId]}</div>
           </div>
         </div>
