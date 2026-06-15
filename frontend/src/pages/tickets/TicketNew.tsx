@@ -193,7 +193,14 @@ export default function TicketNew() {
         responsible_id: assignee || undefined,
         benefit_ids: selectedBenefits.length > 0 ? selectedBenefits : [],
       };
-      await api.post('/tickets/', payload);
+      const created = await api.post<any>('/tickets/', payload);
+      if (!saveAsDraft && created && created.id) {
+        await api.post(`/tickets/${created.id}/status`, {
+          new_status: 'pending_review',
+          comment: '创建单据时提交审核',
+          evidence_urls: [],
+        });
+      }
       alert(saveAsDraft ? '草稿保存成功' : '提交审核成功');
       navigate({ to: '/tickets' });
     } catch (e) {
