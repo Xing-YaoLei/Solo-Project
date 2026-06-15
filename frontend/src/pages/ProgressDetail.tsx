@@ -4,7 +4,7 @@ import { studyProgressApi, processingApi } from '@/api';
 import { useAuthStore } from '@/store/auth';
 import type {
   StudyProgress, Communication, ReviewConclusion,
-  PracticeRecord, RiskLevel
+  PracticeRecord, RiskLevel, ChapterProgress
 } from '@/types';
 
 const riskColors: Record<RiskLevel, string> = {
@@ -29,6 +29,7 @@ export default function ProgressDetailPage() {
   const [communications, setCommunications] = useState<Communication[]>([]);
   const [reviews, setReviews] = useState<ReviewConclusion[]>([]);
   const [practiceRecords, setPracticeRecords] = useState<PracticeRecord[]>([]);
+  const [chapterProgress, setChapterProgress] = useState<ChapterProgress | null>(null);
   const [newMessage, setNewMessage] = useState('');
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewForm, setReviewForm] = useState({
@@ -36,7 +37,7 @@ export default function ProgressDetailPage() {
     action_plan: '',
     risk_level_after: '' as string,
   });
-  const [activeTab, setActiveTab] = useState<'overview' | 'records' | 'communication' | 'reviews'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'chapters' | 'records' | 'communication' | 'reviews'>('overview');
 
   const progressId = Number(id);
 
@@ -48,16 +49,18 @@ export default function ProgressDetailPage() {
 
   const loadData = async () => {
     try {
-      const [progressData, commData, reviewData, recordData] = await Promise.all([
+      const [progressData, commData, reviewData, recordData, chapterData] = await Promise.all([
         studyProgressApi.get(progressId),
         processingApi.listCommunications(progressId),
         processingApi.listReviews(progressId),
         studyProgressApi.listPracticeRecords({ student_id: undefined, page_size: 20 }),
+        studyProgressApi.getChapterProgress(progressId),
       ]);
       setProgress(progressData);
       setCommunications(commData);
       setReviews(reviewData);
       setPracticeRecords(recordData.filter(r => r.course_id === progressData.course_id));
+      setChapterProgress(chapterData);
     } catch (error) {
       console.error('加载数据失败:', error);
     }
@@ -156,9 +159,10 @@ export default function ProgressDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         <div className="lg:col-span-3 bg-white rounded-xl shadow-sm border border-gray-200">
           <div className="border-b border-gray-200">
-            <div className="flex">
+            <div className="flex flex-wrap">
               {[
                 { key: 'overview', label: '进度概览' },
+                { key: 'chapters', label: '章节追踪' },
                 { key: 'records', label: '练习记录' },
                 { key: 'communication', label: `沟通记录 (${communications.length})` },
                 { key: 'reviews', label: `复核结论 (${reviews.length})` },
@@ -223,6 +227,77 @@ export default function ProgressDetailPage() {
                     </p>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {activeTab === 'chapters' && chapterProgress && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm text-gray-500">
+                    共 {chapterProgress.chapters.length} 个章节
+                  </p>
+                </div>
+                {chapterProgress.chapters.map(chapter => (
+                  <div
+                    key={chapter.chapter_id}
+                    className={`p-4 rounded-lg border ${
+                      chapter.risk_level === 'normal' ? 'bg-green-50 border-green-200' :
+                      chapter.risk_level === 'warning' ? 'bg-yellow-50 border-yellow-200' :
+                      chapter.risk_level === 'danger' ? 'bg-orange-50 border-orange-200' :
+                      'bg-red-50 border-red-200'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <span className="w-6 h-6 rounded-full bg-white border border-gray-200 flex items-center justify-center text-xs font-medium">
+                          {chapter.order_index}
+                        </span>
+                        <h4 className="font-medium text-gray-900">{chapter.chapter_name}</h4>
+                      </div>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium text-white ${riskColors[chapter.risk_level]}`}>
+                        {riskLabels[chapter.risk_level]}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3 text-sm mb-3">
+                      <div>
+                        <span className="text-gray-500">题目数</span>
+                        <p className="font-medium text-gray-900 mt-1">{chapter.total_questions}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">已完成</span>
+                        <p className="font-medium text-gray-900 mt-1">{chapter.completed_questions} / {chapter.total_questions}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">正确率</span>
+                        <p className={`font-medium mt-1 ${
+                          chapter.accuracy_rate >= 70 ? 'text-green-600' :
+                          chapter.accuracy_rate >= 50 ? 'text-yellow-600' : 'text-red-600'
+                        }`}>
+                          {chapter.completed_questions > 0 ? `${chapter.accuracy_rate}%` : '-'}
+                        </p>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+                        <span>章节完成率</span>
+                        <span>{chapter.completion_rate}%</span>
+                      </div>
+                      <div className="w-full bg-white rounded-full h-2.5 overflow-hidden">
+                        <div
+                          className={`h-2.5 rounded-full transition-all ${
+                            chapter.risk_level === 'normal' ? 'bg-green-500' :
+                            chapter.risk_level === 'warning' ? 'bg-yellow-500' :
+                            chapter.risk_level === 'danger' ? 'bg-orange-500' : 'bg-red-500'
+                          }`}
+                          style={{ width: `${chapter.completion_rate}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {chapterProgress.chapters.length === 0 && (
+                  <p className="text-center text-gray-400 py-12">暂无章节数据</p>
+                )}
               </div>
             )}
 

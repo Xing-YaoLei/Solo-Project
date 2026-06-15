@@ -122,6 +122,14 @@ export const studyProgressApi = {
 
   assessRisk: (id: number) =>
     api.post(`/study-progress/${id}/assess-risk`).then(r => r.data),
+
+  getChapterProgress: (progressId: number) =>
+    api.get(`/study-progress/${progressId}/chapter-progress`).then(r => r.data),
+
+  getChapterRecords: (chapterId: number, studentId?: number) =>
+    api.get(`/study-progress/practice/records/by-chapter/${chapterId}`, {
+      params: { student_id: studentId }
+    }).then(r => r.data),
 };
 
 export const reminderApi = {

@@ -167,3 +167,21 @@ export interface CompletionTrendItem {
   completion_rate: number;
   student_count: number;
 }
+
+export interface ChapterProgressItem {
+  chapter_id: number;
+  chapter_name: string;
+  order_index: number;
+  total_questions: number;
+  completed_questions: number;
+  correct_questions: number;
+  completion_rate: number;
+  accuracy_rate: number;
+  risk_level: RiskLevel;
+}
+
+export interface ChapterProgress {
+  progress_id: number;
+  course_id: number;
+  chapters: ChapterProgressItem[];
+}

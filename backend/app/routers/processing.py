@@ -9,6 +9,13 @@ from app import models, schemas, auth
 router = APIRouter(tags=["处理详情"])
 
 
+def get_teacher_course_ids(db: Session, teacher: models.User) -> List[int]:
+    courses = db.query(models.Course).filter(
+        models.Course.teachers.any(id=teacher.id)
+    ).all()
+    return [c.id for c in courses]
+
+
 @router.get("/study-progress/{progress_id}/communications", response_model=List[schemas.CommunicationResponse])
 def list_communications(
     progress_id: int,
@@ -198,26 +205,56 @@ def complete_todo(
 
 @router.get("/todos/teacher", response_model=List[schemas.TodoItemResponse])
 def get_teacher_todos(
+    generate_missing: bool = True,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.require_role(models.UserRole.TEACHER, models.UserRole.ADMIN, models.UserRole.MANAGER))
 ):
-    high_risk_progresses = db.query(models.StudyProgress).filter(
-        models.StudyProgress.risk_level.in_([models.RiskLevel.DANGER, models.RiskLevel.CRITICAL])
-    ).all()
+    if current_user.role in [models.UserRole.ADMIN, models.UserRole.MANAGER]:
+        high_risk_progresses = db.query(models.StudyProgress).filter(
+            models.StudyProgress.risk_level.in_([models.RiskLevel.DANGER, models.RiskLevel.CRITICAL])
+        ).all()
+    else:
+        allowed_course_ids = get_teacher_course_ids(db, current_user)
+        high_risk_progresses = db.query(models.StudyProgress).filter(
+            models.StudyProgress.risk_level.in_([models.RiskLevel.DANGER, models.RiskLevel.CRITICAL]),
+            models.StudyProgress.course_id.in_(allowed_course_ids)
+        ).all()
     
-    todos = []
-    for progress in high_risk_progresses:
-        todo = models.TodoItem(
-            id=progress.id,
-            user_id=current_user.id,
-            title=f"跟进风险学生: {progress.student.full_name or progress.student.username}",
-            description=f"课程 {progress.course.name} - 完成率 {progress.completion_rate}% - 风险等级: {progress.risk_level.value}",
-            todo_type="risk_followup",
-            related_id=progress.id,
-            priority=1 if progress.risk_level == models.RiskLevel.CRITICAL else 2,
-            is_completed=False,
-            created_at=progress.updated_at
-        )
-        todos.append(todo)
+    if generate_missing:
+        existing_related_ids = set()
+        existing_todos = db.query(models.TodoItem).filter(
+            models.TodoItem.user_id == current_user.id,
+            models.TodoItem.todo_type == "risk_followup",
+            models.TodoItem.is_completed == False
+        ).all()
+        existing_related_ids = {t.related_id for t in existing_todos if t.related_id}
+        
+        for progress in high_risk_progresses:
+            if progress.id not in existing_related_ids:
+                todo = models.TodoItem(
+                    user_id=current_user.id,
+                    title=f"跟进风险学生: {progress.student.full_name or progress.student.username}",
+                    description=(
+                        f"【{progress.course.name}】"
+                        f"完成率 {progress.completion_rate}%，"
+                        f"正确率 {progress.accuracy_rate}%，"
+                        f"风险等级: {progress.risk_level.value}，"
+                        f"上次练习: {progress.last_practice_at.strftime('%m月%d日') if progress.last_practice_at else '无'}"
+                    ),
+                    todo_type="risk_followup",
+                    related_id=progress.id,
+                    priority=1 if progress.risk_level == models.RiskLevel.CRITICAL else 2,
+                    is_completed=False,
+                )
+                db.add(todo)
+        db.commit()
+    
+    todos = db.query(models.TodoItem).filter(
+        models.TodoItem.user_id == current_user.id,
+        models.TodoItem.is_completed == False
+    ).order_by(
+        models.TodoItem.priority.asc(),
+        models.TodoItem.created_at.desc()
+    ).all()
     
     return todos

@@ -1,13 +1,20 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 
 from app.database import get_db
 from app import models, schemas, auth
 
 router = APIRouter(prefix="/study-progress", tags=["学习进度"])
+
+
+def get_teacher_course_ids(db: Session, teacher: models.User) -> List[int]:
+    courses = db.query(models.Course).filter(
+        models.Course.teachers.any(id=teacher.id)
+    ).all()
+    return [c.id for c in courses]
 
 
 def calculate_risk_level(progress: models.StudyProgress, db: Session) -> models.RiskLevel:
@@ -20,13 +27,13 @@ def calculate_risk_level(progress: models.StudyProgress, db: Session) -> models.
     for rule in rules:
         if rule.rule_type == "completion_rate":
             if progress.completion_rate < rule.threshold:
-                if rule.risk_level > risk_level:
+                if rule.risk_level.value > risk_level.value:
                     risk_level = rule.risk_level
         elif rule.rule_type == "days_without_practice" and rule.days_without_practice:
             if progress.last_practice_at:
                 days_since = (datetime.utcnow() - progress.last_practice_at.replace(tzinfo=None)).days
                 if days_since >= rule.days_without_practice:
-                    if rule.risk_level > risk_level:
+                    if rule.risk_level.value > risk_level.value:
                         risk_level = rule.risk_level
     
     return risk_level
@@ -38,7 +45,7 @@ def list_study_progress(
     course_id: Optional[int] = None,
     risk_level: Optional[models.RiskLevel] = None,
     page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
+    page_size: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
@@ -47,16 +54,22 @@ def list_study_progress(
     if current_user.role == models.UserRole.STUDENT:
         query = query.filter(models.StudyProgress.student_id == current_user.id)
     elif current_user.role == models.UserRole.TEACHER:
-        pass
-    elif student_id:
-        query = query.filter(models.StudyProgress.student_id == student_id)
+        allowed_course_ids = get_teacher_course_ids(db, current_user)
+        if course_id:
+            if course_id not in allowed_course_ids:
+                return []
+            query = query.filter(models.StudyProgress.course_id == course_id)
+        else:
+            query = query.filter(models.StudyProgress.course_id.in_(allowed_course_ids))
+    else:
+        if student_id:
+            query = query.filter(models.StudyProgress.student_id == student_id)
+        if course_id:
+            query = query.filter(models.StudyProgress.course_id == course_id)
     
-    if course_id:
-        query = query.filter(models.StudyProgress.course_id == course_id)
     if risk_level:
         query = query.filter(models.StudyProgress.risk_level == risk_level)
     
-    total = query.count()
     progresses = query.order_by(models.StudyProgress.updated_at.desc())\
         .offset((page - 1) * page_size)\
         .limit(page_size)\
@@ -79,6 +92,11 @@ def get_study_progress(
     
     if current_user.role == models.UserRole.STUDENT and progress.student_id != current_user.id:
         raise HTTPException(status_code=403, detail="无权查看")
+    
+    if current_user.role == models.UserRole.TEACHER:
+        allowed_course_ids = get_teacher_course_ids(db, current_user)
+        if progress.course_id not in allowed_course_ids:
+            raise HTTPException(status_code=403, detail="无权查看")
     
     return progress
 
@@ -275,3 +293,103 @@ def assess_risk(
         "current_level": new_risk,
         "changed": old_risk != new_risk
     }
+
+
+@router.get("/{progress_id}/chapter-progress")
+def get_chapter_progress(
+    progress_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    progress = db.query(models.StudyProgress).filter(
+        models.StudyProgress.id == progress_id
+    ).first()
+    if not progress:
+        raise HTTPException(status_code=404, detail="学习进度不存在")
+    
+    if current_user.role == models.UserRole.STUDENT and progress.student_id != current_user.id:
+        raise HTTPException(status_code=403, detail="无权查看")
+    if current_user.role == models.UserRole.TEACHER:
+        allowed_course_ids = get_teacher_course_ids(db, current_user)
+        if progress.course_id not in allowed_course_ids:
+            raise HTTPException(status_code=403, detail="无权查看")
+    
+    chapters = db.query(models.Chapter).filter(
+        models.Chapter.course_id == progress.course_id
+    ).order_by(models.Chapter.order_index).all()
+    
+    chapter_progress = []
+    for chapter in chapters:
+        total_q = db.query(models.Question).filter(
+            models.Question.chapter_id == chapter.id,
+            models.Question.is_active == True
+        ).count()
+        
+        completed_q = db.query(func.count(func.distinct(models.PracticeRecord.question_id))).filter(
+            models.PracticeRecord.student_id == progress.student_id,
+            models.PracticeRecord.chapter_id == chapter.id
+        ).scalar() or 0
+        
+        correct_q = db.query(func.count(func.distinct(models.PracticeRecord.question_id))).filter(
+            models.PracticeRecord.student_id == progress.student_id,
+            models.PracticeRecord.chapter_id == chapter.id,
+            models.PracticeRecord.is_correct == True
+        ).scalar() or 0
+        
+        completion_rate = round(completed_q / total_q * 100, 2) if total_q > 0 else 0
+        accuracy_rate = round(correct_q / completed_q * 100, 2) if completed_q > 0 else 0
+        
+        if completion_rate < 30:
+            risk = models.RiskLevel.CRITICAL
+        elif completion_rate < 50:
+            risk = models.RiskLevel.DANGER
+        elif completion_rate < 70:
+            risk = models.RiskLevel.WARNING
+        else:
+            risk = models.RiskLevel.NORMAL
+        
+        chapter_progress.append({
+            "chapter_id": chapter.id,
+            "chapter_name": chapter.name,
+            "order_index": chapter.order_index,
+            "total_questions": total_q,
+            "completed_questions": completed_q,
+            "correct_questions": correct_q,
+            "completion_rate": completion_rate,
+            "accuracy_rate": accuracy_rate,
+            "risk_level": risk.value,
+        })
+    
+    return {
+        "progress_id": progress.id,
+        "course_id": progress.course_id,
+        "chapters": chapter_progress,
+    }
+
+
+@router.get("/practice/records/by-chapter/{chapter_id}")
+def get_chapter_practice_records(
+    chapter_id: int,
+    student_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    chapter = db.query(models.Chapter).filter(models.Chapter.id == chapter_id).first()
+    if not chapter:
+        raise HTTPException(status_code=404, detail="章节不存在")
+    
+    if current_user.role == models.UserRole.STUDENT:
+        student_id = current_user.id
+    elif current_user.role == models.UserRole.TEACHER:
+        allowed_course_ids = get_teacher_course_ids(db, current_user)
+        if chapter.course_id not in allowed_course_ids:
+            raise HTTPException(status_code=403, detail="无权查看")
+    
+    query = db.query(models.PracticeRecord).filter(
+        models.PracticeRecord.chapter_id == chapter_id
+    )
+    if student_id:
+        query = query.filter(models.PracticeRecord.student_id == student_id)
+    
+    records = query.order_by(models.PracticeRecord.created_at.desc()).limit(50).all()
+    return records

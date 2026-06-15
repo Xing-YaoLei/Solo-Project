@@ -82,6 +82,16 @@ def delete_course(
     return {"message": "删除成功"}
 
 
+def check_teacher_course_access(db: Session, user: models.User, course_id: int) -> bool:
+    if user.role == models.UserRole.ADMIN:
+        return True
+    if user.role == models.UserRole.TEACHER:
+        course = db.query(models.Course).filter(models.Course.id == course_id).first()
+        if course and user in course.teachers:
+            return True
+    return False
+
+
 @router.post("/{course_id}/chapters", response_model=schemas.ChapterResponse)
 def create_chapter(
     course_id: int,
@@ -92,10 +102,16 @@ def create_chapter(
     course = db.query(models.Course).filter(models.Course.id == course_id).first()
     if not course:
         raise HTTPException(status_code=404, detail="课程不存在")
-    db_chapter = models.Chapter(**chapter.model_dump())
+    if not check_teacher_course_access(db, current_user, course_id):
+        raise HTTPException(status_code=403, detail="您无权在此课程下添加章节")
+    chapter_data = chapter.model_dump()
+    chapter_data["course_id"] = course_id
+    db_chapter = models.Chapter(**chapter_data)
     db.add(db_chapter)
     db.commit()
     db.refresh(db_chapter)
+    if course.chapters is None:
+        course.chapters = []
     return db_chapter
 
 
@@ -109,7 +125,11 @@ def update_chapter(
     db_chapter = db.query(models.Chapter).filter(models.Chapter.id == chapter_id).first()
     if not db_chapter:
         raise HTTPException(status_code=404, detail="章节不存在")
-    for key, value in chapter.model_dump().items():
+    if not check_teacher_course_access(db, current_user, db_chapter.course_id):
+        raise HTTPException(status_code=403, detail="您无权修改此章节")
+    chapter_data = chapter.model_dump()
+    chapter_data["course_id"] = db_chapter.course_id
+    for key, value in chapter_data.items():
         setattr(db_chapter, key, value)
     db.commit()
     db.refresh(db_chapter)
