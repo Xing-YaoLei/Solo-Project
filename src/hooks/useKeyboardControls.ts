@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useGameStore } from '../stores/useGameStore';
-import { getLevelById, getMaterialsByStudentId } from '../data/levels';
+import { getLevelById } from '../data/levels';
 
 export function useKeyboardControls() {
   const {
@@ -19,6 +19,7 @@ export function useKeyboardControls() {
     resolveMissingMaterial,
     getMissingMaterials,
     showMissingMaterialModal,
+    showMissingModal,
     hideMissingModal,
     skipMissingMaterial,
     currentMissingMaterialStudent,
@@ -81,24 +82,12 @@ export function useKeyboardControls() {
         e.preventDefault();
         
         if (selectedStudentId && currentPhase === 'application') {
-          const missing = getMissingMaterials(selectedStudentId);
-          const hasMaterials = getMaterialsByStudentId(
-            getLevelById(currentLevelId)!,
-            selectedStudentId
-          );
+          const materialsComplete = checkMaterials(selectedStudentId);
           
-          if (!hasMaterials) return;
-          
-          const requiredMaterials = hasMaterials.materials.filter((m) => m.required);
-          const allChecked = requiredMaterials.every((m) => m.submitted || !m.required);
-          const hasAnySubmitted = requiredMaterials.some((m) => m.submitted);
-          
-          if (missing.length > 0) {
-            resolveMissingMaterial(selectedStudentId, missing[0].id);
-          } else if (missing.length === 0 && hasAnySubmitted) {
-            completeStudentReview(selectedStudentId);
+          if (!materialsComplete) {
+            showMissingModal(selectedStudentId);
           } else {
-            checkMaterials(selectedStudentId);
+            completeStudentReview(selectedStudentId);
           }
         }
       }
@@ -116,18 +105,11 @@ export function useKeyboardControls() {
       if (e.code === 'KeyF') {
         e.preventDefault();
         if (selectedStudentId && currentPhase === 'application') {
-          const missing = getMissingMaterials(selectedStudentId);
-          const hasMaterials = getMaterialsByStudentId(
-            getLevelById(currentLevelId)!,
-            selectedStudentId
-          );
+          const materialsComplete = checkMaterials(selectedStudentId);
           
-          if (!hasMaterials) return;
-          
-          const requiredMaterials = hasMaterials.materials.filter((m) => m.required);
-          const hasAnySubmitted = requiredMaterials.some((m) => m.submitted);
-          
-          if (missing.length === 0 && hasAnySubmitted) {
+          if (!materialsComplete) {
+            showMissingModal(selectedStudentId);
+          } else {
             completeStudentReview(selectedStudentId);
           }
         }
@@ -150,6 +132,7 @@ export function useKeyboardControls() {
     resumeGame,
     nextPhase,
     prevPhase,
+    goToApplicationPhase,
     selectStudent,
     selectedStudentId,
     currentLevelId,
@@ -162,6 +145,6 @@ export function useKeyboardControls() {
     skipMissingMaterial,
     currentMissingMaterialStudent,
     checkMaterials,
-    goToApplicationPhase,
+    showMissingModal,
   ]);
 }

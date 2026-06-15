@@ -218,9 +218,9 @@ export default function MaterialPanel({ isOpen, onClose }: MaterialPanelProps) {
                         : 'bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white shadow-lg shadow-amber-500/20'
                     }`}
                   >
-                    {allComplete ? '✓ 审核通过' : '检查材料完整性'}
+                    {allComplete ? '✓ 材料齐全，完成评分' : '检查材料完整性'}
                     <span className="block text-xs opacity-70 mt-0.5">
-                      <kbd className="px-1 py-0.5 bg-white/20 rounded">Enter</kbd> 检查 / 补全
+                      <kbd className="px-1 py-0.5 bg-white/20 rounded">Enter</kbd> 检查并评分
                     </span>
                   </button>
                   
@@ -240,10 +240,10 @@ export default function MaterialPanel({ isOpen, onClose }: MaterialPanelProps) {
                   {!canComplete && selectedStudent?.hasApplied && !isCompleted && (
                     <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl">
                       <p className="text-amber-300 text-sm text-center">
-                        请先补全所有缺失材料后再完成评分
+                        材料不完整，按 Enter 检查后会提示缺失项
                       </p>
                       <p className="text-amber-400/70 text-xs text-center mt-1">
-                        按 <kbd className="px-1 py-0.5 bg-amber-500/20 rounded">R</kbd> 一键补全
+                        按 <kbd className="px-1 py-0.5 bg-amber-500/20 rounded">R</kbd> 一键补全缺失材料
                       </p>
                     </div>
                   )}
