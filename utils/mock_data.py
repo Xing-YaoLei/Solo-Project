@@ -348,16 +348,19 @@ def _generate_raw_samples_df():
     data = []
     for i in range(1, 101):
         src = random.choice(sources)
+        course_code = ""
         if src == "学生申请表":
+            course_code = f"C{1000 + random.randint(1, 20):04d}"
             payload = {
                 "student_id": f"S{20230000 + random.randint(1, 80):08d}",
-                "course_code": f"C{1000 + random.randint(1, 20):04d}",
+                "course_code": course_code,
                 "apply_time": (datetime.now() - timedelta(days=random.randint(1, 20))).isoformat(),
                 "status": random.choice(["SUBMITTED", "REVIEWING", "APPROVED"]),
             }
         elif src == "教学平台":
+            course_code = f"C{1000 + random.randint(1, 20):04d}"
             payload = {
-                "course_code": f"C{1000 + random.randint(1, 20):04d}",
+                "course_code": course_code,
                 "room_code": f"R{random.randint(1, 15):03d}",
                 "weekday": random.choice(Config.WEEKDAYS),
                 "time_slot": random.choice(Config.TIME_SLOTS),
@@ -376,6 +379,7 @@ def _generate_raw_samples_df():
             "source_system": src,
             "batch_id": f"BATCH{random.randint(100, 999)}",
             "source_id": f"SRC{i:08d}",
+            "course_code": course_code,
             "payload": str(payload),
             "is_processed": random.random() < 0.85,
             "is_anomaly": 1 if random.random() < 0.12 else 0,

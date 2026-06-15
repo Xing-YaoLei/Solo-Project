@@ -1160,12 +1160,15 @@ def drill_room(selected_rows, table_data):
         Input("export-btn", "n_clicks"),
         Input("filter-term", "value"),
         Input("filter-college", "value"),
+        Input("filter-course-type", "value"),
         Input("filter-status", "value"),
         Input("filter-conflict", "value"),
+        Input("filter-date", "start_date"),
+        Input("filter-date", "end_date"),
     ],
     prevent_initial_call=True,
 )
-def export_report(n_clicks, term, college, status, conflict):
+def export_report(n_clicks, term, college, course_type, status, conflict, start_date, end_date):
     ctx = callback_context
     if not ctx.triggered or ctx.triggered[0]["prop_id"] != "export-btn.n_clicks":
         return no_update
@@ -1173,10 +1176,11 @@ def export_report(n_clicks, term, college, status, conflict):
     output = exporter.export_duration_report(
         academic_term=term,
         college=college or None,
+        course_type=course_type or None,
         status=status or None,
         has_conflict=None if conflict == "" else conflict,
-        start_date=None,
-        end_date=None,
+        start_date=start_date.split("T")[0] if start_date else None,
+        end_date=end_date.split("T")[0] if end_date else None,
     )
 
     filename = f"审核时长报表_{term}_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx"

@@ -64,10 +64,11 @@ class ReportExporter:
         return pd.DataFrame(padded, columns=["A", "B", "C", "D", "E", "F", "G", "H"])
 
     def export_duration_report(self, academic_term, college, status, has_conflict,
-                                start_date, end_date, output_path=None):
+                                course_type, start_date, end_date, output_path=None):
         filters_desc = {
             "学期": academic_term or "全部学期",
             "学院": college or "全部学院",
+            "课程类型": course_type or "全部类型",
             "申请状态": status or "全部状态",
             "是否含冲突": "是" if has_conflict == 1 else ("否" if has_conflict == 0 else "全部"),
             "提交日期范围": f"{start_date or '不限'} 至 {end_date or '不限'}",
@@ -75,9 +76,12 @@ class ReportExporter:
 
         apps = self.ds.get_applications(
             academic_term=academic_term, college=college, status=status,
-            has_conflict=has_conflict
+            has_conflict=has_conflict, course_type=course_type,
+            start_date=start_date, end_date=end_date
         )
-        duration_stats = self.ds.get_duration_stats(academic_term=academic_term, college=college)
+        duration_stats = self.ds.get_duration_stats(
+            academic_term=academic_term, college=college, course_type=course_type
+        )
         funnel = self.ds.get_funnel_data(academic_term=academic_term, college=college)
         conflicts = self.ds.get_conflicts(academic_term=academic_term)
         anomalies = self.ds.get_anomalies()
