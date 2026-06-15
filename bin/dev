@@ -3,29 +3,6 @@
 
 APP_ROOT = File.expand_path("..", __dir__)
 
-def foreman_available?
-  system("which foreman > /dev/null 2>&1")
-end
-
-def gem_foreman_available?
-  system("gem list -i foreman > /dev/null 2>&1")
-end
-
-unless foreman_available? || gem_foreman_available?
-  puts "Installing foreman..."
-  system("gem install foreman") || abort("Failed to install foreman. Run: gem install foreman")
-end
-
-foreman_bin = if foreman_available?
-  "foreman"
-else
-  begin
-    Gem.bin_path("foreman", "foreman")
-  rescue Gem::GemNotFoundException
-    "foreman"
-  end
-end
-
 Dir.chdir(APP_ROOT) do
-  exec("#{foreman_bin} start -f Procfile.dev")
+  exec("bundle exec foreman start -f Procfile.dev")
 end

@@ -88,29 +88,30 @@ Node.js >= 16        # node -v (TailwindCSS编译)
 ### 一键安装
 ```bash
 cd MP0164
-chmod +x bin/setup bin/rails bin/rake
-./bin/setup
+./bin/setup          # 安装依赖 → 创建数据库 → 迁移 → 种子数据
 ```
 
-### 手动安装
+### 启动开发服务器
 ```bash
-# 1. 安装依赖
+./bin/dev            # 同时启动 Rails + TailwindCSS + Sidekiq
+                     # 访问 http://localhost:3000
+```
+
+### 手动分步启动
+```bash
+# 1. 安装依赖（如未运行 bin/setup）
 bundle install
 
-# 2. 创建数据库 + 迁移
+# 2. 创建数据库 + 迁移 + 种子
 rails db:create
 rails db:migrate
-
-# 3. 加载示例数据（30名学员、4个社群、完整数据）
 rails db:seed
 
-# 4. 启动 Sidekiq (另一个终端)
-bundle exec sidekiq
+# 3. 启动 Sidekiq（另一个终端）
+bundle exec sidekiq -q exports -q mailers -q default
 
-# 5. 启动 Rails 服务器
-bin/dev          # 同时启动 Rails + Tailwind 监听 (推荐)
-# 或
-bin/rails s      # 仅Rails，然后访问 http://localhost:3000
+# 4. 启动 Rails 服务器
+bin/rails s          # 访问 http://localhost:3000
 ```
 
 ---
