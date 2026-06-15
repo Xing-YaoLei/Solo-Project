@@ -57,9 +57,10 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { appointmentApi } from '@/api/appointment'
+import { teacherApi } from '@/api/teacher'
 import ConflictAlert from './ConflictAlert.vue'
 
 const props = defineProps({
@@ -84,13 +85,7 @@ const timeSlotOptions = [
   '17:00-18:00', '19:00-20:00'
 ]
 
-const teacherList = ref([
-  { id: 1, name: '王老师' },
-  { id: 2, name: '李老师' },
-  { id: 3, name: '张老师' },
-  { id: 4, name: '赵老师' },
-  { id: 5, name: '陈老师' }
-])
+const teacherList = ref([])
 
 const form = ref({ trialDate: '', timeSlot: '', teacherId: '', reason: '' })
 
@@ -100,6 +95,13 @@ const rules = {
   teacherId: [{ required: true, message: '请选择新老师', trigger: 'change' }],
   reason: [{ required: true, message: '请填写改约原因', trigger: 'blur' }]
 }
+
+onMounted(async () => {
+  try {
+    const res = await teacherApi.getList()
+    teacherList.value = res.data || []
+  } catch { /* ignore */ }
+})
 
 watch(() => [form.value.trialDate, form.value.timeSlot, form.value.teacherId], async () => {
   if (form.value.trialDate && form.value.timeSlot && form.value.teacherId) {
@@ -111,7 +113,7 @@ watch(() => [form.value.trialDate, form.value.timeSlot, form.value.teacherId], a
 
 async function checkConflict() {
   try {
-    const res = await appointmentApi.getConflicts({
+    const res = await appointmentApi.checkConflict({
       date: form.value.trialDate,
       timeSlot: form.value.timeSlot,
       teacherId: form.value.teacherId,

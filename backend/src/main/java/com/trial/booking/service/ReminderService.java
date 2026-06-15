@@ -1,10 +1,16 @@
 package com.trial.booking.service;
 
 import com.trial.booking.common.PageResult;
+import com.trial.booking.entity.Appointment;
 import com.trial.booking.entity.Reminder;
+import com.trial.booking.entity.Teacher;
+import com.trial.booking.repository.AppointmentRepository;
 import com.trial.booking.repository.ReminderRepository;
+import com.trial.booking.repository.TeacherRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -23,6 +29,8 @@ import java.util.List;
 public class ReminderService {
 
     private final ReminderRepository reminderRepository;
+    private final AppointmentRepository appointmentRepository;
+    private final TeacherRepository teacherRepository;
 
     public PageResult<Reminder> search(int page, int pageSize, String status, String date) {
         PageRequest pageable = PageRequest.of(page - 1, pageSize, Sort.by(Sort.Direction.DESC, "createdAt"));
@@ -33,14 +41,30 @@ public class ReminderService {
                 predicates.add(cb.equal(root.get("status"), status));
             }
             if (date != null && !date.isEmpty()) {
-                LocalDateTime dayStart = LocalDate.parse(date).atStartOfDay();
-                LocalDateTime dayEnd = dayStart.plusDays(1);
-                predicates.add(cb.between(root.get("createdAt"), dayStart, dayEnd));
+                LocalDate targetDate = LocalDate.parse(date);
+                Subquery<Long> subquery = query.subquery(Long.class);
+                Root<Appointment> appointmentRoot = subquery.from(Appointment.class);
+                subquery.select(appointmentRoot.get("id"))
+                        .where(cb.equal(appointmentRoot.get("trialDate"), targetDate));
+                predicates.add(root.get("appointmentId").in(subquery));
             }
             return cb.and(predicates.toArray(new Predicate[0]));
         };
 
         Page<Reminder> result = reminderRepository.findAll(spec, pageable);
+        for (Reminder reminder : result.getContent()) {
+            if (reminder.getAppointmentId() != null) {
+                appointmentRepository.findById(reminder.getAppointmentId()).ifPresent(appointment -> {
+                    reminder.setTrialDate(appointment.getTrialDate());
+                    reminder.setTimeSlot(appointment.getTimeSlot());
+                    if (appointment.getTeacherId() != null) {
+                        teacherRepository.findById(appointment.getTeacherId())
+                                .map(Teacher::getName)
+                                .ifPresent(reminder::setTeacherName);
+                    }
+                });
+            }
+        }
         return PageResult.of(result);
     }
 

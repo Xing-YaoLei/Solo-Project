@@ -5,6 +5,7 @@ import lombok.Data;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Data
@@ -48,4 +49,13 @@ public class Reminder {
 
     @UpdateTimestamp
     private LocalDateTime updatedAt;
+
+    @Transient
+    private LocalDate trialDate;
+
+    @Transient
+    private String timeSlot;
+
+    @Transient
+    private String teacherName;
 }

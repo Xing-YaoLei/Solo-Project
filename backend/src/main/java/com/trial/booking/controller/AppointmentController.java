@@ -12,6 +12,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/appointments")
@@ -61,7 +62,13 @@ public class AppointmentController {
 
     @GetMapping("/conflicts")
     @PreAuthorize("isAuthenticated()")
-    public ApiResponse<List<Appointment>> getConflicts(AppointmentDTO.ConflictParams params) {
+    public ApiResponse<List<Map<String, Object>>> getConflicts(@Valid AppointmentDTO.AllConflictsParams params) {
+        return ApiResponse.success(appointmentService.getAllConflicts(params.getDate(), params.getTeacherId()));
+    }
+
+    @GetMapping("/conflicts/single")
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<List<Appointment>> checkConflict(@Valid AppointmentDTO.ConflictParams params) {
         return ApiResponse.success(appointmentService.detectConflicts(params));
     }
 

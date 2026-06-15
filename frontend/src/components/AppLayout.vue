@@ -21,23 +21,23 @@
           <el-icon><Calendar /></el-icon>
           <template #title>预约分派台</template>
         </el-menu-item>
-        <el-menu-item index="/conflicts">
+        <el-menu-item v-permission="['ADMIN', 'RECEPTIONIST', 'PRINCIPAL', 'TEACHER']" index="/conflicts">
           <el-icon><Warning /></el-icon>
           <template #title>冲突检测</template>
         </el-menu-item>
-        <el-menu-item index="/reschedule-logs">
+        <el-menu-item v-permission="['ADMIN', 'RECEPTIONIST', 'PRINCIPAL']" index="/reschedule-logs">
           <el-icon><Switch /></el-icon>
           <template #title>改约记录</template>
         </el-menu-item>
-        <el-menu-item index="/attendance">
+        <el-menu-item v-permission="['ADMIN', 'RECEPTIONIST', 'PRINCIPAL', 'TEACHER']" index="/attendance">
           <el-icon><Checked /></el-icon>
           <template #title>到场管理</template>
         </el-menu-item>
-        <el-menu-item index="/reminders">
+        <el-menu-item v-permission="['ADMIN', 'RECEPTIONIST', 'PRINCIPAL']" index="/reminders">
           <el-icon><Bell /></el-icon>
           <template #title>提醒名单</template>
         </el-menu-item>
-        <el-menu-item index="/statistics">
+        <el-menu-item v-permission="['ADMIN', 'PRINCIPAL']" index="/statistics">
           <el-icon><TrendCharts /></el-icon>
           <template #title>统计报表</template>
         </el-menu-item>

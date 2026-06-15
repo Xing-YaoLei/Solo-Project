@@ -36,10 +36,12 @@ export const useDictStore = defineStore('dict', () => {
   ])
 
   const roleOptions = ref([
-    { label: '管理员', value: 'ADMIN' },
+    { label: '学生', value: 'STUDENT' },
+    { label: '家长', value: 'PARENT' },
+    { label: '老师', value: 'TEACHER' },
+    { label: '校区校长', value: 'PRINCIPAL' },
     { label: '前台', value: 'RECEPTIONIST' },
-    { label: '教师', value: 'TEACHER' },
-    { label: '校长', value: 'PRINCIPAL' }
+    { label: '管理员', value: 'ADMIN' }
   ])
 
   function getStatusLabel(value) {

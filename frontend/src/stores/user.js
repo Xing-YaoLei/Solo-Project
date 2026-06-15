@@ -11,6 +11,17 @@ export const useUserStore = defineStore('user', () => {
   const isLoggedIn = computed(() => !!token.value)
   const username = computed(() => userInfo.value?.username || '')
 
+  function hasRole(targetRole) {
+    if (Array.isArray(targetRole)) {
+      return targetRole.includes(role.value)
+    }
+    return role.value === targetRole
+  }
+
+  function hasAnyRole(roles) {
+    return roles.includes(role.value)
+  }
+
   async function login(loginForm) {
     const res = await authApi.login(loginForm)
     const { token: newToken, user } = res.data
@@ -41,5 +52,5 @@ export const useUserStore = defineStore('user', () => {
     router.push('/login')
   }
 
-  return { token, userInfo, role, isLoggedIn, username, login, getUserInfo, logout }
+  return { token, userInfo, role, isLoggedIn, username, hasRole, hasAnyRole, login, getUserInfo, logout }
 })

@@ -25,6 +25,9 @@ export const appointmentApi = {
   getConflicts(params) {
     return request.get('/appointments/conflicts', { params })
   },
+  checkConflict(params) {
+    return request.get('/appointments/conflicts/single', { params })
+  },
   getChangeLog(id) {
     return request.get(`/appointments/${id}/change-log`)
   },

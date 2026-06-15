@@ -28,6 +28,9 @@ public class Teacher {
     @Column(length = 50)
     private String campus;
 
+    @Column(name = "user_id")
+    private Long userId;
+
     @Column(columnDefinition = "TEXT")
     private String description;
 

@@ -64,6 +64,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { appointmentApi } from '@/api/appointment'
+import { teacherApi } from '@/api/teacher'
 import dayjs from 'dayjs'
 import StatusTag from '@/components/StatusTag.vue'
 import RescheduleDialog from '@/components/RescheduleDialog.vue'
@@ -75,17 +76,15 @@ const filterTeacher = ref('')
 const showReschedule = ref(false)
 const rescheduleData = ref({})
 
-const teacherList = ref([
-  { id: 1, name: '王老师' },
-  { id: 2, name: '李老师' },
-  { id: 3, name: '张老师' },
-  { id: 4, name: '赵老师' },
-  { id: 5, name: '陈老师' }
-])
+const teacherList = ref([])
 
 const conflictCount = computed(() => conflicts.value.reduce((sum, g) => sum + g.items.length, 0))
 
-onMounted(() => {
+onMounted(async () => {
+  try {
+    const res = await teacherApi.getList()
+    teacherList.value = res.data || []
+  } catch { /* ignore */ }
   loadConflicts()
 })
 

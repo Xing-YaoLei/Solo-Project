@@ -61,13 +61,13 @@ public class AppointmentDTO {
 
     @Data
     public static class RescheduleRequest {
-        @NotNull(message = "新日期不能为空")
-        private LocalDate newDate;
+        @NotNull(message = "试听日期不能为空")
+        private LocalDate trialDate;
 
-        @NotBlank(message = "新时段不能为空")
-        private String newTimeSlot;
+        @NotBlank(message = "时段不能为空")
+        private String timeSlot;
 
-        private Long newTeacherId;
+        private Long teacherId;
 
         private String reason;
     }
@@ -78,9 +78,11 @@ public class AppointmentDTO {
         private int pageSize = 20;
         private LocalDate startDate;
         private LocalDate endDate;
+        private LocalDate trialDate;
         private String campus;
         private String subject;
         private String status;
+        private String attendanceStatus;
         private Long teacherId;
         private String keyword;
     }
@@ -106,16 +108,22 @@ public class AppointmentDTO {
 
     @Data
     public static class ConflictParams {
-        @NotNull(message = "老师ID不能为空")
         private Long teacherId;
 
         @NotNull(message = "日期不能为空")
-        private LocalDate trialDate;
+        private LocalDate date;
 
-        @NotBlank(message = "时段不能为空")
         private String timeSlot;
 
         private Long excludeId;
+    }
+
+    @Data
+    public static class AllConflictsParams {
+        @NotNull(message = "日期不能为空")
+        private LocalDate date;
+
+        private Long teacherId;
     }
 
     @Data

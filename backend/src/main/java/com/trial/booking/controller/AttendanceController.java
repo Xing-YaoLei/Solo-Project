@@ -41,9 +41,16 @@ public class AttendanceController {
 
     @GetMapping("/attendance/rate")
     public ApiResponse<Map<String, Object>> getAttendanceRate(
-            @RequestParam String startDate,
-            @RequestParam String endDate,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) String date,
             @RequestParam(required = false) String campus) {
-        return ApiResponse.success(attendanceService.getAttendanceRate(startDate, endDate, campus));
+        String effectiveStart = startDate;
+        String effectiveEnd = endDate;
+        if (date != null && !date.isEmpty()) {
+            effectiveStart = date;
+            effectiveEnd = date;
+        }
+        return ApiResponse.success(attendanceService.getAttendanceRate(effectiveStart, effectiveEnd, campus));
     }
 }

@@ -12,4 +12,6 @@ public interface TeacherRepository extends JpaRepository<Teacher, Long> {
     List<Teacher> findByEnabledTrue();
 
     List<Teacher> findBySubjectAndEnabledTrue(String subject);
+
+    Optional<Teacher> findByUserId(Long userId);
 }

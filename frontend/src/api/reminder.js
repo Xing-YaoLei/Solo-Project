@@ -17,6 +17,6 @@ export const reminderApi = {
     return request.post(`/reminders/${id}/send`)
   },
   batchSend(ids) {
-    return request.post('/reminders/batch-send', { ids })
+    return request.post('/reminders/batch-send', ids)
   }
 }

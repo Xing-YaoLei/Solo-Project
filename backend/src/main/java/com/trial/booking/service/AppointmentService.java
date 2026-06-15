@@ -24,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -62,15 +63,41 @@ public class AppointmentService {
     }
 
     public PageResult<Appointment> search(AppointmentDTO.SearchParams params) {
+        LocalDate effectiveStart = params.getStartDate();
+        LocalDate effectiveEnd = params.getEndDate();
+        if (params.getTrialDate() != null) {
+            effectiveStart = params.getTrialDate();
+            effectiveEnd = params.getTrialDate();
+        }
+
         Specification<Appointment> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
-            if (params.getStartDate() != null && params.getEndDate() != null) {
-                predicates.add(cb.between(root.get("trialDate"), params.getStartDate(), params.getEndDate()));
-            } else if (params.getStartDate() != null) {
-                predicates.add(cb.greaterThanOrEqualTo(root.get("trialDate"), params.getStartDate()));
-            } else if (params.getEndDate() != null) {
-                predicates.add(cb.lessThanOrEqualTo(root.get("trialDate"), params.getEndDate()));
+            String role = SecurityUtils.getCurrentUserRole();
+            Long currentUserId = SecurityUtils.getCurrentUserId();
+
+            if ("STUDENT".equals(role) && currentUserId != null) {
+                predicates.add(cb.equal(root.get("studentUserId"), currentUserId));
+            } else if ("PARENT".equals(role) && currentUserId != null) {
+                predicates.add(cb.equal(root.get("parentId"), currentUserId));
+            } else if ("TEACHER".equals(role) && currentUserId != null) {
+                teacherRepository.findByUserId(currentUserId).ifPresent(teacher ->
+                        predicates.add(cb.equal(root.get("teacherId"), teacher.getId()))
+                );
+            } else if ("PRINCIPAL".equals(role) && currentUserId != null) {
+                userRepository.findById(currentUserId).ifPresent(user -> {
+                    if (user.getCampus() != null && !user.getCampus().isEmpty()) {
+                        predicates.add(cb.equal(root.get("campus"), user.getCampus()));
+                    }
+                });
+            }
+
+            if (effectiveStart != null && effectiveEnd != null) {
+                predicates.add(cb.between(root.get("trialDate"), effectiveStart, effectiveEnd));
+            } else if (effectiveStart != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("trialDate"), effectiveStart));
+            } else if (effectiveEnd != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("trialDate"), effectiveEnd));
             }
 
             if (params.getCampus() != null && !params.getCampus().isEmpty()) {
@@ -81,6 +108,16 @@ public class AppointmentService {
             }
             if (params.getStatus() != null && !params.getStatus().isEmpty()) {
                 predicates.add(cb.equal(root.get("status"), params.getStatus()));
+            }
+            if (params.getAttendanceStatus() != null) {
+                if ("NONE".equals(params.getAttendanceStatus()) || params.getAttendanceStatus().isEmpty()) {
+                    predicates.add(cb.or(
+                            cb.isNull(root.get("attendanceStatus")),
+                            cb.equal(root.get("attendanceStatus"), "")
+                    ));
+                } else {
+                    predicates.add(cb.equal(root.get("attendanceStatus"), params.getAttendanceStatus()));
+                }
             }
             if (params.getTeacherId() != null) {
                 predicates.add(cb.equal(root.get("teacherId"), params.getTeacherId()));
@@ -209,9 +246,9 @@ public class AppointmentService {
         newAppointment.setStudentName(original.getStudentName());
         newAppointment.setStudentPhone(original.getStudentPhone());
         newAppointment.setSubject(original.getSubject());
-        newAppointment.setTrialDate(request.getNewDate());
-        newAppointment.setTimeSlot(request.getNewTimeSlot());
-        newAppointment.setTeacherId(request.getNewTeacherId() != null ? request.getNewTeacherId() : original.getTeacherId());
+        newAppointment.setTrialDate(request.getTrialDate());
+        newAppointment.setTimeSlot(request.getTimeSlot());
+        newAppointment.setTeacherId(request.getTeacherId() != null ? request.getTeacherId() : original.getTeacherId());
         newAppointment.setCampus(original.getCampus());
         newAppointment.setRemark(original.getRemark());
         newAppointment.setParentId(original.getParentId());
@@ -266,9 +303,46 @@ public class AppointmentService {
 
     public List<Appointment> detectConflicts(AppointmentDTO.ConflictParams params) {
         List<Appointment> conflicts = detectConflictsInternal(
-                params.getTeacherId(), params.getTrialDate(), params.getTimeSlot(), params.getExcludeId());
+                params.getTeacherId(), params.getDate(), params.getTimeSlot(), params.getExcludeId());
         conflicts.forEach(this::fillTeacherName);
         return conflicts;
+    }
+
+    public List<Map<String, Object>> getAllConflicts(LocalDate date, Long teacherId) {
+        Specification<Appointment> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            predicates.add(cb.equal(root.get("trialDate"), date));
+            predicates.add(cb.not(root.get("status").in("CANCELLED", "RESCHEDULED")));
+            if (teacherId != null) {
+                predicates.add(cb.equal(root.get("teacherId"), teacherId));
+            }
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        List<Appointment> appointments = appointmentRepository.findAll(spec);
+        appointments.forEach(this::fillTeacherName);
+
+        Map<String, List<Appointment>> grouped = appointments.stream()
+                .collect(java.util.stream.Collectors.groupingBy(
+                        a -> a.getTeacherId() + "_" + a.getTimeSlot()
+                ));
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Map.Entry<String, List<Appointment>> entry : grouped.entrySet()) {
+            List<Appointment> items = entry.getValue();
+            if (items.size() > 1) {
+                Appointment first = items.get(0);
+                Map<String, Object> conflict = new java.util.LinkedHashMap<>();
+                conflict.put("key", entry.getKey());
+                conflict.put("date", first.getTrialDate());
+                conflict.put("teacherId", first.getTeacherId());
+                conflict.put("teacherName", first.getTeacherName());
+                conflict.put("timeSlot", first.getTimeSlot());
+                conflict.put("items", items);
+                result.add(conflict);
+            }
+        }
+        return result;
     }
 
     @Transactional
