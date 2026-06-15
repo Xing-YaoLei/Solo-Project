@@ -30,12 +30,13 @@ logger = logging.getLogger(__name__)
 def register_drilldown_callbacks():
     @app.callback(
         Output("drilldown-grade-id", "data"),
-        Input("drilldown-url", "pathname"),
+        Input("url", "pathname"),
     )
     def extract_grade_id(pathname):
         if pathname and pathname.startswith("/drilldown/"):
             try:
                 grade_id = int(pathname.split("/")[-1])
+                logger.info(f"提取到下钻 grade_id: {grade_id}")
                 return grade_id
             except (ValueError, IndexError):
                 return None
@@ -233,14 +234,6 @@ def register_drilldown_callbacks():
                 html.Div("加载失败"),
                 "0",
             )
-
-    @app.callback(
-        Output("drilldown-url", "pathname"),
-        Input("back-to-main", "n_clicks"),
-        prevent_initial_call=True,
-    )
-    def navigate_back(n_clicks):
-        return "/"
 
     @app.callback(
         [

@@ -1,6 +1,5 @@
 import os
 import logging
-from datetime import datetime, timedelta, date
 
 from dotenv import load_dotenv
 
@@ -15,7 +14,7 @@ logger = logging.getLogger(__name__)
 from app import app, server, db
 from app.pages import create_main_layout, create_drilldown_layout
 from app.callbacks import register_main_callbacks, register_drilldown_callbacks
-from dash import Input, Output, html, dcc
+from dash import Input, Output, State, html, dcc, callback_context, no_update
 
 
 with server.app_context():
@@ -27,7 +26,21 @@ register_main_callbacks()
 register_drilldown_callbacks()
 
 
-app.layout = main_layout
+@app.callback(Output("page-content", "children"), [Input("url", "pathname")])
+def display_page(pathname):
+    logger.info(f"路由跳转: pathname={pathname}")
+    if pathname and pathname.startswith("/drilldown/"):
+        return drilldown_layout
+    return main_layout
+
+
+app.layout = html.Div(
+    [
+        dcc.Location(id="url", refresh=False),
+        dcc.Store(id="drilldown-grade-id", data=None),
+        html.Div(id="page-content"),
+    ]
+)
 
 
 if __name__ == "__main__":

@@ -295,8 +295,37 @@ def register_main_callbacks():
     def toggle_drilldown_button(selected_rows):
         return not (selected_rows and len(selected_rows) > 0)
 
-    @app.callback(
-        Output("url", "pathname"),
+    app.clientside_callback(
+        """
+        function(drilldownClicks, activeCell, tableData, selectedRows) {
+            const ctx = dash_clientside.callback_context;
+            if (!ctx.triggered || ctx.triggered.length === 0) {
+                return "";
+            }
+            
+            const triggerId = ctx.triggered[0].prop_id.split(".")[0];
+            let gradeId = null;
+            
+            if (triggerId === "drilldown-btn" && selectedRows && selectedRows.length > 0) {
+                const rowIdx = selectedRows[0];
+                if (tableData && rowIdx < tableData.length) {
+                    gradeId = tableData[rowIdx].id;
+                }
+            } else if (triggerId === "students-table" && activeCell) {
+                const rowIdx = activeCell.row;
+                if (tableData && rowIdx < tableData.length) {
+                    gradeId = tableData[rowIdx].id;
+                }
+            }
+            
+            if (gradeId !== null && gradeId !== undefined) {
+                window.location.href = "/drilldown/" + gradeId;
+            }
+            
+            return "";
+        }
+        """,
+        Output("nav-placeholder", "children"),
         [
             Input("drilldown-btn", "n_clicks"),
             Input("students-table", "active_cell"),
@@ -307,23 +336,8 @@ def register_main_callbacks():
         ],
         prevent_initial_call=True,
     )
-    def navigate_to_drilldown(n_clicks, active_cell, table_data, selected_rows):
-        ctx = callback_context
-        trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
 
-        if trigger_id == "drilldown-btn" and selected_rows and len(selected_rows) > 0:
-            row_idx = selected_rows[0]
-            if row_idx < len(table_data):
-                grade_id = table_data[row_idx].get("id")
-                return f"/drilldown/{grade_id}"
 
-        elif trigger_id == "students-table" and active_cell:
-            row_idx = active_cell["row"]
-            if row_idx < len(table_data):
-                grade_id = table_data[row_idx].get("id")
-                return f"/drilldown/{grade_id}"
-
-        return no_update
 
     @app.callback(
         [

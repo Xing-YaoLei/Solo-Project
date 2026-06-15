@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 
 import pandas as pd
+import requests
 from celery import group
 from dotenv import load_dotenv
 
@@ -119,10 +120,74 @@ def get_or_create_student(external_student_id: str, student_info: Optional[Dict]
     return None
 
 
+def _fetch_from_api(api_url: str, api_token: str, data_source: str, sync_batch: str) -> List[Dict]:
+    """
+    从配置的API地址获取数据，失败时记录到异常数据表
+    """
+    if not api_url or not api_token:
+        logger.warning(f"{data_source} 未配置API地址或Token，跳过数据拉取")
+        return []
+
+    try:
+        logger.info(f"开始从 {api_url} 拉取 {data_source} 数据")
+        headers = {
+            "Authorization": f"Bearer {api_token}",
+            "Content-Type": "application/json",
+        }
+        response = requests.get(api_url, headers=headers, timeout=30)
+        response.raise_for_status()
+        data = response.json()
+
+        if isinstance(data, dict) and "data" in data:
+            records = data["data"]
+        elif isinstance(data, list):
+            records = data
+        else:
+            records = []
+
+        logger.info(f"从 {api_url} 成功拉取 {len(records)} 条 {data_source} 数据")
+        return records
+
+    except requests.exceptions.RequestException as e:
+        error_msg = f"API请求失败: {str(e)}"
+        logger.error(f"{data_source} {error_msg}")
+        anomaly = AnomalyData(
+            data_source=data_source,
+            sync_batch=sync_batch,
+            raw_data=json.dumps({"api_url": api_url, "error": str(e)}, ensure_ascii=False),
+            anomaly_type="API连接失败",
+            anomaly_description=error_msg,
+            error_message=str(e),
+            record_id_external="API_REQUEST",
+        )
+        db.session.add(anomaly)
+        db.session.commit()
+        return []
+
+    except (ValueError, json.JSONDecodeError) as e:
+        error_msg = f"API返回数据格式错误: {str(e)}"
+        logger.error(f"{data_source} {error_msg}")
+        anomaly = AnomalyData(
+            data_source=data_source,
+            sync_batch=sync_batch,
+            raw_data=json.dumps({"api_url": api_url, "error": str(e)}, ensure_ascii=False),
+            anomaly_type="数据格式错误",
+            anomaly_description=error_msg,
+            error_message=str(e),
+            record_id_external="API_RESPONSE",
+        )
+        db.session.add(anomaly)
+        db.session.commit()
+        return []
+
+
 @celery_app.task(bind=True, name="sync_employment_data")
 def sync_employment_data(self, records: Optional[List[Dict]] = None) -> Dict[str, Any]:
     data_source = "employment_system"
     sync_batch = generate_sync_batch(data_source)
+
+    api_url = os.getenv("EMPLOYMENT_API_URL", "")
+    api_token = os.getenv("API_TOKEN", "")
 
     sync_task = SyncTask(
         task_name="就业数据同步",
@@ -130,13 +195,15 @@ def sync_employment_data(self, records: Optional[List[Dict]] = None) -> Dict[str
         sync_batch=sync_batch,
         status="running",
         started_at=datetime.utcnow(),
+        config_source="EMPLOYMENT_API_URL",
+        config_url=api_url,
     )
     db.session.add(sync_task)
     db.session.commit()
 
     try:
         if records is None:
-            records = _fetch_external_employment_data()
+            records = _fetch_from_api(api_url, api_token, data_source, sync_batch)
 
         total_records = len(records)
         success_count = 0
@@ -229,6 +296,8 @@ def sync_employment_data(self, records: Optional[List[Dict]] = None) -> Dict[str
         sync_task.completed_at = datetime.utcnow()
         db.session.commit()
 
+        logger.info(f"就业数据同步完成: 共{total_records}条, 成功{success_count}条, 失败{error_count}条")
+
         return {
             "status": "success",
             "sync_batch": sync_batch,
@@ -236,6 +305,8 @@ def sync_employment_data(self, records: Optional[List[Dict]] = None) -> Dict[str
             "success_count": success_count,
             "error_count": error_count,
             "data_source": data_source,
+            "config_source": "EMPLOYMENT_API_URL",
+            "config_url": api_url,
         }
 
     except Exception as e:
@@ -253,19 +324,24 @@ def sync_live_platform_data(self, records: Optional[List[Dict]] = None) -> Dict[
     data_source = "live_platform"
     sync_batch = generate_sync_batch(data_source)
 
+    api_url = os.getenv("LIVE_API_URL", "")
+    api_token = os.getenv("API_TOKEN", "")
+
     sync_task = SyncTask(
         task_name="直播平台数据同步",
         data_source=data_source,
         sync_batch=sync_batch,
         status="running",
         started_at=datetime.utcnow(),
+        config_source="LIVE_API_URL",
+        config_url=api_url,
     )
     db.session.add(sync_task)
     db.session.commit()
 
     try:
         if records is None:
-            records = _fetch_external_live_data()
+            records = _fetch_from_api(api_url, api_token, data_source, sync_batch)
 
         total_records = len(records)
         success_count = 0
@@ -354,6 +430,8 @@ def sync_live_platform_data(self, records: Optional[List[Dict]] = None) -> Dict[
         sync_task.completed_at = datetime.utcnow()
         db.session.commit()
 
+        logger.info(f"直播数据同步完成: 共{total_records}条, 成功{success_count}条, 失败{error_count}条")
+
         return {
             "status": "success",
             "sync_batch": sync_batch,
@@ -361,6 +439,8 @@ def sync_live_platform_data(self, records: Optional[List[Dict]] = None) -> Dict[
             "success_count": success_count,
             "error_count": error_count,
             "data_source": data_source,
+            "config_source": "LIVE_API_URL",
+            "config_url": api_url,
         }
 
     except Exception as e:
@@ -378,19 +458,24 @@ def sync_lms_data(self, records: Optional[List[Dict]] = None) -> Dict[str, Any]:
     data_source = "lms"
     sync_batch = generate_sync_batch(data_source)
 
+    api_url = os.getenv("LMS_API_URL", "")
+    api_token = os.getenv("API_TOKEN", "")
+
     sync_task = SyncTask(
         task_name="LMS学习数据同步",
         data_source=data_source,
         sync_batch=sync_batch,
         status="running",
         started_at=datetime.utcnow(),
+        config_source="LMS_API_URL",
+        config_url=api_url,
     )
     db.session.add(sync_task)
     db.session.commit()
 
     try:
         if records is None:
-            records = _fetch_external_lms_data()
+            records = _fetch_from_api(api_url, api_token, data_source, sync_batch)
 
         total_records = len(records)
         success_count = 0
@@ -479,6 +564,8 @@ def sync_lms_data(self, records: Optional[List[Dict]] = None) -> Dict[str, Any]:
         sync_task.completed_at = datetime.utcnow()
         db.session.commit()
 
+        logger.info(f"LMS数据同步完成: 共{total_records}条, 成功{success_count}条, 失败{error_count}条")
+
         return {
             "status": "success",
             "sync_batch": sync_batch,
@@ -486,6 +573,8 @@ def sync_lms_data(self, records: Optional[List[Dict]] = None) -> Dict[str, Any]:
             "success_count": success_count,
             "error_count": error_count,
             "data_source": data_source,
+            "config_source": "LMS_API_URL",
+            "config_url": api_url,
         }
 
     except Exception as e:
@@ -514,30 +603,3 @@ def run_progress_warning_check() -> Dict[str, Any]:
     from app.services import update_progress_warnings
     result = update_progress_warnings()
     return result
-
-
-def _fetch_external_employment_data() -> List[Dict]:
-    api_url = os.getenv("EMPLOYMENT_API_URL")
-    api_token = os.getenv("API_TOKEN")
-    if not api_url or not api_token:
-        logger.warning("未配置就业系统API，返回空数据")
-        return []
-    return []
-
-
-def _fetch_external_live_data() -> List[Dict]:
-    api_url = os.getenv("LIVE_API_URL")
-    api_token = os.getenv("API_TOKEN")
-    if not api_url or not api_token:
-        logger.warning("未配置直播平台API，返回空数据")
-        return []
-    return []
-
-
-def _fetch_external_lms_data() -> List[Dict]:
-    api_url = os.getenv("LMS_API_URL")
-    api_token = os.getenv("API_TOKEN")
-    if not api_url or not api_token:
-        logger.warning("未配置LMS API，返回空数据")
-        return []
-    return []

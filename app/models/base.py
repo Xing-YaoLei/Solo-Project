@@ -234,6 +234,8 @@ class SyncTask(db.Model):
     started_at = db.Column(db.DateTime)
     completed_at = db.Column(db.DateTime)
     error_message = db.Column(db.Text)
+    config_source = db.Column(db.String(100))
+    config_url = db.Column(db.String(500))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def __repr__(self):

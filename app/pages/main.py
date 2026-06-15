@@ -266,7 +266,6 @@ def create_layout():
     course_options = get_course_options()
     return html.Div(
         [
-            dcc.Location(id="url", refresh=False),
             dcc.Store(id="filter-store", data={}),
             dcc.Interval(id="refresh-interval", interval=5 * 60 * 1000, n_intervals=0),
             html.Div(
@@ -615,6 +614,7 @@ def create_layout():
             style={"position": "fixed", "top": 66, "right": 10, "zIndex": 9999},
         ),
         dcc.Download(id="download-report"),
+        html.Div(id="nav-placeholder", style={"display": "none"}),
     ],
     style={"backgroundColor": COLORS["background"], "minHeight": "100vh", "padding": "20px"},
     )

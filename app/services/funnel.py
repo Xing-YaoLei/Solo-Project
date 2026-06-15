@@ -277,7 +277,7 @@ def get_completion_metrics(filters: FilterParams) -> Dict[str, Any]:
 
     total_enrolled = len(df)
     completed = df[df["completion_rate"] >= 100]
-    passed = df[df["is_pass"] == True]
+    passed = completed[completed["is_pass"] == True]
 
     progress_warning = df[df["progress_warning"] == True]
     in_progress = df[df["status"] == "in_progress"]

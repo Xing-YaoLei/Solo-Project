@@ -396,20 +396,17 @@ def create_samples_tables(samples):
 def create_layout():
     return html.Div(
         [
-            dcc.Location(id="drilldown-url", refresh=False),
-            dcc.Store(id="drilldown-grade-id", data=None),
             html.Div(
                 [
                 html.Div(
                     [
-                        dbc.Button(
+                        dcc.Link(
                             [
                                 html.I(className="fas fa-arrow-left me-2"),
                                 "返回概览",
                             ],
-                            id="back-to-main",
-                            color="light",
-                            className="me-3",
+                            href="/",
+                            className="btn btn-light me-3",
                         ),
                         html.H4(
                             [
