@@ -1,0 +1,196 @@
+[gd_scene load_steps=2 format=3 uid="uid://config001"]
+
+[ext_resource type="Script" path="res://scripts/ConfigScreen.gd" id="1_script"]
+
+[node name="ConfigScreen" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.93, 0.95, 0.98, 1)
+
+[node name="TopBar" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 70.0
+grow_horizontal = 2
+
+[node name="MarginContainer" type="MarginContainer" parent="TopBar"]
+layout_mode = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 12
+
+[node name="HBoxContainer" type="HBoxContainer" parent="TopBar/MarginContainer"]
+layout_mode = 2
+
+[node name="BackButton" type="Button" parent="TopBar/MarginContainer/HBoxContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(100, 44)
+text = "返回"
+
+[node name="TitleLabel" type="Label" parent="TopBar/MarginContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "系统配置"
+theme_override_font_sizes/font_size = 28
+theme_override_colors/font_color = Color(0.1, 0.25, 0.55, 1)
+horizontal_alignment = 1
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 70.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 60
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 60
+theme_override_constants/margin_bottom = 24
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="ModePanel" type="PanelContainer" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="MarginContainer" type="MarginContainer" parent="MarginContainer/VBoxContainer/ModePanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 16
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer/VBoxContainer/ModePanel/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="ModeTitle" type="Label" parent="MarginContainer/VBoxContainer/ModePanel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+text = "训练模式"
+theme_override_font_sizes/font_size = 20
+theme_override_colors/font_color = Color(0.1, 0.25, 0.55, 1)
+
+[node name="ModeOption" type="OptionButton" parent="MarginContainer/VBoxContainer/ModePanel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 44)
+theme_override_font_sizes/font_size = 18
+
+[node name="TimePanel" type="PanelContainer" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="MarginContainer" type="MarginContainer" parent="MarginContainer/VBoxContainer/TimePanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 16
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer/VBoxContainer/TimePanel/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="TimeTitle" type="Label" parent="MarginContainer/VBoxContainer/TimePanel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+text = "开放时间"
+theme_override_font_sizes/font_size = 20
+theme_override_colors/font_color = Color(0.1, 0.25, 0.55, 1)
+
+[node name="EnabledCheckbox" type="CheckBox" parent="MarginContainer/VBoxContainer/TimePanel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+text = "启用开放时间限制"
+theme_override_font_sizes/font_size = 18
+
+[node name="TimeRow" type="HBoxContainer" parent="MarginContainer/VBoxContainer/TimePanel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="StartLabel" type="Label" parent="MarginContainer/VBoxContainer/TimePanel/MarginContainer/VBoxContainer/TimeRow"]
+layout_mode = 2
+text = "开始时间:"
+theme_override_font_sizes/font_size = 18
+theme_override_colors/font_color = Color(0.4, 0.45, 0.55, 1)
+
+[node name="StartTimeEdit" type="LineEdit" parent="MarginContainer/VBoxContainer/TimePanel/MarginContainer/VBoxContainer/TimeRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(120, 40)
+text = "08:00"
+placeholder_text = "HH:MM"
+theme_override_font_sizes/font_size = 18
+
+[node name="EndLabel" type="Label" parent="MarginContainer/VBoxContainer/TimePanel/MarginContainer/VBoxContainer/TimeRow"]
+layout_mode = 2
+text = "结束时间:"
+theme_override_font_sizes/font_size = 18
+theme_override_colors/font_color = Color(0.4, 0.45, 0.55, 1)
+
+[node name="EndTimeEdit" type="LineEdit" parent="MarginContainer/VBoxContainer/TimePanel/MarginContainer/VBoxContainer/TimeRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(120, 40)
+text = "22:00"
+placeholder_text = "HH:MM"
+theme_override_font_sizes/font_size = 18
+
+[node name="RewardPanel" type="PanelContainer" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="MarginContainer" type="MarginContainer" parent="MarginContainer/VBoxContainer/RewardPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 16
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer/VBoxContainer/RewardPanel/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="RewardTitle" type="Label" parent="MarginContainer/VBoxContainer/RewardPanel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+text = "奖励标准"
+theme_override_font_sizes/font_size = 20
+theme_override_colors/font_color = Color(0.1, 0.25, 0.55, 1)
+
+[node name="RewardContainer" type="VBoxContainer" parent="MarginContainer/VBoxContainer/RewardPanel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ButtonRow" type="HBoxContainer" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_constants/separation = 24
+
+[node name="SaveButton" type="Button" parent="MarginContainer/VBoxContainer/ButtonRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(180, 52)
+text = "保存配置"
+theme_override_font_sizes/font_size = 20
+
+[node name="ResetButton" type="Button" parent="MarginContainer/VBoxContainer/ButtonRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(180, 52)
+text = "恢复默认"
+theme_override_font_sizes/font_size = 20
+
+[node name="HintLabel" type="Label" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+text = ""
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 16

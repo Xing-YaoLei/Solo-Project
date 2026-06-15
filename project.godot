@@ -1,0 +1,35 @@
+; Engine configuration file.
+; Godot 4 project for 高校教务教材订购调度解谜游戏
+
+config_version=5
+
+[application]
+
+config/name="高校教务教材订购调度解谜游戏"
+config/description="面向高校教务岗位训练的教材订购调度解谜游戏"
+run/main_scene="res://scenes/MainMenu.tscn"
+config/features=PackedStringArray("4.2", "GL Compatibility")
+config/icon="res://icon.svg"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/size/resizable=false
+window/stretch/mode="canvas_items"
+window/stretch/aspect="keep"
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/canvas_textures/default_texture_filter=0
+
+[gui]
+
+theme/custom="res://themes/default_theme.tres"
+
+[autoload]
+
+GameManager="*res://scripts/GameManager.gd"
+SceneManager="*res://scripts/SceneManager.gd"
