@@ -6,14 +6,7 @@ import os
 from app.config import settings
 
 db_url = settings.DATABASE_URL
-try:
-    import psycopg  # noqa: F401
-except ImportError:
-    if "postgresql" in db_url:
-        print(f"⚠️  PostgreSQL 驱动未安装，回退到 SQLite: {settings.DATABASE_URL_SQLITE}")
-        db_url = settings.DATABASE_URL_SQLITE
-
-connect_args = {"check_same_thread": False} if db_url.startswith("sqlite") else {}
+connect_args = {} if not db_url.startswith("sqlite") else {"check_same_thread": False}
 engine = create_engine(db_url, connect_args=connect_args)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

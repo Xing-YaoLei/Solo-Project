@@ -28,7 +28,7 @@ def get_teacher_course_ids(db: Session, teacher: models.User) -> List[int]:
 def calculate_risk_level(
     progress: models.StudyProgress,
     db: Session,
-    allow_skip: bool = False
+    allow_skip: bool = True
 ) -> models.RiskLevel:
     rules = db.query(models.ReminderRule).filter(
         models.ReminderRule.is_active == True
@@ -263,12 +263,15 @@ def get_completion_trend(
     trends = []
     for i in range(days):
         current_date = start_date + timedelta(days=i)
-        
+
         query = db.query(
             func.avg(models.StudyProgress.completion_rate),
             func.count(models.StudyProgress.id)
         ).filter(
-            func.date(models.StudyProgress.updated_at) <= current_date
+            func.date(func.coalesce(
+                models.StudyProgress.updated_at,
+                models.StudyProgress.created_at
+            )) <= current_date
         )
         
         if course_id:
