@@ -4,7 +4,9 @@ import json
 from datetime import datetime
 from app.celery_app import celery_app
 from app.database import AsyncSessionLocal
-from app.models import ReportDownload, User
+from app.models import ReportDownload, User, ReviewApplication, AdvisorQuota
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from app.api.reports import _generate_excel_report, get_classroom_utilization, get_monthly_summary
 
 REPORTS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "generated_reports")
@@ -29,9 +31,11 @@ def generate_report_async(self, report_type: str, filter_criteria: dict, generat
             report_id = report.id
 
             try:
+                user = (await db.execute(select(User).where(User.id == generated_by_id))).scalar_one_or_none()
+                generated_by_name = user.full_name if user else "未知"
+
                 data = []
                 if report_type == "classroom_utilization":
-                    user = (await db.execute(select(User).where(User.id == generated_by_id))).scalar_one()
                     data_dicts = await get_classroom_utilization(
                         filter_criteria.get("year", datetime.now().year),
                         filter_criteria.get("month", datetime.now().month),
@@ -40,13 +44,38 @@ def generate_report_async(self, report_type: str, filter_criteria: dict, generat
                     )
                     data = [d.model_dump() for d in data_dicts]
                 elif report_type == "monthly_summary":
-                    user = (await db.execute(select(User).where(User.id == generated_by_id))).scalar_one()
                     data_dicts = await get_monthly_summary(filter_criteria.get("year"), user, db)
                     data = [d.model_dump() for d in data_dicts]
+                elif report_type == "review_details":
+                    reviews = (await db.execute(
+                        select(ReviewApplication).options(selectinload(ReviewApplication.student), selectinload(ReviewApplication.course))
+                    )).scalars().all()
+                    for r in reviews:
+                        data.append({
+                            "申请编号": r.application_no,
+                            "学生": r.student.name if r.student else "",
+                            "课程": r.course.course_name if r.course else "",
+                            "当前成绩": r.current_score,
+                            "状态": r.status.value,
+                            "申请时间": r.applied_at.strftime("%Y-%m-%d %H:%M") if r.applied_at else "",
+                        })
+                elif report_type == "advisor_quota":
+                    quotas = (await db.execute(
+                        select(AdvisorQuota).options(selectinload(AdvisorQuota.advisor))
+                    )).scalars().all()
+                    for q in quotas:
+                        data.append({
+                            "导师": q.advisor.full_name if q.advisor else "",
+                            "学期": q.semester,
+                            "最大名额": q.max_quota,
+                            "已分配": q.current_assigned,
+                            "剩余名额": q.max_quota - q.current_assigned,
+                        })
 
-                file_bytes = _generate_excel_report(report_type, data, filter_criteria)
+                file_bytes = _generate_excel_report(report_type, data, filter_criteria, generated_by=generated_by_name)
                 file_name = f"{report.report_name}.xlsx"
                 file_path = os.path.join(REPORTS_DIR, file_name)
+                os.makedirs(REPORTS_DIR, exist_ok=True)
                 with open(file_path, "wb") as f:
                     f.write(file_bytes)
 

@@ -2,10 +2,12 @@ import io
 import os
 import json
 from datetime import datetime, date
+from urllib.parse import quote
 from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, extract
+from sqlalchemy.orm import selectinload
 from typing import Optional
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill
@@ -142,13 +144,15 @@ async def get_monthly_summary(
     return result
 
 
-def _generate_excel_report(report_type: str, data: list, filter_criteria: dict) -> bytes:
+def _generate_excel_report(report_type: str, data: list, filter_criteria: dict, generated_by: str = "") -> bytes:
     wb = Workbook()
     ws = wb.active
     ws.title = report_type
 
     header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
     header_font = Font(bold=True, color="FFFFFF")
+    meta_font = Font(bold=True, size=11)
+    meta_val_font = Font(size=11)
 
     if not data:
         ws.append(["无数据"])
@@ -166,10 +170,19 @@ def _generate_excel_report(report_type: str, data: list, filter_criteria: dict) 
             ws.append([row_dict.get(h, "") for h in headers])
 
     ws.append([])
+    ws.append(["报表元信息"])
+    ws.append(["生成者", generated_by or "未知"])
+    ws.append(["生成时间", datetime.now().strftime("%Y-%m-%d %H:%M:%S")])
+    ws.append([])
     ws.append(["筛选口径"])
     filter_items = list(filter_criteria.items())
     for k, v in filter_items:
         ws.append([k, json.dumps(v, ensure_ascii=False) if isinstance(v, (dict, list)) else str(v)])
+
+    for row in ws.iter_rows(min_row=ws.max_row - len(filter_items) - 4, max_row=ws.max_row, min_col=1, max_col=1):
+        for cell in row:
+            if cell.value and not isinstance(cell.value, (int, float)):
+                cell.font = meta_font
 
     for col in ws.columns:
         max_length = 0
@@ -223,7 +236,9 @@ async def generate_report(
         data_dicts = await get_monthly_summary(filter_criteria.get("year"), current_user, db)
         data = [d.model_dump() for d in data_dicts]
     elif report_type == "review_details":
-        reviews = (await db.execute(select(ReviewApplication))).scalars().all()
+        reviews = (await db.execute(
+            select(ReviewApplication).options(selectinload(ReviewApplication.student), selectinload(ReviewApplication.course))
+        )).scalars().all()
         data = []
         for r in reviews:
             data.append({
@@ -236,7 +251,9 @@ async def generate_report(
             })
     elif report_type == "advisor_quota":
         from app.models import AdvisorQuota
-        quotas = (await db.execute(select(AdvisorQuota))).scalars().all()
+        quotas = (await db.execute(
+            select(AdvisorQuota).options(selectinload(AdvisorQuota.advisor))
+        )).scalars().all()
         data = []
         for q in quotas:
             data.append({
@@ -247,7 +264,7 @@ async def generate_report(
                 "剩余名额": q.max_quota - q.current_assigned,
             })
 
-    file_bytes = _generate_excel_report(report_type, data, filter_criteria)
+    file_bytes = _generate_excel_report(report_type, data, filter_criteria, generated_by=current_user.full_name)
     file_name = f"{report.report_name}.xlsx"
     file_path = os.path.join(REPORTS_DIR, file_name)
     with open(file_path, "wb") as f:
@@ -271,7 +288,7 @@ async def download_report(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(ReportDownload).where(ReportDownload.id == report_id))
+    result = await db.execute(select(ReportDownload).options(selectinload(ReportDownload.generated_by)).where(ReportDownload.id == report_id))
     report = result.scalar_one_or_none()
     if not report:
         raise HTTPException(status_code=404, detail="报表不存在")
@@ -303,15 +320,15 @@ async def download_report(
                 yield chunk
 
     headers = {
-        "X-Report-Name": report.report_name,
-        "X-Generated-By": report.generated_by.full_name if report.generated_by else "",
-        "X-Filter-Criteria": json.dumps(report.filter_criteria, ensure_ascii=False),
+        "Content-Disposition": f'attachment; filename="{report.file_path}"',
+        "X-Report-Name": quote(report.report_name, safe=""),
+        "X-Generated-By": quote(report.generated_by.full_name, safe="") if report.generated_by else "",
+        "X-Filter-Criteria": quote(json.dumps(report.filter_criteria, ensure_ascii=False), safe=""),
     }
     return StreamingResponse(
         iter_file(),
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers=headers,
-        headers_extra={},
     )
 
 
@@ -324,7 +341,7 @@ async def list_reports(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    query = select(ReportDownload)
+    query = select(ReportDownload).options(selectinload(ReportDownload.generated_by))
     count_query = select(func.count(ReportDownload.id))
 
     if report_type:
@@ -356,7 +373,7 @@ async def get_report_info(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(ReportDownload).where(ReportDownload.id == report_id))
+    result = await db.execute(select(ReportDownload).options(selectinload(ReportDownload.generated_by)).where(ReportDownload.id == report_id))
     report = result.scalar_one_or_none()
     if not report:
         raise HTTPException(status_code=404, detail="报表不存在")

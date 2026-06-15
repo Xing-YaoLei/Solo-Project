@@ -5,11 +5,7 @@ from app.config import settings
 
 Base = declarative_base()
 
-connect_args = {}
-if settings.DATABASE_URL.startswith("sqlite"):
-    connect_args = {"check_same_thread": False}
-
-engine = create_async_engine(settings.DATABASE_URL, echo=False, future=True, connect_args=connect_args)
+engine = create_async_engine(settings.DATABASE_URL, echo=False, future=True)
 AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 
