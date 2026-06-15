@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>题目标签管理 - 青少年培训续费跟进排程台</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body class="bg-light">
+
+<div th:insert="~{layout/fragments :: header}"></div>
+
+<div class="d-flex">
+    <div th:insert="~{layout/fragments :: sidebar}"></div>
+
+    <main class="flex-grow-1 p-4">
+        <div th:insert="~{layout/fragments :: pageHeader('题目标签管理', '题目录入与标签关联')}"></div>
+
+        <ul class="nav nav-tabs mb-4" id="mainTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="question-tab" data-bs-toggle="tab" data-bs-target="#questionPanel" type="button" role="tab">
+                    <i class="bi bi-list-task me-1"></i>题目管理
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tag-tab" data-bs-toggle="tab" data-bs-target="#tagPanel" type="button" role="tab">
+                    <i class="bi bi-tags me-1"></i>标签管理
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="mainTabContent">
+            <div class="tab-pane fade show active" id="questionPanel" role="tabpanel">
+                <div class="card border-0 shadow-sm rounded-4 mb-4">
+                    <div class="card-body p-4">
+                        <h6 class="fw-bold mb-3"><i class="bi bi-funnel me-2"></i>筛选题目</h6>
+                        <form class="row g-3" id="questionFilterForm">
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold">选择课程</label>
+                                <select class="form-select" id="filterCourse">
+                                    <option value="">请选择课程</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold">选择作业</label>
+                                <select class="form-select" id="filterHomework" disabled>
+                                    <option value="">请先选择课程</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <div class="d-grid gap-2 w-100">
+                                    <button type="button" class="btn btn-primary" id="btnLoadQuestions">
+                                        <i class="bi bi-search me-1"></i>加载题目
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <p class="text-muted mb-0">共 <span class="fw-bold text-primary" id="questionCount">0</span> 条题目</p>
+                    <button type="button" class="btn btn-success" id="btnAddQuestion">
+                        <i class="bi bi-plus-circle me-1"></i>新增题目
+                    </button>
+                </div>
+
+                <div class="card border-0 shadow-sm rounded-4">
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                <tr>
+                                    <th class="ps-4">ID</th>
+                                    <th>题目文本</th>
+                                    <th>题型</th>
+                                    <th>分值</th>
+                                    <th>排序</th>
+                                    <th>状态</th>
+                                    <th>标签</th>
+                                    <th class="pe-4">操作</th>
+                                </tr>
+                                </thead>
+                                <tbody id="questionTableBody">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="tagPanel" role="tabpanel">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <p class="text-muted mb-0">共 <span class="fw-bold text-primary" id="tagCount">0</span> 个标签</p>
+                    <button type="button" class="btn btn-success" id="btnAddTag">
+                        <i class="bi bi-plus-circle me-1"></i>新增标签
+                    </button>
+                </div>
+
+                <div class="card border-0 shadow-sm rounded-4">
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                <tr>
+                                    <th class="ps-4">ID</th>
+                                    <th>标签名称</th>
+                                    <th>描述</th>
+                                    <th>标签类型</th>
+                                    <th>状态</th>
+                                    <th>关联题目数</th>
+                                    <th class="pe-4">操作</th>
+                                </tr>
+                                </thead>
+                                <tbody id="tagTableBody">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div th:insert="~{layout/fragments :: footer}"></div>
+    </main>
+</div>
+
+<div class="modal fade" id="questionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content border-0 rounded-4">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold" id="questionModalTitle">
+                    <i class="bi bi-plus-circle text-primary me-2"></i>新增题目
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form class="row g-3" id="questionForm">
+                    <input type="hidden" id="qId">
+                    <input type="hidden" id="qHomeworkId">
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">题目文本 <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="qQuestionText" rows="3" placeholder="请输入题目内容"></textarea>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">参考答案</label>
+                        <textarea class="form-control" id="qAnswer" rows="3" placeholder="请输入参考答案"></textarea>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">题型 <span class="text-danger">*</span></label>
+                        <select class="form-select" id="qQuestionType">
+                            <option value="">请选择题型</option>
+                            <option value="选择题">选择题</option>
+                            <option value="填空题">填空题</option>
+                            <option value="判断题">判断题</option>
+                            <option value="简答题">简答题</option>
+                            <option value="编程题">编程题</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">分值 <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" id="qScore" min="0" step="0.5" placeholder="请输入分值">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">排序</label>
+                        <input type="number" class="form-control" id="qSortOrder" min="0" placeholder="请输入排序号">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">关联标签</label>
+                        <div id="qTagCheckboxes" class="d-flex flex-wrap gap-2"></div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="btnSaveQuestion">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="tagModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 rounded-4">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold" id="tagModalTitle">
+                    <i class="bi bi-tag text-primary me-2"></i>新增标签
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form class="row g-3" id="tagForm">
+                    <input type="hidden" id="tId">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">标签名称 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="tTagName" placeholder="请输入标签名称">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">标签类型 <span class="text-danger">*</span></label>
+                        <select class="form-select" id="tTagType">
+                            <option value="">请选择类型</option>
+                            <option value="知识点">知识点</option>
+                            <option value="能力">能力</option>
+                            <option value="难度">难度</option>
+                            <option value="题型">题型</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">描述</label>
+                        <textarea class="form-control" id="tDescription" rows="3" placeholder="请输入标签描述"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="btnSaveTag">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script th:src="@{/js/app.js}"></script>
+<script>
+(function () {
+    let allTags = [];
+    let currentHomeworkId = null;
+
+    const questionTypeMap = {
+        '选择题': 'bg-primary',
+        '填空题': 'bg-info text-dark',
+        '判断题': 'bg-warning text-dark',
+        '简答题': 'bg-purple',
+        '编程题': 'bg-dark'
+    };
+
+    const tagTypeMap = {
+        '知识点': 'bg-primary',
+        '能力': 'bg-success',
+        '难度': 'bg-warning text-dark',
+        '题型': 'bg-info text-dark'
+    };
+
+    const statusBadgeMap = {
+        'ACTIVE': 'bg-success',
+        'INACTIVE': 'bg-secondary',
+        'DELETED': 'bg-danger'
+    };
+
+    function statusBadge(status) {
+        const cls = statusBadgeMap[status] || 'bg-secondary';
+        return '<span class="badge ' + cls + '">' + status + '</span>';
+    }
+
+    function questionTypeBadge(type) {
+        const cls = questionTypeMap[type] || 'bg-secondary';
+        return '<span class="badge ' + cls + '">' + type + '</span>';
+    }
+
+    function tagTypeBadge(type) {
+        const cls = tagTypeMap[type] || 'bg-secondary';
+        return '<span class="badge ' + cls + '">' + type + '</span>';
+    }
+
+    function renderTagBadges(tags) {
+        if (!tags || tags.length === 0) return '<span class="text-muted small">无标签</span>';
+        return tags.map(function (t) {
+            return '<span class="badge bg-light text-dark border me-1">' +
+                '<i class="bi bi-tag me-1"></i>' + escapeHtml(t.tagName || t.name || '') + '</span>';
+        }).join('');
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        var div = document.createElement('div');
+        div.appendChild(document.createTextNode(str));
+        return div.innerHTML;
+    }
+
+    async function loadCourses() {
+        var res = await ApiClient.get('/courses/list');
+        var sel = document.getElementById('filterCourse');
+        sel.innerHTML = '<option value="">请选择课程</option>';
+        if (res.success && res.data) {
+            var list = Array.isArray(res.data) ? res.data : (res.data.records || res.data.list || []);
+            list.forEach(function (c) {
+                sel.innerHTML += '<option value="' + (c.id || c.courseId) + '">' + escapeHtml(c.courseName || c.name || '') + '</option>';
+            });
+        }
+    }
+
+    async function loadHomework(courseId) {
+        var sel = document.getElementById('filterHomework');
+        sel.disabled = false;
+        sel.innerHTML = '<option value="">请选择作业</option>';
+        if (!courseId) {
+            sel.disabled = true;
+            sel.innerHTML = '<option value="">请先选择课程</option>';
+            return;
+        }
+        var res = await ApiClient.get('/homework/course/' + courseId);
+        if (res.success && res.data) {
+            var list = Array.isArray(res.data) ? res.data : (res.data.records || res.data.list || []);
+            list.forEach(function (h) {
+                sel.innerHTML += '<option value="' + (h.id || h.homeworkId) + '">' + escapeHtml(h.title || h.homeworkName || '') + '</option>';
+            });
+        }
+    }
+
+    async function loadQuestions(homeworkId) {
+        currentHomeworkId = homeworkId;
+        var tbody = document.getElementById('questionTableBody');
+        if (!homeworkId) {
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">请选择作业后加载题目</td></tr>';
+            document.getElementById('questionCount').textContent = '0';
+            return;
+        }
+        var res = await ApiClient.get('/questions/homework/' + homeworkId);
+        if (res.success && res.data) {
+            var list = Array.isArray(res.data) ? res.data : (res.data.records || res.data.list || []);
+            document.getElementById('questionCount').textContent = list.length;
+            if (list.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">暂无题目数据</td></tr>';
+                return;
+            }
+            tbody.innerHTML = list.map(function (q) {
+                var tags = q.tags || q.tagList || [];
+                return '<tr>' +
+                    '<td class="ps-4"><span class="text-muted small">' + (q.id || '') + '</span></td>' +
+                    '<td style="max-width:300px;"><span class="d-inline-block text-truncate" style="max-width:280px;" title="' + escapeHtml(q.questionText || '') + '">' + escapeHtml(q.questionText || '') + '</span></td>' +
+                    '<td>' + questionTypeBadge(q.questionType || '') + '</td>' +
+                    '<td>' + (q.score != null ? q.score : '-') + '</td>' +
+                    '<td>' + (q.sortOrder != null ? q.sortOrder : '-') + '</td>' +
+                    '<td>' + statusBadge(q.status || 'ACTIVE') + '</td>' +
+                    '<td>' + renderTagBadges(tags) + '</td>' +
+                    '<td class="pe-4">' +
+                        '<div class="btn-group btn-group-sm">' +
+                            '<button type="button" class="btn btn-outline-primary" title="编辑" onclick="App._editQuestion(' + (q.id || 0) + ')"><i class="bi bi-pencil"></i></button>' +
+                            '<button type="button" class="btn btn-outline-danger" title="删除" onclick="App._deleteQuestion(' + (q.id || 0) + ')"><i class="bi bi-trash"></i></button>' +
+                        '</div>' +
+                    '</td>' +
+                    '</tr>';
+            }).join('');
+        } else {
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-danger py-4">加载失败</td></tr>';
+        }
+    }
+
+    async function loadTags() {
+        var res = await ApiClient.get('/tags/list');
+        if (res.success && res.data) {
+            allTags = Array.isArray(res.data) ? res.data : (res.data.records || res.data.list || []);
+        }
+        renderTagTable();
+        renderTagCheckboxes();
+    }
+
+    function renderTagTable() {
+        var tbody = document.getElementById('tagTableBody');
+        document.getElementById('tagCount').textContent = allTags.length;
+        if (allTags.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">暂无标签数据</td></tr>';
+            return;
+        }
+        tbody.innerHTML = allTags.map(function (t) {
+            return '<tr>' +
+                '<td class="ps-4"><span class="text-muted small">' + (t.id || '') + '</span></td>' +
+                '<td><span class="fw-semibold">' + escapeHtml(t.tagName || '') + '</span></td>' +
+                '<td><span class="small">' + escapeHtml(t.description || '-') + '</span></td>' +
+                '<td>' + tagTypeBadge(t.tagType || '') + '</td>' +
+                '<td>' + statusBadge(t.status || 'ACTIVE') + '</td>' +
+                '<td>' + (t.questionCount != null ? t.questionCount : 0) + '</td>' +
+                '<td class="pe-4">' +
+                    '<div class="btn-group btn-group-sm">' +
+                        '<button type="button" class="btn btn-outline-primary" title="编辑" onclick="App._editTag(' + (t.id || 0) + ')"><i class="bi bi-pencil"></i></button>' +
+                        '<button type="button" class="btn btn-outline-danger" title="删除" onclick="App._deleteTag(' + (t.id || 0) + ')"><i class="bi bi-trash"></i></button>' +
+                    '</div>' +
+                '</td>' +
+                '</tr>';
+        }).join('');
+    }
+
+    function renderTagCheckboxes(selectedIds) {
+        var container = document.getElementById('qTagCheckboxes');
+        if (allTags.length === 0) {
+            container.innerHTML = '<span class="text-muted small">暂无可用标签，请先在标签管理中创建</span>';
+            return;
+        }
+        container.innerHTML = allTags.map(function (t) {
+            var checked = selectedIds && selectedIds.indexOf(t.id) > -1 ? ' checked' : '';
+            return '<div class="form-check form-check-inline">' +
+                '<input class="form-check-input q-tag-cb" type="checkbox" value="' + t.id + '" id="qTag_' + t.id + '"' + checked + '>' +
+                '<label class="form-check-label small" for="qTag_' + t.id + '">' + escapeHtml(t.tagName || '') + '</label>' +
+                '</div>';
+        }).join('');
+    }
+
+    function getSelectedTagIds() {
+        var ids = [];
+        document.querySelectorAll('.q-tag-cb:checked').forEach(function (cb) {
+            ids.push(Number(cb.value));
+        });
+        return ids;
+    }
+
+    function openQuestionModal(question) {
+        document.getElementById('qId').value = question ? question.id : '';
+        document.getElementById('qHomeworkId').value = question ? (question.homeworkId || currentHomeworkId || '') : (currentHomeworkId || '');
+        document.getElementById('qQuestionText').value = question ? (question.questionText || '') : '';
+        document.getElementById('qAnswer').value = question ? (question.answer || '') : '';
+        document.getElementById('qQuestionType').value = question ? (question.questionType || '') : '';
+        document.getElementById('qScore').value = question ? (question.score || '') : '';
+        document.getElementById('qSortOrder').value = question ? (question.sortOrder != null ? question.sortOrder : '') : '';
+
+        var selectedIds = [];
+        if (question && (question.tags || question.tagList)) {
+            var tags = question.tags || question.tagList;
+            selectedIds = tags.map(function (t) { return t.id || t.tagId; });
+        }
+        renderTagCheckboxes(selectedIds);
+
+        var title = document.getElementById('questionModalTitle');
+        if (question) {
+            title.innerHTML = '<i class="bi bi-pencil text-primary me-2"></i>编辑题目';
+        } else {
+            title.innerHTML = '<i class="bi bi-plus-circle text-primary me-2"></i>新增题目';
+        }
+        openModal('questionModal');
+    }
+
+    function openTagModal(tag) {
+        document.getElementById('tId').value = tag ? tag.id : '';
+        document.getElementById('tTagName').value = tag ? (tag.tagName || '') : '';
+        document.getElementById('tTagType').value = tag ? (tag.tagType || '') : '';
+        document.getElementById('tDescription').value = tag ? (tag.description || '') : '';
+
+        var title = document.getElementById('tagModalTitle');
+        if (tag) {
+            title.innerHTML = '<i class="bi bi-pencil text-primary me-2"></i>编辑标签';
+        } else {
+            title.innerHTML = '<i class="bi bi-tag text-primary me-2"></i>新增标签';
+        }
+        openModal('tagModal');
+    }
+
+    async function saveQuestion() {
+        var id = document.getElementById('qId').value;
+        var homeworkId = document.getElementById('qHomeworkId').value;
+        var questionText = document.getElementById('qQuestionText').value.trim();
+        var answer = document.getElementById('qAnswer').value.trim();
+        var questionType = document.getElementById('qQuestionType').value;
+        var score = document.getElementById('qScore').value;
+        var sortOrder = document.getElementById('qSortOrder').value;
+        var tagIds = getSelectedTagIds();
+
+        if (!questionText) { showToast('请输入题目文本', 'warning'); return; }
+        if (!questionType) { showToast('请选择题型', 'warning'); return; }
+        if (!score) { showToast('请输入分值', 'warning'); return; }
+        if (!homeworkId) { showToast('未选择作业', 'warning'); return; }
+
+        var payload = {
+            question: {
+                homeworkId: homeworkId,
+                questionText: questionText,
+                answer: answer,
+                questionType: questionType,
+                score: parseFloat(score),
+                sortOrder: sortOrder ? parseInt(sortOrder) : 0
+            },
+            tagIds: tagIds
+        };
+
+        var res;
+        if (id) {
+            payload.question.id = id;
+            res = await ApiClient.put('/questions/' + id, payload);
+        } else {
+            res = await ApiClient.post('/questions/', payload);
+        }
+
+        if (res.success) {
+            showToast(id ? '题目更新成功' : '题目创建成功', 'success');
+            closeModal('questionModal');
+            loadQuestions(currentHomeworkId);
+        } else {
+            showToast('操作失败: ' + (res.error || ''), 'error');
+        }
+    }
+
+    async function saveTag() {
+        var id = document.getElementById('tId').value;
+        var tagName = document.getElementById('tTagName').value.trim();
+        var tagType = document.getElementById('tTagType').value;
+        var description = document.getElementById('tDescription').value.trim();
+
+        if (!tagName) { showToast('请输入标签名称', 'warning'); return; }
+        if (!tagType) { showToast('请选择标签类型', 'warning'); return; }
+
+        var payload = { tagName: tagName, tagType: tagType, description: description };
+
+        var res;
+        if (id) {
+            payload.id = id;
+            res = await ApiClient.put('/tags/' + id, payload);
+        } else {
+            res = await ApiClient.post('/tags/', payload);
+        }
+
+        if (res.success) {
+            showToast(id ? '标签更新成功' : '标签创建成功', 'success');
+            closeModal('tagModal');
+            loadTags();
+        } else {
+            showToast('操作失败: ' + (res.error || ''), 'error');
+        }
+    }
+
+    async function deleteQuestion(id) {
+        var ok = await confirmDialog('确定要删除该题目吗？此操作不可撤销。');
+        if (!ok) return;
+        var res = await ApiClient.delete('/questions/' + id);
+        if (res.success) {
+            showToast('题目已删除', 'success');
+            loadQuestions(currentHomeworkId);
+        } else {
+            showToast('删除失败: ' + (res.error || ''), 'error');
+        }
+    }
+
+    async function deleteTag(id) {
+        var ok = await confirmDialog('确定要删除该标签吗？此操作不可撤销。');
+        if (!ok) return;
+        var res = await ApiClient.delete('/tags/' + id);
+        if (res.success) {
+            showToast('标签已删除', 'success');
+            loadTags();
+        } else {
+            showToast('删除失败: ' + (res.error || ''), 'error');
+        }
+    }
+
+    function findQuestionById(id) {
+        var rows = document.getElementById('questionTableBody').querySelectorAll('tr');
+        return null;
+    }
+
+    var questionCache = [];
+    var originalLoadQuestions = loadQuestions;
+
+    async function loadQuestionsWithCache(homeworkId) {
+        currentHomeworkId = homeworkId;
+        var tbody = document.getElementById('questionTableBody');
+        if (!homeworkId) {
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">请选择作业后加载题目</td></tr>';
+            document.getElementById('questionCount').textContent = '0';
+            questionCache = [];
+            return;
+        }
+        var res = await ApiClient.get('/questions/homework/' + homeworkId);
+        if (res.success && res.data) {
+            questionCache = Array.isArray(res.data) ? res.data : (res.data.records || res.data.list || []);
+        } else {
+            questionCache = [];
+        }
+        renderQuestionTable();
+    }
+
+    function renderQuestionTable() {
+        var tbody = document.getElementById('questionTableBody');
+        var list = questionCache;
+        document.getElementById('questionCount').textContent = list.length;
+        if (list.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">暂无题目数据</td></tr>';
+            return;
+        }
+        tbody.innerHTML = list.map(function (q) {
+            var tags = q.tags || q.tagList || [];
+            return '<tr>' +
+                '<td class="ps-4"><span class="text-muted small">' + (q.id || '') + '</span></td>' +
+                '<td style="max-width:300px;"><span class="d-inline-block text-truncate" style="max-width:280px;" title="' + escapeHtml(q.questionText || '') + '">' + escapeHtml(q.questionText || '') + '</span></td>' +
+                '<td>' + questionTypeBadge(q.questionType || '') + '</td>' +
+                '<td>' + (q.score != null ? q.score : '-') + '</td>' +
+                '<td>' + (q.sortOrder != null ? q.sortOrder : '-') + '</td>' +
+                '<td>' + statusBadge(q.status || 'ACTIVE') + '</td>' +
+                '<td>' + renderTagBadges(tags) + '</td>' +
+                '<td class="pe-4">' +
+                    '<div class="btn-group btn-group-sm">' +
+                        '<button type="button" class="btn btn-outline-primary" title="编辑" onclick="App._editQuestion(' + (q.id || 0) + ')"><i class="bi bi-pencil"></i></button>' +
+                        '<button type="button" class="btn btn-outline-danger" title="删除" onclick="App._deleteQuestion(' + (q.id || 0) + ')"><i class="bi bi-trash"></i></button>' +
+                    '</div>' +
+                '</td>' +
+                '</tr>';
+        }).join('');
+    }
+
+    function editQuestionById(id) {
+        var q = questionCache.find(function (item) { return item.id == id; });
+        if (q) openQuestionModal(q);
+    }
+
+    function editTagById(id) {
+        var t = allTags.find(function (item) { return item.id == id; });
+        if (t) openTagModal(t);
+    }
+
+    document.getElementById('filterCourse').addEventListener('change', function () {
+        loadHomework(this.value);
+    });
+
+    document.getElementById('btnLoadQuestions').addEventListener('click', function () {
+        var homeworkId = document.getElementById('filterHomework').value;
+        if (!homeworkId) {
+            showToast('请先选择作业', 'warning');
+            return;
+        }
+        loadQuestionsWithCache(homeworkId);
+    });
+
+    document.getElementById('btnAddQuestion').addEventListener('click', function () {
+        if (!currentHomeworkId) {
+            var homeworkId = document.getElementById('filterHomework').value;
+            if (!homeworkId) {
+                showToast('请先选择作业后再新增题目', 'warning');
+                return;
+            }
+            currentHomeworkId = homeworkId;
+        }
+        openQuestionModal(null);
+    });
+
+    document.getElementById('btnAddTag').addEventListener('click', function () {
+        openTagModal(null);
+    });
+
+    document.getElementById('btnSaveQuestion').addEventListener('click', function () {
+        saveQuestion();
+    });
+
+    document.getElementById('btnSaveTag').addEventListener('click', function () {
+        saveTag();
+    });
+
+    window.App = window.App || {};
+    window.App._editQuestion = editQuestionById;
+    window.App._deleteQuestion = deleteQuestion;
+    window.App._editTag = editTagById;
+    window.App._deleteTag = deleteTag;
+
+    loadCourses();
+    loadTags();
+})();
+</script>
+</body>
+</html>

@@ -27,6 +27,11 @@ public class ScoreFeedbackApiController {
         return Result.success(scoreFeedbackService.listFeedbackByStudent(studentId));
     }
 
+    @GetMapping("/status/{status}")
+    public Result<List<ScoreFeedback>> listByStatus(@PathVariable String status) {
+        return Result.success(scoreFeedbackService.listFeedbackByStatus(status));
+    }
+
     @GetMapping("/homework/{homeworkId}")
     public Result<List<ScoreFeedback>> listByHomework(@PathVariable Long homeworkId) {
         return Result.success(scoreFeedbackService.listFeedbackByHomework(homeworkId));

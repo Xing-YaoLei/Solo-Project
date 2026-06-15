@@ -31,6 +31,21 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a class="nav-link" th:classappend="${currentPage == 'courses'} ? 'active'" th:href="@{/courses}">
+                        <i class="bi bi-book me-1"></i>课程管理
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" th:classappend="${currentPage == 'questions'} ? 'active'" th:href="@{/questions}">
+                        <i class="bi bi-tags me-1"></i>题目标签
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" th:classappend="${currentPage == 'scores'} ? 'active'" th:href="@{/scores}">
+                        <i class="bi bi-clipboard-check me-1"></i>成绩审核
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link" th:classappend="${currentPage == 'progress'} ? 'active'" th:href="@{/progress}">
                         <i class="bi bi-bar-chart me-1"></i>学习进度
                     </a>
@@ -77,6 +92,21 @@
             <li class="nav-item">
                 <a class="nav-link rounded text-dark" th:classappend="${currentPage == 'students'} ? 'active bg-primary text-white'" th:href="@{/students}">
                     <i class="bi bi-people me-2"></i>学生管理
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link rounded text-dark" th:classappend="${currentPage == 'courses'} ? 'active bg-primary text-white'" th:href="@{/courses}">
+                    <i class="bi bi-book me-2"></i>课程管理
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link rounded text-dark" th:classappend="${currentPage == 'questions'} ? 'active bg-primary text-white'" th:href="@{/questions}">
+                    <i class="bi bi-tags me-2"></i>题目标签
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link rounded text-dark" th:classappend="${currentPage == 'scores'} ? 'active bg-primary text-white'" th:href="@{/scores}">
+                    <i class="bi bi-clipboard-check me-2"></i>成绩审核
                 </a>
             </li>
             <li class="nav-item">

@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>课程管理 - 青少年培训续费跟进排程台</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body class="bg-light">
+
+<div th:insert="~{layout/fragments :: header}"></div>
+
+<div class="d-flex">
+    <div th:insert="~{layout/fragments :: sidebar}"></div>
+
+    <main class="flex-grow-1 p-4">
+        <div th:insert="~{layout/fragments :: pageHeader('课程管理', '课程、章节与作业录入管理')}"></div>
+
+        <nav aria-label="breadcrumb" class="mb-3" id="breadcrumbNav">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item active" id="bcCourse">课程</li>
+            </ol>
+        </nav>
+
+        <div id="courseSection">
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
+                <div class="card-body p-4">
+                    <h6 class="fw-bold mb-3"><i class="bi bi-search me-2"></i>搜索筛选</h6>
+                    <form class="row g-3" id="courseFilterForm">
+                        <div class="col-md-3">
+                            <label class="form-label small fw-semibold">学科</label>
+                            <select class="form-select" id="filterSubject">
+                                <option value="">全部学科</option>
+                                <option value="数学">数学</option>
+                                <option value="英语">英语</option>
+                                <option value="编程">编程</option>
+                                <option value="物理">物理</option>
+                                <option value="化学">化学</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-semibold">难度</label>
+                            <select class="form-select" id="filterDifficulty">
+                                <option value="">全部难度</option>
+                                <option value="初级">初级</option>
+                                <option value="中级">中级</option>
+                                <option value="高级">高级</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-semibold">状态</label>
+                            <select class="form-select" id="filterStatus">
+                                <option value="">全部状态</option>
+                                <option value="ACTIVE">ACTIVE</option>
+                                <option value="INACTIVE">INACTIVE</option>
+                                <option value="DELETED">DELETED</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <div class="d-grid gap-2 w-100">
+                                <div class="btn-group" role="group">
+                                    <button type="submit" class="btn btn-primary flex-grow-1"><i class="bi bi-search me-1"></i>搜索</button>
+                                    <button type="reset" class="btn btn-outline-secondary"><i class="bi bi-arrow-counterclockwise"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <p class="text-muted mb-0">共 <span class="fw-bold text-primary" id="courseCount">0</span> 条记录</p>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-success" onclick="openModal('addCourseModal')">
+                        <i class="bi bi-plus-circle me-1"></i>新增课程
+                    </button>
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                            <tr>
+                                <th class="ps-4">ID</th>
+                                <th>课程名称</th>
+                                <th>学科</th>
+                                <th>总章节数</th>
+                                <th>总作业数</th>
+                                <th>难度</th>
+                                <th>状态</th>
+                                <th>创建时间</th>
+                                <th class="pe-4">操作</th>
+                            </tr>
+                            </thead>
+                            <tbody id="courseTableBody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="chapterSection" class="d-none">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <button class="btn btn-outline-secondary btn-sm me-2" onclick="backToCourses()"><i class="bi bi-arrow-left me-1"></i>返回课程</button>
+                    <span class="fw-bold" id="chapterCourseName"></span>
+                </div>
+                <button type="button" class="btn btn-success" onclick="openAddChapterModal()">
+                    <i class="bi bi-plus-circle me-1"></i>新增章节
+                </button>
+            </div>
+            <p class="text-muted mb-3">共 <span class="fw-bold text-primary" id="chapterCount">0</span> 条记录</p>
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                            <tr>
+                                <th class="ps-4">ID</th>
+                                <th>章节号</th>
+                                <th>章节名称</th>
+                                <th>学时</th>
+                                <th>排序</th>
+                                <th>状态</th>
+                                <th class="pe-4">操作</th>
+                            </tr>
+                            </thead>
+                            <tbody id="chapterTableBody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="homeworkSection" class="d-none">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <button class="btn btn-outline-secondary btn-sm me-2" onclick="backToChapters()"><i class="bi bi-arrow-left me-1"></i>返回章节</button>
+                    <span class="fw-bold" id="homeworkChapterName"></span>
+                </div>
+                <button type="button" class="btn btn-success" onclick="openAddHomeworkModal()">
+                    <i class="bi bi-plus-circle me-1"></i>新增作业
+                </button>
+            </div>
+            <p class="text-muted mb-3">共 <span class="fw-bold text-primary" id="homeworkCount">0</span> 条记录</p>
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                            <tr>
+                                <th class="ps-4">ID</th>
+                                <th>作业名称</th>
+                                <th>总题数</th>
+                                <th>总分</th>
+                                <th>截止日期</th>
+                                <th>排序</th>
+                                <th>状态</th>
+                                <th class="pe-4">操作</th>
+                            </tr>
+                            </thead>
+                            <tbody id="homeworkTableBody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div th:insert="~{layout/fragments :: footer}"></div>
+    </main>
+</div>
+
+<div class="modal fade" id="addCourseModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content border-0 rounded-4">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold"><i class="bi bi-book text-primary me-2"></i>新增课程</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form class="row g-3" id="addCourseForm">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">课程名称 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="courseName" placeholder="请输入课程名称" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">学科 <span class="text-danger">*</span></label>
+                        <select class="form-select" id="courseSubject" required>
+                            <option value="">请选择</option>
+                            <option>数学</option>
+                            <option>英语</option>
+                            <option>编程</option>
+                            <option>物理</option>
+                            <option>化学</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">难度 <span class="text-danger">*</span></label>
+                        <select class="form-select" id="courseDifficulty" required>
+                            <option value="">请选择</option>
+                            <option>初级</option>
+                            <option>中级</option>
+                            <option>高级</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">描述</label>
+                        <textarea class="form-control" id="courseDescription" rows="3" placeholder="请输入课程描述"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveCourse()">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="addChapterModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content border-0 rounded-4">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold"><i class="bi bi-list-nested text-primary me-2"></i>新增章节</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form class="row g-3" id="addChapterForm">
+                    <input type="hidden" id="chapterCourseId">
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">章节号 <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" id="chapterNo" placeholder="请输入章节号" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">学时 <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" id="chapterStudyHours" placeholder="请输入学时" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">排序</label>
+                        <input type="number" class="form-control" id="chapterSortOrder" placeholder="请输入排序">
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label fw-semibold">章节名称 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="chapterName" placeholder="请输入章节名称" required>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">内容</label>
+                        <textarea class="form-control" id="chapterContent" rows="3" placeholder="请输入章节内容"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveChapter()">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="addHomeworkModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content border-0 rounded-4">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold"><i class="bi bi-pencil-square text-primary me-2"></i>新增作业</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form class="row g-3" id="addHomeworkForm">
+                    <input type="hidden" id="homeworkCourseId">
+                    <input type="hidden" id="homeworkChapterId">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">作业名称 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="homeworkName" placeholder="请输入作业名称" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">总题数 <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" id="homeworkTotalQuestions" placeholder="请输入总题数" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">总分 <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" id="homeworkTotalScore" placeholder="请输入总分" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">截止日期</label>
+                        <input type="date" class="form-control" id="homeworkDeadline">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">排序</label>
+                        <input type="number" class="form-control" id="homeworkSortOrder" placeholder="请输入排序">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">描述</label>
+                        <textarea class="form-control" id="homeworkDescription" rows="3" placeholder="请输入作业描述"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveHomework()">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script th:src="@{/js/app.js}"></script>
+<script>
+(function () {
+    let currentCourseId = null;
+    let currentCourseName = '';
+    let currentChapterId = null;
+    let currentChapterName = '';
+
+    function statusBadge(status) {
+        const map = {
+            ACTIVE: 'bg-success',
+            INACTIVE: 'bg-secondary',
+            DELETED: 'bg-danger'
+        };
+        return `<span class="badge ${map[status] || 'bg-secondary'}">${status}</span>`;
+    }
+
+    async function loadCourses() {
+        const params = {};
+        const subject = document.getElementById('filterSubject').value;
+        const difficulty = document.getElementById('filterDifficulty').value;
+        const status = document.getElementById('filterStatus').value;
+        if (subject) params.subject = subject;
+        if (difficulty) params.difficultyLevel = difficulty;
+        if (status) params.status = status;
+
+        const result = await ApiClient.get('/courses/list', params);
+        if (result.success) {
+            renderCourseList(result.data);
+        } else {
+            showToast('加载课程列表失败: ' + result.error, 'error');
+        }
+    }
+
+    function renderCourseList(courses) {
+        const tbody = document.getElementById('courseTableBody');
+        document.getElementById('courseCount').textContent = courses ? courses.length : 0;
+        if (!courses || courses.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">暂无课程数据</td></tr>';
+            return;
+        }
+        tbody.innerHTML = courses.map(c => `
+            <tr>
+                <td class="ps-4"><span class="text-muted small">${c.id}</span></td>
+                <td class="fw-semibold">${c.courseName}</td>
+                <td><span class="badge bg-secondary">${c.subject}</span></td>
+                <td>${c.totalChapters ?? 0}</td>
+                <td>${c.totalHomeworks ?? 0}</td>
+                <td>${c.difficultyLevel}</td>
+                <td>${statusBadge(c.status)}</td>
+                <td class="small">${c.createTime ? formatDate(c.createTime) : ''}</td>
+                <td class="pe-4">
+                    <div class="btn-group btn-group-sm">
+                        <button type="button" class="btn btn-outline-primary" title="查看章节" onclick="viewChapters(${c.id}, '${c.courseName}')"><i class="bi bi-list-nested"></i></button>
+                        <button type="button" class="btn btn-outline-secondary" title="编辑" onclick="editCourse(${c.id})"><i class="bi bi-pencil"></i></button>
+                        <button type="button" class="btn btn-outline-danger" title="删除" onclick="deleteCourse(${c.id})"><i class="bi bi-trash"></i></button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    window.viewChapters = async function (courseId, courseName) {
+        currentCourseId = courseId;
+        currentCourseName = courseName;
+        document.getElementById('chapterCourseName').textContent = courseName + ' - 章节列表';
+        document.getElementById('courseSection').classList.add('d-none');
+        document.getElementById('chapterSection').classList.remove('d-none');
+        document.getElementById('homeworkSection').classList.add('d-none');
+
+        updateBreadcrumb(['课程', '章节列表']);
+
+        const result = await ApiClient.get('/chapters/course/' + courseId);
+        if (result.success) {
+            renderChapterList(result.data);
+        } else {
+            showToast('加载章节列表失败: ' + result.error, 'error');
+        }
+    };
+
+    function renderChapterList(chapters) {
+        const tbody = document.getElementById('chapterTableBody');
+        document.getElementById('chapterCount').textContent = chapters ? chapters.length : 0;
+        if (!chapters || chapters.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">暂无章节数据</td></tr>';
+            return;
+        }
+        tbody.innerHTML = chapters.map(ch => `
+            <tr>
+                <td class="ps-4"><span class="text-muted small">${ch.id}</span></td>
+                <td>${ch.chapterNo}</td>
+                <td class="fw-semibold">${ch.chapterName}</td>
+                <td>${ch.studyHours}</td>
+                <td>${ch.sortOrder ?? '-'}</td>
+                <td>${statusBadge(ch.status || 'ACTIVE')}</td>
+                <td class="pe-4">
+                    <div class="btn-group btn-group-sm">
+                        <button type="button" class="btn btn-outline-primary" title="查看作业" onclick="viewHomeworks(${ch.id}, '${ch.chapterName}')"><i class="bi bi-pencil-square"></i></button>
+                        <button type="button" class="btn btn-outline-secondary" title="编辑" onclick="editChapter(${ch.id})"><i class="bi bi-pencil"></i></button>
+                        <button type="button" class="btn btn-outline-danger" title="删除" onclick="deleteChapter(${ch.id})"><i class="bi bi-trash"></i></button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    window.viewHomeworks = async function (chapterId, chapterName) {
+        currentChapterId = chapterId;
+        currentChapterName = chapterName;
+        document.getElementById('homeworkChapterName').textContent = currentCourseName + ' > ' + chapterName + ' - 作业列表';
+        document.getElementById('courseSection').classList.add('d-none');
+        document.getElementById('chapterSection').classList.add('d-none');
+        document.getElementById('homeworkSection').classList.remove('d-none');
+
+        updateBreadcrumb(['课程', '章节列表', '作业列表']);
+
+        const result = await ApiClient.get('/homework/chapter/' + chapterId);
+        if (result.success) {
+            renderHomeworkList(result.data);
+        } else {
+            showToast('加载作业列表失败: ' + result.error, 'error');
+        }
+    };
+
+    function renderHomeworkList(homeworks) {
+        const tbody = document.getElementById('homeworkTableBody');
+        document.getElementById('homeworkCount').textContent = homeworks ? homeworks.length : 0;
+        if (!homeworks || homeworks.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">暂无作业数据</td></tr>';
+            return;
+        }
+        tbody.innerHTML = homeworks.map(hw => `
+            <tr>
+                <td class="ps-4"><span class="text-muted small">${hw.id}</span></td>
+                <td class="fw-semibold">${hw.homeworkName}</td>
+                <td>${hw.totalQuestions ?? 0}</td>
+                <td>${hw.totalScore ?? 0}</td>
+                <td class="small">${hw.deadline ? formatDate(hw.deadline) : '-'}</td>
+                <td>${hw.sortOrder ?? '-'}</td>
+                <td>${statusBadge(hw.status || 'ACTIVE')}</td>
+                <td class="pe-4">
+                    <div class="btn-group btn-group-sm">
+                        <button type="button" class="btn btn-outline-primary" title="查看题目"><i class="bi bi-eye"></i></button>
+                        <button type="button" class="btn btn-outline-secondary" title="编辑" onclick="editHomework(${hw.id})"><i class="bi bi-pencil"></i></button>
+                        <button type="button" class="btn btn-outline-danger" title="删除" onclick="deleteHomework(${hw.id})"><i class="bi bi-trash"></i></button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function updateBreadcrumb(items) {
+        const ol = document.querySelector('#breadcrumbNav ol');
+        ol.innerHTML = items.map((item, i) => {
+            if (i === items.length - 1) {
+                return `<li class="breadcrumb-item active">${item}</li>`;
+            }
+            return `<li class="breadcrumb-item"><a href="#" class="text-decoration-none">${item}</a></li>`;
+        }).join('');
+    }
+
+    window.backToCourses = function () {
+        document.getElementById('courseSection').classList.remove('d-none');
+        document.getElementById('chapterSection').classList.add('d-none');
+        document.getElementById('homeworkSection').classList.add('d-none');
+        updateBreadcrumb(['课程']);
+        loadCourses();
+    };
+
+    window.backToChapters = function () {
+        document.getElementById('courseSection').classList.add('d-none');
+        document.getElementById('chapterSection').classList.remove('d-none');
+        document.getElementById('homeworkSection').classList.add('d-none');
+        updateBreadcrumb(['课程', '章节列表']);
+        window.viewChapters(currentCourseId, currentCourseName);
+    };
+
+    window.saveCourse = async function () {
+        const courseName = document.getElementById('courseName').value.trim();
+        const subject = document.getElementById('courseSubject').value;
+        const difficultyLevel = document.getElementById('courseDifficulty').value;
+        const description = document.getElementById('courseDescription').value.trim();
+
+        if (!courseName || !subject || !difficultyLevel) {
+            showToast('请填写必填项', 'warning');
+            return;
+        }
+
+        const result = await ApiClient.post('/courses', {
+            courseName,
+            description,
+            subject,
+            difficultyLevel,
+            totalChapters: 0,
+            totalHomeworks: 0
+        });
+
+        if (result.success) {
+            showToast('课程创建成功', 'success');
+            closeModal('addCourseModal');
+            document.getElementById('addCourseForm').reset();
+            loadCourses();
+        } else {
+            showToast('课程创建失败: ' + result.error, 'error');
+        }
+    };
+
+    window.editCourse = async function (id) {
+        const result = await ApiClient.get('/courses/' + id);
+        if (!result.success) {
+            showToast('获取课程信息失败', 'error');
+            return;
+        }
+        const c = result.data;
+        document.getElementById('courseName').value = c.courseName || '';
+        document.getElementById('courseSubject').value = c.subject || '';
+        document.getElementById('courseDifficulty').value = c.difficultyLevel || '';
+        document.getElementById('courseDescription').value = c.description || '';
+        openModal('addCourseModal');
+
+        const saveBtn = document.querySelector('#addCourseModal .btn-primary');
+        saveBtn.onclick = async function () {
+            const updateResult = await ApiClient.put('/courses/' + id, {
+                courseName: document.getElementById('courseName').value.trim(),
+                description: document.getElementById('courseDescription').value.trim(),
+                subject: document.getElementById('courseSubject').value,
+                difficultyLevel: document.getElementById('courseDifficulty').value,
+                totalChapters: c.totalChapters,
+                totalHomeworks: c.totalHomeworks
+            });
+            if (updateResult.success) {
+                showToast('课程更新成功', 'success');
+                closeModal('addCourseModal');
+                document.getElementById('addCourseForm').reset();
+                saveBtn.onclick = window.saveCourse;
+                loadCourses();
+            } else {
+                showToast('课程更新失败: ' + updateResult.error, 'error');
+            }
+        };
+    };
+
+    window.deleteCourse = async function (id) {
+        const confirmed = await confirmDialog('确定要删除该课程吗？删除后不可恢复。');
+        if (!confirmed) return;
+        const result = await ApiClient.delete('/courses/' + id);
+        if (result.success) {
+            showToast('课程已删除', 'success');
+            loadCourses();
+        } else {
+            showToast('删除失败: ' + result.error, 'error');
+        }
+    };
+
+    window.openAddChapterModal = function () {
+        document.getElementById('chapterCourseId').value = currentCourseId;
+        document.getElementById('addChapterForm').reset();
+        document.getElementById('chapterCourseId').value = currentCourseId;
+        openModal('addChapterModal');
+    };
+
+    window.saveChapter = async function () {
+        const courseId = document.getElementById('chapterCourseId').value;
+        const chapterNo = document.getElementById('chapterNo').value;
+        const chapterName = document.getElementById('chapterName').value.trim();
+        const content = document.getElementById('chapterContent').value.trim();
+        const studyHours = document.getElementById('chapterStudyHours').value;
+        const sortOrder = document.getElementById('chapterSortOrder').value;
+
+        if (!chapterNo || !chapterName || !studyHours) {
+            showToast('请填写必填项', 'warning');
+            return;
+        }
+
+        const result = await ApiClient.post('/chapters', {
+            courseId: Number(courseId),
+            chapterNo: Number(chapterNo),
+            chapterName,
+            content,
+            studyHours: Number(studyHours),
+            sortOrder: sortOrder ? Number(sortOrder) : 0
+        });
+
+        if (result.success) {
+            showToast('章节创建成功', 'success');
+            closeModal('addChapterModal');
+            document.getElementById('addChapterForm').reset();
+            window.viewChapters(currentCourseId, currentCourseName);
+        } else {
+            showToast('章节创建失败: ' + result.error, 'error');
+        }
+    };
+
+    window.editChapter = async function (id) {
+        const result = await ApiClient.get('/chapters/' + id);
+        if (!result.success) {
+            showToast('获取章节信息失败', 'error');
+            return;
+        }
+        const ch = result.data;
+        document.getElementById('chapterCourseId').value = ch.courseId;
+        document.getElementById('chapterNo').value = ch.chapterNo;
+        document.getElementById('chapterName').value = ch.chapterName || '';
+        document.getElementById('chapterContent').value = ch.content || '';
+        document.getElementById('chapterStudyHours').value = ch.studyHours;
+        document.getElementById('chapterSortOrder').value = ch.sortOrder || '';
+        openModal('addChapterModal');
+
+        const saveBtn = document.querySelector('#addChapterModal .btn-primary');
+        saveBtn.onclick = async function () {
+            const updateResult = await ApiClient.put('/chapters/' + id, {
+                courseId: Number(ch.courseId),
+                chapterNo: Number(document.getElementById('chapterNo').value),
+                chapterName: document.getElementById('chapterName').value.trim(),
+                content: document.getElementById('chapterContent').value.trim(),
+                studyHours: Number(document.getElementById('chapterStudyHours').value),
+                sortOrder: document.getElementById('chapterSortOrder').value ? Number(document.getElementById('chapterSortOrder').value) : 0
+            });
+            if (updateResult.success) {
+                showToast('章节更新成功', 'success');
+                closeModal('addChapterModal');
+                document.getElementById('addChapterForm').reset();
+                saveBtn.onclick = window.saveChapter;
+                window.viewChapters(currentCourseId, currentCourseName);
+            } else {
+                showToast('章节更新失败: ' + updateResult.error, 'error');
+            }
+        };
+    };
+
+    window.deleteChapter = async function (id) {
+        const confirmed = await confirmDialog('确定要删除该章节吗？');
+        if (!confirmed) return;
+        const result = await ApiClient.delete('/chapters/' + id);
+        if (result.success) {
+            showToast('章节已删除', 'success');
+            window.viewChapters(currentCourseId, currentCourseName);
+        } else {
+            showToast('删除失败: ' + result.error, 'error');
+        }
+    };
+
+    window.openAddHomeworkModal = function () {
+        document.getElementById('addHomeworkForm').reset();
+        document.getElementById('homeworkCourseId').value = currentCourseId;
+        document.getElementById('homeworkChapterId').value = currentChapterId;
+        openModal('addHomeworkModal');
+    };
+
+    window.saveHomework = async function () {
+        const courseId = document.getElementById('homeworkCourseId').value;
+        const chapterId = document.getElementById('homeworkChapterId').value;
+        const homeworkName = document.getElementById('homeworkName').value.trim();
+        const description = document.getElementById('homeworkDescription').value.trim();
+        const totalQuestions = document.getElementById('homeworkTotalQuestions').value;
+        const totalScore = document.getElementById('homeworkTotalScore').value;
+        const deadline = document.getElementById('homeworkDeadline').value;
+        const sortOrder = document.getElementById('homeworkSortOrder').value;
+
+        if (!homeworkName || !totalQuestions || !totalScore) {
+            showToast('请填写必填项', 'warning');
+            return;
+        }
+
+        const result = await ApiClient.post('/homework', {
+            courseId: Number(courseId),
+            chapterId: Number(chapterId),
+            homeworkName,
+            description,
+            totalQuestions: Number(totalQuestions),
+            totalScore: Number(totalScore),
+            deadline: deadline || null,
+            sortOrder: sortOrder ? Number(sortOrder) : 0
+        });
+
+        if (result.success) {
+            showToast('作业创建成功', 'success');
+            closeModal('addHomeworkModal');
+            document.getElementById('addHomeworkForm').reset();
+            window.viewHomeworks(currentChapterId, currentChapterName);
+        } else {
+            showToast('作业创建失败: ' + result.error, 'error');
+        }
+    };
+
+    window.editHomework = async function (id) {
+        const result = await ApiClient.get('/homework/' + id);
+        if (!result.success) {
+            showToast('获取作业信息失败', 'error');
+            return;
+        }
+        const hw = result.data;
+        document.getElementById('homeworkCourseId').value = hw.courseId;
+        document.getElementById('homeworkChapterId').value = hw.chapterId;
+        document.getElementById('homeworkName').value = hw.homeworkName || '';
+        document.getElementById('homeworkDescription').value = hw.description || '';
+        document.getElementById('homeworkTotalQuestions').value = hw.totalQuestions;
+        document.getElementById('homeworkTotalScore').value = hw.totalScore;
+        document.getElementById('homeworkDeadline').value = hw.deadline ? formatDate(hw.deadline) : '';
+        document.getElementById('homeworkSortOrder').value = hw.sortOrder || '';
+        openModal('addHomeworkModal');
+
+        const saveBtn = document.querySelector('#addHomeworkModal .btn-primary');
+        saveBtn.onclick = async function () {
+            const updateResult = await ApiClient.put('/homework/' + id, {
+                courseId: Number(document.getElementById('homeworkCourseId').value),
+                chapterId: Number(document.getElementById('homeworkChapterId').value),
+                homeworkName: document.getElementById('homeworkName').value.trim(),
+                description: document.getElementById('homeworkDescription').value.trim(),
+                totalQuestions: Number(document.getElementById('homeworkTotalQuestions').value),
+                totalScore: Number(document.getElementById('homeworkTotalScore').value),
+                deadline: document.getElementById('homeworkDeadline').value || null,
+                sortOrder: document.getElementById('homeworkSortOrder').value ? Number(document.getElementById('homeworkSortOrder').value) : 0
+            });
+            if (updateResult.success) {
+                showToast('作业更新成功', 'success');
+                closeModal('addHomeworkModal');
+                document.getElementById('addHomeworkForm').reset();
+                saveBtn.onclick = window.saveHomework;
+                window.viewHomeworks(currentChapterId, currentChapterName);
+            } else {
+                showToast('作业更新失败: ' + updateResult.error, 'error');
+            }
+        };
+    };
+
+    window.deleteHomework = async function (id) {
+        const confirmed = await confirmDialog('确定要删除该作业吗？');
+        if (!confirmed) return;
+        const result = await ApiClient.delete('/homework/' + id);
+        if (result.success) {
+            showToast('作业已删除', 'success');
+            window.viewHomeworks(currentChapterId, currentChapterName);
+        } else {
+            showToast('删除失败: ' + result.error, 'error');
+        }
+    };
+
+    document.getElementById('courseFilterForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        loadCourses();
+    });
+
+    document.getElementById('courseFilterForm').addEventListener('reset', function () {
+        setTimeout(loadCourses, 0);
+    });
+
+    loadCourses();
+})();
+</script>
+</body>
+</html>

@@ -146,9 +146,10 @@ public class FlowIntegrationService {
         Course course = courseRepository.findById(courseId).orElse(null);
         result.put("course", course);
 
-        List<LearningProgress> courseProgress = learningProgressRepository
-                .findByStudentIdAndCourseIdAndProgressType(studentId, courseId, ProgressType.COURSE.getCode());
-        result.put("courseProgress", courseProgress.isEmpty() ? null : courseProgress.get(0));
+        LearningProgress courseProgress = learningProgressRepository
+                .findByStudentIdAndCourseIdAndProgressType(studentId, courseId, ProgressType.COURSE.getCode())
+                .orElse(null);
+        result.put("courseProgress", courseProgress);
 
         List<LearningProgress> chapterProgressList = learningProgressRepository
                 .findByStudentIdAndProgressType(studentId, ProgressType.CHAPTER.getCode());

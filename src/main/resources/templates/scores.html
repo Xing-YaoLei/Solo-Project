@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>成绩反馈审核 - 青少年培训续费跟进排程台</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body class="bg-light">
+
+<div th:insert="~{layout/fragments :: header}"></div>
+
+<div class="d-flex">
+    <div th:insert="~{layout/fragments :: sidebar}"></div>
+
+    <main class="flex-grow-1 p-4">
+        <div th:insert="~{layout/fragments :: pageHeader('成绩反馈审核', '评分审核与进度异常触发')}"></div>
+
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+            <div class="card-body p-4">
+                <h6 class="fw-bold mb-3"><i class="bi bi-funnel me-2"></i>筛选条件</h6>
+                <form class="row g-3" id="filterForm">
+                    <div class="col-md-3">
+                        <label class="form-label small fw-semibold">学生</label>
+                        <select class="form-select" id="studentSelect">
+                            <option value="">全部学生</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-semibold">状态</label>
+                        <select class="form-select" id="statusSelect">
+                            <option value="PENDING">待审核</option>
+                            <option value="REVIEWED">已审核</option>
+                            <option value="APPEALED">已申诉</option>
+                            <option value="CLOSED">已关闭</option>
+                            <option value="">全部状态</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3 d-flex align-items-end">
+                        <div class="d-grid gap-2 w-100">
+                            <div class="btn-group" role="group">
+                                <button type="submit" class="btn btn-primary flex-grow-1"><i class="bi bi-search me-1"></i>查询</button>
+                                <button type="reset" class="btn btn-outline-secondary" id="resetBtn"><i class="bi bi-arrow-counterclockwise"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <p class="text-muted mb-0">共 <span class="fw-bold text-primary" id="totalCount">0</span> 条记录</p>
+        </div>
+
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card border-0 shadow-sm rounded-4">
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                <tr>
+                                    <th class="ps-4">ID</th>
+                                    <th>学生</th>
+                                    <th>作业</th>
+                                    <th>题目</th>
+                                    <th>得分</th>
+                                    <th>总分</th>
+                                    <th>得分率</th>
+                                    <th>等级</th>
+                                    <th>状态</th>
+                                    <th>审核人</th>
+                                    <th class="pe-4">操作</th>
+                                </tr>
+                                </thead>
+                                <tbody id="feedbackTableBody">
+                                <tr>
+                                    <td colspan="11" class="text-center text-muted py-5">
+                                        <i class="bi bi-inbox fs-1 d-block mb-2"></i>请选择学生并查询
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm rounded-4" id="weakPointCard" style="display:none;">
+                    <div class="card-body p-4">
+                        <h6 class="fw-bold mb-3"><i class="bi bi-exclamation-triangle me-2 text-warning"></i>弱项分析</h6>
+                        <div id="weakPointSummary" class="mb-3"></div>
+                        <div id="weakPointTags"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div th:insert="~{layout/fragments :: footer}"></div>
+    </main>
+</div>
+
+<div class="modal fade" id="reviewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 rounded-4">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold"><i class="bi bi-check2-square text-primary me-2"></i>审核反馈</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="reviewForm">
+                    <input type="hidden" id="reviewId">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">得分 <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" id="reviewScore" step="0.5" min="0" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">教师评语</label>
+                        <textarea class="form-control" id="reviewTeacherComment" rows="3" placeholder="请输入评语"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">等级 <span class="text-danger">*</span></label>
+                        <select class="form-select" id="reviewGradeLevel" required>
+                            <option value="">请选择等级</option>
+                            <option value="A">A</option>
+                            <option value="B">B</option>
+                            <option value="C">C</option>
+                            <option value="D">D</option>
+                            <option value="F">F</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">弱项标签</label>
+                        <textarea class="form-control" id="reviewWeakPoints" rows="2" placeholder="多个弱项用逗号分隔"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">审核人 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="reviewReviewedBy" required placeholder="请输入审核人姓名">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="submitReviewBtn"><i class="bi bi-check2 me-1"></i>提交审核</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script th:src="@{/js/app.js}"></script>
+<script>
+(function () {
+    let allFeedbacks = [];
+    let currentStudentId = null;
+
+    async function loadStudents() {
+        const res = await ApiClient.get('/students/list');
+        if (!res.success) return;
+        const select = document.getElementById('studentSelect');
+        (res.data || []).forEach(function (s) {
+            const opt = document.createElement('option');
+            opt.value = s.id;
+            opt.textContent = s.studentName;
+            select.appendChild(opt);
+        });
+    }
+
+    async function loadFeedbacks() {
+        const studentId = document.getElementById('studentSelect').value;
+        const status = document.getElementById('statusSelect').value;
+
+        if (!studentId) {
+            if (status) {
+                const res = await ApiClient.get('/scores/status/' + status);
+                if (res.success) {
+                    allFeedbacks = res.data || [];
+                } else {
+                    allFeedbacks = [];
+                }
+            } else {
+                allFeedbacks = [];
+            }
+            renderTable(allFeedbacks);
+            document.getElementById('weakPointCard').style.display = 'none';
+            return;
+        }
+
+        currentStudentId = studentId;
+        const res = await ApiClient.get('/scores/student/' + studentId);
+        if (!res.success) {
+            showToast('加载反馈数据失败: ' + res.error, 'error');
+            return;
+        }
+
+        allFeedbacks = res.data || [];
+        var filtered = allFeedbacks;
+        if (status) {
+            filtered = allFeedbacks.filter(function (f) { return f.status === status; });
+        }
+
+        renderTable(filtered);
+        loadWeakAnalysis(studentId);
+    }
+
+    function renderTable(feedbacks) {
+        document.getElementById('totalCount').textContent = feedbacks.length;
+        const tbody = document.getElementById('feedbackTableBody');
+
+        if (feedbacks.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="11" class="text-center text-muted py-5"><i class="bi bi-inbox fs-1 d-block mb-2"></i>暂无数据</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = feedbacks.map(function (f) {
+            var rate = f.totalScore && f.totalScore > 0 ? ((f.score / f.totalScore) * 100).toFixed(1) : '0.0';
+            var rateNum = parseFloat(rate);
+            var rateClass = rateNum >= 80 ? 'text-success' : rateNum >= 60 ? 'text-primary' : rateNum >= 30 ? 'text-warning' : 'text-danger';
+            var statusBadge = getStatusBadge(f.status);
+            var gradeBadge = getGradeBadge(f.gradeLevel);
+            var actionBtn = f.status === 'PENDING'
+                ? '<button type="button" class="btn btn-sm btn-outline-primary" onclick="window._openReview(' + f.id + ')"><i class="bi bi-check2-square me-1"></i>审核</button>'
+                : '<button type="button" class="btn btn-sm btn-outline-secondary" disabled><i class="bi bi-check2-square me-1"></i>已审核</button>';
+
+            return '<tr>'
+                + '<td class="ps-4"><span class="text-muted small">' + f.id + '</span></td>'
+                + '<td>' + f.studentId + '</td>'
+                + '<td>' + (f.homeworkId || '-') + '</td>'
+                + '<td>' + (f.questionId || '-') + '</td>'
+                + '<td>' + (f.score != null ? f.score : '-') + '</td>'
+                + '<td>' + (f.totalScore != null ? f.totalScore : '-') + '</td>'
+                + '<td><span class="fw-semibold ' + rateClass + '">' + rate + '%</span></td>'
+                + '<td>' + gradeBadge + '</td>'
+                + '<td>' + statusBadge + '</td>'
+                + '<td>' + (f.reviewedBy || '-') + '</td>'
+                + '<td class="pe-4">' + actionBtn + '</td>'
+                + '</tr>';
+        }).join('');
+    }
+
+    function getStatusBadge(status) {
+        var map = {
+            PENDING: '<span class="badge bg-warning text-dark">待审核</span>',
+            REVIEWED: '<span class="badge bg-success">已审核</span>',
+            APPEALED: '<span class="badge bg-info text-dark">已申诉</span>',
+            CLOSED: '<span class="badge bg-secondary">已关闭</span>'
+        };
+        return map[status] || '<span class="badge bg-secondary">' + (status || '-') + '</span>';
+    }
+
+    function getGradeBadge(grade) {
+        if (!grade) return '-';
+        var map = {
+            A: 'bg-success',
+            B: 'bg-primary',
+            C: 'bg-warning text-dark',
+            D: 'bg-orange',
+            F: 'bg-danger'
+        };
+        var cls = map[grade] || 'bg-secondary';
+        return '<span class="badge ' + cls + '">' + grade + '</span>';
+    }
+
+    async function loadWeakAnalysis(studentId) {
+        var card = document.getElementById('weakPointCard');
+        var res = await ApiClient.get('/flow/student/' + studentId + '/weak-analysis');
+        if (!res.success || !res.data) {
+            card.style.display = 'none';
+            return;
+        }
+
+        card.style.display = '';
+        var data = res.data;
+
+        document.getElementById('weakPointSummary').innerHTML =
+            '<div class="d-flex gap-3 mb-2">'
+            + '<div class="text-center"><span class="fs-4 fw-bold text-danger">' + (data.lowScoreFeedbackCount || 0) + '</span><br><small class="text-muted">低分反馈</small></div>'
+            + '<div class="text-center"><span class="fs-4 fw-bold text-primary">' + (data.totalFeedbackCount || 0) + '</span><br><small class="text-muted">总反馈数</small></div>'
+            + '</div>';
+
+        var weakPoints = data.weakPoints || {};
+        var tagsHtml = Object.keys(weakPoints).map(function (tag) {
+            return '<span class="badge bg-danger bg-opacity-10 text-danger me-2 mb-2 px-3 py-2 rounded-pill">'
+                + tag + ' <span class="badge bg-danger ms-1">' + weakPoints[tag] + '</span></span>';
+        }).join('');
+
+        document.getElementById('weakPointTags').innerHTML = tagsHtml || '<span class="text-muted">暂无弱项数据</span>';
+    }
+
+    window._openReview = function (id) {
+        var feedback = allFeedbacks.find(function (f) { return f.id === id; });
+        if (!feedback) return;
+
+        document.getElementById('reviewId').value = feedback.id;
+        document.getElementById('reviewScore').value = feedback.score || '';
+        document.getElementById('reviewTeacherComment').value = feedback.teacherComment || '';
+        document.getElementById('reviewGradeLevel').value = feedback.gradeLevel || '';
+        document.getElementById('reviewWeakPoints').value = feedback.weakPoints || '';
+        document.getElementById('reviewReviewedBy').value = feedback.reviewedBy || '';
+        openModal('reviewModal');
+    };
+
+    document.getElementById('submitReviewBtn').addEventListener('click', async function () {
+        var id = document.getElementById('reviewId').value;
+        var score = document.getElementById('reviewScore').value;
+        var teacherComment = document.getElementById('reviewTeacherComment').value;
+        var gradeLevel = document.getElementById('reviewGradeLevel').value;
+        var weakPoints = document.getElementById('reviewWeakPoints').value;
+        var reviewedBy = document.getElementById('reviewReviewedBy').value;
+
+        if (!score || !gradeLevel || !reviewedBy) {
+            showToast('请填写必填项', 'warning');
+            return;
+        }
+
+        var params = new URLSearchParams({ score: score, reviewedBy: reviewedBy });
+        if (teacherComment) params.append('teacherComment', teacherComment);
+        if (gradeLevel) params.append('gradeLevel', gradeLevel);
+        if (weakPoints) params.append('weakPoints', weakPoints);
+
+        var res = await ApiClient.put('/scores/' + id + '/review?' + params.toString());
+
+        if (!res.success) {
+            showToast('审核失败: ' + res.error, 'error');
+            return;
+        }
+
+        closeModal('reviewModal');
+        showToast('审核完成，已触发进度重算与异常检查', 'success');
+        loadFeedbacks();
+    });
+
+    document.getElementById('filterForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        loadFeedbacks();
+    });
+
+    document.getElementById('resetBtn').addEventListener('click', function () {
+        document.getElementById('studentSelect').value = '';
+        document.getElementById('statusSelect').value = 'PENDING';
+        allFeedbacks = [];
+        document.getElementById('feedbackTableBody').innerHTML =
+            '<tr><td colspan="11" class="text-center text-muted py-5"><i class="bi bi-inbox fs-1 d-block mb-2"></i>请选择学生并查询</td></tr>';
+        document.getElementById('totalCount').textContent = '0';
+        document.getElementById('weakPointCard').style.display = 'none';
+    });
+
+    loadStudents();
+})();
+</script>
+</body>
+</html>

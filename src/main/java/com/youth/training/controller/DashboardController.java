@@ -60,6 +60,7 @@ public class DashboardController {
         model.addAttribute("activeCourses", activeCourses);
         model.addAttribute("pendingExceptions", pendingExceptions);
         model.addAttribute("todayFollowCount", todayFollowCount);
+        model.addAttribute("currentPage", "index");
 
         List<LearningProgress> warnings = learningProgressRepository
                 .findByCompletionRateLessThanAndProgressType(60.0, ProgressType.COURSE.getCode());
@@ -121,7 +122,8 @@ public class DashboardController {
     }
 
     @GetMapping("/students")
-    public String studentList() {
+    public String studentList(Model model) {
+        model.addAttribute("currentPage", "students");
         return "students";
     }
 
@@ -129,6 +131,7 @@ public class DashboardController {
     public String studentDetail(@PathVariable Long id, Model model) {
         Student student = studentRepository.findById(id).orElse(null);
         model.addAttribute("student", student);
+        model.addAttribute("currentPage", "students");
 
         List<LearningProgress> progressList = learningProgressRepository
                 .findByStudentIdAndProgressType(id, ProgressType.COURSE.getCode());
@@ -160,22 +163,44 @@ public class DashboardController {
     }
 
     @GetMapping("/progress")
-    public String progress() {
+    public String progress(Model model) {
+        model.addAttribute("currentPage", "progress");
         return "progress";
     }
 
     @GetMapping("/exceptions")
-    public String exceptions() {
+    public String exceptions(Model model) {
+        model.addAttribute("currentPage", "exceptions");
         return "exceptions";
     }
 
     @GetMapping("/renewal")
-    public String renewal() {
+    public String renewal(Model model) {
+        model.addAttribute("currentPage", "renewal");
         return "renewal";
     }
 
     @GetMapping("/history")
-    public String history() {
+    public String history(Model model) {
+        model.addAttribute("currentPage", "history");
         return "history";
+    }
+
+    @GetMapping("/courses")
+    public String courses(Model model) {
+        model.addAttribute("currentPage", "courses");
+        return "courses";
+    }
+
+    @GetMapping("/questions")
+    public String questions(Model model) {
+        model.addAttribute("currentPage", "questions");
+        return "questions";
+    }
+
+    @GetMapping("/scores")
+    public String scores(Model model) {
+        model.addAttribute("currentPage", "scores");
+        return "scores";
     }
 }
