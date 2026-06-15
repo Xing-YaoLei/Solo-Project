@@ -1,0 +1,5 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# This file will execute `bundle` with the correct version for the project.
+load Gem.bin_path("bundler", "bundle")

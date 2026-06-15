@@ -1,6 +1,6 @@
 class OperationLog < ApplicationRecord
   STATUSES = %w[completed pending failed cancelled].freeze
-  ACTIONS = %w[create update delete approve reject submit review export import login logout assign unassign].freeze
+  ACTIONS = %w[create update delete approve reject submit review export import login logout assign unassign notify].freeze
 
   belongs_to :operator, class_name: "User", optional: true
   belongs_to :target, polymorphic: true, optional: true

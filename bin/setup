@@ -1,25 +1,24 @@
 #!/usr/bin/env ruby
+# frozen_string_literal: true
+
 require "fileutils"
 
+# This script is called by `rails new` when generating a new app.
+# It's also useful for provisioning new developers.
+
 APP_ROOT = File.expand_path("..", __dir__)
-
-def system!(*args)
-  system(*args) || abort("\n== Command #{args} failed ==")
-end
-
 FileUtils.chdir APP_ROOT do
   puts "== Installing dependencies =="
   system! "gem install bundler --conservative"
   system("bundle check") || system!("bundle install")
 
-  puts "\n== Preparing database =="
-  begin
-    system! "bin/rails db:prepare"
-  rescue
-    puts "Database creation may have failed, trying to create..."
-    system! "bin/rails db:create"
-    system! "bin/rails db:migrate"
+  puts "\n== Copying sample files =="
+  unless File.exist?("config/database.yml")
+    FileUtils.cp "config/database.yml", "config/database.yml"
   end
+
+  puts "\n== Preparing database =="
+  system! "bin/rails db:prepare"
 
   puts "\n== Seeding database =="
   system! "bin/rails db:seed"
@@ -30,7 +29,14 @@ FileUtils.chdir APP_ROOT do
   puts "\n== Restarting application server =="
   system! "bin/rails restart"
 
-  puts "\n🎉 Setup completed! Run 'bin/rails s' to start the server."
-  puts "Sidekiq (for background jobs): 'bundle exec sidekiq' (in a separate terminal)"
-  puts "Default Redis connection: redis://localhost:6379/0"
+  puts "\n🎉 Setup completed!"
+  puts "🚀 Start the app with: bin/dev"
+  puts "   Or separately:"
+  puts "   - Web server:    bin/rails s"
+  puts "   - CSS watch:     bin/rails tailwindcss:watch"
+  puts "   - Sidekiq:       bundle exec sidekiq"
+end
+
+def system!(*args)
+  system(*args) || abort("\n== Command #{args} failed ==")
 end

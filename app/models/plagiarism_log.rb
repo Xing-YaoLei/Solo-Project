@@ -18,6 +18,26 @@ class PlagiarismLog < ApplicationRecord
   scope :by_status, ->(status) { where(status: status) if status.present? }
   scope :unresolved, -> { where(status: %w[open investigating]) }
 
+  def open?
+    status == "open"
+  end
+
+  def investigating?
+    status == "investigating"
+  end
+
+  def resolved?
+    status == "resolved"
+  end
+
+  def closed?
+    status == "closed"
+  end
+
+  def dismissed?
+    status == "dismissed"
+  end
+
   after_create :notify_responsible_user
   after_update :record_closure, if: :just_closed?
 

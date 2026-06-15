@@ -1,3 +1,17 @@
-web: bin/rails server -p 3000
-css: bin/rails tailwindcss:watch
-worker: bundle exec sidekiq
+#!/usr/bin/env bash
+# dev - start up multiple processes using Foreman (Procfile.dev)
+# This requires foreman gem. Install with: gem install foreman
+
+if ! command -v foreman &> /dev/null; then
+  echo "ℹ️  Installing foreman..."
+  gem install foreman
+fi
+
+echo "🚀 Starting development server (Rails + Tailwind + Sidekiq)..."
+echo "   📍 Web:      http://localhost:3000"
+echo "   📍 Sidekiq:  http://localhost:3000/sidekiq"
+echo ""
+echo "Press Ctrl+C to stop all processes."
+echo ""
+
+foreman start -f Procfile.dev

@@ -19,6 +19,22 @@ class ExportRecord < ApplicationRecord
   scope :by_operator, ->(operator_id) { where(operator_id: operator_id) if operator_id.present? }
   scope :recent, -> { order(created_at: :desc) }
 
+  def completed?
+    status == "completed"
+  end
+
+  def processing?
+    status == "processing"
+  end
+
+  def failed?
+    status == "failed"
+  end
+
+  def cancelled?
+    status == "cancelled"
+  end
+
   def generate_csv(data, headers, operator_name = nil)
     csv_content = CSV.generate(headers: true) do |csv|
       csv << ["导出类型:", export_type_name]
