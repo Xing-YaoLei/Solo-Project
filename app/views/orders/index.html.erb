@@ -1,0 +1,83 @@
+<% content_for :title, "订单管理 - 职业教育结算台" %>
+
+<div class="mb-6">
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">订单管理</h1>
+      <p class="mt-1 text-sm text-gray-500">查看所有订单记录，包括报名、退款等</p>
+    </div>
+    <%= link_to new_order_path, class: "inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700" do %>
+      <svg class="-ml-1 mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+      </svg>
+      创建订单
+    <% end %>
+  </div>
+
+  <div class="mt-4 flex space-x-4">
+    <%= link_to "全部", orders_path, class: "text-sm #{params[:status].blank? ? 'text-indigo-600 font-medium' : 'text-gray-500 hover:text-gray-700'}" %>
+    <%= link_to "待支付", orders_path(status: :pending), class: "text-sm #{params[:status] == 'pending' ? 'text-yellow-600 font-medium' : 'text-gray-500 hover:text-gray-700'}" %>
+    <%= link_to "已支付", orders_path(status: :paid), class: "text-sm #{params[:status] == 'paid' ? 'text-green-600 font-medium' : 'text-gray-500 hover:text-gray-700'}" %>
+    <%= link_to "已退款", orders_path(status: :refunded), class: "text-sm #{params[:status] == 'refunded' ? 'text-red-600 font-medium' : 'text-gray-500 hover:text-gray-700'}" %>
+  </div>
+</div>
+
+<div class="bg-white shadow-sm border border-gray-200 rounded-lg overflow-hidden">
+  <div class="overflow-x-auto">
+    <table class="min-w-full divide-y divide-gray-200">
+      <thead class="bg-gray-50">
+        <tr>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">订单号</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">学员</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">课程</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">渠道</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">金额</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">渠道分成</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">下单时间</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+        </tr>
+      </thead>
+      <tbody class="bg-white divide-y divide-gray-200">
+        <% @orders.each do |order| %>
+          <tr class="hover:bg-gray-50">
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-indigo-600">
+              <%= link_to order.order_no, order %>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <div class="text-sm text-gray-900"><%= order.user&.name %></div>
+              <div class="text-sm text-gray-500"><%= order.user&.email %></div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><%= order.course&.title %></td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><%= order.channel&.name || "直客" %></td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+              ¥<%= number_with_precision order.amount, precision: 2 %>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-orange-600">
+              ¥<%= number_with_precision order.commission_amount, precision: 2 %>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <%= order_status_class(order.status) %>">
+                <%= order_status_text(order.status) %>
+              </span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+              <%= time_ago_in_words(order.created_at) %>前
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+              <%= link_to "查看", order, class: "text-indigo-600 hover:text-indigo-900" %>
+              <% if order.paid? %>
+                <%= button_to "退款", refund_order_path(order), method: :post, class: "text-red-600 hover:text-red-900 ml-3" %>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+  <% if @orders.total_pages > 1 %>
+    <div class="px-6 py-4 border-t border-gray-200">
+      <%= paginate @orders %>
+    </div>
+  <% end %>
+</div>

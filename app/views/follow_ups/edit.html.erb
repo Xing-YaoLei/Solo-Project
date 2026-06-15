@@ -1,0 +1,85 @@
+<% content_for :title, "跟进记录 - 职业教育结算台" %>
+
+<div class="mb-6">
+  <%= link_to "← 返回跟进名单", follow_ups_path, class: "text-sm text-gray-500 hover:text-gray-700" %>
+  <h1 class="text-2xl font-bold text-gray-900 mt-2">跟进记录</h1>
+  <p class="mt-1 text-sm text-gray-500">记录跟进原因，设置下次提醒时间</p>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <div class="lg:col-span-1">
+    <div class="bg-white shadow-sm border border-gray-200 rounded-lg p-6">
+      <h3 class="text-lg font-medium text-gray-900 mb-4">学员信息</h3>
+      <div class="flex items-center mb-4">
+        <div class="flex-shrink-0 h-12 w-12 bg-indigo-100 rounded-full flex items-center justify-center">
+          <span class="text-indigo-600 font-bold"><%= @follow_up.user&.name&.first %></span>
+        </div>
+        <div class="ml-4">
+          <div class="text-base font-medium text-gray-900"><%= @follow_up.user&.name %></div>
+          <div class="text-sm text-gray-500"><%= @follow_up.user&.email %></div>
+        </div>
+      </div>
+      <div class="border-t border-gray-200 pt-4 space-y-3">
+        <div>
+          <span class="text-sm text-gray-500">课程</span>
+          <p class="text-sm font-medium text-gray-900"><%= @follow_up.course&.title %></p>
+        </div>
+        <div>
+          <span class="text-sm text-gray-500">当前进度</span>
+          <p class="text-sm font-medium text-red-600"><%= @follow_up.enrollment&.progress&.to_i || 0 %>%</p>
+        </div>
+        <div>
+          <span class="text-sm text-gray-500">落后课时</span>
+          <p class="text-sm font-medium text-gray-900"><%= @follow_up.days_behind %> 课时</p>
+        </div>
+        <div>
+          <span class="text-sm text-gray-500">到期时间</span>
+          <p class="text-sm font-medium text-gray-900"><%= @follow_up.enrollment&.expired_at&.strftime("%Y-%m-%d") %></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="lg:col-span-2">
+    <div class="bg-white shadow-sm border border-gray-200 rounded-lg p-6">
+      <h3 class="text-lg font-medium text-gray-900 mb-4">跟进记录</h3>
+      <%= form_with model: @follow_up, local: true do |form| %>
+        <% if @follow_up.errors.any? %>
+          <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+            <h3 class="font-medium"><%= pluralize(@follow_up.errors.count, "error") %> prohibited this follow_up from being saved:</h3>
+            <ul class="mt-2 list-disc list-inside text-sm">
+              <% @follow_up.errors.each do |error| %>
+                <li><%= error.full_message %></li>
+              <% end %>
+            </ul>
+          </div>
+        <% end %>
+
+        <div class="mb-4">
+          <%= form.label :status, "跟进状态", class: "block text-sm font-medium text-gray-700 mb-2" %>
+          <%= form.select :status, FollowUp.statuses.keys.map { |k| [follow_up_status_text(k), k] }, {}, class: "shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md" %>
+        </div>
+
+        <div class="mb-4">
+          <%= form.label :reason, "落后原因", class: "block text-sm font-medium text-gray-700 mb-2" %>
+          <%= form.text_area :reason, rows: 3, placeholder: "记录学员进度落后的原因...", class: "shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md" %>
+        </div>
+
+        <div class="mb-4">
+          <%= form.label :description, "跟进备注", class: "block text-sm font-medium text-gray-700 mb-2" %>
+          <%= form.text_area :description, rows: 5, placeholder: "记录跟进情况、学员反馈等...", class: "shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md" %>
+        </div>
+
+        <div class="mb-4">
+          <%= form.label :next_follow_up_at, "下次跟进时间", class: "block text-sm font-medium text-gray-700 mb-2" %>
+          <%= form.datetime_local_field :next_follow_up_at, class: "shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md" %>
+        </div>
+
+        <div class="mt-6 flex justify-end space-x-3">
+          <%= link_to "取消", follow_ups_path, class: "px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
+          <%= form.submit "保存记录", class: "inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700" %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

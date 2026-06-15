@@ -1,0 +1,11 @@
+follow_up_generation:
+  cron: "0 9 * * *"
+  class: "FollowUpGenerationJob"
+  queue: default
+  description: "每天早上9点生成进度落后学员的跟进名单"
+
+daily_progress_check:
+  cron: "0 2 * * *"
+  class: "DailyProgressCheckJob"
+  queue: default
+  description: "每天凌晨2点进行每日进度检查"

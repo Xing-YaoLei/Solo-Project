@@ -1,0 +1,433 @@
+<% content_for :title, "报名详情 - 职业教育结算台" %>
+
+<div class="mb-6">
+  <%= link_to "← 返回报名列表", enrollments_path, class: "text-sm text-gray-500 hover:text-gray-700" %>
+  <div class="mt-2 flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">报名详情</h1>
+      <p class="mt-1 text-sm text-gray-500">
+        <%= @enrollment.user&.name %> - <%= @enrollment.course&.title %>
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <%= enrollment_status_class(@enrollment.status) %> ml-2">
+          <%= enrollment_status_text(@enrollment.status) %>
+        </span>
+      </p>
+    </div>
+    <div class="flex space-x-3">
+      <% if @enrollment.enrolled? %>
+        <%= button_to "开始学习", start_learning_enrollment_path(@enrollment), method: :post, class: "inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700" %>
+      <% end %>
+      <%= button_to "更新进度", complete_enrollment_path(@enrollment), method: :post, class: "inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50" %>
+    </div>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+  <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+    <p class="text-sm font-medium text-gray-500">学习进度</p>
+    <div class="mt-2 flex items-end">
+      <p class="text-3xl font-bold text-gray-900"><%= @enrollment.progress.to_i %>%</p>
+      <p class="ml-2 text-sm text-gray-500 mb-1"><%= @enrollment.completed_lessons_count %>/<%= @enrollment.total_lessons_count %> 课时</p>
+    </div>
+    <div class="mt-3 w-full bg-gray-200 rounded-full h-2">
+      <div class="<%= @enrollment.behind_schedule? ? 'bg-red-500' : 'bg-green-500' %> h-2 rounded-full" style="width: <%= @enrollment.progress %>%"></div>
+    </div>
+    <% if @enrollment.behind_schedule? %>
+      <p class="mt-2 text-xs text-red-600">进度落后</p>
+    <% end %>
+  </div>
+
+  <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+    <p class="text-sm font-medium text-gray-500">考试状态</p>
+    <div class="mt-2">
+      <% if @enrollment.exam_passed? %>
+        <p class="text-3xl font-bold text-green-600">已通过</p>
+        <p class="mt-1 text-sm text-gray-500">共参加 <%= @enrollment.exam_attempts %> 次考试</p>
+      <% else %>
+        <p class="text-3xl font-bold text-gray-400">未通过</p>
+        <p class="mt-1 text-sm text-gray-500">已考 <%= @enrollment.exam_attempts %> 次</p>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+    <p class="text-sm font-medium text-gray-500">证书</p>
+    <div class="mt-2">
+      <% if @enrollment.certificate_issued? %>
+        <p class="text-3xl font-bold text-purple-600">已颁发</p>
+        <p class="mt-1 text-sm text-gray-500">可在证书中心查看</p>
+      <% else %>
+        <p class="text-3xl font-bold text-gray-400">未获得</p>
+        <% if @enrollment.certificate_eligible? %>
+          <p class="mt-1 text-sm text-green-600">符合颁发条件</p>
+        <% else %>
+          <p class="mt-1 text-sm text-gray-500">完课并通过考试后获得</p>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+    <p class="text-sm font-medium text-gray-500">有效期</p>
+    <div class="mt-2">
+      <% if @enrollment.expired_at %>
+        <p class="text-3xl font-bold text-gray-900"><%= @enrollment.remaining_days %></p>
+        <p class="mt-1 text-sm text-gray-500">天后到期</p>
+        <% if @enrollment.expired? %>
+          <p class="mt-1 text-xs text-red-600">已过期</p>
+        <% elsif @enrollment.remaining_days < 30 %>
+          <p class="mt-1 text-xs text-orange-600">即将到期</p>
+        <% end %>
+      <% else %>
+        <p class="text-3xl font-bold text-gray-400">-</p>
+        <p class="mt-1 text-sm text-gray-500">未设置有效期</p>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <div class="lg:col-span-2 space-y-6">
+    <div class="bg-white shadow-sm border border-gray-200 rounded-lg overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="text-lg font-medium text-gray-900">课程章节</h3>
+      </div>
+      <div class="divide-y divide-gray-200">
+        <% @enrollment.course&.chapters&.each do |chapter| %>
+          <div class="px-6 py-4">
+            <div class="flex items-center justify-between">
+              <h4 class="font-medium text-gray-900"><%= chapter.title %></h4>
+              <% chapter_completed = chapter.lessons.joins(:lesson_progresses).where(lesson_progresses: { enrollment_id: @enrollment.id, status: :completed }).count %>
+              <% chapter_total = chapter.lessons.count %>
+              <span class="text-sm text-gray-500"><%= chapter_completed %>/<%= chapter_total %> 课时</span>
+            </div>
+            <div class="mt-3 space-y-2">
+              <% chapter.lessons.each do |lesson| %>
+                <% progress = lesson.lesson_progresses.find_by(enrollment_id: @enrollment.id) %>
+                <div class="flex items-center py-1">
+                  <div class="flex-shrink-0">
+                    <% if progress&.completed? %>
+                      <div class="h-5 w-5 rounded-full bg-green-100 flex items-center justify-center">
+                        <svg class="h-3 w-3 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                          <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                        </svg>
+                      </div>
+                    <% elsif progress&.in_progress? %>
+                      <div class="h-5 w-5 rounded-full bg-yellow-100 flex items-center justify-center">
+                        <div class="h-2 w-2 rounded-full bg-yellow-600"></div>
+                      </div>
+                    <% else %>
+                      <div class="h-5 w-5 rounded-full bg-gray-100"></div>
+                    <% end %>
+                  </div>
+                  <span class="ml-3 text-sm <%= progress&.completed? ? 'text-gray-500 line-through' : 'text-gray-700' %>"><%= lesson.title %></span>
+                  <span class="ml-auto text-xs text-gray-400"><%= lesson.duration %>分钟</span>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="bg-white shadow-sm border border-gray-200 rounded-lg overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="text-lg font-medium text-gray-900">题库练习</h3>
+      </div>
+      <div class="p-6">
+        <% practice_count = @enrollment.practice_records.count %>
+        <% correct_count = @enrollment.practice_records.where(is_correct: true).count %>
+        <% accuracy = practice_count > 0 ? (correct_count.to_f / practice_count * 100).round(1) : 0 %>
+        <div class="grid grid-cols-3 gap-4 text-center">
+          <div>
+            <p class="text-2xl font-bold text-indigo-600"><%= practice_count %></p>
+            <p class="text-sm text-gray-500">练习题目</p>
+          </div>
+          <div>
+            <p class="text-2xl font-bold text-green-600"><%= correct_count %></p>
+            <p class="text-sm text-gray-500">正确题数</p>
+          </div>
+          <div>
+            <p class="text-2xl font-bold text-orange-600"><%= accuracy %>%</p>
+            <p class="text-sm text-gray-500">正确率</p>
+          </div>
+        </div>
+        <% if @enrollment.practice_records.any? %>
+          <div class="mt-4 border-t border-gray-100 pt-4">
+            <h4 class="text-sm font-medium text-gray-700 mb-3">最近练习</h4>
+            <div class="space-y-2">
+              <% @enrollment.practice_records.order(created_at: :desc).limit(5).each do |record| %>
+                <div class="flex items-center justify-between py-1">
+                  <span class="text-sm text-gray-600 truncate max-w-xs"><%= record.question&.content %></span>
+                  <span class="text-xs <%= record.is_correct? ? 'text-green-600' : 'text-red-600' %>"><%= record.is_correct? ? '正确' : '错误' %></span>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="bg-white shadow-sm border border-gray-200 rounded-lg overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="text-lg font-medium text-gray-900">考试记录</h3>
+      </div>
+      <div class="p-6">
+        <% if @exam_records.any? %>
+          <div class="space-y-3">
+            <% @exam_records.each do |record| %>
+              <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div>
+                  <p class="font-medium text-gray-900"><%= record.exam&.title %></p>
+                  <p class="text-sm text-gray-500">第 <%= record.attempt_number %> 次 · <%= time_ago_in_words(record.created_at) %>前</p>
+                </div>
+                <div class="text-right">
+                  <p class="text-lg font-bold <%= record.is_passed? ? 'text-green-600' : 'text-red-600' %>"><%= record.score %>分</p>
+                  <p class="text-xs text-gray-500"><%= record.is_passed? ? '通过' : '未通过' %></p>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        <% else %>
+          <p class="text-gray-500 text-center py-4">暂无考试记录</p>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="bg-white shadow-sm border border-gray-200 rounded-lg overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="text-lg font-medium text-gray-900">直播回放</h3>
+      </div>
+      <div class="p-6">
+        <% live_sessions = @enrollment.course&.live_sessions %>
+        <% if live_sessions&.any? %>
+          <div class="space-y-3">
+            <% live_sessions.each do |session| %>
+              <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div class="flex items-center">
+                  <div class="flex-shrink-0 h-10 w-10 bg-indigo-100 rounded-lg flex items-center justify-center">
+                    <svg class="h-5 w-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <div class="ml-4">
+                    <p class="font-medium text-gray-900"><%= session.title %></p>
+                    <p class="text-sm text-gray-500"><%= session.start_time&.strftime("%Y-%m-%d %H:%M") %></p>
+                  </div>
+                </div>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <%= session.status == 'upcoming' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800' %>">
+                  <%= session.status == 'upcoming' ? '即将开始' : '已结束' %>
+                </span>
+              </div>
+            <% end %>
+          </div>
+        <% else %>
+          <p class="text-gray-500 text-center py-4">暂无直播课程</p>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="bg-white shadow-sm border border-gray-200 rounded-lg overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="text-lg font-medium text-gray-900">证书材料</h3>
+      </div>
+      <div class="p-6">
+        <% certificate_issuances = @enrollment.certificate_issuances %>
+        <% if certificate_issuances.any? %>
+          <div class="space-y-3">
+            <% certificate_issuances.each do |issuance| %>
+              <div class="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+                <div class="flex items-center">
+                  <div class="flex-shrink-0 h-10 w-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                    <svg class="h-5 w-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                    </svg>
+                  </div>
+                  <div class="ml-4">
+                    <p class="font-medium text-gray-900"><%= issuance.certificate&.title %></p>
+                    <p class="text-sm text-gray-500">证书编号：<%= issuance.certificate_no %></p>
+                  </div>
+                </div>
+                <span class="text-xs text-purple-600"><%= issuance.issued_at&.strftime("%Y-%m-%d") %> 颁发</span>
+              </div>
+            <% end %>
+          </div>
+        <% else %>
+          <div class="text-center py-4">
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p class="mt-2 text-gray-500">完成课程并通过考试后即可获得证书</p>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="bg-white shadow-sm border border-gray-200 rounded-lg overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+        <h3 class="text-lg font-medium text-gray-900">助教答疑</h3>
+        <%= link_to "发起提问", new_enrollment_qa_thread_path(@enrollment), class: "text-sm text-indigo-600 hover:text-indigo-500" %>
+      </div>
+      <div class="p-6">
+        <% if @qa_threads.any? %>
+          <div class="space-y-3">
+            <% @qa_threads.each do |thread| %>
+              <div class="p-3 bg-gray-50 rounded-lg">
+                <div class="flex items-center justify-between">
+                  <p class="font-medium text-gray-900"><%= thread.title %></p>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium <%= thread.status == 'open' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' %>">
+                    <%= thread.status == 'open' ? '进行中' : '已解决' %>
+                  </span>
+                </div>
+                <p class="mt-1 text-sm text-gray-600 line-clamp-2"><%= thread.content %></p>
+                <div class="mt-2 flex items-center text-xs text-gray-500">
+                  <span><%= thread.user&.name %></span>
+                  <span class="mx-2">·</span>
+                  <span><%= time_ago_in_words(thread.created_at) %>前提问</span>
+                  <span class="mx-2">·</span>
+                  <span><%= thread.qa_replies.count %> 条回复</span>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        <% else %>
+          <p class="text-gray-500 text-center py-4">暂无答疑记录</p>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <div class="space-y-6">
+    <div class="bg-white shadow-sm border border-gray-200 rounded-lg overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="text-lg font-medium text-gray-900">订单信息</h3>
+      </div>
+      <div class="p-6 space-y-3">
+        <div class="flex justify-between">
+          <span class="text-sm text-gray-500">订单号</span>
+          <span class="text-sm font-medium text-gray-900"><%= @enrollment.order&.order_no %></span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-sm text-gray-500">支付金额</span>
+          <span class="text-sm font-medium text-gray-900">¥<%= number_with_precision @enrollment.order&.amount, precision: 2 %></span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-sm text-gray-500">支付方式</span>
+          <span class="text-sm text-gray-600"><%= @enrollment.order&.pay_method %></span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-sm text-gray-500">渠道</span>
+          <span class="text-sm text-gray-600"><%= @enrollment.channel&.name %></span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-sm text-gray-500">报名时间</span>
+          <span class="text-sm text-gray-600"><%= @enrollment.enrolled_at&.strftime("%Y-%m-%d") %></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white shadow-sm border border-gray-200 rounded-lg overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+        <h3 class="text-lg font-medium text-gray-900">跟进记录</h3>
+        <%= link_to "新建跟进", new_enrollment_follow_up_path(@enrollment), class: "text-sm text-indigo-600 hover:text-indigo-500" %>
+      </div>
+      <div class="p-6">
+        <% if @follow_ups.any? %>
+          <div class="space-y-3">
+            <% @follow_ups.limit(5).each do |follow_up| %>
+              <div class="p-3 bg-gray-50 rounded-lg">
+                <div class="flex items-center justify-between">
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium <%= follow_up_status_class(follow_up.status) %>">
+                    <%= follow_up_status_text(follow_up.status) %>
+                  </span>
+                  <span class="text-xs text-gray-500"><%= time_ago_in_words(follow_up.created_at) %>前</span>
+                </div>
+                <p class="mt-2 text-sm text-gray-700"><%= follow_up.reason %></p>
+                <% if follow_up.next_follow_up_at %>
+                  <p class="mt-1 text-xs text-gray-500">下次跟进：<%= follow_up.next_follow_up_at.strftime("%m-%d %H:%M") %></p>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+          <% if @follow_ups.count > 5 %>
+            <%= link_to "查看全部", enrollment_follow_ups_path(@enrollment), class: "block mt-3 text-center text-sm text-indigo-600 hover:text-indigo-500" %>
+          <% end %>
+        <% else %>
+          <p class="text-gray-500 text-center py-4">暂无跟进记录</p>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="bg-white shadow-sm border border-gray-200 rounded-lg overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+        <h3 class="text-lg font-medium text-gray-900">申诉记录</h3>
+        <%= link_to "新建申诉", new_enrollment_appeal_path(@enrollment), class: "text-sm text-indigo-600 hover:text-indigo-500" %>
+      </div>
+      <div class="p-6">
+        <% if @appeals.any? %>
+          <div class="space-y-3">
+            <% @appeals.limit(5).each do |appeal| %>
+              <div class="p-3 bg-gray-50 rounded-lg">
+                <div class="flex items-center justify-between">
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                    <%= appeal_type_text(appeal.appeal_type) %>
+                  </span>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium <%= appeal_status_class(appeal.status) %>">
+                    <%= appeal_status_text(appeal.status) %>
+                  </span>
+                </div>
+                <p class="mt-2 text-sm font-medium text-gray-900"><%= appeal.title %></p>
+                <p class="mt-1 text-xs text-gray-500"><%= time_ago_in_words(appeal.created_at) %>前提交</p>
+              </div>
+            <% end %>
+          </div>
+        <% else %>
+          <p class="text-gray-500 text-center py-4">暂无申诉记录</p>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="bg-white shadow-sm border border-gray-200 rounded-lg overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="text-lg font-medium text-gray-900">补考与延期</h3>
+      </div>
+      <div class="p-6 space-y-4">
+        <div>
+          <h4 class="text-sm font-medium text-gray-700 mb-2">补考记录</h4>
+          <% makeup_exams = @enrollment.makeup_exams %>
+          <% if makeup_exams.any? %>
+            <div class="space-y-2">
+              <% makeup_exams.each do |exam| %>
+                <div class="flex items-center justify-between p-2 bg-yellow-50 rounded">
+                  <span class="text-sm text-gray-700"><%= exam.exam&.title %></span>
+                  <span class="text-xs <%= exam.status == 'approved' ? 'text-green-600' : 'text-yellow-600' %>">
+                    <%= exam.status == 'approved' ? '已批准' : '待审批' %>
+                  </span>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <p class="text-sm text-gray-400">暂无补考记录</p>
+          <% end %>
+        </div>
+        <div>
+          <h4 class="text-sm font-medium text-gray-700 mb-2">延期记录</h4>
+          <% extensions = @enrollment.extensions %>
+          <% if extensions.any? %>
+            <div class="space-y-2">
+              <% extensions.each do |ext| %>
+                <div class="flex items-center justify-between p-2 bg-blue-50 rounded">
+                  <span class="text-sm text-gray-700">延期 <%= ext.extend_days %> 天</span>
+                  <span class="text-xs <%= ext.status == 'approved' ? 'text-green-600' : 'text-yellow-600' %>">
+                    <%= ext.status == 'approved' ? '已批准' : '待审批' %>
+                  </span>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <p class="text-sm text-gray-400">暂无延期记录</p>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
