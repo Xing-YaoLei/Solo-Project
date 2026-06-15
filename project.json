@@ -1,0 +1,11 @@
+{
+  "engine": "cocos-creator-js",
+  "packages": "packages",
+  "name": "UniversitySchedulingGame",
+  "id": "university-scheduling-game",
+  "version": "1.0.0",
+  "type": "2d",
+  "creator": {
+    "version": "3.8.0"
+  }
+}

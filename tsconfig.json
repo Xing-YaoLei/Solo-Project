@@ -1,0 +1,31 @@
+{
+  "extends": "./temp/tsconfig.cocos.json",
+  "compilerOptions": {
+    "target": "ES2017",
+    "module": "ESNext",
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "noImplicitThis": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["assets/scripts/*"]
+    }
+  },
+  "include": [
+    "assets/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "temp",
+    "build",
+    "library"
+  ]
+}

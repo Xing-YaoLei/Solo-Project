@@ -1,0 +1,8 @@
+{
+  "game": {
+    "orientation": "portrait",
+    "screenWidth": 750,
+    "screenHeight": 1334,
+    "frameRate": 60
+  }
+}

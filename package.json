@@ -1,0 +1,15 @@
+{
+  "name": "university-scheduling-game",
+  "version": "1.0.0",
+  "description": "高校教务选课排课经营模拟游戏",
+  "scripts": {
+    "build": "cocos build",
+    "compile": "tsc --noEmit --skipLibCheck",
+    "typecheck": "tsc --noEmit --skipLibCheck 2>&1",
+    "lint": "eslint \"assets/**/*.ts\" --fix"
+  },
+  "devDependencies": {
+    "typescript": "~4.9.5",
+    "@types/node": "^18.0.0"
+  }
+}
