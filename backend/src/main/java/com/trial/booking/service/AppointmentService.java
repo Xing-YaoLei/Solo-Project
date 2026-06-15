@@ -64,6 +64,20 @@ public class AppointmentService {
     }
 
     public PageResult<Appointment> search(AppointmentDTO.SearchParams params) {
+        String role = SecurityUtils.getCurrentUserRole();
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+
+        if ("TEACHER".equals(role) && currentUserId != null) {
+            if (teacherRepository.findByUserId(currentUserId).isEmpty()) {
+                return PageResult.of(List.of(), 0, params.getPage(), params.getPageSize());
+            }
+        } else if ("PRINCIPAL".equals(role) && currentUserId != null) {
+            User principalUser = userRepository.findById(currentUserId).orElse(null);
+            if (principalUser == null || principalUser.getCampus() == null || principalUser.getCampus().isEmpty()) {
+                return PageResult.of(List.of(), 0, params.getPage(), params.getPageSize());
+            }
+        }
+
         LocalDate effectiveStart = params.getStartDate();
         LocalDate effectiveEnd = params.getEndDate();
         if (params.getTrialDate() != null) {
@@ -74,23 +88,24 @@ public class AppointmentService {
         Specification<Appointment> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
-            String role = SecurityUtils.getCurrentUserRole();
-            Long currentUserId = SecurityUtils.getCurrentUserId();
-
             if ("STUDENT".equals(role) && currentUserId != null) {
                 predicates.add(cb.equal(root.get("studentUserId"), currentUserId));
             } else if ("PARENT".equals(role) && currentUserId != null) {
                 predicates.add(cb.equal(root.get("parentId"), currentUserId));
             } else if ("TEACHER".equals(role) && currentUserId != null) {
-                teacherRepository.findByUserId(currentUserId).ifPresent(teacher ->
-                        predicates.add(cb.equal(root.get("teacherId"), teacher.getId()))
-                );
+                Teacher teacher = teacherRepository.findByUserId(currentUserId).orElse(null);
+                if (teacher == null) {
+                    predicates.add(cb.disjunction());
+                } else {
+                    predicates.add(cb.equal(root.get("teacherId"), teacher.getId()));
+                }
             } else if ("PRINCIPAL".equals(role) && currentUserId != null) {
-                userRepository.findById(currentUserId).ifPresent(user -> {
-                    if (user.getCampus() != null && !user.getCampus().isEmpty()) {
-                        predicates.add(cb.equal(root.get("campus"), user.getCampus()));
-                    }
-                });
+                User principalUser = userRepository.findById(currentUserId).orElse(null);
+                if (principalUser == null || principalUser.getCampus() == null || principalUser.getCampus().isEmpty()) {
+                    predicates.add(cb.disjunction());
+                } else {
+                    predicates.add(cb.equal(root.get("campus"), principalUser.getCampus()));
+                }
             }
 
             if (effectiveStart != null && effectiveEnd != null) {
@@ -421,6 +436,9 @@ public class AppointmentService {
     }
 
     public List<ChangeLog> getChangeLog(Long appointmentId) {
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("预约不存在"));
+        checkDataPermission(appointment);
         return changeLogRepository.findByAppointmentIdOrderByCreatedAtDesc(appointmentId);
     }
 
