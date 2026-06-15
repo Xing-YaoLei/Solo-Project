@@ -16,13 +16,6 @@ const roleLabels: Record<string, string> = {
   student: '学生',
 }
 
-const roleScopeDescriptions: Record<string, string> = {
-  admin: '查看全部数据：所有院系、导师与学生',
-  dean: '查看本院系数据：所属院系的导师与学生',
-  advisor: '查看名下学生数据：本人指导的学生复核记录',
-  student: '查看个人数据：仅本人的复核与申请记录',
-}
-
 interface ShareDashboardProps {
   token: string
 }
@@ -32,7 +25,12 @@ export default function ShareDashboard({ token }: ShareDashboardProps) {
   const [valid, setValid] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [role, setRole] = useState<Role>('admin')
-  const [scope, setScope] = useState<Record<string, unknown>>({})
+  const [departmentId, setDepartmentId] = useState<string | undefined>(undefined)
+  const [advisorId, setAdvisorId] = useState<string | undefined>(undefined)
+  const [studentId, setStudentId] = useState<string | undefined>(undefined)
+  const [departmentName, setDepartmentName] = useState<string | null>(null)
+  const [advisorName, setAdvisorName] = useState<string | null>(null)
+  const [studentName, setStudentName] = useState<string | null>(null)
 
   useEffect(() => {
     const verifyToken = async () => {
@@ -40,19 +38,19 @@ export default function ShareDashboard({ token }: ShareDashboardProps) {
       setError(null)
       try {
         const res = await fetch(`/api/share/verify?token=${encodeURIComponent(token)}`)
-        if (res.ok) {
-          const data = await res.json()
-          if (data.valid) {
-            setValid(true)
-            setRole((data.role as Role) || 'admin')
-            setScope(data.scope || {})
-          } else {
-            setValid(false)
-            setError(data.error || '链接无效')
-          }
+        const data = await res.json()
+        if (res.ok && data.valid) {
+          setValid(true)
+          setRole((data.role as Role) || 'admin')
+          setDepartmentId(data.departmentId || undefined)
+          setAdvisorId(data.advisorId || undefined)
+          setStudentId(data.studentId || undefined)
+          setDepartmentName(data.departmentName || null)
+          setAdvisorName(data.advisorName || null)
+          setStudentName(data.studentName || null)
         } else {
           setValid(false)
-          setError('验证失败')
+          setError(data.error || '链接无效')
         }
       } catch {
         setValid(false)
@@ -65,7 +63,17 @@ export default function ShareDashboard({ token }: ShareDashboardProps) {
   }, [token])
 
   const roleLabel = roleLabels[role] || '教务管理员'
-  const scopeDesc = roleScopeDescriptions[role] || ''
+
+  const scopeDescription = (() => {
+    if (studentName) return `查看学生「${studentName}」的个人复核与申请记录`
+    if (advisorName) return `查看导师「${advisorName}」名下学生的复核记录`
+    if (departmentName) return `查看「${departmentName}」院系的导师与学生数据`
+    if (role === 'admin') return '查看全部数据：所有院系、导师与学生'
+    if (role === 'dean') return '查看本院系数据：所属院系的导师与学生'
+    if (role === 'advisor') return '查看名下学生数据：本人指导的学生复核记录'
+    if (role === 'student') return '查看个人数据：仅本人的复核与申请记录'
+    return '按角色权限查看数据'
+  })()
 
   if (loading) {
     return (
@@ -110,7 +118,7 @@ export default function ShareDashboard({ token }: ShareDashboardProps) {
         <div className="flex items-center gap-1.5">
           <Eye size={14} style={{ color: '#92400E' }} />
           <span className="text-xs" style={{ color: '#92400E' }}>
-            {scopeDesc}
+            {scopeDescription}
           </span>
         </div>
       </div>
@@ -123,10 +131,30 @@ export default function ShareDashboard({ token }: ShareDashboardProps) {
       </div>
 
       <div className="grid grid-cols-2 gap-6">
-        <StudentTrendCard role={role} />
-        <GradeCompositionCard role={role} />
-        <MaterialDetailCard role={role} />
-        <AdvisorAnomalyCard role={role} />
+        <StudentTrendCard
+          role={role}
+          department={departmentId}
+          advisorId={advisorId}
+          studentId={studentId}
+        />
+        <GradeCompositionCard
+          role={role}
+          department={departmentId}
+          advisorId={advisorId}
+          studentId={studentId}
+        />
+        <MaterialDetailCard
+          role={role}
+          department={departmentId}
+          advisorId={advisorId}
+          studentId={studentId}
+        />
+        <AdvisorAnomalyCard
+          role={role}
+          department={departmentId}
+          advisorId={advisorId}
+          studentId={studentId}
+        />
       </div>
     </div>
   )

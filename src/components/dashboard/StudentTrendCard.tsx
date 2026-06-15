@@ -4,11 +4,13 @@ import Link from 'next/link'
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts'
 import { useTrendData } from '@/hooks/use-data'
 import type { Role } from '@/lib/types'
-import { ArrowUpRight, Loader2 } from 'lucide-react'
+import { ArrowUpRight, Loader2, AlertTriangle, FileText } from 'lucide-react'
 
 interface Props {
   role?: Role
   department?: string
+  advisorId?: string
+  studentId?: string
 }
 
 interface TooltipPayloadItem {
@@ -40,8 +42,8 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
   )
 }
 
-export default function StudentTrendCard({ role = 'admin', department }: Props) {
-  const { data, loading } = useTrendData(role, department)
+export default function StudentTrendCard({ role = 'admin', department, advisorId, studentId }: Props) {
+  const { data, loading, error } = useTrendData(role, department, advisorId, studentId)
 
   const latest = data[data.length - 1] ?? { count: 0, semester: '' }
   const prev = data[data.length - 2]
@@ -53,6 +55,36 @@ export default function StudentTrendCard({ role = 'admin', department }: Props) 
     return (
       <div className="rounded-xl p-5 shadow-sm flex items-center justify-center" style={{ backgroundColor: 'var(--bg-card)', minHeight: 320 }}>
         <Loader2 size={24} className="animate-spin" style={{ color: 'var(--amber)' }} />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-xl p-5 shadow-sm flex flex-col items-center justify-center" style={{ backgroundColor: 'var(--bg-card)', minHeight: 320 }}>
+        <div
+          className="w-10 h-10 rounded-full flex items-center justify-center mb-3"
+          style={{ backgroundColor: '#FEF2F2' }}
+        >
+          <AlertTriangle size={20} style={{ color: '#EF4444' }} />
+        </div>
+        <p className="text-sm font-medium" style={{ color: '#1E293B' }}>数据加载失败</p>
+        <p className="text-xs mt-1 text-center" style={{ color: '#64748B' }}>{error}</p>
+      </div>
+    )
+  }
+
+  if (data.length === 0) {
+    return (
+      <div className="rounded-xl p-5 shadow-sm flex flex-col items-center justify-center" style={{ backgroundColor: 'var(--bg-card)', minHeight: 320 }}>
+        <div
+          className="w-10 h-10 rounded-full flex items-center justify-center mb-3"
+          style={{ backgroundColor: '#F8FAFC' }}
+        >
+          <FileText size={20} style={{ color: '#94A3B8' }} />
+        </div>
+        <p className="text-sm font-medium" style={{ color: '#64748B' }}>暂无数据</p>
+        <p className="text-xs mt-1" style={{ color: '#94A3B8' }}>当前筛选条件下无记录</p>
       </div>
     )
   }

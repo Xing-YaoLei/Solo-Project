@@ -1,56 +1,87 @@
 import { NextResponse } from 'next/server'
+import prisma from '@/lib/prisma'
 import type { Role } from '@/lib/types'
 import { filterMaterialDetails, filterCampusCardRecords } from '@/lib/role-filter'
-import { materialDetails, campusCardRecords } from '@/lib/mock-data'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const role = (searchParams.get('role') || 'admin') as Role
   const department = searchParams.get('department') || undefined
+  const advisorId = searchParams.get('advisorId') || undefined
+  const studentId = searchParams.get('studentId') || undefined
 
-  let materials = materialDetails
-  let cardRecords = campusCardRecords
   try {
-    const prisma = (await import('@/lib/prisma')).default
-    const dbMaterials = await prisma.application.findMany({
-      include: { student: true },
-      orderBy: { submittedAt: 'desc' },
-    })
-    if (dbMaterials.length > 0) {
-      materials = dbMaterials.map((d, i) => ({
-        id: d.id,
-        studentName: d.student.name,
-        studentId: d.student.studentNo,
-        materialType: d.materialType,
-        submittedAt: d.submittedAt?.toISOString() || new Date().toISOString(),
-        status: (d.status === 'missing' ? '待审核' : d.status === 'pending' ? '审核中' : d.status === 'approved' ? '已通过' : '已退回') as '待审核' | '审核中' | '已通过' | '已退回',
-        riskLevel: (i % 3 === 0 ? 'high' : i % 3 === 1 ? 'medium' : 'low') as 'low' | 'medium' | 'high',
-      }))
-    }
+    const studentWhere = advisorId
+      ? { advisorId }
+      : department
+      ? { departmentId: department }
+      : {}
 
-    const dbCards = await prisma.campusCardRecord.findMany({
-      include: { student: true },
-      orderBy: { transactionTime: 'desc' },
+    const [dbMaterials, dbCards] = await Promise.all([
+      prisma.application.findMany({
+        include: { student: true },
+        where: studentId
+          ? { studentId }
+          : Object.keys(studentWhere).length > 0
+          ? { student: studentWhere }
+          : {},
+        orderBy: { submittedAt: 'desc' },
+      }),
+      prisma.campusCardRecord.findMany({
+        include: { student: true },
+        where: studentId
+          ? { studentId }
+          : Object.keys(studentWhere).length > 0
+          ? { student: studentWhere }
+          : {},
+        orderBy: { transactionTime: 'desc' },
+        take: 100,
+      }),
+    ])
+
+    const materials = dbMaterials.map((d) => ({
+      id: d.id,
+      studentName: d.student.name,
+      studentId: d.student.studentNo,
+      materialType: d.materialType,
+      submittedAt: d.submittedAt?.toISOString() || new Date().toISOString(),
+      status: (
+        d.status === 'missing' ? '待审核' :
+        d.status === 'pending' ? '审核中' :
+        d.status === 'approved' ? '已通过' : '已退回'
+      ) as '待审核' | '审核中' | '已通过' | '已退回',
+      riskLevel: (
+        d.status === 'missing' ? 'high' :
+        d.status === 'pending' ? 'medium' : 'low'
+      ) as 'low' | 'medium' | 'high',
+    }))
+
+    const cardRecords = dbCards.map((d) => ({
+      id: d.id,
+      studentId: d.student.studentNo,
+      studentName: d.student.name,
+      location: d.location,
+      timestamp: d.transactionTime.toISOString(),
+      isAnomaly: d.amount === 0 || d.transactionTime.getHours() >= 22,
+    }))
+
+    const filteredMaterials = filterMaterialDetails(materials, { role, department, advisorId, studentId })
+    const filteredCards = filterCampusCardRecords(cardRecords, { role, department, advisorId, studentId })
+
+    return NextResponse.json({
+      materialDetails: filteredMaterials,
+      campusCardRecords: filteredCards,
     })
-    if (dbCards.length > 0) {
-      cardRecords = dbCards.map((d) => ({
-        id: d.id,
-        studentId: d.student.studentNo,
-        studentName: d.student.name,
-        location: d.location,
-        timestamp: d.transactionTime.toISOString(),
-        isAnomaly: d.amount === 0 || d.transactionTime.getHours() >= 22,
-      }))
-    }
-  } catch {
-    materials = materialDetails
-    cardRecords = campusCardRecords
+  } catch (error) {
+    console.error('Materials API error:', error)
+    return NextResponse.json(
+      {
+        error: '数据加载失败',
+        message: error instanceof Error ? error.message : '数据库连接异常',
+        materialDetails: [],
+        campusCardRecords: [],
+      },
+      { status: 500 }
+    )
   }
-
-  const filteredMaterials = filterMaterialDetails(materials, { role, department })
-  const filteredCards = filterCampusCardRecords(cardRecords, { role, department })
-  return NextResponse.json({
-    materialDetails: filteredMaterials,
-    campusCardRecords: filteredCards,
-  })
 }

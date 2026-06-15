@@ -4,7 +4,6 @@ import type {
   MaterialDetail,
   CampusCardRecord,
   AdvisorAnomaly,
-  Role,
   RoleScope,
 } from './types'
 

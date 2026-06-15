@@ -5,11 +5,13 @@ import Link from 'next/link'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { useGradeComposition } from '@/hooks/use-data'
 import type { Role, GradeComposition } from '@/lib/types'
-import { ArrowUpRight, Loader2 } from 'lucide-react'
+import { ArrowUpRight, Loader2, AlertTriangle, PieChart as PieChartIcon } from 'lucide-react'
 
 interface Props {
   role?: Role
   department?: string
+  advisorId?: string
+  studentId?: string
 }
 
 const gradeColors: Record<string, string> = {
@@ -61,8 +63,8 @@ function BarTooltip({ active, payload, label }: BarTooltipProps) {
   )
 }
 
-export default function GradeCompositionCard({ role = 'admin', department }: Props) {
-  const { data: filteredComposition, loading } = useGradeComposition(role, department)
+export default function GradeCompositionCard({ role = 'admin', department, advisorId, studentId }: Props) {
+  const { data: filteredComposition, loading, error } = useGradeComposition(role, department, advisorId, studentId)
 
   const comparisonData = useMemo(() => {
     return filteredComposition.map((g: GradeComposition) => ({
@@ -96,6 +98,30 @@ export default function GradeCompositionCard({ role = 'admin', department }: Pro
     return (
       <div className="rounded-xl p-5 shadow-sm flex items-center justify-center" style={{ backgroundColor: 'var(--bg-card)', minHeight: 320 }}>
         <Loader2 size={24} className="animate-spin" style={{ color: 'var(--amber)' }} />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-xl p-5 shadow-sm flex flex-col items-center justify-center" style={{ backgroundColor: 'var(--bg-card)', minHeight: 320 }}>
+        <div className="w-10 h-10 rounded-full flex items-center justify-center mb-3" style={{ backgroundColor: '#FEF2F2' }}>
+          <AlertTriangle size={20} style={{ color: '#EF4444' }} />
+        </div>
+        <p className="text-sm font-medium" style={{ color: '#1E293B' }}>数据加载失败</p>
+        <p className="text-xs mt-1 text-center" style={{ color: '#64748B' }}>{error}</p>
+      </div>
+    )
+  }
+
+  if (filteredComposition.length === 0) {
+    return (
+      <div className="rounded-xl p-5 shadow-sm flex flex-col items-center justify-center" style={{ backgroundColor: 'var(--bg-card)', minHeight: 320 }}>
+        <div className="w-10 h-10 rounded-full flex items-center justify-center mb-3" style={{ backgroundColor: '#F8FAFC' }}>
+          <PieChartIcon size={20} style={{ color: '#94A3B8' }} />
+        </div>
+        <p className="text-sm font-medium" style={{ color: '#64748B' }}>暂无数据</p>
+        <p className="text-xs mt-1" style={{ color: '#94A3B8' }}>当前筛选条件下无记录</p>
       </div>
     )
   }

@@ -5,11 +5,13 @@ import Link from 'next/link'
 import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ZAxis } from 'recharts'
 import { useAdvisorAnomalies } from '@/hooks/use-data'
 import type { Role } from '@/lib/types'
-import { ArrowUpRight, Loader2 } from 'lucide-react'
+import { ArrowUpRight, Loader2, AlertTriangle, Users } from 'lucide-react'
 
 interface Props {
   role?: Role
   department?: string
+  advisorId?: string
+  studentId?: string
 }
 
 interface ScatterTooltipProps {
@@ -47,8 +49,8 @@ function AnomalyDot(props: { cx?: number; cy?: number; payload?: { isAnomaly: bo
   )
 }
 
-export default function AdvisorAnomalyCard({ role = 'admin', department }: Props) {
-  const { data: filteredAnomalies, loading } = useAdvisorAnomalies(role, department)
+export default function AdvisorAnomalyCard({ role = 'admin', department, advisorId, studentId }: Props) {
+  const { data: filteredAnomalies, loading, error } = useAdvisorAnomalies(role, department, advisorId, studentId)
 
   const scatterData = useMemo(() => filteredAnomalies.map((a) => ({
     x: a.totalReviews,
@@ -67,15 +69,26 @@ export default function AdvisorAnomalyCard({ role = 'admin', department }: Props
     )
   }
 
+  if (error) {
+    return (
+      <div className="rounded-xl p-5 shadow-sm flex flex-col items-center justify-center" style={{ backgroundColor: 'var(--bg-card)', minHeight: 320 }}>
+        <div className="w-10 h-10 rounded-full flex items-center justify-center mb-3" style={{ backgroundColor: '#FEF2F2' }}>
+          <AlertTriangle size={20} style={{ color: '#EF4444' }} />
+        </div>
+        <p className="text-sm font-medium" style={{ color: '#1E293B' }}>数据加载失败</p>
+        <p className="text-xs mt-1 text-center" style={{ color: '#64748B' }}>{error}</p>
+      </div>
+    )
+  }
+
   if (filteredAnomalies.length === 0) {
     return (
-      <div className="rounded-xl p-5 shadow-sm" style={{ backgroundColor: 'var(--bg-card)' }}>
-        <h3 className="text-base font-semibold mb-4" style={{ color: 'var(--navy)' }}>
-          导师异常监测
-        </h3>
-        <div className="text-center py-8 text-sm" style={{ color: 'var(--slate)' }}>
-          当前角色无可见导师数据
+      <div className="rounded-xl p-5 shadow-sm flex flex-col items-center justify-center" style={{ backgroundColor: 'var(--bg-card)', minHeight: 320 }}>
+        <div className="w-10 h-10 rounded-full flex items-center justify-center mb-3" style={{ backgroundColor: '#F8FAFC' }}>
+          <Users size={20} style={{ color: '#94A3B8' }} />
         </div>
+        <p className="text-sm font-medium" style={{ color: '#64748B' }}>暂无数据</p>
+        <p className="text-xs mt-1" style={{ color: '#94A3B8' }}>当前筛选条件下无记录</p>
       </div>
     )
   }
