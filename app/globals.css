@@ -1,0 +1,202 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Serif+SC:wght@400;500;600;700&display=swap');
+
+:root {
+  --primary-50: #f0f4f9;
+  --primary-100: #d9e2ec;
+  --primary-200: #b3c4d9;
+  --primary-300: #829cc2;
+  --primary-400: #4d74a6;
+  --primary-500: #2d5a87;
+  --primary-600: #1e3a5f;
+  --primary-700: #152a44;
+  --primary-800: #0d1a2c;
+  --primary-900: #080f1a;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+}
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  min-height: 100vh;
+}
+
+body {
+  background-image:
+    linear-gradient(rgba(29, 58, 95, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(29, 58, 95, 0.03) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+@layer components {
+  .card {
+    @apply bg-white rounded-lg shadow-lg border border-gray-100 transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5;
+  }
+
+  .card-gradient {
+    @apply bg-gradient-to-br from-white to-gray-50 rounded-lg shadow-lg border border-gray-100 transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5;
+  }
+
+  .btn-primary {
+    @apply px-4 py-2 bg-primary-600 text-white rounded transition-all duration-200 hover:bg-primary-700 hover:shadow-md active:translate-y-0;
+  }
+
+  .btn-secondary {
+    @apply px-4 py-2 bg-gray-100 text-gray-700 rounded transition-all duration-200 hover:bg-gray-200;
+  }
+
+  .status-pill {
+    @apply px-2.5 py-1 rounded-full text-xs font-medium;
+  }
+
+  .status-pending {
+    @apply bg-blue-50 text-blue-700 border border-blue-200;
+  }
+
+  .status-approved {
+    @apply bg-green-50 text-green-700 border border-green-200;
+  }
+
+  .status-rejected {
+    @apply bg-red-50 text-red-700 border border-red-200;
+  }
+
+  .status-missing {
+    @apply bg-amber-50 text-amber-700 border border-amber-200;
+  }
+
+  .table-header {
+    @apply px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50;
+  }
+
+  .table-cell {
+    @apply px-4 py-3 text-sm text-gray-900 border-b border-gray-100;
+  }
+
+  .table-row {
+    @apply transition-colors duration-150 hover:bg-gray-50;
+  }
+
+  .table-row-alt {
+    @apply bg-gray-50/50;
+  }
+
+  .animate-stagger-1 {
+    animation-delay: 100ms;
+  }
+
+  .animate-stagger-2 {
+    animation-delay: 200ms;
+  }
+
+  .animate-stagger-3 {
+    animation-delay: 300ms;
+  }
+
+  .animate-stagger-4 {
+    animation-delay: 400ms;
+  }
+
+  .animate-stagger-5 {
+    animation-delay: 500ms;
+  }
+
+  .animate-stagger-6 {
+    animation-delay: 600ms;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Recharts customization */
+.recharts-cartesian-grid-horizontal line,
+.recharts-cartesian-grid-vertical line {
+  stroke: #e2e8f0;
+  stroke-dasharray: 2 2;
+}
+
+.recharts-tooltip-wrapper {
+  z-index: 50 !important;
+}
+
+.custom-tooltip {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+}
+
+/* Hatch pattern for missing materials */
+.hatch-pattern {
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 4px,
+    rgba(239, 68, 68, 0.2) 4px,
+    rgba(239, 68, 68, 0.2) 8px
+  );
+}
+
+/* Anomaly pulse animation */
+@keyframes anomaly-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(239, 68, 68, 0);
+  }
+}
+
+.anomaly-dot {
+  animation: anomaly-pulse 2s ease-in-out infinite;
+}
+
+/* Inconsistency flash */
+@keyframes inconsistency-flash {
+  0%, 100% {
+    background-color: rgba(239, 68, 68, 0.1);
+  }
+  50% {
+    background-color: rgba(239, 68, 68, 0.3);
+  }
+}
+
+.inconsistent-cell {
+  animation: inconsistency-flash 2s ease-in-out infinite;
+}
+
+/* Count up number animation */
+.count-up {
+  font-variant-numeric: tabular-nums;
+}
