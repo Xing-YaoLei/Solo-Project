@@ -1,2 +1,10 @@
-# This initializer is no longer needed.
-# Rails automatically loads config/database.yml.
+require "yaml"
+require "erb"
+
+raw = File.read(Rails.root.join("config", "database.yml"))
+parsed = YAML.safe_load(ERB.new(raw).result, permitted_classes: [Symbol])
+env = Rails.env
+
+if parsed && parsed[env]
+  ActiveRecord::Base.configurations = parsed
+end

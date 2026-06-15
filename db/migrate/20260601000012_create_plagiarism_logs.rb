@@ -19,6 +19,5 @@ class CreatePlagiarismLogs < ActiveRecord::Migration[7.2]
       t.timestamps
     end
     add_index :plagiarism_logs, :status
-    add_index :plagiarism_logs, :responsible_user_id
   end
 end
