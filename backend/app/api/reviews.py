@@ -5,7 +5,7 @@ from sqlalchemy import select, func, or_, and_
 from sqlalchemy.orm import selectinload
 from typing import Optional
 
-from app.database import get_db
+from app.database import get_db, model_to_dict
 from app.models import ReviewApplication, Student, Course, Score, User, UserRole, ReviewStatus, Notification, NotificationType, AuditLog, AuditAction
 from app.schemas import ReviewCreate, ReviewUpdate, ReviewResponse, ReviewRecordView
 from app.security import get_current_user, require_roles
@@ -18,7 +18,7 @@ def _generate_application_no() -> str:
 
 
 def _enrich_review(r: ReviewApplication) -> dict:
-    r_dict = r.__dict__
+    r_dict = model_to_dict(r)
     if r.student:
         r_dict["student_name"] = r.student.name
         r_dict["student_no"] = r.student.student_id
@@ -110,7 +110,7 @@ async def get_record_view(
 
     return {
         "students": [
-            {**s.__dict__, "advisor_name": s.advisor.full_name if s.advisor else None}
+            {**model_to_dict(s), "advisor_name": s.advisor.full_name if s.advisor else None}
             for s in students
         ],
         "scores": [_enrich_score(s) for s in scores],

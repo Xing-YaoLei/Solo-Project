@@ -5,7 +5,7 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 from typing import Optional
 
-from app.database import get_db
+from app.database import get_db, model_to_dict
 from app.models import Notification, User, UserRole, AuditLog, AuditAction
 from app.schemas import NotificationResponse, NotificationProcess
 from app.security import get_current_user
@@ -14,7 +14,7 @@ router = APIRouter()
 
 
 def _enrich_notification(n: Notification) -> dict:
-    n_dict = n.__dict__
+    n_dict = model_to_dict(n)
     if n.recipient:
         n_dict["recipient_name"] = n.recipient.full_name
     return n_dict

@@ -4,7 +4,7 @@ from sqlalchemy import select, func, or_
 from sqlalchemy.orm import selectinload
 from typing import Optional
 
-from app.database import get_db
+from app.database import get_db, model_to_dict
 from app.models import Student, User, UserRole
 from app.schemas import StudentCreate, StudentUpdate, StudentResponse, Pagination
 from app.security import get_current_user, require_roles
@@ -55,7 +55,7 @@ async def list_students(
 
     students_data = []
     for s in students:
-        s_dict = s.__dict__
+        s_dict = model_to_dict(s)
         if s.advisor:
             s_dict["advisor_name"] = s.advisor.full_name
         students_data.append(s_dict)
@@ -81,7 +81,7 @@ async def get_student(
     student = result.scalar_one_or_none()
     if not student:
         raise HTTPException(status_code=404, detail="学生不存在")
-    s_dict = student.__dict__
+    s_dict = model_to_dict(student)
     if student.advisor:
         s_dict["advisor_name"] = student.advisor.full_name
     return s_dict

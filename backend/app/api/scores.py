@@ -4,7 +4,7 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 from typing import Optional
 
-from app.database import get_db
+from app.database import get_db, model_to_dict
 from app.models import Score, Student, Course, User, UserRole
 from app.schemas import ScoreCreate, ScoreUpdate, ScoreResponse
 from app.security import get_current_user, require_roles
@@ -13,7 +13,7 @@ router = APIRouter()
 
 
 def _enrich_score(score: Score) -> dict:
-    s_dict = score.__dict__
+    s_dict = model_to_dict(score)
     if score.course:
         s_dict["course_name"] = score.course.course_name
         s_dict["course_code"] = score.course.course_code

@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
 from typing import Optional
 
-from app.database import get_db
+from app.database import get_db, model_to_dict
 from app.models import Classroom, ClassroomSchedule, User, UserRole
 from app.schemas import ClassroomBase, ClassroomResponse, ClassroomScheduleBase
 from app.security import get_current_user, require_roles
@@ -41,7 +41,7 @@ async def list_classrooms(
     classrooms = result.scalars().all()
 
     return {
-        "data": [c.__dict__ for c in classrooms],
+        "data": [model_to_dict(c) for c in classrooms],
         "pagination": {
             "page": page,
             "page_size": page_size,

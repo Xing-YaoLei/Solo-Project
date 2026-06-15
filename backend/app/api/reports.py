@@ -12,7 +12,7 @@ from typing import Optional
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill
 
-from app.database import get_db
+from app.database import get_db, model_to_dict
 from app.models import (
     ReviewApplication, ReviewStatus, User, UserRole, ReportDownload,
     Classroom, ClassroomSchedule, AuditLog, AuditAction,
@@ -28,7 +28,7 @@ os.makedirs(REPORTS_DIR, exist_ok=True)
 
 
 def _enrich_report(r: ReportDownload) -> dict:
-    r_dict = r.__dict__
+    r_dict = model_to_dict(r)
     if r.generated_by:
         r_dict["generated_by_name"] = r.generated_by.full_name
     return r_dict

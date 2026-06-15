@@ -4,7 +4,7 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 from typing import Optional
 
-from app.database import get_db
+from app.database import get_db, model_to_dict
 from app.models import AuditLog, AuditAction, User, UserRole
 from app.schemas import AuditLogResponse
 from app.security import get_current_user, require_roles
@@ -13,7 +13,7 @@ router = APIRouter()
 
 
 def _enrich_audit(a: AuditLog) -> dict:
-    a_dict = a.__dict__
+    a_dict = model_to_dict(a)
     if a.operator:
         a_dict["operator_name"] = a.operator.full_name
     return a_dict

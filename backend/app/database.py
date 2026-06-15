@@ -5,6 +5,11 @@ from app.config import settings
 
 Base = declarative_base()
 
+
+def model_to_dict(obj) -> dict:
+    return {c.name: getattr(obj, c.name) for c in obj.__table__.columns}
+
+
 engine = create_async_engine(settings.DATABASE_URL, echo=False, future=True)
 AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 

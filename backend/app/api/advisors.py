@@ -5,7 +5,7 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 from typing import Optional
 
-from app.database import get_db
+from app.database import get_db, model_to_dict
 from app.models import AdvisorQuota, AdvisorQuotaChange, User, UserRole, Notification, NotificationType, AuditLog, AuditAction
 from app.schemas import AdvisorQuotaCreate, AdvisorQuotaUpdate, AdvisorQuotaResponse, AdvisorQuotaChangeResponse
 from app.security import get_current_user, require_roles
@@ -14,7 +14,7 @@ router = APIRouter()
 
 
 def _enrich_quota(q: AdvisorQuota) -> dict:
-    q_dict = q.__dict__
+    q_dict = model_to_dict(q)
     if q.advisor:
         q_dict["advisor_name"] = q.advisor.full_name
     q_dict["remaining_quota"] = q.max_quota - q.current_assigned
@@ -112,7 +112,7 @@ async def get_quota_history(
     changes = result.scalars().all()
     resp = []
     for c in changes:
-        c_dict = c.__dict__
+        c_dict = model_to_dict(c)
         if c.changed_by:
             c_dict["changed_by_name"] = c.changed_by.full_name
         resp.append(c_dict)
