@@ -35,8 +35,8 @@ import {
 } from '@ant-design/icons'
 import { useNavigate, useParams } from 'react-router-dom'
 import { api } from '../services/api'
-import { conflictLevelLabels, conflictStatusLabels } from '../utils/enumLabels'
-import type { Conflict, ConflictCommunication, ConflictReview } from '../types'
+import { conflictLevelLabels, conflictStatusLabels, weekDayLabels } from '../utils/enumLabels'
+import type { Conflict, ConflictCommunication, ConflictReview, WeekDay } from '../types'
 
 const { Option } = Select
 const { TextArea } = Input
@@ -211,8 +211,8 @@ const ConflictDetail = () => {
               <Space>
                 <WarningOutlined style={{ color: '#f5222d' }} />
                 冲突详情
-                <Tag color={getConflictLevelColor(conflict.conflictLevel)}>
-                  {conflictLevelLabels[conflict.conflictLevel]}
+                <Tag color={getConflictLevelColor(conflict.level)}>
+                  {conflictLevelLabels[conflict.level as keyof typeof conflictLevelLabels]}
                 </Tag>
               </Space>
             }
@@ -249,20 +249,20 @@ const ConflictDetail = () => {
                 </Tag>
               </Descriptions.Item>
               <Descriptions.Item label="冲突类型">
-                {conflict.conflictType === 'Classroom' ? '教室冲突' :
-                 conflict.conflictType === 'Teacher' ? '教师冲突' :
-                 conflict.conflictType === 'Student' ? '学生冲突' : '时间冲突'}
+                {conflict.type === 'ClassroomConflict' ? '教室冲突' :
+                 conflict.type === 'TeacherConflict' ? '教师冲突' :
+                 conflict.type === 'StudentConflict' ? '学生冲突' : '时间冲突'}
               </Descriptions.Item>
               <Descriptions.Item label="风险等级">
-                <Tag color={getConflictLevelColor(conflict.conflictLevel)}>
-                  {conflictLevelLabels[conflict.conflictLevel]}
+                <Tag color={getConflictLevelColor(conflict.level)}>
+                  {conflictLevelLabels[conflict.level as keyof typeof conflictLevelLabels]}
                 </Tag>
               </Descriptions.Item>
               <Descriptions.Item label="冲突描述" span={2}>
                 {conflict.description}
               </Descriptions.Item>
               <Descriptions.Item label="处理人">
-                {conflict.assigneeName || '未分配'}
+                {conflict.assignedToUser?.realName || '未分配'}
               </Descriptions.Item>
               <Descriptions.Item label="创建时间">
                 {new Date(conflict.createdAt).toLocaleString()}
@@ -280,11 +280,14 @@ const ConflictDetail = () => {
               <Col span={12}>
                 <Card size="small" title="排课 1" type="inner">
                   <Descriptions column={1} size="small">
-                    <Descriptions.Item label="课程">{conflict.schedule1Course}</Descriptions.Item>
-                    <Descriptions.Item label="教室">{conflict.schedule1Classroom}</Descriptions.Item>
-                    <Descriptions.Item label="教师">{conflict.schedule1Teacher}</Descriptions.Item>
+                    <Descriptions.Item label="课程">{conflict.schedule1?.course?.name}</Descriptions.Item>
+                    <Descriptions.Item label="教室">{conflict.schedule1?.classroom?.name}</Descriptions.Item>
+                    <Descriptions.Item label="教师">
+                      {conflict.teacher1?.realName || conflict.schedule1?.course?.teacherCourses?.find(tc => tc.isMainTeacher)?.teacher?.realName}
+                    </Descriptions.Item>
                     <Descriptions.Item label="时间">
-                      {conflict.schedule1WeekDay} {conflict.schedule1Time}
+                      {conflict.dayOfWeek ? weekDayLabels[conflict.dayOfWeek as unknown as WeekDay] : ''}
+                      {' '}{conflict.timeSlot?.startTime} - {conflict.timeSlot?.endTime}
                     </Descriptions.Item>
                   </Descriptions>
                 </Card>
@@ -292,11 +295,14 @@ const ConflictDetail = () => {
               <Col span={12}>
                 <Card size="small" title="排课 2" type="inner">
                   <Descriptions column={1} size="small">
-                    <Descriptions.Item label="课程">{conflict.schedule2Course}</Descriptions.Item>
-                    <Descriptions.Item label="教室">{conflict.schedule2Classroom}</Descriptions.Item>
-                    <Descriptions.Item label="教师">{conflict.schedule2Teacher}</Descriptions.Item>
+                    <Descriptions.Item label="课程">{conflict.schedule2?.course?.name}</Descriptions.Item>
+                    <Descriptions.Item label="教室">{conflict.schedule2?.classroom?.name}</Descriptions.Item>
+                    <Descriptions.Item label="教师">
+                      {conflict.teacher2?.realName || conflict.schedule2?.course?.teacherCourses?.find(tc => tc.isMainTeacher)?.teacher?.realName}
+                    </Descriptions.Item>
                     <Descriptions.Item label="时间">
-                      {conflict.schedule2WeekDay} {conflict.schedule2Time}
+                      {conflict.dayOfWeek ? weekDayLabels[conflict.dayOfWeek as unknown as WeekDay] : ''}
+                      {' '}{conflict.timeSlot?.startTime} - {conflict.timeSlot?.endTime}
                     </Descriptions.Item>
                   </Descriptions>
                 </Card>
@@ -312,9 +318,7 @@ const ConflictDetail = () => {
                   </Space>
                 </Divider>
                 <Alert
-                  message={conflict.resolutionType === 'ChangeSchedule1' ? '调整排课1' :
-                           conflict.resolutionType === 'ChangeSchedule2' ? '调整排课2' :
-                           conflict.resolutionType === 'ChangeBoth' ? '调整双方' : '其他方式'}
+                  message="解决方案"
                   description={conflict.resolution}
                   type="success"
                   showIcon
@@ -338,8 +342,8 @@ const ConflictDetail = () => {
                     avatar={<Avatar icon={<UserOutlined />} />}
                     title={
                       <Space>
-                        <span>{item.senderName}</span>
-                        {item.isInternal && <Tag color="orange">内部沟通</Tag>}
+                        <span>{item.user?.realName}</span>
+                        {item.type === 'Internal' && <Tag color="orange">内部沟通</Tag>}
                         <span style={{ color: '#999', fontSize: 12 }}>
                           {new Date(item.createdAt).toLocaleString()}
                         </span>
@@ -379,25 +383,26 @@ const ConflictDetail = () => {
                 </Divider>
                 <Timeline
                   items={reviews.map((review) => ({
-                    color: review.reviewResult === 'Approved' ? 'green' :
-                           review.reviewResult === 'Rejected' ? 'red' : 'blue',
+                    color: review.result === 'Approved' ? 'green' :
+                           review.result === 'Rejected' ? 'red' : 'blue',
                     children: (
                       <Card size="small">
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                           <Space>
                             <Avatar size="small" icon={<UserOutlined />} />
-                            <span style={{ fontWeight: 500 }}>{review.reviewerName}</span>
-                            <Tag color={review.reviewResult === 'Approved' ? 'success' :
-                                       review.reviewResult === 'Rejected' ? 'error' : 'default'}>
-                              {review.reviewResult === 'Approved' ? '同意' :
-                               review.reviewResult === 'Rejected' ? '驳回' : '需修改'}
+                            <span style={{ fontWeight: 500 }}>{review.reviewer?.realName}</span>
+                            <Tag color={review.result === 'Approved' ? 'success' :
+                                       review.result === 'Rejected' ? 'error' : 'default'}>
+                              {review.result === 'Approved' ? '同意' :
+                               review.result === 'Rejected' ? '驳回' : '需修改'}
                             </Tag>
                           </Space>
                           <span style={{ color: '#999', fontSize: 12 }}>
                             {new Date(review.createdAt).toLocaleString()}
                           </span>
                         </div>
-                        <div>{review.reviewComment}</div>
+                        <div>{review.reviewOpinion}</div>
+                        {review.suggestions && <div style={{ marginTop: 8, color: '#666' }}>建议：{review.suggestions}</div>}
                       </Card>
                     ),
                   }))}
@@ -418,7 +423,7 @@ const ConflictDetail = () => {
               <Step
                 status={['UnderReview', 'Resolved', 'Escalated'].includes(conflict.status) ? 'finish' : 'wait'}
                 title="分配处理"
-                description={conflict.assignedAt ? new Date(conflict.assignedAt).toLocaleString() : '待分配'}
+                description={conflict.assignedTo ? '已分配' : '待分配'}
               />
               <Step
                 status={['Resolved', 'Escalated'].includes(conflict.status) ? 'finish' : 'wait'}
@@ -456,7 +461,6 @@ const ConflictDetail = () => {
                 message="已超出处理时效"
                 type="warning"
                 showIcon
-                size="small"
                 style={{ marginTop: 8 }}
               />
             )}

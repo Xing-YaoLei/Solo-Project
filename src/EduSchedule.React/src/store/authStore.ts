@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { User, RoleType } from '../types';
-import { authApi } from '../services/api';
+import { api } from '../services/api';
 
 interface AuthState {
   user: User | null;
@@ -22,7 +22,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   login: async (username: string, password: string) => {
     set({ isLoading: true });
     try {
-      const response = await authApi.login({ username, password });
+      const response = await api.auth.login(username, password);
       const { token, user } = response.data;
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
@@ -42,7 +42,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   fetchCurrentUser: async () => {
     set({ isLoading: true });
     try {
-      const response = await authApi.getCurrentUser();
+      const response = await api.auth.getCurrentUser();
       const user = response.data;
       localStorage.setItem('user', JSON.stringify(user));
       set({ user, isLoading: false });

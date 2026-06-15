@@ -8,6 +8,7 @@ using Microsoft.OpenApi.Models;
 using EduSchedule.API.Data;
 using EduSchedule.API.Hangfire;
 using EduSchedule.API.Services;
+using EduSchedule.API.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -106,6 +107,7 @@ builder.Services.AddScoped<IStudentService, StudentService>();
 builder.Services.AddScoped<IScheduleService, ScheduleService>();
 builder.Services.AddScoped<IConflictDetectionService, ConflictDetectionService>();
 builder.Services.AddScoped<IApprovalService, ApprovalService>();
+builder.Services.AddScoped<BackgroundJobs>();
 
 var app = builder.Build();
 
@@ -125,9 +127,19 @@ app.UseHangfireDashboard(builder.Configuration["HangfireSettings:DashboardPath"]
 
 app.MapControllers();
 
-using (var scope = app.Services.CreateScope())
+await InitializeDatabaseAndHangfireAsync(app);
+
+app.Run();
+
+static async Task InitializeDatabaseAndHangfireAsync(WebApplication app)
 {
+    using var scope = app.Services.CreateScope();
     var serviceProvider = scope.ServiceProvider;
+    var dbContext = serviceProvider.GetRequiredService<AppDbContext>();
+    await dbContext.Database.MigrateAsync();
+
+    await DbInitializer.InitializeAsync(dbContext, serviceProvider);
+
     var backgroundJobs = serviceProvider.GetRequiredService<BackgroundJobs>();
 
     RecurringJob.AddOrUpdate("daily-conflict-summary",
@@ -142,5 +154,3 @@ using (var scope = app.Services.CreateScope())
         () => backgroundJobs.UpdateCourseStatus(),
         Cron.Daily(0, 30));
 }
-
-app.Run();

@@ -26,18 +26,20 @@ const Dashboard = () => {
 
   const loadData = async () => {
     try {
-      const [overviewRes, trendRes, conflictsRes, approvalsRes] = await Promise.all([
+      const [overviewRes, trendRes, conflictSummaryRes, conflictsRes, approvalsRes] = await Promise.all([
         api.dashboard.getOverview(),
         api.dashboard.getApprovalTrend(),
+        api.dashboard.getConflictSummary(),
         api.conflicts.getList({ pageSize: 5, status: 'Pending' }),
-        api.approvals.getTodoList({ pageSize: 5 }),
+        api.approvals.getMyTodos(),
       ])
 
       setOverview(overviewRes.data)
-      setApprovalTrend(trendRes.data.dailyData || [])
-      setConflictSummary(trendRes.data.conflictSummary || [])
+      setApprovalTrend(trendRes.data || [])
+      const summary = conflictSummaryRes.data
+      setConflictSummary(summary ? Object.entries(summary.byLevel || {}).map(([level, count]) => ({ level, count })) : [])
       setRecentConflicts(conflictsRes.data.items || [])
-      setPendingApprovals(approvalsRes.data.items || [])
+      setPendingApprovals(approvalsRes.data || [])
     } catch (error) {
       message.error('加载数据失败')
     } finally {
@@ -58,22 +60,22 @@ const Dashboard = () => {
   const conflictColumns = [
     {
       title: '风险等级',
-      dataIndex: 'conflictLevel',
-      key: 'conflictLevel',
+      dataIndex: 'level',
+      key: 'level',
       render: (level: string) => (
-        <Tag color={getConflictLevelColor(level)}>{conflictLevelLabels[level]}</Tag>
+        <Tag color={getConflictLevelColor(level)}>{conflictLevelLabels[level as keyof typeof conflictLevelLabels]}</Tag>
       ),
     },
     {
       title: '冲突类型',
-      dataIndex: 'conflictType',
-      key: 'conflictType',
+      dataIndex: 'type',
+      key: 'type',
     },
     {
       title: '状态',
       dataIndex: 'status',
       key: 'status',
-      render: (status: string) => <Tag>{conflictStatusLabels[status]}</Tag>,
+      render: (status: string) => <Tag>{conflictStatusLabels[status as keyof typeof conflictStatusLabels]}</Tag>,
     },
     {
       title: '创建时间',
@@ -86,24 +88,33 @@ const Dashboard = () => {
   const approvalColumns = [
     {
       title: '类型',
-      dataIndex: 'approvalType',
-      key: 'approvalType',
+      dataIndex: 'type',
+      key: 'type',
+      render: (type: string) => {
+        const labels: Record<string, string> = {
+          ScheduleApproval: '排课审批',
+          ConflictResolution: '冲突处理',
+          CoursePublish: '课程发布',
+          Other: '其他'
+        }
+        return labels[type] || type
+      },
     },
     {
-      title: '申请人',
-      dataIndex: 'requesterName',
-      key: 'requesterName',
+      title: '标题',
+      dataIndex: 'title',
+      key: 'title',
     },
     {
       title: '状态',
       dataIndex: 'status',
       key: 'status',
-      render: (status: string) => <Tag>{approvalStatusLabels[status]}</Tag>,
+      render: (status: string) => <Tag>{approvalStatusLabels[status as keyof typeof approvalStatusLabels]}</Tag>,
     },
     {
-      title: '提交时间',
-      dataIndex: 'submittedAt',
-      key: 'submittedAt',
+      title: '创建时间',
+      dataIndex: 'createdAt',
+      key: 'createdAt',
       render: (date: string) => new Date(date).toLocaleDateString(),
     },
   ]

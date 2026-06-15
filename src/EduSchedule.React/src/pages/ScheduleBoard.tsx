@@ -32,7 +32,7 @@ import {
 } from '@ant-design/icons'
 import { api } from '../services/api'
 import { conflictLevelLabels, conflictStatusLabels, weekDayLabels } from '../utils/enumLabels'
-import type { CourseSchedule, Conflict, Course, Classroom, TimeSlot } from '../types'
+import type { CourseSchedule, Conflict, Course, Classroom, TimeSlot, WeekDay } from '../types'
 import dayjs from 'dayjs'
 
 const { Option } = Select
@@ -185,35 +185,42 @@ const ScheduleBoard = () => {
 
   const getScheduleConflicts = (scheduleId: number) => {
     return conflicts.filter(
-      (c) => c.scheduleId1 === scheduleId || c.scheduleId2 === scheduleId
+      (c) => c.schedule1Id === scheduleId || c.schedule2Id === scheduleId
     )
+  }
+
+  const getWeekDayNumber = (day: string): number => {
+    const map: Record<string, number> = {
+      Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6, Sunday: 7,
+    }
+    return map[day] || 1
   }
 
   const columns = [
     {
       title: '课程',
-      dataIndex: 'courseName',
-      key: 'courseName',
+      key: 'course',
       width: 180,
-      render: (text: string, record: CourseSchedule) => (
+      render: (_: any, record: CourseSchedule) => (
         <div>
-          <div style={{ fontWeight: 500 }}>{text}</div>
-          <div style={{ color: '#999', fontSize: 12 }}>{record.courseCode}</div>
+          <div style={{ fontWeight: 500 }}>{record.course?.name}</div>
+          <div style={{ color: '#999', fontSize: 12 }}>{record.course?.courseCode}</div>
         </div>
       ),
     },
     {
       title: '教室',
-      dataIndex: 'classroomName',
-      key: 'classroomName',
+      key: 'classroom',
       width: 150,
+      render: (_: any, record: CourseSchedule) => record.classroom?.name || '-',
     },
     {
       title: '星期',
-      dataIndex: 'weekDay',
       key: 'weekDay',
       width: 80,
-      render: (day: string) => weekDayLabels[day] || day,
+      render: (_: any, record: CourseSchedule) => {
+        return weekDayLabels[record.dayOfWeek as unknown as WeekDay] || record.dayOfWeek
+      },
     },
     {
       title: '节次',
@@ -226,18 +233,21 @@ const ScheduleBoard = () => {
     },
     {
       title: '授课教师',
-      dataIndex: 'teacherName',
-      key: 'teacherName',
+      key: 'teacher',
       width: 100,
+      render: (_: any, record: CourseSchedule) => {
+        const mainTeacher = record.course?.teacherCourses?.find(tc => tc.isMainTeacher)
+        return mainTeacher?.teacher?.realName || '-'
+      },
     },
     {
-      title: '日期范围',
-      key: 'dateRange',
+      title: '周次',
+      key: 'weeks',
       width: 200,
       render: (_: any, record: CourseSchedule) => (
         <div>
-          <div>{record.startDate}</div>
-          <div style={{ color: '#999', fontSize: 12 }}>至 {record.endDate}</div>
+          <div>第 {record.startWeek} 周</div>
+          <div style={{ color: '#999', fontSize: 12 }}>至 第 {record.endWeek} 周</div>
         </div>
       ),
     },
@@ -252,13 +262,13 @@ const ScheduleBoard = () => {
         }
         const highestLevel = scheduleConflicts.reduce((max, c) => {
           const levels = ['Low', 'Medium', 'High', 'Critical']
-          return levels.indexOf(c.conflictLevel) > levels.indexOf(max) ? c.conflictLevel : max
+          return levels.indexOf(c.level) > levels.indexOf(max) ? c.level : max
         }, 'Low')
         return (
           <Tooltip title={scheduleConflicts.map((c) => c.description).join('\n')}>
             <Badge count={scheduleConflicts.length} size="small">
               <Tag color={getConflictLevelColor(highestLevel)}>
-                <WarningOutlined /> {conflictLevelLabels[highestLevel]}
+                <WarningOutlined /> {conflictLevelLabels[highestLevel as keyof typeof conflictLevelLabels]}
               </Tag>
             </Badge>
           </Tooltip>
@@ -275,7 +285,7 @@ const ScheduleBoard = () => {
           {status === 'Draft' && <ClockCircleOutlined />}
           {status === 'Approved' && <CheckCircleOutlined />}
           {status === 'Pending' && <ClockCircleOutlined />}
-          {' '}{conflictStatusLabels[status] || status}
+          {' '}{conflictStatusLabels[status as keyof typeof conflictStatusLabels] || status}
         </Tag>
       ),
     },
@@ -305,6 +315,9 @@ const ScheduleBoard = () => {
 
   const weekView = () => {
     const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    const dayNumberMap: Record<string, number> = {
+      Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6, Sunday: 7,
+    }
     return (
       <Card title="周视图" style={{ marginBottom: 16 }}>
         <Row gutter={[8, 8]}>
@@ -312,13 +325,13 @@ const ScheduleBoard = () => {
             <Col span={24 / 7} key={day}>
               <Card
                 size="small"
-                title={weekDayLabels[day]}
+                title={weekDayLabels[day as unknown as WeekDay]}
                 style={{ minHeight: 200 }}
                 bodyStyle={{ padding: 8 }}
               >
                 <Space direction="vertical" size={4} style={{ width: '100%' }}>
                   {schedules
-                    .filter((s) => s.weekDay === day)
+                    .filter((s) => s.dayOfWeek === dayNumberMap[day])
                     .map((schedule) => {
                       const scheduleConflicts = getScheduleConflicts(schedule.id)
                       const hasConflict = scheduleConflicts.length > 0
@@ -334,8 +347,8 @@ const ScheduleBoard = () => {
                             fontSize: 12,
                           }}
                         >
-                          <div style={{ fontWeight: 500 }}>{schedule.courseName}</div>
-                          <div style={{ color: '#666' }}>{schedule.classroomName}</div>
+                          <div style={{ fontWeight: 500 }}>{schedule.course?.name}</div>
+                          <div style={{ color: '#666' }}>{schedule.classroom?.name}</div>
                           <div style={{ color: '#999', fontSize: 11 }}>
                             {slot?.startTime} - {slot?.endTime}
                           </div>
@@ -365,13 +378,12 @@ const ScheduleBoard = () => {
             <div>
               <p>请尽快处理以下冲突：</p>
               <Timeline
-                size="small"
                 items={detectResult.conflicts?.map((c: any, i: number) => ({
-                  color: getConflictLevelColor(c.conflictLevel),
+                  color: getConflictLevelColor(c.level),
                   children: (
                     <div>
-                      <Tag color={getConflictLevelColor(c.conflictLevel)}>
-                        {conflictLevelLabels[c.conflictLevel]}
+                      <Tag color={getConflictLevelColor(c.level)}>
+                        {conflictLevelLabels[c.level as keyof typeof conflictLevelLabels]}
                       </Tag>
                       {c.description}
                     </div>
@@ -469,7 +481,7 @@ const ScheduleBoard = () => {
                 <Select placeholder="请选择课程" showSearch optionFilterProp="children">
                   {courses.map((course) => (
                     <Option key={course.id} value={course.id}>
-                      {course.courseName} ({course.courseCode})
+                      {course.name} ({course.courseCode})
                     </Option>
                   ))}
                 </Select>
@@ -484,7 +496,7 @@ const ScheduleBoard = () => {
                 <Select placeholder="请选择教室" showSearch optionFilterProp="children">
                   {classrooms.map((classroom) => (
                     <Option key={classroom.id} value={classroom.id}>
-                      {classroom.roomName} (容量: {classroom.capacity})
+                      {classroom.name} ({classroom.roomNumber}, 容量: {classroom.capacity})
                     </Option>
                   ))}
                 </Select>
@@ -514,7 +526,7 @@ const ScheduleBoard = () => {
                 <Select placeholder="请选择节次">
                   {timeSlots.map((slot) => (
                     <Option key={slot.id} value={slot.id}>
-                      {slot.slotName} ({slot.startTime}-{slot.endTime})
+                      {slot.name} ({slot.startTime}-{slot.endTime})
                     </Option>
                   ))}
                 </Select>

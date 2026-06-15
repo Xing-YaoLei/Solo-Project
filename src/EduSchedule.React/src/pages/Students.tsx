@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Table, Button, Modal, Form, Input, Select, Space, message, Popconfirm, Tag, Row, Col, DatePicker, Upload } from 'antd'
+import { Table, Button, Modal, Form, Input, InputNumber, Select, Space, message, Popconfirm, Tag, Row, Col, DatePicker, Upload, Switch } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, UploadOutlined, ImportOutlined } from '@ant-design/icons'
 import { api } from '../services/api'
 import type { Student } from '../types'
@@ -52,7 +52,6 @@ const Students = () => {
     form.setFieldsValue({
       ...student,
       enrollmentDate: student.enrollmentDate ? dayjs(student.enrollmentDate) : null,
-      dateOfBirth: student.dateOfBirth ? dayjs(student.dateOfBirth) : null,
     })
     setModalVisible(true)
   }
@@ -73,7 +72,6 @@ const Students = () => {
       const data = {
         ...values,
         enrollmentDate: values.enrollmentDate?.format('YYYY-MM-DD'),
-        dateOfBirth: values.dateOfBirth?.format('YYYY-MM-DD'),
       }
       if (editingStudent) {
         await api.students.update(editingStudent.id, data)
@@ -100,22 +98,7 @@ const Students = () => {
     }
   }
 
-  const getStatusColor = (status: string) => {
-    const colors: Record<string, string> = {
-      Active: 'success',
-      Suspended: 'warning',
-      Graduated: 'default',
-      Withdrawn: 'error',
-    }
-    return colors[status] || 'default'
-  }
 
-  const statusLabels: Record<string, string> = {
-    Active: '在读',
-    Suspended: '休学',
-    Graduated: '已毕业',
-    Withdrawn: '退学',
-  }
 
   const columns = [
     {
@@ -126,15 +109,10 @@ const Students = () => {
     },
     {
       title: '姓名',
-      dataIndex: 'name',
-      key: 'name',
+      dataIndex: 'user',
+      key: 'user',
       width: 100,
-    },
-    {
-      title: '性别',
-      dataIndex: 'gender',
-      key: 'gender',
-      width: 60,
+      render: (user: any) => user?.realName || '-',
     },
     {
       title: '年级',
@@ -150,9 +128,10 @@ const Students = () => {
     },
     {
       title: '学院',
-      dataIndex: 'departmentName',
-      key: 'departmentName',
+      dataIndex: 'department',
+      key: 'department',
       width: 120,
+      render: (dept: any) => dept?.name || '-',
     },
     {
       title: '入学日期',
@@ -163,10 +142,10 @@ const Students = () => {
     },
     {
       title: '状态',
-      dataIndex: 'status',
-      key: 'status',
+      dataIndex: 'isActive',
+      key: 'isActive',
       width: 80,
-      render: (status: string) => <Tag color={getStatusColor(status)}>{statusLabels[status]}</Tag>,
+      render: (active: boolean) => <Tag color={active ? 'success' : 'default'}>{active ? '在读' : '停学'}</Tag>,
     },
     {
       title: '操作',
@@ -250,23 +229,19 @@ const Students = () => {
             </Col>
             <Col span={8}>
               <Form.Item
-                name="name"
-                label="姓名"
-                rules={[{ required: true, message: '请输入姓名' }]}
+                name="userId"
+                label="关联用户ID"
+                rules={[{ required: true, message: '请输入用户ID' }]}
               >
-                <Input placeholder="请输入姓名" />
+                <Input type="number" placeholder="请输入用户ID" />
               </Form.Item>
             </Col>
             <Col span={8}>
               <Form.Item
-                name="gender"
-                label="性别"
-                rules={[{ required: true, message: '请选择性别' }]}
+                name="className"
+                label="班级"
               >
-                <Select>
-                  <Option value="男">男</Option>
-                  <Option value="女">女</Option>
-                </Select>
+                <Input placeholder="请输入班级" />
               </Form.Item>
             </Col>
           </Row>
@@ -307,6 +282,24 @@ const Students = () => {
           <Row gutter={16}>
             <Col span={8}>
               <Form.Item
+                name="gpa"
+                label="GPA"
+                rules={[{ required: true, message: '请输入GPA' }]}
+              >
+                <InputNumber min={0} max={4} step={0.01} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item
+                name="totalCredits"
+                label="总学分"
+                rules={[{ required: true, message: '请输入总学分' }]}
+              >
+                <InputNumber min={0} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item
                 name="enrollmentDate"
                 label="入学日期"
                 rules={[{ required: true, message: '请选择入学日期' }]}
@@ -314,44 +307,30 @@ const Students = () => {
                 <DatePicker style={{ width: '100%' }} />
               </Form.Item>
             </Col>
+          </Row>
+          <Row gutter={16}>
             <Col span={8}>
               <Form.Item
-                name="dateOfBirth"
-                label="出生日期"
+                name="expectedGraduationDate"
+                label="预计毕业日期"
               >
                 <DatePicker style={{ width: '100%' }} />
               </Form.Item>
             </Col>
             <Col span={8}>
               <Form.Item
-                name="status"
-                label="状态"
-                rules={[{ required: true, message: '请选择状态' }]}
+                name="advisor"
+                label="导师"
               >
-                <Select>
-                  <Option value="Active">在读</Option>
-                  <Option value="Suspended">休学</Option>
-                  <Option value="Graduated">已毕业</Option>
-                  <Option value="Withdrawn">退学</Option>
-                </Select>
+                <Input placeholder="请输入导师姓名" />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item name="isActive" label="状态" valuePropName="checked">
+                <Switch checkedChildren="在读" unCheckedChildren="停学" />
               </Form.Item>
             </Col>
           </Row>
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item name="email" label="邮箱">
-                <Input placeholder="请输入邮箱" />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="phone" label="联系电话">
-                <Input placeholder="请输入联系电话" />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Form.Item name="address" label="家庭住址">
-            <Input.TextArea rows={2} placeholder="请输入家庭住址" />
-          </Form.Item>
         </Form>
       </Modal>
 

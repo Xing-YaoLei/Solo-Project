@@ -21,6 +21,7 @@ import {
   WarningOutlined,
   ArrowUpOutlined,
   FilterOutlined,
+  CheckCircleOutlined,
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../services/api'
@@ -52,11 +53,10 @@ const Conflicts = () => {
         api.conflicts.getList({
           page,
           pageSize,
-          search: searchText,
           status: statusFilter,
-          conflictLevel: levelFilter,
+          level: levelFilter,
         }),
-        api.conflicts.getStats(),
+        api.dashboard.getConflictSummary(),
       ])
 
       setConflicts(conflictsRes.data.items)
@@ -75,7 +75,7 @@ const Conflicts = () => {
 
   const handleAssign = async (id: number) => {
     try {
-      await api.conflicts.assign(id, { assigneeId: 1 })
+      await api.conflicts.assign(id, 1)
       message.success('已分配')
       loadData()
     } catch (error) {
@@ -117,30 +117,30 @@ const Conflicts = () => {
   const columns = [
     {
       title: '风险等级',
-      dataIndex: 'conflictLevel',
-      key: 'conflictLevel',
+      dataIndex: 'level',
+      key: 'level',
       width: 100,
       sorter: (a: Conflict, b: Conflict) =>
-        getConflictLevelSort(b.conflictLevel) - getConflictLevelSort(a.conflictLevel),
+        getConflictLevelSort(b.level) - getConflictLevelSort(a.level),
       render: (level: string) => (
         <div className={`conflict-level-${level.toLowerCase()}`} style={{ fontWeight: 600 }}>
           <Tag color={getConflictLevelColor(level)} icon={<WarningOutlined />}>
-            {conflictLevelLabels[level]}
+            {conflictLevelLabels[level as keyof typeof conflictLevelLabels]}
           </Tag>
         </div>
       ),
     },
     {
       title: '冲突类型',
-      dataIndex: 'conflictType',
-      key: 'conflictType',
+      dataIndex: 'type',
+      key: 'type',
       width: 120,
       render: (type: string) => {
         const typeLabels: Record<string, string> = {
-          Classroom: '教室冲突',
-          Teacher: '教师冲突',
-          Student: '学生冲突',
-          Time: '时间冲突',
+          ClassroomConflict: '教室冲突',
+          TeacherConflict: '教师冲突',
+          StudentConflict: '学生冲突',
+          TimeSlotOverlap: '时间冲突',
         }
         return typeLabels[type] || type
       },
@@ -156,7 +156,7 @@ const Conflicts = () => {
           <div>
             <div>{text}</div>
             <div style={{ color: '#999', fontSize: 12, marginTop: 4 }}>
-              涉及课程: {record.schedule1Course} / {record.schedule2Course}
+              涉及课程: {record.schedule1?.course?.name} / {record.schedule2?.course?.name}
             </div>
           </div>
         </Tooltip>
@@ -168,9 +168,9 @@ const Conflicts = () => {
       width: 150,
       render: (_: any, record: Conflict) => (
         <div>
-          <div>{record.schedule1Classroom}</div>
-          {record.schedule1Classroom !== record.schedule2Classroom && (
-            <div style={{ color: '#999', fontSize: 12 }}>{record.schedule2Classroom}</div>
+          <div>{record.schedule1?.classroom?.name}</div>
+          {record.schedule1?.classroom?.name !== record.schedule2?.classroom?.name && (
+            <div style={{ color: '#999', fontSize: 12 }}>{record.schedule2?.classroom?.name}</div>
           )}
         </div>
       ),
@@ -181,19 +181,19 @@ const Conflicts = () => {
       key: 'status',
       width: 100,
       render: (status: string) => (
-        <Tag color={getStatusColor(status)}>{conflictStatusLabels[status]}</Tag>
+        <Tag color={getStatusColor(status)}>{conflictStatusLabels[status as keyof typeof conflictStatusLabels]}</Tag>
       ),
     },
     {
       title: '处理人',
-      dataIndex: 'assigneeName',
-      key: 'assigneeName',
+      dataIndex: 'assignedToUser',
+      key: 'assignedToUser',
       width: 100,
-      render: (name: string) => (
+      render: (user: any) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          {name ? (
+          {user?.realName ? (
             <>
-              <UserOutlined /> {name}
+              <UserOutlined /> {user.realName}
             </>
           ) : (
             <Tag color="default">未分配</Tag>
@@ -217,7 +217,7 @@ const Conflicts = () => {
       title: '操作',
       key: 'action',
       width: 180,
-      fixed: 'right',
+      fixed: 'right' as const,
       render: (_: any, record: Conflict) => (
         <Space>
           <Button
@@ -228,7 +228,7 @@ const Conflicts = () => {
           >
             详情
           </Button>
-          {!record.assigneeId && (
+          {!record.assignedTo && (
             <Button
               type="link"
               size="small"
@@ -249,7 +249,7 @@ const Conflicts = () => {
           <Card>
             <Statistic
               title="待处理"
-              value={stats.pending || 0}
+              value={stats.byStatus?.Pending || 0}
               valueStyle={{ color: '#1890ff' }}
               prefix={<ClockCircleOutlined />}
             />
@@ -259,7 +259,7 @@ const Conflicts = () => {
           <Card>
             <Statistic
               title="高风险"
-              value={stats.highRisk || 0}
+              value={(stats.byLevel?.High || 0) + (stats.byLevel?.Critical || 0)}
               valueStyle={{ color: '#f5222d' }}
               prefix={<ArrowUpOutlined />}
             />
@@ -269,7 +269,7 @@ const Conflicts = () => {
           <Card>
             <Statistic
               title="处理中"
-              value={stats.underReview || 0}
+              value={stats.byStatus?.UnderReview || 0}
               valueStyle={{ color: '#faad14' }}
               prefix={<WarningOutlined />}
             />
@@ -279,7 +279,7 @@ const Conflicts = () => {
           <Card>
             <Statistic
               title="已解决"
-              value={stats.resolved || 0}
+              value={stats.byStatus?.Resolved || 0}
               valueStyle={{ color: '#52c41a' }}
               prefix={<CheckCircleOutlined />}
             />

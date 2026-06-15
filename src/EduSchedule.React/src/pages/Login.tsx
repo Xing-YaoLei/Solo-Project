@@ -14,8 +14,7 @@ const Login = () => {
   const handleSubmit = async (values: { username: string; password: string }) => {
     setLoading(true)
     try {
-      const response = await api.auth.login(values.username, values.password)
-      login(response.data)
+      await login(values.username, values.password)
       message.success('登录成功')
       navigate('/dashboard')
     } catch (error) {

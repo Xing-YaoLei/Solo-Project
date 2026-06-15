@@ -29,7 +29,7 @@ import {
 } from '@ant-design/icons'
 import { api } from '../services/api'
 import { approvalStatusLabels } from '../utils/enumLabels'
-import type { ApprovalRecord } from '../types'
+import type { ApprovalRecord, TodoItem } from '../types'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 const { Option } = Select
@@ -48,7 +48,7 @@ const Approvals = () => {
   const [detailModalVisible, setDetailModalVisible] = useState(false)
   const [approveModalVisible, setApproveModalVisible] = useState(false)
   const [rejectModalVisible, setRejectModalVisible] = useState(false)
-  const [selectedApproval, setSelectedApproval] = useState<ApprovalRecord | null>(null)
+  const [selectedApproval, setSelectedApproval] = useState<any>(null)
   const [stats, setStats] = useState<any>({})
   const [trendData, setTrendData] = useState<any[]>([])
   const [approveForm] = Form.useForm()
@@ -70,22 +70,27 @@ const Approvals = () => {
 
       let approvalsRes
       if (activeTab === 'todo') {
-        approvalsRes = await api.approvals.getTodoList(params)
+        approvalsRes = await api.approvals.getMyTodos()
       } else if (activeTab === 'done') {
-        approvalsRes = await api.approvals.getDoneList(params)
+        approvalsRes = await api.approvals.getPending()
       } else {
-        approvalsRes = await api.approvals.getAll(params)
+        approvalsRes = await api.schedules.getList(params)
       }
 
       const [statsRes, trendRes] = await Promise.all([
-        api.approvals.getStats(),
+        api.approvals.getStatistics(),
         api.dashboard.getApprovalTrend(),
       ])
 
-      setApprovals(approvalsRes.data.items)
-      setTotal(approvalsRes.data.total)
+      if (activeTab === 'todo') {
+        setApprovals(approvalsRes.data as any)
+        setTotal((approvalsRes.data as any).length || 0)
+      } else {
+        setApprovals(approvalsRes.data?.items || approvalsRes.data || [])
+        setTotal(approvalsRes.data?.total || (approvalsRes.data as any)?.length || 0)
+      }
       setStats(statsRes.data)
-      setTrendData(trendRes.data.dailyData || [])
+      setTrendData(trendRes.data || [])
     } catch (error) {
       message.error('加载数据失败')
     } finally {
@@ -115,9 +120,7 @@ const Approvals = () => {
       const values = await approveForm.validateFields()
       if (!selectedApproval) return
 
-      await api.approvals.approve(selectedApproval.id, {
-        comment: values.comment,
-      })
+      await api.schedules.approve(selectedApproval.scheduleId || selectedApproval.id, values.comment)
 
       message.success('审核通过')
       setApproveModalVisible(false)
@@ -132,9 +135,7 @@ const Approvals = () => {
       const values = await rejectForm.validateFields()
       if (!selectedApproval) return
 
-      await api.approvals.reject(selectedApproval.id, {
-        comment: values.comment,
-      })
+      await api.schedules.reject(selectedApproval.scheduleId || selectedApproval.id, values.comment)
 
       message.success('已驳回')
       setRejectModalVisible(false)
@@ -169,11 +170,11 @@ const Approvals = () => {
   const columns = [
     {
       title: '审核类型',
-      dataIndex: 'approvalType',
-      key: 'approvalType',
+      dataIndex: 'type',
+      key: 'type',
       width: 120,
-      render: (type: string) => (
-        <Tag icon={<FileTextOutlined />}>{getApprovalTypeLabel(type)}</Tag>
+      render: (type: string, record: any) => (
+        <Tag icon={<FileTextOutlined />}>{getApprovalTypeLabel(type || record.approvalType || 'Schedule')}</Tag>
       ),
     },
     {
@@ -185,13 +186,13 @@ const Approvals = () => {
     },
     {
       title: '申请人',
-      dataIndex: 'requesterName',
-      key: 'requesterName',
+      dataIndex: 'approver',
+      key: 'approver',
       width: 100,
-      render: (name: string) => (
+      render: (approver: any, record: any) => (
         <span>
           <UserOutlined style={{ marginRight: 4 }} />
-          {name}
+          {approver?.realName || record.requesterName || '-'}
         </span>
       ),
     },
@@ -200,7 +201,7 @@ const Approvals = () => {
       dataIndex: 'submittedAt',
       key: 'submittedAt',
       width: 150,
-      render: (date: string) => new Date(date).toLocaleString(),
+      render: (date: string, record: any) => new Date(date || record.createdAt).toLocaleString(),
     },
     {
       title: '当前状态',
@@ -208,20 +209,21 @@ const Approvals = () => {
       key: 'status',
       width: 100,
       render: (status: string) => (
-        <Tag color={getStatusColor(status)}>{approvalStatusLabels[status]}</Tag>
+        <Tag color={getStatusColor(status)}>{approvalStatusLabels[status as keyof typeof approvalStatusLabels]}</Tag>
       ),
     },
     {
       title: '审核时长',
       key: 'duration',
       width: 100,
-      render: (_: any, record: ApprovalRecord) => {
+      render: (_: any, record: any) => {
+        const submitDate = record.submittedAt || record.createdAt
         if (record.status === 'Pending') {
-          const hours = Math.round((Date.now() - new Date(record.submittedAt).getTime()) / (1000 * 60 * 60))
+          const hours = Math.round((Date.now() - new Date(submitDate).getTime()) / (1000 * 60 * 60))
           return <span style={{ color: hours > 24 ? '#f5222d' : '#faad14' }}>{hours} 小时</span>
         }
-        if (record.completedAt) {
-          const hours = Math.round((new Date(record.completedAt).getTime() - new Date(record.submittedAt).getTime()) / (1000 * 60 * 60))
+        if (record.approvedAt || record.completedAt) {
+          const hours = Math.round((new Date(record.approvedAt || record.completedAt).getTime() - new Date(submitDate).getTime()) / (1000 * 60 * 60))
           return <span>{hours} 小时</span>
         }
         return '-'
@@ -231,8 +233,8 @@ const Approvals = () => {
       title: '操作',
       key: 'action',
       width: 200,
-      fixed: 'right',
-      render: (_: any, record: ApprovalRecord) => (
+      fixed: 'right' as const,
+      render: (_: any, record: any) => (
         <Space>
           <Button
             type="link"
@@ -276,7 +278,7 @@ const Approvals = () => {
           <Card>
             <Statistic
               title="待我审核"
-              value={stats.pending || 0}
+              value={stats.pendingCount || 0}
               valueStyle={{ color: '#1890ff' }}
               prefix={<ClockCircleOutlined />}
             />
@@ -286,7 +288,7 @@ const Approvals = () => {
           <Card>
             <Statistic
               title="我已审核"
-              value={stats.approved || 0}
+              value={stats.approvedCount || 0}
               valueStyle={{ color: '#52c41a' }}
               prefix={<CheckCircleOutlined />}
             />
@@ -296,7 +298,7 @@ const Approvals = () => {
           <Card>
             <Statistic
               title="已驳回"
-              value={stats.rejected || 0}
+              value={stats.rejectedCount || 0}
               valueStyle={{ color: '#f5222d' }}
               prefix={<CloseCircleOutlined />}
             />
@@ -306,7 +308,7 @@ const Approvals = () => {
           <Card>
             <Statistic
               title="平均审核时长"
-              value={stats.avgHours || 0}
+              value={stats.averageApprovalHours || 0}
               suffix="小时"
               valueStyle={{ color: '#722ed1' }}
             />
@@ -344,8 +346,8 @@ const Approvals = () => {
 
       <Card size="small">
         <Tabs activeKey={activeTab} onChange={setActiveTab}>
-          <TabPane tab={`待办 (${stats.pending || 0})`} key="todo" />
-          <TabPane tab={`已办 (${(stats.approved || 0) + (stats.rejected || 0)})`} key="done" />
+          <TabPane tab={`待办 (${stats.pendingCount || 0})`} key="todo" />
+          <TabPane tab={`已办 (${(stats.approvedCount || 0) + (stats.rejectedCount || 0)})`} key="done" />
           <TabPane tab="全部" key="all" />
         </Tabs>
 
@@ -420,7 +422,7 @@ const Approvals = () => {
         {selectedApproval && (
           <div>
             <Alert
-              message={approvalStatusLabels[selectedApproval.status]}
+              message={approvalStatusLabels[selectedApproval.status as keyof typeof approvalStatusLabels]}
               type={selectedApproval.status === 'Approved' ? 'success' :
                     selectedApproval.status === 'Rejected' ? 'error' :
                     selectedApproval.status === 'NeedsRevision' ? 'warning' : 'info'}
@@ -429,7 +431,7 @@ const Approvals = () => {
             />
             <Descriptions column={1} bordered size="small">
               <Descriptions.Item label="审核类型">
-                {getApprovalTypeLabel(selectedApproval.approvalType)}
+                {getApprovalTypeLabel(selectedApproval.type || selectedApproval.approvalType || 'Schedule')}
               </Descriptions.Item>
               <Descriptions.Item label="审核事项">
                 {selectedApproval.title}
@@ -438,22 +440,22 @@ const Approvals = () => {
                 {selectedApproval.description}
               </Descriptions.Item>
               <Descriptions.Item label="申请人">
-                {selectedApproval.requesterName}
+                {selectedApproval.approver?.realName || selectedApproval.requesterName || '-'}
               </Descriptions.Item>
               <Descriptions.Item label="提交时间">
-                {new Date(selectedApproval.submittedAt).toLocaleString()}
+                {new Date(selectedApproval.submittedAt || selectedApproval.createdAt).toLocaleString()}
               </Descriptions.Item>
-              {selectedApproval.approverName && (
+              {(selectedApproval.approver?.realName || selectedApproval.approverName) && (
                 <>
                   <Descriptions.Item label="审核人">
-                    {selectedApproval.approverName}
+                    {selectedApproval.approver?.realName || selectedApproval.approverName}
                   </Descriptions.Item>
                   <Descriptions.Item label="审核时间">
-                    {selectedApproval.completedAt && new Date(selectedApproval.completedAt).toLocaleString()}
+                    {(selectedApproval.approvedAt || selectedApproval.completedAt) && new Date(selectedApproval.approvedAt || selectedApproval.completedAt).toLocaleString()}
                   </Descriptions.Item>
-                  {selectedApproval.comment && (
+                  {(selectedApproval.comments || selectedApproval.comment) && (
                     <Descriptions.Item label="审核意见">
-                      {selectedApproval.comment}
+                      {selectedApproval.comments || selectedApproval.comment}
                     </Descriptions.Item>
                   )}
                 </>

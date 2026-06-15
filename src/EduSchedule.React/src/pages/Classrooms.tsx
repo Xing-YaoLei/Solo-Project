@@ -81,11 +81,13 @@ const Classrooms = () => {
 
   const getRoomTypeColor = (type: string) => {
     const colors: Record<string, string> = {
-      Lecture: 'blue',
-      Seminar: 'green',
-      Lab: 'purple',
-      Computer: 'cyan',
-      Office: 'default',
+      GeneralClassroom: 'blue',
+      MultimediaClassroom: 'green',
+      Laboratory: 'purple',
+      ComputerLab: 'cyan',
+      Gymnasium: 'orange',
+      Auditorium: 'red',
+      MeetingRoom: 'default',
     }
     return colors[type] || 'default'
   }
@@ -99,8 +101,8 @@ const Classrooms = () => {
     },
     {
       title: '教室名称',
-      dataIndex: 'roomName',
-      key: 'roomName',
+      dataIndex: 'name',
+      key: 'name',
       width: 150,
     },
     {
@@ -123,10 +125,10 @@ const Classrooms = () => {
     },
     {
       title: '类型',
-      dataIndex: 'roomType',
-      key: 'roomType',
+      dataIndex: 'type',
+      key: 'type',
       width: 100,
-      render: (type: string) => <Tag color={getRoomTypeColor(type)}>{roomTypeLabels[type]}</Tag>,
+      render: (type: string) => <Tag color={getRoomTypeColor(type)}>{roomTypeLabels[type as keyof typeof roomTypeLabels]}</Tag>,
     },
     {
       title: '设备',
@@ -136,8 +138,8 @@ const Classrooms = () => {
         <Space size={4}>
           {record.hasProjector && <Tag color="blue">投影</Tag>}
           {record.hasWhiteboard && <Tag color="green">白板</Tag>}
-          {record.hasComputer && <Tag color="purple">电脑</Tag>}
-          {record.hasAudioSystem && <Tag color="cyan">音响</Tag>}
+          {record.hasMicrophone && <Tag color="purple">电脑</Tag>}
+          {record.hasSoundSystem && <Tag color="cyan">音响</Tag>}
         </Space>
       ),
     },
@@ -227,7 +229,7 @@ const Classrooms = () => {
             </Col>
             <Col span={8}>
               <Form.Item
-                name="roomName"
+                name="name"
                 label="教室名称"
                 rules={[{ required: true, message: '请输入教室名称' }]}
               >
@@ -236,16 +238,18 @@ const Classrooms = () => {
             </Col>
             <Col span={8}>
               <Form.Item
-                name="roomType"
+                name="type"
                 label="教室类型"
                 rules={[{ required: true, message: '请选择教室类型' }]}
               >
                 <Select>
-                  <Option value="Lecture">阶梯教室</Option>
-                  <Option value="Seminar">研讨室</Option>
-                  <Option value="Lab">实验室</Option>
-                  <Option value="Computer">计算机房</Option>
-                  <Option value="Office">办公室</Option>
+                  <Option value="GeneralClassroom">普通教室</Option>
+                  <Option value="MultimediaClassroom">多媒体教室</Option>
+                  <Option value="Laboratory">实验室</Option>
+                  <Option value="ComputerLab">计算机房</Option>
+                  <Option value="Gymnasium">体育馆</Option>
+                  <Option value="Auditorium">礼堂</Option>
+                  <Option value="MeetingRoom">会议室</Option>
                 </Select>
               </Form.Item>
             </Col>
@@ -266,7 +270,7 @@ const Classrooms = () => {
                 label="楼层"
                 rules={[{ required: true, message: '请输入楼层' }]}
               >
-                <InputNumber min={1} max={20} style={{ width: '100%' }} />
+                <Input placeholder="如：1楼" />
               </Form.Item>
             </Col>
             <Col span={8}>
@@ -292,13 +296,25 @@ const Classrooms = () => {
                 </Form.Item>
               </Col>
               <Col span={6}>
-                <Form.Item name="hasComputer" valuePropName="checked" noStyle>
-                  <Switch checkedChildren="有" unCheckedChildren="无" /> 电脑
+                <Form.Item name="hasMicrophone" valuePropName="checked" noStyle>
+                  <Switch checkedChildren="有" unCheckedChildren="无" /> 麦克风
                 </Form.Item>
               </Col>
               <Col span={6}>
-                <Form.Item name="hasAudioSystem" valuePropName="checked" noStyle>
+                <Form.Item name="hasSoundSystem" valuePropName="checked" noStyle>
                   <Switch checkedChildren="有" unCheckedChildren="无" /> 音响系统
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={16} style={{ marginTop: 8 }}>
+              <Col span={6}>
+                <Form.Item name="hasAirConditioning" valuePropName="checked" noStyle>
+                  <Switch checkedChildren="有" unCheckedChildren="无" /> 空调
+                </Form.Item>
+              </Col>
+              <Col span={6}>
+                <Form.Item name="isDisabledAccessible" valuePropName="checked" noStyle>
+                  <Switch checkedChildren="是" unCheckedChildren="否" /> 无障碍设施
                 </Form.Item>
               </Col>
             </Row>
@@ -310,7 +326,7 @@ const Classrooms = () => {
               </Form.Item>
             </Col>
           </Row>
-          <Form.Item name="notes" label="备注">
+          <Form.Item name="description" label="备注">
             <Input.TextArea rows={2} placeholder="请输入备注信息" />
           </Form.Item>
         </Form>

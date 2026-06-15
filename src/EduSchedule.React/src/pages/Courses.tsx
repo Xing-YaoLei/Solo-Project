@@ -81,8 +81,11 @@ const Courses = () => {
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
       Draft: 'default',
-      Active: 'success',
-      Inactive: 'error',
+      Published: 'processing',
+      Scheduled: 'blue',
+      InProgress: 'success',
+      Completed: 'default',
+      Cancelled: 'error',
     }
     return colors[status] || 'default'
   }
@@ -96,8 +99,8 @@ const Courses = () => {
     },
     {
       title: '课程名称',
-      dataIndex: 'courseName',
-      key: 'courseName',
+      dataIndex: 'name',
+      key: 'name',
       width: 200,
     },
     {
@@ -108,29 +111,37 @@ const Courses = () => {
     },
     {
       title: '学时',
-      dataIndex: 'classHours',
-      key: 'classHours',
+      dataIndex: 'totalHours',
+      key: 'totalHours',
       width: 80,
     },
     {
-      title: '授课教师',
-      dataIndex: 'teacherName',
-      key: 'teacherName',
-      width: 100,
+      title: '周学时',
+      dataIndex: 'weeklyHours',
+      key: 'weeklyHours',
+      width: 80,
+    },
+    {
+      title: '开课院系',
+      dataIndex: ['department', 'name'],
+      key: 'departmentName',
+      width: 120,
+      render: (_: any, record: Course) => record.department?.name || '-',
     },
     {
       title: '先修课程',
-      dataIndex: 'prerequisite',
-      key: 'prerequisite',
+      dataIndex: ['prerequisiteCourse', 'name'],
+      key: 'prerequisiteCourse',
       width: 150,
       ellipsis: true,
+      render: (_: any, record: Course) => record.prerequisiteCourse?.name || '-',
     },
     {
       title: '状态',
       dataIndex: 'status',
       key: 'status',
       width: 100,
-      render: (status: string) => <Tag color={getStatusColor(status)}>{courseStatusLabels[status]}</Tag>,
+      render: (status: string) => <Tag color={getStatusColor(status)}>{courseStatusLabels[status as keyof typeof courseStatusLabels] || status}</Tag>,
     },
     {
       title: '操作',
@@ -209,7 +220,7 @@ const Courses = () => {
             </Col>
             <Col span={12}>
               <Form.Item
-                name="courseName"
+                name="name"
                 label="课程名称"
                 rules={[{ required: true, message: '请输入课程名称' }]}
               >
@@ -229,9 +240,9 @@ const Courses = () => {
             </Col>
             <Col span={8}>
               <Form.Item
-                name="classHours"
-                label="学时"
-                rules={[{ required: true, message: '请输入学时' }]}
+                name="totalHours"
+                label="总学时"
+                rules={[{ required: true, message: '请输入总学时' }]}
               >
                 <InputNumber min={1} max={200} style={{ width: '100%' }} />
               </Form.Item>
@@ -244,8 +255,11 @@ const Courses = () => {
               >
                 <Select>
                   <Option value="Draft">草稿</Option>
-                  <Option value="Active">启用</Option>
-                  <Option value="Inactive">停用</Option>
+                  <Option value="Published">已发布</Option>
+                  <Option value="Scheduled">已排课</Option>
+                  <Option value="InProgress">进行中</Option>
+                  <Option value="Completed">已完成</Option>
+                  <Option value="Cancelled">已取消</Option>
                 </Select>
               </Form.Item>
             </Col>

@@ -201,7 +201,7 @@ const Transcripts = () => {
       title: '操作',
       key: 'action',
       width: 180,
-      fixed: 'right',
+      fixed: 'right' as const,
       render: (_: any, record: Transcript) => (
         <Space>
           <Button

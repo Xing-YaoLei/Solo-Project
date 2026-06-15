@@ -231,7 +231,7 @@ const Applications = () => {
           {status === 'Pending' && <ClockCircleOutlined />}
           {status === 'Approved' && <CheckCircleOutlined />}
           {status === 'Rejected' && <CloseCircleOutlined />}
-          {' '}{approvalStatusLabels[status]}
+          {' '}{approvalStatusLabels[status as keyof typeof approvalStatusLabels]}
         </Tag>
       ),
     },
@@ -246,7 +246,7 @@ const Applications = () => {
       title: '操作',
       key: 'action',
       width: 220,
-      fixed: 'right',
+      fixed: 'right' as const,
       render: (_: any, record: Application) => (
         <Space size="small">
           <Button
@@ -486,7 +486,7 @@ const Applications = () => {
         {selectedApplication && (
           <div>
             <Alert
-              message={approvalStatusLabels[selectedApplication.status]}
+              message={approvalStatusLabels[selectedApplication.status as keyof typeof approvalStatusLabels]}
               type={selectedApplication.status === 'Approved' ? 'success' :
                     selectedApplication.status === 'Rejected' ? 'error' :
                     selectedApplication.status === 'NeedsRevision' ? 'warning' : 'info'}
@@ -538,23 +538,22 @@ const Applications = () => {
               <>
                 <h4 style={{ marginBottom: 12 }}>审核历史</h4>
                 <Timeline
-                  size="small"
                   items={selectedApplication.approvalHistory.map((h: any) => ({
                     color: h.status === 'Approved' ? 'green' :
                            h.status === 'Rejected' ? 'red' : 'blue',
                     children: (
                       <div>
                         <Space>
-                          <strong>{h.approverName}</strong>
+                          <strong>{h.approver?.realName || h.approverName}</strong>
                           <Tag color={h.status === 'Approved' ? 'success' :
                                      h.status === 'Rejected' ? 'error' : 'default'}>
-                            {approvalStatusLabels[h.status]}
+                            {approvalStatusLabels[h.status as keyof typeof approvalStatusLabels]}
                           </Tag>
                           <span style={{ color: '#999', fontSize: 12 }}>
                             {new Date(h.createdAt).toLocaleString()}
                           </span>
                         </Space>
-                        {h.comment && <div style={{ marginTop: 4 }}>{h.comment}</div>}
+                        {(h.comments || h.comment) && <div style={{ marginTop: 4 }}>{h.comments || h.comment}</div>}
                       </div>
                     ),
                   }))}

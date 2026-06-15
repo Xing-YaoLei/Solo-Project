@@ -131,7 +131,7 @@ const MainLayout = () => {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
                 <Avatar size="small" icon={<UserOutlined />} />
                 <span>
-                  {user?.name} ({roleLabels[user?.role as keyof typeof roleLabels]})
+                  {user?.realName} ({roleLabels[user?.role as keyof typeof roleLabels]})
                 </span>
               </div>
             </Dropdown>

@@ -14,6 +14,9 @@ public class Semester
     [Required]
     public SemesterType Type { get; set; }
 
+    [MaxLength(100)]
+    public string Name { get; set; } = string.Empty;
+
     [Required]
     public DateOnly StartDate { get; set; }
 

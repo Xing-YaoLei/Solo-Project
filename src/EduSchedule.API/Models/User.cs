@@ -30,8 +30,14 @@ public class User
     [Required]
     public RoleType Role { get; set; }
 
+    [MaxLength(50)]
+    public string RoleName { get; set; } = string.Empty;
+
     public int? DepartmentId { get; set; }
     public Department? Department { get; set; }
+
+    [MaxLength(100)]
+    public string? DepartmentName { get; set; }
 
     [MaxLength(100)]
     public string? Title { get; set; }

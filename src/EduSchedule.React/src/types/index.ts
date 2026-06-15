@@ -310,3 +310,68 @@ export interface ApiResponse<T> {
   message?: string;
   success?: boolean;
 }
+
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface Transcript {
+  id: number;
+  studentId: number;
+  studentNumber?: string;
+  studentName?: string;
+  courseId: number;
+  courseName?: string;
+  semester: string;
+  regularScore?: number;
+  finalScore?: number;
+  finalGrade: number;
+  gradePoints: number;
+  isPassed: boolean;
+  examDate?: string;
+  notes?: string;
+  createdBy?: number;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export type ApplicationType = 'CourseSelection' | 'CourseDrop' | 'CourseChange' | 'MakeUpExam' | 'StudyAbroad' | 'Other';
+
+export interface Application {
+  id: number;
+  applicationNo: string;
+  applicationType: ApplicationType;
+  title: string;
+  description: string;
+  applicantId: number;
+  applicantName?: string;
+  applicationDate: string;
+  relatedCourseId?: number;
+  relatedCourseName?: string;
+  status: ApprovalStatus;
+  approverId?: number;
+  approverName?: string;
+  approvalComment?: string;
+  approvedAt?: string;
+  attachments?: string;
+  approvalHistory?: ApprovalRecord[];
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface TranscriptStats {
+  total: number;
+  avgGrade: number;
+  passRate: number;
+  failedCount: number;
+}
+
+export interface ApplicationStats {
+  pending: number;
+  approved: number;
+  rejected: number;
+  draft: number;
+}

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { Semester, TimeSlot, Department } from '../types';
-import { semesterApi, timeSlotApi } from '../services/api';
+import { api } from '../services/api';
 
 interface AppContextType {
   currentSemester: Semester | null;
@@ -25,8 +25,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const refreshSemesters = useCallback(async () => {
     try {
       const [allRes, currentRes] = await Promise.all([
-        semesterApi.getAll(),
-        semesterApi.getCurrent().catch(() => ({ data: null })),
+        api.semesters.getList(),
+        api.semesters.getCurrent().catch(() => ({ data: null })),
       ]);
       setSemesters(allRes.data);
       if (currentRes.data) {
@@ -41,7 +41,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const refreshTimeSlots = useCallback(async () => {
     try {
-      const res = await timeSlotApi.getAll();
+      const res = await api.timeSlots.getList();
       setTimeSlots(res.data);
     } catch (error) {
       console.error('Failed to load time slots:', error);
