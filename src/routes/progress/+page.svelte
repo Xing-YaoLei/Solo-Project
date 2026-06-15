@@ -12,7 +12,7 @@
 
 	const completionTrendOption = $derived<EChartsOption>({
 		title: {
-			text: '每日提交人数',
+			text: '每日提交作业数',
 			left: 'center',
 			textStyle: { fontSize: 16, fontWeight: 'normal' }
 		},
@@ -29,18 +29,18 @@
 		},
 		xAxis: {
 			type: 'category',
-			data: progressData.map((d) => d.date),
+			data: progressData.map((d: ProgressItem) => d.date),
 			axisLabel: { rotate: 30, fontSize: 10 }
 		},
 		yAxis: {
 			type: 'value',
-			name: '人数'
+			name: '作业数'
 		},
 		series: [
 			{
-				name: '提交人数',
-				type: 'bar',
-				data: progressData.map((d) => d.submittedCount),
+				name: '提交作业数',
+				type: 'bar' as const,
+				data: progressData.map((d: ProgressItem) => d.submittedCount),
 				itemStyle: {
 					color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
 						{ offset: 0, color: '#3b82f6' },
@@ -52,13 +52,15 @@
 		]
 	});
 
-	const avgCompletionRate = $derived(progressData.length
-		? progressData.reduce((sum, p) => sum + p.completionRate, 0) / progressData.length
-		: 0);
-
 	const latestCompletion = $derived(progressData[progressData.length - 1]?.completionRate || 0);
+	const latestExpected = $derived(progressData[progressData.length - 1]?.expectedCount || 0);
+	const latestCumulative = $derived(progressData[progressData.length - 1]?.cumulativeCompleted || 0);
 
-	const totalSubmissions = $derived(progressData.reduce((sum, p) => sum + p.submittedCount, 0));
+	const totalSubmissions = $derived(progressData.reduce((sum: number, p: ProgressItem) => sum + p.submittedCount, 0));
+
+	const avgCompletionRate = $derived(progressData.length
+		? progressData.reduce((sum: number, p: ProgressItem) => sum + p.completionRate, 0) / progressData.length
+		: 0);
 
 	async function loadData() {
 		loading = true;
@@ -120,32 +122,32 @@
 	{:else}
 		<div class="grid grid-cols-1 md:grid-cols-4 gap-4">
 			<StatCard
-				title="最新完成率"
+				title="累计完成率"
 				value="{(latestCompletion * 100).toFixed(1)}%"
-				subtitle="最近一天"
+				subtitle="学生-作业口径"
 				icon="✅"
 				color={latestCompletion < 0.6 ? 'red' : latestCompletion < 0.8 ? 'yellow' : 'green'}
 			/>
 			<StatCard
-				title="平均完成率"
-				value="{(avgCompletionRate * 100).toFixed(1)}%"
-				subtitle="近{days}天"
-				icon="📊"
-				color={avgCompletionRate < 0.6 ? 'red' : avgCompletionRate < 0.8 ? 'yellow' : 'green'}
+				title="累计已完成"
+				value={latestCumulative}
+				subtitle="学生-作业对"
+				icon="�"
+				color="blue"
 			/>
 			<StatCard
-				title="总提交次数"
-				value={totalSubmissions}
-				subtitle="近{days}天"
-				icon="📝"
-				color="blue"
+				title="累计应完成"
+				value={latestExpected}
+				subtitle="学生-作业对"
+				icon="�"
+				color="purple"
 			/>
 			<StatCard
 				title="监测天数"
 				value="{days}天"
 				subtitle="数据周期"
 				icon="📅"
-				color="purple"
+				color="yellow"
 			/>
 		</div>
 
@@ -165,18 +167,18 @@
 					<thead class="bg-gray-50">
 						<tr>
 							<th class="px-4 py-3 text-left text-sm font-medium text-gray-600">日期</th>
-							<th class="px-4 py-3 text-right text-sm font-medium text-gray-600">提交人数</th>
-							<th class="px-4 py-3 text-right text-sm font-medium text-gray-600">总人数</th>
-							<th class="px-4 py-3 text-right text-sm font-medium text-gray-600">完成率</th>
-							<th class="px-4 py-3 text-right text-sm font-medium text-gray-600">平均分</th>
+							<th class="px-4 py-3 text-right text-sm font-medium text-gray-600">当日完成</th>
+							<th class="px-4 py-3 text-right text-sm font-medium text-gray-600">累计应完成</th>
+							<th class="px-4 py-3 text-right text-sm font-medium text-gray-600">累计完成率</th>
+							<th class="px-4 py-3 text-right text-sm font-medium text-gray-600">当日平均分</th>
 						</tr>
 					</thead>
 					<tbody class="divide-y">
 						{#each [...progressData].reverse() as item (item.date)}
 							<tr class="hover:bg-gray-50">
 								<td class="px-4 py-3 text-sm">{item.date}</td>
-								<td class="px-4 py-3 text-sm text-right">{item.submittedCount} 人</td>
-								<td class="px-4 py-3 text-sm text-right">{item.totalCount} 人</td>
+								<td class="px-4 py-3 text-sm text-right">{item.submittedCount} 份</td>
+								<td class="px-4 py-3 text-sm text-right">{item.expectedCount} 份</td>
 								<td class="px-4 py-3 text-sm text-right">
 									<span
 										class:text-red-600={item.completionRate < 0.6}

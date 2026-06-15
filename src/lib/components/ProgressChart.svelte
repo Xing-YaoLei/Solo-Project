@@ -6,7 +6,8 @@
 		date: string;
 		completionRate: number;
 		submittedCount: number;
-		totalCount: number;
+		expectedCount: number;
+		cumulativeCompleted: number;
 		averageScore: number;
 	}
 

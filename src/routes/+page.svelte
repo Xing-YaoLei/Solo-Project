@@ -10,9 +10,20 @@
 	import type { ProgressItem } from '$lib/components/ProgressChart.svelte';
 	import type { ScoreItem } from '$lib/components/ScoreChart.svelte';
 
+	interface OverviewStats {
+		totalStudents: number;
+		totalAssignments: number;
+		totalSubmissions: number;
+		completionRate: number;
+		averageScore: number;
+		alertCount: number;
+	}
+
 	let loading = $state(true);
-	let stats = $state({
+	let stats: OverviewStats = $state({
 		totalStudents: 0,
+		totalAssignments: 0,
+		totalSubmissions: 0,
 		completionRate: 0,
 		averageScore: 0,
 		alertCount: 0
@@ -39,34 +50,27 @@
 	async function loadData() {
 		loading = true;
 		try {
-			const [alertsRes, tagsRes, progressRes, scoresRes] = await Promise.all([
-				fetch('/api/analysis/alerts'),
+			const [overviewRes, tagsRes, progressRes, scoresRes] = await Promise.all([
+				fetch('/api/analysis/overview'),
 				fetch('/api/analysis/tags'),
 				fetch('/api/analysis/progress?days=14'),
 				fetch('/api/analysis/scores')
 			]);
 
-			const alertsData = await alertsRes.json();
-			const tagsData = await tagsRes.json();
-			const progressData_ = await progressRes.json();
-			const scoresData = await scoresRes.json();
+			const overviewJson = await overviewRes.json();
+			const tagsJson = await tagsRes.json();
+			const progressJson = await progressRes.json();
+			const scoresJson = await scoresRes.json();
 
-			alerts = alertsData.data || [];
-			tagData = tagsData.data || [];
-			progressData = progressData_.data || [];
-			scoreData = scoresData.data || [];
+			stats = overviewJson.data || stats;
+			tagData = tagsJson.data || [];
+			progressData = progressJson.data || [];
+			scoreData = scoresJson.data || [];
 
-			const latestProgress = progressData[progressData.length - 1];
-			const avgScore = progressData.length
-				? progressData.reduce((sum, p) => sum + p.averageScore, 0) / progressData.length
-				: 0;
-
-			stats = {
-				totalStudents: latestProgress?.totalCount || 0,
-				completionRate: latestProgress?.completionRate || 0,
-				averageScore: avgScore,
-				alertCount: alerts.length
-			};
+			const alertsRes = await fetch('/api/analysis/alerts');
+			const alertsJson = await alertsRes.json();
+			alerts = alertsJson.data || [];
+			stats.alertCount = alerts.length;
 		} catch (e) {
 			console.error('加载数据失败', e);
 		} finally {
@@ -114,7 +118,7 @@
 			<StatCard
 				title="作业完成率"
 				value="{(stats.completionRate * 100).toFixed(1)}%"
-				subtitle="近期作业"
+				subtitle="学生-作业口径"
 				icon="📊"
 				color={stats.completionRate < 0.6 ? 'red' : stats.completionRate < 0.8 ? 'yellow' : 'green'}
 				trend={stats.completionRate > 0.8 ? 'up' : 'down'}
@@ -123,7 +127,7 @@
 			<StatCard
 				title="平均成绩"
 				value="{stats.averageScore.toFixed(1)}分"
-				subtitle="近14天"
+				subtitle="已批改作业"
 				icon="📈"
 				color={stats.averageScore < 60 ? 'red' : stats.averageScore < 75 ? 'yellow' : 'green'}
 			/>

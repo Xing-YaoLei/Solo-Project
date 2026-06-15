@@ -14,7 +14,8 @@ export interface ProgressData {
 	date: string;
 	completionRate: number;
 	submittedCount: number;
-	totalCount: number;
+	expectedCount: number;
+	cumulativeCompleted: number;
 	averageScore: number;
 }
 
@@ -31,6 +32,54 @@ export interface RiskAlert {
 	detail: string;
 	affectedStudents?: number;
 	affectedAssignments?: number;
+}
+
+export interface OverviewStats {
+	totalStudents: number;
+	totalAssignments: number;
+	totalSubmissions: number;
+	completionRate: number;
+	averageScore: number;
+	alertCount: number;
+}
+
+export async function getOverviewStats(course?: string): Promise<OverviewStats> {
+	const db = await getDb();
+
+	const courseFilter = course ? ' WHERE course = ? ' : '';
+	const params = course ? [course] : [];
+
+	const studentsResult = queryOne<{ count: number }>(db, `SELECT COUNT(*) as count FROM students ${courseFilter}`, params);
+	const totalStudents = studentsResult?.count || 0;
+
+	const assignmentsResult = queryOne<{ count: number }>(db, `SELECT COUNT(*) as count FROM assignments ${courseFilter}`, params);
+	const totalAssignments = assignmentsResult?.count || 0;
+
+	const subCourseFilter = course
+		? ' AND assignment_id IN (SELECT assignment_id FROM assignments WHERE course = ?) '
+		: '';
+
+	const submissionsResult = queryOne<{ count: number; avg_score: number }>(
+		db,
+		`SELECT COUNT(*) as count, AVG(score) as avg_score FROM submissions WHERE score IS NOT NULL ${subCourseFilter}`,
+		params
+	);
+	const totalSubmissions = submissionsResult?.count || 0;
+	const averageScore = submissionsResult?.avg_score || 0;
+
+	const expected = totalStudents * totalAssignments;
+	const completionRate = expected > 0 ? totalSubmissions / expected : 0;
+
+	const alerts = await getRiskAlerts(course);
+
+	return {
+		totalStudents,
+		totalAssignments,
+		totalSubmissions,
+		completionRate,
+		averageScore,
+		alertCount: alerts.length
+	};
 }
 
 export interface ReviewMaterial {
@@ -109,43 +158,119 @@ export async function getTagAnalysis(course?: string): Promise<TagAnalysis[]> {
 export async function getProgressTrend(days: number = 30, course?: string): Promise<ProgressData[]> {
 	const db = await getDb();
 
-	let sql = `
-		SELECT 
-			date(s.submit_date) as submit_date,
-			COUNT(*) as submitted_count,
-			(SELECT COUNT(DISTINCT student_id) FROM students) as total_students,
-			AVG(s.score) as avg_score
-		FROM submissions s
-		WHERE s.submit_date IS NOT NULL
-	`;
+	const totalStudentsResult = queryOne<{ count: number }>(db, 'SELECT COUNT(*) as count FROM students');
+	const totalStudents = totalStudentsResult?.count || 0;
 
-	const params: (string | number)[] = [];
-	if (course) {
-		sql += ` AND s.assignment_id IN (SELECT assignment_id FROM assignments WHERE course = ?) `;
-		params.push(course);
+	const assignmentCourseFilter = course ? ' AND course = ? ' : '';
+
+	const totalAssignmentsResult = queryOne<{ count: number }>(
+		db,
+		`SELECT COUNT(*) as count FROM assignments WHERE 1=1 ${assignmentCourseFilter}`,
+		course ? [course] : []
+	);
+	const totalAssignments = totalAssignmentsResult?.count || 0;
+
+	const submissionCourseFilter = course
+		? ' AND assignment_id IN (SELECT assignment_id FROM assignments WHERE course = ?) '
+		: '';
+
+	const dailySql = `
+		SELECT
+			date(submit_date) as submit_date,
+			COUNT(*) as count,
+			AVG(score) as avg_score
+		FROM submissions
+		WHERE submit_date IS NOT NULL
+		AND status != 'pending'
+		${submissionCourseFilter}
+		GROUP BY date(submit_date)
+		ORDER BY submit_date
+	`;
+	const dailyRows = queryAll<{ submit_date: string; count: number; avg_score: number }>(
+		db,
+		dailySql,
+		course ? [course] : []
+	);
+
+	const dailyMap = new Map<string, { count: number; avg_score: number }>();
+	for (const row of dailyRows) {
+		dailyMap.set(row.submit_date, { count: row.count, avg_score: row.avg_score });
 	}
 
-	sql += ` GROUP BY date(s.submit_date) ORDER BY submit_date DESC LIMIT ?`;
-	params.push(days);
+	const dueDateSql = `
+		SELECT date(due_date) as due_date, COUNT(*) as count
+		FROM assignments
+		WHERE due_date IS NOT NULL
+		${assignmentCourseFilter}
+		GROUP BY date(due_date)
+		ORDER BY due_date
+	`;
+	const dueDateRows = queryAll<{ due_date: string; count: number }>(
+		db,
+		dueDateSql,
+		course ? [course] : []
+	);
 
-	const rows = queryAll<{
-		submit_date: string;
-		submitted_count: number;
-		total_students: number;
-		avg_score: number;
-	}>(db, sql, params);
+	const today = new Date();
+	const dateList: string[] = [];
+	for (let i = days - 1; i >= 0; i--) {
+		const d = new Date(today);
+		d.setDate(d.getDate() - i);
+		dateList.push(d.toISOString().split('T')[0]);
+	}
 
-	const totalStudents = rows[0]?.total_students || 1;
+	const startDate = dateList[0];
 
-	return rows
-		.map((row) => ({
-			date: row.submit_date,
-			completionRate: row.submitted_count / totalStudents,
-			submittedCount: row.submitted_count,
-			totalCount: totalStudents,
-			averageScore: row.avg_score || 0
-		}))
-		.reverse();
+	let cumulativeExpectedBefore = 0;
+	let cumulativeCompletedBefore = 0;
+
+	for (const row of dueDateRows) {
+		if (row.due_date < startDate) {
+			cumulativeExpectedBefore += row.count * totalStudents;
+		}
+	}
+
+	for (const [date, data] of dailyMap) {
+		if (date < startDate) {
+			cumulativeCompletedBefore += data.count;
+		}
+	}
+
+	let cumulativeExpected = cumulativeExpectedBefore;
+	let cumulativeCompleted = cumulativeCompletedBefore;
+	const result: ProgressData[] = [];
+	let dueDateIndex = 0;
+
+	while (dueDateIndex < dueDateRows.length && dueDateRows[dueDateIndex].due_date < startDate) {
+		dueDateIndex++;
+	}
+
+	for (const date of dateList) {
+		while (dueDateIndex < dueDateRows.length && dueDateRows[dueDateIndex].due_date <= date) {
+			cumulativeExpected += dueDateRows[dueDateIndex].count * totalStudents;
+			dueDateIndex++;
+		}
+
+		const daily = dailyMap.get(date);
+		const dayCompleted = daily?.count || 0;
+		const dayAvgScore = daily?.avg_score || 0;
+		cumulativeCompleted += dayCompleted;
+
+		const expectedCount = cumulativeExpected > 0
+			? cumulativeExpected
+			: totalAssignments * totalStudents;
+
+		result.push({
+			date,
+			completionRate: expectedCount > 0 ? cumulativeCompleted / expectedCount : 0,
+			submittedCount: dayCompleted,
+			expectedCount,
+			cumulativeCompleted,
+			averageScore: dayAvgScore
+		});
+	}
+
+	return result;
 }
 
 export async function getScoreDistribution(course?: string): Promise<ScoreDistribution[]> {
