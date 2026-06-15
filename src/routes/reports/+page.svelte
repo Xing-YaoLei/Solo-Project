@@ -16,18 +16,13 @@
 		{ id: 'user', label: '负责人绩效' }
 	];
 
-	const meQuery = createQuery<void, { user: { roles: string[]; permissions: Record<string, boolean> } }>('auth.me', () => ({} as any));
-	const overviewQuery = createQuery<void, any>('reports.overviewStats', () => ({} as any));
-	const completionRateQuery = createQuery<any, any[]>('reports.completionRateByCourse', () => ({}));
-	const exportCompletionQuery = createQuery<any, { filename: string; content: string }>('reports.exportCompletionRate', () => ({}));
-	const exportPassRateQuery = createQuery<any, { filename: string; content: string }>('reports.exportPassRate', () => ({}));
-	const exportUserPerformanceQuery = createQuery<any, { filename: string; content: string }>('reports.exportUserPerformance', () => ({}));
-
-	$: user = $meQuery.data?.user;
-	$: canExport = user?.permissions?.['report.export'] === true;
-
 	$: dateQueryInput = getDateRangeInput();
 	const passRateQuery = createQuery<any, any[]>('reports.examPassRateByDate', () => dateQueryInput);
+
+	$: exportCompletionInput = {
+		startDate: dateQueryInput.startDate,
+		endDate: dateQueryInput.endDate
+	};
 
 	$: userQueryInput = {
 		page: currentPage,
@@ -35,8 +30,22 @@
 		role: roleFilter || undefined,
 		keyword: searchKeyword || undefined
 	};
+
+	$: exportUserPerformanceInput = {
+		role: roleFilter || undefined,
+		keyword: searchKeyword || undefined
+	};
+
+	const meQuery = createQuery<void, { user: { roles: string[]; permissions: Record<string, boolean> } }>('auth.me', () => ({} as any));
+	const overviewQuery = createQuery<void, any>('reports.overviewStats', () => ({} as any));
+	const completionRateQuery = createQuery<any, any[]>('reports.completionRateByCourse', () => exportCompletionInput);
+	const exportCompletionQuery = createQuery<any, { filename: string; content: string }>('reports.exportCompletionRate', () => exportCompletionInput);
+	const exportPassRateQuery = createQuery<any, { filename: string; content: string }>('reports.exportPassRate', () => dateQueryInput);
+	const exportUserPerformanceQuery = createQuery<any, { filename: string; content: string }>('reports.exportUserPerformance', () => exportUserPerformanceInput);
 	const userPerformanceQuery = createQuery<any, any>('reports.performanceByUser', () => userQueryInput);
 
+	$: user = $meQuery.data?.user;
+	$: canExport = user?.permissions?.['report.export'] === true;
 	$: overview = $overviewQuery.data;
 	$: completionRates = $completionRateQuery.data || [];
 	$: passRateData = $passRateQuery.data || [];
