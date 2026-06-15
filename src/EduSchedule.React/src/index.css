@@ -1,0 +1,53 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
+    'Noto Color Emoji';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.conflict-level-low {
+  color: #52c41a;
+}
+
+.conflict-level-medium {
+  color: #faad14;
+}
+
+.conflict-level-high {
+  color: #fa8c16;
+}
+
+.conflict-level-critical {
+  color: #f5222d;
+}
+
+.status-draft {
+  color: #bfbfbf;
+}
+
+.status-pending {
+  color: #1890ff;
+}
+
+.status-approved {
+  color: #52c41a;
+}
+
+.status-rejected {
+  color: #f5222d;
+}
+
+.status-needs-revision {
+  color: #fa8c16;
+}
