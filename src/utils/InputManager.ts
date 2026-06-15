@@ -13,8 +13,27 @@ interface TouchData {
   startTime: number;
 }
 
+interface SceneBindings {
+  keyboardDownHandler: ((event: KeyboardEvent) => void) | null;
+  keyboardUpHandler: ((event: KeyboardEvent) => void) | null;
+  pointerDownHandler: ((pointer: Phaser.Input.Pointer) => void) | null;
+  pointerMoveHandler: ((pointer: Phaser.Input.Pointer) => void) | null;
+  pointerUpHandler: ((pointer: Phaser.Input.Pointer) => void) | null;
+  pointerCancelHandler: ((pointer: Phaser.Input.Pointer) => void) | null;
+  shutdownListener: (() => void) | null;
+}
+
 class InputManager {
   private scene: Phaser.Scene | null = null;
+  private sceneBindings: SceneBindings = {
+    keyboardDownHandler: null,
+    keyboardUpHandler: null,
+    pointerDownHandler: null,
+    pointerMoveHandler: null,
+    pointerUpHandler: null,
+    pointerCancelHandler: null,
+    shutdownListener: null
+  };
   private keyboardListeners: Map<string, Set<InputCallback>>;
   private touchListeners: Set<InputCallback>;
   private dragStartListeners: Set<DragCallback>;
@@ -46,41 +65,116 @@ class InputManager {
   }
 
   initialize(scene: Phaser.Scene): void {
+    if (this.scene && this.scene !== scene) {
+      this.cleanupSceneBindings();
+      this.clearListeners();
+    }
     this.scene = scene;
     this.setupKeyboardInput(scene);
     this.setupTouchInput(scene);
+    this.setupShutdownListener(scene);
+    this.selectedIndex = 0;
+  }
+
+  private setupShutdownListener(scene: Phaser.Scene): void {
+    const shutdownListener = () => {
+      this.cleanupSceneBindings();
+      this.clearListeners();
+    };
+    scene.events.once('shutdown', shutdownListener);
+    scene.events.once('destroy', shutdownListener);
+    this.sceneBindings.shutdownListener = shutdownListener;
+  }
+
+  private cleanupSceneBindings(): void {
+    if (!this.scene) return;
+
+    const kb = this.scene.input.keyboard;
+    if (kb) {
+      if (this.sceneBindings.keyboardDownHandler) {
+        kb.off('keydown', this.sceneBindings.keyboardDownHandler);
+      }
+      if (this.sceneBindings.keyboardUpHandler) {
+        kb.off('keyup', this.sceneBindings.keyboardUpHandler);
+      }
+    }
+
+    const input = this.scene.input;
+    if (this.sceneBindings.pointerDownHandler) {
+      input.off('pointerdown', this.sceneBindings.pointerDownHandler);
+    }
+    if (this.sceneBindings.pointerMoveHandler) {
+      input.off('pointermove', this.sceneBindings.pointerMoveHandler);
+    }
+    if (this.sceneBindings.pointerUpHandler) {
+      input.off('pointerup', this.sceneBindings.pointerUpHandler);
+    }
+    if (this.sceneBindings.pointerCancelHandler) {
+      input.off('pointercancel', this.sceneBindings.pointerCancelHandler);
+    }
+
+    const events = this.scene.events;
+    if (this.sceneBindings.shutdownListener) {
+      events.off('shutdown', this.sceneBindings.shutdownListener);
+      events.off('destroy', this.sceneBindings.shutdownListener);
+    }
+
+    this.sceneBindings = {
+      keyboardDownHandler: null,
+      keyboardUpHandler: null,
+      pointerDownHandler: null,
+      pointerMoveHandler: null,
+      pointerUpHandler: null,
+      pointerCancelHandler: null,
+      shutdownListener: null
+    };
+    this.scene = null;
+  }
+
+  clearListeners(): void {
+    this.keyboardListeners.clear();
+    this.touchListeners.clear();
+    this.dragStartListeners.clear();
+    this.dragMoveListeners.clear();
+    this.dragEndListeners.clear();
+    this.activeTouches.clear();
+    this.keysPressed.clear();
   }
 
   private setupKeyboardInput(scene: Phaser.Scene): void {
-    scene.input.keyboard?.on('keydown', (event: KeyboardEvent) => {
-      this.handleKeyDown(event.key);
-    });
-
-    scene.input.keyboard?.on('keyup', (event: KeyboardEvent) => {
-      this.handleKeyUp(event.key);
-    });
+    const downHandler = (event: KeyboardEvent) => this.handleKeyDown(event.key);
+    const upHandler = (event: KeyboardEvent) => this.handleKeyUp(event.key);
+    scene.input.keyboard?.on('keydown', downHandler);
+    scene.input.keyboard?.on('keyup', upHandler);
+    this.sceneBindings.keyboardDownHandler = downHandler;
+    this.sceneBindings.keyboardUpHandler = upHandler;
   }
 
   private setupTouchInput(scene: Phaser.Scene): void {
-    scene.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+    const downHandler = (pointer: Phaser.Input.Pointer) => {
       if (pointer.isDown) {
         this.handleTouchStart(pointer);
       }
-    });
-
-    scene.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
+    };
+    const moveHandler = (pointer: Phaser.Input.Pointer) => {
       if (pointer.isDown) {
         this.handleTouchMove(pointer);
       }
-    });
-
-    scene.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
+    };
+    const upHandler = (pointer: Phaser.Input.Pointer) => {
       this.handleTouchEnd(pointer);
-    });
-
-    scene.input.on('pointercancel', (pointer: Phaser.Input.Pointer) => {
+    };
+    const cancelHandler = (pointer: Phaser.Input.Pointer) => {
       this.handleTouchEnd(pointer);
-    });
+    };
+    scene.input.on('pointerdown', downHandler);
+    scene.input.on('pointermove', moveHandler);
+    scene.input.on('pointerup', upHandler);
+    scene.input.on('pointercancel', cancelHandler);
+    this.sceneBindings.pointerDownHandler = downHandler;
+    this.sceneBindings.pointerMoveHandler = moveHandler;
+    this.sceneBindings.pointerUpHandler = upHandler;
+    this.sceneBindings.pointerCancelHandler = cancelHandler;
   }
 
   private handleKeyDown(key: string): void {
@@ -273,14 +367,8 @@ class InputManager {
   }
 
   destroy(): void {
-    this.keyboardListeners.clear();
-    this.touchListeners.clear();
-    this.dragStartListeners.clear();
-    this.dragMoveListeners.clear();
-    this.dragEndListeners.clear();
-    this.activeTouches.clear();
-    this.keysPressed.clear();
-    this.scene = null;
+    this.cleanupSceneBindings();
+    this.clearListeners();
   }
 }
 

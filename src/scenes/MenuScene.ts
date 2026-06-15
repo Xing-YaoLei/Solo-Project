@@ -9,7 +9,8 @@ import { UIDialog } from '../components/UIDialog';
 
 export class MenuScene extends Scene {
   private titleText: Phaser.GameObjects.Text | null = null;
-  private levelButtons: UIButton[] = [];
+  private levelCards: Phaser.GameObjects.Container[] = [];
+  private levelStartButtons: UIButton[] = [];
   private selectedLevelIndex: number = 0;
   private dialog: UIDialog | null = null;
   private saveData = gameStateManager.getSaveData();
@@ -121,9 +122,8 @@ export class MenuScene extends Scene {
 
       card.add([bg, levelNum, title, desc, stats, startButton]);
 
-      if (isUnlocked) {
-        this.levelButtons.push(startButton);
-      }
+      this.levelCards.push(card);
+      this.levelStartButtons.push(startButton);
     });
 
     this.dialog = new UIDialog(this, centerX, centerY, 500, 300);
@@ -155,10 +155,28 @@ export class MenuScene extends Scene {
       color: '#718096',
       fontFamily: 'Arial, sans-serif'
     }).setOrigin(0, 1);
+
+    this.refreshLevelHighlights();
+  }
+
+  private refreshLevelHighlights(): void {
+    this.levelCards.forEach((card, idx) => {
+      const bg = card.getAt(0) as Phaser.GameObjects.Rectangle;
+      if (!bg) return;
+      const isUnlocked = this.saveData.unlockedLevels.includes(LEVEL_CONFIGS[idx]?.id);
+      if (idx === this.selectedLevelIndex) {
+        bg.setStrokeStyle(3, COLORS.primary);
+        card.scale = 1.02;
+      } else {
+        bg.setStrokeStyle(2, isUnlocked ? COLORS.border : 0x4a5568);
+        card.scale = 1;
+      }
+    });
   }
 
   private setupInput(): void {
     inputManager.setMaxIndex(LEVEL_CONFIGS.length - 1);
+    inputManager.setSelectedIndex(this.selectedLevelIndex);
 
     inputManager.onKeyboard('CONFIRM', () => {
       const config = LEVEL_CONFIGS[this.selectedLevelIndex];
@@ -186,13 +204,16 @@ export class MenuScene extends Scene {
       this.selectedLevelIndex = newIndex;
       inputManager.setSelectedIndex(newIndex);
 
-      this.levelButtons.forEach((btn, idx) => {
+      this.levelCards.forEach((card, idx) => {
+        const bg = card.getAt(0) as Phaser.GameObjects.Rectangle;
+        if (!bg) return;
+        const isUnlocked = this.saveData.unlockedLevels.includes(LEVEL_CONFIGS[idx]?.id);
         if (idx === this.selectedLevelIndex) {
-          btn.setColor(COLORS.primary);
-          btn.scale = 1.05;
+          bg.setStrokeStyle(3, COLORS.primary);
+          card.scale = 1.02;
         } else {
-          btn.setColor(COLORS.primary);
-          btn.scale = 1;
+          bg.setStrokeStyle(2, isUnlocked ? COLORS.border : 0x4a5568);
+          card.scale = 1;
         }
       });
     }

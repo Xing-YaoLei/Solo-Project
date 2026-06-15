@@ -740,9 +740,14 @@ export class GameScene extends Scene {
     this.assignmentCards.forEach((card, index) => {
       const element = card.getAt(0) as Phaser.GameObjects.Rectangle;
       if (element) {
-        if (index === selectedIndex && !card.getIsGraded()) {
-          element.setStrokeStyle(3, COLORS.primary);
-          card.scale = 1.05;
+        if (index === selectedIndex) {
+          if (card.getIsGraded()) {
+            element.setStrokeStyle(3, COLORS.success);
+            card.scale = 1.05;
+          } else {
+            element.setStrokeStyle(3, COLORS.primary);
+            card.scale = 1.05;
+          }
         } else {
           element.setStrokeStyle(2, card.getIsGraded() ? COLORS.success : COLORS.border);
           card.scale = 1;
