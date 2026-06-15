@@ -2,6 +2,7 @@ import { json, type LoaderFunction } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
 import { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent, Button, Input, Select, Label } from "~/components/ui";
+import { api } from "~/utils/api";
 
 export const loader: LoaderFunction = async ({ request }) => {
   const url = new URL(request.url);
@@ -10,13 +11,13 @@ export const loader: LoaderFunction = async ({ request }) => {
   const courseType = url.searchParams.get("courseType") || "";
 
   try {
-    const params = new URLSearchParams();
-    if (startDate) params.set("startDate", startDate);
-    if (endDate) params.set("endDate", endDate);
-    if (courseType) params.set("courseType", courseType);
+    const query: Record<string, any> = {};
+    if (startDate) query.startDate = startDate;
+    if (endDate) query.endDate = endDate;
+    if (courseType) query.courseType = courseType;
 
-    const data = await fetch(`http://localhost:3000/api/analytics/attendance-rate?${params.toString()}`)
-      .then((r) => r.json().catch(() => ({ total: 0, present: 0, absent: 0, late: 0, excused: 0, rate: 0 })));
+    const data = await api.analytics.attendanceRate(query)
+      .catch(() => ({ total: 0, present: 0, absent: 0, late: 0, excused: 0, rate: 0 }));
     return json({ data: data || { total: 0, present: 0, absent: 0, late: 0, excused: 0, rate: 0 }, filters: { startDate, endDate, courseType } });
   } catch (e) {
     return json({ data: { total: 0, present: 0, absent: 0, late: 0, excused: 0, rate: 0 }, filters: { startDate: "", endDate: "", courseType: "" } });

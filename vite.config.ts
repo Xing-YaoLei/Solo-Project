@@ -19,10 +19,8 @@ export default defineConfig({
         v3_lazyRouteDiscovery: true,
       },
       ssr: true,
+      serverBuildFile: "build/index.js",
     }),
     tsconfigPaths(),
   ],
-  server: {
-    port: 3000,
-  },
 });

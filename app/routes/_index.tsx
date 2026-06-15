@@ -1,15 +1,16 @@
 import { json, type LoaderFunction } from "@remix-run/node";
 import { useLoaderData, Link } from "@remix-run/react";
 import { Card, CardHeader, CardTitle, CardContent, Badge, StatusBadge } from "~/components/ui";
+import { api } from "~/utils/api";
 
 export const loader: LoaderFunction = async () => {
   const today = new Date().toISOString().split("T")[0];
   try {
     const [appointmentsRes, slotsRes, conflictsRes, attendanceRes] = await Promise.all([
-      fetch(`http://localhost:3000/api/appointments?date=${today}&limit=100`).then((r) => r.json().catch(() => ({ appointments: [], total: 0 }))),
-      fetch(`http://localhost:3000/api/timeslots?date=${today}`).then((r) => r.json().catch(() => [])),
-      fetch("http://localhost:3000/api/conflicts?status=detected").then((r) => r.json().catch(() => [])),
-      fetch("http://localhost:3000/api/analytics/attendance-rate").then((r) => r.json().catch(() => ({ total: 0, present: 0, rate: 0 }))),
+      api.appointments.list({ date: today, limit: 100 }).catch(() => ({ appointments: [], total: 0 })),
+      api.timeslots.list({ date: today }).catch(() => []),
+      api.conflicts.list({ status: "detected" }).catch(() => []),
+      api.analytics.attendanceRate().catch(() => ({ total: 0, present: 0, rate: 0 })),
     ]);
     return json({ today, appointments: appointmentsRes.appointments || [], total: appointmentsRes.total || 0, slots: slotsRes || [], conflicts: conflictsRes || [], attendance: attendanceRes || { total: 0, present: 0, rate: 0 } });
   } catch (e) {

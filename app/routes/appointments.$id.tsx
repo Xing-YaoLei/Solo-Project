@@ -2,10 +2,11 @@ import { json, type LoaderFunction, type ActionFunction } from "@remix-run/node"
 import { useLoaderData, useFetcher, useParams } from "@remix-run/react";
 import { useState, useRef } from "react";
 import { Card, CardHeader, CardTitle, CardContent, Button, StatusBadge, Input, Select, Label, Textarea, Badge } from "~/components/ui";
+import { api } from "~/utils/api";
 
 export const loader: LoaderFunction = async ({ params }) => {
   try {
-    const data = await fetch(`http://localhost:3000/api/appointments/${params.id}`).then((r) => r.json().catch(() => ({ appointment: null, timeline: [] })));
+    const data = await api.appointments.get(params.id!).catch(() => ({ appointment: null, timeline: [] }));
     return json(data || { appointment: null, timeline: [] });
   } catch (e) {
     return json({ appointment: null, timeline: [] });
@@ -21,18 +22,10 @@ export const action: ActionFunction = async ({ request, params }) => {
     if (intent === "status") {
       const status = formData.get("status") as string;
       const remark = formData.get("remark") as string;
-      await fetch(`http://localhost:3000/api/appointments/${id}/status`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status, remark, handler: "协调员" }),
-      });
+      await api.appointments.updateStatus(id, status, "协调员", remark);
     } else if (intent === "remark") {
       const content = formData.get("content") as string;
-      await fetch(`http://localhost:3000/api/appointments/${id}/remark`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content, handler: "协调员" }),
-      });
+      await api.appointments.addRemark(id, "协调员", content);
     }
     return json({ ok: true });
   } catch (e) {

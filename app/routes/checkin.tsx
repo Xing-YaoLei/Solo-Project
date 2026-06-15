@@ -2,11 +2,12 @@ import { json, type LoaderFunction } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
 import { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent, Button, StatusBadge, Input, Select, Badge } from "~/components/ui";
+import { api } from "~/utils/api";
 
 export const loader: LoaderFunction = async () => {
   try {
     const today = new Date().toISOString().split("T")[0];
-    const appointments = await fetch(`http://localhost:3000/api/appointments?date=${today}&limit=100`).then((r) => r.json().catch(() => ({ appointments: [] })));
+    const appointments = await api.appointments.list({ date: today, limit: 100 }).catch(() => ({ appointments: [] }));
     return json({ appointments: appointments.appointments || [] });
   } catch (e) {
     return json({ appointments: [] });

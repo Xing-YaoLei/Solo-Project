@@ -2,10 +2,11 @@ import { json, type LoaderFunction } from "@remix-run/node";
 import { useLoaderData, Link, useFetcher } from "@remix-run/react";
 import { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent, Button, StatusBadge, Input, Select, Badge } from "~/components/ui";
+import { api } from "~/utils/api";
 
 export const loader: LoaderFunction = async () => {
   try {
-    const reminders = await fetch("http://localhost:3000/api/attendance/reminder").then((r) => r.json().catch(() => []));
+    const reminders = await api.attendance.reminder().catch(() => []);
     return json({ reminders: reminders || [] });
   } catch (e) {
     return json({ reminders: [] });

@@ -2,16 +2,17 @@ import { json, type LoaderFunction } from "@remix-run/node";
 import { useLoaderData, Link } from "@remix-run/react";
 import { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent, Button, StatusBadge, Input, Select, Badge } from "~/components/ui";
+import { api } from "~/utils/api";
 
 export const loader: LoaderFunction = async ({ request }) => {
   const url = new URL(request.url);
-  const params = new URLSearchParams();
+  const query: Record<string, any> = {};
   ["status", "date", "courseType", "page", "limit"].forEach((k) => {
     const v = url.searchParams.get(k);
-    if (v) params.set(k, v);
+    if (v) query[k] = v;
   });
   try {
-    const data = await fetch(`http://localhost:3000/api/appointments?${params.toString()}`).then((r) => r.json().catch(() => ({ appointments: [], total: 0, page: 1, totalPages: 1 })));
+    const data = await api.appointments.list(query).catch(() => ({ appointments: [], total: 0, page: 1, totalPages: 1 }));
     return json({ ...data, appointments: data.appointments || [], total: data.total || 0 });
   } catch (e) {
     return json({ appointments: [], total: 0, page: 1, limit: 20, totalPages: 1 });

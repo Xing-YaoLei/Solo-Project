@@ -2,10 +2,11 @@ import { json, type LoaderFunction } from "@remix-run/node";
 import { useLoaderData, Link } from "@remix-run/react";
 import { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent, Button, StatusBadge, Select, Label, Input, Textarea, Modal, Badge } from "~/components/ui";
+import { api } from "~/utils/api";
 
 export const loader: LoaderFunction = async () => {
   try {
-    const conflicts = await fetch("http://localhost:3000/api/conflicts").then((r) => r.json().catch(() => []));
+    const conflicts = await api.conflicts.list().catch(() => []);
     return json({ conflicts: conflicts || [] });
   } catch (e) {
     return json({ conflicts: [] });

@@ -2,11 +2,12 @@ import { json, type LoaderFunction, type ActionFunction, redirect } from "@remix
 import { useLoaderData, useNavigate } from "@remix-run/react";
 import { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent, Button, Input, Select, Label, Textarea, StatusBadge } from "~/components/ui";
+import { api } from "~/utils/api";
 
 export const loader: LoaderFunction = async () => {
   try {
     const today = new Date().toISOString().split("T")[0];
-    const slots = await fetch(`http://localhost:3000/api/timeslots?date=${today}`).then((r) => r.json().catch(() => []));
+    const slots = await api.timeslots.list({ date: today }).catch(() => []);
     return json({ slots: slots || [] });
   } catch (e) {
     return json({ slots: [] });
@@ -17,12 +18,7 @@ export const action: ActionFunction = async ({ request }) => {
   const formData = await request.formData();
   const data = Object.fromEntries(formData);
   try {
-    const res = await fetch("http://localhost:3000/api/appointments", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...data, handler: "协调员" }),
-    });
-    const result = await res.json().catch(() => ({}));
+    const result = await api.appointments.create({ ...data, handler: "协调员" }).catch(() => ({}));
     if (result.appointment?._id) {
       return redirect(`/appointments/${result.appointment._id}`);
     }

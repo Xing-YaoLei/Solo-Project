@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "remix vite:build",
-    "dev": "remix vite:dev",
-    "start": "NODE_ENV=production node dist/server/server.js",
+    "dev": "node --watch server.ts",
+    "start": "NODE_ENV=production node server.ts",
     "typecheck": "tsc"
   },
   "dependencies": {

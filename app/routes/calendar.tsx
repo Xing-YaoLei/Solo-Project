@@ -2,6 +2,7 @@ import { json, type LoaderFunction, type ActionFunction } from "@remix-run/node"
 import { useLoaderData, useFetcher } from "@remix-run/react";
 import { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent, Button, Badge, StatusBadge, Input, Select, Label, Modal } from "~/components/ui";
+import { api } from "~/utils/api";
 
 export const loader: LoaderFunction = async ({ request }) => {
   const url = new URL(request.url);
@@ -14,11 +15,11 @@ export const loader: LoaderFunction = async ({ request }) => {
 
   try {
     if (startDate && endDate) {
-      slots = await fetch(`http://localhost:3000/api/timeslots/range?start=${startDate}&end=${endDate}`).then((r) => r.json().catch(() => []));
+      slots = await api.timeslots.range(startDate, endDate).catch(() => []);
     } else {
-      slots = await fetch(`http://localhost:3000/api/timeslots?date=${date}`).then((r) => r.json().catch(() => []));
+      slots = await api.timeslots.list({ date }).catch(() => []);
     }
-    capacityRules = await fetch("http://localhost:3000/api/capacity").then((r) => r.json().catch(() => []));
+    capacityRules = await api.capacity.list().catch(() => []);
   } catch (e) {}
 
   return json({ date, slots: slots || [], capacityRules: capacityRules || [] });
@@ -28,12 +29,8 @@ export const action: ActionFunction = async ({ request }) => {
   const formData = await request.formData();
   const data = Object.fromEntries(formData);
   try {
-    const res = await fetch("http://localhost:3000/api/timeslots", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    return json(await res.json().catch(() => ({})));
+    const res = await api.timeslots.create(data).catch(() => ({}));
+    return json(res);
   } catch (e) {
     return json({ error: "创建失败" }, { status: 500 });
   }
