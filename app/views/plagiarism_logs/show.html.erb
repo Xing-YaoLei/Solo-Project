@@ -1,0 +1,131 @@
+<div class="page-header flex items-center justify-between">
+  <div>
+    <%= link_to "← 返回列表", plagiarism_logs_path, class: "btn-secondary mb-4" %>
+    <h1 class="page-title">🚨 抄袭告警详情 #<%= @log.id %></h1>
+    <p class="page-subtitle">学员：<%= @log.student&.name %> · 相似度：<%= @log.similarity_score %>%</p>
+  </div>
+  <div class="flex space-x-2 items-center">
+    <%= status_badge(@log.status) %>
+    <% if %w[open investigating].include?(@log.status) %>
+      <%= form_tag resolve_plagiarism_log_path(@log), method: :patch, class: "flex space-x-2" do %>
+        <%= select_tag :action_taken, options_for_select([["警告", "warning"], ["记零分", "zero_score"], ["停课", "suspension"], ["劝退", "expulsion"], ["再培训", "retraining"]]), class: "form-select text-sm", style: "width: auto" %>
+        <%= text_field_tag :resolution_notes, nil, placeholder: "处理备注...", class: "form-input text-sm", style: "width: auto" %>
+        <%= submit_tag "✅ 处理", class: "btn-primary text-xs py-1 px-3" %>
+      <% end %>
+    <% end %>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+  <div class="lg:col-span-2 space-y-6">
+    <div class="table-container p-5">
+      <h3 class="font-semibold mb-4">📋 抄袭原因说明</h3>
+      <div class="bg-red-50 border-l-4 border-red-400 p-4">
+        <p class="text-red-800 text-lg"><%= @log.reason %></p>
+      </div>
+    </div>
+
+    <div class="table-container p-5">
+      <h3 class="font-semibold mb-4">📝 作业内容（疑似抄袭部分）</h3>
+      <% if @submission&.content %>
+        <div class="bg-gray-50 p-4 rounded font-mono text-sm whitespace-pre-wrap max-h-60 overflow-auto">
+          <%= @submission.content %>
+        </div>
+      <% else %>
+        <p class="text-gray-500">内容已归档，详见附件：<%= @submission&.attachment_url %></p>
+      <% end %>
+    </div>
+
+    <% if @source_submission&.content %>
+      <div class="table-container p-5 border-yellow-300">
+        <h3 class="font-semibold mb-4">🔗 疑似来源作业（学员：<%= @source_submission.student&.name %>）</h3>
+        <div class="bg-yellow-50 p-4 rounded font-mono text-sm whitespace-pre-wrap max-h-60 overflow-auto">
+          <%= @source_submission.content %>
+        </div>
+      </div>
+    <% end %>
+
+    <% if @log.similar_segments.present? %>
+      <div class="table-container p-5">
+        <h3 class="font-semibold mb-4">🔍 相似文本片段</h3>
+        <div class="space-y-2">
+          <% @log.similar_segments.each do |key, seg| %>
+            <% if seg.is_a?(Hash) %>
+              <div class="bg-gray-50 p-3 rounded">
+                <p class="text-sm font-semibold text-gray-700">片段 <%= key %> · 匹配长度：<%= seg["match_length"] %></p>
+                <p class="text-xs mt-1 text-gray-600">匹配学员：<%= seg["source_student_name"] || seg["source_student_id"] %></p>
+                <% if seg["text"].present? %>
+                  <p class="font-mono text-sm mt-2 bg-white p-2 border rounded"><%= seg["text"] %></p>
+                <% end %>
+              </div>
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="space-y-6">
+    <div class="stat-card p-5">
+      <h3 class="font-semibold mb-4">📌 处理信息</h3>
+      <dl class="space-y-3 text-sm">
+        <div class="flex justify-between">
+          <dt class="text-gray-500">处理状态</dt>
+          <dd><%= status_badge(@log.status) %></dd>
+        </div>
+        <div class="flex justify-between">
+          <dt class="text-gray-500">相似度</dt>
+          <dd class="font-semibold text-red-600"><%= @log.similarity_score %>%</dd>
+        </div>
+        <div class="flex justify-between">
+          <dt class="text-gray-500">负责人</dt>
+          <dd><%= @log.responsible_user&.name || "未分配" %></dd>
+        </div>
+        <div class="flex justify-between">
+          <dt class="text-gray-500">📣 通知时间</dt>
+          <dd class="text-xs"><%= @log.notified_at&.strftime("%Y-%m-%d %H:%M") || "未通知" %></dd>
+        </div>
+        <div class="flex justify-between">
+          <dt class="text-gray-500">⚡ 处理动作</dt>
+          <dd><%= @log.action_taken ? status_badge(@log.action_taken) : '<span class="text-gray-400">待处理</span>'.html_safe %></dd>
+        </div>
+        <div class="flex justify-between">
+          <dt class="text-gray-500">🔧 处理人</dt>
+          <dd><%= @log.handler&.name || "未处理" %></dd>
+        </div>
+        <div class="flex justify-between">
+          <dt class="text-gray-500">✅ 解决时间</dt>
+          <dd class="text-xs"><%= @log.resolved_at&.strftime("%Y-%m-%d %H:%M") || "-" %></dd>
+        </div>
+        <div class="border-t pt-3 mt-3 flex justify-between">
+          <dt class="text-gray-500 font-semibold">🚪 关闭时间</dt>
+          <dd class="text-xs font-semibold text-blue-600"><%= @log.closed_at&.strftime("%Y-%m-%d %H:%M") || "未关闭" %></dd>
+        </div>
+      </dl>
+    </div>
+
+    <% if @log.resolution_notes.present? %>
+      <div class="stat-card p-5">
+        <h3 class="font-semibold mb-2">📝 处理备注</h3>
+        <p class="text-gray-700"><%= @log.resolution_notes %></p>
+      </div>
+    <% end %>
+
+    <% if %w[open investigating].include?(@log.status) %>
+      <div class="table-container p-5">
+        <h3 class="font-semibold mb-3">快速操作</h3>
+        <div class="space-y-2">
+          <%= form_tag close_plagiarism_log_path(@log), method: :patch do %>
+            <%= hidden_field_tag :close_type, "close" %>
+            <%= text_area_tag :resolution_notes, nil, placeholder: "关闭备注（可选）", class: "form-input text-sm mb-2", rows: 2 %>
+            <%= submit_tag "📭 关闭工单", class: "btn-secondary w-full" %>
+          <% end %>
+          <%= form_tag close_plagiarism_log_path(@log), method: :patch do %>
+            <%= hidden_field_tag :close_type, "dismiss" %>
+            <%= submit_tag "❌ 撤销（标记误报）", class: "btn-secondary w-full text-gray-600" %>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>

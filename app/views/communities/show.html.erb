@@ -1,0 +1,82 @@
+<div class="page-header flex items-center justify-between">
+  <div>
+    <%= link_to "← 返回列表", communities_path, class: "btn-secondary mb-4" %>
+    <h1 class="page-title">🏫 <%= @community.name %></h1>
+    <p class="page-subtitle"><%= @community.course_name %> · 负责人：<%= @community.manager&.name || "未指定" %></p>
+  </div>
+  <div class="flex space-x-2">
+    <%= link_to "编辑", edit_community_path(@community), class: "btn-primary" %>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+  <div class="stat-card">
+    <p class="stat-label">学员总数</p>
+    <p class="stat-value text-blue-600"><%= @students.total_count rescue @students.count %></p>
+  </div>
+  <div class="stat-card">
+    <p class="stat-label">活跃学员</p>
+    <p class="stat-value text-green-600"><%= @students.select { |s| s.status == "active" }.count %></p>
+  </div>
+  <div class="stat-card">
+    <p class="stat-label">考试场次</p>
+    <p class="stat-value"><%= @exams.count %></p>
+  </div>
+  <div class="stat-card">
+    <p class="stat-label">作业总数</p>
+    <p class="stat-value text-purple-600"><%= @assignments.count %></p>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+  <div class="stat-card p-5">
+    <h3 class="font-semibold mb-3">📋 社群信息</h3>
+    <div class="space-y-2 text-sm">
+      <p><span class="text-gray-500">状态：</span><%= status_badge(@community.status) %></p>
+      <p><span class="text-gray-500">周期：</span><%= @community.start_date %> 至 <%= @community.end_date %></p>
+      <p><span class="text-gray-500">描述：</span><%= @community.description || "无" %></p>
+    </div>
+  </div>
+  <div class="table-container">
+    <div class="p-4 border-b">
+      <h3 class="font-semibold">📝 近期考试</h3>
+    </div>
+    <table class="data-table">
+      <thead><tr><th>名称</th><th>日期</th><th>通过率</th></tr></thead>
+      <tbody>
+        <% @exams.each do |exam| %>
+          <tr>
+            <td><%= link_to exam.name, exam_path(exam), class: "text-blue-600" %></td>
+            <td class="text-xs"><%= exam.exam_date %></td>
+            <td><% rate = exam.pass_rate %><span class="<%= rate >= 60 ? 'badge-green' : 'badge-red' %>"><%= rate %>%</span></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="table-container">
+  <div class="p-4 border-b flex justify-between items-center">
+    <h3 class="font-semibold">👥 社群学员名单</h3>
+    <span class="text-sm text-gray-500"><%= @students.total_count rescue @students.count %> 人</span>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="data-table">
+      <thead><tr><th>ID</th><th>姓名</th><th>联系方式</th><th>会员等级</th><th>状态</th><th>入学日期</th><th>操作</th></tr></thead>
+      <tbody>
+        <% @students.each do |s| %>
+          <tr>
+            <td class="font-mono text-xs">#<%= s.id %></td>
+            <td class="font-medium"><%= link_to s.name, student_path(s), class: "text-blue-600" %></td>
+            <td><%= s.phone %></td>
+            <td><%= member_level_badge(s.member_profile&.member_level) %></td>
+            <td><%= status_badge(s.status) %></td>
+            <td class="text-xs"><%= s.enrollment_date %></td>
+            <td><%= link_to "详情", student_path(s), class: "btn-secondary text-xs py-1 px-2" %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>职业教育学员社群结算台</title>
+    <meta name="csrf-param" content="authenticity_token" />
+    <meta name="csrf-token" content="<%= form_authenticity_token %>" />
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+    <%= stylesheet_link_tag "tailwind", "inter-font", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+  </head>
+  <body class="bg-gray-50 min-h-screen">
+    <nav class="bg-white border-b border-gray-200 sticky top-0 z-50">
+      <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between h-16">
+          <div class="flex items-center">
+            <div class="flex-shrink-0 flex items-center">
+              <span class="text-xl font-bold text-blue-600">📚 职教社群结算台</span>
+            </div>
+            <div class="hidden sm:ml-6 sm:flex sm:space-x-2">
+              <%= link_to "结算台", root_path, class: "nav-link #{current_page?(root_path) ? 'nav-link-active' : ''}" %>
+              <%= link_to "记录中心", records_path, class: "nav-link #{current_page?(records_path) ? 'nav-link-active' : ''}" %>
+              <%= link_to "学员管理", students_path, class: "nav-link #{current_page?(students_path) ? 'nav-link-active' : ''}" %>
+              <%= link_to "社群管理", communities_path, class: "nav-link #{current_page?(communities_path) ? 'nav-link-active' : ''}" %>
+              <%= link_to "权益规则", benefit_rules_path, class: "nav-link #{current_page?(benefit_rules_path) ? 'nav-link-active' : ''}" %>
+              <%= link_to "考试复盘", monthly_review_exams_path, class: "nav-link #{current_page?(monthly_review_exams_path) ? 'nav-link-active' : ''}" %>
+              <%= link_to "作业中心", assignments_path, class: "nav-link #{current_page?(assignments_path) ? 'nav-link-active' : ''}" %>
+              <%= link_to "抄袭告警", plagiarism_logs_path, class: "nav-link #{current_page?(plagiarism_logs_path) ? 'nav-link-active' : ''}" %>
+              <%= link_to "操作日志", operation_logs_path, class: "nav-link #{current_page?(operation_logs_path) ? 'nav-link-active' : ''}" %>
+              <%= link_to "导出中心", export_records_path, class: "nav-link #{current_page?(export_records_path) ? 'nav-link-active' : ''}" %>
+            </div>
+          </div>
+          <div class="flex items-center space-x-4">
+            <% if @open_plagiarism_count ||= PlagiarismLog.open.count %>
+              <% if @open_plagiarism_count > 0 %>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 animate-pulse">
+                  ⚠️ <%= @open_plagiarism_count %> 抄袭待处理
+                </span>
+              <% end %>
+            <% end %>
+            <span class="text-gray-600 text-sm">当前用户：<%= current_user&.name || "管理员" %></span>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <main class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <% if notice %>
+        <div class="mb-4 bg-green-50 border-l-4 border-green-400 p-4">
+          <p class="text-green-700"><%= notice %></p>
+        </div>
+      <% end %>
+      <% if alert %>
+        <div class="mb-4 bg-red-50 border-l-4 border-red-400 p-4">
+          <p class="text-red-700"><%= alert %></p>
+        </div>
+      <% end %>
+
+      <%= yield %>
+    </main>
+
+    <footer class="bg-white border-t border-gray-200 mt-12 py-6">
+      <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
+        <p class="text-center text-gray-500 text-sm">© 2026 职业教育学员社群结算台 | Powered by Ruby on Rails + Hotwire + Sidekiq</p>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,28 @@
+<div class="page-header">
+  <%= link_to "← 返回列表", export_records_path, class: "btn-secondary mb-4" %>
+  <h1 class="page-title">📤 新建导出任务</h1>
+</div>
+
+<div class="table-container p-6">
+  <%= form_with(model: @export_record || ExportRecord.new, url: export_records_path, local: true) do |f| %>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="form-group">
+        <%= f.label :export_type, "导出类型", class: "form-label" %>
+        <%= f.select :export_type, options_for_select(ExportRecord::EXPORT_TYPES.map { |t| [I18n.t("export_types.#{t}", default: t.humanize), t] }, params[:export_type]), {}, class: "form-select" %>
+      </div>
+    </div>
+
+    <div class="mt-6 p-4 bg-gray-50 rounded">
+      <h3 class="font-semibold mb-3">🔍 筛选条件（可选，将保存至报表）</h3>
+      <p class="text-xs text-gray-500 mb-3">请以 JSON 格式输入筛选条件，例如：{"year": 2026, "month": 6, "community_id": 1}</p>
+      <div class="form-group">
+        <%= text_area_tag "filter_conditions_json", params[:filter_conditions]&.to_json, class: "form-input font-mono", rows: 4, placeholder: '{"key": "value"}' %>
+      </div>
+    </div>
+
+    <div class="mt-8 flex space-x-3">
+      <%= f.submit "开始导出", class: "btn-primary" %>
+      <%= link_to "取消", export_records_path, class: "btn-secondary" %>
+    </div>
+  <% end %>
+</div>

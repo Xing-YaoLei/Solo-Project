@@ -1,0 +1,42 @@
+<div class="page-header flex items-center justify-between">
+  <div>
+    <%= link_to "← 返回列表", benefit_rules_path, class: "btn-secondary mb-4" %>
+    <h1 class="page-title">🎁 <%= @rule.name %></h1>
+    <p class="page-subtitle">类型：<%= @rule.rule_type %> · 适用等级：<%= @rule.target_member_level %></p>
+  </div>
+  <div class="flex space-x-2">
+    <%= link_to "📜 版本历史 (#{@versions.count})", benefit_rule_versions_path(@rule), class: "btn-secondary" %>
+    <%= link_to "编辑", edit_benefit_rule_path(@rule), class: "btn-primary" %>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+  <div class="stat-card p-5">
+    <h3 class="font-semibold mb-3">规则配置</h3>
+    <dl class="space-y-2 text-sm">
+      <dt class="text-gray-500">规则ID</dt><dd class="font-mono">#<%= @rule.id %></dd>
+      <dt class="text-gray-500">类型</dt><dd><%= member_level_badge(@rule.rule_type) %></dd>
+      <dt class="text-gray-500">适用等级</dt><dd><%= member_level_badge(@rule.target_member_level) %></dd>
+      <dt class="text-gray-500">当前状态</dt><dd><%= @rule.currently_active? ? '<span class="badge-green">生效中</span>'.html_safe : '<span class="badge-gray">已停用</span>'.html_safe %></dd>
+      <dt class="text-gray-500">生效期</dt><dd><%= @rule.effective_date %> ~ <%= @rule.expiry_date || "长期" %></dd>
+      <dt class="text-gray-500">创建人</dt><dd><%= @rule.creator&.name || "系统" %></dd>
+      <dt class="text-gray-500">描述</dt><dd><%= @rule.description %></dd>
+    </dl>
+  </div>
+
+  <div class="stat-card p-5">
+    <h3 class="font-semibold mb-3">近期版本变更</h3>
+    <div class="space-y-2 text-sm">
+      <% @versions.first(5).each_with_index do |v, i| %>
+        <div class="p-2 bg-gray-50 rounded">
+          <div class="flex justify-between items-center">
+            <span class="font-semibold">v<%= @versions.count - i %> · <%= v.event == "create" ? "创建" : "更新" %></span>
+            <span class="text-xs text-gray-500"><%= v.created_at.strftime("%m-%d %H:%M") %></span>
+          </div>
+          <p class="text-xs text-gray-600 mt-1">操作人：<%= v.whodunnit ? "用户##{v.whodunnit}" : "系统" %></p>
+        </div>
+      <% end %>
+    </div>
+    <%= link_to "查看完整历史 →", benefit_rule_versions_path(@rule), class: "text-blue-600 text-sm mt-3 inline-block" %>
+  </div>
+</div>

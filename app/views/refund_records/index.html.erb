@@ -1,0 +1,50 @@
+<div class="page-header">
+  <%= link_to "← 返回退款列表", refund_records_path, class: "btn-secondary mb-4" %>
+  <h1 class="page-title">↩️ 退款记录</h1>
+</div>
+
+<div class="grid grid-cols-2 md:grid-cols-6 gap-3 mb-6">
+  <% RefundRecord::REFUND_REASON_CODES.each do |code| %>
+    <div class="stat-card p-3">
+      <p class="stat-label text-xs"><%= code %></p>
+      <p class="text-xl font-bold text-gray-800"><%= @refund_reason_stats[code] || 0 %></p>
+    </div>
+  <% end %>
+</div>
+
+<div class="table-container">
+  <div class="overflow-x-auto">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>学员</th>
+          <th>金额</th>
+          <th>原因代码</th>
+          <th>退款原因</th>
+          <th>状态</th>
+          <th>支付方式</th>
+          <th>操作员</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @records.each do |r| %>
+          <tr>
+            <td class="font-mono text-xs">#<%= r.id %></td>
+            <td>
+              <div><%= link_to r.student&.name, student_path(r.student), class: "font-medium text-blue-600" %></div>
+            </td>
+            <td class="font-semibold text-red-600">¥<%= r.refund_amount %></td>
+            <td><span class="badge-yellow"><%= r.refund_reason_code %></span></td>
+            <td class="max-w-xs truncate" title="<%= r.refund_reason %>"><%= r.refund_reason %></td>
+            <td><%= refund_status_badge(r.refund_status) %></td>
+            <td><%= r.payment_method %></td>
+            <td class="text-xs"><%= r.operator&.name %></td>
+            <td><%= link_to "详情", refund_record_path(r), class: "btn-secondary text-xs py-1 px-2" %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>

@@ -1,0 +1,45 @@
+<div class="page-header">
+  <%= link_to "← 返回考试列表", exams_path, class: "btn-secondary mb-4" %>
+  <h1 class="page-title">📝 考试列表</h1>
+  <p class="page-subtitle">查看各社群考试安排与通过率</p>
+</div>
+
+<div class="table-container">
+  <div class="overflow-x-auto">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>考试名称</th>
+          <th>类型</th>
+          <th>所属社群</th>
+          <th>考试日期</th>
+          <th>及格分</th>
+          <th>参考数</th>
+          <th>通过率</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @exams.each do |exam| %>
+          <tr>
+            <td class="font-mono text-xs">#<%= exam.id %></td>
+            <td class="font-medium"><%= link_to exam.name, exam_path(exam), class: "text-blue-600 hover:underline" %></td>
+            <td><span class="badge-blue"><%= exam.exam_type %></span></td>
+            <td><%= exam.community&.name || "通用" %></td>
+            <td><%= exam.exam_date %></td>
+            <td><%= exam.passing_score %>分</td>
+            <td class="font-semibold text-center"><%= exam.total_participants %></td>
+            <td>
+              <% rate = exam.pass_rate %>
+              <span class="<%= rate >= 60 ? 'badge-green' : 'badge-red' %>"><%= rate %>%</span>
+            </td>
+            <td>
+              <%= link_to "详情", exam_path(exam), class: "btn-secondary text-xs py-1 px-2" %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>

@@ -1,0 +1,149 @@
+<div class="page-header">
+  <h1 class="page-title">📊 结算台首页</h1>
+  <p class="page-subtitle">职业教育学员社群数据概览</p>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+  <div class="stat-card">
+    <div class="flex items-center justify-between">
+      <div>
+        <p class="stat-label">学员总数</p>
+        <p class="stat-value"><%= @total_students %></p>
+      </div>
+      <span class="text-4xl">👥</span>
+    </div>
+    <p class="mt-3 text-sm text-green-600">活跃: <%= @active_students %> 人</p>
+  </div>
+
+  <div class="stat-card">
+    <div class="flex items-center justify-between">
+      <div>
+        <p class="stat-label">社群总数</p>
+        <p class="stat-value"><%= @total_communities %></p>
+      </div>
+      <span class="text-4xl">🏫</span>
+    </div>
+    <p class="mt-3 text-sm text-blue-600">进行中: <%= @active_communities %> 个</p>
+  </div>
+
+  <div class="stat-card">
+    <div class="flex items-center justify-between">
+      <div>
+        <p class="stat-label">今日核销</p>
+        <p class="stat-value"><%= @today_redemptions %></p>
+      </div>
+      <span class="text-4xl">✅</span>
+    </div>
+    <p class="mt-3 text-sm text-yellow-600">待退款: <%= @pending_refunds %> 笔</p>
+  </div>
+
+  <div class="stat-card">
+    <div class="flex items-center justify-between">
+      <div>
+        <p class="stat-label">抄袭告警</p>
+        <p class="stat-value <%= @open_plagiarism > 0 ? 'text-red-600' : '' %>"><%= @open_plagiarism %></p>
+      </div>
+      <span class="text-4xl">⚠️</span>
+    </div>
+    <p class="mt-3 text-sm text-<%= @open_plagiarism > 0 ? 'red' : 'gray' %>-600">
+      <%= @open_plagiarism > 0 ? '待处理，请及时响应' : '暂无未处理告警' %>
+    </p>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+  <div class="table-container p-5">
+    <h3 class="text-lg font-semibold mb-4">📈 近6个月考试通过率趋势</h3>
+    <div class="space-y-3">
+      <% @pass_rate_stats.each do |stat| %>
+        <div>
+          <div class="flex justify-between text-sm mb-1">
+            <span class="text-gray-600"><%= stat[:month] %></span>
+            <span class="font-medium"><%= stat[:pass_rate] %>% (<%= stat[:total] %>人)</span>
+          </div>
+          <div class="w-full bg-gray-200 rounded-full h-3">
+            <div class="bg-blue-600 h-3 rounded-full transition-all" style="width: <%= [stat[:pass_rate], 100].min %>%"></div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="table-container p-5">
+    <h3 class="text-lg font-semibold mb-4">🏫 社群学员分布</h3>
+    <div class="space-y-3">
+      <% @community_stats.each do |cs| %>
+        <div>
+          <div class="flex justify-between text-sm mb-1">
+            <span class="text-gray-700 font-medium"><%= cs[:name] %></span>
+            <span class="text-gray-600"><%= cs[:active_students] %>/<%= cs[:students] %> 活跃</span>
+          </div>
+          <div class="w-full bg-gray-200 rounded-full h-2.5">
+            <% pct = cs[:students] > 0 ? (cs[:active_students].to_f / cs[:students] * 100) : 0 %>
+            <div class="bg-green-500 h-2.5 rounded-full" style="width: <%= pct %>%"></div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <div class="table-container">
+    <div class="p-5 border-b border-gray-100">
+      <h3 class="text-lg font-semibold">📝 近期考试</h3>
+    </div>
+    <table class="data-table">
+      <thead><tr><th>考试名称</th><th>日期</th><th>通过率</th></tr></thead>
+      <tbody>
+        <% @recent_exams.each do |exam| %>
+          <tr>
+            <td class="font-medium"><%= exam.name %></td>
+            <td><%= exam.exam_date %></td>
+            <td>
+              <% rate = exam.pass_rate %>
+              <span class="<%= rate >= 60 ? 'badge-green' : 'badge-red' %>"><%= rate %>%</span>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="table-container">
+    <div class="p-5 border-b border-gray-100 flex items-center justify-between">
+      <h3 class="text-lg font-semibold">🚨 抄袭告警</h3>
+      <%= link_to "处理", plagiarism_logs_path, class: "btn-primary text-xs py-1 px-3" %>
+    </div>
+    <table class="data-table">
+      <thead><tr><th>学员</th><th>相似度</th><th>状态</th></tr></thead>
+      <tbody>
+        <% @recent_plagiarism.each do |log| %>
+          <tr>
+            <td class="font-medium"><%= log.student&.name %></td>
+            <td><span class="badge-red"><%= log.similarity_score %>%</span></td>
+            <td><%= status_badge(log.status) %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="table-container">
+    <div class="p-5 border-b border-gray-100">
+      <h3 class="text-lg font-semibold">📋 最近操作</h3>
+    </div>
+    <table class="data-table">
+      <thead><tr><th>操作</th><th>操作人</th><th>时间</th></tr></thead>
+      <tbody>
+        <% @recent_operations.each do |log| %>
+          <tr>
+            <td class="font-medium"><%= log.action %></td>
+            <td><%= log.operator&.name || "系统" %></td>
+            <td class="text-xs text-gray-500"><%= log.created_at.strftime("%m-%d %H:%M") %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>

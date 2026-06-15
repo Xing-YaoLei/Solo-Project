@@ -1,0 +1,76 @@
+<div class="page-header flex items-center justify-between">
+  <div>
+    <%= link_to "← 返回列表", export_records_path, class: "btn-secondary mb-4" %>
+    <h1 class="page-title">📤 导出任务 #<%= @record.id %></h1>
+    <p class="page-subtitle"><%= @record.export_type_name %></p>
+  </div>
+  <div class="flex space-x-2 items-center">
+    <%= status_badge(@record.status) %>
+    <% if @record.completed? && @record.file_name %>
+      <%= link_to "⬇️ 下载文件", download_export_record_path(@record), class: "btn-primary", data: { turbo: false } %>
+    <% end %>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+  <div class="stat-card p-5">
+    <h3 class="font-semibold mb-4">任务信息</h3>
+    <dl class="space-y-3 text-sm">
+      <div class="flex justify-between">
+        <dt class="text-gray-500">导出类型</dt>
+        <dd class="font-medium"><%= @record.export_type_name %></dd>
+      </div>
+      <div class="flex justify-between">
+        <dt class="text-gray-500">操作人</dt>
+        <dd class="font-medium"><%= @record.operator&.name || "系统" %></dd>
+      </div>
+      <div class="flex justify-between">
+        <dt class="text-gray-500">创建时间</dt>
+        <dd class="text-xs"><%= @record.created_at.strftime("%Y-%m-%d %H:%M:%S") %></dd>
+      </div>
+      <div class="flex justify-between">
+        <dt class="text-gray-500">⏰ 生成时间</dt>
+        <dd class="text-xs font-semibold text-blue-600"><%= @record.generated_at&.strftime("%Y-%m-%d %H:%M:%S") || "处理中..." %></dd>
+      </div>
+      <div class="flex justify-between">
+        <dt class="text-gray-500">文件名</dt>
+        <dd class="font-mono text-xs"><%= @record.file_name || "未生成" %></dd>
+      </div>
+      <% if @record.error_message.present? %>
+        <div class="mt-3 p-3 bg-red-50 rounded border border-red-200">
+          <dt class="text-red-700 font-semibold">错误信息：</dt>
+          <dd class="text-red-600 text-xs mt-1"><%= @record.error_message %></dd>
+        </div>
+      <% end %>
+    </dl>
+  </div>
+
+  <div class="stat-card p-5">
+    <h3 class="font-semibold mb-4">🔍 筛选条件（已保存至报表）</h3>
+    <% if @record.filter_conditions.present? && @record.filter_conditions.any? %>
+      <ul class="space-y-2">
+        <% @record.filter_conditions.each do |k, v| %>
+          <li class="flex justify-between p-2 bg-gray-50 rounded">
+            <span class="text-gray-700 font-medium"><%= k %></span>
+            <span class="text-blue-600 font-mono text-xs"><%= v.inspect %></span>
+          </li>
+        <% end %>
+      </ul>
+    <% else %>
+      <p class="text-gray-500">无筛选条件（导出全量数据）</p>
+    <% end %>
+  </div>
+</div>
+
+<% if @record.completed? && @record.file_name %>
+  <div class="mt-6 filter-form bg-blue-50 border-blue-200">
+    <h4 class="font-semibold text-blue-800 mb-3">📄 报表文件预览（CSV格式）</h4>
+    <p class="text-sm text-blue-700 mb-2">文件包含以下头部信息：</p>
+    <ul class="list-disc list-inside text-sm text-blue-700 space-y-1">
+      <li>导出类型：<%= @record.export_type_name %></li>
+      <li>生成时间：<%= @record.generated_at&.strftime("%Y-%m-%d %H:%M:%S") %></li>
+      <li>操作人：<%= @record.operator&.name %></li>
+      <li>筛选条件：<%= @record.filter_conditions.present? ? @record.filter_conditions.to_json : "无" %></li>
+    </ul>
+  </div>
+<% end %>

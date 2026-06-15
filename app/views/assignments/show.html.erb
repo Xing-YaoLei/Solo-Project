@@ -1,0 +1,88 @@
+<div class="page-header flex items-center justify-between">
+  <div>
+    <%= link_to "← 返回列表", assignments_path, class: "btn-secondary mb-4" %>
+    <h1 class="page-title">📚 <%= @assignment.title %></h1>
+    <p class="page-subtitle"><%= @assignment.community&.name || "通用作业" %> · 截止：<%= @assignment.due_date %></p>
+  </div>
+  <div class="flex space-x-2">
+    <%= link_to "编辑", edit_assignment_path(@assignment), class: "btn-primary" %>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+  <div class="stat-card">
+    <p class="stat-label">提交份数</p>
+    <p class="stat-value text-blue-600"><%= @submissions.count %></p>
+  </div>
+  <div class="stat-card">
+    <p class="stat-label">抄袭告警</p>
+    <p class="stat-value <%= @flagged_submissions.count > 0 ? 'text-red-600 animate-pulse' : '' %>"><%= @flagged_submissions.count %></p>
+  </div>
+  <div class="stat-card">
+    <p class="stat-label">满分</p>
+    <p class="stat-value"><%= @assignment.total_score %>分</p>
+  </div>
+  <div class="stat-card">
+    <p class="stat-label">抄袭阈值</p>
+    <p class="stat-value text-yellow-600"><%= @assignment.plagiarism_threshold %>%</p>
+  </div>
+</div>
+
+<div class="stat-card p-5 mb-6">
+  <h3 class="font-semibold mb-2">作业要求</h3>
+  <p><%= @assignment.description %></p>
+  <div class="mt-3 pt-3 border-t border-gray-100">
+    <h4 class="text-sm font-semibold text-gray-700 mb-1">详细要求：</h4>
+    <p class="text-gray-600"><%= @assignment.requirements || "无" %></p>
+  </div>
+</div>
+
+<div class="table-container">
+  <div class="p-4 border-b flex justify-between items-center">
+    <h3 class="font-semibold">📤 作业提交情况</h3>
+    <div class="space-x-2">
+      <%= link_to "查看抄袭告警", plagiarism_logs_path(assignment_id: @assignment.id), class: "btn-danger text-xs py-1 px-3" if @flagged_submissions.any? %>
+    </div>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>学员</th>
+          <th>提交时间</th>
+          <th>是否准时</th>
+          <th>分数</th>
+          <th>抄袭率</th>
+          <th>抄袭检测</th>
+          <th>阅卷人</th>
+          <th>反馈</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @submissions.each do |s| %>
+          <tr class="<%= 'bg-red-50' if s.plagiarism_flagged %>">
+            <td>
+              <div class="font-medium"><%= link_to s.student.name, student_path(s.student), class: "text-blue-600" %></div>
+              <div class="text-xs text-gray-500">#<%= s.student_id %></div>
+            </td>
+            <td class="text-xs"><%= s.submitted_at&.strftime("%Y-%m-%d %H:%M") %></td>
+            <td><%= s.on_time? ? '<span class="badge-green">准时</span>'.html_safe : '<span class="badge-red">逾期</span>'.html_safe %></td>
+            <td class="font-semibold"><%= s.score %>分</td>
+            <td class="<%= s.plagiarism_score >= @assignment.plagiarism_threshold ? 'text-red-600 font-bold' : '' %>"><%= s.plagiarism_score %>%</td>
+            <td>
+              <% if s.plagiarism_flagged %>
+                <%= link_to plagiarism_logs_path(student_id: s.student_id) do %>
+                  <span class="badge-red animate-pulse">⚠️ 疑似抄袭</span>
+                <% end %>
+              else %>
+                <span class="badge-green">正常</span>
+              <% end %>
+            </td>
+            <td class="text-xs"><%= s.reviewer&.name || "待批阅" %></td>
+            <td class="text-sm text-gray-600 max-w-xs truncate"><%= s.feedback %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>

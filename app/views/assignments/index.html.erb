@@ -1,0 +1,55 @@
+<div class="page-header">
+  <%= link_to "← 返回作业列表", assignments_path, class: "btn-secondary mb-4" %>
+  <h1 class="page-title">📚 作业中心</h1>
+  <p class="page-subtitle">学员作业提交与抄袭检测管理</p>
+</div>
+
+<div class="table-container">
+  <div class="overflow-x-auto">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>作业标题</th>
+          <th>所属社群</th>
+          <th>创建人</th>
+          <th>截止日期</th>
+          <th>满分</th>
+          <th>提交数</th>
+          <th>抄袭告警</th>
+          <th>抄袭检测</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @assignments.each do |a| %>
+          <tr>
+            <td class="font-mono text-xs">#<%= a.id %></td>
+            <td class="font-medium"><%= link_to a.title, assignment_path(a), class: "text-blue-600 hover:underline" %></td>
+            <td><%= a.community&.name || "通用" %></td>
+            <td><%= a.creator&.name %></td>
+            <td class="<%= a.overdue? ? 'text-red-600' : '' %>"><%= a.due_date %></td>
+            <td><%= a.total_score %>分</td>
+            <td class="font-semibold text-center"><%= a.submission_count %></td>
+            <td>
+              <% flagged = a.flagged_submissions.count %>
+              <% if flagged > 0 %>
+                <span class="badge-red animate-pulse"><%= flagged %> 份</span>
+              <% else %>
+                <span class="badge-green">0</span>
+              <% end %>
+            </td>
+            <td>
+              <% if a.enable_plagiarism_check %>
+                <span class="badge-green">阈值<%= a.plagiarism_threshold %>%</span>
+              <% else %>
+                <span class="badge-gray">关闭</span>
+              <% end %>
+            </td>
+            <td><%= link_to "详情", assignment_path(a), class: "btn-secondary text-xs py-1 px-2" %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>

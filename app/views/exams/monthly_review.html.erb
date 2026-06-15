@@ -1,0 +1,145 @@
+<div class="page-header">
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="page-title">📅 月底复盘 · 考试通过率</h1>
+      <p class="page-subtitle"><%= @year %>年<%= @month %>月 整体考试通过率及明细统计</p>
+    </div>
+    <div class="flex space-x-2">
+      <%= link_to "导出报表📥", export_pass_rates_exams_path(@filter_params), class: "btn-primary", data: { turbo: false } %>
+    </div>
+  </div>
+</div>
+
+<div class="filter-form">
+  <%= form_tag monthly_review_exams_path, method: :get do %>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 items-end">
+      <div class="form-group">
+        <%= label_tag :year, "年份", class: "form-label" %>
+        <%= select_year(@year, field_name: "year", prefix: nil, start_year: 2020, end_year: 2030, class: "form-select") %>
+      </div>
+      <div class="form-group">
+        <%= label_tag :month, "月份", class: "form-label" %>
+        <%= select_month(@month, field_name: "month", prefix: nil, class: "form-select") %>
+      </div>
+      <div class="form-group">
+        <%= label_tag :community_id, "所属社群", class: "form-label" %>
+        <%= select_tag :community_id, options_from_collection_for_select(@communities, :id, :name, params[:community_id]), include_blank: "全部社群", class: "form-select" %>
+      </div>
+      <div class="form-group">
+        <%= label_tag :exam_type, "考试类型", class: "form-label" %>
+        <%= select_tag :exam_type, options_for_select(Exam::EXAM_TYPES, params[:exam_type]), include_blank: "全部类型", class: "form-select" %>
+      </div>
+    </div>
+    <div class="mt-4 flex space-x-3">
+      <%= submit_tag "生成复盘", class: "btn-primary" %>
+      <%= link_to "重置", monthly_review_exams_path, class: "btn-secondary" %>
+    </div>
+  <% end %>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+  <div class="stat-card col-span-1 lg:col-span-2">
+    <div class="flex items-center justify-between mb-3">
+      <p class="stat-label">📊 整体通过率</p>
+      <span class="text-4xl">🎯</span>
+    </div>
+    <p class="stat-value text-5xl <%= @overall_pass_rate >= 60 ? 'text-green-600' : 'text-red-600' %>"><%= @overall_pass_rate %>%</p>
+    <div class="mt-4 w-full bg-gray-200 rounded-full h-4">
+      <div class="<%= @overall_pass_rate >= 60 ? 'bg-green-500' : 'bg-red-500' %> h-4 rounded-full" style="width: <%= @overall_pass_rate %>%"></div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <p class="stat-label">👥 总参考人次</p>
+    <p class="stat-value text-blue-600"><%= @total_participants %></p>
+    <p class="mt-2 text-sm text-gray-500">覆盖 <%= @exams_with_stats.count %> 场考试</p>
+  </div>
+  <div class="stat-card">
+    <p class="stat-label">✅ 通过人次</p>
+    <p class="stat-value text-green-600"><%= @total_passed %></p>
+    <p class="mt-2 text-sm text-gray-500">通过率 <%= @overall_pass_rate %>%</p>
+  </div>
+  <div class="stat-card">
+    <p class="stat-label">❌ 未通过人次</p>
+    <p class="stat-value text-red-600"><%= @total_failed %></p>
+    <p class="mt-2 text-sm text-gray-500">平均分数 <%= @overall_avg_score %> 分</p>
+  </div>
+</div>
+
+<div class="table-container">
+  <div class="p-5 border-b border-gray-100 flex items-center justify-between">
+    <h3 class="text-lg font-semibold">📝 各场次考试明细</h3>
+    <div class="text-sm text-gray-500">
+      导出报表将包含以下信息：筛选条件、生成时间、操作人
+    </div>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>考试ID</th>
+          <th>考试名称</th>
+          <th>类型</th>
+          <th>日期</th>
+          <th>所属社群</th>
+          <th>参考人数</th>
+          <th>通过</th>
+          <th>未通过</th>
+          <th>通过率</th>
+          <th>平均分</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @exams_with_stats.each do |es| %>
+          <% exam = es[:exam] %>
+          <tr>
+            <td class="font-mono text-xs">#<%= exam.id %></td>
+            <td class="font-medium"><%= link_to exam.name, exam_path(exam), class: "text-blue-600 hover:underline" %></td>
+            <td><%= exam.exam_type %></td>
+            <td><%= exam.exam_date %></td>
+            <td><%= exam.community&.name || "通用" %></td>
+            <td class="font-medium text-center"><%= es[:total] %></td>
+            <td class="text-green-600 text-center"><%= es[:passed] %></td>
+            <td class="text-red-600 text-center"><%= es[:failed] %></td>
+            <td>
+              <div class="flex items-center space-x-2">
+                <%= content_tag(:span, "#{es[:pass_rate]}%", class: (es[:pass_rate] >= 60 ? "badge-green" : "badge-red")) %>
+                <div class="flex-1 bg-gray-200 rounded-full h-2 min-w-[60px]">
+                  <div class="<%= es[:pass_rate] >= 60 ? 'bg-green-500' : 'bg-red-500' %> h-2 rounded-full" style="width: <%= [es[:pass_rate], 100].min %>%"></div>
+                </div>
+              </div>
+            </td>
+            <td class="font-medium"><%= es[:avg_score] %></td>
+          </tr>
+        <% end %>
+        <% if @exams_with_stats.empty? %>
+          <tr>
+            <td colspan="10" class="text-center py-8 text-gray-500">该时间段内暂无考试记录</td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="mt-6 filter-form bg-blue-50 border-blue-200">
+  <h4 class="font-semibold text-blue-800 mb-2">📤 报表导出信息说明</h4>
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-blue-700">
+    <div>
+      <p class="font-medium">筛选条件：</p>
+      <ul class="list-disc list-inside">
+        <li>年份: <%= @year %></li>
+        <li>月份: <%= @month %></li>
+        <li>社群: <%= params[:community_id].present? ? Community.find_by(id: params[:community_id])&.name : "全部" %></li>
+        <li>类型: <%= params[:exam_type] || "全部" %></li>
+      </ul>
+    </div>
+    <div>
+      <p class="font-medium">生成时间：</p>
+      <p>导出时自动写入文件头部</p>
+    </div>
+    <div>
+      <p class="font-medium">操作人：</p>
+      <p><%= current_user&.name || "当前登录用户" %></p>
+    </div>
+  </div>
+</div>

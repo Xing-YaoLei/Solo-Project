@@ -1,0 +1,72 @@
+<div class="page-header flex items-center justify-between">
+  <div>
+    <h1 class="page-title">📤 导出中心</h1>
+    <p class="page-subtitle">所有报表导出记录：包含筛选条件、生成时间和操作人</p>
+  </div>
+  <%= link_to "+ 新建导出", new_export_record_path, class: "btn-primary" %>
+</div>
+
+<div class="table-container">
+  <div class="overflow-x-auto">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>导出类型</th>
+          <th>🔍 筛选条件</th>
+          <th>👤 操作人</th>
+          <th>⏰ 生成时间</th>
+          <th>状态</th>
+          <th>文件名</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @records.each do |er| %>
+          <tr>
+            <td class="font-mono text-xs">#<%= er.id %></td>
+            <td class="font-medium"><%= er.export_type_name %></td>
+            <td class="max-w-sm">
+              <% if er.filter_conditions.present? && er.filter_conditions.any? %>
+                <details class="text-xs">
+                  <summary class="cursor-pointer text-blue-600 hover:underline">
+                    <%= er.filter_conditions.count %> 个筛选条件
+                  </summary>
+                  <div class="mt-1 p-2 bg-gray-50 rounded text-gray-700 space-y-1">
+                    <% er.filter_conditions.each do |k, v| %>
+                      <div><span class="font-semibold"><%= k %>:</span> <%= v.inspect %></div>
+                    <% end %>
+                  </div>
+                </details>
+              <% else %>
+                <span class="text-gray-400 text-xs">无筛选条件</span>
+              <% end %>
+            </td>
+            <td>
+              <div class="font-medium"><%= er.operator&.name || "系统" %></div>
+              <div class="text-xs text-gray-500">用户#<%= er.operator_id %></div>
+            </td>
+            <td>
+              <% if er.generated_at %>
+                <div class="font-medium"><%= er.generated_at.strftime("%Y-%m-%d %H:%M:%S") %></div>
+                <div class="text-xs text-gray-500">创建于 <%= er.created_at.strftime("%m-%d %H:%M") %></div>
+              <% else %>
+                <span class="text-gray-400 text-xs">处理中...</span>
+              <% end %>
+            </td>
+            <td><%= status_badge(er.status) %></td>
+            <td class="text-xs font-mono"><%= er.file_name || "-" %></td>
+            <td>
+              <div class="flex space-x-1">
+                <%= link_to "详情", export_record_path(er), class: "btn-secondary text-xs py-1 px-2" %>
+                <% if er.completed? && er.file_name %>
+                  <%= link_to "下载📥", download_export_record_path(er), class: "btn-primary text-xs py-1 px-2", data: { turbo: false } %>
+                <% end %>
+              </div>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>

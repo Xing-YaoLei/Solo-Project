@@ -1,0 +1,47 @@
+<div class="page-header">
+  <%= link_to "← 返回列表", exams_path, class: "btn-secondary mb-4" %>
+  <h1 class="page-title"><%= @exam.new_record? ? "新增考试" : "编辑考试" %></h1>
+</div>
+
+<div class="table-container p-6">
+  <%= form_with(model: @exam, local: true) do |f| %>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="form-group">
+        <%= f.label :name, "考试名称", class: "form-label" %>
+        <%= f.text_field :name, class: "form-input", required: true %>
+      </div>
+      <div class="form-group">
+        <%= f.label :exam_type, "考试类型", class: "form-label" %>
+        <%= f.select :exam_type, options_for_select(Exam::EXAM_TYPES, @exam.exam_type), {}, class: "form-select" %>
+      </div>
+      <div class="form-group">
+        <%= f.label :community_id, "所属社群", class: "form-label" %>
+        <%= f.collection_select :community_id, @communities, :id, :name, include_blank: "通用考试", class: "form-select" %>
+      </div>
+      <div class="form-group">
+        <%= f.label :exam_date, "考试日期", class: "form-label" %>
+        <%= f.date_field :exam_date, class: "form-input" %>
+      </div>
+      <div class="form-group">
+        <%= f.label :duration_minutes, "考试时长(分钟)", class: "form-label" %>
+        <%= f.number_field :duration_minutes, class: "form-input" %>
+      </div>
+      <div class="form-group">
+        <%= f.label :passing_score, "及格分数", class: "form-label" %>
+        <%= f.number_field :passing_score, class: "form-input", step: "0.1" %>
+      </div>
+      <div class="form-group">
+        <%= f.label :total_score, "总分", class: "form-label" %>
+        <%= f.number_field :total_score, class: "form-input", step: "0.1" %>
+      </div>
+      <div class="form-group col-span-2">
+        <%= f.label :description, "考试说明", class: "form-label" %>
+        <%= f.text_area :description, class: "form-input", rows: 2 %>
+      </div>
+    </div>
+    <div class="mt-8 flex space-x-3">
+      <%= f.submit class: "btn-primary" %>
+      <%= link_to "取消", exams_path, class: "btn-secondary" %>
+    </div>
+  <% end %>
+</div>

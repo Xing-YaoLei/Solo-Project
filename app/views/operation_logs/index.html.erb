@@ -1,0 +1,100 @@
+<div class="page-header flex items-center justify-between">
+  <div>
+    <h1 class="page-title">⚖️ 操作日志系统</h1>
+    <p class="page-subtitle">全量操作审计：可查询原因、动作类型、操作对象和关闭时间</p>
+  </div>
+  <%= link_to "导出日志", new_export_record_path(export_type: "operation_logs"), class: "btn-secondary" %>
+</div>
+
+<div class="filter-form">
+  <%= form_tag operation_logs_path, method: :get do %>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="form-group">
+        <%= label_tag :operator_id, "操作人", class: "form-label" %>
+        <%= select_tag :operator_id, options_from_collection_for_select(@users, :id, :name, params[:operator_id]), include_blank: "全部", class: "form-select" %>
+      </div>
+      <div class="form-group">
+        <%= label_tag :action, "动作类型", class: "form-label" %>
+        <%= select_tag :action, options_for_select(OperationLog::ACTIONS, params[:action]), include_blank: "全部", class: "form-select" %>
+      </div>
+      <div class="form-group">
+        <%= label_tag :target_type, "对象类型", class: "form-label" %>
+        <%= text_field_tag :target_type, params[:target_type], class: "form-input", placeholder: "如 Student/Exam..." %>
+      </div>
+      <div class="form-group">
+        <%= label_tag :target_id, "对象ID", class: "form-label" %>
+        <%= text_field_tag :target_id, params[:target_id], class: "form-input" %>
+      </div>
+      <div class="form-group">
+        <%= label_tag :start_date, "起始时间", class: "form-label" %>
+        <%= datetime_field_tag :start_date, params[:start_date], class: "form-input" %>
+      </div>
+      <div class="form-group">
+        <%= label_tag :end_date, "结束时间", class: "form-label" %>
+        <%= datetime_field_tag :end_date, params[:end_date], class: "form-input" %>
+      </div>
+    </div>
+    <div class="mt-4 flex space-x-3">
+      <%= submit_tag "查询", class: "btn-primary" %>
+      <%= link_to "重置", operation_logs_path, class: "btn-secondary" %>
+    </div>
+  <% end %>
+</div>
+
+<div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2 mb-6">
+  <% @action_stats.each do |action, count| %>
+    <div class="bg-white rounded-lg p-3 border border-gray-100 shadow-sm">
+      <p class="text-xs text-gray-500"><%= action_text(action) %></p>
+      <p class="text-xl font-bold text-gray-800"><%= count %></p>
+    </div>
+  <% end %>
+</div>
+
+<div class="table-container">
+  <div class="overflow-x-auto">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>日志ID</th>
+          <th>操作人</th>
+          <th>动作</th>
+          <th>目标对象</th>
+          <th>📋 原因</th>
+          <th>详情</th>
+          <th>变更前</th>
+          <th>变更后</th>
+          <th>状态</th>
+          <th>操作时间</th>
+          <th>关闭时间</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @logs.each do |log| %>
+          <tr>
+            <td class="font-mono text-xs">#<%= log.id %></td>
+            <td>
+              <div class="font-medium"><%= log.operator&.name || "系统" %></div>
+              <div class="text-xs text-gray-500">IP: <%= log.ip_address %></div>
+            </td>
+            <td><span class="badge-blue"><%= action_text(log.action) %></span></td>
+            <td>
+              <div class="font-medium text-blue-600"><%= log.target_name %></div>
+              <div class="text-xs text-gray-500"><%= log.target_type %>#<%= log.target_id %></div>
+            </td>
+            <td class="max-w-xs text-sm"><%= truncate(log.reason, length: 30) || "-" %></td>
+            <td class="max-w-xs text-sm text-gray-600"><%= truncate(log.details, length: 40) || "-" %></td>
+            <td class="text-xs font-mono max-w-[120px] truncate text-gray-500" title="<%= log.before_data.to_json %>">
+              <%= log.before_data.present? ? "{变更前数据}" : "-" %>
+            </td>
+            <td class="text-xs font-mono max-w-[120px] truncate text-blue-600" title="<%= log.after_data.to_json %>">
+              <%= log.after_data.present? ? "{变更后数据}" : "-" %>
+            </td>
+            <td><%= status_badge(log.status) %></td>
+            <td class="text-xs"><%= log.created_at.strftime("%Y-%m-%d %H:%M:%S") %></td>
+            <td class="text-xs"><%= log.closed_at&.strftime("%Y-%m-%d %H:%M:%S") || "-" %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>

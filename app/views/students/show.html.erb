@@ -1,0 +1,161 @@
+<div class="page-header flex items-center justify-between">
+  <div>
+    <%= link_to "← 返回学员列表", students_path, class: "btn-secondary mb-4" %>
+    <h1 class="page-title">👤 学员详情 - <%= @student.name %></h1>
+    <p class="page-subtitle">会员档案、核销、退款、考试、作业全览</p>
+  </div>
+  <div class="flex space-x-2">
+    <%= link_to "编辑学员", edit_student_path(@student), class: "btn-primary" %>
+    <% if @member_profile %>
+      <%= link_to "编辑档案", edit_student_member_profile_path(@student, @member_profile), class: "btn-secondary" %>
+    <% else %>
+      <%= link_to "创建档案", new_student_member_profile_path(@student), class: "btn-secondary" %>
+    <% end %>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+  <div class="stat-card lg:col-span-1">
+    <h3 class="text-lg font-semibold mb-4">🎫 会员档案</h3>
+    <% if @member_profile %>
+      <div class="space-y-3">
+        <div class="flex justify-between"><span class="text-gray-500">会员等级</span><%= member_level_badge(@member_profile.member_level) %></div>
+        <div class="flex justify-between"><span class="text-gray-500">入会日期</span><span><%= @member_profile.membership_start_date %></span></div>
+        <div class="flex justify-between"><span class="text-gray-500">到期日期</span><span><%= @member_profile.membership_end_date %></span></div>
+        <div class="flex justify-between"><span class="text-gray-500">剩余天数</span>
+          <% days = @member_profile.days_remaining %>
+          <span class="<%= days <= 30 ? 'text-red-600 font-semibold' : 'text-green-600' %>"><%= days %>天</span>
+        </div>
+        <div class="flex justify-between"><span class="text-gray-500">可用积分</span><span class="font-semibold"><%= @member_profile.available_points %> / <%= @member_profile.total_points %></span></div>
+        <div class="flex justify-between"><span class="text-gray-500">支付状态</span><%= payment_status_badge(@member_profile.payment_status) %></div>
+        <div class="flex justify-between"><span class="text-gray-500">累计消费</span><span class="font-semibold text-blue-600">¥<%= @member_profile.total_amount %></span></div>
+        <div class="pt-2 border-t border-gray-100">
+          <p class="text-xs text-gray-500 mb-1">权益概览:</p>
+          <p class="text-sm"><%= @member_profile.benefits_overview %></p>
+        </div>
+      </div>
+    <% else %>
+      <p class="text-gray-500">暂无会员档案</p>
+    <% end %>
+  </div>
+
+  <div class="stat-card lg:col-span-2">
+    <h3 class="text-lg font-semibold mb-4">📋 个人信息</h3>
+    <div class="grid grid-cols-2 gap-x-6 gap-y-3">
+      <div><p class="text-gray-500 text-sm">学员ID</p><p class="font-mono font-semibold">#<%= @student.id %></p></div>
+      <div><p class="text-gray-500 text-sm">姓名</p><p class="font-semibold"><%= @student.name %></p></div>
+      <div><p class="text-gray-500 text-sm">手机号</p><p><%= @student.phone %></p></div>
+      <div><p class="text-gray-500 text-sm">邮箱</p><p><%= @student.email %></p></div>
+      <div><p class="text-gray-500 text-sm">身份证号</p><p><%= @student.id_number %></p></div>
+      <div><p class="text-gray-500 text-sm">性别</p><p><%= @student.gender %></p></div>
+      <div><p class="text-gray-500 text-sm">出生日期</p><p><%= @student.birthday %></p></div>
+      <div><p class="text-gray-500 text-sm">学历</p><p><%= @student.education %></p></div>
+      <div><p class="text-gray-500 text-sm">职业</p><p><%= @student.occupation %></p></div>
+      <div><p class="text-gray-500 text-sm">所属社群</p><p><%= link_to @student.community&.name || "未分配", community_path(@student.community) if @student.community %></p></div>
+      <div><p class="text-gray-500 text-sm">状态</p><%= status_badge(@student.status) %></div>
+      <div><p class="text-gray-500 text-sm">入学日期</p><p><%= @student.enrollment_date %></p></div>
+      <div class="col-span-2"><p class="text-gray-500 text-sm">备注</p><p><%= @student.notes || "无" %></p></div>
+    </div>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+  <div class="table-container">
+    <div class="p-4 border-b border-gray-100 flex justify-between items-center">
+      <h3 class="font-semibold">💳 核销记录</h3>
+      <%= link_to "全部", redemption_records_path(student_id: @student.id), class: "text-sm text-blue-600" %>
+    </div>
+    <table class="data-table">
+      <thead><tr><th>权益</th><th>时间</th><th>状态</th><th>积分</th></tr></thead>
+      <tbody>
+        <% @redemption_records.each do |r| %>
+          <tr>
+            <td class="font-medium"><%= r.benefit_name %></td>
+            <td class="text-xs"><%= r.redeemed_at&.strftime("%m-%d %H:%M") %></td>
+            <td><%= status_badge(r.status) %></td>
+            <td><%= r.points_used %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="table-container">
+    <div class="p-4 border-b border-gray-100 flex justify-between items-center">
+      <h3 class="font-semibold">↩️ 退款记录</h3>
+      <%= link_to "全部", refund_records_path(student_id: @student.id), class: "text-sm text-blue-600" %>
+    </div>
+    <table class="data-table">
+      <thead><tr><th>金额</th><th>原因</th><th>状态</th><th>时间</th></tr></thead>
+      <tbody>
+        <% @refund_records.each do |r| %>
+          <tr>
+            <td class="font-semibold text-red-600">¥<%= r.refund_amount %></td>
+            <td class="max-w-[150px] truncate text-sm"><%= r.refund_reason %></td>
+            <td><%= refund_status_badge(r.refund_status) %></td>
+            <td class="text-xs"><%= r.created_at.strftime("%m-%d") %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="table-container">
+    <div class="p-4 border-b border-gray-100">
+      <h3 class="font-semibold">📝 考试成绩</h3>
+    </div>
+    <table class="data-table">
+      <thead><tr><th>考试</th><th>分数</th><th>是否通过</th><th>排名</th></tr></thead>
+      <tbody>
+        <% @exam_results.each do |er| %>
+          <tr>
+            <td class="font-medium"><%= link_to er.exam.name, exam_path(er.exam) %></td>
+            <td class="<%= er.passed ? 'text-green-600' : 'text-red-600' %> font-semibold"><%= er.score %>分</td>
+            <td><%= er.passed ? '<span class="badge-green">通过</span>'.html_safe : '<span class="badge-red">未通过</span>'.html_safe %></td>
+            <td><%= er.rank || "-" %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="table-container">
+    <div class="p-4 border-b border-gray-100">
+      <h3 class="font-semibold">📚 作业提交与抄袭</h3>
+    </div>
+    <table class="data-table">
+      <thead><tr><th>作业</th><th>分数</th><th>抄袭率</th><th>标记</th></tr></thead>
+      <tbody>
+        <% @assignment_submissions.each do |as| %>
+          <tr class="<%= 'bg-red-50' if as.plagiarism_flagged %>">
+            <td class="font-medium"><%= as.assignment&.title %></td>
+            <td><%= as.score %>分</td>
+            <td class="<%= as.plagiarism_score >= 30 ? 'text-red-600 font-semibold' : '' %>"><%= as.plagiarism_score %>%</td>
+            <td><%= as.plagiarism_flagged ? '<span class="badge-red">⚠️疑似</span>'.html_safe : '<span class="badge-green">正常</span>'.html_safe %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="mt-6 table-container">
+  <div class="p-4 border-b border-gray-100">
+    <h3 class="font-semibold">🚨 抄袭告警历史</h3>
+  </div>
+  <table class="data-table">
+    <thead><tr><th>作业</th><th>相似度</th><th>原因</th><th>处理动作</th><th>状态</th><th>关闭时间</th></tr></thead>
+    <tbody>
+      <% @plagiarism_logs.each do |pl| %>
+        <tr>
+          <td class="font-medium"><%= link_to pl.assignment&.title, plagiarism_log_path(pl) %></td>
+          <td class="font-semibold text-red-600"><%= pl.similarity_score %>%</td>
+          <td class="max-w-xs truncate text-sm"><%= pl.reason %></td>
+          <td><%= pl.action_taken || "-" %></td>
+          <td><%= status_badge(pl.status) %></td>
+          <td class="text-xs"><%= pl.closed_at&.strftime("%Y-%m-%d %H:%M") || "-" %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>

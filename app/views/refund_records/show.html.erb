@@ -1,0 +1,72 @@
+<div class="page-header">
+  <%= link_to "← 返回记录中心", records_path, class: "btn-secondary mb-4" %>
+  <h1 class="page-title">↩️ 退款记录详情 #<%= @record.id %></h1>
+  <p class="page-subtitle">学员：<%= @student&.name %> · 金额：¥<%= @record.refund_amount %></p>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <div class="lg:col-span-2 space-y-6">
+    <div class="stat-card p-5 border-red-200">
+      <h3 class="font-semibold mb-4">💸 退款信息</h3>
+      <dl class="grid grid-cols-2 gap-4 text-sm">
+        <div><dt class="text-gray-500">退款金额</dt><dd class="font-bold text-red-600 text-2xl">¥<%= @record.refund_amount %></dd></div>
+        <div><dt class="text-gray-500">退款状态</dt><dd><%= refund_status_badge(@record.refund_status) %></dd></div>
+        <div><dt class="text-gray-500">原因代码</dt><dd><span class="badge-yellow"><%= @record.refund_reason_code %></span></dd></div>
+        <div><dt class="text-gray-500">支付方式</dt><dd><%= @record.payment_method %></dd></div>
+        <div><dt class="text-gray-500">退款时间</dt><dd><%= @record.refunded_at&.strftime("%Y-%m-%d %H:%M") %></dd></div>
+        <div><dt class="text-gray-500">操作员</dt><dd><%= @record.operator&.name || "-" %></dd></div>
+        <div class="col-span-2">
+          <dt class="text-gray-500">📋 退款原因详情</dt>
+          <dd class="mt-1 p-3 bg-red-50 rounded text-red-800"><%= @record.refund_reason %></dd>
+        </div>
+        <div class="col-span-2">
+          <dt class="text-gray-500">✅ 审批备注</dt>
+          <dd class="mt-1 p-3 bg-gray-50 rounded"><%= @record.approval_notes || "-" %></dd>
+        </div>
+      </dl>
+    </div>
+
+    <div class="table-container">
+      <div class="p-4 border-b font-semibold">💳 该学员的核销记录</div>
+      <table class="data-table">
+        <thead><tr><th>ID</th><th>权益</th><th>状态</th><th>积分</th><th>时间</th></tr></thead>
+        <tbody>
+          <% @related_redemptions.each do |r| %>
+            <tr>
+              <td class="font-mono text-xs">#<%= r.id %></td>
+              <td><%= r.benefit_name %></td>
+              <td><%= status_badge(r.status) %></td>
+              <td><%= r.points_used %></td>
+              <td class="text-xs"><%= r.redeemed_at&.strftime("%m-%d") %></td>
+            </tr>
+          <% end %>
+          <% if @related_redemptions.empty? %>
+            <tr><td colspan="5" class="text-center py-4 text-gray-500">暂无核销记录</td></tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="space-y-6">
+    <div class="stat-card p-5">
+      <h3 class="font-semibold mb-3">🎫 关联会员档案</h3>
+      <% if @member_profile %>
+        <dl class="space-y-2 text-sm">
+          <div class="flex justify-between"><span class="text-gray-500">档案ID</span><span class="font-mono">#<%= @member_profile.id %></span></div>
+          <div class="flex justify-between"><span class="text-gray-500">会员等级</span><%= member_level_badge(@member_profile.member_level) %></div>
+          <div class="flex justify-between"><span class="text-gray-500">支付状态</span><%= payment_status_badge(@member_profile.payment_status) %></div>
+          <div class="flex justify-between"><span class="text-gray-500">累计消费</span><span class="font-semibold">¥<%= @member_profile.total_amount %></span></div>
+          <div class="flex justify-between"><span class="text-gray-500">到期日期</span><span class="text-xs"><%= @member_profile.membership_end_date %></span></div>
+          <div class="pt-2 border-t">
+            <p class="text-gray-500 text-xs mb-1">权益概览：</p>
+            <p class="text-sm"><%= @member_profile.benefits_overview %></p>
+          </div>
+        </dl>
+      <% else %>
+        <p class="text-gray-500">未关联会员档案</p>
+      <% end %>
+      <%= link_to "查看学员详情", student_path(@record.student), class: "btn-secondary w-full mt-4 justify-center" %>
+    </div>
+  </div>
+</div>

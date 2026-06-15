@@ -1,0 +1,47 @@
+<div class="page-header">
+  <%= link_to "← 返回核销列表", redemption_records_path, class: "btn-secondary mb-4" %>
+  <h1 class="page-title">💳 核销记录</h1>
+  <p class="page-subtitle">所有权益核销记录</p>
+</div>
+
+<div class="table-container">
+  <div class="overflow-x-auto">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>学员</th>
+          <th>会员等级</th>
+          <th>权益名称</th>
+          <th>核销码</th>
+          <th>核销时间</th>
+          <th>渠道</th>
+          <th>状态</th>
+          <th>积分</th>
+          <th>操作员</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @records.each do |r| %>
+          <tr>
+            <td class="font-mono text-xs">#<%= r.id %></td>
+            <td>
+              <div><%= link_to r.student&.name, student_path(r.student), class: "font-medium text-blue-600" %></div>
+              <div class="text-xs text-gray-500"><%= r.student&.phone %></div>
+            </td>
+            <td><%= member_level_badge(r.student&.member_profile&.member_level) %></td>
+            <td class="font-medium"><%= r.benefit_name %></td>
+            <td class="font-mono text-xs"><%= r.redemption_code %></td>
+            <td class="text-xs"><%= r.redeemed_at&.strftime("%Y-%m-%d %H:%M") %></td>
+            <td><%= r.channel %></td>
+            <td><%= status_badge(r.status) %></td>
+            <td><%= r.points_used %></td>
+            <td class="text-xs"><%= r.operator&.name %></td>
+            <td><%= link_to "详情", redemption_record_path(r), class: "btn-secondary text-xs py-1 px-2" %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>

@@ -1,0 +1,97 @@
+<div class="page-header">
+  <%= link_to "← 返回权益规则", benefit_rules_path, class: "btn-secondary mb-4" %>
+  <h1 class="page-title">📜 权益规则版本历史</h1>
+  <p class="page-subtitle"><%= @rule.name %> · 每次改动保留前后值，支持完整审计追踪</p>
+</div>
+
+<div class="stat-card mb-6">
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div>
+      <p class="stat-label">规则名称</p>
+      <p class="font-semibold"><%= @rule.name %></p>
+    </div>
+    <div>
+      <p class="stat-label">规则类型</p>
+      <p><%= member_level_badge(@rule.rule_type) %></p>
+    </div>
+    <div>
+      <p class="stat-label">适用会员等级</p>
+      <p><%= member_level_badge(@rule.target_member_level) %></p>
+    </div>
+    <div>
+      <p class="stat-label">版本数量</p>
+      <p class="text-2xl font-bold text-blue-600"><%= @versions.count %></p>
+    </div>
+  </div>
+</div>
+
+<div class="table-container">
+  <div class="overflow-x-auto">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>版本号</th>
+          <th>操作类型</th>
+          <th>操作人</th>
+          <th>修改时间</th>
+          <th>🔙 修改前值</th>
+          <th>🔜 修改后值</th>
+          <th>完整对比</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @versions.each_with_index do |v, i| %>
+          <% changes = v.changeset rescue {} %>
+          <tr class="<%= 'bg-gray-50' if i.odd? %>">
+            <td class="font-mono font-bold">v<%= @versions.count - i %></td>
+            <td>
+              <% case v.event
+                 when "create" %><span class="badge-green">创建</span>
+                 when "update" %><span class="badge-blue">更新</span>
+                 when "destroy" %><span class="badge-red">删除</span>
+              <% end %>
+            </td>
+            <td><%= v.whodunnit ? "用户##{v.whodunnit}" : "系统" %></td>
+            <td class="text-xs"><%= v.created_at.strftime("%Y-%m-%d %H:%M:%S") %></td>
+            <td class="text-xs font-mono max-w-xs">
+              <% if changes.present? %>
+                <ul class="space-y-1">
+                  <% changes.each do |field, vals| %>
+                    <% next unless vals.is_a?(Array) && vals.length == 2 %>
+                    <li>
+                      <span class="font-bold text-gray-700"><%= field %>:</span>
+                      <span class="text-red-600 bg-red-50 px-1 rounded"><%= vals[0].inspect %></span>
+                    </li>
+                  <% end %>
+                </ul>
+              <% else %>
+                <span class="text-gray-400">-</span>
+              <% end %>
+            </td>
+            <td class="text-xs font-mono max-w-xs">
+              <% if changes.present? %>
+                <ul class="space-y-1">
+                  <% changes.each do |field, vals| %>
+                    <% next unless vals.is_a?(Array) && vals.length == 2 %>
+                    <li>
+                      <span class="font-bold text-gray-700"><%= field %>:</span>
+                      <span class="text-green-600 bg-green-50 px-1 rounded"><%= vals[1].inspect %></span>
+                    </li>
+                  <% end %>
+                </ul>
+              <% else %>
+                <span class="text-gray-400">-</span>
+              <% end %>
+            </td>
+            <td>
+              <details class="text-xs">
+                <summary class="cursor-pointer text-blue-600 hover:underline">查看完整对象</summary>
+                <pre class="mt-2 p-2 bg-gray-100 rounded max-h-60 overflow-auto"><%= v.object %></pre>
+              </details>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>

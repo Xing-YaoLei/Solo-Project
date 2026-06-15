@@ -1,0 +1,51 @@
+# encoding: utf-8
+zh-CN:
+  status:
+    pending: 待处理
+    completed: 已完成
+    cancelled: 已取消
+    expired: 已过期
+    active: 活跃
+    inactive: 未激活
+    approved: 已批准
+    rejected: 已拒绝
+    refunded: 已退款
+    unpaid: 未付款
+    paid: 已付款
+    partially_paid: 部分付款
+    graduated: 已毕业
+    suspended: 已停学
+    open: 待处理
+    investigating: 调查中
+    resolved: 已解决
+    closed: 已关闭
+    dismissed: 已撤销
+    submitted: 已提交
+    reviewed: 已批阅
+    draft: 草稿
+    resubmitted: 重新提交
+    processing: 处理中
+    failed: 失败
+  actions:
+    create: 创建
+    update: 更新
+    delete: 删除
+    approve: 批准
+    reject: 拒绝
+    submit: 提交
+    review: 审核
+    export: 导出
+    import: 导入
+    login: 登录
+    logout: 登出
+    assign: 分配
+    unassign: 取消分配
+    notify: 通知
+  export_types:
+    exam_pass_rates: "考试通过率报表"
+    redemption_records: "核销记录报表"
+    refund_records: "退款记录报表"
+    student_list: "学员名单报表"
+    plagiarism_logs: "抄袭日志报表"
+    operation_logs: "操作日志报表"
+    member_profiles: "会员档案报表"

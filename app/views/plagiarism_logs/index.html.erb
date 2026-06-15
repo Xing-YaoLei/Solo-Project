@@ -1,0 +1,114 @@
+<div class="page-header flex items-center justify-between">
+  <div>
+    <h1 class="page-title">⚠️ 抄袭告警中心</h1>
+    <p class="page-subtitle">作业抄袭检测日志与处理记录：原因、动作、关闭时间一目了然</p>
+  </div>
+  <span class="badge-red text-base px-3 py-1.5">待处理: <%= @unresolved_count %> 条</span>
+</div>
+
+<div class="filter-form">
+  <%= form_tag plagiarism_logs_path, method: :get do %>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="form-group">
+        <%= label_tag :status, "处理状态", class: "form-label" %>
+        <%= select_tag :status, options_for_select(PlagiarismLog::STATUSES, params[:status]), include_blank: "全部", class: "form-select" %>
+      </div>
+      <div class="form-group">
+        <%= label_tag :student_id, "学员ID", class: "form-label" %>
+        <%= text_field_tag :student_id, params[:student_id], class: "form-input" %>
+      </div>
+      <div class="form-group">
+        <%= label_tag :responsible_user_id, "负责人ID", class: "form-label" %>
+        <%= text_field_tag :responsible_user_id, params[:responsible_user_id], class: "form-input" %>
+      </div>
+      <div class="form-group">
+        <%= label_tag :min_similarity, "最低相似度(%)", class: "form-label" %>
+        <%= number_field_tag :min_similarity, params[:min_similarity], class: "form-input", min: 0, max: 100 %>
+      </div>
+    </div>
+    <div class="mt-4 flex space-x-3">
+      <%= submit_tag "筛选", class: "btn-primary" %>
+      <%= link_to "重置", plagiarism_logs_path, class: "btn-secondary" %>
+      <%= link_to "仅看待处理", plagiarism_logs_path(status: "open"), class: "btn-secondary" %>
+      <%= link_to "导出日志", new_export_record_path(export_type: "plagiarism_logs"), class: "btn-secondary" %>
+    </div>
+  <% end %>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+  <% PlagiarismLog::STATUSES.each do |status| %>
+    <div class="stat-card">
+      <p class="stat-label"><%= status_text(status) %></p>
+      <p class="stat-value"><%= @status_stats[status] || 0 %></p>
+    </div>
+  <% end %>
+</div>
+
+<div class="table-container">
+  <div class="overflow-x-auto">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>日志ID</th>
+          <th>学员</th>
+          <th>作业</th>
+          <th>相似度</th>
+          <th>📋 抄袭原因</th>
+          <th>负责人</th>
+          <th>通知时间</th>
+          <th>⚡ 处理动作</th>
+          <th>状态</th>
+          <th>关闭时间</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @logs.each do |log| %>
+          <tr class="<%= 'bg-red-50' if log.open? %>">
+            <td class="font-mono text-xs">#<%= log.id %></td>
+            <td>
+              <div class="font-medium text-blue-600"><%= link_to log.student&.name, student_path(log.student) %></div>
+              <div class="text-xs text-gray-500">#<%= log.student_id %></div>
+            </td>
+            <td>
+              <div class="font-medium"><%= log.assignment&.title %></div>
+              <div class="text-xs text-gray-500">提交#<%= log.assignment_submission_id %></div>
+            </td>
+            <td>
+              <span class="<%= log.similarity_score >= 50 ? 'badge-red' : 'badge-yellow' %> text-base px-2 py-1">
+                <%= log.similarity_score %>%
+              </span>
+            </td>
+            <td class="max-w-xs">
+              <div class="text-sm text-gray-800" title="<%= log.reason %>"><%= truncate(log.reason, length: 50) %></div>
+            </td>
+            <td>
+              <div class="font-medium"><%= log.responsible_user&.name || "未分配" %></div>
+              <% if log.responsible_user %>
+                <div class="text-xs text-gray-500">#<%= log.responsible_user_id %></div>
+              <% end %>
+            </td>
+            <td class="text-xs"><%= log.notified_at&.strftime("%m-%d %H:%M") %></td>
+            <td>
+              <% if log.action_taken.present? %>
+                <span class="badge-blue"><%= log.action_taken %></span>
+              <% else %>
+                <span class="text-gray-400 text-xs">待处理</span>
+              <% end %>
+            </td>
+            <td><%= status_badge(log.status) %></td>
+            <td class="text-xs"><%= log.closed_at&.strftime("%Y-%m-%d %H:%M") || "-" %></td>
+            <td>
+              <div class="flex space-x-1">
+                <%= link_to "查看", plagiarism_log_path(log), class: "btn-secondary text-xs py-1 px-2" %>
+                <% if log.open? || log.investigating? %>
+                  <%= button_to "处理", resolve_plagiarism_log_path(log, action_taken: "warning"), method: :patch, class: "btn-primary text-xs py-1 px-2", data: { confirm: "确认处理该抄袭记录？" } %>
+                <% end %>
+              </div>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>
