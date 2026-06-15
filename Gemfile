@@ -28,6 +28,7 @@ end
 group :development do
   gem "web-console"
   gem "rack-mini-profiler"
+  gem "foreman"
 end
 
 group :test do
