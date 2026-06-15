@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>仪表盘 - 青少年培训续费跟进排程台</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body class="bg-light">
+
+<div th:insert="~{layout/fragments :: header}"></div>
+
+<div class="d-flex">
+    <div th:insert="~{layout/fragments :: sidebar}"></div>
+
+    <main class="flex-grow-1 p-4">
+        <div th:insert="~{layout/fragments :: pageHeader('仪表盘概览', '今日数据一览与关键指标监控')}"></div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-md-3">
+                <div class="stat-card bg-success text-white p-4 rounded-4 shadow-sm h-100">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="mb-1 opacity-90">总学生数</p>
+                            <h3 class="fw-bold mb-0" th:text="${totalStudents ?: 1286}">1,286</h3>
+                            <small class="opacity-75"><i class="bi bi-arrow-up-circle me-1"></i>较上月 +3.2%</small>
+                        </div>
+                        <div class="bg-white bg-opacity-25 rounded-3 p-3">
+                            <i class="bi bi-people-fill fs-2"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card bg-primary text-white p-4 rounded-4 shadow-sm h-100">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="mb-1 opacity-90">在学课程</p>
+                            <h3 class="fw-bold mb-0" th:text="${activeCourses ?: 342}">342</h3>
+                            <small class="opacity-75"><i class="bi bi-book me-1"></i>覆盖 24 门学科</small>
+                        </div>
+                        <div class="bg-white bg-opacity-25 rounded-3 p-3">
+                            <i class="bi bi-book-fill fs-2"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card bg-danger text-white p-4 rounded-4 shadow-sm h-100">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="mb-1 opacity-90">待处理异常</p>
+                            <h3 class="fw-bold mb-0" th:text="${pendingExceptions ?: 28}">28</h3>
+                            <small class="opacity-75"><i class="bi bi-exclamation-triangle me-1"></i>高优先级 5 条</small>
+                        </div>
+                        <div class="bg-white bg-opacity-25 rounded-3 p-3">
+                            <i class="bi bi-exclamation-triangle-fill fs-2"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card bg-warning text-white p-4 rounded-4 shadow-sm h-100">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="mb-1 opacity-90">今日跟进</p>
+                            <h3 class="fw-bold mb-0" th:text="${todayFollowUps ?: 56}">56</h3>
+                            <small class="opacity-75"><i class="bi bi-check-circle me-1"></i>已完成 32 条</small>
+                        </div>
+                        <div class="bg-white bg-opacity-25 rounded-3 p-3">
+                            <i class="bi bi-calendar-check-fill fs-2"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-lg-7">
+                <div class="card border-0 shadow-sm rounded-4 h-100">
+                    <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center pt-4 px-4 pb-2">
+                        <h5 class="fw-bold mb-0"><i class="bi bi-graph-down-arrow text-danger me-2"></i>进度预警 TOP10</h5>
+                        <a th:href="@{/progress}" class="btn btn-sm btn-outline-primary">查看全部</a>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-light">
+                                <tr>
+                                    <th>学生</th>
+                                    <th>课程</th>
+                                    <th>完成率</th>
+                                    <th>状态</th>
+                                    <th>最近学习</th>
+                                    <th>操作</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr th:each="item : ${progressWarnings ?: #lists.of({
+                                    {name:'张明轩', course:'Python编程入门', rate:23, status:'危险', last:'3天前'},
+                                    {name:'李思琪', course:'英语语法强化', rate:35, status:'警告', last:'2天前'},
+                                    {name:'王浩宇', course:'数学思维训练', rate:42, status:'警告', last:'5天前'},
+                                    {name:'赵雨桐', course:'物理实验探究', rate:18, status:'危险', last:'1周前'},
+                                    {name:'陈嘉豪', course:'化学基础概念', rate:48, status:'警告', last:'3天前'}
+                                })}">
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-2" style="width:36px;height:36px;">
+                                                <span class="fw-bold text-primary small" th:text="${item.name[0]}">张</span>
+                                            </div>
+                                            <span class="fw-semibold" th:text="${item.name}">张明轩</span>
+                                        </div>
+                                    </td>
+                                    <td th:text="${item.course}">Python编程入门</td>
+                                    <td>
+                                        <span class="badge bg-danger rounded-pill" th:text="${item.rate + '%'}">23%</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge" th:classappend="${item.status == '危险'} ? 'bg-danger' : 'bg-warning'" th:text="${item.status}">危险</span>
+                                    </td>
+                                    <td class="text-muted small" th:text="${item.last}">3天前</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary me-1"><i class="bi bi-eye"></i></button>
+                                        <button class="btn btn-sm btn-outline-warning"><i class="bi bi-bell"></i></button>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-5">
+                <div class="card border-0 shadow-sm rounded-4 h-100">
+                    <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center pt-4 px-4 pb-2">
+                        <h5 class="fw-bold mb-0"><i class="bi bi-calendar2-day text-primary me-2"></i>今日待跟进 TOP10</h5>
+                        <a th:href="@{/renewal}" class="btn btn-sm btn-outline-primary">查看全部</a>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-light">
+                                <tr>
+                                    <th>学生</th>
+                                    <th>到期日</th>
+                                    <th>剩余</th>
+                                    <th>阶段</th>
+                                    <th>负责人</th>
+                                    <th>操作</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr th:each="item : ${todayFollowUpsList ?: #lists.of({
+                                    {name:'刘美琳', expire:'2024-01-15', days:2, stage:'意向确认', owner:'王老师'},
+                                    {name:'周浩然', expire:'2024-01-18', days:5, stage:'方案推荐', owner:'李老师'},
+                                    {name:'吴欣怡', expire:'2024-01-10', days:-3, stage:'催缴续费', owner:'张老师'},
+                                    {name:'郑文博', expire:'2024-01-20', days:7, stage:'初次接触', owner:'陈老师'},
+                                    {name:'孙雅婷', expire:'2024-01-12', days:-1, stage:'议价协商', owner:'刘老师'}
+                                })}">
+                                    <td class="fw-semibold" th:text="${item.name}">刘美琳</td>
+                                    <td class="small" th:text="${item.expire}">2024-01-15</td>
+                                    <td>
+                                        <span class="badge rounded-pill" th:classappend="${item.days < 0} ? 'bg-danger' : (${item.days <= 7} ? 'bg-warning' : 'bg-success')"
+                                              th:text="${item.days < 0} ? ('已过期' + ${#numbers.absolute(item.days)} + '天') : (${item.days} + '天')">2天</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info text-dark" th:text="${item.stage}">意向确认</span>
+                                    </td>
+                                    <td class="small text-muted" th:text="${item.owner}">王老师</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-primary"><i class="bi bi-telephone me-1"></i>跟进</button>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-lg-6">
+                <div class="card border-0 shadow-sm rounded-4">
+                    <div class="card-header bg-white border-0 pt-4 px-4 pb-2">
+                        <h5 class="fw-bold mb-0"><i class="bi bi-pie-chart text-success me-2"></i>异常单分布</h5>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="mb-4">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="fw-semibold">待处理</span>
+                                <span class="text-danger fw-bold">28</span>
+                            </div>
+                            <div class="progress" style="height: 12px;">
+                                <div class="progress-bar bg-danger progress-bar-custom" role="progressbar" style="width: 35%"></div>
+                            </div>
+                        </div>
+                        <div class="mb-4">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="fw-semibold">处理中</span>
+                                <span class="text-warning fw-bold">15</span>
+                            </div>
+                            <div class="progress" style="height: 12px;">
+                                <div class="progress-bar bg-warning progress-bar-custom" role="progressbar" style="width: 19%"></div>
+                            </div>
+                        </div>
+                        <div class="mb-4">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="fw-semibold">已解决</span>
+                                <span class="text-success fw-bold">32</span>
+                            </div>
+                            <div class="progress" style="height: 12px;">
+                                <div class="progress-bar bg-success progress-bar-custom" role="progressbar" style="width: 40%"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="fw-semibold">已关闭</span>
+                                <span class="text-muted fw-bold">5</span>
+                            </div>
+                            <div class="progress" style="height: 12px;">
+                                <div class="progress-bar bg-secondary progress-bar-custom" role="progressbar" style="width: 6%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="card border-0 shadow-sm rounded-4">
+                    <div class="card-header bg-white border-0 pt-4 px-4 pb-2">
+                        <h5 class="fw-bold mb-0"><i class="bi bi-wallet2 text-primary me-2"></i>续费意向分布</h5>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="row g-3 mb-4">
+                            <div class="col-6">
+                                <div class="bg-success bg-opacity-10 rounded-3 p-3 text-center">
+                                    <p class="text-success fw-bold mb-1 fs-4">高意向</p>
+                                    <h3 class="fw-bold text-success mb-0">142</h3>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="bg-primary bg-opacity-10 rounded-3 p-3 text-center">
+                                    <p class="text-primary fw-bold mb-1 fs-4">中意向</p>
+                                    <h3 class="fw-bold text-primary mb-0">208</h3>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="bg-warning bg-opacity-10 rounded-3 p-3 text-center">
+                                    <p class="text-warning fw-bold mb-1 fs-4">低意向</p>
+                                    <h3 class="fw-bold text-warning mb-0">86</h3>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="bg-secondary bg-opacity-10 rounded-3 p-3 text-center">
+                                    <p class="text-secondary fw-bold mb-1 fs-4">未明确</p>
+                                    <h3 class="fw-bold text-secondary mb-0">64</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="progress" style="height: 20px;">
+                            <div class="progress-bar bg-success" role="progressbar" style="width: 28.4%">高 28.4%</div>
+                            <div class="progress-bar bg-primary" role="progressbar" style="width: 41.6%">中 41.6%</div>
+                            <div class="progress-bar bg-warning" role="progressbar" style="width: 17.2%">低 17.2%</div>
+                            <div class="progress-bar bg-secondary" role="progressbar" style="width: 12.8%">未 12.8%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div th:insert="~{layout/fragments :: footer}"></div>
+    </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script th:src="@{/js/app.js}"></script>
+</body>
+</html>

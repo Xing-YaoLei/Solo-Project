@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>异常单管理 - 青少年培训续费跟进排程台</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body class="bg-light">
+
+<div th:insert="~{layout/fragments :: header}"></div>
+
+<div class="d-flex">
+    <div th:insert="~{layout/fragments :: sidebar}"></div>
+
+    <main class="flex-grow-1 p-4">
+        <div th:insert="~{layout/fragments :: pageHeader('异常单管理', '处理学生学习异常与突发事件')}"></div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-md-3">
+                <div class="stat-card bg-danger text-white p-4 rounded-4 shadow-sm h-100">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="mb-1 opacity-90">待处理</p>
+                            <h3 class="fw-bold mb-0">28</h3>
+                        </div>
+                        <i class="bi bi-hourglass-split fs-2 opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card bg-warning text-white p-4 rounded-4 shadow-sm h-100">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="mb-1 opacity-90">处理中</p>
+                            <h3 class="fw-bold mb-0">15</h3>
+                        </div>
+                        <i class="bi bi-gear-wide-connected fs-2 opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card bg-success text-white p-4 rounded-4 shadow-sm h-100">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="mb-1 opacity-90">已解决</p>
+                            <h3 class="fw-bold mb-0">132</h3>
+                        </div>
+                        <i class="bi bi-check2-circle fs-2 opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card bg-secondary text-white p-4 rounded-4 shadow-sm h-100">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="mb-1 opacity-90">已关闭</p>
+                            <h3 class="fw-bold mb-0">56</h3>
+                        </div>
+                        <i class="bi bi-door-closed fs-2 opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+            <div class="card-body p-4">
+                <h6 class="fw-bold mb-3"><i class="bi bi-funnel me-2"></i>筛选条件</h6>
+                <form class="row g-3">
+                    <div class="col-md-2">
+                        <label class="form-label small fw-semibold">状态</label>
+                        <select class="form-select">
+                            <option value="">全部状态</option>
+                            <option>待处理</option>
+                            <option>处理中</option>
+                            <option>已解决</option>
+                            <option>已关闭</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small fw-semibold">类型</label>
+                        <select class="form-select">
+                            <option value="">全部类型</option>
+                            <option>学习进度异常</option>
+                            <option>作业异常</option>
+                            <option>出勤异常</option>
+                            <option>缴费异常</option>
+                            <option>投诉建议</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small fw-semibold">优先级</label>
+                        <select class="form-select">
+                            <option value="">全部优先级</option>
+                            <option>高</option>
+                            <option>中</option>
+                            <option>低</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small fw-semibold">责任人</label>
+                        <select class="form-select">
+                            <option value="">全部责任人</option>
+                            <option>王老师</option>
+                            <option>李老师</option>
+                            <option>张老师</option>
+                            <option>陈老师</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-semibold">创建日期</label>
+                        <div class="input-group">
+                            <input type="date" class="form-control">
+                            <span class="input-group-text">至</span>
+                            <input type="date" class="form-control">
+                        </div>
+                    </div>
+                    <div class="col-md-1 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100"><i class="bi bi-search"></i></button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <p class="text-muted mb-0">共 <span class="fw-bold text-primary">231</span> 条异常单</p>
+            <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#createExceptionModal">
+                <i class="bi bi-plus-lg me-1"></i>新建异常单
+            </button>
+        </div>
+
+        <div class="card border-0 shadow-sm rounded-4">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                        <tr>
+                            <th class="ps-4">单号</th>
+                            <th>类型</th>
+                            <th>优先级</th>
+                            <th>标题</th>
+                            <th>学生</th>
+                            <th>责任人</th>
+                            <th>影响范围</th>
+                            <th>状态</th>
+                            <th>创建时间</th>
+                            <th class="pe-4">操作</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="ex : ${exceptions ?: #lists.of({
+                            {no:'EX20240115001', type:'学习进度异常', priority:'高', title:'连续10天未登录系统学习', student:'赵雨桐', owner:'陈老师', scope:'Python编程入门', status:'待处理', created:'2024-01-15 09:00'},
+                            {no:'EX20240114008', type:'作业异常', priority:'中', title:'连续4次作业未按时提交', student:'李思琪', owner:'李老师', scope:'英语语法强化', status:'处理中', created:'2024-01-14 16:30'},
+                            {no:'EX20240114005', type:'出勤异常', priority:'高', title:'本周课程缺勤2次无请假', student:'孙雅婷', owner:'刘老师', scope:'数学思维训练', status:'待处理', created:'2024-01-14 14:20'},
+                            {no:'EX20240113012', type:'缴费异常', priority:'高', title:'续费款项逾期未到账', student:'吴欣怡', owner:'张老师', scope:'全部课程', status:'处理中', created:'2024-01-13 10:00'},
+                            {no:'EX20240113006', type:'投诉建议', priority:'中', title:'家长反馈课程进度过快', student:'周浩然', owner:'王老师', scope:'高中物理进阶', status:'已解决', created:'2024-01-13 08:45'},
+                            {no:'EX20240112010', type:'学习进度异常', priority:'低', title:'月完成率低于60%预警', student:'刘美琳', owner:'王老师', scope:'语文阅读写作', status:'处理中', created:'2024-01-12 18:00'},
+                            {no:'EX20240112003', type:'作业异常', priority:'低', title:'单次作业正确率低于30%', student:'陈嘉豪', owner:'张老师', scope:'化学基础概念', status:'已解决', created:'2024-01-12 11:15'},
+                            {no:'EX20240111007', type:'出勤异常', priority:'中', title:'上课迟到累计超30分钟', student:'王浩宇', owner:'李老师', scope:'数学思维训练', status:'已关闭', created:'2024-01-11 15:00'}
+                        })}">
+                            <td class="ps-4">
+                                <span class="text-muted small fw-semibold" th:text="${ex.no}">EX20240115001</span>
+                            </td>
+                            <td>
+                                <span class="badge bg-info text-dark rounded-pill" th:text="${ex.type}">学习进度异常</span>
+                            </td>
+                            <td>
+                                <span class="badge badge-danger rounded-pill" th:if="${ex.priority == '高'}">
+                                    <i class="bi bi-arrow-up me-1"></i>高
+                                </span>
+                                <span class="badge badge-warning rounded-pill" th:if="${ex.priority == '中'}">
+                                    <i class="bi bi-dash me-1"></i>中
+                                </span>
+                                <span class="badge bg-secondary rounded-pill" th:if="${ex.priority == '低'}">
+                                    <i class="bi bi-arrow-down me-1"></i>低
+                                </span>
+                            </td>
+                            <td class="fw-semibold" th:text="${ex.title}">连续10天未登录系统学习</td>
+                            <td th:text="${ex.student}">赵雨桐</td>
+                            <td th:text="${ex.owner}">陈老师</td>
+                            <td>
+                                <span class="badge bg-light text-dark border" th:text="${ex.scope}">Python编程入门</span>
+                            </td>
+                            <td>
+                                <span class="badge badge-danger rounded-pill" th:if="${ex.status == '待处理'}">待处理</span>
+                                <span class="badge badge-warning rounded-pill" th:if="${ex.status == '处理中'}">处理中</span>
+                                <span class="badge badge-success rounded-pill" th:if="${ex.status == '已解决'}">已解决</span>
+                                <span class="badge bg-secondary rounded-pill" th:if="${ex.status == '已关闭'}">已关闭</span>
+                            </td>
+                            <td class="small text-muted" th:text="${ex.created}">2024-01-15 09:00</td>
+                            <td class="pe-4">
+                                <div class="btn-group btn-group-sm">
+                                    <button type="button" class="btn btn-outline-primary" title="查看" onclick="openExceptionDetail('EX20240115001')">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-warning" title="处理">
+                                        <i class="bi bi-pencil-square"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary" title="关闭">
+                                        <i class="bi bi-x-circle"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div th:insert="~{layout/fragments :: footer}"></div>
+    </main>
+</div>
+
+<div class="modal fade" id="exceptionDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content border-0 rounded-4">
+            <div class="modal-header border-0 pb-0 px-4 pt-4">
+                <div class="d-flex align-items-center">
+                    <div class="bg-danger bg-opacity-10 rounded-3 p-2 me-3">
+                        <i class="bi bi-exclamation-triangle-fill text-danger fs-4"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-1">异常单详情</h5>
+                        <small class="text-muted">单号: <span id="exModalNo" class="fw-semibold">EX20240115001</span></small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="row g-4">
+                    <div class="col-lg-8">
+                        <div class="card border rounded-4 mb-4">
+                            <div class="card-body p-4">
+                                <h6 class="fw-bold mb-3">基本信息</h6>
+                                <div class="row g-3 mb-4">
+                                    <div class="col-sm-6">
+                                        <p class="text-muted small mb-1">异常类型</p>
+                                        <p class="fw-semibold mb-0"><span class="badge bg-info text-dark">学习进度异常</span></p>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <p class="text-muted small mb-1">优先级</p>
+                                        <p class="fw-semibold mb-0"><span class="badge badge-danger rounded-pill"><i class="bi bi-arrow-up me-1"></i>高优先级</span></p>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <p class="text-muted small mb-1">创建时间</p>
+                                        <p class="fw-semibold mb-0">2024-01-15 09:00:00</p>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <p class="text-muted small mb-1">当前状态</p>
+                                        <p class="fw-semibold mb-0"><span class="badge badge-danger rounded-pill">待处理</span></p>
+                                    </div>
+                                </div>
+                                <h6 class="fw-bold mb-2">异常标题</h6>
+                                <p class="mb-4 fw-semibold">连续10天未登录系统学习</p>
+                                <h6 class="fw-bold mb-2">详细描述</h6>
+                                <p class="text-muted mb-0">系统自动检测到该学生已连续10天未登录学习平台，上次登录时间为2024-01-05。当前Python编程入门课程进度仅完成17%，作业提交率30%。建议尽快联系学生及家长了解情况，必要时进行学习计划调整。</p>
+                            </div>
+                        </div>
+                        <div class="card border rounded-4 mb-4">
+                            <div class="card-body p-4">
+                                <h6 class="fw-bold mb-3">处理记录时间线</h6>
+                                <div class="timeline-item pb-3">
+                                    <div class="d-flex">
+                                        <div class="flex-shrink-0 text-center me-3">
+                                            <div class="bg-success text-white rounded-3 px-2 py-1 small">01-15</div>
+                                            <small class="text-muted d-block mt-1">09:00</small>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <p class="fw-semibold mb-1">系统自动创建 <span class="badge bg-light text-dark border small ms-1">系统</span></p>
+                                            <p class="text-muted small mb-0">检测到学习进度异常，自动生成异常单</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="timeline-item pb-3">
+                                    <div class="d-flex">
+                                        <div class="flex-shrink-0 text-center me-3">
+                                            <div class="bg-primary text-white rounded-3 px-2 py-1 small">01-15</div>
+                                            <small class="text-muted d-block mt-1">09:30</small>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <p class="fw-semibold mb-1">自动分派给陈老师 <span class="badge bg-light text-dark border small ms-1">系统</span></p>
+                                            <p class="text-muted small mb-0">根据负责老师自动分派异常单</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card border rounded-4">
+                            <div class="card-body p-4">
+                                <h6 class="fw-bold mb-3"><i class="bi bi-pencil-square text-primary me-2"></i>处理结果</h6>
+                                <form>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">处理状态</label>
+                                        <select class="form-select">
+                                            <option>继续处理中</option>
+                                            <option>标记已解决</option>
+                                            <option>转派其他责任人</option>
+                                            <option>关闭异常单</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">转派责任人</label>
+                                        <select class="form-select">
+                                            <option>不转派</option>
+                                            <option>王老师</option>
+                                            <option>李老师</option>
+                                            <option>张老师</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">处理内容 <span class="text-danger">*</span></label>
+                                        <textarea class="form-control" rows="4" placeholder="请详细描述处理过程、沟通内容及结果..."></textarea>
+                                    </div>
+                                    <div class="d-flex justify-content-end gap-2">
+                                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                                        <button type="button" class="btn btn-primary">提交处理</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="card border rounded-4 mb-4">
+                            <div class="card-body p-4">
+                                <h6 class="fw-bold mb-3">影响范围</h6>
+                                <div class="mb-3">
+                                    <p class="text-muted small mb-1">关联学生</p>
+                                    <div class="d-flex align-items-center">
+                                        <div class="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-2" style="width:36px;height:36px;">
+                                            <span class="fw-bold text-primary small">赵</span>
+                                        </div>
+                                        <div>
+                                            <p class="fw-semibold mb-0">赵雨桐</p>
+                                            <small class="text-muted">S004 / 初中三年级</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <p class="text-muted small mb-1">影响课程</p>
+                                    <div class="d-flex flex-wrap gap-1">
+                                        <span class="badge bg-light text-dark border">物理实验探究</span>
+                                        <span class="badge bg-light text-dark border">数学思维训练</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <p class="text-muted small mb-1">预估影响时长</p>
+                                    <p class="fw-semibold mb-0 text-warning"><i class="bi bi-clock me-1"></i>约 10 天学习缺失</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card border rounded-4 mb-4">
+                            <div class="card-body p-4">
+                                <h6 class="fw-bold mb-3">责任归属</h6>
+                                <div class="mb-3">
+                                    <p class="text-muted small mb-1">当前责任人</p>
+                                    <div class="d-flex align-items-center">
+                                        <div class="bg-success bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-2" style="width:36px;height:36px;">
+                                            <i class="bi bi-person text-success"></i>
+                                        </div>
+                                        <div>
+                                            <p class="fw-semibold mb-0">陈老师</p>
+                                            <small class="text-muted">物理学科组</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <p class="text-muted small mb-1">创建人</p>
+                                    <p class="fw-semibold mb-0"><i class="bi bi-robot me-1"></i>系统自动</p>
+                                </div>
+                                <div>
+                                    <p class="text-muted small mb-1">SLA 处理时限</p>
+                                    <p class="fw-semibold mb-0 text-danger"><i class="bi bi-hourglass-split me-1"></i>剩余 4 小时 30 分</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card bg-primary bg-opacity-5 border-0 rounded-4">
+                            <div class="card-body p-4">
+                                <h6 class="fw-bold mb-3"><i class="bi bi-lightbulb text-warning me-2"></i>处理建议</h6>
+                                <ul class="list-unstyled small mb-0">
+                                    <li class="mb-2 d-flex align-items-start">
+                                        <i class="bi bi-check2-circle text-success me-2 mt-1"></i>
+                                        <span>首先电话联系家长了解学生近况</span>
+                                    </li>
+                                    <li class="mb-2 d-flex align-items-start">
+                                        <i class="bi bi-check2-circle text-success me-2 mt-1"></i>
+                                        <span>评估是否需要调整学习计划或延长课时</span>
+                                    </li>
+                                    <li class="d-flex align-items-start">
+                                        <i class="bi bi-check2-circle text-success me-2 mt-1"></i>
+                                        <span>如存在续费风险，同步转交续费跟进</span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script th:src="@{/js/app.js}"></script>
+<script>
+    function openExceptionDetail(no) {
+        document.getElementById('exModalNo').textContent = no;
+        openModal('exceptionDetailModal');
+    }
+</script>
+</body>
+</html>

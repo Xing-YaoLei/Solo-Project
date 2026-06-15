@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>续费跟进台 - 青少年培训续费跟进排程台</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body class="bg-light">
+
+<div th:insert="~{layout/fragments :: header}"></div>
+
+<div class="d-flex">
+    <div th:insert="~{layout/fragments :: sidebar}"></div>
+
+    <main class="flex-grow-1 p-4">
+        <div th:insert="~{layout/fragments :: pageHeader('续费跟进台', '课程到期续费排程与跟进管理')}"></div>
+
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+            <div class="card-body p-4">
+                <h6 class="fw-bold mb-3"><i class="bi bi-calendar-event me-2"></i>到期分布统计</h6>
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <div class="d-flex align-items-center p-3 bg-danger bg-opacity-10 rounded-3">
+                            <div class="bg-danger rounded-3 p-2 me-3">
+                                <i class="bi bi-calendar-x text-white fs-4"></i>
+                            </div>
+                            <div>
+                                <p class="text-muted small mb-1">已过期</p>
+                                <h4 class="fw-bold text-danger mb-0">42</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="d-flex align-items-center p-3 bg-warning bg-opacity-10 rounded-3">
+                            <div class="bg-warning rounded-3 p-2 me-3">
+                                <i class="bi bi-calendar-week text-white fs-4"></i>
+                            </div>
+                            <div>
+                                <p class="text-muted small mb-1">7天内到期</p>
+                                <h4 class="fw-bold text-warning mb-0">68</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="d-flex align-items-center p-3 bg-primary bg-opacity-10 rounded-3">
+                            <div class="bg-primary rounded-3 p-2 me-3">
+                                <i class="bi bi-calendar2-week text-white fs-4"></i>
+                            </div>
+                            <div>
+                                <p class="text-muted small mb-1">15天内到期</p>
+                                <h4 class="fw-bold text-primary mb-0">124</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="d-flex align-items-center p-3 bg-success bg-opacity-10 rounded-3">
+                            <div class="bg-success rounded-3 p-2 me-3">
+                                <i class="bi bi-calendar-month text-white fs-4"></i>
+                            </div>
+                            <div>
+                                <p class="text-muted small mb-1">30天内到期</p>
+                                <h4 class="fw-bold text-success mb-0">286</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <div class="progress" style="height: 24px; border-radius: 12px;">
+                        <div class="progress-bar bg-danger rounded-start-pill" style="width: 8.2%" title="已过期 42">
+                            <span class="fw-semibold small px-2">已过期 8.2%</span>
+                        </div>
+                        <div class="progress-bar bg-warning" style="width: 13.2%" title="7天内 68">
+                            <span class="fw-semibold small px-2">7天内 13.2%</span>
+                        </div>
+                        <div class="progress-bar bg-primary" style="width: 24.1%" title="15天内 124">
+                            <span class="fw-semibold small px-2">15天内 24.1%</span>
+                        </div>
+                        <div class="progress-bar bg-success rounded-end-pill" style="width: 54.5%" title="30天内 286">
+                            <span class="fw-semibold small px-2">30天内 54.5%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+            <div class="card-header bg-white border-0 px-4 pt-4 pb-0">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="fw-bold mb-0"><i class="bi bi-calendar3 text-primary me-2"></i>续费跟进排程</h5>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-outline-secondary"><i class="bi bi-list me-1"></i>列表视图</button>
+                        <button class="btn btn-sm btn-primary"><i class="bi bi-calendar-date me-1"></i>按日期分组</button>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body p-4">
+                <div class="mb-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="bg-danger bg-opacity-10 rounded-3 px-3 py-2 me-3">
+                            <i class="bi bi-exclamation-octagon-fill text-danger me-1"></i>
+                            <span class="fw-bold text-danger">今日 (2024-01-15)</span>
+                        </div>
+                        <span class="badge bg-danger rounded-pill">12 条待跟进</span>
+                    </div>
+                    <div class="table-responsive mb-4">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                            <tr>
+                                <th>学生姓名</th>
+                                <th>课程</th>
+                                <th>到期日</th>
+                                <th>剩余天数</th>
+                                <th>负责老师</th>
+                                <th>跟进阶段</th>
+                                <th>最近跟进</th>
+                                <th>续费意向</th>
+                                <th>续费状态</th>
+                                <th>操作</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="item : ${todayList ?: #lists.of({
+                                {name:'刘美琳', course:'语文阅读写作', expire:'2024-01-15', days:0, teacher:'王老师', stage:'议价协商', last:'2024-01-12', intent:'高', status:'待续费'},
+                                {name:'钱志远', course:'Python编程入门', expire:'2024-01-16', days:1, teacher:'李老师', stage:'方案推荐', last:'2024-01-10', intent:'中', status:'待续费'}
+                            })}">
+                                <td class="fw-semibold" th:text="${item.name}">刘美琳</td>
+                                <td th:text="${item.course}">语文阅读写作</td>
+                                <td class="small" th:text="${item.expire}">2024-01-15</td>
+                                <td>
+                                    <span class="badge" th:classappend="${item.days <= 0} ? 'bg-danger' : (${item.days <= 7} ? 'bg-warning' : 'bg-success') rounded-pill"
+                                          th:text="${item.days < 0} ? ('已过期' + ${#numbers.absolute(item.days)} + '天') : (${item.days == 0} ? '今日到期' : (${item.days} + '天'))">今日到期</span>
+                                </td>
+                                <td th:text="${item.teacher}">王老师</td>
+                                <td>
+                                    <span class="badge bg-info text-dark rounded-pill" th:text="${item.stage}">议价协商</span>
+                                </td>
+                                <td class="small text-muted" th:text="${item.last}">2024-01-12</td>
+                                <td>
+                                    <span class="badge badge-success rounded-pill" th:if="${item.intent == '高'}">高</span>
+                                    <span class="badge bg-primary rounded-pill" th:if="${item.intent == '中'}">中</span>
+                                    <span class="badge badge-warning rounded-pill" th:if="${item.intent == '低'}">低</span>
+                                </td>
+                                <td>
+                                    <span class="badge badge-warning rounded-pill" th:text="${item.status}">待续费</span>
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <button type="button" class="btn btn-primary" onclick="openFollowUpModal('刘美琳')"><i class="bi bi-plus-lg me-1"></i>新增跟进</button>
+                                        <button type="button" class="btn btn-outline-secondary" title="查看历史"><i class="bi bi-clock-history"></i></button>
+                                        <button type="button" class="btn btn-outline-success" title="标记完成"><i class="bi bi-check-lg"></i></button>
+                                    </div>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="bg-warning bg-opacity-10 rounded-3 px-3 py-2 me-3">
+                            <i class="bi bi-calendar-week text-warning me-1"></i>
+                            <span class="fw-bold text-warning">明日 (2024-01-16)</span>
+                        </div>
+                        <span class="badge bg-warning text-dark rounded-pill">8 条待跟进</span>
+                    </div>
+                    <div class="table-responsive mb-4">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                            <tr>
+                                <th>学生姓名</th>
+                                <th>课程</th>
+                                <th>到期日</th>
+                                <th>剩余天数</th>
+                                <th>负责老师</th>
+                                <th>跟进阶段</th>
+                                <th>最近跟进</th>
+                                <th>续费意向</th>
+                                <th>续费状态</th>
+                                <th>操作</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="item : ${tomorrowList ?: #lists.of({
+                                {name:'冯雪婷', course:'数学思维训练', expire:'2024-01-17', days:2, teacher:'张老师', stage:'初次接触', last:'2024-01-08', intent:'未明确', status:'待续费'},
+                                {name:'许文博', course:'英语口语提升', expire:'2024-01-18', days:3, teacher:'陈老师', stage:'意向确认', last:'2024-01-11', intent:'中', status:'待续费'}
+                            })}">
+                                <td class="fw-semibold" th:text="${item.name}">冯雪婷</td>
+                                <td th:text="${item.course}">数学思维训练</td>
+                                <td class="small" th:text="${item.expire}">2024-01-17</td>
+                                <td>
+                                    <span class="badge bg-warning rounded-pill" th:text="${item.days + '天'}">2天</span>
+                                </td>
+                                <td th:text="${item.teacher}">张老师</td>
+                                <td>
+                                    <span class="badge bg-secondary rounded-pill" th:text="${item.stage}">初次接触</span>
+                                </td>
+                                <td class="small text-muted" th:text="${item.last}">2024-01-08</td>
+                                <td>
+                                    <span class="badge bg-secondary rounded-pill" th:text="${item.intent}">未明确</span>
+                                </td>
+                                <td>
+                                    <span class="badge badge-warning rounded-pill" th:text="${item.status}">待续费</span>
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <button type="button" class="btn btn-primary" onclick="openFollowUpModal('冯雪婷')"><i class="bi bi-plus-lg me-1"></i>新增跟进</button>
+                                        <button type="button" class="btn btn-outline-secondary" title="查看历史"><i class="bi bi-clock-history"></i></button>
+                                        <button type="button" class="btn btn-outline-success" title="标记完成"><i class="bi bi-check-lg"></i></button>
+                                    </div>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="bg-primary bg-opacity-10 rounded-3 px-3 py-2 me-3">
+                            <i class="bi bi-calendar2-week text-primary me-1"></i>
+                            <span class="fw-bold text-primary">本周内 (2024-01-17 ~ 2024-01-21)</span>
+                        </div>
+                        <span class="badge bg-primary rounded-pill">36 条待跟进</span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                            <tr>
+                                <th>学生姓名</th>
+                                <th>课程</th>
+                                <th>到期日</th>
+                                <th>剩余天数</th>
+                                <th>负责老师</th>
+                                <th>跟进阶段</th>
+                                <th>最近跟进</th>
+                                <th>续费意向</th>
+                                <th>续费状态</th>
+                                <th>操作</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="item : ${weekList ?: #lists.of({
+                                {name:'韩雨欣', course:'化学基础概念', expire:'2024-01-20', days:5, teacher:'刘老师', stage:'意向确认', last:'2024-01-05', intent:'高', status:'续费中'},
+                                {name:'邓超恒', course:'物理实验探究', expire:'2024-01-22', days:7, teacher:'陈老师', stage:'方案推荐', last:'2024-01-09', intent:'中', status:'续费中'}
+                            })}">
+                                <td class="fw-semibold" th:text="${item.name}">韩雨欣</td>
+                                <td th:text="${item.course}">化学基础概念</td>
+                                <td class="small" th:text="${item.expire}">2024-01-20</td>
+                                <td>
+                                    <span class="badge bg-success rounded-pill" th:text="${item.days + '天'}">5天</span>
+                                </td>
+                                <td th:text="${item.teacher}">刘老师</td>
+                                <td>
+                                    <span class="badge bg-info text-dark rounded-pill" th:text="${item.stage}">意向确认</span>
+                                </td>
+                                <td class="small text-muted" th:text="${item.last}">2024-01-05</td>
+                                <td>
+                                    <span class="badge badge-success rounded-pill" th:text="${item.intent}">高</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-primary rounded-pill" th:text="${item.status}">续费中</span>
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <button type="button" class="btn btn-primary" onclick="openFollowUpModal('韩雨欣')"><i class="bi bi-plus-lg me-1"></i>新增跟进</button>
+                                        <button type="button" class="btn btn-outline-secondary" title="查看历史"><i class="bi bi-clock-history"></i></button>
+                                        <button type="button" class="btn btn-outline-success" title="标记完成"><i class="bi bi-check-lg"></i></button>
+                                    </div>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div th:insert="~{layout/fragments :: footer}"></div>
+    </main>
+</div>
+
+<div class="modal fade" id="followUpModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content border-0 rounded-4">
+            <div class="modal-header border-0 pb-0">
+                <div class="d-flex align-items-center">
+                    <div class="bg-primary bg-opacity-10 rounded-3 p-2 me-3">
+                        <i class="bi bi-telephone-outbound text-primary fs-4"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-1">新增续费跟进记录</h5>
+                        <small class="text-muted">学生: <span id="followUpStudent" class="fw-semibold text-primary">-</span></small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">跟进阶段 <span class="text-danger">*</span></label>
+                        <select class="form-select">
+                            <option>初次接触</option>
+                            <option>意向确认</option>
+                            <option selected>方案推荐</option>
+                            <option>议价协商</option>
+                            <option>催缴续费</option>
+                            <option>续费成功</option>
+                            <option>确认流失</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">联系方式 <span class="text-danger">*</span></label>
+                        <select class="form-select">
+                            <option selected>电话</option>
+                            <option>微信</option>
+                            <option>面谈</option>
+                            <option>短信</option>
+                            <option>邮件</option>
+                        </select>
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label fw-semibold">跟进主题 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" placeholder="请输入本次跟进的主题">
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label fw-semibold">跟进内容 <span class="text-danger">*</span></label>
+                        <textarea class="form-control" rows="5" placeholder="请详细记录沟通内容、家长反馈、异议点等..."></textarea>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">续费意向</label>
+                        <select class="form-select">
+                            <option>高</option>
+                            <option selected>中</option>
+                            <option>低</option>
+                            <option>未明确</option>
+                            <option>无意向</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">预计续费金额</label>
+                        <div class="input-group">
+                            <span class="input-group-text">¥</span>
+                            <input type="number" class="form-control" placeholder="0.00">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">本次跟进日期</label>
+                        <input type="date" class="form-control" value="2024-01-15">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">下次跟进日期</label>
+                        <input type="date" class="form-control" value="2024-01-17">
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label fw-semibold">下次跟进重点</label>
+                        <textarea class="form-control" rows="2" placeholder="下次跟进需要关注的重点事项..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-outline-primary"><i class="bi bi-save me-1"></i>保存草稿</button>
+                <button type="button" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>提交跟进</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script th:src="@{/js/app.js}"></script>
+<script>
+    function openFollowUpModal(studentName) {
+        document.getElementById('followUpStudent').textContent = studentName;
+        openModal('followUpModal');
+    }
+</script>
+</body>
+</html>

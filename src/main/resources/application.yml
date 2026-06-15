@@ -1,0 +1,108 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+spring:
+  application:
+    name: training-renewal-dashboard
+
+  datasource:
+    url: jdbc:h2:mem:trainingdb;DB_CLOSE_DELAY=-1;MODE=MySQL
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+    # MySQL配置（生产环境使用）
+    # url: jdbc:mysql://localhost:3306/training_db?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    # driver-class-name: com.mysql.cj.jdbc.Driver
+    # username: root
+    # password: root
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.H2Dialect
+        # MySQL方言（生产环境使用）
+        # dialect: org.hibernate.dialect.MySQL8Dialect
+
+  redis:
+    host: localhost
+    port: 6379
+    password:
+    database: 0
+    timeout: 3000ms
+    lettuce:
+      pool:
+        max-active: 8
+        max-wait: -1ms
+        max-idle: 8
+        min-idle: 0
+
+  thymeleaf:
+    cache: false
+    prefix: classpath:/templates/
+    suffix: .html
+    encoding: UTF-8
+    mode: HTML
+
+  quartz:
+    job-store-type: memory
+    properties:
+      org:
+        quartz:
+          scheduler:
+            instanceName: TrainingScheduler
+            instanceId: AUTO
+          threadPool:
+            class: org.quartz.simpl.SimpleThreadPool
+            threadCount: 10
+            threadPriority: 5
+          jobStore:
+            class: org.quartz.simpl.RAMJobStore
+            misfireThreshold: 60000
+
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=500,expireAfterWrite=30m
+
+mybatis:
+  configuration:
+    map-underscore-to-camel-case: true
+
+logging:
+  level:
+    com.youth.training: debug
+    org.hibernate.SQL: debug
+
+training:
+  dashboard:
+    progress:
+      warning-threshold: 60.0
+      danger-threshold: 30.0
+      check-cron: "0 0 2 * * ?"
+    renewal:
+      early-warning-days: 30
+      follow-cron: "0 30 9 * * ?"
+    export:
+      data-caliber: >
+        【取数口径说明】
+        1. 完成率统计范围：课程进度=已完成章节数/课程总章节数×100%
+        2. 作业完成率=已提交并批改作业数/总作业数×100%
+        3. 进度异常判定：完成率低于60%且距上次学习超过7天，生成异常单
+        4. 成绩下滑异常判定：作业得分率低于30%，自动生成成绩下滑异常单
+        5. 续费意向统计：以最近一次跟进记录的renewal_intention字段为准
+        6. 题目标签关联：通过question_tag表关联题目与标签，用于弱项分析
+        7. 成绩反馈流程：评分→审核→触发进度重算→检查异常→记录状态变更
+        8. 数据统计截止时间：导出时系统当前时间
+        9. 责任归属：按课程assigned_teacher字段划分
+      sheet-password: "training@2026"

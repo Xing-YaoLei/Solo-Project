@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Fragments</title>
+</head>
+<body>
+
+<nav th:fragment="header" class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
+    <div class="container-fluid">
+        <a class="navbar-brand d-flex align-items-center" th:href="@{/index}">
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor" class="bi bi-mortarboard-fill me-2" viewBox="0 0 16 16">
+                <path d="M8.211 2.047a.5.5 0 0 0-.422 0l-7.5 3.5a.5.5 0 0 0 .025.917l7.5 3a.5.5 0 0 0 .372 0l7.5-3a.5.5 0 0 0 .025-.917l-7.5-3.5Z"/>
+                <path d="M4.176 9.032a.5.5 0 0 0-.656.327l-.5 1.7a.5.5 0 0 0 .294.605l4.5 1.8a.5.5 0 0 0 .372 0l4.5-1.8a.5.5 0 0 0 .294-.605l-.5-1.7a.5.5 0 0 0-.656-.327L8 10.466 4.176 9.032Zm-.068 1.873c.21-.187.436-.374.672-.566a.5.5 0 0 1 .294.605l-.5 1.7a.5.5 0 0 1-.294.605l-1.35.54a.5.5 0 1 1-.372-.928l1.55-.62.5-1.7Z"/>
+            </svg>
+            <span class="fw-bold">青少年培训续费跟进排程台</span>
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item">
+                    <a class="nav-link active" th:classappend="${currentPage == 'index'} ? 'active'" th:href="@{/index}">
+                        <i class="bi bi-speedometer2 me-1"></i>仪表盘
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" th:classappend="${currentPage == 'students'} ? 'active'" th:href="@{/students}">
+                        <i class="bi bi-people me-1"></i>学生管理
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" th:classappend="${currentPage == 'progress'} ? 'active'" th:href="@{/progress}">
+                        <i class="bi bi-bar-chart me-1"></i>学习进度
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" th:classappend="${currentPage == 'exceptions'} ? 'active'" th:href="@{/exceptions}">
+                        <i class="bi bi-exclamation-triangle me-1"></i>异常单
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" th:classappend="${currentPage == 'renewal'} ? 'active'" th:href="@{/renewal}">
+                        <i class="bi bi-cash me-1"></i>续费跟进
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" th:classappend="${currentPage == 'history'} ? 'active'" th:href="@{/history}">
+                        <i class="bi bi-clock-history me-1"></i>状态历史
+                    </a>
+                </li>
+            </ul>
+            <div class="dropdown ms-3">
+                <button class="btn btn-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                    <i class="bi bi-person-circle me-1"></i>管理员
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" href="#"><i class="bi bi-person me-2"></i>个人设置</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" th:href="@{/login}"><i class="bi bi-box-arrow-right me-2"></i>退出登录</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<div th:fragment="sidebar" class="bg-light border-end" style="width: 220px; min-height: calc(100vh - 56px);">
+    <div class="p-3">
+        <h6 class="text-muted mb-3 fw-semibold">导航菜单</h6>
+        <ul class="nav flex-column gap-1">
+            <li class="nav-item">
+                <a class="nav-link rounded" th:classappend="${currentPage == 'index'} ? 'active bg-primary text-white'" th:href="@{/index}">
+                    <i class="bi bi-speedometer2 me-2"></i>仪表盘
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link rounded text-dark" th:classappend="${currentPage == 'students'} ? 'active bg-primary text-white'" th:href="@{/students}">
+                    <i class="bi bi-people me-2"></i>学生管理
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link rounded text-dark" th:classappend="${currentPage == 'progress'} ? 'active bg-primary text-white'" th:href="@{/progress}">
+                    <i class="bi bi-bar-chart-line me-2"></i>学习进度台
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link rounded text-dark" th:classappend="${currentPage == 'exceptions'} ? 'active bg-primary text-white'" th:href="@{/exceptions}">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>异常单管理
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link rounded text-dark" th:classappend="${currentPage == 'renewal'} ? 'active bg-primary text-white'" th:href="@{/renewal}">
+                    <i class="bi bi-cash-stack me-2"></i>续费跟进台
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link rounded text-dark" th:classappend="${currentPage == 'history'} ? 'active bg-primary text-white'" th:href="@{/history}">
+                    <i class="bi bi-clock-history me-2"></i>状态变更历史
+                </a>
+            </li>
+        </ul>
+        <hr class="my-4">
+        <h6 class="text-muted mb-3 fw-semibold">快捷操作</h6>
+        <div class="d-grid gap-2">
+            <button class="btn btn-outline-primary btn-sm" type="button" data-bs-toggle="modal" data-bs-target="#addStudentModal">
+                <i class="bi bi-person-plus me-1"></i>新增学生
+            </button>
+            <button class="btn btn-outline-success btn-sm" type="button">
+                <i class="bi bi-download me-1"></i>导出报表
+            </button>
+        </div>
+    </div>
+</div>
+
+<footer th:fragment="footer" class="bg-light text-center text-muted py-3 border-top mt-4">
+    <p class="mb-0 small">
+        &copy; 2024 青少年培训续费跟进排程台 &nbsp;|&nbsp;
+        <a href="#" class="text-decoration-none text-muted">使用帮助</a> &nbsp;|&nbsp;
+        <a href="#" class="text-decoration-none text-muted">技术支持</a>
+    </p>
+    <p class="mb-0 small text-muted opacity-75">Version 1.0.0</p>
+</footer>
+
+<div th:fragment="pageHeader(title, subtitle)" class="mb-4">
+    <h2 class="fw-bold mb-1" th:text="${title}">页面标题</h2>
+    <p class="text-muted mb-0" th:if="${subtitle}" th:text="${subtitle}">页面副标题</p>
+</div>
+
+</body>
+</html>

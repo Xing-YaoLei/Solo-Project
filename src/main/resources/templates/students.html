@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学生管理 - 青少年培训续费跟进排程台</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body class="bg-light">
+
+<div th:insert="~{layout/fragments :: header}"></div>
+
+<div class="d-flex">
+    <div th:insert="~{layout/fragments :: sidebar}"></div>
+
+    <main class="flex-grow-1 p-4">
+        <div th:insert="~{layout/fragments :: pageHeader('学生管理', '学生信息管理与查询')}"></div>
+
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+            <div class="card-body p-4">
+                <h6 class="fw-bold mb-3"><i class="bi bi-search me-2"></i>搜索筛选</h6>
+                <form class="row g-3">
+                    <div class="col-md-2">
+                        <label class="form-label small fw-semibold">姓名</label>
+                        <input type="text" class="form-control" placeholder="请输入姓名">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small fw-semibold">手机号</label>
+                        <input type="text" class="form-control" placeholder="请输入手机号">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small fw-semibold">年级</label>
+                        <select class="form-select">
+                            <option value="">全部年级</option>
+                            <option>小学三年级</option>
+                            <option>小学四年级</option>
+                            <option>小学五年级</option>
+                            <option>小学六年级</option>
+                            <option>初中一年级</option>
+                            <option>初中二年级</option>
+                            <option>初中三年级</option>
+                            <option>高中一年级</option>
+                            <option>高中二年级</option>
+                            <option>高中三年级</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small fw-semibold">状态</label>
+                        <select class="form-select">
+                            <option value="">全部状态</option>
+                            <option>在学</option>
+                            <option>停课</option>
+                            <option>已结课</option>
+                            <option>待续费</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small fw-semibold">负责老师</label>
+                        <select class="form-select">
+                            <option value="">全部老师</option>
+                            <option>王老师</option>
+                            <option>李老师</option>
+                            <option>张老师</option>
+                            <option>陈老师</option>
+                            <option>刘老师</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <div class="d-grid gap-2 w-100">
+                            <div class="btn-group" role="group">
+                                <button type="submit" class="btn btn-primary flex-grow-1"><i class="bi bi-search me-1"></i>搜索</button>
+                                <button type="reset" class="btn btn-outline-secondary"><i class="bi bi-arrow-counterclockwise"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <p class="text-muted mb-0">共 <span class="fw-bold text-primary">1,286</span> 条记录</p>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addStudentModal">
+                    <i class="bi bi-person-plus me-1"></i>新增学生
+                </button>
+                <button type="button" class="btn btn-outline-primary" onclick="exportData()">
+                    <i class="bi bi-download me-1"></i>导出
+                </button>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm rounded-4">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                        <tr>
+                            <th class="ps-4">ID</th>
+                            <th>姓名</th>
+                            <th>性别</th>
+                            <th>年龄</th>
+                            <th>年级</th>
+                            <th>手机号</th>
+                            <th>家长</th>
+                            <th>课程到期日</th>
+                            <th>负责老师</th>
+                            <th>状态</th>
+                            <th class="pe-4">操作</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="student, iterStat : ${students ?: #lists.of({
+                            {id:'S001', name:'张明轩', gender:'男', age:12, grade:'小学六年级', phone:'138****1234', parent:'张先生', expire:'2024-03-15', teacher:'王老师', status:'在学'},
+                            {id:'S002', name:'李思琪', gender:'女', age:11, grade:'小学五年级', phone:'139****5678', parent:'李女士', expire:'2024-02-20', teacher:'李老师', status:'待续费'},
+                            {id:'S003', name:'王浩宇', gender:'男', age:14, grade:'初中二年级', phone:'137****9012', parent:'王女士', expire:'2024-01-10', teacher:'张老师', status:'在学'},
+                            {id:'S004', name:'赵雨桐', gender:'女', age:15, grade:'初中三年级', phone:'136****3456', parent:'赵先生', expire:'2023-12-25', teacher:'陈老师', status:'停课'},
+                            {id:'S005', name:'陈嘉豪', gender:'男', age:13, grade:'初中一年级', phone:'135****7890', parent:'陈先生', expire:'2024-04-05', teacher:'刘老师', status:'在学'},
+                            {id:'S006', name:'刘美琳', gender:'女', age:10, grade:'小学四年级', phone:'134****2345', parent:'刘女士', expire:'2024-01-15', teacher:'王老师', status:'待续费'},
+                            {id:'S007', name:'周浩然', gender:'男', age:16, grade:'高中一年级', phone:'133****6789', parent:'周先生', expire:'2024-02-28', teacher:'李老师', status:'在学'},
+                            {id:'S008', name:'吴欣怡', gender:'女', age:11, grade:'小学五年级', phone:'132****0123', parent:'吴女士', expire:'2024-01-10', teacher:'张老师', status:'已结课'}
+                        })}">
+                            <td class="ps-4">
+                                <span class="text-muted small" th:text="${student.id}">S001</span>
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-2" style="width:38px;height:38px;">
+                                        <span class="fw-bold text-primary" th:text="${student.name[0]}">张</span>
+                                    </div>
+                                    <span class="fw-semibold" th:text="${student.name}">张明轩</span>
+                                </div>
+                            </td>
+                            <td th:text="${student.gender}">男</td>
+                            <td th:text="${student.age}">12</td>
+                            <td>
+                                <span class="badge bg-secondary" th:text="${student.grade}">小学六年级</span>
+                            </td>
+                            <td th:text="${student.phone}">138****1234</td>
+                            <td th:text="${student.parent}">张先生</td>
+                            <td class="small" th:text="${student.expire}">2024-03-15</td>
+                            <td th:text="${student.teacher}">王老师</td>
+                            <td>
+                                <span class="badge badge-success" th:if="${student.status == '在学'}">在学</span>
+                                <span class="badge badge-warning" th:if="${student.status == '待续费'}">待续费</span>
+                                <span class="badge bg-secondary" th:if="${student.status == '停课'}">停课</span>
+                                <span class="badge bg-info text-dark" th:if="${student.status == '已结课'}">已结课</span>
+                            </td>
+                            <td class="pe-4">
+                                <div class="btn-group btn-group-sm">
+                                    <a th:href="@{'/student/' + ${student.id}}" class="btn btn-outline-primary" title="查看">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-outline-secondary" title="编辑">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-success" title="跟进">
+                                        <i class="bi bi-telephone"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card-footer bg-white border-0 p-4">
+                <nav aria-label="Page navigation">
+                    <ul class="pagination justify-content-end mb-0">
+                        <li class="page-item disabled">
+                            <a class="page-link" href="#"><i class="bi bi-chevron-left"></i></a>
+                        </li>
+                        <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                        <li class="page-item"><a class="page-link" href="#">2</a></li>
+                        <li class="page-item"><a class="page-link" href="#">3</a></li>
+                        <li class="page-item"><a class="page-link" href="#">4</a></li>
+                        <li class="page-item"><a class="page-link" href="#">5</a></li>
+                        <li class="page-item">
+                            <a class="page-link" href="#"><i class="bi bi-chevron-right"></i></a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+
+        <div th:insert="~{layout/fragments :: footer}"></div>
+    </main>
+</div>
+
+<div class="modal fade" id="addStudentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content border-0 rounded-4">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold"><i class="bi bi-person-plus text-primary me-2"></i>新增学生</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">姓名 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" placeholder="请输入学生姓名">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">性别 <span class="text-danger">*</span></label>
+                        <select class="form-select">
+                            <option>男</option>
+                            <option>女</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">出生日期</label>
+                        <input type="date" class="form-control">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">年级 <span class="text-danger">*</span></label>
+                        <select class="form-select">
+                            <option>小学三年级</option>
+                            <option>小学四年级</option>
+                            <option>小学五年级</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">学生手机号</label>
+                        <input type="tel" class="form-control" placeholder="请输入手机号">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">负责老师</label>
+                        <select class="form-select">
+                            <option>王老师</option>
+                            <option>李老师</option>
+                            <option>张老师</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">家长姓名 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" placeholder="请输入家长姓名">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">家长联系方式 <span class="text-danger">*</span></label>
+                        <input type="tel" class="form-control" placeholder="请输入家长手机号">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">报名课程</label>
+                        <select class="form-select" multiple>
+                            <option>Python编程入门</option>
+                            <option>英语语法强化</option>
+                            <option>数学思维训练</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">课程到期日</label>
+                        <input type="date" class="form-control">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">备注信息</label>
+                        <textarea class="form-control" rows="3" placeholder="请输入备注信息"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script th:src="@{/js/app.js}"></script>
+</body>
+</html>

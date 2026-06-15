@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学习进度台 - 青少年培训续费跟进排程台</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body class="bg-light">
+
+<div th:insert="~{layout/fragments :: header}"></div>
+
+<div class="d-flex">
+    <div th:insert="~{layout/fragments :: sidebar}"></div>
+
+    <main class="flex-grow-1 p-4">
+        <div th:insert="~{layout/fragments :: pageHeader('学习进度台', '监控学生学习进度与预警')}"></div>
+
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+            <div class="card-body p-4">
+                <h6 class="fw-bold mb-3"><i class="bi bi-funnel me-2"></i>筛选条件</h6>
+                <form class="row g-3">
+                    <div class="col-md-2">
+                        <label class="form-label small fw-semibold">课程</label>
+                        <select class="form-select">
+                            <option value="">全部课程</option>
+                            <option>Python编程入门</option>
+                            <option>英语语法强化</option>
+                            <option>数学思维训练</option>
+                            <option>物理实验探究</option>
+                            <option>化学基础概念</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small fw-semibold">年级</label>
+                        <select class="form-select">
+                            <option value="">全部年级</option>
+                            <option>小学三年级</option>
+                            <option>小学四年级</option>
+                            <option>小学五年级</option>
+                            <option>小学六年级</option>
+                            <option>初中一年级</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-semibold">完成率范围</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" placeholder="最低%" min="0" max="100">
+                            <span class="input-group-text">-</span>
+                            <input type="number" class="form-control" placeholder="最高%" min="0" max="100">
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small fw-semibold">预警级别</label>
+                        <select class="form-select">
+                            <option value="">全部</option>
+                            <option value="normal">正常</option>
+                            <option value="warning">警告</option>
+                            <option value="danger">危险</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3 d-flex align-items-end">
+                        <div class="d-grid gap-2 w-100">
+                            <div class="btn-group">
+                                <button type="submit" class="btn btn-primary flex-grow-1"><i class="bi bi-search me-1"></i>查询</button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="refreshProgress()"><i class="bi bi-arrow-clockwise"></i></button>
+                                <button type="reset" class="btn btn-light border"><i class="bi bi-x-lg"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-md-3">
+                <div class="stat-card bg-success text-white p-4 rounded-4 shadow-sm h-100">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="mb-1 opacity-90">正常</p>
+                            <h3 class="fw-bold mb-0">892</h3>
+                        </div>
+                        <i class="bi bi-check-circle-fill fs-2 opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card bg-warning text-white p-4 rounded-4 shadow-sm h-100">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="mb-1 opacity-90">警告</p>
+                            <h3 class="fw-bold mb-0">256</h3>
+                        </div>
+                        <i class="bi bi-exclamation-circle-fill fs-2 opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card bg-danger text-white p-4 rounded-4 shadow-sm h-100">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="mb-1 opacity-90">危险</p>
+                            <h3 class="fw-bold mb-0">98</h3>
+                        </div>
+                        <i class="bi bi-x-circle-fill fs-2 opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card bg-info text-white p-4 rounded-4 shadow-sm h-100">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="mb-1 opacity-90">平均完成率</p>
+                            <h3 class="fw-bold mb-0">72%</h3>
+                        </div>
+                        <i class="bi bi-bar-chart-fill fs-2 opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm rounded-4">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                        <tr>
+                            <th class="ps-4">学生</th>
+                            <th>课程</th>
+                            <th>章节进度</th>
+                            <th>完成率</th>
+                            <th>作业完成率</th>
+                            <th>最近学习</th>
+                            <th>状态</th>
+                            <th class="pe-4">操作</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="item : ${progressList ?: #lists.of({
+                            {name:'张明轩', course:'Python编程入门', done:10, total:12, rate:83, homework:85, last:'2024-01-12 15:30', status:'正常'},
+                            {name:'李思琪', course:'英语语法强化', done:7, total:20, rate:35, homework:60, last:'2024-01-10 09:15', status:'警告'},
+                            {name:'王浩宇', course:'数学思维训练', done:14, total:16, rate:88, homework:92, last:'2024-01-13 18:00', status:'正常'},
+                            {name:'赵雨桐', course:'物理实验探究', done:3, total:18, rate:17, homework:30, last:'2024-01-05 10:00', status:'危险'},
+                            {name:'陈嘉豪', course:'化学基础概念', done:10, total:14, rate:71, homework:78, last:'2024-01-13 14:20', status:'正常'},
+                            {name:'刘美琳', course:'语文阅读写作', done:5, total:15, rate:33, homework:55, last:'2024-01-08 16:45', status:'警告'},
+                            {name:'周浩然', course:'高中物理进阶', done:8, total:22, rate:36, homework:42, last:'2024-01-09 11:00', status:'警告'},
+                            {name:'吴欣怡', course:'英语口语提升', done:15, total:18, rate:83, homework:95, last:'2024-01-13 20:30', status:'正常'}
+                        })}">
+                            <td class="ps-4">
+                                <div class="d-flex align-items-center">
+                                    <div class="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-2" style="width:38px;height:38px;">
+                                        <span class="fw-bold text-primary" th:text="${item.name[0]}">张</span>
+                                    </div>
+                                    <span class="fw-semibold" th:text="${item.name}">张明轩</span>
+                                </div>
+                            </td>
+                            <td th:text="${item.course}">Python编程入门</td>
+                            <td>
+                                <span class="fw-semibold" th:text="${item.done + ' / ' + item.total}">10 / 12</span>
+                                <span class="text-muted small ms-1">章</span>
+                            </td>
+                            <td style="min-width: 180px;">
+                                <div class="d-flex align-items-center">
+                                    <div class="progress flex-grow-1 me-2" style="height: 8px;">
+                                        <div class="progress-bar progress-bar-custom" th:data-rate="${item.rate}"
+                                             th:styleappend="'width:' + ${item.rate} + '%'"></div>
+                                    </div>
+                                    <span class="fw-bold small" th:text="${item.rate + '%'}">83%</span>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <span class="me-1" th:text="${item.homework + '%'}">85%</span>
+                                    <i class="bi text-success" th:classappend="${item.homework >= 80} ? 'bi-arrow-up' : (${item.homework >= 60} ? 'bi-dash text-muted' : 'bi-arrow-down text-danger')"></i>
+                                </div>
+                            </td>
+                            <td class="small text-muted" th:text="${item.last}">2024-01-12 15:30</td>
+                            <td>
+                                <span class="badge badge-success" th:if="${item.status == '正常'}">
+                                    <i class="bi bi-check-circle me-1"></i>正常
+                                </span>
+                                <span class="badge badge-warning" th:if="${item.status == '警告'}">
+                                    <i class="bi bi-exclamation-triangle me-1"></i>警告
+                                </span>
+                                <span class="badge badge-danger" th:if="${item.status == '危险'}">
+                                    <i class="bi bi-exclamation-octagon me-1"></i>危险
+                                </span>
+                            </td>
+                            <td class="pe-4">
+                                <div class="btn-group btn-group-sm">
+                                    <button type="button" class="btn btn-outline-primary" title="查看详情"><i class="bi bi-eye"></i></button>
+                                    <button type="button" class="btn btn-outline-secondary" title="强制刷新"><i class="bi bi-arrow-clockwise"></i></button>
+                                    <button type="button" class="btn btn-outline-danger" title="生成异常"><i class="bi bi-plus-lg"></i></button>
+                                </div>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card-footer bg-white border-0 p-4">
+                <nav aria-label="Page navigation">
+                    <ul class="pagination justify-content-between align-items-center mb-0">
+                        <li class="page-item">
+                            <span class="text-muted small">显示 1-8 共 1,246 条</span>
+                        </li>
+                        <li>
+                            <ul class="pagination mb-0">
+                                <li class="page-item disabled">
+                                    <a class="page-link" href="#"><i class="bi bi-chevron-double-left"></i></a>
+                                </li>
+                                <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                                <li class="page-item"><a class="page-link" href="#">2</a></li>
+                                <li class="page-item"><a class="page-link" href="#">3</a></li>
+                                <li class="page-item"><span class="page-link">...</span></li>
+                                <li class="page-item"><a class="page-link" href="#">156</a></li>
+                                <li class="page-item">
+                                    <a class="page-link" href="#"><i class="bi bi-chevron-double-right"></i></a>
+                                </li>
+                            </ul>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+
+        <div th:insert="~{layout/fragments :: footer}"></div>
+    </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script th:src="@{/js/app.js}"></script>
+<script>
+    renderProgressBars();
+
+    function refreshProgress() {
+        showToast('进度数据已刷新', 'success');
+    }
+</script>
+</body>
+</html>
