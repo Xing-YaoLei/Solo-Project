@@ -135,35 +135,55 @@ export default function ShareExportModal() {
     setSelectedAdvisor(currentAdvisor || '')
     setSelectedStudent('')
     fetchDepartments()
-    if (currentDepartment) {
-      fetchAdvisors(currentDepartment)
-    }
     if (currentAdvisor) {
       fetchStudents(currentAdvisor)
     } else if (currentDepartment) {
+      fetchAdvisors(currentDepartment)
       fetchStudents(undefined, currentDepartment)
+    } else {
+      fetchAdvisors()
+      fetchStudents()
     }
   }, [shareModalOpen, currentRole, currentDepartment, currentAdvisor, fetchDepartments, fetchAdvisors, fetchStudents])
 
   useEffect(() => {
     if (!shareModalOpen) return
-    if (selectedDepartment) {
-      fetchAdvisors(selectedDepartment)
-    } else {
-      setAdvisorOptions([])
+    if (scopeType === 'department') {
+      fetchDepartments()
+    } else if (scopeType === 'advisor') {
+      if (selectedDepartment) {
+        fetchAdvisors(selectedDepartment)
+      } else {
+        fetchAdvisors()
+      }
+    } else if (scopeType === 'student') {
+      if (selectedAdvisor) {
+        fetchStudents(selectedAdvisor)
+      } else if (selectedDepartment) {
+        fetchStudents(undefined, selectedDepartment)
+      } else {
+        fetchStudents()
+      }
     }
-  }, [selectedDepartment, shareModalOpen, fetchAdvisors])
+  }, [scopeType, shareModalOpen, selectedDepartment, selectedAdvisor, fetchAdvisors, fetchStudents, fetchDepartments])
 
   useEffect(() => {
     if (!shareModalOpen) return
-    if (selectedAdvisor) {
-      fetchStudents(selectedAdvisor)
-    } else if (selectedDepartment) {
-      fetchStudents(undefined, selectedDepartment)
-    } else {
-      setStudentOptions([])
+    if (scopeType === 'advisor' || scopeType === 'student') {
+      if (selectedDepartment) {
+        fetchAdvisors(selectedDepartment)
+      }
     }
-  }, [selectedAdvisor, selectedDepartment, shareModalOpen, fetchStudents])
+  }, [selectedDepartment, scopeType, shareModalOpen, fetchAdvisors])
+
+  useEffect(() => {
+    if (!shareModalOpen) return
+    if (scopeType === 'student') {
+      if (selectedAdvisor) {
+        fetchStudents(selectedAdvisor)
+      }
+    }
+  }, [selectedAdvisor, scopeType, shareModalOpen, fetchStudents])
 
   if (!shareModalOpen) return null
 
@@ -373,7 +393,6 @@ export default function ShareExportModal() {
                     <button
                       onClick={() => {
                         setScopeType('advisor')
-                        setSelectedDepartment('')
                         setSelectedStudent('')
                       }}
                       className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200"
@@ -390,8 +409,6 @@ export default function ShareExportModal() {
                     <button
                       onClick={() => {
                         setScopeType('student')
-                        setSelectedDepartment('')
-                        setSelectedAdvisor('')
                       }}
                       className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200"
                       style={{
@@ -431,48 +448,114 @@ export default function ShareExportModal() {
               )}
 
               {scopeType === 'advisor' && (
-                <div>
-                  <label className="block text-xs font-medium mb-1.5" style={{ color: '#64748B' }}>
-                    选择导师
-                  </label>
-                  <select
-                    value={selectedAdvisor}
-                    onChange={(e) => {
-                      setSelectedAdvisor(e.target.value)
-                      setSelectedStudent('')
-                    }}
-                    disabled={scopeLoading}
-                    className="w-full px-3 py-2 rounded-lg text-sm border outline-none transition-colors disabled:opacity-50"
-                    style={{ borderColor: '#E2E8F0', color: '#1E293B' }}
-                  >
-                    <option value="">请选择导师</option>
-                    {advisorOptions.map((a) => (
-                      <option key={a.id} value={a.id}>{a.name}</option>
-                    ))}
-                  </select>
-                </div>
+                <>
+                  <div>
+                    <label className="block text-xs font-medium mb-1.5" style={{ color: '#64748B' }}>
+                      所属院系（可选）
+                    </label>
+                    <select
+                      value={selectedDepartment}
+                      onChange={(e) => {
+                        setSelectedDepartment(e.target.value)
+                        setSelectedAdvisor('')
+                        setSelectedStudent('')
+                      }}
+                      disabled={scopeLoading}
+                      className="w-full px-3 py-2 rounded-lg text-sm border outline-none transition-colors disabled:opacity-50"
+                      style={{ borderColor: '#E2E8F0', color: '#1E293B' }}
+                    >
+                      <option value="">全部院系</option>
+                      {departmentOptions.map((d) => (
+                        <option key={d.id} value={d.id}>{d.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1.5" style={{ color: '#64748B' }}>
+                      选择导师
+                    </label>
+                    <select
+                      value={selectedAdvisor}
+                      onChange={(e) => {
+                        setSelectedAdvisor(e.target.value)
+                        setSelectedStudent('')
+                      }}
+                      disabled={scopeLoading}
+                      className="w-full px-3 py-2 rounded-lg text-sm border outline-none transition-colors disabled:opacity-50"
+                      style={{ borderColor: '#E2E8F0', color: '#1E293B' }}
+                    >
+                      <option value="">请选择导师</option>
+                      {advisorOptions.map((a) => (
+                        <option key={a.id} value={a.id}>{a.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </>
               )}
 
               {scopeType === 'student' && (
-                <div>
-                  <label className="block text-xs font-medium mb-1.5" style={{ color: '#64748B' }}>
-                    选择学生
-                  </label>
-                  <select
-                    value={selectedStudent}
-                    onChange={(e) => setSelectedStudent(e.target.value)}
-                    disabled={scopeLoading}
-                    className="w-full px-3 py-2 rounded-lg text-sm border outline-none transition-colors disabled:opacity-50"
-                    style={{ borderColor: '#E2E8F0', color: '#1E293B' }}
-                  >
-                    <option value="">请选择学生</option>
-                    {studentOptions.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}（{s.studentNo}）
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <>
+                  <div>
+                    <label className="block text-xs font-medium mb-1.5" style={{ color: '#64748B' }}>
+                      所属院系（可选）
+                    </label>
+                    <select
+                      value={selectedDepartment}
+                      onChange={(e) => {
+                        setSelectedDepartment(e.target.value)
+                        setSelectedAdvisor('')
+                        setSelectedStudent('')
+                      }}
+                      disabled={scopeLoading}
+                      className="w-full px-3 py-2 rounded-lg text-sm border outline-none transition-colors disabled:opacity-50"
+                      style={{ borderColor: '#E2E8F0', color: '#1E293B' }}
+                    >
+                      <option value="">全部院系</option>
+                      {departmentOptions.map((d) => (
+                        <option key={d.id} value={d.id}>{d.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1.5" style={{ color: '#64748B' }}>
+                      所属导师（可选）
+                    </label>
+                    <select
+                      value={selectedAdvisor}
+                      onChange={(e) => {
+                        setSelectedAdvisor(e.target.value)
+                        setSelectedStudent('')
+                      }}
+                      disabled={scopeLoading}
+                      className="w-full px-3 py-2 rounded-lg text-sm border outline-none transition-colors disabled:opacity-50"
+                      style={{ borderColor: '#E2E8F0', color: '#1E293B' }}
+                    >
+                      <option value="">全部导师</option>
+                      {advisorOptions.map((a) => (
+                        <option key={a.id} value={a.id}>{a.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1.5" style={{ color: '#64748B' }}>
+                      选择学生
+                    </label>
+                    <select
+                      value={selectedStudent}
+                      onChange={(e) => setSelectedStudent(e.target.value)}
+                      disabled={scopeLoading}
+                      className="w-full px-3 py-2 rounded-lg text-sm border outline-none transition-colors disabled:opacity-50"
+                      style={{ borderColor: '#E2E8F0', color: '#1E293B' }}
+                    >
+                      <option value="">请选择学生</option>
+                      {studentOptions.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name}（{s.studentNo}）
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </>
               )}
 
               <div>
