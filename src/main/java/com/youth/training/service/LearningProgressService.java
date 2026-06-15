@@ -4,11 +4,14 @@ import com.youth.training.dto.StatusChangeDTO;
 import com.youth.training.entity.Chapter;
 import com.youth.training.entity.Homework;
 import com.youth.training.entity.LearningProgress;
+import com.youth.training.entity.ScoreFeedback;
 import com.youth.training.enums.CommonStatus;
 import com.youth.training.enums.ProgressType;
 import com.youth.training.repository.ChapterRepository;
 import com.youth.training.repository.HomeworkRepository;
 import com.youth.training.repository.LearningProgressRepository;
+import com.youth.training.repository.QuestionRepository;
+import com.youth.training.repository.ScoreFeedbackRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -34,6 +37,77 @@ public class LearningProgressService {
 
     @Autowired
     private StatusHistoryService statusHistoryService;
+
+    @Autowired
+    private ScoreFeedbackRepository scoreFeedbackRepository;
+
+    @Autowired
+    private QuestionRepository questionRepository;
+
+    @Transactional
+    @CacheEvict(value = {"learningProgress", "studentProgress", "warningProgress"}, allEntries = true)
+    public LearningProgress calculateHomeworkProgress(Long studentId, Long courseId, Long homeworkId) {
+        int totalQuestions = questionRepository.countByHomeworkId(homeworkId);
+
+        int reviewedQuestions = 0;
+        if (totalQuestions > 0) {
+            List<ScoreFeedback> feedbacks = scoreFeedbackRepository.findByStudentIdAndHomeworkId(studentId, homeworkId);
+            long reviewedCount = feedbacks.stream()
+                    .filter(f -> "REVIEWED".equals(f.getStatus()))
+                    .map(ScoreFeedback::getQuestionId)
+                    .distinct()
+                    .count();
+            reviewedQuestions = (int) reviewedCount;
+        }
+
+        double completionRate = totalQuestions > 0 ? (reviewedQuestions * 100.0 / totalQuestions) : 0.0;
+        completionRate = Math.round(completionRate * 100.0) / 100.0;
+
+        LearningProgress progress;
+        String oldStatus = "";
+
+        List<LearningProgress> existingList = learningProgressRepository
+                .findByStudentIdAndProgressType(studentId, ProgressType.HOMEWORK.getCode());
+        Optional<LearningProgress> existingOpt = existingList.stream()
+                .filter(p -> p.getCourseId().equals(courseId))
+                .filter(p -> homeworkId.equals(p.getHomeworkId()))
+                .findFirst();
+
+        if (existingOpt.isPresent()) {
+            progress = existingOpt.get();
+            oldStatus = progress.getStatus();
+        } else {
+            progress = new LearningProgress();
+            progress.setStudentId(studentId);
+            progress.setCourseId(courseId);
+            progress.setHomeworkId(homeworkId);
+            progress.setProgressType(ProgressType.HOMEWORK.getCode());
+            progress.setStatus(CommonStatus.ACTIVE.getCode());
+        }
+
+        progress.setCompletionRate(completionRate);
+        progress.setCompletedCount(reviewedQuestions);
+        progress.setTotalCount(totalQuestions);
+        progress.setLastStudyTime(LocalDateTime.now());
+
+        String newStatus = completionRate >= 100.0 ? "COMPLETED" : CommonStatus.ACTIVE.getCode();
+        progress.setStatus(newStatus);
+
+        LearningProgress saved = learningProgressRepository.save(progress);
+
+        if (!Objects.equals(oldStatus, newStatus)) {
+            StatusChangeDTO statusDTO = new StatusChangeDTO();
+            statusDTO.setBusinessId(saved.getId());
+            statusDTO.setBusinessType("LEARNING_PROGRESS");
+            statusDTO.setOldStatus(oldStatus);
+            statusDTO.setNewStatus(newStatus);
+            statusDTO.setChangeReason("作业进度状态变更，完成率: " + completionRate + "%");
+            statusDTO.setOperator("SYSTEM");
+            statusHistoryService.saveStatusHistory(statusDTO);
+        }
+
+        return saved;
+    }
 
     @Transactional
     @CacheEvict(value = {"learningProgress", "studentProgress", "warningProgress"}, allEntries = true)

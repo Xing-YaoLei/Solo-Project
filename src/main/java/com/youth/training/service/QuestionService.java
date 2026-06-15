@@ -40,6 +40,9 @@ public class QuestionService {
     @Transactional
     @CacheEvict(value = {"question", "questionList", "questionTags"}, allEntries = true)
     public Question createQuestion(Question question, List<Long> tagIds) {
+        if (question.getStatus() == null) {
+            question.setStatus(CommonStatus.ACTIVE.getCode());
+        }
         Question saved = questionRepository.save(question);
 
         if (tagIds != null && !tagIds.isEmpty()) {

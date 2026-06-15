@@ -36,6 +36,9 @@ public class HomeworkService {
     @Transactional
     @CacheEvict(value = {"homework", "homeworkByCourse"}, allEntries = true)
     public Homework createHomework(Homework homework) {
+        if (homework.getStatus() == null) {
+            homework.setStatus(CommonStatus.ACTIVE.getCode());
+        }
         Homework saved = homeworkRepository.save(homework);
 
         courseService.recalculateCourseStats(homework.getCourseId());

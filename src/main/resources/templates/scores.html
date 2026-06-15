@@ -46,6 +46,13 @@
                             </div>
                         </div>
                     </div>
+                    <div class="col-md-3 d-flex align-items-end">
+                        <div class="d-grid gap-2 w-100">
+                            <button type="button" class="btn btn-success" onclick="openAddFeedbackModal()">
+                                <i class="bi bi-plus-circle me-1"></i>新增成绩反馈
+                            </button>
+                        </div>
+                    </div>
                 </form>
             </div>
         </div>
@@ -150,6 +157,62 @@
     </div>
 </div>
 
+<div class="modal fade" id="addFeedbackModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content border-0 rounded-4">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold"><i class="bi bi-plus-circle text-primary me-2"></i>新增成绩反馈</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form class="row g-3" id="addFeedbackForm">
+                    <input type="hidden" id="fbStatus" value="PENDING">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">学生 <span class="text-danger">*</span></label>
+                        <select class="form-select" id="fbStudentId" required>
+                            <option value="">请选择学生</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">课程 <span class="text-danger">*</span></label>
+                        <select class="form-select" id="fbCourseId" required>
+                            <option value="">请选择课程</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">作业 <span class="text-danger">*</span></label>
+                        <select class="form-select" id="fbHomeworkId" disabled required>
+                            <option value="">请先选择课程</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">题目</label>
+                        <select class="form-select" id="fbQuestionId" disabled>
+                            <option value="">请先选择作业</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">得分 <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" id="fbScore" step="0.5" min="0" required placeholder="请输入得分">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">总分 <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" id="fbTotalScore" step="0.5" min="0" required placeholder="请输入总分">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">学生作答内容</label>
+                        <textarea class="form-control" id="fbAnswerContent" rows="3" placeholder="请输入学生作答内容（可选）"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveNewFeedback()"><i class="bi bi-save me-1"></i>保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script th:src="@{/js/app.js}"></script>
 <script>
@@ -159,14 +222,16 @@
 
     async function loadStudents() {
         const res = await ApiClient.get('/students/list');
-        if (!res.success) return;
-        const select = document.getElementById('studentSelect');
-        (res.data || []).forEach(function (s) {
-            const opt = document.createElement('option');
-            opt.value = s.id;
-            opt.textContent = s.studentName;
-            select.appendChild(opt);
-        });
+        if (res.success && res.data && res.data.code === 200) {
+            const select = document.getElementById('studentSelect');
+            const students = res.data.data || [];
+            students.forEach(function (s) {
+                const opt = document.createElement('option');
+                opt.value = s.id;
+                opt.textContent = s.studentName;
+                select.appendChild(opt);
+            });
+        }
     }
 
     async function loadFeedbacks() {
@@ -176,9 +241,11 @@
         if (!studentId) {
             if (status) {
                 const res = await ApiClient.get('/scores/status/' + status);
-                if (res.success) {
-                    allFeedbacks = res.data || [];
+                if (res.success && res.data && res.data.code === 200) {
+                    allFeedbacks = res.data.data || [];
                 } else {
+                    const err = res.data?.message || res.error;
+                    if (err) showToast('加载反馈数据失败: ' + err, 'error');
                     allFeedbacks = [];
                 }
             } else {
@@ -191,12 +258,17 @@
 
         currentStudentId = studentId;
         const res = await ApiClient.get('/scores/student/' + studentId);
-        if (!res.success) {
-            showToast('加载反馈数据失败: ' + res.error, 'error');
+        if (res.success && res.data && res.data.code === 200) {
+            allFeedbacks = res.data.data || [];
+        } else {
+            const err = res.data?.message || res.error || '加载失败';
+            showToast('加载反馈数据失败: ' + err, 'error');
+            allFeedbacks = [];
+            renderTable(allFeedbacks);
+            document.getElementById('weakPointCard').style.display = 'none';
             return;
         }
 
-        allFeedbacks = res.data || [];
         var filtered = allFeedbacks;
         if (status) {
             filtered = allFeedbacks.filter(function (f) { return f.status === status; });
@@ -267,27 +339,28 @@
     async function loadWeakAnalysis(studentId) {
         var card = document.getElementById('weakPointCard');
         var res = await ApiClient.get('/flow/student/' + studentId + '/weak-analysis');
-        if (!res.success || !res.data) {
+        if (res.success && res.data && res.data.code === 200) {
+            card.style.display = '';
+            var data = res.data.data;
+
+            document.getElementById('weakPointSummary').innerHTML =
+                '<div class="d-flex gap-3 mb-2">'
+                + '<div class="text-center"><span class="fs-4 fw-bold text-danger">' + (data.lowScoreFeedbackCount || 0) + '</span><br><small class="text-muted">低分反馈</small></div>'
+                + '<div class="text-center"><span class="fs-4 fw-bold text-primary">' + (data.totalFeedbackCount || 0) + '</span><br><small class="text-muted">总反馈数</small></div>'
+                + '</div>';
+
+            var weakPoints = data.weakPoints || {};
+            var tagsHtml = Object.keys(weakPoints).map(function (tag) {
+                return '<span class="badge bg-danger bg-opacity-10 text-danger me-2 mb-2 px-3 py-2 rounded-pill">'
+                    + tag + ' <span class="badge bg-danger ms-1">' + weakPoints[tag] + '</span></span>';
+            }).join('');
+
+            document.getElementById('weakPointTags').innerHTML = tagsHtml || '<span class="text-muted">暂无弱项数据</span>';
+        } else {
+            const err = res.data?.message || res.error;
+            if (err && res.success === false) showToast('加载弱项分析失败: ' + err, 'error');
             card.style.display = 'none';
-            return;
         }
-
-        card.style.display = '';
-        var data = res.data;
-
-        document.getElementById('weakPointSummary').innerHTML =
-            '<div class="d-flex gap-3 mb-2">'
-            + '<div class="text-center"><span class="fs-4 fw-bold text-danger">' + (data.lowScoreFeedbackCount || 0) + '</span><br><small class="text-muted">低分反馈</small></div>'
-            + '<div class="text-center"><span class="fs-4 fw-bold text-primary">' + (data.totalFeedbackCount || 0) + '</span><br><small class="text-muted">总反馈数</small></div>'
-            + '</div>';
-
-        var weakPoints = data.weakPoints || {};
-        var tagsHtml = Object.keys(weakPoints).map(function (tag) {
-            return '<span class="badge bg-danger bg-opacity-10 text-danger me-2 mb-2 px-3 py-2 rounded-pill">'
-                + tag + ' <span class="badge bg-danger ms-1">' + weakPoints[tag] + '</span></span>';
-        }).join('');
-
-        document.getElementById('weakPointTags').innerHTML = tagsHtml || '<span class="text-muted">暂无弱项数据</span>';
     }
 
     window._openReview = function (id) {
@@ -323,15 +396,140 @@
 
         var res = await ApiClient.put('/scores/' + id + '/review?' + params.toString());
 
-        if (!res.success) {
-            showToast('审核失败: ' + res.error, 'error');
+        if (res.success && res.data && res.data.code === 200) {
+            closeModal('reviewModal');
+            showToast('审核完成，已触发进度重算与异常检查', 'success');
+            loadFeedbacks();
+        } else {
+            const err = res.data?.message || res.error || '操作失败';
+            showToast('审核失败: ' + err, 'error');
+        }
+    });
+
+    window.openAddFeedbackModal = async function () {
+        document.getElementById('addFeedbackForm').reset();
+        document.getElementById('fbStatus').value = 'PENDING';
+        document.getElementById('fbHomeworkId').disabled = true;
+        document.getElementById('fbHomeworkId').innerHTML = '<option value="">请先选择课程</option>';
+        document.getElementById('fbQuestionId').disabled = true;
+        document.getElementById('fbQuestionId').innerHTML = '<option value="">请先选择作业</option>';
+
+        const stuSel = document.getElementById('fbStudentId');
+        stuSel.innerHTML = '<option value="">请选择学生</option>';
+        const stuRes = await ApiClient.get('/students/list');
+        if (stuRes.success && stuRes.data && stuRes.data.code === 200) {
+            (stuRes.data.data || []).forEach(function (s) {
+                stuSel.innerHTML += '<option value="' + s.id + '">' + s.studentName + '</option>';
+            });
+        } else {
+            const err = stuRes.data?.message || stuRes.error || '加载学生列表失败';
+            showToast('加载学生列表失败: ' + err, 'error');
+        }
+
+        const crsSel = document.getElementById('fbCourseId');
+        crsSel.innerHTML = '<option value="">请选择课程</option>';
+        const crsRes = await ApiClient.get('/courses/list');
+        if (crsRes.success && crsRes.data && crsRes.data.code === 200) {
+            (crsRes.data.data || []).forEach(function (c) {
+                crsSel.innerHTML += '<option value="' + c.id + '">' + (c.courseName || c.name || '') + '</option>';
+            });
+        } else {
+            const err = crsRes.data?.message || crsRes.error || '加载课程列表失败';
+            showToast('加载课程列表失败: ' + err, 'error');
+        }
+
+        openModal('addFeedbackModal');
+    };
+
+    document.getElementById('fbCourseId').addEventListener('change', async function () {
+        const courseId = this.value;
+        const hwSel = document.getElementById('fbHomeworkId');
+        hwSel.disabled = true;
+        hwSel.innerHTML = '<option value="">请选择作业</option>';
+        const qSel = document.getElementById('fbQuestionId');
+        qSel.disabled = true;
+        qSel.innerHTML = '<option value="">请先选择作业</option>';
+
+        if (!courseId) {
+            hwSel.innerHTML = '<option value="">请先选择课程</option>';
             return;
         }
 
-        closeModal('reviewModal');
-        showToast('审核完成，已触发进度重算与异常检查', 'success');
-        loadFeedbacks();
+        const res = await ApiClient.get('/homework/course/' + courseId);
+        if (res.success && res.data && res.data.code === 200) {
+            hwSel.disabled = false;
+            (res.data.data || []).forEach(function (h) {
+                hwSel.innerHTML += '<option value="' + h.id + '">' + (h.homeworkName || h.title || '') + '</option>';
+            });
+        } else {
+            const err = res.data?.message || res.error || '加载作业列表失败';
+            showToast('加载作业列表失败: ' + err, 'error');
+        }
     });
+
+    document.getElementById('fbHomeworkId').addEventListener('change', async function () {
+        const homeworkId = this.value;
+        const qSel = document.getElementById('fbQuestionId');
+        qSel.disabled = true;
+        qSel.innerHTML = '<option value="">请选择题目</option>';
+
+        if (!homeworkId) {
+            qSel.innerHTML = '<option value="">请先选择作业</option>';
+            return;
+        }
+
+        const res = await ApiClient.get('/questions/homework/' + homeworkId);
+        if (res.success && res.data && res.data.code === 200) {
+            qSel.disabled = false;
+            (res.data.data || []).forEach(function (q) {
+                qSel.innerHTML += '<option value="' + q.id + '">' + (q.questionText ? q.questionText.substring(0, 30) : ('题目' + q.id)) + '</option>';
+            });
+            if (qSel.options.length > 1) {
+                qSel.innerHTML += '<option value="">（不指定题目）</option>';
+            }
+        } else {
+            const err = res.data?.message || res.error || '加载题目列表失败';
+            showToast('加载题目列表失败: ' + err, 'error');
+        }
+    });
+
+    window.saveNewFeedback = async function () {
+        const studentId = document.getElementById('fbStudentId').value;
+        const homeworkId = document.getElementById('fbHomeworkId').value;
+        const questionId = document.getElementById('fbQuestionId').value;
+        const score = document.getElementById('fbScore').value;
+        const totalScore = document.getElementById('fbTotalScore').value;
+        const answerContent = document.getElementById('fbAnswerContent').value.trim();
+        const status = document.getElementById('fbStatus').value || 'PENDING';
+
+        if (!studentId) { showToast('请选择学生', 'warning'); return; }
+        if (!homeworkId) { showToast('请选择作业', 'warning'); return; }
+        if (score === '' || score === null) { showToast('请输入得分', 'warning'); return; }
+        if (totalScore === '' || totalScore === null) { showToast('请输入总分', 'warning'); return; }
+
+        const payload = {
+            studentId: Number(studentId),
+            homeworkId: Number(homeworkId),
+            score: parseFloat(score),
+            totalScore: parseFloat(totalScore),
+            status: status
+        };
+        if (questionId) payload.questionId = Number(questionId);
+        if (answerContent) payload.answerContent = answerContent;
+
+        const res = await ApiClient.post('/scores/', payload);
+
+        if (res.success && res.data && res.data.code === 200) {
+            const newFb = res.data.data;
+            showToast('成绩反馈创建成功', 'success');
+            closeModal('addFeedbackModal');
+            document.getElementById('addFeedbackForm').reset();
+            loadFeedbacks();
+        } else {
+            const err = res.data?.message || res.error || '操作失败';
+            showToast('创建失败: ' + err, 'error');
+        }
+    };
 
     document.getElementById('filterForm').addEventListener('submit', function (e) {
         e.preventDefault();

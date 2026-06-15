@@ -337,10 +337,11 @@
         if (status) params.status = status;
 
         const result = await ApiClient.get('/courses/list', params);
-        if (result.success) {
-            renderCourseList(result.data);
+        if (result.success && result.data && result.data.code === 200) {
+            renderCourseList(result.data.data);
         } else {
-            showToast('加载课程列表失败: ' + result.error, 'error');
+            const errMsg = result.data?.message || result.error || '操作失败';
+            showToast('加载课程列表失败: ' + errMsg, 'error');
         }
     }
 
@@ -383,10 +384,11 @@
         updateBreadcrumb(['课程', '章节列表']);
 
         const result = await ApiClient.get('/chapters/course/' + courseId);
-        if (result.success) {
-            renderChapterList(result.data);
+        if (result.success && result.data && result.data.code === 200) {
+            renderChapterList(result.data.data);
         } else {
-            showToast('加载章节列表失败: ' + result.error, 'error');
+            const errMsg = result.data?.message || result.error || '操作失败';
+            showToast('加载章节列表失败: ' + errMsg, 'error');
         }
     };
 
@@ -427,10 +429,11 @@
         updateBreadcrumb(['课程', '章节列表', '作业列表']);
 
         const result = await ApiClient.get('/homework/chapter/' + chapterId);
-        if (result.success) {
-            renderHomeworkList(result.data);
+        if (result.success && result.data && result.data.code === 200) {
+            renderHomeworkList(result.data.data);
         } else {
-            showToast('加载作业列表失败: ' + result.error, 'error');
+            const errMsg = result.data?.message || result.error || '操作失败';
+            showToast('加载作业列表失败: ' + errMsg, 'error');
         }
     };
 
@@ -507,23 +510,25 @@
             totalHomeworks: 0
         });
 
-        if (result.success) {
+        if (result.success && result.data && result.data.code === 200) {
             showToast('课程创建成功', 'success');
             closeModal('addCourseModal');
             document.getElementById('addCourseForm').reset();
             loadCourses();
         } else {
-            showToast('课程创建失败: ' + result.error, 'error');
+            const errMsg = result.data?.message || result.error || '操作失败';
+            showToast('课程创建失败: ' + errMsg, 'error');
         }
     };
 
     window.editCourse = async function (id) {
         const result = await ApiClient.get('/courses/' + id);
-        if (!result.success) {
-            showToast('获取课程信息失败', 'error');
+        if (!result.success || !result.data || result.data.code !== 200) {
+            const errMsg = result.data?.message || '获取课程信息失败';
+            showToast(errMsg, 'error');
             return;
         }
-        const c = result.data;
+        const c = result.data.data;
         document.getElementById('courseName').value = c.courseName || '';
         document.getElementById('courseSubject').value = c.subject || '';
         document.getElementById('courseDifficulty').value = c.difficultyLevel || '';
@@ -540,14 +545,15 @@
                 totalChapters: c.totalChapters,
                 totalHomeworks: c.totalHomeworks
             });
-            if (updateResult.success) {
+            if (updateResult.success && updateResult.data && updateResult.data.code === 200) {
                 showToast('课程更新成功', 'success');
                 closeModal('addCourseModal');
                 document.getElementById('addCourseForm').reset();
                 saveBtn.onclick = window.saveCourse;
                 loadCourses();
             } else {
-                showToast('课程更新失败: ' + updateResult.error, 'error');
+                const errMsg = updateResult.data?.message || updateResult.error || '操作失败';
+                showToast('课程更新失败: ' + errMsg, 'error');
             }
         };
     };
@@ -556,11 +562,12 @@
         const confirmed = await confirmDialog('确定要删除该课程吗？删除后不可恢复。');
         if (!confirmed) return;
         const result = await ApiClient.delete('/courses/' + id);
-        if (result.success) {
+        if (result.success && result.data && result.data.code === 200) {
             showToast('课程已删除', 'success');
             loadCourses();
         } else {
-            showToast('删除失败: ' + result.error, 'error');
+            const errMsg = result.data?.message || result.error || '操作失败';
+            showToast('删除失败: ' + errMsg, 'error');
         }
     };
 
@@ -593,23 +600,25 @@
             sortOrder: sortOrder ? Number(sortOrder) : 0
         });
 
-        if (result.success) {
+        if (result.success && result.data && result.data.code === 200) {
             showToast('章节创建成功', 'success');
             closeModal('addChapterModal');
             document.getElementById('addChapterForm').reset();
             window.viewChapters(currentCourseId, currentCourseName);
         } else {
-            showToast('章节创建失败: ' + result.error, 'error');
+            const errMsg = result.data?.message || result.error || '操作失败';
+            showToast('章节创建失败: ' + errMsg, 'error');
         }
     };
 
     window.editChapter = async function (id) {
         const result = await ApiClient.get('/chapters/' + id);
-        if (!result.success) {
-            showToast('获取章节信息失败', 'error');
+        if (!result.success || !result.data || result.data.code !== 200) {
+            const errMsg = result.data?.message || '获取章节信息失败';
+            showToast(errMsg, 'error');
             return;
         }
-        const ch = result.data;
+        const ch = result.data.data;
         document.getElementById('chapterCourseId').value = ch.courseId;
         document.getElementById('chapterNo').value = ch.chapterNo;
         document.getElementById('chapterName').value = ch.chapterName || '';
@@ -628,14 +637,15 @@
                 studyHours: Number(document.getElementById('chapterStudyHours').value),
                 sortOrder: document.getElementById('chapterSortOrder').value ? Number(document.getElementById('chapterSortOrder').value) : 0
             });
-            if (updateResult.success) {
+            if (updateResult.success && updateResult.data && updateResult.data.code === 200) {
                 showToast('章节更新成功', 'success');
                 closeModal('addChapterModal');
                 document.getElementById('addChapterForm').reset();
                 saveBtn.onclick = window.saveChapter;
                 window.viewChapters(currentCourseId, currentCourseName);
             } else {
-                showToast('章节更新失败: ' + updateResult.error, 'error');
+                const errMsg = updateResult.data?.message || updateResult.error || '操作失败';
+                showToast('章节更新失败: ' + errMsg, 'error');
             }
         };
     };
@@ -644,11 +654,12 @@
         const confirmed = await confirmDialog('确定要删除该章节吗？');
         if (!confirmed) return;
         const result = await ApiClient.delete('/chapters/' + id);
-        if (result.success) {
+        if (result.success && result.data && result.data.code === 200) {
             showToast('章节已删除', 'success');
             window.viewChapters(currentCourseId, currentCourseName);
         } else {
-            showToast('删除失败: ' + result.error, 'error');
+            const errMsg = result.data?.message || result.error || '操作失败';
+            showToast('删除失败: ' + errMsg, 'error');
         }
     };
 
@@ -685,23 +696,25 @@
             sortOrder: sortOrder ? Number(sortOrder) : 0
         });
 
-        if (result.success) {
+        if (result.success && result.data && result.data.code === 200) {
             showToast('作业创建成功', 'success');
             closeModal('addHomeworkModal');
             document.getElementById('addHomeworkForm').reset();
             window.viewHomeworks(currentChapterId, currentChapterName);
         } else {
-            showToast('作业创建失败: ' + result.error, 'error');
+            const errMsg = result.data?.message || result.error || '操作失败';
+            showToast('作业创建失败: ' + errMsg, 'error');
         }
     };
 
     window.editHomework = async function (id) {
         const result = await ApiClient.get('/homework/' + id);
-        if (!result.success) {
-            showToast('获取作业信息失败', 'error');
+        if (!result.success || !result.data || result.data.code !== 200) {
+            const errMsg = result.data?.message || '获取作业信息失败';
+            showToast(errMsg, 'error');
             return;
         }
-        const hw = result.data;
+        const hw = result.data.data;
         document.getElementById('homeworkCourseId').value = hw.courseId;
         document.getElementById('homeworkChapterId').value = hw.chapterId;
         document.getElementById('homeworkName').value = hw.homeworkName || '';
@@ -724,14 +737,15 @@
                 deadline: document.getElementById('homeworkDeadline').value || null,
                 sortOrder: document.getElementById('homeworkSortOrder').value ? Number(document.getElementById('homeworkSortOrder').value) : 0
             });
-            if (updateResult.success) {
+            if (updateResult.success && updateResult.data && updateResult.data.code === 200) {
                 showToast('作业更新成功', 'success');
                 closeModal('addHomeworkModal');
                 document.getElementById('addHomeworkForm').reset();
                 saveBtn.onclick = window.saveHomework;
                 window.viewHomeworks(currentChapterId, currentChapterName);
             } else {
-                showToast('作业更新失败: ' + updateResult.error, 'error');
+                const errMsg = updateResult.data?.message || updateResult.error || '操作失败';
+                showToast('作业更新失败: ' + errMsg, 'error');
             }
         };
     };
@@ -740,11 +754,12 @@
         const confirmed = await confirmDialog('确定要删除该作业吗？');
         if (!confirmed) return;
         const result = await ApiClient.delete('/homework/' + id);
-        if (result.success) {
+        if (result.success && result.data && result.data.code === 200) {
             showToast('作业已删除', 'success');
             window.viewHomeworks(currentChapterId, currentChapterName);
         } else {
-            showToast('删除失败: ' + result.error, 'error');
+            const errMsg = result.data?.message || result.error || '操作失败';
+            showToast('删除失败: ' + errMsg, 'error');
         }
     };
 

@@ -283,8 +283,9 @@
         var res = await ApiClient.get('/courses/list');
         var sel = document.getElementById('filterCourse');
         sel.innerHTML = '<option value="">请选择课程</option>';
-        if (res.success && res.data) {
-            var list = Array.isArray(res.data) ? res.data : (res.data.records || res.data.list || []);
+        if (res.success && res.data && res.data.code === 200) {
+            var d = res.data.data;
+            var list = Array.isArray(d) ? d : (d.records || d.list || []);
             list.forEach(function (c) {
                 sel.innerHTML += '<option value="' + (c.id || c.courseId) + '">' + escapeHtml(c.courseName || c.name || '') + '</option>';
             });
@@ -301,8 +302,9 @@
             return;
         }
         var res = await ApiClient.get('/homework/course/' + courseId);
-        if (res.success && res.data) {
-            var list = Array.isArray(res.data) ? res.data : (res.data.records || res.data.list || []);
+        if (res.success && res.data && res.data.code === 200) {
+            var d = res.data.data;
+            var list = Array.isArray(d) ? d : (d.records || d.list || []);
             list.forEach(function (h) {
                 sel.innerHTML += '<option value="' + (h.id || h.homeworkId) + '">' + escapeHtml(h.title || h.homeworkName || '') + '</option>';
             });
@@ -318,8 +320,9 @@
             return;
         }
         var res = await ApiClient.get('/questions/homework/' + homeworkId);
-        if (res.success && res.data) {
-            var list = Array.isArray(res.data) ? res.data : (res.data.records || res.data.list || []);
+        if (res.success && res.data && res.data.code === 200) {
+            var d = res.data.data;
+            var list = Array.isArray(d) ? d : (d.records || d.list || []);
             document.getElementById('questionCount').textContent = list.length;
             if (list.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">暂无题目数据</td></tr>';
@@ -344,14 +347,16 @@
                     '</tr>';
             }).join('');
         } else {
-            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-danger py-4">加载失败</td></tr>';
+            var errMsg = res.data?.message || res.error || '操作失败';
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-danger py-4">加载失败: ' + escapeHtml(errMsg) + '</td></tr>';
         }
     }
 
     async function loadTags() {
         var res = await ApiClient.get('/tags/list');
-        if (res.success && res.data) {
-            allTags = Array.isArray(res.data) ? res.data : (res.data.records || res.data.list || []);
+        if (res.success && res.data && res.data.code === 200) {
+            var d = res.data.data;
+            allTags = Array.isArray(d) ? d : (d.records || d.list || []);
         }
         renderTagTable();
         renderTagCheckboxes();
@@ -480,12 +485,13 @@
             res = await ApiClient.post('/questions/', payload);
         }
 
-        if (res.success) {
+        if (res.success && res.data && res.data.code === 200) {
             showToast(id ? '题目更新成功' : '题目创建成功', 'success');
             closeModal('questionModal');
             loadQuestions(currentHomeworkId);
         } else {
-            showToast('操作失败: ' + (res.error || ''), 'error');
+            var errMsg = res.data?.message || res.error || '操作失败';
+            showToast('操作失败: ' + errMsg, 'error');
         }
     }
 
@@ -508,12 +514,13 @@
             res = await ApiClient.post('/tags/', payload);
         }
 
-        if (res.success) {
+        if (res.success && res.data && res.data.code === 200) {
             showToast(id ? '标签更新成功' : '标签创建成功', 'success');
             closeModal('tagModal');
             loadTags();
         } else {
-            showToast('操作失败: ' + (res.error || ''), 'error');
+            var errMsg = res.data?.message || res.error || '操作失败';
+            showToast('操作失败: ' + errMsg, 'error');
         }
     }
 
@@ -521,11 +528,12 @@
         var ok = await confirmDialog('确定要删除该题目吗？此操作不可撤销。');
         if (!ok) return;
         var res = await ApiClient.delete('/questions/' + id);
-        if (res.success) {
+        if (res.success && res.data && res.data.code === 200) {
             showToast('题目已删除', 'success');
             loadQuestions(currentHomeworkId);
         } else {
-            showToast('删除失败: ' + (res.error || ''), 'error');
+            var errMsg = res.data?.message || res.error || '操作失败';
+            showToast('删除失败: ' + errMsg, 'error');
         }
     }
 
@@ -533,11 +541,12 @@
         var ok = await confirmDialog('确定要删除该标签吗？此操作不可撤销。');
         if (!ok) return;
         var res = await ApiClient.delete('/tags/' + id);
-        if (res.success) {
+        if (res.success && res.data && res.data.code === 200) {
             showToast('标签已删除', 'success');
             loadTags();
         } else {
-            showToast('删除失败: ' + (res.error || ''), 'error');
+            var errMsg = res.data?.message || res.error || '操作失败';
+            showToast('删除失败: ' + errMsg, 'error');
         }
     }
 
@@ -559,8 +568,9 @@
             return;
         }
         var res = await ApiClient.get('/questions/homework/' + homeworkId);
-        if (res.success && res.data) {
-            questionCache = Array.isArray(res.data) ? res.data : (res.data.records || res.data.list || []);
+        if (res.success && res.data && res.data.code === 200) {
+            var d = res.data.data;
+            questionCache = Array.isArray(d) ? d : (d.records || d.list || []);
         } else {
             questionCache = [];
         }

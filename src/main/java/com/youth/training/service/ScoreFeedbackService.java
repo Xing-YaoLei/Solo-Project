@@ -120,6 +120,8 @@ public class ScoreFeedbackService {
                 return;
             }
 
+            learningProgressService.calculateHomeworkProgress(
+                    feedback.getStudentId(), homework.getCourseId(), feedback.getHomeworkId());
             learningProgressService.calculateChapterProgress(
                     feedback.getStudentId(), homework.getCourseId(), homework.getChapterId());
             learningProgressService.calculateCourseProgress(
