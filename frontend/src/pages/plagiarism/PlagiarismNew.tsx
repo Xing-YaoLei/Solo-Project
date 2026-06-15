@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, Link } from '@tanstack/react-router'
 import api from '@/api/client'
-import { PLAGIARISM_SEVERITY, TICKET_SOURCE } from '@/utils/enums'
+import { plagiarismSeverityLabels, ticketSourceLabels } from '@/utils/enums'
 import type { MemberProfile, CommunityTicket } from '@/types'
 import dayjs from 'dayjs'
 
@@ -182,8 +182,8 @@ export default function PlagiarismNew() {
               value={form.severity}
               onChange={e => setForm(prev => ({ ...prev, severity: e.target.value }))}
             >
-              {Object.entries(PLAGIARISM_SEVERITY).map(([key, val]) => (
-                <option key={key} value={key}>{val.label}</option>
+              {plagiarismSeverityLabels.map((item) => (
+                <option key={item.value} value={item.value}>{item.label}</option>
               ))}
             </select>
           </div>
@@ -219,7 +219,7 @@ export default function PlagiarismNew() {
                       onClick={() => handleSelectMember(m)}
                     >
                       <div style={{ fontWeight: 500 }}>{m.name}</div>
-                      <div style={{ fontSize: 12, color: '#6b7280' }}>{m.member_no} · {m.phone} · {TICKET_SOURCE[m.source_channel as keyof typeof TICKET_SOURCE]?.label}</div>
+                      <div style={{ fontSize: 12, color: '#6b7280' }}>{m.member_no} · {m.phone} · {(ticketSourceLabels.find(t => t.value === m.source_channel)?.label)}</div>
                     </div>
                   ))}
                 </div>

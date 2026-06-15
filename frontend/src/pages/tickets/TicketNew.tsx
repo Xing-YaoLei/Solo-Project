@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
+import api from '@/api/client';
 import dayjs from 'dayjs';
 import { useNavigate } from '@tanstack/react-router';
 
@@ -46,18 +46,19 @@ const PRIORITY_OPTIONS = [
 ];
 
 const SOURCE_OPTIONS = [
-  { value: 'wechat', label: '微信社群' },
-  { value: 'phone', label: '电话咨询' },
-  { value: 'online', label: '官网留言' },
+  { value: 'wechat_group', label: '微信群' },
+  { value: 'qq_group', label: 'QQ群' },
+  { value: 'offline_activity', label: '线下活动' },
   { value: 'referral', label: '转介绍' },
-  { value: 'offline', label: '线下活动' },
+  { value: 'advertisement', label: '广告投放' },
+  { value: 'other', label: '其他渠道' },
 ];
 
 const USER_OPTIONS = [
-  { value: 'user1', label: '张三' },
-  { value: 'user2', label: '李四' },
-  { value: 'user3', label: '王五' },
-  { value: 'user4', label: '赵六' },
+  { value: 1, label: '张三' },
+  { value: 2, label: '李四' },
+  { value: 3, label: '王五' },
+  { value: 4, label: '赵六' },
 ];
 
 export default function TicketNew() {
@@ -71,8 +72,8 @@ export default function TicketNew() {
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('consult');
   const [priority, setPriority] = useState('medium');
-  const [source, setSource] = useState('');
-  const [assignee, setAssignee] = useState('');
+  const [source, setSource] = useState('wechat_group');
+  const [assignee, setAssignee] = useState<number | ''>('');
   const [description, setDescription] = useState('');
   const [attachments, setAttachments] = useState('');
 
@@ -90,8 +91,8 @@ export default function TicketNew() {
   useEffect(() => {
     const fetchMembers = async () => {
       try {
-        const res = await axios.get('/api/members/', { params: { keyword: memberKeyword, page_size: 20 } });
-        setMemberOptions(res.data?.items || res.data || []);
+        const res = await api.get('/members/', { params: { keyword: memberKeyword, page_size: 20 } });
+        setMemberOptions(res.items || res || []);
       } catch (e) {
         const mock: Member[] = Array.from({ length: 15 }).map((_, i) => ({
           id: i + 1,
@@ -122,8 +123,8 @@ export default function TicketNew() {
   useEffect(() => {
     const fetchBenefits = async () => {
       try {
-        const res = await axios.get('/api/benefits/', { params: { page_size: 50 } });
-        setBenefits(res.data?.items || res.data || []);
+        const res = await api.get('/benefits/', { params: { page_size: 50 } });
+        setBenefits(res.items || res || []);
       } catch (e) {
         const mock: Benefit[] = Array.from({ length: 12 }).map((_, i) => ({
           id: i + 1,
@@ -179,20 +180,20 @@ export default function TicketNew() {
     if (!saveAsDraft && !validate()) return;
     setSubmitting(true);
     try {
+      const priorityMap: Record<string, number> = { low: 1, medium: 2, high: 3, urgent: 4 };
       const payload = {
         ticket_no: ticketNo,
         title,
-        category,
-        priority,
+        member_id: selectedMember?.id as number,
         source,
-        assignee,
-        member_id: selectedMember?.id,
-        benefit_ids: selectedBenefits,
-        description,
-        attachments: attachments.split('\n').filter((s) => s.trim()),
-        status: saveAsDraft ? 'draft' : 'pending_review',
+        category: category || undefined,
+        priority: priorityMap[priority] ?? 3,
+        description: description || undefined,
+        evidence_urls: attachments.split('\n').filter((s) => s.trim()),
+        responsible_id: assignee || undefined,
+        benefit_ids: selectedBenefits.length > 0 ? selectedBenefits : [],
       };
-      await axios.post('/api/tickets/', payload);
+      await api.post('/tickets/', payload);
       alert(saveAsDraft ? '草稿保存成功' : '提交审核成功');
       navigate({ to: '/tickets' });
     } catch (e) {
@@ -337,10 +338,10 @@ export default function TicketNew() {
         <div className="section-title">责任人</div>
         <div className="form-item" style={{ maxWidth: 320 }}>
           <label>分配给</label>
-          <select className="input" value={assignee} onChange={(e) => setAssignee(e.target.value)}>
+          <select className="input" value={assignee} onChange={(e) => setAssignee(e.target.value === '' ? '' : Number(e.target.value))}>
             <option value="">请选择责任人</option>
             {USER_OPTIONS.map((o) => (
-              <option key={o.value} value={o.label}>{o.label}</option>
+              <option key={o.value} value={o.value}>{o.label}</option>
             ))}
           </select>
         </div>

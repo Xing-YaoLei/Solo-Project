@@ -320,9 +320,23 @@ export default function PlagiarismDetail() {
     }
   };
 
-  const handleStatusChange = async (action: string) => {
+  const handleStatusChange = async (action: string, comment?: string, handlerId?: number) => {
+    const actionToStatus: Record<string, string> = {
+      start_investigate: 'investigating',
+      confirm: 'confirmed',
+      dismiss: 'dismissed',
+      appeal: 'appealed',
+      resolve: 'resolved',
+      appeal_resolve: 'resolved',
+    };
+    const newStatus = actionToStatus[action];
+    const payload: any = {
+      status: newStatus,
+    };
+    if (comment) payload.comment = comment;
+    if (handlerId) payload.handler_id = handlerId;
     try {
-      await axios.post(`/api/plagiarism/${caseId}/status`, { action });
+      await axios.post(`/api/plagiarism/${caseId}/status`, payload);
       fetchDetail();
     } catch (e) {
       console.error('status change error', e);

@@ -1,222 +1,330 @@
+// ========== 与后端 schemas.py 1:1 字段对齐 ==========
+
 export interface User {
   id?: number
   username?: string
-  phone?: string
-  email?: string
+  full_name?: string
+  email?: string | null
   role?: string
-  status?: string
+  is_active?: boolean
   created_at?: string
-  updated_at?: string
+  [key: string]: any
 }
 
 export interface MemberProfile {
   id?: number
-  user_id?: number
-  member_level?: string
-  real_name?: string
-  id_card?: string
-  phone?: string
-  total_revenue?: number
-  commission_balance?: number
-  join_date?: string
-  referrer_id?: number
-  referral_code?: string
+  member_no?: string
+  name?: string
+  phone?: string | null
+  email?: string | null
+  id_card?: string | null
+  level?: string // MemberLevel 枚举值
+  source_channel?: string // TicketSource 枚举值
+  join_date?: string | null
+  exam_score?: number | null
+  exam_pass_status?: boolean | null
+  exam_date?: string | null
+  total_learning_hours?: number
+  community_group?: string | null
+  tags?: string[]
+  remark?: string | null
   created_at?: string
   updated_at?: string
+  [key: string]: any
 }
 
 export interface BenefitRule {
   id?: number
-  name?: string
-  code?: string
-  description?: string
-  benefit_type?: string
-  value?: number
-  value_type?: string
+  rule_code?: string
+  rule_name?: string
+  description?: string | null
+  benefit_type?: string | null
   applicable_levels?: string[]
-  min_amount?: number
-  max_amount?: number
-  effective_start?: string
-  effective_end?: string
+  discount_rate?: number
+  bonus_points?: number
+  cash_value?: number
+  valid_from?: string | null
+  valid_until?: string | null
   is_active?: boolean
+  conditions?: Record<string, any>
   created_at?: string
   updated_at?: string
+  [key: string]: any
 }
 
 export interface MemberBenefitMapping {
   id?: number
   member_id?: number
   benefit_id?: number
-  benefit_name?: string
-  granted_at?: string
-  expires_at?: string
-  used_at?: string
-  status?: string
-  created_at?: string
+  granted_date?: string | null
+  used_count?: number
+  max_usage?: number
+  is_active?: boolean
+  remark?: string | null
+  benefit?: BenefitRule | null
+  [key: string]: any
 }
 
 export interface AccountTransaction {
   id?: number
+  transaction_no?: string
   member_id?: number
-  transaction_type?: string
+  ticket_id?: number | null
+  type?: string // TransactionType 枚举值
   amount?: number
-  balance_after?: number
-  related_ticket_id?: number
-  related_plagiarism_id?: number
-  description?: string
-  operator_id?: number
-  operator_name?: string
-  created_at?: string
-}
-
-export interface CommunityTicket {
-  id?: number
-  ticket_no?: string
-  title?: string
-  source?: string
-  submitter_id?: number
-  submitter_name?: string
-  submitter_phone?: string
-  referrer_id?: number
-  referrer_name?: string
-  amount?: number
-  content?: string
+  balance_after?: number | null
+  payment_method?: string | null
+  related_order_no?: string | null
+  description?: string | null
   evidence_urls?: string[]
-  status?: string
-  current_reviewer_id?: number
-  current_reviewer_name?: string
-  responsible_person_id?: number
-  responsible_person_name?: string
-  review_tags?: string[]
-  final_score?: number
-  review_deadline?: string
-  is_exam_needed?: boolean
-  exam_status?: string
-  exam_started_at?: string
-  exam_finished_at?: string
-  violation_type?: string
-  violation_description?: string
-  violation_amount?: number
-  completed_at?: string
-  closed_at?: string
-  closed_reason?: string
+  transaction_date?: string
+  operator_id?: number | null
   created_at?: string
-  updated_at?: string
+  [key: string]: any
 }
 
 export interface AuditLog {
   id?: number
   ticket_id?: number
   operator_id?: number
-  operator_name?: string
   action?: string
-  old_status?: string
-  new_status?: string
-  remark?: string
+  old_status?: string | null
+  new_status?: string | null
+  comment?: string | null
+  evidence_urls?: string[]
+  reference_ids?: number[]
+  operator?: User | null
   created_at?: string
+  [key: string]: any
 }
 
 export interface ReviewRecord {
   id?: number
   ticket_id?: number
   reviewer_id?: number
-  reviewer_name?: string
-  review_round?: number
-  review_tags?: string[]
-  score?: number
-  comment?: string
-  is_passed?: boolean
-  need_supplement?: boolean
-  supplement_instruction?: string
-  escalate_reason?: string
+  round?: number
+  is_escalated?: boolean
+  review_tag?: string | null // ReviewTag 枚举值
+  score?: number | null
+  summary?: string | null
+  evidence_urls?: string[]
+  cited_transaction_ids?: number[]
+  cited_benefit_ids?: number[]
+  follow_up_actions?: string[]
+  reviewer?: User | null
   created_at?: string
+  updated_at?: string
+  [key: string]: any
 }
 
 export interface TicketBenefitReference {
   id?: number
   ticket_id?: number
   benefit_id?: number
-  benefit_name?: string
-  applied_amount?: number
+  applied_value?: number
+  remark?: string | null
+  applied_date?: string
+  benefit?: BenefitRule | null
+  [key: string]: any
+}
+
+export interface CommunityTicket {
+  id?: number
+  ticket_no?: string
+  title?: string
+  member_id?: number
+  source?: string // TicketSource 枚举值
+  category?: string | null
+  priority?: number
+  description?: string | null
+  evidence_urls?: string[]
+  responsible_id?: number | null
+  status?: string // TicketStatus 枚举值
+  creator_id?: number | null
+  creator?: User | null
+  responsible?: User | null
+  member?: MemberProfile | null
+  supplement_requirements?: string | null
+  closed_at?: string | null
+  close_remark?: string | null
+  review_tag?: string | null // ReviewTag 枚举值
+  review_score?: number | null
+  review_remark?: string | null
   created_at?: string
+  updated_at?: string
+  audit_logs?: AuditLog[]
+  review_records?: ReviewRecord[]
+  transactions?: AccountTransaction[]
+  benefit_references?: TicketBenefitReference[]
+  [key: string]: any
 }
 
 export interface PlagiarismCase {
   id?: number
   case_no?: string
-  reported_by?: number
-  reporter_name?: string
-  reported_member_id?: number
-  reported_member_name?: string
-  ticket_id?: number
-  title?: string
-  description?: string
+  member_id?: number
+  ticket_id?: number | null
+  assignment_name?: string
+  course_name?: string | null
+  similarity_score?: number | null
+  original_author?: string | null
+  description?: string | null
   evidence_urls?: string[]
-  status?: string
-  severity?: string
-  investigator_id?: number
-  investigator_name?: string
-  deduction_points?: number
-  deduction_amount?: number
-  result_description?: string
-  appealed?: boolean
-  appeal_reason?: string
-  appeal_result?: string
-  resolved_at?: string
+  severity?: string // PlagiarismSeverity 枚举值
+  status?: string // PlagiarismStatus 枚举值
+  reporter_id?: number | null
+  handler_id?: number | null
+  investigation_notes?: string | null
+  resolution?: string | null
+  punishment?: string | null
+  appeal_deadline?: string | null
+  resolved_at?: string | null
   created_at?: string
   updated_at?: string
+  member?: MemberProfile | null
+  [key: string]: any
 }
 
+// ========== 列表响应包装 ==========
+
+export interface ListResponse<T> {
+  total: number
+  items: T[]
+}
+
+export type MemberProfileListResponse = ListResponse<MemberProfile>
+export type BenefitRuleListResponse = ListResponse<BenefitRule>
+export type AccountTransactionListResponse = ListResponse<AccountTransaction>
+export type CommunityTicketListResponse = ListResponse<CommunityTicket>
+export type PlagiarismCaseListResponse = ListResponse<PlagiarismCase>
+
+// ========== 请求体（提交用） ==========
+
+export interface CommunityTicketCreatePayload {
+  ticket_no?: string
+  title: string
+  member_id: number
+  source?: string // TicketSource
+  category?: string
+  priority?: number
+  description?: string
+  evidence_urls?: string[]
+  responsible_id?: number
+  benefit_ids?: number[]
+}
+
+export interface CommunityTicketUpdatePayload {
+  title?: string
+  source?: string
+  category?: string
+  priority?: number
+  description?: string
+  evidence_urls?: string[]
+  responsible_id?: number
+}
+
+export interface TicketStatusUpdatePayload {
+  new_status: string // TicketStatus
+  comment?: string
+  evidence_urls?: string[]
+  supplement_requirements?: string
+  close_remark?: string
+}
+
+export interface TicketReviewCreatePayload {
+  review_tag: string // ReviewTag
+  score?: number
+  summary?: string
+  evidence_urls?: string[]
+  cited_transaction_ids?: number[]
+  cited_benefit_ids?: number[]
+  follow_up_actions?: string[]
+  is_escalated?: boolean
+}
+
+export interface PlagiarismCaseCreatePayload {
+  member_id: number
+  ticket_id?: number
+  assignment_name: string
+  course_name?: string
+  similarity_score?: number
+  original_author?: string
+  description?: string
+  evidence_urls?: string[]
+  severity?: string // PlagiarismSeverity
+}
+
+export interface PlagiarismCaseUpdatePayload {
+  status?: string // PlagiarismStatus
+  severity?: string
+  similarity_score?: number
+  investigation_notes?: string
+  resolution?: string
+  punishment?: string
+  appeal_deadline?: string
+}
+
+export interface PlagiarismStatusUpdatePayload {
+  status: string // PlagiarismStatus
+  comment?: string
+  handler_id?: number
+}
+
+// ========== 汇总统计 ==========
+
 export interface SummaryStats {
-  total_tickets?: number
-  pending_count?: number
-  processing_count?: number
-  completed_count?: number
-  closed_count?: number
-  total_amount?: number
-  paid_amount?: number
-  exam_count?: number
-  exam_pass_count?: number
-  violation_count?: number
-  violation_amount?: number
+  total_tickets: number
+  draft_count: number
+  pending_review_count: number
+  supplement_needed_count: number
+  escalated_review_count: number
+  processing_count: number
+  completed_count: number
+  closed_count: number
+  total_members: number
+  exam_pass_rate: number
+  plagiarism_cases_count: number
+  open_plagiarism_count: number
 }
 
 export interface SourceChannelStats {
-  source?: string
-  count?: number
-  amount?: number
-  ratio?: number
+  source: string // TicketSource
+  count: number
+  percentage: number
+  exam_pass_rate?: number | null
+  [key: string]: any
 }
 
 export interface ResponsibleStats {
-  person_id?: number
-  person_name?: string
-  total_count?: number
-  completed_count?: number
-  pending_count?: number
-  avg_processing_days?: number
+  responsible_id: number
+  responsible_name: string
+  total: number
+  completed: number
+  completion_rate: number
+  [key: string]: any
 }
 
 export interface ReviewTagStats {
-  tag?: string
-  count?: number
-  ratio?: number
+  tag: string // ReviewTag
+  count: number
+  percentage: number
+  [key: string]: any
 }
 
 export interface ExamStats {
-  total_exams?: number
-  passed?: number
-  failed?: number
-  in_progress?: number
-  pass_rate?: number
-  avg_duration_minutes?: number
+  total_examined: number
+  passed_count: number
+  failed_count: number
+  pass_rate: number
+  average_score?: number | null
+  by_level?: Record<string, Record<string, any>>
+  [key: string]: any
 }
 
 export interface FullSummaryResponse {
-  summary?: SummaryStats
-  source_channels?: SourceChannelStats[]
-  responsible_persons?: ResponsibleStats[]
-  review_tags?: ReviewTagStats[]
-  exams?: ExamStats
-  generated_at?: string
+  overview: SummaryStats
+  by_source: SourceChannelStats[]
+  by_responsible: ResponsibleStats[]
+  by_review_tag: ReviewTagStats[]
+  exam_stats: ExamStats
 }

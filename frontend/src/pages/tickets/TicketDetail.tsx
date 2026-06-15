@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import axios from 'axios';
+import api from '@/api/client';
 import dayjs from 'dayjs';
 import { useNavigate } from '@tanstack/react-router';
 import Modal from '../../components/common/Modal';
@@ -23,7 +23,7 @@ type TicketStatus =
   | 'completed'
   | 'closed';
 
-type Priority = 'low' | 'medium' | 'high' | 'urgent';
+type Priority = 'low' | 'medium' | 'high' | 'urgent' | number;
 
 interface MemberProfileExt extends MemberProfile {
   email?: string;
@@ -181,13 +181,13 @@ export default function TicketDetail({ ticketId }: { ticketId: string }) {
   const [statusForm, setStatusForm] = useState({ remark: '', evidenceUrls: '' });
   const [reviewModal, setReviewModal] = useState(false);
   const [reviewForm, setReviewForm] = useState({
-    review_tags: '',
+    review_tag: '',
     score: 0,
     summary: '',
     cited_transaction_ids: '',
     cited_benefit_ids: '',
     follow_up_actions: '',
-    escalated: false,
+    is_escalated: false,
   });
 
   const txRefs = useRef<Record<number, HTMLDivElement | null>>({});
@@ -201,8 +201,8 @@ export default function TicketDetail({ ticketId }: { ticketId: string }) {
   const fetchDetail = async () => {
     setLoading(true);
     try {
-      const res = await axios.get(`/api/tickets/${ticketId}`);
-      setData(res.data as TicketDetailData);
+      const res = await api.get(`/tickets/${ticketId}`);
+      setData(res as TicketDetailData);
     } catch (e) {
       console.error('fetch ticket detail error', e);
       setData(generateMockData(Number(ticketId)));
@@ -252,6 +252,8 @@ export default function TicketDetail({ ticketId }: { ticketId: string }) {
         actions.push({ key: 'submit', label: '提交审核', className: 'btn-primary' });
         break;
       case 'pending_review':
+        actions.push({ key: 'start_review', label: '开始审核', className: 'btn-primary' });
+        break;
       case 'reviewing':
         actions.push({ key: 'approve', label: '通过', className: 'btn-success' });
         actions.push({ key: 'supplement', label: '要求补资料', className: 'btn-warning' });
@@ -261,7 +263,7 @@ export default function TicketDetail({ ticketId }: { ticketId: string }) {
         actions.push({ key: 'resubmit', label: '重新提交', className: 'btn-primary' });
         break;
       case 'escalated_review':
-        actions.push({ key: 'approve', label: '复核通过', className: 'btn-success' });
+        actions.push({ key: 'senior_approve', label: '复核通过', className: 'btn-success' });
         actions.push({ key: 'supplement', label: '要求补资料', className: 'btn-warning' });
         break;
       case 'processing':
@@ -284,7 +286,9 @@ export default function TicketDetail({ ticketId }: { ticketId: string }) {
     }
     const titles: Record<string, string> = {
       submit: '确认提交审核',
+      start_review: '确认开始审核',
       approve: '确认通过',
+      senior_approve: '确认复核通过',
       supplement: '要求补资料',
       escalate: '确认升级复核',
       resubmit: '确认重新提交',
@@ -295,12 +299,31 @@ export default function TicketDetail({ ticketId }: { ticketId: string }) {
   };
 
   const handleStatusConfirm = async () => {
+    const actionToStatus: Record<string, string> = {
+      submit: 'pending_review',
+      start_review: 'reviewing',
+      approve: 'processing',
+      senior_approve: 'processing',
+      supplement: 'supplement_needed',
+      escalate: 'escalated_review',
+      resubmit: 'pending_review',
+      complete: 'completed',
+      close: 'closed',
+    };
+    const newStatus = actionToStatus[statusModal.action];
+    const payload: any = {
+      new_status: newStatus,
+      comment: statusForm.remark || undefined,
+      evidence_urls: statusForm.evidenceUrls.split(',').map((s) => s.trim()).filter(Boolean),
+    };
+    if (statusModal.action === 'supplement' && statusForm.remark) {
+      payload.supplement_requirements = statusForm.remark;
+    }
+    if (statusModal.action === 'close' && statusForm.remark) {
+      payload.close_remark = statusForm.remark;
+    }
     try {
-      await axios.post(`/api/tickets/${ticketId}/status`, {
-        action: statusModal.action,
-        remark: statusForm.remark,
-        evidence_urls: statusForm.evidenceUrls.split(',').map((s) => s.trim()).filter(Boolean),
-      });
+      await api.post(`/tickets/${ticketId}/status`, payload);
     } catch (e) {
       console.error('status change error', e);
     }
@@ -309,29 +332,47 @@ export default function TicketDetail({ ticketId }: { ticketId: string }) {
     fetchDetail();
   };
 
+  const REVIEW_TAG_OPTIONS = [
+    { value: 'excellent', label: '优秀' },
+    { value: 'good', label: '良好' },
+    { value: 'normal', label: '一般' },
+    { value: 'needs_improvement', label: '待改进' },
+    { value: 'problematic', label: '存疑' },
+  ];
+
+  const parseIds = (str: string): number[] => {
+    if (!str.trim()) return [];
+    return str.split(',').map((s) => Number(s.trim())).filter((n) => !isNaN(n) && n > 0);
+  };
+
   const handleReviewSubmit = async () => {
+    if (!reviewForm.review_tag) {
+      alert('请选择复盘标签');
+      return;
+    }
     try {
-      await axios.post(`/api/tickets/${ticketId}/review`, {
-        review_tags: reviewForm.review_tags.split(',').map((s) => s.trim()).filter(Boolean),
-        score: reviewForm.score,
-        summary: reviewForm.summary,
-        cited_transaction_ids: reviewForm.cited_transaction_ids.split(',').map((s) => Number(s.trim())).filter(Boolean),
-        cited_benefit_ids: reviewForm.cited_benefit_ids.split(',').map((s) => Number(s.trim())).filter(Boolean),
+      await api.post(`/tickets/${ticketId}/review`, {
+        review_tag: reviewForm.review_tag,
+        score: reviewForm.score || undefined,
+        summary: reviewForm.summary || undefined,
+        evidence_urls: [],
+        cited_transaction_ids: parseIds(reviewForm.cited_transaction_ids),
+        cited_benefit_ids: parseIds(reviewForm.cited_benefit_ids),
         follow_up_actions: reviewForm.follow_up_actions.split('\n').map((s) => s.trim()).filter(Boolean),
-        escalated: reviewForm.escalated,
+        is_escalated: reviewForm.is_escalated,
       });
     } catch (e) {
       console.error('review submit error', e);
     }
     setReviewModal(false);
     setReviewForm({
-      review_tags: '',
+      review_tag: '',
       score: 0,
       summary: '',
       cited_transaction_ids: '',
       cited_benefit_ids: '',
       follow_up_actions: '',
-      escalated: false,
+      is_escalated: false,
     });
     fetchDetail();
   };
@@ -618,8 +659,8 @@ export default function TicketDetail({ ticketId }: { ticketId: string }) {
               <div className="detail-line">
                 <span className="k">分类</span>
                 <span className="v">
-                  {ticket.review_tags && ticket.review_tags.length > 0
-                    ? ticket.review_tags.map((t, i) => (
+                  {(ticket as any).review_tags && (ticket as any).review_tags.length > 0
+                    ? (ticket as any).review_tags.map((t: string, i: number) => (
                         <span
                           key={i}
                           className="color-tag"
@@ -785,7 +826,7 @@ export default function TicketDetail({ ticketId }: { ticketId: string }) {
                             {r.escalated && <span className="escalated-tag">已升级</span>}
                           </div>
                           <div className="review-meta-row">
-                            {r.review_tags && r.review_tags.length > 0 && r.review_tags.map((t, j) => (
+                            {(r as any).review_tags && (r as any).review_tags.length > 0 && (r as any).review_tags.map((t: string, j: number) => (
                               <span
                                 key={j}
                                 className="color-tag-sm"
@@ -986,13 +1027,17 @@ export default function TicketDetail({ ticketId }: { ticketId: string }) {
       >
         <div className="form-grid">
           <div className="form-group">
-            <label className="form-label">复盘标签（多个用逗号分隔）</label>
-            <input
+            <label className="form-label">复盘标签 <span style={{ color: '#F56C6C' }}>*</span></label>
+            <select
               className="form-input"
-              placeholder="例如: 投诉,退款"
-              value={reviewForm.review_tags}
-              onChange={(e) => setReviewForm({ ...reviewForm, review_tags: e.target.value })}
-            />
+              value={reviewForm.review_tag}
+              onChange={(e) => setReviewForm({ ...reviewForm, review_tag: e.target.value })}
+            >
+              <option value="">请选择复盘标签</option>
+              {REVIEW_TAG_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
           </div>
           <div className="form-group">
             <label className="form-label">复盘分数（0-100）</label>
@@ -1051,8 +1096,8 @@ export default function TicketDetail({ ticketId }: { ticketId: string }) {
           <label className="checkbox-label">
             <input
               type="checkbox"
-              checked={reviewForm.escalated}
-              onChange={(e) => setReviewForm({ ...reviewForm, escalated: e.target.checked })}
+              checked={reviewForm.is_escalated}
+              onChange={(e) => setReviewForm({ ...reviewForm, is_escalated: e.target.checked })}
             />
             <span>是否升级处理</span>
           </label>
@@ -1084,7 +1129,7 @@ function generateMockData(id: number): TicketDetailData {
       responsible_person_id: 1,
       responsible_person_name: ['张三', '李四', '王五', '赵六'][id % 4],
       review_tags: [['投诉', '退款'], ['咨询'], ['退款', '补偿'], ['权益'], ['学习']][id % 5],
-      priority: (['low', 'medium', 'high', 'urgent'] as Priority[])[id % 4],
+      priority: [1, 2, 3, 4][id % 4],
       supplement_requirements: id % 3 === 0 ? '请补充以下资料：1. 购买凭证截图 2. 问题录屏视频 3. 会员身份证明' : undefined,
       created_at: dayjs().subtract(id * 2, 'hour').format('YYYY-MM-DD HH:mm:ss'),
       updated_at: dayjs().subtract(id, 'hour').format('YYYY-MM-DD HH:mm:ss'),

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import axios from 'axios';
+import api from '@/api/client';
 import dayjs from 'dayjs';
 import { useNavigate, useParams } from '@tanstack/react-router';
 
@@ -147,9 +147,9 @@ export default function TicketList({ initialStatus, poolTitle, poolTip }: Ticket
       if (dateEnd) params.date_end = dateEnd;
       if (activeStatuses.length > 0) params.statuses = activeStatuses.join(',');
 
-      const res = await axios.get('/api/tickets/', { params });
-      setTickets(res.data?.items || res.data || []);
-      setTotal(res.data?.total || res.data?.length || 0);
+      const res = await api.get('/tickets/', { params });
+      setTickets(res.items || res || []);
+      setTotal(res.total || res.length || 0);
     } catch (e) {
       console.error('fetch tickets error', e);
       const mock: Ticket[] = Array.from({ length: 23 }).map((_, i) => ({
@@ -179,9 +179,28 @@ export default function TicketList({ initialStatus, poolTitle, poolTip }: Ticket
     fetchTickets();
   };
 
-  const handleStatusChange = async (id: number, action: string) => {
+  const handleStatusChange = async (id: number, action: string, comment?: string, supplementRequirements?: string, closeRemark?: string) => {
+    const actionToStatus: Record<string, string> = {
+      submit: 'pending_review',
+      start_review: 'reviewing',
+      approve: 'processing',
+      senior_approve: 'processing',
+      supplement: 'supplement_needed',
+      escalate: 'escalated_review',
+      resubmit: 'pending_review',
+      complete: 'completed',
+      close: 'closed',
+    };
+    const newStatus = actionToStatus[action];
+    const payload: any = {
+      new_status: newStatus,
+      evidence_urls: [],
+    };
+    if (comment) payload.comment = comment;
+    if (supplementRequirements && action === 'supplement') payload.supplement_requirements = supplementRequirements;
+    if (closeRemark && action === 'close') payload.close_remark = closeRemark;
     try {
-      await axios.post(`/api/tickets/${id}/status`, { action });
+      await api.post(`/tickets/${id}/status`, payload);
       fetchTickets();
     } catch (e) {
       console.error('status change error', e);
@@ -205,8 +224,24 @@ export default function TicketList({ initialStatus, poolTitle, poolTip }: Ticket
             提交审核
           </button>
         );
+        actions.push(
+          <button key="close" className="btn btn-sm btn-gray" onClick={() => handleStatusChange(t.id, 'close')}>
+            关闭
+          </button>
+        );
         break;
       case 'pending_review':
+        actions.push(
+          <button key="start_review" className="btn btn-sm btn-primary" onClick={() => handleStatusChange(t.id, 'start_review')}>
+            开始审核
+          </button>
+        );
+        actions.push(
+          <button key="close" className="btn btn-sm btn-gray" onClick={() => handleStatusChange(t.id, 'close')}>
+            关闭
+          </button>
+        );
+        break;
       case 'reviewing':
         actions.push(
           <button key="approve" className="btn btn-sm btn-success" onClick={() => handleStatusChange(t.id, 'approve')}>
@@ -223,6 +258,11 @@ export default function TicketList({ initialStatus, poolTitle, poolTip }: Ticket
             升级复核
           </button>
         );
+        actions.push(
+          <button key="close" className="btn btn-sm btn-gray" onClick={() => handleStatusChange(t.id, 'close')}>
+            关闭
+          </button>
+        );
         break;
       case 'supplement_needed':
         actions.push(
@@ -230,11 +270,26 @@ export default function TicketList({ initialStatus, poolTitle, poolTip }: Ticket
             重新提交
           </button>
         );
+        actions.push(
+          <button key="close" className="btn btn-sm btn-gray" onClick={() => handleStatusChange(t.id, 'close')}>
+            关闭
+          </button>
+        );
         break;
       case 'escalated_review':
         actions.push(
-          <button key="escalate_approve" className="btn btn-sm btn-success" onClick={() => handleStatusChange(t.id, 'approve')}>
+          <button key="senior_approve" className="btn btn-sm btn-success" onClick={() => handleStatusChange(t.id, 'senior_approve')}>
             复核通过
+          </button>
+        );
+        actions.push(
+          <button key="supplement" className="btn btn-sm btn-warning" onClick={() => handleStatusChange(t.id, 'supplement')}>
+            要求补资料
+          </button>
+        );
+        actions.push(
+          <button key="close" className="btn btn-sm btn-gray" onClick={() => handleStatusChange(t.id, 'close')}>
+            关闭
           </button>
         );
         break;
@@ -242,6 +297,11 @@ export default function TicketList({ initialStatus, poolTitle, poolTip }: Ticket
         actions.push(
           <button key="complete" className="btn btn-sm btn-success" onClick={() => handleStatusChange(t.id, 'complete')}>
             完成处理
+          </button>
+        );
+        actions.push(
+          <button key="close" className="btn btn-sm btn-gray" onClick={() => handleStatusChange(t.id, 'close')}>
+            关闭
           </button>
         );
         break;
