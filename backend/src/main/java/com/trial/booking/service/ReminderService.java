@@ -4,9 +4,12 @@ import com.trial.booking.common.PageResult;
 import com.trial.booking.entity.Appointment;
 import com.trial.booking.entity.Reminder;
 import com.trial.booking.entity.Teacher;
+import com.trial.booking.entity.User;
 import com.trial.booking.repository.AppointmentRepository;
 import com.trial.booking.repository.ReminderRepository;
 import com.trial.booking.repository.TeacherRepository;
+import com.trial.booking.repository.UserRepository;
+import com.trial.booking.security.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
@@ -31,12 +34,57 @@ public class ReminderService {
     private final ReminderRepository reminderRepository;
     private final AppointmentRepository appointmentRepository;
     private final TeacherRepository teacherRepository;
+    private final UserRepository userRepository;
 
     public PageResult<Reminder> search(int page, int pageSize, String status, String date) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        String role = SecurityUtils.getCurrentUserRole();
+
+        if ("TEACHER".equals(role)) {
+            if (teacherRepository.findByUserId(currentUserId).isEmpty()) {
+                return PageResult.of(List.of(), 0, page, pageSize);
+            }
+        }
+        if ("PRINCIPAL".equals(role)) {
+            User user = userRepository.findById(currentUserId).orElse(null);
+            if (user == null || user.getCampus() == null || user.getCampus().isEmpty()) {
+                return PageResult.of(List.of(), 0, page, pageSize);
+            }
+        }
+
         PageRequest pageable = PageRequest.of(page - 1, pageSize, Sort.by(Sort.Direction.DESC, "createdAt"));
 
         Specification<Reminder> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
+
+            if ("STUDENT".equals(role) && currentUserId != null) {
+                Subquery<Long> subquery = query.subquery(Long.class);
+                Root<Appointment> appointmentRoot = subquery.from(Appointment.class);
+                subquery.select(appointmentRoot.get("id"))
+                        .where(cb.equal(appointmentRoot.get("studentUserId"), currentUserId));
+                predicates.add(root.get("appointmentId").in(subquery));
+            } else if ("PARENT".equals(role) && currentUserId != null) {
+                Subquery<Long> subquery = query.subquery(Long.class);
+                Root<Appointment> appointmentRoot = subquery.from(Appointment.class);
+                subquery.select(appointmentRoot.get("id"))
+                        .where(cb.equal(appointmentRoot.get("parentId"), currentUserId));
+                predicates.add(root.get("appointmentId").in(subquery));
+            } else if ("TEACHER".equals(role) && currentUserId != null) {
+                Teacher teacher = teacherRepository.findByUserId(currentUserId).orElseThrow();
+                Subquery<Long> subquery = query.subquery(Long.class);
+                Root<Appointment> appointmentRoot = subquery.from(Appointment.class);
+                subquery.select(appointmentRoot.get("id"))
+                        .where(cb.equal(appointmentRoot.get("teacherId"), teacher.getId()));
+                predicates.add(root.get("appointmentId").in(subquery));
+            } else if ("PRINCIPAL".equals(role) && currentUserId != null) {
+                User user = userRepository.findById(currentUserId).orElseThrow();
+                Subquery<Long> subquery = query.subquery(Long.class);
+                Root<Appointment> appointmentRoot = subquery.from(Appointment.class);
+                subquery.select(appointmentRoot.get("id"))
+                        .where(cb.equal(appointmentRoot.get("campus"), user.getCampus()));
+                predicates.add(root.get("appointmentId").in(subquery));
+            }
+
             if (status != null && !status.isEmpty()) {
                 predicates.add(cb.equal(root.get("status"), status));
             }

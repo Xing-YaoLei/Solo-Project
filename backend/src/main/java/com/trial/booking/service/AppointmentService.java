@@ -12,6 +12,7 @@ import com.trial.booking.repository.TeacherRepository;
 import com.trial.booking.repository.UserRepository;
 import com.trial.booking.security.SecurityUtils;
 import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Subquery;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -144,6 +145,7 @@ public class AppointmentService {
     public Appointment getById(Long id) {
         Appointment appointment = appointmentRepository.findById(id)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("预约不存在"));
+        checkDataPermission(appointment);
         fillTeacherName(appointment);
         return appointment;
     }
@@ -426,12 +428,56 @@ public class AppointmentService {
         Sort sort = Sort.by(Sort.Direction.DESC, "createdAt");
         Pageable pageable = PageRequest.of(params.getPage() - 1, params.getPageSize(), sort);
 
-        Page<ChangeLog> page;
-        if (params.getChangeType() != null && !params.getChangeType().isEmpty()) {
-            page = changeLogRepository.findByChangeType(params.getChangeType(), pageable);
-        } else {
-            page = changeLogRepository.findAll(pageable);
-        }
+        String role = SecurityUtils.getCurrentUserRole();
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+
+        Specification<ChangeLog> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            if ("STUDENT".equals(role) && currentUserId != null) {
+                Subquery<Long> subquery = query.subquery(Long.class);
+                jakarta.persistence.criteria.Root<Appointment> appointmentRoot = subquery.from(Appointment.class);
+                subquery.select(appointmentRoot.get("id"));
+                subquery.where(cb.equal(appointmentRoot.get("studentUserId"), currentUserId));
+                predicates.add(cb.in(root.get("appointmentId")).value(subquery));
+            } else if ("PARENT".equals(role) && currentUserId != null) {
+                Subquery<Long> subquery = query.subquery(Long.class);
+                jakarta.persistence.criteria.Root<Appointment> appointmentRoot = subquery.from(Appointment.class);
+                subquery.select(appointmentRoot.get("id"));
+                subquery.where(cb.equal(appointmentRoot.get("parentId"), currentUserId));
+                predicates.add(cb.in(root.get("appointmentId")).value(subquery));
+            } else if ("TEACHER".equals(role) && currentUserId != null) {
+                Teacher teacher = teacherRepository.findByUserId(currentUserId).orElse(null);
+                if (teacher == null) {
+                    predicates.add(cb.disjunction());
+                } else {
+                    Subquery<Long> subquery = query.subquery(Long.class);
+                    jakarta.persistence.criteria.Root<Appointment> appointmentRoot = subquery.from(Appointment.class);
+                    subquery.select(appointmentRoot.get("id"));
+                    subquery.where(cb.equal(appointmentRoot.get("teacherId"), teacher.getId()));
+                    predicates.add(cb.in(root.get("appointmentId")).value(subquery));
+                }
+            } else if ("PRINCIPAL".equals(role) && currentUserId != null) {
+                User user = userRepository.findById(currentUserId).orElse(null);
+                if (user == null || user.getCampus() == null || user.getCampus().isEmpty()) {
+                    predicates.add(cb.disjunction());
+                } else {
+                    Subquery<Long> subquery = query.subquery(Long.class);
+                    jakarta.persistence.criteria.Root<Appointment> appointmentRoot = subquery.from(Appointment.class);
+                    subquery.select(appointmentRoot.get("id"));
+                    subquery.where(cb.equal(appointmentRoot.get("campus"), user.getCampus()));
+                    predicates.add(cb.in(root.get("appointmentId")).value(subquery));
+                }
+            }
+
+            if (params.getChangeType() != null && !params.getChangeType().isEmpty()) {
+                predicates.add(cb.equal(root.get("changeType"), params.getChangeType()));
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        Page<ChangeLog> page = changeLogRepository.findAll(spec, pageable);
         return PageResult.of(page);
     }
 
@@ -470,5 +516,40 @@ public class AppointmentService {
         log.setOperatorId(operatorId);
         log.setOperatorName(operatorName);
         return log;
+    }
+
+    private void checkDataPermission(Appointment appointment) {
+        String role = SecurityUtils.getCurrentUserRole();
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+
+        if ("STUDENT".equals(role)) {
+            if (appointment.getStudentUserId() == null || !appointment.getStudentUserId().equals(currentUserId)) {
+                throw new org.springframework.security.access.AccessDeniedException("无权访问该预约");
+            }
+        } else if ("PARENT".equals(role)) {
+            if (appointment.getParentId() == null || !appointment.getParentId().equals(currentUserId)) {
+                throw new org.springframework.security.access.AccessDeniedException("无权访问该预约");
+            }
+        } else if ("TEACHER".equals(role)) {
+            Teacher teacher = teacherRepository.findByUserId(currentUserId).orElse(null);
+            if (teacher == null) {
+                throw new org.springframework.security.access.AccessDeniedException("无权访问该预约");
+            }
+            if (appointment.getTeacherId() == null || !appointment.getTeacherId().equals(teacher.getId())) {
+                throw new org.springframework.security.access.AccessDeniedException("无权访问该预约");
+            }
+        } else if ("PRINCIPAL".equals(role)) {
+            User user = userRepository.findById(currentUserId).orElse(null);
+            if (user == null || user.getCampus() == null) {
+                throw new org.springframework.security.access.AccessDeniedException("无权访问该预约");
+            }
+            if (appointment.getCampus() == null || !appointment.getCampus().equals(user.getCampus())) {
+                throw new org.springframework.security.access.AccessDeniedException("无权访问该预约");
+            }
+        } else if ("ADMIN".equals(role) || "RECEPTIONIST".equals(role)) {
+            return;
+        } else {
+            throw new org.springframework.security.access.AccessDeniedException("无权访问该预约");
+        }
     }
 }
