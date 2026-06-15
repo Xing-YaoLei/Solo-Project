@@ -1,8 +1,8 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import and_
+from sqlalchemy import and_, case, func
 from typing import List, Dict, Optional, Any
 from datetime import datetime, date
-from ..models import AlertThreshold, MaterialDistribution, Student, Course, NoteTask, Enrollment
+from ..models import AlertThreshold, MaterialDistribution, Student, Course, NoteTask, Enrollment, Homework
 from .funnel_service import FunnelService
 from ..core.redis_client import get_redis
 import json
@@ -138,9 +138,6 @@ class AlertService:
 
     def _get_homework_submit_rate(self, course_id: Optional[int], region_id: Optional[int]) -> float:
         """获取作业提交率"""
-        from ..models import Homework
-        from sqlalchemy import func
-
         query = self.db.query(
             func.count(Homework.id),
             func.sum(case((Homework.is_submitted == True, 1), else_=0))
@@ -156,15 +153,22 @@ class AlertService:
     def generate_note_task(
         self,
         alert: Dict[str, Any],
-        created_by: str = "system"
+        assigned_to: Optional[str] = None
     ) -> NoteTask:
-        """命中预警后生成备注任务，chart_ref对应图表区"""
+        """命中预警后生成备注任务，chart_ref对应图表区，与NoteTask模型对齐"""
         task_no = f"NT{datetime.now().strftime('%Y%m%d')}{uuid.uuid4().hex[:6].upper()}"
 
         course_id = alert.get('course_id')
         course_part = f"course_{course_id}" if course_id else "all"
 
         alert_type = alert.get('type', '')
+        type_mapping = {
+            'completion_rate': 'completion_alert',
+            'delay_days': 'delay_warning',
+            'homework_rate': 'quality_issue',
+        }
+        task_type = type_mapping.get(alert_type, 'completion_alert')
+
         if alert_type in ('completion_rate', 'delay_days'):
             chart_ref = f"funnel_{course_part}"
         elif alert_type == 'homework_rate':
@@ -174,22 +178,41 @@ class AlertService:
 
         task = NoteTask(
             task_no=task_no,
-            type=alert['type'],
+            student_id=alert.get('student_id'),
+            course_id=course_id,
+            type=task_type,
             title=f"【{alert['level']}】{alert['threshold_name']}",
-            content=f"预警触发：{alert['threshold_name']}\n阈值：{alert['threshold_value']}\n实际值：{alert['actual_value']}\n请尽快处理。",
+            content=(
+                f"预警触发：{alert['threshold_name']}\n"
+                f"阈值：{alert['threshold_value']} {self._operator_desc(alert['operator'])}\n"
+                f"实际值：{alert['actual_value']}\n"
+                f"请尽快处理。"
+            ),
             status="pending",
             priority="high" if alert['level'] == 'danger' else "medium",
+            assigned_to=assigned_to,
             trigger_threshold_id=alert['threshold_id'],
-            chart_ref=chart_ref,
-            created_by=created_by
+            chart_ref=chart_ref
         )
 
         self.db.add(task)
-        self.db.commit()
+        self.db.flush()
         self.db.refresh(task)
+
         self.funnel_service.invalidate_cache()
 
         return task
+
+    def _operator_desc(self, op: str) -> str:
+        """运算符中文描述"""
+        desc_map = {
+            'lt': '（小于）',
+            'gt': '（大于）',
+            'lte': '（小于等于）',
+            'gte': '（大于等于）',
+            'eq': '（等于）',
+        }
+        return desc_map.get(op, '')
 
     def get_note_tasks(
         self,

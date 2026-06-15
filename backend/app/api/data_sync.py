@@ -4,7 +4,7 @@ from typing import List, Dict, Any, Optional
 import pandas as pd
 from ..core.database import get_db
 from ..data_processing import data_cleaner, data_deduplicator, get_caliber_matcher
-from ..models import Student, Enrollment, AcademicRecord, Homework, DataSourceSync
+from ..models import Student, Enrollment, AcademicRecord, Homework, DataSourceSync, NoteTask
 from ..services.funnel_service import get_funnel_service, FunnelService
 from ..services.alert_service import get_alert_service, AlertService
 from datetime import datetime, date
@@ -66,6 +66,53 @@ def _parse_date(value: Any) -> Optional[date]:
         return datetime.strptime(str(value).strip()[:10], '%Y-%m-%d').date()
     except (ValueError, TypeError):
         return None
+
+
+def _process_alerts_and_create_tasks(
+    db: Session,
+    funnel_service: FunnelService,
+    alert_service: AlertService
+) -> Dict[str, Any]:
+    """统一处理：检测预警并生成备注任务，返回统计信息和任务详情"""
+    funnel_service.invalidate_cache()
+
+    alerts = alert_service.check_alerts()
+
+    note_task_details = []
+    note_tasks_created = 0
+
+    today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+
+    for alert in alerts:
+        dup_task = db.query(NoteTask).filter(
+            and_(
+                NoteTask.trigger_threshold_id == alert['threshold_id'],
+                NoteTask.status.in_(['pending', 'processing']),
+                NoteTask.created_at >= today_start
+            )
+        ).first()
+
+        if not dup_task:
+            task = alert_service.generate_note_task(alert)
+            note_tasks_created += 1
+            note_task_details.append({
+                "id": task.id,
+                "task_no": task.task_no,
+                "type": task.type,
+                "title": task.title,
+                "chart_ref": task.chart_ref,
+                "priority": task.priority,
+                "level": alert['level']
+            })
+
+    db.commit()
+    funnel_service.invalidate_cache()
+
+    return {
+        "alerts_triggered": len(alerts),
+        "note_tasks_created": note_tasks_created,
+        "note_tasks": note_task_details
+    }
 
 
 @router.post("/sync/enrollment")
@@ -140,26 +187,8 @@ async def sync_enrollment_data(
         db.commit()
 
         funnel_service = get_funnel_service(db)
-        funnel_service.invalidate_cache()
-
         alert_service = get_alert_service(db)
-        alerts = alert_service.check_alerts()
-        note_tasks_created = 0
-        for alert in alerts:
-            from ..models import NoteTask as NT
-            dup_task = db.query(NT).filter(
-                and_(
-                    NT.trigger_threshold_id == alert['threshold_id'],
-                    NT.status.in_(['pending', 'processing']),
-                    NT.created_at >= datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-                )
-            ).first()
-            if not dup_task:
-                alert_service.generate_note_task(alert)
-                note_tasks_created += 1
-
-        db.commit()
-        funnel_service.invalidate_cache()
+        alert_result = _process_alerts_and_create_tasks(db, funnel_service, alert_service)
 
         return {
             "message": "同步成功",
@@ -168,8 +197,7 @@ async def sync_enrollment_data(
             "dedup_count": dedup_count,
             "students_inserted_merged": student_count,
             "enrollments_inserted": enrollment_count,
-            "alerts_triggered": len(alerts),
-            "note_tasks_created": note_tasks_created
+            **alert_result
         }
 
     except Exception as e:
@@ -278,25 +306,8 @@ async def sync_academic_data(
         db.commit()
 
         funnel_service = get_funnel_service(db)
-        funnel_service.invalidate_cache()
-
         alert_service = get_alert_service(db)
-        alerts = alert_service.check_alerts()
-        note_tasks_created = 0
-        for alert in alerts:
-            from ..models import NoteTask as NT
-            dup_task = db.query(NT).filter(
-                and_(
-                    NT.trigger_threshold_id == alert['threshold_id'],
-                    NT.status.in_(['pending', 'processing']),
-                    NT.created_at >= datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-                )
-            ).first()
-            if not dup_task:
-                alert_service.generate_note_task(alert)
-                note_tasks_created += 1
-        db.commit()
-        funnel_service.invalidate_cache()
+        alert_result = _process_alerts_and_create_tasks(db, funnel_service, alert_service)
 
         return {
             "message": "同步成功",
@@ -305,8 +316,7 @@ async def sync_academic_data(
             "dedup_count": dedup_count,
             "students_inserted_merged": student_count,
             "academic_records_inserted": academic_count,
-            "alerts_triggered": len(alerts),
-            "note_tasks_created": note_tasks_created
+            **alert_result
         }
 
     except Exception as e:
@@ -410,25 +420,8 @@ async def sync_homework_data(
         db.commit()
 
         funnel_service = get_funnel_service(db)
-        funnel_service.invalidate_cache()
-
         alert_service = get_alert_service(db)
-        alerts = alert_service.check_alerts()
-        note_tasks_created = 0
-        for alert in alerts:
-            from ..models import NoteTask as NT
-            dup_task = db.query(NT).filter(
-                and_(
-                    NT.trigger_threshold_id == alert['threshold_id'],
-                    NT.status.in_(['pending', 'processing']),
-                    NT.created_at >= datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-                )
-            ).first()
-            if not dup_task:
-                alert_service.generate_note_task(alert)
-                note_tasks_created += 1
-        db.commit()
-        funnel_service.invalidate_cache()
+        alert_result = _process_alerts_and_create_tasks(db, funnel_service, alert_service)
 
         return {
             "message": "同步成功",
@@ -437,8 +430,7 @@ async def sync_homework_data(
             "dedup_count": dedup_count,
             "students_inserted_merged": student_count,
             "homework_inserted": homework_count,
-            "alerts_triggered": len(alerts),
-            "note_tasks_created": note_tasks_created
+            **alert_result
         }
 
     except Exception as e:
