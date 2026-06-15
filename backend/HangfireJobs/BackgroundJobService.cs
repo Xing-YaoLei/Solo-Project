@@ -1,4 +1,9 @@
+using CertSchedulePlatform.Data;
+using CertSchedulePlatform.DTOs;
 using CertSchedulePlatform.Services;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace CertSchedulePlatform.HangfireJobs;
 
@@ -68,7 +73,7 @@ public class BackgroundJobService
         try
         {
             using var scope = _serviceProvider.CreateScope();
-            var context = scope.ServiceProvider.GetRequiredService<Data.AppDbContext>();
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
             var expiredExports = await context.ExportRecords
                 .Where(e => e.ExpiresAt <= DateTime.UtcNow)
@@ -97,12 +102,4 @@ public class BackgroundJobService
             throw;
         }
     }
-}
-
-public class MonthlyReviewQueryDto
-{
-    public int Year { get; set; }
-    public int Month { get; set; }
-    public int? CertificateId { get; set; }
-    public int? CourseId { get; set; }
 }

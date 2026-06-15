@@ -7,7 +7,6 @@ import {
   Progress,
   Tag,
   List,
-  Badge,
   Descriptions,
   Button,
   Modal,
@@ -15,8 +14,9 @@ import {
   Input,
   InputNumber,
   Space,
-  Divider,
   message,
+  Spin,
+  Empty,
 } from 'antd';
 import {
   BookOutlined,
@@ -28,195 +28,65 @@ import {
   ArrowDownOutlined,
 } from '@ant-design/icons';
 import type { LearningProgressDetail, ProgressHistory, ProgressStatus } from '../types';
-import { progressApi, certificateApi } from '../api/progress';
+import { progressApi } from '../api/progress';
 import dayjs from 'dayjs';
 
 const { Option } = Select;
 const { TextArea } = Input;
 
-const mockProgresses: LearningProgressDetail[] = [
-  {
-    progress: {
-      id: 1,
-      userId: 3,
-      userName: '李学员',
-      certificateId: 1,
-      certificateName: '一级建造师',
-      courseId: 1,
-      courseName: '建设工程经济',
-      completionRate: 35.5,
-      targetRate: 60,
-      startDate: '2025-03-01T00:00:00Z',
-      targetDate: '2025-08-31T00:00:00Z',
-      status: 3,
-      statusText: '进度落后',
-      note: '学习进度落后，需要加快节奏',
-      createdAt: '2025-03-01T00:00:00Z',
-      updatedAt: '2025-05-20T00:00:00Z',
-    },
-    chapters: [
-      {
-        id: 1,
-        title: '第一章 资金时间价值',
-        courseId: 1,
-        sortOrder: 1,
-        estimatedHours: 8,
-        isActive: true,
-        questionTags: [
-          { id: 1, name: '资金等值计算', questionCount: 5, difficulty: 2, difficultyText: '中等' },
-          { id: 2, name: '名义利率与有效利率', questionCount: 3, difficulty: 3, difficultyText: '困难' },
-        ],
-      },
-      {
-        id: 2,
-        title: '第二章 工程经济评价',
-        courseId: 1,
-        sortOrder: 2,
-        estimatedHours: 12,
-        isActive: true,
-        questionTags: [
-          { id: 3, name: '净现值计算', questionCount: 6, difficulty: 2, difficultyText: '中等' },
-        ],
-      },
-      {
-        id: 3,
-        title: '第三章 投资方案经济效果评价',
-        courseId: 1,
-        sortOrder: 3,
-        estimatedHours: 10,
-        isActive: true,
-        questionTags: [],
-      },
-    ],
-    assignmentRecords: [
-      {
-        id: 1,
-        assignmentId: 1,
-        assignmentTitle: '第一章课后练习',
-        assignmentType: 3,
-        assignmentTypeText: '课后作业',
-        userId: 3,
-        correctCount: 15,
-        totalQuestions: 20,
-        score: 75,
-        startedAt: '2025-03-20T10:00:00Z',
-        submittedAt: '2025-03-20T11:30:00Z',
-        status: 2,
-        statusText: '已提交',
-      },
-      {
-        id: 2,
-        assignmentId: 2,
-        assignmentTitle: '第二章课后练习',
-        assignmentType: 3,
-        assignmentTypeText: '课后作业',
-        userId: 3,
-        correctCount: 0,
-        totalQuestions: 25,
-        score: 0,
-        status: 0,
-        statusText: '未开始',
-      },
-    ],
-    questionTags: [
-      { id: 1, name: '资金等值计算', questionCount: 5, difficulty: 2, difficultyText: '中等', chapterId: 1 },
-      { id: 2, name: '名义利率与有效利率', questionCount: 3, difficulty: 3, difficultyText: '困难', chapterId: 1 },
-      { id: 3, name: '净现值计算', questionCount: 6, difficulty: 2, difficultyText: '中等', chapterId: 2 },
-    ],
-    history: [
-      {
-        id: 2,
-        learningProgressId: 1,
-        oldCompletionRate: 20,
-        newCompletionRate: 35.5,
-        oldStatus: 1,
-        oldStatusText: '进行中',
-        newStatus: 3,
-        newStatusText: '进度落后',
-        oldNote: undefined,
-        newNote: '学习进度落后，需要加快节奏',
-        changedByUserId: 2,
-        changedByName: '张老师',
-        changeReason: '老师评估后调整状态',
-        changedAt: '2025-05-20T00:00:00Z',
-      },
-      {
-        id: 1,
-        learningProgressId: 1,
-        oldCompletionRate: 0,
-        newCompletionRate: 20,
-        oldStatus: 0,
-        oldStatusText: '未开始',
-        newStatus: 1,
-        newStatusText: '进行中',
-        changedByUserId: 3,
-        changedByName: '李学员',
-        changeReason: '开始学习第一章',
-        changedAt: '2025-03-10T00:00:00Z',
-      },
-    ],
-  },
-  {
-    progress: {
-      id: 2,
-      userId: 3,
-      userName: '李学员',
-      certificateId: 1,
-      certificateName: '一级建造师',
-      courseId: 2,
-      courseName: '建设工程项目管理',
-      completionRate: 72,
-      targetRate: 65,
-      startDate: '2025-03-15T00:00:00Z',
-      targetDate: '2025-08-31T00:00:00Z',
-      status: 2,
-      statusText: '正常推进',
-      note: '进度良好',
-      createdAt: '2025-03-15T00:00:00Z',
-      updatedAt: '2025-05-15T00:00:00Z',
-    },
-    chapters: [
-      {
-        id: 4,
-        title: '第一章 项目组织与管理',
-        courseId: 2,
-        sortOrder: 1,
-        estimatedHours: 6,
-        isActive: true,
-        questionTags: [],
-      },
-    ],
-    assignmentRecords: [],
-    questionTags: [],
-    history: [],
-  },
-];
-
 function RecordsPage() {
-  const [selectedProgressId, setSelectedProgressId] = useState<number>(1);
+  const [selectedProgressId, setSelectedProgressId] = useState<number | undefined>();
   const [detail, setDetail] = useState<LearningProgressDetail | null>(null);
   const [progressList, setProgressList] = useState<{ id: number; courseName?: string; certificateName?: string }[]>([]);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [listLoading, setListLoading] = useState(false);
 
   useEffect(() => {
     loadProgressList();
-    loadDetail();
+  }, []);
+
+  useEffect(() => {
+    if (selectedProgressId) {
+      loadDetail();
+    }
   }, [selectedProgressId]);
 
-  const loadProgressList = () => {
-    const list = mockProgresses.map((p) => ({
-      id: p.progress.id,
-      courseName: p.progress.courseName,
-      certificateName: p.progress.certificateName,
-    }));
-    setProgressList(list);
+  const loadProgressList = async () => {
+    setListLoading(true);
+    try {
+      const result = await progressApi.getList({ userId: 3, pageIndex: 1, pageSize: 100 });
+      const list = result.items.map((p) => ({
+        id: p.id,
+        courseName: p.courseName,
+        certificateName: p.certificateName,
+      }));
+      setProgressList(list);
+      if (list.length > 0 && !selectedProgressId) {
+        setSelectedProgressId(list[0].id);
+      }
+    } catch (error) {
+      console.error('加载进度列表失败:', error);
+      message.error('加载进度列表失败');
+    } finally {
+      setListLoading(false);
+    }
   };
 
-  const loadDetail = () => {
-    const found = mockProgresses.find((p) => p.progress.id === selectedProgressId);
-    setDetail(found || null);
+  const loadDetail = async () => {
+    if (!selectedProgressId) return;
+    setDetailLoading(true);
+    try {
+      const data = await progressApi.getDetail(selectedProgressId);
+      setDetail(data);
+    } catch (error) {
+      console.error('加载详情失败:', error);
+      message.error('加载详情失败');
+    } finally {
+      setDetailLoading(false);
+    }
   };
 
   const getStatusColor = (status: number) => {
@@ -252,45 +122,27 @@ function RecordsPage() {
   };
 
   const handleSaveProgress = async () => {
+    if (!selectedProgressId) return;
     try {
       const values = await form.validateFields();
       setLoading(true);
-      message.success('进度更新成功');
+
+      await progressApi.update(selectedProgressId, {
+        completionRate: values.completionRate,
+        status: values.status,
+        note: values.note,
+        changeReason: values.changeReason,
+        changedByUserId: 2,
+      });
+
+      message.success('进度更新成功，历史记录已保存');
       setEditModalVisible(false);
       setLoading(false);
-
-      if (detail) {
-        const newHistory: ProgressHistory = {
-          id: Date.now(),
-          learningProgressId: detail.progress.id,
-          oldCompletionRate: detail.progress.completionRate,
-          newCompletionRate: values.completionRate,
-          oldStatus: detail.progress.status,
-          oldStatusText: detail.progress.statusText,
-          newStatus: values.status,
-          newStatusText: getStatusText(values.status),
-          oldNote: detail.progress.note,
-          newNote: values.note,
-          changedByUserId: 2,
-          changedByName: '张老师',
-          changeReason: values.changeReason,
-          changedAt: new Date().toISOString(),
-        };
-
-        setDetail({
-          ...detail,
-          progress: {
-            ...detail.progress,
-            completionRate: values.completionRate,
-            status: values.status,
-            statusText: getStatusText(values.status),
-            note: values.note,
-            updatedAt: new Date().toISOString(),
-          },
-          history: [newHistory, ...detail.history],
-        });
-      }
+      await loadDetail();
+      await loadProgressList();
     } catch (error) {
+      console.error('更新进度失败:', error);
+      message.error('更新进度失败');
       setLoading(false);
     }
   };
@@ -300,8 +152,8 @@ function RecordsPage() {
     return texts[status] || '未知';
   };
 
-  if (!detail) {
-    return <div>加载中...</div>;
+  if (listLoading) {
+    return <Spin tip="加载中..." />;
   }
 
   return (
@@ -314,6 +166,7 @@ function RecordsPage() {
             value={selectedProgressId}
             onChange={setSelectedProgressId}
             placeholder="选择学习进度"
+            loading={listLoading}
           >
             {progressList.map((p) => (
               <Option key={p.id} value={p.id}>
@@ -321,223 +174,238 @@ function RecordsPage() {
               </Option>
             ))}
           </Select>
-          <Button type="primary" icon={<EditOutlined />} onClick={handleEditProgress}>
+          <Button
+            type="primary"
+            icon={<EditOutlined />}
+            onClick={handleEditProgress}
+            disabled={!detail}
+          >
             更新进度
           </Button>
         </Space>
       </div>
 
-      <Card style={{ marginBottom: 16 }}>
-        <Descriptions title="学习进度概览" column={3}>
-          <Descriptions.Item label="学员">{detail.progress.userName}</Descriptions.Item>
-          <Descriptions.Item label="证书">{detail.progress.certificateName}</Descriptions.Item>
-          <Descriptions.Item label="课程">{detail.progress.courseName}</Descriptions.Item>
-          <Descriptions.Item label="当前进度">
-            <Progress
-              percent={detail.progress.completionRate}
-              status={detail.progress.status === 3 ? 'exception' : 'active'}
-            />
-          </Descriptions.Item>
-          <Descriptions.Item label="目标进度">
-            <span style={{ color: '#52c41a', fontWeight: 'bold' }}>{detail.progress.targetRate}%</span>
-          </Descriptions.Item>
-          <Descriptions.Item label="状态">
-            <Tag color={getStatusColor(detail.progress.status)}>{detail.progress.statusText}</Tag>
-          </Descriptions.Item>
-          <Descriptions.Item label="开始日期">
-            {dayjs(detail.progress.startDate).format('YYYY-MM-DD')}
-          </Descriptions.Item>
-          <Descriptions.Item label="目标日期">
-            {dayjs(detail.progress.targetDate).format('YYYY-MM-DD')}
-          </Descriptions.Item>
-          <Descriptions.Item label="备注">{detail.progress.note || '-'}</Descriptions.Item>
-        </Descriptions>
-      </Card>
-
-      <Row gutter={16}>
-        <Col span={12}>
-          <Card
-            title={
-              <span>
-                <BookOutlined style={{ marginRight: 8 }} />
-                课程章节 ({detail.chapters.length})
-              </span>
-            }
-            style={{ marginBottom: 16 }}
-          >
-            <List
-              dataSource={detail.chapters}
-              renderItem={(chapter) => (
-                <List.Item className="chapter-item">
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 500, marginBottom: 4 }}>{chapter.title}</div>
-                    <div style={{ color: '#8c8c8c', fontSize: 13 }}>
-                      预计 {chapter.estimatedHours} 小时
-                    </div>
-                    {chapter.questionTags && chapter.questionTags.length > 0 && (
-                      <div style={{ marginTop: 6 }}>
-                        {chapter.questionTags.map((tag) => (
-                          <span
-                            key={tag.id}
-                            className={`question-tag ${getDifficultyClass(tag.difficulty)}`}
-                          >
-                            {tag.name} ({tag.questionCount}题)
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </List.Item>
-              )}
-            />
+      {detailLoading ? (
+        <Card>
+          <Spin tip="加载详情中..." />
+        </Card>
+      ) : !detail ? (
+        <Card>
+          <Empty description="暂无学习进度数据" />
+        </Card>
+      ) : (
+        <>
+          <Card style={{ marginBottom: 16 }}>
+            <Descriptions title="学习进度概览" column={3}>
+              <Descriptions.Item label="学员">{detail.progress.userName}</Descriptions.Item>
+              <Descriptions.Item label="证书">{detail.progress.certificateName}</Descriptions.Item>
+              <Descriptions.Item label="课程">{detail.progress.courseName}</Descriptions.Item>
+              <Descriptions.Item label="当前进度">
+                <Progress
+                  percent={detail.progress.completionRate}
+                  status={detail.progress.status === 3 ? 'exception' : 'active'}
+                />
+              </Descriptions.Item>
+              <Descriptions.Item label="目标进度">
+                <span style={{ color: '#52c41a', fontWeight: 'bold' }}>{detail.progress.targetRate}%</span>
+              </Descriptions.Item>
+              <Descriptions.Item label="状态">
+                <Tag color={getStatusColor(detail.progress.status)}>{detail.progress.statusText}</Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="开始日期">
+                {detail.progress.startDate ? dayjs(detail.progress.startDate).format('YYYY-MM-DD') : '-'}
+              </Descriptions.Item>
+              <Descriptions.Item label="目标日期">
+                {detail.progress.targetDate ? dayjs(detail.progress.targetDate).format('YYYY-MM-DD') : '-'}
+              </Descriptions.Item>
+              <Descriptions.Item label="备注">{detail.progress.note || '-'}</Descriptions.Item>
+            </Descriptions>
           </Card>
-        </Col>
 
-        <Col span={12}>
-          <Card
-            title={
-              <span>
-                <FileTextOutlined style={{ marginRight: 8 }} />
-                作业记录 ({detail.assignmentRecords.length})
-              </span>
-            }
-            style={{ marginBottom: 16 }}
-          >
-            {detail.assignmentRecords.length > 0 ? (
-              <List
-                dataSource={detail.assignmentRecords}
-                renderItem={(record) => (
-                  <List.Item className="chapter-item">
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontWeight: 500 }}>{record.assignmentTitle}</span>
-                        <Tag>{record.assignmentTypeText}</Tag>
-                      </div>
-                      <div style={{ marginTop: 6 }}>
-                        {record.status === 0 ? (
-                          <span style={{ color: '#8c8c8c' }}>未开始</span>
-                        ) : (
-                          <span>
-                            得分：<strong>{record.score}</strong> 分
-                            （{record.correctCount}/{record.totalQuestions}）
-                          </span>
-                        )}
-                      </div>
-                      {record.submittedAt && (
-                        <div style={{ color: '#8c8c8c', fontSize: 12, marginTop: 4 }}>
-                          提交于 {dayjs(record.submittedAt).format('YYYY-MM-DD HH:mm')}
-                        </div>
-                      )}
-                    </div>
-                  </List.Item>
-                )}
-              />
-            ) : (
-              <div style={{ textAlign: 'center', color: '#8c8c8c', padding: 20 }}>
-                暂无作业记录
-              </div>
-            )}
-          </Card>
-        </Col>
-      </Row>
-
-      <Row gutter={16}>
-        <Col span={12}>
-          <Card
-            title={
-              <span>
-                <TagsOutlined style={{ marginRight: 8 }} />
-                题目标签 ({detail.questionTags.length})
-              </span>
-            }
-            style={{ marginBottom: 16 }}
-          >
-            {detail.questionTags.length > 0 ? (
-              <div>
-                {detail.questionTags.map((tag) => (
-                  <div
-                    key={tag.id}
-                    style={{
-                      display: 'inline-block',
-                      margin: 4,
-                      padding: '6px 12px',
-                      borderRadius: 4,
-                      background: '#f5f5f5',
-                    }}
-                  >
-                    <span className={`question-tag ${getDifficultyClass(tag.difficulty)}`}>
-                      {tag.difficultyText}
-                    </span>
-                    <span style={{ marginLeft: 4 }}>{tag.name}</span>
-                    <span style={{ color: '#8c8c8c', fontSize: 12, marginLeft: 6 }}>
-                      {tag.questionCount}题
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div style={{ textAlign: 'center', color: '#8c8c8c', padding: 20 }}>
-                暂无标签
-              </div>
-            )}
-          </Card>
-        </Col>
-
-        <Col span={12}>
-          <Card
-            title={
-              <span>
-                <HistoryOutlined style={{ marginRight: 8 }} />
-                进度变更历史
-              </span>
-            }
-            style={{ marginBottom: 16 }}
-          >
-            {detail.history.length > 0 ? (
-              <List
-                dataSource={detail.history}
-                renderItem={(item) => (
-                  <List.Item className="history-item">
-                    <div style={{ width: '100%' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                        <span style={{ fontWeight: 500 }}>
-                          {item.newCompletionRate - item.oldCompletionRate >= 0 ? (
-                            <ArrowUpOutlined style={{ color: '#52c41a' }} />
-                          ) : (
-                            <ArrowDownOutlined style={{ color: '#ff4d4f' }} />
+          <Row gutter={16}>
+            <Col span={12}>
+              <Card
+                title={
+                  <span>
+                    <BookOutlined style={{ marginRight: 8 }} />
+                    课程章节 ({detail.chapters.length})
+                  </span>
+                }
+                style={{ marginBottom: 16 }}
+              >
+                {detail.chapters.length > 0 ? (
+                  <List
+                    dataSource={detail.chapters}
+                    renderItem={(chapter) => (
+                      <List.Item className="chapter-item">
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 500, marginBottom: 4 }}>{chapter.title}</div>
+                          <div style={{ color: '#8c8c8c', fontSize: 13 }}>
+                            预计 {chapter.estimatedHours} 小时
+                          </div>
+                          {chapter.questionTags && chapter.questionTags.length > 0 && (
+                            <div style={{ marginTop: 6 }}>
+                              {chapter.questionTags.map((tag) => (
+                                <span
+                                  key={tag.id}
+                                  className={`question-tag ${getDifficultyClass(tag.difficulty)}`}
+                                >
+                                  {tag.name} ({tag.questionCount}题)
+                                </span>
+                              ))}
+                            </div>
                           )}
-                          <span style={{ marginLeft: 4 }}>
-                            {item.oldCompletionRate}% → {item.newCompletionRate}%
-                          </span>
-                        </span>
-                        <span style={{ color: '#8c8c8c', fontSize: 12 }}>
-                          {dayjs(item.changedAt).format('YYYY-MM-DD HH:mm')}
-                        </span>
-                      </div>
-                      <div style={{ fontSize: 13, color: '#595959' }}>
-                        状态变更：{item.oldStatusText} → {item.newStatusText}
-                      </div>
-                      <div style={{ fontSize: 13, color: '#595959' }}>
-                        操作人：{item.changedByName}
-                        {item.changeReason && ` · ${item.changeReason}`}
-                      </div>
-                      {item.newNote && item.newNote !== item.oldNote && (
-                        <div style={{ fontSize: 12, color: '#8c8c8c', marginTop: 4 }}>
-                          备注：{item.oldNote || '无'} → {item.newNote}
                         </div>
-                      )}
-                    </div>
-                  </List.Item>
+                      </List.Item>
+                    )}
+                  />
+                ) : (
+                  <Empty description="暂无章节数据" />
                 )}
-              />
-            ) : (
-              <div style={{ textAlign: 'center', color: '#8c8c8c', padding: 20 }}>
-                暂无变更记录
-              </div>
-            )}
-          </Card>
-        </Col>
-      </Row>
+              </Card>
+            </Col>
+
+            <Col span={12}>
+              <Card
+                title={
+                  <span>
+                    <FileTextOutlined style={{ marginRight: 8 }} />
+                    作业记录 ({detail.assignmentRecords.length})
+                  </span>
+                }
+                style={{ marginBottom: 16 }}
+              >
+                {detail.assignmentRecords.length > 0 ? (
+                  <List
+                    dataSource={detail.assignmentRecords}
+                    renderItem={(record) => (
+                      <List.Item className="chapter-item">
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontWeight: 500 }}>{record.assignmentTitle}</span>
+                            <Tag>{record.assignmentTypeText}</Tag>
+                          </div>
+                          <div style={{ marginTop: 6 }}>
+                            {record.status === 0 ? (
+                              <span style={{ color: '#8c8c8c' }}>未开始</span>
+                            ) : (
+                              <span>
+                                得分：<strong>{record.score}</strong> 分
+                                （{record.correctCount}/{record.totalQuestions}）
+                              </span>
+                            )}
+                          </div>
+                          {record.submittedAt && (
+                            <div style={{ color: '#8c8c8c', fontSize: 12, marginTop: 4 }}>
+                              提交于 {dayjs(record.submittedAt).format('YYYY-MM-DD HH:mm')}
+                            </div>
+                          )}
+                        </div>
+                      </List.Item>
+                    )}
+                  />
+                ) : (
+                  <Empty description="暂无作业记录" />
+                )}
+              </Card>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Card
+                title={
+                  <span>
+                    <TagsOutlined style={{ marginRight: 8 }} />
+                    题目标签 ({detail.questionTags.length})
+                  </span>
+                }
+                style={{ marginBottom: 16 }}
+              >
+                {detail.questionTags.length > 0 ? (
+                  <div>
+                    {detail.questionTags.map((tag) => (
+                      <div
+                        key={tag.id}
+                        style={{
+                          display: 'inline-block',
+                          margin: 4,
+                          padding: '6px 12px',
+                          borderRadius: 4,
+                          background: '#f5f5f5',
+                        }}
+                      >
+                        <span className={`question-tag ${getDifficultyClass(tag.difficulty)}`}>
+                          {tag.difficultyText}
+                        </span>
+                        <span style={{ marginLeft: 4 }}>{tag.name}</span>
+                        <span style={{ color: '#8c8c8c', fontSize: 12, marginLeft: 6 }}>
+                          {tag.questionCount}题
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <Empty description="暂无标签" />
+                )}
+              </Card>
+            </Col>
+
+            <Col span={12}>
+              <Card
+                title={
+                  <span>
+                    <HistoryOutlined style={{ marginRight: 8 }} />
+                    进度变更历史
+                  </span>
+                }
+                style={{ marginBottom: 16 }}
+              >
+                {detail.history.length > 0 ? (
+                  <List
+                    dataSource={detail.history}
+                    renderItem={(item) => (
+                      <List.Item className="history-item">
+                        <div style={{ width: '100%' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                            <span style={{ fontWeight: 500 }}>
+                              {item.newCompletionRate - item.oldCompletionRate >= 0 ? (
+                                <ArrowUpOutlined style={{ color: '#52c41a' }} />
+                              ) : (
+                                <ArrowDownOutlined style={{ color: '#ff4d4f' }} />
+                              )}
+                              <span style={{ marginLeft: 4 }}>
+                                {item.oldCompletionRate}% → {item.newCompletionRate}%
+                              </span>
+                            </span>
+                            <span style={{ color: '#8c8c8c', fontSize: 12 }}>
+                              {dayjs(item.changedAt).format('YYYY-MM-DD HH:mm')}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: 13, color: '#595959' }}>
+                            状态变更：{item.oldStatusText} → {item.newStatusText}
+                          </div>
+                          <div style={{ fontSize: 13, color: '#595959' }}>
+                            操作人：{item.changedByName}
+                            {item.changeReason && ` · ${item.changeReason}`}
+                          </div>
+                          {item.newNote && item.newNote !== item.oldNote && (
+                            <div style={{ fontSize: 12, color: '#8c8c8c', marginTop: 4 }}>
+                              备注：{item.oldNote || '无'} → {item.newNote}
+                            </div>
+                          )}
+                        </div>
+                      </List.Item>
+                    )}
+                  />
+                ) : (
+                  <Empty description="暂无变更记录" />
+                )}
+              </Card>
+            </Col>
+          </Row>
+        </>
+      )}
 
       <Modal
         title="更新学习进度"
@@ -580,7 +448,7 @@ function RecordsPage() {
             label="变更原因"
             rules={[{ required: true, message: '请输入变更原因' }]}
           >
-            <TextArea rows={2} placeholder="请说明此次变更的原因" />
+            <TextArea rows={2} placeholder="请说明此次变更的原因（将保存到历史记录）" />
           </Form.Item>
         </Form>
       </Modal>

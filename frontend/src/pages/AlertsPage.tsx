@@ -15,6 +15,8 @@ import {
   Statistic,
   Row,
   Col,
+  Spin,
+  Empty,
 } from 'antd';
 import {
   WarningOutlined,
@@ -30,126 +32,137 @@ const { RangePicker } = DatePicker;
 const { Option } = Select;
 const { TextArea } = Input;
 
-const mockAlerts: ProgressAlert[] = [
-  {
-    id: 1,
-    learningProgressId: 1,
-    userId: 3,
-    userName: '李学员',
-    certificateName: '一级建造师',
-    courseName: '建设工程经济',
-    alertType: 1,
-    alertTypeText: '进度落后',
-    severity: 2,
-    severityText: '中',
-    currentRate: 35.5,
-    expectedRate: 50,
-    behindRate: 14.5,
-    message: '学习进度落后14.5%，当前35.5%，预期50%',
-    status: 0,
-    statusText: '待处理',
-    reason: '',
-    actionTaken: '',
-    createdAt: '2025-05-20T00:00:00Z',
-  },
-  {
-    id: 2,
-    learningProgressId: 1,
-    userId: 3,
-    userName: '李学员',
-    certificateName: '一级建造师',
-    courseName: '建设工程经济',
-    alertType: 2,
-    alertTypeText: '即将截止',
-    severity: 3,
-    severityText: '高',
-    currentRate: 35.5,
-    expectedRate: 60,
-    behindRate: 24.5,
-    message: '距离考试还有3个月，当前进度落后较多',
-    status: 1,
-    statusText: '处理中',
-    reason: '学员工作繁忙，学习时间不足',
-    actionTaken: '已与学员沟通，制定新的学习计划',
-    resolvedAt: undefined,
-    resolvedByUserId: 2,
-    resolvedByName: '张老师',
-    createdAt: '2025-05-15T00:00:00Z',
-  },
-];
-
 function AlertsPage() {
-  const [alerts, setAlerts] = useState<ProgressAlert[]>(mockAlerts);
+  const [alerts, setAlerts] = useState<ProgressAlert[]>([]);
   const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState<AlertStatus | undefined>();
   const [severityFilter, setSeverityFilter] = useState<AlertSeverity | undefined>();
+  const [dateRange, setDateRange] = useState<[any, any] | null>(null);
   const [handleModalVisible, setHandleModalVisible] = useState(false);
   const [currentAlert, setCurrentAlert] = useState<ProgressAlert | null>(null);
   const [form] = Form.useForm();
   const [submitLoading, setSubmitLoading] = useState(false);
+  const [stats, setStats] = useState({
+    open: 0,
+    inProgress: 0,
+    resolved: 0,
+    critical: 0,
+  });
+
+  useEffect(() => {
+    loadAlerts();
+  }, [statusFilter, severityFilter, dateRange]);
+
+  const loadAlerts = async () => {
+    setLoading(true);
+    try {
+      const result = await alertApi.getList({
+        status: statusFilter,
+        severity: severityFilter,
+        startDate: dateRange?.[0]?.toISOString(),
+        endDate: dateRange?.[1]?.toISOString(),
+        pageIndex: 1,
+        pageSize: 100,
+      });
+      setAlerts(result.items);
+      updateStats(result.items);
+    } catch (error) {
+      console.error('加载告警列表失败:', error);
+      message.error('加载告警列表失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateStats = (data: ProgressAlert[]) => {
+    setStats({
+      open: data.filter((a) => a.status === 0).length,
+      inProgress: data.filter((a) => a.status === 1).length,
+      resolved: data.filter((a) => a.status === 2 || a.status === 3).length,
+      critical: data.filter((a) => a.severity >= 3 && (a.status === 0 || a.status === 1)).length,
+    });
+  };
 
   const getSeverityColor = (severity: number) => {
     switch (severity) {
-      case 1: return 'blue';
-      case 2: return 'orange';
-      case 3: return 'red';
-      case 4: return 'magenta';
-      default: return 'default';
+      case 1:
+        return 'blue';
+      case 2:
+        return 'orange';
+      case 3:
+        return 'red';
+      case 4:
+        return 'magenta';
+      default:
+        return 'default';
     }
   };
 
   const getStatusColor = (status: number) => {
     switch (status) {
-      case 0: return 'warning';
-      case 1: return 'processing';
-      case 2: return 'success';
-      case 3: return 'default';
-      case 4: return 'default';
-      default: return 'default';
+      case 0:
+        return 'warning';
+      case 1:
+        return 'processing';
+      case 2:
+        return 'success';
+      case 3:
+        return 'default';
+      case 4:
+        return 'default';
+      default:
+        return 'default';
     }
   };
 
-  const openHandleModal = (alert: ProgressAlert) => {
+  const openHandleModal = async (alert: ProgressAlert) => {
     setCurrentAlert(alert);
-    form.setFieldsValue({
-      reason: alert.reason || '',
-      actionTaken: alert.actionTaken || '',
-      newStatus: 2,
-    });
+    const fullAlert = await alertApi.getById(alert.id);
+    if (fullAlert) {
+      form.setFieldsValue({
+        reason: fullAlert.reason || '',
+        actionTaken: fullAlert.actionTaken || '',
+        newStatus: 2,
+      });
+    }
     setHandleModalVisible(true);
   };
 
   const handleSubmit = async () => {
+    if (!currentAlert) return;
     try {
       const values = await form.validateFields();
       setSubmitLoading(true);
 
-      setTimeout(() => {
-        if (currentAlert) {
-          const updatedAlerts = alerts.map(a => {
-            if (a.id === currentAlert.id) {
-              return {
-                ...a,
-                reason: values.reason,
-                actionTaken: values.actionTaken,
-                status: values.newStatus,
-                statusText: getStatusText(values.newStatus),
-                resolvedAt: (values.newStatus === 2 || values.newStatus === 3) ? new Date().toISOString() : undefined,
-                resolvedByUserId: 2,
-                resolvedByName: '张老师',
-                closedAt: values.newStatus === 3 ? new Date().toISOString() : undefined,
-              };
-            }
-            return a;
-          });
-          setAlerts(updatedAlerts);
-        }
-        message.success('处理成功');
-        setHandleModalVisible(false);
-        setSubmitLoading(false);
-      }, 500);
-    } catch (error) {
+      await alertApi.handleAlert(currentAlert.id, {
+        reason: values.reason,
+        actionTaken: values.actionTaken,
+        handlerUserId: 2,
+        newStatus: values.newStatus,
+      });
+
+      message.success('处理成功，已保存原因、处理措施和处理时间');
+      setHandleModalVisible(false);
       setSubmitLoading(false);
+      await loadAlerts();
+    } catch (error) {
+      console.error('处理告警失败:', error);
+      message.error('处理告警失败');
+      setSubmitLoading(false);
+    }
+  };
+
+  const handleTriggerCheck = async () => {
+    try {
+      setLoading(true);
+      const count = await alertApi.triggerCheck();
+      message.success(`检测完成，新生成 ${count} 条告警`);
+      await loadAlerts();
+    } catch (error) {
+      console.error('触发检测失败:', error);
+      message.error('触发检测失败');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -157,14 +170,6 @@ function AlertsPage() {
     const texts = ['待处理', '处理中', '已解决', '已关闭', '已忽略'];
     return texts[status] || '未知';
   };
-
-  const filteredAlerts = alerts.filter(a => {
-    if (statusFilter !== undefined && a.status !== statusFilter) return false;
-    if (severityFilter !== undefined && a.severity !== severityFilter) return false;
-    return true;
-  });
-
-  const openCount = alerts.filter(a => a.status === 0 || a.status === 1).length;
 
   const columns = [
     {
@@ -231,15 +236,9 @@ function AlertsPage() {
       width: 120,
       render: (_: any, record: ProgressAlert) => (
         <Space>
-          {record.status === 0 || record.status === 1 ? (
-            <Button type="link" onClick={() => openHandleModal(record)}>
-              处理
-            </Button>
-          ) : (
-            <Button type="link" onClick={() => openHandleModal(record)}>
-              查看
-            </Button>
-          )}
+          <Button type="link" onClick={() => openHandleModal(record)}>
+            {record.status === 0 || record.status === 1 ? '处理' : '查看'}
+          </Button>
         </Space>
       ),
     },
@@ -254,7 +253,7 @@ function AlertsPage() {
           <Card>
             <Statistic
               title="待处理告警"
-              value={alerts.filter(a => a.status === 0).length}
+              value={stats.open}
               prefix={<WarningOutlined />}
               valueStyle={{ color: '#faad14' }}
             />
@@ -264,7 +263,7 @@ function AlertsPage() {
           <Card>
             <Statistic
               title="处理中"
-              value={alerts.filter(a => a.status === 1).length}
+              value={stats.inProgress}
               prefix={<ClockCircleOutlined />}
               valueStyle={{ color: '#1677ff' }}
             />
@@ -274,7 +273,7 @@ function AlertsPage() {
           <Card>
             <Statistic
               title="已解决"
-              value={alerts.filter(a => a.status === 2 || a.status === 3).length}
+              value={stats.resolved}
               prefix={<CheckCircleOutlined />}
               valueStyle={{ color: '#52c41a' }}
             />
@@ -284,7 +283,7 @@ function AlertsPage() {
           <Card>
             <Statistic
               title="严重告警"
-              value={alerts.filter(a => a.severity >= 3 && (a.status === 0 || a.status === 1)).length}
+              value={stats.critical}
               prefix={<ExclamationCircleOutlined />}
               valueStyle={{ color: '#ff4d4f' }}
             />
@@ -319,21 +318,35 @@ function AlertsPage() {
               <Option value={3}>高</Option>
               <Option value={4}>严重</Option>
             </Select>
-            <RangePicker placeholder={['开始时间', '结束时间']} />
-            <Button type="primary" onClick={() => {}}>
+            <RangePicker
+              placeholder={['开始时间', '结束时间']}
+              value={dateRange}
+              onChange={setDateRange}
+            />
+            <Button type="primary" onClick={loadAlerts}>
               查询
             </Button>
-            <Button onClick={() => { setStatusFilter(undefined); setSeverityFilter(undefined); }}>
+            <Button
+              onClick={() => {
+                setStatusFilter(undefined);
+                setSeverityFilter(undefined);
+                setDateRange(null);
+              }}
+            >
               重置
+            </Button>
+            <Button onClick={handleTriggerCheck} loading={loading}>
+              立即检测进度
             </Button>
           </Space>
         </div>
 
         <Table
           columns={columns}
-          dataSource={filteredAlerts}
+          dataSource={alerts}
           rowKey="id"
           loading={loading}
+          locale={{ emptyText: <Empty description="暂无告警数据" /> }}
           pagination={{
             pageSize: 10,
             showSizeChanger: true,
@@ -367,14 +380,14 @@ function AlertsPage() {
               </div>
             </div>
 
-            {(currentAlert.status === 0 || currentAlert.status === 1) ? (
+            {currentAlert.status === 0 || currentAlert.status === 1 ? (
               <Form form={form} layout="vertical">
                 <Form.Item
                   name="reason"
                   label="原因分析"
                   rules={[{ required: true, message: '请输入原因分析' }]}
                 >
-                  <TextArea rows={3} placeholder="请分析告警产生的原因" />
+                  <TextArea rows={3} placeholder="请分析告警产生的原因（将保存到处理记录）" />
                 </Form.Item>
 
                 <Form.Item
@@ -382,7 +395,7 @@ function AlertsPage() {
                   label="处理措施"
                   rules={[{ required: true, message: '请输入处理措施' }]}
                 >
-                  <TextArea rows={3} placeholder="请描述采取的处理措施" />
+                  <TextArea rows={3} placeholder="请描述采取的处理措施（将保存到处理记录）" />
                 </Form.Item>
 
                 <Form.Item
@@ -410,7 +423,7 @@ function AlertsPage() {
                   <strong>处理人：</strong>{currentAlert.resolvedByName || '未知'}
                 </div>
                 {currentAlert.resolvedAt && (
-                  <div>
+                  <div style={{ marginBottom: 12 }}>
                     <strong>处理时间：</strong>
                     {dayjs(currentAlert.resolvedAt).format('YYYY-MM-DD HH:mm')}
                   </div>

@@ -1,4 +1,5 @@
 using CertSchedulePlatform.DTOs;
+using CertSchedulePlatform.Entities;
 
 namespace CertSchedulePlatform.Services;
 

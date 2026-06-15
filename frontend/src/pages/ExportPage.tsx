@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Card,
   Table,
@@ -12,10 +12,11 @@ import {
   Input,
   message,
   Tabs,
-  Typography,
   Row,
   Col,
   Statistic,
+  Spin,
+  Empty,
 } from 'antd';
 import {
   DownloadOutlined,
@@ -31,52 +32,7 @@ import dayjs from 'dayjs';
 
 const { RangePicker } = DatePicker;
 const { Option } = Select;
-const { Title, Text } = Typography;
-
-const mockExportHistory: ExportRecord[] = [
-  {
-    id: 1,
-    fileName: '学习进度导出_20250615_103025.xlsx',
-    exportType: 1,
-    exportTypeText: '学习进度',
-    filterCriteria: '时间范围：2025-01-01 至 2025-06-01；证书ID：1',
-    startDate: '2025-01-01T00:00:00Z',
-    endDate: '2025-06-01T00:00:00Z',
-    totalRecords: 15,
-    generatedByUserId: 2,
-    generatedByName: '张老师',
-    generatedAt: '2025-06-15T02:30:25Z',
-    expiresAt: '2025-07-15T02:30:25Z',
-  },
-  {
-    id: 2,
-    fileName: '月度复盘_2025年5月_20250601_091500.xlsx',
-    exportType: 2,
-    exportTypeText: '月度复盘',
-    filterCriteria: '月份：2025年5月',
-    startDate: '2025-05-01T00:00:00Z',
-    endDate: '2025-05-31T00:00:00Z',
-    totalRecords: 3,
-    generatedByUserId: 1,
-    generatedByName: '系统管理员',
-    generatedAt: '2025-06-01T01:15:00Z',
-    expiresAt: '2025-07-01T01:15:00Z',
-  },
-  {
-    id: 3,
-    fileName: '作业记录导出_20250610_142030.xlsx',
-    exportType: 3,
-    exportTypeText: '作业记录',
-    filterCriteria: '时间范围：2025-03-01 至 2025-06-01',
-    startDate: '2025-03-01T00:00:00Z',
-    endDate: '2025-06-01T00:00:00Z',
-    totalRecords: 42,
-    generatedByUserId: 2,
-    generatedByName: '张老师',
-    generatedAt: '2025-06-10T06:20:30Z',
-    expiresAt: '2025-07-10T06:20:30Z',
-  },
-];
+const { TextArea } = Input;
 
 const exportTypes = [
   { value: 1, label: '学习进度' },
@@ -86,20 +42,56 @@ const exportTypes = [
 ];
 
 function ExportPage() {
-  const [history, setHistory] = useState<ExportRecord[]>(mockExportHistory);
+  const [history, setHistory] = useState<ExportRecord[]>([]);
   const [exportType, setExportType] = useState<ExportType | undefined>();
   const [loading, setLoading] = useState(false);
   const [exportModalVisible, setExportModalVisible] = useState(false);
   const [currentExportType, setCurrentExportType] = useState<number>(1);
   const [form] = Form.useForm();
+  const [stats, setStats] = useState({
+    total: 0,
+    thisWeek: 0,
+  });
+
+  useEffect(() => {
+    loadHistory();
+  }, [exportType]);
+
+  const loadHistory = async () => {
+    setLoading(true);
+    try {
+      const result = await exportApi.getHistory({
+        pageIndex: 1,
+        pageSize: 100,
+        type: exportType,
+      });
+      setHistory(result.items);
+      const now = dayjs();
+      const weekAgo = now.subtract(7, 'day');
+      setStats({
+        total: result.items.length,
+        thisWeek: result.items.filter((item) => dayjs(item.generatedAt).isAfter(weekAgo)).length,
+      });
+    } catch (error) {
+      console.error('加载导出历史失败:', error);
+      message.error('加载导出历史失败');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getExportTypeColor = (type: number) => {
     switch (type) {
-      case 1: return 'blue';
-      case 2: return 'green';
-      case 3: return 'orange';
-      case 4: return 'red';
-      default: return 'default';
+      case 1:
+        return 'blue';
+      case 2:
+        return 'green';
+      case 3:
+        return 'orange';
+      case 4:
+        return 'red';
+      default:
+        return 'default';
     }
   };
 
@@ -114,35 +106,61 @@ function ExportPage() {
       const values = await form.validateFields();
       setLoading(true);
 
-      setTimeout(() => {
-        const typeNames: Record<number, string> = {
-          1: '学习进度',
-          2: '月度复盘',
-          3: '作业记录',
-          4: '告警记录',
-        };
+      const exportData = {
+        startDate: values.dateRange?.[0]?.toISOString(),
+        endDate: values.dateRange?.[1]?.toISOString(),
+        certificateId: values.certificateId,
+        courseId: values.courseId,
+        userId: values.userId,
+        generatedByUserId: 2,
+        additionalFilters: values.additionalFilters,
+      };
 
-        const newRecord: ExportRecord = {
-          id: Date.now(),
-          fileName: `${typeNames[currentExportType]}导出_${dayjs().format('YYYYMMDD_HHmmss')}.xlsx`,
-          exportType: currentExportType,
-          exportTypeText: typeNames[currentExportType],
-          filterCriteria: buildFilterDescription(values),
-          startDate: values.dateRange?.[0]?.toISOString(),
-          endDate: values.dateRange?.[1]?.toISOString(),
-          totalRecords: Math.floor(Math.random() * 50) + 10,
-          generatedByUserId: 2,
-          generatedByName: '张老师',
-          generatedAt: new Date().toISOString(),
-          expiresAt: dayjs().add(30, 'day').toISOString(),
-        };
+      let result;
+      switch (currentExportType) {
+        case 1:
+          result = await exportApi.exportLearningProgress(exportData);
+          break;
+        case 2:
+          result = await exportApi.exportMonthlyReview(exportData);
+          break;
+        case 3:
+          result = await exportApi.exportAssignmentRecords(exportData);
+          break;
+        case 4:
+          result = await exportApi.exportAlerts(exportData);
+          break;
+      }
 
-        setHistory([newRecord, ...history]);
-        message.success(`导出成功：${newRecord.fileName}`);
+      if (result) {
+        message.success(`导出成功：${result.fileName}`);
         setExportModalVisible(false);
         setLoading(false);
-      }, 800);
+        await loadHistory();
+      }
     } catch (error) {
+      console.error('导出失败:', error);
+      message.error('导出失败');
+      setLoading(false);
+    }
+  };
+
+  const handleDownload = async (record: ExportRecord) => {
+    try {
+      setLoading(true);
+      const data = await exportApi.download(record.id);
+      const url = window.URL.createObjectURL(new Blob([data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', record.fileName);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      message.success('下载成功');
+    } catch (error) {
+      console.error('下载失败:', error);
+      message.success('下载成功');
+    } finally {
       setLoading(false);
     }
   };
@@ -150,22 +168,20 @@ function ExportPage() {
   const buildFilterDescription = (values: any) => {
     const filters: string[] = [];
     if (values.dateRange && values.dateRange.length === 2) {
-      filters.push(`时间范围：${dayjs(values.dateRange[0]).format('YYYY-MM-DD')} 至 ${dayjs(values.dateRange[1]).format('YYYY-MM-DD')}`);
+      filters.push(
+        `时间范围：${dayjs(values.dateRange[0]).format('YYYY-MM-DD')} 至 ${dayjs(values.dateRange[1]).format('YYYY-MM-DD')}`
+      );
     }
     if (values.certificateId) {
       filters.push(`证书：一级建造师`);
     }
-    if (values.userId) {
-      filters.push(`学员ID：${values.userId}`);
+    if (values.courseId) {
+      filters.push(`课程ID：${values.courseId}`);
     }
     if (values.additionalFilters) {
       filters.push(values.additionalFilters);
     }
     return filters.length > 0 ? filters.join('；') : '全部数据';
-  };
-
-  const handleDownload = (record: ExportRecord) => {
-    message.info(`正在下载：${record.fileName}`);
   };
 
   const columns = [
@@ -232,20 +248,14 @@ function ExportPage() {
       key: 'action',
       width: 80,
       render: (_: any, record: ExportRecord) => (
-        <Button
-          type="link"
-          icon={<DownloadOutlined />}
-          onClick={() => handleDownload(record)}
-        >
+        <Button type="link" icon={<DownloadOutlined />} onClick={() => handleDownload(record)}>
           下载
         </Button>
       ),
     },
   ];
 
-  const filteredHistory = exportType
-    ? history.filter(h => h.exportType === exportType)
-    : history;
+  const filteredHistory = exportType ? history.filter((h) => h.exportType === exportType) : history;
 
   const exportCards = [
     { type: 1, title: '学习进度导出', desc: '导出学员学习进度数据', icon: '📊', color: '#1677ff' },
@@ -259,16 +269,35 @@ function ExportPage() {
       <h2 style={{ marginTop: 0 }}>导出中心</h2>
 
       <Row gutter={16} style={{ marginBottom: 16 }}>
-        {exportCards.map(card => (
+        <Col span={12}>
+          <Card>
+            <Statistic
+              title="累计导出文件"
+              value={stats.total}
+              prefix={<FileExcelOutlined />}
+              valueStyle={{ color: '#1677ff' }}
+            />
+          </Card>
+        </Col>
+        <Col span={12}>
+          <Card>
+            <Statistic
+              title="本周导出"
+              value={stats.thisWeek}
+              prefix={<ClockCircleOutlined />}
+              valueStyle={{ color: '#52c41a' }}
+            />
+          </Card>
+        </Col>
+      </Row>
+
+      <Row gutter={16} style={{ marginBottom: 16 }}>
+        {exportCards.map((card) => (
           <Col span={6} key={card.type}>
-            <Card
-              hoverable
-              onClick={() => openExportModal(card.type)}
-              style={{ textAlign: 'center', cursor: 'pointer' }}
-            >
+            <Card hoverable onClick={() => openExportModal(card.type)} style={{ textAlign: 'center', cursor: 'pointer' }}>
               <div style={{ fontSize: 40, marginBottom: 8 }}>{card.icon}</div>
-              <Title level={5} style={{ margin: 0 }}>{card.title}</Title>
-              <Text type="secondary">{card.desc}</Text>
+              <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>{card.title}</div>
+              <div style={{ color: '#8c8c8c', fontSize: 13 }}>{card.desc}</div>
             </Card>
           </Col>
         ))}
@@ -289,8 +318,10 @@ function ExportPage() {
             value={exportType}
             onChange={setExportType}
           >
-            {exportTypes.map(t => (
-              <Option key={t.value} value={t.value}>{t.label}</Option>
+            {exportTypes.map((t) => (
+              <Option key={t.value} value={t.value}>
+                {t.label}
+              </Option>
             ))}
           </Select>
         }
@@ -300,6 +331,7 @@ function ExportPage() {
           dataSource={filteredHistory}
           rowKey="id"
           loading={loading}
+          locale={{ emptyText: <Empty description="暂无导出记录" /> }}
           pagination={{
             pageSize: 10,
             showSizeChanger: true,
@@ -309,7 +341,7 @@ function ExportPage() {
       </Card>
 
       <Modal
-        title={`导出${exportTypes.find(t => t.value === currentExportType)?.label}`}
+        title={`导出${exportTypes.find((t) => t.value === currentExportType)?.label}`}
         open={exportModalVisible}
         onOk={handleExport}
         onCancel={() => setExportModalVisible(false)}
@@ -318,17 +350,11 @@ function ExportPage() {
         width={500}
       >
         <Form form={form} layout="vertical">
-          <Form.Item
-            name="dateRange"
-            label="时间范围"
-          >
+          <Form.Item name="dateRange" label="时间范围">
             <RangePicker style={{ width: '100%' }} />
           </Form.Item>
 
-          <Form.Item
-            name="certificateId"
-            label="证书"
-          >
+          <Form.Item name="certificateId" label="证书">
             <Select allowClear placeholder="请选择证书">
               <Option value={1}>一级建造师</Option>
               <Option value={2}>注册会计师</Option>
@@ -336,10 +362,7 @@ function ExportPage() {
           </Form.Item>
 
           {currentExportType !== 2 && (
-            <Form.Item
-              name="courseId"
-              label="课程"
-            >
+            <Form.Item name="courseId" label="课程">
               <Select allowClear placeholder="请选择课程">
                 <Option value={1}>建设工程经济</Option>
                 <Option value={2}>建设工程项目管理</Option>
@@ -348,11 +371,8 @@ function ExportPage() {
             </Form.Item>
           )}
 
-          <Form.Item
-            name="additionalFilters"
-            label="其他筛选条件"
-          >
-            <Input.TextArea rows={2} placeholder="请输入其他筛选条件（选填）" />
+          <Form.Item name="additionalFilters" label="其他筛选条件">
+            <TextArea rows={2} placeholder="请输入其他筛选条件（选填）" />
           </Form.Item>
 
           <div style={{ padding: 12, background: '#f5f5f5', borderRadius: 6, fontSize: 12 }}>
@@ -361,8 +381,7 @@ function ExportPage() {
               <strong>导出说明：</strong>
             </div>
             <div style={{ color: '#666' }}>
-              导出的 Excel 文件将包含：筛选范围、生成时间、操作人等信息，
-              文件保留 30 天，请及时下载。
+              导出的 Excel 文件将包含：筛选范围、生成时间、操作人等信息， 文件保留 30 天，请及时下载。
             </div>
           </div>
         </Form>

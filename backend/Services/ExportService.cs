@@ -3,6 +3,7 @@ using CertSchedulePlatform.Data;
 using CertSchedulePlatform.DTOs;
 using CertSchedulePlatform.Entities;
 using OfficeOpenXml;
+using System.IO;
 using System.Text;
 using System.Text.Json;
 

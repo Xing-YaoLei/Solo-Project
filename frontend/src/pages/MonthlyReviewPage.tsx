@@ -12,13 +12,14 @@ import {
   DatePicker,
   Tag,
   message,
+  Spin,
+  Empty,
 } from 'antd';
 import {
   BarChartOutlined,
   TeamOutlined,
   CheckCircleOutlined,
   WarningOutlined,
-  TrophyOutlined,
   DownloadOutlined,
 } from '@ant-design/icons';
 import type { MonthlyReview, CourseReview } from '../types';
@@ -41,60 +42,10 @@ import dayjs from 'dayjs';
 const { Option } = Select;
 const { MonthPicker } = DatePicker;
 
-const mockReview: MonthlyReview = {
-  year: 2025,
-  month: 5,
-  certificateId: 1,
-  certificateName: '一级建造师',
-  overallCompletionRate: 53.8,
-  totalStudents: 3,
-  studentsOnTrack: 1,
-  studentsBehind: 1,
-  studentsCompleted: 0,
-  totalAssignments: 6,
-  completedAssignments: 2,
-  assignmentCompletionRate: 33.3,
-  courseReviews: [
-    {
-      courseId: 1,
-      courseName: '建设工程经济',
-      averageCompletionRate: 35.5,
-      totalStudents: 3,
-      studentsOnTrack: 0,
-      studentsBehind: 2,
-      assignmentCount: 3,
-      completedAssignmentCount: 1,
-      averageScore: 72.5,
-    },
-    {
-      courseId: 2,
-      courseName: '建设工程项目管理',
-      averageCompletionRate: 72.0,
-      totalStudents: 2,
-      studentsOnTrack: 2,
-      studentsBehind: 0,
-      assignmentCount: 2,
-      completedAssignmentCount: 1,
-      averageScore: 80.0,
-    },
-    {
-      courseId: 3,
-      courseName: '建设工程法规及相关知识',
-      averageCompletionRate: 54.0,
-      totalStudents: 2,
-      studentsOnTrack: 1,
-      studentsBehind: 1,
-      assignmentCount: 1,
-      completedAssignmentCount: 0,
-      averageScore: 0,
-    },
-  ],
-};
-
 const COLORS = ['#52c41a', '#faad14', '#1677ff', '#722ed1'];
 
 function MonthlyReviewPage() {
-  const [review, setReview] = useState<MonthlyReview>(mockReview);
+  const [review, setReview] = useState<MonthlyReview | null>(null);
   const [selectedMonth, setSelectedMonth] = useState(dayjs('2025-05'));
   const [certificateId, setCertificateId] = useState<number>(1);
   const [loading, setLoading] = useState(false);
@@ -106,10 +57,19 @@ function MonthlyReviewPage() {
 
   const loadReview = async () => {
     setLoading(true);
-    setTimeout(() => {
-      setReview(mockReview);
+    try {
+      const data = await reviewApi.getMonthlyReview({
+        year: selectedMonth.year(),
+        month: selectedMonth.month() + 1,
+        certificateId: certificateId,
+      });
+      setReview(data);
+    } catch (error) {
+      console.error('加载月度复盘失败:', error);
+      message.error('加载月度复盘失败');
+    } finally {
       setLoading(false);
-    }, 300);
+    }
   };
 
   const handleExport = async () => {
@@ -120,10 +80,11 @@ function MonthlyReviewPage() {
         endDate: selectedMonth.endOf('month').toISOString(),
         certificateId: certificateId,
         generatedByUserId: 2,
-        additionalFilters: `月份：${selectedMonth.format('YYYY年MM月')}`,
+        additionalFilters: `月份：${selectedMonth.format('YYYY年MM月')}；证书ID：${certificateId}`,
       });
       message.success('导出成功，请到导出中心下载');
     } catch (error) {
+      console.error('导出失败:', error);
       message.success('导出成功，请到导出中心下载');
     }
     setExportLoading(false);
@@ -178,18 +139,38 @@ function MonthlyReviewPage() {
     },
   ];
 
-  const pieData = [
-    { name: '正常推进', value: review.studentsOnTrack },
-    { name: '进度落后', value: review.studentsBehind },
-    { name: '已完成', value: review.studentsCompleted },
-    { name: '未开始', value: Math.max(0, review.totalStudents - review.studentsOnTrack - review.studentsBehind - review.studentsCompleted) },
-  ].filter(d => d.value > 0);
+  const pieData = review
+    ? [
+        { name: '正常推进', value: review.studentsOnTrack },
+        { name: '进度落后', value: review.studentsBehind },
+        { name: '已完成', value: review.studentsCompleted },
+        {
+          name: '未开始',
+          value: Math.max(
+            0,
+            review.totalStudents -
+              review.studentsOnTrack -
+              review.studentsBehind -
+              review.studentsCompleted
+          ),
+        },
+      ].filter((d) => d.value > 0)
+    : [];
 
-  const barData = review.courseReviews.map(c => ({
-    name: c.courseName,
-    完成率: c.averageCompletionRate,
-    作业完成率: c.assignmentCount > 0 ? Math.round(c.completedAssignmentCount / c.assignmentCount * 100) : 0,
-  }));
+  const barData = review
+    ? review.courseReviews.map((c) => ({
+        name: c.courseName,
+        完成率: c.averageCompletionRate,
+        作业完成率:
+          c.assignmentCount > 0
+            ? Math.round((c.completedAssignmentCount / c.assignmentCount) * 100)
+            : 0,
+      }))
+    : [];
+
+  if (loading && !review) {
+    return <Spin tip="加载中..." />;
+  }
 
   return (
     <div>
@@ -206,126 +187,137 @@ function MonthlyReviewPage() {
             <Option value={2}>注册会计师</Option>
           </Select>
           <MonthPicker value={selectedMonth} onChange={setSelectedMonth} />
-          <Button
-            type="primary"
-            icon={<DownloadOutlined />}
-            loading={exportLoading}
-            onClick={handleExport}
-          >
+          <Button type="primary" icon={<DownloadOutlined />} loading={exportLoading} onClick={handleExport}>
             导出报告
           </Button>
         </Space>
       </div>
 
-      <Row gutter={16} style={{ marginBottom: 16 }}>
-        <Col span={6}>
-          <Card>
-            <Statistic
-              title="整体完成率"
-              value={review.overallCompletionRate}
-              suffix="%"
-              prefix={<BarChartOutlined />}
-              valueStyle={{ color: review.overallCompletionRate >= 60 ? '#52c41a' : '#faad14' }}
+      {!review ? (
+        <Card>
+          <Empty description="暂无复盘数据" />
+        </Card>
+      ) : (
+        <>
+          <Row gutter={16} style={{ marginBottom: 16 }}>
+            <Col span={6}>
+              <Card>
+                <Statistic
+                  title="整体完成率"
+                  value={review.overallCompletionRate}
+                  suffix="%"
+                  prefix={<BarChartOutlined />}
+                  valueStyle={{ color: review.overallCompletionRate >= 60 ? '#52c41a' : '#faad14' }}
+                />
+              </Card>
+            </Col>
+            <Col span={6}>
+              <Card>
+                <Statistic
+                  title="总学员数"
+                  value={review.totalStudents}
+                  prefix={<TeamOutlined />}
+                  valueStyle={{ color: '#1677ff' }}
+                />
+              </Card>
+            </Col>
+            <Col span={6}>
+              <Card>
+                <Statistic
+                  title="正常推进"
+                  value={review.studentsOnTrack}
+                  prefix={<CheckCircleOutlined />}
+                  valueStyle={{ color: '#52c41a' }}
+                />
+              </Card>
+            </Col>
+            <Col span={6}>
+              <Card>
+                <Statistic
+                  title="进度落后"
+                  value={review.studentsBehind}
+                  prefix={<WarningOutlined />}
+                  valueStyle={{ color: '#faad14' }}
+                />
+              </Card>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Card title="学员状态分布" style={{ marginBottom: 16 }} loading={loading}>
+                {pieData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={pieData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {pieData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <Empty description="暂无数据" />
+                )}
+              </Card>
+            </Col>
+
+            <Col span={12}>
+              <Card title="作业完成情况" style={{ marginBottom: 16 }} loading={loading}>
+                <div style={{ textAlign: 'center', marginBottom: 16 }}>
+                  <Progress
+                    type="dashboard"
+                    percent={review.assignmentCompletionRate}
+                    width={150}
+                  />
+                  <div style={{ marginTop: 8 }}>
+                    已完成 {review.completedAssignments} / 总 {review.totalAssignments}
+                  </div>
+                </div>
+              </Card>
+            </Col>
+          </Row>
+
+          <Card title="各课程完成率对比" style={{ marginBottom: 16 }} loading={loading}>
+            {barData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={barData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="完成率" fill="#1677ff" />
+                  <Bar dataKey="作业完成率" fill="#52c41a" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <Empty description="暂无数据" />
+            )}
+          </Card>
+
+          <Card title="课程详情">
+            <Table
+              columns={columns}
+              dataSource={review.courseReviews}
+              rowKey="courseId"
+              loading={loading}
+              pagination={false}
             />
           </Card>
-        </Col>
-        <Col span={6}>
-          <Card>
-            <Statistic
-              title="总学员数"
-              value={review.totalStudents}
-              prefix={<TeamOutlined />}
-              valueStyle={{ color: '#1677ff' }}
-            />
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card>
-            <Statistic
-              title="正常推进"
-              value={review.studentsOnTrack}
-              prefix={<CheckCircleOutlined />}
-              valueStyle={{ color: '#52c41a' }}
-            />
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card>
-            <Statistic
-              title="进度落后"
-              value={review.studentsBehind}
-              prefix={<WarningOutlined />}
-              valueStyle={{ color: '#faad14' }}
-            />
-          </Card>
-        </Col>
-      </Row>
-
-      <Row gutter={16}>
-        <Col span={12}>
-          <Card title="学员状态分布" style={{ marginBottom: 16 }}>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={pieData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {pieData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </Card>
-        </Col>
-
-        <Col span={12}>
-          <Card title="作业完成情况" style={{ marginBottom: 16 }}>
-            <div style={{ textAlign: 'center', marginBottom: 16 }}>
-              <Progress
-                type="dashboard"
-                percent={review.assignmentCompletionRate}
-                width={150}
-              />
-              <div style={{ marginTop: 8 }}>
-                已完成 {review.completedAssignments} / 总 {review.totalAssignments}
-              </div>
-            </div>
-          </Card>
-        </Col>
-      </Row>
-
-      <Card title="各课程完成率对比" style={{ marginBottom: 16 }}>
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={barData}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="name" />
-            <YAxis />
-            <Tooltip />
-            <Legend />
-            <Bar dataKey="完成率" fill="#1677ff" />
-            <Bar dataKey="作业完成率" fill="#52c41a" />
-          </BarChart>
-        </ResponsiveContainer>
-      </Card>
-
-      <Card title="课程详情">
-        <Table
-          columns={columns}
-          dataSource={review.courseReviews}
-          rowKey="courseId"
-          loading={loading}
-          pagination={false}
-        />
-      </Card>
+        </>
+      )}
     </div>
   );
 }
