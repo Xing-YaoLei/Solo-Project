@@ -28,7 +28,7 @@ def get_courses(dept_id=None):
     sql = "SELECT * FROM course WHERE 1=1"
     params = {}
     if dept_id and dept_id != "全部":
-        sql += " AND dept_id = ?"
+        sql += " AND dept_id = $1"
         params["1"] = dept_id
     sql += " ORDER BY course_name"
     return db.query(sql, params if params else None)
@@ -286,30 +286,25 @@ def main():
                 with st.spinner(f"正在生成{export_format.upper()}文件..."):
                     try:
                         if export_type == "textbook":
-                            file_path = export_service.export_textbooks(df, filters, export_format)
+                            file_bytes, file_name, _ = export_service.export_textbooks(df, filters, export_format)
                         elif export_type == "funnel":
-                            file_path = export_service.export_funnel_report(df, filters, export_format)
+                            metrics = {"total_stages": len(df), "overall_conversion": df["total_conversion"][-1] if len(df) > 0 else 0}
+                            file_bytes, file_name, _ = export_service.export_funnel_report(df, metrics, filters, export_format)
                         else:
-                            file_path = export_service.export_gap_report(df, filters, export_format)
+                            from src.data.gap_analyzer import GapAnalyzer
+                            analyzer = GapAnalyzer()
+                            summary = analyzer.get_gap_summary(filters.get("term_id"))
+                            file_bytes, file_name, _ = export_service.export_gap_report(df, summary, filters, export_format)
                         
-                        st.success(f"✅ 文件生成成功！")
-                        
-                        with open(file_path, "rb") as f:
-                            file_bytes = f.read()
-                        
-                        file_name = {
-                            "textbook": "教材清单",
-                            "funnel": "漏斗报表",
-                            "gap": "缺口报告"
-                        }.get(export_type, "导出数据")
+                        st.success(f"✅ 文件生成成功: {file_name}")
                         
                         file_ext = "xlsx" if export_format == "excel" else "pdf"
                         mime_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" if export_format == "excel" else "application/pdf"
                         
                         st.download_button(
-                            f"📥 下载 {file_name}.{file_ext}",
+                            f"📥 下载 {file_name}",
                             file_bytes,
-                            f"{file_name}_{datetime.now().strftime('%Y%m%d%H%M%S')}.{file_ext}",
+                            file_name,
                             mime_type,
                             use_container_width=True
                         )

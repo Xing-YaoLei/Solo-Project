@@ -28,7 +28,7 @@ def get_courses(dept_id=None):
     sql = "SELECT * FROM course WHERE 1=1"
     params = {}
     if dept_id and dept_id != "全部":
-        sql += " AND dept_id = ?"
+        sql += " AND dept_id = $1"
         params["1"] = dept_id
     sql += " ORDER BY course_name"
     return db.query(sql, params if params else None)
@@ -195,26 +195,28 @@ def main():
         with col1:
             if st.button("📥 导出Excel", key="export_excel"):
                 with st.spinner("正在生成Excel文件..."):
-                    excel_path = export_service.export_textbooks(df, filters, "excel")
-                    with open(excel_path, "rb") as f:
-                        st.download_button(
-                            "下载Excel文件",
-                            f,
-                            f"教材清单_{datetime.now().strftime('%Y%m%d%H%M%S')}.xlsx",
-                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                        )
+                    file_bytes, file_name, _ = export_service.export_textbooks(df, filters, "excel")
+                    st.success(f"✅ Excel生成成功: {file_name}")
+                    st.download_button(
+                        "📥 下载Excel文件",
+                        file_bytes,
+                        file_name,
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        use_container_width=True
+                    )
         
         with col2:
             if st.button("📄 导出PDF", key="export_pdf"):
                 with st.spinner("正在生成PDF文件..."):
-                    pdf_path = export_service.export_textbooks(df, filters, "pdf")
-                    with open(pdf_path, "rb") as f:
-                        st.download_button(
-                            "下载PDF文件",
-                            f,
-                            f"教材清单_{datetime.now().strftime('%Y%m%d%H%M%S')}.pdf",
-                            "application/pdf"
-                        )
+                    file_bytes, file_name, _ = export_service.export_textbooks(df, filters, "pdf")
+                    st.success(f"✅ PDF生成成功: {file_name}")
+                    st.download_button(
+                        "📥 下载PDF文件",
+                        file_bytes,
+                        file_name,
+                        "application/pdf",
+                        use_container_width=True
+                    )
         
         with col3:
             st.info("💡 导出文件自动包含筛选条件水印，转发后可追溯取数范围")

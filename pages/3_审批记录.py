@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from config import setup_logger, STATUS_COLORS
 from src.data.database import db
 from src.utils.filters import build_filter_conditions, generate_filter_description
+from src.export.export_utils import ExportService
 
 logger = setup_logger()
 
@@ -27,7 +28,7 @@ def get_courses(dept_id=None):
     sql = "SELECT * FROM course WHERE 1=1"
     params = {}
     if dept_id and dept_id != "全部":
-        sql += " AND dept_id = ?"
+        sql += " AND dept_id = $1"
         params["1"] = dept_id
     sql += " ORDER BY course_name"
     return db.query(sql, params if params else None)
@@ -184,6 +185,41 @@ def main():
         
         st.markdown("---")
         
+        export_service = ExportService()
+        
+        col1, col2, col3 = st.columns([1, 1, 1])
+        
+        with col1:
+            if st.button("📥 导出Excel", key="approval_export_excel"):
+                with st.spinner("正在生成Excel文件..."):
+                    file_bytes, file_name, _ = export_service.export_approval_records(df, filters, "excel")
+                    st.success(f"✅ Excel生成成功: {file_name}")
+                    st.download_button(
+                        "📥 下载Excel文件",
+                        file_bytes,
+                        file_name,
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        use_container_width=True
+                    )
+        
+        with col2:
+            if st.button("📄 导出PDF", key="approval_export_pdf"):
+                with st.spinner("正在生成PDF文件..."):
+                    file_bytes, file_name, _ = export_service.export_approval_records(df, filters, "pdf")
+                    st.success(f"✅ PDF生成成功: {file_name}")
+                    st.download_button(
+                        "📥 下载PDF文件",
+                        file_bytes,
+                        file_name,
+                        "application/pdf",
+                        use_container_width=True
+                    )
+        
+        with col3:
+            st.info("💡 导出文件自动包含筛选条件水印，转发后可追溯取数范围")
+        
+        st.markdown("---")
+        
         col1, col2 = st.columns([1, 1])
         
         with col1:
@@ -270,13 +306,6 @@ def main():
                 use_container_width=True,
                 hide_index=True,
                 column_config=column_config
-            )
-            
-            st.download_button(
-                "📥 导出审批记录",
-                df.to_pandas().to_csv(index=False).encode("utf-8-sig"),
-                f"审批记录_{datetime.now().strftime('%Y%m%d%H%M%S')}.csv",
-                "text/csv"
             )
         else:
             st.info("暂无符合条件的审批记录")

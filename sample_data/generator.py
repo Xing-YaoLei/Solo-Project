@@ -78,6 +78,7 @@ class SampleDataGenerator:
         self._generate_courses()
         self._generate_students()
         self._generate_textbook_orders()
+        self._generate_student_applications()
         self._generate_approvals()
         self._generate_campus_card_records()
         self._generate_classrooms()
@@ -199,6 +200,65 @@ class SampleDataGenerator:
         df = pl.DataFrame(orders)
         db.insert_dataframe("textbook_order", df)
         logger.info(f"生成 {len(df)} 条教材订购数据")
+
+    def _generate_student_applications(self):
+        orders_df = db.query("SELECT * FROM textbook_order WHERE order_status IN ('submitted', 'approved', 'purchased', 'stocked', 'distributed')")
+        students_df = db.query("SELECT student_id, dept_id FROM student LIMIT 500")
+
+        applications = []
+        application_id = 1
+
+        for order in orders_df.to_dicts():
+            if random.random() > 0.85:
+                continue
+
+            course = db.query(f"SELECT * FROM course WHERE course_id = '{order['course_id']}'").to_dicts()
+            if not course:
+                continue
+
+            course = course[0]
+            dept_students = students_df.filter(pl.col("dept_id") == course["dept_id"])
+            if dept_students.is_empty():
+                dept_students = students_df
+
+            if len(dept_students) == 0:
+                continue
+
+            num_applications = min(
+                max(1, int(order["quantity"] * 0.6) if order["quantity"] > 0 else random.randint(1, 3)),
+                len(dept_students)
+            )
+
+            selected_indices = random.sample(range(len(dept_students)), num_applications)
+
+            for idx in selected_indices:
+                student = dept_students.row(idx, named=True)
+                submit_date = order["created_at"] + timedelta(days=random.randint(-7, 3))
+                version = random.randint(1, 3)
+                has_confirmed = random.random() > 0.1
+
+                applications.append({
+                    "application_id": f"APP{application_id:06d}",
+                    "order_id": order["order_id"],
+                    "student_id": student["student_id"],
+                    "textbook_name": order["textbook_name"],
+                    "textbook_isbn": order["textbook_isbn"],
+                    "publisher": order["publisher"],
+                    "price": order["price"],
+                    "quantity": 1,
+                    "submit_time": submit_date,
+                    "has_confirmed": has_confirmed,
+                    "confirm_time": submit_date + timedelta(hours=random.randint(1, 72)) if has_confirmed else None,
+                    "version_id": version,
+                    "data_source": random.choice(["student_portal", "manual"]),
+                    "created_at": submit_date,
+                    "updated_at": submit_date + timedelta(hours=random.randint(1, 48)),
+                })
+                application_id += 1
+
+        df = pl.DataFrame(applications)
+        db.insert_dataframe("student_application", df)
+        logger.info(f"生成 {len(df)} 条学生申请数据")
 
     def _generate_approvals(self):
         orders_df = db.query("SELECT * FROM textbook_order WHERE order_status IN ('approved', 'purchased', 'stocked', 'distributed')")

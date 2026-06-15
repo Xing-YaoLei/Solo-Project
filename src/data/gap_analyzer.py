@@ -99,6 +99,23 @@ class GapAnalyzer:
                 suggested_action="补全审批流程记录"
             ))
 
+        sql_no_application = """
+        SELECT o.order_id
+        FROM textbook_order o
+        LEFT JOIN student_application sa ON o.order_id = sa.order_id
+        WHERE o.term_id = ? AND sa.application_id IS NULL
+        AND o.order_status IN ('submitted', 'approved', 'purchased')
+        """
+        result = db.query(sql_no_application, {"1": term_id})
+        for row in result.to_dicts():
+            gaps.append(self._create_gap_record(
+                order_id=row["order_id"],
+                gap_type="no_student_application",
+                missing_field=None,
+                severity="low",
+                suggested_action="核对学生申请表，确认是否已提交纸质申请"
+            ))
+
         return gaps
 
     def _find_quantity_mismatch_gaps(self, term_id: str) -> List[Dict]:
