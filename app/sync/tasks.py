@@ -120,6 +120,17 @@ def get_or_create_student(external_student_id: str, student_info: Optional[Dict]
     return None
 
 
+def safe_update_state(task_self, state: str, meta: Dict[str, Any]) -> None:
+    """
+    安全地更新任务状态，在没有 task_id 时（直接调用函数）不抛出异常
+    """
+    try:
+        if task_self and hasattr(task_self, 'request') and task_self.request.id:
+            task_self.update_state(state=state, meta=meta)
+    except Exception:
+        pass
+
+
 def _fetch_from_api(api_url: str, api_token: str, data_source: str, sync_batch: str) -> List[Dict]:
     """
     从配置的API地址获取数据，失败时记录到异常数据表
@@ -210,7 +221,8 @@ def sync_employment_data(self, records: Optional[List[Dict]] = None) -> Dict[str
         error_count = 0
 
         for idx, record in enumerate(records, 1):
-            self.update_state(
+            safe_update_state(
+                self,
                 state="PROGRESS",
                 meta={"current": idx, "total": total_records, "success": success_count, "errors": error_count},
             )
@@ -348,7 +360,8 @@ def sync_live_platform_data(self, records: Optional[List[Dict]] = None) -> Dict[
         error_count = 0
 
         for idx, record in enumerate(records, 1):
-            self.update_state(
+            safe_update_state(
+                self,
                 state="PROGRESS",
                 meta={"current": idx, "total": total_records, "success": success_count, "errors": error_count},
             )
@@ -482,7 +495,8 @@ def sync_lms_data(self, records: Optional[List[Dict]] = None) -> Dict[str, Any]:
         error_count = 0
 
         for idx, record in enumerate(records, 1):
-            self.update_state(
+            safe_update_state(
+                self,
                 state="PROGRESS",
                 meta={"current": idx, "total": total_records, "success": success_count, "errors": error_count},
             )
