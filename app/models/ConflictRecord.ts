@@ -10,6 +10,9 @@ export interface IConflictRecord extends Document {
   assignedTo?: string;
   assignedRole: "admin" | "coordinator" | "teacher";
   supplementNote?: string;
+  supplementedBy?: string;
+  supplementedAt?: Date;
+  forwardedAt?: Date;
   resolvedBy?: string;
   resolvedAt?: Date;
   createdAt: Date;
@@ -39,6 +42,9 @@ const ConflictRecordSchema = new Schema<IConflictRecord>(
       default: "coordinator",
     },
     supplementNote: { type: String, trim: true },
+    supplementedBy: { type: String, trim: true },
+    supplementedAt: { type: Date },
+    forwardedAt: { type: Date },
     resolvedBy: { type: String, trim: true },
     resolvedAt: { type: Date },
   },

@@ -31,9 +31,8 @@ export default function Conflicts() {
 
   const filtered = conflicts.filter((c: any) => statusFilter === "all" || c.status === statusFilter);
 
-  const handleForward = async () => {
-    if (!selected) return;
-    await fetch(`/api/conflicts/${selected._id}/forward`, {
+  const handleForward = async (conflict: any) => {
+    await fetch(`/api/conflicts/${conflict._id}/forward`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(forwardForm),
@@ -42,9 +41,8 @@ export default function Conflicts() {
     window.location.reload();
   };
 
-  const handleSupplement = async () => {
-    if (!selected) return;
-    await fetch(`/api/conflicts/${selected._id}/supplement`, {
+  const handleSupplement = async (conflict: any) => {
+    await fetch(`/api/conflicts/${conflict._id}/supplement`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ supplementNote, handler: "协调员" }),
@@ -53,9 +51,8 @@ export default function Conflicts() {
     window.location.reload();
   };
 
-  const handleResolve = async () => {
-    if (!selected) return;
-    await fetch(`/api/conflicts/${selected._id}/resolve`, {
+  const handleResolve = async (conflict: any) => {
+    await fetch(`/api/conflicts/${conflict._id}/resolve`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ resolvedBy: "管理员" }),
@@ -163,7 +160,7 @@ export default function Conflicts() {
                     <Button size="sm" variant="secondary" onClick={() => { setSelected(c); setShowSupplement(true); }}>补说明</Button>
                   )}
                   {(c.status === "forwarded" || c.status === "supplemented") && (
-                    <Button size="sm" variant="primary" onClick={() => { setSelected(c); handleResolve(); }}>确认解决</Button>
+                    <Button size="sm" variant="primary" onClick={() => handleResolve(c)}>确认解决</Button>
                   )}
                 </div>
               </CardContent>
@@ -195,7 +192,7 @@ export default function Conflicts() {
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="secondary" onClick={() => setShowForward(false)}>取消</Button>
-            <Button onClick={handleForward}>确认转派</Button>
+            <Button onClick={() => selected && handleForward(selected)}>确认转派</Button>
           </div>
         </div>
       </Modal>
@@ -213,7 +210,7 @@ export default function Conflicts() {
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="secondary" onClick={() => setShowSupplement(false)}>取消</Button>
-            <Button onClick={handleSupplement}>提交</Button>
+            <Button onClick={() => selected && handleSupplement(selected)}>提交</Button>
           </div>
         </div>
       </Modal>

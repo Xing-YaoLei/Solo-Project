@@ -17,4 +17,5 @@ router.use("/attendance", attendanceRouter);
 router.use("/analytics", analyticsRouter);
 router.use("/upload", uploadRouter);
 
+export { router as apiRouter };
 export default router;
