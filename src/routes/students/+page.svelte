@@ -1,6 +1,7 @@
 <script lang="ts">
 	import AppLayout from '$lib/components/AppLayout.svelte';
 	import { createQuery, createMutation } from '$lib/trpc/query';
+	import { downloadCsv } from '$lib/utils/csv';
 
 	let searchKeyword = '';
 	let roleFilter = '';
@@ -26,13 +27,38 @@
 		isActive: statusFilter === 'active' ? true : statusFilter === 'inactive' ? false : undefined
 	};
 
+	$: exportInput = {
+		role: roleFilter || undefined,
+		keyword: searchKeyword || undefined,
+		isActive: statusFilter === 'active' ? true : statusFilter === 'inactive' ? false : undefined
+	};
+
+	const meQuery = createQuery<void, { user: { roles: string[]; permissions: Record<string, boolean> } }>('auth.me', () => ({} as any));
 	const usersQuery = createQuery<any, any>('users.list', () => queryInput);
+	const exportUsersQuery = createQuery<any, { filename: string; content: string }>('users.export', () => exportInput);
 	const rolesQuery = createQuery<void, any[]>('users.listRoles', () => ({} as any));
 	const createUserMutation = createMutation<any, any>('users.create');
 	const updateUserMutation = createMutation<any, any>('users.update');
 
 	$: usersData = $usersQuery.data;
 	$: roles = $rolesQuery.data || [];
+	$: user = $meQuery.data?.user;
+	$: canExport = user?.permissions?.['export.data'] === true;
+
+	async function exportUsers() {
+		if (!canExport) {
+			alert('您没有导出权限，请联系教务管理员');
+			return;
+		}
+		try {
+			const result = await exportUsersQuery.refetch();
+			if (result) {
+				downloadCsv(result.content, result.filename);
+			}
+		} catch (err: any) {
+			alert(err.message || '导出失败');
+		}
+	}
 
 	function getRoleLabel(role: string) {
 		const labels: Record<string, string> = {
@@ -165,12 +191,14 @@
 						</button>
 					</div>
 					<div class="flex items-center gap-2">
-						<button class="btn btn-outline">
-							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-							</svg>
-							导出
-						</button>
+						{#if canExport}
+							<button on:click={exportUsers} class="btn btn-outline">
+								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+								</svg>
+								导出
+							</button>
+						{/if}
 						<button
 							on:click={() => (showCreateModal = true)}
 							class="btn btn-primary"

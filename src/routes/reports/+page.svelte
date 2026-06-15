@@ -1,6 +1,7 @@
 <script lang="ts">
 	import AppLayout from '$lib/components/AppLayout.svelte';
 	import { createQuery } from '$lib/trpc/query';
+	import { downloadCsv } from '$lib/utils/csv';
 
 	let activeTab = 'completion';
 	let dateRange = '7d';
@@ -15,8 +16,15 @@
 		{ id: 'user', label: '负责人绩效' }
 	];
 
+	const meQuery = createQuery<void, { user: { roles: string[]; permissions: Record<string, boolean> } }>('auth.me', () => ({} as any));
 	const overviewQuery = createQuery<void, any>('reports.overviewStats', () => ({} as any));
 	const completionRateQuery = createQuery<any, any[]>('reports.completionRateByCourse', () => ({}));
+	const exportCompletionQuery = createQuery<any, { filename: string; content: string }>('reports.exportCompletionRate', () => ({}));
+	const exportPassRateQuery = createQuery<any, { filename: string; content: string }>('reports.exportPassRate', () => ({}));
+	const exportUserPerformanceQuery = createQuery<any, { filename: string; content: string }>('reports.exportUserPerformance', () => ({}));
+
+	$: user = $meQuery.data?.user;
+	$: canExport = user?.permissions?.['report.export'] === true;
 
 	$: dateQueryInput = getDateRangeInput();
 	const passRateQuery = createQuery<any, any[]>('reports.examPassRateByDate', () => dateQueryInput);
@@ -33,6 +41,51 @@
 	$: completionRates = $completionRateQuery.data || [];
 	$: passRateData = $passRateQuery.data || [];
 	$: userPerformance = $userPerformanceQuery.data;
+
+	async function exportCompletion() {
+		if (!canExport) {
+			alert('您没有导出权限，请联系教务管理员');
+			return;
+		}
+		try {
+			const result = await exportCompletionQuery.refetch();
+			if (result) {
+				downloadCsv(result.content, result.filename);
+			}
+		} catch (err: any) {
+			alert(err.message || '导出失败');
+		}
+	}
+
+	async function exportPassRate() {
+		if (!canExport) {
+			alert('您没有导出权限，请联系教务管理员');
+			return;
+		}
+		try {
+			const result = await exportPassRateQuery.refetch();
+			if (result) {
+				downloadCsv(result.content, result.filename);
+			}
+		} catch (err: any) {
+			alert(err.message || '导出失败');
+		}
+	}
+
+	async function exportUserPerformance() {
+		if (!canExport) {
+			alert('您没有导出权限，请联系教务管理员');
+			return;
+		}
+		try {
+			const result = await exportUserPerformanceQuery.refetch();
+			if (result) {
+				downloadCsv(result.content, result.filename);
+			}
+		} catch (err: any) {
+			alert(err.message || '导出失败');
+		}
+	}
 
 	function getDateRangeInput() {
 		const end = new Date();
@@ -194,12 +247,14 @@
 						<div class="flex items-center justify-between mb-6">
 							<h3 class="text-lg font-semibold text-gray-900">课程完成率排行</h3>
 							<div class="flex items-center gap-2">
-								<button class="btn btn-outline text-sm">
-									<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-									</svg>
-									导出
-								</button>
+								{#if canExport}
+									<button on:click={exportCompletion} class="btn btn-outline text-sm">
+										<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+										</svg>
+										导出
+									</button>
+								{/if}
 							</div>
 						</div>
 
@@ -270,12 +325,14 @@
 									<option value="week">按周</option>
 									<option value="month">按月</option>
 								</select>
-								<button class="btn btn-outline text-sm">
-									<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-									</svg>
-									导出
-								</button>
+								{#if canExport}
+									<button on:click={exportPassRate} class="btn btn-outline text-sm">
+										<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+										</svg>
+										导出
+									</button>
+								{/if}
 							</div>
 						</div>
 
@@ -352,12 +409,14 @@
 									<option value="lecturer">讲师</option>
 									<option value="admin">教务</option>
 								</select>
-								<button class="btn btn-outline text-sm">
-									<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-									</svg>
-									导出
-								</button>
+								{#if canExport}
+									<button on:click={exportUserPerformance} class="btn btn-outline text-sm">
+										<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+										</svg>
+										导出
+									</button>
+								{/if}
 							</div>
 						</div>
 

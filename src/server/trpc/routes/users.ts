@@ -189,5 +189,77 @@ export const usersRouter = router({
 			orderBy: roles.code
 		});
 		return roleList;
-	})
+	}),
+
+	export: requirePermission('export.data')
+		.input(
+			z.object({
+				role: z.string().optional(),
+				keyword: z.string().optional(),
+				isActive: z.boolean().optional()
+			})
+		)
+		.query(async ({ ctx, input }) => {
+			const whereConditions = [];
+
+			if (input.role) {
+				whereConditions.push(eq(roles.code, input.role));
+			}
+			if (input.keyword) {
+				whereConditions.push(
+					or(like(users.name, `%${input.keyword}%`), like(users.email, `%${input.keyword}%`))
+				);
+			}
+			if (input.isActive !== undefined) {
+				whereConditions.push(eq(users.isActive, input.isActive));
+			}
+
+			const items = await ctx.db
+				.select({
+					email: users.email,
+					name: users.name,
+					phone: users.phone,
+					isActive: users.isActive,
+					createdAt: users.createdAt,
+					roleName: roles.name
+				})
+				.from(users)
+				.leftJoin(userRoles, eq(userRoles.userId, users.id))
+				.leftJoin(roles, eq(roles.id, userRoles.roleId))
+				.where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
+				.orderBy(desc(users.createdAt));
+
+			const rows = items.map((item, i) => ({
+				序号: i + 1,
+				姓名: item.name,
+				邮箱: item.email,
+				手机号: item.phone || '-',
+				角色: item.roleName || '-',
+				状态: item.isActive ? '正常' : '禁用',
+				创建时间: item.createdAt ? new Date(item.createdAt).toLocaleString('zh-CN') : '-'
+			}));
+
+			return {
+				filename: `学员列表_${new Date().toISOString().split('T')[0]}.csv`,
+				content: generateCsv(rows)
+			};
+		})
 });
+
+function generateCsv(rows: Record<string, string | number>[]): string {
+	if (rows.length === 0) return '';
+
+	const headers = Object.keys(rows[0]);
+	const escape = (val: string | number): string => {
+		const str = String(val);
+		if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+			return `"${str.replace(/"/g, '""')}"`;
+		}
+		return str;
+	};
+
+	const headerRow = headers.map(escape).join(',');
+	const dataRows = rows.map((row) => headers.map((h) => escape(row[h])).join(','));
+
+	return '\ufeff' + [headerRow, ...dataRows].join('\n');
+}

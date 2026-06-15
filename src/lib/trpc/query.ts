@@ -27,11 +27,11 @@ export function createQuery<TInput, TOutput>(
 		isFetching: false
 	});
 
-	async function fetchData() {
-		if (!enabled) return;
+	async function fetchData(): Promise<TOutput | null> {
+		if (!enabled) return null;
 
 		const input = getInput();
-		if (input === undefined) return;
+		if (input === undefined) return null;
 
 		state.update((s) => ({ ...s, isLoading: true, isFetching: true, error: null }));
 
@@ -45,6 +45,7 @@ export function createQuery<TInput, TOutput>(
 
 			const data = await procedure.query(input);
 			state.set({ data, isLoading: false, error: null, isFetching: false });
+			return data;
 		} catch (error) {
 			state.set({
 				data: null,
@@ -52,6 +53,7 @@ export function createQuery<TInput, TOutput>(
 				error: error as Error,
 				isFetching: false
 			});
+			throw error;
 		}
 	}
 
@@ -59,7 +61,7 @@ export function createQuery<TInput, TOutput>(
 		fetchData();
 	}
 
-	function refetch() {
+	async function refetch() {
 		return fetchData();
 	}
 
