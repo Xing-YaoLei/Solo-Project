@@ -30,6 +30,7 @@ export default function StudentListPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCollege, setSelectedCollege] = useState<string>('all');
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
+  const [selectedMaterialStatuses, setSelectedMaterialStatuses] = useState<string[]>([]);
   const [scoreRange, setScoreRange] = useState<[number, number]>([0, 100]);
   const [selectedStudent, setSelectedStudent] = useState<StudentInfo | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -41,9 +42,10 @@ export default function StudentListPage() {
     const result: any = {};
     if (selectedCollege !== 'all') result.college = selectedCollege;
     if (selectedStatuses.length > 0) result.status = selectedStatuses;
+    if (selectedMaterialStatuses.length > 0) result.materialStatus = selectedMaterialStatuses;
     result.scoreRange = scoreRange;
     return result;
-  }, [selectedCollege, selectedStatuses, scoreRange]);
+  }, [selectedCollege, selectedStatuses, selectedMaterialStatuses, scoreRange]);
 
   const { data: allStudents, total } = getStudentList(1, 1000, filters);
 
@@ -77,6 +79,15 @@ export default function StudentListPage() {
     setPage(1);
   };
 
+  const toggleMaterialStatus = (status: string) => {
+    setSelectedMaterialStatuses(prev =>
+      prev.includes(status)
+        ? prev.filter(s => s !== status)
+        : [...prev, status]
+    );
+    setPage(1);
+  };
+
   const handleStudentClick = (student: StudentInfo) => {
     setSelectedStudent(student);
     setIsDrawerOpen(true);
@@ -85,6 +96,7 @@ export default function StudentListPage() {
   const clearFilters = () => {
     setSelectedCollege('all');
     setSelectedStatuses([]);
+    setSelectedMaterialStatuses([]);
     setScoreRange([0, 100]);
     setSearchTerm('');
     setPage(1);
@@ -93,6 +105,7 @@ export default function StudentListPage() {
   const activeFiltersCount = [
     selectedCollege !== 'all' ? 1 : 0,
     selectedStatuses.length,
+    selectedMaterialStatuses.length,
     scoreRange[0] > 0 || scoreRange[1] < 100 ? 1 : 0,
   ].reduce((a, b) => a + b, 0);
 
@@ -261,38 +274,86 @@ export default function StudentListPage() {
         </div>
 
         <div className="pt-4 border-t border-gray-100">
-          <label className="block text-xs font-medium text-gray-500 mb-2">材料状态联动筛选</label>
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-emerald-500" />
-              <span className="text-sm text-gray-600">已核验</span>
-              <input
-                type="range"
-                min="0"
-                max="4"
-                value={filteredStudents[0]?.materials.filter(m => m.status === 'verified').length || 0}
-                className="w-24 accent-emerald-500"
-                readOnly
-              />
-              <span className="text-xs font-mono text-gray-500">
-                {filteredStudents.filter(s => s.materials.filter(m => m.status === 'verified').length > 0).length}人
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-blue-500" />
-              <span className="text-sm text-gray-600">已提交</span>
-              <span className="text-xs font-mono text-gray-500">
-                {filteredStudents.filter(s => s.materials.filter(m => m.status === 'submitted').length > 0).length}人
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-red-500" />
-              <span className="text-sm text-gray-600">缺失</span>
-              <span className="text-xs font-mono text-gray-500">
-                {filteredStudents.filter(s => s.materials.filter(m => m.status === 'missing').length > 0).length}人
-              </span>
-            </div>
+          <label className="block text-xs font-medium text-gray-500 mb-3">材料状态联动筛选</label>
+          <div className="grid grid-cols-3 gap-4">
+            <button
+              onClick={() => toggleMaterialStatus('verified')}
+              className={clsx(
+                'flex items-center gap-3 p-3 rounded-lg border-2 transition-all text-left',
+                selectedMaterialStatuses.includes('verified')
+                  ? 'border-emerald-500 bg-emerald-50'
+                  : 'border-gray-200 bg-white hover:border-emerald-200'
+              )}
+            >
+              <div className="w-4 h-4 rounded-full bg-emerald-500 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-gray-800">已核验</div>
+                <div className="text-xs font-mono text-gray-500 mt-0.5">
+                  {allStudents.filter(s => s.materials.some(m => m.status === 'verified')).length}人 · 占比
+                  {allStudents.length > 0
+                    ? Math.round(allStudents.filter(s => s.materials.some(m => m.status === 'verified')).length / allStudents.length * 100)
+                    : 0}%
+                </div>
+              </div>
+              {selectedMaterialStatuses.includes('verified') && (
+                <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center text-white text-xs">✓</div>
+              )}
+            </button>
+            <button
+              onClick={() => toggleMaterialStatus('submitted')}
+              className={clsx(
+                'flex items-center gap-3 p-3 rounded-lg border-2 transition-all text-left',
+                selectedMaterialStatuses.includes('submitted')
+                  ? 'border-blue-500 bg-blue-50'
+                  : 'border-gray-200 bg-white hover:border-blue-200'
+              )}
+            >
+              <div className="w-4 h-4 rounded-full bg-blue-500 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-gray-800">已提交</div>
+                <div className="text-xs font-mono text-gray-500 mt-0.5">
+                  {allStudents.filter(s => s.materials.some(m => m.status === 'submitted')).length}人 · 占比
+                  {allStudents.length > 0
+                    ? Math.round(allStudents.filter(s => s.materials.some(m => m.status === 'submitted')).length / allStudents.length * 100)
+                    : 0}%
+                </div>
+              </div>
+              {selectedMaterialStatuses.includes('submitted') && (
+                <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs">✓</div>
+              )}
+            </button>
+            <button
+              onClick={() => toggleMaterialStatus('missing')}
+              className={clsx(
+                'flex items-center gap-3 p-3 rounded-lg border-2 transition-all text-left',
+                selectedMaterialStatuses.includes('missing')
+                  ? 'border-red-500 bg-red-50'
+                  : 'border-gray-200 bg-white hover:border-red-200'
+              )}
+            >
+              <div className="w-4 h-4 rounded-full bg-red-500 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-gray-800">材料缺失</div>
+                <div className="text-xs font-mono text-gray-500 mt-0.5">
+                  {allStudents.filter(s => s.materials.some(m => m.status === 'missing')).length}人 · 占比
+                  {allStudents.length > 0
+                    ? Math.round(allStudents.filter(s => s.materials.some(m => m.status === 'missing')).length / allStudents.length * 100)
+                    : 0}%
+                </div>
+              </div>
+              {selectedMaterialStatuses.includes('missing') && (
+                <div className="w-5 h-5 rounded-full bg-red-500 flex items-center justify-center text-white text-xs">✓</div>
+              )}
+            </button>
           </div>
+          {selectedMaterialStatuses.length > 0 && (
+            <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
+              <span>当前筛选逻辑：满足任一选中状态的学生</span>
+              <span className="px-2 py-0.5 bg-gray-100 rounded text-gray-600">
+                {selectedMaterialStatuses.map(s => s === 'verified' ? '已核验' : s === 'submitted' ? '已提交' : '缺失').join(' 或 ')}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 

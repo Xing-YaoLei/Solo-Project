@@ -249,6 +249,11 @@ export const getStudentList = (page = 1, pageSize = 10, filters?: any): { data: 
     if (filters.status?.length > 0) {
       filtered = filtered.filter(s => filters.status.includes(s.applicationStatus));
     }
+    if (filters.materialStatus?.length > 0) {
+      filtered = filtered.filter(s =>
+        s.materials.some(m => filters.materialStatus.includes(m.status))
+      );
+    }
     if (filters.scoreRange) {
       filtered = filtered.filter(s =>
         s.transcriptScore >= filters.scoreRange[0] &&

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   FileCheck,
   AlertTriangle,
@@ -8,19 +8,16 @@ import {
   BarChart3,
   ArrowRight,
   Filter,
+  Database,
+  RefreshCw,
+  Building2,
 } from 'lucide-react';
 import {
   PieChart as RePieChart,
   Pie,
   Cell,
   ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
   Tooltip,
-  Legend,
 } from 'recharts';
 import ReviewTrendChart from '@/components/charts/ReviewTrendChart';
 import MaterialGapChart from '@/components/charts/MaterialGapChart';
@@ -29,34 +26,112 @@ import {
   getMultiSourceData,
   getMaterialGapData,
   getReviewReasonData,
-} from '@/lib/mockData';
-import type { MultiSourceData } from '@/types';
+  getColleges,
+  getDataSourceMode,
+} from '@/lib/dataService';
+import type { MultiSourceData, TrendDataPoint, MaterialGapData, ReviewReasonData } from '@/types';
 import clsx from 'clsx';
 
 const COLORS = ['#2d5a87', '#10b981', '#f59e0b', '#3b82f6', '#8b5cf6', '#ef4444'];
 
 export default function ReviewAnalysisPage() {
   const [selectedSource, setSelectedSource] = useState<'all' | 'inconsistent'>('all');
-  const trendData = getTrendData();
-  const multiSourceData = getMultiSourceData();
-  const materialGapData = getMaterialGapData();
-  const reviewReasonData = getReviewReasonData();
+  const [selectedCollege, setSelectedCollege] = useState<string>('all');
+  const [dataSourceMode, setDataSourceMode] = useState<'mock' | 'prisma'>('mock');
+  const [colleges, setColleges] = useState<string[]>([]);
 
-  const filteredData = selectedSource === 'inconsistent'
-    ? multiSourceData.filter(d => !d.isConsistent)
-    : multiSourceData;
+  const [trendData, setTrendData] = useState<TrendDataPoint[]>([]);
+  const [multiSourceData, setMultiSourceData] = useState<MultiSourceData[]>([]);
+  const [materialGapData, setMaterialGapData] = useState<MaterialGapData[]>([]);
+  const [reviewReasonData, setReviewReasonData] = useState<ReviewReasonData[]>([]);
 
-  const inconsistentCount = multiSourceData.filter(d => !d.isConsistent).length;
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadData = async (showSpinner = false) => {
+    if (showSpinner) setRefreshing(true);
+    try {
+      setDataSourceMode(getDataSourceMode());
+
+      const [trend, multiSource, gap, reason, collegeList] = await Promise.all([
+        getTrendData(),
+        getMultiSourceData({
+          showOnlyInconsistent: selectedSource === 'inconsistent',
+          college: selectedCollege !== 'all' ? selectedCollege : undefined,
+        }),
+        getMaterialGapData(),
+        getReviewReasonData(),
+        getColleges(),
+      ]);
+
+      setTrendData(trend);
+      setMultiSourceData(multiSource);
+      setMaterialGapData(gap);
+      setReviewReasonData(reason);
+      setColleges(collegeList);
+    } catch (e) {
+      console.error('加载数据失败:', e);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  useEffect(() => {
+    if (!loading) {
+      loadData(false);
+    }
+  }, [selectedSource, selectedCollege]);
+
+  const allMultiSourceData = loading ? [] : multiSourceData;
+  const inconsistentCount = allMultiSourceData.filter(d => !d.isConsistent).length;
+  const filteredData = allMultiSourceData;
+
+  if (loading) {
+    return (
+      <div className="p-8 flex flex-col items-center justify-center min-h-[60vh]">
+        <div className="w-16 h-16 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin mb-4" />
+        <p className="text-gray-500 text-sm">正在加载成绩复核分析数据...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold font-serif text-gray-900 mb-2">
-          成绩复核分析
-        </h1>
-        <p className="text-gray-500">
-          多源数据对照分析、材料缺失缺口、复核原因分布
-        </p>
+      <div className="flex items-start justify-between mb-8">
+        <div>
+          <h1 className="text-3xl font-bold font-serif text-gray-900 mb-2">
+            成绩复核分析
+          </h1>
+          <p className="text-gray-500">
+            多源数据对照分析、材料缺失缺口、复核原因分布
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className={clsx(
+            'flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium',
+            dataSourceMode === 'prisma'
+              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+              : 'bg-amber-50 text-amber-700 border border-amber-200'
+          )}>
+            <Database className="w-4 h-4" />
+            <span>
+              数据源: {dataSourceMode === 'prisma' ? 'Prisma/PostgreSQL' : '内置 Mock 数据'}
+            </span>
+          </div>
+          <button
+            onClick={() => loadData(true)}
+            disabled={refreshing}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-all text-xs font-medium"
+          >
+            <RefreshCw className={clsx('w-4 h-4', refreshing && 'animate-spin')} />
+            {refreshing ? '刷新中...' : '刷新数据'}
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-4 mb-8">
@@ -65,7 +140,7 @@ export default function ReviewAnalysisPage() {
             <FileCheck className="w-5 h-5 text-primary-600" />
             <span className="text-sm text-gray-500">总对照记录</span>
           </div>
-          <div className="text-2xl font-bold font-mono text-gray-900">{multiSourceData.length}</div>
+          <div className="text-2xl font-bold font-mono text-gray-900">{allMultiSourceData.length}</div>
         </div>
         <div className="card-gradient p-4">
           <div className="flex items-center gap-2 mb-2">
@@ -80,7 +155,9 @@ export default function ReviewAnalysisPage() {
             <span className="text-sm text-gray-500">一致率</span>
           </div>
           <div className="text-2xl font-bold font-mono text-emerald-600">
-            {(((multiSourceData.length - inconsistentCount) / multiSourceData.length) * 100).toFixed(1)}%
+            {allMultiSourceData.length > 0
+              ? (((allMultiSourceData.length - inconsistentCount) / allMultiSourceData.length) * 100).toFixed(1)
+              : '0.0'}%
           </div>
         </div>
       </div>
@@ -123,7 +200,7 @@ export default function ReviewAnalysisPage() {
                   ))}
                 </Pie>
                 <Tooltip
-                  content={({ active, payload }) => {
+                  content={({ active, payload }: { active?: boolean; payload?: any[] }) => {
                     if (active && payload && payload.length) {
                       const data = payload[0].payload;
                       return (
@@ -166,38 +243,53 @@ export default function ReviewAnalysisPage() {
       </div>
 
       <div className="card-gradient p-6">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <div>
             <h2 className="text-lg font-semibold text-gray-900">多源数据对照</h2>
             <p className="text-sm text-gray-500">
               学生申请表、一卡通版本、教务库口径三方数据对照
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-gray-500" />
-            <div className="flex bg-gray-100 rounded-lg p-1">
-              <button
-                onClick={() => setSelectedSource('all')}
-                className={clsx(
-                  'px-3 py-1 text-xs font-medium rounded-md transition-all',
-                  selectedSource === 'all'
-                    ? 'bg-white shadow text-primary-700'
-                    : 'text-gray-600 hover:text-gray-900'
-                )}
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-gray-500" />
+              <select
+                value={selectedCollege}
+                onChange={(e) => setSelectedCollege(e.target.value)}
+                className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
               >
-                全部
-              </button>
-              <button
-                onClick={() => setSelectedSource('inconsistent')}
-                className={clsx(
-                  'px-3 py-1 text-xs font-medium rounded-md transition-all',
-                  selectedSource === 'inconsistent'
-                    ? 'bg-white shadow text-red-600'
-                    : 'text-gray-600 hover:text-gray-900'
-                )}
-              >
-                不一致 ({inconsistentCount})
-              </button>
+                <option value="all">全部学院</option>
+                {colleges.map(college => (
+                  <option key={college} value={college}>{college}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-gray-500" />
+              <div className="flex bg-gray-100 rounded-lg p-1">
+                <button
+                  onClick={() => setSelectedSource('all')}
+                  className={clsx(
+                    'px-3 py-1 text-xs font-medium rounded-md transition-all',
+                    selectedSource === 'all'
+                      ? 'bg-white shadow text-primary-700'
+                      : 'text-gray-600 hover:text-gray-900'
+                  )}
+                >
+                  全部
+                </button>
+                <button
+                  onClick={() => setSelectedSource('inconsistent')}
+                  className={clsx(
+                    'px-3 py-1 text-xs font-medium rounded-md transition-all',
+                    selectedSource === 'inconsistent'
+                      ? 'bg-white shadow text-red-600'
+                      : 'text-gray-600 hover:text-gray-900'
+                  )}
+                >
+                  不一致 ({inconsistentCount})
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -312,7 +404,9 @@ export default function ReviewAnalysisPage() {
 
         {filteredData.length === 0 && (
           <div className="text-center py-12 text-gray-500">
-            暂无数据
+            <Database className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+            <p>暂无符合筛选条件的数据</p>
+            <p className="text-xs mt-1 text-gray-400">请尝试切换筛选条件或检查数据源配置</p>
           </div>
         )}
 
@@ -326,6 +420,21 @@ export default function ReviewAnalysisPage() {
                   红色闪烁单元格表示该字段在不同数据源中存在差异。请重点关注这些记录并进行人工核对。
                 </p>
               </div>
+            </div>
+          </div>
+        )}
+
+        {dataSourceMode === 'mock' && (
+          <div className="mt-4 p-3 bg-amber-50 rounded-lg border border-amber-100 flex items-start gap-2">
+            <Database className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div className="text-xs text-amber-800">
+              <p className="font-medium mb-0.5">当前使用内置模拟数据</p>
+              <p>
+                如需连接真实 PostgreSQL/Supabase 数据库，请在 <code className="bg-amber-100 px-1 rounded">.env.local</code> 中配置：
+                <br />1. <code className="bg-amber-100 px-1 rounded">DATABASE_URL</code> 指向您的 PostgreSQL
+                <br />2. <code className="bg-amber-100 px-1 rounded">NEXT_PUBLIC_DATA_SOURCE=prisma</code> 启用 Prisma 模式
+                <br />然后运行 <code className="bg-amber-100 px-1 rounded">npm run prisma:generate &amp;&amp; npm run prisma:push &amp;&amp; npm run prisma:seed</code>
+              </p>
             </div>
           </div>
         )}
