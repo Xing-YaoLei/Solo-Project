@@ -602,6 +602,8 @@ export class GameScene extends Scene {
       inputManager.setMaxIndex(Math.max(0, (this.levelData?.students.length || 1) - 1));
     } else if (currentStage === 'rules') {
       inputManager.setMaxIndex(Math.max(0, (this.levelData?.reminderRules.length || 1) - 1));
+      this.selectedRuleIndex = 0;
+      this.highlightSelectedRule();
     } else if (currentStage === 'scoring') {
       inputManager.setMaxIndex(Math.max(0, this.assignmentCards.length - 1));
     }
@@ -609,25 +611,11 @@ export class GameScene extends Scene {
 
   private setupInput(): void {
     this.inputListeners.push(
-      inputManager.onKeyboard('CANCEL', () => {
-        this.togglePause();
-      }),
-
-      inputManager.onKeyboard('TAB_LEFT', () => {
-        const stages: GameStage[] = ['feedback', 'rules', 'scoring'];
-        const currentIndex = stages.indexOf(gameStateManager.getState().currentStage);
-        const prevIndex = (currentIndex - 1 + stages.length) % stages.length;
-        this.switchStage(stages[prevIndex]);
-      }),
-
-      inputManager.onKeyboard('TAB_RIGHT', () => {
-        const stages: GameStage[] = ['feedback', 'rules', 'scoring'];
-        const currentIndex = stages.indexOf(gameStateManager.getState().currentStage);
-        const nextIndex = (currentIndex + 1) % stages.length;
-        this.switchStage(stages[nextIndex]);
-      }),
-
       inputManager.onKeyboard('CONFIRM', () => {
+        if (this.scoringDialog?.isVisible()) {
+          this.scoringDialog.confirm();
+          return;
+        }
         const state = gameStateManager.getState();
         if (state.currentStage === 'scoring') {
           const selectedCard = this.assignmentCards[inputManager.getSelectedIndex()];
@@ -639,14 +627,40 @@ export class GameScene extends Scene {
           if (selectedCard) {
             this.showStudentDetail(selectedCard.getStudent());
           }
+        } else if (state.currentStage === 'rules') {
+          this.toggleSelectedRule();
         }
+      }),
+
+      inputManager.onKeyboard('CANCEL', () => {
+        if (this.scoringDialog?.isVisible()) {
+          this.scoringDialog.cancel();
+          return;
+        }
+        this.togglePause();
+      }),
+
+      inputManager.onKeyboard('TAB_LEFT', () => {
+        if (this.scoringDialog?.isVisible()) return;
+        const stages: GameStage[] = ['feedback', 'rules', 'scoring'];
+        const currentIndex = stages.indexOf(gameStateManager.getState().currentStage);
+        const prevIndex = (currentIndex - 1 + stages.length) % stages.length;
+        this.switchStage(stages[prevIndex]);
+      }),
+
+      inputManager.onKeyboard('TAB_RIGHT', () => {
+        if (this.scoringDialog?.isVisible()) return;
+        const stages: GameStage[] = ['feedback', 'rules', 'scoring'];
+        const currentIndex = stages.indexOf(gameStateManager.getState().currentStage);
+        const nextIndex = (currentIndex + 1) % stages.length;
+        this.switchStage(stages[nextIndex]);
       })
     );
 
     for (let i = 0; i <= 9; i++) {
       this.inputListeners.push(
         inputManager.onKeyboard(`NUMBER_${i}`, () => {
-          if (this.scoringDialog?.active) {
+          if (this.scoringDialog?.isVisible()) {
             const currentScore = this.scoringDialog.getCurrentScore();
             const maxScore = this.scoringDialog.getMaxScore();
             const newScore = clamp(currentScore * 10 + i, 0, maxScore);
@@ -657,22 +671,33 @@ export class GameScene extends Scene {
     }
 
     inputManager.onKeyboard('UP', () => {
+      if (this.scoringDialog?.isVisible()) return;
       const state = gameStateManager.getState();
       if (state.currentStage === 'scoring') {
         const maxIndex = Math.max(0, this.assignmentCards.length - 1);
         const newIndex = Math.max(0, inputManager.getSelectedIndex() - 1);
         inputManager.setSelectedIndex(newIndex);
         this.highlightSelectedCard();
+      } else if (state.currentStage === 'rules') {
+        const newIndex = Math.max(0, this.selectedRuleIndex - 1);
+        this.selectedRuleIndex = newIndex;
+        this.highlightSelectedRule();
       }
     });
 
     inputManager.onKeyboard('DOWN', () => {
+      if (this.scoringDialog?.isVisible()) return;
       const state = gameStateManager.getState();
       if (state.currentStage === 'scoring') {
         const maxIndex = Math.max(0, this.assignmentCards.length - 1);
         const newIndex = Math.min(maxIndex, inputManager.getSelectedIndex() + 1);
         inputManager.setSelectedIndex(newIndex);
         this.highlightSelectedCard();
+      } else if (state.currentStage === 'rules') {
+        const maxIndex = (this.levelData?.reminderRules.length || 1) - 1;
+        const newIndex = Math.min(maxIndex, this.selectedRuleIndex + 1);
+        this.selectedRuleIndex = newIndex;
+        this.highlightSelectedRule();
       }
     });
 
@@ -709,6 +734,50 @@ export class GameScene extends Scene {
         }
       }
     });
+  }
+
+  private highlightSelectedRule(): void {
+    this.ruleCards.forEach((card, index) => {
+      const bg = card.getAt(0) as Phaser.GameObjects.Rectangle;
+      if (bg) {
+        if (index === this.selectedRuleIndex) {
+          bg.setStrokeStyle(3, COLORS.primary);
+          card.scale = 1.03;
+        } else {
+          const rule = this.levelData?.reminderRules[index];
+          bg.setStrokeStyle(2, rule?.active ? COLORS.success : COLORS.border);
+          card.scale = 1;
+        }
+      }
+    });
+  }
+
+  private toggleSelectedRule(): void {
+    if (!this.levelData) return;
+    const rule = this.levelData.reminderRules[this.selectedRuleIndex];
+    if (!rule) return;
+
+    rule.active = !rule.active;
+    gameStateManager.toggleRule(rule.id, rule.active, this.levelData);
+
+    const card = this.ruleCards[this.selectedRuleIndex];
+    if (card) {
+      const bg = card.getAt(0) as Phaser.GameObjects.Rectangle;
+      const statusIndicator = card.getAt(1) as Phaser.GameObjects.Rectangle;
+      const statusText = card.getAt(2) as Phaser.GameObjects.Text;
+
+      if (bg) {
+        bg.fillColor = rule.active ? COLORS.surface : COLORS.surfaceLight;
+        bg.setStrokeStyle(3, COLORS.primary);
+      }
+      if (statusIndicator) {
+        statusIndicator.fillColor = rule.active ? COLORS.success : COLORS.surfaceLight;
+        statusIndicator.setStrokeStyle(2, rule.active ? COLORS.success : COLORS.border);
+      }
+      if (statusText) {
+        statusText.setText(rule.active ? '✓' : '');
+      }
+    }
   }
 
   private togglePause(): void {

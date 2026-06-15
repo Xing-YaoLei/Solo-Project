@@ -12,6 +12,9 @@ export class AssignmentCard extends Phaser.GameObjects.Container {
   private lateIndicator: Phaser.GameObjects.Text | null = null;
   private matterBody: Matter.Body | null = null;
   private isDragging: boolean = false;
+  private hasMoved: boolean = false;
+  private pointerDownX: number = 0;
+  private pointerDownY: number = 0;
   private originalX: number;
   private originalY: number;
   private assignment: Assignment;
@@ -100,11 +103,24 @@ export class AssignmentCard extends Phaser.GameObjects.Container {
   private setupInteraction(): void {
     this.setInteractive({ useHandCursor: true, draggable: true });
 
-    this.on('pointerdown', () => this.onPointerDown());
-    this.on('pointerup', () => this.onPointerUp());
-    this.on('pointerout', () => this.onPointerOut());
+    this.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      if (!this.active) return;
+      this.pointerDownX = pointer.x;
+      this.pointerDownY = pointer.y;
+      this.hasMoved = false;
+      this.isDragging = true;
+      this.background.setStrokeStyle(3, COLORS.primary);
+      this.scale = 1.05;
+      this.setDepth(100);
+    });
+
     this.on('drag', (_pointer: Phaser.Input.Pointer, dragX: number, dragY: number) => {
       if (this.isDragging) {
+        const dx = Math.abs(dragX - this.x);
+        const dy = Math.abs(dragY - this.y);
+        if (dx > 5 || dy > 5) {
+          this.hasMoved = true;
+        }
         this.x = dragX;
         this.y = dragY;
         if (this.matterBody) {
@@ -112,37 +128,46 @@ export class AssignmentCard extends Phaser.GameObjects.Container {
         }
       }
     });
+
     this.on('dragend', (_pointer: Phaser.Input.Pointer, x: number, y: number) => {
       this.isDragging = false;
-      if (this.onDragEndCallback) {
-        this.onDragEndCallback(this, x, y);
+      if (this.hasMoved) {
+        if (this.onDragEndCallback) {
+          this.onDragEndCallback(this, x, y);
+        }
+      } else {
+        this.resetPosition();
+        if (this.onSelectCallback) {
+          this.onSelectCallback(this);
+        }
+      }
+      this.hasMoved = false;
+      this.background.setStrokeStyle(2, this.isGraded ? COLORS.success : COLORS.border);
+      this.scale = 1;
+    });
+
+    this.on('pointerup', () => {
+      if (!this.active) return;
+      if (!this.hasMoved && this.isDragging) {
+        this.isDragging = false;
+        this.hasMoved = false;
+        if (this.onSelectCallback) {
+          this.onSelectCallback(this);
+        }
+        this.background.setStrokeStyle(2, this.isGraded ? COLORS.success : COLORS.border);
+        this.scale = 1;
       }
     });
-  }
 
-  private onPointerDown(): void {
-    if (!this.active) return;
-    this.isDragging = true;
-    this.background.setStrokeStyle(3, COLORS.primary);
-    this.scale = 1.05;
-    this.setDepth(100);
-  }
-
-  private onPointerUp(): void {
-    if (!this.active) return;
-    if (!this.isDragging) {
-      if (this.onSelectCallback) {
-        this.onSelectCallback(this);
+    this.on('pointerout', () => {
+      if (!this.active) return;
+      if (!this.hasMoved) {
+        this.isDragging = false;
+        this.hasMoved = false;
+        this.background.setStrokeStyle(2, this.isGraded ? COLORS.success : COLORS.border);
+        this.scale = 1;
       }
-    }
-    this.background.setStrokeStyle(2, this.isGraded ? COLORS.success : COLORS.border);
-    this.scale = 1;
-  }
-
-  private onPointerOut(): void {
-    if (!this.active) return;
-    this.background.setStrokeStyle(2, this.isGraded ? COLORS.success : COLORS.border);
-    this.scale = 1;
+    });
   }
 
   initPhysics(engine: Matter.Engine): void {

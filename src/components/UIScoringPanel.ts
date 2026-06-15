@@ -219,4 +219,16 @@ export class UIScoringPanel extends Phaser.GameObjects.Container {
   getMaxScore(): number {
     return this.maxScore;
   }
+
+  isVisible(): boolean {
+    return this.active && this.visible;
+  }
+
+  confirm(): void {
+    this.onConfirm();
+  }
+
+  cancel(): void {
+    this.onCancel();
+  }
 }

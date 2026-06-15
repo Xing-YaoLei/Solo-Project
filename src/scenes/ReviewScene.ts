@@ -163,6 +163,8 @@ export class ReviewScene extends Scene {
     const yAxis = this.add.line(-innerWidth / 2, -innerHeight / 2, 0, 0, 0, innerHeight, COLORS.border)
       .setOrigin(0, 0);
 
+    this.chartContainer.add([bg, xAxis, yAxis]);
+
     for (let i = 0; i <= 4; i++) {
       const y = -innerHeight / 2 + i * (innerHeight / 4);
       const gridLine = this.add.line(-innerWidth / 2, y, 0, 0, innerWidth, 0, COLORS.surfaceLight)
@@ -209,32 +211,35 @@ export class ReviewScene extends Scene {
       });
 
       const graphics = this.add.graphics();
+      graphics.setPosition(0, 0);
       graphics.lineStyle(3, COLORS.primary, 0.8);
       graphics.beginPath();
-      graphics.moveTo(points[0].x + chartX, points[0].y + chartY);
+      graphics.moveTo(points[0].x, points[0].y);
 
       for (let i = 1; i < points.length; i++) {
         const curr = points[i];
-        graphics.lineTo(curr.x + chartX, curr.y + chartY);
+        graphics.lineTo(curr.x, curr.y);
       }
       graphics.strokePath();
 
       const fillGraphics = this.add.graphics();
+      fillGraphics.setPosition(0, 0);
       fillGraphics.fillStyle(COLORS.primary, 0.2);
       fillGraphics.beginPath();
-      fillGraphics.moveTo(points[0].x + chartX, innerHeight / 2 + chartY);
-      fillGraphics.lineTo(points[0].x + chartX, points[0].y + chartY);
+      fillGraphics.moveTo(points[0].x, innerHeight / 2);
+      fillGraphics.lineTo(points[0].x, points[0].y);
 
       for (let i = 1; i < points.length; i++) {
         const curr = points[i];
-        fillGraphics.lineTo(curr.x + chartX, curr.y + chartY);
+        fillGraphics.lineTo(curr.x, curr.y);
       }
 
-      fillGraphics.lineTo(points[points.length - 1].x + chartX, innerHeight / 2 + chartY);
+      fillGraphics.lineTo(points[points.length - 1].x, innerHeight / 2);
       fillGraphics.closePath();
       fillGraphics.fillPath();
 
       this.chartContainer?.add(graphics);
+      this.chartContainer?.add(fillGraphics);
     }
 
     const avgCompletion = calculateAverage(progressHistory.map(r => r.completionRate));
@@ -278,7 +283,7 @@ export class ReviewScene extends Scene {
       this.chartContainer?.add([legendDot, legendText]);
     });
 
-    this.chartContainer.add([title, bg, xAxis, yAxis, avgLine, avgLabel]);
+    this.chartContainer.add([title, avgLine, avgLabel]);
   }
 
   private getStageLabel(stage: GameStage): string {
