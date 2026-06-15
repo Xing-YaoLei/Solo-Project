@@ -3,27 +3,34 @@ import { Settings, CheckCircle, Clock, Plus, Info, Zap, Target } from 'lucide-re
 import { api } from '@/services/api';
 import { cn } from '@/lib/utils';
 
-interface CaliberVersion {
+interface CaliberVersionData {
   version: string;
-  name: string;
-  description: string;
+  effectiveDate: string;
   formula: string;
-  is_active: boolean;
-  created_at: string;
-  created_by: string;
-  effective_from: string;
-  effective_to: string | null;
+  description: string;
+  changeReason: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
+interface CaliberVersionCreate {
+  version: string;
+  effectiveDate: string;
+  formula: string;
+  description: string;
+  changeReason: string;
 }
 
 const CaliberManagement: React.FC = () => {
-  const [versions, setVersions] = useState<CaliberVersion[]>([]);
+  const [versions, setVersions] = useState<CaliberVersionData[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [newVersion, setNewVersion] = useState({
+  const [newVersion, setNewVersion] = useState<CaliberVersionCreate>({
     version: '',
-    name: '',
-    description: '',
+    effectiveDate: new Date().toISOString().split('T')[0],
     formula: '',
+    description: '',
+    changeReason: '',
   });
 
   useEffect(() => {
@@ -33,42 +40,37 @@ const CaliberManagement: React.FC = () => {
   const fetchVersions = async () => {
     try {
       const data = await api.caliber.getVersions();
-      setVersions(Array.isArray(data) ? data : data.data || []);
+      const list = Array.isArray(data) ? data : data.data || [];
+      setVersions(list);
     } catch (error) {
       console.error('Failed to fetch caliber versions:', error);
-      const mockVersions: CaliberVersion[] = [
+      const mockVersions: CaliberVersionData[] = [
         {
           version: 'v1.2',
-          name: '完成率口径 v1.2',
-          description: '优化分母计算逻辑，排除已退学学员',
+          effectiveDate: '2024-01-10',
           formula: '完成率 = 已完成题目数 / (总题目数 - 退学学员应做题目数) × 100%',
-          is_active: true,
-          created_at: '2024-01-10 10:30:00',
-          created_by: 'admin',
-          effective_from: '2024-01-10',
-          effective_to: null,
+          description: '优化分母计算逻辑，排除已退学学员',
+          changeReason: '发现已退学学员拉低整体完成率，需排除统计',
+          isActive: true,
+          createdAt: '2024-01-10T10:30:00',
         },
         {
           version: 'v1.1',
-          name: '完成率口径 v1.1',
-          description: '调整重复练习题目的计算权重',
+          effectiveDate: '2024-01-05',
           formula: '完成率 = Σ(单次完成 × 权重) / 总题目数 × 100%，重复练习权重递减',
-          is_active: false,
-          created_at: '2024-01-05 14:20:00',
-          created_by: 'manager',
-          effective_from: '2024-01-05',
-          effective_to: '2024-01-09',
+          description: '调整重复练习题目的计算权重',
+          changeReason: '重复做同一道题被重复计数，数据失真',
+          isActive: false,
+          createdAt: '2024-01-05T14:20:00',
         },
         {
           version: 'v1.0',
-          name: '完成率口径 v1.0',
-          description: '初始版本，简单完成率计算',
+          effectiveDate: '2024-01-01',
           formula: '完成率 = 已完成题目数 / 总题目数 × 100%',
-          is_active: false,
-          created_at: '2024-01-01 09:00:00',
-          created_by: 'admin',
-          effective_from: '2024-01-01',
-          effective_to: '2024-01-04',
+          description: '初始版本，简单完成率计算',
+          changeReason: '项目启动，建立基础统计口径',
+          isActive: false,
+          createdAt: '2024-01-01T09:00:00',
         },
       ];
       setVersions(mockVersions);
@@ -88,21 +90,35 @@ const CaliberManagement: React.FC = () => {
   };
 
   const handleCreate = async () => {
-    if (!newVersion.version || !newVersion.name || !newVersion.formula) {
-      alert('请填写完整信息');
+    if (!newVersion.version || !newVersion.formula || !newVersion.description || !newVersion.changeReason) {
+      alert('请填写完整信息（版本号、描述、计算公式、变更原因）');
       return;
     }
     try {
       await api.caliber.createVersion(newVersion);
       setShowCreateModal(false);
-      setNewVersion({ version: '', name: '', description: '', formula: '' });
+      setNewVersion({
+        version: '',
+        effectiveDate: new Date().toISOString().split('T')[0],
+        formula: '',
+        description: '',
+        changeReason: '',
+      });
       await fetchVersions();
     } catch (error) {
       console.error('Failed to create version:', error);
     }
   };
 
-  const activeVersion = versions.find(v => v.is_active);
+  const activeVersion = versions.find(v => v.isActive);
+
+  const formatTime = (isoStr: string) => {
+    try {
+      return new Date(isoStr).toLocaleString('zh-CN', { hour12: false });
+    } catch {
+      return isoStr;
+    }
+  };
 
   if (loading) {
     return (
@@ -137,7 +153,7 @@ const CaliberManagement: React.FC = () => {
               </div>
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <h3 className="text-xl font-bold text-white">{activeVersion.name}</h3>
+                  <h3 className="text-xl font-bold text-white">完成率口径 {activeVersion.version}</h3>
                   <span className="px-2.5 py-1 bg-green-500/20 text-green-400 text-xs font-medium rounded-full flex items-center gap-1">
                     <CheckCircle size={12} />
                     当前生效
@@ -149,9 +165,8 @@ const CaliberManagement: React.FC = () => {
                   <p className="text-primary-300 font-mono text-sm">{activeVersion.formula}</p>
                 </div>
                 <div className="flex items-center gap-6 mt-4 text-xs text-dark-400">
-                  <span>创建于: {activeVersion.created_at}</span>
-                  <span>创建人: {activeVersion.created_by}</span>
-                  <span>生效日期: {activeVersion.effective_from}</span>
+                  <span>创建于: {formatTime(activeVersion.createdAt)}</span>
+                  <span>生效日期: {activeVersion.effectiveDate}</span>
                 </div>
               </div>
             </div>
@@ -166,13 +181,13 @@ const CaliberManagement: React.FC = () => {
         </h2>
         <div className="space-y-4">
           {versions.map((version, index) => {
-            const StatusIcon = version.is_active ? CheckCircle : Clock;
+            const StatusIcon = version.isActive ? CheckCircle : Clock;
             return (
               <div
                 key={version.version}
                 className={cn(
                   'p-5 rounded-xl border transition-all',
-                  version.is_active
+                  version.isActive
                     ? 'bg-primary-500/10 border-primary-500/30'
                     : 'bg-dark-800/40 border-dark-700/50 hover:border-dark-600/50'
                 )}
@@ -181,7 +196,7 @@ const CaliberManagement: React.FC = () => {
                   <div className="flex items-start gap-4">
                     <div className={cn(
                       'w-12 h-12 rounded-xl flex items-center justify-center',
-                      version.is_active
+                      version.isActive
                         ? 'bg-gradient-to-br from-primary-500 to-primary-700'
                         : 'bg-dark-700/60'
                     )}>
@@ -189,8 +204,8 @@ const CaliberManagement: React.FC = () => {
                     </div>
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <h4 className="text-white font-semibold">{version.name}</h4>
-                        {version.is_active && (
+                        <h4 className="text-white font-semibold">完成率口径 {version.version}</h4>
+                        {version.isActive && (
                           <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded-full flex items-center gap-1">
                             <StatusIcon size={10} />
                             生效中
@@ -202,14 +217,18 @@ const CaliberManagement: React.FC = () => {
                         <p className="text-xs text-dark-400 mb-0.5">计算公式</p>
                         <p className="text-dark-200 font-mono text-xs">{version.formula}</p>
                       </div>
+                      <div className="p-2.5 bg-orange-500/10 rounded-lg border border-orange-500/20 mb-2">
+                        <p className="text-xs text-orange-300 mb-0.5">变更原因</p>
+                        <p className="text-orange-100/80 text-xs">{version.changeReason}</p>
+                      </div>
                       <div className="flex items-center gap-4 text-xs text-dark-400">
                         <span>版本: {version.version}</span>
-                        <span>创建: {version.created_at}</span>
-                        <span>生效: {version.effective_from}{version.effective_to ? ` ~ ${version.effective_to}` : ' ~ 至今'}</span>
+                        <span>创建: {formatTime(version.createdAt)}</span>
+                        <span>生效日期: {version.effectiveDate}</span>
                       </div>
                     </div>
                   </div>
-                  {!version.is_active && (
+                  {!version.isActive && (
                     <button
                       onClick={() => handleActivate(version.version)}
                       className="px-4 py-2 bg-primary-600 hover:bg-primary-500 text-white text-sm rounded-lg transition-all flex items-center gap-1.5"
@@ -267,12 +286,12 @@ const CaliberManagement: React.FC = () => {
 
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="card-gradient p-6 w-full max-w-lg mx-4">
+          <div className="card-gradient p-6 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
             <h3 className="text-xl font-semibold text-white mb-4">创建新口径版本</h3>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-dark-300 mb-2">版本号</label>
+                  <label className="block text-sm font-medium text-dark-300 mb-2">版本号 <span className="text-red-400">*</span></label>
                   <input
                     type="text"
                     value={newVersion.version}
@@ -282,18 +301,17 @@ const CaliberManagement: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-dark-300 mb-2">版本名称</label>
+                  <label className="block text-sm font-medium text-dark-300 mb-2">生效日期 <span className="text-red-400">*</span></label>
                   <input
-                    type="text"
-                    value={newVersion.name}
-                    onChange={(e) => setNewVersion({ ...newVersion, name: e.target.value })}
-                    placeholder="例如: 完成率口径 v1.3"
+                    type="date"
+                    value={newVersion.effectiveDate}
+                    onChange={(e) => setNewVersion({ ...newVersion, effectiveDate: e.target.value })}
                     className="w-full px-4 py-2.5 bg-dark-800/60 border border-dark-700 rounded-lg text-white focus:outline-none focus:border-primary-500"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-dark-300 mb-2">版本描述</label>
+                <label className="block text-sm font-medium text-dark-300 mb-2">版本描述 <span className="text-red-400">*</span></label>
                 <textarea
                   value={newVersion.description}
                   onChange={(e) => setNewVersion({ ...newVersion, description: e.target.value })}
@@ -303,7 +321,17 @@ const CaliberManagement: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-dark-300 mb-2">计算公式</label>
+                <label className="block text-sm font-medium text-dark-300 mb-2">变更原因 <span className="text-red-400">*</span></label>
+                <textarea
+                  value={newVersion.changeReason}
+                  onChange={(e) => setNewVersion({ ...newVersion, changeReason: e.target.value })}
+                  placeholder="说明为什么需要调整此口径..."
+                  rows={2}
+                  className="w-full px-4 py-2.5 bg-dark-800/60 border border-dark-700 rounded-lg text-white focus:outline-none focus:border-primary-500 resize-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-dark-300 mb-2">计算公式 <span className="text-red-400">*</span></label>
                 <textarea
                   value={newVersion.formula}
                   onChange={(e) => setNewVersion({ ...newVersion, formula: e.target.value })}

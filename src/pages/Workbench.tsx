@@ -35,10 +35,11 @@ const Workbench: React.FC = () => {
   const fetchData = async () => {
     try {
       const overviewData = await api.dashboard.getOverview();
+      const overview = Array.isArray(overviewData) ? null : (overviewData.data || overviewData);
       setOverview({
-        myStudents: overviewData.data?.totalStudents || 15,
-        myCompletionRate: overviewData.data?.totalCompletionRate || 68.5,
-        avgPracticeCount: overviewData.data?.avgPracticeDuration || 120,
+        myStudents: overview?.totalStudents || 15,
+        myCompletionRate: overview?.totalCompletionRate || 68.5,
+        avgPracticeCount: overview?.avgPracticeDuration || 120,
         needAttention: 3,
       });
       

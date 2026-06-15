@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import func, and_, Date, cast
+from sqlalchemy import func, and_, Date, cast, case
 from datetime import date, timedelta
 from typing import List, Optional
 import duckdb
@@ -136,13 +136,18 @@ class DashboardService:
     def get_chapter_distribution(self, user_id: int, user_role: str) -> List[ChapterDistribution]:
         student_ids = self._get_student_ids_for_user(user_id, user_role)
 
+        completed_count_expr = func.count(func.distinct(
+            case(
+                (StudentPractice.is_correct == True, StudentPractice.student_id),
+                else_=None
+            )
+        )).label('completed_count')
+
         results = self.db.query(
             Course.name.label('course_name'),
             Chapter.name.label('chapter_name'),
             func.count(Question.id).label('question_count'),
-            func.count(func.distinct(
-                func.IF(StudentPractice.is_correct == True, StudentPractice.student_id, None)
-            )).label('completed_count')
+            completed_count_expr
         ).select_from(Chapter).join(
             Course, Chapter.course_id == Course.id
         ).join(
@@ -201,10 +206,17 @@ class DashboardService:
     def get_tag_ranking(self, user_id: int, user_role: str) -> List[TagRank]:
         student_ids = self._get_student_ids_for_user(user_id, user_role)
 
+        correct_rate_expr = func.avg(
+            case(
+                (StudentPractice.is_correct == True, 100.0),
+                else_=0.0
+            )
+        ).label('correct_rate')
+
         results = self.db.query(
             QuestionTag.tag_name.label('tag_name'),
             func.count(StudentPractice.id).label('practice_count'),
-            func.avg(func.IF(StudentPractice.is_correct == True, 100, 0)).label('correct_rate')
+            correct_rate_expr
         ).select_from(QuestionTag).join(
             QuestionTagRelation, QuestionTagRelation.tag_id == QuestionTag.id
         ).join(
