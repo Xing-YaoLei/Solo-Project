@@ -146,7 +146,7 @@ class DashboardService:
         results = self.db.query(
             Course.name.label('course_name'),
             Chapter.name.label('chapter_name'),
-            func.count(Question.id).label('question_count'),
+            func.count(func.distinct(Question.id)).label('question_count'),
             completed_count_expr
         ).select_from(Chapter).join(
             Course, Chapter.course_id == Course.id
