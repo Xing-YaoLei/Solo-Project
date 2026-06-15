@@ -1,5 +1,5 @@
 import ReactECharts from 'echarts-for-react';
-import type { FunnelOverview } from '../types';
+import type { FunnelOverview } from '../../types';
 
 interface FunnelChartProps {
   data: FunnelOverview | null;

@@ -413,7 +413,7 @@ const DashboardPage = () => {
           >
             <NoteTaskPanel
               tasks={noteTasks}
-              chartRef="funnel_all"
+              chartRef="funnel_"
               onResolve={handleResolveTask}
             />
           </Card>
@@ -426,9 +426,27 @@ const DashboardPage = () => {
             图表区 - 成绩反馈
           </div>
         </Col>
-        <Col span={24}>
+        <Col span={16}>
           <Card title="成绩与作业统计" size="small" style={{ height: 380 }}>
             <GradeFeedbackChart gradeOverview={gradeOverview} homeworkStats={homeworkStats} />
+          </Card>
+        </Col>
+        <Col span={8}>
+          <Card
+            title="成绩相关备注任务"
+            size="small"
+            style={{ height: 380 }}
+            extra={
+              <Tag color="orange">
+                {noteTasks.filter(t => t.status !== 'resolved' && t.chart_ref?.startsWith('grade_')).length} 待处理
+              </Tag>
+            }
+          >
+            <NoteTaskPanel
+              tasks={noteTasks}
+              chartRef="grade_"
+              onResolve={handleResolveTask}
+            />
           </Card>
         </Col>
       </Row>

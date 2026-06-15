@@ -35,7 +35,14 @@ const NoteTaskPanel = ({ tasks, chartRef, onResolve }: NoteTaskPanelProps) => {
   const [loading, setLoading] = useState(false);
 
   const filteredTasks = chartRef
-    ? tasks.filter((t) => t.chart_ref === chartRef || !t.chart_ref)
+    ? tasks.filter((t) => {
+        if (!t.chart_ref) return true;
+        if (t.chart_ref === chartRef) return true;
+        if (chartRef.endsWith('_')) {
+          return t.chart_ref.startsWith(chartRef);
+        }
+        return false;
+      })
     : tasks;
 
   const handleResolve = async (taskId: number) => {

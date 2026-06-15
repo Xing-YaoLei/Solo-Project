@@ -47,7 +47,7 @@ const ReminderRulesChart = ({ rules, onToggle }: ReminderRulesChartProps) => {
       dataIndex: 'trigger_days',
       key: 'trigger_days',
       width: 100,
-      render: (days: number) => `${days}天前触发',
+      render: (days: number) => `${days}天前触发`,
     },
     {
       title: '提醒渠道',

@@ -158,8 +158,19 @@ class AlertService:
         alert: Dict[str, Any],
         created_by: str = "system"
     ) -> NoteTask:
-        """命中预警后生成备注任务"""
+        """命中预警后生成备注任务，chart_ref对应图表区"""
         task_no = f"NT{datetime.now().strftime('%Y%m%d')}{uuid.uuid4().hex[:6].upper()}"
+
+        course_id = alert.get('course_id')
+        course_part = f"course_{course_id}" if course_id else "all"
+
+        alert_type = alert.get('type', '')
+        if alert_type in ('completion_rate', 'delay_days'):
+            chart_ref = f"funnel_{course_part}"
+        elif alert_type == 'homework_rate':
+            chart_ref = f"grade_{course_part}"
+        else:
+            chart_ref = f"funnel_{course_part}"
 
         task = NoteTask(
             task_no=task_no,
@@ -169,7 +180,7 @@ class AlertService:
             status="pending",
             priority="high" if alert['level'] == 'danger' else "medium",
             trigger_threshold_id=alert['threshold_id'],
-            chart_ref=f"funnel_{alert.get('course_id', 'all')}",
+            chart_ref=chart_ref,
             created_by=created_by
         )
 
