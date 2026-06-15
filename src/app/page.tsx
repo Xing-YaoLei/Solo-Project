@@ -7,10 +7,9 @@ import GradeCompositionCard from '@/components/dashboard/GradeCompositionCard'
 import MaterialDetailCard from '@/components/dashboard/MaterialDetailCard'
 import AdvisorAnomalyCard from '@/components/dashboard/AdvisorAnomalyCard'
 import { useStore } from '@/store/use-store'
-import { trendData, materialDetails, advisorAnomalies, gradeComposition } from '@/lib/mock-data'
-import { filterTrendData, filterMaterialDetails, filterAdvisorAnomalies, filterGradeComposition } from '@/lib/role-filter'
+import { useDashboardData } from '@/hooks/use-data'
 import type { RoleScope } from '@/lib/types'
-import { FileText, AlertTriangle, Users, Award, Database, CreditCard, ClipboardList, Share2, FileDown } from 'lucide-react'
+import { FileText, AlertTriangle, Users, Award, Database, CreditCard, ClipboardList, Share2, FileDown, Loader2 } from 'lucide-react'
 
 const roleLabels: Record<string, string> = {
   admin: '教务管理员',
@@ -22,12 +21,15 @@ const roleLabels: Record<string, string> = {
 export default function DashboardPage() {
   const currentRole = useStore((s) => s.currentRole)
   const toggleShareModal = useStore((s) => s.toggleShareModal)
+  const lastRefreshedAt = useStore((s) => s.lastRefreshedAt)
 
   const scope: RoleScope = { role: currentRole }
-  const filteredTrend = useMemo(() => filterTrendData(trendData, scope), [currentRole])
-  const filteredMaterials = useMemo(() => filterMaterialDetails(materialDetails, scope), [currentRole])
-  const filteredAnomalies = useMemo(() => filterAdvisorAnomalies(advisorAnomalies, scope), [currentRole])
-  const filteredGrades = useMemo(() => filterGradeComposition(gradeComposition, scope), [currentRole])
+  const { data, loading, refetch } = useDashboardData(scope)
+
+  const filteredTrend = data?.trend ?? []
+  const filteredMaterials = data?.materials ?? []
+  const filteredAnomalies = data?.anomalies ?? []
+  const filteredGrades = data?.composition ?? []
 
   const totalApplications = filteredTrend.reduce((sum, d) => sum + d.count, 0)
   const pendingReviews = filteredMaterials.filter((m) => m.status === '待审核' || m.status === '审核中').length
@@ -101,6 +103,15 @@ export default function DashboardPage() {
     'PostgreSQL',
     'Supabase',
   ]
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-32">
+        <Loader2 size={48} className="animate-spin mb-4" style={{ color: 'var(--amber)' }} />
+        <p className="text-sm" style={{ color: 'var(--slate)' }}>正在加载数据...</p>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">

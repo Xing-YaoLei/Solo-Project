@@ -1,11 +1,12 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import RefreshIndicator from '@/components/dashboard/RefreshIndicator'
 import StudentTrendCard from '@/components/dashboard/StudentTrendCard'
 import GradeCompositionCard from '@/components/dashboard/GradeCompositionCard'
 import MaterialDetailCard from '@/components/dashboard/MaterialDetailCard'
 import AdvisorAnomalyCard from '@/components/dashboard/AdvisorAnomalyCard'
-import { Shield, Eye } from 'lucide-react'
+import { Shield, Eye, Loader2, AlertTriangle } from 'lucide-react'
 import type { Role } from '@/lib/types'
 
 const roleLabels: Record<string, string> = {
@@ -22,10 +23,77 @@ const roleScopeDescriptions: Record<string, string> = {
   student: '查看个人数据：仅本人的复核与申请记录',
 }
 
-export default function ShareDashboard({ role }: { role: string }) {
-  const safeRole = (role || 'admin') as Role
-  const roleLabel = roleLabels[safeRole] || '教务管理员'
-  const scopeDesc = roleScopeDescriptions[safeRole] || ''
+interface ShareDashboardProps {
+  token: string
+}
+
+export default function ShareDashboard({ token }: ShareDashboardProps) {
+  const [loading, setLoading] = useState(true)
+  const [valid, setValid] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [role, setRole] = useState<Role>('admin')
+  const [scope, setScope] = useState<Record<string, unknown>>({})
+
+  useEffect(() => {
+    const verifyToken = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const res = await fetch(`/api/share/verify?token=${encodeURIComponent(token)}`)
+        if (res.ok) {
+          const data = await res.json()
+          if (data.valid) {
+            setValid(true)
+            setRole((data.role as Role) || 'admin')
+            setScope(data.scope || {})
+          } else {
+            setValid(false)
+            setError(data.error || '链接无效')
+          }
+        } else {
+          setValid(false)
+          setError('验证失败')
+        }
+      } catch {
+        setValid(false)
+        setError('网络错误，请稍后重试')
+      } finally {
+        setLoading(false)
+      }
+    }
+    verifyToken()
+  }, [token])
+
+  const roleLabel = roleLabels[role] || '教务管理员'
+  const scopeDesc = roleScopeDescriptions[role] || ''
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-32">
+        <Loader2 size={48} className="animate-spin mb-4" style={{ color: 'var(--amber)' }} />
+        <p className="text-sm" style={{ color: 'var(--slate)' }}>正在验证分享链接...</p>
+      </div>
+    )
+  }
+
+  if (!valid) {
+    return (
+      <div className="flex flex-col items-center justify-center py-32">
+        <div
+          className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
+          style={{ backgroundColor: '#FEF2F2' }}
+        >
+          <AlertTriangle size={32} style={{ color: '#EF4444' }} />
+        </div>
+        <h2 className="text-lg font-semibold mb-2" style={{ color: 'var(--navy)' }}>
+          分享链接无效
+        </h2>
+        <p className="text-sm mb-6" style={{ color: 'var(--slate)' }}>
+          {error || '该分享链接已过期或不存在'}
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -55,10 +123,10 @@ export default function ShareDashboard({ role }: { role: string }) {
       </div>
 
       <div className="grid grid-cols-2 gap-6">
-        <StudentTrendCard role={safeRole} />
-        <GradeCompositionCard role={safeRole} />
-        <MaterialDetailCard role={safeRole} />
-        <AdvisorAnomalyCard role={safeRole} />
+        <StudentTrendCard role={role} />
+        <GradeCompositionCard role={role} />
+        <MaterialDetailCard role={role} />
+        <AdvisorAnomalyCard role={role} />
       </div>
     </div>
   )

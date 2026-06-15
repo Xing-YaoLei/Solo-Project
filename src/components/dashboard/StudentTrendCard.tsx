@@ -1,12 +1,10 @@
 'use client'
 
-import { useMemo } from 'react'
 import Link from 'next/link'
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts'
-import { trendData } from '@/lib/mock-data'
-import { filterTrendData } from '@/lib/role-filter'
-import type { Role, RoleScope } from '@/lib/types'
-import { ArrowUpRight } from 'lucide-react'
+import { useTrendData } from '@/hooks/use-data'
+import type { Role } from '@/lib/types'
+import { ArrowUpRight, Loader2 } from 'lucide-react'
 
 interface Props {
   role?: Role
@@ -43,14 +41,21 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
 }
 
 export default function StudentTrendCard({ role = 'admin', department }: Props) {
-  const scope: RoleScope = { role, department }
-  const data = useMemo(() => filterTrendData(trendData, scope), [role, department])
+  const { data, loading } = useTrendData(role, department)
 
-  const latest = data[data.length - 1]
+  const latest = data[data.length - 1] ?? { count: 0, semester: '' }
   const prev = data[data.length - 2]
-  const momChange = prev ? (((latest.count - prev.count) / prev.count) * 100).toFixed(1) : '0'
+  const momChange = prev && prev.count > 0 ? (((latest.count - prev.count) / prev.count) * 100).toFixed(1) : '0'
   const first = data[0]
-  const yoyChange = first ? (((latest.count - first.count) / first.count) * 100).toFixed(1) : '0'
+  const yoyChange = first && first.count > 0 ? (((latest.count - first.count) / first.count) * 100).toFixed(1) : '0'
+
+  if (loading) {
+    return (
+      <div className="rounded-xl p-5 shadow-sm flex items-center justify-center" style={{ backgroundColor: 'var(--bg-card)', minHeight: 320 }}>
+        <Loader2 size={24} className="animate-spin" style={{ color: 'var(--amber)' }} />
+      </div>
+    )
+  }
 
   return (
     <div className="rounded-xl p-5 shadow-sm" style={{ backgroundColor: 'var(--bg-card)' }}>

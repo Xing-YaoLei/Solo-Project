@@ -3,10 +3,9 @@
 import { useMemo } from 'react'
 import Link from 'next/link'
 import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ZAxis } from 'recharts'
-import { advisorAnomalies } from '@/lib/mock-data'
-import { filterAdvisorAnomalies } from '@/lib/role-filter'
-import type { Role, RoleScope } from '@/lib/types'
-import { ArrowUpRight } from 'lucide-react'
+import { useAdvisorAnomalies } from '@/hooks/use-data'
+import type { Role } from '@/lib/types'
+import { ArrowUpRight, Loader2 } from 'lucide-react'
 
 interface Props {
   role?: Role
@@ -49,17 +48,24 @@ function AnomalyDot(props: { cx?: number; cy?: number; payload?: { isAnomaly: bo
 }
 
 export default function AdvisorAnomalyCard({ role = 'admin', department }: Props) {
-  const scope: RoleScope = { role, department }
-  const filteredAnomalies = useMemo(() => filterAdvisorAnomalies(advisorAnomalies, scope), [role, department])
+  const { data: filteredAnomalies, loading } = useAdvisorAnomalies(role, department)
 
-  const scatterData = filteredAnomalies.map((a) => ({
+  const scatterData = useMemo(() => filteredAnomalies.map((a) => ({
     x: a.totalReviews,
     y: a.anomalyRate,
     name: a.advisorName,
     isAnomaly: a.anomalyRate > 10,
-  }))
+  })), [filteredAnomalies])
 
   const anomalousAdvisors = filteredAnomalies.filter((a) => a.anomalyRate > 10)
+
+  if (loading) {
+    return (
+      <div className="rounded-xl p-5 shadow-sm flex items-center justify-center" style={{ backgroundColor: 'var(--bg-card)', minHeight: 320 }}>
+        <Loader2 size={24} className="animate-spin" style={{ color: 'var(--amber)' }} />
+      </div>
+    )
+  }
 
   if (filteredAnomalies.length === 0) {
     return (

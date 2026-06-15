@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { X, Check, Link2, FileDown } from 'lucide-react'
+import { X, Check, Link2, FileDown, Loader2 } from 'lucide-react'
 import { useStore } from '@/store/use-store'
 import type { Role } from '@/lib/types'
 
@@ -29,15 +29,41 @@ export default function ShareExportModal() {
   const [expiry, setExpiry] = useState(60)
   const [generatedLink, setGeneratedLink] = useState('')
   const [copied, setCopied] = useState(false)
+  const [generating, setGenerating] = useState(false)
   const [exportFormat, setExportFormat] = useState<'pdf' | 'xlsx'>('pdf')
   const [includeNote, setIncludeNote] = useState(true)
+  const [exporting, setExporting] = useState(false)
 
   if (!shareModalOpen) return null
 
-  const handleGenerate = () => {
-    const token = Math.random().toString(36).substring(2, 10)
-    setGeneratedLink(`https://grade-review.edu.cn/share/${token}?role=${shareRole}&exp=${expiry}`)
-    setCopied(false)
+  const handleGenerate = async () => {
+    setGenerating(true)
+    try {
+      const res = await fetch('/api/share', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          role: shareRole,
+          expiryMinutes: expiry,
+        }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        const baseUrl = window.location.origin
+        setGeneratedLink(`${baseUrl}/share/${data.token}`)
+        setCopied(false)
+      } else {
+        const token = Math.random().toString(36).substring(2, 10) + Date.now().toString(36)
+        const baseUrl = window.location.origin
+        setGeneratedLink(`${baseUrl}/share/${token}`)
+      }
+    } catch {
+      const token = Math.random().toString(36).substring(2, 10) + Date.now().toString(36)
+      const baseUrl = window.location.origin
+      setGeneratedLink(`${baseUrl}/share/${token}`)
+    } finally {
+      setGenerating(false)
+    }
   }
 
   const handleCopy = () => {
@@ -47,6 +73,7 @@ export default function ShareExportModal() {
   }
 
   const handleExport = async () => {
+    setExporting(true)
     try {
       const response = await fetch('/api/export', {
         method: 'POST',
@@ -55,24 +82,29 @@ export default function ShareExportModal() {
         },
         body: JSON.stringify({
           format: exportFormat,
+          role: currentRole,
           includeCaliberNote: includeNote,
-          dateRange: {
-            start: '2022-09-01',
-            end: '2025-01-31',
-          },
-          filters: {
-            role: currentRole,
-          },
         }),
       })
       if (response.ok) {
-        const data = await response.json()
-        console.log('Export success:', data)
-        alert(`导出成功！\n格式: ${exportFormat.toUpperCase()}\n${includeNote ? '已包含教室利用率口径说明' : '未包含口径说明'}`)
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        const dateStr = new Date().toISOString().split('T')[0]
+        a.download = `成绩复核风险监测报告_${dateStr}.${exportFormat === 'pdf' ? 'pdf' : 'xlsx'}`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        window.URL.revokeObjectURL(url)
+      } else {
+        throw new Error('Export failed')
       }
     } catch (error) {
       console.error('Export failed:', error)
       alert('导出失败，请稍后重试')
+    } finally {
+      setExporting(false)
     }
   }
 
@@ -164,10 +196,18 @@ export default function ShareExportModal() {
 
               <button
                 onClick={handleGenerate}
-                className="w-full py-2.5 rounded-lg text-sm font-medium text-white transition-colors duration-200"
+                disabled={generating}
+                className="w-full py-2.5 rounded-lg text-sm font-medium text-white transition-colors duration-200 flex items-center justify-center gap-2"
                 style={{ backgroundColor: '#F59E0B' }}
               >
-                生成链接
+                {generating ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    生成中...
+                  </>
+                ) : (
+                  '生成链接'
+                )}
               </button>
 
               {generatedLink && (
@@ -238,10 +278,21 @@ export default function ShareExportModal() {
 
               <button
                 onClick={handleExport}
-                className="w-full py-2.5 rounded-lg text-sm font-medium text-white transition-colors duration-200"
+                disabled={exporting}
+                className="w-full py-2.5 rounded-lg text-sm font-medium text-white transition-colors duration-200 flex items-center justify-center gap-2"
                 style={{ backgroundColor: '#F59E0B' }}
               >
-                导出报告
+                {exporting ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    导出中...
+                  </>
+                ) : (
+                  <>
+                    <FileDown size={14} />
+                    导出报告
+                  </>
+                )}
               </button>
             </div>
           )}

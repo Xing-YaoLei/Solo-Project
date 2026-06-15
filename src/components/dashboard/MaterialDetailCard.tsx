@@ -1,11 +1,10 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
-import { materialDetails, campusCardRecords } from '@/lib/mock-data'
-import { filterMaterialDetails, filterCampusCardRecords } from '@/lib/role-filter'
-import type { Role, RoleScope } from '@/lib/types'
-import { ArrowUpRight, ChevronDown } from 'lucide-react'
+import { useMaterialsData } from '@/hooks/use-data'
+import type { Role } from '@/lib/types'
+import { ArrowUpRight, ChevronDown, Loader2 } from 'lucide-react'
 
 interface Props {
   role?: Role
@@ -27,10 +26,17 @@ const riskConfig: Record<string, { label: string; color: string; bg: string }> =
 
 export default function MaterialDetailCard({ role = 'admin', department }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  const scope: RoleScope = { role, department }
+  const { data, loading } = useMaterialsData(role, department)
+  const filteredMaterials = data.materialDetails
+  const filteredCards = data.campusCardRecords
 
-  const filteredMaterials = useMemo(() => filterMaterialDetails(materialDetails, scope), [role, department])
-  const filteredCards = useMemo(() => filterCampusCardRecords(campusCardRecords, scope), [role, department])
+  if (loading) {
+    return (
+      <div className="rounded-xl p-5 shadow-sm flex items-center justify-center" style={{ backgroundColor: 'var(--bg-card)', minHeight: 320 }}>
+        <Loader2 size={24} className="animate-spin" style={{ color: 'var(--amber)' }} />
+      </div>
+    )
+  }
 
   return (
     <div className="rounded-xl p-5 shadow-sm" style={{ backgroundColor: 'var(--bg-card)' }}>
@@ -42,8 +48,8 @@ export default function MaterialDetailCard({ role = 'admin', department }: Props
         {filteredMaterials.map((item) => {
           const isExpanded = expandedId === item.id
           const records = filteredCards.filter((r) => r.studentId === item.studentId)
-          const status = statusConfig[item.status]
-          const risk = riskConfig[item.riskLevel]
+          const status = statusConfig[item.status] || statusConfig['待审核']
+          const risk = riskConfig[item.riskLevel] || riskConfig['medium']
 
           return (
             <div key={item.id}>

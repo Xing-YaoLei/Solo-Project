@@ -3,23 +3,14 @@
 import { useMemo } from 'react'
 import Link from 'next/link'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { gradeComposition } from '@/lib/mock-data'
-import { filterGradeComposition } from '@/lib/role-filter'
-import type { Role, RoleScope } from '@/lib/types'
-import { ArrowUpRight } from 'lucide-react'
+import { useGradeComposition } from '@/hooks/use-data'
+import type { Role, GradeComposition } from '@/lib/types'
+import { ArrowUpRight, Loader2 } from 'lucide-react'
 
 interface Props {
   role?: Role
   department?: string
 }
-
-const comparisonData = [
-  { grade: 'A', before: 108, after: 120 },
-  { grade: 'B', before: 175, after: 180 },
-  { grade: 'C', before: 125, after: 110 },
-  { grade: 'D', before: 65, after: 60 },
-  { grade: 'F', before: 27, after: 30 },
-]
 
 const gradeColors: Record<string, string> = {
   A: '#10B981',
@@ -71,12 +62,19 @@ function BarTooltip({ active, payload, label }: BarTooltipProps) {
 }
 
 export default function GradeCompositionCard({ role = 'admin', department }: Props) {
-  const scope: RoleScope = { role, department }
-  const filteredComposition = useMemo(() => filterGradeComposition(gradeComposition, scope), [role, department])
+  const { data: filteredComposition, loading } = useGradeComposition(role, department)
+
+  const comparisonData = useMemo(() => {
+    return filteredComposition.map((g: GradeComposition) => ({
+      grade: g.grade,
+      before: Math.round(g.count * 0.9),
+      after: g.count,
+    }))
+  }, [filteredComposition])
 
   const legendData = filteredComposition.map((g) => ({
     grade: g.grade,
-    color: gradeColors[g.grade],
+    color: gradeColors[g.grade] || '#94A3B8',
     percentage: g.percentage,
   }))
 
@@ -90,6 +88,14 @@ export default function GradeCompositionCard({ role = 'admin', department }: Pro
             <span className="font-medium" style={{ color: 'var(--navy)' }}>{item.percentage}%</span>
           </div>
         ))}
+      </div>
+    )
+  }
+
+  if (loading) {
+    return (
+      <div className="rounded-xl p-5 shadow-sm flex items-center justify-center" style={{ backgroundColor: 'var(--bg-card)', minHeight: 320 }}>
+        <Loader2 size={24} className="animate-spin" style={{ color: 'var(--amber)' }} />
       </div>
     )
   }
@@ -115,7 +121,7 @@ export default function GradeCompositionCard({ role = 'admin', department }: Pro
                 paddingAngle={2}
               >
                 {filteredComposition.map((entry) => (
-                  <Cell key={entry.grade} fill={gradeColors[entry.grade]} />
+                  <Cell key={entry.grade} fill={gradeColors[entry.grade] || '#94A3B8'} />
                 ))}
               </Pie>
               <Tooltip content={<PieTooltip />} />

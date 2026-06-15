@@ -7,20 +7,29 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "check": "tsc --noEmit"
+    "check": "tsc --noEmit",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:push": "prisma db push",
+    "db:generate": "prisma generate"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@prisma/client": "^6.8.2",
+    "@supabase/supabase-js": "^2.108.2",
+    "clsx": "^2.1.1",
+    "exceljs": "^4.4.0",
+    "jspdf": "^4.2.1",
+    "lucide-react": "^0.469.0",
     "next": "14.2.35",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "recharts": "^2.15.3",
-    "lucide-react": "^0.469.0",
-    "zustand": "^5.0.5",
-    "@prisma/client": "^6.8.2",
-    "clsx": "^2.1.1"
+    "zustand": "^5.0.5"
   },
   "devDependencies": {
-    "@types/node": "^20.17.57",
+    "@types/node": "^20.19.43",
     "@types/react": "^18.3.22",
     "@types/react-dom": "^18.3.7",
     "autoprefixer": "^10.4.21",
