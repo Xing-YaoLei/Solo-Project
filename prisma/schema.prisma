@@ -1,0 +1,95 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Department {
+  id      String    @id @default(uuid())
+  name    String
+  code    String    @unique
+  students Student[]
+  advisors Advisor[]
+}
+
+model Advisor {
+  id           String      @id @default(uuid())
+  name         String
+  departmentId String
+  quotaLimit   Int         @default(10)
+  department   Department  @relation(fields: [departmentId], references: [id])
+  students     Student[]
+}
+
+model Student {
+  id           String          @id @default(uuid())
+  name         String
+  studentNo    String          @unique
+  departmentId String
+  advisorId    String
+  department   Department      @relation(fields: [departmentId], references: [id])
+  advisor      Advisor         @relation(fields: [advisorId], references: [id])
+  gradeReviews GradeReview[]
+  applications Application[]
+  cardRecords  CampusCardRecord[]
+}
+
+model GradeReview {
+  id            String    @id @default(uuid())
+  studentId     String
+  semester      String
+  originalGrade String
+  reviewedGrade String?
+  reviewedAt    DateTime?
+  student       Student   @relation(fields: [studentId], references: [id])
+
+  @@index([studentId])
+  @@index([semester])
+}
+
+model Application {
+  id           String             @id @default(uuid())
+  studentId    String
+  semester     String
+  materialType String
+  status       String             @default("missing")
+  submittedAt  DateTime?
+  student      Student            @relation(fields: [studentId], references: [id])
+  cardRecords  CampusCardRecord[]
+
+  @@index([studentId])
+}
+
+model CampusCardRecord {
+  id              String       @id @default(uuid())
+  studentId       String
+  applicationId   String?
+  transactionTime DateTime
+  location        String
+  amount          Float
+  student         Student      @relation(fields: [studentId], references: [id])
+  application     Application? @relation(fields: [applicationId], references: [id])
+
+  @@index([studentId])
+  @@index([applicationId])
+}
+
+model ShareToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  role      String
+  scopeJson String   @default("{}")
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([token])
+}
+
+model RefreshLog {
+  id          String   @id @default(uuid())
+  refreshedAt DateTime @default(now())
+  triggeredBy String
+}
