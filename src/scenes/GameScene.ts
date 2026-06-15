@@ -600,6 +600,8 @@ export class GameScene extends Scene {
 
     if (currentStage === 'feedback') {
       inputManager.setMaxIndex(Math.max(0, (this.levelData?.students.length || 1) - 1));
+      inputManager.setSelectedIndex(0);
+      this.highlightSelectedStudent();
     } else if (currentStage === 'rules') {
       inputManager.setMaxIndex(Math.max(0, (this.levelData?.reminderRules.length || 1) - 1));
       this.selectedRuleIndex = 0;
@@ -661,20 +663,24 @@ export class GameScene extends Scene {
       this.inputListeners.push(
         inputManager.onKeyboard(`NUMBER_${i}`, () => {
           if (this.scoringDialog?.isVisible()) {
-            const currentScore = this.scoringDialog.getCurrentScore();
-            const maxScore = this.scoringDialog.getMaxScore();
-            const newScore = clamp(currentScore * 10 + i, 0, maxScore);
-            this.scoringDialog.setScore(newScore);
+            this.scoringDialog.inputDigit(i);
           }
         })
       );
     }
 
+    this.inputListeners.push(
+      inputManager.onKeyboard('BACKSPACE', () => {
+        if (this.scoringDialog?.isVisible()) {
+          this.scoringDialog.deleteDigit();
+        }
+      })
+    );
+
     inputManager.onKeyboard('UP', () => {
       if (this.scoringDialog?.isVisible()) return;
       const state = gameStateManager.getState();
       if (state.currentStage === 'scoring') {
-        const maxIndex = Math.max(0, this.assignmentCards.length - 1);
         const newIndex = Math.max(0, inputManager.getSelectedIndex() - 1);
         inputManager.setSelectedIndex(newIndex);
         this.highlightSelectedCard();
@@ -682,6 +688,10 @@ export class GameScene extends Scene {
         const newIndex = Math.max(0, this.selectedRuleIndex - 1);
         this.selectedRuleIndex = newIndex;
         this.highlightSelectedRule();
+      } else if (state.currentStage === 'feedback') {
+        const newIndex = Math.max(0, inputManager.getSelectedIndex() - 1);
+        inputManager.setSelectedIndex(newIndex);
+        this.highlightSelectedStudent();
       }
     });
 
@@ -698,6 +708,11 @@ export class GameScene extends Scene {
         const newIndex = Math.min(maxIndex, this.selectedRuleIndex + 1);
         this.selectedRuleIndex = newIndex;
         this.highlightSelectedRule();
+      } else if (state.currentStage === 'feedback') {
+        const maxIndex = Math.max(0, this.studentCards.length - 1);
+        const newIndex = Math.min(maxIndex, inputManager.getSelectedIndex() + 1);
+        inputManager.setSelectedIndex(newIndex);
+        this.highlightSelectedStudent();
       }
     });
 
@@ -746,6 +761,22 @@ export class GameScene extends Scene {
         } else {
           const rule = this.levelData?.reminderRules[index];
           bg.setStrokeStyle(2, rule?.active ? COLORS.success : COLORS.border);
+          card.scale = 1;
+        }
+      }
+    });
+  }
+
+  private highlightSelectedStudent(): void {
+    const selectedIndex = inputManager.getSelectedIndex();
+    this.studentCards.forEach((card, index) => {
+      const element = card.getAt(0) as Phaser.GameObjects.Rectangle;
+      if (element) {
+        if (index === selectedIndex) {
+          element.setStrokeStyle(3, COLORS.primary);
+          card.scale = 1.05;
+        } else {
+          element.setStrokeStyle(2, COLORS.border);
           card.scale = 1;
         }
       }

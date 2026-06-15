@@ -1,7 +1,7 @@
 import { COLORS, Submission, Assignment } from '../types';
 import { UIButton } from './UIButton';
 import { UIProgressBar } from './UIProgressBar';
-import { getScoreColor, formatDate } from '../utils';
+import { getScoreColor, formatDate, clamp } from '../utils';
 
 export class UIScoringPanel extends Phaser.GameObjects.Container {
   private background: Phaser.GameObjects.Rectangle;
@@ -10,12 +10,14 @@ export class UIScoringPanel extends Phaser.GameObjects.Container {
   private assignmentTitleText: Phaser.GameObjects.Text;
   private submissionContentText: Phaser.GameObjects.Text;
   private scoreDisplay: Phaser.GameObjects.Text;
+  private inputHintText: Phaser.GameObjects.Text;
   private scoreSlider: UIProgressBar | null = null;
   private confirmButton: UIButton;
   private cancelButton: UIButton;
   private scoreButtons: UIButton[] = [];
   private currentScore: number = 0;
   private maxScore: number = 100;
+  private scoreInput: string = '';
   private submission: Submission | null = null;
   private assignment: Assignment | null = null;
   private onConfirmCallback: ((score: number) => void) | null = null;
@@ -61,6 +63,13 @@ export class UIScoringPanel extends Phaser.GameObjects.Container {
       align: 'center'
     }).setOrigin(0.5, 0.5);
 
+    this.inputHintText = scene.add.text(0, 55, '数字键输入分数，Enter 提交', {
+      fontSize: '13px',
+      color: '#718096',
+      fontFamily: 'Arial, sans-serif',
+      align: 'center'
+    }).setOrigin(0.5, 0.5);
+
     this.createScoreButtons();
 
     this.confirmButton = new UIButton(scene, 80, height / 2 - 40, 100, 40, '确认', 16, COLORS.success)
@@ -76,6 +85,7 @@ export class UIScoringPanel extends Phaser.GameObjects.Container {
       this.assignmentTitleText,
       this.submissionContentText,
       this.scoreDisplay,
+      this.inputHintText,
       this.confirmButton,
       this.cancelButton,
       ...this.scoreButtons
@@ -102,6 +112,7 @@ export class UIScoringPanel extends Phaser.GameObjects.Container {
         14,
         COLORS.surfaceLight
       ).setOnClick(() => {
+          this.scoreInput = score.toString();
           this.currentScore = Math.min(score, this.maxScore);
           this.updateScoreDisplay();
         });
@@ -120,7 +131,8 @@ export class UIScoringPanel extends Phaser.GameObjects.Container {
     this.submission = submission;
     this.assignment = assignment;
     this.maxScore = assignment.maxScore;
-    this.currentScore = Math.min(submission.score, assignment.maxScore);
+    this.scoreInput = '';
+    this.currentScore = 0;
     this.onConfirmCallback = onConfirm;
     this.onCancelCallback = onCancel || null;
 
@@ -173,14 +185,36 @@ export class UIScoringPanel extends Phaser.GameObjects.Container {
     });
   }
 
-  setScore(score: number): this {
-    this.currentScore = Math.max(0, Math.min(this.maxScore, score));
+  inputDigit(digit: number): this {
+    const candidate = this.scoreInput + digit.toString();
+    const candidateValue = parseInt(candidate, 10);
+    if (candidateValue > this.maxScore) {
+      this.scoreInput = this.maxScore.toString();
+      this.currentScore = this.maxScore;
+    } else {
+      this.scoreInput = candidate;
+      this.currentScore = candidateValue;
+    }
     this.updateScoreDisplay();
     return this;
   }
 
-  adjustScore(delta: number): this {
-    return this.setScore(this.currentScore + delta);
+  deleteDigit(): this {
+    if (this.scoreInput.length > 0) {
+      this.scoreInput = this.scoreInput.slice(0, -1);
+      this.currentScore = this.scoreInput.length > 0 ? parseInt(this.scoreInput, 10) : 0;
+    } else {
+      this.currentScore = 0;
+    }
+    this.updateScoreDisplay();
+    return this;
+  }
+
+  clearInput(): this {
+    this.scoreInput = '';
+    this.currentScore = 0;
+    this.updateScoreDisplay();
+    return this;
   }
 
   private onConfirm(): void {

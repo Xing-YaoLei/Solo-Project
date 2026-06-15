@@ -155,7 +155,7 @@ export const KEY_MAPPINGS = {
   LEFT: ['ArrowLeft', 'A', 'a'],
   RIGHT: ['ArrowRight', 'D', 'd'],
   CONFIRM: ['Enter', 'Space'],
-  CANCEL: ['Escape', 'Backspace'],
+  CANCEL: ['Escape'],
   TAB_LEFT: ['Q', 'q'],
   TAB_RIGHT: ['E', 'e'],
   HELP: ['F1', '?']

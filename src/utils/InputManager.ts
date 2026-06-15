@@ -103,6 +103,10 @@ class InputManager {
       if (/^[0-9]$/.test(key)) {
         this.notifyKeyboardListeners('NUMBER_' + key);
       }
+
+      if (key === 'Backspace') {
+        this.notifyKeyboardListeners('BACKSPACE');
+      }
     }
   }
 
@@ -174,12 +178,6 @@ class InputManager {
 
   private handleNavigation(mapping: keyof typeof KEY_MAPPINGS): void {
     switch (mapping) {
-      case 'UP':
-        this.selectedIndex = Math.max(0, this.selectedIndex - 1);
-        break;
-      case 'DOWN':
-        this.selectedIndex = Math.min(this.maxIndex, this.selectedIndex + 1);
-        break;
       case 'LEFT':
         this.notifyKeyboardListeners('NAV_LEFT');
         break;
