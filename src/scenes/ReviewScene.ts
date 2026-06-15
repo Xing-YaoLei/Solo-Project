@@ -18,6 +18,9 @@ export class ReviewScene extends Scene {
   }
 
   create(): void {
+    this.gameState = gameStateManager.getState();
+    this.saveData = gameStateManager.getSaveData();
+
     gameStateManager.setPhase('review');
     inputManager.initialize(this);
     this.createUI();
@@ -65,6 +68,8 @@ export class ReviewScene extends Scene {
     const bg = this.add.rectangle(0, 0, panelWidth, panelHeight, COLORS.surface)
       .setOrigin(0.5, 0.5)
       .setStrokeStyle(2, COLORS.primary);
+
+    panel.add(bg);
 
     const state = this.gameState;
     const levelData = getLevelById(state.currentLevelId);
@@ -121,8 +126,6 @@ export class ReviewScene extends Scene {
       panel.add([icon, value, label]);
     });
 
-    panel.add(bg);
-
     if (levelData && state.completionRate >= levelData.targetCompletionRate) {
       const successBadge = this.add.text(panelWidth / 2 - 20, -panelHeight / 2 + 20, '✅ 目标达成！', {
         fontSize: '16px',
@@ -142,13 +145,6 @@ export class ReviewScene extends Scene {
 
     this.chartContainer = this.add.container(chartX, chartY);
 
-    const title = this.add.text(0, -chartHeight / 2 - 20, '📈 完成率变化趋势', {
-      fontSize: '20px',
-      color: '#ffffff',
-      fontFamily: 'Arial, sans-serif',
-      fontStyle: 'bold'
-    }).setOrigin(0.5, 0.5);
-
     const bg = this.add.rectangle(0, 0, chartWidth, chartHeight, COLORS.surface)
       .setOrigin(0.5, 0.5)
       .setStrokeStyle(2, COLORS.border);
@@ -157,13 +153,7 @@ export class ReviewScene extends Scene {
     const innerWidth = chartWidth - padding * 2;
     const innerHeight = chartHeight - padding * 2;
 
-    const xAxis = this.add.line(-innerWidth / 2, innerHeight / 2, 0, 0, innerWidth, 0, COLORS.border)
-      .setOrigin(0, 0);
-
-    const yAxis = this.add.line(-innerWidth / 2, -innerHeight / 2, 0, 0, 0, innerHeight, COLORS.border)
-      .setOrigin(0, 0);
-
-    this.chartContainer.add([bg, xAxis, yAxis]);
+    this.chartContainer.add(bg);
 
     for (let i = 0; i <= 4; i++) {
       const y = -innerHeight / 2 + i * (innerHeight / 4);
@@ -180,88 +170,120 @@ export class ReviewScene extends Scene {
       this.chartContainer?.add([gridLine, label]);
     }
 
+    const xAxis = this.add.line(-innerWidth / 2, innerHeight / 2, 0, 0, innerWidth, 0, COLORS.border)
+      .setOrigin(0, 0);
+
+    const yAxis = this.add.line(-innerWidth / 2, -innerHeight / 2, 0, 0, 0, innerHeight, COLORS.border)
+      .setOrigin(0, 0);
+
+    this.chartContainer?.add([xAxis, yAxis]);
+
     const progressHistory = this.gameState.progressHistory;
-    if (progressHistory.length > 1) {
-      const points: { x: number; y: number }[] = [];
-      const stageColors: Record<GameStage, number> = {
-        feedback: COLORS.primary,
-        rules: COLORS.warning,
-        scoring: COLORS.success
-      };
+    const stageColors: Record<GameStage, number> = {
+      feedback: COLORS.primary,
+      rules: COLORS.warning,
+      scoring: COLORS.success
+    };
+
+    if (progressHistory.length >= 1) {
+      const points: { x: number; y: number; stage: GameStage }[] = [];
 
       progressHistory.forEach((record, index) => {
-        const x = -innerWidth / 2 + (index / (progressHistory.length - 1)) * innerWidth;
+        const x = progressHistory.length === 1
+          ? 0
+          : -innerWidth / 2 + (index / (progressHistory.length - 1)) * innerWidth;
         const y = innerHeight / 2 - record.completionRate * innerHeight;
-        points.push({ x, y });
+        points.push({ x, y, stage: record.stage });
+      });
 
-        const dotColor = stageColors[record.stage] || COLORS.primary;
-        const dot = this.add.circle(x, y, 5, dotColor)
+      if (progressHistory.length > 1) {
+        const fillGraphics = this.add.graphics();
+        fillGraphics.setPosition(0, 0);
+        fillGraphics.fillStyle(COLORS.primary, 0.15);
+        fillGraphics.beginPath();
+        fillGraphics.moveTo(points[0].x, innerHeight / 2);
+        fillGraphics.lineTo(points[0].x, points[0].y);
+
+        for (let i = 1; i < points.length; i++) {
+          const curr = points[i];
+          fillGraphics.lineTo(curr.x, curr.y);
+        }
+
+        fillGraphics.lineTo(points[points.length - 1].x, innerHeight / 2);
+        fillGraphics.closePath();
+        fillGraphics.fillPath();
+
+        this.chartContainer?.add(fillGraphics);
+
+        const lineGraphics = this.add.graphics();
+        lineGraphics.setPosition(0, 0);
+        lineGraphics.lineStyle(3, COLORS.primary, 0.9);
+        lineGraphics.beginPath();
+        lineGraphics.moveTo(points[0].x, points[0].y);
+
+        for (let i = 1; i < points.length; i++) {
+          const curr = points[i];
+          lineGraphics.lineTo(curr.x, curr.y);
+        }
+        lineGraphics.strokePath();
+
+        this.chartContainer?.add(lineGraphics);
+      }
+
+      points.forEach((point, index) => {
+        const dotColor = stageColors[point.stage] || COLORS.primary;
+        const dot = this.add.circle(point.x, point.y, 6, dotColor)
           .setStrokeStyle(2, COLORS.surface);
 
-        if (index === 0 || index === progressHistory.length - 1 || record.stage !== progressHistory[index - 1]?.stage) {
-          const stageLabel = this.add.text(x, y - 15, this.getStageLabel(record.stage), {
+        this.chartContainer?.add(dot);
+
+        if (index === 0 || index === points.length - 1 || point.stage !== points[index - 1]?.stage) {
+          const stageLabel = this.add.text(point.x, point.y - 15, this.getStageLabel(point.stage), {
             fontSize: '10px',
             color: '#' + dotColor.toString(16).padStart(6, '0'),
-            fontFamily: 'Arial, sans-serif'
+            fontFamily: 'Arial, sans-serif',
+            fontStyle: 'bold'
           }).setOrigin(0.5, 1);
           this.chartContainer?.add(stageLabel);
         }
-
-        this.chartContainer?.add(dot);
       });
-
-      const graphics = this.add.graphics();
-      graphics.setPosition(0, 0);
-      graphics.lineStyle(3, COLORS.primary, 0.8);
-      graphics.beginPath();
-      graphics.moveTo(points[0].x, points[0].y);
-
-      for (let i = 1; i < points.length; i++) {
-        const curr = points[i];
-        graphics.lineTo(curr.x, curr.y);
-      }
-      graphics.strokePath();
-
-      const fillGraphics = this.add.graphics();
-      fillGraphics.setPosition(0, 0);
-      fillGraphics.fillStyle(COLORS.primary, 0.2);
-      fillGraphics.beginPath();
-      fillGraphics.moveTo(points[0].x, innerHeight / 2);
-      fillGraphics.lineTo(points[0].x, points[0].y);
-
-      for (let i = 1; i < points.length; i++) {
-        const curr = points[i];
-        fillGraphics.lineTo(curr.x, curr.y);
-      }
-
-      fillGraphics.lineTo(points[points.length - 1].x, innerHeight / 2);
-      fillGraphics.closePath();
-      fillGraphics.fillPath();
-
-      this.chartContainer?.add(graphics);
-      this.chartContainer?.add(fillGraphics);
+    } else {
+      const emptyText = this.add.text(0, 0, '暂无进度数据', {
+        fontSize: '16px',
+        color: '#718096',
+        fontFamily: 'Arial, sans-serif'
+      }).setOrigin(0.5, 0.5);
+      this.chartContainer?.add(emptyText);
     }
 
-    const avgCompletion = calculateAverage(progressHistory.map(r => r.completionRate));
-    const avgLine = this.add.line(
-      -innerWidth / 2,
-      innerHeight / 2 - avgCompletion * innerHeight,
-      0, 0,
-      innerWidth, 0,
-      COLORS.warning,
-      0.5
-    ).setOrigin(0, 0);
+    const avgCompletion = progressHistory.length > 0
+      ? calculateAverage(progressHistory.map(r => r.completionRate))
+      : 0;
 
-    const avgLabel = this.add.text(
-      innerWidth / 2 + 10,
-      innerHeight / 2 - avgCompletion * innerHeight,
-      `平均: ${formatPercentage(avgCompletion)}`,
-      {
-        fontSize: '12px',
-        color: '#ed8936',
-        fontFamily: 'Arial, sans-serif'
-      }
-    ).setOrigin(0, 0.5);
+    if (progressHistory.length > 1) {
+      const avgLine = this.add.line(
+        -innerWidth / 2,
+        innerHeight / 2 - avgCompletion * innerHeight,
+        0, 0,
+        innerWidth, 0,
+        COLORS.warning,
+        0.6
+      ).setOrigin(0, 0);
+
+      const avgLabel = this.add.text(
+        innerWidth / 2 + 10,
+        innerHeight / 2 - avgCompletion * innerHeight,
+        `平均: ${formatPercentage(avgCompletion)}`,
+        {
+          fontSize: '12px',
+          color: '#ed8936',
+          fontFamily: 'Arial, sans-serif',
+          fontStyle: 'bold'
+        }
+      ).setOrigin(0, 0.5);
+
+      this.chartContainer?.add([avgLine, avgLabel]);
+    }
 
     const legendItems = [
       { color: COLORS.primary, label: '成绩反馈' },
@@ -283,7 +305,14 @@ export class ReviewScene extends Scene {
       this.chartContainer?.add([legendDot, legendText]);
     });
 
-    this.chartContainer.add([title, avgLine, avgLabel]);
+    const title = this.add.text(0, -chartHeight / 2 - 20, '📈 完成率变化趋势', {
+      fontSize: '20px',
+      color: '#ffffff',
+      fontFamily: 'Arial, sans-serif',
+      fontStyle: 'bold'
+    }).setOrigin(0.5, 0.5);
+
+    this.chartContainer.add(title);
   }
 
   private getStageLabel(stage: GameStage): string {
@@ -306,12 +335,16 @@ export class ReviewScene extends Scene {
       .setOrigin(0.5, 0.5)
       .setStrokeStyle(2, COLORS.border);
 
+    panel.add(bg);
+
     const title = this.add.text(-panelWidth / 2 + 20, -panelHeight / 2 + 15, '📋 各阶段完成情况', {
       fontSize: '16px',
       color: '#ffffff',
       fontFamily: 'Arial, sans-serif',
       fontStyle: 'bold'
     }).setOrigin(0, 0.5);
+
+    panel.add(title);
 
     const stages: { key: GameStage; label: string; color: number }[] = [
       { key: 'feedback', label: '成绩反馈', color: COLORS.primary },
@@ -325,7 +358,7 @@ export class ReviewScene extends Scene {
       const stageRecords = progressHistory.filter(r => r.stage === stage.key);
       const stageCompletion = stageRecords.length > 0
         ? stageRecords[stageRecords.length - 1].completionRate
-        : (index === 0 ? 1 : 0);
+        : 0;
 
       const barX = -panelWidth / 2 + 20 + index * 260;
       const barY = 10;
@@ -347,10 +380,8 @@ export class ReviewScene extends Scene {
         true
       ).setShowPercentage(true).setValue(stageCompletion * 100, false);
 
-      panel.add(progressBar);
+      panel.add([barLabel, progressBar]);
     });
-
-    panel.add([bg, title]);
   }
 
   private createButtons(): void {
