@@ -70,6 +70,33 @@ def _parse_date(value: Any) -> Optional[date]:
         return None
 
 
+def _parse_boolean(value: Any, default: bool = False) -> bool:
+    """
+    布尔字段解析，兼容多种CSV表示：
+    真值：True, true, 'True', 'true', 'TRUE', 1, '1', '是', 'Y', 'y', 'yes', 'Yes'
+    假值：False, false, 'False', 'false', 'FALSE', 0, '0', '否', 'N', 'n', 'no', 'No', ''
+    NaN/None 返回 default
+    """
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        if pd.isna(value):
+            return default
+        return value != 0
+    if isinstance(value, str):
+        s = value.strip().lower()
+        if s == '':
+            return default
+        if s in ('true', '1', '是', 'y', 'yes'):
+            return True
+        if s in ('false', '0', '否', 'n', 'no'):
+            return False
+        return default
+    return default
+
+
 async def _stream_parse_file(file: UploadFile, chunk_size: int = 1024 * 1024) -> pd.DataFrame:
     """
     流式解析上传文件（CSV按分块读，Excel按行迭代读）
@@ -439,8 +466,14 @@ async def sync_homework_data(
                         except Exception:
                             submit_time = None
 
-                is_submitted = bool(row.get('is_submitted', False)) if pd.notna(row.get('is_submitted')) else (submit_time is not None)
-                is_late = bool(row.get('is_late', False)) if pd.notna(row.get('is_late')) else False
+                is_submitted_raw = row.get('is_submitted')
+                if pd.notna(is_submitted_raw) and is_submitted_raw is not None and str(is_submitted_raw).strip() != '':
+                    is_submitted = _parse_boolean(is_submitted_raw, default=False)
+                else:
+                    is_submitted = submit_time is not None
+
+                is_late_raw = row.get('is_late')
+                is_late = _parse_boolean(is_late_raw, default=False)
 
                 homework = Homework(
                     homework_no=f"HW{uuid.uuid4().hex[:8].upper()}",
