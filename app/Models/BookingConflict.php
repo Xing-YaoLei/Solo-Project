@@ -71,4 +71,29 @@ class BookingConflict extends Model
     {
         return $query->where('resolved', true);
     }
+
+    public function getIsResolvedAttribute(): bool
+    {
+        return (bool)$this->resolved;
+    }
+
+    public function getTypeAttribute(): string
+    {
+        return $this->conflict_type;
+    }
+
+    public function getDescriptionAttribute(): string
+    {
+        return $this->conflict_description;
+    }
+
+    public function getDataAttribute(): ?array
+    {
+        return $this->conflict_data;
+    }
+
+    public function getDetectedAtAttribute()
+    {
+        return $this->created_at;
+    }
 }

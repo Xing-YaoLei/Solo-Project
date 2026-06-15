@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
-class Authenticate
+class RedirectIfAuthenticated
 {
     public function handle(Request $request, Closure $next, string ...$guards): Response
     {
@@ -15,16 +15,10 @@ class Authenticate
 
         foreach ($guards as $guard) {
             if (Auth::guard($guard)->check()) {
-                Auth::shouldUse($guard);
-
-                return $next($request);
+                return redirect()->route('dashboard');
             }
         }
 
-        if ($request->expectsJson()) {
-            abort(401);
-        }
-
-        return redirect()->route('login');
+        return $next($request);
     }
 }

@@ -22,7 +22,9 @@ class BookingService
     {
         return DB::transaction(function () use ($data) {
             $data['created_by'] = Auth::id();
-            $data['status'] = $data['status'] ?? TrialBooking::STATUS_PENDING;
+            if (!isset($data['status'])) {
+                $data['status'] = TrialBooking::STATUS_PENDING;
+            }
 
             $booking = TrialBooking::create($data);
 
@@ -33,7 +35,9 @@ class BookingService
                 $this->createConflictRecord($booking, $conflict);
             }
 
-            return $booking->load(['course', 'timeSlot', 'assignedTo', 'createdBy');
+            $booking->load(['course', 'timeSlot', 'assignedTo', 'createdBy']);
+
+            return $booking;
         });
     }
 
@@ -44,9 +48,12 @@ class BookingService
 
             $booking->update($data);
 
-            $changedValues = array_filter($data, function ($key) use ($oldValues, $data) {
-                return $oldValues[$key] != $data[$key];
-            }, ARRAY_FILTER_USE_KEY);
+            $changedValues = [];
+            foreach ($data as $key => $value) {
+                if ($oldValues[$key] != $value) {
+                    $changedValues[$key] = $value;
+                }
+            }
 
             if (!empty($changedValues)) {
                 $this->auditService->logBookingUpdate($booking, $oldValues, $changedValues);
@@ -60,7 +67,9 @@ class BookingService
                 }
             }
 
-            return $booking->load(['course', 'timeSlot', 'assignedTo', 'createdBy']);
+            $booking->load(['course', 'timeSlot', 'assignedTo', 'createdBy']);
+
+            return $booking;
         });
     }
 
@@ -103,10 +112,16 @@ class BookingService
             }
 
             if (!empty($data['result']) && $data['result'] === 'escalated') {
-                $this->escalate($booking, $data['escalation_reason'] ?? null, $data['escalated_to'] ?? null);
+                $this->escalate(
+                    $booking,
+                    $data['escalation_reason'] ?? null,
+                    isset($data['escalated_to']) ? (int)$data['escalated_to'] : null
+                );
             }
 
-            return $followUp->load('createdBy');
+            $followUp->load('createdBy');
+
+            return $followUp;
         });
     }
 
@@ -121,7 +136,9 @@ class BookingService
 
             $this->auditService->logEscalation($booking, $reason);
 
-            return $booking->fresh()->load('escalatedTo');
+            $booking->load('escalatedTo');
+
+            return $booking;
         });
     }
 
@@ -143,7 +160,13 @@ class BookingService
     {
         return DB::transaction(function () use ($booking, $reason) {
             $booking->status = TrialBooking::STATUS_CANCELLED;
-            $booking->remark = $booking->remark ? $booking->remark . "\n取消原因: " . $reason : "取消原因: " . $reason;
+            if ($reason) {
+                if ($booking->remark) {
+                    $booking->remark = $booking->remark . "\n取消原因: " . $reason;
+                } else {
+                    $booking->remark = "取消原因: " . $reason;
+                }
+            }
             $booking->save();
 
             $this->auditService->logBookingCancellation($booking, $reason);
@@ -175,7 +198,9 @@ class BookingService
 
             $this->auditService->logReview($booking, $note, $tags);
 
-            return $booking->fresh()->load('reviewedBy');
+            $booking->load('reviewedBy');
+
+            return $booking;
         });
     }
 
@@ -217,7 +242,9 @@ class BookingService
                 );
             }
 
-            return $conflict->fresh()->load('resolvedBy');
+            $conflict->load('resolvedBy');
+
+            return $conflict;
         });
     }
 
@@ -237,12 +264,9 @@ class BookingService
 
             $bookedCount = TrialBooking::where('time_slot_id', $slot->id)
                 ->where('trial_date', $date)
-                ->whereIn('status', [
-                    TrialBooking::STATUS_PENDING,
-                    TrialBooking::STATUS_CONFIRMED,
-                    TrialBooking::STATUS_NEED_INFO,
-                    TrialBooking::STATUS_ESCALATED,
-                    TrialBooking::STATUS_COMPLETED,
+                ->whereNotIn('status', [
+                    TrialBooking::STATUS_CANCELLED,
+                    TrialBooking::STATUS_CLOSED,
                 ])
                 ->count();
 
@@ -260,7 +284,7 @@ class BookingService
                 'booked_count' => $bookedCount,
                 'available_count' => max(0, $maxCapacity - $bookedCount),
                 'is_full' => $bookedCount >= $maxCapacity,
-                'is_warning' => $bookedCount >= $warnCapacity && $warnCapacity > 0,
+                'is_warning' => $warnCapacity > 0 && $bookedCount >= $warnCapacity,
             ];
         }
 

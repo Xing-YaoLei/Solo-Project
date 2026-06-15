@@ -1,21 +1,11 @@
 <?php
 
-define('LARAVEL_START', microtime(true));
+use Illuminate\Http\Request;
 
-if (file_exists($maintenance = __DIR__.'/../storage/framework/maintenance.php')) {
-    require $maintenance;
-}
+define('LARAVEL_START', microtime(true));
 
 require __DIR__.'/../vendor/autoload.php';
 
-$app = require_once __DIR__.'/../bootstrap/app.php';
+$app = require __DIR__.'/../bootstrap/app.php';
 
-$kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
-
-$response = $kernel->handle(
-    $request = Illuminate\Http\Request::capture()
-);
-
-$response->send();
-
-$kernel->terminate($request, $response);
+$app->handleRequest(Request::capture());

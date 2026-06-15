@@ -1,6 +1,5 @@
 <?php
 
-use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -14,22 +13,20 @@ Route::get('/', function () {
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
         'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
     ]);
-});
+})->name('home');
 
-Route::middleware([
-    'auth:sanctum',
-    config('jetstream.auth_session'),
-    'verified',
-])->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     Route::prefix('bookings')->name('bookings.')->group(function () {
+        Route::get('/check/conflicts', [TrialBookingController::class, 'checkConflicts'])->name('check-conflicts');
+        Route::get('/capacity/all', [TrialBookingController::class, 'allCapacityInfo'])->name('capacity-all');
+
         Route::get('/', [TrialBookingController::class, 'index'])->name('index');
         Route::get('/create', [TrialBookingController::class, 'create'])->name('create');
         Route::post('/', [TrialBookingController::class, 'store'])->name('store');
+
         Route::get('/{trialBooking}', [TrialBookingController::class, 'show'])->name('show');
         Route::get('/{trialBooking}/edit', [TrialBookingController::class, 'edit'])->name('edit');
         Route::put('/{trialBooking}', [TrialBookingController::class, 'update'])->name('update');
@@ -41,8 +38,7 @@ Route::middleware([
         Route::post('/{trialBooking}/escalate', [TrialBookingController::class, 'escalate'])->name('escalate');
         Route::post('/{trialBooking}/review', [TrialBookingController::class, 'review'])->name('review');
         Route::post('/{trialBooking}/follow-up', [TrialBookingController::class, 'addFollowUp'])->name('follow-up.store');
-
-        Route::get('/check/conflicts', [TrialBookingController::class, 'checkConflicts'])->name('check-conflicts');
+        Route::post('/{trialBooking}/conflicts/{conflict}/resolve', [TrialBookingController::class, 'resolveConflict'])->name('conflicts.resolve');
     });
 
     Route::get('/calendar', [CalendarController::class, 'index'])->name('calendar');
@@ -62,3 +58,5 @@ Route::middleware([
         Route::delete('/rules/{rule}', [TimeSlotController::class, 'deleteRule'])->name('rules.destroy');
     });
 });
+
+require __DIR__.'/auth.php';

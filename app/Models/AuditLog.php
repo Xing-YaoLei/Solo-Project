@@ -67,4 +67,18 @@ class AuditLog extends Model
 
         return $labels[$this->action] ?? $this->action;
     }
+
+    public function getDetailsAttribute(): ?array
+    {
+        $details = [];
+
+        if ($this->old_values) {
+            $details['old'] = $this->old_values;
+        }
+        if ($this->new_values) {
+            $details['new'] = $this->new_values;
+        }
+
+        return !empty($details) ? $details : null;
+    }
 }

@@ -6,6 +6,7 @@ use App\Models\TrialBooking;
 use App\Models\TimeSlot;
 use App\Models\Course;
 use App\Models\User;
+use App\Models\BookingConflict;
 use App\Services\BookingService;
 use App\Services\AuditService;
 use Illuminate\Http\Request;
@@ -107,6 +108,19 @@ class TrialBookingController extends Controller
         ]);
     }
 
+    public function allCapacityInfo(Request $request)
+    {
+        $request->validate([
+            'date' => 'required|date',
+        ]);
+
+        $slots = $this->bookingService->getTimeSlotCapacityInfo($request->date);
+
+        return response()->json([
+            'slots' => $slots,
+        ]);
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -164,7 +178,7 @@ class TrialBookingController extends Controller
         return Inertia::render('Bookings/Show', [
             'booking' => $booking,
             'auditLogs' => $auditLogs,
-            'statusTransitions' => $statusTransitions,
+            'availableTransitions' => $statusTransitions,
             'capacityInfo' => $capacityInfo[0] ?? null,
         ]);
     }
@@ -423,14 +437,50 @@ class TrialBookingController extends Controller
         ]);
     }
 
+    public function capacityInfo(Request $request)
+    {
+        $request->validate([
+            'date' => 'required|date',
+        ]);
+
+        $slots = $this->bookingService->getTimeSlotCapacityInfo(
+            $request->date
+        );
+
+        return response()->json([
+            'slots' => $slots,
+        ]);
+    }
+
+    public function resolveConflict(Request $request, TrialBooking $trialBooking, BookingConflict $conflict)
+    {
+        $validated = $request->validate([
+            'resolution_note' => 'required|string',
+        ]);
+
+        try {
+            $this->bookingService->resolveConflict(
+                $conflict,
+                $validated['resolution_note']
+            );
+
+            return redirect()->route('bookings.show', $trialBooking)
+                ->with('success', '冲突已解决');
+        } catch (\Exception $e) {
+            throw ValidationException::withMessages([
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
     protected function getAvailableStatusTransitions(TrialBooking $booking): array
     {
         $transitions = [];
 
         $allStatuses = [
-            'pending' => '待跟进',
+            'pending' => '待确认',
             'confirmed' => '已确认',
-            'need_info' => '补资料',
+            'need_info' => '待补资料',
             'escalated' => '升级复核',
             'completed' => '已完成',
             'cancelled' => '已取消',
@@ -440,7 +490,7 @@ class TrialBookingController extends Controller
         foreach (array_keys($allStatuses) as $status) {
             if ($booking->canTransitionTo($status)) {
                 $transitions[] = [
-                    'value' => $status,
+                    'status' => $status,
                     'label' => $allStatuses[$status],
                 ];
             }

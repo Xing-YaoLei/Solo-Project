@@ -61,4 +61,24 @@ class BookingFollowUp extends Model
 
         return $labels[$this->result] ?? $this->result ?? '-';
     }
+
+    public function getFollowUpTypeAttribute(): string
+    {
+        return $this->type;
+    }
+
+    public function getFollowUpTimeAttribute()
+    {
+        return $this->follow_up_at;
+    }
+
+    public function getNextFollowTimeAttribute()
+    {
+        return $this->next_follow_up_at;
+    }
+
+    public function getNextActionAttribute()
+    {
+        return $this->next_action;
+    }
 }

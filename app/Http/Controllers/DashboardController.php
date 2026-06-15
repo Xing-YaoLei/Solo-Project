@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\TrialBooking;
+use App\Models\TimeSlot;
+use App\Models\AuditLog;
 use App\Services\BookingService;
 use App\Services\StatisticsService;
 use Illuminate\Http\Request;
@@ -27,8 +29,10 @@ class DashboardController extends Controller
 
         $stats = $this->statisticsService->getOverviewStats($startDate, $endDate);
 
-        $query = TrialBooking::with(['course', 'timeSlot', 'assignedTo', 'createdBy'])
-            ->withCount('conflicts')
+        $dateFilter = $request->input('date_filter', 'all');
+        $today = now()->toDateString();
+
+        $query = TrialBooking::with(['course', 'timeSlot', 'assignedTo', 'createdBy', 'conflicts'])
             ->when($group, function ($q) use ($group) {
                 $q->byGroup($group);
             })
@@ -41,6 +45,19 @@ class DashboardController extends Controller
                         ->orWhere('booking_no', 'like', "%{$search}%");
                 });
             })
+            ->when($dateFilter === 'today', function ($q) use ($today) {
+                $q->where('trial_date', $today);
+            })
+            ->when($dateFilter === 'week', function ($q) {
+                $q->whereBetween('trial_date', [
+                    now()->startOfWeek()->toDateString(),
+                    now()->endOfWeek()->toDateString(),
+                ]);
+            })
+            ->when($dateFilter === 'month', function ($q) {
+                $q->whereMonth('trial_date', now()->month)
+                    ->whereYear('trial_date', now()->year);
+            })
             ->when($request->input('source_channel'), function ($q) use ($request) {
                 $q->where('source_channel', $request->input('source_channel'));
             })
@@ -51,35 +68,47 @@ class DashboardController extends Controller
             ->orderBy('time_slot_id')
             ->paginate(20);
 
-        $statusGroups = [
-            'to_handle' => [
-                'label' => '待处理',
-                'count' => TrialBooking::byGroup('to_handle')->count(),
-            ],
-            'need_info' => [
-                'label' => '补资料',
-                'count' => TrialBooking::byGroup('need_info')->count(),
-            ],
-            'escalated' => [
-                'label' => '升级复核',
-                'count' => TrialBooking::byGroup('escalated')->count(),
-            ],
-            'completed' => [
-                'label' => '已完成',
-                'count' => TrialBooking::byGroup('completed')->count(),
-            ],
-            'closed' => [
-                'label' => '已关闭',
-                'count' => TrialBooking::byGroup('closed')->count(),
-            ],
+        $groupCounts = [
+            'to_handle' => TrialBooking::byGroup('to_handle')->count(),
+            'need_info' => TrialBooking::byGroup('need_info')->count(),
+            'escalated' => TrialBooking::byGroup('escalated')->count(),
+            'completed' => TrialBooking::byGroup('completed')->count(),
+            'closed' => TrialBooking::byGroup('closed')->count(),
         ];
+
+        $todayTimeSlots = $this->bookingService->getTimeSlotCapacityInfo($today);
+
+        $recentLogs = AuditLog::with('user')
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get()
+            ->map(function ($log) {
+                return [
+                    'id' => $log->id,
+                    'action' => $log->action,
+                    'details' => $log->details,
+                    'created_at' => $log->created_at,
+                    'user' => $log->user ? [
+                        'id' => $log->user->id,
+                        'name' => $log->user->name,
+                    ] : null,
+                ];
+            });
 
         return Inertia::render('Dashboard/Index', [
             'stats' => $stats,
             'bookings' => $query,
-            'statusGroups' => $statusGroups,
+            'groupCounts' => (object)$groupCounts,
+            'todayTimeSlots' => $todayTimeSlots,
+            'recentLogs' => $recentLogs,
             'currentGroup' => $group,
-            'filters' => $request->only(['search', 'source_channel', 'assigned_to', 'start_date', 'end_date']),
+            'filters' => $request->only(['search', 'source_channel', 'assigned_to', 'start_date', 'end_date', 'date_filter']),
         ]);
+    }
+
+    protected function getDayType($date)
+    {
+        $dayOfWeek = date('N', strtotime($date));
+        return $dayOfWeek >= 6 ? 'weekend' : 'weekday';
     }
 }

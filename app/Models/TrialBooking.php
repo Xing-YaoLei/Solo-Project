@@ -46,6 +46,9 @@ class TrialBooking extends Model
         'attended',
         'attendance_note',
         'assigned_to',
+        'created_by',
+        'updated_by',
+        'status_updated_at',
         'review_tags',
         'review_note',
         'reviewed_by',
@@ -128,6 +131,11 @@ class TrialBooking extends Model
     public function escalatedTo(): BelongsTo
     {
         return $this->belongsTo(User::class, 'escalated_to');
+    }
+
+    public function closedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'updated_by');
     }
 
     public function followUps(): HasMany
@@ -355,5 +363,23 @@ class TrialBooking extends Model
     public function getCanEditAttribute(): bool
     {
         return !in_array($this->status, [self::STATUS_CLOSED]);
+    }
+
+    public function getClosedAtAttribute()
+    {
+        if ($this->status === self::STATUS_CLOSED) {
+            return $this->status_updated_at;
+        }
+        return null;
+    }
+
+    public function getTrialFeedbackAttribute()
+    {
+        return $this->attendance_note;
+    }
+
+    public function getSignupIntentAttribute()
+    {
+        return $this->review_tags ? $this->review_tags[0] ?? null : null;
     }
 }
