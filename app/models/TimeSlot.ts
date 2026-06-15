@@ -1,4 +1,4 @@
-import { Schema, model, type Document, type Types } from "mongoose";
+import mongoose, { Schema, model, type Document, type Types } from "mongoose";
 
 export interface ITimeSlot extends Document {
   date: string;
@@ -37,4 +37,4 @@ TimeSlotSchema.index({ date: 1, startTime: 1 });
 TimeSlotSchema.index({ courseType: 1 });
 TimeSlotSchema.index({ teacher: 1, date: 1 });
 
-export const TimeSlot = model<ITimeSlot>("TimeSlot", TimeSlotSchema);
+export const TimeSlot = mongoose.models.TimeSlot || model<ITimeSlot>("TimeSlot", TimeSlotSchema);

@@ -1,4 +1,4 @@
-import { Schema, model, type Document, type Types } from "mongoose";
+import mongoose, { Schema, model, type Document, type Types } from "mongoose";
 
 export interface IAttendance extends Document {
   appointmentId: Types.ObjectId;
@@ -30,4 +30,4 @@ const AttendanceSchema = new Schema<IAttendance>(
 AttendanceSchema.index({ appointmentId: 1 });
 AttendanceSchema.index({ timeSlotId: 1, status: 1 });
 
-export const Attendance = model<IAttendance>("Attendance", AttendanceSchema);
+export const Attendance = mongoose.models.Attendance || model<IAttendance>("Attendance", AttendanceSchema);

@@ -1,4 +1,4 @@
-import { Schema, model, type Document, type Types } from "mongoose";
+import mongoose, { Schema, model, type Document, type Types } from "mongoose";
 
 export interface ITimelineEvent extends Document {
   appointmentId: Types.ObjectId;
@@ -38,4 +38,4 @@ const TimelineEventSchema = new Schema<ITimelineEvent>(
 
 TimelineEventSchema.index({ appointmentId: 1, createdAt: -1 });
 
-export const TimelineEvent = model<ITimelineEvent>("TimelineEvent", TimelineEventSchema);
+export const TimelineEvent = mongoose.models.TimelineEvent || model<ITimelineEvent>("TimelineEvent", TimelineEventSchema);

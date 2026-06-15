@@ -1,4 +1,4 @@
-import { Schema, model, type Document } from "mongoose";
+import mongoose, { Schema, model, type Document } from "mongoose";
 
 export interface ICapacityRule extends Document {
   name: string;
@@ -27,4 +27,4 @@ const CapacityRuleSchema = new Schema<ICapacityRule>(
 
 CapacityRuleSchema.index({ courseType: 1 });
 
-export const CapacityRule = model<ICapacityRule>("CapacityRule", CapacityRuleSchema);
+export const CapacityRule = mongoose.models.CapacityRule || model<ICapacityRule>("CapacityRule", CapacityRuleSchema);

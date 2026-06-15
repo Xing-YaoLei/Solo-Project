@@ -1,4 +1,4 @@
-import { Schema, model, type Document, type Types } from "mongoose";
+import mongoose, { Schema, model, type Document, type Types } from "mongoose";
 
 export interface IConflictRecord extends Document {
   type: "time_overlap" | "teacher_conflict" | "classroom_conflict" | "overcapacity";
@@ -54,4 +54,4 @@ const ConflictRecordSchema = new Schema<IConflictRecord>(
 ConflictRecordSchema.index({ status: 1 });
 ConflictRecordSchema.index({ assignedRole: 1, status: 1 });
 
-export const ConflictRecord = model<IConflictRecord>("ConflictRecord", ConflictRecordSchema);
+export const ConflictRecord = mongoose.models.ConflictRecord || model<IConflictRecord>("ConflictRecord", ConflictRecordSchema);
