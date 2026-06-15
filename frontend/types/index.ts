@@ -37,6 +37,8 @@ export interface Student {
   class_name: string
   contact: string
   guardian_contact: string
+  status: 'active' | 'graduated' | 'transferred' | 'inactive'
+  status_display: string
 }
 
 export type DistributionStatus = 'pending' | 'following' | 'reviewing' | 'completed'

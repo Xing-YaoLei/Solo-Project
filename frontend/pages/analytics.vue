@@ -150,7 +150,13 @@ onMounted(async () => {
   await analyticsStore.init()
 })
 
-const excludeIrrelevant = ref(true)
+const excludeIrrelevant = computed({
+  get: () => analyticsStore.excludeIrrelevant,
+  set: (v: boolean) => {
+    analyticsStore.setExcludeIrrelevant(v)
+    refreshData()
+  },
+})
 const periodFilter = ref<'month' | 'quarter' | 'year'>('month')
 const courseFilter = ref<number | null>(null)
 

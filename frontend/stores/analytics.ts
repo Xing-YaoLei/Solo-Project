@@ -8,6 +8,7 @@ interface AnalyticsState {
   loading: boolean
   period: 'month' | 'quarter' | 'year'
   courseId: number | null
+  excludeIrrelevant: boolean
 }
 
 export const useAnalyticsStore = defineStore('analytics', {
@@ -32,6 +33,7 @@ export const useAnalyticsStore = defineStore('analytics', {
     loading: false,
     period: 'month',
     courseId: null,
+    excludeIrrelevant: true,
   }),
   getters: {
     riskDistributionList(state): { name: string; value: number }[] {
@@ -56,10 +58,18 @@ export const useAnalyticsStore = defineStore('analytics', {
     setCourseId(courseId: number | null) {
       this.courseId = courseId
     },
+    setExcludeIrrelevant(val: boolean) {
+      this.excludeIrrelevant = val
+    },
+    _buildParams(): Record<string, unknown> {
+      const params: Record<string, unknown> = {}
+      if (this.excludeIrrelevant) params.exclude_irrelevant = 'true'
+      return params
+    },
     async fetchOverview() {
       const api = useApi()
       try {
-        this.overview = await api.get<AnalyticsOverview>('/analytics/overview/')
+        this.overview = await api.get<AnalyticsOverview>('/analytics/overview/', this._buildParams())
       } catch (e) {
         console.error('Failed to fetch overview', e)
       }
@@ -67,7 +77,8 @@ export const useAnalyticsStore = defineStore('analytics', {
     async fetchCompletionTrend() {
       const api = useApi()
       try {
-        const params: Record<string, unknown> = { period: this.period }
+        const params = this._buildParams()
+        params.period = this.period
         if (this.courseId) params.course_id = this.courseId
         this.completionTrend = await api.get<CompletionTrend>('/analytics/completion-trend/', params)
       } catch (e) {
@@ -77,7 +88,7 @@ export const useAnalyticsStore = defineStore('analytics', {
     async fetchRiskDistribution() {
       const api = useApi()
       try {
-        const params: Record<string, unknown> = {}
+        const params = this._buildParams()
         if (this.courseId) params.course_id = this.courseId
         this.riskDistribution = await api.get<RiskDistributionData>('/analytics/risk-distribution/', params)
       } catch (e) {

@@ -8,6 +8,13 @@ from progress_app.models import Progress
 from students.models import Student
 
 
+def _exclude_irrelevant_filter(request, queryset, student_field="student"):
+    exclude = request.query_params.get("exclude_irrelevant", "false").lower() in ("true", "1", "yes")
+    if exclude:
+        queryset = queryset.filter(**{f"{student_field}__status": "active"})
+    return queryset
+
+
 class CompletionTrendView(APIView):
 
     def get(self, request):
@@ -15,6 +22,7 @@ class CompletionTrendView(APIView):
         course_id = request.query_params.get("course_id")
 
         distributions = Distribution.objects.all()
+        distributions = _exclude_irrelevant_filter(request, distributions, "student")
         if course_id:
             distributions = distributions.filter(material__course_id=course_id)
 
@@ -54,6 +62,7 @@ class RiskDistributionView(APIView):
         course_id = request.query_params.get("course_id")
 
         risks = RiskRecord.objects.all()
+        risks = _exclude_irrelevant_filter(request, risks, "distribution__student")
         if course_id:
             risks = risks.filter(distribution__material__course_id=course_id)
 
@@ -78,12 +87,24 @@ class RiskDistributionView(APIView):
 class OverviewView(APIView):
 
     def get(self, request):
-        total_students = Student.objects.count()
-        total_distributions = Distribution.objects.count()
-        completed_count = Distribution.objects.filter(status="completed").count()
+        students = Student.objects.all()
+        students = _exclude_irrelevant_filter(request, students, "student") if False else students
+        exclude = request.query_params.get("exclude_irrelevant", "false").lower() in ("true", "1", "yes")
+        if exclude:
+            students = students.filter(status="active")
+        total_students = students.count()
+
+        distributions = Distribution.objects.all()
+        distributions = _exclude_irrelevant_filter(request, distributions, "student")
+        total_distributions = distributions.count()
+        completed_count = distributions.filter(status="completed").count()
         completion_rate = round(completed_count / total_distributions * 100, 1) if total_distributions > 0 else 0
-        risk_count = RiskRecord.objects.count()
-        pending_count = Distribution.objects.filter(status="pending").count()
+
+        risks = RiskRecord.objects.all()
+        risks = _exclude_irrelevant_filter(request, risks, "distribution__student")
+        risk_count = risks.count()
+
+        pending_count = distributions.filter(status="pending").count()
 
         return Response({
             "total_students": total_students,

@@ -14,6 +14,13 @@ class DistributionViewSet(viewsets.ModelViewSet):
     filterset_fields = ["status", "risk_level", "material", "student", "tags"]
     search_fields = ["student__name", "material__title"]
 
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        exclude_irrelevant = self.request.query_params.get("exclude_irrelevant", "false").lower() in ("true", "1", "yes")
+        if exclude_irrelevant:
+            queryset = queryset.filter(student__status="active")
+        return queryset
+
     @action(detail=False, methods=["post"], url_path="batch")
     def batch_create(self, request):
         serializer = BatchDistributionSerializer(data=request.data)
@@ -42,7 +49,11 @@ class DistributionViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["get"], url_path="stats")
     def stats(self, request):
         from django.db.models import Count
-        stats = Distribution.objects.values("status").annotate(count=Count("id"))
+        qs = Distribution.objects.all()
+        exclude_irrelevant = request.query_params.get("exclude_irrelevant", "false").lower() in ("true", "1", "yes")
+        if exclude_irrelevant:
+            qs = qs.filter(student__status="active")
+        stats = qs.values("status").annotate(count=Count("id"))
         result = {item["status"]: item["count"] for item in stats}
         for key, _ in Distribution.STATUS_CHOICES:
             result.setdefault(key, 0)

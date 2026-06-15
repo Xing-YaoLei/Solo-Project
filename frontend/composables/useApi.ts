@@ -57,5 +57,15 @@ export function useApi() {
     })
   }
 
-  return { get, post, put, patch, del }
+  async function upload<T>(url: string, file: File, fieldName = 'file'): Promise<T> {
+    const formData = new FormData()
+    formData.append(fieldName, file)
+    return await $fetch<T>(url, {
+      baseURL,
+      method: 'POST',
+      body: formData,
+    })
+  }
+
+  return { get, post, put, patch, del, upload }
 }

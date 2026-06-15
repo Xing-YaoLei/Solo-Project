@@ -7,6 +7,7 @@ interface DistributionState {
   statusFilter: DistributionStatus | null
   tagFilter: number | null
   searchQuery: string
+  excludeIrrelevant: boolean
   materials: Material[]
   students: Student[]
   tags: Tag[]
@@ -20,6 +21,7 @@ export const useDistributionStore = defineStore('distribution', {
     statusFilter: null,
     tagFilter: null,
     searchQuery: '',
+    excludeIrrelevant: true,
     materials: [],
     students: [],
     tags: [],
@@ -60,6 +62,9 @@ export const useDistributionStore = defineStore('distribution', {
     setSearchQuery(query: string) {
       this.searchQuery = query
     },
+    setExcludeIrrelevant(val: boolean) {
+      this.excludeIrrelevant = val
+    },
     async fetchDistributions() {
       const api = useApi()
       this.loading = true
@@ -67,6 +72,7 @@ export const useDistributionStore = defineStore('distribution', {
         const params: Record<string, unknown> = {}
         if (this.statusFilter) params.status = this.statusFilter
         if (this.searchQuery) params.search = this.searchQuery
+        if (this.excludeIrrelevant) params.exclude_irrelevant = 'true'
         const response = await api.get<PaginatedResponse<Distribution>>('/distributions/', params)
         this.distributions = response.results
       } finally {
@@ -76,7 +82,9 @@ export const useDistributionStore = defineStore('distribution', {
     async fetchStats() {
       const api = useApi()
       try {
-        const response = await api.get<Record<string, number>>('/distributions/stats/')
+        const params: Record<string, unknown> = {}
+        if (this.excludeIrrelevant) params.exclude_irrelevant = 'true'
+        const response = await api.get<Record<string, number>>('/distributions/stats/', params)
         this.stats = {
           pending: response.pending || 0,
           following: response.following || 0,
