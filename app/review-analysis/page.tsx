@@ -1,11 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   FileCheck,
   AlertTriangle,
   PieChart,
-  BarChart3,
   ArrowRight,
   Filter,
   Database,
@@ -23,12 +22,9 @@ import ReviewTrendChart from '@/components/charts/ReviewTrendChart';
 import MaterialGapChart from '@/components/charts/MaterialGapChart';
 import {
   getTrendData,
-  getMultiSourceData,
   getMaterialGapData,
   getReviewReasonData,
-  getColleges,
-  getDataSourceMode,
-} from '@/lib/dataService';
+} from '@/lib/mockData';
 import type { MultiSourceData, TrendDataPoint, MaterialGapData, ReviewReasonData } from '@/types';
 import clsx from 'clsx';
 
@@ -48,48 +44,40 @@ export default function ReviewAnalysisPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const loadData = async (showSpinner = false) => {
+  const loadMultiSourceData = useCallback(async (showSpinner = false) => {
     if (showSpinner) setRefreshing(true);
     try {
-      setDataSourceMode(getDataSourceMode());
+      const params = new URLSearchParams();
+      if (selectedSource === 'inconsistent') params.set('inconsistent', 'true');
+      if (selectedCollege !== 'all') params.set('college', selectedCollege);
 
-      const [trend, multiSource, gap, reason, collegeList] = await Promise.all([
-        getTrendData(),
-        getMultiSourceData({
-          showOnlyInconsistent: selectedSource === 'inconsistent',
-          college: selectedCollege !== 'all' ? selectedCollege : undefined,
-        }),
-        getMaterialGapData(),
-        getReviewReasonData(),
-        getColleges(),
-      ]);
+      const res = await fetch(`/api/multi-source?${params.toString()}`);
+      if (!res.ok) throw new Error(`API 返回 ${res.status}`);
 
-      setTrendData(trend);
-      setMultiSourceData(multiSource);
-      setMaterialGapData(gap);
-      setReviewReasonData(reason);
-      setColleges(collegeList);
+      const json = await res.json();
+      setMultiSourceData(json.multiSourceData);
+      setColleges(json.colleges);
+      setDataSourceMode(json.mode);
     } catch (e) {
-      console.error('加载数据失败:', e);
+      console.error('加载三源对照数据失败:', e);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  };
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  useEffect(() => {
-    if (!loading) {
-      loadData(false);
-    }
   }, [selectedSource, selectedCollege]);
 
-  const allMultiSourceData = loading ? [] : multiSourceData;
-  const inconsistentCount = allMultiSourceData.filter(d => !d.isConsistent).length;
-  const filteredData = allMultiSourceData;
+  useEffect(() => {
+    setTrendData(getTrendData());
+    setMaterialGapData(getMaterialGapData());
+    setReviewReasonData(getReviewReasonData());
+    loadMultiSourceData();
+  }, [loadMultiSourceData]);
+
+  const handleRefresh = () => {
+    loadMultiSourceData(true);
+  };
+
+  const inconsistentCount = multiSourceData.filter(d => !d.isConsistent).length;
 
   if (loading) {
     return (
@@ -124,7 +112,7 @@ export default function ReviewAnalysisPage() {
             </span>
           </div>
           <button
-            onClick={() => loadData(true)}
+            onClick={handleRefresh}
             disabled={refreshing}
             className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-all text-xs font-medium"
           >
@@ -140,7 +128,7 @@ export default function ReviewAnalysisPage() {
             <FileCheck className="w-5 h-5 text-primary-600" />
             <span className="text-sm text-gray-500">总对照记录</span>
           </div>
-          <div className="text-2xl font-bold font-mono text-gray-900">{allMultiSourceData.length}</div>
+          <div className="text-2xl font-bold font-mono text-gray-900">{multiSourceData.length}</div>
         </div>
         <div className="card-gradient p-4">
           <div className="flex items-center gap-2 mb-2">
@@ -155,8 +143,8 @@ export default function ReviewAnalysisPage() {
             <span className="text-sm text-gray-500">一致率</span>
           </div>
           <div className="text-2xl font-bold font-mono text-emerald-600">
-            {allMultiSourceData.length > 0
-              ? (((allMultiSourceData.length - inconsistentCount) / allMultiSourceData.length) * 100).toFixed(1)
+            {multiSourceData.length > 0
+              ? (((multiSourceData.length - inconsistentCount) / multiSourceData.length) * 100).toFixed(1)
               : '0.0'}%
           </div>
         </div>
@@ -331,7 +319,7 @@ export default function ReviewAnalysisPage() {
               </tr>
             </thead>
             <tbody>
-              {filteredData.map((row, idx) => (
+              {multiSourceData.map((row, idx) => (
                 <tr key={row.studentId} className={clsx(
                   'table-row',
                   idx % 2 === 1 && 'table-row-alt',
@@ -402,7 +390,7 @@ export default function ReviewAnalysisPage() {
           </table>
         </div>
 
-        {filteredData.length === 0 && (
+        {multiSourceData.length === 0 && (
           <div className="text-center py-12 text-gray-500">
             <Database className="w-12 h-12 mx-auto mb-3 text-gray-300" />
             <p>暂无符合筛选条件的数据</p>
@@ -434,6 +422,19 @@ export default function ReviewAnalysisPage() {
                 <br />1. <code className="bg-amber-100 px-1 rounded">DATABASE_URL</code> 指向您的 PostgreSQL
                 <br />2. <code className="bg-amber-100 px-1 rounded">NEXT_PUBLIC_DATA_SOURCE=prisma</code> 启用 Prisma 模式
                 <br />然后运行 <code className="bg-amber-100 px-1 rounded">npm run prisma:generate &amp;&amp; npm run prisma:push &amp;&amp; npm run prisma:seed</code>
+              </p>
+            </div>
+          </div>
+        )}
+
+        {dataSourceMode === 'prisma' && (
+          <div className="mt-4 p-3 bg-emerald-50 rounded-lg border border-emerald-100 flex items-start gap-2">
+            <Database className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
+            <div className="text-xs text-emerald-800">
+              <p className="font-medium mb-0.5">已连接 Prisma/PostgreSQL 数据源</p>
+              <p>
+                三源对照数据来自数据库中的 <code className="bg-emerald-100 px-1 rounded">DataVersion</code> 表，
+                对照记录由 <code className="bg-emerald-100 px-1 rounded">seed.ts</code> 初始化生成。
               </p>
             </div>
           </div>
