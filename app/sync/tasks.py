@@ -28,7 +28,8 @@ logger = logging.getLogger(__name__)
 
 
 def generate_sync_batch(data_source: str) -> str:
-    return f"{data_source}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
+    now = datetime.utcnow()
+    return f"{data_source}_{now.strftime('%Y%m%d%H%M%S')}_{now.microsecond // 1000:03d}"
 
 
 def save_anomaly_data(
@@ -270,6 +271,9 @@ def sync_employment_data(self, records: Optional[List[Dict]] = None) -> Dict[str
                         sync_batch=sync_batch,
                     )
                     db.session.add(employment)
+                else:
+                    employment.sync_batch = sync_batch
+                    employment.updated_at = datetime.utcnow()
 
                 employment.company_name = record.get("company_name")
                 employment.position = record.get("position")
@@ -394,28 +398,45 @@ def sync_live_platform_data(self, records: Optional[List[Dict]] = None) -> Dict[
                     error_count += 1
                     continue
 
-                live_session = LiveSession(
-                    student_id=student.id,
-                    external_student_id=external_student_id,
-                    live_room_id=record.get("live_room_id"),
-                    live_title=record.get("live_title"),
-                    course_related=record.get("course_related"),
-                    duration_minutes=record.get("duration_minutes", 0),
-                    is_online=record.get("is_online", False),
-                    interaction_count=record.get("interaction_count", 0),
-                    sync_batch=sync_batch,
-                )
-
+                join_time = None
                 if record.get("join_time"):
-                    live_session.join_time = datetime.fromisoformat(
+                    join_time = datetime.fromisoformat(
                         str(record["join_time"]).replace("Z", "+00:00")
                     )
+
+                leave_time = None
                 if record.get("leave_time"):
-                    live_session.leave_time = datetime.fromisoformat(
+                    leave_time = datetime.fromisoformat(
                         str(record["leave_time"]).replace("Z", "+00:00")
                     )
 
-                db.session.add(live_session)
+                live_session = LiveSession.query.filter_by(
+                    student_id=student.id,
+                    external_student_id=external_student_id,
+                    live_room_id=record.get("live_room_id"),
+                    join_time=join_time,
+                ).first()
+
+                if live_session is None:
+                    live_session = LiveSession(
+                        student_id=student.id,
+                        external_student_id=external_student_id,
+                        live_room_id=record.get("live_room_id"),
+                        sync_batch=sync_batch,
+                    )
+                    db.session.add(live_session)
+                else:
+                    live_session.sync_batch = sync_batch
+                    live_session.updated_at = datetime.utcnow()
+
+                live_session.live_title = record.get("live_title")
+                live_session.course_related = record.get("course_related")
+                live_session.duration_minutes = record.get("duration_minutes", 0)
+                live_session.is_online = record.get("is_online", False)
+                live_session.interaction_count = record.get("interaction_count", 0)
+                live_session.join_time = join_time
+                live_session.leave_time = leave_time
+
                 success_count += 1
 
                 if idx % 100 == 0:
@@ -529,17 +550,33 @@ def sync_lms_data(self, records: Optional[List[Dict]] = None) -> Dict[str, Any]:
                     error_count += 1
                     continue
 
-                lms_record = LMSRecord(
+                course_id = record.get("course_id")
+                chapter_id = record.get("chapter_id")
+
+                lms_record = LMSRecord.query.filter_by(
                     student_id=student.id,
-                    course_id=record.get("course_id"),
-                    chapter_id=record.get("chapter_id"),
                     external_student_id=external_student_id,
-                    study_duration_minutes=record.get("study_duration_minutes", 0),
-                    completion_status=record.get("completion_status", "not_started"),
-                    quiz_score=record.get("quiz_score"),
-                    progress_percent=record.get("progress_percent", 0),
-                    sync_batch=sync_batch,
-                )
+                    course_id=course_id,
+                    chapter_id=chapter_id,
+                ).first()
+
+                if lms_record is None:
+                    lms_record = LMSRecord(
+                        student_id=student.id,
+                        course_id=course_id,
+                        chapter_id=chapter_id,
+                        external_student_id=external_student_id,
+                        sync_batch=sync_batch,
+                    )
+                    db.session.add(lms_record)
+                else:
+                    lms_record.sync_batch = sync_batch
+                    lms_record.updated_at = datetime.utcnow()
+
+                lms_record.study_duration_minutes = record.get("study_duration_minutes", 0)
+                lms_record.completion_status = record.get("completion_status", "not_started")
+                lms_record.quiz_score = record.get("quiz_score")
+                lms_record.progress_percent = record.get("progress_percent", 0)
 
                 if record.get("first_access_time"):
                     lms_record.first_access_time = datetime.fromisoformat(
@@ -550,7 +587,6 @@ def sync_lms_data(self, records: Optional[List[Dict]] = None) -> Dict[str, Any]:
                         str(record["last_access_time"]).replace("Z", "+00:00")
                     )
 
-                db.session.add(lms_record)
                 success_count += 1
 
                 if idx % 100 == 0:
