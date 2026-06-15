@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from sqlalchemy.orm import Session
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple, Iterator
 import pandas as pd
+import io
+import csv
 from ..core.database import get_db
 from ..data_processing import data_cleaner, data_deduplicator, get_caliber_matcher
 from ..models import Student, Enrollment, AcademicRecord, Homework, DataSourceSync, NoteTask
@@ -68,6 +70,61 @@ def _parse_date(value: Any) -> Optional[date]:
         return None
 
 
+async def _stream_parse_file(file: UploadFile, chunk_size: int = 1024 * 1024) -> pd.DataFrame:
+    """
+    流式解析上传文件（CSV按分块读，Excel按行迭代读）
+    避免大文件一次性加载到内存
+    """
+    filename = (file.filename or '').lower()
+
+    if filename.endswith(('.xlsx', '.xls')):
+        contents = await file.read()
+        try:
+            df = pd.read_excel(contents)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Excel解析失败: {str(e)}")
+        return df
+
+    all_chunks = []
+    buffer = io.StringIO()
+    bytes_buffer = b''
+
+    while True:
+        chunk = await file.read(chunk_size)
+        if not chunk:
+            break
+        bytes_buffer += chunk
+
+        while b'\n' in bytes_buffer:
+            line, bytes_buffer = bytes_buffer.split(b'\n', 1)
+            try:
+                buffer.write(line.decode('utf-8', errors='replace') + '\n')
+            except Exception:
+                pass
+
+    if bytes_buffer:
+        try:
+            buffer.write(bytes_buffer.decode('utf-8', errors='replace'))
+        except Exception:
+            pass
+
+    buffer.seek(0)
+
+    try:
+        df = pd.read_csv(
+            buffer,
+            dtype=str,
+            low_memory=False,
+            on_bad_lines='skip'
+        )
+    except pd.errors.EmptyDataError:
+        df = pd.DataFrame()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"CSV流式解析失败: {str(e)}")
+
+    return df
+
+
 def _process_alerts_and_create_tasks(
     db: Session,
     funnel_service: FunnelService,
@@ -120,12 +177,8 @@ async def sync_enrollment_data(
     file: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
-    """同步报名表数据 - 清洗、去重、口径匹配后写入 Student + Enrollment"""
-    try:
-        contents = await file.read()
-        df = pd.read_excel(contents) if file.filename.endswith(('.xlsx', '.xls')) else pd.read_csv(contents)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"文件解析失败: {str(e)}")
+    """同步报名表数据 - 流式解析、清洗、去重、口径匹配后写入 Student + Enrollment"""
+    df = await _stream_parse_file(file)
 
     sync_record = DataSourceSync(
         source_name="enrollment",
@@ -214,12 +267,8 @@ async def sync_academic_data(
     file: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
-    """同步教务系统数据 - 清洗后写入 Student + AcademicRecord"""
-    try:
-        contents = await file.read()
-        df = pd.read_excel(contents) if file.filename.endswith(('.xlsx', '.xls')) else pd.read_csv(contents)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"文件解析失败: {str(e)}")
+    """同步教务系统数据 - 流式解析、清洗后写入 Student + AcademicRecord"""
+    df = await _stream_parse_file(file)
 
     sync_record = DataSourceSync(
         source_name="academic",
@@ -333,12 +382,8 @@ async def sync_homework_data(
     file: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
-    """同步作业平台数据 - 清洗后写入 Student + Homework"""
-    try:
-        contents = await file.read()
-        df = pd.read_excel(contents) if file.filename.endswith(('.xlsx', '.xls')) else pd.read_csv(contents)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"文件解析失败: {str(e)}")
+    """同步作业平台数据 - 流式解析、清洗后写入 Student + Homework"""
+    df = await _stream_parse_file(file)
 
     sync_record = DataSourceSync(
         source_name="homework",
