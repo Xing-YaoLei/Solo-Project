@@ -70,13 +70,13 @@ export function createQuery<TInput, TOutput>(
 	};
 }
 
-export function createMutation<TInput, TOutput>(path: string) {
+export function createMutation<TInput = void, TOutput = unknown>(path: string) {
 	const state = writable({
 		isLoading: false,
 		error: null as Error | null
 	});
 
-	async function mutate(input: TInput): Promise<TOutput> {
+	async function mutate(input?: TInput): Promise<TOutput> {
 		state.set({ isLoading: true, error: null });
 
 		try {

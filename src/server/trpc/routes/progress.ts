@@ -1,10 +1,9 @@
 import { z } from 'zod';
 import { router, protectedProcedure, requirePermission } from '../trpc';
-import { learningProgress, examScores } from '../../db/schema';
-import { eq, desc, and, between, gte, lte } from 'drizzle-orm';
+import { learningProgress, examScores, todos, courses, userRoles, roles, users } from '../../db/schema';
+import { eq, desc, and, gte, lte, sql } from 'drizzle-orm';
 import { generateId } from 'lucia';
 import { TRPCError } from '@trpc/server';
-import { sql } from 'drizzle-orm';
 
 export const progressRouter = router({
 	getUserProgress: protectedProcedure
@@ -73,6 +72,8 @@ export const progressRouter = router({
 					})
 					.where(eq(learningProgress.id, existing.id));
 
+				await checkAndCreateProgressDelayTodo(ctx, input.userId, input.courseId, input.progressPercent);
+
 				return { id: existing.id };
 			} else {
 				const id = generateId(15);
@@ -88,6 +89,8 @@ export const progressRouter = router({
 					isCompleted: input.progressPercent >= 100,
 					lastStudiedAt: new Date()
 				});
+
+				await checkAndCreateProgressDelayTodo(ctx, input.userId, input.courseId, input.progressPercent);
 
 				return { id };
 			}
@@ -192,6 +195,106 @@ export const progressRouter = router({
 				finishedAt: new Date()
 			});
 
+			if (!isPassed) {
+				await createExamFailedTodo(ctx, ctx.user.id, input.courseId, input.examName, input.score);
+			}
+
 			return { id, isPassed };
 		})
 });
+
+async function checkAndCreateProgressDelayTodo(
+	ctx: any,
+	userId: string,
+	courseId: string,
+	progressPercent: number
+) {
+	if (progressPercent >= 70) return;
+
+	const existingTodo = await ctx.db.query.todos.findFirst({
+		where: and(
+			eq(todos.relatedUserId, userId),
+			eq(todos.relatedCourseId, courseId),
+			eq(todos.source, 'progress_delay'),
+			sql`${todos.status} not in ('completed', 'rejected')`
+		)
+	});
+
+	if (existingTodo) return;
+
+	const course = await ctx.db.query.courses.findFirst({
+		where: eq(courses.id, courseId)
+	});
+
+	const assistants = await ctx.db
+		.select({ id: users.id, name: users.name })
+		.from(userRoles)
+		.innerJoin(roles, eq(userRoles.roleId, roles.id))
+		.innerJoin(users, eq(userRoles.userId, users.id))
+		.where(eq(roles.code, 'assistant'))
+		.limit(1);
+
+	const assigneeId = assistants[0]?.id;
+	const todoId = generateId(15);
+
+	await ctx.db.insert(todos).values({
+		id: todoId,
+		title: `进度落后提醒 - ${course?.title || '课程'}`,
+		description: `学员的学习进度为 ${progressPercent}%，低于预期进度 70%，请及时跟进并提供必要的辅导。`,
+		priority: progressPercent < 40 ? 'urgent' : progressPercent < 50 ? 'high' : 'medium',
+		source: 'progress_delay',
+		category: '学习进度',
+		relatedUserId: userId,
+		relatedCourseId: courseId,
+		assigneeId,
+		assigneeRole: 'assistant',
+		creatorId: 'system',
+		metadata: {
+			progressPercent,
+			expectedProgress: 70,
+			courseTitle: course?.title
+		}
+	});
+}
+
+async function createExamFailedTodo(
+	ctx: any,
+	userId: string,
+	courseId: string,
+	examName: string,
+	score: number
+) {
+	const course = await ctx.db.query.courses.findFirst({
+		where: eq(courses.id, courseId)
+	});
+
+	const assistants = await ctx.db
+		.select({ id: users.id })
+		.from(userRoles)
+		.innerJoin(roles, eq(userRoles.roleId, roles.id))
+		.innerJoin(users, eq(userRoles.userId, users.id))
+		.where(eq(roles.code, 'assistant'))
+		.limit(1);
+
+	const assigneeId = assistants[0]?.id;
+	const todoId = generateId(15);
+
+	await ctx.db.insert(todos).values({
+		id: todoId,
+		title: `考试未通过 - ${examName}`,
+		description: `学员在"${examName}"考试中得分 ${score} 分，未通过考试，请协助复习。`,
+		priority: score < 40 ? 'urgent' : score < 50 ? 'high' : 'medium',
+		source: 'exam_failed',
+		category: '考试成绩',
+		relatedUserId: userId,
+		relatedCourseId: courseId,
+		assigneeId,
+		assigneeRole: 'assistant',
+		creatorId: 'system',
+		metadata: {
+			examName,
+			score,
+			courseTitle: course?.title
+		}
+	});
+}

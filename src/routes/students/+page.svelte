@@ -28,8 +28,8 @@
 
 	const usersQuery = createQuery<any, any>('users.list', () => queryInput);
 	const rolesQuery = createQuery<void, any[]>('users.listRoles', () => ({} as any));
-	const createUserMutation = createMutation('users.create');
-	const updateUserMutation = createMutation('users.update');
+	const createUserMutation = createMutation<any, any>('users.create');
+	const updateUserMutation = createMutation<any, any>('users.update');
 
 	$: usersData = $usersQuery.data;
 	$: roles = $rolesQuery.data || [];
@@ -295,6 +295,7 @@
 					<button
 						on:click={() => (showCreateModal = false)}
 						class="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+						aria-label="关闭"
 					>
 						<svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -303,8 +304,9 @@
 				</div>
 				<div class="p-6 space-y-4">
 					<div>
-						<label class="label">姓名</label>
+						<label class="label" for="userName">姓名</label>
 						<input
+							id="userName"
 							type="text"
 							bind:value={newUser.name}
 							class="input"
@@ -312,8 +314,9 @@
 						/>
 					</div>
 					<div>
-						<label class="label">邮箱</label>
+						<label class="label" for="userEmail">邮箱</label>
 						<input
+							id="userEmail"
 							type="email"
 							bind:value={newUser.email}
 							class="input"
@@ -321,8 +324,9 @@
 						/>
 					</div>
 					<div>
-						<label class="label">密码</label>
+						<label class="label" for="userPassword">密码</label>
 						<input
+							id="userPassword"
 							type="password"
 							bind:value={newUser.password}
 							class="input"
@@ -330,8 +334,9 @@
 						/>
 					</div>
 					<div>
-						<label class="label">手机号</label>
+						<label class="label" for="userPhone">手机号</label>
 						<input
+							id="userPhone"
 							type="tel"
 							bind:value={newUser.phone}
 							class="input"
@@ -339,8 +344,9 @@
 						/>
 					</div>
 					<div>
-						<label class="label">角色</label>
+						<label class="label" for="userRole">角色</label>
 						<select
+							id="userRole"
 							bind:value={newUser.role}
 							class="input"
 						>
@@ -377,6 +383,7 @@
 					<button
 						on:click={() => (showDetailModal = false)}
 						class="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+						aria-label="关闭"
 					>
 						<svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>

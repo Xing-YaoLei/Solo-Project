@@ -21,7 +21,7 @@ export async function getUserWithRoles(userId: string): Promise<AuthUser | null>
 		}
 	});
 
-	const roleCodes = userRoleRecords.map((ur) => ur.role.code as UserRoleCode);
+	const roleCodes = userRoleRecords.map((ur) => (ur.role as unknown as { code: UserRoleCode }).code);
 	const permissions = getPermissionsByRoles(roleCodes);
 
 	return {

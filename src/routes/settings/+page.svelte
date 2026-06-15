@@ -14,9 +14,9 @@
 	const reminderRulesQuery = createQuery<any, any[]>('settings.listReminderRules', () => ({}));
 	const chapterTracesQuery = createQuery<any, any>('settings.listChapterTraces', () => ({ page: 1, pageSize: 20 }));
 	const savedFiltersQuery = createQuery<any, any[]>('settings.listSavedFilters', () => ({}));
-	const createRuleMutation = createMutation('settings.createReminderRule');
-	const updateRuleMutation = createMutation('settings.updateReminderRule');
-	const deleteRuleMutation = createMutation('settings.deleteReminderRule');
+	const createRuleMutation = createMutation<any, any>('settings.createReminderRule');
+	const updateRuleMutation = createMutation<any, any>('settings.updateReminderRule');
+	const deleteRuleMutation = createMutation<any, any>('settings.deleteReminderRule');
 
 	$: reminderRules = $reminderRulesQuery.data || [];
 	$: chapterTraces = $chapterTracesQuery.data?.items || [];
@@ -249,9 +249,10 @@
 													<div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
 												</label>
 												<button
-													on:click={() => deleteRule(rule)}
-													class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-												>
+																									on:click={() => deleteRule(rule)}
+																									class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+																									aria-label="删除规则"
+																								>
 													<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 														<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
 													</svg>
@@ -356,9 +357,10 @@
 										</div>
 										<div class="flex items-center gap-2">
 											<button
-												on:click={() => deleteFilter(filter)}
-												class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-											>
+																								on:click={() => deleteFilter(filter)}
+																								class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+																								aria-label="删除筛选"
+																						>
 												<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
 												</svg>
@@ -380,9 +382,10 @@
 				<div class="flex items-center justify-between p-6 border-b border-gray-200">
 					<h3 class="text-lg font-semibold text-gray-900">新建提醒规则</h3>
 					<button
-						on:click={() => (showCreateRuleModal = false)}
-						class="p-1 hover:bg-gray-100 rounded-lg transition-colors"
-					>
+												on:click={() => (showCreateRuleModal = false)}
+												class="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+												aria-label="关闭"
+										>
 						<svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
 						</svg>
@@ -390,8 +393,9 @@
 				</div>
 				<div class="p-6 space-y-4 max-h-96 overflow-y-auto">
 					<div>
-						<label class="label">规则名称</label>
+						<label class="label" for="ruleName">规则名称</label>
 						<input
+							id="ruleName"
 							type="text"
 							bind:value={newRule.name}
 							class="input"
@@ -399,16 +403,18 @@
 						/>
 					</div>
 					<div>
-						<label class="label">规则描述</label>
+						<label class="label" for="ruleDescription">规则描述</label>
 						<textarea
+							id="ruleDescription"
 							bind:value={newRule.description}
 							class="input min-h-[80px]"
 							placeholder="请输入规则描述（选填）"
-						/>
+						></textarea>
 					</div>
 					<div>
-						<label class="label">规则类型</label>
+						<label class="label" for="ruleType">规则类型</label>
 						<select
+							id="ruleType"
 							bind:value={newRule.ruleType}
 							class="input"
 						>
@@ -418,8 +424,8 @@
 							<option value="course_complete">课程完成提醒</option>
 						</select>
 					</div>
-					<div>
-						<label class="label">通知渠道</label>
+					<fieldset>
+						<legend class="label">通知渠道</legend>
 						<div class="flex items-center gap-4">
 							<label class="flex items-center gap-2 cursor-pointer">
 								<input
@@ -449,7 +455,7 @@
 								<span class="text-sm text-gray-700">短信</span>
 							</label>
 						</div>
-					</div>
+					</fieldset>
 					<div class="flex items-center gap-3">
 						<label class="relative inline-flex items-center cursor-pointer">
 							<input

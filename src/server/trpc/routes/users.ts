@@ -18,22 +18,6 @@ export const usersRouter = router({
 			})
 		)
 		.query(async ({ ctx, input }) => {
-			let query = ctx.db
-				.select({
-					id: users.id,
-					email: users.email,
-					name: users.name,
-					avatar: users.avatar,
-					phone: users.phone,
-					isActive: users.isActive,
-					createdAt: users.createdAt,
-					roleCode: roles.code,
-					roleName: roles.name
-				})
-				.from(users)
-				.leftJoin(userRoles, eq(userRoles.userId, users.id))
-				.leftJoin(roles, eq(roles.id, userRoles.roleId));
-
 			const whereConditions = [];
 
 			if (input.role) {
@@ -48,9 +32,22 @@ export const usersRouter = router({
 				whereConditions.push(eq(users.isActive, input.isActive));
 			}
 
-			if (whereConditions.length > 0) {
-				query = query.where(and(...whereConditions));
-			}
+			const query = ctx.db
+				.select({
+					id: users.id,
+					email: users.email,
+					name: users.name,
+					avatar: users.avatar,
+					phone: users.phone,
+					isActive: users.isActive,
+					createdAt: users.createdAt,
+					roleCode: roles.code,
+					roleName: roles.name
+				})
+				.from(users)
+				.leftJoin(userRoles, eq(userRoles.userId, users.id))
+				.leftJoin(roles, eq(roles.id, userRoles.roleId))
+				.where(whereConditions.length > 0 ? and(...whereConditions) : undefined);
 
 			const items = await query
 				.orderBy(desc(users.createdAt))

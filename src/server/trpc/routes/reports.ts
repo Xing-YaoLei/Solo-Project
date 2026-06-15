@@ -22,21 +22,23 @@ export const reportsRouter = router({
 				whereConditions.push(lte(learningProgress.createdAt, new Date(input.endDate)));
 			}
 
+			const completedCountExpr = sql<number>`sum(case when ${learningProgress.isCompleted} then 1 else 0 end)`.mapWith(
+				Number
+			);
+
 			const progressData = await ctx.db
 				.select({
 					courseId: learningProgress.courseId,
 					courseTitle: courses.title,
 					totalCount: sql<number>`count(*)`.mapWith(Number),
-					completedCount: sql<number>`sum(case when ${learningProgress.isCompleted} then 1 else 0 end)`.mapWith(
-						Number
-					),
+					completedCount: completedCountExpr,
 					avgProgress: sql<number>`avg(${learningProgress.progressPercent})`.mapWith(Number)
 				})
 				.from(learningProgress)
 				.innerJoin(courses, eq(learningProgress.courseId, courses.id))
 				.where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
 				.groupBy(learningProgress.courseId, courses.title)
-				.orderBy(desc(completedCount));
+				.orderBy(desc(completedCountExpr));
 
 			return progressData.map((item) => ({
 				...item,
@@ -109,7 +111,11 @@ export const reportsRouter = router({
 				);
 			}
 
-			let usersQuery = ctx.db
+			if (input.role) {
+				userWhereConditions.push(eq(roles.code, input.role));
+			}
+
+			const usersQuery = ctx.db
 				.select({
 					id: users.id,
 					name: users.name,
@@ -120,15 +126,8 @@ export const reportsRouter = router({
 				})
 				.from(users)
 				.innerJoin(userRoles, eq(userRoles.userId, users.id))
-				.innerJoin(roles, eq(roles.id, userRoles.roleId));
-
-			if (input.role) {
-				usersQuery = usersQuery.where(eq(roles.code, input.role));
-			}
-
-			if (userWhereConditions.length > 0) {
-				usersQuery = usersQuery.where(and(...userWhereConditions));
-			}
+				.innerJoin(roles, eq(roles.id, userRoles.roleId))
+				.where(userWhereConditions.length > 0 ? and(...userWhereConditions) : undefined);
 
 			const usersList = await usersQuery.limit(input.pageSize).offset((input.page - 1) * input.pageSize);
 

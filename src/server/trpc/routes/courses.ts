@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { router, protectedProcedure, requirePermission } from '../trpc';
 import { courses, chapters } from '../../db/schema';
-import { eq, desc, like, and } from 'drizzle-orm';
+import { eq, desc, like, and, sql } from 'drizzle-orm';
 import { generateId } from 'lucia';
 import { TRPCError } from '@trpc/server';
 
@@ -25,7 +25,7 @@ export const coursesRouter = router({
 				whereConditions.push(eq(courses.category, input.category));
 			}
 
-			const [items, total] = await Promise.all([
+			const [items, totalResult] = await Promise.all([
 				ctx.db.query.courses.findMany({
 					where: whereConditions.length > 0 ? and(...whereConditions) : undefined,
 					orderBy: desc(courses.createdAt),
@@ -41,11 +41,12 @@ export const coursesRouter = router({
 					}
 				}),
 				ctx.db
-					.select({ count: (): number => sql`count(*)`.mapWith(Number) })
+					.select({ count: sql<number>`count(*)` })
 					.from(courses)
 					.where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
-					.then((res) => res[0]?.count || 0)
 			]);
+
+			const total = totalResult[0]?.count || 0;
 
 			return {
 				items,
@@ -157,5 +158,3 @@ export const coursesRouter = router({
 			return chaptersList;
 		})
 });
-
-import { sql } from 'drizzle-orm';
