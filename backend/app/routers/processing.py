@@ -209,6 +209,15 @@ def get_teacher_todos(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.require_role(models.UserRole.TEACHER, models.UserRole.ADMIN, models.UserRole.MANAGER))
 ):
+    from app.routers.study_progress import calculate_risk_level
+
+    all_progresses = db.query(models.StudyProgress).all()
+    for p in all_progresses:
+        recalculated = calculate_risk_level(p, db)
+        if p.risk_level != recalculated:
+            p.risk_level = recalculated
+    db.commit()
+
     high_risk_values = [models.RiskLevel.DANGER.value, models.RiskLevel.CRITICAL.value]
     if current_user.role in [models.UserRole.ADMIN, models.UserRole.MANAGER]:
         high_risk_progresses = db.query(models.StudyProgress).filter(

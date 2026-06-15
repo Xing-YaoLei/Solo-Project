@@ -1,21 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func, and_
-from typing import List, Optional, Dict, Any
+from sqlalchemy import func
+from typing import List, Optional
 from datetime import datetime, timedelta
 
 from app.database import get_db
 from app import models, schemas, auth
 
 router = APIRouter(prefix="/study-progress", tags=["学习进度"])
-
-
-RISK_LEVEL_ORDER: Dict[models.RiskLevel, int] = {
-    models.RiskLevel.NORMAL: 0,
-    models.RiskLevel.WARNING: 1,
-    models.RiskLevel.DANGER: 2,
-    models.RiskLevel.CRITICAL: 3,
-}
 
 
 def get_teacher_course_ids(db: Session, teacher: models.User) -> List[int]:
@@ -25,40 +17,16 @@ def get_teacher_course_ids(db: Session, teacher: models.User) -> List[int]:
     return [c.id for c in courses]
 
 
-def calculate_risk_level(
-    progress: models.StudyProgress,
-    db: Session,
-    allow_skip: bool = True
-) -> models.RiskLevel:
-    rules = db.query(models.ReminderRule).filter(
-        models.ReminderRule.is_active == True
-    ).all()
-
-    target_risk = models.RiskLevel.NORMAL
-
-    for rule in rules:
-        if rule.rule_type == "completion_rate":
-            if progress.completion_rate < rule.threshold:
-                if RISK_LEVEL_ORDER[rule.risk_level] > RISK_LEVEL_ORDER[target_risk]:
-                    target_risk = rule.risk_level
-        elif rule.rule_type == "days_without_practice" and rule.days_without_practice:
-            if progress.last_practice_at:
-                days_since = (datetime.utcnow() - progress.last_practice_at.replace(tzinfo=None)).days
-                if days_since >= rule.days_without_practice:
-                    if RISK_LEVEL_ORDER[rule.risk_level] > RISK_LEVEL_ORDER[target_risk]:
-                        target_risk = rule.risk_level
-
-    old_risk = progress.risk_level
-    old_order = RISK_LEVEL_ORDER.get(old_risk, 0)
-    target_order = RISK_LEVEL_ORDER.get(target_risk, 0)
-
-    if target_order <= old_order:
-        return old_risk
-
-    if allow_skip:
-        return target_risk
-
-    return list(RISK_LEVEL_ORDER.keys())[old_order + 1]
+def calculate_risk_level(progress: models.StudyProgress, db: Session) -> models.RiskLevel:
+    cr = progress.completion_rate
+    if cr < 30:
+        return models.RiskLevel.CRITICAL
+    elif cr < 50:
+        return models.RiskLevel.DANGER
+    elif cr < 70:
+        return models.RiskLevel.WARNING
+    else:
+        return models.RiskLevel.NORMAL
 
 
 @router.get("", response_model=List[schemas.StudyProgressResponse])
@@ -302,9 +270,9 @@ def assess_risk(
     
     old_risk = progress.risk_level
     new_risk = calculate_risk_level(progress, db)
-    
+    progress.risk_level = new_risk
+
     if old_risk != new_risk:
-        progress.risk_level = new_risk
         risk_record = models.RiskRecord(
             study_progress_id=progress.id,
             previous_level=old_risk,
@@ -312,8 +280,9 @@ def assess_risk(
             reason="手动触发风险评估"
         )
         db.add(risk_record)
-        db.commit()
-    
+
+    db.commit()
+
     return {
         "previous_level": old_risk,
         "current_level": new_risk,
