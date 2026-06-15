@@ -111,10 +111,18 @@
 
           <div class="card">
             <div class="card-title">
-              <el-icon><UserFilled /></el-icon>
-              各年级进度分布
+              <span class="title-left">
+                <el-icon><UserFilled /></el-icon>
+                各年级进度分布
+              </span>
+              <span v-if="gradeProgressError" class="sync-warning">
+                <el-icon><Warning /></el-icon>
+                数据加载失败
+              </span>
             </div>
-            <el-table :data="gradeProgressData" stripe>
+            <el-empty v-if="gradeProgressError || gradeProgressData.length === 0"
+                      :description="gradeProgressError ? '接口不可用，请稍后重试' : '暂无年级数据'" />
+            <el-table v-else :data="gradeProgressData" stripe>
               <el-table-column prop="grade" label="年级" width="120" />
               <el-table-column prop="count" label="人数" width="100" />
               <el-table-column label="平均完成率" width="200">
@@ -184,10 +192,18 @@
 
         <div class="card">
           <div class="card-title">
-            <el-icon><ChatDotRound /></el-icon>
-            家长反馈情绪分布
+            <span class="title-left">
+              <el-icon><ChatDotRound /></el-icon>
+              家长反馈情绪分布
+            </span>
+            <span v-if="sentimentError" class="sync-warning">
+              <el-icon><Warning /></el-icon>
+              数据加载失败
+            </span>
           </div>
-          <div class="feedback-stats grid-4">
+          <el-empty v-if="sentimentError || feedbackStats.total === 0"
+                    :description="sentimentError ? '接口不可用，请稍后重试' : '暂无反馈数据'" />
+          <div v-else class="feedback-stats grid-4">
             <div class="feedback-item">
               <div class="feedback-icon positive">😊</div>
               <div class="feedback-info">
@@ -295,6 +311,8 @@ const delayedBatches = ref([])
 const lastSyncTime = ref(new Date().toLocaleString('zh-CN'))
 const feedbackStats = ref({ positive: 0, neutral: 0, negative: 0, pending: 0, total: 0 })
 const gradeProgressData = ref([])
+const sentimentError = ref(false)
+const gradeProgressError = ref(false)
 
 const getBatchTypeName = (type) => {
   const map = { ENROLLMENT: '报名表', ACADEMIC: '成绩数据', FEEDBACK: '家长反馈' }
@@ -345,14 +363,12 @@ const formatPercent = (val) => {
 const loadData = async () => {
   lastSyncTime.value = new Date().toLocaleString('zh-CN')
   try {
-    const [tagRes, funnelRes, scoreRes, bottomRes, delayedRes, sentimentRes, gradeRes] = await Promise.all([
+    const [tagRes, funnelRes, scoreRes, bottomRes, delayedRes] = await Promise.all([
       getTagDistribution(),
       getProgressFunnel(),
       getScoreRanking(20),
       getBottomProgress(20),
-      getDelayedBatches(),
-      getFeedbackSentiment(),
-      getGradeProgress()
+      getDelayedBatches()
     ])
 
     if (tagRes.code === 200) tagDistribution.value = tagRes.data
@@ -360,11 +376,41 @@ const loadData = async () => {
     if (scoreRes.code === 200) scoreRanking.value = scoreRes.data
     if (bottomRes.code === 200) bottomProgress.value = bottomRes.data
     if (delayedRes && delayedRes.code === 200) delayedBatches.value = delayedRes.data
-    if (sentimentRes && sentimentRes.code === 200) feedbackStats.value = sentimentRes.data
-    if (gradeRes && gradeRes.code === 200) gradeProgressData.value = gradeRes.data
   } catch (e) {
-    console.warn('加载数据失败，使用模拟数据')
+    console.warn('加载图表数据失败，使用模拟数据')
     loadMockData()
+  }
+
+  try {
+    const sentimentRes = await getFeedbackSentiment()
+    if (sentimentRes && sentimentRes.code === 200) {
+      feedbackStats.value = sentimentRes.data
+      sentimentError.value = false
+    } else {
+      sentimentError.value = true
+      feedbackStats.value = { positive: 0, neutral: 0, negative: 0, pending: 0, total: 0 }
+      ElMessage.error(sentimentRes?.message || '家长反馈情绪统计加载失败')
+    }
+  } catch (e) {
+    sentimentError.value = true
+    feedbackStats.value = { positive: 0, neutral: 0, negative: 0, pending: 0, total: 0 }
+    ElMessage.error(`家长反馈情绪统计加载失败：${e.message || '网络错误'}`)
+  }
+
+  try {
+    const gradeRes = await getGradeProgress()
+    if (gradeRes && gradeRes.code === 200) {
+      gradeProgressData.value = gradeRes.data
+      gradeProgressError.value = false
+    } else {
+      gradeProgressError.value = true
+      gradeProgressData.value = []
+      ElMessage.error(gradeRes?.message || '年级进度分布加载失败')
+    }
+  } catch (e) {
+    gradeProgressError.value = true
+    gradeProgressData.value = []
+    ElMessage.error(`年级进度分布加载失败：${e.message || '网络错误'}`)
   }
 
   try {
@@ -426,23 +472,6 @@ const loadMockData = () => {
       expectedSyncTime: '2024-01-13 18:00:00',
       actualSyncTime: ''
     }
-  ]
-
-  feedbackStats.value = {
-    positive: 68,
-    neutral: 24,
-    negative: 12,
-    pending: 15,
-    total: 119
-  }
-
-  gradeProgressData.value = [
-    { grade: '初一', count: 56, avgCompletion: 78.5, lowPercent: 12.5, lowCount: 7 },
-    { grade: '初二', count: 62, avgCompletion: 72.3, lowPercent: 18.2, lowCount: 11 },
-    { grade: '初三', count: 48, avgCompletion: 68.9, lowPercent: 22.8, lowCount: 11 },
-    { grade: '高一', count: 55, avgCompletion: 75.6, lowPercent: 15.3, lowCount: 8 },
-    { grade: '高二', count: 52, avgCompletion: 71.2, lowPercent: 19.6, lowCount: 10 },
-    { grade: '高三', count: 45, avgCompletion: 65.8, lowPercent: 26.7, lowCount: 12 }
   ]
 }
 
