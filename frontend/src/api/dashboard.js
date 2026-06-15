@@ -35,3 +35,11 @@ export const getConsultantStats = (consultantId) => {
 export const refreshCache = () => {
   return request.post('/dashboard/cache/refresh')
 }
+
+export const getFeedbackSentiment = () => {
+  return request.get('/dashboard/feedback-sentiment')
+}
+
+export const getGradeProgress = () => {
+  return request.get('/dashboard/grade-progress')
+}

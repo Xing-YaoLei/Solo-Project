@@ -308,6 +308,7 @@ import { ElMessage } from 'element-plus'
 import { Upload, Refresh, Files, Check, Close, Warning, List } from '@element-plus/icons-vue'
 import { getRecentBatches, getDelayedBatches } from '@/api/batch'
 import { importEnrollment, importAcademic, importFeedback } from '@/api/import'
+import { refreshCache } from '@/api/dashboard'
 
 const activeTab = ref('all')
 const currentPage = ref(1)
@@ -510,15 +511,20 @@ const submitImport = async () => {
       )
       importDialogVisible.value = false
       await loadData()
+      try {
+        await refreshCache()
+      } catch (e) {}
+      window.dispatchEvent(new CustomEvent('data-imported', {
+        detail: { type: currentImportType.value, data: res.data }
+      }))
     } else {
-      ElMessage.success(`模拟导入成功，共 ${data.length} 条数据`)
-      importDialogVisible.value = false
-      prependMockBatch(data)
+      const msg = res?.message || '导入失败'
+      ElMessage.error(msg)
     }
   } catch (e) {
-    ElMessage.success(`模拟导入成功，共 ${importForm.value.mockCount} 条数据`)
-    importDialogVisible.value = false
-    prependMockBatch(generateMockData(currentImportType.value, importForm.value.mockCount))
+    console.error('导入失败:', e)
+    const errMsg = e?.response?.data?.message || e?.message || '导入接口调用失败，请检查后端服务'
+    ElMessage.error(`导入失败：${errMsg}`)
   } finally {
     importing.value = false
   }

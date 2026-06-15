@@ -204,4 +204,81 @@ public class DashboardService {
             redisTemplate.delete(keys);
         }
     }
+
+    public Map<String, Object> getFeedbackSentimentStats() {
+        String cacheKey = CACHE_PREFIX + "feedback_sentiment";
+        @SuppressWarnings("unchecked")
+        Map<String, Object> cached = (Map<String, Object>) redisTemplate.opsForValue().get(cacheKey);
+        if (cached != null) {
+            return cached;
+        }
+
+        List<Object[]> sentimentDist = feedbackRepository.getSentimentDistribution();
+        long total = feedbackRepository.count();
+        long pending = feedbackRepository.countByHandleStatus("PENDING");
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        int positive = 0, neutral = 0, negative = 0;
+
+        for (Object[] row : sentimentDist) {
+            String sentiment = (String) row[0];
+            Long count = ((Number) row[1]).longValue();
+            if ("POSITIVE".equalsIgnoreCase(sentiment)) positive = count.intValue();
+            else if ("NEUTRAL".equalsIgnoreCase(sentiment)) neutral = count.intValue();
+            else if ("NEGATIVE".equalsIgnoreCase(sentiment)) negative = count.intValue();
+        }
+
+        result.put("positive", positive);
+        result.put("neutral", neutral);
+        result.put("negative", negative);
+        result.put("pending", pending);
+        result.put("total", total);
+
+        redisTemplate.opsForValue().set(cacheKey, result, CACHE_EXPIRE, TimeUnit.SECONDS);
+        return result;
+    }
+
+    public List<Map<String, Object>> getGradeProgressDistribution() {
+        String cacheKey = CACHE_PREFIX + "grade_progress";
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> cached = (List<Map<String, Object>>) redisTemplate.opsForValue().get(cacheKey);
+        if (cached != null) {
+            return cached;
+        }
+
+        List<Object[]> gradeDist = enrollmentRepository.countByGrade();
+        List<Map<String, Object>> result = new ArrayList<>();
+
+        for (Object[] row : gradeDist) {
+            Map<String, Object> item = new LinkedHashMap<>();
+            String grade = (String) row[0];
+            Long count = ((Number) row[1]).longValue();
+            item.put("grade", grade);
+            item.put("count", count.intValue());
+
+            List<StudentEnrollment> students = enrollmentRepository
+                    .findByGrade(grade);
+
+            double avgCompletion = 0;
+            long lowCount = 0;
+            if (!students.isEmpty()) {
+                avgCompletion = students.stream()
+                        .mapToDouble(s -> s.getCompletionRate() != null ? s.getCompletionRate().doubleValue() : 0)
+                        .average()
+                        .orElse(0);
+                lowCount = students.stream()
+                        .filter(s -> s.getCompletionRate() != null && s.getCompletionRate().compareTo(BigDecimal.valueOf(60)) < 0)
+                        .count();
+            }
+
+            item.put("avgCompletion", avgCompletion);
+            item.put("lowCount", lowCount);
+            item.put("lowPercent", count > 0 ? (lowCount * 100.0 / count) : 0);
+
+            result.add(item);
+        }
+
+        redisTemplate.opsForValue().set(cacheKey, result, CACHE_EXPIRE, TimeUnit.SECONDS);
+        return result;
+    }
 }

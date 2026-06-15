@@ -28,7 +28,7 @@
     </div>
 
     <div class="analysis-content">
-      <div v-if="activeTab === 'tags'" class="tag-analysis">
+      <div v-show="activeTab === 'tags'" class="tag-analysis">
         <div class="grid-2">
           <div class="card">
             <div class="card-title">
@@ -79,7 +79,7 @@
         </div>
       </div>
 
-      <div v-if="activeTab === 'funnel'" class="funnel-analysis">
+      <div v-show="activeTab === 'funnel'" class="funnel-analysis">
         <div class="card">
           <div class="card-title">
             <span class="title-left">
@@ -125,17 +125,19 @@
                   />
                 </template>
               </el-table-column>
-              <el-table-column label="落后占比">
-                <el-tag type="danger" size="small">
-                  {{ row.lowPercent?.toFixed?.(1) || 0 }}%
-                </el-tag>
+              <el-table-column label="落后占比" width="120">
+                <template #default="{ row }">
+                  <el-tag type="danger" size="small">
+                    {{ formatPercent(row.lowPercent) }}%
+                  </el-tag>
+                </template>
               </el-table-column>
             </el-table>
           </div>
         </div>
       </div>
 
-      <div v-if="activeTab === 'ranking'" class="ranking-analysis">
+      <div v-show="activeTab === 'ranking'" class="ranking-analysis">
         <div class="grid-2">
           <div class="card">
             <div class="card-title">
@@ -218,7 +220,7 @@
         </div>
       </div>
 
-      <div v-if="activeTab === 'rules'" class="rules-analysis">
+      <div v-show="activeTab === 'rules'" class="rules-analysis">
         <div class="card">
           <div class="card-title">
             <span class="title-left">
@@ -266,7 +268,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { PieChart, Histogram, TrendCharts, Warning, UserFilled,
          Trophy, Bottom, ChatDotRound, Clock, Setting, List } from '@element-plus/icons-vue'
 import TagPieChart from '@/components/charts/TagPieChart.vue'
@@ -274,7 +276,8 @@ import ProgressFunnelChart from '@/components/charts/ProgressFunnelChart.vue'
 import RankingBarChart from '@/components/charts/RankingBarChart.vue'
 import RuleChangeChart from '@/components/charts/RuleChangeChart.vue'
 import {
-  getTagDistribution, getProgressFunnel, getScoreRanking, getBottomProgress
+  getTagDistribution, getProgressFunnel, getScoreRanking, getBottomProgress,
+  getFeedbackSentiment, getGradeProgress
 } from '@/api/dashboard'
 import { getRecentChanges, getRuleTypeStats } from '@/api/rule'
 import { getDelayedBatches } from '@/api/batch'
@@ -290,6 +293,8 @@ const ruleTypeStats = ref([])
 const recentRuleChanges = ref([])
 const delayedBatches = ref([])
 const lastSyncTime = ref(new Date().toLocaleString('zh-CN'))
+const feedbackStats = ref({ positive: 0, neutral: 0, negative: 0, pending: 0, total: 0 })
+const gradeProgressData = ref([])
 
 const getBatchTypeName = (type) => {
   const map = { ENROLLMENT: '报名表', ACADEMIC: '成绩数据', FEEDBACK: '家长反馈' }
@@ -298,22 +303,6 @@ const getBatchTypeName = (type) => {
 
 const hasDelayed = (type) => delayedBatches.value.some(b => b.batchType === type)
 const getDelayedByType = (type) => delayedBatches.value.filter(b => b.batchType === type)
-
-const feedbackStats = ref({
-  positive: 68,
-  neutral: 24,
-  negative: 12,
-  pending: 15
-})
-
-const gradeProgressData = ref([
-  { grade: '初一', count: 56, avgCompletion: 78.5, lowPercent: 12.5 },
-  { grade: '初二', count: 62, avgCompletion: 72.3, lowPercent: 18.2 },
-  { grade: '初三', count: 48, avgCompletion: 68.9, lowPercent: 22.8 },
-  { grade: '高一', count: 55, avgCompletion: 75.6, lowPercent: 15.3 },
-  { grade: '高二', count: 52, avgCompletion: 71.2, lowPercent: 19.6 },
-  { grade: '高三', count: 45, avgCompletion: 65.8, lowPercent: 26.7 }
-])
 
 const tagTotal = computed(() => {
   return tagDistribution.value.reduce((sum, item) => sum + (item.count || 0), 0)
@@ -347,15 +336,23 @@ const getProgressColor = (rate) => {
   return '#f5222d'
 }
 
+const formatPercent = (val) => {
+  if (val === null || val === undefined || isNaN(val)) return '0.0'
+  const num = Number(val)
+  return num.toFixed(1)
+}
+
 const loadData = async () => {
   lastSyncTime.value = new Date().toLocaleString('zh-CN')
   try {
-    const [tagRes, funnelRes, scoreRes, bottomRes, delayedRes] = await Promise.all([
+    const [tagRes, funnelRes, scoreRes, bottomRes, delayedRes, sentimentRes, gradeRes] = await Promise.all([
       getTagDistribution(),
       getProgressFunnel(),
       getScoreRanking(20),
       getBottomProgress(20),
-      getDelayedBatches()
+      getDelayedBatches(),
+      getFeedbackSentiment(),
+      getGradeProgress()
     ])
 
     if (tagRes.code === 200) tagDistribution.value = tagRes.data
@@ -363,6 +360,8 @@ const loadData = async () => {
     if (scoreRes.code === 200) scoreRanking.value = scoreRes.data
     if (bottomRes.code === 200) bottomProgress.value = bottomRes.data
     if (delayedRes && delayedRes.code === 200) delayedBatches.value = delayedRes.data
+    if (sentimentRes && sentimentRes.code === 200) feedbackStats.value = sentimentRes.data
+    if (gradeRes && gradeRes.code === 200) gradeProgressData.value = gradeRes.data
   } catch (e) {
     console.warn('加载数据失败，使用模拟数据')
     loadMockData()
@@ -428,6 +427,23 @@ const loadMockData = () => {
       actualSyncTime: ''
     }
   ]
+
+  feedbackStats.value = {
+    positive: 68,
+    neutral: 24,
+    negative: 12,
+    pending: 15,
+    total: 119
+  }
+
+  gradeProgressData.value = [
+    { grade: '初一', count: 56, avgCompletion: 78.5, lowPercent: 12.5, lowCount: 7 },
+    { grade: '初二', count: 62, avgCompletion: 72.3, lowPercent: 18.2, lowCount: 11 },
+    { grade: '初三', count: 48, avgCompletion: 68.9, lowPercent: 22.8, lowCount: 11 },
+    { grade: '高一', count: 55, avgCompletion: 75.6, lowPercent: 15.3, lowCount: 8 },
+    { grade: '高二', count: 52, avgCompletion: 71.2, lowPercent: 19.6, lowCount: 10 },
+    { grade: '高三', count: 45, avgCompletion: 65.8, lowPercent: 26.7, lowCount: 12 }
+  ]
 }
 
 const loadMockRuleData = () => {
@@ -454,8 +470,17 @@ const loadMockRuleData = () => {
   recentRuleChanges.value = ruleChanges.value
 }
 
+const handleDataImported = () => {
+  loadData()
+}
+
 onMounted(() => {
   loadData()
+  window.addEventListener('data-imported', handleDataImported)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('data-imported', handleDataImported)
 })
 </script>
 

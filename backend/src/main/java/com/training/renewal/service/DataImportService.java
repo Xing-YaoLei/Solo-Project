@@ -24,6 +24,7 @@ public class DataImportService {
     private final AcademicRecordRepository academicRepository;
     private final ParentFeedbackRepository feedbackRepository;
     private final BatchService batchService;
+    private final DashboardService dashboardService;
 
     @Transactional
     public Map<String, Integer> importEnrollmentData(List<StudentEnrollment> dataList,
@@ -58,6 +59,7 @@ public class DataImportService {
         }
 
         batchService.completeBatch(batchId, dataList.size(), successCount, failCount);
+        dashboardService.evictDashboardCache();
 
         return Map.of("total", dataList.size(), "success", successCount, "fail", failCount);
     }
@@ -88,6 +90,7 @@ public class DataImportService {
         updateStudentProgressFromAcademic(batchId);
 
         batchService.completeBatch(batchId, dataList.size(), successCount, failCount);
+        dashboardService.evictDashboardCache();
 
         return Map.of("total", dataList.size(), "success", successCount, "fail", failCount);
     }
@@ -115,6 +118,7 @@ public class DataImportService {
         }
 
         batchService.completeBatch(batchId, dataList.size(), successCount, failCount);
+        dashboardService.evictDashboardCache();
 
         return Map.of("total", dataList.size(), "success", successCount, "fail", failCount);
     }

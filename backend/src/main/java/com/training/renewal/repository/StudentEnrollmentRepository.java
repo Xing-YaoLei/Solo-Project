@@ -23,6 +23,8 @@ public interface StudentEnrollmentRepository extends JpaRepository<StudentEnroll
 
     List<StudentEnrollment> findByCourseTag(String courseTag);
 
+    List<StudentEnrollment> findByGrade(String grade);
+
     @Query("SELECT s.courseTag, COUNT(s) FROM StudentEnrollment s WHERE s.isDeleted = false GROUP BY s.courseTag")
     List<Object[]> countByCourseTag();
 

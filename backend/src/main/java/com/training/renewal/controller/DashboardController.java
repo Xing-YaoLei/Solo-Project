@@ -64,4 +64,14 @@ public class DashboardController {
         dashboardService.evictDashboardCache();
         return Result.success("缓存已刷新", null);
     }
+
+    @GetMapping("/feedback-sentiment")
+    public Result<Map<String, Object>> getFeedbackSentiment() {
+        return Result.success(dashboardService.getFeedbackSentimentStats());
+    }
+
+    @GetMapping("/grade-progress")
+    public Result<List<Map<String, Object>>> getGradeProgress() {
+        return Result.success(dashboardService.getGradeProgressDistribution());
+    }
 }

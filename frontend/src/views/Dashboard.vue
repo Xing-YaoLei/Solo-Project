@@ -224,7 +224,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useUserStore } from '@/store/user'
 import { ElMessage } from 'element-plus'
 import { Refresh, User, Warning, ChatDotRound, Clock,
@@ -431,7 +431,17 @@ const submitComment = async () => {
 
 onMounted(() => {
   loadData()
+  window.addEventListener('data-imported', handleDataImported)
 })
+
+onUnmounted(() => {
+  window.removeEventListener('data-imported', handleDataImported)
+})
+
+const handleDataImported = (e) => {
+  loadData()
+  ElMessage.info('检测到新数据导入，图表已更新')
+}
 </script>
 
 <style lang="scss" scoped>
