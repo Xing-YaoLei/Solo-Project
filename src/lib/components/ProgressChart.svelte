@@ -38,7 +38,7 @@
 		},
 		xAxis: {
 			type: 'category',
-			data: data.map((d) => d.date),
+			data: data.map((d: ProgressItem) => d.date),
 			boundaryGap: false,
 			axisLabel: {
 				rotate: 30,
@@ -70,14 +70,14 @@
 		series: [
 			{
 				name: '完成率',
-				type: 'line',
+				type: 'line' as const,
 				yAxisIndex: 0,
-				data: data.map((d) => d.completionRate),
+				data: data.map((d: ProgressItem) => d.completionRate),
 				smooth: true,
 				itemStyle: { color: '#3b82f6' },
 				areaStyle: {
 					color: {
-						type: 'linear',
+						type: 'linear' as const,
 						x: 0,
 						y: 0,
 						x2: 0,
@@ -90,15 +90,18 @@
 				},
 				label: {
 					show: true,
-					formatter: (params: { value: number }) => `${(params.value * 100).toFixed(0)}%`,
+					formatter: (params: unknown) => {
+						const v = (params as { value: number }).value;
+						return `${(v * 100).toFixed(0)}%`;
+					},
 					fontSize: 10
 				}
 			},
 			{
 				name: '平均分',
-				type: 'line',
+				type: 'line' as const,
 				yAxisIndex: 1,
-				data: data.map((d) => d.averageScore),
+				data: data.map((d: ProgressItem) => d.averageScore),
 				smooth: true,
 				itemStyle: { color: '#10b981' },
 				label: {

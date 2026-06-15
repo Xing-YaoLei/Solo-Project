@@ -129,8 +129,10 @@ export async function initDb(): Promise<void> {
 	}
 }
 
-export function queryAll<T = Record<string, unknown>>(database: Database, sql: string, params: unknown[] = []): T[] {
-	const result = database.exec(sql, params as (string | number | null | undefined)[]);
+type SqlParam = string | number | null;
+
+export function queryAll<T = Record<string, unknown>>(database: Database, sql: string, params: SqlParam[] = []): T[] {
+	const result = database.exec(sql, params);
 	if (result.length === 0) return [];
 
 	const columns = result[0].columns;
@@ -145,7 +147,7 @@ export function queryAll<T = Record<string, unknown>>(database: Database, sql: s
 	});
 }
 
-export function queryOne<T = Record<string, unknown>>(database: Database, sql: string, params: unknown[] = [] ): T | null {
+export function queryOne<T = Record<string, unknown>>(database: Database, sql: string, params: SqlParam[] = []): T | null {
 	const rows = queryAll<T>(database, sql, params);
 	return rows.length > 0 ? rows[0] : null;
 }

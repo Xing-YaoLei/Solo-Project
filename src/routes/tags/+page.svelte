@@ -166,7 +166,7 @@
 												class:bg-yellow-500={item.riskLevel === 'medium'}
 												class:bg-green-500={item.riskLevel === 'low'}
 												style="width: {(item.correctRate * 100).toFixed(0)}%"
-											/>
+											></div>
 										</div>
 										<span class="w-12 text-right">{(item.correctRate * 100).toFixed(1)}%</span>
 									</div>

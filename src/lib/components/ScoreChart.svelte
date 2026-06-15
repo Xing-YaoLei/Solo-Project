@@ -21,8 +21,10 @@
 		},
 		tooltip: {
 			trigger: 'item',
-			formatter: (params: { name: string; value: number; percent: number }) =>
-				`${params.name}<br/>人数: ${params.value} 人<br/>占比: ${params.percent}%`
+			formatter: (params: unknown) => {
+				const p = params as { name: string; value: number; percent: number };
+				return `${p.name}<br/>人数: ${p.value} 人<br/>占比: ${p.percent}%`;
+			}
 		},
 		legend: {
 			orient: 'vertical',
@@ -32,7 +34,7 @@
 		series: [
 			{
 				name: '成绩分布',
-				type: 'pie',
+				type: 'pie' as const,
 				radius: ['40%', '70%'],
 				center: ['60%', '55%'],
 				avoidLabelOverlap: false,
@@ -55,7 +57,7 @@
 				labelLine: {
 					show: true
 				},
-				data: data.map((d, i) => ({
+				data: data.map((d: ScoreItem, i: number) => ({
 					value: d.count,
 					name: d.range + '分',
 					itemStyle: {

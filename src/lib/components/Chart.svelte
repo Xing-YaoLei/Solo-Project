@@ -35,4 +35,4 @@
 	});
 </script>
 
-<div bind:this={chartDom} style="width: {width}; height: {height};" />
+<div bind:this={chartDom} style="width: {width}; height: {height};"></div>

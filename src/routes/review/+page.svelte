@@ -187,7 +187,7 @@ ${reviewData.improvementSuggestions.map((s, i) => `${i + 1}. ${s}`).join('\n')}
 					<div class="flex flex-wrap gap-2">
 						{#each reviewData.weakTags as tag (tag)}
 							<span class="inline-flex items-center px-3 py-1.5 bg-red-50 text-red-700 rounded-full text-sm">
-								<span class="w-2 h-2 bg-red-500 rounded-full mr-2" />
+								<span class="w-2 h-2 bg-red-500 rounded-full mr-2"></span>
 								{tag}
 							</span>
 						{/each}

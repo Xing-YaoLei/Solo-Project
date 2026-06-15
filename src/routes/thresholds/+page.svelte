@@ -189,13 +189,14 @@
 								{#if getInputType(threshold.config_key) === 'checkbox'}
 								<button
 									onclick={() => toggleBoolean(threshold)}
+									aria-label="切换 {threshold.description || threshold.config_key}"
 									class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors
 										{threshold.config_value === 'true' ? 'bg-primary-500' : 'bg-gray-300'}"
 								>
 									<span
 										class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform
 											{threshold.config_value === 'true' ? 'translate-x-6' : 'translate-x-1'}"
-									/>
+									></span>
 								</button>
 							{:else if getInputType(threshold.config_key) === 'number'}
 								<div class="flex items-center gap-2">

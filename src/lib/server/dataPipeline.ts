@@ -1,4 +1,4 @@
-import { tableFromArrays, tableFromJSON, type Table } from 'apache-arrow';
+import { tableFromJSON, type Table } from 'apache-arrow';
 
 export interface RawStudent {
 	student_id?: string;
@@ -64,15 +64,16 @@ export interface RawFeedback {
 	来源?: string;
 }
 
-export function normalizeField<T extends Record<string, unknown>>(
-	raw: T,
+export function normalizeField(
+	raw: Record<string, string | number | undefined>,
 	fieldMap: Record<string, string[]>
 ): Record<string, unknown> {
 	const result: Record<string, unknown> = {};
 	for (const [targetKey, sourceKeys] of Object.entries(fieldMap)) {
 		for (const sourceKey of sourceKeys) {
-			if (raw[sourceKey] !== undefined && raw[sourceKey] !== null && raw[sourceKey] !== '') {
-				result[targetKey] = raw[sourceKey];
+			const val = raw[sourceKey];
+			if (val !== undefined && val !== null && val !== '') {
+				result[targetKey] = val;
 				break;
 			}
 		}
@@ -91,7 +92,7 @@ export function cleanStudents(rawData: RawStudent[]): Table {
 	};
 
 	const cleaned = rawData
-		.map((raw) => normalizeField(raw, studentFieldMap))
+		.map((raw) => normalizeField(raw as Record<string, string | number | undefined>, studentFieldMap))
 		.filter((s) => s.student_id && s.name)
 		.map((s) => ({
 			...s,
@@ -119,7 +120,7 @@ export function cleanAssignments(rawData: RawAssignment[]): Table {
 	};
 
 	const cleaned = rawData
-		.map((raw) => normalizeField(raw, assignmentFieldMap))
+		.map((raw) => normalizeField(raw as Record<string, string | number | undefined>, assignmentFieldMap))
 		.filter((a) => a.assignment_id && a.title)
 		.map((a) => ({
 			...a,
@@ -149,7 +150,7 @@ export function cleanSubmissions(rawData: RawSubmission[]): Table {
 	};
 
 	const cleaned = rawData
-		.map((raw) => normalizeField(raw, submissionFieldMap))
+		.map((raw) => normalizeField(raw as Record<string, string | number | undefined>, submissionFieldMap))
 		.filter((s) => s.student_id && s.assignment_id)
 		.map((s) => ({
 			...s,
@@ -177,7 +178,7 @@ export function cleanFeedback(rawData: RawFeedback[]): Table {
 	};
 
 	const cleaned = rawData
-		.map((raw) => normalizeField(raw, feedbackFieldMap))
+		.map((raw) => normalizeField(raw as Record<string, string | number | undefined>, feedbackFieldMap))
 		.filter((f) => f.student_id && f.content)
 		.map((f) => ({
 			...f,
@@ -211,7 +212,7 @@ function analyzeSentiment(content: string): 'positive' | 'negative' | 'neutral' 
 	return 'neutral';
 }
 
-function deduplicateByKey<T extends Record<string, unknown>>(arr: T[], key: string): T[] {
+function deduplicateByKey(arr: Record<string, unknown>[], key: string): Record<string, unknown>[] {
 	const seen = new Set<unknown>();
 	return arr.filter((item) => {
 		const value = item[key];
@@ -221,7 +222,7 @@ function deduplicateByKey<T extends Record<string, unknown>>(arr: T[], key: stri
 	});
 }
 
-function deduplicateByCompositeKey<T extends Record<string, unknown>>(arr: T[], keys: string[]): T[] {
+function deduplicateByCompositeKey(arr: Record<string, unknown>[], keys: string[]): Record<string, unknown>[] {
 	const seen = new Set<string>();
 	return arr.filter((item) => {
 		const composite = keys.map((k) => item[k]).join('|');

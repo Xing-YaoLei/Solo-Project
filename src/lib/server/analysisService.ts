@@ -193,39 +193,49 @@ export async function getRiskAlerts(course?: string): Promise<RiskAlert[]> {
 	const progressLagDays = parseInt(await getThresholdValue('progress_lag_days', '3'));
 
 	let courseFilter = '';
-	const params: string[] = [];
+	let assignmentCountFilter = '';
+	const params: (string | number)[] = [];
 	if (course) {
 		courseFilter = ' AND a.course = ? ';
+		assignmentCountFilter = ' AND course = ? ';
 		params.push(course);
 	}
 
+	const totalAssignmentsResult = queryOne<{ count: number }>(
+		db,
+		`SELECT COUNT(*) as count FROM assignments WHERE 1=1 ${assignmentCountFilter}`,
+		course ? [course] : []
+	);
+	const totalAssignments = totalAssignmentsResult?.count || 0;
+	const totalStudentsResult = queryOne<{ count: number }>(db, 'SELECT COUNT(*) as count FROM students');
+	const totalStudents = totalStudentsResult?.count || 0;
+
 	const completionSql = `
-		SELECT 
-			COUNT(DISTINCT s.student_id) as submitted,
-			(SELECT COUNT(*) FROM students) as total
+		SELECT COUNT(*) as completed
 		FROM submissions s
 		LEFT JOIN assignments a ON s.assignment_id = a.assignment_id
 		WHERE s.status != 'pending'
 		${courseFilter}
 	`;
-	const compResult = queryOne<{ submitted: number; total: number }>(db, completionSql, params);
-	const completionRate = compResult && compResult.total > 0 ? compResult.submitted / compResult.total : 1;
+	const compResult = queryOne<{ completed: number }>(db, completionSql, params);
+	const expected = totalStudents * totalAssignments;
+	const completionRate = expected > 0 ? (compResult?.completed || 0) / expected : 1;
 
 	if (completionRate < completionCritical) {
 		alerts.push({
 			type: 'completion',
 			level: 'critical',
 			message: '作业完成率危急',
-			detail: `当前完成率仅为 ${(completionRate * 100).toFixed(1)}%，已低于危急阈值`,
-			affectedStudents: (compResult?.total || 0) - (compResult?.submitted || 0)
+			detail: `当前完成率仅为 ${(completionRate * 100).toFixed(1)}%（${compResult?.completed || 0}/${expected}），已低于危急阈值`,
+			affectedStudents: expected - (compResult?.completed || 0)
 		});
 	} else if (completionRate < completionWarning) {
 		alerts.push({
 			type: 'completion',
 			level: 'high',
 			message: '作业完成率预警',
-			detail: `当前完成率为 ${(completionRate * 100).toFixed(1)}%，已低于预警阈值`,
-			affectedStudents: (compResult?.total || 0) - (compResult?.submitted || 0)
+			detail: `当前完成率为 ${(completionRate * 100).toFixed(1)}%（${compResult?.completed || 0}/${expected}），已低于预警阈值`,
+			affectedStudents: expected - (compResult?.completed || 0)
 		});
 	}
 
@@ -317,25 +327,35 @@ export async function generateReviewMaterial(periodDays: number = 7, course?: st
 	const db = await getDb();
 
 	let courseFilter = '';
+	let assignmentCourseFilter = '';
 	const params: (string | number)[] = [];
 	if (course) {
 		courseFilter = ' AND a.course = ? ';
+		assignmentCourseFilter = ' AND course = ? ';
 		params.push(course);
 	}
 
 	const totalStudentsResult = queryOne<{ count: number }>(db, 'SELECT COUNT(*) as count FROM students');
 	const totalStudents = totalStudentsResult?.count || 0;
 
+	const totalAssignmentsResult = queryOne<{ count: number }>(
+		db,
+		`SELECT COUNT(*) as count FROM assignments WHERE 1=1 ${assignmentCourseFilter}`,
+		params
+	);
+	const totalAssignments = totalAssignmentsResult?.count || 0;
+
 	const completionSql = `
-		SELECT COUNT(DISTINCT s.student_id) as submitted
+		SELECT COUNT(*) as completed
 		FROM submissions s
 		LEFT JOIN assignments a ON s.assignment_id = a.assignment_id
 		WHERE date(s.submit_date) >= date('now', ?)
 		AND s.status != 'pending'
 		${courseFilter}
 	`;
-	const compResult = queryOne<{ submitted: number }>(db, completionSql, [`-${periodDays} days`, ...params]);
-	const completionRate = totalStudents > 0 ? (compResult?.submitted || 0) / totalStudents : 0;
+	const compResult = queryOne<{ completed: number }>(db, completionSql, [`-${periodDays} days`, ...params]);
+	const expectedSubmissions = totalStudents * totalAssignments;
+	const completionRate = expectedSubmissions > 0 ? (compResult?.completed || 0) / expectedSubmissions : 0;
 
 	const scoreSql = `
 		SELECT AVG(s.score) as avg_score
@@ -356,29 +376,40 @@ export async function generateReviewMaterial(periodDays: number = 7, course?: st
 		SELECT 
 			st.student_id,
 			st.name,
-			COUNT(s.id) as submission_count,
-			AVG(s.score) as avg_score,
-			CAST(julianday('now') - julianday(MAX(s.submit_date)) as INTEGER) as days_since_last
+			COALESCE(sub.completed_count, 0) as completed_count,
+			? as total_assignments,
+			COALESCE(sub.avg_score, 0) as avg_score,
+			COALESCE(sub.days_since_last, 999) as days_since_last
 		FROM students st
-		LEFT JOIN submissions s ON st.student_id = s.student_id
-		WHERE s.submit_date IS NOT NULL
-		GROUP BY st.student_id
-		HAVING days_since_last > ?
-		ORDER BY days_since_last DESC
+		LEFT JOIN (
+			SELECT 
+				s.student_id,
+				COUNT(DISTINCT s.assignment_id) as completed_count,
+				AVG(s.score) as avg_score,
+				CAST(julianday('now') - julianday(MAX(s.submit_date)) as INTEGER) as days_since_last
+			FROM submissions s
+			WHERE s.submit_date IS NOT NULL
+			AND s.status != 'pending'
+			GROUP BY s.student_id
+		) sub ON st.student_id = sub.student_id
+		WHERE COALESCE(sub.days_since_last, 999) > ?
+		OR COALESCE(sub.completed_count, 0) < ? * 0.5
+		ORDER BY days_since_last DESC, completed_count ASC
 		LIMIT 10
 	`;
 	const laggingStudentsRows = queryAll<{
 		student_id: string;
 		name: string;
-		submission_count: number;
+		completed_count: number;
+		total_assignments: number;
 		avg_score: number;
 		days_since_last: number;
-	}>(db, laggingStudentsSql, [progressLagDays]);
+	}>(db, laggingStudentsSql, [totalAssignments, progressLagDays, totalAssignments]);
 
 	const laggingStudents = laggingStudentsRows.map((row) => ({
 		studentId: row.student_id,
 		name: row.name,
-		completionRate: row.submission_count / Math.max(1, totalStudents),
+		completionRate: totalAssignments > 0 ? row.completed_count / totalAssignments : 0,
 		averageScore: row.avg_score || 0,
 		lagDays: row.days_since_last
 	}));
@@ -403,7 +434,7 @@ export async function generateReviewMaterial(periodDays: number = 7, course?: st
 
 	const suggestions: string[] = [];
 	if (completionRate < 0.7) {
-		suggestions.push('作业完成率偏低，建议加强家校沟通，督促学生按时完成作业');
+		suggestions.push(`作业完成率仅 ${(completionRate * 100).toFixed(1)}%（${compResult?.completed || 0}/${expectedSubmissions}），建议加强家校沟通，督促学生按时完成作业`);
 	}
 	if (averageScore < 60) {
 		suggestions.push('整体成绩不理想，建议回顾核心知识点，安排专项复习');
@@ -412,7 +443,7 @@ export async function generateReviewMaterial(periodDays: number = 7, course?: st
 		suggestions.push(`以下知识点掌握薄弱：${weakTags.join('、')}，建议针对性加强练习`);
 	}
 	if (laggingStudents.length > 0) {
-		suggestions.push(`${laggingStudents.length} 名学生进度落后，建议一对一辅导跟进`);
+		suggestions.push(`${laggingStudents.length} 名学生进度落后或完成率不足 50%，建议一对一辅导跟进`);
 	}
 	if (feedbackSummary.negative > 2) {
 		suggestions.push('家长负面反馈较多，建议主动与家长沟通，了解具体问题');
@@ -430,6 +461,62 @@ export async function generateReviewMaterial(periodDays: number = 7, course?: st
 		improvementSuggestions: suggestions,
 		feedbackSummary
 	};
+}
+
+export interface FeedbackRecord {
+	id: number;
+	student_id: string;
+	feedback_date: string;
+	feedback_type: string;
+	content: string;
+	sentiment: string;
+	source: string;
+}
+
+export interface FeedbackSummary {
+	total: number;
+	positive: number;
+	neutral: number;
+	negative: number;
+}
+
+export async function getParentFeedback(days: number = 30, course?: string): Promise<{ list: FeedbackRecord[]; summary: FeedbackSummary }> {
+	const db = await getDb();
+
+	let courseFilter = '';
+	const params: (string | number)[] = [`-${days} days`];
+	if (course) {
+		courseFilter = ` AND pf.student_id IN (SELECT student_id FROM students WHERE course = ?) `;
+		params.push(course);
+	}
+
+	const listSql = `
+		SELECT pf.id, pf.student_id, pf.feedback_date, pf.feedback_type, pf.content, pf.sentiment, pf.source
+		FROM parent_feedback pf
+		WHERE date(pf.feedback_date) >= date('now', ?)
+		${courseFilter}
+		ORDER BY pf.feedback_date DESC
+		LIMIT 50
+	`;
+	const list = queryAll<FeedbackRecord>(db, listSql, params);
+
+	const summarySql = `
+		SELECT sentiment, COUNT(*) as count
+		FROM parent_feedback
+		WHERE date(feedback_date) >= date('now', ?)
+		${courseFilter}
+		GROUP BY sentiment
+	`;
+	const summaryRows = queryAll<{ sentiment: string; count: number }>(db, summarySql, params);
+
+	const summary: FeedbackSummary = {
+		total: summaryRows.reduce((sum, r) => sum + r.count, 0),
+		positive: summaryRows.find((r) => r.sentiment === 'positive')?.count || 0,
+		neutral: summaryRows.find((r) => r.sentiment === 'neutral')?.count || 0,
+		negative: summaryRows.find((r) => r.sentiment === 'negative')?.count || 0
+	};
+
+	return { list, summary };
 }
 
 export async function getCourses(): Promise<string[]> {

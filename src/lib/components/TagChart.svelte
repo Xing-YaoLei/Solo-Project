@@ -27,7 +27,7 @@
 			formatter: (params: unknown) => {
 				const p = params as Array<{ name: string; value: number; seriesName: string }>;
 				if (!p.length) return '';
-				const item = data.find((d) => d.tag === p[0].name);
+				const item = data.find((d: TagData) => d.tag === p[0].name);
 				if (!item) return p[0].name;
 				return `
 					<div style="font-weight:600;margin-bottom:8px">${item.tag}</div>
@@ -47,7 +47,7 @@
 		},
 		xAxis: {
 			type: 'category',
-			data: data.map((d) => d.tag),
+			data: data.map((d: TagData) => d.tag),
 			axisLabel: {
 				rotate: 30,
 				interval: 0,
@@ -65,8 +65,8 @@
 		series: [
 			{
 				name: '正确率',
-				type: 'bar',
-				data: data.map((d) => ({
+				type: 'bar' as const,
+				data: data.map((d: TagData) => ({
 					value: d.correctRate,
 					itemStyle: {
 						color: getBarColor(d.riskLevel)
@@ -75,8 +75,11 @@
 				barWidth: '50%',
 				label: {
 					show: true,
-					position: 'top',
-					formatter: (params: { value: number }) => `${(params.value * 100).toFixed(1)}%`,
+					position: 'top' as const,
+					formatter: (params: unknown) => {
+						const v = (params as { value: number }).value;
+						return `${(v * 100).toFixed(1)}%`;
+					},
 					fontSize: 11
 				}
 			}

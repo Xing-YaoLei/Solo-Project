@@ -27,6 +27,9 @@
 	let scoreData: ScoreItem[] = $state([]);
 	let feedbackList: FeedbackItem[] = $state([]);
 	let feedbackStats: FeedbackStats = $state({ total: 0, positive: 0, neutral: 0, negative: 0 });
+	let avgScore = $state(0);
+	let excellentRate = $state(0);
+	let passRate = $state(0);
 
 	const feedbackPieOption = $derived<EChartsOption>({
 		title: {
@@ -46,7 +49,7 @@
 		series: [
 			{
 				name: '反馈情绪',
-				type: 'pie',
+				type: 'pie' as const,
 				radius: ['40%', '70%'],
 				center: ['60%', '55%'],
 				itemStyle: {
@@ -79,7 +82,7 @@
 			formatter: (params: unknown) => {
 				const p = params as Array<{ name: string; value: number; seriesName: string }>;
 				if (!p.length) return '';
-				const item = scoreData.find((d) => d.range + '分' === p[0].name);
+				const item = scoreData.find((d: ScoreItem) => d.range + '分' === p[0].name);
 				if (!item) return p[0].name;
 				return `${item.range}分<br/>人数: ${item.count} 人<br/>占比: ${(item.percentage * 100).toFixed(1)}%`;
 			}
@@ -93,7 +96,7 @@
 		},
 		xAxis: {
 			type: 'category',
-			data: scoreData.map((d) => d.range + '分')
+			data: scoreData.map((d: ScoreItem) => d.range + '分')
 		},
 		yAxis: {
 			type: 'value',
@@ -102,8 +105,8 @@
 		series: [
 			{
 				name: '人数',
-				type: 'bar',
-				data: scoreData.map((d, i) => ({
+				type: 'bar' as const,
+				data: scoreData.map((d: ScoreItem, i: number) => ({
 					value: d.count,
 					itemStyle: {
 						color: getScoreColor(i)
@@ -112,7 +115,7 @@
 				barWidth: '50%',
 				label: {
 					show: true,
-					position: 'top',
+					position: 'top' as const,
 					formatter: '{c}人'
 				}
 			}
@@ -129,71 +132,40 @@
 		try {
 			const [scoresRes, feedbackRes] = await Promise.all([
 				fetch('/api/analysis/scores'),
-				fetch('/api/analysis/alerts')
+				fetch('/api/analysis/feedback?days=30')
 			]);
 
-			const scoresData = await scoresRes.json();
-			scoreData = scoresData.data || [];
+			const scoresJson = await scoresRes.json();
+			scoreData = scoresJson.data || [];
 
-			feedbackStats = {
-				total: 15,
-				positive: 7,
-				neutral: 5,
-				negative: 3
-			};
+			const feedbackJson = await feedbackRes.json();
+			const fbData = feedbackJson.data || { list: [], summary: { total: 0, positive: 0, neutral: 0, negative: 0 } };
+			feedbackList = fbData.list || [];
+			feedbackStats = fbData.summary || { total: 0, positive: 0, neutral: 0, negative: 0 };
 
-			feedbackList = [
-				{
-					id: 1,
-					student_id: 'S0001',
-					feedback_date: '2024-01-15',
-					feedback_type: '作业',
-					content: '孩子最近进步很大，感谢老师的耐心教导',
-					sentiment: 'positive',
-					source: 'wechat'
-				},
-				{
-					id: 2,
-					student_id: 'S0003',
-					feedback_date: '2024-01-14',
-					feedback_type: '课程',
-					content: '孩子说听不懂，跟不上进度',
-					sentiment: 'negative',
-					source: 'phone'
-				},
-				{
-					id: 3,
-					student_id: 'S0005',
-					feedback_date: '2024-01-13',
-					feedback_type: '作业',
-					content: '作业批改很仔细，孩子学到了很多',
-					sentiment: 'positive',
-					source: 'wechat'
-				},
-				{
-					id: 4,
-					student_id: 'S0007',
-					feedback_date: '2024-01-12',
-					feedback_type: '考试',
-					content: '最近成绩下降明显，很担心',
-					sentiment: 'negative',
-					source: 'meeting'
-				},
-				{
-					id: 5,
-					student_id: 'S0009',
-					feedback_date: '2024-01-11',
-					feedback_type: '作业',
-					content: '作业难度适中',
-					sentiment: 'neutral',
-					source: 'wechat'
-				}
-			];
+			avgScore = scoreData.length > 0
+				? scoreData.reduce((sum: number, d: ScoreItem) => sum + d.count * rangeMid(d.range), 0) /
+					Math.max(1, scoreData.reduce((sum: number, d: ScoreItem) => sum + d.count, 0))
+				: 0;
+
+			const totalSubmissions = scoreData.reduce((sum: number, d: ScoreItem) => sum + d.count, 0) || 1;
+			const excellentCount = scoreData.filter((d: ScoreItem) => d.range === '90-100').reduce((sum: number, d: ScoreItem) => sum + d.count, 0);
+			const passCount = scoreData.filter((d: ScoreItem) => d.range !== '0-59').reduce((sum: number, d: ScoreItem) => sum + d.count, 0);
+			excellentRate = excellentCount / totalSubmissions;
+			passRate = passCount / totalSubmissions;
 		} catch (e) {
 			console.error('加载数据失败', e);
 		} finally {
 			loading = false;
 		}
+	}
+
+	function rangeMid(range: string): number {
+		const parts = range.split('-');
+		if (parts.length === 2) {
+			return (parseFloat(parts[0]) + parseFloat(parts[1])) / 2;
+		}
+		return 0;
 	}
 
 	function getSentimentLabel(sentiment: string): string {
@@ -261,21 +233,21 @@
 		<div class="grid grid-cols-1 md:grid-cols-4 gap-4">
 			<StatCard
 				title="平均分"
-				value="72.5分"
+				value="{avgScore.toFixed(1)}分"
 				subtitle="整体表现"
 				icon="📊"
 				color="blue"
 			/>
 			<StatCard
 				title="优秀率"
-				value="23.5%"
+				value="{(excellentRate * 100).toFixed(1)}%"
 				subtitle="90分以上"
 				icon="🏆"
 				color="green"
 			/>
 			<StatCard
 				title="及格率"
-				value="68.2%"
+				value="{(passRate * 100).toFixed(1)}%"
 				subtitle="60分以上"
 				icon="✅"
 				color="yellow"
@@ -305,27 +277,31 @@
 				<div class="p-4 border-b">
 					<h3 class="text-lg font-medium">最新家长反馈</h3>
 				</div>
-				<div class="divide-y max-h-96 overflow-y-auto">
-					{#each feedbackList as item (item.id)}
-						<div class="p-4 hover:bg-gray-50">
-							<div class="flex items-start justify-between mb-2">
-								<div class="flex items-center gap-2">
-									<span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium {getSentimentClass(item.sentiment)}">
-										{getSentimentLabel(item.sentiment)}
-									</span>
-									<span class="text-xs text-gray-500">{item.feedback_type}</span>
+				{#if feedbackList.length === 0}
+					<p class="text-gray-500 text-center py-8">暂无家长反馈数据</p>
+				{:else}
+					<div class="divide-y max-h-96 overflow-y-auto">
+						{#each feedbackList as item (item.id)}
+							<div class="p-4 hover:bg-gray-50">
+								<div class="flex items-start justify-between mb-2">
+									<div class="flex items-center gap-2">
+										<span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium {getSentimentClass(item.sentiment)}">
+											{getSentimentLabel(item.sentiment)}
+										</span>
+										<span class="text-xs text-gray-500">{item.feedback_type}</span>
+									</div>
+									<span class="text-xs text-gray-400">{item.feedback_date}</span>
 								</div>
-								<span class="text-xs text-gray-400">{item.feedback_date}</span>
+								<p class="text-sm text-gray-700 mb-2">{item.content}</p>
+								<div class="flex items-center gap-2 text-xs text-gray-500">
+									<span>学生: {item.student_id}</span>
+									<span>·</span>
+									<span>来源: {getSourceLabel(item.source)}</span>
+								</div>
 							</div>
-							<p class="text-sm text-gray-700 mb-2">{item.content}</p>
-							<div class="flex items-center gap-2 text-xs text-gray-500">
-								<span>学生: {item.student_id}</span>
-								<span>·</span>
-								<span>来源: {getSourceLabel(item.source)}</span>
-							</div>
-						</div>
-					{/each}
-				</div>
+						{/each}
+					</div>
+				{/if}
 			</div>
 		</div>
 	{/if}
