@@ -1,0 +1,188 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  background: #f0f2f5;
+  color: #1f2937;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.app-container {
+  min-height: 100vh;
+  background: #f0f2f5;
+}
+
+.app-header {
+  background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+  color: white;
+  padding: 20px 32px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.app-title {
+  font-size: 24px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.app-subtitle {
+  font-size: 14px;
+  opacity: 0.85;
+  margin-top: 4px;
+}
+
+.app-content {
+  padding: 24px 32px;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+.dashboard-grid .full-width {
+  grid-column: 1 / -1;
+}
+
+.chart-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.chart-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.chart-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.refresh-time {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.chart-body {
+  flex: 1;
+  min-height: 300px;
+}
+
+.share-btn {
+  color: #3b82f6;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.share-btn:hover {
+  color: #1d4ed8;
+}
+
+.completion-rate-note {
+  font-size: 11px;
+  color: #9ca3af;
+  margin-top: 8px;
+  text-align: right;
+  font-style: italic;
+}
+
+.severity-high {
+  color: #ef4444;
+}
+
+.severity-medium {
+  color: #f59e0b;
+}
+
+.severity-low {
+  color: #10b981;
+}
+
+.rank-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 600;
+  background: #e5e7eb;
+  color: #6b7280;
+}
+
+.rank-badge.top1 {
+  background: #fbbf24;
+  color: white;
+}
+
+.rank-badge.top2 {
+  background: #9ca3af;
+  color: white;
+}
+
+.rank-badge.top3 {
+  background: #d97706;
+  color: white;
+}
+
+.view-toggle {
+  display: flex;
+  gap: 4px;
+}
+
+.view-toggle .toggle-btn {
+  padding: 4px 12px;
+  font-size: 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid #d1d5db;
+  background: white;
+  color: #6b7280;
+}
+
+.view-toggle .toggle-btn.active {
+  background: #3b82f6;
+  color: white;
+  border-color: #3b82f6;
+}
+
+.share-modal-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.permission-check {
+  margin-bottom: 12px;
+}
+
+.permission-check .check-item {
+  margin-bottom: 8px;
+}
