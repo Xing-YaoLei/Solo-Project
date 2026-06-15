@@ -1,0 +1,26 @@
+{
+  "name": "youth-training-material-tracker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "@pinia/nuxt": "^0.5.1",
+    "dayjs": "^1.11.10",
+    "echarts": "^5.5.0",
+    "naive-ui": "^2.38.1",
+    "nuxt": "^3.11.2",
+    "pinia": "^2.1.7",
+    "vue-echarts": "^7.0.3"
+  },
+  "devDependencies": {
+    "@vueuse/nuxt": "^10.9.0",
+    "typescript": "^5.4.5"
+  }
+}
