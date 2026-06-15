@@ -1,12 +1,10 @@
 package com.training.renewal.entity;
 
 import jakarta.persistence.*;
-import lombok.Data;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
 
-@Data
 @Entity
 @Table(name = "parent_feedback", indexes = {
     @Index(name = "idx_student_no", columnList = "studentNo"),
@@ -60,4 +58,124 @@ public class ParentFeedback {
     @CreationTimestamp
     @Column(updatable = false)
     private LocalDateTime createTime;
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getBatchId() {
+        return batchId;
+    }
+
+    public void setBatchId(String batchId) {
+        this.batchId = batchId;
+    }
+
+    public String getStudentNo() {
+        return studentNo;
+    }
+
+    public void setStudentNo(String studentNo) {
+        this.studentNo = studentNo;
+    }
+
+    public String getParentName() {
+        return parentName;
+    }
+
+    public void setParentName(String parentName) {
+        this.parentName = parentName;
+    }
+
+    public String getFeedbackType() {
+        return feedbackType;
+    }
+
+    public void setFeedbackType(String feedbackType) {
+        this.feedbackType = feedbackType;
+    }
+
+    public String getFeedbackChannel() {
+        return feedbackChannel;
+    }
+
+    public void setFeedbackChannel(String feedbackChannel) {
+        this.feedbackChannel = feedbackChannel;
+    }
+
+    public String getContent() {
+        return content;
+    }
+
+    public void setContent(String content) {
+        this.content = content;
+    }
+
+    public String getSentiment() {
+        return sentiment;
+    }
+
+    public void setSentiment(String sentiment) {
+        this.sentiment = sentiment;
+    }
+
+    public Integer getScore() {
+        return score;
+    }
+
+    public void setScore(Integer score) {
+        this.score = score;
+    }
+
+    public LocalDateTime getFeedbackTime() {
+        return feedbackTime;
+    }
+
+    public void setFeedbackTime(LocalDateTime feedbackTime) {
+        this.feedbackTime = feedbackTime;
+    }
+
+    public String getHandlerId() {
+        return handlerId;
+    }
+
+    public void setHandlerId(String handlerId) {
+        this.handlerId = handlerId;
+    }
+
+    public String getHandlerName() {
+        return handlerName;
+    }
+
+    public void setHandlerName(String handlerName) {
+        this.handlerName = handlerName;
+    }
+
+    public String getHandleStatus() {
+        return handleStatus;
+    }
+
+    public void setHandleStatus(String handleStatus) {
+        this.handleStatus = handleStatus;
+    }
+
+    public String getHandleResult() {
+        return handleResult;
+    }
+
+    public void setHandleResult(String handleResult) {
+        this.handleResult = handleResult;
+    }
+
+    public LocalDateTime getCreateTime() {
+        return createTime;
+    }
+
+    public void setCreateTime(LocalDateTime createTime) {
+        this.createTime = createTime;
+    }
 }

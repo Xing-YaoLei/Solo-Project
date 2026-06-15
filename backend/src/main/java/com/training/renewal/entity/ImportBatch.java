@@ -1,12 +1,10 @@
 package com.training.renewal.entity;
 
 import jakarta.persistence.*;
-import lombok.Data;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
 
-@Data
 @Entity
 @Table(name = "import_batch", indexes = {
     @Index(name = "idx_batch_type", columnList = "batchType"),
@@ -57,4 +55,132 @@ public class ImportBatch {
     private LocalDateTime actualSyncTime;
 
     private Boolean isDelayed = false;
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getBatchId() {
+        return batchId;
+    }
+
+    public void setBatchId(String batchId) {
+        this.batchId = batchId;
+    }
+
+    public String getBatchType() {
+        return batchType;
+    }
+
+    public void setBatchType(String batchType) {
+        this.batchType = batchType;
+    }
+
+    public String getBatchName() {
+        return batchName;
+    }
+
+    public void setBatchName(String batchName) {
+        this.batchName = batchName;
+    }
+
+    public LocalDateTime getBatchTime() {
+        return batchTime;
+    }
+
+    public void setBatchTime(LocalDateTime batchTime) {
+        this.batchTime = batchTime;
+    }
+
+    public Integer getTotalCount() {
+        return totalCount;
+    }
+
+    public void setTotalCount(Integer totalCount) {
+        this.totalCount = totalCount;
+    }
+
+    public Integer getSuccessCount() {
+        return successCount;
+    }
+
+    public void setSuccessCount(Integer successCount) {
+        this.successCount = successCount;
+    }
+
+    public Integer getFailCount() {
+        return failCount;
+    }
+
+    public void setFailCount(Integer failCount) {
+        this.failCount = failCount;
+    }
+
+    public String getOperatorId() {
+        return operatorId;
+    }
+
+    public void setOperatorId(String operatorId) {
+        this.operatorId = operatorId;
+    }
+
+    public String getOperatorName() {
+        return operatorName;
+    }
+
+    public void setOperatorName(String operatorName) {
+        this.operatorName = operatorName;
+    }
+
+    public String getRemark() {
+        return remark;
+    }
+
+    public void setRemark(String remark) {
+        this.remark = remark;
+    }
+
+    public LocalDateTime getCreateTime() {
+        return createTime;
+    }
+
+    public void setCreateTime(LocalDateTime createTime) {
+        this.createTime = createTime;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public LocalDateTime getExpectedSyncTime() {
+        return expectedSyncTime;
+    }
+
+    public void setExpectedSyncTime(LocalDateTime expectedSyncTime) {
+        this.expectedSyncTime = expectedSyncTime;
+    }
+
+    public LocalDateTime getActualSyncTime() {
+        return actualSyncTime;
+    }
+
+    public void setActualSyncTime(LocalDateTime actualSyncTime) {
+        this.actualSyncTime = actualSyncTime;
+    }
+
+    public Boolean getIsDelayed() {
+        return isDelayed;
+    }
+
+    public void setIsDelayed(Boolean isDelayed) {
+        this.isDelayed = isDelayed;
+    }
 }

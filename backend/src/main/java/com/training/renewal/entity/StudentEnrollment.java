@@ -1,7 +1,6 @@
 package com.training.renewal.entity;
 
 import jakarta.persistence.*;
-import lombok.Data;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -9,7 +8,6 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-@Data
 @Entity
 @Table(name = "student_enrollment", indexes = {
     @Index(name = "idx_batch_id", columnList = "batchId"),
@@ -81,4 +79,172 @@ public class StudentEnrollment {
     private String dataSource;
 
     private LocalDateTime sourceSyncTime;
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getBatchId() {
+        return batchId;
+    }
+
+    public void setBatchId(String batchId) {
+        this.batchId = batchId;
+    }
+
+    public String getStudentNo() {
+        return studentNo;
+    }
+
+    public void setStudentNo(String studentNo) {
+        this.studentNo = studentNo;
+    }
+
+    public String getStudentName() {
+        return studentName;
+    }
+
+    public void setStudentName(String studentName) {
+        this.studentName = studentName;
+    }
+
+    public String getGrade() {
+        return grade;
+    }
+
+    public void setGrade(String grade) {
+        this.grade = grade;
+    }
+
+    public String getCourseName() {
+        return courseName;
+    }
+
+    public void setCourseName(String courseName) {
+        this.courseName = courseName;
+    }
+
+    public String getCourseTag() {
+        return courseTag;
+    }
+
+    public void setCourseTag(String courseTag) {
+        this.courseTag = courseTag;
+    }
+
+    public LocalDate getEnrollDate() {
+        return enrollDate;
+    }
+
+    public void setEnrollDate(LocalDate enrollDate) {
+        this.enrollDate = enrollDate;
+    }
+
+    public LocalDate getExpireDate() {
+        return expireDate;
+    }
+
+    public void setExpireDate(LocalDate expireDate) {
+        this.expireDate = expireDate;
+    }
+
+    public BigDecimal getTotalFee() {
+        return totalFee;
+    }
+
+    public void setTotalFee(BigDecimal totalFee) {
+        this.totalFee = totalFee;
+    }
+
+    public BigDecimal getPaidFee() {
+        return paidFee;
+    }
+
+    public void setPaidFee(BigDecimal paidFee) {
+        this.paidFee = paidFee;
+    }
+
+    public String getConsultantId() {
+        return consultantId;
+    }
+
+    public void setConsultantId(String consultantId) {
+        this.consultantId = consultantId;
+    }
+
+    public String getConsultantName() {
+        return consultantName;
+    }
+
+    public void setConsultantName(String consultantName) {
+        this.consultantName = consultantName;
+    }
+
+    public BigDecimal getCompletionRate() {
+        return completionRate;
+    }
+
+    public void setCompletionRate(BigDecimal completionRate) {
+        this.completionRate = completionRate;
+    }
+
+    public String getRenewalStatus() {
+        return renewalStatus;
+    }
+
+    public void setRenewalStatus(String renewalStatus) {
+        this.renewalStatus = renewalStatus;
+    }
+
+    public String getRemark() {
+        return remark;
+    }
+
+    public void setRemark(String remark) {
+        this.remark = remark;
+    }
+
+    public Boolean getIsDeleted() {
+        return isDeleted;
+    }
+
+    public void setIsDeleted(Boolean isDeleted) {
+        this.isDeleted = isDeleted;
+    }
+
+    public LocalDateTime getCreateTime() {
+        return createTime;
+    }
+
+    public void setCreateTime(LocalDateTime createTime) {
+        this.createTime = createTime;
+    }
+
+    public LocalDateTime getUpdateTime() {
+        return updateTime;
+    }
+
+    public void setUpdateTime(LocalDateTime updateTime) {
+        this.updateTime = updateTime;
+    }
+
+    public String getDataSource() {
+        return dataSource;
+    }
+
+    public void setDataSource(String dataSource) {
+        this.dataSource = dataSource;
+    }
+
+    public LocalDateTime getSourceSyncTime() {
+        return sourceSyncTime;
+    }
+
+    public void setSourceSyncTime(LocalDateTime sourceSyncTime) {
+        this.sourceSyncTime = sourceSyncTime;
+    }
 }

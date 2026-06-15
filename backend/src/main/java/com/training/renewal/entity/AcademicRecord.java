@@ -1,14 +1,12 @@
 package com.training.renewal.entity;
 
 import jakarta.persistence.*;
-import lombok.Data;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-@Data
 @Entity
 @Table(name = "academic_record", indexes = {
     @Index(name = "idx_student_no", columnList = "studentNo"),
@@ -62,4 +60,124 @@ public class AcademicRecord {
 
     @Column(length = 64)
     private String dataSource;
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getBatchId() {
+        return batchId;
+    }
+
+    public void setBatchId(String batchId) {
+        this.batchId = batchId;
+    }
+
+    public String getStudentNo() {
+        return studentNo;
+    }
+
+    public void setStudentNo(String studentNo) {
+        this.studentNo = studentNo;
+    }
+
+    public String getCourseName() {
+        return courseName;
+    }
+
+    public void setCourseName(String courseName) {
+        this.courseName = courseName;
+    }
+
+    public String getCourseTag() {
+        return courseTag;
+    }
+
+    public void setCourseTag(String courseTag) {
+        this.courseTag = courseTag;
+    }
+
+    public LocalDate getExamDate() {
+        return examDate;
+    }
+
+    public void setExamDate(LocalDate examDate) {
+        this.examDate = examDate;
+    }
+
+    public String getExamName() {
+        return examName;
+    }
+
+    public void setExamName(String examName) {
+        this.examName = examName;
+    }
+
+    public BigDecimal getScore() {
+        return score;
+    }
+
+    public void setScore(BigDecimal score) {
+        this.score = score;
+    }
+
+    public BigDecimal getClassRank() {
+        return classRank;
+    }
+
+    public void setClassRank(BigDecimal classRank) {
+        this.classRank = classRank;
+    }
+
+    public BigDecimal getGradeRank() {
+        return gradeRank;
+    }
+
+    public void setGradeRank(BigDecimal gradeRank) {
+        this.gradeRank = gradeRank;
+    }
+
+    public BigDecimal getProgressRate() {
+        return progressRate;
+    }
+
+    public void setProgressRate(BigDecimal progressRate) {
+        this.progressRate = progressRate;
+    }
+
+    public String getTeacherComment() {
+        return teacherComment;
+    }
+
+    public void setTeacherComment(String teacherComment) {
+        this.teacherComment = teacherComment;
+    }
+
+    public String getLevel() {
+        return level;
+    }
+
+    public void setLevel(String level) {
+        this.level = level;
+    }
+
+    public LocalDateTime getCreateTime() {
+        return createTime;
+    }
+
+    public void setCreateTime(LocalDateTime createTime) {
+        this.createTime = createTime;
+    }
+
+    public String getDataSource() {
+        return dataSource;
+    }
+
+    public void setDataSource(String dataSource) {
+        this.dataSource = dataSource;
+    }
 }
