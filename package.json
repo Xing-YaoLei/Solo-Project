@@ -1,0 +1,44 @@
+{
+  "name": "youth-trial-booking",
+  "private": true,
+  "sideEffects": false,
+  "type": "module",
+  "scripts": {
+    "build": "remix vite:build",
+    "dev": "remix vite:dev",
+    "start": "NODE_ENV=production node dist/server/server.js",
+    "typecheck": "tsc"
+  },
+  "dependencies": {
+    "@remix-run/express": "^2.15.2",
+    "@remix-run/node": "^2.15.2",
+    "@remix-run/react": "^2.15.2",
+    "compression": "^1.7.5",
+    "express": "^4.21.2",
+    "ioredis": "^5.4.2",
+    "isbot": "^5.1.22",
+    "mongoose": "^8.10.1",
+    "multer": "^1.4.5-lts.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "remix-utils": "^7.7.0",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@remix-run/dev": "^2.15.2",
+    "@types/compression": "^1.7.5",
+    "@types/express": "^5.0.0",
+    "@types/multer": "^1.4.12",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.5.1",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.3",
+    "vite": "^5.4.14",
+    "vite-tsconfig-paths": "^4.3.2"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
