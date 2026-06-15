@@ -13,6 +13,10 @@ const props = defineProps({
     type: Array,
     default: () => []
   },
+  delayedBatches: {
+    type: Array,
+    default: () => []
+  },
   width: {
     type: Number,
     default: 500
@@ -112,6 +116,34 @@ const renderChart = () => {
       .attr('fill', '#8c8c8c')
       .text(i > 0 ? `转化率: ${(d.value / props.data[i-1].value * 100).toFixed(1)}%` : '')
   })
+
+  if (props.delayedBatches && props.delayedBatches.length > 0) {
+    const delayY = containerHeight - 16 - props.delayedBatches.length * 22
+
+    const delayGroup = svg.append('g')
+      .attr('class', 'delay-markers')
+      .attr('transform', `translate(${margin.left}, ${delayY})`)
+
+    props.delayedBatches.forEach((batch, i) => {
+      const delayItem = delayGroup.append('g')
+        .attr('transform', `translate(0, ${i * 22})`)
+
+      delayItem.append('rect')
+        .attr('width', 12)
+        .attr('height', 12)
+        .attr('rx', 2)
+        .attr('fill', '#faad14')
+        .attr('opacity', 0.8)
+
+      delayItem.append('text')
+        .attr('x', 18)
+        .attr('y', 10)
+        .attr('font-size', '11px')
+        .attr('fill', '#fa8c16')
+        .attr('font-weight', '500')
+        .text(`⚠ 教务数据延迟: ${batch.batchName} - 实际 ${batch.actualSyncTime?.substring?.(5, 16) || '未同步'}`)
+    })
+  }
 }
 
 onMounted(() => {
@@ -123,7 +155,7 @@ onUnmounted(() => {
   window.removeEventListener('resize', renderChart)
 })
 
-watch(() => props.data, () => {
+watch([() => props.data, () => props.delayedBatches], () => {
   renderChart()
 }, { deep: true })
 </script>

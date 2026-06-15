@@ -3,10 +3,25 @@
     <div class="page-header">
       <h2 class="page-title">续费跟进风险监测总览</h2>
       <div class="header-actions">
+        <span class="last-sync-time">
+          <el-icon><Clock /></el-icon>
+          数据截止: {{ lastSyncTime }}
+        </span>
         <el-button type="primary" :icon="Refresh" @click="refreshData">
           刷新数据
         </el-button>
       </div>
+    </div>
+
+    <div v-if="delayedBatches.length > 0" class="delay-alert-bar">
+      <el-alert
+        v-for="batch in delayedBatches"
+        :key="batch.batchId"
+        :title="`⚠ 延迟同步：[${getBatchTypeName(batch.batchType)}] ${batch.batchName} - 预期 ${batch.expectedSyncTime || '-'}，实际 ${batch.actualSyncTime || '未同步'}`"
+        type="warning"
+        show-icon
+        :closable="false"
+      />
     </div>
 
     <div class="stat-cards grid-4">
@@ -57,18 +72,36 @@
     <div class="chart-grid grid-2">
       <div class="card">
         <div class="card-title">
-          <el-icon><PieChart /></el-icon>
-          题目标签分布
+          <span class="title-left">
+            <el-icon><PieChart /></el-icon>
+            题目标签分布
+          </span>
+          <span class="title-right">
+            <span v-if="hasDelayed('ENROLLMENT')" class="sync-warning">
+              <el-icon><Warning /></el-icon>
+              存在延迟数据
+            </span>
+            <span class="sync-time-text">数据更新: {{ lastSyncTime }}</span>
+          </span>
         </div>
-        <TagPieChart :data="tagDistribution" />
+        <TagPieChart :data="tagDistribution" :delayedBatches="getDelayedByType('ENROLLMENT')" />
       </div>
 
       <div class="card">
         <div class="card-title">
-          <el-icon><TrendCharts /></el-icon>
-          学习进度漏斗
+          <span class="title-left">
+            <el-icon><TrendCharts /></el-icon>
+            学习进度漏斗
+          </span>
+          <span class="title-right">
+            <span v-if="hasDelayed('ACADEMIC')" class="sync-warning">
+              <el-icon><Warning /></el-icon>
+              教务数据延迟
+            </span>
+            <span class="sync-time-text">数据更新: {{ lastSyncTime }}</span>
+          </span>
         </div>
-        <ProgressFunnelChart :data="progressFunnel" />
+        <ProgressFunnelChart :data="progressFunnel" :delayedBatches="getDelayedByType('ACADEMIC')" />
       </div>
     </div>
 
@@ -204,6 +237,7 @@ import {
   refreshCache
 } from '@/api/dashboard'
 import { createComment } from '@/api/comment'
+import { getDelayedBatches } from '@/api/batch'
 
 const userStore = useUserStore()
 const isManager = computed(() => userStore.isManager)
@@ -215,6 +249,8 @@ const consultantStats = ref([])
 const myStats = ref({})
 const myStudents = ref([])
 const expiringCount = ref(0)
+const delayedBatches = ref([])
+const lastSyncTime = ref(new Date().toLocaleString('zh-CN'))
 
 const commentDialogVisible = ref(false)
 const commentForm = ref({
@@ -243,14 +279,29 @@ const getRenewalTagType = (status) => {
   return map[status] || 'info'
 }
 
+const getBatchTypeName = (type) => {
+  const map = { ENROLLMENT: '报名表', ACADEMIC: '成绩数据', FEEDBACK: '家长反馈' }
+  return map[type] || type
+}
+
+const hasDelayed = (type) => delayedBatches.value.some(b => b.batchType === type)
+
+const getDelayedByType = (type) => delayedBatches.value.filter(b => b.batchType === type)
+
 const loadData = async () => {
+  lastSyncTime.value = new Date().toLocaleString('zh-CN')
   try {
-    const [overviewRes, tagRes, funnelRes, expiringRes] = await Promise.all([
+    const [overviewRes, tagRes, funnelRes, expiringRes, delayedRes] = await Promise.all([
       getOverview(),
       getTagDistribution(),
       getProgressFunnel(),
-      getExpiringStudents(30)
+      getExpiringStudents(30),
+      getDelayedBatches()
     ])
+
+    if (delayedRes && delayedRes.code === 200) {
+      delayedBatches.value = delayedRes.data
+    }
 
     if (overviewRes.code === 200) overview.value = overviewRes.data
     if (tagRes.code === 200) tagDistribution.value = tagRes.data
@@ -304,6 +355,23 @@ const loadMockData = () => {
   ]
 
   expiringCount.value = 56
+
+  delayedBatches.value = [
+    {
+      batchId: 'ACADEMIC_DELAYED_001',
+      batchName: '教务系统期末成绩导入',
+      batchType: 'ACADEMIC',
+      expectedSyncTime: '2024-01-12 10:00:00',
+      actualSyncTime: '2024-01-14 15:30:00'
+    },
+    {
+      batchId: 'ENROLLMENT_DELAYED_002',
+      batchName: '寒假班报名表同步',
+      batchType: 'ENROLLMENT',
+      expectedSyncTime: '2024-01-13 18:00:00',
+      actualSyncTime: ''
+    }
+  ]
 
   if (isManager.value) {
     consultantStats.value = [
@@ -379,6 +447,61 @@ onMounted(() => {
       font-weight: 600;
       margin: 0;
       color: #1a1a1a;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+
+      .last-sync-time {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 12px;
+        color: #8c8c8c;
+      }
+    }
+  }
+
+  .delay-alert-bar {
+    margin-bottom: 16px;
+
+    :deep(.el-alert) {
+      margin-bottom: 8px;
+    }
+  }
+
+  .card-title {
+    display: flex !important;
+    justify-content: space-between;
+    align-items: center;
+
+    .title-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .title-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 12px;
+      color: #8c8c8c;
+      font-weight: normal;
+
+      .sync-warning {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        color: #faad14;
+        font-weight: 500;
+      }
+
+      .sync-time-text {
+        color: #8c8c8c;
+      }
     }
   }
 

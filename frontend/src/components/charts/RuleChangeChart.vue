@@ -13,6 +13,10 @@ const props = defineProps({
     type: Array,
     default: () => []
   },
+  delayedBatches: {
+    type: Array,
+    default: () => []
+  },
   width: {
     type: Number,
     default: 600
@@ -54,8 +58,16 @@ const renderChart = () => {
     return date
   })
 
+  const allDates = [...xData]
+  if (props.delayedBatches) {
+    props.delayedBatches.forEach(b => {
+      if (b.expectedSyncTime) allDates.push(new Date(b.expectedSyncTime))
+      if (b.actualSyncTime) allDates.push(new Date(b.actualSyncTime))
+    })
+  }
+
   const xScale = d3.scaleTime()
-    .domain(d3.extent(xData))
+    .domain(d3.extent(allDates))
     .range([0, chartWidth])
 
   const versions = [...new Set(sortedData.map(d => d.version))]
@@ -176,6 +188,47 @@ const renderChart = () => {
       .attr('fill', '#595959')
       .text(type)
   })
+
+  if (props.delayedBatches && props.delayedBatches.length > 0) {
+    const delayY = chartHeight + 20
+
+    props.delayedBatches.forEach((batch, i) => {
+      const dates = []
+      if (batch.expectedSyncTime) dates.push(new Date(batch.expectedSyncTime))
+      if (batch.actualSyncTime) dates.push(new Date(batch.actualSyncTime))
+
+      dates.forEach((date, j) => {
+        const x = xScale(date)
+        const label = j === 0 ? `预期:${batch.batchName}` : `实际:${batch.batchName}`
+        const isActual = j > 0
+
+        const delayG = g.append('g')
+          .attr('transform', `translate(${x}, ${delayY + i * 24})`)
+
+        delayG.append('line')
+          .attr('x1', 0)
+          .attr('x2', 0)
+          .attr('y1', -chartHeight)
+          .attr('y2', 0)
+          .attr('stroke', isActual ? '#f5222d' : '#faad14')
+          .attr('stroke-width', 1.5)
+          .attr('stroke-dasharray', '4 3')
+          .attr('opacity', 0.7)
+
+        delayG.append('circle')
+          .attr('r', 6)
+          .attr('fill', isActual ? '#f5222d' : '#faad14')
+
+        delayG.append('text')
+          .attr('x', 8)
+          .attr('y', 4)
+          .attr('font-size', '10px')
+          .attr('fill', isActual ? '#f5222d' : '#fa8c16')
+          .attr('font-weight', '500')
+          .text(`${label.substring(0, 14)}...`)
+      })
+    })
+  }
 }
 
 onMounted(() => {
@@ -187,7 +240,7 @@ onUnmounted(() => {
   window.removeEventListener('resize', renderChart)
 })
 
-watch(() => props.data, () => {
+watch([() => props.data, () => props.delayedBatches], () => {
   renderChart()
 }, { deep: true })
 </script>

@@ -13,6 +13,10 @@ const props = defineProps({
     type: Array,
     default: () => []
   },
+  delayedBatches: {
+    type: Array,
+    default: () => []
+  },
   width: {
     type: Number,
     default: 400
@@ -139,6 +143,36 @@ const renderChart = () => {
 
     legendY += 22
   })
+
+  if (props.delayedBatches && props.delayedBatches.length > 0) {
+    const delayX = 10
+    let delayY = containerHeight - 16 - props.delayedBatches.length * 22
+
+    const delayGroup = svg.append('g')
+      .attr('class', 'delay-markers')
+
+    props.delayedBatches.forEach(batch => {
+      const delayItem = delayGroup.append('g')
+        .attr('transform', `translate(${delayX}, ${delayY})`)
+
+      delayItem.append('rect')
+        .attr('width', 12)
+        .attr('height', 12)
+        .attr('rx', 2)
+        .attr('fill', '#faad14')
+        .attr('opacity', 0.8)
+
+      delayItem.append('text')
+        .attr('x', 18)
+        .attr('y', 10)
+        .attr('font-size', '11px')
+        .attr('fill', '#fa8c16')
+        .attr('font-weight', '500')
+        .text(`⚠ 延迟: ${batch.batchName} - 预期 ${batch.expectedSyncTime?.substring?.(5, 16) || '-'}`)
+
+      delayY += 22
+    })
+  }
 }
 
 onMounted(() => {
@@ -150,7 +184,7 @@ onUnmounted(() => {
   window.removeEventListener('resize', renderChart)
 })
 
-watch(() => props.data, () => {
+watch([() => props.data, () => props.delayedBatches], () => {
   renderChart()
 }, { deep: true })
 </script>
