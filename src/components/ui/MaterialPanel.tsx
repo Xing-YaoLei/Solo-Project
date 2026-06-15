@@ -39,7 +39,16 @@ export default function MaterialPanel({ isOpen, onClose }: MaterialPanelProps) {
 
   const handleCompleteReview = () => {
     if (selectedStudentId) {
-      completeStudentReview(selectedStudentId);
+      const hasMaterials = getMaterialsByStudentId(level!, selectedStudentId);
+      if (!hasMaterials) return;
+      
+      const requiredMaterials = hasMaterials.materials.filter((m) => m.required);
+      const allSubmitted = requiredMaterials.every((m) => m.submitted);
+      const hasAnySubmitted = requiredMaterials.some((m) => m.submitted);
+      
+      if (allSubmitted && hasAnySubmitted) {
+        completeStudentReview(selectedStudentId);
+      }
     }
   };
 
@@ -210,6 +219,9 @@ export default function MaterialPanel({ isOpen, onClose }: MaterialPanelProps) {
                     }`}
                   >
                     {allComplete ? '✓ 审核通过' : '检查材料完整性'}
+                    <span className="block text-xs opacity-70 mt-0.5">
+                      <kbd className="px-1 py-0.5 bg-white/20 rounded">Enter</kbd> 检查 / 补全
+                    </span>
                   </button>
                   
                   {canComplete && (
@@ -219,7 +231,21 @@ export default function MaterialPanel({ isOpen, onClose }: MaterialPanelProps) {
                     >
                       <CheckCircle className="w-5 h-5" />
                       完成评分 (+20 分)
+                      <span className="block text-xs opacity-70">
+                        <kbd className="px-1 py-0.5 bg-white/20 rounded">F</kbd> 完成
+                      </span>
                     </button>
+                  )}
+                  
+                  {!canComplete && selectedStudent?.hasApplied && !isCompleted && (
+                    <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl">
+                      <p className="text-amber-300 text-sm text-center">
+                        请先补全所有缺失材料后再完成评分
+                      </p>
+                      <p className="text-amber-400/70 text-xs text-center mt-1">
+                        按 <kbd className="px-1 py-0.5 bg-amber-500/20 rounded">R</kbd> 一键补全
+                      </p>
+                    </div>
                   )}
                 </div>
               )}

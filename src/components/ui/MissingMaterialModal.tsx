@@ -1,4 +1,5 @@
-import { AlertTriangle, RotateCcw, ArrowRight, X } from 'lucide-react';
+import { useEffect } from 'react';
+import { AlertTriangle, RotateCcw, ArrowRight, X, PlusCircle } from 'lucide-react';
 import { useGameStore } from '../../stores/useGameStore';
 import { getLevelById, getStudentById } from '../../data/levels';
 import { getMaterialTypeName } from '../../utils/helpers';
@@ -12,6 +13,8 @@ export default function MissingMaterialModal() {
     getMissingMaterials,
     goToApplicationPhase,
     skipMissingMaterial,
+    resolveMissingMaterial,
+    checkMaterials,
   } = useGameStore();
 
   const level = currentLevelId ? getLevelById(currentLevelId) : null;
@@ -22,6 +25,66 @@ export default function MissingMaterialModal() {
   const missingMaterials = currentMissingMaterialStudent
     ? getMissingMaterials(currentMissingMaterialStudent)
     : [];
+
+  useEffect(() => {
+    if (!showMissingMaterialModal) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'KeyR') {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        if (currentMissingMaterialStudent && missingMaterials.length > 0) {
+          resolveMissingMaterial(currentMissingMaterialStudent, missingMaterials[0].id);
+          
+          const updatedMissing = getMissingMaterials(currentMissingMaterialStudent);
+          if (updatedMissing.length === 0) {
+            hideMissingModal();
+            goToApplicationPhase(currentMissingMaterialStudent);
+          }
+        }
+        return;
+      }
+
+      if (e.code === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        if (!currentMissingMaterialStudent) return;
+        
+        const currentMissing = getMissingMaterials(currentMissingMaterialStudent);
+        
+        if (currentMissing.length === 0) {
+          hideMissingModal();
+          goToApplicationPhase(currentMissingMaterialStudent);
+        } else {
+          skipMissingMaterial(currentMissingMaterialStudent);
+        }
+        return;
+      }
+
+      if (e.code === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        hideMissingModal();
+        if (currentMissingMaterialStudent) {
+          goToApplicationPhase(currentMissingMaterialStudent);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
+  }, [
+    showMissingMaterialModal,
+    currentMissingMaterialStudent,
+    missingMaterials,
+    getMissingMaterials,
+    resolveMissingMaterial,
+    hideMissingModal,
+    goToApplicationPhase,
+    skipMissingMaterial,
+  ]);
 
   if (!showMissingMaterialModal) return null;
 
@@ -34,7 +97,25 @@ export default function MissingMaterialModal() {
 
   const handleSkip = () => {
     if (currentMissingMaterialStudent) {
-      skipMissingMaterial(currentMissingMaterialStudent);
+      const currentMissing = getMissingMaterials(currentMissingMaterialStudent);
+      if (currentMissing.length > 0) {
+        skipMissingMaterial(currentMissingMaterialStudent);
+      } else {
+        hideMissingModal();
+        goToApplicationPhase(currentMissingMaterialStudent);
+      }
+    }
+  };
+
+  const handleQuickResolve = () => {
+    if (currentMissingMaterialStudent && missingMaterials.length > 0) {
+      resolveMissingMaterial(currentMissingMaterialStudent, missingMaterials[0].id);
+      
+      const updatedMissing = getMissingMaterials(currentMissingMaterialStudent);
+      if (updatedMissing.length === 0) {
+        hideMissingModal();
+        goToApplicationPhase(currentMissingMaterialStudent);
+      }
     }
   };
 
@@ -82,26 +163,42 @@ export default function MissingMaterialModal() {
           </div>
 
           <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 mb-6">
-            <p className="text-amber-300 text-sm">
-              💡 <strong>提示：</strong>返回上一阶段可以补充材料，但会消耗时间。跳过则直接扣除 15 分。
+            <p className="text-amber-300 text-sm mb-2">
+              💡 <strong>提示：</strong>补充材料后可继续完成评分。
             </p>
+            <div className="flex flex-wrap gap-3 text-xs text-stone-400 mt-2">
+              <span><kbd className="px-1.5 py-0.5 bg-stone-700/50 rounded text-stone-300">R</kbd> 一键补全</span>
+              <span><kbd className="px-1.5 py-0.5 bg-stone-700/50 rounded text-stone-300">Enter</kbd> 跳过扣分</span>
+              <span><kbd className="px-1.5 py-0.5 bg-stone-700/50 rounded text-stone-300">Esc</kbd> 返回修正</span>
+            </div>
           </div>
 
-          <div className="flex gap-3">
-            <button
-              onClick={handleGoBack}
-              className="flex-1 py-3 px-4 bg-stone-700 hover:bg-stone-600 text-stone-100 rounded-xl font-medium transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
-            >
-              <RotateCcw className="w-4 h-4" />
-              返回修正
-            </button>
-            <button
-              onClick={handleSkip}
-              className="flex-1 py-3 px-4 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white rounded-xl font-medium transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2"
-            >
-              跳过 (-15分)
-              <ArrowRight className="w-4 h-4" />
-            </button>
+          <div className="flex flex-col gap-3">
+            {missingMaterials.length > 0 && (
+              <button
+                onClick={handleQuickResolve}
+                className="w-full py-3 px-4 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white rounded-xl font-medium transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2"
+              >
+                <PlusCircle className="w-4 h-4" />
+                一键补全 "{getMaterialTypeName(missingMaterials[0].type)}" (+10分)
+              </button>
+            )}
+            <div className="flex gap-3">
+              <button
+                onClick={handleGoBack}
+                className="flex-1 py-3 px-4 bg-stone-700 hover:bg-stone-600 text-stone-100 rounded-xl font-medium transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
+              >
+                <RotateCcw className="w-4 h-4" />
+                返回修正
+              </button>
+              <button
+                onClick={handleSkip}
+                className="flex-1 py-3 px-4 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white rounded-xl font-medium transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2"
+              >
+                跳过 (-15分)
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
       </div>

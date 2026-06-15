@@ -10,6 +10,7 @@ export function useKeyboardControls() {
     resumeGame,
     nextPhase,
     prevPhase,
+    goToApplicationPhase,
     selectStudent,
     selectedStudentId,
     currentLevelId,
@@ -40,6 +41,17 @@ export function useKeyboardControls() {
 
       if (isPaused && e.code !== 'Space') return;
 
+      if (showMissingMaterialModal) {
+        if (e.code === 'Escape') {
+          e.preventDefault();
+          hideMissingModal();
+          if (currentMissingMaterialStudent) {
+            goToApplicationPhase(currentMissingMaterialStudent);
+          }
+        }
+        return;
+      }
+
       if (e.code === 'KeyQ') {
         e.preventDefault();
         prevPhase();
@@ -68,11 +80,6 @@ export function useKeyboardControls() {
       if (e.code === 'Enter') {
         e.preventDefault();
         
-        if (showMissingMaterialModal && currentMissingMaterialStudent) {
-          skipMissingMaterial(currentMissingMaterialStudent);
-          return;
-        }
-        
         if (selectedStudentId && currentPhase === 'application') {
           const missing = getMissingMaterials(selectedStudentId);
           const hasMaterials = getMaterialsByStudentId(
@@ -83,13 +90,12 @@ export function useKeyboardControls() {
           if (!hasMaterials) return;
           
           const requiredMaterials = hasMaterials.materials.filter((m) => m.required);
-          const hasChecked = requiredMaterials.some(
-            (m) => m.submitted
-          );
+          const allChecked = requiredMaterials.every((m) => m.submitted || !m.required);
+          const hasAnySubmitted = requiredMaterials.some((m) => m.submitted);
           
           if (missing.length > 0) {
             resolveMissingMaterial(selectedStudentId, missing[0].id);
-          } else if (missing.length === 0 && hasChecked) {
+          } else if (missing.length === 0 && hasAnySubmitted) {
             completeStudentReview(selectedStudentId);
           } else {
             checkMaterials(selectedStudentId);
@@ -111,7 +117,17 @@ export function useKeyboardControls() {
         e.preventDefault();
         if (selectedStudentId && currentPhase === 'application') {
           const missing = getMissingMaterials(selectedStudentId);
-          if (missing.length === 0) {
+          const hasMaterials = getMaterialsByStudentId(
+            getLevelById(currentLevelId)!,
+            selectedStudentId
+          );
+          
+          if (!hasMaterials) return;
+          
+          const requiredMaterials = hasMaterials.materials.filter((m) => m.required);
+          const hasAnySubmitted = requiredMaterials.some((m) => m.submitted);
+          
+          if (missing.length === 0 && hasAnySubmitted) {
             completeStudentReview(selectedStudentId);
           }
         }
@@ -146,5 +162,6 @@ export function useKeyboardControls() {
     skipMissingMaterial,
     currentMissingMaterialStudent,
     checkMaterials,
+    goToApplicationPhase,
   ]);
 }
