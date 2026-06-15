@@ -2,8 +2,45 @@ import { Router } from "express";
 import { getAttendanceRate } from "../services/attendance.service.js";
 import { getAppointments } from "../services/appointment.service.js";
 import { exportToXlsx } from "../utils/export.js";
+import { getConflicts } from "../services/conflict.service.js";
+import { getTimeSlots } from "../services/timeslot.service.js";
 
 const router = Router();
+
+router.get("/", async (req, res, next) => {
+  try {
+    const startDate = typeof req.query.startDate === "string" ? req.query.startDate : undefined;
+    const endDate = typeof req.query.endDate === "string" ? req.query.endDate : undefined;
+    const courseType = typeof req.query.courseType === "string" ? req.query.courseType : undefined;
+    const [rate, conflicts, slots, apts] = await Promise.all([
+      getAttendanceRate({ startDate, endDate, courseType }),
+      getConflicts({}),
+      getTimeSlots({}),
+      getAppointments({ limit: 0 }),
+    ]);
+    res.json({
+      ok: true,
+      summary: {
+        attendanceRate: rate.rate,
+        totalAppointments: apts.total,
+        totalSlots: Array.isArray(slots) ? slots.length : 0,
+        pendingConflicts: Array.isArray(conflicts) ? conflicts.filter((c: any) => c.status !== "resolved").length : 0,
+        totalConflicts: Array.isArray(conflicts) ? conflicts.length : 0,
+        breakdown: {
+          present: rate.present,
+          absent: rate.absent,
+          late: rate.late,
+          excused: rate.excused,
+          total: rate.total,
+        },
+      },
+      endpoints: {
+        "GET /attendance-rate": "/api/analytics/attendance-rate",
+        "GET /export": "/api/analytics/export",
+      },
+    });
+  } catch (e) { next(e); }
+});
 
 router.get("/attendance-rate", async (req, res, next) => {
   try {
