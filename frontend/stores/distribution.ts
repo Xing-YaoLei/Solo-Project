@@ -107,7 +107,9 @@ export const useDistributionStore = defineStore('distribution', {
     async fetchStudents() {
       const api = useApi()
       try {
-        const response = await api.get<PaginatedResponse<Student>>('/students/')
+        const params: Record<string, unknown> = {}
+        if (this.excludeIrrelevant) params.exclude_irrelevant = 'true'
+        const response = await api.get<PaginatedResponse<Student>>('/students/', params)
         this.students = response.results
       } catch (e) {
         console.error('Failed to fetch students', e)
