@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_
+from sqlalchemy.orm import selectinload
 from typing import Optional
 
 from app.database import get_db
@@ -24,7 +25,7 @@ async def list_students(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    query = select(Student)
+    query = select(Student).options(selectinload(Student.advisor))
     count_query = select(func.count(Student.id))
 
     if keyword:
@@ -76,7 +77,7 @@ async def get_student(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(Student).where(Student.id == student_id))
+    result = await db.execute(select(Student).options(selectinload(Student.advisor)).where(Student.id == student_id))
     student = result.scalar_one_or_none()
     if not student:
         raise HTTPException(status_code=404, detail="学生不存在")

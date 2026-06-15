@@ -2,6 +2,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
+from sqlalchemy.orm import selectinload
 from typing import Optional
 
 from app.database import get_db
@@ -57,7 +58,7 @@ async def list_quotas(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    query = select(AdvisorQuota)
+    query = select(AdvisorQuota).options(selectinload(AdvisorQuota.advisor))
     count_query = select(func.count(AdvisorQuota.id))
 
     if semester:
@@ -92,7 +93,7 @@ async def get_quota(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(AdvisorQuota).where(AdvisorQuota.id == quota_id))
+    result = await db.execute(select(AdvisorQuota).options(selectinload(AdvisorQuota.advisor)).where(AdvisorQuota.id == quota_id))
     quota = result.scalar_one_or_none()
     if not quota:
         raise HTTPException(status_code=404, detail="导师名额不存在")
@@ -106,7 +107,7 @@ async def get_quota_history(
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
-        select(AdvisorQuotaChange).where(AdvisorQuotaChange.quota_id == quota_id).order_by(AdvisorQuotaChange.changed_at.desc())
+        select(AdvisorQuotaChange).options(selectinload(AdvisorQuotaChange.changed_by)).where(AdvisorQuotaChange.quota_id == quota_id).order_by(AdvisorQuotaChange.changed_at.desc())
     )
     changes = result.scalars().all()
     resp = []
@@ -146,7 +147,7 @@ async def update_quota(
     current_user: User = Depends(require_roles(UserRole.ADMIN, UserRole.STUDENT_AFFAIRS)),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(AdvisorQuota).where(AdvisorQuota.id == quota_id))
+    result = await db.execute(select(AdvisorQuota).options(selectinload(AdvisorQuota.advisor)).where(AdvisorQuota.id == quota_id))
     quota = result.scalar_one_or_none()
     if not quota:
         raise HTTPException(status_code=404, detail="导师名额不存在")

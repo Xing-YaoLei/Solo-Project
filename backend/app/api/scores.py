@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
+from sqlalchemy.orm import selectinload
 from typing import Optional
 
 from app.database import get_db
@@ -33,7 +34,7 @@ async def list_scores(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    query = select(Score)
+    query = select(Score).options(selectinload(Score.course), selectinload(Score.teacher))
     count_query = select(func.count(Score.id))
 
     if student_id:
@@ -75,7 +76,7 @@ async def get_student_scores(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    query = select(Score).where(Score.student_id == student_id)
+    query = select(Score).options(selectinload(Score.course), selectinload(Score.teacher)).where(Score.student_id == student_id)
     if semester:
         query = query.where(Score.semester == semester)
     query = query.order_by(Score.semester.desc(), Score.id.desc())
@@ -90,7 +91,7 @@ async def get_score(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(Score).where(Score.id == score_id))
+    result = await db.execute(select(Score).options(selectinload(Score.course), selectinload(Score.teacher)).where(Score.id == score_id))
     score = result.scalar_one_or_none()
     if not score:
         raise HTTPException(status_code=404, detail="成绩不存在")
@@ -117,7 +118,7 @@ async def update_score(
     current_user: User = Depends(require_roles(UserRole.ADMIN, UserRole.TEACHER)),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(Score).where(Score.id == score_id))
+    result = await db.execute(select(Score).options(selectinload(Score.course), selectinload(Score.teacher)).where(Score.id == score_id))
     score = result.scalar_one_or_none()
     if not score:
         raise HTTPException(status_code=404, detail="成绩不存在")
@@ -135,7 +136,7 @@ async def delete_score(
     current_user: User = Depends(require_roles(UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(Score).where(Score.id == score_id))
+    result = await db.execute(select(Score).options(selectinload(Score.course), selectinload(Score.teacher)).where(Score.id == score_id))
     score = result.scalar_one_or_none()
     if not score:
         raise HTTPException(status_code=404, detail="成绩不存在")

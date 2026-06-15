@@ -165,7 +165,7 @@ export default function MonthlyReview() {
                 <div style={{ fontSize: 22, fontWeight: 600, color: '#ff4d4f' }}>{overallStats.overUtilized || 0}间</div>
               </div>
               <div>
-                <div style={{ fontSize: 12, color: '#8c8c8c' }}>低利用率(<40%)</div>
+                <div style={{ fontSize: 12, color: '#8c8c8c' }}>{"低利用率(<40%)"}</div>
                 <div style={{ fontSize: 22, fontWeight: 600, color: '#52c41a' }}>{overallStats.underUtilized || 0}间</div>
               </div>
             </Space>

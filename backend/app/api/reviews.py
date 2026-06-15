@@ -2,6 +2,7 @@ from datetime import datetime, date
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_, and_
+from sqlalchemy.orm import selectinload
 from typing import Optional
 
 from app.database import get_db
@@ -69,9 +70,14 @@ async def get_record_view(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    students_query = select(Student)
-    scores_query = select(Score)
-    reviews_query = select(ReviewApplication)
+    students_query = select(Student).options(selectinload(Student.advisor))
+    scores_query = select(Score).options(selectinload(Score.course), selectinload(Score.teacher))
+    reviews_query = select(ReviewApplication).options(
+        selectinload(ReviewApplication.student),
+        selectinload(ReviewApplication.course),
+        selectinload(ReviewApplication.reviewer),
+        selectinload(ReviewApplication.handler),
+    )
 
     if grade:
         students_query = students_query.where(Student.grade == grade)
@@ -127,7 +133,12 @@ async def list_reviews(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    query = select(ReviewApplication)
+    query = select(ReviewApplication).options(
+        selectinload(ReviewApplication.student),
+        selectinload(ReviewApplication.course),
+        selectinload(ReviewApplication.reviewer),
+        selectinload(ReviewApplication.handler),
+    )
     count_query = select(func.count(ReviewApplication.id))
 
     if status:
@@ -174,7 +185,14 @@ async def get_review(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(ReviewApplication).where(ReviewApplication.id == review_id))
+    result = await db.execute(
+        select(ReviewApplication).options(
+            selectinload(ReviewApplication.student),
+            selectinload(ReviewApplication.course),
+            selectinload(ReviewApplication.reviewer),
+            selectinload(ReviewApplication.handler),
+        ).where(ReviewApplication.id == review_id)
+    )
     review = result.scalar_one_or_none()
     if not review:
         raise HTTPException(status_code=404, detail="复核申请不存在")
@@ -238,7 +256,14 @@ async def update_review(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(ReviewApplication).where(ReviewApplication.id == review_id))
+    result = await db.execute(
+        select(ReviewApplication).options(
+            selectinload(ReviewApplication.student),
+            selectinload(ReviewApplication.course),
+            selectinload(ReviewApplication.reviewer),
+            selectinload(ReviewApplication.handler),
+        ).where(ReviewApplication.id == review_id)
+    )
     review = result.scalar_one_or_none()
     if not review:
         raise HTTPException(status_code=404, detail="复核申请不存在")
@@ -316,7 +341,12 @@ async def check_materials(
     current_user: User = Depends(require_roles(UserRole.ADMIN, UserRole.STUDENT_AFFAIRS, UserRole.ADVISOR)),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(ReviewApplication).where(ReviewApplication.id == review_id))
+    result = await db.execute(
+        select(ReviewApplication).options(
+            selectinload(ReviewApplication.student),
+            selectinload(ReviewApplication.course),
+        ).where(ReviewApplication.id == review_id)
+    )
     review = result.scalar_one_or_none()
     if not review:
         raise HTTPException(status_code=404, detail="复核申请不存在")
@@ -325,7 +355,9 @@ async def check_materials(
     review.status = ReviewStatus.MATERIALS_MISSING
     reason_str = f"材料缺失检查: {', '.join(missing_materials)}"
 
-    if review.student.advisor_id:
+    action_taken_str = f"材料缺失通知已发送至导师及学工处"
+
+    if review.student and review.student.advisor_id:
         await _create_notification(
             db, review.student.advisor_id, review.id, NotificationType.MATERIALS_MISSING,
             "成绩复核材料缺失",
@@ -333,10 +365,19 @@ async def check_materials(
             reason=reason_str,
         )
 
+    student_affairs = (await db.execute(select(User).where(User.role == UserRole.STUDENT_AFFAIRS))).scalars().all()
+    for sa in student_affairs:
+        await _create_notification(
+            db, sa.id, review.id, NotificationType.MATERIALS_MISSING,
+            "成绩复核材料缺失",
+            f"学生[{review.student.name if review.student else ''}]复核申请缺失材料: {', '.join(missing_materials)}",
+            reason=reason_str,
+        )
+
     await _add_audit_log(
         db, AuditAction.NOTIFY, "review_application", review.id, review.id,
-        current_user.id, new_values={"missing_materials": missing_materials},
-        reason=reason_str, action_taken="材料缺失通知已发送"
+        current_user.id, new_values={"missing_materials": missing_materials, "status": ReviewStatus.MATERIALS_MISSING.value},
+        reason=reason_str, action_taken=action_taken_str,
     )
     await db.commit()
     return {"message": "材料缺失检查完成，通知已发送", "missing": missing_materials}

@@ -7,7 +7,7 @@ import 'dayjs/locale/zh-cn'
 import { router } from './router'
 import './index.css'
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
+ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <ConfigProvider
       locale={zhCN}

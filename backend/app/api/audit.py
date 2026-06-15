@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
+from sqlalchemy.orm import selectinload
 from typing import Optional
 
 from app.database import get_db
-from app.models import AuditLog, AuditAction, User
+from app.models import AuditLog, AuditAction, User, UserRole
 from app.schemas import AuditLogResponse
 from app.security import get_current_user, require_roles
 
@@ -26,10 +27,10 @@ async def list_audit_logs(
     entity_type: Optional[str] = None,
     review_id: Optional[int] = None,
     operator_id: Optional[int] = None,
-    current_user=Depends(require_roles("admin", "auditor", "student_affairs")),
+    current_user=Depends(require_roles(UserRole.ADMIN, UserRole.AUDITOR, UserRole.STUDENT_AFFAIRS)),
     db: AsyncSession = Depends(get_db),
 ):
-    query = select(AuditLog)
+    query = select(AuditLog).options(selectinload(AuditLog.operator))
     count_query = select(func.count(AuditLog.id))
 
     if action:
@@ -72,7 +73,7 @@ async def get_review_audit(
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
-        select(AuditLog).where(AuditLog.review_id == review_id).order_by(AuditLog.created_at.asc())
+        select(AuditLog).options(selectinload(AuditLog.operator)).where(AuditLog.review_id == review_id).order_by(AuditLog.created_at.asc())
     )
     logs = result.scalars().all()
     return [_enrich_audit(a) for a in logs]

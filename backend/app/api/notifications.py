@@ -2,6 +2,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
+from sqlalchemy.orm import selectinload
 from typing import Optional
 
 from app.database import get_db
@@ -29,7 +30,7 @@ async def list_notifications(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    query = select(Notification).where(Notification.recipient_id == current_user.id)
+    query = select(Notification).options(selectinload(Notification.recipient)).where(Notification.recipient_id == current_user.id)
     count_query = select(func.count(Notification.id)).where(Notification.recipient_id == current_user.id)
 
     if type:
@@ -78,7 +79,7 @@ async def get_notification(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(Notification).where(Notification.id == notif_id))
+    result = await db.execute(select(Notification).options(selectinload(Notification.recipient)).where(Notification.id == notif_id))
     notif = result.scalar_one_or_none()
     if not notif:
         raise HTTPException(status_code=404, detail="通知不存在")
@@ -96,7 +97,7 @@ async def process_notification(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(Notification).where(Notification.id == notif_id))
+    result = await db.execute(select(Notification).options(selectinload(Notification.recipient)).where(Notification.id == notif_id))
     notif = result.scalar_one_or_none()
     if not notif:
         raise HTTPException(status_code=404, detail="通知不存在")
