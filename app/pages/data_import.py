@@ -1,20 +1,26 @@
 from __future__ import annotations
 
 import streamlit as st
+import polars as pl
 
 from app.services.duckdb_service import DuckDBService
 from app.services.minio_service import MinIOService
 from app.services.pipeline import DataPipeline
 from app.services.auth_service import AuthService
+from typing import Optional
 
 
 def render(
-    db: DuckDBService, minio: MinIOService, pipeline: DataPipeline, auth: AuthService, username: str
+    db: DuckDBService, minio: MinIOService | None, pipeline: DataPipeline | None, auth: AuthService, username: str
 ) -> None:
     st.header("📥 数据导入")
 
     if not auth.can_import_data(username):
         st.warning("您没有数据导入权限，请联系管理员。")
+        return
+
+    if pipeline is None or minio is None:
+        st.error("⚠️ 对象存储 (MinIO) 服务不可用，数据导入功能已禁用。请联系管理员启动 MinIO 服务。")
         return
 
     tab_import, tab_batches, tab_trace = st.tabs(["导入数据", "导入批次", "批次回查"])
@@ -108,20 +114,50 @@ def _render_batch_trace(pipeline: DataPipeline) -> None:
     batch_id = st.text_input("输入批次编号", placeholder="例如: BATCH_cashier_20240101_120000")
 
     if batch_id:
+        if pipeline is None:
+            st.error("对象存储不可用，批次回查功能已禁用。请联系管理员启动 MinIO 服务。")
+            return
+
         try:
             trace = pipeline.trace_batch(batch_id)
+
             col1, col2 = st.columns(2)
             with col1:
-                st.markdown("#### MinIO 存储")
+                st.markdown("#### 数据源信息")
+                if trace["source_type"]:
+                    type_label = {
+                        "cashier": "收银系统",
+                        "inventory": "库存表",
+                        "member": "会员记录",
+                        "followup": "回访记录",
+                    }.get(trace["source_type"], trace["source_type"])
+                    st.info(f"批次类型: **{type_label}**")
+                else:
+                    st.warning("未识别批次类型")
+
+                st.markdown("#### MinIO 存储元数据")
                 if trace["minio_metadata"]:
-                    st.json(trace["minio_metadata"])
+                    for src, meta in trace["minio_metadata"].items():
+                        src_label = {
+                            "cashier": "收银系统",
+                            "inventory": "库存表",
+                            "member": "会员记录",
+                            "followup": "回访记录",
+                        }.get(src, src)
+                        with st.expander(f"📦 {src_label}", expanded=True):
+                            st.json(meta)
                 else:
                     st.info("MinIO 中未找到该批次数据。")
+
             with col2:
                 st.markdown("#### 数据库记录")
                 if trace["db_record"]:
                     st.json(trace["db_record"])
                 else:
                     st.info("数据库中未找到该批次记录。")
+
+                if trace["available_sources"]:
+                    st.markdown("#### 可用的源数据")
+                    st.write(f"可追溯的数据源: {', '.join(trace['available_sources'])}")
         except Exception as e:
             st.error(f"批次回查失败: {e}")

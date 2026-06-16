@@ -105,6 +105,14 @@ class MinIOService:
         response.release_conn()
         return data
 
+    def list_objects_in_batch(self, batch_id: str) -> list[str]:
+        objects = self.client.list_objects(
+            settings.minio_bucket_pharmacy,
+            prefix=f"{batch_id}/",
+            recursive=True,
+        )
+        return [obj.object_name for obj in objects]
+
     def list_batches(self) -> list[dict]:
         objects = self.client.list_objects(
             settings.minio_bucket_pharmacy, recursive=True

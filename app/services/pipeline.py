@@ -108,16 +108,43 @@ class DataPipeline:
         }
 
     def trace_batch(self, batch_id: str) -> dict:
-        try:
-            minio_meta = self.minio.get_batch_metadata(batch_id, "cashier_transactions.csv")
-        except Exception:
-            minio_meta = None
+        _SOURCE_OBJECT_MAP: dict[str, str] = {
+            "cashier": "cashier_transactions.csv",
+            "inventory": "inventory.csv",
+            "member": "members.csv",
+            "followup": "followup_records.csv",
+        }
 
         db_batches = self.duckdb.list_import_batches()
         batch_row = db_batches.filter(pl.col("batch_id") == batch_id)
 
+        source_type = None
+        if batch_row.height > 0:
+            source_type = batch_row["source_type"].to_list()[0]
+
+        minio_meta: dict[str, dict] = {}
+
+        if self.minio is not None:
+            if source_type and source_type in _SOURCE_OBJECT_MAP:
+                try:
+                    obj_name = _SOURCE_OBJECT_MAP[source_type]
+                    minio_meta[source_type] = self.minio.get_batch_metadata(batch_id, obj_name)
+                except Exception:
+                    pass
+            else:
+                for src_type, obj_name in _SOURCE_OBJECT_MAP.items():
+                    try:
+                        meta = self.minio.get_batch_metadata(batch_id, obj_name)
+                        minio_meta[src_type] = meta
+                    except Exception:
+                        pass
+
+        db_record = batch_row.to_dicts() if batch_row.height > 0 else []
+
         return {
             "batch_id": batch_id,
+            "source_type": source_type,
             "minio_metadata": minio_meta,
-            "db_record": batch_row.to_dicts() if batch_row.height > 0 else [],
+            "db_record": db_record,
+            "available_sources": list(minio_meta.keys()),
         }

@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 import hashlib
 import yaml
+import bcrypt
 from pathlib import Path
 
 from app.config import settings
@@ -19,11 +20,25 @@ class AuthService:
                 self._users_config = yaml.safe_load(f)
         return self._users_config
 
+    def verify_credentials(self, username: str, password: str) -> bool:
+        creds = self.users_config.get("credentials", {})
+        if username not in creds:
+            return False
+        stored_hash = creds[username].get("password", "")
+        try:
+            return bcrypt.checkpw(password.encode("utf-8"), stored_hash.encode("utf-8"))
+        except (ValueError, TypeError):
+            return False
+
     def get_role(self, username: str) -> str:
         creds = self.users_config.get("credentials", {})
+        if username not in creds:
+            return "guest"
+        roles_cfg = self.users_config.get("roles", {})
+        if username in roles_cfg and "overview" in roles_cfg[username]:
+            return "admin"
         if username == "admin":
             return "admin"
-        roles_cfg = self.users_config.get("roles", {})
         if username in roles_cfg:
             return "staff"
         staff_users = [k for k in creds.keys() if k != "admin"]

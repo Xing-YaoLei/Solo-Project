@@ -1,13 +1,13 @@
 credentials:
   admin:
     name: 管理员
-    password: $2b$12$example_hash_placeholder
+    password: $2b$12$FVjGJLMF1OP6yZuBfVZkTuQyF251rzKZe53CmbKZRWF0B8js951Xi
   pharmacist_a:
     name: 药师A-门店01
-    password: $2b$12$example_hash_placeholder
+    password: $2b$12$/Ln4EzArD230ihwmQAhcgO/vYHgREaqbVxwyRAxjSbY2ih3nleUTC
   pharmacist_b:
     name: 药师B-门店02
-    password: $2b$12$example_hash_placeholder
+    password: $2b$12$5ff00lTA3KjFBWxfbqaLHurwYmIZm5PujnnhJMGIjyhJPk.I.eG/2
 
 cookie:
   name: pharmacy_dashboard
@@ -25,7 +25,11 @@ roles:
     - member_detail
     - prescription_annotate
     - data_import
-  staff:
+  pharmacist_a:
+    - followup
+    - member_detail
+    - prescription_annotate
+  pharmacist_b:
     - followup
     - member_detail
     - prescription_annotate
