@@ -1,0 +1,31 @@
+credentials:
+  admin:
+    name: 管理员
+    password: $2b$12$example_hash_placeholder
+  pharmacist_a:
+    name: 药师A-门店01
+    password: $2b$12$example_hash_placeholder
+  pharmacist_b:
+    name: 药师B-门店02
+    password: $2b$12$example_hash_placeholder
+
+cookie:
+  name: pharmacy_dashboard
+  key: some_random_secret_key
+  expiry_days: 1
+
+preauthorized:
+  emails: []
+
+roles:
+  admin:
+    - overview
+    - followup
+    - analysis
+    - member_detail
+    - prescription_annotate
+    - data_import
+  staff:
+    - followup
+    - member_detail
+    - prescription_annotate

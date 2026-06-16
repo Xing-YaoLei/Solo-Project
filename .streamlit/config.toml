@@ -1,0 +1,2 @@
+[tool.streamlit]
+serverPort = 8501
