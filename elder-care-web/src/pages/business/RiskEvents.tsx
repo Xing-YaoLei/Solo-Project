@@ -96,7 +96,8 @@ const RiskEvents: React.FC = () => {
   const handleAdd = () => {
     setEditing(null);
     form.resetFields();
-    form.setFieldsValue({ eventType: 'Fall', severity: 'Medium', status: 'Open' });
+    const defaultStaffId = staffList.length > 0 ? staffList[0].id : undefined;
+    form.setFieldsValue({ eventType: 'Fall', severity: 'Medium', status: 'Open', reportedByStaffId: defaultStaffId, assignedStaffId: defaultStaffId });
     setModalOpen(true);
   };
 
@@ -390,8 +391,15 @@ const RiskEvents: React.FC = () => {
               </Form.Item>
             </Col>
           </Row>
-          <Form.Item name="assignedStaffId" label="指派负责人">
-            <Select allowClear>
+          <Form.Item name="assignedStaffId" label="指派负责人" rules={[{ required: true, message: '请选择负责人' }]}>
+            <Select>
+              {staffList.map((s) => (
+                <Select.Option key={s.id} value={s.id}>{s.name}</Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
+          <Form.Item name="reportedByStaffId" label="上报人" rules={[{ required: true, message: '请选择上报人' }]}>
+            <Select>
               {staffList.map((s) => (
                 <Select.Option key={s.id} value={s.id}>{s.name}</Select.Option>
               ))}

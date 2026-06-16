@@ -44,8 +44,17 @@ public class UpdateRiskEventDto
     [Required, StringLength(1000)]
     public string Description { get; set; } = string.Empty;
 
+    [Required]
+    public DateTime EventTime { get; set; }
+
     [StringLength(200)]
     public string? Location { get; set; }
+
+    [Required]
+    public int AreaId { get; set; }
+
+    [Required]
+    public int ReportedByStaffId { get; set; }
 
     [Required]
     public int AssignedStaffId { get; set; }

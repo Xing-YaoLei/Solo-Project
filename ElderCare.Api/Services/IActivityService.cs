@@ -9,6 +9,6 @@ public interface IActivityService
     Task<ThresholdDto?> UpdateThresholdAsync(int id, CreateThresholdDto dto);
     Task<IEnumerable<CheckInDto>> GetAllCheckInsAsync();
     Task<CheckInDto> CreateCheckInAsync(CreateCheckInDto dto);
-    Task<IEnumerable<CheckInStatsDto>> GetCheckInStatsAsync(int? elderlyId = null);
+    Task<IEnumerable<CheckInStatsDto>> GetCheckInStatsAsync(int? elderlyId = null, int? staffId = null);
     Task<IEnumerable<CheckInStatsDto>> CheckThresholdComplianceAsync(int? areaId = null);
 }

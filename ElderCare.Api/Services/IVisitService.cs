@@ -11,4 +11,5 @@ public interface IVisitService
     Task<VisitRecordDto> CreateVisitRecordAsync(CreateVisitRecordDto dto);
     Task<IEnumerable<VisitRecordDto>> GetVisitsByElderlyAsync(int elderlyId);
     Task<IEnumerable<VisitComplianceDto>> CheckVisitComplianceAsync(int elderlyId);
+    Task<IEnumerable<VisitComplianceDto>> GetComplianceAsync(int? staffId = null, DateTime? startDate = null, DateTime? endDate = null);
 }

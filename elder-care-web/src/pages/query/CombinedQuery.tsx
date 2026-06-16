@@ -2,8 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Table, Select, DatePicker, Button, Row, Col, Card, Statistic, Tag, Space } from 'antd';
 import { SearchOutlined, ReloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { query, areas, staffApi } from '../../api/apiClient';
-import type { CombinedQuery as CombinedQueryType, PagedResult, Area, Staff } from '../../types';
+import { query, areas, staffApi, visitRecords, checkIns } from '../../api/apiClient';
+import type { CombinedQuery as CombinedQueryType, PagedResult, Area, Staff, VisitCompliance, CheckInStats } from '../../types';
 import {
   RiskEventTypeLabel, RiskEventSeverityLabel, RiskEventStatusLabel,
   MedicationStatusLabel, VisitStatusLabel, CheckInStatusLabel,
@@ -82,12 +82,44 @@ const CombinedQuery: React.FC = () => {
       setTableData(result.items || []);
       setTotalCount(result.totalCount);
       setPage(p);
+
+      let complianceRate = 0;
+      let compliantCount = 0;
+      let activeCount = 0;
+
+      if (entityType === 'Visit') {
+        try {
+          const complianceRes = await visitRecords.getCompliance(filterStaff ?? undefined, dateRange?.[0]?.format('YYYY-MM-DD'), dateRange?.[1]?.format('YYYY-MM-DD'));
+          const visitCompliances: VisitCompliance[] = complianceRes.data;
+          if (visitCompliances.length > 0) {
+            complianceRate = Math.round(visitCompliances.reduce((sum, c) => sum + c.complianceRate, 0) / visitCompliances.length * 100);
+            compliantCount = visitCompliances.filter(c => c.complianceRate >= 1).length;
+          }
+        } catch {}
+        activeCount = (result.items || []).filter((i: any) => i.status === 'Completed').length;
+      } else if (entityType === 'CheckIn') {
+        try {
+          const statsRes = await checkIns.getStats(filterStaff ?? undefined);
+          const checkInStatsList: CheckInStats[] = statsRes.data;
+          if (checkInStatsList.length > 0) {
+            compliantCount = checkInStatsList.filter(c => c.isCompliant).length;
+            complianceRate = Math.round((compliantCount / checkInStatsList.length) * 100);
+          }
+        } catch {}
+        activeCount = (result.items || []).filter((i: any) => i.status === 'CheckedIn').length;
+      } else {
+        activeCount = (result.items || []).filter((i: any) => i.status === 'Active' || i.status === 'Completed' || i.status === 'CheckedIn').length || 0;
+        if (result.items?.length) {
+          const successCount = result.items.filter((i: any) => i.status === 'Completed' || i.status === 'CheckedIn' || i.status === 'Active').length;
+          complianceRate = Math.round((successCount / result.items.length) * 100);
+          compliantCount = successCount;
+        }
+      }
+
       setStats({
         total: result.totalCount,
-        active: result.items?.filter((i: any) => i.status === 'Active' || i.status === 'Completed' || i.status === 'CheckedIn').length || 0,
-        compliance: result.items?.length
-          ? Math.round((result.items.filter((i: any) => i.status === 'Completed' || i.status === 'CheckedIn' || i.status === 'Active').length / result.items.length) * 100)
-          : 0,
+        active: activeCount,
+        compliance: complianceRate,
       });
     } catch {
       setTableData([]);

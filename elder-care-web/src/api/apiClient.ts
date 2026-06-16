@@ -17,6 +17,7 @@ import type {
   Staff,
   CheckInStats,
   RiskEventReminder,
+  VisitCompliance,
 } from '../types';
 
 const apiClient = axios.create({
@@ -62,6 +63,8 @@ export const visitRecords = {
   getAll: () => apiClient.get<VisitRecord[]>('/visit-records'),
   create: (data: Partial<VisitRecord>) => apiClient.post<VisitRecord>('/visit-records', data),
   getByElderly: (elderlyId: number) => apiClient.get<VisitRecord[]>(`/visit-records/elderly/${elderlyId}`),
+  getCompliance: (staffId?: number, startDate?: string, endDate?: string) =>
+    apiClient.get<VisitCompliance[]>('/visit-records/compliance', { params: { staffId, startDate, endDate } }),
 };
 
 export const thresholds = {
@@ -73,7 +76,7 @@ export const thresholds = {
 export const checkIns = {
   getAll: () => apiClient.get<ActivityCheckIn[]>('/activity-checkins'),
   create: (data: Partial<ActivityCheckIn>) => apiClient.post<ActivityCheckIn>('/activity-checkins', data),
-  getStats: (elderlyId?: number) => apiClient.get<CheckInStats[]>('/activity-checkins/stats', { params: { elderlyId } }),
+  getStats: (staffId?: number) => apiClient.get<CheckInStats[]>('/activity-checkins/stats', { params: { staffId } }),
 };
 
 export const elderlyApi = {

@@ -35,4 +35,14 @@ public class VisitRecordController : ControllerBase
         var result = await _service.GetVisitsByElderlyAsync(elderlyId);
         return Ok(result);
     }
+
+    [HttpGet("compliance")]
+    public async Task<ActionResult<IEnumerable<VisitComplianceDto>>> GetCompliance(
+        [FromQuery] int? staffId = null,
+        [FromQuery] DateTime? startDate = null,
+        [FromQuery] DateTime? endDate = null)
+    {
+        var result = await _service.GetComplianceAsync(staffId, startDate, endDate);
+        return Ok(result);
+    }
 }

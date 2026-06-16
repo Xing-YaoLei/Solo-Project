@@ -30,9 +30,9 @@ public class ActivityCheckInController : ControllerBase
     }
 
     [HttpGet("stats")]
-    public async Task<ActionResult<IEnumerable<CheckInStatsDto>>> GetStats([FromQuery] int? elderlyId)
+    public async Task<ActionResult<IEnumerable<CheckInStatsDto>>> GetStats([FromQuery] int? elderlyId, [FromQuery] int? staffId)
     {
-        var result = await _service.GetCheckInStatsAsync(elderlyId);
+        var result = await _service.GetCheckInStatsAsync(elderlyId, staffId);
         return Ok(result);
     }
 }

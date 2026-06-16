@@ -214,4 +214,55 @@ public class VisitService : IVisitService
 
         return result;
     }
+
+    public async Task<IEnumerable<VisitComplianceDto>> GetComplianceAsync(int? staffId = null, DateTime? startDate = null, DateTime? endDate = null)
+    {
+        var elderlyList = await _context.ElderlyProfiles
+            .Where(e => !staffId.HasValue || e.PrimaryStaffId == staffId.Value)
+            .ToListAsync();
+
+        var result = new List<VisitComplianceDto>();
+        foreach (var elderly in elderlyList)
+        {
+            var rules = await _context.VisitRecordRules
+                .Where(r => r.IsActive)
+                .Where(r => !r.AreaId.HasValue || r.AreaId == elderly.AreaId)
+                .ToListAsync();
+
+            foreach (var rule in rules)
+            {
+                var visitsQuery = _context.VisitRecords
+                    .Where(v => v.ElderlyId == elderly.Id && v.RuleId == rule.Id);
+                if (startDate.HasValue)
+                    visitsQuery = visitsQuery.Where(v => v.VisitDate >= startDate.Value);
+                if (endDate.HasValue)
+                    visitsQuery = visitsQuery.Where(v => v.VisitDate <= endDate.Value);
+                if (staffId.HasValue)
+                    visitsQuery = visitsQuery.Where(v => v.StaffId == staffId.Value);
+
+                var visits = await visitsQuery.ToListAsync();
+                var completed = visits.Count(v => v.Status == VisitStatus.Completed);
+                var missed = visits.Count(v => v.Status == VisitStatus.Missed);
+                var daysInPeriod = startDate.HasValue && endDate.HasValue
+                    ? Math.Max(1, (int)(endDate.Value - startDate.Value).TotalDays)
+                    : 30;
+                var totalRequired = rule.FrequencyDays > 0
+                    ? Math.Max(1, daysInPeriod / rule.FrequencyDays)
+                    : visits.Count;
+
+                result.Add(new VisitComplianceDto
+                {
+                    ElderlyId = elderly.Id,
+                    ElderlyName = elderly.Name,
+                    RuleName = rule.Name,
+                    TotalRequired = totalRequired,
+                    Completed = completed,
+                    Missed = missed,
+                    ComplianceRate = totalRequired > 0 ? (double)completed / totalRequired * 100 : 0
+                });
+            }
+        }
+
+        return result;
+    }
 }

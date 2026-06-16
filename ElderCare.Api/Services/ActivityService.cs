@@ -144,11 +144,13 @@ public class ActivityService : IActivityService
         };
     }
 
-    public async Task<IEnumerable<CheckInStatsDto>> GetCheckInStatsAsync(int? elderlyId = null)
+    public async Task<IEnumerable<CheckInStatsDto>> GetCheckInStatsAsync(int? elderlyId = null, int? staffId = null)
     {
         var query = _context.ActivityCheckIns.AsQueryable();
         if (elderlyId.HasValue)
             query = query.Where(c => c.ElderlyId == elderlyId.Value);
+        if (staffId.HasValue)
+            query = query.Where(c => c.StaffId == staffId.Value);
 
         var checkIns = await query
             .Include(c => c.Elderly)

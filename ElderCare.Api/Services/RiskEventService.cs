@@ -35,7 +35,7 @@ public class RiskEventService : IRiskEventService
                 AreaId = r.AreaId,
                 AreaName = r.Area.Name,
                 ReportedByStaffId = r.ReportedByStaffId,
-                ReportedByStaffName = r.ReportedByStaff.Name,
+                ReportedByStaffName = r.ReportedByStaff != null ? r.ReportedByStaff.Name : null,
                 AssignedStaffId = r.AssignedStaffId,
                 AssignedStaffName = r.AssignedStaff != null ? r.AssignedStaff.Name : null,
                 Status = r.Status,
@@ -66,7 +66,7 @@ public class RiskEventService : IRiskEventService
                 AreaId = r.AreaId,
                 AreaName = r.Area.Name,
                 ReportedByStaffId = r.ReportedByStaffId,
-                ReportedByStaffName = r.ReportedByStaff.Name,
+                ReportedByStaffName = r.ReportedByStaff != null ? r.ReportedByStaff.Name : null,
                 AssignedStaffId = r.AssignedStaffId,
                 AssignedStaffName = r.AssignedStaff != null ? r.AssignedStaff.Name : null,
                 Status = r.Status,
@@ -103,7 +103,10 @@ public class RiskEventService : IRiskEventService
         entity.EventType = dto.EventType;
         entity.Severity = dto.Severity;
         entity.Description = dto.Description;
+        entity.EventTime = dto.EventTime;
         entity.Location = dto.Location;
+        entity.AreaId = dto.AreaId;
+        entity.ReportedByStaffId = dto.ReportedByStaffId;
         entity.AssignedStaffId = dto.AssignedStaffId;
         entity.Status = dto.Status;
         entity.Resolution = dto.Resolution;
@@ -228,7 +231,7 @@ public class RiskEventService : IRiskEventService
                 RiskEventId = r.RiskEventId,
                 ActionType = r.ActionType.ToString(),
                 StaffId = r.StaffId,
-                StaffName = r.Staff.Name,
+                StaffName = r.Staff != null ? r.Staff.Name : null,
                 Message = r.Message,
                 ActionTime = r.ActionTime,
                 IsSuccessful = r.IsSuccessful,
@@ -265,7 +268,7 @@ public class RiskEventService : IRiskEventService
             RiskEventId = r.RiskEventId,
             ActionType = r.ActionType.ToString(),
             StaffId = r.StaffId,
-            StaffName = r.Staff.Name,
+            StaffName = r.Staff != null ? r.Staff.Name : null,
             Message = r.Message,
             ActionTime = r.ActionTime,
             IsSuccessful = r.IsSuccessful,
