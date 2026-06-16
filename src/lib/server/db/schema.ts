@@ -23,6 +23,7 @@ export const users = pgTable('user', {
   id: text('id').primaryKey(),
   username: varchar('username', { length: 50 }).notNull().unique(),
   name: varchar('name', { length: 100 }).notNull(),
+  passwordHash: text('password_hash').notNull(),
   role: userRoleEnum('role').notNull().default('staff'),
   pharmacyId: uuid('pharmacy_id'),
   createdAt: timestamp('created_at').notNull().defaultNow(),

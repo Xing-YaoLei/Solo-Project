@@ -33,4 +33,5 @@ interface DatabaseUserAttributes {
   name: string;
   role: string;
   pharmacyId: string | null;
+  passwordHash: string;
 }

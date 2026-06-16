@@ -33,6 +33,10 @@
           <span>📋</span>
           <span>回访记录</span>
         </a>
+        <a href="/followup/new" class="sidebar-item {currentPath === '/followup/new' ? 'active' : ''}" style="color: var(--primary-color); font-weight: 500;">
+          <span>➕</span>
+          <span>新建回访</span>
+        </a>
         <a href="/todos" class="sidebar-item {currentPath === '/todos' ? 'active' : ''}">
           <span>✅</span>
           <span>我的待办</span>

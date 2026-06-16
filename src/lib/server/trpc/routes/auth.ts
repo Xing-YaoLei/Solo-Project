@@ -22,7 +22,7 @@ export const authRouter = createTRPCRouter({
       }
 
       const validPassword = await new Argon2id().verify(
-        'hash_' + existingUser.id,
+        existingUser.passwordHash,
         input.password
       );
 
@@ -38,7 +38,16 @@ export const authRouter = createTRPCRouter({
         ...sessionCookie.attributes
       });
 
-      return { success: true, user: existingUser };
+      return { 
+        success: true, 
+        user: {
+          id: existingUser.id,
+          username: existingUser.username,
+          name: existingUser.name,
+          role: existingUser.role,
+          pharmacyId: existingUser.pharmacyId
+        }
+      };
     }),
 
   logout: protectedProcedure
@@ -82,6 +91,7 @@ export const authRouter = createTRPCRouter({
         id: userId,
         username: input.username,
         name: input.name,
+        passwordHash: hashedPassword,
         role: input.role
       });
 

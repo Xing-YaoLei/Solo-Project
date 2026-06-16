@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { createTRPCRouter, protectedProcedure, managerProcedure } from '../context';
-import { followupRecords, communicationNotes, members, prescriptions, drugBatches, drugs, replenishmentOrders } from '../../db/schema';
-import { eq, and, desc, asc, count, gte, lte } from 'drizzle-orm';
+import { followupRecords, communicationNotes, members, prescriptions, prescriptionItems, insuranceRecords, drugBatches, drugs, replenishmentOrders, replenishmentOrderItems, users } from '../../db/schema';
+import { eq, and, or, desc, asc, count, gte, lte, like } from 'drizzle-orm';
 import { generateIdFromEntropySize } from 'lucia';
 
 export const followupRouter = createTRPCRouter({
@@ -119,26 +119,247 @@ export const followupRouter = createTRPCRouter({
       memberId: z.string(),
       prescriptionId: z.string().optional(),
       replenishmentOrderId: z.string().optional(),
+      insuranceRecordId: z.string().optional(),
       riskLevel: z.enum(['low', 'medium', 'high', 'critical']).default('low'),
-      nextFollowupDate: z.date().optional()
+      nextFollowupDate: z.date().optional(),
+      initialNote: z.string().optional(),
+      prescriptionData: z.object({
+        prescriptionNo: z.string().optional(),
+        hospital: z.string().optional(),
+        doctor: z.string().optional(),
+        issueDate: z.date().optional(),
+        status: z.enum(['clear', 'unclear', 'verified', 'rejected']).default('clear'),
+        riskLevel: z.enum(['low', 'medium', 'high', 'critical']).default('low'),
+        photoUrl: z.string().optional(),
+        notes: z.string().optional(),
+        items: z.array(z.object({
+          drugId: z.string().optional(),
+          drugName: z.string(),
+          specification: z.string().optional(),
+          dosage: z.string().optional(),
+          frequency: z.string().optional(),
+          duration: z.string().optional(),
+          quantity: z.number().optional()
+        })).default([])
+      }).optional(),
+      replenishmentData: z.object({
+        items: z.array(z.object({
+          drugId: z.string(),
+          batchId: z.string().optional(),
+          quantity: z.number(),
+          unitPrice: z.number(),
+          subtotal: z.number()
+        })).default([])
+      }).optional(),
+      insuranceData: z.object({
+        recordNo: z.string(),
+        transactionDate: z.date(),
+        totalAmount: z.number(),
+        insuranceAmount: z.number(),
+        selfPayAmount: z.number()
+      }).optional()
     }))
     .mutation(async ({ ctx, input }) => {
-      const id = generateIdFromEntropySize(21);
-      
-      const [record] = await ctx.db.insert(followupRecords).values({
-        id,
-        memberId: input.memberId,
-        prescriptionId: input.prescriptionId,
-        replenishmentOrderId: input.replenishmentOrderId,
-        riskLevel: input.riskLevel,
-        status: 'pending',
-        assignedTo: ctx.user.id,
-        pharmacyId: ctx.user.pharmacyId,
-        nextFollowupDate: input.nextFollowupDate,
-        createdBy: ctx.user.id
-      }).returning();
+      const followupId = generateIdFromEntropySize(21);
+      const now = new Date();
+
+      let createdPrescriptionId = input.prescriptionId;
+      let createdOrderId = input.replenishmentOrderId;
+      let createdInsuranceId = input.insuranceRecordId;
+
+      await ctx.db.transaction(async (tx) => {
+        if (input.prescriptionData && !input.prescriptionId) {
+          createdPrescriptionId = generateIdFromEntropySize(21);
+          await tx.insert(prescriptions).values({
+            id: createdPrescriptionId,
+            memberId: input.memberId,
+            ...input.prescriptionData
+          });
+
+          if (input.prescriptionData.items.length > 0) {
+            for (const item of input.prescriptionData.items) {
+              const itemId = generateIdFromEntropySize(21);
+              await tx.insert(prescriptionItems).values({
+                id: itemId,
+                prescriptionId: createdPrescriptionId,
+                ...item
+              });
+            }
+          }
+        }
+
+        if (input.replenishmentData && !input.replenishmentOrderId && input.replenishmentData.items.length > 0) {
+          createdOrderId = generateIdFromEntropySize(21);
+          const orderNo = 'RB' + Date.now();
+          const totalAmount = input.replenishmentData.items.reduce((sum, item) => sum + item.subtotal, 0);
+
+          await tx.insert(replenishmentOrders).values({
+            id: createdOrderId,
+            orderNo,
+            memberId: input.memberId,
+            pharmacyId: ctx.user.pharmacyId,
+            status: 'pending',
+            totalAmount,
+            createdBy: ctx.user.id
+          });
+
+          for (const item of input.replenishmentData.items) {
+            const itemId = generateIdFromEntropySize(21);
+            await tx.insert(replenishmentOrderItems).values({
+              id: itemId,
+              orderId: createdOrderId,
+              ...item
+            });
+          }
+        }
+
+        if (input.insuranceData && !input.insuranceRecordId) {
+          createdInsuranceId = generateIdFromEntropySize(21);
+          await tx.insert(insuranceRecords).values({
+            id: createdInsuranceId,
+            memberId: input.memberId,
+            prescriptionId: createdPrescriptionId,
+            pharmacyId: ctx.user.pharmacyId,
+            ...input.insuranceData
+          });
+        }
+
+        await tx.insert(followupRecords).values({
+          id: followupId,
+          memberId: input.memberId,
+          prescriptionId: createdPrescriptionId,
+          replenishmentOrderId: createdOrderId,
+          insuranceRecordId: createdInsuranceId,
+          riskLevel: input.riskLevel,
+          status: 'pending',
+          assignedTo: ctx.user.id,
+          pharmacyId: ctx.user.pharmacyId,
+          nextFollowupDate: input.nextFollowupDate,
+          createdBy: ctx.user.id
+        });
+
+        if (input.initialNote) {
+          const noteId = generateIdFromEntropySize(21);
+          await tx.insert(communicationNotes).values({
+            id: noteId,
+            followupRecordId: followupId,
+            content: input.initialNote,
+            isReview: false,
+            createdBy: ctx.user.id
+          });
+        }
+      });
+
+      const record = await ctx.db.query.followupRecords.findFirst({
+        where: eq(followupRecords.id, followupId)
+      });
 
       return record;
+    }),
+
+  getMemberList: protectedProcedure
+    .input(z.object({
+      search: z.string().optional()
+    }))
+    .query(async ({ ctx, input }) => {
+      const whereConditions = [];
+      if (input.search) {
+        whereConditions.push(
+          or(
+            like(members.name, `%${input.search}%`),
+            like(members.memberNo, `%${input.search}%`),
+            like(members.phone, `%${input.search}%`)
+          )
+        );
+      }
+
+      return ctx.db.query.members.findMany({
+        where: and(...whereConditions),
+        limit: 50,
+        orderBy: [desc(members.createdAt)]
+      });
+    }),
+
+  getMemberPrescriptions: protectedProcedure
+    .input(z.string())
+    .query(async ({ ctx, input }) => {
+      return ctx.db.query.prescriptions.findMany({
+        where: eq(prescriptions.memberId, input),
+        with: {
+          items: true
+        },
+        orderBy: [desc(prescriptions.createdAt)]
+      });
+    }),
+
+  getMemberReplenishmentOrders: protectedProcedure
+    .input(z.string())
+    .query(async ({ ctx, input }) => {
+      return ctx.db.query.replenishmentOrders.findMany({
+        where: eq(replenishmentOrders.memberId, input),
+        with: {
+          items: {
+            with: {
+              drug: true,
+              batch: true
+            }
+          }
+        },
+        orderBy: [desc(replenishmentOrders.createdAt)]
+      });
+    }),
+
+  getDrugList: protectedProcedure
+    .input(z.object({
+      search: z.string().optional()
+    }))
+    .query(async ({ ctx, input }) => {
+      const whereConditions = [];
+      if (input.search) {
+        whereConditions.push(
+          or(
+            like(drugs.name, `%${input.search}%`),
+            like(drugs.drugCode, `%${input.search}%`)
+          )
+        );
+      }
+
+      return ctx.db.query.drugs.findMany({
+        where: and(...whereConditions),
+        limit: 50,
+        orderBy: [desc(drugs.createdAt)]
+      });
+    }),
+
+  getDrugBatches: protectedProcedure
+    .input(z.string())
+    .query(async ({ ctx, input }) => {
+      return ctx.db.query.drugBatches.findMany({
+        where: eq(drugBatches.drugId, input),
+        with: {
+          drug: true
+        },
+        orderBy: [asc(drugBatches.expiryDate)]
+      });
+    }),
+
+  getStaffList: protectedProcedure
+    .query(async ({ ctx }) => {
+      return ctx.db.query.users.findMany({
+        where: and(
+          or(
+            eq(users.role, 'staff'),
+            eq(users.role, 'pharmacist')
+          ),
+          eq(users.pharmacyId, ctx.user.pharmacyId)
+        ),
+        columns: {
+          id: true,
+          name: true,
+          role: true
+        },
+        orderBy: [asc(users.name)]
+      });
     }),
 
   update: protectedProcedure
