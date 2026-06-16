@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import {
   Search,
-  Filter,
   Calendar,
   User,
   ChevronRight,
@@ -18,37 +17,43 @@ import {
   Phone,
   ShieldAlert,
 } from "lucide-react";
-import {
-  getFollowUpsByAssignee,
-  getFollowUpDetail,
-  addAnnotation,
-} from "@/lib/mock-data";
+import { useDataStore } from "@/lib/data-store";
 import type { FollowUp } from "@/lib/mock-data";
 import { useAuthStore } from "@/lib/auth-store";
 import { cn, formatDate, getRiskLabel, getStatusLabel } from "@/lib/utils";
 
 export default function FollowUpsPage() {
   const { user } = useAuthStore();
+  const store = useDataStore();
   const [followUps, setFollowUps] = useState<FollowUp[]>([]);
   const [search, setSearch] = useState("");
   const [riskFilter, setRiskFilter] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [detail, setDetail] = useState<ReturnType<typeof getFollowUpDetail> | null>(null);
+  const [detail, setDetail] = useState<any>(null);
   const [detailTab, setDetailTab] = useState<"profile" | "prescription" | "medication" | "annotation">("profile");
 
-  useEffect(() => {
+  const refresh = () => {
     const assigneeId = user?.role === "staff" ? user.id : null;
-    setFollowUps(getFollowUpsByAssignee(assigneeId));
-  }, [user]);
+    setFollowUps(store.getFollowUpsByAssignee(assigneeId));
+  };
+
+  useEffect(() => {
+    refresh();
+  }, [store, user]);
 
   useEffect(() => {
     if (selectedId) {
-      setDetail(getFollowUpDetail(selectedId));
+      const d = store.getFollowUpDetail(selectedId);
+      if (d && (user?.role !== "staff" || d.followUp.assigneeId === user?.id)) {
+        setDetail(d);
+      } else {
+        setDetail(null);
+      }
     } else {
       setDetail(null);
     }
-  }, [selectedId]);
+  }, [selectedId, store, user]);
 
   const filtered = followUps.filter((f) => {
     if (search && !f.memberName.includes(search)) return false;
@@ -56,6 +61,13 @@ export default function FollowUpsPage() {
     if (statusFilter && f.status !== statusFilter) return false;
     return true;
   });
+
+  const addAnnotation = (prescriptionId: string | undefined, content: string) => {
+    if (!user) return;
+    store.addAnnotation(selectedId!, prescriptionId, content, user.id, user.name);
+    refresh();
+    setDetail(store.getFollowUpDetail(selectedId!));
+  };
 
   return (
     <div className="h-full flex gap-5">
@@ -273,7 +285,7 @@ export default function FollowUpsPage() {
                     慢病标签
                   </div>
                   <div className="flex flex-wrap gap-1.5">
-                    {detail.member.chronicTypes.map((c) => (
+                    {detail.member.chronicTypes.map((c: string) => (
                       <span
                         key={c}
                         className="px-2 py-0.5 rounded-full bg-white text-warning-700 text-xs border border-warning-200"
@@ -288,7 +300,7 @@ export default function FollowUpsPage() {
 
             {detailTab === "prescription" && (
               <div className="space-y-3 animate-fade-in">
-                {detail.prescriptions.map((p) => (
+                {detail.prescriptions.map((p: any) => (
                   <div
                     key={p.id}
                     className="p-4 rounded-lg border border-slate-200 hover:border-primary-300 transition-colors"
@@ -316,7 +328,7 @@ export default function FollowUpsPage() {
 
             {detailTab === "medication" && (
               <div className="space-y-2 animate-fade-in">
-                {detail.medications.map((m, i) => (
+                {detail.medications.map((m: any, i: number) => (
                   <div
                     key={i}
                     className="flex items-center justify-between p-3 rounded-lg border border-slate-200"
@@ -342,12 +354,7 @@ export default function FollowUpsPage() {
                 followUpId={selectedId}
                 prescriptions={detail.prescriptions}
                 existing={detail.annotations}
-                onAdd={(prescriptionId, content) => {
-                  if (!user) return;
-                  const newAnn = addAnnotation(selectedId, prescriptionId, content, user.id);
-                  setDetail(getFollowUpDetail(selectedId));
-                  return newAnn;
-                }}
+                onAdd={addAnnotation}
               />
             )}
           </div>
@@ -358,7 +365,6 @@ export default function FollowUpsPage() {
 }
 
 function AnnotationPanel({
-  followUpId,
   prescriptions,
   existing,
   onAdd,
@@ -366,11 +372,10 @@ function AnnotationPanel({
   followUpId: string;
   prescriptions: any[];
   existing: any[];
-  onAdd: (prescriptionId: string | undefined, content: string) => any;
+  onAdd: (prescriptionId: string | undefined, content: string) => void;
 }) {
   const [content, setContent] = useState("");
   const [selectedPrescription, setSelectedPrescription] = useState<string>("");
-  const { user } = useAuthStore();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -419,7 +424,7 @@ function AnnotationPanel({
             暂无注释或回访记录
           </div>
         )}
-        {existing.map((a) => (
+        {existing.map((a: any) => (
           <div
             key={a.id}
             className="p-3 rounded-lg border-l-4 border-primary-500 bg-primary-50/30"

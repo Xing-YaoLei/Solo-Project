@@ -13,17 +13,18 @@ import {
   Cell,
   LabelList,
 } from "recharts";
-import { getMemberFunnel } from "@/lib/mock-data";
+import { useDataStore } from "@/lib/data-store";
 import type { FunnelStage } from "@/lib/mock-data";
 
 const stageColors = ["#0F766E", "#0D9488", "#14B8A6", "#2DD4BF", "#5EEAD4"];
 
 export default function MemberFunnelPage() {
+  const store = useDataStore();
   const [data, setData] = useState<FunnelStage[]>([]);
 
   useEffect(() => {
-    setData(getMemberFunnel());
-  }, []);
+    setData(store.getMemberFunnel());
+  }, [store]);
 
   const firstCount = data[0]?.count || 1;
   const lastCount = data[data.length - 1]?.count || 0;
@@ -37,7 +38,7 @@ export default function MemberFunnelPage() {
           会员档案漏斗
         </h1>
         <p className="text-sm text-slate-500 mt-1">
-          从会员注册到复购转化的全链路漏斗分析
+          从会员注册到复购转化的全链路漏斗 — 收银系统导入后自动更新转化数据
         </p>
       </div>
 
@@ -83,9 +84,7 @@ export default function MemberFunnelPage() {
       </div>
 
       <div className="card p-6">
-        <h3 className="text-base font-semibold text-slate-900 mb-6">
-          转化漏斗
-        </h3>
+        <h3 className="text-base font-semibold text-slate-900 mb-6">转化漏斗</h3>
         <div className="h-96">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart

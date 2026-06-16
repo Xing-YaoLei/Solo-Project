@@ -13,7 +13,7 @@ import {
   Cell,
   Legend,
 } from "recharts";
-import { getBatchExpiryData } from "@/lib/mock-data";
+import { useDataStore } from "@/lib/data-store";
 import type { BatchExpiryPoint } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
@@ -26,15 +26,20 @@ const rangeColors: Record<string, string> = {
 };
 
 export default function BatchExpiryPage() {
+  const store = useDataStore();
   const [data, setData] = useState<BatchExpiryPoint[]>([]);
 
   useEffect(() => {
-    setData(getBatchExpiryData());
-  }, []);
+    setData(store.getBatchExpiryData());
+  }, [store]);
 
-  const urgentCount = data.filter((d) => d.range === "7天内" || d.range === "8-30天").reduce((s, d) => s + d.count, 0);
+  const urgentCount = data
+    .filter((d) => d.range === "7天内" || d.range === "8-30天")
+    .reduce((s, d) => s + d.count, 0);
   const totalCount = data.reduce((s, d) => s + d.count, 0);
-  const safeCount = data.filter((d) => d.range === "90天以上").reduce((s, d) => s + d.count, 0);
+  const safeCount = data
+    .filter((d) => d.range === "90天以上")
+    .reduce((s, d) => s + d.count, 0);
 
   return (
     <div className="space-y-6">
@@ -44,7 +49,7 @@ export default function BatchExpiryPage() {
           批号效期分布
         </h1>
         <p className="text-sm text-slate-500 mt-1">
-          按距离效期的时间区间统计药品批次数量，预警临期风险
+          按距离效期的时间区间统计药品批次数量 — 数据由收银系统导入自动驱动
         </p>
       </div>
 
@@ -90,9 +95,7 @@ export default function BatchExpiryPage() {
       </div>
 
       <div className="card p-6">
-        <h3 className="text-base font-semibold text-slate-900 mb-6">
-          效期区间分布
-        </h3>
+        <h3 className="text-base font-semibold text-slate-900 mb-6">效期区间分布</h3>
         <div className="h-96">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data} margin={{ top: 20, right: 30, left: 0, bottom: 10 }}>

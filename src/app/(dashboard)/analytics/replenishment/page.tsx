@@ -13,18 +13,35 @@ import {
   Cell,
   LabelList,
 } from "recharts";
-import { getReplenishmentRanking } from "@/lib/mock-data";
+import { useDataStore } from "@/lib/data-store";
 import type { ReplenishmentRank } from "@/lib/mock-data";
 
-const rankColors = ["#0F766E", "#0D9488", "#115E59", "#14B8A6", "#134E4A", "#2DD4BF", "#0F766E", "#0D9488", "#115E59", "#14B8A6"];
+const rankColors = [
+  "#0F766E",
+  "#0D9488",
+  "#115E59",
+  "#14B8A6",
+  "#134E4A",
+  "#2DD4BF",
+  "#0F766E",
+  "#0D9488",
+  "#115E59",
+  "#14B8A6",
+  "#0F766E",
+  "#0D9488",
+  "#115E59",
+  "#14B8A6",
+  "#0F766E",
+];
 
 export default function ReplenishmentPage() {
+  const store = useDataStore();
   const [data, setData] = useState<ReplenishmentRank[]>([]);
   const [limit, setLimit] = useState(10);
 
   useEffect(() => {
-    setData(getReplenishmentRanking(limit));
-  }, [limit]);
+    setData(store.getReplenishmentRanking(limit));
+  }, [store, limit]);
 
   const totalCount = data.reduce((s, d) => s + d.count, 0);
   const topCount = data[0]?.count || 0;
@@ -38,7 +55,7 @@ export default function ReplenishmentPage() {
             补货单排行
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Top 高频补货药品排行，辅助库存优化决策
+            Top 高频补货药品排行 — 库存导入与收银系统数据联合驱动
           </p>
         </div>
         <select
@@ -94,11 +111,9 @@ export default function ReplenishmentPage() {
       </div>
 
       <div className="card p-6">
-        <h3 className="text-base font-semibold text-slate-900 mb-6">
-          补货频次排行
-        </h3>
-        <div className="h-[480px]">
-          <ResponsiveContainer width="100%" height="100%">
+        <h3 className="text-base font-semibold text-slate-900 mb-6">补货频次排行</h3>
+        <div className="h-[480px] overflow-y-auto">
+          <ResponsiveContainer width="100%" height={data.length * 48}>
             <BarChart
               data={data}
               layout="vertical"

@@ -22,7 +22,7 @@ import {
   Bar,
   Cell,
 } from "recharts";
-import { getDashboardOverview } from "@/lib/mock-data";
+import { useDataStore } from "@/lib/data-store";
 import type { DashboardOverview } from "@/lib/mock-data";
 import { cn, formatCurrency } from "@/lib/utils";
 
@@ -86,10 +86,11 @@ function StatCard({ label, value, icon: Icon, gradient, trend, trendPositive }: 
 
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardOverview | null>(null);
+  const getOverview = useDataStore((s) => s.getDashboardOverview);
 
   useEffect(() => {
-    setData(getDashboardOverview());
-  }, []);
+    setData(getOverview());
+  }, [getOverview]);
 
   if (!data) {
     return (

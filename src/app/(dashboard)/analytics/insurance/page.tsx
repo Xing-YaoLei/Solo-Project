@@ -5,26 +5,26 @@ import { Wallet, TrendingUp, Receipt } from "lucide-react";
 import {
   ComposedChart,
   Line,
-  Bar,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
   Legend,
-  Area,
 } from "recharts";
-import { getInsuranceTrend } from "@/lib/mock-data";
+import { useDataStore } from "@/lib/data-store";
 import type { InsuranceTrendPoint } from "@/lib/mock-data";
 import { formatCurrency } from "@/lib/utils";
 
 export default function InsurancePage() {
+  const store = useDataStore();
   const [data, setData] = useState<InsuranceTrendPoint[]>([]);
   const [months, setMonths] = useState(6);
 
   useEffect(() => {
-    setData(getInsuranceTrend(months));
-  }, [months]);
+    setData(store.getInsuranceTrend(months));
+  }, [store, months]);
 
   const totalAmount = data.reduce((s, d) => s + d.amount, 0);
   const totalCount = data.reduce((s, d) => s + d.count, 0);
@@ -39,7 +39,7 @@ export default function InsurancePage() {
             医保流水变化
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            月度医保结算金额与交易笔数趋势分析
+            月度医保结算金额与交易笔数趋势 — 收银系统导入自动驱动
           </p>
         </div>
         <select
@@ -61,7 +61,9 @@ export default function InsurancePage() {
               <Wallet className="w-5 h-5 text-white" />
             </div>
             <div>
-              <div className="text-2xl font-bold text-slate-900">{formatCurrency(totalAmount)}</div>
+              <div className="text-2xl font-bold text-slate-900">
+                {formatCurrency(totalAmount)}
+              </div>
               <div className="text-sm text-slate-500 mt-0.5">累计结算金额</div>
             </div>
           </div>
@@ -87,7 +89,9 @@ export default function InsurancePage() {
               <TrendingUp className="w-5 h-5 text-white" />
             </div>
             <div>
-              <div className="text-2xl font-bold text-slate-900">{formatCurrency(avgAmount)}</div>
+              <div className="text-2xl font-bold text-slate-900">
+                {formatCurrency(avgAmount)}
+              </div>
               <div className="text-sm text-slate-500 mt-0.5">月均结算金额</div>
             </div>
           </div>
@@ -95,9 +99,7 @@ export default function InsurancePage() {
       </div>
 
       <div className="card p-6">
-        <h3 className="text-base font-semibold text-slate-900 mb-6">
-          月度结算趋势
-        </h3>
+        <h3 className="text-base font-semibold text-slate-900 mb-6">月度结算趋势</h3>
         <div className="h-96">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={data} margin={{ top: 20, right: 30, left: 0, bottom: 10 }}>

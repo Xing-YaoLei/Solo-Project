@@ -114,6 +114,18 @@ export interface InsuranceTransaction {
   storeId?: string;
 }
 
+export interface MedicationRecord {
+  id: string;
+  memberId: string;
+  memberName: string;
+  drugName: string;
+  drugSku: string;
+  quantity: number;
+  unitPrice: number;
+  purchaseDate: string;
+  storeId?: string;
+}
+
 export interface DashboardOverview {
   totalChronicMembers: number;
   highRiskCount: number;

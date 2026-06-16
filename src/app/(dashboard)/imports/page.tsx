@@ -18,34 +18,59 @@ import {
   RefreshCw,
   Eye,
 } from "lucide-react";
-import { getImportBatches, getImportBatchDetail } from "@/lib/mock-data";
+import { useDataStore, type ImportSource } from "@/lib/data-store";
 import type { ImportBatch, ImportRecord } from "@/lib/mock-data";
+import { useAuthStore } from "@/lib/auth-store";
 import { cn, formatDateTime, getSourceLabel, getStatusLabel } from "@/lib/utils";
 
 export default function ImportsPage() {
+  const { user } = useAuthStore();
+  const store = useDataStore();
   const [batches, setBatches] = useState<ImportBatch[]>([]);
   const [sourceFilter, setSourceFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [search, setSearch] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [detail, setDetail] = useState<ReturnType<typeof getImportBatchDetail> | null>(null);
+  const [detail, setDetail] = useState<any>(null);
   const [showNewModal, setShowNewModal] = useState(false);
 
+  const refresh = () => {
+    setBatches(
+      store.getImportBatches({
+        source: sourceFilter || undefined,
+        status: statusFilter || undefined,
+      })
+    );
+  };
+
   useEffect(() => {
-    setBatches(getImportBatches({ source: sourceFilter || undefined, status: statusFilter || undefined }));
-  }, [sourceFilter, statusFilter]);
+    refresh();
+  }, [store, sourceFilter, statusFilter]);
 
   useEffect(() => {
     if (expandedId) {
-      setDetail(getImportBatchDetail(expandedId));
+      setDetail(store.getImportBatchDetail(expandedId));
     } else {
       setDetail(null);
     }
-  }, [expandedId]);
+  }, [expandedId, store]);
 
   const filtered = batches.filter(
     (b) => !search || (b.fileName || "").toLowerCase().includes(search.toLowerCase())
   );
+
+  const handleCreateBatch = (
+    source: ImportSource,
+    fileName: string,
+    recordCount: number
+  ) => {
+    if (!user) return;
+    const rows = generateSampleRows(source, recordCount);
+    const batch = store.createImportBatch(source, fileName, user.id, rows);
+    store.processImportBatch(batch.id);
+    refresh();
+    setShowNewModal(false);
+  };
 
   const StatusIcon = ({ status }: { status: string }) => {
     switch (status) {
@@ -72,10 +97,19 @@ export default function ImportsPage() {
             管理收银系统、会员记录、库存表、医保流水的数据导入批次，支持全链路回查
           </p>
         </div>
-        <button onClick={() => setShowNewModal(true)} className="btn-primary">
-          <Upload className="w-4 h-4 mr-2" />
-          新建导入
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={refresh}
+            className="btn-secondary flex items-center gap-1.5"
+          >
+            <RefreshCw className="w-4 h-4" />
+            刷新
+          </button>
+          <button onClick={() => setShowNewModal(true)} className="btn-primary">
+            <Upload className="w-4 h-4 mr-2" />
+            新建导入
+          </button>
+        </div>
       </div>
 
       <div className="card p-4">
@@ -214,8 +248,8 @@ export default function ImportsPage() {
                         </span>
                       </td>
                     </tr>
-                    {isExpanded && detail && detail.batch.id === b.id && (
-                      <tr className="bg-slate-50">
+                    {isExpanded && detail && detail.batch && detail.batch.id === b.id && (
+                      <tr key={`${b.id}-detail`} className="bg-slate-50">
                         <td colSpan={8} className="px-5 py-4">
                           <div className="space-y-4 animate-fade-in">
                             <div className="flex items-center justify-between">
@@ -224,7 +258,15 @@ export default function ImportsPage() {
                                 批次明细回查
                               </h4>
                               {b.status === "failed" && (
-                                <button className="btn-secondary text-xs py-1">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    store.processImportBatch(b.id);
+                                    refresh();
+                                    setDetail(store.getImportBatchDetail(b.id));
+                                  }}
+                                  className="btn-secondary text-xs py-1"
+                                >
                                   <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
                                   重试导入
                                 </button>
@@ -249,7 +291,7 @@ export default function ImportsPage() {
                                   </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
-                                  {detail.records.slice(0, 10).map((r, i) => (
+                                  {detail.records && detail.records.slice(0, 10).map((r: ImportRecord, i: number) => (
                                     <tr key={r.id} className="hover:bg-slate-50">
                                       <td className="px-4 py-2 text-slate-500">#{i + 1}</td>
                                       <td className="px-4 py-2">
@@ -276,7 +318,7 @@ export default function ImportsPage() {
                                   ))}
                                 </tbody>
                               </table>
-                              {detail.records.length > 10 && (
+                              {detail.records && detail.records.length > 10 && (
                                 <div className="px-4 py-2 text-center text-xs text-slate-500 border-t border-slate-100">
                                   仅展示前 10 条，共 {detail.records.length} 条记录
                                 </div>
@@ -300,19 +342,46 @@ export default function ImportsPage() {
       </div>
 
       {showNewModal && (
-        <NewImportModal onClose={() => setShowNewModal(false)} />
+        <NewImportModal
+          onClose={() => setShowNewModal(false)}
+          onSubmit={handleCreateBatch}
+        />
       )}
     </div>
   );
 }
 
-function NewImportModal({ onClose }: { onClose: () => void }) {
-  const [source, setSource] = useState("pos");
+function NewImportModal({
+  onClose,
+  onSubmit,
+}: {
+  onClose: () => void;
+  onSubmit: (source: ImportSource, fileName: string, recordCount: number) => void;
+}) {
+  const [source, setSource] = useState<ImportSource>("pos");
   const [fileName, setFileName] = useState("");
+  const [recordCount, setRecordCount] = useState(20);
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = () => {
+    setSubmitting(true);
+    setTimeout(() => {
+      const finalFileName = fileName || `${source}_import_${Date.now()}.csv`;
+      onSubmit(source, finalFileName, recordCount);
+      setSubmitting(false);
+    }, 600);
+  };
+
+  const sourceDescription: Record<ImportSource, string> = {
+    pos: "收银系统流水会匹配/新建会员档案，写入用药记录，自动生成库存批次与补货单，如含医保金额则同时写入医保流水",
+    member: "会员记录按手机号去重合并，新建或更新会员档案与慢病标签",
+    inventory: "库存表写入库存批次记录，并按安全库存自动生成补货订单",
+    insurance: "医保流水匹配会员后写入交易记录，驱动医保流水趋势图表",
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-slide-up">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg animate-slide-up">
         <div className="px-6 py-5 border-b border-slate-200 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-slate-900">新建数据导入</h3>
           <button
@@ -329,7 +398,7 @@ function NewImportModal({ onClose }: { onClose: () => void }) {
             </label>
             <select
               value={source}
-              onChange={(e) => setSource(e.target.value)}
+              onChange={(e) => setSource(e.target.value as ImportSource)}
               className="input-field"
             >
               <option value="pos">收银系统</option>
@@ -337,34 +406,136 @@ function NewImportModal({ onClose }: { onClose: () => void }) {
               <option value="inventory">库存表</option>
               <option value="insurance">医保流水</option>
             </select>
+            <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+              {sourceDescription[source]}
+            </p>
           </div>
+
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">
-              上传文件
+              文件名 <span className="text-slate-400">（可选）</span>
             </label>
-            <div
-              className="border-2 border-dashed border-slate-300 rounded-lg p-8 text-center hover:border-primary-400 hover:bg-primary-50/30 transition-colors cursor-pointer"
-              onClick={() => setFileName("sample_import_file.csv")}
-            >
-              <Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-              <div className="text-sm text-slate-700 font-medium">
-                {fileName || "点击或拖拽文件到此处上传"}
-              </div>
-              <div className="text-xs text-slate-500 mt-1">
-                支持 CSV / Excel 格式，最大 50MB
-              </div>
+            <input
+              type="text"
+              value={fileName}
+              onChange={(e) => setFileName(e.target.value)}
+              placeholder={`如：${source}_export_202506.csv`}
+              className="input-field"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              模拟记录数
+            </label>
+            <div className="flex items-center gap-3">
+              <input
+                type="range"
+                min={5}
+                max={100}
+                step={5}
+                value={recordCount}
+                onChange={(e) => setRecordCount(Number(e.target.value))}
+                className="flex-1 accent-primary-600"
+              />
+              <span className="text-sm font-medium text-slate-700 w-16 text-right">
+                {recordCount} 条
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 mt-1.5">
+              将生成 {recordCount} 条模拟数据用于演示导入流程
+            </p>
+          </div>
+
+          <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:border-primary-400 hover:bg-primary-50/30 transition-colors">
+            <Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+            <div className="text-sm text-slate-700 font-medium">
+              模拟文件上传模式
+            </div>
+            <div className="text-xs text-slate-500 mt-1">
+              演示环境下自动生成样本数据，无需真实上传
             </div>
           </div>
         </div>
         <div className="px-6 py-4 border-t border-slate-200 flex justify-end gap-3">
-          <button onClick={onClose} className="btn-secondary">
+          <button onClick={onClose} className="btn-secondary" disabled={submitting}>
             取消
           </button>
-          <button onClick={onClose} className="btn-primary">
-            开始导入
+          <button
+            onClick={handleSubmit}
+            className="btn-primary"
+            disabled={submitting}
+          >
+            {submitting ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                处理中...
+              </>
+            ) : (
+              <>
+                <Upload className="w-4 h-4 mr-2" />
+                开始导入
+              </>
+            )}
           </button>
         </div>
       </div>
     </div>
   );
+}
+
+function generateSampleRows(source: string, count: number) {
+  const names = ["赵明", "钱华", "孙丽", "李军", "周敏", "吴强", "郑芳", "王磊"];
+  const drugs = ["苯磺酸氨氯地平片", "盐酸二甲双胍缓释片", "阿托伐他汀钙片", "阿司匹林肠溶片"];
+  const rows = [];
+  for (let i = 0; i < count; i++) {
+    const name = names[i % names.length] + (i >= names.length ? i : "");
+    if (source === "pos") {
+      rows.push({
+        row: i + 1,
+        memberName: name,
+        phone: `139${String(10000000 + i * 137).slice(0, 8)}`,
+        drugName: drugs[i % drugs.length],
+        drugSku: `DRUG${String((i % 10) + 1).padStart(3, "0")}`,
+        quantity: 1 + (i % 3),
+        unitPrice: 25 + i * 3.5,
+        purchaseDate: `2025-06-${String((i % 28) + 1).padStart(2, "0")}`,
+        expiryDays: 10 + (i % 100),
+        batchNo: `B2025${String(i + 1).padStart(4, "0")}`,
+        insuranceAmount: i % 2 === 0 ? 100 + i * 10 : undefined,
+        storeId: "s1",
+      });
+    } else if (source === "member") {
+      rows.push({
+        row: i + 1,
+        name,
+        phone: `139${String(10000000 + i * 137).slice(0, 8)}`,
+        age: 50 + (i % 30),
+        gender: i % 2 === 0 ? "男" : "女",
+        riskLevel: i % 5 === 0 ? "high" : i % 3 === 0 ? "medium" : "low",
+        chronicTypes: i % 2 === 0 ? ["高血压"] : ["糖尿病"],
+        storeId: "s1",
+      });
+    } else if (source === "inventory") {
+      rows.push({
+        row: i + 1,
+        drugName: drugs[i % drugs.length],
+        batchNo: `B2025${String(i + 1).padStart(4, "0")}`,
+        expiryDate: `2025-${String((i % 12) + 1).padStart(2, "0")}-${String((i % 28) + 1).padStart(2, "0")}`,
+        quantity: 50 + i * 20,
+        storeId: "s1",
+      });
+    } else {
+      rows.push({
+        row: i + 1,
+        memberName: name,
+        phone: `139${String(10000000 + i * 137).slice(0, 8)}`,
+        amount: 80 + i * 25.5,
+        count: 1 + (i % 3),
+        transactionDate: `2025-${String((i % 6) + 1).padStart(2, "0")}-${String((i % 28) + 1).padStart(2, "0")}`,
+        storeId: "s1",
+      });
+    }
+  }
+  return rows;
 }
