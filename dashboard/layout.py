@@ -3,6 +3,7 @@ import pandas as pd
 from datetime import datetime, timedelta, date
 from dash import dcc, html, Input, Output, State, callback, ctx, dash_table
 import dash_bootstrap_components as dbc
+import logging
 
 from dashboard.app import app
 from dashboard.components import (
@@ -16,6 +17,15 @@ from data.queries import (
     aggregate_daily_stats, detect_no_show_impact_periods, get_sync_delay_annotations
 )
 from config.settings import Config
+
+logger = logging.getLogger(__name__)
+
+try:
+    from celery_tasks.tasks import run_full_monitoring_cycle
+    CELERY_AVAILABLE = True
+except ImportError:
+    CELERY_AVAILABLE = False
+    logger.warning("Celery tasks not available, running in data-only mode")
 
 
 def _build_header_right():
@@ -301,6 +311,15 @@ def update_filter(n1, n2, n3, n4):
 )
 def load_all_data(n_refresh, n_interval, start_date, end_date):
     try:
+        triggered_by = ctx.triggered_id if hasattr(ctx, 'triggered_id') else (ctx.triggered[0]['prop_id'].split('.')[0] if ctx.triggered else None)
+
+        if not Config.DEMO_MODE and CELERY_AVAILABLE and triggered_by == "refresh-btn":
+            try:
+                result = run_full_monitoring_cycle.delay()
+                logger.info(f"Manual refresh triggered full monitoring cycle: {result.id}")
+            except Exception as e:
+                logger.error(f"Failed to trigger monitoring cycle: {e}")
+
         if Config.DEMO_MODE:
             from data.demo_data import (
                 generate_demo_appointments, generate_demo_followups,

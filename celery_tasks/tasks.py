@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime, timedelta
-from celery import chain
+from celery import chain, group
 from sqlalchemy import and_, func, or_
 from database.connection import get_session
 from database.models import (
@@ -13,8 +13,8 @@ from celery_tasks.app import celery_app
 logger = logging.getLogger(__name__)
 
 
-@celery_app.task(name="celery_tasks.tasks.sync_his_data", bind=True, max_retries=3)
-def sync_his_data(self, full_sync=False):
+@celery_app.task(name="celery_tasks.tasks.sync_his_data", bind=True, max_retries=3, queue="sync_queue")
+def sync_his_data(self, full_sync=False, *args, **kwargs):
     session = get_session()
     sync_log = SyncLog(
         sync_type="HIS_SYNC",
@@ -67,8 +67,8 @@ def sync_his_data(self, full_sync=False):
         session.close()
 
 
-@celery_app.task(name="celery_tasks.tasks.check_his_delay")
-def check_his_delay():
+@celery_app.task(name="celery_tasks.tasks.check_his_delay", queue="monitor_queue")
+def check_his_delay(*args, **kwargs):
     session = get_session()
     try:
         threshold = Config.HIS_DELAY_THRESHOLD_MINUTES
@@ -103,8 +103,8 @@ def check_his_delay():
         session.close()
 
 
-@celery_app.task(name="celery_tasks.tasks.check_imaging_missing")
-def check_imaging_missing():
+@celery_app.task(name="celery_tasks.tasks.check_imaging_missing", queue="monitor_queue")
+def check_imaging_missing(*args, **kwargs):
     session = get_session()
     try:
         now = datetime.utcnow()
@@ -165,8 +165,8 @@ def check_imaging_missing():
         session.close()
 
 
-@celery_app.task(name="celery_tasks.tasks.check_no_show_impact")
-def check_no_show_impact():
+@celery_app.task(name="celery_tasks.tasks.check_no_show_impact", queue="analytics_queue")
+def check_no_show_impact(*args, **kwargs):
     session = get_session()
     try:
         today = datetime.utcnow().date()
@@ -225,8 +225,8 @@ def check_no_show_impact():
         session.close()
 
 
-@celery_app.task(name="celery_tasks.tasks.check_billing_caliber_change")
-def check_billing_caliber_change():
+@celery_app.task(name="celery_tasks.tasks.check_billing_caliber_change", queue="monitor_queue")
+def check_billing_caliber_change(*args, **kwargs):
     session = get_session()
     try:
         now = datetime.utcnow()
@@ -259,14 +259,17 @@ def check_billing_caliber_change():
         session.close()
 
 
-@celery_app.task(name="celery_tasks.tasks.run_full_monitoring_cycle")
-def run_full_monitoring_cycle():
+@celery_app.task(name="celery_tasks.tasks.run_full_monitoring_cycle", queue="analytics_queue")
+def run_full_monitoring_cycle(*args, **kwargs):
     workflow = chain(
-        sync_his_data.s(),
-        check_his_delay.s(),
-        check_imaging_missing.s(),
-        check_no_show_impact.s(),
-        check_billing_caliber_change.s()
+        sync_his_data.si(full_sync=False),
+        group(
+            check_his_delay.si(),
+            check_imaging_missing.si(),
+            check_billing_caliber_change.si()
+        ),
+        check_no_show_impact.si()
     )
     result = workflow.apply_async()
-    return {"task_id": result.id, "status": "started"}
+    logger.info(f"Full monitoring cycle started, chain task_id: {result.id}")
+    return {"chain_task_id": result.id, "status": "started"}
