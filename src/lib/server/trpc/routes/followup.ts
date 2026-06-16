@@ -297,6 +297,12 @@ export const followupRouter = createTRPCRouter({
 
       return ctx.db.query.members.findMany({
         where: and(...whereConditions),
+        columns: {
+          id: true,
+          name: true,
+          memberNo: true,
+          phone: true
+        },
         limit: 50,
         orderBy: [desc(members.createdAt)]
       });
@@ -305,6 +311,10 @@ export const followupRouter = createTRPCRouter({
   getMemberPrescriptions: protectedProcedure
     .input(z.string())
     .query(async ({ ctx, input }) => {
+      if (!['admin', 'manager'].includes(ctx.user.role)) {
+        throw new Error('无权限访问会员处方');
+      }
+
       return ctx.db.query.prescriptions.findMany({
         where: eq(prescriptions.memberId, input),
         with: {
@@ -317,6 +327,10 @@ export const followupRouter = createTRPCRouter({
   getMemberReplenishmentOrders: protectedProcedure
     .input(z.string())
     .query(async ({ ctx, input }) => {
+      if (!['admin', 'manager'].includes(ctx.user.role)) {
+        throw new Error('无权限访问会员补货单');
+      }
+
       return ctx.db.query.replenishmentOrders.findMany({
         where: eq(replenishmentOrders.memberId, input),
         with: {
@@ -336,6 +350,10 @@ export const followupRouter = createTRPCRouter({
       search: z.string().optional()
     }))
     .query(async ({ ctx, input }) => {
+      if (!['admin', 'manager'].includes(ctx.user.role)) {
+        throw new Error('无权限访问药品列表');
+      }
+
       const whereConditions = [];
       if (input.search) {
         whereConditions.push(
@@ -356,6 +374,10 @@ export const followupRouter = createTRPCRouter({
   getDrugBatches: protectedProcedure
     .input(z.string())
     .query(async ({ ctx, input }) => {
+      if (!['admin', 'manager'].includes(ctx.user.role)) {
+        throw new Error('无权限访问药品批号');
+      }
+
       return ctx.db.query.drugBatches.findMany({
         where: eq(drugBatches.drugId, input),
         with: {
@@ -367,6 +389,10 @@ export const followupRouter = createTRPCRouter({
 
   getStaffList: protectedProcedure
     .query(async ({ ctx }) => {
+      if (!['admin', 'manager'].includes(ctx.user.role)) {
+        throw new Error('无权限访问员工列表');
+      }
+
       return ctx.db.query.users.findMany({
         where: and(
           or(
