@@ -1,0 +1,35 @@
+export const GAME_CONFIG = {
+  WIDTH: 1280,
+  HEIGHT: 720,
+  INITIAL_MONEY: 10000,
+  INITIAL_REPUTATION: 50,
+  MAX_REPUTATION: 100,
+  MIN_REPUTATION: 0,
+  DAY_DURATION: 60000,
+  MAX_TASKS_PER_DAY: 5,
+  INSURANCE_AUDIT_CHANCE: 0.15,
+  SCORE_BASE: 100,
+  SCORE_BONUS_PERFECT: 50,
+  SCORE_PENALTY_ERROR: -30,
+  SCORE_PENALTY_REJECTION: -50,
+  STORAGE_KEYS: {
+    SAVE_DATA: 'rehab_center_save',
+    TRAINING_RECORDS: 'rehab_center_records',
+    LEADERBOARD: 'rehab_center_leaderboard',
+    TUTORIAL_STATUS: 'rehab_center_tutorial'
+  }
+} as const
+
+export const COLORS = {
+  PRIMARY: 0x4a90d9,
+  SECONDARY: 0x50c878,
+  ACCENT: 0xff6b6b,
+  WARNING: 0xffd93d,
+  BACKGROUND: 0x1a1a2e,
+  SURFACE: 0x16213e,
+  SURFACE_LIGHT: 0x0f3460,
+  TEXT: 0xffffff,
+  TEXT_SECONDARY: 0xa0a0a0,
+  SUCCESS: 0x50c878,
+  ERROR: 0xff6b6b
+} as const
