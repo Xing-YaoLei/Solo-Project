@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>口腔诊所会员复诊调度训练系统</title>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: linear-gradient(135deg, #1a3a4a 0%, #0d1b2a 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        color: #fff;
+    }
+    .container {
+        max-width: 700px;
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(10px);
+        border-radius: 16px;
+        padding: 40px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+    .header {
+        text-align: center;
+        margin-bottom: 30px;
+    }
+    .icon {
+        font-size: 64px;
+        margin-bottom: 10px;
+    }
+    h1 {
+        font-size: 28px;
+        margin-bottom: 8px;
+        background: linear-gradient(90deg, #4ecdc4, #44a3aa);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    .subtitle {
+        color: rgba(255, 255, 255, 0.6);
+        font-size: 14px;
+    }
+    .status {
+        background: rgba(255, 193, 7, 0.1);
+        border: 1px solid rgba(255, 193, 7, 0.3);
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 25px;
+    }
+    .status-title {
+        color: #ffc107;
+        font-weight: 600;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .status-text {
+        color: rgba(255, 255, 255, 0.8);
+        font-size: 14px;
+        line-height: 1.6;
+    }
+    .features {
+        margin-bottom: 25px;
+    }
+    .features h2 {
+        font-size: 16px;
+        color: rgba(255, 255, 255, 0.7);
+        margin-bottom: 12px;
+        font-weight: 500;
+    }
+    .feature-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+    .feature {
+        background: rgba(255, 255, 255, 0.05);
+        padding: 12px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        color: rgba(255, 255, 255, 0.8);
+        border-left: 3px solid #4ecdc4;
+    }
+    .highlight {
+        border-left-color: #a855f7;
+    }
+    .section {
+        margin-bottom: 20px;
+    }
+    .section h3 {
+        font-size: 14px;
+        color: rgba(255, 255, 255, 0.6);
+        margin-bottom: 10px;
+        font-weight: 500;
+    }
+    code {
+        background: rgba(0, 0, 0, 0.3);
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-family: "SF Mono", Menlo, monospace;
+        font-size: 12px;
+        color: #4ecdc4;
+    }
+    .steps {
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 10px;
+        padding: 16px;
+    }
+    .step {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 12px;
+        align-items: flex-start;
+    }
+    .step:last-child {
+        margin-bottom: 0;
+    }
+    .step-num {
+        width: 24px;
+        height: 24px;
+        background: #4ecdc4;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: 600;
+        flex-shrink: 0;
+        color: #0d1b2a;
+    }
+    .step-text {
+        font-size: 13px;
+        color: rgba(255, 255, 255, 0.8);
+        line-height: 1.6;
+    }
+    .footer {
+        margin-top: 25px;
+        padding-top: 20px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        text-align: center;
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.4);
+    }
+    .btn {
+        display: inline-block;
+        padding: 10px 20px;
+        background: linear-gradient(135deg, #4ecdc4, #44a3aa);
+        color: #0d1b2a;
+        text-decoration: none;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 14px;
+        margin-top: 10px;
+        transition: transform 0.2s;
+    }
+    .btn:hover {
+        transform: translateY(-2px);
+    }
+</style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="icon">🦷</div>
+            <h1>口腔诊所会员复诊调度训练</h1>
+            <p class="subtitle">Dental Clinic Revisit Training System</p>
+        </div>
+
+        <div class="status">
+            <div class="status-title">
+                <span>⚠️</span>
+                <span>导出引导页</span>
+            </div>
+            <div class="status-text">
+                这是项目引导页。运行 <code>./build_web.sh</code> 后，本文件会被真正的游戏页面替代。
+            </div>
+        </div>
+
+        <div class="features">
+            <h2>✅ 核心训练功能</h2>
+            <div class="feature-grid">
+                <div class="feature">📸 影像附件快速处理</div>
+                <div class="feature highlight">📋 患者档案错误回放 <b>×3</b></div>
+                <div class="feature">💰 收费明细核对</div>
+                <div class="feature">⏱️ 真实犹豫耗时显示</div>
+                <div class="feature">⚠️ 爽约视觉预警</div>
+                <div class="feature">📊 复诊率统计</div>
+                <div class="feature">🏆 双维度排行榜</div>
+                <div class="feature">🎬 错误步骤回放</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>🚀 一键导出 Web 版本</h3>
+            <div class="steps">
+                <div class="step">
+                    <div class="step-num">1</div>
+                    <div class="step-text">
+                        打开终端，进入项目目录<br>
+                        <code>cd /Users/yaoleyxing/Developer/solo-mange-pro/MP0198</code>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-num">2</div>
+                    <div class="step-text">
+                        运行一键导出脚本<br>
+                        <code>./build_web.sh</code>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-num">3</div>
+                    <div class="step-text">
+                        脚本会自动下载 Godot 4.3 和 Web 导出模板，完成后在 export/web/ 目录下生成可运行的游戏。
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-num">4</div>
+                    <div class="step-text">
+                        启动本地服务器预览<br>
+                        <code>cd export/web && python3 -m http.server 8000</code>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>💻 直接用 Godot 运行</h3>
+            <div class="steps">
+                <div class="step">
+                    <div class="step-num">1</div>
+                    <div class="step-text">
+                        用 <b>Godot 4.3+</b> 打开项目目录<br>
+                        <code>/Users/yaoleyxing/Developer/solo-mange-pro/MP0198</code>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-num">2</div>
+                    <div class="step-text">
+                        按 <code>F5</code> 直接开始训练
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            MP0198 · 口腔诊所会员复诊调度解谜游戏 · Godot 4 + GDScript
+        </div>
+    </div>
+</body>
+</html>
