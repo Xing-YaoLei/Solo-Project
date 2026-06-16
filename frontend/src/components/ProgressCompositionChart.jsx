@@ -2,11 +2,20 @@ import React, { useEffect, useState } from 'react'
 import ReactECharts from 'echarts-for-react'
 import { analyticsAPI } from '../utils/api'
 
-const ProgressCompositionChart = ({ onRefresh }) => {
+const ProgressCompositionChart = ({ onRefresh, externalData = null }) => {
   const [data, setData] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(!externalData)
 
   const fetchData = async () => {
+    if (externalData) {
+      setData(externalData)
+      if (onRefresh && externalData.refreshed_at) {
+        onRefresh(externalData.refreshed_at)
+      }
+      setLoading(false)
+      return
+    }
+
     setLoading(true)
     try {
       const res = await analyticsAPI.getProgressComposition()
@@ -23,10 +32,22 @@ const ProgressCompositionChart = ({ onRefresh }) => {
 
   useEffect(() => {
     fetchData()
-  }, [])
+  }, [externalData])
 
   const getOption = () => {
-    if (!data) return {}
+    if (!data || !data.data || data.data.length === 0) {
+      return {
+        title: {
+          text: '暂无数据权限',
+          left: 'center',
+          top: 'center',
+          textStyle: {
+            color: '#9ca3af',
+            fontSize: 14
+          }
+        }
+      }
+    }
 
     const pieData = data.data.map(item => ({
       name: item.category,
@@ -72,7 +93,7 @@ const ProgressCompositionChart = ({ onRefresh }) => {
               show: true,
               fontSize: 20,
               fontWeight: 'bold',
-              formatter: (params) => {
+              formatter: () => {
                 return `总人数\n${data.total}`
               }
             }

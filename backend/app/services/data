@@ -1,0 +1,343 @@
+from abc import ABC, abstractmethod
+from typing import Dict, Any, List, Optional
+from datetime import datetime, timedelta
+import pandas as pd
+import numpy as np
+import duckdb
+from ..core.database import get_db
+from ..core.duckdb_conn import get_duckdb_connection
+from ..core.config import get_settings
+
+settings = get_settings()
+
+
+class BaseDataSource(ABC):
+    name: str = "base"
+    display_name: str = "基础数据源"
+    description: str = ""
+
+    def __init__(self):
+        self.last_sync_at: Optional[datetime] = None
+        self.sync_status: str = "idle"
+        self.record_count: int = 0
+        self.sync_history: List[Dict[str, Any]] = []
+
+    @abstractmethod
+    def fetch_data(self, data_type: str, params: Dict[str, Any]) -> Dict[str, Any]:
+        pass
+
+    @abstractmethod
+    def sync_data(self, **options) -> Dict[str, Any]:
+        pass
+
+    def get_sync_status(self) -> Dict[str, Any]:
+        return {
+            "name": self.name,
+            "display_name": self.display_name,
+            "description": self.description,
+            "status": self.sync_status,
+            "last_sync_at": self.last_sync_at,
+            "record_count": self.record_count,
+            "recent_syncs": self.sync_history[-5:] if self.sync_history else []
+        }
+
+    def _log_sync(self, success: bool, record_count: int, error: str = None):
+        self.sync_history.append({
+            "synced_at": datetime.now(),
+            "success": success,
+            "record_count": record_count,
+            "error": error
+        })
+        if len(self.sync_history) > 50:
+            self.sync_history = self.sync_history[-50:]
+
+
+class PostgreSQLDataSource(BaseDataSource):
+    name: str = "postgresql"
+    display_name: str = "PostgreSQL 核心数据库"
+    description: str = "存储学生、课程、成绩、章节等核心业务数据"
+
+    def __init__(self):
+        super().__init__()
+        self._init_tables()
+
+    def _init_tables(self):
+        with get_duckdb_connection() as con:
+            con.execute("""
+                CREATE TABLE IF NOT EXISTS pg_students (
+                    id INTEGER,
+                    student_id VARCHAR,
+                    name VARCHAR,
+                    gender VARCHAR,
+                    age INTEGER,
+                    major VARCHAR,
+                    class_name VARCHAR,
+                    enrollment_date DATE,
+                    status VARCHAR,
+                    email VARCHAR,
+                    phone VARCHAR,
+                    created_at TIMESTAMP
+                )
+            """)
+
+            con.execute("""
+                CREATE TABLE IF NOT EXISTS pg_courses (
+                    id INTEGER,
+                    course_code VARCHAR,
+                    course_name VARCHAR,
+                    credit FLOAT,
+                    total_hours INTEGER,
+                    department VARCHAR,
+                    teacher VARCHAR,
+                    semester VARCHAR,
+                    status VARCHAR,
+                    created_at TIMESTAMP
+                )
+            """)
+
+            con.execute("""
+                CREATE TABLE IF NOT EXISTS pg_grades (
+                    id INTEGER,
+                    student_id VARCHAR,
+                    student_name VARCHAR,
+                    course_id INTEGER,
+                    course_name VARCHAR,
+                    chapter_id INTEGER,
+                    chapter_name VARCHAR,
+                    score FLOAT,
+                    total_questions INTEGER,
+                    correct_count INTEGER,
+                    time_spent INTEGER,
+                    submit_time TIMESTAMP,
+                    created_at TIMESTAMP
+                )
+            """)
+
+            con.execute("""
+                CREATE TABLE IF NOT EXISTS pg_chapters (
+                    id INTEGER,
+                    course_id INTEGER,
+                    course_name VARCHAR,
+                    chapter_code VARCHAR,
+                    chapter_name VARCHAR,
+                    chapter_order INTEGER,
+                    total_students INTEGER,
+                    completed_students INTEGER,
+                    avg_score FLOAT,
+                    completion_rate FLOAT,
+                    created_at TIMESTAMP
+                )
+            """)
+
+            self._seed_mock_data(con)
+
+    def _seed_mock_data(self, con: duckdb.DuckDBPyConnection):
+        count = con.execute("SELECT COUNT(*) FROM pg_students").fetchone()[0]
+        if count > 0:
+            return
+
+        first_names = ["张", "李", "王", "刘", "陈", "杨", "赵", "黄", "周", "吴"]
+        last_names = ["伟", "芳", "娜", "敏", "静", "强", "磊", "洋", "艳", "勇"]
+        majors = ["计算机科学与技术", "软件工程", "人工智能", "大数据技术", "网络工程"]
+        classes = ["计科2101", "计科2102", "软工2101", "软工2102", "AI2101"]
+        courses = [
+            ("CS001", "Java高级开发", 4.0, 64),
+            ("CS002", "Python数据分析", 3.5, 48),
+            ("CS003", "Web前端工程", 4.0, 64),
+            ("CS004", "数据库系统原理", 3.0, 48),
+            ("CS005", "计算机网络基础", 3.5, 48)
+        ]
+        chapters = ["第一章 基础入门", "第二章 核心概念", "第三章 进阶技巧", "第四章 实战演练", "第五章 综合测试"]
+
+        students = []
+        for i in range(500):
+            students.append({
+                "id": i + 1,
+                "student_id": f"S{2024001 + i}",
+                "name": np.random.choice(first_names) + np.random.choice(last_names),
+                "gender": np.random.choice(["男", "女"]),
+                "age": np.random.randint(18, 25),
+                "major": np.random.choice(majors),
+                "class_name": np.random.choice(classes),
+                "enrollment_date": datetime(2024, 9, 1).date(),
+                "status": np.random.choice(["在读", "休学", "毕业"], p=[0.9, 0.05, 0.05]),
+                "email": f"s{2024001 + i}@edu.com",
+                "phone": f"138{np.random.randint(10000000, 99999999)}",
+                "created_at": datetime.now() - timedelta(days=np.random.randint(0, 365))
+            })
+        pd.DataFrame(students).to_sql("pg_students", con, if_exists="append", index=False)
+
+        course_data = []
+        for i, (code, name, credit, hours) in enumerate(courses):
+            course_data.append({
+                "id": i + 1,
+                "course_code": code,
+                "course_name": name,
+                "credit": credit,
+                "total_hours": hours,
+                "department": "计算机学院",
+                "teacher": f"教师{i + 1}",
+                "semester": "2026春",
+                "status": "进行中",
+                "created_at": datetime.now() - timedelta(days=180)
+            })
+        pd.DataFrame(course_data).to_sql("pg_courses", con, if_exists="append", index=False)
+
+        grades = []
+        gid = 1
+        for student in students[:200]:
+            for course in course_data:
+                for ci, chapter in enumerate(chapters):
+                    total_q = np.random.randint(20, 50)
+                    correct = np.random.randint(5, total_q)
+                    grades.append({
+                        "id": gid,
+                        "student_id": student["student_id"],
+                        "student_name": student["name"],
+                        "course_id": course["id"],
+                        "course_name": course["course_name"],
+                        "chapter_id": ci + 1,
+                        "chapter_name": chapter,
+                        "score": round(correct / total_q * 100, 1),
+                        "total_questions": total_q,
+                        "correct_count": correct,
+                        "time_spent": np.random.randint(600, 3600),
+                        "submit_time": datetime.now() - timedelta(days=np.random.randint(0, 30)),
+                        "created_at": datetime.now() - timedelta(days=np.random.randint(0, 30))
+                    })
+                    gid += 1
+        pd.DataFrame(grades).to_sql("pg_grades", con, if_exists="append", index=False)
+
+        chapter_stats = []
+        cid = 1
+        for course in course_data:
+            for ci, chapter in enumerate(chapters):
+                total_students = np.random.randint(200, 500)
+                completed = int(total_students * np.random.uniform(0.3, 0.9))
+                chapter_stats.append({
+                    "id": cid,
+                    "course_id": course["id"],
+                    "course_name": course["course_name"],
+                    "chapter_code": f"{course['course_code']}-{ci + 1}",
+                    "chapter_name": chapter,
+                    "chapter_order": ci + 1,
+                    "total_students": total_students,
+                    "completed_students": completed,
+                    "avg_score": round(np.random.uniform(60, 90), 1),
+                    "completion_rate": round(completed / total_students * 100, 2),
+                    "created_at": datetime.now() - timedelta(days=30)
+                })
+                cid += 1
+        pd.DataFrame(chapter_stats).to_sql("pg_chapters", con, if_exists="append", index=False)
+
+        self.record_count = len(students) + len(course_data) + len(grades) + len(chapter_stats)
+        self.last_sync_at = datetime.now()
+
+    def fetch_data(self, data_type: str, params: Dict[str, Any]) -> Dict[str, Any]:
+        with get_duckdb_connection() as con:
+            if data_type == "all":
+                return {
+                    "students": self.fetch_data("students", params),
+                    "courses": self.fetch_data("courses", params),
+                    "grades": self.fetch_data("grades", params),
+                    "chapters": self.fetch_data("chapters", params)
+                }
+
+            elif data_type == "students":
+                query = "SELECT * FROM pg_students WHERE 1=1"
+                query_params = []
+
+                if params.get("status"):
+                    query += " AND status = ?"
+                    query_params.append(params["status"])
+                if params.get("major"):
+                    query += " AND major = ?"
+                    query_params.append(params["major"])
+                if params.get("class_name"):
+                    query += " AND class_name = ?"
+                    query_params.append(params["class_name"])
+
+                limit = params.get("limit", 100)
+                query += f" ORDER BY created_at DESC LIMIT ?"
+                query_params.append(limit)
+
+                df = con.execute(query, query_params).fetchdf()
+                return {"data": df.to_dict("records"), "total": len(df), "source": self.name}
+
+            elif data_type == "courses":
+                df = con.execute("SELECT * FROM pg_courses ORDER BY id").fetchdf()
+                return {"data": df.to_dict("records"), "total": len(df), "source": self.name}
+
+            elif data_type == "grades":
+                query = "SELECT * FROM pg_grades WHERE 1=1"
+                query_params = []
+
+                if params.get("student_id"):
+                    query += " AND student_id = ?"
+                    query_params.append(params["student_id"])
+                if params.get("course_id"):
+                    query += " AND course_id = ?"
+                    query_params.append(params["course_id"])
+                if params.get("chapter_id"):
+                    query += " AND chapter_id = ?"
+                    query_params.append(params["chapter_id"])
+                if params.get("start_date"):
+                    query += " AND submit_time >= ?"
+                    query_params.append(params["start_date"])
+                if params.get("end_date"):
+                    query += " AND submit_time <= ?"
+                    query_params.append(params["end_date"])
+
+                limit = params.get("limit", 500)
+                query += f" ORDER BY submit_time DESC LIMIT ?"
+                query_params.append(limit)
+
+                df = con.execute(query, query_params).fetchdf()
+                return {"data": df.to_dict("records"), "total": len(df), "source": self.name}
+
+            elif data_type == "chapters":
+                query = "SELECT * FROM pg_chapters WHERE 1=1"
+                query_params = []
+
+                if params.get("course_id"):
+                    query += " AND course_id = ?"
+                    query_params.append(params["course_id"])
+
+                query += " ORDER BY course_id, chapter_order"
+                df = con.execute(query, query_params).fetchdf()
+                return {"data": df.to_dict("records"), "total": len(df), "source": self.name}
+
+            else:
+                raise ValueError(f"不支持的数据类型: {data_type}")
+
+    def sync_data(self, **options) -> Dict[str, Any]:
+        self.sync_status = "syncing"
+        try:
+            with get_duckdb_connection() as con:
+                students_count = con.execute("SELECT COUNT(*) FROM pg_students").fetchone()[0]
+                grades_count = con.execute("SELECT COUNT(*) FROM pg_grades").fetchone()[0]
+                courses_count = con.execute("SELECT COUNT(*) FROM pg_courses").fetchone()[0]
+                chapters_count = con.execute("SELECT COUNT(*) FROM pg_chapters").fetchone()[0]
+
+                total = students_count + grades_count + courses_count + chapters_count
+                self.record_count = total
+                self.last_sync_at = datetime.now()
+                self.sync_status = "success"
+                self._log_sync(True, total)
+
+                return {
+                    "source": self.name,
+                    "success": True,
+                    "synced_at": self.last_sync_at,
+                    "record_count": total,
+                    "details": {
+                        "students": students_count,
+                        "courses": courses_count,
+                        "grades": grades_count,
+                        "chapters": chapters_count
+                    }
+                }
+        except Exception as e:
+            self.sync_status = "error"
+            self._log_sync(False, 0, str(e))
+            raise

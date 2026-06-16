@@ -1,15 +1,27 @@
 import React, { useEffect, useState } from 'react'
 import ReactECharts from 'echarts-for-react'
-import { Button, Space, Radio } from 'antd'
+import { Radio } from 'antd'
 import { analyticsAPI } from '../utils/api'
 
-const ChapterRankChart = ({ onRefresh }) => {
+const ChapterRankChart = ({ onRefresh, externalData = null, showToggle = true }) => {
   const [data, setData] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [viewMode, setViewMode] = useState('rate')
+  const [loading, setLoading] = useState(!externalData)
+  const [viewMode, setViewMode] = useState(externalData?.view_mode || 'rate')
   const [sortBy, setSortBy] = useState('completion_rate')
+  const [hasPermission, setHasPermission] = useState(true)
 
   const fetchData = async () => {
+    if (externalData) {
+      setData(externalData.data || [])
+      setViewMode(externalData.view_mode || 'rate')
+      setHasPermission((externalData.data?.length || 0) > 0)
+      if (onRefresh && externalData.refreshed_at) {
+        onRefresh(externalData.refreshed_at)
+      }
+      setLoading(false)
+      return
+    }
+
     setLoading(true)
     try {
       const res = await analyticsAPI.getChapterRank({
@@ -17,6 +29,7 @@ const ChapterRankChart = ({ onRefresh }) => {
         view_mode: viewMode
       })
       setData(res.data)
+      setHasPermission(true)
       if (onRefresh && res.refreshed_at) {
         onRefresh(res.refreshed_at)
       }
@@ -29,16 +42,29 @@ const ChapterRankChart = ({ onRefresh }) => {
 
   useEffect(() => {
     fetchData()
-  }, [sortBy, viewMode])
+  }, [sortBy, viewMode, externalData])
 
   const handleViewModeChange = (e) => {
+    if (externalData) return
     const newMode = e.target.value
     setViewMode(newMode)
     setSortBy(newMode === 'rate' ? 'completion_rate' : 'total_students')
   }
 
   const getOption = () => {
-    if (!data || data.length === 0) return {}
+    if (!data || data.length === 0) {
+      return {
+        title: {
+          text: '暂无数据权限',
+          left: 'center',
+          top: 'center',
+          textStyle: {
+            color: '#9ca3af',
+            fontSize: 14
+          }
+        }
+      }
+    }
 
     const sortedData = [...data].sort((a, b) => {
       if (viewMode === 'rate') {
@@ -51,10 +77,6 @@ const ChapterRankChart = ({ onRefresh }) => {
     const values = viewMode === 'rate'
       ? sortedData.map(item => item.completion_rate)
       : sortedData.map(item => item.total_students)
-
-    const completedValues = sortedData.map(item => item.completed_students)
-
-    const maxValue = Math.max(...values) * 1.1
 
     return {
       tooltip: {
@@ -129,18 +151,20 @@ const ChapterRankChart = ({ onRefresh }) => {
     }
   }
 
-  const viewToggle = (
+  const viewToggle = showToggle && !externalData ? (
     <Radio.Group size="small" value={viewMode} onChange={handleViewModeChange}>
       <Radio.Button value="rate">按完成率</Radio.Button>
       <Radio.Button value="absolute">按人数</Radio.Button>
     </Radio.Group>
-  )
+  ) : null
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'flex-end' }}>
-        {viewToggle}
-      </div>
+      {viewToggle && (
+        <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'flex-end' }}>
+          {viewToggle}
+        </div>
+      )}
       <div style={{ flex: 1, minHeight: 0 }}>
         <ReactECharts
           option={getOption()}

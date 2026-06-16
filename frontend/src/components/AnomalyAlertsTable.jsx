@@ -1,23 +1,37 @@
 import React, { useEffect, useState } from 'react'
-import { Table, Tag, Badge, Space } from 'antd'
+import { Table, Tag, Badge, Space, Empty } from 'antd'
 import { analyticsAPI } from '../utils/api'
 import dayjs from 'dayjs'
 
-const AnomalyAlertsTable = ({ onRefresh }) => {
+const AnomalyAlertsTable = ({ onRefresh, externalData = null }) => {
   const [data, setData] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(!externalData)
   const [total, setTotal] = useState(0)
   const [severityStats, setSeverityStats] = useState({})
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
+  const [hasPermission, setHasPermission] = useState(true)
 
   const fetchData = async (p = page, ps = pageSize) => {
+    if (externalData) {
+      setData(externalData.data || [])
+      setTotal(externalData.total || 0)
+      setSeverityStats(externalData.severity_stats || {})
+      setHasPermission((externalData.data?.length || 0) > 0)
+      if (onRefresh && externalData.refreshed_at) {
+        onRefresh(externalData.refreshed_at)
+      }
+      setLoading(false)
+      return
+    }
+
     setLoading(true)
     try {
       const res = await analyticsAPI.getAnomalyAlerts({ page: p, page_size: ps })
       setData(res.data)
       setTotal(res.total)
       setSeverityStats(res.severity_stats)
+      setHasPermission(true)
       if (onRefresh && res.refreshed_at) {
         onRefresh(res.refreshed_at)
       }
@@ -30,9 +44,10 @@ const AnomalyAlertsTable = ({ onRefresh }) => {
 
   useEffect(() => {
     fetchData()
-  }, [])
+  }, [externalData])
 
   const handlePageChange = (p, ps) => {
+    if (externalData) return
     setPage(p)
     setPageSize(ps)
     fetchData(p, ps)
@@ -131,28 +146,37 @@ const AnomalyAlertsTable = ({ onRefresh }) => {
     }
   ]
 
-  const statsSummary = (
+  if (!hasPermission) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 280 }}>
+        <Empty description="暂无数据权限" />
+      </div>
+    )
+  }
+
+  const statsSummary = hasPermission && Object.keys(severityStats).length > 0 ? (
     <Space size={16} style={{ marginLeft: 12 }}>
       {Object.entries(severityStats).map(([level, count]) => {
         const { color } = getSeverityColor(level)
         return (
           <span key={level} style={{ fontSize: 12, color: '#6b7280' }}>
-          <Tag color={color} style={{ marginRight: 4 }} />
-          {level}危: {count}
-        </span>
+            <Tag color={color} style={{ marginRight: 4 }} />
+            {level}危: {count}
+          </span>
         )
       })}
     </Space>
-  )
+  ) : null
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      {statsSummary}
       <Table
         columns={columns}
         dataSource={data}
         rowKey="id"
         loading={loading}
-        pagination={{
+        pagination={externalData ? false : {
           current: page,
           pageSize: pageSize,
           total: total,

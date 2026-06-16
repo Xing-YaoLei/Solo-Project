@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .core.config import get_settings
 from .services.mock_data import init_mock_data
-from .routers import analytics, share, meta
+from .routers import analytics, share, meta, data_sources
 
 settings = get_settings()
 
@@ -23,6 +23,7 @@ app.add_middleware(
 app.include_router(analytics.router, prefix="/api")
 app.include_router(share.router, prefix="/api")
 app.include_router(meta.router, prefix="/api")
+app.include_router(data_sources.router)
 
 
 @app.on_event("startup")

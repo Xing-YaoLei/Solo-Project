@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { Spin, Alert, Button } from 'antd'
-import { ArrowLeftOutlined } from '@ant-design/icons'
+import { Spin, Alert, Button, Tag } from 'antd'
+import { ArrowLeftOutlined, LockOutlined } from '@ant-design/icons'
 import { shareAPI } from '../utils/api'
 import ChartCard from '../components/ChartCard'
 import TagTrendChart from '../components/TagTrendChart'
@@ -27,7 +27,9 @@ const SharePage = () => {
   const [shareData, setShareData] = useState(null)
 
   useEffect(() => {
-    fetchShareContent()
+    if (token) {
+      fetchShareContent()
+    }
   }, [token])
 
   const fetchShareContent = async () => {
@@ -52,40 +54,94 @@ const SharePage = () => {
 
     const chartType = shareData.chart_type
     const data = shareData.data
+    const permissions = shareData.permissions || {}
+    const formula = shareData.completion_rate_formula || shareData.data?.completion_rate_formula
+
+    const chartProps = {
+      externalData: data,
+      showToggle: false
+    }
+
+    const renderWithCard = (title, chartNode) => (
+      <ChartCard
+        title={title}
+        refreshTime={data.refreshed_at}
+        completionFormula={formula}
+      >
+        {chartNode}
+      </ChartCard>
+    )
 
     switch (chartType) {
       case 'tag_trend':
-        return <TagTrendChart data={data} />
+        return renderWithCard(
+          chartTitles.tag_trend,
+          <TagTrendChart {...chartProps} />
+        )
+
       case 'progress_composition':
-        return <ProgressCompositionChart data={data} />
+        return renderWithCard(
+          chartTitles.progress_composition,
+          <ProgressCompositionChart {...chartProps} />
+        )
+
       case 'grade_feedback':
-        return <GradeFeedbackTable data={data} />
+        return renderWithCard(
+          chartTitles.grade_feedback,
+          <GradeFeedbackTable {...chartProps} />
+        )
+
       case 'anomaly_alerts':
-        return <AnomalyAlertsTable data={data} />
+        return renderWithCard(
+          chartTitles.anomaly_alerts,
+          <AnomalyAlertsTable {...chartProps} />
+        )
+
       case 'chapter_rank':
-        return <ChapterRankChart data={data} />
+        return renderWithCard(
+          chartTitles.chapter_rank,
+          <ChapterRankChart {...chartProps} />
+        )
+
       case 'dashboard':
         return (
           <div className="dashboard-grid">
             <div className="full-width">
-              <ChartCard title="题目标签趋势" refreshTime={data.refreshed_at}>
-                <TagTrendChart />
-              </ChartCard>
+              {renderWithCard(
+                chartTitles.tag_trend,
+                <TagTrendChart externalData={data.tag_trend} />
+              )}
             </div>
             <div>
-              <ChartCard title="学习进度构成" refreshTime={data.progress_composition?.refreshed_at}>
-                <ProgressCompositionChart />
-              </ChartCard>
+              {renderWithCard(
+                chartTitles.progress_composition,
+                <ProgressCompositionChart externalData={data.progress_composition} />
+              )}
             </div>
             <div>
-              <ChartCard title="课程章节排行" refreshTime={data.chapter_rank_top10?.refreshed_at}>
-                <ChapterRankChart />
-              </ChartCard>
+              {renderWithCard(
+                chartTitles.chapter_rank,
+                <ChapterRankChart externalData={data.chapter_rank_top10} showToggle={false} />
+              )}
+            </div>
+            <div className="full-width">
+              {renderWithCard(
+                chartTitles.anomaly_alerts,
+                <AnomalyAlertsTable externalData={data.anomaly_alerts_summary} />
+              )}
             </div>
           </div>
         )
+
       default:
-        return <div>不支持的图表类型</div>
+        return (
+          <Alert
+            message="不支持的图表类型"
+            description={`当前分享的图表类型「${chartType}」不支持显示`}
+            type="warning"
+            showIcon
+          />
+        )
     }
   }
 
@@ -119,25 +175,44 @@ const SharePage = () => {
   }
 
   const title = chartTitles[shareData?.chart_type] || '分享图表'
+  const permissions = shareData?.permissions || {}
+  const formula = shareData?.completion_rate_formula || shareData?.data?.completion_rate_formula
 
   return (
     <div style={{ minHeight: '100vh', background: '#f0f2f5', padding: '20px' }}>
       <div style={{ maxWidth: 1200, margin: '0 auto' }}>
         <div style={{ background: 'white', borderRadius: 12, padding: 20, marginBottom: 16 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
             <div>
               <h2 style={{ margin: 0, fontSize: 20 }}>{title}</h2>
               <p style={{ margin: '8px 0 0 0', fontSize: 12, color: '#9ca3af' }}>
                 分享自职业教育题库练习风险监测系统
               </p>
             </div>
-            <div style={{ fontSize: 12, color: '#6b7280' }}>
-              有效期至：{dayjs(shareData?.expires_at).format('YYYY-MM-DD HH:mm')}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+              <div style={{ fontSize: 12, color: '#6b7280' }}>
+                有效期至：{dayjs(shareData?.expires_at).format('YYYY-MM-DD HH:mm')}
+              </div>
+              {permissions && (
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  <Tag icon={<LockOutlined />} color="blue" style={{ fontSize: 11 }}>
+                    {permissions.view_raw_data ? '可查看明细' : '无明细权限'}
+                  </Tag>
+                  <Tag icon={<LockOutlined />} color="green" style={{ fontSize: 11 }}>
+                    可查看完成率口径
+                  </Tag>
+                  {permissions.export_data && (
+                    <Tag icon={<LockOutlined />} color="orange" style={{ fontSize: 11 }}>
+                      可导出数据
+                    </Tag>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
 
-        {shareData?.data?.completion_rate_formula && (
+        {formula && (
           <div style={{
             background: '#fffbeb',
             border: '1px solid #fcd34d',
@@ -147,7 +222,21 @@ const SharePage = () => {
             fontSize: 12,
             color: '#92400e'
           }}>
-            <strong>完成率口径：</strong>{shareData.data.completion_rate_formula}
+            <strong>完成率口径：</strong>{formula}
+          </div>
+        )}
+
+        {!permissions.view_raw_data && (
+          <div style={{
+            background: '#fef3c7',
+            border: '1px solid #fbbf24',
+            borderRadius: 8,
+            padding: '10px 16px',
+            marginBottom: 16,
+            fontSize: 12,
+            color: '#92400e'
+          }}>
+            <strong>提示：</strong>当前分享未开启明细数据权限，部分数据可能无法查看。
           </div>
         )}
 
@@ -155,14 +244,13 @@ const SharePage = () => {
           {renderChart()}
         </div>
 
-        {shareData?.permissions && (
-          <div style={{ marginTop: 16, fontSize: 11, color: '#9ca3af', textAlign: 'center' }}>
-            您的权限：
-            {shareData.permissions.view_formula && '查看完成率口径 '}
-            {shareData.permissions.view_raw_data && '查看明细数据 '}
-            {shareData.permissions.export_data && '导出数据 '}
-          </div>
-        )}
+        <div style={{ marginTop: 16, textAlign: 'center' }}>
+          <Link to="/">
+            <Button icon={<ArrowLeftOutlined />}>
+              返回监测系统
+            </Button>
+          </Link>
+        </div>
       </div>
     </div>
   )

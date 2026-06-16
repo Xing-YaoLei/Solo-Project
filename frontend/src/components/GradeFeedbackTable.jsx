@@ -1,23 +1,34 @@
 import React, { useEffect, useState } from 'react'
-import { Table, Tag, Progress } from 'antd'
+import { Table, Tag, Progress, Empty } from 'antd'
 import { analyticsAPI } from '../utils/api'
 import dayjs from 'dayjs'
 
-const GradeFeedbackTable = ({ onRefresh }) => {
+const GradeFeedbackTable = ({ onRefresh, externalData = null }) => {
   const [data, setData] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(!externalData)
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
-  const [completionFormula, setCompletionFormula] = useState('')
+  const [hasPermission, setHasPermission] = useState(true)
 
   const fetchData = async (p = page, ps = pageSize) => {
+    if (externalData) {
+      setData(externalData.data || [])
+      setTotal(externalData.total || 0)
+      setHasPermission((externalData.data?.length || 0) > 0)
+      if (onRefresh && externalData.refreshed_at) {
+        onRefresh(externalData.refreshed_at)
+      }
+      setLoading(false)
+      return
+    }
+
     setLoading(true)
     try {
       const res = await analyticsAPI.getGradeFeedback({ page: p, page_size: ps })
       setData(res.data)
       setTotal(res.total)
-      setCompletionFormula(res.completion_rate_formula)
+      setHasPermission(true)
       if (onRefresh && res.refreshed_at) {
         onRefresh(res.refreshed_at)
       }
@@ -30,9 +41,10 @@ const GradeFeedbackTable = ({ onRefresh }) => {
 
   useEffect(() => {
     fetchData()
-  }, [])
+  }, [externalData])
 
   const handlePageChange = (p, ps) => {
+    if (externalData) return
     setPage(p)
     setPageSize(ps)
     fetchData(p, ps)
@@ -127,6 +139,14 @@ const GradeFeedbackTable = ({ onRefresh }) => {
     }
   ]
 
+  if (!hasPermission) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 280 }}>
+        <Empty description="暂无数据权限" />
+      </div>
+    )
+  }
+
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Table
@@ -134,7 +154,7 @@ const GradeFeedbackTable = ({ onRefresh }) => {
         dataSource={data}
         rowKey="student_id"
         loading={loading}
-        pagination={{
+        pagination={externalData ? false : {
           current: page,
           pageSize: pageSize,
           total: total,

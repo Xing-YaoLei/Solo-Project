@@ -2,11 +2,20 @@ import React, { useEffect, useState } from 'react'
 import ReactECharts from 'echarts-for-react'
 import { analyticsAPI } from '../utils/api'
 
-const TagTrendChart = ({ onRefresh }) => {
+const TagTrendChart = ({ onRefresh, externalData = null }) => {
   const [data, setData] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(!externalData)
 
   const fetchData = async () => {
+    if (externalData) {
+      setData(externalData)
+      if (onRefresh && externalData.refreshed_at) {
+        onRefresh(externalData.refreshed_at)
+      }
+      setLoading(false)
+      return
+    }
+
     setLoading(true)
     try {
       const res = await analyticsAPI.getTagTrend(30)
@@ -23,13 +32,35 @@ const TagTrendChart = ({ onRefresh }) => {
 
   useEffect(() => {
     fetchData()
-  }, [])
+  }, [externalData])
+
+  useEffect(() => {
+    if (externalData) {
+      setData(externalData)
+      setLoading(false)
+      if (onRefresh && externalData.refreshed_at) {
+        onRefresh(externalData.refreshed_at)
+      }
+    }
+  }, [externalData])
 
   const getOption = () => {
-    if (!data) return {}
+    if (!data || !data.data || data.data.length === 0) {
+      return {
+        title: {
+          text: '暂无数据权限',
+          left: 'center',
+          top: 'center',
+          textStyle: {
+            color: '#9ca3af',
+            fontSize: 14
+          }
+        }
+      }
+    }
 
     const dates = [...new Set(data.data.map(item => item.date))].sort()
-    const tags = data.tags
+    const tags = data.tags || []
 
     const series = tags.map(tag => {
       const tagData = dates.map(date => {
