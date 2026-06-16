@@ -1,6 +1,7 @@
 import { Lucia, type Session, type User as LuciaUser } from 'lucia';
 import { PostgresJsAdapter } from '@lucia-auth/adapter-postgresql';
 import postgres from 'postgres';
+import bcrypt from 'bcryptjs';
 import type { UserRole, SessionUser } from '../../shared/types';
 import { getDb, type DbInstance, type Database } from '../db';
 import { mockUsers } from '../db/seed';
@@ -269,13 +270,15 @@ export async function login(email: string, password: string): Promise<{ session:
     return createMockSession(mockUser.id);
   }
 
-  // TODO: Implement real password verification with hashing
   const db = dbInstance.db as Database;
   const user = await db.query.users.findFirst({
     where: (users, { eq, and }) => and(eq(users.email, email.toLowerCase()), eq(users.isActive, true))
   });
 
   if (!user) return null;
+
+  const passwordValid = await bcrypt.compare(password, user.hashedPassword);
+  if (!passwordValid) return null;
 
   return createRealSession(user.id);
 }

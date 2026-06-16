@@ -49,8 +49,7 @@ export const userSessions = pgTable('user_sessions', {
   userId: varchar('user_id', { length: 64 })
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
-  activeExpiresAt: integer('active_expires_at').notNull(),
-  idleExpiresAt: integer('idle_expires_at').notNull()
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull()
 });
 
 export const careLevels = pgTable('care_levels', {

@@ -28,7 +28,7 @@ export interface DbInstance {
 let dbInstance: DbInstance | null = null;
 
 const DEFAULT_HASHED_PASSWORD =
-  '$2a$10$placeholder.please.configure.real.password.hashing';
+  '$2b$10$GnnGstxUcR9Dv52sm.FluOdPo1KNfdOX3SZGVHB2QOg/yUappflm2';
 
 function toDate(d: Date | string | null | undefined): Date | null {
   if (d === null || d === undefined) return null;

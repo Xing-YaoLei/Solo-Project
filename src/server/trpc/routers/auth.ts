@@ -1,8 +1,8 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { createTRPCRouter, publicProcedure, protectedProcedure } from '../trpc';
+import { login as luciaLogin, invalidateSession, isMockAuth } from '../../auth/lucia';
 import type { SessionUser } from '../../../shared/types';
-import { mockUsers } from '../mockData';
 
 export const authRouter = createTRPCRouter({
   login: publicProcedure
@@ -13,33 +13,30 @@ export const authRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ input }) => {
-      const user = mockUsers.find((u) => u.email.toLowerCase() === input.email.toLowerCase());
-      if (!user) {
+      const result = await luciaLogin(input.email, input.password);
+
+      if (!result) {
         throw new TRPCError({ code: 'UNAUTHORIZED', message: '用户不存在或密码错误' });
-      }
-      const validPasswords = ['password123', 'admin123', 'super123', 'nurse123', 'doctor123'];
-      if (!validPasswords.includes(input.password)) {
-        throw new TRPCError({ code: 'UNAUTHORIZED', message: '用户不存在或密码错误' });
-      }
-      if (!user.isActive) {
-        throw new TRPCError({ code: 'FORBIDDEN', message: '账号已被禁用' });
       }
 
       const sessionUser: SessionUser = {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role
+        id: result.user.id,
+        email: result.user.email,
+        name: result.user.name,
+        role: result.user.role
       };
 
       return {
         success: true,
         user: sessionUser,
-        token: `mock-token-${user.id}-${Date.now()}`
+        token: result.session.id
       };
     }),
 
-  logout: publicProcedure.mutation(() => {
+  logout: publicProcedure.mutation(async ({ ctx }) => {
+    if (ctx.session && 'id' in ctx.session) {
+      await invalidateSession(ctx.session.id);
+    }
     return {
       success: true,
       message: '登出成功'
@@ -55,5 +52,9 @@ export const authRouter = createTRPCRouter({
 
   me: protectedProcedure.query(({ ctx }) => {
     return ctx.user;
+  }),
+
+  isMockMode: publicProcedure.query(() => {
+    return isMockAuth();
   })
 });
