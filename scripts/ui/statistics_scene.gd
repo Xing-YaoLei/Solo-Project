@@ -253,8 +253,13 @@ func _on_reset_button_pressed():
 	add_child(dialog)
 	dialog.popup_centered()
 	
-	dialog.action.connect(func(action):
+	dialog.custom_action.connect(func(action: String):
+		dialog.hide()
 		dialog.queue_free()
 		if action == "reset":
 			statistics_manager.reset_statistics()
 			_render_all_statistics()
+	)
+	dialog.canceled.connect(func():
+		dialog.queue_free()
+	)

@@ -123,7 +123,8 @@ func _update_patient_cards():
 func _on_level_started(level_data: LevelData):
 	level_name_label.text = level_data.name
 	_update_score_display()
-	patient_queue.clear_children()
+	for child in patient_queue.get_children():
+		child.queue_free()
 	patient_card_cache.clear()
 	current_patient = null
 
@@ -668,7 +669,8 @@ func _show_result_dialog(title: String, result: Dictionary):
 	add_child(dialog)
 	dialog.popup_centered()
 	
-	dialog.action.connect(func(action):
+	dialog.custom_action.connect(func(action: String):
+		dialog.hide()
 		dialog.queue_free()
 		match action:
 			"menu":
@@ -680,6 +682,10 @@ func _show_result_dialog(title: String, result: Dictionary):
 			"retry":
 				if game_manager and game_manager.current_level:
 					_start_level(game_manager.current_level.id)
+	)
+	dialog.canceled.connect(func():
+		dialog.queue_free()
+	)
 
 func _start_level(level_id: String):
 	if game_manager:
@@ -708,7 +714,8 @@ func _on_back_button_pressed():
 	add_child(dialog)
 	dialog.popup_centered()
 	
-	dialog.action.connect(func(action):
+	dialog.custom_action.connect(func(action: String):
+		dialog.hide()
 		dialog.queue_free()
 		if action == "quit":
 			if game_manager:
@@ -718,3 +725,9 @@ func _on_back_button_pressed():
 		else:
 			if game_manager:
 				game_manager.resume_game()
+	)
+	dialog.canceled.connect(func():
+		if game_manager:
+			game_manager.resume_game()
+		dialog.queue_free()
+	)
