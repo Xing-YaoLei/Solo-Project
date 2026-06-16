@@ -1,0 +1,325 @@
+[gd_scene load_steps=2 format=3 uid="uid://d7xq7k5m3v4n3"]
+
+[ext_resource type="Script" path="res://scripts/ui/game_level.gd" id="1_game"]
+
+[node name="GameLevel" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_game")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.08, 0.1, 0.12, 1)
+
+[node name="TopBar" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 60.0
+theme_override_constants/border_width_left = 0
+theme_override_constants/border_width_top = 0
+theme_override_constants/border_width_right = 0
+
+[node name="TopBarHBox" type="HBoxContainer" parent="TopBar"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = 10.0
+offset_right = -20.0
+offset_bottom = -10.0
+theme_override_constants/separation = 20
+
+[node name="BackButton" type="Button" parent="TopBar/TopBarHBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(80, 40)
+text = "暂停"
+
+[node name="LevelName" type="Label" parent="TopBar/TopBarHBox"]
+layout_mode = 2
+text = "关卡名称"
+theme_override_colors/font_color = Color(0.95, 0.95, 0.95, 1)
+theme_override_font_sizes/font_size = 20
+
+[node name="ScoreLabel" type="Label" parent="TopBar/TopBarHBox"]
+layout_mode = 2
+text = "得分: 0"
+theme_override_colors/font_color = Color(1, 0.85, 0.2, 1)
+theme_override_font_sizes/font_size = 18
+
+[node name="AccuracyLabel" type="Label" parent="TopBar/TopBarHBox"]
+layout_mode = 2
+text = "正确率: 0%"
+theme_override_colors/font_color = Color(0.6, 0.9, 0.7, 1)
+theme_override_font_sizes/font_size = 18
+
+[node name="TimerLabel" type="Label" parent="TopBar/TopBarHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "⏱ 05:00"
+horizontal_alignment = 2
+theme_override_colors/font_color = Color(0.9, 0.9, 0.6, 1)
+theme_override_font_sizes/font_size = 24
+
+[node name="MainContainer" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = 80.0
+offset_right = -20.0
+offset_bottom = -20.0
+theme_override_constants/separation = 20
+
+[node name="PatientQueuePanel" type="Panel" parent="MainContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(380, 0)
+size_flags_vertical = 3
+
+[node name="PatientQueueVBox" type="VBoxContainer" parent="MainContainer/PatientQueuePanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 15.0
+offset_top = 15.0
+offset_right = -15.0
+offset_bottom = -15.0
+theme_override_constants/separation = 10
+
+[node name="QueueTitle" type="Label" parent="MainContainer/PatientQueuePanel/PatientQueueVBox"]
+layout_mode = 2
+text = "待处理患者"
+theme_override_colors/font_color = Color(0.9, 0.9, 0.9, 1)
+theme_override_font_sizes/font_size = 18
+
+[node name="PatientQueueScroll" type="ScrollContainer" parent="MainContainer/PatientQueuePanel/PatientQueueVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="PatientQueue" type="VBoxContainer" parent="MainContainer/PatientQueuePanel/PatientQueueVBox/PatientQueueScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 10
+
+[node name="CenterPanel" type="VBoxContainer" parent="MainContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 15
+
+[node name="PatientDetailPanel" type="Panel" parent="MainContainer/CenterPanel"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="PatientDetailVBox" type="VBoxContainer" parent="MainContainer/CenterPanel/PatientDetailPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = 20.0
+offset_right = -20.0
+offset_bottom = -20.0
+theme_override_constants/separation = 15
+
+[node name="NoPatientLabel" type="Label" parent="MainContainer/CenterPanel/PatientDetailPanel/PatientDetailVBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+text = "请从左侧选择一位患者开始分级"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_colors/font_color = Color(0.5, 0.5, 0.5, 1)
+theme_override_font_sizes/font_size = 20
+
+[node name="TriageButtonsPanel" type="Panel" parent="MainContainer/CenterPanel"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 120)
+
+[node name="TriageButtonsVBox" type="VBoxContainer" parent="MainContainer/CenterPanel/TriageButtonsPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = 15.0
+offset_right = -20.0
+offset_bottom = -15.0
+theme_override_constants/separation = 10
+
+[node name="TriageTitle" type="Label" parent="MainContainer/CenterPanel/TriageButtonsPanel/TriageButtonsVBox"]
+layout_mode = 2
+text = "请选择患者分级："
+theme_override_colors/font_color = Color(0.9, 0.9, 0.9, 1)
+theme_override_font_sizes/font_size = 16
+
+[node name="TriageButtonsHBox" type="HBoxContainer" parent="MainContainer/CenterPanel/TriageButtonsPanel/TriageButtonsVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 15
+
+[node name="Level1Button" type="Button" parent="MainContainer/CenterPanel/TriageButtonsPanel/TriageButtonsVBox/TriageButtonsHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+text = "I级\n急危重症"
+theme_override_colors/font_color = Color(0.9, 0.1, 0.1, 1)
+theme_override_font_sizes/font_size = 16
+disabled = true
+
+[node name="Level2Button" type="Button" parent="MainContainer/CenterPanel/TriageButtonsPanel/TriageButtonsVBox/TriageButtonsHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+text = "II级\n急重症"
+theme_override_colors/font_color = Color(0.9, 0.5, 0.1, 1)
+theme_override_font_sizes/font_size = 16
+disabled = true
+
+[node name="Level3Button" type="Button" parent="MainContainer/CenterPanel/TriageButtonsPanel/TriageButtonsVBox/TriageButtonsHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+text = "III级\n急症"
+theme_override_colors/font_color = Color(0.9, 0.8, 0.1, 1)
+theme_override_font_sizes/font_size = 16
+disabled = true
+
+[node name="Level4Button" type="Button" parent="MainContainer/CenterPanel/TriageButtonsPanel/TriageButtonsVBox/TriageButtonsHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+text = "IV级\n非急症"
+theme_override_colors/font_color = Color(0.2, 0.8, 0.3, 1)
+theme_override_font_sizes/font_size = 16
+disabled = true
+
+[node name="DocumentPanel" type="Panel" parent="MainContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(420, 0)
+size_flags_vertical = 3
+
+[node name="DocumentVBox" type="VBoxContainer" parent="MainContainer/DocumentPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 15.0
+offset_top = 15.0
+offset_right = -15.0
+offset_bottom = -15.0
+theme_override_constants/separation = 10
+
+[node name="DocumentTabs" type="HBoxContainer" parent="MainContainer/DocumentPanel/DocumentVBox"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="NursingLogTab" type="Button" parent="MainContainer/DocumentPanel/DocumentVBox/DocumentTabs"]
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 36)
+text = "护理日志"
+theme_override_font_sizes/font_size = 14
+
+[node name="SettlementTab" type="Button" parent="MainContainer/DocumentPanel/DocumentVBox/DocumentTabs"]
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 36)
+text = "结算明细"
+theme_override_font_sizes/font_size = 14
+
+[node name="AssessmentTab" type="Button" parent="MainContainer/DocumentPanel/DocumentVBox/DocumentTabs"]
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 36)
+text = "评估量表"
+theme_override_font_sizes/font_size = 14
+
+[node name="DocumentContentScroll" type="ScrollContainer" parent="MainContainer/DocumentPanel/DocumentVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="DocumentContent" type="VBoxContainer" parent="MainContainer/DocumentPanel/DocumentVBox/DocumentContentScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 10
+
+[node name="DocumentPlaceholder" type="Label" parent="MainContainer/DocumentPanel/DocumentVBox/DocumentContentScroll/DocumentContent"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+text = "请先选择患者\n然后查看相关文档"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_colors/font_color = Color(0.5, 0.5, 0.5, 1)
+theme_override_font_sizes/font_size = 16
+
+[node name="WarningPanel" type="Panel" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 12
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -300.0
+offset_top = -100.0
+offset_right = 300.0
+offset_bottom = -20.0
+modulate = Color(1, 1, 1, 0)
+theme_override_colors/border_color = Color(0.95, 0.3, 0.3, 1)
+theme_override_constants/border_width_left = 3
+theme_override_constants/border_width_top = 3
+theme_override_constants/border_width_right = 3
+theme_override_constants/border_width_bottom = 3
+
+[node name="WarningHBox" type="HBoxContainer" parent="WarningPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 15.0
+offset_top = 10.0
+offset_right = -15.0
+offset_bottom = -10.0
+theme_override_constants/separation = 15
+
+[node name="WarningIcon" type="Label" parent="WarningPanel/WarningHBox"]
+layout_mode = 2
+text = "⚠️"
+theme_override_font_sizes/font_size = 32
+
+[node name="WarningVBox" type="VBoxContainer" parent="WarningPanel/WarningHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="WarningTitle" type="Label" parent="WarningPanel/WarningHBox/WarningVBox"]
+layout_mode = 2
+text = "医保拒付预警"
+theme_override_colors/font_color = Color(0.95, 0.3, 0.3, 1)
+theme_override_font_sizes/font_size = 18
+
+[node name="WarningText" type="Label" parent="WarningPanel/WarningHBox/WarningVBox"]
+layout_mode = 2
+text = "提示信息"
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.95, 0.8, 0.8, 1)
+theme_override_font_sizes/font_size = 14
+
+[node name="WarningClose" type="Button" parent="WarningPanel/WarningHBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(40, 40)
+text = "✕"
+theme_override_font_sizes/font_size = 16

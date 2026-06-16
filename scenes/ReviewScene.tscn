@@ -1,0 +1,165 @@
+[gd_scene load_steps=2 format=3 uid="uid://e7xq7k5m3v4n4"]
+
+[ext_resource type="Script" path="res://scripts/ui/review_scene.gd" id="1_review"]
+
+[node name="ReviewScene" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_review")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.1, 0.12, 0.15, 1)
+
+[node name="MainVBox" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 30.0
+offset_top = 20.0
+offset_right = -30.0
+offset_bottom = -20.0
+theme_override_constants/separation = 15
+
+[node name="Header" type="HBoxContainer" parent="MainVBox"]
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="BackButton" type="Button" parent="MainVBox/Header"]
+layout_mode = 2
+custom_minimum_size = Vector2(100, 40)
+text = "← 返回"
+
+[node name="Title" type="Label" parent="MainVBox/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "训练复盘分析"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.95, 0.95, 0.95, 1)
+theme_override_font_sizes/font_size = 28
+
+[node name="ReplaySelector" type="OptionButton" parent="MainVBox/Header"]
+layout_mode = 2
+custom_minimum_size = Vector2(200, 40)
+
+[node name="SummaryPanel" type="Panel" parent="MainVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 120)
+
+[node name="SummaryHBox" type="HBoxContainer" parent="MainVBox/SummaryPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = 15.0
+offset_right = -20.0
+offset_bottom = -15.0
+theme_override_constants/separation = 30
+
+[node name="LevelNameLabel" type="Label" parent="MainVBox/SummaryPanel/SummaryHBox"]
+layout_mode = 2
+text = "关卡名称"
+theme_override_colors/font_color = Color(0.9, 0.9, 0.9, 1)
+theme_override_font_sizes/font_size = 18
+
+[node name="ScoreLabel" type="Label" parent="MainVBox/SummaryPanel/SummaryHBox"]
+layout_mode = 2
+text = "得分: 0"
+theme_override_colors/font_color = Color(1, 0.85, 0.2, 1)
+theme_override_font_sizes/font_size = 18
+
+[node name="AccuracyLabel" type="Label" parent="MainVBox/SummaryPanel/SummaryHBox"]
+layout_mode = 2
+text = "正确率: 0%"
+theme_override_colors/font_color = Color(0.6, 0.9, 0.7, 1)
+theme_override_font_sizes/font_size = 18
+
+[node name="TimeLabel" type="Label" parent="MainVBox/SummaryPanel/SummaryHBox"]
+layout_mode = 2
+text = "用时: 0秒"
+theme_override_colors/font_color = Color(0.6, 0.8, 0.9, 1)
+theme_override_font_sizes/font_size = 18
+
+[node name="ResultLabel" type="Label" parent="MainVBox/SummaryPanel/SummaryHBox"]
+layout_mode = 2
+text = "未通过"
+theme_override_colors/font_color = Color(0.95, 0.3, 0.3, 1)
+theme_override_font_sizes/font_size = 18
+
+[node name="TabContainer" type="TabContainer" parent="MainVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_font_sizes/font_size = 16
+
+[node name="WrongStepsTab" type="ScrollContainer" parent="MainVBox/TabContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="WrongStepsContent" type="VBoxContainer" parent="MainVBox/TabContainer/WrongStepsTab"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 15
+
+[node name="SettlementTab" type="ScrollContainer" parent="MainVBox/TabContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="SettlementContent" type="VBoxContainer" parent="MainVBox/TabContainer/SettlementTab"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 15
+
+[node name="AssessmentTab" type="ScrollContainer" parent="MainVBox/TabContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="AssessmentContent" type="VBoxContainer" parent="MainVBox/TabContainer/AssessmentTab"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 15
+
+[node name="RecentFailuresTab" type="ScrollContainer" parent="MainVBox/TabContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="RecentFailuresContent" type="VBoxContainer" parent="MainVBox/TabContainer/RecentFailuresTab"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 15
+
+[node name="Footer" type="HBoxContainer" parent="MainVBox"]
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="RetryButton" type="Button" parent="MainVBox/Footer"]
+layout_mode = 2
+custom_minimum_size = Vector2(150, 45)
+text = "重新训练"
+theme_override_font_sizes/font_size = 16
+
+[node name="Spacer" type="Control" parent="MainVBox/Footer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="MenuButton" type="Button" parent="MainVBox/Footer"]
+layout_mode = 2
+custom_minimum_size = Vector2(150, 45)
+text = "返回主菜单"
+theme_override_font_sizes/font_size = 16

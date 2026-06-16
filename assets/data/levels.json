@@ -1,0 +1,896 @@
+{
+  "levels": [
+    {
+      "id": "level_1",
+      "name": "初识分级",
+      "description": "学习基础的患者分级概念，处理3位基础患者",
+      "difficulty": "BEGINNER",
+      "patient_count": 3,
+      "time_limit": 300.0,
+      "target_accuracy": 0.7,
+      "required_score": 60,
+      "patients": [
+        {
+          "id": "p001",
+          "name": "张三",
+          "age": 65,
+          "gender": "男",
+          "correct_triage_level": 2,
+          "time_limit": 90.0,
+          "is_critical": false,
+          "training_prescription": {
+            "project_code": "RX-001",
+            "items": ["平衡训练", "肌力训练"],
+            "frequency": "每日2次",
+            "duration": "30分钟/次",
+            "common_errors": ["漏记训练频次", "项目编码错误"]
+          },
+          "documents": {
+            "nursing_log": {
+              "title": "护理日志 - 张三",
+              "date": "2024-01-15",
+              "vital_signs": {
+                "temperature": "38.5℃",
+                "blood_pressure": "145/95 mmHg",
+                "heart_rate": "98次/分",
+                "oxygen_saturation": "94%"
+              },
+              "symptoms": ["右侧肢体无力", "言语含糊", "头痛"],
+              "nursing_notes": "患者晨起后出现右侧肢体无力，伴言语含糊。既往有高血压病史10年。",
+              "key_indicators": ["体温升高", "血压偏高", "神经系统症状"]
+            },
+            "settlement_detail": {
+              "title": "结算明细 - 张三",
+              "date": "2024-01-15",
+              "items": [
+                {"name": "门诊挂号费", "amount": 50.0, "insurance_covered": true},
+                {"name": "头颅CT检查", "amount": 850.0, "insurance_covered": true},
+                {"name": "肌力训练", "amount": 120.0, "insurance_covered": true},
+                {"name": "平衡训练", "amount": 100.0, "insurance_covered": true}
+              ],
+              "total_amount": 1120.0,
+              "insurance_amount": 896.0,
+              "self_payment": 224.0,
+              "prescription_code": "RX-001",
+              "risk_points": ["注意训练频次记录"]
+            },
+            "assessment_scale": {
+              "title": "评估量表 - 脑卒中评估",
+              "scale_type": "NIHSS",
+              "scores": {
+                "意识水平": 1,
+                "凝视": 0,
+                "视野": 0,
+                "面瘫": 2,
+                "上肢运动": 3,
+                "下肢运动": 2,
+                "肢体共济失调": 0,
+                "感觉": 1,
+                "语言": 2,
+                "构音障碍": 1,
+                "忽视症": 0
+              },
+              "total_score": 12,
+              "interpretation": "中度脑卒中",
+              "recommendation": "紧急评估，2小时内完成CT检查"
+            }
+          }
+        },
+        {
+          "id": "p002",
+          "name": "李四",
+          "age": 45,
+          "gender": "女",
+          "correct_triage_level": 3,
+          "time_limit": 120.0,
+          "is_critical": false,
+          "training_prescription": {
+            "project_code": "RX-002",
+            "items": ["关节活动度训练", "物理因子治疗"],
+            "frequency": "每日1次",
+            "duration": "45分钟/次",
+            "common_errors": ["项目与诊断不符", "收费编码错误"]
+          },
+          "documents": {
+            "nursing_log": {
+              "title": "护理日志 - 李四",
+              "date": "2024-01-15",
+              "vital_signs": {
+                "temperature": "36.8℃",
+                "blood_pressure": "125/80 mmHg",
+                "heart_rate": "72次/分",
+                "oxygen_saturation": "98%"
+              },
+              "symptoms": ["左膝关节疼痛", "活动受限", "肿胀"],
+              "nursing_notes": "患者3天前扭伤左膝，疼痛逐渐加重，行走困难。",
+              "key_indicators": ["生命体征平稳", "局部症状明显"]
+            },
+            "settlement_detail": {
+              "title": "结算明细 - 李四",
+              "date": "2024-01-15",
+              "items": [
+                {"name": "门诊挂号费", "amount": 50.0, "insurance_covered": true},
+                {"name": "膝关节X线", "amount": 280.0, "insurance_covered": true},
+                {"name": "关节活动度训练", "amount": 80.0, "insurance_covered": true},
+                {"name": "物理因子治疗", "amount": 90.0, "insurance_covered": true}
+              ],
+              "total_amount": 500.0,
+              "insurance_amount": 400.0,
+              "self_payment": 100.0,
+              "prescription_code": "RX-002",
+              "risk_points": ["注意项目与诊断关联性"]
+            },
+            "assessment_scale": {
+              "title": "评估量表 - 膝关节损伤评估",
+              "scale_type": "Lysholm",
+              "scores": {
+                "跛行": 5,
+                "拄拐": 5,
+                "绞锁": 15,
+                "不稳定": 10,
+                "疼痛": 15,
+                "肿胀": 5,
+                "上楼梯": 5,
+                "下蹲": 5
+              },
+              "total_score": 65,
+              "interpretation": "膝关节功能中度受限",
+              "recommendation": "保守治疗，康复训练"
+            }
+          }
+        },
+        {
+          "id": "p003",
+          "name": "王五",
+          "age": 72,
+          "gender": "男",
+          "correct_triage_level": 0,
+          "time_limit": 45.0,
+          "is_critical": true,
+          "training_prescription": {
+            "project_code": "RX-003",
+            "items": ["心电监护", "紧急溶栓评估"],
+            "frequency": "持续",
+            "duration": "按需",
+            "common_errors": ["延误紧急处理", "分诊级别错误"]
+          },
+          "documents": {
+            "nursing_log": {
+              "title": "护理日志 - 王五",
+              "date": "2024-01-15",
+              "vital_signs": {
+                "temperature": "37.2℃",
+                "blood_pressure": "180/110 mmHg",
+                "heart_rate": "115次/分",
+                "oxygen_saturation": "88%"
+              },
+              "symptoms": ["剧烈胸痛", "呼吸困难", "大汗淋漓", "意识模糊"],
+              "nursing_notes": "患者突发剧烈胸痛20分钟，伴呼吸困难。既往冠心病史。",
+              "key_indicators": ["血压极高", "血氧低", "胸痛剧烈", "紧急指征"]
+            },
+            "settlement_detail": {
+              "title": "结算明细 - 王五",
+              "date": "2024-01-15",
+              "items": [
+                {"name": "急诊挂号费", "amount": 100.0, "insurance_covered": true},
+                {"name": "心电图检查", "amount": 120.0, "insurance_covered": true},
+                {"name": "心肌酶谱", "amount": 350.0, "insurance_covered": true},
+                {"name": "心电监护", "amount": 200.0, "insurance_covered": true}
+              ],
+              "total_amount": 770.0,
+              "insurance_amount": 616.0,
+              "self_payment": 154.0,
+              "prescription_code": "RX-003",
+              "risk_points": ["紧急情况，优先处理"]
+            },
+            "assessment_scale": {
+              "title": "评估量表 - 胸痛评估",
+              "scale_type": "HEART",
+              "scores": {
+                "History": 2,
+                "ECG": 2,
+                "Age": 1,
+                "Risk factors": 2,
+                "Troponin": 1
+              },
+              "total_score": 8,
+              "interpretation": "高危 - 高度怀疑急性冠脉综合征",
+              "recommendation": "立即介入治疗，10分钟内完成心电图"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "level_2",
+      "name": "压力测试",
+      "description": "在时间压力下处理5位患者，注意区分急重症",
+      "difficulty": "INTERMEDIATE",
+      "patient_count": 5,
+      "time_limit": 420.0,
+      "target_accuracy": 0.75,
+      "required_score": 70,
+      "patients": [
+        {
+          "id": "p004",
+          "name": "赵六",
+          "age": 58,
+          "gender": "男",
+          "correct_triage_level": 1,
+          "time_limit": 60.0,
+          "is_critical": true,
+          "training_prescription": {
+            "project_code": "RX-004",
+            "items": ["呼吸训练", "体位引流"],
+            "frequency": "每4小时1次",
+            "duration": "20分钟/次",
+            "common_errors": ["血氧监测不及时", "体位管理不当"]
+          },
+          "documents": {
+            "nursing_log": {
+              "title": "护理日志 - 赵六",
+              "date": "2024-01-15",
+              "vital_signs": {
+                "temperature": "39.1℃",
+                "blood_pressure": "105/65 mmHg",
+                "heart_rate": "125次/分",
+                "oxygen_saturation": "85% (吸氧4L/min)"
+              },
+              "symptoms": ["呼吸急促", "咳嗽咳痰", "胸痛", "意识淡漠"],
+              "nursing_notes": "患者肺炎病史，今日呼吸困难加重。",
+              "key_indicators": ["高热", "血氧低", "呼吸急促", "血压偏低"]
+            },
+            "settlement_detail": {
+              "title": "结算明细 - 赵六",
+              "date": "2024-01-15",
+              "items": [
+                {"name": "急诊挂号费", "amount": 100.0, "insurance_covered": true},
+                {"name": "血气分析", "amount": 180.0, "insurance_covered": true},
+                {"name": "胸部CT", "amount": 1200.0, "insurance_covered": true},
+                {"name": "呼吸训练", "amount": 60.0, "insurance_covered": true}
+              ],
+              "total_amount": 1540.0,
+              "insurance_amount": 1232.0,
+              "self_payment": 308.0,
+              "prescription_code": "RX-004",
+              "risk_points": ["注意吸氧浓度记录"]
+            },
+            "assessment_scale": {
+              "title": "评估量表 - 呼吸功能评估",
+              "scale_type": "CURB-65",
+              "scores": {
+                "意识障碍": 1,
+                "尿素氮": 1,
+                "呼吸频率": 1,
+                "血压": 1,
+                "年龄": 1
+              },
+              "total_score": 5,
+              "interpretation": "极高危肺炎，死亡率高",
+              "recommendation": "立即收入ICU，机械通气支持"
+            }
+          }
+        },
+        {
+          "id": "p005",
+          "name": "孙七",
+          "age": 32,
+          "gender": "女",
+          "correct_triage_level": 3,
+          "time_limit": 100.0,
+          "is_critical": false,
+          "training_prescription": {
+            "project_code": "RX-005",
+            "items": ["颈椎牵引", "颈部肌力训练"],
+            "frequency": "每日1次",
+            "duration": "40分钟/次",
+            "common_errors": ["牵引重量不当", "训练强度超标"]
+          },
+          "documents": {
+            "nursing_log": {
+              "title": "护理日志 - 孙七",
+              "date": "2024-01-15",
+              "vital_signs": {
+                "temperature": "36.5℃",
+                "blood_pressure": "118/75 mmHg",
+                "heart_rate": "68次/分",
+                "oxygen_saturation": "99%"
+              },
+              "symptoms": ["颈肩部酸痛", "右上肢麻木", "头晕"],
+              "nursing_notes": "患者长期伏案工作，颈痛反复发作1年，加重3天。",
+              "key_indicators": ["生命体征平稳", "慢性疼痛急性发作"]
+            },
+            "settlement_detail": {
+              "title": "结算明细 - 孙七",
+              "date": "2024-01-15",
+              "items": [
+                {"name": "门诊挂号费", "amount": 50.0, "insurance_covered": true},
+                {"name": "颈椎X线", "amount": 240.0, "insurance_covered": true},
+                {"name": "颈椎牵引", "amount": 70.0, "insurance_covered": true},
+                {"name": "颈部肌力训练", "amount": 85.0, "insurance_covered": true}
+              ],
+              "total_amount": 445.0,
+              "insurance_amount": 356.0,
+              "self_payment": 89.0,
+              "prescription_code": "RX-005",
+              "risk_points": ["注意训练强度记录"]
+            },
+            "assessment_scale": {
+              "title": "评估量表 - 颈椎功能评估",
+              "scale_type": "NDI",
+              "scores": {
+                "疼痛强度": 6,
+                "自理能力": 4,
+                "提物": 6,
+                "阅读": 4,
+                "头痛": 6,
+                "注意力": 4,
+                "睡眠": 4,
+                "驾驶": 8,
+                "工作": 6,
+                "娱乐": 4
+              },
+              "total_score": 52,
+              "interpretation": "中度颈椎功能障碍",
+              "recommendation": "保守治疗，康复训练，定期复查"
+            }
+          }
+        },
+        {
+          "id": "p006",
+          "name": "周八",
+          "age": 81,
+          "gender": "女",
+          "correct_triage_level": 1,
+          "time_limit": 50.0,
+          "is_critical": true,
+          "training_prescription": {
+            "project_code": "RX-006",
+            "items": ["跌倒风险评估", "平衡功能训练"],
+            "frequency": "每班次评估",
+            "duration": "按需",
+            "common_errors": ["跌倒风险分级错误", "防护措施不到位"]
+          },
+          "documents": {
+            "nursing_log": {
+              "title": "护理日志 - 周八",
+              "date": "2024-01-15",
+              "vital_signs": {
+                "temperature": "37.5℃",
+                "blood_pressure": "165/95 mmHg",
+                "heart_rate": "105次/分",
+                "oxygen_saturation": "92%"
+              },
+              "symptoms": ["摔伤后头痛", "左侧肢体活动受限", "恶心呕吐"],
+              "nursing_notes": "患者2小时前在家中跌倒，伤及头部和左髋。",
+              "key_indicators": ["高龄", "外伤史", "头痛呕吐", "肢体活动受限"]
+            },
+            "settlement_detail": {
+              "title": "结算明细 - 周八",
+              "date": "2024-01-15",
+              "items": [
+                {"name": "急诊挂号费", "amount": 100.0, "insurance_covered": true},
+                {"name": "头颅CT", "amount": 850.0, "insurance_covered": true},
+                {"name": "髋关节X线", "amount": 280.0, "insurance_covered": true},
+                {"name": "平衡功能训练", "amount": 100.0, "insurance_covered": true}
+              ],
+              "total_amount": 1330.0,
+              "insurance_amount": 1064.0,
+              "self_payment": 266.0,
+              "prescription_code": "RX-006",
+              "risk_points": ["注意跌倒风险评估"]
+            },
+            "assessment_scale": {
+              "title": "评估量表 - 跌倒风险评估",
+              "scale_type": "Morse",
+              "scores": {
+                "跌倒史": 25,
+                "次级诊断": 15,
+                "使用行走辅助具": 15,
+                "静脉治疗": 20,
+                "步态": 30,
+                "精神状态": 15
+              },
+              "total_score": 120,
+              "interpretation": "高跌倒风险",
+              "recommendation": "严格卧床，24小时陪护，立即影像学检查"
+            }
+          }
+        },
+        {
+          "id": "p007",
+          "name": "吴九",
+          "age": 28,
+          "gender": "男",
+          "correct_triage_level": 3,
+          "time_limit": 110.0,
+          "is_critical": false,
+          "training_prescription": {
+            "project_code": "RX-007",
+            "items": ["腰背肌功能锻炼", "腰椎牵引"],
+            "frequency": "每日2次",
+            "duration": "35分钟/次",
+            "common_errors": ["训练姿势不当", "牵引时间不足"]
+          },
+          "documents": {
+            "nursing_log": {
+              "title": "护理日志 - 吴九",
+              "date": "2024-01-15",
+              "vital_signs": {
+                "temperature": "36.7℃",
+                "blood_pressure": "122/80 mmHg",
+                "heart_rate": "70次/分",
+                "oxygen_saturation": "98%"
+              },
+              "symptoms": ["腰痛伴左下肢放射痛", "弯腰受限"],
+              "nursing_notes": "患者搬重物后出现腰痛，咳嗽时加重。",
+              "key_indicators": ["生命体征平稳", "外伤诱因明确"]
+            },
+            "settlement_detail": {
+              "title": "结算明细 - 吴九",
+              "date": "2024-01-15",
+              "items": [
+                {"name": "门诊挂号费", "amount": 50.0, "insurance_covered": true},
+                {"name": "腰椎CT", "amount": 750.0, "insurance_covered": true},
+                {"name": "腰背肌功能锻炼", "amount": 75.0, "insurance_covered": true},
+                {"name": "腰椎牵引", "amount": 90.0, "insurance_covered": true}
+              ],
+              "total_amount": 965.0,
+              "insurance_amount": 772.0,
+              "self_payment": 193.0,
+              "prescription_code": "RX-007",
+              "risk_points": ["注意训练姿势指导记录"]
+            },
+            "assessment_scale": {
+              "title": "评估量表 - 腰痛评估",
+              "scale_type": "Oswestry",
+              "scores": {
+                "疼痛": 6,
+                "自理": 4,
+                "提物": 6,
+                "行走": 6,
+                "坐": 4,
+                "站": 4,
+                "睡眠": 4,
+                "性生活": 2,
+                "社交": 4,
+                "旅行": 6
+              },
+              "total_score": 46,
+              "interpretation": "中度腰痛功能障碍",
+              "recommendation": "保守治疗，康复训练，避免重体力劳动"
+            }
+          }
+        },
+        {
+          "id": "p008",
+          "name": "郑十",
+          "age": 55,
+          "gender": "男",
+          "correct_triage_level": 2,
+          "time_limit": 75.0,
+          "is_critical": false,
+          "training_prescription": {
+            "project_code": "RX-008",
+            "items": ["血糖监测", "糖尿病足护理"],
+            "frequency": "每日4次",
+            "duration": "15分钟/次",
+            "common_errors": ["血糖监测频次不足", "足部评估遗漏"]
+          },
+          "documents": {
+            "nursing_log": {
+              "title": "护理日志 - 郑十",
+              "date": "2024-01-15",
+              "vital_signs": {
+                "temperature": "38.2℃",
+                "blood_pressure": "155/95 mmHg",
+                "heart_rate": "95次/分",
+                "oxygen_saturation": "95%"
+              },
+              "symptoms": ["右足红肿疼痛", "破溃流脓", "行走困难"],
+              "nursing_notes": "患者糖尿病史15年，右足破溃1周，加重伴发热2天。",
+              "key_indicators": ["感染征象", "糖尿病史", "足部溃疡"]
+            },
+            "settlement_detail": {
+              "title": "结算明细 - 郑十",
+              "date": "2024-01-15",
+              "items": [
+                {"name": "急诊挂号费", "amount": 100.0, "insurance_covered": true},
+                {"name": "血糖监测", "amount": 80.0, "insurance_covered": true},
+                {"name": "创面处理", "amount": 150.0, "insurance_covered": true},
+                {"name": "糖尿病足护理", "amount": 60.0, "insurance_covered": true}
+              ],
+              "total_amount": 390.0,
+              "insurance_amount": 312.0,
+              "self_payment": 78.0,
+              "prescription_code": "RX-008",
+              "risk_points": ["注意血糖监测频次记录"]
+            },
+            "assessment_scale": {
+              "title": "评估量表 - 糖尿病足评估",
+              "scale_type": "Wagner",
+              "scores": {
+                "溃疡深度": 3,
+                "感染程度": 2,
+                "缺血程度": 1,
+                "神经病变": 2
+              },
+              "total_score": 8,
+              "interpretation": "Wagner 3级 - 深部溃疡伴脓肿",
+              "recommendation": "住院治疗，抗感染，创面清创，密切监测血糖"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "level_3",
+      "name": "医保督察",
+      "description": "高难度关卡，严格把控医保拒付风险，处理6位患者",
+      "difficulty": "ADVANCED",
+      "patient_count": 6,
+      "time_limit": 540.0,
+      "target_accuracy": 0.85,
+      "required_score": 85,
+      "patients": [
+        {
+          "id": "p009",
+          "name": "陈十一",
+          "age": 68,
+          "gender": "男",
+          "correct_triage_level": 1,
+          "time_limit": 40.0,
+          "is_critical": true,
+          "training_prescription": {
+            "project_code": "RX-009",
+            "items": ["心肺复苏术后监护", "脑复苏治疗"],
+            "frequency": "持续监护",
+            "duration": "按需",
+            "common_errors": ["急救记录不全", "时间节点缺失"]
+          },
+          "documents": {
+            "nursing_log": {
+              "title": "护理日志 - 陈十一",
+              "date": "2024-01-15",
+              "vital_signs": {
+                "temperature": "35.8℃",
+                "blood_pressure": "85/50 mmHg",
+                "heart_rate": "45次/分",
+                "oxygen_saturation": "78%"
+              },
+              "symptoms": ["突发意识丧失", "抽搐", "大小便失禁"],
+              "nursing_notes": "患者突发心脏骤停，已行CPR 10分钟，正在抢救中。",
+              "key_indicators": ["意识丧失", "生命体征不稳定", "正在抢救", "紧急指征"]
+            },
+            "settlement_detail": {
+              "title": "结算明细 - 陈十一",
+              "date": "2024-01-15",
+              "items": [
+                {"name": "急诊抢救费", "amount": 500.0, "insurance_covered": true},
+                {"name": "心肺复苏术", "amount": 800.0, "insurance_covered": true},
+                {"name": "气管插管术", "amount": 300.0, "insurance_covered": true},
+                {"name": "心电监护", "amount": 200.0, "insurance_covered": true}
+              ],
+              "total_amount": 1800.0,
+              "insurance_amount": 1440.0,
+              "self_payment": 360.0,
+              "prescription_code": "RX-009",
+              "risk_points": ["抢救时间节点记录必须准确"]
+            },
+            "assessment_scale": {
+              "title": "评估量表 - 心搏骤停评估",
+              "scale_type": "APACHE II",
+              "scores": {
+                "急性生理评分": 18,
+                "年龄评分": 5,
+                "慢性健康评分": 5
+              },
+              "total_score": 28,
+              "interpretation": "预计死亡率约55%",
+              "recommendation": "持续高级生命支持，立即收入ICU"
+            }
+          }
+        },
+        {
+          "id": "p010",
+          "name": "林十二",
+          "age": 41,
+          "gender": "女",
+          "correct_triage_level": 2,
+          "time_limit": 65.0,
+          "is_critical": false,
+          "training_prescription": {
+            "project_code": "RX-010",
+            "items": ["手部功能训练", "感觉功能训练"],
+            "frequency": "每日2次",
+            "duration": "40分钟/次",
+            "common_errors": ["过度医疗", "项目与诊断不符"]
+          },
+          "documents": {
+            "nursing_log": {
+              "title": "护理日志 - 林十二",
+              "date": "2024-01-15",
+              "vital_signs": {
+                "temperature": "37.1℃",
+                "blood_pressure": "130/82 mmHg",
+                "heart_rate": "78次/分",
+                "oxygen_saturation": "97%"
+              },
+              "symptoms": ["右手麻木", "精细动作困难", "夜间加重"],
+              "nursing_notes": "患者右手麻木3个月，诊断为腕管综合征，保守治疗无效。",
+              "key_indicators": ["神经卡压症状", "保守治疗无效"]
+            },
+            "settlement_detail": {
+              "title": "结算明细 - 林十二",
+              "date": "2024-01-15",
+              "items": [
+                {"name": "门诊挂号费", "amount": 50.0, "insurance_covered": true},
+                {"name": "肌电图检查", "amount": 450.0, "insurance_covered": true},
+                {"name": "手部功能训练", "amount": 80.0, "insurance_covered": true},
+                {"name": "感觉功能训练", "amount": 70.0, "insurance_covered": true},
+                {"name": "颈椎牵引", "amount": 70.0, "insurance_covered": false}
+              ],
+              "total_amount": 720.0,
+              "insurance_amount": 490.0,
+              "self_payment": 230.0,
+              "prescription_code": "RX-010",
+              "risk_points": ["颈椎牵引与腕管综合征诊断不符，可能拒付"]
+            },
+            "assessment_scale": {
+              "title": "评估量表 - 上肢功能评估",
+              "scale_type": "DASH",
+              "scores": {
+                "日常生活活动": 15,
+                "工作": 8,
+                "运动": 7,
+                "症状": 12
+              },
+              "total_score": 42,
+              "interpretation": "中度上肢功能障碍",
+              "recommendation": "建议手术减压治疗，术前术后康复训练"
+            }
+          }
+        },
+        {
+          "id": "p011",
+          "name": "黄十三",
+          "age": 60,
+          "gender": "男",
+          "correct_triage_level": 3,
+          "time_limit": 95.0,
+          "is_critical": false,
+          "training_prescription": {
+            "project_code": "RX-011",
+            "items": ["有氧运动训练", "饮食指导"],
+            "frequency": "每周3次",
+            "duration": "60分钟/次",
+            "common_errors": ["运动风险评估不足", "训练记录不完整"]
+          },
+          "documents": {
+            "nursing_log": {
+              "title": "护理日志 - 黄十三",
+              "date": "2024-01-15",
+              "vital_signs": {
+                "temperature": "36.6℃",
+                "blood_pressure": "148/92 mmHg",
+                "heart_rate": "82次/分",
+                "oxygen_saturation": "96%"
+              },
+              "symptoms": ["体重超标", "活动后气促", "易疲劳"],
+              "nursing_notes": "患者BMI 32，高血压病史8年，要求减重康复。",
+              "key_indicators": ["肥胖", "高血压", "代谢综合征"]
+            },
+            "settlement_detail": {
+              "title": "结算明细 - 黄十三",
+              "date": "2024-01-15",
+              "items": [
+                {"name": "门诊挂号费", "amount": 50.0, "insurance_covered": true},
+                {"name": "体成分分析", "amount": 120.0, "insurance_covered": true},
+                {"name": "运动心肺试验", "amount": 680.0, "insurance_covered": true},
+                {"name": "有氧运动训练", "amount": 95.0, "insurance_covered": true},
+                {"name": "饮食指导", "amount": 60.0, "insurance_covered": true},
+                {"name": "中医针灸", "amount": 150.0, "insurance_covered": false}
+              ],
+              "total_amount": 1155.0,
+              "insurance_amount": 828.0,
+              "self_payment": 327.0,
+              "prescription_code": "RX-011",
+              "risk_points": ["中医针灸不在康复处方范围内，可能拒付"]
+            },
+            "assessment_scale": {
+              "title": "评估量表 - 运动风险评估",
+              "scale_type": "PAR-Q",
+              "scores": {
+                "心脏问题": 1,
+                "胸痛": 0,
+                "头晕": 1,
+                "骨关节问题": 1,
+                "高血压药物": 1,
+                "其他疾病": 1
+              },
+              "total_score": 5,
+              "interpretation": "中等运动风险，需医学监督",
+              "recommendation": "在医护监督下进行运动训练，循序渐进"
+            }
+          }
+        },
+        {
+          "id": "p012",
+          "name": "刘十四",
+          "age": 75,
+          "gender": "女",
+          "correct_triage_level": 1,
+          "time_limit": 45.0,
+          "is_critical": true,
+          "training_prescription": {
+            "project_code": "RX-012",
+            "items": ["意识状态监测", "吞咽功能评估"],
+            "frequency": "每2小时1次",
+            "duration": "按需",
+            "common_errors": ["意识评估不准确", "吞咽筛查遗漏"]
+          },
+          "documents": {
+            "nursing_log": {
+              "title": "护理日志 - 刘十四",
+              "date": "2024-01-15",
+              "vital_signs": {
+                "temperature": "38.8℃",
+                "blood_pressure": "175/100 mmHg",
+                "heart_rate": "110次/分",
+                "oxygen_saturation": "89%"
+              },
+              "symptoms": ["呼之不应", "双眼向左侧凝视", "右侧肢体瘫痪"],
+              "nursing_notes": "患者2小时前突发意识障碍，伴右侧肢体无力。",
+              "key_indicators": ["意识障碍", "局灶神经体征", "高血糖（待查）", "紧急"]
+            },
+            "settlement_detail": {
+              "title": "结算明细 - 刘十四",
+              "date": "2024-01-15",
+              "items": [
+                {"name": "急诊挂号费", "amount": 100.0, "insurance_covered": true},
+                {"name": "头颅CT", "amount": 850.0, "insurance_covered": true},
+                {"name": "血糖监测", "amount": 40.0, "insurance_covered": true},
+                {"name": "心电监护", "amount": 200.0, "insurance_covered": true},
+                {"name": "吞咽功能评估", "amount": 80.0, "insurance_covered": true}
+              ],
+              "total_amount": 1270.0,
+              "insurance_amount": 1016.0,
+              "self_payment": 254.0,
+              "prescription_code": "RX-012",
+              "risk_points": ["紧急情况，时间就是大脑"]
+            },
+            "assessment_scale": {
+              "title": "评估量表 - 意识状态评估",
+              "scale_type": "GCS",
+              "scores": {
+                "睁眼反应": 2,
+                "语言反应": 2,
+                "运动反应": 4
+              },
+              "total_score": 8,
+              "interpretation": "重度意识障碍（昏迷）",
+              "recommendation": "立即神经科会诊，紧急影像学检查，气道保护"
+            }
+          }
+        },
+        {
+          "id": "p013",
+          "name": "杨十五",
+          "age": 35,
+          "gender": "男",
+          "correct_triage_level": 3,
+          "time_limit": 105.0,
+          "is_critical": false,
+          "training_prescription": {
+            "project_code": "RX-013",
+            "items": ["运动疗法", "物理因子治疗"],
+            "frequency": "每日1次",
+            "duration": "50分钟/次",
+            "common_errors": ["重复收费", "治疗频次超标"]
+          },
+          "documents": {
+            "nursing_log": {
+              "title": "护理日志 - 杨十五",
+              "date": "2024-01-15",
+              "vital_signs": {
+                "temperature": "36.9℃",
+                "blood_pressure": "128/82 mmHg",
+                "heart_rate": "75次/分",
+                "oxygen_saturation": "98%"
+              },
+              "symptoms": ["腰部酸痛", "劳累后加重", "休息后缓解"],
+              "nursing_notes": "患者腰肌劳损病史2年，近1周因工作劳累症状加重。",
+              "key_indicators": ["慢性劳损", "症状与劳累相关"]
+            },
+            "settlement_detail": {
+              "title": "结算明细 - 杨十五",
+              "date": "2024-01-15",
+              "items": [
+                {"name": "门诊挂号费", "amount": 50.0, "insurance_covered": true},
+                {"name": "腰椎X线", "amount": 240.0, "insurance_covered": true},
+                {"name": "运动疗法", "amount": 90.0, "insurance_covered": true},
+                {"name": "物理因子治疗", "amount": 90.0, "insurance_covered": true},
+                {"name": "运动疗法(重复)", "amount": 90.0, "insurance_covered": false}
+              ],
+              "total_amount": 560.0,
+              "insurance_amount": 420.0,
+              "self_payment": 140.0,
+              "prescription_code": "RX-013",
+              "risk_points": ["运动疗法重复收费，医保拒付高风险"]
+            },
+            "assessment_scale": {
+              "title": "评估量表 - 腰痛评估",
+              "scale_type": "VAS",
+              "scores": {
+                "疼痛评分": 5
+              },
+              "total_score": 5,
+              "interpretation": "中度疼痛",
+              "recommendation": "保守治疗，康复训练，注意休息"
+            }
+          }
+        },
+        {
+          "id": "p014",
+          "name": "朱十六",
+          "age": 50,
+          "gender": "女",
+          "correct_triage_level": 2,
+          "time_limit": 70.0,
+          "is_critical": false,
+          "training_prescription": {
+            "project_code": "RX-014",
+            "items": ["关节活动度训练", "ADL训练"],
+            "frequency": "每日2次",
+            "duration": "35分钟/次",
+            "common_errors": ["适应症不符", "诊断与治疗项目不匹配"]
+          },
+          "documents": {
+            "nursing_log": {
+              "title": "护理日志 - 朱十六",
+              "date": "2024-01-15",
+              "vital_signs": {
+                "temperature": "37.3℃",
+                "blood_pressure": "135/85 mmHg",
+                "heart_rate": "88次/分",
+                "oxygen_saturation": "96%"
+              },
+              "symptoms": ["多关节疼痛", "晨僵", "双手关节肿胀"],
+              "nursing_notes": "患者类风湿性关节炎病史5年，近1个月关节痛加重。",
+              "key_indicators": ["自身免疫性疾病", "多关节受累"]
+            },
+            "settlement_detail": {
+              "title": "结算明细 - 朱十六",
+              "date": "2024-01-15",
+              "items": [
+                {"name": "门诊挂号费", "amount": 50.0, "insurance_covered": true},
+                {"name": "类风湿因子检测", "amount": 180.0, "insurance_covered": true},
+                {"name": "关节活动度训练", "amount": 80.0, "insurance_covered": true},
+                {"name": "ADL训练", "amount": 70.0, "insurance_covered": true},
+                {"name": "颈椎牵引", "amount": 70.0, "insurance_covered": false}
+              ],
+              "total_amount": 450.0,
+              "insurance_amount": 304.0,
+              "self_payment": 146.0,
+              "prescription_code": "RX-014",
+              "risk_points": ["颈椎牵引与类风湿性关节炎主要症状不符，可能拒付"]
+            },
+            "assessment_scale": {
+              "title": "评估量表 - 类风湿关节炎评估",
+              "scale_type": "DAS28",
+              "scores": {
+                "压痛关节数": 6,
+                "肿胀关节数": 4,
+                "ESR": 28,
+                "VAS评分": 6
+              },
+              "total_score": 5.2,
+              "interpretation": "疾病活动度高",
+              "recommendation": "调整药物治疗方案，配合康复训练保护关节功能"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

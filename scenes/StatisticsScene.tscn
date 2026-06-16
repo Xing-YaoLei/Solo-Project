@@ -1,0 +1,216 @@
+[gd_scene load_steps=2 format=3 uid="uid://f7xq7k5m3v4n5"]
+
+[ext_resource type="Script" path="res://scripts/ui/statistics_scene.gd" id="1_stats"]
+
+[node name="StatisticsScene" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_stats")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.1, 0.12, 0.15, 1)
+
+[node name="MainVBox" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 40.0
+offset_top = 30.0
+offset_right = -40.0
+offset_bottom = -30.0
+theme_override_constants/separation = 20
+
+[node name="Header" type="HBoxContainer" parent="MainVBox"]
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="BackButton" type="Button" parent="MainVBox/Header"]
+layout_mode = 2
+custom_minimum_size = Vector2(100, 40)
+text = "← 返回"
+
+[node name="Title" type="Label" parent="MainVBox/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "📊 训练统计"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.95, 0.95, 0.95, 1)
+theme_override_font_sizes/font_size = 28
+
+[node name="ResetButton" type="Button" parent="MainVBox/Header"]
+layout_mode = 2
+custom_minimum_size = Vector2(120, 40)
+text = "重置统计"
+
+[node name="OverallStatsPanel" type="Panel" parent="MainVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 140)
+
+[node name="OverallStatsGrid" type="GridContainer" parent="MainVBox/OverallStatsPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = 15.0
+offset_right = -20.0
+offset_bottom = -15.0
+columns = 6
+theme_override_constants/h_separation = 30
+theme_override_constants/v_separation = 10
+
+[node name="CompletionRateTitle" type="Label" parent="MainVBox/OverallStatsPanel/OverallStatsGrid"]
+layout_mode = 2
+text = "🎯 训练完成率"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.6, 0.65, 0.7, 1)
+theme_override_font_sizes/font_size = 13
+
+[node name="TotalSessionsTitle" type="Label" parent="MainVBox/OverallStatsPanel/OverallStatsGrid"]
+layout_mode = 2
+text = "📝 总训练次数"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.6, 0.65, 0.7, 1)
+theme_override_font_sizes/font_size = 13
+
+[node name="TotalPatientsTitle" type="Label" parent="MainVBox/OverallStatsPanel/OverallStatsGrid"]
+layout_mode = 2
+text = "👥 处理患者数"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.6, 0.65, 0.7, 1)
+theme_override_font_sizes/font_size = 13
+
+[node name="OverallAccuracyTitle" type="Label" parent="MainVBox/OverallStatsPanel/OverallStatsGrid"]
+layout_mode = 2
+text = "✅ 总正确率"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.6, 0.65, 0.7, 1)
+theme_override_font_sizes/font_size = 13
+
+[node name="InsuranceRejectionsTitle" type="Label" parent="MainVBox/OverallStatsPanel/OverallStatsGrid"]
+layout_mode = 2
+text = "💰 医保拒付"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.6, 0.65, 0.7, 1)
+theme_override_font_sizes/font_size = 13
+
+[node name="TotalTimeTitle" type="Label" parent="MainVBox/OverallStatsPanel/OverallStatsGrid"]
+layout_mode = 2
+text = "⏱ 训练时长"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.6, 0.65, 0.7, 1)
+theme_override_font_sizes/font_size = 13
+
+[node name="CompletionRateValue" type="Label" parent="MainVBox/OverallStatsPanel/OverallStatsGrid"]
+layout_mode = 2
+text = "0%"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.3, 0.85, 0.4, 1)
+theme_override_font_sizes/font_size = 24
+
+[node name="TotalSessionsValue" type="Label" parent="MainVBox/OverallStatsPanel/OverallStatsGrid"]
+layout_mode = 2
+text = "0"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.6, 0.8, 0.9, 1)
+theme_override_font_sizes/font_size = 24
+
+[node name="TotalPatientsValue" type="Label" parent="MainVBox/OverallStatsPanel/OverallStatsGrid"]
+layout_mode = 2
+text = "0"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.8, 0.7, 0.9, 1)
+theme_override_font_sizes/font_size = 24
+
+[node name="OverallAccuracyValue" type="Label" parent="MainVBox/OverallStatsPanel/OverallStatsGrid"]
+layout_mode = 2
+text = "0%"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(1, 0.85, 0.3, 1)
+theme_override_font_sizes/font_size = 24
+
+[node name="InsuranceRejectionsValue" type="Label" parent="MainVBox/OverallStatsPanel/OverallStatsGrid"]
+layout_mode = 2
+text = "0"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.95, 0.5, 0.3, 1)
+theme_override_font_sizes/font_size = 24
+
+[node name="TotalTimeValue" type="Label" parent="MainVBox/OverallStatsPanel/OverallStatsGrid"]
+layout_mode = 2
+text = "0秒"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.7, 0.8, 0.85, 1)
+theme_override_font_sizes/font_size = 24
+
+[node name="LevelStatsPanel" type="Panel" parent="MainVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="LevelStatsVBox" type="VBoxContainer" parent="MainVBox/LevelStatsPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = 15.0
+offset_right = -20.0
+offset_bottom = -15.0
+theme_override_constants/separation = 10
+
+[node name="LevelStatsTitle" type="Label" parent="MainVBox/LevelStatsPanel/LevelStatsVBox"]
+layout_mode = 2
+text = "📋 各关卡统计"
+theme_override_colors/font_color = Color(0.9, 0.9, 0.9, 1)
+theme_override_font_sizes/font_size = 18
+
+[node name="LevelStatsScroll" type="ScrollContainer" parent="MainVBox/LevelStatsPanel/LevelStatsVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="LevelStatsContent" type="VBoxContainer" parent="MainVBox/LevelStatsPanel/LevelStatsVBox/LevelStatsScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 10
+
+[node name="RecentSessionsPanel" type="Panel" parent="MainVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 200)
+size_flags_vertical = 3
+
+[node name="RecentSessionsVBox" type="VBoxContainer" parent="MainVBox/RecentSessionsPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = 15.0
+offset_right = -20.0
+offset_bottom = -15.0
+theme_override_constants/separation = 10
+
+[node name="RecentSessionsTitle" type="Label" parent="MainVBox/RecentSessionsPanel/RecentSessionsVBox"]
+layout_mode = 2
+text = "📜 最近训练记录"
+theme_override_colors/font_color = Color(0.9, 0.9, 0.9, 1)
+theme_override_font_sizes/font_size = 18
+
+[node name="RecentSessionsScroll" type="ScrollContainer" parent="MainVBox/RecentSessionsPanel/RecentSessionsVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="RecentSessionsContent" type="VBoxContainer" parent="MainVBox/RecentSessionsPanel/RecentSessionsVBox/RecentSessionsScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8

@@ -1,0 +1,63 @@
+[gd_scene load_steps=2 format=3 uid="uid://c7xq7k5m3v4n2"]
+
+[ext_resource type="Script" path="res://scripts/ui/level_select.gd" id="1_level"]
+
+[node name="LevelSelect" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_level")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.1, 0.12, 0.15, 1)
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 50.0
+offset_top = 30.0
+offset_right = -50.0
+offset_bottom = -30.0
+theme_override_constants/separation = 20
+
+[node name="Header" type="HBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="BackButton" type="Button" parent="VBoxContainer/Header"]
+layout_mode = 2
+custom_minimum_size = Vector2(100, 40)
+text = "← 返回"
+
+[node name="Title" type="Label" parent="VBoxContainer/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "选择训练关卡"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.95, 0.95, 0.95, 1)
+theme_override_font_sizes/font_size = 32
+
+[node name="Spacer" type="Control" parent="VBoxContainer/Header"]
+layout_mode = 2
+custom_minimum_size = Vector2(100, 0)
+
+[node name="LevelScroll" type="ScrollContainer" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="LevelGrid" type="GridContainer" parent="VBoxContainer/LevelScroll"]
+layout_mode = 2
+columns = 3
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/h_separation = 30
+theme_override_constants/v_separation = 30
