@@ -1,6 +1,6 @@
 import pandas as pd
-from datetime import date, timedelta
-from typing import Optional, List, Dict, Any
+from datetime import date, timedelta, datetime
+from typing import List, Dict, Any
 from sqlalchemy import func, and_, or_, case
 
 from app.models import (
@@ -226,6 +226,7 @@ def get_follow_up_tasks(user_id: int = None, role: UserRole = None) -> pd.DataFr
                 FollowUp.due_date,
                 FollowUp.created_at,
                 FollowUp.completed_at,
+                FollowUp.assigned_to,
                 Prescription.prescription_no,
                 Prescription.patient_name,
                 Pharmacy.name.label("pharmacy_name"),
@@ -236,16 +237,19 @@ def get_follow_up_tasks(user_id: int = None, role: UserRole = None) -> pd.DataFr
             .outerjoin(User, FollowUp.assigned_to == User.id)
         )
 
-        if role == UserRole.EXECUTOR and user_id:
-            query = query.filter(FollowUp.assigned_to == user_id)
-        elif role == UserRole.EXECUTOR:
-            query = query.filter(FollowUp.assigned_to.is_(None))
+        if role == UserRole.EXECUTOR:
+            if user_id:
+                query = query.filter(
+                    or_(FollowUp.assigned_to == user_id, FollowUp.assigned_to.is_(None))
+                )
+            else:
+                query = query.filter(FollowUp.assigned_to.is_(None))
 
         rows = query.order_by(FollowUp.priority.desc(), FollowUp.due_date.asc()).all()
 
         columns = ["id", "status", "priority", "follow_up_type", "content",
-                   "due_date", "created_at", "completed_at", "prescription_no",
-                   "patient_name", "pharmacy_name", "assignee_name"]
+                   "due_date", "created_at", "completed_at", "assigned_to",
+                   "prescription_no", "patient_name", "pharmacy_name", "assignee_name"]
         df = _to_dataframe(rows, columns)
         if not df.empty:
             status_map = {
@@ -256,6 +260,7 @@ def get_follow_up_tasks(user_id: int = None, role: UserRole = None) -> pd.DataFr
             }
             df["status_label"] = df["status"].map(lambda x: status_map.get(x, str(x)))
             df["priority_label"] = df["priority"].map({0: "低", 1: "中", 2: "高"})
+            df["can_claim"] = df["assigned_to"].isna()
         return df
     finally:
         session.close()
@@ -330,7 +335,7 @@ def get_batch_history(limit: int = 50) -> pd.DataFrame:
             .order_by(ImportBatch.created_at.desc())
             .limit(limit)
             .all()
-               )
+        )
         df = _to_dataframe(rows, ["batch_no", "source", "status", "total_records",
                                    "success_records", "failed_records", "file_name",
                                    "started_at", "completed_at"])
@@ -340,3 +345,158 @@ def get_batch_history(limit: int = 50) -> pd.DataFrame:
         return df
     finally:
         session.close()
+
+
+# ========================================================================
+# 写操作：处方审核、注释解决、任务分派（对应业务流程状态流转）
+# ========================================================================
+
+def submit_pharmacist_review(
+    prescription_id: int,
+    pharmacist_id: int,
+    opinion: PharmacistOpinion,
+    comment: str = "",
+) -> Dict[str, Any]:
+    """
+    药师提交审核意见，同步更新处方状态和审核时间。
+
+    状态流转规则：
+      PASSED                    → APPROVED
+      PHOTO_UNCLEAR / INCOMPLETE_INFO → NEEDS_CLARIFICATION 并触发回访
+      其他异常意见               → REJECTED
+    """
+    session = get_session()
+    try:
+        prescription = session.query(Prescription).filter(
+            Prescription.id == prescription_id
+        ).first()
+        if not prescription:
+            return {"ok": False, "error": "处方不存在"}
+
+        pharmacist = session.query(User).filter(User.id == pharmacist_id).first()
+        if not pharmacist or pharmacist.role not in (UserRole.PHARMACIST, UserRole.MANAGEMENT):
+            return {"ok": False, "error": "无权审核"}
+
+        review = PharmacistReview(
+            prescription_id=prescription_id,
+            pharmacist_id=pharmacist_id,
+            opinion=opinion,
+            comment=comment or "",
+        )
+        session.add(review)
+
+        prescription.review_date = datetime.utcnow()
+
+        if opinion == PharmacistOpinion.PASSED:
+            prescription.status = PrescriptionStatus.APPROVED
+        elif opinion in (PharmacistOpinion.PHOTO_UNCLEAR, PharmacistOpinion.INCOMPLETE_INFO):
+            prescription.status = PrescriptionStatus.NEEDS_CLARIFICATION
+            prescription.has_unclear_photo = prescription.has_unclear_photo or (
+                opinion == PharmacistOpinion.PHOTO_UNCLEAR
+            )
+            # 自动建立回访任务（如无）
+            existing_fu = session.query(FollowUp).filter(
+                and_(
+                    FollowUp.prescription_id == prescription.id,
+                    FollowUp.status.in_([FollowUpStatus.PENDING, FollowUpStatus.IN_PROGRESS]),
+                )
+            ).first()
+            if not existing_fu:
+                fu = FollowUp(
+                    prescription_id=prescription.id,
+                    status=FollowUpStatus.PENDING,
+                    priority=2,
+                    follow_up_type="photo_unclear" if opinion == PharmacistOpinion.PHOTO_UNCLEAR else "clarification",
+                    content="药师审核标注需澄清，等待回访处理",
+                    due_date=date.today() + timedelta(days=3),
+                )
+                session.add(fu)
+        else:
+            prescription.status = PrescriptionStatus.REJECTED
+
+        session.commit()
+        return {
+            "ok": True,
+            "prescription_id": prescription.id,
+            "new_status": prescription.status.value,
+            "review_id": review.id,
+        }
+    except Exception as e:
+        session.rollback()
+        return {"ok": False, "error": str(e)}
+    finally:
+        session.close()
+
+
+def resolve_note(note_id: int, resolver_id: int) -> Dict[str, Any]:
+    """把处方注释标记为已解决。"""
+    session = get_session()
+    try:
+        note = session.query(PrescriptionNote).filter(PrescriptionNote.id == note_id).first()
+        if not note:
+            return {"ok": False, "error": "注释不存在"}
+        note.is_resolved = True
+        note.resolved_at = datetime.utcnow()
+
+        # 如果该处方所有注释都已解决，自动把 NEEDS_CLARIFICATION 切回 UNDER_REVIEW
+        unresolved = session.query(PrescriptionNote).filter(
+            and_(
+                PrescriptionNote.prescription_id == note.prescription_id,
+                PrescriptionNote.is_resolved == False,
+            )
+        ).count()
+        if unresolved == 0:
+            rx = session.query(Prescription).filter(Prescription.id == note.prescription_id).first()
+            if rx and rx.status == PrescriptionStatus.NEEDS_CLARIFICATION:
+                rx.status = PrescriptionStatus.UNDER_REVIEW
+
+        session.commit()
+        return {"ok": True, "note_id": note_id}
+    except Exception as e:
+        session.rollback()
+        return {"ok": False, "error": str(e)}
+    finally:
+        session.close()
+
+
+def get_pending_review_list(limit: int = 50) -> pd.DataFrame:
+    """查询待审核处方列表（给药师/管理层用）。"""
+    session = get_session()
+    try:
+        rows = (
+            session.query(
+                Prescription.id,
+                Prescription.prescription_no,
+                Prescription.patient_name,
+                Prescription.prescription_date,
+                Prescription.status,
+                Prescription.has_unclear_photo,
+                Pharmacy.name.label("pharmacy_name"),
+                Member.name.label("member_name"),
+            )
+            .join(Pharmacy, Prescription.pharmacy_id == Pharmacy.id)
+            .outerjoin(Member, Prescription.member_id == Member.id)
+            .filter(Prescription.status.in_([
+                PrescriptionStatus.RECEIVED,
+                PrescriptionStatus.UNDER_REVIEW,
+                PrescriptionStatus.NEEDS_CLARIFICATION,
+            ]))
+            .order_by(Prescription.prescription_date.desc())
+            .limit(limit)
+            .all()
+        )
+        df = _to_dataframe(rows, [
+            "id", "prescription_no", "patient_name", "prescription_date",
+            "status", "has_unclear_photo", "pharmacy_name", "member_name",
+        ])
+        if not df.empty:
+            status_map = {
+                PrescriptionStatus.RECEIVED: "已接收",
+                PrescriptionStatus.UNDER_REVIEW: "审核中",
+                PrescriptionStatus.NEEDS_CLARIFICATION: "需澄清",
+            }
+            df["status_label"] = df["status"].map(lambda x: status_map.get(x, str(x)))
+        return df
+    finally:
+        session.close()
+

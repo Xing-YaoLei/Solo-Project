@@ -1,13 +1,12 @@
 from datetime import datetime, timedelta, date
-from typing import List, Dict, Any
-import pandas as pd
+from typing import Dict, Any
 from sqlalchemy import func, and_, or_
 
 from app.tasks.celery_app import celery_app
 from app.models import (
-    get_session, Prescription, PrescriptionItem, Member, Pharmacy,
-    PharmacistReview, PrescriptionNote, FollowUp, PrescriptionPhoto,
-    PrescriptionStatus, PharmacistOpinion, FollowUpStatus,
+    get_session, Prescription, PrescriptionItem,
+    PharmacistReview, FollowUp, User,
+    PrescriptionStatus, PharmacistOpinion, FollowUpStatus, UserRole,
 )
 from app.data import (
     import_pos_data, import_member_data, import_insurance_data,
@@ -197,8 +196,30 @@ def task_expiry_monitor(days_threshold: int = 90):
 
 @celery_app.task(name="auto_assign_follow_ups")
 def task_auto_assign_follow_ups():
+    """
+    自动分派回访任务：
+    1. 找出 NEEDS_CLARIFICATION / FOLLOW_UP / has_unclear_photo 处方
+    2. 若还没活动的回访任务则新建，并按最少负载轮询分配给活跃 EXECUTOR
+    """
     session = get_session()
     try:
+        # 取所有活跃执行角色并按已分配任务数排序（最少负载优先）
+        active_executors = (
+            session.query(User.id, User.full_name, func.count(FollowUp.id).label("load"))
+            .outerjoin(
+                FollowUp,
+                and_(
+                    FollowUp.assigned_to == User.id,
+                    FollowUp.status.in_([FollowUpStatus.PENDING, FollowUpStatus.IN_PROGRESS]),
+                ),
+            )
+            .filter(User.role == UserRole.EXECUTOR, User.is_active == True)
+            .group_by(User.id, User.full_name)
+            .order_by(func.count(FollowUp.id).asc())
+            .all()
+        )
+        executor_ids = [e.id for e in active_executors]
+
         need_followup = session.query(Prescription).filter(
             or_(
                 Prescription.status == PrescriptionStatus.NEEDS_CLARIFICATION,
@@ -208,6 +229,7 @@ def task_auto_assign_follow_ups():
         ).all()
 
         assigned = 0
+        round_robin = 0
         for rx in need_followup:
             existing_fu = session.query(FollowUp).filter(
                 and_(
@@ -217,18 +239,29 @@ def task_auto_assign_follow_ups():
             ).first()
 
             if not existing_fu:
+                # 按最少负载轮询分配；如果无活跃执行角色则留空（公共池）
+                assigned_to = executor_ids[round_robin % len(executor_ids)] if executor_ids else None
+                round_robin += 1
+
                 fu = FollowUp(
                     prescription_id=rx.id,
+                    assigned_to=assigned_to,
                     status=FollowUpStatus.PENDING,
                     priority=2 if rx.status == PrescriptionStatus.NEEDS_CLARIFICATION else 1,
-                    follow_up_type="clarification" if rx.has_unclear_photo else "review",
-                    content="处方审核需进一步确认或回访",
+                    follow_up_type="photo_unclear" if rx.has_unclear_photo else (
+                        "clarification" if rx.status == PrescriptionStatus.NEEDS_CLARIFICATION else "review"
+                    ),
+                    content="处方审核需进一步确认或回访（系统自动分派）",
                     due_date=date.today() + timedelta(days=3),
                 )
                 session.add(fu)
                 assigned += 1
 
         session.commit()
-        return {"assigned": assigned}
+        return {
+            "assigned": assigned,
+            "executors_available": len(executor_ids),
+            "prescriptions_requiring_followup": len(need_followup),
+        }
     finally:
         session.close()

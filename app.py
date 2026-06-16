@@ -1,9 +1,8 @@
-import os
-import hashlib
 from datetime import datetime
-from dash import Dash, dcc, html, Input, Output, State, callback_context, no_update
+from dash import Dash, dcc, html, Input, Output, State, no_update
 import dash_bootstrap_components as dbc
 from flask import Flask, session as flask_session
+import logging
 
 from config import Config
 from app.models import (
@@ -11,6 +10,8 @@ from app.models import (
 )
 from app.dashboards.management_dashboard import build_management_layout, register_management_callbacks
 from app.dashboards.executor_dashboard import build_executor_layout, register_executor_callbacks
+
+logger = logging.getLogger(__name__)
 
 
 server = Flask(__name__)
@@ -98,21 +99,28 @@ def create_app() -> Dash:
         [Input("url", "pathname")],
     )
     def display_page(pathname):
-        user = _get_current_user()
-        if not user:
-            return _build_login_layout(), {"user_id": None, "role": None, "name": None}
+        try:
+            user = _get_current_user()
+            if not user:
+                return _build_login_layout(), {"user_id": None, "role": None, "name": None}
 
-        user_info = {"user_id": user.id, "role": user.role.value, "name": user.full_name}
-        nav = _build_navbar(user)
+            user_info = {"user_id": user.id, "role": user.role.value, "name": user.full_name}
+            nav = _build_navbar(user)
 
-        if user.role in [UserRole.MANAGEMENT, UserRole.PHARMACIST]:
-            content = build_management_layout()
-        elif user.role == UserRole.EXECUTOR:
-            content = build_executor_layout()
-        else:
-            content = html.Div("无权访问", className="text-danger p-5")
+            if user.role in [UserRole.MANAGEMENT, UserRole.PHARMACIST]:
+                content = build_management_layout()
+            elif user.role == UserRole.EXECUTOR:
+                content = build_executor_layout()
+            else:
+                content = html.Div("无权访问", className="text-danger p-5")
 
-        return html.Div([nav, content]), user_info
+            return html.Div([nav, content]), user_info
+        except Exception as e:
+            logger.exception("display_page 路由失败")
+            return html.Div([
+                _build_login_layout(),
+                dbc.Alert(f"页面加载异常: {str(e)}", color="danger", className="mt-3"),
+            ]), {"user_id": None, "role": None, "name": None}
 
     # -------- 登录回调 --------
     @app.callback(
@@ -122,26 +130,30 @@ def create_app() -> Dash:
         prevent_initial_call=True,
     )
     def do_login(n_clicks, username, password):
-        if not username or not password:
-            return no_update, "请输入用户名和密码"
-
-        user = verify_user_credentials(username, password)
-        if not user:
-            return no_update, "用户名或密码错误"
-
-        flask_session["user_id"] = user.id
-        flask_session["username"] = user.username
-
-        sess = get_session()
         try:
-            u = sess.query(User).filter(User.id == user.id).first()
-            if u:
-                u.last_login = datetime.utcnow()
-                sess.commit()
-        finally:
-            sess.close()
+            if not username or not password:
+                return no_update, "请输入用户名和密码"
 
-        return "/dashboard", ""
+            user = verify_user_credentials(username, password)
+            if not user:
+                return no_update, "用户名或密码错误"
+
+            flask_session["user_id"] = user.id
+            flask_session["username"] = user.username
+
+            sess = get_session()
+            try:
+                u = sess.query(User).filter(User.id == user.id).first()
+                if u:
+                    u.last_login = datetime.utcnow()
+                    sess.commit()
+            finally:
+                sess.close()
+
+            return "/dashboard", ""
+        except Exception as e:
+            logger.exception("登录异常")
+            return no_update, f"登录失败: {str(e)}"
 
     # -------- 登出回调（组件在已登录时才渲染，依靠 suppress_callback_exceptions） --------
     @app.callback(
@@ -150,8 +162,12 @@ def create_app() -> Dash:
         prevent_initial_call=True,
     )
     def do_logout(n_clicks):
-        flask_session.clear()
-        return "/login"
+        try:
+            flask_session.clear()
+            return "/login"
+        except Exception as e:
+            logger.exception("登出异常")
+            return "/login"
 
     return app
 

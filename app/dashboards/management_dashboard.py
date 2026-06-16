@@ -1,6 +1,8 @@
-from dash import dcc, html, dash_table, Input, Output, State, callback_context
+from dash import dcc, html, dash_table, Input, Output, no_update
 import dash_bootstrap_components as dbc
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
+import traceback
+import logging
 
 from app.dashboards.data_service import (
     get_prescription_summary, get_prescription_trend,
@@ -9,11 +11,29 @@ from app.dashboards.data_service import (
     get_member_changes, get_pharmacy_stats, get_batch_history,
 )
 from app.dashboards.charts import (
-    create_trend_chart, create_amount_trend, create_photo_distribution_chart,
+    create_trend_chart, create_photo_distribution_chart,
     create_photo_quality_pie, create_pharmacist_funnel, create_expiry_ranking_chart,
     create_member_change_chart, create_pharmacy_comparison, create_status_pie,
     create_kpi_card,
 )
+
+logger = logging.getLogger(__name__)
+
+
+def _safe_empty_fig(msg: str = "暂无数据"):
+    """生成一个简单的空数据占位图，避免回调崩溃。"""
+    import plotly.graph_objects as go
+    fig = go.Figure()
+    fig.update_layout(
+        annotations=[dict(
+            text=msg, showarrow=False, font=dict(size=14, color="#9CA3AF"),
+            xref="paper", yref="paper", x=0.5, y=0.5,
+        )],
+        paper_bgcolor="white", plot_bgcolor="white",
+        xaxis=dict(visible=False), yaxis=dict(visible=False),
+        height=240,
+    )
+    return fig
 
 
 def build_management_layout():
@@ -84,9 +104,13 @@ def register_management_callbacks(app):
         prevent_initial_call=False,
     )
     def _mgmt_update_summary(start_date, end_date, n_clicks):
-        start = date.fromisoformat(start_date) if start_date else None
-        end = date.fromisoformat(end_date) if end_date else None
-        return get_prescription_summary(start, end)
+        try:
+            start = date.fromisoformat(start_date) if start_date else None
+            end = date.fromisoformat(end_date) if end_date else None
+            return get_prescription_summary(start, end)
+        except Exception as e:
+            logger.exception("mgmt_update_summary 失败")
+            return {"error": str(e)}
 
     @app.callback(
         [Output("mgmt-kpi-total", "figure"), Output("mgmt-kpi-approved", "figure"),
@@ -97,64 +121,85 @@ def register_management_callbacks(app):
          Input("mgmt-date-range", "start_date"), Input("mgmt-date-range", "end_date")],
     )
     def _mgmt_update_kpis(summary, start_date, end_date):
-        if not summary:
-            summary = get_prescription_summary()
-        trend_df = get_prescription_trend(30)
-        return (
-            create_kpi_card(summary.get("total_prescriptions", 0), "处方总数", "#2563EB"),
-            create_kpi_card(summary.get("approved", 0), "审核通过", "#10B981"),
-            create_kpi_card(summary.get("approval_rate", 0), "通过率", "#3B82F6", suffix="%"),
-            create_kpi_card(summary.get("total_amount", 0), "总金额", "#8B5CF6", prefix="¥"),
-            create_kpi_card(summary.get("insurance_amount", 0), "医保支付", "#F59E0B", prefix="¥"),
-            create_kpi_card(summary.get("pending_review", 0), "待审核", "#EF4444"),
-            create_trend_chart(trend_df),
-            create_status_pie(summary),
-        )
+        try:
+            if not summary or isinstance(summary, dict) and "error" in summary:
+                summary = get_prescription_summary()
+            trend_df = get_prescription_trend(30)
+            return (
+                create_kpi_card(summary.get("total_prescriptions", 0), "处方总数", "#2563EB"),
+                create_kpi_card(summary.get("approved", 0), "审核通过", "#10B981"),
+                create_kpi_card(summary.get("approval_rate", 0), "通过率", "#3B82F6", suffix="%"),
+                create_kpi_card(summary.get("total_amount", 0), "总金额", "#8B5CF6", prefix="¥"),
+                create_kpi_card(summary.get("insurance_amount", 0), "医保支付", "#F59E0B", prefix="¥"),
+                create_kpi_card(summary.get("pending_review", 0), "待审核", "#EF4444"),
+                create_trend_chart(trend_df) if not trend_df.empty else _safe_empty_fig("暂无趋势数据"),
+                create_status_pie(summary),
+            )
+        except Exception as e:
+            logger.exception("mgmt_update_kpis 失败")
+            empty = _safe_empty_fig(f"数据加载失败: {str(e)[:40]}")
+            return [empty] * 8
 
     @app.callback(
         Output("mgmt-analysis-content", "children"),
         [Input("mgmt-analysis-tabs", "active_tab")],
     )
     def _mgmt_render_analysis_tab(tab_id):
-        if tab_id == "photo":
-            photo_df = get_photo_distribution()
-            quality_df = get_photo_quality_detail()
-            return dbc.Row([
-                dbc.Col(dcc.Graph(figure=create_photo_distribution_chart(photo_df)), width=8),
-                dbc.Col(dcc.Graph(figure=create_photo_quality_pie(quality_df)), width=4),
-            ])
-        elif tab_id == "funnel":
-            funnel_df = get_pharmacist_funnel()
-            return dbc.Row([
-                dbc.Col(dcc.Graph(figure=create_pharmacist_funnel(funnel_df)), width=12),
-            ])
-        elif tab_id == "expiry":
-            expiry_df = get_expiry_ranking(limit=20)
-            return dbc.Row([
-                dbc.Col(dcc.Graph(figure=create_expiry_ranking_chart(expiry_df)), width=12),
-            ])
-        elif tab_id == "member":
-            member_df = get_member_changes(90)
-            return dbc.Row([
-                dbc.Col(dcc.Graph(figure=create_member_change_chart(member_df)), width=12),
-            ])
-        elif tab_id == "pharmacy":
-            ph_df = get_pharmacy_stats()
-            return dbc.Row([
-                dbc.Col(dcc.Graph(figure=create_pharmacy_comparison(ph_df)), width=12),
-            ])
-        elif tab_id == "batch":
-            batch_df = get_batch_history(50)
-            if batch_df.empty:
-                return html.Div("暂无导入批次记录", className="text-secondary p-4")
-            display_cols = ["batch_no", "source_label", "status_label", "total_records",
-                            "success_records", "failed_records", "file_name", "started_at"]
-            return dash_table.DataTable(
-                data=batch_df[display_cols].to_dict("records"),
-                columns=[{"name": c, "id": c} for c in display_cols],
-                page_size=15,
-                style_table={"overflowX": "auto"},
-                style_header={"backgroundColor": "#F3F4F6", "fontWeight": "bold"},
-                style_cell={"padding": "10px", "textAlign": "left"},
-            )
-        return html.Div()
+        try:
+            if tab_id == "photo":
+                photo_df = get_photo_distribution()
+                quality_df = get_photo_quality_detail()
+                return dbc.Row([
+                    dbc.Col(dcc.Graph(
+                        figure=create_photo_distribution_chart(photo_df) if not photo_df.empty else _safe_empty_fig()
+                    ), width=8),
+                    dbc.Col(dcc.Graph(
+                        figure=create_photo_quality_pie(quality_df) if not quality_df.empty else _safe_empty_fig()
+                    ), width=4),
+                ])
+            elif tab_id == "funnel":
+                funnel_df = get_pharmacist_funnel()
+                return dbc.Row([
+                    dbc.Col(dcc.Graph(
+                        figure=create_pharmacist_funnel(funnel_df) if not funnel_df.empty else _safe_empty_fig()
+                    ), width=12),
+                ])
+            elif tab_id == "expiry":
+                expiry_df = get_expiry_ranking(limit=20)
+                return dbc.Row([
+                    dbc.Col(dcc.Graph(
+                        figure=create_expiry_ranking_chart(expiry_df) if not expiry_df.empty else _safe_empty_fig()
+                    ), width=12),
+                ])
+            elif tab_id == "member":
+                member_df = get_member_changes(90)
+                return dbc.Row([
+                    dbc.Col(dcc.Graph(
+                        figure=create_member_change_chart(member_df) if not member_df.empty else _safe_empty_fig()
+                    ), width=12),
+                ])
+            elif tab_id == "pharmacy":
+                ph_df = get_pharmacy_stats()
+                return dbc.Row([
+                    dbc.Col(dcc.Graph(
+                        figure=create_pharmacy_comparison(ph_df) if not ph_df.empty else _safe_empty_fig()
+                    ), width=12),
+                ])
+            elif tab_id == "batch":
+                batch_df = get_batch_history(50)
+                if batch_df.empty:
+                    return html.Div("暂无导入批次记录", className="text-secondary p-4")
+                display_cols = ["batch_no", "source_label", "status_label", "total_records",
+                                "success_records", "failed_records", "file_name", "started_at"]
+                return dash_table.DataTable(
+                    data=batch_df[display_cols].to_dict("records"),
+                    columns=[{"name": c, "id": c} for c in display_cols],
+                    page_size=15,
+                    style_table={"overflowX": "auto"},
+                    style_header={"backgroundColor": "#F3F4F6", "fontWeight": "bold"},
+                    style_cell={"padding": "10px", "textAlign": "left"},
+                )
+            return html.Div()
+        except Exception as e:
+            logger.exception("mgmt_render_analysis_tab 失败")
+            return dbc.Alert(f"数据加载失败: {str(e)}", color="danger")
