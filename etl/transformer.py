@@ -148,7 +148,7 @@ class DataTransformer:
         stages = [
             {
                 "stage": "预约登记",
-                "count": total,
+                "count": int(total),
                 "conversion": 1.0,
                 "color": "#6366f1",
             },
@@ -157,7 +157,7 @@ class DataTransformer:
         confirmed_mask = appointments_df["status"].isin(
             ["已确认", "已到院", "已完成"]
         )
-        confirmed_count = confirmed_mask.sum()
+        confirmed_count = int(confirmed_mask.sum())
         stages.append(
             {
                 "stage": "预约确认",
@@ -168,7 +168,7 @@ class DataTransformer:
         )
 
         arrived_mask = appointments_df["status"].isin(["已到院", "已完成"])
-        arrived_count = arrived_mask.sum()
+        arrived_count = int(arrived_mask.sum())
         stages.append(
             {
                 "stage": "患者到院",
@@ -179,7 +179,7 @@ class DataTransformer:
         )
 
         completed_mask = appointments_df["status"] == "已完成"
-        completed_count = completed_mask.sum()
+        completed_count = int(completed_mask.sum())
         stages.append(
             {
                 "stage": "服务完成",
@@ -265,6 +265,7 @@ class DataTransformer:
             }
 
         df = appointments_df.copy()
+        df["appointment_date"] = pd.to_datetime(df["appointment_date"])
         df = df[df["status"] == "已完成"].sort_values("appointment_date")
 
         if df.empty:
@@ -284,7 +285,7 @@ class DataTransformer:
             if len(group) < 2:
                 continue
 
-            visit_dates = sorted(group["appointment_date"].unique())
+            visit_dates = sorted(pd.to_datetime(group["appointment_date"].unique()))
             for i in range(1, len(visit_dates)):
                 days_between = (visit_dates[i] - visit_dates[i - 1]).days
                 if days_between <= window_days:

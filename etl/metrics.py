@@ -181,8 +181,8 @@ class MetricsCalculator:
         age_stats = (
             df.groupby("age_group", observed=True)
             .agg(
-                count=("appointment_no", "count"),
-                completed=("status", lambda x: (x == "已完成").sum()),
+                count=("age", "size"),
+                completed=("status", lambda x: (x == "已完成").sum() if "status" in df.columns else 0),
             )
             .reset_index()
         )

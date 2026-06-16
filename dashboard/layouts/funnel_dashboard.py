@@ -203,7 +203,7 @@ class FunnelDashboard:
                                                     "color": "#fef3c7",
                                                 },
                                                 {
-                                                    "if": {"filter_query": "{is_resolved} = true"},
+                                                    "if": {"filter_query": "{is_resolved} = '已处理'"},
                                                     "opacity": 0.6,
                                                 },
                                             ],

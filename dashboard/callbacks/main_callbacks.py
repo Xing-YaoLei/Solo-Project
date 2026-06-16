@@ -23,6 +23,27 @@ from dashboard.layouts import (
 )
 
 
+def _safe_to_records(df):
+    if df.empty:
+        return []
+    df = df.copy()
+    for col in df.columns:
+        if pd.api.types.is_datetime64_any_dtype(df[col]):
+            df = df.assign(
+                **{col: df[col].apply(
+                    lambda x: x.strftime("%Y-%m-%d %H:%M:%S") if pd.notna(x) else None
+                )}
+            )
+    records = df.to_dict("records")
+    cleaned = []
+    for record in records:
+        cleaned.append({
+            k: (None if isinstance(v, float) and (v != v) else v)
+            for k, v in record.items()
+        })
+    return cleaned
+
+
 def register_callbacks(app):
     funnel_dashboard = FunnelDashboard()
     images_view = ImagesView()
@@ -194,11 +215,11 @@ def register_callbacks(app):
                         )
 
                 data_store = {
-                    "appointments": appointments_full.to_dict("records"),
-                    "payments": payments_clean.to_dict("records"),
-                    "patients": patients_df.to_dict("records"),
-                    "images": images_df.to_dict("records"),
-                    "no_show": no_show_df.to_dict("records"),
+                    "appointments": _safe_to_records(appointments_full),
+                    "payments": _safe_to_records(payments_clean),
+                    "patients": _safe_to_records(patients_df),
+                    "images": _safe_to_records(images_df),
+                    "no_show": _safe_to_records(no_show_df),
                     "funnel_data": transformer.calculate_funnel_stages(appointments_full),
                     "start_date": start_date,
                     "end_date": end_date,
@@ -206,7 +227,7 @@ def register_callbacks(app):
                 }
 
                 anomaly_store = {
-                    "anomalies": anomalies_df.to_dict("records"),
+                    "anomalies": _safe_to_records(anomalies_df),
                     "last_refresh": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 }
 
@@ -598,10 +619,10 @@ def register_callbacks(app):
                 yaxis=dict(autorange="reversed"),
             )
 
-        total_amount = payments_df["actual_amount"].sum()
+        total_amount = pd.to_numeric(payments_df["actual_amount"], errors="coerce").fillna(0).sum()
         total_count = len(payments_df)
         avg_amount = total_amount / total_count if total_count > 0 else 0
-        total_discount = payments_df["discount_amount"].sum()
+        total_discount = pd.to_numeric(payments_df.get("discount_amount", 0), errors="coerce").fillna(0).sum()
 
         return (
             trend_fig,
@@ -823,9 +844,7 @@ def register_callbacks(app):
         age_fig = go.Figure()
         if "age" in filtered.columns:
             calculator = MetricsCalculator()
-            age_dist = calculator.calculate_age_distribution(
-                filtered.merge(appointments_df[["patient_id"]].drop_duplicates(), on="patient_id")
-            )
+            age_dist = calculator.calculate_age_distribution(filtered)
             if not age_dist.empty:
                 age_fig.add_trace(
                     go.Bar(
@@ -1104,11 +1123,20 @@ def register_callbacks(app):
             )
 
         table_df = filtered.copy()
-        table_df["detected_at"] = pd.to_datetime(table_df["detected_at"]).dt.strftime("%Y-%m-%d %H:%M:%S")
+        table_df["detected_at"] = pd.to_datetime(table_df["detected_at"], errors="coerce").dt.strftime("%Y-%m-%d %H:%M:%S")
         table_df["is_resolved"] = table_df["is_resolved"].map({True: "已处理", False: "待处理"})
         table_df["severity"] = table_df["severity"].map({"error": "严重", "warning": "警告", "info": "信息"})
-        table_df["remark_time"] = pd.to_datetime(table_df["remark_time"]).dt.strftime("%Y-%m-%d %H:%M:%S") if "remark_time" in table_df.columns else ""
-        table_df["data_snapshot"] = "🔍 查看详情"
+        if "remark_time" in table_df.columns:
+            table_df["remark_time"] = pd.to_datetime(table_df["remark_time"], errors="coerce").dt.strftime("%Y-%m-%d %H:%M:%S").fillna("")
+        else:
+            table_df["remark_time"] = ""
+        if "remark_content" not in table_df.columns:
+            table_df["remark_content"] = ""
+        if "remark_author" not in table_df.columns:
+            table_df["remark_author"] = ""
+        table_df["data_snapshot"] = table_df["data_snapshot"].apply(
+            lambda x: json.dumps(x, indent=2, ensure_ascii=False) if isinstance(x, dict) else str(x) if pd.notna(x) else ""
+        )
 
         return (
             status_fig,
