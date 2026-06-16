@@ -156,12 +156,6 @@ export class GameManager extends Component {
         log(`[GameManager] 开始任务: ${taskConfig.name} (${taskId})`);
         this.eventTarget.emit(GameEvent.TASK_CHANGED, taskId, taskConfig);
 
-        if (taskConfig.clueIds && taskConfig.clueIds.length > 0) {
-            this.setPhase('CLUE_OBSERVATION');
-        } else {
-            this.setPhase('ACTION_SELECTION');
-        }
-
         return true;
     }
 
@@ -318,6 +312,7 @@ export class GameManager extends Component {
             const nextIndex = this.currentSession.taskOrder.indexOf(nextTaskId);
             if (nextIndex >= 0) {
                 this.currentSession.currentTaskIndex = nextIndex;
+                this.setPhase('TASK_ACCEPT');
                 this.startTask(nextTaskId);
                 return;
             }
@@ -327,6 +322,7 @@ export class GameManager extends Component {
         if (nextIndex < this.currentSession.taskOrder.length) {
             const nextTaskId = this.currentSession.taskOrder[nextIndex];
             this.currentSession.currentTaskIndex = nextIndex;
+            this.setPhase('TASK_ACCEPT');
             this.startTask(nextTaskId);
         } else {
             this.completeSession();
