@@ -1,9 +1,12 @@
 import polars as pl
 from datetime import date, timedelta, datetime
 from typing import Tuple, List, Dict, Optional
+import uuid
 
 from database import get_db
 from data_models import RISK_LEVELS, RISK_COLORS
+from storage import get_minio
+from config import config
 
 
 class RiskDataService:
@@ -428,6 +431,171 @@ class RiskDataService:
         return self.db.query(
             "SELECT patient_id, name, risk_level FROM patients WHERE discharge_date IS NULL ORDER BY name"
         )
+
+    def create_archive_record(self, export_type: str, object_name: str, file_name: str,
+                              date_from: Optional[date] = None, date_to: Optional[date] = None,
+                              file_size_bytes: int = 0, record_count: int = 0,
+                              file_count: int = 0, status: str = "uploaded",
+                              etag: str = "", created_by: str = "system",
+                              note: str = "") -> str:
+        archive_id = f"ARCH-{uuid.uuid4().hex[:12]}"
+        sql = """
+            INSERT INTO export_archives
+            (archive_id, export_type, object_name, file_name, date_from, date_to,
+             file_size_bytes, record_count, file_count, status, minio_bucket,
+             minio_endpoint, etag, created_by, note)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """
+        self.db.execute(sql, [
+            archive_id, export_type, object_name, file_name,
+            date_from, date_to, file_size_bytes, record_count, file_count,
+            status, config.MINIO_BUCKET, config.MINIO_ENDPOINT, etag, created_by, note
+        ])
+        return archive_id
+
+    def list_archive_records(self, export_type: Optional[str] = None,
+                             status: Optional[str] = None,
+                             limit: int = 200) -> pl.DataFrame:
+        sql = "SELECT * FROM export_archives WHERE 1=1"
+        params = []
+        if export_type:
+            sql += " AND export_type = ?"
+            params.append(export_type)
+        if status:
+            sql += " AND status = ?"
+            params.append(status)
+        sql += " ORDER BY created_at DESC"
+        if limit and limit > 0:
+            sql += f" LIMIT {limit}"
+        return self.db.query(sql, params)
+
+    def get_archive_record(self, archive_id: str) -> Optional[Dict]:
+        sql = "SELECT * FROM export_archives WHERE archive_id = ?"
+        df = self.db.query(sql, [archive_id])
+        if df.is_empty():
+            return None
+        return df.row(0, named=True)
+
+    def get_archive_by_object_name(self, object_name: str) -> Optional[Dict]:
+        sql = "SELECT * FROM export_archives WHERE object_name = ? ORDER BY created_at DESC LIMIT 1"
+        df = self.db.query(sql, [object_name])
+        if df.is_empty():
+            return None
+        return df.row(0, named=True)
+
+    def update_archive_status(self, archive_id: str, status: str, note: str = ""):
+        sql = "UPDATE export_archives SET status = ?, note = ? WHERE archive_id = ?"
+        self.db.execute(sql, [status, note, archive_id])
+
+    def delete_archive_record(self, archive_id: str, also_delete_minio: bool = True):
+        record = self.get_archive_record(archive_id)
+        if record and also_delete_minio:
+            minio = get_minio()
+            minio.delete_object(record["object_name"])
+        sql = "DELETE FROM export_archives WHERE archive_id = ?"
+        self.db.execute(sql, [archive_id])
+
+    def delete_all_archives(self, also_delete_minio: bool = True) -> int:
+        if also_delete_minio:
+            minio = get_minio()
+            for obj in minio.list_objects("exports/"):
+                minio.delete_object(obj)
+        df = self.db.query("SELECT COUNT(*) as cnt FROM export_archives")
+        count = int(df.row(0)["cnt"]) if not df.is_empty() else 0
+        self.db.execute("DELETE FROM export_archives")
+        return count
+
+    def get_archive_stats(self) -> Dict:
+        sql = """
+            SELECT
+                COUNT(*) as total_archives,
+                COALESCE(SUM(file_size_bytes), 0) as total_size_bytes,
+                COALESCE(SUM(record_count), 0) as total_records,
+                SUM(CASE WHEN status = 'uploaded' THEN 1 ELSE 0 END) as uploaded_count,
+                SUM(CASE WHEN status = 'deleted' THEN 1 ELSE 0 END) as deleted_count,
+                SUM(CASE WHEN export_type = '风险趋势' THEN 1 ELSE 0 END) as risk_trend_count,
+                SUM(CASE WHEN export_type = '异常汇总' THEN 1 ELSE 0 END) as anomaly_count,
+                SUM(CASE WHEN export_type = '治疗日历' THEN 1 ELSE 0 END) as treatment_count,
+                SUM(CASE WHEN export_type = '器械状态' THEN 1 ELSE 0 END) as device_count,
+                SUM(CASE WHEN export_type = '护理日志' THEN 1 ELSE 0 END) as nursing_count,
+                SUM(CASE WHEN export_type = '复盘备注' THEN 1 ELSE 0 END) as review_count
+            FROM export_archives
+        """
+        df = self.db.query(sql)
+        if df.is_empty():
+            return {
+                "total_archives": 0,
+                "total_size_bytes": 0,
+                "total_records": 0,
+                "uploaded_count": 0,
+                "deleted_count": 0
+            }
+        row = df.row(0, named=True)
+        return {k: (int(v) if v is not None else 0) for k, v in row.items()}
+
+    def export_and_archive(self, export_type: str, files: Dict, file_name: str,
+                           date_from: Optional[date] = None, date_to: Optional[date] = None,
+                           record_count: int = 0, created_by: str = "system",
+                           note: str = "") -> Dict:
+        minio = get_minio()
+        if not minio.is_connected():
+            return {"success": False, "error": "MinIO 对象存储连接失败，无法归档"}
+
+        object_name = minio.generate_archive_path(export_type, str(date_from or ""), str(date_to or ""))
+        upload_result = minio.upload_zip_from_files(object_name, files)
+        if not upload_result:
+            return {"success": False, "error": "MinIO 上传失败"}
+
+        object_info = minio.get_object_info(object_name) or {}
+        etag = object_info.get("etag", "")
+
+        file_count = upload_result.get("file_count", 0)
+        size_bytes = upload_result.get("size_bytes", 0)
+
+        archive_id = self.create_archive_record(
+            export_type=export_type,
+            object_name=object_name,
+            file_name=file_name,
+            date_from=date_from,
+            date_to=date_to,
+            file_size_bytes=size_bytes,
+            record_count=record_count,
+            file_count=file_count,
+            status="uploaded",
+            etag=etag,
+            created_by=created_by,
+            note=note
+        )
+
+        return {
+            "success": True,
+            "archive_id": archive_id,
+            "object_name": object_name,
+            "file_size_bytes": size_bytes,
+            "file_count": file_count,
+            "etag": etag
+        }
+
+    def retrieve_archive(self, archive_id: str) -> Optional[Dict]:
+        record = self.get_archive_record(archive_id)
+        if not record:
+            return None
+        minio = get_minio()
+        data = minio.download_zip(record["object_name"])
+        if data is None:
+            return None
+        return {
+            "data": data,
+            "file_name": record["file_name"],
+            "size_bytes": len(data),
+            "archive": record
+        }
+
+    def retrieve_archive_by_object(self, object_name: str) -> Optional[Dict]:
+        record = self.get_archive_by_object_name(object_name)
+        if not record:
+            return None
+        return self.retrieve_archive(record["archive_id"])
 
 
 def get_service() -> RiskDataService:

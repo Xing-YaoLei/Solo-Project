@@ -200,6 +200,27 @@ class DuckDBManager:
             VALUES (1, CURRENT_DATE - 1, CURRENT_DATE, CURRENT_DATE, CURRENT_DATE, CURRENT_TIMESTAMP)
         """)
 
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS export_archives (
+                archive_id VARCHAR PRIMARY KEY,
+                export_type VARCHAR NOT NULL,
+                object_name VARCHAR NOT NULL,
+                file_name VARCHAR NOT NULL,
+                date_from DATE,
+                date_to DATE,
+                file_size_bytes INTEGER DEFAULT 0,
+                record_count INTEGER DEFAULT 0,
+                file_count INTEGER DEFAULT 0,
+                status VARCHAR DEFAULT 'uploaded',
+                minio_bucket VARCHAR,
+                minio_endpoint VARCHAR,
+                etag VARCHAR,
+                created_by VARCHAR DEFAULT 'system',
+                note TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
     def get_connection(self) -> duckdb.DuckDBPyConnection:
         return self._conn
 

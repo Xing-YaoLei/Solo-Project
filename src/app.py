@@ -28,6 +28,7 @@ from data_models import (
     PHYSICIANS, initialize_all_data
 )
 from database import get_db
+from storage import get_minio
 from charts import (
     create_risk_monitor_chart,
     create_risk_distribution_chart,
@@ -681,6 +682,24 @@ def render_common_views(filters):
 
 def render_download_section(filters):
     st.subheader("📥 数据下载中心")
+    st.caption("所有数据在下载前会自动归档到 MinIO 对象存储，后续可从「对象存储管理」取回同一份 ZIP")
+
+    minio = get_minio()
+    minio_connected = minio.is_connected()
+
+    if minio_connected:
+        stats = minio.get_bucket_stats()
+        db_stats = service.get_archive_stats()
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("🟢 MinIO 连接", "正常", f"端点: {stats['endpoint']}")
+        c2.metric("📦 存储桶", stats["bucket_name"], f"{stats['zip_archives']} 个归档")
+        c3.metric("💾 已归档", f"{db_stats['total_archives']} 份",
+                  f"总 {db_stats['total_records']} 条记录")
+        c4.metric("📦 存储用量", f"{stats['total_size_mb']} MB",
+                  f"{stats['total_objects']} 个对象")
+    else:
+        st.warning("⚠️ MinIO 对象存储未连接，当前仅支持本地直接下载（无法归档持久化）。"
+                   "请检查 .env 中 MINIO_ENDPOINT / MINIO_ACCESS_KEY / MINIO_SECRET_KEY 配置。")
 
     download_tabs = st.tabs([
         "风险趋势数据", "患者明细", "医保拒付分析", "异常事件汇总",
@@ -688,7 +707,6 @@ def render_download_section(filters):
     ])
 
     training_rule = calculate_training_completion_rule()
-    rule_text = json.dumps(training_rule, ensure_ascii=False, indent=2)
 
     def add_training_rule_readme(existing_files: dict) -> dict:
         readme = f"""# 训练完成率计算规则
@@ -702,21 +720,66 @@ def render_download_section(filters):
         existing_files["TRAINING_COMPLETION_RULE.md"] = readme.encode("utf-8")
         return existing_files
 
-    def create_zip_download(files: dict, filename: str, button_label: str):
+    def create_zip_bytes(files: dict) -> bytes:
         files = add_training_rule_readme(files)
         zip_buffer = io.BytesIO()
         with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
             for name, data in files.items():
+                if isinstance(data, str):
+                    data = data.encode("utf-8")
                 zf.writestr(name, data)
-        zip_buffer.seek(0)
-        st.download_button(
-            button_label,
-            data=zip_buffer.getvalue(),
-            file_name=filename,
-            mime="application/zip",
-            use_container_width=True,
-            type="primary"
-        )
+        return zip_buffer.getvalue()
+
+    def render_export_row(export_type_label: str, export_type_key: str, files: dict,
+                          filename: str, df_list: list = None):
+        record_count = 0
+        if df_list:
+            for df in df_list:
+                if hasattr(df, "__len__"):
+                    record_count += len(df)
+
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            result = st.button(
+                f"📦 导出并归档「{export_type_label}」",
+                key=f"btn_export_{export_type_key}",
+                type="primary",
+                use_container_width=True
+            )
+        with col2:
+            zip_bytes = create_zip_bytes(files)
+            st.download_button(
+                "📥 直接下载",
+                data=zip_bytes,
+                file_name=filename,
+                mime="application/zip",
+                use_container_width=True,
+                key=f"btn_direct_{export_type_key}"
+            )
+
+        if result:
+            with st.spinner(f"正在打包并上传 {export_type_label} 到 MinIO ..."):
+                full_files = add_training_rule_readme({k: v for k, v in files.items()})
+                archive_result = service.export_and_archive(
+                    export_type=export_type_label,
+                    files=full_files,
+                    file_name=filename,
+                    date_from=filters["start_date"],
+                    date_to=filters["end_date"],
+                    record_count=record_count,
+                    created_by="看板用户",
+                    note=f"通过看板导出，筛选: 风险={filters['risk_filter'][:2]} 诊断={filters['diagnosis'][:4]}"
+                )
+            if archive_result.get("success"):
+                st.success(f"✅ 归档成功！{archive_result['file_count']} 个文件 / "
+                           f"{archive_result['file_size_bytes']/1024:.1f} KB\n\n"
+                           f"归档ID：`{archive_result['archive_id']}`\n\n"
+                           f"对象路径：`{archive_result['object_name']}`\n\n"
+                           f"可在下方「对象存储管理」中随时取回同一份 ZIP。")
+                st.balloons()
+            else:
+                st.error(f"❌ 归档失败：{archive_result.get('error', '未知错误')}")
+                st.info("提示：即使归档失败，您仍可使用右侧「直接下载」按钮获取本地 ZIP。")
 
     with download_tabs[0]:
         st.markdown("**患者分级风险趋势数据**")
@@ -727,10 +790,11 @@ def render_download_section(filters):
         if not trend.is_empty():
             csv_data = trend.write_csv()
             files = {"risk_trend.csv": csv_data.encode("utf-8")}
-            create_zip_download(files, f"risk_trend_{filters['start_date']}_{filters['end_date']}.zip",
-                                "📥 下载风险趋势数据 (ZIP, 含训练完成率规则)")
-
+            filename = f"risk_trend_{filters['start_date']}_{filters['end_date']}.zip"
+            render_export_row("风险趋势", "risk_trend", files, filename, [trend])
             st.dataframe(trend.to_pandas(), use_container_width=True, hide_index=True)
+        else:
+            st.info("暂无趋势数据")
 
     with download_tabs[1]:
         st.markdown("**患者风险明细清单**")
@@ -743,9 +807,11 @@ def render_download_section(filters):
         if not patients.is_empty():
             csv_data = patients.write_csv()
             files = {"patient_risk_details.csv": csv_data.encode("utf-8")}
-            create_zip_download(files, f"patient_risk_{date.today()}.zip",
-                                "📥 下载患者明细 (ZIP)")
+            filename = f"patient_risk_{date.today()}.zip"
+            render_export_row("患者明细", "patient_details", files, filename, [patients])
             st.dataframe(patients.to_pandas(), use_container_width=True, hide_index=True)
+        else:
+            st.info("暂无患者数据")
 
     with download_tabs[2]:
         st.markdown("**医保拒付分析报告**")
@@ -759,9 +825,11 @@ def render_download_section(filters):
                     ensure_ascii=False, indent=2
                 ).encode("utf-8")
             }
-            create_zip_download(files, f"insurance_analysis_{filters['start_date']}_{filters['end_date']}.zip",
-                                "📥 下载医保拒付数据 (ZIP)")
+            filename = f"insurance_analysis_{filters['start_date']}_{filters['end_date']}.zip"
+            render_export_row("医保拒付", "insurance_denials", files, filename, [denials])
             st.dataframe(denials.to_pandas(), use_container_width=True, hide_index=True)
+        else:
+            st.info("暂无医保拒付数据")
 
     with download_tabs[3]:
         st.markdown("**异常事件汇总报告**")
@@ -776,43 +844,54 @@ def render_download_section(filters):
             "medical_record_gaps.csv": record_gaps.write_csv().encode("utf-8") if not record_gaps.is_empty() else "无数据".encode(),
             "device_calibration_changes.csv": device_changes.write_csv().encode("utf-8") if not device_changes.is_empty() else "无数据".encode()
         }
-        create_zip_download(files, f"anomaly_report_{filters['start_date']}_{filters['end_date']}.zip",
-                            "📥 下载异常事件汇总 (ZIP)")
+        filename = f"anomaly_report_{filters['start_date']}_{filters['end_date']}.zip"
+        df_list = [df for df in [anomalies, fee_delays, record_gaps, device_changes] if not df.is_empty()]
+        render_export_row("异常汇总", "anomaly_summary", files, filename, df_list)
 
     with download_tabs[4]:
+        st.markdown("**治疗日历**")
         treatments = service.get_treatment_calendar(
             filters["start_date"], filters["end_date"], filters["selected_patients"]
         )
         if not treatments.is_empty():
             files = {"treatment_calendar.csv": treatments.write_csv().encode("utf-8")}
-            create_zip_download(files, f"treatment_calendar_{filters['start_date']}_{filters['end_date']}.zip",
-                                "📥 下载治疗日历 (ZIP)")
+            filename = f"treatment_calendar_{filters['start_date']}_{filters['end_date']}.zip"
+            render_export_row("治疗日历", "treatment_calendar", files, filename, [treatments])
+        else:
+            st.info("暂无治疗日历数据")
 
     with download_tabs[5]:
+        st.markdown("**器械状态**")
         devices = service.get_device_status(filters["start_date"], filters["end_date"])
         if not devices.is_empty():
             files = {"device_status.csv": devices.write_csv().encode("utf-8")}
-            create_zip_download(files, f"device_status_{filters['start_date']}_{filters['end_date']}.zip",
-                                "📥 下载设备状态 (ZIP)")
+            filename = f"device_status_{filters['start_date']}_{filters['end_date']}.zip"
+            render_export_row("器械状态", "device_status", files, filename, [devices])
+        else:
+            st.info("暂无器械状态数据")
 
     with download_tabs[6]:
+        st.markdown("**护理日志**")
         nursing = service.get_nursing_logs(
             filters["start_date"], filters["end_date"], filters["selected_patients"]
         )
         if not nursing.is_empty():
             files = {"nursing_logs.csv": nursing.write_csv().encode("utf-8")}
-            create_zip_download(files, f"nursing_logs_{filters['start_date']}_{filters['end_date']}.zip",
-                                "📥 下载护理日志 (ZIP)")
+            filename = f"nursing_logs_{filters['start_date']}_{filters['end_date']}.zip"
+            render_export_row("护理日志", "nursing_logs", files, filename, [nursing])
+        else:
+            st.info("暂无护理日志数据")
 
     with download_tabs[7]:
+        st.markdown("**复盘备注**")
         notes = service.get_review_notes(
             patient_id=filters["selected_patients"][0] if filters["selected_patients"] else None,
             start_date=filters["start_date"], end_date=filters["end_date"]
         )
         if not notes.is_empty():
             files = {"review_notes.csv": notes.write_csv().encode("utf-8")}
-            create_zip_download(files, f"review_notes_{filters['start_date']}_{filters['end_date']}.zip",
-                                "📥 下载复盘备注 (ZIP)")
+            filename = f"review_notes_{filters['start_date']}_{filters['end_date']}.zip"
+            render_export_row("复盘备注", "review_notes", files, filename, [notes])
         else:
             st.info("暂无复盘备注数据")
 
@@ -838,6 +917,218 @@ def render_download_section(filters):
         st.markdown("**注意事项：**")
         for item in rule['注意事项']:
             st.markdown(f"- ⚠️ {item}")
+
+
+def render_minio_manager(filters):
+    st.subheader("☁️ 对象存储管理")
+    st.caption("MinIO 归档数据管理 — 可从此处取回下载中心导出的同一份 ZIP，或删除过期归档")
+
+    minio = get_minio()
+    if not minio.is_connected():
+        st.error("❌ MinIO 对象存储未连接，请检查 .env 配置：\n\n"
+                 "- MINIO_ENDPOINT (默认 localhost:9000)\n"
+                 "- MINIO_ACCESS_KEY (默认 minioadmin)\n"
+                 "- MINIO_SECRET_KEY (默认 minioadmin)")
+        with st.expander("🔧 临时解决方案：本地模拟对象存储", expanded=True):
+            st.info("当 MinIO 未可用时，下载中心「直接下载」按钮仍可工作，数据从 DuckDB 实时生成返回 ZIP。"
+                    "归档功能需要 MinIO 服务运行中。\n\n"
+                    "启动 MinIO 命令示例（Docker）：\n"
+                    "```bash\n"
+                    "docker run -p 9000:9000 -p 9001:9001 \\\n"
+                    "  quay.io/minio/minio server /data --console-address ':9001'\n"
+                    "```")
+        return
+
+    bucket_stats = minio.get_bucket_stats()
+    db_stats = service.get_archive_stats()
+
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("🏷️ 存储桶", bucket_stats["bucket_name"], bucket_stats["endpoint"])
+    col2.metric("📦 对象总数", bucket_stats["total_objects"],
+                f"{bucket_stats['zip_archives']} 个 ZIP")
+    col3.metric("💾 存储使用", f"{bucket_stats['total_size_mb']} MB",
+                f"{bucket_stats['total_size_bytes']/1024:.0f} KB")
+    col4.metric("📚 归档记录", f"{db_stats['total_archives']} 份",
+                f"{db_stats['total_records']} 条数据")
+
+    st.markdown("---")
+    mgmt_tabs = st.tabs(["📋 归档列表", "🔍 按对象名查询", "📊 按类型统计", "🧹 清理"])
+
+    with mgmt_tabs[0]:
+        type_filter = st.multiselect(
+            "按导出类型筛选（留空=全部）",
+            ["风险趋势", "患者明细", "医保拒付", "异常汇总", "治疗日历", "器械状态", "护理日志", "复盘备注"],
+            default=[], key="mgmt_type_filter"
+        )
+        selected_type = type_filter[0] if (len(type_filter) == 1) else None
+
+        records = service.list_archive_records(export_type=selected_type, limit=500)
+        if records.is_empty():
+            st.info("📭 暂无归档记录，请先在「数据下载中心」点击「导出并归档」按钮。")
+        else:
+            st.markdown(f"**共 {len(records)} 条归档记录（最新在前）**")
+            records_pd = records.to_pandas()
+            for _, row in records_pd.iterrows():
+                aid = row["archive_id"]
+                etype = row["export_type"]
+                oname = row["object_name"]
+                fname = row["file_name"]
+                size_kb = f"{row['file_size_bytes']/1024:.1f} KB" if row["file_size_bytes"] else "0 KB"
+                rec_count = row["record_count"]
+                d_from = row["date_from"]
+                d_to = row["date_to"]
+                creator = row["created_by"]
+                created = row["created_at"]
+                status = row["status"]
+
+                type_icon = {
+                    "风险趋势": "📈", "患者明细": "👥", "医保拒付": "💰",
+                    "异常汇总": "⚠️", "治疗日历": "📅", "器械状态": "⚙️",
+                    "护理日志": "📋", "复盘备注": "📝"
+                }.get(etype, "📦")
+
+                status_badge = "🟢 已上传" if status == "uploaded" else ("🔴 已删除" if status == "deleted" else f"⚪ {status}")
+
+                with st.expander(
+                    f"{type_icon} {etype} | {created} | {size_kb} | {status_badge} | {aid}",
+                    expanded=False
+                ):
+                    info_c1, info_c2 = st.columns(2)
+                    with info_c1:
+                        st.markdown(f"**归档ID：** `{aid}`")
+                        st.markdown(f"**导出类型：** {etype}")
+                        st.markdown(f"**用户文件名：** `{fname}`")
+                        st.markdown(f"**MinIO 对象名：** `{oname}`")
+                        st.markdown(f"**数据范围：** {d_from} ~ {d_to}")
+                    with info_c2:
+                        st.markdown(f"**文件大小：** {size_kb}")
+                        st.markdown(f"**记录条数：** {rec_count} 条")
+                        st.markdown(f"**创建者：** {creator}")
+                        st.markdown(f"**状态：** {status_badge}")
+                        st.markdown(f"**ETag：** `{row['etag'][:12]}...`" if row["etag"] else "**ETag：** —")
+
+                    btn_c1, btn_c2, btn_c3 = st.columns(3)
+                    with btn_c1:
+                        retrieve_key = f"ret_{aid}"
+                        if st.button(f"⬇️ 从 MinIO 取回", key=retrieve_key, type="primary", use_container_width=True):
+                            with st.spinner(f"正在从 MinIO 下载对象 {oname} ..."):
+                                result = service.retrieve_archive(aid)
+                            if result and result["data"] is not None:
+                                st.success(f"✅ 取回成功！{len(result['data'])/1024:.1f} KB，"
+                                           f"内容与原始归档完全一致。")
+                                st.download_button(
+                                    f"📥 下载 {fname}",
+                                    data=result["data"],
+                                    file_name=result["file_name"],
+                                    mime="application/zip",
+                                    use_container_width=True,
+                                    key=f"dl_{aid}"
+                                )
+                            else:
+                                st.error("❌ 取回失败：MinIO 中未找到对应对象（可能已被物理删除）")
+
+                    with btn_c2:
+                        verify_key = f"chk_{aid}"
+                        if st.button(f"🔍 验证对象存在", key=verify_key, use_container_width=True):
+                            exists = minio.object_exists(oname)
+                            info = minio.get_object_info(oname) if exists else None
+                            if exists and info:
+                                st.success(f"✅ 对象存在：{info['size_bytes']/1024:.1f} KB，"
+                                           f"最后修改 {str(info['last_modified'])[:19]}")
+                            else:
+                                st.warning("⚠️ 对象在 MinIO 中不存在（DuckDB 记录存在但对象被删除）")
+                                if st.checkbox("同步更新记录状态为「已删除」", key=f"fix_{aid}"):
+                                    service.update_archive_status(aid, "deleted", "MinIO 对象已被物理删除")
+
+                    with btn_c3:
+                        del_key = f"del_{aid}"
+                        if st.button(f"🗑️ 删除归档", key=del_key, use_container_width=True):
+                            service.delete_archive_record(aid, also_delete_minio=True)
+                            st.success("✅ 归档记录 + MinIO 对象均已删除")
+                            st.rerun()
+
+    with mgmt_tabs[1]:
+        search = st.text_input("🔍 输入对象名关键字或归档ID（支持模糊匹配）",
+                               placeholder="例如: risk_trend, treatment, ARCH-xxx")
+        if search:
+            all_records = service.list_archive_records(limit=500)
+            if not all_records.is_empty():
+                mask = (all_records["object_name"].cast(pl.Utf8).str.to_lowercase().str.contains(search.lower())
+                        | all_records["archive_id"].cast(pl.Utf8).str.to_lowercase().str.contains(search.lower())
+                        | all_records["file_name"].cast(pl.Utf8).str.to_lowercase().str.contains(search.lower()))
+                matched = all_records.filter(mask)
+                if not matched.is_empty():
+                    st.dataframe(matched.to_pandas(), use_container_width=True, hide_index=True)
+                else:
+                    st.info("未找到匹配的归档记录。")
+
+            st.markdown("---")
+            st.markdown("**MinIO 对象层直接扫描**（不依赖 DuckDB 记录）：")
+            prefix = st.text_input("扫描前缀（例如 exports/risk_trend/，留空=全部）", value="exports/")
+            if st.button("🚀 扫描 MinIO 对象", type="primary"):
+                with st.spinner("正在列举对象..."):
+                    objects = minio.list_objects_detailed(prefix=prefix)
+                if objects:
+                    st.markdown(f"**在 {config.MINIO_BUCKET}/{prefix}* 下找到 {len(objects)} 个对象**")
+                    for obj in objects:
+                        obj_c1, obj_c2, obj_c3 = st.columns([3, 2, 1])
+                        with obj_c1:
+                            st.code(obj["object_name"], language=None)
+                        with obj_c2:
+                            st.markdown(f"📦 {obj['size_bytes']/1024:.1f} KB | "
+                                        f"🕐 {str(obj['last_modified'])[:19] if obj['last_modified'] else '—'}")
+                        with obj_c3:
+                            if st.button("⬇️ 直接取回", key=f"dlobj_{hash(obj['object_name'])%1000000}"):
+                                data = minio.download_bytes(obj["object_name"])
+                                if data:
+                                    local_name = obj["object_name"].split("/")[-1]
+                                    st.success(f"✅ {len(data)/1024:.1f} KB 取回成功")
+                                    st.download_button("下载", data=data, file_name=local_name,
+                                                       mime="application/zip", key=f"dlo_{hash(obj['object_name'])%10000}")
+                                else:
+                                    st.error("下载失败")
+                else:
+                    st.info("未找到任何对象")
+
+    with mgmt_tabs[2]:
+        stat = db_stats
+        c1, c2, c3 = st.columns(3)
+        c1.metric("📈 风险趋势归档", f"{stat.get('risk_trend_count', 0)} 份")
+        c2.metric("⚠️ 异常汇总归档", f"{stat.get('anomaly_count', 0)} 份")
+        c3.metric("📅 治疗日历归档", f"{stat.get('treatment_count', 0)} 份")
+        c4, c5, c6 = st.columns(3)
+        c4.metric("⚙️ 器械状态归档", f"{stat.get('device_count', 0)} 份")
+        c5.metric("📋 护理日志归档", f"{stat.get('nursing_count', 0)} 份")
+        c6.metric("📝 复盘备注归档", f"{stat.get('review_count', 0)} 份")
+
+        st.markdown("---")
+        summary = service.list_archive_records()
+        if not summary.is_empty():
+            summary_pd = summary.to_pandas()
+            summary_pd["创建日期"] = summary_pd["created_at"].astype(str).str[:10]
+            pivot = summary_pd.groupby(["创建日期", "export_type"]).size().unstack(fill_value=0)
+            st.markdown("**按日期 × 导出类型分布**")
+            st.bar_chart(pivot)
+
+    with mgmt_tabs[3]:
+        st.warning("⚠️ 清理操作不可撤销，请谨慎操作！")
+
+        d1, d2 = st.columns(2)
+        with d1:
+            older_days = st.slider("删除多少天以前的归档", 7, 365, 90)
+            if st.button(f"🗑️ 删除 {older_days} 天前的归档（仅记录+保留对象）", key="clean_older"):
+                cutoff = date.today() - timedelta(days=older_days)
+                old_records = service.list_archive_records().filter(pl.col("created_at") < str(cutoff))
+                count = len(old_records)
+                for r in old_records.iter_rows(named=True):
+                    service.update_archive_status(r["archive_id"], "deleted", f"清理 {older_days}天 前归档")
+                st.success(f"✅ 已标记 {count} 条过期记录为删除状态")
+        with d2:
+            if st.button("🔥 彻底清空所有归档（DuckDB记录 + MinIO对象）", type="secondary"):
+                if st.checkbox("⚠️ 确认此操作将永久删除所有归档，不可恢复", key="confirm_purge"):
+                    deleted = service.delete_all_archives(also_delete_minio=True)
+                    st.success(f"✅ 已彻底删除 {deleted} 条归档记录及关联 MinIO 对象")
+                    st.rerun()
 
 
 def main():
@@ -877,6 +1168,9 @@ def main():
 
     st.markdown("---")
     render_download_section(filters)
+
+    st.markdown("---")
+    render_minio_manager(filters)
 
     st.markdown("---")
     st.caption(
