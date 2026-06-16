@@ -1,7 +1,7 @@
 from dash import dcc, html, dash_table, Input, Output, State, callback_context
 import dash_bootstrap_components as dbc
 from datetime import date, datetime
-from typing import Optional
+from flask import session as flask_session
 
 from app.models import (
     get_session, User, FollowUp, Prescription, PrescriptionNote,
@@ -13,7 +13,11 @@ from app.dashboards.data_service import (
 from app.dashboards.charts import create_kpi_card
 
 
-def build_executor_layout(current_user_id: int):
+def build_executor_layout():
+    """
+    执行角色回访看板布局。组件ID统一加 exec- 前缀避免冲突。
+    注意：用户ID从 Flask session 读取，不再通过参数注入到布局。
+    """
     return dbc.Container([
         html.Br(),
         dbc.Row([
@@ -21,7 +25,7 @@ def build_executor_layout(current_user_id: int):
             dbc.Col([
                 dbc.Button("刷新", id="exec-refresh-btn", color="primary", outline=True, className="me-2"),
                 dcc.Dropdown(
-                    id="status-filter",
+                    id="exec-status-filter",
                     options=[
                         {"label": "全部", "value": "all"},
                         {"label": "待处理", "value": FollowUpStatus.PENDING.value},
@@ -50,7 +54,7 @@ def build_executor_layout(current_user_id: int):
                     id="exec-loading",
                     type="default",
                     children=dash_table.DataTable(
-                        id="task-table",
+                        id="exec-task-table",
                         columns=[
                             {"name": "ID", "id": "id", "hidden": True},
                             {"name": "优先级", "id": "priority_label"},
@@ -85,15 +89,15 @@ def build_executor_layout(current_user_id: int):
         dbc.Modal([
             dbc.ModalHeader(dbc.ModalTitle("处理回访任务")),
             dbc.ModalBody([
-                dcc.Store(id="selected-task-id"),
-                html.Div(id="task-detail"),
+                dcc.Store(id="exec-selected-task-id"),
+                html.Div(id="exec-task-detail"),
                 html.Hr(),
                 html.H6("添加注释（如处方照片不清晰可说明）"),
-                dbc.Textarea(id="note-input", placeholder="请输入注释内容...", rows=3, className="mb-2"),
+                dbc.Textarea(id="exec-note-input", placeholder="请输入注释内容...", rows=3, className="mb-2"),
                 dbc.Row([
                     dbc.Col(
                         dcc.Dropdown(
-                            id="note-type",
+                            id="exec-note-type",
                             options=[
                                 {"label": "处方澄清", "value": "clarification"},
                                 {"label": "照片不清", "value": "photo_unclear"},
@@ -104,42 +108,49 @@ def build_executor_layout(current_user_id: int):
                             clearable=False,
                         ), width=4,
                     ),
-                    dbc.Col(dbc.Button("保存注释", id="save-note-btn", color="secondary", outline=True), width=3),
+                    dbc.Col(dbc.Button("保存注释", id="exec-save-note-btn", color="secondary", outline=True), width=3),
                 ]),
                 html.Br(),
-                html.Div(id="note-history"),
+                html.Div(id="exec-note-history"),
             ]),
             dbc.ModalFooter([
-                dbc.Button("开始处理", id="start-btn", color="warning", className="me-2"),
-                dbc.Button("标记完成", id="complete-btn", color="success", className="me-2"),
-                dbc.Button("关闭", id="close-modal", color="secondary"),
+                dbc.Button("开始处理", id="exec-start-btn", color="warning", className="me-2"),
+                dbc.Button("标记完成", id="exec-complete-btn", color="success", className="me-2"),
+                dbc.Button("关闭", id="exec-close-modal", color="secondary"),
             ]),
-        ], id="task-modal", is_open=False, size="lg"),
-
-        dcc.Store(id="exec-user-id", data=current_user_id),
+        ], id="exec-task-modal", is_open=False, size="lg"),
     ], fluid=True)
 
 
-def build_executor_callbacks(app, current_user_id: int):
+def _get_current_user_id() -> int:
+    """从 Flask session 拿当前登录用户ID。回调里必须这么取，不能依赖 layout 构造参数。"""
+    return flask_session.get("user_id")
+
+
+def register_executor_callbacks(app):
+    """在 create_app 启动阶段注册执行角色所有回调。"""
+
     @app.callback(
-        [Output("task-table", "data"),
+        [Output("exec-task-table", "data"),
          Output("exec-kpi-pending", "figure"),
          Output("exec-kpi-progress", "figure"),
          Output("exec-kpi-done", "figure"),
          Output("exec-kpi-total", "figure")],
         [Input("exec-refresh-btn", "n_clicks"),
-         Input("status-filter", "value"),
-         Input("exec-user-id", "data")],
+         Input("exec-status-filter", "value")],
         prevent_initial_call=False,
     )
-    def update_task_list(n_clicks, status_filter, user_id):
+    def _exec_update_task_list(n_clicks, status_filter):
+        user_id = _get_current_user_id()
         df = get_follow_up_tasks(user_id=user_id, role=UserRole.EXECUTOR)
+        empty_fig = create_kpi_card(0, "", "#2563EB")
         if df.empty:
-            empty_fig = create_kpi_card(0, "", "#2563EB")
             return [], empty_fig, empty_fig, empty_fig, empty_fig
 
         if status_filter != "all":
-            df = df[df["status"].apply(lambda x: x.value == status_filter if hasattr(x, "value") else x == status_filter)]
+            df = df[df["status"].apply(
+                lambda x: x.value == status_filter if hasattr(x, "value") else x == status_filter
+            )]
 
         df_display = df.copy()
         df_display["due_date"] = df_display["due_date"].astype(str)
@@ -159,16 +170,16 @@ def build_executor_callbacks(app, current_user_id: int):
         )
 
     @app.callback(
-        [Output("task-modal", "is_open"), Output("selected-task-id", "data"),
-         Output("task-detail", "children"), Output("note-history", "children")],
-        [Input("task-table", "active_cell"),
-         Input("task-table", "derived_viewport_data"),
-         Input("close-modal", "n_clicks")],
+        [Output("exec-task-modal", "is_open"), Output("exec-selected-task-id", "data"),
+         Output("exec-task-detail", "children"), Output("exec-note-history", "children")],
+        [Input("exec-task-table", "active_cell"),
+         Input("exec-task-table", "derived_viewport_data"),
+         Input("exec-close-modal", "n_clicks")],
         prevent_initial_call=True,
     )
-    def open_task_modal(active_cell, viewport_data, close_clicks):
+    def _exec_open_task_modal(active_cell, viewport_data, close_clicks):
         ctx = callback_context
-        if ctx.triggered_id == "close-modal":
+        if ctx.triggered_id == "exec-close-modal":
             return False, None, "", ""
 
         if not active_cell or active_cell["column_id"] != "actions":
@@ -179,13 +190,13 @@ def build_executor_callbacks(app, current_user_id: int):
             return False, None, "", ""
 
         task_id = viewport_data[row_idx]["id"]
-        session = get_session()
+        sess = get_session()
         try:
-            task = session.query(FollowUp).filter(FollowUp.id == task_id).first()
+            task = sess.query(FollowUp).filter(FollowUp.id == task_id).first()
             if not task:
                 return False, None, "", ""
 
-            prescription = session.query(Prescription).filter(Prescription.id == task.prescription_id).first()
+            prescription = sess.query(Prescription).filter(Prescription.id == task.prescription_id).first()
             detail = dbc.Row([
                 dbc.Col([
                     html.P([html.Strong("处方号："), prescription.prescription_no if prescription else ""]),
@@ -216,13 +227,14 @@ def build_executor_callbacks(app, current_user_id: int):
                 for _, note in notes_df.iterrows():
                     badge_color = "success" if note["is_resolved"] else "warning"
                     resolved_text = "  [已解决]" if note["is_resolved"] else ""
+                    created_str = note["created_at"].strftime("%Y-%m-%d %H:%M") if hasattr(note["created_at"], "strftime") else str(note["created_at"])
                     note_items.append(
                         dbc.Card([
                             dbc.CardBody([
                                 html.P([
                                     dbc.Badge(note["note_type"], color="info", className="me-2"),
                                     html.Strong(note["author_name"]),
-                                    html.Span(f"  ({note['created_at'].strftime('%Y-%m-%d %H:%M')})") if hasattr(note["created_at"], "strftime") else "",
+                                    html.Span(f"  ({created_str})"),
                                     dbc.Badge(resolved_text.strip(), color=badge_color, className="ms-2"),
                                 ]),
                                 html.P(note["content"], className="mb-0 mt-2"),
@@ -233,24 +245,24 @@ def build_executor_callbacks(app, current_user_id: int):
 
             return True, task_id, detail, note_history
         finally:
-            session.close()
+            sess.close()
 
     @app.callback(
-        Output("note-history", "children", allow_duplicate=True),
-        [Input("save-note-btn", "n_clicks")],
-        [State("selected-task-id", "data"),
-         State("note-input", "value"),
-         State("note-type", "value"),
-         State("exec-user-id", "data")],
+        Output("exec-note-history", "children", allow_duplicate=True),
+        [Input("exec-save-note-btn", "n_clicks")],
+        [State("exec-selected-task-id", "data"),
+         State("exec-note-input", "value"),
+         State("exec-note-type", "value")],
         prevent_initial_call=True,
     )
-    def save_note(n_clicks, task_id, content, note_type, user_id):
-        if not task_id or not content:
+    def _exec_save_note(n_clicks, task_id, content, note_type):
+        user_id = _get_current_user_id()
+        if not task_id or not content or not user_id:
             return dash_table.no_update
 
-        session = get_session()
+        sess = get_session()
         try:
-            task = session.query(FollowUp).filter(FollowUp.id == task_id).first()
+            task = sess.query(FollowUp).filter(FollowUp.id == task_id).first()
             if not task:
                 return dash_table.no_update
 
@@ -261,69 +273,73 @@ def build_executor_callbacks(app, current_user_id: int):
                 content=content,
                 is_resolved=False,
             )
-            session.add(note)
+            sess.add(note)
 
             if note_type == "photo_unclear":
-                rx = session.query(Prescription).filter(Prescription.id == task.prescription_id).first()
+                rx = sess.query(Prescription).filter(Prescription.id == task.prescription_id).first()
                 if rx:
                     rx.has_unclear_photo = True
                     rx.status = PrescriptionStatus.NEEDS_CLARIFICATION
 
-            session.commit()
+            sess.commit()
 
             notes_df = get_prescription_notes(task.prescription_id)
             if notes_df.empty:
                 return html.P("暂无注释记录", className="text-secondary")
             note_items = []
-            for _, note in notes_df.iterrows():
-                badge_color = "success" if note["is_resolved"] else "warning"
-                resolved_text = "  [已解决]" if note["is_resolved"] else ""
+            for _, n in notes_df.iterrows():
+                badge_color = "success" if n["is_resolved"] else "warning"
+                resolved_text = "  [已解决]" if n["is_resolved"] else ""
+                created_str = n["created_at"].strftime("%Y-%m-%d %H:%M") if hasattr(n["created_at"], "strftime") else str(n["created_at"])
                 note_items.append(
                     dbc.Card([
                         dbc.CardBody([
                             html.P([
-                                dbc.Badge(note["note_type"], color="info", className="me-2"),
-                                html.Strong(note["author_name"]),
-                                html.Span(f"  ({note['created_at'].strftime('%Y-%m-%d %H:%M')})") if hasattr(note["created_at"], "strftime") else "",
+                                dbc.Badge(n["note_type"], color="info", className="me-2"),
+                                html.Strong(n["author_name"]),
+                                html.Span(f"  ({created_str})"),
                                 dbc.Badge(resolved_text.strip(), color=badge_color, className="ms-2"),
                             ]),
-                            html.P(note["content"], className="mb-0 mt-2"),
+                            html.P(n["content"], className="mb-0 mt-2"),
                         ]),
                     ], className="mb-2")
                 )
             return html.Div(note_items)
         finally:
-            session.close()
+            sess.close()
 
     @app.callback(
-        Output("task-modal", "is_open", allow_duplicate=True),
-        [Input("start-btn", "n_clicks"), Input("complete-btn", "n_clicks")],
-        [State("selected-task-id", "data")],
+        [Output("exec-task-modal", "is_open", allow_duplicate=True),
+         Output("exec-refresh-btn", "n_clicks")],
+        [Input("exec-start-btn", "n_clicks"), Input("exec-complete-btn", "n_clicks")],
+        [State("exec-selected-task-id", "data"),
+         State("exec-refresh-btn", "n_clicks")],
         prevent_initial_call=True,
     )
-    def update_task_status(start_clicks, complete_clicks, task_id):
+    def _exec_update_task_status(start_clicks, complete_clicks, task_id, cur_refresh_clicks):
         if not task_id:
-            return dash_table.no_update
+            return dash_table.no_update, dash_table.no_update
 
         ctx = callback_context
-        session = get_session()
+        sess = get_session()
         try:
-            task = session.query(FollowUp).filter(FollowUp.id == task_id).first()
+            task = sess.query(FollowUp).filter(FollowUp.id == task_id).first()
             if not task:
-                return dash_table.no_update
+                return False, cur_refresh_clicks
 
-            if ctx.triggered_id == "start-btn":
+            if ctx.triggered_id == "exec-start-btn":
                 task.status = FollowUpStatus.IN_PROGRESS
-            elif ctx.triggered_id == "complete-btn":
+            elif ctx.triggered_id == "exec-complete-btn":
                 task.status = FollowUpStatus.COMPLETED
                 task.completed_at = datetime.utcnow()
-
                 if task.prescription_id:
-                    rx = session.query(Prescription).filter(Prescription.id == task.prescription_id).first()
+                    rx = sess.query(Prescription).filter(Prescription.id == task.prescription_id).first()
                     if rx and rx.status == PrescriptionStatus.FOLLOW_UP:
                         rx.status = PrescriptionStatus.UNDER_REVIEW
 
-            session.commit()
-            return False
+            sess.commit()
+            # 关闭弹窗并触发刷新按钮刷新列表
+            next_clicks = (cur_refresh_clicks or 0) + 1
+            return False, next_clicks
         finally:
-            session.close()
+            sess.close()

@@ -6,6 +6,7 @@ from .models import (
     ImportSource, BatchStatus, UserRole, PrescriptionStatus,
     PharmacistOpinion, FollowUpStatus
 )
+from .seeds import init_default_users, verify_user_credentials
 
 __all__ = [
     "Base", "engine", "SessionLocal", "get_db", "get_session",
@@ -14,4 +15,5 @@ __all__ = [
     "PrescriptionNote", "FollowUp", "InsuranceSettlement",
     "ImportSource", "BatchStatus", "UserRole", "PrescriptionStatus",
     "PharmacistOpinion", "FollowUpStatus",
+    "init_default_users", "verify_user_credentials",
 ]

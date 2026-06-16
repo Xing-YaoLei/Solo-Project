@@ -11,8 +11,8 @@ from .charts import (
     create_member_change_chart, create_pharmacy_comparison, create_status_pie,
     create_kpi_card,
 )
-from .management_dashboard import build_management_layout, build_management_callbacks
-from .executor_dashboard import build_executor_layout, build_executor_callbacks
+from .management_dashboard import build_management_layout, register_management_callbacks
+from .executor_dashboard import build_executor_layout, register_executor_callbacks
 
 __all__ = [
     "get_prescription_summary", "get_prescription_trend",
@@ -24,6 +24,6 @@ __all__ = [
     "create_photo_quality_pie", "create_pharmacist_funnel", "create_expiry_ranking_chart",
     "create_member_change_chart", "create_pharmacy_comparison", "create_status_pie",
     "create_kpi_card",
-    "build_management_layout", "build_management_callbacks",
-    "build_executor_layout", "build_executor_callbacks",
+    "build_management_layout", "register_management_callbacks",
+    "build_executor_layout", "register_executor_callbacks",
 ]

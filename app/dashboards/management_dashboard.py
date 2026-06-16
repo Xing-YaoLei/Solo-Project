@@ -17,6 +17,7 @@ from app.dashboards.charts import (
 
 
 def build_management_layout():
+    """只构建布局，不注册任何回调。组件ID统一加 mgmt- 前缀避免冲突。"""
     today = date.today()
     default_start = today - timedelta(days=30)
 
@@ -27,30 +28,30 @@ def build_management_layout():
             dbc.Col([
                 dbc.Row([
                     dbc.Col(dcc.DatePickerRange(
-                        id="date-range",
+                        id="mgmt-date-range",
                         start_date=default_start,
                         end_date=today,
                         display_format="YYYY-MM-DD",
                         className="mb-2",
                     )),
-                    dbc.Col(dbc.Button("刷新数据", id="refresh-btn", color="primary", outline=True, className="mb-2")),
+                    dbc.Col(dbc.Button("刷新数据", id="mgmt-refresh-btn", color="primary", outline=True, className="mb-2")),
                 ]),
             ], width=4),
         ]),
         html.Hr(),
 
         dbc.Row([
-            dbc.Col(dcc.Graph(id="kpi-total", figure=create_kpi_card(0, "处方总数", "#2563EB")), width=2),
-            dbc.Col(dcc.Graph(id="kpi-approved", figure=create_kpi_card(0, "审核通过", "#10B981")), width=2),
-            dbc.Col(dcc.Graph(id="kpi-rate", figure=create_kpi_card(0, "通过率", "#3B82F6", suffix="%")), width=2),
-            dbc.Col(dcc.Graph(id="kpi-amount", figure=create_kpi_card(0, "总金额", "#8B5CF6", prefix="¥")), width=2),
-            dbc.Col(dcc.Graph(id="kpi-insurance", figure=create_kpi_card(0, "医保支付", "#F59E0B", prefix="¥")), width=2),
-            dbc.Col(dcc.Graph(id="kpi-pending", figure=create_kpi_card(0, "待审核", "#EF4444")), width=2),
+            dbc.Col(dcc.Graph(id="mgmt-kpi-total", figure=create_kpi_card(0, "处方总数", "#2563EB")), width=2),
+            dbc.Col(dcc.Graph(id="mgmt-kpi-approved", figure=create_kpi_card(0, "审核通过", "#10B981")), width=2),
+            dbc.Col(dcc.Graph(id="mgmt-kpi-rate", figure=create_kpi_card(0, "通过率", "#3B82F6", suffix="%")), width=2),
+            dbc.Col(dcc.Graph(id="mgmt-kpi-amount", figure=create_kpi_card(0, "总金额", "#8B5CF6", prefix="¥")), width=2),
+            dbc.Col(dcc.Graph(id="mgmt-kpi-insurance", figure=create_kpi_card(0, "医保支付", "#F59E0B", prefix="¥")), width=2),
+            dbc.Col(dcc.Graph(id="mgmt-kpi-pending", figure=create_kpi_card(0, "待审核", "#EF4444")), width=2),
         ], className="mb-4"),
 
         dbc.Row([
-            dbc.Col(dcc.Graph(id="trend-chart"), width=8),
-            dbc.Col(dcc.Graph(id="status-pie"), width=4),
+            dbc.Col(dcc.Graph(id="mgmt-trend-chart"), width=8),
+            dbc.Col(dcc.Graph(id="mgmt-status-pie"), width=4),
         ], className="mb-4"),
 
         dbc.Row([
@@ -63,44 +64,42 @@ def build_management_layout():
                     dbc.Tab(label="会员档案变化", tab_id="member"),
                     dbc.Tab(label="门店对比", tab_id="pharmacy"),
                     dbc.Tab(label="导入批次", tab_id="batch"),
-                ], id="analysis-tabs", active_tab="photo"),
+                ], id="mgmt-analysis-tabs", active_tab="photo"),
                 html.Br(),
-                html.Div(id="analysis-content"),
+                html.Div(id="mgmt-analysis-content"),
             ], width=12),
         ]),
 
-        dcc.Store(id="summary-store"),
+        dcc.Store(id="mgmt-summary-store"),
     ], fluid=True)
 
 
-def build_management_callbacks(app):
+def register_management_callbacks(app):
+    """在 create_app 启动阶段调用，一次性注册管理层所有回调。"""
+
     @app.callback(
-        Output("summary-store", "data"),
-        [Input("date-range", "start_date"), Input("date-range", "end_date"),
-         Input("refresh-btn", "n_clicks")],
+        Output("mgmt-summary-store", "data"),
+        [Input("mgmt-date-range", "start_date"), Input("mgmt-date-range", "end_date"),
+         Input("mgmt-refresh-btn", "n_clicks")],
         prevent_initial_call=False,
     )
-    def update_summary(start_date, end_date, n_clicks):
+    def _mgmt_update_summary(start_date, end_date, n_clicks):
         start = date.fromisoformat(start_date) if start_date else None
         end = date.fromisoformat(end_date) if end_date else None
-        summary = get_prescription_summary(start, end)
-        return summary
+        return get_prescription_summary(start, end)
 
     @app.callback(
-        [Output("kpi-total", "figure"), Output("kpi-approved", "figure"),
-         Output("kpi-rate", "figure"), Output("kpi-amount", "figure"),
-         Output("kpi-insurance", "figure"), Output("kpi-pending", "figure"),
-         Output("trend-chart", "figure"), Output("status-pie", "figure")],
-        [Input("summary-store", "data"),
-         Input("date-range", "start_date"), Input("date-range", "end_date")],
+        [Output("mgmt-kpi-total", "figure"), Output("mgmt-kpi-approved", "figure"),
+         Output("mgmt-kpi-rate", "figure"), Output("mgmt-kpi-amount", "figure"),
+         Output("mgmt-kpi-insurance", "figure"), Output("mgmt-kpi-pending", "figure"),
+         Output("mgmt-trend-chart", "figure"), Output("mgmt-status-pie", "figure")],
+        [Input("mgmt-summary-store", "data"),
+         Input("mgmt-date-range", "start_date"), Input("mgmt-date-range", "end_date")],
     )
-    def update_kpis(summary, start_date, end_date):
+    def _mgmt_update_kpis(summary, start_date, end_date):
         if not summary:
             summary = get_prescription_summary()
-        start = date.fromisoformat(start_date) if start_date else None
-        end = date.fromisoformat(end_date) if end_date else None
         trend_df = get_prescription_trend(30)
-
         return (
             create_kpi_card(summary.get("total_prescriptions", 0), "处方总数", "#2563EB"),
             create_kpi_card(summary.get("approved", 0), "审核通过", "#10B981"),
@@ -113,10 +112,10 @@ def build_management_callbacks(app):
         )
 
     @app.callback(
-        Output("analysis-content", "children"),
-        [Input("analysis-tabs", "active_tab")],
+        Output("mgmt-analysis-content", "children"),
+        [Input("mgmt-analysis-tabs", "active_tab")],
     )
-    def render_analysis_tab(tab_id):
+    def _mgmt_render_analysis_tab(tab_id):
         if tab_id == "photo":
             photo_df = get_photo_distribution()
             quality_df = get_photo_quality_detail()
