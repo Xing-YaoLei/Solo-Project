@@ -9,7 +9,6 @@ import {
   jsonb,
   primaryKey,
   foreignKey,
-  uuid,
   pgEnum
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
@@ -19,18 +18,18 @@ export const followupStatusEnum = pgEnum('followup_status', ['pending', 'in_prog
 export const riskLevelEnum = pgEnum('risk_level', ['low', 'medium', 'high', 'critical']);
 export const prescriptionStatusEnum = pgEnum('prescription_status', ['clear', 'unclear', 'verified', 'rejected']);
 
-export const users = pgTable('user', {
+export const users = pgTable('users', {
   id: text('id').primaryKey(),
   username: varchar('username', { length: 50 }).notNull().unique(),
   name: varchar('name', { length: 100 }).notNull(),
   passwordHash: text('password_hash').notNull(),
   role: userRoleEnum('role').notNull().default('staff'),
-  pharmacyId: uuid('pharmacy_id'),
+  pharmacyId: text('pharmacy_id').references(() => pharmacies.id),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow()
 });
 
-export const sessions = pgTable('session', {
+export const sessions = pgTable('sessions', {
   id: text('id').primaryKey(),
   userId: text('user_id')
     .notNull()
@@ -39,7 +38,7 @@ export const sessions = pgTable('session', {
 });
 
 export const pharmacies = pgTable('pharmacies', {
-  id: uuid('id').primaryKey().defaultRandom(),
+  id: text('id').primaryKey(),
   name: varchar('name', { length: 100 }).notNull(),
   address: text('address'),
   phone: varchar('phone', { length: 20 }),
@@ -47,7 +46,7 @@ export const pharmacies = pgTable('pharmacies', {
 });
 
 export const members = pgTable('members', {
-  id: uuid('id').primaryKey().defaultRandom(),
+  id: text('id').primaryKey(),
   memberNo: varchar('member_no', { length: 50 }).notNull().unique(),
   name: varchar('name', { length: 100 }).notNull(),
   phone: varchar('phone', { length: 20 }).notNull(),
@@ -58,13 +57,13 @@ export const members = pgTable('members', {
   allergyHistory: text('allergy_history'),
   medicalHistory: text('medical_history'),
   insuranceCardNo: varchar('insurance_card_no', { length: 50 }),
-  pharmacyId: uuid('pharmacy_id').references(() => pharmacies.id),
+  pharmacyId: text('pharmacy_id').references(() => pharmacies.id),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow()
 });
 
 export const drugs = pgTable('drugs', {
-  id: uuid('id').primaryKey().defaultRandom(),
+  id: text('id').primaryKey(),
   drugCode: varchar('drug_code', { length: 50 }).notNull().unique(),
   name: varchar('name', { length: 200 }).notNull(),
   genericName: varchar('generic_name', { length: 200 }),
@@ -78,21 +77,21 @@ export const drugs = pgTable('drugs', {
 });
 
 export const drugBatches = pgTable('drug_batches', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  drugId: uuid('drug_id').notNull().references(() => drugs.id),
+  id: text('id').primaryKey(),
+  drugId: text('drug_id').notNull().references(() => drugs.id),
   batchNo: varchar('batch_no', { length: 50 }).notNull(),
   productionDate: date('production_date', { mode: 'date' }),
   expiryDate: date('expiry_date', { mode: 'date' }).notNull(),
   quantity: integer('quantity').notNull().default(0),
-  pharmacyId: uuid('pharmacy_id').references(() => pharmacies.id),
+  pharmacyId: text('pharmacy_id').references(() => pharmacies.id),
   createdAt: timestamp('created_at').notNull().defaultNow()
 });
 
 export const replenishmentOrders = pgTable('replenishment_orders', {
-  id: uuid('id').primaryKey().defaultRandom(),
+  id: text('id').primaryKey(),
   orderNo: varchar('order_no', { length: 50 }).notNull().unique(),
-  memberId: uuid('member_id').references(() => members.id),
-  pharmacyId: uuid('pharmacy_id').references(() => pharmacies.id),
+  memberId: text('member_id').references(() => members.id),
+  pharmacyId: text('pharmacy_id').references(() => pharmacies.id),
   status: varchar('status', { length: 20 }).notNull().default('pending'),
   totalAmount: integer('total_amount').default(0),
   createdAt: timestamp('created_at').notNull().defaultNow(),
@@ -100,18 +99,21 @@ export const replenishmentOrders = pgTable('replenishment_orders', {
 });
 
 export const replenishmentOrderItems = pgTable('replenishment_order_items', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  orderId: uuid('order_id').notNull().references(() => replenishmentOrders.id),
-  drugId: uuid('drug_id').notNull().references(() => drugs.id),
-  batchId: uuid('batch_id').references(() => drugBatches.id),
+  id: text('id').primaryKey(),
+  orderId: text('order_id').notNull().references(() => replenishmentOrders.id),
+  drugId: text('drug_id').references(() => drugs.id),
+  drugName: varchar('drug_name', { length: 200 }),
+  batchId: text('batch_id').references(() => drugBatches.id),
+  batchNo: varchar('batch_no', { length: 50 }),
+  expiryDate: date('expiry_date', { mode: 'date' }),
   quantity: integer('quantity').notNull(),
   unitPrice: integer('unit_price').notNull(),
   subtotal: integer('subtotal').notNull()
 });
 
 export const prescriptions = pgTable('prescriptions', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  memberId: uuid('member_id').notNull().references(() => members.id),
+  id: text('id').primaryKey(),
+  memberId: text('member_id').notNull().references(() => members.id),
   prescriptionNo: varchar('prescription_no', { length: 50 }),
   hospital: varchar('hospital', { length: 200 }),
   doctor: varchar('doctor', { length: 50 }),
@@ -124,9 +126,9 @@ export const prescriptions = pgTable('prescriptions', {
 });
 
 export const prescriptionItems = pgTable('prescription_items', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  prescriptionId: uuid('prescription_id').notNull().references(() => prescriptions.id),
-  drugId: uuid('drug_id').references(() => drugs.id),
+  id: text('id').primaryKey(),
+  prescriptionId: text('prescription_id').notNull().references(() => prescriptions.id),
+  drugId: text('drug_id').references(() => drugs.id),
   drugName: varchar('drug_name', { length: 200 }).notNull(),
   specification: varchar('specification', { length: 100 }),
   dosage: varchar('dosage', { length: 100 }),
@@ -136,28 +138,28 @@ export const prescriptionItems = pgTable('prescription_items', {
 });
 
 export const insuranceRecords = pgTable('insurance_records', {
-  id: uuid('id').primaryKey().defaultRandom(),
+  id: text('id').primaryKey(),
   recordNo: varchar('record_no', { length: 50 }).notNull().unique(),
-  memberId: uuid('member_id').notNull().references(() => members.id),
-  prescriptionId: uuid('prescription_id').references(() => prescriptions.id),
+  memberId: text('member_id').notNull().references(() => members.id),
+  prescriptionId: text('prescription_id').references(() => prescriptions.id),
   transactionDate: timestamp('transaction_date').notNull(),
   totalAmount: integer('total_amount').notNull(),
   insuranceAmount: integer('insurance_amount').notNull(),
   selfPayAmount: integer('self_pay_amount').notNull(),
-  pharmacyId: uuid('pharmacy_id').references(() => pharmacies.id),
+  pharmacyId: text('pharmacy_id').references(() => pharmacies.id),
   createdAt: timestamp('created_at').notNull().defaultNow()
 });
 
 export const followupRecords = pgTable('followup_records', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  memberId: uuid('member_id').notNull().references(() => members.id),
-  prescriptionId: uuid('prescription_id').references(() => prescriptions.id),
-  replenishmentOrderId: uuid('replenishment_order_id').references(() => replenishmentOrders.id),
-  insuranceRecordId: uuid('insurance_record_id').references(() => insuranceRecords.id),
+  id: text('id').primaryKey(),
+  memberId: text('member_id').notNull().references(() => members.id),
+  prescriptionId: text('prescription_id').references(() => prescriptions.id),
+  replenishmentOrderId: text('replenishment_order_id').references(() => replenishmentOrders.id),
+  insuranceRecordId: text('insurance_record_id').references(() => insuranceRecords.id),
   status: followupStatusEnum('status').notNull().default('pending'),
   riskLevel: riskLevelEnum('risk_level').notNull().default('low'),
   assignedTo: text('assigned_to').references(() => users.id),
-  pharmacyId: uuid('pharmacy_id').references(() => pharmacies.id),
+  pharmacyId: text('pharmacy_id').references(() => pharmacies.id),
   followupDate: timestamp('followup_date'),
   nextFollowupDate: timestamp('next_followup_date'),
   medicationAdherence: boolean('medication_adherence'),
@@ -170,8 +172,8 @@ export const followupRecords = pgTable('followup_records', {
 });
 
 export const communicationNotes = pgTable('communication_notes', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  followupRecordId: uuid('followup_record_id').notNull().references(() => followupRecords.id),
+  id: text('id').primaryKey(),
+  followupRecordId: text('followup_record_id').notNull().references(() => followupRecords.id),
   content: text('content').notNull(),
   isReview: boolean('is_review').notNull().default(false),
   createdBy: text('created_by').notNull().references(() => users.id),

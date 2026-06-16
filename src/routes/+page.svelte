@@ -34,10 +34,16 @@
         </select>
       </div>
       <div class="form-group" style="margin-bottom: 0;">
-        <label class="form-label">
-          <input type="checkbox" bind:checked={assignedOnly} style="margin-right: 0.5rem;" />
-          只看我负责的
-        </label>
+        {#if user && ['admin', 'manager'].includes(user.role)}
+          <label class="form-label">
+            <input type="checkbox" bind:checked={assignedOnly} style="margin-right: 0.5rem;" />
+            只看我负责的
+          </label>
+        {:else}
+          <label class="form-label" style="color: var(--text-muted);">
+            🔒 仅显示您负责的记录
+          </label>
+        {/if}
         <button class="btn-secondary" on:click={loadRecords} style="width: 100%;">
           筛选
         </button>
@@ -131,6 +137,9 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { trpc } from '$lib/trpc/client';
+  import { page } from '$app/stores';
+
+  $: user = $page.data?.user;
 
   let records: any[] = [];
   let total = 0;

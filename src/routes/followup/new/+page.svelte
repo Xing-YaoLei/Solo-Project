@@ -18,6 +18,12 @@
   let createNewPrescription = false;
   let prescriptionNo = '';
   let hospital = '';
+  let doctor = '';
+  let issueDate = '';
+  let prescriptionStatus: 'clear' | 'unclear' | 'verified' | 'rejected' = 'clear';
+  let prescriptionRiskLevel: 'low' | 'medium' | 'high' | 'critical' = 'low';
+  let prescriptionPhotoUrl = '';
+  let prescriptionNotes = '';
   let prescriptionItems: any[] = [];
 
   let createNewReplenishment = false;
@@ -69,6 +75,7 @@
       specification: '',
       dosage: '',
       frequency: '',
+      duration: '',
       quantity: 1
     }];
   }
@@ -91,10 +98,21 @@
     replenishmentItems = replenishmentItems.filter((_, i) => i !== index);
   }
 
+  function calcSubtotal(item: any) {
+    return (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0);
+  }
+
   async function submitFollowup() {
     if (!selectedMember) {
       alert('请选择会员');
       return;
+    }
+
+    if (createNewInsurance) {
+      if (!insuranceRecordNo || !insuranceTransactionDate) {
+        alert('请填写医保流水号和交易日期');
+        return;
+      }
     }
 
     submitLoading = true;
@@ -113,8 +131,30 @@
         input.prescriptionData = {
           prescriptionNo: prescriptionNo || undefined,
           hospital: hospital || undefined,
+          doctor: doctor || undefined,
+          issueDate: issueDate ? new Date(issueDate) : undefined,
+          status: prescriptionStatus,
+          riskLevel: prescriptionRiskLevel,
+          photoUrl: prescriptionPhotoUrl || undefined,
+          notes: prescriptionNotes || undefined,
           items: prescriptionItems.filter(item => item.drugName.trim())
         };
+      }
+
+      if (createNewReplenishment && replenishmentItems.length > 0) {
+        const validItems = replenishmentItems.filter(item => item.drugName.trim());
+        if (validItems.length > 0) {
+          input.replenishmentData = {
+            items: validItems.map(item => ({
+              drugName: item.drugName,
+              batchNo: item.batchNo || undefined,
+              expiryDate: item.expiryDate ? new Date(item.expiryDate) : undefined,
+              quantity: Number(item.quantity) || 0,
+              unitPrice: Math.round((Number(item.unitPrice) || 0) * 100),
+              subtotal: Math.round(calcSubtotal(item) * 100)
+            }))
+          };
+        }
       }
 
       if (createNewInsurance) {
@@ -128,7 +168,7 @@
       }
 
       const result = await trpc.followup.create.mutate(input);
-      
+
       if (result) {
         goto(`/followup/${result.id}`);
       }
@@ -183,9 +223,9 @@
     <div class="card-body">
       <div class="form-group">
         <label class="form-label">搜索会员</label>
-        <input 
-          type="text" 
-          class="form-input" 
+        <input
+          type="text"
+          class="form-input"
           placeholder="输入会员姓名、会员号或手机号..."
           bind:value={memberSearch}
           on:input={searchMembers}
@@ -199,7 +239,7 @@
       {:else if members.length > 0}
         <div style="border: 1px solid var(--border-color); border-radius: var(--border-radius); overflow: hidden;">
           {#each members as member}
-            <div 
+            <div
               style="padding: 1rem; border-bottom: 1px solid var(--border-color); cursor: pointer; transition: background 0.2s;"
               on:mouseenter={(e) => { e.currentTarget.style.background = 'var(--primary-light)'; }}
               on:mouseleave={(e) => { e.currentTarget.style.background = 'transparent'; }}
@@ -246,13 +286,13 @@
 {#if currentStep === 2}
   <div class="card">
     <div class="card-header">
-      步骤 2：关联处方信息
+      步骤 2：关联处方信息（含处方照片）
     </div>
     <div class="card-body">
       <div class="form-group">
         <label style="display: flex; align-items: center; gap: 0.5rem;">
           <input type="checkbox" bind:checked={createNewPrescription} />
-          <span>创建新处方</span>
+          <span>创建新处方并关联</span>
         </label>
       </div>
 
@@ -266,9 +306,43 @@
             <label class="form-label">开具医院</label>
             <input type="text" class="form-input" bind:value={hospital} placeholder="如：北京协和医院" />
           </div>
+          <div class="form-group">
+            <label class="form-label">医生</label>
+            <input type="text" class="form-input" bind:value={doctor} />
+          </div>
+          <div class="form-group">
+            <label class="form-label">开具日期</label>
+            <input type="date" class="form-input" bind:value={issueDate} />
+          </div>
+          <div class="form-group">
+            <label class="form-label">处方状态</label>
+            <select class="form-input" bind:value={prescriptionStatus}>
+              <option value="clear">清晰</option>
+              <option value="unclear">不清晰</option>
+              <option value="verified">已复核</option>
+              <option value="rejected">已退回</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">风险等级</label>
+            <select class="form-input" bind:value={prescriptionRiskLevel}>
+              <option value="low">低风险</option>
+              <option value="medium">中风险</option>
+              <option value="high">高风险</option>
+              <option value="critical">极高风险</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">处方照片 URL</label>
+          <input type="text" class="form-input" bind:value={prescriptionPhotoUrl} placeholder="https://example.com/prescription.jpg" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">处方备注</label>
+          <textarea class="form-input" rows={2} bind:value={prescriptionNotes}></textarea>
         </div>
 
-        <div style="margin-top: 1rem;">
+        <div style="margin-top: 1.5rem;">
           <div class="section-title">
             处方药品明细
             <button class="btn-secondary btn-sm" style="margin-left: auto;" on:click={addPrescriptionItem}>
@@ -276,11 +350,12 @@
             </button>
           </div>
           {#each prescriptionItems as item, index}
-            <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr auto; gap: 0.5rem; margin-bottom: 0.5rem;">
+            <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr auto; gap: 0.5rem; margin-bottom: 0.5rem;">
               <input type="text" class="form-input" placeholder="药品名称" bind:value={item.drugName} />
               <input type="text" class="form-input" placeholder="规格" bind:value={item.specification} />
               <input type="text" class="form-input" placeholder="用量" bind:value={item.dosage} />
               <input type="text" class="form-input" placeholder="频次" bind:value={item.frequency} />
+              <input type="text" class="form-input" placeholder="疗程" bind:value={item.duration} />
               <input type="number" class="form-input" placeholder="数量" bind:value={item.quantity} />
               <button class="btn-danger btn-sm" on:click={() => removePrescriptionItem(index)}>删除</button>
             </div>
@@ -300,7 +375,7 @@
       <div class="form-group">
         <label style="display: flex; align-items: center; gap: 0.5rem;">
           <input type="checkbox" bind:checked={createNewReplenishment} />
-          <span>创建新补货单</span>
+          <span>创建新补货单并关联批号效期</span>
         </label>
       </div>
 
@@ -317,8 +392,8 @@
               <div class="card-body">
                 <div class="form-row">
                   <div class="form-group" style="margin-bottom: 0;">
-                    <label class="form-label">药品</label>
-                    <input type="text" class="form-input" placeholder="搜索药品..." bind:value={item.drugName} />
+                    <label class="form-label">药品名称</label>
+                    <input type="text" class="form-input" placeholder="如：苯磺酸氨氯地平片" bind:value={item.drugName} />
                   </div>
                   <div class="form-group" style="margin-bottom: 0;">
                     <label class="form-label">批号</label>
@@ -335,6 +410,10 @@
                   <div class="form-group" style="margin-bottom: 0;">
                     <label class="form-label">单价(元)</label>
                     <input type="number" class="form-input" bind:value={item.unitPrice} step="0.01" min="0" />
+                  </div>
+                  <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label">小计(元)</label>
+                    <input type="text" class="form-input" value={calcSubtotal(item).toFixed(2)} disabled />
                   </div>
                 </div>
                 <div style="text-align: right; margin-top: 0.5rem;">
@@ -365,11 +444,11 @@
       {#if createNewInsurance}
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label">流水号</label>
+            <label class="form-label">流水号 *</label>
             <input type="text" class="form-input" bind:value={insuranceRecordNo} placeholder="如：INS20240615001" />
           </div>
           <div class="form-group">
-            <label class="form-label">交易日期</label>
+            <label class="form-label">交易日期 *</label>
             <input type="date" class="form-input" bind:value={insuranceTransactionDate} />
           </div>
           <div class="form-group">
@@ -412,8 +491,8 @@
         </div>
       </div>
       <div class="form-group">
-        <label class="form-label">初始沟通备注</label>
-        <textarea class="form-input" rows={4} bind:value={initialNote} placeholder="输入本次回访的初始备注信息..."></textarea>
+        <label class="form-label">初始沟通备注（将作为沟通备注保存）</label>
+        <textarea class="form-input" rows={4} bind:value={initialNote} placeholder="输入本次回访的初始沟通备注，将写入 communication_notes 表..."></textarea>
       </div>
 
       <div style="margin-top: 1.5rem; padding: 1rem; background: var(--bg-tertiary); border-radius: var(--border-radius);">
@@ -427,15 +506,23 @@
           </div>
           <div class="info-item">
             <span class="info-label">处方</span>
-            <span class="info-value">{createNewPrescription ? `新建(${prescriptionItems.length}种药品)` : '无'}</span>
+            <span class="info-value">{createNewPrescription ? `新建(${prescriptionItems.length}种药品)` : '不创建'}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">处方照片</span>
+            <span class="info-value">{createNewPrescription && prescriptionPhotoUrl ? '已填写' : '无'}</span>
           </div>
           <div class="info-item">
             <span class="info-label">补货单</span>
-            <span class="info-value">{createNewReplenishment ? `新建(${replenishmentItems.length}种药品)` : '无'}</span>
+            <span class="info-value">{createNewReplenishment ? `新建(${replenishmentItems.length}种药品，含批号效期)` : '不创建'}</span>
           </div>
           <div class="info-item">
             <span class="info-label">医保流水</span>
-            <span class="info-value">{createNewInsurance ? '新建' : '无'}</span>
+            <span class="info-value">{createNewInsurance ? '已填写' : '无'}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">初始备注</span>
+            <span class="info-value">{initialNote ? '已填写' : '无'}</span>
           </div>
           <div class="info-item">
             <span class="info-label">风险等级</span>

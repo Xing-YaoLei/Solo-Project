@@ -1,10 +1,37 @@
 import { db } from './index';
-import { users, pharmacies, members, drugs, drugBatches, prescriptions, prescriptionItems, insuranceRecords, replenishmentOrders, replenishmentOrderItems, followupRecords, communicationNotes } from './schema';
+import {
+  users,
+  pharmacies,
+  members,
+  drugs,
+  drugBatches,
+  prescriptions,
+  prescriptionItems,
+  insuranceRecords,
+  replenishmentOrders,
+  replenishmentOrderItems,
+  followupRecords,
+  communicationNotes
+} from './schema';
 import { Argon2id } from 'oslo/password';
 import { generateId } from 'lucia';
 
 async function main() {
   console.log('🌱 开始初始化数据库...');
+
+  console.log('🗑️  清空旧数据...');
+  await db.delete(communicationNotes);
+  await db.delete(followupRecords);
+  await db.delete(replenishmentOrderItems);
+  await db.delete(replenishmentOrders);
+  await db.delete(insuranceRecords);
+  await db.delete(prescriptionItems);
+  await db.delete(prescriptions);
+  await db.delete(drugBatches);
+  await db.delete(drugs);
+  await db.delete(members);
+  await db.delete(users);
+  await db.delete(pharmacies);
 
   const adminUserId = generateId(15);
   const managerUserId = generateId(15);
@@ -17,31 +44,31 @@ async function main() {
   const pharmacistHash = await new Argon2id().hash('pharma123');
   const staffHash = await new Argon2id().hash('staff123');
 
-  const pharmacyId1 = '11111111-1111-1111-1111-111111111111';
-  const pharmacyId2 = '22222222-2222-2222-2222-222222222222';
+  const pharmacyId1 = generateId(15);
+  const pharmacyId2 = generateId(15);
 
-  const memberId1 = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
-  const memberId2 = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
-  const memberId3 = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
+  const memberId1 = generateId(15);
+  const memberId2 = generateId(15);
+  const memberId3 = generateId(15);
 
-  const drugId1 = 'dddddddd-dddd-dddd-dddd-dddddddddddd';
-  const drugId2 = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee';
-  const drugId3 = 'ffffffff-ffff-ffff-ffff-ffffffffffff';
+  const drugId1 = generateId(15);
+  const drugId2 = generateId(15);
+  const drugId3 = generateId(15);
 
-  const batchId1 = '11111111-2222-3333-4444-555555555555';
-  const batchId2 = '66666666-7777-8888-9999-000000000000';
-  const batchId3 = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+  const batchId1 = generateId(15);
+  const batchId2 = generateId(15);
+  const batchId3 = generateId(15);
 
-  const prescriptionId1 = 'pppppppp-pppp-pppp-pppp-pppppppppppp';
-  const prescriptionId2 = 'qqqqqqqq-qqqq-qqqq-qqqq-qqqqqqqqqqqq';
+  const prescriptionId1 = generateId(15);
+  const prescriptionId2 = generateId(15);
 
-  const insuranceId1 = 'iiiiiiii-iiii-iiii-iiii-iiiiiiiiiiii';
+  const insuranceId1 = generateId(15);
 
-  const orderId1 = 'oooooooo-oooo-oooo-oooo-oooooooooooo';
+  const orderId1 = generateId(15);
 
-  const followupId1 = 'ffffffff-1111-2222-3333-444444444444';
-  const followupId2 = 'gggggggg-5555-6666-7777-888888888888';
-  const followupId3 = 'hhhhhhhh-9999-0000-aaaa-bbbbbbbbbbbb';
+  const followupId1 = generateId(15);
+  const followupId2 = generateId(15);
+  const followupId3 = generateId(15);
 
   console.log('🏥 插入门店数据...');
   await db.insert(pharmacies).values([
@@ -57,7 +84,7 @@ async function main() {
       address: '北京市海淀区医药路66号',
       phone: '010-66666666'
     }
-  ]).onConflictDoNothing();
+  ]);
 
   console.log('👤 插入用户数据...');
   await db.insert(users).values([
@@ -101,7 +128,7 @@ async function main() {
       role: 'staff',
       pharmacyId: pharmacyId1
     }
-  ]).onConflictDoNothing();
+  ]);
 
   console.log('👥 插入会员数据...');
   await db.insert(members).values([
@@ -112,7 +139,7 @@ async function main() {
       phone: '13800138001',
       idCard: '110101197501011234',
       gender: '男',
-      birthday: '1975-01-01',
+      birthday: '1975-01-01' as any,
       address: '北京市朝阳区幸福小区1号楼',
       allergyHistory: '青霉素过敏',
       medicalHistory: '高血压、糖尿病',
@@ -126,7 +153,7 @@ async function main() {
       phone: '13800138002',
       idCard: '110101198002025678',
       gender: '女',
-      birthday: '1980-02-15',
+      birthday: '1980-02-15' as any,
       address: '北京市海淀区阳光花园3号楼',
       allergyHistory: '无',
       medicalHistory: '心脏病',
@@ -140,14 +167,14 @@ async function main() {
       phone: '13800138003',
       idCard: '110101196503109012',
       gender: '男',
-      birthday: '1965-03-10',
+      birthday: '1965-03-10' as any,
       address: '北京市西城区和平里小区5号楼',
       allergyHistory: '磺胺类过敏',
       medicalHistory: '高血压、高血脂',
       insuranceCardNo: 'BJ112233445',
       pharmacyId: pharmacyId1
     }
-  ]).onConflictDoNothing();
+  ]);
 
   console.log('💊 插入药品数据...');
   await db.insert(drugs).values([
@@ -187,7 +214,7 @@ async function main() {
       usage: '口服，每日1次，每次1片，睡前服用',
       caution: '定期检查肝功能，出现肌肉疼痛立即停药'
     }
-  ]).onConflictDoNothing();
+  ]);
 
   console.log('📦 插入药品批号数据...');
   await db.insert(drugBatches).values([
@@ -195,8 +222,8 @@ async function main() {
       id: batchId1,
       drugId: drugId1,
       batchNo: 'B2401001',
-      productionDate: '2024-01-15',
-      expiryDate: '2026-01-14',
+      productionDate: '2024-01-15' as any,
+      expiryDate: '2026-01-14' as any,
       quantity: 150,
       pharmacyId: pharmacyId1
     },
@@ -204,8 +231,8 @@ async function main() {
       id: batchId2,
       drugId: drugId2,
       batchNo: 'B2402005',
-      productionDate: '2024-02-20',
-      expiryDate: '2025-08-19',
+      productionDate: '2024-02-20' as any,
+      expiryDate: '2025-08-19' as any,
       quantity: 200,
       pharmacyId: pharmacyId1
     },
@@ -213,12 +240,12 @@ async function main() {
       id: batchId3,
       drugId: drugId3,
       batchNo: 'B2403010',
-      productionDate: '2024-03-10',
-      expiryDate: '2026-03-09',
+      productionDate: '2024-03-10' as any,
+      expiryDate: '2026-03-09' as any,
       quantity: 100,
       pharmacyId: pharmacyId1
     }
-  ]).onConflictDoNothing();
+  ]);
 
   console.log('📝 插入处方数据...');
   await db.insert(prescriptions).values([
@@ -228,7 +255,7 @@ async function main() {
       prescriptionNo: 'RX202406001',
       hospital: '北京协和医院',
       doctor: '王主任',
-      issueDate: '2024-06-01',
+      issueDate: '2024-06-01' as any,
       status: 'clear',
       riskLevel: 'medium',
       photoUrl: 'https://example.com/prescriptions/rx001.jpg',
@@ -240,13 +267,13 @@ async function main() {
       prescriptionNo: 'RX202406002',
       hospital: '北京协和医院',
       doctor: '李主任',
-      issueDate: '2024-06-05',
+      issueDate: '2024-06-05' as any,
       status: 'unclear',
       riskLevel: 'high',
       photoUrl: 'https://example.com/prescriptions/rx002.jpg',
       notes: '处方字迹模糊，需要联系医院确认'
     }
-  ]).onConflictDoNothing();
+  ]);
 
   console.log('📋 插入处方明细...');
   await db.insert(prescriptionItems).values([
@@ -283,7 +310,7 @@ async function main() {
       duration: '30天',
       quantity: 2
     }
-  ]).onConflictDoNothing();
+  ]);
 
   console.log('🏥 插入医保流水...');
   await db.insert(insuranceRecords).values([
@@ -298,7 +325,7 @@ async function main() {
       selfPayAmount: 17400,
       pharmacyId: pharmacyId1
     }
-  ]).onConflictDoNothing();
+  ]);
 
   console.log('📦 插入补货单...');
   await db.insert(replenishmentOrders).values([
@@ -311,7 +338,7 @@ async function main() {
       totalAmount: 58000,
       createdBy: staffUserId1
     }
-  ]).onConflictDoNothing();
+  ]);
 
   console.log('📦 插入补货单明细...');
   await db.insert(replenishmentOrderItems).values([
@@ -333,7 +360,7 @@ async function main() {
       unitPrice: 10000,
       subtotal: 40000
     }
-  ]).onConflictDoNothing();
+  ]);
 
   console.log('📋 插入回访记录...');
   const now = new Date();
@@ -395,7 +422,7 @@ async function main() {
       reviewOpinion: null,
       createdBy: staffUserId2
     }
-  ]).onConflictDoNothing();
+  ]);
 
   console.log('💬 插入沟通备注...');
   await db.insert(communicationNotes).values([
@@ -423,7 +450,7 @@ async function main() {
       createdBy: pharmacistUserId,
       createdAt: new Date(now.getTime() - 12 * 60 * 60 * 1000)
     }
-  ]).onConflictDoNothing();
+  ]);
 
   console.log('');
   console.log('✅ 数据库初始化完成！');

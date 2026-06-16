@@ -144,8 +144,11 @@ export const followupRouter = createTRPCRouter({
       }).optional(),
       replenishmentData: z.object({
         items: z.array(z.object({
-          drugId: z.string(),
+          drugId: z.string().optional(),
+          drugName: z.string().optional(),
           batchId: z.string().optional(),
+          batchNo: z.string().optional(),
+          expiryDate: z.date().optional(),
           quantity: z.number(),
           unitPrice: z.number(),
           subtotal: z.number()
@@ -208,7 +211,14 @@ export const followupRouter = createTRPCRouter({
             await tx.insert(replenishmentOrderItems).values({
               id: itemId,
               orderId: createdOrderId,
-              ...item
+              drugId: item.drugId,
+              drugName: item.drugName,
+              batchId: item.batchId,
+              batchNo: item.batchNo,
+              expiryDate: item.expiryDate,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              subtotal: item.subtotal
             });
           }
         }
