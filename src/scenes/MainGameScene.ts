@@ -87,18 +87,32 @@ export class MainGameScene extends Phaser.Scene {
   }
 
   init(data: { level: Level; onGameEnd: (result: GameResult) => void; onExit: () => void }): void {
-    this.level = data.level;
-    this.onGameEndCallback = data.onGameEnd;
-    this.onExitCallback = data.onExit;
+    if (data && data.level) {
+      this.level = data.level;
+      this.onGameEndCallback = data.onGameEnd;
+      this.onExitCallback = data.onExit;
+    } else {
+      console.error('MainGameScene init: Invalid data received', data);
+    }
   }
 
   preload(): void {}
 
   create(): void {
+    if (!this.level) {
+      console.error('MainGameScene create: Level is undefined');
+      this.onExitCallback?.();
+      return;
+    }
+
     const { initGameState } = useGameStateStore.getState();
     initGameState(this.level);
     const { gameState } = useGameStateStore.getState();
-    if (!gameState) return;
+    if (!gameState) {
+      console.error('MainGameScene create: GameState initialization failed');
+      this.onExitCallback?.();
+      return;
+    }
     this.gameState = gameState;
 
     this.shelfGrid = new ShelfGrid(
@@ -621,7 +635,7 @@ export class MainGameScene extends Phaser.Scene {
     const { updateGameState, gameState } = useGameStateStore.getState();
     if (!gameState) return;
 
-    const newTimeRemaining = gameState.timeRemaining - 1;
+    const newTimeRemaining = Math.max(0, gameState.timeRemaining - 1);
 
     if (newTimeRemaining <= 10 && newTimeRemaining > 0) {
       audioUtils.playCountdown();
@@ -629,7 +643,14 @@ export class MainGameScene extends Phaser.Scene {
     }
 
     if (newTimeRemaining <= 0) {
-      this.endGame();
+      updateGameState({
+        timeRemaining: 0,
+        isGameOver: true,
+      });
+      this.updateTimerDisplay(0);
+      this.time.delayedCall(300, () => {
+        this.endGame('timeout');
+      });
     } else {
       updateGameState({ timeRemaining: newTimeRemaining });
       this.updateTimerDisplay(newTimeRemaining);
@@ -821,8 +842,16 @@ export class MainGameScene extends Phaser.Scene {
 
   private checkGameComplete(): void {
     const allPlaced = this.phaserCards.every((card) => card.isPlaced);
-    if (allPlaced) {
-      this.endGame();
+    if (allPlaced && !this.isGameOver) {
+      const { updateGameState, gameState } = useGameStateStore.getState();
+      if (gameState) {
+        updateGameState({
+          isGameOver: true,
+        });
+      }
+      this.time.delayedCall(300, () => {
+        this.endGame('complete');
+      });
     }
   }
 
@@ -921,15 +950,33 @@ export class MainGameScene extends Phaser.Scene {
     return graphics;
   }
 
-  private endGame(): void {
+  private endGame(reason: 'timeout' | 'complete' | 'exit' = 'exit'): void {
     if (this.isGameOver) return;
     this.isGameOver = true;
 
-    const { gameState } = useGameStateStore.getState();
-    if (!gameState) return;
-
     if (this.timerEvent) {
       this.timerEvent.remove(false);
+      this.timerEvent = null;
+    }
+
+    const { updateGameState, gameState } = useGameStateStore.getState();
+    if (!gameState) {
+      this.cleanup();
+      this.onExitCallback?.();
+      return;
+    }
+
+    const finalGameState: GameState = {
+      ...gameState,
+      timeRemaining: 0,
+      isGameOver: true,
+    };
+
+    if (reason === 'timeout') {
+      updateGameState({
+        timeRemaining: 0,
+        isGameOver: true,
+      });
     }
 
     const placements = this.phaserCards
@@ -945,7 +992,7 @@ export class MainGameScene extends Phaser.Scene {
       });
 
     const result = ScoreCalculator.calculateFinalScore(
-      gameState,
+      finalGameState,
       this.level,
       this.ruleEngine,
       placements

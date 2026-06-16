@@ -3,6 +3,7 @@ import Phaser from 'phaser';
 import type { Level, GameResult } from '@/types/game';
 import { SCENE_KEYS } from '@/types/game';
 import { createGameConfig, GAME_CONFIG } from '@/game/GameConfig';
+import { MainGameScene } from '@/scenes/MainGameScene';
 
 interface GameSceneProps {
   level: Level;
@@ -13,36 +14,67 @@ interface GameSceneProps {
 export const GameScene: React.FC<GameSceneProps> = ({ level, onGameEnd, onExit }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<Phaser.Game | null>(null);
+  const sceneLaunchedRef = useRef(false);
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!containerRef.current || !level) {
+      console.error('GameScene: Missing container or level data');
+      return;
+    }
 
-    const initPhaser = async () => {
-      const { MainGameScene } = await import('@/scenes/MainGameScene');
+    sceneLaunchedRef.current = false;
 
-      const config = createGameConfig(
-        containerRef.current!,
-        GAME_CONFIG.DEFAULT_WIDTH,
-        GAME_CONFIG.DEFAULT_HEIGHT
-      );
+    const config = createGameConfig(
+      containerRef.current,
+      GAME_CONFIG.DEFAULT_WIDTH,
+      GAME_CONFIG.DEFAULT_HEIGHT
+    );
 
-      config.scene = [MainGameScene];
+    config.scene = [];
 
-      const game = new Phaser.Game(config);
-      gameRef.current = game;
+    const game = new Phaser.Game(config);
+    gameRef.current = game;
 
-      game.scene.start(SCENE_KEYS.Game, {
+    const launchScene = () => {
+      if (sceneLaunchedRef.current || !gameRef.current) return;
+      sceneLaunchedRef.current = true;
+
+      const sceneManager = gameRef.current.scene;
+
+      if (!sceneManager.getScene(SCENE_KEYS.Game)) {
+        sceneManager.add(SCENE_KEYS.Game, MainGameScene);
+      }
+
+      sceneManager.start(SCENE_KEYS.Game, {
         level,
         onGameEnd,
         onExit,
       });
     };
 
-    initPhaser();
+    if (game.isBooted) {
+      launchScene();
+    } else {
+      game.events.once('ready', launchScene);
+    }
+
+    const handleBootError = (error: unknown) => {
+      console.error('Phaser Game boot error:', error);
+      onExit();
+    };
+
+    game.events.on('error', handleBootError);
 
     return () => {
+      sceneLaunchedRef.current = false;
+      game.events.off('error', handleBootError);
+      game.events.off('ready', launchScene);
       if (gameRef.current) {
-        gameRef.current.destroy(true);
+        try {
+          gameRef.current.destroy(true);
+        } catch (e) {
+          console.error('Error destroying Phaser game:', e);
+        }
         gameRef.current = null;
       }
     };
