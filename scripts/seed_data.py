@@ -194,17 +194,40 @@ def seed_prescriptions(session, pharmacies: list, members: list, count: int = 20
             )
             session.add(photo)
 
-        if status in [PrescriptionStatus.APPROVED, PrescriptionStatus.REJECTED] and pharmacists:
-            opinions = [PharmacistOpinion.PASSED, PharmacistOpinion.PASSED, PharmacistOpinion.PASSED,
-                        PharmacistOpinion.DOSE_ISSUE, PharmacistOpinion.INTERACTION_WARNING,
-                        PharmacistOpinion.DUPLICATE_THERAPY, PharmacistOpinion.PHOTO_UNCLEAR,
-                        PharmacistOpinion.INCOMPLETE_INFO]
-            opinion = random.choice(opinions) if status == PrescriptionStatus.REJECTED else PharmacistOpinion.PASSED
+        if status == PrescriptionStatus.APPROVED and pharmacists:
+            # 通过的处方：审核意见都是 PASSED
+            review = PharmacistReview(
+                prescription_id=rx.id,
+                pharmacist_id=random.choice(pharmacists).id,
+                opinion=PharmacistOpinion.PASSED,
+                comment="审核通过，用药合理",
+            )
+            session.add(review)
+        elif status == PrescriptionStatus.REJECTED and pharmacists:
+            # 驳回的处方：从异常意见里随机选
+            reject_opinions = [
+                PharmacistOpinion.DOSE_ISSUE,
+                PharmacistOpinion.INTERACTION_WARNING,
+                PharmacistOpinion.DUPLICATE_THERAPY,
+                PharmacistOpinion.CONTRAINDICATION,
+            ]
+            opinion = random.choice(reject_opinions)
             review = PharmacistReview(
                 prescription_id=rx.id,
                 pharmacist_id=random.choice(pharmacists).id,
                 opinion=opinion,
-                comment="审核通过，用药合理" if opinion == PharmacistOpinion.PASSED else "存在用药问题，需调整",
+                comment="存在用药问题，需调整",
+            )
+            session.add(review)
+        elif status == PrescriptionStatus.NEEDS_CLARIFICATION and pharmacists:
+            # 需澄清的处方：从澄清类意见里随机
+            clarify_opinions = [PharmacistOpinion.PHOTO_UNCLEAR, PharmacistOpinion.INCOMPLETE_INFO]
+            opinion = random.choice(clarify_opinions)
+            review = PharmacistReview(
+                prescription_id=rx.id,
+                pharmacist_id=random.choice(pharmacists).id,
+                opinion=opinion,
+                comment="处方信息不清晰，需进一步确认",
             )
             session.add(review)
 
