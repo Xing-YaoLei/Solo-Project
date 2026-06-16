@@ -21,21 +21,21 @@ from src.config import Config
 
 def show_details():
     """展示明细页面"""
-    st.title("📋 复诊率明细")
-
-    last_update = get_last_update_time()
-    if last_update:
-        st.caption(f"最后更新时间: {last_update.strftime('%Y-%m-%d %H:%M:%S')}")
-
     role = st.session_state.current_role
     current_user = st.session_state.current_user
 
     if role == "frontline":
-        st.info(f"您当前查看的是: **{current_user}** 负责的患者明细")
+        st.title("📋 我的复诊明细")
+        st.info(f"仅展示 **{current_user}** 负责的会员复诊数据")
         df = get_revisit_risk_overview(doctor_filter=current_user)
     else:
-        st.info("管理层可查看所有医生的明细")
+        st.title("📋 复诊率明细")
+        st.info("管理层可查看所有医生的明细数据")
         df = get_revisit_risk_overview()
+
+    last_update = get_last_update_time()
+    if last_update:
+        st.caption(f"最后更新时间: {last_update.strftime('%Y-%m-%d %H:%M:%S')}")
 
     if df.is_empty():
         st.warning("暂无数据")

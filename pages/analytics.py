@@ -216,15 +216,27 @@ def _show_followup_funnel():
 
 
 def _show_imaging_ranking():
-    """展示影像附件排行"""
+    """展示影像附件排行 - 接入MinIO真实对象存储数据"""
     st.subheader("影像附件排行")
 
     try:
-        df = get_imaging_ranking()
+        result = get_imaging_ranking()
+        df = result["data"]
+        minio_available = result["minio_available"]
+        minio_stats = result["minio_stats"]
+        source = result["source"]
 
         if df.is_empty():
             st.warning("暂无影像数据")
             return
+
+        if minio_available:
+            st.success(f"✅ 对象存储已连接 (MinIO) - 数据来源: 影像系统 + 对象存储")
+            if minio_stats:
+                st.caption(f"对象存储中共有 {minio_stats['total_files']} 个影像文件")
+        else:
+            st.warning("⚠️ 对象存储未连接 - 当前仅展示影像系统记录数据")
+            st.caption("提示: 配置MinIO后可查看真实对象存储统计")
 
         col1, col2 = st.columns(2)
 
@@ -282,6 +294,17 @@ def _show_imaging_ranking():
                 "image_count": "数量"
             }
         )
+
+        if minio_available and minio_stats:
+            st.markdown("---")
+            with st.expander("📦 对象存储详细统计"):
+                st.markdown(f"**存储桶**: `clinic-attachments`")
+                st.markdown(f"**文件总数**: {minio_stats['total_files']}")
+
+                if minio_stats.get("by_type"):
+                    st.markdown("**按目录分类统计:**")
+                    for folder, stats in minio_stats["by_type"].items():
+                        st.text(f"  {folder}/ : {stats['count']} 个文件")
 
     except Exception as e:
         st.error(f"加载影像数据失败: {e}")

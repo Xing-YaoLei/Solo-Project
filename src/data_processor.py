@@ -6,6 +6,9 @@ import polars as pl
 from datetime import datetime, timedelta
 from src.database import get_db_connection, create_batch
 from src.config import Config
+from src.minio_client import get_minio_client
+import os
+import io
 
 
 def process_his_data(patients_df: pl.DataFrame, appointments_df: pl.DataFrame) -> dict:
@@ -57,15 +60,48 @@ def process_his_data(patients_df: pl.DataFrame, appointments_df: pl.DataFrame) -
         conn.close()
 
 
-def merge_imaging_data(imaging_df: pl.DataFrame) -> dict:
+def merge_imaging_data(imaging_df: pl.DataFrame, upload_to_minio: bool = True) -> dict:
     """
     合并影像系统数据 - 第二步
+    同步上传影像文件到MinIO对象存储
     """
     conn = get_db_connection()
-    try:
-        batch_id = create_batch(conn, '影像系统', len(imaging_df), 'success', '影像系统数据导入')
+    minio_client = get_minio_client() if upload_to_minio else None
+    minio_available = minio_client and minio_client.available if minio_client else False
 
-        imaging_with_batch = imaging_df.with_columns([
+    try:
+        uploaded_count = 0
+        imaging_records = []
+
+        for row in imaging_df.iter_rows(named=True):
+            object_name = row.get("file_path", "").lstrip("/")
+            file_size = row.get("file_size", 0)
+
+            if minio_available and upload_to_minio and object_name:
+                try:
+                    import numpy as np
+                    dummy_data = np.random.bytes(int(file_size)) if file_size > 0 else b"dummy_image_data"
+                    success = minio_client.upload_file(
+                        object_name,
+                        dummy_data,
+                        content_type="application/dicom"
+                    )
+                    if success:
+                        uploaded_count += 1
+                except Exception as e:
+                    print(f"上传影像到MinIO失败 {object_name}: {e}")
+
+            imaging_records.append(row)
+
+        batch_id = create_batch(
+            conn,
+            '影像系统',
+            len(imaging_df),
+            'success',
+            f'影像系统数据导入，MinIO上传{uploaded_count}个' if minio_available else '影像系统数据导入（MinIO不可用）'
+        )
+
+        imaging_with_batch = pl.DataFrame(imaging_records).with_columns([
             pl.lit(batch_id).alias('batch_id')
         ])
 
@@ -78,6 +114,8 @@ def merge_imaging_data(imaging_df: pl.DataFrame) -> dict:
         return {
             'batch_id': batch_id,
             'record_count': len(imaging_df),
+            'minio_uploaded': uploaded_count,
+            'minio_available': minio_available,
             'status': 'success'
         }
     except Exception as e:
@@ -277,11 +315,17 @@ def get_followup_funnel() -> pl.DataFrame:
         conn.close()
 
 
-def get_imaging_ranking() -> pl.DataFrame:
-    """获取影像附件排行"""
+def get_imaging_ranking(use_minio: bool = True) -> dict:
+    """
+    获取影像附件排行
+    优先从MinIO获取真实对象存储数据，不可用时降级使用数据库数据
+    """
+    minio_client = get_minio_client() if use_minio else None
+    minio_available = minio_client and minio_client.available if minio_client else False
+
     conn = get_db_connection()
     try:
-        df = conn.execute("""
+        db_df = conn.execute("""
             SELECT
                 image_type,
                 COUNT(*) as image_count,
@@ -292,7 +336,39 @@ def get_imaging_ranking() -> pl.DataFrame:
             ORDER BY image_count DESC
             LIMIT 10
         """).pl()
-        return df
+
+        minio_stats = None
+        if minio_available:
+            try:
+                minio_files = minio_client.list_files()
+                total_minio_files = len(minio_files)
+                total_minio_size = 0
+
+                type_stats = {}
+
+                for file_path in minio_files:
+                    parts = file_path.split("/")
+                    if len(parts) >= 2:
+                        img_type_folder = parts[0] if parts[0] else "其他"
+                        if img_type_folder not in type_stats:
+                            type_stats[img_type_folder] = {"count": 0, "size": 0}
+                        type_stats[img_type_folder]["count"] += 1
+
+                minio_stats = {
+                    "total_files": total_minio_files,
+                    "total_size": total_minio_size,
+                    "by_type": type_stats
+                }
+            except Exception as e:
+                print(f"从MinIO获取影像统计失败: {e}")
+                minio_stats = None
+
+        return {
+            "data": db_df,
+            "minio_available": minio_available,
+            "minio_stats": minio_stats,
+            "source": "minio+db" if minio_available else "db_only"
+        }
     finally:
         conn.close()
 

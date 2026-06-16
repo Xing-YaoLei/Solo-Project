@@ -80,7 +80,7 @@ import polars as pl
 
 
 def sidebar_navigation():
-    """侧边栏导航"""
+    """侧边栏导航 - 根据角色显示不同菜单"""
     with st.sidebar:
         st.title("🦷 复诊监测系统")
 
@@ -94,9 +94,14 @@ def sidebar_navigation():
 
         st.markdown("---")
 
+        if role == "management":
+            menu_options = ["复诊风险总览", "复诊率明细", "数据分析"]
+        else:
+            menu_options = ["我的复诊明细"]
+
         page = st.radio(
             "导航菜单",
-            ["复诊风险总览", "复诊率明细", "数据分析"],
+            menu_options,
             label_visibility="collapsed"
         )
 
@@ -123,7 +128,7 @@ def main():
     if page == "复诊风险总览":
         from pages.overview import show_overview
         show_overview()
-    elif page == "复诊率明细":
+    elif page in ["复诊率明细", "我的复诊明细"]:
         from pages.details import show_details
         show_details()
     elif page == "数据分析":
