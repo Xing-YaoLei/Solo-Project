@@ -80,7 +80,7 @@ const VisitRules: React.FC = () => {
 
   const handleToggleActive = async (record: VisitRecordRule) => {
     try {
-      await visitRules.update(record.id, { isActive: !record.isActive });
+      await visitRules.update(record.id, { ...record, isActive: !record.isActive });
       message.success('状态更新成功');
       fetchData();
     } catch {}

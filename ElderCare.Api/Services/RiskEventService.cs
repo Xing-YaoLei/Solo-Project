@@ -37,7 +37,7 @@ public class RiskEventService : IRiskEventService
                 ReportedByStaffId = r.ReportedByStaffId,
                 ReportedByStaffName = r.ReportedByStaff.Name,
                 AssignedStaffId = r.AssignedStaffId,
-                AssignedStaffName = r.AssignedStaff.Name,
+                AssignedStaffName = r.AssignedStaff != null ? r.AssignedStaff.Name : null,
                 Status = r.Status,
                 Resolution = r.Resolution,
                 ResolvedAt = r.ResolvedAt
@@ -68,7 +68,7 @@ public class RiskEventService : IRiskEventService
                 ReportedByStaffId = r.ReportedByStaffId,
                 ReportedByStaffName = r.ReportedByStaff.Name,
                 AssignedStaffId = r.AssignedStaffId,
-                AssignedStaffName = r.AssignedStaff.Name,
+                AssignedStaffName = r.AssignedStaff != null ? r.AssignedStaff.Name : null,
                 Status = r.Status,
                 Resolution = r.Resolution,
                 ResolvedAt = r.ResolvedAt

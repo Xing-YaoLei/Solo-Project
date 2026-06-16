@@ -68,7 +68,7 @@ const ActivityThresholds: React.FC = () => {
 
   const handleToggleActive = async (record: ActivityCheckInThreshold) => {
     try {
-      await thresholds.update(record.id, { isActive: !record.isActive });
+      await thresholds.update(record.id, { ...record, isActive: !record.isActive });
       message.success('状态更新成功');
       fetchData();
     } catch {}

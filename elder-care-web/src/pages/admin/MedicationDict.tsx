@@ -66,7 +66,7 @@ const MedicationDict: React.FC = () => {
 
   const handleToggleActive = async (record: MedicationDictionary) => {
     try {
-      await medicationDict.update(record.id, { isActive: !record.isActive });
+      await medicationDict.update(record.id, { ...record, isActive: !record.isActive });
       message.success('状态更新成功');
       fetchData();
     } catch {}
