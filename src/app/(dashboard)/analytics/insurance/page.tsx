@@ -20,7 +20,7 @@ import { formatCurrency } from "@/lib/utils";
 export default function InsurancePage() {
   const store = useDataStore();
   const [data, setData] = useState<InsuranceTrendPoint[]>([]);
-  const [months, setMonths] = useState(6);
+  const [months, setMonths] = useState<number | undefined>(undefined);
 
   useEffect(() => {
     setData(store.getInsuranceTrend(months));
@@ -43,10 +43,13 @@ export default function InsurancePage() {
           </p>
         </div>
         <select
-          value={months}
-          onChange={(e) => setMonths(Number(e.target.value))}
+          value={months ?? ""}
+          onChange={(e) =>
+            setMonths(e.target.value ? Number(e.target.value) : undefined)
+          }
           className="input-field w-36 text-sm"
         >
+          <option value="">全部月份</option>
           <option value={3}>近 3 个月</option>
           <option value={6}>近 6 个月</option>
           <option value={12}>近 12 个月</option>

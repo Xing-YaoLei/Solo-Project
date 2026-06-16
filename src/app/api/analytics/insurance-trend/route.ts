@@ -10,7 +10,8 @@ export async function GET(request: NextRequest) {
   }
   try {
     const searchParams = request.nextUrl.searchParams;
-    const months = Number(searchParams.get("months")) || 6;
+    const monthsParam = searchParams.get("months");
+    const months = monthsParam ? Number(monthsParam) : undefined;
     const data = getInsuranceTrend(months);
     return NextResponse.json(data);
   } catch (error) {
