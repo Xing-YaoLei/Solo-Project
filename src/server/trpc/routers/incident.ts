@@ -14,6 +14,9 @@ import {
   mockUsers,
   generateId
 } from '../mockData';
+import { getDb, type Database } from '../../db';
+import * as schema from '../../db/schema';
+import { eq } from 'drizzle-orm';
 
 function toDate(date: Date | string): Date {
   return date instanceof Date ? date : new Date(date);
@@ -34,10 +37,15 @@ function deepCloneWithDates<T>(obj: T): T {
 }
 
 let incidentsData: Incident[] = deepCloneWithDates(mockIncidents);
+let partiesData: IncidentParty[] = deepCloneWithDates(mockIncidentParties);
+
+function getPartiesByIncident(incidentId: string): IncidentParty[] {
+  return partiesData.filter((p) => p.incidentId === incidentId);
+}
 
 function hydrateIncident(incident: Incident): Incident {
   const elder = mockElders.find((e) => e.id === incident.elderId);
-  const parties = mockIncidentParties.filter((p) => p.incidentId === incident.id);
+  const parties = getPartiesByIncident(incident.id);
   return {
     ...incident,
     elder,
@@ -172,10 +180,13 @@ export const incidentRouter = createTRPCRouter({
         summary: null,
         correctiveActions: [],
         elder,
-        parties
+        parties: []
       };
       incidentsData.unshift(newIncident);
-      return newIncident;
+      for (const p of parties) {
+        partiesData.push(p);
+      }
+      return hydrateIncident(newIncident);
     }),
 
   supplementParty: protectedProcedure
@@ -187,27 +198,16 @@ export const incidentRouter = createTRPCRouter({
       })
     )
     .mutation(({ input }): IncidentParty => {
-      let targetParty: IncidentParty | null = null;
-
-      for (const incident of incidentsData) {
-        if (incident.parties) {
-          const partyIndex = incident.parties.findIndex((p) => p.id === input.partyId);
-          if (partyIndex !== -1) {
-            incident.parties[partyIndex] = {
-              ...incident.parties[partyIndex],
-              description: input.description,
-              supplementAt: new Date()
-            };
-            targetParty = incident.parties[partyIndex];
-            break;
-          }
-        }
-      }
-
-      if (!targetParty) {
+      const partyIndex = partiesData.findIndex((p) => p.id === input.partyId);
+      if (partyIndex === -1) {
         throw new TRPCError({ code: 'NOT_FOUND', message: '影响对象不存在' });
       }
-      return targetParty;
+      partiesData[partyIndex] = {
+        ...partiesData[partyIndex],
+        description: input.description,
+        supplementAt: new Date()
+      };
+      return partiesData[partyIndex];
     }),
 
   addWitness: protectedProcedure
@@ -238,12 +238,8 @@ export const incidentRouter = createTRPCRouter({
         responsibilityType: null
       };
 
-      if (!incidentsData[index].parties) {
-        incidentsData[index].parties = [];
-      }
-      incidentsData[index].parties!.push(newParty);
-
-      return incidentsData[index];
+      partiesData.push(newParty);
+      return hydrateIncident(incidentsData[index]);
     }),
 
   confirmResponsibility: protectedProcedure
@@ -266,22 +262,22 @@ export const incidentRouter = createTRPCRouter({
         throw new TRPCError({ code: 'NOT_FOUND', message: '事件不存在' });
       }
 
-      const incident = incidentsData[index];
-      if (incident.parties) {
-        for (const resp of input.responsibilities) {
-          const partyIndex = incident.parties.findIndex((p) => p.id === resp.partyId);
-          if (partyIndex !== -1) {
-            incident.parties[partyIndex] = {
-              ...incident.parties[partyIndex],
-              isResponsible: resp.isResponsible,
-              responsibilityType: resp.isResponsible ? (resp.responsibilityType ?? 'indirect') : null
-            };
-          }
+      for (const resp of input.responsibilities) {
+        const partyIndex = partiesData.findIndex((p) => p.id === resp.partyId);
+        if (partyIndex !== -1) {
+          partiesData[partyIndex] = {
+            ...partiesData[partyIndex],
+            isResponsible: resp.isResponsible,
+            responsibilityType: resp.isResponsible ? (resp.responsibilityType ?? 'indirect') : null
+          };
         }
       }
 
-      incident.status = 'confirming';
-      return incident;
+      incidentsData[index] = {
+        ...incidentsData[index],
+        status: 'confirming'
+      };
+      return hydrateIncident(incidentsData[index]);
     }),
 
   close: protectedProcedure
@@ -293,19 +289,108 @@ export const incidentRouter = createTRPCRouter({
         correctiveActions: z.array(z.string()).default([])
       })
     )
-    .mutation(({ input }): Incident => {
+    .mutation(async ({ input, ctx }): Promise<Incident> => {
       const index = incidentsData.findIndex((i) => i.id === input.incidentId);
       if (index === -1) {
         throw new TRPCError({ code: 'NOT_FOUND', message: '事件不存在' });
       }
 
-      incidentsData[index] = {
+      const now = new Date();
+      const closedIncident: Incident = {
         ...incidentsData[index],
         status: 'closed',
-        closedAt: new Date(),
+        closedAt: now,
         summary: input.summary,
         correctiveActions: input.correctiveActions
       };
-      return incidentsData[index];
+      incidentsData[index] = closedIncident;
+
+      const allParties = getPartiesByIncident(input.incidentId);
+
+      try {
+        const dbInstance = await getDb();
+        if (!dbInstance.isMock) {
+          const db = dbInstance.db as Database;
+          await db.transaction(async (tx) => {
+            const existingIncident = await tx.query.incidents.findFirst({
+              where: eq(schema.incidents.id, input.incidentId)
+            });
+
+            if (existingIncident) {
+              await tx.update(schema.incidents)
+                .set({
+                  status: 'closed',
+                  closedAt: now,
+                  summary: input.summary,
+                  correctiveActions: input.correctiveActions
+                })
+                .where(eq(schema.incidents.id, input.incidentId));
+            } else {
+              await tx.insert(schema.incidents).values({
+                id: closedIncident.id,
+                elderId: closedIncident.elderId,
+                type: closedIncident.type,
+                status: 'closed',
+                reportedAt: toDate(closedIncident.reportedAt),
+                reportedBy: closedIncident.reportedBy,
+                location: closedIncident.location,
+                description: closedIncident.description,
+                closedAt: now,
+                summary: input.summary,
+                correctiveActions: input.correctiveActions
+              });
+            }
+
+            for (const party of allParties) {
+              const existingParty = await tx.query.incidentParties.findFirst({
+                where: eq(schema.incidentParties.id, party.id)
+              });
+
+              const partyRecord = {
+                id: party.id,
+                incidentId: party.incidentId,
+                roleType: party.roleType,
+                userId: party.userId,
+                personName: party.personName,
+                description: party.description,
+                supplementAt: party.supplementAt ? toDate(party.supplementAt) : null,
+                isResponsible: party.isResponsible,
+                responsibilityType: party.responsibilityType
+              };
+
+              if (existingParty) {
+                await tx.update(schema.incidentParties)
+                  .set(partyRecord)
+                  .where(eq(schema.incidentParties.id, party.id));
+              } else {
+                await tx.insert(schema.incidentParties).values(partyRecord);
+              }
+            }
+
+            const handlerUserName = ctx.user?.name ?? '系统';
+            const handlerUserId = ctx.user?.id ?? null;
+            const existingHandler = await tx.query.flowHandlers.findFirst({
+              where: eq(schema.flowHandlers.id, `handler-close-${input.incidentId}`)
+            });
+            if (!existingHandler) {
+              await tx.insert(schema.flowHandlers).values({
+                id: `handler-close-${input.incidentId}`,
+                entityType: 'incident',
+                entityId: input.incidentId,
+                stepName: '关闭归档',
+                userId: handlerUserId,
+                userName: handlerUserName,
+                handledAt: now,
+                action: 'close'
+              });
+            }
+          });
+          console.log(`[Incident] Event ${input.incidentId} closed and persisted to PostgreSQL`);
+        }
+      } catch (persistError) {
+        console.error('[Incident] Failed to persist closed incident:', persistError instanceof Error ? persistError.message : persistError);
+      }
+
+      return hydrateIncident(closedIncident);
     })
 });
