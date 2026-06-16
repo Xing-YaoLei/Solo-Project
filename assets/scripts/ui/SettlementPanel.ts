@@ -220,6 +220,8 @@ export class SettlementPanel extends Component {
         if (!showComplexLogs) {
             this.nursingLogPanel?.setActive(false);
             this.billingDetailPanel?.setActive(false);
+        } else {
+            this.switchTab('nursing');
         }
     }
 

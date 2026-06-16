@@ -8,13 +8,13 @@
     "_parent": null,
     "_children": [
       {
-        "__id__": 3
+        "__id__": 2
       },
       {
-        "__id__": 6
+        "__id__": 5
       },
       {
-        "__id__": 13
+        "__id__": 7
       }
     ],
     "_active": true,
@@ -23,7 +23,7 @@
         "__id__": 1
       },
       {
-        "__id__": 2
+        "__id__": 11
       }
     ],
     "_prefab": null,
@@ -54,9 +54,10 @@
       "y": 0,
       "z": 0
     },
-    "_id": "9d9268cb"
+    "_id": "6ecc86e6"
   },
   {
+    "__id__": 1,
     "__type__": "cc.UITransform",
     "name": "",
     "_name": "",
@@ -74,36 +75,25 @@
       "x": 0.5,
       "y": 0.5
     },
-    "_id": "29de85212e654369ad5e417cd9461c05",
-    "__id__": 1
+    "_id": "1e0893f1bcef4e5185df6254c47c862f"
   },
   {
-    "__type__": "cc.Script",
-    "name": "CluePanel",
-    "_name": "",
-    "_objFlags": 0,
-    "node": null,
-    "_enabled": true,
-    "__prefab": null,
-    "__scriptAsset": null,
-    "_id": "0b4bc241afe8431b8d1e27ac2c14efdf",
-    "__id__": 2
-  },
-  {
-    "__id__": 3,
+    "__id__": 2,
     "__type__": "cc.Node",
-    "_name": "TitleLabel",
+    "_name": "titleLabel",
     "_objFlags": 0,
     "node": null,
-    "_parent": null,
+    "_parent": {
+      "__id__": 0
+    },
     "_children": [],
     "_active": true,
     "_components": [
       {
-        "__id__": 4
+        "__id__": 3
       },
       {
-        "__id__": 5
+        "__id__": 4
       }
     ],
     "_prefab": null,
@@ -134,9 +124,10 @@
       "y": 0,
       "z": 0
     },
-    "_id": "a3df65ac"
+    "_id": "7c762909"
   },
   {
+    "__id__": 3,
     "__type__": "cc.UITransform",
     "name": "",
     "_name": "",
@@ -154,10 +145,10 @@
       "x": 0.5,
       "y": 0.5
     },
-    "_id": "7b2224a22a074c49afa1931d263b6d89",
-    "__id__": 4
+    "_id": "cfcfacf274c14bc2974e166538710bd2"
   },
   {
+    "__id__": 4,
     "__type__": "cc.Label",
     "name": "",
     "_name": "",
@@ -186,28 +177,22 @@
       "b": 51,
       "a": 255
     },
-    "_id": "48f3d8160fce426c992b15e1aa5b12a3",
-    "__id__": 5
+    "_id": "955b52187e254613bfdf3fc1ec63e10e"
   },
   {
-    "__id__": 6,
+    "__id__": 5,
     "__type__": "cc.Node",
-    "_name": "ClueScrollView",
+    "_name": "clueContainer",
     "_objFlags": 0,
     "node": null,
-    "_parent": null,
-    "_children": [
-      {
-        "__id__": 9
-      }
-    ],
+    "_parent": {
+      "__id__": 0
+    },
+    "_children": [],
     "_active": true,
     "_components": [
       {
-        "__id__": 7
-      },
-      {
-        "__id__": 8
+        "__id__": 6
       }
     ],
     "_prefab": null,
@@ -238,9 +223,10 @@
       "y": 0,
       "z": 0
     },
-    "_id": "e477813e"
+    "_id": "b23653c9"
   },
   {
+    "__id__": 6,
     "__type__": "cc.UITransform",
     "name": "",
     "_name": "",
@@ -258,51 +244,26 @@
       "x": 0.5,
       "y": 0.5
     },
-    "_id": "d0721c4d8ea5411483a3424f2eaf9242",
-    "__id__": 7
+    "_id": "26047f82813b42319bbf45623fb69a16"
   },
   {
-    "__type__": "cc.ScrollView",
-    "name": "",
-    "_name": "",
-    "_objFlags": 0,
-    "node": null,
-    "_enabled": true,
-    "__prefab": null,
-    "_normalizedPosition": {
-      "__type__": "cc.Vec2",
-      "x": 0,
-      "y": 1
-    },
-    "_horizontal": true,
-    "_vertical": true,
-    "_inertia": true,
-    "_brake": 0.5,
-    "_elastic": true,
-    "_bounceDuration": 0.2,
-    "_content": null,
-    "_view": null,
-    "_verticalScrollBar": null,
-    "_horizontalScrollBar": null,
-    "_cancelInnerEvents": true,
-    "scrollEvents": [],
-    "_id": "8db6292537644b4db800edeb71cd93ba",
-    "__id__": 8
-  },
-  {
-    "__id__": 9,
+    "__id__": 7,
     "__type__": "cc.Node",
-    "_name": "View",
+    "_name": "observeCompleteButton",
     "_objFlags": 0,
     "node": null,
-    "_parent": null,
-    "_children": [
-      {
-        "__id__": 11
-      }
-    ],
+    "_parent": {
+      "__id__": 0
+    },
+    "_children": [],
     "_active": true,
     "_components": [
+      {
+        "__id__": 8
+      },
+      {
+        "__id__": 9
+      },
       {
         "__id__": 10
       }
@@ -311,7 +272,7 @@
     "_lpos": {
       "__type__": "cc.Vec3",
       "x": 0,
-      "y": 0,
+      "y": -180,
       "z": 0
     },
     "_lrot": {
@@ -335,145 +296,10 @@
       "y": 0,
       "z": 0
     },
-    "_id": "a76d2085"
+    "_id": "c2336e34"
   },
   {
-    "__type__": "cc.UITransform",
-    "name": "",
-    "_name": "",
-    "_objFlags": 0,
-    "node": null,
-    "_enabled": true,
-    "__prefab": null,
-    "_contentSize": {
-      "__type__": "cc.Size",
-      "width": 550,
-      "height": 300
-    },
-    "_anchorPoint": {
-      "__type__": "cc.Vec2",
-      "x": 0.5,
-      "y": 0.5
-    },
-    "_id": "6f74c1646790497aa72c57a1820fa84b",
-    "__id__": 10
-  },
-  {
-    "__id__": 11,
-    "__type__": "cc.Node",
-    "_name": "Content",
-    "_objFlags": 0,
-    "node": null,
-    "_parent": null,
-    "_children": [],
-    "_active": true,
-    "_components": [
-      {
-        "__id__": 12
-      }
-    ],
-    "_prefab": null,
-    "_lpos": {
-      "__type__": "cc.Vec3",
-      "x": 0,
-      "y": 0,
-      "z": 0
-    },
-    "_lrot": {
-      "__type__": "cc.Quat",
-      "x": 0,
-      "y": 0,
-      "z": 0,
-      "w": 1
-    },
-    "_lscale": {
-      "__type__": "cc.Vec3",
-      "x": 1,
-      "y": 1,
-      "z": 1
-    },
-    "_mobility": 0,
-    "_layer": 33554432,
-    "_euler": {
-      "__type__": "cc.Vec3",
-      "x": 0,
-      "y": 0,
-      "z": 0
-    },
-    "_id": "88a08c44"
-  },
-  {
-    "__type__": "cc.UITransform",
-    "name": "",
-    "_name": "",
-    "_objFlags": 0,
-    "node": null,
-    "_enabled": true,
-    "__prefab": null,
-    "_contentSize": {
-      "__type__": "cc.Size",
-      "width": 550,
-      "height": 600
-    },
-    "_anchorPoint": {
-      "__type__": "cc.Vec2",
-      "x": 0.5,
-      "y": 0.5
-    },
-    "_id": "867e52e4a76d49edaaf91f299652a1cf",
-    "__id__": 12
-  },
-  {
-    "__id__": 13,
-    "__type__": "cc.Node",
-    "_name": "DoneButton",
-    "_objFlags": 0,
-    "node": null,
-    "_parent": null,
-    "_children": [],
-    "_active": true,
-    "_components": [
-      {
-        "__id__": 14
-      },
-      {
-        "__id__": 15
-      },
-      {
-        "__id__": 16
-      }
-    ],
-    "_prefab": null,
-    "_lpos": {
-      "__type__": "cc.Vec3",
-      "x": 0,
-      "y": -170,
-      "z": 0
-    },
-    "_lrot": {
-      "__type__": "cc.Quat",
-      "x": 0,
-      "y": 0,
-      "z": 0,
-      "w": 1
-    },
-    "_lscale": {
-      "__type__": "cc.Vec3",
-      "x": 1,
-      "y": 1,
-      "z": 1
-    },
-    "_mobility": 0,
-    "_layer": 33554432,
-    "_euler": {
-      "__type__": "cc.Vec3",
-      "x": 0,
-      "y": 0,
-      "z": 0
-    },
-    "_id": "f2c3c146"
-  },
-  {
+    "__id__": 8,
     "__type__": "cc.UITransform",
     "name": "",
     "_name": "",
@@ -491,10 +317,10 @@
       "x": 0.5,
       "y": 0.5
     },
-    "_id": "bb4d5304a4df4eacae5a71032f2a02d7",
-    "__id__": 14
+    "_id": "7b9f7ff39f4f44ae99aebcd8556ac6ba"
   },
   {
+    "__id__": 9,
     "__type__": "cc.Button",
     "name": "",
     "_name": "",
@@ -536,10 +362,10 @@
     "_duration": 0.1,
     "_zoomScale": 1.2,
     "_target": null,
-    "_id": "93328c08a4b54708b0140734b0903d69",
-    "__id__": 15
+    "_id": "fa9842f410694da19209c956a96cea85"
   },
   {
+    "__id__": 10,
     "__type__": "cc.Label",
     "name": "",
     "_name": "",
@@ -568,7 +394,31 @@
       "b": 255,
       "a": 255
     },
-    "_id": "76ab0878a02e4cc7b2213ced5ebd5faa",
-    "__id__": 16
+    "_id": "98922d457df54eb5b4c237ff1f95b7f7"
+  },
+  {
+    "__id__": 11,
+    "__type__": "cc.Script",
+    "name": "CluePanel",
+    "_name": "",
+    "_objFlags": 0,
+    "node": null,
+    "_enabled": true,
+    "__prefab": null,
+    "__scriptAsset": {
+      "__uuid__": "7a6692d5719231fa7c43a368f7475be1",
+      "__expectedType__": "cc.Component"
+    },
+    "_id": "5586d7a0aaa94c24a5cbc3437a6d6ffd",
+    "clueScrollView": null,
+    "clueContainer": {
+      "__id__": 5
+    },
+    "observeCompleteButton": {
+      "__id__": 7
+    },
+    "titleLabel": {
+      "__id__": 4
+    }
   }
 ]

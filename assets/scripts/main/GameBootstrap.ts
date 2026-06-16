@@ -88,6 +88,10 @@ export class GameBootstrap extends Component {
             this.gameManager.setPhase('MENU');
         }
 
+        if (this.uiController) {
+            this.uiController.showLevelSelect();
+        }
+
         if (this.tutorialController) {
             this.tutorialController.triggerTutorialsByCondition('FIRST_LAUNCH');
         }

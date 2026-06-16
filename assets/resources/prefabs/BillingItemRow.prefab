@@ -8,19 +8,19 @@
     "_parent": null,
     "_children": [
       {
-        "__id__": 3
+        "__id__": 2
       },
       {
-        "__id__": 6
+        "__id__": 5
       },
       {
-        "__id__": 9
+        "__id__": 8
       },
       {
-        "__id__": 12
+        "__id__": 11
       },
       {
-        "__id__": 15
+        "__id__": 14
       }
     ],
     "_active": true,
@@ -29,7 +29,7 @@
         "__id__": 1
       },
       {
-        "__id__": 2
+        "__id__": 17
       }
     ],
     "_prefab": null,
@@ -60,9 +60,10 @@
       "y": 0,
       "z": 0
     },
-    "_id": "f458dd7f"
+    "_id": "fd377390"
   },
   {
+    "__id__": 1,
     "__type__": "cc.UITransform",
     "name": "",
     "_name": "",
@@ -72,44 +73,33 @@
     "__prefab": null,
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 540,
-      "height": 24
+      "width": 530,
+      "height": 28
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
       "x": 0.5,
       "y": 0.5
     },
-    "_id": "499c940c89dc44bb87c32d599111793d",
-    "__id__": 1
+    "_id": "70091d835f0d465b99d4d6e8955b9306"
   },
   {
-    "__type__": "cc.Script",
-    "name": "BillingItemRow",
-    "_name": "",
-    "_objFlags": 0,
-    "node": null,
-    "_enabled": true,
-    "__prefab": null,
-    "__scriptAsset": null,
-    "_id": "601bb3dfdb2f44c289e282f7a027585e",
-    "__id__": 2
-  },
-  {
-    "__id__": 3,
+    "__id__": 2,
     "__type__": "cc.Node",
-    "_name": "NameLabel",
+    "_name": "nameLabel",
     "_objFlags": 0,
     "node": null,
-    "_parent": null,
+    "_parent": {
+      "__id__": 0
+    },
     "_children": [],
     "_active": true,
     "_components": [
       {
-        "__id__": 4
+        "__id__": 3
       },
       {
-        "__id__": 5
+        "__id__": 4
       }
     ],
     "_prefab": null,
@@ -140,9 +130,10 @@
       "y": 0,
       "z": 0
     },
-    "_id": "b5f93b6c"
+    "_id": "d2542879"
   },
   {
+    "__id__": 3,
     "__type__": "cc.UITransform",
     "name": "",
     "_name": "",
@@ -160,10 +151,10 @@
       "x": 0.5,
       "y": 0.5
     },
-    "_id": "61e7cc56192046ec8f83541a53b2eaff",
-    "__id__": 4
+    "_id": "bb6b941010f841fdadae9778300ebeb0"
   },
   {
+    "__id__": 4,
     "__type__": "cc.Label",
     "name": "",
     "_name": "",
@@ -192,24 +183,25 @@
       "b": 51,
       "a": 255
     },
-    "_id": "1392bf9e1db14ff0bf1c0d49292a2c5b",
-    "__id__": 5
+    "_id": "70897046747445ec95b3b65cd29e3c7b"
   },
   {
-    "__id__": 6,
+    "__id__": 5,
     "__type__": "cc.Node",
-    "_name": "CodeLabel",
+    "_name": "codeLabel",
     "_objFlags": 0,
     "node": null,
-    "_parent": null,
+    "_parent": {
+      "__id__": 0
+    },
     "_children": [],
     "_active": true,
     "_components": [
       {
-        "__id__": 7
+        "__id__": 6
       },
       {
-        "__id__": 8
+        "__id__": 7
       }
     ],
     "_prefab": null,
@@ -240,9 +232,10 @@
       "y": 0,
       "z": 0
     },
-    "_id": "ac66d55b"
+    "_id": "8199b70f"
   },
   {
+    "__id__": 6,
     "__type__": "cc.UITransform",
     "name": "",
     "_name": "",
@@ -260,10 +253,10 @@
       "x": 0.5,
       "y": 0.5
     },
-    "_id": "1b27c7ccace44827b580fd78d1a001a0",
-    "__id__": 7
+    "_id": "866d5cd0493b42e9b5e203cfc78211c3"
   },
   {
+    "__id__": 7,
     "__type__": "cc.Label",
     "name": "",
     "_name": "",
@@ -292,24 +285,25 @@
       "b": 100,
       "a": 255
     },
-    "_id": "fa78194ad3e844be8e64583ed4e2d6ea",
-    "__id__": 8
+    "_id": "496260b020c744918b9ccf837bafa34c"
   },
   {
-    "__id__": 9,
+    "__id__": 8,
     "__type__": "cc.Node",
-    "_name": "CostLabel",
+    "_name": "costLabel",
     "_objFlags": 0,
     "node": null,
-    "_parent": null,
+    "_parent": {
+      "__id__": 0
+    },
     "_children": [],
     "_active": true,
     "_components": [
       {
-        "__id__": 10
+        "__id__": 9
       },
       {
-        "__id__": 11
+        "__id__": 10
       }
     ],
     "_prefab": null,
@@ -340,9 +334,10 @@
       "y": 0,
       "z": 0
     },
-    "_id": "6610ad12"
+    "_id": "01a6e4ea"
   },
   {
+    "__id__": 9,
     "__type__": "cc.UITransform",
     "name": "",
     "_name": "",
@@ -360,10 +355,10 @@
       "x": 0.5,
       "y": 0.5
     },
-    "_id": "a62b6721ddc34c809151a9dbfffd25f9",
-    "__id__": 10
+    "_id": "6ca4e2183c204f0e8ef4a41995d0fd27"
   },
   {
+    "__id__": 10,
     "__type__": "cc.Label",
     "name": "",
     "_name": "",
@@ -392,24 +387,25 @@
       "b": 51,
       "a": 255
     },
-    "_id": "1b4849da988e455c925135825cd4a3ab",
-    "__id__": 11
+    "_id": "31ea987277194be5945f62790e994270"
   },
   {
-    "__id__": 12,
+    "__id__": 11,
     "__type__": "cc.Node",
-    "_name": "InsuranceLabel",
+    "_name": "insuranceLabel",
     "_objFlags": 0,
     "node": null,
-    "_parent": null,
+    "_parent": {
+      "__id__": 0
+    },
     "_children": [],
     "_active": true,
     "_components": [
       {
-        "__id__": 13
+        "__id__": 12
       },
       {
-        "__id__": 14
+        "__id__": 13
       }
     ],
     "_prefab": null,
@@ -440,9 +436,10 @@
       "y": 0,
       "z": 0
     },
-    "_id": "769a23a6"
+    "_id": "4efb339c"
   },
   {
+    "__id__": 12,
     "__type__": "cc.UITransform",
     "name": "",
     "_name": "",
@@ -460,10 +457,10 @@
       "x": 0.5,
       "y": 0.5
     },
-    "_id": "33c2069fb8c946e2a1043e4fad98b348",
-    "__id__": 13
+    "_id": "db01c79d459f48faa62750e6a2a78f8c"
   },
   {
+    "__id__": 13,
     "__type__": "cc.Label",
     "name": "",
     "_name": "",
@@ -492,24 +489,25 @@
       "b": 50,
       "a": 255
     },
-    "_id": "990779eb1eb14720a7c2475980604f18",
-    "__id__": 14
+    "_id": "5c0ef0e300c4420e8b59268d48f82c4a"
   },
   {
-    "__id__": 15,
+    "__id__": 14,
     "__type__": "cc.Node",
-    "_name": "StatusLabel",
+    "_name": "statusLabel",
     "_objFlags": 0,
     "node": null,
-    "_parent": null,
+    "_parent": {
+      "__id__": 0
+    },
     "_children": [],
     "_active": true,
     "_components": [
       {
-        "__id__": 16
+        "__id__": 15
       },
       {
-        "__id__": 17
+        "__id__": 16
       }
     ],
     "_prefab": null,
@@ -540,9 +538,10 @@
       "y": 0,
       "z": 0
     },
-    "_id": "bc095ede"
+    "_id": "38ad388f"
   },
   {
+    "__id__": 15,
     "__type__": "cc.UITransform",
     "name": "",
     "_name": "",
@@ -560,10 +559,10 @@
       "x": 0.5,
       "y": 0.5
     },
-    "_id": "e10cfe967cbc4b1f89f182461435b8de",
-    "__id__": 16
+    "_id": "47fe08f4f0ac4b1c96e7279f75bcb60d"
   },
   {
+    "__id__": 16,
     "__type__": "cc.Label",
     "name": "",
     "_name": "",
@@ -592,7 +591,36 @@
       "b": 50,
       "a": 255
     },
-    "_id": "c83e366c679f421d9e9178d01fadd80d",
-    "__id__": 17
+    "_id": "3c174ba782de4f018773aface1fa8680"
+  },
+  {
+    "__id__": 17,
+    "__type__": "cc.Script",
+    "name": "BillingItemRow",
+    "_name": "",
+    "_objFlags": 0,
+    "node": null,
+    "_enabled": true,
+    "__prefab": null,
+    "__scriptAsset": {
+      "__uuid__": "f2a3b4c5d6a7b8c9d0e1f2a3b4c5d6a7",
+      "__expectedType__": "cc.Component"
+    },
+    "_id": "618e2292a0f14ea6b7e341af80ae775f",
+    "nameLabel": {
+      "__id__": 4
+    },
+    "codeLabel": {
+      "__id__": 7
+    },
+    "costLabel": {
+      "__id__": 10
+    },
+    "insuranceLabel": {
+      "__id__": 13
+    },
+    "statusLabel": {
+      "__id__": 16
+    }
   }
 ]

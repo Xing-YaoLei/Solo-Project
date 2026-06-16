@@ -11,9 +11,6 @@
     "_components": [
       {
         "__id__": 1
-      },
-      {
-        "__id__": 2
       }
     ],
     "_prefab": null,
@@ -44,30 +41,10 @@
       "y": 0,
       "z": 0
     },
-    "_id": "d4583045"
+    "_id": "f7bd6fb4"
   },
   {
-    "__type__": "cc.UITransform",
-    "name": "",
-    "_name": "",
-    "_objFlags": 0,
-    "node": null,
-    "_enabled": true,
-    "__prefab": null,
-    "_contentSize": {
-      "__type__": "cc.Size",
-      "width": 100,
-      "height": 100
-    },
-    "_anchorPoint": {
-      "__type__": "cc.Vec2",
-      "x": 0.5,
-      "y": 0.5
-    },
-    "_id": "97dd4fddbd7e49c09c101b7e61437c2d",
-    "__id__": 1
-  },
-  {
+    "__id__": 1,
     "__type__": "cc.Script",
     "name": "GameManager",
     "_name": "",
@@ -75,8 +52,10 @@
     "node": null,
     "_enabled": true,
     "__prefab": null,
-    "__scriptAsset": null,
-    "_id": "94bd26621198469fa5262715a31d9bc6",
-    "__id__": 2
+    "__scriptAsset": {
+      "__uuid__": "4c199a5a5b39bc9765423ccdf48a00b9",
+      "__expectedType__": "cc.Component"
+    },
+    "_id": "27e1f055979d420f9291e8869090a9e7"
   }
 ]

@@ -8,19 +8,22 @@
     "_parent": null,
     "_children": [
       {
-        "__id__": 3
+        "__id__": 2
       },
       {
-        "__id__": 6
+        "__id__": 5
       },
       {
-        "__id__": 9
+        "__id__": 8
       },
       {
-        "__id__": 12
+        "__id__": 11
       },
       {
-        "__id__": 15
+        "__id__": 14
+      },
+      {
+        "__id__": 17
       }
     ],
     "_active": true,
@@ -29,7 +32,7 @@
         "__id__": 1
       },
       {
-        "__id__": 2
+        "__id__": 21
       }
     ],
     "_prefab": null,
@@ -60,9 +63,10 @@
       "y": 0,
       "z": 0
     },
-    "_id": "96dcd791"
+    "_id": "f7a228fc"
   },
   {
+    "__id__": 1,
     "__type__": "cc.UITransform",
     "name": "",
     "_name": "",
@@ -80,169 +84,59 @@
       "x": 0.5,
       "y": 0.5
     },
-    "_id": "d1fe11c51d514026ac02dd1804627bc2",
-    "__id__": 1
+    "_id": "76f47a30fe3e4b0a9bcb217b382c14cb"
   },
   {
-    "__type__": "cc.Script",
-    "name": "TaskPanel",
-    "_name": "",
+    "__id__": 2,
+    "__type__": "cc.Node",
+    "_name": "taskNameLabel",
     "_objFlags": 0,
     "node": null,
-    "_enabled": true,
-    "__prefab": null,
-    "__scriptAsset": null,
-    "_id": "1f4c92f584e649e8891d938c82f92dfa",
-    "__id__": 2
+    "_parent": {
+      "__id__": 0
+    },
+    "_children": [],
+    "_active": true,
+    "_components": [
+      {
+        "__id__": 3
+      },
+      {
+        "__id__": 4
+      }
+    ],
+    "_prefab": null,
+    "_lpos": {
+      "__type__": "cc.Vec3",
+      "x": 0,
+      "y": 160,
+      "z": 0
+    },
+    "_lrot": {
+      "__type__": "cc.Quat",
+      "x": 0,
+      "y": 0,
+      "z": 0,
+      "w": 1
+    },
+    "_lscale": {
+      "__type__": "cc.Vec3",
+      "x": 1,
+      "y": 1,
+      "z": 1
+    },
+    "_mobility": 0,
+    "_layer": 33554432,
+    "_euler": {
+      "__type__": "cc.Vec3",
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "_id": "b8800ebc"
   },
   {
     "__id__": 3,
-    "__type__": "cc.Node",
-    "_name": "TitleLabel",
-    "_objFlags": 0,
-    "node": null,
-    "_parent": null,
-    "_children": [],
-    "_active": true,
-    "_components": [
-      {
-        "__id__": 4
-      },
-      {
-        "__id__": 5
-      }
-    ],
-    "_prefab": null,
-    "_lpos": {
-      "__type__": "cc.Vec3",
-      "x": 0,
-      "y": 180,
-      "z": 0
-    },
-    "_lrot": {
-      "__type__": "cc.Quat",
-      "x": 0,
-      "y": 0,
-      "z": 0,
-      "w": 1
-    },
-    "_lscale": {
-      "__type__": "cc.Vec3",
-      "x": 1,
-      "y": 1,
-      "z": 1
-    },
-    "_mobility": 0,
-    "_layer": 33554432,
-    "_euler": {
-      "__type__": "cc.Vec3",
-      "x": 0,
-      "y": 0,
-      "z": 0
-    },
-    "_id": "02bd0f30"
-  },
-  {
-    "__type__": "cc.UITransform",
-    "name": "",
-    "_name": "",
-    "_objFlags": 0,
-    "node": null,
-    "_enabled": true,
-    "__prefab": null,
-    "_contentSize": {
-      "__type__": "cc.Size",
-      "width": 400,
-      "height": 40
-    },
-    "_anchorPoint": {
-      "__type__": "cc.Vec2",
-      "x": 0.5,
-      "y": 0.5
-    },
-    "_id": "975ea4a4273a4492b5ae3923e6303665",
-    "__id__": 4
-  },
-  {
-    "__type__": "cc.Label",
-    "name": "",
-    "_name": "",
-    "_objFlags": 0,
-    "node": null,
-    "_enabled": true,
-    "__prefab": null,
-    "_useOriginalSize": false,
-    "_string": "当前任务",
-    "_horizontalAlign": 1,
-    "_verticalAlign": 1,
-    "_actualFontSize": 24,
-    "_fontSize": 24,
-    "_fontFamily": "Arial",
-    "_lineHeight": 28.799999999999997,
-    "_overflow": 0,
-    "_enableWrapText": true,
-    "_font": null,
-    "_isSystemFontUsed": true,
-    "_spacingX": 0,
-    "_cacheMode": 0,
-    "_color": {
-      "__type__": "cc.Color",
-      "r": 51,
-      "g": 51,
-      "b": 51,
-      "a": 255
-    },
-    "_id": "a67fd0bcac284024b340a7a513d63f6a",
-    "__id__": 5
-  },
-  {
-    "__id__": 6,
-    "__type__": "cc.Node",
-    "_name": "TaskNameLabel",
-    "_objFlags": 0,
-    "node": null,
-    "_parent": null,
-    "_children": [],
-    "_active": true,
-    "_components": [
-      {
-        "__id__": 7
-      },
-      {
-        "__id__": 8
-      }
-    ],
-    "_prefab": null,
-    "_lpos": {
-      "__type__": "cc.Vec3",
-      "x": 0,
-      "y": 120,
-      "z": 0
-    },
-    "_lrot": {
-      "__type__": "cc.Quat",
-      "x": 0,
-      "y": 0,
-      "z": 0,
-      "w": 1
-    },
-    "_lscale": {
-      "__type__": "cc.Vec3",
-      "x": 1,
-      "y": 1,
-      "z": 1
-    },
-    "_mobility": 0,
-    "_layer": 33554432,
-    "_euler": {
-      "__type__": "cc.Vec3",
-      "x": 0,
-      "y": 0,
-      "z": 0
-    },
-    "_id": "78960188"
-  },
-  {
     "__type__": "cc.UITransform",
     "name": "",
     "_name": "",
@@ -260,10 +154,10 @@
       "x": 0.5,
       "y": 0.5
     },
-    "_id": "1a21f2f3bf7e46f6bd3bcf1132473818",
-    "__id__": 7
+    "_id": "aa950ea870854131ac0439de3322565b"
   },
   {
+    "__id__": 4,
     "__type__": "cc.Label",
     "name": "",
     "_name": "",
@@ -292,31 +186,32 @@
       "b": 51,
       "a": 255
     },
-    "_id": "4dd46c5e9ddd41ac99ff3e3e4050b9e4",
-    "__id__": 8
+    "_id": "bcbb5dc38dfe4966870742e672d9cdc2"
   },
   {
-    "__id__": 9,
+    "__id__": 5,
     "__type__": "cc.Node",
-    "_name": "TaskDescLabel",
+    "_name": "taskDescLabel",
     "_objFlags": 0,
     "node": null,
-    "_parent": null,
+    "_parent": {
+      "__id__": 0
+    },
     "_children": [],
     "_active": true,
     "_components": [
       {
-        "__id__": 10
+        "__id__": 6
       },
       {
-        "__id__": 11
+        "__id__": 7
       }
     ],
     "_prefab": null,
     "_lpos": {
       "__type__": "cc.Vec3",
       "x": 0,
-      "y": 60,
+      "y": 100,
       "z": 0
     },
     "_lrot": {
@@ -340,9 +235,10 @@
       "y": 0,
       "z": 0
     },
-    "_id": "60ab8c56"
+    "_id": "2c70185e"
   },
   {
+    "__id__": 6,
     "__type__": "cc.UITransform",
     "name": "",
     "_name": "",
@@ -353,17 +249,17 @@
     "_contentSize": {
       "__type__": "cc.Size",
       "width": 500,
-      "height": 100
+      "height": 80
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
       "x": 0.5,
       "y": 0.5
     },
-    "_id": "78617b98263b468eaceb65d7e55e9490",
-    "__id__": 10
+    "_id": "0fc73bdc45644887b2e87481ffd7d315"
   },
   {
+    "__id__": 7,
     "__type__": "cc.Label",
     "name": "",
     "_name": "",
@@ -392,31 +288,32 @@
       "b": 100,
       "a": 255
     },
-    "_id": "197de9134f024b9da1f802e57fbc2ec7",
-    "__id__": 11
+    "_id": "6554aea00b1c4f2b81f110874181f3e0"
   },
   {
-    "__id__": 12,
+    "__id__": 8,
     "__type__": "cc.Node",
-    "_name": "TaskTypeLabel",
+    "_name": "taskTypeLabel",
     "_objFlags": 0,
     "node": null,
-    "_parent": null,
+    "_parent": {
+      "__id__": 0
+    },
     "_children": [],
     "_active": true,
     "_components": [
       {
-        "__id__": 13
+        "__id__": 9
       },
       {
-        "__id__": 14
+        "__id__": 10
       }
     ],
     "_prefab": null,
     "_lpos": {
       "__type__": "cc.Vec3",
       "x": 0,
-      "y": -20,
+      "y": 40,
       "z": 0
     },
     "_lrot": {
@@ -440,9 +337,10 @@
       "y": 0,
       "z": 0
     },
-    "_id": "18f82c9c"
+    "_id": "91a8d26d"
   },
   {
+    "__id__": 9,
     "__type__": "cc.UITransform",
     "name": "",
     "_name": "",
@@ -460,10 +358,10 @@
       "x": 0.5,
       "y": 0.5
     },
-    "_id": "d36eeab587bd47d7b798912a0660b002",
-    "__id__": 13
+    "_id": "a00122a4e25a4db8a93484743ac718f3"
   },
   {
+    "__id__": 10,
     "__type__": "cc.Label",
     "name": "",
     "_name": "",
@@ -472,7 +370,7 @@
     "_enabled": true,
     "__prefab": null,
     "_useOriginalSize": false,
-    "_string": "类型: 登记",
+    "_string": "",
     "_horizontalAlign": 1,
     "_verticalAlign": 1,
     "_actualFontSize": 18,
@@ -492,27 +390,232 @@
       "b": 243,
       "a": 255
     },
-    "_id": "8ef58ba6819c42e19539e127e21e6944",
-    "__id__": 14
+    "_id": "653209b113a44e1ab8644af893b15b8a"
   },
   {
-    "__id__": 15,
+    "__id__": 11,
     "__type__": "cc.Node",
-    "_name": "StartTaskBtn",
+    "_name": "taskProgressLabel",
     "_objFlags": 0,
     "node": null,
-    "_parent": null,
+    "_parent": {
+      "__id__": 0
+    },
     "_children": [],
     "_active": true,
     "_components": [
       {
-        "__id__": 16
+        "__id__": 12
       },
       {
-        "__id__": 17
+        "__id__": 13
+      }
+    ],
+    "_prefab": null,
+    "_lpos": {
+      "__type__": "cc.Vec3",
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "_lrot": {
+      "__type__": "cc.Quat",
+      "x": 0,
+      "y": 0,
+      "z": 0,
+      "w": 1
+    },
+    "_lscale": {
+      "__type__": "cc.Vec3",
+      "x": 1,
+      "y": 1,
+      "z": 1
+    },
+    "_mobility": 0,
+    "_layer": 33554432,
+    "_euler": {
+      "__type__": "cc.Vec3",
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "_id": "2638c39a"
+  },
+  {
+    "__id__": 12,
+    "__type__": "cc.UITransform",
+    "name": "",
+    "_name": "",
+    "_objFlags": 0,
+    "node": null,
+    "_enabled": true,
+    "__prefab": null,
+    "_contentSize": {
+      "__type__": "cc.Size",
+      "width": 300,
+      "height": 30
+    },
+    "_anchorPoint": {
+      "__type__": "cc.Vec2",
+      "x": 0.5,
+      "y": 0.5
+    },
+    "_id": "8ac3e45b2db444d6812294620313fb8d"
+  },
+  {
+    "__id__": 13,
+    "__type__": "cc.Label",
+    "name": "",
+    "_name": "",
+    "_objFlags": 0,
+    "node": null,
+    "_enabled": true,
+    "__prefab": null,
+    "_useOriginalSize": false,
+    "_string": "任务进度: 0/0",
+    "_horizontalAlign": 1,
+    "_verticalAlign": 1,
+    "_actualFontSize": 16,
+    "_fontSize": 16,
+    "_fontFamily": "Arial",
+    "_lineHeight": 19.2,
+    "_overflow": 0,
+    "_enableWrapText": true,
+    "_font": null,
+    "_isSystemFontUsed": true,
+    "_spacingX": 0,
+    "_cacheMode": 0,
+    "_color": {
+      "__type__": "cc.Color",
+      "r": 51,
+      "g": 51,
+      "b": 51,
+      "a": 255
+    },
+    "_id": "fc76810997844ba8857d3cd13f683d5e"
+  },
+  {
+    "__id__": 14,
+    "__type__": "cc.Node",
+    "_name": "clueIndicator",
+    "_objFlags": 0,
+    "node": null,
+    "_parent": {
+      "__id__": 0
+    },
+    "_children": [],
+    "_active": true,
+    "_components": [
+      {
+        "__id__": 15
       },
+      {
+        "__id__": 16
+      }
+    ],
+    "_prefab": null,
+    "_lpos": {
+      "__type__": "cc.Vec3",
+      "x": -120,
+      "y": -40,
+      "z": 0
+    },
+    "_lrot": {
+      "__type__": "cc.Quat",
+      "x": 0,
+      "y": 0,
+      "z": 0,
+      "w": 1
+    },
+    "_lscale": {
+      "__type__": "cc.Vec3",
+      "x": 1,
+      "y": 1,
+      "z": 1
+    },
+    "_mobility": 0,
+    "_layer": 33554432,
+    "_euler": {
+      "__type__": "cc.Vec3",
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "_id": "c1780fe7"
+  },
+  {
+    "__id__": 15,
+    "__type__": "cc.UITransform",
+    "name": "",
+    "_name": "",
+    "_objFlags": 0,
+    "node": null,
+    "_enabled": true,
+    "__prefab": null,
+    "_contentSize": {
+      "__type__": "cc.Size",
+      "width": 200,
+      "height": 24
+    },
+    "_anchorPoint": {
+      "__type__": "cc.Vec2",
+      "x": 0.5,
+      "y": 0.5
+    },
+    "_id": "404e60cb07044868bbda3bfbabf0850a"
+  },
+  {
+    "__id__": 16,
+    "__type__": "cc.Label",
+    "name": "",
+    "_name": "",
+    "_objFlags": 0,
+    "node": null,
+    "_enabled": true,
+    "__prefab": null,
+    "_useOriginalSize": false,
+    "_string": "",
+    "_horizontalAlign": 1,
+    "_verticalAlign": 1,
+    "_actualFontSize": 14,
+    "_fontSize": 14,
+    "_fontFamily": "Arial",
+    "_lineHeight": 16.8,
+    "_overflow": 0,
+    "_enableWrapText": true,
+    "_font": null,
+    "_isSystemFontUsed": true,
+    "_spacingX": 0,
+    "_cacheMode": 0,
+    "_color": {
+      "__type__": "cc.Color",
+      "r": 51,
+      "g": 51,
+      "b": 51,
+      "a": 255
+    },
+    "_id": "0e66cb7c9337444f95d6de2d77966e3c"
+  },
+  {
+    "__id__": 17,
+    "__type__": "cc.Node",
+    "_name": "acceptButton",
+    "_objFlags": 0,
+    "node": null,
+    "_parent": {
+      "__id__": 0
+    },
+    "_children": [],
+    "_active": true,
+    "_components": [
       {
         "__id__": 18
+      },
+      {
+        "__id__": 19
+      },
+      {
+        "__id__": 20
       }
     ],
     "_prefab": null,
@@ -543,9 +646,10 @@
       "y": 0,
       "z": 0
     },
-    "_id": "d3c9fadd"
+    "_id": "1fcfc51b"
   },
   {
+    "__id__": 18,
     "__type__": "cc.UITransform",
     "name": "",
     "_name": "",
@@ -563,10 +667,10 @@
       "x": 0.5,
       "y": 0.5
     },
-    "_id": "09807cc8ba9443d1a7ef911a80b3432f",
-    "__id__": 16
+    "_id": "16464dc21b724b8a9b30fa8eb94e6e0d"
   },
   {
+    "__id__": 19,
     "__type__": "cc.Button",
     "name": "",
     "_name": "",
@@ -608,10 +712,10 @@
     "_duration": 0.1,
     "_zoomScale": 1.2,
     "_target": null,
-    "_id": "5619d14ababa41d8a8f24254c0f5b005",
-    "__id__": 17
+    "_id": "eef81a40f1e94ead978760b7f52fc0e9"
   },
   {
+    "__id__": 20,
     "__type__": "cc.Label",
     "name": "",
     "_name": "",
@@ -640,7 +744,42 @@
       "b": 255,
       "a": 255
     },
-    "_id": "1896875a420d450dabd047fc417ee79b",
-    "__id__": 18
+    "_id": "176d29ef1a534969b68e3e2f1e46aba4"
+  },
+  {
+    "__id__": 21,
+    "__type__": "cc.Script",
+    "name": "TaskPanel",
+    "_name": "",
+    "_objFlags": 0,
+    "node": null,
+    "_enabled": true,
+    "__prefab": null,
+    "__scriptAsset": {
+      "__uuid__": "f2b4dc448677cab8f0fbe363cdd95dd9",
+      "__expectedType__": "cc.Component"
+    },
+    "_id": "477dfcd9e0bf4dfba024440a17d1be72",
+    "taskNameLabel": {
+      "__id__": 4
+    },
+    "taskDescLabel": {
+      "__id__": 7
+    },
+    "taskTypeLabel": {
+      "__id__": 10
+    },
+    "taskProgressLabel": {
+      "__id__": 13
+    },
+    "clueIndicator": {
+      "__id__": 14
+    },
+    "clueCountLabel": {
+      "__id__": 16
+    },
+    "acceptButton": {
+      "__id__": 17
+    }
   }
 ]

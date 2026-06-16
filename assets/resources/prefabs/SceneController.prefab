@@ -8,19 +8,16 @@
     "_parent": null,
     "_children": [
       {
-        "__id__": 3
+        "__id__": 1
       },
       {
-        "__id__": 5
+        "__id__": 3
       }
     ],
     "_active": true,
     "_components": [
       {
-        "__id__": 1
-      },
-      {
-        "__id__": 2
+        "__id__": 5
       }
     ],
     "_prefab": null,
@@ -51,53 +48,22 @@
       "y": 0,
       "z": 0
     },
-    "_id": "6e539d9e"
+    "_id": "c5bfab23"
   },
   {
-    "__type__": "cc.UITransform",
-    "name": "",
-    "_name": "",
-    "_objFlags": 0,
-    "node": null,
-    "_enabled": true,
-    "__prefab": null,
-    "_contentSize": {
-      "__type__": "cc.Size",
-      "width": 768,
-      "height": 512
-    },
-    "_anchorPoint": {
-      "__type__": "cc.Vec2",
-      "x": 0.5,
-      "y": 0.5
-    },
-    "_id": "3a95c0eaa816452cace6b20ac9609803",
-    "__id__": 1
-  },
-  {
-    "__type__": "cc.Script",
-    "name": "SceneController",
-    "_name": "",
-    "_objFlags": 0,
-    "node": null,
-    "_enabled": true,
-    "__prefab": null,
-    "__scriptAsset": null,
-    "_id": "975348d6a6ff422d963ce340d1af45a0",
-    "__id__": 2
-  },
-  {
-    "__id__": 3,
+    "__id__": 1,
     "__type__": "cc.Node",
-    "_name": "TiledMapContainer",
+    "_name": "tiledMapContainer",
     "_objFlags": 0,
     "node": null,
-    "_parent": null,
+    "_parent": {
+      "__id__": 0
+    },
     "_children": [],
     "_active": true,
     "_components": [
       {
-        "__id__": 4
+        "__id__": 2
       }
     ],
     "_prefab": null,
@@ -128,9 +94,10 @@
       "y": 0,
       "z": 0
     },
-    "_id": "810d3bb3"
+    "_id": "0bec6b14"
   },
   {
+    "__id__": 2,
     "__type__": "cc.UITransform",
     "name": "",
     "_name": "",
@@ -148,21 +115,22 @@
       "x": 0.5,
       "y": 0.5
     },
-    "_id": "b37c8a4c3e0d49918514039d579dad2d",
-    "__id__": 4
+    "_id": "adf94290a0ae492c835e9ac3ad74bf7f"
   },
   {
-    "__id__": 5,
+    "__id__": 3,
     "__type__": "cc.Node",
-    "_name": "InteractiveObjects",
+    "_name": "interactiveObjectsContainer",
     "_objFlags": 0,
     "node": null,
-    "_parent": null,
+    "_parent": {
+      "__id__": 0
+    },
     "_children": [],
     "_active": true,
     "_components": [
       {
-        "__id__": 6
+        "__id__": 4
       }
     ],
     "_prefab": null,
@@ -193,9 +161,10 @@
       "y": 0,
       "z": 0
     },
-    "_id": "9280485d"
+    "_id": "014cbe2b"
   },
   {
+    "__id__": 4,
     "__type__": "cc.UITransform",
     "name": "",
     "_name": "",
@@ -213,7 +182,27 @@
       "x": 0.5,
       "y": 0.5
     },
-    "_id": "3da0c5ffe3df48ada12fddcca4b7957d",
-    "__id__": 6
+    "_id": "fc7ac2a0056a423498eda7469fd458b9"
+  },
+  {
+    "__id__": 5,
+    "__type__": "cc.Script",
+    "name": "SceneController",
+    "_name": "",
+    "_objFlags": 0,
+    "node": null,
+    "_enabled": true,
+    "__prefab": null,
+    "__scriptAsset": {
+      "__uuid__": "6d22639d681dcb82dfb811999ec65884",
+      "__expectedType__": "cc.Component"
+    },
+    "_id": "e852ff3abd1f4293a94a25da69e079ed",
+    "tiledMapContainer": {
+      "__id__": 1
+    },
+    "interactiveObjectsContainer": {
+      "__id__": 3
+    }
   }
 ]

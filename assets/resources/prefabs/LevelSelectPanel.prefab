@@ -8,13 +8,13 @@
     "_parent": null,
     "_children": [
       {
-        "__id__": 3
+        "__id__": 2
       },
       {
-        "__id__": 6
+        "__id__": 5
       },
       {
-        "__id__": 8
+        "__id__": 7
       }
     ],
     "_active": true,
@@ -23,7 +23,7 @@
         "__id__": 1
       },
       {
-        "__id__": 2
+        "__id__": 11
       }
     ],
     "_prefab": null,
@@ -54,9 +54,10 @@
       "y": 0,
       "z": 0
     },
-    "_id": "2cbd5bb0"
+    "_id": "6aee933c"
   },
   {
+    "__id__": 1,
     "__type__": "cc.UITransform",
     "name": "",
     "_name": "",
@@ -74,36 +75,25 @@
       "x": 0.5,
       "y": 0.5
     },
-    "_id": "9fff9037a399414180759c89c354a6b7",
-    "__id__": 1
+    "_id": "ad4393dcfe72470da01f73b8d89752fb"
   },
   {
-    "__type__": "cc.Script",
-    "name": "LevelSelectPanel",
-    "_name": "",
-    "_objFlags": 0,
-    "node": null,
-    "_enabled": true,
-    "__prefab": null,
-    "__scriptAsset": null,
-    "_id": "0d08ca55c2e749f1ace54edec9329d25",
-    "__id__": 2
-  },
-  {
-    "__id__": 3,
+    "__id__": 2,
     "__type__": "cc.Node",
-    "_name": "TitleLabel",
+    "_name": "titleLabel",
     "_objFlags": 0,
     "node": null,
-    "_parent": null,
+    "_parent": {
+      "__id__": 0
+    },
     "_children": [],
     "_active": true,
     "_components": [
       {
-        "__id__": 4
+        "__id__": 3
       },
       {
-        "__id__": 5
+        "__id__": 4
       }
     ],
     "_prefab": null,
@@ -134,9 +124,10 @@
       "y": 0,
       "z": 0
     },
-    "_id": "98446612"
+    "_id": "a2c4f4a2"
   },
   {
+    "__id__": 3,
     "__type__": "cc.UITransform",
     "name": "",
     "_name": "",
@@ -154,10 +145,10 @@
       "x": 0.5,
       "y": 0.5
     },
-    "_id": "e49d8e973896498e8dbaf06c555effdd",
-    "__id__": 4
+    "_id": "11bcfdf8e31c41c4b7a829db6b08d46b"
   },
   {
+    "__id__": 4,
     "__type__": "cc.Label",
     "name": "",
     "_name": "",
@@ -186,21 +177,22 @@
       "b": 51,
       "a": 255
     },
-    "_id": "768f2ed3e3fa44bd9b36b376fa0d2c88",
-    "__id__": 5
+    "_id": "1c1e72173f7b4416a63c0fab11060e64"
   },
   {
-    "__id__": 6,
+    "__id__": 5,
     "__type__": "cc.Node",
-    "_name": "LevelsContainer",
+    "_name": "levelContainer",
     "_objFlags": 0,
     "node": null,
-    "_parent": null,
+    "_parent": {
+      "__id__": 0
+    },
     "_children": [],
     "_active": true,
     "_components": [
       {
-        "__id__": 7
+        "__id__": 6
       }
     ],
     "_prefab": null,
@@ -231,9 +223,10 @@
       "y": 0,
       "z": 0
     },
-    "_id": "1496ed62"
+    "_id": "86ce235a"
   },
   {
+    "__id__": 6,
     "__type__": "cc.UITransform",
     "name": "",
     "_name": "",
@@ -251,27 +244,28 @@
       "x": 0.5,
       "y": 0.5
     },
-    "_id": "8be20ed6f6e64dd089a6d4a40b0bafae",
-    "__id__": 7
+    "_id": "91531c2287134624ba749a7661e0f45e"
   },
   {
-    "__id__": 8,
+    "__id__": 7,
     "__type__": "cc.Node",
-    "_name": "LeaderboardButton",
+    "_name": "leaderboardButton",
     "_objFlags": 0,
     "node": null,
-    "_parent": null,
+    "_parent": {
+      "__id__": 0
+    },
     "_children": [],
     "_active": true,
     "_components": [
+      {
+        "__id__": 8
+      },
       {
         "__id__": 9
       },
       {
         "__id__": 10
-      },
-      {
-        "__id__": 11
       }
     ],
     "_prefab": null,
@@ -302,9 +296,10 @@
       "y": 0,
       "z": 0
     },
-    "_id": "9158b620"
+    "_id": "068911db"
   },
   {
+    "__id__": 8,
     "__type__": "cc.UITransform",
     "name": "",
     "_name": "",
@@ -322,10 +317,10 @@
       "x": 0.5,
       "y": 0.5
     },
-    "_id": "6b775f72c1564967a937a4c13eb23d45",
-    "__id__": 9
+    "_id": "764a684440854a7c8938262291a944a7"
   },
   {
+    "__id__": 9,
     "__type__": "cc.Button",
     "name": "",
     "_name": "",
@@ -367,10 +362,10 @@
     "_duration": 0.1,
     "_zoomScale": 1.2,
     "_target": null,
-    "_id": "e8575c23008b47a7ae7f519574023888",
-    "__id__": 10
+    "_id": "60d384d3644449c9bd3fd8cf5927d961"
   },
   {
+    "__id__": 10,
     "__type__": "cc.Label",
     "name": "",
     "_name": "",
@@ -399,7 +394,28 @@
       "b": 255,
       "a": 255
     },
-    "_id": "487cdfa92f7a4a4aa9388c9943b54ec6",
-    "__id__": 11
+    "_id": "7dd36446f71e4537901bb5e20796dec1"
+  },
+  {
+    "__id__": 11,
+    "__type__": "cc.Script",
+    "name": "LevelSelectPanel",
+    "_name": "",
+    "_objFlags": 0,
+    "node": null,
+    "_enabled": true,
+    "__prefab": null,
+    "__scriptAsset": {
+      "__uuid__": "8f7aa51280dd56f4005416bf7dcfbfdf",
+      "__expectedType__": "cc.Component"
+    },
+    "_id": "4ee639a7233c40488f021b9c8c76e670",
+    "levelScrollView": null,
+    "levelContainer": {
+      "__id__": 5
+    },
+    "totalScoreLabel": null,
+    "playerLevelLabel": null,
+    "coinsLabel": null
   }
 ]
