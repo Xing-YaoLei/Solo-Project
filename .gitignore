@@ -1,0 +1,52 @@
+
+# Build results
+[Dd]ebug/
+[Rr]elease/
+bin/
+obj/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.userprefs
+*.dbmdl
+*.[Rr]e[Ss]harper.user
+_ReSharper.*/
+*.dotCover
+
+# Visual Studio
+.vs/
+*.vcxproj.user
+.vsconfig
+
+# .NET Core
+project.lock.json
+project.fragment.lock.json
+artifacts/
+*.pbix.user
+
+# NuGet
+*.nupkg
+packages/
+
+# Client
+node_modules/
+dist/
+build/
+.DS_Store
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+logs/
+*.log
+
+# Uploads
+wwwroot/uploads/
