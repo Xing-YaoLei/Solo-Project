@@ -1,83 +1,52 @@
 import sys
-print('Python版本:', sys.version)
+sys.path.insert(0, '.')
+
+print('=== 数据库模块 ===')
+from database import (
+    Base, engine, SessionLocal,
+    Patient, Appointment, PaymentDetail, ImageAttachment,
+    AnomalyMarker, Remark, HisCaliberChange, RefreshLog,
+    AppointmentStatus, AnomalyType
+)
+print('✓ 数据库模型全部导入成功')
+
 print()
-print('检查核心依赖...')
-try:
-    import dash
-    print('✓ dash:', dash.__version__)
-except ImportError as e:
-    print('✗ dash:', e)
-try:
-    import dash_bootstrap_components as dbc
-    print('✓ dash_bootstrap_components:', dbc.__version__)
-except ImportError as e:
-    print('✗ dash_bootstrap_components:', e)
-try:
-    import plotly
-    print('✓ plotly:', plotly.__version__)
-except ImportError as e:
-    print('✗ plotly:', e)
-try:
-    import pandas as pd
-    print('✓ pandas:', pd.__version__)
-except ImportError as e:
-    print('✗ pandas:', e)
-try:
-    import numpy as np
-    print('✓ numpy:', np.__version__)
-except ImportError as e:
-    print('✗ numpy:', e)
-try:
-    import sqlalchemy
-    print('✓ sqlalchemy:', sqlalchemy.__version__)
-except ImportError as e:
-    print('✗ sqlalchemy:', e)
-try:
-    import celery
-    print('✓ celery:', celery.__version__)
-except ImportError as e:
-    print('✗ celery:', e)
-try:
-    import psycopg2
-    print('✓ psycopg2: 已安装')
-except ImportError as e:
-    print('✗ psycopg2:', e)
-try:
-    import openpyxl
-    print('✓ openpyxl: 已安装')
-except ImportError as e:
-    print('✗ openpyxl:', e)
+print('=== ETL模块 ===')
+from etl.queries import DataQuerier
+print('✓ 数据查询模块导入成功')
+
+from etl.transformer import DataTransformer
+print('✓ 数据转换模块导入成功')
+
+from etl.funnel_analyzer import FunnelAnalyzer
+print('✓ 漏斗分析模块导入成功')
+
+from etl.anomaly_detector import AnomalyDetector
+print('✓ 异常检测模块导入成功')
+
+from etl.metrics import MetricsCalculator
+print('✓ 指标计算模块导入成功')
+
 print()
-print('检查项目模块导入...')
-try:
-    from config import settings
-    print('✓ config.settings')
-except Exception as e:
-    print('✗ config.settings:', e)
-try:
-    from database import models, connection
-    print('✓ database.models, database.connection')
-except Exception as e:
-    print('✗ database:', e)
-try:
-    from etl import DataQuerier, DataTransformer, FunnelAnalyzer, AnomalyDetector, MetricsCalculator
-    print('✓ etl 模块')
-except Exception as e:
-    print('✗ etl:', e)
-try:
-    from dashboard.layouts import serve_layout, FunnelDashboard, ImagesView, PaymentsView, PatientsView, ReviewView
-    print('✓ dashboard.layouts')
-except Exception as e:
-    print('✗ dashboard.layouts:', e)
-try:
-    from dashboard.callbacks import register_callbacks
-    print('✓ dashboard.callbacks')
-except Exception as e:
-    print('✗ dashboard.callbacks:', e)
-try:
-    from celery_tasks import data_tasks, scheduler
-    print('✓ celery_tasks')
-except Exception as e:
-    print('✗ celery_tasks:', e)
+print('=== 仪表盘模块 ===')
+from dashboard.app import app, server
+print('✓ Dash应用导入成功')
+
+from dashboard.layouts import (
+    main_layout, funnel_dashboard, images_view,
+    payments_view, patients_view, review_view
+)
+print('✓ 所有布局模块导入成功')
+
+from dashboard.callbacks import register_callbacks
+print('✓ 回调注册模块导入成功')
+
 print()
-print('导入测试完成！')
+print('=== Celery模块 ===')
+from celery_tasks.data_tasks import detect_anomalies, sync_data, generate_report
+print('✓ Celery任务模块导入成功')
+
+print()
+print('================================')
+print('✓ 全部模块导入成功！')
+print('================================')

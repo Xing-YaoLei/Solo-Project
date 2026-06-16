@@ -14,9 +14,113 @@ from etl import (
     AnomalyDetector,
     MetricsCalculator,
 )
+from dashboard.layouts import (
+    FunnelDashboard,
+    ImagesView,
+    PaymentsView,
+    PatientsView,
+    ReviewView,
+)
 
 
 def register_callbacks(app):
+    funnel_dashboard = FunnelDashboard()
+    images_view = ImagesView()
+    payments_view = PaymentsView()
+    patients_view = PatientsView()
+    review_view = ReviewView()
+
+    @app.callback(
+        Output("page-content", "children"),
+        Input("url", "pathname"),
+    )
+    def render_page(pathname):
+        if pathname == "/" or pathname == "/funnel":
+            return funnel_dashboard.layout
+        elif pathname == "/images":
+            return images_view.layout
+        elif pathname == "/payments":
+            return payments_view.layout
+        elif pathname == "/patients":
+            return patients_view.layout
+        elif pathname == "/review":
+            return review_view.layout
+        else:
+            return funnel_dashboard.layout
+
+    @app.callback(
+        Output("nav-funnel", "active"),
+        Output("nav-images", "active"),
+        Output("nav-payments", "active"),
+        Output("nav-patients", "active"),
+        Output("nav-review", "active"),
+        Input("url", "pathname"),
+    )
+    def update_nav_active(pathname):
+        return (
+            pathname in ["/", "/funnel"],
+            pathname == "/images",
+            pathname == "/payments",
+            pathname == "/patients",
+            pathname == "/review",
+        )
+
+    @app.callback(
+        Output("start-date-picker", "date"),
+        Output("end-date-picker", "date"),
+        Input("date-range-preset", "value"),
+        State("start-date-picker", "date"),
+        State("end-date-picker", "date"),
+        prevent_initial_call=False,
+    )
+    def update_date_range(preset_value, current_start, current_end):
+        if preset_value == "custom":
+            return dash.no_update, dash.no_update
+
+        today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+
+        if preset_value == "today":
+            start = end = today
+        elif preset_value == "this_week":
+            start = today - timedelta(days=today.weekday())
+            end = start + timedelta(days=6)
+        elif preset_value == "last_week":
+            start = today - timedelta(days=today.weekday() + 7)
+            end = start + timedelta(days=6)
+        elif preset_value == "this_month":
+            start = today.replace(day=1)
+            if start.month == 12:
+                next_month = start.replace(year=start.year + 1, month=1)
+            else:
+                next_month = start.replace(month=start.month + 1)
+            end = next_month - timedelta(days=1)
+        elif preset_value == "last_month":
+            if today.month == 1:
+                last_month = today.replace(year=today.year - 1, month=12, day=1)
+            else:
+                last_month = today.replace(month=today.month - 1, day=1)
+            if last_month.month == 12:
+                next_month = last_month.replace(year=last_month.year + 1, month=1)
+            else:
+                next_month = last_month.replace(month=last_month.month + 1)
+            start = last_month
+            end = next_month - timedelta(days=1)
+        elif preset_value == "this_quarter":
+            quarter = (today.month - 1) // 3 + 1
+            start = today.replace(month=(quarter - 1) * 3 + 1, day=1)
+            if quarter == 4:
+                next_quarter = start.replace(year=start.year + 1, month=1)
+            else:
+                next_quarter = start.replace(month=quarter * 3 + 1, day=1)
+            end = next_quarter - timedelta(days=1)
+        elif preset_value == "this_year":
+            start = today.replace(month=1, day=1)
+            end = today.replace(month=12, day=31)
+        else:
+            return dash.no_update, dash.no_update
+
+        return start.strftime("%Y-%m-%d"), end.strftime("%Y-%m-%d")
+
     @app.callback(
         Output("data-store", "data"),
         Output("anomaly-store", "data"),
@@ -409,14 +513,14 @@ def register_callbacks(app):
         Output("kpi-payment-avg", "children"),
         Output("kpi-discount-total", "children"),
         Input("data-store", "data"),
+        State("anomaly-store", "data"),
     )
-    def update_payments_view(data_store):
+    def update_payments_view(data_store, anomaly_store):
         if not data_store or "payments" not in data_store:
             empty_fig = go.Figure()
             return empty_fig, empty_fig, [], "0", "0", "0", "0", "0"
 
         payments_df = pd.DataFrame(data_store["payments"])
-        anomaly_store = dash.callback_context.states.get("anomaly-store", {}).get("data", {})
         anomaly_payment_ids = []
 
         if anomaly_store and "anomalies" in anomaly_store:
@@ -514,49 +618,105 @@ def register_callbacks(app):
         Output("remark-section", "style"),
         Output("remarks-history-section", "style"),
         Output("payment-remarks-history", "children"),
+        Output("remark-save-status", "children"),
         Input("payments-table", "selected_rows"),
+        Input("btn-save-remark", "n_clicks"),
         State("payments-table", "data"),
-        State("anomaly-store", "data"),
+        State("remark-author", "value"),
+        State("remark-content", "value"),
+        prevent_initial_call=False,
     )
-    def show_payment_remark_section(selected_rows, table_data, anomaly_store):
+    def update_payment_remark_section(selected_rows, save_clicks, table_data, author, content):
+        ctx = callback_context
+        trigger_id = ctx.triggered[0]["prop_id"].split(".")[0] if ctx.triggered else None
+
         if not selected_rows or not table_data:
-            return {"display": "none"}, {"display": "none"}, ""
+            return {"display": "none"}, {"display": "none"}, "", dash.no_update
 
         selected_payment = table_data[selected_rows[0]]
         payment_id = selected_payment["id"]
+        save_status = dash.no_update
+
+        if trigger_id == "btn-save-remark" and save_clicks:
+            if not author or not content:
+                save_status = dbc.Alert(
+                    [
+                        html.I(className="fas fa-exclamation-triangle me-2"),
+                        "请填写作者和备注内容",
+                    ],
+                    color="warning",
+                    dismissable=True,
+                    duration=3000,
+                )
+            else:
+                try:
+                    with DataQuerier() as querier:
+                        querier.save_payment_remark(
+                            payment_id=payment_id,
+                            author=author,
+                            content=content,
+                        )
+                    save_status = dbc.Alert(
+                        [
+                            html.I(className="fas fa-check-circle me-2"),
+                            "备注保存成功！",
+                        ],
+                        color="success",
+                        dismissable=True,
+                        duration=3000,
+                    )
+                except Exception as e:
+                    save_status = dbc.Alert(
+                        [
+                            html.I(className="fas fa-times-circle me-2"),
+                            f"备注保存失败: {str(e)}",
+                        ],
+                        color="danger",
+                        dismissable=True,
+                    )
+
+        try:
+            with DataQuerier() as querier:
+                remarks_df = querier.get_remarks_for_payment(payment_id)
+        except Exception:
+            remarks_df = pd.DataFrame()
 
         history_remarks = []
-        if anomaly_store and "anomalies" in anomaly_store:
-            anomaly_df = pd.DataFrame(anomaly_store["anomalies"])
-            payment_anomalies = anomaly_df[anomaly_df["payment_id"] == payment_id]
-
-            for _, row in payment_anomalies.iterrows():
-                if pd.notna(row.get("remark_content")):
-                    history_remarks.append(
-                        dbc.Card(
-                            dbc.CardBody(
-                                [
-                                    html.H6(
-                                        [
-                                            html.I(className="fas fa-user me-2"),
-                                            row.get("remark_author", "未知"),
-                                            html.Small(
-                                                f" · {row.get('remark_time', '')}",
-                                                className="text-muted ms-2",
-                                            ),
-                                        ],
-                                        className="text-info mb-2",
-                                    ),
-                                    html.P(row["remark_content"], className="text-light mb-0"),
-                                    html.Small(
-                                        f"关联异常: {row.get('anomaly_type', '')} - {row.get('description', '')[:50]}...",
-                                        className="text-warning",
-                                    ),
-                                ]
-                            ),
-                            className="bg-dark border-info mb-2",
-                        )
+        if not remarks_df.empty:
+            remarks_df = remarks_df.sort_values("created_at", ascending=False)
+            for _, row in remarks_df.iterrows():
+                is_review = row.get("is_review_note", False)
+                badge_color = "warning" if is_review else "info"
+                badge_text = "复盘备注" if is_review else "普通备注"
+                created_time = ""
+                if pd.notna(row.get("created_at")):
+                    created_time = pd.to_datetime(row["created_at"]).strftime("%Y-%m-%d %H:%M")
+                history_remarks.append(
+                    dbc.Card(
+                        dbc.CardBody(
+                            [
+                                html.H6(
+                                    [
+                                        html.I(className="fas fa-user me-2"),
+                                        row.get("author", "未知"),
+                                        dbc.Badge(
+                                            badge_text,
+                                            color=badge_color,
+                                            className="ms-2",
+                                        ),
+                                        html.Small(
+                                            f" · {created_time}",
+                                            className="text-muted ms-2",
+                                        ),
+                                    ],
+                                    className=f"text-{badge_color} mb-2",
+                                ),
+                                html.P(row["content"], className="text-light mb-0"),
+                            ]
+                        ),
+                        className=f"bg-dark border-{badge_color} mb-2",
                     )
+                )
 
         if not history_remarks:
             history_remarks.append(
@@ -567,50 +727,8 @@ def register_callbacks(app):
             {"display": "block"},
             {"display": "block"},
             html.Div(history_remarks),
+            save_status,
         )
-
-    @app.callback(
-        Output("remark-save-status", "children"),
-        Input("btn-save-remark", "n_clicks"),
-        State("payments-table", "selected_rows"),
-        State("payments-table", "data"),
-        State("remark-author", "value"),
-        State("remark-content", "value"),
-        prevent_initial_call=True,
-    )
-    def save_payment_remark(n_clicks, selected_rows, table_data, author, content):
-        if not n_clicks or not selected_rows or not author or not content:
-            return dash.no_update
-
-        selected_payment = table_data[selected_rows[0]]
-        payment_id = selected_payment["id"]
-
-        try:
-            with DataQuerier() as querier:
-                querier.save_payment_remark(
-                    payment_id=payment_id,
-                    author=author,
-                    content=content,
-                )
-
-            return dbc.Alert(
-                [
-                    html.I(className="fas fa-check-circle me-2"),
-                    "备注保存成功！",
-                ],
-                color="success",
-                dismissable=True,
-                duration=3000,
-            )
-        except Exception as e:
-            return dbc.Alert(
-                [
-                    html.I(className="fas fa-times-circle me-2"),
-                    f"备注保存失败: {str(e)}",
-                ],
-                color="danger",
-                dismissable=True,
-            )
 
     @app.callback(
         Output("patient-gender-chart", "figure"),
@@ -1006,11 +1124,18 @@ def register_callbacks(app):
         Output("review-detail-content", "children"),
         Output("review-history-remarks", "children"),
         Output("review-remark-section", "style"),
+        Output("review-save-status", "children"),
         Input("review-table", "selected_rows"),
+        Input("btn-save-review", "n_clicks"),
         State("review-table", "data"),
-        State("anomaly-store", "data"),
+        State("review-remark-author", "value"),
+        State("review-remark-content", "value"),
+        prevent_initial_call=False,
     )
-    def show_review_detail(selected_rows, table_data, anomaly_store):
+    def update_review_detail(selected_rows, save_clicks, table_data, author, content):
+        ctx = callback_context
+        trigger_id = ctx.triggered[0]["prop_id"].split(".")[0] if ctx.triggered else None
+
         if not selected_rows or not table_data:
             return (
                 {"display": "none"},
@@ -1018,10 +1143,51 @@ def register_callbacks(app):
                 "",
                 "",
                 {"display": "none"},
+                dash.no_update,
             )
 
         selected = table_data[selected_rows[0]]
         anomaly_id = selected["id"]
+        save_status = dash.no_update
+
+        if trigger_id == "btn-save-review" and save_clicks:
+            if not author or not content:
+                save_status = dbc.Alert(
+                    [
+                        html.I(className="fas fa-exclamation-triangle me-2"),
+                        "请填写作者和备注内容",
+                    ],
+                    color="warning",
+                    dismissable=True,
+                    duration=3000,
+                )
+            else:
+                try:
+                    with DataQuerier() as querier:
+                        querier.save_anomaly_remark(
+                            anomaly_id=anomaly_id,
+                            author=author,
+                            content=content,
+                            is_review_note=True,
+                        )
+                    save_status = dbc.Alert(
+                        [
+                            html.I(className="fas fa-check-circle me-2"),
+                            "复盘备注保存成功！",
+                        ],
+                        color="success",
+                        dismissable=True,
+                        duration=3000,
+                    )
+                except Exception as e:
+                    save_status = dbc.Alert(
+                        [
+                            html.I(className="fas fa-times-circle me-2"),
+                            f"复盘备注保存失败: {str(e)}",
+                        ],
+                        color="danger",
+                        dismissable=True,
+                    )
 
         detail_content = dbc.Card(
             dbc.CardBody(
@@ -1080,32 +1246,46 @@ def register_callbacks(app):
             className="bg-dark border-info",
         )
 
-        history_remarks = []
-        if anomaly_store and "anomalies" in anomaly_store:
-            anomaly_df = pd.DataFrame(anomaly_store["anomalies"])
-            anomaly_record = anomaly_df[anomaly_df["id"] == anomaly_id]
+        try:
+            with DataQuerier() as querier:
+                remarks_df = querier.get_remarks_for_anomalies([anomaly_id])
+        except Exception:
+            remarks_df = pd.DataFrame()
 
-            if not anomaly_record.empty and pd.notna(anomaly_record.iloc[0].get("remark_content")):
-                row = anomaly_record.iloc[0]
+        history_remarks = []
+        if not remarks_df.empty:
+            remarks_df = remarks_df.sort_values("created_at", ascending=False)
+            for _, row in remarks_df.iterrows():
+                is_review = row.get("is_review_note", False)
+                badge_color = "warning" if is_review else "info"
+                badge_text = "复盘备注" if is_review else "普通备注"
+                created_time = ""
+                if pd.notna(row.get("created_at")):
+                    created_time = pd.to_datetime(row["created_at"]).strftime("%Y-%m-%d %H:%M")
                 history_remarks.append(
                     dbc.Card(
                         dbc.CardBody(
                             [
                                 html.H6(
                                     [
-                                        html.I(className="fas fa-user me-2 text-info"),
-                                        row.get("remark_author", "未知"),
+                                        html.I(className="fas fa-user me-2"),
+                                        row.get("author", "未知"),
+                                        dbc.Badge(
+                                            badge_text,
+                                            color=badge_color,
+                                            className="ms-2",
+                                        ),
                                         html.Small(
-                                            f" · {row.get('remark_time', '')}",
+                                            f" · {created_time}",
                                             className="text-muted ms-2",
                                         ),
                                     ],
-                                    className="text-info mb-2",
+                                    className=f"text-{badge_color} mb-2",
                                 ),
-                                html.P(row["remark_content"], className="text-light mb-0"),
+                                html.P(row["content"], className="text-light mb-0"),
                             ]
                         ),
-                        className="bg-dark border-info mb-2",
+                        className=f"bg-dark border-{badge_color} mb-2",
                     )
                 )
 
@@ -1120,51 +1300,8 @@ def register_callbacks(app):
             detail_content,
             html.Div(history_remarks),
             {"display": "block"},
+            save_status,
         )
-
-    @app.callback(
-        Output("review-save-status", "children"),
-        Input("btn-save-review", "n_clicks"),
-        State("review-table", "selected_rows"),
-        State("review-table", "data"),
-        State("review-remark-author", "value"),
-        State("review-remark-content", "value"),
-        prevent_initial_call=True,
-    )
-    def save_review_remark(n_clicks, selected_rows, table_data, author, content):
-        if not n_clicks or not selected_rows or not author or not content:
-            return dash.no_update
-
-        selected = table_data[selected_rows[0]]
-        anomaly_id = selected["id"]
-
-        try:
-            with DataQuerier() as querier:
-                querier.save_anomaly_remark(
-                    anomaly_id=anomaly_id,
-                    author=author,
-                    content=content,
-                    is_review_note=True,
-                )
-
-            return dbc.Alert(
-                [
-                    html.I(className="fas fa-check-circle me-2"),
-                    "复盘备注保存成功！",
-                ],
-                color="success",
-                dismissable=True,
-                duration=3000,
-            )
-        except Exception as e:
-            return dbc.Alert(
-                [
-                    html.I(className="fas fa-times-circle me-2"),
-                    f"复盘备注保存失败: {str(e)}",
-                ],
-                color="danger",
-                dismissable=True,
-            )
 
     @app.callback(
         Output("download-excel", "data"),

@@ -1,13 +1,6 @@
 from datetime import datetime, timedelta
-import dash
 import dash_bootstrap_components as dbc
-from dash import dcc, html, Input, Output, State, callback
-
-from dashboard.layouts.funnel_dashboard import FunnelDashboard
-from dashboard.layouts.images_view import ImagesView
-from dashboard.layouts.payments_view import PaymentsView
-from dashboard.layouts.patients_view import PatientsView
-from dashboard.layouts.review_view import ReviewView
+from dash import dcc, html
 
 
 def serve_layout():
@@ -168,83 +161,3 @@ def serve_layout():
         ],
         className="min-vh-100 bg-dark",
     )
-
-
-@callback(
-    Output("start-date-picker", "date"),
-    Output("end-date-picker", "date"),
-    Input("date-range-preset", "value"),
-    State("start-date-picker", "date"),
-    State("end-date-picker", "date"),
-    prevent_initial_call=False,
-)
-def update_date_range(preset_value, current_start, current_end):
-    if preset_value == "custom":
-        return dash.no_update, dash.no_update
-
-    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-
-    if preset_value == "today":
-        start = end = today
-    elif preset_value == "this_week":
-        start = today - timedelta(days=today.weekday())
-        end = start + timedelta(days=6)
-    elif preset_value == "last_week":
-        start = today - timedelta(days=today.weekday() + 7)
-        end = start + timedelta(days=6)
-    elif preset_value == "this_month":
-        start = today.replace(day=1)
-        if start.month == 12:
-            next_month = start.replace(year=start.year + 1, month=1)
-        else:
-            next_month = start.replace(month=start.month + 1)
-        end = next_month - timedelta(days=1)
-    elif preset_value == "last_month":
-        if today.month == 1:
-            last_month = today.replace(year=today.year - 1, month=12, day=1)
-        else:
-            last_month = today.replace(month=today.month - 1, day=1)
-        if last_month.month == 12:
-            next_month = last_month.replace(year=last_month.year + 1, month=1)
-        else:
-            next_month = last_month.replace(month=last_month.month + 1)
-        start = last_month
-        end = next_month - timedelta(days=1)
-    elif preset_value == "this_quarter":
-        quarter = (today.month - 1) // 3 + 1
-        start = today.replace(month=(quarter - 1) * 3 + 1, day=1)
-        if quarter == 4:
-            next_quarter = start.replace(year=start.year + 1, month=1)
-        else:
-            next_quarter = start.replace(month=quarter * 3 + 1, day=1)
-        end = next_quarter - timedelta(days=1)
-    elif preset_value == "this_year":
-        start = today.replace(month=1, day=1)
-        end = today.replace(month=12, day=31)
-    else:
-        start, end = current_start, current_end
-
-    return start.strftime("%Y-%m-%d"), end.strftime("%Y-%m-%d")
-
-
-@callback(
-    Output("page-content", "children"),
-    Output("nav-funnel", "active"),
-    Output("nav-images", "active"),
-    Output("nav-payments", "active"),
-    Output("nav-patients", "active"),
-    Output("nav-review", "active"),
-    Input("url", "pathname"),
-)
-def display_page(pathname):
-    pages = {
-        "/": (FunnelDashboard().layout, True, False, False, False, False),
-        "/images": (ImagesView().layout, False, True, False, False, False),
-        "/payments": (PaymentsView().layout, False, False, True, False, False),
-        "/patients": (PatientsView().layout, False, False, False, True, False),
-        "/review": (ReviewView().layout, False, False, False, False, True),
-    }
-
-    default = (FunnelDashboard().layout, True, False, False, False, False)
-
-    return pages.get(pathname, default)
