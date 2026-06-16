@@ -342,7 +342,7 @@ public class SettlementBillService : ISettlementBillService
         
         if (approved)
         {
-            bill.StatusId = (int)SettlementStatus.Processing;
+            bill.StatusId = (int)SettlementStatus.ReviewApproved;
             bill.ReviewedAt = DateTime.Now;
             bill.ReviewedById = userId;
         }
@@ -369,12 +369,31 @@ public class SettlementBillService : ISettlementBillService
         if (bill == null) return null;
 
         var fromStatus = bill.StatusId;
-        bill.StatusId = (int)SettlementStatus.PendingFinalReview;
-        bill.ProcessedAt = DateTime.Now;
-        bill.ProcessedById = userId;
+        var transitionRemark = string.Empty;
+
+        if (bill.StatusId == (int)SettlementStatus.ReviewApproved ||
+            bill.StatusId == (int)SettlementStatus.ReviewRejected)
+        {
+            bill.StatusId = (int)SettlementStatus.Processing;
+            bill.ProcessedAt = DateTime.Now;
+            bill.ProcessedById = userId;
+            transitionRemark = "开始处理";
+        }
+        else if (bill.StatusId == (int)SettlementStatus.Processing)
+        {
+            bill.StatusId = (int)SettlementStatus.PendingFinalReview;
+            bill.ProcessedAt = DateTime.Now;
+            bill.ProcessedById = userId;
+            transitionRemark = "处理完成，待复盘";
+        }
+        else
+        {
+            return null;
+        }
+
         bill.UpdatedAt = DateTime.Now;
 
-        await AddStatusTransition(bill.Id, fromStatus, bill.StatusId, userId, "处理完成，待复盘");
+        await AddStatusTransition(bill.Id, fromStatus, bill.StatusId, userId, transitionRemark);
         await _context.SaveChangesAsync();
 
         return await GetBillByIdAsync(id);

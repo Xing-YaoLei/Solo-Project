@@ -18,6 +18,11 @@ import type {
   TrainingCompletionRate,
   AssigneeStatistics,
   ReviewTagStatistics,
+  PatientDto,
+  SourceChannelDto,
+  UserDto,
+  RejectionReasonDto,
+  ReviewTagDto,
 } from '../types';
 
 const api = axios.create({
@@ -197,6 +202,26 @@ export const statisticsApi = {
     api.get<StatusOverview[]>('/Statistics/status-overview', {
       params: { startDate, endDate },
     }).then((r) => r.data),
+};
+
+export const referenceDataApi = {
+  getPatients: (keyword?: string) =>
+    api.get<PatientDto[]>('/ReferenceData/patients', { params: { keyword } }).then((r) => r.data),
+
+  getPatient: (id: number) =>
+    api.get<PatientDto>(`/ReferenceData/patients/${id}`).then((r) => r.data),
+
+  getSourceChannels: () =>
+    api.get<SourceChannelDto[]>('/ReferenceData/source-channels').then((r) => r.data),
+
+  getUsers: (role?: string) =>
+    api.get<UserDto[]>('/ReferenceData/users', { params: { role } }).then((r) => r.data),
+
+  getRejectionReasons: () =>
+    api.get<RejectionReasonDto[]>('/ReferenceData/rejection-reasons').then((r) => r.data),
+
+  getReviewTags: () =>
+    api.get<ReviewTagDto[]>('/ReferenceData/review-tags').then((r) => r.data),
 };
 
 export default api;

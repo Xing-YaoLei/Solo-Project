@@ -300,3 +300,43 @@ export const SettlementStatusMap: Record<number, { name: string; color: string }
   10: { name: '补充材料中', color: 'warning' },
   11: { name: '升级处理', color: 'magenta' },
 };
+
+export interface PatientDto {
+  id: number;
+  patientNo: string;
+  name: string;
+  gender?: string;
+  birthDate?: string;
+  phone?: string;
+  insuranceType?: string;
+  insuranceNo?: string;
+  sourceChannelId?: number;
+}
+
+export interface SourceChannelDto {
+  id: number;
+  name: string;
+  description?: string;
+}
+
+export interface UserDto {
+  id: number;
+  userName: string;
+  name: string;
+  role?: string;
+  department?: string;
+}
+
+export interface RejectionReasonDto {
+  id: number;
+  code: string;
+  name: string;
+  description?: string;
+}
+
+export interface ReviewTagDto {
+  id: number;
+  name: string;
+  color?: string;
+  description?: string;
+}

@@ -92,6 +92,7 @@ const BillDetail: React.FC = () => {
           await settlementApi.review(billId, false, values.remark);
           break;
         case 'process':
+        case 'process-complete':
           await settlementApi.process(billId);
           break;
         case 'final-approve':

@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Form, Input, Select, DatePicker, Button, Space, Table, InputNumber, message } from 'antd';
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
-import type { SettlementBill, CreateSettlementItem, CreateSettlementBill } from '../types';
+import type { SettlementBill, CreateSettlementItem, CreateSettlementBill, PatientDto, SourceChannelDto, UserDto } from '../types';
+import { referenceDataApi } from '../services/api';
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -14,6 +15,11 @@ interface BillFormProps {
 }
 
 const BillForm: React.FC<BillFormProps> = ({ form, initialData, onSubmit, onCancel }) => {
+  const [patients, setPatients] = useState<PatientDto[]>([]);
+  const [sourceChannels, setSourceChannels] = useState<SourceChannelDto[]>([]);
+  const [users, setUsers] = useState<UserDto[]>([]);
+  const [loading, setLoading] = useState(false);
+
   const [items, setItems] = useState<CreateSettlementItem[]>(
     initialData?.items || [
       {
@@ -26,6 +32,28 @@ const BillForm: React.FC<BillFormProps> = ({ form, initialData, onSubmit, onCanc
       },
     ]
   );
+
+  useEffect(() => {
+    loadReferenceData();
+  }, []);
+
+  const loadReferenceData = async () => {
+    setLoading(true);
+    try {
+      const [patientsData, channelsData, usersData] = await Promise.all([
+        referenceDataApi.getPatients(),
+        referenceDataApi.getSourceChannels(),
+        referenceDataApi.getUsers(),
+      ]);
+      setPatients(patientsData);
+      setSourceChannels(channelsData);
+      setUsers(usersData);
+    } catch (error) {
+      console.error('Failed to load reference data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleFinish = (values: any) => {
     if (items.length === 0 || !items.some((item) => item.itemName)) {
@@ -225,29 +253,33 @@ const BillForm: React.FC<BillFormProps> = ({ form, initialData, onSubmit, onCanc
         name="patientId"
         rules={[{ required: true, message: '请选择患者' }]}
       >
-        <Select placeholder="请选择患者">
-          <Option value={1}>张三 (P000001)</Option>
-          <Option value={2}>李四 (P000002)</Option>
-          <Option value={3}>王五 (P000003)</Option>
+        <Select placeholder="请选择患者" loading={loading} showSearch optionFilterProp="children">
+          {patients.map((p) => (
+            <Option key={p.id} value={p.id}>
+              {p.name} ({p.patientNo})
+            </Option>
+          ))}
         </Select>
       </Form.Item>
 
       <div style={{ display: 'flex', gap: 16 }}>
         <Form.Item label="来源渠道" name="sourceChannelId" style={{ flex: 1 }}>
-          <Select placeholder="请选择来源渠道">
-            <Option value={1}>门诊转诊</Option>
-            <Option value={2}>住院转诊</Option>
-            <Option value={3}>社区推荐</Option>
-            <Option value={4}>线上预约</Option>
-            <Option value={5}>其他</Option>
+          <Select placeholder="请选择来源渠道" loading={loading}>
+            {sourceChannels.map((c) => (
+              <Option key={c.id} value={c.id}>
+                {c.name}
+              </Option>
+            ))}
           </Select>
         </Form.Item>
 
         <Form.Item label="负责人" name="assigneeId" style={{ flex: 1 }}>
-          <Select placeholder="请选择负责人">
-            <Option value={1}>张医生</Option>
-            <Option value={2}>李医生</Option>
-            <Option value={3}>王护士</Option>
+          <Select placeholder="请选择负责人" loading={loading}>
+            {users.map((u) => (
+              <Option key={u.id} value={u.id}>
+                {u.name}
+              </Option>
+            ))}
           </Select>
         </Form.Item>
       </div>

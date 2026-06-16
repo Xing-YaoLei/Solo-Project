@@ -9,7 +9,6 @@ import {
   Form,
   Select,
   Input,
-  Upload,
   message,
   Tabs,
   Row,
@@ -23,10 +22,10 @@ import {
   CheckCircleOutlined,
   FileTextOutlined,
   WarningOutlined,
+  DeleteOutlined,
 } from '@ant-design/icons';
-import type { UploadProps } from 'antd';
-import { exceptionApi } from '../services/api';
-import type { ExceptionRecord } from '../types';
+import { exceptionApi, settlementApi, referenceDataApi } from '../services/api';
+import type { ExceptionRecord, SettlementBill, RejectionReasonDto, UserDto } from '../types';
 import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
 
@@ -43,9 +42,29 @@ const ExceptionsPage: React.FC = () => {
   const [handleMethod, setHandleMethod] = useState<string>('');
   const [form] = Form.useForm();
   const [handleForm] = Form.useForm();
+  const [supplementMaterials, setSupplementMaterials] = useState<Array<{ materialName: string; materialType: string; fileUrl?: string; remark?: string }>>([]);
+  const [bills, setBills] = useState<SettlementBill[]>([]);
+  const [rejectionReasons, setRejectionReasons] = useState<RejectionReasonDto[]>([]);
+  const [users, setUsers] = useState<UserDto[]>([]);
+  const [refDataLoading, setRefDataLoading] = useState(false);
+
+  const addSupplementMaterial = () => {
+    setSupplementMaterials([...supplementMaterials, { materialName: '', materialType: 'document', remark: '' }]);
+  };
+
+  const removeSupplementMaterial = (index: number) => {
+    setSupplementMaterials(supplementMaterials.filter((_, i) => i !== index));
+  };
+
+  const updateSupplementMaterial = (index: number, field: string, value: string) => {
+    const updated = [...supplementMaterials];
+    (updated[index] as any)[field] = value;
+    setSupplementMaterials(updated);
+  };
 
   useEffect(() => {
     loadExceptions();
+    loadReferenceData();
   }, []);
 
   const loadExceptions = async () => {
@@ -57,6 +76,24 @@ const ExceptionsPage: React.FC = () => {
       console.error('Failed to load exceptions:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadReferenceData = async () => {
+    setRefDataLoading(true);
+    try {
+      const [billsData, reasonsData, usersData] = await Promise.all([
+        settlementApi.getList({ pageIndex: 1, pageSize: 100 }),
+        referenceDataApi.getRejectionReasons(),
+        referenceDataApi.getUsers(),
+      ]);
+      setBills(billsData.items || []);
+      setRejectionReasons(reasonsData);
+      setUsers(usersData);
+    } catch (error) {
+      console.error('Failed to load reference data:', error);
+    } finally {
+      setRefDataLoading(false);
     }
   };
 
@@ -84,6 +121,7 @@ const ExceptionsPage: React.FC = () => {
     setSelectedException(record);
     setHandleMethod(method);
     handleForm.resetFields();
+    setSupplementMaterials([]);
     setHandleModalVisible(true);
   };
 
@@ -91,6 +129,17 @@ const ExceptionsPage: React.FC = () => {
     if (!selectedException) return;
 
     try {
+      if (handleMethod === 'SupplementMaterials') {
+        const validMaterials = supplementMaterials.filter((m) => m.materialName.trim() !== '');
+        if (validMaterials.length === 0) {
+          message.warning('请至少添加一条补充材料');
+          return;
+        }
+        for (const material of validMaterials) {
+          await exceptionApi.addSupplementMaterial(selectedException.id, selectedException.billId, material);
+        }
+      }
+
       await exceptionApi.handle({
         exceptionRecordId: selectedException.id,
         handleMethod,
@@ -104,13 +153,6 @@ const ExceptionsPage: React.FC = () => {
       console.error('Handle error:', error);
       message.error('处理失败');
     }
-  };
-
-  const uploadProps: UploadProps = {
-    beforeUpload: (file) => {
-      console.log('Upload file:', file.name);
-      return false;
-    },
   };
 
   const columns = [
@@ -398,13 +440,12 @@ const ExceptionsPage: React.FC = () => {
             label="关联单据"
             rules={[{ required: true, message: '请选择单据' }]}
           >
-            <Select placeholder="请选择单据" showSearch>
-              <Option value={1}>JB202406001 - 张三</Option>
-              <Option value={2}>JB202406002 - 李四</Option>
-              <Option value={3}>JB202406003 - 王五</Option>
-              <Option value={5}>JB202406005 - 赵六</Option>
-              <Option value={7}>JB202406007 - 钱七</Option>
-              <Option value={9}>JB202406009 - 孙八</Option>
+            <Select placeholder="请选择单据" showSearch loading={refDataLoading} optionFilterProp="children">
+              {bills.map((b) => (
+                <Option key={b.id} value={b.id}>
+                  {b.billNo} - {b.patientName}
+                </Option>
+              ))}
             </Select>
           </Form.Item>
 
@@ -413,12 +454,12 @@ const ExceptionsPage: React.FC = () => {
             label="拒付原因"
             rules={[{ required: true, message: '请选择拒付原因' }]}
           >
-            <Select placeholder="请选择拒付原因">
-              <Option value={1}>费用超标</Option>
-              <Option value={2}>适应症不符</Option>
-              <Option value={3}>材料不全</Option>
-              <Option value={4}>时间不符</Option>
-              <Option value={5}>其他</Option>
+            <Select placeholder="请选择拒付原因" loading={refDataLoading}>
+              {rejectionReasons.map((r) => (
+                <Option key={r.id} value={r.id}>
+                  {r.name}
+                </Option>
+              ))}
             </Select>
           </Form.Item>
 
@@ -431,10 +472,12 @@ const ExceptionsPage: React.FC = () => {
           </Form.Item>
 
           <Form.Item name="handlerId" label="处理人">
-            <Select placeholder="请选择处理人">
-              <Option value={1}>张医生</Option>
-              <Option value={2}>李处理员</Option>
-              <Option value={3}>王医生</Option>
+            <Select placeholder="请选择处理人" loading={refDataLoading}>
+              {users.map((u) => (
+                <Option key={u.id} value={u.id}>
+                  {u.name}
+                </Option>
+              ))}
             </Select>
           </Form.Item>
         </Form>
@@ -462,20 +505,74 @@ const ExceptionsPage: React.FC = () => {
               label="升级至"
               rules={[{ required: true, message: '请选择升级对象' }]}
             >
-              <Select placeholder="请选择升级处理的人员">
-                <Option value={5}>陈主任</Option>
-                <Option value={6}>刘副主任</Option>
-                <Option value={7}>医保办</Option>
+              <Select placeholder="请选择升级处理的人员" loading={refDataLoading}>
+                {users.map((u) => (
+                  <Option key={u.id} value={u.id}>
+                    {u.name}
+                  </Option>
+                ))}
               </Select>
             </Form.Item>
           )}
 
           {handleMethod === 'SupplementMaterials' && (
-            <Form.Item label="上传补充材料">
-              <Upload {...uploadProps} multiple>
-                <Button icon={<UploadOutlined />}>点击上传文件</Button>
-              </Upload>
-            </Form.Item>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                <label style={{ fontWeight: 500 }}>补充材料明细</label>
+                <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={addSupplementMaterial}>
+                  添加材料
+                </Button>
+              </div>
+              <div style={{ border: '1px solid #f0f0f0', borderRadius: 8, padding: 12, marginBottom: 16 }}>
+                {supplementMaterials.length === 0 ? (
+                  <div style={{ color: '#999', textAlign: 'center', padding: 16 }}>暂无材料，请点击上方"添加材料"</div>
+                ) : (
+                  <div>
+                    {supplementMaterials.map((m, idx) => (
+                      <div key={idx} style={{ display: 'flex', gap: 8, marginBottom: idx < supplementMaterials.length - 1 ? 8 : 0, alignItems: 'flex-start' }}>
+                        <div style={{ flex: 1 }}>
+                          <Input
+                            placeholder="材料名称"
+                            size="small"
+                            value={m.materialName}
+                            onChange={(e) => updateSupplementMaterial(idx, 'materialName', e.target.value)}
+                            style={{ marginBottom: 6 }}
+                          />
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <Select
+                              size="small"
+                              value={m.materialType}
+                              onChange={(v) => updateSupplementMaterial(idx, 'materialType', v)}
+                              style={{ width: 120 }}
+                            >
+                              <Option value="document">证明文件</Option>
+                              <Option value="medical">医嘱/病历</Option>
+                              <Option value="bill">费用清单</Option>
+                              <Option value="report">检查报告</Option>
+                              <Option value="other">其他</Option>
+                            </Select>
+                            <Input
+                              placeholder="备注说明"
+                              size="small"
+                              value={m.remark}
+                              onChange={(e) => updateSupplementMaterial(idx, 'remark', e.target.value)}
+                              style={{ flex: 1 }}
+                            />
+                          </div>
+                        </div>
+                        <Button
+                          type="text"
+                          danger
+                          size="small"
+                          icon={<DeleteOutlined />}
+                          onClick={() => removeSupplementMaterial(idx)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           )}
 
           <Form.Item
