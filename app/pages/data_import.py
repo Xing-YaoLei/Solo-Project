@@ -32,7 +32,7 @@ def render(
         _render_batch_list(db, minio)
 
     with tab_trace:
-        _render_batch_trace(pipeline)
+        _render_batch_trace(db, pipeline)
 
 
 def _render_import_form(pipeline: DataPipeline, username: str) -> None:
@@ -108,7 +108,7 @@ def _render_batch_list(db: DuckDBService, minio: MinIOService) -> None:
         st.error(f"加载批次列表失败: {e}")
 
 
-def _render_batch_trace(pipeline: DataPipeline) -> None:
+def _render_batch_trace(db: DuckDBService, pipeline: DataPipeline) -> None:
     st.subheader("批次回查")
 
     batch_id = st.text_input("输入批次编号", placeholder="例如: BATCH_cashier_20240101_120000")
@@ -120,44 +120,54 @@ def _render_batch_trace(pipeline: DataPipeline) -> None:
 
         try:
             trace = pipeline.trace_batch(batch_id)
+            batch_detail = db.get_batch_detail(batch_id)
+
+            st.markdown("#### 批次基础信息")
+            if batch_detail:
+                type_label = {
+                    "cashier": "收银系统",
+                    "inventory": "库存表",
+                    "member": "会员记录",
+                    "followup": "回访记录",
+                }.get(batch_detail.get("source_type", ""), batch_detail.get("source_type", "-"))
+                st.info(
+                    f"**批次类型**: {type_label} | "
+                    f"**导入人**: {batch_detail.get('imported_by', '-')} | "
+                    f"**导入时间**: {batch_detail.get('imported_at', '-')} | "
+                    f"**行数**: {batch_detail.get('row_count', 0)}"
+                )
+            else:
+                st.warning("数据库中未找到该批次记录。")
 
             col1, col2 = st.columns(2)
             with col1:
-                st.markdown("#### 数据源信息")
-                if trace["source_type"]:
-                    type_label = {
-                        "cashier": "收银系统",
-                        "inventory": "库存表",
-                        "member": "会员记录",
-                        "followup": "回访记录",
-                    }.get(trace["source_type"], trace["source_type"])
-                    st.info(f"批次类型: **{type_label}**")
-                else:
-                    st.warning("未识别批次类型")
-
-                st.markdown("#### MinIO 存储元数据")
-                if trace["minio_metadata"]:
-                    for src, meta in trace["minio_metadata"].items():
+                st.markdown("#### 📦 MinIO 原始文件元数据")
+                all_meta = trace.get("all_sources_metadata", {})
+                if all_meta:
+                    for src, meta in all_meta.items():
                         src_label = {
                             "cashier": "收银系统",
                             "inventory": "库存表",
                             "member": "会员记录",
                             "followup": "回访记录",
                         }.get(src, src)
-                        with st.expander(f"📦 {src_label}", expanded=True):
+                        with st.expander(f"� {src_label}", expanded=src == trace.get("source_type")):
                             st.json(meta)
                 else:
                     st.info("MinIO 中未找到该批次数据。")
 
             with col2:
-                st.markdown("#### 数据库记录")
+                st.markdown("#### 🗄️ 数据库 import_batches 记录")
                 if trace["db_record"]:
                     st.json(trace["db_record"])
                 else:
                     st.info("数据库中未找到该批次记录。")
 
-                if trace["available_sources"]:
-                    st.markdown("#### 可用的源数据")
-                    st.write(f"可追溯的数据源: {', '.join(trace['available_sources'])}")
+            if trace["available_sources"]:
+                st.markdown("#### 📋 可追溯的数据源")
+                st.write(
+                    "该批次在 MinIO 中包含以下源文件: "
+                    + ", ".join(trace["available_sources"])
+                )
         except Exception as e:
             st.error(f"批次回查失败: {e}")

@@ -459,5 +459,55 @@ class DuckDBService:
         ).fetchdf()
         return pl.from_pandas(result)
 
+    def get_batch_records(self, batch_id: str, source_type: str) -> pl.DataFrame:
+        table_map = {
+            "cashier": "cashier_transactions",
+            "inventory": "inventory",
+            "member": "members",
+            "followup": "followup_records",
+        }
+        table = table_map.get(source_type)
+        if not table:
+            return pl.DataFrame()
+        try:
+            result = self.conn.execute(
+                f"SELECT * FROM {table} WHERE batch_id = ?",
+                [batch_id],
+            ).fetchdf()
+            return pl.from_pandas(result)
+        except Exception:
+            return pl.DataFrame()
+
+    def get_member_snapshot_at_batch(self, member_id: str, batch_id: str) -> dict | None:
+        member = self.conn.execute(
+            "SELECT * FROM members WHERE member_id = ? AND batch_id = ?",
+            [member_id, batch_id],
+        ).fetchone()
+        if not member:
+            member = self.conn.execute(
+                "SELECT * FROM members WHERE member_id = ?",
+                [member_id],
+            ).fetchone()
+            if not member:
+                return None
+        columns = [desc[0] for desc in self.conn.execute(
+            "SELECT * FROM members WHERE member_id = ? LIMIT 1",
+            [member_id],
+        ).description]
+        return dict(zip(columns, member))
+
+    def get_batch_detail(self, batch_id: str) -> dict | None:
+        row = self.conn.execute(
+            "SELECT * FROM import_batches WHERE batch_id = ?",
+            [batch_id],
+        ).fetchone()
+        if not row:
+            return None
+        columns = [desc[0] for desc in self.conn.execute(
+            "SELECT * FROM import_batches WHERE batch_id = ?",
+            [batch_id],
+        ).description]
+        return dict(zip(columns, row))
+
     def close(self) -> None:
         self.conn.close()

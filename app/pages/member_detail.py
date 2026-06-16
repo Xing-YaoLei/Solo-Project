@@ -107,11 +107,11 @@ def _render_member_changes(db: DuckDBService, store_id: str | None) -> None:
 
 
 def _render_source_trace(db: DuckDBService, store_id: str | None) -> None:
-    st.subheader("口径排查 - 跳转原始记录")
+    st.subheader("口径排查 - 从变更跳转原始记录")
 
     st.markdown("""
-    通过会员档案变更记录，可追溯至原始导入批次，排查数据口径偏差。
-    点击批次编号可查看该批次的导入详情。
+    通过会员档案变更记录，可追溯至对应批次的原始会员记录，排查数据口径偏差。
+    点击**查看原始记录**按钮可查看该会员在变更批次中的完整档案快照。
     """)
 
     try:
@@ -125,27 +125,79 @@ def _render_source_trace(db: DuckDBService, store_id: str | None) -> None:
                 col1, col2, col3 = st.columns([2, 2, 1])
                 with col1:
                     st.markdown(f"**会员**: {row['member_id']} - {row.get('member_name', '')}")
-                    st.markdown(f"**字段**: {row['field_name']}")
+                    st.markdown(f"**字段**: `{row['field_name']}`")
                 with col2:
                     st.markdown(f"**旧值**: `{row['old_value']}` → **新值**: `{row['new_value']}`")
                     st.caption(f"变更时间: {row['changed_at']}")
                 with col3:
                     batch_id = row.get("source_batch_id", "")
                     if batch_id:
-                        if st.button(f"📋 {batch_id[:20]}...", key=f"trace_{row['change_id']}"):
-                            st.session_state["selected_batch_id"] = batch_id
+                        st.caption(f"来源批次: {batch_id}")
+                        if st.button(
+                            f"🔍 查看原始记录",
+                            key=f"trace_{row['change_id']}",
+                            help="查看该会员在变更批次中的完整档案",
+                        ):
+                            st.session_state[f"trace_detail_{row['change_id']}"] = True
 
-        if "selected_batch_id" in st.session_state:
-            st.markdown("---")
-            st.subheader(f"批次详情: {st.session_state['selected_batch_id']}")
-            batches = db.list_import_batches()
-            batch_detail = batches.filter(
-                pl.col("batch_id") == st.session_state["selected_batch_id"]
-            )
-            if batch_detail.height > 0:
-                st.dataframe(batch_detail, use_container_width=True, hide_index=True)
-            else:
-                st.info("未找到该批次的数据库记录。")
+                if st.session_state.get(f"trace_detail_{row['change_id']}", False):
+                    with st.expander(f"📋 原始会员记录 - {row['member_id']}", expanded=True):
+                        _render_member_source_detail(db, row)
+
+                st.divider()
 
     except Exception as e:
         st.error(f"加载口径排查失败: {e}")
+
+
+def _render_member_source_detail(db: DuckDBService, change_row: dict) -> None:
+    member_id = change_row.get("member_id", "")
+    batch_id = change_row.get("source_batch_id", "")
+    field_name = change_row.get("field_name", "")
+    old_value = change_row.get("old_value", "")
+    new_value = change_row.get("new_value", "")
+
+    try:
+        snapshot = db.get_member_snapshot_at_batch(member_id, batch_id)
+        batch_detail = db.get_batch_detail(batch_id)
+
+        if batch_detail:
+            st.markdown("#### 📦 批次信息")
+            st.json(batch_detail)
+
+        if snapshot:
+            st.markdown("#### 👤 会员档案快照（变更后）")
+            label_map = {
+                "member_id": "会员编号",
+                "member_name": "姓名",
+                "phone": "电话",
+                "store_id": "所属门店",
+                "register_date": "注册日期",
+                "chronic_disease": "慢性病",
+                "allergy_info": "过敏信息",
+                "last_visit_date": "最近到店日期",
+                "batch_id": "来源批次",
+                "imported_at": "导入时间",
+            }
+            for key, value in snapshot.items():
+                if key == field_name:
+                    st.markdown(
+                        f"**{label_map.get(key, key)}**: "
+                        f"<span style='background-color: #fff3cd; padding: 2px 6px; border-radius: 4px;'>"
+                        f"{value} ← 变更字段</span>",
+                        unsafe_allow_html=True,
+                    )
+                else:
+                    st.markdown(f"**{label_map.get(key, key)}**: {value}")
+        else:
+            st.warning(f"未找到会员 {member_id} 的档案记录。")
+
+        st.markdown("#### 🔄 变更前后对比")
+        col_a, col_b = st.columns(2)
+        with col_a:
+            st.info(f"**变更前（旧值）**\n\n`{old_value}`")
+        with col_b:
+            st.success(f"**变更后（新值）**\n\n`{new_value}`")
+
+    except Exception as e:
+        st.error(f"加载原始会员记录失败: {e}")

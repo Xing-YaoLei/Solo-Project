@@ -141,10 +141,40 @@ class DataPipeline:
 
         db_record = batch_row.to_dicts() if batch_row.height > 0 else []
 
+        all_sources_meta: dict[str, dict] = {}
+        if self.minio is not None:
+            for src_type, obj_name in _SOURCE_OBJECT_MAP.items():
+                try:
+                    meta = self.minio.get_batch_metadata(batch_id, obj_name)
+                    all_sources_meta[src_type] = meta
+                except Exception:
+                    pass
+
         return {
             "batch_id": batch_id,
             "source_type": source_type,
             "minio_metadata": minio_meta,
+            "all_sources_metadata": all_sources_meta,
             "db_record": db_record,
-            "available_sources": list(minio_meta.keys()),
+            "available_sources": list(all_sources_meta.keys()),
         }
+
+    def get_all_batch_meta(self, batch_id: str) -> dict[str, dict]:
+        _SOURCE_OBJECT_MAP: dict[str, str] = {
+            "cashier": "cashier_transactions.csv",
+            "inventory": "inventory.csv",
+            "member": "members.csv",
+            "followup": "followup_records.csv",
+        }
+
+        result: dict[str, dict] = {}
+        if self.minio is None:
+            return result
+
+        for src_type, obj_name in _SOURCE_OBJECT_MAP.items():
+            try:
+                meta = self.minio.get_batch_metadata(batch_id, obj_name)
+                result[src_type] = meta
+            except Exception:
+                pass
+        return result
