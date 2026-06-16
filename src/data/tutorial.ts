@@ -1,0 +1,86 @@
+import type { TutorialStep } from '../types/game';
+
+export const TUTORIAL_STEPS: TutorialStep[] = [
+  {
+    id: 0,
+    target: 'welcome',
+    title: '欢迎来到影像归档培训游戏！',
+    content: '您好！我将引导您学习如何正确处理口腔诊所的影像归档工作。让我们开始吧！',
+    position: 'top',
+    highlight: false,
+  },
+  {
+    id: 1,
+    target: 'task-panel',
+    title: '任务面板',
+    content: '这里显示当前患者的基本信息和治疗计划。请仔细阅读治疗计划，了解治疗的各个步骤。',
+    position: 'right',
+    highlight: true,
+  },
+  {
+    id: 2,
+    target: 'treatment-plan',
+    title: '治疗计划详情',
+    content: '点击展开查看完整的治疗计划，包括每个步骤所需的影像资料。注意是否有随访任务需要处理。',
+    position: 'right',
+    highlight: true,
+  },
+  {
+    id: 3,
+    target: 'image-viewer',
+    title: '影像查看区',
+    content: '这里展示患者的影像附件。点击缩略图可以放大查看，检查影像质量是否符合要求。',
+    position: 'left',
+    highlight: true,
+  },
+  {
+    id: 4,
+    target: 'decision-panel',
+    title: '操作决策区',
+    content: '根据治疗计划和影像资料，选择正确的处理方式。选项包括：归档、转发、退回、随访提醒、爽约处理等。',
+    position: 'left',
+    highlight: true,
+  },
+  {
+    id: 5,
+    target: 'status-bar',
+    title: '状态栏',
+    content: '顶部显示当前得分、剩余时间和连击数。响应越快、连击越高，得分越多！',
+    position: 'bottom',
+    highlight: true,
+  },
+  {
+    id: 6,
+    target: 'first-task',
+    title: '开始第一个任务',
+    content: '现在让我们处理第一个任务。这位患者的治疗计划完整，影像资料齐全，请选择"正常归档"。',
+    position: 'top',
+    highlight: false,
+  },
+  {
+    id: 7,
+    target: 'followup-task',
+    title: '识别随访任务',
+    content: '这个任务的治疗计划包含随访任务。请注意，有随访任务时需要选择"随访提醒"，而不是直接归档。',
+    position: 'top',
+    highlight: false,
+  },
+  {
+    id: 8,
+    target: 'complete',
+    title: '恭喜完成新手引导！',
+    content: '您已经掌握了基本操作。现在可以开始正式的关卡训练了。记住：仔细检查治疗计划和影像资料，做出正确的决策！',
+    position: 'top',
+    highlight: false,
+  },
+];
+
+export const TUTORIAL_HINTS: Record<string, string> = {
+  archive: '资料完整且无随访任务时，选择正常归档。',
+  follow_up: '治疗计划包含随访任务时，需要设置随访提醒。',
+  return_missing: '治疗计划中列出的影像资料不完整时，需要退回补充。',
+  return_quality: '影像质量模糊、不清晰时，需要退回重拍。',
+  forward_doctor: '复杂病例或需要医生确认时，转发给医生。',
+  forward_front: '涉及费用、预约等问题时，转发给前台。',
+  missed_appointment: '患者未按时就诊时，按爽约处理。',
+};
