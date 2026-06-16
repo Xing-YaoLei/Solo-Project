@@ -1,0 +1,149 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/settlement.gd" id="1_settle"]
+
+[node name="SettlementScreen" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_settle")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.106, 0.157, 0.22, 1)
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 40
+theme_override_constants/margin_right = 40
+theme_override_constants/margin_top = 30
+theme_override_constants/margin_bottom = 30
+
+[node name="ScrollContainer" type="ScrollContainer" parent="MarginContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="ContentVBox" type="VBoxContainer" parent="MarginContainer/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="TitleLabel" type="Label" parent="MarginContainer/ScrollContainer/ContentVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 32
+text = "本轮结算"
+horizontal_alignment = 1
+
+[node name="StatsRow1" type="HBoxContainer" parent="MarginContainer/ScrollContainer/ContentVBox"]
+layout_mode = 2
+theme_override_constants/separation = 24
+
+[node name="CompletedLabel" type="Label" parent="MarginContainer/ScrollContainer/ContentVBox/StatsRow1"]
+layout_mode = 2
+unique_name_in_owner = true
+theme_override_colors/font_color = Color(0.4, 0.87, 0.47, 1)
+theme_override_font_sizes/font_size = 20
+text = "完成: 0"
+
+[node name="NoShowLabel" type="Label" parent="MarginContainer/ScrollContainer/ContentVBox/StatsRow1"]
+layout_mode = 2
+unique_name_in_owner = true
+theme_override_colors/font_color = Color(1, 0.85, 0.3, 1)
+theme_override_font_sizes/font_size = 20
+text = "爽约: 0"
+
+[node name="ErrorCountLabel" type="Label" parent="MarginContainer/ScrollContainer/ContentVBox/StatsRow1"]
+layout_mode = 2
+unique_name_in_owner = true
+theme_override_colors/font_color = Color(1, 0.35, 0.35, 1)
+theme_override_font_sizes/font_size = 20
+text = "失误: 0"
+
+[node name="StatsRow2" type="HBoxContainer" parent="MarginContainer/ScrollContainer/ContentVBox"]
+layout_mode = 2
+theme_override_constants/separation = 24
+
+[node name="RevisitRateLabel" type="Label" parent="MarginContainer/ScrollContainer/ContentVBox/StatsRow2"]
+layout_mode = 2
+unique_name_in_owner = true
+theme_override_colors/font_color = Color(0.4, 0.8, 1, 1)
+theme_override_font_sizes/font_size = 20
+text = "复诊率: 0%"
+
+[node name="TimeLabel" type="Label" parent="MarginContainer/ScrollContainer/ContentVBox/StatsRow2"]
+layout_mode = 2
+unique_name_in_owner = true
+theme_override_colors/font_color = Color(0.8, 0.8, 0.8, 1)
+theme_override_font_sizes/font_size = 20
+text = "用时: 0:00"
+
+[node name="HSeparator" type="HSeparator" parent="MarginContainer/ScrollContainer/ContentVBox"]
+layout_mode = 2
+
+[node name="ErrorTitleLabel" type="Label" parent="MarginContainer/ScrollContainer/ContentVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 24
+text = "病历摘要错因分析"
+
+[node name="ErrorBreakdown" type="VBoxContainer" parent="MarginContainer/ScrollContainer/ContentVBox"]
+layout_mode = 2
+unique_name_in_owner = true
+theme_override_constants/separation = 8
+
+[node name="HSeparator2" type="HSeparator" parent="MarginContainer/ScrollContainer/ContentVBox"]
+layout_mode = 2
+
+[node name="RecordTitleLabel" type="Label" parent="MarginContainer/ScrollContainer/ContentVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 24
+text = "病历摘要相关错因"
+
+[node name="RecordErrorDetail" type="VBoxContainer" parent="MarginContainer/ScrollContainer/ContentVBox"]
+layout_mode = 2
+unique_name_in_owner = true
+theme_override_constants/separation = 8
+
+[node name="HSeparator3" type="HSeparator" parent="MarginContainer/ScrollContainer/ContentVBox"]
+layout_mode = 2
+
+[node name="ButtonRow" type="HBoxContainer" parent="MarginContainer/ScrollContainer/ContentVBox"]
+layout_mode = 2
+theme_override_constants/separation = 16
+alignment = 1
+
+[node name="BackButton" type="Button" parent="MarginContainer/ScrollContainer/ContentVBox/ButtonRow"]
+layout_mode = 2
+unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 44)
+text = "返回主菜单"
+
+[node name="ReplayButton" type="Button" parent="MarginContainer/ScrollContainer/ContentVBox/ButtonRow"]
+layout_mode = 2
+unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 44)
+text = "查看回放"
+
+[node name="RetryButton" type="Button" parent="MarginContainer/ScrollContainer/ContentVBox/ButtonRow"]
+layout_mode = 2
+unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 44)
+text = "再来一轮"

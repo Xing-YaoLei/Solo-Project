@@ -1,0 +1,292 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/game.gd" id="1_game"]
+
+[node name="GameScreen" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_game")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.051, 0.106, 0.165, 1)
+
+[node name="MainLayout" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = 12.0
+offset_right = -16.0
+offset_bottom = -12.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 12
+
+[node name="TopBar" type="HBoxContainer" parent="MainLayout"]
+layout_mode = 2
+theme_override_constants/separation = 32
+
+[node name="TimerLabel" type="Label" parent="MainLayout/TopBar"]
+layout_mode = 2
+unique_name_in_owner = true
+theme_override_font_sizes/font_size = 22
+theme_override_colors/font_color = Color(0.85, 0.9, 0.95, 1)
+text = "时间: 0:00"
+
+[node name="PatientProgress" type="Label" parent="MainLayout/TopBar"]
+layout_mode = 2
+unique_name_in_owner = true
+theme_override_font_sizes/font_size = 22
+theme_override_colors/font_color = Color(0.85, 0.9, 0.95, 1)
+text = "患者 1 / 8"
+horizontal_alignment = 1
+
+[node name="RoundLabel" type="Label" parent="MainLayout/TopBar"]
+layout_mode = 2
+unique_name_in_owner = true
+theme_override_font_sizes/font_size = 22
+theme_override_colors/font_color = Color(0.85, 0.9, 0.95, 1)
+text = "第 1 轮"
+horizontal_alignment = 2
+
+[node name="CenterArea" type="HBoxContainer" parent="MainLayout"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 16
+
+[node name="ImagingPanel" type="PanelContainer" parent="MainLayout/CenterArea"]
+layout_mode = 2
+unique_name_in_owner = true
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MainLayout/CenterArea/ImagingPanel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="ImagingTitle" type="Label" parent="MainLayout/CenterArea/ImagingPanel/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+theme_override_colors/font_color = Color(0.1, 0.1, 0.1, 1)
+text = "影像附件"
+horizontal_alignment = 1
+
+[node name="HSeparator" type="HSeparator" parent="MainLayout/CenterArea/ImagingPanel/VBoxContainer"]
+layout_mode = 2
+
+[node name="FindingType" type="Label" parent="MainLayout/CenterArea/ImagingPanel/VBoxContainer"]
+layout_mode = 2
+unique_name_in_owner = true
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.1, 0.1, 0.1, 1)
+text = "类型: —"
+
+[node name="FindingRegion" type="Label" parent="MainLayout/CenterArea/ImagingPanel/VBoxContainer"]
+layout_mode = 2
+unique_name_in_owner = true
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.1, 0.1, 0.1, 1)
+text = "部位: —"
+
+[node name="FindingResult" type="Label" parent="MainLayout/CenterArea/ImagingPanel/VBoxContainer"]
+layout_mode = 2
+unique_name_in_owner = true
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.1, 0.1, 0.1, 1)
+text = "结果: —"
+
+[node name="ImagingButtons" type="HBoxContainer" parent="MainLayout/CenterArea/ImagingPanel/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="ImagingAccept" type="Button" parent="MainLayout/CenterArea/ImagingPanel/VBoxContainer/ImagingButtons"]
+layout_mode = 2
+unique_name_in_owner = true
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "通过"
+
+[node name="ImagingReject" type="Button" parent="MainLayout/CenterArea/ImagingPanel/VBoxContainer/ImagingButtons"]
+layout_mode = 2
+unique_name_in_owner = true
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "驳回"
+
+[node name="BillingPanel" type="PanelContainer" parent="MainLayout/CenterArea"]
+layout_mode = 2
+unique_name_in_owner = true
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MainLayout/CenterArea/BillingPanel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="BillingTitle" type="Label" parent="MainLayout/CenterArea/BillingPanel/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+theme_override_colors/font_color = Color(0.1, 0.1, 0.1, 1)
+text = "收费明细"
+horizontal_alignment = 1
+
+[node name="HSeparator" type="HSeparator" parent="MainLayout/CenterArea/BillingPanel/VBoxContainer"]
+layout_mode = 2
+
+[node name="BillingItem" type="Label" parent="MainLayout/CenterArea/BillingPanel/VBoxContainer"]
+layout_mode = 2
+unique_name_in_owner = true
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.1, 0.1, 0.1, 1)
+text = "项目: —"
+
+[node name="BillingPrice" type="Label" parent="MainLayout/CenterArea/BillingPanel/VBoxContainer"]
+layout_mode = 2
+unique_name_in_owner = true
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.1, 0.1, 0.1, 1)
+text = "费用: —"
+
+[node name="BillingInsurance" type="Label" parent="MainLayout/CenterArea/BillingPanel/VBoxContainer"]
+layout_mode = 2
+unique_name_in_owner = true
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.1, 0.1, 0.1, 1)
+text = "医保: —"
+
+[node name="BillingButtons" type="HBoxContainer" parent="MainLayout/CenterArea/BillingPanel/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="BillingAccept" type="Button" parent="MainLayout/CenterArea/BillingPanel/VBoxContainer/BillingButtons"]
+layout_mode = 2
+unique_name_in_owner = true
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "通过"
+
+[node name="BillingReject" type="Button" parent="MainLayout/CenterArea/BillingPanel/VBoxContainer/BillingButtons"]
+layout_mode = 2
+unique_name_in_owner = true
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "驳回"
+
+[node name="RecordPanel" type="PanelContainer" parent="MainLayout/CenterArea"]
+layout_mode = 2
+unique_name_in_owner = true
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MainLayout/CenterArea/RecordPanel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="RecordTitle" type="Label" parent="MainLayout/CenterArea/RecordPanel/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+theme_override_colors/font_color = Color(0.1, 0.1, 0.1, 1)
+text = "患者档案"
+horizontal_alignment = 1
+
+[node name="HSeparator" type="HSeparator" parent="MainLayout/CenterArea/RecordPanel/VBoxContainer"]
+layout_mode = 2
+
+[node name="RecordCondition" type="Label" parent="MainLayout/CenterArea/RecordPanel/VBoxContainer"]
+layout_mode = 2
+unique_name_in_owner = true
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.1, 0.1, 0.1, 1)
+text = "诊断: —"
+
+[node name="RecordTreatment" type="Label" parent="MainLayout/CenterArea/RecordPanel/VBoxContainer"]
+layout_mode = 2
+unique_name_in_owner = true
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.1, 0.1, 0.1, 1)
+text = "治疗: —"
+
+[node name="RecordAllergy" type="Label" parent="MainLayout/CenterArea/RecordPanel/VBoxContainer"]
+layout_mode = 2
+unique_name_in_owner = true
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.1, 0.1, 0.1, 1)
+text = "过敏: —"
+
+[node name="RecordButtons" type="HBoxContainer" parent="MainLayout/CenterArea/RecordPanel/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="RecordAccept" type="Button" parent="MainLayout/CenterArea/RecordPanel/VBoxContainer/RecordButtons"]
+layout_mode = 2
+unique_name_in_owner = true
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "通过"
+
+[node name="RecordReject" type="Button" parent="MainLayout/CenterArea/RecordPanel/VBoxContainer/RecordButtons"]
+layout_mode = 2
+unique_name_in_owner = true
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "驳回"
+
+[node name="PatientInfoBar" type="HBoxContainer" parent="MainLayout"]
+layout_mode = 2
+theme_override_constants/separation = 24
+
+[node name="PatientName" type="Label" parent="MainLayout/PatientInfoBar"]
+layout_mode = 2
+unique_name_in_owner = true
+theme_override_font_sizes/font_size = 20
+theme_override_colors/font_color = Color(0.85, 0.9, 0.95, 1)
+text = "姓名: —"
+
+[node name="PatientID" type="Label" parent="MainLayout/PatientInfoBar"]
+layout_mode = 2
+unique_name_in_owner = true
+theme_override_font_sizes/font_size = 20
+theme_override_colors/font_color = Color(0.85, 0.9, 0.95, 1)
+text = "编号: —"
+
+[node name="NoShowWarning" type="ColorRect" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(1, 0, 0, 0.5)
+unique_name_in_owner = true
+
+[node name="WarningLabel" type="Label" parent="NoShowWarning"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = -30.0
+offset_right = 200.0
+offset_bottom = 30.0
+grow_horizontal = 2
+grow_vertical = 2
+unique_name_in_owner = true
+theme_override_font_sizes/font_size = 32
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+text = "⚠ 爽约预警"
+horizontal_alignment = 1
+vertical_alignment = 1

@@ -1,0 +1,103 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/replay_viewer.gd" id="1_replay"]
+
+[node name="ReplayViewerScreen" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_replay")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.102, 0.102, 0.1804, 1)
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/margin_left = 30
+theme_override_constants/margin_top = 30
+theme_override_constants/margin_right = 30
+theme_override_constants/margin_bottom = 30
+
+[node name="HSplitContainer" type="HSplitContainer" parent="MarginContainer"]
+layout_mode = 2
+split_offset = 280
+
+[node name="LeftPanel" type="VBoxContainer" parent="MarginContainer/HSplitContainer"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="ListTitle" type="Label" parent="MarginContainer/HSplitContainer/LeftPanel"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "回放列表"
+
+[node name="HSeparator" type="HSeparator" parent="MarginContainer/HSplitContainer/LeftPanel"]
+layout_mode = 2
+
+[node name="ScrollContainer" type="ScrollContainer" parent="MarginContainer/HSplitContainer/LeftPanel"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ReplayList" type="VBoxContainer" parent="MarginContainer/HSplitContainer/LeftPanel/ScrollContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="RightPanel" type="VBoxContainer" parent="MarginContainer/HSplitContainer"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="DetailTitle" type="Label" parent="MarginContainer/HSplitContainer/RightPanel"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "回放详情"
+
+[node name="HSeparator2" type="HSeparator" parent="MarginContainer/HSplitContainer/RightPanel"]
+layout_mode = 2
+
+[node name="StepScrollContainer" type="ScrollContainer" parent="MarginContainer/HSplitContainer/RightPanel"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="PlaybackSteps" type="VBoxContainer" parent="MarginContainer/HSplitContainer/RightPanel/StepScrollContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="HesitationLabel" type="Label" parent="MarginContainer/HSplitContainer/RightPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(1, 0.9, 0.2, 1)
+text = ""
+
+[node name="PlayButton" type="Button" parent="MarginContainer/HSplitContainer/RightPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(140, 44)
+theme_override_font_sizes/font_size = 18
+text = "自动播放"
+disabled = true
+
+[node name="HSeparator3" type="HSeparator" parent="MarginContainer/HSplitContainer/RightPanel"]
+layout_mode = 2
+
+[node name="BackButton" type="Button" parent="MarginContainer/HSplitContainer/RightPanel"]
+layout_mode = 2
+custom_minimum_size = Vector2(160, 48)
+theme_override_font_sizes/font_size = 20
+text = "返回主菜单"
