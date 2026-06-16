@@ -43,6 +43,9 @@ builder.Services.AddScoped<INursingLogService, NursingLogService>();
 builder.Services.AddScoped<IExceptionService, ExceptionService>();
 builder.Services.AddScoped<IStatisticsService, StatisticsService>();
 
+builder.Services.AddScoped<ExceptionHandlingJob>();
+builder.Services.AddScoped<NotificationJob>();
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp",
@@ -69,12 +72,14 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapHangfireDashboard("/hangfire");
 
-RecurringJob.AddOrUpdate("daily-status-check",
-    () => ExceptionHandlingJob.CheckExceptionStatus(),
+RecurringJob.AddOrUpdate<ExceptionHandlingJob>(
+    "daily-status-check",
+    job => job.CheckExceptionStatus(),
     Cron.Daily);
 
-RecurringJob.AddOrUpdate("reminder-notifications",
-    () => NotificationJob.SendReminders(),
+RecurringJob.AddOrUpdate<NotificationJob>(
+    "reminder-notifications",
+    job => job.SendReminders(),
     Cron.HourInterval(2));
 
 app.Run();

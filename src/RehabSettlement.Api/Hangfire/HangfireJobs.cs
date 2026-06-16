@@ -3,17 +3,24 @@ using RehabSettlement.Api.Services;
 
 namespace RehabSettlement.Api.Hangfire;
 
-public static class ExceptionHandlingJob
+public class ExceptionHandlingJob
 {
-    public static Task CheckExceptionStatus()
+    private readonly IExceptionService _exceptionService;
+
+    public ExceptionHandlingJob(IExceptionService exceptionService)
     {
-        return Task.CompletedTask;
+        _exceptionService = exceptionService;
+    }
+
+    public async Task CheckExceptionStatus()
+    {
+        await _exceptionService.CheckAndEscalateOverdueAsync();
     }
 }
 
-public static class NotificationJob
+public class NotificationJob
 {
-    public static Task SendReminders()
+    public Task SendReminders()
     {
         return Task.CompletedTask;
     }
@@ -23,14 +30,16 @@ public static class HangfireJobScheduler
 {
     public static void ScheduleJobs()
     {
-        RecurringJob.AddOrUpdate("daily-exception-check", 
-            () => ExceptionHandlingJob.CheckExceptionStatus(), 
-            Cron.Daily(8, 0), 
+        RecurringJob.AddOrUpdate<ExceptionHandlingJob>(
+            "daily-exception-check",
+            job => job.CheckExceptionStatus(),
+            Cron.Daily(8, 0),
             TimeZoneInfo.Local);
 
-        RecurringJob.AddOrUpdate("reminder-notifications", 
-            () => NotificationJob.SendReminders(), 
-            Cron.HourInterval(2), 
+        RecurringJob.AddOrUpdate<NotificationJob>(
+            "reminder-notifications",
+            job => job.SendReminders(),
+            Cron.HourInterval(2),
             TimeZoneInfo.Local);
     }
 }
