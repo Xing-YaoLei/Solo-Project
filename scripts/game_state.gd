@@ -17,6 +17,7 @@ var score: int = 0
 var task_history: Array = []
 
 var level_results: Dictionary = {}
+var last_result: Dictionary = {}
 
 func start_level(level_id: String, mode: String) -> void:
 	current_level_id = level_id
@@ -88,6 +89,7 @@ func finalize_level() -> Dictionary:
 	if not level_results.has(current_level_id):
 		level_results[current_level_id] = []
 	level_results[current_level_id].append(result)
+	last_result = result.duplicate()
 	emit_signal("level_completed", result)
 	return result
 

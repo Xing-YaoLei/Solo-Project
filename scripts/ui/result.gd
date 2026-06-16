@@ -11,7 +11,9 @@ func _ready() -> void:
 	again_btn.pressed.connect(_on_again_pressed)
 	select_btn.pressed.connect(_on_select_pressed)
 	menu_btn.pressed.connect(_on_menu_pressed)
-	var result: Dictionary = GameState.get_best_result(GameState.current_level_id)
+	var result: Dictionary = GameState.last_result
+	if result.is_empty():
+		result = GameState.get_best_result(GameState.current_level_id)
 	if result.is_empty():
 		get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")
 		return

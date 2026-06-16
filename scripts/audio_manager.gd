@@ -31,8 +31,9 @@ func vibrate(strength: float = 0.5) -> void:
 	if not SettingsManager.vibration_enabled:
 		return
 	if OS.has_feature("web"):
-		if JavaScript.eval("typeof navigator !== 'undefined' && navigator.vibrate", true):
-			JavaScript.eval("navigator.vibrate(%d)" % [int(strength * 200)])
+		var has_vibrate: bool = bool(JavaScriptBridge.eval("typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function'", true))
+		if has_vibrate:
+			JavaScriptBridge.eval("navigator.vibrate(%d)" % [int(strength * 200)], true)
 	else:
 		DisplayServer.vibrate_handheld(strength)
 

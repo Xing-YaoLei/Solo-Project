@@ -4,11 +4,11 @@ var game_active: bool = false
 
 @onready var timer_bar: ProgressBar = $VBoxContainer/TopHBox/TimerBox/VBox/TimerBar
 @onready var timer_label: Label = $VBoxContainer/TopHBox/TimerBox/VBox/TimerHBox/TimerLabel
-@onready var score_label: Label = $VBoxContainer/TopHBox/StatsBox/VBox/StatsHBox/ScoreLabel
-@onready var progress_label: Label = $VBoxContainer/TopHBox/StatsBox/VBox/StatsHBox/ProgressLabel
-@onready var combo_label: Label = $VBoxContainer/TopHBox/StatsBox/VBox/StatsHBox/ComboLabel
-@onready var errors_label: Label = $VBoxContainer/TopHBox/StatsBox/VBox/StatsHBox/ErrorsLabel
-@onready var level_name_label: Label = $VBoxContainer/TopHBox/StatsBox/VBox/LevelLabel
+@onready var score_label: Label = $VBoxContainer/TopHBox/StatsBox/VBox2/StatsHBox/ScoreLabel
+@onready var progress_label: Label = $VBoxContainer/TopHBox/StatsBox/VBox2/StatsHBox/ProgressLabel
+@onready var combo_label: Label = $VBoxContainer/TopHBox/StatsBox/VBox2/StatsHBox/ComboLabel
+@onready var errors_label: Label = $VBoxContainer/TopHBox/StatsBox/VBox2/StatsHBox/ErrorsLabel
+@onready var level_name_label: Label = $VBoxContainer/TopHBox/StatsBox/VBox2/LevelLabel
 @onready var task_container: Control = $VBoxContainer/CenterContainer/TaskContainer
 @onready var pause_btn: Button = $VBoxContainer/TopHBox/TimerBox/VBox/TimerHBox/PauseButton
 @onready var restart_btn: Button = $VBoxContainer/TopHBox/TimerBox/VBox/TimerHBox/RestartButton

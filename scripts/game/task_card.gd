@@ -7,7 +7,7 @@ var answered_flag: bool = false
 
 @onready var title_label: Label = $PanelContainer/VBoxContainer/HeaderHBox/TitleLabel
 @onready var type_label: Label = $PanelContainer/VBoxContainer/HeaderHBox/TypeLabel
-@onready var content_vbox: VBoxContainer = $PanelContainer/VBoxContainer/ContentScroll/VBoxContainer
+@onready var content_vbox: VBoxContainer = $PanelContainer/VBoxContainer/ContentScroll/VBoxContainer2
 @onready var pass_btn: Button = $PanelContainer/VBoxContainer/ButtonHBox/PassButton
 @onready var fail_btn: Button = $PanelContainer/VBoxContainer/ButtonHBox/FailButton
 @onready var card_panel: PanelContainer = $PanelContainer

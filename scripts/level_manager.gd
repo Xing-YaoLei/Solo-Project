@@ -117,17 +117,17 @@ func generate_batch_task(level_id: String) -> Dictionary:
 	var medicine: String = MEDICINE_NAMES[randi() % MEDICINE_NAMES.size()]
 	var batch_no: String = "B%06d" % [randi() % 900000 + 100000]
 	var is_valid: bool = randf() < valid_rate
-	var today := Date.get_date_from_system()
+	var today: Dictionary = Time.get_datetime_dict_from_system()
 	var expire_year: int
 	var expire_month: int
 	if is_valid:
-		expire_year = today.year + randi_range(1, 3)
+		expire_year = int(today["year"]) + randi_range(1, 3)
 		expire_month = randi_range(1, 12)
 	else:
-		expire_year = today.year - randi_range(0, 2)
+		expire_year = int(today["year"]) - randi_range(0, 2)
 		expire_month = randi_range(1, 12)
-		if expire_year == today.year and expire_month > today.month:
-			expire_month = max(1, today.month - randi_range(1, 6))
+		if expire_year == int(today["year"]) and expire_month > int(today["month"]):
+			expire_month = max(1, int(today["month"]) - randi_range(1, 6))
 	return {
 		"type": "batch",
 		"medicine": medicine,
