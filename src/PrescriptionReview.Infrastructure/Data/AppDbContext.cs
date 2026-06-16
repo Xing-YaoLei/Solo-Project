@@ -80,7 +80,7 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<RestockOrder>()
             .HasOne(ro => ro.Prescription)
-            .WithMany()
+            .WithMany(p => p.RestockOrders)
             .HasForeignKey(ro => ro.PrescriptionId)
             .OnDelete(DeleteBehavior.SetNull);
 
@@ -98,7 +98,7 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<InsuranceRecord>()
             .HasOne(ir => ir.Prescription)
-            .WithMany()
+            .WithMany(p => p.InsuranceRecords)
             .HasForeignKey(ir => ir.PrescriptionId)
             .OnDelete(DeleteBehavior.SetNull);
 

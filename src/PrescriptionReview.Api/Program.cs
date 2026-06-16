@@ -70,9 +70,14 @@ builder.Services.AddAuthorization(options =>
 
 builder.Services.AddInfrastructureServices(builder.Configuration);
 
-var useInMemoryHangfireStr = builder.Configuration["UseInMemoryDatabase"]?.ToLower();
-var useSqliteHangfireStr = builder.Configuration["UseSqlite"]?.ToLower();
-var useInMemoryHangfire = useInMemoryHangfireStr == "true" || useInMemoryHangfireStr == "1" || useSqliteHangfireStr == "true" || useSqliteHangfireStr == "1";
+var useInMemoryHangfireConfigStr = builder.Configuration["UseInMemoryHangfire"]?.ToLower();
+var useInMemoryHangfire = useInMemoryHangfireConfigStr == "true" || useInMemoryHangfireConfigStr == "1";
+if (!useInMemoryHangfire)
+{
+    var useInMemoryDbStr = builder.Configuration["UseInMemoryDatabase"]?.ToLower();
+    var useSqliteStr = builder.Configuration["UseSqlite"]?.ToLower();
+    useInMemoryHangfire = useInMemoryDbStr == "true" || useInMemoryDbStr == "1" || useSqliteStr == "true" || useSqliteStr == "1";
+}
 
 builder.Services.AddHangfire(config =>
 {

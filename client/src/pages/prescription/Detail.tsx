@@ -29,6 +29,9 @@ import {
   UserOutlined,
   ClockCircleOutlined,
   ExclamationCircleOutlined,
+  ShoppingOutlined,
+  FundOutlined,
+  EyeOutlined,
 } from '@ant-design/icons'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
@@ -50,7 +53,7 @@ import {
   AttachmentType,
   AttachmentTypeNames,
 } from '@/types'
-import type { PrescriptionDetail, AttachmentType as AttachmentTypeEnum } from '@/types'
+import type { PrescriptionDetail, AttachmentType as AttachmentTypeEnum, RestockOrder, InsuranceRecord } from '@/types'
 import dayjs from 'dayjs'
 
 const { TabPane } = Tabs
@@ -81,6 +84,11 @@ const PrescriptionDetail = () => {
 
   const [imagePreviewVisible, setImagePreviewVisible] = useState(false)
   const [previewImage, setPreviewImage] = useState('')
+
+  const [restockOrderVisible, setRestockOrderVisible] = useState(false)
+  const [selectedRestockOrder, setSelectedRestockOrder] = useState<RestockOrder | null>(null)
+  const [insuranceRecordVisible, setInsuranceRecordVisible] = useState(false)
+  const [selectedInsuranceRecord, setSelectedInsuranceRecord] = useState<InsuranceRecord | null>(null)
 
   useEffect(() => {
     if (id) {
@@ -178,6 +186,16 @@ const PrescriptionDetail = () => {
   const handlePreviewImage = (filePath: string) => {
     setPreviewImage(`/${filePath}`)
     setImagePreviewVisible(true)
+  }
+
+  const handleViewRestockOrder = (order: RestockOrder) => {
+    setSelectedRestockOrder(order)
+    setRestockOrderVisible(true)
+  }
+
+  const handleViewInsuranceRecord = (record: InsuranceRecord) => {
+    setSelectedInsuranceRecord(record)
+    setInsuranceRecordVisible(true)
   }
 
   const handleAddSupplement = () => {
@@ -506,6 +524,83 @@ const PrescriptionDetail = () => {
                 </div>
               )}
             </Card>
+
+            <Card
+              title={
+                <Space>
+                  <ShoppingOutlined style={{ color: '#fa8c16' }} />
+                  <span>关联补货单（业务单据）</span>
+                </Space>
+              }
+              size="small"
+            >
+              {!prescription?.restockOrders || prescription.restockOrders.length === 0 ? (
+                <Empty description="暂无关联补货单" />
+              ) : (
+                <Table
+                  rowKey="id"
+                  dataSource={prescription.restockOrders}
+                  pagination={false}
+                  size="small"
+                  columns={[
+                    { title: '单号', dataIndex: 'orderNo', width: 180 },
+                    { title: '日期', dataIndex: 'orderDate', width: 140, render: (v: string) => dayjs(v).format('YYYY-MM-DD') },
+                    { title: '金额(元)', dataIndex: 'totalAmount', width: 100, render: (v: number) => v.toFixed(2) },
+                    { title: '品项数', dataIndex: 'itemCount', width: 80 },
+                    { title: '状态', dataIndex: 'status', width: 100, render: (v: string) => <Tag color="orange">{v}</Tag> },
+                    { title: '操作人', dataIndex: 'operatorName', width: 100 },
+                    {
+                      title: '操作',
+                      width: 80,
+                      render: (_: any, r: RestockOrder) => (
+                        <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => handleViewRestockOrder(r)}>
+                          查看
+                        </Button>
+                      ),
+                    },
+                  ]}
+                />
+              )}
+            </Card>
+
+            <Card
+              title={
+                <Space>
+                  <FundOutlined style={{ color: '#722ed1' }} />
+                  <span>关联医保流水（业务单据）</span>
+                </Space>
+              }
+              size="small"
+            >
+              {!prescription?.insuranceRecords || prescription.insuranceRecords.length === 0 ? (
+                <Empty description="暂无关联医保流水" />
+              ) : (
+                <Table
+                  rowKey="id"
+                  dataSource={prescription.insuranceRecords}
+                  pagination={false}
+                  size="small"
+                  columns={[
+                    { title: '流水号', dataIndex: 'recordNo', width: 180 },
+                    { title: '患者', dataIndex: 'patientName', width: 100 },
+                    { title: '交易日期', dataIndex: 'tradeDate', width: 140, render: (v: string) => dayjs(v).format('YYYY-MM-DD') },
+                    { title: '总金额(元)', dataIndex: 'totalAmount', width: 100, render: (v: number) => v.toFixed(2) },
+                    { title: '医保支付(元)', dataIndex: 'insurancePay', width: 100, render: (v: number) => v.toFixed(2) },
+                    { title: '自付(元)', dataIndex: 'selfPay', width: 100, render: (v: number) => v.toFixed(2) },
+                    { title: '类型', dataIndex: 'tradeType', width: 100 },
+                    {
+                      title: '操作',
+                      width: 80,
+                      render: (_: any, r: InsuranceRecord) => (
+                        <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => handleViewInsuranceRecord(r)}>
+                          查看
+                        </Button>
+                      ),
+                    },
+                  ]}
+                />
+              )}
+            </Card>
           </Space>
         </TabPane>
 
@@ -640,7 +735,7 @@ const PrescriptionDetail = () => {
             </Card>
 
             <Card
-              title="补货单"
+              title="补货单（材料文件）"
               extra={
                 <Upload
                   showUploadList={false}
@@ -690,7 +785,7 @@ const PrescriptionDetail = () => {
             </Card>
 
             <Card
-              title="医保流水"
+              title="医保流水（材料文件）"
               extra={
                 <Upload
                   showUploadList={false}
@@ -1101,6 +1196,70 @@ const PrescriptionDetail = () => {
             alt="预览"
             style={{ width: '100%' }}
           />
+        )}
+      </Drawer>
+
+      <Drawer
+        width={550}
+        open={restockOrderVisible}
+        onClose={() => setRestockOrderVisible(false)}
+        title={
+          <Space>
+            <ShoppingOutlined style={{ color: '#fa8c16' }} />
+            <span>补货单详情 - {selectedRestockOrder?.orderNo}</span>
+          </Space>
+        }
+      >
+        {selectedRestockOrder && (
+          <div>
+            <Card size="small" style={{ marginBottom: 16 }}>
+              <Descriptions column={2} size="small">
+                <Descriptions.Item label="单号">{selectedRestockOrder.orderNo}</Descriptions.Item>
+                <Descriptions.Item label="门店">{selectedRestockOrder.storeName}</Descriptions.Item>
+                <Descriptions.Item label="日期">{dayjs(selectedRestockOrder.orderDate).format('YYYY-MM-DD')}</Descriptions.Item>
+                <Descriptions.Item label="状态"><Tag color="orange">{selectedRestockOrder.status}</Tag></Descriptions.Item>
+                <Descriptions.Item label="品项数">{selectedRestockOrder.itemCount} 种</Descriptions.Item>
+                <Descriptions.Item label="总金额">¥{selectedRestockOrder.totalAmount.toFixed(2)}</Descriptions.Item>
+                <Descriptions.Item label="操作人">{selectedRestockOrder.operatorName}</Descriptions.Item>
+                <Descriptions.Item label="创建时间">{dayjs(selectedRestockOrder.createdAt).format('YYYY-MM-DD HH:mm')}</Descriptions.Item>
+                <Descriptions.Item label="备注" span={2}>{selectedRestockOrder.remark || '-'}</Descriptions.Item>
+              </Descriptions>
+            </Card>
+          </div>
+        )}
+      </Drawer>
+
+      <Drawer
+        width={550}
+        open={insuranceRecordVisible}
+        onClose={() => setInsuranceRecordVisible(false)}
+        title={
+          <Space>
+            <FundOutlined style={{ color: '#722ed1' }} />
+            <span>医保流水详情 - {selectedInsuranceRecord?.recordNo}</span>
+          </Space>
+        }
+      >
+        {selectedInsuranceRecord && (
+          <div>
+            <Card size="small" style={{ marginBottom: 16 }}>
+              <Descriptions column={2} size="small">
+                <Descriptions.Item label="流水号">{selectedInsuranceRecord.recordNo}</Descriptions.Item>
+                <Descriptions.Item label="门店">{selectedInsuranceRecord.storeName}</Descriptions.Item>
+                <Descriptions.Item label="患者">{selectedInsuranceRecord.patientName}</Descriptions.Item>
+                <Descriptions.Item label="身份证">{selectedInsuranceRecord.idCard}</Descriptions.Item>
+                <Descriptions.Item label="医保卡号">{selectedInsuranceRecord.insuranceCardNo}</Descriptions.Item>
+                <Descriptions.Item label="交易日期">{dayjs(selectedInsuranceRecord.tradeDate).format('YYYY-MM-DD')}</Descriptions.Item>
+                <Descriptions.Item label="交易类型">{selectedInsuranceRecord.tradeType}</Descriptions.Item>
+                <Descriptions.Item label="状态"><Tag color="purple">{selectedInsuranceRecord.status}</Tag></Descriptions.Item>
+                <Descriptions.Item label="总金额">¥{selectedInsuranceRecord.totalAmount.toFixed(2)}</Descriptions.Item>
+                <Descriptions.Item label="医保支付">¥{selectedInsuranceRecord.insurancePay.toFixed(2)}</Descriptions.Item>
+                <Descriptions.Item label="自付金额">¥{selectedInsuranceRecord.selfPay.toFixed(2)}</Descriptions.Item>
+                <Descriptions.Item label="创建时间">{dayjs(selectedInsuranceRecord.createdAt).format('YYYY-MM-DD HH:mm')}</Descriptions.Item>
+                <Descriptions.Item label="备注" span={2}>{selectedInsuranceRecord.remark || '-'}</Descriptions.Item>
+              </Descriptions>
+            </Card>
+          </div>
         )}
       </Drawer>
     </div>

@@ -33,4 +33,6 @@ public class Prescription
     public ICollection<SupplementNote> SupplementNotes { get; set; } = new List<SupplementNote>();
     public ICollection<PharmacistOpinion> PharmacistOpinions { get; set; } = new List<PharmacistOpinion>();
     public FollowUp? FollowUp { get; set; }
+    public ICollection<RestockOrder> RestockOrders { get; set; } = new List<RestockOrder>();
+    public ICollection<InsuranceRecord> InsuranceRecords { get; set; } = new List<InsuranceRecord>();
 }

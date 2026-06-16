@@ -156,6 +156,9 @@ public class PrescriptionService : IPrescriptionService
             .Include(p => p.SupplementNotes).ThenInclude(s => s.Operator)
             .Include(p => p.PharmacistOpinions).ThenInclude(po => po.Pharmacist)
             .Include(p => p.FollowUp).ThenInclude(f => f.Operator)
+            .Include(p => p.RestockOrders).ThenInclude(r => r.Operator)
+            .Include(p => p.RestockOrders).ThenInclude(r => r.Items)
+            .Include(p => p.InsuranceRecords)
             .FirstOrDefaultAsync(p => p.Id == id);
 
         if (prescription == null)
@@ -571,7 +574,44 @@ public class PrescriptionService : IPrescriptionService
                 CompletedAt = p.FollowUp.CompletedAt,
                 Remark = p.FollowUp.Remark,
                 CreatedAt = p.FollowUp.CreatedAt
-            }
+            },
+            RestockOrders = p.RestockOrders.OrderByDescending(r => r.OrderDate).Select(r => new RestockOrderDto
+            {
+                Id = r.Id,
+                OrderNo = r.OrderNo,
+                StoreId = r.StoreId,
+                StoreName = r.Store?.Name,
+                PrescriptionId = r.PrescriptionId,
+                PrescriptionNo = r.Prescription?.PrescriptionNo,
+                OrderDate = r.OrderDate,
+                TotalAmount = r.TotalAmount,
+                ItemCount = r.ItemCount,
+                Status = r.Status,
+                Remark = r.Remark,
+                OperatorId = r.OperatorId,
+                OperatorName = r.Operator?.RealName,
+                CreatedAt = r.CreatedAt
+            }).ToList(),
+            InsuranceRecords = p.InsuranceRecords.OrderByDescending(i => i.TradeDate).Select(i => new InsuranceRecordDto
+            {
+                Id = i.Id,
+                RecordNo = i.RecordNo,
+                StoreId = i.StoreId,
+                StoreName = i.Store?.Name,
+                PrescriptionId = i.PrescriptionId,
+                PrescriptionNo = i.Prescription?.PrescriptionNo,
+                PatientName = i.PatientName,
+                IdCard = i.IdCard,
+                InsuranceCardNo = i.InsuranceCardNo,
+                TradeDate = i.TradeDate,
+                TotalAmount = i.TotalAmount,
+                InsurancePay = i.InsurancePay,
+                SelfPay = i.SelfPay,
+                TradeType = i.TradeType,
+                Status = i.Status,
+                Remark = i.Remark,
+                CreatedAt = i.CreatedAt
+            }).ToList()
         };
     }
 

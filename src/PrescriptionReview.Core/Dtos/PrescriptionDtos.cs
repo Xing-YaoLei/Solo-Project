@@ -40,6 +40,8 @@ public class PrescriptionDetailDto : PrescriptionDto
     public List<SupplementNoteDto> SupplementNotes { get; set; } = new();
     public List<PharmacistOpinionDto> PharmacistOpinions { get; set; } = new();
     public FollowUpDto? FollowUp { get; set; }
+    public List<RestockOrderDto> RestockOrders { get; set; } = new();
+    public List<InsuranceRecordDto> InsuranceRecords { get; set; } = new();
 }
 
 public class PrescriptionCreateDto

@@ -147,6 +147,8 @@ export interface PrescriptionDetail extends Prescription {
   supplementNotes: SupplementNote[]
   pharmacistOpinions: PharmacistOpinion[]
   followUp?: FollowUp
+  restockOrders: RestockOrder[]
+  insuranceRecords: InsuranceRecord[]
 }
 
 export interface PrescriptionCreate {
