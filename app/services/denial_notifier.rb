@@ -1,9 +1,11 @@
 class DenialNotifier
   def notify_responsible_persons(settlement)
     area = settlement.patient.area
-    finance_users = User.where(area: area, role: :finance)
+    recipients = User.where(role: :finance).to_a
+    area_therapists = User.where(area: area, role: :therapist).to_a
+    recipients = (recipients + area_therapists).uniq
 
-    finance_users.each do |user|
+    recipients.each do |user|
       notification = Notification.create!(
         user: user,
         settlement: settlement,
