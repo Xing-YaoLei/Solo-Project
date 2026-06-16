@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+*.pyo
+.Python
+env/
+venv/
+.venv/
+.env
+data/
+*.duckdb
+*.db
+*.sqlite
+streamlit/secrets.toml
+.DS_Store
+.idea/
+.vscode/
+*.log
