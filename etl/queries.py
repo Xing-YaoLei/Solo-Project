@@ -122,6 +122,20 @@ class DataQuerier:
         df = pd.read_sql(query.statement, self.db.bind)
         return df
 
+    def get_remarks_for_anomaly(self, anomaly_id: int) -> pd.DataFrame:
+        anomaly = self.db.query(AnomalyMarker).filter(AnomalyMarker.id == anomaly_id).first()
+
+        if anomaly and anomaly.payment_id:
+            query = self.db.query(Remark).filter(
+                (Remark.anomaly_id == anomaly_id)
+                | (Remark.payment_id == anomaly.payment_id)
+            )
+        else:
+            query = self.db.query(Remark).filter(Remark.anomaly_id == anomaly_id)
+
+        df = pd.read_sql(query.statement, self.db.bind)
+        return df
+
     def get_remarks_for_anomalies(self, anomaly_ids: List[int]) -> pd.DataFrame:
         if not anomaly_ids:
             return pd.DataFrame()
@@ -329,7 +343,17 @@ class DataQuerier:
         author: str,
         content: str,
     ) -> Remark:
+        anomaly_id = None
+        anomaly = (
+            self.db.query(AnomalyMarker.id)
+            .filter(AnomalyMarker.payment_id == payment_id)
+            .first()
+        )
+        if anomaly:
+            anomaly_id = anomaly.id
+
         remark = Remark(
+            anomaly_id=anomaly_id,
             payment_id=payment_id,
             author=author,
             content=content,
@@ -357,6 +381,27 @@ class DataQuerier:
 
         anomaly_ids = anomalies["id"].tolist()
         remarks = self.get_remarks_for_anomalies(anomaly_ids)
+
+        payment_ids = anomalies["payment_id"].dropna().unique().tolist()
+        if payment_ids:
+            payment_remarks = self.db.query(Remark).filter(
+                Remark.payment_id.in_([int(pid) for pid in payment_ids])
+            )
+            payment_remarks_df = pd.read_sql(payment_remarks.statement, self.db.bind)
+            if not payment_remarks_df.empty:
+                existing_ids = set(remarks["id"].tolist()) if not remarks.empty else set()
+                new_remarks = payment_remarks_df[~payment_remarks_df["id"].isin(existing_ids)]
+                if not new_remarks.empty:
+                    pid_to_anomaly = {}
+                    for _, arow in anomalies.iterrows():
+                        pid = arow.get("payment_id")
+                        if pd.notna(pid):
+                            pid_to_anomaly[int(pid)] = arow["id"]
+                    new_remarks = new_remarks.copy()
+                    new_remarks["anomaly_id"] = new_remarks["payment_id"].map(pid_to_anomaly)
+                    valid_remarks = new_remarks[new_remarks["anomaly_id"].notna()]
+                    if not valid_remarks.empty:
+                        remarks = pd.concat([remarks, valid_remarks], ignore_index=True) if not remarks.empty else valid_remarks
 
         if not remarks.empty:
             remarks_grouped = (

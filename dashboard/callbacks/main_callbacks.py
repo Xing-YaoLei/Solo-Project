@@ -14,6 +14,7 @@ from etl import (
     AnomalyDetector,
     MetricsCalculator,
 )
+from database import AnomalyType, AnomalyMarker, RefreshLog
 from dashboard.layouts import (
     FunnelDashboard,
     ImagesView,
@@ -42,6 +43,56 @@ def _safe_to_records(df):
             for k, v in record.items()
         })
     return cleaned
+
+
+def _persist_anomalies(querier, detector, appointments_df, payments_df):
+    detector_instance = detector if isinstance(detector, AnomalyDetector) else AnomalyDetector(querier.db)
+    detected = detector_instance.detect_all_anomalies(appointments_df, payments_df)
+
+    if not detected:
+        return 0
+
+    existing = querier.get_anomalies()
+    existing_keys = set()
+    if not existing.empty:
+        for _, row in existing.iterrows():
+            key = (
+                row.get("anomaly_type"),
+                row.get("appointment_no"),
+                row.get("payment_id"),
+                row.get("description", "")[:200],
+            )
+            existing_keys.add(key)
+
+    new_count = 0
+    for anomaly in detected:
+        atype = anomaly.get("anomaly_type")
+        if isinstance(atype, AnomalyType):
+            atype = atype.value
+        key = (
+            atype,
+            anomaly.get("appointment_no"),
+            anomaly.get("payment_id"),
+            anomaly.get("description", "")[:200],
+        )
+        if key in existing_keys:
+            continue
+
+        anomaly_type_val = anomaly.get("anomaly_type")
+        if isinstance(anomaly_type_val, AnomalyType):
+            anomaly_type_val = anomaly_type_val
+
+        querier.save_anomaly(
+            anomaly_type=anomaly_type_val,
+            description=anomaly.get("description", ""),
+            severity=anomaly.get("severity", "warning"),
+            appointment_no=anomaly.get("appointment_no"),
+            payment_id=anomaly.get("payment_id"),
+            data_snapshot=anomaly.get("data_snapshot"),
+        )
+        new_count += 1
+
+    return new_count
 
 
 def register_callbacks(app):
@@ -173,7 +224,6 @@ def register_callbacks(app):
                     appointments_df["patient_id"].unique().tolist() if not appointments_df.empty else []
                 )
                 images_df = querier.get_image_attachments(start_dt, end_dt, cleaning_only=True)
-                anomalies_df = querier.get_anomalies_with_remarks(start_dt, end_dt)
                 no_show_df = querier.get_no_show_trend(start_dt, end_dt)
 
                 transformer = DataTransformer()
@@ -187,12 +237,38 @@ def register_callbacks(app):
                     appointments_merged, patients_df
                 )
 
+                new_anomaly_count = 0
                 if trigger_id == "btn-manual-refresh":
+                    detector = AnomalyDetector(querier.db)
+                    try:
+                        new_anomaly_count = _persist_anomalies(
+                            querier, detector, appointments_clean, payments_clean
+                        )
+                    finally:
+                        detector.close()
+
+                    refresh_log = RefreshLog(
+                        refresh_type="manual",
+                        status="completed",
+                        records_processed=len(appointments_full),
+                        anomalies_detected=new_anomaly_count,
+                        data_source="his_prod",
+                        end_time=datetime.now(),
+                    )
+                    querier.db.add(refresh_log)
+                    querier.db.commit()
+
+                anomalies_df = querier.get_anomalies_with_remarks(start_dt, end_dt)
+
+                if trigger_id == "btn-manual-refresh":
+                    msg = f"数据刷新成功！处理预约 {len(appointments_full)} 条，收费 {len(payments_clean)} 条"
+                    if new_anomaly_count > 0:
+                        msg += f"，新增异常 {new_anomaly_count} 条"
                     alerts.append(
                         dbc.Alert(
                             [
                                 html.I(className="fas fa-check-circle me-2"),
-                                f"数据刷新成功！处理预约 {len(appointments_full)} 条，收费 {len(payments_clean)} 条",
+                                msg,
                             ],
                             color="success",
                             dismissable=True,
@@ -1276,17 +1352,26 @@ def register_callbacks(app):
 
         try:
             with DataQuerier() as querier:
-                remarks_df = querier.get_remarks_for_anomalies([anomaly_id])
+                remarks_df = querier.get_remarks_for_anomaly(anomaly_id)
         except Exception:
             remarks_df = pd.DataFrame()
 
         history_remarks = []
+        seen_ids = set()
         if not remarks_df.empty:
             remarks_df = remarks_df.sort_values("created_at", ascending=False)
             for _, row in remarks_df.iterrows():
+                rid = row.get("id")
+                if rid in seen_ids:
+                    continue
+                seen_ids.add(rid)
                 is_review = row.get("is_review_note", False)
                 badge_color = "warning" if is_review else "info"
                 badge_text = "复盘备注" if is_review else "普通备注"
+                has_payment = pd.notna(row.get("payment_id")) and row.get("payment_id")
+                if has_payment and not is_review:
+                    badge_text = "收费备注"
+                    badge_color = "success"
                 created_time = ""
                 if pd.notna(row.get("created_at")):
                     created_time = pd.to_datetime(row["created_at"]).strftime("%Y-%m-%d %H:%M")
