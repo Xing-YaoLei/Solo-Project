@@ -57,17 +57,13 @@ func go_to_level_select():
 	switch_to_scene("res://scenes/LevelSelect.tscn")
 
 func go_to_game_level(level_id: String):
-	var main: Node = get_tree().root.get_node_or_null("Main")
-	if main:
-		var game_manager: GameManager = main.get_node_or_null("GameManager")
-		if game_manager:
-			game_manager.start_level(level_id)
+	if Globals:
+		Globals.pending_level_id = level_id
 	switch_to_scene("res://scenes/GameLevel.tscn")
 
 func go_to_review(replay_data: Dictionary):
-	var globals: Node = get_tree().root.get_node_or_null("Globals")
-	if globals:
-		globals.set("pending_replay_data", replay_data)
+	if Globals:
+		Globals.pending_replay_data = replay_data.duplicate(true)
 	switch_to_scene("res://scenes/ReviewScene.tscn")
 
 func go_to_statistics():

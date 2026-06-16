@@ -8,11 +8,10 @@ var statistics_manager: StatisticsManager
 @onready var level_grid: GridContainer = $VBoxContainer/LevelScroll/LevelGrid
 
 func _ready():
-	var main: Node = get_tree().root.get_node_or_null("Main")
-	if main:
-		scene_manager = main.get_node_or_null("SceneManager")
-		game_manager = main.get_node_or_null("GameManager")
-		statistics_manager = main.get_node_or_null("StatisticsManager")
+	if Globals:
+		scene_manager = Globals.scene_manager
+		game_manager = Globals.game_manager
+		statistics_manager = Globals.statistics_manager
 	
 	back_button.pressed.connect(_on_back_button_pressed)
 	

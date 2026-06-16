@@ -3,7 +3,6 @@ extends Control
 var scene_manager: SceneManager
 var replay_manager: ReplayManager
 var game_manager: GameManager
-var globals: Node
 
 var replay_data: Dictionary = {}
 var current_replay: Dictionary = {}
@@ -28,16 +27,13 @@ var all_replays: Array[Dictionary] = []
 @onready var menu_button: Button = $MainVBox/Footer/MenuButton
 
 func _ready():
-	var main: Node = get_tree().root.get_node_or_null("Main")
-	if main:
-		scene_manager = main.get_node_or_null("SceneManager")
-		replay_manager = main.get_node_or_null("ReplayManager")
-		game_manager = main.get_node_or_null("GameManager")
-	
-	globals = get_tree().root.get_node_or_null("Globals")
-	if globals and globals.pending_replay_data.size() > 0:
-		replay_data = globals.pending_replay_data.duplicate(true)
-		globals.pending_replay_data.clear()
+	if Globals:
+		scene_manager = Globals.scene_manager
+		replay_manager = Globals.replay_manager
+		game_manager = Globals.game_manager
+		if Globals.pending_replay_data.size() > 0:
+			replay_data = Globals.pending_replay_data.duplicate(true)
+			Globals.pending_replay_data.clear()
 	
 	tab_container.set_tab_title(0, "❌ 错误步骤")
 	tab_container.set_tab_title(1, "💰 结算错因")
@@ -149,7 +145,7 @@ func _create_wrong_step_card(step: Dictionary) -> Panel:
 	var card: Panel = Panel.new()
 	card.custom_minimum_size = Vector2(0, 160)
 	
-	var vbox: VBoxContainer.new()
+	var vbox: VBoxContainer = VBoxContainer.new()
 	vbox.layout_mode = 1
 	vbox.anchors_preset = 15
 	vbox.anchor_right = 1
@@ -161,7 +157,7 @@ func _create_wrong_step_card(step: Dictionary) -> Panel:
 	vbox.theme_override_constants.separation = 8
 	card.add_child(vbox)
 	
-	var header: HBoxContainer.new()
+	var header: HBoxContainer = HBoxContainer.new()
 	header.theme_override_constants.separation = 15
 	vbox.add_child(header)
 	
@@ -184,7 +180,7 @@ func _create_wrong_step_card(step: Dictionary) -> Panel:
 	error_type.theme_override_font_sizes.font_size = 14
 	header.add_child(error_type)
 	
-	var levels_hbox: HBoxContainer.new()
+	var levels_hbox: HBoxContainer = HBoxContainer.new()
 	levels_hbox.theme_override_constants.separation = 20
 	vbox.add_child(levels_hbox)
 	
@@ -222,7 +218,7 @@ func _create_wrong_step_card(step: Dictionary) -> Panel:
 		vbox.add_child(indicators_title)
 		
 		for indicator in missed_indicators:
-			var ind_label: Label.new()
+			var ind_label: Label = Label.new()
 			ind_label.text = "   ⚡ " + indicator
 			ind_label.theme_override_colors.font_color = Color(0.9, 0.7, 0.4, 1)
 			ind_label.theme_override_font_sizes.font_size = 12
@@ -237,7 +233,7 @@ func _create_wrong_step_card(step: Dictionary) -> Panel:
 		vbox.add_child(risk_title)
 		
 		for risk in insurance_risk:
-			var risk_label: Label.new()
+			var risk_label: Label = Label.new()
 			risk_label.text = "   🚫 " + risk
 			risk_label.theme_override_colors.font_color = Color(0.95, 0.5, 0.5, 1)
 			risk_label.theme_override_font_sizes.font_size = 12
@@ -270,7 +266,7 @@ func _create_settlement_error_card(error_info: Dictionary) -> Panel:
 	var card: Panel = Panel.new()
 	card.custom_minimum_size = Vector2(0, 200)
 	
-	var vbox: VBoxContainer.new()
+	var vbox: VBoxContainer = VBoxContainer.new()
 	vbox.layout_mode = 1
 	vbox.anchors_preset = 15
 	vbox.anchor_right = 1
@@ -282,7 +278,7 @@ func _create_settlement_error_card(error_info: Dictionary) -> Panel:
 	vbox.theme_override_constants.separation = 8
 	card.add_child(vbox)
 	
-	var header: HBoxContainer.new()
+	var header: HBoxContainer = HBoxContainer.new()
 	header.theme_override_constants.separation = 15
 	vbox.add_child(header)
 	
@@ -336,7 +332,7 @@ func _create_settlement_error_card(error_info: Dictionary) -> Panel:
 		vbox.add_child(items_title)
 		
 		for item in settlement_items:
-			var item_hbox: HBoxContainer.new()
+			var item_hbox: HBoxContainer = HBoxContainer.new()
 			item_hbox.theme_override_constants.separation = 10
 			vbox.add_child(item_hbox)
 			
@@ -411,7 +407,7 @@ func _create_assessment_replay_card(replay: Dictionary, index: int) -> Panel:
 	var card: Panel = Panel.new()
 	card.custom_minimum_size = Vector2(0, 220)
 	
-	var vbox: VBoxContainer.new()
+	var vbox: VBoxContainer = VBoxContainer.new()
 	vbox.layout_mode = 1
 	vbox.anchors_preset = 15
 	vbox.anchor_right = 1
@@ -423,7 +419,7 @@ func _create_assessment_replay_card(replay: Dictionary, index: int) -> Panel:
 	vbox.theme_override_constants.separation = 8
 	card.add_child(vbox)
 	
-	var header: HBoxContainer.new()
+	var header: HBoxContainer = HBoxContainer.new()
 	header.theme_override_constants.separation = 15
 	vbox.add_child(header)
 	
@@ -546,7 +542,7 @@ func _create_failure_replay_card(failure: Dictionary, index: int) -> Panel:
 	var card: Panel = Panel.new()
 	card.custom_minimum_size = Vector2(0, 180)
 	
-	var vbox: VBoxContainer.new()
+	var vbox: VBoxContainer = VBoxContainer.new()
 	vbox.layout_mode = 1
 	vbox.anchors_preset = 15
 	vbox.anchor_right = 1
@@ -558,7 +554,7 @@ func _create_failure_replay_card(failure: Dictionary, index: int) -> Panel:
 	vbox.theme_override_constants.separation = 8
 	card.add_child(vbox)
 	
-	var header: HBoxContainer.new()
+	var header: HBoxContainer = HBoxContainer.new()
 	header.theme_override_constants.separation = 15
 	vbox.add_child(header)
 	
@@ -588,7 +584,7 @@ func _create_failure_replay_card(failure: Dictionary, index: int) -> Panel:
 	time_label.theme_override_font_sizes.font_size = 11
 	header.add_child(time_label)
 	
-	var stats_hbox: HBoxContainer.new()
+	var stats_hbox: HBoxContainer = HBoxContainer.new()
 	stats_hbox.theme_override_constants.separation = 30
 	vbox.add_child(stats_hbox)
 	

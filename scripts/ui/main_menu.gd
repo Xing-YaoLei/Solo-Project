@@ -11,11 +11,10 @@ var statistics_manager: StatisticsManager
 @onready var quit_button: Button = $VBoxContainer/QuitButton
 
 func _ready():
-	var main: Node = get_tree().root.get_node_or_null("Main")
-	if main:
-		scene_manager = main.get_node_or_null("SceneManager")
-		replay_manager = main.get_node_or_null("ReplayManager")
-		statistics_manager = main.get_node_or_null("StatisticsManager")
+	if Globals:
+		scene_manager = Globals.scene_manager
+		replay_manager = Globals.replay_manager
+		statistics_manager = Globals.statistics_manager
 	
 	start_button.pressed.connect(_on_start_button_pressed)
 	level_select_button.pressed.connect(_on_level_select_button_pressed)

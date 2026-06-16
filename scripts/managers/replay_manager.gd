@@ -186,9 +186,6 @@ func get_training_prescription_errors(replay_data: Dictionary) -> Array[Dictiona
 	return errors
 
 static func _get_instance() -> ReplayManager:
-	var main: Node = get_tree().root.get_node_or_null("Main")
-	if main:
-		var manager: Node = main.get_node_or_null("ReplayManager")
-		if manager:
-			return manager
+	if Globals and Globals.replay_manager:
+		return Globals.replay_manager
 	return null

@@ -6,10 +6,9 @@ var statistics_manager: StatisticsManager
 var scene_manager: SceneManager
 
 var pending_replay_data: Dictionary = {}
+var pending_level_id: String = ""
 
 func _ready():
-	name = "Main"
-	
 	game_manager = GameManager.new()
 	game_manager.name = "GameManager"
 	add_child(game_manager)

@@ -1,11 +1,8 @@
-extends Node
+extends RefCounted
 class_name Patient
 
 enum TriageLevel { LEVEL_1, LEVEL_2, LEVEL_3, LEVEL_4 }
 enum DocumentType { NURSING_LOG, SETTLEMENT_DETAIL, ASSESSMENT_SCALE }
-
-signal triage_completed(patient: Patient, selected_level: int, is_correct: bool)
-signal document_opened(patient: Patient, doc_type: int)
 
 var id: String
 var name: String
@@ -48,7 +45,7 @@ func _parse_document_type(type_str: String) -> int:
 		_:
 			return DocumentType.NURSING_LOG
 
-func get_triage_level_name(level: TriageLevel) -> String:
+static func get_triage_level_name(level: int) -> String:
 	match level:
 		TriageLevel.LEVEL_1:
 			return "I级 - 急危重症"
@@ -61,7 +58,7 @@ func get_triage_level_name(level: TriageLevel) -> String:
 		_:
 			return "未分级"
 
-func get_triage_level_color(level: TriageLevel) -> Color:
+static func get_triage_level_color(level: int) -> Color:
 	match level:
 		TriageLevel.LEVEL_1:
 			return Color(0.9, 0.1, 0.1, 1)
@@ -74,18 +71,16 @@ func get_triage_level_color(level: TriageLevel) -> Color:
 		_:
 			return Color(0.5, 0.5, 0.5, 1)
 
-func get_document(doc_type: DocumentType) -> Dictionary:
+func get_document(doc_type: int) -> Dictionary:
 	return documents.get(doc_type, {})
 
-func open_document(doc_type: DocumentType) -> Dictionary:
-	emit_signal("document_opened", self, doc_type)
+func open_document(doc_type: int) -> Dictionary:
 	return get_document(doc_type)
 
-func complete_triage(selected_level: TriageLevel) -> bool:
+func complete_triage(selected_level: int) -> bool:
 	is_triage_completed = true
 	selected_triage_level = selected_level
 	var is_correct: bool = selected_level == correct_triage_level
-	emit_signal("triage_completed", self, selected_level, is_correct)
 	return is_correct
 
 func get_remaining_time(current_time: float) -> float:
@@ -100,7 +95,7 @@ func should_show_warning(current_time: float) -> bool:
 		return true
 	return false
 
-func get_document_type_name(doc_type: DocumentType) -> String:
+static func get_document_type_name(doc_type: int) -> String:
 	match doc_type:
 		DocumentType.NURSING_LOG:
 			return "护理日志"

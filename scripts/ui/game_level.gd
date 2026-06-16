@@ -34,10 +34,9 @@ var warning_tween: Tween = null
 @onready var document_placeholder: Label = $MainContainer/DocumentPanel/DocumentVBox/DocumentContentScroll/DocumentContent/DocumentPlaceholder
 
 func _ready():
-	var main: Node = get_tree().root.get_node_or_null("Main")
-	if main:
-		scene_manager = main.get_node_or_null("SceneManager")
-		game_manager = main.get_node_or_null("GameManager")
+	if Globals:
+		scene_manager = Globals.scene_manager
+		game_manager = Globals.game_manager
 	
 	warning_panel = $WarningPanel
 	warning_text = $WarningPanel/WarningHBox/WarningVBox/WarningText
@@ -66,8 +65,13 @@ func _ready():
 	_set_triage_buttons_enabled(false)
 	_set_document_tabs_enabled(false)
 	
-	if game_manager and game_manager.current_level:
-		_on_level_started(game_manager.current_level)
+	if game_manager:
+		if Globals and Globals.pending_level_id != "":
+			var level_id: String = Globals.pending_level_id
+			Globals.pending_level_id = ""
+			game_manager.start_level(level_id)
+		elif game_manager.current_level:
+			_on_level_started(game_manager.current_level)
 
 func _process(delta: float):
 	if game_manager and game_manager.is_level_active:
@@ -133,7 +137,7 @@ func _create_patient_card(patient: Patient) -> Panel:
 	card.name = "PatientCard_" + patient.id
 	card.custom_minimum_size = Vector2(0, 100)
 	
-	var vbox: VBoxContainer.new()
+	var vbox: VBoxContainer = VBoxContainer.new()
 	vbox.layout_mode = 1
 	vbox.anchors_preset = 15
 	vbox.anchor_right = 1
@@ -145,7 +149,7 @@ func _create_patient_card(patient: Patient) -> Panel:
 	vbox.theme_override_constants.separation = 6
 	card.add_child(vbox)
 	
-	var header: HBoxContainer.new()
+	var header: HBoxContainer = HBoxContainer.new()
 	header.theme_override_constants.separation = 10
 	vbox.add_child(header)
 	
@@ -401,7 +405,7 @@ func _render_settlement_detail(data: Dictionary):
 	
 	var items: Array = data.get("items", [])
 	for item in items:
-		var item_hbox: HBoxContainer.new()
+		var item_hbox: HBoxContainer = HBoxContainer.new()
 		item_hbox.theme_override_constants.separation = 10
 		document_content.add_child(item_hbox)
 		
@@ -431,7 +435,7 @@ func _render_settlement_detail(data: Dictionary):
 	var total_separator: HSeparator = HSeparator.new()
 	document_content.add_child(total_separator)
 	
-	var total_hbox: HBoxContainer.new()
+	var total_hbox: HBoxContainer = HBoxContainer.new()
 	total_hbox.theme_override_constants.separation = 20
 	document_content.add_child(total_hbox)
 	
@@ -492,7 +496,7 @@ func _render_assessment_scale(data: Dictionary):
 	
 	var scores: Dictionary = data.get("scores", {})
 	for key in scores:
-		var score_hbox: HBoxContainer.new()
+		var score_hbox: HBoxContainer = HBoxContainer.new()
 		score_hbox.theme_override_constants.separation = 10
 		document_content.add_child(score_hbox)
 		
@@ -518,7 +522,7 @@ func _render_assessment_scale(data: Dictionary):
 	var total_separator: HSeparator = HSeparator.new()
 	document_content.add_child(total_separator)
 	
-	var total_hbox: HBoxContainer.new()
+	var total_hbox: HBoxContainer = HBoxContainer.new()
 	document_content.add_child(total_hbox)
 	
 	var total_label: Label = Label.new()

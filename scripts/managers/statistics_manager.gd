@@ -179,9 +179,6 @@ func reset_statistics():
 	save_statistics()
 
 static func _get_instance() -> StatisticsManager:
-	var main: Node = get_tree().root.get_node_or_null("Main")
-	if main:
-		var manager: Node = main.get_node_or_null("StatisticsManager")
-		if manager:
-			return manager
+	if Globals and Globals.statistics_manager:
+		return Globals.statistics_manager
 	return null

@@ -18,11 +18,10 @@ var game_manager: GameManager
 @onready var recent_sessions_content: VBoxContainer = $MainVBox/RecentSessionsPanel/RecentSessionsVBox/RecentSessionsScroll/RecentSessionsContent
 
 func _ready():
-	var main: Node = get_tree().root.get_node_or_null("Main")
-	if main:
-		scene_manager = main.get_node_or_null("SceneManager")
-		statistics_manager = main.get_node_or_null("StatisticsManager")
-		game_manager = main.get_node_or_null("GameManager")
+	if Globals:
+		scene_manager = Globals.scene_manager
+		statistics_manager = Globals.statistics_manager
+		game_manager = Globals.game_manager
 	
 	back_button.pressed.connect(_on_back_button_pressed)
 	reset_button.pressed.connect(_on_reset_button_pressed)
@@ -74,7 +73,7 @@ func _create_level_stat_card(level: LevelData, stat: Dictionary) -> Panel:
 	var card: Panel = Panel.new()
 	card.custom_minimum_size = Vector2(0, 90)
 	
-	var hbox: HBoxContainer.new()
+	var hbox: HBoxContainer = HBoxContainer.new()
 	hbox.layout_mode = 1
 	hbox.anchors_preset = 15
 	hbox.anchor_right = 1
@@ -259,4 +258,3 @@ func _on_reset_button_pressed():
 		if action == "reset":
 			statistics_manager.reset_statistics()
 			_render_all_statistics()
-)
