@@ -7,6 +7,7 @@ import { ShelfGrid } from '@/game/ShelfGrid';
 import { DisplayCard } from '@/game/DisplayCard';
 import { PromotionRuleEngine } from '@/game/PromotionRuleEngine';
 import { ScoreCalculator } from '@/game/ScoreCalculator';
+import { generateMedicineTexture } from '@/game/CardTextureGenerator';
 import { useGameStateStore } from '@/store/useGameStateStore';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
@@ -67,6 +68,7 @@ export class MainGameScene extends Phaser.Scene {
 
   private isPaused = false;
   private isGameOver = false;
+  private completionSnapshot: GameState | null = null;
   private selectedCardIndex = -1;
   private keyboardFocusCell: { row: number; col: number } | null = null;
   private dragStartX = 0;
@@ -95,15 +97,7 @@ export class MainGameScene extends Phaser.Scene {
     }
   }
 
-  preload(): void {
-    if (!this.level) return;
-    this.level.medicines.forEach((medId) => {
-      const medicine = getMedicineById(medId);
-      if (medicine && medicine.photoUrl) {
-        this.load.image(`med-${medicine.id}`, medicine.photoUrl);
-      }
-    });
-  }
+  preload(): void {}
 
   create(): void {
     if (!this.level) {
@@ -121,6 +115,18 @@ export class MainGameScene extends Phaser.Scene {
       return;
     }
     this.gameState = gameState;
+    this.completionSnapshot = null;
+
+    this.level.medicines.forEach((medId) => {
+      const medicine = getMedicineById(medId);
+      if (medicine) {
+        const textureKey = `med-${medicine.id}`;
+        if (!this.textures.exists(textureKey)) {
+          const canvas = generateMedicineTexture(medicine);
+          this.textures.addCanvas(textureKey, canvas);
+        }
+      }
+    });
 
     this.shelfGrid = new ShelfGrid(
       this.level,
@@ -344,39 +350,9 @@ export class MainGameScene extends Phaser.Scene {
     background.setFillStyle(0xffffff, 1);
 
     const textureKey = `med-${medicine.id}`;
-    const photoSize = width - 12;
-    let photo: Phaser.GameObjects.Image;
+    const photo = this.add.image(0, 0, textureKey).setOrigin(0.5);
 
-    if (this.textures.exists(textureKey)) {
-      photo = this.add.image(0, -5, textureKey).setOrigin(0.5);
-      const scale = photoSize / Math.max(photo.width, photo.height);
-      photo.setScale(scale);
-      photo.setCrop(
-        (photo.width - photoSize / scale) / 2,
-        (photo.height - photoSize / scale) / 2,
-        photoSize / scale,
-        photoSize / scale
-      );
-    } else {
-      photo = this.add.image(0, -5, '__DEFAULT').setOrigin(0.5).setVisible(false);
-      const fallbackBg = this.add.rectangle(0, -5, photoSize, photoSize, colorHex, 0.2).setOrigin(0.5);
-      const fallbackIcon = this.add.text(0, -5, medicine.icon, { fontSize: '36px' }).setOrigin(0.5);
-      container.add([fallbackBg, fallbackIcon]);
-    }
-
-    const nameLabel = this.add.text(
-      0,
-      (height - 12) / 2 - 8,
-      medicine.name.length > 8 ? medicine.name.slice(0, 8) + '...' : medicine.name,
-      {
-        fontFamily: 'Noto Sans SC',
-        fontSize: '11px',
-        color: '#333333',
-        fontStyle: '500',
-      }
-    ).setOrigin(0.5, 1);
-
-    container.add([background, photo, nameLabel]);
+    container.add([background, photo]);
     container.setSize(width, height);
     container.setInteractive({ useHandCursor: true, draggable: true });
 
@@ -392,7 +368,7 @@ export class MainGameScene extends Phaser.Scene {
       container,
       background,
       photo,
-      nameLabel,
+      nameLabel: this.add.text(0, 0, '', { fontSize: '1px' }).setVisible(false),
       displayCard,
       isDragging: false,
       isPlaced: false,
@@ -865,11 +841,9 @@ export class MainGameScene extends Phaser.Scene {
   private checkGameComplete(): void {
     const allPlaced = this.phaserCards.every((card) => card.isPlaced);
     if (allPlaced && !this.isGameOver) {
-      const { updateGameState, gameState } = useGameStateStore.getState();
+      const { gameState } = useGameStateStore.getState();
       if (gameState) {
-        updateGameState({
-          isGameOver: true,
-        });
+        this.completionSnapshot = { ...gameState };
       }
       this.time.delayedCall(300, () => {
         this.endGame('complete');
@@ -988,31 +962,28 @@ export class MainGameScene extends Phaser.Scene {
       return;
     }
 
-    let finalTimeRemaining: number;
+    let finalGameState: GameState;
 
     switch (reason) {
       case 'complete':
-        finalTimeRemaining = Math.max(0, gameState.timeRemaining);
+        finalGameState = this.completionSnapshot
+          ? { ...this.completionSnapshot, isGameOver: true }
+          : { ...gameState, isGameOver: true };
         updateGameState({
+          timeRemaining: finalGameState.timeRemaining,
           isGameOver: true,
         });
         break;
       case 'timeout':
       case 'exit':
       default:
-        finalTimeRemaining = 0;
+        finalGameState = { ...gameState, timeRemaining: 0, isGameOver: true };
         updateGameState({
           timeRemaining: 0,
           isGameOver: true,
         });
         break;
     }
-
-    const finalGameState: GameState = {
-      ...gameState,
-      timeRemaining: finalTimeRemaining,
-      isGameOver: true,
-    };
 
     const placements = this.phaserCards
       .filter((card) => card.isPlaced && card.displayCard.getPlacedCell())

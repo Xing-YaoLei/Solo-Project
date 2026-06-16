@@ -4,7 +4,6 @@ export interface Medicine {
   category: string;
   color: string;
   icon: string;
-  photoUrl: string;
 }
 
 export type PromotionRuleType = 'category-zone' | 'endcap' | 'stack' | 'price-tag';
