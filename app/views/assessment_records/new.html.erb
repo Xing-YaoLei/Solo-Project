@@ -1,6 +1,6 @@
 <div class="space-y-6">
   <div class="flex items-center gap-3">
-    <%= link_to "← 返回列表", assessment_records_path, class: "text-sm text-gray-500 hover:text-[#1B2A4A] transition-colors", style="font-family: 'Noto Sans SC', sans-serif;" %>
+    <%= link_to "&larr; 返回列表".html_safe, assessment_records_path, class: "text-sm text-gray-500 hover:text-[#1B2A4A] transition-colors", style: "font-family: 'Noto Sans SC', sans-serif;" %>
   </div>
 
   <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
@@ -52,12 +52,15 @@
               </thead>
               <tbody>
                 <% @scale_items.each_with_index do |item, idx| %>
+                  <% score_key = item.id.to_s %>
+                  <% current_score = (@assessment_record.item_scores || {})[score_key] %>
                   <tr class="<%= idx.even? ? 'bg-white' : 'bg-[#F5F3EF]/50' %> border-b border-gray-50">
                     <td class="px-4 py-3 text-sm text-[#1B2A4A]" style="font-family: 'Noto Sans SC', sans-serif;"><%= item.name %></td>
                     <td class="px-4 py-3 text-sm text-gray-500" style="font-family: 'Noto Sans SC', sans-serif;"><%= item.category %></td>
                     <td class="px-4 py-3 text-sm text-gray-500" style="font-family: 'DM Sans', sans-serif;"><%= item.weight %></td>
                     <td class="px-4 py-3">
-                      <%= f.number_field "item_scores[#{item.id}]", value: @assessment_record.item_scores&.dig(item.id.to_s), step: 0.5, placeholder: "输入分数", class: "w-24 px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2DD4A8] focus:border-transparent", style: "font-family: 'DM Sans', sans-serif;" %>
+                      <% field_name = "assessment_record[item_scores][#{item.id}]" %>
+                      <input type="number" step="0.5" name="<%= field_name %>" id="<%= field_name %>" value="<%= current_score %>" placeholder="输入分数" class="w-24 px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2DD4A8] focus:border-transparent" style="font-family: 'DM Sans', sans-serif;" />
                     </td>
                   </tr>
                 <% end %>

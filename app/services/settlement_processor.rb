@@ -12,7 +12,7 @@ class SettlementProcessor
     ActiveRecord::Base.transaction do
       settlement.update!(status: :denied)
       settlement.denial_actions.create!(
-        action_type: :close,
+        action_type: :deny,
         reason: reason,
         operator: operator,
         performed_at: Time.current

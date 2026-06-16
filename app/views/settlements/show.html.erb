@@ -59,26 +59,120 @@
         <div class="bg-white rounded-xl shadow-sm border border-red-100 p-6">
           <h2 class="text-lg font-semibold text-[#1B2A4A] mb-4" style="font-family: 'Noto Sans SC', sans-serif;">驳回处理</h2>
           <div class="flex flex-wrap gap-3">
-            <%= button_to "补充材料", supplement_settlement_path(@settlement),
-                  method: :patch,
-                  params: { reason: "", materials: "" },
-                  form: { data: { turbo_confirm: "确认补充材料并重新提交？" } },
-                  class: "inline-flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors",
-                  style: "font-family: 'Noto Sans SC', sans-serif;" %>
+            <button type="button" onclick="document.getElementById('supplement_modal').classList.remove('hidden')"
+                    class="inline-flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors"
+                    style="font-family: 'Noto Sans SC', sans-serif;">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m3.75 9v6m3-3H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+              </svg>
+              补充材料
+            </button>
 
-            <%= button_to "重新提交", retry_settlement_path(@settlement),
-                  method: :patch,
-                  params: { reason: "" },
-                  form: { data: { turbo_confirm: "确认重新提交结算单？" } },
-                  class: "inline-flex items-center gap-2 px-4 py-2 bg-yellow-500 text-white rounded-lg text-sm font-medium hover:bg-yellow-600 transition-colors",
-                  style: "font-family: 'Noto Sans SC', sans-serif;" %>
+            <button type="button" onclick="document.getElementById('retry_modal').classList.remove('hidden')"
+                    class="inline-flex items-center gap-2 px-4 py-2 bg-yellow-500 text-white rounded-lg text-sm font-medium hover:bg-yellow-600 transition-colors"
+                    style="font-family: 'Noto Sans SC', sans-serif;">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+              </svg>
+              重新提交
+            </button>
 
-            <%= button_to "关闭结算", close_settlement_path(@settlement),
-                  method: :patch,
-                  params: { reason: "" },
-                  form: { data: { turbo_confirm: "确认关闭此结算单？此操作不可撤销。" } },
-                  class: "inline-flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 transition-colors",
-                  style: "font-family: 'Noto Sans SC', sans-serif;" %>
+            <button type="button" onclick="document.getElementById('close_modal').classList.remove('hidden')"
+                    class="inline-flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 transition-colors"
+                    style="font-family: 'Noto Sans SC', sans-serif;">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+              </svg>
+              关闭结算
+            </button>
+          </div>
+        </div>
+
+        <%# 补充材料模态框 %>
+        <div id="supplement_modal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+          <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onclick="document.getElementById('supplement_modal').classList.add('hidden')"></div>
+            <div class="relative inline-block align-bottom bg-white rounded-xl shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-gray-100">
+              <%= form_with url: supplement_settlement_path(@settlement), method: :patch, local: true, class: "p-6" do |f| %>
+                <h3 class="text-lg font-semibold text-[#1B2A4A] mb-4 text-left" style="font-family: 'Noto Sans SC', sans-serif;">补充材料并重新提交</h3>
+                <div class="space-y-4 text-left">
+                  <div>
+                    <%= label_tag :reason, "处理原因/说明", class: "block text-sm font-medium text-gray-700 mb-1", style: "font-family: 'Noto Sans SC', sans-serif;" %>
+                    <%= text_area_tag :reason, nil, rows: 3, placeholder: "请说明补充了哪些信息、修改了什么内容...", required: true,
+                                      class: "w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent",
+                                      style: "font-family: 'Noto Sans SC', sans-serif;" %>
+                  </div>
+                  <div>
+                    <%= label_tag :materials, "补充材料清单", class: "block text-sm font-medium text-gray-700 mb-1", style: "font-family: 'Noto Sans SC', sans-serif;" %>
+                    <%= text_field_tag :materials, nil, placeholder: "用英文逗号分隔，如：评估报告V2,处方单截图,护理记录",
+                                       class: "w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent",
+                                       style: "font-family: 'Noto Sans SC', sans-serif;" %>
+                    <p class="text-xs text-gray-400 mt-1" style="font-family: 'Noto Sans SC', sans-serif;">多个材料用英文逗号(,)分隔</p>
+                  </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-3">
+                  <button type="button" onclick="document.getElementById('supplement_modal').classList.add('hidden')"
+                          class="px-4 py-2 text-gray-500 border border-gray-200 rounded-lg text-sm hover:bg-gray-50 transition-colors"
+                          style="font-family: 'Noto Sans SC', sans-serif;">取消</button>
+                  <%= f.submit "确认补充材料", class: "px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors", style: "font-family: 'Noto Sans SC', sans-serif;" %>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        </div>
+
+        <%# 重新提交模态框 %>
+        <div id="retry_modal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+          <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onclick="document.getElementById('retry_modal').classList.add('hidden')"></div>
+            <div class="relative inline-block align-bottom bg-white rounded-xl shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-gray-100">
+              <%= form_with url: retry_settlement_path(@settlement), method: :patch, local: true, class: "p-6" do |f| %>
+                <h3 class="text-lg font-semibold text-[#1B2A4A] mb-4 text-left" style="font-family: 'Noto Sans SC', sans-serif;">重新提交结算单</h3>
+                <div class="space-y-4 text-left">
+                  <div>
+                    <%= label_tag :reason, "提交说明", class: "block text-sm font-medium text-gray-700 mb-1", style: "font-family: 'Noto Sans SC', sans-serif;" %>
+                    <%= text_area_tag :reason, nil, rows: 3, placeholder: "请说明重新提交的原因、已做的修改...", required: true,
+                                      class: "w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent",
+                                      style: "font-family: 'Noto Sans SC', sans-serif;" %>
+                  </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-3">
+                  <button type="button" onclick="document.getElementById('retry_modal').classList.add('hidden')"
+                          class="px-4 py-2 text-gray-500 border border-gray-200 rounded-lg text-sm hover:bg-gray-50 transition-colors"
+                          style="font-family: 'Noto Sans SC', sans-serif;">取消</button>
+                  <%= f.submit "确认重新提交", class: "px-4 py-2 bg-yellow-500 text-white rounded-lg text-sm font-medium hover:bg-yellow-600 transition-colors", style: "font-family: 'Noto Sans SC', sans-serif;" %>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        </div>
+
+        <%# 关闭结算模态框 %>
+        <div id="close_modal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+          <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onclick="document.getElementById('close_modal').classList.add('hidden')"></div>
+            <div class="relative inline-block align-bottom bg-white rounded-xl shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-gray-100">
+              <%= form_with url: close_settlement_path(@settlement), method: :patch, local: true, class: "p-6" do |f| %>
+                <h3 class="text-lg font-semibold text-red-600 mb-4 text-left" style="font-family: 'Noto Sans SC', sans-serif;">关闭结算单（不可撤销）</h3>
+                <div class="bg-red-50 border border-red-100 rounded-lg p-3 mb-4 text-left">
+                  <p class="text-xs text-red-600" style="font-family: 'Noto Sans SC', sans-serif;">⚠️ 关闭后结算单将不能再提交或修改，请谨慎操作。</p>
+                </div>
+                <div class="space-y-4 text-left">
+                  <div>
+                    <%= label_tag :reason, "关闭原因", class: "block text-sm font-medium text-gray-700 mb-1", style: "font-family: 'Noto Sans SC', sans-serif;" %>
+                    <%= text_area_tag :reason, nil, rows: 3, placeholder: "请说明关闭结算单的原因...", required: true,
+                                      class: "w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent",
+                                      style: "font-family: 'Noto Sans SC', sans-serif;" %>
+                  </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-3">
+                  <button type="button" onclick="document.getElementById('close_modal').classList.add('hidden')"
+                          class="px-4 py-2 text-gray-500 border border-gray-200 rounded-lg text-sm hover:bg-gray-50 transition-colors"
+                          style="font-family: 'Noto Sans SC', sans-serif;">取消</button>
+                  <%= f.submit "确认关闭", class: "px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 transition-colors", style: "font-family: 'Noto Sans SC', sans-serif;" %>
+                </div>
+              <% end %>
+            </div>
           </div>
         </div>
       <% end %>
@@ -86,18 +180,78 @@
       <% if @settlement.pending? %>
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <div class="flex gap-3">
-            <%= button_to "提交结算", submit_settlement_path(@settlement),
-                  method: :patch,
-                  form: { data: { turbo_confirm: "确认提交结算单？" } },
-                  class: "inline-flex items-center gap-2 px-4 py-2 bg-[#2DD4A8] text-white rounded-lg text-sm font-medium hover:bg-[#2DD4A8]/90 transition-colors",
-                  style: "font-family: 'Noto Sans SC', sans-serif;" %>
+            <button type="button" onclick="document.getElementById('submit_modal').classList.remove('hidden')"
+                    class="inline-flex items-center gap-2 px-4 py-2 bg-[#2DD4A8] text-white rounded-lg text-sm font-medium hover:bg-[#2DD4A8]/90 transition-colors"
+                    style="font-family: 'Noto Sans SC', sans-serif;">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
+              </svg>
+              提交结算
+            </button>
 
-            <%= button_to "驳回", deny_settlement_path(@settlement),
-                  method: :patch,
-                  params: { reason: "" },
-                  form: { data: { turbo_confirm: "确认驳回此结算单？" } },
-                  class: "inline-flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 transition-colors",
-                  style: "font-family: 'Noto Sans SC', sans-serif;" %>
+            <button type="button" onclick="document.getElementById('deny_modal').classList.remove('hidden')"
+                    class="inline-flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 transition-colors"
+                    style="font-family: 'Noto Sans SC', sans-serif;">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+              </svg>
+              驳回
+            </button>
+          </div>
+        </div>
+
+        <%# 提交结算模态框 %>
+        <div id="submit_modal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+          <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onclick="document.getElementById('submit_modal').classList.add('hidden')"></div>
+            <div class="relative inline-block align-bottom bg-white rounded-xl shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-gray-100">
+              <%= form_with url: submit_settlement_path(@settlement), method: :patch, local: true, class: "p-6" do |f| %>
+                <h3 class="text-lg font-semibold text-[#1B2A4A] mb-4 text-left" style="font-family: 'Noto Sans SC', sans-serif;">提交结算单</h3>
+                <div class="bg-green-50 border border-green-100 rounded-lg p-3 mb-4 text-left">
+                  <p class="text-xs text-green-700" style="font-family: 'Noto Sans SC', sans-serif;">✅ 提交后将进入医保审核流程。</p>
+                </div>
+                <div class="space-y-4 text-left">
+                  <div>
+                    <%= label_tag :remark, "提交备注（可选）", class: "block text-sm font-medium text-gray-700 mb-1", style: "font-family: 'Noto Sans SC', sans-serif;" %>
+                    <%= text_area_tag :remark, nil, rows: 2, placeholder: "可选：补充说明提交信息...",
+                                      class: "w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2DD4A8] focus:border-transparent",
+                                      style: "font-family: 'Noto Sans SC', sans-serif;" %>
+                  </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-3">
+                  <button type="button" onclick="document.getElementById('submit_modal').classList.add('hidden')"
+                          class="px-4 py-2 text-gray-500 border border-gray-200 rounded-lg text-sm hover:bg-gray-50 transition-colors"
+                          style="font-family: 'Noto Sans SC', sans-serif;">取消</button>
+                  <%= f.submit "确认提交", class: "px-4 py-2 bg-[#2DD4A8] text-white rounded-lg text-sm font-medium hover:bg-[#2DD4A8]/90 transition-colors", style: "font-family: 'Noto Sans SC', sans-serif;" %>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        </div>
+
+        <%# 驳回模态框（pending状态） %>
+        <div id="deny_modal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+          <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onclick="document.getElementById('deny_modal').classList.add('hidden')"></div>
+            <div class="relative inline-block align-bottom bg-white rounded-xl shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-gray-100">
+              <%= form_with url: deny_settlement_path(@settlement), method: :patch, local: true, class: "p-6" do |f| %>
+                <h3 class="text-lg font-semibold text-red-600 mb-4 text-left" style="font-family: 'Noto Sans SC', sans-serif;">驳回结算单</h3>
+                <div class="space-y-4 text-left">
+                  <div>
+                    <%= label_tag :reason, "驳回原因", class: "block text-sm font-medium text-gray-700 mb-1", style: "font-family: 'Noto Sans SC', sans-serif;" %>
+                    <%= text_area_tag :reason, nil, rows: 3, placeholder: "请详细说明驳回原因，便于后续整改...", required: true,
+                                      class: "w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent",
+                                      style: "font-family: 'Noto Sans SC', sans-serif;" %>
+                  </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-3">
+                  <button type="button" onclick="document.getElementById('deny_modal').classList.add('hidden')"
+                          class="px-4 py-2 text-gray-500 border border-gray-200 rounded-lg text-sm hover:bg-gray-50 transition-colors"
+                          style="font-family: 'Noto Sans SC', sans-serif;">取消</button>
+                  <%= f.submit "确认驳回", class: "px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 transition-colors", style: "font-family: 'Noto Sans SC', sans-serif;" %>
+                </div>
+              <% end %>
+            </div>
           </div>
         </div>
       <% end %>
@@ -105,12 +259,43 @@
       <% if @settlement.submitted? %>
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <div class="flex gap-3">
-            <%= button_to "驳回", deny_settlement_path(@settlement),
-                  method: :patch,
-                  params: { reason: "" },
-                  form: { data: { turbo_confirm: "确认驳回此结算单？" } },
-                  class: "inline-flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 transition-colors",
-                  style: "font-family: 'Noto Sans SC', sans-serif;" %>
+            <button type="button" onclick="document.getElementById('deny_submitted_modal').classList.remove('hidden')"
+                    class="inline-flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 transition-colors"
+                    style="font-family: 'Noto Sans SC', sans-serif;">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+              </svg>
+              驳回
+            </button>
+          </div>
+        </div>
+
+        <%# 驳回模态框（submitted状态） %>
+        <div id="deny_submitted_modal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+          <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onclick="document.getElementById('deny_submitted_modal').classList.add('hidden')"></div>
+            <div class="relative inline-block align-bottom bg-white rounded-xl shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-gray-100">
+              <%= form_with url: deny_settlement_path(@settlement), method: :patch, local: true, class: "p-6" do |f| %>
+                <h3 class="text-lg font-semibold text-red-600 mb-4 text-left" style="font-family: 'Noto Sans SC', sans-serif;">驳回已提交的结算单</h3>
+                <div class="bg-yellow-50 border border-yellow-100 rounded-lg p-3 mb-4 text-left">
+                  <p class="text-xs text-yellow-700" style="font-family: 'Noto Sans SC', sans-serif;">⚠️ 驳回后将触发拒付通知，自动推送给相关负责人处理。</p>
+                </div>
+                <div class="space-y-4 text-left">
+                  <div>
+                    <%= label_tag :reason, "驳回原因", class: "block text-sm font-medium text-gray-700 mb-1", style: "font-family: 'Noto Sans SC', sans-serif;" %>
+                    <%= text_area_tag :reason, nil, rows: 3, placeholder: "请详细说明医保拒付的具体原因，如：缺少评估支撑材料、费用明细不符...", required: true,
+                                      class: "w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent",
+                                      style: "font-family: 'Noto Sans SC', sans-serif;" %>
+                  </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-3">
+                  <button type="button" onclick="document.getElementById('deny_submitted_modal').classList.add('hidden')"
+                          class="px-4 py-2 text-gray-500 border border-gray-200 rounded-lg text-sm hover:bg-gray-50 transition-colors"
+                          style="font-family: 'Noto Sans SC', sans-serif;">取消</button>
+                  <%= f.submit "确认驳回", class: "px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 transition-colors", style: "font-family: 'Noto Sans SC', sans-serif;" %>
+                </div>
+              <% end %>
+            </div>
           </div>
         </div>
       <% end %>
@@ -128,52 +313,91 @@
               <div class="relative pl-10 pb-6 last:pb-0">
                 <div class="absolute left-0 top-0 w-6 h-6 rounded-full border-2 flex items-center justify-center
                   <% case action.action_type
-                     when 'supplement' %>border-blue-400 bg-blue-50
+                     when 'deny' %>border-red-400 bg-red-50
+                  <% when 'supplement' %>border-blue-400 bg-blue-50
                   <% when 'retry' %>border-yellow-400 bg-yellow-50
-                  <% when 'close' %>border-red-400 bg-red-50
+                  <% when 'close' %>border-gray-400 bg-gray-50
                   <% end %>">
                   <div class="w-2 h-2 rounded-full
                     <% case action.action_type
-                       when 'supplement' %>bg-blue-400
+                       when 'deny' %>bg-red-400
+                    <% when 'supplement' %>bg-blue-400
                     <% when 'retry' %>bg-yellow-400
-                    <% when 'close' %>bg-red-400
+                    <% when 'close' %>bg-gray-400
                     <% end %>"></div>
                 </div>
 
                 <div>
-                  <div class="flex items-center gap-2">
+                  <div class="flex items-center gap-2 flex-wrap">
                     <span class="text-sm font-medium text-[#1B2A4A]" style="font-family: 'Noto Sans SC', sans-serif;">
                       <% case action.action_type
-                         when 'supplement' %>补充材料
+                         when 'deny' %>驳回拒付
+                      <% when 'supplement' %>补充材料
                       <% when 'retry' %>重新提交
                       <% when 'close' %>关闭结算
+                      <% else %><%= action.action_type.humanize %>
                       <% end %>
                     </span>
                     <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium
                       <% case action.action_type
-                         when 'supplement' %>bg-blue-100 text-blue-700
+                         when 'deny' %>bg-red-100 text-red-700
+                      <% when 'supplement' %>bg-blue-100 text-blue-700
                       <% when 'retry' %>bg-yellow-100 text-yellow-700
-                      <% when 'close' %>bg-red-100 text-red-700
+                      <% when 'close' %>bg-gray-100 text-gray-700
+                      <% else %>bg-gray-100 text-gray-700
                       <% end %>" style="font-family: 'Noto Sans SC', sans-serif;">
-                      <%= action.action_type %>
+                      <% case action.action_type
+                         when 'deny' %>DENY
+                      <% when 'supplement' %>SUPPLEMENT
+                      <% when 'retry' %>RETRY
+                      <% when 'close' %>CLOSE
+                      <% else %><%= action.action_type.upcase %>
+                      <% end %>
                     </span>
                   </div>
 
                   <% if action.reason.present? %>
-                    <p class="text-xs text-gray-500 mt-1" style="font-family: 'Noto Sans SC', sans-serif;"><%= action.reason %></p>
-                  <% end %>
-
-                  <% if action.materials.present? && action.materials.is_a?(Array) && action.materials.any? %>
-                    <div class="mt-2 flex flex-wrap gap-1">
-                      <% action.materials.each do |m| %>
-                        <span class="inline-flex items-center px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-[10px]" style="font-family: 'DM Sans', sans-serif;"><%= m %></span>
-                      <% end %>
+                    <div class="mt-2 bg-gray-50 border-l-4
+                      <% case action.action_type
+                         when 'deny' %>border-red-400
+                      <% when 'supplement' %>border-blue-400
+                      <% when 'retry' %>border-yellow-400
+                      <% when 'close' %>border-gray-400
+                      <% else %>border-gray-300
+                      <% end %> rounded-r-md p-3">
+                      <p class="text-xs text-gray-700 leading-relaxed whitespace-pre-wrap" style="font-family: 'Noto Sans SC', sans-serif;"><%= action.reason %></p>
                     </div>
                   <% end %>
 
-                  <div class="mt-1 flex items-center gap-2 text-[10px] text-gray-400">
-                    <span style="font-family: 'Noto Sans SC', sans-serif;"><%= action.operator.name %></span>
-                    <span style="font-family: 'DM Sans', sans-serif;"><%= action.performed_at&.strftime("%Y-%m-%d %H:%M") %></span>
+                  <% if action.materials.present? && action.materials.is_a?(Array) && action.materials.any? %>
+                    <div class="mt-2">
+                      <p class="text-[10px] text-gray-400 mb-1" style="font-family: 'Noto Sans SC', sans-serif;">补充材料：</p>
+                      <div class="flex flex-wrap gap-1.5">
+                        <% action.materials.each do |m| %>
+                          <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 border border-blue-100 text-blue-700 rounded-md text-[10px] font-medium" style="font-family: 'Noto Sans SC', sans-serif;">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3 h-3">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                            </svg>
+                            <%= m %>
+                          </span>
+                        <% end %>
+                      </div>
+                    </div>
+                  <% end %>
+
+                  <div class="mt-2 flex items-center gap-3 text-[10px] text-gray-400">
+                    <span class="inline-flex items-center gap-1">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3 h-3">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+                      </svg>
+                      <%= action.operator.try(:name) || "系统" %>
+                    </span>
+                    <span class="inline-flex items-center gap-1">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3 h-3">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                      </svg>
+                      <%= action.performed_at&.strftime("%Y-%m-%d %H:%M") || action.created_at.strftime("%Y-%m-%d %H:%M") %>
+                    </span>
                   </div>
                 </div>
               </div>

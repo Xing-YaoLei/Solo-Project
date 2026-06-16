@@ -14,6 +14,6 @@ class EquipmentMaintenancesController < ApplicationController
   private
 
   def maintenance_params
-    params.require(:equipment_maintenance).permit(:type, :description, :performed_at, :performer_id)
+    params.require(:equipment_maintenance).permit(:maintenance_type, :description, :performed_at, :performer_id)
   end
 end
