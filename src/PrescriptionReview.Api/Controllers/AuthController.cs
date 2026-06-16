@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 using PrescriptionReview.Core.Dtos;
 using PrescriptionReview.Core.Interfaces;
 using PrescriptionReview.Core.Common;

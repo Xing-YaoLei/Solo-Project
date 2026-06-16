@@ -186,6 +186,7 @@ export interface PrescriptionQuery extends PagedQuery {
   patientName?: string
   pharmacistId?: number
   hasUnclearRecord?: boolean
+  followUpCompleted?: boolean
 }
 
 export interface PrescriptionReview {

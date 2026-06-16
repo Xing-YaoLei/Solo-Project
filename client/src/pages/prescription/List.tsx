@@ -32,6 +32,7 @@ import {
   batchReviewPrescriptions,
   uploadAttachment,
   changePrescriptionStatus,
+  submitPrescription,
 } from '@/api/prescription'
 import { getStores } from '@/api/business'
 import { useUserStore } from '@/store/user'
@@ -82,6 +83,21 @@ const PrescriptionList = () => {
   useEffect(() => {
     if (searchParams.get('action') === 'create') {
       setCreateModalVisible(true)
+    }
+    const initQuery: PrescriptionQuery = {}
+    const statusParam = searchParams.get('status')
+    if (statusParam !== null) {
+      initQuery.status = parseInt(statusParam) as PrescriptionStatus
+    }
+    const storeIdParam = searchParams.get('storeId')
+    if (storeIdParam !== null) {
+      initQuery.storeId = parseInt(storeIdParam)
+    }
+    if (searchParams.get('followUpCompleted') === 'true') {
+      initQuery.followUpCompleted = true
+    }
+    if (Object.keys(initQuery).length > 0) {
+      setQuery(initQuery)
     }
   }, [searchParams])
 
@@ -221,6 +237,16 @@ const PrescriptionList = () => {
     message.success('创建成功')
   }
 
+  const handleQuickSubmit = async (record: Prescription) => {
+    try {
+      await submitPrescription(record.id)
+      message.success('处方已提交审核')
+      fetchData()
+    } catch (error) {
+      console.error('Submit error:', error)
+    }
+  }
+
   const handleQuickStatusChange = (record: Prescription) => {
     setSelectedPrescription(record)
     statusForm.resetFields()
@@ -343,8 +369,8 @@ const PrescriptionList = () => {
               </Button>
             )}
           {hasRole([UserRole.Cashier, UserRole.StoreManager]) && record.status === PrescriptionStatus.Pending && (
-            <Button type="link" size="small" onClick={() => handleQuickStatusChange(record)}>
-              提交
+            <Button type="link" size="small" onClick={() => handleQuickSubmit(record)}>
+              提交审核
             </Button>
           )}
         </Space>

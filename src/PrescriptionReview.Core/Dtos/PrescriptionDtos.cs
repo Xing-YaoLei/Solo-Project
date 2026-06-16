@@ -82,6 +82,7 @@ public class PrescriptionQueryDto : PagedQuery
     public string? PatientName { get; set; }
     public int? PharmacistId { get; set; }
     public bool? HasUnclearRecord { get; set; }
+    public bool? FollowUpCompleted { get; set; }
 }
 
 public class PrescriptionReviewDto

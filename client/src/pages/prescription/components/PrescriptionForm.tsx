@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { Form, Input, InputNumber, Select, DatePicker, Button, Table, Space, message, Modal } from 'antd'
-import { PlusOutlined, DeleteOutlined, UploadOutlined } from '@ant-design/icons'
-import { createPrescription } from '@/api/prescription'
-import { uploadAttachment } from '@/api/prescription'
+import { PlusOutlined, DeleteOutlined, UploadOutlined, SendOutlined, SaveOutlined } from '@ant-design/icons'
+import { createPrescription, uploadAttachment, submitPrescription } from '@/api/prescription'
 import { AttachmentType, PrescriptionItemCreate } from '@/types'
 import type { Store } from '@/types'
 import dayjs from 'dayjs'
@@ -57,7 +56,7 @@ const PrescriptionForm = ({ stores, defaultStoreId, onSuccess, onCancel }: Presc
     }
   }
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (andSubmit: boolean = false) => {
     try {
       const values = await form.validateFields()
 
@@ -102,6 +101,13 @@ const PrescriptionForm = ({ stores, defaultStoreId, onSuccess, onCancel }: Presc
             console.error('Upload attachment error:', e)
           }
         }
+      }
+
+      if (andSubmit) {
+        await submitPrescription(result.id)
+        message.success('处方已提交审核')
+      } else {
+        message.success('处方已保存')
       }
 
       onSuccess()
@@ -384,8 +390,11 @@ const PrescriptionForm = ({ stores, defaultStoreId, onSuccess, onCancel }: Presc
         <div style={{ textAlign: 'right', marginTop: 24, paddingTop: 16, borderTop: '1px solid #f0f0f0' }}>
           <Space>
             <Button onClick={onCancel}>取消</Button>
-            <Button type="primary" loading={loading} onClick={handleSubmit}>
-              保存并提交
+            <Button icon={<SaveOutlined />} loading={loading} onClick={() => handleSubmit(false)}>
+              保存
+            </Button>
+            <Button type="primary" icon={<SendOutlined />} loading={loading} onClick={() => handleSubmit(true)}>
+              保存并提交审核
             </Button>
           </Space>
         </div>

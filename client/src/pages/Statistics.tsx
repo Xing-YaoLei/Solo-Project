@@ -111,10 +111,15 @@ const Statistics = () => {
     setQuery({})
   }
 
-  const handleViewPrescriptions = (storeId?: number, status?: PrescriptionStatus) => {
+  const handleViewPrescriptions = (
+    storeId?: number,
+    status?: PrescriptionStatus,
+    followUpCompleted?: boolean,
+  ) => {
     const params = new URLSearchParams()
     if (storeId) params.set('storeId', String(storeId))
     if (status !== undefined) params.set('status', String(status))
+    if (followUpCompleted) params.set('followUpCompleted', 'true')
     navigate(`/prescriptions?${params.toString()}`)
   }
 
@@ -164,7 +169,8 @@ const Statistics = () => {
           value: statistics.followUpCompletedCount,
           icon: <PhoneOutlined style={{ fontSize: 28, color: '#13c2c2' }} />,
           color: '#13c2c2',
-          clickable: false,
+          clickable: true,
+          followUpCompleted: true,
         },
       ]
     : []
@@ -290,7 +296,10 @@ const Statistics = () => {
           <Col xs={12} sm={8} md={4} key={index}>
             <Card
               hoverable={card.clickable}
-              onClick={() => card.clickable && handleViewPrescriptions(undefined, card.status)}
+              onClick={() =>
+                card.clickable &&
+                handleViewPrescriptions(undefined, card.status, (card as any).followUpCompleted)
+              }
               style={{ cursor: card.clickable ? 'pointer' : 'default' }}
             >
               <div style={{ display: 'flex', alignItems: 'center' }}>

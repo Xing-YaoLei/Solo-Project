@@ -25,6 +25,7 @@ public class PrescriptionService : IPrescriptionService
             .Include(p => p.Pharmacist)
             .Include(p => p.Items)
             .Include(p => p.Attachments)
+            .Include(p => p.FollowUp)
             .AsQueryable();
 
         if (currentUserId.HasValue)
@@ -71,6 +72,11 @@ public class PrescriptionService : IPrescriptionService
         if (query.HasUnclearRecord == true)
         {
             queryable = queryable.Where(p => p.AuditLogs.Any(a => a.OldStatus == PrescriptionStatus.Unclear || a.NewStatus == PrescriptionStatus.Unclear));
+        }
+
+        if (query.FollowUpCompleted == true)
+        {
+            queryable = queryable.Where(p => p.FollowUp != null && p.FollowUp.IsCompleted);
         }
 
         if (!string.IsNullOrEmpty(query.Keyword))
