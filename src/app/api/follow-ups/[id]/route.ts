@@ -14,6 +14,13 @@ export async function GET(
     return NextResponse.json({ error: check.error }, { status: check.status });
   }
 
+  if (role === "staff" && !userId) {
+    return NextResponse.json(
+      { error: "身份标识缺失，请重新登录" },
+      { status: 401 }
+    );
+  }
+
   try {
     const detail = getFollowUpDetail(params.id);
     if (!detail) {

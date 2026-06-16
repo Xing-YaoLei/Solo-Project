@@ -14,6 +14,13 @@ export async function POST(
     return NextResponse.json({ error: check.error }, { status: check.status });
   }
 
+  if (role === "staff" && !userId) {
+    return NextResponse.json(
+      { error: "身份标识缺失，请重新登录" },
+      { status: 401 }
+    );
+  }
+
   try {
     const { content, prescriptionId } = await request.json();
     if (!content?.trim()) {
@@ -34,13 +41,13 @@ export async function POST(
       );
     }
 
-    const user = getUserById(userId || "");
+    const user = getUserById(userId!);
     const createdByName = user?.name || "未知";
     const annotation = addAnnotation(
       params.id,
       prescriptionId,
       content.trim(),
-      userId || "",
+      userId!,
       createdByName
     );
     return NextResponse.json(annotation, { status: 201 });
