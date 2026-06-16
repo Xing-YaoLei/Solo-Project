@@ -26,7 +26,7 @@ export class GameScene extends Phaser.Scene {
 
   create(): void {
     this.cameras.main.setBackgroundColor(COLORS.BACKGROUND)
-    
+
     this.initMatterPhysics()
     this.createHeader()
     this.createTaskList()
@@ -34,10 +34,10 @@ export class GameScene extends Phaser.Scene {
     this.createInstrumentPanel()
     this.createBottomBar()
 
-    if (this.stateManager.getState().tasks.length === 0) {
+    if (this.stateManager.getCurrentDayTasks().length === 0) {
       this.stateManager.generateTasks()
     }
-    
+
     this.refreshUI()
   }
 
@@ -53,7 +53,7 @@ export class GameScene extends Phaser.Scene {
 
   private createHeader(): void {
     this.add.rectangle(GAME_CONFIG.WIDTH / 2, 30, GAME_CONFIG.WIDTH, 60, COLORS.SURFACE)
-    
+
     const state = this.stateManager.getState()
     const levelConfig = this.stateManager.getCurrentLevelConfig()
 
@@ -96,7 +96,7 @@ export class GameScene extends Phaser.Scene {
   private createTaskList(): void {
     this.add.rectangle(310, 380, 580, 620, COLORS.SURFACE, 0.8)
       .setStrokeStyle(2, COLORS.SURFACE_LIGHT)
-    
+
     this.add.text(40, 80, '📋 今日任务', {
       font: 'bold 22px Arial', color: '#ffffff'
     })
@@ -108,8 +108,8 @@ export class GameScene extends Phaser.Scene {
   private createCalendar(): void {
     this.add.rectangle(GAME_CONFIG.WIDTH / 2 + 30, 380, 620, 580, COLORS.SURFACE, 0.8)
       .setStrokeStyle(2, COLORS.SURFACE_LIGHT)
-      .setName('calendar')
-    
+      .setName('calendarBg')
+
     this.add.text(680, 80, '📅 治疗日历', {
       font: 'bold 22px Arial', color: '#ffffff'
     })
@@ -173,7 +173,7 @@ export class GameScene extends Phaser.Scene {
 
   private refreshHeader(): void {
     const state = this.stateManager.getState()
-    
+
     const moneyText = this.uiElements.get('money') as Phaser.GameObjects.Text
     if (moneyText) moneyText.setText(`${state.money}`)
 
@@ -195,16 +195,41 @@ export class GameScene extends Phaser.Scene {
     if (!container) return
     container.removeAll(true)
 
-    const state = this.stateManager.getState()
-    const tasks = state.tasks.filter(t => t.assignedDate === `day_${state.currentDay}`)
+    const tasks = this.stateManager.getCurrentDayTasks()
 
     tasks.forEach((task, index) => {
       const y = index * 130
       const isSelected = this.selectedTask?.id === task.id
-      
+
       const card = this.add.rectangle(270, y + 55, 540, 120, isSelected ? COLORS.SURFACE_LIGHT : COLORS.SURFACE)
         .setStrokeStyle(2, isSelected ? COLORS.PRIMARY : COLORS.SURFACE_LIGHT)
         .setInteractive({ useHandCursor: true })
+
+      const avatar = this.add.text(20, y + 10, task.patient.avatar, { font: '36px Arial' })
+      const nameT = this.add.text(70, y + 10, task.patient.name, {
+        font: 'bold 18px Arial', color: '#ffffff'
+      })
+      const diagT = this.add.text(70, y + 35, task.patient.diagnosis, {
+        font: '14px Arial', color: '#a0a0a0'
+      })
+
+      const difficultyStars = '⭐'.repeat(task.difficulty)
+      const starT = this.add.text(200, y + 10, difficultyStars, { font: '14px Arial', color: '#ffd93d' })
+
+      const treatmentNames = task.treatments.slice(0, 3).map(tid => TREATMENTS[tid]?.name || tid).join('、')
+      const treatT = this.add.text(20, y + 60, `所需治疗: ${treatmentNames}`, {
+        font: '13px Arial', color: '#4a90d9'
+      })
+
+      const rewardT = this.add.text(20, y + 85, `奖励: ${task.reward} 💰`, {
+        font: '14px Arial', color: '#ffd700'
+      })
+
+      const statusColor = task.isCompleted ? COLORS.SUCCESS : task.isAccepted ? COLORS.WARNING : COLORS.TEXT_SECONDARY
+      const statusText = task.isCompleted ? '已完成' : task.isAccepted ? '进行中' : '待接受'
+      const stT = this.add.text(450, y + 10, statusText, {
+        font: 'bold 14px Arial', color: `#${statusColor.toString(16).padStart(6, '0')}`
+      }).setOrigin(1, 0)
 
       card.on('pointerdown', () => {
         this.selectedTask = task
@@ -212,33 +237,7 @@ export class GameScene extends Phaser.Scene {
         this.showTaskDetail(task)
       })
 
-      this.add.text(20, y + 10, task.patient.avatar, { font: '36px Arial' })
-      this.add.text(70, y + 10, task.patient.name, {
-        font: 'bold 18px Arial', color: '#ffffff'
-      })
-      this.add.text(70, y + 35, task.patient.diagnosis, {
-        font: '14px Arial', color: '#a0a0a0'
-      })
-
-      const difficultyStars = '⭐'.repeat(task.difficulty)
-      this.add.text(200, y + 10, difficultyStars, { font: '14px Arial', color: '#ffd93d' })
-
-      const treatmentNames = task.treatments.slice(0, 3).map(tid => TREATMENTS[tid]?.name || tid).join('、')
-      this.add.text(20, y + 60, `所需治疗: ${treatmentNames}`, {
-        font: '13px Arial', color: '#4a90d9'
-      })
-
-      this.add.text(20, y + 85, `奖励: ${task.reward} 💰`, {
-        font: '14px Arial', color: '#ffd700'
-      })
-
-      const statusColor = task.isCompleted ? COLORS.SUCCESS : task.isAccepted ? COLORS.WARNING : COLORS.TEXT_SECONDARY
-      const statusText = task.isCompleted ? '已完成' : task.isAccepted ? '进行中' : '待接受'
-      this.add.text(450, y + 10, statusText, {
-        font: 'bold 14px Arial', color: `#${statusColor.toString(16).padStart(6, '0')}`
-      }).setOrigin(1, 0)
-
-      container.add([card])
+      container.add([card, avatar, nameT, diagT, starT, treatT, rewardT, stT])
     })
   }
 
@@ -477,16 +476,19 @@ export class GameScene extends Phaser.Scene {
     }).setOrigin(0.5).setName('instrumentPanel_sel')
 
     const state = this.stateManager.getState()
-    
-    state.instruments.forEach((inst, index) => {
-      const y = GAME_CONFIG.HEIGHT / 2 - 70 + index * 65
+
+    state.instruments.forEach((inst) => {
       const isRequired = inst.id === treatment?.requiredInstrument
       const isAvailable = inst.status === 'available'
-      
-      const card = this.add.rectangle(GAME_CONFIG.WIDTH / 2, y, 440, 55, isRequired ? COLORS.PRIMARY : COLORS.SURFACE_LIGHT)
+
+      const card = this.add.rectangle(GAME_CONFIG.WIDTH / 2, 0, 440, 55, isRequired ? COLORS.PRIMARY : COLORS.SURFACE_LIGHT)
         .setStrokeStyle(2, isAvailable ? COLORS.SECONDARY : COLORS.TEXT_SECONDARY)
         .setInteractive({ useHandCursor: isAvailable })
         .setName('instrumentPanel_sel')
+
+      const idx = state.instruments.indexOf(inst)
+      const y = GAME_CONFIG.HEIGHT / 2 - 70 + idx * 65
+      card.setY(y)
 
       this.add.text(GAME_CONFIG.WIDTH / 2 - 200, y, inst.icon, { font: '28px Arial' })
         .setOrigin(0, 0.5).setName('instrumentPanel_sel')
@@ -495,9 +497,9 @@ export class GameScene extends Phaser.Scene {
         font: 'bold 16px Arial', color: '#ffffff'
       }).setOrigin(0, 0.5).setName('instrumentPanel_sel')
 
-      const statusText = inst.status === 'available' ? '可用' : inst.status === 'in-use' ? '使用中' : inst.status === 'maintenance' ? '需维护' : '损坏'
+      const instStatusText = inst.status === 'available' ? '可用' : inst.status === 'in-use' ? '使用中' : inst.status === 'maintenance' ? '需维护' : '损坏'
       this.add.text(GAME_CONFIG.WIDTH / 2 - 150, y + 12,
-        `状态: ${statusText} | 耐久: ${inst.durability}/${inst.maxDurability}`,
+        `状态: ${instStatusText} | 耐久: ${inst.durability}/${inst.maxDurability}`,
         { font: '12px Arial', color: isAvailable ? '#50c878' : '#a0a0a0' }
       ).setOrigin(0, 0.5).setName('instrumentPanel_sel')
 
@@ -534,48 +536,55 @@ export class GameScene extends Phaser.Scene {
     const calendarDay = this.stateManager.getCalendarDay(state.currentDay)
     if (!calendarDay) return
 
+    const allTasks = this.stateManager.getAllTasks()
     const timeSlots = ['09:00', '10:00', '14:00', '15:00', '16:00', '17:00']
-    
+
     timeSlots.forEach((slot, index) => {
       const x = (index % 3) * 200
       const y = Math.floor(index / 3) * 180
-      
+
       const scheduled = calendarDay.treatments.find(t => t.timeSlot === index)
       const treatment = scheduled ? TREATMENTS[scheduled.treatmentId] : null
 
       const slotBg = this.add.rectangle(x + 90, y + 80, 180, 160, scheduled ? COLORS.SURFACE_LIGHT : COLORS.BACKGROUND)
         .setStrokeStyle(2, scheduled ? COLORS.PRIMARY : COLORS.SURFACE_LIGHT)
 
-      this.add.text(x + 90, y + 15, slot, {
+      const timeLabel = this.add.text(x + 90, y + 15, slot, {
         font: 'bold 18px Arial', color: '#ffffff'
       }).setOrigin(0.5)
 
+      const items: Phaser.GameObjects.GameObject[] = [slotBg, timeLabel]
+
       if (scheduled && treatment) {
-        this.add.text(x + 90, y + 45, treatment.name, {
+        const treatName = this.add.text(x + 90, y + 45, treatment.name, {
           font: 'bold 14px Arial', color: '#4a90d9'
         }).setOrigin(0.5)
+        items.push(treatName)
 
-        const task = state.tasks.find(t => t.patient.id === scheduled.patientId)
-        this.add.text(x + 90, y + 70, task?.patient?.name || '', {
+        const task = allTasks.find(t => t.patient.id === scheduled.patientId)
+        const patientName = this.add.text(x + 90, y + 70, task?.patient?.name || '', {
           font: '13px Arial', color: '#ffffff'
         }).setOrigin(0.5)
+        items.push(patientName)
 
-        const statusText = scheduled.isCompleted
+        const statusLabel = scheduled.isCompleted
           ? (scheduled.isInsuranceApproved ? '✓ 已完成' : '✗ 已拒付')
           : '进行中'
-        this.add.text(x + 90, y + 100, statusText, {
-          font: '12px Arial',
-          color: scheduled.isCompleted
-            ? (scheduled.isInsuranceApproved ? '#50c878' : '#ff6b6b')
-            : '#ffd93d'
+        const statusColor = scheduled.isCompleted
+          ? (scheduled.isInsuranceApproved ? '#50c878' : '#ff6b6b')
+          : '#ffd93d'
+        const statusT = this.add.text(x + 90, y + 100, statusLabel, {
+          font: '12px Arial', color: statusColor
         }).setOrigin(0.5)
+        items.push(statusT)
 
         if (!scheduled.isCompleted) {
           const completeBtn = this.add.rectangle(x + 90, y + 135, 120, 30, COLORS.SECONDARY)
             .setInteractive({ useHandCursor: true })
-          this.add.text(x + 90, y + 135, '完成治疗', {
+          const completeLabel = this.add.text(x + 90, y + 135, '完成治疗', {
             font: 'bold 13px Arial', color: '#ffffff'
           }).setOrigin(0.5)
+          items.push(completeBtn, completeLabel)
 
           completeBtn.on('pointerdown', () => {
             const result = this.stateManager.completeTreatment(scheduled.id)
@@ -589,9 +598,9 @@ export class GameScene extends Phaser.Scene {
             }
           })
         }
-
-        container.add([slotBg])
       }
+
+      container.add(items)
     })
   }
 
@@ -609,24 +618,25 @@ export class GameScene extends Phaser.Scene {
         .setStrokeStyle(2, COLORS.PRIMARY)
         .setInteractive({ useHandCursor: true })
 
-      this.add.text(x + 15, y + 35, inst.icon, { font: '28px Arial' })
-      
-      this.add.text(x + 50, y + 15, inst.name, {
+      const iconT = this.add.text(x + 15, y + 35, inst.icon, { font: '28px Arial' })
+
+      const nameT = this.add.text(x + 50, y + 15, inst.name, {
         font: 'bold 13px Arial', color: '#ffffff'
       })
 
       const durPercent = inst.durability / inst.maxDurability
       const durColor = durPercent > 0.6 ? '50c878' : durPercent > 0.3 ? 'ffd93d' : 'ff6b6b'
-      
-      this.add.text(x + 50, y + 38, `${inst.durability}/${inst.maxDurability}`, {
-        font: '11px Arial',
-        color: `#${durColor}`
+
+      const durT = this.add.text(x + 50, y + 38, `${inst.durability}/${inst.maxDurability}`, {
+        font: '11px Arial', color: `#${durColor}`
       })
+
+      const items: Phaser.GameObjects.GameObject[] = [card, iconT, nameT, durT]
 
       if (inst.status === 'maintenance' || inst.durability <= 20) {
         const maintainBtn = this.add.rectangle(x + 140, y + 45, 50, 25, COLORS.WARNING)
           .setInteractive({ useHandCursor: true })
-        this.add.text(x + 140, y + 45, '维护', {
+        const maintainLabel = this.add.text(x + 140, y + 45, '维护', {
           font: 'bold 11px Arial', color: '#000000'
         }).setOrigin(0.5)
 
@@ -639,10 +649,10 @@ export class GameScene extends Phaser.Scene {
           }
         })
 
-        container.add([card, maintainBtn])
-      } else {
-        container.add([card])
+        items.push(maintainBtn, maintainLabel)
       }
+
+      container.add(items)
     })
   }
 
@@ -656,8 +666,9 @@ export class GameScene extends Phaser.Scene {
 
     if (this.stateManager.advanceDay()) {
       this.stateManager.generateTasks()
+      this.selectedTask = null
       this.refreshUI()
-      this.setStatus(`进入第 ${state.currentDay} 天`)
+      this.setStatus(`进入第 ${state.currentDay + 1} 天`)
     }
   }
 
@@ -665,8 +676,7 @@ export class GameScene extends Phaser.Scene {
     const state = this.stateManager.getState()
     const levelConfig = this.stateManager.getCurrentLevelConfig()
     const score = this.stateManager.getSessionScore()
-    const completedTasks = state.tasks.filter(t => t.isCompleted).length
-    const totalTasks = state.tasks.length
+    const stats = this.stateManager.getCompletionStats()
     const errors = this.stateManager.getErrors()
     const rejections = this.stateManager.getRejections()
 
@@ -675,11 +685,11 @@ export class GameScene extends Phaser.Scene {
       date: new Date().toISOString(),
       level: state.currentLevel,
       score,
-      completedTasks,
-      totalTasks,
+      completedTasks: stats.completed,
+      totalTasks: stats.total,
       errors,
       rejections,
-      completionRate: totalTasks > 0 ? completedTasks / totalTasks : 0
+      completionRate: stats.rate
     }
     this.storageManager.addTrainingRecord(record)
 
@@ -688,7 +698,7 @@ export class GameScene extends Phaser.Scene {
       playerName: '玩家',
       score,
       level: state.currentLevel,
-      completionRate: record.completionRate,
+      completionRate: stats.rate,
       date: new Date().toISOString()
     }
     this.storageManager.addLeaderboardEntry(leaderboardEntry)
@@ -708,7 +718,7 @@ export class GameScene extends Phaser.Scene {
     }).setOrigin(0.5).setName('endLevelPanel')
 
     this.add.text(GAME_CONFIG.WIDTH / 2, GAME_CONFIG.HEIGHT / 2 - 80,
-      `完成任务: ${completedTasks}/${totalTasks} (${(record.completionRate * 100).toFixed(1)}%)`,
+      `完成任务: ${stats.completed}/${stats.total} (${(stats.rate * 100).toFixed(1)}%)`,
       { font: '18px Arial', color: '#ffffff' }
     ).setOrigin(0.5).setName('endLevelPanel')
 
@@ -736,34 +746,46 @@ export class GameScene extends Phaser.Scene {
       })
     }
 
-    let btnYOffset = 0
-    if (score >= levelConfig.targetScore && state.currentLevel < LEVELS.length) {
-      const nextBtn = this.add.rectangle(GAME_CONFIG.WIDTH / 2, GAME_CONFIG.HEIGHT / 2 + 180, 200, 50, COLORS.SUCCESS)
-        .setInteractive({ useHandCursor: true })
-        .setName('endLevelPanel')
-      this.add.text(GAME_CONFIG.WIDTH / 2, GAME_CONFIG.HEIGHT / 2 + 180, '进入下一关', {
-        font: 'bold 20px Arial', color: '#ffffff'
+    if (rejections.length > 0) {
+      const rejOffset = errors.length > 0 ? 90 + Math.min(errors.length, 3) * 25 + 10 : 60
+      this.add.text(GAME_CONFIG.WIDTH / 2, GAME_CONFIG.HEIGHT / 2 + rejOffset, '医保拒付详情:', {
+        font: 'bold 16px Arial', color: '#ffd93d'
       }).setOrigin(0.5).setName('endLevelPanel')
-
-      nextBtn.on('pointerdown', () => {
-        this.stateManager.levelUp()
-        this.scene.restart()
+      rejections.slice(0, 3).forEach((rej, i) => {
+        this.add.text(GAME_CONFIG.WIDTH / 2, GAME_CONFIG.HEIGHT / 2 + rejOffset + 30 + i * 25,
+          `• ${rej.reason} (损失${rej.amount}元)`,
+          { font: '13px Arial', color: '#a0a0a0' }
+        ).setOrigin(0.5).setName('endLevelPanel')
       })
-      nextBtn.on('pointerover', () => nextBtn.setFillStyle(Phaser.Display.Color.IntegerToColor(COLORS.SUCCESS).lighten(15).color))
-      nextBtn.on('pointerout', () => nextBtn.setFillStyle(COLORS.SUCCESS))
-      btnYOffset = -70
     }
 
-    const menuBtn = this.add.rectangle(GAME_CONFIG.WIDTH / 2 + btnYOffset, GAME_CONFIG.HEIGHT / 2 + 180, 200, 50, COLORS.PRIMARY)
+    const menuBtn = this.add.rectangle(GAME_CONFIG.WIDTH / 2, GAME_CONFIG.HEIGHT / 2 + 200, 200, 50, COLORS.PRIMARY)
       .setInteractive({ useHandCursor: true })
       .setName('endLevelPanel')
-    this.add.text(GAME_CONFIG.WIDTH / 2 + btnYOffset, GAME_CONFIG.HEIGHT / 2 + 180, '返回菜单', {
+    this.add.text(GAME_CONFIG.WIDTH / 2, GAME_CONFIG.HEIGHT / 2 + 200, '返回菜单', {
       font: 'bold 20px Arial', color: '#ffffff'
     }).setOrigin(0.5).setName('endLevelPanel')
 
     menuBtn.on('pointerdown', () => this.scene.start('MainMenuScene'))
     menuBtn.on('pointerover', () => menuBtn.setFillStyle(Phaser.Display.Color.IntegerToColor(COLORS.PRIMARY).lighten(15).color))
     menuBtn.on('pointerout', () => menuBtn.setFillStyle(COLORS.PRIMARY))
+
+    if (score >= levelConfig.targetScore && state.currentLevel < LEVELS.length) {
+      const nextBtn = this.add.rectangle(GAME_CONFIG.WIDTH / 2, GAME_CONFIG.HEIGHT / 2 + 140, 200, 50, COLORS.SUCCESS)
+        .setInteractive({ useHandCursor: true })
+        .setName('endLevelPanel')
+      this.add.text(GAME_CONFIG.WIDTH / 2, GAME_CONFIG.HEIGHT / 2 + 140, '进入下一关', {
+        font: 'bold 20px Arial', color: '#ffffff'
+      }).setOrigin(0.5).setName('endLevelPanel')
+
+      nextBtn.on('pointerdown', () => {
+        this.stateManager.levelUp()
+        this.stateManager.resetSessionStats()
+        this.scene.restart()
+      })
+      nextBtn.on('pointerover', () => nextBtn.setFillStyle(Phaser.Display.Color.IntegerToColor(COLORS.SUCCESS).lighten(15).color))
+      nextBtn.on('pointerout', () => nextBtn.setFillStyle(COLORS.SUCCESS))
+    }
   }
 
   private showPauseMenu(): void {

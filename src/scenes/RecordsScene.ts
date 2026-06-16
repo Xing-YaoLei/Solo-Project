@@ -58,6 +58,8 @@ export class RecordsScene extends Phaser.Scene {
     const avgCompletion = records.reduce((sum, r) => sum + r.completionRate, 0) / totalSessions
     const totalErrors = records.reduce((sum, r) => sum + r.errors.length, 0)
     const totalRejections = records.reduce((sum, r) => sum + r.rejections.length, 0)
+    const totalRejectionAmount = records.reduce((sum, r) =>
+      sum + r.rejections.reduce((s, rej: RejectionRecord) => s + rej.amount, 0), 0)
 
     this.add.rectangle(200, 150, 350, 80, COLORS.SURFACE)
       .setStrokeStyle(2, COLORS.PRIMARY)
@@ -81,8 +83,8 @@ export class RecordsScene extends Phaser.Scene {
 
     this.add.rectangle(565, 250, 350, 60, COLORS.SURFACE)
       .setStrokeStyle(1, COLORS.ACCENT)
-    this.add.text(565, 240, '总医保拒付', { font: '14px Arial', color: '#a0a0a0' }).setOrigin(0.5)
-    this.add.text(565, 265, `${totalRejections} 次`, { font: 'bold 20px Arial', color: '#ff6b6b' }).setOrigin(0.5)
+    this.add.text(565, 240, '医保拒付', { font: '14px Arial', color: '#a0a0a0' }).setOrigin(0.5)
+    this.add.text(565, 265, `${totalRejections} 次 / ${totalRejectionAmount}元`, { font: 'bold 20px Arial', color: '#ff6b6b' }).setOrigin(0.5)
 
     this.add.text(60, 320, '历史记录（点击查看详情）:', {
       font: 'bold 20px Arial', color: '#ffffff'
@@ -92,28 +94,28 @@ export class RecordsScene extends Phaser.Scene {
 
     records.slice().reverse().forEach((record, index) => {
       const y = index * 70
-      
+
       const card = this.add.rectangle(600, y + 30, 1160, 60, COLORS.SURFACE)
         .setStrokeStyle(2, COLORS.SURFACE_LIGHT)
         .setInteractive({ useHandCursor: true })
 
       const date = new Date(record.date)
-      this.add.text(60, y + 30, date.toLocaleString('zh-CN'), { font: '14px Arial', color: '#a0a0a0' })
+      const dateT = this.add.text(60, y + 30, date.toLocaleString('zh-CN'), { font: '14px Arial', color: '#a0a0a0' })
         .setOrigin(0, 0.5)
-      this.add.text(260, y + 30, `Lv.${record.level}`, { font: 'bold 16px Arial', color: '#4a90d9' })
+      const levelT = this.add.text(260, y + 30, `Lv.${record.level}`, { font: 'bold 16px Arial', color: '#4a90d9' })
         .setOrigin(0, 0.5)
-      this.add.text(380, y + 30, `任务: ${record.completedTasks}/${record.totalTasks}`, { 
-        font: '14px Arial', color: '#ffffff' 
+      const taskT = this.add.text(380, y + 30, `任务: ${record.completedTasks}/${record.totalTasks}`, {
+        font: '14px Arial', color: '#ffffff'
       }).setOrigin(0, 0.5)
-      this.add.text(580, y + 30, `完成率: ${(record.completionRate * 100).toFixed(1)}%`, { 
-        font: '14px Arial', 
+      const rateT = this.add.text(580, y + 30, `完成率: ${(record.completionRate * 100).toFixed(1)}%`, {
+        font: '14px Arial',
         color: record.completionRate >= 0.8 ? '#50c878' : record.completionRate >= 0.5 ? '#ffd93d' : '#ff6b6b'
       }).setOrigin(0, 0.5)
-      this.add.text(820, y + 30, `得分: ${record.score}`, { 
-        font: 'bold 18px Arial', color: '#ffd700' 
+      const scoreT = this.add.text(820, y + 30, `得分: ${record.score}`, {
+        font: 'bold 18px Arial', color: '#ffd700'
       }).setOrigin(0, 0.5)
-      this.add.text(1000, y + 30, `❌${record.errors.length} 🚫${record.rejections.length}`, { 
-        font: '14px Arial', color: '#ff6b6b' 
+      const errT = this.add.text(1000, y + 30, `❌${record.errors.length} 🚫${record.rejections.length}`, {
+        font: '14px Arial', color: '#ff6b6b'
       }).setOrigin(0, 0.5)
 
       card.on('pointerdown', () => {
@@ -122,7 +124,7 @@ export class RecordsScene extends Phaser.Scene {
       card.on('pointerover', () => card.setFillStyle(COLORS.SURFACE_LIGHT))
       card.on('pointerout', () => card.setFillStyle(COLORS.SURFACE))
 
-      recordContainer.add([card])
+      recordContainer.add([card, dateT, levelT, taskT, rateT, scoreT, errT])
     })
   }
 
@@ -132,18 +134,22 @@ export class RecordsScene extends Phaser.Scene {
       if (go.name === 'recordDetail') go.destroy()
     })
 
-    this.add.rectangle(GAME_CONFIG.WIDTH / 2, GAME_CONFIG.HEIGHT / 2, 700, 500, COLORS.SURFACE)
+    const totalRejectionAmount = record.rejections.reduce((sum, rej: RejectionRecord) => sum + rej.amount, 0)
+    const maxDetailItems = 6
+    const detailHeight = 520 + Math.min(record.errors.length + record.rejections.length, maxDetailItems * 2) * 10
+
+    this.add.rectangle(GAME_CONFIG.WIDTH / 2, GAME_CONFIG.HEIGHT / 2, 700, Math.min(detailHeight, 600), COLORS.SURFACE)
       .setStrokeStyle(3, COLORS.PRIMARY)
       .setName('recordDetail')
 
-    this.add.text(GAME_CONFIG.WIDTH / 2, GAME_CONFIG.HEIGHT / 2 - 210, '训练详情', {
+    this.add.text(GAME_CONFIG.WIDTH / 2, GAME_CONFIG.HEIGHT / 2 - 250, '训练详情复盘', {
       font: 'bold 28px Arial', color: '#ffffff'
     }).setOrigin(0.5).setName('recordDetail')
 
-    const closeBtn = this.add.rectangle(GAME_CONFIG.WIDTH / 2 + 320, GAME_CONFIG.HEIGHT / 2 - 210, 40, 40, COLORS.ACCENT)
+    const closeBtn = this.add.rectangle(GAME_CONFIG.WIDTH / 2 + 320, GAME_CONFIG.HEIGHT / 2 - 250, 40, 40, COLORS.ACCENT)
       .setInteractive({ useHandCursor: true })
       .setName('recordDetail')
-    this.add.text(GAME_CONFIG.WIDTH / 2 + 320, GAME_CONFIG.HEIGHT / 2 - 210, '✕', {
+    this.add.text(GAME_CONFIG.WIDTH / 2 + 320, GAME_CONFIG.HEIGHT / 2 - 250, '✕', {
       font: 'bold 20px Arial', color: '#ffffff'
     }).setOrigin(0.5).setName('recordDetail')
 
@@ -154,22 +160,27 @@ export class RecordsScene extends Phaser.Scene {
       })
     })
 
-    this.add.text(GAME_CONFIG.WIDTH / 2 - 300, GAME_CONFIG.HEIGHT / 2 - 160, 
+    this.add.text(GAME_CONFIG.WIDTH / 2 - 300, GAME_CONFIG.HEIGHT / 2 - 200,
       `日期: ${new Date(record.date).toLocaleString('zh-CN')}`,
       { font: '16px Arial', color: '#a0a0a0' }
     ).setOrigin(0, 0.5).setName('recordDetail')
 
-    this.add.text(GAME_CONFIG.WIDTH / 2 - 300, GAME_CONFIG.HEIGHT / 2 - 120,
-      `关卡: Lv.${record.level} | 得分: ${record.score}`,
+    this.add.text(GAME_CONFIG.WIDTH / 2 - 300, GAME_CONFIG.HEIGHT / 2 - 160,
+      `关卡: Lv.${record.level} | 总得分: ${record.score}`,
       { font: 'bold 20px Arial', color: '#ffffff' }
     ).setOrigin(0, 0.5).setName('recordDetail')
 
-    this.add.text(GAME_CONFIG.WIDTH / 2 - 300, GAME_CONFIG.HEIGHT / 2 - 80,
+    this.add.text(GAME_CONFIG.WIDTH / 2 - 300, GAME_CONFIG.HEIGHT / 2 - 120,
       `任务完成: ${record.completedTasks}/${record.totalTasks} (${(record.completionRate * 100).toFixed(1)}%)`,
       { font: '18px Arial', color: '#4a90d9' }
     ).setOrigin(0, 0.5).setName('recordDetail')
 
-    let yOffset = GAME_CONFIG.HEIGHT / 2 - 30
+    this.add.text(GAME_CONFIG.WIDTH / 2 - 300, GAME_CONFIG.HEIGHT / 2 - 85,
+      `错误: ${record.errors.length}次 | 医保拒付: ${record.rejections.length}次 | 拒付金额: ${totalRejectionAmount}元`,
+      { font: '16px Arial', color: '#ffd93d' }
+    ).setOrigin(0, 0.5).setName('recordDetail')
+
+    let yOffset = GAME_CONFIG.HEIGHT / 2 - 40
 
     if (record.errors.length > 0) {
       this.add.text(GAME_CONFIG.WIDTH / 2 - 300, yOffset, '错误记录:', {
@@ -177,13 +188,21 @@ export class RecordsScene extends Phaser.Scene {
       }).setOrigin(0, 0.5).setName('recordDetail')
       yOffset += 30
 
-      record.errors.slice(0, 4).forEach(err => {
+      record.errors.slice(0, maxDetailItems).forEach(err => {
         this.add.text(GAME_CONFIG.WIDTH / 2 - 280, yOffset,
           `• ${err.reason}`,
           { font: '14px Arial', color: '#a0a0a0' }
         ).setOrigin(0, 0.5).setName('recordDetail')
         yOffset += 22
       })
+
+      if (record.errors.length > maxDetailItems) {
+        this.add.text(GAME_CONFIG.WIDTH / 2 - 280, yOffset,
+          `...还有 ${record.errors.length - maxDetailItems} 条错误`,
+          { font: '14px Arial', color: '#666666' }
+        ).setOrigin(0, 0.5).setName('recordDetail')
+        yOffset += 22
+      }
     }
 
     yOffset += 10
@@ -193,13 +212,20 @@ export class RecordsScene extends Phaser.Scene {
       }).setOrigin(0, 0.5).setName('recordDetail')
       yOffset += 30
 
-      record.rejections.slice(0, 4).forEach((rej: RejectionRecord) => {
+      record.rejections.slice(0, maxDetailItems).forEach((rej: RejectionRecord) => {
         this.add.text(GAME_CONFIG.WIDTH / 2 - 280, yOffset,
           `• ${rej.reason} (损失: ${rej.amount}元)`,
           { font: '14px Arial', color: '#a0a0a0' }
         ).setOrigin(0, 0.5).setName('recordDetail')
         yOffset += 22
       })
+
+      if (record.rejections.length > maxDetailItems) {
+        this.add.text(GAME_CONFIG.WIDTH / 2 - 280, yOffset,
+          `...还有 ${record.rejections.length - maxDetailItems} 条拒付`,
+          { font: '14px Arial', color: '#666666' }
+        ).setOrigin(0, 0.5).setName('recordDetail')
+      }
     }
   }
 }

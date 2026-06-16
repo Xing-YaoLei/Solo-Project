@@ -14,18 +14,25 @@ const DIAGNOSES = [
 
 let patientIdCounter = 0
 
-export function generatePatient(level: number): Patient {
+export function generatePatient(unlockedTreatments: string[]): Patient {
+  const eligibleDiagnoses = DIAGNOSES.filter(d =>
+    d.treatments.some(t => unlockedTreatments.includes(t))
+  )
+
+  const pool = eligibleDiagnoses.length > 0 ? eligibleDiagnoses : DIAGNOSES
+
   const id = `patient_${Date.now()}_${patientIdCounter++}`
   const name = FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)]
   const age = 35 + Math.floor(Math.random() * 45)
   const gender = Math.random() > 0.5 ? 'male' : 'female'
-  const diagnosis = DIAGNOSES[Math.floor(Math.random() * DIAGNOSES.length)]
+  const diagnosis = pool[Math.floor(Math.random() * pool.length)]
   const insuranceTypes: Array<'basic' | 'supplementary' | 'commercial'> = ['basic', 'basic', 'basic', 'supplementary', 'commercial']
-  const insuranceType = insuranceTypes[Math.floor(Math.random() * Math.min(insuranceTypes.length, 2 + level))]
+  const insuranceType = insuranceTypes[Math.floor(Math.random() * insuranceTypes.length)]
   const avatars = gender === 'male' ? ['👨', '👴', '👨‍🦰', '👨‍🦱'] : ['👩', '👵', '👩‍🦰', '👩‍🦱']
 
-  const treatmentCount = Math.min(diagnosis.treatments.length, 1 + Math.floor(Math.random() * level))
-  const selectedTreatments = [...diagnosis.treatments].sort(() => Math.random() - 0.5).slice(0, treatmentCount)
+  const availableTreatments = diagnosis.treatments.filter(t => unlockedTreatments.includes(t))
+  const treatmentCount = Math.max(1, Math.min(availableTreatments.length, 1 + Math.floor(Math.random() * availableTreatments.length)))
+  const selectedTreatments = [...availableTreatments].sort(() => Math.random() - 0.5).slice(0, treatmentCount)
 
   return {
     id,
