@@ -238,12 +238,11 @@ def get_follow_up_tasks(user_id: int = None, role: UserRole = None) -> pd.DataFr
         )
 
         if role == UserRole.EXECUTOR:
+            # 执行角色只看到明确分配给自己的任务（不再展示公共池）
             if user_id:
-                query = query.filter(
-                    or_(FollowUp.assigned_to == user_id, FollowUp.assigned_to.is_(None))
-                )
+                query = query.filter(FollowUp.assigned_to == user_id)
             else:
-                query = query.filter(FollowUp.assigned_to.is_(None))
+                query = query.filter(FollowUp.assigned_to == -1)  # 无账号时返回空集
 
         rows = query.order_by(FollowUp.priority.desc(), FollowUp.due_date.asc()).all()
 

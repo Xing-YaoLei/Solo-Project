@@ -165,9 +165,8 @@ def register_executor_callbacks(app):
             df_display = df.copy()
             df_display["due_date"] = df_display["due_date"].astype(str)
             df_display["actions"] = "[查看/处理](#)"
-            df_display["assignee_label"] = df_display.apply(
-                lambda r: (r["assignee_name"] if r["assignee_name"] else "公共池（可领取）"), axis=1
-            )
+            # 执行角色只看到分配给自己的任务，处理人统一显示为「本人」
+            df_display["assignee_label"] = "本人"
             df_display = df_display.fillna("")
 
             pending_count = len(df[df["status"] == FollowUpStatus.PENDING])

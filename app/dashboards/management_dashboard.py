@@ -281,7 +281,8 @@ def register_management_callbacks(app):
                              className="text-muted small mb-2"),
                     dash_table.DataTable(
                         id="mgmt-review-table",
-                        data=review_df[display_cols].to_dict("records"),
+                        # id 列放在 data 里但不在 columns 中定义 → 隐藏列，viewport_data 可读取
+                        data=review_df[display_cols + ["id"]].to_dict("records"),
                         columns=[{"name": c, "id": c} for c in display_cols],
                         page_size=15,
                         style_table={"overflowX": "auto"},
@@ -313,7 +314,8 @@ def register_management_callbacks(app):
                              className="text-muted small mb-2"),
                     dash_table.DataTable(
                         id="mgmt-notes-table",
-                        data=notes_df[display_cols].to_dict("records"),
+                        # id(prescription_note 主键)、prescription_id 隐藏在 data 中
+                        data=notes_df[display_cols + ["id", "prescription_id"]].to_dict("records"),
                         columns=[{"name": c, "id": c} for c in display_cols],
                         page_size=15,
                         style_table={"overflowX": "auto"},
@@ -528,7 +530,8 @@ def register_management_callbacks(app):
                              className="text-muted small mb-2"),
                     dash_table.DataTable(
                         id="mgmt-review-table",
-                        data=review_df[display_cols].to_dict("records"),
+                        # id 列放在 data 里但不在 columns 中定义 → 隐藏列，viewport_data 可读取
+                        data=review_df[display_cols + ["id"]].to_dict("records"),
                         columns=[{"name": c, "id": c} for c in display_cols],
                         page_size=15,
                         style_table={"overflowX": "auto"},
@@ -559,7 +562,8 @@ def register_management_callbacks(app):
                              className="text-muted small mb-2"),
                     dash_table.DataTable(
                         id="mgmt-notes-table",
-                        data=notes_df[display_cols].to_dict("records"),
+                        # id(prescription_note 主键)、prescription_id 隐藏在 data 中
+                        data=notes_df[display_cols + ["id", "prescription_id"]].to_dict("records"),
                         columns=[{"name": c, "id": c} for c in display_cols],
                         page_size=15,
                         style_table={"overflowX": "auto"},
