@@ -181,7 +181,7 @@ export class TiledMapManager extends Component {
 
         tween(this.highlightNode)
             .repeatForever(
-                tween()
+                tween(this.highlightNode)
                     .to(0.5, { opacity: 200 })
                     .to(0.5, { opacity: 100 })
             )

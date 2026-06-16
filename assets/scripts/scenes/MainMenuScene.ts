@@ -98,7 +98,7 @@ export class MainMenuScene extends Component {
         roleButtons.forEach((btn, index) => {
             if (roles[index]) {
                 const role = roles[index];
-                const label = btn.getComponentInChildren(Label);
+                const label = btn.node.getComponentInChildren(Label);
                 if (label) {
                     label.string = PharmacistRole.getDisplayName(role);
                 }

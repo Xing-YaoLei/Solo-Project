@@ -1,5 +1,5 @@
-import { _decorator, Component, Node, Label, Sprite, UITransform, tween, Vec3, Color } from 'cc';
-import type { TaskConfig, PrescriptionData, ReplenishmentData, InsuranceData, BlurConfig } from '../data/LevelConfig';
+import { _decorator, Component, Node, Label, Sprite, UITransform, tween, Vec3, Color, instantiate } from 'cc';
+import type { TaskConfig, PrescriptionData, ReplenishmentData, InsuranceData, BlurConfig, AdviceConfig } from '../data/LevelConfig';
 import { PharmacistAdviceService, type EvaluatedAdvice } from '../services/PharmacistAdviceService';
 
 const { ccclass, property } = _decorator;
@@ -27,14 +27,16 @@ export class InfoPanel extends Component {
     adviceBubblePrefab: Node | null = null;
 
     private currentTask: TaskConfig | null = null;
+    private levelPharmacistAdvice: AdviceConfig[] = [];
     private blurConfig: BlurConfig | null = null;
 
     onLoad() {
         this.hideAllPanels();
     }
 
-    public setTask(task: TaskConfig, blurConfig?: BlurConfig): void {
+    public setTask(task: TaskConfig, levelAdvice?: AdviceConfig[], blurConfig?: BlurConfig): void {
         this.currentTask = task;
+        this.levelPharmacistAdvice = levelAdvice || [];
         this.blurConfig = blurConfig || null;
         this.hideAllPanels();
         this.clearAdvice();
@@ -146,7 +148,7 @@ export class InfoPanel extends Component {
 
         const adviceList = PharmacistAdviceService.instance.getAdviceForTask(
             this.currentTask,
-            this.currentTask.pharmacistAdvice || []
+            this.levelPharmacistAdvice
         );
 
         const relevantAdvice = adviceList.filter(advice => {
@@ -164,7 +166,7 @@ export class InfoPanel extends Component {
     private createAdviceBubble(advice: EvaluatedAdvice, index: number): void {
         if (!this.adviceContainer || !this.adviceBubblePrefab) return;
 
-        const bubble = Node.instantiate(this.adviceBubblePrefab);
+        const bubble = instantiate(this.adviceBubblePrefab);
         this.adviceContainer.addChild(bubble);
 
         bubble.setPosition(0, -index * 80, 0);

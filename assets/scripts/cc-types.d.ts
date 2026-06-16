@@ -1,17 +1,14 @@
 declare module 'cc' {
-    export const _decorator: {
-        ccclass: (name: string) => ClassDecorator;
-        property: {
-            (type: any): PropertyDecorator;
-            (opts: { type?: any; default?: any; visible?: boolean; tooltip?: string; multiline?: boolean; min?: number; max?: number; step?: number; range?: any; slide?: boolean; displayOrder?: number; group?: string; override?: boolean; readonly?: boolean; serializable?: boolean; formerlySerializedAs?: string; }): PropertyDecorator;
-            (): PropertyDecorator;
-        };
-        executeInEditMode: (target: Function) => void;
-        menu: (path: string) => ClassDecorator;
-        requireComponent: (component: Function) => ClassDecorator;
-        disallowMultiple: (target: Function) => void;
-        executionOrder: (order: number) => ClassDecorator;
-    };
+
+    export namespace _decorator {
+        function ccclass(name?: string): any;
+        function property(options?: any): any;
+        function executeInEditMode(target: any): void;
+        function menu(path: string): any;
+        function requireComponent(component: any): any;
+        function disallowMultiple(target: any): void;
+        function executionOrder(order: number): any;
+    }
 
     export class Component {
         node: Node;
@@ -27,12 +24,6 @@ declare module 'cc' {
         scheduleOnce(callback: Function, delay?: number): void;
         unschedule(callback: Function): void;
         unscheduleAllCallbacks(): void;
-        getComponent<T extends Component>(type: new () => T): T | null;
-        getComponent(type: string): Component | null;
-        getComponent<T extends Component>(type: { new (...args: any[]): T }): T | null;
-        getComponents<T extends Component>(type: new () => T): T[];
-        getComponentInChildren<T extends Component>(type: new () => T): T | null;
-        getComponentsInChildren<T extends Component>(type: new () => T): T[];
     }
 
     export class Node {
@@ -63,8 +54,8 @@ declare module 'cc' {
         height: number;
         activeInHierarchy: boolean;
         uuid: string;
-        on(type: string, callback: Function, target?: any, useCapture?: boolean): typeof this;
-        off(type: string, callback?: Function, target?: any): typeof this;
+        on(type: string, callback: Function, target?: any, useCapture?: boolean): Node;
+        off(type: string, callback?: Function, target?: any): Node;
         emit(type: string, ...args: any[]): void;
         addChild(child: Node): void;
         removeChild(child: Node, cleanup?: boolean): void;
@@ -72,8 +63,7 @@ declare module 'cc' {
         getChildByName(name: string): Node | null;
         getChildByUuid(uuid: string): Node | null;
         getComponent<T extends Component>(type: new () => T): T | null;
-        getComponent(type: string): Component | null;
-        getComponent<T extends Component>(type: { new (...args: any[]): T }): T | null;
+        getComponent(type: string): any | null;
         getComponents<T extends Component>(type: new () => T): T[];
         getComponentInChildren<T extends Component>(type: new () => T): T | null;
         getComponentsInChildren<T extends Component>(type: new () => T): T[];
@@ -105,6 +95,27 @@ declare module 'cc' {
         length(): number;
         normalize(): Vec3;
         clone(): Vec3;
+    }
+
+    export class Vec2 {
+        x: number;
+        y: number;
+        constructor(x?: number, y?: number);
+    }
+
+    export class Vec4 {
+        x: number;
+        y: number;
+        z: number;
+        w: number;
+        constructor(x?: number, y?: number, z?: number, w?: number);
+    }
+
+    export class Quat {
+        x: number;
+        y: number;
+        z: number;
+        w: number;
     }
 
     export class Color {
@@ -150,6 +161,7 @@ declare module 'cc' {
         verticalAlign: number;
         overflow: number;
         enableWrapText: boolean;
+        overflowMode: number;
     }
 
     export class Sprite extends Component {
@@ -163,6 +175,11 @@ declare module 'cc' {
         type: number;
         sizeMode: number;
         color: Color;
+        fillCenter: any;
+        fillRange: number;
+        fillStart: number;
+        fillType: number;
+        material: any;
     }
 
     export class SpriteFrame {
@@ -190,8 +207,11 @@ declare module 'cc' {
         };
         interactable: boolean;
         transition: number;
-        clickEvents: Component[];
+        clickEvents: any[];
         node: Node;
+        duration: number;
+        zoomScale: number;
+        enabled: boolean;
     }
 
     export class Toggle extends Component {
@@ -199,6 +219,15 @@ declare module 'cc' {
             TOGGLE: string;
         };
         isChecked: boolean;
+        node: Node;
+        toggleEvents: any[];
+        checkMark: Node | null;
+        enabled: boolean;
+    }
+
+    export class ToggleContainer extends Component {
+        allowSwitchOff: boolean;
+        toggleItems: Toggle[];
         node: Node;
     }
 
@@ -214,11 +243,18 @@ declare module 'cc' {
         content: Node | null;
         horizontal: boolean;
         vertical: boolean;
-        scrollToOffset(offset: Vec3, timeInSeconds?: number, attenuated?: boolean): void;
+        scrollThreshold: number;
+        cancelInnerEvents: boolean;
+        inertia: boolean;
+        brake: number;
+        elastic: boolean;
+        bounceDuration: number;
+        scrollToOffset(offset: any, timeInSeconds?: number, attenuated?: boolean): void;
         scrollToLeft(timeInSeconds?: number, attenuated?: boolean): void;
         scrollToRight(timeInSeconds?: number, attenuated?: boolean): void;
         scrollToTop(timeInSeconds?: number, attenuated?: boolean): void;
         scrollToBottom(timeInSeconds?: number, attenuated?: boolean): void;
+        stopAutoScroll(): void;
     }
 
     export class Layout extends Component {
@@ -238,6 +274,10 @@ declare module 'cc' {
         paddingBottom: number;
         spacingX: number;
         spacingY: number;
+        cellSize: Size;
+        constraint: number;
+        constraintNum: number;
+        startAxis: number;
         updateLayout(): void;
     }
 
@@ -249,6 +289,44 @@ declare module 'cc' {
         setContentSize(width: number | Size, height?: number): void;
         convertToNodeSpaceAR(worldPoint: Vec3): Vec3;
         convertToWorldSpaceAR(localPoint: Vec3): Vec3;
+        setAnchorPoint(x: number, y: number): void;
+        getBoundingBoxToWorld(): any;
+    }
+
+    export class Canvas extends Component {
+        alignCanvasWithScreen: boolean;
+        cameraComponent: any;
+    }
+
+    export class Camera extends Component {
+        orthoHeight: number;
+        near: number;
+        far: number;
+        fov: number;
+        ortho: boolean;
+        clearFlags: number;
+        clearDepth: number;
+        clearStencil: number;
+        clearColor: any;
+        visibility: number;
+    }
+
+    export class Widget extends Component {
+        isAlignHorizontal: boolean;
+        isAlignVertical: boolean;
+        isAlignTop: boolean;
+        isAlignBottom: boolean;
+        isAlignLeft: boolean;
+        isAlignRight: boolean;
+        isStretchHeight: boolean;
+        isStretchWidth: boolean;
+        left: number;
+        right: number;
+        top: number;
+        bottom: number;
+        horizontalCenter: number;
+        verticalCenter: number;
+        alignMode: number;
     }
 
     export class TiledMap extends Component {
@@ -278,32 +356,65 @@ declare module 'cc' {
         name: string;
         nativeUrl: string;
         destroy(): boolean;
+        _uuid: string;
     }
 
     export class JsonAsset extends Asset {
         json: any;
     }
 
-    export class Prefab extends Asset {}
+    export class Prefab extends Asset {
+        data: any;
+    }
 
     export class Scene extends Asset {
         name: string;
     }
 
+    export class ImageAsset extends Asset {
+        data: any;
+    }
+
+    export class Texture2D extends Asset {
+        image: ImageAsset | null;
+    }
+
+    export class TextAsset extends Asset {
+        text: string;
+    }
+
+    export class AudioClip extends Asset {}
+    export class AnimationClip extends Asset {}
+
     export namespace director {
-        function loadScene(sceneName: string, onLoaded?: (error: Error | null, scene?: Scene) => void): void;
+        function loadScene(sceneName: string, onLoaded?: (error: Error | null, scene?: Scene) => void, onLaunched?: (error: Error | null, scene?: Scene) => void): void;
         function loadScene(sceneName: string, onLoaded?: (error: Error | null, scene?: Scene) => void): void;
         function getScene(): Scene | null;
         function getRunningScene(): Scene | null;
-        function preloadScene(sceneName: string, onLoaded?: (error: Error | null) => void): void;
+        function preloadScene(sceneName: string, onLoaded?: (error: Error | null) => void, onProgress?: (finished: number, total: number, item: any) => void): void;
+        function addScene(): any;
+        function removeScene(): void;
+        function replaceScene(scene: Scene): void;
+        function runSceneImmediate(sceneName: string, onLaunch?: Function): void;
+        const root: any;
+        const scenes: Scene[];
     }
 
     export namespace resources {
         function load(path: string, type: any, callback: (error: Error | null, asset: any) => void): void;
+        function load(path: string, callback: (error: Error | null, asset: any) => void): void;
         function loadDir(path: string, type: any, callback: (error: Error | null, assets: any[]) => void): void;
+        function loadDir(path: string, callback: (error: Error | null, assets: any[]) => void): void;
         function release(path: string): void;
         function releaseDir(path: string): void;
         function releaseAsset(asset: Asset): void;
+        function preload(path: string, type: any, callback?: (error: Error | null, asset: any) => void): void;
+    }
+
+    export namespace assetManager {
+        const bundles: any;
+        function loadAny(paths: string[], type: any, onProgress: any, onComplete: any): void;
+        function loadRemote(url: string, options: any, callback: (err: Error | null, data: any) => void): void;
     }
 
     export namespace sys {
@@ -316,6 +427,9 @@ declare module 'cc' {
         const language: string;
         const os: string;
         const platform: number;
+        const isBrowser: boolean;
+        const isMobile: boolean;
+        const isNative: boolean;
     }
 
     export function tween(target: any): Tween;
@@ -325,13 +439,20 @@ declare module 'cc' {
         by(duration: number, props: any, opts?: any): Tween;
         delay(duration: number): Tween;
         call(callback: Function): Tween;
-        repeat(repeatTimes: number, tween: Tween): Tween;
-        repeatForever(tween: Tween): Tween;
+        repeat(repeatTimes: number, tween?: Tween): Tween;
+        repeatForever(tween?: Tween): Tween;
         sequence(...tweens: Tween[]): Tween;
         parallel(...tweens: Tween[]): Tween;
         start(): Tween;
         stop(): Tween;
         clone(): Tween;
+        hide(): Tween;
+        show(): Tween;
+        removeSelf(): Tween;
+        reverseTime(): Tween;
+        then(other: Tween): Tween;
+        target(newTarget?: any): Tween;
+        union(): Tween;
     }
 
     export class Mask extends Component {
@@ -342,21 +463,98 @@ declare module 'cc' {
         };
         type: number;
         inverted: boolean;
+        alphaThreshold: number;
+        spriteFrame: SpriteFrame | null;
+        node: Node;
     }
 
-    export class PageView extends Component {}
-    export class EditBox extends Component {}
-    export class Slider extends Component {}
+    export class Graphics extends Component {
+        lineWidth: number;
+        strokeColor: Color;
+        fillColor: Color;
+        lineCap: number;
+        lineJoin: number;
+        miterLimit: number;
+        clear(): void;
+        moveTo(x: number, y: number): void;
+        lineTo(x: number, y: number): void;
+        circle(cx: number, cy: number, r: number): void;
+        rect(x: number, y: number, w: number, h: number): void;
+        close(): void;
+        stroke(): void;
+        fill(): void;
+    }
 
-    export const math: {
-        Vec2: any;
-        Vec3: typeof Vec3;
-        Vec4: any;
-        Mat3: any;
-        Mat4: any;
-        Quat: any;
-        Color: typeof Color;
-        Size: typeof Size;
-        Rect: typeof Rect;
-    };
+    export class PageView extends Component {
+        content: Node | null;
+        pageEvents: any[];
+        scrollThreshold: number;
+        cancelInnerEvents: boolean;
+        turnPageEventTiming: number;
+        scrollToPage(index: number, timeInSeconds?: number): void;
+        getCurrentPageIndex(): number;
+    }
+
+    export class EditBox extends Component {
+        string: string;
+        placeholder: string;
+        background: SpriteFrame | null;
+        fontColor: Color;
+        fontSize: number;
+        inputMode: number;
+        inputFlag: number;
+        returnType: number;
+        maxLength: number;
+        editBoxRect: Rect;
+    }
+
+    export class Slider extends Component {
+        progress: number;
+        direction: number;
+        handle: Node | null;
+        slideEvents: any[];
+    }
+
+    export class RichText extends Component {
+        string: string;
+        fontSize: number;
+        lineHeight: number;
+        maxWidth: number;
+        enableWrapText: boolean;
+    }
+
+    export class Animation extends Component {
+        defaultClip: AnimationClip | null;
+        play(name?: string, frameRate?: number): void;
+        stop(name?: string): void;
+        pause(name?: string): void;
+        resume(name?: string): void;
+    }
+
+    export namespace math {
+        const Vec2: any;
+        const Vec3: typeof Vec3;
+        const Vec4: any;
+        const Mat3: any;
+        const Mat4: any;
+        const Quat: any;
+        const Color: typeof Color;
+        const Size: typeof Size;
+        const Rect: typeof Rect;
+    }
+
+    export namespace NodeSpace {
+        const LOCAL: number;
+        const WORLD: number;
+    }
+
+    export function warn(...args: any[]): void;
+    export function warnID(id: number, ...args: any[]): void;
+    export function error(...args: any[]): void;
+    export function errorID(id: number, ...args: any[]): void;
+    export function log(...args: any[]): void;
+    export function logID(id: number, ...args: any[]): void;
+
+    export const game: any;
+    export const view: any;
 }

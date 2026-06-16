@@ -3,34 +3,35 @@
     "target": "ES2020",
     "module": "ESNext",
     "moduleResolution": "node",
-    "strict": true,
+    "strict": false,
     "noImplicitAny": false,
-    "strictNullChecks": true,
-    "strictFunctionTypes": true,
-    "noImplicitThis": true,
-    "alwaysStrict": true,
+    "strictNullChecks": false,
+    "strictFunctionTypes": false,
+    "noImplicitThis": false,
+    "strictBindCallApply": false,
+    "strictPropertyInitialization": false,
+    "alwaysStrict": false,
     "skipLibCheck": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
-    "declaration": true,
-    "declarationMap": true,
+    "emitDecoratorMetadata": false,
+    "declaration": false,
+    "declarationMap": false,
     "sourceMap": true,
     "outDir": "./temp/declarations",
     "baseUrl": ".",
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
+    "useDefineForClassFields": false,
+    "isolatedModules": false,
     "paths": {
-      "cc": ["assets/scripts/cc.d.ts"],
-      "db://*": ["assets/*"]
-    },
-    "typeRoots": [
-      "./node_modules/@types",
-      "./assets/scripts"
-    ]
+      "cc": ["./assets/scripts/cc.d.ts"]
+    }
   },
   "include": [
     "assets/**/*.ts",
-    "assets/scripts/cc.d.ts"
+    "assets/**/*.d.ts"
   ],
   "exclude": [
     "node_modules",

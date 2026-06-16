@@ -84,7 +84,7 @@ export class LevelCard extends Component {
             this.completedBadge.active = record ? record.completionCount > 0 : false;
         }
         if (this.lockMask) {
-            this.lockMask.active = !this.isUnlocked;
+            this.lockMask.node.active = !this.isUnlocked;
         }
     }
 

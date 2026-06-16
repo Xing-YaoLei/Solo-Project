@@ -74,7 +74,7 @@ export class LevelSelectScene extends Component {
 
         toggles.forEach((toggle, index) => {
             const role = roles[index];
-            const label = toggle.getComponentInChildren(Label);
+            const label = toggle.node.getComponentInChildren(Label);
             if (label) {
                 label.string = role ? PharmacistRole.getDisplayName(role) : '全部';
             }
@@ -101,7 +101,7 @@ export class LevelSelectScene extends Component {
 
         toggles.forEach((toggle, index) => {
             const difficulty = difficulties[index];
-            const label = toggle.getComponentInChildren(Label);
+            const label = toggle.node.getComponentInChildren(Label);
             if (label) {
                 label.string = difficulty ? Difficulty.getDisplayName(difficulty) : '全部';
             }

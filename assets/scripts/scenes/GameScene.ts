@@ -118,7 +118,7 @@ export class GameScene extends Component {
         }
 
         if (this.infoPanel) {
-            this.infoPanel.setTask(task, this.currentLevel!.prescriptionBlur);
+            this.infoPanel.setTask(task, this.currentLevel!.pharmacistAdvice, this.currentLevel!.prescriptionBlur);
         }
 
         if (this.tiledMapManager) {

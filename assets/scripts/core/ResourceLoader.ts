@@ -37,7 +37,7 @@ export class ResourceLoader {
         });
     }
 
-    public async loadAsset<T extends Asset>(path: string, type: new () => T): Promise<T | null> {
+    public async loadAsset<T extends Asset>(path: string, type: any): Promise<T | null> {
         return new Promise((resolve) => {
             resources.load(path, type, (err, asset) => {
                 if (err) {
