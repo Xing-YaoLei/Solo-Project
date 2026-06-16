@@ -1,0 +1,168 @@
+[gd_scene load_steps=2 format=3 uid="uid://bgamemain001"]
+
+[ext_resource type="Script" path="res://scripts/game/game_main.gd" id="1_gm"]
+
+[node name="GameMain" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_gm")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.92, 0.95, 0.98, 1.0)
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = 20.0
+offset_right = -20.0
+offset_bottom = -20.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 16
+
+[node name="TopHBox" type="HBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="TimerBox" type="PanelContainer" parent="VBoxContainer/TopHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="TimerPanelStyle" type="StyleBoxFlat" parent="VBoxContainer/TopHBox/TimerBox"]
+bg_color = Color(1, 1, 1, 1.0)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+content_margin_left = 14.0
+content_margin_top = 10.0
+content_margin_right = 14.0
+content_margin_bottom = 10.0
+shadow_color = Color(0, 0, 0, 0.06, 1)
+shadow_size = 3
+shadow_offset = Vector2(0, 1)
+
+[node name="VBox" type="VBoxContainer" parent="VBoxContainer/TopHBox/TimerBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="TimerHBox" type="HBoxContainer" parent="VBoxContainer/TopHBox/TimerBox/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+alignment = 1
+
+[node name="TimerLabel" type="Label" parent="VBoxContainer/TopHBox/TimerBox/VBox/TimerHBox"]
+layout_mode = 2
+text = "02:00"
+theme_override_colors/font_color = Color(0.15, 0.35, 0.75, 1.0)
+theme_override_font_sizes/font_size = 28
+size_flags_horizontal = 3
+
+[node name="PauseButton" type="Button" parent="VBoxContainer/TopHBox/TimerBox/VBox/TimerHBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(72, 36)
+text = "⏸ 暂停"
+theme_override_font_sizes/font_size = 13
+
+[node name="RestartButton" type="Button" parent="VBoxContainer/TopHBox/TimerBox/VBox/TimerHBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(72, 36)
+text = "⟳ 重开"
+theme_override_font_sizes/font_size = 13
+
+[node name="BackButton" type="Button" parent="VBoxContainer/TopHBox/TimerBox/VBox/TimerHBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(72, 36)
+text = "← 返回"
+theme_override_font_sizes/font_size = 13
+
+[node name="TimerBar" type="ProgressBar" parent="VBoxContainer/TopHBox/TimerBox/VBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 8)
+value = 100.0
+show_percentage = false
+
+[node name="StatsBox" type="PanelContainer" parent="VBoxContainer/TopHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 0)
+
+[node name="StatsPanelStyle" type="StyleBoxFlat" parent="VBoxContainer/TopHBox/StatsBox"]
+bg_color = Color(1, 1, 1, 1.0)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+content_margin_left = 14.0
+content_margin_top = 10.0
+content_margin_right = 14.0
+content_margin_bottom = 10.0
+shadow_color = Color(0, 0, 0, 0.06, 1)
+shadow_size = 3
+shadow_offset = Vector2(0, 1)
+
+[node name="VBox" type="VBoxContainer" parent="VBoxContainer/TopHBox/StatsBox"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="LevelLabel" type="Label" parent="VBoxContainer/TopHBox/StatsBox/VBox"]
+layout_mode = 2
+text = "关卡名称"
+theme_override_colors/font_color = Color(0.15, 0.35, 0.75, 1.0)
+theme_override_font_sizes/font_size = 18
+
+[node name="StatsHBox" type="HBoxContainer" parent="VBoxContainer/TopHBox/StatsBox/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="ScoreLabel" type="Label" parent="VBoxContainer/TopHBox/StatsBox/VBox/StatsHBox"]
+layout_mode = 2
+text = "得分: 0"
+theme_override_colors/font_color = Color(0.15, 0.35, 0.75, 1.0)
+theme_override_font_sizes/font_size = 15
+
+[node name="ProgressLabel" type="Label" parent="VBoxContainer/TopHBox/StatsBox/VBox/StatsHBox"]
+layout_mode = 2
+text = "进度: 0/0"
+theme_override_colors/font_color = Color(0.1, 0.7, 0.55, 1.0)
+theme_override_font_sizes/font_size = 15
+
+[node name="ComboLabel" type="Label" parent="VBoxContainer/TopHBox/StatsBox/VBox/StatsHBox"]
+layout_mode = 2
+text = "连击: --"
+theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 1.0)
+theme_override_font_sizes/font_size = 15
+
+[node name="ErrorsLabel" type="Label" parent="VBoxContainer/TopHBox/StatsBox/VBox/StatsHBox"]
+layout_mode = 2
+text = "错误: 0"
+theme_override_colors/font_color = Color(0.85, 0.35, 0.35, 1.0)
+theme_override_font_sizes/font_size = 15
+
+[node name="CenterContainer" type="CenterContainer" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="TaskContainer" type="Control" parent="VBoxContainer/CenterContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(600, 520)
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+grow_horizontal = 2
+grow_vertical = 2

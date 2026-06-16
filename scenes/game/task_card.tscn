@@ -1,0 +1,85 @@
+[gd_scene load_steps=2 format=3 uid="uid://btaskcard001"]
+
+[ext_resource type="Script" path="res://scripts/game/task_card.gd" id="1_tc"]
+
+[node name="TaskCard" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_tc")
+
+[node name="PanelContainer" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="PanelStyle" type="StyleBoxFlat" parent="PanelContainer"]
+bg_color = Color(1, 1, 1, 1.0)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+content_margin_left = 24.0
+content_margin_top = 20.0
+content_margin_right = 24.0
+content_margin_bottom = 20.0
+shadow_color = Color(0, 0, 0, 0.1, 1)
+shadow_size = 6
+shadow_offset = Vector2(0, 3)
+
+[node name="VBoxContainer" type="VBoxContainer" parent="PanelContainer"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="HeaderHBox" type="HBoxContainer" parent="PanelContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="TitleLabel" type="Label" parent="PanelContainer/VBoxContainer/HeaderHBox"]
+layout_mode = 2
+text = "任务标题"
+theme_override_colors/font_color = Color(0.15, 0.35, 0.75, 1.0)
+theme_override_font_sizes/font_size = 22
+size_flags_horizontal = 3
+
+[node name="TypeLabel" type="Label" parent="PanelContainer/VBoxContainer/HeaderHBox"]
+layout_mode = 2
+text = "任务类型"
+theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 1.0)
+theme_override_font_sizes/font_size = 13
+
+[node name="HSeparator" type="HSeparator" parent="PanelContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="ContentScroll" type="ScrollContainer" parent="PanelContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="PanelContainer/VBoxContainer/ContentScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="ButtonHBox" type="HBoxContainer" parent="PanelContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 16
+alignment = 1
+
+[node name="PassButton" type="Button" parent="PanelContainer/VBoxContainer/ButtonHBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(180, 52)
+text = "通过"
+theme_override_font_sizes/font_size = 16
+
+[node name="FailButton" type="Button" parent="PanelContainer/VBoxContainer/ButtonHBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(180, 52)
+text = "驳回"
+theme_override_font_sizes/font_size = 16

@@ -1,0 +1,233 @@
+[gd_scene load_steps=2 format=3 uid="uid://bsettings001"]
+
+[ext_resource type="Script" path="res://scripts/ui/settings.gd" id="1_set"]
+
+[node name="Settings" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_set")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.94, 0.97, 1.0, 1.0)
+
+[node name="Panel" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -300.0
+offset_top = -280.0
+offset_right = 300.0
+offset_bottom = 280.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="PanelStyle" type="StyleBoxFlat" parent="Panel"]
+bg_color = Color(1, 1, 1, 1.0)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+content_margin_left = 30.0
+content_margin_top = 30.0
+content_margin_right = 30.0
+content_margin_bottom = 30.0
+shadow_color = Color(0, 0, 0, 0.08, 1)
+shadow_size = 8
+shadow_offset = Vector2(0, 4)
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Panel"]
+layout_mode = 2
+theme_override_constants/separation = 30
+
+[node name="TitleLabel" type="Label" parent="Panel/VBoxContainer"]
+layout_mode = 2
+text = "系统设置"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.15, 0.35, 0.75, 1.0)
+theme_override_font_sizes/font_size = 32
+
+[node name="SubtitleLabel" type="Label" parent="Panel/VBoxContainer"]
+layout_mode = 2
+text = "工作间隙安静练习，可按需关闭"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 1.0)
+theme_override_font_sizes/font_size = 14
+
+[node name="SettingsBox" type="VBoxContainer" parent="Panel/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="SoundRow" type="HBoxContainer" parent="Panel/VBoxContainer/SettingsBox"]
+layout_mode = 2
+theme_override_constants/separation = 20
+alignment = 1
+
+[node name="Icon" type="Label" parent="Panel/VBoxContainer/SettingsBox/SoundRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(40, 40)
+text = "🔊"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 28
+
+[node name="VBox" type="VBoxContainer" parent="Panel/VBoxContainer/SettingsBox/SoundRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="Label" type="Label" parent="Panel/VBoxContainer/SettingsBox/SoundRow/VBox"]
+layout_mode = 2
+text = "音效"
+theme_override_colors/font_color = Color(0.2, 0.25, 0.35, 1.0)
+theme_override_font_sizes/font_size = 18
+
+[node name="Label2" type="Label" parent="Panel/VBoxContainer/SettingsBox/SoundRow/VBox"]
+layout_mode = 2
+text = "开启/关闭所有游戏音效"
+theme_override_colors/font_color = Color(0.55, 0.6, 0.7, 1.0)
+theme_override_font_sizes/font_size = 12
+
+[node name="CheckBox" type="CheckBox" parent="Panel/VBoxContainer/SettingsBox/SoundRow"]
+layout_mode = 2
+
+[node name="HSeparator" type="HSeparator" parent="Panel/VBoxContainer/SettingsBox"]
+layout_mode = 2
+
+[node name="AnimationRow" type="HBoxContainer" parent="Panel/VBoxContainer/SettingsBox"]
+layout_mode = 2
+theme_override_constants/separation = 20
+alignment = 1
+
+[node name="Icon" type="Label" parent="Panel/VBoxContainer/SettingsBox/AnimationRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(40, 40)
+text = "✨"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 28
+
+[node name="VBox" type="VBoxContainer" parent="Panel/VBoxContainer/SettingsBox/AnimationRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="Label" type="Label" parent="Panel/VBoxContainer/SettingsBox/AnimationRow/VBox"]
+layout_mode = 2
+text = "动画"
+theme_override_colors/font_color = Color(0.2, 0.25, 0.35, 1.0)
+theme_override_font_sizes/font_size = 18
+
+[node name="Label2" type="Label" parent="Panel/VBoxContainer/SettingsBox/AnimationRow/VBox"]
+layout_mode = 2
+text = "开启/关闭过渡动画与特效"
+theme_override_colors/font_color = Color(0.55, 0.6, 0.7, 1.0)
+theme_override_font_sizes/font_size = 12
+
+[node name="CheckBox" type="CheckBox" parent="Panel/VBoxContainer/SettingsBox/AnimationRow"]
+layout_mode = 2
+
+[node name="HSeparator2" type="HSeparator" parent="Panel/VBoxContainer/SettingsBox"]
+layout_mode = 2
+
+[node name="VibrationRow" type="HBoxContainer" parent="Panel/VBoxContainer/SettingsBox"]
+layout_mode = 2
+theme_override_constants/separation = 20
+alignment = 1
+
+[node name="Icon" type="Label" parent="Panel/VBoxContainer/SettingsBox/VibrationRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(40, 40)
+text = "📳"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 28
+
+[node name="VBox" type="VBoxContainer" parent="Panel/VBoxContainer/SettingsBox/VibrationRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="Label" type="Label" parent="Panel/VBoxContainer/SettingsBox/VibrationRow/VBox"]
+layout_mode = 2
+text = "震动"
+theme_override_colors/font_color = Color(0.2, 0.25, 0.35, 1.0)
+theme_override_font_sizes/font_size = 18
+
+[node name="Label2" type="Label" parent="Panel/VBoxContainer/SettingsBox/VibrationRow/VBox"]
+layout_mode = 2
+text = "开启/关闭设备震动反馈"
+theme_override_colors/font_color = Color(0.55, 0.6, 0.7, 1.0)
+theme_override_font_sizes/font_size = 12
+
+[node name="CheckBox" type="CheckBox" parent="Panel/VBoxContainer/SettingsBox/VibrationRow"]
+layout_mode = 2
+
+[node name="BackButton" type="Button" parent="Panel/VBoxContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 52)
+text = "返回主菜单"
+theme_override_font_sizes/font_size = 18
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(0.9, 0.95, 1, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_1")
+theme_override_styles/hover = SubResource("StyleBoxFlat_2")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_3")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_4")
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_1"]
+bg_color = Color(0.3, 0.4, 0.55, 1.0)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+content_margin_left = 20.0
+content_margin_top = 10.0
+content_margin_right = 20.0
+content_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_2"]
+bg_color = Color(0.4, 0.5, 0.65, 1.0)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+content_margin_left = 20.0
+content_margin_top = 10.0
+content_margin_right = 20.0
+content_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_3"]
+bg_color = Color(0.2, 0.3, 0.45, 1.0)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+content_margin_left = 20.0
+content_margin_top = 10.0
+content_margin_right = 20.0
+content_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_4"]
+bg_color = Color(0.7, 0.75, 0.85, 1.0)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+content_margin_left = 20.0
+content_margin_top = 10.0
+content_margin_right = 20.0
+content_margin_bottom = 10.0
