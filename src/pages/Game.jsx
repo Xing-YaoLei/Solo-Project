@@ -26,6 +26,7 @@ export default function Game() {
   const [countdown, setCountdown] = useState(3)
   const [gameStarted, setGameStarted] = useState(false)
   const [gameReady, setGameReady] = useState(false)
+  const [showFirstTaskWarning, setShowFirstTaskWarning] = useState(false)
 
   useEffect(() => {
     startGame(parseInt(level))
@@ -34,14 +35,21 @@ export default function Game() {
   useEffect(() => {
     if (gameState === 'playing' && tasks.length > 0) {
       setGameReady(true)
+      const firstTask = tasks[0]
+      if (firstTask?.isBlurry) {
+        setShowFirstTaskWarning(true)
+      }
     }
   }, [gameState, tasks])
 
   useEffect(() => {
-    if (gameStarted || countdown <= 0) return
+    if (gameStarted) return
     if (countdown === 0) {
-      setGameStarted(true)
-      return
+      const timer = setTimeout(() => {
+        setGameStarted(true)
+        setShowFirstTaskWarning(false)
+      }, 500)
+      return () => clearTimeout(timer)
     }
     const timer = setTimeout(() => setCountdown(c => c - 1), 800)
     return () => clearTimeout(timer)
@@ -80,11 +88,11 @@ export default function Game() {
         />
       </div>
 
-      {gameStarted && gameReady && gameState === 'playing' && !isReplaying && (
+      {gameStarted && !isReplaying && (
         <TaskPanel />
       )}
 
-      {gameStarted && gameReady && gameState === 'playing' && (
+      {gameStarted && (
         <div style={{
           position: 'absolute',
           top: 20,
@@ -108,7 +116,7 @@ export default function Game() {
         </div>
       )}
 
-      {gameStarted && gameReady && gameState === 'playing' && (
+      {gameStarted && (
         <div style={{
           position: 'absolute',
           bottom: 20,
@@ -159,27 +167,71 @@ export default function Game() {
         </div>
       )}
 
-      {!gameStarted && countdown > 0 && (
+      {!gameStarted && countdown >= 0 && (
         <div className="modal-overlay" style={{ zIndex: 200 }}>
           <div style={{ textAlign: 'center' }}>
-            <div style={{
-              fontSize: 120,
-              fontWeight: 900,
-              background: 'linear-gradient(135deg, #60a5fa, #a78bfa)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              marginBottom: 24,
-              animation: 'pulse 0.8s ease-in-out',
-            }}>
-              {countdown}
-            </div>
-            <div style={{ fontSize: 24, color: '#e0e6ed', fontWeight: 600 }}>
-              准备开始 {useGameStore.getState().currentLevel?.name || '训练'}
-            </div>
-            <div style={{ fontSize: 16, color: '#94a3b8', marginTop: 8 }}>
-              限时 {formatTime(useGameStore.getState().currentLevel?.duration || 90)} ·
-              共 {useGameStore.getState().currentLevel?.taskCount || 5} 个任务
-            </div>
+            {countdown > 0 ? (
+              <>
+                <div style={{
+                  fontSize: 120,
+                  fontWeight: 900,
+                  background: 'linear-gradient(135deg, #60a5fa, #a78bfa)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  marginBottom: 24,
+                  animation: 'pulse 0.8s ease-in-out',
+                }}>
+                  {countdown}
+                </div>
+                <div style={{ fontSize: 24, color: '#e0e6ed', fontWeight: 600 }}>
+                  准备开始 {useGameStore.getState().currentLevel?.name || '训练'}
+                </div>
+                <div style={{ fontSize: 16, color: '#94a3b8', marginTop: 8 }}>
+                  限时 {formatTime(useGameStore.getState().currentLevel?.duration || 90)} ·
+                  共 {useGameStore.getState().currentLevel?.taskCount || 5} 个任务
+                </div>
+                {showFirstTaskWarning && (
+                  <div className="danger-pulse fade-in" style={{
+                    marginTop: 32,
+                    padding: '16px 24px',
+                    background: 'rgba(239, 68, 68, 0.15)',
+                    border: '2px solid #ef4444',
+                    borderRadius: 12,
+                    maxWidth: 450,
+                    marginLeft: 'auto',
+                    marginRight: 'auto',
+                  }}>
+                    <div style={{
+                      fontSize: 18,
+                      color: '#f87171',
+                      fontWeight: 700,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                    }}>
+                      <span>⚠️</span>
+                      <span>紧急预警：第一张处方照片清晰度不足！</span>
+                    </div>
+                    <div style={{ fontSize: 14, color: '#fca5a5', marginTop: 6 }}>
+                      请准备升级处理，避免误判
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div style={{
+                fontSize: 80,
+                fontWeight: 900,
+                background: 'linear-gradient(135deg, #10b981, #34d399)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                marginBottom: 16,
+                animation: 'pulse 0.5s ease-in-out',
+              }}>
+                开始！
+              </div>
+            )}
           </div>
         </div>
       )}
