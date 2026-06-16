@@ -94,12 +94,12 @@ public class ReferenceDataController : ControllerBase
 
         var result = await query
             .Where(u => u.IsActive)
-            .OrderBy(u => u.Name)
+            .OrderBy(u => u.RealName)
             .Select(u => new UserDto
             {
                 Id = u.Id,
                 UserName = u.UserName,
-                Name = u.Name,
+                RealName = u.RealName,
                 Role = u.Role,
                 Department = u.Department
             })
@@ -168,7 +168,7 @@ public class UserDto
 {
     public int Id { get; set; }
     public string UserName { get; set; } = string.Empty;
-    public string Name { get; set; } = string.Empty;
+    public string RealName { get; set; } = string.Empty;
     public string? Role { get; set; }
     public string? Department { get; set; }
 }

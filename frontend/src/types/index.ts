@@ -322,7 +322,7 @@ export interface SourceChannelDto {
 export interface UserDto {
   id: number;
   userName: string;
-  name: string;
+  realName: string;
   role?: string;
   department?: string;
 }

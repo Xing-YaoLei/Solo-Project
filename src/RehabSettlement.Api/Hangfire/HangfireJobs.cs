@@ -5,18 +5,17 @@ namespace RehabSettlement.Api.Hangfire;
 
 public static class ExceptionHandlingJob
 {
-    public static async Task CheckExceptionStatus()
+    public static Task CheckExceptionStatus()
     {
-        // 这里会通过依赖注入获取服务
-        // 实际使用时需要用 JobActivator
+        return Task.CompletedTask;
     }
 }
 
 public static class NotificationJob
 {
-    public static async Task SendReminders()
+    public static Task SendReminders()
     {
-        // 发送提醒通知
+        return Task.CompletedTask;
     }
 }
 

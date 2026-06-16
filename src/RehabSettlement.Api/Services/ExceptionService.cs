@@ -274,6 +274,7 @@ public class ExceptionService : IExceptionService
         };
 
         _context.StatusTransitions.Add(transition);
+        await _context.SaveChangesAsync();
     }
 
     private static ExceptionRecordDto MapToDto(ExceptionRecord e)

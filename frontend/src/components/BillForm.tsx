@@ -264,23 +264,11 @@ const BillForm: React.FC<BillFormProps> = ({ form, initialData, onSubmit, onCanc
 
       <div style={{ display: 'flex', gap: 16 }}>
         <Form.Item label="来源渠道" name="sourceChannelId" style={{ flex: 1 }}>
-          <Select placeholder="请选择来源渠道" loading={loading}>
-            {sourceChannels.map((c) => (
-              <Option key={c.id} value={c.id}>
-                {c.name}
-              </Option>
-            ))}
-          </Select>
+          <Select placeholder="请选择来源渠道" loading={loading} options={sourceChannels.map((c) => ({ label: c.name, value: c.id }))} />
         </Form.Item>
 
         <Form.Item label="负责人" name="assigneeId" style={{ flex: 1 }}>
-          <Select placeholder="请选择负责人" loading={loading}>
-            {users.map((u) => (
-              <Option key={u.id} value={u.id}>
-                {u.name}
-              </Option>
-            ))}
-          </Select>
+          <Select placeholder="请选择负责人" loading={loading} options={users.map((u) => ({ label: u.realName, value: u.id }))} />
         </Form.Item>
       </div>
 

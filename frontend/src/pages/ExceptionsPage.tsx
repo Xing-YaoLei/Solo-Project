@@ -475,7 +475,7 @@ const ExceptionsPage: React.FC = () => {
             <Select placeholder="请选择处理人" loading={refDataLoading}>
               {users.map((u) => (
                 <Option key={u.id} value={u.id}>
-                  {u.name}
+                  {u.realName}
                 </Option>
               ))}
             </Select>
@@ -508,7 +508,7 @@ const ExceptionsPage: React.FC = () => {
               <Select placeholder="请选择升级处理的人员" loading={refDataLoading}>
                 {users.map((u) => (
                   <Option key={u.id} value={u.id}>
-                    {u.name}
+                    {u.realName}
                   </Option>
                 ))}
               </Select>
