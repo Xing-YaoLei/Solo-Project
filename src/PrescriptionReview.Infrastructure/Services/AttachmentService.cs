@@ -82,6 +82,19 @@ public class AttachmentService : IAttachmentService
         };
 
         _context.Attachments.Add(attachment);
+
+        var typeName = GetTypeName(type);
+        _context.AuditLogs.Add(new AuditLog
+        {
+            PrescriptionId = prescriptionId,
+            OperatorId = uploadedBy,
+            OldStatus = prescription.Status,
+            NewStatus = prescription.Status,
+            Action = $"上传{typeName}",
+            Remark = $"文件名: {fileName}",
+            CreatedAt = DateTime.Now
+        });
+
         await _context.SaveChangesAsync();
 
         var dto = new AttachmentDto
@@ -127,6 +140,8 @@ public class AttachmentService : IAttachmentService
         {
             AttachmentType.PrescriptionPhoto => "处方照片",
             AttachmentType.SupplementDocument => "补充资料",
+            AttachmentType.RestockOrder => "补货单",
+            AttachmentType.InsuranceRecord => "医保流水",
             AttachmentType.Other => "其他",
             _ => "未知"
         };

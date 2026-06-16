@@ -263,6 +263,18 @@ const PrescriptionDetail = () => {
     (a) => a.type === AttachmentType.SupplementDocument
   ) || []
 
+  const restockOrders = prescription?.attachments.filter(
+    (a) => a.type === AttachmentType.RestockOrder
+  ) || []
+
+  const insuranceRecords = prescription?.attachments.filter(
+    (a) => a.type === AttachmentType.InsuranceRecord
+  ) || []
+
+  const otherAttachments = prescription?.attachments.filter(
+    (a) => a.type === AttachmentType.Other
+  ) || []
+
   const drugColumns = [
     { title: '药品名称', dataIndex: 'drugName', width: 200 },
     { title: '规格', dataIndex: 'specification', width: 140 },
@@ -384,6 +396,116 @@ const PrescriptionDetail = () => {
                 bordered
               />
             </Card>
+
+            <Card title="处方照片（同步展示）" size="small">
+              {prescriptionPhotos.length === 0 ? (
+                <Empty description="暂无处方照片" />
+              ) : (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+                  {prescriptionPhotos.slice(0, 4).map((att) => (
+                    <div
+                      key={att.id}
+                      style={{
+                        width: 100,
+                        textAlign: 'center',
+                        cursor: 'pointer',
+                      }}
+                      onClick={() => handlePreviewImage(att.filePath)}
+                    >
+                      <div
+                        style={{
+                          width: 100,
+                          height: 100,
+                          border: '1px solid #d9d9d9',
+                          borderRadius: 4,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          backgroundColor: '#fafafa',
+                          marginBottom: 4,
+                        }}
+                      >
+                        <FileImageOutlined style={{ fontSize: 24, color: '#1677ff' }} />
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 11,
+                          color: '#595959',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {att.originalFileName}
+                      </div>
+                    </div>
+                  ))}
+                  {prescriptionPhotos.length > 4 && (
+                    <div
+                      style={{
+                        width: 100,
+                        height: 100,
+                        border: '1px dashed #d9d9d9',
+                        borderRadius: 4,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#8c8c8c',
+                        cursor: 'pointer',
+                      }}
+                      onClick={() => document.querySelector('.ant-tabs-nav-list [data-tab-key="2"]')?.parentElement?.click()}
+                    >
+                      还有 {prescriptionPhotos.length - 4} 张
+                    </div>
+                  )}
+                </div>
+              )}
+            </Card>
+
+            <Card title="药师意见（同步展示）" size="small">
+              {prescription?.pharmacistOpinions.length === 0 ? (
+                <Empty description="暂无药师意见" />
+              ) : (
+                <List
+                  dataSource={prescription?.pharmacistOpinions.slice(0, 2)}
+                  size="small"
+                  renderItem={(item) => (
+                    <List.Item key={item.id}>
+                      <List.Item.Meta
+                        avatar={<Avatar size="small" icon={<UserOutlined />} />}
+                        title={
+                          <Space size={8}>
+                            <span style={{ fontSize: 13 }}>{item.pharmacistName}</span>
+                            <Tag color={item.isApproved ? 'success' : 'error'} style={{ margin: 0 }}>
+                              {item.isApproved ? '同意' : '拒绝'}
+                            </Tag>
+                          </Space>
+                        }
+                        description={
+                          <div>
+                            <div style={{ fontSize: 12, marginBottom: 4 }}>{item.opinion}</div>
+                            <div style={{ fontSize: 11, color: '#8c8c8c' }}>
+                              {dayjs(item.createdAt).format('YYYY-MM-DD HH:mm')}
+                            </div>
+                          </div>
+                        }
+                      />
+                    </List.Item>
+                  )}
+                />
+              )}
+              {prescription && prescription.pharmacistOpinions.length > 2 && (
+                <div style={{ textAlign: 'center', marginTop: 8 }}>
+                  <Button
+                    type="link"
+                    size="small"
+                    onClick={() => document.querySelector('.ant-tabs-nav-list [data-tab-key="3"]')?.parentElement?.click()}
+                  >
+                    查看全部 {prescription.pharmacistOpinions.length} 条意见
+                  </Button>
+                </div>
+              )}
+            </Card>
           </Space>
         </TabPane>
 
@@ -503,6 +625,156 @@ const PrescriptionDetail = () => {
                     >
                       <List.Item.Meta
                         avatar={<FileImageOutlined style={{ fontSize: 20, color: '#52c41a' }} />}
+                        title={item.originalFileName}
+                        description={
+                          <Space size={16}>
+                            <span>上传者：{item.uploaderName}</span>
+                            <span>{dayjs(item.createdAt).format('YYYY-MM-DD HH:mm')}</span>
+                          </Space>
+                        }
+                      />
+                    </List.Item>
+                  )}
+                />
+              )}
+            </Card>
+
+            <Card
+              title="补货单"
+              extra={
+                <Upload
+                  showUploadList={false}
+                  customRequest={async ({ file }) => {
+                    await handleUpload(file as File, AttachmentType.RestockOrder)
+                  }}
+                >
+                  <Button type="primary" size="small" icon={<UploadOutlined />}>
+                    上传补货单
+                  </Button>
+                </Upload>
+              }
+              size="small"
+            >
+              {restockOrders.length === 0 ? (
+                <Empty description="暂无补货单" />
+              ) : (
+                <List
+                  dataSource={restockOrders}
+                  renderItem={(item) => (
+                    <List.Item
+                      actions={[
+                        <Button
+                          type="link"
+                          size="small"
+                          danger
+                          onClick={() => handleDeleteAttachment(item.id)}
+                        >
+                          删除
+                        </Button>,
+                      ]}
+                    >
+                      <List.Item.Meta
+                        avatar={<FileImageOutlined style={{ fontSize: 20, color: '#fa8c16' }} />}
+                        title={item.originalFileName}
+                        description={
+                          <Space size={16}>
+                            <span>上传者：{item.uploaderName}</span>
+                            <span>{dayjs(item.createdAt).format('YYYY-MM-DD HH:mm')}</span>
+                          </Space>
+                        }
+                      />
+                    </List.Item>
+                  )}
+                />
+              )}
+            </Card>
+
+            <Card
+              title="医保流水"
+              extra={
+                <Upload
+                  showUploadList={false}
+                  customRequest={async ({ file }) => {
+                    await handleUpload(file as File, AttachmentType.InsuranceRecord)
+                  }}
+                >
+                  <Button type="primary" size="small" icon={<UploadOutlined />}>
+                    上传医保流水
+                  </Button>
+                </Upload>
+              }
+              size="small"
+            >
+              {insuranceRecords.length === 0 ? (
+                <Empty description="暂无医保流水" />
+              ) : (
+                <List
+                  dataSource={insuranceRecords}
+                  renderItem={(item) => (
+                    <List.Item
+                      actions={[
+                        <Button
+                          type="link"
+                          size="small"
+                          danger
+                          onClick={() => handleDeleteAttachment(item.id)}
+                        >
+                          删除
+                        </Button>,
+                      ]}
+                    >
+                      <List.Item.Meta
+                        avatar={<FileImageOutlined style={{ fontSize: 20, color: '#722ed1' }} />}
+                        title={item.originalFileName}
+                        description={
+                          <Space size={16}>
+                            <span>上传者：{item.uploaderName}</span>
+                            <span>{dayjs(item.createdAt).format('YYYY-MM-DD HH:mm')}</span>
+                          </Space>
+                        }
+                      />
+                    </List.Item>
+                  )}
+                />
+              )}
+            </Card>
+
+            <Card
+              title="其他附件"
+              extra={
+                <Upload
+                  showUploadList={false}
+                  customRequest={async ({ file }) => {
+                    await handleUpload(file as File, AttachmentType.Other)
+                  }}
+                >
+                  <Button type="primary" size="small" icon={<UploadOutlined />}>
+                    上传其他
+                  </Button>
+                </Upload>
+              }
+              size="small"
+            >
+              {otherAttachments.length === 0 ? (
+                <Empty description="暂无其他附件" />
+              ) : (
+                <List
+                  dataSource={otherAttachments}
+                  renderItem={(item) => (
+                    <List.Item
+                      actions={[
+                        <Button
+                          type="link"
+                          size="small"
+                          danger
+                          onClick={() => handleDeleteAttachment(item.id)}
+                        >
+                          删除
+                        </Button>,
+                      ]}
+                    >
+                      <List.Item.Meta
+                        avatar={<FileImageOutlined style={{ fontSize: 20, color: '#8c8c8c' }} />}
                         title={item.originalFileName}
                         description={
                           <Space size={16}>

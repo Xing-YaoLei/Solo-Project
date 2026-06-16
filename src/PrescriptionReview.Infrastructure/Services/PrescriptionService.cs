@@ -596,6 +596,8 @@ public class PrescriptionService : IPrescriptionService
         {
             AttachmentType.PrescriptionPhoto => "处方照片",
             AttachmentType.SupplementDocument => "补充资料",
+            AttachmentType.RestockOrder => "补货单",
+            AttachmentType.InsuranceRecord => "医保流水",
             AttachmentType.Other => "其他",
             _ => "未知"
         };

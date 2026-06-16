@@ -7,6 +7,7 @@ using PrescriptionReview.Infrastructure.Data;
 using PrescriptionReview.Infrastructure.Services;
 using Hangfire;
 using Hangfire.SqlServer;
+using Hangfire.InMemory;
 using Microsoft.EntityFrameworkCore;
 using PrescriptionReview.Api;
 
@@ -69,18 +70,29 @@ builder.Services.AddAuthorization(options =>
 
 builder.Services.AddInfrastructureServices(builder.Configuration);
 
+var useInMemoryHangfireStr = builder.Configuration["UseInMemoryDatabase"]?.ToLower();
+var useSqliteHangfireStr = builder.Configuration["UseSqlite"]?.ToLower();
+var useInMemoryHangfire = useInMemoryHangfireStr == "true" || useInMemoryHangfireStr == "1" || useSqliteHangfireStr == "true" || useSqliteHangfireStr == "1";
+
 builder.Services.AddHangfire(config =>
 {
-    config.UseSqlServerStorage(
-        builder.Configuration.GetConnectionString("DefaultConnection"),
-        new SqlServerStorageOptions
-        {
-            CommandBatchMaxTimeout = TimeSpan.FromMinutes(5),
-            SlidingInvisibilityTimeout = TimeSpan.FromMinutes(5),
-            QueuePollInterval = TimeSpan.Zero,
-            UseRecommendedIsolationLevel = true,
-            DisableGlobalLocks = true
-        });
+    if (useInMemoryHangfire)
+    {
+        config.UseInMemoryStorage();
+    }
+    else
+    {
+        config.UseSqlServerStorage(
+            builder.Configuration.GetConnectionString("DefaultConnection"),
+            new SqlServerStorageOptions
+            {
+                CommandBatchMaxTimeout = TimeSpan.FromMinutes(5),
+                SlidingInvisibilityTimeout = TimeSpan.FromMinutes(5),
+                QueuePollInterval = TimeSpan.Zero,
+                UseRecommendedIsolationLevel = true,
+                DisableGlobalLocks = true
+            });
+    }
 });
 
 builder.Services.AddHangfireServer();

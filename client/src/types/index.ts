@@ -209,12 +209,16 @@ export interface PrescriptionStatusChange {
 export enum AttachmentType {
   PrescriptionPhoto = 0,
   SupplementDocument = 1,
-  Other = 2,
+  RestockOrder = 2,
+  InsuranceRecord = 3,
+  Other = 4,
 }
 
 export const AttachmentTypeNames: Record<AttachmentType, string> = {
   [AttachmentType.PrescriptionPhoto]: '处方照片',
   [AttachmentType.SupplementDocument]: '补充资料',
+  [AttachmentType.RestockOrder]: '补货单',
+  [AttachmentType.InsuranceRecord]: '医保流水',
   [AttachmentType.Other]: '其他',
 }
 

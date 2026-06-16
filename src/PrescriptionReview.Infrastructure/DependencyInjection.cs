@@ -11,8 +11,26 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructureServices(this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddDbContext<AppDbContext>(options =>
-            options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
+        var useInMemoryStr = configuration["UseInMemoryDatabase"]?.ToLower();
+        var useSqliteStr = configuration["UseSqlite"]?.ToLower();
+        var useInMemory = useInMemoryStr == "true" || useInMemoryStr == "1";
+        var useSqlite = useSqliteStr == "true" || useSqliteStr == "1";
+
+        if (useInMemory)
+        {
+            services.AddDbContext<AppDbContext>(options =>
+                options.UseInMemoryDatabase("PrescriptionReview"));
+        }
+        else if (useSqlite)
+        {
+            services.AddDbContext<AppDbContext>(options =>
+                options.UseSqlite("Data Source=PrescriptionReview.db"));
+        }
+        else
+        {
+            services.AddDbContext<AppDbContext>(options =>
+                options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
+        }
 
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IUserService, UserService>();
