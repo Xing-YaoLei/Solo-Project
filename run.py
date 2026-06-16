@@ -12,7 +12,8 @@ def main():
     print("🏥 康复中心康复评估风险监测系统")
     print(f"🚀 启动Dash应用，端口: {settings.DASH_PORT}")
     print(f"🔗 访问地址: http://localhost:{settings.DASH_PORT}")
-    print(f"💾 数据库: {'SQLite' if settings.USE_SQLITE else 'PostgreSQL'}")
+    print(f"💾 数据库: {settings.DATABASE_URL}")
+    print(f"   驱动: {'SQLite' if settings.USE_SQLITE else 'PostgreSQL (psycopg)'}")
     print("=" * 60)
 
     app.run_server(
