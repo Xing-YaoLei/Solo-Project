@@ -1,0 +1,189 @@
+{
+  "version": "1.0.0",
+  "tutorials": {
+    "TUT_INTRO": {
+      "id": "TUT_INTRO",
+      "name": "新手引导：欢迎来到康复中心",
+      "order": 1,
+      "triggerCondition": "FIRST_LAUNCH",
+      "steps": [
+        {
+          "id": 1,
+          "type": "DIALOG",
+          "target": null,
+          "content": "欢迎来到康复中心评估经营模拟系统！\n本系统将帮助你掌握康复评估与医保合规的核心技能。",
+          "highlightArea": null,
+          "duration": 0
+        },
+        {
+          "id": 2,
+          "type": "POINTER",
+          "target": "LEVEL_SELECT_BUTTON",
+          "content": "首先，让我们从第一个关卡开始，点击关卡选择按钮。",
+          "highlightArea": "level_select_btn",
+          "duration": 0
+        },
+        {
+          "id": 3,
+          "type": "POINTER",
+          "target": "LV001_CARD",
+          "content": "选择\"初入康复科\"关卡，这是最适合新手的入门训练。",
+          "highlightArea": "level_card_LV001",
+          "duration": 0
+        }
+      ]
+    },
+    "TUT_TASK_FLOW": {
+      "id": "TUT_TASK_FLOW",
+      "name": "任务流程：接任务→看线索→做选择",
+      "order": 2,
+      "triggerCondition": "ENTER_LEVEL_LV001",
+      "steps": [
+        {
+          "id": 1,
+          "type": "DIALOG",
+          "target": null,
+          "content": "每局游戏分为三个阶段：接任务、观察线索、选择动作。\n让我们逐步体验这个流程。",
+          "highlightArea": null,
+          "duration": 0
+        },
+        {
+          "id": 2,
+          "type": "POINTER",
+          "target": "TASK_PANEL",
+          "content": "这里是任务面板，显示当前任务目标和要求。\n先仔细阅读任务描述，明确需要做什么。",
+          "highlightArea": "task_panel",
+          "duration": 0
+        },
+        {
+          "id": 3,
+          "type": "POINTER",
+          "target": "CLUE_TAB",
+          "content": "点击线索标签页，查看与任务相关的患者资料、检查报告等。\n仔细阅读线索是做出正确选择的关键！",
+          "highlightArea": "clue_tab",
+          "duration": 0
+        },
+        {
+          "id": 4,
+          "type": "POINTER",
+          "target": "CLUE_CARD",
+          "content": "点击线索卡片可以查看详细内容。\n注意线索上的重要性标记，CRITICAL标记的线索务必仔细阅读！",
+          "highlightArea": "clue_card_first",
+          "duration": 0
+        },
+        {
+          "id": 5,
+          "type": "POINTER",
+          "target": "ACTION_PANEL",
+          "content": "查看完线索后，回到动作面板，从多个选项中做出你的专业判断。",
+          "highlightArea": "action_panel",
+          "duration": 0
+        }
+      ]
+    },
+    "TUT_SCORING": {
+      "id": "TUT_SCORING",
+      "name": "评分规则：得分、错因与医保拒付",
+      "order": 3,
+      "triggerCondition": "FIRST_ACTION_COMPLETE",
+      "steps": [
+        {
+          "id": 1,
+          "type": "DIALOG",
+          "target": null,
+          "content": "每次选择后都会有即时反馈，让我们了解评分规则。",
+          "highlightArea": null,
+          "duration": 0
+        },
+        {
+          "id": 2,
+          "type": "DIALOG",
+          "target": null,
+          "content": "【得分系统】\n✅ 正确选择：获得正向得分\n❌ 错误选择：被扣分\n\n选择越专业、越符合规范，得分越高！",
+          "highlightArea": null,
+          "duration": 0
+        },
+        {
+          "id": 3,
+          "type": "DIALOG",
+          "target": null,
+          "content": "【错因标记】\n错误会被归类为：\n• 流程错误(PROCEDURAL)\n• 诊断错误(DIAGNOSTIC)\n• 评估错误(EVALUATION)\n• 文档错误(DOCUMENTATION)\n• 医疗安全(SAFETY)\n• 医保违规(BILLING/OVERTREATMENT)\n\n复盘时可以针对弱项重点提升！",
+          "highlightArea": null,
+          "duration": 0
+        },
+        {
+          "id": 4,
+          "type": "DIALOG",
+          "target": null,
+          "content": "【医保拒付风险】\n每个错误选项都有医保拒付触发概率。\n高风险操作（如过度治疗、串换编码）有很高概率触发医保稽核！\n累计触发3次以上会直接影响通关和排行榜名次。",
+          "highlightArea": null,
+          "duration": 0
+        }
+      ]
+    },
+    "TUT_LOG_AND_SETTLEMENT": {
+      "id": "TUT_LOG_AND_SETTLEMENT",
+      "name": "进阶系统：护理日志与结算明细",
+      "order": 4,
+      "triggerCondition": "UNLOCK_COMPLEX_LOGS",
+      "steps": [
+        {
+          "id": 1,
+          "type": "DIALOG",
+          "target": null,
+          "content": "随着你完成更多训练，更复杂的功能将逐步解锁！",
+          "highlightArea": null,
+          "duration": 0
+        },
+        {
+          "id": 2,
+          "type": "POINTER",
+          "target": "NURSING_LOG_TAB",
+          "content": "护理日志面板记录了每一步操作的时间线，\n复盘时可以重现完整的决策过程，找出哪些环节可以改进。",
+          "highlightArea": "nursing_log_tab",
+          "duration": 0
+        },
+        {
+          "id": 3,
+          "type": "POINTER",
+          "target": "BILLING_DETAIL_TAB",
+          "content": "结算明细面板展示了每个收费项目的：\n• 医保编码与名称\n• 单价与数量\n• 医保报销比例\n• 是否触发拒付风险\n\n精细化管理是DRG时代的核心竞争力！",
+          "highlightArea": "billing_detail_tab",
+          "duration": 0
+        }
+      ]
+    },
+    "TUT_REPLAY_AND_RANKING": {
+      "id": "TUT_REPLAY_AND_RANKING",
+      "name": "复盘与排行榜：持续精进",
+      "order": 5,
+      "triggerCondition": "FIRST_LEVEL_COMPLETE",
+      "steps": [
+        {
+          "id": 1,
+          "type": "DIALOG",
+          "target": null,
+          "content": "恭喜完成首次训练！学习是一个持续精进的过程。",
+          "highlightArea": null,
+          "duration": 0
+        },
+        {
+          "id": 2,
+          "type": "POINTER",
+          "target": "REPLAY_BUTTON",
+          "content": "点击\"复盘训练记录\"可以回看：\n• 每题的得分和错因\n• 医保拒付触发点\n• 完成率和耗时\n\n针对性改进薄弱环节，成绩会稳步提升！",
+          "highlightArea": "replay_btn",
+          "duration": 0
+        },
+        {
+          "id": 3,
+          "type": "POINTER",
+          "target": "RANKING_BUTTON",
+          "content": "排行榜系统按照综合得分排名，综合考虑：\n• 正确率\n• 完成时间\n• 医保合规性\n\n挑战更高分数，成为康复管理专家！",
+          "highlightArea": "ranking_btn",
+          "duration": 0
+        }
+      ]
+    }
+  }
+}

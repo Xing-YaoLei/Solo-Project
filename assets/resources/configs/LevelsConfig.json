@@ -1,0 +1,89 @@
+{
+  "version": "1.0.0",
+  "levels": [
+    {
+      "id": "LV001",
+      "name": "初入康复科",
+      "description": "熟悉康复中心基本流程，完成首次患者接待",
+      "difficulty": 1,
+      "prescriptionId": "PRE_BASIC_001",
+      "sceneId": "SCENE_LOBBY_01",
+      "tiledMap": "maps/rehab_lobby.tmx",
+      "unlockCondition": {
+        "type": "NONE",
+        "value": 0
+      },
+      "timeLimit": 600,
+      "passScore": 60,
+      "tasks": ["TASK_001", "TASK_002", "TASK_003"],
+      "rewards": {
+        "exp": 100,
+        "coins": 500,
+        "unlockItems": ["ITEM_REHAB_BADGE_01"]
+      }
+    },
+    {
+      "id": "LV002",
+      "name": "脑卒中康复评估",
+      "description": "对脑卒中患者进行系统评估并制定康复方案",
+      "difficulty": 2,
+      "prescriptionId": "PRE_STROKE_001",
+      "sceneId": "SCENE_EVAL_ROOM_01",
+      "tiledMap": "maps/evaluation_room.tmx",
+      "unlockCondition": {
+        "type": "LEVEL_PASS",
+        "value": "LV001"
+      },
+      "timeLimit": 900,
+      "passScore": 70,
+      "tasks": ["TASK_101", "TASK_102", "TASK_103", "TASK_104"],
+      "rewards": {
+        "exp": 200,
+        "coins": 1000,
+        "unlockItems": ["ITEM_STROKE_CERT"]
+      }
+    },
+    {
+      "id": "LV003",
+      "name": "骨折术后康复",
+      "description": "管理骨折术后患者的康复训练流程，注意医保合规",
+      "difficulty": 3,
+      "prescriptionId": "PRE_FRACTURE_001",
+      "sceneId": "SCENE_THERAPY_ROOM_01",
+      "tiledMap": "maps/therapy_room.tmx",
+      "unlockCondition": {
+        "type": "LEVEL_PASS",
+        "value": "LV002"
+      },
+      "timeLimit": 1200,
+      "passScore": 75,
+      "tasks": ["TASK_201", "TASK_202", "TASK_203", "TASK_204", "TASK_205"],
+      "rewards": {
+        "exp": 350,
+        "coins": 1800,
+        "unlockItems": ["ITEM_FRACTURE_CERT"]
+      }
+    },
+    {
+      "id": "LV004",
+      "name": "老年综合康复",
+      "description": "处理多病共存老年患者的复杂康复方案，规避医保拒付风险",
+      "difficulty": 4,
+      "prescriptionId": "PRE_ELDERLY_001",
+      "sceneId": "SCENE_ELDERLY_WARD_01",
+      "tiledMap": "maps/elderly_ward.tmx",
+      "unlockCondition": {
+        "type": "TOTAL_SCORE",
+        "value": 200
+      },
+      "timeLimit": 1500,
+      "passScore": 80,
+      "tasks": ["TASK_301", "TASK_302", "TASK_303", "TASK_304", "TASK_305", "TASK_306"],
+      "rewards": {
+        "exp": 500,
+        "coins": 3000,
+        "unlockItems": ["ITEM_ELDERLY_CERT", "ITEM_SENIOR_THERAPIST"]
+      }
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "engine": "cocos-creator-js",
+  "packages": "packages",
+  "name": "rehab-center-simulation",
+  "id": "rehab-center-2024",
+  "version": "3.8.0",
+  "type": "3d"
+}

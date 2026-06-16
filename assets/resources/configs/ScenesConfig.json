@@ -1,0 +1,74 @@
+{
+  "version": "1.0.0",
+  "scenes": {
+    "SCENE_LOBBY_01": {
+      "id": "SCENE_LOBBY_01",
+      "name": "康复科大厅",
+      "description": "患者接待、登记和分诊区域",
+      "tiledMap": "maps/rehab_lobby.tmx",
+      "backgroundMusic": "audio/bgm_lobby",
+      "interactiveObjects": [
+        { "id": "OBJ_RECEPTION_DESK", "name": "接待台", "triggerTaskIds": ["TASK_001"] },
+        { "id": "OBJ_INFO_BOARD", "name": "信息公告板", "triggerClueIds": [] },
+        { "id": "OBJ_WAITING_AREA", "name": "等候区", "triggerTaskIds": [] }
+      ],
+      "npcs": [
+        { "id": "NPC_RECEPTIONIST_01", "name": "前台护士小王", "role": "RECEPTIONIST", "dialogues": [] }
+      ]
+    },
+    "SCENE_EVAL_ROOM_01": {
+      "id": "SCENE_EVAL_ROOM_01",
+      "name": "神经康复评估室",
+      "description": "脑卒中、脑外伤等神经疾患评估区域",
+      "tiledMap": "maps/evaluation_room.tmx",
+      "backgroundMusic": "audio/bgm_evaluation",
+      "interactiveObjects": [
+        { "id": "OBJ_EVAL_BED", "name": "评估床", "triggerTaskIds": ["TASK_101"] },
+        { "id": "OBJ_WALKING_BAR", "name": "平行杠", "triggerTaskIds": [] },
+        { "id": "OBJ_COMPUTER", "name": "量表评估系统", "triggerTaskIds": ["TASK_101", "TASK_102"] },
+        { "id": "OBJ_FILM_VIEWER", "name": "阅片灯", "triggerTaskIds": ["TASK_101"] }
+      ],
+      "npcs": [
+        { "id": "NPC_PATIENT_STROKE", "name": "患者张建国", "role": "PATIENT", "dialogues": [] },
+        { "id": "NPC_THERAPIST_NEURO", "name": "康复治疗师李姐", "role": "MENTOR", "dialogues": [] }
+      ]
+    },
+    "SCENE_THERAPY_ROOM_01": {
+      "id": "SCENE_THERAPY_ROOM_01",
+      "name": "骨科康复治疗室",
+      "description": "运动疗法、作业疗法实施区域",
+      "tiledMap": "maps/therapy_room.tmx",
+      "backgroundMusic": "audio/bgm_therapy",
+      "interactiveObjects": [
+        { "id": "OBJ_TREATMENT_BED", "name": "治疗床", "triggerTaskIds": ["TASK_201", "TASK_202", "TASK_203"] },
+        { "id": "OBJ_GONIOMETER", "name": "量角器组", "triggerTaskIds": ["TASK_202"] },
+        { "id": "OBJ_DUMBBELL_RACK", "name": "哑铃架", "triggerTaskIds": ["TASK_204"] },
+        { "id": "OBJ_XRAY_VIEWER", "name": "X光阅片灯", "triggerTaskIds": ["TASK_201"] },
+        { "id": "OBJ_BILLING_STATION", "name": "医保申报工作站", "triggerTaskIds": ["TASK_205"] }
+      ],
+      "npcs": [
+        { "id": "NPC_PATIENT_FRACTURE", "name": "患者刘奶奶", "role": "PATIENT", "dialogues": [] },
+        { "id": "NPC_THERAPIST_ORTHO", "name": "主管治疗师陈老师", "role": "MENTOR", "dialogues": [] }
+      ]
+    },
+    "SCENE_ELDERLY_WARD_01": {
+      "id": "SCENE_ELDERLY_WARD_01",
+      "name": "老年康复病区",
+      "description": "老年综合康复单元，含多学科协作空间",
+      "tiledMap": "maps/elderly_ward.tmx",
+      "backgroundMusic": "audio/bgm_elderly",
+      "interactiveObjects": [
+        { "id": "OBJ_PATIENT_BED", "name": "病床", "triggerTaskIds": ["TASK_301", "TASK_303"] },
+        { "id": "OBJ_MEDICATION_CART", "name": "药车", "triggerTaskIds": ["TASK_302"] },
+        { "id": "OBJ_MDT_MEETING_ROOM", "name": "MDT会议室", "triggerTaskIds": ["TASK_304"] },
+        { "id": "OBJ_HOME_VR_SIMULATOR", "name": "居家环境VR模拟器", "triggerTaskIds": ["TASK_305"] },
+        { "id": "OBJ_DRG_MANAGEMENT_SYSTEM", "name": "DRG管理系统", "triggerTaskIds": ["TASK_306"] }
+      ],
+      "npcs": [
+        { "id": "NPC_PATIENT_ELDERLY", "name": "患者王爷爷", "role": "PATIENT", "dialogues": [] },
+        { "id": "NPC_GERIATRICIAN", "name": "老年科赵主任", "role": "MENTOR", "dialogues": [] },
+        { "id": "NPC_CASE_MANAGER", "name": "个案管理师孙老师", "role": "MENTOR", "dialogues": [] }
+      ]
+    }
+  }
+}

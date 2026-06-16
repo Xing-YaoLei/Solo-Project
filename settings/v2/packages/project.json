@@ -1,0 +1,31 @@
+{
+  "general": {
+    "designWidth": 1280,
+    "designHeight": 720,
+    "fitWidth": true,
+    "fitHeight": false,
+    "frameRate": 60
+  },
+  "physics": {
+    "useBuiltIn": true,
+    "gravity": {
+      "x": 0,
+      "y": -320,
+      "z": 0
+    }
+  },
+  "group_index": {
+    "DEFAULT": 0,
+    "UI": 1,
+    "GROUND": 2,
+    "NPC": 3,
+    "TRIGGER": 4
+  },
+  "collision_matrix": {
+    "0": [true, true, true, true, true],
+    "1": [true, false, false, false, false],
+    "2": [true, false, true, true, true],
+    "3": [true, false, true, false, true],
+    "4": [true, false, true, true, false]
+  }
+}

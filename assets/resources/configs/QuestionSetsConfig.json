@@ -1,0 +1,150 @@
+{
+  "version": "1.0.0",
+  "questionSets": {
+    "QS_NIHSS_01": {
+      "id": "QS_NIHSS_01",
+      "name": "NIHSS量表模拟评估题组",
+      "description": "模拟患者表现，评估使用者对NIHSS各子项的掌握程度",
+      "questions": [
+        {
+          "id": "Q_NIHSS_1",
+          "subscale": "1a. 意识水平",
+          "scenario": "患者对提问反应正常，能准确回答姓名、年龄、当前地点。",
+          "options": [
+            { "text": "0分：警觉，反应敏锐", "score": 2, "correct": true },
+            { "text": "1分：嗜睡，最小刺激能唤醒", "score": 0, "correct": false },
+            { "text": "2分：昏睡，需强刺激才有反应", "score": 0, "correct": false },
+            { "text": "3分：昏迷，无反应", "score": 0, "correct": false }
+          ]
+        },
+        {
+          "id": "Q_NIHSS_2",
+          "subscale": "5a. 左上肢运动",
+          "scenario": "患者左上肢抬起后可对抗一定阻力，但力量较健侧稍弱，可完成全关节活动。",
+          "options": [
+            { "text": "0分：无下落，肌力正常", "score": 0, "correct": false },
+            { "text": "1分：对抗重力下不落到床，但不能抗阻力", "score": 0, "correct": false },
+            { "text": "2分：对抗重力会下落，可部分抵抗", "score": 2, "correct": true },
+            { "text": "3分：完全不能对抗重力，立即下落", "score": 0, "correct": false },
+            { "text": "4分：完全不能活动", "score": 0, "correct": false }
+          ]
+        },
+        {
+          "id": "Q_NIHSS_3",
+          "subscale": "9. 语言（失语症）",
+          "scenario": "患者命名困难，找词费力，但能理解大部分语言指令，可进行简单对话。",
+          "options": [
+            { "text": "0分：无失语，正常", "score": 0, "correct": false },
+            { "text": "1分：轻度失语，找词或命名困难", "score": 2, "correct": true },
+            { "text": "2分：中度失语，表达需明显帮助", "score": 0, "correct": false },
+            {
+              "text": "3分：重度失语，仅有极少能用的词",
+              "score": 0,
+              "correct": false
+            }
+          ]
+        }
+      ],
+      "passScore": 5,
+      "explanation": "NIHSS评分是卒中患者神经功能评估的金标准，共11个亚项，总分0-42分。"
+    },
+    "QS_ROM_01": {
+      "id": "QS_ROM_01",
+      "name": "关节活动度测量规范题组",
+      "description": "考查ROM测量的标准体位、量角器放置和正常范围",
+      "questions": [
+        {
+          "id": "Q_ROM_1",
+          "subscale": "膝关节屈曲量角器放置",
+          "scenario": "测量左膝关节屈曲活动度时，量角器的轴心应放置在哪个解剖标志？",
+          "options": [
+            { "text": "股骨大转子", "score": 0, "correct": false },
+            { "text": "股骨内髁", "score": 0, "correct": false },
+            { "text": "股骨外髁", "score": 3, "correct": true },
+            { "text": "髌骨中点", "score": 0, "correct": false },
+            { "text": "腓骨小头", "score": 0, "correct": false }
+          ]
+        },
+        {
+          "id": "Q_ROM_2",
+          "subscale": "膝关节屈曲正常范围",
+          "scenario": "成年人膝关节屈曲的正常活动范围（主动）是？",
+          "options": [
+            { "text": "0° - 90°", "score": 0, "correct": false },
+            { "text": "0° - 135°", "score": 3, "correct": true },
+            { "text": "0° - 160°", "score": 0, "correct": false },
+            { "text": "0° - 180°", "score": 0, "correct": false }
+          ]
+        },
+        {
+          "id": "Q_ROM_3",
+          "subscale": "ROM测量原则",
+          "scenario": "关于关节活动度测量，下列哪项描述是正确的？",
+          "options": [
+            { "text": "只需要测量患侧即可", "score": 0, "correct": false },
+            { "text": "只需要记录主动活动范围", "score": 0, "correct": false },
+            { "text": "应双侧对比测量，记录主动和被动ROM", "score": 3, "correct": true },
+            { "text": "测量结果估读到5°即可", "score": 0, "correct": false }
+          ]
+        }
+      ],
+      "passScore": 7,
+      "explanation": "ROM测量是康复评估的基础技能，标准化操作可确保数据可靠性，是医保稽核的重点检查项。"
+    },
+    "QS_CGA_01": {
+      "id": "QS_CGA_01",
+      "name": "老年综合评估(CGA)核心题组",
+      "description": "考查CGA的维度、常用量表和筛查切点",
+      "questions": [
+        {
+          "id": "Q_CGA_1",
+          "subscale": "CGA核心维度",
+          "scenario": "以下哪项不属于老年综合评估(CGA)的传统核心维度？",
+          "options": [
+            { "text": "躯体功能（ADL/IADL）", "score": 0, "correct": false },
+            { "text": "认知功能与情绪", "score": 0, "correct": false },
+            { "text": "营养状况", "score": 0, "correct": false },
+            { "text": "经济状况与财产管理能力", "score": 4, "correct": true },
+            { "text": "社会支持系统", "score": 0, "correct": false }
+          ]
+        },
+        {
+          "id": "Q_CGA_2",
+          "subscale": "MMSE评分判读",
+          "scenario": "一名72岁女性患者，MMSE评分为24分（受教育程度：初中），最可能的诊断是？",
+          "options": [
+            { "text": "认知功能完全正常", "score": 0, "correct": false },
+            { "text": "轻度认知障碍(MCI)", "score": 4, "correct": true },
+            { "text": "中度痴呆", "score": 0, "correct": false },
+            { "text": "重度痴呆", "score": 0, "correct": false }
+          ]
+        },
+        {
+          "id": "Q_CGA_3",
+          "subscale": "Beers标准用途",
+          "scenario": "Beers标准主要用于评估老年患者的哪项问题？",
+          "options": [
+            { "text": "跌倒风险评估", "score": 0, "correct": false },
+            { "text": "营养不良筛查", "score": 0, "correct": false },
+            { "text": "潜在不适当用药筛查", "score": 4, "correct": true },
+            { "text": "抑郁情绪筛查", "score": 0, "correct": false },
+            { "text": "压疮风险评估", "score": 0, "correct": false }
+          ]
+        },
+        {
+          "id": "Q_CGA_4",
+          "subscale": "跌倒风险评估",
+          "scenario": "以下哪种药物是老年患者跌倒的明确高危因素？（Beers标准标记）",
+          "options": [
+            { "text": "苯二氮䓬类（如地西泮）", "score": 4, "correct": true },
+            { "text": "二甲双胍", "score": 0, "correct": false },
+            { "text": "氨氯地平", "score": 0, "correct": false },
+            { "text": "奥美拉唑", "score": 0, "correct": false }
+          ]
+        }
+      ],
+      "passScore": 12,
+      "explanation": "老年综合评估强调全人管理，而非仅关注单一疾病。完整的CGA是老年康复医保结算的必备支持资料。"
+    }
+  }
+}

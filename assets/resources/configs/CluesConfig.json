@@ -1,0 +1,597 @@
+{
+  "version": "1.0.0",
+  "clues": {
+    "CLUE_001": {
+      "id": "CLUE_001",
+      "name": "患者基本信息表",
+      "description": "显示患者姓名、性别、年龄、身份证号、医保类型等基本字段",
+      "category": "DOCUMENT",
+      "spritePath": "clues/form_icon",
+      "content": {
+        "name": "张建国",
+        "gender": "男",
+        "age": 58,
+        "idCard": "1101011965XXXX1234",
+        "insuranceType": "职工医保",
+        "referralSource": "神经内科转诊"
+      },
+      "importance": "HIGH",
+      "hint": "注意核对医保类型，不同保险报销政策不同"
+    },
+    "CLUE_002": {
+      "id": "CLUE_002",
+      "name": "就诊卡",
+      "description": "患者的医院就诊卡片",
+      "category": "PHYSICAL",
+      "spritePath": "clues/card_icon",
+      "content": {
+        "patientId": "P20240115001",
+        "visitCount": 1,
+        "firstVisit": true
+      },
+      "importance": "LOW",
+      "hint": "首次就诊患者需要建立完整档案"
+    },
+    "CLUE_003": {
+      "id": "CLUE_003",
+      "name": "患者主诉记录",
+      "description": "患者口述的主要不适",
+      "category": "DOCUMENT",
+      "spritePath": "clues/note_icon",
+      "content": {
+        "chiefComplaint": "右侧肢体活动不利3天",
+        "duration": "3天",
+        "onsetMode": "安静状态下突发",
+        "accompanyingSymptoms": ["言语稍欠流利", "右侧口角歪斜"]
+      },
+      "importance": "CRITICAL",
+      "hint": "典型的脑卒中发病表现，需要重点关注"
+    },
+    "CLUE_004": {
+      "id": "CLUE_004",
+      "name": "既往史问卷",
+      "description": "患者既往健康状况问卷",
+      "category": "DOCUMENT",
+      "spritePath": "clues/questionnaire_icon",
+      "content": {
+        "hypertension": "10年，规律服药，血压控制尚可",
+        "diabetes": "5年，口服降糖药",
+        "smoking": "吸烟30年，已戒2年",
+        "drinking": "偶尔饮酒",
+        "surgeryHistory": "无",
+        "allergy": "青霉素过敏"
+      },
+      "importance": "HIGH",
+      "hint": "高血压和糖尿病都是脑卒中的高危因素"
+    },
+    "CLUE_005": {
+      "id": "CLUE_005",
+      "name": "生命体征记录单",
+      "description": "入院时的生命体征数据",
+      "category": "DOCUMENT",
+      "spritePath": "clues/vitals_icon",
+      "content": {
+        "temperature": "36.5°C",
+        "pulse": 78,
+        "respiration": 18,
+        "bloodPressure": "145/90 mmHg",
+        "oxygenSaturation": "96%（未吸氧）",
+        "painScore": 2
+      },
+      "importance": "MEDIUM",
+      "hint": "血压偏高，需要持续监测"
+    },
+    "CLUE_101": {
+      "id": "CLUE_101",
+      "name": "头颅CT/MRI报告",
+      "description": "神经影像学检查结果",
+      "category": "DOCUMENT",
+      "spritePath": "clues/scan_icon",
+      "content": {
+        "examType": "头颅MRI+DWI",
+        "findings": "左侧基底节区急性脑梗死，范围约2.5×1.8cm",
+        "hemorrhage": "排除脑出血",
+        "carotidDoppler": "双侧颈动脉硬化伴斑块形成"
+      },
+      "importance": "CRITICAL",
+      "hint": "左侧基底节区病变解释右侧肢体症状"
+    },
+    "CLUE_102": {
+      "id": "CLUE_102",
+      "name": "NIHSS评分参考卡",
+      "description": "美国国立卫生院卒中量表使用参考",
+      "category": "REFERENCE",
+      "spritePath": "clues/scale_icon",
+      "content": {
+        "totalScore": "0-42分",
+        "severity": {
+          "mild": "0-4分：轻型",
+          "moderate": "5-15分：中型",
+          "moderateSevere": "16-20分：中重型",
+          "severe": "21-42分：重型"
+        },
+        "subscales": ["意识水平", "凝视", "视野", "面瘫", "上肢运动", "下肢运动", "共济失调", "感觉", "语言", "构音障碍", "忽视症"]
+      },
+      "importance": "HIGH",
+      "hint": "逐项评估，不要遗漏任何子项"
+    },
+    "CLUE_103": {
+      "id": "CLUE_103",
+      "name": "患者功能视频片段",
+      "description": "患者入院时的功能状态录像截图",
+      "category": "MEDIA",
+      "spritePath": "clues/video_icon",
+      "content": {
+        "observations": [
+          "右侧上肢只能在床面平移，不能抬离床面",
+          "可行走但需要辅助，右侧画圈步态",
+          "回答问题切题但找词困难",
+          "右侧鼻唇沟变浅"
+        ]
+      },
+      "importance": "HIGH",
+      "hint": "结合视频表现量化各项评分"
+    },
+    "CLUE_104": {
+      "id": "CLUE_104",
+      "name": "康复预后评估工具",
+      "description": "脑卒中功能预后的参考资料",
+      "category": "REFERENCE",
+      "spritePath": "clues/prognosis_icon",
+      "content": {
+        "predictors": {
+          "positive": ["年龄<65岁", "发病1周内NIHSS<10分", "早期康复介入"],
+          "negative": ["糖尿病控制不佳", "既往卒中史", "严重认知障碍"]
+        },
+        "recoveryTimeline": {
+          "1month": "神经功能快速恢复阶段",
+          "3month": "功能恢复黄金期",
+          "6month": "大部分功能恢复完成"
+        }
+      },
+      "importance": "MEDIUM",
+      "hint": "目标设定要基于客观预后判断，既不保守也不冒进"
+    },
+    "CLUE_105": {
+      "id": "CLUE_105",
+      "name": "患者及家属期望调查表",
+      "description": "患者和家属对康复效果的期待",
+      "category": "DOCUMENT",
+      "spritePath": "clues/survey_icon",
+      "content": {
+        "patientExpectation": "希望能重新回到工作岗位，恢复正常生活",
+        "familyExpectation": "生活能自理就满意了，不要求太多",
+        "understandingLevel": "对疾病有基本认知，知道恢复需要时间",
+        "supportSystem": "配偶照护为主，子女周末可帮忙"
+      },
+      "importance": "MEDIUM",
+      "hint": "患者期望偏高，需要引导并关注家属心理"
+    },
+    "CLUE_106": {
+      "id": "CLUE_106",
+      "name": "医保康复项目目录（节选）",
+      "description": "当地医保可报销的康复治疗项目及限价",
+      "category": "REFERENCE",
+      "spritePath": "clues/insurance_icon",
+      "content": {
+        "PT": {
+          "name": "运动疗法",
+          "code": "340100001",
+          "price": 45,
+          "limitPerDay": 2,
+          "description": "针对肢体功能障碍的综合训练"
+        },
+        "OT": {
+          "name": "作业疗法",
+          "code": "340100002",
+          "price": 40,
+          "limitPerDay": 1,
+          "description": "日常生活活动能力训练"
+        },
+        "ST": {
+          "name": "言语训练",
+          "code": "340100003",
+          "price": 50,
+          "limitPerDay": 1,
+          "description": "针对失语、构音障碍的训练"
+        },
+        "PHYSIOTHERAPY": {
+          "name": "物理因子治疗",
+          "code": "340100004",
+          "price": 30,
+          "limitPerDay": 2,
+          "description": "电疗、热疗、冷疗等"
+        },
+        "DAYCARE_LIMIT": {
+          "dailyRehabCap": 200,
+          "consecutiveDaysLimit": 90
+        }
+      },
+      "importance": "CRITICAL",
+      "hint": "超限价、超次数、超期限的费用医保拒付"
+    },
+    "CLUE_201": {
+      "id": "CLUE_201",
+      "name": "术前X线片",
+      "description": "患者受伤时的影像资料",
+      "category": "MEDIA",
+      "spritePath": "clues/xray_icon",
+      "content": {
+        "fractureType": "左胫骨平台骨折 Schatzker Ⅲ型",
+        "displacement": "外侧平台塌陷约8mm",
+        "associatedInjuries": ["外侧半月板损伤可疑", "前交叉韧带止点撕脱待排"]
+      },
+      "importance": "CRITICAL",
+      "hint": "关节内骨折需要精确复位，否则远期创伤性关节炎风险高"
+    },
+    "CLUE_202": {
+      "id": "CLUE_202",
+      "name": "术后X线片（第3天）",
+      "description": "内固定术后复查影像",
+      "category": "MEDIA",
+      "spritePath": "clues/xray_icon",
+      "content": {
+        "fixationType": "外侧锁定钢板支撑植骨",
+        "reductionQuality": "关节面平整，塌陷纠正满意",
+        "implantPosition": "钢板螺钉位置良好，无穿入关节",
+        "recommendation": "术后2周内非负重，2周后部分负重渐进"
+      },
+      "importance": "CRITICAL",
+      "hint": "负重进度需要严格遵影像表现"
+    },
+    "CLUE_203": {
+      "id": "CLUE_203",
+      "name": "ROM测量记录模板",
+      "description": "关节活动度测量的标准体位和记录方式",
+      "category": "REFERENCE",
+      "spritePath": "clues/goniometer_icon",
+      "content": {
+        "knee": {
+          "flexion": {
+            "normalRange": "0°-135°",
+            "patientPosition": "俯卧位，髋伸直",
+            "fulcrum": "股骨外髁",
+            "proximalArm": "股骨大转子至外髁连线",
+            "distalArm": "腓骨小头至外踝连线"
+          },
+          "extension": {
+            "normalRange": "0°",
+            "note": "注意是否存在屈曲挛缩"
+          }
+        },
+        "ankle": {
+          "dorsiflexion": {
+            "normalRange": "0°-15°",
+            "plantarFlexion": "0°-45°"
+          }
+        }
+      },
+      "importance": "HIGH",
+      "hint": "量角器放置位置不正确会导致测量误差"
+    },
+    "CLUE_204": {
+      "id": "CLUE_204",
+      "name": "MMT肌力分级标准",
+      "description": "徒手肌力检查的6级分级标准",
+      "category": "REFERENCE",
+      "spritePath": "clues/mmt_icon",
+      "content": {
+        "grade5": "能对抗最大阻力完成全关节活动范围运动",
+        "grade4": "能对抗中等强度阻力完成全关节活动范围运动",
+        "grade3": "能对抗重力完成全关节活动范围运动，不能抗阻力",
+        "grade2": "消除重力后能完成全关节活动范围运动",
+        "grade1": "可触及肌肉收缩，但无关节活动",
+        "grade0": "无可触及的肌肉收缩"
+      },
+      "importance": "HIGH",
+      "hint": "注意抗重力体位和非抗重力体位的区别"
+    },
+    "CLUE_205": {
+      "id": "CLUE_205",
+      "name": "胫骨平台骨折康复临床路径",
+      "description": "中华医学会推荐的康复分期及内容",
+      "category": "REFERENCE",
+      "spritePath": "clues/pathway_icon",
+      "content": {
+        "phase1": {
+          "period": "术后0-2周",
+          "goals": ["控制肿胀疼痛", "预防血栓", "维持髌骨活动度"],
+          "interventions": ["踝泵", "股四头肌等长收缩", "CPM机被动活动0-60°", "物理因子消肿"],
+          "weightBearing": "完全非负重"
+        },
+        "phase2": {
+          "period": "术后2-6周",
+          "goals": ["膝关节被动ROM达到90°", "预防肌肉萎缩"],
+          "interventions": ["渐进性被动ROM", "直腿抬高", "本体感觉训练"],
+          "weightBearing": "足尖点地(<10kg)"
+        },
+        "phase3": {
+          "period": "术后6-12周",
+          "goals": ["ROM接近健侧", "肌力恢复至4级", "逐步全负重"],
+          "interventions": ["主动ROM训练", "渐进性抗阻训练", "平衡训练", "步态训练"],
+          "weightBearing": "部分负重→全负重过渡"
+        },
+        "phase4": {
+          "period": "术后12周以后",
+          "goals": ["功能性能力恢复", "重返生活/工作"],
+          "interventions": ["功能性训练", "专项运动训练", "患者教育"],
+          "weightBearing": "全负重"
+        }
+      },
+      "importance": "CRITICAL",
+      "hint": "不同分期的康复目标和负重要求不同，切勿急于求成"
+    },
+    "CLUE_206": {
+      "id": "CLUE_206",
+      "name": "骨科康复医保稽核重点提示",
+      "description": "当地医保局发布的骨科康复常见违规情形",
+      "category": "REFERENCE",
+      "spritePath": "clues/audit_icon",
+      "content": {
+        "commonViolations": [
+          "同一收费编码同日多次申报（如运动疗法申报4次/日）",
+          "串换项目：将自费项目申报为医保项目",
+          "分解收费：将一次治疗分解为多个编码申报",
+          "超范围用药：非本疾病相关用药",
+          "虚假记录：康复记录与收费项目不匹配"
+        ],
+        "penaltyScale": {
+          "minor": "拒付相关费用+限期整改",
+          "moderate": "拒付+2-5倍罚款+约谈",
+          "severe": "拒付+5-10倍罚款+暂停医保服务+通报"
+        },
+        "keyIndicator": "康复费用占住院总费用比例>40%触发预警"
+      },
+      "importance": "CRITICAL",
+      "hint": "医保稽核越来越严，合规是底线"
+    },
+    "CLUE_301": {
+      "id": "CLUE_301",
+      "name": "老年综合评估(CGA)包内容清单",
+      "description": "老年医学科常用评估工具包",
+      "category": "REFERENCE",
+      "spritePath": "clues/cga_icon",
+      "content": {
+        "domains": {
+          "physicalFunction": ["ADL(Barthel指数)", "IADL(Lawton量表)", "步态与平衡(Tinetti)"],
+          "cognition": ["MMSE简易精神状态检查表", "MoCA蒙特利尔认知评估"],
+          "mood": ["GDS老年抑郁量表", "SAS焦虑自评量表"],
+          "nutrition": ["MNA微型营养评估"],
+          "sensory": ["视力评估", "听力评估"],
+          "socialSupport": ["社会支持评定量表", "照护者负担量表"],
+          "medication": ["用药清单核查", "Beers标准筛查"],
+          "geriatricSyndromes": ["跌倒评估", "压疮评估", "睡眠评估", "尿失禁评估", "疼痛评估"]
+        }
+      },
+      "importance": "HIGH",
+      "hint": "CGA强调全面性，不要只关注躯体功能"
+    },
+    "CLUE_302": {
+      "id": "CLUE_302",
+      "name": "MMSE认知筛查结果",
+      "description": "患者的简易精神状态检查得分",
+      "category": "DOCUMENT",
+      "spritePath": "clues/mmse_icon",
+      "content": {
+        "totalScore": 24,
+        "maxScore": 30,
+        "cutoff": {
+          "normal": "≥27分",
+          "mildCI": "21-26分：轻度认知障碍",
+          "moderate": "10-20分：中度",
+          "severe": "<10分：重度"
+        },
+        "subscores": {
+          "orientation": 9,
+          "registration": 3,
+          "attentionCalculation": 4,
+          "recall": 2,
+          "language": 6
+        },
+        "interpreter": "提示轻度认知障碍，记忆力下降为主，符合MCI表现"
+      },
+      "importance": "HIGH",
+      "hint": "轻度认知障碍会影响患者对康复训练的理解和配合度"
+    },
+    "CLUE_303": {
+      "id": "CLUE_303",
+      "name": "GDS-15抑郁筛查结果",
+      "description": "老年抑郁量表简版评估记录",
+      "category": "DOCUMENT",
+      "spritePath": "clues/gds_icon",
+      "content": {
+        "score": 8,
+        "maxScore": 15,
+        "interpretation": "8分提示可能存在抑郁症状，建议进一步临床访谈",
+        "positiveItems": ["对生活基本满意？→否", "觉得生活空虚？→是", "常感到无聊？→是", "经常感到无助？→有时", "担心会有坏事发生？→有时", "对多数活动失去兴趣？→是"],
+        "recommendation": "1. 转诊老年精神科/心理科会诊；2. 康复训练中增加社会参与类活动；3. 照护者注意观察有无自杀倾向"
+      },
+      "importance": "HIGH",
+      "hint": "老年抑郁会严重影响康复动力和预后，不可忽视"
+    },
+    "CLUE_304": {
+      "id": "CLUE_304",
+      "name": "MNA营养评估结果",
+      "description": "微型营养评估简版记录",
+      "category": "DOCUMENT",
+      "spritePath": "clues/mna_icon",
+      "content": {
+        "totalScore": 9,
+        "maxScore": 14,
+        "interpretation": "9分提示存在营养不良风险",
+        "details": {
+          "BMI": 21.2,
+          "weightLoss": "过去3个月体重下降3kg，原因：食欲下降",
+          "acuteDisease": "过去1个月因骨折手术应激",
+          "mobility": "行动受限，需助行器",
+          "neuropsychological": "轻度认知障碍+抑郁",
+          "foodIntake": "进食量较前减少约40%"
+        },
+        "dietitianAdvice": "每日热量目标30kcal/kg，蛋白质1.2-1.5g/kg，考虑口服营养补充(ONS)"
+      },
+      "importance": "HIGH",
+      "hint": "营养不良会导致肌肉分解加速、康复效果差、并发症增加"
+    },
+    "CLUE_305": {
+      "id": "CLUE_305",
+      "name": "患者用药清单及Beers筛查",
+      "description": "患者服用的所有药物及潜在不适当用药标记",
+      "category": "DOCUMENT",
+      "spritePath": "clues/meds_icon",
+      "content": {
+        "medicationList": [
+          {
+            "name": "氨氯地平",
+            "dose": "5mg qd",
+            "indication": "高血压",
+            "beersFlag": false
+          },
+          {
+            "name": "二甲双胍",
+            "dose": "0.5g tid",
+            "indication": "2型糖尿病",
+            "beersFlag": false
+          },
+          {
+            "name": "阿司匹林",
+            "dose": "100mg qd",
+            "indication": "二级预防",
+            "beersFlag": false,
+            "warning": "注意出血风险，跌倒后容易颅内出血"
+          },
+          {
+            "name": "地西泮",
+            "dose": "5mg qn",
+            "indication": "失眠",
+            "beersFlag": true,
+            "beersCategory": "苯二氮䓬类",
+            "risk": "跌倒风险增加2倍，认知损害加重",
+            "recommendation": "换用非苯二氮䓬类催眠药或非药物治疗"
+          },
+          {
+            "name": "塞来昔布",
+            "dose": "0.2g bid",
+            "indication": "术后止痛",
+            "beersFlag": true,
+            "beersCategory": "NSAIDs",
+            "risk": "心血管风险增加，与ACEI/利尿剂合用影响肾功能",
+            "recommendation": "短期使用，尽早停用，注意肾功能监测"
+          }
+        ],
+        "polypharmacyNote": "共5种药物，其中2种Beers标准不适当用药，需与临床团队沟通调整"
+      },
+      "importance": "CRITICAL",
+      "hint": "Beers中的地西泮是跌倒的重要危险因素，应优先处理"
+    },
+    "CLUE_306": {
+      "id": "CLUE_306",
+      "name": "Morse跌倒风险评估量表",
+      "description": "住院患者跌倒风险评估工具",
+      "category": "REFERENCE",
+      "spritePath": "clues/fall_icon",
+      "content": {
+        "scoringSheet": {
+          "fallHistory": {
+            "0": "无跌倒史：0分",
+            "25": "有跌倒史：25分"
+          },
+          "secondaryDiagnosis": {
+            "0": "无：0分",
+            "15": "有：15分"
+          },
+          "ambulatoryAid": {
+            "0": "不需要/卧床/轮椅由他人推：0分",
+            "15": "使用拐杖/手杖/助行器：15分",
+            "30": "扶家具行走：30分"
+          },
+          "ivHeparin": {
+            "0": "无：0分",
+            "20": "有：20分"
+          },
+          "gait": {
+            "0": "正常/卧床不能动：0分",
+            "10": "虚弱：10分",
+            "20": "残疾：20分"
+          },
+          "mentalStatus": {
+            "0": "知道自己能力：0分",
+            "15": "高估自己或忘记限制：15分"
+          }
+        },
+        "riskLevel": {
+          "low": "0-24分：低危",
+          "moderate": "25-44分：中危",
+          "high": "≥45分：高危，必须落实预防措施"
+        }
+      },
+      "importance": "HIGH",
+      "hint": "老年住院患者跌倒后果严重，髋部骨折死亡率高"
+    },
+    "CLUE_307": {
+      "id": "CLUE_307",
+      "name": "患者居家环境评估报告",
+      "description": "出院前家访时对居家环境的安全性评估",
+      "category": "DOCUMENT",
+      "spritePath": "clues/home_icon",
+      "content": {
+        "livingSituation": "与配偶同住，子女住同小区，步行10分钟",
+        "housingType": "老式多层住宅，4楼无电梯，楼梯间无扶手",
+        "bathroom": "浴缸无扶手，地面瓷砖无防滑垫，热水器温度不可调",
+        "bedroom": "床高过高(65cm)，夜间无夜灯",
+        "lighting": "整体照明偏暗，过道无感应灯",
+        "hazardItems": [
+          "门口有5cm高门槛",
+          "客厅地毯边缘翘起",
+          "电线横穿走道"
+        ],
+        "modificationRecommendations": [
+          "楼梯和卫生间加装扶手（高优先级）",
+          "更换防滑垫和防滑地砖",
+          "加装夜灯和感应灯",
+          "降低床高至45cm左右",
+          "改造门槛为斜坡或移除"
+        ]
+      },
+      "importance": "HIGH",
+      "hint": "居家环境改造是预防出院后跌倒的关键措施"
+    },
+    "CLUE_308": {
+      "id": "CLUE_308",
+      "name": "DRG付费规则说明（老年康复相关）",
+      "description": "本地区DRG付费对老年综合康复的相关规定",
+      "category": "REFERENCE",
+      "spritePath": "clues/drg_icon",
+      "content": {
+        "relatedGroups": {
+          "BR23": {
+            "name": "老年康复与护理，伴合并症与并发症",
+            "weight": 1.85,
+            "baseRate": 6500,
+            "standardCost": "约12025元",
+            "stayRange": "10-28天",
+            "keyPoints": [
+              "超过上限天数进入LIP(长住院)机制，按床日付费",
+              "30天非计划再入院扣减权重50%",
+              "院内感染等并发症不额外增加支付"
+            ]
+          }
+        },
+        "commonDenialReasons": [
+          "康复项目与诊断不符（如骨科编码申报神经康复项目）",
+          "康复频次与病程不符（如急性期每日4次PT）",
+          "缺乏功能评估记录或评估与治疗方案不对应",
+          "升级护理（CCU监护等）无客观依据",
+          "带药超量（出院带药超过7天用量）"
+        ],
+        "optimizationTips": [
+          "合理控制住院天数，临近LIP阈值评估是否可转社区/日间医院",
+          "优化成本结构，减少不必要的高值耗材和辅助用药",
+          "重视首页诊断编码准确性，合并症编码完整",
+          "完整记录功能评估-目标-治疗-再评估的闭环"
+        ]
+      },
+      "importance": "CRITICAL",
+      "hint": "DRG下不是做得越多赚得越多，成本控制同样重要"
+    }
+  }
+}

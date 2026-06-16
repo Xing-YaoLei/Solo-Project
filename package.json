@@ -1,0 +1,9 @@
+{
+  "name": "rehab-center-simulation",
+  "version": "1.0.0",
+  "description": "康复中心康复评估经营模拟游戏",
+  "creator": {
+    "version": "3.8.0"
+  },
+  "type": "commonjs"
+}

@@ -1,0 +1,149 @@
+{
+  "version": "1.0.0",
+  "prescriptions": {
+    "PRE_BASIC_001": {
+      "id": "PRE_BASIC_001",
+      "name": "基础接诊流程训练处方",
+      "description": "针对新入职人员的标准化接诊流程训练",
+      "category": "ADMINISTRATIVE",
+      "parameters": {
+        "maxAttempts": 3,
+        "timeDeductionPerSecond": 0.01,
+        "scoreMultiplier": 1.0,
+        "insuranceWeight": 0.3,
+        "procedureWeight": 0.7,
+        "unlockComplexLogsAfter": 2
+      },
+      "objectives": [
+        {
+          "id": "OBJ_001",
+          "name": "信息采集正确率",
+          "target": 0.8,
+          "description": "患者基本信息采集正确率达到80%以上"
+        },
+        {
+          "id": "OBJ_002",
+          "name": "建档完整性",
+          "target": 0.9,
+          "description": "档案填写完整度达到90%以上"
+        }
+      ]
+    },
+    "PRE_STROKE_001": {
+      "id": "PRE_STROKE_001",
+      "name": "脑卒中康复评估处方",
+      "description": "脑卒中患者标准化评估与方案制定训练",
+      "category": "NEUROLOGICAL",
+      "parameters": {
+        "maxAttempts": 3,
+        "timeDeductionPerSecond": 0.008,
+        "scoreMultiplier": 1.2,
+        "insuranceWeight": 0.4,
+        "clinicalWeight": 0.6,
+        "unlockComplexLogsAfter": 3,
+        "requiredEvaluationScale": "NIHSS",
+        "minEvaluationItems": 5
+      },
+      "objectives": [
+        {
+          "id": "OBJ_101",
+          "name": "NIHSS完整率",
+          "target": 1.0,
+          "description": "必须完成NIHSS全项评估"
+        },
+        {
+          "id": "OBJ_102",
+          "name": "处方合规率",
+          "target": 0.9,
+          "description": "康复处方符合医保目录要求"
+        },
+        {
+          "id": "OBJ_103",
+          "name": "知情同意完整率",
+          "target": 1.0,
+          "description": "必须完成知情同意签署流程"
+        }
+      ]
+    },
+    "PRE_FRACTURE_001": {
+      "id": "PRE_FRACTURE_001",
+      "name": "骨折术后康复处方",
+      "description": "骨科术后康复分期管理与费用控制训练",
+      "category": "ORTHOPEDIC",
+      "parameters": {
+        "maxAttempts": 2,
+        "timeDeductionPerSecond": 0.01,
+        "scoreMultiplier": 1.3,
+        "insuranceWeight": 0.5,
+        "clinicalWeight": 0.5,
+        "unlockComplexLogsAfter": 3,
+        "billingAccuracyThreshold": 0.95,
+        "drgCostCeiling": 15000
+      },
+      "objectives": [
+        {
+          "id": "OBJ_201",
+          "name": "分期正确率",
+          "target": 1.0,
+          "description": "康复方案分期与骨折愈合阶段匹配"
+        },
+        {
+          "id": "OBJ_202",
+          "name": "ROM测量规范率",
+          "target": 0.95,
+          "description": "关节活动度测量符合标准体位"
+        },
+        {
+          "id": "OBJ_203",
+          "name": "医保编码准确率",
+          "target": 0.95,
+          "description": "收费项目编码匹配正确率"
+        }
+      ]
+    },
+    "PRE_ELDERLY_001": {
+      "id": "PRE_ELDERLY_001",
+      "name": "老年综合康复处方",
+      "description": "多病共存老年患者的全人康复管理训练",
+      "category": "GERIATRIC",
+      "parameters": {
+        "maxAttempts": 2,
+        "timeDeductionPerSecond": 0.012,
+        "scoreMultiplier": 1.5,
+        "insuranceWeight": 0.55,
+        "clinicalWeight": 0.45,
+        "unlockComplexLogsAfter": 4,
+        "requiredCgaDomains": 6,
+        "polypharmacyScreeningMandatory": true,
+        "drgGroupCompliance": true,
+        "readmissionPenaltyEnabled": true
+      },
+      "objectives": [
+        {
+          "id": "OBJ_301",
+          "name": "CGA维度覆盖率",
+          "target": 0.8,
+          "description": "老年综合评估覆盖至少80%核心维度"
+        },
+        {
+          "id": "OBJ_302",
+          "name": "用药安全率",
+          "target": 0.9,
+          "description": "识别并干预Beers不适当用药"
+        },
+        {
+          "id": "OBJ_303",
+          "name": "跌倒预防落实率",
+          "target": 1.0,
+          "description": "高危患者必须落实跌倒预防措施"
+        },
+        {
+          "id": "OBJ_304",
+          "name": "DRG成本控制率",
+          "target": 0.95,
+          "description": "总费用在DRG标准成本的95%-105%范围内"
+        }
+      ]
+    }
+  }
+}

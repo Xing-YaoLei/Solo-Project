@@ -1,0 +1,519 @@
+{
+  "version": "1.0.0",
+  "tasks": {
+    "TASK_001": {
+      "id": "TASK_001",
+      "name": "接待患者登记",
+      "description": "引导患者完成基础信息登记",
+      "type": "ACTION",
+      "clueIds": ["CLUE_001", "CLUE_002"],
+      "actionOptions": [
+        {
+          "id": "OPT_001_A",
+          "text": "询问姓名、年龄、联系方式",
+          "score": 20,
+          "isCorrect": true,
+          "explanation": "标准的患者信息采集流程",
+          "nextTask": "TASK_002"
+        },
+        {
+          "id": "OPT_001_B",
+          "text": "直接安排医生接诊",
+          "score": -10,
+          "isCorrect": false,
+          "errorType": "PROCEDURAL",
+          "explanation": "未完成登记就接诊，违反就诊流程",
+          "insuranceRejectionRisk": 0.1,
+          "nextTask": "TASK_002"
+        },
+        {
+          "id": "OPT_001_C",
+          "text": "先收取挂号费再登记",
+          "score": 0,
+          "isCorrect": false,
+          "errorType": "ADMINISTRATIVE",
+          "explanation": "收费顺序有误，应先登记建档",
+          "insuranceRejectionRisk": 0.05,
+          "nextTask": "TASK_002"
+        }
+      ]
+    },
+    "TASK_002": {
+      "id": "TASK_002",
+      "name": "主诉采集",
+      "description": "采集患者主要症状和就诊原因",
+      "type": "OBSERVATION",
+      "clueIds": ["CLUE_003", "CLUE_004", "CLUE_005"],
+      "actionOptions": [
+        {
+          "id": "OPT_002_A",
+          "text": "使用开放式提问引导患者描述",
+          "score": 25,
+          "isCorrect": true,
+          "explanation": "开放式提问有助于获取完整信息",
+          "nextTask": "TASK_003"
+        },
+        {
+          "id": "OPT_002_B",
+          "text": "根据外观直接判断病情",
+          "score": -15,
+          "isCorrect": false,
+          "errorType": "DIAGNOSTIC",
+          "explanation": "仅凭外观判断容易误诊",
+          "insuranceRejectionRisk": 0.15,
+          "nextTask": "TASK_003"
+        }
+      ]
+    },
+    "TASK_003": {
+      "id": "TASK_003",
+      "name": "建档归档",
+      "description": "将患者信息整理归档，完成首次接诊",
+      "type": "ACTION",
+      "clueIds": [],
+      "actionOptions": [
+        {
+          "id": "OPT_003_A",
+          "text": "完整录入电子病历并生成康复档案编号",
+          "score": 30,
+          "isCorrect": true,
+          "explanation": "规范的档案管理是医保审核的基础",
+          "nextTask": null
+        },
+        {
+          "id": "OPT_003_B",
+          "text": "简单记录主要信息即可",
+          "score": -20,
+          "isCorrect": false,
+          "errorType": "DOCUMENTATION",
+          "explanation": "病历不完整可能导致医保拒付",
+          "insuranceRejectionRisk": 0.4,
+          "nextTask": null
+        }
+      ]
+    },
+    "TASK_101": {
+      "id": "TASK_101",
+      "name": "脑卒中分级评估",
+      "description": "采用NIHSS量表进行神经功能缺损评分",
+      "type": "EVALUATION",
+      "clueIds": ["CLUE_101", "CLUE_102", "CLUE_103"],
+      "questionSetId": "QS_NIHSS_01",
+      "actionOptions": [
+        {
+          "id": "OPT_101_A",
+          "text": "按NIHSS量表逐项规范评估并记录",
+          "score": 30,
+          "isCorrect": true,
+          "explanation": "规范的量表评估是制定康复方案的依据",
+          "nextTask": "TASK_102"
+        },
+        {
+          "id": "OPT_101_B",
+          "text": "凭经验快速判断严重程度",
+          "score": -20,
+          "isCorrect": false,
+          "errorType": "EVALUATION",
+          "explanation": "缺乏量化评估记录，医保可能拒付",
+          "insuranceRejectionRisk": 0.35,
+          "nextTask": "TASK_102"
+        }
+      ]
+    },
+    "TASK_102": {
+      "id": "TASK_102",
+      "name": "康复目标设定",
+      "description": "根据评估结果设定短期和长期康复目标",
+      "type": "PLANNING",
+      "clueIds": ["CLUE_104", "CLUE_105"],
+      "actionOptions": [
+        {
+          "id": "OPT_102_A",
+          "text": "采用SMART原则设定可量化目标",
+          "score": 25,
+          "isCorrect": true,
+          "explanation": "SMART目标便于后续效果评估",
+          "nextTask": "TASK_103"
+        },
+        {
+          "id": "OPT_102_B",
+          "text": "设定一个大致恢复的目标",
+          "score": -10,
+          "isCorrect": false,
+          "errorType": "PLANNING",
+          "explanation": "目标不具体无法评估康复效果",
+          "insuranceRejectionRisk": 0.2,
+          "nextTask": "TASK_103"
+        }
+      ]
+    },
+    "TASK_103": {
+      "id": "TASK_103",
+      "name": "康复处方开具",
+      "description": "选择合适的康复治疗项目组合",
+      "type": "PRESCRIPTION",
+      "clueIds": ["CLUE_106"],
+      "prescriptionRules": {
+        "maxItems": 5,
+        "requiredCategories": ["PT", "OT"],
+        "insuranceLimit": 800
+      },
+      "actionOptions": [
+        {
+          "id": "OPT_103_A",
+          "text": "PT(运动疗法)+OT(作业疗法)+语言训练",
+          "score": 30,
+          "isCorrect": true,
+          "explanation": "针对脑卒中的标准康复组合",
+          "nextTask": "TASK_104",
+          "cost": 680
+        },
+        {
+          "id": "OPT_103_B",
+          "text": "全部治疗项目全开确保全面",
+          "score": -25,
+          "isCorrect": false,
+          "errorType": "OVERTREATMENT",
+          "explanation": "过度治疗属于医保重点稽核项",
+          "insuranceRejectionRisk": 0.6,
+          "nextTask": "TASK_104",
+          "cost": 1500
+        }
+      ]
+    },
+    "TASK_104": {
+      "id": "TASK_104",
+      "name": "知情同意签署",
+      "description": "向患者及家属说明方案并签署知情同意书",
+      "type": "COMMUNICATION",
+      "clueIds": [],
+      "actionOptions": [
+        {
+          "id": "OPT_104_A",
+          "text": "详细说明风险、收益、替代方案后签署",
+          "score": 25,
+          "isCorrect": true,
+          "explanation": "完整的知情同意是医疗合规的必要环节",
+          "nextTask": null
+        },
+        {
+          "id": "OPT_104_B",
+          "text": "让家属直接签字即可",
+          "score": -15,
+          "isCorrect": false,
+          "errorType": "COMMUNICATION",
+          "explanation": "未履行告知义务存在医疗纠纷风险",
+          "insuranceRejectionRisk": 0.25,
+          "nextTask": null
+        }
+      ]
+    },
+    "TASK_201": {
+      "id": "TASK_201",
+      "name": "术后影像学评估",
+      "description": "查看术后影像确认内固定位置和愈合情况",
+      "type": "EVALUATION",
+      "clueIds": ["CLUE_201", "CLUE_202"],
+      "actionOptions": [
+        {
+          "id": "OPT_201_A",
+          "text": "对照术前术后影像，记录骨痂生长情况",
+          "score": 25,
+          "isCorrect": true,
+          "explanation": "影像学对比是评估愈合的金标准",
+          "nextTask": "TASK_202"
+        },
+        {
+          "id": "OPT_201_B",
+          "text": "看报告结论即可，不用读片",
+          "score": -10,
+          "isCorrect": false,
+          "errorType": "EVALUATION",
+          "explanation": "康复治疗师应具备基本读片能力",
+          "nextTask": "TASK_202"
+        }
+      ]
+    },
+    "TASK_202": {
+      "id": "TASK_202",
+      "name": "关节活动度测量",
+      "description": "使用量角器测量患肢关节活动范围",
+      "type": "EVALUATION",
+      "clueIds": ["CLUE_203"],
+      "questionSetId": "QS_ROM_01",
+      "actionOptions": [
+        {
+          "id": "OPT_202_A",
+          "text": "双侧对比测量，记录主动和被动ROM",
+          "score": 25,
+          "isCorrect": true,
+          "explanation": "双侧对比是ROM测量的标准方法",
+          "nextTask": "TASK_203"
+        },
+        {
+          "id": "OPT_202_B",
+          "text": "只测患侧，记录大概角度",
+          "score": -15,
+          "isCorrect": false,
+          "errorType": "EVALUATION",
+          "explanation": "缺乏健侧对照无法准确判断功能受限程度",
+          "insuranceRejectionRisk": 0.2,
+          "nextTask": "TASK_203"
+        }
+      ]
+    },
+    "TASK_203": {
+      "id": "TASK_203",
+      "name": "肌力分级评估",
+      "description": "采用MMT徒手肌力检查法评估肌群力量",
+      "type": "EVALUATION",
+      "clueIds": ["CLUE_204"],
+      "actionOptions": [
+        {
+          "id": "OPT_203_A",
+          "text": "按MMT标准分级(0-5级)逐组检查",
+          "score": 20,
+          "isCorrect": true,
+          "explanation": "MMT是肌力评估的国际标准",
+          "nextTask": "TASK_204"
+        },
+        {
+          "id": "OPT_203_B",
+          "text": "让患者用力感受一下即可",
+          "score": -10,
+          "isCorrect": false,
+          "errorType": "EVALUATION",
+          "explanation": "主观判断无法准确量化肌力水平",
+          "nextTask": "TASK_204"
+        }
+      ]
+    },
+    "TASK_204": {
+      "id": "TASK_204",
+      "name": "分期康复方案制定",
+      "description": "根据骨折愈合阶段制定渐进式康复计划",
+      "type": "PLANNING",
+      "clueIds": ["CLUE_205"],
+      "actionOptions": [
+        {
+          "id": "OPT_204_A",
+          "text": "分早期(消肿止痛)、中期(ROM训练)、后期(肌力强化)制定",
+          "score": 35,
+          "isCorrect": true,
+          "explanation": "分期康复符合骨折愈合的病理生理规律",
+          "nextTask": "TASK_205"
+        },
+        {
+          "id": "OPT_204_B",
+          "text": "一开始就高强度训练加速恢复",
+          "score": -30,
+          "isCorrect": false,
+          "errorType": "TREATMENT",
+          "explanation": "过早高强度训练可能导致内固定松动或再骨折",
+          "insuranceRejectionRisk": 0.5,
+          "nextTask": "TASK_205"
+        }
+      ]
+    },
+    "TASK_205": {
+      "id": "TASK_205",
+      "name": "康复费用申报",
+      "description": "按照医保目录规范整理收费项目",
+      "type": "BILLING",
+      "clueIds": ["CLUE_206"],
+      "billingRules": {
+        "dailyLimit": true,
+        "sameDayDeny": ["PT", "PT_GROUP"]
+      },
+      "actionOptions": [
+        {
+          "id": "OPT_205_A",
+          "text": "按医保编码逐项匹配，每日项目不重复申报",
+          "score": 30,
+          "isCorrect": true,
+          "explanation": "规范编码是医保结算的基础",
+          "nextTask": null,
+          "cost": 520
+        },
+        {
+          "id": "OPT_205_B",
+          "text": "将多次治疗打包为高价值项目申报",
+          "score": -35,
+          "isCorrect": false,
+          "errorType": "BILLING_FRAUD",
+          "explanation": "串换项目属于欺诈骗保行为",
+          "insuranceRejectionRisk": 0.95,
+          "nextTask": null,
+          "cost": 980
+        }
+      ]
+    },
+    "TASK_301": {
+      "id": "TASK_301",
+      "name": "老年综合评估(CGA)",
+      "description": "对老年患者进行躯体、认知、情绪、社会支持的全面评估",
+      "type": "EVALUATION",
+      "clueIds": ["CLUE_301", "CLUE_302", "CLUE_303", "CLUE_304"],
+      "questionSetId": "QS_CGA_01",
+      "actionOptions": [
+        {
+          "id": "OPT_301_A",
+          "text": "完成CGA全维度评估并记录各量表得分",
+          "score": 40,
+          "isCorrect": true,
+          "explanation": "CGA是老年康复的核心评估工具",
+          "nextTask": "TASK_302"
+        },
+        {
+          "id": "OPT_301_B",
+          "text": "只评估主要问题，其他简化",
+          "score": -20,
+          "isCorrect": false,
+          "errorType": "EVALUATION",
+          "explanation": "老年患者多病共存，忽略某一维度可能导致严重后果",
+          "insuranceRejectionRisk": 0.3,
+          "nextTask": "TASK_302"
+        }
+      ]
+    },
+    "TASK_302": {
+      "id": "TASK_302",
+      "name": "多重用药核查",
+      "description": "核查患者用药清单，识别药物相互作用和不良反应风险",
+      "type": "SAFETY",
+      "clueIds": ["CLUE_305"],
+      "actionOptions": [
+        {
+          "id": "OPT_302_A",
+          "text": "使用Beers标准筛查潜在不适当用药",
+          "score": 30,
+          "isCorrect": true,
+          "explanation": "Beers标准是老年用药安全的国际指南",
+          "nextTask": "TASK_303"
+        },
+        {
+          "id": "OPT_302_B",
+          "text": "用药是临床医生的事，不做干预",
+          "score": -15,
+          "isCorrect": false,
+          "errorType": "SAFETY",
+          "explanation": "康复治疗中跌倒等不良事件常与药物相关",
+          "nextTask": "TASK_303"
+        }
+      ]
+    },
+    "TASK_303": {
+      "id": "TASK_303",
+      "name": "跌倒风险评估",
+      "description": "使用专门量表评估老年患者跌倒风险",
+      "type": "EVALUATION",
+      "clueIds": ["CLUE_306"],
+      "actionOptions": [
+        {
+          "id": "OPT_303_A",
+          "text": "使用Morse跌倒量表综合评估并落实预防措施",
+          "score": 25,
+          "isCorrect": true,
+          "explanation": "Morse量表是住院患者跌倒风险评估的标准工具",
+          "nextTask": "TASK_304"
+        },
+        {
+          "id": "OPT_303_B",
+          "text": "看患者走路稳不稳判断",
+          "score": -10,
+          "isCorrect": false,
+          "errorType": "EVALUATION",
+          "explanation": "主观判断可能遗漏重要的跌倒风险因素",
+          "nextTask": "TASK_304"
+        }
+      ]
+    },
+    "TASK_304": {
+      "id": "TASK_304",
+      "name": "多学科团队协作",
+      "description": "协调康复医师、治疗师、护士、营养师等团队成员",
+      "type": "COLLABORATION",
+      "clueIds": [],
+      "actionOptions": [
+        {
+          "id": "OPT_304_A",
+          "text": "组织MDT会议，各专业分别提出方案后整合",
+          "score": 30,
+          "isCorrect": true,
+          "explanation": "MDT是老年综合康复的标准工作模式",
+          "nextTask": "TASK_305"
+        },
+        {
+          "id": "OPT_304_B",
+          "text": "康复治疗师独立制定方案即可",
+          "score": -15,
+          "isCorrect": false,
+          "errorType": "COLLABORATION",
+          "explanation": "老年患者问题复杂，单一专业难以全面覆盖",
+          "nextTask": "TASK_305"
+        }
+      ]
+    },
+    "TASK_305": {
+      "id": "TASK_305",
+      "name": "出院计划制定",
+      "description": "衔接社区康复和居家康复，制定连续性照护计划",
+      "type": "PLANNING",
+      "clueIds": ["CLUE_307"],
+      "actionOptions": [
+        {
+          "id": "OPT_305_A",
+          "text": "制定详细的出院康复计划、随访时间表，并联系社区康复中心",
+          "score": 35,
+          "isCorrect": true,
+          "explanation": "连续性照护可显著降低再入院率",
+          "nextTask": "TASK_306"
+        },
+        {
+          "id": "OPT_305_B",
+          "text": "出院时简单交代回家锻炼即可",
+          "score": -20,
+          "isCorrect": false,
+          "errorType": "PLANNING",
+          "explanation": "缺乏衔接的出院计划容易导致功能退步和再入院",
+          "insuranceRejectionRisk": 0.25,
+          "nextTask": "TASK_306"
+        }
+      ]
+    },
+    "TASK_306": {
+      "id": "TASK_306",
+      "name": "医保结算质控",
+      "description": "对全疗程费用进行质控，确保符合DRG/DIP付费规则",
+      "type": "BILLING",
+      "clueIds": ["CLUE_308"],
+      "billingRules": {
+        "drgGroup": "BR23",
+        "costCeiling": 12000,
+        "readmissionPenalty": true
+      },
+      "actionOptions": [
+        {
+          "id": "OPT_306_A",
+          "text": "对照DRG分组器核查编码正确性，在成本范围内优化方案",
+          "score": 35,
+          "isCorrect": true,
+          "explanation": "DRG时代的精细化管理能力",
+          "nextTask": null,
+          "cost": 11500
+        },
+        {
+          "id": "OPT_306_B",
+          "text": "尽量多做项目，费用高了医保会出",
+          "score": -40,
+          "isCorrect": false,
+          "errorType": "BILLING_FRAUD",
+          "explanation": "DRG超支部分由医院承担，且高费用会触发重点稽核",
+          "insuranceRejectionRisk": 0.85,
+          "nextTask": null,
+          "cost": 18500
+        }
+      ]
+    }
+  }
+}
