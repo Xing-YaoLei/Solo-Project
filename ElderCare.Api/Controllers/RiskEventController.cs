@@ -88,11 +88,11 @@ public class RiskEventController : ControllerBase
     }
 
     [HttpPost("{id}/close/{reminderId}")]
-    public async Task<ActionResult<ReminderActionDto>> CloseReminder(int id, int reminderId)
+    public async Task<ActionResult<ReminderActionDto>> CloseReminder(int id, int reminderId, CreateReminderActionDto dto)
     {
         try
         {
-            var result = await _service.CloseReminderAsync(id, reminderId);
+            var result = await _service.CloseReminderAsync(id, reminderId, dto);
             return Ok(result);
         }
         catch (KeyNotFoundException)

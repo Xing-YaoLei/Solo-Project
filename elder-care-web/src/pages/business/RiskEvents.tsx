@@ -176,7 +176,7 @@ const RiskEvents: React.FC = () => {
 
   const handleCloseSubmit = async () => {
     try {
-      await closeForm.validateFields();
+      const values = await closeForm.validateFields();
       const res = await riskEvents.getTimeline(selectedEvent!.id);
       const reminders: RiskEventReminder[] = res.data.reminders || [];
       const latestReminder = reminders.sort((a, b) => new Date(b.actionTime).getTime() - new Date(a.actionTime).getTime())[0];
@@ -184,7 +184,7 @@ const RiskEvents: React.FC = () => {
         message.warning('没有可关闭的提醒');
         return;
       }
-      await riskEvents.close(selectedEvent!.id, latestReminder.id);
+      await riskEvents.close(selectedEvent!.id, latestReminder.id, { message: values.resolution || '关闭事件' });
       message.success('关闭成功');
       setCloseModalOpen(false);
       fetchData();

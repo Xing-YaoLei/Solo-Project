@@ -185,31 +185,35 @@ public class RiskEventService : IRiskEventService
         return await MapToReminderActionDto(entity.Id);
     }
 
-    public async Task<ReminderActionDto> CloseReminderAsync(int riskEventId, int reminderId)
+    public async Task<ReminderActionDto> CloseReminderAsync(int riskEventId, int reminderId, CreateReminderActionDto dto)
     {
-        var reminder = await _context.RiskEventReminders.FindAsync(reminderId);
-        if (reminder == null) throw new KeyNotFoundException($"Reminder {reminderId} not found");
-
-        reminder.ActionType = ReminderActionType.Closed;
-        reminder.IsSuccessful = true;
-        reminder.ActionTime = DateTime.UtcNow;
-        await _context.SaveChangesAsync();
+        var parentReminder = await _context.RiskEventReminders.FindAsync(reminderId);
+        if (parentReminder == null) throw new KeyNotFoundException($"Reminder {reminderId} not found");
 
         var riskEvent = await _context.RiskEvents.FindAsync(riskEventId);
-        if (riskEvent != null)
-        {
-            var openReminders = await _context.RiskEventReminders
-                .AnyAsync(r => r.RiskEventId == riskEventId && r.Id != reminderId
-                              && r.ActionType != ReminderActionType.Closed);
-            if (!openReminders)
-            {
-                riskEvent.Status = "Closed";
-                riskEvent.ResolvedAt = DateTime.UtcNow;
-                await _context.SaveChangesAsync();
-            }
-        }
+        if (riskEvent == null) throw new KeyNotFoundException($"RiskEvent {riskEventId} not found");
 
-        return await MapToReminderActionDto(reminderId);
+        var closedReminder = new RiskEventReminder
+        {
+            RiskEventId = riskEventId,
+            ActionType = ReminderActionType.Closed,
+            StaffId = parentReminder.StaffId,
+            Message = dto.Message,
+            ActionTime = DateTime.UtcNow,
+            IsSuccessful = true,
+            RetryCount = parentReminder.RetryCount,
+            ParentReminderId = reminderId,
+            Notes = dto.Notes
+        };
+        _context.RiskEventReminders.Add(closedReminder);
+
+        riskEvent.Status = "Closed";
+        riskEvent.ResolvedAt = DateTime.UtcNow;
+        riskEvent.Resolution = dto.Message;
+
+        await _context.SaveChangesAsync();
+
+        return await MapToReminderActionDto(closedReminder.Id);
     }
 
     public async Task<IEnumerable<ReminderActionDto>> GetReminderHistoryAsync(int riskEventId)

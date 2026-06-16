@@ -95,8 +95,8 @@ export const riskEventsApi = {
     apiClient.post<RiskEventReminder>(`/risk-events/${id}/supplement`, data),
   retry: (id: number, reminderId: number, data: { message: string; notes?: string }) =>
     apiClient.post<RiskEventReminder>(`/risk-events/${id}/retry/${reminderId}`, data),
-  close: (id: number, reminderId: number) =>
-    apiClient.post<RiskEventReminder>(`/risk-events/${id}/close/${reminderId}`),
+  close: (id: number, reminderId: number, data: { message: string; notes?: string }) =>
+    apiClient.post<RiskEventReminder>(`/risk-events/${id}/close/${reminderId}`, data),
   getTimeline: (id: number) => apiClient.get<RiskEventTimeline>(`/risk-events/${id}/timeline`),
 };
 export const riskEvents = riskEventsApi;
