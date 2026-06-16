@@ -156,7 +156,7 @@ export interface FlowAttachment {
 	fileUrl: string;
 	fileSize: number;
 	mimeType: string;
-	uploadedBy: string;
+	uploadedBy: string | null;
 	uploadedAt: DateLike;
 }
 
@@ -165,7 +165,7 @@ export interface FlowRemark {
 	entityType: EntityType;
 	entityId: string;
 	content: string;
-	createdBy: string;
+	createdBy: string | null;
 	createdAt: DateLike;
 }
 
@@ -174,7 +174,7 @@ export interface FlowHandler {
 	entityType: 'assessment' | 'incident';
 	entityId: string;
 	stepName: string;
-	userId: string;
+	userId: string | null;
 	userName: string;
 	handledAt: DateLike | null;
 	action: string;

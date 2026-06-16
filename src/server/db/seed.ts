@@ -112,7 +112,7 @@ export const mockUsers: User[] = [
   }
 ];
 
-const mockElders: Elder[] = [
+export const mockElders: Elder[] = [
   {
     id: 'elder-1',
     name: '赵秀兰',
@@ -251,7 +251,7 @@ const mockElders: Elder[] = [
   }
 ];
 
-const mockAssessments: Assessment[] = [
+export const mockAssessments: Assessment[] = [
   {
     id: 'assessment-1',
     elderId: 'elder-1',
@@ -374,7 +374,7 @@ const mockAssessments: Assessment[] = [
   }
 ];
 
-const mockMedications: Medication[] = [
+export const mockMedications: Medication[] = [
   {
     id: 'med-1',
     elderId: 'elder-1',
@@ -481,7 +481,7 @@ const mockMedications: Medication[] = [
   }
 ];
 
-const mockMedicationExecutions: MedicationExecution[] = [
+export const mockMedicationExecutions: MedicationExecution[] = [
   {
     id: 'med-exec-1',
     medicationId: 'med-1',
@@ -520,7 +520,7 @@ const mockMedicationExecutions: MedicationExecution[] = [
   }
 ];
 
-const mockVisitRecords: VisitRecord[] = [
+export const mockVisitRecords: VisitRecord[] = [
   {
     id: 'visit-1',
     elderId: 'elder-1',
@@ -589,7 +589,7 @@ const mockVisitRecords: VisitRecord[] = [
   }
 ];
 
-const mockIncidents: Incident[] = [
+export const mockIncidents: Incident[] = [
   {
     id: 'incident-1',
     elderId: 'elder-2',
@@ -631,7 +631,7 @@ const mockIncidents: Incident[] = [
   }
 ];
 
-const mockIncidentParties: IncidentParty[] = [
+export const mockIncidentParties: IncidentParty[] = [
   {
     id: 'party-1',
     incidentId: 'incident-1',
@@ -700,7 +700,7 @@ const mockIncidentParties: IncidentParty[] = [
   }
 ];
 
-const mockFlowAttachments: FlowAttachment[] = [
+export const mockFlowAttachments: FlowAttachment[] = [
   {
     id: 'attach-1',
     entityType: 'assessment',
@@ -747,7 +747,7 @@ const mockFlowAttachments: FlowAttachment[] = [
   }
 ];
 
-const mockFlowRemarks: FlowRemark[] = [
+export const mockFlowRemarks: FlowRemark[] = [
   {
     id: 'remark-1',
     entityType: 'assessment',
@@ -790,7 +790,7 @@ const mockFlowRemarks: FlowRemark[] = [
   }
 ];
 
-const mockFlowHandlers: FlowHandler[] = [
+export const mockFlowHandlers: FlowHandler[] = [
   {
     id: 'handler-1',
     entityType: 'assessment',
@@ -1003,16 +1003,3 @@ export function createMockDb(): MockDb {
 
   return db;
 }
-
-export {
-  mockElders,
-  mockAssessments,
-  mockMedications,
-  mockMedicationExecutions,
-  mockVisitRecords,
-  mockIncidents,
-  mockIncidentParties,
-  mockFlowAttachments,
-  mockFlowRemarks,
-  mockFlowHandlers
-};

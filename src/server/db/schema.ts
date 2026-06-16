@@ -1,6 +1,5 @@
 import {
   pgTable,
-  uuid,
   varchar,
   text,
   date,
@@ -8,8 +7,7 @@ import {
   integer,
   boolean,
   jsonb,
-  pgEnum,
-  foreignKey
+  pgEnum
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
@@ -32,7 +30,7 @@ export const flowEntityTypeEnum = pgEnum('flow_entity_type', ['assessment', 'inc
 export const responsibilityTypeEnum = pgEnum('responsibility_type', ['direct', 'indirect']);
 
 export const users = pgTable('users', {
-  id: uuid('id').primaryKey().defaultRandom(),
+  id: varchar('id', { length: 64 }).primaryKey(),
   email: varchar('email', { length: 255 }).unique().notNull(),
   name: varchar('name', { length: 100 }).notNull(),
   role: userRoleEnum('role').notNull(),
@@ -43,12 +41,12 @@ export const users = pgTable('users', {
     .notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true })
     .defaultNow()
-    .$onUpdate(() => new Date())
+    .notNull()
 });
 
 export const userSessions = pgTable('user_sessions', {
   id: varchar('id', { length: 128 }).primaryKey(),
-  userId: uuid('user_id')
+  userId: varchar('user_id', { length: 64 })
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
   activeExpiresAt: integer('active_expires_at').notNull(),
@@ -56,7 +54,7 @@ export const userSessions = pgTable('user_sessions', {
 });
 
 export const careLevels = pgTable('care_levels', {
-  id: uuid('id').primaryKey().defaultRandom(),
+  id: varchar('id', { length: 64 }).primaryKey(),
   name: varchar('name', { length: 50 }).notNull(),
   scoreRange: jsonb('score_range').notNull(),
   description: text('description'),
@@ -65,7 +63,7 @@ export const careLevels = pgTable('care_levels', {
 });
 
 export const elders = pgTable('elders', {
-  id: uuid('id').primaryKey().defaultRandom(),
+  id: varchar('id', { length: 64 }).primaryKey(),
   name: varchar('name', { length: 100 }).notNull(),
   gender: genderEnum('gender').notNull(),
   birthDate: date('birth_date').notNull(),
@@ -73,7 +71,7 @@ export const elders = pgTable('elders', {
   roomNumber: varchar('room_number', { length: 50 }),
   admissionDate: date('admission_date'),
   status: elderStatusEnum('status').default('pending'),
-  careLevelId: uuid('care_level_id').references(() => careLevels.id),
+  careLevelId: varchar('care_level_id', { length: 64 }).references(() => careLevels.id),
   avatar: varchar('avatar', { length: 500 }),
   allergies: jsonb('allergies').default(sql`'[]'::jsonb`),
   medicalHistory: jsonb('medical_history').default(sql`'[]'::jsonb`),
@@ -83,12 +81,12 @@ export const elders = pgTable('elders', {
     .notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true })
     .defaultNow()
-    .$onUpdate(() => new Date())
+    .notNull()
 });
 
 export const assessments = pgTable('assessments', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  elderId: uuid('elder_id')
+  id: varchar('id', { length: 64 }).primaryKey(),
+  elderId: varchar('elder_id', { length: 64 })
     .notNull()
     .references(() => elders.id, { onDelete: 'cascade' }),
   status: assessmentStatusEnum('status').default('draft'),
@@ -97,20 +95,20 @@ export const assessments = pgTable('assessments', {
   emotionScore: integer('emotion_score').default(0),
   socialScore: integer('social_score').default(0),
   totalScore: integer('total_score').default(0),
-  suggestedLevelId: uuid('suggested_level_id').references(() => careLevels.id),
-  finalLevelId: uuid('final_level_id').references(() => careLevels.id),
+  suggestedLevelId: varchar('suggested_level_id', { length: 64 }).references(() => careLevels.id),
+  finalLevelId: varchar('final_level_id', { length: 64 }).references(() => careLevels.id),
   currentStep: integer('current_step').default(0),
   createdAt: timestamp('created_at', { withTimezone: true })
     .defaultNow()
     .notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true })
     .defaultNow()
-    .$onUpdate(() => new Date())
+    .notNull()
 });
 
 export const medications = pgTable('medications', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  elderId: uuid('elder_id')
+  id: varchar('id', { length: 64 }).primaryKey(),
+  elderId: varchar('elder_id', { length: 64 })
     .notNull()
     .references(() => elders.id, { onDelete: 'cascade' }),
   name: varchar('name', { length: 200 }).notNull(),
@@ -125,8 +123,8 @@ export const medications = pgTable('medications', {
 });
 
 export const medicationExecutions = pgTable('medication_executions', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  medicationId: uuid('medication_id')
+  id: varchar('id', { length: 64 }).primaryKey(),
+  medicationId: varchar('medication_id', { length: 64 })
     .notNull()
     .references(() => medications.id, { onDelete: 'cascade' }),
   executedAt: timestamp('executed_at', { withTimezone: true })
@@ -139,8 +137,8 @@ export const medicationExecutions = pgTable('medication_executions', {
 });
 
 export const visitRecords = pgTable('visit_records', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  elderId: uuid('elder_id')
+  id: varchar('id', { length: 64 }).primaryKey(),
+  elderId: varchar('elder_id', { length: 64 })
     .notNull()
     .references(() => elders.id, { onDelete: 'cascade' }),
   visitorName: varchar('visitor_name', { length: 100 }).notNull(),
@@ -155,8 +153,8 @@ export const visitRecords = pgTable('visit_records', {
 });
 
 export const incidents = pgTable('incidents', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  elderId: uuid('elder_id')
+  id: varchar('id', { length: 64 }).primaryKey(),
+  elderId: varchar('elder_id', { length: 64 })
     .notNull()
     .references(() => elders.id, { onDelete: 'cascade' }),
   type: incidentTypeEnum('type').default('fall'),
@@ -173,12 +171,12 @@ export const incidents = pgTable('incidents', {
 });
 
 export const incidentParties = pgTable('incident_parties', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  incidentId: uuid('incident_id')
+  id: varchar('id', { length: 64 }).primaryKey(),
+  incidentId: varchar('incident_id', { length: 64 })
     .notNull()
     .references(() => incidents.id, { onDelete: 'cascade' }),
   roleType: partyRoleEnum('role_type').notNull(),
-  userId: uuid('user_id').references(() => users.id),
+  userId: varchar('user_id', { length: 64 }).references(() => users.id),
   personName: varchar('person_name', { length: 100 }).notNull(),
   description: text('description'),
   supplementAt: timestamp('supplement_at', { withTimezone: true }),
@@ -187,9 +185,9 @@ export const incidentParties = pgTable('incident_parties', {
 });
 
 export const flowAttachments = pgTable('flow_attachments', {
-  id: uuid('id').primaryKey().defaultRandom(),
+  id: varchar('id', { length: 64 }).primaryKey(),
   entityType: entityTypeEnum('entity_type').notNull(),
-  entityId: uuid('entity_id').notNull(),
+  entityId: varchar('entity_id', { length: 64 }).notNull(),
   fileName: varchar('file_name', { length: 255 }).notNull(),
   fileUrl: varchar('file_url', { length: 500 }).notNull(),
   fileSize: integer('file_size'),
@@ -201,9 +199,9 @@ export const flowAttachments = pgTable('flow_attachments', {
 });
 
 export const flowRemarks = pgTable('flow_remarks', {
-  id: uuid('id').primaryKey().defaultRandom(),
+  id: varchar('id', { length: 64 }).primaryKey(),
   entityType: entityTypeEnum('entity_type').notNull(),
-  entityId: uuid('entity_id').notNull(),
+  entityId: varchar('entity_id', { length: 64 }).notNull(),
   content: text('content').notNull(),
   createdBy: varchar('created_by', { length: 100 }),
   createdAt: timestamp('created_at', { withTimezone: true })
@@ -212,11 +210,11 @@ export const flowRemarks = pgTable('flow_remarks', {
 });
 
 export const flowHandlers = pgTable('flow_handlers', {
-  id: uuid('id').primaryKey().defaultRandom(),
+  id: varchar('id', { length: 128 }).primaryKey(),
   entityType: flowEntityTypeEnum('entity_type').notNull(),
-  entityId: uuid('entity_id').notNull(),
+  entityId: varchar('entity_id', { length: 64 }).notNull(),
   stepName: varchar('step_name', { length: 100 }).notNull(),
-  userId: uuid('user_id').references(() => users.id),
+  userId: varchar('user_id', { length: 64 }).references(() => users.id),
   userName: varchar('user_name', { length: 100 }).notNull(),
   handledAt: timestamp('handled_at', { withTimezone: true }),
   action: varchar('action', { length: 50 })

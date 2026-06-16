@@ -197,12 +197,12 @@
 							<div class="flex gap-3">
 								<div class="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
 									<span class="text-xs font-medium text-primary-700">
-										{remark.createdBy.charAt(0)}
+										{(remark.createdBy ?? '系').charAt(0)}
 									</span>
 								</div>
 								<div class="flex-1 min-w-0">
 									<div class="flex items-center gap-2 mb-1">
-										<span class="text-sm font-medium text-gray-800">{remark.createdBy}</span>
+										<span class="text-sm font-medium text-gray-800">{remark.createdBy ?? '系统'}</span>
 										<span class="text-xs text-gray-400">{formatDateTime(remark.createdAt)}</span>
 									</div>
 									<p class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap break-words">
@@ -246,7 +246,7 @@
 									<p class="text-xs text-gray-400">
 										{attachment.fileSize > 0 && formatFileSize(attachment.fileSize)}
 										{attachment.fileSize > 0 && ' · '}
-										{attachment.uploadedBy} · {formatDateTime(attachment.uploadedAt)}
+										{attachment.uploadedBy ?? '系统'} · {formatDateTime(attachment.uploadedAt)}
 									</p>
 								</div>
 								<div class="flex items-center gap-1">
