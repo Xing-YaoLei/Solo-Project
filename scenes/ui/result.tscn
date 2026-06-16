@@ -12,7 +12,7 @@ content_margin_left = 36.0
 content_margin_top = 30.0
 content_margin_right = 36.0
 content_margin_bottom = 30.0
-shadow_color = Color(0, 0, 0, 0.1, 1)
+shadow_color = Color(0, 0, 0, 0.1)
 shadow_size = 10
 shadow_offset = Vector2(0, 5)
 
