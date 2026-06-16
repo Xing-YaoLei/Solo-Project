@@ -38,6 +38,7 @@ import {
   deleteAttachment,
   addSupplementNote,
   changePrescriptionStatus,
+  submitPrescription,
 } from '@/api/prescription'
 import { getFollowUpByPrescriptionId, createFollowUp, updateFollowUp } from '@/api/business'
 import { useUserStore } from '@/store/user'
@@ -108,6 +109,17 @@ const PrescriptionDetail = () => {
       setFollowUp(data)
     } catch (error) {
       console.error('Fetch follow-up error:', error)
+    }
+  }
+
+  const handleSubmit = async () => {
+    if (!id) return
+    try {
+      await submitPrescription(Number(id))
+      message.success('处方已提交审核')
+      fetchDetail()
+    } catch (error) {
+      console.error('Submit error:', error)
     }
   }
 
@@ -291,7 +303,7 @@ const PrescriptionDetail = () => {
         <Space>
           {hasRole([UserRole.Cashier, UserRole.StoreManager]) &&
             prescription?.status === PrescriptionStatus.Pending && (
-              <Button type="primary" onClick={() => navigate(-1)}>
+              <Button type="primary" onClick={handleSubmit}>
                 提交审核
               </Button>
             )}

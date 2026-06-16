@@ -8,6 +8,7 @@ using PrescriptionReview.Infrastructure.Services;
 using Hangfire;
 using Hangfire.SqlServer;
 using Microsoft.EntityFrameworkCore;
+using PrescriptionReview.Api;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -97,11 +98,8 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "处方审核排程台 API v1"));
-}
+app.UseSwagger();
+app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "处方审核排程台 API v1"));
 
 app.UseCors("AllowAll");
 
