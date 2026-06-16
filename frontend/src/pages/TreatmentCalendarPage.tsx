@@ -14,6 +14,8 @@ import {
   Space,
   message,
   Badge,
+  Row,
+  Col,
 } from 'antd';
 import {
   CalendarOutlined,
@@ -28,12 +30,11 @@ import dayjs from 'dayjs';
 import { treatmentApi } from '../services/api';
 import type { TreatmentCalendar } from '../types';
 
-const { RangePicker } = DatePicker;
 const { Option } = Select;
 const { TextArea } = Input;
 
 const TreatmentCalendarPage: React.FC = () => {
-  const [loading, setLoading] = useState(false);
+  const [, setLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Dayjs>(dayjs());
   const [treatments, setTreatments] = useState<TreatmentCalendar[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
@@ -55,39 +56,9 @@ const TreatmentCalendarPage: React.FC = () => {
       setTreatments(data);
     } catch (error) {
       console.error('Failed to load treatments:', error);
-      setTreatments(getMockTreatments());
     } finally {
       setLoading(false);
     }
-  };
-
-  const getMockTreatments = (): TreatmentCalendar[] => {
-    const baseDate = dayjs().startOf('month');
-    return Array.from({ length: 20 }, (_, i) => {
-      const date = baseDate.add(i + 2, 'day');
-      const statuses = [1, 2, 3, 3, 3, 1, 1, 1, 1, 1];
-      const statusNames = ['已预约', '进行中', '已完成', '已完成', '已完成', '已预约', '已预约', '已预约', '已预约', '已预约'];
-      return {
-        id: i + 1,
-        billId: 1,
-        patientId: 1,
-        patientName: '张三',
-        treatmentDate: date.format('YYYY-MM-DD'),
-        startTime: ['08:00', '09:30', '14:00', '15:30'][i % 4],
-        endTime: ['09:00', '10:30', '15:00', '16:30'][i % 4],
-        treatmentType: ['运动疗法', '物理治疗', '作业治疗', '言语治疗'][i % 4],
-        treatmentItem: ['关节活动训练', '电疗', '手功能训练', '吞咽训练'][i % 4],
-        doctorId: 1,
-        doctorName: '张医生',
-        therapistId: 2,
-        therapistName: '李治疗师',
-        statusId: statuses[i % statuses.length],
-        statusName: statusNames[i % statuses.length],
-        duration: 60,
-        remark: i === 5 ? '患者请假，需改期' : '',
-        createdAt: date.subtract(3, 'day').format('YYYY-MM-DD HH:mm:ss'),
-      };
-    });
   };
 
   const getListData = (value: Dayjs) => {
@@ -98,8 +69,6 @@ const TreatmentCalendarPage: React.FC = () => {
 
   const dateCellRender = (value: Dayjs) => {
     const listData = getListData(value);
-    const completed = listData.filter((t) => t.statusId === 3).length;
-    const total = listData.length;
 
     return (
       <ul className="events">
@@ -177,9 +146,7 @@ const TreatmentCalendarPage: React.FC = () => {
       loadTreatments();
     } catch (error) {
       console.error('Submit error:', error);
-      message.success(editingTreatment ? '更新成功（模拟）' : '创建成功（模拟）');
-      setModalVisible(false);
-      loadTreatments();
+      message.error('提交失败');
     }
   };
 
@@ -189,8 +156,8 @@ const TreatmentCalendarPage: React.FC = () => {
       message.success('删除成功');
       loadTreatments();
     } catch (error) {
-      message.success('删除成功（模拟）');
-      loadTreatments();
+      console.error('Delete error:', error);
+      message.error('删除失败');
     }
   };
 

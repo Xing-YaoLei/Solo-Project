@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, Form, Input, Select, Button, Space, Divider, List, Tag, Modal, message, Tabs } from 'antd';
+import { Card, Form, Input, Select, Button, Space, List, Tag, Modal, message, Tabs } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 
 const { Option } = Select;

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Row, Col, Card, Statistic, Progress, List, Tag, Table } from 'antd';
+import { Row, Col, Card, Statistic, Progress, List, Tag } from 'antd';
 import {
   FileTextOutlined,
   ClockCircleOutlined,
@@ -26,44 +26,10 @@ const Dashboard: React.FC = () => {
       setDashboard(data);
     } catch (error) {
       console.error('Failed to load dashboard:', error);
-      setDashboard(getMockData());
     } finally {
       setLoading(false);
     }
   };
-
-  const getMockData = (): DashboardDto => ({
-    totalBills: 156,
-    pendingBills: 42,
-    completedBills: 98,
-    exceptionBills: 16,
-    totalAmount: 1258600.5,
-    insuranceAmount: 896500.0,
-    statusOverview: [
-      { statusId: 1, statusName: '待录入', count: 12, amount: 85000 },
-      { statusId: 2, statusName: '待审核', count: 18, amount: 156000 },
-      { statusId: 5, statusName: '处理中', count: 12, amount: 98000 },
-      { statusId: 6, statusName: '待复盘', count: 8, amount: 72000 },
-      { statusId: 7, statusName: '已完成', count: 65, amount: 520000 },
-      { statusId: 9, statusName: '医保拒付', count: 9, amount: 89000 },
-      { statusId: 10, statusName: '补充材料中', count: 5, amount: 45000 },
-      { statusId: 11, statusName: '升级处理', count: 2, amount: 18000 },
-    ],
-    sourceChannelStats: [
-      { sourceChannelId: 1, sourceChannelName: '门诊转诊', billCount: 58, totalAmount: 486000, insuranceAmount: 320000, rate: 37.2 },
-      { sourceChannelId: 2, sourceChannelName: '住院转诊', billCount: 42, totalAmount: 420000, insuranceAmount: 290000, rate: 26.9 },
-      { sourceChannelId: 3, sourceChannelName: '社区推荐', billCount: 28, totalAmount: 196000, insuranceAmount: 140000, rate: 17.9 },
-      { sourceChannelId: 4, sourceChannelName: '线上预约', billCount: 18, totalAmount: 108000, insuranceAmount: 78000, rate: 11.5 },
-      { sourceChannelId: 5, sourceChannelName: '其他', billCount: 10, totalAmount: 48600, insuranceAmount: 35000, rate: 6.4 },
-    ],
-    trainingCompletionRate: {
-      totalScheduled: 420,
-      completed: 378,
-      cancelled: 18,
-      noShow: 24,
-      completionRate: 90.0,
-    },
-  });
 
   return (
     <div>
@@ -168,7 +134,7 @@ const Dashboard: React.FC = () => {
                       <div>
                       <div>总金额：¥{item.totalAmount.toLocaleString()}</div>
                       <div style={{ marginTop: 4 }}>
-                        <Progress percent={item.rate.toFixed(1)} style={{ width: '100%' }} />
+                        <Progress percent={Number(item.rate.toFixed(1))} style={{ width: '100%' }} />
                       </div>
                     </div>
                     }

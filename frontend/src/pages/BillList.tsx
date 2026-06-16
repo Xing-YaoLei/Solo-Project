@@ -40,40 +40,10 @@ const BillList: React.FC = () => {
       setData(result);
     } catch (error) {
       console.error('Failed to load bills:', error);
-      setData({
-        items: getMockBills(),
-        totalCount: 50,
-        pageIndex: 1,
-        pageSize: 20,
-        totalPages: 3,
-      });
+      message.error('加载单据列表失败');
     } finally {
       setLoading(false);
     }
-  };
-
-  const getMockBills = (): SettlementBill[] => {
-    const statuses = [1, 2, 5, 6, 7, 9, 10];
-    return Array.from({ length: 10 }, (_, i) => ({
-      id: i + 1,
-      billNo: `JB202406${String(i + 1).padStart(3, '0')}`,
-      patientId: i + 1,
-      patientName: `患者${i + 1}`,
-      patientNo: `P${String(i + 1).padStart(6, '0')}`,
-      statusId: statuses[i % statuses.length],
-      statusName: SettlementStatusMap[statuses[i % statuses.length]]?.name || '未知',
-      sourceChannelName: ['门诊转诊', '住院转诊', '社区推荐', '线上预约'][i % 4],
-      assigneeName: ['张医生', '李医生', '王护士'][i % 3],
-      treatmentStartDate: dayjs().add(i, 'day').format('YYYY-MM-DD'),
-      treatmentEndDate: dayjs().add(i + 7, 'day').format('YYYY-MM-DD'),
-      totalAmount: (i + 1) * 5000,
-      insuranceAmount: (i + 1) * 3500,
-      selfPayAmount: (i + 1) * 1500,
-      createdAt: dayjs().subtract(i, 'day').format('YYYY-MM-DD HH:mm:ss'),
-      updatedAt: dayjs().subtract(i, 'day').format('YYYY-MM-DD HH:mm:ss'),
-      items: [],
-      reviewTags: [],
-    }));
   };
 
   const handleSearch = () => {
@@ -112,8 +82,7 @@ const BillList: React.FC = () => {
       loadData();
     } catch (error) {
       console.error('Delete error:', error);
-      message.success('删除成功（模拟）');
-      loadData();
+      message.error('删除失败');
     }
   };
 
@@ -130,9 +99,7 @@ const BillList: React.FC = () => {
       loadData();
     } catch (error) {
       console.error('Submit error:', error);
-      message.success(editingBill ? '更新成功（模拟）' : '创建成功（模拟）');
-      setFormModalVisible(false);
-      loadData();
+      message.error('提交失败');
     }
   };
 
@@ -205,7 +172,7 @@ const BillList: React.FC = () => {
       title: '操作',
       key: 'actions',
       width: 180,
-      fixed: 'right',
+      fixed: 'right' as const,
       render: (_: any, record: SettlementBill) => (
         <Space size="small">
           <Button

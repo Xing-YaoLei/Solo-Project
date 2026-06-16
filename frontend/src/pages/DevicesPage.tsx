@@ -1,12 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Table, Tag, Space, Button, Modal, Form, Input, Select, DatePicker, message, List, Row, Col, Statistic } from 'antd';
+import { Card, Table, Tag, Space, Button, Modal, Form, Input, Select, List, Row, Col, Statistic } from 'antd';
 import { PlusOutlined, EditOutlined, HistoryOutlined, ToolOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { deviceApi } from '../services/api';
 import type { DeviceDto, DeviceUsageRecord } from '../types';
-import dayjs from 'dayjs';
 
 const { Option } = Select;
-const { TextArea } = Input;
 
 const DevicesPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
@@ -16,7 +14,6 @@ const DevicesPage: React.FC = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [usageModalVisible, setUsageModalVisible] = useState(false);
   const [form] = Form.useForm();
-  const [usageForm] = Form.useForm();
 
   useEffect(() => {
     loadDevices();
@@ -29,24 +26,10 @@ const DevicesPage: React.FC = () => {
       setDevices(data);
     } catch (error) {
       console.error('Failed to load devices:', error);
-      setDevices(getMockDevices());
     } finally {
       setLoading(false);
     }
   };
-
-  const getMockDevices = (): DeviceDto[] => [
-    { id: 1, deviceCode: 'DEV001', deviceName: '电动起立床', deviceType: '康复设备', model: 'EL-2000', statusId: 1, statusName: '正常', location: '康复治疗室1' },
-    { id: 2, deviceCode: 'DEV002', deviceName: '中频电疗仪', deviceType: '理疗设备', model: 'ZP-100', statusId: 1, statusName: '正常', location: '物理治疗室' },
-    { id: 3, deviceCode: 'DEV003', deviceName: '持续被动运动机(CPM)', deviceType: '康复设备', model: 'CPM-300', statusId: 2, statusName: '维护中', location: '康复治疗室2' },
-    { id: 4, deviceCode: 'DEV004', deviceName: '平衡训练仪', deviceType: '评估设备', model: 'BT-500', statusId: 1, statusName: '正常', location: '评估室' },
-    { id: 5, deviceCode: 'DEV005', deviceName: '言语训练系统', deviceType: '康复设备', model: 'ST-200', statusId: 3, statusName: '故障', location: '言语治疗室' },
-    { id: 6, deviceCode: 'DEV006', deviceName: '下肢康复机器人', deviceType: '康复设备', model: 'LR-1000', statusId: 1, statusName: '正常', location: '机器人治疗室' },
-    { id: 7, deviceCode: 'DEV007', deviceName: '上肢康复训练器', deviceType: '康复设备', model: 'UR-500', statusId: 1, statusName: '正常', location: '作业治疗室' },
-    { id: 8, deviceCode: 'DEV008', deviceName: '超声波治疗仪', deviceType: '理疗设备', model: 'US-300', statusId: 1, statusName: '正常', location: '物理治疗室' },
-    { id: 9, deviceCode: 'DEV009', deviceName: '牵引床', deviceType: '康复设备', model: 'TC-150', statusId: 2, statusName: '维护中', location: '牵引治疗室' },
-    { id: 10, deviceCode: 'DEV010', deviceName: '肌电生物反馈仪', deviceType: '评估设备', model: 'EMG-400', statusId: 1, statusName: '正常', location: '评估室' },
-  ];
 
   const loadUsageRecords = async (deviceId: number) => {
     try {
@@ -54,24 +37,7 @@ const DevicesPage: React.FC = () => {
       setUsageRecords(data);
     } catch (error) {
       console.error('Failed to load usage records:', error);
-      setUsageRecords(getMockUsageRecords(deviceId));
     }
-  };
-
-  const getMockUsageRecords = (deviceId: number): DeviceUsageRecord[] => {
-    const baseDate = dayjs();
-    return Array.from({ length: 10 }, (_, i) => ({
-      id: i + 1,
-      deviceId,
-      deviceName: devices.find((d) => d.id === deviceId)?.deviceName || '',
-      billId: i + 1,
-      treatmentCalendarId: i + 1,
-      useDate: baseDate.subtract(i, 'day').format('YYYY-MM-DD'),
-      startTime: ['08:00', '09:30', '14:00', '15:30', '10:00'][i % 5],
-      endTime: ['09:00', '10:30', '15:00', '16:30', '11:00'][i % 5],
-      duration: [30, 45, 60, 20, 40][i % 5],
-      remark: ['用于膝关节康复', '常规治疗', '强化训练', '评估测试', '术后恢复'][i % 5],
-    }));
   };
 
   const handleViewUsage = (device: DeviceDto) => {

@@ -11,7 +11,6 @@ import {
   Tabs,
   DatePicker,
   Space,
-  BarChart,
 } from 'antd';
 import {
   RiseOutlined,
@@ -35,7 +34,7 @@ import dayjs from 'dayjs';
 const { RangePicker } = DatePicker;
 
 const StatisticsPage: React.FC = () => {
-  const [loading, setLoading] = useState(false);
+  const [, setLoading] = useState(false);
   const [dateRange, setDateRange] = useState<[dayjs.Dayjs, dayjs.Dayjs] | null>(null);
   const [trainingRate, setTrainingRate] = useState<TrainingCompletionRate | null>(null);
   const [sourceChannels, setSourceChannels] = useState<SourceChannelStatistics[]>([]);
@@ -68,63 +67,10 @@ const StatisticsPage: React.FC = () => {
       setStatusOverview(status);
     } catch (error) {
       console.error('Failed to load statistics:', error);
-      setTrainingRate(getMockTrainingRate());
-      setSourceChannels(getMockSourceChannels());
-      setAssignees(getMockAssignees());
-      setReviewTags(getMockReviewTags());
-      setStatusOverview(getMockStatusOverview());
     } finally {
       setLoading(false);
     }
   };
-
-  const getMockTrainingRate = (): TrainingCompletionRate => ({
-    totalScheduled: 420,
-    completed: 378,
-    cancelled: 18,
-    noShow: 24,
-    completionRate: 90.0,
-  });
-
-  const getMockSourceChannels = (): SourceChannelStatistics[] => [
-    { sourceChannelId: 1, sourceChannelName: '门诊转诊', billCount: 58, totalAmount: 486000, insuranceAmount: 320000, rate: 37.2 },
-    { sourceChannelId: 2, sourceChannelName: '住院转诊', billCount: 42, totalAmount: 420000, insuranceAmount: 290000, rate: 26.9 },
-    { sourceChannelId: 3, sourceChannelName: '社区推荐', billCount: 28, totalAmount: 196000, insuranceAmount: 140000, rate: 17.9 },
-    { sourceChannelId: 4, sourceChannelName: '线上预约', billCount: 18, totalAmount: 108000, insuranceAmount: 78000, rate: 11.5 },
-    { sourceChannelId: 5, sourceChannelName: '其他', billCount: 10, totalAmount: 48600, insuranceAmount: 35000, rate: 6.4 },
-  ];
-
-  const getMockAssignees = (): AssigneeStatistics[] => [
-    { assigneeId: 1, assigneeName: '张医生', billCount: 45, completedCount: 32, pendingCount: 10, rejectedCount: 3, completedRate: 71.1 },
-    { assigneeId: 2, assigneeName: '李处理员', billCount: 38, completedCount: 28, pendingCount: 8, rejectedCount: 2, completedRate: 73.7 },
-    { assigneeId: 3, assigneeName: '王医生', billCount: 32, completedCount: 25, pendingCount: 5, rejectedCount: 2, completedRate: 78.1 },
-    { assigneeId: 4, assigneeName: '赵护士', billCount: 25, completedCount: 20, pendingCount: 4, rejectedCount: 1, completedRate: 80.0 },
-    { assigneeId: 5, assigneeName: '陈主任', billCount: 16, completedCount: 12, pendingCount: 3, rejectedCount: 1, completedRate: 75.0 },
-  ];
-
-  const getMockReviewTags = (): ReviewTagStatistics[] => [
-    { reviewTagId: 1, reviewTagName: '术后康复', billCount: 68, totalAmount: 580000, color: '#1890ff' },
-    { reviewTagId: 2, reviewTagName: '运动损伤', billCount: 42, totalAmount: 320000, color: '#52c41a' },
-    { reviewTagId: 3, reviewTagName: '老年康复', billCount: 35, totalAmount: 280000, color: '#faad14' },
-    { reviewTagId: 4, reviewTagName: '神经系统', billCount: 28, totalAmount: 240000, color: '#722ed1' },
-    { reviewTagId: 5, reviewTagName: '骨关节', billCount: 45, totalAmount: 380000, color: '#eb2f96' },
-    { reviewTagId: 6, reviewTagName: '心肺康复', billCount: 18, totalAmount: 150000, color: '#13c2c2' },
-    { reviewTagId: 7, reviewTagName: '儿童康复', billCount: 12, totalAmount: 90000, color: '#fa8c16' },
-  ];
-
-  const getMockStatusOverview = (): StatusOverview[] => [
-    { statusId: 1, statusName: '待录入', count: 12, amount: 85000 },
-    { statusId: 2, statusName: '待审核', count: 18, amount: 156000 },
-    { statusId: 3, statusName: '审核通过', count: 8, amount: 68000 },
-    { statusId: 4, statusName: '审核驳回', count: 5, amount: 42000 },
-    { statusId: 5, statusName: '处理中', count: 15, amount: 128000 },
-    { statusId: 6, statusName: '待复盘', count: 10, amount: 92000 },
-    { statusId: 7, statusName: '已完成', count: 65, amount: 520000 },
-    { statusId: 8, statusName: '已关闭', count: 12, amount: 95000 },
-    { statusId: 9, statusName: '医保拒付', count: 9, amount: 89000 },
-    { statusId: 10, statusName: '补充材料中', count: 5, amount: 45000 },
-    { statusId: 11, statusName: '升级处理', count: 2, amount: 18000 },
-  ];
 
   const assigneeColumns = [
     {
@@ -165,7 +111,7 @@ const StatisticsPage: React.FC = () => {
       dataIndex: 'completedRate',
       key: 'completedRate',
       render: (val: number) => (
-        <Progress percent={val.toFixed(1)} size="small" status={val >= 75 ? 'normal' : val >= 60 ? 'active' : 'exception'} />
+        <Progress percent={Number(val.toFixed(1))} size="small" status={val >= 75 ? 'normal' : val >= 60 ? 'active' : 'exception'} />
       ),
     },
   ];
@@ -270,7 +216,7 @@ const StatisticsPage: React.FC = () => {
                         <span>总金额：<strong>¥{item.totalAmount.toLocaleString()}</strong></span>
                         <span>医保报销：<span style={{ color: '#52c41a' }}>¥{item.insuranceAmount.toLocaleString()}</span></span>
                       </div>
-                      <Progress percent={item.rate.toFixed(1)} status="active" />
+                      <Progress percent={Number(item.rate.toFixed(1))} status="active" />
                     </div>
                   }
                 />

@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Form, Input, Select, DatePicker, Button, Space, Table, InputNumber, message } from 'antd';
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import type { SettlementBill, CreateSettlementItem, CreateSettlementBill } from '../types';
-import dayjs from 'dayjs';
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -269,7 +268,7 @@ const BillForm: React.FC<BillFormProps> = ({ form, initialData, onSubmit, onCanc
       </div>
 
       <Table
-        rowKey={(record, index) => index?.toString() || '0'}
+        rowKey={(_record, index) => index?.toString() || '0'}
         columns={itemColumns}
         dataSource={items}
         pagination={false}

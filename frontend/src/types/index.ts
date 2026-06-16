@@ -168,7 +168,7 @@ export interface NursingLog {
 export interface StatusTransition {
   id: number;
   billId: number;
-  fromStatusId?: number;
+  fromStatusId: number | null;
   toStatusId: number;
   remark?: string;
   operatorName: string;
@@ -271,19 +271,21 @@ export interface ReviewTagStatistics {
   color?: string;
 }
 
-export enum SettlementStatus {
-  PendingEntry = 1,
-  PendingReview = 2,
-  ReviewApproved = 3,
-  ReviewRejected = 4,
-  Processing = 5,
-  PendingFinalReview = 6,
-  Completed = 7,
-  Closed = 8,
-  InsuranceRejected = 9,
-  SupplementingMaterials = 10,
-  Escalated = 11,
-}
+export const SettlementStatus = {
+  PendingEntry: 1,
+  PendingReview: 2,
+  ReviewApproved: 3,
+  ReviewRejected: 4,
+  Processing: 5,
+  PendingFinalReview: 6,
+  Completed: 7,
+  Closed: 8,
+  InsuranceRejected: 9,
+  SupplementingMaterials: 10,
+  Escalated: 11,
+} as const;
+
+export type SettlementStatusType = typeof SettlementStatus[keyof typeof SettlementStatus];
 
 export const SettlementStatusMap: Record<number, { name: string; color: string }> = {
   1: { name: '待录入', color: 'default' },

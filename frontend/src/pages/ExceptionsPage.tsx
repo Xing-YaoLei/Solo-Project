@@ -12,26 +12,21 @@ import {
   Upload,
   message,
   Tabs,
-  List,
   Row,
   Col,
   Statistic,
-  Divider,
 } from 'antd';
 import {
   PlusOutlined,
-  CloseOutlined,
   UploadOutlined,
   ArrowUpOutlined,
   CheckCircleOutlined,
   FileTextOutlined,
-  ExclamationCircleOutlined,
-  ClockCircleOutlined,
   WarningOutlined,
 } from '@ant-design/icons';
 import type { UploadProps } from 'antd';
-import { exceptionApi, settlementApi } from '../services/api';
-import type { ExceptionRecord, SupplementMaterial } from '../types';
+import { exceptionApi } from '../services/api';
+import type { ExceptionRecord } from '../types';
 import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
 
@@ -60,184 +55,9 @@ const ExceptionsPage: React.FC = () => {
       setExceptions(data);
     } catch (error) {
       console.error('Failed to load exceptions:', error);
-      setExceptions(getMockExceptions());
     } finally {
       setLoading(false);
     }
-  };
-
-  const getMockExceptions = (): ExceptionRecord[] => {
-    const baseDate = dayjs();
-    return [
-      {
-        id: 1,
-        billId: 1,
-        billNo: 'JB202406001',
-        exceptionType: 'InsuranceRejection',
-        rejectionReasonId: 1,
-        rejectionReasonName: '费用超标',
-        description: '部分治疗项目费用超出医保支付标准，需要核实具体收费依据',
-        handlerId: 2,
-        handlerName: '李处理员',
-        handleMethod: 'SupplementMaterials',
-        handleRemark: '已补充相关证明材料，包括收费标准说明和医嘱单',
-        handledAt: baseDate.subtract(2, 'day').format('YYYY-MM-DD HH:mm:ss'),
-        escalatedAt: undefined,
-        escalatedTo: undefined,
-        escalatedToName: undefined,
-        isClosed: false,
-        closedAt: undefined,
-        createdAt: baseDate.subtract(5, 'day').format('YYYY-MM-DD HH:mm:ss'),
-        supplementMaterials: [
-          {
-            id: 1,
-            exceptionRecordId: 1,
-            billId: 1,
-            materialName: '收费标准说明.pdf',
-            materialType: 'document',
-            fileUrl: '/files/material1.pdf',
-            remark: '物价局核定的收费标准文件',
-            createdAt: baseDate.subtract(4, 'day').format('YYYY-MM-DD HH:mm:ss'),
-          },
-          {
-            id: 2,
-            exceptionRecordId: 1,
-            billId: 1,
-            materialName: '医嘱单.pdf',
-            materialType: 'document',
-            fileUrl: '/files/material2.pdf',
-            remark: '主治医师开具的治疗医嘱',
-            createdAt: baseDate.subtract(4, 'day').format('YYYY-MM-DD HH:mm:ss'),
-          },
-          {
-            id: 3,
-            exceptionRecordId: 1,
-            billId: 1,
-            materialName: '治疗记录.pdf',
-            materialType: 'document',
-            fileUrl: '/files/material3.pdf',
-            remark: '详细的治疗过程记录',
-            createdAt: baseDate.subtract(2, 'day').format('YYYY-MM-DD HH:mm:ss'),
-          },
-        ],
-      },
-      {
-        id: 2,
-        billId: 3,
-        billNo: 'JB202406003',
-        exceptionType: 'InsuranceRejection',
-        rejectionReasonId: 2,
-        rejectionReasonName: '适应症不符',
-        description: '医保审核认为治疗项目与诊断不符，需要提供更多临床依据',
-        handlerId: 3,
-        handlerName: '王医生',
-        handleMethod: 'Escalate',
-        handleRemark: '已提交科主任复核，等待进一步处理意见',
-        handledAt: baseDate.subtract(1, 'day').format('YYYY-MM-DD HH:mm:ss'),
-        escalatedAt: baseDate.subtract(1, 'day').format('YYYY-MM-DD HH:mm:ss'),
-        escalatedTo: 5,
-        escalatedToName: '陈主任',
-        isClosed: false,
-        closedAt: undefined,
-        createdAt: baseDate.subtract(3, 'day').format('YYYY-MM-DD HH:mm:ss'),
-        supplementMaterials: [
-          {
-            id: 4,
-            exceptionRecordId: 2,
-            billId: 3,
-            materialName: '病历摘要.pdf',
-            materialType: 'document',
-            fileUrl: '/files/material4.pdf',
-            remark: '患者完整病历摘要',
-            createdAt: baseDate.subtract(3, 'day').format('YYYY-MM-DD HH:mm:ss'),
-          },
-        ],
-      },
-      {
-        id: 3,
-        billId: 5,
-        billNo: 'JB202406005',
-        exceptionType: 'InsuranceRejection',
-        rejectionReasonId: 3,
-        rejectionReasonName: '材料不全',
-        description: '缺少必要的诊断证明和检查报告',
-        handlerId: 1,
-        handlerName: '张医生',
-        handleMethod: 'CloseNormally',
-        handleRemark: '经核实患者自愿放弃医保报销，改为自费',
-        handledAt: baseDate.subtract(6, 'day').format('YYYY-MM-DD HH:mm:ss'),
-        escalatedAt: undefined,
-        escalatedTo: undefined,
-        escalatedToName: undefined,
-        isClosed: true,
-        closedAt: baseDate.subtract(6, 'day').format('YYYY-MM-DD HH:mm:ss'),
-        createdAt: baseDate.subtract(8, 'day').format('YYYY-MM-DD HH:mm:ss'),
-        supplementMaterials: [],
-      },
-      {
-        id: 4,
-        billId: 7,
-        billNo: 'JB202406007',
-        exceptionType: 'InsuranceRejection',
-        rejectionReasonId: 1,
-        rejectionReasonName: '费用超标',
-        description: '康复治疗次数超出医保支付限额',
-        handlerId: undefined,
-        handlerName: undefined,
-        handleMethod: undefined,
-        handleRemark: undefined,
-        handledAt: undefined,
-        escalatedAt: undefined,
-        escalatedTo: undefined,
-        escalatedToName: undefined,
-        isClosed: false,
-        closedAt: undefined,
-        createdAt: baseDate.subtract(1, 'day').format('YYYY-MM-DD HH:mm:ss'),
-        supplementMaterials: [],
-      },
-      {
-        id: 5,
-        billId: 9,
-        billNo: 'JB202406009',
-        exceptionType: 'InsuranceRejection',
-        rejectionReasonId: 4,
-        rejectionReasonName: '时间不符',
-        description: '治疗时间与医保规定的时限要求不符',
-        handlerId: 2,
-        handlerName: '李处理员',
-        handleMethod: 'SupplementMaterials',
-        handleRemark: '已提交特殊情况说明，等待医保中心审批',
-        handledAt: baseDate.subtract(4, 'day').format('YYYY-MM-DD HH:mm:ss'),
-        escalatedAt: undefined,
-        escalatedTo: undefined,
-        escalatedToName: undefined,
-        isClosed: false,
-        closedAt: undefined,
-        createdAt: baseDate.subtract(7, 'day').format('YYYY-MM-DD HH:mm:ss'),
-        supplementMaterials: [
-          {
-            id: 5,
-            exceptionRecordId: 5,
-            billId: 9,
-            materialName: '特殊情况说明.pdf',
-            materialType: 'document',
-            fileUrl: '/files/material5.pdf',
-            remark: '由科室主任签字的特殊情况说明',
-            createdAt: baseDate.subtract(4, 'day').format('YYYY-MM-DD HH:mm:ss'),
-          },
-          {
-            id: 6,
-            exceptionRecordId: 5,
-            billId: 9,
-            materialName: '检查报告.pdf',
-            materialType: 'document',
-            fileUrl: '/files/material6.pdf',
-            remark: '相关检查报告佐证',
-            createdAt: baseDate.subtract(4, 'day').format('YYYY-MM-DD HH:mm:ss'),
-          },
-        ],
-      },
-    ];
   };
 
   const handleCreate = () => {
@@ -256,9 +76,7 @@ const ExceptionsPage: React.FC = () => {
       loadExceptions();
     } catch (error) {
       console.error('Create error:', error);
-      message.success('创建成功（模拟）');
-      setCreateModalVisible(false);
-      loadExceptions();
+      message.error('创建失败');
     }
   };
 
@@ -284,23 +102,7 @@ const ExceptionsPage: React.FC = () => {
       loadExceptions();
     } catch (error) {
       console.error('Handle error:', error);
-      message.success('处理成功（模拟）');
-      setHandleModalVisible(false);
-      loadExceptions();
-    }
-  };
-
-  const handleClose = async (record: ExceptionRecord) => {
-    try {
-      await exceptionApi.close({
-        exceptionRecordId: record.id,
-        closeRemark: '正常关闭',
-      });
-      message.success('关闭成功');
-      loadExceptions();
-    } catch (error) {
-      message.success('关闭成功（模拟）');
-      loadExceptions();
+      message.error('处理失败');
     }
   };
 

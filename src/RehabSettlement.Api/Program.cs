@@ -1,4 +1,6 @@
 using RehabSettlement.Api.Data;
+using RehabSettlement.Api.Services;
+using RehabSettlement.Api.Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Hangfire;
 using Hangfire.SqlServer;
@@ -67,11 +69,11 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapHangfireDashboard("/hangfire");
 
-RecurringJobManager.AddOrUpdate("daily-status-check",
+RecurringJob.AddOrUpdate("daily-status-check",
     () => ExceptionHandlingJob.CheckExceptionStatus(),
     Cron.Daily);
 
-RecurringJobManager.AddOrUpdate("reminder-notifications",
+RecurringJob.AddOrUpdate("reminder-notifications",
     () => NotificationJob.SendReminders(),
     Cron.HourInterval(2));
 
