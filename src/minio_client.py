@@ -72,7 +72,7 @@ class MinioClient:
             return None
 
     def list_files(self, prefix: str = "") -> list:
-        """列出存储桶中的文件"""
+        """列出存储桶中的文件路径"""
         if not self.available:
             return []
         try:
@@ -81,6 +81,70 @@ class MinioClient:
         except Exception as e:
             print(f"列出文件失败: {e}")
             return []
+
+    def list_files_with_details(self, prefix: str = "") -> list:
+        """列出存储桶中的文件及详细信息
+
+        Returns:
+            list of dict: [{
+                'object_name': str,
+                'size': int (bytes),
+                'last_modified': datetime,
+                'content_type': str
+            }]
+        """
+        if not self.available:
+            return []
+        try:
+            objects = self.client.list_objects(
+                Config.MINIO_BUCKET,
+                prefix=prefix,
+                recursive=True
+            )
+            result = []
+            for obj in objects:
+                result.append({
+                    'object_name': obj.object_name,
+                    'size': obj.size if hasattr(obj, 'size') and obj.size else 0,
+                    'last_modified': obj.last_modified if hasattr(obj, 'last_modified') else None,
+                    'content_type': obj.content_type if hasattr(obj, 'content_type') else None
+                })
+            return result
+        except Exception as e:
+            print(f"列出文件详情失败: {e}")
+            return []
+
+    def get_bucket_stats(self, prefix: str = "") -> dict:
+        """获取存储桶统计信息
+
+        Returns:
+            dict: {
+                'total_files': int,
+                'total_size': int (bytes),
+                'prefix': str
+            }
+        """
+        if not self.available:
+            return {'total_files': 0, 'total_size': 0, 'prefix': prefix}
+        try:
+            objects = self.client.list_objects(
+                Config.MINIO_BUCKET,
+                prefix=prefix,
+                recursive=True
+            )
+            total_files = 0
+            total_size = 0
+            for obj in objects:
+                total_files += 1
+                total_size += obj.size if hasattr(obj, 'size') and obj.size else 0
+            return {
+                'total_files': total_files,
+                'total_size': total_size,
+                'prefix': prefix
+            }
+        except Exception as e:
+            print(f"获取存储桶统计失败: {e}")
+            return {'total_files': 0, 'total_size': 0, 'prefix': prefix}
 
     def delete_file(self, object_name: str) -> bool:
         """删除文件"""

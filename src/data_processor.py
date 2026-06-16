@@ -431,7 +431,18 @@ def get_followup_funnel() -> pl.DataFrame:
 def get_imaging_ranking(use_minio: bool = True) -> dict:
     """
     获取影像附件排行
-    优先从MinIO获取真实对象存储数据，不可用时降级使用数据库数据
+    主数据源: MinIO 对象存储（真实文件统计）
+    降级数据源: 数据库影像记录（MinIO不可用时）
+
+    返回结构: {
+        "data": pl.DataFrame - 按类型统计的排行数据
+        "minio_available": bool - MinIO是否可用
+        "source": str - 数据来源: "minio" / "database"
+        "total_files": int - 总文件数
+        "total_size": int - 总大小(字节)
+        "db_record_count": int - 数据库记录数(用于对比)
+        "file_list": list - 文件详情列表
+    }
     """
     minio_client = get_minio_client() if use_minio else None
     minio_available = minio_client and minio_client.available if minio_client else False
@@ -447,51 +458,93 @@ def get_imaging_ranking(use_minio: bool = True) -> dict:
             FROM imaging_records
             GROUP BY image_type
             ORDER BY image_count DESC
-            LIMIT 10
         """).pl()
 
-        minio_stats = None
+        db_record_count = db_df["image_count"].sum() if not db_df.is_empty() else 0
+
+        type_folder_map = {
+            "panoramic": "口腔全景片",
+            "periapical": "根尖片",
+            "cbct": "CBCT",
+            "cephalometric": "头颅侧位片",
+            "endoscope": "口腔内窥镜",
+            "dental": "牙片",
+            "other": "其他"
+        }
+
         if minio_available:
             try:
-                minio_files = minio_client.list_files()
-                total_minio_files = len(minio_files)
+                minio_files = minio_client.list_files_with_details(prefix="imaging/")
 
                 type_stats = {}
-                total_minio_size = 0
+                total_files = 0
+                total_size = 0
 
-                type_folder_map = {
-                    "panoramic": "口腔全景片",
-                    "periapical": "根尖片",
-                    "cbct": "CBCT",
-                    "cephalometric": "头颅侧位片",
-                    "endoscope": "口腔内窥镜",
-                    "dental": "牙片",
-                    "other": "其他"
-                }
+                for f in minio_files:
+                    path = f.get("object_name", "")
+                    size = f.get("size", 0)
 
-                for file_path in minio_files:
-                    parts = file_path.split("/")
+                    parts = path.split("/")
                     if len(parts) >= 2 and parts[0] == "imaging":
                         folder_code = parts[1] if len(parts) > 1 else "other"
                         type_name = type_folder_map.get(folder_code, folder_code)
-                        if type_name not in type_stats:
-                            type_stats[type_name] = {"count": 0, "size": 0}
-                        type_stats[type_name]["count"] += 1
 
-                minio_stats = {
-                    "total_files": total_minio_files,
-                    "total_size": total_minio_size,
-                    "by_type": type_stats
+                        if type_name not in type_stats:
+                            type_stats[type_name] = {
+                                "image_count": 0,
+                                "total_size": 0,
+                                "files": []
+                            }
+
+                        type_stats[type_name]["image_count"] += 1
+                        type_stats[type_name]["total_size"] += size
+                        total_files += 1
+                        total_size += size
+
+                ranking_data = []
+                for type_name, stats in sorted(
+                    type_stats.items(),
+                    key=lambda x: x[1]["image_count"],
+                    reverse=True
+                ):
+                    avg_size = round(stats["total_size"] / stats["image_count"], 2) if stats["image_count"] > 0 else 0
+                    ranking_data.append({
+                        "image_type": type_name,
+                        "image_count": stats["image_count"],
+                        "total_size": stats["total_size"],
+                        "avg_size": avg_size
+                    })
+
+                result_df = pl.DataFrame(ranking_data) if ranking_data else pl.DataFrame(schema={
+                    "image_type": str,
+                    "image_count": int,
+                    "total_size": int,
+                    "avg_size": float
+                })
+
+                return {
+                    "data": result_df,
+                    "minio_available": True,
+                    "source": "minio",
+                    "total_files": total_files,
+                    "total_size": total_size,
+                    "db_record_count": db_record_count,
+                    "file_list": minio_files
                 }
+
             except Exception as e:
-                print(f"从MinIO获取影像统计失败: {e}")
-                minio_stats = None
+                print(f"从MinIO获取影像统计失败，降级使用数据库数据: {e}")
+
+        total_db_size = db_df["total_size"].sum() if not db_df.is_empty() else 0
 
         return {
             "data": db_df,
-            "minio_available": minio_available,
-            "minio_stats": minio_stats,
-            "source": "minio+db" if minio_available else "db_only"
+            "minio_available": False,
+            "source": "database",
+            "total_files": db_record_count,
+            "total_size": total_db_size,
+            "db_record_count": db_record_count,
+            "file_list": []
         }
     finally:
         conn.close()

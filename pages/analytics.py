@@ -216,98 +216,215 @@ def _show_followup_funnel():
 
 
 def _show_imaging_ranking():
-    """展示影像附件排行 - 接入MinIO真实对象存储数据"""
-    st.subheader("影像附件排行")
+    """展示影像附件排行 - 以MinIO对象存储为真实数据源"""
+    st.subheader("🖼️ 影像附件排行")
 
     try:
         result = get_imaging_ranking()
         df = result["data"]
         minio_available = result["minio_available"]
-        minio_stats = result["minio_stats"]
         source = result["source"]
+        total_files = result.get("total_files", 0)
+        total_size = result.get("total_size", 0)
+        db_record_count = result.get("db_record_count", 0)
+        file_list = result.get("file_list", [])
 
         if df.is_empty():
             st.warning("暂无影像数据")
             return
 
-        if minio_available:
-            st.success(f"✅ 对象存储已连接 (MinIO) - 数据来源: 影像系统 + 对象存储")
-            if minio_stats:
-                st.caption(f"对象存储中共有 {minio_stats['total_files']} 个影像文件")
-        else:
-            st.warning("⚠️ 对象存储未连接 - 当前仅展示影像系统记录数据")
-            st.caption("提示: 配置MinIO后可查看真实对象存储统计")
-
-        col1, col2 = st.columns(2)
-
-        with col1:
-            fig = px.bar(
-                df.to_pandas(),
-                x="image_type",
-                y="image_count",
-                color="image_count",
-                color_continuous_scale="Purples",
-                text="image_count",
-                title="影像类型数量排行"
-            )
-            fig.update_layout(
-                height=400,
-                xaxis_title="影像类型",
-                yaxis_title="数量",
-                coloraxis_showscale=False
-            )
-            fig.update_traces(textposition='outside')
-            st.plotly_chart(fig, use_container_width=True)
-
-        with col2:
-            df_size = df.with_columns(
-                (pl.col("total_size") / 1024 / 1024).round(2).alias("size_mb")
-            )
-            fig = px.pie(
-                df_size.to_pandas(),
-                values="size_mb",
-                names="image_type",
-                title="影像存储空间占比",
-                hole=0.4
-            )
-            fig.update_layout(height=400)
-            st.plotly_chart(fig, use_container_width=True)
+        _show_imaging_source_status(minio_available, source, total_files, total_size, db_record_count)
 
         st.markdown("---")
 
-        display_df = df.select([
-            "image_type",
-            "image_count",
-            "total_size",
-            "avg_size"
-        ]).with_columns([
-            (pl.col("total_size") / 1024 / 1024).round(2).alias("总大小(MB)"),
-            (pl.col("avg_size") / 1024 / 1024).round(2).alias("平均大小(MB)")
-        ]).drop(["total_size", "avg_size"])
+        _show_imaging_metrics(total_files, total_size, len(df))
 
-        st.dataframe(
-            display_df.to_pandas(),
-            use_container_width=True,
-            hide_index=True,
-            column_config={
-                "image_type": "影像类型",
-                "image_count": "数量"
-            }
-        )
+        st.markdown("---")
 
-        if minio_available and minio_stats:
-            st.markdown("---")
-            with st.expander("📦 对象存储详细统计"):
-                st.markdown(f"**存储桶**: `clinic-attachments`")
-                st.markdown(f"**文件总数**: {minio_stats['total_files']}")
+        _show_imaging_charts(df)
 
-                if minio_stats.get("by_type"):
-                    st.markdown("**按目录分类统计:**")
-                    for folder, stats in minio_stats["by_type"].items():
-                        st.text(f"  {folder}/ : {stats['count']} 个文件")
+        st.markdown("---")
+
+        _show_imaging_detail_table(df)
+
+        st.markdown("---")
+
+        _show_imaging_file_list(file_list, minio_available)
 
     except Exception as e:
         st.error(f"加载影像数据失败: {e}")
+        import traceback
+        with st.expander("错误详情"):
+            st.code(traceback.format_exc())
+
+
+def _show_imaging_source_status(minio_available, source, total_files, total_size, db_record_count):
+    """展示数据来源状态"""
+    if minio_available and source == "minio":
+        st.success(
+            f"✅ 对象存储已连接 (MinIO) | "
+            f"数据源: **对象存储真实文件** | "
+            f"共 {total_files} 个文件, "
+            f"总大小 {_format_size(total_size)}"
+        )
+        st.caption(
+            f"影像系统记录: {db_record_count} 条 | "
+            f"对象存储文件: {total_files} 个"
+        )
+    else:
+        st.warning(
+            f"⚠️ 对象存储未连接 | "
+            f"数据源: **影像系统记录（数据库）** | "
+            f"共 {total_files} 条记录"
+        )
+        st.caption(
+            "提示: 配置并启动 MinIO 服务后，将自动切换为对象存储真实文件统计。"
+            "配置路径: src/config.py 中 MINIO_ENDPOINT 等参数"
+        )
+
+
+def _show_imaging_metrics(total_files, total_size, type_count):
+    """展示影像核心指标"""
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.metric(
+            "文件总数",
+            f"{total_files} 个"
+        )
+
+    with col2:
+        st.metric(
+            "总存储空间",
+            _format_size(total_size)
+        )
+
+    with col3:
+        st.metric(
+            "影像类型数",
+            f"{type_count} 种"
+        )
+
+
+def _show_imaging_charts(df: pl.DataFrame):
+    """展示影像统计图表"""
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("**影像类型数量排行**")
+        fig = px.bar(
+            df.to_pandas(),
+            x="image_type",
+            y="image_count",
+            color="image_count",
+            color_continuous_scale="Purples",
+            text="image_count"
+        )
+        fig.update_layout(
+            height=380,
+            xaxis_title="影像类型",
+            yaxis_title="文件数量",
+            coloraxis_showscale=False
+        )
+        fig.update_traces(textposition='outside')
+        st.plotly_chart(fig, use_container_width=True)
+
+    with col2:
+        st.markdown("**存储空间占比**")
+        df_size = df.with_columns(
+            (pl.col("total_size") / 1024 / 1024).round(2).alias("size_mb")
+        )
+        fig = px.pie(
+            df_size.to_pandas(),
+            values="size_mb",
+            names="image_type",
+            hole=0.4
+        )
+        fig.update_layout(height=380)
+        fig.update_traces(
+            textinfo='label+percent',
+            hovertemplate='%{label}<br>%{value:.2f} MB<br>%{percent}'
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+
+def _show_imaging_detail_table(df: pl.DataFrame):
+    """展示影像明细表"""
+    st.markdown("**📋 影像类型明细表**")
+
+    display_df = df.clone()
+    display_df = display_df.with_columns([
+        pl.col("image_count").alias("文件数"),
+        (pl.col("total_size") / 1024 / 1024).round(2).alias("总大小(MB)"),
+        (pl.col("avg_size") / 1024 / 1024).round(2).alias("平均大小(MB)")
+    ]).select([
+        "image_type",
+        "文件数",
+        "总大小(MB)",
+        "平均大小(MB)"
+    ])
+
+    st.dataframe(
+        display_df.to_pandas(),
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "image_type": "影像类型",
+            "文件数": st.column_config.NumberColumn("文件数", format="%d 个"),
+            "总大小(MB)": st.column_config.NumberColumn("总大小(MB)", format="%.2f"),
+            "平均大小(MB)": st.column_config.NumberColumn("平均大小(MB)", format="%.2f")
+        }
+    )
+
+
+def _show_imaging_file_list(file_list: list, minio_available: bool):
+    """展示文件列表（可选，折叠显示）"""
+    if not minio_available or not file_list:
+        return
+
+    with st.expander(f"📁 查看全部文件列表 (共 {len(file_list)} 个)"):
+        file_data = []
+        for f in file_list:
+            file_data.append({
+                "文件路径": f.get("object_name", ""),
+                "大小": _format_size(f.get("size", 0)),
+                "大小(字节)": f.get("size", 0)
+            })
+
+        if file_data:
+            search = st.text_input("🔍 搜索文件", placeholder="输入关键词搜索...", key="file_search")
+
+            import pandas as pd
+            df_files = pd.DataFrame(file_data)
+
+            if search:
+                df_files = df_files[df_files["文件路径"].str.contains(search, case=False)]
+
+            st.dataframe(
+                df_files,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "文件路径": st.column_config.TextColumn("文件路径", width="large"),
+                    "大小": st.column_config.TextColumn("大小"),
+                    "大小(字节)": st.column_config.NumberColumn("大小(字节)", format="%d")
+                }
+            )
+            st.caption(f"显示 {len(df_files)} / {len(file_data)} 个文件")
+
+
+def _format_size(size_bytes: int) -> str:
+    """格式化文件大小显示"""
+    if size_bytes is None or size_bytes == 0:
+        return "0 B"
+    if size_bytes < 1024:
+        return f"{size_bytes} B"
+    elif size_bytes < 1024 * 1024:
+        return f"{round(size_bytes / 1024, 2)} KB"
+    elif size_bytes < 1024 * 1024 * 1024:
+        return f"{round(size_bytes / (1024 * 1024), 2)} MB"
+    else:
+        return f"{round(size_bytes / (1024 * 1024 * 1024), 2)} GB"
 
 
 def _show_charge_trend():
