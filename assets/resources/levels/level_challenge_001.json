@@ -1,0 +1,230 @@
+{
+    "id": "level_challenge_001",
+    "name": "处方不清高难挑战",
+    "description": "处理字迹模糊、信息不全的处方审核挑战",
+    "岗位": ["reviewer"],
+    "difficulty": "challenge",
+    "timeLimit": 420,
+    "passingScore": 75,
+    "prescriptionBlur": {
+        "enabled": true,
+        "blurRadius": 3.5,
+        "obscureAreas": ["doctorSignature", "dosage", "doctorName"],
+        "tiltAngle": 15,
+        "randomSeed": 42
+    },
+    "pharmacistAdvice": [
+        {
+            "id": "advice_100",
+            "condition": "task.prescription.blurLevel >= 3",
+            "content": "⚠️ 处方字迹模糊，关键信息不清，请仔细辨认",
+            "type": "warning",
+            "priority": 20
+        },
+        {
+            "id": "advice_101",
+            "condition": "task.prescription.hasDoctorSignature === false",
+            "content": "💡 提示：处方医生签名区域模糊不清",
+            "type": "hint",
+            "priority": 15
+        },
+        {
+            "id": "advice_102",
+            "condition": "task.prescription.dosage > 200",
+            "content": "⚠️ 剂量疑似超过常规用量，且字迹不清请确认",
+            "type": "warning",
+            "priority": 18
+        }
+    ],
+    "tasks": [
+        {
+            "id": "task_challenge_01",
+            "description": "审核模糊处方：医生签名模糊不清",
+            "prescription": {
+                "patientName": "赵某某",
+                "patientAge": 55,
+                "patientGender": "男",
+                "drugName": "阿托伐他汀钙片",
+                "drugSpecification": "20mg*7片",
+                "dosage": 20,
+                "frequency": "每日1次",
+                "duration": "30天",
+                "diagnosis": "高脂血症",
+                "doctorName": "███",
+                "isExpired": false,
+                "hasDoctorSignature": false,
+                "hasHospitalStamp": true,
+                "issueDate": "2026-06-16",
+                "blurLevel": 3
+            },
+            "replenishmentOrder": {
+                "orderId": "RO20260616006",
+                "drugName": "阿托伐他汀钙片",
+                "requestedQuantity": 40,
+                "currentStock": 12,
+                "unitPrice": 55.00,
+                "supplier": "辉瑞制药",
+                "expiryDate": "2028-03-31",
+                "isUrgent": false
+            },
+            "insuranceRecord": {
+                "recordId": "IR20260616006",
+                "patientName": "赵某某",
+                "idCardNumber": "110101197001012345",
+                "insuranceType": "城镇职工医保",
+                "drugName": "阿托伐他汀钙片",
+                "totalAmount": 220.00,
+                "insuranceCoverage": 154.00,
+                "personalPayment": 66.00,
+                "transactionDate": "2026-06-16",
+                "isReimbursable": true,
+                "reimbursementLimit": 300
+            },
+            "correctAction": "supplement",
+            "wrongActions": [
+                {
+                    "action": "approve",
+                    "reason": "医生签名模糊不清，无法确认处方合法性，不应通过",
+                    "penalty": 20,
+                    "knowledgeExplanation": "处方审核核心原则：无医生签名或签名不清的处方，一律退回，要求患者联系医生确认或重新开具处方"
+                },
+                {
+                    "action": "reject",
+                    "reason": "处方其他信息完整，仅签名不清应要求补充材料确认，而非直接拒绝",
+                    "penalty": 10,
+                    "knowledgeExplanation": "签名不清属于可补正情形，应先要求患者补充确认，而非直接拒绝"
+                },
+                {
+                    "action": "report",
+                    "reason": "该情形不属于需要上报的特殊情形",
+                    "penalty": 8,
+                    "knowledgeExplanation": "上报适用于麻醉、精神、毒性等特殊管理药品处方"
+                }
+            ],
+            "score": 35,
+            "knowledgePoint": "签名不清处方处理"
+        },
+        {
+            "id": "task_challenge_02",
+            "description": "审核倾斜模糊处方：药品剂量模糊",
+            "prescription": {
+                "patientName": "孙某某",
+                "patientAge": 72,
+                "patientGender": "女",
+                "drugName": "盐酸二甲双胍片",
+                "drugSpecification": "0.5g*30片",
+                "dosage": 1500,
+                "frequency": "每日█次",
+                "duration": "30天",
+                "diagnosis": "2型糖尿病",
+                "doctorName": "刘医生",
+                "isExpired": false,
+                "hasDoctorSignature": true,
+                "hasHospitalStamp": true,
+                "issueDate": "2026-06-15",
+                "blurLevel": 4
+            },
+            "replenishmentOrder": {
+                "orderId": "RO20260616007",
+                "drugName": "盐酸二甲双胍片",
+                "requestedQuantity": 50,
+                "currentStock": 28,
+                "unitPrice": 28.00,
+                "supplier": "中美上海施贵宝",
+                "expiryDate": "2028-06-30",
+                "isUrgent": true
+            },
+            "insuranceRecord": {
+                "recordId": "IR20260616007",
+                "patientName": "孙某某",
+                "idCardNumber": "110101195401016789",
+                "insuranceType": "城镇居民医保",
+                "drugName": "盐酸二甲双胍片",
+                "totalAmount": 28.00,
+                "insuranceCoverage": 19.60,
+                "personalPayment": 8.40,
+                "transactionDate": "2026-06-16",
+                "isReimbursable": true,
+                "reimbursementLimit": 200
+            },
+            "correctAction": "supplement",
+            "wrongActions": [
+                {
+                    "action": "approve",
+                    "reason": "用药频率字迹模糊，无法确认每日几次，剂量存在用药安全风险",
+                    "penalty": 20,
+                    "knowledgeExplanation": "关键用药信息不清可能导致用药错误，严重威胁患者安全，必须确认清楚"
+                },
+                {
+                    "action": "reject",
+                    "reason": "处方其他信息完整，仅用法用量不清，应先联系医生确认",
+                    "penalty": 12,
+                    "knowledgeExplanation": "对于信息不清的处方，应先要求患者联系医生确认或补充，而非直接拒绝"
+                }
+            ],
+            "score": 35,
+            "knowledgePoint": "用法用量不清处方处理"
+        },
+        {
+            "id": "task_challenge_03",
+            "description": "审核严重模糊处方：多重模糊+倾斜",
+            "prescription": {
+                "patientName": "周某某",
+                "patientAge": 45,
+                "patientGender": "男",
+                "drugName": "布洛芬缓释胶囊",
+                "drugSpecification": "0.3g*20粒",
+                "dosage": 600,
+                "frequency": "每日█次",
+                "duration": "7天",
+                "diagnosis": "急性痛风发作",
+                "doctorName": "███",
+                "isExpired": false,
+                "hasDoctorSignature": false,
+                "hasHospitalStamp": true,
+                "issueDate": "2026-06-16",
+                "blurLevel": 5
+            },
+            "replenishmentOrder": {
+                "orderId": "RO20260616008",
+                "drugName": "布洛芬缓释胶囊",
+                "requestedQuantity": 60,
+                "currentStock": 18,
+                "unitPrice": 22.00,
+                "supplier": "中美史克",
+                "expiryDate": "2027-12-31",
+                "isUrgent": true
+            },
+            "insuranceRecord": {
+                "recordId": "IR20260616008",
+                "patientName": "周某某",
+                "idCardNumber": "110101198001014567",
+                "insuranceType": "城镇职工医保",
+                "drugName": "布洛芬缓释胶囊",
+                "totalAmount": 22.00,
+                "insuranceCoverage": 15.40,
+                "personalPayment": 6.60,
+                "transactionDate": "2026-06-16",
+                "isReimbursable": true,
+                "reimbursementLimit": 100
+            },
+            "correctAction": "supplement",
+            "wrongActions": [
+                {
+                    "action": "approve",
+                    "reason": "医生签名、用药频率均模糊，存在严重用药安全隐患",
+                    "penalty": 25,
+                    "knowledgeExplanation": "多处关键信息模糊的处方，必须退回要求补充材料确认，不能侥幸通过"
+                },
+                {
+                    "action": "report",
+                    "reason": "该情形不属于需要上报的特殊管理药品处方",
+                    "penalty": 10,
+                    "knowledgeExplanation": "上报适用于麻醉药品、第一类精神药品等特殊管理处方"
+                }
+            ],
+            "score": 30,
+            "knowledgePoint": "多重模糊处方综合处理"
+        }
+    ]
+}

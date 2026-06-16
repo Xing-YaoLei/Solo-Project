@@ -1,0 +1,156 @@
+{
+    "id": "level_003",
+    "name": "补货专员库存管理",
+    "description": "侧重补货单审核与库存判断",
+    "岗位": ["replenishment"],
+    "difficulty": "intermediate",
+    "timeLimit": 300,
+    "passingScore": 65,
+    "pharmacistAdvice": [
+        {
+            "id": "advice_020",
+            "condition": "task.replenishmentOrder.currentStock < task.replenishmentOrder.requestedQuantity",
+            "content": "⚠️ 当前库存{{replenishmentOrder.currentStock}}，补货数量{{replenishmentOrder.requestedQuantity}}，库存不足",
+            "type": "warning",
+            "priority": 10
+        },
+        {
+            "id": "advice_021",
+            "condition": "task.replenishmentOrder.isUrgent === true",
+            "content": "💡 该补货单为紧急订单，请优先处理",
+            "type": "hint",
+            "priority": 15
+        },
+        {
+            "id": "advice_022",
+            "condition": "task.replenishmentOrder.expiryDate < '2027-01-01'",
+            "content": "⚠️ 药品有效期临近，请谨慎补货",
+            "type": "warning",
+            "priority": 12
+        }
+    ],
+    "tasks": [
+        {
+            "id": "task_003_01",
+            "description": "审核板蓝根颗粒补货单",
+            "prescription": {
+                "patientName": "无",
+                "patientAge": 0,
+                "patientGender": "无",
+                "drugName": "板蓝根颗粒",
+                "drugSpecification": "10g*20袋",
+                "dosage": 0,
+                "frequency": "",
+                "duration": "",
+                "diagnosis": "",
+                "doctorName": "",
+                "isExpired": false,
+                "hasDoctorSignature": false,
+                "hasHospitalStamp": false,
+                "issueDate": "",
+                "blurLevel": 0
+            },
+            "replenishmentOrder": {
+                "orderId": "RO20260616004",
+                "drugName": "板蓝根颗粒",
+                "requestedQuantity": 100,
+                "currentStock": 15,
+                "unitPrice": 15.00,
+                "supplier": "云南白药",
+                "expiryDate": "2028-06-30",
+                "isUrgent": true
+            },
+            "insuranceRecord": {
+                "recordId": "IR20260616004",
+                "patientName": "无",
+                "idCardNumber": "",
+                "insuranceType": "",
+                "drugName": "板蓝根颗粒",
+                "totalAmount": 1500.00,
+                "insuranceCoverage": 0,
+                "personalPayment": 1500.00,
+                "transactionDate": "2026-06-16",
+                "isReimbursable": false,
+                "reimbursementLimit": 0
+            },
+            "correctAction": "approve",
+            "wrongActions": [
+                {
+                    "action": "reject",
+                    "reason": "库存不足应批准补货，这是紧急订单",
+                    "penalty": 15,
+                    "knowledgeExplanation": "补货专员职责：当库存低于安全线时应及时批准补货，特别是紧急订单"
+                },
+                {
+                    "action": "supplement",
+                    "reason": "补货单信息完整",
+                    "penalty": 5,
+                    "knowledgeExplanation": "补货单审核要点：药品名称、数量、供应商、有效期、紧急程度"
+                }
+            ],
+            "score": 30,
+            "knowledgePoint": "紧急补货单审核"
+        },
+        {
+            "id": "task_003_02",
+            "description": "审核维生素C片补货单",
+            "prescription": {
+                "patientName": "无",
+                "patientAge": 0,
+                "patientGender": "无",
+                "drugName": "维生素C片",
+                "drugSpecification": "100mg*100片",
+                "dosage": 0,
+                "frequency": "",
+                "duration": "",
+                "diagnosis": "",
+                "doctorName": "",
+                "isExpired": false,
+                "hasDoctorSignature": false,
+                "hasHospitalStamp": false,
+                "issueDate": "",
+                "blurLevel": 0
+            },
+            "replenishmentOrder": {
+                "orderId": "RO20260616005",
+                "drugName": "维生素C片",
+                "requestedQuantity": 50,
+                "currentStock": 200,
+                "unitPrice": 8.50,
+                "supplier": "东北制药",
+                "expiryDate": "2026-12-31",
+                "isUrgent": false
+            },
+            "insuranceRecord": {
+                "recordId": "IR20260616005",
+                "patientName": "无",
+                "idCardNumber": "",
+                "insuranceType": "",
+                "drugName": "维生素C片",
+                "totalAmount": 425.00,
+                "insuranceCoverage": 0,
+                "personalPayment": 425.00,
+                "transactionDate": "2026-06-16",
+                "isReimbursable": false,
+                "reimbursementLimit": 0
+            },
+            "correctAction": "reject",
+            "wrongActions": [
+                {
+                    "action": "approve",
+                    "reason": "当前库存200盒充足，且药品有效期临近，应拒绝补货",
+                    "penalty": 15,
+                    "knowledgeExplanation": "补货专员需要合理控制库存，避免积压近效期药品，防止过期损耗"
+                },
+                {
+                    "action": "supplement",
+                    "reason": "补货单信息完整，但库存充足无需补充",
+                    "penalty": 5,
+                    "knowledgeExplanation": "库存充足且近效期药品应先消耗现有库存"
+                }
+            ],
+            "score": 30,
+            "knowledgePoint": "库存充足与效期管理"
+        }
+    ]
+}

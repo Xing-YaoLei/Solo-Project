@@ -1,0 +1,143 @@
+{
+    "id": "level_002",
+    "name": "营业员基础训练",
+    "description": "侧重处方识别与医保结算流程训练",
+    "岗位": ["sales"],
+    "difficulty": "beginner",
+    "timeLimit": 240,
+    "passingScore": 60,
+    "pharmacistAdvice": [
+        {
+            "id": "advice_010",
+            "condition": "task.insuranceRecord.isReimbursable === false",
+            "content": "ℹ️ 该药品不可医保报销，需告知患者",
+            "type": "info",
+            "priority": 10
+        },
+        {
+            "id": "advice_011",
+            "condition": "task.prescription.patientAge < 18",
+            "content": "⚠️ 患者为未成年人，用药需特别注意剂量",
+            "type": "warning",
+            "priority": 15
+        }
+    ],
+    "tasks": [
+        {
+            "id": "task_002_01",
+            "description": "处理刘某某的日常用药购买",
+            "prescription": {
+                "patientName": "刘某某",
+                "patientAge": 45,
+                "patientGender": "男",
+                "drugName": "奥美拉唑肠溶胶囊",
+                "drugSpecification": "20mg*14粒",
+                "dosage": 20,
+                "frequency": "每日1次",
+                "duration": "14天",
+                "diagnosis": "慢性胃炎",
+                "doctorName": "陈医生",
+                "isExpired": false,
+                "hasDoctorSignature": true,
+                "hasHospitalStamp": true,
+                "issueDate": "2026-06-16",
+                "blurLevel": 0
+            },
+            "replenishmentOrder": {
+                "orderId": "RO20260616002",
+                "drugName": "奥美拉唑肠溶胶囊",
+                "requestedQuantity": 60,
+                "currentStock": 45,
+                "unitPrice": 32.00,
+                "supplier": "阿斯利康",
+                "expiryDate": "2028-01-31",
+                "isUrgent": false
+            },
+            "insuranceRecord": {
+                "recordId": "IR20260616002",
+                "patientName": "刘某某",
+                "idCardNumber": "110101198001013456",
+                "insuranceType": "城镇职工医保",
+                "drugName": "奥美拉唑肠溶胶囊",
+                "totalAmount": 32.00,
+                "insuranceCoverage": 22.40,
+                "personalPayment": 9.60,
+                "transactionDate": "2026-06-16",
+                "isReimbursable": true,
+                "reimbursementLimit": 100
+            },
+            "correctAction": "approve",
+            "wrongActions": [
+                {
+                    "action": "reject",
+                    "reason": "处方合规，应通过并完成医保结算",
+                    "penalty": 10,
+                    "knowledgeExplanation": "营业员岗位重点：核对患者信息、药品信息、医保结算流程"
+                }
+            ],
+            "score": 25,
+            "knowledgePoint": "医保结算流程"
+        },
+        {
+            "id": "task_002_02",
+            "description": "处理陈某某的儿童处方",
+            "prescription": {
+                "patientName": "陈某某",
+                "patientAge": 8,
+                "patientGender": "女",
+                "drugName": "小儿氨酚黄那敏颗粒",
+                "drugSpecification": "6g*10袋",
+                "dosage": 6,
+                "frequency": "每日3次",
+                "duration": "3天",
+                "diagnosis": "小儿感冒",
+                "doctorName": "赵医生",
+                "isExpired": false,
+                "hasDoctorSignature": true,
+                "hasHospitalStamp": true,
+                "issueDate": "2026-06-16",
+                "blurLevel": 0
+            },
+            "replenishmentOrder": {
+                "orderId": "RO20260616003",
+                "drugName": "小儿氨酚黄那敏颗粒",
+                "requestedQuantity": 80,
+                "currentStock": 15,
+                "unitPrice": 18.00,
+                "supplier": "哈药六厂",
+                "expiryDate": "2027-12-31",
+                "isUrgent": false
+            },
+            "insuranceRecord": {
+                "recordId": "IR20260616003",
+                "patientName": "陈某某",
+                "idCardNumber": "110101201801017890",
+                "insuranceType": "城镇居民医保",
+                "drugName": "小儿氨酚黄那敏颗粒",
+                "totalAmount": 18.00,
+                "insuranceCoverage": 0,
+                "personalPayment": 18.00,
+                "transactionDate": "2026-06-16",
+                "isReimbursable": false,
+                "reimbursementLimit": 0
+            },
+            "correctAction": "approve",
+            "wrongActions": [
+                {
+                    "action": "reject",
+                    "reason": "处方合规，儿童用药剂量正确",
+                    "penalty": 10,
+                    "knowledgeExplanation": "儿童用药需根据年龄体重计算剂量，6g/次对于8岁儿童是合适的"
+                },
+                {
+                    "action": "supplement",
+                    "reason": "处方信息完整，无需补充材料，但需要提醒患者该药品需自费",
+                    "penalty": 5,
+                    "knowledgeExplanation": "营业员应主动告知患者医保报销情况"
+                }
+            ],
+            "score": 25,
+            "knowledgePoint": "儿童用药与自费药品处理"
+        }
+    ]
+}

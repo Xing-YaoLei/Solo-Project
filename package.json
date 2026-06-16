@@ -1,0 +1,16 @@
+{
+  "name": "pharmacy-prescription-game",
+  "version": "1.0.0",
+  "description": "药店连锁处方审核经营模拟游戏",
+  "creator": {
+    "version": "3.8.0"
+  },
+  "type": "commonjs",
+  "scripts": {
+    "build": "echo 'Please build using Cocos Creator Editor'",
+    "typecheck": "npx tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

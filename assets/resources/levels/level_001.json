@@ -1,0 +1,231 @@
+{
+    "id": "level_001",
+    "name": "基础处方审核入门",
+    "description": "学习识别常规处方的基本要素，掌握基础审核流程",
+    "岗位": ["reviewer", "sales"],
+    "difficulty": "beginner",
+    "timeLimit": 300,
+    "passingScore": 60,
+    "pharmacistAdvice": [
+        {
+            "id": "advice_001",
+            "condition": "task.prescription.dosage > 100",
+            "content": "⚠️ 注意：处方剂量{{prescription.dosage}}mg超过常规用量，请仔细核对",
+            "type": "warning",
+            "priority": 10
+        },
+        {
+            "id": "advice_002",
+            "condition": "task.prescription.isExpired === true",
+            "content": "⚠️ 警告：该处方已过期，请拒绝处理",
+            "type": "warning",
+            "priority": 20
+        },
+        {
+            "id": "advice_003",
+            "condition": "task.prescription.hasDoctorSignature === false",
+            "content": "💡 提示：处方缺少医生签名",
+            "type": "hint",
+            "priority": 15
+        },
+        {
+            "id": "advice_004",
+            "condition": "task.replenishmentOrder.currentStock < 10",
+            "content": "ℹ️ 当前库存{{replenishmentOrder.currentStock}}盒，不足请及时补货",
+            "type": "info",
+            "priority": 5
+        },
+        {
+            "id": "advice_005",
+            "condition": "task.insuranceRecord.isReimbursable === false",
+            "content": "ℹ️ 该药品不在医保目录内，需自费购买",
+            "type": "info",
+            "priority": 8
+        }
+    ],
+    "tasks": [
+        {
+            "id": "task_001_01",
+            "description": "审核张某某的感冒处方",
+            "prescription": {
+                "patientName": "张某某",
+                "patientAge": 35,
+                "patientGender": "男",
+                "drugName": "阿莫西林胶囊",
+                "drugSpecification": "0.5g*24粒",
+                "dosage": 50,
+                "frequency": "每日3次",
+                "duration": "7天",
+                "diagnosis": "上呼吸道感染",
+                "doctorName": "李医生",
+                "isExpired": false,
+                "hasDoctorSignature": true,
+                "hasHospitalStamp": true,
+                "issueDate": "2026-06-15",
+                "blurLevel": 0
+            },
+            "replenishmentOrder": {
+                "orderId": "RO20260615001",
+                "drugName": "阿莫西林胶囊",
+                "requestedQuantity": 50,
+                "currentStock": 25,
+                "unitPrice": 25.80,
+                "supplier": "华北制药",
+                "expiryDate": "2028-12-31",
+                "isUrgent": false
+            },
+            "insuranceRecord": {
+                "recordId": "IR20260615001",
+                "patientName": "张某某",
+                "idCardNumber": "110101199001011234",
+                "insuranceType": "城镇职工医保",
+                "drugName": "阿莫西林胶囊",
+                "totalAmount": 25.80,
+                "insuranceCoverage": 18.06,
+                "personalPayment": 7.74,
+                "transactionDate": "2026-06-15",
+                "isReimbursable": true,
+                "reimbursementLimit": 100
+            },
+            "correctAction": "approve",
+            "wrongActions": [
+                {
+                    "action": "reject",
+                    "reason": "处方各项要素齐全，处方未过期，有医生签名和医院盖章，无需拒绝",
+                    "penalty": 10,
+                    "knowledgeExplanation": "处方审核四要素：1.处方有效期检查；2.医生签名确认；3.医院盖章确认；4.药品名称、剂量、用法合理性判断"
+                },
+                {
+                    "action": "supplement",
+                    "reason": "处方信息完整，无需补充材料",
+                    "penalty": 5,
+                    "knowledgeExplanation": "补充材料适用于处方信息不完整、字迹不清、关键信息缺失的情况"
+                },
+                {
+                    "action": "report",
+                    "reason": "该处方为常规处方，无需上报",
+                    "penalty": 8,
+                    "knowledgeExplanation": "上报适用于麻醉药品、精神药品、超剂量处方等特殊管理药品处方"
+                }
+            ],
+            "score": 20,
+            "knowledgePoint": "处方基本要素审核"
+        },
+        {
+            "id": "task_001_02",
+            "description": "审核李某某的高血压处方",
+            "prescription": {
+                "patientName": "李某某",
+                "patientAge": 62,
+                "patientGender": "女",
+                "drugName": "硝苯地平控释片",
+                "drugSpecification": "30mg*7片",
+                "dosage": 30,
+                "frequency": "每日1次",
+                "duration": "30天",
+                "diagnosis": "原发性高血压",
+                "doctorName": "王医生",
+                "isExpired": false,
+                "hasDoctorSignature": true,
+                "hasHospitalStamp": true,
+                "issueDate": "2026-06-14",
+                "blurLevel": 0
+            },
+            "replenishmentOrder": {
+                "orderId": "RO20260615002",
+                "drugName": "硝苯地平控释片",
+                "requestedQuantity": 30,
+                "currentStock": 8,
+                "unitPrice": 45.00,
+                "supplier": "拜耳医药",
+                "expiryDate": "2027-06-30",
+                "isUrgent": true
+            },
+            "insuranceRecord": {
+                "recordId": "IR20260615002",
+                "patientName": "李某某",
+                "idCardNumber": "110101196001015678",
+                "insuranceType": "城镇居民医保",
+                "drugName": "硝苯地平控释片",
+                "totalAmount": 180.00,
+                "insuranceCoverage": 126.00,
+                "personalPayment": 54.00,
+                "transactionDate": "2026-06-15",
+                "isReimbursable": true,
+                "reimbursementLimit": 200
+            },
+            "correctAction": "approve",
+            "wrongActions": [
+                {
+                    "action": "reject",
+                    "reason": "处方合规，但库存不足应先通过处方，再启动补货流程",
+                    "penalty": 10,
+                    "knowledgeExplanation": "库存不足不等于处方审核不通过，应先通过处方审核，同时提醒患者并启动补货流程"
+                },
+                {
+                    "action": "supplement",
+                    "reason": "处方信息完整，无需补充材料",
+                    "penalty": 5,
+                    "knowledgeExplanation": "补充材料适用于处方信息不完整的情况"
+                }
+            ],
+            "score": 20,
+            "knowledgePoint": "慢性病长期处方审核"
+        },
+        {
+            "id": "task_001_03",
+            "description": "审核王某某的抗生素处方",
+            "prescription": {
+                "patientName": "王某某",
+                "patientAge": 28,
+                "patientGender": "男",
+                "drugName": "头孢克肟分散片",
+                "drugSpecification": "0.1g*6片",
+                "dosage": 200,
+                "frequency": "每日2次",
+                "duration": "5天",
+                "diagnosis": "急性支气管炎",
+                "doctorName": "张医生",
+                "isExpired": false,
+                "hasDoctorSignature": true,
+                "hasHospitalStamp": true,
+                "issueDate": "2026-06-16",
+                "blurLevel": 0
+            },
+            "replenishmentOrder": {
+                "orderId": "RO20260616001",
+                "drugName": "头孢克肟分散片",
+                "requestedQuantity": 40,
+                "currentStock": 35,
+                "unitPrice": 38.50,
+                "supplier": "广州白云山制药",
+                "expiryDate": "2028-03-31",
+                "isUrgent": false
+            },
+            "insuranceRecord": {
+                "recordId": "IR20260616001",
+                "patientName": "王某某",
+                "idCardNumber": "110101199501019012",
+                "insuranceType": "城镇职工医保",
+                "drugName": "头孢克肟分散片",
+                "totalAmount": 38.50,
+                "insuranceCoverage": 26.95,
+                "personalPayment": 11.55,
+                "transactionDate": "2026-06-16",
+                "isReimbursable": true,
+                "reimbursementLimit": 150
+            },
+            "correctAction": "approve",
+            "wrongActions": [
+                {
+                    "action": "reject",
+                    "reason": "剂量200mg为成人常规剂量范围内，无需拒绝",
+                    "penalty": 15,
+                    "knowledgeExplanation": "头孢克肟成人常规剂量为每次100-200mg，每日2次，需根据病情判断"
+                }
+            ],
+            "score": 20,
+            "knowledgePoint": "抗生素处方剂量审核"
+        }
+    ]
+}
