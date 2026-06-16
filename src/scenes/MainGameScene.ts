@@ -18,9 +18,8 @@ interface PhaserCard {
   id: string;
   container: Phaser.GameObjects.Container;
   background: Phaser.GameObjects.Rectangle;
-  icon: Phaser.GameObjects.Text;
-  name: Phaser.GameObjects.Text;
-  category: Phaser.GameObjects.Text;
+  photo: Phaser.GameObjects.Image;
+  nameLabel: Phaser.GameObjects.Text;
   displayCard: DisplayCard;
   isDragging: boolean;
   isPlaced: boolean;
@@ -96,7 +95,15 @@ export class MainGameScene extends Phaser.Scene {
     }
   }
 
-  preload(): void {}
+  preload(): void {
+    if (!this.level) return;
+    this.level.medicines.forEach((medId) => {
+      const medicine = getMedicineById(medId);
+      if (medicine && medicine.photoUrl) {
+        this.load.image(`med-${medicine.id}`, medicine.photoUrl);
+      }
+    });
+  }
 
   create(): void {
     if (!this.level) {
@@ -336,24 +343,40 @@ export class MainGameScene extends Phaser.Scene {
     background.setStrokeStyle(2, colorHex);
     background.setFillStyle(0xffffff, 1);
 
-    const icon = this.add.text(0, -18, medicine.icon, {
-      fontSize: '32px',
-    }).setOrigin(0.5);
+    const textureKey = `med-${medicine.id}`;
+    const photoSize = width - 12;
+    let photo: Phaser.GameObjects.Image;
 
-    const name = this.add.text(0, 8, medicine.name.length > 6 ? medicine.name.slice(0, 6) + '...' : medicine.name, {
-      fontFamily: 'Noto Sans SC',
-      fontSize: '12px',
-      color: '#333333',
-      fontStyle: '500',
-    }).setOrigin(0.5);
+    if (this.textures.exists(textureKey)) {
+      photo = this.add.image(0, -5, textureKey).setOrigin(0.5);
+      const scale = photoSize / Math.max(photo.width, photo.height);
+      photo.setScale(scale);
+      photo.setCrop(
+        (photo.width - photoSize / scale) / 2,
+        (photo.height - photoSize / scale) / 2,
+        photoSize / scale,
+        photoSize / scale
+      );
+    } else {
+      photo = this.add.image(0, -5, '__DEFAULT').setOrigin(0.5).setVisible(false);
+      const fallbackBg = this.add.rectangle(0, -5, photoSize, photoSize, colorHex, 0.2).setOrigin(0.5);
+      const fallbackIcon = this.add.text(0, -5, medicine.icon, { fontSize: '36px' }).setOrigin(0.5);
+      container.add([fallbackBg, fallbackIcon]);
+    }
 
-    const category = this.add.text(0, 25, medicine.category, {
-      fontFamily: 'Noto Sans SC',
-      fontSize: '10px',
-      color: '#888888',
-    }).setOrigin(0.5);
+    const nameLabel = this.add.text(
+      0,
+      (height - 12) / 2 - 8,
+      medicine.name.length > 8 ? medicine.name.slice(0, 8) + '...' : medicine.name,
+      {
+        fontFamily: 'Noto Sans SC',
+        fontSize: '11px',
+        color: '#333333',
+        fontStyle: '500',
+      }
+    ).setOrigin(0.5, 1);
 
-    container.add([background, icon, name, category]);
+    container.add([background, photo, nameLabel]);
     container.setSize(width, height);
     container.setInteractive({ useHandCursor: true, draggable: true });
 
@@ -368,9 +391,8 @@ export class MainGameScene extends Phaser.Scene {
       id: displayCard.getId(),
       container,
       background,
-      icon,
-      name,
-      category,
+      photo,
+      nameLabel,
       displayCard,
       isDragging: false,
       isPlaced: false,
@@ -966,18 +988,31 @@ export class MainGameScene extends Phaser.Scene {
       return;
     }
 
+    let finalTimeRemaining: number;
+
+    switch (reason) {
+      case 'complete':
+        finalTimeRemaining = Math.max(0, gameState.timeRemaining);
+        updateGameState({
+          isGameOver: true,
+        });
+        break;
+      case 'timeout':
+      case 'exit':
+      default:
+        finalTimeRemaining = 0;
+        updateGameState({
+          timeRemaining: 0,
+          isGameOver: true,
+        });
+        break;
+    }
+
     const finalGameState: GameState = {
       ...gameState,
-      timeRemaining: 0,
+      timeRemaining: finalTimeRemaining,
       isGameOver: true,
     };
-
-    if (reason === 'timeout') {
-      updateGameState({
-        timeRemaining: 0,
-        isGameOver: true,
-      });
-    }
 
     const placements = this.phaserCards
       .filter((card) => card.isPlaced && card.displayCard.getPlacedCell())
