@@ -12,6 +12,10 @@ export const memberRouter = createTRPCRouter({
       pageSize: z.number().default(20)
     }))
     .query(async ({ ctx, input }) => {
+      if (!['admin', 'manager'].includes(ctx.user.role)) {
+        throw new Error('无权限访问会员档案');
+      }
+
       const whereConditions = [];
       
       if (input.search) {
@@ -43,6 +47,10 @@ export const memberRouter = createTRPCRouter({
   get: protectedProcedure
     .input(z.string())
     .query(async ({ ctx, input }) => {
+      if (!['admin', 'manager'].includes(ctx.user.role)) {
+        throw new Error('无权限访问会员档案');
+      }
+
       const member = await ctx.db.query.members.findFirst({
         where: eq(members.id, input)
       });
@@ -68,6 +76,10 @@ export const memberRouter = createTRPCRouter({
       insuranceCardNo: z.string().optional()
     }))
     .mutation(async ({ ctx, input }) => {
+      if (!['admin', 'manager'].includes(ctx.user.role)) {
+        throw new Error('无权限创建会员');
+      }
+
       const id = generateIdFromEntropySize(21);
       
       const [member] = await ctx.db.insert(members).values({
@@ -94,6 +106,10 @@ export const memberRouter = createTRPCRouter({
       insuranceCardNo: z.string().optional()
     }))
     .mutation(async ({ ctx, input }) => {
+      if (!['admin', 'manager'].includes(ctx.user.role)) {
+        throw new Error('无权限修改会员');
+      }
+
       const { id, ...updateData } = input;
       
       const [member] = await ctx.db.update(members)

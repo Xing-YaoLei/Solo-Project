@@ -12,6 +12,10 @@ export const drugRouter = createTRPCRouter({
       pageSize: z.number().default(20)
     }))
     .query(async ({ ctx, input }) => {
+      if (!['admin', 'manager'].includes(ctx.user.role)) {
+        throw new Error('无权限访问药品批号');
+      }
+
       const whereConditions = [];
       
       if (input.search) {
@@ -46,6 +50,10 @@ export const drugRouter = createTRPCRouter({
       expiringSoon: z.boolean().default(false)
     }))
     .query(async ({ ctx, input }) => {
+      if (!['admin', 'manager'].includes(ctx.user.role)) {
+        throw new Error('无权限访问药品批号');
+      }
+
       const whereConditions = [];
       
       if (input.drugId) {
@@ -78,6 +86,10 @@ export const drugRouter = createTRPCRouter({
       quantity: z.number().default(0)
     }))
     .mutation(async ({ ctx, input }) => {
+      if (!['admin', 'manager'].includes(ctx.user.role)) {
+        throw new Error('无权限创建药品批号');
+      }
+
       const id = generateIdFromEntropySize(21);
       
       const [batch] = await ctx.db.insert(drugBatches).values({
@@ -92,6 +104,10 @@ export const drugRouter = createTRPCRouter({
   get: protectedProcedure
     .input(z.string())
     .query(async ({ ctx, input }) => {
+      if (!['admin', 'manager'].includes(ctx.user.role)) {
+        throw new Error('无权限访问药品信息');
+      }
+
       const drug = await ctx.db.query.drugs.findFirst({
         where: eq(drugs.id, input)
       });
@@ -116,6 +132,10 @@ export const drugRouter = createTRPCRouter({
       caution: z.string().optional()
     }))
     .mutation(async ({ ctx, input }) => {
+      if (!['admin', 'manager'].includes(ctx.user.role)) {
+        throw new Error('无权限创建药品');
+      }
+
       const id = generateIdFromEntropySize(21);
       
       const [drug] = await ctx.db.insert(drugs).values({

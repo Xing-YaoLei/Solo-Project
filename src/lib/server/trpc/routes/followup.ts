@@ -123,6 +123,7 @@ export const followupRouter = createTRPCRouter({
       riskLevel: z.enum(['low', 'medium', 'high', 'critical']).default('low'),
       nextFollowupDate: z.date().optional(),
       initialNote: z.string().optional(),
+      reviewOpinion: z.string().optional(),
       prescriptionData: z.object({
         prescriptionNo: z.string().optional(),
         hospital: z.string().optional(),
@@ -255,6 +256,17 @@ export const followupRouter = createTRPCRouter({
             followupRecordId: followupId,
             content: input.initialNote,
             isReview: false,
+            createdBy: ctx.user.id
+          });
+        }
+
+        if (input.reviewOpinion) {
+          const reviewId = generateIdFromEntropySize(21);
+          await tx.insert(communicationNotes).values({
+            id: reviewId,
+            followupRecordId: followupId,
+            content: input.reviewOpinion,
+            isReview: true,
             createdBy: ctx.user.id
           });
         }

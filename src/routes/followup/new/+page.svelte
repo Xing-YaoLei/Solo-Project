@@ -14,6 +14,7 @@
   let riskLevel: 'low' | 'medium' | 'high' | 'critical' = 'low';
   let nextFollowupDate = '';
   let initialNote = '';
+  let reviewOpinion = '';
 
   let createNewPrescription = false;
   let prescriptionNo = '';
@@ -120,7 +121,8 @@
       const input: any = {
         memberId: selectedMember.id,
         riskLevel,
-        initialNote: initialNote || undefined
+        initialNote: initialNote || undefined,
+        reviewOpinion: reviewOpinion || undefined
       };
 
       if (nextFollowupDate) {
@@ -494,6 +496,10 @@
         <label class="form-label">初始沟通备注（将作为沟通备注保存）</label>
         <textarea class="form-input" rows={4} bind:value={initialNote} placeholder="输入本次回访的初始沟通备注，将写入 communication_notes 表..."></textarea>
       </div>
+      <div class="form-group">
+        <label class="form-label">复核意见（将标记为 isReview: true）</label>
+        <textarea class="form-input" rows={3} bind:value={reviewOpinion} placeholder="如有复核意见请填写，将标记为复核备注..."></textarea>
+      </div>
 
       <div style="margin-top: 1.5rem; padding: 1rem; background: var(--bg-tertiary); border-radius: var(--border-radius);">
         <div style="font-weight: 600; margin-bottom: 0.75rem;">
@@ -523,6 +529,10 @@
           <div class="info-item">
             <span class="info-label">初始备注</span>
             <span class="info-value">{initialNote ? '已填写' : '无'}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">复核意见</span>
+            <span class="info-value">{reviewOpinion ? '已填写' : '无'}</span>
           </div>
           <div class="info-item">
             <span class="info-label">风险等级</span>

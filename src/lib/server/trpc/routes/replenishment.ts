@@ -13,6 +13,10 @@ export const replenishmentRouter = createTRPCRouter({
       pageSize: z.number().default(20)
     }))
     .query(async ({ ctx, input }) => {
+      if (!['admin', 'manager'].includes(ctx.user.role)) {
+        throw new Error('无权限访问补货单');
+      }
+
       const whereConditions = [];
       
       if (input.memberId) {
@@ -55,6 +59,10 @@ export const replenishmentRouter = createTRPCRouter({
   get: protectedProcedure
     .input(z.string())
     .query(async ({ ctx, input }) => {
+      if (!['admin', 'manager'].includes(ctx.user.role)) {
+        throw new Error('无权限访问补货单');
+      }
+
       const order = await ctx.db.query.replenishmentOrders.findFirst({
         where: eq(replenishmentOrders.id, input),
         with: {
@@ -87,6 +95,10 @@ export const replenishmentRouter = createTRPCRouter({
       }))
     }))
     .mutation(async ({ ctx, input }) => {
+      if (!['admin', 'manager'].includes(ctx.user.role)) {
+        throw new Error('无权限创建补货单');
+      }
+
       const orderId = generateIdFromEntropySize(21);
       const orderNo = 'RB' + Date.now();
       

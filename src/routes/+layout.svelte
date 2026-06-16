@@ -41,26 +41,28 @@
           <span>✅</span>
           <span>我的待办</span>
         </a>
-        <a href="/members" class="sidebar-item {currentPath.startsWith('/members') ? 'active' : ''}">
-          <span>👤</span>
-          <span>会员档案</span>
-        </a>
-        <a href="/drugs" class="sidebar-item {currentPath.startsWith('/drugs') ? 'active' : ''}">
-          <span>💊</span>
-          <span>药品批号</span>
-        </a>
-        <a href="/replenishment" class="sidebar-item {currentPath.startsWith('/replenishment') ? 'active' : ''}">
-          <span>📦</span>
-          <span>补货单</span>
-        </a>
-        <a href="/prescriptions" class="sidebar-item {currentPath.startsWith('/prescriptions') ? 'active' : ''}">
-          <span>📝</span>
-          <span>处方管理</span>
-        </a>
-        <a href="/insurance" class="sidebar-item {currentPath.startsWith('/insurance') ? 'active' : ''}">
-          <span>🏥</span>
-          <span>医保流水</span>
-        </a>
+        {#if user && ['admin', 'manager'].includes(user.role)}
+          <a href="/members" class="sidebar-item {currentPath.startsWith('/members') ? 'active' : ''}">
+            <span>👤</span>
+            <span>会员档案</span>
+          </a>
+          <a href="/drugs" class="sidebar-item {currentPath.startsWith('/drugs') ? 'active' : ''}">
+            <span>💊</span>
+            <span>药品批号</span>
+          </a>
+          <a href="/replenishment" class="sidebar-item {currentPath.startsWith('/replenishment') ? 'active' : ''}">
+            <span>📦</span>
+            <span>补货单</span>
+          </a>
+          <a href="/prescriptions" class="sidebar-item {currentPath.startsWith('/prescriptions') ? 'active' : ''}">
+            <span>📝</span>
+            <span>处方管理</span>
+          </a>
+          <a href="/insurance" class="sidebar-item {currentPath.startsWith('/insurance') ? 'active' : ''}">
+            <span>🏥</span>
+            <span>医保流水</span>
+          </a>
+        {/if}
       </nav>
       <div class="sidebar-footer">
         {#if user}

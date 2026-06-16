@@ -14,6 +14,10 @@ export const prescriptionRouter = createTRPCRouter({
       pageSize: z.number().default(20)
     }))
     .query(async ({ ctx, input }) => {
+      if (!['admin', 'manager'].includes(ctx.user.role)) {
+        throw new Error('无权限访问处方管理');
+      }
+
       const whereConditions = [];
       
       if (input.memberId) {
@@ -60,6 +64,10 @@ export const prescriptionRouter = createTRPCRouter({
   get: protectedProcedure
     .input(z.string())
     .query(async ({ ctx, input }) => {
+      if (!['admin', 'manager'].includes(ctx.user.role)) {
+        throw new Error('无权限访问处方管理');
+      }
+
       const prescription = await ctx.db.query.prescriptions.findFirst({
         where: eq(prescriptions.id, input),
         with: {
@@ -97,6 +105,10 @@ export const prescriptionRouter = createTRPCRouter({
       }))
     }))
     .mutation(async ({ ctx, input }) => {
+      if (!['admin', 'manager'].includes(ctx.user.role)) {
+        throw new Error('无权限创建处方');
+      }
+
       const id = generateIdFromEntropySize(21);
       const { items, ...prescriptionData } = input;
 
@@ -131,6 +143,10 @@ export const prescriptionRouter = createTRPCRouter({
       notes: z.string().optional()
     }))
     .mutation(async ({ ctx, input }) => {
+      if (!['admin', 'manager'].includes(ctx.user.role)) {
+        throw new Error('无权限修改处方');
+      }
+
       const { id, ...updateData } = input;
       
       const [prescription] = await ctx.db.update(prescriptions)
@@ -150,6 +166,10 @@ export const insuranceRouter = createTRPCRouter({
       pageSize: z.number().default(20)
     }))
     .query(async ({ ctx, input }) => {
+      if (!['admin', 'manager'].includes(ctx.user.role)) {
+        throw new Error('无权限访问医保流水');
+      }
+
       const whereConditions = [];
       
       if (input.memberId) {
@@ -188,6 +208,10 @@ export const insuranceRouter = createTRPCRouter({
   get: protectedProcedure
     .input(z.string())
     .query(async ({ ctx, input }) => {
+      if (!['admin', 'manager'].includes(ctx.user.role)) {
+        throw new Error('无权限访问医保流水');
+      }
+
       const record = await ctx.db.query.insuranceRecords.findFirst({
         where: eq(insuranceRecords.id, input),
         with: {
@@ -214,6 +238,10 @@ export const insuranceRouter = createTRPCRouter({
       selfPayAmount: z.number()
     }))
     .mutation(async ({ ctx, input }) => {
+      if (!['admin', 'manager'].includes(ctx.user.role)) {
+        throw new Error('无权限创建医保流水');
+      }
+
       const id = generateIdFromEntropySize(21);
       
       const [record] = await ctx.db.insert(insuranceRecords).values({
