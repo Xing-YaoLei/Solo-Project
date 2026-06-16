@@ -1,4 +1,3 @@
-import { _decorator } from 'cc';
 import { ExpressionParser } from '../core/ExpressionParser';
 import type { AdviceConfig } from '../data/LevelConfig';
 import type { TaskConfig } from '../data/LevelConfig';
@@ -10,7 +9,6 @@ export interface EvaluatedAdvice {
     priority: number;
 }
 
-@ccclass('PharmacistAdviceService')
 export class PharmacistAdviceService {
     private static _instance: PharmacistAdviceService | null = null;
 

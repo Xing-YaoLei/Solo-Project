@@ -1,4 +1,3 @@
-import { _decorator } from 'cc';
 import { EventBus } from '../core/EventBus';
 import { GameEventType } from '../data/enums/GameEventType';
 import { createInitialGameState, type GameState, type TaskResult } from '../data/GameState';
@@ -9,7 +8,18 @@ import { TimerService } from './TimerService';
 import { ScoringService } from './ScoringService';
 import { PlayerDataService } from './PlayerDataService';
 
-@ccclass('GameFlowController')
+export interface LevelCompletionData {
+    levelId: string;
+    levelName: string;
+    results: TaskResult[];
+    score: number;
+    totalScore: number;
+    timeSpent: number;
+    mode: GameMode;
+    tasks: TaskConfig[];
+    passingScore: number;
+}
+
 export class GameFlowController {
     private static _instance: GameFlowController | null = null;
     private state: GameState = createInitialGameState();
@@ -36,14 +46,18 @@ export class GameFlowController {
         };
 
         TimerService.instance.start(level.timeLimit);
-        this.setupEventListeners();
+        this.ensureTimeUpListener();
         EventBus.instance.emit(GameEventType.DATA_UPDATED, 'level_start', this.state);
     }
 
-    private setupEventListeners(): void {
-        EventBus.instance.on(GameEventType.TIME_UP, () => {
-            this.completeLevel();
-        });
+    private timeUpHandler: (() => void) | null = null;
+
+    private ensureTimeUpListener(): void {
+        if (this.timeUpHandler) {
+            EventBus.instance.off(GameEventType.TIME_UP, this.timeUpHandler);
+        }
+        this.timeUpHandler = () => { this.completeLevel(); };
+        EventBus.instance.on(GameEventType.TIME_UP, this.timeUpHandler);
     }
 
     public getCurrentTask(): TaskConfig | null {
@@ -72,7 +86,7 @@ export class GameFlowController {
         return result;
     }
 
-    public nextTask(): boolean {
+    public advanceToNextTask(): boolean {
         if (!this.state.currentLevel) return false;
 
         this.state.currentTaskIndex++;
@@ -100,13 +114,24 @@ export class GameFlowController {
             );
         }
 
-        EventBus.instance.emit(GameEventType.LEVEL_COMPLETED, {
-            results: this.state.taskResults,
+        if (this.timeUpHandler) {
+            EventBus.instance.off(GameEventType.TIME_UP, this.timeUpHandler);
+            this.timeUpHandler = null;
+        }
+
+        const completionData: LevelCompletionData = {
+            levelId: this.state.currentLevel ? this.state.currentLevel.id : '',
+            levelName: this.state.currentLevel ? this.state.currentLevel.name : '',
+            results: [...this.state.taskResults],
             score: this.state.score,
             totalScore: this.state.totalScore,
             timeSpent,
-            mode: this.state.currentMode
-        });
+            mode: this.state.currentMode,
+            tasks: this.state.currentLevel ? [...this.state.currentLevel.tasks] : [],
+            passingScore: this.state.currentLevel ? this.state.currentLevel.passingScore : 60
+        };
+
+        EventBus.instance.emit(GameEventType.LEVEL_COMPLETED, completionData);
     }
 
     public pauseGame(): void {
@@ -137,6 +162,10 @@ export class GameFlowController {
 
     public reset(): void {
         TimerService.instance.stop();
+        if (this.timeUpHandler) {
+            EventBus.instance.off(GameEventType.TIME_UP, this.timeUpHandler);
+            this.timeUpHandler = null;
+        }
         this.state = createInitialGameState();
     }
 }

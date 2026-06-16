@@ -84,7 +84,7 @@ export interface LevelConfig {
     id: string;
     name: string;
     description: string;
-    岗位: PharmacistRole[];
+    roles: PharmacistRole[];
     difficulty: Difficulty;
     timeLimit: number;
     passingScore: number;

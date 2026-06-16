@@ -1,21 +1,14 @@
 import { _decorator, Component, Node, Label, ProgressBar, ScrollView, instantiate, Prefab, UITransform, Color } from 'cc';
 import { SceneManager } from '../core/SceneManager';
 import { ScoringService } from '../services/ScoringService';
-import { PlayerDataService } from '../services/PlayerDataService';
 import type { TaskResult } from '../data/GameState';
 import { GameMode } from '../data/enums/GameMode';
+import type { LevelCompletionData } from '../services/GameFlowController';
+import type { TaskConfig } from '../data/LevelConfig';
+import { TaskAction } from '../data/enums/TaskAction';
 import { WrongItemCard } from '../components/WrongItemCard';
 
 const { ccclass, property } = _decorator;
-
-interface ResultData {
-    results: TaskResult[];
-    score: number;
-    totalScore: number;
-    timeSpent: number;
-    mode: GameMode;
-    levelId: string;
-}
 
 @ccclass('ResultScene')
 export class ResultScene extends Component {
@@ -39,6 +32,9 @@ export class ResultScene extends Component {
 
     @property(Label)
     resultTitleLabel: Label | null = null;
+
+    @property(Label)
+    levelNameLabel: Label | null = null;
 
     @property(ScrollView)
     wrongItemsScrollView: ScrollView | null = null;
@@ -64,16 +60,23 @@ export class ResultScene extends Component {
     @property(Node)
     failedBadge: Node | null = null;
 
-    private resultData: ResultData | null = null;
+    private completionData: LevelCompletionData | null = null;
+    private taskMap: Map<string, TaskConfig> = new Map();
     private isPassed: boolean = false;
 
     onLoad() {
         const params = SceneManager.instance.getParams();
-        this.resultData = params as ResultData;
+        this.completionData = params as LevelCompletionData;
+
+        if (this.completionData) {
+            this.completionData.tasks.forEach(t => {
+                this.taskMap.set(t.id, t);
+            });
+        }
     }
 
     start() {
-        if (!this.resultData) return;
+        if (!this.completionData) return;
 
         this.calculateAndDisplayResults();
         this.setupButtons();
@@ -81,14 +84,13 @@ export class ResultScene extends Component {
     }
 
     private calculateAndDisplayResults(): void {
-        if (!this.resultData) return;
+        if (!this.completionData) return;
 
-        const { results, score, totalScore, timeSpent, mode } = this.resultData;
+        const { results, score, totalScore, timeSpent, mode, levelName, passingScore } = this.completionData;
         const scoring = ScoringService.instance;
 
         const accuracy = scoring.getAccuracy(results);
         const correctCount = scoring.getCorrectCount(results);
-        const passingScore = 60;
         const grade = scoring.getGrade(score, totalScore, passingScore);
         this.isPassed = scoring.isPassed(score, passingScore, results.length, results);
 
@@ -114,29 +116,24 @@ export class ResultScene extends Component {
         if (this.resultTitleLabel) {
             this.resultTitleLabel.string = this.isPassed ? '🎉 训练完成！' : '💪 继续加油！';
         }
+        if (this.levelNameLabel) {
+            this.levelNameLabel.string = levelName;
+        }
         if (this.passedBadge) {
             this.passedBadge.active = this.isPassed;
         }
         if (this.failedBadge) {
             this.failedBadge.active = !this.isPassed;
         }
-
         if (this.nextLevelButton) {
             this.nextLevelButton.active = this.isPassed && mode === GameMode.FORMAL_TRAINING;
         }
-
-        this.displayKnowledgeStats(results);
-    }
-
-    private displayKnowledgeStats(results: TaskResult[]): void {
-        const stats = ScoringService.instance.getKnowledgePointStats(results);
-        console.log('知识点统计:', stats);
     }
 
     private displayWrongItems(): void {
-        if (!this.resultData || !this.wrongItemsScrollView || !this.wrongItemCardPrefab) return;
+        if (!this.completionData || !this.wrongItemsScrollView || !this.wrongItemCardPrefab) return;
 
-        const wrongResults = ScoringService.instance.getWrongResults(this.resultData.results);
+        const wrongResults = ScoringService.instance.getWrongResults(this.completionData.results);
 
         if (wrongResults.length === 0) {
             if (this.wrongItemsSection) {
@@ -151,12 +148,14 @@ export class ResultScene extends Component {
         content.removeAllChildren();
 
         wrongResults.forEach((result, index) => {
-            const taskIndex = this.resultData!.results.findIndex(r => r.taskId === result.taskId);
-            const cardNode = instantiate(this.wrongItemCardPrefab!);
+            const taskConfig = this.taskMap.get(result.taskId);
+            const taskDescription = taskConfig ? taskConfig.description : result.taskId;
+            const taskNumber = this.completionData!.results.findIndex(r => r.taskId === result.taskId) + 1;
+
+            const cardNode = instantiate(this.wrongItemCardPrefab);
             const card = cardNode.getComponent('WrongItemCard') as WrongItemCard;
             if (card) {
-                const taskDescription = this.getTaskDescription(result.taskId);
-                card.setData(result, taskDescription, taskIndex + 1);
+                card.setData(result, taskDescription, taskNumber);
             }
             cardNode.setPosition(0, -index * 220, 0);
             content.addChild(cardNode);
@@ -166,13 +165,6 @@ export class ResultScene extends Component {
         if (contentTransform) {
             contentTransform.height = wrongResults.length * 220 + 20;
         }
-    }
-
-    private getTaskDescription(taskId: string): string {
-        const params = SceneManager.instance.getParams();
-        const levelId = params.levelId as string;
-        const level = PlayerDataService.instance.getLevelRecord(levelId);
-        return `任务 ${taskId}`;
     }
 
     private getGradeColor(grade: string): Color {
@@ -211,11 +203,11 @@ export class ResultScene extends Component {
     }
 
     private async onRetryClick(): Promise<void> {
-        if (!this.resultData) return;
+        if (!this.completionData) return;
 
         await SceneManager.instance.loadScene('Game', {
-            levelId: this.resultData.levelId,
-            mode: this.resultData.mode
+            levelId: this.completionData.levelId,
+            mode: this.completionData.mode
         });
     }
 
@@ -225,24 +217,6 @@ export class ResultScene extends Component {
 
     private async onNextLevelClick(): Promise<void> {
         await SceneManager.instance.goBack();
-    }
-
-    public expandAllWrongItems(): void {
-        if (!this.wrongItemsScrollView) return;
-        const content = this.wrongItemsScrollView.content;
-        if (!content) return;
-
-        const cards = content.getComponentsInChildren(WrongItemCard);
-        cards.forEach(card => card.expand());
-    }
-
-    public collapseAllWrongItems(): void {
-        if (!this.wrongItemsScrollView) return;
-        const content = this.wrongItemsScrollView.content;
-        if (!content) return;
-
-        const cards = content.getComponentsInChildren(WrongItemCard);
-        cards.forEach(card => card.collapse());
     }
 
     onDestroy() {

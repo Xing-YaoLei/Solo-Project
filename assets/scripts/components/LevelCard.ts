@@ -99,7 +99,7 @@ export class LevelCard extends Component {
 
     public getRoleDisplay(): string {
         if (!this.levelConfig) return '';
-        return this.levelConfig.岗位
+        return this.levelConfig.roles
             .map(r => PharmacistRole.getDisplayName(r))
             .join('、');
     }

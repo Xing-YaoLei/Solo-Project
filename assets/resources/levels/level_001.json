@@ -2,7 +2,7 @@
     "id": "level_001",
     "name": "基础处方审核入门",
     "description": "学习识别常规处方的基本要素，掌握基础审核流程",
-    "岗位": ["reviewer", "sales"],
+    "roles": ["reviewer", "sales"],
     "difficulty": "beginner",
     "timeLimit": 300,
     "passingScore": 60,

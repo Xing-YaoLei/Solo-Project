@@ -1,8 +1,6 @@
-import { _decorator } from 'cc';
 import { EventBus } from '../core/EventBus';
 import { GameEventType } from '../data/enums/GameEventType';
 
-@ccclass('TimerService')
 export class TimerService {
     private static _instance: TimerService | null = null;
     private remainingTime: number = 0;

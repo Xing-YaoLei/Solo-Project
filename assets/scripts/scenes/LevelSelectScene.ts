@@ -128,7 +128,7 @@ export class LevelSelectScene extends Component {
 
     private applyFilters(): void {
         this.filteredLevels = this.allLevels.filter(level => {
-            if (this.selectedRole && !level.岗位.includes(this.selectedRole)) {
+            if (this.selectedRole && !level.roles.includes(this.selectedRole)) {
                 return false;
             }
             if (this.selectedDifficulty && level.difficulty !== this.selectedDifficulty) {

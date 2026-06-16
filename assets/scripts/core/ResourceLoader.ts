@@ -1,6 +1,5 @@
-import { _decorator, resources, Asset, JsonAsset } from 'cc';
+import { resources, Asset, JsonAsset } from 'cc';
 
-@ccclass('ResourceLoader')
 export class ResourceLoader {
     private static _instance: ResourceLoader | null = null;
 

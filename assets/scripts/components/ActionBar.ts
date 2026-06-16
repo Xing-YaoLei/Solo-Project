@@ -1,7 +1,6 @@
-import { _decorator, Component, Node, Button, Label, Color, tween, Vec3 } from 'cc';
+import { _decorator, Component, Node, Label, Color, tween, Vec3 } from 'cc';
 import { TaskAction } from '../data/enums/TaskAction';
-import { EventBus } from '../core/EventBus';
-import { GameEventType } from '../data/enums/GameEventType';
+import { GameFlowController } from '../services/GameFlowController';
 import type { TaskResult } from '../data/GameState';
 
 const { ccclass, property } = _decorator;
@@ -24,10 +23,10 @@ export class ActionBar extends Component {
     feedbackPanel: Node | null = null;
 
     @property(Label)
-    feedbackLabel: Node | null = null;
+    feedbackLabel: Label | null = null;
 
     private isProcessing: boolean = false;
-    private onActionCallback: ((action: TaskAction, result: TaskResult) => void) | null = null;
+    private onActionDone: ((result: TaskResult) => void) | null = null;
 
     onLoad() {
         this.setupButtons();
@@ -35,24 +34,24 @@ export class ActionBar extends Component {
     }
 
     private setupButtons(): void {
-        const buttonConfigs = [
-            { node: this.approveButton, action: TaskAction.APPROVE },
-            { node: this.rejectButton, action: TaskAction.REJECT },
-            { node: this.supplementButton, action: TaskAction.SUPPLEMENT },
-            { node: this.reportButton, action: TaskAction.REPORT }
+        const buttonConfigs: [Node | null, TaskAction][] = [
+            [this.approveButton, TaskAction.APPROVE],
+            [this.rejectButton, TaskAction.REJECT],
+            [this.supplementButton, TaskAction.SUPPLEMENT],
+            [this.reportButton, TaskAction.REPORT]
         ];
 
-        buttonConfigs.forEach(config => {
-            if (config.node) {
-                config.node.on(Node.EventType.TOUCH_END, () => {
-                    this.onButtonClick(config.action);
+        buttonConfigs.forEach(([node, action]) => {
+            if (node) {
+                node.on(Node.EventType.TOUCH_END, () => {
+                    this.onButtonClick(action);
                 }, this);
             }
         });
     }
 
-    public setCallback(callback: (action: TaskAction, result: TaskResult) => void): void {
-        this.onActionCallback = callback;
+    public setOnActionDone(callback: (result: TaskResult) => void): void {
+        this.onActionDone = callback;
     }
 
     private onButtonClick(action: TaskAction): void {
@@ -61,7 +60,13 @@ export class ActionBar extends Component {
 
         this.animateButtonClick(action);
 
-        EventBus.instance.emit(GameEventType.ACTION_SELECTED, action);
+        const result = GameFlowController.instance.submitAction(action);
+        if (!result) {
+            this.isProcessing = false;
+            return;
+        }
+
+        this.showFeedback(result);
     }
 
     private animateButtonClick(action: TaskAction): void {
@@ -84,35 +89,38 @@ export class ActionBar extends Component {
         }
     }
 
-    public showFeedback(result: TaskResult): void {
-        if (!this.feedbackPanel) return;
-
-        this.feedbackPanel.active = true;
-        const feedbackLabel = this.feedbackPanel.getComponentInChildren(Label);
-
-        if (feedbackLabel) {
+    private showFeedback(result: TaskResult): void {
+        if (this.feedbackLabel) {
             if (result.isCorrect) {
-                feedbackLabel.string = `✓ 正确！+${result.scoreEarned}分`;
-                feedbackLabel.color = new Color().fromHEX('#4CAF50');
+                this.feedbackLabel.string = `✓ 正确！+${result.scoreEarned}分`;
+                this.feedbackLabel.color = new Color().fromHEX('#4CAF50');
             } else {
-                feedbackLabel.string = `✗ 错误：${result.wrongReason || '操作有误'}`;
-                feedbackLabel.color = new Color().fromHEX('#F44336');
+                this.feedbackLabel.string = `✗ 错误：${result.wrongReason || '操作有误'}`;
+                this.feedbackLabel.color = new Color().fromHEX('#F44336');
             }
         }
 
-        this.feedbackPanel.opacity = 0;
-        tween(this.feedbackPanel)
-            .to(0.3, { opacity: 255 })
-            .delay(1.5)
-            .to(0.3, { opacity: 0 })
-            .call(() => {
-                this.hideFeedback();
-                if (this.onActionCallback) {
-                    this.onActionCallback(result.playerAction, result);
-                }
-                this.isProcessing = false;
-            })
-            .start();
+        if (this.feedbackPanel) {
+            this.feedbackPanel.active = true;
+            this.feedbackPanel.opacity = 0;
+            tween(this.feedbackPanel)
+                .to(0.3, { opacity: 255 })
+                .delay(1.2)
+                .to(0.3, { opacity: 0 })
+                .call(() => {
+                    this.hideFeedback();
+                    this.isProcessing = false;
+                    if (this.onActionDone) {
+                        this.onActionDone(result);
+                    }
+                })
+                .start();
+        } else {
+            this.isProcessing = false;
+            if (this.onActionDone) {
+                this.onActionDone(result);
+            }
+        }
     }
 
     private hideFeedback(): void {

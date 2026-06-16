@@ -1,24 +1,41 @@
 {
-  "extends": "./temp/tsconfig.cocos.json",
   "compilerOptions": {
     "target": "ES2020",
     "module": "ESNext",
+    "moduleResolution": "node",
     "strict": true,
-    "noImplicitAny": true,
+    "noImplicitAny": false,
     "strictNullChecks": true,
     "strictFunctionTypes": true,
     "noImplicitThis": true,
     "alwaysStrict": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "outDir": "./temp/declarations",
+    "baseUrl": ".",
+    "paths": {
+      "cc": ["assets/scripts/cc.d.ts"],
+      "db://*": ["assets/*"]
+    },
+    "typeRoots": [
+      "./node_modules/@types",
+      "./assets/scripts"
+    ]
   },
   "include": [
-    "assets/**/*.ts"
+    "assets/**/*.ts",
+    "assets/scripts/cc.d.ts"
   ],
   "exclude": [
     "node_modules",
     "temp",
-    "build"
+    "build",
+    "library"
   ]
 }

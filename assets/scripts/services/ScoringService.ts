@@ -1,4 +1,3 @@
-import { _decorator } from 'cc';
 import { EventBus } from '../core/EventBus';
 import { GameEventType } from '../data/enums/GameEventType';
 import { TaskAction } from '../data/enums/TaskAction';
@@ -6,7 +5,6 @@ import { GameMode } from '../data/enums/GameMode';
 import type { TaskConfig, LevelConfig, WrongActionConfig } from '../data/LevelConfig';
 import type { TaskResult } from '../data/GameState';
 
-@ccclass('ScoringService')
 export class ScoringService {
     private static _instance: ScoringService | null = null;
 

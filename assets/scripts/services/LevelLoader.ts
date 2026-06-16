@@ -1,11 +1,9 @@
-import { _decorator } from 'cc';
 import { ResourceLoader } from '../core/ResourceLoader';
 import type { LevelConfig } from '../data/LevelConfig';
 import { PharmacistRole } from '../data/enums/PharmacistRole';
 import { Difficulty } from '../data/enums/Difficulty';
 import { GameMode } from '../data/enums/GameMode';
 
-@ccclass('LevelLoader')
 export class LevelLoader {
     private static _instance: LevelLoader | null = null;
     private levels: LevelConfig[] = [];
@@ -46,7 +44,7 @@ export class LevelLoader {
         }
 
         return this.levels.filter(level => {
-            if (role && !level.岗位.includes(role)) {
+            if (role && !level.roles.includes(role)) {
                 return false;
             }
             if (difficulty && level.difficulty !== difficulty) {
@@ -64,7 +62,7 @@ export class LevelLoader {
     }
 
     private validateLevelConfig(config: any): config is LevelConfig {
-        if (!config.id || !config.name || !config.岗位 || !config.difficulty) {
+        if (!config.id || !config.name || !config.roles || !config.difficulty) {
             console.warn(`Invalid level config: missing required fields`, config);
             return false;
         }

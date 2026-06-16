@@ -1,14 +1,11 @@
-import { _decorator, director, Scene } from 'cc';
+import { director, Scene } from 'cc';
 import { EventBus } from './EventBus';
 import { GameEventType } from '../data/enums/GameEventType';
-
-const { ccclass } = _decorator;
 
 export interface SceneParams {
     [key: string]: any;
 }
 
-@ccclass('SceneManager')
 export class SceneManager {
     private static _instance: SceneManager | null = null;
     private sceneParams: SceneParams = {};

@@ -1,15 +1,14 @@
-import { _decorator, Component, Node, Label, Button, UITransform, instantiate, Prefab } from 'cc';
+import { _decorator, Component, Node, Label } from 'cc';
 import { SceneManager } from '../core/SceneManager';
 import { EventBus } from '../core/EventBus';
 import { GameEventType } from '../data/enums/GameEventType';
 import { LevelLoader } from '../services/LevelLoader';
-import { GameFlowController } from '../services/GameFlowController';
+import { GameFlowController, type LevelCompletionData } from '../services/GameFlowController';
 import type { LevelConfig, TaskConfig } from '../data/LevelConfig';
 import { GameMode } from '../data/enums/GameMode';
-import { TaskAction } from '../data/enums/TaskAction';
 import type { TaskResult } from '../data/GameState';
 import { TaskPanel } from '../components/TaskPanel';
-import { InfoPanel, InfoPanelType } from '../components/InfoPanel';
+import { InfoPanel, type InfoPanelType } from '../components/InfoPanel';
 import { ActionBar } from '../components/ActionBar';
 import { TiledMapManager } from '../tiled/TiledMapManager';
 
@@ -41,9 +40,11 @@ export class GameScene extends Component {
     @property(Node)
     pausePanel: Node | null = null;
 
+    @property(Label)
+    taskDescriptionLabel: Label | null = null;
+
     private currentLevel: LevelConfig | null = null;
     private currentMode: GameMode = GameMode.FORMAL_TRAINING;
-    private currentTask: TaskConfig | null = null;
 
     async onLoad() {
         const params = SceneManager.instance.getParams();
@@ -80,10 +81,10 @@ export class GameScene extends Component {
     }
 
     private setupInfoButtons(): void {
-        const buttons = [
-            { node: this.prescriptionButton, type: 'prescription' as InfoPanelType },
-            { node: this.replenishmentButton, type: 'replenishment' as InfoPanelType },
-            { node: this.insuranceButton, type: 'insurance' as InfoPanelType }
+        const buttons: { node: Node | null; type: InfoPanelType }[] = [
+            { node: this.prescriptionButton, type: 'prescription' },
+            { node: this.replenishmentButton, type: 'replenishment' },
+            { node: this.insuranceButton, type: 'insurance' }
         ];
 
         buttons.forEach(config => {
@@ -98,27 +99,26 @@ export class GameScene extends Component {
     private setupActionBar(): void {
         if (!this.actionBar) return;
 
-        this.actionBar.setCallback((action: TaskAction, result: TaskResult) => {
-            this.onActionSubmitted(action, result);
+        this.actionBar.setOnActionDone((result: TaskResult) => {
+            const hasMore = GameFlowController.instance.advanceToNextTask();
+            if (hasMore) {
+                this.loadCurrentTask();
+            }
         });
     }
 
     private loadCurrentTask(): void {
-        this.currentTask = GameFlowController.instance.getCurrentTask();
+        const task = GameFlowController.instance.getCurrentTask();
         const state = GameFlowController.instance.getState();
 
-        if (!this.currentTask || !state.currentLevel) return;
+        if (!task || !state.currentLevel) return;
 
         if (this.taskPanel) {
-            this.taskPanel.setTask(
-                this.currentTask,
-                state.currentTaskIndex,
-                state.currentLevel.tasks.length
-            );
+            this.taskPanel.setTask(task, state.currentTaskIndex, state.currentLevel.tasks.length);
         }
 
         if (this.infoPanel) {
-            this.infoPanel.setTask(this.currentTask, this.currentLevel.prescriptionBlur);
+            this.infoPanel.setTask(task, this.currentLevel!.prescriptionBlur);
         }
 
         if (this.tiledMapManager) {
@@ -130,6 +130,10 @@ export class GameScene extends Component {
         if (this.actionBar) {
             this.actionBar.reset();
         }
+
+        if (this.taskDescriptionLabel) {
+            this.taskDescriptionLabel.string = task.description;
+        }
     }
 
     private showInfoPanel(type: InfoPanelType): void {
@@ -140,7 +144,7 @@ export class GameScene extends Component {
     }
 
     private highlightActiveButton(activeType: InfoPanelType | null): void {
-        const buttons = [
+        const buttons: { node: Node | null; type: string }[] = [
             { node: this.prescriptionButton, type: 'prescription' },
             { node: this.replenishmentButton, type: 'replenishment' },
             { node: this.insuranceButton, type: 'insurance' }
@@ -166,15 +170,6 @@ export class GameScene extends Component {
         }
     }
 
-    private onActionSubmitted(action: TaskAction, result: TaskResult): void {
-        this.scheduleOnce(() => {
-            const hasMore = GameFlowController.instance.nextTask();
-            if (hasMore) {
-                this.loadCurrentTask();
-            }
-        }, 0.5);
-    }
-
     private onPause(): void {
         if (this.pausePanel) {
             this.pausePanel.active = true;
@@ -187,7 +182,7 @@ export class GameScene extends Component {
         }
     }
 
-    private async onLevelCompleted(data: any): Promise<void> {
+    private async onLevelCompleted(data: LevelCompletionData): Promise<void> {
         await SceneManager.instance.loadScene('Result', data);
     }
 
@@ -204,16 +199,6 @@ export class GameScene extends Component {
         EventBus.instance.off(GameEventType.LEVEL_COMPLETED, this.onLevelCompleted, this);
         EventBus.instance.off(GameEventType.PAUSE, this.onPause, this);
         EventBus.instance.off(GameEventType.RESUME, this.onResume, this);
-
-        if (this.prescriptionButton) {
-            this.prescriptionButton.off(Node.EventType.TOUCH_END);
-        }
-        if (this.replenishmentButton) {
-            this.replenishmentButton.off(Node.EventType.TOUCH_END);
-        }
-        if (this.insuranceButton) {
-            this.insuranceButton.off(Node.EventType.TOUCH_END);
-        }
 
         GameFlowController.instance.reset();
     }

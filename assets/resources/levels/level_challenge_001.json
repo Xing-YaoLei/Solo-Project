@@ -2,7 +2,7 @@
     "id": "level_challenge_001",
     "name": "处方不清高难挑战",
     "description": "处理字迹模糊、信息不全的处方审核挑战",
-    "岗位": ["reviewer"],
+    "roles": ["reviewer"],
     "difficulty": "challenge",
     "timeLimit": 420,
     "passingScore": 75,

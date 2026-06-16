@@ -1,4 +1,4 @@
-import { _decorator, sys } from 'cc';
+import { sys } from 'cc';
 import type { PlayerData, LevelRecord } from '../data/PlayerData';
 import { createDefaultPlayerData, getAccuracy, formatTime } from '../data/PlayerData';
 import { PharmacistRole } from '../data/enums/PharmacistRole';
@@ -7,7 +7,6 @@ import { ScoringService } from './ScoringService';
 
 const STORAGE_KEY = 'pharmacy_game_player_data';
 
-@ccclass('PlayerDataService')
 export class PlayerDataService {
     private static _instance: PlayerDataService | null = null;
     private playerData: PlayerData | null = null;

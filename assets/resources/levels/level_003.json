@@ -2,7 +2,7 @@
     "id": "level_003",
     "name": "补货专员库存管理",
     "description": "侧重补货单审核与库存判断",
-    "岗位": ["replenishment"],
+    "roles": ["replenishment"],
     "difficulty": "intermediate",
     "timeLimit": 300,
     "passingScore": 65,

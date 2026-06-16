@@ -2,7 +2,7 @@
     "id": "level_002",
     "name": "营业员基础训练",
     "description": "侧重处方识别与医保结算流程训练",
-    "岗位": ["sales"],
+    "roles": ["sales"],
     "difficulty": "beginner",
     "timeLimit": 240,
     "passingScore": 60,
