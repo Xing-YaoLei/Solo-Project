@@ -1023,17 +1023,39 @@ def render_minio_manager(filters):
                             if exists and info:
                                 st.success(f"✅ 对象存在：{info['size_bytes']/1024:.1f} KB，"
                                            f"最后修改 {str(info['last_modified'])[:19]}")
+                                if status != "uploaded":
+                                    service.update_archive_status(aid, "uploaded", "重新验证：对象存在，恢复为上传状态")
+                                    st.info("🔧 已自动将记录状态恢复为「已上传」")
                             else:
-                                st.warning("⚠️ 对象在 MinIO 中不存在（DuckDB 记录存在但对象被删除）")
-                                if st.checkbox("同步更新记录状态为「已删除」", key=f"fix_{aid}"):
-                                    service.update_archive_status(aid, "deleted", "MinIO 对象已被物理删除")
+                                st.warning("⚠️ 对象在 MinIO/本地存储中不存在（DuckDB 记录存在但对象被删除）")
+                                confirm_key = f"confirm_fix_{aid}"
+                                if st.session_state.get(confirm_key):
+                                    service.update_archive_status(aid, "deleted", "MinIO 对象已被物理删除，经验证同步更新")
+                                    st.success("✅ 记录状态已更新为「已删除」")
+                                    del st.session_state[confirm_key]
+                                else:
+                                    st.checkbox("确认：同步更新记录状态为「已删除」", key=confirm_key,
+                                                help="勾选后将永久标记该记录为删除状态（不影响其他记录）")
 
                     with btn_c3:
                         del_key = f"del_{aid}"
-                        if st.button(f"🗑️ 删除归档", key=del_key, use_container_width=True):
-                            service.delete_archive_record(aid, also_delete_minio=True)
-                            st.success("✅ 归档记录 + MinIO 对象均已删除")
-                            st.rerun()
+                        confirm_del_key = f"confirm_del_{aid}"
+                        if st.session_state.get(confirm_del_key):
+                            c_del1, c_del2 = st.columns(2)
+                            with c_del1:
+                                if st.button("✅ 确认删除", key=f"do_del_{aid}", type="primary", use_container_width=True):
+                                    service.delete_archive_record(aid, also_delete_minio=True)
+                                    del st.session_state[confirm_del_key]
+                                    st.success("✅ 归档记录 + 存储对象均已删除")
+                                    st.rerun()
+                            with c_del2:
+                                if st.button("❌ 取消", key=f"cancel_del_{aid}", use_container_width=True):
+                                    del st.session_state[confirm_del_key]
+                                    st.rerun()
+                        else:
+                            if st.button(f"🗑️ 删除归档", key=del_key, use_container_width=True):
+                                st.session_state[confirm_del_key] = True
+                                st.rerun()
 
     with mgmt_tabs[1]:
         search = st.text_input("🔍 输入对象名关键字或归档ID（支持模糊匹配）",
@@ -1094,7 +1116,7 @@ def render_minio_manager(filters):
         summary = service.list_archive_records()
         if not summary.is_empty():
             summary_pd = summary.to_pandas()
-            summary_pd["创建日期"] = summary_pd["created_at"].astype(str).str[:10]
+            summary_pd = summary_pd.assign(创建日期=summary_pd["created_at"].astype(str).str[:10])
             pivot = summary_pd.groupby(["创建日期", "export_type"]).size().unstack(fill_value=0)
             st.markdown("**按日期 × 导出类型分布**")
             st.bar_chart(pivot)
@@ -1105,18 +1127,52 @@ def render_minio_manager(filters):
         d1, d2 = st.columns(2)
         with d1:
             older_days = st.slider("删除多少天以前的归档", 7, 365, 90)
-            if st.button(f"🗑️ 删除 {older_days} 天前的归档（仅记录+保留对象）", key="clean_older"):
-                cutoff = date.today() - timedelta(days=older_days)
-                old_records = service.list_archive_records().filter(pl.col("created_at") < str(cutoff))
-                count = len(old_records)
-                for r in old_records.iter_rows(named=True):
-                    service.update_archive_status(r["archive_id"], "deleted", f"清理 {older_days}天 前归档")
-                st.success(f"✅ 已标记 {count} 条过期记录为删除状态")
+            clean_older_key = f"confirm_clean_older_{older_days}"
+            if st.session_state.get(clean_older_key):
+                if st.button(f"✅ 确认标记 {older_days} 天前的归档", type="primary", use_container_width=True, key=f"do_clean_{older_days}"):
+                    cutoff = date.today() - timedelta(days=older_days)
+                    old_records = service.list_archive_records().filter(pl.col("created_at") < str(cutoff))
+                    count = len(old_records)
+                    for r in old_records.iter_rows(named=True):
+                        service.update_archive_status(r["archive_id"], "deleted", f"清理 {older_days}天 前归档")
+                    del st.session_state[clean_older_key]
+                    st.success(f"✅ 已标记 {count} 条过期记录为删除状态")
+                    st.rerun()
+                if st.button("❌ 取消", key=f"cancel_clean_{older_days}", use_container_width=True):
+                    del st.session_state[clean_older_key]
+                    st.rerun()
+            else:
+                if st.button(f"�️ 标记 {older_days} 天前的归档（仅记录状态，保留对象）", key="clean_older", use_container_width=True):
+                    st.session_state[clean_older_key] = True
+                    st.rerun()
+
         with d2:
-            if st.button("🔥 彻底清空所有归档（DuckDB记录 + MinIO对象）", type="secondary"):
-                if st.checkbox("⚠️ 确认此操作将永久删除所有归档，不可恢复", key="confirm_purge"):
+            purge_key = "confirm_purge_all"
+            if st.session_state.get(purge_key):
+                if st.button("🔥 再次确认：彻底清空（不可恢复）", type="primary", use_container_width=True, key="do_purge"):
                     deleted = service.delete_all_archives(also_delete_minio=True)
-                    st.success(f"✅ 已彻底删除 {deleted} 条归档记录及关联 MinIO 对象")
+                    del st.session_state[purge_key]
+                    # 同时清理 local storage 目录
+                    minio_dir = None
+                    try:
+                        from pathlib import Path
+                        from config import config as _cfg
+                        minio_dir = Path(_cfg.DUCKDB_DATABASE).parent / "minio_local"
+                        if minio_dir.exists():
+                            import shutil
+                            for sub in minio_dir.iterdir():
+                                if sub.is_dir():
+                                    shutil.rmtree(sub)
+                    except:
+                        pass
+                    st.success(f"✅ 已彻底删除 {deleted} 条归档记录及关联存储对象")
+                    st.rerun()
+                if st.button("❌ 取消清空操作", key="cancel_purge", use_container_width=True):
+                    del st.session_state[purge_key]
+                    st.rerun()
+            else:
+                if st.button("🔥 彻底清空所有归档（DuckDB记录 + 存储对象）", type="secondary", use_container_width=True):
+                    st.session_state[purge_key] = True
                     st.rerun()
 
 
