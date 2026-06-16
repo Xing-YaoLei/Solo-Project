@@ -1,0 +1,234 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  COMPLETED
+  MISSED
+  CANCELLED
+  RESCHEDULED
+}
+
+enum TreatmentStage {
+  CONSULTATION
+  DIAGNOSIS
+  TREATMENT_PLANNING
+  BRACKET_PLACEMENT
+  ACTIVE_TREATMENT
+  RETENTION
+  COMPLETED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  PARTIAL
+  REFUNDED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum DataSource {
+  HIS
+  CHARGING_SYSTEM
+  APPOINTMENT_SYSTEM
+  MANUAL
+}
+
+model Patient {
+  id              String    @id @default(uuid())
+  patientNo       String    @unique
+  name            String
+  gender          String?
+  birthDate       DateTime?
+  phone           String?
+  idCardNo        String?
+  address         String?
+  treatmentStage  TreatmentStage @default(CONSULTATION)
+  isOrthoCase     Boolean   @default(false)
+  firstVisitDate  DateTime?
+  orthoStartDate  DateTime?
+  doctor          String?
+  source          DataSource @default(HIS)
+  hisPatientId    String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  appointments    Appointment[]
+  chargeRecords   ChargeRecord[]
+  imageAttachments ImageAttachment[]
+  noteTasks       NoteTask[]
+  funnelRecords   FunnelRecord[]
+
+  @@index([isOrthoCase])
+  @@index([treatmentStage])
+  @@index([patientNo])
+}
+
+model Appointment {
+  id              String    @id @default(uuid())
+  patientId       String
+  appointmentNo   String    @unique
+  appointmentDate DateTime
+  appointmentType String?
+  status          AppointmentStatus
+  doctor          String?
+  department      String?
+  source          DataSource @default(APPOINTMENT_SYSTEM)
+  hisAppointmentId String?
+  missedReason    String?
+  rescheduledTo   DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  patient         Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId])
+  @@index([appointmentDate])
+  @@index([status])
+}
+
+model ChargeRecord {
+  id              String    @id @default(uuid())
+  patientId       String
+  chargeNo        String    @unique
+  chargeDate      DateTime
+  amount          Decimal   @db.Decimal(10, 2)
+  itemName        String
+  itemType        String?
+  paymentStatus   PaymentStatus @default(PENDING)
+  paymentMethod   String?
+  source          DataSource @default(CHARGING_SYSTEM)
+  hisChargeId     String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  patient         Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId])
+  @@index([chargeDate])
+  @@index([paymentStatus])
+}
+
+model ImageAttachment {
+  id              String    @id @default(uuid())
+  patientId       String
+  fileName        String
+  fileType        String
+  fileSize        Int?
+  fileUrl         String
+  category        String?
+  uploadDate      DateTime  @default(now())
+  uploadedBy      String?
+  description     String?
+  source          DataSource @default(MANUAL)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  patient         Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId])
+  @@index([category])
+}
+
+model ThresholdConfig {
+  id              String    @id @default(uuid())
+  configKey       String    @unique
+  configName      String
+  configValue     String
+  configType      String
+  description     String?
+  category        String?
+  updatedBy       String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([configKey])
+  @@index([category])
+}
+
+model NoteTask {
+  id              String    @id @default(uuid())
+  patientId       String
+  taskType        String
+  title           String
+  description     String?
+  priority        TaskPriority @default(MEDIUM)
+  status          TaskStatus @default(PENDING)
+  assignedTo      String?
+  dueDate         DateTime?
+  completedAt     DateTime?
+  completedBy     String?
+  conclusion      String?
+  triggerReason   String?
+  triggerValue    Decimal?  @db.Decimal(5, 2)
+  thresholdValue  Decimal?  @db.Decimal(5, 2)
+  source          String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  patient         Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId])
+  @@index([status])
+  @@index([priority])
+}
+
+model FunnelRecord {
+  id              String    @id @default(uuid())
+  patientId       String
+  stage           TreatmentStage
+  stageDate       DateTime
+  isMissed        Boolean   @default(false)
+  revisitRate     Decimal?  @db.Decimal(5, 2)
+  dataSource      DataSource @default(HIS)
+  isDeduplicated  Boolean   @default(false)
+  deduplicationKey String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  patient         Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId])
+  @@index([stage])
+  @@index([stageDate])
+  @@index([isDeduplicated])
+}
+
+model DataImportLog {
+  id              String    @id @default(uuid())
+  source          DataSource
+  importType      String
+  recordsTotal    Int       @default(0)
+  recordsSuccess  Int       @default(0)
+  recordsFailed   Int       @default(0)
+  recordsDuplicate Int      @default(0)
+  startTime       DateTime
+  endTime         DateTime?
+  status          String
+  errorMessage    String?
+  createdBy       String?
+  createdAt       DateTime  @default(now())
+
+  @@index([source])
+  @@index([importType])
+  @@index([createdAt])
+}
