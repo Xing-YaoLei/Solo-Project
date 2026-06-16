@@ -1,13 +1,25 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 import polars as pl
 
 from app.services.minio_service import MinIOService
 from app.services.duckdb_service import DuckDBService
+
+
+def _serialize_snapshot(snapshot: dict) -> dict:
+    result = {}
+    for k, v in snapshot.items():
+        if isinstance(v, (date, datetime)):
+            result[k] = v.isoformat()
+        elif v is None:
+            result[k] = None
+        else:
+            result[k] = str(v)
+    return result
 
 
 class DataPipeline:
@@ -57,27 +69,25 @@ class DataPipeline:
         df = pl.read_csv(file_path)
         batch_id = self._generate_batch_id("member")
 
-        _MEMBER_FIELDS = [
-            "member_id", "member_name", "phone", "store_id",
+        _COMPARE_FIELDS = [
+            "member_name", "phone", "store_id",
             "register_date", "chronic_disease", "allergy_info", "last_visit_date"
         ]
 
-        existing_members = self.duckdb.conn.execute(
-            "SELECT member_id, member_name, phone, store_id, register_date, "
-            "chronic_disease, allergy_info, last_visit_date, batch_id "
-            "FROM members QUALIFY ROW_NUMBER() OVER ("
-            "PARTITION BY member_id ORDER BY imported_at DESC) = 1"
-        ).fetchall()
+        existing_rows = self.duckdb.conn.execute("""
+            SELECT * FROM members
+            QUALIFY ROW_NUMBER() OVER (
+                PARTITION BY member_id ORDER BY imported_at DESC
+            ) = 1
+        """).fetchall()
 
-        columns = [desc[0] for desc in self.duckdb.conn.execute(
-            "SELECT member_id, member_name, phone, store_id, register_date, "
-            "chronic_disease, allergy_info, last_visit_date, batch_id "
-            "FROM members LIMIT 1"
+        col_names = [desc[0] for desc in self.duckdb.conn.execute(
+            "SELECT * FROM members LIMIT 1"
         ).description]
 
-        existing_map = {}
-        for row in existing_members:
-            row_dict = dict(zip(columns, row))
+        existing_map: dict[str, dict] = {}
+        for row in existing_rows:
+            row_dict = dict(zip(col_names, row))
             existing_map[row_dict["member_id"]] = row_dict
 
         minio_meta = self.minio.upload_dataframe(df, "members.csv", batch_id)
@@ -85,23 +95,26 @@ class DataPipeline:
 
         for rec in df.to_dicts():
             mid = rec.get("member_id")
-            if mid and mid in existing_map:
-                old_snapshot = existing_map[mid]
-                for field_name in _MEMBER_FIELDS:
-                    if field_name == "member_id":
-                        continue
-                    new_val = str(rec.get(field_name, "")) if rec.get(field_name) is not None else ""
-                    old_val = str(old_snapshot.get(field_name, "")) if old_snapshot.get(field_name) is not None else ""
-                    if new_val != old_val:
-                        self.duckdb.track_member_profile_change(
-                            change_id=f"CHG_{mid}_{field_name}_{batch_id}",
-                            member_id=mid,
-                            field_name=field_name,
-                            old_value=old_val,
-                            new_value=new_val,
-                            source_batch_id=batch_id,
-                            source_snapshot=json.dumps(old_snapshot, ensure_ascii=False),
-                        )
+            if not mid or mid not in existing_map:
+                continue
+
+            old_snapshot_raw = existing_map[mid]
+            old_snapshot = _serialize_snapshot(old_snapshot_raw)
+            snapshot_json = json.dumps(old_snapshot, ensure_ascii=False)
+
+            for field_name in _COMPARE_FIELDS:
+                new_val = str(rec.get(field_name, "")) if rec.get(field_name) is not None else ""
+                old_val = old_snapshot.get(field_name, "") or ""
+                if new_val != old_val:
+                    self.duckdb.track_member_profile_change(
+                        change_id=f"CHG_{mid}_{field_name}_{batch_id}",
+                        member_id=mid,
+                        field_name=field_name,
+                        old_value=old_val,
+                        new_value=new_val,
+                        source_batch_id=batch_id,
+                        source_snapshot=snapshot_json,
+                    )
 
         return {
             "batch_id": batch_id,
