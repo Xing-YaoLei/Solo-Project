@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireRole } from "@/lib/auth-guard";
+import { requireRole, parseRoleFromHeader, parseUserIdFromHeader } from "@/lib/auth-guard";
+import { getFollowUpDetail, addAnnotation, getUserById } from "@/lib/server-data";
 
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const role = request.headers.get("x-user-role") as any;
-  const userId = request.headers.get("x-user-id");
+  const role = parseRoleFromHeader(request.headers);
+  const userId = parseUserIdFromHeader(request.headers);
 
   const check = requireRole(role, ["admin", "manager", "staff"]);
   if (!check.allowed) {
@@ -22,7 +23,6 @@ export async function POST(
       );
     }
 
-    const { getFollowUpDetail, addAnnotation, users } = require("@/lib/data-store");
     const detail = getFollowUpDetail(params.id);
     if (!detail) {
       return NextResponse.json({ error: "回访记录不存在" }, { status: 404 });
@@ -34,13 +34,13 @@ export async function POST(
       );
     }
 
-    const createdByName =
-      (users as any[]).find((u: any) => u.id === userId)?.name || "未知";
+    const user = getUserById(userId || "");
+    const createdByName = user?.name || "未知";
     const annotation = addAnnotation(
       params.id,
       prescriptionId,
       content.trim(),
-      userId,
+      userId || "",
       createdByName
     );
     return NextResponse.json(annotation, { status: 201 });

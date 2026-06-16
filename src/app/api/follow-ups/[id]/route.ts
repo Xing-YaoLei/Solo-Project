@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireRole } from "@/lib/auth-guard";
+import { requireRole, parseRoleFromHeader, parseUserIdFromHeader } from "@/lib/auth-guard";
+import { getFollowUpDetail } from "@/lib/server-data";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const role = request.headers.get("x-user-role") as any;
-  const userId = request.headers.get("x-user-id");
+  const role = parseRoleFromHeader(request.headers);
+  const userId = parseUserIdFromHeader(request.headers);
 
   const check = requireRole(role, ["admin", "manager", "staff"]);
   if (!check.allowed) {
@@ -14,7 +15,6 @@ export async function GET(
   }
 
   try {
-    const { getFollowUpDetail } = require("@/lib/data-store");
     const detail = getFollowUpDetail(params.id);
     if (!detail) {
       return NextResponse.json({ error: "回访记录不存在" }, { status: 404 });

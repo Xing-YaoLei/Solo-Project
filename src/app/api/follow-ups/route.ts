@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireRole } from "@/lib/auth-guard";
+import { requireRole, parseRoleFromHeader, parseUserIdFromHeader } from "@/lib/auth-guard";
+import { getFollowUpsByAssignee } from "@/lib/server-data";
 
 export async function GET(request: NextRequest) {
-  const role = request.headers.get("x-user-role") as any;
-  const userId = request.headers.get("x-user-id");
+  const role = parseRoleFromHeader(request.headers);
+  const userId = parseUserIdFromHeader(request.headers);
 
   const check = requireRole(role, ["admin", "manager", "staff"]);
   if (!check.allowed) {
@@ -11,7 +12,6 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const { getFollowUpsByAssignee } = require("@/lib/data-store");
     const assigneeId = role === "staff" ? userId || null : null;
     const items = getFollowUpsByAssignee(assigneeId);
     return NextResponse.json({ items, total: items.length });

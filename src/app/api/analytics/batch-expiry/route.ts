@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireRole } from "@/lib/auth-guard";
+import { requireRole, parseRoleFromHeader } from "@/lib/auth-guard";
+import { getBatchExpiryData } from "@/lib/server-data";
 
 export async function GET(request: NextRequest) {
-  const role = request.headers.get("x-user-role") as any;
+  const role = parseRoleFromHeader(request.headers);
   const check = requireRole(role, ["admin", "manager"]);
   if (!check.allowed) {
     return NextResponse.json({ error: check.error }, { status: check.status });
   }
   try {
-    const { getBatchExpiryData } = require("@/lib/data-store");
-    return NextResponse.json(getBatchExpiryData());
+    const data = getBatchExpiryData();
+    return NextResponse.json(data);
   } catch (error) {
     return NextResponse.json(
       { error: "获取批号效期数据失败" },
