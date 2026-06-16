@@ -64,8 +64,9 @@
 | 前端 | **Dash 2.17.1** + **Plotly 5.22.0** | 交互式看板和图表 |
 | 样式 | **Dash Bootstrap Components** | 响应式UI |
 | 数据处理 | **Pandas 2.2.2** + **NumPy 1.26.4** | 指标计算和分析 |
-| 数据库 | **PostgreSQL** / **SQLite** | 数据持久化（默认SQLite） |
-| ORM | **SQLAlchemy 2.0.30** | 数据库操作 |
+| 数据库 | **PostgreSQL** / **SQLite** | 数据持久化（默认 PostgreSQL） |
+| PostgreSQL 驱动 | **psycopg v3** (`psycopg[binary]>=3.1,<4`) | SQLAlchemy 官方推荐驱动，Python 3.14 兼容 |
+| ORM | **SQLAlchemy `>=2.0.36,<3`** | 数据库操作，修复 Python 3.14 `FastIntFlag` 兼容性 |
 | 异步任务 | **Celery 5.4.0** + **Redis** | 定时任务和异步处理 |
 | 缓存 | **Flask-Caching** | 性能优化 |
 
@@ -100,11 +101,24 @@ MP0213/
 
 ## 🚀 快速开始
 
+> **数据库驱动说明**：当 `DATABASE_URL` 以 `postgresql://` 开头时，系统自动改写为 `postgresql+psycopg://`，由 **psycopg v3** 驱动连接（SQLAlchemy 官方推荐，Python 3.14 兼容）。已显式指定 `+psycopg` 的 URL 会原样保留。
+
+### 前置条件
+- PostgreSQL 服务运行在 `localhost:5432`，已创建数据库 `rehab_center`，账号 `postgres` / 密码 `password`
+- Redis 服务运行在 `localhost:6379`（供 Celery 任务队列使用，无 Redis 时看板仍可运行，仅无法执行定时任务）
+
 ### 方式一：一键启动（推荐）
 ```bash
 ./start.sh
 ```
-首次运行会自动初始化数据库并生成模拟数据。
+脚本会自动：
+1. 创建并激活虚拟环境
+2. 安装依赖：**SQLAlchemy `>=2.0.36,<3`** + **psycopg v3**（`psycopg[binary]>=3.1,<4`）+ Dash/Plotly/Pandas/Celery
+3. 使用代码默认的 PostgreSQL 连接串：`postgresql://postgres:password@localhost:5432/rehab_center`
+4. 验证 PostgreSQL 连接
+5. 启动 Dash 应用
+
+首次运行后需要手动初始化数据库与模拟数据（见方式二第 3–4 步）。
 
 ### 方式二：手动启动
 ```bash
@@ -113,17 +127,38 @@ python3 -m venv venv
 source venv/bin/activate
 
 # 2. 安装依赖
+#    - SQLAlchemy >=2.0.36,<3（Python 3.14 兼容性修复版本）
+#    - psycopg[binary]>=3.1,<4（PostgreSQL 驱动，v3 纯 Python + C 加速）
 pip install -r requirements.txt
 
-# 3. 初始化数据库
+# 3. 初始化数据库（在 PostgreSQL 中创建全部 13 张表）
+DATABASE_URL=postgresql://postgres:password@localhost:5432/rehab_center \
 python scripts/init_database.py
 
 # 4. 生成模拟数据
+DATABASE_URL=postgresql://postgres:password@localhost:5432/rehab_center \
 python scripts/mock_data_generator.py
 
-# 5. 启动应用
+# 5. 启动应用（未设置 DATABASE_URL 时，默认仍使用上面的 PostgreSQL 连接串）
+DATABASE_URL=postgresql://postgres:password@localhost:5432/rehab_center \
 python run.py
 ```
+
+> 💡 如需永久固化连接串，可复制 `.env.example` 为 `.env` 并修改其中的 `DATABASE_URL`。不提供 `.env` 时，系统以代码默认值为准。
+
+### 方式三：快速体验（SQLite 模式，无需 PostgreSQL）
+在项目根目录创建 `.env` 并写入：
+```env
+DATABASE_URL=sqlite:///rehab_center.db
+```
+然后执行：
+```bash
+pip install -r requirements.txt
+python scripts/init_database.py
+python scripts/mock_data_generator.py
+python run.py
+```
+或直接 `./start.sh`，脚本会检测到 SQLite URL 并自动初始化本地数据库。
 
 ### 访问应用
 打开浏览器访问：http://localhost:8050
