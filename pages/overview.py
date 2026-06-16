@@ -6,7 +6,10 @@ import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
 import polars as pl
-from datetime import datetime
+import sys
+import os
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.data_processor import (
     get_revisit_risk_overview,
@@ -21,43 +24,70 @@ def show_overview():
     """展示总览页面"""
     st.title("📊 复诊风险总览")
 
-    last_update = get_last_update_time()
-    if last_update:
-        st.caption(f"最后更新时间: {last_update.strftime('%Y-%m-%d %H:%M:%S')}")
-    else:
-        st.caption("暂无数据更新记录")
+    try:
+        last_update = get_last_update_time()
+        if last_update:
+            st.caption(f"最后更新时间: {last_update.strftime('%Y-%m-%d %H:%M:%S')}")
+        else:
+            st.caption("暂无数据更新记录")
+    except Exception as e:
+        st.warning(f"获取更新时间失败: {e}")
 
     role = st.session_state.current_role
 
-    df = get_revisit_risk_overview()
+    try:
+        df = get_revisit_risk_overview()
+    except Exception as e:
+        st.error(f"加载数据失败: {e}")
+        if st.button("重试", type="primary"):
+            st.rerun()
+        return
 
     if df.is_empty():
         st.warning("暂无数据，请先导入数据")
         return
 
-    _show_key_metrics(df)
+    try:
+        _show_key_metrics(df)
+    except Exception as e:
+        st.error(f"加载关键指标失败: {e}")
 
     st.markdown("---")
 
     col1, col2 = st.columns(2)
 
     with col1:
-        _show_risk_distribution(df)
+        try:
+            _show_risk_distribution(df)
+        except Exception as e:
+            st.error(f"加载风险分布失败: {e}")
 
     with col2:
-        _show_status_distribution(df)
+        try:
+            _show_status_distribution(df)
+        except Exception as e:
+            st.error(f"加载状态分布失败: {e}")
 
     st.markdown("---")
 
-    _show_doctor_revisit_rate(role)
+    try:
+        _show_doctor_revisit_rate(role)
+    except Exception as e:
+        st.error(f"加载医生复诊率失败: {e}")
 
     st.markdown("---")
 
-    _show_revisit_list(df, role)
+    try:
+        _show_revisit_list(df, role)
+    except Exception as e:
+        st.error(f"加载复诊列表失败: {e}")
 
     st.markdown("---")
 
-    _show_batch_history()
+    try:
+        _show_batch_history()
+    except Exception as e:
+        st.error(f"加载批次历史失败: {e}")
 
 
 def _show_key_metrics(df: pl.DataFrame):
@@ -82,7 +112,7 @@ def _show_key_metrics(df: pl.DataFrame):
         st.metric("待复诊", pending)
 
     with col4:
-        st.metric("爽约数", missed, delta=f"{round(missed/total*100, 1)}%", delta_color="inverse")
+        st.metric("爽约数", missed, delta=f"{round(missed/total*100, 1)}%" if total > 0 else None, delta_color="inverse")
 
     with col5:
         st.metric("复诊率", f"{revisit_rate}%")
@@ -148,18 +178,11 @@ def _show_doctor_revisit_rate(role: str):
     """展示医生复诊率排行"""
     st.subheader("👨‍⚕️ 医生复诊率排行")
 
-    rate_df = get_revisit_rate_by_doctor()
+    rate_df = get_revisit_rate_by_doctor(current_user=st.session_state.current_user, role=role)
 
     if rate_df.is_empty():
         st.info("暂无数据")
         return
-
-    if role == "frontline":
-        current_doctor = st.session_state.current_user
-        rate_df = rate_df.filter(pl.col("doctor_name") == current_doctor)
-        if rate_df.is_empty():
-            st.info("您暂无负责的患者数据")
-            return
 
     fig = px.bar(
         rate_df.to_pandas(),
@@ -184,29 +207,28 @@ def _show_revisit_list(df: pl.DataFrame, role: str):
     """展示复诊列表"""
     st.subheader("📋 复诊风险明细")
 
-    if role == "frontline":
-        current_doctor = st.session_state.current_user
-        df = df.filter(pl.col("responsible_doctor") == current_doctor)
-
     col1, col2, col3 = st.columns(3)
     with col1:
         status_filter = st.multiselect(
             "状态筛选",
             options=df["status"].unique().to_list(),
-            default=df["status"].unique().to_list()
+            default=df["status"].unique().to_list(),
+            key="overview_status_filter"
         )
     with col2:
         risk_filter = st.multiselect(
             "风险等级",
             options=["high", "medium", "normal"],
             default=["high", "medium", "normal"],
-            format_func=lambda x: {"high": "高风险", "medium": "中风险", "normal": "正常"}[x]
+            format_func=lambda x: {"high": "高风险", "medium": "中风险", "normal": "正常"}[x],
+            key="overview_risk_filter"
         )
     with col3:
         member_filter = st.multiselect(
             "会员等级",
             options=df["member_level"].unique().to_list(),
-            default=df["member_level"].unique().to_list()
+            default=df["member_level"].unique().to_list(),
+            key="overview_member_filter"
         )
 
     filtered_df = df.filter(
@@ -214,6 +236,8 @@ def _show_revisit_list(df: pl.DataFrame, role: str):
         pl.col("risk_level").is_in(risk_filter) &
         pl.col("member_level").is_in(member_filter)
     )
+
+    st.write(f"共 {len(filtered_df)} 条记录")
 
     display_df = filtered_df.select([
         "appointment_id",
@@ -260,8 +284,25 @@ def _show_batch_history():
         if batches.is_empty():
             st.info("暂无批次记录")
         else:
+            status_colors = {
+                "success": "🟢 成功",
+                "failed": "🔴 失败",
+                "processing": "🟡 处理中"
+            }
+
+            display_batches = batches.with_columns(
+                pl.col("status").replace(status_colors).alias("status_display")
+            ).select([
+                "batch_id",
+                "source_system",
+                "import_time",
+                "record_count",
+                "status_display",
+                "remark"
+            ])
+
             st.dataframe(
-                batches.to_pandas(),
+                display_batches.to_pandas(),
                 use_container_width=True,
                 hide_index=True,
                 column_config={
@@ -269,7 +310,7 @@ def _show_batch_history():
                     "source_system": "来源系统",
                     "import_time": "导入时间",
                     "record_count": "记录数",
-                    "status": "状态",
+                    "status_display": "状态",
                     "remark": "备注"
                 }
             )

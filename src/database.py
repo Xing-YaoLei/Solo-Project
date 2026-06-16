@@ -1,6 +1,9 @@
 """
 数据库连接和Schema管理模块
 基于DuckDB构建
+
+注意: DuckDB作为分析型数据库，外键约束支持有限
+本设计保留逻辑关联关系，通过业务代码保证数据一致性
 """
 import duckdb
 import os
@@ -45,8 +48,7 @@ def init_database():
             member_level VARCHAR,
             register_date DATE,
             responsible_doctor VARCHAR,
-            batch_id INTEGER,
-            FOREIGN KEY (batch_id) REFERENCES import_batches(batch_id)
+            batch_id INTEGER
         );
     """)
 
@@ -63,9 +65,7 @@ def init_database():
             is_member BOOLEAN DEFAULT true,
             risk_level VARCHAR DEFAULT 'normal',
             next_appointment_date DATE,
-            batch_id INTEGER,
-            FOREIGN KEY (patient_id) REFERENCES his_patients(patient_id),
-            FOREIGN KEY (batch_id) REFERENCES import_batches(batch_id)
+            batch_id INTEGER
         );
     """)
 
@@ -75,8 +75,7 @@ def init_database():
             appointment_id VARCHAR NOT NULL,
             note_text TEXT NOT NULL,
             created_by VARCHAR NOT NULL,
-            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (appointment_id) REFERENCES his_appointments(appointment_id)
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
     """)
 
@@ -90,10 +89,7 @@ def init_database():
             file_path VARCHAR,
             file_size BIGINT,
             description VARCHAR,
-            batch_id INTEGER,
-            FOREIGN KEY (patient_id) REFERENCES his_patients(patient_id),
-            FOREIGN KEY (appointment_id) REFERENCES his_appointments(appointment_id),
-            FOREIGN KEY (batch_id) REFERENCES import_batches(batch_id)
+            batch_id INTEGER
         );
     """)
 
@@ -107,10 +103,7 @@ def init_database():
             amount DECIMAL(10,2) NOT NULL,
             payment_method VARCHAR,
             is_paid BOOLEAN DEFAULT true,
-            batch_id INTEGER,
-            FOREIGN KEY (patient_id) REFERENCES his_patients(patient_id),
-            FOREIGN KEY (appointment_id) REFERENCES his_appointments(appointment_id),
-            FOREIGN KEY (batch_id) REFERENCES import_batches(batch_id)
+            batch_id INTEGER
         );
     """)
 
@@ -126,9 +119,7 @@ def init_database():
             expected_end_date DATE,
             status VARCHAR DEFAULT '进行中',
             doctor_name VARCHAR,
-            batch_id INTEGER,
-            FOREIGN KEY (patient_id) REFERENCES his_patients(patient_id),
-            FOREIGN KEY (batch_id) REFERENCES import_batches(batch_id)
+            batch_id INTEGER
         );
     """)
 
@@ -143,10 +134,7 @@ def init_database():
             create_date DATE NOT NULL,
             due_date DATE,
             complete_date DATE,
-            batch_id INTEGER,
-            FOREIGN KEY (patient_id) REFERENCES his_patients(patient_id),
-            FOREIGN KEY (appointment_id) REFERENCES his_appointments(appointment_id),
-            FOREIGN KEY (batch_id) REFERENCES import_batches(batch_id)
+            batch_id INTEGER
         );
     """)
 
@@ -171,6 +159,22 @@ def create_batch(conn, source_system, record_count=0, status='success', remark=N
         RETURNING batch_id
     """, [source_system, record_count, status, remark]).fetchone()
     return result[0] if result else None
+
+
+def update_batch_status(conn, batch_id, status, remark=None):
+    """更新批次状态"""
+    if remark:
+        conn.execute("""
+            UPDATE import_batches
+            SET status = ?, remark = ?
+            WHERE batch_id = ?
+        """, [status, remark, batch_id])
+    else:
+        conn.execute("""
+            UPDATE import_batches
+            SET status = ?
+            WHERE batch_id = ?
+        """, [status, batch_id])
 
 
 def get_latest_batch(conn, source_system):
