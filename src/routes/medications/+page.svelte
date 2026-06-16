@@ -451,7 +451,7 @@
 </div>
 
 {#if showAddModal}
-	<Modal title="新增用药记录" onClose={closeAddModal}>
+	<Modal title="新增用药记录" on:close={closeAddModal}>
 		{#if modalError}
 			<div class="mb-4 p-3 rounded-xl bg-danger-50 border border-danger-200 text-sm text-danger-700">
 				{modalError}

@@ -4,6 +4,10 @@ import { createTRPCRouter, protectedProcedure, createRoleMiddleware } from '../t
 import type { User, UserRole, PaginatedResult } from '../../../shared/types';
 import { mockUsers, generateId } from '../mockData';
 
+function toDate(date: Date | string): Date {
+  return date instanceof Date ? date : new Date(date);
+}
+
 let usersData: User[] = [...mockUsers];
 
 const adminRole = createRoleMiddleware('admin');
@@ -38,7 +42,7 @@ export const userRouter = createTRPCRouter({
         filtered = filtered.filter((u) => u.isActive === input.isActive);
       }
 
-      filtered.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      filtered.sort((a, b) => toDate(b.createdAt).getTime() - toDate(a.createdAt).getTime());
 
       const total = filtered.length;
       const start = (input.page - 1) * input.pageSize;

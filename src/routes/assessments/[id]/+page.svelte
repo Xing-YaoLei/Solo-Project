@@ -68,6 +68,7 @@
 
 	async function loadAll() {
 		const id = $page.params.id;
+		if (!id) return;
 		loading = true;
 		error = '';
 		try {
@@ -90,9 +91,10 @@
 			socialScore = a.socialScore;
 			selectedFinalLevelId = a.finalLevelId ?? '';
 
-			if (a.elderId) {
+			const elderId = a.elderId;
+			if (elderId) {
 				try {
-					elder = await trpc.elder.getById.query(a.elderId);
+					elder = await trpc.elder.getById.query(elderId);
 				} catch (e) {
 					// elder not found, continue
 				}
@@ -398,7 +400,7 @@
 									<select
 										bind:value={selectedFinalLevelId}
 										class="input"
-										disabled={assessment.status === 'closed'}
+										disabled={false}
 									>
 										<option value="">请选择护理等级</option>
 										{#each careLevels.filter((cl) => cl.isActive) as cl}
@@ -449,15 +451,17 @@
 			</div>
 
 			<div class="space-y-5">
-				<FlowPanel
-					entityType="assessment"
-					entityId={$page.params.id}
-					title="流程附件与备注"
-					bind:attachments
-					bind:remarks
-					bind:handlers
-					disabled={assessment.status === 'closed'}
-				/>
+				{#if $page.params.id}
+					<FlowPanel
+						entityType="assessment"
+						entityId={$page.params.id}
+						title="流程附件与备注"
+						bind:attachments
+						bind:remarks
+						bind:handlers
+						disabled={assessment.status === 'closed'}
+					/>
+				{/if}
 			</div>
 		</div>
 	{/if}

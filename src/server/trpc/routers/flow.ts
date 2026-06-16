@@ -13,6 +13,11 @@ import {
   generateId
 } from '../mockData';
 
+function toDate(date: Date | string | null | undefined): Date | null {
+  if (!date) return null;
+  return date instanceof Date ? date : new Date(date);
+}
+
 let attachmentsData: FlowAttachment[] = [...mockFlowAttachments];
 let remarksData: FlowRemark[] = [...mockFlowRemarks];
 const handlersData: FlowHandler[] = [...mockFlowHandlers];
@@ -32,7 +37,7 @@ export const flowRouter = createTRPCRouter({
         .filter(
           (a) => a.entityType === input.entityType && a.entityId === input.entityId
         )
-        .sort((a, b) => b.uploadedAt.getTime() - a.uploadedAt.getTime());
+        .sort((a, b) => toDate(b.uploadedAt)!.getTime() - toDate(a.uploadedAt)!.getTime());
     }),
 
   uploadAttachment: protectedProcedure
@@ -86,7 +91,7 @@ export const flowRouter = createTRPCRouter({
         .filter(
           (r) => r.entityType === input.entityType && r.entityId === input.entityId
         )
-        .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+        .sort((a, b) => toDate(a.createdAt)!.getTime() - toDate(b.createdAt)!.getTime());
     }),
 
   addRemark: protectedProcedure
@@ -123,8 +128,8 @@ export const flowRouter = createTRPCRouter({
           (h) => h.entityType === input.entityType && h.entityId === input.entityId
         )
         .sort((a, b) => {
-          const timeA = a.handledAt?.getTime() ?? 0;
-          const timeB = b.handledAt?.getTime() ?? 0;
+          const timeA = toDate(a.handledAt)?.getTime() ?? 0;
+          const timeB = toDate(b.handledAt)?.getTime() ?? 0;
           return timeA - timeB;
         });
     })

@@ -1,4 +1,5 @@
-import { createTRPCClient, httpLink, type TRPCClientInit } from '@trpc/client';
+import { createTRPCClient, httpLink } from '@trpc/client';
+import superjson from 'superjson';
 import type { AppRouter } from '$server/trpc/routers';
 
 let browserClient: ReturnType<typeof createTRPCClient<AppRouter>> | null = null;
@@ -12,7 +13,7 @@ function getToken(): string | null {
 	}
 }
 
-export function createTRPCProxyClient(init?: TRPCClientInit) {
+export function createTRPCProxyClient() {
 	const isBrowser = typeof window !== 'undefined';
 	if (isBrowser && browserClient) return browserClient;
 
@@ -20,6 +21,7 @@ export function createTRPCProxyClient(init?: TRPCClientInit) {
 		links: [
 			httpLink({
 				url: '/api/trpc',
+				transformer: superjson,
 				async fetch(url, options) {
 					const token = getToken();
 					const headers = new Headers(options?.headers ?? {});

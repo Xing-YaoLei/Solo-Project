@@ -9,12 +9,41 @@ import type {
 } from '../../../shared/types';
 import {
   mockIncidents,
+  mockIncidentParties,
   mockElders,
   mockUsers,
   generateId
 } from '../mockData';
 
-let incidentsData: Incident[] = JSON.parse(JSON.stringify(mockIncidents));
+function toDate(date: Date | string): Date {
+  return date instanceof Date ? date : new Date(date);
+}
+
+function deepCloneWithDates<T>(obj: T): T {
+  if (obj === null || obj === undefined) return obj;
+  if (obj instanceof Date) return new Date(obj.getTime()) as unknown as T;
+  if (Array.isArray(obj)) return obj.map(deepCloneWithDates) as unknown as T;
+  if (typeof obj === 'object') {
+    const cloned = {} as Record<string, unknown>;
+    for (const key of Object.keys(obj)) {
+      cloned[key] = deepCloneWithDates((obj as Record<string, unknown>)[key]);
+    }
+    return cloned as T;
+  }
+  return obj;
+}
+
+let incidentsData: Incident[] = deepCloneWithDates(mockIncidents);
+
+function hydrateIncident(incident: Incident): Incident {
+  const elder = mockElders.find((e) => e.id === incident.elderId);
+  const parties = mockIncidentParties.filter((p) => p.incidentId === incident.id);
+  return {
+    ...incident,
+    elder,
+    parties: parties.length > 0 ? parties : incident.parties ?? []
+  };
+}
 
 const staffRole = createRoleMiddleware('admin', 'supervisor', 'nurse', 'doctor');
 const supervisorOrAdmin = createRoleMiddleware('supervisor', 'admin');
@@ -43,11 +72,11 @@ export const incidentRouter = createTRPCRouter({
         filtered = filtered.filter((i) => i.elderId === input.elderId);
       }
 
-      filtered.sort((a, b) => b.reportedAt.getTime() - a.reportedAt.getTime());
+      filtered.sort((a, b) => toDate(b.reportedAt).getTime() - toDate(a.reportedAt).getTime());
 
       const total = filtered.length;
       const start = (input.page - 1) * input.pageSize;
-      const items = filtered.slice(start, start + input.pageSize);
+      const items = filtered.slice(start, start + input.pageSize).map(hydrateIncident);
 
       return {
         items,
@@ -64,7 +93,7 @@ export const incidentRouter = createTRPCRouter({
       if (!incident) {
         throw new TRPCError({ code: 'NOT_FOUND', message: '事件不存在' });
       }
-      return incident;
+      return hydrateIncident(incident);
     }),
 
   report: protectedProcedure

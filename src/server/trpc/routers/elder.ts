@@ -22,12 +22,13 @@ export const elderRouter = createTRPCRouter({
       let filtered = [...eldersData];
 
       if (input.search) {
-        const searchLower = input.search.toLowerCase();
+        const searchTerm = input.search;
+        const searchLower = searchTerm.toLowerCase();
         filtered = filtered.filter(
           (e) =>
             e.name.toLowerCase().includes(searchLower) ||
-            e.idCard.includes(input.search) ||
-            e.roomNumber?.toLowerCase().includes(searchLower)
+            e.idCard.includes(searchTerm) ||
+            (e.roomNumber ?? '').toLowerCase().includes(searchLower)
         );
       }
       if (input.gender) {
@@ -136,6 +137,8 @@ export const elderRouter = createTRPCRouter({
       const updated: Elder = {
         ...eldersData[index],
         ...input,
+        roomNumber: input.roomNumber ?? eldersData[index].roomNumber,
+        admissionDate: input.admissionDate ?? eldersData[index].admissionDate,
         updatedAt: new Date()
       };
       eldersData[index] = updated;

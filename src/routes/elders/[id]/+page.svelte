@@ -68,6 +68,7 @@
 	async function loadAll() {
 		loading = true;
 		const id = $page.params.id;
+		if (!id) return;
 		try {
 			const [e, a, m, v, i] = await Promise.all([
 				trpc.elder.getById.query(id),

@@ -1,6 +1,4 @@
-<script lang="ts">
-	import { cn } from '$lib/utils/cn';
-	import { Check, Circle } from 'lucide-svelte';
+<script lang="ts" context="module">
 	import type { ComponentType } from 'svelte';
 
 	export interface TimelineItem {
@@ -12,6 +10,11 @@
 		icon?: ComponentType;
 		extra?: unknown;
 	}
+</script>
+
+<script lang="ts">
+	import { cn } from '$lib/utils/cn';
+	import { Check, Circle } from 'lucide-svelte';
 
 	export let items: TimelineItem[] = [];
 	export let className = '';

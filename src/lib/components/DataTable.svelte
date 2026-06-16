@@ -1,7 +1,4 @@
-<script lang="ts">
-	import { cn } from '$lib/utils/cn';
-	import EmptyState from './EmptyState.svelte';
-	import { Loader2 } from 'lucide-svelte';
+<script lang="ts" context="module">
 	import type { ComponentType } from 'svelte';
 
 	export interface Column<T = unknown> {
@@ -13,6 +10,12 @@
 		component?: ComponentType;
 		componentProps?: (item: T, index: number) => Record<string, unknown>;
 	}
+</script>
+
+<script lang="ts">
+	import { cn } from '$lib/utils/cn';
+	import EmptyState from './EmptyState.svelte';
+	import { Loader2 } from 'lucide-svelte';
 
 	type ItemType = unknown;
 

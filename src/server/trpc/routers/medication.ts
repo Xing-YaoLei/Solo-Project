@@ -4,6 +4,10 @@ import { createTRPCRouter, protectedProcedure, createRoleMiddleware } from '../t
 import type { Medication, MedicationExecution, PaginatedResult } from '../../../shared/types';
 import { mockMedications, mockMedicationExecutions, generateId } from '../mockData';
 
+function toDate(date: Date | string): Date {
+  return date instanceof Date ? date : new Date(date);
+}
+
 let medicationsData: Medication[] = [...mockMedications];
 let executionsData: MedicationExecution[] = [...mockMedicationExecutions];
 
@@ -148,7 +152,7 @@ export const medicationRouter = createTRPCRouter({
         filtered = filtered.filter((e) => elderMeds.includes(e.medicationId));
       }
 
-      filtered.sort((a, b) => b.executedAt.getTime() - a.executedAt.getTime());
+      filtered.sort((a, b) => toDate(b.executedAt).getTime() - toDate(a.executedAt).getTime());
 
       const total = filtered.length;
       const start = (input.page - 1) * input.pageSize;

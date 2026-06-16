@@ -19,12 +19,14 @@
 
 	export let entityType: EntityType;
 	export let entityId: string;
+	export let title = '';
 	export let remarks: FlowRemark[] = [];
 	export let attachments: FlowAttachment[] = [];
 	export let handlers: FlowHandler[] = [];
 	export let canAddRemark = true;
 	export let canDeleteAttachment = false;
 	export let loading = false;
+	export let disabled = false;
 	export let className = '';
 
 	const dispatch = createEventDispatcher<{
@@ -112,6 +114,11 @@
 </script>
 
 <div class={cn('card overflow-hidden', className)}>
+	{#if title}
+		<div class="px-6 py-4 border-b border-gray-100">
+			<h3 class="text-lg font-semibold text-gray-800">{title}</h3>
+		</div>
+	{/if}
 	<div class="flex border-b border-gray-100">
 		{#each tabsWithCount as tab}
 			<button
@@ -143,15 +150,16 @@
 	<div class="p-4">
 		{#if activeTab === 'remarks'}
 			<div class="space-y-4">
-				{#if canAddRemark}
+				{#if canAddRemark && !disabled}
 					<div class="flex gap-3">
 						<div class="flex-1">
 							<textarea
 								bind:value={newRemark}
 								placeholder="添加备注..."
 								class="input resize-none min-h-[80px]"
+								disabled={disabled || submittingRemark}
 								on:keydown={(e) => {
-									if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+									if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && !disabled) {
 										handleAddRemark();
 									}
 								}}
@@ -161,7 +169,7 @@
 								<button
 									type="button"
 									on:click={handleAddRemark}
-									disabled={!newRemark.trim() || submittingRemark}
+									disabled={!newRemark.trim() || submittingRemark || disabled}
 									class="btn-primary py-2 px-4 text-sm"
 								>
 									<Send class="w-4 h-4" />

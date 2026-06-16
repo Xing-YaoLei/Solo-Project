@@ -2,7 +2,7 @@ import { Lucia, type Session, type User as LuciaUser } from 'lucia';
 import { PostgresJsAdapter } from '@lucia-auth/adapter-postgresql';
 import postgres from 'postgres';
 import type { UserRole, SessionUser } from '../../shared/types';
-import { getDb, type DbInstance } from '../db';
+import { getDb, type DbInstance, type Database } from '../db';
 import { mockUsers } from '../db/seed';
 
 declare module 'lucia' {
@@ -270,7 +270,8 @@ export async function login(email: string, password: string): Promise<{ session:
   }
 
   // TODO: Implement real password verification with hashing
-  const user = await dbInstance.db.query.users.findFirst({
+  const db = dbInstance.db as Database;
+  const user = await db.query.users.findFirst({
     where: (users, { eq, and }) => and(eq(users.email, email.toLowerCase()), eq(users.isActive, true))
   });
 

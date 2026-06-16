@@ -893,7 +893,10 @@ const mockFlowHandlers: FlowHandler[] = [
   }
 ];
 
-export interface MockTable<T extends { id: string; createdAt?: Date; updatedAt?: Date }> {
+type DateLike = Date | string;
+type MockTableConstraint = { id: string; createdAt?: DateLike; updatedAt?: DateLike };
+
+export interface MockTable<T extends MockTableConstraint> {
   findMany(): Promise<T[]>;
   findFirst(where?: Partial<T>): Promise<T | null>;
   findById(id: string): Promise<T | null>;
@@ -901,8 +904,6 @@ export interface MockTable<T extends { id: string; createdAt?: Date; updatedAt?:
   update(id: string, data: Partial<T>): Promise<T | null>;
   delete(id: string): Promise<boolean>;
 }
-
-type MockTableConstraint = { id: string; createdAt?: Date; updatedAt?: Date };
 
 function createMockTable<T extends MockTableConstraint>(initialData: T[]): MockTable<T> {
   const data: T[] = [...initialData];
@@ -926,8 +927,8 @@ function createMockTable<T extends MockTableConstraint>(initialData: T[]): MockT
       const record = {
         ...(input as unknown as Record<string, unknown>),
         id: input.id ?? uuid(),
-        createdAt: (input as { createdAt?: Date }).createdAt ?? timestamp,
-        updatedAt: (input as { updatedAt?: Date }).updatedAt ?? timestamp
+        createdAt: (input as { createdAt?: DateLike }).createdAt ?? timestamp,
+        updatedAt: (input as { updatedAt?: DateLike }).updatedAt ?? timestamp
       } as unknown as T;
       data.push(record);
       return record;

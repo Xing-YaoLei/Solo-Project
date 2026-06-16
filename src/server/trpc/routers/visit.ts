@@ -4,6 +4,10 @@ import { createTRPCRouter, protectedProcedure, createRoleMiddleware } from '../t
 import type { VisitRecord, PaginatedResult } from '../../../shared/types';
 import { mockVisitRecords, generateId } from '../mockData';
 
+function toDate(date: Date | string): Date {
+  return date instanceof Date ? date : new Date(date);
+}
+
 let visitRecordsData: VisitRecord[] = [...mockVisitRecords];
 
 const staffRole = createRoleMiddleware('admin', 'supervisor', 'nurse', 'doctor');
@@ -19,7 +23,7 @@ export const visitRouter = createTRPCRouter({
     )
     .query(({ input }): PaginatedResult<VisitRecord> => {
       let filtered = visitRecordsData.filter((v) => v.elderId === input.elderId);
-      filtered.sort((a, b) => b.visitTime.getTime() - a.visitTime.getTime());
+      filtered.sort((a, b) => toDate(b.visitTime).getTime() - toDate(a.visitTime).getTime());
 
       const total = filtered.length;
       const start = (input.page - 1) * input.pageSize;
@@ -129,7 +133,10 @@ export const visitRouter = createTRPCRouter({
       tomorrow.setDate(tomorrow.getDate() + 1);
 
       return visitRecordsData
-        .filter((v) => v.visitTime >= today && v.visitTime < tomorrow)
-        .sort((a, b) => b.visitTime.getTime() - a.visitTime.getTime());
+        .filter((v) => {
+          const vt = toDate(v.visitTime);
+          return vt >= today && vt < tomorrow;
+        })
+        .sort((a, b) => toDate(b.visitTime).getTime() - toDate(a.visitTime).getTime());
     })
 });

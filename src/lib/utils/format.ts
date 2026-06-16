@@ -1,8 +1,18 @@
 import type { AssessmentStatus, ElderStatus, IncidentStatus } from '$shared/types';
 
+export function ensureDate(date: Date | string | null | undefined): Date | null {
+	if (!date) return null;
+	if (date instanceof Date && !isNaN(date.getTime())) return date;
+	if (typeof date === 'string') {
+		const d = new Date(date);
+		if (!isNaN(d.getTime())) return d;
+	}
+	return null;
+}
+
 export function formatDate(date: Date | string | null | undefined): string {
-	if (!date) return '-';
-	const d = typeof date === 'string' ? new Date(date) : date;
+	const d = ensureDate(date);
+	if (!d) return '-';
 	const year = d.getFullYear();
 	const month = String(d.getMonth() + 1).padStart(2, '0');
 	const day = String(d.getDate()).padStart(2, '0');
@@ -10,8 +20,8 @@ export function formatDate(date: Date | string | null | undefined): string {
 }
 
 export function formatDateTime(date: Date | string | null | undefined): string {
-	if (!date) return '-';
-	const d = typeof date === 'string' ? new Date(date) : date;
+	const d = ensureDate(date);
+	if (!d) return '-';
 	const year = d.getFullYear();
 	const month = String(d.getMonth() + 1).padStart(2, '0');
 	const day = String(d.getDate()).padStart(2, '0');
@@ -21,8 +31,8 @@ export function formatDateTime(date: Date | string | null | undefined): string {
 }
 
 export function formatRelativeTime(date: Date | string | null | undefined): string {
-	if (!date) return '-';
-	const d = typeof date === 'string' ? new Date(date) : date;
+	const d = ensureDate(date);
+	if (!d) return '-';
 	const now = new Date();
 	const diffMs = now.getTime() - d.getTime();
 	const diffSec = Math.floor(diffMs / 1000);

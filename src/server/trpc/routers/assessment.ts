@@ -10,6 +10,10 @@ import {
   generateId
 } from '../mockData';
 
+function toDate(date: Date | string): Date {
+  return date instanceof Date ? date : new Date(date);
+}
+
 let assessmentsData: Assessment[] = [...mockAssessments];
 const flowHandlers = [...mockFlowHandlers];
 
@@ -46,7 +50,7 @@ export const assessmentRouter = createTRPCRouter({
         filtered = filtered.filter((a) => a.status === input.status);
       }
 
-      filtered.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      filtered.sort((a, b) => toDate(b.createdAt).getTime() - toDate(a.createdAt).getTime());
 
       const total = filtered.length;
       const start = (input.page - 1) * input.pageSize;
@@ -231,7 +235,7 @@ export const assessmentRouter = createTRPCRouter({
     .use(supervisorOrAdmin)
     .input(z.string().min(1))
     .mutation(({ input, ctx }): Assessment => {
-      const index = assessmentsData.findIndex((a) => a.id === input.id);
+      const index = assessmentsData.findIndex((a) => a.id === input);
       if (index === -1) {
         throw new TRPCError({ code: 'NOT_FOUND', message: '评估不存在' });
       }
@@ -246,7 +250,7 @@ export const assessmentRouter = createTRPCRouter({
       flowHandlers.push({
         id: generateId(),
         entityType: 'assessment',
-        entityId: input.id,
+        entityId: input,
         stepName: STEP_NAMES[STEP_NAMES.length - 1],
         userId: ctx.user?.id,
         userName: ctx.user?.name,

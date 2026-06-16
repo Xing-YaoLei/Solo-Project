@@ -29,23 +29,21 @@
 	let newIncidentDescription = '';
 	let submitting = false;
 	let modalError = '';
-
-	const elders = [
-		{ id: '00000000-0000-0000-0000-000000000201', name: '陈秀英' },
-		{ id: '00000000-0000-0000-0000-000000000202', name: '王建国' },
-		{ id: '00000000-0000-0000-0000-000000000203', name: '刘淑芬' },
-		{ id: '00000000-0000-0000-0000-000000000204', name: '赵德财' }
-	];
+	let elders: { id: string; name: string }[] = [];
 
 	async function loadIncidents() {
 		loading = true;
 		try {
-			const result = await trpc.incident.list.query({
-				status: activeTab === 'all' ? undefined : activeTab,
-				page: 1,
-				pageSize: 50
-			});
-			incidents = result.items;
+			const [incidentResult, elderResult] = await Promise.all([
+				trpc.incident.list.query({
+					status: activeTab === 'all' ? undefined : activeTab,
+					page: 1,
+					pageSize: 50
+				}),
+				trpc.elder.list.query({ page: 1, pageSize: 100 })
+			]);
+			incidents = incidentResult.items;
+			elders = elderResult.items.map((e) => ({ id: e.id, name: e.name }));
 		} catch (e) {
 			console.error(e);
 		} finally {

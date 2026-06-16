@@ -1,41 +1,43 @@
+export type DateLike = Date | string;
+
 export type UserRole = 'admin' | 'supervisor' | 'nurse' | 'doctor' | 'family';
 
 export interface User {
-  id: string;
-  email: string;
-  name: string;
-  role: UserRole;
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
+	id: string;
+	email: string;
+	name: string;
+	role: UserRole;
+	isActive: boolean;
+	createdAt: DateLike;
+	updatedAt: DateLike;
 }
 
 export interface SessionUser {
-  id: string;
-  email: string;
-  name: string;
-  role: UserRole;
+	id: string;
+	email: string;
+	name: string;
+	role: UserRole;
 }
 
 export type ElderStatus = 'pending' | 'admitted' | 'discharged';
 
 export interface Elder {
-  id: string;
-  name: string;
-  gender: 'male' | 'female';
-  birthDate: Date;
-  idCard: string;
-  roomNumber: string;
-  admissionDate: Date;
-  status: ElderStatus;
-  careLevelId: string | null;
-  avatar: string | null;
-  allergies: string[];
-  medicalHistory: string[];
-  emergencyContact: { name: string; phone: string; relation: string };
-  createdAt: Date;
-  updatedAt: Date;
-  careLevel?: CareLevel | null;
+	id: string;
+	name: string;
+	gender: 'male' | 'female';
+	birthDate: DateLike;
+	idCard: string;
+	roomNumber: string;
+	admissionDate: DateLike;
+	status: ElderStatus;
+	careLevelId: string | null;
+	avatar: string | null;
+	allergies: string[];
+	medicalHistory: string[];
+	emergencyContact: { name: string; phone: string; relation: string };
+	createdAt: DateLike;
+	updatedAt: DateLike;
+	careLevel?: CareLevel | null;
 }
 
 export interface CareLevel {
@@ -56,58 +58,58 @@ export type AssessmentStatus =
   | 'closed';
 
 export interface Assessment {
-  id: string;
-  elderId: string;
-  status: AssessmentStatus;
-  adlScore: number;
-  cognitionScore: number;
-  emotionScore: number;
-  socialScore: number;
-  totalScore: number;
-  suggestedLevelId: string | null;
-  finalLevelId: string | null;
-  currentStep: number;
-  createdAt: Date;
-  updatedAt: Date;
-  elder?: Elder;
-  suggestedLevel?: CareLevel | null;
-  finalLevel?: CareLevel | null;
+	id: string;
+	elderId: string;
+	status: AssessmentStatus;
+	adlScore: number;
+	cognitionScore: number;
+	emotionScore: number;
+	socialScore: number;
+	totalScore: number;
+	suggestedLevelId: string | null;
+	finalLevelId: string | null;
+	currentStep: number;
+	createdAt: DateLike;
+	updatedAt: DateLike;
+	elder?: Elder;
+	suggestedLevel?: CareLevel | null;
+	finalLevel?: CareLevel | null;
 }
 
 export interface Medication {
-  id: string;
-  elderId: string;
-  name: string;
-  dosage: string;
-  frequency: string;
-  route: string;
-  startDate: Date;
-  endDate: Date | null;
-  prescribedBy: string;
-  notes: string;
-  isActive: boolean;
+	id: string;
+	elderId: string;
+	name: string;
+	dosage: string;
+	frequency: string;
+	route: string;
+	startDate: DateLike;
+	endDate: DateLike | null;
+	prescribedBy: string;
+	notes: string;
+	isActive: boolean;
 }
 
 export interface MedicationExecution {
-  id: string;
-  medicationId: string;
-  executedAt: Date;
-  executedBy: string;
-  signature: string | null;
-  isAbnormal: boolean;
-  abnormalNote: string | null;
+	id: string;
+	medicationId: string;
+	executedAt: DateLike;
+	executedBy: string;
+	signature: string | null;
+	isAbnormal: boolean;
+	abnormalNote: string | null;
 }
 
 export interface VisitRecord {
-  id: string;
-  elderId: string;
-  visitorName: string;
-  relation: string;
-  visitorPhone: string;
-  visitTime: Date;
-  leaveTime: Date | null;
-  notes: string;
-  recordedBy: string;
+	id: string;
+	elderId: string;
+	visitorName: string;
+	relation: string;
+	visitorPhone: string;
+	visitTime: DateLike;
+	leaveTime: DateLike | null;
+	notes: string;
+	recordedBy: string;
 }
 
 export type IncidentType = 'fall' | 'other';
@@ -117,65 +119,65 @@ export type IncidentStatus = 'reported' | 'supplementing' | 'confirming' | 'clos
 export type PartyRoleType = 'elder' | 'nurse' | 'supervisor' | 'witness' | 'doctor';
 
 export interface Incident {
-  id: string;
-  elderId: string;
-  type: IncidentType;
-  status: IncidentStatus;
-  reportedAt: Date;
-  reportedBy: string;
-  location: string;
-  description: string;
-  closedAt: Date | null;
-  summary: string | null;
-  correctiveActions: string[];
-  elder?: Elder;
-  parties?: IncidentParty[];
+	id: string;
+	elderId: string;
+	type: IncidentType;
+	status: IncidentStatus;
+	reportedAt: DateLike;
+	reportedBy: string;
+	location: string;
+	description: string;
+	closedAt: DateLike | null;
+	summary: string | null;
+	correctiveActions: string[];
+	elder?: Elder;
+	parties?: IncidentParty[];
 }
 
 export interface IncidentParty {
-  id: string;
-  incidentId: string;
-  roleType: PartyRoleType;
-  userId: string | null;
-  personName: string;
-  description: string | null;
-  supplementAt: Date | null;
-  isResponsible: boolean | null;
-  responsibilityType: 'direct' | 'indirect' | null;
+	id: string;
+	incidentId: string;
+	roleType: PartyRoleType;
+	userId: string | null;
+	personName: string;
+	description: string | null;
+	supplementAt: DateLike | null;
+	isResponsible: boolean | null;
+	responsibilityType: 'direct' | 'indirect' | null;
 }
 
 export type EntityType = 'assessment' | 'incident' | 'elder' | 'medication' | 'visit';
 
 export interface FlowAttachment {
-  id: string;
-  entityType: EntityType;
-  entityId: string;
-  fileName: string;
-  fileUrl: string;
-  fileSize: number;
-  mimeType: string;
-  uploadedBy: string;
-  uploadedAt: Date;
+	id: string;
+	entityType: EntityType;
+	entityId: string;
+	fileName: string;
+	fileUrl: string;
+	fileSize: number;
+	mimeType: string;
+	uploadedBy: string;
+	uploadedAt: DateLike;
 }
 
 export interface FlowRemark {
-  id: string;
-  entityType: EntityType;
-  entityId: string;
-  content: string;
-  createdBy: string;
-  createdAt: Date;
+	id: string;
+	entityType: EntityType;
+	entityId: string;
+	content: string;
+	createdBy: string;
+	createdAt: DateLike;
 }
 
 export interface FlowHandler {
-  id: string;
-  entityType: 'assessment' | 'incident';
-  entityId: string;
-  stepName: string;
-  userId: string;
-  userName: string;
-  handledAt: Date | null;
-  action: string;
+	id: string;
+	entityType: 'assessment' | 'incident';
+	entityId: string;
+	stepName: string;
+	userId: string;
+	userName: string;
+	handledAt: DateLike | null;
+	action: string;
 }
 
 export interface DashboardStats {

@@ -14,10 +14,10 @@
 	let error = '';
 
 	const testAccounts: { email: string; password: string; role: UserRole; label: string }[] = [
-		{ email: 'admin@eldercare.com', password: 'admin123', role: 'admin', label: '机构管理员' },
-		{ email: 'supervisor@eldercare.com', password: 'super123', role: 'supervisor', label: '护理主管' },
-		{ email: 'nurse@eldercare.com', password: 'nurse123', role: 'nurse', label: '护理员' },
-		{ email: 'doctor@eldercare.com', password: 'doctor123', role: 'doctor', label: '驻院医生' }
+		{ email: 'admin@eldercare.com', password: 'password123', role: 'admin', label: '机构管理员' },
+		{ email: 'supervisor@eldercare.com', password: 'password123', role: 'supervisor', label: '护理主管' },
+		{ email: 'nurse@eldercare.com', password: 'password123', role: 'nurse', label: '护理员' },
+		{ email: 'doctor@eldercare.com', password: 'password123', role: 'doctor', label: '驻院医生' }
 	];
 
 	function fillAccount(account: typeof testAccounts[0]) {

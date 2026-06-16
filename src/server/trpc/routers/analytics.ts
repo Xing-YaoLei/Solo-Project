@@ -9,6 +9,11 @@ import {
   mockMedicationExecutions
 } from '../mockData';
 
+function toDate(date: Date | string | null | undefined): Date | null {
+  if (!date) return null;
+  return date instanceof Date ? date : new Date(date);
+}
+
 const adminOrSupervisor = createRoleMiddleware('admin', 'supervisor');
 
 export const analyticsRouter = createTRPCRouter({
@@ -22,7 +27,10 @@ export const analyticsRouter = createTRPCRouter({
     tomorrow.setDate(tomorrow.getDate() + 1);
 
     const todayAssessments = mockAssessments.filter(
-      (a) => a.createdAt >= today && a.createdAt < tomorrow
+      (a) => {
+        const d = toDate(a.createdAt)!;
+        return d >= today && d < tomorrow;
+      }
     ).length;
 
     const activeIncidents = mockIncidents.filter(
@@ -98,7 +106,10 @@ export const analyticsRouter = createTRPCRouter({
         nextDay.setDate(nextDay.getDate() + 1);
 
         const count = mockIncidents.filter(
-          (i) => i.reportedAt >= date && i.reportedAt < nextDay
+          (i) => {
+            const d = toDate(i.reportedAt)!;
+            return d >= date && d < nextDay;
+          }
         ).length;
 
         dailyData.push({
@@ -127,7 +138,10 @@ export const analyticsRouter = createTRPCRouter({
       startDate.setDate(startDate.getDate() - input.days);
 
       const filtered = mockMedicationExecutions.filter(
-        (e) => e.executedAt >= startDate
+        (e) => {
+          const d = toDate(e.executedAt)!;
+          return d >= startDate;
+        }
       );
 
       const total = filtered.length;
@@ -142,7 +156,10 @@ export const analyticsRouter = createTRPCRouter({
         nextDay.setDate(nextDay.getDate() + 1);
 
         const dayExecutions = mockMedicationExecutions.filter(
-          (e) => e.executedAt >= date && e.executedAt < nextDay
+          (e) => {
+            const d = toDate(e.executedAt)!;
+            return d >= date && d < nextDay;
+          }
         );
         const dayTotal = dayExecutions.length;
         const dayNormal = dayExecutions.filter((e) => !e.isAbnormal).length;
@@ -224,10 +241,10 @@ export const analyticsRouter = createTRPCRouter({
           data = mockElders.map((e) => ({
             姓名: e.name,
             性别: e.gender === 'male' ? '男' : '女',
-            出生日期: e.birthDate.toISOString().slice(0, 10),
+            出生日期: toDate(e.birthDate)!.toISOString().slice(0, 10),
             身份证号: e.idCard,
             房间号: e.roomNumber,
-            入住日期: e.admissionDate?.toISOString().slice(0, 10) ?? '',
+            入住日期: toDate(e.admissionDate)?.toISOString().slice(0, 10) ?? '',
             状态: e.status === 'pending' ? '待入住' : e.status === 'admitted' ? '已入住' : '已出院',
             护理等级: e.careLevel?.name ?? '未评定'
           }));
@@ -244,7 +261,7 @@ export const analyticsRouter = createTRPCRouter({
             总分: a.totalScore,
             建议等级: a.suggestedLevel?.name ?? '',
             最终等级: a.finalLevel?.name ?? '',
-            创建时间: a.createdAt.toISOString()
+            创建时间: toDate(a.createdAt)!.toISOString()
           }));
           filename = `评估记录_${new Date().toISOString().slice(0, 10)}.${input.format}`;
           break;
@@ -256,14 +273,14 @@ export const analyticsRouter = createTRPCRouter({
             上报人: i.reportedBy,
             地点: i.location,
             描述: i.description,
-            上报时间: i.reportedAt.toISOString(),
-            关闭时间: i.closedAt?.toISOString() ?? ''
+            上报时间: toDate(i.reportedAt)!.toISOString(),
+            关闭时间: toDate(i.closedAt)?.toISOString() ?? ''
           }));
           filename = `事件记录_${new Date().toISOString().slice(0, 10)}.${input.format}`;
           break;
         case 'medications':
           data = mockMedicationExecutions.map((m) => ({
-            执行时间: m.executedAt.toISOString(),
+            执行时间: toDate(m.executedAt)!.toISOString(),
             执行人: m.executedBy,
             是否异常: m.isAbnormal ? '是' : '否',
             异常备注: m.abnormalNote ?? ''
