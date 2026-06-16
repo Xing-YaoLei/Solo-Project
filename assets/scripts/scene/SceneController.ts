@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, Prefab, instantiate, resources, TiledMap, TiledLayer, find, UITransform, Vec3, log, warn, error } from 'cc';
+import { _decorator, Component, Node, resources, TiledMap, TiledLayer, UITransform, Vec3, Label, Color, log, warn, error } from 'cc';
 import { ConfigTypes } from '../types/ConfigTypes';
 import { ConfigManager } from '../core/ConfigManager';
 import { GameManager } from '../core/GameManager';
@@ -13,12 +13,6 @@ export class SceneController extends Component {
 
     @property(Node)
     interactiveObjectsContainer: Node | null = null;
-
-    @property(Prefab)
-    interactiveObjectPrefab: Prefab | null = null;
-
-    @property(Prefab)
-    npcPrefab: Prefab | null = null;
 
     private currentSceneConfig: ConfigTypes.SceneConfig | null = null;
     private tiledMapNode: Node | null = null;
@@ -104,17 +98,12 @@ export class SceneController extends Component {
     }
 
     private createInteractiveObjects(objects: ConfigTypes.InteractiveObject[]): void {
-        if (!this.interactiveObjectsContainer || !this.interactiveObjectPrefab) return;
+        if (!this.interactiveObjectsContainer) return;
 
         objects.forEach((obj, index) => {
-            const node = instantiate(this.interactiveObjectPrefab!);
+            const node = this.createInteractiveObjectNode(obj);
             node.name = obj.id;
             node.setPosition(this.calculateObjectPosition(index, objects.length));
-
-            const handler = node.getComponent('InteractiveObjectHandler');
-            if (handler) {
-                (handler as any).setup(obj);
-            }
 
             node.on(Node.EventType.TOUCH_END, () => {
                 this.onInteractiveObjectClicked(obj);
@@ -125,6 +114,34 @@ export class SceneController extends Component {
         });
     }
 
+    private createInteractiveObjectNode(obj: ConfigTypes.InteractiveObject): Node {
+        const node = new Node(obj.id);
+        const ut = node.addComponent(UITransform);
+        ut.setContentSize(120, 80);
+
+        const nameLabel = this.addLabel(node, obj.name, 11, new Color(33, 33, 33), 120, 24, 0, -20);
+        const typeLabel = this.addLabel(node, obj.type, 9, new Color(100, 100, 100), 120, 20, 0, 10);
+
+        return node;
+    }
+
+    private addLabel(parent: Node, text: string, fontSize: number, color: Color, w: number, h: number, x: number, y: number): Label {
+        const n = new Node('Label');
+        parent.addChild(n);
+        const ut = n.addComponent(UITransform);
+        ut.setContentSize(w, h);
+        n.setPosition(x, y, 0);
+        const label = n.addComponent(Label);
+        label.string = text;
+        label.fontSize = fontSize;
+        label.lineHeight = fontSize * 1.2;
+        label.horizontalAlign = Label.HorizontalAlign.CENTER;
+        label.verticalAlign = Label.VerticalAlign.CENTER;
+        label.overflow = Label.Overflow.CLAMP;
+        label.color = color;
+        return label;
+    }
+
     private calculateObjectPosition(index: number, total: number): Vec3 {
         const startX = -400;
         const spacing = 200;
@@ -133,17 +150,12 @@ export class SceneController extends Component {
     }
 
     private createNPCs(npcs: ConfigTypes.NPCConfig[]): void {
-        if (!this.interactiveObjectsContainer || !this.npcPrefab) return;
+        if (!this.interactiveObjectsContainer) return;
 
         npcs.forEach((npc, index) => {
-            const node = instantiate(this.npcPrefab!);
+            const node = this.createNPCNode(npc);
             node.name = npc.id;
             node.setPosition(new Vec3(300 + index * 150, 0, 0));
-
-            const handler = node.getComponent('NPCHandler');
-            if (handler) {
-                (handler as any).setup(npc);
-            }
 
             node.on(Node.EventType.TOUCH_END, () => {
                 this.onNPCClicked(npc);
@@ -152,6 +164,17 @@ export class SceneController extends Component {
             this.interactiveObjectsContainer.addChild(node);
             this.npcNodes.set(npc.id, node);
         });
+    }
+
+    private createNPCNode(npc: ConfigTypes.NPCConfig): Node {
+        const node = new Node(npc.id);
+        const ut = node.addComponent(UITransform);
+        ut.setContentSize(80, 100);
+
+        const nameLabel = this.addLabel(node, npc.name, 11, new Color(33, 33, 33), 80, 20, 0, -30);
+        const roleLabel = this.addLabel(node, npc.role, 9, new Color(100, 100, 100), 80, 20, 0, 10);
+
+        return node;
     }
 
     private onInteractiveObjectClicked(obj: ConfigTypes.InteractiveObject): void {

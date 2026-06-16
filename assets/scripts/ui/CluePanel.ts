@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, Label, Sprite, Prefab, instantiate, ScrollView, Color, resources, SpriteFrame } from 'cc';
+import { _decorator, Component, Node, Label, Sprite, UITransform, ScrollView, Color, resources, SpriteFrame } from 'cc';
 import { ConfigTypes } from '../types/ConfigTypes';
 import { GameManager } from '../core/GameManager';
 
@@ -162,9 +162,6 @@ export class CluePanel extends Component {
     @property(Node)
     clueContainer: Node | null = null;
 
-    @property(Prefab)
-    clueCardPrefab: Prefab | null = null;
-
     @property(Node)
     observeCompleteButton: Node | null = null;
 
@@ -195,7 +192,7 @@ export class CluePanel extends Component {
         }
         this.clueCards = [];
 
-        if (!this.clueCardPrefab || !this.clueContainer) return;
+        if (!this.clueContainer) return;
 
         const task = GameManager.instance.getCurrentTask();
         if (this.titleLabel && task) {
@@ -203,7 +200,7 @@ export class CluePanel extends Component {
         }
 
         clues.forEach(clue => {
-            const node = instantiate(this.clueCardPrefab!);
+            const node = this.createClueCardNode();
             const card = node.getComponent(ClueCard) || node.addComponent(ClueCard);
             card.setup(clue);
             this.clueContainer!.addChild(node);
@@ -211,6 +208,103 @@ export class CluePanel extends Component {
         });
 
         this.node.active = clues.length > 0;
+    }
+
+    private createClueCardNode(): Node {
+        const node = new Node('ClueCard');
+        const rootUt = node.addComponent(UITransform);
+        rootUt.setContentSize(500, 80);
+        const card = node.addComponent(ClueCard);
+
+        const nameLabelNode = new Node('NameLabel');
+        node.addChild(nameLabelNode);
+        const nameLabelUt = nameLabelNode.addComponent(UITransform);
+        nameLabelUt.setContentSize(200, 30);
+        nameLabelNode.setPosition(-80, 15, 0);
+        const nameLabel = nameLabelNode.addComponent(Label);
+        nameLabel.string = '';
+        nameLabel.fontSize = 24;
+        nameLabel.lineHeight = 28;
+        nameLabel.horizontalAlign = Label.HorizontalAlign.CENTER;
+        nameLabel.verticalAlign = Label.VerticalAlign.CENTER;
+        card.nameLabel = nameLabel;
+
+        const categoryLabelNode = new Node('CategoryLabel');
+        node.addChild(categoryLabelNode);
+        const categoryLabelUt = categoryLabelNode.addComponent(UITransform);
+        categoryLabelUt.setContentSize(120, 24);
+        categoryLabelNode.setPosition(-80, -15, 0);
+        const categoryLabel = categoryLabelNode.addComponent(Label);
+        categoryLabel.string = '';
+        categoryLabel.fontSize = 18;
+        categoryLabel.lineHeight = 22;
+        categoryLabel.horizontalAlign = Label.HorizontalAlign.CENTER;
+        categoryLabel.verticalAlign = Label.VerticalAlign.CENTER;
+        card.categoryLabel = categoryLabel;
+
+        const importanceLabelNode = new Node('ImportanceLabel');
+        node.addChild(importanceLabelNode);
+        const importanceLabelUt = importanceLabelNode.addComponent(UITransform);
+        importanceLabelUt.setContentSize(100, 24);
+        importanceLabelNode.setPosition(80, -15, 0);
+        const importanceLabel = importanceLabelNode.addComponent(Label);
+        importanceLabel.string = '';
+        importanceLabel.fontSize = 18;
+        importanceLabel.lineHeight = 22;
+        importanceLabel.horizontalAlign = Label.HorizontalAlign.CENTER;
+        importanceLabel.verticalAlign = Label.VerticalAlign.CENTER;
+        card.importanceLabel = importanceLabel;
+
+        const iconSpriteNode = new Node('IconSprite');
+        node.addChild(iconSpriteNode);
+        const iconSpriteUt = iconSpriteNode.addComponent(UITransform);
+        iconSpriteUt.setContentSize(60, 60);
+        iconSpriteNode.setPosition(-210, 0, 0);
+        card.iconSprite = iconSpriteNode.addComponent(Sprite);
+
+        const viewedIndicatorNode = new Node('ViewedIndicator');
+        node.addChild(viewedIndicatorNode);
+        const viewedIndicatorUt = viewedIndicatorNode.addComponent(UITransform);
+        viewedIndicatorUt.setContentSize(20, 20);
+        viewedIndicatorNode.setPosition(220, 0, 0);
+        card.viewedIndicator = viewedIndicatorNode;
+
+        const detailPanelNode = new Node('DetailPanel');
+        node.addChild(detailPanelNode);
+        const detailPanelUt = detailPanelNode.addComponent(UITransform);
+        detailPanelUt.setContentSize(480, 200);
+        detailPanelNode.setPosition(0, -140, 0);
+        detailPanelNode.active = false;
+
+        const detailContentLabelNode = new Node('DetailContentLabel');
+        detailPanelNode.addChild(detailContentLabelNode);
+        const detailContentLabelUt = detailContentLabelNode.addComponent(UITransform);
+        detailContentLabelUt.setContentSize(460, 120);
+        detailContentLabelNode.setPosition(0, 40, 0);
+        const detailContentLabel = detailContentLabelNode.addComponent(Label);
+        detailContentLabel.string = '';
+        detailContentLabel.fontSize = 20;
+        detailContentLabel.lineHeight = 24;
+        detailContentLabel.horizontalAlign = Label.HorizontalAlign.CENTER;
+        detailContentLabel.verticalAlign = Label.VerticalAlign.CENTER;
+        card.detailContentLabel = detailContentLabel;
+
+        const detailHintLabelNode = new Node('DetailHintLabel');
+        detailPanelNode.addChild(detailHintLabelNode);
+        const detailHintLabelUt = detailHintLabelNode.addComponent(UITransform);
+        detailHintLabelUt.setContentSize(460, 40);
+        detailHintLabelNode.setPosition(0, -60, 0);
+        const detailHintLabel = detailHintLabelNode.addComponent(Label);
+        detailHintLabel.string = '';
+        detailHintLabel.fontSize = 18;
+        detailHintLabel.lineHeight = 22;
+        detailHintLabel.horizontalAlign = Label.HorizontalAlign.CENTER;
+        detailHintLabel.verticalAlign = Label.VerticalAlign.CENTER;
+        card.detailHintLabel = detailHintLabel;
+
+        card.detailPanel = detailPanelNode;
+
+        return node;
     }
 
     private onObserveComplete(): void {

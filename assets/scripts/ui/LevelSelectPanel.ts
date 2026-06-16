@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, Label, Sprite, Prefab, instantiate, Color, ScrollView } from 'cc';
+import { _decorator, Component, Node, Label, Sprite, UITransform, Color, ScrollView } from 'cc';
 import { ConfigTypes } from '../types/ConfigTypes';
 import { GameTypes } from '../types/GameTypes';
 import { ConfigManager } from '../core/ConfigManager';
@@ -96,9 +96,6 @@ export class LevelSelectPanel extends Component {
     @property(Node)
     levelContainer: Node | null = null;
 
-    @property(Prefab)
-    levelCardPrefab: Prefab | null = null;
-
     @property(Label)
     totalScoreLabel: Label | null = null;
 
@@ -133,14 +130,91 @@ export class LevelSelectPanel extends Component {
         this.levelCards = [];
 
         const levels = ConfigManager.instance.getAllLevels();
-        if (!this.levelCardPrefab || !this.levelContainer) return;
+        if (!this.levelContainer) return;
 
         levels.forEach(level => {
-            const node = instantiate(this.levelCardPrefab!);
+            const node = this.createLevelCardNode();
             const card = node.getComponent(LevelCard) || node.addComponent(LevelCard);
             card.setup(level);
             this.levelContainer!.addChild(node);
             this.levelCards.push(card);
         });
+    }
+
+    private createLevelCardNode(): Node {
+        const node = new Node('LevelCard');
+        const ut = node.addComponent(UITransform);
+        ut.setContentSize(660, 100);
+        const card = node.addComponent(LevelCard);
+
+        const levelNameNode = new Node('LevelNameLabel');
+        node.addChild(levelNameNode);
+        const levelNameUt = levelNameNode.addComponent(UITransform);
+        levelNameUt.setContentSize(300, 28);
+        levelNameNode.setPosition(-140, 20, 0);
+        const levelNameLabel = levelNameNode.addComponent(Label);
+        levelNameLabel.string = '';
+        levelNameLabel.fontSize = 28;
+        levelNameLabel.lineHeight = 28 * 1.2;
+        levelNameLabel.horizontalAlign = Label.HorizontalAlign.CENTER;
+        levelNameLabel.verticalAlign = Label.VerticalAlign.CENTER;
+
+        const levelDescNode = new Node('LevelDescLabel');
+        node.addChild(levelDescNode);
+        const levelDescUt = levelDescNode.addComponent(UITransform);
+        levelDescUt.setContentSize(300, 20);
+        levelDescNode.setPosition(-140, -10, 0);
+        const levelDescLabel = levelDescNode.addComponent(Label);
+        levelDescLabel.string = '';
+        levelDescLabel.fontSize = 12;
+        levelDescLabel.lineHeight = 12 * 1.2;
+        levelDescLabel.horizontalAlign = Label.HorizontalAlign.CENTER;
+        levelDescLabel.verticalAlign = Label.VerticalAlign.CENTER;
+        levelDescLabel.color = Color.GRAY;
+
+        const difficultyNode = new Node('DifficultyLabel');
+        node.addChild(difficultyNode);
+        const difficultyUt = difficultyNode.addComponent(UITransform);
+        difficultyUt.setContentSize(100, 24);
+        difficultyNode.setPosition(200, 20, 0);
+        const difficultyLabel = difficultyNode.addComponent(Label);
+        difficultyLabel.string = '';
+        difficultyLabel.fontSize = 14;
+        difficultyLabel.lineHeight = 14 * 1.2;
+        difficultyLabel.horizontalAlign = Label.HorizontalAlign.CENTER;
+        difficultyLabel.verticalAlign = Label.VerticalAlign.CENTER;
+
+        const lockedMaskNode = new Node('LockedMask');
+        node.addChild(lockedMaskNode);
+        const lockedMaskUt = lockedMaskNode.addComponent(UITransform);
+        lockedMaskUt.setContentSize(660, 100);
+        lockedMaskNode.active = false;
+
+        const bestScoreNode = new Node('BestScoreLabel');
+        node.addChild(bestScoreNode);
+        const bestScoreUt = bestScoreNode.addComponent(UITransform);
+        bestScoreUt.setContentSize(200, 20);
+        bestScoreNode.setPosition(0, -40, 0);
+        const bestScoreLabel = bestScoreNode.addComponent(Label);
+        bestScoreLabel.string = '';
+        bestScoreLabel.fontSize = 12;
+        bestScoreLabel.lineHeight = 12 * 1.2;
+        bestScoreLabel.horizontalAlign = Label.HorizontalAlign.CENTER;
+        bestScoreLabel.verticalAlign = Label.VerticalAlign.CENTER;
+
+        const starsNode = new Node('StarsContainer');
+        node.addChild(starsNode);
+        const starsUt = starsNode.addComponent(UITransform);
+        starsUt.setContentSize(150, 24);
+        starsNode.setPosition(250, -10, 0);
+
+        card.levelNameLabel = levelNameLabel;
+        card.levelDescLabel = levelDescLabel;
+        card.difficultyLabel = difficultyLabel;
+        card.lockedMask = lockedMaskNode;
+        card.bestScoreLabel = bestScoreLabel;
+        card.starsContainer = starsNode;
+
+        return node;
     }
 }

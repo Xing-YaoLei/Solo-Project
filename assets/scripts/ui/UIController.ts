@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, Prefab, instantiate, find, log, warn, Label, Color } from 'cc';
+import { _decorator, Component, Node, log, warn, Label, Color } from 'cc';
 import { GameTypes } from '../types/GameTypes';
 import { GameManager, GameEvent } from '../core/GameManager';
 import { ConfigManager } from '../core/ConfigManager';
@@ -104,7 +104,7 @@ export class UIController extends Component {
         this.actionPanel?.refresh();
     }
 
-    private showLevelSelect(): void {
+    public showLevelSelect(): void {
         this.levelSelectRoot?.setActive(true);
         this.gameplayRoot?.setActive(false);
         this.settlementRoot?.setActive(false);
@@ -162,8 +162,8 @@ export class UIController extends Component {
     private updateTabButtonState(activeTab: string): void {
         const setActive = (btn: Node | null, active: boolean) => {
             if (!btn) return;
-            const labels = btn.getComponentsInChildren(Label as any);
-            labels.forEach(l => {
+            const labels = btn.getComponentsInChildren(Label);
+            labels.forEach((l: Label) => {
                 l.color = active ? new Color(21, 101, 192) : new Color(97, 97, 97);
             });
         };

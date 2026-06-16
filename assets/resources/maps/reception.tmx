@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <map version="1.5" tiledversion="1.8.4" orientation="orthogonal" renderorder="right-down" width="24" height="16" tilewidth="32" tileheight="32" infinite="0" nextlayerid="3" nextobjectid="7">
- <tileset firstgid="1" name="placeholder_tiles" tilewidth="32" tileheight="32" tilecount="4" columns="2">
+ <tileset firstgid="1" name="tiles" tilewidth="32" tileheight="32" tilecount="4" columns="2">
   <grid orientation="orthogonal" width="1" height="1"/>
   <tile id="0">
    <properties>
@@ -22,7 +22,8 @@
     <property name="type" value="desk"/>
    </properties>
   </tile>
- </tileset>
+  <image source="tileset.png" width="96" height="64"/>
+</tileset>
  <layer id="1" name="Floor" width="24" height="16">
   <data encoding="csv">
 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,

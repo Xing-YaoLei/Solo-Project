@@ -31,7 +31,31 @@ export class GameBootstrap extends Component {
     private isInitialized: boolean = false;
 
     start(): void {
+        this.resolveReferences();
         this.initializeGame();
+    }
+
+    private resolveReferences(): void {
+        if (!this.gameManager) {
+            const gmNode = find('GameManager');
+            if (gmNode) this.gameManager = gmNode.getComponent(GameManager);
+        }
+        if (!this.uiController) {
+            const uiNode = find('UIController');
+            if (uiNode) this.uiController = uiNode.getComponent(UIController);
+        }
+        if (!this.hudController) {
+            const hudNode = find('HUDController');
+            if (hudNode) this.hudController = hudNode.getComponent(HUDController);
+        }
+        if (!this.tutorialController) {
+            const tutNode = find('TutorialController');
+            if (tutNode) this.tutorialController = tutNode.getComponent(TutorialController);
+        }
+        if (!this.sceneController) {
+            const scNode = find('SceneController');
+            if (scNode) this.sceneController = scNode.getComponent(SceneController);
+        }
     }
 
     private initializeGame(): void {

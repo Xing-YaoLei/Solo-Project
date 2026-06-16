@@ -6,7 +6,7 @@
       "name": "患者基本信息表",
       "description": "显示患者姓名、性别、年龄、身份证号、医保类型等基本字段",
       "category": "DOCUMENT",
-      "spritePath": "clues/form_icon",
+      "spritePath": "textures/icon_clue_doc",
       "content": {
         "name": "张建国",
         "gender": "男",
@@ -23,7 +23,7 @@
       "name": "就诊卡",
       "description": "患者的医院就诊卡片",
       "category": "PHYSICAL",
-      "spritePath": "clues/card_icon",
+      "spritePath": "textures/icon_clue_physical",
       "content": {
         "patientId": "P20240115001",
         "visitCount": 1,
@@ -37,12 +37,15 @@
       "name": "患者主诉记录",
       "description": "患者口述的主要不适",
       "category": "DOCUMENT",
-      "spritePath": "clues/note_icon",
+      "spritePath": "textures/icon_clue_doc",
       "content": {
         "chiefComplaint": "右侧肢体活动不利3天",
         "duration": "3天",
         "onsetMode": "安静状态下突发",
-        "accompanyingSymptoms": ["言语稍欠流利", "右侧口角歪斜"]
+        "accompanyingSymptoms": [
+          "言语稍欠流利",
+          "右侧口角歪斜"
+        ]
       },
       "importance": "CRITICAL",
       "hint": "典型的脑卒中发病表现，需要重点关注"
@@ -52,7 +55,7 @@
       "name": "既往史问卷",
       "description": "患者既往健康状况问卷",
       "category": "DOCUMENT",
-      "spritePath": "clues/questionnaire_icon",
+      "spritePath": "textures/icon_clue_doc",
       "content": {
         "hypertension": "10年，规律服药，血压控制尚可",
         "diabetes": "5年，口服降糖药",
@@ -69,7 +72,7 @@
       "name": "生命体征记录单",
       "description": "入院时的生命体征数据",
       "category": "DOCUMENT",
-      "spritePath": "clues/vitals_icon",
+      "spritePath": "textures/icon_clue_doc",
       "content": {
         "temperature": "36.5°C",
         "pulse": 78,
@@ -86,7 +89,7 @@
       "name": "头颅CT/MRI报告",
       "description": "神经影像学检查结果",
       "category": "DOCUMENT",
-      "spritePath": "clues/scan_icon",
+      "spritePath": "textures/icon_clue_doc",
       "content": {
         "examType": "头颅MRI+DWI",
         "findings": "左侧基底节区急性脑梗死，范围约2.5×1.8cm",
@@ -101,7 +104,7 @@
       "name": "NIHSS评分参考卡",
       "description": "美国国立卫生院卒中量表使用参考",
       "category": "REFERENCE",
-      "spritePath": "clues/scale_icon",
+      "spritePath": "textures/icon_clue_doc",
       "content": {
         "totalScore": "0-42分",
         "severity": {
@@ -110,7 +113,19 @@
           "moderateSevere": "16-20分：中重型",
           "severe": "21-42分：重型"
         },
-        "subscales": ["意识水平", "凝视", "视野", "面瘫", "上肢运动", "下肢运动", "共济失调", "感觉", "语言", "构音障碍", "忽视症"]
+        "subscales": [
+          "意识水平",
+          "凝视",
+          "视野",
+          "面瘫",
+          "上肢运动",
+          "下肢运动",
+          "共济失调",
+          "感觉",
+          "语言",
+          "构音障碍",
+          "忽视症"
+        ]
       },
       "importance": "HIGH",
       "hint": "逐项评估，不要遗漏任何子项"
@@ -120,7 +135,7 @@
       "name": "患者功能视频片段",
       "description": "患者入院时的功能状态录像截图",
       "category": "MEDIA",
-      "spritePath": "clues/video_icon",
+      "spritePath": "textures/icon_clue_physical",
       "content": {
         "observations": [
           "右侧上肢只能在床面平移，不能抬离床面",
@@ -137,11 +152,19 @@
       "name": "康复预后评估工具",
       "description": "脑卒中功能预后的参考资料",
       "category": "REFERENCE",
-      "spritePath": "clues/prognosis_icon",
+      "spritePath": "textures/icon_clue_doc",
       "content": {
         "predictors": {
-          "positive": ["年龄<65岁", "发病1周内NIHSS<10分", "早期康复介入"],
-          "negative": ["糖尿病控制不佳", "既往卒中史", "严重认知障碍"]
+          "positive": [
+            "年龄<65岁",
+            "发病1周内NIHSS<10分",
+            "早期康复介入"
+          ],
+          "negative": [
+            "糖尿病控制不佳",
+            "既往卒中史",
+            "严重认知障碍"
+          ]
         },
         "recoveryTimeline": {
           "1month": "神经功能快速恢复阶段",
@@ -157,7 +180,7 @@
       "name": "患者及家属期望调查表",
       "description": "患者和家属对康复效果的期待",
       "category": "DOCUMENT",
-      "spritePath": "clues/survey_icon",
+      "spritePath": "textures/icon_clue_doc",
       "content": {
         "patientExpectation": "希望能重新回到工作岗位，恢复正常生活",
         "familyExpectation": "生活能自理就满意了，不要求太多",
@@ -172,7 +195,7 @@
       "name": "医保康复项目目录（节选）",
       "description": "当地医保可报销的康复治疗项目及限价",
       "category": "REFERENCE",
-      "spritePath": "clues/insurance_icon",
+      "spritePath": "textures/icon_insurance",
       "content": {
         "PT": {
           "name": "运动疗法",
@@ -215,11 +238,14 @@
       "name": "术前X线片",
       "description": "患者受伤时的影像资料",
       "category": "MEDIA",
-      "spritePath": "clues/xray_icon",
+      "spritePath": "textures/icon_clue_physical",
       "content": {
         "fractureType": "左胫骨平台骨折 Schatzker Ⅲ型",
         "displacement": "外侧平台塌陷约8mm",
-        "associatedInjuries": ["外侧半月板损伤可疑", "前交叉韧带止点撕脱待排"]
+        "associatedInjuries": [
+          "外侧半月板损伤可疑",
+          "前交叉韧带止点撕脱待排"
+        ]
       },
       "importance": "CRITICAL",
       "hint": "关节内骨折需要精确复位，否则远期创伤性关节炎风险高"
@@ -229,7 +255,7 @@
       "name": "术后X线片（第3天）",
       "description": "内固定术后复查影像",
       "category": "MEDIA",
-      "spritePath": "clues/xray_icon",
+      "spritePath": "textures/icon_clue_physical",
       "content": {
         "fixationType": "外侧锁定钢板支撑植骨",
         "reductionQuality": "关节面平整，塌陷纠正满意",
@@ -244,7 +270,7 @@
       "name": "ROM测量记录模板",
       "description": "关节活动度测量的标准体位和记录方式",
       "category": "REFERENCE",
-      "spritePath": "clues/goniometer_icon",
+      "spritePath": "textures/icon_clue_doc",
       "content": {
         "knee": {
           "flexion": {
@@ -274,7 +300,7 @@
       "name": "MMT肌力分级标准",
       "description": "徒手肌力检查的6级分级标准",
       "category": "REFERENCE",
-      "spritePath": "clues/mmt_icon",
+      "spritePath": "textures/icon_clue_doc",
       "content": {
         "grade5": "能对抗最大阻力完成全关节活动范围运动",
         "grade4": "能对抗中等强度阻力完成全关节活动范围运动",
@@ -291,30 +317,62 @@
       "name": "胫骨平台骨折康复临床路径",
       "description": "中华医学会推荐的康复分期及内容",
       "category": "REFERENCE",
-      "spritePath": "clues/pathway_icon",
+      "spritePath": "textures/icon_clue_doc",
       "content": {
         "phase1": {
           "period": "术后0-2周",
-          "goals": ["控制肿胀疼痛", "预防血栓", "维持髌骨活动度"],
-          "interventions": ["踝泵", "股四头肌等长收缩", "CPM机被动活动0-60°", "物理因子消肿"],
+          "goals": [
+            "控制肿胀疼痛",
+            "预防血栓",
+            "维持髌骨活动度"
+          ],
+          "interventions": [
+            "踝泵",
+            "股四头肌等长收缩",
+            "CPM机被动活动0-60°",
+            "物理因子消肿"
+          ],
           "weightBearing": "完全非负重"
         },
         "phase2": {
           "period": "术后2-6周",
-          "goals": ["膝关节被动ROM达到90°", "预防肌肉萎缩"],
-          "interventions": ["渐进性被动ROM", "直腿抬高", "本体感觉训练"],
+          "goals": [
+            "膝关节被动ROM达到90°",
+            "预防肌肉萎缩"
+          ],
+          "interventions": [
+            "渐进性被动ROM",
+            "直腿抬高",
+            "本体感觉训练"
+          ],
           "weightBearing": "足尖点地(<10kg)"
         },
         "phase3": {
           "period": "术后6-12周",
-          "goals": ["ROM接近健侧", "肌力恢复至4级", "逐步全负重"],
-          "interventions": ["主动ROM训练", "渐进性抗阻训练", "平衡训练", "步态训练"],
+          "goals": [
+            "ROM接近健侧",
+            "肌力恢复至4级",
+            "逐步全负重"
+          ],
+          "interventions": [
+            "主动ROM训练",
+            "渐进性抗阻训练",
+            "平衡训练",
+            "步态训练"
+          ],
           "weightBearing": "部分负重→全负重过渡"
         },
         "phase4": {
           "period": "术后12周以后",
-          "goals": ["功能性能力恢复", "重返生活/工作"],
-          "interventions": ["功能性训练", "专项运动训练", "患者教育"],
+          "goals": [
+            "功能性能力恢复",
+            "重返生活/工作"
+          ],
+          "interventions": [
+            "功能性训练",
+            "专项运动训练",
+            "患者教育"
+          ],
           "weightBearing": "全负重"
         }
       },
@@ -326,7 +384,7 @@
       "name": "骨科康复医保稽核重点提示",
       "description": "当地医保局发布的骨科康复常见违规情形",
       "category": "REFERENCE",
-      "spritePath": "clues/audit_icon",
+      "spritePath": "textures/icon_warning",
       "content": {
         "commonViolations": [
           "同一收费编码同日多次申报（如运动疗法申报4次/日）",
@@ -350,17 +408,44 @@
       "name": "老年综合评估(CGA)包内容清单",
       "description": "老年医学科常用评估工具包",
       "category": "REFERENCE",
-      "spritePath": "clues/cga_icon",
+      "spritePath": "textures/icon_clue_doc",
       "content": {
         "domains": {
-          "physicalFunction": ["ADL(Barthel指数)", "IADL(Lawton量表)", "步态与平衡(Tinetti)"],
-          "cognition": ["MMSE简易精神状态检查表", "MoCA蒙特利尔认知评估"],
-          "mood": ["GDS老年抑郁量表", "SAS焦虑自评量表"],
-          "nutrition": ["MNA微型营养评估"],
-          "sensory": ["视力评估", "听力评估"],
-          "socialSupport": ["社会支持评定量表", "照护者负担量表"],
-          "medication": ["用药清单核查", "Beers标准筛查"],
-          "geriatricSyndromes": ["跌倒评估", "压疮评估", "睡眠评估", "尿失禁评估", "疼痛评估"]
+          "physicalFunction": [
+            "ADL(Barthel指数)",
+            "IADL(Lawton量表)",
+            "步态与平衡(Tinetti)"
+          ],
+          "cognition": [
+            "MMSE简易精神状态检查表",
+            "MoCA蒙特利尔认知评估"
+          ],
+          "mood": [
+            "GDS老年抑郁量表",
+            "SAS焦虑自评量表"
+          ],
+          "nutrition": [
+            "MNA微型营养评估"
+          ],
+          "sensory": [
+            "视力评估",
+            "听力评估"
+          ],
+          "socialSupport": [
+            "社会支持评定量表",
+            "照护者负担量表"
+          ],
+          "medication": [
+            "用药清单核查",
+            "Beers标准筛查"
+          ],
+          "geriatricSyndromes": [
+            "跌倒评估",
+            "压疮评估",
+            "睡眠评估",
+            "尿失禁评估",
+            "疼痛评估"
+          ]
         }
       },
       "importance": "HIGH",
@@ -371,7 +456,7 @@
       "name": "MMSE认知筛查结果",
       "description": "患者的简易精神状态检查得分",
       "category": "DOCUMENT",
-      "spritePath": "clues/mmse_icon",
+      "spritePath": "textures/icon_clue_doc",
       "content": {
         "totalScore": 24,
         "maxScore": 30,
@@ -398,12 +483,19 @@
       "name": "GDS-15抑郁筛查结果",
       "description": "老年抑郁量表简版评估记录",
       "category": "DOCUMENT",
-      "spritePath": "clues/gds_icon",
+      "spritePath": "textures/icon_clue_doc",
       "content": {
         "score": 8,
         "maxScore": 15,
         "interpretation": "8分提示可能存在抑郁症状，建议进一步临床访谈",
-        "positiveItems": ["对生活基本满意？→否", "觉得生活空虚？→是", "常感到无聊？→是", "经常感到无助？→有时", "担心会有坏事发生？→有时", "对多数活动失去兴趣？→是"],
+        "positiveItems": [
+          "对生活基本满意？→否",
+          "觉得生活空虚？→是",
+          "常感到无聊？→是",
+          "经常感到无助？→有时",
+          "担心会有坏事发生？→有时",
+          "对多数活动失去兴趣？→是"
+        ],
         "recommendation": "1. 转诊老年精神科/心理科会诊；2. 康复训练中增加社会参与类活动；3. 照护者注意观察有无自杀倾向"
       },
       "importance": "HIGH",
@@ -414,7 +506,7 @@
       "name": "MNA营养评估结果",
       "description": "微型营养评估简版记录",
       "category": "DOCUMENT",
-      "spritePath": "clues/mna_icon",
+      "spritePath": "textures/icon_clue_doc",
       "content": {
         "totalScore": 9,
         "maxScore": 14,
@@ -437,7 +529,7 @@
       "name": "患者用药清单及Beers筛查",
       "description": "患者服用的所有药物及潜在不适当用药标记",
       "category": "DOCUMENT",
-      "spritePath": "clues/meds_icon",
+      "spritePath": "textures/icon_clue_doc",
       "content": {
         "medicationList": [
           {
@@ -488,7 +580,7 @@
       "name": "Morse跌倒风险评估量表",
       "description": "住院患者跌倒风险评估工具",
       "category": "REFERENCE",
-      "spritePath": "clues/fall_icon",
+      "spritePath": "textures/icon_warning",
       "content": {
         "scoringSheet": {
           "fallHistory": {
@@ -532,7 +624,7 @@
       "name": "患者居家环境评估报告",
       "description": "出院前家访时对居家环境的安全性评估",
       "category": "DOCUMENT",
-      "spritePath": "clues/home_icon",
+      "spritePath": "textures/icon_clue_doc",
       "content": {
         "livingSituation": "与配偶同住，子女住同小区，步行10分钟",
         "housingType": "老式多层住宅，4楼无电梯，楼梯间无扶手",
@@ -560,7 +652,7 @@
       "name": "DRG付费规则说明（老年康复相关）",
       "description": "本地区DRG付费对老年综合康复的相关规定",
       "category": "REFERENCE",
-      "spritePath": "clues/drg_icon",
+      "spritePath": "textures/icon_insurance",
       "content": {
         "relatedGroups": {
           "BR23": {

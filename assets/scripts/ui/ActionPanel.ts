@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, Label, Prefab, instantiate, Color, Sprite, Button } from 'cc';
+import { _decorator, Component, Node, Label, UITransform, Color, Sprite, Button } from 'cc';
 import { ConfigTypes } from '../types/ConfigTypes';
 import { GameManager } from '../core/GameManager';
 
@@ -112,9 +112,6 @@ export class ActionPanel extends Component {
     @property(Node)
     optionsContainer: Node | null = null;
 
-    @property(Prefab)
-    optionPrefab: Prefab | null = null;
-
     @property(Label)
     hintLabel: Label | null = null;
 
@@ -162,10 +159,10 @@ export class ActionPanel extends Component {
             this.proceedButton.active = false;
         }
 
-        if (!this.optionPrefab || !this.optionsContainer) return;
+        if (!this.optionsContainer) return;
 
         options.forEach((opt, index) => {
-            const node = instantiate(this.optionPrefab!);
+            const node = this.createOptionNode();
             const component = node.getComponent(ActionOption) || node.addComponent(ActionOption);
             component.setup(opt, index, this.onOptionSelected.bind(this));
             this.optionsContainer!.addChild(node);
@@ -182,6 +179,48 @@ export class ActionPanel extends Component {
                 this.hintLabel.string = '💡 请结合线索资料，做出最专业的判断';
             }
         }
+    }
+
+    private createOptionNode(): Node {
+        const node = new Node('ActionOption');
+        const ut = node.addComponent(UITransform);
+        ut.setContentSize(530, 48);
+
+        const backgroundSprite = node.addComponent(Sprite);
+        const optionButton = node.addComponent(Button);
+        const actionOption = node.addComponent(ActionOption);
+
+        const optionTextNode = new Node('OptionTextLabel');
+        node.addChild(optionTextNode);
+        const optionTextUt = optionTextNode.addComponent(UITransform);
+        optionTextUt.setContentSize(460, 36);
+        optionTextNode.setPosition(-30, 0, 0);
+        const optionTextLabel = optionTextNode.addComponent(Label);
+        optionTextLabel.string = '';
+        optionTextLabel.fontSize = 24;
+        optionTextLabel.lineHeight = 28.8;
+        optionTextLabel.horizontalAlign = Label.HorizontalAlign.CENTER;
+        optionTextLabel.verticalAlign = Label.VerticalAlign.CENTER;
+
+        const riskIndicatorNode = new Node('RiskIndicatorLabel');
+        node.addChild(riskIndicatorNode);
+        const riskIndicatorUt = riskIndicatorNode.addComponent(UITransform);
+        riskIndicatorUt.setContentSize(300, 24);
+        riskIndicatorNode.setPosition(0, -28, 0);
+        const riskIndicatorLabel = riskIndicatorNode.addComponent(Label);
+        riskIndicatorLabel.string = '';
+        riskIndicatorLabel.fontSize = 12;
+        riskIndicatorLabel.lineHeight = 14.4;
+        riskIndicatorLabel.horizontalAlign = Label.HorizontalAlign.CENTER;
+        riskIndicatorLabel.verticalAlign = Label.VerticalAlign.CENTER;
+        riskIndicatorLabel.color = new Color(255, 0, 0);
+
+        actionOption.optionTextLabel = optionTextLabel;
+        actionOption.riskIndicatorLabel = riskIndicatorLabel;
+        actionOption.backgroundSprite = backgroundSprite;
+        actionOption.optionButton = optionButton;
+
+        return node;
     }
 
     private onOptionSelected(option: ConfigTypes.ActionOption, index: number): void {

@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, Label, Sprite, ProgressBar, Color, ScrollView, Prefab, instantiate } from 'cc';
+import { _decorator, Component, Node, Label, Sprite, ProgressBar, Color, ScrollView, UITransform } from 'cc';
 import { GameTypes } from '../types/GameTypes';
 import { ConfigTypes } from '../types/ConfigTypes';
 import { GameManager } from '../core/GameManager';
@@ -101,9 +101,6 @@ export class SettlementPanel extends Component {
     @property(Node)
     billingContainer: Node | null = null;
 
-    @property(Prefab)
-    billingItemPrefab: Prefab | null = null;
-
     @property(Label)
     totalCostLabel: Label | null = null;
 
@@ -174,8 +171,8 @@ export class SettlementPanel extends Component {
             this.timeSpentLabel.string = this.formatTime(session.totalTimeSpent);
         }
 
-        const taskResults = Object.values(session.taskProgress);
-        const correctCount = taskResults.filter(p => p.scoreEarned >= 0).length;
+        const taskResults = Object.values(session.taskProgress) as any[];
+        const correctCount = taskResults.filter((p: any) => p.scoreEarned >= 0).length;
         if (this.correctCountLabel) {
             const label = this.correctCountLabel.getComponent(Label) || this.correctCountLabel.getComponentInChildren(Label);
             if (label) label.string = `正确: ${correctCount}/${taskResults.length}`;
@@ -231,10 +228,10 @@ export class SettlementPanel extends Component {
             this.billingContainer.removeAllChildren();
         }
 
-        if (!this.billingItemPrefab || !this.billingContainer) return;
+        if (!this.billingContainer) return;
 
         settlement.billingItems.forEach(item => {
-            const node = instantiate(this.billingItemPrefab!);
+            const node = this.createBillingItemNode();
             const row = node.getComponent(BillingItemRow) || node.addComponent(BillingItemRow);
             row.setup(item);
             this.billingContainer!.addChild(node);
@@ -278,6 +275,81 @@ export class SettlementPanel extends Component {
             this.nursingLogPanel?.setActive(false);
             this.billingDetailPanel?.setActive(true);
         }
+    }
+
+    private createBillingItemNode(): Node {
+        const node = new Node('BillingItem');
+        const ut = node.addComponent(UITransform);
+        ut.setContentSize(530, 28);
+        const row = node.addComponent(BillingItemRow);
+
+        const nameLabelNode = new Node('NameLabel');
+        node.addChild(nameLabelNode);
+        const nameLabelUt = nameLabelNode.addComponent(UITransform);
+        nameLabelUt.setContentSize(200, 24);
+        nameLabelNode.setPosition(-150, 0, 0);
+        const nameLabel = nameLabelNode.addComponent(Label);
+        nameLabel.string = '';
+        nameLabel.fontSize = 12;
+        nameLabel.lineHeight = 14.4;
+        nameLabel.horizontalAlign = Label.HorizontalAlign.CENTER;
+        nameLabel.verticalAlign = Label.VerticalAlign.CENTER;
+        row.nameLabel = nameLabel;
+
+        const codeLabelNode = new Node('CodeLabel');
+        node.addChild(codeLabelNode);
+        const codeLabelUt = codeLabelNode.addComponent(UITransform);
+        codeLabelUt.setContentSize(100, 24);
+        codeLabelNode.setPosition(-20, 0, 0);
+        const codeLabel = codeLabelNode.addComponent(Label);
+        codeLabel.string = '';
+        codeLabel.fontSize = 10;
+        codeLabel.lineHeight = 12;
+        codeLabel.horizontalAlign = Label.HorizontalAlign.CENTER;
+        codeLabel.verticalAlign = Label.VerticalAlign.CENTER;
+        codeLabel.color = new Color(128, 128, 128);
+        row.codeLabel = codeLabel;
+
+        const costLabelNode = new Node('CostLabel');
+        node.addChild(costLabelNode);
+        const costLabelUt = costLabelNode.addComponent(UITransform);
+        costLabelUt.setContentSize(80, 24);
+        costLabelNode.setPosition(80, 0, 0);
+        const costLabel = costLabelNode.addComponent(Label);
+        costLabel.string = '';
+        costLabel.fontSize = 12;
+        costLabel.lineHeight = 14.4;
+        costLabel.horizontalAlign = Label.HorizontalAlign.CENTER;
+        costLabel.verticalAlign = Label.VerticalAlign.CENTER;
+        row.costLabel = costLabel;
+
+        const insuranceLabelNode = new Node('InsuranceLabel');
+        node.addChild(insuranceLabelNode);
+        const insuranceLabelUt = insuranceLabelNode.addComponent(UITransform);
+        insuranceLabelUt.setContentSize(80, 24);
+        insuranceLabelNode.setPosition(170, 0, 0);
+        const insuranceLabel = insuranceLabelNode.addComponent(Label);
+        insuranceLabel.string = '';
+        insuranceLabel.fontSize = 12;
+        insuranceLabel.lineHeight = 14.4;
+        insuranceLabel.horizontalAlign = Label.HorizontalAlign.CENTER;
+        insuranceLabel.verticalAlign = Label.VerticalAlign.CENTER;
+        row.insuranceLabel = insuranceLabel;
+
+        const statusLabelNode = new Node('StatusLabel');
+        node.addChild(statusLabelNode);
+        const statusLabelUt = statusLabelNode.addComponent(UITransform);
+        statusLabelUt.setContentSize(60, 24);
+        statusLabelNode.setPosition(240, 0, 0);
+        const statusLabel = statusLabelNode.addComponent(Label);
+        statusLabel.string = '';
+        statusLabel.fontSize = 11;
+        statusLabel.lineHeight = 13.2;
+        statusLabel.horizontalAlign = Label.HorizontalAlign.CENTER;
+        statusLabel.verticalAlign = Label.VerticalAlign.CENTER;
+        row.statusLabel = statusLabel;
+
+        return node;
     }
 
     private formatTime(seconds: number): string {
