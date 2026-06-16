@@ -1,0 +1,94 @@
+<% content_for :page_title, "组合查询" %>
+
+<div class="space-y-6">
+  <div class="flex items-center justify-between">
+    <h1 class="text-2xl font-bold text-[#1B2A4A]" style="font-family: 'Noto Sans SC', sans-serif;">组合查询</h1>
+    <%= link_to "返回仪表盘", root_path, class: "text-sm text-gray-500 hover:text-[#1B2A4A] transition-colors", style: "font-family: 'Noto Sans SC', sans-serif;" %>
+  </div>
+
+  <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+    <%= form_with url: analytics_combined_query_path, method: :get, class: "flex flex-wrap gap-3 items-end" do |f| %>
+      <div class="min-w-[140px]">
+        <label class="block text-xs text-gray-500 mb-1" style="font-family: 'Noto Sans SC', sans-serif;">状态（多选）</label>
+        <select name="statuses[]" multiple class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2DD4A8] focus:border-transparent h-20" style="font-family: 'Noto Sans SC', sans-serif;">
+          <option value="draft" <%= "selected" if Array(params[:statuses]).include?("draft") %>>草稿</option>
+          <option value="completed" <%= "selected" if Array(params[:statuses]).include?("completed") %>>已完成</option>
+          <option value="cancelled" <%= "selected" if Array(params[:statuses]).include?("cancelled") %>>已取消</option>
+        </select>
+      </div>
+      <div class="min-w-[130px]">
+        <label class="block text-xs text-gray-500 mb-1" style="font-family: 'Noto Sans SC', sans-serif;">开始日期</label>
+        <%= f.date_field :start_date, value: params[:start_date], class: "w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2DD4A8] focus:border-transparent", style: "font-family: 'DM Sans', sans-serif;" %>
+      </div>
+      <div class="min-w-[130px]">
+        <label class="block text-xs text-gray-500 mb-1" style="font-family: 'Noto Sans SC', sans-serif;">结束日期</label>
+        <%= f.date_field :end_date, value: params[:end_date], class: "w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2DD4A8] focus:border-transparent", style: "font-family: 'DM Sans', sans-serif;" %>
+      </div>
+      <div class="min-w-[120px]">
+        <label class="block text-xs text-gray-500 mb-1" style="font-family: 'Noto Sans SC', sans-serif;">区域</label>
+        <%= f.select :area_id, options_for_select([["全部区域", ""]] + @areas.map { |a| [a.name, a.id] }, params[:area_id]), {}, class: "w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2DD4A8] focus:border-transparent", style: "font-family: 'Noto Sans SC', sans-serif;" %>
+      </div>
+      <div class="min-w-[120px]">
+        <label class="block text-xs text-gray-500 mb-1" style="font-family: 'Noto Sans SC', sans-serif;">责任人</label>
+        <%= f.select :therapist_id, options_for_select([["全部治疗师", ""]] + @therapists.map { |t| [t.name, t.id] }, params[:therapist_id]), {}, class: "w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2DD4A8] focus:border-transparent", style: "font-family: 'Noto Sans SC', sans-serif;" %>
+      </div>
+      <button type="submit" class="px-4 py-2 bg-[#1B2A4A] text-white rounded-lg text-sm hover:bg-[#2a3d66] transition-colors" style="font-family: 'Noto Sans SC', sans-serif;">查询</button>
+      <%= link_to "重置", analytics_combined_query_path, class: "px-4 py-2 text-gray-500 border border-gray-200 rounded-lg text-sm hover:bg-gray-50 transition-colors", style: "font-family: 'Noto Sans SC', sans-serif;" %>
+    <% end %>
+  </div>
+
+  <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+    <table class="w-full">
+      <thead>
+        <tr class="bg-[#1B2A4A] text-white text-sm" style="font-family: 'Noto Sans SC', sans-serif;">
+          <th class="px-4 py-3 text-left font-medium">患者</th>
+          <th class="px-4 py-3 text-left font-medium">量表</th>
+          <th class="px-4 py-3 text-left font-medium">评估师</th>
+          <th class="px-4 py-3 text-left font-medium">评估日期</th>
+          <th class="px-4 py-3 text-left font-medium">总分</th>
+          <th class="px-4 py-3 text-left font-medium">状态</th>
+          <th class="px-4 py-3 text-left font-medium">处方数</th>
+          <th class="px-4 py-3 text-left font-medium">训练次数</th>
+          <th class="px-4 py-3 text-left font-medium">操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @records.each_with_index do |record, idx| %>
+          <tr class="<%= idx.even? ? 'bg-white' : 'bg-[#F5F3EF]/50' %> border-b border-gray-50 hover:bg-[#2DD4A8]/5 transition-colors">
+            <td class="px-4 py-3 text-sm text-[#1B2A4A] font-medium" style="font-family: 'Noto Sans SC', sans-serif;"><%= record.patient&.name %></td>
+            <td class="px-4 py-3 text-sm text-gray-600" style="font-family: 'Noto Sans SC', sans-serif;"><%= record.scale&.name %></td>
+            <td class="px-4 py-3 text-sm text-gray-600" style="font-family: 'Noto Sans SC', sans-serif;"><%= record.assessor&.name %></td>
+            <td class="px-4 py-3 text-sm text-gray-600" style="font-family: 'DM Sans', sans-serif;"><%= record.assessed_at&.strftime("%Y-%m-%d") %></td>
+            <td class="px-4 py-3 text-sm font-semibold text-[#1B2A4A]" style="font-family: 'DM Sans', sans-serif;"><%= record.total_score.presence || "-" %></td>
+            <td class="px-4 py-3">
+              <% case record.status %>
+              <% when "completed" %>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#2DD4A8]/10 text-[#2DD4A8]" style="font-family: 'Noto Sans SC', sans-serif;">已完成</span>
+              <% when "draft" %>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#F59E0B]/10 text-[#F59E0B]" style="font-family: 'Noto Sans SC', sans-serif;">草稿</span>
+              <% when "cancelled" %>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#EF4444]/10 text-[#EF4444]" style="font-family: 'Noto Sans SC', sans-serif;">已取消</span>
+              <% end %>
+            </td>
+            <td class="px-4 py-3 text-sm text-gray-600" style="font-family: 'DM Sans', sans-serif;"><%= record.training_prescriptions.count %></td>
+            <td class="px-4 py-3 text-sm text-gray-600" style="font-family: 'DM Sans', sans-serif;"><%= record.training_prescriptions.sum { |p| p.training_sessions.count } %></td>
+            <td class="px-4 py-3">
+              <%= link_to "查看", assessment_record_path(record), class: "text-xs px-2 py-1 text-[#1B2A4A] hover:bg-[#1B2A4A]/5 rounded transition-colors", style: "font-family: 'Noto Sans SC', sans-serif;" %>
+            </td>
+          </tr>
+        <% end %>
+        <% if @records.empty? %>
+          <tr>
+            <td colspan="9" class="px-4 py-12 text-center text-gray-400" style="font-family: 'Noto Sans SC', sans-serif;">暂无匹配记录</td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+
+  <% if @records.total_pages > 1 %>
+    <div class="flex justify-center gap-1" style="font-family: 'DM Sans', sans-serif;">
+      <%= paginate @records %>
+    </div>
+  <% end %>
+</div>

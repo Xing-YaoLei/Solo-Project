@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title><%= content_for(:title) || "康复评估结算台" %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="康复评估结算台">
+    <meta name="mobile-web-app-capable" content="yes">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+
+    <%= yield :head %>
+
+    <link rel="icon" href="/icon.png" type="image/png">
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/icon.png">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <%= stylesheet_link_tag "tailwind", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+
+    <style>
+      body { font-family: 'Noto Sans SC', 'DM Sans', sans-serif; background-color: #F5F3EF; }
+    </style>
+  </head>
+
+  <body class="min-h-screen">
+    <%= render "shared/sidebar" %>
+
+    <div class="ml-60 min-h-screen flex flex-col">
+      <%= render "shared/navbar" %>
+
+      <main class="flex-1 p-6">
+        <% if notice.present? %>
+          <div class="mb-4 px-4 py-3 bg-[#2DD4A8]/10 border border-[#2DD4A8]/20 rounded-lg text-sm text-[#2DD4A8]" style="font-family: 'Noto Sans SC', sans-serif;" data-turbo-autofocus="false" data-controller="notification-auto-dismiss">
+            <%= notice %>
+          </div>
+        <% end %>
+
+        <% if alert.present? %>
+          <div class="mb-4 px-4 py-3 bg-[#EF4444]/10 border border-[#EF4444]/20 rounded-lg text-sm text-[#EF4444]" style="font-family: 'Noto Sans SC', sans-serif;" data-controller="notification-auto-dismiss">
+            <%= alert %>
+          </div>
+        <% end %>
+
+        <%= yield %>
+      </main>
+    </div>
+  </body>
+</html>

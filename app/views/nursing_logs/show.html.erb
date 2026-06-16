@@ -1,0 +1,79 @@
+<div class="min-h-screen" style="background-color: #F5F3EF;">
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="mb-6">
+      <%= link_to "← 返回护理日志", nursing_logs_path, class: "text-sm font-medium hover:underline", style: "color: #2DD4A8;" %>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+      <div class="flex items-start justify-between mb-6">
+        <div>
+          <h1 class="text-2xl font-bold" style="color: #1B2A4A;">护理日志详情</h1>
+          <p class="text-sm text-gray-500 mt-1">
+            <%= @nursing_log.logged_at&.strftime("%Y年%m月%d日") || @nursing_log.created_at.strftime("%Y年%m月%d日") %>
+          </p>
+        </div>
+        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium
+          <% case @nursing_log.care_type
+             when 'daily_care' %>bg-blue-100 text-blue-800
+          <% when 'special_care' %>bg-purple-100 text-purple-800
+          <% when 'rehabilitation_care' %>bg-green-100 text-green-800
+          <% when 'observation' %>bg-orange-100 text-orange-800
+          <% else %>bg-gray-100 text-gray-800
+          <% end %>">
+          <% care_type_labels = { 'daily_care' => '日常护理', 'special_care' => '特殊护理', 'rehabilitation_care' => '康复护理', 'observation' => '观察' } %>
+          <%= care_type_labels[@nursing_log.care_type] || @nursing_log.care_type %>
+        </span>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4 mb-6">
+        <div class="bg-gray-50 rounded-lg p-4">
+          <span class="text-sm text-gray-400">患者</span>
+          <p class="font-medium mt-1" style="color: #1B2A4A;"><%= @nursing_log.patient.try(:name) || "Patient ##{@nursing_log.patient_id}" %></p>
+        </div>
+        <div class="bg-gray-50 rounded-lg p-4">
+          <span class="text-sm text-gray-400">责任护士</span>
+          <p class="font-medium mt-1" style="color: #1B2A4A;"><%= @nursing_log.nurse.try(:name) || "Nurse ##{@nursing_log.nurse_id}" %></p>
+        </div>
+      </div>
+
+      <div class="mb-6">
+        <h3 class="text-sm font-medium text-gray-400 mb-2">护理内容</h3>
+        <div class="bg-gray-50 rounded-lg p-4 text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+          <%= @nursing_log.content %>
+        </div>
+      </div>
+
+      <% if @nursing_log.assessment_record.present? %>
+        <div class="border-t border-gray-100 pt-6">
+          <h3 class="text-sm font-medium text-gray-400 mb-3">关联评估记录</h3>
+          <div class="bg-blue-50 border border-blue-100 rounded-lg p-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="font-medium text-blue-800">评估记录 #<%= @nursing_log.assessment_record.id %></p>
+                <p class="text-sm text-blue-600 mt-1">
+                  评估时间: <%= @nursing_log.assessment_record.assessed_at&.strftime("%Y-%m-%d") || "未记录" %>
+                </p>
+                <p class="text-sm text-blue-600">
+                  状态: <%= @nursing_log.assessment_record.status == 'completed' ? '已完成' : @nursing_log.assessment_record.status == 'draft' ? '草稿' : '已取消' %>
+                </p>
+              </div>
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                <% case @nursing_log.assessment_record.status
+                   when 'completed' %>bg-green-100 text-green-800
+                <% when 'draft' %>bg-yellow-100 text-yellow-800
+                <% when 'cancelled' %>bg-red-100 text-red-800
+                <% end %>">
+                <%= @nursing_log.assessment_record.status == 'completed' ? '已完成' : @nursing_log.assessment_record.status == 'draft' ? '草稿' : '已取消' %>
+              </span>
+            </div>
+          </div>
+        </div>
+      <% else %>
+        <div class="border-t border-gray-100 pt-6">
+          <h3 class="text-sm font-medium text-gray-400 mb-3">关联评估记录</h3>
+          <p class="text-sm text-gray-400 italic">无关联评估记录</p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

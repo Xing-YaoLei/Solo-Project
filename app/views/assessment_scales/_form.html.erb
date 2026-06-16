@@ -1,0 +1,49 @@
+<%= turbo_frame_tag "scale_form" do %>
+  <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+    <h2 class="text-lg font-semibold text-[#1B2A4A] mb-4" style="font-family: 'Noto Sans SC', sans-serif;"><%= assessment_scale.persisted? ? "编辑量表" : "新建量表" %></h2>
+
+    <%= form_with model: assessment_scale, class: "space-y-4" do |f| %>
+      <% if assessment_scale.errors.any? %>
+        <div class="bg-[#EF4444]/10 border border-[#EF4444]/20 rounded-lg p-3">
+          <ul class="text-sm text-[#EF4444] list-disc list-inside" style="font-family: 'Noto Sans SC', sans-serif;">
+            <% assessment_scale.errors.full_messages.each do |msg| %>
+              <li><%= msg %></li>
+            <% end %>
+          </ul>
+        </div>
+      <% end %>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm text-gray-600 mb-1" style="font-family: 'Noto Sans SC', sans-serif;">量表名称 <span class="text-[#EF4444]">*</span></label>
+          <%= f.text_field :name, class: "w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2DD4A8] focus:border-transparent", style: "font-family: 'Noto Sans SC', sans-serif;" %>
+        </div>
+        <div>
+          <label class="block text-sm text-gray-600 mb-1" style="font-family: 'Noto Sans SC', sans-serif;">分类</label>
+          <%= f.text_field :category, placeholder: "如：运动功能、认知功能、ADL", class: "w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2DD4A8] focus:border-transparent", style: "font-family: 'Noto Sans SC', sans-serif;" %>
+        </div>
+        <div>
+          <label class="block text-sm text-gray-600 mb-1" style="font-family: 'Noto Sans SC', sans-serif;">版本</label>
+          <%= f.text_field :version, class: "w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2DD4A8] focus:border-transparent", style: "font-family: 'DM Sans', sans-serif;" %>
+        </div>
+        <div>
+          <label class="block text-sm text-gray-600 mb-1" style="font-family: 'Noto Sans SC', sans-serif;">启用状态</label>
+          <label class="flex items-center gap-2 mt-2">
+            <%= f.check_box :active, class: "w-4 h-4 text-[#2DD4A8] rounded border-gray-300 focus:ring-[#2DD4A8]" %>
+            <span class="text-sm text-gray-600" style="font-family: 'Noto Sans SC', sans-serif;">启用</span>
+          </label>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-sm text-gray-600 mb-1" style="font-family: 'Noto Sans SC', sans-serif;">评分配置 (JSON)</label>
+        <%= f.text_area :scoring_config, value: assessment_scale.scoring_config.present? ? JSON.generate(assessment_scale.scoring_config) : '{"grades":[]}', rows: 4, placeholder: '{"grades":[{"label":"轻度","min":0,"max":30},{"label":"中度","min":31,"max":60},{"label":"重度","min":61,"max":100}]}', class: "w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#2DD4A8] focus:border-transparent", style: "font-family: 'DM Sans', sans-serif;" %>
+      </div>
+
+      <div class="flex items-center gap-3 pt-2">
+        <%= f.submit assessment_scale.persisted? ? "更新量表" : "创建量表", class: "px-6 py-2 bg-[#2DD4A8] text-white rounded-lg text-sm font-medium hover:bg-[#22b893] transition-colors", style: "font-family: 'Noto Sans SC', sans-serif;" %>
+        <%= link_to "取消", assessment_scales_path, class: "px-4 py-2 text-gray-500 border border-gray-200 rounded-lg text-sm hover:bg-gray-50 transition-colors", style: "font-family: 'Noto Sans SC', sans-serif;" %>
+      </div>
+    <% end %>
+  </div>
+<% end %>

@@ -1,0 +1,53 @@
+<% content_for :page_title, "通知中心" %>
+
+<div class="space-y-6">
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-[#1B2A4A]" style="font-family: 'Noto Sans SC', sans-serif;">通知中心</h1>
+      <p class="text-sm text-gray-500 mt-1" style="font-family: 'Noto Sans SC', sans-serif;">您有 <%= @unread_count %> 条未读通知</p>
+    </div>
+
+    <% if @unread_count > 0 %>
+      <%= button_to "全部标记为已读", mark_all_as_read_notifications_path, method: :patch,
+            class: "px-4 py-2 text-sm text-[#2DD4A8] hover:text-[#2DD4A8]/80 font-medium transition-colors",
+            style: "font-family: 'Noto Sans SC', sans-serif;" %>
+    <% end %>
+  </div>
+
+  <div class="space-y-3">
+    <% if @notifications.any? %>
+      <% @notifications.each do |notification| %>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 <%= 'border-l-4 border-l-[#2DD4A8]' unless notification.read %>">
+          <div class="flex items-start justify-between">
+            <div class="flex-1">
+              <div class="flex items-center gap-2">
+                <% unless notification.read %>
+                  <span class="w-2 h-2 rounded-full bg-[#2DD4A8]"></span>
+                <% end %>
+                <h3 class="text-sm font-semibold text-[#1B2A4A]" style="font-family: 'Noto Sans SC', sans-serif;"><%= notification.title %></h3>
+              </div>
+              <p class="text-sm text-gray-500 mt-1" style="font-family: 'Noto Sans SC', sans-serif;"><%= notification.message %></p>
+              <p class="text-[10px] text-gray-400 mt-2" style="font-family: 'DM Sans', sans-serif;"><%= notification.created_at.strftime("%Y-%m-%d %H:%M") %></p>
+            </div>
+
+            <% unless notification.read %>
+              <%= button_to "标记已读", mark_as_read_notification_path(notification), method: :patch,
+                    class: "text-xs text-[#2DD4A8] hover:text-[#2DD4A8]/80 font-medium transition-colors",
+                    style: "font-family: 'Noto Sans SC', sans-serif;" %>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    <% else %>
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
+        <p class="text-gray-400" style="font-family: 'Noto Sans SC', sans-serif;">暂无通知</p>
+      </div>
+    <% end %>
+  </div>
+
+  <% if @notifications.respond_to?(:total_pages) && @notifications.total_pages > 1 %>
+    <div class="flex justify-center">
+      <%= paginate @notifications %>
+    </div>
+  <% end %>
+</div>

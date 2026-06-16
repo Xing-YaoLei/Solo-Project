@@ -1,0 +1,77 @@
+<div class="space-y-6">
+  <div class="flex items-center justify-between">
+    <h1 class="text-2xl font-bold text-[#1B2A4A]" style="font-family: 'Noto Sans SC', sans-serif;">评估量表管理</h1>
+    <%= link_to "新建量表", new_assessment_scale_path, class: "inline-flex items-center px-4 py-2 bg-[#2DD4A8] text-white rounded-lg text-sm font-medium hover:bg-[#22b893] transition-colors", style: "font-family: 'Noto Sans SC', sans-serif;" %>
+  </div>
+
+  <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+    <%= form_with url: assessment_scales_path, method: :get, class: "flex flex-wrap gap-3 items-end", data: { turbo_frame: "scales_list" } do |f| %>
+      <div class="flex-1 min-w-[200px]">
+        <label class="block text-xs text-gray-500 mb-1" style="font-family: 'Noto Sans SC', sans-serif;">搜索名称</label>
+        <%= f.text_field :search, value: params[:search], placeholder: "输入量表名称...", class: "w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2DD4A8] focus:border-transparent", style: "font-family: 'Noto Sans SC', sans-serif;" %>
+      </div>
+      <div class="min-w-[160px]">
+        <label class="block text-xs text-gray-500 mb-1" style="font-family: 'Noto Sans SC', sans-serif;">分类筛选</label>
+        <%= f.select :category, options_for_select([["全部分类", ""]] + @categories.map { |c| [c, c] }, params[:category]), {}, class: "w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2DD4A8] focus:border-transparent", style: "font-family: 'Noto Sans SC', sans-serif;" %>
+      </div>
+      <button type="submit" class="px-4 py-2 bg-[#1B2A4A] text-white rounded-lg text-sm hover:bg-[#2a3d66] transition-colors" style="font-family: 'Noto Sans SC', sans-serif;">查询</button>
+      <%= link_to "重置", assessment_scales_path, class: "px-4 py-2 text-gray-500 border border-gray-200 rounded-lg text-sm hover:bg-gray-50 transition-colors", style: "font-family: 'Noto Sans SC', sans-serif;" %>
+    <% end %>
+  </div>
+
+  <%= turbo_frame_tag "scales_list" do %>
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <table class="w-full">
+        <thead>
+          <tr class="bg-[#1B2A4A] text-white text-sm" style="font-family: 'Noto Sans SC', sans-serif;">
+            <th class="px-4 py-3 text-left font-medium">量表名称</th>
+            <th class="px-4 py-3 text-left font-medium">分类</th>
+            <th class="px-4 py-3 text-left font-medium">版本</th>
+            <th class="px-4 py-3 text-left font-medium">项目数</th>
+            <th class="px-4 py-3 text-left font-medium">状态</th>
+            <th class="px-4 py-3 text-left font-medium">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @assessment_scales.each_with_index do |scale, idx| %>
+            <tr class="<%= idx.even? ? 'bg-white' : 'bg-[#F5F3EF]/50' %> border-b border-gray-50 hover:bg-[#2DD4A8]/5 transition-colors">
+              <td class="px-4 py-3">
+                <%= link_to scale.name, assessment_scale_path(scale), class: "text-[#1B2A4A] font-medium hover:text-[#2DD4A8] transition-colors", style: "font-family: 'Noto Sans SC', sans-serif;", data: { turbo_frame: "_top" } %>
+              </td>
+              <td class="px-4 py-3 text-sm text-gray-600" style="font-family: 'Noto Sans SC', sans-serif;"><%= scale.category %></td>
+              <td class="px-4 py-3 text-sm text-gray-600" style="font-family: 'DM Sans', sans-serif;"><%= scale.version %></td>
+              <td class="px-4 py-3 text-sm" style="font-family: 'DM Sans', sans-serif;"><%= scale.scale_items.count %></td>
+              <td class="px-4 py-3">
+                <% if scale.active? %>
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#2DD4A8]/10 text-[#2DD4A8]" style="font-family: 'Noto Sans SC', sans-serif;">启用</span>
+                <% else %>
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500" style="font-family: 'Noto Sans SC', sans-serif;">停用</span>
+                <% end %>
+              </td>
+              <td class="px-4 py-3">
+                <div class="flex items-center gap-2">
+                  <%= button_to toggle_active_assessment_scale_path(scale), method: :patch, class: "text-xs px-2 py-1 rounded #{scale.active? ? 'text-[#F59E0B] hover:bg-[#F59E0B]/10' : 'text-[#2DD4A8] hover:bg-[#2DD4A8]/10'} transition-colors", style: "font-family: 'Noto Sans SC', sans-serif;", form: { data: { turbo_frame: "_top" } } do %>
+                    <%= scale.active? ? "停用" : "启用" %>
+                  <% end %>
+                  <%= link_to "编辑", edit_assessment_scale_path(scale), class: "text-xs px-2 py-1 text-[#1B2A4A] hover:bg-[#1B2A4A]/5 rounded transition-colors", style: "font-family: 'Noto Sans SC', sans-serif;", data: { turbo_frame: "_top" } %>
+                  <%= button_to "删除", assessment_scale_path(scale), method: :delete, class: "text-xs px-2 py-1 text-[#EF4444] hover:bg-[#EF4444]/10 rounded transition-colors", style: "font-family: 'Noto Sans SC', sans-serif;", form: { data: { turbo_frame: "_top", turbo_confirm: "确认删除该量表？" } } %>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+          <% if @assessment_scales.empty? %>
+            <tr>
+              <td colspan="6" class="px-4 py-12 text-center text-gray-400" style="font-family: 'Noto Sans SC', sans-serif;">暂无评估量表数据</td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+
+    <% if @assessment_scales.total_pages > 1 %>
+      <div class="flex justify-center mt-4 gap-1" style="font-family: 'DM Sans', sans-serif;">
+        <%= paginate @assessment_scales %>
+      </div>
+    <% end %>
+  <% end %>
+</div>

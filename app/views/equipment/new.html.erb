@@ -1,0 +1,58 @@
+<div class="min-h-screen" style="background-color: #F5F3EF;">
+  <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="mb-6">
+      <%= link_to "← 返回设备列表", equipment_index_path, class: "text-sm font-medium hover:underline", style: "color: #2DD4A8;" %>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+      <h1 class="text-xl font-bold mb-6" style="color: #1B2A4A;">新增设备</h1>
+
+      <%= form_with model: @equipment, url: equipment_index_path, local: true, class: "space-y-5" do |f| %>
+        <% if @equipment.errors.any? %>
+          <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+            <ul class="list-disc list-inside text-sm text-red-600">
+              <% @equipment.errors.full_messages.each do |msg| %>
+                <li><%= msg %></li>
+              <% end %>
+            </ul>
+          </div>
+        <% end %>
+
+        <div>
+          <%= f.label :name, "设备名称", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= f.text_field :name, class: "w-full rounded-lg border-gray-300 text-sm focus:ring-0 focus:border-gray-400" %>
+        </div>
+
+        <div>
+          <%= f.label :code, "设备编号", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= f.text_field :code, class: "w-full rounded-lg border-gray-300 text-sm focus:ring-0 focus:border-gray-400" %>
+        </div>
+
+        <div>
+          <%= f.label :category, "设备分类", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= f.text_field :category, placeholder: "例：训练器械、评估工具", class: "w-full rounded-lg border-gray-300 text-sm focus:ring-0 focus:border-gray-400" %>
+        </div>
+
+        <div>
+          <%= f.label :area_id, "所属区域", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= f.select :area_id, @areas.map { |a| [a.name, a.id] }, { include_blank: "请选择区域" }, class: "w-full rounded-lg border-gray-300 text-sm focus:ring-0 focus:border-gray-400" %>
+        </div>
+
+        <div>
+          <%= f.label :status, "设备状态", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= f.select :status, Equipment.statuses.keys.map { |s| [s == 'normal' ? '正常' : s == 'maintenance' ? '维护中' : '已退役', s] }, {}, class: "w-full rounded-lg border-gray-300 text-sm focus:ring-0 focus:border-gray-400" %>
+        </div>
+
+        <div>
+          <%= f.label :last_maintenance_date, "上次维护日期", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= f.date_field :last_maintenance_date, class: "w-full rounded-lg border-gray-300 text-sm focus:ring-0 focus:border-gray-400" %>
+        </div>
+
+        <div class="flex gap-3 pt-2">
+          <%= f.submit "创建设备", class: "px-6 py-2.5 rounded-lg text-white font-medium hover:opacity-90 transition-opacity", style: "background-color: #2DD4A8;" %>
+          <%= link_to "取消", equipment_index_path, class: "px-6 py-2.5 rounded-lg font-medium border hover:bg-gray-50 transition-colors", style: "color: #1B2A4A; border-color: #1B2A4A;" %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

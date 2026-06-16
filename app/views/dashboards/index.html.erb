@@ -1,0 +1,124 @@
+<% content_for :page_title, "仪表盘" %>
+
+<div class="space-y-6">
+  <div class="flex items-center justify-between">
+    <h1 class="text-2xl font-bold text-[#1B2A4A]" style="font-family: 'Noto Sans SC', sans-serif;">仪表盘</h1>
+    <p class="text-sm text-gray-400" style="font-family: 'DM Sans', sans-serif;"><%= Date.current.strftime("%Y-%m-%d") %></p>
+  </div>
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-sm text-gray-500" style="font-family: 'Noto Sans SC', sans-serif;">今日评估</span>
+        <span class="p-2 bg-[#1B2A4A]/5 rounded-lg">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="#1B2A4A" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15a2.25 2.25 0 0 1 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25Z" /></svg>
+        </span>
+      </div>
+      <p class="text-3xl font-bold text-[#1B2A4A]" style="font-family: 'DM Sans', sans-serif;"><%= @today_assessment_count %></p>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-sm text-gray-500" style="font-family: 'Noto Sans SC', sans-serif;">待处理拒付</span>
+        <span class="p-2 bg-[#EF4444]/5 rounded-lg">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="#EF4444" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" /></svg>
+        </span>
+      </div>
+      <p class="text-3xl font-bold text-[#EF4444]" style="font-family: 'DM Sans', sans-serif;"><%= @pending_denial_count %></p>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-sm text-gray-500" style="font-family: 'Noto Sans SC', sans-serif;">设备预警</span>
+        <span class="p-2 bg-[#F59E0B]/5 rounded-lg">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="#F59E0B" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17 17.25 21A2.652 2.652 0 0 0 21 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 1 1-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 0 0 4.486-6.336l-3.276 3.277a3.004 3.004 0 0 1-2.25-2.25l3.276-3.276a4.5 4.5 0 0 0-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437 1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008Z" /></svg>
+        </span>
+      </div>
+      <p class="text-3xl font-bold text-[#F59E0B]" style="font-family: 'DM Sans', sans-serif;"><%= @equipment_alert_count %></p>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-sm text-gray-500" style="font-family: 'Noto Sans SC', sans-serif;">训练完成率</span>
+        <span class="p-2 bg-[#2DD4A8]/5 rounded-lg">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="#2DD4A8" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" /></svg>
+        </span>
+      </div>
+      <p class="text-3xl font-bold text-[#2DD4A8]" style="font-family: 'DM Sans', sans-serif;"><%= number_to_percentage(@completion_rate, precision: 1) %></p>
+    </div>
+  </div>
+
+  <div class="flex flex-wrap gap-3">
+    <%= link_to new_assessment_record_path, class: "inline-flex items-center gap-2 px-4 py-2.5 bg-[#2DD4A8] text-white rounded-lg text-sm font-medium hover:bg-[#22b893] transition-colors", style: "font-family: 'Noto Sans SC', sans-serif;" do %>
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+      新建评估
+    <% end %>
+    <%= link_to assessment_records_path, class: "inline-flex items-center gap-2 px-4 py-2.5 bg-[#1B2A4A] text-white rounded-lg text-sm font-medium hover:bg-[#2a3d66] transition-colors", style: "font-family: 'Noto Sans SC', sans-serif;" do %>
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" /></svg>
+      查看记录
+    <% end %>
+    <%= link_to analytics_completion_rate_path, class: "inline-flex items-center gap-2 px-4 py-2.5 border border-[#1B2A4A]/20 text-[#1B2A4A] rounded-lg text-sm font-medium hover:bg-[#1B2A4A]/5 transition-colors", style: "font-family: 'Noto Sans SC', sans-serif;" do %>
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" /></svg>
+      完成率分析
+    <% end %>
+    <%= link_to analytics_trends_path, class: "inline-flex items-center gap-2 px-4 py-2.5 border border-[#1B2A4A]/20 text-[#1B2A4A] rounded-lg text-sm font-medium hover:bg-[#1B2A4A]/5 transition-colors", style: "font-family: 'Noto Sans SC', sans-serif;" do %>
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941" /></svg>
+      趋势报表
+    <% end %>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100">
+      <div class="px-5 py-4 border-b border-gray-100">
+        <h2 class="text-base font-semibold text-[#1B2A4A]" style="font-family: 'Noto Sans SC', sans-serif;">最近评估记录</h2>
+      </div>
+      <div class="divide-y divide-gray-50">
+        <% if @recent_records.any? %>
+          <% @recent_records.each do |record| %>
+            <div class="px-5 py-3 flex items-center justify-between hover:bg-[#F5F3EF]/50 transition-colors">
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-[#1B2A4A] truncate" style="font-family: 'Noto Sans SC', sans-serif;"><%= record.patient&.name %> - <%= record.scale&.name %></p>
+                <p class="text-xs text-gray-400 mt-0.5" style="font-family: 'DM Sans', sans-serif;"><%= record.assessed_at&.strftime("%Y-%m-%d") %> · <%= record.assessor&.name %></p>
+              </div>
+              <div class="flex items-center gap-2">
+                <% case record.status %>
+                <% when "completed" %>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#2DD4A8]/10 text-[#2DD4A8]" style="font-family: 'Noto Sans SC', sans-serif;">已完成</span>
+                <% when "draft" %>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#F59E0B]/10 text-[#F59E0B]" style="font-family: 'Noto Sans SC', sans-serif;">草稿</span>
+                <% when "cancelled" %>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#EF4444]/10 text-[#EF4444]" style="font-family: 'Noto Sans SC', sans-serif;">已取消</span>
+                <% end %>
+                <%= link_to "查看", assessment_record_path(record), class: "text-xs text-[#2DD4A8] hover:underline", style: "font-family: 'Noto Sans SC', sans-serif;" %>
+              </div>
+            </div>
+          <% end %>
+        <% else %>
+          <div class="px-5 py-8 text-center text-sm text-gray-400" style="font-family: 'Noto Sans SC', sans-serif;">暂无评估记录</div>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100">
+      <div class="px-5 py-4 border-b border-gray-100">
+        <h2 class="text-base font-semibold text-[#1B2A4A]" style="font-family: 'Noto Sans SC', sans-serif;">最近通知</h2>
+      </div>
+      <div class="divide-y divide-gray-50">
+        <% if @recent_notifications.any? %>
+          <% @recent_notifications.each do |notification| %>
+            <div class="px-5 py-3 flex items-start gap-3 hover:bg-[#F5F3EF]/50 transition-colors">
+              <span class="mt-1 shrink-0 w-2 h-2 rounded-full <%= notification.read? ? 'bg-gray-300' : 'bg-[#2DD4A8]' %>"></span>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-[#1B2A4A] truncate" style="font-family: 'Noto Sans SC', sans-serif;"><%= notification.title %></p>
+                <p class="text-xs text-gray-400 mt-0.5 truncate" style="font-family: 'Noto Sans SC', sans-serif;"><%= notification.message %></p>
+              </div>
+              <span class="shrink-0 text-xs text-gray-300" style="font-family: 'DM Sans', sans-serif;"><%= notification.sent_at&.strftime("%m-%d %H:%M") %></span>
+            </div>
+          <% end %>
+        <% else %>
+          <div class="px-5 py-8 text-center text-sm text-gray-400" style="font-family: 'Noto Sans SC', sans-serif;">暂无通知</div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

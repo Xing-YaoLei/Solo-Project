@@ -1,0 +1,22 @@
+<h1>医保结算被驳回通知</h1>
+
+<p>尊敬的 <%= @user.name %>：</p>
+
+<p>患者 <strong><%= @settlement.patient.name %></strong> 的医保结算已被驳回，请及时处理。</p>
+
+<table style="border-collapse: collapse; width: 100%; margin: 16px 0;">
+  <tr>
+    <td style="padding: 8px; border: 1px solid #ddd; background: #f9f9f9; font-weight: bold;">结算金额</td>
+    <td style="padding: 8px; border: 1px solid #ddd;"><%= @settlement.amount %> 元</td>
+  </tr>
+  <tr>
+    <td style="padding: 8px; border: 1px solid #ddd; background: #f9f9f9; font-weight: bold;">保险类型</td>
+    <td style="padding: 8px; border: 1px solid #ddd;"><%= @settlement.insurance_type %></td>
+  </tr>
+  <tr>
+    <td style="padding: 8px; border: 1px solid #ddd; background: #f9f9f9; font-weight: bold;">驳回原因</td>
+    <td style="padding: 8px; border: 1px solid #ddd;"><%= @notification.message %></td>
+  </tr>
+</table>
+
+<p>请登录系统查看详情并进行处理。</p>

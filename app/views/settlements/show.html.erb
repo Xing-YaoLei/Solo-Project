@@ -1,0 +1,188 @@
+<% content_for :page_title, "结算详情" %>
+
+<div class="space-y-6">
+  <div class="flex items-center gap-3">
+    <%= link_to settlements_path, class: "text-gray-400 hover:text-[#1B2A4A] transition-colors" do %>
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+      </svg>
+    <% end %>
+    <h1 class="text-2xl font-bold text-[#1B2A4A]" style="font-family: 'Noto Sans SC', sans-serif;">结算详情</h1>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="lg:col-span-2 space-y-6">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-lg font-semibold text-[#1B2A4A]" style="font-family: 'Noto Sans SC', sans-serif;">基本信息</h2>
+          <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium
+            <% case @settlement.status
+               when 'pending' %>bg-gray-100 text-gray-600
+            <% when 'submitted' %>bg-blue-100 text-blue-700
+            <% when 'approved' %>bg-green-100 text-green-700
+            <% when 'denied' %>bg-red-100 text-red-700
+            <% when 'closed' %>bg-gray-200 text-gray-500
+            <% end %>" style="font-family: 'Noto Sans SC', sans-serif;">
+            <%= t("settlements.status.#{@settlement.status}", default: @settlement.status) %>
+          </span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <p class="text-xs text-gray-400 mb-1" style="font-family: 'Noto Sans SC', sans-serif;">患者姓名</p>
+            <p class="text-sm font-medium text-[#1B2A4A]" style="font-family: 'Noto Sans SC', sans-serif;"><%= @settlement.patient.name %></p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-400 mb-1" style="font-family: 'Noto Sans SC', sans-serif;">保险类型</p>
+            <p class="text-sm font-medium text-[#1B2A4A]" style="font-family: 'Noto Sans SC', sans-serif;"><%= @settlement.insurance_type %></p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-400 mb-1" style="font-family: 'Noto Sans SC', sans-serif;">结算金额</p>
+            <p class="text-sm font-medium text-[#1B2A4A]" style="font-family: 'DM Sans', sans-serif;"><%= number_to_currency(@settlement.amount, unit: "¥") %></p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-400 mb-1" style="font-family: 'Noto Sans SC', sans-serif;">提交日期</p>
+            <p class="text-sm font-medium text-[#1B2A4A]" style="font-family: 'DM Sans', sans-serif;"><%= @settlement.submitted_at&.strftime("%Y-%m-%d") || "-" %></p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-400 mb-1" style="font-family: 'Noto Sans SC', sans-serif;">结算日期</p>
+            <p class="text-sm font-medium text-[#1B2A4A]" style="font-family: 'DM Sans', sans-serif;"><%= @settlement.settled_at&.strftime("%Y-%m-%d") || "-" %></p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-400 mb-1" style="font-family: 'Noto Sans SC', sans-serif;">创建时间</p>
+            <p class="text-sm font-medium text-[#1B2A4A]" style="font-family: 'DM Sans', sans-serif;"><%= @settlement.created_at.strftime("%Y-%m-%d") %></p>
+          </div>
+        </div>
+      </div>
+
+      <% if @settlement.denied? %>
+        <div class="bg-white rounded-xl shadow-sm border border-red-100 p-6">
+          <h2 class="text-lg font-semibold text-[#1B2A4A] mb-4" style="font-family: 'Noto Sans SC', sans-serif;">驳回处理</h2>
+          <div class="flex flex-wrap gap-3">
+            <%= button_to "补充材料", supplement_settlement_path(@settlement),
+                  method: :patch,
+                  params: { reason: "", materials: "" },
+                  form: { data: { turbo_confirm: "确认补充材料并重新提交？" } },
+                  class: "inline-flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors",
+                  style: "font-family: 'Noto Sans SC', sans-serif;" %>
+
+            <%= button_to "重新提交", retry_settlement_path(@settlement),
+                  method: :patch,
+                  params: { reason: "" },
+                  form: { data: { turbo_confirm: "确认重新提交结算单？" } },
+                  class: "inline-flex items-center gap-2 px-4 py-2 bg-yellow-500 text-white rounded-lg text-sm font-medium hover:bg-yellow-600 transition-colors",
+                  style: "font-family: 'Noto Sans SC', sans-serif;" %>
+
+            <%= button_to "关闭结算", close_settlement_path(@settlement),
+                  method: :patch,
+                  params: { reason: "" },
+                  form: { data: { turbo_confirm: "确认关闭此结算单？此操作不可撤销。" } },
+                  class: "inline-flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 transition-colors",
+                  style: "font-family: 'Noto Sans SC', sans-serif;" %>
+          </div>
+        </div>
+      <% end %>
+
+      <% if @settlement.pending? %>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <div class="flex gap-3">
+            <%= button_to "提交结算", submit_settlement_path(@settlement),
+                  method: :patch,
+                  form: { data: { turbo_confirm: "确认提交结算单？" } },
+                  class: "inline-flex items-center gap-2 px-4 py-2 bg-[#2DD4A8] text-white rounded-lg text-sm font-medium hover:bg-[#2DD4A8]/90 transition-colors",
+                  style: "font-family: 'Noto Sans SC', sans-serif;" %>
+
+            <%= button_to "驳回", deny_settlement_path(@settlement),
+                  method: :patch,
+                  params: { reason: "" },
+                  form: { data: { turbo_confirm: "确认驳回此结算单？" } },
+                  class: "inline-flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 transition-colors",
+                  style: "font-family: 'Noto Sans SC', sans-serif;" %>
+          </div>
+        </div>
+      <% end %>
+
+      <% if @settlement.submitted? %>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <div class="flex gap-3">
+            <%= button_to "驳回", deny_settlement_path(@settlement),
+                  method: :patch,
+                  params: { reason: "" },
+                  form: { data: { turbo_confirm: "确认驳回此结算单？" } },
+                  class: "inline-flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 transition-colors",
+                  style: "font-family: 'Noto Sans SC', sans-serif;" %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="space-y-6">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <h2 class="text-lg font-semibold text-[#1B2A4A] mb-6" style="font-family: 'Noto Sans SC', sans-serif;">操作时间线</h2>
+
+        <% if @denial_actions.any? %>
+          <div class="relative">
+            <div class="absolute left-3 top-0 bottom-0 w-px bg-gray-200"></div>
+
+            <% @denial_actions.each do |action| %>
+              <div class="relative pl-10 pb-6 last:pb-0">
+                <div class="absolute left-0 top-0 w-6 h-6 rounded-full border-2 flex items-center justify-center
+                  <% case action.action_type
+                     when 'supplement' %>border-blue-400 bg-blue-50
+                  <% when 'retry' %>border-yellow-400 bg-yellow-50
+                  <% when 'close' %>border-red-400 bg-red-50
+                  <% end %>">
+                  <div class="w-2 h-2 rounded-full
+                    <% case action.action_type
+                       when 'supplement' %>bg-blue-400
+                    <% when 'retry' %>bg-yellow-400
+                    <% when 'close' %>bg-red-400
+                    <% end %>"></div>
+                </div>
+
+                <div>
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm font-medium text-[#1B2A4A]" style="font-family: 'Noto Sans SC', sans-serif;">
+                      <% case action.action_type
+                         when 'supplement' %>补充材料
+                      <% when 'retry' %>重新提交
+                      <% when 'close' %>关闭结算
+                      <% end %>
+                    </span>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium
+                      <% case action.action_type
+                         when 'supplement' %>bg-blue-100 text-blue-700
+                      <% when 'retry' %>bg-yellow-100 text-yellow-700
+                      <% when 'close' %>bg-red-100 text-red-700
+                      <% end %>" style="font-family: 'Noto Sans SC', sans-serif;">
+                      <%= action.action_type %>
+                    </span>
+                  </div>
+
+                  <% if action.reason.present? %>
+                    <p class="text-xs text-gray-500 mt-1" style="font-family: 'Noto Sans SC', sans-serif;"><%= action.reason %></p>
+                  <% end %>
+
+                  <% if action.materials.present? && action.materials.is_a?(Array) && action.materials.any? %>
+                    <div class="mt-2 flex flex-wrap gap-1">
+                      <% action.materials.each do |m| %>
+                        <span class="inline-flex items-center px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-[10px]" style="font-family: 'DM Sans', sans-serif;"><%= m %></span>
+                      <% end %>
+                    </div>
+                  <% end %>
+
+                  <div class="mt-1 flex items-center gap-2 text-[10px] text-gray-400">
+                    <span style="font-family: 'Noto Sans SC', sans-serif;"><%= action.operator.name %></span>
+                    <span style="font-family: 'DM Sans', sans-serif;"><%= action.performed_at&.strftime("%Y-%m-%d %H:%M") %></span>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        <% else %>
+          <p class="text-sm text-gray-400 text-center py-4" style="font-family: 'Noto Sans SC', sans-serif;">暂无操作记录</p>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

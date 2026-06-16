@@ -1,0 +1,53 @@
+<% content_for :page_title, "新建结算" %>
+
+<div class="space-y-6">
+  <div class="flex items-center gap-3">
+    <%= link_to settlements_path, class: "text-gray-400 hover:text-[#1B2A4A] transition-colors" do %>
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+      </svg>
+    <% end %>
+    <h1 class="text-2xl font-bold text-[#1B2A4A]" style="font-family: 'Noto Sans SC', sans-serif;">新建结算</h1>
+  </div>
+
+  <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+    <%= form_with model: @settlement, url: settlements_path, local: true, class: "space-y-5" do |f| %>
+      <% if @settlement.errors.any? %>
+        <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+          <ul class="text-sm text-red-600 list-disc list-inside" style="font-family: 'Noto Sans SC', sans-serif;">
+            <% @settlement.errors.full_messages.each do |msg| %>
+              <li><%= msg %></li>
+            <% end %>
+          </ul>
+        </div>
+      <% end %>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div>
+          <%= f.label :patient_id, "患者", class: "block text-sm font-medium text-[#1B2A4A] mb-1", style: "font-family: 'Noto Sans SC', sans-serif;" %>
+          <%= f.select :patient_id, @patients.map { |p| [p.name, p.id] }, { prompt: "请选择患者" }, class: "w-full rounded-lg border-gray-200 text-sm py-2.5 px-3 border focus:ring-[#2DD4A8] focus:border-[#2DD4A8]", style: "font-family: 'Noto Sans SC', sans-serif;" %>
+        </div>
+
+        <div>
+          <%= f.label :assessment_record_id, "评估记录", class: "block text-sm font-medium text-[#1B2A4A] mb-1", style: "font-family: 'Noto Sans SC', sans-serif;" %>
+          <%= f.select :assessment_record_id, @assessment_records.map { |r| ["记录##{r.id} - #{r.patient&.name}", r.id] }, { prompt: "请选择评估记录" }, class: "w-full rounded-lg border-gray-200 text-sm py-2.5 px-3 border focus:ring-[#2DD4A8] focus:border-[#2DD4A8]", style: "font-family: 'Noto Sans SC', sans-serif;" %>
+        </div>
+
+        <div>
+          <%= f.label :amount, "结算金额（元）", class: "block text-sm font-medium text-[#1B2A4A] mb-1", style: "font-family: 'Noto Sans SC', sans-serif;" %>
+          <%= f.number_field :amount, step: 0.01, class: "w-full rounded-lg border-gray-200 text-sm py-2.5 px-3 border focus:ring-[#2DD4A8] focus:border-[#2DD4A8]", style: "font-family: 'DM Sans', sans-serif;" %>
+        </div>
+
+        <div>
+          <%= f.label :insurance_type, "保险类型", class: "block text-sm font-medium text-[#1B2A4A] mb-1", style: "font-family: 'Noto Sans SC', sans-serif;" %>
+          <%= f.select :insurance_type, ["城镇职工基本医疗保险", "城乡居民基本医疗保险", "新型农村合作医疗", "商业保险"], { prompt: "请选择保险类型" }, class: "w-full rounded-lg border-gray-200 text-sm py-2.5 px-3 border focus:ring-[#2DD4A8] focus:border-[#2DD4A8]", style: "font-family: 'Noto Sans SC', sans-serif;" %>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
+        <%= link_to "取消", settlements_path, class: "px-4 py-2 text-sm text-gray-500 hover:text-[#1B2A4A] transition-colors", style: "font-family: 'Noto Sans SC', sans-serif;" %>
+        <%= f.submit "创建结算", class: "px-6 py-2 bg-[#2DD4A8] text-white rounded-lg text-sm font-medium hover:bg-[#2DD4A8]/90 transition-colors", style: "font-family: 'Noto Sans SC', sans-serif;" %>
+      </div>
+    <% end %>
+  </div>
+</div>

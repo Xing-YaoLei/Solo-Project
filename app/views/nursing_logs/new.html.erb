@@ -1,0 +1,53 @@
+<div class="min-h-screen" style="background-color: #F5F3EF;">
+  <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="mb-6">
+      <%= link_to "← 返回护理日志", nursing_logs_path, class: "text-sm font-medium hover:underline", style: "color: #2DD4A8;" %>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+      <h1 class="text-xl font-bold mb-6" style="color: #1B2A4A;">新建护理日志</h1>
+
+      <%= form_with model: @nursing_log, url: nursing_logs_path, local: true, class: "space-y-5" do |f| %>
+        <% if @nursing_log.errors.any? %>
+          <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+            <ul class="list-disc list-inside text-sm text-red-600">
+              <% @nursing_log.errors.full_messages.each do |msg| %>
+                <li><%= msg %></li>
+              <% end %>
+            </ul>
+          </div>
+        <% end %>
+
+        <div>
+          <%= f.label :patient_id, "患者", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= f.select :patient_id, @patients.map { |p| [p.class.exists? ? p.try(:name) : "Patient ##{p.id}", p.id] }, { include_blank: "请选择患者" }, class: "w-full rounded-lg border-gray-300 text-sm focus:ring-0 focus:border-gray-400", data: { action: "change->nursing-log#loadAssessments" } %>
+        </div>
+
+        <div>
+          <%= f.label :assessment_record_id, "关联评估记录（可选）", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= f.select :assessment_record_id, @assessment_records.map { |a| ["评估记录 ##{a.id} - #{a.assessed_at&.strftime('%Y-%m-%d')}", a.id] }, { include_blank: "不关联" }, class: "w-full rounded-lg border-gray-300 text-sm focus:ring-0 focus:border-gray-400" %>
+        </div>
+
+        <div>
+          <%= f.label :care_type, "护理类型", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= f.select :care_type, [["日常护理", "daily_care"], ["特殊护理", "special_care"], ["康复护理", "rehabilitation_care"], ["观察", "observation"]], { include_blank: "请选择护理类型" }, class: "w-full rounded-lg border-gray-300 text-sm focus:ring-0 focus:border-gray-400" %>
+        </div>
+
+        <div>
+          <%= f.label :content, "护理内容", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= f.text_area :content, rows: 6, placeholder: "请详细记录护理内容...", class: "w-full rounded-lg border-gray-300 text-sm focus:ring-0 focus:border-gray-400" %>
+        </div>
+
+        <div>
+          <%= f.label :logged_at, "记录日期", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= f.date_field :logged_at, value: Date.today, class: "w-full rounded-lg border-gray-300 text-sm focus:ring-0 focus:border-gray-400" %>
+        </div>
+
+        <div class="flex gap-3 pt-2">
+          <%= f.submit "创建日志", class: "px-6 py-2.5 rounded-lg text-white font-medium hover:opacity-90 transition-opacity", style: "background-color: #2DD4A8;" %>
+          <%= link_to "取消", nursing_logs_path, class: "px-6 py-2.5 rounded-lg font-medium border hover:bg-gray-50 transition-colors", style: "color: #1B2A4A; border-color: #1B2A4A;" %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

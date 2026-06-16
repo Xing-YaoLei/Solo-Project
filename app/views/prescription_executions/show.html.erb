@@ -1,0 +1,109 @@
+<div class="px-6 py-8" style="background-color: #F5F3EF; min-height: 100vh;">
+  <div class="max-w-4xl mx-auto">
+    <div class="mb-6">
+      <%= link_to "← 返回列表", prescription_executions_path, class: "text-sm font-medium hover:underline", style: "color: #2DD4A8;" %>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+      <div class="flex items-center justify-between mb-4">
+        <h1 class="text-2xl font-bold" style="color: #1B2A4A;">处方详情</h1>
+        <span class="px-3 py-1 rounded-full text-xs font-medium
+          <%= case @prescription.status
+              when 'active' then 'bg-emerald-100 text-emerald-700'
+              when 'pending' then 'bg-amber-100 text-amber-700'
+              when 'completed' then 'bg-blue-100 text-blue-700'
+              else 'bg-gray-100 text-gray-500'
+              end %>">
+          <%= @prescription.status %>
+        </span>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4 text-sm">
+        <div>
+          <span class="text-gray-500">患者:</span>
+          <span class="font-medium ml-1" style="color: #1B2A4A;"><%= @prescription.assessment_record&.patient&.name %></span>
+        </div>
+        <div>
+          <span class="text-gray-500">治疗师:</span>
+          <span class="font-medium ml-1" style="color: #1B2A4A;"><%= @prescription.therapist&.name %></span>
+        </div>
+        <div>
+          <span class="text-gray-500">开始日期:</span>
+          <span class="font-medium ml-1"><%= @prescription.start_date %></span>
+        </div>
+        <div>
+          <span class="text-gray-500">结束日期:</span>
+          <span class="font-medium ml-1"><%= @prescription.end_date %></span>
+        </div>
+      </div>
+
+      <% completion_rate = PrescriptionEngine.calculate_completion_rate(@prescription) %>
+      <div class="mt-4">
+        <div class="flex items-center justify-between text-xs mb-1">
+          <span class="text-gray-500">总完成率</span>
+          <span class="font-semibold" style="color: #2DD4A8;"><%= completion_rate.round(0) %>%</span>
+        </div>
+        <div class="w-full bg-gray-100 rounded-full h-3">
+          <div class="h-3 rounded-full" style="width: <%= completion_rate %>%; background: linear-gradient(90deg, #2DD4A8, #1B2A4A);"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm p-6">
+      <h2 class="text-lg font-bold mb-6" style="color: #1B2A4A;">训练时间线</h2>
+
+      <div class="relative">
+        <div class="absolute left-5 top-0 bottom-0 w-0.5 bg-gray-200"></div>
+
+        <% @sessions.each do |session| %>
+          <div class="relative flex items-start mb-6 last:mb-0">
+            <div class="relative z-10 flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center
+              <%= case session.status
+                  when 'completed' then 'bg-emerald-100'
+                  when 'in_progress' then 'bg-blue-100'
+                  when 'missed' then 'bg-red-100'
+                  else 'bg-gray-100'
+                  end %>">
+              <div class="w-3 h-3 rounded-full
+                <%= case session.status
+                    when 'completed' then 'bg-emerald-500'
+                    when 'in_progress' then 'bg-blue-500'
+                    when 'missed' then 'bg-red-500'
+                    else 'bg-gray-400'
+                    end %>"></div>
+            </div>
+
+            <div class="ml-4 flex-1 bg-gray-50 rounded-lg p-4 border border-gray-100">
+              <div class="flex items-center justify-between mb-2">
+                <span class="font-medium text-sm" style="color: #1B2A4A;"><%= session.session_date %></span>
+                <span class="px-2 py-0.5 rounded-full text-xs font-medium
+                  <%= case session.status
+                      when 'completed' then 'bg-emerald-100 text-emerald-700'
+                      when 'in_progress' then 'bg-blue-100 text-blue-700'
+                      when 'missed' then 'bg-red-100 text-red-700'
+                      else 'bg-gray-100 text-gray-500'
+                      end %>">
+                  <%= t("prescription_executions.session_status.#{session.status}", default: session.status) %>
+                </span>
+              </div>
+              <div class="text-xs text-gray-500 space-y-1">
+                <p>设备: <%= session.equipment&.name || "未指定" %></p>
+                <p>计划时长: <%= session.planned_duration %> 分钟
+                  <% if session.completed? %>
+                    / 实际: <%= session.actual_duration %> 分钟
+                  <% end %>
+                </p>
+              </div>
+            </div>
+          </div>
+        <% end %>
+
+        <% if @sessions.empty? %>
+          <div class="text-center py-8 text-gray-400">
+            <p>暂无训练记录</p>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

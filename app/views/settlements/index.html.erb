@@ -1,0 +1,81 @@
+<% content_for :page_title, "医保结算" %>
+
+<div class="space-y-6">
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-[#1B2A4A]" style="font-family: 'Noto Sans SC', sans-serif;">医保结算</h1>
+      <p class="text-sm text-gray-500 mt-1" style="font-family: 'Noto Sans SC', sans-serif;">管理医保结算和驳回处理</p>
+    </div>
+    <%= link_to "新建结算", new_settlement_path, class: "inline-flex items-center gap-2 px-4 py-2 bg-[#2DD4A8] text-white rounded-lg text-sm font-medium hover:bg-[#2DD4A8]/90 transition-colors", style: "font-family: 'Noto Sans SC', sans-serif;" %>
+  </div>
+
+  <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+    <%= form_with url: settlements_path, method: :get, class: "flex flex-wrap items-end gap-4" do |f| %>
+      <div class="flex-1 min-w-[150px]">
+        <label class="block text-xs font-medium text-gray-500 mb-1" style="font-family: 'Noto Sans SC', sans-serif;">状态</label>
+        <%= f.select :status, Settlement.statuses.keys.map { |s| [t("settlements.status.#{s}"), s] }, { include_blank: "全部" }, class: "w-full rounded-lg border-gray-200 text-sm py-2 px-3 border focus:ring-[#2DD4A8] focus:border-[#2DD4A8]", style: "font-family: 'Noto Sans SC', sans-serif;" %>
+      </div>
+      <div class="flex-1 min-w-[150px]">
+        <label class="block text-xs font-medium text-gray-500 mb-1" style="font-family: 'Noto Sans SC', sans-serif;">患者</label>
+        <%= f.select :patient_id, @patients.map { |p| [p.name, p.id] }, { include_blank: "全部" }, class: "w-full rounded-lg border-gray-200 text-sm py-2 px-3 border focus:ring-[#2DD4A8] focus:border-[#2DD4A8]", style: "font-family: 'Noto Sans SC', sans-serif;" %>
+      </div>
+      <div class="flex-1 min-w-[130px]">
+        <label class="block text-xs font-medium text-gray-500 mb-1" style="font-family: 'Noto Sans SC', sans-serif;">开始日期</label>
+        <%= f.date_field :start_date, value: params[:start_date], class: "w-full rounded-lg border-gray-200 text-sm py-2 px-3 border focus:ring-[#2DD4A8] focus:border-[#2DD4A8]" %>
+      </div>
+      <div class="flex-1 min-w-[130px]">
+        <label class="block text-xs font-medium text-gray-500 mb-1" style="font-family: 'Noto Sans SC', sans-serif;">结束日期</label>
+        <%= f.date_field :end_date, value: params[:end_date], class: "w-full rounded-lg border-gray-200 text-sm py-2 px-3 border focus:ring-[#2DD4A8] focus:border-[#2DD4A8]" %>
+      </div>
+      <div>
+        <%= f.submit "筛选", class: "px-4 py-2 bg-[#1B2A4A] text-white rounded-lg text-sm font-medium hover:bg-[#1B2A4A]/90 transition-colors", style: "font-family: 'Noto Sans SC', sans-serif;" %>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="grid gap-4">
+    <% if @settlements.any? %>
+      <% @settlements.each do |settlement| %>
+        <%= link_to settlement_path(settlement), class: "block bg-white rounded-xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow" do %>
+          <div class="flex items-center justify-between">
+            <div class="flex-1">
+              <div class="flex items-center gap-3">
+                <h3 class="text-base font-semibold text-[#1B2A4A]" style="font-family: 'Noto Sans SC', sans-serif;">
+                  <%= settlement.patient.name %>
+                </h3>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                  <% case settlement.status
+                     when 'pending' %>bg-gray-100 text-gray-600
+                  <% when 'submitted' %>bg-blue-100 text-blue-700
+                  <% when 'approved' %>bg-green-100 text-green-700
+                  <% when 'denied' %>bg-red-100 text-red-700
+                  <% when 'closed' %>bg-gray-200 text-gray-500
+                  <% end %>" style="font-family: 'Noto Sans SC', sans-serif;">
+                  <%= t("settlements.status.#{settlement.status}", default: settlement.status) %>
+                </span>
+              </div>
+              <div class="mt-2 flex items-center gap-4 text-sm text-gray-500" style="font-family: 'Noto Sans SC', sans-serif;">
+                <span>保险类型：<%= settlement.insurance_type %></span>
+                <span>金额：<%= number_to_currency(settlement.amount, unit: "¥") %></span>
+                <span>提交日期：<%= settlement.submitted_at&.strftime("%Y-%m-%d") || "-" %></span>
+              </div>
+            </div>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-300">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+            </svg>
+          </div>
+        <% end %>
+      <% end %>
+    <% else %>
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
+        <p class="text-gray-400" style="font-family: 'Noto Sans SC', sans-serif;">暂无结算记录</p>
+      </div>
+    <% end %>
+  </div>
+
+  <% if @settlements.respond_to?(:total_pages) && @settlements.total_pages > 1 %>
+    <div class="flex justify-center">
+      <%= paginate @settlements %>
+    </div>
+  <% end %>
+</div>

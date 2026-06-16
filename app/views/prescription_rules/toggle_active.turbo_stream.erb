@@ -1,0 +1,20 @@
+<%= turbo_stream.replace dom_id(@prescription_rule) do %>
+  <tr id="<%= dom_id(@prescription_rule) %>" class="hover:bg-gray-50 transition-colors">
+    <td class="px-6 py-4 text-sm font-medium" style="color: #1B2A4A;"><%= @prescription_rule.name %></td>
+    <td class="px-6 py-4 text-sm text-gray-600"><%= truncate(@prescription_rule.trigger_condition, length: 50) %></td>
+    <td class="px-6 py-4">
+      <%= button_to toggle_active_prescription_rule_path(@prescription_rule), method: :patch, data: { turbo_frame: dom_id(@prescription_rule) }, class: "inline-flex items-center gap-2" do %>
+        <span class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors <%= @prescription_rule.active? ? 'bg-emerald-500' : 'bg-gray-300' %>">
+          <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform <%= @prescription_rule.active? ? 'translate-x-6' : 'translate-x-1' %>"></span>
+        </span>
+        <span class="text-xs font-medium <%= @prescription_rule.active? ? 'text-emerald-600' : 'text-gray-400' %>"><%= @prescription_rule.active? ? '启用' : '停用' %></span>
+      <% end %>
+    </td>
+    <td class="px-6 py-4 text-sm text-gray-500"><%= l(@prescription_rule.created_at, format: :short) %></td>
+    <td class="px-6 py-4 text-right space-x-2">
+      <%= link_to "查看", prescription_rule_path(@prescription_rule), class: "text-sm font-medium hover:underline", style: "color: #2DD4A8;" %>
+      <%= link_to "编辑", edit_prescription_rule_path(@prescription_rule), class: "text-sm font-medium text-blue-600 hover:underline", data: { turbo_frame: "modal" } %>
+      <%= button_to "删除", prescription_rule_path(@prescription_rule), method: :delete, class: "text-sm font-medium hover:underline text-red-500", form: { data: { turbo_confirm: "确认删除此规则？" } } %>
+    </td>
+  </tr>
+<% end %>

@@ -1,0 +1,11 @@
+医保结算被驳回通知
+
+尊敬的 <%= @user.name %>：
+
+患者 <%= @settlement.patient.name %> 的医保结算已被驳回，请及时处理。
+
+结算金额：<%= @settlement.amount %> 元
+保险类型：<%= @settlement.insurance_type %>
+驳回原因：<%= @notification.message %>
+
+请登录系统查看详情并进行处理。

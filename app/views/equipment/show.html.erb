@@ -1,0 +1,136 @@
+<div class="min-h-screen" style="background-color: #F5F3EF;">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="mb-6">
+      <%= link_to "← 返回设备列表", equipment_index_path, class: "text-sm font-medium hover:underline", style: "color: #2DD4A8;" %>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div class="lg:col-span-2 space-y-6">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <div class="flex items-start justify-between mb-4">
+            <div>
+              <h1 class="text-2xl font-bold" style="color: #1B2A4A;"><%= @equipment.name %></h1>
+              <p class="text-sm text-gray-500 mt-1">编号: <%= @equipment.code %></p>
+            </div>
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium
+              <% case @equipment.status
+                 when 'normal' %>bg-green-100 text-green-800
+              <% when 'maintenance' %>bg-yellow-100 text-yellow-800
+              <% when 'retired' %>bg-red-100 text-red-800
+              <% end %>">
+              <span class="w-2 h-2 rounded-full mr-2
+                <% case @equipment.status
+                   when 'normal' %>bg-green-500
+                <% when 'maintenance' %>bg-yellow-500
+                <% when 'retired' %>bg-red-500
+                <% end %>"></span>
+              <%= @equipment.status == 'normal' ? '正常' : @equipment.status == 'maintenance' ? '维护中' : '已退役' %>
+            </span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4 text-sm">
+            <div class="bg-gray-50 rounded-lg p-3">
+              <span class="text-gray-400">分类</span>
+              <p class="font-medium mt-1" style="color: #1B2A4A;"><%= @equipment.category.presence || "未分类" %></p>
+            </div>
+            <div class="bg-gray-50 rounded-lg p-3">
+              <span class="text-gray-400">所属区域</span>
+              <p class="font-medium mt-1" style="color: #1B2A4A;"><%= @equipment.area&.name || "未分配" %></p>
+            </div>
+            <div class="bg-gray-50 rounded-lg p-3">
+              <span class="text-gray-400">上次维护</span>
+              <p class="font-medium mt-1" style="color: #1B2A4A;"><%= @equipment.last_maintenance_date&.strftime("%Y-%m-%d") || "无记录" %></p>
+            </div>
+            <div class="bg-gray-50 rounded-lg p-3">
+              <span class="text-gray-400">创建时间</span>
+              <p class="font-medium mt-1" style="color: #1B2A4A;"><%= @equipment.created_at.strftime("%Y-%m-%d") %></p>
+            </div>
+          </div>
+
+          <div class="mt-4 flex gap-3">
+            <%= link_to "编辑设备", edit_equipment_path(@equipment), class: "px-4 py-2 rounded-lg text-sm font-medium border hover:bg-gray-50 transition-colors", style: "color: #1B2A4A; border-color: #1B2A4A;" %>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <h2 class="text-lg font-semibold mb-4" style="color: #1B2A4A;">维护记录</h2>
+
+          <% if @maintenances.any? %>
+            <div class="relative">
+              <div class="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200"></div>
+              <div class="space-y-6">
+                <% @maintenances.each do |m| %>
+                  <div class="relative pl-10">
+                    <div class="absolute left-2.5 top-1.5 w-3 h-3 rounded-full border-2 border-white" style="background-color: #2DD4A8;"></div>
+                    <div class="bg-gray-50 rounded-lg p-4">
+                      <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm font-semibold" style="color: #1B2A4A;"><%= m.type.presence || "常规维护" %></span>
+                        <span class="text-xs text-gray-400"><%= m.performed_at&.strftime("%Y-%m-%d") %></span>
+                      </div>
+                      <p class="text-sm text-gray-600"><%= m.description %></p>
+                      <p class="text-xs text-gray-400 mt-2">执行人: <%= m.performer&.class&.exists? ? m.performer.try(:name) : "未知" %></p>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          <% else %>
+            <div class="text-center py-8">
+              <p class="text-gray-400">暂无维护记录</p>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <div class="space-y-6">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <h2 class="text-lg font-semibold mb-4" style="color: #1B2A4A;">使用统计</h2>
+          <div class="space-y-3">
+            <div class="flex items-center justify-between py-2 border-b border-gray-100">
+              <span class="text-sm text-gray-500">维护次数</span>
+              <span class="font-semibold" style="color: #1B2A4A;"><%= @maintenances.count %></span>
+            </div>
+            <div class="flex items-center justify-between py-2 border-b border-gray-100">
+              <span class="text-sm text-gray-500">训练次数</span>
+              <span class="font-semibold" style="color: #1B2A4A;"><%= @equipment.training_sessions.count %></span>
+            </div>
+            <div class="flex items-center justify-between py-2">
+              <span class="text-sm text-gray-500">设备状态</span>
+              <span class="font-semibold
+                <% case @equipment.status
+                   when 'normal' %>text-green-600
+                <% when 'maintenance' %>text-yellow-600
+                <% when 'retired' %>text-red-600
+                <% end %>">
+                <%= @equipment.status == 'normal' ? '正常' : @equipment.status == 'maintenance' ? '维护中' : '已退役' %>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <h2 class="text-lg font-semibold mb-4" style="color: #1B2A4A;">添加维护记录</h2>
+          <%= form_with model: [@equipment, @maintenance], url: equipment_equipment_maintenances_path(@equipment), local: true, class: "space-y-4" do |f| %>
+            <div>
+              <%= f.label :type, "维护类型", class: "block text-sm font-medium text-gray-700 mb-1" %>
+              <%= f.text_field :type, placeholder: "例：定期保养", class: "w-full rounded-lg border-gray-300 text-sm focus:ring-0 focus:border-gray-400" %>
+            </div>
+            <div>
+              <%= f.label :description, "维护描述", class: "block text-sm font-medium text-gray-700 mb-1" %>
+              <%= f.text_area :description, rows: 3, placeholder: "描述维护内容...", class: "w-full rounded-lg border-gray-300 text-sm focus:ring-0 focus:border-gray-400" %>
+            </div>
+            <div>
+              <%= f.label :performed_at, "维护日期", class: "block text-sm font-medium text-gray-700 mb-1" %>
+              <%= f.date_field :performed_at, class: "w-full rounded-lg border-gray-300 text-sm focus:ring-0 focus:border-gray-400" %>
+            </div>
+            <div>
+              <%= f.label :performer_id, "执行人", class: "block text-sm font-medium text-gray-700 mb-1" %>
+              <%= f.select :performer_id, User.all.map { |u| [u.class.exists? ? u.try(:name) : "User ##{u.id}", u.id] }, { include_blank: true }, class: "w-full rounded-lg border-gray-300 text-sm focus:ring-0 focus:border-gray-400" %>
+            </div>
+            <%= f.submit "添加记录", class: "w-full py-2 rounded-lg text-white font-medium hover:opacity-90 transition-opacity", style: "background-color: #2DD4A8;" %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

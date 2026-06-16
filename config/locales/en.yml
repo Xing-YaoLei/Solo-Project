@@ -1,0 +1,75 @@
+# Files in the config/locales directory are used for internationalization and
+# are automatically loaded by Rails. If you want to use locales other than
+# English, add the necessary files in this directory.
+#
+# To use the locales, use `I18n.t`:
+#
+#     I18n.t "hello"
+#
+# In views, this is aliased to just `t`:
+#
+#     <%= t("hello") %>
+#
+# To use a different locale, set it with `I18n.locale`:
+#
+#     I18n.locale = :es
+#
+# This would use the information in config/locales/es.yml.
+#
+# To learn more about the API, please read the Rails Internationalization guide
+# at https://guides.rubyonrails.org/i18n.html.
+#
+# Be aware that YAML interprets the following case-insensitive strings as
+# booleans: `true`, `false`, `on`, `off`, `yes`, `no`. Therefore, these strings
+# must be quoted to be interpreted as strings. For example:
+#
+#     en:
+#       "yes": yup
+#       enabled: "ON"
+
+en:
+  hello: "Hello world"
+  settlements:
+    status:
+      pending: "待提交"
+      submitted: "已提交"
+      approved: "已通过"
+      denied: "已驳回"
+      closed: "已关闭"
+  prescription_executions:
+    status:
+      pending: "待执行"
+      active: "执行中"
+      completed: "已完成"
+      cancelled: "已取消"
+  assessment_records:
+    status:
+      draft: "草稿"
+      completed: "已完成"
+      cancelled: "已取消"
+  training_sessions:
+    status:
+      planned: "计划中"
+      in_progress: "进行中"
+      completed: "已完成"
+      missed: "已错过"
+  equipment:
+    status:
+      normal: "正常"
+      maintenance: "维护中"
+      retired: "已退役"
+  users:
+    role:
+      admin: "系统管理员"
+      therapist: "治疗师"
+      finance: "财务人员"
+  date:
+    formats:
+      default: "%Y-%m-%d"
+      short: "%m月%d日"
+      long: "%Y年%m月%d日"
+  time:
+    formats:
+      default: "%Y-%m-%d %H:%M"
+      short: "%m月%d日 %H:%M"
+      long: "%Y年%m月%d日 %H:%M:%S"

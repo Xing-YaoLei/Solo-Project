@@ -1,0 +1,36 @@
+<div class="border border-gray-200 rounded-lg p-4 bg-gray-50 space-y-3 training-plan-item">
+  <div class="flex items-center justify-between">
+    <span class="text-sm font-semibold" style="color: #1B2A4A;">练习项 #<span class="item-index"><%= index + 1 %></span></span>
+    <button type="button" data-action="click->training-plan#removeItem" class="text-red-400 hover:text-red-600 text-xs">移除</button>
+  </div>
+
+  <div>
+    <label class="block text-xs font-medium text-gray-500 mb-1">练习名称</label>
+    <input type="text" name="prescription_rule[training_plan][<%= index %>][exercise_name]" value="<%= item['exercise_name'] %>" placeholder="例如: 肩关节活动训练" class="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:outline-none">
+  </div>
+
+  <div class="grid grid-cols-3 gap-3">
+    <div>
+      <label class="block text-xs font-medium text-gray-500 mb-1">组数</label>
+      <input type="number" name="prescription_rule[training_plan][<%= index %>][sets]" value="<%= item['sets'] %>" min="1" class="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:outline-none">
+    </div>
+    <div>
+      <label class="block text-xs font-medium text-gray-500 mb-1">次数</label>
+      <input type="number" name="prescription_rule[training_plan][<%= index %>][reps]" value="<%= item['reps'] %>" min="1" class="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:outline-none">
+    </div>
+    <div>
+      <label class="block text-xs font-medium text-gray-500 mb-1">时长(分钟)</label>
+      <input type="number" name="prescription_rule[training_plan][<%= index %>][duration]" value="<%= item['duration'] %>" min="1" class="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:outline-none">
+    </div>
+  </div>
+
+  <div>
+    <label class="block text-xs font-medium text-gray-500 mb-1">频率</label>
+    <select name="prescription_rule[training_plan][<%= index %>][frequency]" class="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:outline-none">
+      <option value="daily" <%= 'selected' if item['frequency'] == 'daily' %>>每天</option>
+      <option value="weekly" <%= 'selected' if item['frequency'] == 'weekly' %>>每周</option>
+      <option value="biweekly" <%= 'selected' if item['frequency'] == 'biweekly' %>>每两周</option>
+      <option value="monthly" <%= 'selected' if item['frequency'] == 'monthly' %>>每月</option>
+    </select>
+  </div>
+</div>

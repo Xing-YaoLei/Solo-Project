@@ -1,0 +1,30 @@
+<header class="sticky top-0 z-20 bg-white/80 backdrop-blur-md border-b border-gray-100">
+  <div class="flex items-center justify-between px-6 py-3">
+    <div class="flex items-center gap-4">
+      <h2 class="text-lg font-semibold text-[#1B2A4A]" style="font-family: 'Noto Sans SC', sans-serif;">
+        <%= content_for(:page_title) || "康复评估结算台" %>
+      </h2>
+    </div>
+
+    <div class="flex items-center gap-4">
+      <div class="relative">
+        <%= link_to notifications_path, class: "relative p-2 text-gray-400 hover:text-[#1B2A4A] transition-colors" do %>
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+          </svg>
+          <%= render "notifications/notification_count", unread_count: User.first&.notifications&.unread&.count || 0 %>
+        <% end %>
+      </div>
+
+      <div class="h-5 w-px bg-gray-200"></div>
+
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-full bg-[#1B2A4A] flex items-center justify-center text-white text-xs font-bold" style="font-family: 'DM Sans', sans-serif;">U</div>
+        <div>
+          <p class="text-sm font-medium text-[#1B2A4A]" style="font-family: 'Noto Sans SC', sans-serif;">当前用户</p>
+          <p class="text-xs text-gray-400" style="font-family: 'Noto Sans SC', sans-serif;">治疗师</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>

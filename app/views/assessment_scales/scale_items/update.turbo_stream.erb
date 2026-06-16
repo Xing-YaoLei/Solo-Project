@@ -1,0 +1,3 @@
+<%= turbo_stream.replace "scale_item_#{@scale_item.id}" do %>
+  <%= render partial: "assessment_scales/scale_items/scale_item", locals: { scale: @scale, scale_item: @scale_item } %>
+<% end %>

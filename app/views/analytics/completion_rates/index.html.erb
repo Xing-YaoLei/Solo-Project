@@ -1,0 +1,106 @@
+<% content_for :page_title, "完成率复盘" %>
+
+<div class="space-y-6">
+  <div class="flex items-center justify-between">
+    <h1 class="text-2xl font-bold text-[#1B2A4A]" style="font-family: 'Noto Sans SC', sans-serif;">训练完成率复盘</h1>
+    <%= link_to "返回仪表盘", root_path, class: "text-sm text-gray-500 hover:text-[#1B2A4A] transition-colors", style: "font-family: 'Noto Sans SC', sans-serif;" %>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+    <div class="lg:col-span-1">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 space-y-4">
+        <h2 class="text-sm font-semibold text-[#1B2A4A]" style="font-family: 'Noto Sans SC', sans-serif;">筛选条件</h2>
+        <%= form_with url: analytics_completion_rate_path, method: :get, class: "space-y-3" do |f| %>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1" style="font-family: 'Noto Sans SC', sans-serif;">开始日期</label>
+            <%= f.date_field :start_date, value: @start_date, class: "w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2DD4A8] focus:border-transparent", style: "font-family: 'DM Sans', sans-serif;" %>
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1" style="font-family: 'Noto Sans SC', sans-serif;">结束日期</label>
+            <%= f.date_field :end_date, value: @end_date, class: "w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2DD4A8] focus:border-transparent", style: "font-family: 'DM Sans', sans-serif;" %>
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1" style="font-family: 'Noto Sans SC', sans-serif;">区域</label>
+            <%= f.select :area_id, options_for_select([["全部区域", ""]] + @areas.map { |a| [a.name, a.id] }, @area_id), {}, class: "w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2DD4A8] focus:border-transparent", style: "font-family: 'Noto Sans SC', sans-serif;" %>
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1" style="font-family: 'Noto Sans SC', sans-serif;">责任人</label>
+            <%= f.select :therapist_id, options_for_select([["全部治疗师", ""]] + @therapists.map { |t| [t.name, t.id] }, @therapist_id), {}, class: "w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2DD4A8] focus:border-transparent", style: "font-family: 'Noto Sans SC', sans-serif;" %>
+          </div>
+          <div class="flex gap-2 pt-2">
+            <button type="submit" class="flex-1 px-4 py-2 bg-[#1B2A4A] text-white rounded-lg text-sm hover:bg-[#2a3d66] transition-colors" style="font-family: 'Noto Sans SC', sans-serif;">查询</button>
+            <%= link_to "重置", analytics_completion_rate_path, class: "px-4 py-2 text-gray-500 border border-gray-200 rounded-lg text-sm hover:bg-gray-50 transition-colors text-center", style: "font-family: 'Noto Sans SC', sans-serif;" %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="lg:col-span-3 space-y-6">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <div class="text-center">
+          <p class="text-sm text-gray-500 mb-2" style="font-family: 'Noto Sans SC', sans-serif;">总体完成率</p>
+          <p class="text-5xl font-bold text-[#2DD4A8]" style="font-family: 'DM Sans', sans-serif;"><%= number_to_percentage(@overall_rate, precision: 1) %></p>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100">
+        <div class="px-5 py-4 border-b border-gray-100">
+          <h2 class="text-base font-semibold text-[#1B2A4A]" style="font-family: 'Noto Sans SC', sans-serif;">按区域分布</h2>
+        </div>
+        <div class="p-5">
+          <div class="space-y-3">
+            <% @area_breakdown.each do |item| %>
+              <div class="flex items-center gap-3">
+                <span class="w-24 text-sm text-gray-600 shrink-0" style="font-family: 'Noto Sans SC', sans-serif;"><%= item[:area].name %></span>
+                <div class="flex-1 bg-gray-100 rounded-full h-4 overflow-hidden">
+                  <div class="bg-[#2DD4A8] h-full rounded-full transition-all" style="width: <%= [item[:rate], 100].min %>%;"></div>
+                </div>
+                <span class="text-sm font-semibold text-[#1B2A4A] w-16 text-right" style="font-family: 'DM Sans', sans-serif;"><%= number_to_percentage(item[:rate], precision: 1) %></span>
+              </div>
+            <% end %>
+            <% if @area_breakdown.empty? %>
+              <p class="text-center text-sm text-gray-400 py-4" style="font-family: 'Noto Sans SC', sans-serif;">暂无区域数据</p>
+            <% end %>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100">
+        <div class="px-5 py-4 border-b border-gray-100">
+          <h2 class="text-base font-semibold text-[#1B2A4A]" style="font-family: 'Noto Sans SC', sans-serif;">按治疗师分布</h2>
+        </div>
+        <div class="overflow-hidden">
+          <table class="w-full">
+            <thead>
+              <tr class="bg-[#1B2A4A] text-white text-sm" style="font-family: 'Noto Sans SC', sans-serif;">
+                <th class="px-4 py-3 text-left font-medium">治疗师</th>
+                <th class="px-4 py-3 text-left font-medium">区域</th>
+                <th class="px-4 py-3 text-left font-medium">完成率</th>
+                <th class="px-4 py-3 text-left font-medium">进度</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @therapist_breakdown.each_with_index do |item, idx| %>
+                <tr class="<%= idx.even? ? 'bg-white' : 'bg-[#F5F3EF]/50' %> border-b border-gray-50">
+                  <td class="px-4 py-3 text-sm text-[#1B2A4A] font-medium" style="font-family: 'Noto Sans SC', sans-serif;"><%= item[:therapist].name %></td>
+                  <td class="px-4 py-3 text-sm text-gray-600" style="font-family: 'Noto Sans SC', sans-serif;"><%= item[:therapist].area&.name %></td>
+                  <td class="px-4 py-3 text-sm font-semibold text-[#1B2A4A]" style="font-family: 'DM Sans', sans-serif;"><%= number_to_percentage(item[:rate], precision: 1) %></td>
+                  <td class="px-4 py-3">
+                    <div class="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                      <div class="bg-[#2DD4A8] h-full rounded-full" style="width: <%= [item[:rate], 100].min %>%;"></div>
+                    </div>
+                  </td>
+                </tr>
+              <% end %>
+              <% if @therapist_breakdown.empty? %>
+                <tr>
+                  <td colspan="4" class="px-4 py-8 text-center text-sm text-gray-400" style="font-family: 'Noto Sans SC', sans-serif;">暂无治疗师数据</td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

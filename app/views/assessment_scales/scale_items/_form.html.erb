@@ -1,0 +1,21 @@
+<%= form_with model: [scale, scale_item], url: assessment_scale_scale_items_path(scale), class: "bg-[#F5F3EF]/50 rounded-lg p-4 space-y-3" do |f| %>
+  <div class="flex flex-wrap gap-3 items-end">
+    <div class="flex-1 min-w-[140px]">
+      <label class="block text-xs text-gray-500 mb-1" style="font-family: 'Noto Sans SC', sans-serif;">项目名称</label>
+      <%= f.text_field :name, placeholder: "输入项目名称", class: "w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2DD4A8] focus:border-transparent", style: "font-family: 'Noto Sans SC', sans-serif;" %>
+    </div>
+    <div class="w-[120px]">
+      <label class="block text-xs text-gray-500 mb-1" style="font-family: 'Noto Sans SC', sans-serif;">分类</label>
+      <%= f.text_field :category, placeholder: "分类", class: "w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2DD4A8] focus:border-transparent", style: "font-family: 'Noto Sans SC', sans-serif;" %>
+    </div>
+    <div class="w-[80px]">
+      <label class="block text-xs text-gray-500 mb-1" style="font-family: 'Noto Sans SC', sans-serif;">权重</label>
+      <%= f.number_field :weight, step: 0.1, value: scale_item.weight || 1.0, class: "w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2DD4A8] focus:border-transparent", style: "font-family: 'DM Sans', sans-serif;" %>
+    </div>
+    <div class="w-[80px]">
+      <label class="block text-xs text-gray-500 mb-1" style="font-family: 'Noto Sans SC', sans-serif;">排序</label>
+      <%= f.number_field :sort_order, value: scale_item.sort_order || 0, class: "w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2DD4A8] focus:border-transparent", style: "font-family: 'DM Sans', sans-serif;" %>
+    </div>
+    <button type="submit" class="px-4 py-2 bg-[#2DD4A8] text-white rounded-lg text-sm hover:bg-[#22b893] transition-colors" style="font-family: 'Noto Sans SC', sans-serif;">添加</button>
+  </div>
+<% end %>

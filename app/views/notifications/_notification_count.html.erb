@@ -1,0 +1,5 @@
+<% unread_count = local_assigns[:unread_count] || 0 %>
+
+<span id="notification_count" class="absolute -top-0.5 -right-0.5 inline-flex items-center justify-center w-4 h-4 text-[10px] font-bold text-white bg-[#EF4444] rounded-full" style="font-family: 'DM Sans', sans-serif;">
+  <%= unread_count > 0 ? unread_count : 0 %>
+</span>

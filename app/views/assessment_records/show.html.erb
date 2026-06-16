@@ -1,0 +1,83 @@
+<div class="space-y-6">
+  <div class="flex items-center gap-3">
+    <%= link_to "← 返回列表", assessment_records_path, class: "text-sm text-gray-500 hover:text-[#1B2A4A] transition-colors", style: "font-family: 'Noto Sans SC', sans-serif;" %>
+    <span class="text-gray-300">|</span>
+    <h1 class="text-2xl font-bold text-[#1B2A4A]" style="font-family: 'Noto Sans SC', sans-serif;">评估记录详情</h1>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="lg:col-span-1 space-y-4">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-3">
+        <h2 class="text-lg font-semibold text-[#1B2A4A]" style="font-family: 'Noto Sans SC', sans-serif;">基本信息</h2>
+        <div class="space-y-2">
+          <div>
+            <span class="text-xs text-gray-400" style="font-family: 'Noto Sans SC', sans-serif;">患者</span>
+            <p class="text-sm text-gray-700 mt-0.5" style="font-family: 'Noto Sans SC', sans-serif;"><%= @assessment_record.patient&.name %></p>
+          </div>
+          <div>
+            <span class="text-xs text-gray-400" style="font-family: 'Noto Sans SC', sans-serif;">评估量表</span>
+            <p class="text-sm text-gray-700 mt-0.5" style="font-family: 'Noto Sans SC', sans-serif;"><%= @assessment_record.scale&.name %></p>
+          </div>
+          <div>
+            <span class="text-xs text-gray-400" style="font-family: 'Noto Sans SC', sans-serif;">评估师</span>
+            <p class="text-sm text-gray-700 mt-0.5" style="font-family: 'Noto Sans SC', sans-serif;"><%= @assessment_record.assessor&.name %></p>
+          </div>
+          <div>
+            <span class="text-xs text-gray-400" style="font-family: 'Noto Sans SC', sans-serif;">评估日期</span>
+            <p class="text-sm text-gray-700 mt-0.5" style="font-family: 'DM Sans', sans-serif;"><%= @assessment_record.assessed_at&.strftime("%Y-%m-%d") %></p>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-3">
+        <h2 class="text-lg font-semibold text-[#1B2A4A]" style="font-family: 'Noto Sans SC', sans-serif;">评分结果</h2>
+        <div class="text-center py-4">
+          <p class="text-4xl font-bold text-[#2DD4A8]" style="font-family: 'DM Sans', sans-serif;"><%= @assessment_record.total_score.presence || "-" %></p>
+          <p class="text-sm text-gray-400 mt-1" style="font-family: 'Noto Sans SC', sans-serif;">总分</p>
+        </div>
+        <% if @assessment_record.grade.present? %>
+          <div class="text-center">
+            <span class="inline-flex items-center px-4 py-1.5 rounded-full text-sm font-semibold bg-[#1B2A4A]/10 text-[#1B2A4A]" style="font-family: 'Noto Sans SC', sans-serif;"><%= @assessment_record.grade %></span>
+          </div>
+        <% end %>
+        <div class="text-center">
+          <% case @assessment_record.status %>
+          <% when "completed" %>
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#2DD4A8]/10 text-[#2DD4A8]" style="font-family: 'Noto Sans SC', sans-serif;">已完成</span>
+          <% when "draft" %>
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#F59E0B]/10 text-[#F59E0B]" style="font-family: 'Noto Sans SC', sans-serif;">草稿</span>
+          <% when "cancelled" %>
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#EF4444]/10 text-[#EF4444]" style="font-family: 'Noto Sans SC', sans-serif;">已取消</span>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <div class="lg:col-span-2">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <h2 class="text-lg font-semibold text-[#1B2A4A] mb-4" style="font-family: 'Noto Sans SC', sans-serif;">评估项目得分</h2>
+        <table class="w-full">
+          <thead>
+            <tr class="border-b border-gray-100">
+              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500" style="font-family: 'Noto Sans SC', sans-serif;">项目名称</th>
+              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500" style="font-family: 'Noto Sans SC', sans-serif;">分类</th>
+              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500" style="font-family: 'Noto Sans SC', sans-serif;">权重</th>
+              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500" style="font-family: 'Noto Sans SC', sans-serif;">得分</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% item_scores = @assessment_record.item_scores || {} %>
+            <% @assessment_record.scale&.scale_items&.order(:sort_order)&.each_with_index do |item, idx| %>
+              <tr class="<%= idx.even? ? 'bg-white' : 'bg-[#F5F3EF]/50' %> border-b border-gray-50">
+                <td class="px-4 py-3 text-sm text-[#1B2A4A]" style="font-family: 'Noto Sans SC', sans-serif;"><%= item.name %></td>
+                <td class="px-4 py-3 text-sm text-gray-500" style="font-family: 'Noto Sans SC', sans-serif;"><%= item.category %></td>
+                <td class="px-4 py-3 text-sm text-gray-500" style="font-family: 'DM Sans', sans-serif;"><%= item.weight %></td>
+                <td class="px-4 py-3 text-sm font-semibold text-[#2DD4A8]" style="font-family: 'DM Sans', sans-serif;"><%= item_scores[item.id.to_s].presence || "-" %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>

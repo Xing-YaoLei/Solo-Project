@@ -1,0 +1,82 @@
+<div class="min-h-screen" style="background-color: #F5F3EF;">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="flex items-center justify-between mb-8">
+      <h1 class="text-2xl font-bold" style="color: #1B2A4A;">设备管理</h1>
+      <%= link_to "新增设备", new_equipment_path, class: "inline-flex items-center px-4 py-2 rounded-lg text-white font-medium shadow-sm hover:opacity-90 transition-opacity", style: "background-color: #2DD4A8;" %>
+    </div>
+
+    <div class="mb-6 flex flex-wrap items-center gap-3">
+      <%= form_with url: equipment_index_path, method: :get, class: "flex flex-wrap items-center gap-3", data: { turbo_frame: "equipment_list" } do |f| %>
+        <div class="flex items-center gap-2">
+          <%= link_to "全部", equipment_index_path, class: "px-3 py-1.5 rounded-full text-sm font-medium #{params[:status].blank? ? 'text-white' : 'text-gray-600 hover:bg-gray-100'}", style: params[:status].blank? ? "background-color: #1B2A4A;" : "" %>
+          <%= link_to "正常", equipment_index_path(status: "normal"), class: "px-3 py-1.5 rounded-full text-sm font-medium #{params[:status] == 'normal' ? 'text-white' : 'text-green-700 bg-green-50 hover:bg-green-100'}", style: params[:status] == 'normal' ? "background-color: #16a34a;" : "" %>
+          <%= link_to "维护中", equipment_index_path(status: "maintenance"), class: "px-3 py-1.5 rounded-full text-sm font-medium #{params[:status] == 'maintenance' ? 'text-white' : 'text-yellow-700 bg-yellow-50 hover:bg-yellow-100'}", style: params[:status] == 'maintenance' ? "background-color: #F59E0B;" : "" %>
+          <%= link_to "已退役", equipment_index_path(status: "retired"), class: "px-3 py-1.5 rounded-full text-sm font-medium #{params[:status] == 'retired' ? 'text-white' : 'text-red-700 bg-red-50 hover:bg-red-100'}", style: params[:status] == 'retired' ? "background-color: #EF4444;" : "" %>
+        </div>
+
+        <div class="h-6 w-px bg-gray-300"></div>
+
+        <%= f.select :area_id, @areas.map { |a| [a.name, a.id] }, { include_blank: "全部区域" }, selected: params[:area_id], class: "rounded-lg border-gray-300 text-sm py-1.5 pl-3 pr-8 focus:ring-0 focus:border-gray-400" %>
+        <%= f.submit "筛选", class: "px-3 py-1.5 rounded-lg text-sm font-medium text-white", style: "background-color: #1B2A4A;" %>
+      <% end %>
+    </div>
+
+    <%= turbo_frame_tag "equipment_list" do %>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <% @equipment.each do |eq| %>
+          <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
+            <div class="p-5">
+              <div class="flex items-start justify-between mb-3">
+                <div>
+                  <h3 class="font-semibold text-lg" style="color: #1B2A4A;"><%= eq.name %></h3>
+                  <p class="text-sm text-gray-500"><%= eq.code %></p>
+                </div>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                  <% case eq.status
+                     when 'normal' %>bg-green-100 text-green-800
+                  <% when 'maintenance' %>bg-yellow-100 text-yellow-800
+                  <% when 'retired' %>bg-red-100 text-red-800
+                  <% end %>">
+                  <span class="w-1.5 h-1.5 rounded-full mr-1.5
+                    <% case eq.status
+                       when 'normal' %>bg-green-500
+                    <% when 'maintenance' %>bg-yellow-500
+                    <% when 'retired' %>bg-red-500
+                    <% end %>"></span>
+                  <%= eq.status == 'normal' ? '正常' : eq.status == 'maintenance' ? '维护中' : '已退役' %>
+                </span>
+              </div>
+
+              <div class="space-y-1.5 text-sm text-gray-600">
+                <div class="flex items-center gap-2">
+                  <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
+                  <span><%= eq.category.presence || "未分类" %></span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                  <span><%= eq.area&.name || "未分配" %></span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                  <span>上次维护: <%= eq.last_maintenance_date&.strftime("%Y-%m-%d") || "无记录" %></span>
+                </div>
+              </div>
+            </div>
+
+            <div class="border-t border-gray-100 px-5 py-3 flex items-center justify-between bg-gray-50/50">
+              <span class="text-xs text-gray-400"><%= eq.equipment_maintenances.count %> 条维护记录</span>
+              <%= link_to "查看详情", equipment_path(eq), class: "text-sm font-medium hover:underline", style: "color: #2DD4A8;" %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+
+      <% if @equipment.empty? %>
+        <div class="text-center py-16">
+          <svg class="mx-auto h-12 w-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+          <p class="mt-4 text-gray-400">暂无设备数据</p>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+</div>

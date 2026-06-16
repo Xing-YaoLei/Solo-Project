@@ -1,0 +1,7 @@
+<%= turbo_stream.append "scale_items" do %>
+  <%= render partial: "assessment_scales/scale_items/scale_item", locals: { scale: @scale, scale_item: @scale_item } %>
+<% end %>
+
+<%= turbo_stream.replace "scale_item_form" do %>
+  <%= render partial: "assessment_scales/scale_items/form", locals: { scale: @scale, scale_item: ScaleItem.new(scale: @scale) } %>
+<% end %>
