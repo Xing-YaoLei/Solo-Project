@@ -1,5 +1,6 @@
 import sys
 import os
+import importlib
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -10,6 +11,16 @@ import pandas as pd
 import io
 import json
 import zipfile
+
+import config as _config_mod
+import database as _db_mod
+import storage as _storage_mod
+import data_models as _models_mod
+import data_service as _service_mod
+import charts as _charts_mod
+
+for _mod in [_config_mod, _db_mod, _storage_mod, _models_mod, _service_mod, _charts_mod]:
+    importlib.reload(_mod)
 
 from data_service import get_service
 from data_models import (

@@ -342,28 +342,35 @@ def create_single_patient_trend(detail_df: pl.DataFrame,
             hovertemplate='<b>%{x}</b><br>训练完成率: %{y:.1f}%<extra></extra>'
         ))
 
-        anomaly_mask = (
-            (~detail_df["fee_table_updated"].to_list()) |
-            (~detail_df["medical_record_complete"].to_list()) |
-            (~detail_df["device_calibration_current"].to_list()) |
-            (detail_df["insurance_denial"].to_list())
-        )
+        fee_list = detail_df["fee_table_updated"].to_list()
+        med_list = detail_df["medical_record_complete"].to_list()
+        dev_list = detail_df["device_calibration_current"].to_list()
+        ins_list = detail_df["insurance_denial"].to_list()
+
+        anomaly_mask = []
+        anomaly_types_list = []
+        for i in range(len(detail_df)):
+            is_anomaly = False
+            types = []
+            if not bool(fee_list[i]):
+                is_anomaly = True
+                types.append("收费延迟")
+            if not bool(med_list[i]):
+                is_anomaly = True
+                types.append("病历缺失")
+            if not bool(dev_list[i]):
+                is_anomaly = True
+                types.append("设备校准")
+            if bool(ins_list[i]):
+                is_anomaly = True
+                types.append("医保拒付")
+            anomaly_mask.append(is_anomaly)
+            anomaly_types_list.append("<br>".join(types) if types else "")
 
         if any(anomaly_mask):
             anomaly_dates = [d for d, m in zip(dates, anomaly_mask) if m]
             anomaly_scores = [s for s, m in zip(scores, anomaly_mask) if m]
-            anomaly_types = []
-            for row in detail_df.filter(pl.lit(anomaly_mask)).iter_rows(named=True):
-                types = []
-                if not row["fee_table_updated"]:
-                    types.append("收费延迟")
-                if not row["medical_record_complete"]:
-                    types.append("病历缺失")
-                if not row["device_calibration_current"]:
-                    types.append("设备校准")
-                if row["insurance_denial"]:
-                    types.append("医保拒付")
-                anomaly_types.append("<br>".join(types) if types else "异常")
+            anomaly_types = [t for t, m in zip(anomaly_types_list, anomaly_mask) if m]
 
             fig.add_trace(go.Scatter(
                 x=anomaly_dates, y=anomaly_scores,
