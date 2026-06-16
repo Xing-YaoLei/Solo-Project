@@ -71,6 +71,9 @@ export interface GameState {
   completedTasks: string[]
   currentLevel: number
   tutorialCompleted: boolean
+  sessionScore: number
+  errors: ErrorRecord[]
+  rejections: RejectionRecord[]
 }
 
 export interface TrainingRecord {
@@ -88,6 +91,8 @@ export interface TrainingRecord {
 export interface ErrorRecord {
   taskId: string
   treatmentId: string
+  patientName: string
+  treatmentName: string
   reason: string
   timestamp: number
 }
@@ -95,6 +100,8 @@ export interface ErrorRecord {
 export interface RejectionRecord {
   taskId: string
   treatmentId: string
+  patientName: string
+  treatmentName: string
   reason: string
   amount: number
   timestamp: number

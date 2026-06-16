@@ -1,10 +1,12 @@
 import Phaser from 'phaser'
 import { GAME_CONFIG, COLORS } from '../game/constants'
 import { StorageManager } from '../managers/StorageManager'
-import type { TrainingRecord, RejectionRecord } from '../game/types'
+import { TREATMENTS } from '../config/treatments'
+import type { TrainingRecord, RejectionRecord, ErrorRecord } from '../game/types'
 
 export class RecordsScene extends Phaser.Scene {
   private storageManager!: StorageManager
+  private detailContainer: Phaser.GameObjects.Container | null = null
 
   constructor() {
     super('RecordsScene')
@@ -129,103 +131,147 @@ export class RecordsScene extends Phaser.Scene {
   }
 
   private showRecordDetail(record: TrainingRecord): void {
-    this.children.each(c => {
-      const go = c as Phaser.GameObjects.GameObject
-      if (go.name === 'recordDetail') go.destroy()
-    })
+    this.closeRecordDetail()
 
-    const totalRejectionAmount = record.rejections.reduce((sum, rej: RejectionRecord) => sum + rej.amount, 0)
-    const maxDetailItems = 6
-    const detailHeight = 520 + Math.min(record.errors.length + record.rejections.length, maxDetailItems * 2) * 10
+    const panelX = GAME_CONFIG.WIDTH / 2 - 350
+    const panelY = 60
+    const panelW = 700
+    const panelH = GAME_CONFIG.HEIGHT - 120
 
-    this.add.rectangle(GAME_CONFIG.WIDTH / 2, GAME_CONFIG.HEIGHT / 2, 700, Math.min(detailHeight, 600), COLORS.SURFACE)
+    this.add.rectangle(GAME_CONFIG.WIDTH / 2, GAME_CONFIG.HEIGHT / 2, panelW, panelH, COLORS.SURFACE)
       .setStrokeStyle(3, COLORS.PRIMARY)
       .setName('recordDetail')
 
-    this.add.text(GAME_CONFIG.WIDTH / 2, GAME_CONFIG.HEIGHT / 2 - 250, '训练详情复盘', {
+    this.add.text(GAME_CONFIG.WIDTH / 2, panelY + 30, '训练详情复盘', {
       font: 'bold 28px Arial', color: '#ffffff'
     }).setOrigin(0.5).setName('recordDetail')
 
-    const closeBtn = this.add.rectangle(GAME_CONFIG.WIDTH / 2 + 320, GAME_CONFIG.HEIGHT / 2 - 250, 40, 40, COLORS.ACCENT)
+    const closeBtn = this.add.rectangle(GAME_CONFIG.WIDTH / 2 + 320, panelY + 30, 40, 40, COLORS.ACCENT)
       .setInteractive({ useHandCursor: true })
       .setName('recordDetail')
-    this.add.text(GAME_CONFIG.WIDTH / 2 + 320, GAME_CONFIG.HEIGHT / 2 - 250, '✕', {
+    this.add.text(GAME_CONFIG.WIDTH / 2 + 320, panelY + 30, '✕', {
       font: 'bold 20px Arial', color: '#ffffff'
     }).setOrigin(0.5).setName('recordDetail')
+    closeBtn.on('pointerdown', () => this.closeRecordDetail())
 
-    closeBtn.on('pointerdown', () => {
-      this.children.each(c => {
-        const go = c as Phaser.GameObjects.GameObject
-        if (go.name === 'recordDetail') go.destroy()
-      })
-    })
+    const totalRejectionAmount = record.rejections.reduce((sum, rej: RejectionRecord) => sum + rej.amount, 0)
 
-    this.add.text(GAME_CONFIG.WIDTH / 2 - 300, GAME_CONFIG.HEIGHT / 2 - 200,
-      `日期: ${new Date(record.date).toLocaleString('zh-CN')}`,
-      { font: '16px Arial', color: '#a0a0a0' }
-    ).setOrigin(0, 0.5).setName('recordDetail')
+    this.detailContainer = this.add.container(panelX + 20, panelY + 70)
+    this.detailContainer.setName('recordDetailContent')
 
-    this.add.text(GAME_CONFIG.WIDTH / 2 - 300, GAME_CONFIG.HEIGHT / 2 - 160,
-      `关卡: Lv.${record.level} | 总得分: ${record.score}`,
-      { font: 'bold 20px Arial', color: '#ffffff' }
-    ).setOrigin(0, 0.5).setName('recordDetail')
+    let yOffset = 0
 
-    this.add.text(GAME_CONFIG.WIDTH / 2 - 300, GAME_CONFIG.HEIGHT / 2 - 120,
-      `任务完成: ${record.completedTasks}/${record.totalTasks} (${(record.completionRate * 100).toFixed(1)}%)`,
-      { font: '18px Arial', color: '#4a90d9' }
-    ).setOrigin(0, 0.5).setName('recordDetail')
-
-    this.add.text(GAME_CONFIG.WIDTH / 2 - 300, GAME_CONFIG.HEIGHT / 2 - 85,
-      `错误: ${record.errors.length}次 | 医保拒付: ${record.rejections.length}次 | 拒付金额: ${totalRejectionAmount}元`,
-      { font: '16px Arial', color: '#ffd93d' }
-    ).setOrigin(0, 0.5).setName('recordDetail')
-
-    let yOffset = GAME_CONFIG.HEIGHT / 2 - 40
+    const headerItems = this.buildDetailHeader(record, totalRejectionAmount)
+    this.detailContainer.add(headerItems)
+    yOffset = 120
 
     if (record.errors.length > 0) {
-      this.add.text(GAME_CONFIG.WIDTH / 2 - 300, yOffset, '错误记录:', {
-        font: 'bold 18px Arial', color: '#ff6b6b'
-      }).setOrigin(0, 0.5).setName('recordDetail')
-      yOffset += 30
-
-      record.errors.slice(0, maxDetailItems).forEach(err => {
-        this.add.text(GAME_CONFIG.WIDTH / 2 - 280, yOffset,
-          `• ${err.reason}`,
-          { font: '14px Arial', color: '#a0a0a0' }
-        ).setOrigin(0, 0.5).setName('recordDetail')
-        yOffset += 22
-      })
-
-      if (record.errors.length > maxDetailItems) {
-        this.add.text(GAME_CONFIG.WIDTH / 2 - 280, yOffset,
-          `...还有 ${record.errors.length - maxDetailItems} 条错误`,
-          { font: '14px Arial', color: '#666666' }
-        ).setOrigin(0, 0.5).setName('recordDetail')
-        yOffset += 22
-      }
+      const errorItems = this.buildErrorSection(record.errors, yOffset)
+      this.detailContainer.add(errorItems)
+      yOffset += 30 + record.errors.length * 26
     }
 
-    yOffset += 10
+    yOffset += 15
+
     if (record.rejections.length > 0) {
-      this.add.text(GAME_CONFIG.WIDTH / 2 - 300, yOffset, '医保拒付记录:', {
-        font: 'bold 18px Arial', color: '#ffd93d'
-      }).setOrigin(0, 0.5).setName('recordDetail')
-      yOffset += 30
-
-      record.rejections.slice(0, maxDetailItems).forEach((rej: RejectionRecord) => {
-        this.add.text(GAME_CONFIG.WIDTH / 2 - 280, yOffset,
-          `• ${rej.reason} (损失: ${rej.amount}元)`,
-          { font: '14px Arial', color: '#a0a0a0' }
-        ).setOrigin(0, 0.5).setName('recordDetail')
-        yOffset += 22
-      })
-
-      if (record.rejections.length > maxDetailItems) {
-        this.add.text(GAME_CONFIG.WIDTH / 2 - 280, yOffset,
-          `...还有 ${record.rejections.length - maxDetailItems} 条拒付`,
-          { font: '14px Arial', color: '#666666' }
-        ).setOrigin(0, 0.5).setName('recordDetail')
-      }
+      const rejectionItems = this.buildRejectionSection(record.rejections, yOffset)
+      this.detailContainer.add(rejectionItems)
+      yOffset += 30 + record.rejections.length * 26
     }
+
+    this.input.on('wheel', this.handleDetailScroll, this)
+  }
+
+  private buildDetailHeader(record: TrainingRecord, totalRejectionAmount: number): Phaser.GameObjects.GameObject[] {
+    const items: Phaser.GameObjects.GameObject[] = []
+    let y = 0
+
+    const t1 = this.add.text(10, y, `日期: ${new Date(record.date).toLocaleString('zh-CN')}`, {
+      font: '16px Arial', color: '#a0a0a0'
+    })
+    items.push(t1)
+    y += 30
+
+    const t2 = this.add.text(10, y, `关卡: Lv.${record.level} | 总得分: ${record.score}`, {
+      font: 'bold 20px Arial', color: '#ffffff'
+    })
+    items.push(t2)
+    y += 30
+
+    const t3 = this.add.text(10, y, `任务完成: ${record.completedTasks}/${record.totalTasks} (${(record.completionRate * 100).toFixed(1)}%)`, {
+      font: '18px Arial', color: '#4a90d9'
+    })
+    items.push(t3)
+    y += 30
+
+    const t4 = this.add.text(10, y, `错误: ${record.errors.length}次 | 医保拒付: ${record.rejections.length}次 | 拒付金额: ${totalRejectionAmount}元`, {
+      font: '16px Arial', color: '#ffd93d'
+    })
+    items.push(t4)
+    y += 30
+
+    return items
+  }
+
+  private buildErrorSection(errors: ErrorRecord[], startY: number): Phaser.GameObjects.GameObject[] {
+    const items: Phaser.GameObjects.GameObject[] = []
+
+    const header = this.add.text(10, startY, `错误记录（${errors.length}条）:`, {
+      font: 'bold 18px Arial', color: '#ff6b6b'
+    })
+    items.push(header)
+
+    errors.forEach((err, i) => {
+      const y = startY + 30 + i * 26
+      const patientLabel = err.patientName || '未知患者'
+      const treatmentLabel = err.treatmentName || TREATMENTS[err.treatmentId]?.name || err.treatmentId
+      const line = this.add.text(20, y, `• [${patientLabel} / ${treatmentLabel}] ${err.reason}`, {
+        font: '14px Arial', color: '#a0a0a0', wordWrap: { width: 620 }
+      })
+      items.push(line)
+    })
+
+    return items
+  }
+
+  private buildRejectionSection(rejections: RejectionRecord[], startY: number): Phaser.GameObjects.GameObject[] {
+    const items: Phaser.GameObjects.GameObject[] = []
+
+    const header = this.add.text(10, startY, `医保拒付记录（${rejections.length}条）:`, {
+      font: 'bold 18px Arial', color: '#ffd93d'
+    })
+    items.push(header)
+
+    rejections.forEach((rej, i) => {
+      const y = startY + 30 + i * 26
+      const patientLabel = rej.patientName || '未知患者'
+      const treatmentLabel = rej.treatmentName || TREATMENTS[rej.treatmentId]?.name || rej.treatmentId
+      const line = this.add.text(20, y, `• [${patientLabel} / ${treatmentLabel}] ${rej.reason} (损失: ${rej.amount}元)`, {
+        font: '14px Arial', color: '#a0a0a0', wordWrap: { width: 620 }
+      })
+      items.push(line)
+    })
+
+    return items
+  }
+
+  private handleDetailScroll(_pointer: Phaser.Input.Pointer, _gameObjects: Phaser.GameObjects.GameObject[], _dx: number, dy: number): void {
+    if (!this.detailContainer) return
+    const currentY = this.detailContainer.y
+    const maxY = 70
+    const minY = Math.min(maxY, currentY - dy * 0.5)
+    this.detailContainer.y = Phaser.Math.Clamp(minY, -this.detailContainer.length * 26 + 300, maxY)
+  }
+
+  private closeRecordDetail(): void {
+    this.input.off('wheel', this.handleDetailScroll, this)
+
+    this.children.each(c => {
+      const go = c as Phaser.GameObjects.GameObject
+      if (go.name === 'recordDetail') go.destroy()
+      if (go.name === 'recordDetailContent') go.destroy()
+    })
+
+    this.detailContainer = null
   }
 }

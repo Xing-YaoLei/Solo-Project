@@ -120,7 +120,10 @@ export class StorageManager {
       instruments,
       completedTasks: [],
       currentLevel: 1,
-      tutorialCompleted: false
+      tutorialCompleted: false,
+      sessionScore: 0,
+      errors: [],
+      rejections: []
     }
   }
 }

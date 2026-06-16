@@ -14,10 +14,6 @@ export class GameStateManager {
   private static instance: GameStateManager
   private state: GameState
   private currentClues: Map<string, Clue[]> = new Map()
-  private errors: ErrorRecord[] = []
-  private rejections: RejectionRecord[] = []
-  private sessionScore: number = 0
-  private allTasks: Task[] = []
 
   private constructor() {
     this.state = StorageManager.getInstance().getInitialGameState()
@@ -39,10 +35,17 @@ export class GameStateManager {
     StorageManager.getInstance().saveGame(this.state)
   }
 
+  private syncToState(): void {
+    StorageManager.getInstance().saveGame(this.state)
+  }
+
   loadSavedState(): boolean {
     const saved = StorageManager.getInstance().loadGame()
     if (saved) {
       this.state = saved
+      if (!this.state.sessionScore) this.state.sessionScore = 0
+      if (!this.state.errors) this.state.errors = []
+      if (!this.state.rejections) this.state.rejections = []
       return true
     }
     return false
@@ -51,10 +54,6 @@ export class GameStateManager {
   resetState(): void {
     this.state = StorageManager.getInstance().getInitialGameState()
     this.currentClues.clear()
-    this.errors = []
-    this.rejections = []
-    this.sessionScore = 0
-    this.allTasks = []
     StorageManager.getInstance().clearSave()
   }
 
@@ -85,7 +84,17 @@ export class GameStateManager {
   generateTasks(): Task[] {
     const levelConfig = this.getCurrentLevelConfig()
     const unlockedTreatments = this.getUnlockedTreatments()
-    const tasks: Task[] = []
+    const existingDayTaskIds = new Set(
+      this.state.tasks
+        .filter(t => t.assignedDate === `day_${this.state.currentDay}`)
+        .map(t => t.id)
+    )
+
+    if (existingDayTaskIds.size > 0) {
+      return this.state.tasks.filter(t => t.assignedDate === `day_${this.state.currentDay}`)
+    }
+
+    const newTasks: Task[] = []
 
     for (let i = 0; i < levelConfig.taskCount; i++) {
       const patient = generatePatient(unlockedTreatments)
@@ -104,21 +113,20 @@ export class GameStateManager {
         isCompleted: false,
         isAccepted: false
       }
-      tasks.push(task)
+      newTasks.push(task)
     }
 
-    this.allTasks.push(...tasks)
-    this.state.tasks = [...this.allTasks]
-    StorageManager.getInstance().saveGame(this.state)
-    return tasks
+    this.state.tasks = [...this.state.tasks, ...newTasks]
+    this.syncToState()
+    return newTasks
   }
 
   getCurrentDayTasks(): Task[] {
-    return this.allTasks.filter(t => t.assignedDate === `day_${this.state.currentDay}`)
+    return this.state.tasks.filter(t => t.assignedDate === `day_${this.state.currentDay}`)
   }
 
   getAllTasks(): Task[] {
-    return [...this.allTasks]
+    return [...this.state.tasks]
   }
 
   getClues(patientId: string): Clue[] {
@@ -136,11 +144,10 @@ export class GameStateManager {
   }
 
   acceptTask(taskId: string): boolean {
-    const task = this.allTasks.find(t => t.id === taskId)
+    const task = this.state.tasks.find(t => t.id === taskId)
     if (!task || task.isAccepted) return false
     task.isAccepted = true
-    this.state.tasks = [...this.allTasks]
-    StorageManager.getInstance().saveGame(this.state)
+    this.syncToState()
     return true
   }
 
@@ -150,7 +157,7 @@ export class GameStateManager {
     timeSlot: number,
     instrumentId: string
   ): { success: boolean; message?: string } {
-    const task = this.allTasks.find(t => t.id === taskId)
+    const task = this.state.tasks.find(t => t.id === taskId)
     if (!task || !task.isAccepted || task.isCompleted) {
       return { success: false, message: '任务无效或已完成' }
     }
@@ -214,7 +221,7 @@ export class GameStateManager {
       instrument.status = 'maintenance'
     }
 
-    StorageManager.getInstance().saveGame(this.state)
+    this.syncToState()
     return { success: true }
   }
 
@@ -231,7 +238,7 @@ export class GameStateManager {
     }
 
     const treatment = TREATMENTS[scheduled.treatmentId]
-    const task = this.allTasks.find(t => t.patient.id === scheduled.patientId)
+    const task = this.state.tasks.find(t => t.patient.id === scheduled.patientId)
     const instrument = this.state.instruments.find(i => i.id === scheduled.instrumentId)
 
     if (!treatment || !task) {
@@ -255,12 +262,14 @@ export class GameStateManager {
         rejection = {
           taskId: task.id,
           treatmentId: treatment.id,
+          patientName: task.patient.name,
+          treatmentName: treatment.name,
           reason: rejectionReason,
           amount: Math.floor(treatment.cost * treatment.insuranceRatio),
           timestamp: Date.now()
         }
-        this.rejections.push(rejection)
-        this.sessionScore += GAME_CONFIG.SCORE_PENALTY_REJECTION
+        this.state.rejections.push(rejection)
+        this.state.sessionScore += GAME_CONFIG.SCORE_PENALTY_REJECTION
         this.state.reputation = Math.max(GAME_CONFIG.MIN_REPUTATION, this.state.reputation - 2)
       }
     } else if (task.patient.insuranceType === 'basic') {
@@ -269,12 +278,14 @@ export class GameStateManager {
       rejection = {
         taskId: task.id,
         treatmentId: treatment.id,
+        patientName: task.patient.name,
+        treatmentName: treatment.name,
         reason: rejectionReason,
         amount: treatment.cost,
         timestamp: Date.now()
       }
-      this.rejections.push(rejection)
-      this.sessionScore += GAME_CONFIG.SCORE_PENALTY_REJECTION
+      this.state.rejections.push(rejection)
+      this.state.sessionScore += GAME_CONFIG.SCORE_PENALTY_REJECTION
     }
 
     scheduled.isInsuranceApproved = insuranceApproved
@@ -286,14 +297,14 @@ export class GameStateManager {
     payment += Math.floor(treatment.cost * (1 - (treatment.insuranceCovered ? treatment.insuranceRatio : 0)))
 
     this.state.money += payment
-    this.sessionScore += GAME_CONFIG.SCORE_BASE
+    this.state.sessionScore += GAME_CONFIG.SCORE_BASE
     if (insuranceApproved) {
-      this.sessionScore += GAME_CONFIG.SCORE_BONUS_PERFECT
+      this.state.sessionScore += GAME_CONFIG.SCORE_BONUS_PERFECT
       this.state.reputation = Math.min(GAME_CONFIG.MAX_REPUTATION, this.state.reputation + 1)
     }
 
     this.checkTaskCompletion(task)
-    StorageManager.getInstance().saveGame(this.state)
+    this.syncToState()
 
     return { success: true, payment, rejection }
   }
@@ -309,38 +320,43 @@ export class GameStateManager {
       if (!this.state.completedTasks.includes(task.id)) {
         this.state.completedTasks.push(task.id)
         this.state.money += task.reward
-        this.sessionScore += task.reward / 2
+        this.state.sessionScore += task.reward / 2
       }
     }
   }
 
   addError(taskId: string, treatmentId: string, reason: string): void {
+    const task = this.state.tasks.find(t => t.id === taskId)
+    const treatment = TREATMENTS[treatmentId]
     const error: ErrorRecord = {
       taskId,
       treatmentId,
+      patientName: task?.patient?.name || '未知患者',
+      treatmentName: treatment?.name || treatmentId,
       reason,
       timestamp: Date.now()
     }
-    this.errors.push(error)
-    this.sessionScore += GAME_CONFIG.SCORE_PENALTY_ERROR
+    this.state.errors.push(error)
+    this.state.sessionScore += GAME_CONFIG.SCORE_PENALTY_ERROR
     this.state.reputation = Math.max(GAME_CONFIG.MIN_REPUTATION, this.state.reputation - 1)
+    this.syncToState()
   }
 
   getErrors(): ErrorRecord[] {
-    return [...this.errors]
+    return [...this.state.errors]
   }
 
   getRejections(): RejectionRecord[] {
-    return [...this.rejections]
+    return [...this.state.rejections]
   }
 
   getSessionScore(): number {
-    return Math.max(0, this.sessionScore)
+    return Math.max(0, this.state.sessionScore)
   }
 
   getCompletionStats(): { completed: number; total: number; rate: number } {
-    const completed = this.allTasks.filter(t => t.isCompleted).length
-    const total = this.allTasks.length
+    const completed = this.state.tasks.filter(t => t.isCompleted).length
+    const total = this.state.tasks.length
     return {
       completed,
       total,
@@ -353,7 +369,7 @@ export class GameStateManager {
       return false
     }
     this.state.currentDay++
-    StorageManager.getInstance().saveGame(this.state)
+    this.syncToState()
     return true
   }
 
@@ -365,7 +381,7 @@ export class GameStateManager {
     this.state.money -= instrument.maintenanceCost
     instrument.durability = instrument.maxDurability
     instrument.status = 'available'
-    StorageManager.getInstance().saveGame(this.state)
+    this.syncToState()
     return true
   }
 
@@ -375,19 +391,19 @@ export class GameStateManager {
     if (!instrument) return false
 
     this.state.instruments.push({ ...instrument })
-    StorageManager.getInstance().saveGame(this.state)
+    this.syncToState()
     return true
   }
 
   levelUp(): boolean {
     const currentLevel = this.getCurrentLevelConfig()
-    if (this.sessionScore < currentLevel.targetScore) return false
+    if (this.state.sessionScore < currentLevel.targetScore) return false
     if (this.state.currentLevel >= LEVELS.length) return false
 
     this.state.currentLevel++
     const nextLevel = this.getCurrentLevelConfig()
     nextLevel.unlockInstruments.forEach(id => this.unlockInstrument(id))
-    StorageManager.getInstance().saveGame(this.state)
+    this.syncToState()
     return true
   }
 
@@ -396,9 +412,11 @@ export class GameStateManager {
   }
 
   resetSessionStats(): void {
-    this.errors = []
-    this.rejections = []
-    this.sessionScore = 0
-    this.allTasks = []
+    this.state.sessionScore = 0
+    this.state.errors = []
+    this.state.rejections = []
+    this.state.tasks = []
+    this.state.completedTasks = []
+    this.syncToState()
   }
 }
