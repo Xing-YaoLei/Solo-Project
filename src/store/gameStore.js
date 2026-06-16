@@ -27,6 +27,7 @@ const useGameStore = create(
       completedFollowUpTasks: [],
       showNextTaskWarning: false,
       nextTaskWarningType: null,
+      currentGameFollowUpCount: 0,
       statistics: {
         totalGames: 0,
         totalSuccess: 0,
@@ -44,6 +45,8 @@ const useGameStore = create(
         const level = get().levels.find(l => l.id === levelId)
         if (!level) return
         const tasks = generateTasks(level.taskCount)
+        const followUpCount = tasks.filter(t => t.requiresFollowUp).length
+        const currentStats = get().statistics
         set({
           currentLevel: level,
           gameState: 'playing',
@@ -59,6 +62,11 @@ const useGameStore = create(
           completedFollowUpTasks: [],
           showNextTaskWarning: false,
           nextTaskWarningType: null,
+          currentGameFollowUpCount: followUpCount,
+          statistics: {
+            ...currentStats,
+            totalFollowUps: currentStats.totalFollowUps + followUpCount,
+          },
         })
       },
 
@@ -240,6 +248,7 @@ const useGameStore = create(
           gameState: result,
           levels: newLevels,
           failureHistory: newFailureHistory,
+          currentGameFollowUpCount: 0,
           statistics: {
             ...statistics,
             totalGames: statistics.totalGames + 1,
@@ -250,20 +259,31 @@ const useGameStore = create(
         })
       },
 
-      resetGame: () => set({
-        gameState: 'idle',
-        currentLevel: null,
-        timeRemaining: 0,
-        score: 0,
-        tasks: [],
-        currentTaskIndex: 0,
-        mistakes: [],
-        failureReasons: [],
-        replayData: [],
-        completedFollowUpTasks: [],
-        showNextTaskWarning: false,
-        nextTaskWarningType: null,
-      }),
+      resetGame: () => {
+        const { currentGameFollowUpCount, statistics, gameState } = get()
+        const isGameInProgress = gameState === 'playing'
+        set({
+          gameState: 'idle',
+          currentLevel: null,
+          timeRemaining: 0,
+          score: 0,
+          tasks: [],
+          currentTaskIndex: 0,
+          mistakes: [],
+          failureReasons: [],
+          replayData: [],
+          completedFollowUpTasks: [],
+          showNextTaskWarning: false,
+          nextTaskWarningType: null,
+          currentGameFollowUpCount: 0,
+          statistics: isGameInProgress && currentGameFollowUpCount > 0
+            ? {
+                ...statistics,
+                totalFollowUps: Math.max(0, statistics.totalFollowUps - currentGameFollowUpCount),
+              }
+            : statistics,
+        })
+      },
 
       startReplay: (failureId) => {
         const failure = get().failureHistory.find(f => f.id === failureId)

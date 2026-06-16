@@ -29,8 +29,9 @@ export default function Game() {
   const [showFirstTaskWarning, setShowFirstTaskWarning] = useState(false)
 
   useEffect(() => {
+    if (gameState === 'playing' && tasks.length > 0) return
     startGame(parseInt(level))
-  }, [level, startGame])
+  }, [level, startGame, gameState, tasks.length])
 
   useEffect(() => {
     if (gameState === 'playing' && tasks.length > 0) {
