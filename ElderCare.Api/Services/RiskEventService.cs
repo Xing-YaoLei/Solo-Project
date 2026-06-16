@@ -237,53 +237,15 @@ public class RiskEventService : IRiskEventService
 
     public async Task<RiskEventTimelineDto> GetRiskEventTimelineAsync(int riskEventId)
     {
-        var riskEvent = await _context.RiskEvents.FindAsync(riskEventId);
+        var riskEvent = await GetRiskEventByIdAsync(riskEventId);
         if (riskEvent == null) throw new KeyNotFoundException($"RiskEvent {riskEventId} not found");
 
-        var reminders = await _context.RiskEventReminders
-            .Include(r => r.Staff)
-            .Where(r => r.RiskEventId == riskEventId)
-            .OrderBy(r => r.ActionTime)
-            .ToListAsync();
-
-        var timeline = new List<TimelineItemDto>
-        {
-            new()
-            {
-                Time = riskEvent.EventTime,
-                Action = "EventCreated",
-                Description = $"Risk event reported: {riskEvent.Description}",
-                StaffName = (await _context.Staff.FindAsync(riskEvent.ReportedByStaffId))?.Name
-            }
-        };
-
-        foreach (var reminder in reminders)
-        {
-            timeline.Add(new TimelineItemDto
-            {
-                Time = reminder.ActionTime,
-                Action = reminder.ActionType.ToString(),
-                Description = reminder.Message,
-                StaffName = reminder.Staff?.Name
-            });
-        }
-
-        if (riskEvent.ResolvedAt.HasValue)
-        {
-            timeline.Add(new TimelineItemDto
-            {
-                Time = riskEvent.ResolvedAt.Value,
-                Action = "Resolved",
-                Description = riskEvent.Resolution ?? "Event resolved",
-                StaffName = null
-            });
-        }
+        var reminders = await GetReminderHistoryAsync(riskEventId);
 
         return new RiskEventTimelineDto
         {
-            RiskEventId = riskEventId,
-            RiskEventStatus = riskEvent.Status,
-            Timeline = timeline
+            RiskEvent = riskEvent,
+            Reminders = reminders.ToList()
         };
     }
 
@@ -297,7 +259,7 @@ public class RiskEventService : IRiskEventService
         {
             Id = r.Id,
             RiskEventId = r.RiskEventId,
-            ActionType = r.ActionType,
+            ActionType = r.ActionType.ToString(),
             StaffId = r.StaffId,
             StaffName = r.Staff.Name,
             Message = r.Message,

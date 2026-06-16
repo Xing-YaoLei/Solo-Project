@@ -184,7 +184,7 @@ const MedicationSchedules: React.FC = () => {
       render: (val: string) => <Tag color={reminderStatusColors[val] || 'default'}>{ReminderStatusLabel[val] || val}</Tag>,
     },
     { title: '确认时间', dataIndex: 'acknowledgedAt', key: 'acknowledgedAt', render: (val: string) => val ? dayjs(val).format('YYYY-MM-DD HH:mm') : '-' },
-    { title: '确认人', dataIndex: 'acknowledgedByName', key: 'acknowledgedByName', render: (val: string) => val || '-' },
+    { title: '确认人', dataIndex: 'acknowledgedByStaffName', key: 'acknowledgedByStaffName', render: (val: string) => val || '-' },
     { title: '备注', dataIndex: 'notes', key: 'notes', render: (val: string) => val || '-' },
     {
       title: '操作',

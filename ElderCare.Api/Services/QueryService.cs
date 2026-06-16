@@ -29,6 +29,8 @@ public class QueryService : IQueryService
                     elderlyQ = elderlyQ.Where(e => e.Status == query.Status);
                 if (query.AreaId.HasValue)
                     elderlyQ = elderlyQ.Where(e => e.AreaId == query.AreaId.Value);
+                if (query.StaffId.HasValue)
+                    elderlyQ = elderlyQ.Where(e => e.PrimaryStaffId == query.StaffId.Value);
                 if (query.StartDate.HasValue)
                     elderlyQ = elderlyQ.Where(e => e.AdmissionDate >= query.StartDate.Value);
                 if (query.EndDate.HasValue)
@@ -101,7 +103,7 @@ public class QueryService : IQueryService
                     .ToListAsync();
                 break;
 
-            case "schedules":
+            case "schedule":
                 var schedQ = _context.MedicationSchedules
                     .Include(s => s.Elderly)
                     .Include(s => s.MedicationDict)
@@ -109,6 +111,10 @@ public class QueryService : IQueryService
                     .AsQueryable();
                 if (!string.IsNullOrEmpty(query.Status) && Enum.TryParse<Models.Enums.MedicationStatus>(query.Status, true, out var medStatus))
                     schedQ = schedQ.Where(s => s.Status == medStatus);
+                if (query.AreaId.HasValue)
+                    schedQ = schedQ.Where(s => s.Elderly.AreaId == query.AreaId.Value);
+                if (query.StaffId.HasValue)
+                    schedQ = schedQ.Where(s => s.CreatedByStaffId == query.StaffId.Value);
                 if (query.StartDate.HasValue)
                     schedQ = schedQ.Where(s => s.StartTime >= query.StartDate.Value);
                 if (query.EndDate.HasValue)
@@ -137,7 +143,7 @@ public class QueryService : IQueryService
                     .ToListAsync();
                 break;
 
-            case "visits":
+            case "visit":
                 var visitQ = _context.VisitRecords
                     .Include(v => v.Elderly)
                     .Include(v => v.Staff)
@@ -145,6 +151,8 @@ public class QueryService : IQueryService
                     .AsQueryable();
                 if (!string.IsNullOrEmpty(query.Status) && Enum.TryParse<Models.Enums.VisitStatus>(query.Status, true, out var vStatus))
                     visitQ = visitQ.Where(v => v.Status == vStatus);
+                if (query.AreaId.HasValue)
+                    visitQ = visitQ.Where(v => v.Elderly.AreaId == query.AreaId.Value);
                 if (query.StaffId.HasValue)
                     visitQ = visitQ.Where(v => v.StaffId == query.StaffId.Value);
                 if (query.StartDate.HasValue)
@@ -173,13 +181,15 @@ public class QueryService : IQueryService
                     .ToListAsync();
                 break;
 
-            case "checkins":
+            case "checkin":
                 var checkInQ = _context.ActivityCheckIns
                     .Include(c => c.Elderly)
                     .Include(c => c.Staff)
                     .AsQueryable();
                 if (!string.IsNullOrEmpty(query.Status) && Enum.TryParse<Models.Enums.CheckInStatus>(query.Status, true, out var cStatus))
                     checkInQ = checkInQ.Where(c => c.Status == cStatus);
+                if (query.AreaId.HasValue)
+                    checkInQ = checkInQ.Where(c => c.Elderly.AreaId == query.AreaId.Value);
                 if (query.StaffId.HasValue)
                     checkInQ = checkInQ.Where(c => c.StaffId == query.StaffId.Value);
                 if (query.StartDate.HasValue)

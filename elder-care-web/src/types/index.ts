@@ -54,12 +54,12 @@ export interface MedicationSchedule {
   dosage: string;
   frequency: string;
   startTime: string;
-  endTime: string;
+  endTime?: string;
   timeOfDay: string;
-  instructions: string;
+  instructions?: string;
   status: string;
   createdByStaffId: number;
-  createdByName?: string;
+  createdByStaffName?: string;
 }
 
 export interface MedicationReminderLog {
@@ -71,7 +71,7 @@ export interface MedicationReminderLog {
   status: string;
   acknowledgedAt?: string;
   acknowledgedByStaffId?: number;
-  acknowledgedByName?: string;
+  acknowledgedByStaffName?: string;
   notes?: string;
 }
 
@@ -80,7 +80,7 @@ export interface VisitRecordRule {
   name: string;
   frequencyDays: number;
   requiredDurationMinutes: number;
-  areaId: number;
+  areaId?: number;
   areaName?: string;
   priority: string;
   isActive: boolean;
@@ -92,12 +92,12 @@ export interface VisitRecord {
   elderlyName?: string;
   staffId: number;
   staffName?: string;
-  ruleId: number;
+  ruleId?: number;
   ruleName?: string;
   visitDate: string;
   duration: number;
   status: string;
-  notes: string;
+  notes?: string;
   nextVisitDate?: string;
 }
 
@@ -106,7 +106,7 @@ export interface ActivityCheckInThreshold {
   activityName: string;
   requiredCheckIns: number;
   periodDays: number;
-  areaId: number;
+  areaId?: number;
   areaName?: string;
   isActive: boolean;
 }
@@ -120,7 +120,7 @@ export interface ActivityCheckIn {
   staffName?: string;
   checkInTime: string;
   status: string;
-  thresholdId: number;
+  thresholdId?: number;
   notes?: string;
 }
 
@@ -132,11 +132,11 @@ export interface RiskEvent {
   severity: string;
   description: string;
   eventTime: string;
-  location: string;
+  location?: string;
   areaId: number;
   areaName?: string;
   reportedByStaffId: number;
-  reportedByName?: string;
+  reportedByStaffName?: string;
   assignedStaffId?: number;
   assignedStaffName?: string;
   status: string;
@@ -183,22 +183,31 @@ export interface RiskEventTimeline {
   reminders: RiskEventReminder[];
 }
 
-export interface CheckInStats {
+export interface CheckInStatsDto {
+  elderlyId: number;
+  elderlyName: string;
+  activityName: string;
   totalCheckIns: number;
-  onTime: number;
-  late: number;
+  checkedIn: number;
   absent: number;
+  late: number;
   excused: number;
+  isCompliant: boolean;
+}
+
+export type CheckInStats = CheckInStatsDto;
+
+export interface VisitComplianceDto {
+  elderlyId: number;
+  elderlyName: string;
+  ruleName?: string;
+  totalRequired: number;
+  completed: number;
+  missed: number;
   complianceRate: number;
 }
 
-export interface VisitCompliance {
-  totalScheduled: number;
-  completed: number;
-  missed: number;
-  cancelled: number;
-  complianceRate: number;
-}
+export type VisitCompliance = VisitComplianceDto;
 
 export const MedicationStatus = {
   Active: 'Active',

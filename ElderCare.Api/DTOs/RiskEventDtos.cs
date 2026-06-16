@@ -106,15 +106,6 @@ public class ReminderActionDto
 
 public class RiskEventTimelineDto
 {
-    public int RiskEventId { get; set; }
-    public string RiskEventStatus { get; set; } = string.Empty;
-    public List<TimelineItemDto> Timeline { get; set; } = new();
-}
-
-public class TimelineItemDto
-{
-    public DateTime Time { get; set; }
-    public string Action { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
-    public string? StaffName { get; set; }
+    public RiskEventDto RiskEvent { get; set; } = null!;
+    public List<ReminderActionDto> Reminders { get; set; } = new();
 }

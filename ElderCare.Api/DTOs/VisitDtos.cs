@@ -79,6 +79,7 @@ public class VisitComplianceDto
 {
     public int ElderlyId { get; set; }
     public string ElderlyName { get; set; } = string.Empty;
+    public string? RuleName { get; set; }
     public int TotalRequired { get; set; }
     public int Completed { get; set; }
     public int Missed { get; set; }

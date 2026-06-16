@@ -20,7 +20,7 @@ import type {
 } from '../types';
 
 const apiClient = axios.create({
-  baseURL: 'http://localhost:5000/api',
+  baseURL: '/api',
   timeout: 10000,
 });
 
@@ -73,7 +73,7 @@ export const thresholds = {
 export const checkIns = {
   getAll: () => apiClient.get<ActivityCheckIn[]>('/activity-checkins'),
   create: (data: Partial<ActivityCheckIn>) => apiClient.post<ActivityCheckIn>('/activity-checkins', data),
-  getStats: (elderlyId?: number) => apiClient.get<CheckInStats>('/activity-checkins/stats', { params: { elderlyId } }),
+  getStats: (elderlyId?: number) => apiClient.get<CheckInStats[]>('/activity-checkins/stats', { params: { elderlyId } }),
 };
 
 export const elderlyApi = {

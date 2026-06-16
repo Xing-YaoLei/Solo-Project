@@ -239,7 +239,7 @@ public class MedicationService : IMedicationService
                 ElderlyId = r.ElderlyId,
                 ElderlyName = r.Elderly.Name,
                 ReminderTime = r.ReminderTime,
-                Status = r.Status,
+                Status = r.Status.ToString(),
                 AcknowledgedAt = r.AcknowledgedAt,
                 AcknowledgedByStaffId = r.AcknowledgedByStaffId,
                 AcknowledgedByStaffName = r.AcknowledgedByStaff != null ? r.AcknowledgedByStaff.Name : null,
