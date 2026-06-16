@@ -1,5 +1,8 @@
 import Phaser from 'phaser';
 import { SCENE_KEYS } from '@/types/game';
+import { BootScene } from '@/scenes/BootScene';
+import { PreloadScene } from '@/scenes/PreloadScene';
+import { MainGameScene } from '@/scenes/MainGameScene';
 
 export const createGameConfig = (
   container: HTMLElement,
@@ -7,7 +10,7 @@ export const createGameConfig = (
   height: number = 800
 ): Phaser.Types.Core.GameConfig => {
   return {
-    type: Phaser.AUTO,
+    type: Phaser.CANVAS,
     width,
     height,
     parent: container,
@@ -18,14 +21,8 @@ export const createGameConfig = (
       width,
       height,
     },
-    physics: {
-      default: 'matter',
-      matter: {
-        gravity: { x: 0, y: 0 },
-        debug: false,
-      },
-    },
-    scene: [],
+
+    scene: [BootScene, PreloadScene, MainGameScene],
     dom: {
       createContainer: true,
     },
