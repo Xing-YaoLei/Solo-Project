@@ -1,0 +1,168 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  password  String
+  name      String
+  role      String   @default("CLERK")
+  storeId   String
+  storeName String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assignedTasks       FollowUpTask[]       @relation("Assignee")
+  pharmacistOpinions  PharmacistOpinion[]
+  reviewNotes         ReviewNote[]
+
+  @@map("users")
+}
+
+model Store {
+  id        String   @id @default(uuid())
+  name      String
+  code      String   @unique
+  address   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  replenishmentOrders ReplenishmentOrder[]
+
+  @@map("stores")
+}
+
+model ReplenishmentOrder {
+  id           String   @id @default(uuid())
+  orderNo      String   @unique
+  storeId      String
+  store        Store    @relation(fields: [storeId], references: [id])
+  drugName     String
+  drugSpec     String
+  manufacturer String
+  quantity     Int
+  unitPrice    Float
+  totalAmount  Float
+  orderDate    DateTime
+  status       String   @default("PENDING")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  insuranceRecords  InsuranceRecord[]
+  prescriptionPhotos PrescriptionPhoto[]
+  followUpTasks     FollowUpTask[]
+
+  @@map("replenishment_orders")
+}
+
+model InsuranceRecord {
+  id                    String             @id @default(uuid())
+  transactionNo         String             @unique
+  patientName           String
+  patientId             String
+  insuranceType         String
+  drugName              String
+  quantity              Int
+  amount                Float
+  transactionDate       DateTime
+  replenishmentOrderId  String
+  replenishmentOrder    ReplenishmentOrder @relation(fields: [replenishmentOrderId], references: [id])
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+
+  @@map("insurance_records")
+}
+
+model PrescriptionPhoto {
+  id                    String             @id @default(uuid())
+  fileName              String
+  fileUrl               String
+  isClear               Boolean            @default(true)
+  riskLevel             String             @default("LOW")
+  ocrText               String?
+  replenishmentOrderId  String
+  replenishmentOrder    ReplenishmentOrder @relation(fields: [replenishmentOrderId], references: [id])
+  uploadedAt            DateTime           @default(now())
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+
+  @@map("prescription_photos")
+}
+
+model FollowUpTask {
+  id                    String             @id @default(uuid())
+  taskNo                String             @unique
+  replenishmentOrderId  String
+  replenishmentOrder    ReplenishmentOrder @relation(fields: [replenishmentOrderId], references: [id])
+  drugName              String
+  storeId               String
+  storeName             String
+  assigneeId            String
+  assignee              User               @relation("Assignee", fields: [assigneeId], references: [id])
+  assigneeName          String
+  status                String             @default("PENDING")
+  riskLevel             String             @default("LOW")
+  completedAt           DateTime?
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+
+  pharmacistOpinions    PharmacistOpinion[]
+  batchExpiryRecords    BatchExpiryRecord[]
+  reviewNotes           ReviewNote[]
+
+  @@map("follow_up_tasks")
+}
+
+model PharmacistOpinion {
+  id              String       @id @default(uuid())
+  followUpTaskId  String
+  followUpTask    FollowUpTask @relation(fields: [followUpTaskId], references: [id])
+  pharmacistId    String
+  pharmacist      User         @relation(fields: [pharmacistId], references: [id])
+  pharmacistName  String
+  opinion         String
+  isApproved      Boolean      @default(false)
+  reviewedAt      DateTime     @default(now())
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@map("pharmacist_opinions")
+}
+
+model BatchExpiryRecord {
+  id              String       @id @default(uuid())
+  followUpTaskId  String
+  followUpTask    FollowUpTask @relation(fields: [followUpTaskId], references: [id])
+  batchNo         String
+  productionDate  DateTime
+  expiryDate      DateTime
+  shelfLife       String
+  verifiedBy      String
+  verifiedAt      DateTime     @default(now())
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@map("batch_expiry_records")
+}
+
+model ReviewNote {
+  id              String       @id @default(uuid())
+  followUpTaskId  String
+  followUpTask    FollowUpTask @relation(fields: [followUpTaskId], references: [id])
+  authorId        String
+  author          User         @relation(fields: [authorId], references: [id])
+  authorName      String
+  authorRole      String
+  type            String       @default("COMMUNICATION")
+  content         String
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@map("review_notes")
+}
