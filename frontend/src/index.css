@@ -1,0 +1,83 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f0f2f5;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.page-container {
+  padding: 24px;
+}
+
+.page-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: #262626;
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: #262626;
+}
+
+.risk-low {
+  color: #52c41a;
+}
+
+.risk-medium {
+  color: #faad14;
+}
+
+.risk-high {
+  color: #fa8c16;
+}
+
+.risk-critical {
+  color: #f5222d;
+}
+
+.risk-badge-low {
+  background-color: #f6ffed;
+  color: #52c41a;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.risk-badge-medium {
+  background-color: #fffbe6;
+  color: #faad14;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.risk-badge-high {
+  background-color: #fff7e6;
+  color: #fa8c16;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.risk-badge-critical {
+  background-color: #fff1f0;
+  color: #f5222d;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
