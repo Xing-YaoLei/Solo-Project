@@ -62,16 +62,16 @@ export class SettlementPanel extends Component {
     @property(ProgressBar)
     scoreProgressBar: ProgressBar | null = null;
 
-    @property(Label)
+    @property(Node)
     starLabel: Node | null = null;
 
     @property(Label)
     timeSpentLabel: Label | null = null;
 
-    @property(Label)
+    @property(Node)
     correctCountLabel: Node | null = null;
 
-    @property(Label)
+    @property(Node)
     insuranceTriggeredLabel: Node | null = null;
 
     @property(Node)
@@ -166,7 +166,8 @@ export class SettlementPanel extends Component {
 
         if (this.starLabel) {
             const stars = session.passed ? (session.totalScore >= 90 ? 3 : session.totalScore >= 75 ? 2 : 1) : 0;
-            (this.starLabel as any).string = '⭐'.repeat(stars) + '☆'.repeat(3 - stars);
+            const label = this.starLabel.getComponent(Label) || this.starLabel.getComponentInChildren(Label);
+            if (label) label.string = '⭐'.repeat(stars) + '☆'.repeat(3 - stars);
         }
 
         if (this.timeSpentLabel) {
@@ -176,16 +177,18 @@ export class SettlementPanel extends Component {
         const taskResults = Object.values(session.taskProgress);
         const correctCount = taskResults.filter(p => p.scoreEarned >= 0).length;
         if (this.correctCountLabel) {
-            (this.correctCountLabel as any).string = `正确: ${correctCount}/${taskResults.length}`;
+            const label = this.correctCountLabel.getComponent(Label) || this.correctCountLabel.getComponentInChildren(Label);
+            if (label) label.string = `正确: ${correctCount}/${taskResults.length}`;
         }
 
         if (this.insuranceTriggeredLabel) {
+            const label = this.insuranceTriggeredLabel.getComponent(Label) || this.insuranceTriggeredLabel.getComponentInChildren(Label);
             if (session.insuranceRejectionCount > 0) {
-                (this.insuranceTriggeredLabel as any).string = `🚨 医保拒付触发: ${session.insuranceRejectionCount}次`;
-                (this.insuranceTriggeredLabel as any).active = true;
+                if (label) label.string = `🚨 医保拒付触发: ${session.insuranceRejectionCount}次`;
+                this.insuranceTriggeredLabel.active = true;
             } else {
-                (this.insuranceTriggeredLabel as any).string = `✅ 无医保拒付记录`;
-                (this.insuranceTriggeredLabel as any).active = true;
+                if (label) label.string = `✅ 无医保拒付记录`;
+                this.insuranceTriggeredLabel.active = true;
             }
         }
 

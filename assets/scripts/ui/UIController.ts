@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, Prefab, instantiate, find, log, warn } from 'cc';
+import { _decorator, Component, Node, Prefab, instantiate, find, log, warn, Label, Color } from 'cc';
 import { GameTypes } from '../types/GameTypes';
 import { GameManager, GameEvent } from '../core/GameManager';
 import { ConfigManager } from '../core/ConfigManager';
@@ -172,5 +172,3 @@ export class UIController extends Component {
         setActive(this.actionTabButton, activeTab === 'action');
     }
 }
-
-import { Label } from 'cc';

@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.5" tiledversion="1.8.4" orientation="orthogonal" renderorder="right-down" width="24" height="16" tilewidth="32" tileheight="32" infinite="0" nextlayerid="3" nextobjectid="8">
+ <tileset firstgid="1" name="placeholder_tiles" tilewidth="32" tileheight="32" tilecount="4" columns="2">
+  <grid orientation="orthogonal" width="1" height="1"/>
+  <tile id="0"><properties><property name="type" value="floor"/></properties></tile>
+  <tile id="1"><properties><property name="type" value="wall"/></properties></tile>
+  <tile id="2"><properties><property name="type" value="door"/></properties></tile>
+  <tile id="3"><properties><property name="type" value="equipment"/></properties></tile>
+ </tileset>
+ <layer id="1" name="Floor" width="24" height="16">
+  <data encoding="csv">
+1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+1,0,0,0,0,0,3,3,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+1,0,0,0,0,0,3,3,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+1,0,0,0,0,0,0,0,0,0,0,0,3,3,3,0,0,0,0,0,0,0,0,1,
+1,0,0,0,0,0,0,0,0,0,0,0,3,3,3,0,0,0,0,0,0,0,0,1,
+1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+1,0,0,0,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,0,1,
+1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
+</data>
+ </layer>
+ <objectgroup id="2" name="InteractiveObjects">
+  <object id="1" name="OBJ_ASSESSMENT_BED" type="interactive" x="192" y="96" width="96" height="64">
+   <properties>
+    <property name="triggerTaskIds" value="TASK_004"/>
+   </properties>
+  </object>
+  <object id="2" name="OBJ_ROM_EQUIPMENT" type="interactive" x="384" y="192" width="96" height="64">
+   <properties>
+    <property name="triggerTaskIds" value="TASK_005,TASK_006"/>
+   </properties>
+  </object>
+  <object id="3" name="OBJ_PATIENT_01" type="npc" x="224" y="224" width="32" height="48">
+   <properties>
+    <property name="npcId" value="NPC_STROKE_PATIENT"/>
+    <property name="triggerTaskIds" value="TASK_004,TASK_005"/>
+   </properties>
+  </object>
+  <object id="4" name="OBJ_MEDICAL_RECORD" type="interactive" x="64" y="160" width="32" height="32">
+   <properties>
+    <property name="triggerTaskIds" value="TASK_004"/>
+   </properties>
+  </object>
+  <object id="5" name="OBJ_EXIT_RECEPTION" type="door" x="128" y="448" width="64" height="32">
+   <properties>
+    <property name="targetScene" value="reception"/>
+   </properties>
+  </object>
+  <object id="6" name="OBJ_EXIT_THERAPY" type="door" x="640" y="448" width="64" height="32">
+   <properties>
+    <property name="targetScene" value="therapy_room"/>
+    <property name="triggerTaskIds" value="TASK_007"/>
+   </properties>
+  </object>
+ </objectgroup>
+</map>

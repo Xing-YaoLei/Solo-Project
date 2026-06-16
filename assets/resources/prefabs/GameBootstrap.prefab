@@ -1,0 +1,82 @@
+[
+  {
+    "__id__": 0,
+    "__type__": "cc.Node",
+    "_name": "GameBootstrap",
+    "_objFlags": 0,
+    "node": null,
+    "_parent": null,
+    "_children": [],
+    "_active": true,
+    "_components": [
+      {
+        "__id__": 1
+      },
+      {
+        "__id__": 2
+      }
+    ],
+    "_prefab": null,
+    "_lpos": {
+      "__type__": "cc.Vec3",
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "_lrot": {
+      "__type__": "cc.Quat",
+      "x": 0,
+      "y": 0,
+      "z": 0,
+      "w": 1
+    },
+    "_lscale": {
+      "__type__": "cc.Vec3",
+      "x": 1,
+      "y": 1,
+      "z": 1
+    },
+    "_mobility": 0,
+    "_layer": 33554432,
+    "_euler": {
+      "__type__": "cc.Vec3",
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "_id": "ac174ffb"
+  },
+  {
+    "__type__": "cc.UITransform",
+    "name": "",
+    "_name": "",
+    "_objFlags": 0,
+    "node": null,
+    "_enabled": true,
+    "__prefab": null,
+    "_contentSize": {
+      "__type__": "cc.Size",
+      "width": 100,
+      "height": 100
+    },
+    "_anchorPoint": {
+      "__type__": "cc.Vec2",
+      "x": 0.5,
+      "y": 0.5
+    },
+    "_id": "f28897c1f99049c284f0f0a5f47f5d49",
+    "__id__": 1
+  },
+  {
+    "__type__": "cc.Script",
+    "name": "GameBootstrap",
+    "_name": "",
+    "_objFlags": 0,
+    "node": null,
+    "_enabled": true,
+    "__prefab": null,
+    "__scriptAsset": null,
+    "_id": "f866fc392a184552a99d025ba985d9ec",
+    "__id__": 2
+  }
+]

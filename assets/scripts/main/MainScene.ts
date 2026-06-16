@@ -164,5 +164,3 @@ export class MainScene extends Component {
 
     }
 }
-
-import { Label } from 'cc';

@@ -5,7 +5,7 @@
       "id": "SCENE_LOBBY_01",
       "name": "康复科大厅",
       "description": "患者接待、登记和分诊区域",
-      "tiledMap": "maps/rehab_lobby.tmx",
+      "tiledMap": "maps/reception.tmx",
       "backgroundMusic": "audio/bgm_lobby",
       "interactiveObjects": [
         { "id": "OBJ_RECEPTION_DESK", "name": "接待台", "triggerTaskIds": ["TASK_001"] },
@@ -55,7 +55,7 @@
       "id": "SCENE_ELDERLY_WARD_01",
       "name": "老年康复病区",
       "description": "老年综合康复单元，含多学科协作空间",
-      "tiledMap": "maps/elderly_ward.tmx",
+      "tiledMap": "maps/geriatric_ward.tmx",
       "backgroundMusic": "audio/bgm_elderly",
       "interactiveObjects": [
         { "id": "OBJ_PATIENT_BED", "name": "病床", "triggerTaskIds": ["TASK_301", "TASK_303"] },

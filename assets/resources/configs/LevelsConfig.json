@@ -8,7 +8,7 @@
       "difficulty": 1,
       "prescriptionId": "PRE_BASIC_001",
       "sceneId": "SCENE_LOBBY_01",
-      "tiledMap": "maps/rehab_lobby.tmx",
+      "tiledMap": "maps/reception.tmx",
       "unlockCondition": {
         "type": "NONE",
         "value": 0
@@ -71,7 +71,7 @@
       "difficulty": 4,
       "prescriptionId": "PRE_ELDERLY_001",
       "sceneId": "SCENE_ELDERLY_WARD_01",
-      "tiledMap": "maps/elderly_ward.tmx",
+      "tiledMap": "maps/geriatric_ward.tmx",
       "unlockCondition": {
         "type": "TOTAL_SCORE",
         "value": 200
