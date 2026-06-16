@@ -12,15 +12,14 @@ export default function ResultModal() {
     tasks,
     failureReasons,
     resetGame,
+    completedFollowUpTasks,
   } = useGameStore()
 
   if (gameState !== 'win' && gameState !== 'fail') return null
 
   const isWin = gameState === 'win'
   const followUpTasks = tasks.filter(t => t.requiresFollowUp)
-  const completedFollowUps = isWin
-    ? Math.floor(followUpTasks.length * 0.9)
-    : Math.floor(followUpTasks.length * 0.5)
+  const completedFollowUps = completedFollowUpTasks.length
 
   const memberProfileErrors = failureReasons.filter(r =>
     r.message.includes('会员档案') || r.message.includes('不匹配')

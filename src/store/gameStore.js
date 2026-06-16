@@ -24,6 +24,9 @@ const useGameStore = create(
       replayData: [],
       replayIndex: 0,
       isReplaying: false,
+      completedFollowUpTasks: [],
+      showNextTaskWarning: false,
+      nextTaskWarningType: null,
       statistics: {
         totalGames: 0,
         totalSuccess: 0,
@@ -53,7 +56,35 @@ const useGameStore = create(
           replayData: [],
           replayIndex: 0,
           isReplaying: false,
+          completedFollowUpTasks: [],
+          showNextTaskWarning: false,
+          nextTaskWarningType: null,
         })
+      },
+
+      completeFollowUp: (taskId) => {
+        const { completedFollowUpTasks, statistics } = get()
+        if (completedFollowUpTasks.includes(taskId)) return
+        set({
+          completedFollowUpTasks: [...completedFollowUpTasks, taskId],
+          statistics: {
+            ...statistics,
+            completedFollowUps: statistics.completedFollowUps + 1,
+          },
+        })
+      },
+
+      triggerNextTaskWarning: (type) => {
+        set({
+          showNextTaskWarning: true,
+          nextTaskWarningType: type,
+        })
+        setTimeout(() => {
+          set({
+            showNextTaskWarning: false,
+            nextTaskWarningType: null,
+          })
+        }, 3000)
       },
 
       tickTime: () => {
@@ -100,6 +131,13 @@ const useGameStore = create(
         let prescriptionErrors = 0
         let pharmacistErrors = 0
         let batchExpiryErrors = 0
+
+        if (task.requiresFollowUp) {
+          newStatistics = {
+            ...newStatistics,
+            totalFollowUps: newStatistics.totalFollowUps + 1,
+          }
+        }
 
         if (!isCorrect) {
           const mistake = {
@@ -157,10 +195,10 @@ const useGameStore = create(
       },
 
       endGame: (result) => {
-        const { currentLevel, score, mistakes, replayData, statistics, failureHistory, tasks } = get()
+        const { currentLevel, score, mistakes, replayData, statistics, failureHistory, tasks, completedFollowUpTasks } = get()
         const isWin = result === 'win'
         const followUps = tasks.filter(t => t.requiresFollowUp)
-        const completedFollowUps = Math.floor(followUps.length * (isWin ? 0.9 : 0.5))
+        const playerCompletedFollowUps = completedFollowUpTasks.length
 
         const newFailureHistory = isWin
           ? failureHistory
@@ -173,6 +211,8 @@ const useGameStore = create(
                 mistakes,
                 replayData,
                 failureReasons: get().failureReasons,
+                completedFollowUps: playerCompletedFollowUps,
+                totalFollowUps: followUps.length,
               },
               ...failureHistory,
             ].slice(0, 10)
@@ -185,7 +225,7 @@ const useGameStore = create(
           games: prevStats.games + 1,
           wins: prevStats.wins + (isWin ? 1 : 0),
           bestScore: Math.max(prevStats.bestScore, score),
-          avgFollowUps: Math.round((prevStats.avgFollowUps * prevStats.games + completedFollowUps) / (prevStats.games + 1)),
+          avgFollowUps: Math.round((prevStats.avgFollowUps * prevStats.games + playerCompletedFollowUps) / (prevStats.games + 1)),
         }
 
         let newLevels = get().levels
@@ -205,8 +245,6 @@ const useGameStore = create(
             totalGames: statistics.totalGames + 1,
             totalSuccess: statistics.totalSuccess + (isWin ? 1 : 0),
             totalFailures: statistics.totalFailures + (isWin ? 0 : 1),
-            totalFollowUps: statistics.totalFollowUps + followUps.length,
-            completedFollowUps: statistics.completedFollowUps + completedFollowUps,
             levelStats: newLevelStats,
           },
         })
@@ -222,6 +260,9 @@ const useGameStore = create(
         mistakes: [],
         failureReasons: [],
         replayData: [],
+        completedFollowUpTasks: [],
+        showNextTaskWarning: false,
+        nextTaskWarningType: null,
       }),
 
       startReplay: (failureId) => {

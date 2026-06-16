@@ -25,10 +25,17 @@ export default function Game() {
 
   const [countdown, setCountdown] = useState(3)
   const [gameStarted, setGameStarted] = useState(false)
+  const [gameReady, setGameReady] = useState(false)
 
   useEffect(() => {
     startGame(parseInt(level))
   }, [level, startGame])
+
+  useEffect(() => {
+    if (gameState === 'playing' && tasks.length > 0) {
+      setGameReady(true)
+    }
+  }, [gameState, tasks])
 
   useEffect(() => {
     if (gameStarted || countdown <= 0) return
@@ -73,11 +80,11 @@ export default function Game() {
         />
       </div>
 
-      {gameStarted && gameState === 'playing' && !isReplaying && (
+      {gameStarted && gameReady && gameState === 'playing' && !isReplaying && (
         <TaskPanel />
       )}
 
-      {gameStarted && gameState === 'playing' && (
+      {gameStarted && gameReady && gameState === 'playing' && (
         <div style={{
           position: 'absolute',
           top: 20,
@@ -101,7 +108,7 @@ export default function Game() {
         </div>
       )}
 
-      {gameStarted && gameState === 'playing' && (
+      {gameStarted && gameReady && gameState === 'playing' && (
         <div style={{
           position: 'absolute',
           bottom: 20,

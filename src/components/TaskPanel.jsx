@@ -11,12 +11,27 @@ export default function TaskPanel() {
     score,
     currentLevel,
     mistakes,
+    completedFollowUpTasks,
+    completeFollowUp,
+    showNextTaskWarning,
+    nextTaskWarningType,
+    triggerNextTaskWarning,
   } = useGameStore()
 
   const [showWarning, setShowWarning] = useState(false)
   const [decisionDetails, setDecisionDetails] = useState({})
+  const [localFollowUpCompleted, setLocalFollowUpCompleted] = useState({})
 
   const task = tasks[currentTaskIndex]
+  const nextTask = tasks[currentTaskIndex + 1]
+
+  useEffect(() => {
+    if (nextTask && nextTask.isBlurry && !showNextTaskWarning) {
+      triggerNextTaskWarning('blurry')
+    } else if (nextTask && (nextTask.hasConflict || nextTask.isExpired) && !showNextTaskWarning) {
+      triggerNextTaskWarning(nextTask.hasConflict ? 'conflict' : 'expired')
+    }
+  }, [currentTaskIndex, nextTask, showNextTaskWarning, triggerNextTaskWarning])
 
   useEffect(() => {
     if (task && task.warningBeforeAppear) {
@@ -25,6 +40,14 @@ export default function TaskPanel() {
       return () => clearTimeout(timer)
     }
   }, [currentTaskIndex, task])
+
+  const isFollowUpCompleted = task && (completedFollowUpTasks.includes(task.id) || localFollowUpCompleted[task.id])
+
+  const handleFollowUp = () => {
+    if (!task || isFollowUpCompleted) return
+    completeFollowUp(task.id)
+    setLocalFollowUpCompleted(prev => ({ ...prev, [task.id]: true }))
+  }
 
   if (!task) return null
 
@@ -417,16 +440,86 @@ export default function TaskPanel() {
         </div>
       </div>
 
-      {showWarning && (
-        <div className="card warning-pulse fade-in" style={{
+      {(showWarning || showNextTaskWarning) && (
+        <div className={`card ${nextTaskWarningType === 'blurry' || showNextTaskWarning ? 'danger-pulse' : 'warning-pulse'} fade-in`} style={{
           padding: 16,
           marginBottom: 12,
-          background: 'rgba(251, 191, 36, 0.1)',
-          border: '2px solid #fbbf24',
+          background: nextTaskWarningType === 'blurry'
+            ? 'rgba(239, 68, 68, 0.12)'
+            : showNextTaskWarning
+            ? 'rgba(245, 158, 11, 0.12)'
+            : 'rgba(251, 191, 36, 0.1)',
+          border: `2px solid ${nextTaskWarningType === 'blurry' ? '#ef4444' : showNextTaskWarning ? '#f59e0b' : '#fbbf24'}`,
           textAlign: 'center',
         }}>
-          <div style={{ fontSize: 14, color: '#fbbf24', fontWeight: 700 }}>
-            ⚠️ 注意：下一任务可能存在异常，请仔细核对！
+          <div style={{
+            fontSize: 14,
+            color: nextTaskWarningType === 'blurry' ? '#f87171' : '#fbbf24',
+            fontWeight: 700,
+          }}>
+            {showNextTaskWarning && nextTaskWarningType === 'blurry'
+              ? '⚠️ 紧急预警：下一处方照片清晰度不足！请准备升级处理'
+              : showNextTaskWarning && nextTaskWarningType === 'conflict'
+              ? '⚠️ 注意：下一任务药师意见存在冲突风险'
+              : showNextTaskWarning && nextTaskWarningType === 'expired'
+              ? '⚠️ 注意：下一任务药品可能已过期'
+              : '⚠️ 注意：下一任务可能存在异常，请仔细核对！'}
+          </div>
+        </div>
+      )}
+
+      {task.requiresFollowUp && (
+        <div className="card fade-in" style={{
+          padding: 14,
+          marginBottom: 12,
+          background: isFollowUpCompleted
+            ? 'rgba(16, 185, 129, 0.08)'
+            : 'rgba(251, 191, 36, 0.06)',
+          border: `1px solid ${isFollowUpCompleted ? 'rgba(16, 185, 129, 0.3)' : 'rgba(251, 191, 36, 0.3)'}`,
+        }}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: 12,
+          }}>
+            <div>
+              <div style={{
+                fontSize: 13,
+                fontWeight: 600,
+                color: isFollowUpCompleted ? '#34d399' : '#fbbf24',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+              }}>
+                <span>📞</span>
+                会员回访
+                {isFollowUpCompleted && <span>✓ 已完成</span>}
+              </div>
+              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
+                会员: {task.member} · {task.disease} · 药品: {task.medicine}
+              </div>
+            </div>
+            <button
+              onClick={handleFollowUp}
+              disabled={isFollowUpCompleted}
+              style={{
+                padding: '8px 16px',
+                borderRadius: 6,
+                fontSize: 12,
+                fontWeight: 600,
+                background: isFollowUpCompleted
+                  ? 'rgba(16, 185, 129, 0.2)'
+                  : 'linear-gradient(135deg, #f59e0b, #d97706)',
+                color: isFollowUpCompleted ? '#34d399' : 'white',
+                border: 'none',
+                cursor: isFollowUpCompleted ? 'default' : 'pointer',
+                transition: 'all 0.2s',
+                opacity: isFollowUpCompleted ? 0.7 : 1,
+              }}
+            >
+              {isFollowUpCompleted ? '已记录' : '✓ 标记回访完成'}
+            </button>
           </div>
         </div>
       )}
