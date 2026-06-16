@@ -17,6 +17,9 @@ class DuckDBService:
         self._init_tables()
 
     def _init_tables(self) -> None:
+        self._migrate_members_table()
+        self._migrate_member_profile_changes_table()
+
         self.conn.execute("""
             CREATE TABLE IF NOT EXISTS cashier_transactions (
                 transaction_id VARCHAR PRIMARY KEY,
@@ -54,7 +57,7 @@ class DuckDBService:
 
         self.conn.execute("""
             CREATE TABLE IF NOT EXISTS members (
-                member_id VARCHAR PRIMARY KEY,
+                member_id VARCHAR,
                 member_name VARCHAR,
                 phone VARCHAR,
                 store_id VARCHAR,
@@ -63,7 +66,8 @@ class DuckDBService:
                 allergy_info VARCHAR,
                 last_visit_date DATE,
                 batch_id VARCHAR,
-                imported_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                imported_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (member_id, batch_id)
             )
         """)
 
@@ -104,7 +108,8 @@ class DuckDBService:
                 old_value VARCHAR,
                 new_value VARCHAR,
                 changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                source_batch_id VARCHAR
+                source_batch_id VARCHAR,
+                source_snapshot VARCHAR
             )
         """)
 
@@ -118,6 +123,80 @@ class DuckDBService:
                 imported_by VARCHAR
             )
         """)
+
+    def _migrate_members_table(self) -> None:
+        try:
+            existing_cols = self.conn.execute(
+                "SELECT column_name FROM information_schema.columns WHERE table_name = 'members' ORDER BY ordinal_position"
+            ).fetchall()
+            existing_col_names = [row[0] for row in existing_cols]
+
+            if not existing_col_names:
+                return
+
+            pk_info = self.conn.execute("""
+                SELECT constraint_type, constraint_column_names
+                FROM duckdb_constraints()
+                WHERE table_name = 'members' AND constraint_type = 'PRIMARY KEY'
+            """).fetchone()
+
+            needs_migration = False
+            if pk_info:
+                pk_cols = pk_info[1]
+                if isinstance(pk_cols, str):
+                    if pk_cols != '["member_id","batch_id"]':
+                        needs_migration = True
+                elif isinstance(pk_cols, list):
+                    if pk_cols != ["member_id", "batch_id"]:
+                        needs_migration = True
+
+            if needs_migration:
+                print("🔄 迁移 members 表到复合主键结构...")
+                self.conn.execute("ALTER TABLE members RENAME TO members_old")
+                self.conn.execute("""
+                    CREATE TABLE members (
+                        member_id VARCHAR,
+                        member_name VARCHAR,
+                        phone VARCHAR,
+                        store_id VARCHAR,
+                        register_date DATE,
+                        chronic_disease VARCHAR,
+                        allergy_info VARCHAR,
+                        last_visit_date DATE,
+                        batch_id VARCHAR,
+                        imported_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        PRIMARY KEY (member_id, batch_id)
+                    )
+                """)
+                self.conn.execute("""
+                    INSERT INTO members
+                    SELECT * FROM members_old
+                """)
+                self.conn.execute("DROP TABLE members_old")
+                print("✅ members 表迁移完成")
+
+        except Exception as e:
+            print(f"⚠️  检查 members 表结构时出错: {e}")
+
+    def _migrate_member_profile_changes_table(self) -> None:
+        try:
+            existing_cols = self.conn.execute(
+                "SELECT column_name FROM information_schema.columns WHERE table_name = 'member_profile_changes' ORDER BY ordinal_position"
+            ).fetchall()
+            existing_col_names = [row[0] for row in existing_cols]
+
+            if not existing_col_names:
+                return
+
+            if "source_snapshot" not in existing_col_names:
+                print("🔄 为 member_profile_changes 表添加 source_snapshot 字段...")
+                self.conn.execute(
+                    "ALTER TABLE member_profile_changes ADD COLUMN source_snapshot VARCHAR"
+                )
+                print("✅ source_snapshot 字段添加完成")
+
+        except Exception as e:
+            print(f"⚠️  检查 member_profile_changes 表结构时出错: {e}")
 
     def import_cashier_data(
         self, df: pl.DataFrame, batch_id: str, imported_by: str = "system"
@@ -245,12 +324,13 @@ class DuckDBService:
         old_value: str,
         new_value: str,
         source_batch_id: str,
+        source_snapshot: str | None = None,
     ) -> None:
         self.conn.execute(
             """INSERT INTO member_profile_changes
-               (change_id, member_id, field_name, old_value, new_value, source_batch_id)
-               VALUES (?, ?, ?, ?, ?, ?)""",
-            [change_id, member_id, field_name, old_value, new_value, source_batch_id],
+               (change_id, member_id, field_name, old_value, new_value, source_batch_id, source_snapshot)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            [change_id, member_id, field_name, old_value, new_value, source_batch_id, source_snapshot],
         )
 
     def get_merged_followup_view(self, store_id: str | None = None) -> pl.DataFrame:
@@ -278,7 +358,10 @@ class DuckDBService:
                 inv.supplier
             FROM followup_records f
             LEFT JOIN cashier_transactions c ON f.transaction_id = c.transaction_id
-            LEFT JOIN members m ON f.member_id = m.member_id
+            LEFT JOIN (
+                SELECT * FROM members
+                QUALIFY ROW_NUMBER() OVER (PARTITION BY member_id ORDER BY imported_at DESC) = 1
+            ) m ON f.member_id = m.member_id
             LEFT JOIN inventory inv ON c.product_code = inv.product_code
                 AND f.store_id = inv.store_id
         """
@@ -367,9 +450,13 @@ class DuckDBService:
                 mpc.old_value,
                 mpc.new_value,
                 mpc.changed_at,
-                mpc.source_batch_id
+                mpc.source_batch_id,
+                mpc.source_snapshot
             FROM member_profile_changes mpc
-            LEFT JOIN members m ON mpc.member_id = m.member_id
+            LEFT JOIN (
+                SELECT * FROM members
+                QUALIFY ROW_NUMBER() OVER (PARTITION BY member_id ORDER BY imported_at DESC) = 1
+            ) m ON mpc.member_id = m.member_id
             WHERE 1=1
         """
         params: list[str] = []
@@ -414,7 +501,11 @@ class DuckDBService:
 
     def get_member_detail_with_source(self, member_id: str) -> dict:
         member = self.conn.execute(
-            "SELECT * FROM members WHERE member_id = ?",
+            """
+            SELECT * FROM members
+            WHERE member_id = ?
+            QUALIFY ROW_NUMBER() OVER (PARTITION BY member_id ORDER BY imported_at DESC) = 1
+            """,
             [member_id],
         ).fetchone()
 
@@ -422,7 +513,7 @@ class DuckDBService:
             return {}
 
         columns = [desc[0] for desc in self.conn.execute(
-            "SELECT * FROM members WHERE member_id = ?", [member_id]
+            "SELECT * FROM members WHERE member_id = ? LIMIT 1", [member_id]
         ).description]
         member_dict = dict(zip(columns, member))
 
@@ -484,12 +575,7 @@ class DuckDBService:
             [member_id, batch_id],
         ).fetchone()
         if not member:
-            member = self.conn.execute(
-                "SELECT * FROM members WHERE member_id = ?",
-                [member_id],
-            ).fetchone()
-            if not member:
-                return None
+            return None
         columns = [desc[0] for desc in self.conn.execute(
             "SELECT * FROM members WHERE member_id = ? LIMIT 1",
             [member_id],

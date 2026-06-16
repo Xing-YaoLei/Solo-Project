@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 import streamlit as st
 import plotly.express as px
 import polars as pl
@@ -156,48 +158,86 @@ def _render_member_source_detail(db: DuckDBService, change_row: dict) -> None:
     field_name = change_row.get("field_name", "")
     old_value = change_row.get("old_value", "")
     new_value = change_row.get("new_value", "")
+    source_snapshot_json = change_row.get("source_snapshot", None)
 
     try:
-        snapshot = db.get_member_snapshot_at_batch(member_id, batch_id)
         batch_detail = db.get_batch_detail(batch_id)
-
         if batch_detail:
             st.markdown("#### 📦 批次信息")
             st.json(batch_detail)
 
-        if snapshot:
-            st.markdown("#### 👤 会员档案快照（变更后）")
-            label_map = {
-                "member_id": "会员编号",
-                "member_name": "姓名",
-                "phone": "电话",
-                "store_id": "所属门店",
-                "register_date": "注册日期",
-                "chronic_disease": "慢性病",
-                "allergy_info": "过敏信息",
-                "last_visit_date": "最近到店日期",
-                "batch_id": "来源批次",
-                "imported_at": "导入时间",
-            }
-            for key, value in snapshot.items():
-                if key == field_name:
-                    st.markdown(
-                        f"**{label_map.get(key, key)}**: "
-                        f"<span style='background-color: #fff3cd; padding: 2px 6px; border-radius: 4px;'>"
-                        f"{value} ← 变更字段</span>",
-                        unsafe_allow_html=True,
-                    )
-                else:
-                    st.markdown(f"**{label_map.get(key, key)}**: {value}")
-        else:
-            st.warning(f"未找到会员 {member_id} 的档案记录。")
+        old_snapshot = None
+        if source_snapshot_json:
+            try:
+                old_snapshot = json.loads(source_snapshot_json)
+            except Exception:
+                old_snapshot = None
 
-        st.markdown("#### 🔄 变更前后对比")
+        new_record = db.get_member_snapshot_at_batch(member_id, batch_id)
+
+        label_map = {
+            "member_id": "会员编号",
+            "member_name": "姓名",
+            "phone": "电话",
+            "store_id": "所属门店",
+            "register_date": "注册日期",
+            "chronic_disease": "慢性病",
+            "allergy_info": "过敏信息",
+            "last_visit_date": "最近到店日期",
+            "batch_id": "来源批次",
+            "imported_at": "导入时间",
+        }
+
         col_a, col_b = st.columns(2)
+
         with col_a:
-            st.info(f"**变更前（旧值）**\n\n`{old_value}`")
+            st.markdown("#### 📜 变更前快照（来源记录）")
+            if old_snapshot:
+                for key in label_map:
+                    if key in old_snapshot:
+                        val = old_snapshot[key]
+                        if key == field_name:
+                            st.markdown(
+                                f"**{label_map[key]}**: "
+                                f"<span style='background-color: #ffebee; padding: 2px 6px; border-radius: 4px;'>"
+                                f"{val} ← 变更前</span>",
+                                unsafe_allow_html=True,
+                            )
+                        else:
+                            st.markdown(f"**{label_map[key]}**: {val}")
+                if "batch_id" in old_snapshot:
+                    st.caption(f"📌 来自批次: {old_snapshot['batch_id']}")
+            else:
+                st.info("无变更前快照记录（可能为首次导入）。")
+                st.info(f"**变更前值**\n\n`{old_value}`")
+
         with col_b:
-            st.success(f"**变更后（新值）**\n\n`{new_value}`")
+            st.markdown("#### 📝 变更后记录（该批次导入行）")
+            if new_record:
+                for key in label_map:
+                    if key in new_record:
+                        val = new_record[key]
+                        if key == field_name:
+                            st.markdown(
+                                f"**{label_map[key]}**: "
+                                f"<span style='background-color: #e8f5e9; padding: 2px 6px; border-radius: 4px;'>"
+                                f"{val} ← 变更后</span>",
+                                unsafe_allow_html=True,
+                            )
+                        else:
+                            st.markdown(f"**{label_map[key]}**: {val}")
+                if "batch_id" in new_record:
+                    st.caption(f"📌 来自批次: {new_record['batch_id']}")
+            else:
+                st.warning(f"未找到该批次的会员原始导入记录。")
+                st.info(f"**变更后值**\n\n`{new_value}`")
+
+        st.markdown("#### 🔄 字段变更对比")
+        comp_col1, comp_col2 = st.columns(2)
+        with comp_col1:
+            st.error(f"**变更前**\n\n`{old_value}`")
+        with comp_col2:
+            st.success(f"**变更后**\n\n`{new_value}`")
 
     except Exception as e:
         st.error(f"加载原始会员记录失败: {e}")
