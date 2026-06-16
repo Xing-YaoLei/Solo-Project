@@ -538,8 +538,6 @@ class RiskDataService:
                            record_count: int = 0, created_by: str = "system",
                            note: str = "") -> Dict:
         minio = get_minio()
-        if not minio.is_connected():
-            return {"success": False, "error": "MinIO 对象存储连接失败，无法归档"}
 
         object_name = minio.generate_archive_path(export_type, str(date_from or ""), str(date_to or ""))
         upload_result = minio.upload_zip_from_files(object_name, files)

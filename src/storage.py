@@ -6,15 +6,113 @@ import polars as pl
 import json
 import zipfile
 import os
+import hashlib
 from datetime import datetime
+from pathlib import Path
 
 from config import config
+
+
+class LocalStorageBackend:
+    _base_dir: Path
+
+    def __init__(self):
+        self._base_dir = Path(config.DUCKDB_DATABASE).parent / "minio_local"
+        self._base_dir.mkdir(parents=True, exist_ok=True)
+
+    def _object_path(self, object_name: str) -> Path:
+        p = self._base_dir / object_name
+        p.parent.mkdir(parents=True, exist_ok=True)
+        return p
+
+    def upload_bytes(self, object_name: str, data: bytes, content_type: str = "application/octet-stream",
+                     metadata: Optional[Dict[str, str]] = None) -> bool:
+        try:
+            p = self._object_path(object_name)
+            p.write_bytes(data)
+            if metadata:
+                meta_path = p.with_suffix(p.suffix + ".meta.json")
+                meta_path.write_text(json.dumps(metadata, ensure_ascii=False))
+            return True
+        except Exception:
+            return False
+
+    def download_bytes(self, object_name: str) -> Optional[bytes]:
+        try:
+            p = self._object_path(object_name)
+            if p.exists():
+                return p.read_bytes()
+            return None
+        except Exception:
+            return None
+
+    def delete_object(self, object_name: str):
+        try:
+            p = self._object_path(object_name)
+            if p.exists():
+                p.unlink()
+            meta = p.with_suffix(p.suffix + ".meta.json")
+            if meta.exists():
+                meta.unlink()
+        except Exception:
+            pass
+
+    def list_objects_detailed(self, prefix: str = "") -> List[Dict[str, Any]]:
+        result = []
+        search_dir = self._base_dir / prefix if prefix else self._base_dir
+        if not search_dir.exists():
+            return result
+        for f in sorted(search_dir.rglob("*")):
+            if f.is_file() and not f.name.endswith(".meta.json"):
+                rel = f.relative_to(self._base_dir)
+                stat = f.stat()
+                result.append({
+                    "object_name": str(rel),
+                    "size_bytes": stat.st_size,
+                    "last_modified": datetime.fromtimestamp(stat.st_mtime),
+                    "etag": hashlib.md5(f.read_bytes()).hexdigest(),
+                    "content_type": "application/zip" if f.suffix == ".zip" else "application/octet-stream"
+                })
+        result.sort(key=lambda x: x.get("last_modified") or datetime.min, reverse=True)
+        return result
+
+    def object_exists(self, object_name: str) -> bool:
+        return self._object_path(object_name).exists()
+
+    def get_object_info(self, object_name: str) -> Optional[Dict[str, Any]]:
+        p = self._object_path(object_name)
+        if not p.exists():
+            return None
+        stat = p.stat()
+        return {
+            "object_name": object_name,
+            "size_bytes": stat.st_size,
+            "last_modified": datetime.fromtimestamp(stat.st_mtime),
+            "etag": hashlib.md5(p.read_bytes()).hexdigest(),
+            "content_type": "application/zip" if p.suffix == ".zip" else "application/octet-stream",
+            "metadata": {}
+        }
+
+    def get_bucket_stats(self) -> Dict[str, Any]:
+        objects = self.list_objects_detailed()
+        total_bytes = sum(o["size_bytes"] for o in objects)
+        zip_count = sum(1 for o in objects if o["object_name"].endswith(".zip"))
+        return {
+            "total_objects": len(objects),
+            "zip_archives": zip_count,
+            "total_size_bytes": total_bytes,
+            "total_size_mb": round(total_bytes / 1024 / 1024, 2),
+            "bucket_name": "local-storage",
+            "endpoint": "local-filesystem",
+            "connected": True
+        }
 
 
 class MinIOManager:
     _instance: Optional["MinIOManager"] = None
     _client: Optional[Minio] = None
     _connection_ok: bool = False
+    _local_backend: Optional[LocalStorageBackend] = None
 
     def __new__(cls):
         if cls._instance is None:
@@ -24,6 +122,8 @@ class MinIOManager:
     def __init__(self):
         if self._client is None:
             self._initialize_client()
+        if self._local_backend is None:
+            self._local_backend = LocalStorageBackend()
 
     def _initialize_client(self):
         try:
@@ -37,6 +137,9 @@ class MinIOManager:
             self._connection_ok = True
         except Exception:
             self._connection_ok = False
+
+    def _use_local(self) -> bool:
+        return not self.is_connected()
 
     def is_connected(self) -> bool:
         if not self._connection_ok:
@@ -108,6 +211,8 @@ class MinIOManager:
                 pass
 
     def list_objects(self, prefix: str = "") -> List[str]:
+        if self._use_local():
+            return [o["object_name"] for o in self._local_backend.list_objects_detailed(prefix)]
         try:
             objects = self._client.list_objects(config.MINIO_BUCKET, prefix=prefix, recursive=True)
             return [obj.object_name for obj in objects]
@@ -115,6 +220,8 @@ class MinIOManager:
             return []
 
     def list_objects_detailed(self, prefix: str = "") -> List[Dict[str, Any]]:
+        if self._use_local():
+            return self._local_backend.list_objects_detailed(prefix)
         try:
             objects = self._client.list_objects(config.MINIO_BUCKET, prefix=prefix, recursive=True)
             result = []
@@ -132,6 +239,9 @@ class MinIOManager:
             return []
 
     def delete_object(self, object_name: str):
+        if self._use_local():
+            self._local_backend.delete_object(object_name)
+            return
         try:
             self._client.remove_object(config.MINIO_BUCKET, object_name)
         except S3Error:
@@ -143,6 +253,8 @@ class MinIOManager:
 
     def upload_bytes(self, object_name: str, data: bytes, content_type: str = "application/octet-stream",
                      metadata: Optional[Dict[str, str]] = None) -> bool:
+        if self._use_local():
+            return self._local_backend.upload_bytes(object_name, data, content_type, metadata)
         try:
             buffer = io.BytesIO(data)
             self._client.put_object(
@@ -158,6 +270,8 @@ class MinIOManager:
             return False
 
     def download_bytes(self, object_name: str) -> Optional[bytes]:
+        if self._use_local():
+            return self._local_backend.download_bytes(object_name)
         try:
             response = self._client.get_object(
                 bucket_name=config.MINIO_BUCKET,
@@ -174,6 +288,8 @@ class MinIOManager:
                 pass
 
     def object_exists(self, object_name: str) -> bool:
+        if self._use_local():
+            return self._local_backend.object_exists(object_name)
         try:
             self._client.stat_object(config.MINIO_BUCKET, object_name)
             return True
@@ -181,6 +297,8 @@ class MinIOManager:
             return False
 
     def get_object_info(self, object_name: str) -> Optional[Dict[str, Any]]:
+        if self._use_local():
+            return self._local_backend.get_object_info(object_name)
         try:
             stat = self._client.stat_object(config.MINIO_BUCKET, object_name)
             return {
@@ -220,6 +338,10 @@ class MinIOManager:
         return self.download_bytes(object_name)
 
     def get_bucket_stats(self) -> Dict[str, Any]:
+        if self._use_local():
+            stats = self._local_backend.get_bucket_stats()
+            stats["endpoint"] = "local-filesystem (MinIO 未连接，自动降级)"
+            return stats
         try:
             objects = self.list_objects_detailed()
             total_bytes = sum(o["size_bytes"] for o in objects)
@@ -231,7 +353,7 @@ class MinIOManager:
                 "total_size_mb": round(total_bytes / 1024 / 1024, 2),
                 "bucket_name": config.MINIO_BUCKET,
                 "endpoint": config.MINIO_ENDPOINT,
-                "connected": self.is_connected()
+                "connected": True
             }
         except Exception:
             return {
@@ -260,6 +382,11 @@ class MinIOManager:
         safe_from = str(date_from).replace("-", "")
         safe_to = str(date_to).replace("-", "")
         return f"exports/{prefix}/{safe_from}_{safe_to}/{prefix}_{ts}.zip"
+
+    def get_storage_mode(self) -> str:
+        if self.is_connected():
+            return "minio"
+        return "local"
 
 
 def get_minio() -> MinIOManager:

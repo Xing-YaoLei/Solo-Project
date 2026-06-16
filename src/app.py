@@ -682,24 +682,22 @@ def render_common_views(filters):
 
 def render_download_section(filters):
     st.subheader("📥 数据下载中心")
-    st.caption("所有数据在下载前会自动归档到 MinIO 对象存储，后续可从「对象存储管理」取回同一份 ZIP")
 
     minio = get_minio()
-    minio_connected = minio.is_connected()
+    storage_mode = minio.get_storage_mode()
+    storage_label = "MinIO 对象存储" if storage_mode == "minio" else "本地文件存储（MinIO 未连接，自动降级）"
+    st.caption(f"归档存储：{storage_label} — 导出后可从「对象存储管理」取回同一份 ZIP")
 
-    if minio_connected:
-        stats = minio.get_bucket_stats()
-        db_stats = service.get_archive_stats()
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("🟢 MinIO 连接", "正常", f"端点: {stats['endpoint']}")
-        c2.metric("📦 存储桶", stats["bucket_name"], f"{stats['zip_archives']} 个归档")
-        c3.metric("💾 已归档", f"{db_stats['total_archives']} 份",
-                  f"总 {db_stats['total_records']} 条记录")
-        c4.metric("📦 存储用量", f"{stats['total_size_mb']} MB",
-                  f"{stats['total_objects']} 个对象")
-    else:
-        st.warning("⚠️ MinIO 对象存储未连接，当前仅支持本地直接下载（无法归档持久化）。"
-                   "请检查 .env 中 MINIO_ENDPOINT / MINIO_ACCESS_KEY / MINIO_SECRET_KEY 配置。")
+    stats = minio.get_bucket_stats()
+    db_stats = service.get_archive_stats()
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("🟢 存储状态", "MinIO" if storage_mode == "minio" else "本地降级",
+              f"端点: {stats['endpoint']}")
+    c2.metric("📦 存储桶", stats["bucket_name"], f"{stats['zip_archives']} 个归档")
+    c3.metric("💾 已归档", f"{db_stats['total_archives']} 份",
+              f"总 {db_stats['total_records']} 条记录")
+    c4.metric("📦 存储用量", f"{stats['total_size_mb']} MB",
+              f"{stats['total_objects']} 个对象")
 
     download_tabs = st.tabs([
         "风险趋势数据", "患者明细", "医保拒付分析", "异常事件汇总",
@@ -768,7 +766,7 @@ def render_download_section(filters):
                     date_to=filters["end_date"],
                     record_count=record_count,
                     created_by="看板用户",
-                    note=f"通过看板导出，筛选: 风险={filters['risk_filter'][:2]} 诊断={filters['diagnosis'][:4]}"
+                    note=f"通过看板导出，筛选: 风险={(filters.get('risk_filter') or '全部')[:2]} 诊断={(filters.get('diagnosis') or '全部')[:4]}"
                 )
             if archive_result.get("success"):
                 st.success(f"✅ 归档成功！{archive_result['file_count']} 个文件 / "
@@ -921,23 +919,13 @@ def render_download_section(filters):
 
 def render_minio_manager(filters):
     st.subheader("☁️ 对象存储管理")
-    st.caption("MinIO 归档数据管理 — 可从此处取回下载中心导出的同一份 ZIP，或删除过期归档")
 
     minio = get_minio()
-    if not minio.is_connected():
-        st.error("❌ MinIO 对象存储未连接，请检查 .env 配置：\n\n"
-                 "- MINIO_ENDPOINT (默认 localhost:9000)\n"
-                 "- MINIO_ACCESS_KEY (默认 minioadmin)\n"
-                 "- MINIO_SECRET_KEY (默认 minioadmin)")
-        with st.expander("🔧 临时解决方案：本地模拟对象存储", expanded=True):
-            st.info("当 MinIO 未可用时，下载中心「直接下载」按钮仍可工作，数据从 DuckDB 实时生成返回 ZIP。"
-                    "归档功能需要 MinIO 服务运行中。\n\n"
-                    "启动 MinIO 命令示例（Docker）：\n"
-                    "```bash\n"
-                    "docker run -p 9000:9000 -p 9001:9001 \\\n"
-                    "  quay.io/minio/minio server /data --console-address ':9001'\n"
-                    "```")
-        return
+    storage_mode = minio.get_storage_mode()
+    if storage_mode == "minio":
+        st.caption("MinIO 对象存储已连接 — 可取回下载中心导出的同一份 ZIP，或删除过期归档")
+    else:
+        st.caption("本地文件存储（MinIO 未连接，已自动降级）— 归档功能正常可用，数据保存在本地 data/minio_local/ 目录")
 
     bucket_stats = minio.get_bucket_stats()
     db_stats = service.get_archive_stats()
@@ -1069,7 +1057,8 @@ def render_minio_manager(filters):
                 with st.spinner("正在列举对象..."):
                     objects = minio.list_objects_detailed(prefix=prefix)
                 if objects:
-                    st.markdown(f"**在 {config.MINIO_BUCKET}/{prefix}* 下找到 {len(objects)} 个对象**")
+                    bucket_name = minio.get_bucket_stats().get("bucket_name", "rehab-center-data")
+                    st.markdown(f"**在 {bucket_name}/{prefix}* 下找到 {len(objects)} 个对象**")
                     for obj in objects:
                         obj_c1, obj_c2, obj_c3 = st.columns([3, 2, 1])
                         with obj_c1:
