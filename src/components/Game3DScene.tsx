@@ -6,16 +6,17 @@ import * as THREE from 'three'
 import { useGameStore } from '../store/gameStore'
 import { elderlyProfiles } from '../data/elderlyProfiles'
 
-function Pill({ position, color, scale = 1, onClick }: { 
+function Pill({ position, color, scale = 1, animationEnabled, onClick }: { 
   position: [number, number, number]
   color: string
   scale?: number
+  animationEnabled: boolean
   onClick?: () => void
 }) {
   const meshRef = useRef<THREE.Mesh>(null)
   
   useFrame((state) => {
-    if (meshRef.current) {
+    if (meshRef.current && animationEnabled) {
       meshRef.current.rotation.y = state.clock.elapsedTime * 0.5
     }
   })
@@ -33,25 +34,26 @@ function Pill({ position, color, scale = 1, onClick }: {
   )
 }
 
-function Heart({ position, scale = 1, isWarning = false }: {
+function Heart({ position, scale = 1, isWarning = false, animationEnabled }: {
   position: [number, number, number]
   scale?: number
   isWarning?: boolean
+  animationEnabled: boolean
 }) {
-  const meshRef = useRef<THREE.Mesh>(null)
+  const groupRef = useRef<THREE.Group>(null)
   
   useFrame((state) => {
-    if (meshRef.current) {
+    if (groupRef.current && animationEnabled) {
       const pulse = 1 + Math.sin(state.clock.elapsedTime * 3) * 0.1
-      meshRef.current.scale.setScalar(scale * pulse)
+      groupRef.current.scale.setScalar(pulse)
     }
   })
 
   const color = isWarning ? '#ff4757' : '#2ed573'
 
   return (
-    <group position={position}>
-      <mesh ref={meshRef}>
+    <group ref={groupRef} position={position} scale={scale}>
+      <mesh>
         <sphereGeometry args={[0.3, 16, 16]} />
         <meshStandardMaterial 
           color={color} 
@@ -89,18 +91,19 @@ function ElderlyAvatar({
   position, 
   elderly, 
   status,
+  animationEnabled,
   onClick 
 }: {
   position: [number, number, number]
   elderly: typeof elderlyProfiles[0]
   status: 'healthy' | 'at_risk' | 'critical' | 'medication_due'
+  animationEnabled: boolean
   onClick?: () => void
 }) {
   const groupRef = useRef<THREE.Group>(null)
-  const settings = useGameStore(state => state.settings)
   
   useFrame((state) => {
-    if (groupRef.current && settings.animationEnabled) {
+    if (groupRef.current && animationEnabled) {
       const bob = Math.sin(state.clock.elapsedTime * 1.5 + position[0]) * 0.05
       groupRef.current.position.y = position[1] + bob
     }
@@ -110,9 +113,9 @@ function ElderlyAvatar({
                    status === 'at_risk' ? '#ffa502' : 
                    status === 'medication_due' ? '#3742fa' : '#2ed573'
 
-  return (
-    <group ref={groupRef} position={position} onClick={onClick}>
-      <Float speed={1.5} rotationIntensity={0.2} floatIntensity={0.5}>
+  const content = (
+    <group position={position} onClick={onClick}>
+      <group ref={groupRef}>
         <mesh position={[0, 0.8, 0]} castShadow>
           <sphereGeometry args={[0.5, 16, 16]} />
           <meshStandardMaterial color="#ffeaa7" />
@@ -143,17 +146,19 @@ function ElderlyAvatar({
         </Text>
         
         {status === 'medication_due' && (
-          <Heart position={[0.8, 0.5, 0]} isWarning />
+          <Heart position={[0.8, 0.5, 0]} isWarning animationEnabled={animationEnabled} />
         )}
         {status === 'at_risk' && (
-          <Heart position={[0.8, 0.5, 0]} isWarning scale={1.2} />
+          <Heart position={[0.8, 0.5, 0]} isWarning scale={1.2} animationEnabled={animationEnabled} />
         )}
         {status === 'critical' && (
-          <Heart position={[0.8, 0.5, 0]} isWarning scale={1.5} />
+          <Heart position={[0.8, 0.5, 0]} isWarning scale={1.5} animationEnabled={animationEnabled} />
         )}
-      </Float>
+      </group>
     </group>
   )
+
+  return content
 }
 
 function Floor() {
@@ -245,13 +250,14 @@ function SceneContent() {
           position={elderlyPositions[index]}
           elderly={elderly}
           status={getElderlyStatus(elderly.id)}
+          animationEnabled={settings.animationEnabled}
           onClick={() => handleElderlyClick(elderly.id)}
         />
       ))}
 
-      <Pill position={[-10, 3, 0]} color="#ff6b6b" scale={0.8} />
-      <Pill position={[10, 3, 0]} color="#4ecdc4" scale={0.8} />
-      <Pill position={[0, 3, 10]} color="#ffe66d" scale={0.8} />
+      <Pill position={[-10, 3, 0]} color="#ff6b6b" scale={0.8} animationEnabled={settings.animationEnabled} />
+      <Pill position={[10, 3, 0]} color="#4ecdc4" scale={0.8} animationEnabled={settings.animationEnabled} />
+      <Pill position={[0, 3, 10]} color="#ffe66d" scale={0.8} animationEnabled={settings.animationEnabled} />
 
       <OrbitControls 
         enablePan={false}
@@ -264,8 +270,6 @@ function SceneContent() {
 }
 
 export function Game3DScene() {
-  const settings = useGameStore(state => state.settings)
-
   return (
     <Canvas
       shadows
@@ -276,13 +280,9 @@ export function Game3DScene() {
       <color attach="background" args={['#2d3436']} />
       <fog attach="fog" args={['#2d3436', 20, 50]} />
       
-      {settings.animationEnabled ? (
-        <Physics gravity={[0, -9.81, 0]}>
-          <SceneContent />
-        </Physics>
-      ) : (
+      <Physics gravity={[0, -9.81, 0]} paused={false}>
         <SceneContent />
-      )}
+      </Physics>
     </Canvas>
   )
 }

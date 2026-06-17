@@ -211,17 +211,26 @@ export const useGameStore = create<GameStore>()(
       setGameState: (state) => set({ gameState: state }),
 
       startGame: (levelId) => {
-        const level = get().levels.find(l => l.id === levelId)
+        const state = get()
+        const level = state.levels.find(l => l.id === levelId)
         if (!level || !level.unlocked) return
 
         const shuffledElderly = [...elderlyProfiles].sort(() => Math.random() - 0.5)
         const selectedElderly = shuffledElderly.slice(0, level.elderlyCount)
 
+        const taskTypes: GameTask['type'][] = ['medication_reminder', 'activity_checkin', 'profile_review']
+        if (level.difficulty >= 2) {
+          taskTypes.push('risk_event')
+        }
+        const type = taskTypes[Math.floor(Math.random() * taskTypes.length)]
+        const firstElderly = selectedElderly[Math.floor(Math.random() * selectedElderly.length)]
+        const firstTask = createTask(type, firstElderly, 0, level.difficulty, 0)
+
         set({
           gameState: 'playing',
           currentLevel: level,
           currentElderly: selectedElderly,
-          activeTasks: [],
+          activeTasks: [firstTask],
           completedTasks: [],
           timeRemaining: level.duration,
           score: 0,
@@ -229,11 +238,19 @@ export const useGameStore = create<GameStore>()(
           maxCombo: 0,
           actions: [],
           stats: initialStats,
-          taskCounter: 0,
+          taskCounter: 1,
           lastTaskTime: 0,
           selectedReplay: null,
           replayActionIndex: -1
         })
+
+        if (type === 'risk_event') {
+          setTimeout(() => {
+            const s = get()
+            s.playSound('urgent')
+            s.vibrate([100, 50, 100])
+          }, 0)
+        }
       },
 
       pauseGame: () => {
@@ -300,48 +317,97 @@ export const useGameStore = create<GameStore>()(
         }
 
         const elapsedTime = (state.currentLevel?.duration || 0) - newTimeRemaining
-        let newActiveTasks = [...state.activeTasks]
+        const currentActiveTasks = state.activeTasks
         let newScore = state.score
         let newCombo = state.combo
         let newActions = [...state.actions]
         let newMaxCombo = state.maxCombo
+        let shouldGenerateTask = false
 
-        const timedOutTasks = newActiveTasks.filter(task => {
+        const timedOutTasks = currentActiveTasks.filter(task => {
           const taskElapsed = elapsedTime - task.timestamp
           return taskElapsed >= task.timeLimit
         })
 
-        timedOutTasks.forEach(task => {
-          const action: PlayerAction = {
-            taskId: task.id,
-            optionId: 'timeout',
-            timestamp: elapsedTime,
-            isCorrect: false,
-            timeSpent: task.timeLimit,
-            combo: 0
-          }
-          newActions.push(action)
-          newScore = Math.max(0, newScore - task.points * 0.5)
+        if (timedOutTasks.length > 0) {
+          timedOutTasks.forEach(task => {
+            const action: PlayerAction = {
+              taskId: task.id,
+              optionId: 'timeout',
+              timestamp: elapsedTime,
+              isCorrect: false,
+              timeSpent: task.timeLimit,
+              combo: 0
+            }
+            newActions.push(action)
+            newScore = Math.max(0, newScore - task.points * 0.5)
+          })
           newCombo = 0
-        })
+        }
 
-        newActiveTasks = newActiveTasks.filter(task => {
+        const remainingActiveTasks = currentActiveTasks.filter(task => {
           const taskElapsed = elapsedTime - task.timestamp
           return taskElapsed < task.timeLimit
         })
 
         if (elapsedTime - state.lastTaskTime >= (state.currentLevel?.taskFrequency || 10) &&
-            newActiveTasks.length < (state.currentLevel?.maxConcurrentTasks || 3)) {
-          state.generateTask()
+            remainingActiveTasks.length < (state.currentLevel?.maxConcurrentTasks || 3)) {
+          shouldGenerateTask = true
         }
 
-        set({
-          timeRemaining: newTimeRemaining,
-          activeTasks: newActiveTasks,
-          score: newScore,
-          combo: newCombo,
-          maxCombo: newMaxCombo,
-          actions: newActions
+        set(prev => {
+          let updatedActiveTasks = remainingActiveTasks
+          let updatedTaskCounter = prev.taskCounter
+          let updatedLastTaskTime = prev.lastTaskTime
+
+          if (shouldGenerateTask && prev.currentLevel && prev.currentElderly.length > 0) {
+            const elderly = prev.currentElderly[Math.floor(Math.random() * prev.currentElderly.length)]
+            const taskTypes: GameTask['type'][] = ['medication_reminder', 'activity_checkin', 'profile_review']
+            if (prev.currentLevel.difficulty >= 2) {
+              taskTypes.push('risk_event')
+            }
+            if (prev.currentLevel.difficulty >= 3) {
+              taskTypes.push('risk_event')
+              taskTypes.push('medication_reminder')
+            }
+            if (prev.currentLevel.difficulty >= 4) {
+              taskTypes.push('risk_event')
+            }
+
+            const type = taskTypes[Math.floor(Math.random() * taskTypes.length)]
+            const task = createTask(
+              type,
+              elderly,
+              elapsedTime,
+              prev.currentLevel.difficulty,
+              prev.taskCounter
+            )
+            updatedActiveTasks = [...remainingActiveTasks, task]
+            updatedTaskCounter = prev.taskCounter + 1
+            updatedLastTaskTime = elapsedTime
+
+            if (type === 'risk_event') {
+              setTimeout(() => {
+                const s = get()
+                s.playSound('urgent')
+                s.vibrate([100, 50, 100])
+              }, 0)
+            }
+          }
+
+          return {
+            timeRemaining: newTimeRemaining,
+            activeTasks: updatedActiveTasks,
+            score: newScore,
+            combo: newCombo,
+            maxCombo: newMaxCombo,
+            actions: newActions,
+            taskCounter: updatedTaskCounter,
+            lastTaskTime: updatedLastTaskTime,
+            completedTasks: timedOutTasks.length > 0 
+              ? [...prev.completedTasks, ...timedOutTasks]
+              : prev.completedTasks
+          }
         })
       },
 
