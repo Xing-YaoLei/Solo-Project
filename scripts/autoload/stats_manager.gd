@@ -10,7 +10,7 @@ func _ready() -> void:
 func _load_stats() -> void:
 	var file := FileAccess.open(SAVE_PATH, FileAccess.READ)
 	if file:
-		var data := file.get_var()
+		var data: Variant = file.get_var()
 		if data is Dictionary and data.has("level_stats"):
 			level_stats = data.level_stats
 		file.close()
@@ -18,7 +18,7 @@ func _load_stats() -> void:
 func save_stats() -> void:
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file:
-		var data := {
+		var data: Dictionary = {
 			"level_stats": level_stats
 		}
 		file.store_var(data)
@@ -38,7 +38,7 @@ func record_level_result(level_id: String, score: int, accuracy: float, satisfac
 			"avg_satisfaction": 0
 		}
 	
-	var stats: Dictionary = level_stats[level_id]
+	var stats: Dictionary = level_stats[level_id] as Dictionary
 	stats.total_plays += 1
 	stats.total_score += score
 	stats.total_satisfaction += satisfaction
@@ -58,13 +58,13 @@ func record_level_result(level_id: String, score: int, accuracy: float, satisfac
 
 func get_level_stats(level_id: String) -> Dictionary:
 	if level_stats.has(level_id):
-		return level_stats[level_id]
+		return level_stats[level_id] as Dictionary
 	return {}
 
 func get_all_levels_sorted_by_satisfaction() -> Array:
 	var result: Array = []
 	for level_id in level_stats:
-		var stats: Dictionary = level_stats[level_id]
+		var stats: Dictionary = level_stats[level_id] as Dictionary
 		result.append({
 			"level_id": level_id,
 			"best_satisfaction": stats.best_satisfaction,

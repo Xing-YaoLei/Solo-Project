@@ -14,7 +14,7 @@ func _ready() -> void:
 func _load_settings() -> void:
 	var file := FileAccess.open(SAVE_PATH, FileAccess.READ)
 	if file:
-		var data := file.get_var()
+		var data: Variant = file.get_var()
 		if data is Dictionary:
 			if data.has("sound_enabled"):
 				sound_enabled = data.sound_enabled
@@ -27,7 +27,7 @@ func _load_settings() -> void:
 func save_settings() -> void:
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file:
-		var data := {
+		var data: Dictionary = {
 			"sound_enabled": sound_enabled,
 			"animation_enabled": animation_enabled,
 			"vibration_enabled": vibration_enabled

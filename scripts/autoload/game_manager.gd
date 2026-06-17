@@ -313,7 +313,7 @@ func _end_game(completed: bool) -> void:
 	
 	var satisfaction = _calculate_satisfaction(accuracy, score, max_combo, completed)
 	
-	var stats := {
+	var stats: Dictionary = {
 		"score": score,
 		"correct_count": correct_count,
 		"wrong_count": wrong_count,

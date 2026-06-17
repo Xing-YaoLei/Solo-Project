@@ -92,6 +92,10 @@ func _play_tone(freq: float, duration: float, delay: float = 0.0) -> void:
 func vibrate(strength: float = 1.0) -> void:
 	if not SettingsManager.vibration_enabled:
 		return
+	var duration_ms := int(200 * strength)
 	if Input.has_method("vibrate_handheld"):
-		if Input.has_feature("mobile"):
-			Input.vibrate_handheld(int(200 * strength))
+		Input.vibrate_handheld(duration_ms)
+	elif Engine.has_singleton("JavaScriptBridge"):
+		var jsb = Engine.get_singleton("JavaScriptBridge")
+		if jsb and jsb.has_method("eval"):
+			jsb.eval("if (navigator.vibrate) { navigator.vibrate(%d); }" % duration_ms)
