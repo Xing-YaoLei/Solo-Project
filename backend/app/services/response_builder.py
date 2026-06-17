@@ -16,6 +16,7 @@ from app.schemas import (
     ReviewRecord,
     Communication,
     WorkOrderDailyItem,
+    DispatchRule,
 )
 
 
@@ -35,6 +36,21 @@ def to_photo_schema(photo: WorkOrderPhotoModel) -> WorkOrderPhoto:
         photo_type=photo.photo_type,
         uploaded_by=photo.uploaded_by,
         created_at=photo.created_at,
+    )
+
+
+def to_dispatch_rule_schema(rule) -> DispatchRule:
+    return DispatchRule(
+        id=rule.id,
+        name=rule.name,
+        category=rule.category,
+        priority=rule.priority,
+        assigned_role=rule.assigned_role,
+        default_assignee_id=rule.default_assignee_id,
+        processing_hours=rule.processing_hours,
+        description=rule.description,
+        is_active=rule.is_active,
+        created_at=rule.created_at,
     )
 
 
@@ -102,7 +118,7 @@ def to_work_order_schema(db: Session, order: WorkOrderModel) -> WorkOrder:
         status_logs=[to_status_log_schema(l) for l in order.status_logs],
         review_records=[to_review_schema(db, r) for r in order.review_records],
         communications=[to_communication_schema(db, c) for c in order.communications],
-        dispatch_rules=order.dispatch_rules,
+        dispatch_rules=[to_dispatch_rule_schema(r) for r in order.dispatch_rules],
     )
 
 

@@ -3,7 +3,7 @@ import sys
 sys.path.insert(0, '.')
 
 from app.core.database import Base, engine, SessionLocal
-from app.models import WorkOrder, StatusLog, ReviewRecord, Communication, WorkOrderPhoto
+from app.models import WorkOrder, StatusLog, ReviewRecord, Communication, WorkOrderPhoto, WorkOrderDispatchRule
 from app.main import _init_sample_work_orders, _init_default_dispatch_rules
 from app.services.user_service import init_default_users
 
@@ -12,6 +12,7 @@ print("=== Reinitializing database data ===")
 db = SessionLocal()
 try:
     print("  Deleting existing data...")
+    db.query(WorkOrderDispatchRule).delete()
     db.query(WorkOrderPhoto).delete()
     db.query(StatusLog).delete()
     db.query(ReviewRecord).delete()

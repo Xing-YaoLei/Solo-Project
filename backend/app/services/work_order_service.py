@@ -162,10 +162,19 @@ def create_work_order(db: Session, order_in: WorkOrderCreate, creator: User) -> 
         DispatchRule.category == order_in.category,
     ).all()
 
-    if applicable_rules:
-        rule = applicable_rules[0]
+    matched_rules = []
+    for rule in applicable_rules:
+        if rule.priority is None or rule.priority == order_in.priority:
+            matched_rules.append(rule)
+
+    if not matched_rules and applicable_rules:
+        matched_rules = [applicable_rules[0]]
+
+    if matched_rules:
+        rule = matched_rules[0]
         db_order.deadline = datetime.now() + timedelta(hours=rule.processing_hours)
-        db_order.dispatch_rules = applicable_rules
+        db_order.dispatch_rules = matched_rules
+        db_order.processing_hours = rule.processing_hours
 
         if rule.default_assignee_id:
             db_order.assigned_to = rule.default_assignee_id

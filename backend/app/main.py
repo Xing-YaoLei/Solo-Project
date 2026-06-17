@@ -100,7 +100,13 @@ def _init_sample_work_orders(db):
     worker1 = db.query(User).filter(User.username == "worker1").first()
     worker2 = db.query(User).filter(User.username == "worker2").first()
 
-    def _create_and_advance(title, desc, loc, cat, prio, creator, worker, stages, days_ago=0):
+    def _shift_date_sql(col):
+        if settings.USE_SQLITE:
+            return f"datetime({col}, :shift)"
+        else:
+            return f"{col} + CAST(:shift AS INTERVAL)"
+
+    def _create_and_advance(title, desc, loc, cat, prio, creator, worker, stages, days_ago=0, photos=None, completion_photos=None):
         order = create_work_order(db, WorkOrderCreate(
             title=title,
             description=desc,
@@ -109,6 +115,7 @@ def _init_sample_work_orders(db):
             priority=prio,
             reporter_name="报修人测试",
             reporter_phone="13800138000",
+            photos=photos,
         ), creator)
 
         for stage in stages:
@@ -117,7 +124,10 @@ def _init_sample_work_orders(db):
             elif stage == "start" and worker:
                 order = start_work_order(db, order.id, worker, "开始处理")
             elif stage == "complete" and worker:
-                order = complete_work_order(db, order.id, WorkOrderComplete(remark="已处理完成"), worker)
+                complete_data = {"remark": "已处理完成"}
+                if completion_photos:
+                    complete_data["photos"] = completion_photos
+                order = complete_work_order(db, order.id, WorkOrderComplete(**complete_data), worker)
             elif stage == "review_pass":
                 order = review_work_order(db, order.id, WorkOrderReview(is_passed=True, comment="符合要求，通过"), manager)
             elif stage == "review_fail":
@@ -129,35 +139,64 @@ def _init_sample_work_orders(db):
             from sqlalchemy import text
             shift = f"-{days_ago} days"
             params = {"oid": order.id, "shift": shift}
-            for col in ["created_at", "assigned_at", "started_at", "completed_at", "deadline", "closed_at"]:
-                db.execute(text(f"UPDATE work_orders SET {col} = datetime({col}, :shift) WHERE id = :oid AND {col} IS NOT NULL"), params)
-            db.execute(text("UPDATE status_logs SET created_at = datetime(created_at, :shift) WHERE work_order_id = :oid"), params)
-            db.execute(text("UPDATE review_records SET created_at = datetime(review_records.created_at, :shift) WHERE work_order_id = :oid"), params)
-            db.execute(text("UPDATE communications SET created_at = datetime(communications.created_at, :shift) WHERE work_order_id = :oid"), params)
+            for col in ["created_at", "completed_at", "deadline", "closed_at"]:
+                db.execute(text(f"UPDATE work_orders SET {col} = {_shift_date_sql(col)} WHERE id = :oid AND {col} IS NOT NULL"), params)
+            db.execute(text(f"UPDATE status_logs SET created_at = {_shift_date_sql('created_at')} WHERE work_order_id = :oid"), params)
+            db.execute(text(f"UPDATE review_records SET review_time = {_shift_date_sql('review_time')} WHERE work_order_id = :oid"), params)
+            db.execute(text(f"UPDATE communications SET created_at = {_shift_date_sql('created_at')} WHERE work_order_id = :oid"), params)
+            db.execute(text(f"UPDATE work_order_photos SET created_at = {_shift_date_sql('created_at')} WHERE work_order_id = :oid"), params)
             db.commit()
             db.refresh(order)
 
         return order
 
+    sample_photos = {
+        "corridor_light": [
+            {"url": "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=dark%20office%20corridor%20with%20broken%20ceiling%20lights%2C%20dim%20lighting%2C%20realistic%20photo&image_size=square_hd", "caption": "三楼走廊灯不亮", "photo_type": "scene"},
+            {"url": "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=broken%20fluorescent%20lamp%20fixture%20on%20ceiling%2C%20close%20up%2C%20realistic&image_size=square", "caption": "故障灯具特写", "photo_type": "detail"},
+        ],
+        "ac_unit": [
+            {"url": "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=office%20meeting%20room%20with%20ceiling%20air%20conditioner%2C%20warm%20uncomfortable%20atmosphere%2C%20realistic&image_size=square_hd", "caption": "会议室空调", "photo_type": "scene"},
+            {"url": "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=air%20conditioner%20indoor%20unit%20displaying%20error%20code%2C%20close%20up%2C%20realistic&image_size=square", "caption": "空调控制面板显示异常", "photo_type": "detail"},
+        ],
+        "fire_light": [
+            {"url": "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=dark%20underground%20parking%20garage%20with%20broken%20emergency%20exit%20signs%2C%20dim%20red%20light%2C%20realistic&image_size=square_hd", "caption": "地下车库出口指示灯不亮", "photo_type": "scene"},
+        ],
+        "tile_falling": [
+            {"url": "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=exterior%20building%20wall%20with%20loose%20and%20falling%20tiles%2C%20safety%20hazard%2C%20realistic%20photo&image_size=square_hd", "caption": "外墙瓷砖脱落", "photo_type": "scene"},
+            {"url": "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=broken%20ceramic%20tile%20on%20ground%20near%20building%2C%20close%20up%2C%20realistic&image_size=square", "caption": "脱落的瓷砖碎块", "photo_type": "detail"},
+        ],
+        "water_leak": [
+            {"url": "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=public%20restroom%20faucet%20leaking%20water%2C%20water%20dripping%2C%20realistic%20photo&image_size=square_hd", "caption": "水龙头滴水", "photo_type": "scene"},
+        ],
+        "pipe_burst": [
+            {"url": "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=burst%20water%20pipe%20spraying%20water%20in%20garden%20irrigation%20system%2C%20realistic&image_size=square_hd", "caption": "喷灌水管爆裂", "photo_type": "scene"},
+        ],
+    }
+
     _create_and_advance(
         "1号楼走廊灯不亮", "三楼走廊三个灯不亮，晚上很黑",
         "1号楼3楼走廊", WorkOrderCategory.ELECTRICAL, WorkOrderPriority.HIGH,
-        manager, worker1, ["assign", "start"], days_ago=0
+        manager, worker1, ["assign", "start"], days_ago=0,
+        photos=sample_photos["corridor_light"]
     )
     _create_and_advance(
         "2号楼卫生间漏水", "男卫生间水龙头一直在滴水",
         "2号楼2楼卫生间", WorkOrderCategory.PLUMBING, WorkOrderPriority.MEDIUM,
-        manager, worker2, ["assign", "start", "complete"], days_ago=1
+        manager, worker2, ["assign", "start", "complete"], days_ago=1,
+        photos=sample_photos["water_leak"]
     )
     _create_and_advance(
         "3号楼空调不制冷", "会议室空调吹出来的风不冷",
         "3号楼5楼会议室", WorkOrderCategory.HVAC, WorkOrderPriority.HIGH,
-        manager, worker1, ["assign", "start", "complete", "review_fail"], days_ago=2
+        manager, worker1, ["assign", "start", "complete", "review_fail"], days_ago=2,
+        photos=sample_photos["ac_unit"]
     )
     _create_and_advance(
         "地下车库消防指示灯坏了", "B1层多个安全出口指示灯不亮",
         "地下车库B1层", WorkOrderCategory.ELECTRICAL, WorkOrderPriority.URGENT,
-        manager, worker2, [], days_ago=0
+        manager, worker2, [], days_ago=0,
+        photos=sample_photos["fire_light"]
     )
     _create_and_advance(
         "园区路灯故障", "东门附近两个路灯不亮",
@@ -177,7 +216,8 @@ def _init_sample_work_orders(db):
     _create_and_advance(
         "外墙瓷砖脱落", "2号楼南侧墙面有瓷砖松动",
         "2号楼南外墙", WorkOrderCategory.CIVIL, WorkOrderPriority.URGENT,
-        manager, worker2, ["assign", "start", "complete", "review_fail", "start", "complete"], days_ago=4
+        manager, worker2, ["assign", "start", "complete", "review_fail", "start", "complete"], days_ago=4,
+        photos=sample_photos["tile_falling"]
     )
     _create_and_advance(
         "茶水间饮水机故障", "无法加热，指示灯不亮",
@@ -192,7 +232,8 @@ def _init_sample_work_orders(db):
     _create_and_advance(
         "绿化区水管爆裂", "西北角绿化喷灌水管漏水",
         "园区西北角绿化区", WorkOrderCategory.PLUMBING, WorkOrderPriority.HIGH,
-        manager, worker1, ["assign", "start", "complete", "review_pass"], days_ago=14
+        manager, worker1, ["assign", "start", "complete", "review_pass"], days_ago=14,
+        photos=sample_photos["pipe_burst"]
     )
     _create_and_advance(
         "会议室投影不显示", "会议时投影突然无信号",
