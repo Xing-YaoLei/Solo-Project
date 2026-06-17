@@ -101,9 +101,19 @@ export const BillPanel = ({ billId, onClose }: BillPanelProps) => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-green-400">
                   <Percent size={16} />
-                  <span>优惠折扣</span>
+                  <span>{summary.appliedDiscount ? '优惠折扣' : '时长折扣'}</span>
                 </div>
                 <span className="text-green-400">-{summary.formattedDiscount}</span>
+              </div>
+            )}
+
+            {summary.appliedDiscount && summary.formattedAppliedDiscount && (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-purple-400">
+                  <Ticket size={16} />
+                  <span>优惠券</span>
+                </div>
+                <span className="text-purple-400">-{summary.formattedAppliedDiscount}</span>
               </div>
             )}
 
@@ -125,18 +135,30 @@ export const BillPanel = ({ billId, onClose }: BillPanelProps) => {
               </motion.div>
             ) : (
               <div className="space-y-3">
-                {!summary.hasException && discountCooldown <= 0 && (phase === 'billing' || phase === 'settlement') && (
-                  <motion.button
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={handleApplyDiscount}
-                    className="w-full py-2.5 rounded-xl font-medium text-sm bg-purple-500/20 border border-purple-500/50 text-purple-400 hover:bg-purple-500/30 transition-all flex items-center justify-center gap-2"
-                  >
-                    <Ticket size={16} />
-                    使用优惠券 (20%折扣)
-                  </motion.button>
+                {!summary.hasException && !summary.isPaid && (phase === 'billing' || phase === 'settlement') && (
+                  summary.appliedDiscount && summary.formattedAppliedDiscount ? (
+                    <div className="w-full py-2.5 rounded-xl font-medium text-sm bg-purple-500/20 border border-purple-500/50 text-purple-400 flex items-center justify-center gap-2">
+                      <Ticket size={16} />
+                      已使用优惠券 (-{summary.formattedAppliedDiscount})
+                    </div>
+                  ) : discountCooldown <= 0 ? (
+                    <motion.button
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={handleApplyDiscount}
+                      className="w-full py-2.5 rounded-xl font-medium text-sm bg-purple-500/20 border border-purple-500/50 text-purple-400 hover:bg-purple-500/30 transition-all flex items-center justify-center gap-2"
+                    >
+                      <Ticket size={16} />
+                      使用优惠券 (20%折扣)
+                    </motion.button>
+                  ) : (
+                    <div className="w-full py-2.5 rounded-xl font-medium text-sm bg-slate-700/50 border border-slate-600 text-slate-500 flex items-center justify-center gap-2 cursor-not-allowed">
+                      <Ticket size={16} />
+                      优惠券冷却中 ({discountCooldown.toFixed(0)}s)
+                    </div>
+                  )
                 )}
                 <motion.button
                   initial={{ opacity: 0 }}

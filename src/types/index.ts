@@ -47,6 +47,7 @@ export interface Bill {
   isPaid: boolean;
   hasException: boolean;
   exceptionReason?: string;
+  appliedDiscount?: number;
 }
 
 export type PatrolTaskType = 'check' | 'repair' | 'verify';

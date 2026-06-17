@@ -267,6 +267,10 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         GAME_CONFIG.discountPercentage
       );
       
+      const appliedDiscount = bill.appliedDiscount || 0;
+      const finalDiscount = fee.discount + appliedDiscount;
+      const finalTotalFee = Math.max(0, fee.totalFee - appliedDiscount);
+      
       return {
         bills: state.bills.map(b =>
           b.id === billId
@@ -274,8 +278,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
                 ...b,
                 durationMinutes,
                 baseFee: fee.baseFee,
-                discount: fee.discount,
-                totalFee: fee.totalFee,
+                discount: finalDiscount,
+                totalFee: finalTotalFee,
                 isPaid: true,
               }
             : b
@@ -536,13 +540,26 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         if (state.phase === 'access_control') {
           const unprocessed = state.accessRecords.find(r => !r.isProcessed);
           if (unprocessed) {
+            const stateNow = get();
+            let recordId = unprocessed.id;
+            let assignedSpotId = unprocessed.assignedSpotId;
+            
+            if (!assignedSpotId) {
+              const emptySpot = stateNow.spots.find(s => s.status === 'empty');
+              if (emptySpot) {
+                assignedSpotId = emptySpot.id;
+                get().assignRecordToSpot(recordId, emptySpot.id);
+              }
+            }
+            
             set(state => ({
               accessRecords: state.accessRecords.map(r =>
-                r.id === unprocessed.id ? { ...r, isProcessed: true } : r
+                r.id === recordId ? { ...r, isProcessed: true } : r
               ),
             }));
+            
             const allProcessed = get().accessRecords.every(r => r.isProcessed);
-            if (allProcessed && state.phase === 'access_control') {
+            if (allProcessed) {
               get().addScore(50);
               get().setPhase('billing');
             }
@@ -551,6 +568,12 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           const unpaid = state.bills.find(b => !b.isPaid);
           if (unpaid) {
             get().payBill(unpaid.id);
+          } else {
+            const allPaid = get().bills.length === 0 || get().bills.every(b => b.isPaid);
+            if (allPaid) {
+              get().addScore(100);
+              get().setPhase('patrol');
+            }
           }
         } else if (state.phase === 'patrol') {
           const next = state.patrolPoints.filter(p => !p.isVisited).sort((a, b) => a.order - b.order)[0];
@@ -590,6 +613,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     const state = get();
     const bill = state.bills.find(b => b.id === billId);
     if (!bill || bill.isPaid) return false;
+    if (bill.appliedDiscount && bill.appliedDiscount > 0) return false;
 
     const discountItem = ITEMS.find(i => i.effect === 'add_discount');
     if (!discountItem) return false;
@@ -598,11 +622,30 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     const cooldown = state.itemCooldowns[discountItem.id];
     if (state.gameTime - lastUsed < cooldown) return false;
 
+    const spot = state.spots.find(s => s.id === bill.spotId);
+    const record = state.accessRecords.find(r => r.vehiclePlate === bill.vehiclePlate);
+    const vehicleType = record?.vehicleType || 'car';
+    const durationMinutes = spot && spot.entryTime
+      ? (state.gameTime - spot.entryTime) / 60
+      : 0;
+    const fee = calculateParkingFee(
+      durationMinutes,
+      GAME_CONFIG.baseParkingRate,
+      vehicleType,
+      GAME_CONFIG.discountThresholdMinutes,
+      GAME_CONFIG.discountPercentage
+    );
+    const extraDiscount = fee.baseFee * 0.2;
+
     set(state => ({
       itemUsedAt: { ...state.itemUsedAt, [discountItem.id]: state.gameTime },
       bills: state.bills.map(b =>
         b.id === billId
-          ? { ...b, discount: b.discount + b.baseFee * 0.2, totalFee: Math.max(0, b.totalFee - b.baseFee * 0.2) }
+          ? {
+              ...b,
+              appliedDiscount: extraDiscount,
+              totalFee: Math.max(0, fee.totalFee - extraDiscount),
+            }
           : b
       ),
     }));
@@ -612,6 +655,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       itemName: discountItem.name,
       effect: discountItem.effect,
       targetBillId: billId,
+      discountAmount: extraDiscount,
     });
 
     return true;

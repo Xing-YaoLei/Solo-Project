@@ -49,24 +49,32 @@ export const useBilling = () => {
   const getCurrentFeeForSpot = useCallback((spotId: string) => {
     const spot = spots.find(s => s.id === spotId);
     if (!spot || !spot.entryTime || spot.status !== 'occupied') {
-      return { baseFee: 0, discount: 0, totalFee: 0, durationMinutes: 0 };
+      return { baseFee: 0, discount: 0, totalFee: 0, durationMinutes: 0, appliedDiscount: 0 };
     }
 
     const record = accessRecords.find(r => r.assignedSpotId === spotId);
     const vehicleType = record?.vehicleType || 'car';
     const durationMinutes = (gameTime - spot.entryTime) / 60;
 
-    return {
-      ...calculateParkingFee(
-        durationMinutes,
-        GAME_CONFIG.baseParkingRate,
-        vehicleType,
-        GAME_CONFIG.discountThresholdMinutes,
-        GAME_CONFIG.discountPercentage
-      ),
+    const baseFee = calculateParkingFee(
       durationMinutes,
+      GAME_CONFIG.baseParkingRate,
+      vehicleType,
+      GAME_CONFIG.discountThresholdMinutes,
+      GAME_CONFIG.discountPercentage
+    );
+
+    const bill = bills.find(b => b.spotId === spotId && !b.isPaid);
+    const appliedDiscount = bill?.appliedDiscount || 0;
+
+    return {
+      baseFee: baseFee.baseFee,
+      discount: baseFee.discount,
+      totalFee: Math.max(0, baseFee.totalFee - appliedDiscount),
+      durationMinutes,
+      appliedDiscount,
     };
-  }, [spots, accessRecords, gameTime]);
+  }, [spots, accessRecords, gameTime, bills]);
 
   const processPayment = useCallback((billId: string) => {
     if (phase !== 'billing' && phase !== 'settlement') return false;
@@ -90,16 +98,30 @@ export const useBilling = () => {
 
     const spot = spots.find(s => s.id === bill.spotId);
     const fee = getCurrentFeeForSpot(bill.spotId);
+    const appliedDiscount = bill.appliedDiscount || 0;
+    const baseFee = calculateParkingFee(
+      fee.durationMinutes,
+      GAME_CONFIG.baseParkingRate,
+      (accessRecords.find(r => r.vehiclePlate === bill.vehiclePlate)?.vehicleType) || 'car',
+      GAME_CONFIG.discountThresholdMinutes,
+      GAME_CONFIG.discountPercentage
+    );
 
     return {
       ...bill,
       spotNumber: spot?.number,
-      currentFee: fee,
+      currentFee: {
+        ...fee,
+        baseFee: baseFee.baseFee,
+        discount: baseFee.discount + appliedDiscount,
+        totalFee: fee.totalFee,
+      },
       formattedTotal: formatCurrency(fee.totalFee),
-      formattedBase: formatCurrency(fee.baseFee),
-      formattedDiscount: formatCurrency(fee.discount),
+      formattedBase: formatCurrency(baseFee.baseFee),
+      formattedDiscount: formatCurrency(baseFee.discount + appliedDiscount),
+      formattedAppliedDiscount: appliedDiscount > 0 ? formatCurrency(appliedDiscount) : null,
     };
-  }, [bills, spots, getCurrentFeeForSpot]);
+  }, [bills, spots, getCurrentFeeForSpot, accessRecords]);
 
   const getSpotTurnover = useCallback(() => {
     const totalSpots = spots.length;
