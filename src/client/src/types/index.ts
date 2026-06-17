@@ -409,7 +409,7 @@ export interface UpdateScheduleDto {
 }
 
 export interface ScheduleStatusChangeDto {
-  newStatus: ScheduleStatus;
+  newStatus?: ScheduleStatus;
   changeReason?: string;
   reviewComments?: string;
   reviewResult?: ReviewResult;
@@ -582,7 +582,7 @@ export interface UpdateExceptionRecordDto {
 }
 
 export interface ExceptionStatusChangeDto {
-  newStatus: ExceptionStatus;
+  newStatus?: ExceptionStatus;
   changeReason?: string;
   closeType?: ExceptionCloseType;
   supplementRequirement?: string;

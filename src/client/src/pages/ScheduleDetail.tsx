@@ -76,7 +76,6 @@ import { exceptionService } from '@/services/exceptionService';
 import type {
   ScheduleDetailDto,
   ScheduleStatusChangeDto,
-  ScheduleStatus,
   MedicationDto,
   CreateMedicationDto,
   CreateExceptionRecordDto,
@@ -87,7 +86,12 @@ import type {
   ElderDetailDto,
 } from '@/types';
 import { useAppStore } from '@/store/useAppStore';
-import { ExceptionType as ExceptionTypeEnum, ExceptionSeverity as ExceptionSeverityEnum, ShiftType as ShiftTypeEnum } from '@/types';
+import {
+  ScheduleStatus,
+  ExceptionType as ExceptionTypeEnum,
+  ExceptionSeverity as ExceptionSeverityEnum,
+  ShiftType as ShiftTypeEnum,
+} from '@/types';
 
 const { Step } = Steps;
 const { Panel } = Collapse;
@@ -200,7 +204,7 @@ const ScheduleDetail: React.FC = () => {
       key: string;
       label: string;
       icon: React.ReactNode;
-      type?: 'primary' | 'default' | 'dashed' | 'link' | 'text' | 'ghost';
+      type?: 'primary' | 'default' | 'dashed' | 'link' | 'text';
       danger?: boolean;
       needsForm?: boolean;
       title?: string;

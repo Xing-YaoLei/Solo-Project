@@ -11,11 +11,10 @@ import {
   Tag,
   Progress,
   Alert,
-  Empty,
   Divider,
   Tooltip,
-  Typography,
   Space,
+  Descriptions,
 } from 'antd';
 import {
   CalendarOutlined,
@@ -33,24 +32,32 @@ import {
   MedicineBoxOutlined,
   BulbOutlined,
   InfoCircleOutlined,
+  ArrowUpOutlined,
 } from '@ant-design/icons';
 import ReactECharts from 'echarts-for-react';
 import dayjs from 'dayjs';
 import PageHeader from '@/components/PageHeader';
 import { useNavigate } from 'react-router-dom';
 import { statisticsService } from '@/services/statisticsService';
-import type { StatisticsDto } from '@/types';
+import type {
+  StatisticsDto,
+  ScheduleStatisticsDto,
+  ExceptionStatisticsDto,
+  CareStandardStatisticsDto,
+  SourceStatisticsDto,
+  HandlerStatisticsDto,
+  ExceptionCauseStatisticsDto,
+  ScheduleStatusCountItem,
+  ExceptionSeverityCountItem,
+  ExceptionTypeCountItem,
+  SourceCountItem,
+  CareStandardCountItem,
+} from '@/types';
 import {
-  ExceptionType as ExceptionTypeEnum,
-  ExceptionSeverity as ExceptionSeverityEnum,
-  ExceptionCloseType as ExceptionCloseTypeEnum,
-  ReviewResult as ReviewResultEnum,
   SourceType as SourceTypeEnum,
 } from '@/types';
-import { getEnumLabel } from '@/utils/enumUtils';
 
 const { TabPane } = Tabs;
-const { Text, Title } = Typography;
 
 const getAntdColor = (name: string): string => {
   const map: Record<string, string> = {
@@ -69,6 +76,56 @@ const getAntdColor = (name: string): string => {
     gray: '#8c8c8c',
   };
   return map[name] || '#1890ff';
+};
+
+const findCountInStatusBreakdown = (
+  breakdown: ScheduleStatusCountItem[] | undefined,
+  statusText: string,
+  defaultValue: number
+): number => {
+  if (!breakdown || breakdown.length === 0) return defaultValue;
+  const item = breakdown.find((b) => b.statusText === statusText);
+  return item ? item.count : defaultValue;
+};
+
+const findCountInSeverityBreakdown = (
+  breakdown: ExceptionSeverityCountItem[] | undefined,
+  severityText: string,
+  defaultValue: number
+): number => {
+  if (!breakdown || breakdown.length === 0) return defaultValue;
+  const item = breakdown.find((b) => b.severityText === severityText);
+  return item ? item.count : defaultValue;
+};
+
+const findCountInTypeBreakdown = (
+  breakdown: ExceptionTypeCountItem[] | undefined,
+  typeText: string,
+  defaultValue: number
+): number => {
+  if (!breakdown || breakdown.length === 0) return defaultValue;
+  const item = breakdown.find((b) => b.typeText === typeText);
+  return item ? item.count : defaultValue;
+};
+
+const findCountInSourceBreakdown = (
+  breakdown: SourceCountItem[] | undefined,
+  source: SourceTypeEnum,
+  defaultValue: number
+): number => {
+  if (!breakdown || breakdown.length === 0) return defaultValue;
+  const item = breakdown.find((b) => b.source === source);
+  return item ? item.count : defaultValue;
+};
+
+const findCountInCareStandardBreakdown = (
+  breakdown: CareStandardCountItem[] | undefined,
+  standardText: string,
+  defaultValue: number
+): number => {
+  if (!breakdown || breakdown.length === 0) return defaultValue;
+  const item = breakdown.find((b) => b.standardText === standardText);
+  return item ? item.count : defaultValue;
 };
 
 const StatisticsAnalysis: React.FC = () => {
@@ -94,6 +151,56 @@ const StatisticsAnalysis: React.FC = () => {
     fetchData();
   }, [fetchData]);
 
+  const s = (data?.scheduleStatistics || {}) as ScheduleStatisticsDto;
+  const e = (data?.exceptionStatistics || {}) as ExceptionStatisticsDto;
+  const c = (data?.careStandardStatistics || {}) as CareStandardStatisticsDto;
+  const src = (data?.sourceStatistics || {}) as SourceStatisticsDto;
+  const h = (data?.handlerStatistics || {}) as HandlerStatisticsDto;
+  const ec = (data?.exceptionCauseStatistics || {}) as ExceptionCauseStatisticsDto;
+
+  const scheduleDraft = s?.draftCount ?? findCountInStatusBreakdown(s?.statusBreakdown, '草稿', 12);
+  const scheduleSubmitted = findCountInStatusBreakdown(s?.statusBreakdown, '已提交', 8);
+  const scheduleUnderReview = s?.underReviewCount ?? findCountInStatusBreakdown(s?.statusBreakdown, '审核中', 5);
+  const scheduleApproved = findCountInStatusBreakdown(s?.statusBreakdown, '已审核', 15);
+  const scheduleInProgress = s?.inProgressCount ?? findCountInStatusBreakdown(s?.statusBreakdown, '进行中', 32);
+  const scheduleCompleted = s?.completedCount ?? findCountInStatusBreakdown(s?.statusBreakdown, '已完成', 45);
+  const scheduleReviewed = findCountInStatusBreakdown(s?.statusBreakdown, '已复盘', 28);
+  const scheduleClosed = s?.closedCount ?? findCountInStatusBreakdown(s?.statusBreakdown, '已关闭', 60);
+
+  const exceptionFatal = findCountInSeverityBreakdown(e?.severityBreakdown, '致命', 3);
+  const exceptionCritical = findCountInSeverityBreakdown(e?.severityBreakdown, '严重', 12);
+  const exceptionHigh = findCountInSeverityBreakdown(e?.severityBreakdown, '高', 25);
+  const exceptionMedium = findCountInSeverityBreakdown(e?.severityBreakdown, '中', 38);
+  const exceptionLow = findCountInSeverityBreakdown(e?.severityBreakdown, '低', 45);
+
+  const exceptionFall = e?.fallCount ?? findCountInTypeBreakdown(e?.typeBreakdown, '跌倒', 52);
+  const exceptionMedicationError = findCountInTypeBreakdown(e?.typeBreakdown, '用药错误', 18);
+  const exceptionMissing = findCountInTypeBreakdown(e?.typeBreakdown, '走失', 15);
+  const exceptionPressureSore = findCountInTypeBreakdown(e?.typeBreakdown, '压疮', 12);
+  const exceptionInfection = findCountInTypeBreakdown(e?.typeBreakdown, '感染', 10);
+  const exceptionOtherType = findCountInTypeBreakdown(e?.typeBreakdown, '其他', 16);
+
+  const exceptionTotal = e?.totalCount ?? 123;
+  const exceptionClosed = (e?.closedNormalCount ?? 52) + (e?.closedWithSupplementCount ?? 18) + (e?.closedEscalatedCount ?? 10);
+  const closeNormal = e?.closedNormalCount ?? 52;
+  const closeSupplement = e?.closedWithSupplementCount ?? 18;
+  const closeEscalated = e?.closedEscalatedCount ?? 10;
+
+  const sourceSelf = findCountInSourceBreakdown(src?.breakdown, SourceTypeEnum.SelfRegistration, 68);
+  const sourceHospital = findCountInSourceBreakdown(src?.breakdown, SourceTypeEnum.HospitalReferral, 85);
+  const sourceCommunity = findCountInSourceBreakdown(src?.breakdown, SourceTypeEnum.CommunityReferral, 52);
+  const sourceFamily = findCountInSourceBreakdown(src?.breakdown, SourceTypeEnum.FamilyIntroduction, 45);
+  const sourceOnline = findCountInSourceBreakdown(src?.breakdown, SourceTypeEnum.OnlineBooking, 38);
+  const sourceOther = findCountInSourceBreakdown(src?.breakdown, SourceTypeEnum.Other, 22);
+
+  const reviewedTotal = c?.totalEvaluated ?? 156;
+  const reviewedFail = c?.belowStandardCount ?? findCountInCareStandardBreakdown(c?.breakdown, '不达标', 18);
+  const reviewedPass = c?.meetsStandardCount ?? findCountInCareStandardBreakdown(c?.breakdown, '达标', 105);
+  const reviewedExcellent = c?.exceedsStandardCount ?? findCountInCareStandardBreakdown(c?.breakdown, '超标', 33);
+  const reviewedPassRate = reviewedTotal > 0 ? Math.round(((reviewedPass + reviewedExcellent) / reviewedTotal) * 100) : 0;
+
+  const totalElders = src?.totalElders ?? 310;
+
   const scheduleStatusPieOption = {
     tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
     legend: { orient: 'horizontal', bottom: 0 },
@@ -106,14 +213,14 @@ const StatisticsAnalysis: React.FC = () => {
         avoidLabelOverlap: true,
         label: { show: true, formatter: '{b}\n{d}%' },
         data: [
-          { value: data?.scheduleDraft || 12, name: '草稿', itemStyle: { color: getAntdColor('gray') } },
-          { value: data?.scheduleSubmitted || 8, name: '已提交', itemStyle: { color: getAntdColor('blue') } },
-          { value: data?.scheduleUnderReview || 5, name: '审核中', itemStyle: { color: getAntdColor('gold') } },
-          { value: data?.scheduleApproved || 15, name: '已审核', itemStyle: { color: getAntdColor('cyan') } },
-          { value: data?.scheduleInProgress || 32, name: '进行中', itemStyle: { color: getAntdColor('geekblue') } },
-          { value: data?.scheduleCompleted || 45, name: '已完成', itemStyle: { color: getAntdColor('green') } },
-          { value: data?.scheduleReviewed || 28, name: '已复盘', itemStyle: { color: getAntdColor('purple') } },
-          { value: data?.scheduleClosed || 60, name: '已关闭', itemStyle: { color: getAntdColor('magenta') } },
+          { value: scheduleDraft, name: '草稿', itemStyle: { color: getAntdColor('gray') } },
+          { value: scheduleSubmitted, name: '已提交', itemStyle: { color: getAntdColor('blue') } },
+          { value: scheduleUnderReview, name: '审核中', itemStyle: { color: getAntdColor('gold') } },
+          { value: scheduleApproved, name: '已审核', itemStyle: { color: getAntdColor('cyan') } },
+          { value: scheduleInProgress, name: '进行中', itemStyle: { color: getAntdColor('geekblue') } },
+          { value: scheduleCompleted, name: '已完成', itemStyle: { color: getAntdColor('green') } },
+          { value: scheduleReviewed, name: '已复盘', itemStyle: { color: getAntdColor('purple') } },
+          { value: scheduleClosed, name: '已关闭', itemStyle: { color: getAntdColor('magenta') } },
         ],
       },
     ],
@@ -134,7 +241,9 @@ const StatisticsAnalysis: React.FC = () => {
         name: '新排班',
         type: 'line',
         smooth: true,
-        data: [8, 12, 15, 10, 18, 14, 16],
+        data: s?.dailyTrend && s.dailyTrend.length > 0
+          ? s.dailyTrend.map((d) => d.count)
+          : [8, 12, 15, 10, 18, 14, 16],
         itemStyle: { color: getAntdColor('blue') },
         areaStyle: {
           color: {
@@ -176,11 +285,11 @@ const StatisticsAnalysis: React.FC = () => {
         center: ['50%', '40%'],
         label: { show: true, formatter: '{b}\n{c}个' },
         data: [
-          { value: data?.exceptionFatal || 3, name: '致命', itemStyle: { color: getAntdColor('red') } },
-          { value: data?.exceptionCritical || 12, name: '严重', itemStyle: { color: getAntdColor('volcano') } },
-          { value: data?.exceptionHigh || 25, name: '高', itemStyle: { color: getAntdColor('orange') } },
-          { value: data?.exceptionMedium || 38, name: '中', itemStyle: { color: getAntdColor('gold') } },
-          { value: data?.exceptionLow || 45, name: '低', itemStyle: { color: getAntdColor('green') } },
+          { value: exceptionFatal, name: '致命', itemStyle: { color: getAntdColor('red') } },
+          { value: exceptionCritical, name: '严重', itemStyle: { color: getAntdColor('volcano') } },
+          { value: exceptionHigh, name: '高', itemStyle: { color: getAntdColor('orange') } },
+          { value: exceptionMedium, name: '中', itemStyle: { color: getAntdColor('gold') } },
+          { value: exceptionLow, name: '低', itemStyle: { color: getAntdColor('green') } },
         ],
       },
     ],
@@ -198,17 +307,17 @@ const StatisticsAnalysis: React.FC = () => {
         label: { show: true, formatter: '{b}\n{d}%' },
         data: [
           {
-            value: data?.exceptionFall || 52,
-            name: getEnumLabel(ExceptionTypeEnum.Fall, 'exceptionType'),
+            value: exceptionFall,
+            name: '跌倒',
             itemStyle: { color: getAntdColor('red'), shadowBlur: 12, shadowColor: 'rgba(255,77,79,0.5)' },
             label: { fontWeight: 'bold', color: '#cf1322' },
             emphasis: { scale: true, scaleSize: 10 },
           },
-          { value: 18, name: '用药错误', itemStyle: { color: getAntdColor('orange') } },
-          { value: 15, name: '走失', itemStyle: { color: getAntdColor('gold') } },
-          { value: 12, name: '压疮', itemStyle: { color: getAntdColor('purple') } },
-          { value: 10, name: '感染', itemStyle: { color: getAntdColor('cyan') } },
-          { value: 16, name: '其他', itemStyle: { color: getAntdColor('gray') } },
+          { value: exceptionMedicationError, name: '用药错误', itemStyle: { color: getAntdColor('orange') } },
+          { value: exceptionMissing, name: '走失', itemStyle: { color: getAntdColor('gold') } },
+          { value: exceptionPressureSore, name: '压疮', itemStyle: { color: getAntdColor('purple') } },
+          { value: exceptionInfection, name: '感染', itemStyle: { color: getAntdColor('cyan') } },
+          { value: exceptionOtherType, name: '其他', itemStyle: { color: getAntdColor('gray') } },
         ],
       },
     ],
@@ -229,7 +338,9 @@ const StatisticsAnalysis: React.FC = () => {
         name: '异常总数',
         type: 'line',
         smooth: true,
-        data: [5, 8, 12, 7, 10, 14, 11, 9, 13, 16, 12, 8, 15, 10],
+        data: e?.dailyTrend && e.dailyTrend.length > 0
+          ? e.dailyTrend.map((d) => d.count)
+          : [5, 8, 12, 7, 10, 14, 11, 9, 13, 16, 12, 8, 15, 10],
         itemStyle: { color: getAntdColor('blue') },
         lineStyle: { width: 2 },
       },
@@ -305,12 +416,12 @@ const StatisticsAnalysis: React.FC = () => {
         center: ['50%', '40%'],
         label: { show: true, formatter: '{b}\n{c}人' },
         data: [
-          { value: data?.sourceSelf || 68, name: getEnumLabel(SourceTypeEnum.Self, 'sourceType'), itemStyle: { color: getAntdColor('blue') } },
-          { value: data?.sourceHospital || 85, name: getEnumLabel(SourceTypeEnum.Hospital, 'sourceType'), itemStyle: { color: getAntdColor('red') } },
-          { value: data?.sourceCommunity || 52, name: getEnumLabel(SourceTypeEnum.Community, 'sourceType'), itemStyle: { color: getAntdColor('green') } },
-          { value: data?.sourceFamily || 45, name: getEnumLabel(SourceTypeEnum.Family, 'sourceType'), itemStyle: { color: getAntdColor('orange') } },
-          { value: data?.sourceOnline || 38, name: getEnumLabel(SourceTypeEnum.Online, 'sourceType'), itemStyle: { color: getAntdColor('cyan') } },
-          { value: data?.sourceOther || 22, name: getEnumLabel(SourceTypeEnum.Other, 'sourceType'), itemStyle: { color: getAntdColor('gray') } },
+          { value: sourceSelf, name: '自行登记', itemStyle: { color: getAntdColor('blue') } },
+          { value: sourceHospital, name: '医院转介', itemStyle: { color: getAntdColor('red') } },
+          { value: sourceCommunity, name: '社区转介', itemStyle: { color: getAntdColor('green') } },
+          { value: sourceFamily, name: '家属介绍', itemStyle: { color: getAntdColor('orange') } },
+          { value: sourceOnline, name: '线上预约', itemStyle: { color: getAntdColor('cyan') } },
+          { value: sourceOther, name: '其他', itemStyle: { color: getAntdColor('gray') } },
         ],
       },
     ],
@@ -322,7 +433,9 @@ const StatisticsAnalysis: React.FC = () => {
     xAxis: { type: 'value', name: '案件数' },
     yAxis: {
       type: 'category',
-      data: ['李护士', '王护士', '张护士', '刘护士', '陈医生', '赵医生', '黄护士', '孙医生', '周护士', '吴护士'].reverse(),
+      data: h?.topHandlers && h.topHandlers.length > 0
+        ? h.topHandlers.map((x) => x.handlerName).reverse()
+        : ['李护士', '王护士', '张护士', '刘护士', '陈医生', '赵医生', '黄护士', '孙医生', '周护士', '吴护士'].reverse(),
       axisLabel: { fontSize: 11 },
     },
     series: [
@@ -330,7 +443,9 @@ const StatisticsAnalysis: React.FC = () => {
         name: '总案件数',
         type: 'bar',
         stack: 'total',
-        data: [25, 30, 32, 38, 40, 45, 48, 52, 58, 62].reverse(),
+        data: h?.topHandlers && h.topHandlers.length > 0
+          ? h.topHandlers.map((x) => x.totalProcessed).reverse()
+          : [25, 30, 32, 38, 40, 45, 48, 52, 58, 62].reverse(),
         itemStyle: { color: getAntdColor('blue'), borderRadius: [0, 4, 4, 0] },
         label: { show: true, position: 'inside', fontSize: 10 },
       },
@@ -343,25 +458,29 @@ const StatisticsAnalysis: React.FC = () => {
     xAxis: { type: 'value', name: '发生次数' },
     yAxis: {
       type: 'category',
-      data: [
-        '其他因素',
-        '药物副作用',
-        '鞋子不合脚',
-        '地面湿滑',
-        '灯光照明不足',
-        '家具/障碍物',
-        '起身/坐下过快',
-        '平衡功能障碍',
-        '下肢无力',
-        '视力不佳',
-      ],
+      data: ec?.topFallCauses && ec.topFallCauses.length > 0
+        ? ec.topFallCauses.map((x) => x.cause).reverse()
+        : [
+            '其他因素',
+            '药物副作用',
+            '鞋子不合脚',
+            '地面湿滑',
+            '灯光照明不足',
+            '家具/障碍物',
+            '起身/坐下过快',
+            '平衡功能障碍',
+            '下肢无力',
+            '视力不佳',
+          ],
       axisLabel: { fontSize: 11 },
     },
     series: [
       {
         name: '跌倒次数',
         type: 'bar',
-        data: [3, 5, 6, 7, 8, 9, 10, 12, 14, 16],
+        data: ec?.topFallCauses && ec.topFallCauses.length > 0
+          ? ec.topFallCauses.map((x) => x.count).reverse()
+          : [3, 5, 6, 7, 8, 9, 10, 12, 14, 16],
         itemStyle: {
           color: (params: any) => {
             const colors = [
@@ -387,13 +506,22 @@ const StatisticsAnalysis: React.FC = () => {
         radius: ['40%', '70%'],
         center: ['50%', '40%'],
         label: { show: true, formatter: '{b}\n{d}%' },
-        data: [
-          { value: 18, name: '卫生间', itemStyle: { color: getAntdColor('blue'), shadowBlur: 8 } },
-          { value: 15, name: '卧室', itemStyle: { color: getAntdColor('purple') } },
-          { value: 12, name: '走廊', itemStyle: { color: getAntdColor('orange') } },
-          { value: 5, name: '餐厅', itemStyle: { color: getAntdColor('gold') } },
-          { value: 2, name: '其他', itemStyle: { color: getAntdColor('gray') } },
-        ],
+        data: ec?.fallLocationBreakdown && ec.fallLocationBreakdown.length > 0
+          ? ec.fallLocationBreakdown.map((x, i) => {
+              const colorKeys = ['blue', 'purple', 'orange', 'gold', 'gray'];
+              return {
+                value: x.count,
+                name: x.location,
+                itemStyle: { color: getAntdColor(colorKeys[i] || 'gray'), shadowBlur: i === 0 ? 8 : undefined },
+              };
+            })
+          : [
+              { value: 18, name: '卫生间', itemStyle: { color: getAntdColor('blue'), shadowBlur: 8 } },
+              { value: 15, name: '卧室', itemStyle: { color: getAntdColor('purple') } },
+              { value: 12, name: '走廊', itemStyle: { color: getAntdColor('orange') } },
+              { value: 5, name: '餐厅', itemStyle: { color: getAntdColor('gold') } },
+              { value: 2, name: '其他', itemStyle: { color: getAntdColor('gray') } },
+            ],
       },
     ],
   };
@@ -409,13 +537,22 @@ const StatisticsAnalysis: React.FC = () => {
         radius: ['20%', '70%'],
         center: ['50%', '40%'],
         label: { show: true, formatter: '{b}\n{c}例' },
-        data: [
-          { value: 22, name: '头部', itemStyle: { color: getAntdColor('red'), shadowBlur: 8 } },
-          { value: 15, name: '下肢', itemStyle: { color: getAntdColor('orange') } },
-          { value: 8, name: '上肢', itemStyle: { color: getAntdColor('blue') } },
-          { value: 5, name: '躯干', itemStyle: { color: getAntdColor('green') } },
-          { value: 2, name: '其他', itemStyle: { color: getAntdColor('gray') } },
-        ],
+        data: ec?.injuryPartBreakdown && ec.injuryPartBreakdown.length > 0
+          ? ec.injuryPartBreakdown.map((x, i) => {
+              const colorKeys = ['red', 'orange', 'blue', 'green', 'gray'];
+              return {
+                value: x.count,
+                name: x.bodyPart,
+                itemStyle: { color: getAntdColor(colorKeys[i] || 'gray'), shadowBlur: i === 0 ? 8 : undefined },
+              };
+            })
+          : [
+              { value: 22, name: '头部', itemStyle: { color: getAntdColor('red'), shadowBlur: 8 } },
+              { value: 15, name: '下肢', itemStyle: { color: getAntdColor('orange') } },
+              { value: 8, name: '上肢', itemStyle: { color: getAntdColor('blue') } },
+              { value: 5, name: '躯干', itemStyle: { color: getAntdColor('green') } },
+              { value: 2, name: '其他', itemStyle: { color: getAntdColor('gray') } },
+            ],
       },
     ],
   };
@@ -426,7 +563,7 @@ const StatisticsAnalysis: React.FC = () => {
       dataIndex: 'handler',
       key: 'handler',
       fixed: 'left' as const,
-      render: (text: string, record: any, index: number) => (
+      render: (text: string, _record: any, index: number) => (
         <Space>
           {index < 3 && <TrophyOutlined style={{ color: ['#faad14', '#8c8c8c', '#d46b08'][index] }} />}
           <UserOutlined />
@@ -478,34 +615,39 @@ const StatisticsAnalysis: React.FC = () => {
     },
   ];
 
-  const handlerEfficiencyData = [
-    { key: '1', handler: '李护士', totalCases: 62, closedCases: 59, avgHours: 28, closeRate: 95 },
-    { key: '2', handler: '王护士', totalCases: 58, closedCases: 54, avgHours: 32, closeRate: 93 },
-    { key: '3', handler: '张护士', totalCases: 52, closedCases: 47, avgHours: 36, closeRate: 90 },
-    { key: '4', handler: '刘护士', totalCases: 48, closedCases: 42, avgHours: 42, closeRate: 88 },
-    { key: '5', handler: '陈医生', totalCases: 45, closedCases: 40, avgHours: 48, closeRate: 89 },
-    { key: '6', handler: '赵医生', totalCases: 40, closedCases: 35, avgHours: 52, closeRate: 88 },
-    { key: '7', handler: '黄护士', totalCases: 38, closedCases: 32, avgHours: 45, closeRate: 84 },
-    { key: '8', handler: '孙医生', totalCases: 32, closedCases: 27, avgHours: 58, closeRate: 84 },
-    { key: '9', handler: '周护士', totalCases: 30, closedCases: 25, avgHours: 62, closeRate: 83 },
-    { key: '10', handler: '吴护士', totalCases: 25, closedCases: 20, avgHours: 70, closeRate: 80 },
-  ];
+  const handlerEfficiencyData = h?.handlerEfficiency && h.handlerEfficiency.length > 0
+    ? h.handlerEfficiency.map((x, i) => ({
+        key: String(i + 1),
+        handler: x.handlerName,
+        totalCases: x.totalCases,
+        closedCases: x.closedCases,
+        avgHours: x.averageHandlingHours,
+        closeRate: x.closureRate,
+      }))
+    : [
+        { key: '1', handler: '李护士', totalCases: 62, closedCases: 59, avgHours: 28, closeRate: 95 },
+        { key: '2', handler: '王护士', totalCases: 58, closedCases: 54, avgHours: 32, closeRate: 93 },
+        { key: '3', handler: '张护士', totalCases: 52, closedCases: 47, avgHours: 36, closeRate: 90 },
+        { key: '4', handler: '刘护士', totalCases: 48, closedCases: 42, avgHours: 42, closeRate: 88 },
+        { key: '5', handler: '陈医生', totalCases: 45, closedCases: 40, avgHours: 48, closeRate: 89 },
+        { key: '6', handler: '赵医生', totalCases: 40, closedCases: 35, avgHours: 52, closeRate: 88 },
+        { key: '7', handler: '黄护士', totalCases: 38, closedCases: 32, avgHours: 45, closeRate: 84 },
+        { key: '8', handler: '孙医生', totalCases: 32, closedCases: 27, avgHours: 58, closeRate: 84 },
+        { key: '9', handler: '周护士', totalCases: 30, closedCases: 25, avgHours: 62, closeRate: 83 },
+        { key: '10', handler: '吴护士', totalCases: 25, closedCases: 20, avgHours: 70, closeRate: 80 },
+      ];
 
-  const totalSchedules = (data?.scheduleDraft || 0) + (data?.scheduleSubmitted || 0) + (data?.scheduleUnderReview || 0) +
-    (data?.scheduleApproved || 0) + (data?.scheduleInProgress || 0) + (data?.scheduleCompleted || 0) +
-    (data?.scheduleReviewed || 0) + (data?.scheduleClosed || 0) || 205;
+  const totalSchedules = s?.totalCount ?? (
+    (
+      scheduleDraft + scheduleSubmitted + scheduleUnderReview +
+      scheduleApproved + scheduleInProgress + scheduleCompleted +
+      scheduleReviewed + scheduleClosed
+    ) || 205
+  );
 
-  const totalExceptions = (data?.exceptionTotal || 123);
-  const totalFalls = (data?.exceptionFall || 52);
-  const pendingExceptions = totalExceptions - (data?.exceptionClosed || 80);
-
-  const reviewedTotal = data?.reviewTotal || 156;
-  const reviewedFail = data?.reviewFail || 18;
-  const reviewedPass = data?.reviewPass || 105;
-  const reviewedExcellent = data?.reviewExcellent || 33;
-  const reviewedPassRate = reviewedTotal > 0 ? Math.round(((reviewedPass + reviewedExcellent) / reviewedTotal) * 100) : 0;
-
-  const totalElders = 310;
+  const totalExceptions = exceptionTotal;
+  const totalFalls = exceptionFall;
+  const pendingExceptions = e?.openCount ?? (totalExceptions - exceptionClosed);
 
   if (loading) {
     return (
@@ -568,7 +710,7 @@ const StatisticsAnalysis: React.FC = () => {
                 <Card>
                   <Statistic
                     title="进行中"
-                    value={data?.scheduleInProgress || 32}
+                    value={scheduleInProgress}
                     prefix={<ThunderboltOutlined style={{ color: getAntdColor('geekblue') }} />}
                     suffix="单"
                     valueStyle={{ color: getAntdColor('geekblue') }}
@@ -579,7 +721,7 @@ const StatisticsAnalysis: React.FC = () => {
                 <Card>
                   <Statistic
                     title="已完成"
-                    value={data?.scheduleCompleted || 45}
+                    value={scheduleCompleted}
                     prefix={<CheckCircleOutlined style={{ color: getAntdColor('green') }} />}
                     suffix="单"
                     valueStyle={{ color: getAntdColor('green') }}
@@ -590,7 +732,7 @@ const StatisticsAnalysis: React.FC = () => {
                 <Card>
                   <Statistic
                     title="完成率"
-                    value={totalSchedules > 0 ? Math.round((((data?.scheduleCompleted || 0) + (data?.scheduleReviewed || 0) + (data?.scheduleClosed || 0)) / totalSchedules) * 100) : 65}
+                    value={totalSchedules > 0 ? Math.round((((scheduleCompleted) + (scheduleReviewed) + (scheduleClosed)) / totalSchedules) * 100) : 65}
                     prefix={<TrophyOutlined style={{ color: getAntdColor('purple') }} />}
                     suffix="%"
                     valueStyle={{ color: getAntdColor('purple') }}
@@ -611,14 +753,14 @@ const StatisticsAnalysis: React.FC = () => {
                     size="small"
                     pagination={false}
                     dataSource={[
-                      { status: '草稿', count: 12, percent: 6 },
-                      { status: '已提交', count: 8, percent: 4 },
-                      { status: '审核中', count: 5, percent: 2 },
-                      { status: '已审核', count: 15, percent: 7 },
-                      { status: '进行中', count: 32, percent: 16 },
-                      { status: '已完成', count: 45, percent: 22 },
-                      { status: '已复盘', count: 28, percent: 14 },
-                      { status: '已关闭', count: 60, percent: 29 },
+                      { status: '草稿', count: scheduleDraft, percent: totalSchedules > 0 ? Math.round((scheduleDraft / totalSchedules) * 100) : 6 },
+                      { status: '已提交', count: scheduleSubmitted, percent: totalSchedules > 0 ? Math.round((scheduleSubmitted / totalSchedules) * 100) : 4 },
+                      { status: '审核中', count: scheduleUnderReview, percent: totalSchedules > 0 ? Math.round((scheduleUnderReview / totalSchedules) * 100) : 2 },
+                      { status: '已审核', count: scheduleApproved, percent: totalSchedules > 0 ? Math.round((scheduleApproved / totalSchedules) * 100) : 7 },
+                      { status: '进行中', count: scheduleInProgress, percent: totalSchedules > 0 ? Math.round((scheduleInProgress / totalSchedules) * 100) : 16 },
+                      { status: '已完成', count: scheduleCompleted, percent: totalSchedules > 0 ? Math.round((scheduleCompleted / totalSchedules) * 100) : 22 },
+                      { status: '已复盘', count: scheduleReviewed, percent: totalSchedules > 0 ? Math.round((scheduleReviewed / totalSchedules) * 100) : 14 },
+                      { status: '已关闭', count: scheduleClosed, percent: totalSchedules > 0 ? Math.round((scheduleClosed / totalSchedules) * 100) : 29 },
                     ]}
                     columns={[
                       {
@@ -753,10 +895,10 @@ const StatisticsAnalysis: React.FC = () => {
                 <Col xs={24} sm={8}>
                   <Card type="inner">
                     <Statistic
-                      title={getEnumLabel(ExceptionCloseTypeEnum.NormalClose, 'exceptionCloseType')}
-                      value={data?.closeNormal || 52}
+                      title="正常关闭"
+                      value={closeNormal}
                       prefix={<CheckCircleOutlined style={{ color: getAntdColor('green') }} />}
-                      suffix={`件 ${Math.round((data?.closeNormal || 52) / (data?.exceptionClosed || 80) * 100)}%`}
+                      suffix={`件 ${exceptionClosed > 0 ? Math.round((closeNormal / exceptionClosed) * 100) : 0}%`}
                       valueStyle={{ color: getAntdColor('green') }}
                     />
                   </Card>
@@ -764,10 +906,10 @@ const StatisticsAnalysis: React.FC = () => {
                 <Col xs={24} sm={8}>
                   <Card type="inner">
                     <Statistic
-                      title={getEnumLabel(ExceptionCloseTypeEnum.SupplementRequired, 'exceptionCloseType')}
-                      value={data?.closeSupplement || 18}
+                      title="需补充材料"
+                      value={closeSupplement}
                       prefix={<InfoCircleOutlined style={{ color: getAntdColor('blue') }} />}
-                      suffix={`件 ${Math.round((data?.closeSupplement || 18) / (data?.exceptionClosed || 80) * 100)}%`}
+                      suffix={`件 ${exceptionClosed > 0 ? Math.round((closeSupplement / exceptionClosed) * 100) : 0}%`}
                       valueStyle={{ color: getAntdColor('blue') }}
                     />
                   </Card>
@@ -775,10 +917,10 @@ const StatisticsAnalysis: React.FC = () => {
                 <Col xs={24} sm={8}>
                   <Card type="inner">
                     <Statistic
-                      title={getEnumLabel(ExceptionCloseTypeEnum.Escalation, 'exceptionCloseType')}
-                      value={data?.closeEscalated || 10}
-                      prefix={<ArrowUpOutlined color="getAntdColor('orange')" />}
-                      suffix={`件 ${Math.round((data?.closeEscalated || 10) / (data?.exceptionClosed || 80) * 100)}%`}
+                      title="升级处理"
+                      value={closeEscalated}
+                      prefix={<ArrowUpOutlined style={{ color: getAntdColor('orange') }} />}
+                      suffix={`件 ${exceptionClosed > 0 ? Math.round((closeEscalated / exceptionClosed) * 100) : 0}%`}
                       valueStyle={{ color: getAntdColor('orange') }}
                     />
                   </Card>
@@ -811,10 +953,10 @@ const StatisticsAnalysis: React.FC = () => {
               <Col xs={24} sm={12} md={6}>
                 <Card>
                   <Statistic
-                    title={getEnumLabel(ReviewResultEnum.Fail, 'reviewResult')}
+                    title="不达标"
                     value={reviewedFail}
                     prefix={<CloseCircleOutlined style={{ color: getAntdColor('red') }} />}
-                    suffix={`单 ${Math.round((reviewedFail / reviewedTotal) * 100)}%`}
+                    suffix={`单 ${reviewedTotal > 0 ? Math.round((reviewedFail / reviewedTotal) * 100) : 0}%`}
                     valueStyle={{ color: getAntdColor('red') }}
                   />
                 </Card>
@@ -822,10 +964,10 @@ const StatisticsAnalysis: React.FC = () => {
               <Col xs={24} sm={12} md={6}>
                 <Card>
                   <Statistic
-                    title={getEnumLabel(ReviewResultEnum.Pass, 'reviewResult')}
+                    title="达标"
                     value={reviewedPass}
                     prefix={<CheckCircleOutlined style={{ color: getAntdColor('blue') }} />}
-                    suffix={`单 ${Math.round((reviewedPass / reviewedTotal) * 100)}%`}
+                    suffix={`单 ${reviewedTotal > 0 ? Math.round((reviewedPass / reviewedTotal) * 100) : 0}%`}
                     valueStyle={{ color: getAntdColor('blue') }}
                   />
                 </Card>
@@ -833,10 +975,10 @@ const StatisticsAnalysis: React.FC = () => {
               <Col xs={24} sm={12} md={6}>
                 <Card>
                   <Statistic
-                    title={getEnumLabel(ReviewResultEnum.Excellent, 'reviewResult')}
+                    title="超标"
                     value={reviewedExcellent}
                     prefix={<TrophyOutlined style={{ color: getAntdColor('gold') }} />}
-                    suffix={`单 ${Math.round((reviewedExcellent / reviewedTotal) * 100)}%`}
+                    suffix={`单 ${reviewedTotal > 0 ? Math.round((reviewedExcellent / reviewedTotal) * 100) : 0}%`}
                     valueStyle={{ color: getAntdColor('gold') }}
                   />
                 </Card>
@@ -872,21 +1014,21 @@ const StatisticsAnalysis: React.FC = () => {
                         <Col><Tag color="gold">超标（Excellent）</Tag></Col>
                         <Col>{reviewedExcellent} 单</Col>
                       </Row>
-                      <Progress percent={Math.round((reviewedExcellent / reviewedTotal) * 100)} showInfo={false} strokeColor={getAntdColor('gold')} />
+                      <Progress percent={reviewedTotal > 0 ? Math.round((reviewedExcellent / reviewedTotal) * 100) : 0} showInfo={false} strokeColor={getAntdColor('gold')} />
                     </div>
                     <div style={{ marginBottom: 16 }}>
                       <Row align="middle" justify="space-between" style={{ marginBottom: 6 }}>
                         <Col><Tag color="blue">达标（Pass）</Tag></Col>
                         <Col>{reviewedPass} 单</Col>
                       </Row>
-                      <Progress percent={Math.round((reviewedPass / reviewedTotal) * 100)} showInfo={false} strokeColor={getAntdColor('blue')} />
+                      <Progress percent={reviewedTotal > 0 ? Math.round((reviewedPass / reviewedTotal) * 100) : 0} showInfo={false} strokeColor={getAntdColor('blue')} />
                     </div>
                     <div>
                       <Row align="middle" justify="space-between" style={{ marginBottom: 6 }}>
                         <Col><Tag color="red">不达标（Fail）</Tag></Col>
                         <Col>{reviewedFail} 单</Col>
                       </Row>
-                      <Progress percent={Math.round((reviewedFail / reviewedTotal) * 100)} showInfo={false} strokeColor={getAntdColor('red')} />
+                      <Progress percent={reviewedTotal > 0 ? Math.round((reviewedFail / reviewedTotal) * 100) : 0} showInfo={false} strokeColor={getAntdColor('red')} />
                     </div>
                   </div>
                 </Card>
@@ -924,9 +1066,9 @@ const StatisticsAnalysis: React.FC = () => {
                 <Card>
                   <Statistic
                     title="医院转介（Top1）"
-                    value={85}
+                    value={sourceHospital}
                     prefix={<AlertOutlined style={{ color: getAntdColor('red') }} />}
-                    suffix={`人 ${Math.round(85 / totalElders * 100)}%`}
+                    suffix={`人 ${totalElders > 0 ? Math.round((sourceHospital / totalElders) * 100) : 0}%`}
                     valueStyle={{ color: getAntdColor('red') }}
                   />
                 </Card>
@@ -935,9 +1077,9 @@ const StatisticsAnalysis: React.FC = () => {
                 <Card>
                   <Statistic
                     title="自行登记"
-                    value={68}
+                    value={sourceSelf}
                     prefix={<UserOutlined style={{ color: getAntdColor('blue') }} />}
-                    suffix={`人 ${Math.round(68 / totalElders * 100)}%`}
+                    suffix={`人 ${totalElders > 0 ? Math.round((sourceSelf / totalElders) * 100) : 0}%`}
                     valueStyle={{ color: getAntdColor('blue') }}
                   />
                 </Card>
@@ -946,9 +1088,9 @@ const StatisticsAnalysis: React.FC = () => {
                 <Card>
                   <Statistic
                     title="线上预约"
-                    value={38}
+                    value={sourceOnline}
                     prefix={<CalendarOutlined style={{ color: getAntdColor('cyan') }} />}
-                    suffix={`人 ${Math.round(38 / totalElders * 100)}%`}
+                    suffix={`人 ${totalElders > 0 ? Math.round((sourceOnline / totalElders) * 100) : 0}%`}
                     valueStyle={{ color: getAntdColor('cyan') }}
                   />
                 </Card>
@@ -967,12 +1109,12 @@ const StatisticsAnalysis: React.FC = () => {
                     size="small"
                     pagination={false}
                     dataSource={[
-                      { source: getEnumLabel(SourceTypeEnum.Self, 'sourceType'), count: 68, color: 'blue' },
-                      { source: getEnumLabel(SourceTypeEnum.Hospital, 'sourceType'), count: 85, color: 'red' },
-                      { source: getEnumLabel(SourceTypeEnum.Community, 'sourceType'), count: 52, color: 'green' },
-                      { source: getEnumLabel(SourceTypeEnum.Family, 'sourceType'), count: 45, color: 'orange' },
-                      { source: getEnumLabel(SourceTypeEnum.Online, 'sourceType'), count: 38, color: 'cyan' },
-                      { source: getEnumLabel(SourceTypeEnum.Other, 'sourceType'), count: 22, color: 'gray' },
+                      { source: '自行登记', count: sourceSelf, color: 'blue' },
+                      { source: '医院转介', count: sourceHospital, color: 'red' },
+                      { source: '社区转介', count: sourceCommunity, color: 'green' },
+                      { source: '家属介绍', count: sourceFamily, color: 'orange' },
+                      { source: '线上预约', count: sourceOnline, color: 'cyan' },
+                      { source: '其他', count: sourceOther, color: 'gray' },
                     ]}
                     columns={[
                       {
@@ -984,7 +1126,7 @@ const StatisticsAnalysis: React.FC = () => {
                         title: '占比', dataIndex: 'count', key: 'percent',
                         render: (v: number, record: any) => (
                           <Progress
-                            percent={Math.round(v / totalElders * 100)}
+                            percent={totalElders > 0 ? Math.round((v / totalElders) * 100) : 0}
                             size="small"
                             strokeColor={getAntdColor(record.color)}
                           />

@@ -235,7 +235,7 @@ const ScheduleManagement: React.FC = () => {
   };
 
   const getAvailableActions = (status: ScheduleStatus) => {
-    const actions: Array<{ key: string; label: string; icon: React.ReactNode; type?: 'primary' | 'default' | 'danger' | 'ghost' | 'link'; danger?: boolean }> = [];
+    const actions: Array<{ key: string; label: string; icon: React.ReactNode; type?: 'primary' | 'default' | 'dashed' | 'link' | 'text'; danger?: boolean }> = [];
     switch (status) {
       case 0:
         actions.push({ key: 'submit', label: '提交审核', icon: <AuditOutlined />, type: 'primary' });

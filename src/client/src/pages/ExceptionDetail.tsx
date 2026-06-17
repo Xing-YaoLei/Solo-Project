@@ -168,7 +168,7 @@ const ExceptionDetail: React.FC = () => {
       key: string;
       label: string;
       icon: React.ReactNode;
-      type?: 'primary' | 'default' | 'dashed' | 'link' | 'text' | 'ghost';
+      type?: 'primary' | 'default' | 'dashed' | 'link' | 'text';
       danger?: boolean;
       needsForm?: boolean;
       title?: string;
@@ -352,7 +352,7 @@ const ExceptionDetail: React.FC = () => {
                 <Form.Item
                   name="assignedTo"
                   label="分配给（处理人）"
-                  rules={[{ required: true, message: '请输入处理人姓名' }]
+                  rules={[{ required: true, message: '请输入处理人姓名' }]}
                 >
                   <Input placeholder="处理人姓名" />
                 </Form.Item>
@@ -377,14 +377,14 @@ const ExceptionDetail: React.FC = () => {
             <Form.Item
               name="supplementRequirement"
               label="补充要求"
-              rules={[{ required: true, message: '请输入补充要求' }]
+              rules={[{ required: true, message: '请输入补充要求' }]}
             >
               <TextArea rows={4} placeholder="请详细描述需要补充的材料" />
             </Form.Item>
             <Form.Item
               name="supplementDueDate"
               label="补充截止日"
-              rules={[{ required: true, message: '请选择截止日期' }]
+              rules={[{ required: true, message: '请选择截止日期' }]}
             >
               <DatePicker style={{ width: '100%' }} />
             </Form.Item>
@@ -395,7 +395,7 @@ const ExceptionDetail: React.FC = () => {
           <Form.Item
             name="supplementMaterialDescription"
             label="补充材料说明"
-            rules={[{ required: true, message: '请输入补充材料说明' }]
+            rules={[{ required: true, message: '请输入补充材料说明' }]}
           >
             <TextArea rows={4} placeholder="请描述已提交的补充材料" />
           </Form.Item>
@@ -406,7 +406,7 @@ const ExceptionDetail: React.FC = () => {
             <Form.Item
               name="escalationReason"
               label="升级原因"
-              rules={[{ required: true, message: '请输入升级原因' }]
+              rules={[{ required: true, message: '请输入升级原因' }]}
             >
               <TextArea rows={3} placeholder="请详细说明升级原因" />
             </Form.Item>
@@ -415,7 +415,7 @@ const ExceptionDetail: React.FC = () => {
                 <Form.Item
                   name="escalatedTo"
                   label="升级对象"
-                  rules={[{ required: true, message: '请输入升级对象' }]
+                  rules={[{ required: true, message: '请输入升级对象' }]}
                 >
                   <Input placeholder="例如：院长办公室 / 医务科" />
                 </Form.Item>
@@ -437,7 +437,7 @@ const ExceptionDetail: React.FC = () => {
             <Form.Item
               name="supplementMaterialDescription"
               label="补充材料说明"
-              rules={[{ required: true, message: '请输入补充材料说明' }]
+              rules={[{ required: true, message: '请输入补充材料说明' }]}
             >
               <TextArea rows={3} placeholder="请描述已补充的材料" />
             </Form.Item>
@@ -452,7 +452,7 @@ const ExceptionDetail: React.FC = () => {
             <Form.Item
               name="escalationResponse"
               label="升级处理结果"
-              rules={[{ required: true, message: '请输入升级处理结果' }]
+              rules={[{ required: true, message: '请输入升级处理结果' }]}
             >
               <TextArea rows={3} placeholder="请输入升级后的处理结果" />
             </Form.Item>
