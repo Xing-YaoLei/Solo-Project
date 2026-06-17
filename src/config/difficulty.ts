@@ -1,0 +1,81 @@
+import type { DifficultyConfig } from '@/types';
+
+export const DIFFICULTY_CONFIGS: Record<string, DifficultyConfig> = {
+  easy: {
+    id: 'easy',
+    name: '简单模式',
+    description: '适合新手，账单简单，突发事件少，时间充裕',
+    billingComplexity: 1,
+    emergencyFrequency: 0.2,
+    emergencyTimeLimit: 60,
+    patrolPointCount: 4,
+    timeMultiplier: 6,
+    itemCooldowns: {
+      'hint': 10,
+      'skip': 30,
+      'freeze': 20,
+    },
+  },
+  normal: {
+    id: 'normal',
+    name: '普通模式',
+    description: '标准难度，账单有复杂度，突发事件适中',
+    billingComplexity: 2,
+    emergencyFrequency: 0.5,
+    emergencyTimeLimit: 45,
+    patrolPointCount: 6,
+    timeMultiplier: 12,
+    itemCooldowns: {
+      'hint': 15,
+      'skip': 45,
+      'freeze': 30,
+    },
+  },
+  hard: {
+    id: 'hard',
+    name: '困难模式',
+    description: '高难度，账单复杂，突发事件频繁，时间紧张',
+    billingComplexity: 3,
+    emergencyFrequency: 0.8,
+    emergencyTimeLimit: 30,
+    patrolPointCount: 8,
+    timeMultiplier: 20,
+    itemCooldowns: {
+      'hint': 20,
+      'skip': 60,
+      'freeze': 45,
+    },
+  },
+};
+
+export const GAME_CONFIG = {
+  baseParkingRate: 5,
+  motorcycleRate: 2,
+  truckRateMultiplier: 2,
+  discountThresholdMinutes: 120,
+  discountPercentage: 0.15,
+  maxReplayCount: 3,
+  lagThresholdSeconds: 3,
+  patrolSpeed: 5,
+  spotPositions: [
+    [8, 0, 6] as [number, number, number],
+    [8, 0, 2] as [number, number, number],
+    [8, 0, -2] as [number, number, number],
+    [8, 0, -6] as [number, number, number],
+    [-8, 0, 6] as [number, number, number],
+    [-8, 0, 2] as [number, number, number],
+    [-8, 0, -2] as [number, number, number],
+    [-8, 0, -6] as [number, number, number],
+  ] as [number, number, number][],
+  patrolPointPositions: [
+    [0, 0, 8] as [number, number, number],
+    [10, 0, 0] as [number, number, number],
+    [0, 0, -8] as [number, number, number],
+    [-10, 0, 0] as [number, number, number],
+    [5, 0, 5] as [number, number, number],
+    [-5, 0, 5] as [number, number, number],
+    [5, 0, -5] as [number, number, number],
+    [-5, 0, -5] as [number, number, number],
+  ] as [number, number, number][],
+  gatePosition: [0, 0, 12] as [number, number, number],
+};
