@@ -47,9 +47,9 @@ export class TenantsService {
       include: {
         property: true,
         user: { select: { id: true, email: true } },
-        contracts: { orderBy: { createdAt: 'desc' },
-        financeRecords: { orderBy: { createdAt: 'desc' },
-        tasks: { orderBy: { createdAt: 'desc' },
+        contracts: { orderBy: { createdAt: 'desc' } },
+        financeRecords: { orderBy: { createdAt: 'desc' } },
+        tasks: { orderBy: { createdAt: 'desc' } },
       },
     })
 

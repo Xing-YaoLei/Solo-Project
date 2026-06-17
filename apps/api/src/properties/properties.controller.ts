@@ -12,7 +12,7 @@ import {
 } from '@nestjs/common'
 import { PropertiesService } from './properties.service'
 import { JwtAuthGuard } from '../auth/jwt-auth.guard'
-import { PropertyStatus } from '@prisma/client'
+import { PropertyStatus } from '@rental/db'
 
 @Controller('properties')
 @UseGuards(JwtAuthGuard)

@@ -50,8 +50,18 @@ export const useAuthStore = create<AuthState>()(
 interface AppState {
   sidebarCollapsed: boolean
   currentView: string
+  viewRole: string
   toggleSidebar: () => void
   setCurrentView: (view: string) => void
+  setViewRole: (role: string) => void
+}
+
+const viewRoleMap: Record<string, string> = {
+  manager: 'PROPERTY_MANAGER',
+  maintenance: 'MAINTENANCE_WORKER',
+  finance: 'FINANCE',
+  tenant: 'TENANT',
+  frontline: 'FRONTLINE',
 }
 
 export const useAppStore = create<AppState>()(
@@ -59,9 +69,11 @@ export const useAppStore = create<AppState>()(
     (set) => ({
       sidebarCollapsed: false,
       currentView: 'manager',
+      viewRole: 'PROPERTY_MANAGER',
       toggleSidebar: () =>
         set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
-      setCurrentView: (view) => set({ currentView: view }),
+      setCurrentView: (view) => set({ currentView: view, viewRole: viewRoleMap[view] || view }),
+      setViewRole: (role) => set({ viewRole: role }),
     }),
     {
       name: 'app-storage',

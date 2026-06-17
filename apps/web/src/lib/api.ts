@@ -161,6 +161,9 @@ export const financeApi = {
   createRecord: (data: any) => api.post('/finance', data),
   updateRecord: (id: string, data: any) => api.put(`/finance/${id}`, data),
   markPaid: (id: string) => api.put(`/finance/${id}/paid`),
+  checkOverdue: () => api.post('/finance/check-overdue'),
+  processPayment: (id: string, paidAt?: string) =>
+    api.put(`/finance/${id}/process-payment`, { paidAt }),
   deleteRecord: (id: string) => api.delete(`/finance/${id}`),
   getStats: () => api.get('/finance/stats'),
   getTenantFinance: (tenantId: string) =>
@@ -170,7 +173,7 @@ export const financeApi = {
 }
 
 export const reportsApi = {
-  getDashboard: () => api.get('/reports/dashboard'),
+  getDashboard: (params?: any) => api.get('/reports/dashboard', { params }),
   refreshDashboard: () => api.post('/reports/dashboard/refresh'),
   getOccupancyReport: (params?: any) =>
     api.get('/reports/occupancy', { params }),

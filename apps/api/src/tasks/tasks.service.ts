@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
-import { TaskStatus, TaskType, Priority } from '@prisma/client'
+import { TaskStatus, TaskType, Priority, UserRole } from '@rental/db'
 import { RedisService } from '../redis/redis.service'
 
 @Injectable()
@@ -22,6 +22,8 @@ export class TasksService {
     tenantId?: string
     keyword?: string
     pool?: string
+    userId?: string
+    userRole?: UserRole
   }) {
     const {
       page = 1,
@@ -35,6 +37,8 @@ export class TasksService {
       tenantId,
       keyword,
       pool,
+      userId,
+      userRole,
     } = params
     const skip = (page - 1) * pageSize
 
@@ -54,14 +58,51 @@ export class TasksService {
       ]
     }
 
+    const andConditions: any[] = []
+
     if (pool === 'overdue') {
-      where.OR = [
-        { status: TaskStatus.OVERDUE },
-        {
-          status: TaskStatus.PENDING,
-          dueDate: { lt: new Date() },
-        },
-      ]
+      andConditions.push({
+        OR: [
+          { status: TaskStatus.OVERDUE },
+          {
+            status: { in: [TaskStatus.PENDING, TaskStatus.IN_PROGRESS] },
+            dueDate: { lt: new Date(), not: null },
+          },
+        ],
+      })
+    }
+
+    if (userRole && userId) {
+      switch (userRole) {
+        case UserRole.TENANT:
+          andConditions.push({ tenant: { userId } })
+          break
+        case UserRole.MAINTENANCE_WORKER:
+          andConditions.push({ assigneeId: userId })
+          andConditions.push({ type: TaskType.MAINTENANCE })
+          break
+        case UserRole.FINANCE:
+          andConditions.push({ type: { in: [TaskType.RENT_OVERDUE, TaskType.CONTRACT_REVIEW] } })
+          break
+        case UserRole.FRONTLINE:
+          andConditions.push({ assigneeId: userId })
+          andConditions.push({ type: { in: [TaskType.PROPERTY_LISTING, TaskType.UTILITY_READING, TaskType.MAINTENANCE] } })
+          break
+        case UserRole.PROPERTY_MANAGER:
+          andConditions.push({
+            OR: [
+              { creatorId: userId },
+              { property: { managerId: userId } },
+            ],
+          })
+          break
+        case UserRole.ADMIN:
+          break
+      }
+    }
+
+    if (andConditions.length > 0) {
+      where.AND = andConditions
     }
 
     const [list, total] = await Promise.all([
@@ -89,11 +130,11 @@ export class TasksService {
     const task = await this.prisma.task.findUnique({
       where: { id },
       include: {
-        property: true,
+        property: { include: { photos: { orderBy: { sortOrder: 'asc' } } } },
         assignee: { select: { id: true, name: true, role: true, phone: true, avatar: true } },
         creator: { select: { id: true, name: true } },
         tenant: true,
-        contract: true,
+        contract: { include: { amendments: { orderBy: { createdAt: 'desc' } } } },
         parentTask: { select: { id: true, title: true, status: true } },
         childTasks: { orderBy: { createdAt: 'desc' } },
         comments: {
@@ -103,6 +144,12 @@ export class TasksService {
         auditLogs: {
           orderBy: { createdAt: 'desc' },
           include: { user: { select: { id: true, name: true } } },
+        },
+        maintenanceWorkOrders: {
+          include: {
+            record: { select: { id: true, type: true, description: true } },
+            worker: { select: { id: true, name: true } },
+          },
         },
       },
     })
@@ -433,18 +480,56 @@ export class TasksService {
     })
   }
 
-  async getOverdueTasks() {
-    const tasks = await this.prisma.task.findMany({
-      where: {
+  async getOverdueTasks(userId?: string, userRole?: UserRole) {
+    const andConditions: any[] = [
+      {
         OR: [
           { status: TaskStatus.OVERDUE },
           {
             status: { in: [TaskStatus.PENDING, TaskStatus.IN_PROGRESS] },
-            dueDate: { lt: new Date() },
-            dueDate: { not: null },
+            dueDate: { lt: new Date(), not: null },
           },
         ],
       },
+    ]
+
+    if (userRole && userId) {
+      switch (userRole) {
+        case UserRole.TENANT:
+          andConditions.push({ tenant: { userId } })
+          break
+        case UserRole.MAINTENANCE_WORKER:
+          andConditions.push({ assigneeId: userId })
+          andConditions.push({ type: TaskType.MAINTENANCE })
+          break
+        case UserRole.FINANCE:
+          andConditions.push({ type: { in: [TaskType.RENT_OVERDUE, TaskType.CONTRACT_REVIEW] } })
+          break
+        case UserRole.FRONTLINE:
+          andConditions.push({ assigneeId: userId })
+          andConditions.push({ type: { in: [TaskType.PROPERTY_LISTING, TaskType.UTILITY_READING, TaskType.MAINTENANCE] } })
+          break
+        case UserRole.PROPERTY_MANAGER:
+          andConditions.push({
+            OR: [
+              { creatorId: userId },
+              { property: { managerId: userId } },
+            ],
+          })
+          break
+        case UserRole.ADMIN:
+        default:
+          break
+      }
+    }
+
+    const where: any = {}
+    if (andConditions.length > 0) {
+      where.AND = andConditions
+    }
+
+    const tasks = await this.prisma.task.findMany({
+      where,
       orderBy: { dueDate: 'asc' },
       include: {
         assignee: { select: { id: true, name: true } },

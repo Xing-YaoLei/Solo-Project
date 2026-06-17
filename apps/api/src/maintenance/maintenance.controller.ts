@@ -12,7 +12,7 @@ import {
 } from '@nestjs/common'
 import { MaintenanceService } from './maintenance.service'
 import { JwtAuthGuard } from '../auth/jwt-auth.guard'
-import { MaintenanceStatus, Priority } from '@prisma/client'
+import { MaintenanceStatus, Priority } from '@rental/db'
 
 @Controller('maintenance')
 @UseGuards(JwtAuthGuard)

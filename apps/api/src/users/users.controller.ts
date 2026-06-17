@@ -3,7 +3,7 @@ import { UsersService } from './users.service'
 import { JwtAuthGuard } from '../auth/jwt-auth.guard'
 import { RolesGuard } from '../auth/roles.guard'
 import { Roles } from '../auth/roles.decorator'
-import { UserRole } from '@prisma/client'
+import { UserRole } from '@rental/db'
 
 @Controller('users')
 @UseGuards(JwtAuthGuard, RolesGuard)

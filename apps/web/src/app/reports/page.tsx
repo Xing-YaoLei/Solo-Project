@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { reportsApi, usersApi } from '@/lib/api'
 import { formatMoney, formatNumber } from '@/lib/utils'
+import { useAppStore } from '@/stores'
 import {
   BarChart,
   Bar,
@@ -47,6 +48,7 @@ export default function ReportsPage() {
   const [selectedManager, setSelectedManager] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const { viewRole } = useAppStore()
 
   useEffect(() => {
     const fetchManagers = async () => {
@@ -70,7 +72,7 @@ export default function ReportsPage() {
     } else if (activeTab === 'maintenance') {
       fetchMaintenanceData()
     }
-  }, [activeTab, period, selectedManager, startDate, endDate])
+  }, [activeTab, period, selectedManager, startDate, endDate, viewRole])
 
   const fetchOccupancyData = async () => {
     try {
@@ -79,6 +81,7 @@ export default function ReportsPage() {
         startDate: startDate || undefined,
         endDate: endDate || undefined,
         managerId: selectedManager || undefined,
+        viewRole,
       })
       setOccupancyData(data)
     } catch (e) {
@@ -92,6 +95,7 @@ export default function ReportsPage() {
         periodType: period,
         startDate: startDate || undefined,
         endDate: endDate || undefined,
+        viewRole,
       })
       setTaskData(data)
     } catch (e) {
@@ -105,6 +109,7 @@ export default function ReportsPage() {
         periodType: period,
         startDate: startDate || undefined,
         endDate: endDate || undefined,
+        viewRole,
       })
       setRevenueData(data)
     } catch (e) {
@@ -118,6 +123,7 @@ export default function ReportsPage() {
         periodType: period,
         startDate: startDate || undefined,
         endDate: endDate || undefined,
+        viewRole,
       })
       setMaintenanceData(data)
     } catch (e) {
@@ -601,7 +607,7 @@ function RevenueReport({ data }: { data: any }) {
                   <Pie
                     data={byType.map((item: any) => ({
                       name: item.type,
-                      value: item._sum?.amount?.toNumber() || 0,
+                      value: typeof item._sum?.amount === 'number' ? item._sum.amount : Number(item._sum?.amount || 0),
                     }))}
                     cx="50%"
                     cy="50%"
@@ -631,7 +637,7 @@ function RevenueReport({ data }: { data: any }) {
                     <span className="text-sm">{item.type}</span>
                   </div>
                   <span className="font-medium">
-                    {formatMoney(item._sum?.amount?.toNumber() || 0)}
+                    {formatMoney(typeof item._sum?.amount === 'number' ? item._sum.amount : Number(item._sum?.amount || 0))}
                   </span>
                 </div>
               ))}

@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
-import { ContractStatus } from '@prisma/client'
+import { ContractStatus } from '@rental/db'
 
 @Injectable()
 export class ContractsService {
@@ -54,7 +54,7 @@ export class ContractsService {
         tenant: true,
         createdBy: { select: { id: true, name: true } },
         amendments: { orderBy: { createdAt: 'desc' } },
-        tasks: { orderBy: { createdAt: 'desc' },
+        tasks: { orderBy: { createdAt: 'desc' } },
         financeRecords: { orderBy: { createdAt: 'desc' } },
       },
     })

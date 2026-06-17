@@ -27,7 +27,6 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { propertiesApi } from '@/lib/api'
 import { formatMoney, getStatusColor, getStatusLabel } from '@/lib/utils'
-import { useState } from 'react'
 
 export default function PropertiesPage() {
   const [properties, setProperties] = useState<any[]>([])

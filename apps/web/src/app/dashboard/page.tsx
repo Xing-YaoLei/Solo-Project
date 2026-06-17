@@ -16,6 +16,7 @@ import { reportsApi, tasksApi, propertiesApi, tenantsApi, financeApi } from '@/l
 import { formatMoney, getStatusColor, getStatusLabel } from '@/lib/utils'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import { useAppStore } from '@/stores'
 import {
   BarChart,
   Bar,
@@ -36,18 +37,19 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [overdueTasks, setOverdueTasks] = useState<any[]>([])
   const [recentTasks, setRecentTasks] = useState<any[]>([])
+  const { viewRole } = useAppStore()
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const [dashboard, overdue, tasks] = await Promise.all([
-          reportsApi.getDashboard(),
+          reportsApi.getDashboard({ viewRole }),
           tasksApi.getOverdueTasks(),
-          tasksApi.getTasks({ pageSize: 5 }),
+          tasksApi.getTasks({ pageSize: 5, viewRole }),
         ])
         setStats(dashboard)
-        setOverdue(Array.isArray(overdue) ? overdue : [])
-        setRecentTasks(tasks.list || [])
+        setOverdueTasks(Array.isArray(overdue) ? overdue : [])
+        setRecentTasks((tasks as any)?.list || [])
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error)
       } finally {
@@ -55,7 +57,7 @@ export default function DashboardPage() {
       }
     }
     fetchData()
-  }, [])
+  }, [viewRole])
 
   if (loading) {
     return (

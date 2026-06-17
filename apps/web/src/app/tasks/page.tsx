@@ -25,9 +25,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { tasksApi, propertiesApi, usersApi } from '@/lib/api'
+import { tasksApi, propertiesApi, usersApi, maintenanceApi, utilitiesApi } from '@/lib/api'
 import { formatDate, getStatusColor, getStatusLabel, formatDateTime } from '@/lib/utils'
-import { useTaskStore } from '@/stores'
+import { useTaskStore, useAppStore } from '@/stores'
 
 const taskPools = [
   { key: 'all', label: '全部任务', icon: ListTodo },
@@ -45,6 +45,7 @@ export default function TasksPage() {
   const [stats, setStats] = useState<any>(null)
   const [users, setUsers] = useState<any[]>([])
   const { filters, setFilters, selectedTaskId, setSelectedTask } = useTaskStore()
+  const { viewRole } = useAppStore()
   const [page, setPage] = useState(1)
   const [pageSize] = useState(20)
   const [keyword, setKeyword] = useState('')
@@ -75,7 +76,7 @@ export default function TasksPage() {
 
   useEffect(() => {
     fetchTasks()
-  }, [activePool, page, keyword, filters])
+  }, [activePool, page, keyword, filters, viewRole])
 
   const fetchTasks = async () => {
     setLoading(true)
@@ -84,6 +85,7 @@ export default function TasksPage() {
         page,
         pageSize,
         keyword: keyword || undefined,
+        viewRole,
         ...filters,
       }
 
@@ -492,84 +494,7 @@ function TaskDetail({ taskId, onUpdate }: { taskId: string; onUpdate: () => void
 
         {/* 侧边配置 */}
         <div className="w-72 border-l bg-background p-4 space-y-6 overflow-auto">
-          <div>
-            <h3 className="font-medium text-sm mb-3">维修记录配置</h3>
-            <div className="space-y-2">
-              <button className="w-full text-left p-3 rounded-lg bg-muted/50 hover:bg-muted text-sm">
-                <p className="font-medium">水电维修</p>
-                <p className="text-xs text-muted-foreground">水管/电路/灯具</p>
-              </button>
-              <button className="w-full text-left p-3 rounded-lg bg-muted/50 hover:bg-muted text-sm">
-                <p className="font-medium">家具维修</p>
-                <p className="text-xs text-muted-foreground">衣柜/床/桌椅</p>
-              </button>
-              <button className="w-full text-left p-3 rounded-lg bg-muted/50 hover:bg-muted text-sm">
-                <p className="font-medium">家电维修</p>
-                <p className="text-xs text-muted-foreground">空调/冰箱/洗衣机</p>
-              </button>
-            </div>
-          </div>
-
-          <div>
-            <h3 className="font-medium text-sm mb-3">水电读数留痕</h3>
-            <div className="space-y-2">
-              <div className="p-3 rounded-lg bg-muted/50 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">电表读数</span>
-                  <span className="font-medium">256.8 度</span>
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  上次抄表：2024-01-15
-                </p>
-              </div>
-              <div className="p-3 rounded-lg bg-muted/50 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">水表读数</span>
-                  <span className="font-medium">42.5 吨</span>
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  上次抄表：2024-01-15
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <h3 className="font-medium text-sm mb-3">快速操作</h3>
-            <div className="space-y-2">
-              <Button size="sm" variant="outline" className="w-full justify-start">
-                <Plus className="mr-2 h-4 w-4" />
-                创建维修工单
-              </Button>
-              <Button size="sm" variant="outline" className="w-full justify-start">
-                <Plus className="mr-2 h-4 w-4" />
-                录入水电读数
-              </Button>
-              <Button size="sm" variant="outline" className="w-full justify-start">
-                <Plus className="mr-2 h-4 w-4" />
-                生成财务记录
-              </Button>
-            </div>
-          </div>
-
-          <div>
-            <h3 className="font-medium text-sm mb-3">操作日志</h3>
-            <div className="space-y-3">
-              {task.auditLogs?.slice(0, 5).map((log: any) => (
-                <div key={log.id} className="flex gap-2 text-xs">
-                  <div className="w-2 h-2 rounded-full bg-primary mt-1.5 flex-shrink-0" />
-                  <div>
-                    <p className="text-muted-foreground">
-                      {log.user?.name} {log.remark}
-                    </p>
-                    <p className="text-muted-foreground/70">
-                      {formatDateTime(log.createdAt)}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+          <TaskSidebar task={task} onUpdate={() => { fetchTask(); onUpdate() }} />
         </div>
       </div>
 
@@ -1133,5 +1058,109 @@ function TaskComments({ task }: { task: any }) {
         </div>
       ))}
     </div>
+  )
+}
+
+function TaskSidebar({ task, onUpdate }: { task: any; onUpdate: () => void }) {
+  const [maintenanceRecords, setMaintenanceRecords] = useState<any[]>([])
+  const [utilityReadings, setUtilityReadings] = useState<any[]>([])
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        if (task.propertyId) {
+          const [records, readings] = await Promise.all([
+            maintenanceApi.getRecords({ propertyId: task.propertyId, pageSize: 5 }),
+            utilitiesApi.getPropertyReadings(task.propertyId, { pageSize: 5 }),
+          ])
+          setMaintenanceRecords((records as any)?.list || (Array.isArray(records) ? records : []))
+          const readingsData = readings as any
+          setUtilityReadings(readingsData?.list || Array.isArray(readingsData) ? readingsData : [])
+        }
+      } catch (e) {
+        console.error(e)
+      }
+    }
+    fetchData()
+  }, [task.propertyId])
+
+  return (
+    <>
+      <div>
+        <h3 className="font-medium text-sm mb-3">维修记录配置</h3>
+        {maintenanceRecords.length === 0 ? (
+          <p className="text-xs text-muted-foreground">暂无维修记录</p>
+        ) : (
+          <div className="space-y-2">
+            {maintenanceRecords.slice(0, 5).map((record: any) => (
+              <button key={record.id} className="w-full text-left p-3 rounded-lg bg-muted/50 hover:bg-muted text-sm">
+                <p className="font-medium">{record.type}维修</p>
+                <p className="text-xs text-muted-foreground truncate">{record.description}</p>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div>
+        <h3 className="font-medium text-sm mb-3">水电读数留痕</h3>
+        {utilityReadings.length === 0 ? (
+          <p className="text-xs text-muted-foreground">暂无水电读数</p>
+        ) : (
+          <div className="space-y-2">
+            {utilityReadings.slice(0, 4).map((reading: any) => (
+              <div key={reading.id} className="p-3 rounded-lg bg-muted/50 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">
+                    {reading.type === 'ELECTRIC' ? '电表' : reading.type === 'WATER' ? '水表' : '燃气表'}
+                  </span>
+                  <span className="font-medium">{reading.reading} {reading.type === 'ELECTRIC' ? '度' : '吨'}</span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  抄表日期：{formatDate(reading.readingDate)}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div>
+        <h3 className="font-medium text-sm mb-3">快速操作</h3>
+        <div className="space-y-2">
+          <Button size="sm" variant="outline" className="w-full justify-start">
+            <Plus className="mr-2 h-4 w-4" />
+            创建维修工单
+          </Button>
+          <Button size="sm" variant="outline" className="w-full justify-start">
+            <Plus className="mr-2 h-4 w-4" />
+            录入水电读数
+          </Button>
+          <Button size="sm" variant="outline" className="w-full justify-start">
+            <Plus className="mr-2 h-4 w-4" />
+            生成财务记录
+          </Button>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="font-medium text-sm mb-3">操作日志</h3>
+        <div className="space-y-3">
+          {task.auditLogs?.slice(0, 5).map((log: any) => (
+            <div key={log.id} className="flex gap-2 text-xs">
+              <div className="w-2 h-2 rounded-full bg-primary mt-1.5 flex-shrink-0" />
+              <div>
+                <p className="text-muted-foreground">
+                  {log.user?.name} {log.remark}
+                </p>
+                <p className="text-muted-foreground/70">
+                  {formatDateTime(log.createdAt)}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
   )
 }

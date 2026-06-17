@@ -18,7 +18,11 @@
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false,
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@rental/db": ["../../packages/db/src/index.ts"],
+      "@prisma/client": ["../../packages/db/node_modules/.prisma/client"],
+      ".prisma/client/*": ["../../packages/db/node_modules/.prisma/client/*"],
+      ".prisma/client/runtime/*": ["../../packages/db/node_modules/.prisma/client/runtime/*"]
     }
   }
 }

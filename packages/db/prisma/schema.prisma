@@ -4,6 +4,7 @@
 
 generator client {
   provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
 }
 
 datasource db {
@@ -82,11 +83,17 @@ model User {
   createdTasks     Task[] @relation("CreatedTasks")
   createdProperties Property[] @relation("PropertyCreator")
   managedProperties Property[] @relation("PropertyManager")
-  tenants          Tenant[]
+  tenants          Tenant[] @relation("TenantUser")
   maintenanceWorkOrders MaintenanceWorkOrder[] @relation("MaintenanceWorker")
   createdMaintenanceWorkOrders MaintenanceWorkOrder[] @relation("MaintenanceCreator")
-  utilityReadings  UtilityReading[]
-  financeRecords   FinanceRecord[]
+  utilityReadings  UtilityReading[] @relation("UtilityReadingRecorder")
+  createdFinanceRecords FinanceRecord[] @relation("FinanceRecordCreator")
+  createdContracts Contract[] @relation("ContractCreator")
+  createdContractAmendments ContractAmendment[] @relation("AmendmentCreator")
+  taskComments     TaskComment[] @relation("TaskCommentAuthor")
+  taskAuditLogs    TaskAuditLog[] @relation("TaskAuditLogAuthor")
+  createdPropertyFilters PropertyFilter[] @relation("PropertyFilterCreator")
+  createdReportSnapshots ReportSnapshot[] @relation("ReportCreator")
 }
 
 model Property {
@@ -124,6 +131,7 @@ model Property {
   utilityRecords UtilityReading[]
   tasks          Task[]
   filters        PropertyFilter[]
+  financeRecords FinanceRecord[]
 }
 
 model PropertyPhoto {
@@ -147,7 +155,7 @@ model Tenant {
   id          String   @id @default(cuid())
   name        String
   idCardNo    String?
-  phone       String
+  phone       String   @unique
   email       String?
   avatar      String?
   gender      String?
@@ -165,7 +173,7 @@ model Tenant {
   updatedAt   DateTime @updatedAt
 
   userId      String?
-  user        User?    @relation(fields: [userId], references: [id])
+  user        User?    @relation("TenantUser", fields: [userId], references: [id])
   propertyId  String?
   property    Property? @relation(fields: [propertyId], references: [id])
 
@@ -199,7 +207,7 @@ model Contract {
   createdById String
   property    Property @relation(fields: [propertyId], references: [id])
   tenant      Tenant   @relation(fields: [tenantId], references: [id])
-  createdBy   User     @relation(fields: [createdById], references: [id])
+  createdBy   User     @relation("ContractCreator", fields: [createdById], references: [id])
 
   tasks       Task[]
   financeRecords FinanceRecord[]
@@ -221,7 +229,7 @@ model ContractAmendment {
   createdById String
 
   contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
-  createdBy  User     @relation(fields: [createdById], references: [id])
+  createdBy  User     @relation("AmendmentCreator", fields: [createdById], references: [id])
 }
 
 model MaintenanceRecord {
@@ -264,7 +272,8 @@ model MaintenanceWorkOrder {
   record     MaintenanceRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
   worker     User?    @relation("MaintenanceWorker", fields: [workerId], references: [id])
   creator    User     @relation("MaintenanceCreator", fields: [creatorId], references: [id])
-  task       Task?
+  taskId     String?
+  task       Task?    @relation(fields: [taskId], references: [id])
 
   @@index([workerId])
   @@index([status])
@@ -284,7 +293,7 @@ model UtilityReading {
   recordedById String
 
   property    Property @relation(fields: [propertyId], references: [id])
-  recordedBy  User     @relation(fields: [recordedById], references: [id])
+  recordedBy  User     @relation("UtilityReadingRecorder", fields: [recordedById], references: [id])
 
   @@index([propertyId])
   @@index([type, readingDate])
@@ -322,6 +331,7 @@ model Task {
   childTasks    Task[]    @relation("ParentTask")
   comments      TaskComment[]
   auditLogs     TaskAuditLog[]
+  maintenanceWorkOrders MaintenanceWorkOrder[]
 
   @@index([status])
   @@index([type])
@@ -339,7 +349,7 @@ model TaskComment {
   createdAt DateTime @default(now())
 
   task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation("TaskCommentAuthor", fields: [userId], references: [id])
 }
 
 model TaskAuditLog {
@@ -353,7 +363,7 @@ model TaskAuditLog {
   createdAt DateTime @default(now())
 
   task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation("TaskAuditLogAuthor", fields: [userId], references: [id])
 }
 
 model FinanceRecord {
@@ -376,7 +386,7 @@ model FinanceRecord {
   property    Property? @relation(fields: [propertyId], references: [id])
   tenant      Tenant?   @relation(fields: [tenantId], references: [id])
   contract    Contract? @relation(fields: [contractId], references: [id])
-  createdBy   User      @relation(fields: [createdById], references: [id])
+  createdBy   User      @relation("FinanceRecordCreator", fields: [createdById], references: [id])
 
   @@index([type, status])
   @@index([dueDate])
@@ -392,7 +402,7 @@ model PropertyFilter {
   createdById String
 
   property  Property? @relation(fields: [propertyId], references: [id])
-  createdBy User     @relation(fields: [createdById], references: [id])
+  createdBy User     @relation("PropertyFilterCreator", fields: [createdById], references: [id])
   propertyId String?
 
   @@index([createdById])
@@ -407,7 +417,7 @@ model ReportSnapshot {
   data       Json
   createdAt  DateTime @default(now())
   createdById String
-  createdBy  User     @relation(fields: [createdById], references: [id])
+  createdBy  User     @relation("ReportCreator", fields: [createdById], references: [id])
 
   @@index([reportType, periodType, periodStart])
 }

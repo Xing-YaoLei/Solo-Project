@@ -85,6 +85,19 @@ export class FinanceController {
     return this.financeService.markPaid(id)
   }
 
+  @Post('check-overdue')
+  async checkOverdue() {
+    return this.financeService.checkAndCreateOverdueTasks()
+  }
+
+  @Put(':id/process-payment')
+  async processPayment(
+    @Param('id') id: string,
+    @Body('paidAt') paidAt?: string,
+  ) {
+    return this.financeService.processRentPayment(id, paidAt ? new Date(paidAt) : undefined)
+  }
+
   @Delete(':id')
   async delete(@Param('id') id: string) {
     return this.financeService.delete(id)

@@ -95,9 +95,11 @@ export function getStatusLabel(status: string) {
     URGENT: '紧急',
     PROPERTY_LISTING: '房源上架',
     RENT_OVERDUE: '租金逾期',
-    MAINTENANCE: '维修工单',
     CONTRACT_REVIEW: '合同审核',
     UTILITY_READING: '水电读数',
+  }
+  if (status === 'MAINTENANCE') {
+    return '维修工单'
   }
   return labels[status] || status
 }

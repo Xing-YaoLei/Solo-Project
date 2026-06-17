@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
-import { PropertyStatus, TaskStatus } from '@prisma/client'
+import { PropertyStatus, TaskStatus, UserRole, TaskType } from '@rental/db'
 import { RedisService } from '../redis/redis.service'
 
 @Injectable()
@@ -16,12 +16,27 @@ export class ReportsService {
     endDate?: string
     district?: string
     managerId?: string
+    userId?: string
+    userRole?: UserRole
   }) {
-    const { periodType = 'MONTHLY', startDate, endDate, district, managerId } = params
+    const { periodType = 'MONTHLY', startDate, endDate, district, managerId, userId, userRole } = params
 
     const propertyWhere: any = {}
     if (district) propertyWhere.district = district
     if (managerId) propertyWhere.managerId = managerId
+
+    if (userRole && userId) {
+      switch (userRole) {
+        case UserRole.PROPERTY_MANAGER:
+          propertyWhere.managerId = userId
+          break
+        case UserRole.TENANT:
+        case UserRole.MAINTENANCE_WORKER:
+        case UserRole.FRONTLINE:
+          propertyWhere.id = 'no-access'
+          break
+      }
+    }
 
     const totalProperties = await this.prisma.property.count({ where: propertyWhere })
     const occupiedProperties = await this.prisma.property.count({
@@ -35,13 +50,14 @@ export class ReportsService {
     })
 
     const byDistrict = await this.prisma.property.groupBy({
-      by: ['district',
+      by: ['district'],
       _count: true,
-      where: { ...propertyWhere, district: { not: null },
+      where: propertyWhere,
     })
 
     const districtStats = []
     for (const item of byDistrict) {
+      if (!item.district) continue
       const districtOccupied = await this.prisma.property.count({
         where: {
           ...propertyWhere,
@@ -60,7 +76,7 @@ export class ReportsService {
     const byManager = await this.prisma.property.groupBy({
       by: ['managerId'],
       _count: true,
-      where: { ...propertyWhere, managerId: { not: null } },
+      where: { ...propertyWhere, NOT: { managerId: null } },
     })
 
     const managerStats = []
@@ -104,14 +120,43 @@ export class ReportsService {
     endDate?: string
     type?: string
     assigneeId?: string
+    userId?: string
+    userRole?: UserRole
   }) {
-    const { periodType = 'MONTHLY', startDate, endDate, type, assigneeId } = params
+    const { periodType = 'MONTHLY', startDate, endDate, type, assigneeId, userId, userRole } = params
 
     const where: any = {}
     if (type) where.type = type
     if (assigneeId) where.assigneeId = assigneeId
     if (startDate) where.createdAt = { ...where.createdAt, gte: new Date(startDate) }
     if (endDate) where.createdAt = { ...where.createdAt, lte: new Date(endDate) }
+
+    if (userRole && userId) {
+      switch (userRole) {
+        case UserRole.TENANT:
+          where.tenant = { userId }
+          break
+        case UserRole.MAINTENANCE_WORKER:
+          where.assigneeId = userId
+          where.type = TaskType.MAINTENANCE
+          break
+        case UserRole.FINANCE:
+          where.type = { in: [TaskType.RENT_OVERDUE, TaskType.CONTRACT_REVIEW] }
+          break
+        case UserRole.FRONTLINE:
+          where.assigneeId = userId
+          where.type = { in: [TaskType.PROPERTY_LISTING, TaskType.UTILITY_READING, TaskType.MAINTENANCE] }
+          break
+        case UserRole.PROPERTY_MANAGER:
+          where.OR = [
+            { creatorId: userId },
+            { property: { managerId: userId } },
+          ]
+          break
+        case UserRole.ADMIN:
+          break
+      }
+    }
 
     const total = await this.prisma.task.count({ where })
     const completed = await this.prisma.task.count({
@@ -148,7 +193,7 @@ export class ReportsService {
     const byAssignee = await this.prisma.task.groupBy({
       by: ['assigneeId'],
       _count: true,
-      where: { ...where, assigneeId: { not: null } },
+      where: { ...where, NOT: { assigneeId: null } },
     })
 
     const assigneeStats = []
@@ -159,14 +204,14 @@ export class ReportsService {
         select: { id: true, name: true, role: true },
       })
       const completedByUser = await this.prisma.task.count({
-        where: { assigneeId: item.assigneeId, status: TaskStatus.COMPLETED },
+        where: { ...where, assigneeId: item.assigneeId, status: TaskStatus.COMPLETED },
       })
       assigneeStats.push({
-          assignee: user,
-          total: item._count,
-          completed: completedByUser,
-          completionRate: item._count > 0 ? (completedByUser / item._count) * 100 : 0,
-        })
+        assignee: user,
+        total: item._count,
+        completed: completedByUser,
+        completionRate: item._count > 0 ? (completedByUser / item._count) * 100 : 0,
+      })
     }
 
     return {
@@ -190,14 +235,34 @@ export class ReportsService {
     endDate?: string
     propertyId?: string
     tenantId?: string
+    userId?: string
+    userRole?: UserRole
   }) {
-    const { periodType = 'MONTHLY', startDate, endDate, propertyId, tenantId } = params
+    const { periodType = 'MONTHLY', startDate, endDate, propertyId, tenantId, userId, userRole } = params
 
     const where: any = { direction: 'INCOME', status: 'PAID' }
     if (propertyId) where.propertyId = propertyId
     if (tenantId) where.tenantId = tenantId
     if (startDate) where.paidAt = { ...where.paidAt, gte: new Date(startDate) }
     if (endDate) where.paidAt = { ...where.paidAt, lte: new Date(endDate) }
+
+    if (userRole && userId) {
+      switch (userRole) {
+        case UserRole.TENANT:
+          where.tenant = { userId }
+          break
+        case UserRole.PROPERTY_MANAGER:
+          where.property = { managerId: userId }
+          break
+        case UserRole.MAINTENANCE_WORKER:
+        case UserRole.FRONTLINE:
+          where.id = 'no-access'
+          break
+        case UserRole.FINANCE:
+        case UserRole.ADMIN:
+          break
+      }
+    }
 
     const incomeRecords = await this.prisma.financeRecord.findMany({
       where,
@@ -209,6 +274,24 @@ export class ReportsService {
     const expenseWhere: any = { direction: 'EXPENSE', status: 'PAID' }
     if (startDate) expenseWhere.paidAt = { ...expenseWhere.paidAt, gte: new Date(startDate) }
     if (endDate) expenseWhere.paidAt = { ...expenseWhere.paidAt, lte: new Date(endDate) }
+
+    if (userRole && userId) {
+      switch (userRole) {
+        case UserRole.TENANT:
+          expenseWhere.tenant = { userId }
+          break
+        case UserRole.PROPERTY_MANAGER:
+          expenseWhere.property = { managerId: userId }
+          break
+        case UserRole.MAINTENANCE_WORKER:
+        case UserRole.FRONTLINE:
+          expenseWhere.id = 'no-access'
+          break
+        case UserRole.FINANCE:
+        case UserRole.ADMIN:
+          break
+      }
+    }
 
     const expenseRecords = await this.prisma.financeRecord.findMany({
       where: expenseWhere,
@@ -222,13 +305,20 @@ export class ReportsService {
       where,
     })
 
+    const byTypeResult = byType.map((item: any) => ({
+      type: item.type,
+      _sum: {
+        amount: item._sum.amount ? Number(item._sum.amount) : 0,
+      },
+    }))
+
     return {
       summary: {
         totalIncome,
         totalExpense,
         netProfit: totalIncome - totalExpense,
       },
-      byType,
+      byType: byTypeResult,
     }
   }
 
@@ -238,8 +328,10 @@ export class ReportsService {
     endDate?: string
     workerId?: string
     type?: string
+    userId?: string
+    userRole?: UserRole
   }) {
-    const { periodType = 'MONTHLY', startDate, endDate, workerId, type } = params
+    const { periodType = 'MONTHLY', startDate, endDate, workerId, type, userId, userRole } = params
 
     const where: any = {}
     if (workerId) where.workerId = workerId
@@ -247,12 +339,30 @@ export class ReportsService {
     if (startDate) where.createdAt = { ...where.createdAt, gte: new Date(startDate) }
     if (endDate) where.createdAt = { ...where.createdAt, lte: new Date(endDate) }
 
+    if (userRole && userId) {
+      switch (userRole) {
+        case UserRole.MAINTENANCE_WORKER:
+          where.workerId = userId
+          break
+        case UserRole.PROPERTY_MANAGER:
+          where.record = { property: { managerId: userId } }
+          break
+        case UserRole.TENANT:
+        case UserRole.FINANCE:
+        case UserRole.FRONTLINE:
+          where.id = 'no-access'
+          break
+        case UserRole.ADMIN:
+          break
+      }
+    }
+
     const total = await this.prisma.maintenanceWorkOrder.count({ where })
 
     const byWorker = await this.prisma.maintenanceWorkOrder.groupBy({
       by: ['workerId', 'status'],
       _count: true,
-      where: { ...where, workerId: { not: null } },
+      where: { ...where, NOT: { workerId: null } },
     })
 
     const workerStatsMap = new Map()
@@ -295,46 +405,95 @@ export class ReportsService {
     }
   }
 
-  async getDashboardSummary() {
-    const cacheKey = 'dashboard:summary'
+  async getDashboardSummary(userId?: string, userRole?: UserRole) {
+    const roleKey = userRole ? userRole : 'default'
+    const cacheKey = userId ? `dashboard:summary:${userId}:${roleKey}` : `dashboard:summary:${roleKey}`
     const cached = await this.redisService.get(cacheKey)
     if (cached) {
       return JSON.parse(cached)
     }
 
-    const [propertyStats = await this.prisma.property.groupBy({
+    const propertyWhere: any = {}
+    const taskWhere: any = {}
+    const tenantWhere: any = {}
+    const financeWhere: any = { direction: 'INCOME', status: 'PAID' }
+
+    if (userRole && userId) {
+      switch (userRole) {
+        case UserRole.PROPERTY_MANAGER:
+          propertyWhere.managerId = userId
+          taskWhere.OR = [
+            { creatorId: userId },
+            { property: { managerId: userId } },
+          ]
+          financeWhere.property = { managerId: userId }
+          break
+        case UserRole.MAINTENANCE_WORKER:
+          taskWhere.assigneeId = userId
+          taskWhere.type = TaskType.MAINTENANCE
+          propertyWhere.id = 'no-access'
+          tenantWhere.id = 'no-access'
+          break
+        case UserRole.FINANCE:
+          taskWhere.type = { in: [TaskType.RENT_OVERDUE, TaskType.CONTRACT_REVIEW] }
+          propertyWhere.id = 'no-access'
+          tenantWhere.id = 'no-access'
+          break
+        case UserRole.FRONTLINE:
+          taskWhere.assigneeId = userId
+          taskWhere.type = { in: [TaskType.PROPERTY_LISTING, TaskType.UTILITY_READING, TaskType.MAINTENANCE] }
+          propertyWhere.id = 'no-access'
+          tenantWhere.id = 'no-access'
+          financeWhere.id = 'no-access'
+          break
+        case UserRole.TENANT:
+          taskWhere.tenant = { userId }
+          tenantWhere.userId = userId
+          propertyWhere.id = 'no-access'
+          financeWhere.tenant = { userId }
+          break
+        case UserRole.ADMIN:
+        default:
+          break
+      }
+    }
+
+    const propertyStats = await this.prisma.property.groupBy({
       by: ['status'],
       _count: true,
+      where: propertyWhere,
     })
 
     const taskStats = await this.prisma.task.groupBy({
       by: ['status'],
       _count: true,
+      where: taskWhere,
     })
 
-    const totalProperties = await this.prisma.property.count()
+    const totalProperties = await this.prisma.property.count({ where: propertyWhere })
     const occupiedProperties = await this.prisma.property.count({
-      where: { status: PropertyStatus.OCCUPIED },
+      where: { ...propertyWhere, status: PropertyStatus.OCCUPIED },
     })
 
-    const totalTasks = await this.prisma.task.count()
+    const totalTasks = await this.prisma.task.count({ where: taskWhere })
     const overdueTasks = await this.prisma.task.count({
       where: {
+        ...taskWhere,
         OR: [
           { status: TaskStatus.OVERDUE },
-          { status: { in: [TaskStatus.PENDING, TaskStatus.IN_PROGRESS] }, dueDate: { lt: new Date() }, dueDate: { not: null } },
+          { status: { in: [TaskStatus.PENDING, TaskStatus.IN_PROGRESS] }, dueDate: { lt: new Date() } },
         ],
       },
     })
 
-    const totalTenants = await this.prisma.tenant.count()
+    const totalTenants = await this.prisma.tenant.count({ where: tenantWhere })
     const activeTenants = await this.prisma.tenant.count({
-      where: { propertyId: { not: null } },
+      where: { ...tenantWhere, propertyId: { not: null } },
     })
 
     const incomeSum = await this.prisma.financeRecord.aggregate({
       _sum: { amount: true },
-      where: { direction: 'INCOME', status: 'PAID' },
+      where: financeWhere,
     })
 
     const result = {
@@ -364,7 +523,11 @@ export class ReportsService {
   }
 
   async clearDashboardCache() {
-    await this.redisService.del('dashboard:summary')
-    return { success: true }
+    const client = this.redisService.getClient()
+    const keys = await client.keys('dashboard:summary:*')
+    if (keys.length > 0) {
+      await client.del(...keys)
+    }
+    return { success: true, cleared: keys.length }
   }
 }

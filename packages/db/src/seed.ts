@@ -1,4 +1,4 @@
-import { prisma, UserRole, PropertyStatus, TaskType, TaskStatus, Priority, ContractStatus } from './index'
+import { prisma, UserRole, PropertyStatus, TaskType, TaskStatus, Priority, ContractStatus, MaintenanceStatus } from './index'
 
 async function main() {
   console.log('Start seeding...')
@@ -206,6 +206,80 @@ async function main() {
         cost: 200 + i * 100,
         status: i % 2 === 0 ? 'OPEN' : 'COMPLETED',
         reportedAt: new Date(Date.now() - i * 86400000),
+      },
+    })
+  }
+
+  const maintenanceRecords = await prisma.maintenanceRecord.findMany()
+  for (let i = 0; i < Math.min(3, maintenanceRecords.length); i++) {
+    const record = maintenanceRecords[i]
+    await prisma.maintenanceWorkOrder.create({
+      data: {
+        recordId: record.id,
+        workerId: maintenance.id,
+        creatorId: manager.id,
+        priority: i === 0 ? Priority.HIGH : Priority.MEDIUM,
+        status: i === 0 ? MaintenanceStatus.IN_PROGRESS : MaintenanceStatus.COMPLETED,
+        description: record.description,
+        solution: i !== 0 ? '已维修完成' : null,
+        cost: i !== 0 ? 200 + i * 100 : null,
+        completedAt: i !== 0 ? new Date() : null,
+      },
+    })
+  }
+
+  for (let m = 0; m < 6; m++) {
+    const isOverdue = m >= 4
+    await prisma.financeRecord.create({
+      data: {
+        recordNo: `FIN2024${String(m + 1).padStart(6, '0')}`,
+        type: 'RENT',
+        amount: properties[m % properties.length].monthlyRent || 3500,
+        direction: 'INCOME',
+        status: isOverdue ? 'OVERDUE' : m === 3 ? 'PENDING' : 'PAID',
+        dueDate: isOverdue ? new Date(Date.now() - (m - 3) * 5 * 86400000) : new Date(2024, m, 1),
+        paidAt: !isOverdue && m !== 3 ? new Date(2024, m, 3) : null,
+        remark: isOverdue ? `租金逾期 ${m - 3} 个月` : `${m + 1}月租金`,
+        propertyId: properties[m % properties.length].id,
+        tenantId: tenant.id,
+        contractId: contract.id,
+        createdById: finance.id,
+      },
+    })
+  }
+
+  for (let m = 0; m < 3; m++) {
+    await prisma.financeRecord.create({
+      data: {
+        recordNo: `FIN2024EXP${String(m + 1).padStart(6, '0')}`,
+        type: m === 0 ? 'MAINTENANCE_FEE' : m === 1 ? 'UTILITY_FEE' : 'OTHER',
+        amount: 500 + m * 200,
+        direction: 'EXPENSE',
+        status: 'PAID',
+        dueDate: new Date(2024, m, 1),
+        paidAt: new Date(2024, m, 2),
+        remark: m === 0 ? '维修费用' : m === 1 ? '水电费用' : '其他支出',
+        propertyId: properties[m].id,
+        createdById: finance.id,
+      },
+    })
+  }
+
+  const overdueFinanceRecords = await prisma.financeRecord.findMany({
+    where: { status: 'OVERDUE' },
+  })
+  for (const finRecord of overdueFinanceRecords) {
+    const daysOverdue = Math.floor(
+      (Date.now() - (finRecord.dueDate?.getTime() || Date.now())) / (1000 * 60 * 60 * 24),
+    )
+    await prisma.task.updateMany({
+      where: {
+        type: TaskType.RENT_OVERDUE,
+        tenantId: finRecord.tenantId,
+        status: TaskStatus.PENDING,
+      },
+      data: {
+        type: TaskType.RENT_OVERDUE,
       },
     })
   }

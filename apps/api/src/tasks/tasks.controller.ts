@@ -12,12 +12,20 @@ import {
 } from '@nestjs/common'
 import { TasksService } from './tasks.service'
 import { JwtAuthGuard } from '../auth/jwt-auth.guard'
-import { TaskStatus, TaskType, Priority } from '@prisma/client'
+import { TaskStatus, TaskType, Priority, UserRole } from '@rental/db'
 
 @Controller('tasks')
 @UseGuards(JwtAuthGuard)
 export class TasksController {
   constructor(private readonly tasksService: TasksService) {}
+
+  private resolveRole(req: any, viewRole?: string): UserRole {
+    const jwtRole = req?.user?.role as UserRole
+    if (jwtRole === UserRole.ADMIN && viewRole && Object.values(UserRole).includes(viewRole as UserRole)) {
+      return viewRole as UserRole
+    }
+    return jwtRole
+  }
 
   @Get()
   async findAll(
@@ -32,6 +40,8 @@ export class TasksController {
     @Query('tenantId') tenantId?: string,
     @Query('keyword') keyword?: string,
     @Query('pool') pool?: string,
+    @Query('viewRole') viewRole?: string,
+    @Req() req?: any,
   ) {
     return this.tasksService.findAll({
       page: parseInt(page) || 1,
@@ -45,6 +55,8 @@ export class TasksController {
       tenantId,
       keyword,
       pool,
+      userId: req?.user?.userId,
+      userRole: this.resolveRole(req, viewRole),
     })
   }
 
@@ -74,8 +86,8 @@ export class TasksController {
   }
 
   @Get('overdue')
-  async getOverdueTasks() {
-    return this.tasksService.getOverdueTasks()
+  async getOverdueTasks(@Query('viewRole') viewRole?: string, @Req() req?: any) {
+    return this.tasksService.getOverdueTasks(req?.user?.userId, this.resolveRole(req, viewRole))
   }
 
   @Get(':id')
