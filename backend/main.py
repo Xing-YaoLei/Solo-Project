@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 import sys
 import os
 
@@ -13,7 +14,19 @@ from app.api.threshold import router as threshold_router
 from app.api.review import router as review_router
 from app.api.data_import import router as data_import_router
 
-app = FastAPI(title="养老护理床位排班漏斗报表系统", version="1.0.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    from app.db.database import init_pg_tables
+    init_pg_tables()
+    yield
+
+
+app = FastAPI(
+    title="养老护理床位排班漏斗报表系统",
+    version="1.0.0",
+    lifespan=lifespan,
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -34,13 +47,16 @@ app.include_router(data_import_router, prefix="/api")
 
 @app.get("/api/health")
 async def health_check():
-    from app.db.database import is_pg_available
+    from app.db.database import is_pg_available, get_pg_engine
+    pg_available = is_pg_available()
+    if pg_available:
+        get_pg_engine()
     return {
         "code": 0,
         "message": "success",
         "data": {
             "status": "ok",
-            "pgAvailable": is_pg_available(),
+            "pgAvailable": pg_available,
         }
     }
 

@@ -76,7 +76,7 @@ class RiskService:
         conn = get_duckdb()
         start_date = datetime.now() - timedelta(days=days)
         
-        data = conn.execute("""
+        event_data = conn.execute("""
             SELECT type, COUNT(*) as count
             FROM risk_events
             WHERE occur_time >= ?
@@ -84,22 +84,60 @@ class RiskService:
             ORDER BY count DESC
         """, [start_date]).fetchall()
         
-        total = sum(row[1] for row in data) if data else 1
+        health_abnormal = conn.execute("""
+            SELECT 
+                CASE 
+                    WHEN metric_type = 'bp_systolic' AND metric_value >= 160 THEN 'health_critical'
+                    WHEN metric_type IN ('bp_systolic', 'bp_diastolic') THEN 'hypertension'
+                    WHEN metric_type = 'heart_rate' AND (metric_value >= 100 OR metric_value <= 50) THEN 'arrhythmia'
+                    WHEN metric_type = 'blood_oxygen' AND metric_value <= 92 THEN 'hypoxia'
+                    WHEN metric_type = 'blood_sugar' AND metric_value >= 11 THEN 'hyperglycemia'
+                    WHEN metric_type = 'temperature' AND metric_value >= 37.5 THEN 'fever'
+                    ELSE 'health_abnormal'
+                END as risk_type,
+                COUNT(*) as count
+            FROM health_metrics_clean
+            WHERE measure_time >= ?
+              AND (
+                (metric_type = 'bp_systolic' AND metric_value >= 140)
+                OR (metric_type = 'bp_diastolic' AND metric_value >= 90)
+                OR (metric_type = 'heart_rate' AND (metric_value >= 100 OR metric_value <= 50))
+                OR (metric_type = 'blood_oxygen' AND metric_value <= 92)
+                OR (metric_type = 'blood_sugar' AND metric_value >= 11)
+                OR (metric_type = 'temperature' AND metric_value >= 37.5)
+              )
+            GROUP BY risk_type
+        """, [start_date]).fetchall()
         
         type_map = {
             "fall": "跌倒",
             "pressure_ulcer": "压疮",
             "wandering": "走失",
             "medication_error": "用药失误",
-            "other": "其他"
+            "other": "其他",
+            "hypertension": "高血压异常",
+            "arrhythmia": "心率异常",
+            "hypoxia": "血氧异常",
+            "health_abnormal": "健康异常",
+            "health_critical": "血压危重",
+            "hyperglycemia": "高血糖",
+            "fever": "发热",
         }
         
+        merged = {}
+        for row in event_data:
+            merged[row[0]] = merged.get(row[0], 0) + row[1]
+        for row in health_abnormal:
+            merged[row[0]] = merged.get(row[0], 0) + row[1]
+        
+        total = sum(merged.values()) if merged else 1
+        
         result = []
-        for row in data:
+        for k, v in sorted(merged.items(), key=lambda x: -x[1]):
             result.append({
-                "type": type_map.get(row[0], row[0]),
-                "count": row[1],
-                "ratio": round(row[1] / total * 100, 1)
+                "type": type_map.get(k, k),
+                "count": v,
+                "ratio": round(v / total * 100, 1)
             })
         
         return result
@@ -110,7 +148,7 @@ class RiskService:
         today = datetime.now()
         start_date = today - timedelta(days=days)
         
-        data = conn.execute("""
+        event_data = conn.execute("""
             SELECT 
                 DATE(occur_time) as occur_date,
                 type,
@@ -118,20 +156,54 @@ class RiskService:
             FROM risk_events
             WHERE occur_time >= ? AND occur_time <= ?
             GROUP BY DATE(occur_time), type
-            ORDER BY occur_date
+        """, [start_date, today]).fetchall()
+        
+        health_data = conn.execute("""
+            SELECT 
+                DATE(measure_time) as occur_date,
+                CASE
+                    WHEN metric_type IN ('bp_systolic', 'bp_diastolic') THEN 'hypertension'
+                    WHEN metric_type = 'heart_rate' THEN 'arrhythmia'
+                    WHEN metric_type = 'blood_oxygen' THEN 'hypoxia'
+                    WHEN metric_type = 'blood_sugar' THEN 'hyperglycemia'
+                    WHEN metric_type = 'temperature' THEN 'fever'
+                    ELSE 'health_abnormal'
+                END as type,
+                COUNT(*) as count
+            FROM health_metrics_clean
+            WHERE measure_time >= ? AND measure_time <= ?
+              AND (
+                (metric_type = 'bp_systolic' AND metric_value >= 140)
+                OR (metric_type = 'bp_diastolic' AND metric_value >= 90)
+                OR (metric_type = 'heart_rate' AND (metric_value >= 100 OR metric_value <= 50))
+                OR (metric_type = 'blood_oxygen' AND metric_value <= 92)
+                OR (metric_type = 'blood_sugar' AND metric_value >= 11)
+                OR (metric_type = 'temperature' AND metric_value >= 37.5)
+              )
+            GROUP BY DATE(measure_time), type
         """, [start_date, today]).fetchall()
         
         date_dict = {}
+        known_types = ["fall", "pressure_ulcer", "wandering", "medication_error", "other",
+                       "hypertension", "arrhythmia", "hypoxia", "health_abnormal",
+                       "hyperglycemia", "fever", "health_critical"]
         for i in range(days + 1):
             d = (start_date + timedelta(days=i)).strftime("%Y-%m-%d")
-            date_dict[d] = {"fall": 0, "pressure_ulcer": 0, "wandering": 0, "medication_error": 0, "other": 0}
+            date_dict[d] = {t: 0 for t in known_types}
         
-        for row in data:
+        for row in event_data:
             date_str = str(row[0])
-            event_type = row[1]
-            count = row[2]
-            if date_str in date_dict and event_type in date_dict[date_str]:
-                date_dict[date_str][event_type] = count
+            t = row[1]
+            c = row[2]
+            if date_str in date_dict and t in date_dict[date_str]:
+                date_dict[date_str][t] += c
+        
+        for row in health_data:
+            date_str = str(row[0])
+            t = row[1]
+            c = row[2]
+            if date_str in date_dict and t in date_dict[date_str]:
+                date_dict[date_str][t] += c
         
         result = []
         for date_str, types in sorted(date_dict.items()):
