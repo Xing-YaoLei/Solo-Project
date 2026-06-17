@@ -11,8 +11,15 @@ export class DashboardService {
     private redisService: RedisService,
   ) {}
 
-  async getStats() {
-    const cacheKey = 'dashboard:stats';
+  async getStats(userId: string, role: string) {
+    if (role === 'ADMIN' || role === 'MANAGER') {
+      return this.getGlobalStats();
+    }
+    return this.getPersonalStats(userId);
+  }
+
+  private async getGlobalStats() {
+    const cacheKey = 'dashboard:stats:global';
     const cached = await this.redisService.get(cacheKey);
     if (cached) {
       return JSON.parse(cached);
@@ -37,14 +44,50 @@ export class DashboardService {
       escalatedTasks: escalated,
       completionRate,
       trendData,
+      isGlobal: true,
     };
 
     await this.redisService.set(cacheKey, JSON.stringify(stats), CACHE_TTL);
-
     return stats;
   }
 
-  async getTrend(days: number) {
+  async getPersonalStats(userId: string) {
+    const cacheKey = `dashboard:stats:user:${userId}`;
+    const cached = await this.redisService.get(cacheKey);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+
+    const where = { assigneeId: userId };
+    const [total, completed, pending, inProgress, escalated] = await Promise.all([
+      this.prisma.followUpTask.count({ where }),
+      this.prisma.followUpTask.count({ where: { ...where, status: 'COMPLETED' } }),
+      this.prisma.followUpTask.count({ where: { ...where, status: 'PENDING' } }),
+      this.prisma.followUpTask.count({ where: { ...where, status: 'IN_PROGRESS' } }),
+      this.prisma.followUpTask.count({ where: { ...where, status: 'ESCALATED' } }),
+    ]);
+
+    const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+    const stats = {
+      totalTasks: total,
+      completedTasks: completed,
+      pendingTasks: pending,
+      inProgressTasks: inProgress,
+      escalatedTasks: escalated,
+      completionRate,
+      trendData: [],
+      isGlobal: false,
+    };
+
+    await this.redisService.set(cacheKey, JSON.stringify(stats), CACHE_TTL);
+    return stats;
+  }
+
+  async getTrend(days: number, userId: string, role: string) {
+    if (role !== 'ADMIN' && role !== 'MANAGER') {
+      return [];
+    }
     const cacheKey = `dashboard:trend:${days}`;
     const cached = await this.redisService.get(cacheKey);
     if (cached) {

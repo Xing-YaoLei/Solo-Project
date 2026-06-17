@@ -1,8 +1,10 @@
 import { Module } from '@nestjs/common';
 import { ReplenishmentOrdersController } from './replenishment-orders.controller';
 import { ReplenishmentOrdersService } from './replenishment-orders.service';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
+  imports: [AuthModule],
   controllers: [ReplenishmentOrdersController],
   providers: [ReplenishmentOrdersService],
   exports: [ReplenishmentOrdersService],

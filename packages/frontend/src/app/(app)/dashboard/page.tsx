@@ -29,10 +29,9 @@ export default function DashboardPage() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [tasksRes, statsRes] = await Promise.all([
-          isManager ? followUpApi.getAllTasks() : followUpApi.getMyTasks(),
-          dashboardApi.getStats(),
-        ]);
+        const tasksPromise = isManager ? followUpApi.getAllTasks() : followUpApi.getMyTasks();
+        const statsPromise = isManager ? dashboardApi.getStats() : dashboardApi.getMyStats();
+        const [tasksRes, statsRes] = await Promise.all([tasksPromise, statsPromise]);
         setTasks(tasksRes.data);
         setStats(statsRes.data);
       } catch {
@@ -52,13 +51,13 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-surface-50">工作台</h1>
-          <p className="text-surface-200 mt-1">欢迎回来，{user?.name}</p>
+          <p className="text-surface-200 mt-1">欢迎回来，{user?.name} · {isManager ? '管理员' : '处理人'}</p>
         </div>
         <Link
           href="/tasks"
           className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-medium transition-colors"
         >
-          查看所有任务
+          查看任务列表
         </Link>
       </div>
 

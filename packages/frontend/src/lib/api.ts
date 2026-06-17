@@ -58,7 +58,8 @@ export const replenishmentApi = {
 
 export const dashboardApi = {
   getStats: () => api.get('/dashboard/stats'),
-  getTrend: (period?: string) => api.get('/dashboard/trend', { params: { period } }),
+  getMyStats: () => api.get('/dashboard/my-stats'),
+  getTrend: (days?: number) => api.get('/dashboard/trend', { params: { days } }),
 };
 
 export const authApi = {

@@ -1,34 +1,48 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth';
 import { dashboardApi } from '@/lib/api';
-import type { DashboardStats, TrendPoint } from '@/lib/types';
+import type { DashboardStats } from '@/lib/types';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
 
 export default function AnalyticsPage() {
+  const { user, isManager, loading: authLoading } = useAuth();
+  const router = useRouter();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        const res = await dashboardApi.getStats();
-        setStats(res.data);
-      } catch {
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, []);
+    if (!authLoading && !isManager) {
+      router.replace('/dashboard');
+      return;
+    }
+    if (!authLoading && isManager) {
+      const load = async () => {
+        try {
+          const res = await dashboardApi.getStats();
+          setStats(res.data);
+        } catch {
+        } finally {
+          setLoading(false);
+        }
+      };
+      load();
+    }
+  }, [authLoading, isManager, router]);
 
-  if (loading) return <div className="animate-pulse text-surface-200 text-lg p-8">加载中...</div>;
+  if (authLoading || (isManager && loading)) {
+    return <div className="animate-pulse text-surface-200 text-lg p-8">加载中...</div>;
+  }
+
+  if (!isManager) return null;
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-surface-50">回访完成趋势</h1>
-        <p className="text-surface-200 mt-1">管理层回访数据概览</p>
+        <p className="text-surface-200 mt-1">管理层回访数据概览 · {user?.storeName}</p>
       </div>
 
       {stats && (
