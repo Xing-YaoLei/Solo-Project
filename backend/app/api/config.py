@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import List
 
 from app.db.session import get_db
@@ -8,15 +8,38 @@ from app import schemas, models
 router = APIRouter(prefix="/thresholds", tags=["预警阈值配置"])
 
 
+def _build_response(cfg, history_list):
+    return schemas.ThresholdConfig(
+        id=cfg.id,
+        config_key=cfg.config_key,
+        config_name=cfg.config_name,
+        config_value=cfg.config_value,
+        config_unit=cfg.config_unit,
+        value_type=cfg.value_type or "count",
+        min_value=cfg.min_value,
+        max_value=cfg.max_value,
+        category=cfg.category,
+        description=cfg.description,
+        current_modified_by=cfg.current_modified_by,
+        change_logs=[
+            schemas.ThresholdChangeLogInfo(
+                id=h.id,
+                old_value=h.old_value,
+                new_value=h.new_value,
+                changed_by=h.changed_by,
+                change_reason=h.change_reason,
+                changed_at=h.changed_at,
+            )
+            for h in history_list
+        ],
+        created_at=cfg.created_at,
+        updated_at=cfg.updated_at,
+    )
+
+
 @router.get("/", response_model=List[schemas.ThresholdConfig])
 def list_threshold_configs(db: Session = Depends(get_db)):
-    configs = (
-        db.query(models.ThresholdConfig)
-        .options(
-            Session.query(models.ThresholdConfig).column_descriptions[0]["type"]
-        )
-        .all()
-    )
+    configs = db.query(models.ThresholdConfig).order_by(models.ThresholdConfig.id).all()
 
     results = []
     for cfg in configs:
@@ -27,31 +50,7 @@ def list_threshold_configs(db: Session = Depends(get_db)):
             .limit(10)
             .all()
         )
-        results.append(
-            schemas.ThresholdConfig(
-                id=cfg.id,
-                config_key=cfg.config_key,
-                config_name=cfg.config_name,
-                config_value=cfg.config_value,
-                config_unit=cfg.config_unit,
-                category=cfg.category,
-                description=cfg.description,
-                current_modified_by=cfg.current_modified_by,
-                history=[
-                    schemas.ThresholdChangeLogInfo(
-                        id=h.id,
-                        old_value=h.old_value,
-                        new_value=h.new_value,
-                        changed_by=h.changed_by,
-                        change_reason=h.change_reason,
-                        changed_at=h.changed_at,
-                    )
-                    for h in history
-                ],
-                created_at=cfg.created_at,
-                updated_at=cfg.updated_at,
-            )
-        )
+        results.append(_build_response(cfg, history))
     return results
 
 
@@ -73,19 +72,7 @@ def create_threshold_config(
     db.commit()
     db.refresh(cfg)
 
-    return schemas.ThresholdConfig(
-        id=cfg.id,
-        config_key=cfg.config_key,
-        config_name=cfg.config_name,
-        config_value=cfg.config_value,
-        config_unit=cfg.config_unit,
-        category=cfg.category,
-        description=cfg.description,
-        current_modified_by=cfg.current_modified_by,
-        history=[],
-        created_at=cfg.created_at,
-        updated_at=cfg.updated_at,
-    )
+    return _build_response(cfg, [])
 
 
 @router.put("/{config_id}", response_model=schemas.ThresholdConfig)
@@ -103,52 +90,21 @@ def update_threshold_config(
         raise HTTPException(status_code=404, detail="配置不存在")
 
     old_value = cfg.config_value
-    if old_value == payload.config_value:
-        history = (
-            db.query(models.ThresholdChangeLog)
-            .filter(models.ThresholdChangeLog.config_id == cfg.id)
-            .order_by(models.ThresholdChangeLog.changed_at.desc())
-            .limit(10)
-            .all()
-        )
-        return schemas.ThresholdConfig(
-            id=cfg.id,
-            config_key=cfg.config_key,
-            config_name=cfg.config_name,
-            config_value=cfg.config_value,
-            config_unit=cfg.config_unit,
-            category=cfg.category,
-            description=cfg.description,
-            current_modified_by=cfg.current_modified_by,
-            history=[
-                schemas.ThresholdChangeLogInfo(
-                    id=h.id,
-                    old_value=h.old_value,
-                    new_value=h.new_value,
-                    changed_by=h.changed_by,
-                    change_reason=h.change_reason,
-                    changed_at=h.changed_at,
-                )
-                for h in history
-            ],
-            created_at=cfg.created_at,
-            updated_at=cfg.updated_at,
-        )
+    if old_value != payload.config_value:
+        cfg.config_value = payload.config_value
+        cfg.current_modified_by = payload.modified_by
 
-    cfg.config_value = payload.config_value
-    cfg.current_modified_by = payload.modified_by
-
-    log = models.ThresholdChangeLog(
-        config_id=cfg.id,
-        old_value=old_value,
-        new_value=payload.config_value,
-        changed_by=payload.modified_by,
-        change_reason=payload.change_reason,
-    )
-    db.add(log)
-    db.commit()
-    db.refresh(cfg)
-    db.refresh(log)
+        log = models.ThresholdChangeLog(
+            config_id=cfg.id,
+            old_value=old_value,
+            new_value=payload.config_value,
+            changed_by=payload.modified_by,
+            change_reason=payload.change_reason,
+        )
+        db.add(log)
+        db.commit()
+        db.refresh(cfg)
+        db.refresh(log)
 
     history = (
         db.query(models.ThresholdChangeLog)
@@ -158,29 +114,7 @@ def update_threshold_config(
         .all()
     )
 
-    return schemas.ThresholdConfig(
-        id=cfg.id,
-        config_key=cfg.config_key,
-        config_name=cfg.config_name,
-        config_value=cfg.config_value,
-        config_unit=cfg.config_unit,
-        category=cfg.category,
-        description=cfg.description,
-        current_modified_by=cfg.current_modified_by,
-        history=[
-            schemas.ThresholdChangeLogInfo(
-                id=h.id,
-                old_value=h.old_value,
-                new_value=h.new_value,
-                changed_by=h.changed_by,
-                change_reason=h.change_reason,
-                changed_at=h.changed_at,
-            )
-            for h in history
-        ],
-        created_at=cfg.created_at,
-        updated_at=cfg.updated_at,
-    )
+    return _build_response(cfg, history)
 
 
 @router.delete("/{config_id}")

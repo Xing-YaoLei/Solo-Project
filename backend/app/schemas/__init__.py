@@ -152,6 +152,9 @@ class ThresholdConfigBase(BaseModel):
     config_name: str
     config_value: float
     config_unit: Optional[str] = None
+    value_type: Optional[str] = "count"
+    min_value: Optional[float] = None
+    max_value: Optional[float] = None
     category: Optional[str] = None
     description: Optional[str] = None
 
@@ -181,12 +184,13 @@ class ThresholdChangeLogInfo(BaseModel):
 class ThresholdConfig(ThresholdConfigBase):
     id: int
     current_modified_by: Optional[str] = None
-    history: List[ThresholdChangeLogInfo] = []
+    change_logs: List[ThresholdChangeLogInfo] = Field(default=[], alias="history")
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
+        populate_by_name = True
 
 
 class ExceptionAnnotationBase(BaseModel):

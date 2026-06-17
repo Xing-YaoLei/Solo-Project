@@ -6,7 +6,6 @@ from datetime import date, datetime
 from app.db.session import get_db
 from app import schemas, models
 from app.services.duckdb_service import duckdb_service
-from app.core.config import settings
 
 router = APIRouter(prefix="/funnel", tags=["促销陈列漏斗"])
 
@@ -20,7 +19,7 @@ def get_funnel_report(
     end_date: Optional[date] = Query(None),
     db: Session = Depends(get_db),
 ):
-    duckdb_service.refresh_data(settings.DATABASE_URL)
+    duckdb_service.refresh_data(db)
 
     funnel_rows = duckdb_service.query_funnel_data(
         promotion_id=promotion_id,
@@ -107,7 +106,7 @@ def get_sales_trend(
     end_date: Optional[date] = Query(None),
     db: Session = Depends(get_db),
 ):
-    duckdb_service.refresh_data(settings.DATABASE_URL)
+    duckdb_service.refresh_data(db)
 
     promotion = db.query(models.Promotion).filter(models.Promotion.id == promotion_id).first()
     if not promotion:
@@ -196,7 +195,7 @@ def get_display_impact_ranges(
     promotion_id: int = Query(..., description="促销活动ID"),
     db: Session = Depends(get_db),
 ):
-    duckdb_service.refresh_data(settings.DATABASE_URL)
+    duckdb_service.refresh_data(db)
 
     impact_rows = duckdb_service.detect_display_impact_ranges(promotion_id)
     unqualified_inspections = (

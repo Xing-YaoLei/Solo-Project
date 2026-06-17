@@ -65,11 +65,21 @@ def refresh_all_data(
     db.refresh(refresh_log)
 
     try:
-        processed = duckdb_service.refresh_data(settings.DATABASE_URL)
+        processed = duckdb_service.refresh_data(db)
 
         query = db.query(models.SalesRecord)
-        delay_threshold = 30
-        missing_threshold = 5
+        delay_threshold_cfg = (
+            db.query(models.ThresholdConfig)
+            .filter(models.ThresholdConfig.config_key == "cashier_delay_minutes")
+            .first()
+        )
+        delay_threshold = delay_threshold_cfg.config_value if delay_threshold_cfg else 30
+        missing_threshold_cfg = (
+            db.query(models.ThresholdConfig)
+            .filter(models.ThresholdConfig.config_key == "member_missing_count")
+            .first()
+        )
+        missing_threshold = missing_threshold_cfg.config_value if missing_threshold_cfg else 5
         delay_count = query.filter(
             models.SalesRecord.cashier_delay_minutes >= delay_threshold
         ).count()
@@ -80,13 +90,13 @@ def refresh_all_data(
             models.SalesRecord.medical_insurance_caliber_changed == True
         ).count()
 
-        refresh_log.status = "completed"
+        refresh_log.status = "success"
         refresh_log.completed_at = datetime.now()
         refresh_log.records_processed = processed
         refresh_log.exceptions_found = {
-            "收银系统延迟": delay_count,
-            "会员记录缺失": missing_count,
-            "医保接口口径变化": caliber_count,
+            "cashier_delay": delay_count,
+            "member_missing": missing_count,
+            "mi_caliber_change": caliber_count,
         }
         refresh_log.remark = f"DuckDB 数据刷新完成，共处理 {processed} 条促销记录"
         db.commit()

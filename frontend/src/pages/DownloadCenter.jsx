@@ -238,10 +238,10 @@ export default function DownloadCenter() {
   const logColumns = [
     {
       title: '刷新时间',
-      dataIndex: 'refreshed_at',
-      key: 'refreshed_at',
+      dataIndex: 'started_at',
+      key: 'started_at',
       width: 180,
-      render: (t) => dayjs(t).format('YYYY-MM-DD HH:mm:ss'),
+      render: (t) => t ? dayjs(t).format('YYYY-MM-DD HH:mm:ss') : '-',
     },
     {
       title: '触发方式',
@@ -252,6 +252,7 @@ export default function DownloadCenter() {
         const map = {
           scheduled: { color: 'blue', text: '定时任务', icon: <ClockCircleOutlined /> },
           frontend_user: { color: 'cyan', text: '用户手动', icon: <CheckCircleOutlined /> },
+          system: { color: 'cyan', text: '用户手动', icon: <CheckCircleOutlined /> },
           api: { color: 'purple', text: 'API调用', icon: <InfoCircleOutlined /> },
         }
         const cfg = map[v] || { color: 'default', text: v, icon: null }
@@ -308,6 +309,8 @@ export default function DownloadCenter() {
       render: (v) => {
         const map = {
           success: { color: 'green', text: '成功', icon: <CheckCircleOutlined /> },
+          completed: { color: 'green', text: '成功', icon: <CheckCircleOutlined /> },
+          running: { color: 'blue', text: '运行中', icon: <ClockCircleOutlined /> },
           partial: { color: 'orange', text: '部分成功', icon: <WarningOutlined /> },
           failed: { color: 'red', text: '失败', icon: <WarningOutlined /> },
         }

@@ -9,7 +9,6 @@ import pandas as pd
 from app.db.session import get_db
 from app import models
 from app.services.duckdb_service import duckdb_service
-from app.core.config import settings
 
 router = APIRouter(prefix="/download", tags=["报表下载"])
 
@@ -83,7 +82,7 @@ def download_funnel_report(
     end_date: Optional[date] = Query(None),
     db: Session = Depends(get_db),
 ):
-    duckdb_service.refresh_data(settings.DATABASE_URL)
+    duckdb_service.refresh_data(db)
     funnel_rows = duckdb_service.query_funnel_data(
         promotion_id=promotion_id,
         region=region,
@@ -197,7 +196,7 @@ def download_sales_trend_report(
     promotion_id: int = Query(..., description="促销活动ID"),
     db: Session = Depends(get_db),
 ):
-    duckdb_service.refresh_data(settings.DATABASE_URL)
+    duckdb_service.refresh_data(db)
     trend_rows = duckdb_service.query_sales_trend(promotion_id=promotion_id)
     impact_rows = duckdb_service.detect_display_impact_ranges(promotion_id=promotion_id)
     promotion = (
@@ -332,4 +331,338 @@ def download_sales_trend_report(
         headers={
             "Content-Disposition": f"attachment; filename={filename}",
         },
+    )
+
+
+def _auto_width(worksheet):
+    for column in worksheet.columns:
+        max_length = 0
+        column_letter = column[0].column_letter
+        for cell in column:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except Exception:
+                pass
+        adjusted_width = min(max_length + 2, 50)
+        worksheet.column_dimensions[column_letter].width = adjusted_width
+
+
+def _build_excel(sheets: dict) -> BytesIO:
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        for name, df in sheets.items():
+            df.to_excel(writer, sheet_name=name, index=False)
+        for sheet_name in writer.sheets:
+            _auto_width(writer.sheets[sheet_name])
+    output.seek(0)
+    return output
+
+
+@router.get("/rectification-report")
+def download_rectification_report(
+    status: Optional[str] = Query(None),
+    start_date: Optional[date] = Query(None),
+    end_date: Optional[date] = Query(None),
+    db: Session = Depends(get_db),
+):
+    query = db.query(models.Rectification)
+    if status:
+        query = query.filter(models.Rectification.rectification_status == status)
+    if start_date:
+        query = query.filter(models.Rectification.require_rectification_date >= start_date)
+    if end_date:
+        query = query.filter(models.Rectification.require_rectification_date <= end_date)
+    rectifications = query.order_by(models.Rectification.require_rectification_date.desc()).all()
+
+    total = len(rectifications)
+    completed = len([r for r in rectifications if r.rectification_status == "completed"])
+    pending = len([r for r in rectifications if r.rectification_status == "pending"])
+    overdue = len([r for r in rectifications if r.rectification_status == "overdue"])
+
+    summary_df = pd.DataFrame([{
+        "总记录数": total,
+        "已完成": completed,
+        "待整改": pending,
+        "已超期": overdue,
+        "完成率(%)": round(completed / total * 100, 2) if total > 0 else 0,
+    }])
+
+    detail_rows = []
+    for r in rectifications:
+        promo = db.query(models.Promotion).filter(models.Promotion.id == r.promotion_id).first()
+        detail_rows.append({
+            "问题描述": r.issue_description,
+            "促销编码": promo.promo_code if promo else "",
+            "要求完成日期": r.require_rectification_date.isoformat() if r.require_rectification_date else "",
+            "实际完成日期": r.actual_rectification_date.isoformat() if r.actual_rectification_date else "",
+            "状态": {"pending": "待整改", "completed": "已完成", "overdue": "已超期"}.get(r.rectification_status, r.rectification_status),
+            "整改人": r.rectification_by or "",
+            "审核人": r.reviewer or "",
+            "备注": r.rectification_remark or "",
+        })
+    detail_df = pd.DataFrame(detail_rows) if detail_rows else pd.DataFrame([{"提示": "暂无整改记录"}])
+
+    overdue_rows = [d for d in detail_rows if d["状态"] == "已超期"]
+    overdue_df = pd.DataFrame(overdue_rows) if overdue_rows else pd.DataFrame([{"提示": "暂无超期记录"}])
+
+    person_stats = {}
+    for r in rectifications:
+        by = r.rectification_by or "未分配"
+        person_stats.setdefault(by, {"总问题数": 0, "已完成": 0})
+        person_stats[by]["总问题数"] += 1
+        if r.rectification_status == "completed":
+            person_stats[by]["已完成"] += 1
+    person_rows = [{"责任人": k, **v} for k, v in person_stats.items()]
+    person_df = pd.DataFrame(person_rows) if person_rows else pd.DataFrame([{"提示": "暂无责任人数据"}])
+
+    rules_df = pd.DataFrame(PROMO_CALCULATION_RULES)
+    output = _build_excel({
+        "整改进度总览": summary_df,
+        "整改明细列表": detail_df,
+        "超期预警清单": overdue_df,
+        "责任人汇总": person_df,
+        "促销达成计算规则": rules_df,
+    })
+
+    filename = f"整改记录汇总报表_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
+@router.get("/display-photo-report")
+def download_display_photo_report(
+    store_id: Optional[int] = Query(None),
+    promotion_id: Optional[int] = Query(None),
+    start_date: Optional[date] = Query(None),
+    end_date: Optional[date] = Query(None),
+    db: Session = Depends(get_db),
+):
+    query = db.query(models.DisplayInspection)
+    if store_id:
+        query = query.filter(models.DisplayInspection.store_id == store_id)
+    if promotion_id:
+        query = query.filter(models.DisplayInspection.promotion_id == promotion_id)
+    if start_date:
+        query = query.filter(models.DisplayInspection.inspection_date >= start_date)
+    if end_date:
+        query = query.filter(models.DisplayInspection.inspection_date <= end_date)
+    inspections = query.order_by(models.DisplayInspection.inspection_date.desc()).all()
+
+    total = len(inspections)
+    qualified = len([i for i in inspections if i.is_qualified])
+    summary_df = pd.DataFrame([{
+        "巡检总次数": total,
+        "合格次数": qualified,
+        "不合格次数": total - qualified,
+        "合格率(%)": round(qualified / total * 100, 2) if total > 0 else 0,
+        "平均得分": round(sum(i.overall_score for i in inspections) / total, 1) if total > 0 else 0,
+    }])
+
+    photo_rows = []
+    for ins in inspections:
+        photos = db.query(models.DisplayPhoto).filter(models.DisplayPhoto.inspection_id == ins.id).all()
+        for p in photos:
+            photo_rows.append({
+                "巡检日期": ins.inspection_date.isoformat(),
+                "照片类型": {"display": "陈列全景", "pop": "POP物料", "price": "价格标签", "stock": "库存堆头"}.get(p.photo_type, p.photo_type),
+                "文件名": p.file_name,
+                "上传人": p.upload_by or "",
+                "上传时间": p.created_at.isoformat() if p.created_at else "",
+            })
+    photo_df = pd.DataFrame(photo_rows) if photo_rows else pd.DataFrame([{"提示": "暂无照片记录"}])
+
+    score_rows = []
+    for ins in inspections:
+        store = db.query(models.Store).filter(models.Store.id == ins.store_id).first()
+        score_rows.append({
+            "巡检日期": ins.inspection_date.isoformat(),
+            "门店": store.store_name if store else "",
+            "位置(0-30)": ins.position_score,
+            "POP物料(0-20)": ins.pop_score,
+            "价格标签(0-20)": ins.price_score,
+            "库存展示(0-30)": ins.stock_score,
+            "综合得分": ins.overall_score,
+            "是否合格": "合格" if ins.is_qualified else "不合格",
+            "巡检人": ins.inspector or "",
+        })
+    score_df = pd.DataFrame(score_rows) if score_rows else pd.DataFrame([{"提示": "暂无巡检记录"}])
+
+    rules_df = pd.DataFrame(PROMO_CALCULATION_RULES)
+    output = _build_excel({
+        "陈列合格统计": summary_df,
+        "照片上传记录": photo_df,
+        "巡检评分明细": score_df,
+        "促销达成计算规则": rules_df,
+    })
+
+    filename = f"陈列照片巡检报表_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
+@router.get("/threshold-audit-report")
+def download_threshold_audit_report(db: Session = Depends(get_db)):
+    configs = db.query(models.ThresholdConfig).order_by(models.ThresholdConfig.id).all()
+
+    config_rows = []
+    for cfg in configs:
+        config_rows.append({
+            "配置键名": cfg.config_key,
+            "配置名称": cfg.config_name,
+            "当前值": cfg.config_value,
+            "单位": cfg.config_unit or "",
+            "值类型": cfg.value_type or "count",
+            "最小值": cfg.min_value if cfg.min_value is not None else "",
+            "最大值": cfg.max_value if cfg.max_value is not None else "",
+            "分类": cfg.category or "",
+            "说明": cfg.description or "",
+            "最近修改人": cfg.current_modified_by or "",
+            "创建时间": cfg.created_at.isoformat() if cfg.created_at else "",
+            "更新时间": cfg.updated_at.isoformat() if cfg.updated_at else "",
+        })
+    config_df = pd.DataFrame(config_rows) if config_rows else pd.DataFrame([{"提示": "暂无阈值配置"}])
+
+    all_logs = db.query(models.ThresholdChangeLog).order_by(models.ThresholdChangeLog.changed_at.desc()).all()
+    log_rows = []
+    for log in all_logs:
+        cfg = db.query(models.ThresholdConfig).filter(models.ThresholdConfig.id == log.config_id).first()
+        log_rows.append({
+            "配置键名": cfg.config_key if cfg else "",
+            "配置名称": cfg.config_name if cfg else "",
+            "变更前值": log.old_value,
+            "变更后值": log.new_value,
+            "修改人": log.changed_by,
+            "修改原因": log.change_reason or "",
+            "修改时间": log.changed_at.isoformat() if log.changed_at else "",
+        })
+    log_df = pd.DataFrame(log_rows) if log_rows else pd.DataFrame([{"提示": "暂无变更历史"}])
+
+    person_stats = {}
+    for log in all_logs:
+        person_stats.setdefault(log.changed_by, {"修改次数": 0})
+        person_stats[log.changed_by]["修改次数"] += 1
+    person_rows = [{"修改人": k, **v} for k, v in person_stats.items()]
+    person_df = pd.DataFrame(person_rows) if person_rows else pd.DataFrame([{"提示": "暂无修改人记录"}])
+
+    rules_df = pd.DataFrame(PROMO_CALCULATION_RULES)
+    output = _build_excel({
+        "当前阈值配置": config_df,
+        "阈值变更历史": log_df,
+        "修改人统计": person_df,
+        "促销达成计算规则": rules_df,
+    })
+
+    filename = f"阈值调整审计报表_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
+@router.get("/exception-digest-report")
+def download_exception_digest_report(
+    exception_type: Optional[str] = Query(None),
+    start_date: Optional[date] = Query(None),
+    end_date: Optional[date] = Query(None),
+    db: Session = Depends(get_db),
+):
+    query = db.query(models.SalesRecord)
+    if start_date:
+        query = query.filter(models.SalesRecord.sale_date >= start_date)
+    if end_date:
+        query = query.filter(models.SalesRecord.sale_date <= end_date)
+    sales_records = query.all()
+
+    cashier_delay_cfg = db.query(models.ThresholdConfig).filter(
+        models.ThresholdConfig.config_key == "cashier_delay_minutes"
+    ).first()
+    delay_threshold = cashier_delay_cfg.config_value if cashier_delay_cfg else 30
+    member_missing_cfg = db.query(models.ThresholdConfig).filter(
+        models.ThresholdConfig.config_key == "member_missing_count"
+    ).first()
+    missing_threshold = member_missing_cfg.config_value if member_missing_cfg else 5
+
+    delay_rows, missing_rows, mi_rows = [], [], []
+    for sr in sales_records:
+        if sr.cashier_delay_minutes >= delay_threshold:
+            if not exception_type or exception_type == "cashier_delay":
+                delay_rows.append({
+                    "日期": sr.sale_date.isoformat(),
+                    "促销ID": sr.promotion_id,
+                    "门店ID": sr.store_id,
+                    "延迟分钟数": sr.cashier_delay_minutes,
+                    "阈值": delay_threshold,
+                })
+        if sr.member_record_missing_count >= missing_threshold:
+            if not exception_type or exception_type == "member_missing":
+                missing_rows.append({
+                    "日期": sr.sale_date.isoformat(),
+                    "促销ID": sr.promotion_id,
+                    "门店ID": sr.store_id,
+                    "缺失条数": sr.member_record_missing_count,
+                    "阈值": missing_threshold,
+                })
+        if sr.medical_insurance_caliber_changed:
+            if not exception_type or exception_type == "mi_caliber_change":
+                mi_rows.append({
+                    "日期": sr.sale_date.isoformat(),
+                    "促销ID": sr.promotion_id,
+                    "门店ID": sr.store_id,
+                    "数据版本": sr.data_version,
+                })
+
+    summary_df = pd.DataFrame([{
+        "收银系统延迟(条)": len(delay_rows),
+        "会员记录缺失(条)": len(missing_rows),
+        "医保口径变化(条)": len(mi_rows),
+        "异常总计": len(delay_rows) + len(missing_rows) + len(mi_rows),
+    }])
+
+    delay_df = pd.DataFrame(delay_rows) if delay_rows else pd.DataFrame([{"提示": "暂无收银延迟记录"}])
+    missing_df = pd.DataFrame(missing_rows) if missing_rows else pd.DataFrame([{"提示": "暂无会员缺失记录"}])
+    mi_df = pd.DataFrame(mi_rows) if mi_rows else pd.DataFrame([{"提示": "暂无医保口径变化记录"}])
+
+    annotations = db.query(models.ExceptionAnnotation).all()
+    if start_date:
+        annotations = [a for a in annotations if a.annotation_date >= start_date]
+    if end_date:
+        annotations = [a for a in annotations if a.annotation_date <= end_date]
+    if exception_type:
+        annotations = [a for a in annotations if a.exception_type == exception_type]
+
+    status_rows = []
+    for ann in annotations:
+        status_rows.append({
+            "日期": ann.annotation_date.isoformat(),
+            "异常类型": EXCEPTION_TYPES.get(ann.exception_type, ann.exception_type),
+            "异常描述": ann.exception_description,
+            "影响程度": ann.impact_degree,
+            "复盘说明": ann.review_note or "",
+            "处理人": ann.review_by or "",
+        })
+    status_df = pd.DataFrame(status_rows) if status_rows else pd.DataFrame([{"提示": "暂无异常处理记录"}])
+
+    rules_df = pd.DataFrame(PROMO_CALCULATION_RULES)
+    output = _build_excel({
+        "异常类型汇总": summary_df,
+        "收银延迟明细": delay_df,
+        "会员缺失明细": missing_df,
+        "医保口径变化明细": mi_df,
+        "异常处理状态": status_df,
+        "促销达成计算规则": rules_df,
+    })
+
+    filename = f"异常数据摘要报表_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
     )

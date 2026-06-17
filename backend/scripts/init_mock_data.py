@@ -107,16 +107,16 @@ def create_mock_data():
         print(f"✅ 创建了 {len(promotions)} 个促销活动")
 
         threshold_defaults = [
-            ("cashier_delay_minutes", "收银延迟阈值", 30, "分钟", "异常检测", "收银系统延迟超过该分钟数将标记异常"),
-            ("member_missing_count", "会员记录缺失阈值", 5, "条", "异常检测", "单天会员记录缺失条数超过该值将标记异常"),
-            ("mi_caliber_change", "医保口径变化标记", 1, "布尔", "异常检测", "医保接口口径是否发生变化（1=是）"),
-            ("display_pass_score", "陈列合格分数线", 60, "分", "陈列管理", "陈列综合评分达到该值以上视为合格"),
-            ("position_weight", "陈列位置权重", 30, "分", "陈列管理", "陈列位置项在综合评分中的满分值"),
-            ("pop_weight", "POP物料权重", 20, "分", "陈列管理", "POP物料项在综合评分中的满分值"),
-            ("price_weight", "价格标签权重", 20, "分", "陈列管理", "价格标签项在综合评分中的满分值"),
-            ("stock_weight", "库存展示权重", 30, "分", "陈列管理", "库存展示项在综合评分中的满分值"),
-            ("rectification_days", "整改期限", 3, "天", "整改管理", "要求整改完成的天数"),
-            ("sales_drop_threshold", "销量跌幅预警", 30, "%", "异常检测", "日销量环比跌幅超过该值触发陈列影响分析"),
+            ("cashier_delay_minutes", "收银延迟阈值", 30, "分钟", "minutes", 1, 180, "异常预警", "收银系统延迟超过该分钟数将标记异常"),
+            ("member_missing_count", "会员记录缺失阈值", 5, "条", "count", 1, 100, "异常预警", "单天会员记录缺失条数超过该值将标记异常"),
+            ("mi_caliber_change", "医保口径变化标记", 1, "布尔", "count", 0, 1, "异常预警", "医保接口口径是否发生变化（1=是）"),
+            ("display_pass_score", "陈列合格分数线", 60, "分", "score", 0, 100, "陈列质量", "陈列综合评分达到该值以上视为合格"),
+            ("position_weight", "陈列位置权重", 30, "分", "score", 0, 50, "陈列质量", "陈列位置项在综合评分中的满分值"),
+            ("pop_weight", "POP物料权重", 20, "分", "score", 0, 50, "陈列质量", "POP物料项在综合评分中的满分值"),
+            ("price_weight", "价格标签权重", 20, "分", "score", 0, 50, "陈列质量", "价格标签项在综合评分中的满分值"),
+            ("stock_weight", "库存展示权重", 30, "分", "score", 0, 50, "陈列质量", "库存展示项在综合评分中的满分值"),
+            ("rectification_days", "整改期限", 3, "天", "days", 1, 30, "销售达成", "要求整改完成的天数"),
+            ("sales_drop_threshold", "销量跌幅预警", 30, "%", "percent", 5, 80, "异常预警", "日销量环比跌幅超过该值触发陈列影响分析"),
         ]
         thresholds = []
         for cfg in threshold_defaults:
@@ -126,8 +126,11 @@ def create_mock_data():
                     config_name=cfg[1],
                     config_value=cfg[2],
                     config_unit=cfg[3],
-                    category=cfg[4],
-                    description=cfg[5],
+                    value_type=cfg[4],
+                    min_value=cfg[5],
+                    max_value=cfg[6],
+                    category=cfg[7],
+                    description=cfg[8],
                     current_modified_by="system_init",
                 )
             )
