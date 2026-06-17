@@ -1,0 +1,385 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model ConstructionSite {
+  id        String   @id @default(uuid())
+  name      String
+  address   String?
+  projectNo String   @unique
+  owner     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  materialArrivals  MaterialArrival[]
+  purchaseOrders    PurchaseOrder[]
+  inventoryRecords  InventoryRecord[]
+  stockCounts       StockCount[]
+  stockCountDiffs   StockCountDiff[]
+  supervisorPhotos  SupervisorPhoto[]
+  paymentRecords    PaymentRecord[]
+  anomalies         AnomalyItem[]
+  notes             Note[]
+}
+
+model Material {
+  id           String   @id @default(uuid())
+  name         String
+  code         String   @unique
+  category     String
+  unit         String
+  spec         String?
+  standardDays Int      @default(7)
+  safetyStock  Float    @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  materialArrivals MaterialArrival[]
+  purchaseOrders   PurchaseOrderItem[]
+  inventoryRecords InventoryRecord[]
+  safetyStocks     SafetyStock[]
+  stockCountDiffs  StockCountDiff[]
+}
+
+model MaterialArrival {
+  id             String     @id @default(uuid())
+  siteId         String
+  materialId     String
+  batchNo        String
+  stage          FunnelStage
+  plannedQty     Float
+  actualQty      Float?
+  shortageQty    Float      @default(0)
+  hasShortage    Boolean    @default(false)
+  plannedDate    DateTime?
+  actualDate     DateTime?
+  turnoverDays   Int?
+  inspector      String?
+  status         ArrivalStatus @default(PENDING)
+  caliberVersion String     @default("v1.0")
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  site     ConstructionSite @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  material Material         @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  anomalies   AnomalyItem[]
+  purchaseRef String?
+  @@index([siteId, stage])
+  @@index([materialId, hasShortage])
+}
+
+enum FunnelStage {
+  DEMAND_PLAN
+  PURCHASE_ORDER
+  WAREHOUSE_OUT
+  SITE_DELIVERY
+  SITE_ACCEPTANCE
+  ACTUAL_USE
+}
+
+enum ArrivalStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  SHORTAGE
+  CANCELLED
+}
+
+model PurchaseOrder {
+  id           String          @id @default(uuid())
+  siteId       String
+  orderNo      String          @unique
+  supplier     String?
+  totalAmount  Float           @default(0)
+  status       PurchaseStatus  @default(DRAFT)
+  syncStatus   SyncStatus      @default(NOT_SYNCED)
+  syncedAt     DateTime?
+  orderedAt    DateTime?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  site  ConstructionSite    @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  items PurchaseOrderItem[]
+  anomalies AnomalyItem[]
+}
+
+model PurchaseOrderItem {
+  id              String        @id @default(uuid())
+  orderId         String
+  materialId      String
+  qty             Float
+  unitPrice       Float
+  promisedDate    DateTime?
+  actualArrivalId String?
+
+  order    PurchaseOrder   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  material Material        @relation(fields: [materialId], references: [id], onDelete: Cascade)
+}
+
+enum PurchaseStatus {
+  DRAFT
+  APPROVED
+  ORDERED
+  PARTIAL_ARRIVED
+  FULLY_ARRIVED
+  CLOSED
+}
+
+model SupervisorPhoto {
+  id         String     @id @default(uuid())
+  siteId     String
+  photoUrl   String
+  fileName   String
+  photoType  PhotoType
+  takenAt    DateTime
+  uploader   String?
+  remark     String?
+  syncStatus SyncStatus @default(NOT_SYNCED)
+  syncedAt   DateTime?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  site      ConstructionSite @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  anomalies AnomalyItem[]
+}
+
+enum PhotoType {
+  MATERIAL_LOADING
+  MATERIAL_UNLOADING
+  SITE_INSPECTION
+  QUALITY_CHECK
+  OTHER
+}
+
+model PaymentRecord {
+  id             String       @id @default(uuid())
+  siteId         String
+  purchaseOrderId String?
+  amount         Float
+  paymentType    PaymentType
+  payer          String?
+  payee          String?
+  paidAt         DateTime?
+  voucherNo      String?
+  syncStatus     SyncStatus   @default(NOT_SYNCED)
+  syncedAt       DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  site  ConstructionSite @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  order PurchaseOrder?   @relation(fields: [purchaseOrderId], references: [id])
+  anomalies AnomalyItem[]
+}
+
+enum PaymentType {
+  ADVANCE
+  PARTIAL
+  FINAL
+  DEPOSIT
+}
+
+enum SyncStatus {
+  NOT_SYNCED
+  SYNCING
+  SYNCED
+  FAILED
+}
+
+model InventoryRecord {
+  id            String          @id @default(uuid())
+  siteId        String
+  materialId    String
+  recordType    InventoryType
+  qty           Float
+  unitPrice     Float?
+  referenceNo   String?
+  occurredAt    DateTime
+  operator      String?
+  remark        String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  site     ConstructionSite @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  material Material         @relation(fields: [materialId], references: [id], onDelete: Cascade)
+}
+
+enum InventoryType {
+  INBOUND
+  OUTBOUND
+  ADJUSTMENT
+  RETURN
+}
+
+model SafetyStock {
+  id         String   @id @default(uuid())
+  materialId String
+  siteId     String?
+  minQty     Float
+  maxQty     Float
+  reorderQty Float
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  material Material         @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  site     ConstructionSite? @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  @@unique([materialId, siteId])
+}
+
+model StockCount {
+  id         String   @id @default(uuid())
+  siteId     String
+  countNo    String   @unique
+  countDate  DateTime
+  counter    String?
+  status     CountStatus @default(DRAFT)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  site  ConstructionSite @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  diffs StockCountDiff[]
+}
+
+enum CountStatus {
+  DRAFT
+  CONFIRMED
+  ADJUSTED
+}
+
+model StockCountDiff {
+  id              String        @id @default(uuid())
+  countId         String
+  siteId          String
+  materialId      String
+  systemQty       Float
+  actualQty       Float
+  diffQty         Float
+  diffAmount      Float?
+  unitPrice       Float?
+  diffReason      String?
+  rawSampleRef    String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  count    StockCount       @relation(fields: [countId], references: [id], onDelete: Cascade)
+  site     ConstructionSite @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  material Material         @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  notes    Note[]
+}
+
+model RawSample {
+  id          String   @id @default(uuid())
+  diffId      String
+  sampleNo    String
+  sampleData  Json
+  photoUrl    String?
+  takenBy     String?
+  takenAt     DateTime
+  createdAt   DateTime @default(now())
+
+  diff StockCountDiff @relation(fields: [diffId], references: [id], onDelete: Cascade)
+}
+
+model AnomalyItem {
+  id            String         @id @default(uuid())
+  anomalyType   AnomalyType
+  severity      Severity
+  siteId        String
+  arrivalId     String?
+  photoId       String?
+  paymentId     String?
+  orderId       String?
+  title         String
+  description   String
+  status        AnomalyStatus  @default(OPEN)
+  assignee      String?
+  resolvedAt    DateTime?
+  resolution    String?
+  caliberUsed   String         @default("v1.0")
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  site     ConstructionSite @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  arrival  MaterialArrival? @relation(fields: [arrivalId], references: [id], onDelete: SetNull)
+  photo    SupervisorPhoto? @relation(fields: [photoId], references: [id], onDelete: SetNull)
+  payment  PaymentRecord?   @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  order    PurchaseOrder?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  notes    Note[]
+}
+
+enum AnomalyType {
+  BATCH_SHORTAGE
+  QUALITY_ISSUE
+  PHOTO_MISSING
+  PAYMENT_MISMATCH
+  ORDER_MISSING
+  INVENTORY_DIFF
+  OTHER
+}
+
+enum Severity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AnomalyStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  IGNORED
+}
+
+model SyncTask {
+  id          String     @id @default(uuid())
+  taskType    SyncTaskType
+  status      SyncStatus
+  totalCount  Int        @default(0)
+  successCount Int       @default(0)
+  failedCount Int        @default(0)
+  errorMsg    String?
+  startedAt   DateTime?
+  finishedAt  DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+enum SyncTaskType {
+  SUPERVISOR_PHOTO
+  PAYMENT_RECORD
+  PURCHASE_ORDER
+  ALL
+}
+
+model Note {
+  id            String         @id @default(uuid())
+  content       String
+  author        String?
+  siteId        String
+  anomalyId     String?
+  stockDiffId   String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  site      ConstructionSite @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  anomaly   AnomalyItem?     @relation(fields: [anomalyId], references: [id], onDelete: SetNull)
+  stockDiff StockCountDiff?  @relation(fields: [stockDiffId], references: [id], onDelete: SetNull)
+}
+
+model ExportLog {
+  id             String   @id @default(uuid())
+  exportType     String
+  filters        Json
+  caliberVersion String
+  fileUrl        String?
+  fileName       String
+  exportedBy     String?
+  createdAt      DateTime @default(now())
+}
