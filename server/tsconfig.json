@@ -10,12 +10,12 @@
     "sourceMap": true,
     "outDir": "./dist",
     "rootDir": "./src",
-    "incremental": true,
+    "incremental": false,
     "strict": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "esModuleInterop": true,
     "resolveJsonModule": true
   },
-  "exclude": ["node_modules", "dist", "prisma.config.ts", "prisma"]
+  "exclude": ["node_modules", "dist", "prisma.config.ts", "prisma.config.js", "prisma.config.d.ts", "prisma.config.js.map", "prisma", "test-prisma.ts", "test-prisma.js", "test-prisma.d.ts", "test-prisma.js.map", "*.test.ts"]
 }
