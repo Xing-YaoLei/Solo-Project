@@ -16,7 +16,6 @@ import {
   Col,
   Progress,
   Image,
-  List,
   Badge,
 } from 'antd'
 import {
@@ -34,8 +33,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import dayjs from 'dayjs'
 import { todoApi } from '@/api'
 import { useAppStore } from '@/store'
-import Timeline from '@/components/Timeline'
-import type { TodoTaskDto, TodoStatus, TodoPriority, TimelineEventDto } from '@/types'
+import type { TodoTaskDto, TodoStatus } from '@/types'
 import {
   formatTodoStatus,
   formatTodoPriority,
@@ -50,12 +48,10 @@ const TodoDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>()
   const { setLoading } = useAppStore()
   const [todo, setTodo] = useState<TodoTaskDto | null>(null)
-  const [timeline, setTimeline] = useState<TimelineEventDto[]>([])
   const [resultModalVisible, setResultModalVisible] = useState(false)
   const [editModalVisible, setEditModalVisible] = useState(false)
   const [result, setResult] = useState('')
   const [description, setDescription] = useState('')
-  const [activeTab, setActiveTab] = useState<'detail' | 'timeline'>('detail')
 
   const fetchData = useCallback(async () => {
     if (!id) return

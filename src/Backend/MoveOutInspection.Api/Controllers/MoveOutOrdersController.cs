@@ -37,53 +37,44 @@ public class MoveOutOrdersController : ControllerBase
     private async Task<PagedResult<MoveOutOrderListDto>> QueryOrdersInternalAsync(
         MoveOutOrderQueryDto query)
     {
-        Expression<Func<MoveOutOrder, bool>>? predicate = null;
-        var predicates = new List<Expression<Func<MoveOutOrder, bool>>>();
+        IQueryable<MoveOutOrder> queryable = _unitOfWork.MoveOutOrders.GetQueryable();
 
         if (query.Status.HasValue)
-            predicates.Add(o => o.Status == query.Status.Value);
+            queryable = queryable.Where(o => o.Status == query.Status.Value);
         if (query.AssignedHandlerId.HasValue)
-            predicates.Add(o => o.AssignedHandlerId == query.AssignedHandlerId.Value);
+            queryable = queryable.Where(o => o.AssignedHandlerId == query.AssignedHandlerId.Value);
         if (query.MoveOutDateFrom.HasValue)
-            predicates.Add(o => o.MoveOutDate >= query.MoveOutDateFrom.Value);
+            queryable = queryable.Where(o => o.MoveOutDate >= query.MoveOutDateFrom.Value);
         if (query.MoveOutDateTo.HasValue)
-            predicates.Add(o => o.MoveOutDate <= query.MoveOutDateTo.Value);
+            queryable = queryable.Where(o => o.MoveOutDate <= query.MoveOutDateTo.Value);
         if (!string.IsNullOrWhiteSpace(query.Building))
-            predicates.Add(o => o.Apartment != null && o.Apartment.Building.Contains(query.Building));
+            queryable = queryable.Where(o => o.Apartment != null && o.Apartment.Building.Contains(query.Building));
         if (!string.IsNullOrWhiteSpace(query.SearchKeyword))
-            predicates.Add(o =>
+            queryable = queryable.Where(o =>
                 o.OrderNumber.Contains(query.SearchKeyword) ||
                 (o.Tenant != null && o.Tenant.Name.Contains(query.SearchKeyword)) ||
                 (o.Apartment != null && o.Apartment.ApartmentNumber.Contains(query.SearchKeyword)));
 
         if (query.HasOverdueRent.HasValue)
         {
-            predicates.Add(o => _unitOfWork.RentOverdueRecords
-                .ExistsAsync(r => r.MoveOutOrderId == o.Id && !r.IsResolved)
-                .GetAwaiter().GetResult() == query.HasOverdueRent.Value);
+            var overdueOrderIds = await _unitOfWork.RentOverdueRecords
+                .FindAsync(r => !r.IsResolved);
+            var ids = overdueOrderIds.Select(r => r.MoveOutOrderId).Distinct().ToList();
+            if (query.HasOverdueRent.Value)
+                queryable = queryable.Where(o => ids.Contains(o.Id));
+            else
+                queryable = queryable.Where(o => !ids.Contains(o.Id));
         }
 
-        if (predicates.Any())
-        {
-            var param = Expression.Parameter(typeof(MoveOutOrder), "o");
-            Expression combined = null;
-            foreach (var p in predicates)
-            {
-                var invoked = Expression.Invoke(p, param);
-                combined = combined == null ? invoked : Expression.AndAlso(combined, invoked);
-            }
-            predicate = Expression.Lambda<Func<MoveOutOrder, bool>>(combined!, param);
-        }
-
-        var result = await _unitOfWork.MoveOutOrders.GetPagedAsync(
-            predicate,
-            o => o.CreatedAt,
-            true,
-            query.PageNumber,
-            query.PageSize);
+        var totalCount = await queryable.CountAsync();
+        var items = await queryable
+            .OrderByDescending(o => o.CreatedAt)
+            .Skip((query.PageNumber - 1) * query.PageSize)
+            .Take(query.PageSize)
+            .ToListAsync();
 
         var dtos = new List<MoveOutOrderListDto>();
-        foreach (var order in result.Items)
+        foreach (var order in items)
         {
             var apartment = await _unitOfWork.Apartments.GetByIdAsync(order.ApartmentId);
             var tenant = await _unitOfWork.Tenants.GetByIdAsync(order.TenantId);
@@ -119,9 +110,9 @@ public class MoveOutOrdersController : ControllerBase
         return new PagedResult<MoveOutOrderListDto>
         {
             Items = dtos,
-            TotalCount = result.TotalCount,
-            PageNumber = result.PageNumber,
-            PageSize = result.PageSize
+            TotalCount = totalCount,
+            PageNumber = query.PageNumber,
+            PageSize = query.PageSize
         };
     }
 

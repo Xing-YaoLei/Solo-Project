@@ -8,6 +8,7 @@ public interface IRepository<T> where T : class
 {
     Task<T?> GetByIdAsync(Guid id);
     Task<List<T>> GetAllAsync();
+    IQueryable<T> GetQueryable();
     Task<List<T>> FindAsync(Expression<Func<T, bool>> predicate);
     Task<T?> FirstOrDefaultAsync(Expression<Func<T, bool>> predicate);
     Task<PagedResult<T>> GetPagedAsync(
