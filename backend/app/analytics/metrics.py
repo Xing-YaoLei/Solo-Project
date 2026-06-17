@@ -196,13 +196,13 @@ class AnalyticsMetrics:
         query = f"""
         SELECT
             strftime('%Y-%m', report_date) AS month,
-            tag,
+            unnest AS tag,
             COUNT(*) AS count
         FROM complaints,
-             UNNEST(tags) AS tag
+             UNNEST(tags) AS t(unnest)
         WHERE {where_clause}
           AND tags IS NOT NULL
-        GROUP BY month, tag
+        GROUP BY month, unnest
         ORDER BY month, count DESC
         """
 
