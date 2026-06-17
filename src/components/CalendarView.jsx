@@ -6,6 +6,7 @@ const TIME_SLOTS = ['上午', '下午', '晚间']
 
 export default function CalendarView() {
   const [selectedSlots, setSelectedSlots] = useState({})
+  const [startTime] = useState(Date.now())
   const prescription = useGameStore(state => state.prescription)
   const setCalendarPlan = useGameStore(state => state.setCalendarPlan)
   const goToMenu = useGameStore(state => state.goToMenu)
@@ -31,7 +32,8 @@ export default function CalendarView() {
       totalSlots,
       prescription: prescription?.id,
     }
-    setCalendarPlan(plan)
+    const timeTaken = Math.floor((Date.now() - startTime) / 1000)
+    setCalendarPlan(plan, timeTaken)
   }
   
   const isRecommended = totalSlots >= recommendedMin && totalSlots <= recommendedMax

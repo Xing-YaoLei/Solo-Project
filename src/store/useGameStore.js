@@ -25,8 +25,14 @@ const initialState = {
   failedReplays: [],
   
   assessmentScore: null,
+  assessmentTime: null,
+  assessmentAnswers: null,
   prescription: null,
+  prescriptionTime: null,
   calendarPlan: null,
+  calendarTime: null,
+  
+  lastAssignmentTime: 0,
   
   patients: [],
   equipment: [],
@@ -75,8 +81,13 @@ export const useGameStore = create((set, get) => ({
       maxCombo: 0,
       decisionTimeHistory: [],
       assessmentScore: null,
+      assessmentTime: null,
+      assessmentAnswers: null,
       prescription: null,
+      prescriptionTime: null,
       calendarPlan: null,
+      calendarTime: null,
+      lastAssignmentTime: 0,
       timeElapsed: 0,
       isPaused: false,
       insuranceWarning: null,
@@ -86,33 +97,100 @@ export const useGameStore = create((set, get) => ({
     })
   },
 
-  completeAssessment: (score) => {
-    set({ assessmentScore: score, phase: 'prescription' })
+  completeAssessment: (score, timeTaken, answers) => {
+    set({ 
+      assessmentScore: score, 
+      assessmentTime: timeTaken,
+      assessmentAnswers: answers,
+      phase: 'prescription',
+      decisionTimeHistory: [
+        ...get().decisionTimeHistory,
+        { phase: 'assessment', time: timeTaken, score },
+      ],
+    })
   },
 
-  setPrescription: (prescription) => {
-    set({ prescription, phase: 'calendar' })
+  setPrescription: (prescription, timeTaken) => {
+    set({ 
+      prescription, 
+      prescriptionTime: timeTaken,
+      phase: 'calendar',
+      decisionTimeHistory: [
+        ...get().decisionTimeHistory,
+        { phase: 'prescription', time: timeTaken, prescriptionId: prescription.id },
+      ],
+    })
   },
 
-  setCalendarPlan: (plan) => {
-    set({ calendarPlan: plan, phase: 'gameplay' })
+  setCalendarPlan: (plan, timeTaken) => {
+    const state = get()
+    set({ 
+      calendarPlan: plan, 
+      calendarTime: timeTaken,
+      phase: 'gameplay',
+      lastAssignmentTime: 0,
+      decisionTimeHistory: [
+        ...state.decisionTimeHistory,
+        { phase: 'calendar', time: timeTaken, totalSlots: plan.totalSlots },
+      ],
+    })
     get().initializeLevel()
   },
 
   initializeLevel: () => {
-    const { currentLevel, prescription } = get()
-    const patientCount = 3 + currentLevel * 2
-    const equipmentCount = 3 + Math.floor(currentLevel / 2)
+    const { currentLevel, prescription, assessmentScore, calendarPlan } = get()
+    
+    // 根据评估分数调整难度
+    const scoreMultiplier = assessmentScore ? (assessmentScore / 10) : 1
+    const basePatientCount = 3 + currentLevel * 2
+    const patientCount = Math.round(basePatientCount * (0.8 + scoreMultiplier * 0.4))
+    
+    const baseEquipmentCount = 3 + Math.floor(currentLevel / 2)
+    const equipmentCount = baseEquipmentCount
+    
+    // 根据处方调整时间限制
+    let timeLimit = 180
+    if (prescription) {
+      const durationMap = {
+        strength: 150,
+        cardio: 180,
+        mobility: 170,
+        physical: 160,
+      }
+      timeLimit = durationMap[prescription.id] || 180
+    }
+    
+    // 根据日历计划调整时间限制
+    if (calendarPlan) {
+      const slots = calendarPlan.totalSlots
+      if (slots < 3) {
+        timeLimit = Math.max(120, timeLimit - 30)
+      } else if (slots > 6) {
+        timeLimit = timeLimit + 20
+      }
+    }
     
     const allEquipmentTypes = Object.values(EQUIPMENT_TYPES)
     const allPatientTypes = Object.values(PATIENT_TYPES)
+    
+    // 根据处方优先选择相关器械
+    let equipmentTypePool = [...allEquipmentTypes]
+    if (prescription && prescription.equipment) {
+      const preferredTypes = prescription.equipment
+      const otherTypes = allEquipmentTypes.filter(e => !preferredTypes.includes(e.id))
+      equipmentTypePool = [
+        ...preferredTypes.map(id => allEquipmentTypes.find(e => e.id === id)),
+        ...preferredTypes.map(id => allEquipmentTypes.find(e => e.id === id)),
+        ...otherTypes,
+      ].filter(Boolean)
+    }
     
     const equipment = []
     const availableEquipmentTypes = []
     
     for (let i = 0; i < equipmentCount; i++) {
-      const typeIndex = i % allEquipmentTypes.length
-      const type = allEquipmentTypes[typeIndex]
+      const typeIndex = i % equipmentTypePool.length
+      const type = equipmentTypePool[typeIndex]
       
       if (!availableEquipmentTypes.find(t => t.id === type.id)) {
         availableEquipmentTypes.push(type)
@@ -144,16 +222,50 @@ export const useGameStore = create((set, get) => ({
       eq => equipmentTypesInLevel.includes(eq.id)
     )
     
+    // 根据评估分数调整患者难度权重
+    let patientTypeWeights = [0.6, 0.3, 0.1]
+    if (assessmentScore) {
+      if (assessmentScore <= 8) {
+        patientTypeWeights = [0.7, 0.25, 0.05]
+      } else if (assessmentScore <= 14) {
+        patientTypeWeights = [0.4, 0.4, 0.2]
+      } else {
+        patientTypeWeights = [0.2, 0.4, 0.4]
+      }
+    }
+    
+    // 根据处方优先选择相关的需求器械
+    let patientNeedsPool = [...availableEquipmentForLevel]
+    if (prescription && prescription.equipment) {
+      const preferredEquipment = availableEquipmentForLevel.filter(e => 
+        prescription.equipment.includes(e.id)
+      )
+      const otherEquipment = availableEquipmentForLevel.filter(e => 
+        !prescription.equipment.includes(e.id)
+      )
+      patientNeedsPool = [
+        ...preferredEquipment,
+        ...preferredEquipment,
+        ...otherEquipment,
+      ]
+    }
+    
     const patients = []
     for (let i = 0; i < patientCount; i++) {
-      const typeIndex = Math.min(
-        Math.floor(Math.random() * Math.min(currentLevel + 1, allPatientTypes.length)),
-        allPatientTypes.length - 1
-      )
-      const type = allPatientTypes[typeIndex]
+      const rand = Math.random()
+      let typeIndex = 0
+      let cumulative = 0
+      for (let j = 0; j < patientTypeWeights.length; j++) {
+        cumulative += patientTypeWeights[j]
+        if (rand < cumulative) {
+          typeIndex = j
+          break
+        }
+      }
+      const type = allPatientTypes[Math.min(typeIndex, allPatientTypes.length - 1)]
       
-      const needsEquipment = availableEquipmentForLevel[
-        Math.floor(Math.random() * availableEquipmentForLevel.length)
+      const needsEquipment = patientNeedsPool[
+        Math.floor(Math.random() * patientNeedsPool.length)
       ]
       
       const col = i % 4
@@ -187,7 +299,7 @@ export const useGameStore = create((set, get) => ({
       scheduledPatients: [],
       initialLevelPatients: patients.map(p => ({ ...p })),
       initialLevelEquipment: equipment.map(e => ({ ...e })),
-      timeLimit: 150 + currentLevel * 30,
+      timeLimit,
     })
   },
 
@@ -199,8 +311,11 @@ export const useGameStore = create((set, get) => ({
     if (!patient || !equipment) return false
     if (patient.status !== 'waiting') return false
     
+    const decisionTime = state.timeElapsed - state.lastAssignmentTime
+    
     if (equipment.isOccupied) {
       set(state => ({
+        lastAssignmentTime: state.timeElapsed,
         scheduledPatients: [
           ...state.scheduledPatients,
           {
@@ -212,6 +327,10 @@ export const useGameStore = create((set, get) => ({
             success: false,
             errorType: 'timingConflict',
           },
+        ],
+        decisionTimeHistory: [
+          ...state.decisionTimeHistory,
+          { phase: 'dispatch', time: decisionTime, success: false, errorType: 'timingConflict' },
         ],
         statistics: {
           ...state.statistics,
@@ -230,6 +349,7 @@ export const useGameStore = create((set, get) => ({
     
     if (!isCorrectEquipment) {
       set(state => ({
+        lastAssignmentTime: state.timeElapsed,
         score: Math.max(0, state.score - 10),
         combo: 0,
         patients: state.patients.map(p =>
@@ -247,6 +367,10 @@ export const useGameStore = create((set, get) => ({
             errorType: 'misallocation',
           },
         ],
+        decisionTimeHistory: [
+          ...state.decisionTimeHistory,
+          { phase: 'dispatch', time: decisionTime, success: false, errorType: 'misallocation' },
+        ],
         statistics: {
           ...state.statistics,
           totalMisallocations: state.statistics.totalMisallocations + 1,
@@ -261,6 +385,7 @@ export const useGameStore = create((set, get) => ({
     
     if (riskMismatch) {
       set(state => ({
+        lastAssignmentTime: state.timeElapsed,
         score: Math.max(0, state.score - 10),
         combo: 0,
         patients: state.patients.map(p =>
@@ -277,6 +402,10 @@ export const useGameStore = create((set, get) => ({
             success: false,
             errorType: 'riskMismatch',
           },
+        ],
+        decisionTimeHistory: [
+          ...state.decisionTimeHistory,
+          { phase: 'dispatch', time: decisionTime, success: false, errorType: 'riskMismatch' },
         ],
         statistics: {
           ...state.statistics,
@@ -298,6 +427,7 @@ export const useGameStore = create((set, get) => ({
     let scoreGain = 10 + Math.floor(newCombo * 1.5)
     
     set(state => ({
+      lastAssignmentTime: state.timeElapsed,
       score: state.score + scoreGain,
       combo: newCombo,
       maxCombo: Math.max(state.maxCombo, newCombo),
@@ -320,7 +450,10 @@ export const useGameStore = create((set, get) => ({
           success: true,
         },
       ],
-      decisionTimeHistory: [...state.decisionTimeHistory, 0],
+      decisionTimeHistory: [
+        ...state.decisionTimeHistory,
+        { phase: 'dispatch', time: decisionTime, success: true },
+      ],
     }))
     
     return true
@@ -442,6 +575,20 @@ export const useGameStore = create((set, get) => ({
         winRate: (prevLevelStat.wins + (isWin ? 1 : 0)) / (prevLevelStat.plays + 1),
       }
       
+      const dispatchTimes = state.decisionTimeHistory
+        .filter(d => d.phase === 'dispatch' && typeof d.time === 'number')
+        .map(d => d.time)
+      
+      const newAvgDecisionTime = dispatchTimes.length > 0
+        ? (state.statistics.avgDecisionTime * state.statistics.totalGames + 
+           dispatchTimes.reduce((a, b) => a + b, 0) / dispatchTimes.length) / 
+          (state.statistics.totalGames + 1)
+        : state.statistics.avgDecisionTime
+      
+      const assessmentTime = state.assessmentTime || 0
+      const prescriptionTime = state.prescriptionTime || 0
+      const calendarTime = state.calendarTime || 0
+      
       return {
         phase: 'settlement',
         gameResult: result,
@@ -453,11 +600,24 @@ export const useGameStore = create((set, get) => ({
           completionRate: newTotalCompleted / newTotalGames,
           levelStats: {
             ...state.statistics.levelStats,
-            [levelKey]: newLevelStat,
+            [levelKey]: {
+              ...newLevelStat,
+              assessmentTime,
+              prescriptionTime,
+              calendarTime,
+              avgDispatchTime: dispatchTimes.length > 0 
+                ? dispatchTimes.reduce((a, b) => a + b, 0) / dispatchTimes.length 
+                : 0,
+              totalDecisionTime: assessmentTime + prescriptionTime + calendarTime + 
+                (dispatchTimes.reduce((a, b) => a + b, 0)),
+              finalScore: state.score,
+              finalCompletion: completionRate,
+              assessmentScore: state.assessmentScore,
+              prescription: state.prescription?.id,
+              calendarSlots: state.calendarPlan?.totalSlots,
+            },
           },
-          avgDecisionTime: state.decisionTimeHistory.length > 0
-            ? state.decisionTimeHistory.reduce((a, b) => a + b, 0) / state.decisionTimeHistory.length
-            : state.statistics.avgDecisionTime,
+          avgDecisionTime: newAvgDecisionTime,
         },
         failedReplays: !isWin
           ? [replayData, ...state.failedReplays].slice(0, 5)

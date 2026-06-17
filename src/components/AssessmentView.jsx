@@ -82,7 +82,8 @@ export default function AssessmentView() {
       const totalScore = Object.entries(newAnswers).reduce((sum, [qIdx, optIdx]) => {
         return sum + ASSESSMENT_QUESTIONS[qIdx].options[optIdx].score
       }, 0)
-      completeAssessment(totalScore)
+      const timeTaken = Math.floor((Date.now() - startTime) / 1000)
+      completeAssessment(totalScore, timeTaken, newAnswers)
     }
   }
   

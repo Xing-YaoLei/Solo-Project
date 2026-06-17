@@ -101,6 +101,11 @@ export default function StatisticsView() {
               <span style={styles.overviewValue}>{totalMisallocations}</span>
               <span style={styles.overviewLabel}>分配失误</span>
             </div>
+            <div style={styles.overviewCard}>
+              <span style={styles.overviewIcon}>⏱️</span>
+              <span style={styles.overviewValue}>{avgDecisionTime > 0 ? avgDecisionTime.toFixed(1) : '--'}s</span>
+              <span style={styles.overviewLabel}>平均决策时间</span>
+            </div>
           </div>
         </div>
         
@@ -125,6 +130,7 @@ export default function StatisticsView() {
                 <span style={styles.levelColWin}>胜率</span>
                 <span style={styles.levelColCompletion}>完成率</span>
                 <span style={styles.levelColScore}>平均分</span>
+                <span style={styles.levelColDecision}>决策时间</span>
                 <span style={styles.levelColEffect}>效果</span>
               </div>
               
@@ -136,6 +142,9 @@ export default function StatisticsView() {
                   const winRatePercent = Math.round(stat.winRate * 100)
                   const completionPercent = Math.round(stat.avgCompletion * 100)
                   const avgScore = Math.round(stat.avgScore)
+                  const avgDispatchTime = stat.avgDispatchTime 
+                    ? stat.avgDispatchTime.toFixed(1) 
+                    : '--'
                   
                   const isBest = levelKey === bestLevel
                   const isHardest = levelKey === hardestLevel
@@ -188,6 +197,13 @@ export default function StatisticsView() {
                       </div>
                       
                       <span style={styles.levelColScore}>{avgScore}</span>
+                      
+                      <span style={styles.levelColDecision}>
+                        <span style={styles.decisionTimeValue}>{avgDispatchTime}s</span>
+                        <span style={styles.decisionTimeLabel}>
+                          评估 {stat.assessmentTime || '--'}s
+                        </span>
+                      </span>
                       
                       <span 
                         style={{ 
@@ -377,7 +393,7 @@ const styles = {
   },
   overviewGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(4, 1fr)',
+    gridTemplateColumns: 'repeat(5, 1fr)',
     gap: '12px',
   },
   overviewCard: {
@@ -423,6 +439,7 @@ const styles = {
   levelColWin: { textAlign: 'center', display: 'flex', alignItems: 'center', gap: '8px' },
   levelColCompletion: { textAlign: 'center', display: 'flex', alignItems: 'center', gap: '8px' },
   levelColScore: { textAlign: 'center' },
+  levelColDecision: { textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' },
   levelColEffect: { textAlign: 'center' },
   levelList: {
     display: 'flex',
@@ -430,13 +447,22 @@ const styles = {
   },
   levelRow: {
     display: 'grid',
-    gridTemplateColumns: '120px 50px 1fr 1fr 70px 70px',
+    gridTemplateColumns: '120px 50px 1fr 1fr 70px 80px 70px',
     gap: '10px',
     padding: '12px 16px',
     alignItems: 'center',
     borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
     fontSize: '13px',
     transition: 'background 0.2s ease',
+  },
+  decisionTimeValue: {
+    fontSize: '13px',
+    fontWeight: 'bold',
+    color: '#4facfe',
+  },
+  decisionTimeLabel: {
+    fontSize: '10px',
+    color: '#718096',
   },
   levelRowBest: {
     background: 'rgba(107, 203, 119, 0.08)',

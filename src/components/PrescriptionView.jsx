@@ -42,6 +42,7 @@ const PRESCRIPTION_OPTIONS = [
 
 export default function PrescriptionView() {
   const [selectedPrescription, setSelectedPrescription] = useState(null)
+  const [startTime] = useState(Date.now())
   const assessmentScore = useGameStore(state => state.assessmentScore)
   const setPrescription = useGameStore(state => state.setPrescription)
   const goToMenu = useGameStore(state => state.goToMenu)
@@ -54,7 +55,8 @@ export default function PrescriptionView() {
   const handleConfirm = () => {
     if (selectedPrescription) {
       const prescription = PRESCRIPTION_OPTIONS.find(p => p.id === selectedPrescription)
-      setPrescription(prescription)
+      const timeTaken = Math.floor((Date.now() - startTime) / 1000)
+      setPrescription(prescription, timeTaken)
     }
   }
   
