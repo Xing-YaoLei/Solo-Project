@@ -12,7 +12,7 @@ import { levelManager } from '@/data/levelManager';
 import { useKeyboard } from '@/hooks/useKeyboard';
 import { useWorkOrder } from '@/hooks/useWorkOrder';
 import { WorkOrderPanel } from '@/components/game/WorkOrderPanel';
-import type { WorkOrderResult, WorkOrder as WorkOrderType } from '@/types';
+import type { WorkOrderResult, WorkOrder as WorkOrderType, ActiveWorkOrder } from '@/types';
 
 const InspectionPage: React.FC = () => {
   const navigate = useNavigate();
@@ -23,31 +23,47 @@ const InspectionPage: React.FC = () => {
   const [observeTime, setObserveTime] = useState(0);
   const [playerRoute, setPlayerRoute] = useState<number[]>([]);
   const [showWorkOrder, setShowWorkOrder] = useState(false);
-  const [currentOrder, setCurrentOrder] = useState<WorkOrderType | null>(null);
+  const [currentOrder, setCurrentOrder] = useState<ActiveWorkOrder | null>(null);
   
   const level = currentLevelId ? levelManager.getLevelById(currentLevelId) : null;
   const observeTimeLimit = level?.inspection.observeTime || 15;
 
   const {
     activeOrders,
-    completedOrders,
     timeoutCount,
     startGame: startWorkOrders,
-    triggerOrder,
     retryOrder,
     resolveOrder,
   } = useWorkOrder({
     orders: level?.workOrders.orders || [],
     timeout: level?.workOrders.timeout || 30,
     enabled: level?.workOrders.enabled || false,
+    onTrigger: (order, isRetrying) => {
+      const activeOrder: ActiveWorkOrder = {
+        ...order,
+        startTime: Date.now(),
+        remainingTime: level?.workOrders.timeout || 30,
+        isRetrying,
+      };
+      setCurrentOrder(activeOrder);
+      setShowWorkOrder(true);
+    },
     onTimeout: (order) => {
       incrementTimeoutCount();
-      setCurrentOrder(order);
+      const activeOrder: ActiveWorkOrder = {
+        ...order,
+        startTime: Date.now(),
+        remainingTime: level?.workOrders.timeout || 30,
+        isRetrying: true,
+      };
+      setCurrentOrder(activeOrder);
       setShowWorkOrder(true);
+      retryOrder(order.id);
     },
     onComplete: (result: WorkOrderResult) => {
       completeWorkOrder(result);
       setShowWorkOrder(false);
+      setCurrentOrder(null);
       const penalty = result.retried ? (level?.workOrders.retryPenalty || 0) : 0;
       if (result.isCorrect) {
         addScore(50 - penalty);
@@ -142,7 +158,6 @@ const InspectionPage: React.FC = () => {
   const handleRetry = () => {
     if (currentOrder) {
       retryOrder(currentOrder.id);
-      setShowWorkOrder(false);
     }
   };
 
@@ -155,6 +170,9 @@ const InspectionPage: React.FC = () => {
       </GameContainer>
     );
   }
+
+  const displayOrder = currentOrder || (activeOrders.length > 0 ? activeOrders[0] : null);
+  const displayIsRetrying = displayOrder?.isRetrying || (timeoutCount > 0 && !displayOrder);
 
   return (
     <GameContainer>
@@ -268,13 +286,15 @@ const InspectionPage: React.FC = () => {
         </div>
       </div>
 
-      {showWorkOrder && currentOrder && (
+      {showWorkOrder && displayOrder && (
         <WorkOrderPanel
-          order={currentOrder}
-          options={currentOrder.options}
-          isRetrying={timeoutCount > 0}
+          order={displayOrder}
+          options={displayOrder.options}
+          timeout={level?.workOrders.timeout || 30}
+          isRetrying={displayIsRetrying}
           onSelect={handleOrderSelect}
           onRetry={handleRetry}
+          onResolve={handleOrderSelect}
         />
       )}
     </GameContainer>

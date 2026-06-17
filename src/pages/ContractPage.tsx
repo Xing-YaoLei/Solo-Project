@@ -14,7 +14,7 @@ import { levelManager } from '@/data/levelManager';
 import { useKeyboard } from '@/hooks/useKeyboard';
 import { useNumberKeys } from '@/hooks/useKeyboard';
 import { useWorkOrder } from '@/hooks/useWorkOrder';
-import type { ContractDecision, WorkOrderResult, WorkOrder as WorkOrderType, WorkOrderOption, ApprovalOption } from '@/types';
+import type { ContractDecision, WorkOrderResult, WorkOrder as WorkOrderType, WorkOrderOption, ApprovalOption, ActiveWorkOrder } from '@/types';
 
 const ContractPage: React.FC = () => {
   const navigate = useNavigate();
@@ -31,32 +31,50 @@ const ContractPage: React.FC = () => {
   const [currentTenantIndex, setCurrentTenantIndex] = useState(0);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [showWorkOrder, setShowWorkOrder] = useState(false);
-  const [currentOrder, setCurrentOrder] = useState<WorkOrderType | null>(null);
+  const [currentOrder, setCurrentOrder] = useState<ActiveWorkOrder | null>(null);
 
   const level = currentLevelId ? levelManager.getLevelById(currentLevelId) : null;
   const tenants = level?.contracts.tenants || [];
   const approvalOptions = level?.contracts.approvalOptions || [];
   const currentTenant = tenants[currentTenantIndex];
+  const woTimeout = level?.workOrders.timeout || 30;
 
   const {
     activeOrders,
-    completedOrders,
     timeoutCount,
     startGame: startWorkOrders,
     retryOrder,
     resolveOrder,
   } = useWorkOrder({
     orders: level?.workOrders.orders || [],
-    timeout: level?.workOrders.timeout || 30,
+    timeout: woTimeout,
     enabled: level?.workOrders.enabled || false,
+    onTrigger: (order, isRetrying) => {
+      const activeOrder: ActiveWorkOrder = {
+        ...order,
+        startTime: Date.now(),
+        remainingTime: woTimeout,
+        isRetrying,
+      };
+      setCurrentOrder(activeOrder);
+      setShowWorkOrder(true);
+    },
     onTimeout: (order) => {
       incrementTimeoutCount();
-      setCurrentOrder(order);
+      const activeOrder: ActiveWorkOrder = {
+        ...order,
+        startTime: Date.now(),
+        remainingTime: woTimeout,
+        isRetrying: true,
+      };
+      setCurrentOrder(activeOrder);
       setShowWorkOrder(true);
+      retryOrder(order.id);
     },
     onComplete: (result: WorkOrderResult) => {
       completeWorkOrder(result);
       setShowWorkOrder(false);
+      setCurrentOrder(null);
       const penalty = result.retried ? (level?.workOrders.retryPenalty || 0) : 0;
       if (result.isCorrect) {
         addScore(50 - penalty);
@@ -156,7 +174,6 @@ const ContractPage: React.FC = () => {
   const handleRetry = () => {
     if (currentOrder) {
       retryOrder(currentOrder.id);
-      setShowWorkOrder(false);
     }
   };
 
@@ -174,6 +191,9 @@ const ContractPage: React.FC = () => {
   const correctCount = decisions.filter(
     (d, i) => d && level.contracts.correctAnswers[tenants[i].id] === d.optionId
   ).length;
+
+  const displayOrder = currentOrder || (activeOrders.length > 0 ? activeOrders[0] : null);
+  const displayIsRetrying = displayOrder?.isRetrying || (timeoutCount > 0 && !displayOrder);
 
   return (
     <GameContainer>
@@ -322,13 +342,15 @@ const ContractPage: React.FC = () => {
         </div>
       </div>
 
-      {showWorkOrder && currentOrder && (
+      {showWorkOrder && displayOrder && (
         <WorkOrderPanel
-          order={currentOrder}
-          options={currentOrder.options}
-          isRetrying={timeoutCount > 0}
+          order={displayOrder}
+          options={displayOrder.options}
+          timeout={woTimeout}
+          isRetrying={displayIsRetrying}
           onSelect={handleOrderSelect}
           onRetry={handleRetry}
+          onResolve={handleOrderSelect}
         />
       )}
     </GameContainer>

@@ -5,12 +5,13 @@ interface UseWorkOrderOptions {
   orders: WorkOrder[];
   timeout: number;
   enabled: boolean;
+  onTrigger: (order: WorkOrder, isRetrying: boolean) => void;
   onTimeout: (order: WorkOrder) => void;
   onComplete: (result: WorkOrderResult) => void;
 }
 
 export function useWorkOrder(options: UseWorkOrderOptions) {
-  const { orders, timeout, enabled, onTimeout, onComplete } = options;
+  const { orders, timeout, enabled, onTrigger, onTimeout, onComplete } = options;
   
   const [activeOrders, setActiveOrders] = useState<ActiveWorkOrder[]>([]);
   const [completedOrders, setCompletedOrders] = useState<WorkOrderResult[]>([]);
@@ -19,6 +20,15 @@ export function useWorkOrder(options: UseWorkOrderOptions) {
   const gameStartTimeRef = useRef<number>(0);
   const triggeredOrdersRef = useRef<Set<string>>(new Set());
   const timersRef = useRef<Map<string, number>>(new Map());
+  const onTriggerRef = useRef(onTrigger);
+  const onTimeoutRef = useRef(onTimeout);
+  const onCompleteRef = useRef(onComplete);
+
+  useEffect(() => {
+    onTriggerRef.current = onTrigger;
+    onTimeoutRef.current = onTimeout;
+    onCompleteRef.current = onComplete;
+  }, [onTrigger, onTimeout, onComplete]);
 
   const startGame = useCallback(() => {
     gameStartTimeRef.current = Date.now();
@@ -41,16 +51,17 @@ export function useWorkOrder(options: UseWorkOrderOptions) {
     };
 
     setActiveOrders((prev) => [...prev, activeOrder]);
+    onTriggerRef.current(order, isRetrying);
 
     const timerId = window.setTimeout(() => {
       setActiveOrders((prev) => prev.filter((o) => o.id !== order.id));
       setTimeoutCount((prev) => prev + 1);
-      onTimeout(order);
+      onTimeoutRef.current(order);
       timersRef.current.delete(order.id);
     }, timeout * 1000);
 
     timersRef.current.set(order.id, timerId);
-  }, [timeout, onTimeout]);
+  }, [timeout]);
 
   const retryOrder = useCallback((orderId: string) => {
     const order = orders.find((o) => o.id === orderId);
@@ -66,24 +77,27 @@ export function useWorkOrder(options: UseWorkOrderOptions) {
       timersRef.current.delete(orderId);
     }
 
-    const activeOrder = activeOrders.find((o) => o.id === orderId);
-    if (!activeOrder) return;
+    setActiveOrders((prev) => {
+      const activeOrder = prev.find((o) => o.id === orderId);
+      if (!activeOrder) return prev;
 
-    const responseTime = Math.floor((Date.now() - activeOrder.startTime) / 1000);
-    const isCorrect = optionId === activeOrder.correctOptionId;
+      const responseTime = Math.floor((Date.now() - activeOrder.startTime) / 1000);
+      const isCorrect = optionId === activeOrder.correctOptionId;
 
-    const result: WorkOrderResult = {
-      orderId,
-      optionId,
-      responseTime,
-      isCorrect,
-      retried: activeOrder.isRetrying,
-    };
+      const result: WorkOrderResult = {
+        orderId,
+        optionId,
+        responseTime,
+        isCorrect,
+        retried: activeOrder.isRetrying,
+      };
 
-    setActiveOrders((prev) => prev.filter((o) => o.id !== orderId));
-    setCompletedOrders((prev) => [...prev, result]);
-    onComplete(result);
-  }, [activeOrders, onComplete]);
+      setCompletedOrders((completedPrev) => [...completedPrev, result]);
+      onCompleteRef.current(result);
+
+      return prev.filter((o) => o.id !== orderId);
+    });
+  }, []);
 
   useEffect(() => {
     if (!enabled) return;
