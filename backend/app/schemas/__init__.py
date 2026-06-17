@@ -184,13 +184,12 @@ class ThresholdChangeLogInfo(BaseModel):
 class ThresholdConfig(ThresholdConfigBase):
     id: int
     current_modified_by: Optional[str] = None
-    change_logs: List[ThresholdChangeLogInfo] = Field(default=[], alias="history")
+    change_logs: List[ThresholdChangeLogInfo] = Field(default=[])
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
-        populate_by_name = True
 
 
 class ExceptionAnnotationBase(BaseModel):

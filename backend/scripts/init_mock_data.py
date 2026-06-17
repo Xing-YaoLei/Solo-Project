@@ -304,7 +304,7 @@ def create_mock_data():
                         desc_map = {
                             "cashier_delay": f"收银系统延迟 {cashier_delay} 分钟，可能影响当日销售统计完整性",
                             "member_missing": f"会员销售记录缺失 {member_missing} 条，会员占比数据需人工复核",
-                            "mi_caliber_changed": "当日医保结算接口升级，医保销售统计口径发生变化",
+                            "mi_caliber_change": "当日医保结算接口升级，医保销售统计口径发生变化",
                         }
                         annotations.append(
                             models.ExceptionAnnotation(

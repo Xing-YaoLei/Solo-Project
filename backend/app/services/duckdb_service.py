@@ -4,7 +4,7 @@ import pandas as pd
 from typing import List, Optional, Dict, Any
 from datetime import date
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, case
 
 from app.core.config import settings
 
@@ -114,7 +114,7 @@ class DuckDBService:
                 func.SUM(models.SalesRecord.member_sales_amount).label("member_amount"),
                 func.SUM(models.SalesRecord.medical_insurance_amount).label("mi_amount"),
                 func.SUM(
-                    func.CASE(
+                    case(
                         (models.SalesRecord.cashier_delay_minutes > 30, 1),
                         else_=0,
                     )
@@ -123,7 +123,7 @@ class DuckDBService:
                     "member_missing_total"
                 ),
                 func.SUM(
-                    func.CASE(
+                    case(
                         (models.SalesRecord.medical_insurance_caliber_changed == True, 1),
                         else_=0,
                     )
@@ -152,9 +152,9 @@ class DuckDBService:
                 "cashier_delay_count", "member_missing_total", "mi_caliber_change_count",
             ])
             for col in ["sales_amount", "sales_units", "original_amount", "member_amount", "mi_amount"]:
-                df[col] = df[col].fillna(0)
+                df.loc[:, col] = df[col].fillna(0)
             for col in ["cashier_delay_count", "member_missing_total", "mi_caliber_change_count"]:
-                df[col] = df[col].fillna(0).astype(int)
+                df.loc[:, col] = df[col].fillna(0).astype(int)
         else:
             df = pd.DataFrame(columns=[
                 "promotion_id", "promo_code", "promo_name",
@@ -203,7 +203,7 @@ class DuckDBService:
         qualified_display = (
             db.query(
                 models.DisplayInspection.promotion_id.label("promotion_id"),
-                func.SUM(func.CASE((models.DisplayInspection.is_qualified == True, 1), else_=0)).label(
+                func.SUM(case((models.DisplayInspection.is_qualified == True, 1), else_=0)).label(
                     "qualified_count"
                 ),
                 func.COUNT(models.DisplayInspection.id).label("total_inspections"),
@@ -218,7 +218,7 @@ class DuckDBService:
             db.query(
                 models.Rectification.promotion_id.label("promotion_id"),
                 func.SUM(
-                    func.CASE((models.Rectification.rectification_status == "completed", 1), else_=0)
+                    case((models.Rectification.rectification_status == "completed", 1), else_=0)
                 ).label("rectified_count"),
                 func.COUNT(models.Rectification.id).label("total_issues"),
             )
