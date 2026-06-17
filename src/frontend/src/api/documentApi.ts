@@ -1,12 +1,5 @@
 import { api } from './axios'
-import { 
-  Document, 
-  CreateDocumentDto, 
-  UpdateDocumentDto, 
-  BatchUpdateDocumentsDto,
-  DocumentHistory,
-  DocumentFilterParams 
-} from '@/types/document'
+import { Document, CreateDocumentDto, UpdateDocumentDto, BatchUpdateDocumentsDto, DocumentHistory, DocumentFilterParams } from '@/types/document'
 import { PaginatedResponse } from '@/types/statistics'
 
 export const documentApi = {
@@ -42,4 +35,19 @@ export const documentApi = {
   
   verifyAmountConsistency: (id: string) => 
     api.post<Document>(`/documents/${id}/verify-amount`),
+  
+  uploadAttachment: (documentId: string, file: File, description?: string) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    if (description) formData.append('description', description)
+    return api.post<any>(`/attachments/upload/${documentId}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+  
+  getAttachments: (documentId: string) => 
+    api.get<any[]>(`/attachments/document/${documentId}`),
+  
+  deleteAttachment: (id: string) => 
+    api.delete<void>(`/attachments/${id}`),
 }

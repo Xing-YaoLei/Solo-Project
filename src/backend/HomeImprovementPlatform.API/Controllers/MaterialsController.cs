@@ -1,3 +1,4 @@
+using HomeImprovementPlatform.API.DTOs;
 using HomeImprovementPlatform.API.DTOs.Material;
 using HomeImprovementPlatform.API.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -18,12 +19,35 @@ public class MaterialsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<MaterialDto>>> GetAll(
+    public async Task<ActionResult<PaginatedResponse<MaterialDto>>> GetAll(
         [FromQuery] bool? isActive,
-        [FromQuery] string? category)
+        [FromQuery] string? category,
+        [FromQuery] string? search,
+        [FromQuery] int pageIndex = 1,
+        [FromQuery] int pageSize = 20)
     {
-        var materials = await _materialService.GetAllAsync(isActive, category);
-        return Ok(materials);
+        var allMaterials = await _materialService.GetAllAsync(isActive, category);
+
+        var query = allMaterials.AsQueryable();
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.ToLower();
+            query = query.Where(m => m.Name.ToLower().Contains(s) || m.MaterialCode.ToLower().Contains(s));
+        }
+
+        var totalCount = query.Count();
+        var items = query.OrderBy(m => m.Name)
+                         .Skip((pageIndex - 1) * pageSize)
+                         .Take(pageSize)
+                         .ToList();
+
+        return Ok(new PaginatedResponse<MaterialDto>
+        {
+            Items = items,
+            TotalCount = totalCount,
+            PageIndex = pageIndex,
+            PageSize = pageSize
+        });
     }
 
     [HttpGet("{id}")]

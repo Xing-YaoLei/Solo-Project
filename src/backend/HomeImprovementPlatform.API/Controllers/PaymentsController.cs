@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using HomeImprovementPlatform.API.DTOs;
 using HomeImprovementPlatform.API.DTOs.Payment;
 using HomeImprovementPlatform.API.Enums;
 using HomeImprovementPlatform.API.Services;
@@ -20,12 +21,26 @@ public class PaymentsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<PaymentRecordDto>>> GetAll(
+    public async Task<ActionResult<PaginatedResponse<PaymentRecordDto>>> GetAll(
         [FromQuery] PaymentStatus? status,
-        [FromQuery] Guid? projectId)
+        [FromQuery] Guid? projectId,
+        [FromQuery] int pageIndex = 1,
+        [FromQuery] int pageSize = 20)
     {
-        var payments = await _paymentService.GetAllAsync(status, projectId);
-        return Ok(payments);
+        var allPayments = await _paymentService.GetAllAsync(status, projectId);
+
+        var items = allPayments.OrderByDescending(p => p.CreatedAt)
+                               .Skip((pageIndex - 1) * pageSize)
+                               .Take(pageSize)
+                               .ToList();
+
+        return Ok(new PaginatedResponse<PaymentRecordDto>
+        {
+            Items = items,
+            TotalCount = allPayments.Count(),
+            PageIndex = pageIndex,
+            PageSize = pageSize
+        });
     }
 
     [HttpGet("{id}")]

@@ -1,4 +1,7 @@
 using System.Security.Claims;
+using HomeImprovementPlatform.API.DTOs;
+using HomeImprovementPlatform.API.DTOs.Document;
+using HomeImprovementPlatform.API.DTOs.Payment;
 using HomeImprovementPlatform.API.DTOs.Project;
 using HomeImprovementPlatform.API.Enums;
 using HomeImprovementPlatform.API.Services;
@@ -13,19 +16,56 @@ namespace HomeImprovementPlatform.API.Controllers;
 public class ProjectsController : ControllerBase
 {
     private readonly IProjectService _projectService;
+    private readonly IDocumentService _documentService;
+    private readonly IPaymentService _paymentService;
 
-    public ProjectsController(IProjectService projectService)
+    public ProjectsController(
+        IProjectService projectService,
+        IDocumentService documentService,
+        IPaymentService paymentService)
     {
         _projectService = projectService;
+        _documentService = documentService;
+        _paymentService = paymentService;
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<ProjectDto>>> GetAll()
+    public async Task<ActionResult<PaginatedResponse<ProjectDto>>> GetAll(
+        [FromQuery] int pageIndex = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? search = null,
+        [FromQuery] DocumentStatus? status = null)
     {
         var userId = GetCurrentUserId();
         var userRole = GetCurrentUserRole();
-        var projects = await _projectService.GetAllAsync(userRole, userId);
-        return Ok(projects);
+        var allProjects = await _projectService.GetAllAsync(userRole, userId);
+
+        var query = allProjects.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.ToLower();
+            query = query.Where(p => p.Name.ToLower().Contains(s) || p.ProjectNumber.ToLower().Contains(s) || p.Address.ToLower().Contains(s));
+        }
+
+        if (status.HasValue)
+        {
+            query = query.Where(p => p.Status == status.Value);
+        }
+
+        var totalCount = query.Count();
+        var items = query.OrderByDescending(p => p.CreatedAt)
+                         .Skip((pageIndex - 1) * pageSize)
+                         .Take(pageSize)
+                         .ToList();
+
+        return Ok(new PaginatedResponse<ProjectDto>
+        {
+            Items = items,
+            TotalCount = totalCount,
+            PageIndex = pageIndex,
+            PageSize = pageSize
+        });
     }
 
     [HttpGet("{id}")]
@@ -40,6 +80,28 @@ public class ProjectsController : ControllerBase
         {
             return NotFound(new { message = ex.Message });
         }
+    }
+
+    [HttpGet("{id}/documents")]
+    public async Task<ActionResult<IEnumerable<DocumentDto>>> GetProjectDocuments(
+        Guid id,
+        [FromQuery] DocumentType? type,
+        [FromQuery] DocumentStatus? status,
+        [FromQuery] AmountConsistencyStatus? amountConsistency)
+    {
+        var userId = GetCurrentUserId();
+        var userRole = GetCurrentUserRole();
+        var documents = await _documentService.GetAllAsync(type, status, amountConsistency, id, userRole, userId);
+        return Ok(documents);
+    }
+
+    [HttpGet("{id}/payments")]
+    public async Task<ActionResult<IEnumerable<PaymentRecordDto>>> GetProjectPayments(
+        Guid id,
+        [FromQuery] PaymentStatus? status)
+    {
+        var payments = await _paymentService.GetAllAsync(status, id);
+        return Ok(payments);
     }
 
     [HttpPost]

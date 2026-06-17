@@ -18,6 +18,8 @@ public interface IDocumentService
     Task<DocumentDto> SubmitForApprovalAsync(Guid id, Guid userId);
     Task<DocumentDto> ApproveAsync(Guid id, Guid approvalNodeId, string comments, Guid userId);
     Task<DocumentDto> RejectAsync(Guid id, Guid approvalNodeId, string comments, Guid userId);
+    Task<DocumentDto> ApproveByUserAsync(Guid id, Guid userId, string comments);
+    Task<DocumentDto> RejectByUserAsync(Guid id, Guid userId, string comments);
     Task<IEnumerable<DocumentDto>> BatchUpdateStatusAsync(BatchUpdateDocumentsDto dto, Guid updatedById);
     Task<IEnumerable<DocumentDto>> GetInconsistentDocumentsAsync();
     Task<DocumentDto> VerifyAmountConsistencyAsync(Guid id, Guid userId);
@@ -386,6 +388,73 @@ public class DocumentService : IDocumentService
             .ToListAsync();
 
         return _mapper.Map<IEnumerable<DocumentHistoryDto>>(histories);
+    }
+
+    public async Task<DocumentDto> ApproveByUserAsync(Guid id, Guid userId, string comments)
+    {
+        var document = await _context.Documents
+            .Include(d => d.ApprovalNodes)
+            .FirstOrDefaultAsync(d => d.Id == id);
+
+        if (document == null)
+            throw new KeyNotFoundException($"Document with id {id} not found");
+
+        var approvalNode = document.ApprovalNodes
+            .Where(a => a.ApproverId == userId && !a.IsApproved)
+            .OrderBy(a => a.NodeOrder)
+            .FirstOrDefault();
+
+        if (approvalNode == null)
+            throw new InvalidOperationException("No pending approval node found for this user");
+
+        approvalNode.IsApproved = true;
+        approvalNode.Comments = comments;
+        approvalNode.ApprovedAt = DateTime.UtcNow;
+
+        var oldStatus = document.Status;
+        if (document.ApprovalNodes.All(a => a.IsApproved))
+        {
+            document.Status = DocumentStatus.Approved;
+            document.ApprovalDate = DateTime.UtcNow;
+        }
+
+        document.UpdatedAt = DateTime.UtcNow;
+
+        await AddHistory(id, "Approve", null, null, null, null, $"User: {comments}", oldStatus, document.Status, userId);
+        await _context.SaveChangesAsync();
+
+        return await GetByIdAsync(id);
+    }
+
+    public async Task<DocumentDto> RejectByUserAsync(Guid id, Guid userId, string comments)
+    {
+        var document = await _context.Documents
+            .Include(d => d.ApprovalNodes)
+            .FirstOrDefaultAsync(d => d.Id == id);
+
+        if (document == null)
+            throw new KeyNotFoundException($"Document with id {id} not found");
+
+        var approvalNode = document.ApprovalNodes
+            .Where(a => a.ApproverId == userId && !a.IsApproved)
+            .OrderBy(a => a.NodeOrder)
+            .FirstOrDefault();
+
+        if (approvalNode == null)
+            throw new InvalidOperationException("No pending approval node found for this user");
+
+        approvalNode.IsApproved = false;
+        approvalNode.Comments = comments;
+        approvalNode.ApprovedAt = DateTime.UtcNow;
+
+        var oldStatus = document.Status;
+        document.Status = DocumentStatus.Rejected;
+        document.UpdatedAt = DateTime.UtcNow;
+
+        await AddHistory(id, "Reject", null, null, null, null, $"User: {comments}", oldStatus, document.Status, userId);
+        await _context.SaveChangesAsync();
+
+        return await GetByIdAsync(id);
     }
 
     private AmountConsistencyStatus CheckAmountConsistency(Document document)

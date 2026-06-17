@@ -2,9 +2,11 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using HomeImprovementPlatform.API.DTOs.Auth;
+using HomeImprovementPlatform.API.Enums;
 using HomeImprovementPlatform.API.Helpers;
 using HomeImprovementPlatform.API.Models;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
@@ -14,6 +16,8 @@ public interface IAuthService
 {
     Task<AuthResponseDto> LoginAsync(LoginDto loginDto);
     Task<AuthResponseDto> RegisterAsync(RegisterDto registerDto);
+    Task<UserDto> GetCurrentUserAsync(Guid userId);
+    Task<IEnumerable<UserDto>> GetUsersByRoleAsync(string? role);
 }
 
 public class AuthService : IAuthService
@@ -46,7 +50,7 @@ public class AuthService : IAuthService
             throw new UnauthorizedAccessException("Invalid email or password");
         }
 
-        return await GenerateAuthResponseAsync(user);
+        return GenerateAuthResponse(user);
     }
 
     public async Task<AuthResponseDto> RegisterAsync(RegisterDto registerDto)
@@ -75,14 +79,55 @@ public class AuthService : IAuthService
             throw new InvalidOperationException($"User creation failed: {errors}");
         }
 
-        return await GenerateAuthResponseAsync(user);
+        return GenerateAuthResponse(user);
     }
 
-    private Task<AuthResponseDto> GenerateAuthResponseAsync(ApplicationUser user)
+    public async Task<UserDto> GetCurrentUserAsync(Guid userId)
+    {
+        var user = await _userManager.FindByIdAsync(userId.ToString());
+        if (user == null)
+            throw new KeyNotFoundException($"User with id {userId} not found");
+
+        return new UserDto
+        {
+            Id = user.Id,
+            Email = user.Email!,
+            FullName = user.FullName,
+            Role = user.Role,
+            PhoneNumber = user.PhoneNumber,
+            IsActive = user.IsActive,
+            CreatedAt = user.CreatedAt
+        };
+    }
+
+    public async Task<IEnumerable<UserDto>> GetUsersByRoleAsync(string? role)
+    {
+        var query = _userManager.Users.AsQueryable();
+
+        if (!string.IsNullOrEmpty(role) && Enum.TryParse<UserRole>(role, out var userRole))
+        {
+            query = query.Where(u => u.Role == userRole);
+        }
+
+        var users = await query.OrderBy(u => u.FullName).ToListAsync();
+
+        return users.Select(u => new UserDto
+        {
+            Id = u.Id,
+            Email = u.Email!,
+            FullName = u.FullName,
+            Role = u.Role,
+            PhoneNumber = u.PhoneNumber,
+            IsActive = u.IsActive,
+            CreatedAt = u.CreatedAt
+        });
+    }
+
+    private AuthResponseDto GenerateAuthResponse(ApplicationUser user)
     {
         var claims = new List<Claim>
         {
-            new Claim(ClaimTypes.NameIdentifier, user.Id),
+            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new Claim(ClaimTypes.Email, user.Email!),
             new Claim(ClaimTypes.Name, user.FullName),
             new Claim(ClaimTypes.Role, user.Role.ToString())
@@ -103,7 +148,7 @@ public class AuthService : IAuthService
         var tokenHandler = new JwtSecurityTokenHandler();
         var tokenString = tokenHandler.WriteToken(token);
 
-        return Task.FromResult(new AuthResponseDto
+        return new AuthResponseDto
         {
             Token = tokenString,
             UserId = user.Id,
@@ -111,6 +156,6 @@ public class AuthService : IAuthService
             FullName = user.FullName,
             Role = user.Role,
             ExpiresAt = expires
-        });
+        };
     }
 }

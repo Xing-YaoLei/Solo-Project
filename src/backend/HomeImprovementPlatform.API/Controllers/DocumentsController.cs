@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using HomeImprovementPlatform.API.DTOs;
+using HomeImprovementPlatform.API.DTOs.Auth;
 using HomeImprovementPlatform.API.DTOs.Document;
 using HomeImprovementPlatform.API.Enums;
 using HomeImprovementPlatform.API.Services;
@@ -20,16 +22,39 @@ public class DocumentsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<DocumentDto>>> GetAll(
+    public async Task<ActionResult<PaginatedResponse<DocumentDto>>> GetAll(
         [FromQuery] DocumentType? type,
         [FromQuery] DocumentStatus? status,
-        [FromQuery] AmountConsistencyStatus? consistency,
-        [FromQuery] Guid? projectId)
+        [FromQuery] AmountConsistencyStatus? amountConsistency,
+        [FromQuery] Guid? projectId,
+        [FromQuery] string? search,
+        [FromQuery] int pageIndex = 1,
+        [FromQuery] int pageSize = 20)
     {
         var userId = GetCurrentUserId();
         var userRole = GetCurrentUserRole();
-        var documents = await _documentService.GetAllAsync(type, status, consistency, projectId, userRole, userId);
-        return Ok(documents);
+        var allDocs = await _documentService.GetAllAsync(type, status, amountConsistency, projectId, userRole, userId);
+
+        var query = allDocs.AsQueryable();
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.ToLower();
+            query = query.Where(d => d.Title.ToLower().Contains(s) || d.DocumentNumber.ToLower().Contains(s));
+        }
+
+        var totalCount = query.Count();
+        var items = query.OrderByDescending(d => d.CreatedAt)
+                         .Skip((pageIndex - 1) * pageSize)
+                         .Take(pageSize)
+                         .ToList();
+
+        return Ok(new PaginatedResponse<DocumentDto>
+        {
+            Items = items,
+            TotalCount = totalCount,
+            PageIndex = pageIndex,
+            PageSize = pageSize
+        });
     }
 
     [HttpGet("{id}")]
@@ -102,39 +127,49 @@ public class DocumentsController : ControllerBase
         }
     }
 
-    [HttpPost("{id}/approve/{approvalNodeId}")]
+    [HttpPost("{id}/approve")]
     [Authorize(Roles = "Supervisor,Designer")]
-    public async Task<ActionResult<DocumentDto>> Approve(Guid id, Guid approvalNodeId, [FromBody] string comments)
+    public async Task<ActionResult<DocumentDto>> Approve(Guid id, [FromBody] ApprovalRequestDto? request)
     {
         try
         {
             var userId = GetCurrentUserId();
-            var document = await _documentService.ApproveAsync(id, approvalNodeId, comments, userId);
+            var comments = request?.Comments ?? string.Empty;
+            var document = await _documentService.ApproveByUserAsync(id, userId, comments);
             return Ok(document);
         }
         catch (KeyNotFoundException ex)
         {
             return NotFound(new { message = ex.Message });
         }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
-    [HttpPost("{id}/reject/{approvalNodeId}")]
+    [HttpPost("{id}/reject")]
     [Authorize(Roles = "Supervisor,Designer")]
-    public async Task<ActionResult<DocumentDto>> Reject(Guid id, Guid approvalNodeId, [FromBody] string comments)
+    public async Task<ActionResult<DocumentDto>> Reject(Guid id, [FromBody] ApprovalRequestDto? request)
     {
         try
         {
             var userId = GetCurrentUserId();
-            var document = await _documentService.RejectAsync(id, approvalNodeId, comments, userId);
+            var comments = request?.Comments ?? string.Empty;
+            var document = await _documentService.RejectByUserAsync(id, userId, comments);
             return Ok(document);
         }
         catch (KeyNotFoundException ex)
         {
             return NotFound(new { message = ex.Message });
         }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
-    [HttpPost("batch-update")]
+    [HttpPost("batch")]
     [Authorize(Roles = "Supervisor")]
     public async Task<ActionResult<IEnumerable<DocumentDto>>> BatchUpdate([FromBody] BatchUpdateDocumentsDto dto)
     {
