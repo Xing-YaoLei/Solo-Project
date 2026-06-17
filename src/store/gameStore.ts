@@ -311,18 +311,14 @@ export const useGameStore = create<GameStore>()(
         if (state.gameState !== 'playing') return
 
         const newTimeRemaining = state.timeRemaining - delta
-        if (newTimeRemaining <= 0) {
-          state.endGame()
-          return
-        }
-
-        const elapsedTime = (state.currentLevel?.duration || 0) - newTimeRemaining
+        const elapsedTime = (state.currentLevel?.duration || 0) - Math.max(0, newTimeRemaining)
         const currentActiveTasks = state.activeTasks
         let newScore = state.score
         let newCombo = state.combo
         let newActions = [...state.actions]
         let newMaxCombo = state.maxCombo
         let shouldGenerateTask = false
+        let allFailedTasks: GameTask[] = []
 
         const timedOutTasks = currentActiveTasks.filter(task => {
           const taskElapsed = elapsedTime - task.timestamp
@@ -343,14 +339,33 @@ export const useGameStore = create<GameStore>()(
             newScore = Math.max(0, newScore - task.points * 0.5)
           })
           newCombo = 0
+          allFailedTasks = [...allFailedTasks, ...timedOutTasks]
         }
 
-        const remainingActiveTasks = currentActiveTasks.filter(task => {
+        let remainingActiveTasks = currentActiveTasks.filter(task => {
           const taskElapsed = elapsedTime - task.timestamp
           return taskElapsed < task.timeLimit
         })
 
-        if (elapsedTime - state.lastTaskTime >= (state.currentLevel?.taskFrequency || 10) &&
+        if (newTimeRemaining <= 0) {
+          remainingActiveTasks.forEach(task => {
+            const action: PlayerAction = {
+              taskId: task.id,
+              optionId: 'timeout',
+              timestamp: elapsedTime,
+              isCorrect: false,
+              timeSpent: elapsedTime - task.timestamp,
+              combo: 0
+            }
+            newActions.push(action)
+            newScore = Math.max(0, newScore - task.points * 0.5)
+          })
+          newCombo = 0
+          allFailedTasks = [...allFailedTasks, ...remainingActiveTasks]
+          remainingActiveTasks = []
+        }
+
+        if (newTimeRemaining > 0 && elapsedTime - state.lastTaskTime >= (state.currentLevel?.taskFrequency || 10) &&
             remainingActiveTasks.length < (state.currentLevel?.maxConcurrentTasks || 3)) {
           shouldGenerateTask = true
         }
@@ -395,8 +410,12 @@ export const useGameStore = create<GameStore>()(
             }
           }
 
+          const newCompletedTasks = allFailedTasks.length > 0 
+            ? [...prev.completedTasks, ...allFailedTasks]
+            : prev.completedTasks
+
           return {
-            timeRemaining: newTimeRemaining,
+            timeRemaining: Math.max(0, newTimeRemaining),
             activeTasks: updatedActiveTasks,
             score: newScore,
             combo: newCombo,
@@ -404,11 +423,15 @@ export const useGameStore = create<GameStore>()(
             actions: newActions,
             taskCounter: updatedTaskCounter,
             lastTaskTime: updatedLastTaskTime,
-            completedTasks: timedOutTasks.length > 0 
-              ? [...prev.completedTasks, ...timedOutTasks]
-              : prev.completedTasks
+            completedTasks: newCompletedTasks
           }
         })
+
+        if (newTimeRemaining <= 0) {
+          setTimeout(() => {
+            get().endGame()
+          }, 0)
+        }
       },
 
       generateTask: () => {

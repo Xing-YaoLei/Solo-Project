@@ -179,20 +179,29 @@ export function ReviewScreen() {
                 {actions.map((action, index) => {
                   const task = completedTasks.find(t => t.id === action.taskId)
                   const elderly = task ? elderlyProfiles.find(e => e.id === task.elderlyId) : null
+                  const isGameEndTimeout = action.optionId === 'timeout' && 
+                    currentLevel && action.timestamp >= (currentLevel.duration - 0.1)
                   return (
                     <div 
                       key={index}
                       className={`flex items-center justify-between p-3 rounded-lg
-                        ${action.isCorrect ? 'bg-green-900/30' : 'bg-red-900/30'}`}
+                        ${action.isCorrect ? 'bg-green-900/30' : isGameEndTimeout ? 'bg-yellow-900/30' : 'bg-red-900/30'}`}
                     >
                       <div className="flex items-center gap-3">
-                        <span className="text-2xl">{action.isCorrect ? '✅' : '❌'}</span>
+                        <span className="text-2xl">
+                          {action.isCorrect ? '✅' : isGameEndTimeout ? '⏰' : '❌'}
+                        </span>
                         <div>
                           <div className="flex items-center gap-2">
                             <span className="text-white font-medium">{elderly?.avatar} {elderly?.name}</span>
                             {task && (
                               <span className={`text-sm ${getTaskTypeColor(task.type)}`}>
                                 [{getTaskTypeName(task.type)}]
+                              </span>
+                            )}
+                            {isGameEndTimeout && (
+                              <span className="text-xs bg-yellow-600 text-white px-2 py-0.5 rounded">
+                                倒计时结束
                               </span>
                             )}
                           </div>

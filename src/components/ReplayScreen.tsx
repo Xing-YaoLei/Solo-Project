@@ -87,21 +87,34 @@ export function ReplayScreen() {
         const isSelected = replayActionIndex === index
         const details = getActionDetails(action, completedTasks)
         const elderly = elderlyProfiles.find(e => e.id === details.elderlyId)
+        const isGameEndTimeout = action.optionId === 'timeout' && 
+          action.timestamp >= (level.duration - 0.1)
         
         return (
           <div
             key={`${prefix}-${index}`}
             className={`p-3 rounded-lg cursor-pointer transition-all
               ${isSelected ? 'ring-2 ring-blue-500' : ''}
-              ${action.isCorrect ? 'bg-green-900/30 hover:bg-green-900/50' : 'bg-red-900/30 hover:bg-red-900/50'}`}
+              ${action.isCorrect ? 'bg-green-900/30 hover:bg-green-900/50' : 
+                isGameEndTimeout ? 'bg-yellow-900/30 hover:bg-yellow-900/50' : 
+                'bg-red-900/30 hover:bg-red-900/50'}`}
             onClick={() => setReplayActionIndex(isSelected ? -1 : index)}
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="text-xl">{action.isCorrect ? '✅' : '❌'}</span>
+                <span className="text-xl">
+                  {action.isCorrect ? '✅' : isGameEndTimeout ? '⏰' : '❌'}
+                </span>
                 <div>
-                  <div className="text-white font-medium text-sm">
-                    {elderly?.avatar || '👤'} {elderly?.name || '未知'} · 操作 #{index + 1}
+                  <div className="flex items-center gap-2">
+                    <span className="text-white font-medium text-sm">
+                      {elderly?.avatar || '👤'} {elderly?.name || '未知'} · 操作 #{index + 1}
+                    </span>
+                    {isGameEndTimeout && (
+                      <span className="text-xs bg-yellow-600 text-white px-2 py-0.5 rounded">
+                        倒计时结束
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 text-xs">
                     <span className="text-gray-400">
@@ -143,7 +156,9 @@ export function ReplayScreen() {
                   <div>
                     <span className="text-gray-500">选择:</span>
                     <span className="ml-1 text-gray-300">
-                      {action.optionId === 'timeout' ? '超时未处理' : details.option?.text || '选项 ' + action.optionId.slice(-1)}
+                      {action.optionId === 'timeout' 
+                        ? (isGameEndTimeout ? '倒计时结束未处理' : '超时未处理') 
+                        : details.option?.text || '选项 ' + action.optionId.slice(-1)}
                     </span>
                   </div>
                   <div>
