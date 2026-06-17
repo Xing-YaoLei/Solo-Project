@@ -1,0 +1,8 @@
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0307/src/backend/HomeImprovementPlatform.API/obj/Debug/net9.0/HomeImprovementPlatform.API.csproj.AssemblyReference.cache
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0307/src/backend/HomeImprovementPlatform.API/obj/Debug/net9.0/HomeImprovementPlatform.API.GeneratedMSBuildEditorConfig.editorconfig
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0307/src/backend/HomeImprovementPlatform.API/obj/Debug/net9.0/HomeImprovementPlatform.API.AssemblyInfoInputs.cache
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0307/src/backend/HomeImprovementPlatform.API/obj/Debug/net9.0/HomeImprovementPlatform.API.AssemblyInfo.cs
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0307/src/backend/HomeImprovementPlatform.API/obj/Debug/net9.0/HomeImprovementPlatform.API.csproj.CoreCompileInputs.cache
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0307/src/backend/HomeImprovementPlatform.API/obj/Debug/net9.0/HomeImprovementPlatform.API.MvcApplicationPartsAssemblyInfo.cs
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0307/src/backend/HomeImprovementPlatform.API/obj/Debug/net9.0/HomeImprovementPlatform.API.MvcApplicationPartsAssemblyInfo.cache
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0307/src/backend/HomeImprovementPlatform.API/obj/Debug/net9.0/HomeImprovementPlatform.API.sourcelink.json
