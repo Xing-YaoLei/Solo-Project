@@ -9,6 +9,10 @@ export const ANALYTICS_CONFIG: AnalyticsConfig = {
     'task_fail',
     'emergency',
     'achievement',
+    'payment',
+    'patrol_visit',
+    'item_use',
+    'access_assign',
   ],
 };
 
@@ -19,4 +23,8 @@ export const EVENT_DESCRIPTIONS: Record<AnalyticsEventType, string> = {
   task_fail: '任务失败',
   emergency: '突发事件',
   achievement: '成就解锁',
+  payment: '支付账单',
+  patrol_visit: '巡检点访问',
+  item_use: '道具使用',
+  access_assign: '门禁分配',
 };

@@ -137,7 +137,7 @@ export interface Achievement {
   unlockedAt?: number;
 }
 
-export type AnalyticsEventType = 'game_start' | 'game_end' | 'task_complete' | 'task_fail' | 'emergency' | 'achievement';
+export type AnalyticsEventType = 'game_start' | 'game_end' | 'task_complete' | 'task_fail' | 'emergency' | 'achievement' | 'payment' | 'patrol_visit' | 'item_use' | 'access_assign';
 
 export interface AnalyticsEvent {
   id: string;
@@ -171,6 +171,10 @@ export interface GameState {
   isPaused: boolean;
   isFailed: boolean;
   failureReason?: string;
+  itemCooldowns: Record<string, number>;
+  itemUsedAt: Record<string, number>;
+  settlementReady: boolean;
+  activeHint: string | null;
 }
 
 export interface GameConfig {

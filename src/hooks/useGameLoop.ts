@@ -46,7 +46,7 @@ export const useGameLoop = () => {
   }, [recordInteraction]);
 
   useFrame((_, delta) => {
-    if (gameState.isPaused || gameState.isFailed || gameState.phase === 'ended') {
+    if (gameState.isPaused || gameState.isFailed || gameState.phase === 'ended' || gameState.phase === 'settlement') {
       return;
     }
 

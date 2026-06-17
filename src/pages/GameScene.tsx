@@ -48,20 +48,23 @@ export const GameScene = () => {
     failureReason: state.failureReason,
     score: state.score,
     sessionId: state.sessionId,
+    settlementReady: state.settlementReady,
   }));
   const endGame = useGameStore(state => state.endGame);
 
   const startRecording = useReplayStore(state => state.startRecording);
   const stopRecording = useReplayStore(state => state.stopRecording);
   const { checkAndUnlockAchievements } = useAchievements();
+  const initAnalyticsSession = useAnalyticsStore(state => state.initSession);
   const trackEvent = useAnalyticsStore(state => state.trackEvent);
 
   useEffect(() => {
     initGame(difficulty);
-    startRecording(gameState.sessionId, difficulty);
-    trackEvent('game_start', { difficulty, sessionId: gameState.sessionId });
+    const sessionId = useGameStore.getState().sessionId;
+    startRecording(sessionId, difficulty);
+    initAnalyticsSession(sessionId);
     loadSettings();
-  }, [difficulty, initGame, startRecording, gameState.sessionId, trackEvent]);
+  }, [difficulty, initGame, startRecording, initAnalyticsSession]);
 
   useEffect(() => {
     if (gameState.phase === 'ended' && !showResult) {
@@ -122,7 +125,58 @@ export const GameScene = () => {
     setShowResult(false);
     setGameResult(null);
     initGame(difficulty);
-    startRecording(useGameStore.getState().sessionId, difficulty);
+    const newSessionId = useGameStore.getState().sessionId;
+    startRecording(newSessionId, difficulty);
+    useAnalyticsStore.getState().initSession(newSessionId);
+    useAnalyticsStore.getState().trackEvent('game_start', { difficulty, sessionId: newSessionId });
+  };
+
+  const handleSettlement = () => {
+    const result = endGame(true);
+    setGameResult({
+      success: true,
+      ...result,
+    });
+
+    const replay = stopRecording(true, result.score);
+    const currentStats = loadStats();
+    const gameTime = (Date.now() - useGameStore.getState().realStartTime) / 1000;
+    const lagPoints = useReplayStore.getState().lagPoints;
+    
+    checkAndUnlockAchievements({
+      score: result.score,
+      time: gameTime,
+      accuracy: result.accuracy,
+      streak: currentStats.currentStreak + 1,
+      difficulty,
+      noLagPoints: lagPoints.length === 0,
+    });
+
+    const gameStateFull = useGameStore.getState();
+    const resolvedEmergencies = gameStateFull.emergencies.filter(e => e.isResolved).length;
+    
+    const updatedStats: GameStats = {
+      totalGames: currentStats.totalGames + 1,
+      wins: currentStats.wins + 1,
+      bestScore: Math.max(currentStats.bestScore, result.score),
+      bestTime: Math.min(currentStats.bestTime, gameTime),
+      currentStreak: currentStats.currentStreak + 1,
+      bestStreak: Math.max(currentStats.bestStreak, currentStats.currentStreak + 1),
+      totalEmergenciesHandled: currentStats.totalEmergenciesHandled + resolvedEmergencies,
+      totalPlayTime: currentStats.totalPlayTime + Math.floor(gameTime),
+    };
+    saveStats(updatedStats);
+
+    useAnalyticsStore.getState().trackEvent('game_end', {
+      success: true,
+      score: result.score,
+      accuracy: result.accuracy,
+      efficiency: result.efficiency,
+      emergencyHandling: result.emergencyHandling,
+      replayId: replay?.id,
+    });
+
+    setShowResult(true);
   };
 
   const handleGoToReview = () => {
@@ -158,6 +212,59 @@ export const GameScene = () => {
         {activeBillId && (
           <BillPanel billId={activeBillId} onClose={closeBillPanel} />
         )}
+
+      <AnimatePresence>
+        {gameState.settlementReady && gameState.phase === 'settlement' && !showResult && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-black/60 flex items-center justify-center z-40 pointer-events-auto"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 30 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              transition={{ type: 'spring', damping: 25 }}
+              className="bg-slate-800 rounded-3xl p-8 w-full max-w-md border border-slate-700 shadow-2xl"
+            >
+              <div className="text-center mb-6">
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: 'spring', delay: 0.2 }}
+                  className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-full flex items-center justify-center"
+                >
+                  <CheckCircle className="text-white" size={36} />
+                </motion.div>
+                <h2 className="text-2xl font-bold text-white mb-2 font-orbitron">巡检完成</h2>
+                <p className="text-slate-400">所有巡检点已访问，可以进行费用结算</p>
+              </div>
+
+              <div className="bg-slate-700/50 rounded-2xl p-4 mb-6 space-y-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-slate-400">当前得分</span>
+                  <span className="text-yellow-400 font-bold text-lg">{gameState.score}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-slate-400">难度模式</span>
+                  <span className="text-white font-medium">
+                    {DIFFICULTY_CONFIGS[difficulty]?.name || '普通模式'}
+                  </span>
+                </div>
+              </div>
+
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleSettlement}
+                className="w-full py-4 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-bold rounded-xl hover:shadow-lg hover:shadow-blue-500/25 transition-shadow text-lg"
+              >
+                确认结算
+              </motion.button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {showResult && gameResult && (

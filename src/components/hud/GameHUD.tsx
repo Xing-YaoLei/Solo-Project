@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, MapPin, AlertTriangle, CheckCircle, XCircle, Pause, Play, Home, Settings } from 'lucide-react';
+import { Clock, MapPin, AlertTriangle, CheckCircle, XCircle, Pause, Play, Home, Settings, Zap } from 'lucide-react';
 import { useGameStore } from '@/store/gameStore';
 import { usePatrol } from '@/hooks/usePatrol';
 import { useBilling } from '@/hooks/useBilling';
@@ -7,6 +7,7 @@ import { useEmergency } from '@/hooks/useEmergency';
 import { useAccessControl } from '@/hooks/useAccessControl';
 import { formatTime, formatCurrency, formatGameTime } from '@/utils/math';
 import { DIFFICULTY_CONFIGS } from '@/config/difficulty';
+import { ITEMS } from '@/config/items';
 
 const phaseNames: Record<string, string> = {
   access_control: '门禁登记',
@@ -29,6 +30,9 @@ export const GameHUD = () => {
     failureReason: state.failureReason,
     playerPosition: state.playerPosition,
     accessRecords: state.accessRecords,
+    itemCooldowns: state.itemCooldowns,
+    itemUsedAt: state.itemUsedAt,
+    activeHint: state.activeHint,
   }));
   
   const { progress: patrolProgress, currentTarget, distanceToTarget } = usePatrol();
@@ -38,6 +42,8 @@ export const GameHUD = () => {
   
   const pauseGame = useGameStore(state => state.pauseGame);
   const resumeGame = useGameStore(state => state.resumeGame);
+  const useItem = useGameStore(state => state.useItem);
+  const getItemCooldown = useGameStore(state => state.getItemCooldown);
   
   const realTime = Math.floor((Date.now() - useGameStore.getState().realStartTime) / 1000);
   const difficultyConfig = DIFFICULTY_CONFIGS[gameState.difficulty];
@@ -155,6 +161,24 @@ export const GameHUD = () => {
         )}
       </AnimatePresence>
 
+      <AnimatePresence>
+        {gameState.activeHint && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="absolute top-28 left-1/2 -translate-x-1/2 pointer-events-auto z-30"
+          >
+            <div className="bg-blue-500/90 backdrop-blur-sm rounded-xl px-6 py-3 border border-blue-400/50 shadow-lg shadow-blue-500/25 max-w-md text-center">
+              <div className="flex items-center gap-2">
+                <Zap className="text-blue-200" size={16} />
+                <span className="text-white font-medium text-sm">{gameState.activeHint}</span>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <motion.div 
         initial={{ opacity: 0, x: 20 }}
         animate={{ opacity: 1, x: 0 }}
@@ -181,6 +205,40 @@ export const GameHUD = () => {
                 />
               )}
             </div>
+          </div>
+        </div>
+
+        <div className="bg-slate-900/90 backdrop-blur-sm rounded-xl p-3 border border-slate-700 mt-3">
+          <div className="text-xs text-slate-400 mb-2 flex items-center gap-1">
+            <Zap size={12} />
+            道具栏
+          </div>
+          <div className="space-y-1.5">
+            {ITEMS.map(item => {
+              const remaining = getItemCooldown(item.id);
+              const isReady = remaining <= 0 && gameState.phase !== 'ended';
+              return (
+                <motion.button
+                  key={item.id}
+                  whileHover={isReady ? { scale: 1.02 } : {}}
+                  whileTap={isReady ? { scale: 0.98 } : {}}
+                  onClick={() => isReady && useItem(item.id)}
+                  className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-all ${
+                    isReady
+                      ? 'bg-slate-700/80 hover:bg-slate-600 cursor-pointer'
+                      : 'bg-slate-800/50 opacity-50 cursor-not-allowed'
+                  }`}
+                >
+                  <span className="text-base">{item.icon}</span>
+                  <div className="flex-1 text-left min-w-0">
+                    <div className="text-slate-200 truncate">{item.name}</div>
+                    {!isReady && (
+                      <div className="text-slate-500 text-[10px]">{remaining.toFixed(0)}s</div>
+                    )}
+                  </div>
+                </motion.button>
+              );
+            })}
           </div>
         </div>
       </motion.div>

@@ -13,6 +13,8 @@ import type {
 import { DIFFICULTY_CONFIGS, GAME_CONFIG } from '@/config/difficulty';
 import { generateId, generatePlateNumber, randomChoice, randomInt } from '@/utils/math';
 import { calculateParkingFee } from '@/utils/time';
+import { ITEMS } from '@/config/items';
+import { useAnalyticsStore } from './analyticsStore';
 
 interface GameActions {
   initGame: (difficulty: DifficultyId) => void;
@@ -33,6 +35,11 @@ interface GameActions {
   resetGame: () => void;
   setScore: (score: number) => void;
   addScore: (points: number) => void;
+  useItem: (itemId: string) => boolean;
+  getItemCooldown: (itemId: string) => number;
+  getAvailableItems: () => string[];
+  activeHint: string | null;
+  applyDiscountToBill: (billId: string) => boolean;
 }
 
 const createInitialSpots = (): ParkingSpot[] => {
@@ -80,6 +87,13 @@ const createInitialState = (difficulty: DifficultyId): GameState => {
   const accessRecords = createInitialAccessRecords(config.billingComplexity * 3);
   const patrolPoints = createInitialPatrolPoints(config.patrolPointCount);
   
+  const itemCooldowns: Record<string, number> = {};
+  const itemUsedAt: Record<string, number> = {};
+  ITEMS.forEach(item => {
+    itemCooldowns[item.id] = config.itemCooldowns?.[item.id] ?? item.cooldown;
+    itemUsedAt[item.id] = -Infinity;
+  });
+  
   return {
     sessionId: generateId(),
     difficulty,
@@ -101,6 +115,10 @@ const createInitialState = (difficulty: DifficultyId): GameState => {
     cameraRotation: [0, 0, 0],
     isPaused: false,
     isFailed: false,
+    itemCooldowns,
+    itemUsedAt,
+    settlementReady: false,
+    activeHint: null,
   };
 };
 
@@ -149,6 +167,9 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   },
 
   assignRecordToSpot: (recordId: string, spotId: string) => {
+    const preState = get();
+    const preAssigned = preState.accessRecords.find(r => r.id === recordId)?.assignedSpotId;
+    
     set(state => {
       const record = state.accessRecords.find(r => r.id === recordId);
       const spot = state.spots.find(s => s.id === spotId);
@@ -188,9 +209,22 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         bills: [...state.bills, newBill],
       };
     });
+    
+    const newState = get();
+    const assigned = newState.accessRecords.find(r => r.id === recordId)?.assignedSpotId;
+    if (!preAssigned && assigned === spotId) {
+      useAnalyticsStore.getState().trackEvent('access_assign', {
+        recordId,
+        spotId,
+        vehiclePlate: newState.accessRecords.find(r => r.id === recordId)?.vehiclePlate,
+      });
+    }
   },
 
   processAccessRecord: (recordId: string) => {
+    const preState = get();
+    const preRecord = preState.accessRecords.find(r => r.id === recordId);
+    
     set(state => ({
       accessRecords: state.accessRecords.map(r =>
         r.id === recordId ? { ...r, isProcessed: true } : r
@@ -201,11 +235,15 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     const allProcessed = state.accessRecords.every(r => r.isProcessed);
     if (allProcessed && state.phase === 'access_control') {
       get().addScore(100);
+      useAnalyticsStore.getState().trackEvent('task_complete', { task: 'access_control' });
       get().setPhase('billing');
     }
   },
 
   payBill: (billId: string) => {
+    const preState = get();
+    const preBill = preState.bills.find(b => b.id === billId);
+    
     set(state => {
       const bill = state.bills.find(b => b.id === billId);
       if (!bill || bill.isPaid) return state;
@@ -257,15 +295,31 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       };
     });
     
+    const newState = get();
+    const paidBill = newState.bills.find(b => b.id === billId);
+    if (!preBill?.isPaid && paidBill?.isPaid) {
+      useAnalyticsStore.getState().trackEvent('payment', {
+        billId,
+        spotId: paidBill.spotId,
+        vehiclePlate: paidBill.vehiclePlate,
+        totalFee: paidBill.totalFee,
+        hasException: paidBill.hasException,
+      });
+    }
+    
     const state = get();
     const allPaid = state.bills.every(b => b.isPaid);
     if (allPaid && state.phase === 'billing') {
       get().addScore(150);
+      useAnalyticsStore.getState().trackEvent('task_complete', { task: 'billing' });
       get().setPhase('patrol');
     }
   },
 
   visitPatrolPoint: (pointId: string) => {
+    const preState = get();
+    const prePoint = preState.patrolPoints.find(p => p.id === pointId);
+    
     set(state => {
       const point = state.patrolPoints.find(p => p.id === pointId);
       if (!point || point.isVisited) return state;
@@ -290,11 +344,23 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       };
     });
     
+    const newState = get();
+    const newPoint = newState.patrolPoints.find(p => p.id === pointId);
+    if (!prePoint?.isVisited && newPoint?.isVisited) {
+      useAnalyticsStore.getState().trackEvent('patrol_visit', {
+        pointId,
+        name: newPoint.name,
+        order: newPoint.order,
+      });
+    }
+    
     const state = get();
     const allVisited = state.patrolPoints.every(p => p.isVisited);
     if (allVisited && state.phase === 'patrol') {
       get().addScore(200);
+      useAnalyticsStore.getState().trackEvent('task_complete', { task: 'patrol' });
       get().setPhase('settlement');
+      set({ settlementReady: true });
     }
   },
 
@@ -420,4 +486,152 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
 
   setScore: (score: number) => set({ score }),
   addScore: (points: number) => set(state => ({ score: state.score + points })),
+
+  useItem: (itemId: string): boolean => {
+    const state = get();
+    const cooldown = state.itemCooldowns[itemId];
+    const lastUsed = state.itemUsedAt[itemId];
+    const now = state.gameTime;
+    
+    if (!cooldown || now - lastUsed < cooldown) {
+      return false;
+    }
+
+    const item = ITEMS.find(i => i.id === itemId);
+    if (!item) return false;
+
+    set(state => ({
+      itemUsedAt: { ...state.itemUsedAt, [itemId]: now },
+    }));
+
+    switch (item.effect) {
+      case 'show_hint': {
+        let hint = '';
+        if (state.phase === 'access_control') {
+          const unprocessed = state.accessRecords.find(r => !r.isProcessed && !r.assignedSpotId);
+          const emptySpot = state.spots.find(s => s.status === 'empty');
+          hint = unprocessed && emptySpot
+            ? `将 ${unprocessed.vehiclePlate} 分配到 ${emptySpot.number} 号车位`
+            : '所有门禁记录已处理';
+        } else if (state.phase === 'billing') {
+          const unpaid = state.bills.find(b => !b.isPaid);
+          hint = unpaid
+            ? `车位 ${unpaid.spotId.replace('spot-', '')} 有未支付账单 ¥${unpaid.totalFee}`
+            : '所有账单已支付';
+        } else if (state.phase === 'patrol') {
+          const next = state.patrolPoints.filter(p => !p.isVisited).sort((a, b) => a.order - b.order)[0];
+          hint = next ? `下一个巡检点: ${next.name}` : '巡检已完成';
+        } else if (state.phase === 'emergency') {
+          hint = state.activeEmergency
+            ? `前往 ${state.activeEmergency.location} 处理 ${state.activeEmergency.description}`
+            : '无活跃突发事件';
+        } else if (state.phase === 'settlement') {
+          hint = '点击确认结算完成游戏';
+        }
+        set({ activeHint: hint });
+        setTimeout(() => set({ activeHint: null }), 5000);
+        break;
+      }
+      case 'skip_task': {
+        if (state.phase === 'access_control') {
+          const unprocessed = state.accessRecords.find(r => !r.isProcessed);
+          if (unprocessed) {
+            set(state => ({
+              accessRecords: state.accessRecords.map(r =>
+                r.id === unprocessed.id ? { ...r, isProcessed: true } : r
+              ),
+            }));
+            const allProcessed = get().accessRecords.every(r => r.isProcessed);
+            if (allProcessed && state.phase === 'access_control') {
+              get().addScore(50);
+              get().setPhase('billing');
+            }
+          }
+        } else if (state.phase === 'billing') {
+          const unpaid = state.bills.find(b => !b.isPaid);
+          if (unpaid) {
+            get().payBill(unpaid.id);
+          }
+        } else if (state.phase === 'patrol') {
+          const next = state.patrolPoints.filter(p => !p.isVisited).sort((a, b) => a.order - b.order)[0];
+          if (next) {
+            get().visitPatrolPoint(next.id);
+          }
+        }
+        set(state => ({ accuracy: Math.max(0, state.accuracy - 10) }));
+        break;
+      }
+      case 'freeze_time':
+        set({ isPaused: true });
+        setTimeout(() => {
+          const s = get();
+          if (s.phase !== 'ended') set({ isPaused: false });
+        }, 10000);
+        break;
+      case 'repair_device':
+        if (state.activeEmergency) {
+          get().resolveEmergency(state.activeEmergency.id);
+        }
+        break;
+      case 'add_discount':
+        break;
+    }
+
+    useAnalyticsStore.getState().trackEvent('item_use', {
+      itemId,
+      itemName: item.name,
+      effect: item.effect,
+    });
+
+    return true;
+  },
+
+  applyDiscountToBill: (billId: string): boolean => {
+    const state = get();
+    const bill = state.bills.find(b => b.id === billId);
+    if (!bill || bill.isPaid) return false;
+
+    const discountItem = ITEMS.find(i => i.effect === 'add_discount');
+    if (!discountItem) return false;
+
+    const lastUsed = state.itemUsedAt[discountItem.id];
+    const cooldown = state.itemCooldowns[discountItem.id];
+    if (state.gameTime - lastUsed < cooldown) return false;
+
+    set(state => ({
+      itemUsedAt: { ...state.itemUsedAt, [discountItem.id]: state.gameTime },
+      bills: state.bills.map(b =>
+        b.id === billId
+          ? { ...b, discount: b.discount + b.baseFee * 0.2, totalFee: Math.max(0, b.totalFee - b.baseFee * 0.2) }
+          : b
+      ),
+    }));
+
+    useAnalyticsStore.getState().trackEvent('item_use', {
+      itemId: discountItem.id,
+      itemName: discountItem.name,
+      effect: discountItem.effect,
+      targetBillId: billId,
+    });
+
+    return true;
+  },
+
+  getItemCooldown: (itemId: string): number => {
+    const state = get();
+    const cooldown = state.itemCooldowns[itemId] || 0;
+    const lastUsed = state.itemUsedAt[itemId] || -Infinity;
+    const now = state.gameTime;
+    const remaining = cooldown - (now - lastUsed);
+    return Math.max(0, remaining);
+  },
+
+  getAvailableItems: (): string[] => {
+    const state = get();
+    return ITEMS.filter(item => {
+      const remaining = state.itemCooldowns[item.id] || 0;
+      const lastUsed = state.itemUsedAt[item.id] || -Infinity;
+      return state.gameTime - lastUsed >= remaining;
+    }).map(i => i.id);
+  },
 }));

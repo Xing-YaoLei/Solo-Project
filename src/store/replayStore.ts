@@ -3,6 +3,7 @@ import type { ReplayData, ReplayFrame, LagPoint, GameState } from '@/types';
 import { loadReplays, saveReplay, getReplayById, deleteReplay } from '@/utils/storage';
 import { generateId } from '@/utils/math';
 import { GAME_CONFIG } from '@/config/difficulty';
+import { useGameStore } from './gameStore';
 
 interface ReplayState {
   replays: ReplayData[];
@@ -122,9 +123,11 @@ export const useReplayStore = create<ReplayState & ReplayActions>((set, get) => 
           duration: lagDuration,
           reason,
           description,
-          position: get().currentReplay
-            ? get().currentReplay.frames[get().currentFrameIndex]?.playerPosition || [0, 0, 0]
-            : [0, 0, 0],
+          position: recordingSession
+            ? [...useGameStore.getState().playerPosition] as [number, number, number]
+            : state.currentReplay
+              ? (state.currentReplay.frames.find(f => f.timestamp >= (state.pendingLagStart! - state.currentReplay!.startTime))?.playerPosition || [0, 0, 0])
+              : [0, 0, 0],
         };
         
         if (recordingSession) {
@@ -209,8 +212,9 @@ export const useReplayStore = create<ReplayState & ReplayActions>((set, get) => 
     if (!state.currentReplay || lagPointIndex >= state.lagPoints.length) return;
     
     const lagPoint = state.lagPoints[lagPointIndex];
+    const relativeTimestamp = lagPoint.timestamp - state.currentReplay.startTime;
     const frameIndex = state.currentReplay.frames.findIndex(
-      f => f.timestamp >= lagPoint.timestamp - recordingSession!.startTime
+      f => f.timestamp >= relativeTimestamp
     );
     
     if (frameIndex !== -1) {

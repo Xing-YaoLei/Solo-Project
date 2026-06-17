@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Clock, Tag, Percent, AlertCircle } from 'lucide-react';
+import { X, Clock, Tag, Percent, AlertCircle, Ticket } from 'lucide-react';
 import { useBilling } from '@/hooks/useBilling';
+import { useGameStore } from '@/store/gameStore';
 import { formatCurrency, formatTime } from '@/utils/math';
 
 interface BillPanelProps {
@@ -10,6 +11,8 @@ interface BillPanelProps {
 
 export const BillPanel = ({ billId, onClose }: BillPanelProps) => {
   const { getBillSummary, processPayment, phase } = useBilling();
+  const applyDiscountToBill = useGameStore(state => state.applyDiscountToBill);
+  const getItemCooldown = useGameStore(state => state.getItemCooldown);
   
   const summary = getBillSummary(billId);
   
@@ -25,6 +28,12 @@ export const BillPanel = ({ billId, onClose }: BillPanelProps) => {
       }, 500);
     }
   };
+
+  const handleApplyDiscount = () => {
+    applyDiscountToBill(summary.id);
+  };
+
+  const discountCooldown = getItemCooldown('discount');
 
   return (
     <AnimatePresence>
@@ -115,22 +124,37 @@ export const BillPanel = ({ billId, onClose }: BillPanelProps) => {
                 <span className="text-green-400 font-medium">✓ 已支付</span>
               </motion.div>
             ) : (
-              <motion.button
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={handlePayment}
-                disabled={phase !== 'billing' && phase !== 'settlement'}
-                className={`w-full py-4 rounded-xl font-bold text-lg transition-all ${
-                  phase === 'billing' || phase === 'settlement'
-                    ? 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white hover:from-yellow-400 hover:to-orange-400 shadow-lg shadow-orange-500/25'
-                    : 'bg-slate-600 text-slate-400 cursor-not-allowed'
-                }`}
-              >
-                确认支付 {summary.formattedTotal}
-              </motion.button>
+              <div className="space-y-3">
+                {!summary.hasException && discountCooldown <= 0 && (phase === 'billing' || phase === 'settlement') && (
+                  <motion.button
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleApplyDiscount}
+                    className="w-full py-2.5 rounded-xl font-medium text-sm bg-purple-500/20 border border-purple-500/50 text-purple-400 hover:bg-purple-500/30 transition-all flex items-center justify-center gap-2"
+                  >
+                    <Ticket size={16} />
+                    使用优惠券 (20%折扣)
+                  </motion.button>
+                )}
+                <motion.button
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handlePayment}
+                  disabled={phase !== 'billing' && phase !== 'settlement'}
+                  className={`w-full py-4 rounded-xl font-bold text-lg transition-all ${
+                    phase === 'billing' || phase === 'settlement'
+                      ? 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white hover:from-yellow-400 hover:to-orange-400 shadow-lg shadow-orange-500/25'
+                      : 'bg-slate-600 text-slate-400 cursor-not-allowed'
+                  }`}
+                >
+                  确认支付 {summary.formattedTotal}
+                </motion.button>
+              </div>
             )}
           </AnimatePresence>
 
