@@ -33,6 +33,7 @@ export interface Bed {
   height: number;
   occupant: ElderProfile | null;
   requiredCareLevel: number;
+  requiredMedicines: string[];
 }
 
 export interface LevelConfig {
@@ -248,6 +249,20 @@ export class DataManager {
         const requiredCareLevel = config.minCareLevel + 
           Math.floor(Math.random() * (config.maxCareLevel - config.minCareLevel + 1));
         
+        const medCount = Math.min(config.medicineComplexity + Math.floor(Math.random() * 2), GameConfig.MEDICINES.length);
+        const requiredMedicines: string[] = [];
+        const usedMeds = new Set<string>();
+        for (let m = 0; m < medCount; m++) {
+          let medIdx: number;
+          let med: typeof GameConfig.MEDICINES[0];
+          do {
+            medIdx = Math.floor(Math.random() * GameConfig.MEDICINES.length);
+            med = GameConfig.MEDICINES[medIdx];
+          } while (usedMeds.has(med.id));
+          usedMeds.add(med.id);
+          requiredMedicines.push(med.id);
+        }
+        
         beds.push({
           id: bedIndex,
           row,
@@ -257,7 +272,8 @@ export class DataManager {
           width: bedWidth,
           height: bedHeight,
           occupant: null,
-          requiredCareLevel
+          requiredCareLevel,
+          requiredMedicines
         });
         bedIndex++;
       }

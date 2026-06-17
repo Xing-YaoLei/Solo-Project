@@ -169,12 +169,17 @@ export class UIHelper {
       track.fillStyle(value ? GameConfig.COLORS.success : 0x555555, 1);
       track.fillRoundedRect(-toggleWidth / 2, -toggleHeight / 2, toggleWidth, toggleHeight, toggleHeight / 2);
       
-      scene.tweens.add({
-        targets: knob,
-        x: value ? toggleWidth / 2 - knobRadius - 2 : -toggleWidth / 2 + knobRadius + 2,
-        duration: 200,
-        ease: 'Cubic.easeOut'
-      });
+      const multiplier = SettingsManager.getInstance().getAnimationMultiplier();
+      if (multiplier > 0) {
+        scene.tweens.add({
+          targets: knob,
+          x: value ? toggleWidth / 2 - knobRadius - 2 : -toggleWidth / 2 + knobRadius + 2,
+          duration: 200 * multiplier,
+          ease: 'Cubic.easeOut'
+        });
+      } else {
+        knob.x = value ? toggleWidth / 2 - knobRadius - 2 : -toggleWidth / 2 + knobRadius + 2;
+      }
     };
 
     updateToggle(initialValue);

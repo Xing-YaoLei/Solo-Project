@@ -144,9 +144,9 @@ export class ResultScene extends Phaser.Scene {
   }
 
   private renderStatCards(centerX: number, centerY: number): void {
-    const cardWidth = 180;
+    const cardWidth = 150;
     const cardHeight = 100;
-    const gap = 25;
+    const gap = 18;
 
     const stats = [
       {
@@ -156,9 +156,9 @@ export class ResultScene extends Phaser.Scene {
         color: GameConfig.COLORS.primary
       },
       {
-        label: '🎯 准确率',
-        value: `${Math.round(this.result.accuracy * 100)}%`,
-        subtext: `${this.result.correctCount}对/${this.result.errorCount}错`,
+        label: '❌ 错误次数',
+        value: this.result.errorCount.toString(),
+        subtext: this.result.errorCount === 0 ? '完美通关！' : '下次加油',
         color: this.result.errorCount === 0 ? GameConfig.COLORS.success : GameConfig.COLORS.error
       },
       {
@@ -166,11 +166,18 @@ export class ResultScene extends Phaser.Scene {
         value: this.result.maxStreak.toString(),
         subtext: `连击加分 ${this.result.streakScore}`,
         color: GameConfig.COLORS.warning
+      },
+      {
+        label: '🎯 准确率',
+        value: `${Math.round(this.result.accuracy * 100)}%`,
+        subtext: `${this.result.correctCount}对`,
+        color: this.result.errorCount === 0 ? GameConfig.COLORS.success : GameConfig.COLORS.warning
       }
     ];
 
     stats.forEach((stat, i) => {
-      const x = centerX - (cardWidth + gap) + i * (cardWidth + gap);
+      const totalWidth = stats.length * (cardWidth + gap) - gap;
+      const x = centerX - totalWidth / 2 + cardWidth / 2 + i * (cardWidth + gap);
       const container = this.add.container(x, centerY);
 
       const bg = this.add.graphics();

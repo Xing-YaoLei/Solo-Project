@@ -187,13 +187,22 @@ export class GameScene extends Phaser.Scene {
     });
     levelText.setOrigin(0.5);
 
+    const medIcons: Phaser.GameObjects.Text[] = [];
+    bed.requiredMedicines.slice(0, 3).forEach((medId, i) => {
+      const med = GameConfig.MEDICINES.find((m: { id: string; name: string; icon: string; color: number }) => m.id === medId);
+      const icon = this.add.text(-bed.width / 2 + 12 + i * 22, -bed.height / 2 + 42, med?.icon ?? '💊', {
+        fontSize: '18px'
+      });
+      medIcons.push(icon);
+    });
+
     const bedLabel = this.add.text(0, bed.height / 2 - 15, `${index + 1}号床`, {
       fontSize: '14px',
       color: '#cccccc'
     });
     bedLabel.setOrigin(0.5);
 
-    container.add([bg, levelBadge, levelText, bedLabel]);
+    container.add([bg, levelBadge, levelText, ...medIcons, bedLabel]);
     container.setName(`bed_${index}`);
 
     container.setInteractive(new Phaser.Geom.Rectangle(0, 0, bed.width, bed.height), Phaser.Geom.Rectangle.Contains);
@@ -377,13 +386,24 @@ export class GameScene extends Phaser.Scene {
 
   private createHint(): void {
     const hintText = this.add.text(GameConfig.GAME_WIDTH / 2, GameConfig.GAME_HEIGHT - 120,
-      '🖱 点击老人查看档案 → 点击匹配床位入住  |  ⌨️ 方向键选择 空格确认 1-9快捷选床',
+      '需同时匹配护理等级 + 用药配置  |  🖱 点击老人查看档案 → 点击匹配床位入住  |  ⌨️ 方向键选择 空格确认',
       {
-        fontSize: '14px',
+        fontSize: '13px',
         color: '#666666'
       }
     );
     hintText.setOrigin(0.5);
+  }
+
+  private checkMedicineMatch(elder: ElderProfile, bed: Bed): boolean {
+    const elderMedIds = new Set(elder.medicines.map(m => m.id));
+    const bedMedIds = new Set(bed.requiredMedicines);
+    for (const medId of elderMedIds) {
+      if (!bedMedIds.has(medId)) {
+        return false;
+      }
+    }
+    return true;
   }
 
   private handleElderSelect(index: number): void {
@@ -426,7 +446,9 @@ export class GameScene extends Phaser.Scene {
   private processAssignment(elderCard: ElderCard, bedSlot: BedSlot): void {
     const elder = elderCard.elder;
     const bed = bedSlot.bed;
-    const isCorrect = elder.careLevel === bed.requiredCareLevel;
+    const careLevelMatch = elder.careLevel === bed.requiredCareLevel;
+    const medicineMatch = this.checkMedicineMatch(elder, bed);
+    const isCorrect = careLevelMatch && medicineMatch;
 
     const stat = this.careLevelStats.find(s => s.level === bed.requiredCareLevel);
     if (stat) stat.total++;
@@ -463,7 +485,15 @@ export class GameScene extends Phaser.Scene {
 
       UIHelper.shake(this, elderCard.container);
 
-      this.showFeedback(`护理等级不匹配！需要${CARE_LEVELS.find((l: { id: number; name: string; color: number; description: string }) => l.id === bed.requiredCareLevel)?.name}级护理`, false);
+      let errorMsg = '';
+      if (!careLevelMatch && !medicineMatch) {
+        errorMsg = '护理等级和用药都不匹配！';
+      } else if (!careLevelMatch) {
+        errorMsg = `护理等级不匹配！需要${CARE_LEVELS.find((l: { id: number; name: string; color: number; description: string }) => l.id === bed.requiredCareLevel)?.name}级护理`;
+      } else {
+        errorMsg = '用药配置不匹配！床位缺少所需药物';
+      }
+      this.showFeedback(errorMsg, false);
     }
 
     this.hideElderDetail();
@@ -775,23 +805,32 @@ export class GameScene extends Phaser.Scene {
 
   private handleKeyboardNavigation(key: string): void {
     if (this.keyboardMode === 'elders') {
-      const maxIndex = this.elderCards.filter(c => c.container.active).length - 1;
-      if (this.keyboardSelectedIndex < 0) this.keyboardSelectedIndex = 0;
+      const availableElders = this.elderCards.filter(c => c.container.input && c.container.input.enabled);
+      if (availableElders.length === 0) return;
+
+      let currentIdxInAvailable = availableElders.findIndex(c => c === this.elderCards[this.keyboardSelectedIndex]);
+      if (currentIdxInAvailable === -1) currentIdxInAvailable = 0;
+
+      const cols = 2;
+      let newIdxInAvailable = currentIdxInAvailable;
 
       switch (key) {
         case 'ArrowRight':
-          this.keyboardSelectedIndex = Math.min(this.keyboardSelectedIndex + 1, maxIndex);
+          newIdxInAvailable = Math.min(currentIdxInAvailable + 1, availableElders.length - 1);
           break;
         case 'ArrowLeft':
-          this.keyboardSelectedIndex = Math.max(this.keyboardSelectedIndex - 1, 0);
+          newIdxInAvailable = Math.max(currentIdxInAvailable - 1, 0);
           break;
         case 'ArrowDown':
-          this.keyboardSelectedIndex = Math.min(this.keyboardSelectedIndex + 2, maxIndex);
+          newIdxInAvailable = Math.min(currentIdxInAvailable + cols, availableElders.length - 1);
           break;
         case 'ArrowUp':
-          this.keyboardSelectedIndex = Math.max(this.keyboardSelectedIndex - 2, 0);
+          newIdxInAvailable = Math.max(currentIdxInAvailable - cols, 0);
           break;
       }
+
+      const selectedCard = availableElders[newIdxInAvailable];
+      this.keyboardSelectedIndex = this.elderCards.indexOf(selectedCard);
     } else {
       const maxIndex = this.bedSlots.length - 1;
       if (this.keyboardSelectedIndex < 0) this.keyboardSelectedIndex = 0;
@@ -819,8 +858,14 @@ export class GameScene extends Phaser.Scene {
   private updateKeyboardSelection(): void {
     this.elderCards.forEach((card, i) => {
       const bg = card.container.list[0] as Phaser.GameObjects.Graphics;
-      const isSelected = this.keyboardMode === 'elders' && i === this.keyboardSelectedIndex && card.container.active;
+      const isAvailable = card.container.input && card.container.input.enabled;
+      const isSelected = this.keyboardMode === 'elders' && i === this.keyboardSelectedIndex && isAvailable;
       this.updateElderCardVisual(bg, card.container.width, card.container.height, isSelected || card.isSelected);
+      if (!isAvailable) {
+        card.container.setAlpha(0.5);
+      } else {
+        card.container.setAlpha(1);
+      }
     });
 
     this.bedSlots.forEach((slot, i) => {
@@ -840,10 +885,12 @@ export class GameScene extends Phaser.Scene {
 
   private handleKeyboardConfirm(): void {
     if (this.keyboardMode === 'elders') {
-      const activeCards = this.elderCards.filter(c => c.container.active);
-      if (this.keyboardSelectedIndex >= 0 && this.keyboardSelectedIndex < activeCards.length) {
-        const actualIndex = this.elderCards.indexOf(activeCards[this.keyboardSelectedIndex]);
-        this.handleElderSelect(actualIndex);
+      const availableCards = this.elderCards.filter(c => c.container.input && c.container.input.enabled);
+      if (availableCards.length === 0) return;
+      
+      const card = this.elderCards[this.keyboardSelectedIndex];
+      if (card && card.container.input && card.container.input.enabled) {
+        this.handleElderSelect(this.keyboardSelectedIndex);
       }
     } else {
       if (this.keyboardSelectedIndex >= 0 && this.keyboardSelectedIndex < this.bedSlots.length) {

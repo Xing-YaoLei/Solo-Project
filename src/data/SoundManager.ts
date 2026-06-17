@@ -18,32 +18,50 @@ export class SoundManager {
   }
 
   public playSuccess(): void {
-    if (!SettingsManager.getInstance().isSoundEnabled()) return;
-    SettingsManager.getInstance().vibrate(50);
-    this.playBeep(880, 0.1, 'sine', 0.3);
+    const settings = SettingsManager.getInstance();
+    if (settings.isSoundEnabled()) {
+      this.playBeep(880, 0.1, 'sine', 0.3);
+    }
+    if (settings.isVibrationEnabled()) {
+      settings.vibrate(50);
+    }
   }
 
   public playError(): void {
-    if (!SettingsManager.getInstance().isSoundEnabled()) return;
-    SettingsManager.getInstance().vibrate([100, 50, 100]);
-    this.playBeep(220, 0.2, 'square', 0.2);
+    const settings = SettingsManager.getInstance();
+    if (settings.isSoundEnabled()) {
+      this.playBeep(220, 0.2, 'square', 0.2);
+    }
+    if (settings.isVibrationEnabled()) {
+      settings.vibrate([100, 50, 100]);
+    }
   }
 
   public playClick(): void {
-    if (!SettingsManager.getInstance().isSoundEnabled()) return;
-    this.playBeep(600, 0.05, 'sine', 0.15);
+    const settings = SettingsManager.getInstance();
+    if (settings.isSoundEnabled()) {
+      this.playBeep(600, 0.05, 'sine', 0.15);
+    }
   }
 
   public playLevelComplete(): void {
-    if (!SettingsManager.getInstance().isSoundEnabled()) return;
-    SettingsManager.getInstance().vibrate([100, 100, 100, 100, 200]);
-    this.playSequence([523, 659, 784, 1047], 0.15, 'sine', 0.3);
+    const settings = SettingsManager.getInstance();
+    if (settings.isSoundEnabled()) {
+      this.playSequence([523, 659, 784, 1047], 0.15, 'sine', 0.3);
+    }
+    if (settings.isVibrationEnabled()) {
+      settings.vibrate([100, 100, 100, 100, 200]);
+    }
   }
 
   public playGameOver(): void {
-    if (!SettingsManager.getInstance().isSoundEnabled()) return;
-    SettingsManager.getInstance().vibrate([200, 100, 200, 100, 300]);
-    this.playSequence([392, 349, 330, 262], 0.2, 'sine', 0.3);
+    const settings = SettingsManager.getInstance();
+    if (settings.isSoundEnabled()) {
+      this.playSequence([392, 349, 330, 262], 0.2, 'sine', 0.3);
+    }
+    if (settings.isVibrationEnabled()) {
+      settings.vibrate([200, 100, 200, 100, 300]);
+    }
   }
 
   public playTick(): void {
