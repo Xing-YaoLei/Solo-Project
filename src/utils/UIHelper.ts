@@ -57,9 +57,11 @@ export class UIHelper {
         scene.tweens.add({
           targets: container,
           scale: 1.05 * multiplier + (1 - multiplier),
-          duration: 150,
+          duration: 150 * multiplier,
           ease: 'Power2'
         });
+      } else {
+        container.scale = originalScale;
       }
     });
 
@@ -69,12 +71,17 @@ export class UIHelper {
       bg.fillRoundedRect(-width / 2, -height / 2, width, height, radius);
       scene.input.setDefaultCursor('default');
       
-      scene.tweens.add({
-        targets: container,
-        scale: originalScale,
-        duration: 150,
-        ease: 'Power2'
-      });
+      const multiplier = SettingsManager.getInstance().getAnimationMultiplier();
+      if (multiplier > 0) {
+        scene.tweens.add({
+          targets: container,
+          scale: originalScale,
+          duration: 150 * multiplier,
+          ease: 'Power2'
+        });
+      } else {
+        container.scale = originalScale;
+      }
     });
 
     container.on('pointerdown', () => {
@@ -84,13 +91,13 @@ export class UIHelper {
         scene.tweens.add({
           targets: container,
           scale: 0.95,
-          duration: 100,
+          duration: 100 * multiplier,
           ease: 'Power2',
           onComplete: () => {
             scene.tweens.add({
               targets: container,
               scale: originalScale,
-              duration: 100,
+              duration: 100 * multiplier,
               ease: 'Power2'
             });
           }

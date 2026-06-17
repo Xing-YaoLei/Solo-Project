@@ -68,6 +68,11 @@ export interface GameResult {
   care达标: { level: number; correct: number; total: number }[];
 }
 
+export interface SchedulingData {
+  elders: ElderProfile[];
+  beds: Bed[];
+}
+
 export class DataManager {
   private static instance: DataManager;
   private levels: LevelConfig[] = [];
@@ -169,72 +174,113 @@ export class DataManager {
     }
   }
 
+  private generateRandomMedicines(complexity: number): Medicine[] {
+    const medicines: Medicine[] = [];
+    const medCount = Math.min(complexity + Math.floor(Math.random() * 2), GameConfig.MEDICINES.length);
+    const usedMeds = new Set<string>();
+    
+    for (let m = 0; m < medCount; m++) {
+      let medIdx: number;
+      let med: typeof GameConfig.MEDICINES[0];
+      do {
+        medIdx = Math.floor(Math.random() * GameConfig.MEDICINES.length);
+        med = GameConfig.MEDICINES[medIdx];
+      } while (usedMeds.has(med.id));
+      usedMeds.add(med.id);
+
+      medicines.push({
+        ...med,
+        dosage: ['每日1次', '每日2次', '每日3次', '饭前服用', '饭后服用'][Math.floor(Math.random() * 5)],
+        frequency: ['早', '中', '晚', '早晚', '早中晚'][Math.floor(Math.random() * 5)]
+      });
+    }
+    return medicines;
+  }
+
+  private generateMedicinesFromIds(medIds: string[]): Medicine[] {
+    return medIds.map(id => {
+      const med = GameConfig.MEDICINES.find((m: { id: string; name: string; icon: string; color: number }) => m.id === id);
+      return {
+        ...med!,
+        dosage: ['每日1次', '每日2次', '每日3次', '饭前服用', '饭后服用'][Math.floor(Math.random() * 5)],
+        frequency: ['早', '中', '晚', '早晚', '早中晚'][Math.floor(Math.random() * 5)]
+      };
+    });
+  }
+
+  private generateRandomElder(index: number, config: LevelConfig, usedNames: Set<string>, forcedCareLevel?: number, forcedMedicineIds?: string[]): ElderProfile {
+    let name: string;
+    do {
+      const nameIdx = Math.floor(Math.random() * GameConfig.ELDERLY_NAMES.length);
+      name = GameConfig.ELDERLY_NAMES[nameIdx];
+    } while (usedNames.has(name));
+    usedNames.add(name);
+
+    const careLevel = forcedCareLevel ?? (config.minCareLevel + 
+      Math.floor(Math.random() * (config.maxCareLevel - config.minCareLevel + 1)));
+
+    const medicines = forcedMedicineIds 
+      ? this.generateMedicinesFromIds(forcedMedicineIds)
+      : this.generateRandomMedicines(config.medicineComplexity);
+
+    const conditionCount = Math.floor(Math.random() * 3) + 1;
+    const conditions: string[] = [];
+    const usedConditions = new Set<string>();
+    for (let c = 0; c < conditionCount; c++) {
+      let cond: string;
+      do {
+        cond = GameConfig.CONDITIONS[Math.floor(Math.random() * GameConfig.CONDITIONS.length)];
+      } while (usedConditions.has(cond));
+      usedConditions.add(cond);
+      conditions.push(cond);
+    }
+
+    const avatar = GameConfig.ELDERLY_AVATARS[Math.floor(Math.random() * GameConfig.ELDERLY_AVATARS.length)];
+    const isFemale = name.includes('奶奶');
+
+    return {
+      id: `elder_${Date.now()}_${index}`,
+      name,
+      avatar,
+      age: 65 + Math.floor(Math.random() * 30),
+      gender: isFemale ? 'female' : 'male',
+      careLevel,
+      conditions,
+      medicines,
+      roomType: ['single', 'double', 'ward'][Math.floor(Math.random() * 3)] as 'single' | 'double' | 'ward',
+      dietaryRestrictions: ['低盐', '低糖', '低脂', '流质', '普食'].slice(0, Math.floor(Math.random() * 3)),
+      notes: careLevel >= 3 ? '需要特别关注' : '情况稳定'
+    };
+  }
+
   public generateElders(config: LevelConfig): ElderProfile[] {
     const elders: ElderProfile[] = [];
     const usedNames = new Set<string>();
-
     for (let i = 0; i < config.elderCount; i++) {
-      let name: string;
-      do {
-        const nameIdx = Math.floor(Math.random() * GameConfig.ELDERLY_NAMES.length);
-        name = GameConfig.ELDERLY_NAMES[nameIdx];
-      } while (usedNames.has(name));
-      usedNames.add(name);
+      elders.push(this.generateRandomElder(i, config, usedNames));
+    }
+    return elders;
+  }
 
-      const careLevel = config.minCareLevel + 
-        Math.floor(Math.random() * (config.maxCareLevel - config.minCareLevel + 1));
+  public generateSchedulingData(config: LevelConfig, bedStartX: number, bedStartY: number, bedWidth: number, bedHeight: number): SchedulingData {
+    const beds = this.generateBeds(config, bedStartX, bedStartY, bedWidth, bedHeight);
+    const elders: ElderProfile[] = [];
+    const usedNames = new Set<string>();
 
-      const medicines: Medicine[] = [];
-      const medCount = Math.min(config.medicineComplexity + Math.floor(Math.random() * 2), GameConfig.MEDICINES.length);
-      const usedMeds = new Set<string>();
-      
-      for (let m = 0; m < medCount; m++) {
-        let medIdx: number;
-        let med: typeof GameConfig.MEDICINES[0];
-        do {
-          medIdx = Math.floor(Math.random() * GameConfig.MEDICINES.length);
-          med = GameConfig.MEDICINES[medIdx];
-        } while (usedMeds.has(med.id));
-        usedMeds.add(med.id);
+    const guaranteedCount = Math.min(config.targetCorrect, config.bedCount, config.elderCount);
+    const shuffledBeds = [...beds].sort(() => Math.random() - 0.5);
 
-        medicines.push({
-          ...med,
-          dosage: ['每日1次', '每日2次', '每日3次', '饭前服用', '饭后服用'][Math.floor(Math.random() * 5)],
-          frequency: ['早', '中', '晚', '早晚', '早中晚'][Math.floor(Math.random() * 5)]
-        });
-      }
-
-      const conditionCount = Math.floor(Math.random() * 3) + 1;
-      const conditions: string[] = [];
-      const usedConditions = new Set<string>();
-      for (let c = 0; c < conditionCount; c++) {
-        let cond: string;
-        do {
-          cond = GameConfig.CONDITIONS[Math.floor(Math.random() * GameConfig.CONDITIONS.length)];
-        } while (usedConditions.has(cond));
-        usedConditions.add(cond);
-        conditions.push(cond);
-      }
-
-      const avatar = GameConfig.ELDERLY_AVATARS[Math.floor(Math.random() * GameConfig.ELDERLY_AVATARS.length)];
-      const isFemale = name.includes('奶奶');
-
-      elders.push({
-        id: `elder_${Date.now()}_${i}`,
-        name,
-        avatar,
-        age: 65 + Math.floor(Math.random() * 30),
-        gender: isFemale ? 'female' : 'male',
-        careLevel,
-        conditions,
-        medicines,
-        roomType: ['single', 'double', 'ward'][Math.floor(Math.random() * 3)] as 'single' | 'double' | 'ward',
-        dietaryRestrictions: ['低盐', '低糖', '低脂', '流质', '普食'].slice(0, Math.floor(Math.random() * 3)),
-        notes: careLevel >= 3 ? '需要特别关注' : '情况稳定'
-      });
+    for (let i = 0; i < guaranteedCount; i++) {
+      const bed = shuffledBeds[i];
+      const elderMedIds = bed.requiredMedicines.slice(0, Math.max(1, Math.floor(bed.requiredMedicines.length * 0.7)));
+      elders.push(this.generateRandomElder(i, config, usedNames, bed.requiredCareLevel, elderMedIds));
     }
 
-    return elders;
+    for (let i = guaranteedCount; i < config.elderCount; i++) {
+      elders.push(this.generateRandomElder(i, config, usedNames));
+    }
+
+    return { elders, beds };
   }
 
   public generateBeds(config: LevelConfig, startX: number, startY: number, bedWidth: number, bedHeight: number): Bed[] {

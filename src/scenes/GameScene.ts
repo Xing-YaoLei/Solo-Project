@@ -144,10 +144,11 @@ export class GameScene extends Phaser.Scene {
   }
 
   private createGameArea(): void {
-    this.elders = DataManager.getInstance().generateElders(this.level);
     const bedWidth = 120;
     const bedHeight = 100;
-    this.beds = DataManager.getInstance().generateBeds(this.level, 540, 160, bedWidth, bedHeight);
+    const schedulingData = DataManager.getInstance().generateSchedulingData(this.level, 540, 160, bedWidth, bedHeight);
+    this.elders = schedulingData.elders;
+    this.beds = schedulingData.beds;
 
     this.createBedArea();
     this.createElderQueue();

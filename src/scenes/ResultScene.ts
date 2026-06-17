@@ -256,15 +256,18 @@ export class ResultScene extends Phaser.Scene {
   }
 
   private createParticles(): void {
+    const multiplier = SettingsManager.getInstance().getAnimationMultiplier();
+    if (multiplier === 0) return;
+
     const color = this.result.completed ? GameConfig.COLORS.success : GameConfig.COLORS.error;
     this.add.particles(0, 0, undefined, {
-      speed: { min: 30, max: 80 },
+      speed: { min: 30 * multiplier, max: 80 * multiplier },
       angle: { min: 0, max: 360 },
       scale: { start: 0.4, end: 0 },
       alpha: { start: 0.6, end: 0 },
       tint: color,
-      lifespan: 3000,
-      quantity: 1,
+      lifespan: 3000 / multiplier,
+      quantity: Math.max(1, Math.floor(1 * multiplier)),
       blendMode: 'ADD',
       bounds: { x: 0, y: 0, w: GameConfig.GAME_WIDTH, h: GameConfig.GAME_HEIGHT }
     });

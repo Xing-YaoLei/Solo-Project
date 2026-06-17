@@ -3,6 +3,7 @@ import { GameConfig } from '../config/GameConfig';
 import { UIHelper } from '../utils/UIHelper';
 import { DataManager, LevelConfig } from '../data/DataManager';
 import { SoundManager } from '../data/SoundManager';
+import { SettingsManager } from '../data/SettingsManager';
 
 export class LevelSelectScene extends Phaser.Scene {
 
@@ -124,22 +125,32 @@ export class LevelSelectScene extends Phaser.Scene {
       
       container.on('pointerover', () => {
         this.input.setDefaultCursor('pointer');
-        this.tweens.add({
-          targets: container,
-          scale: 1.03,
-          duration: 150,
-          ease: 'Power2'
-        });
+        const multiplier = SettingsManager.getInstance().getAnimationMultiplier();
+        if (multiplier > 0) {
+          this.tweens.add({
+            targets: container,
+            scale: 1 + 0.03 * multiplier,
+            duration: 150 * multiplier,
+            ease: 'Power2'
+          });
+        } else {
+          container.scale = 1;
+        }
       });
 
       container.on('pointerout', () => {
         this.input.setDefaultCursor('default');
-        this.tweens.add({
-          targets: container,
-          scale: 1,
-          duration: 150,
-          ease: 'Power2'
-        });
+        const multiplier = SettingsManager.getInstance().getAnimationMultiplier();
+        if (multiplier > 0) {
+          this.tweens.add({
+            targets: container,
+            scale: 1,
+            duration: 150 * multiplier,
+            ease: 'Power2'
+          });
+        } else {
+          container.scale = 1;
+        }
       });
 
       container.on('pointerdown', () => {

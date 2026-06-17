@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { GameConfig } from '../config/GameConfig';
 import { UIHelper } from '../utils/UIHelper';
 import { SoundManager } from '../data/SoundManager';
+import { SettingsManager } from '../data/SettingsManager';
 
 export class MenuScene extends Phaser.Scene {
   constructor() {
@@ -97,14 +98,17 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private addAnimatedBackground(): void {
+    const multiplier = SettingsManager.getInstance().getAnimationMultiplier();
+    if (multiplier === 0) return;
+
     this.add.particles(0, 0, undefined, {
-      speed: { min: 20, max: 40 },
+      speed: { min: 20 * multiplier, max: 40 * multiplier },
       angle: { min: 0, max: 360 },
       scale: { start: 0.3, end: 0 },
       alpha: { start: 0.5, end: 0 },
       tint: [GameConfig.COLORS.primary, GameConfig.COLORS.secondary],
-      lifespan: 4000,
-      quantity: 2,
+      lifespan: 4000 / multiplier,
+      quantity: Math.max(1, Math.floor(2 * multiplier)),
       blendMode: 'ADD',
       bounds: { x: 0, y: 0, w: GameConfig.GAME_WIDTH, h: GameConfig.GAME_HEIGHT }
     });
