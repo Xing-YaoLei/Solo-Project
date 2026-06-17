@@ -17,7 +17,7 @@ import type { WorkOrderResult, WorkOrder as WorkOrderType } from '@/types';
 const InspectionPage: React.FC = () => {
   const navigate = useNavigate();
   const gameContainerRef = useRef<HTMLDivElement>(null);
-  const { currentLevelId, setPhase, setInspectionRoute, addScore } = useGameStore();
+  const { currentLevelId, setPhase, setInspectionRoute, addScore, completeWorkOrder, incrementTimeoutCount } = useGameStore();
   
   const [isObserving, setIsObserving] = useState(true);
   const [observeTime, setObserveTime] = useState(0);
@@ -41,10 +41,12 @@ const InspectionPage: React.FC = () => {
     timeout: level?.workOrders.timeout || 30,
     enabled: level?.workOrders.enabled || false,
     onTimeout: (order) => {
+      incrementTimeoutCount();
       setCurrentOrder(order);
       setShowWorkOrder(true);
     },
     onComplete: (result: WorkOrderResult) => {
+      completeWorkOrder(result);
       setShowWorkOrder(false);
       const penalty = result.retried ? (level?.workOrders.retryPenalty || 0) : 0;
       if (result.isCorrect) {

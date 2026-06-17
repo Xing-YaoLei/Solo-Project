@@ -23,6 +23,8 @@ const ContractPage: React.FC = () => {
     setPhase,
     setContractDecision,
     addScore,
+    completeWorkOrder,
+    incrementTimeoutCount,
     contracts: { decisions },
   } = useGameStore();
 
@@ -48,10 +50,12 @@ const ContractPage: React.FC = () => {
     timeout: level?.workOrders.timeout || 30,
     enabled: level?.workOrders.enabled || false,
     onTimeout: (order) => {
+      incrementTimeoutCount();
       setCurrentOrder(order);
       setShowWorkOrder(true);
     },
     onComplete: (result: WorkOrderResult) => {
+      completeWorkOrder(result);
       setShowWorkOrder(false);
       const penalty = result.retried ? (level?.workOrders.retryPenalty || 0) : 0;
       if (result.isCorrect) {

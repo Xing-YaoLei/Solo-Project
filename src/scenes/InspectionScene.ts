@@ -36,7 +36,6 @@ export class InspectionScene extends Phaser.Scene {
   }
 
   preload() {
-    this.load.image('park-bg', 'assets/images/park-bg.png');
   }
 
   create() {
@@ -45,7 +44,11 @@ export class InspectionScene extends Phaser.Scene {
     this.matterEngine = Matter.Engine.create();
     this.matterEngine.gravity.y = 0;
 
-    this.add.rectangle(width / 2, height / 2, width, height, 0x1a3150);
+    const bg = this.add.image(width / 2, height / 2, 'park-bg');
+    const scaleX = width / 800;
+    const scaleY = height / 600;
+    const scale = Math.max(scaleX, scaleY);
+    bg.setScale(scale);
 
     this.createParkMap();
 

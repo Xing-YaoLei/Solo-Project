@@ -44,7 +44,7 @@ export function calculateContractScore(
 export function calculateMeterScore(
   readings: Record<string, number>,
   meters: MeterReadingType[],
-  tolerance: number,
+  defaultTolerance: number,
   weight: number
 ): number {
   let correctCount = 0;
@@ -53,6 +53,7 @@ export function calculateMeterScore(
     const playerReading = readings[meter.id];
     if (playerReading !== undefined) {
       const error = Math.abs(playerReading - meter.correctReading);
+      const tolerance = meter.tolerance || defaultTolerance;
       if (error <= tolerance) {
         correctCount++;
       }
@@ -179,7 +180,8 @@ export function calculateLevelScore(
   
   const meterCorrect = allMeters.filter((m) => {
     const r = meterReadings[m.id];
-    return r !== undefined && Math.abs(r - m.correctReading) <= level.meters.tolerance;
+    const tolerance = m.tolerance || level.meters.tolerance;
+    return r !== undefined && Math.abs(r - m.correctReading) <= tolerance;
   }).length;
   
   const totalCorrect = contractCorrect + meterCorrect;

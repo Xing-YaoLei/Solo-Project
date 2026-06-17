@@ -34,6 +34,7 @@ export const MeterDisplay: React.FC<MeterDisplayProps> = ({
   const estimatedCost = usage * unitPrice;
   const playerUsage = parseFloat(inputValue) - meter.previousReading;
   const playerCost = isNaN(playerUsage) ? 0 : playerUsage * unitPrice;
+  const tolerance = meter.tolerance;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -124,6 +125,9 @@ export const MeterDisplay: React.FC<MeterDisplayProps> = ({
           <div className="text-right">
             <span className="text-xs text-gray-400">上期读数</span>
             <p className="text-xl font-bold text-white">{meter.previousReading}</p>
+            <p className="text-xs text-gray-500 mt-1">
+              允许误差: ±{tolerance}
+            </p>
           </div>
         </div>
       </CardHeader>

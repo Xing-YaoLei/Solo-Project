@@ -37,14 +37,20 @@ class GameInstance {
       this.game.events.once('ready', () => {
         this.game?.scene.start('BootScene');
 
-        setTimeout(() => {
-          this.game?.scene.start('InspectionScene', { levelId });
+        const checkScene = () => {
           const scene = this.game?.scene.getScene('InspectionScene') as InspectionScene | null;
-          if (scene) {
+          if (scene && scene.scene.isActive()) {
             this.inspectionScene = scene;
+            resolve();
+          } else {
+            setTimeout(checkScene, 100);
           }
-          resolve();
-        }, 500);
+        };
+
+        setTimeout(() => {
+          this.game?.scene.start('LoadScene', { levelId });
+          checkScene();
+        }, 200);
       });
     });
   }

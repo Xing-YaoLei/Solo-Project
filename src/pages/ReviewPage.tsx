@@ -109,7 +109,7 @@ const ReviewPage: React.FC = () => {
     const allMeters = [...level.meters.waterMeters, ...level.meters.electricMeters];
     const meter = allMeters.find((m) => m.id === r.meterId);
     if (!meter) return false;
-    const tolerance = level.meters.tolerance || 5;
+    const tolerance = meter.tolerance || level.meters.tolerance || 5;
     return Math.abs(r.value - meter.correctReading) <= tolerance;
   }).length;
 
@@ -436,7 +436,7 @@ const ReviewPage: React.FC = () => {
                   const userValue = reading?.value ?? 0;
                   const correctValue = meter.correctReading;
                   const diff = Math.abs(userValue - correctValue);
-                  const tolerance = level.meters.tolerance || 5;
+                  const tolerance = meter.tolerance || level.meters.tolerance || 5;
                   const isCorrect = diff <= tolerance;
                   const isWater = level.meters.waterMeters.some((m) => m.id === meter.id);
                   

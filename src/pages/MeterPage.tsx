@@ -21,6 +21,8 @@ const MeterPage: React.FC = () => {
     setPhase,
     setMeterReading,
     addScore,
+    completeWorkOrder,
+    incrementTimeoutCount,
     meters: { readings },
     calculateFinalScore,
   } = useGameStore();
@@ -46,10 +48,12 @@ const MeterPage: React.FC = () => {
     timeout: level?.workOrders.timeout || 30,
     enabled: level?.workOrders.enabled || false,
     onTimeout: (order) => {
+      incrementTimeoutCount();
       setCurrentOrder(order);
       setShowWorkOrder(true);
     },
     onComplete: (result: WorkOrderResult) => {
+      completeWorkOrder(result);
       setShowWorkOrder(false);
       const penalty = result.retried ? (level?.workOrders.retryPenalty || 0) : 0;
       if (result.isCorrect) {
@@ -182,6 +186,7 @@ const MeterPage: React.FC = () => {
                         key={meter.id}
                         meter={meter}
                         type="water"
+                        unitPrice={level.meters.unitPrices.water}
                         value={reading?.value}
                         onChange={(value) => handleReadingChange(meter.id, value)}
                         disabled={activeOrders.length > 0}
@@ -205,6 +210,7 @@ const MeterPage: React.FC = () => {
                         key={meter.id}
                         meter={meter}
                         type="electric"
+                        unitPrice={level.meters.unitPrices.electric}
                         value={reading?.value}
                         onChange={(value) => handleReadingChange(meter.id, value)}
                         disabled={activeOrders.length > 0}
