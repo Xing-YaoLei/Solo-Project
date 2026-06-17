@@ -46,8 +46,24 @@ def build_sidebar():
                 ],
                 className="p-3",
             ),
+            html.Hr(className="bg-light"),
+            html.Div(
+                [
+                    html.Div(
+                        [
+                            html.Label("已保存视图", className="text-white-50 small"),
+                        ],
+                    ),
+                    html.Div(
+                        id="saved-views-list",
+                        className="mt-2 overflow-auto",
+                        style={"maxHeight": "280px"},
+                    ),
+                ],
+                className="p-3",
+            ),
         ],
-        className="bg-dark vh-100 position-fixed",
+        className="bg-dark vh-100 position-fixed overflow-y-auto",
         style={"width": "240px", "left": "0", "top": "0"},
     )
 
@@ -446,6 +462,141 @@ def build_elder_section():
                 id="note-modal",
                 is_open=False,
             ),
+            dbc.Modal(
+                [
+                    dbc.ModalHeader(dbc.ModalTitle("保存为常用视图")),
+                    dbc.ModalBody(
+                        [
+                            html.Div(
+                                [
+                                    html.Strong("将保存以下内容的快照："),
+                                    html.Ul(
+                                        [
+                                            html.Li("老人档案（基本信息、紧急联系人等）"),
+                                            html.Li("护理等级评估历史"),
+                                            html.Li("用药清单"),
+                                            html.Li("复盘备注"),
+                                        ],
+                                        className="mt-2 mb-3",
+                                    ),
+                                ]
+                            ),
+                            dbc.Label("视图名称（可选）"),
+                            dbc.Input(
+                                id="save-view-name",
+                                type="text",
+                                placeholder="默认使用老人姓名",
+                            ),
+                            html.Small(
+                                "若该老人已有已保存视图，将覆盖更新并刷新快照时间。",
+                                className="text-muted mt-2 d-block",
+                            ),
+                        ]
+                    ),
+                    dbc.ModalFooter(
+                        [
+                            dbc.Button(
+                                "取消", id="btn-cancel-save-view", color="secondary"
+                            ),
+                            dbc.Button(
+                                "确认保存", id="btn-confirm-save-view", color="primary"
+                            ),
+                        ]
+                    ),
+                ],
+                id="save-view-modal",
+                is_open=False,
+            ),
+            dbc.Modal(
+                [
+                    dbc.ModalHeader(
+                        [
+                            dbc.ModalTitle(id="restore-view-title"),
+                            dbc.Button(
+                                id="btn-download-restored-view",
+                                color="outline-primary",
+                                size="sm",
+                                className="ms-2",
+                            ),
+                        ]
+                    ),
+                    dbc.ModalBody(
+                        [
+                            dcc.Download(id="download-restored-view"),
+                            dbc.Tabs(
+                                [
+                                    dbc.Tab(
+                                        label="📄 老人档案",
+                                        tab_id="tab-restore-profile",
+                                        children=[
+                                            html.Div(
+                                                id="restore-profile-body",
+                                                className="mt-3",
+                                            )
+                                        ],
+                                    ),
+                                    dbc.Tab(
+                                        label="📊 护理等级",
+                                        tab_id="tab-restore-care",
+                                        children=[
+                                            dcc.Graph(
+                                                id="restore-care-graph",
+                                                className="mt-3",
+                                            ),
+                                        ],
+                                    ),
+                                    dbc.Tab(
+                                        label="💊 用药清单",
+                                        tab_id="tab-restore-medication",
+                                        children=[
+                                            html.Div(
+                                                id="restore-medication-body",
+                                                className="mt-3",
+                                            )
+                                        ],
+                                    ),
+                                    dbc.Tab(
+                                        label="📝 复盘备注",
+                                        tab_id="tab-restore-notes",
+                                        children=[
+                                            html.Div(
+                                                id="restore-notes-body",
+                                                className="mt-3",
+                                            )
+                                        ],
+                                    ),
+                                ],
+                                id="restore-tabs",
+                                active_tab="tab-restore-profile",
+                            ),
+                        ]
+                    ),
+                    dbc.ModalFooter(
+                        [
+                            dbc.Button(
+                                "恢复到当前选择",
+                                id="btn-apply-restore",
+                                color="success",
+                            ),
+                            dbc.Button(
+                                "删除此视图",
+                                id="btn-delete-restore",
+                                color="danger",
+                                outline=True,
+                            ),
+                            dbc.Button(
+                                "关闭",
+                                id="btn-close-restore",
+                                color="secondary",
+                            ),
+                        ]
+                    ),
+                ],
+                id="restore-view-modal",
+                is_open=False,
+                size="xl",
+            ),
+            dcc.Store(id="active-view-id"),
         ],
         className="mb-5",
     )

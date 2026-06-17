@@ -57,7 +57,8 @@
 MP0253/
 ├── app.py                          # Dash 应用入口
 ├── init_db.py                      # 数据库建表脚本
-├── requirements.txt                # Python 依赖
+├── celery_launcher.py              # ✅ Celery启动器（零权限问题，推荐）
+├── requirements.txt                # Python 依赖（含 openpyxl）
 ├── .env.example                    # 环境变量模板
 ├── run_worker.sh                   # Celery Worker 启动脚本
 ├── run_beat.sh                     # Celery Beat 启动脚本
@@ -66,7 +67,8 @@ MP0253/
 │   │   └── schema.py              # SQLAlchemy ORM 模型（10张核心表）
 │   ├── services/
 │   │   ├── data_processor.py      # 数据处理：清洗、冲突检测、达标率计算
-│   │   └── export_service.py      # Excel 导出服务
+│   │   ├── export_service.py      # Excel 导出服务
+│   │   └── view_storage.py        # ✅ 常用视图快照存储服务（保存/恢复/删除）
 │   ├── tasks/
 │   │   ├── sync_tasks.py          # 数据同步任务（门禁/护理终端/收费）
 │   │   ├── detection_tasks.py     # 异常检测任务
