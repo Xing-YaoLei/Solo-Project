@@ -1,6 +1,7 @@
 import { _decorator, Component, Node, Label, Button, Sprite, Color, UITransform, Vec3, Canvas, view, Graphics, tween, UIOpacity, Layout, find, ProgressBar } from 'cc';
 import { ResourceGenerator, ResourceType } from './utils/ResourceGenerator';
 import { UIBuilder } from './utils/UIBuilder';
+import { NodeUtil } from './utils/NodeUtil';
 import { GameManager } from './GameManager';
 import { ScoreManager } from './ScoreManager';
 import { levelManager } from './LevelManager';
@@ -83,7 +84,7 @@ export class App extends Component {
         this.clearRoot();
 
         const bg = new Node('BG');
-        bg.setContentSize(750, 1334);
+        NodeUtil.setContentSize(bg, 750, 1334);
         const bgSprite = bg.addComponent(Sprite);
         bgSprite.color = new Color(245, 240, 230, 255);
         this._rootNode!.addChild(bg);
@@ -140,7 +141,7 @@ export class App extends Component {
 
     createMiniMap(): Node {
         const mapNode = new Node('MiniMap');
-        mapNode.setContentSize(600, 340);
+        NodeUtil.setContentSize(mapNode, 600, 340);
         const mapSprite = mapNode.addComponent(Sprite);
         mapSprite.color = new Color(255, 255, 255, 255);
         mapSprite.type = Sprite.Type.SLICED;
@@ -205,13 +206,13 @@ export class App extends Component {
         this.clearRoot();
 
         const bg = new Node('BG');
-        bg.setContentSize(750, 1334);
+        NodeUtil.setContentSize(bg, 750, 1334);
         const bgSprite = bg.addComponent(Sprite);
         bgSprite.color = new Color(245, 240, 230, 255);
         this._rootNode!.addChild(bg);
 
         const header = new Node('Header');
-        header.setContentSize(750, 100);
+        NodeUtil.setContentSize(header, 750, 100);
         header.setPosition(0, 600, 0);
         this._rootNode!.addChild(header);
 
@@ -245,7 +246,7 @@ export class App extends Component {
         const result = GameManager.instance.getLevelResult(config.id);
 
         const node = new Node(`Level_${config.id}`);
-        node.setContentSize(650, 140);
+        NodeUtil.setContentSize(node, 650, 140);
         const sprite = node.addComponent(Sprite);
         sprite.spriteFrame = ResourceGenerator.getSpriteFrame('panel_bg');
         sprite.type = Sprite.Type.SLICED;
@@ -261,13 +262,13 @@ export class App extends Component {
         node.addChild(numLabel);
 
         const nameLabel = UIBuilder.createLabel(config.name, 24, unlocked ? new Color(50, 50, 50, 255) : new Color(180, 180, 180, 255), 0);
-        nameLabel.setContentSize(350, 32);
+        NodeUtil.setContentSize(nameLabel, 350, 32);
         nameLabel.setAnchorPoint(0, 0.5);
         nameLabel.setPosition(-180, 25, 0);
         node.addChild(nameLabel);
 
         const descLabel = UIBuilder.createLabel(config.description, 16, unlocked ? new Color(120, 120, 120, 255) : new Color(200, 200, 200, 255), 0);
-        descLabel.setContentSize(350, 22);
+        NodeUtil.setContentSize(descLabel, 350, 22);
         descLabel.setAnchorPoint(0, 0.5);
         descLabel.setPosition(-180, -5, 0);
         node.addChild(descLabel);
@@ -337,7 +338,7 @@ export class App extends Component {
         this._processedTasks.clear();
 
         const bg = new Node('BG');
-        bg.setContentSize(750, 1334);
+        NodeUtil.setContentSize(bg, 750, 1334);
         const bgSprite = bg.addComponent(Sprite);
         bgSprite.color = new Color(240, 245, 250, 255);
         this._rootNode!.addChild(bg);
@@ -351,7 +352,7 @@ export class App extends Component {
 
     buildTopHUD(config: LevelConfig): void {
         const hud = new Node('HUD');
-        hud.setContentSize(750, 180);
+        NodeUtil.setContentSize(hud, 750, 180);
         hud.setPosition(0, 570, 0);
         this._rootNode!.addChild(hud);
 
@@ -369,7 +370,7 @@ export class App extends Component {
         hud.addChild(levelLabel);
 
         const scoreBg = new Node('ScoreBg');
-        scoreBg.setContentSize(140, 56);
+        NodeUtil.setContentSize(scoreBg, 140, 56);
         const scoreBgSprite = scoreBg.addComponent(Sprite);
         scoreBgSprite.spriteFrame = ResourceGenerator.getSpriteFrame('card_bg');
         scoreBgSprite.type = Sprite.Type.SLICED;
@@ -434,7 +435,7 @@ export class App extends Component {
 
     buildTiledMapPreview(): void {
         const mapContainer = new Node('TiledMap');
-        mapContainer.setContentSize(700, 240);
+        NodeUtil.setContentSize(mapContainer, 700, 240);
         mapContainer.setPosition(0, 360, 0);
         const mapSprite = mapContainer.addComponent(Sprite);
         mapSprite.spriteFrame = ResourceGenerator.getSpriteFrame('card_bg');
@@ -541,7 +542,7 @@ export class App extends Component {
             '🎯 请核对以下活动签到，点击正确的条目',
             18, new Color(120, 120, 120, 255), 0
         );
-        title.setContentSize(650, 28);
+        NodeUtil.setContentSize(title, 650, 28);
         title.setAnchorPoint(0, 0.5);
         title.setPosition(10, 0, 0);
         content.addChild(title);
@@ -570,7 +571,7 @@ export class App extends Component {
             if (processed) {
                 const sprite = card.getComponent(Sprite)!;
                 sprite.spriteFrame = ResourceGenerator.getSpriteFrame('card_processed');
-                card.opacity = 120;
+                NodeUtil.setOpacity(card, 120);
             }
 
             card.name = `Task_${task.id}`;
@@ -614,7 +615,7 @@ export class App extends Component {
 
     showScorePopup(points: number, isCorrect: boolean): void {
         const popup = new Node('ScorePopup');
-        popup.setContentSize(150, 50);
+        NodeUtil.setContentSize(popup, 150, 50);
         popup.setPosition(0, 0, 0);
         this._rootNode!.addChild(popup);
 
@@ -643,7 +644,7 @@ export class App extends Component {
 
     showComboPopup(combo: number): void {
         const popup = new Node('ComboPopup');
-        popup.setContentSize(300, 60);
+        NodeUtil.setContentSize(popup, 300, 60);
         popup.setPosition(0, 100, 0);
         this._rootNode!.addChild(popup);
 
@@ -778,7 +779,7 @@ export class App extends Component {
         }
 
         const scoreBg = new Node('ScoreBg');
-        scoreBg.setContentSize(200, 100);
+        NodeUtil.setContentSize(scoreBg, 200, 100);
         const scoreSprite = scoreBg.addComponent(Sprite);
         scoreSprite.spriteFrame = ResourceGenerator.getSpriteFrame('card_bg');
         scoreSprite.type = Sprite.Type.SLICED;
@@ -958,7 +959,7 @@ export class App extends Component {
         this.clearRoot();
 
         const bg = new Node('BG');
-        bg.setContentSize(750, 1334);
+        NodeUtil.setContentSize(bg, 750, 1334);
         const bgSprite = bg.addComponent(Sprite);
         bgSprite.color = new Color(245, 240, 230, 255);
         this._rootNode!.addChild(bg);
@@ -1039,7 +1040,7 @@ export class App extends Component {
         statsRow.addChild(avgAccLabel);
 
         const chartNode = new Node('Chart');
-        chartNode.setContentSize(700, 280);
+        NodeUtil.setContentSize(chartNode, 700, 280);
         chartNode.setPosition(0, 230, 0);
         const chartBg = chartNode.addComponent(Sprite);
         chartBg.spriteFrame = ResourceGenerator.getSpriteFrame('card_bg');
@@ -1103,7 +1104,7 @@ export class App extends Component {
             item.addChild(numLabel);
 
             const nameLabel = UIBuilder.createLabel(r.config.name, 22, new Color(50, 50, 50, 255), 0);
-            nameLabel.setContentSize(300, 28);
+            NodeUtil.setContentSize(nameLabel, 300, 28);
             nameLabel.setAnchorPoint(0, 0.5);
             nameLabel.setPosition(-200, 25, 0);
             item.addChild(nameLabel);
@@ -1112,7 +1113,7 @@ export class App extends Component {
                 `得分: ${r.score} | 准确率: ${r.accuracy}% | 连击: ${r.maxCombo}`,
                 16, new Color(120, 120, 120, 255), 0
             );
-            detailLabel.setContentSize(350, 22);
+            NodeUtil.setContentSize(detailLabel, 350, 22);
             detailLabel.setAnchorPoint(0, 0.5);
             detailLabel.setPosition(-200, -5, 0);
             item.addChild(detailLabel);
@@ -1147,7 +1148,7 @@ export class App extends Component {
         this.clearRoot();
 
         const bg = new Node('BG');
-        bg.setContentSize(750, 1334);
+        NodeUtil.setContentSize(bg, 750, 1334);
         const bgSprite = bg.addComponent(Sprite);
         bgSprite.color = new Color(245, 240, 230, 255);
         this._rootNode!.addChild(bg);
@@ -1232,7 +1233,7 @@ export class App extends Component {
         ].join('\n');
 
         const aboutLabel = UIBuilder.createLabel(aboutText, 16, new Color(100, 100, 100, 255), 0);
-        aboutLabel.setContentSize(620, 280);
+        NodeUtil.setContentSize(aboutLabel, 620, 280);
         aboutLabel.setAnchorPoint(0, 1);
         aboutLabel.setPosition(-300, -220, 0);
         const labelComp = aboutLabel.getComponent(Label)!;
@@ -1249,7 +1250,7 @@ export class App extends Component {
 
         const overlay = UIBuilder.createOverlay();
         overlay.name = 'TutorialOverlay';
-        overlay.setContentSize(750, 1334);
+        NodeUtil.setContentSize(overlay, 750, 1334);
         overlay.setPosition(0, 0, 0);
         this._rootNode!.addChild(overlay);
 
@@ -1281,7 +1282,7 @@ export class App extends Component {
 
         const contentLabel = UIBuilder.createLabel(steps[0].content, 20, new Color(80, 80, 80, 255), 1);
         contentLabel.name = 'TutorialContent';
-        contentLabel.setContentSize(560, 160);
+        NodeUtil.setContentSize(contentLabel, 560, 160);
         const contentLabelComp = contentLabel.getComponent(Label)!;
         contentLabelComp.lineHeight = 28;
         contentLabelComp.horizontalAlign = 1;

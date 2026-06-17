@@ -1,5 +1,6 @@
 import { _decorator, Component, Node, Label, tween, Vec3, UIOpacity, Color } from 'cc';
 import { GameManager } from '../GameManager';
+import { NodeUtil } from '../utils/NodeUtil';
 const { ccclass, property } = _decorator;
 
 @ccclass('ScorePopup')

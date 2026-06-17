@@ -1,5 +1,6 @@
 import { _decorator, Component, Node, Vec3, tween, Tween, UIOpacity, Sprite, Color } from 'cc';
 import { GameManager } from './GameManager';
+import { NodeUtil } from '../utils/NodeUtil';
 const { ccclass, property } = _decorator;
 
 @ccclass('AnimationHelper')

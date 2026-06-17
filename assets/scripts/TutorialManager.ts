@@ -1,5 +1,6 @@
 import { _decorator, Component, Node, Label, Button, Sprite, Color, tween, Vec3, UIOpacity } from 'cc';
 import { GameManager } from './GameManager';
+import { NodeUtil } from './utils/NodeUtil';
 const { ccclass, property } = _decorator;
 
 export interface TutorialStep {
@@ -182,7 +183,7 @@ export class TutorialManager extends Component {
         if (contentNode) {
             const intensity = GameManager.instance.getAnimationMultiplier();
             contentNode.setPosition(0, -20, 0);
-            contentNode.opacity = 0;
+            NodeUtil.setOpacity(contentNode, 0);
             tween(contentNode)
                 .to(0.3 * intensity, { position: new Vec3(0, 0, 0), opacity: 255 })
                 .start();

@@ -1,5 +1,6 @@
-import { _decorator, Component, Node, Sprite, SpriteFrame, Vec3, UITransform, assetManager } from 'cc';
+import { _decorator, Component, Node, Sprite, SpriteFrame, Vec3, UITransform } from 'cc';
 import { levelManager } from './LevelManager';
+import { NodeUtil } from './utils/NodeUtil';
 import { RuntimeTmxLoader, TmxMapData, TmxSpriteFrameCache } from './utils/RuntimeTmxLoader';
 const { ccclass, property } = _decorator;
 
@@ -15,128 +16,56 @@ export class TiledMapController extends Component {
     showElderlyNames: boolean = false;
 
     @property
-    baseUrl: string = 'assets/tiled';
+    resourcePath: string = 'assets/tiled';
 
     private _mapData: TmxMapData | null = null;
     private _spriteFrames: TmxSpriteFrameCache = {};
     private _elderlyPositions: Map<string, Vec3> = new Map();
     private _loaded: boolean = false;
-    private _layerNodes: Node[] = [];
-
-    private static _baseUrlCandidates: string[] = [
-        'assets/tiled',
-        'resources/tiled',
-        'assets/resources/tiled',
-        './assets/tiled',
-        '',
-    ];
-    private static _detectedBaseUrl: string = '';
+    private _loading: boolean = false;
+    private _error: string | null = null;
 
     onLoad() {
-        this.loadMap(this.mapName);
+        this.loadMap();
     }
 
-    async resolveBaseUrl(): Promise<string> {
-        if (TiledMapController._detectedBaseUrl) {
-            return TiledMapController._detectedBaseUrl;
-        }
+    async loadMap(): Promise<void> {
+        if (this._loading) return;
 
-        for (const candidate of TiledMapController._baseUrlCandidates) {
-            try {
-                const testUrl = candidate
-                    ? `${candidate}/${this.mapName}.tmx`
-                    : `${this.mapName}.tmx`;
-                const xhr = new XMLHttpRequest();
-                xhr.open('HEAD', testUrl, true);
-                await new Promise<void>((resolve) => {
-                    xhr.onload = () => {
-                        if (xhr.status >= 200 && xhr.status < 400) {
-                            TiledMapController._detectedBaseUrl = candidate;
-                            console.log(`[TiledMapController] Detected base URL: '${candidate}'`);
-                        }
-                        resolve();
-                    };
-                    xhr.onerror = () => resolve();
-                    xhr.ontimeout = () => resolve();
-                    try { xhr.send(); } catch { resolve(); }
-                    setTimeout(resolve, 800);
-                });
-
-                if (TiledMapController._detectedBaseUrl) {
-                    return TiledMapController._detectedBaseUrl;
-                }
-            } catch (e) {
-            }
-        }
-
-        TiledMapController._detectedBaseUrl = this.baseUrl;
-        return TiledMapController._detectedBaseUrl;
-    }
-
-    async loadMap(mapName: string): Promise<void> {
-        this.node.removeAllChildren();
-        this._layerNodes = [];
+        this._loading = true;
         this._loaded = false;
+        this._error = null;
+        this.node.removeAllChildren();
         this._elderlyPositions.clear();
 
-        const base = await this.resolveBaseUrl();
-        this.baseUrl = base;
-
-        const tmxUrl = base
-            ? `${base}/${mapName}.tmx`
-            : `${mapName}.tmx`;
+        const tmxUrl = `${this.resourcePath}/${this.mapName}.tmx`;
 
         try {
-            console.log(`[TiledMapController] Loading TMX from: ${tmxUrl}`);
-
-            let xmlText: string | null = null;
-            const tryUrls = [
-                tmxUrl,
-                `assets/tiled/${mapName}.tmx`,
-                `assets/resources/tiled/${mapName}.tmx`,
-                `resources/tiled/${mapName}.tmx`,
-            ];
-
-            for (const url of tryUrls) {
-                try {
-                    xmlText = await RuntimeTmxLoader.loadTextFile(url);
-                    console.log(`[TiledMapController] TMX loaded via: ${url}`);
-                    this.baseUrl = url.substring(0, url.lastIndexOf('/'));
-                    break;
-                } catch (e) {
-                }
-            }
-
-            if (!xmlText) {
-                throw new Error('All TMX load paths failed');
-            }
-
+            console.log(`[TiledMapController] Loading TMX: ${tmxUrl}`);
+            const xmlText = await RuntimeTmxLoader.loadTextFile(tmxUrl);
             this._mapData = RuntimeTmxLoader.parseTmx(xmlText);
 
+            if (!this._mapData || this._mapData.layers.length === 0) {
+                throw new Error('Invalid TMX data: no layers found');
+            }
+
+            console.log(`[TiledMapController] Parsed map: ${this._mapData.width}x${this._mapData}, ${this._mapData.layers.length} layers, ${this._mapData.tilesets.length} tilesets`);
+
             for (const tileset of this._mapData.tilesets) {
-                let texture: any = null;
-                const imgTryUrls = [
-                    `${this.baseUrl}/${tileset.image}`,
-                    `assets/tiled/${tileset.image}`,
-                    `assets/resources/tiled/${tileset.image}`,
-                ];
-                for (const imgUrl of imgTryUrls) {
-                    try {
-                        texture = await RuntimeTmxLoader.loadImageAsTexture(imgUrl);
-                        tileset.texture = texture;
-                        console.log(`[TiledMapController] Tileset image loaded via: ${imgUrl}`);
-                        break;
-                    } catch (e) {
-                    }
-                }
-                if (!tileset.texture) {
-                    console.warn(`[TiledMapController] Could not load tileset image: ${tileset.image}`);
-                }
+                const imgUrl = `${this.resourcePath}/${tileset.image}`;
+                console.log(`[TiledMapController] Loading tileset: ${imgUrl}`);
+                tileset.texture = await RuntimeTmxLoader.loadImageAsTexture(imgUrl);
             }
 
             this._spriteFrames = RuntimeTmxLoader.buildSpriteFrames(this._mapData);
 
-            this.parseElderlyLayer();
+            const tileCount = Object.keys(this._spriteFrames).length;
+            if (tileCount === 0) {
+                throw new Error('No sprite frames were built from tilesets');
+            }
+            console.log(`[TiledMapController] Built ${tileCount} sprite frames`);
+
+            this.parseElderlyPositions();
             this.renderMap();
 
             if (this.showElderlyNames) {
@@ -144,44 +73,34 @@ export class TiledMapController extends Component {
             }
 
             this._loaded = true;
-            console.log(`[TiledMapController] Map '${mapName}' loaded successfully`);
+            console.log(`[TiledMapController] Map '${this.mapName}' loaded successfully`);
 
         } catch (err) {
-            console.error(`[TiledMapController] Failed to load map '${mapName}':`, err);
-            this.buildFallbackMap();
+            this._error = err instanceof Error ? err.message : String(err);
+            console.error(`[TiledMapController] Failed to load map '${this.mapName}':`, err);
+            this.showErrorIndicator();
+        } finally {
+            this._loading = false;
         }
     }
 
-    loadTmxFromResources(mapName: string): Promise<string> {
-        return new Promise((resolve, reject) => {
-            assetManager.loadRemote(`${this.baseUrl}/${mapName}.tmx`, (err: any, asset: any) => {
-                if (err) {
-                    reject(err);
-                    return;
-                }
-                const text = asset?._nativeAsset || asset?.text || '';
-                if (text) {
-                    resolve(text);
-                } else {
-                    reject(new Error('Empty TMX data from resources'));
-                }
-            });
-        });
-    }
-
-    parseElderlyLayer(): void {
+    parseElderlyPositions(): void {
         if (!this._mapData) return;
 
-        const elderlyLayer = this._mapData.layers.find(l => l.name === 'elderly');
-        if (!elderlyLayer) return;
+        this._elderlyPositions.clear();
 
-        for (let y = 0; y < elderlyLayer.tiles.length; y++) {
-            for (let x = 0; x < elderlyLayer.tiles[y].length; x++) {
-                const gid = elderlyLayer.tiles[y][x];
-                if (gid > 0) {
-                    const position = RuntimeTmxLoader.tileToWorldPosition(this._mapData!, x, y, this.mapScale);
-                    const key = `tile_${x}_${y}`;
-                    this._elderlyPositions.set(key, position);
+        for (const layer of this._mapData.layers) {
+            if (layer.name.toLowerCase().includes('elderly') ||
+                layer.name.toLowerCase().includes('npc') ||
+                layer.name.toLowerCase().includes('people')) {
+                for (let y = 0; y < layer.tiles.length; y++) {
+                    for (let x = 0; x < layer.tiles[y].length; x++) {
+                        const gid = layer.tiles[y][x];
+                        if (gid > 0) {
+                            const pos = RuntimeTmxLoader.tileToWorldPosition(this._mapData!, x, y, this.mapScale);
+                            this._elderlyPositions.set(`tile_${x}_${y}`, pos);
+                        }
+                    }
                 }
             }
         }
@@ -200,16 +119,17 @@ export class TiledMapController extends Component {
         if (!transform) {
             transform = this.node.addComponent(UITransform);
         }
-        transform.setContentSize(totalWidth, totalHeight);
+        NodeUtil.setContentSize(this.node, totalWidth, totalHeight);
 
         for (let layerIdx = 0; layerIdx < this._mapData.layers.length; layerIdx++) {
             const layer = this._mapData.layers[layerIdx];
+
             const layerNode = new Node(`Layer_${layer.name}`);
-            layerNode.addComponent(UITransform).setContentSize(totalWidth, totalHeight);
+            NodeUtil.setContentSize(layerNode, totalWidth, totalHeight);
             layerNode.setSiblingIndex(layerIdx);
             this.node.addChild(layerNode);
-            this._layerNodes.push(layerNode);
 
+            let renderedTiles = 0;
             for (let y = 0; y < layer.tiles.length; y++) {
                 for (let x = 0; x < layer.tiles[y].length; x++) {
                     const gid = layer.tiles[y][x];
@@ -220,8 +140,11 @@ export class TiledMapController extends Component {
 
                     const tileNode = this.createTileNode(gid, x, y, spriteFrame);
                     layerNode.addChild(tileNode);
+                    renderedTiles++;
                 }
             }
+
+            console.log(`[TiledMapController] Layer '${layer.name}': ${renderedTiles} tiles rendered`);
         }
     }
 
@@ -230,16 +153,13 @@ export class TiledMapController extends Component {
 
         const { tileWidth, tileHeight } = this._mapData;
 
-        const tileNode = new Node(`Tile_${tileX}_${tileY}_${gid}`);
-        const transform = tileNode.addComponent(UITransform);
-        transform.setContentSize(
-            tileWidth * this.mapScale,
-            tileHeight * this.mapScale
-        );
+        const tileNode = new Node(`Tile_${tileX}_${tileY}_gid${gid}`);
+        NodeUtil.setContentSize(tileNode, tileWidth * this.mapScale, tileHeight * this.mapScale);
 
         const sprite = tileNode.addComponent(Sprite);
         sprite.spriteFrame = spriteFrame;
         sprite.sizeMode = Sprite.SizeMode.CUSTOM;
+        sprite.trim = true;
 
         const pos = RuntimeTmxLoader.tileToWorldPosition(this._mapData, tileX, tileY, this.mapScale);
         tileNode.setPosition(pos.x, pos.y, 0);
@@ -256,65 +176,19 @@ export class TiledMapController extends Component {
 
             const pos = positions[index];
             const labelNode = new Node(`ElderlyLabel_${index}`);
-            const transform = labelNode.addComponent(UITransform);
-            transform.setContentSize(60 * this.mapScale, 24 * this.mapScale);
+            NodeUtil.setContentSize(labelNode, 60 * this.mapScale, 24 * this.mapScale);
             labelNode.setPosition(pos.x, pos.y + 40 * this.mapScale, 10);
             this.node.addChild(labelNode);
         });
     }
 
-    buildFallbackMap(): void {
-        console.warn('[TiledMapController] Building fallback colored map');
-
-        this._mapData = {
-            width: 20,
-            height: 12,
-            tileWidth: 64,
-            tileHeight: 64,
-            orientation: 'orthogonal',
-            tilesets: [],
-            layers: [],
-            objectGroups: [],
-        };
-
-        const totalWidth = 20 * 64 * this.mapScale;
-        const totalHeight = 12 * 64 * this.mapScale;
-
-        let transform = this.node.getComponent(UITransform);
-        if (!transform) {
-            transform = this.node.addComponent(UITransform);
-        }
-        transform.setContentSize(totalWidth, totalHeight);
-
-        const fallbackLayer = new Node('Layer_Fallback');
-        fallbackLayer.addComponent(UITransform).setContentSize(totalWidth, totalHeight);
-        this.node.addChild(fallbackLayer);
-        this._layerNodes.push(fallbackLayer);
-
-        const colors = [
-            { r: 245, g: 235, b: 220 },
-            { r: 210, g: 195, b: 175 },
-        ];
-
-        for (let y = 0; y < 12; y++) {
-            for (let x = 0; x < 20; x++) {
-                const color = colors[(x + y) % 2];
-
-                const tileNode = new Node(`Tile_${x}_${y}`);
-                const t = tileNode.addComponent(UITransform);
-                t.setContentSize(64 * this.mapScale, 64 * this.mapScale);
-
-                const sprite = tileNode.addComponent(Sprite);
-                (sprite as any).color = { r: color.r, g: color.g, b: color.b, a: 255 };
-
-                const pos = RuntimeTmxLoader.tileToWorldPosition(this._mapData, x, y, this.mapScale);
-                tileNode.setPosition(pos.x, pos.y, 0);
-
-                fallbackLayer.addChild(tileNode);
-            }
-        }
-
-        this._loaded = true;
+    showErrorIndicator(): void {
+        const errorNode = new Node('MapLoadError');
+        NodeUtil.setContentSize(errorNode, 300, 60);
+        const label = errorNode.addComponent(Sprite);
+        label.type = Sprite.Type.SIMPLE;
+        errorNode.setPosition(0, 0, 0);
+        this.node.addChild(errorNode);
     }
 
     getElderlyPositions(): Map<string, Vec3> {
@@ -333,16 +207,28 @@ export class TiledMapController extends Component {
         };
     }
 
+    getLayerNames(): string[] {
+        return this._mapData?.layers.map(l => l.name) || [];
+    }
+
     get isLoaded(): boolean {
         return this._loaded;
     }
 
-    getLayerNames(): string[] {
-        return this._mapData?.layers.map(l => l.name) || [];
+    get isLoading(): boolean {
+        return this._loading;
+    }
+
+    get error(): string | null {
+        return this._error;
     }
 
     updateElderlyDisplay(): void {
         if (!this.showElderlyNames) return;
         this.renderElderlyOverlays();
+    }
+
+    reload(): void {
+        this.loadMap();
     }
 }

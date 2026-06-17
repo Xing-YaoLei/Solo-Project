@@ -1,12 +1,20 @@
 import { _decorator, Node, Label, Button, Sprite, Color, UITransform, Vec3, ScrollView, Layout, SpriteFrame, UIOpacity, ProgressBar, Toggle, Slider } from 'cc';
 import { ResourceGenerator, ResourceType } from './ResourceGenerator';
+import { NodeUtil } from './utils/NodeUtil';
 const { ccclass } = _decorator;
 
 @ccclass('UIBuilder')
 export class UIBuilder {
+    private static ensureTransform(node: Node, width: number, height: number): UITransform {
+        let t = node.getComponent(UITransform);
+        if (!t) t = node.addComponent(UITransform);
+        t.setContentSize(width, height);
+        return t;
+    }
+
     static createButton(text: string, width: number = 180, height: number = 56, onClick?: () => void, variant: 'primary' | 'secondary' | 'danger' = 'primary'): Node {
         const btnNode = new Node('Button');
-        btnNode.setContentSize(width, height);
+        UIBuilder.ensureTransform(btnNode, width, height);
 
         const sprite = btnNode.addComponent(Sprite);
         let resourceType: ResourceType = 'button_primary';
@@ -55,7 +63,7 @@ export class UIBuilder {
 
     static createCard(width: number = 620, height: number = 96, type: 'normal' | 'correct' | 'wrong' | 'processed' = 'normal'): Node {
         const node = new Node('Card');
-        node.setContentSize(width, height);
+        UIBuilder.ensureTransform(node, width, height);
 
         const sprite = node.addComponent(Sprite);
         let resourceType: ResourceType = 'card_bg';
@@ -72,7 +80,7 @@ export class UIBuilder {
 
     static createPanel(width: number = 680, height: number = 900): Node {
         const node = new Node('Panel');
-        node.setContentSize(width, height);
+        UIBuilder.ensureTransform(node, width, height);
 
         const sprite = node.addComponent(Sprite);
         sprite.spriteFrame = ResourceGenerator.getSpriteFrame('panel_bg');
@@ -86,7 +94,7 @@ export class UIBuilder {
 
     static createIcon(type: ResourceType, size: number = 40): Node {
         const node = new Node('Icon');
-        node.setContentSize(size, size);
+        UIBuilder.ensureTransform(node, size, size);
 
         const sprite = node.addComponent(Sprite);
         sprite.spriteFrame = ResourceGenerator.getSpriteFrame(type);
@@ -96,7 +104,7 @@ export class UIBuilder {
 
     static createTab(text: string, active: boolean = false, onClick?: () => void): Node {
         const node = new Node('Tab');
-        node.setContentSize(140, 48);
+        UIBuilder.ensureTransform(node, 140, 48);
 
         const sprite = node.addComponent(Sprite);
         sprite.spriteFrame = ResourceGenerator.getSpriteFrame(active ? 'tab_active' : 'tab_inactive');
@@ -121,7 +129,7 @@ export class UIBuilder {
 
     static createStar(filled: boolean, size: number = 48): Node {
         const node = new Node('Star');
-        node.setContentSize(size, size);
+        UIBuilder.ensureTransform(node, size, size);
 
         const sprite = node.addComponent(Sprite);
         sprite.spriteFrame = ResourceGenerator.getSpriteFrame(filled ? 'icon_star' : 'icon_star_empty');
@@ -131,7 +139,7 @@ export class UIBuilder {
 
     static createProgressBar(width: number = 400, height: number = 18): Node {
         const bgNode = new Node('ProgressBar');
-        bgNode.setContentSize(width, height);
+        UIBuilder.ensureTransform(bgNode, width, height);
 
         const bgSprite = bgNode.addComponent(Sprite);
         bgSprite.spriteFrame = ResourceGenerator.getSpriteFrame('progress_bar_bg');
@@ -144,7 +152,7 @@ export class UIBuilder {
         progressBar.progress = 1;
 
         const barNode = new Node('Bar');
-        barNode.setContentSize(width, height);
+        UIBuilder.ensureTransform(barNode, width, height);
         barNode.setAnchorPoint(0, 0.5);
         barNode.setPosition(-width / 2, 0, 0);
         const barSprite = barNode.addComponent(Sprite);
@@ -159,7 +167,7 @@ export class UIBuilder {
 
     static createScrollView(width: number = 650, height: number = 600): Node {
         const scrollNode = new Node('ScrollView');
-        scrollNode.setContentSize(width, height);
+        UIBuilder.ensureTransform(scrollNode, width, height);
 
         const scrollView = scrollNode.addComponent(ScrollView);
         scrollView.direction = ScrollView.Direction.VERTICAL;
@@ -170,13 +178,12 @@ export class UIBuilder {
         sprite.color = new Color(250, 250, 250, 0);
 
         const viewNode = new Node('View');
-        viewNode.setContentSize(width, height);
-        const viewTransform = viewNode.addComponent(UITransform);
+        const viewTransform = UIBuilder.ensureTransform(viewNode, width, height);
         scrollNode.addChild(viewNode);
         scrollView.view = viewTransform;
 
         const contentNode = new Node('Content');
-        contentNode.setContentSize(width, 0);
+        UIBuilder.ensureTransform(contentNode, width, 0);
         contentNode.setAnchorPoint(0.5, 1);
         contentNode.setPosition(0, height / 2, 0);
         const contentLayout = contentNode.addComponent(Layout);
@@ -193,7 +200,7 @@ export class UIBuilder {
 
     static createOverlay(): Node {
         const node = new Node('Overlay');
-        node.setContentSize(800, 1400);
+        UIBuilder.ensureTransform(node, 800, 1400);
 
         const sprite = node.addComponent(Sprite);
         sprite.spriteFrame = ResourceGenerator.getSpriteFrame('overlay_bg');
@@ -206,7 +213,7 @@ export class UIBuilder {
 
     static createToggle(label: string, checked: boolean = false, onChange?: (checked: boolean) => void): Node {
         const container = new Node('ToggleContainer');
-        container.setContentSize(280, 44);
+        UIBuilder.ensureTransform(container, 280, 44);
 
         const layout = container.addComponent(Layout);
         layout.type = Layout.Type.HORIZONTAL;
@@ -214,7 +221,7 @@ export class UIBuilder {
         layout.verticalDirection = Layout.VerticalDirection.CENTER;
 
         const toggleNode = new Node('Toggle');
-        toggleNode.setContentSize(40, 40);
+        UIBuilder.ensureTransform(toggleNode, 40, 40);
         const toggleSprite = toggleNode.addComponent(Sprite);
         toggleSprite.spriteFrame = ResourceGenerator.getSpriteFrame(checked ? 'tab_active' : 'tab_inactive');
         toggleSprite.type = Sprite.Type.SLICED;
@@ -224,7 +231,7 @@ export class UIBuilder {
         toggle.checkMark = toggleSprite;
 
         const markNode = new Node('CheckMark');
-        markNode.setContentSize(20, 20);
+        UIBuilder.ensureTransform(markNode, 20, 20);
         const markSprite = markNode.addComponent(Sprite);
         markSprite.spriteFrame = ResourceGenerator.getSpriteFrame('icon_star');
         markNode.active = checked;
@@ -248,7 +255,7 @@ export class UIBuilder {
 
     static createSlider(label: string, value: number = 1, onChange?: (value: number) => void): Node {
         const container = new Node('SliderContainer');
-        container.setContentSize(400, 60);
+        UIBuilder.ensureTransform(container, 400, 60);
 
         const labelNode = this.createLabel(label, 20, new Color(60, 60, 60, 255));
         labelNode.setPosition(-160, 10, 0);
@@ -259,7 +266,7 @@ export class UIBuilder {
         container.addChild(valueLabel);
 
         const sliderNode = new Node('Slider');
-        sliderNode.setContentSize(360, 20);
+        UIBuilder.ensureTransform(sliderNode, 360, 20);
         sliderNode.setPosition(0, -15, 0);
 
         const bgSprite = sliderNode.addComponent(Sprite);
@@ -271,7 +278,7 @@ export class UIBuilder {
         slider.progress = value;
 
         const barNode = new Node('Bar');
-        barNode.setContentSize(360, 20);
+        UIBuilder.ensureTransform(barNode, 360, 20);
         barNode.setAnchorPoint(0, 0.5);
         barNode.setPosition(-180, 0, 0);
         const barSprite = barNode.addComponent(Sprite);
@@ -280,7 +287,7 @@ export class UIBuilder {
         sliderNode.addChild(barNode);
 
         const handleNode = new Node('Handle');
-        handleNode.setContentSize(28, 28);
+        UIBuilder.ensureTransform(handleNode, 28, 28);
         const handleSprite = handleNode.addComponent(Sprite);
         handleSprite.spriteFrame = ResourceGenerator.getSpriteFrame('button_primary');
         handleSprite.type = Sprite.Type.SLICED;
@@ -317,20 +324,21 @@ export class UIBuilder {
         card.addChild(icon);
 
         const titleLabel = this.createLabel(title, 20, new Color(40, 40, 40, 255), 0);
-        titleLabel.setContentSize(400, 28);
+        titleLabel.getComponent(UITransform)!.setContentSize(400, 28);
         titleLabel.setAnchorPoint(0, 0.5);
         titleLabel.setPosition(-200, 14, 0);
         card.addChild(titleLabel);
 
         const subLabel = this.createLabel(subtitle, 16, new Color(120, 120, 120, 255), 0);
-        subLabel.setContentSize(400, 22);
+        subLabel.getComponent(UITransform)!.setContentSize(400, 22);
         subLabel.setAnchorPoint(0, 0.5);
         subLabel.setPosition(-200, -14, 0);
         card.addChild(subLabel);
 
         const hintIcon = this.createIcon(isCorrect ? 'icon_star' : 'icon_star_empty', 24);
         hintIcon.setPosition(260, 0, 0);
-        hintIcon.opacity = 0;
+        const hintOp = hintIcon.getComponent(UIOpacity) || hintIcon.addComponent(UIOpacity);
+        NodeUtil.setOpacity(hintOp, 0);
         card.addChild(hintIcon);
 
         const btn = card.getComponent(Button)!;

@@ -1,6 +1,7 @@
 import { _decorator, Component, Node, director, Canvas, view, UITransform, game, Game } from 'cc';
 import { App } from './App';
 import { ResourceGenerator } from './utils/ResourceGenerator';
+import { NodeUtil } from './utils/NodeUtil';
 import { GameManager } from './GameManager';
 const { ccclass } = _decorator;
 

@@ -1,5 +1,6 @@
 import { _decorator, Component, Node, Label, Button, Sprite, Color, tween, Vec3 } from 'cc';
 import { GameManager } from './GameManager';
+import { NodeUtil } from './utils/NodeUtil';
 const { ccclass, property } = _decorator;
 
 @ccclass('MainMenu')
@@ -50,7 +51,7 @@ export class MainMenu extends Component {
 
         const intensity = GameManager.instance.getAnimationMultiplier();
 
-        this.menuNode.opacity = 0;
+        this.NodeUtil.setOpacity(menuNode, 0);
         tween(this.menuNode)
             .delay(0.3)
             .to(0.5, { opacity: 255 })

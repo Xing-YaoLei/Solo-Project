@@ -1,5 +1,6 @@
 import { _decorator, Component, Node, Label, Button, ProgressBar, Sprite, Color, Vec3, tween, UIOpacity, instantiate, Prefab } from 'cc';
 import { ScoreManager } from './ScoreManager';
+import { NodeUtil } from './utils/NodeUtil';
 import { levelManager } from './LevelManager';
 import { GameManager } from './GameManager';
 import { MedicineItem, VisitRecord, ActivityItem, LevelResult } from './data/ElderlyData';

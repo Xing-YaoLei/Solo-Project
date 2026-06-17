@@ -128,7 +128,7 @@
   },
   {
     "__type__": "Launcher",
-    "_scriptAsset": null,
+    "_scriptAsset": {"__uuid__": "7da4bced-a9e9-1b5a-3067-963d50176d23", "__expectedType__": "cc.Script"},
     "_enabled": true,
     "__prefab": null,
     "node": {

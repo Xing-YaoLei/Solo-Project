@@ -1,0 +1,18 @@
+{
+  "ver": "4.0.23",
+  "importer": "typescript",
+  "imported": true,
+  "uuid": "afd13b48-b0b5-f244-be84-a002785c9565",
+  "files": [
+    ".js"
+  ],
+  "subMetas": {},
+  "userData": {
+    "isPlugin": false,
+    "sortIndex": 0,
+    "sourceMaps": false,
+    "loadPluginInWeb": false,
+    "loadPluginInNative": false,
+    "loadPluginInEditor": false
+  }
+}
