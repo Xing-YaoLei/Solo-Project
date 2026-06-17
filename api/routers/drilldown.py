@@ -57,9 +57,11 @@ async def training_completion(
 async def calendar_view(
     year: int = Query(...),
     month: int = Query(..., ge=1, le=12),
+    patient_id: Optional[int] = Query(None),
+    prescription_id: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
-    return await get_calendar(db, month, year)
+    return await get_calendar(db, month, year, patient_id, prescription_id)
 
 
 @router.get("/equipment", response_model=List[EquipmentRecordOut])

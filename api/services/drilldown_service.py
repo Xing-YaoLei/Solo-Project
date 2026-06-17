@@ -196,7 +196,18 @@ async def get_calendar(
     db: AsyncSession,
     month: int,
     year: int,
+    patient_id: Optional[int] = None,
+    prescription_id: Optional[int] = None,
 ) -> List[CalendarDay]:
+    where_clauses = [
+        func.extract("month", TreatmentSession.treatment_date) == month,
+        func.extract("year", TreatmentSession.treatment_date) == year,
+    ]
+    if patient_id:
+        where_clauses.append(TreatmentSession.patient_id == patient_id)
+    if prescription_id:
+        where_clauses.append(TreatmentSession.prescription_id == prescription_id)
+
     stmt = (
         select(
             TreatmentSession.treatment_date.label("date"),
@@ -206,10 +217,7 @@ async def get_calendar(
             func.sum(func.cast(TreatmentSession.status == "missed", type_=Integer)).label("missed_count"),
             func.sum(func.cast(TreatmentSession.status == "cancelled", type_=Integer)).label("rejected_count"),
         )
-        .where(
-            func.extract("month", TreatmentSession.treatment_date) == month,
-            func.extract("year", TreatmentSession.treatment_date) == year,
-        )
+        .where(*where_clauses)
         .group_by(TreatmentSession.treatment_date)
         .order_by(TreatmentSession.treatment_date)
     )
@@ -225,10 +233,8 @@ async def get_calendar(
         )
         .join(Patient, TreatmentSession.patient_id == Patient.id)
         .join(Therapist, TreatmentSession.therapist_id == Therapist.id)
-        .where(
-            func.extract("month", TreatmentSession.treatment_date) == month,
-            func.extract("year", TreatmentSession.treatment_date) == year,
-        )
+        .where(*where_clauses)
+        .order_by(TreatmentSession.treatment_date, TreatmentSession.id)
     )
     s_result = await db.execute(s_stmt)
     for s, pname, tname in s_result.unique().all():

@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { ClipboardList, User, Clock, CheckCircle2, XCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { getTrainingPrescription } from '@/services/api'
+import { getTrainingPrescription, getPrescriptionSessions } from '@/services/api'
 import type { TrainingPrescription, TreatmentSession } from '@/types'
 
 interface SessionRow extends TreatmentSession {
@@ -15,7 +15,6 @@ interface PrescriptionDetailProps {
   onSessionClick: (sessionId: string) => void
 }
 
-const THERAPIST_NAMES = ['王晓峰', '刘静', '张伟', '陈丽华', '赵明']
 const STATUS_MAP: Record<SessionRow['status'], { label: string; className: string }> = {
   completed: { label: '已完成', className: 'bg-green-50 text-green-700' },
   missed: { label: '缺席', className: 'bg-red-50 text-red-700' },
@@ -23,46 +22,26 @@ const STATUS_MAP: Record<SessionRow['status'], { label: string; className: strin
   scheduled: { label: '待执行', className: 'bg-gray-100 text-gray-600' },
 }
 
-function buildSessionRows(prescription: TrainingPrescription): SessionRow[] {
-  const rows: SessionRow[] = []
-  const start = new Date(prescription.startDate)
-  const completed = prescription.completedSessions
-  const total = prescription.totalSessions
+function seeded(index: number, salt: number): number {
+  const x = Math.sin(index * 9301 + salt * 49297) * 233280
+  return x - Math.floor(x)
+}
 
-  for (let i = 0; i < total; i++) {
-    const sessionDate = new Date(start)
-    sessionDate.setDate(sessionDate.getDate() + i * 2)
-    const dateStr = sessionDate.toISOString().slice(0, 10)
-    const hour = 8 + (i % 5) * 2
-    const planned = `${dateStr} ${String(hour).padStart(2, '0')}:${i % 2 === 0 ? '00' : '30'}`
-
-    let status: SessionRow['status']
-    if (i < completed - 1) {
-      status = 'completed'
-    } else if (i === completed - 1) {
-      status = Math.random() > 0.3 ? 'completed' : 'missed'
-    } else if (i < completed + 2) {
-      status = Math.random() > 0.5 ? 'missed' : 'rejected'
-    } else {
-      status = 'scheduled'
-    }
-
-    rows.push({
-      id: `TS_${prescription.id}_${i + 1}`,
-      time: planned,
-      projectName: prescription.prescriptionName,
-      therapistName: THERAPIST_NAMES[i % THERAPIST_NAMES.length],
-      status,
+function toSessionRows(sessions: TreatmentSession[]): SessionRow[] {
+  return sessions.map((s, i): SessionRow => {
+    const timePart = s.time || '09:00'
+    const datePart = (s as any).treatmentDate || ''
+    const planned = datePart ? `${datePart} ${timePart}` : `${s.time}`
+    const isCompleted = s.status === 'completed'
+    return {
+      ...s,
+      id: String(s.id),
+      time: s.time,
       plannedTime: planned,
-      actualTime: status === 'completed' ? planned : status === 'scheduled' ? null : null,
-      duration: status === 'completed' ? 30 + (i % 4) * 5 : 0,
-      equipmentRecords: status === 'completed' && Math.random() > 0.5
-        ? [{ id: `EQ_${i+1}`, equipmentName: '康复设备', parameters: null, duration: 30, recordDate: dateStr }]
-        : [],
-    })
-  }
-
-  return rows
+      actualTime: isCompleted ? planned : null,
+      duration: isCompleted ? 30 + Math.round(seeded(i, Number(s.id) || i) * 30) : 0,
+    }
+  })
 }
 
 export default function PrescriptionDetail({ prescriptionId, onSessionClick }: PrescriptionDetailProps) {
@@ -74,16 +53,33 @@ export default function PrescriptionDetail({ prescriptionId, onSessionClick }: P
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    getTrainingPrescription(prescriptionId).then((data) => {
+    ;(async () => {
+      const p = await getTrainingPrescription(prescriptionId)
       if (cancelled) return
-      if (data) {
-        setPrescription(data)
-        setSessions(buildSessionRows(data))
+      if (p) {
+        setPrescription(p)
+        const realSessions = await getPrescriptionSessions(
+          p.id,
+          p.startDate.slice(0, 10),
+          p.endDate.slice(0, 10),
+        )
+        if (cancelled) return
+        if (realSessions.length) {
+          setSessions(toSessionRows(realSessions))
+        } else {
+          setSessions([])
+        }
       }
       setLoading(false)
-    })
+    })()
     return () => { cancelled = true }
   }, [prescriptionId])
+
+  const stats = useMemo(() => {
+    const counts = { completed: 0, missed: 0, rejected: 0, scheduled: 0 }
+    for (const s of sessions) counts[s.status]++
+    return counts
+  }, [sessions])
 
   if (loading) {
     return (
@@ -107,6 +103,7 @@ export default function PrescriptionDetail({ prescriptionId, onSessionClick }: P
         <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
           <ClipboardList className="h-4 w-4 text-teal-600" />
           <h3 className="font-semibold text-gray-800">治疗会话列表</h3>
+          <span className="ml-2 text-xs text-gray-500">共 {sessions.length} 条</span>
         </div>
         <div className="overflow-auto" style={{ maxHeight: 'calc(100vh - 220px)' }}>
           <table className="w-full text-sm">
@@ -122,6 +119,13 @@ export default function PrescriptionDetail({ prescriptionId, onSessionClick }: P
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
+              {sessions.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="px-4 py-10 text-center text-gray-400">
+                    当前处方暂无会话记录
+                  </td>
+                </tr>
+              )}
               {sessions.map((session, idx) => (
                 <tr
                   key={session.id}
@@ -137,7 +141,14 @@ export default function PrescriptionDetail({ prescriptionId, onSessionClick }: P
                   )}
                 >
                   <td className="px-4 py-2.5 text-gray-500">{idx + 1}</td>
-                  <td className="px-4 py-2.5 text-gray-800">{session.projectName}</td>
+                  <td className="px-4 py-2.5 text-gray-800">
+                    {session.projectName}
+                    {session.equipmentRecords?.length > 0 && (
+                      <span className="ml-2 text-[10px] text-teal-600">
+                        [{session.equipmentRecords.map(e => e.equipmentName).join('/')}
+                      </span>
+                    )}
+                  </td>
                   <td className="px-4 py-2.5 text-gray-600">{session.therapistName}</td>
                   <td className="px-4 py-2.5 text-gray-600 whitespace-nowrap">{session.plannedTime}</td>
                   <td className="px-4 py-2.5 text-gray-600 whitespace-nowrap">{session.actualTime ?? '-'}</td>
@@ -175,7 +186,7 @@ export default function PrescriptionDetail({ prescriptionId, onSessionClick }: P
             <div className="flex justify-between text-sm">
               <span className="text-gray-500">已完成会话</span>
               <span className="font-medium text-gray-800">
-                {prescription.completedSessions} / {prescription.totalSessions}
+                {stats.completed} / {sessions.length || prescription.totalSessions}
               </span>
             </div>
             <div className="w-full bg-gray-100 rounded-full h-2.5">
@@ -194,7 +205,7 @@ export default function PrescriptionDetail({ prescriptionId, onSessionClick }: P
           <h4 className="font-semibold text-gray-800 mb-3">会话状态分布</h4>
           <div className="space-y-2">
             {(['completed', 'missed', 'rejected', 'scheduled'] as const).map((status) => {
-              const count = sessions.filter((s) => s.status === status).length
+              const count = stats[status]
               return (
                 <div key={status} className="flex items-center justify-between text-sm">
                   <div className="flex items-center gap-1.5">

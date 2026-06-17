@@ -4,6 +4,7 @@ import type {
   AssessmentScale,
   TrainingPrescription,
   TreatmentCalendarDay,
+  TreatmentSession,
   EquipmentRecord,
   RejectionRecord,
   SavedView,
@@ -196,13 +197,14 @@ export async function getTrainingPrescription(
 export async function getTreatmentCalendar(
   patientId: string,
   month: string,
+  prescriptionId?: string,
 ): Promise<TreatmentCalendarDay[]> {
   try {
     const [y, m] = month.split('-').map(Number)
-    const raw = await apiGet<any[]>('/api/drilldown/calendar', {
-      year: y,
-      month: m,
-    })
+    const params: Record<string, unknown> = { year: y, month: m }
+    if (patientId) params.patient_id = parseInt(patientId)
+    if (prescriptionId) params.prescription_id = parseInt(prescriptionId)
+    const raw = await apiGet<any[]>('/api/drilldown/calendar', params)
     const days = toCamel<any[]>(raw)
     return delay(days.map((d) => ({
       date: d.date,
@@ -213,6 +215,7 @@ export async function getTreatmentCalendar(
       details: (d.details || []).map((s: any) => ({
         ...s,
         id: String(s.id),
+        prescriptionId: s.prescriptionId ? String(s.prescriptionId) : undefined,
         equipmentRecords: (s.equipmentRecords || []).map((e: any) => ({
           ...e,
           id: String(e.id),
@@ -225,21 +228,76 @@ export async function getTreatmentCalendar(
   }
 }
 
+function parseSessionIdToInt(sid: string): number | undefined {
+  if (!sid) return undefined
+  const pure = sid.replace(/^TS[_-]*/, '')
+  const n = parseInt(pure, 10)
+  return isNaN(n) ? undefined : n
+}
+
+export async function getPrescriptionSessions(
+  prescriptionId: string,
+  rangeStart: string,
+  rangeEnd: string,
+): Promise<TreatmentSession[]> {
+  try {
+    const pid = parseInt(prescriptionId)
+    const startY = parseInt(rangeStart.slice(0, 4))
+    const startM = parseInt(rangeStart.slice(5, 7))
+    const endY = parseInt(rangeEnd.slice(0, 4))
+    const endM = parseInt(rangeEnd.slice(5, 7))
+
+    const all: TreatmentSession[] = []
+    let y = startY
+    let m = startM
+    while (y < endY || (y === endY && m <= endM)) {
+      const raw = await apiGet<any[]>('/api/drilldown/calendar', {
+        year: y,
+        month: m,
+        prescription_id: pid,
+      })
+      const days = toCamel<any[]>(raw)
+      for (const d of days) {
+        for (const s of (d.details || [])) {
+          all.push({
+            ...s,
+            id: String(s.id),
+            prescriptionId: s.prescriptionId ? String(s.prescriptionId) : prescriptionId,
+            equipmentRecords: (s.equipmentRecords || []).map((e: any) => ({
+              ...e,
+              id: String(e.id),
+            })),
+          })
+        }
+      }
+      m++
+      if (m > 12) { m = 1; y++ }
+    }
+    return delay(all)
+  } catch (e) {
+    console.warn('prescription sessions API failed', e)
+    return delay([])
+  }
+}
+
 export async function getEquipmentRecord(
   recordId: string,
 ): Promise<EquipmentRecord | undefined> {
   try {
-    const sid = parseInt(recordId)
-    const raw = await apiGet<any[]>('/api/drilldown/equipment', { session_id: sid })
+    const sid = parseSessionIdToInt(recordId)
+    const params: Record<string, unknown> = {}
+    if (sid) params.session_id = sid
+    const raw = await apiGet<any[]>('/api/drilldown/equipment', Object.keys(params).length ? params : undefined)
     const items = toCamel<any[]>(raw)
-    if (!items.length) return delay(undefined)
-    const r = items[0]
+    const exactBySession = sid ? items.find((r) => parseSessionIdToInt(String(r.sessionId)) === sid) : undefined
+    const first = exactBySession || items[0]
+    if (!first) return delay(undefined)
     return delay({
-      ...r,
-      id: String(r.id),
-      sessionId: r.sessionId ? String(r.sessionId) : recordId,
-      parameters: r.parameters || null,
-      recordDate: r.recordDate || '',
+      ...first,
+      id: String(first.id),
+      sessionId: first.sessionId ? String(first.sessionId) : recordId,
+      parameters: first.parameters || null,
+      recordDate: first.recordDate || first.treatmentDate || '',
     })
   } catch (e) {
     console.warn('equipment API failed', e)

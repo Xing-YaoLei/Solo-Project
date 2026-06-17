@@ -23,6 +23,19 @@ const LEVEL_LABELS: Record<number, string> = {
   4: '设备记录',
 }
 
+function pickDefaultCalendarMonth(prescriptions: TrainingPrescription[], prescriptionId?: string | null): string {
+  if (prescriptionId) {
+    const p = prescriptions.find((x) => x.id === prescriptionId)
+    if (p && p.startDate) return p.startDate.slice(0, 7)
+  }
+  const earliest = prescriptions
+    .map((p) => p.startDate)
+    .filter(Boolean)
+    .sort()[0]
+  if (earliest) return earliest.slice(0, 7)
+  return '2025-03'
+}
+
 export default function DrilldownPage() {
   const {
     drilldownLevel,
@@ -37,10 +50,7 @@ export default function DrilldownPage() {
   const [prescriptions, setPrescriptions] = useState<TrainingPrescription[]>([])
   const [selectedAssessmentId, setSelectedAssessmentId] = useState<string | null>(null)
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null)
-  const [calendarMonth, setCalendarMonth] = useState(() => {
-    const now = new Date()
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-  })
+  const [calendarMonth, setCalendarMonth] = useState('2025-03')
 
   useEffect(() => {
     getAssessmentScales().then(setAssessments)
@@ -49,6 +59,12 @@ export default function DrilldownPage() {
   useEffect(() => {
     getTrainingCompletion().then(setPrescriptions)
   }, [])
+
+  useEffect(() => {
+    if (prescriptions.length && !selectedPrescriptionId) {
+      setCalendarMonth(pickDefaultCalendarMonth(prescriptions))
+    }
+  }, [prescriptions, selectedPrescriptionId])
 
   const currentLevelIndex = LEVEL_MAP[drilldownLevel.level] ?? 1
 
@@ -76,7 +92,7 @@ export default function DrilldownPage() {
 
     if (targetIndex < currentLevelIndex) {
       if (targetIndex < 4) setSelectedSessionId(null)
-      if (targetIndex < 3) setCalendarMonth(`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`)
+      if (targetIndex < 3) setCalendarMonth(pickDefaultCalendarMonth(prescriptions, selectedPrescriptionId))
       if (targetIndex < 2) {
         setSelectedPrescriptionId(null)
         setSelectedPatientId(null)
@@ -86,7 +102,7 @@ export default function DrilldownPage() {
       const levelKey = (['assessment', 'prescription', 'calendar', 'equipment'] as const)[targetIndex - 1]
       setDrilldownLevel({ level: levelKey, label: LEVEL_LABELS[targetIndex] })
     }
-  }, [currentLevelIndex, setDrilldownLevel, setSelectedPatientId, setSelectedPrescriptionId])
+  }, [currentLevelIndex, prescriptions, selectedPrescriptionId, setDrilldownLevel, setSelectedPatientId, setSelectedPrescriptionId])
 
   const handleAssessmentSelect = useCallback((assessmentId: string) => {
     const assessment = assessments.find((a) => a.id === assessmentId)
@@ -96,11 +112,13 @@ export default function DrilldownPage() {
     setSelectedPatientId(assessment.patientId)
 
     const linkedPrescription = prescriptions.find((p) => p.assessmentId === assessmentId)
-    if (linkedPrescription) {
-      setSelectedPrescriptionId(linkedPrescription.id)
+    const chosen = linkedPrescription || prescriptions.find((p) => p.patientId === assessment.patientId)
+
+    if (chosen) {
+      setSelectedPrescriptionId(chosen.id)
+      setCalendarMonth(pickDefaultCalendarMonth(prescriptions, chosen.id))
     } else {
-      const byPatient = prescriptions.find((p) => p.patientId === assessment.patientId)
-      setSelectedPrescriptionId(byPatient?.id ?? null)
+      setSelectedPrescriptionId(null)
     }
 
     setDrilldownLevel({ level: 'prescription', label: '训练处方' })
@@ -108,8 +126,13 @@ export default function DrilldownPage() {
 
   const handleSessionClick = useCallback((sessionId: string) => {
     setSelectedSessionId(sessionId)
+    setCalendarMonth((prev) => {
+      const found = prescriptions.find((p) => p.id === selectedPrescriptionId)
+      if (found && found.startDate) return found.startDate.slice(0, 7)
+      return prev
+    })
     setDrilldownLevel({ level: 'calendar', label: '治疗日历' })
-  }, [setDrilldownLevel])
+  }, [prescriptions, selectedPrescriptionId, setDrilldownLevel])
 
   const handleSessionDrill = useCallback((sessionId: string) => {
     setSelectedSessionId(sessionId)
@@ -145,6 +168,7 @@ export default function DrilldownPage() {
           <TreatmentCalendar
             patientId={selectedPatientId}
             month={calendarMonth}
+            prescriptionId={selectedPrescriptionId ?? undefined}
             onSessionDrill={handleSessionDrill}
           />
         )}

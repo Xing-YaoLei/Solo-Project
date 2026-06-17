@@ -7,6 +7,7 @@ import type { TreatmentCalendarDay, TreatmentSession } from '@/types'
 interface TreatmentCalendarProps {
   patientId: string
   month: string
+  prescriptionId?: string
   onSessionDrill: (sessionId: string) => void
 }
 
@@ -27,7 +28,7 @@ function getDayCellBg(day: TreatmentCalendarDay | undefined): string {
   return 'bg-white'
 }
 
-export default function TreatmentCalendar({ patientId, month, onSessionDrill }: TreatmentCalendarProps) {
+export default function TreatmentCalendar({ patientId, month, prescriptionId, onSessionDrill }: TreatmentCalendarProps) {
   const [currentMonth, setCurrentMonth] = useState(month)
   const [calendarData, setCalendarData] = useState<TreatmentCalendarDay[]>([])
   const [loading, setLoading] = useState(true)
@@ -37,13 +38,14 @@ export default function TreatmentCalendar({ patientId, month, onSessionDrill }: 
     let cancelled = false
     setLoading(true)
     setSelectedDay(null)
-    getTreatmentCalendar(patientId, currentMonth).then((data) => {
+    setCurrentMonth(month)
+    getTreatmentCalendar(patientId, month, prescriptionId).then((data) => {
       if (cancelled) return
       setCalendarData(data)
       setLoading(false)
     })
     return () => { cancelled = true }
-  }, [patientId, currentMonth])
+  }, [patientId, month, prescriptionId])
 
   const calendarGrid = useMemo(() => {
     const [yearStr, monthStr] = currentMonth.split('-')
