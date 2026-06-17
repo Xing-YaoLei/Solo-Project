@@ -200,21 +200,54 @@
     "_id": "gamescene-component",
     "_scriptAssetUuid": "GameScene",
     "_class": "GameScene",
-    "uiCanvas": null,
-    "hudLayer": null,
-    "dialogLayer": null,
-    "notificationLayer": null,
-    "tutorialLayer": null,
-    "orderListPrefab": null,
-    "orderPanelPrefab": null,
-    "cluePanelPrefab": null,
-    "choiceDialogPrefab": null,
-    "dispatchPanelPrefab": null,
-    "resultPanelPrefab": null,
-    "reviewPanelPrefab": null,
-    "tutorialOverlayPrefab": null,
-    "hudPanelPrefab": null,
-    "tiledMapPrefab": null
+    "uiCanvas": {
+      "__id__": 2
+    },
+    "mapContainer": {
+      "__id__": 2
+    },
+    "hudLayer": {
+      "__id__": 6
+    },
+    "dialogLayer": {
+      "__id__": 7
+    },
+    "notificationLayer": {
+      "__id__": 8
+    },
+    "tutorialLayer": {
+      "__id__": 10
+    },
+    "orderListPrefab": {
+      "__uuid__": "prefabs/ui/OrderList",
+      "__expectedType__": "cc.Prefab",
+      "__isNative__": false
+    },
+    "orderPanelPrefab": {
+      "__uuid__": "prefabs/ui/OrderPanel",
+      "__expectedType__": "cc.Prefab",
+      "__isNative__": false
+    },
+    "hudPanelPrefab": {
+      "__uuid__": "prefabs/ui/HUDPanel",
+      "__expectedType__": "cc.Prefab",
+      "__isNative__": false
+    },
+    "tutorialOverlayPrefab": {
+      "__uuid__": "prefabs/ui/TutorialOverlay",
+      "__expectedType__": "cc.Prefab",
+      "__isNative__": false
+    },
+    "reviewPanelPrefab": {
+      "__uuid__": "prefabs/ui/ReviewPanel",
+      "__expectedType__": "cc.Prefab",
+      "__isNative__": false
+    },
+    "tiledMapPrefab": {
+      "__uuid__": "prefabs/ui/TiledMap",
+      "__expectedType__": "cc.Prefab",
+      "__isNative__": false
+    }
   },
   {
     "__type__": "cc.Node",

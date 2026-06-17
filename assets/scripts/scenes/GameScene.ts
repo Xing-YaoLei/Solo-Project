@@ -40,28 +40,16 @@ export class GameScene extends Component {
     orderPanelPrefab: Prefab | null = null;
 
     @property(Prefab)
-    cluePanelPrefab: Prefab | null = null;
-
-    @property(Prefab)
-    dispatchPanelPrefab: Prefab | null = null;
-
-    @property(Prefab)
-    choiceDialogPrefab: Prefab | null = null;
-
-    @property(Prefab)
     hudPanelPrefab: Prefab | null = null;
 
     @property(Prefab)
-    tutorialPanelPrefab: Prefab | null = null;
-
-    @property(Prefab)
-    resultPanelPrefab: Prefab | null = null;
+    tutorialOverlayPrefab: Prefab | null = null;
 
     @property(Prefab)
     reviewPanelPrefab: Prefab | null = null;
 
     @property(Prefab)
-    notificationPrefab: Prefab | null = null;
+    tiledMapPrefab: Prefab | null = null;
 
     private eventManager: EventManager;
     private refs: SceneRefs;
@@ -86,6 +74,7 @@ export class GameScene extends Component {
         try {
             await game.initialize();
             this.spawnHUD();
+            this.spawnTiledMap();
 
             const startLevel = 1;
             Logger.info(`Starting game at level ${startLevel} from GameScene`);
@@ -183,35 +172,20 @@ export class GameScene extends Component {
         if (!this.orderListPrefab || !this.refs.uiCanvas) return;
         const node = instantiate(this.orderListPrefab);
         node.name = 'OrderList';
-        node.setPosition(new Vec3(-560, 0, 0));
+        node.setPosition(new Vec3(-700, 0, 0));
         this.refs.uiCanvas.addChild(node);
     }
 
     public spawnOrderPanel() {
         if (!this.orderPanelPrefab || !this.refs.dialogLayer) return;
+        const existing = this.refs.dialogLayer.getChildByName('OrderPanel');
+        if (existing) {
+            existing.active = true;
+            return;
+        }
         const node = instantiate(this.orderPanelPrefab);
         node.name = 'OrderPanel';
-        this.refs.dialogLayer.addChild(node);
-    }
-
-    public spawnCluePanel() {
-        if (!this.cluePanelPrefab || !this.refs.dialogLayer) return;
-        const node = instantiate(this.cluePanelPrefab);
-        node.name = 'CluePanel';
-        this.refs.dialogLayer.addChild(node);
-    }
-
-    public spawnDispatchPanel() {
-        if (!this.dispatchPanelPrefab || !this.refs.dialogLayer) return;
-        const node = instantiate(this.dispatchPanelPrefab);
-        node.name = 'DispatchPanel';
-        this.refs.dialogLayer.addChild(node);
-    }
-
-    public spawnChoiceDialog() {
-        if (!this.choiceDialogPrefab || !this.refs.dialogLayer) return;
-        const node = instantiate(this.choiceDialogPrefab);
-        node.name = 'ChoiceDialog';
+        node.setPosition(new Vec3(450, 0, 0));
         this.refs.dialogLayer.addChild(node);
     }
 
@@ -224,29 +198,27 @@ export class GameScene extends Component {
     }
 
     public spawnTutorialPanel() {
-        if (!this.tutorialPanelPrefab || !this.refs.tutorialLayer) return;
-        const node = instantiate(this.tutorialPanelPrefab);
-        node.name = 'TutorialPanel';
+        if (!this.tutorialOverlayPrefab || !this.refs.tutorialLayer) return;
+        const node = instantiate(this.tutorialOverlayPrefab);
+        node.name = 'TutorialOverlay';
+        node.setPosition(Vec3.ZERO);
         this.refs.tutorialLayer.addChild(node);
-    }
-
-    public spawnResultPanel(passed: boolean, score: number, reason?: string) {
-        if (!this.resultPanelPrefab || !this.refs.dialogLayer) return;
-        const node = instantiate(this.resultPanelPrefab);
-        node.name = 'ResultPanel';
-        const label = node.getComponentInChildren(Label);
-        if (label) {
-            label.string = passed ? `🎉 关卡完成！\n得分: ${score}` : `😢 关卡失败\n${reason || ''}`;
-            label.color = passed ? new Color(80, 200, 120) : new Color(220, 80, 80);
-        }
-        this.refs.dialogLayer.addChild(node);
     }
 
     public spawnReviewPanel() {
         if (!this.reviewPanelPrefab || !this.refs.dialogLayer) return;
         const node = instantiate(this.reviewPanelPrefab);
         node.name = 'ReviewPanel';
+        node.setPosition(Vec3.ZERO);
         this.refs.dialogLayer.addChild(node);
+    }
+
+    public spawnTiledMap() {
+        if (!this.tiledMapPrefab || !this.refs.mapContainer) return;
+        const node = instantiate(this.tiledMapPrefab);
+        node.name = 'TiledMap';
+        node.setPosition(new Vec3(0, -50, 0));
+        this.refs.mapContainer.addChild(node);
     }
 
     public showNotification(title: string, message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') {

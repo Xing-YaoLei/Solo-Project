@@ -230,8 +230,6 @@ export class OrderListUI extends Component {
                 const scene = findGameScene();
                 if (scene) {
                     scene.spawnOrderPanel();
-                    scene.spawnCluePanel();
-                    scene.spawnChoiceDialog();
                 }
             }, this);
         }

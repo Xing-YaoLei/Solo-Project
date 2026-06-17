@@ -89,8 +89,9 @@ export class TiledMapUI extends Component {
                 const existing = this.node.getComponent(TiledMap);
                 const tileMap = existing || this.node.addComponent(TiledMap);
                 tileMap.tmxAsset = this.mapAsset;
+                Logger.info('[地图] 使用编辑器绑定的 TiledMapAsset');
             } else {
-                this.renderFallbackMap();
+                await this.loadMapAssetFromResources(mapId);
             }
 
             return true;
@@ -99,6 +100,25 @@ export class TiledMapUI extends Component {
             this.renderFallbackMap();
             return false;
         }
+    }
+
+    private async loadMapAssetFromResources(mapPath: string): Promise<void> {
+        return new Promise((resolve, reject) => {
+            resources.load(mapPath, TiledMapAsset, (err, asset) => {
+                if (err) {
+                    Logger.warn('[地图] resources 加载失败，使用回退渲染:', mapPath, err);
+                    this.renderFallbackMap();
+                    resolve();
+                    return;
+                }
+                this.mapAsset = asset;
+                const existing = this.node.getComponent(TiledMap);
+                const tileMap = existing || this.node.addComponent(TiledMap);
+                tileMap.tmxAsset = asset;
+                Logger.info('[地图] 从 resources 加载成功:', mapPath);
+                resolve();
+            });
+        });
     }
 
     private renderFallbackMap() {
