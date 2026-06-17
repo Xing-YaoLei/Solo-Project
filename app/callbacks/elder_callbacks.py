@@ -2,7 +2,7 @@ import logging
 from datetime import datetime, date
 import pandas as pd
 import plotly.graph_objects as go
-from dash import Input, Output, State, dash_table, html, dcc, callback_context
+from dash import Input, Output, State, ALL, dash_table, html, dcc, callback_context
 from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
 

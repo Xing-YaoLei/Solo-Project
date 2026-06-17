@@ -14,17 +14,10 @@ from app.models.schema import (
 )
 from app.services.data_processor import (
     clean_assessment_data, get_fall_impact_periods,
-    aggregate_assessment_trend
+    aggregate_assessment_trend, COLOR_MAP, CARE_LEVEL_ORDER
 )
 
 logger = logging.getLogger(__name__)
-
-COLOR_MAP = {
-    "自理": "#28a745",
-    "半自理": "#ffc107",
-    "全护理": "#fd7e14",
-    "特护": "#dc3545",
-}
 
 
 def register_trend_callbacks(app):

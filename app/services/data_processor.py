@@ -20,6 +20,13 @@ CARE_STANDARDS = {
 
 CARE_LEVEL_ORDER = ["自理", "半自理", "全护理", "特护"]
 
+COLOR_MAP = {
+    "自理": "#28a745",
+    "半自理": "#ffc107",
+    "全护理": "#fd7e14",
+    "特护": "#dc3545",
+}
+
 
 def calculate_fall_impact_range(fall_time: datetime, injury_level: str) -> Tuple[datetime, datetime]:
     impact_days_map = {
