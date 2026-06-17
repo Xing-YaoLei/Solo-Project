@@ -82,6 +82,17 @@ export default function WorkOrderDetail({ orderId }: Props) {
     }
   };
 
+  const refreshDetail = async () => {
+    if (!order) return;
+    try {
+      const fresh = await getWorkOrder(order.id);
+      setOrder(fresh);
+      setShowCompleteModal(false);
+    } catch (err: any) {
+      alert('刷新失败：' + (err.response?.data?.detail || err.message));
+    }
+  };
+
   const handleReview = async (isPassed: boolean, comment: string) => {
     if (!order) return;
     try {
@@ -278,25 +289,87 @@ export default function WorkOrderDetail({ orderId }: Props) {
                       <p className="text-sm">暂无照片</p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                      {order.photos.map((photo) => (
-                        <div key={photo.id} className="relative group">
-                          <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
-                            <img
-                              src={photo.url}
-                              alt={photo.caption || '现场照片'}
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).src =
-                                  'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"%3E%3Crect fill="%23e5e7eb" width="100" height="100"/%3E%3Ctext fill="%239ca3af" font-size="12" text-anchor="middle" x="50" y="55"%3E现场照片%3C/text%3E%3C/svg%3E';
-                              }}
-                            />
+                    <div className="space-y-8">
+                      {(() => {
+                        const scenePhotos = order.photos.filter((p) => p.photo_type === 'scene' || !p.photo_type);
+                        const completionPhotos = order.photos.filter((p) => p.photo_type === 'completion');
+                        const otherPhotos = order.photos.filter(
+                          (p) => p.photo_type && p.photo_type !== 'scene' && p.photo_type !== 'completion'
+                        );
+
+                        const photoGroups: { title: string; photos: typeof order.photos; badge?: string; color?: string }[] = [];
+                        if (scenePhotos.length > 0) {
+                          photoGroups.push({
+                            title: '创建现场照',
+                            photos: scenePhotos,
+                            badge: '报修时上传',
+                            color: 'bg-blue-100 text-blue-700',
+                          });
+                        }
+                        if (completionPhotos.length > 0) {
+                          photoGroups.push({
+                            title: '处理完成照',
+                            photos: completionPhotos,
+                            badge: '处理完成时上传',
+                            color: 'bg-green-100 text-green-700',
+                          });
+                        }
+                        if (otherPhotos.length > 0) {
+                          photoGroups.push({
+                            title: '其他照片',
+                            photos: otherPhotos,
+                            color: 'bg-gray-100 text-gray-700',
+                          });
+                        }
+
+                        return photoGroups.map((group) => (
+                          <div key={group.title}>
+                            <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-100">
+                              <h3 className="font-semibold text-gray-800">{group.title}</h3>
+                              <span className="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-600">
+                                {group.photos.length} 张
+                              </span>
+                              {group.badge && (
+                                <span
+                                  className={`px-2 py-0.5 text-xs rounded-full ${group.color}`}
+                                >
+                                  {group.badge}
+                                </span>
+                              )}
+                            </div>
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                              {group.photos.map((photo) => (
+                                <div key={photo.id} className="relative group">
+                                  <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden cursor-pointer"
+                                    onClick={() => {
+                                      const modal = document.createElement('div');
+                                      modal.className = 'fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-8';
+                                      modal.innerHTML = `<img src="${photo.url}" alt="" class="max-w-full max-h-full rounded-lg object-contain shadow-2xl" />`;
+                                      modal.onclick = () => modal.remove();
+                                      document.body.appendChild(modal);
+                                    }}
+                                  >
+                                    <img
+                                      src={photo.url}
+                                      alt={photo.caption || group.title}
+                                      className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                                      onError={(e) => {
+                                        (e.target as HTMLImageElement).src =
+                                          'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"%3E%3Crect fill="%23e5e7eb" width="100" height="100"/%3E%3Ctext fill="%239ca3af" font-size="12" text-anchor="middle" x="50" y="55"%3E加载失败%3C/text%3E%3C/svg%3E';
+                                      }}
+                                    />
+                                  </div>
+                                  {photo.caption && (
+                                    <p className="mt-1.5 text-xs text-gray-600 line-clamp-2 leading-relaxed">
+                                      {photo.caption}
+                                    </p>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
                           </div>
-                          {photo.caption && (
-                            <p className="mt-1 text-xs text-gray-500 truncate">{photo.caption}</p>
-                          )}
-                        </div>
-                      ))}
+                        ));
+                      })()}
                     </div>
                   )}
                 </div>
@@ -610,8 +683,9 @@ export default function WorkOrderDetail({ orderId }: Props) {
 
       {showCompleteModal && (
         <CompleteModal
+          orderId={order!.id}
           onClose={() => setShowCompleteModal(false)}
-          onComplete={handleComplete}
+          onCompleted={refreshDetail}
         />
       )}
     </div>

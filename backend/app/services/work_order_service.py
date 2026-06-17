@@ -189,7 +189,7 @@ def create_work_order(db: Session, order_in: WorkOrderCreate, creator: User) -> 
                 work_order_id=db_order.id,
                 url=photo_in.url,
                 caption=photo_in.caption,
-                photo_type=photo_in.photo_type,
+                photo_type=photo_in.photo_type or "scene",
                 uploaded_by=creator.id,
             )
             db.add(db_photo)

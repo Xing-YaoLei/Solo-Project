@@ -153,24 +153,42 @@ def _init_sample_work_orders(db):
     sample_photos = {
         "corridor_light": [
             {"url": "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=dark%20office%20corridor%20with%20broken%20ceiling%20lights%2C%20dim%20lighting%2C%20realistic%20photo&image_size=square_hd", "caption": "三楼走廊灯不亮", "photo_type": "scene"},
-            {"url": "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=broken%20fluorescent%20lamp%20fixture%20on%20ceiling%2C%20close%20up%2C%20realistic&image_size=square", "caption": "故障灯具特写", "photo_type": "detail"},
+            {"url": "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=broken%20fluorescent%20lamp%20fixture%20on%20ceiling%2C%20close%20up%2C%20realistic&image_size=square", "caption": "故障灯具特写", "photo_type": "scene"},
+        ],
+        "corridor_light_fixed": [
+            {"url": "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=bright%20office%20corridor%20with%20new%20LED%20ceiling%20lights%2C%20well%20lit%2C%20realistic%20photo&image_size=square_hd", "caption": "更换LED灯管后照明恢复", "photo_type": "completion"},
         ],
         "ac_unit": [
             {"url": "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=office%20meeting%20room%20with%20ceiling%20air%20conditioner%2C%20warm%20uncomfortable%20atmosphere%2C%20realistic&image_size=square_hd", "caption": "会议室空调", "photo_type": "scene"},
-            {"url": "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=air%20conditioner%20indoor%20unit%20displaying%20error%20code%2C%20close%20up%2C%20realistic&image_size=square", "caption": "空调控制面板显示异常", "photo_type": "detail"},
+            {"url": "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=air%20conditioner%20indoor%20unit%20displaying%20error%20code%2C%20close%20up%2C%20realistic&image_size=square", "caption": "空调控制面板显示异常", "photo_type": "scene"},
+        ],
+        "ac_unit_fixed": [
+            {"url": "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=AC%20technician%20repairing%20ceiling%20air%20conditioner%2C%20tools%20on%20table%2C%20cold%20air%20flowing%2C%20realistic&image_size=square_hd", "caption": "清洗滤网、补加冷媒后制冷恢复", "photo_type": "completion"},
+            {"url": "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=air%20conditioner%20remote%20control%20showing%2022%20degrees%20celcius%2C%20close%20up%2C%20realistic&image_size=square", "caption": "遥控器显示22℃正常", "photo_type": "completion"},
         ],
         "fire_light": [
             {"url": "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=dark%20underground%20parking%20garage%20with%20broken%20emergency%20exit%20signs%2C%20dim%20red%20light%2C%20realistic&image_size=square_hd", "caption": "地下车库出口指示灯不亮", "photo_type": "scene"},
         ],
         "tile_falling": [
             {"url": "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=exterior%20building%20wall%20with%20loose%20and%20falling%20tiles%2C%20safety%20hazard%2C%20realistic%20photo&image_size=square_hd", "caption": "外墙瓷砖脱落", "photo_type": "scene"},
-            {"url": "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=broken%20ceramic%20tile%20on%20ground%20near%20building%2C%20close%20up%2C%20realistic&image_size=square", "caption": "脱落的瓷砖碎块", "photo_type": "detail"},
+            {"url": "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=broken%20ceramic%20tile%20on%20ground%20near%20building%2C%20close%20up%2C%20realistic&image_size=square", "caption": "脱落的瓷砖碎块", "photo_type": "scene"},
+        ],
+        "tile_falling_fixed": [
+            {"url": "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=worker%20on%20scaffold%20repairing%20building%20exterior%20wall%20tiles%2C%20safety%20harness%2C%20realistic&image_size=square_hd", "caption": "搭设脚手架重新粘贴瓷砖", "photo_type": "completion"},
+            {"url": "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=repaired%20building%20exterior%20wall%20with%20new%20tiles%2C%20clean%20surface%2C%20realistic&image_size=square", "caption": "修复后外墙平整完好", "photo_type": "completion"},
         ],
         "water_leak": [
             {"url": "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=public%20restroom%20faucet%20leaking%20water%2C%20water%20dripping%2C%20realistic%20photo&image_size=square_hd", "caption": "水龙头滴水", "photo_type": "scene"},
         ],
+        "water_leak_fixed": [
+            {"url": "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=plumber%20replacing%20restroom%20faucet%20cartridge%2C%20wrench%20in%20hand%2C%20realistic&image_size=square_hd", "caption": "更换阀芯", "photo_type": "completion"},
+            {"url": "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=new%20bathroom%20faucet%20no%20leak%2C%20clean%20dry%20sink%2C%20close%20up%2C%20realistic&image_size=square", "caption": "修复后无漏水", "photo_type": "completion"},
+        ],
         "pipe_burst": [
             {"url": "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=burst%20water%20pipe%20spraying%20water%20in%20garden%20irrigation%20system%2C%20realistic&image_size=square_hd", "caption": "喷灌水管爆裂", "photo_type": "scene"},
+        ],
+        "pipe_burst_fixed": [
+            {"url": "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=gardener%20repairing%20irrigation%20pipe%20with%20pipe%20clamp%2C%20garden%20background%2C%20realistic&image_size=square_hd", "caption": "安装管箍修复漏水点", "photo_type": "completion"},
         ],
     }
 
@@ -184,13 +202,15 @@ def _init_sample_work_orders(db):
         "2号楼卫生间漏水", "男卫生间水龙头一直在滴水",
         "2号楼2楼卫生间", WorkOrderCategory.PLUMBING, WorkOrderPriority.MEDIUM,
         manager, worker2, ["assign", "start", "complete"], days_ago=1,
-        photos=sample_photos["water_leak"]
+        photos=sample_photos["water_leak"],
+        completion_photos=sample_photos["water_leak_fixed"]
     )
     _create_and_advance(
         "3号楼空调不制冷", "会议室空调吹出来的风不冷",
         "3号楼5楼会议室", WorkOrderCategory.HVAC, WorkOrderPriority.HIGH,
         manager, worker1, ["assign", "start", "complete", "review_fail"], days_ago=2,
-        photos=sample_photos["ac_unit"]
+        photos=sample_photos["ac_unit"],
+        completion_photos=sample_photos["ac_unit_fixed"]
     )
     _create_and_advance(
         "地下车库消防指示灯坏了", "B1层多个安全出口指示灯不亮",
@@ -217,7 +237,8 @@ def _init_sample_work_orders(db):
         "外墙瓷砖脱落", "2号楼南侧墙面有瓷砖松动",
         "2号楼南外墙", WorkOrderCategory.CIVIL, WorkOrderPriority.URGENT,
         manager, worker2, ["assign", "start", "complete", "review_fail", "start", "complete"], days_ago=4,
-        photos=sample_photos["tile_falling"]
+        photos=sample_photos["tile_falling"],
+        completion_photos=sample_photos["tile_falling_fixed"]
     )
     _create_and_advance(
         "茶水间饮水机故障", "无法加热，指示灯不亮",
@@ -233,7 +254,8 @@ def _init_sample_work_orders(db):
         "绿化区水管爆裂", "西北角绿化喷灌水管漏水",
         "园区西北角绿化区", WorkOrderCategory.PLUMBING, WorkOrderPriority.HIGH,
         manager, worker1, ["assign", "start", "complete", "review_pass"], days_ago=14,
-        photos=sample_photos["pipe_burst"]
+        photos=sample_photos["pipe_burst"],
+        completion_photos=sample_photos["pipe_burst_fixed"]
     )
     _create_and_advance(
         "会议室投影不显示", "会议时投影突然无信号",
