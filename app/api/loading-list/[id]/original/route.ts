@@ -9,6 +9,16 @@ export async function GET(
     const { id } = await params;
     const record = getOriginalRecord(id);
 
+    if (!record) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "原始记录不存在",
+        },
+        { status: 404 }
+      );
+    }
+
     return NextResponse.json({
       success: true,
       data: record,

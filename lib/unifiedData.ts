@@ -78,16 +78,32 @@ type BaseRoute = {
 type UnifiedData = {
   orders: BaseOrder[];
   routes: BaseRoute[];
+  loadingItems: LoadingItemType[];
+  originalRecords: Map<string, OriginalRecordType>;
+  differences: DataDifference[];
+  paymentVersions: PaymentVersion[];
   generatedAt: number;
 };
 
 const DATA_TTL_MS = 10 * 60 * 1000;
-let cachedData: UnifiedData | null = null;
+
+declare global {
+  var __unifiedDataCache: UnifiedData | null | undefined;
+}
+
+function getCache(): UnifiedData | null {
+  return globalThis.__unifiedDataCache ?? null;
+}
+
+function setCache(data: UnifiedData) {
+  globalThis.__unifiedDataCache = data;
+}
 
 function generateUnifiedData(): UnifiedData {
   const now = Date.now();
-  if (cachedData && now - cachedData.generatedAt < DATA_TTL_MS) {
-    return cachedData;
+  const cached = getCache();
+  if (cached && now - cached.generatedAt < DATA_TTL_MS) {
+    return cached;
   }
 
   const today = new Date();
@@ -182,14 +198,172 @@ function generateUnifiedData(): UnifiedData {
         createdAt: new Date(plannedTime.getTime() - randInt(1, 24) * 3600000),
       };
 
-      assignedRoute.orderIds.push(order.id);
+      // 仅当天订单分配到路线，历史订单不占用路线的 orderIds
+      if (dayOffset === 0) {
+        assignedRoute.orderIds.push(order.id);
+      }
       orders.push(order);
       orderCounter++;
     }
   }
 
-  cachedData = { orders, routes, generatedAt: now };
-  return cachedData;
+  // 生成装载清单 + 对应的原始录入记录（仅基于当天路线的订单）
+  const loadingItems: LoadingItemType[] = [];
+  const originalRecords = new Map<string, OriginalRecordType>();
+  let itemIndex = 0;
+
+  routes.forEach((route) => {
+    const routeOrders = orders.filter((o) => route.orderIds.includes(o.id));
+
+    routeOrders.forEach((order) => {
+      const itemCount = randInt(1, 3);
+      for (let m = 0; m < itemCount; m++) {
+        const quantity = randInt(1, 10);
+        const isAbnormal = order.anomalyType || Math.random() > 0.78;
+        const status: LoadingItemType["status"] = !isAbnormal
+          ? "normal"
+          : Math.random() > 0.5
+          ? "abnormal"
+          : "missing";
+        const loadedQuantity = status === "normal"
+          ? quantity
+          : Math.max(0, quantity - randInt(1, quantity));
+
+        const itemId = uuid();
+        const recordId = `REC-${formatDateKey(order.plannedTime).replace(/-/g, "")}-${String(itemIndex).padStart(5, "0")}`;
+
+        const materialName = pick(MATERIAL_NAMES);
+        const unit = pick(["个", "套", "米"]);
+        const enteredBy = pick(["仓库管理员-张磊", "调度员-李娜", "运营-王强", "采购-刘敏"]);
+        const enteredAt = new Date(
+          order.plannedTime.getTime() - randInt(1, 12) * 3600000
+        ).toISOString();
+        const source = pick(["WMS系统", "手工录入", "调拨单"]);
+        const batchNo = `BATCH-${randInt(10000, 99999)}`;
+        const warehouse = pick(["中心仓库", "北区仓库", "南区仓库"]);
+        const shelfNo = `A${randInt(1, 20)}-${randInt(1, 10)}`;
+        const operatorSignature = pick(["ZL", "LN", "WQ", "LM"]);
+
+        // 原始录入记录的数量略偏高于实际装载（常见的口径偏差场景）
+        const originalQty = status === "normal"
+          ? quantity
+          : quantity + randInt(0, 3);
+
+        const loadingItem: LoadingItemType = {
+          id: itemId,
+          routeId: route.id,
+          routeName: route.routeName,
+          orderId: order.id,
+          orderNo: order.orderNo,
+          materialName,
+          quantity,
+          unit,
+          loadedQuantity,
+          status,
+          originalRecordId: recordId,
+          remark: status !== "normal"
+            ? pick(["仓库库存不足", "物料损坏更换", "用户临时增加", "规格型号不符"])
+            : undefined,
+        };
+
+        const originalRecord: OriginalRecordType = {
+          id: recordId,
+          materialName,
+          quantity: originalQty,
+          unit,
+          enteredBy,
+          enteredAt,
+          source,
+          rawData: {
+            batchNo,
+            warehouse,
+            shelfNo,
+            operatorSignature,
+          },
+        };
+
+        loadingItems.push(loadingItem);
+        originalRecords.set(recordId, originalRecord);
+        itemIndex++;
+      }
+    });
+  });
+
+  // 生成 CRM vs 抄表差异 & 支付流水版本（基于同一批差异订单）
+  const differences: DataDifference[] = [];
+  const paymentVersions: PaymentVersion[] = [];
+
+  // 选取约 15% 的订单作为"差异订单"，CRM/抄表/支付都基于这批
+  const diffOrderCount = Math.max(10, Math.floor(orders.length * 0.12));
+  const diffStep = Math.floor(orders.length / diffOrderCount);
+  const diffOrders: BaseOrder[] = [];
+
+  for (let i = 0; i < diffOrderCount; i++) {
+    const order = orders[Math.min(i * diffStep, orders.length - 1)];
+    diffOrders.push(order);
+  }
+
+  // 生成 CRM vs 抄表差异
+  diffOrders.forEach((order) => {
+    const crmAmount = parseFloat(order.amount.toFixed(2));
+    const meterAmount = parseFloat((order.amount + randFloat(-120, 120)).toFixed(2));
+    const diffFields: string[] = ["amount"];
+    if (Math.random() > 0.6) diffFields.push("repairType");
+    if (Math.random() > 0.8) diffFields.push("apartmentId");
+
+    differences.push({
+      id: uuid(),
+      orderId: order.id,
+      orderNo: order.orderNo,
+      crmValue: {
+        amount: crmAmount,
+        repairType: order.repairType,
+        apartmentId: order.apartmentId,
+      },
+      meterValue: {
+        amount: meterAmount,
+        repairType: diffFields.includes("repairType") ? pick(REPAIR_TYPES) : order.repairType,
+        apartmentId: diffFields.includes("apartmentId") ? pick(APARTMENT_IDS) : order.apartmentId,
+      },
+      diffFields,
+      diffAmount: parseFloat((meterAmount - crmAmount).toFixed(2)),
+      createdAt: order.createdAt.toISOString(),
+    });
+  });
+
+  // 生成支付流水版本（同一批差异订单）
+  diffOrders.forEach((order) => {
+    const baseAmount = order.amount;
+    const vCount = randInt(2, 4);
+
+    for (let v = 1; v <= vCount; v++) {
+      paymentVersions.push({
+        id: uuid(),
+        orderId: order.id,
+        orderNo: order.orderNo,
+        version: v,
+        amount: parseFloat((baseAmount + randFloat(-60, 60) * (v - 1)).toFixed(2)),
+        status: v === vCount ? "已确认" : "已变更",
+        operator: pick(OPERATORS),
+        changedAt: new Date(
+          order.plannedTime.getTime() + (v - 1) * 3600000 + randInt(0, 10000)
+        ).toISOString(),
+        changeReason: pick(CHANGE_REASONS),
+      });
+    }
+  });
+
+  const result: UnifiedData = {
+    orders,
+    routes,
+    loadingItems,
+    originalRecords,
+    differences,
+    paymentVersions,
+    generatedAt: now,
+  };
+  setCache(result);
+  return result;
 }
 
 export function getData() {
@@ -197,7 +371,7 @@ export function getData() {
 }
 
 export function refreshData() {
-  cachedData = null;
+  setCache(null as unknown as UnifiedData);
   return generateUnifiedData();
 }
 
@@ -303,45 +477,16 @@ export function getDataDifferences(limit = 20): {
   list: DataDifference[];
   stats: { totalCount: number; affectedOrders: number; totalDiffAmount: number };
 } {
-  const { orders } = getData();
-  const diffs: DataDifference[] = [];
-  const total = Math.min(limit, Math.floor(orders.length * 0.15));
+  const { differences } = getData();
+  const list = differences.slice(0, limit);
 
-  for (let i = 0; i < total; i++) {
-    const order = orders[i * Math.floor(orders.length / total)];
-    const crmAmount = parseFloat(order.amount.toFixed(2));
-    const meterAmount = parseFloat((order.amount + randFloat(-120, 120)).toFixed(2));
-    const diffFields: string[] = ["amount"];
-    if (Math.random() > 0.6) diffFields.push("repairType");
-    if (Math.random() > 0.8) diffFields.push("apartmentId");
-
-    diffs.push({
-      id: uuid(),
-      orderId: order.id,
-      orderNo: order.orderNo,
-      crmValue: {
-        amount: crmAmount,
-        repairType: order.repairType,
-        apartmentId: order.apartmentId,
-      },
-      meterValue: {
-        amount: meterAmount,
-        repairType: diffFields.includes("repairType") ? pick(REPAIR_TYPES) : order.repairType,
-        apartmentId: diffFields.includes("apartmentId") ? pick(APARTMENT_IDS) : order.apartmentId,
-      },
-      diffFields,
-      diffAmount: parseFloat((meterAmount - crmAmount).toFixed(2)),
-      createdAt: order.createdAt.toISOString(),
-    });
-  }
-
-  const totalDiffAmount = diffs.reduce((s, d) => s + Math.abs(d.diffAmount ?? 0), 0);
+  const totalDiffAmount = list.reduce((s, d) => s + Math.abs(d.diffAmount ?? 0), 0);
 
   return {
-    list: diffs,
+    list,
     stats: {
-      totalCount: diffs.length,
-      affectedOrders: new Set(diffs.map((d) => d.orderId)).size,
+      totalCount: list.length,
+      affectedOrders: new Set(list.map((d) => d.orderId)).size,
       totalDiffAmount: parseFloat(totalDiffAmount.toFixed(2)),
     },
   };
@@ -351,37 +496,17 @@ export function getPaymentVersions(limit = 15): {
   list: PaymentVersion[];
   stats: { totalChanges: number; affectedOrders: number };
 } {
-  const { orders } = getData();
-  const versions: PaymentVersion[] = [];
-  const count = Math.min(limit, Math.floor(orders.length * 0.1));
-
-  for (let i = 0; i < count; i++) {
-    const order = orders[i * Math.floor(orders.length / count)];
-    const baseAmount = order.amount;
-    const vCount = randInt(2, 4);
-
-    for (let v = 1; v <= vCount; v++) {
-      versions.push({
-        id: uuid(),
-        orderId: order.id,
-        orderNo: order.orderNo,
-        version: v,
-        amount: parseFloat((baseAmount + randFloat(-60, 60) * (v - 1)).toFixed(2)),
-        status: v === vCount ? "已确认" : "已变更",
-        operator: pick(OPERATORS),
-        changedAt: new Date(
-          order.plannedTime.getTime() + (v - 1) * 3600000 + randInt(0, 10000)
-        ).toISOString(),
-        changeReason: pick(CHANGE_REASONS),
-      });
-    }
-  }
+  const { paymentVersions } = getData();
+  const allSorted = [...paymentVersions].sort(
+    (a, b) => new Date(b.changedAt).getTime() - new Date(a.changedAt).getTime()
+  );
+  const list = allSorted.slice(0, limit);
 
   return {
-    list: versions.sort((a, b) => new Date(b.changedAt).getTime() - new Date(a.changedAt).getTime()),
+    list,
     stats: {
-      totalChanges: versions.length,
-      affectedOrders: new Set(versions.map((v) => v.orderId)).size,
+      totalChanges: list.length,
+      affectedOrders: new Set(list.map((v) => v.orderId)).size,
     },
   };
 }
@@ -472,27 +597,6 @@ export function getRouteDetails(routeId: string): {
           status: o.isOnTime ? "已完成" : "延误完成",
         });
       }
-    });
-  }
-
-  if (samples.length === 0 && routes.length > 0) {
-    const fallback = routes[0];
-    routeName = fallback.routeName;
-    driverName = fallback.driverName;
-    driverId = fallback.driverId;
-    vehicleNo = fallback.vehicleNo;
-    orders.slice(0, 5).forEach((o) => {
-      samples.push({
-        orderId: o.id,
-        orderNo: o.orderNo,
-        apartmentId: o.apartmentId,
-        repairType: o.repairType,
-        plannedTime: o.plannedTime.toISOString(),
-        actualTime: o.actualTime.toISOString(),
-        isOnTime: o.isOnTime,
-        delayMinutes: o.delayMinutes,
-        status: o.isOnTime ? "已完成" : "延误完成",
-      });
     });
   }
 
@@ -597,7 +701,7 @@ export function getDriverTrack(driverId: string, routeId?: string): {
     const t = new Date(route.plannedStart);
     t.setMinutes(t.getMinutes() + i * 10);
 
-    const relatedOrder = i % 6 === 0 ? routeOrders[Math.floor(i / 6) % routeOrders.length] : undefined;
+    const relatedOrder = i % 6 === 0 ? routeOrders[Math.floor(i / 6) % Math.max(1, routeOrders.length)] : undefined;
 
     trackPoints.push({
       timestamp: t.toISOString(),
@@ -638,89 +742,31 @@ export function getLoadingList(
     missingItems: number;
   };
 } {
-  const { routes, orders } = getData();
-  const items: LoadingItemType[] = [];
+  const { loadingItems } = getData();
 
-  const targetRoutes = filterRouteId
-    ? routes.filter((r) => r.id === filterRouteId)
-    : routes;
-  const targetOrderIds = filterOrderId ? [filterOrderId] : null;
+  let list = [...loadingItems];
 
-  let itemIndex = 0;
+  if (filterRouteId) {
+    list = list.filter((i) => i.routeId === filterRouteId);
+  }
+  if (filterOrderId) {
+    list = list.filter((i) => i.orderId === filterOrderId);
+  }
 
-  targetRoutes.forEach((route) => {
-    const routeOrderIds = targetOrderIds
-      ? route.orderIds.filter((id) => id === targetOrderIds[0])
-      : route.orderIds;
-
-    routeOrderIds.forEach((oid) => {
-      const order = orders.find((x) => x.id === oid);
-      if (!order) return;
-
-      const itemCount = randInt(1, 3);
-      for (let m = 0; m < itemCount; m++) {
-        const quantity = randInt(1, 10);
-        const isAbnormal = order.anomalyType || Math.random() > 0.78;
-        const status: LoadingItemType["status"] = !isAbnormal
-          ? "normal"
-          : Math.random() > 0.5
-          ? "abnormal"
-          : "missing";
-        const loadedQuantity = status === "normal"
-          ? quantity
-          : Math.max(0, quantity - randInt(1, quantity));
-
-        items.push({
-          id: uuid(),
-          routeId: route.id,
-          routeName: route.routeName,
-          orderId: order.id,
-          orderNo: order.orderNo,
-          materialName: pick(MATERIAL_NAMES),
-          quantity,
-          unit: pick(["个", "套", "米"]),
-          loadedQuantity,
-          status,
-          originalRecordId: `REC-${new Date(order.plannedTime)
-            .toISOString()
-            .slice(0, 10)
-            .replace(/-/g, "")}-${String(itemIndex).padStart(5, "0")}`,
-          remark: status !== "normal"
-            ? pick(["仓库库存不足", "物料损坏更换", "用户临时增加", "规格型号不符"])
-            : undefined,
-        });
-        itemIndex++;
-      }
-    });
-  });
+  list.sort((a, b) => a.routeName.localeCompare(b.routeName));
 
   return {
-    list: items.sort((a, b) => a.routeName.localeCompare(b.routeName)),
+    list,
     stats: {
-      totalItems: items.length,
-      normalItems: items.filter((i) => i.status === "normal").length,
-      abnormalItems: items.filter((i) => i.status === "abnormal").length,
-      missingItems: items.filter((i) => i.status === "missing").length,
+      totalItems: list.length,
+      normalItems: list.filter((i) => i.status === "normal").length,
+      abnormalItems: list.filter((i) => i.status === "abnormal").length,
+      missingItems: list.filter((i) => i.status === "missing").length,
     },
   };
 }
 
-export function getOriginalRecord(recordId: string): OriginalRecordType {
-  return {
-    id: recordId,
-    materialName: pick(MATERIAL_NAMES),
-    quantity: randInt(1, 15),
-    unit: pick(["个", "套", "米"]),
-    enteredBy: pick(["仓库管理员-张磊", "调度员-李娜", "运营-王强", "采购-刘敏"]),
-    enteredAt: new Date(
-      Date.now() - randInt(1, 7) * 86400000 - randInt(0, 43200) * 1000
-    ).toISOString(),
-    source: pick(["WMS系统", "手工录入", "调拨单"]),
-    rawData: {
-      batchNo: `BATCH-${randInt(10000, 99999)}`,
-      warehouse: pick(["中心仓库", "北区仓库", "南区仓库"]),
-      shelfNo: `A${randInt(1, 20)}-${randInt(1, 10)}`,
-      operatorSignature: pick(["ZL", "LN", "WQ", "LM"]),
-    },
-  };
+export function getOriginalRecord(recordId: string): OriginalRecordType | null {
+  const { originalRecords } = getData();
+  return originalRecords.get(recordId) ?? null;
 }
