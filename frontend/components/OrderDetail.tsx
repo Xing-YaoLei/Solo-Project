@@ -12,6 +12,7 @@ import {
   priorityLabels,
   priorityColors,
 } from '../lib/utils';
+import type { ReviewTag, DelayReason, OrderStatus } from '../types';
 import {
   MapPin,
   Clock,
@@ -175,7 +176,7 @@ function OverviewTab({ order }: { order: any }) {
         <div className="bg-white rounded-lg border border-gray-100 p-4">
           <h3 className="text-sm font-medium text-gray-700 mb-3">复盘标签</h3>
           <div className="flex flex-wrap gap-2">
-            {order.reviewTags.map((tag: any) => (
+            {order.reviewTags.map((tag: ReviewTag) => (
               <span
                 key={tag}
                 className={`px-2.5 py-1 text-xs font-medium rounded-full ${reviewTagColors[tag]}`}
@@ -283,7 +284,7 @@ function DelayTab({ order }: { order: any }) {
         </div>
       ) : (
         <div className="space-y-3">
-          {delays.map((delay: any) => (
+          {delays.map((delay: { id: string; reason: DelayReason; detail: string; duration: number; reportedAt: string }) => (
             <div key={delay.id} className="bg-red-50 rounded-lg p-4 border border-red-100">
               <div className="flex items-start justify-between mb-2">
                 <span className="px-2.5 py-1 bg-red-100 text-red-700 text-xs font-medium rounded">
@@ -425,7 +426,7 @@ function HistoryTab({ order }: { order: any }) {
       ) : (
         <div className="relative">
           <div className="absolute left-3 top-2 bottom-2 w-0.5 bg-gray-200" />
-          {logs.map((log: any, index: number) => (
+          {logs.map((log: { id: string; fromStatus: OrderStatus; toStatus: OrderStatus; remark?: string; createdAt: string }, index: number) => (
             <div key={log.id} className="relative pl-8 pb-4">
               <div className={`absolute left-1.5 w-3 h-3 rounded-full border-2 border-white ${
                 index === 0 ? 'bg-primary-500' : 'bg-gray-300'

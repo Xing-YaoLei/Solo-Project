@@ -4,11 +4,13 @@ import OrderList from '../components/OrderList';
 import OrderDetail from '../components/OrderDetail';
 import ProcessPanel from '../components/ProcessPanel';
 import StatisticsPanel from '../components/StatisticsPanel';
-import { ClipboardList, LayoutDashboard, History } from 'lucide-react';
+import CreateOrderModal from '../components/CreateOrderModal';
+import { ClipboardList, LayoutDashboard, History, Plus, Workflow } from 'lucide-react';
 
 export default function Home() {
   const { fetchOrders, fetchCommonMaterials, fetchRepairPersons } = useAppStore();
   const [activeTab, setActiveTab] = useState<'dispatch' | 'stats' | 'history'>('dispatch');
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   useEffect(() => {
     fetchOrders();
@@ -16,10 +18,16 @@ export default function Home() {
     fetchRepairPersons();
   }, []);
 
+  useEffect(() => {
+    const handleOpenModal = () => setShowCreateModal(true);
+    window.addEventListener('openCreateModal', handleOpenModal);
+    return () => window.removeEventListener('openCreateModal', handleOpenModal);
+  }, []);
+
   return (
     <div className="h-screen flex flex-col bg-gray-50">
-      <header className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex items-center justify-between">
+      <header className="bg-white border-b border-gray-200">
+        <div className="px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-primary-600 rounded-lg flex items-center justify-center">
               <ClipboardList className="w-6 h-6 text-white" />
@@ -30,6 +38,13 @@ export default function Home() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-lg text-sm font-medium hover:bg-primary-600 transition-colors shadow-sm"
+            >
+              <Plus className="w-4 h-4" />
+              新增派单
+            </button>
             <button
               onClick={() => setActiveTab('dispatch')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
@@ -71,6 +86,44 @@ export default function Home() {
             </button>
           </div>
         </div>
+
+        {activeTab === 'dispatch' && (
+          <div className="px-6 py-3 bg-gradient-to-r from-blue-50 to-indigo-50 border-t border-gray-100">
+            <div className="flex items-center gap-2">
+              <Workflow className="w-4 h-4 text-primary-500" />
+              <span className="text-sm font-medium text-gray-700">业务链路：</span>
+              <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5 px-3 py-1 bg-white rounded-full border border-green-200 shadow-sm">
+                  <div className="w-2 h-2 rounded-full bg-green-500" />
+                  <span className="text-xs font-medium text-green-700">录入派单</span>
+                </div>
+                <span className="text-gray-400">→</span>
+                <div className="flex items-center gap-1.5 px-3 py-1 bg-white rounded-full border border-blue-200 shadow-sm">
+                  <div className="w-2 h-2 rounded-full bg-blue-500" />
+                  <span className="text-xs font-medium text-blue-700">人员分派</span>
+                </div>
+                <span className="text-gray-400">→</span>
+                <div className="flex items-center gap-1.5 px-3 py-1 bg-white rounded-full border border-yellow-200 shadow-sm">
+                  <div className="w-2 h-2 rounded-full bg-yellow-500" />
+                  <span className="text-xs font-medium text-yellow-700">维修处理</span>
+                </div>
+                <span className="text-gray-400">→</span>
+                <div className="flex items-center gap-1.5 px-3 py-1 bg-white rounded-full border border-purple-200 shadow-sm">
+                  <div className="w-2 h-2 rounded-full bg-purple-500" />
+                  <span className="text-xs font-medium text-purple-700">完成复核</span>
+                </div>
+                <span className="text-gray-400">→</span>
+                <div className="flex items-center gap-1.5 px-3 py-1 bg-white rounded-full border border-gray-300 shadow-sm">
+                  <div className="w-2 h-2 rounded-full bg-gray-500" />
+                  <span className="text-xs font-medium text-gray-700">单据关闭</span>
+                </div>
+              </div>
+              <div className="ml-auto text-xs text-gray-500">
+                提示：点击左侧「录入」按钮或顶部「新增派单」开始完整业务流程
+              </div>
+            </div>
+          </div>
+        )}
       </header>
 
       <main className="flex-1 overflow-hidden">
@@ -98,6 +151,11 @@ export default function Home() {
           </div>
         )}
       </main>
+
+      <CreateOrderModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+      />
     </div>
   );
 }
