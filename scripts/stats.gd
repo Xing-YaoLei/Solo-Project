@@ -49,7 +49,7 @@ func _create_rank_card(level_data: Dictionary, rank: int) -> PanelContainer:
 	
 	var center_vbox = VBoxContainer.new()
 	center_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	center_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	center_vbox.alignment = BoxContainer.AlignmentMode.ALIGNMENT_CENTER
 	hbox.add_child(center_vbox)
 	
 	var name_label = Label.new()
@@ -66,7 +66,7 @@ func _create_rank_card(level_data: Dictionary, rank: int) -> PanelContainer:
 	
 	var right_vbox = VBoxContainer.new()
 	right_vbox.custom_minimum_size = Vector2(120, 0)
-	right_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	right_vbox.alignment = BoxContainer.AlignmentMode.ALIGNMENT_CENTER
 	hbox.add_child(right_vbox)
 	
 	var sat_label = Label.new()

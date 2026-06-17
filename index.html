@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>物业装修备案调度 - 游戏入口</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        .title {
+            font-size: 32px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+        .subtitle {
+            font-size: 16px;
+            color: #7f8c8d;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #4a90d9, #357abd);
+            color: white;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            margin: 0 4px;
+        }
+        .badges {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 16px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            text-align: center;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #52c41a, #389e0d);
+            color: white;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(82, 196, 26, 0.4);
+        }
+        .btn-secondary {
+            background: #f0f2f5;
+            color: #2c3e50;
+        }
+        .btn-secondary:hover {
+            background: #e4e7ed;
+        }
+        .info {
+            background: #f6f8fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        .info-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 12px;
+        }
+        .info ol {
+            padding-left: 20px;
+            color: #5a6773;
+            line-height: 2;
+            font-size: 14px;
+        }
+        .features {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin: 20px 0;
+        }
+        .feature {
+            text-align: center;
+            padding: 16px 8px;
+            background: #f6f8fa;
+            border-radius: 12px;
+        }
+        .feature-icon {
+            font-size: 28px;
+            margin-bottom: 6px;
+        }
+        .feature-text {
+            font-size: 13px;
+            color: #5a6773;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1 class="title">🏢 物业装修备案调度</h1>
+        <p class="subtitle">模拟经营解谜游戏</p>
+        <div class="badges">
+            <span class="badge">Godot 4</span>
+            <span class="badge">GDScript</span>
+            <span class="badge">WebGL</span>
+        </div>
+
+        <div class="features">
+            <div class="feature">
+                <div class="feature-icon">💧</div>
+                <div class="feature-text">水电读数</div>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">📋</div>
+                <div class="feature-text">审批意见</div>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">🏠</div>
+                <div class="feature-text">房屋档案</div>
+            </div>
+        </div>
+
+        <a href="build/web/index.html" class="btn btn-primary" id="playBtn">▶ 开始游戏</a>
+        <button class="btn btn-secondary" onclick="checkGame()">🔍 检查游戏文件</button>
+
+        <div class="info">
+            <div class="info-title">📦 如果游戏无法启动</div>
+            <ol>
+                <li>使用 Godot 4.2+ 打开 <code>project.godot</code></li>
+                <li>菜单: 项目 → 导出... → 选择 Web 预设</li>
+                <li>点击「导出项目」，保存为 <code>build/web/index.html</code></li>
+                <li>刷新此页面后点击「开始游戏」</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        function checkGame() {
+            fetch('build/web/index.html')
+                .then(r => {
+                    if (r.ok) {
+                        alert('✅ 游戏文件已就绪！\n点击「开始游戏」即可游玩。');
+                    } else {
+                        alert('⚠️ 游戏文件尚未导出\n\n请按页面下方的说明步骤，先用 Godot 4 导出 Web 版本。');
+                    }
+                })
+                .catch(() => {
+                    alert('⚠️ 游戏文件尚未导出\n\n请按页面下方的说明步骤，先用 Godot 4 导出 Web 版本。');
+                });
+        }
+
+        document.getElementById('playBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            fetch('build/web/index.html')
+                .then(r => {
+                    if (r.ok) {
+                        window.location.href = 'build/web/index.html';
+                    } else {
+                        alert('⚠️ 游戏尚未导出！\n\n请先用 Godot 4 编辑器导出 Web 版本到 build/web/ 目录。');
+                    }
+                })
+                .catch(() => {
+                    alert('⚠️ 游戏尚未导出！\n\n请先用 Godot 4 编辑器导出 Web 版本到 build/web/ 目录。');
+                });
+        });
+    </script>
+</body>
+</html>

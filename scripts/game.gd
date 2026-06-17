@@ -94,7 +94,7 @@ func _display_water_meter_task(task: Dictionary) -> void:
 	water_val.add_theme_font_size_override("font_size", 18)
 	water_val.add_theme_color_override("font_color", Color(0.2, 0.4, 0.7, 1))
 	var water_hbox = HBoxContainer.new()
-	water_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	water_hbox.alignment = BoxContainer.AlignmentMode.ALIGNMENT_CENTER
 	water_hbox.add_theme_constant_override("separation", 20)
 	water_hbox.add_child(water_label)
 	water_hbox.add_child(water_val)
@@ -110,7 +110,7 @@ func _display_water_meter_task(task: Dictionary) -> void:
 	electric_val.add_theme_font_size_override("font_size", 18)
 	electric_val.add_theme_color_override("font_color", Color(0.9, 0.6, 0.2, 1))
 	var electric_hbox = HBoxContainer.new()
-	electric_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	electric_hbox.alignment = BoxContainer.AlignmentMode.ALIGNMENT_CENTER
 	electric_hbox.add_theme_constant_override("separation", 20)
 	electric_hbox.add_child(electric_label)
 	electric_hbox.add_child(electric_val)
@@ -137,10 +137,14 @@ func _display_approval_task(task: Dictionary) -> void:
 	spacer.custom_minimum_size = Vector2(0, 10)
 	task_content.add_child(spacer)
 	
+	var grid_wrapper = CenterContainer.new()
+	task_content.add_child(grid_wrapper)
+	
 	var grid = GridContainer.new()
 	grid.columns = 2
-	grid.alignment = BoxContainer.ALIGNMENT_CENTER
-	task_content.add_child(grid)
+	grid.add_theme_constant_override("h_separation", 30)
+	grid.add_theme_constant_override("v_separation", 8)
+	grid_wrapper.add_child(grid)
 	
 	var permit_label = Label.new()
 	permit_label.text = "装修许可证:"
@@ -178,12 +182,14 @@ func _display_house_archive_task(task: Dictionary) -> void:
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	task_content.add_child(title_label)
 	
+	var grid_wrapper = CenterContainer.new()
+	task_content.add_child(grid_wrapper)
+	
 	var grid = GridContainer.new()
 	grid.columns = 2
-	grid.alignment = BoxContainer.ALIGNMENT_CENTER
 	grid.add_theme_constant_override("h_separation", 30)
 	grid.add_theme_constant_override("v_separation", 8)
-	task_content.add_child(grid)
+	grid_wrapper.add_child(grid)
 	
 	var owner_label = Label.new()
 	owner_label.text = "业主姓名:"
@@ -254,9 +260,9 @@ func _play_wrong_animation() -> void:
 	task_card.position.x = 0
 	var shake_tween = create_tween()
 	shake_tween.set_loops(3)
-	shake_tween.tween_property(task_card, "position:x", -10, 0.05)
-	shake_tween.tween_property(task_card, "position:x", 10, 0.05)
-	shake_tween.tween_property(task_card, "position:x", 0, 0.05)
+	shake_tween.tween_property(task_card, "position:x", -10.0, 0.05)
+	shake_tween.tween_property(task_card, "position:x", 10.0, 0.05)
+	shake_tween.tween_property(task_card, "position:x", 0.0, 0.05)
 
 func _on_game_state_changed() -> void:
 	_refresh_ui()

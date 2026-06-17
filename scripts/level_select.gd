@@ -24,7 +24,7 @@ func _create_level_card(level: Dictionary) -> PanelContainer:
 	
 	var left_vbox = VBoxContainer.new()
 	left_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	left_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	left_vbox.alignment = BoxContainer.AlignmentMode.ALIGNMENT_CENTER
 	hbox.add_child(left_vbox)
 	
 	var level_name = Label.new()
@@ -40,7 +40,7 @@ func _create_level_card(level: Dictionary) -> PanelContainer:
 	left_vbox.add_child(level_desc)
 	
 	var info_hbox = HBoxContainer.new()
-	info_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	info_hbox.alignment = BoxContainer.AlignmentMode.ALIGNMENT_CENTER
 	info_hbox.add_theme_constant_override("separation", 20)
 	left_vbox.add_child(info_hbox)
 	
@@ -65,7 +65,7 @@ func _create_level_card(level: Dictionary) -> PanelContainer:
 	var stats = StatsManager.get_level_stats(level.id)
 	if not stats.is_empty():
 		var stat_hbox = HBoxContainer.new()
-		stat_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+		stat_hbox.alignment = BoxContainer.AlignmentMode.ALIGNMENT_CENTER
 		stat_hbox.add_theme_constant_override("separation", 15)
 		left_vbox.add_child(stat_hbox)
 		

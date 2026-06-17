@@ -92,5 +92,6 @@ func _play_tone(freq: float, duration: float, delay: float = 0.0) -> void:
 func vibrate(strength: float = 1.0) -> void:
 	if not SettingsManager.vibration_enabled:
 		return
-	if Input.has_feature("mobile"):
-		Input.vibrate_handheld(int(200 * strength))
+	if Input.has_method("vibrate_handheld"):
+		if Input.has_feature("mobile"):
+			Input.vibrate_handheld(int(200 * strength))
