@@ -3,7 +3,6 @@ using ElderCareScheduling.API.Hangfire;
 using ElderCareScheduling.API.Repositories;
 using ElderCareScheduling.API.Services;
 using Hangfire;
-using Hangfire.Dashboard;
 using Hangfire.SqlServer;
 using Microsoft.EntityFrameworkCore;
 
@@ -103,20 +102,9 @@ app.UseHangfireDashboard("/hangfire", new DashboardOptions
     DashboardTitle = "养老护理排班后台任务管理",
     Authorization = new[]
     {
-        new BasicAuthAuthorizationFilter(new BasicAuthAuthorizationFilterOptions
-        {
-            RequireSsl = false,
-            SslRedirect = false,
-            LoginCaseSensitive = true,
-            Users = new[]
-            {
-                new BasicAuthAuthorizationUser
-                {
-                    Login = "admin",
-                    PasswordClear = "Admin@123"
-                }
-            }
-        })
+        app.Environment.IsDevelopment()
+            ? new NoopDashboardAuthFilter()
+            : new SimpleDashboardAuthFilter("admin", "Admin@123")
     }
 });
 
