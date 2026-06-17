@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
-from .models import UserRole, WorkOrderStatus, WorkOrderPriority, WorkOrderCategory
+from ..models import UserRole, WorkOrderStatus, WorkOrderPriority, WorkOrderCategory
 
 
 class UserBase(BaseModel):

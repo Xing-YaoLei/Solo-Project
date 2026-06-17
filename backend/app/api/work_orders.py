@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Body
 from sqlalchemy.orm import Session
 from typing import Optional, List
+from datetime import datetime
 
 from ..core.database import get_db
 from ..models import User, UserRole, WorkOrderStatus, WorkOrderPriority, WorkOrderCategory
@@ -10,6 +11,12 @@ from ..schemas import (
     WorkOrderDailyItem, DashboardStats, CommunicationCreate, Communication
 )
 from ..services import work_order_service
+from ..services.response_builder import (
+    to_work_order_schema,
+    to_work_order_list,
+    to_daily_item,
+    to_communication_schema,
+)
 from .deps import get_current_user, get_current_active_admin
 
 router = APIRouter(prefix="/work-orders", tags=["工单"])
@@ -22,9 +29,17 @@ def get_daily_orders(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    items, total = work_order_service.get_daily_work_orders(
+    orders, total = work_order_service.get_daily_work_orders(
         db, current_user=current_user, skip=skip, limit=limit
     )
+    now = datetime.now()
+    items = []
+    for order in orders:
+        is_overdue = False
+        if order.deadline and order.status not in [WorkOrderStatus.COMPLETED, WorkOrderStatus.CLOSED]:
+            is_overdue = order.deadline < now
+        review_failed = order.status == WorkOrderStatus.REVIEW_FAILED
+        items.append(to_daily_item(db, order, is_overdue, review_failed))
     return {"items": items, "total": total, "page": skip // limit + 1, "page_size": limit}
 
 
@@ -53,7 +68,7 @@ def list_work_orders(
         keyword=keyword,
     )
     return WorkOrderList(
-        items=orders,
+        items=to_work_order_list(db, orders),
         total=total,
         page=skip // limit + 1,
         page_size=limit,
@@ -74,7 +89,7 @@ def get_work_order(
         if order.created_by != current_user.id and order.assigned_to != current_user.id:
             raise HTTPException(status_code=403, detail="无权查看此工单")
 
-    return order
+    return to_work_order_schema(db, order)
 
 
 @router.post("", response_model=WorkOrder, status_code=201)
@@ -84,7 +99,7 @@ def create_work_order(
     db: Session = Depends(get_db),
 ):
     order = work_order_service.create_work_order(db, order_in, current_user)
-    return order
+    return to_work_order_schema(db, order)
 
 
 @router.put("/{order_id}", response_model=WorkOrder)
@@ -103,7 +118,7 @@ def update_work_order(
             raise HTTPException(status_code=403, detail="无权修改此工单")
 
     updated = work_order_service.update_work_order(db, order_id, order_in, current_user)
-    return updated
+    return to_work_order_schema(db, updated)
 
 
 @router.post("/{order_id}/assign", response_model=WorkOrder)
@@ -118,7 +133,7 @@ def assign_work_order(
         raise HTTPException(status_code=404, detail="工单不存在")
 
     updated = work_order_service.assign_work_order(db, order_id, assign_in, current_user)
-    return updated
+    return to_work_order_schema(db, updated)
 
 
 @router.post("/{order_id}/start", response_model=WorkOrder)
@@ -138,7 +153,7 @@ def start_work_order(
     updated = work_order_service.start_work_order(db, order_id, current_user, remark)
     if not updated:
         raise HTTPException(status_code=400, detail="工单状态不允许开始处理")
-    return updated
+    return to_work_order_schema(db, updated)
 
 
 @router.post("/{order_id}/complete", response_model=WorkOrder)
@@ -158,7 +173,7 @@ def complete_work_order(
     updated = work_order_service.complete_work_order(db, order_id, complete_in, current_user)
     if not updated:
         raise HTTPException(status_code=400, detail="工单状态不允许完成")
-    return updated
+    return to_work_order_schema(db, updated)
 
 
 @router.post("/{order_id}/review", response_model=WorkOrder)
@@ -175,7 +190,7 @@ def review_work_order(
     updated = work_order_service.review_work_order(db, order_id, review_in, current_user)
     if not updated:
         raise HTTPException(status_code=400, detail="工单状态不允许复核")
-    return updated
+    return to_work_order_schema(db, updated)
 
 
 @router.get("/{order_id}/communications", response_model=List[Communication])
@@ -192,7 +207,7 @@ def list_communications(
         if order.created_by != current_user.id and order.assigned_to != current_user.id:
             raise HTTPException(status_code=403, detail="无权查看此工单")
 
-    return order.communications
+    return [to_communication_schema(db, c) for c in order.communications]
 
 
 @router.post("/{order_id}/communications", response_model=Communication)
@@ -211,4 +226,4 @@ def add_communication(
             raise HTTPException(status_code=403, detail="无权操作此工单")
 
     comm = work_order_service.add_communication(db, order_id, comm_in.content, current_user)
-    return comm
+    return to_communication_schema(db, comm)

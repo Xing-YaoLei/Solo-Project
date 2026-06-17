@@ -1,9 +1,16 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Text, Enum, Float
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Text, Enum as SAEnum, Float
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import enum
 
 from ..core.database import Base
+from ..core.config import settings
+
+
+def _enum_column(enum_class, **kwargs):
+    if settings.SQLALCHEMY_DATABASE_URI.startswith("sqlite"):
+        return SAEnum(enum_class, native_enum=False, values_callable=lambda x: [e.value for e in x], **kwargs)
+    return SAEnum(enum_class, **kwargs)
 
 
 class UserRole(str, enum.Enum):
@@ -20,7 +27,7 @@ class User(Base):
     full_name = Column(String(100), nullable=False)
     email = Column(String(100), unique=True, index=True)
     hashed_password = Column(String(255), nullable=False)
-    role = Column(Enum(UserRole), default=UserRole.WORKER, nullable=False)
+    role = Column(_enum_column(UserRole), default=UserRole.WORKER, nullable=False)
     is_active = Column(Boolean, default=True)
     phone = Column(String(20))
     department = Column(String(100))
@@ -68,9 +75,9 @@ class WorkOrder(Base):
     title = Column(String(200), nullable=False)
     description = Column(Text, nullable=False)
     location = Column(String(200), nullable=False)
-    category = Column(Enum(WorkOrderCategory), nullable=False)
-    priority = Column(Enum(WorkOrderPriority), default=WorkOrderPriority.MEDIUM, nullable=False)
-    status = Column(Enum(WorkOrderStatus), default=WorkOrderStatus.PENDING, nullable=False)
+    category = Column(_enum_column(WorkOrderCategory), nullable=False)
+    priority = Column(_enum_column(WorkOrderPriority), default=WorkOrderPriority.MEDIUM, nullable=False)
+    status = Column(_enum_column(WorkOrderStatus), default=WorkOrderStatus.PENDING, nullable=False)
 
     reporter_name = Column(String(100))
     reporter_phone = Column(String(20))
@@ -117,8 +124,8 @@ class StatusLog(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     work_order_id = Column(Integer, ForeignKey("work_orders.id"), nullable=False)
-    from_status = Column(Enum(WorkOrderStatus))
-    to_status = Column(Enum(WorkOrderStatus), nullable=False)
+    from_status = Column(_enum_column(WorkOrderStatus))
+    to_status = Column(_enum_column(WorkOrderStatus), nullable=False)
     remark = Column(Text)
     operated_by = Column(Integer, ForeignKey("users.id"))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -159,8 +166,8 @@ class DispatchRule(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False)
-    category = Column(Enum(WorkOrderCategory))
-    priority = Column(Enum(WorkOrderPriority))
+    category = Column(_enum_column(WorkOrderCategory))
+    priority = Column(_enum_column(WorkOrderPriority))
     assigned_role = Column(String(50))
     default_assignee_id = Column(Integer, ForeignKey("users.id"))
     processing_hours = Column(Float, default=24)

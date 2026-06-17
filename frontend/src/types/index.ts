@@ -192,3 +192,8 @@ export interface WorkOrderReview {
   is_passed: boolean;
   comment?: string;
 }
+
+export interface UserLogin {
+  username: string;
+  password: string;
+}

@@ -3,7 +3,7 @@ import { Link } from '@tanstack/react-router';
 import { useAuthStore, hasPermission } from '@/hooks/useAuthStore';
 import { getDailyWorkOrders, getWorkOrders } from '@/api/workOrders';
 import type { WorkOrderDailyItem, WorkOrderStatus, WorkOrderCategory, WorkOrderPriority } from '@/types';
-import { statusLabels, statusColors, priorityLabels, priorityColors, categoryLabels } from '@/utils/constants';
+import { statusLabels, statusColors, priorityLabels, priorityColors, categoryLabels, categoryColors } from '@/utils/constants';
 import {
   ClipboardList,
   Plus,

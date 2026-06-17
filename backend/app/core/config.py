@@ -12,8 +12,12 @@ class Settings(BaseSettings):
     POSTGRES_DB: str = "property_repair"
     POSTGRES_PORT: str = "5432"
 
+    USE_SQLITE: bool = True
+
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:
+        if self.USE_SQLITE:
+            return "sqlite:///./property_repair.db"
         return f"postgresql+psycopg2://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
 
     SECRET_KEY: str = "your-secret-key-change-in-production"
