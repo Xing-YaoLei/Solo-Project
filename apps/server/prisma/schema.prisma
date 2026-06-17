@@ -1,0 +1,362 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  OWNER
+  DESIGNER
+  FOREMAN
+  SUPERVISOR
+}
+
+enum ChangeOrderStatus {
+  DRAFT
+  PENDING_REVIEW
+  DESIGNER_APPROVED
+  OWNER_APPROVED
+  IN_PROGRESS
+  PENDING_ACCEPTANCE
+  ACCEPTED
+  REJECTED
+  CANCELLED
+}
+
+enum MaterialDelayStatus {
+  REPORTED
+  CONFIRMED
+  RESCHEDULED
+  RESOLVED
+  CLOSED
+}
+
+enum AfterSalesStatus {
+  OPEN
+  IN_PROGRESS
+  PENDING_REVIEW
+  RESOLVED
+  CLOSED
+}
+
+enum AcceptanceStatus {
+  PENDING
+  PASSED
+  FAILED
+  RE_INSPECTED
+}
+
+enum BatchOperationType {
+  STATUS_UPDATE
+  ASSIGN
+  NOTIFY
+  EXPORT
+}
+
+enum LogAction {
+  CREATE
+  UPDATE
+  DELETE
+  STATUS_CHANGE
+  COMMENT
+  ATTACH
+  BATCH_OPERATION
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  phone     String?  @unique
+  name      String
+  password  String
+  role      UserRole
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assignedDesignChanges    DesignChangeOrder[] @relation("DesignerOrders")
+  submittedDesignChanges   DesignChangeOrder[] @relation("SubmitterOrders")
+  supervisedProjects       Project[]           @relation("SupervisorProjects")
+  ownedProjects            Project[]           @relation("OwnerProjects")
+  foremanProjects          Project[]           @relation("ForemanProjects")
+  designerProjects         Project[]           @relation("DesignerProjects")
+  createdLogs              OperationLog[]      @relation("LogCreator")
+  uploadedPhotos           AcceptancePhoto[]   @relation("PhotoUploader")
+  reviewedPhotos           AcceptancePhoto[]   @relation("PhotoReviewer")
+  reportedAfterSales       AfterSalesTicket[]  @relation("TicketReporter")
+  assignedAfterSales       AfterSalesTicket[]  @relation("TicketAssignee")
+  reportedMaterialDelays   MaterialDelay[]     @relation("DelayReporter")
+  handledMaterialDelays    MaterialDelay[]     @relation("DelayHandler")
+  changeStatusLogs         ChangeStatusLog[]   @relation("StatusLogOperator")
+  materialDelayLogs        MaterialDelayLog[]  @relation("DelayLogOperator")
+  authoredComments         Comment[]           @relation("CommentAuthor")
+  uploadedAttachments      Attachment[]        @relation("AttachmentUploader")
+  workerCheckins           WorkerCheckin[]     @relation("WorkerCheckins")
+  batchOperations          BatchOperation[]    @relation("BatchOperator")
+}
+
+model Project {
+  id            String   @id @default(cuid())
+  name          String
+  address       String
+  ownerId       String
+  designerId    String?
+  foremanId     String?
+  supervisorId  String?
+  startDate     DateTime?
+  endDate       DateTime?
+  actualEndDate DateTime?
+  status        String   @default("ACTIVE")
+  description   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  owner        User                @relation("OwnerProjects", fields: [ownerId], references: [id])
+  designer     User?               @relation("DesignerProjects", fields: [designerId], references: [id])
+  foreman      User?               @relation("ForemanProjects", fields: [foremanId], references: [id])
+  supervisor   User?               @relation("SupervisorProjects", fields: [supervisorId], references: [id])
+  changeOrders DesignChangeOrder[]
+  checkins     WorkerCheckin[]
+  afterSales   AfterSalesTicket[]
+  materials    MaterialDelay[]
+  stat         ProjectStat?
+}
+
+model DesignChangeOrder {
+  id             String             @id @default(cuid())
+  orderNo        String             @unique
+  projectId      String
+  title          String
+  description    String
+  reason         String?
+  originalDesign String?
+  newDesign      String?
+  impactOnSchedule Int?
+  impactOnCost   Decimal?           @db.Decimal(12, 2)
+  status         ChangeOrderStatus  @default(DRAFT)
+  designerId     String?
+  submittedById  String?
+  approvedAt     DateTime?
+  completedAt    DateTime?
+  deadline       DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  project         Project              @relation(fields: [projectId], references: [id])
+  designer        User?                @relation("DesignerOrders", fields: [designerId], references: [id])
+  submittedBy     User?                @relation("SubmitterOrders", fields: [submittedById], references: [id])
+  statusHistory   ChangeStatusLog[]
+  acceptancePhotos AcceptancePhoto[]
+  materialDelays  MaterialDelay[]
+  comments        Comment[]
+  attachments     Attachment[]
+  operationLogs   OperationLog[]
+}
+
+model ChangeStatusLog {
+  id            String            @id @default(cuid())
+  changeOrderId String
+  oldStatus     ChangeOrderStatus?
+  newStatus     ChangeOrderStatus
+  remark        String?
+  operatorId    String?
+  createdAt     DateTime          @default(now())
+
+  changeOrder DesignChangeOrder @relation(fields: [changeOrderId], references: [id])
+  operator    User?              @relation("StatusLogOperator", fields: [operatorId], references: [id])
+}
+
+model AcceptancePhoto {
+  id            String           @id @default(cuid())
+  changeOrderId String
+  uploaderId    String
+  photoUrl      String
+  thumbnailUrl  String?
+  description   String?
+  status        AcceptanceStatus @default(PENDING)
+  reviewRemark  String?
+  reviewedById  String?
+  reviewedAt    DateTime?
+  phase         String?
+  createdAt     DateTime         @default(now())
+
+  changeOrder DesignChangeOrder @relation(fields: [changeOrderId], references: [id])
+  uploader    User              @relation("PhotoUploader", fields: [uploaderId], references: [id])
+  reviewer    User?             @relation("PhotoReviewer", fields: [reviewedById], references: [id])
+}
+
+model WorkerCheckin {
+  id        String   @id @default(cuid())
+  projectId String
+  workerId  String
+  checkinTime DateTime
+  checkoutTime DateTime?
+  location  String?
+  photoUrl  String?
+  remark    String?
+  workType  String?
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id])
+  worker  User    @relation("WorkerCheckins", fields: [workerId], references: [id])
+}
+
+model AfterSalesTicket {
+  id          String           @id @default(cuid())
+  ticketNo    String           @unique
+  projectId   String
+  title       String
+  description String
+  status      AfterSalesStatus @default(OPEN)
+  priority    String           @default("NORMAL")
+  reporterId  String
+  assigneeId  String?
+  resolvedAt  DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  project    Project   @relation(fields: [projectId], references: [id])
+  reporter   User      @relation("TicketReporter", fields: [reporterId], references: [id])
+  assignee   User?     @relation("TicketAssignee", fields: [assigneeId], references: [id])
+  comments   Comment[]
+  attachments Attachment[]
+}
+
+model MaterialDelay {
+  id            String              @id @default(cuid())
+  changeOrderId String?
+  projectId     String
+  materialName  String
+  specification String?
+  quantity      Decimal?            @db.Decimal(12, 2)
+  originalDate  DateTime
+  estimatedDate DateTime?
+  actualDate    DateTime?
+  delayDays     Int?
+  reason        String
+  status        MaterialDelayStatus @default(REPORTED)
+  impact        String?
+  reportedById  String
+  handledById   String?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  changeOrder DesignChangeOrder? @relation(fields: [changeOrderId], references: [id])
+  project     Project             @relation(fields: [projectId], references: [id])
+  reportedBy  User                @relation("DelayReporter", fields: [reportedById], references: [id])
+  handledBy   User?               @relation("DelayHandler", fields: [handledById], references: [id])
+  history     MaterialDelayLog[]
+}
+
+model MaterialDelayLog {
+  id             String              @id @default(cuid())
+  materialDelayId String
+  oldStatus      MaterialDelayStatus?
+  newStatus      MaterialDelayStatus
+  remark         String?
+  operatorId     String?
+  createdAt      DateTime            @default(now())
+
+  materialDelay MaterialDelay @relation(fields: [materialDelayId], references: [id])
+  operator      User?         @relation("DelayLogOperator", fields: [operatorId], references: [id])
+}
+
+model Comment {
+  id            String   @id @default(cuid())
+  content       String
+  authorId      String
+  changeOrderId String?
+  ticketId      String?
+  isSupplement  Boolean  @default(false)
+  supplementType String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  author      User              @relation("CommentAuthor", fields: [authorId], references: [id])
+  changeOrder DesignChangeOrder? @relation(fields: [changeOrderId], references: [id])
+  ticket      AfterSalesTicket?  @relation(fields: [ticketId], references: [id])
+  attachments Attachment[]
+}
+
+model Attachment {
+  id            String   @id @default(cuid())
+  fileName      String
+  fileUrl       String
+  fileType      String?
+  fileSize      Int?
+  changeOrderId String?
+  commentId     String?
+  ticketId      String?
+  uploadedById  String
+  createdAt     DateTime @default(now())
+
+  changeOrder DesignChangeOrder? @relation(fields: [changeOrderId], references: [id])
+  comment     Comment?           @relation(fields: [commentId], references: [id])
+  ticket      AfterSalesTicket?  @relation(fields: [ticketId], references: [id])
+  uploadedBy  User               @relation("AttachmentUploader", fields: [uploadedById], references: [id])
+}
+
+model OperationLog {
+  id              String   @id @default(cuid())
+  action          LogAction
+  entityType      String
+  entityId        String
+  oldValue        String?  @db.Text
+  newValue        String?  @db.Text
+  remark          String?
+  operatorId      String
+  batchOperationId String?
+  createdAt       DateTime @default(now())
+
+  operator       User              @relation("LogCreator", fields: [operatorId], references: [id])
+  changeOrder    DesignChangeOrder? @relation(fields: [entityId], references: [id])
+  batchOperation BatchOperation?   @relation(fields: [batchOperationId], references: [id])
+}
+
+model BatchOperation {
+  id          String              @id @default(cuid())
+  type        BatchOperationType
+  name        String
+  description String?
+  totalCount  Int
+  successCount Int                @default(0)
+  failCount   Int                 @default(0)
+  status      String              @default("PROCESSING")
+  operatorId  String
+  payload     String?             @db.Text
+  createdAt   DateTime            @default(now())
+  completedAt DateTime?
+
+  operator User                @relation("BatchOperator", fields: [operatorId], references: [id])
+  items    BatchOperationItem[]
+  logs     OperationLog[]
+}
+
+model BatchOperationItem {
+  id               String @id @default(cuid())
+  batchOperationId String
+  entityType       String
+  entityId         String
+  status           String
+  errorMessage     String?
+  result           String? @db.Text
+
+  batchOperation BatchOperation @relation(fields: [batchOperationId], references: [id])
+}
+
+model ProjectStat {
+  id              String   @id @default(cuid())
+  projectId       String   @unique
+  totalChanges    Int      @default(0)
+  completedChanges Int     @default(0)
+  delayedDays     Int      @default(0)
+  costIncrease    Decimal? @db.Decimal(12, 2)
+  materialDelays  Int      @default(0)
+  afterSalesCount Int      @default(0)
+  updatedAt       DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id])
+}

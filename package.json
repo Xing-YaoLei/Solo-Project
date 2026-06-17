@@ -1,0 +1,23 @@
+{
+  "name": "design-change-dispatch",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev --workspace=@app/web",
+    "dev:server": "npm run start:dev --workspace=@app/server",
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:web\"",
+    "build:web": "npm run build --workspace=@app/web",
+    "build:server": "npm run build --workspace=@app/server",
+    "build": "npm run build:server && npm run build:web",
+    "prisma:generate": "npm run prisma:generate --workspace=@app/server",
+    "prisma:migrate": "npm run prisma:migrate --workspace=@app/server",
+    "prisma:studio": "npm run prisma:studio --workspace=@app/server"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "typescript": "^5.4.0"
+  }
+}
