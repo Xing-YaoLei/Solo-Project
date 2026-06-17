@@ -2,9 +2,9 @@ from datetime import datetime, timedelta
 from celery import shared_task
 from sqlalchemy.orm import Session
 
-from ..core.database import SessionLocal
-from ..models import WorkOrder, WorkOrderStatus, User
-from ..services import work_order_service
+from app.core.database import SessionLocal
+from app.models import WorkOrder, WorkOrderStatus, User
+from app.services import work_order_service
 
 
 @shared_task(name="check_overdue_orders")

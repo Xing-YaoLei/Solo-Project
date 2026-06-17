@@ -3,21 +3,21 @@ from sqlalchemy.orm import Session
 from typing import Optional, List
 from datetime import datetime
 
-from ..core.database import get_db
-from ..models import User, UserRole, WorkOrderStatus, WorkOrderPriority, WorkOrderCategory
-from ..schemas import (
+from app.core.database import get_db
+from app.models import User, UserRole, WorkOrderStatus, WorkOrderPriority, WorkOrderCategory
+from app.schemas import (
     WorkOrder, WorkOrderCreate, WorkOrderUpdate, WorkOrderAssign,
     WorkOrderComplete, WorkOrderReview, WorkOrderList,
     WorkOrderDailyItem, DashboardStats, CommunicationCreate, Communication
 )
-from ..services import work_order_service
-from ..services.response_builder import (
+from app.services import work_order_service
+from app.services.response_builder import (
     to_work_order_schema,
     to_work_order_list,
     to_daily_item,
     to_communication_schema,
 )
-from .deps import get_current_user, get_current_active_admin
+from app.api.deps import get_current_user, get_current_active_admin
 
 router = APIRouter(prefix="/work-orders", tags=["工单"])
 
@@ -29,17 +29,9 @@ def get_daily_orders(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    orders, total = work_order_service.get_daily_work_orders(
+    items, total = work_order_service.get_daily_work_orders(
         db, current_user=current_user, skip=skip, limit=limit
     )
-    now = datetime.now()
-    items = []
-    for order in orders:
-        is_overdue = False
-        if order.deadline and order.status not in [WorkOrderStatus.COMPLETED, WorkOrderStatus.CLOSED]:
-            is_overdue = order.deadline < now
-        review_failed = order.status == WorkOrderStatus.REVIEW_FAILED
-        items.append(to_daily_item(db, order, is_overdue, review_failed))
     return {"items": items, "total": total, "page": skip // limit + 1, "page_size": limit}
 
 

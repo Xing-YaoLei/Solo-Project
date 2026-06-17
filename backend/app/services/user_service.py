@@ -1,9 +1,9 @@
 from sqlalchemy.orm import Session
 from typing import Optional, List
 
-from ..models import User, UserRole
-from ..schemas import UserCreate, UserUpdate
-from ..core.security import get_password_hash, verify_password
+from app.models import User, UserRole
+from app.schemas import UserCreate, UserUpdate
+from app.core.security import get_password_hash, verify_password
 
 
 def get_user(db: Session, user_id: int) -> Optional[User]:

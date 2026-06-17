@@ -1,7 +1,7 @@
 from typing import List, Optional
 from sqlalchemy.orm import Session
 
-from ..models import (
+from app.models import (
     WorkOrder as WorkOrderModel,
     WorkOrderPhoto as WorkOrderPhotoModel,
     StatusLog as StatusLogModel,
@@ -9,7 +9,7 @@ from ..models import (
     Communication as CommunicationModel,
     User as UserModel,
 )
-from ..schemas import (
+from app.schemas import (
     WorkOrder,
     WorkOrderPhoto,
     StatusLog,

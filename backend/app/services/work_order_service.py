@@ -5,11 +5,11 @@ from typing import Optional, List
 import random
 import string
 
-from ..models import User, UserRole, WorkOrder, WorkOrderStatus, WorkOrderPriority
-from ..models import WorkOrderPhoto, StatusLog, ReviewRecord, Communication, DispatchRule
-from ..schemas import WorkOrderCreate, WorkOrderUpdate, WorkOrderAssign
-from ..schemas import WorkOrderComplete, WorkOrderReview, WorkOrderDailyItem
-from ..schemas import FirstTimeResolveStats
+from app.models import User, UserRole, WorkOrder, WorkOrderStatus, WorkOrderPriority
+from app.models import WorkOrderPhoto, StatusLog, ReviewRecord, Communication, DispatchRule
+from app.schemas import WorkOrderCreate, WorkOrderUpdate, WorkOrderAssign
+from app.schemas import WorkOrderComplete, WorkOrderReview, WorkOrderDailyItem
+from app.schemas import FirstTimeResolveStats
 
 
 def generate_order_no() -> str:
@@ -372,31 +372,40 @@ def add_communication(db: Session, order_id: int, content: str, sender: User) ->
 
 
 def get_first_time_resolve_trend(db: Session, days: int = 30) -> List[FirstTimeResolveStats]:
-    start_date = datetime.now() - timedelta(days=days)
+    from collections import defaultdict
+    end_date = datetime.now().date()
+    start_date = end_date - timedelta(days=days - 1)
 
-    results = db.query(
-        func.date(WorkOrder.closed_at).label('date'),
-        func.count(WorkOrder.id).label('total'),
-        func.sum(func.case((WorkOrder.is_first_time_resolved == True, 1), else_=0)).label('first_time_resolved')
-    ).filter(
+    closed_orders = db.query(WorkOrder).filter(
         WorkOrder.status == WorkOrderStatus.CLOSED,
-        WorkOrder.closed_at >= start_date
-    ).group_by(
-        func.date(WorkOrder.closed_at)
-    ).order_by(
-        func.date(WorkOrder.closed_at)
+        WorkOrder.closed_at.isnot(None),
     ).all()
 
+    daily_stats = defaultdict(lambda: {"total": 0, "first_time_resolved": 0})
+
+    for order in closed_orders:
+        if not order.closed_at:
+            continue
+        order_date = order.closed_at.date() if hasattr(order.closed_at, 'date') else datetime.fromisoformat(str(order.closed_at)).date()
+        if start_date <= order_date <= end_date:
+            date_key = order_date.isoformat()
+            daily_stats[date_key]["total"] += 1
+            if order.is_first_time_resolved:
+                daily_stats[date_key]["first_time_resolved"] += 1
+
     stats = []
-    for row in results:
-        total = row.total or 0
-        first_time = row.first_time_resolved or 0
-        rate = (first_time / total * 100) if total > 0 else 0
+    for i in range(days):
+        d = start_date + timedelta(days=i)
+        date_str = d.isoformat()
+        day_data = daily_stats.get(date_str, {"total": 0, "first_time_resolved": 0})
+        total = day_data["total"]
+        first_time = day_data["first_time_resolved"]
+        rate = round((first_time / total * 100), 2) if total > 0 else 0.0
         stats.append(FirstTimeResolveStats(
-            date=str(row.date),
+            date=date_str,
             total=total,
             first_time_resolved=first_time,
-            rate=round(rate, 2)
+            rate=rate
         ))
 
     return stats

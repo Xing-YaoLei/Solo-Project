@@ -2,11 +2,11 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from typing import Optional, List
 
-from ..core.database import get_db
-from ..models import User, UserRole, WorkOrderStatus, WorkOrderPriority, WorkOrderCategory
-from ..schemas import User as UserSchema
-from ..services import user_service
-from .deps import get_current_user, get_current_admin_only
+from app.core.database import get_db
+from app.models import User, UserRole, WorkOrderStatus, WorkOrderPriority, WorkOrderCategory
+from app.schemas import User as UserSchema
+from app.services import user_service
+from app.api.deps import get_current_user, get_current_admin_only
 
 router = APIRouter(prefix="/users", tags=["用户"])
 

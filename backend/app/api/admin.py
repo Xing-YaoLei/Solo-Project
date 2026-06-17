@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from ..core.database import get_db
-from ..models import User
-from ..schemas import (
+from app.core.database import get_db
+from app.models import User
+from app.schemas import (
     DispatchRule, DispatchRuleCreate, DispatchRuleUpdate, DashboardStats
 )
-from ..services import dispatch_service, work_order_service
-from .deps import get_current_active_admin
+from app.services import dispatch_service, work_order_service
+from app.api.deps import get_current_active_admin
 
 router = APIRouter(tags=["管理"])
 

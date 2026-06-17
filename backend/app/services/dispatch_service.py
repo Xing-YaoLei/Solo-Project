@@ -2,8 +2,8 @@ from sqlalchemy.orm import Session
 from typing import Optional, List
 from datetime import datetime
 
-from ..models import User, UserRole, DispatchRule
-from ..schemas import DispatchRuleCreate, DispatchRuleUpdate
+from app.models import User, UserRole, DispatchRule
+from app.schemas import DispatchRuleCreate, DispatchRuleUpdate
 
 
 def get_dispatch_rule(db: Session, rule_id: int) -> Optional[DispatchRule]:

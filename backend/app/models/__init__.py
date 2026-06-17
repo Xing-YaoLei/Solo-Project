@@ -3,8 +3,8 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import enum
 
-from ..core.database import Base
-from ..core.config import settings
+from app.core.database import Base
+from app.core.config import settings
 
 
 def _enum_column(enum_class, **kwargs):

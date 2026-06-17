@@ -1,9 +1,9 @@
 from fastapi import APIRouter
 
-from .auth import router as auth_router
-from .users import router as users_router
-from .work_orders import router as work_orders_router
-from .admin import router as admin_router
+from app.api.auth import router as auth_router
+from app.api.users import router as users_router
+from app.api.work_orders import router as work_orders_router
+from app.api.admin import router as admin_router
 
 api_router = APIRouter()
 

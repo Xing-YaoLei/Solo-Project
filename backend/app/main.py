@@ -2,14 +2,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timedelta
 
-from .core.config import settings
-from .core.database import engine, Base, SessionLocal
-from .api import api_router
-from .services.user_service import init_default_users
-from .services.dispatch_service import create_dispatch_rule
-from .services.work_order_service import create_work_order, assign_work_order, start_work_order, complete_work_order, review_work_order, add_communication
-from .models import DispatchRule, WorkOrderCategory, WorkOrderPriority, UserRole, WorkOrderStatus
-from .schemas import DispatchRuleCreate, WorkOrderCreate, WorkOrderAssign, WorkOrderComplete, WorkOrderReview
+from app.core.config import settings
+from app.core.database import engine, Base, SessionLocal
+from app.api import api_router
+from app.services.user_service import init_default_users
+from app.services.dispatch_service import create_dispatch_rule
+from app.services.work_order_service import create_work_order, assign_work_order, start_work_order, complete_work_order, review_work_order, add_communication
+from app.models import DispatchRule, WorkOrderCategory, WorkOrderPriority, UserRole, WorkOrderStatus
+from app.schemas import DispatchRuleCreate, WorkOrderCreate, WorkOrderAssign, WorkOrderComplete, WorkOrderReview
 
 app = FastAPI(title=settings.PROJECT_NAME, version="1.0.0")
 
@@ -39,7 +39,7 @@ def startup_event():
 
 def _init_default_dispatch_rules(db):
     from sqlalchemy import func
-    from ..models import User
+    from app.models import User
     count = db.query(func.count(DispatchRule.id)).scalar()
     if count == 0:
         worker1 = db.query(User).filter(User.username == "worker1").first()
@@ -89,7 +89,7 @@ def _init_default_dispatch_rules(db):
 
 def _init_sample_work_orders(db):
     from sqlalchemy import func
-    from ..models import WorkOrder, User
+    from app.models import WorkOrder, User
 
     count = db.query(func.count(WorkOrder.id)).scalar()
     if count > 0:
@@ -101,7 +101,6 @@ def _init_sample_work_orders(db):
     worker2 = db.query(User).filter(User.username == "worker2").first()
 
     def _create_and_advance(title, desc, loc, cat, prio, creator, worker, stages, days_ago=0):
-        created_at = datetime.now() - timedelta(days=days_ago)
         order = create_work_order(db, WorkOrderCreate(
             title=title,
             description=desc,
@@ -111,11 +110,6 @@ def _init_sample_work_orders(db):
             reporter_name="报修人测试",
             reporter_phone="13800138000",
         ), creator)
-
-        from sqlalchemy import text
-        db.execute(text("UPDATE work_orders SET created_at = :ca WHERE id = :id"), {"ca": created_at, "id": order.id})
-        db.commit()
-        db.refresh(order)
 
         for stage in stages:
             if stage == "assign" and worker:
@@ -130,6 +124,19 @@ def _init_sample_work_orders(db):
                 order = review_work_order(db, order.id, WorkOrderReview(is_passed=False, comment="处理不合格，需要重新处理"), manager)
                 add_communication(db, order.id, "这个地方还需要重新处理一下，主要是安全问题。", manager)
                 add_communication(db, order.id, "收到，我马上回去重新处理。", worker)
+
+        if days_ago > 0:
+            from sqlalchemy import text
+            shift = f"-{days_ago} days"
+            params = {"oid": order.id, "shift": shift}
+            for col in ["created_at", "assigned_at", "started_at", "completed_at", "deadline", "closed_at"]:
+                db.execute(text(f"UPDATE work_orders SET {col} = datetime({col}, :shift) WHERE id = :oid AND {col} IS NOT NULL"), params)
+            db.execute(text("UPDATE status_logs SET created_at = datetime(created_at, :shift) WHERE work_order_id = :oid"), params)
+            db.execute(text("UPDATE review_records SET created_at = datetime(review_records.created_at, :shift) WHERE work_order_id = :oid"), params)
+            db.execute(text("UPDATE communications SET created_at = datetime(communications.created_at, :shift) WHERE work_order_id = :oid"), params)
+            db.commit()
+            db.refresh(order)
+
         return order
 
     _create_and_advance(
@@ -212,3 +219,13 @@ def _init_sample_work_orders(db):
 @app.get("/health")
 def health_check():
     return {"status": "ok", "message": "服务运行正常"}
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(
+        "app.main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,
+    )
