@@ -1,0 +1,117 @@
+[
+  {
+    "__type__": "cc.Prefab",
+    "_name": "TiledMap",
+    "_objFlags": 0,
+    "__editorExtras__": {},
+    "data": {
+      "__id__": 1
+    },
+    "optimizationPolicy": 0,
+    "_id": "prefab-tiledmap"
+  },
+  {
+    "__type__": "cc.Node",
+    "_name": "TiledMapUI",
+    "_objFlags": 0,
+    "__editorExtras__": {},
+    "_parent": null,
+    "_children": [],
+    "_active": true,
+    "_components": [
+      {
+        "__id__": 2
+      },
+      {
+        "__id__": 3
+      }
+    ],
+    "_prefab": {
+      "__id__": 4
+    },
+    "_lpos": {
+      "__type__": "cc.Vec3",
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "_lrot": {
+      "__type__": "cc.Quat",
+      "x": 0,
+      "y": 0,
+      "z": 0,
+      "w": 1
+    },
+    "_lscale": {
+      "__type__": "cc.Vec3",
+      "x": 1,
+      "y": 1,
+      "z": 1
+    },
+    "_mobility": 0,
+    "_layer": 33554432,
+    "_euler": {
+      "__type__": "cc.Vec3",
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "_id": "prefab-tiledmap-node"
+  },
+  {
+    "__type__": "cc.Component",
+    "__scriptAsset": null,
+    "_name": "",
+    "_objFlags": 0,
+    "__editorExtras__": {},
+    "node": {
+      "__id__": 1
+    },
+    "_enabled": true,
+    "__prefab": null,
+    "_id": "prefab-tiledmap-component",
+    "_scriptAssetUuid": "TiledMapUI",
+    "_class": "TiledMapUI",
+    "mapContainer": null,
+    "buildingsLayer": null,
+    "ordersLayer": null,
+    "workersLayer": null,
+    "infoPanel": null,
+    "infoLabel": null,
+    "levelLabel": null,
+    "zoomInButton": null,
+    "zoomOutButton": null,
+    "resetButton": null,
+    "currentLevelId": 1,
+    "currentZoom": 1,
+    "mapWidth": 800,
+    "mapHeight": 600
+  },
+  {
+    "__type__": "cc.UITransform",
+    "_name": "",
+    "_objFlags": 0,
+    "node": {
+      "__id__": 1
+    },
+    "_enabled": true,
+    "__prefab": null,
+    "_contentSize": {
+      "__type__": "cc.Size",
+      "width": 1000,
+      "height": 700
+    },
+    "_anchorPoint": {
+      "__type__": "cc.Vec2",
+      "x": 0.5,
+      "y": 0.5
+    },
+    "_id": "prefab-tiledmap-uitransform"
+  },
+  {
+    "__type__": "cc.Node",
+    "_name": "",
+    "_objFlags": 0,
+    "_id": "prefab-tiledmap-prefab-info"
+  }
+]

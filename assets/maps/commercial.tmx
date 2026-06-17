@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.10" tiledversion="1.10.2" orientation="orthogonal" renderorder="right-down" width="25" height="18" tilewidth="32" tileheight="32" infinite="0" nextlayerid="3" nextobjectid="40">
+ <tileset firstgid="1" name="commercial_tiles" tilewidth="32" tileheight="32" tilecount="8" columns="4">
+  <tile id="0" type="floor"><properties><property name="color" value="#dddddd"/></properties></tile>
+  <tile id="1" type="hall"><properties><property name="color" value="#eeeeee"/></properties></tile>
+  <tile id="2" type="shop"><properties><property name="color" value="#ccddee"/></properties></tile>
+  <tile id="3" type="office"><properties><property name="color" value="#ddeeff"/></properties></tile>
+  <tile id="4" type="elevator"><properties><property name="color" value="#aabbcc"/></properties></tile>
+  <tile id="5" type="restroom"><properties><property name="color" value="#cceedd"/></properties></tile>
+  <tile id="6" type="stairs"><properties><property name="color" value="#cccccc"/></properties></tile>
+  <tile id="7" type="storage"><properties><property name="color" value="#ddccaa"/></properties></tile>
+ </tileset>
+ <layer id="1" name="Floor" width="25" height="18">
+  <data encoding="csv">
+1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+1,2,2,2,2,0,0,3,3,3,3,0,0,3,3,3,3,0,0,2,2,2,2,2,1,
+1,2,2,2,2,0,0,3,3,3,3,0,0,3,3,3,3,0,0,2,2,2,2,2,1,
+1,2,2,2,2,0,0,3,3,3,3,0,0,3,3,3,3,0,0,2,2,2,2,2,1,
+1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+1,0,4,0,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,0,4,0,0,1,
+1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+1,2,2,2,2,0,0,3,3,3,3,0,0,3,3,3,3,0,0,2,2,2,2,2,1,
+1,2,2,2,2,0,0,3,3,3,3,0,0,3,3,3,3,0,0,2,2,2,2,2,1,
+1,2,2,2,2,0,0,3,3,3,3,0,0,3,3,3,3,0,0,2,2,2,2,2,1,
+1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+1,0,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5,0,0,1,
+1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+1,2,2,2,2,0,0,7,7,7,7,0,0,7,7,7,7,0,0,2,2,2,2,2,1,
+1,2,2,2,2,0,0,7,7,7,7,0,0,7,7,7,7,0,0,2,2,2,2,2,1,
+1,2,2,2,2,0,0,7,7,7,7,0,0,7,7,7,7,0,0,2,2,2,2,2,1,
+1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
+  </data>
+ </layer>
+ <objectgroup id="2" name="Locations">
+  <object id="1" name="Shop_A" type="shop" x="32" y="32" width="128" height="96">
+   <properties>
+    <property name="locationId" value="SHOP_A"/>
+    <property name="locationName" value="A区商铺"/>
+   </properties>
+  </object>
+  <object id="2" name="Office_1" type="office" x="224" y="32" width="128" height="96">
+   <properties>
+    <property name="locationId" value="OFF_1"/>
+    <property name="locationName" value="1号办公室"/>
+   </properties>
+  </object>
+  <object id="3" name="Office_2" type="office" x="448" y="32" width="128" height="96">
+   <properties>
+    <property name="locationId" value="OFF_2"/>
+    <property name="locationName" value="2号办公室"/>
+   </properties>
+  </object>
+  <object id="4" name="Shop_B" type="shop" x="640" y="32" width="128" height="96">
+   <properties>
+    <property name="locationId" value="SHOP_B"/>
+    <property name="locationName" value="B区商铺"/>
+   </properties>
+  </object>
+  <object id="5" name="Elevator" type="elevator" x="64" y="160" width="32" height="32">
+   <properties><property name="locationName" value="电梯间1"/></properties>
+  </object>
+  <object id="6" name="Restroom_M" type="restroom" x="32" y="352" width="64" height="32">
+   <properties><property name="locationName" value="男卫生间"/></properties>
+  </object>
+  <object id="7" name="Restroom_F" type="restroom" x="640" y="352" width="64" height="32">
+   <properties><property name="locationName" value="女卫生间"/></properties>
+  </object>
+  <object id="8" name="Storage" type="storage" x="224" y="416" width="128" height="96">
+   <properties><property name="locationName" value="储藏室1"/></properties>
+  </object>
+  <object id="9" name="Storage_2" type="storage" x="448" y="416" width="128" height="96">
+   <properties><property name="locationName" value="储藏室2"/></properties>
+  </object>
+ </objectgroup>
+</map>

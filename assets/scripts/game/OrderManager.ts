@@ -11,6 +11,8 @@ import {
     getOrderByPriority
 } from './OrderTypes';
 import { EventManager, GameEventType } from '../core/EventManager';
+import { SaveManager, IScoreRecord } from '../core/SaveManager';
+import { GameManager } from '../core/GameManager';
 import { Logger } from '../core/Logger';
 
 export class OrderManager {
@@ -18,9 +20,14 @@ export class OrderManager {
     private activeOrders: Map<string, IActiveOrder> = new Map();
     private completedOrders: IActiveOrder[] = [];
     private eventManager: EventManager;
+    private saveManager: SaveManager;
+    private gameManager: GameManager;
+    private orderFirstAttemptMap: Map<string, boolean> = new Map();
 
     private constructor() {
         this.eventManager = EventManager.getInstance();
+        this.saveManager = SaveManager.getInstance();
+        this.gameManager = GameManager.getInstance();
     }
 
     public static getInstance(): OrderManager {
@@ -33,6 +40,7 @@ export class OrderManager {
     public receiveOrder(order: IRepairOrder): IActiveOrder {
         const activeOrder = createActiveOrder(order);
         this.activeOrders.set(order.id, activeOrder);
+        this.orderFirstAttemptMap.set(order.id, true);
         this.eventManager.emit(GameEventType.ORDER_RECEIVED, { order: activeOrder });
         Logger.info(`新工单已接收: ${order.id} - ${order.title}`);
         return activeOrder;
@@ -163,10 +171,30 @@ export class OrderManager {
         this.activeOrders.delete(order.id);
         this.completedOrders.push(order);
 
+        const isFirstTime = this.orderFirstAttemptMap.get(order.id) ?? true;
+        this.orderFirstAttemptMap.set(order.id, false);
+
+        const score = result.reward?.score || 0;
+        const completionTime = order.acceptedAt ? (Date.now() - order.acceptedAt) / 1000 : 0;
+
+        const record: IScoreRecord = {
+            orderId: order.id,
+            score,
+            isFirstTime,
+            reviewPassed: true,
+            timestamp: Date.now(),
+            completionTime
+        };
+
+        const levelId = this.gameManager.getCurrentLevel();
+        this.saveManager.recordScore(levelId, record);
+
         this.eventManager.emit(GameEventType.ORDER_COMPLETED, {
             orderId: order.id,
             reward: result.reward,
-            score: result.reward?.score || 0
+            score,
+            isFirstTime,
+            record
         });
 
         if (result.reward?.unlockRule) {
@@ -175,7 +203,7 @@ export class OrderManager {
             });
         }
 
-        Logger.info(`工单完成: ${order.id}, 得分: ${result.reward?.score || 0}`);
+        Logger.info(`工单完成: ${order.id}, 得分: ${score}, 首次: ${isFirstTime}`);
     }
 
     private failOrder(order: IActiveOrder, result: IChoiceResult): void {
@@ -184,21 +212,45 @@ export class OrderManager {
         this.activeOrders.delete(order.id);
         this.completedOrders.push(order);
 
+        const isFirstTime = this.orderFirstAttemptMap.get(order.id) ?? true;
+        this.orderFirstAttemptMap.set(order.id, false);
+
+        const scoreDeduction = result.penalty?.scoreDeduction || 0;
+        const completionTime = order.acceptedAt ? (Date.now() - order.acceptedAt) / 1000 : 0;
+        const requiresReview = result.penalty?.requiresReview ?? true;
+
+        const record: IScoreRecord = {
+            orderId: order.id,
+            score: -scoreDeduction,
+            isFirstTime,
+            errorType: result.penalty?.errorType || 'WRONG_CHOICE',
+            errorDescription: result.penalty?.description || '处理失败',
+            reviewPassed: !requiresReview,
+            timestamp: Date.now(),
+            completionTime
+        };
+
+        const levelId = this.gameManager.getCurrentLevel();
+        this.saveManager.recordScore(levelId, record);
+
         this.eventManager.emit(GameEventType.ORDER_FAILED, {
             orderId: order.id,
             penalty: result.penalty,
-            scoreDeduction: result.penalty?.scoreDeduction || 0
+            scoreDeduction,
+            isFirstTime,
+            record
         });
 
-        if (result.penalty?.requiresReview) {
+        if (requiresReview) {
             this.eventManager.emit(GameEventType.REVIEW_FAILED, {
                 orderId: order.id,
-                errorType: result.penalty.errorType,
-                description: result.penalty.description
+                errorType: record.errorType,
+                description: record.errorDescription,
+                record
             });
         }
 
-        Logger.warn(`工单失败: ${order.id}, 扣分: ${result.penalty?.scoreDeduction || 0}`);
+        Logger.warn(`工单失败: ${order.id}, 扣分: ${scoreDeduction}, 首次: ${isFirstTime}, 需复核: ${requiresReview}`);
     }
 
     public checkTimeoutOrders(): IActiveOrder[] {

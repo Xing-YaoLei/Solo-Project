@@ -1,0 +1,119 @@
+[
+  {
+    "__type__": "cc.Prefab",
+    "_name": "ReviewPanel",
+    "_objFlags": 0,
+    "__editorExtras__": {},
+    "data": {
+      "__id__": 1
+    },
+    "optimizationPolicy": 0,
+    "_id": "prefab-reviewpanel"
+  },
+  {
+    "__type__": "cc.Node",
+    "_name": "ReviewPanelUI",
+    "_objFlags": 0,
+    "__editorExtras__": {},
+    "_parent": null,
+    "_children": [],
+    "_active": true,
+    "_components": [
+      {
+        "__id__": 2
+      },
+      {
+        "__id__": 3
+      }
+    ],
+    "_prefab": {
+      "__id__": 4
+    },
+    "_lpos": {
+      "__type__": "cc.Vec3",
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "_lrot": {
+      "__type__": "cc.Quat",
+      "x": 0,
+      "y": 0,
+      "z": 0,
+      "w": 1
+    },
+    "_lscale": {
+      "__type__": "cc.Vec3",
+      "x": 1,
+      "y": 1,
+      "z": 1
+    },
+    "_mobility": 0,
+    "_layer": 33554432,
+    "_euler": {
+      "__type__": "cc.Vec3",
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "_id": "prefab-reviewpanel-node"
+  },
+  {
+    "__type__": "cc.Component",
+    "__scriptAsset": null,
+    "_name": "",
+    "_objFlags": 0,
+    "__editorExtras__": {},
+    "node": {
+      "__id__": 1
+    },
+    "_enabled": true,
+    "__prefab": null,
+    "_id": "prefab-reviewpanel-component",
+    "_scriptAssetUuid": "ReviewPanelUI",
+    "_class": "ReviewPanelUI",
+    "summaryArea": null,
+    "errorsArea": null,
+    "recordsArea": null,
+    "firstSolveArea": null,
+    "summaryTitle": null,
+    "totalAttemptsLabel": null,
+    "passedLabel": null,
+    "failedLabel": null,
+    "firstSolveRateLabel": null,
+    "avgScoreLabel": null,
+    "avgTimeLabel": null,
+    "firstSolveProgress": null,
+    "closeButton": null,
+    "exportButton": null,
+    "errorsScroll": null,
+    "recordsScroll": null
+  },
+  {
+    "__type__": "cc.UITransform",
+    "_name": "",
+    "_objFlags": 0,
+    "node": {
+      "__id__": 1
+    },
+    "_enabled": true,
+    "__prefab": null,
+    "_contentSize": {
+      "__type__": "cc.Size",
+      "width": 900,
+      "height": 650
+    },
+    "_anchorPoint": {
+      "__type__": "cc.Vec2",
+      "x": 0.5,
+      "y": 0.5
+    },
+    "_id": "prefab-reviewpanel-uitransform"
+  },
+  {
+    "__type__": "cc.Node",
+    "_name": "",
+    "_objFlags": 0,
+    "_id": "prefab-reviewpanel-prefab-info"
+  }
+]

@@ -1,6 +1,6 @@
 import { getLevelConfig, getAllLevelConfigs, ILevelConfig } from '../../configs/LevelConfig';
 import { getOrdersForLevel, SAMPLE_ORDERS } from '../../configs/OrderConfig';
-import { ASSET_CATEGORIES, IAssetConfig, IAssetCategory } from '../../configs/AssetConfig';
+import { ASSET_CATEGORIES, IAssetConfig, IAssetCategory, getMapResourceForLevel as getMapFromAsset } from '../../configs/AssetConfig';
 import { IWorker, IRepairOrder } from '../types/GameTypes';
 import { SaveManager } from '../core/SaveManager';
 import { Logger } from '../core/Logger';
@@ -113,9 +113,9 @@ export class DataManager {
         return this.cloneOrders(SAMPLE_ORDERS);
     }
 
-    public getMapResourceForLevel(levelId: number): string | undefined {
+    public getMapResourceForLevel(levelId: number): string {
         const config = this.getLevelConfig(levelId);
-        return config?.mapResource;
+        return config?.mapResource || getMapFromAsset(levelId);
     }
 
     public getTargetScoreForLevel(levelId: number): number {
