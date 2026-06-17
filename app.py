@@ -7,7 +7,7 @@ import streamlit as st
 import polars as pl
 import plotly.express as px
 import plotly.graph_objects as go
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 import os
 
 from src.data.database import DatabaseManager
@@ -23,6 +23,40 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
+
+def merge_continuous_dates(dates):
+    if not dates:
+        return []
+    sorted_dates = sorted(set(dates))
+    segments = []
+    seg_start = sorted_dates[0]
+    seg_end = sorted_dates[0]
+    for d in sorted_dates[1:]:
+        if (d - seg_end).days == 1:
+            seg_end = d
+        else:
+            segments.append((seg_start, seg_end))
+            seg_start = d
+            seg_end = d
+    segments.append((seg_start, seg_end))
+    return segments
+
+
+def day_range_vrect_x(d):
+    if isinstance(d, datetime):
+        dt = d
+    elif isinstance(d, date):
+        dt = datetime(d.year, d.month, d.day)
+    else:
+        dt = datetime.fromisoformat(str(d))
+    return dt
+
+
+def segment_x_bounds(seg_start, seg_end):
+    x0 = day_range_vrect_x(seg_start) - timedelta(hours=12)
+    x1 = day_range_vrect_x(seg_end) + timedelta(hours=12)
+    return x0, x1
 
 
 SEVERITY_COLORS = {
@@ -271,14 +305,20 @@ def render_overview(db, start_date, end_date):
             fig = go.Figure()
 
             if len(conflict_dates) > 0:
-                for cd in sorted(daily_pd["scheduled_date"][daily_pd["has_conflict"]]):
+                conflict_date_objs = sorted(
+                    [d for d in daily_pd["scheduled_date"][daily_pd["has_conflict"]]]
+                )
+                conflict_segments = merge_continuous_dates(conflict_date_objs)
+                for idx, (seg_start, seg_end) in enumerate(conflict_segments):
+                    x0, x1 = segment_x_bounds(seg_start, seg_end)
                     fig.add_vrect(
-                        x0=cd, x1=cd,
-                        fillcolor="#FF4B4B", opacity=0.15,
-                        layer="below", line_width=0,
-                        annotation_text="冲突",
+                        x0=x0, x1=x1,
+                        fillcolor="#FF4B4B", opacity=0.18,
+                        layer="below", line_width=1,
+                        line_color="#FF4B4B", line_dash="dot",
+                        annotation_text=f"冲突段 {idx + 1}" if len(conflict_segments) > 1 else "冲突段",
                         annotation_position="top",
-                        annotation_font_size=8,
+                        annotation_font_size=9,
                         annotation_font_color="#FF4B4B",
                     )
 
@@ -564,8 +604,8 @@ def render_attendance_review(db, start_date, end_date):
     curr_end = end_date
 
     comparison = analyzer.compare_periods(
-        prev_start, prev_end,
-        curr_start, curr_end
+        curr_start, curr_end,
+        prev_start, prev_end
     )
     improvement = comparison["improvement"]
 
@@ -586,18 +626,18 @@ def render_attendance_review(db, start_date, end_date):
         },
         {
             "指标": "📋 总排班数",
-            "前期": str(comparison["previous_period"]["total"]),
-            "后期": str(comparison["current_period"]["total"]),
+            "前期": str(int(comparison["previous_period"]["total"] or 0)),
+            "后期": str(int(comparison["current_period"]["total"] or 0)),
             "改善/变化": (
-                f"{comparison['current_period']['total'] - comparison['previous_period']['total']:+d}"
+                f"{int(comparison['current_period']['total'] or 0) - int(comparison['previous_period']['total'] or 0):+d}"
             ),
         },
         {
             "指标": "✅ 正常到场数",
-            "前期": str(comparison["previous_period"]["arrived"]),
-            "后期": str(comparison["current_period"]["arrived"]),
+            "前期": str(int(comparison["previous_period"]["arrived"] or 0)),
+            "后期": str(int(comparison["current_period"]["arrived"] or 0)),
             "改善/变化": (
-                f"{comparison['current_period']['arrived'] - comparison['previous_period']['arrived']:+d}"
+                f"{int(comparison['current_period']['arrived'] or 0) - int(comparison['previous_period']['arrived'] or 0):+d}"
             ),
         },
         {
@@ -703,14 +743,17 @@ def render_attendance_review(db, start_date, end_date):
         conflict_dates_sorted = sorted(
             [d for d in daily_pd["scheduled_date"][daily_pd["has_conflict"]]]
         )
-        for cd in conflict_dates_sorted:
+        conflict_segments = merge_continuous_dates(conflict_dates_sorted)
+        for idx, (seg_start, seg_end) in enumerate(conflict_segments):
+            x0, x1 = segment_x_bounds(seg_start, seg_end)
             fig.add_vrect(
-                x0=cd, x1=cd,
-                fillcolor="#FF4B4B", opacity=0.12,
-                layer="below", line_width=0,
-                annotation_text="冲突",
+                x0=x0, x1=x1,
+                fillcolor="#FF4B4B", opacity=0.15,
+                layer="below", line_width=1,
+                line_color="#FF4B4B", line_dash="dot",
+                annotation_text=f"冲突段 {idx + 1}" if len(conflict_segments) > 1 else "冲突段",
                 annotation_position="top",
-                annotation_font_size=9,
+                annotation_font_size=10,
                 annotation_font_color="#FF4B4B",
             )
 
@@ -738,8 +781,9 @@ def render_attendance_review(db, start_date, end_date):
             ))
 
         fig.add_vrect(
-            x0=prev_start, x1=prev_end,
-            fillcolor="#F1C40F", opacity=0.05,
+            x0=segment_x_bounds(prev_start, prev_end)[0],
+            x1=segment_x_bounds(prev_start, prev_end)[1],
+            fillcolor="#F1C40F", opacity=0.06,
             layer="below", line_width=1, line_dash="dash", line_color="#F1C40F",
             annotation_text="前期",
             annotation_position="top left",
@@ -747,8 +791,9 @@ def render_attendance_review(db, start_date, end_date):
             annotation_font_color="#F39C12",
         )
         fig.add_vrect(
-            x0=curr_start, x1=curr_end,
-            fillcolor="#2ECC71", opacity=0.05,
+            x0=segment_x_bounds(curr_start, curr_end)[0],
+            x1=segment_x_bounds(curr_start, curr_end)[1],
+            fillcolor="#2ECC71", opacity=0.06,
             layer="below", line_width=1, line_dash="dash", line_color="#2ECC71",
             annotation_text="后期",
             annotation_position="top left",
