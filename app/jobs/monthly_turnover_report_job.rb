@@ -1,13 +1,19 @@
 class MonthlyTurnoverReportJob < ApplicationJob
   queue_as :reports
 
-  def perform(report_month_str, generated_by, filter_conditions)
-    report_month = Date.parse(report_month_str)
+  def perform(report_id)
+    report = MonthlyTurnoverReport.find(report_id)
+    report.update!(status: "generating")
+
+    report_month = report.report_month
     start_date = report_month.beginning_of_month
     end_date = report_month.end_of_month
+    filter_conditions = report.filter_conditions_hash
+    generated_by = report.generated_by
 
     spots = ParkingSpot.all
     spots = spots.by_zone(filter_conditions["zone"]) if filter_conditions["zone"].present?
+    spots = spots.by_spot_type(filter_conditions["spot_type"]) if filter_conditions["spot_type"].present?
 
     turnover_data = spots.map do |spot|
       bills = spot.parking_bills.where(check_out_at: start_date..end_date)
@@ -35,21 +41,35 @@ class MonthlyTurnoverReportJob < ApplicationJob
       occupancy_rate: (spots.occupied.count.to_f / spots.count * 100).round(2)
     }
 
-    report = MonthlyTurnoverReport.create!(
-      report_month: report_month,
-      generated_by: generated_by,
-      filter_conditions: filter_conditions,
-      generated_at: Time.current
-    )
-
     file_path = generate_excel(report, turnover_data, summary, filter_conditions, generated_by)
 
-    report.update!(file_url: file_path)
-
-    report
+    report.update!(status: "completed", file_url: file_path)
+  rescue => e
+    report.update!(status: "failed", error_message: e.message) if report.present?
+    raise e
   end
 
   private
+
+  FILTER_LABELS = {
+    "zone" => "区域",
+    "spot_type" => "车位类型"
+  }.freeze
+
+  SPOT_TYPE_LABELS = {
+    "regular" => "普通",
+    "reserved" => "预留",
+    "disabled" => "无障碍",
+    "ev" => "充电桩"
+  }.freeze
+
+  def filter_label(key)
+    FILTER_LABELS[key] || key
+  end
+
+  def filter_value_display(key, value)
+    return SPOT_TYPE_LABELS[value] || value
+  end
 
   def generate_excel(report, turnover_data, summary, filter_conditions, generated_by)
     require "axlsx"
@@ -73,7 +93,7 @@ class MonthlyTurnoverReportJob < ApplicationJob
         sheet.add_row ["筛选条件"], style: [info_style]
         filter_conditions.each do |key, value|
           next if value.blank?
-          sheet.add_row ["  #{key}", value]
+          sheet.add_row ["  #{filter_label(key)}", filter_value_display(key, value)]
         end
         sheet.add_row []
 
@@ -90,7 +110,7 @@ class MonthlyTurnoverReportJob < ApplicationJob
           sheet.add_row [
             d[:spot_number],
             d[:zone],
-            d[:spot_type],
+            SPOT_TYPE_LABELS[d[:spot_type]] || d[:spot_type],
             d[:total_bills],
             d[:paid_bills],
             d[:unpaid_bills],

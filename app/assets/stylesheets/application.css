@@ -276,6 +276,8 @@ a:hover {
 .badge-ev { background: #dcfce7; color: #166534; }
 .badge-occupied { background: #fef3c7; color: #92400e; }
 .badge-available { background: #dcfce7; color: #166534; }
+.badge-generating { background: #dbeafe; color: #1e40af; }
+.badge-failed { background: #fef2f2; color: #991b1b; }
 .badge-update { background: #dbeafe; color: #1e40af; }
 .badge-destroy { background: #fef2f2; color: #991b1b; }
 .badge-create { background: #dcfce7; color: #166534; }
@@ -522,4 +524,8 @@ a:hover {
 
 .form-actions form {
   width: 100%;
+}
+
+.text-danger {
+  color: var(--color-danger);
 }

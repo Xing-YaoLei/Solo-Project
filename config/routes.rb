@@ -28,7 +28,7 @@ Rails.application.routes.draw do
     end
   end
 
-  resources :turnover_reports, only: %i[index new create] do
+  resources :turnover_reports, only: %i[index show new create] do
     member do
       get :download
     end

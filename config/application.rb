@@ -25,6 +25,7 @@ module Mp0264
 
     config.i18n.default_locale = :"zh-CN"
     config.time_zone = "Beijing"
+    config.active_job.queue_adapter = :sidekiq
 
     # Please, add to the `ignore` list any other `lib` subdirectories that do
     # not contain `.rb` files, or that should not be reloaded or eager loaded.

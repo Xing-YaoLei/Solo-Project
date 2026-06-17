@@ -8,6 +8,8 @@
     <tr>
       <th>报告月份</th>
       <th>操作人</th>
+      <th>状态</th>
+      <th>筛选条件</th>
       <th>生成时间</th>
       <th>操作</th>
     </tr>
@@ -15,10 +17,38 @@
   <tbody>
     <% @reports.each do |report| %>
       <tr>
-        <td><%= report.report_month.strftime('%Y年%m月') %></td>
+        <td><%= link_to report.display_month, turnover_report_path(report) %></td>
         <td><%= report.generated_by %></td>
-        <td><%= report.created_at.strftime('%Y-%m-%d %H:%M') %></td>
-        <td><%= link_to "下载", download_turnover_report_path(report), class: "btn btn-sm btn-primary" %></td>
+        <td>
+          <span class="badge badge-<%= report.status %>">
+            <%= case report.status
+                when "pending" then "排队中"
+                when "generating" then "生成中"
+                when "completed" then "已完成"
+                when "failed" then "失败"
+                else report.status
+                end %>
+          </span>
+        </td>
+        <td>
+          <% if report.filter_conditions_hash.any? %>
+            <% report.filter_conditions_hash.each do |k, v| %>
+              <%= v %><br>
+            <% end %>
+          <% else %>
+            无筛选
+          <% end %>
+        </td>
+        <td><%= report.generated_at.strftime('%Y-%m-%d %H:%M') %></td>
+        <td>
+          <% if report.completed? %>
+            <%= link_to "下载", download_turnover_report_path(report), class: "btn btn-sm btn-primary" %>
+          <% elsif report.failed? %>
+            <span class="text-danger"><%= report.error_message %></span>
+          <% else %>
+            <span class="badge badge-generating">处理中</span>
+          <% end %>
+        </td>
       </tr>
     <% end %>
   </tbody>

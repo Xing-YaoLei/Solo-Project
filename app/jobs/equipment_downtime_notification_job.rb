@@ -1,5 +1,5 @@
 class EquipmentDowntimeNotificationJob < ApplicationJob
-  queue_as :urgent
+  queue_as :notifications
 
   def perform(downtime_id)
     downtime = EquipmentDowntime.find_by(id: downtime_id)

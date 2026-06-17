@@ -1,0 +1,57 @@
+<div class="page-header">
+  <h1>周转报告详情</h1>
+  <%= link_to "返回列表", turnover_reports_path, class: "btn btn-sm" %>
+</div>
+
+<div class="detail-card">
+  <div class="detail-row">
+    <span class="detail-label">报告月份</span>
+    <span class="detail-value"><%= @report.display_month %></span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">操作人</span>
+    <span class="detail-value"><%= @report.generated_by %></span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">生成时间</span>
+    <span class="detail-value"><%= @report.generated_at.strftime('%Y-%m-%d %H:%M:%S') %></span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">状态</span>
+    <span class="detail-value">
+      <span class="badge badge-<%= @report.status %>">
+        <%= case @report.status
+            when "pending" then "排队中"
+            when "generating" then "生成中"
+            when "completed" then "已完成"
+            when "failed" then "失败"
+            else @report.status
+            end %>
+      </span>
+    </span>
+  </div>
+  <% if @report.failed? %>
+    <div class="detail-row">
+      <span class="detail-label">错误信息</span>
+      <span class="detail-value text-danger"><%= @report.error_message %></span>
+    </div>
+  <% end %>
+  <div class="detail-row">
+    <span class="detail-label">筛选条件</span>
+    <span class="detail-value">
+      <% if @report.filter_conditions_hash.any? %>
+        <% @report.filter_conditions_hash.each do |k, v| %>
+          <span class="badge"><%= k %>: <%= v %></span>
+        <% end %>
+      <% else %>
+        无筛选条件
+      <% end %>
+    </span>
+  </div>
+</div>
+
+<% if @report.completed? %>
+  <div class="form-actions">
+    <%= link_to "下载 Excel", download_turnover_report_path(@report), class: "btn btn-primary" %>
+  </div>
+<% end %>

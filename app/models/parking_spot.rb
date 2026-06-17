@@ -10,6 +10,7 @@ class ParkingSpot < ApplicationRecord
   scope :occupied, -> { where(occupied: true) }
   scope :available, -> { where(occupied: false) }
   scope :by_zone, ->(zone) { where(zone: zone) if zone.present? }
+  scope :by_spot_type, ->(spot_type) { where(spot_type: spot_type) if spot_type.present? }
 
   def turnover_rate(start_date:, end_date:)
     period_bills = parking_bills.where(check_out_at: start_date..end_date)

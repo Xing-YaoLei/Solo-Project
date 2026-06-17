@@ -20,7 +20,7 @@
 
   <div class="form-group">
     <%= f.label :spot_type, "车位类型" %>
-    <%= f.select :spot_type, options_for_select([["全部", ""], ["临时", "temporary"], ["月租", "monthly"], ["计时", "hourly"], ["日租", "daily"]]) %>
+    <%= f.select :spot_type, options_for_select([["全部", ""], ["普通", "regular"], ["预留", "reserved"], ["无障碍", "disabled"], ["充电桩", "ev"]]) %>
   </div>
 
   <div class="form-actions">
