@@ -1,21 +1,17 @@
 import { NextResponse } from "next/server";
-import { generateLoadingItems } from "@/lib/mockData";
+import { getLoadingList } from "@/lib/unifiedData";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const items = generateLoadingItems(25);
+    const { searchParams } = new URL(request.url);
+    const routeId = searchParams.get("routeId") ?? undefined;
+    const orderId = searchParams.get("orderId") ?? undefined;
+
+    const result = getLoadingList(routeId, orderId);
 
     return NextResponse.json({
       success: true,
-      data: {
-        list: items,
-        stats: {
-          totalItems: items.length,
-          normalItems: items.filter((i) => i.status === "normal").length,
-          abnormalItems: items.filter((i) => i.status === "abnormal").length,
-          missingItems: items.filter((i) => i.status === "missing").length,
-        },
-      },
+      data: result,
     });
   } catch (error) {
     return NextResponse.json(

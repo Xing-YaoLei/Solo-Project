@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server";
-import { generateDispatchTrend, generateAnomalyDistribution } from "@/lib/mockData";
+import { getTrendData } from "@/lib/unifiedData";
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const days = parseInt(searchParams.get("days") || "30", 10);
 
-    const trend = generateDispatchTrend(days);
-    const anomalies = generateAnomalyDistribution();
+    const { trend, anomalies } = getTrendData(days);
 
     return NextResponse.json({
       success: true,

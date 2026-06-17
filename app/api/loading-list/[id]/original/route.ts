@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { generateOriginalRecord } from "@/lib/mockData";
+import { getOriginalRecord } from "@/lib/unifiedData";
 
 export async function GET(
   _request: Request,
@@ -7,7 +7,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const record = generateOriginalRecord(id);
+    const record = getOriginalRecord(id);
 
     return NextResponse.json({
       success: true,

@@ -1,30 +1,20 @@
 import { NextResponse } from "next/server";
-import { generateTrackPoints } from "@/lib/mockData";
+import { getDriverTrack } from "@/lib/unifiedData";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
-    const track = generateTrackPoints(30);
+    const { searchParams } = new URL(request.url);
+    const routeId = searchParams.get("routeId") ?? undefined;
+
+    const result = getDriverTrack(id, routeId);
 
     return NextResponse.json({
       success: true,
-      data: {
-        driverId: id,
-        trackPoints: track,
-        stats: {
-          totalPoints: track.length,
-          avgSpeed:
-            track.length > 0
-              ? parseFloat(
-                  (track.reduce((sum, p) => sum + p.speed, 0) / track.length).toFixed(1)
-                )
-              : 0,
-          orderStops: track.filter((p) => p.orderId).length,
-        },
-      },
+      data: result,
     });
   } catch (error) {
     return NextResponse.json(

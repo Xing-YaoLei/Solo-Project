@@ -55,10 +55,14 @@ export function AnomalyPieChart({ data }: AnomalyPieChartProps) {
                 borderRadius: "8px",
                 fontSize: "12px",
               }}
-              formatter={(value: number, _name: string, props: { payload: AnomalyDistribution }) => [
-                `${value} 单 (${((value / total) * 100).toFixed(1)}%)`,
-                props.payload.name,
-              ]}
+              formatter={(value: number, _name: string, props?: { payload?: AnomalyDistribution }) => {
+                const payload = props?.payload;
+                const name = payload?.name ?? "";
+                return [
+                  `${value} 单 (${((value / total) * 100).toFixed(1)}%)`,
+                  name,
+                ];
+              }}
             />
             <Legend
               verticalAlign="bottom"

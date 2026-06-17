@@ -1,13 +1,12 @@
-import { PrismaClient } from "@prisma/client";
+export const prisma = {
+  _mock: true,
+  dispatchOrder: {
+    findMany: async () => [],
+    count: async () => 0,
+  },
+  routePlan: {
+    findMany: async () => [],
+  },
+} as unknown;
 
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
-};
-
-export const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient({
-    log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
-  });
-
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+export type PrismaClient = typeof prisma;

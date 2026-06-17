@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
 import { KPICard } from "@/components/KPICard";
 import { DataTable } from "@/components/DataTable";
@@ -15,6 +16,7 @@ import {
   MapPin,
   ClipboardList,
   Truck,
+  ExternalLink,
 } from "lucide-react";
 import {
   cn,
@@ -27,6 +29,7 @@ import {
 import type { RoutePlanType, RouteSampleDetail } from "@/types";
 
 export default function RoutesPage() {
+  const router = useRouter();
   const [routes, setRoutes] = useState<RoutePlanType[]>([]);
   const [stats, setStats] = useState({
     totalRoutes: 0,
@@ -42,6 +45,12 @@ export default function RoutesPage() {
     delayedCount: 0,
     avgDelayMinutes: 0,
   });
+  const [routeMeta, setRouteMeta] = useState<{
+    driverId: string;
+    driverName: string;
+    routeName: string;
+    vehicleNo: string;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
 
   const onTimeReviewData = [
@@ -75,9 +84,33 @@ export default function RoutesPage() {
       const json = await res.json();
       setRouteSamples(json.data.samples);
       setSampleStats(json.data.stats);
+      setRouteMeta(json.data.meta ?? null);
     } catch (error) {
       console.error("加载路线详情失败:", error);
     }
+  };
+
+  const openDriverTrack = () => {
+    if (!selectedRoute) return;
+    const driverId = routeMeta?.driverId ?? selectedRoute.driverName;
+    const params = new URLSearchParams({
+      driverId,
+      routeId: selectedRoute.id,
+      driverName: routeMeta?.driverName ?? selectedRoute.driverName,
+      routeName: selectedRoute.routeName,
+    });
+    router.push(`/driver-tracking?${params.toString()}`);
+    setSelectedRoute(null);
+  };
+
+  const openLoadingList = () => {
+    if (!selectedRoute) return;
+    const params = new URLSearchParams({
+      routeId: selectedRoute.id,
+      routeName: selectedRoute.routeName,
+    });
+    router.push(`/loading-list?${params.toString()}`);
+    setSelectedRoute(null);
   };
 
   const renderTimeBar = (route: RoutePlanType) => {
@@ -379,13 +412,21 @@ export default function RoutesPage() {
             />
 
             <div className="flex justify-end gap-3">
-              <button className="btn-secondary inline-flex items-center gap-2">
+              <button
+                onClick={openDriverTrack}
+                className="btn-secondary inline-flex items-center gap-2"
+              >
                 <MapPin size={16} />
                 关联司机轨迹
+                <ExternalLink size={14} />
               </button>
-              <button className="btn-primary inline-flex items-center gap-2">
+              <button
+                onClick={openLoadingList}
+                className="btn-primary inline-flex items-center gap-2"
+              >
                 <ClipboardList size={16} />
                 查看装载清单
+                <ExternalLink size={14} />
               </button>
             </div>
           </div>

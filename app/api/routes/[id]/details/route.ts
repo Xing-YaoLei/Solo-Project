@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { generateRouteSampleDetails } from "@/lib/mockData";
+import { getRouteDetails } from "@/lib/unifiedData";
 
 export async function GET(
   _request: Request,
@@ -7,28 +7,11 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const samples = generateRouteSampleDetails(id);
-
-    const delayedSamples = samples.filter((s) => !s.isOnTime);
+    const result = getRouteDetails(id);
 
     return NextResponse.json({
       success: true,
-      data: {
-        routeId: id,
-        samples,
-        stats: {
-          totalSamples: samples.length,
-          onTimeCount: samples.filter((s) => s.isOnTime).length,
-          delayedCount: delayedSamples.length,
-          avgDelayMinutes:
-            delayedSamples.length > 0
-              ? Math.round(
-                  delayedSamples.reduce((sum, s) => sum + (s.delayMinutes ?? 0), 0) /
-                    delayedSamples.length
-                )
-              : 0,
-        },
-      },
+      data: result,
     });
   } catch (error) {
     return NextResponse.json(

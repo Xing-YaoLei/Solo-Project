@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { generateKPI } from "@/lib/mockData";
+import { getKPIData } from "@/lib/unifiedData";
 
 export async function GET() {
   try {
-    const data = generateKPI();
+    const data = getKPIData();
     return NextResponse.json({
       success: true,
       data,

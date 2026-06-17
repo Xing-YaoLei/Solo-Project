@@ -1,21 +1,13 @@
 import { NextResponse } from "next/server";
-import { generateDriverCheckins } from "@/lib/mockData";
+import { getDriverCheckins } from "@/lib/unifiedData";
 
 export async function GET() {
   try {
-    const checkins = generateDriverCheckins(10);
+    const result = getDriverCheckins();
 
     return NextResponse.json({
       success: true,
-      data: {
-        list: checkins,
-        stats: {
-          totalDrivers: checkins.length,
-          checkedIn: checkins.filter((c) => c.status === "checked_in").length,
-          notCheckedIn: checkins.filter((c) => c.status === "not_checked_in").length,
-          abnormal: checkins.filter((c) => c.status === "abnormal").length,
-        },
-      },
+      data: result,
     });
   } catch (error) {
     return NextResponse.json(

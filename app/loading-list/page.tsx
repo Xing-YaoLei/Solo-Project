@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Header } from "@/components/Header";
 import { KPICard } from "@/components/KPICard";
 import { DataTable } from "@/components/DataTable";
@@ -16,6 +17,8 @@ import {
   Database,
   User,
   Calendar,
+  X,
+  Link2,
 } from "lucide-react";
 import {
   cn,
@@ -27,6 +30,11 @@ import {
 import type { LoadingItemType, OriginalRecordType } from "@/types";
 
 export default function LoadingListPage() {
+  const searchParams = useSearchParams();
+  const urlRouteId = searchParams.get("routeId");
+  const urlOrderId = searchParams.get("orderId");
+  const urlRouteName = searchParams.get("routeName");
+
   const [items, setItems] = useState<LoadingItemType[]>([]);
   const [stats, setStats] = useState({
     totalItems: 0,
@@ -38,21 +46,43 @@ export default function LoadingListPage() {
   const [originalRecord, setOriginalRecord] = useState<OriginalRecordType | null>(null);
   const [recordModalOpen, setRecordModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [filterInfo, setFilterInfo] = useState<{
+    routeId?: string;
+    orderId?: string;
+    routeName?: string;
+  } | null>(null);
+
+  const loadData = async (routeId?: string, orderId?: string) => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (routeId) params.set("routeId", routeId);
+      if (orderId) params.set("orderId", orderId);
+      const qs = params.toString();
+      const res = await fetch(`/api/loading-list${qs ? `?${qs}` : ""}`);
+      const json = await res.json();
+      setItems(json.data.list);
+      setStats(json.data.stats);
+    } catch (error) {
+      console.error("加载数据失败:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    async function loadData() {
-      try {
-        const res = await fetch("/api/loading-list");
-        const json = await res.json();
-        setItems(json.data.list);
-        setStats(json.data.stats);
-      } catch (error) {
-        console.error("加载数据失败:", error);
-      } finally {
-        setLoading(false);
-      }
+    if (urlRouteId || urlOrderId) {
+      const info: { routeId?: string; orderId?: string; routeName?: string } = {};
+      if (urlRouteId) info.routeId = urlRouteId;
+      if (urlOrderId) info.orderId = urlOrderId;
+      if (urlRouteName) info.routeName = decodeURIComponent(urlRouteName);
+      setFilterInfo(info);
+      loadData(urlRouteId ?? undefined, urlOrderId ?? undefined);
+    } else {
+      setFilterInfo(null);
+      loadData();
     }
-    loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleViewOriginal = async (item: LoadingItemType) => {
@@ -185,6 +215,46 @@ export default function LoadingListPage() {
     <div>
       <Header title="装载清单与异常追溯" subtitle="装载明细与原始录入记录关联排查" />
       <div className="p-6 space-y-6">
+        {filterInfo && (
+          <div className="glass-card p-4 border border-primary/30 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-primary/15 flex items-center justify-center">
+                <Link2 size={16} className="text-primary" />
+              </div>
+              <div>
+                <p className="text-xs text-muted">路线样本联动筛选</p>
+                <p className="text-sm font-medium flex items-center gap-2">
+                  {filterInfo.routeName && (
+                    <>
+                      路线：<span className="text-warning">{filterInfo.routeName}</span>
+                    </>
+                  )}
+                  {filterInfo.routeId && !filterInfo.routeName && (
+                    <>
+                      路线ID：<span className="font-mono text-primary">{filterInfo.routeId}</span>
+                    </>
+                  )}
+                  {filterInfo.orderId && (
+                    <>
+                      <span className="text-muted">·</span>
+                      工单：<span className="font-mono text-success">{filterInfo.orderId}</span>
+                    </>
+                  )}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                setFilterInfo(null);
+                loadData();
+              }}
+              className="btn-secondary !py-1.5 !px-3 text-xs inline-flex items-center gap-1.5"
+            >
+              <X size={14} />
+              清除筛选
+            </button>
+          </div>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <KPICard
             title="装载明细总数"

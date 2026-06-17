@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import "./globals.css";
 import { Sidebar } from "@/components/Sidebar";
@@ -16,7 +17,9 @@ export default function RootLayout({
     <html lang="zh-CN" className="dark">
       <body className={`antialiased min-h-screen bg-background grid-pattern`}>
         <Sidebar />
-        <main className="ml-60 min-h-screen">{children}</main>
+        <main className="ml-60 min-h-screen">
+          <Suspense fallback={null}>{children}</Suspense>
+        </main>
       </body>
     </html>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Header } from "@/components/Header";
 import { KPICard } from "@/components/KPICard";
 import { DataTable } from "@/components/DataTable";
@@ -16,6 +17,8 @@ import {
   User,
   Truck,
   Navigation,
+  X,
+  Link2,
 } from "lucide-react";
 import {
   cn,
@@ -28,6 +31,12 @@ import {
 import type { DriverCheckinType, TrackPointType } from "@/types";
 
 export default function DriverTrackingPage() {
+  const searchParams = useSearchParams();
+  const urlDriverId = searchParams.get("driverId");
+  const urlRouteId = searchParams.get("routeId");
+  const urlDriverName = searchParams.get("driverName");
+  const urlRouteName = searchParams.get("routeName");
+
   const [checkins, setCheckins] = useState<DriverCheckinType[]>([]);
   const [checkinStats, setCheckinStats] = useState({
     totalDrivers: 0,
@@ -45,14 +54,41 @@ export default function DriverTrackingPage() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [filterInfo, setFilterInfo] = useState<{
+    driverId: string;
+    driverName: string;
+    routeId?: string;
+    routeName?: string;
+  } | null>(null);
 
   useEffect(() => {
     async function loadData() {
       try {
         const res = await fetch("/api/drivers/checkin");
         const json = await res.json();
-        setCheckins(json.data.list);
+        const list = json.data.list;
+        setCheckins(list);
         setCheckinStats(json.data.stats);
+
+        // 如果 URL 带了 driverId，自动选中对应司机
+        if (urlDriverId) {
+          const matched = list.find(
+            (d: DriverCheckinType) =>
+              d.driverId === urlDriverId ||
+              d.driverName === decodeURIComponent(urlDriverName ?? "")
+          );
+          if (matched) {
+            handleDriverSelect(matched, urlRouteId ?? undefined);
+          }
+        }
+        if (urlDriverId) {
+          setFilterInfo({
+            driverId: urlDriverId,
+            driverName: decodeURIComponent(urlDriverName ?? ""),
+            routeId: urlRouteId ?? undefined,
+            routeName: urlRouteName ? decodeURIComponent(urlRouteName) : undefined,
+          });
+        }
       } catch (error) {
         console.error("加载数据失败:", error);
       } finally {
@@ -60,6 +96,7 @@ export default function DriverTrackingPage() {
       }
     }
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -78,12 +115,15 @@ export default function DriverTrackingPage() {
     return () => clearInterval(interval);
   }, [isPlaying, trackPoints.length]);
 
-  const handleDriverSelect = async (driver: DriverCheckinType) => {
+  const handleDriverSelect = async (driver: DriverCheckinType, routeIdParam?: string) => {
     setSelectedDriver(driver);
     setCurrentIndex(0);
     setIsPlaying(false);
     try {
-      const res = await fetch(`/api/drivers/${driver.driverId}/track`);
+      const url = routeIdParam
+        ? `/api/drivers/${driver.driverId}/track?routeId=${routeIdParam}`
+        : `/api/drivers/${driver.driverId}/track`;
+      const res = await fetch(url);
       const json = await res.json();
       setTrackPoints(json.data.trackPoints);
       setTrackStats(json.data.stats);
@@ -169,6 +209,38 @@ export default function DriverTrackingPage() {
     <div>
       <Header title="司机签到与轨迹回放" subtitle="实时签到监控与历史轨迹联动分析" />
       <div className="p-6 space-y-6">
+        {filterInfo && (
+          <div className="glass-card p-4 border border-primary/30 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-primary/15 flex items-center justify-center">
+                <Link2 size={16} className="text-primary" />
+              </div>
+              <div>
+                <p className="text-xs text-muted">路线样本联动筛选</p>
+                <p className="text-sm font-medium flex items-center gap-2">
+                  司机：<span className="text-primary">{filterInfo.driverName}</span>
+                  {filterInfo.routeName && (
+                    <>
+                      <span className="text-muted">·</span>
+                      路线：<span className="text-warning">{filterInfo.routeName}</span>
+                    </>
+                  )}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                setFilterInfo(null);
+                setSelectedDriver(null);
+                setTrackPoints([]);
+              }}
+              className="btn-secondary !py-1.5 !px-3 text-xs inline-flex items-center gap-1.5"
+            >
+              <X size={14} />
+              清除筛选
+            </button>
+          </div>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <KPICard
             title="在岗司机"

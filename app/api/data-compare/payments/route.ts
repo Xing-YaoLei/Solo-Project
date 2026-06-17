@@ -1,19 +1,13 @@
 import { NextResponse } from "next/server";
-import { generatePaymentVersions } from "@/lib/mockData";
+import { getPaymentVersions } from "@/lib/unifiedData";
 
 export async function GET() {
   try {
-    const versions = generatePaymentVersions(15);
+    const result = getPaymentVersions(15);
 
     return NextResponse.json({
       success: true,
-      data: {
-        list: versions,
-        stats: {
-          totalChanges: versions.length,
-          affectedOrders: new Set(versions.map((v) => v.orderId)).size,
-        },
-      },
+      data: result,
     });
   } catch (error) {
     return NextResponse.json(

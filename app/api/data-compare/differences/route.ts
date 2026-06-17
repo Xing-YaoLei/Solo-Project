@@ -1,27 +1,16 @@
 import { NextResponse } from "next/server";
-import { generateDataDifferences } from "@/lib/mockData";
+import { getDataDifferences } from "@/lib/unifiedData";
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get("limit") || "20", 10);
 
-    const differences = generateDataDifferences(limit);
-    const totalDiffAmount = differences.reduce(
-      (sum, d) => sum + Math.abs(d.diffAmount ?? 0),
-      0
-    );
+    const result = getDataDifferences(limit);
 
     return NextResponse.json({
       success: true,
-      data: {
-        list: differences,
-        stats: {
-          totalCount: differences.length,
-          affectedOrders: new Set(differences.map((d) => d.orderId)).size,
-          totalDiffAmount: parseFloat(totalDiffAmount.toFixed(2)),
-        },
-      },
+      data: result,
     });
   } catch (error) {
     return NextResponse.json(
