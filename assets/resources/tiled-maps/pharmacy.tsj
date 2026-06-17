@@ -1,0 +1,14 @@
+{
+  "type": "tileset",
+  "name": "pharmacy",
+  "tilewidth": 32,
+  "tileheight": 32,
+  "tilecount": 10,
+  "columns": 5,
+  "image": "",
+  "imagewidth": 160,
+  "imageheight": 64,
+  "margin": 0,
+  "spacing": 0,
+  "tiles": []
+}

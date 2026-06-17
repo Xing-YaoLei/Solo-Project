@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, Label, Sprite, UITransform, tween, Vec3, Color, instantiate } from 'cc';
+import { _decorator, Component, Node, Label, Sprite, UITransform, tween, Vec3, Color, instantiate, Prefab } from 'cc';
 import type { TaskConfig, PrescriptionData, ReplenishmentData, InsuranceData, BlurConfig, AdviceConfig } from '../data/LevelConfig';
 import { PharmacistAdviceService, type EvaluatedAdvice } from '../services/PharmacistAdviceService';
 
@@ -23,8 +23,8 @@ export class InfoPanel extends Component {
     @property(Sprite)
     prescriptionImage: Sprite | null = null;
 
-    @property(Node)
-    adviceBubblePrefab: Node | null = null;
+    @property(Prefab)
+    adviceBubblePrefab: Prefab | null = null;
 
     private currentTask: TaskConfig | null = null;
     private levelPharmacistAdvice: AdviceConfig[] = [];
