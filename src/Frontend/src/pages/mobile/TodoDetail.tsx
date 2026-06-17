@@ -33,7 +33,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import dayjs from 'dayjs'
 import { todoApi } from '@/api'
 import { useAppStore } from '@/store'
-import type { TodoTaskDto, TodoStatus } from '@/types'
+import type { TodoTaskDto, TodoStatus, TodoPriority } from '@/types'
 import {
   formatTodoStatus,
   formatTodoPriority,
