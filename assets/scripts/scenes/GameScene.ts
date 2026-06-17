@@ -155,12 +155,14 @@ export class GameScene extends Component {
 
         this.eventManager.on(GameEventType.LEVEL_COMPLETE, (event) => {
             Logger.info('[Scene] 关卡完成:', event.data?.levelId, '得分:', event.data?.score);
-            this.spawnResultPanel(true, event.data?.score || 0);
+            this.showNotification('🎉 关卡完成', `得分: ${event.data?.score || 0}`, 'success');
+            this.spawnReviewPanel();
         });
 
         this.eventManager.on(GameEventType.LEVEL_FAIL, (event) => {
             Logger.warn('[Scene] 关卡失败:', event.data?.reason);
-            this.spawnResultPanel(false, 0, event.data?.reason);
+            this.showNotification('😢 关卡失败', event.data?.reason || '', 'error');
+            this.spawnReviewPanel();
         });
     }
 
@@ -222,63 +224,85 @@ export class GameScene extends Component {
     }
 
     public showNotification(title: string, message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') {
-        if (!this.refs.notificationLayer) return;
-
-        if (this.notificationPrefab) {
-            const node = instantiate(this.notificationPrefab);
-            node.name = `Notification_${Date.now()}`;
-            const labels = node.getComponentsInChildren(Label);
-            if (labels.length >= 2) {
-                labels[0].string = title;
-                labels[1].string = message;
-            } else if (labels.length === 1) {
-                labels[0].string = `${title} - ${message}`;
-            }
-            const colorMap: Record<string, Color> = {
-                info: new Color(80, 140, 255),
-                success: new Color(80, 200, 120),
-                warning: new Color(255, 180, 60),
-                error: new Color(220, 80, 80)
-            };
-            const bg = node.getComponent(Sprite) || node.getComponentInChildren(Sprite);
-            if (bg) bg.color = colorMap[type] || colorMap.info;
-
-            const opacity = node.addComponent(UIOpacity);
-            opacity.opacity = 0;
-            this.refs.notificationLayer.addChild(node);
-
-            let t = 0;
-            const fadeInDuration = 0.2;
-            const showDuration = 2.5;
-            const fadeOutDuration = 0.3;
-            const total = fadeInDuration + showDuration + fadeOutDuration;
-            const scheduler = director.getScheduler();
-            let scheduled = false;
-            const callback = () => {
-                t += 1 / 60;
-                if (t < fadeInDuration) {
-                    opacity.opacity = Math.round((t / fadeInDuration) * 255);
-                } else if (t < fadeInDuration + showDuration) {
-                    opacity.opacity = 255;
-                } else if (t < total) {
-                    const fadeT = (t - fadeInDuration - showDuration) / fadeOutDuration;
-                    opacity.opacity = Math.round((1 - fadeT) * 255);
-                } else {
-                    opacity.opacity = 0;
-                    if (node.isValid) node.destroy();
-                    if (scheduled) {
-                        scheduler.unschedule(callback, this);
-                    }
-                    return;
-                }
-                const existingY = node.position.y;
-                node.setPosition(new Vec3(node.position.x, existingY + (t < fadeInDuration ? 0.5 : 0), node.position.z));
-            };
-            scheduled = true;
-            scheduler.schedule(callback, this, 1 / 60, false);
-        } else {
+        if (!this.refs.notificationLayer) {
             Logger.info(`[通知] ${title}: ${message}`);
+            return;
         }
+
+        const node = new Node(`Notification_${Date.now()}`);
+        node.layer = Layers.Enum.UI_2D;
+        const ui = node.addComponent(UITransform);
+        ui.setContentSize(360, 80);
+        ui.anchorY = 1;
+
+        const bg = node.addComponent(Sprite);
+        bg.type = Sprite.Type.SLICED;
+        const colorMap: Record<string, Color> = {
+            info: new Color(80, 140, 255, 235),
+            success: new Color(80, 200, 120, 235),
+            warning: new Color(255, 180, 60, 235),
+            error: new Color(220, 80, 80, 235)
+        };
+        bg.color = colorMap[type] || colorMap.info;
+
+        const titleNode = new Node('Title');
+        titleNode.layer = Layers.Enum.UI_2D;
+        const tUi = titleNode.addComponent(UITransform);
+        tUi.setContentSize(340, 28);
+        tUi.anchorY = 1;
+        const titleLbl = titleNode.addComponent(Label);
+        titleLbl.string = title;
+        titleLbl.fontSize = 15;
+        titleLbl.color = new Color(255, 255, 255);
+        titleLbl.horizontalAlign = Label.HorizontalAlign.LEFT;
+        titleNode.setPosition(new Vec3(10, -10, 0));
+        node.addChild(titleNode);
+
+        const msgNode = new Node('Message');
+        msgNode.layer = Layers.Enum.UI_2D;
+        const mUi = msgNode.addComponent(UITransform);
+        mUi.setContentSize(340, 40);
+        mUi.anchorY = 1;
+        const msgLbl = msgNode.addComponent(Label);
+        msgLbl.string = message;
+        msgLbl.fontSize = 12;
+        msgLbl.color = new Color(255, 255, 255, 240);
+        msgLbl.lineHeight = 18;
+        msgLbl.horizontalAlign = Label.HorizontalAlign.LEFT;
+        msgLbl.verticalAlign = Label.VerticalAlign.TOP;
+        msgNode.setPosition(new Vec3(10, -38, 0));
+        node.addChild(msgNode);
+
+        const opacity = node.addComponent(UIOpacity);
+        opacity.opacity = 0;
+
+        const existingCount = this.refs.notificationLayer.children.length;
+        node.setPosition(new Vec3(0, -10 - existingCount * 90, 0));
+        this.refs.notificationLayer.addChild(node);
+
+        let t = 0;
+        const fadeInDuration = 0.2;
+        const showDuration = 2.5;
+        const fadeOutDuration = 0.5;
+        const total = fadeInDuration + showDuration + fadeOutDuration;
+        const scheduler = this.scheduler;
+        const callback = () => {
+            t += 1 / 60;
+            if (t < fadeInDuration) {
+                opacity.opacity = Math.round((t / fadeInDuration) * 255);
+            } else if (t < fadeInDuration + showDuration) {
+                opacity.opacity = 255;
+            } else if (t < total) {
+                const fadeT = (t - fadeInDuration - showDuration) / fadeOutDuration;
+                opacity.opacity = Math.round((1 - fadeT) * 255);
+            } else {
+                opacity.opacity = 0;
+                if (node.isValid) node.destroy();
+                scheduler.unschedule(callback, this);
+                return;
+            }
+        };
+        scheduler.schedule(callback, this, 1 / 60, false);
     }
 
     update(dt: number) {

@@ -63,6 +63,8 @@ export class OrderPanelUI extends Component {
         this.dispatchManager = game.getDispatchRuleManager();
         this.eventManager = EventManager.getInstance();
 
+        this.buildDefaultUI();
+
         if (this.closeButton) {
             this.closeButton.node.on(Button.EventType.CLICK, () => {
                 this.node.destroy();
@@ -72,6 +74,214 @@ export class OrderPanelUI extends Component {
         this.setupEventListeners();
         this.findCurrentOrder();
         this.render();
+    }
+
+    private buildDefaultUI() {
+        const root = this.node;
+        const rootUi = root.getComponent(UITransform) || root.addComponent(UITransform);
+        if (rootUi.contentSize.width < 100) rootUi.setContentSize(600, 900);
+
+        const rootBg = root.getComponent(Sprite) || root.addComponent(Sprite);
+        rootBg.color = new Color(255, 255, 255);
+        rootBg.type = Sprite.Type.SLICED;
+
+        if (!this.titleLabel || !this.titleBar) {
+            const titleBar = new Node('TitleBar');
+            titleBar.layer = Layers.Enum.UI_2D;
+            const tbUi = titleBar.addComponent(UITransform);
+            tbUi.setContentSize(600, 60);
+            tbUi.anchorY = 1;
+            const tbBg = titleBar.addComponent(Sprite);
+            tbBg.color = new Color(245, 248, 255);
+            tbBg.type = Sprite.Type.SLICED;
+            titleBar.setPosition(new Vec3(0, 0, 0));
+            root.addChild(titleBar);
+
+            const titleLblNode = new Node('TitleLabel');
+            titleLblNode.layer = Layers.Enum.UI_2D;
+            const tlUi = titleLblNode.addComponent(UITransform);
+            tlUi.setContentSize(500, 36);
+            tlUi.anchorY = 1;
+            const titleLbl = titleLblNode.addComponent(Label);
+            titleLbl.string = '工单详情';
+            titleLbl.fontSize = 18;
+            titleLbl.color = new Color(40, 60, 120);
+            titleLblNode.setPosition(new Vec3(20, -12, 0));
+            titleBar.addChild(titleLblNode);
+
+            this.titleBar = titleBar;
+            this.titleLabel = titleLbl;
+
+            const closeBtn = new Node('CloseButton');
+            closeBtn.layer = Layers.Enum.UI_2D;
+            const cbUi = closeBtn.addComponent(UITransform);
+            cbUi.setContentSize(40, 40);
+            cbUi.anchorY = 1;
+            const cbBg = closeBtn.addComponent(Sprite);
+            cbBg.color = new Color(220, 220, 220);
+            cbBg.type = Sprite.Type.SLICED;
+            const cbBtn = closeBtn.addComponent(Button);
+            cbBtn.transition = Button.Transition.COLOR;
+            cbBtn.normalColor = cbBg.color;
+            cbBtn.hoverColor = new Color(240, 240, 240);
+            cbBtn.pressedColor = new Color(200, 200, 200);
+            const cbLbl = closeBtn.addComponent(Label);
+            cbLbl.string = '✕';
+            cbLbl.fontSize = 16;
+            cbLbl.color = new Color(100, 100, 100);
+            closeBtn.setPosition(new Vec3(560, -10, 0));
+            titleBar.addChild(closeBtn);
+            this.closeButton = cbBtn;
+        }
+
+        if (!this.priorityLabel || !this.locationLabel || !this.reporterLabel || !this.categoryLabel) {
+            const infoNode = new Node('InfoArea');
+            infoNode.layer = Layers.Enum.UI_2D;
+            const infoUi = infoNode.addComponent(UITransform);
+            infoUi.setContentSize(580, 100);
+            infoUi.anchorY = 1;
+            infoNode.setPosition(new Vec3(0, -70, 0));
+            root.addChild(infoNode);
+
+            const priLblNode = new Node('PriorityLabel');
+            priLblNode.layer = Layers.Enum.UI_2D;
+            const plUi = priLblNode.addComponent(UITransform);
+            plUi.setContentSize(560, 20);
+            plUi.anchorY = 1;
+            const priLbl = priLblNode.addComponent(Label);
+            priLbl.fontSize = 13;
+            priLbl.horizontalAlign = Label.HorizontalAlign.LEFT;
+            priLblNode.setPosition(new Vec3(10, -10, 0));
+            infoNode.addChild(priLblNode);
+            this.priorityLabel = priLbl;
+
+            const locLblNode = new Node('LocationLabel');
+            locLblNode.layer = Layers.Enum.UI_2D;
+            const llUi = locLblNode.addComponent(UITransform);
+            llUi.setContentSize(560, 20);
+            llUi.anchorY = 1;
+            const locLbl = locLblNode.addComponent(Label);
+            locLbl.fontSize = 12;
+            locLbl.color = new Color(100, 100, 100);
+            locLbl.horizontalAlign = Label.HorizontalAlign.LEFT;
+            locLblNode.setPosition(new Vec3(10, -32, 0));
+            infoNode.addChild(locLblNode);
+            this.locationLabel = locLbl;
+
+            const repLblNode = new Node('ReporterLabel');
+            repLblNode.layer = Layers.Enum.UI_2D;
+            const rlUi = repLblNode.addComponent(UITransform);
+            rlUi.setContentSize(560, 20);
+            rlUi.anchorY = 1;
+            const repLbl = repLblNode.addComponent(Label);
+            repLbl.fontSize = 12;
+            repLbl.color = new Color(100, 100, 100);
+            repLbl.horizontalAlign = Label.HorizontalAlign.LEFT;
+            repLblNode.setPosition(new Vec3(10, -54, 0));
+            infoNode.addChild(repLblNode);
+            this.reporterLabel = repLbl;
+
+            const catLblNode = new Node('CategoryLabel');
+            catLblNode.layer = Layers.Enum.UI_2D;
+            const clUi = catLblNode.addComponent(UITransform);
+            clUi.setContentSize(560, 20);
+            clUi.anchorY = 1;
+            const catLbl = catLblNode.addComponent(Label);
+            catLbl.fontSize = 12;
+            catLbl.color = new Color(100, 100, 100);
+            catLbl.horizontalAlign = Label.HorizontalAlign.LEFT;
+            catLblNode.setPosition(new Vec3(10, -76, 0));
+            infoNode.addChild(catLblNode);
+            this.categoryLabel = catLbl;
+        }
+
+        if (!this.descriptionLabel) {
+            const descNode = new Node('DescriptionLabel');
+            descNode.layer = Layers.Enum.UI_2D;
+            const dUi = descNode.addComponent(UITransform);
+            dUi.setContentSize(580, 60);
+            dUi.anchorY = 1;
+            const descLbl = descNode.addComponent(Label);
+            descLbl.fontSize = 13;
+            descLbl.color = new Color(60, 60, 60);
+            descLbl.lineHeight = 18;
+            descLbl.horizontalAlign = Label.HorizontalAlign.LEFT;
+            descNode.setPosition(new Vec3(0, -180, 0));
+            root.addChild(descNode);
+            this.descriptionLabel = descLbl;
+        }
+
+        if (!this.stagesContainer) {
+            const stageNode = new Node('StagesContainer');
+            stageNode.layer = Layers.Enum.UI_2D;
+            const sUi = stageNode.addComponent(UITransform);
+            sUi.setContentSize(580, 80);
+            sUi.anchorY = 1;
+            stageNode.setPosition(new Vec3(0, -250, 0));
+            root.addChild(stageNode);
+            this.stagesContainer = stageNode;
+        }
+
+        if (!this.cluesContainer) {
+            const clueNode = new Node('CluesContainer');
+            clueNode.layer = Layers.Enum.UI_2D;
+            const cUi = clueNode.addComponent(UITransform);
+            cUi.setContentSize(580, 140);
+            cUi.anchorY = 1;
+            clueNode.setPosition(new Vec3(0, -340, 0));
+            root.addChild(clueNode);
+            this.cluesContainer = clueNode;
+        }
+
+        if (!this.choicesContainer) {
+            const choiceNode = new Node('ChoicesContainer');
+            choiceNode.layer = Layers.Enum.UI_2D;
+            const chUi = choiceNode.addComponent(UITransform);
+            chUi.setContentSize(580, 200);
+            chUi.anchorY = 1;
+            choiceNode.setPosition(new Vec3(0, -490, 0));
+            root.addChild(choiceNode);
+            this.choicesContainer = choiceNode;
+        }
+
+        if (!this.workersContainer) {
+            const workerNode = new Node('WorkersContainer');
+            workerNode.layer = Layers.Enum.UI_2D;
+            const wUi = workerNode.addComponent(UITransform);
+            wUi.setContentSize(580, 180);
+            wUi.anchorY = 1;
+            workerNode.setPosition(new Vec3(0, -700, 0));
+            root.addChild(workerNode);
+            this.workersContainer = workerNode;
+        }
+
+        if (!this.feedbackArea || !this.feedbackLabel) {
+            const fbNode = new Node('FeedbackArea');
+            fbNode.layer = Layers.Enum.UI_2D;
+            const fbUi = fbNode.addComponent(UITransform);
+            fbUi.setContentSize(580, 50);
+            fbUi.anchorY = 0;
+            const fbBg = fbNode.addComponent(Sprite);
+            fbBg.color = new Color(230, 250, 235, 240);
+            fbBg.type = Sprite.Type.SLICED;
+            fbNode.addComponent(UIOpacity);
+            fbNode.setPosition(new Vec3(0, -850, 0));
+            fbNode.active = false;
+            root.addChild(fbNode);
+
+            const fbLblNode = new Node('FeedbackLabel');
+            fbLblNode.layer = Layers.Enum.UI_2D;
+            const flUi = fbLblNode.addComponent(UITransform);
+            flUi.setContentSize(560, 30);
+            const fbLbl = fbLblNode.addComponent(Label);
+            fbLbl.fontSize = 14;
+            fbLbl.verticalAlign = Label.VerticalAlign.CENTER;
+            fbLblNode.setPosition(new Vec3(0, 0, 0));
+            fbNode.addChild(fbLblNode);
+
+            this.feedbackArea = fbNode;
+            this.feedbackLabel = fbLbl;
+        }
     }
 
     private setupEventListeners() {
@@ -433,7 +643,6 @@ export class OrderPanelUI extends Component {
             this.scheduleOnce(() => {
                 if (scene) {
                     scene.spawnReviewPanel();
-                    scene.spawnDispatchPanel();
                 }
             }, 1.2);
         }

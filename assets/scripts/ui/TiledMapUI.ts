@@ -49,8 +49,109 @@ export class TiledMapUI extends Component {
         this.orderManager = game.getOrderManager();
         this.eventManager = EventManager.getInstance();
 
-        this.markersLayer = this.markersLayer || this.node.getChildByName('Markers') || this.node;
+        this.buildDefaultUI();
         this.setupEventListeners();
+    }
+
+    private buildDefaultUI() {
+        const root = this.node;
+        const rootUi = root.getComponent(UITransform) || root.addComponent(UITransform);
+        if (rootUi.contentSize.width < 100) rootUi.setContentSize(1000, 700);
+
+        this.markersLayer = this.markersLayer || this.node.getChildByName('Markers');
+        if (!this.markersLayer) {
+            const markersNode = new Node('Markers');
+            markersNode.layer = Layers.Enum.UI_2D;
+            const mUi = markersNode.addComponent(UITransform);
+            mUi.setContentSize(1000, 700);
+            markersNode.setPosition(Vec3.ZERO);
+            root.addChild(markersNode);
+            this.markersLayer = markersNode;
+        }
+
+        if (!this.mapNameLabel) {
+            const mapNameNode = new Node('MapNameLabel');
+            mapNameNode.layer = Layers.Enum.UI_2D;
+            const mnUi = mapNameNode.addComponent(UITransform);
+            mnUi.setContentSize(300, 30);
+            mnUi.anchorX = 0;
+            mnUi.anchorY = 1;
+            const mnLbl = mapNameNode.addComponent(Label);
+            mnLbl.string = '🗺️ 地图';
+            mnLbl.fontSize = 16;
+            mnLbl.color = new Color(60, 60, 60);
+            mnLbl.horizontalAlign = Label.HorizontalAlign.LEFT;
+            mapNameNode.setPosition(new Vec3(-480, 340, 10));
+            root.addChild(mapNameNode);
+            this.mapNameLabel = mnLbl;
+        }
+
+        if (!this.infoPanel) {
+            const infoPanel = new Node('InfoPanel');
+            infoPanel.layer = Layers.Enum.UI_2D;
+            const ipUi = infoPanel.addComponent(UITransform);
+            ipUi.setContentSize(280, 200);
+            ipUi.anchorX = 1;
+            ipUi.anchorY = 1;
+            const ipBg = infoPanel.addComponent(Sprite);
+            ipBg.color = new Color(255, 255, 255, 240);
+            ipBg.type = Sprite.Type.SLICED;
+            infoPanel.setPosition(new Vec3(480, 340, 10));
+            infoPanel.active = false;
+            root.addChild(infoPanel);
+
+            const titleNode = new Node('InfoPanelTitle');
+            titleNode.layer = Layers.Enum.UI_2D;
+            const tUi = titleNode.addComponent(UITransform);
+            tUi.setContentSize(260, 30);
+            tUi.anchorY = 1;
+            const tLbl = titleNode.addComponent(Label);
+            tLbl.fontSize = 15;
+            tLbl.color = new Color(40, 60, 120);
+            tLbl.horizontalAlign = Label.HorizontalAlign.LEFT;
+            titleNode.setPosition(new Vec3(-130, -10, 0));
+            infoPanel.addChild(titleNode);
+
+            const contentNode = new Node('InfoPanelContent');
+            contentNode.layer = Layers.Enum.UI_2D;
+            const cUi = contentNode.addComponent(UITransform);
+            cUi.setContentSize(260, 150);
+            cUi.anchorY = 1;
+            const cLbl = contentNode.addComponent(Label);
+            cLbl.fontSize = 12;
+            cLbl.color = new Color(80, 80, 80);
+            cLbl.lineHeight = 18;
+            cLbl.horizontalAlign = Label.HorizontalAlign.LEFT;
+            cLbl.verticalAlign = Label.VerticalAlign.TOP;
+            contentNode.setPosition(new Vec3(-130, -40, 0));
+            infoPanel.addChild(contentNode);
+
+            const closeBtn = new Node('InfoCloseBtn');
+            closeBtn.layer = Layers.Enum.UI_2D;
+            const cbUi = closeBtn.addComponent(UITransform);
+            cbUi.setContentSize(28, 28);
+            cbUi.anchorX = 1;
+            cbUi.anchorY = 1;
+            const cbBg = closeBtn.addComponent(Sprite);
+            cbBg.color = new Color(220, 220, 220);
+            cbBg.type = Sprite.Type.SLICED;
+            const cbBtn = closeBtn.addComponent(Button);
+            cbBtn.transition = Button.Transition.COLOR;
+            cbBtn.normalColor = cbBg.color;
+            cbBtn.hoverColor = new Color(240, 240, 240);
+            cbBtn.pressedColor = new Color(200, 200, 200);
+            const cbLbl = closeBtn.addComponent(Label);
+            cbLbl.string = '✕';
+            cbLbl.fontSize = 14;
+            cbLbl.color = new Color(100, 100, 100);
+            closeBtn.setPosition(new Vec3(-10, -10, 0));
+            closeBtn.on(Button.EventType.CLICK, () => { infoPanel.active = false; }, this);
+            infoPanel.addChild(closeBtn);
+
+            this.infoPanel = infoPanel;
+            this.infoPanelTitle = tLbl;
+            this.infoPanelContent = cLbl;
+        }
     }
 
     async start() {
@@ -407,8 +508,6 @@ export class TiledMapUI extends Component {
         const scene = findGameScene();
         if (scene) {
             scene.spawnOrderPanel();
-            scene.spawnCluePanel();
-            scene.spawnChoiceDialog();
         }
     }
 
@@ -432,8 +531,6 @@ export class TiledMapUI extends Component {
         const scene = findGameScene();
         if (scene) {
             scene.spawnOrderPanel();
-            scene.spawnCluePanel();
-            scene.spawnChoiceDialog();
         }
     }
 
