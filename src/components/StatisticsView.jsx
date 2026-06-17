@@ -9,7 +9,15 @@ export default function StatisticsView() {
     goToReplay,
   } = useGameStore()
   
-  const { totalGames, totalCompleted, completionRate, levelStats, avgDecisionTime, equipmentErrorReasons } = statistics
+  const { 
+    totalGames, 
+    totalCompleted, 
+    completionRate, 
+    levelStats, 
+    avgDecisionTime, 
+    equipmentErrorReasons,
+    totalMisallocations,
+  } = statistics
   
   const levelKeys = Object.keys(levelStats).sort((a, b) => {
     const numA = parseInt(a.split('_')[1])
@@ -25,6 +33,36 @@ export default function StatisticsView() {
   ]
   
   const totalErrors = Object.values(equipmentErrorReasons).reduce((a, b) => a + b, 0)
+  
+  const getEffectRating = (completionAvg, playCount) => {
+    if (playCount < 2) return { label: '数据不足', color: '#718096' }
+    if (completionAvg >= 0.85) return { label: '优秀', color: '#6bcb77' }
+    if (completionAvg >= 0.7) return { label: '良好', color: '#4facfe' }
+    if (completionAvg >= 0.5) return { label: '一般', color: '#ffa502' }
+    return { label: '需加强', color: '#ff6b6b' }
+  }
+  
+  const bestLevel = levelKeys.length > 0 
+    ? levelKeys.reduce((best, key) => {
+        const stat = levelStats[key]
+        const bestStat = levelStats[best]
+        if (!bestStat || stat.avgCompletion > bestStat.avgCompletion) {
+          return key
+        }
+        return best
+      }, null)
+    : null
+  
+  const hardestLevel = levelKeys.length > 1
+    ? levelKeys.reduce((worst, key) => {
+        const stat = levelStats[key]
+        const worstStat = levelStats[worst]
+        if (!worstStat || stat.avgCompletion < worstStat.avgCompletion) {
+          return key
+        }
+        return worst
+      }, null)
+    : null
   
   return (
     <div style={styles.container}>
@@ -46,12 +84,12 @@ export default function StatisticsView() {
             <div style={styles.overviewCard}>
               <span style={styles.overviewIcon}>🎮</span>
               <span style={styles.overviewValue}>{totalGames}</span>
-              <span style={styles.overviewLabel}>总局数</span>
+              <span style={styles.overviewLabel}>总训练次数</span>
             </div>
             <div style={styles.overviewCard}>
               <span style={styles.overviewIcon}>🏆</span>
               <span style={styles.overviewValue}>{totalCompleted}</span>
-              <span style={styles.overviewLabel}>完成局数</span>
+              <span style={styles.overviewLabel}>成功次数</span>
             </div>
             <div style={styles.overviewCard}>
               <span style={styles.overviewIcon}>✅</span>
@@ -59,83 +97,111 @@ export default function StatisticsView() {
               <span style={styles.overviewLabel}>训练完成率</span>
             </div>
             <div style={styles.overviewCard}>
-              <span style={styles.overviewIcon}>⏱️</span>
-              <span style={styles.overviewValue}>{avgDecisionTime.toFixed(1)}s</span>
-              <span style={styles.overviewLabel}>平均决策时间</span>
+              <span style={styles.overviewIcon}>❌</span>
+              <span style={styles.overviewValue}>{totalMisallocations}</span>
+              <span style={styles.overviewLabel}>分配失误</span>
             </div>
           </div>
         </div>
         
         <div style={styles.section}>
-          <h3 style={styles.sectionTitle}>🎯 关卡训练效果</h3>
+          <div style={styles.sectionHeader}>
+            <h3 style={styles.sectionTitle}>🎯 关卡训练效果对比</h3>
+            {bestLevel && (
+              <span style={styles.bestBadge}>
+                最佳: 第{bestLevel.split('_')[1]}关
+              </span>
+            )}
+          </div>
           <p style={styles.sectionDesc}>
-            各关卡的训练完成情况，可看出哪些关卡训练效果更好
+            各关卡的训练完成率、平均分和胜率，可对比看出不同关卡的训练效果
           </p>
           
           {levelKeys.length > 0 ? (
-            <div style={styles.levelList}>
-              {levelKeys.map(levelKey => {
-                const stat = levelStats[levelKey]
-                const levelNum = parseInt(levelKey.split('_')[1])
-                const winRate = stat.plays > 0 ? (stat.wins / stat.plays) * 100 : 0
-                const completionAvg = Math.round(stat.avgCompletion * 100)
-                
-                let effectRating = ''
-                let effectColor = ''
-                if (completionAvg >= 80) {
-                  effectRating = '优秀'
-                  effectColor = '#6bcb77'
-                } else if (completionAvg >= 60) {
-                  effectRating = '良好'
-                  effectColor = '#4facfe'
-                } else if (completionAvg >= 40) {
-                  effectRating = '一般'
-                  effectColor = '#ffa502'
-                } else {
-                  effectRating = '需加强'
-                  effectColor = '#ff6b6b'
-                }
-                
-                return (
-                  <div key={levelKey} style={styles.levelItem}>
-                    <div style={styles.levelHeader}>
-                      <div style={styles.levelName}>
-                        <span style={styles.levelBadge}>第 {levelNum} 关</span>
-                        <span style={{ ...styles.levelEffect, color: effectColor }}>
-                          训练效果: {effectRating}
-                        </span>
+            <div style={styles.levelComparison}>
+              <div style={styles.levelTableHeader}>
+                <span style={styles.levelColLevel}>关卡</span>
+                <span style={styles.levelColPlays}>次数</span>
+                <span style={styles.levelColWin}>胜率</span>
+                <span style={styles.levelColCompletion}>完成率</span>
+                <span style={styles.levelColScore}>平均分</span>
+                <span style={styles.levelColEffect}>效果</span>
+              </div>
+              
+              <div style={styles.levelList}>
+                {levelKeys.map(levelKey => {
+                  const stat = levelStats[levelKey]
+                  const levelNum = parseInt(levelKey.split('_')[1])
+                  const effect = getEffectRating(stat.avgCompletion, stat.plays)
+                  const winRatePercent = Math.round(stat.winRate * 100)
+                  const completionPercent = Math.round(stat.avgCompletion * 100)
+                  const avgScore = Math.round(stat.avgScore)
+                  
+                  const isBest = levelKey === bestLevel
+                  const isHardest = levelKey === hardestLevel
+                  
+                  return (
+                    <div 
+                      key={levelKey} 
+                      style={{
+                        ...styles.levelRow,
+                        ...(isBest ? styles.levelRowBest : {}),
+                        ...(isHardest ? styles.levelRowHardest : {}),
+                      }}
+                    >
+                      <div style={styles.levelColLevel}>
+                        <span style={styles.levelNumBadge}>第 {levelNum} 关</span>
+                        {isBest && <span style={styles.smallBadgeGreen}>最佳</span>}
+                        {isHardest && <span style={styles.smallBadgeRed}>最难</span>}
                       </div>
-                      <div style={styles.levelStats}>
-                        <span style={styles.levelPlayCount}>
-                          游玩 {stat.plays} 次
-                        </span>
-                        <span style={styles.levelWinCount}>
-                          通关 {stat.wins} 次
-                        </span>
+                      
+                      <span style={styles.levelColPlays}>{stat.plays}</span>
+                      
+                      <div style={styles.levelColWin}>
+                        <div className="progress-bar" style={styles.smallProgress}>
+                          <div 
+                            className="progress-fill"
+                            style={{
+                              width: `${winRatePercent}%`,
+                              background: winRatePercent >= 60 
+                                ? 'linear-gradient(90deg, #6bcb77, #4dd4ac)' 
+                                : 'linear-gradient(90deg, #ffa502, #ff6b6b)',
+                            }}
+                          />
+                        </div>
+                        <span style={styles.progressText}>{winRatePercent}%</span>
                       </div>
-                    </div>
-                    
-                    <div style={styles.levelProgressRow}>
-                      <span style={styles.progressLabel}>完成率</span>
-                      <div className="progress-bar" style={styles.levelProgressBar}>
-                        <div 
-                          className="progress-fill"
-                          style={{
-                            width: `${completionAvg}%`,
-                            background: `linear-gradient(90deg, ${effectColor}, ${effectColor}aa)`,
-                          }}
-                        />
+                      
+                      <div style={styles.levelColCompletion}>
+                        <div className="progress-bar" style={styles.smallProgress}>
+                          <div 
+                            className="progress-fill"
+                            style={{
+                              width: `${completionPercent}%`,
+                              background: completionPercent >= 70 
+                                ? 'linear-gradient(90deg, #4facfe, #00f2fe)'
+                                : 'linear-gradient(90deg, #ffa502, #ff6b6b)',
+                            }}
+                          />
+                        </div>
+                        <span style={styles.progressText}>{completionPercent}%</span>
                       </div>
-                      <span style={styles.progressValue}>{completionAvg}%</span>
+                      
+                      <span style={styles.levelColScore}>{avgScore}</span>
+                      
+                      <span 
+                        style={{ 
+                          ...styles.levelColEffect, 
+                          color: effect.color,
+                          fontWeight: 'bold',
+                        }}
+                      >
+                        {effect.label}
+                      </span>
                     </div>
-                    
-                    <div style={styles.levelProgressRow}>
-                      <span style={styles.progressLabel}>最高分</span>
-                      <span style={styles.progressHighlight}>{stat.bestScore}</span>
-                    </div>
-                  </div>
-                )
-              })}
+                  )
+                })}
+              </div>
             </div>
           ) : (
             <p style={styles.emptyText}>暂无训练数据，快去开始训练吧！</p>
@@ -173,7 +239,10 @@ export default function StatisticsView() {
                       }}
                     />
                   </div>
-                  <span style={styles.errorChartCount}>{count}</span>
+                  <span style={styles.errorChartCount}>{count}次</span>
+                  <span style={styles.errorChartPercent}>
+                    {percentage.toFixed(0)}%
+                  </span>
                 </div>
               )
             })}
@@ -183,34 +252,52 @@ export default function StatisticsView() {
         <div style={styles.section}>
           <h3 style={styles.sectionTitle}>🎬 最近失败回放</h3>
           <p style={styles.sectionDesc}>
-            保留最近 5 次失败的训练记录，可点击查看复盘
+            保留最近 {failedReplays.length}/5 次失败的训练记录，点击可查看复盘
           </p>
           
           {failedReplays.length > 0 ? (
             <div style={styles.replayList}>
-              {failedReplays.map((replay, idx) => (
-                <div 
-                  key={replay.timestamp + idx}
-                  style={styles.replayItem}
-                  onClick={() => goToReplay(replay)}
-                >
-                  <div style={styles.replayInfo}>
-                    <span style={styles.replayLevel}>第 {replay.level} 关</span>
-                    <span style={styles.replayScore}>{replay.score} 分</span>
+              {failedReplays.map((replay, idx) => {
+                const levelNum = replay.level
+                const completionPercent = Math.round(replay.completionRate * 100)
+                const date = new Date(replay.timestamp)
+                const dateStr = `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`
+                
+                return (
+                  <div 
+                    key={replay.timestamp + idx}
+                    style={styles.replayItem}
+                    onClick={() => goToReplay(replay)}
+                  >
+                    <div style={styles.replayRank}>
+                      <span style={styles.rankBadge}>#{idx + 1}</span>
+                    </div>
+                    
+                    <div style={styles.replayInfo}>
+                      <div style={styles.replayTopRow}>
+                        <span style={styles.replayLevel}>第 {levelNum} 关</span>
+                        <span style={styles.replayScore}>{replay.score} 分</span>
+                      </div>
+                      <div style={styles.replayBottomRow}>
+                        <span style={styles.replayDate}>{dateStr}</span>
+                        <span style={styles.replayRate}>
+                          完成率: {completionPercent}%
+                        </span>
+                      </div>
+                      <div className="progress-bar" style={styles.replayProgress}>
+                        <div 
+                          className="progress-fill danger"
+                          style={{ width: `${completionPercent}%` }}
+                        />
+                      </div>
+                    </div>
+                    
+                    <button className="btn btn-secondary" style={styles.replayBtn}>
+                      查看 →
+                    </button>
                   </div>
-                  <div style={styles.replayDetails}>
-                    <span style={styles.replayDate}>
-                      {new Date(replay.timestamp).toLocaleString('zh-CN')}
-                    </span>
-                    <span style={styles.replayRate}>
-                      完成率: {Math.round(replay.completionRate * 100)}%
-                    </span>
-                  </div>
-                  <button className="btn btn-secondary" style={styles.replayBtn}>
-                    查看回放 →
-                  </button>
-                </div>
-              ))}
+                )
+              })}
             </div>
           ) : (
             <p style={styles.emptyText}>暂无失败记录，保持优秀！</p>
@@ -226,7 +313,7 @@ const styles = {
     width: '100%',
     height: '100%',
     display: 'flex',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'center',
     padding: '20px',
     background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
@@ -237,11 +324,9 @@ const styles = {
     borderRadius: '24px',
     padding: '32px',
     width: '100%',
-    maxWidth: '700px',
+    maxWidth: '800px',
     boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)',
     border: '1px solid rgba(255, 255, 255, 0.1)',
-    maxHeight: '90vh',
-    overflowY: 'auto',
   },
   header: {
     display: 'flex',
@@ -261,10 +346,16 @@ const styles = {
     fontSize: '14px',
   },
   overviewSection: {
-    marginBottom: '24px',
+    marginBottom: '28px',
   },
   section: {
-    marginBottom: '24px',
+    marginBottom: '28px',
+  },
+  sectionHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '8px',
   },
   sectionTitle: {
     fontSize: '18px',
@@ -276,107 +367,118 @@ const styles = {
     color: '#718096',
     marginBottom: '16px',
   },
+  bestBadge: {
+    padding: '4px 12px',
+    background: 'linear-gradient(135deg, #ffd93d, #ff9500)',
+    borderRadius: '12px',
+    fontSize: '12px',
+    fontWeight: 'bold',
+    color: '#1a1a2e',
+  },
   overviewGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(4, 1fr)',
     gap: '12px',
   },
   overviewCard: {
-    padding: '20px',
+    padding: '18px 12px',
     background: 'rgba(255, 255, 255, 0.05)',
     borderRadius: '12px',
     textAlign: 'center',
   },
   overviewIcon: {
     display: 'block',
-    fontSize: '28px',
-    marginBottom: '8px',
+    fontSize: '24px',
+    marginBottom: '6px',
   },
   overviewValue: {
     display: 'block',
-    fontSize: '24px',
+    fontSize: '22px',
     fontWeight: 'bold',
     color: '#ffffff',
     marginBottom: '4px',
   },
   overviewLabel: {
-    fontSize: '12px',
+    fontSize: '11px',
     color: '#718096',
   },
+  levelComparison: {
+    background: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: '12px',
+    overflow: 'hidden',
+    border: '1px solid rgba(255, 255, 255, 0.05)',
+  },
+  levelTableHeader: {
+    display: 'grid',
+    gridTemplateColumns: '120px 50px 1fr 1fr 70px 70px',
+    gap: '10px',
+    padding: '12px 16px',
+    background: 'rgba(255, 255, 255, 0.05)',
+    fontSize: '12px',
+    color: '#a0aec0',
+    fontWeight: 'bold',
+  },
+  levelColLevel: { textAlign: 'left' },
+  levelColPlays: { textAlign: 'center' },
+  levelColWin: { textAlign: 'center', display: 'flex', alignItems: 'center', gap: '8px' },
+  levelColCompletion: { textAlign: 'center', display: 'flex', alignItems: 'center', gap: '8px' },
+  levelColScore: { textAlign: 'center' },
+  levelColEffect: { textAlign: 'center' },
   levelList: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '12px',
   },
-  levelItem: {
-    padding: '16px',
-    background: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: '12px',
-  },
-  levelHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: '12px',
-    flexWrap: 'wrap',
-    gap: '8px',
-  },
-  levelName: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '4px',
-  },
-  levelBadge: {
-    padding: '4px 12px',
-    background: 'linear-gradient(135deg, #667eea, #764ba2)',
-    borderRadius: '12px',
-    fontSize: '13px',
-    fontWeight: 'bold',
-    color: '#ffffff',
-    display: 'inline-block',
-    width: 'fit-content',
-  },
-  levelEffect: {
-    fontSize: '13px',
-    fontWeight: 'bold',
-  },
-  levelStats: {
-    display: 'flex',
-    gap: '12px',
-    fontSize: '12px',
-  },
-  levelPlayCount: {
-    color: '#a0aec0',
-  },
-  levelWinCount: {
-    color: '#6bcb77',
-  },
-  levelProgressRow: {
-    display: 'flex',
+  levelRow: {
+    display: 'grid',
+    gridTemplateColumns: '120px 50px 1fr 1fr 70px 70px',
+    gap: '10px',
+    padding: '12px 16px',
     alignItems: 'center',
-    gap: '12px',
-    marginBottom: '8px',
-  },
-  progressLabel: {
-    fontSize: '12px',
-    color: '#a0aec0',
-    width: '50px',
-  },
-  levelProgressBar: {
-    flex: 1,
-    height: '8px',
-  },
-  progressValue: {
+    borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
     fontSize: '13px',
+    transition: 'background 0.2s ease',
+  },
+  levelRowBest: {
+    background: 'rgba(107, 203, 119, 0.08)',
+  },
+  levelRowHardest: {
+    background: 'rgba(255, 107, 107, 0.08)',
+  },
+  levelNumBadge: {
+    padding: '4px 10px',
+    background: 'linear-gradient(135deg, #667eea, #764ba2)',
+    borderRadius: '8px',
+    fontSize: '12px',
     fontWeight: 'bold',
     color: '#ffffff',
-    minWidth: '45px',
-    textAlign: 'right',
+    marginRight: '6px',
   },
-  progressHighlight: {
-    fontSize: '16px',
+  smallBadgeGreen: {
+    padding: '2px 6px',
+    background: 'rgba(107, 203, 119, 0.3)',
+    borderRadius: '4px',
+    fontSize: '10px',
+    color: '#6bcb77',
     fontWeight: 'bold',
-    color: '#ffd93d',
+  },
+  smallBadgeRed: {
+    padding: '2px 6px',
+    background: 'rgba(255, 107, 107, 0.3)',
+    borderRadius: '4px',
+    fontSize: '10px',
+    color: '#ff6b6b',
+    fontWeight: 'bold',
+  },
+  smallProgress: {
+    flex: 1,
+    height: '6px',
+    minWidth: '50px',
+  },
+  progressText: {
+    fontSize: '11px',
+    color: '#cbd5e0',
+    minWidth: '36px',
+    textAlign: 'right',
   },
   errorChart: {
     display: 'flex',
@@ -395,10 +497,11 @@ const styles = {
     fontSize: '13px',
     color: '#cbd5e0',
     width: '90px',
+    flexShrink: 0,
   },
   errorChartDot: {
-    width: '8px',
-    height: '8px',
+    width: '10px',
+    height: '10px',
     borderRadius: '50%',
   },
   errorChartBar: {
@@ -406,10 +509,16 @@ const styles = {
     height: '8px',
   },
   errorChartCount: {
-    fontSize: '14px',
+    fontSize: '13px',
     fontWeight: 'bold',
     color: '#ffffff',
-    minWidth: '30px',
+    minWidth: '40px',
+    textAlign: 'right',
+  },
+  errorChartPercent: {
+    fontSize: '11px',
+    color: '#718096',
+    minWidth: '35px',
     textAlign: 'right',
   },
   replayList: {
@@ -421,18 +530,37 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     gap: '16px',
-    padding: '14px',
-    background: 'rgba(255, 255, 255, 0.05)',
+    padding: '14px 16px',
+    background: 'rgba(255, 255, 255, 0.03)',
     borderRadius: '12px',
     cursor: 'pointer',
     transition: 'all 0.2s ease',
-    border: '1px solid transparent',
+    border: '1px solid rgba(255, 255, 255, 0.05)',
+  },
+  replayRank: {
+    flexShrink: 0,
+  },
+  rankBadge: {
+    display: 'block',
+    width: '36px',
+    height: '36px',
+    lineHeight: '36px',
+    textAlign: 'center',
+    background: 'linear-gradient(135deg, #ff6b6b, #ffa502)',
+    borderRadius: '50%',
+    fontWeight: 'bold',
+    fontSize: '14px',
+    color: '#ffffff',
   },
   replayInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  replayTopRow: {
     display: 'flex',
-    flexDirection: 'column',
-    gap: '4px',
-    minWidth: '100px',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '4px',
   },
   replayLevel: {
     fontWeight: 'bold',
@@ -440,30 +568,33 @@ const styles = {
     fontSize: '14px',
   },
   replayScore: {
-    fontSize: '18px',
+    fontSize: '16px',
     fontWeight: 'bold',
     color: '#ffd93d',
   },
-  replayDetails: {
-    flex: 1,
+  replayBottomRow: {
     display: 'flex',
-    flexDirection: 'column',
-    gap: '4px',
+    justifyContent: 'space-between',
     fontSize: '12px',
     color: '#a0aec0',
+    marginBottom: '8px',
   },
   replayDate: {},
   replayRate: {},
+  replayProgress: {
+    height: '6px',
+  },
   replayBtn: {
     padding: '8px 16px',
     fontSize: '13px',
+    flexShrink: 0,
   },
   emptyText: {
     textAlign: 'center',
     color: '#718096',
     fontSize: '14px',
     padding: '30px',
-    background: 'rgba(255, 255, 255, 0.05)',
+    background: 'rgba(255, 255, 255, 0.03)',
     borderRadius: '12px',
   },
 }

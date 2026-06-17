@@ -31,6 +31,8 @@ const initialState = {
   patients: [],
   equipment: [],
   scheduledPatients: [],
+  initialLevelPatients: [],
+  initialLevelEquipment: [],
   timeElapsed: 0,
   timeLimit: 180,
   isPaused: false,
@@ -44,6 +46,7 @@ const initialState = {
     completionRate: 0,
     levelStats: {},
     avgDecisionTime: 0,
+    totalMisallocations: 0,
     equipmentErrorReasons: {
       misallocation: 0,
       timingConflict: 0,
@@ -53,13 +56,17 @@ const initialState = {
   },
   
   replayData: null,
+  replayTime: 0,
+  isReplayPlaying: false,
+  replaySpeed: 1,
 }
+
+let replayIntervalId = null
 
 export const useGameStore = create((set, get) => ({
   ...initialState,
 
   startGame: (level = 1) => {
-    const state = get()
     set({
       phase: 'assessment',
       currentLevel: level,
@@ -96,39 +103,61 @@ export const useGameStore = create((set, get) => ({
     const patientCount = 3 + currentLevel * 2
     const equipmentCount = 3 + Math.floor(currentLevel / 2)
     
-    const equipmentTypes = Object.values(EQUIPMENT_TYPES)
-    const patientTypes = Object.values(PATIENT_TYPES)
+    const allEquipmentTypes = Object.values(EQUIPMENT_TYPES)
+    const allPatientTypes = Object.values(PATIENT_TYPES)
     
     const equipment = []
+    const availableEquipmentTypes = []
+    
     for (let i = 0; i < equipmentCount; i++) {
-      const type = equipmentTypes[i % equipmentTypes.length]
+      const typeIndex = i % allEquipmentTypes.length
+      const type = allEquipmentTypes[typeIndex]
+      
+      if (!availableEquipmentTypes.find(t => t.id === type.id)) {
+        availableEquipmentTypes.push(type)
+      }
+      
+      const col = i % 3
+      const row = Math.floor(i / 3)
+      
       equipment.push({
         id: `eq-${i}`,
         type: type.id,
-        name: `${type.name} ${i + 1}`,
+        name: `${type.name} ${Math.floor(i / allEquipmentTypes.length) + 1}`,
         color: type.color,
         risk: type.risk,
         position: [
-          (i % 3 - 1) * 4,
+          (col - 1) * 4,
           0,
-          Math.floor(i / 3) * 3 - 2,
+          row * 3 - 2,
         ],
         isOccupied: false,
         occupiedBy: null,
         usageTime: 0,
+        totalUsedTime: 0,
       })
     }
+    
+    const equipmentTypesInLevel = [...new Set(equipment.map(e => e.type))]
+    const availableEquipmentForLevel = availableEquipmentTypes.filter(
+      eq => equipmentTypesInLevel.includes(eq.id)
+    )
     
     const patients = []
     for (let i = 0; i < patientCount; i++) {
       const typeIndex = Math.min(
-        Math.floor(Math.random() * (currentLevel + 1)),
-        patientTypes.length - 1
+        Math.floor(Math.random() * Math.min(currentLevel + 1, allPatientTypes.length)),
+        allPatientTypes.length - 1
       )
-      const type = patientTypes[typeIndex]
-      const needsEquipment = equipmentTypes[
-        Math.floor(Math.random() * equipmentTypes.length)
+      const type = allPatientTypes[typeIndex]
+      
+      const needsEquipment = availableEquipmentForLevel[
+        Math.floor(Math.random() * availableEquipmentForLevel.length)
       ]
+      
+      const col = i % 4
+      const row = Math.floor(i / 4)
+      
       patients.push({
         id: `patient-${i}`,
         name: `患者 ${i + 1}`,
@@ -136,16 +165,18 @@ export const useGameStore = create((set, get) => ({
         color: type.color,
         difficulty: type.difficulty,
         requiredEquipment: needsEquipment.id,
-        requiredDuration: 30 + Math.floor(Math.random() * 30),
+        requiredDuration: 25 + Math.floor(Math.random() * 25),
         waitTime: 0,
         status: 'waiting',
         satisfaction: 100,
-        insuranceRisk: Math.random() < 0.2 + currentLevel * 0.05,
+        insuranceRisk: Math.random() < 0.15 + currentLevel * 0.03,
+        misallocatedCount: 0,
         position: [
-          (i % 4 - 1.5) * 2,
+          (col - 1.5) * 2.2,
           0,
-          -6 - Math.floor(i / 4) * 1.5,
+          -6 - row * 1.8,
         ],
+        targetEquipmentPosition: null,
       })
     }
     
@@ -153,7 +184,9 @@ export const useGameStore = create((set, get) => ({
       equipment,
       patients,
       scheduledPatients: [],
-      timeLimit: 180 + currentLevel * 30,
+      initialLevelPatients: patients.map(p => ({ ...p })),
+      initialLevelEquipment: equipment.map(e => ({ ...e })),
+      timeLimit: 150 + currentLevel * 30,
     })
   },
 
@@ -162,29 +195,57 @@ export const useGameStore = create((set, get) => ({
     const patient = state.patients.find(p => p.id === patientId)
     const equipment = state.equipment.find(e => e.id === equipmentId)
     
-    if (!patient || !equipment || equipment.isOccupied) return false
+    if (!patient || !equipment) return false
+    if (patient.status !== 'waiting') return false
+    
+    if (equipment.isOccupied) {
+      set(state => ({
+        statistics: {
+          ...state.statistics,
+          equipmentErrorReasons: {
+            ...state.statistics.equipmentErrorReasons,
+            timingConflict: state.statistics.equipmentErrorReasons.timingConflict + 1,
+          },
+        },
+      }))
+      return false
+    }
     
     const isCorrectEquipment = patient.requiredEquipment === equipment.type
     const riskMismatch = equipment.risk === 'high' && patient.type === 'mild'
     
-    let scoreGain = 10
-    let decisionTime = 0
-    
     if (!isCorrectEquipment) {
-      scoreGain = -15
       set(state => ({
+        score: Math.max(0, state.score - 10),
+        combo: 0,
+        patients: state.patients.map(p =>
+          p.id === patientId ? { ...p, misallocatedCount: (p.misallocatedCount || 0) + 1 } : p
+        ),
+        scheduledPatients: [
+          ...state.scheduledPatients,
+          {
+            patientId,
+            equipmentId,
+            startTime: state.timeElapsed,
+            duration: 0,
+            type: 'assign',
+            success: false,
+            errorType: 'misallocation',
+          },
+        ],
         statistics: {
           ...state.statistics,
+          totalMisallocations: state.statistics.totalMisallocations + 1,
           equipmentErrorReasons: {
             ...state.statistics.equipmentErrorReasons,
             misallocation: state.statistics.equipmentErrorReasons.misallocation + 1,
           },
         },
       }))
+      return false
     }
     
     if (riskMismatch) {
-      scoreGain -= 10
       set(state => ({
         statistics: {
           ...state.statistics,
@@ -196,18 +257,15 @@ export const useGameStore = create((set, get) => ({
       }))
     }
     
-    if (patient.insuranceRisk && Math.random() < 0.3) {
-      set({ insuranceWarning: { patientId, equipmentId } })
-      scoreGain -= 5
+    if (patient.insuranceRisk && Math.random() < 0.25) {
+      set({ insuranceWarning: { patientId, equipmentId, time: state.timeElapsed } })
     }
     
-    const newCombo = isCorrectEquipment ? state.combo + 1 : 0
-    if (isCorrectEquipment) {
-      scoreGain += Math.floor(newCombo * 2)
-    }
+    const newCombo = state.combo + 1
+    let scoreGain = 10 + Math.floor(newCombo * 1.5)
     
     set(state => ({
-      score: Math.max(0, state.score + scoreGain),
+      score: state.score + scoreGain,
       combo: newCombo,
       maxCombo: Math.max(state.maxCombo, newCombo),
       patients: state.patients.map(p =>
@@ -215,14 +273,21 @@ export const useGameStore = create((set, get) => ({
       ),
       equipment: state.equipment.map(e =>
         e.id === equipmentId
-          ? { ...e, isOccupied: true, occupiedBy: patientId, usageTime: patient.requiredDuration }
+          ? { ...e, isOccupied: true, occupiedBy: patientId, usageTime: patient.requiredDuration, totalUsedTime: e.totalUsedTime + patient.requiredDuration }
           : e
       ),
       scheduledPatients: [
         ...state.scheduledPatients,
-        { patientId, equipmentId, startTime: state.timeElapsed, result: scoreGain > 0 ? 'success' : 'fail' },
+        {
+          patientId,
+          equipmentId,
+          startTime: state.timeElapsed,
+          duration: patient.requiredDuration,
+          type: 'assign',
+          success: true,
+        },
       ],
-      decisionTimeHistory: [...state.decisionTimeHistory, decisionTime],
+      decisionTimeHistory: [...state.decisionTimeHistory, 0],
     }))
     
     return true
@@ -286,31 +351,53 @@ export const useGameStore = create((set, get) => ({
     const completedCount = state.patients.filter(p => p.status === 'completed').length
     const totalCount = state.patients.length
     const completionRate = completedCount / totalCount
+    const isWin = result === 'success'
     
     const replayData = {
       timestamp: Date.now(),
       level: state.currentLevel,
       score: state.score,
       result,
+      isWin,
       completionRate,
-      patients: state.patients,
-      equipment: state.equipment,
-      scheduledPatients: state.scheduledPatients,
+      completedCount,
+      totalCount,
+      maxCombo: state.maxCombo,
+      totalMisallocations: state.scheduledPatients.filter(s => !s.success).length,
+      timeLimit: state.timeLimit,
+      initialPatients: state.initialLevelPatients.map(p => ({ ...p })),
+      initialEquipment: state.initialLevelEquipment.map(e => ({ ...e })),
+      events: state.scheduledPatients.map(s => ({ ...s })),
+      finalPatients: state.patients.map(p => ({ ...p })),
+      finalEquipment: state.equipment.map(e => ({ ...e })),
     }
     
     const levelKey = `level_${state.currentLevel}`
     
     set(state => {
       const newTotalGames = state.statistics.totalGames + 1
-      const newTotalCompleted = state.statistics.totalCompleted + (result === 'success' ? 1 : 0)
-      const prevLevelStat = state.statistics.levelStats[levelKey] || { plays: 0, wins: 0, bestScore: 0, avgCompletion: 0 }
+      const newTotalCompleted = state.statistics.totalCompleted + (isWin ? 1 : 0)
+      const prevLevelStat = state.statistics.levelStats[levelKey] || { 
+        plays: 0, 
+        wins: 0, 
+        bestScore: 0, 
+        avgCompletion: 0,
+        avgScore: 0,
+        totalScore: 0,
+      }
       
       const newLevelStat = {
         plays: prevLevelStat.plays + 1,
-        wins: prevLevelStat.wins + (result === 'success' ? 1 : 0),
+        wins: prevLevelStat.wins + (isWin ? 1 : 0),
         bestScore: Math.max(prevLevelStat.bestScore, state.score),
+        totalScore: prevLevelStat.totalScore + state.score,
+        avgScore: (prevLevelStat.totalScore + state.score) / (prevLevelStat.plays + 1),
         avgCompletion: (prevLevelStat.avgCompletion * prevLevelStat.plays + completionRate) / (prevLevelStat.plays + 1),
+        winRate: (prevLevelStat.wins + (isWin ? 1 : 0)) / (prevLevelStat.plays + 1),
       }
+      
+      const newTotalMisallocations = state.statistics.totalMisallocations + 
+        state.scheduledPatients.filter(s => !s.success).length
       
       return {
         phase: 'settlement',
@@ -325,15 +412,102 @@ export const useGameStore = create((set, get) => ({
             ...state.statistics.levelStats,
             [levelKey]: newLevelStat,
           },
+          totalMisallocations: newTotalMisallocations,
           avgDecisionTime: state.decisionTimeHistory.length > 0
             ? state.decisionTimeHistory.reduce((a, b) => a + b, 0) / state.decisionTimeHistory.length
             : state.statistics.avgDecisionTime,
         },
-        failedReplays: result !== 'success'
+        failedReplays: !isWin
           ? [replayData, ...state.failedReplays].slice(0, 5)
           : state.failedReplays,
       }
     })
+  },
+
+  setReplayTime: (time) => set({ replayTime: time }),
+  
+  setReplayPlaying: (playing) => {
+    const state = get()
+    
+    if (playing && state.replayData) {
+      if (replayIntervalId) {
+        clearInterval(replayIntervalId)
+      }
+      
+      const intervalMs = 50
+      
+      replayIntervalId = setInterval(() => {
+        const currentState = get()
+        if (!currentState.isReplayPlaying || !currentState.replayData) {
+          clearInterval(replayIntervalId)
+          replayIntervalId = null
+          return
+        }
+        
+        const delta = intervalMs / 1000
+        const newTime = currentState.replayTime + delta * currentState.replaySpeed
+        
+        if (newTime >= currentState.replayData.timeLimit) {
+          set({ 
+            replayTime: currentState.replayData.timeLimit, 
+            isReplayPlaying: false 
+          })
+          clearInterval(replayIntervalId)
+          replayIntervalId = null
+          return
+        }
+        
+        set({ replayTime: newTime })
+      }, intervalMs)
+      
+      set({ isReplayPlaying: true })
+    } else {
+      if (replayIntervalId) {
+        clearInterval(replayIntervalId)
+        replayIntervalId = null
+      }
+      set({ isReplayPlaying: false })
+    }
+  },
+  
+  setReplaySpeed: (speed) => set({ replaySpeed: speed }),
+  
+  getReplayStateAtTime: (time) => {
+    const { replayData } = get()
+    if (!replayData) return null
+    
+    const patients = replayData.initialPatients.map(p => ({ ...p }))
+    const equipment = replayData.initialEquipment.map(e => ({ ...e }))
+    
+    const eventsBeforeTime = replayData.events.filter(e => e.startTime <= time && e.type === 'assign' && e.success)
+    
+    eventsBeforeTime.forEach(event => {
+      const patient = patients.find(p => p.id === event.patientId)
+      const eq = equipment.find(e => e.id === event.equipmentId)
+      
+      if (patient && eq) {
+        const endTime = event.startTime + event.duration
+        if (time < endTime) {
+          patient.status = 'treatment'
+          eq.isOccupied = true
+          eq.occupiedBy = patient.id
+          eq.usageTime = endTime - time
+        } else {
+          patient.status = 'completed'
+          eq.isOccupied = false
+          eq.occupiedBy = null
+          eq.usageTime = 0
+        }
+      }
+    })
+    
+    patients.forEach(p => {
+      if (p.status === 'waiting') {
+        p.waitTime = time
+      }
+    })
+    
+    return { patients, equipment, eventsBeforeTime }
   },
 
   setPhase: (phase) => set({ phase }),
@@ -342,7 +516,23 @@ export const useGameStore = create((set, get) => ({
   
   goToMenu: () => set({ phase: 'menu' }),
   goToStatistics: () => set({ phase: 'statistics' }),
-  goToReplay: (replayData) => set({ phase: 'replay', replayData }),
+  goToReplay: (replayData) => {
+    if (replayIntervalId) {
+      clearInterval(replayIntervalId)
+      replayIntervalId = null
+    }
+    set({ 
+      phase: 'replay', 
+      replayData,
+      replayTime: 0,
+      isReplayPlaying: false,
+      replaySpeed: 1,
+    })
+  },
   
   resetGame: () => set(initialState),
 }))
+
+if (typeof window !== 'undefined') {
+  window.__gameStore = useGameStore
+}

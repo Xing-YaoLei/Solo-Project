@@ -1,48 +1,36 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useMemo } from 'react'
 import { useGameStore, EQUIPMENT_TYPES, PATIENT_TYPES } from '../store/useGameStore'
-import GameScene from './GameScene'
+import ReplayScene from './ReplayScene'
 
 export default function ReplayView() {
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [replayTime, setReplayTime] = useState(0)
-  const [playbackSpeed, setPlaybackSpeed] = useState(1)
-  
   const {
     replayData,
+    replayTime,
+    isReplayPlaying,
+    replaySpeed,
+    setReplayTime,
+    setReplayPlaying,
+    setReplaySpeed,
     goToMenu,
+    getReplayStateAtTime,
   } = useGameStore()
   
-  const intervalRef = useRef(null)
+  const currentState = useMemo(() => {
+    if (!replayData) return null
+    return getReplayStateAtTime(replayTime)
+  }, [replayTime, replayData, getReplayStateAtTime])
   
-  useEffect(() => {
-    if (isPlaying && replayData) {
-      intervalRef.current = setInterval(() => {
-        setReplayTime(prev => {
-          if (prev >= 180) {
-            setIsPlaying(false)
-            return prev
-          }
-          return prev + 0.1 * playbackSpeed
-        })
-      }, 100)
-    }
-    
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current)
-      }
-    }
-  }, [isPlaying, playbackSpeed, replayData])
+  const eventsUpToNow = useMemo(() => {
+    if (!replayData) return []
+    return replayData.events.filter(e => e.startTime <= replayTime)
+  }, [replayTime, replayData])
   
   if (!replayData) {
     return (
       <div style={styles.container}>
         <div style={styles.card}>
           <h2 style={styles.title}>无回放数据</h2>
-          <button 
-            className="btn"
-            onClick={goToMenu}
-          >
+          <button className="btn" onClick={goToMenu} style={styles.backBtn}>
             返回主菜单
           </button>
         </div>
@@ -50,87 +38,261 @@ export default function ReplayView() {
     )
   }
   
-  const totalTime = 180
-  const progress = (replayTime / totalTime) * 100
+  const progress = replayData.timeLimit > 0 ? (replayTime / replayData.timeLimit) * 100 : 0
+  const isWin = replayData.isWin
   
   const handlePlayPause = () => {
-    setIsPlaying(!isPlaying)
+    if (replayTime >= replayData.timeLimit) {
+      setReplayTime(0)
+    }
+    setReplayPlaying(!isReplayPlaying)
   }
   
   const handleRestart = () => {
     setReplayTime(0)
-    setIsPlaying(true)
+    setReplayPlaying(true)
   }
   
   const handleSpeedChange = (speed) => {
-    setPlaybackSpeed(speed)
+    setReplaySpeed(speed)
   }
   
-  const isWin = replayData.result === 'success'
+  const handleProgressClick = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const percentage = x / rect.width
+    const newTime = percentage * replayData.timeLimit
+    setReplayTime(Math.max(0, Math.min(replayData.timeLimit, newTime)))
+  }
+  
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = Math.floor(seconds % 60)
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
   
   return (
     <div style={styles.container}>
       <div style={styles.canvasContainer}>
-        <GameScene />
+        <ReplayScene />
       </div>
       
       <div className="ui-overlay">
         <div style={styles.topBar}>
           <div style={styles.topBarLeft}>
             <h2 style={styles.title}>🎬 复盘回放</h2>
-            <span style={styles.levelBadge}>第 {replayData.level} 关</span>
+            <span style={{ 
+              ...styles.levelBadge,
+              backgroundColor: isWin ? 'linear-gradient(135deg, #6bcb77, #4dd4ac)' : 'linear-gradient(135deg, #ff6b6b, #ffa502)',
+            }}>
+              第 {replayData.level} 关 · {isWin ? '成功' : '失败'}
+            </span>
           </div>
           <button 
             className="btn btn-secondary"
             style={styles.backBtn}
             onClick={goToMenu}
           >
-            返回
+            ← 返回
           </button>
         </div>
         
-        <div style={styles.infoPanel}>
-          <div style={styles.infoCard}>
-            <span style={styles.infoLabel}>最终得分</span>
-            <span style={styles.infoValue}>{replayData.score}</span>
+        <div style={styles.statsRow}>
+          <div style={styles.statCard}>
+            <span style={styles.statLabel}>最终得分</span>
+            <span style={styles.statValue}>{replayData.score}</span>
           </div>
-          <div style={styles.infoCard}>
-            <span style={styles.infoLabel}>结果</span>
-            <span style={{ 
-              ...styles.infoValue, 
-              color: isWin ? '#6bcb77' : '#ff6b6b' 
-            }}>
-              {isWin ? '成功' : '失败'}
+          <div style={styles.statCard}>
+            <span style={styles.statLabel}>完成数</span>
+            <span style={styles.statValue}>
+              {replayData.completedCount}/{replayData.totalCount}
             </span>
           </div>
-          <div style={styles.infoCard}>
-            <span style={styles.infoLabel}>完成率</span>
-            <span style={styles.infoValue}>
+          <div style={styles.statCard}>
+            <span style={styles.statLabel}>完成率</span>
+            <span style={styles.statValue}>
               {Math.round(replayData.completionRate * 100)}%
             </span>
+          </div>
+          <div style={styles.statCard}>
+            <span style={styles.statLabel}>最大连击</span>
+            <span style={styles.statValue}>{replayData.maxCombo}</span>
+          </div>
+        </div>
+        
+        <div style={styles.leftPanel}>
+          <h3 style={styles.panelTitle}>📋 事件时间线</h3>
+          <div style={styles.eventList}>
+            {replayData.events.map((event, idx) => {
+              const patient = replayData.initialPatients.find(p => p.id === event.patientId)
+              const equipment = replayData.initialEquipment.find(e => e.id === event.equipmentId)
+              const patientType = patient ? 
+                Object.values(PATIENT_TYPES).find(t => t.id === patient.type) : null
+              const eqType = equipment ? 
+                Object.values(EQUIPMENT_TYPES).find(e => e.id === equipment.type) : null
+              
+              const isPast = event.startTime <= replayTime
+              
+              return (
+                <div 
+                  key={idx} 
+                  style={{
+                    ...styles.eventItem,
+                    ...(isPast ? styles.eventItemPast : styles.eventItemFuture),
+                  }}
+                  onClick={() => setReplayTime(event.startTime)}
+                >
+                  <span style={styles.eventTime}>
+                    {formatTime(event.startTime)}
+                  </span>
+                  <span style={styles.eventIcon}>
+                    {event.success ? '✅' : '❌'}
+                  </span>
+                  <div style={styles.eventContent}>
+                    <span style={styles.eventText}>
+                      {patient?.name || '未知'} → {equipment?.name || '未知'}
+                    </span>
+                    {patient?.insuranceRisk && (
+                      <span style={styles.insuranceTag}>医保</span>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+            {replayData.events.length === 0 && (
+              <p style={styles.emptyText}>暂无调度记录</p>
+            )}
+          </div>
+        </div>
+        
+        <div style={styles.rightPanel}>
+          <h3 style={styles.panelTitle}>📊 实时状态</h3>
+          
+          {currentState && (
+            <>
+              <div style={styles.statusSection}>
+                <h4 style={styles.sectionTitle}>等待中</h4>
+                <div style={styles.patientMiniList}>
+                  {currentState.patients.filter(p => p.status === 'waiting').map(p => {
+                    const pType = Object.values(PATIENT_TYPES).find(t => t.id === p.type)
+                    return (
+                      <div key={p.id} style={styles.patientMiniItem}>
+                        <span style={{ color: pType?.color }}>●</span>
+                        <span style={styles.patientMiniName}>{p.name}</span>
+                      </div>
+                    )
+                  })}
+                  {currentState.patients.filter(p => p.status === 'waiting').length === 0 && (
+                    <span style={styles.emptyMini}>无</span>
+                  )}
+                </div>
+              </div>
+              
+              <div style={styles.statusSection}>
+                <h4 style={styles.sectionTitle}>治疗中</h4>
+                <div style={styles.patientMiniList}>
+                  {currentState.patients.filter(p => p.status === 'treatment').map(p => {
+                    const pType = Object.values(PATIENT_TYPES).find(t => t.id === p.type)
+                    return (
+                      <div key={p.id} style={styles.patientMiniItem}>
+                        <span style={{ color: '#6bcb77' }}>●</span>
+                        <span style={styles.patientMiniName}>{p.name}</span>
+                      </div>
+                    )
+                  })}
+                  {currentState.patients.filter(p => p.status === 'treatment').length === 0 && (
+                    <span style={styles.emptyMini}>无</span>
+                  )}
+                </div>
+              </div>
+              
+              <div style={styles.statusSection}>
+                <h4 style={styles.sectionTitle}>已完成</h4>
+                <div style={styles.patientMiniList}>
+                  {currentState.patients.filter(p => p.status === 'completed').map(p => {
+                    return (
+                      <div key={p.id} style={styles.patientMiniItem}>
+                        <span style={{ color: '#4facfe' }}>✓</span>
+                        <span style={styles.patientMiniName}>{p.name}</span>
+                      </div>
+                    )
+                  })}
+                  {currentState.patients.filter(p => p.status === 'completed').length === 0 && (
+                    <span style={styles.emptyMini}>无</span>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+          
+          <div style={styles.analysisSection}>
+            <h4 style={styles.sectionTitle}>💡 复盘分析</h4>
+            <div style={styles.analysisPoints}>
+              <p style={styles.analysisPoint}>
+                • 共完成 {replayData.completedCount} / {replayData.totalCount} 位患者治疗
+              </p>
+              <p style={styles.analysisPoint}>
+                • 有 {replayData.totalMisallocations} 次分配失误
+              </p>
+              <p style={styles.analysisPoint}>
+                • 最大连击 {replayData.maxCombo} 次
+              </p>
+            </div>
+            {!isWin && (
+              <div style={styles.improveTip}>
+                <strong>失败原因：</strong>
+                {replayData.result === 'timeup' 
+                  ? '时间不足，未能在限时内完成所有患者治疗'
+                  : '训练未达标'
+                }
+              </div>
+            )}
           </div>
         </div>
         
         <div style={styles.controlsPanel}>
-          <div style={styles.progressSection}>
+          <div 
+            style={styles.progressSection}
+            onClick={handleProgressClick}
+          >
             <div className="progress-bar" style={styles.progressBar}>
               <div 
                 className="progress-fill"
                 style={{ ...styles.progressFill, width: `${progress}%` }}
               />
+              {replayData.events.map((event, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    ...styles.eventMarker,
+                    left: `${(event.startTime / replayData.timeLimit) * 100}%`,
+                  }}
+                  title={`${formatTime(event.startTime)} - ${event.success ? '成功' : '失败'}`}
+                />
+              ))}
             </div>
-            <span style={styles.timeText}>
-              {Math.floor(replayTime)}s / {totalTime}s
-            </span>
+            <div style={styles.timeLabels}>
+              <span style={styles.timeLabel}>0:00</span>
+              <span style={styles.timeLabel}>{formatTime(replayTime)}</span>
+              <span style={styles.timeLabel}>{formatTime(replayData.timeLimit)}</span>
+            </div>
           </div>
           
           <div style={styles.controlButtons}>
             <button 
               className="btn btn-secondary"
-              style={styles.controlBtn}
+              style={styles.smallBtn}
+              onClick={() => setReplayTime(Math.max(0, replayTime - 5))}
+            >
+              ⏪ -5s
+            </button>
+            
+            <button 
+              className="btn btn-secondary"
+              style={styles.smallBtn}
               onClick={handleRestart}
             >
-              ⏮️ 重新播放
+              ⏮️ 重新开始
             </button>
             
             <button 
@@ -138,7 +300,15 @@ export default function ReplayView() {
               style={styles.playBtn}
               onClick={handlePlayPause}
             >
-              {isPlaying ? '⏸️ 暂停' : '▶️ 播放'}
+              {isReplayPlaying ? '⏸️ 暂停' : '▶️ 播放'}
+            </button>
+            
+            <button 
+              className="btn btn-secondary"
+              style={styles.smallBtn}
+              onClick={() => setReplayTime(Math.min(replayData.timeLimit, replayTime + 5))}
+            >
+              +5s ⏩
             </button>
             
             <div style={styles.speedControls}>
@@ -148,7 +318,7 @@ export default function ReplayView() {
                   key={speed}
                   style={{
                     ...styles.speedBtn,
-                    ...(playbackSpeed === speed ? styles.speedBtnActive : {}),
+                    ...(replaySpeed === speed ? styles.speedBtnActive : {}),
                   }}
                   onClick={() => handleSpeedChange(speed)}
                 >
@@ -156,68 +326,6 @@ export default function ReplayView() {
                 </button>
               ))}
             </div>
-          </div>
-        </div>
-        
-        <div style={styles.eventLog}>
-          <h3 style={styles.eventLogTitle}>📋 调度记录</h3>
-          <div style={styles.eventList}>
-            {replayData.scheduledPatients.map((event, idx) => {
-              const patient = replayData.patients.find(p => p.id === event.patientId)
-              const equipment = replayData.equipment.find(e => e.id === event.equipmentId)
-              const patientType = patient ? 
-                Object.values(PATIENT_TYPES).find(t => t.id === patient.type) : null
-              const eqType = equipment ? 
-                Object.values(EQUIPMENT_TYPES).find(e => e.id === equipment.type) : null
-              
-              return (
-                <div 
-                  key={idx} 
-                  style={{
-                    ...styles.eventItem,
-                    ...(event.result === 'success' ? styles.eventSuccess : styles.eventFail),
-                  }}
-                >
-                  <span style={styles.eventTime}>
-                    {Math.floor(event.startTime)}s
-                  </span>
-                  <span style={styles.eventIcon}>
-                    {event.result === 'success' ? '✅' : '❌'}
-                  </span>
-                  <span style={styles.eventText}>
-                    {patient?.name || '未知患者'} → {equipment?.name || '未知器械'}
-                  </span>
-                  {patient?.insuranceRisk && (
-                    <span style={styles.insuranceTag}>医保</span>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </div>
-        
-        <div style={styles.analysisPanel}>
-          <h3 style={styles.analysisTitle}>💡 复盘分析</h3>
-          
-          <div style={styles.analysisSection}>
-            <h4 style={styles.analysisSubtitle}>成功点</h4>
-            <ul style={styles.analysisList}>
-              <li>共完成 {replayData.scheduledPatients.filter(s => s.result === 'success').length} 次正确调度</li>
-              <li>完成率 {Math.round(replayData.completionRate * 100)}%</li>
-            </ul>
-          </div>
-          
-          <div style={styles.analysisSection}>
-            <h4 style={styles.analysisSubtitle}>改进点</h4>
-            <ul style={styles.analysisList}>
-              <li>有 {replayData.scheduledPatients.filter(s => s.result === 'fail').length} 次调度失误</li>
-              <li>注意带医保标识的高风险患者</li>
-              <li>可提高器械使用效率减少等待</li>
-            </ul>
-          </div>
-          
-          <div style={styles.analysisTip}>
-            💡 提示：放慢速度仔细观察患者头顶的需求图标
           </div>
         </div>
       </div>
@@ -259,127 +367,56 @@ const styles = {
   },
   levelBadge: {
     padding: '6px 14px',
-    background: 'linear-gradient(135deg, #667eea, #764ba2)',
     borderRadius: '16px',
     fontWeight: 'bold',
     fontSize: '13px',
+    color: '#ffffff',
   },
   backBtn: {
     padding: '8px 16px',
     fontSize: '14px',
   },
-  infoPanel: {
+  statsRow: {
     position: 'absolute',
-    top: '70px',
+    top: '60px',
     left: '50%',
     transform: 'translateX(-50%)',
     display: 'flex',
-    gap: '16px',
+    gap: '12px',
   },
-  infoCard: {
-    padding: '12px 24px',
+  statCard: {
+    padding: '10px 20px',
     background: 'rgba(26, 26, 46, 0.9)',
-    borderRadius: '12px',
+    borderRadius: '10px',
     textAlign: 'center',
     border: '1px solid rgba(255, 255, 255, 0.1)',
   },
-  infoLabel: {
+  statLabel: {
     display: 'block',
-    fontSize: '12px',
+    fontSize: '11px',
     color: '#a0aec0',
-    marginBottom: '4px',
+    marginBottom: '2px',
   },
-  infoValue: {
-    fontSize: '20px',
+  statValue: {
+    fontSize: '18px',
     fontWeight: 'bold',
     color: '#ffd93d',
   },
-  controlsPanel: {
+  leftPanel: {
     position: 'absolute',
-    bottom: '20px',
-    left: '50%',
-    transform: 'translateX(-50%)',
-    width: '90%',
-    maxWidth: '600px',
-    padding: '16px',
-    background: 'rgba(26, 26, 46, 0.95)',
-    borderRadius: '16px',
-    border: '1px solid rgba(255, 255, 255, 0.1)',
-  },
-  progressSection: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    marginBottom: '16px',
-  },
-  progressBar: {
-    flex: 1,
-    height: '10px',
-  },
-  progressFill: {
-    height: '100%',
-  },
-  timeText: {
-    fontSize: '14px',
-    color: '#a0aec0',
-    minWidth: '100px',
-    textAlign: 'right',
-  },
-  controlButtons: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '12px',
-  },
-  controlBtn: {
-    padding: '10px 20px',
-    fontSize: '14px',
-  },
-  playBtn: {
-    padding: '12px 32px',
-    fontSize: '16px',
-  },
-  speedControls: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-    marginLeft: '16px',
-  },
-  speedLabel: {
-    fontSize: '13px',
-    color: '#a0aec0',
-    marginRight: '4px',
-  },
-  speedBtn: {
-    padding: '6px 12px',
-    border: '1px solid rgba(255, 255, 255, 0.2)',
-    borderRadius: '6px',
-    background: 'rgba(255, 255, 255, 0.05)',
-    color: '#a0aec0',
-    cursor: 'pointer',
-    fontSize: '12px',
-    transition: 'all 0.2s ease',
-  },
-  speedBtnActive: {
-    background: 'linear-gradient(135deg, #4facfe, #00f2fe)',
-    color: '#ffffff',
-    borderColor: '#4facfe',
-  },
-  eventLog: {
-    position: 'absolute',
-    top: '70px',
+    top: '120px',
     left: '16px',
-    width: '280px',
-    maxHeight: '60vh',
+    width: '260px',
+    maxHeight: 'calc(100vh - 200px)',
     background: 'rgba(26, 26, 46, 0.9)',
     borderRadius: '16px',
-    padding: '16px',
+    padding: '14px',
     border: '1px solid rgba(255, 255, 255, 0.1)',
     overflowY: 'auto',
   },
-  eventLogTitle: {
-    fontSize: '15px',
-    margin: '0 0 12px 0',
+  panelTitle: {
+    fontSize: '14px',
+    margin: '0 0 10px 0',
     color: '#4facfe',
   },
   eventList: {
@@ -393,69 +430,200 @@ const styles = {
     gap: '8px',
     padding: '8px 10px',
     borderRadius: '8px',
-    fontSize: '12px',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
   },
-  eventSuccess: {
-    background: 'rgba(107, 203, 119, 0.1)',
+  eventItemPast: {
+    background: 'rgba(79, 172, 254, 0.1)',
+    borderLeft: '3px solid #4facfe',
   },
-  eventFail: {
-    background: 'rgba(255, 107, 107, 0.1)',
+  eventItemFuture: {
+    background: 'rgba(255, 255, 255, 0.03)',
+    opacity: 0.6,
   },
   eventTime: {
+    fontSize: '11px',
     color: '#718096',
-    minWidth: '35px',
+    minWidth: '45px',
+    fontWeight: 'bold',
   },
   eventIcon: {
-    fontSize: '14px',
+    fontSize: '12px',
+  },
+  eventContent: {
+    flex: 1,
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
   },
   eventText: {
-    flex: 1,
+    fontSize: '12px',
     color: '#cbd5e0',
+    flex: 1,
   },
   insuranceTag: {
-    padding: '2px 6px',
+    padding: '2px 5px',
     background: '#ff6b6b',
     borderRadius: '4px',
-    fontSize: '10px',
+    fontSize: '9px',
     color: '#ffffff',
+    fontWeight: 'bold',
   },
-  analysisPanel: {
+  emptyText: {
+    textAlign: 'center',
+    color: '#718096',
+    fontSize: '12px',
+    padding: '20px',
+  },
+  rightPanel: {
     position: 'absolute',
-    top: '70px',
+    top: '120px',
     right: '16px',
-    width: '260px',
+    width: '220px',
     background: 'rgba(26, 26, 46, 0.9)',
     borderRadius: '16px',
-    padding: '16px',
+    padding: '14px',
     border: '1px solid rgba(255, 255, 255, 0.1)',
   },
-  analysisTitle: {
-    fontSize: '15px',
-    margin: '0 0 12px 0',
-    color: '#4facfe',
-  },
-  analysisSection: {
+  statusSection: {
     marginBottom: '12px',
   },
-  analysisSubtitle: {
-    fontSize: '13px',
-    margin: '0 0 8px 0',
+  sectionTitle: {
+    fontSize: '12px',
+    margin: '0 0 6px 0',
+    color: '#a0aec0',
+    fontWeight: '600',
+  },
+  patientMiniList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '3px',
+  },
+  patientMiniItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    fontSize: '11px',
     color: '#cbd5e0',
   },
-  analysisList: {
-    margin: 0,
-    paddingLeft: '20px',
+  patientMiniName: {
+    fontSize: '11px',
+  },
+  emptyMini: {
+    fontSize: '11px',
+    color: '#718096',
+    fontStyle: 'italic',
+  },
+  analysisSection: {
+    marginTop: '12px',
+    paddingTop: '12px',
+    borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+  },
+  analysisPoints: {
+    marginBottom: '10px',
+  },
+  analysisPoint: {
+    fontSize: '11px',
+    color: '#a0aec0',
+    margin: '4px 0',
+    lineHeight: '1.4',
+  },
+  improveTip: {
+    padding: '8px 10px',
+    background: 'rgba(255, 107, 107, 0.1)',
+    borderRadius: '8px',
+    fontSize: '11px',
+    color: '#ff6b6b',
+    lineHeight: '1.5',
+    borderLeft: '3px solid #ff6b6b',
+  },
+  controlsPanel: {
+    position: 'absolute',
+    bottom: '16px',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    width: '90%',
+    maxWidth: '650px',
+    padding: '14px',
+    background: 'rgba(26, 26, 46, 0.95)',
+    borderRadius: '16px',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+  },
+  progressSection: {
+    cursor: 'pointer',
+    marginBottom: '12px',
+  },
+  progressBar: {
+    height: '12px',
+    position: 'relative',
+    overflow: 'visible',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: '6px',
+    position: 'relative',
+    zIndex: 1,
+  },
+  eventMarker: {
+    position: 'absolute',
+    top: '-2px',
+    width: '4px',
+    height: '16px',
+    backgroundColor: '#ffd93d',
+    borderRadius: '2px',
+    zIndex: 2,
+    transform: 'translateX(-50%)',
+  },
+  timeLabels: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    marginTop: '4px',
+  },
+  timeLabel: {
+    fontSize: '11px',
+    color: '#718096',
+  },
+  controlButtons: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px',
+    flexWrap: 'wrap',
+  },
+  smallBtn: {
+    padding: '8px 14px',
+    fontSize: '13px',
+  },
+  playBtn: {
+    padding: '10px 28px',
+    fontSize: '15px',
+  },
+  speedControls: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+    marginLeft: '12px',
+  },
+  speedLabel: {
     fontSize: '12px',
     color: '#a0aec0',
-    lineHeight: '1.8',
+    marginRight: '4px',
   },
-  analysisTip: {
-    padding: '10px 12px',
-    background: 'rgba(79, 172, 254, 0.1)',
-    borderRadius: '8px',
-    fontSize: '12px',
-    color: '#4facfe',
-    lineHeight: '1.5',
-    borderLeft: '3px solid #4facfe',
+  speedBtn: {
+    padding: '5px 10px',
+    border: '1px solid rgba(255, 255, 255, 0.2)',
+    borderRadius: '6px',
+    background: 'rgba(255, 255, 255, 0.05)',
+    color: '#a0aec0',
+    cursor: 'pointer',
+    fontSize: '11px',
+    transition: 'all 0.2s ease',
+  },
+  speedBtnActive: {
+    background: 'linear-gradient(135deg, #4facfe, #00f2fe)',
+    color: '#ffffff',
+    borderColor: '#4facfe',
+    fontWeight: 'bold',
   },
 }
