@@ -8,9 +8,10 @@ interface IndicatorCardProps {
   change: number
   unit?: string
   icon?: ReactNode
+  subtext?: ReactNode
 }
 
-export default function IndicatorCard({ title, value, change, unit, icon }: IndicatorCardProps) {
+export default function IndicatorCard({ title, value, change, unit, icon, subtext }: IndicatorCardProps) {
   const isPositive = change >= 0
 
   return (
@@ -19,9 +20,12 @@ export default function IndicatorCard({ title, value, change, unit, icon }: Indi
         <span className="text-sm text-gray-500 font-medium">{title}</span>
         {icon && <span className="text-teal-600">{icon}</span>}
       </div>
-      <div className="flex items-end gap-2">
-        <span className="text-2xl font-bold text-gray-900">{value}</span>
-        {unit && <span className="text-sm text-gray-400 mb-0.5">{unit}</span>}
+      <div className="flex flex-col">
+        <div className="flex items-end gap-2">
+          <span className="text-2xl font-bold text-gray-900">{value}</span>
+          {unit && <span className="text-sm text-gray-400 mb-0.5">{unit}</span>}
+        </div>
+        {subtext && <div>{subtext}</div>}
       </div>
       <div className={cn('flex items-center gap-1 text-xs font-medium', isPositive ? 'text-emerald-600' : 'text-rose-600')}>
         {isPositive ? <TrendingUp size={14} /> : <TrendingDown size={14} />}

@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { AlertTriangle, Filter, Search, ArrowRight, X, CheckCircle2, Clock, MessageSquare } from 'lucide-react'
 import ReactECharts from 'echarts-for-react'
 import type { RejectionRecord, RemarkTask } from '@/types'
-import { getRejectionRecords, updateConclusion } from '@/services/api'
+import { getRejectionRecords, upsertRemarkTask, updateConclusion } from '@/services/api'
 import RejectionTable from '@/components/RejectionTable'
 import RemarkPanel from '@/components/RemarkPanel'
 import { cn } from '@/lib/utils'
@@ -26,12 +26,16 @@ export default function RejectionPage() {
   const [activeRejection, setActiveRejection] = useState<RejectionRecord | null>(null)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
-  useEffect(() => {
+  const fetchRecords = () => {
     setLoading(true)
     getRejectionRecords().then((data) => {
       setRecords(data)
       setLoading(false)
     })
+  }
+
+  useEffect(() => {
+    fetchRecords()
   }, [])
 
   const filteredRecords = useMemo(() => {
@@ -62,12 +66,32 @@ export default function RejectionPage() {
     if (record) setActiveRejection(record)
   }
 
-  const handleSubmit = async (rejectionId: string, data: { status: RemarkTask['status']; conclusion: string }) => {
+  const handleSubmitRemark = async (rejectionId: string, data: { assignee: string; remark: string }) => {
     try {
-      const updated = await updateConclusion(rejectionId, data.conclusion)
+      const updated = await upsertRemarkTask({
+        rejectionId,
+        content: data.remark,
+        assignedTo: data.assignee,
+        status: 'processing',
+      })
+      if (updated) {
+        setRecords((prev) => prev.map((r) => (r.id === rejectionId ? updated : r)))
+        setActiveRejection(updated)
+        showToast('备注提交成功，任务已创建/更新')
+      } else {
+        showToast('提交失败，请重试', 'error')
+      }
+    } catch {
+      showToast('提交失败，请重试', 'error')
+    }
+  }
+
+  const handleSubmitConclusion = async (rejectionId: string, conclusion: string) => {
+    try {
+      const updated = await updateConclusion(rejectionId, conclusion)
       setRecords((prev) => prev.map((r) => (r.id === rejectionId ? updated : r)))
       setActiveRejection(null)
-      showToast('备注提交成功')
+      showToast('处理结论已提交，任务已完成')
     } catch {
       showToast('提交失败，请重试', 'error')
     }
@@ -201,7 +225,12 @@ export default function RejectionPage() {
         <RejectionTable data={filteredRecords} onProcess={handleProcess} onView={handleView} />
       )}
 
-      <RemarkPanel rejection={activeRejection} onClose={() => setActiveRejection(null)} onSubmit={handleSubmit} />
+      <RemarkPanel
+        rejection={activeRejection}
+        onClose={() => setActiveRejection(null)}
+        onSubmitRemark={handleSubmitRemark}
+        onSubmitConclusion={handleSubmitConclusion}
+      />
 
       {toast && (
         <div

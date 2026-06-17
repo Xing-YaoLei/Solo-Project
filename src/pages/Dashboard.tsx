@@ -7,6 +7,7 @@ import {
   getSettlementSummary,
   getTrainingCompletion,
   getRejectionRecords,
+  getRejectionReasons,
 } from '@/services/api'
 import type { SettlementTrend, SettlementSummary } from '@/types'
 import IndicatorCard from '@/components/IndicatorCard'
@@ -40,7 +41,7 @@ export default function Dashboard() {
   const [summary, setSummary] = useState<SettlementSummary | null>(null)
   const [trend, setTrend] = useState<SettlementTrend[]>([])
   const [completionData, setCompletionData] = useState<{ name: string; rate: number; target: number }[]>([])
-  const [rejectionData, setRejectionData] = useState<{ name: string; value: number }[]>([])
+  const [rejectionData, setRejectionData] = useState<{ name: string; value: number; count: number; pendingAmount: number; processingAmount: number; resolvedAmount: number }[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -51,8 +52,8 @@ export default function Dashboard() {
       getSettlementSummary(viewFilters),
       getSettlementTrend('month', viewFilters),
       getTrainingCompletion(viewFilters),
-      getRejectionRecords(viewFilters),
-    ]).then(([summaryRes, trendRes, prescriptions, rejections]) => {
+      getRejectionReasons(viewFilters),
+    ]).then(([summaryRes, trendRes, prescriptions, reasonItems]) => {
       if (cancelled) return
       setSummary(summaryRes)
       setTrend(trendRes)
@@ -67,15 +68,7 @@ export default function Dashboard() {
         }))
       setCompletionData(completionItems)
 
-      const reasonMap = new Map<string, number>()
-      for (const r of rejections) {
-        reasonMap.set(r.rejectionReason, (reasonMap.get(r.rejectionReason) || 0) + r.rejectedAmount)
-      }
-      const reasonItems = Array.from(reasonMap.entries())
-        .map(([name, value]) => ({ name, value: Math.round(value) }))
-        .sort((a, b) => b.value - a.value)
-        .slice(0, 6)
-      setRejectionData(reasonItems)
+      setRejectionData(reasonItems.slice(0, 6))
 
       setLoading(false)
     })
@@ -102,6 +95,10 @@ export default function Dashboard() {
     )
   }
 
+  const pendingAmount = summary?.rejectedPendingAmount || 0
+  const processingAmount = summary?.rejectedProcessingAmount || 0
+  const resolvedAmount = summary?.rejectedResolvedAmount || 0
+
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Indicator cards */}
@@ -115,6 +112,13 @@ export default function Dashboard() {
         <IndicatorCard
           title="拒付金额"
           value={summary ? `¥${summary.rejectedAmount.toLocaleString()}` : '-'}
+          subtext={
+            <div className="mt-1 text-[11px] text-gray-500 space-x-2">
+              <span className="inline-flex items-center"><span className="w-2 h-2 rounded-full bg-amber-500 mr-1" />待处理 ¥{pendingAmount.toLocaleString()}</span>
+              <span className="inline-flex items-center"><span className="w-2 h-2 rounded-full bg-blue-500 mr-1" />处理中 ¥{processingAmount.toLocaleString()}</span>
+              <span className="inline-flex items-center"><span className="w-2 h-2 rounded-full bg-emerald-500 mr-1" />已解决 ¥{resolvedAmount.toLocaleString()}</span>
+            </div>
+          }
           change={summary?.rejectedAmountChange ?? 0}
           icon={<AlertTriangle size={20} />}
         />

@@ -88,13 +88,24 @@ export function generateSettlementTrend(): SettlementTrend[] {
     const rejectionRate = rand(3, 12)
     const rejectedAmount = Math.round(totalAmount * rejectionRate / 100)
     const completionRate = rand(65, 92)
+    const insuranceAmount = Math.round(totalAmount * 0.8)
+    const selfPaidAmount = Math.round(totalAmount * 0.2)
+    const rejectedPendingAmount = Math.round(rejectedAmount * 0.5)
+    const rejectedProcessingAmount = Math.round(rejectedAmount * 0.3)
+    const rejectedResolvedAmount = rejectedAmount - rejectedPendingAmount - rejectedProcessingAmount
 
     data.push({
       period: `${year}-${pad(m + 1)}`,
       totalAmount: Math.round(totalAmount),
+      insuranceAmount,
+      selfPaidAmount,
       rejectedAmount,
+      rejectedPendingAmount,
+      rejectedProcessingAmount,
+      rejectedResolvedAmount,
       rejectionRate,
       completionRate,
+      count: Math.round(rand(10, 30)),
     })
   }
 
@@ -106,10 +117,22 @@ export function generateSettlementSummary(): SettlementSummary {
   const rejectionRate = rand(4, 10)
   const rejectedAmount = Math.round(totalAmount * rejectionRate / 100)
   const completionRate = rand(70, 90)
+  const rejectedPendingAmount = Math.round(rejectedAmount * 0.5)
+  const rejectedProcessingAmount = Math.round(rejectedAmount * 0.3)
+  const rejectedResolvedAmount = rejectedAmount - rejectedPendingAmount - rejectedProcessingAmount
+  const totalCount = Math.round(rand(100, 200))
 
   return {
+    totalSettled: Math.round(totalAmount),
+    totalInsurance: Math.round(totalAmount * 0.8),
+    totalSelfPaid: Math.round(totalAmount * 0.2),
+    totalCount,
+    avgPerCase: Math.round(totalAmount / totalCount),
     totalAmount: Math.round(totalAmount),
     rejectedAmount,
+    rejectedPendingAmount,
+    rejectedProcessingAmount,
+    rejectedResolvedAmount,
     rejectionRate,
     completionRate,
     totalAmountChange: rand(-5, 15),

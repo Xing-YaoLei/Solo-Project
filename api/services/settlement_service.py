@@ -1,10 +1,10 @@
 from datetime import date, timedelta
 from typing import List, Optional, Tuple
-from sqlalchemy import select, func, extract, Integer
+from sqlalchemy import select, func, Integer, case
 from sqlalchemy.ext.asyncio import AsyncSession
 import duckdb
 
-from api.models import Settlement, Patient, Department, RejectionRecord, TreatmentSession
+from api.models import Settlement, Patient, Department, RejectionRecord, TreatmentSession, RemarkTask
 from api.schemas import SettlementTrendPoint, SettlementSummary
 
 
@@ -15,7 +15,7 @@ def _get_prev_period(period: str, granularity: str) -> str:
         q = int(parts[1])
         if q == 1:
             return f"{year - 1}-Q4"
-        return f"{year}-Q{q - 1}"
+        return f"{year - 1}-Q{q - 1}"
     else:
         y, m = map(int, period.split("-"))
         if m == 1:
@@ -29,28 +29,74 @@ def _calc_change_pct(curr: float, prev: float) -> float:
     return round((curr - prev) / prev * 100, 2)
 
 
+def _apply_rejection_status_filter(stmt, status: Optional[str], model=RejectionRecord):
+    if not status:
+        return stmt
+    if status == "pending":
+        return stmt.where(model.status.in_(["pending", None]))
+    elif status == "processing":
+        return stmt.where(model.status == "remarked")
+    elif status == "resolved":
+        return stmt.where(model.status == "concluded")
+    return stmt
+
+
+def _apply_dept_filter(stmt, patient_model, department_id: Optional[int] = None, department: Optional[str] = None):
+    if department_id:
+        return stmt.where(patient_model.department_id == department_id)
+    elif department:
+        return stmt.join(Department, patient_model.department_id == Department.id).where(Department.name == department)
+    return stmt
+
+
 async def _get_rejections_by_period(
     db: AsyncSession,
     start_date: Optional[date],
     end_date: Optional[date],
     granularity: str,
+    department_id: Optional[int] = None,
+    department: Optional[str] = None,
+    status: Optional[str] = None,
 ) -> dict:
-    stmt = select(RejectionRecord)
+    rej_status_expr = case(
+        (RemarkTask.status == "resolved", "resolved"),
+        (RemarkTask.status == "processing", "processing"),
+        else_="pending",
+    ).label("task_status")
+
+    stmt = select(
+        RejectionRecord,
+        rej_status_expr,
+    ).select_from(RejectionRecord).join(
+        Patient, RejectionRecord.patient_id == Patient.id
+    ).outerjoin(RemarkTask, RemarkTask.rejection_id == RejectionRecord.id)
     if start_date:
         stmt = stmt.where(RejectionRecord.rejection_date >= start_date)
     if end_date:
         stmt = stmt.where(RejectionRecord.rejection_date <= end_date)
+    stmt = _apply_dept_filter(stmt, Patient, department_id, department)
+    stmt = _apply_rejection_status_filter(stmt, status)
     result = await db.execute(stmt)
-    rows = result.scalars().all()
+    rows = result.all()
 
-    grouped: dict[str, float] = {}
-    for r in rows:
+    grouped: dict[str, dict] = {}
+    for r, task_status in rows:
         if granularity == "quarterly":
             q = (r.rejection_date.month - 1) // 3 + 1
             key = f"{r.rejection_date.year}-Q{q}"
         else:
             key = r.rejection_date.strftime("%Y-%m")
-        grouped[key] = grouped.get(key, 0.0) + r.amount
+        if key not in grouped:
+            grouped[key] = {
+                "total": 0.0,
+                "pending": 0.0,
+                "processing": 0.0,
+                "resolved": 0.0,
+            }
+        grouped[key]["total"] += r.amount
+        status_key = task_status or "pending"
+        if status_key in grouped[key]:
+            grouped[key][status_key] += r.amount
     return grouped
 
 
@@ -59,12 +105,24 @@ async def _get_completion_by_period(
     start_date: Optional[date],
     end_date: Optional[date],
     granularity: str,
+    department_id: Optional[int] = None,
+    department: Optional[str] = None,
+    therapist_id: Optional[int] = None,
+    therapist: Optional[str] = None,
 ) -> dict:
-    stmt = select(TreatmentSession)
+    from api.models import Therapist
+
+    stmt = select(TreatmentSession).join(Patient, TreatmentSession.patient_id == Patient.id)
     if start_date:
         stmt = stmt.where(TreatmentSession.treatment_date >= start_date)
     if end_date:
         stmt = stmt.where(TreatmentSession.treatment_date <= end_date)
+    stmt = _apply_dept_filter(stmt, Patient, department_id, department)
+    if therapist_id:
+        stmt = stmt.where(TreatmentSession.therapist_id == therapist_id)
+    elif therapist:
+        stmt = stmt.join(Therapist, TreatmentSession.therapist_id == Therapist.id).where(Therapist.name == therapist)
+
     result = await db.execute(stmt)
     rows = result.scalars().all()
 
@@ -92,18 +150,29 @@ async def get_settlement_trend(
     start_date: Optional[date],
     end_date: Optional[date],
     granularity: str = "monthly",
+    department_id: Optional[int] = None,
+    department: Optional[str] = None,
+    rejection_status: Optional[str] = None,
 ) -> List[SettlementTrendPoint]:
-    stmt = select(Settlement)
+    stmt = select(Settlement).join(Patient, Settlement.patient_id == Patient.id)
     if start_date:
         stmt = stmt.where(Settlement.settlement_date >= start_date)
     if end_date:
         stmt = stmt.where(Settlement.settlement_date <= end_date)
+    stmt = _apply_dept_filter(stmt, Patient, department_id, department)
     stmt = stmt.order_by(Settlement.settlement_date)
     result = await db.execute(stmt)
     rows = result.scalars().all()
 
-    rejection_by_period = await _get_rejections_by_period(db, start_date, end_date, granularity)
-    completion_by_period = await _get_completion_by_period(db, start_date, end_date, granularity)
+    rejection_by_period = await _get_rejections_by_period(
+        db, start_date, end_date, granularity,
+        department_id=department_id, department=department,
+        status=rejection_status,
+    )
+    completion_by_period = await _get_completion_by_period(
+        db, start_date, end_date, granularity,
+        department_id=department_id, department=department,
+    )
 
     grouped: dict[str, dict] = {}
     for s in rows:
@@ -129,7 +198,11 @@ async def get_settlement_trend(
     for period in sorted(grouped.keys()):
         g = grouped[period]
         total = round(g["total_amount"], 2)
-        rejected = round(rejection_by_period.get(period, 0.0), 2)
+        rej = rejection_by_period.get(period, {})
+        rejected = round(rej.get("total", 0.0), 2)
+        rejected_pending = round(rej.get("pending", 0.0), 2)
+        rejected_processing = round(rej.get("processing", 0.0), 2)
+        rejected_resolved = round(rej.get("resolved", 0.0), 2)
         points.append(
             SettlementTrendPoint(
                 period=period,
@@ -137,6 +210,9 @@ async def get_settlement_trend(
                 insurance_amount=round(g["insurance_amount"], 2),
                 self_paid_amount=round(g["self_paid_amount"], 2),
                 rejected_amount=rejected,
+                rejected_pending_amount=rejected_pending,
+                rejected_processing_amount=rejected_processing,
+                rejected_resolved_amount=rejected_resolved,
                 rejection_rate=round(rejected / total * 100, 2) if total > 0 else 0.0,
                 completion_rate=completion_by_period.get(period, 0.0),
                 count=g["count"],
@@ -150,42 +226,60 @@ async def get_settlement_trend_olap(
     start_date: Optional[date],
     end_date: Optional[date],
     granularity: str = "monthly",
+    department_id: Optional[int] = None,
+    department: Optional[str] = None,
+    rejection_status: Optional[str] = None,
 ) -> List[SettlementTrendPoint]:
     settle_stmt = select(
         Settlement.settlement_date,
         Settlement.total_amount,
         Settlement.insurance_amount,
         Settlement.self_paid_amount,
-    )
+    ).join(Patient, Settlement.patient_id == Patient.id)
     if start_date:
         settle_stmt = settle_stmt.where(Settlement.settlement_date >= start_date)
     if end_date:
         settle_stmt = settle_stmt.where(Settlement.settlement_date <= end_date)
+    settle_stmt = _apply_dept_filter(settle_stmt, Patient, department_id, department)
     settle_result = await db.execute(settle_stmt)
     settle_rows = settle_result.all()
 
     if not settle_rows:
         return []
 
+    from api.models import Therapist
+
     session_stmt = select(
         TreatmentSession.treatment_date,
         TreatmentSession.status,
-    )
+    ).join(Patient, TreatmentSession.patient_id == Patient.id)
     if start_date:
         session_stmt = session_stmt.where(TreatmentSession.treatment_date >= start_date)
     if end_date:
         session_stmt = session_stmt.where(TreatmentSession.treatment_date <= end_date)
+    session_stmt = _apply_dept_filter(session_stmt, Patient, department_id, department)
     session_result = await db.execute(session_stmt)
     session_rows = session_result.all()
 
     rejection_stmt = select(
         RejectionRecord.rejection_date,
         RejectionRecord.amount,
-    )
+        RejectionRecord.status,
+        RemarkTask.status.label("task_status"),
+    ).join(Patient, RejectionRecord.patient_id == Patient.id
+    ).outerjoin(RemarkTask, RemarkTask.rejection_id == RejectionRecord.id)
     if start_date:
         rejection_stmt = rejection_stmt.where(RejectionRecord.rejection_date >= start_date)
     if end_date:
         rejection_stmt = rejection_stmt.where(RejectionRecord.rejection_date <= end_date)
+    rejection_stmt = _apply_dept_filter(rejection_stmt, Patient, department_id, department)
+    if rejection_status:
+        if rejection_status == "pending":
+            rejection_stmt = rejection_stmt.where(RejectionRecord.status.in_(["pending", None]))
+        elif rejection_status == "processing":
+            rejection_stmt = rejection_stmt.where(RejectionRecord.status == "remarked")
+        elif rejection_status == "resolved":
+            rejection_stmt = rejection_stmt.where(RejectionRecord.status == "concluded")
     rejection_result = await db.execute(rejection_stmt)
     rejection_rows = rejection_result.all()
 
@@ -222,14 +316,16 @@ async def get_settlement_trend_olap(
     )
 
     con.execute(
-        "CREATE TABLE rejection_records (rejection_date DATE, amount DOUBLE)"
+        "CREATE TABLE rejection_records (rejection_date DATE, amount DOUBLE, status VARCHAR, task_status VARCHAR)"
     )
     con.executemany(
-        "INSERT INTO rejection_records VALUES (?, ?)",
+        "INSERT INTO rejection_records VALUES (?, ?, ?, ?)",
         [
             (
                 r.rejection_date.isoformat(),
                 r.amount,
+                r.status or "pending",
+                r.task_status or "pending",
             )
             for r in rejection_rows
         ],
@@ -256,7 +352,10 @@ async def get_settlement_trend_olap(
         ),
         rej AS (
             SELECT {rejection_period} AS period,
-                   SUM(amount) AS rejected_amount
+                   SUM(amount) AS rejected_amount,
+                   SUM(CASE WHEN task_status = 'pending' OR task_status IS NULL THEN amount ELSE 0 END) AS rejected_pending_amount,
+                   SUM(CASE WHEN task_status = 'processing' THEN amount ELSE 0 END) AS rejected_processing_amount,
+                   SUM(CASE WHEN task_status = 'resolved' THEN amount ELSE 0 END) AS rejected_resolved_amount
             FROM rejection_records
             GROUP BY period
         ),
@@ -273,6 +372,9 @@ async def get_settlement_trend_olap(
                s.self_paid_amount,
                s.cnt,
                COALESCE(r.rejected_amount, 0) AS rejected_amount,
+               COALESCE(r.rejected_pending_amount, 0) AS rejected_pending_amount,
+               COALESCE(r.rejected_processing_amount, 0) AS rejected_processing_amount,
+               COALESCE(r.rejected_resolved_amount, 0) AS rejected_resolved_amount,
                CASE
                    WHEN s.total_amount > 0 THEN ROUND(COALESCE(r.rejected_amount, 0) / s.total_amount * 100, 2)
                    ELSE 0.0
@@ -298,8 +400,11 @@ async def get_settlement_trend_olap(
                 insurance_amount=round(r[2], 2),
                 self_paid_amount=round(r[3], 2),
                 rejected_amount=round(r[5], 2),
-                rejection_rate=float(r[6]),
-                completion_rate=float(r[7]),
+                rejected_pending_amount=round(r[6], 2),
+                rejected_processing_amount=round(r[7], 2),
+                rejected_resolved_amount=round(r[8], 2),
+                rejection_rate=float(r[9]),
+                completion_rate=float(r[10]),
                 count=r[4],
             )
         )
@@ -310,48 +415,73 @@ async def _get_range_summary(
     db: AsyncSession,
     start_date: date,
     end_date: date,
-) -> Tuple[float, float, float, int, float, float]:
+    department_id: Optional[int] = None,
+    department: Optional[str] = None,
+    rejection_status: Optional[str] = None,
+) -> Tuple[float, float, float, int, float, float, float, float, float]:
     stmt_settle = select(
         func.sum(Settlement.total_amount),
         func.sum(Settlement.insurance_amount),
         func.sum(Settlement.self_paid_amount),
         func.count(Settlement.id),
-    ).where(
+    ).join(Patient, Settlement.patient_id == Patient.id).where(
         Settlement.settlement_date >= start_date,
         Settlement.settlement_date <= end_date,
     )
+    stmt_settle = _apply_dept_filter(stmt_settle, Patient, department_id, department)
     row = (await db.execute(stmt_settle)).one()
     total = float(row[0] or 0)
     ins = float(row[1] or 0)
     self_paid = float(row[2] or 0)
     cnt = row[3] or 0
 
-    stmt_rej = select(func.sum(RejectionRecord.amount)).where(
+    rej_status_expr = case(
+        (RemarkTask.status == "resolved", "resolved"),
+        (RemarkTask.status == "processing", "processing"),
+        else_="pending",
+    )
+    stmt_rej = select(
+        func.sum(RejectionRecord.amount),
+        func.sum(func.cast(rej_status_expr == "pending", type_=Integer) * RejectionRecord.amount),
+        func.sum(func.cast(rej_status_expr == "processing", type_=Integer) * RejectionRecord.amount),
+        func.sum(func.cast(rej_status_expr == "resolved", type_=Integer) * RejectionRecord.amount),
+    ).select_from(RejectionRecord).join(
+        Patient, RejectionRecord.patient_id == Patient.id
+    ).outerjoin(RemarkTask, RemarkTask.rejection_id == RejectionRecord.id).where(
         RejectionRecord.rejection_date >= start_date,
         RejectionRecord.rejection_date <= end_date,
     )
+    stmt_rej = _apply_dept_filter(stmt_rej, Patient, department_id, department)
+    stmt_rej = _apply_rejection_status_filter(stmt_rej, rejection_status)
     rej_row = (await db.execute(stmt_rej)).one()
     rejected = float(rej_row[0] or 0)
+    rejected_pending = float(rej_row[1] or 0)
+    rejected_processing = float(rej_row[2] or 0)
+    rejected_resolved = float(rej_row[3] or 0)
 
     stmt_session = select(
         func.count(TreatmentSession.id),
         func.sum(func.cast(TreatmentSession.status == "completed", type_=Integer)),
-    ).where(
+    ).join(Patient, TreatmentSession.patient_id == Patient.id).where(
         TreatmentSession.treatment_date >= start_date,
         TreatmentSession.treatment_date <= end_date,
     )
+    stmt_session = _apply_dept_filter(stmt_session, Patient, department_id, department)
     sess_row = (await db.execute(stmt_session)).one()
     total_sess = sess_row[0] or 0
     completed_sess = int(sess_row[1] or 0)
     completion_rate = round(completed_sess / total_sess * 100, 2) if total_sess > 0 else 0.0
 
-    return total, ins, self_paid, cnt, rejected, completion_rate
+    return total, ins, self_paid, cnt, rejected, completion_rate, rejected_pending, rejected_processing, rejected_resolved
 
 
 async def get_settlement_summary(
     db: AsyncSession,
     start_date: Optional[date],
     end_date: Optional[date],
+    department_id: Optional[int] = None,
+    department: Optional[str] = None,
+    rejection_status: Optional[str] = None,
 ) -> SettlementSummary:
     today = date.today()
     end = end_date or today
@@ -360,7 +490,9 @@ async def get_settlement_summary(
     else:
         start = date(end.year, 1, 1)
 
-    curr_total, curr_ins, curr_self, curr_cnt, curr_rej, curr_completion = await _get_range_summary(db, start, end)
+    curr_total, curr_ins, curr_self, curr_cnt, curr_rej, curr_completion, curr_pending, curr_processing, curr_resolved = await _get_range_summary(
+        db, start, end, department_id, department, rejection_status
+    )
 
     curr_days = (end - start).days + 1
     prev_end = start - timedelta(days=1)
@@ -368,7 +500,9 @@ async def get_settlement_summary(
     if prev_start < date(2020, 1, 1):
         prev_start = date(2020, 1, 1)
 
-    prev_total, _, _, _, prev_rej, prev_completion = await _get_range_summary(db, prev_start, prev_end)
+    prev_total, _, _, _, prev_rej, prev_completion, _, _, _ = await _get_range_summary(
+        db, prev_start, prev_end, department_id, department, rejection_status
+    )
 
     avg_per_case = round(curr_total / curr_cnt, 2) if curr_cnt else 0.0
     rej_rate = round(curr_rej / curr_total * 100, 2) if curr_total > 0 else 0.0
@@ -381,6 +515,9 @@ async def get_settlement_summary(
         total_count=curr_cnt,
         avg_per_case=avg_per_case,
         rejected_amount=round(curr_rej, 2),
+        rejected_pending_amount=round(curr_pending, 2),
+        rejected_processing_amount=round(curr_processing, 2),
+        rejected_resolved_amount=round(curr_resolved, 2),
         rejection_rate=rej_rate,
         completion_rate=curr_completion,
         total_amount_change=_calc_change_pct(curr_total, prev_total),

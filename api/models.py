@@ -163,7 +163,9 @@ class RemarkTask(Base):
     rejection_id = Column(Integer, ForeignKey("rejection_record.id"), nullable=False)
     assigned_to = Column(String(100))
     content = Column(Text)
+    status = Column(String(50), default="pending")
     created_at = Column(DateTime, default=datetime.now)
+    resolved_at = Column(DateTime, nullable=True)
     completed = Column(Boolean, default=False)
 
     rejection = relationship("RejectionRecord")

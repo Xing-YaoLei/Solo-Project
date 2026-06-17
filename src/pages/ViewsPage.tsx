@@ -25,8 +25,11 @@ export default function ViewsPage() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   useEffect(() => {
-    getSavedViews().then(setViews)
-  }, [])
+    getSavedViews().then((data) => {
+      setViews(data)
+      data.forEach((v) => saveView(v))
+    })
+  }, [saveView])
 
   const handleLoad = (id: string) => {
     setActiveViewId(id)
@@ -82,7 +85,9 @@ export default function ViewsPage() {
       if (!morningMeetingMode) {
         toggleMorningMeetingMode()
       }
-      handleLoad(viewId)
+      setViewFilters(view.filters)
+      loadView(viewId)
+      navigate('/')
     }
   }
 

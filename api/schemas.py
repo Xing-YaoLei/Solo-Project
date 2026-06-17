@@ -207,12 +207,22 @@ class ConclusionUpdate(BaseModel):
     conclusion: str
 
 
+class RemarkTaskUpsert(BaseModel):
+    rejection_id: int
+    assignee: Optional[str] = None
+    content: Optional[str] = None
+    status: Optional[str] = None
+
+
 class SettlementTrendPoint(BaseModel):
     period: str
     total_amount: float
     insurance_amount: float
     self_paid_amount: float
     rejected_amount: float = 0.0
+    rejected_pending_amount: float = 0.0
+    rejected_processing_amount: float = 0.0
+    rejected_resolved_amount: float = 0.0
     rejection_rate: float = 0.0
     completion_rate: float = 0.0
     count: int
@@ -225,6 +235,9 @@ class SettlementSummary(BaseModel):
     total_count: int
     avg_per_case: float
     rejected_amount: float = 0.0
+    rejected_pending_amount: float = 0.0
+    rejected_processing_amount: float = 0.0
+    rejected_resolved_amount: float = 0.0
     rejection_rate: float = 0.0
     completion_rate: float = 0.0
     total_amount_change: float = 0.0

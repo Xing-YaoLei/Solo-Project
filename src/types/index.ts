@@ -1,14 +1,28 @@
 export interface SettlementTrend {
   period: string
   totalAmount: number
+  insuranceAmount: number
+  selfPaidAmount: number
   rejectedAmount: number
+  rejectedPendingAmount: number
+  rejectedProcessingAmount: number
+  rejectedResolvedAmount: number
   rejectionRate: number
   completionRate: number
+  count: number
 }
 
 export interface SettlementSummary {
+  totalSettled: number
+  totalInsurance: number
+  totalSelfPaid: number
+  totalCount: number
+  avgPerCase: number
   totalAmount: number
   rejectedAmount: number
+  rejectedPendingAmount: number
+  rejectedProcessingAmount: number
+  rejectedResolvedAmount: number
   rejectionRate: number
   completionRate: number
   totalAmountChange: number
@@ -89,6 +103,8 @@ export interface RejectionRecord {
   rejectedAmount: number
   rejectionReason: string
   rejectionDate: string
+  remark?: string
+  conclusion?: string
   remarkTask?: RemarkTask
 }
 

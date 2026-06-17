@@ -87,6 +87,7 @@ function buildQueryParams(filters?: ViewFilters) {
   if (end) params.end_date = end
   if (filters?.department) params.department = filters.department
   if (filters?.therapist) params.therapist = filters.therapist
+  if (filters?.rejectionStatus) params.rejection_status = filters.rejectionStatus
   return params
 }
 
@@ -116,8 +117,16 @@ export async function getSettlementSummary(
     const raw = await apiGet<any>('/api/settlement/summary', buildQueryParams(filters))
     const c = toCamel<any>(raw)
     return delay({
-      totalAmount: c.totalSettled || 0,
+      totalSettled: c.totalSettled || 0,
+      totalInsurance: c.totalInsurance || 0,
+      totalSelfPaid: c.totalSelfPaid || 0,
+      totalCount: c.totalCount || 0,
+      avgPerCase: c.avgPerCase || 0,
+      totalAmount: c.totalSettled || c.totalAmount || 0,
       rejectedAmount: c.rejectedAmount || 0,
+      rejectedPendingAmount: c.rejectedPendingAmount || 0,
+      rejectedProcessingAmount: c.rejectedProcessingAmount || 0,
+      rejectedResolvedAmount: c.rejectedResolvedAmount || 0,
       rejectionRate: c.rejectionRate || 0,
       completionRate: c.completionRate || 0,
       totalAmountChange: c.totalAmountChange || 0,
@@ -128,7 +137,9 @@ export async function getSettlementSummary(
   } catch (e) {
     console.warn('summary API failed', e)
     return delay({
+      totalSettled: 0, totalInsurance: 0, totalSelfPaid: 0, totalCount: 0, avgPerCase: 0,
       totalAmount: 0, rejectedAmount: 0, rejectionRate: 0, completionRate: 0,
+      rejectedPendingAmount: 0, rejectedProcessingAmount: 0, rejectedResolvedAmount: 0,
       totalAmountChange: 0, rejectedAmountChange: 0,
       rejectionRateChange: 0, completionRateChange: 0,
     })
@@ -327,6 +338,57 @@ export async function getRejectionRecords(
   } catch (e) {
     console.warn('rejection list API failed', e)
     return delay([])
+  }
+}
+
+export async function getRejectionReasons(
+  filters?: ViewFilters,
+): Promise<Array<{ name: string; value: number; count: number; pendingAmount: number; processingAmount: number; resolvedAmount: number }>> {
+  try {
+    const params = buildQueryParams(filters)
+    if (filters?.rejectionStatus) params.status = filters.rejectionStatus
+    const raw = await apiGet<any[]>('/api/rejection/reasons', params)
+    const camel = toCamel<any[]>(raw)
+    return delay(camel.map((r) => ({
+      name: r.name || r.reason || '',
+      value: r.value || r.totalAmount || 0,
+      count: r.count || 0,
+      pendingAmount: r.pendingAmount || 0,
+      processingAmount: r.processingAmount || 0,
+      resolvedAmount: r.resolvedAmount || 0,
+    })))
+  } catch (e) {
+    console.warn('rejection reasons API failed', e)
+    return delay([])
+  }
+}
+
+export async function upsertRemarkTask(
+  data: { rejectionId: string; content: string; assignedTo?: string; status?: 'pending' | 'processing' | 'resolved' },
+): Promise<RejectionRecord | undefined> {
+  try {
+    const rid = parseInt(data.rejectionId)
+    const raw = await apiPost<any>('/api/rejection/remark-task', {
+      rejection_id: rid,
+      content: data.content,
+      assigned_to: data.assignedTo || '当前用户',
+      status: data.status || 'processing',
+    })
+    const r = toCamel<any>(raw)
+    return delay({
+      ...r,
+      id: String(r.id),
+      settlementId: r.settlementId ? String(r.settlementId) : undefined,
+      patientId: String(r.patientId),
+      remarkTask: r.remarkTask ? {
+        ...r.remarkTask,
+        id: String(r.remarkTask.id),
+        rejectionId: String(r.remarkTask.rejectionId),
+      } : undefined,
+    })
+  } catch (e) {
+    console.warn('upsert remark task API failed', e)
+    return delay(undefined)
   }
 }
 

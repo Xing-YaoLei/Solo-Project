@@ -20,17 +20,30 @@ async def settlement_trend(
     end_date: Optional[date] = Query(None),
     granularity: str = Query("monthly", pattern="^(monthly|quarterly)$"),
     use_olap: bool = Query(False),
+    department: Optional[str] = Query(None),
+    rejection_status: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
     if use_olap:
-        return await get_settlement_trend_olap(db, start_date, end_date, granularity)
-    return await get_settlement_trend(db, start_date, end_date, granularity)
+        return await get_settlement_trend_olap(
+            db, start_date, end_date, granularity,
+            department=department, rejection_status=rejection_status,
+        )
+    return await get_settlement_trend(
+        db, start_date, end_date, granularity,
+        department=department, rejection_status=rejection_status,
+    )
 
 
 @router.get("/summary", response_model=SettlementSummary)
 async def settlement_summary(
     start_date: Optional[date] = Query(None),
     end_date: Optional[date] = Query(None),
+    department: Optional[str] = Query(None),
+    rejection_status: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
-    return await get_settlement_summary(db, start_date, end_date)
+    return await get_settlement_summary(
+        db, start_date, end_date,
+        department=department, rejection_status=rejection_status,
+    )
