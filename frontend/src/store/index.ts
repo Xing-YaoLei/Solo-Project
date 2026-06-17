@@ -109,3 +109,11 @@ export const isAdmin = (): boolean => {
   const user = useStore.getState().user;
   return user?.role === 'admin';
 };
+export const getCurrentUserName = (): string => {
+  const user = useStore.getState().user;
+  return user?.full_name || '';
+};
+export const getCurrentUserId = (): number | null => {
+  const user = useStore.getState().user;
+  return user?.id || null;
+};

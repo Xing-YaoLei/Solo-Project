@@ -5,14 +5,14 @@ import { formatDuration } from '../../utils/format';
 
 interface RepairDurationChartProps {
   data: RepairDurationData[];
-  groupBy?: 'date' | 'worker' | 'type';
+  groupBy?: 'worker' | 'type';
   height?: number;
   darkMode?: boolean;
 }
 
 const RepairDurationChart: React.FC<RepairDurationChartProps> = ({
   data,
-  groupBy = 'date',
+  groupBy = 'worker',
   height = 400,
   darkMode = false,
 }) => {
@@ -20,69 +20,29 @@ const RepairDurationChart: React.FC<RepairDurationChartProps> = ({
   const backgroundColor = darkMode ? '#141414' : '#fff';
 
   const getChartData = () => {
-    if (groupBy === 'date') {
-      const dateMap = new Map<string, number[]>();
-      data.forEach((item) => {
-        if (!dateMap.has(item.date)) {
-          dateMap.set(item.date, []);
-        }
-        dateMap.get(item.date)!.push(item.duration);
-      });
-
-      const dates = Array.from(dateMap.keys()).sort();
-      const avgDurations = dates.map((date) => {
-        const durations = dateMap.get(date)!;
-        return durations.reduce((a, b) => a + b, 0) / durations.length;
-      });
-      const maxDurations = dates.map((date) => Math.max(...dateMap.get(date)!));
-      const minDurations = dates.map((date) => Math.min(...dateMap.get(date)!));
-
-      return {
-        xAxisData: dates,
-        series: [
-          {
-            name: '平均时长',
-            type: 'line' as const,
-            smooth: true,
-            data: avgDurations,
-            itemStyle: { color: '#1677ff' },
-            areaStyle: { opacity: 0.1 },
-          },
-          {
-            name: '最长时长',
-            type: 'line' as const,
-            smooth: true,
-            data: maxDurations,
-            itemStyle: { color: '#f5222d' },
-            lineStyle: { type: 'dashed' as const },
-          },
-          {
-            name: '最短时长',
-            type: 'line' as const,
-            smooth: true,
-            data: minDurations,
-            itemStyle: { color: '#52c41a' },
-            lineStyle: { type: 'dashed' as const },
-          },
-        ],
-      };
-    }
-
     if (groupBy === 'worker') {
-      const workerMap = new Map<string, number[]>();
+      const workerMap = new Map<string, { avg: number; median: number; count: number }>();
       data.forEach((item) => {
-        if (!workerMap.has(item.workerName)) {
-          workerMap.set(item.workerName, []);
+        if (!item.worker_name) return;
+        if (!workerMap.has(item.worker_name)) {
+          workerMap.set(item.worker_name, { avg: 0, median: 0, count: 0 });
         }
-        workerMap.get(item.workerName)!.push(item.duration);
+        const entry = workerMap.get(item.worker_name)!;
+        entry.avg += item.avg_duration * item.total_orders;
+        entry.median += item.median_duration * item.total_orders;
+        entry.count += item.total_orders;
       });
 
       const workers = Array.from(workerMap.keys());
-      const avgDurations = workers.map((worker) => {
-        const durations = workerMap.get(worker)!;
-        return durations.reduce((a, b) => a + b, 0) / durations.length;
+      const avgDurations = workers.map((w) => {
+        const e = workerMap.get(w)!;
+        return e.count > 0 ? e.avg / e.count : 0;
       });
-      const counts = workers.map((worker) => workerMap.get(worker)!.length);
+      const medianDurations = workers.map((w) => {
+        const e = workerMap.get(w)!;
+        return e.count > 0 ? e.median / e.count : 0;
+      });
+      const counts = workers.map((w) => workerMap.get(w)!.count);
 
       return {
         xAxisData: workers,
@@ -92,6 +52,18 @@ const RepairDurationChart: React.FC<RepairDurationChartProps> = ({
             type: 'bar' as const,
             data: avgDurations,
             itemStyle: { color: '#1677ff' },
+            label: {
+              show: true,
+              position: 'top' as const,
+              formatter: (params: { value: number }) => formatDuration(params.value),
+              color: textColor,
+            },
+          },
+          {
+            name: '中位数时长',
+            type: 'bar' as const,
+            data: medianDurations,
+            itemStyle: { color: '#52c41a' },
             label: {
               show: true,
               position: 'top' as const,
@@ -125,19 +97,28 @@ const RepairDurationChart: React.FC<RepairDurationChartProps> = ({
       };
     }
 
-    const typeMap = new Map<string, number[]>();
+    const typeMap = new Map<string, { avg: number; median: number; count: number }>();
     data.forEach((item) => {
-      if (!typeMap.has(item.type)) {
-        typeMap.set(item.type, []);
+      if (!item.repair_type) return;
+      if (!typeMap.has(item.repair_type)) {
+        typeMap.set(item.repair_type, { avg: 0, median: 0, count: 0 });
       }
-      typeMap.get(item.type)!.push(item.duration);
+      const entry = typeMap.get(item.repair_type)!;
+      entry.avg += item.avg_duration * item.total_orders;
+      entry.median += item.median_duration * item.total_orders;
+      entry.count += item.total_orders;
     });
 
     const types = Array.from(typeMap.keys());
-    const avgDurations = types.map((type) => {
-      const durations = typeMap.get(type)!;
-      return durations.reduce((a, b) => a + b, 0) / durations.length;
+    const avgDurations = types.map((t) => {
+      const e = typeMap.get(t)!;
+      return e.count > 0 ? e.avg / e.count : 0;
     });
+    const medianDurations = types.map((t) => {
+      const e = typeMap.get(t)!;
+      return e.count > 0 ? e.median / e.count : 0;
+    });
+    const counts = types.map((t) => typeMap.get(t)!.count);
 
     return {
       xAxisData: types,
@@ -198,13 +179,13 @@ const RepairDurationChart: React.FC<RepairDurationChartProps> = ({
     xAxis: {
       type: 'category',
       data: chartData.xAxisData,
-      axisLabel: { color: textColor, rotate: groupBy === 'date' ? 45 : 0 },
+      axisLabel: { color: textColor, rotate: 45 },
       axisLine: { lineStyle: { color: textColor } },
     },
     yAxis: chartData.yAxis || [
       {
         type: 'value',
-        name: groupBy === 'worker' ? '时长(小时)' : '维修时长(小时)',
+        name: '维修时长(小时)',
         axisLabel: { color: textColor },
         axisLine: { lineStyle: { color: textColor } },
         splitLine: { lineStyle: { color: darkMode ? '#333' : '#eee' } },

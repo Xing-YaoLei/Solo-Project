@@ -33,7 +33,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
       if (!record) return;
 
       setLoading(true);
-      await paymentAPI.addComment(record.id, values.comment);
+      await paymentAPI.addComment(record.id as unknown as number, values.comment);
       message.success('备注添加成功');
       onSuccess?.();
       onCancel();

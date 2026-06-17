@@ -1,12 +1,15 @@
 export type UserRole = 'admin' | 'worker';
 
 export interface User {
-  id: string;
-  username: string;
-  name: string;
+  id: number;
+  email: string;
+  full_name: string;
   role: UserRole;
-  avatar?: string;
+  is_active: boolean;
+  created_at: string;
   phone?: string;
+  avatar_url?: string;
+  last_login_at?: string;
 }
 
 export interface LoginRequest {
@@ -37,38 +40,42 @@ export interface KPIData {
 }
 
 export interface WaterElectricityData {
-  date: string;
-  water: number;
-  electricity: number;
-  area: string;
+  month: string;
+  district: string;
+  avg_water: number;
+  avg_electricity: number;
+  avg_gas: number;
+  count: number;
 }
 
 export interface InspectionFunnelData {
-  name: string;
-  value: number;
+  stage: string;
+  count: number;
+  conversion_rate: number;
 }
 
 export interface PaymentRankingData {
-  name: string;
-  amount: number;
-  area: string;
+  period: string;
+  dimension: string;
+  key: string;
+  total_amount: number;
+  transaction_count: number;
 }
 
 export interface ComplaintTagsData {
-  date: string;
-  noise: number;
-  hygiene: number;
-  facilities: number;
-  safety: number;
-  other: number;
+  month: string;
+  tag: string;
+  count: number;
 }
 
 export interface RepairDurationData {
-  date: string;
-  workerName: string;
-  duration: number;
-  type: string;
-  status: string;
+  worker_id?: number;
+  worker_name?: string;
+  repair_type?: string;
+  avg_duration: number;
+  median_duration: number;
+  total_orders: number;
+  caliber_version: string;
 }
 
 export interface DateRange {
@@ -95,38 +102,55 @@ export interface PaymentRecord {
 }
 
 export interface CaliberVersion {
-  id: string;
+  id: number;
   version: string;
-  name: string;
-  description: string;
-  effectiveDate: string;
-  createTime: string;
-  creator: string;
-  changes: string[];
+  effective_date: string;
+  description?: string;
+  calculation_rule?: string;
+  is_active: boolean;
+  created_at: string;
+  end_date?: string;
+  exclude_holidays?: boolean;
+  exclude_weekends?: boolean;
+  start_event?: string;
+  end_event?: string;
+  created_by?: number;
 }
 
 export interface ImportBatch {
-  id: string;
-  name: string;
-  type: string;
-  totalCount: number;
-  successCount: number;
-  failCount: number;
-  status: 'pending' | 'processing' | 'success' | 'failed';
-  createTime: string;
-  creator: string;
-  file?: string;
+  id: number;
+  batch_no: string;
+  import_type: string;
+  file_name?: string;
+  total_count: number;
+  success_count: number;
+  failed_count: number;
+  status: string;
+  imported_by?: number;
+  created_at: string;
+  completed_at?: string;
+  error_message?: string;
+  file_size?: number;
 }
 
 export interface RepairOrder {
-  id: string;
-  title: string;
-  type: string;
-  status: 'pending' | 'processing' | 'completed' | 'cancelled';
-  workerName: string;
-  createTime: string;
-  completeTime?: string;
-  duration?: number;
-  area: string;
-  description: string;
+  id: number;
+  repair_no: string;
+  property_id: number;
+  reporter_id: number;
+  worker_id?: number;
+  repair_type: string;
+  description?: string;
+  report_time: string;
+  assign_time?: string;
+  start_time?: string;
+  complete_time?: string;
+  status: string;
+  duration_hours?: number;
+  caliber_version?: string;
+  batch_id?: number;
+  title?: string;
+  actual_cost?: number;
+  remark?: string;
+  created_at: string;
 }

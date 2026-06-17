@@ -2,22 +2,38 @@ import request, { setToken, removeToken } from '../utils/request';
 import { LoginRequest, LoginResponse, User } from '../types';
 
 export const authAPI = {
-  login: (data: LoginRequest) =>
-    request.post<unknown, LoginResponse>('/auth/login', data).then((res) => {
-      const response = res as unknown as LoginResponse;
-      if (response.token) {
-        setToken(response.token);
-      }
-      return response;
-    }),
+  login: async (data: LoginRequest): Promise<LoginResponse> => {
+    const formData = new URLSearchParams();
+    formData.append('username', data.username);
+    formData.append('password', data.password);
+
+    const response = await request.post('/auth/login', formData, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    });
+
+    const token = (response as unknown as { access_token: string }).access_token;
+
+    if (token) {
+      setToken(token);
+    }
+
+    const user = await authAPI.getCurrentUser();
+
+    return {
+      token,
+      user,
+    };
+  },
 
   logout: () => {
     removeToken();
-    return request.post<unknown, void>('/auth/logout');
+    return Promise.resolve();
   },
 
-  getCurrentUser: () =>
-    request.get<unknown, User>('/auth/me'),
+  getCurrentUser: (): Promise<User> =>
+    request.get('/auth/me') as Promise<User>,
 };
 
 export const login = async (username: string, password: string): Promise<LoginResponse> => {

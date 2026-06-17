@@ -17,7 +17,7 @@ export const removeToken = (): void => {
 };
 
 const request: AxiosInstance = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || '/api',
+  baseURL: `${process.env.REACT_APP_API_URL || ''}/api/v1`,
   timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
@@ -38,30 +38,36 @@ request.interceptors.request.use(
 );
 
 request.interceptors.response.use(
-  (response: AxiosResponse<ApiResponse>) => {
-    const { code, message: msg, data } = response.data;
+  (response: AxiosResponse) => {
+    const data = response.data;
 
-    if (code === 200 || code === 0) {
-      return data as unknown as AxiosResponse;
+    if (data && typeof data === 'object' && 'code' in data) {
+      const { code, message: msg, data: responseData } = data as unknown as ApiResponse;
+
+      if (code === 200 || code === 0) {
+        return responseData;
+      }
+
+      if (code === 401) {
+        removeToken();
+        message.error('登录已过期，请重新登录');
+        window.location.href = '/login';
+        return Promise.reject(new Error('Unauthorized'));
+      }
+
+      if (code === 403) {
+        message.error('没有权限访问该资源');
+        return Promise.reject(new Error('Forbidden'));
+      }
+
+      if (msg) {
+        message.error(msg);
+      }
+
+      return Promise.reject(new Error(msg || 'Request failed'));
     }
 
-    if (code === 401) {
-      removeToken();
-      message.error('登录已过期，请重新登录');
-      window.location.href = '/login';
-      return Promise.reject(new Error('Unauthorized'));
-    }
-
-    if (code === 403) {
-      message.error('没有权限访问该资源');
-      return Promise.reject(new Error('Forbidden'));
-    }
-
-    if (msg) {
-      message.error(msg);
-    }
-
-    return Promise.reject(new Error(msg || 'Request failed'));
+    return data;
   },
   (error) => {
     if (error.response?.status === 401) {

@@ -16,19 +16,19 @@ const PaymentRankingChart: React.FC<PaymentRankingChartProps> = ({
   height = 400,
   darkMode = false,
 }) => {
-  const sortedData = [...data].sort((a, b) => b.amount - a.amount).slice(0, topN);
-  const names = sortedData.map((item) => item.name);
-  const amounts = sortedData.map((item) => item.amount);
-  const areas = sortedData.map((item) => item.area);
+  const sortedData = [...data].sort((a, b) => b.total_amount - a.total_amount).slice(0, topN);
+  const keys = sortedData.map((item) => item.key);
+  const amounts = sortedData.map((item) => item.total_amount);
+  const dimensions = sortedData.map((item) => item.dimension);
 
   const textColor = darkMode ? '#ccc' : '#333';
   const backgroundColor = darkMode ? '#141414' : '#fff';
 
-  const areaColors: Record<string, string> = {};
+  const dimColors: Record<string, string> = {};
   const colorPalette = ['#1677ff', '#52c41a', '#faad14', '#f5222d', '#722ed1', '#13c2c2', '#eb2f96'];
-  const uniqueAreas = Array.from(new Set(areas));
-  uniqueAreas.forEach((area, index) => {
-    areaColors[area] = colorPalette[index % colorPalette.length];
+  const uniqueDims = Array.from(new Set(dimensions));
+  uniqueDims.forEach((dim, index) => {
+    dimColors[dim] = colorPalette[index % colorPalette.length];
   });
 
   const option = {
@@ -40,8 +40,9 @@ const PaymentRankingChart: React.FC<PaymentRankingChartProps> = ({
       },
       formatter: (params: unknown) => {
         const param = (params as Array<{ name: string; value: number; color: string }>)[0];
-        const area = areas[names.indexOf(param.name)];
-        return `${param.name}<br/>区域: ${area}<br/>金额: ${formatMoney(param.value)}`;
+        const dim = dimensions[keys.indexOf(param.name)];
+        const item = sortedData.find((d) => d.key === param.name);
+        return `${param.name}<br/>维度: ${dim}<br/>金额: ${formatMoney(param.value)}<br/>交易次数: ${item?.transaction_count || 0}`;
       },
     },
     grid: {
@@ -62,7 +63,7 @@ const PaymentRankingChart: React.FC<PaymentRankingChartProps> = ({
     },
     yAxis: {
       type: 'category',
-      data: names,
+      data: keys,
       axisLabel: { color: textColor },
       axisLine: { lineStyle: { color: textColor } },
     },
@@ -71,8 +72,8 @@ const PaymentRankingChart: React.FC<PaymentRankingChartProps> = ({
         name: '收款金额',
         type: 'bar',
         data: sortedData.map((item) => ({
-          value: item.amount,
-          itemStyle: { color: areaColors[item.area] },
+          value: item.total_amount,
+          itemStyle: { color: dimColors[item.dimension] },
         })),
         label: {
           show: true,

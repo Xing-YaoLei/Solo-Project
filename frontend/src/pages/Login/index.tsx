@@ -25,9 +25,9 @@ const Login: React.FC = () => {
   const handleRoleChange = (key: string) => {
     setRole(key as 'admin' | 'worker');
     if (key === 'admin') {
-      form.setFieldsValue({ username: 'admin', password: 'admin123' });
+      form.setFieldsValue({ username: 'admin@example.com', password: 'admin123' });
     } else {
-      form.setFieldsValue({ username: 'worker', password: 'worker123' });
+      form.setFieldsValue({ username: 'worker1@example.com', password: 'worker123' });
     }
   };
 
@@ -69,7 +69,7 @@ const Login: React.FC = () => {
               marginBottom: 8,
             }}
           >
-            物业管理看板
+            长租公寓退租验房趋势看板
           </div>
           <div style={{ color: '#888', fontSize: 14 }}>请登录以继续</div>
         </div>
@@ -87,7 +87,7 @@ const Login: React.FC = () => {
           name="login"
           onFinish={handleSubmit}
           initialValues={{
-            username: 'admin',
+            username: 'admin@example.com',
             password: 'admin123',
           }}
           size="large"
@@ -129,8 +129,8 @@ const Login: React.FC = () => {
 
         <div style={{ marginTop: 24, textAlign: 'center', color: '#999', fontSize: 12 }}>
           <p>默认账号：</p>
-          <p>管理员: admin / admin123</p>
-          <p>工作人员: worker / worker123</p>
+          <p>管理员: admin@example.com / admin123</p>
+          <p>工作人员: worker1@example.com / worker123</p>
         </div>
       </Card>
     </div>

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Row, Col, Card, Space, Select, Table, Button, Spin, message } from 'antd';
 import { EditOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useStore, isAdmin } from '../../store';
-import { analyticsAPI } from '../../services/api';
+import { analyticsAPI, paymentAPI } from '../../services/api';
 import DateRangePicker from '../../components/common/DateRangePicker';
 import StatusBadge from '../../components/common/StatusBadge';
 import CommentModal from '../../components/common/CommentModal';
@@ -21,89 +21,59 @@ const Analytics: React.FC = () => {
   const [waterData, setWaterData] = useState<WaterElectricityData[]>([]);
   const [complaintData, setComplaintData] = useState<ComplaintTagsData[]>([]);
   const [paymentRecords, setPaymentRecords] = useState<PaymentRecord[]>([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
   const [commentModalOpen, setCommentModalOpen] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<PaymentRecord | null>(null);
 
   const mockAreas = ['A区', 'B区', 'C区', 'D区', 'E区'];
-  
-  const mockWaterData: WaterElectricityData[] = Array.from({ length: 30 }, (_, i) => ({
-    date: `2024-0${Math.floor(i / 7) + 1}-${(i % 28) + 1}`,
-    water: Math.floor(Math.random() * 50) + 20,
-    electricity: Math.floor(Math.random() * 100) + 50,
-    area: mockAreas[i % 5],
-  }));
-
-  const mockComplaintData: ComplaintTagsData[] = Array.from({ length: 12 }, (_, i) => ({
-    date: `2024-${String(i + 1).padStart(2, '0')}`,
-    noise: Math.floor(Math.random() * 20) + 5,
-    hygiene: Math.floor(Math.random() * 15) + 3,
-    facilities: Math.floor(Math.random() * 25) + 8,
-    safety: Math.floor(Math.random() * 10) + 2,
-    other: Math.floor(Math.random() * 8) + 1,
-  }));
-
-  const mockPaymentRecords: PaymentRecord[] = Array.from({ length: 50 }, (_, i) => ({
-    id: `PAY${String(i + 1).padStart(6, '0')}`,
-    payer: ['张三', '李四', '王五', '赵六', '钱七'][i % 5],
-    amount: Math.floor(Math.random() * 15000) + 1000,
-    date: `2024-0${Math.floor(i / 10) + 1}-${(i % 28) + 1}`,
-    status: (['paid', 'overdue', 'pending'] as const)[i % 3],
-    type: ['物业费', '水电费', '停车费', '维修费'][i % 4],
-    area: mockAreas[i % 5],
-    isOverdue: i % 3 === 1,
-    overdueDays: i % 3 === 1 ? Math.floor(Math.random() * 30) + 1 : 0,
-    comment: i % 5 === 0 ? '已电话联系，承诺下周支付' : undefined,
-  }));
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const areaList = await analyticsAPI.getAreas().catch(() => mockAreas);
-        setAreas(areaList as string[]);
+        const districts = new Set<string>();
+        const params = dateRange
+          ? {
+              start_month: dateRange[0].format('YYYY-MM'),
+              end_month: dateRange[1].format('YYYY-MM'),
+              district: selectedArea || undefined,
+            }
+          : { district: selectedArea || undefined };
 
-        const params = {
-          startDate: dateRange?.[0].format('YYYY-MM-DD'),
-          endDate: dateRange?.[1].format('YYYY-MM-DD'),
-          area: selectedArea || undefined,
-          page,
-          pageSize,
-        };
-
-        const [water, complaint, payments] = await Promise.all([
-          Promise.resolve(mockWaterData),
-          Promise.resolve(mockComplaintData),
-          Promise.resolve({ list: mockPaymentRecords.slice((page - 1) * pageSize, page * pageSize), total: mockPaymentRecords.length }),
+        const [water, complaint] = await Promise.all([
+          analyticsAPI.getUtilityReadings(params).catch(() => []),
+          analyticsAPI.getComplaintTagTrend(params).catch(() => []),
         ]);
 
-        setWaterData(water as WaterElectricityData[]);
+        const waterList = water as WaterElectricityData[];
+        waterList.forEach(item => districts.add(item.district));
+        setAreas(Array.from(districts));
+        setWaterData(waterList);
         setComplaintData(complaint as ComplaintTagsData[]);
-        setPaymentRecords(payments.list);
-        setTotal(payments.total);
       } catch (error) {
         console.error('Failed to fetch analytics data:', error);
+        setAreas(mockAreas);
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, [dateRange, selectedArea, page, pageSize]);
+  }, [dateRange, selectedArea]);
 
   const handleAddComment = (record: PaymentRecord) => {
-    if (!record.isOverdue) {
-      message.info('该记录未逾期，无需添加注释');
-      return;
-    }
     setSelectedRecord(record);
     setCommentModalOpen(true);
   };
 
-  const handleCommentSuccess = () => {
-    message.success('备注已保存');
+  const handleSaveComment = async (comment: string) => {
+    if (!selectedRecord) return;
+    try {
+      await paymentAPI.addComment(selectedRecord.id as unknown as number, comment);
+      message.success('注释保存成功');
+      setCommentModalOpen(false);
+    } catch (error) {
+      message.error('注释保存失败');
+    }
   };
 
   const columns = [
@@ -114,7 +84,7 @@ const Analytics: React.FC = () => {
       width: 140,
     },
     {
-      title: '支付人',
+      title: '付款人',
       dataIndex: 'payer',
       key: 'payer',
       width: 100,
@@ -125,14 +95,20 @@ const Analytics: React.FC = () => {
       key: 'amount',
       width: 120,
       render: (value: number) => formatMoney(value),
-      sorter: (a: PaymentRecord, b: PaymentRecord) => a.amount - b.amount,
     },
     {
-      title: '支付日期',
+      title: '日期',
       dataIndex: 'date',
       key: 'date',
       width: 120,
       render: (value: string) => formatDate(value),
+    },
+    {
+      title: '状态',
+      dataIndex: 'status',
+      key: 'status',
+      width: 100,
+      render: (value: string) => <StatusBadge status={value} />,
     },
     {
       title: '类型',
@@ -147,129 +123,129 @@ const Analytics: React.FC = () => {
       width: 80,
     },
     {
-      title: '状态',
-      dataIndex: 'status',
-      key: 'status',
-      width: 100,
-      render: (value: string, record: PaymentRecord) => (
-        <StatusBadge status={value} text={record.isOverdue ? '已逾期' : undefined} />
-      ),
-    },
-    {
       title: '逾期天数',
       dataIndex: 'overdueDays',
       key: 'overdueDays',
       width: 100,
-      render: (value: number, record: PaymentRecord) =>
-        record.isOverdue ? <span style={{ color: '#ff4d4f' }}>{value} 天</span> : '-',
+      render: (value: number, record: PaymentRecord) => 
+        record.isOverdue ? <span style={{ color: '#f5222d' }}>{value}天</span> : '-',
     },
     {
-      title: '备注',
+      title: '注释',
       dataIndex: 'comment',
       key: 'comment',
+      width: 200,
       ellipsis: true,
-      render: (value: string) => value || '-',
     },
     {
       title: '操作',
       key: 'action',
       width: 100,
-      fixed: 'right' as const,
-      render: (_: unknown, record: PaymentRecord) => (
-        <Button
-          type="link"
-          size="small"
-          icon={<EditOutlined />}
-          onClick={() => handleAddComment(record)}
-          disabled={!record.isOverdue}
-        >
-          注释
-        </Button>
-      ),
+      render: (_: unknown, record: PaymentRecord) => 
+        record.isOverdue && (
+          <Button
+            type="link"
+            size="small"
+            icon={<EditOutlined />}
+            onClick={() => handleAddComment(record)}
+          >
+            注释
+          </Button>
+        ),
     },
   ];
+
+  if (loading && waterData.length === 0) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400 }}>
+        <Spin size="large" tip="加载中..." />
+      </div>
+    );
+  }
 
   return (
     <div>
       <Space style={{ marginBottom: 24 }} wrap>
         <DateRangePicker value={dateRange} onChange={setDateRange} />
-        {isAdmin() && (
-          <Select
-            style={{ width: 150 }}
-            placeholder="选择区域"
-            allowClear
-            value={selectedArea}
-            onChange={setSelectedArea}
-            options={areas.map((area) => ({ value: area, label: area }))}
-          />
-        )}
-        <Button icon={<ReloadOutlined />} onClick={() => setDateRange(null)}>
+        <Select
+          style={{ width: 150 }}
+          placeholder="选择区域"
+          allowClear
+          value={selectedArea}
+          onChange={setSelectedArea}
+          options={areas.map(a => ({ value: a, label: a }))}
+        />
+        <Button
+          icon={<ReloadOutlined />}
+          onClick={() => {
+            setDateRange(null);
+            setSelectedArea(null);
+          }}
+        >
           重置
         </Button>
       </Space>
 
-      {loading && !waterData.length ? (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400 }}>
-          <Spin size="large" tip="加载中..." />
+      {!isAdmin() && (
+        <div style={{ marginBottom: 24 }}>
+          <Space>
+            <div style={{ color: '#888', fontSize: 12 }}>
+              提示：租金逾期记录允许添加注释说明
+            </div>
+          </Space>
         </div>
-      ) : (
-        <>
-          <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-            <Col xs={24} lg={12}>
-              <Card title="水电读数分布分析" bordered={false} extra={<Select
-                defaultValue="bar"
-                style={{ width: 100 }}
-                options={[
-                  { value: 'bar', label: '柱状图' },
-                  { value: 'boxplot', label: '箱线图' },
-                ]}
-              />}>
-                <WaterElectricityChart data={waterData} chartType="bar" darkMode={darkMode} />
-              </Card>
-            </Col>
-            <Col xs={24} lg={12}>
-              <Card title="投诉标签趋势分析" bordered={false} extra={<Select
-                defaultValue="line"
-                style={{ width: 100 }}
-                options={[
-                  { value: 'line', label: '折线图' },
-                  { value: 'stacked', label: '堆叠图' },
-                ]}
-              />}>
-                <ComplaintTagsChart data={complaintData} chartType="line" darkMode={darkMode} />
-              </Card>
-            </Col>
-          </Row>
+      )}
 
-          <Card title="支付流水列表" bordered={false}>
-            <Table
-              columns={columns}
-              dataSource={paymentRecords}
-              rowKey="id"
-              loading={loading}
-              pagination={{
-                current: page,
-                pageSize,
-                total,
-                showSizeChanger: true,
-                showQuickJumper: true,
-                showTotal: (total) => `共 ${total} 条记录`,
-                onChange: (page, pageSize) => {
-                  setPage(page);
-                  setPageSize(pageSize);
-                },
-              }}
-              scroll={{ x: 1200 }}
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        <Col xs={24} lg={12}>
+          <Card title="水电读数分布" bordered={false}>
+            <WaterElectricityChart
+              data={waterData}
+              chartType="bar"
+              darkMode={darkMode}
             />
           </Card>
-        </>
-      )}
+        </Col>
+        <Col xs={24} lg={12}>
+          <Card title="投诉标签变化" bordered={false}>
+            <ComplaintTagsChart
+              data={complaintData}
+              chartType="line"
+              darkMode={darkMode}
+            />
+          </Card>
+        </Col>
+      </Row>
+
+      <Card
+        title="支付流水（租金逾期可加注释）"
+        bordered={false}
+        extra={
+          <span style={{ color: '#888', fontSize: 12 }}>
+            共 {paymentRecords.length} 条记录
+          </span>
+        }
+      >
+        <Table
+          columns={columns}
+          dataSource={paymentRecords}
+          rowKey="id"
+          loading={loading}
+          pagination={{
+            pageSize: 10,
+            showSizeChanger: true,
+            showQuickJumper: true,
+            showTotal: (total) => `共 ${total} 条记录`,
+          }}
+          scroll={{ x: 1200 }}
+        />
+      </Card>
 
       <CommentModal
         open={commentModalOpen}
         record={selectedRecord}
         onCancel={() => setCommentModalOpen(false)}
-        onSuccess={handleCommentSuccess}
+        onSuccess={() => setCommentModalOpen(false)}
       />
     </div>
   );

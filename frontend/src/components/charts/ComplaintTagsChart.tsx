@@ -15,33 +15,35 @@ const ComplaintTagsChart: React.FC<ComplaintTagsChartProps> = ({
   height = 400,
   darkMode = false,
 }) => {
-  const dates = data.map((item) => item.date);
-  const tags = ['noise', 'hygiene', 'facilities', 'safety', 'other'] as const;
-  const tagNames: Record<string, string> = {
-    noise: '噪音',
-    hygiene: '卫生',
-    facilities: '设施',
-    safety: '安全',
-    other: '其他',
-  };
+  const months = Array.from(new Set(data.map((item) => item.month))).sort();
+  const tags = Array.from(new Set(data.map((item) => item.tag)));
+
   const tagColors: Record<string, string> = {
-    noise: '#f5222d',
-    hygiene: '#faad14',
-    facilities: '#1677ff',
-    safety: '#52c41a',
-    other: '#722ed1',
+    '响应慢': '#f5222d',
+    '态度差': '#faad14',
+    '设施': '#1677ff',
+    '保洁': '#52c41a',
+    '噪音': '#722ed1',
+    '施工': '#13c2c2',
+    '邻里': '#eb2f96',
+    '异味': '#fa8c16',
+    '安全': '#a0d911',
+    '其他': '#8c8c8c',
   };
 
   const textColor = darkMode ? '#ccc' : '#333';
   const backgroundColor = darkMode ? '#141414' : '#fff';
 
   const series = tags.map((tag) => ({
-    name: tagNames[tag],
+    name: tag,
     type: chartType === 'stacked' ? ('bar' as const) : ('line' as const),
     stack: chartType === 'stacked' ? 'complaint' : undefined,
     smooth: chartType !== 'stacked',
-    data: data.map((item) => item[tag]),
-    itemStyle: { color: tagColors[tag] },
+    data: months.map((month) => {
+      const item = data.find((d) => d.month === month && d.tag === tag);
+      return item?.count || 0;
+    }),
+    itemStyle: { color: tagColors[tag] || '#8c8c8c' },
     areaStyle: chartType === 'line' ? { opacity: 0.1 } : undefined,
   }));
 
@@ -54,7 +56,7 @@ const ComplaintTagsChart: React.FC<ComplaintTagsChartProps> = ({
       },
     },
     legend: {
-      data: tags.map((tag) => tagNames[tag]),
+      data: tags,
       textStyle: { color: textColor },
       top: 0,
     },
@@ -67,7 +69,7 @@ const ComplaintTagsChart: React.FC<ComplaintTagsChartProps> = ({
     xAxis: {
       type: 'category',
       boundaryGap: chartType === 'stacked',
-      data: dates,
+      data: months,
       axisLabel: { color: textColor, rotate: 45 },
       axisLine: { lineStyle: { color: textColor } },
     },

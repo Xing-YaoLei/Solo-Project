@@ -1,85 +1,56 @@
 import request from '../utils/request';
 import {
-  KPIData,
   WaterElectricityData,
   InspectionFunnelData,
   PaymentRankingData,
   ComplaintTagsData,
   RepairDurationData,
-  DateRange,
-  AreaFilter,
   PaymentRecord,
   CaliberVersion,
   ImportBatch,
   RepairOrder,
 } from '../types';
 
-export const dashboardAPI = {
-  getKPI: (params?: DateRange & AreaFilter) =>
-    request.get<unknown, KPIData>('/dashboard/kpi', { params }),
-
-  getWaterElectricity: (params?: DateRange & AreaFilter) =>
-    request.get<unknown, WaterElectricityData[]>('/dashboard/water-electricity', { params }),
-
-  getInspectionFunnel: (params?: DateRange & AreaFilter) =>
-    request.get<unknown, InspectionFunnelData[]>('/dashboard/inspection-funnel', { params }),
-
-  getPaymentRanking: (params?: DateRange & AreaFilter) =>
-    request.get<unknown, PaymentRankingData[]>('/dashboard/payment-ranking', { params }),
-
-  getComplaintTags: (params?: DateRange & AreaFilter) =>
-    request.get<unknown, ComplaintTagsData[]>('/dashboard/complaint-tags', { params }),
-};
-
 export const analyticsAPI = {
-  getOverview: (params?: DateRange & AreaFilter) =>
-    request.get<unknown, { kpi: KPIData; charts: unknown }>('/analytics/overview', { params }),
+  syncData: (tables?: string[]) =>
+    request.post('/analytics/sync', { tables }) as Promise<{ message: string }>,
 
-  getPaymentRecords: (params?: DateRange & AreaFilter & { page?: number; pageSize?: number }) =>
-    request.get<unknown, { list: PaymentRecord[]; total: number }>('/analytics/payments', { params }),
+  getUtilityReadings: (params?: { start_month?: string; end_month?: string; district?: string }) =>
+    request.get('/analytics/utility-readings', { params }) as Promise<WaterElectricityData[]>,
 
-  getAreas: () => request.get<unknown, string[]>('/analytics/areas'),
+  getInspectionFunnel: () =>
+    request.get('/analytics/inspection-funnel') as Promise<InspectionFunnelData[]>,
+
+  getPaymentRanking: (params?: { period?: string; dimension?: string; limit?: number; start_month?: string; end_month?: string }) =>
+    request.get('/analytics/payment-ranking', { params }) as Promise<PaymentRankingData[]>,
+
+  getComplaintTagTrend: (params?: { start_month?: string; end_month?: string }) =>
+    request.get('/analytics/complaint-tag-trend', { params }) as Promise<ComplaintTagsData[]>,
+
+  getRepairDuration: () =>
+    request.get('/analytics/repair-duration') as Promise<RepairDurationData[]>,
 };
 
 export const repairAPI = {
-  getDurationTrend: (params?: DateRange & AreaFilter & { caliberVersion?: string }) =>
-    request.get<unknown, RepairDurationData[]>('/repair/duration-trend', { params }),
-
-  getOrders: (params?: DateRange & AreaFilter & { page?: number; pageSize?: number; workerId?: string }) =>
-    request.get<unknown, { list: RepairOrder[]; total: number }>('/repair/orders', { params }),
-
   getCaliberVersions: () =>
-    request.get<unknown, CaliberVersion[]>('/repair/caliber-versions'),
+    request.get('/repair/caliber-versions') as Promise<CaliberVersion[]>,
+
+  getOrders: (params?: { page?: number; page_size?: number; status?: string; worker_id?: number }) =>
+    request.get('/repair/orders', { params }) as Promise<{ items: RepairOrder[]; total: number; page: number; page_size: number }>,
+
+  getOrder: (id: number) =>
+    request.get(`/repair/orders/${id}`) as Promise<RepairOrder>,
 };
 
 export const dataImportAPI = {
-  getBatches: (params?: { page?: number; pageSize?: number }) =>
-    request.get<unknown, { list: ImportBatch[]; total: number }>('/import/batches', { params }),
-
-  uploadFile: (file: File, type: string) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('type', type);
-    return request.post<unknown, ImportBatch>('/import/upload', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-  },
-};
-
-export const caliberAPI = {
-  getVersions: (params?: { page?: number; pageSize?: number }) =>
-    request.get<unknown, { list: CaliberVersion[]; total: number }>('/caliber/versions', { params }),
-
-  getVersionDetail: (id: string) =>
-    request.get<unknown, CaliberVersion>(`/caliber/versions/${id}`),
+  getBatches: (params?: { page?: number; page_size?: number }) =>
+    request.get('/import/batches', { params }) as Promise<{ items: ImportBatch[]; total: number; page: number; page_size: number }>,
 };
 
 export const paymentAPI = {
-  addComment: (id: string, comment: string) =>
-    request.post<unknown, PaymentRecord>(`/payments/${id}/comment`, { comment }),
+  addComment: (id: number, comment: string) =>
+    request.post(`/payments/${id}/comment`, { comment }) as Promise<PaymentRecord>,
 
-  getPaymentDetail: (id: string) =>
-    request.get<unknown, PaymentRecord>(`/payments/${id}`),
+  getPaymentDetail: (id: number) =>
+    request.get(`/payments/${id}`) as Promise<PaymentRecord>,
 };

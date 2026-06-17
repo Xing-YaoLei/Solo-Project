@@ -8,6 +8,13 @@ interface InspectionFunnelChartProps {
   darkMode?: boolean;
 }
 
+const stageLabels: Record<string, string> = {
+  applied: '已申请',
+  assigned: '已分配',
+  inspected: '已验房',
+  completed: '已完成',
+};
+
 const InspectionFunnelChart: React.FC<InspectionFunnelChartProps> = ({
   data,
   height = 400,
@@ -17,15 +24,24 @@ const InspectionFunnelChart: React.FC<InspectionFunnelChartProps> = ({
   const textColor = darkMode ? '#ccc' : '#333';
   const backgroundColor = darkMode ? '#141414' : '#fff';
 
+  const chartData = data.map((item) => ({
+    name: stageLabels[item.stage] || item.stage,
+    value: item.count,
+    conversionRate: item.conversion_rate,
+  }));
+
   const option = {
     backgroundColor,
     tooltip: {
       trigger: 'item',
-      formatter: '{b}: {c} ({d}%)',
+      formatter: (params: { name: string; value: number; data: { conversionRate?: number } }) => {
+        const rate = params.data.conversionRate !== undefined ? ` (转化率 ${params.data.conversionRate}%)` : '';
+        return `${params.name}: ${params.value}${rate}`;
+      },
     },
     legend: {
       top: 0,
-      data: data.map((item) => item.name),
+      data: chartData.map((item) => item.name),
       textStyle: { color: textColor },
     },
     series: [
@@ -37,7 +53,7 @@ const InspectionFunnelChart: React.FC<InspectionFunnelChartProps> = ({
         bottom: 60,
         width: '80%',
         min: 0,
-        max: Math.max(...data.map((item) => item.value)),
+        max: Math.max(...data.map((item) => item.count)),
         minSize: '0%',
         maxSize: '100%',
         sort: 'descending',
@@ -65,7 +81,7 @@ const InspectionFunnelChart: React.FC<InspectionFunnelChartProps> = ({
             fontSize: 14,
           },
         },
-        data: data.map((item, index) => ({
+        data: chartData.map((item, index) => ({
           ...item,
           itemStyle: { color: colors[index % colors.length] },
         })),

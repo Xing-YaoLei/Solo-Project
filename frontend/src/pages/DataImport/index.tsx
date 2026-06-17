@@ -19,15 +19,17 @@ const DataImport: React.FC = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
 
   const mockBatches: ImportBatch[] = Array.from({ length: 25 }, (_, i) => ({
-    id: `BATCH${String(i + 1).padStart(6, '0')}`,
-    name: ['支付数据', '水电数据', '维修数据', '验房数据'][i % 4] + `_20240${Math.floor(i / 6) + 1}`,
-    type: ['payment', 'utility', 'repair', 'inspection'][i % 4],
-    totalCount: Math.floor(Math.random() * 500) + 50,
-    successCount: Math.floor(Math.random() * 450) + 40,
-    failCount: Math.floor(Math.random() * 50),
+    id: i + 1,
+    batch_no: `BATCH${String(i + 1).padStart(6, '0')}`,
+    import_type: ['payment', 'utility', 'repair', 'inspection'][i % 4] as ImportBatch['import_type'],
+    file_name: ['支付数据', '水电数据', '维修数据', '验房数据'][i % 4] + `_20240${Math.floor(i / 6) + 1}.xlsx`,
+    total_count: Math.floor(Math.random() * 500) + 50,
+    success_count: Math.floor(Math.random() * 450) + 40,
+    failed_count: Math.floor(Math.random() * 50),
     status: (['pending', 'processing', 'success', 'failed'] as const)[i % 4],
-    createTime: `2024-0${Math.floor(i / 5) + 1}-${(i % 28) + 1} ${String(Math.floor(Math.random() * 24)).padStart(2, '0')}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')}:00`,
-    creator: ['admin', 'worker1', 'worker2'][i % 3],
+    created_at: `2024-0${Math.floor(i / 5) + 1}-${(i % 28) + 1} ${String(Math.floor(Math.random() * 24)).padStart(2, '0')}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')}:00`,
+    imported_by: i % 3 + 1,
+    completed_at: i % 4 !== 1 ? `2024-0${Math.floor(i / 5) + 1}-${(i % 28) + 1} ${String(Math.floor(Math.random() * 24)).padStart(2, '0')}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')}:00` : undefined,
   }));
 
   const importTypes = [
@@ -41,11 +43,13 @@ const DataImport: React.FC = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const data = await dataImportAPI.getBatches({ page, pageSize }).catch(() => ({
-          list: mockBatches.slice((page - 1) * pageSize, page * pageSize),
+        const data = await dataImportAPI.getBatches({ page, page_size: pageSize }).catch(() => ({
+          items: mockBatches.slice((page - 1) * pageSize, page * pageSize),
           total: mockBatches.length,
+          page,
+          page_size: pageSize,
         }));
-        setBatches(data.list);
+        setBatches(data.items);
         setTotal(data.total);
       } catch (error) {
         console.error('Failed to fetch import batches:', error);
@@ -83,7 +87,7 @@ const DataImport: React.FC = () => {
         });
       }, 200);
 
-      const result = await dataImportAPI.uploadFile(file, importType);
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
       clearInterval(progressInterval);
       setUploadProgress(100);
@@ -113,20 +117,20 @@ const DataImport: React.FC = () => {
   const columns = [
     {
       title: '批次号',
-      dataIndex: 'id',
-      key: 'id',
+      dataIndex: 'batch_no',
+      key: 'batch_no',
       width: 140,
     },
     {
-      title: '批次名称',
-      dataIndex: 'name',
-      key: 'name',
+      title: '文件名',
+      dataIndex: 'file_name',
+      key: 'file_name',
       width: 200,
     },
     {
       title: '类型',
-      dataIndex: 'type',
-      key: 'type',
+      dataIndex: 'import_type',
+      key: 'import_type',
       width: 100,
       render: (value: string) => {
         const typeMap: Record<string, { label: string; color: string }> = {
@@ -141,22 +145,22 @@ const DataImport: React.FC = () => {
     },
     {
       title: '总数',
-      dataIndex: 'totalCount',
-      key: 'totalCount',
+      dataIndex: 'total_count',
+      key: 'total_count',
       width: 80,
       render: (value: number) => formatNumber(value),
     },
     {
       title: '成功',
-      dataIndex: 'successCount',
-      key: 'successCount',
+      dataIndex: 'success_count',
+      key: 'success_count',
       width: 80,
       render: (value: number) => <span style={{ color: '#52c41a' }}>{formatNumber(value)}</span>,
     },
     {
       title: '失败',
-      dataIndex: 'failCount',
-      key: 'failCount',
+      dataIndex: 'failed_count',
+      key: 'failed_count',
       width: 80,
       render: (value: number) => value > 0 ? <span style={{ color: '#f5222d' }}>{formatNumber(value)}</span> : '-',
     },
@@ -164,10 +168,10 @@ const DataImport: React.FC = () => {
       title: '状态',
       dataIndex: 'status',
       key: 'status',
-      width: 100,
+      width: 120,
       render: (value: string, record: ImportBatch) => {
         if (value === 'processing') {
-          const progress = Math.round((record.successCount / record.totalCount) * 100);
+          const progress = Math.round((record.success_count / record.total_count) * 100);
           return (
             <Space direction="vertical" style={{ width: '100%' }}>
               <Progress percent={progress} size="small" />
@@ -185,16 +189,17 @@ const DataImport: React.FC = () => {
     },
     {
       title: '创建时间',
-      dataIndex: 'createTime',
-      key: 'createTime',
+      dataIndex: 'created_at',
+      key: 'created_at',
       width: 160,
       render: (value: string) => formatDateTime(value),
     },
     {
-      title: '创建人',
-      dataIndex: 'creator',
-      key: 'creator',
-      width: 100,
+      title: '完成时间',
+      dataIndex: 'completed_at',
+      key: 'completed_at',
+      width: 160,
+      render: (value: string) => value ? formatDateTime(value) : '-',
     },
   ];
 

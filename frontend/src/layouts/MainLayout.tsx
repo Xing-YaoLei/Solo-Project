@@ -73,7 +73,7 @@ const MainLayout: React.FC = () => {
       key: '1',
       label: (
         <div style={{ padding: '8px 12px' }}>
-          <div style={{ fontWeight: 500 }}>{user?.name}</div>
+          <div style={{ fontWeight: 500 }}>{user?.full_name}</div>
           <div style={{ fontSize: 12, color: '#888' }}>
             {user?.role === 'admin' ? '管理员' : '工作人员'}
           </div>
@@ -186,14 +186,14 @@ const MainLayout: React.FC = () => {
                   (e.currentTarget as HTMLElement).style.background = 'transparent';
                 }}
               >
-                <Avatar size={32} icon={<UserOutlined />} src={user?.avatar} />
+                <Avatar size={32} icon={<UserOutlined />} src={user?.avatar_url} />
                 <span
                   style={{
                     marginLeft: 8,
                     color: darkMode ? '#fff' : '#333',
                   }}
                 >
-                  {user?.name}
+                  {user?.full_name}
                 </span>
               </div>
             </Dropdown>
