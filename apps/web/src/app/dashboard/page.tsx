@@ -44,7 +44,7 @@ export default function DashboardPage() {
       try {
         const [dashboard, overdue, tasks] = await Promise.all([
           reportsApi.getDashboard({ viewRole }),
-          tasksApi.getOverdueTasks(),
+          tasksApi.getOverdueTasks({ viewRole }),
           tasksApi.getTasks({ pageSize: 5, viewRole }),
         ])
         setStats(dashboard)

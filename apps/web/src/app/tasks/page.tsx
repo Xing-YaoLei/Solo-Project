@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
+import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import {
   ListTodo,
@@ -25,7 +26,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { tasksApi, propertiesApi, usersApi, maintenanceApi, utilitiesApi } from '@/lib/api'
+import { tasksApi, propertiesApi, usersApi, maintenanceApi, utilitiesApi, tenantsApi, contractsApi, financeApi } from '@/lib/api'
 import { formatDate, getStatusColor, getStatusLabel, formatDateTime } from '@/lib/utils'
 import { useTaskStore, useAppStore } from '@/stores'
 
@@ -37,11 +38,23 @@ const taskPools = [
   { key: 'completed', label: '已完成', icon: ListTodo },
 ]
 
-export default function TasksPage() {
+export default function TasksPageWrapper() {
+  return (
+    <Suspense fallback={<div className="flex h-full items-center justify-center"><div className="text-muted-foreground">加载中...</div></div>}>
+      <TasksPage />
+    </Suspense>
+  )
+}
+
+function TasksPage() {
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const pathname = usePathname()
   const [tasks, setTasks] = useState<any[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
-  const [activePool, setActivePool] = useState('all')
+  const initialPool = searchParams.get('pool') || 'all'
+  const [activePool, setActivePool] = useState(initialPool)
   const [stats, setStats] = useState<any>(null)
   const [users, setUsers] = useState<any[]>([])
   const { filters, setFilters, selectedTaskId, setSelectedTask } = useTaskStore()
@@ -49,6 +62,11 @@ export default function TasksPage() {
   const [page, setPage] = useState(1)
   const [pageSize] = useState(20)
   const [keyword, setKeyword] = useState('')
+
+  useEffect(() => {
+    const pool = searchParams.get('pool') || 'all'
+    setActivePool(pool)
+  }, [searchParams])
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -168,6 +186,13 @@ export default function TasksPage() {
                 onClick={() => {
                   setActivePool(pool.key)
                   setPage(1)
+                  const params = new URLSearchParams(searchParams.toString())
+                  if (pool.key === 'all') {
+                    params.delete('pool')
+                  } else {
+                    params.set('pool', pool.key)
+                  }
+                  router.push(`${pathname}?${params.toString()}`)
                 }}
                 className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium border-b-2 transition-colors ${
                   isActive
@@ -463,20 +488,35 @@ function TaskDetail({ taskId, onUpdate }: { taskId: string; onUpdate: () => void
               <TabsTrigger value="photos">房源照片</TabsTrigger>
               <TabsTrigger value="tenant">租客档案</TabsTrigger>
               <TabsTrigger value="contract">合同版本</TabsTrigger>
+              <TabsTrigger value="maintenance">维修工单</TabsTrigger>
+              <TabsTrigger value="utilities">水电读数</TabsTrigger>
+              <TabsTrigger value="finance">财务记录</TabsTrigger>
               <TabsTrigger value="materials">补充材料</TabsTrigger>
               <TabsTrigger value="comments">处理记录</TabsTrigger>
             </TabsList>
 
             <TabsContent value="photos">
-              <PropertyPhotos task={task} />
+              <PropertyPhotos task={task} onUpdate={() => { fetchTask(); onUpdate() }} />
             </TabsContent>
 
             <TabsContent value="tenant">
-              <TenantProfile task={task} />
+              <TenantProfile task={task} onUpdate={() => { fetchTask(); onUpdate() }} />
             </TabsContent>
 
             <TabsContent value="contract">
-              <ContractVersions task={task} />
+              <ContractVersions task={task} onUpdate={() => { fetchTask(); onUpdate() }} />
+            </TabsContent>
+
+            <TabsContent value="maintenance">
+              <MaintenanceWorkOrders task={task} onUpdate={() => { fetchTask(); onUpdate() }} />
+            </TabsContent>
+
+            <TabsContent value="utilities">
+              <UtilityReadingsTab task={task} onUpdate={() => { fetchTask(); onUpdate() }} />
+            </TabsContent>
+
+            <TabsContent value="finance">
+              <FinanceRecordsTab task={task} onUpdate={() => { fetchTask(); onUpdate() }} />
             </TabsContent>
 
             <TabsContent value="materials">
@@ -494,7 +534,7 @@ function TaskDetail({ taskId, onUpdate }: { taskId: string; onUpdate: () => void
 
         {/* 侧边配置 */}
         <div className="w-72 border-l bg-background p-4 space-y-6 overflow-auto">
-          <TaskSidebar task={task} onUpdate={() => { fetchTask(); onUpdate() }} />
+          <TaskSidebar task={task} onUpdate={() => { fetchTask(); onUpdate() }} onSwitchTab={(tab) => setActiveTab(tab)} />
         </div>
       </div>
 
@@ -682,8 +722,47 @@ function TaskActions({ task, onUpdate }: { task: any; onUpdate: () => void }) {
   )
 }
 
-function PropertyPhotos({ task }: { task: any }) {
+function PropertyPhotos({ task, onUpdate }: { task: any; onUpdate?: () => void }) {
   const photos = task.property?.photos || []
+  const [showUpload, setShowUpload] = useState(false)
+  const [newPhoto, setNewPhoto] = useState({ url: '', title: '', sortOrder: 0 })
+  const [submitting, setSubmitting] = useState(false)
+
+  const handleUpload = async () => {
+    if (!newPhoto.url || !task.propertyId) return
+    setSubmitting(true)
+    try {
+      await propertiesApi.uploadPhoto(task.propertyId, newPhoto)
+      setShowUpload(false)
+      setNewPhoto({ url: '', title: '', sortOrder: 0 })
+      onUpdate?.()
+    } catch (e) {
+      console.error(e)
+      alert('上传失败')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleDelete = async (photoId: string) => {
+    if (!confirm('确定删除该照片？')) return
+    try {
+      await propertiesApi.deletePhoto(photoId)
+      onUpdate?.()
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  const handleSetCover = async (photoId: string) => {
+    if (!task.propertyId) return
+    try {
+      await propertiesApi.setCoverPhoto(task.propertyId, photoId)
+      onUpdate?.()
+    } catch (e) {
+      console.error(e)
+    }
+  }
 
   if (photos.length === 0) {
     return (
@@ -697,11 +776,37 @@ function PropertyPhotos({ task }: { task: any }) {
     <div>
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-medium">房源照片 ({photos.length}张)</h3>
-        <Button size="sm" variant="outline">
+        <Button size="sm" variant="outline" onClick={() => setShowUpload(true)}>
           <Plus className="mr-2 h-4 w-4" />
           上传照片
         </Button>
       </div>
+
+      {showUpload && (
+        <Card className="mb-4">
+          <CardContent className="pt-4 space-y-3">
+            <Input
+              placeholder="照片标题"
+              value={newPhoto.title}
+              onChange={(e) => setNewPhoto({ ...newPhoto, title: e.target.value })}
+            />
+            <Input
+              placeholder="照片URL"
+              value={newPhoto.url}
+              onChange={(e) => setNewPhoto({ ...newPhoto, url: e.target.value })}
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => setShowUpload(false)}>
+                取消
+              </Button>
+              <Button size="sm" onClick={handleUpload} disabled={submitting || !newPhoto.url}>
+                {submitting ? '上传中...' : '确认上传'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid grid-cols-3 gap-4">
         {photos.map((photo: any) => (
           <div
@@ -714,8 +819,8 @@ function PropertyPhotos({ task }: { task: any }) {
               className="w-full h-32 object-cover"
             />
             <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-              <Button size="sm" variant="secondary">查看</Button>
-              <Button size="sm" variant="secondary">删除</Button>
+              <Button size="sm" variant="secondary" onClick={() => handleSetCover(photo.id)}>设封面</Button>
+              <Button size="sm" variant="destructive" onClick={() => handleDelete(photo.id)}>删除</Button>
             </div>
             {photo.title && (
               <p className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs p-2">
@@ -734,8 +839,40 @@ function PropertyPhotos({ task }: { task: any }) {
   )
 }
 
-function TenantProfile({ task }: { task: any }) {
+function TenantProfile({ task, onUpdate }: { task: any; onUpdate?: () => void }) {
   const tenant = task.tenant
+  const [editing, setEditing] = useState(false)
+  const [form, setForm] = useState<any>({})
+  const [submitting, setSubmitting] = useState(false)
+
+  const startEdit = () => {
+    setForm({
+      name: tenant?.name || '',
+      phone: tenant?.phone || '',
+      idCardNo: tenant?.idCardNo || '',
+      gender: tenant?.gender || '',
+      occupation: tenant?.occupation || '',
+      company: tenant?.company || '',
+      emergencyContact: tenant?.emergencyContact || '',
+      emergencyPhone: tenant?.emergencyPhone || '',
+    })
+    setEditing(true)
+  }
+
+  const handleSave = async () => {
+    if (!tenant?.id) return
+    setSubmitting(true)
+    try {
+      await tenantsApi.updateTenant(tenant.id, form)
+      setEditing(false)
+      onUpdate?.()
+    } catch (e) {
+      console.error(e)
+      alert('保存失败')
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   if (!tenant) {
     return (
@@ -749,7 +886,16 @@ function TenantProfile({ task }: { task: any }) {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h3 className="font-medium">租客档案</h3>
-        <Button size="sm" variant="outline">编辑信息</Button>
+        {!editing ? (
+          <Button size="sm" variant="outline" onClick={startEdit} disabled={!tenant}>编辑信息</Button>
+        ) : (
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => setEditing(false)}>取消</Button>
+            <Button size="sm" onClick={handleSave} disabled={submitting}>
+              {submitting ? '保存中...' : '保存'}
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-6">
@@ -758,30 +904,27 @@ function TenantProfile({ task }: { task: any }) {
             <CardTitle className="text-base">基本信息</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">姓名</span>
-              <span>{tenant.name}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">手机号</span>
-              <span>{tenant.phone}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">身份证号</span>
-              <span>{tenant.idCardNo || '未填写'}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">性别</span>
-              <span>{tenant.gender || '未填写'}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">职业</span>
-              <span>{tenant.occupation || '未填写'}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">公司</span>
-              <span>{tenant.company || '未填写'}</span>
-            </div>
+            {[
+              { key: 'name', label: '姓名' },
+              { key: 'phone', label: '手机号' },
+              { key: 'idCardNo', label: '身份证号' },
+              { key: 'gender', label: '性别' },
+              { key: 'occupation', label: '职业' },
+              { key: 'company', label: '公司' },
+            ].map(({ key, label }) => (
+              <div key={key} className="flex justify-between items-center">
+                <span className="text-muted-foreground">{label}</span>
+                {editing ? (
+                  <Input
+                    className="w-2/3 h-8 text-sm"
+                    value={form[key] || ''}
+                    onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+                  />
+                ) : (
+                  <span>{(tenant as any)?.[key] || '未填写'}</span>
+                )}
+              </div>
+            ))}
           </CardContent>
         </Card>
 
@@ -790,14 +933,23 @@ function TenantProfile({ task }: { task: any }) {
             <CardTitle className="text-base">紧急联系人</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">联系人</span>
-              <span>{tenant.emergencyContact || '未填写'}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">联系电话</span>
-              <span>{tenant.emergencyPhone || '未填写'}</span>
-            </div>
+            {[
+              { key: 'emergencyContact', label: '联系人' },
+              { key: 'emergencyPhone', label: '联系电话' },
+            ].map(({ key, label }) => (
+              <div key={key} className="flex justify-between items-center">
+                <span className="text-muted-foreground">{label}</span>
+                {editing ? (
+                  <Input
+                    className="w-2/3 h-8 text-sm"
+                    value={form[key] || ''}
+                    onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+                  />
+                ) : (
+                  <span>{(tenant as any)?.[key] || '未填写'}</span>
+                )}
+              </div>
+            ))}
           </CardContent>
         </Card>
 
@@ -827,8 +979,27 @@ function TenantProfile({ task }: { task: any }) {
   )
 }
 
-function ContractVersions({ task }: { task: any }) {
+function ContractVersions({ task, onUpdate }: { task: any; onUpdate?: () => void }) {
   const contract = task.contract
+  const [showNew, setShowNew] = useState(false)
+  const [form, setForm] = useState<any>({ versionNote: '', monthlyRent: 0, deposit: 0 })
+  const [submitting, setSubmitting] = useState(false)
+
+  const handleCreateVersion = async () => {
+    if (!contract?.id) return
+    setSubmitting(true)
+    try {
+      await contractsApi.createVersion(contract.id, form)
+      setShowNew(false)
+      setForm({ versionNote: '', monthlyRent: 0, deposit: 0 })
+      onUpdate?.()
+    } catch (e) {
+      console.error(e)
+      alert('创建版本失败')
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   if (!contract) {
     return (
@@ -847,11 +1018,53 @@ function ContractVersions({ task }: { task: any }) {
             合同编号：{contract.contractNo} · 当前版本：v{contract.version}
           </p>
         </div>
-        <Button size="sm">
+        <Button size="sm" onClick={() => setShowNew(true)}>
           <Plus className="mr-2 h-4 w-4" />
           新建版本
         </Button>
       </div>
+
+      {showNew && (
+        <Card className="mb-6">
+          <CardContent className="pt-4 space-y-3">
+            <div>
+              <label className="text-sm font-medium">版本说明</label>
+              <Input
+                className="mt-1"
+                placeholder="请输入版本变更说明..."
+                value={form.versionNote}
+                onChange={(e) => setForm({ ...form, versionNote: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium">月租金</label>
+                <Input
+                  className="mt-1"
+                  type="number"
+                  value={form.monthlyRent}
+                  onChange={(e) => setForm({ ...form, monthlyRent: Number(e.target.value) })}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">押金</label>
+                <Input
+                  className="mt-1"
+                  type="number"
+                  value={form.deposit}
+                  onChange={(e) => setForm({ ...form, deposit: Number(e.target.value) })}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => setShowNew(false)}>取消</Button>
+              <Button size="sm" onClick={handleCreateVersion} disabled={submitting}>
+                {submitting ? '创建中...' : '确认创建'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="space-y-4">
         {/* 当前版本 */}
@@ -1028,6 +1241,668 @@ function TaskMaterials({ task, onUpdate }: { task: any; onUpdate: () => void }) 
   )
 }
 
+function MaintenanceWorkOrders({ task, onUpdate }: { task: any; onUpdate?: () => void }) {
+  const [records, setRecords] = useState<any[]>([])
+  const [workOrders, setWorkOrders] = useState<any[]>([])
+  const [workers, setWorkers] = useState<any[]>([])
+  const [showCreate, setShowCreate] = useState(false)
+  const [form, setForm] = useState<any>({
+    description: '',
+    workerId: '',
+    priority: 'MEDIUM',
+    recordId: '',
+  })
+  const [submitting, setSubmitting] = useState(false)
+  const [showNewRecord, setShowNewRecord] = useState(false)
+  const [newRecordForm, setNewRecordForm] = useState<any>({ type: '水电', description: '', cost: 0 })
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        if (task.propertyId) {
+          const recordsResult: any = await maintenanceApi.getRecords({ propertyId: task.propertyId, pageSize: 20 })
+          setRecords(recordsResult.list || recordsResult || [])
+        }
+        const workersResult: any = await usersApi.getUsersByRole('MAINTENANCE_WORKER')
+        setWorkers(Array.isArray(workersResult) ? workersResult : workersResult.list || [])
+      } catch (e) {
+        console.error(e)
+      }
+    }
+    fetchData()
+  }, [task.propertyId])
+
+  useEffect(() => {
+    if (records.length > 0 && task.propertyId) {
+      const fetchWorkOrders = async () => {
+        try {
+          const all: any[] = []
+          for (const r of records) {
+            const wo: any = await maintenanceApi.getWorkOrders({ recordId: r.id, pageSize: 20 })
+            all.push(...(wo.list || wo || []))
+          }
+          setWorkOrders(all)
+        } catch (e) {
+          console.error(e)
+        }
+      }
+      fetchWorkOrders()
+    }
+  }, [records, task.propertyId])
+
+  const handleCreateRecord = async () => {
+    if (!task.propertyId) return
+    setSubmitting(true)
+    try {
+      await maintenanceApi.createRecord({
+        ...newRecordForm,
+        propertyId: task.propertyId,
+        status: 'OPEN',
+      })
+      setShowNewRecord(false)
+      setNewRecordForm({ type: '水电', description: '', cost: 0 })
+      const recordsResult: any = await maintenanceApi.getRecords({ propertyId: task.propertyId, pageSize: 20 })
+      setRecords(recordsResult.list || recordsResult || [])
+      onUpdate?.()
+    } catch (e) {
+      console.error(e)
+      alert('创建维修记录失败')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleCreateWorkOrder = async () => {
+    if (!form.recordId || !form.workerId) return
+    setSubmitting(true)
+    try {
+      await maintenanceApi.createWorkOrder(form.recordId, {
+        description: form.description,
+        priority: form.priority,
+        workerId: form.workerId,
+      })
+      setShowCreate(false)
+      setForm({ description: '', workerId: '', priority: 'MEDIUM', recordId: '' })
+      onUpdate?.()
+      if (task.propertyId) {
+        const all: any[] = []
+        for (const r of records) {
+          const wo: any = await maintenanceApi.getWorkOrders({ recordId: r.id, pageSize: 20 })
+          all.push(...(wo.list || wo || []))
+        }
+        setWorkOrders(all)
+      }
+    } catch (e) {
+      console.error(e)
+      alert('创建工单失败')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleCompleteWorkOrder = async (id: string) => {
+    const solution = prompt('请输入维修解决方案：')
+    if (!solution) return
+    const costStr = prompt('维修费用（元）：', '0')
+    const cost = costStr ? Number(costStr) : 0
+    try {
+      await maintenanceApi.completeWorkOrder(id, solution, cost)
+      onUpdate?.()
+      if (task.propertyId) {
+        const all: any[] = []
+        for (const r of records) {
+          const wo: any = await maintenanceApi.getWorkOrders({ recordId: r.id, pageSize: 20 })
+          all.push(...(wo.list || wo || []))
+        }
+        setWorkOrders(all)
+      }
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-medium">维修工单 ({workOrders.length})</h3>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => setShowNewRecord(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            新建维修记录
+          </Button>
+          <Button size="sm" onClick={() => setShowCreate(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            创建工单
+          </Button>
+        </div>
+      </div>
+
+      {showNewRecord && (
+        <Card className="mb-4">
+          <CardContent className="pt-4 space-y-3">
+            <div>
+              <label className="text-sm font-medium">维修类型</label>
+              <select
+                className="mt-1 w-full rounded-md border border-input p-2 text-sm"
+                value={newRecordForm.type}
+                onChange={(e) => setNewRecordForm({ ...newRecordForm, type: e.target.value })}
+              >
+                <option value="水电">水电</option>
+                <option value="家具">家具</option>
+                <option value="家电">家电</option>
+                <option value="装修">装修</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-medium">问题描述</label>
+              <textarea
+                className="mt-1 w-full rounded-md border border-input p-2 text-sm"
+                rows={3}
+                value={newRecordForm.description}
+                onChange={(e) => setNewRecordForm({ ...newRecordForm, description: e.target.value })}
+                placeholder="请输入问题描述..."
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">预估费用（元）</label>
+              <Input
+                className="mt-1"
+                type="number"
+                value={newRecordForm.cost}
+                onChange={(e) => setNewRecordForm({ ...newRecordForm, cost: Number(e.target.value) })}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => setShowNewRecord(false)}>取消</Button>
+              <Button size="sm" onClick={handleCreateRecord} disabled={submitting}>
+                {submitting ? '创建中...' : '确认创建'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {showCreate && (
+        <Card className="mb-4">
+          <CardContent className="pt-4 space-y-3">
+            <div>
+              <label className="text-sm font-medium">关联维修记录</label>
+              <select
+                className="mt-1 w-full rounded-md border border-input p-2 text-sm"
+                value={form.recordId}
+                onChange={(e) => setForm({ ...form, recordId: e.target.value })}
+              >
+                <option value="">请选择</option>
+                {records.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.type} - {r.description?.substring(0, 20)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-medium">分派给</label>
+              <select
+                className="mt-1 w-full rounded-md border border-input p-2 text-sm"
+                value={form.workerId}
+                onChange={(e) => setForm({ ...form, workerId: e.target.value })}
+              >
+                <option value="">请选择</option>
+                {workers.map((w) => (
+                  <option key={w.id} value={w.id}>{w.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-medium">优先级</label>
+              <select
+                className="mt-1 w-full rounded-md border border-input p-2 text-sm"
+                value={form.priority}
+                onChange={(e) => setForm({ ...form, priority: e.target.value })}
+              >
+                <option value="LOW">低</option>
+                <option value="MEDIUM">中</option>
+                <option value="HIGH">高</option>
+                <option value="URGENT">紧急</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-medium">问题描述</label>
+              <textarea
+                className="mt-1 w-full rounded-md border border-input p-2 text-sm"
+                rows={3}
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                placeholder="请输入工单描述..."
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => setShowCreate(false)}>取消</Button>
+              <Button size="sm" onClick={handleCreateWorkOrder} disabled={submitting || !form.recordId || !form.workerId}>
+                {submitting ? '创建中...' : '确认创建'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {workOrders.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground">暂无维修工单</div>
+      ) : (
+        <div className="space-y-3">
+          {workOrders.map((wo: any) => (
+            <div key={wo.id} className="p-4 rounded-lg border bg-background">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                      wo.status === 'COMPLETED' ? 'bg-green-100 text-green-600' :
+                      wo.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-600' :
+                      'bg-yellow-100 text-yellow-600'
+                    }`}>
+                      {wo.status === 'COMPLETED' ? '已完成' : wo.status === 'IN_PROGRESS' ? '处理中' : '待处理'}
+                    </span>
+                    <span className={`px-2 py-0.5 rounded text-xs ${
+                      wo.priority === 'URGENT' ? 'bg-red-100 text-red-600' :
+                      wo.priority === 'HIGH' ? 'bg-orange-100 text-orange-600' :
+                      wo.priority === 'MEDIUM' ? 'bg-blue-100 text-blue-600' :
+                      'bg-gray-100 text-gray-600'
+                    }`}>
+                      {wo.priority === 'URGENT' ? '紧急' : wo.priority === 'HIGH' ? '高' : wo.priority === 'MEDIUM' ? '中' : '低'}
+                    </span>
+                  </div>
+                  <p className="font-medium mt-2 text-sm">{wo.description || '维修工单'}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    维修员：{wo.worker?.name || '未分派'} · 创建：{formatDate(wo.createdAt)}
+                  </p>
+                  {wo.solution && (
+                    <p className="text-xs mt-2 bg-muted/50 p-2 rounded">
+                      解决方案：{wo.solution}
+                    </p>
+                  )}
+                  {wo.cost != null && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      费用：¥{wo.cost}
+                    </p>
+                  )}
+                </div>
+                {wo.status !== 'COMPLETED' && (
+                  <Button size="sm" onClick={() => handleCompleteWorkOrder(wo.id)}>
+                    完成
+                  </Button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function UtilityReadingsTab({ task, onUpdate }: { task: any; onUpdate?: () => void }) {
+  const [readings, setReadings] = useState<any[]>([])
+  const [showCreate, setShowCreate] = useState(false)
+  const [form, setForm] = useState<any>({
+    type: 'ELECTRIC',
+    reading: 0,
+    previousReading: 0,
+    readingDate: new Date().toISOString().split('T')[0],
+  })
+  const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        if (task.propertyId) {
+          const result: any = await utilitiesApi.getPropertyReadings(task.propertyId, { pageSize: 50 })
+          setReadings(result.list || result || [])
+        }
+      } catch (e) {
+        console.error(e)
+      }
+    }
+    fetchData()
+  }, [task.propertyId])
+
+  const handleCreate = async () => {
+    if (!task.propertyId || !form.reading) return
+    setSubmitting(true)
+    try {
+      const usage = Math.max(0, form.reading - form.previousReading)
+      await utilitiesApi.createReading({
+        ...form,
+        propertyId: task.propertyId,
+        usage,
+      })
+      setShowCreate(false)
+      setForm({ type: 'ELECTRIC', reading: 0, previousReading: 0, readingDate: new Date().toISOString().split('T')[0] })
+      const result: any = await utilitiesApi.getPropertyReadings(task.propertyId, { pageSize: 50 })
+      setReadings(result.list || result || [])
+      onUpdate?.()
+    } catch (e) {
+      console.error(e)
+      alert('录入失败')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-medium">水电读数 ({readings.length})</h3>
+        <Button size="sm" onClick={() => setShowCreate(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          录入读数
+        </Button>
+      </div>
+
+      {showCreate && (
+        <Card className="mb-4">
+          <CardContent className="pt-4 space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium">类型</label>
+                <select
+                  className="mt-1 w-full rounded-md border border-input p-2 text-sm"
+                  value={form.type}
+                  onChange={(e) => setForm({ ...form, type: e.target.value })}
+                >
+                  <option value="ELECTRIC">电表</option>
+                  <option value="WATER">水表</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium">抄表日期</label>
+                <Input
+                  className="mt-1"
+                  type="date"
+                  value={form.readingDate}
+                  onChange={(e) => setForm({ ...form, readingDate: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium">上次读数</label>
+                <Input
+                  className="mt-1"
+                  type="number"
+                  value={form.previousReading}
+                  onChange={(e) => setForm({ ...form, previousReading: Number(e.target.value) })}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">本次读数</label>
+                <Input
+                  className="mt-1"
+                  type="number"
+                  value={form.reading}
+                  onChange={(e) => setForm({ ...form, reading: Number(e.target.value) })}
+                />
+              </div>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              预计用量：{Math.max(0, form.reading - form.previousReading)} {form.type === 'ELECTRIC' ? '度' : '吨'}
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => setShowCreate(false)}>取消</Button>
+              <Button size="sm" onClick={handleCreate} disabled={submitting || !form.reading}>
+                {submitting ? '录入中...' : '确认录入'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {readings.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground">暂无水电读数</div>
+      ) : (
+        <div className="grid grid-cols-2 gap-3">
+          {readings.map((r: any) => (
+            <div key={r.id} className="p-4 rounded-lg border bg-background">
+              <div className="flex items-center justify-between">
+                <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                  r.type === 'ELECTRIC' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'
+                }`}>
+                  {r.type === 'ELECTRIC' ? '电表' : '水表'}
+                </span>
+                <span className="text-xs text-muted-foreground">{formatDate(r.readingDate)}</span>
+              </div>
+              <p className="text-2xl font-bold mt-2">
+                {r.reading}
+                <span className="text-sm font-normal text-muted-foreground ml-1">
+                  {r.type === 'ELECTRIC' ? '度' : '吨'}
+                </span>
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                用量：{r.usage} · 上次：{r.previousReading}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function FinanceRecordsTab({ task, onUpdate }: { task: any; onUpdate?: () => void }) {
+  const [records, setRecords] = useState<any[]>([])
+  const [showCreate, setShowCreate] = useState(false)
+  const [form, setForm] = useState<any>({
+    type: 'RENT',
+    direction: 'INCOME',
+    amount: 0,
+    status: 'PENDING',
+    dueDate: new Date().toISOString().split('T')[0],
+    remark: '',
+  })
+  const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        if (task.propertyId) {
+          const params: any = { propertyId: task.propertyId, pageSize: 50 }
+          if (task.tenantId) params.tenantId = task.tenantId
+          if (task.contractId) params.contractId = task.contractId
+          const result: any = await financeApi.getRecords(params)
+          setRecords(result.list || result || [])
+        }
+      } catch (e) {
+        console.error(e)
+      }
+    }
+    fetchData()
+  }, [task.propertyId, task.tenantId, task.contractId])
+
+  const handleCreate = async () => {
+    if (!task.propertyId || !form.amount) return
+    setSubmitting(true)
+    try {
+      const recordNo = `FIN${Date.now()}`
+      const data: any = {
+        ...form,
+        recordNo,
+        propertyId: task.propertyId,
+      }
+      if (task.tenantId) data.tenantId = task.tenantId
+      if (task.contractId) data.contractId = task.contractId
+      await financeApi.createRecord(data)
+      setShowCreate(false)
+      setForm({ type: 'RENT', direction: 'INCOME', amount: 0, status: 'PENDING', dueDate: new Date().toISOString().split('T')[0], remark: '' })
+      const params: any = { propertyId: task.propertyId, pageSize: 50 }
+      if (task.tenantId) params.tenantId = task.tenantId
+      if (task.contractId) params.contractId = task.contractId
+      const result: any = await financeApi.getRecords(params)
+      setRecords(result.list || result || [])
+      onUpdate?.()
+    } catch (e) {
+      console.error(e)
+      alert('生成失败')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleMarkPaid = async (id: string) => {
+    try {
+      await financeApi.markPaid(id)
+      onUpdate?.()
+      const params: any = { propertyId: task.propertyId, pageSize: 50 }
+      if (task.tenantId) params.tenantId = task.tenantId
+      if (task.contractId) params.contractId = task.contractId
+      const result: any = await financeApi.getRecords(params)
+      setRecords(result.list || result || [])
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  const typeLabels: Record<string, string> = {
+    RENT: '租金',
+    MAINTENANCE_FEE: '维修费',
+    UTILITY_FEE: '水电费',
+    DEPOSIT: '押金',
+    OTHER: '其他',
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-medium">财务记录 ({records.length})</h3>
+        <Button size="sm" onClick={() => setShowCreate(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          生成记录
+        </Button>
+      </div>
+
+      {showCreate && (
+        <Card className="mb-4">
+          <CardContent className="pt-4 space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium">类型</label>
+                <select
+                  className="mt-1 w-full rounded-md border border-input p-2 text-sm"
+                  value={form.type}
+                  onChange={(e) => setForm({ ...form, type: e.target.value })}
+                >
+                  <option value="RENT">租金</option>
+                  <option value="MAINTENANCE_FEE">维修费</option>
+                  <option value="UTILITY_FEE">水电费</option>
+                  <option value="DEPOSIT">押金</option>
+                  <option value="OTHER">其他</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium">方向</label>
+                <select
+                  className="mt-1 w-full rounded-md border border-input p-2 text-sm"
+                  value={form.direction}
+                  onChange={(e) => setForm({ ...form, direction: e.target.value })}
+                >
+                  <option value="INCOME">收入</option>
+                  <option value="EXPENSE">支出</option>
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium">金额（元）</label>
+                <Input
+                  className="mt-1"
+                  type="number"
+                  value={form.amount}
+                  onChange={(e) => setForm({ ...form, amount: Number(e.target.value) })}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">状态</label>
+                <select
+                  className="mt-1 w-full rounded-md border border-input p-2 text-sm"
+                  value={form.status}
+                  onChange={(e) => setForm({ ...form, status: e.target.value })}
+                >
+                  <option value="PENDING">待收款</option>
+                  <option value="PAID">已收款</option>
+                  <option value="OVERDUE">逾期</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium">应收/应付日期</label>
+              <Input
+                className="mt-1"
+                type="date"
+                value={form.dueDate}
+                onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">备注</label>
+              <Input
+                className="mt-1"
+                value={form.remark}
+                onChange={(e) => setForm({ ...form, remark: e.target.value })}
+                placeholder="请输入备注..."
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => setShowCreate(false)}>取消</Button>
+              <Button size="sm" onClick={handleCreate} disabled={submitting || !form.amount}>
+                {submitting ? '生成中...' : '确认生成'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {records.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground">暂无财务记录</div>
+      ) : (
+        <div className="space-y-3">
+          {records.map((r: any) => (
+            <div key={r.id} className="p-4 rounded-lg border bg-background flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                    r.direction === 'INCOME' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
+                  }`}>
+                    {r.direction === 'INCOME' ? '收入' : '支出'}
+                  </span>
+                  <span className="text-xs text-muted-foreground">{r.recordNo}</span>
+                </div>
+                <p className="text-lg font-bold mt-1">
+                  {r.direction === 'INCOME' ? '+' : '-'}¥{r.amount}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {typeLabels[r.type] || r.type} · {r.remark || ''} · 截止：{formatDate(r.dueDate)}
+                </p>
+              </div>
+              <div className="text-right">
+                <span className={`px-2 py-1 rounded text-xs font-medium ${
+                  r.status === 'PAID' ? 'bg-green-100 text-green-600' :
+                  r.status === 'OVERDUE' ? 'bg-red-100 text-red-600' :
+                  'bg-yellow-100 text-yellow-600'
+                }`}>
+                  {r.status === 'PAID' ? '已收款' : r.status === 'OVERDUE' ? '逾期' : '待收款'}
+                </span>
+                {r.status !== 'PAID' && r.direction === 'INCOME' && (
+                  <Button size="sm" variant="outline" className="mt-2" onClick={() => handleMarkPaid(r.id)}>
+                    标记已收
+                  </Button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function TaskComments({ task }: { task: any }) {
   const comments = task.comments || []
 
@@ -1061,7 +1936,7 @@ function TaskComments({ task }: { task: any }) {
   )
 }
 
-function TaskSidebar({ task, onUpdate }: { task: any; onUpdate: () => void }) {
+function TaskSidebar({ task, onUpdate, onSwitchTab }: { task: any; onUpdate: () => void; onSwitchTab?: (tab: string) => void }) {
   const [maintenanceRecords, setMaintenanceRecords] = useState<any[]>([])
   const [utilityReadings, setUtilityReadings] = useState<any[]>([])
 
@@ -1128,15 +2003,15 @@ function TaskSidebar({ task, onUpdate }: { task: any; onUpdate: () => void }) {
       <div>
         <h3 className="font-medium text-sm mb-3">快速操作</h3>
         <div className="space-y-2">
-          <Button size="sm" variant="outline" className="w-full justify-start">
+          <Button size="sm" variant="outline" className="w-full justify-start" onClick={() => onSwitchTab?.('maintenance')}>
             <Plus className="mr-2 h-4 w-4" />
             创建维修工单
           </Button>
-          <Button size="sm" variant="outline" className="w-full justify-start">
+          <Button size="sm" variant="outline" className="w-full justify-start" onClick={() => onSwitchTab?.('utilities')}>
             <Plus className="mr-2 h-4 w-4" />
             录入水电读数
           </Button>
-          <Button size="sm" variant="outline" className="w-full justify-start">
+          <Button size="sm" variant="outline" className="w-full justify-start" onClick={() => onSwitchTab?.('finance')}>
             <Plus className="mr-2 h-4 w-4" />
             生成财务记录
           </Button>

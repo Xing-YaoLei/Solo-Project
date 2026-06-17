@@ -25,10 +25,12 @@ export class ReportsService {
     if (district) propertyWhere.district = district
     if (managerId) propertyWhere.managerId = managerId
 
-    if (userRole && userId) {
+    if (userRole) {
       switch (userRole) {
         case UserRole.PROPERTY_MANAGER:
-          propertyWhere.managerId = userId
+          if (userId) {
+            propertyWhere.managerId = userId
+          }
           break
         case UserRole.TENANT:
         case UserRole.MAINTENANCE_WORKER:
@@ -131,29 +133,38 @@ export class ReportsService {
     if (startDate) where.createdAt = { ...where.createdAt, gte: new Date(startDate) }
     if (endDate) where.createdAt = { ...where.createdAt, lte: new Date(endDate) }
 
-    if (userRole && userId) {
+    if (userRole) {
       switch (userRole) {
         case UserRole.TENANT:
-          where.tenant = { userId }
+          if (userId) {
+            where.tenant = { userId }
+          }
           break
         case UserRole.MAINTENANCE_WORKER:
-          where.assigneeId = userId
           where.type = TaskType.MAINTENANCE
+          if (userId) {
+            where.assigneeId = userId
+          }
           break
         case UserRole.FINANCE:
           where.type = { in: [TaskType.RENT_OVERDUE, TaskType.CONTRACT_REVIEW] }
           break
         case UserRole.FRONTLINE:
-          where.assigneeId = userId
           where.type = { in: [TaskType.PROPERTY_LISTING, TaskType.UTILITY_READING, TaskType.MAINTENANCE] }
+          if (userId) {
+            where.assigneeId = userId
+          }
           break
         case UserRole.PROPERTY_MANAGER:
-          where.OR = [
-            { creatorId: userId },
-            { property: { managerId: userId } },
-          ]
+          if (userId) {
+            where.OR = [
+              { creatorId: userId },
+              { property: { managerId: userId } },
+            ]
+          }
           break
         case UserRole.ADMIN:
+        default:
           break
       }
     }
@@ -246,13 +257,17 @@ export class ReportsService {
     if (startDate) where.paidAt = { ...where.paidAt, gte: new Date(startDate) }
     if (endDate) where.paidAt = { ...where.paidAt, lte: new Date(endDate) }
 
-    if (userRole && userId) {
+    if (userRole) {
       switch (userRole) {
         case UserRole.TENANT:
-          where.tenant = { userId }
+          if (userId) {
+            where.tenant = { userId }
+          }
           break
         case UserRole.PROPERTY_MANAGER:
-          where.property = { managerId: userId }
+          if (userId) {
+            where.property = { managerId: userId }
+          }
           break
         case UserRole.MAINTENANCE_WORKER:
         case UserRole.FRONTLINE:
@@ -275,13 +290,17 @@ export class ReportsService {
     if (startDate) expenseWhere.paidAt = { ...expenseWhere.paidAt, gte: new Date(startDate) }
     if (endDate) expenseWhere.paidAt = { ...expenseWhere.paidAt, lte: new Date(endDate) }
 
-    if (userRole && userId) {
+    if (userRole) {
       switch (userRole) {
         case UserRole.TENANT:
-          expenseWhere.tenant = { userId }
+          if (userId) {
+            expenseWhere.tenant = { userId }
+          }
           break
         case UserRole.PROPERTY_MANAGER:
-          expenseWhere.property = { managerId: userId }
+          if (userId) {
+            expenseWhere.property = { managerId: userId }
+          }
           break
         case UserRole.MAINTENANCE_WORKER:
         case UserRole.FRONTLINE:
@@ -339,13 +358,17 @@ export class ReportsService {
     if (startDate) where.createdAt = { ...where.createdAt, gte: new Date(startDate) }
     if (endDate) where.createdAt = { ...where.createdAt, lte: new Date(endDate) }
 
-    if (userRole && userId) {
+    if (userRole) {
       switch (userRole) {
         case UserRole.MAINTENANCE_WORKER:
-          where.workerId = userId
+          if (userId) {
+            where.workerId = userId
+          }
           break
         case UserRole.PROPERTY_MANAGER:
-          where.record = { property: { managerId: userId } }
+          if (userId) {
+            where.record = { property: { managerId: userId } }
+          }
           break
         case UserRole.TENANT:
         case UserRole.FINANCE:
@@ -418,19 +441,23 @@ export class ReportsService {
     const tenantWhere: any = {}
     const financeWhere: any = { direction: 'INCOME', status: 'PAID' }
 
-    if (userRole && userId) {
+    if (userRole) {
       switch (userRole) {
         case UserRole.PROPERTY_MANAGER:
-          propertyWhere.managerId = userId
-          taskWhere.OR = [
-            { creatorId: userId },
-            { property: { managerId: userId } },
-          ]
-          financeWhere.property = { managerId: userId }
+          if (userId) {
+            propertyWhere.managerId = userId
+            taskWhere.OR = [
+              { creatorId: userId },
+              { property: { managerId: userId } },
+            ]
+            financeWhere.property = { managerId: userId }
+          }
           break
         case UserRole.MAINTENANCE_WORKER:
-          taskWhere.assigneeId = userId
           taskWhere.type = TaskType.MAINTENANCE
+          if (userId) {
+            taskWhere.assigneeId = userId
+          }
           propertyWhere.id = 'no-access'
           tenantWhere.id = 'no-access'
           break
@@ -440,17 +467,21 @@ export class ReportsService {
           tenantWhere.id = 'no-access'
           break
         case UserRole.FRONTLINE:
-          taskWhere.assigneeId = userId
           taskWhere.type = { in: [TaskType.PROPERTY_LISTING, TaskType.UTILITY_READING, TaskType.MAINTENANCE] }
+          if (userId) {
+            taskWhere.assigneeId = userId
+          }
           propertyWhere.id = 'no-access'
           tenantWhere.id = 'no-access'
           financeWhere.id = 'no-access'
           break
         case UserRole.TENANT:
-          taskWhere.tenant = { userId }
-          tenantWhere.userId = userId
+          if (userId) {
+            taskWhere.tenant = { userId }
+            tenantWhere.userId = userId
+            financeWhere.tenant = { userId }
+          }
           propertyWhere.id = 'no-access'
-          financeWhere.tenant = { userId }
           break
         case UserRole.ADMIN:
         default:

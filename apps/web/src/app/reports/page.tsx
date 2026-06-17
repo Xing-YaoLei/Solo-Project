@@ -45,21 +45,31 @@ export default function ReportsPage() {
   const [revenueData, setRevenueData] = useState<any>(null)
   const [maintenanceData, setMaintenanceData] = useState<any>(null)
   const [managers, setManagers] = useState<any[]>([])
+  const [workers, setWorkers] = useState<any[]>([])
+  const [assignees, setAssignees] = useState<any[]>([])
   const [selectedManager, setSelectedManager] = useState('')
+  const [selectedWorker, setSelectedWorker] = useState('')
+  const [selectedAssignee, setSelectedAssignee] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const { viewRole } = useAppStore()
 
   useEffect(() => {
-    const fetchManagers = async () => {
+    const fetchUsers = async () => {
       try {
-        const result: any = await usersApi.getUsersByRole('PROPERTY_MANAGER')
-        setManagers(result || [])
+        const [mgrResult, workerResult, allResult]: any[] = await Promise.all([
+          usersApi.getUsersByRole('PROPERTY_MANAGER'),
+          usersApi.getUsersByRole('MAINTENANCE_WORKER'),
+          usersApi.getUsers({ pageSize: 100 }),
+        ])
+        setManagers(Array.isArray(mgrResult) ? mgrResult : mgrResult.list || [])
+        setWorkers(Array.isArray(workerResult) ? workerResult : workerResult.list || [])
+        setAssignees(allResult.list || allResult || [])
       } catch (e) {
         console.error(e)
       }
     }
-    fetchManagers()
+    fetchUsers()
   }, [])
 
   useEffect(() => {
@@ -72,7 +82,7 @@ export default function ReportsPage() {
     } else if (activeTab === 'maintenance') {
       fetchMaintenanceData()
     }
-  }, [activeTab, period, selectedManager, startDate, endDate, viewRole])
+  }, [activeTab, period, selectedManager, selectedWorker, selectedAssignee, startDate, endDate, viewRole])
 
   const fetchOccupancyData = async () => {
     try {
@@ -95,6 +105,7 @@ export default function ReportsPage() {
         periodType: period,
         startDate: startDate || undefined,
         endDate: endDate || undefined,
+        assigneeId: selectedAssignee || undefined,
         viewRole,
       })
       setTaskData(data)
@@ -123,6 +134,7 @@ export default function ReportsPage() {
         periodType: period,
         startDate: startDate || undefined,
         endDate: endDate || undefined,
+        workerId: selectedWorker || undefined,
         viewRole,
       })
       setMaintenanceData(data)
@@ -176,7 +188,7 @@ export default function ReportsPage() {
             </div>
             {activeTab === 'occupancy' && (
               <div className="space-y-2">
-                <Label>负责人</Label>
+                <Label>负责人（管家）</Label>
                 <select
                   className="h-10 rounded-md border border-input bg-background px-3 text-sm"
                   value={selectedManager}
@@ -191,14 +203,62 @@ export default function ReportsPage() {
                 </select>
               </div>
             )}
-            <Button onClick={() => {
-              if (activeTab === 'occupancy') fetchOccupancyData()
-              else if (activeTab === 'tasks') fetchTaskData()
-              else if (activeTab === 'revenue') fetchRevenueData()
-              else if (activeTab === 'maintenance') fetchMaintenanceData()
-            }}>
+            {activeTab === 'tasks' && (
+              <div className="space-y-2">
+                <Label>负责人</Label>
+                <select
+                  className="h-10 rounded-md border border-input bg-background px-3 text-sm min-w-[160px]"
+                  value={selectedAssignee}
+                  onChange={(e) => setSelectedAssignee(e.target.value)}
+                >
+                  <option value="">全部</option>
+                  {assignees.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name} - {u.role}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {activeTab === 'maintenance' && (
+              <div className="space-y-2">
+                <Label>维修员</Label>
+                <select
+                  className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                  value={selectedWorker}
+                  onChange={(e) => setSelectedWorker(e.target.value)}
+                >
+                  <option value="">全部</option>
+                  {workers.map((w) => (
+                    <option key={w.id} value={w.id}>
+                      {w.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <Button
+              onClick={() => {
+                if (activeTab === 'occupancy') fetchOccupancyData()
+                else if (activeTab === 'tasks') fetchTaskData()
+                else if (activeTab === 'revenue') fetchRevenueData()
+                else if (activeTab === 'maintenance') fetchMaintenanceData()
+              }}
+            >
               <Filter className="mr-2 h-4 w-4" />
               筛选
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setStartDate('')
+                setEndDate('')
+                setSelectedManager('')
+                setSelectedWorker('')
+                setSelectedAssignee('')
+              }}
+            >
+              重置
             </Button>
           </div>
         </CardContent>

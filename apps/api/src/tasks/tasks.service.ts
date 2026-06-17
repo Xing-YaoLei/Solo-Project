@@ -72,31 +72,40 @@ export class TasksService {
       })
     }
 
-    if (userRole && userId) {
+    if (userRole) {
       switch (userRole) {
         case UserRole.TENANT:
-          andConditions.push({ tenant: { userId } })
+          if (userId) {
+            andConditions.push({ tenant: { userId } })
+          }
           break
         case UserRole.MAINTENANCE_WORKER:
-          andConditions.push({ assigneeId: userId })
           andConditions.push({ type: TaskType.MAINTENANCE })
+          if (userId) {
+            andConditions.push({ assigneeId: userId })
+          }
           break
         case UserRole.FINANCE:
           andConditions.push({ type: { in: [TaskType.RENT_OVERDUE, TaskType.CONTRACT_REVIEW] } })
           break
         case UserRole.FRONTLINE:
-          andConditions.push({ assigneeId: userId })
           andConditions.push({ type: { in: [TaskType.PROPERTY_LISTING, TaskType.UTILITY_READING, TaskType.MAINTENANCE] } })
+          if (userId) {
+            andConditions.push({ assigneeId: userId })
+          }
           break
         case UserRole.PROPERTY_MANAGER:
-          andConditions.push({
-            OR: [
-              { creatorId: userId },
-              { property: { managerId: userId } },
-            ],
-          })
+          if (userId) {
+            andConditions.push({
+              OR: [
+                { creatorId: userId },
+                { property: { managerId: userId } },
+              ],
+            })
+          }
           break
         case UserRole.ADMIN:
+        default:
           break
       }
     }
@@ -493,29 +502,37 @@ export class TasksService {
       },
     ]
 
-    if (userRole && userId) {
+    if (userRole) {
       switch (userRole) {
         case UserRole.TENANT:
-          andConditions.push({ tenant: { userId } })
+          if (userId) {
+            andConditions.push({ tenant: { userId } })
+          }
           break
         case UserRole.MAINTENANCE_WORKER:
-          andConditions.push({ assigneeId: userId })
           andConditions.push({ type: TaskType.MAINTENANCE })
+          if (userId) {
+            andConditions.push({ assigneeId: userId })
+          }
           break
         case UserRole.FINANCE:
           andConditions.push({ type: { in: [TaskType.RENT_OVERDUE, TaskType.CONTRACT_REVIEW] } })
           break
         case UserRole.FRONTLINE:
-          andConditions.push({ assigneeId: userId })
           andConditions.push({ type: { in: [TaskType.PROPERTY_LISTING, TaskType.UTILITY_READING, TaskType.MAINTENANCE] } })
+          if (userId) {
+            andConditions.push({ assigneeId: userId })
+          }
           break
         case UserRole.PROPERTY_MANAGER:
-          andConditions.push({
-            OR: [
-              { creatorId: userId },
-              { property: { managerId: userId } },
-            ],
-          })
+          if (userId) {
+            andConditions.push({
+              OR: [
+                { creatorId: userId },
+                { property: { managerId: userId } },
+              ],
+            })
+          }
           break
         case UserRole.ADMIN:
         default:
