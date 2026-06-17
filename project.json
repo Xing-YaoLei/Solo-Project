@@ -1,0 +1,32 @@
+{
+  "name": "property-repair-simulator",
+  "version": "1.0.0",
+  "type": "2d",
+  "creator": {
+    "version": "3.8.0"
+  },
+  "settings": {
+    "design-resolution": {
+      "width": 1920,
+      "height": 1080
+    },
+    "fit-width": true,
+    "fit-height": false,
+    "exact-fit-screen": true
+  },
+  "modules": [
+    "2d",
+    "audio",
+    "animation",
+    "gfx-webgl",
+    "gfx-webgl2",
+    "particle",
+    "physics-2d",
+    "ui",
+    "webview",
+    "video",
+    "tiled-map",
+    "spine",
+    "dragon-bones"
+  ]
+}

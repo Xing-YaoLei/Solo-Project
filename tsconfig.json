@@ -1,0 +1,35 @@
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "declaration": true,
+    "outDir": "./dist",
+    "rootDir": "./",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["assets/scripts/*"],
+      "@configs/*": ["configs/*"],
+      "@core/*": ["assets/scripts/core/*"],
+      "@game/*": ["assets/scripts/game/*"],
+      "@data/*": ["assets/scripts/data/*"],
+      "@ui/*": ["assets/scripts/ui/*"],
+      "@tutorial/*": ["assets/scripts/tutorial/*"]
+    }
+  },
+  "include": [
+    "assets/scripts/**/*.ts",
+    "configs/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "library"
+  ]
+}
