@@ -272,7 +272,7 @@ class MockDataGenerator:
             })
         return pl.DataFrame(data)
 
-    def populate_database(self, db, start_date: date, end_date: date):
+    def populate_database(self, db, start_date: date, end_date: date, storage=None):
         meter = self.generate_meter_readings(start_date, end_date)
         contracts = self.generate_e_contracts(start_date)
         crm = self.generate_crm_schedules(start_date, end_date)
@@ -287,6 +287,50 @@ class MockDataGenerator:
         db.insert_dataframe("attendance_records", attendance)
         db.insert_dataframe("alert_list", alerts)
 
+        versions = {}
+
+        minio_meter_path = ""
+        minio_contract_path = ""
+
+        if storage and storage.is_available():
+            try:
+                saved = storage.save_versioned_dataframe(meter, "meter_readings")
+                if saved:
+                    minio_meter_path = saved
+                saved = storage.save_versioned_dataframe(contracts, "e_contracts")
+                if saved:
+                    minio_contract_path = saved
+            except Exception:
+                pass
+
+        meter_version = db.save_version(
+            category="meter_readings",
+            df=meter.select([
+                "id", "apartment_id", "room_id", "reading_date",
+                "water_meter", "electric_meter", "gas_meter", "source"
+            ]),
+            description=f"自动生成抄表数据 - {start_date} 至 {end_date}",
+            effective_date=end_date,
+            storage_location=minio_meter_path,
+            storage_type="duckdb_archive" + ("+minio" if minio_meter_path else "")
+        )
+        versions["meter_readings"] = meter_version
+
+        contract_version = db.save_version(
+            category="e_contracts",
+            df=contracts.select([
+                "id", "contract_no", "apartment_id", "room_id",
+                "tenant_name", "start_date", "end_date",
+                "cleaning_frequency", "cleaning_weekday",
+                "cleaning_time_slot", "is_current"
+            ]),
+            description=f"自动生成电子合同数据 - 截至 {start_date}",
+            effective_date=start_date,
+            storage_location=minio_contract_path,
+            storage_type="duckdb_archive" + ("+minio" if minio_contract_path else "")
+        )
+        versions["e_contracts"] = contract_version
+
         return {
             "meter_readings": len(meter),
             "e_contracts": len(contracts),
@@ -294,4 +338,5 @@ class MockDataGenerator:
             "reschedule_records": len(reschedule),
             "attendance_records": len(attendance),
             "alert_list": len(alerts),
+            "versions": versions,
         }
