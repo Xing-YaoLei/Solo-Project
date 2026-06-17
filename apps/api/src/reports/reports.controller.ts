@@ -8,17 +8,18 @@ import { UserRole } from '@rental/db'
 export class ReportsController {
   constructor(private readonly reportsService: ReportsService) {}
 
-  private resolveRole(req: any, viewRole?: string): UserRole {
+  private resolveRole(req: any, viewRole?: string): { role: UserRole; isViewSwitch: boolean } {
     const jwtRole = req?.user?.role as UserRole
     if (jwtRole === UserRole.ADMIN && viewRole && Object.values(UserRole).includes(viewRole as UserRole)) {
-      return viewRole as UserRole
+      return { role: viewRole as UserRole, isViewSwitch: true }
     }
-    return jwtRole
+    return { role: jwtRole, isViewSwitch: false }
   }
 
   @Get('dashboard')
   async getDashboardSummary(@Req() req: any, @Query('viewRole') viewRole?: string) {
-    return this.reportsService.getDashboardSummary(req.user?.userId, this.resolveRole(req, viewRole))
+    const { role, isViewSwitch } = this.resolveRole(req, viewRole)
+    return this.reportsService.getDashboardSummary(isViewSwitch ? undefined : req.user?.userId, role)
   }
 
   @Post('dashboard/refresh')
@@ -36,14 +37,15 @@ export class ReportsController {
     @Query('viewRole') viewRole?: string,
     @Req() req?: any,
   ) {
+    const { role, isViewSwitch } = this.resolveRole(req, viewRole)
     return this.reportsService.getOccupancyReport({
       periodType,
       startDate,
       endDate,
       district,
       managerId,
-      userId: req?.user?.userId,
-      userRole: this.resolveRole(req, viewRole),
+      userId: isViewSwitch ? undefined : req?.user?.userId,
+      userRole: role,
     })
   }
 
@@ -57,14 +59,15 @@ export class ReportsController {
     @Query('viewRole') viewRole?: string,
     @Req() req?: any,
   ) {
+    const { role, isViewSwitch } = this.resolveRole(req, viewRole)
     return this.reportsService.getTaskReport({
       periodType,
       startDate,
       endDate,
       type,
       assigneeId,
-      userId: req?.user?.userId,
-      userRole: this.resolveRole(req, viewRole),
+      userId: isViewSwitch ? undefined : req?.user?.userId,
+      userRole: role,
     })
   }
 
@@ -78,14 +81,15 @@ export class ReportsController {
     @Query('viewRole') viewRole?: string,
     @Req() req?: any,
   ) {
+    const { role, isViewSwitch } = this.resolveRole(req, viewRole)
     return this.reportsService.getRevenueReport({
       periodType,
       startDate,
       endDate,
       propertyId,
       tenantId,
-      userId: req?.user?.userId,
-      userRole: this.resolveRole(req, viewRole),
+      userId: isViewSwitch ? undefined : req?.user?.userId,
+      userRole: role,
     })
   }
 
@@ -99,14 +103,15 @@ export class ReportsController {
     @Query('viewRole') viewRole?: string,
     @Req() req?: any,
   ) {
+    const { role, isViewSwitch } = this.resolveRole(req, viewRole)
     return this.reportsService.getMaintenanceReport({
       periodType,
       startDate,
       endDate,
       workerId,
       type,
-      userId: req?.user?.userId,
-      userRole: this.resolveRole(req, viewRole),
+      userId: isViewSwitch ? undefined : req?.user?.userId,
+      userRole: role,
     })
   }
 }

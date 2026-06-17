@@ -14,6 +14,7 @@ import {
   Building2,
   MoreHorizontal,
   ChevronRight,
+  Image as ImageIcon,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -54,6 +55,7 @@ function TasksPage() {
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const initialPool = searchParams.get('pool') || 'all'
+  const initialTaskId = searchParams.get('taskId')
   const [activePool, setActivePool] = useState(initialPool)
   const [stats, setStats] = useState<any>(null)
   const [users, setUsers] = useState<any[]>([])
@@ -66,7 +68,11 @@ function TasksPage() {
   useEffect(() => {
     const pool = searchParams.get('pool') || 'all'
     setActivePool(pool)
-  }, [searchParams])
+    const taskId = searchParams.get('taskId')
+    if (taskId) {
+      setSelectedTask(taskId)
+    }
+  }, [searchParams, setSelectedTask])
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -766,8 +772,44 @@ function PropertyPhotos({ task, onUpdate }: { task: any; onUpdate?: () => void }
 
   if (photos.length === 0) {
     return (
-      <div className="text-center py-12 text-muted-foreground">
-        暂无房源照片
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-medium">房源照片 (0张)</h3>
+          <Button size="sm" variant="outline" onClick={() => setShowUpload(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            上传首张照片
+          </Button>
+        </div>
+        <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
+          <ImageIcon className="mx-auto h-12 w-12 mb-2 opacity-50" />
+          <p>暂无房源照片</p>
+          <p className="text-sm mt-1">点击上方按钮上传首张照片</p>
+        </div>
+
+        {showUpload && (
+          <Card className="mt-4">
+            <CardContent className="pt-4 space-y-3">
+              <Input
+                placeholder="照片标题"
+                value={newPhoto.title}
+                onChange={(e) => setNewPhoto({ ...newPhoto, title: e.target.value })}
+              />
+              <Input
+                placeholder="照片URL"
+                value={newPhoto.url}
+                onChange={(e) => setNewPhoto({ ...newPhoto, url: e.target.value })}
+              />
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" size="sm" onClick={() => setShowUpload(false)}>
+                  取消
+                </Button>
+                <Button size="sm" onClick={handleUpload} disabled={submitting || !newPhoto.url}>
+                  {submitting ? '上传中...' : '确认上传'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     )
   }

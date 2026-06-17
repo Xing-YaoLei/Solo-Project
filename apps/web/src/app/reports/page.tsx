@@ -312,6 +312,7 @@ function OccupancyReport({ data }: { data: any }) {
   const summary = data.summary || {}
   const byDistrict = data.byDistrict || []
   const byManager = data.byManager || []
+  const trend = data.trend || []
 
   return (
     <div className="space-y-6">
@@ -348,6 +349,38 @@ function OccupancyReport({ data }: { data: any }) {
           </CardContent>
         </Card>
       </div>
+
+      {/* 入住趋势 */}
+      {trend.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">入住趋势</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={trend}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="period" />
+                  <YAxis yAxisId="left" />
+                  <YAxis yAxisId="right" orientation="right" />
+                  <Tooltip />
+                  <Legend />
+                  <Bar yAxisId="left" dataKey="newOccupancy" name="新增入住" fill="#10b981" />
+                  <Line
+                    yAxisId="right"
+                    type="monotone"
+                    dataKey="cumulativeOccupancy"
+                    name="累计入住"
+                    stroke="#3b82f6"
+                    strokeWidth={2}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* 按区域分布 */}

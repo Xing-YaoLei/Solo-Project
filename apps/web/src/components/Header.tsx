@@ -35,21 +35,21 @@ const roleViews = [
 
 export function Header() {
   const { user, logout } = useAuthStore()
-  const { currentView, setCurrentView } = useAppStore()
+  const { currentView, setCurrentView, viewRole } = useAppStore()
   const router = useRouter()
   const [overdueCount, setOverdueCount] = useState(0)
 
   useEffect(() => {
     const fetchOverdue = async () => {
       try {
-        const tasks = await tasksApi.getOverdueTasks()
+        const tasks = await tasksApi.getOverdueTasks({ viewRole })
         setOverdueCount(Array.isArray(tasks) ? tasks.length : 0)
       } catch (e) {
         console.error(e)
       }
     }
     fetchOverdue()
-  }, [])
+  }, [viewRole])
 
   const handleLogout = () => {
     logout()

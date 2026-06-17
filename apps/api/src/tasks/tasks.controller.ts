@@ -19,12 +19,12 @@ import { TaskStatus, TaskType, Priority, UserRole } from '@rental/db'
 export class TasksController {
   constructor(private readonly tasksService: TasksService) {}
 
-  private resolveRole(req: any, viewRole?: string): UserRole {
+  private resolveRole(req: any, viewRole?: string): { role: UserRole; isViewSwitch: boolean } {
     const jwtRole = req?.user?.role as UserRole
     if (jwtRole === UserRole.ADMIN && viewRole && Object.values(UserRole).includes(viewRole as UserRole)) {
-      return viewRole as UserRole
+      return { role: viewRole as UserRole, isViewSwitch: true }
     }
-    return jwtRole
+    return { role: jwtRole, isViewSwitch: false }
   }
 
   @Get()
@@ -43,6 +43,7 @@ export class TasksController {
     @Query('viewRole') viewRole?: string,
     @Req() req?: any,
   ) {
+    const { role, isViewSwitch } = this.resolveRole(req, viewRole)
     return this.tasksService.findAll({
       page: parseInt(page) || 1,
       pageSize: parseInt(pageSize) || 10,
@@ -55,8 +56,8 @@ export class TasksController {
       tenantId,
       keyword,
       pool,
-      userId: req?.user?.userId,
-      userRole: this.resolveRole(req, viewRole),
+      userId: isViewSwitch ? undefined : req?.user?.userId,
+      userRole: role,
     })
   }
 
@@ -87,7 +88,8 @@ export class TasksController {
 
   @Get('overdue')
   async getOverdueTasks(@Query('viewRole') viewRole?: string, @Req() req?: any) {
-    return this.tasksService.getOverdueTasks(req?.user?.userId, this.resolveRole(req, viewRole))
+    const { role, isViewSwitch } = this.resolveRole(req, viewRole)
+    return this.tasksService.getOverdueTasks(isViewSwitch ? undefined : req?.user?.userId, role)
   }
 
   @Get(':id')

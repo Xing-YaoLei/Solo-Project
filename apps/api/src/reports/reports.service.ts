@@ -103,6 +103,59 @@ export class ReportsService {
       })
     }
 
+    // 按日期趋势（基于合同开始日期的新增入住）
+    const contractWhere: any = { status: 'ACTIVE' }
+    if (startDate) {
+      contractWhere.startDate = { ...contractWhere.startDate, gte: new Date(startDate) }
+    }
+    if (endDate) {
+      contractWhere.startDate = { ...contractWhere.startDate, lte: new Date(endDate) }
+    }
+    const propertyFilter: any = {}
+    if (managerId) propertyFilter.managerId = managerId
+    if (district) propertyFilter.district = district
+    if (Object.keys(propertyFilter).length > 0) {
+      contractWhere.property = propertyFilter
+    }
+
+    const dateTrend: any[] = []
+    const contracts = await this.prisma.contract.findMany({
+      where: contractWhere,
+      select: { startDate: true, id: true, propertyId: true },
+      orderBy: { startDate: 'asc' },
+    })
+
+    if (contracts.length > 0) {
+      const grouped: Record<string, number> = {}
+      for (const contract of contracts) {
+        let key: string
+        const d = new Date(contract.startDate)
+        if (periodType === 'DAILY') {
+          key = d.toISOString().split('T')[0]
+        } else if (periodType === 'WEEKLY') {
+          const weekStart = new Date(d)
+          weekStart.setDate(d.getDate() - d.getDay())
+          key = weekStart.toISOString().split('T')[0]
+        } else if (periodType === 'YEARLY') {
+          key = d.getFullYear().toString()
+        } else {
+          key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+        }
+        grouped[key] = (grouped[key] || 0) + 1
+      }
+
+      const sortedKeys = Object.keys(grouped).sort()
+      let cumulative = 0
+      for (const key of sortedKeys.slice(-12)) {
+        cumulative += grouped[key]
+        dateTrend.push({
+          period: key,
+          newOccupancy: grouped[key],
+          cumulativeOccupancy: cumulative,
+        })
+      }
+    }
+
     return {
       summary: {
         total: totalProperties,
@@ -113,6 +166,7 @@ export class ReportsService {
       },
       byDistrict: districtStats,
       byManager: managerStats,
+      trend: dateTrend,
     }
   }
 

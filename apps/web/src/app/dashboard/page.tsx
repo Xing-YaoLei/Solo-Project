@@ -329,7 +329,7 @@ export default function DashboardPage() {
                       </div>
                     </div>
                     <Button variant="destructive" size="sm" asChild>
-                      <Link href={`/tasks/${task.id}`}>处理</Link>
+                      <Link href={`/tasks?pool=overdue&taskId=${task.id}`}>处理</Link>
                     </Button>
                   </div>
                 ))}
