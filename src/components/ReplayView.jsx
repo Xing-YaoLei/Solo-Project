@@ -133,12 +133,20 @@ export default function ReplayView() {
               
               const isPast = event.startTime <= replayTime
               
+              const errorLabels = {
+                misallocation: '器械错配',
+                timingConflict: '时间冲突',
+                riskMismatch: '风险不匹配',
+                overcapacity: '超负荷',
+              }
+              
               return (
                 <div 
                   key={idx} 
                   style={{
                     ...styles.eventItem,
                     ...(isPast ? styles.eventItemPast : styles.eventItemFuture),
+                    ...(!event.success ? { borderLeft: '3px solid #ff6b6b' } : {}),
                   }}
                   onClick={() => setReplayTime(event.startTime)}
                 >
@@ -152,7 +160,12 @@ export default function ReplayView() {
                     <span style={styles.eventText}>
                       {patient?.name || '未知'} → {equipment?.name || '未知'}
                     </span>
-                    {patient?.insuranceRisk && (
+                    {!event.success && event.errorType && (
+                      <span style={{ ...styles.insuranceTag, background: '#ff6b6b' }}>
+                        {errorLabels[event.errorType] || '错误'}
+                      </span>
+                    )}
+                    {event.success && patient?.insuranceRisk && (
                       <span style={styles.insuranceTag}>医保</span>
                     )}
                   </div>
@@ -265,6 +278,7 @@ export default function ReplayView() {
                   key={idx}
                   style={{
                     ...styles.eventMarker,
+                    backgroundColor: event.success ? '#6bcb77' : '#ff6b6b',
                     left: `${(event.startTime / replayData.timeLimit) * 100}%`,
                   }}
                   title={`${formatTime(event.startTime)} - ${event.success ? '成功' : '失败'}`}

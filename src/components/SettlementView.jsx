@@ -13,7 +13,6 @@ export default function SettlementView() {
     equipment,
     replayData,
     scheduledPatients,
-    statistics,
     goToMenu,
     startGame,
     goToReplay,
@@ -25,7 +24,12 @@ export default function SettlementView() {
   
   const isWin = gameResult === 'success'
   
-  const errorStats = statistics.equipmentErrorReasons
+  const errorStats = replayData?.gameErrorReasons || {
+    misallocation: 0,
+    timingConflict: 0,
+    riskMismatch: 0,
+    overcapacity: 0,
+  }
   const totalErrors = Object.values(errorStats).reduce((a, b) => a + b, 0)
   
   const errorDetails = [
@@ -122,7 +126,7 @@ export default function SettlementView() {
                   <div style={styles.summaryItem}>
                     <span style={styles.summaryItemLabel}>失败次数</span>
                     <span style={{ ...styles.summaryItemValue, color: '#ff6b6b' }}>
-                      {scheduledPatients.filter(s => s.result === 'fail').length}
+                      {scheduledPatients.filter(s => !s.success).length}
                     </span>
                   </div>
                 </div>

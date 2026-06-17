@@ -228,6 +228,8 @@ function ReplayEquipment({ equipment, currentTime }) {
 
 function ReplayPatient({ patient, currentTime }) {
   const groupRef = useRef()
+  const bodyMaterialRef = useRef()
+  const errorFlashRef = useRef(0)
   
   const patientType = Object.values(PATIENT_TYPES).find(t => t.id === patient.type)
   const requiredEq = Object.values(EQUIPMENT_TYPES).find(e => e.id === patient.requiredEquipment)
@@ -253,6 +255,22 @@ function ReplayPatient({ patient, currentTime }) {
     const speed = 3
     groupRef.current.position.x += (targetPos[0] - current.x) * speed * delta
     groupRef.current.position.z += (targetPos[2] - current.z) * speed * delta
+    
+    if (patient.isAttemptingWrong) {
+      errorFlashRef.current += delta * 8
+      if (bodyMaterialRef.current) {
+        const flashIntensity = (Math.sin(errorFlashRef.current) + 1) / 2
+        bodyMaterialRef.current.color.setStyle(`rgb(255, ${Math.floor(107 * flashIntensity)}, ${Math.floor(107 * flashIntensity)})`)
+        bodyMaterialRef.current.emissive.setStyle(`rgb(255, ${Math.floor(0)}, ${Math.floor(0)})`)
+        bodyMaterialRef.current.emissiveIntensity = flashIntensity * 0.8
+      }
+    } else {
+      if (bodyMaterialRef.current) {
+        bodyMaterialRef.current.color.setStyle(statusColor)
+        bodyMaterialRef.current.emissive.setStyle(statusColor)
+        bodyMaterialRef.current.emissiveIntensity = 0.2
+      }
+    }
   })
   
   return (
@@ -269,7 +287,12 @@ function ReplayPatient({ patient, currentTime }) {
         
         <mesh position={[0, 0.6, 0]} castShadow>
           <capsuleGeometry args={[0.25, 0.8, 4, 8]} />
-          <meshStandardMaterial color={statusColor} />
+          <meshStandardMaterial 
+            ref={bodyMaterialRef}
+            color={statusColor} 
+            emissive={statusColor}
+            emissiveIntensity={0.2}
+          />
         </mesh>
         
         <mesh position={[-0.25, 0.6, 0]} castShadow>

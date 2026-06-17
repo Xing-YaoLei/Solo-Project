@@ -19,6 +19,8 @@ export default function StatisticsView() {
     totalMisallocations,
   } = statistics
   
+  const totalErrors = Object.values(equipmentErrorReasons).reduce((a, b) => a + b, 0)
+  
   const levelKeys = Object.keys(levelStats).sort((a, b) => {
     const numA = parseInt(a.split('_')[1])
     const numB = parseInt(b.split('_')[1])
@@ -31,8 +33,6 @@ export default function StatisticsView() {
     { key: 'riskMismatch', label: '风险不匹配', color: '#a55eea' },
     { key: 'overcapacity', label: '超负荷', color: '#2ed573' },
   ]
-  
-  const totalErrors = Object.values(equipmentErrorReasons).reduce((a, b) => a + b, 0)
   
   const getEffectRating = (completionAvg, playCount) => {
     if (playCount < 2) return { label: '数据不足', color: '#718096' }
@@ -211,13 +211,13 @@ export default function StatisticsView() {
         <div style={styles.section}>
           <h3 style={styles.sectionTitle}>🔧 器械错因统计</h3>
           <p style={styles.sectionDesc}>
-            累计失误次数: {totalErrors} 次
+            累计失误次数: {totalMisallocations} 次
           </p>
           
           <div style={styles.errorChart}>
             {errorReasons.map(reason => {
               const count = equipmentErrorReasons[reason.key] || 0
-              const percentage = totalErrors > 0 ? (count / totalErrors) * 100 : 0
+              const percentage = totalMisallocations > 0 ? (count / totalMisallocations) * 100 : 0
               
               return (
                 <div key={reason.key} style={styles.errorChartItem}>
