@@ -121,6 +121,8 @@ class DuckDBClient:
                 task_type VARCHAR,
                 compliance_rate DOUBLE,
                 threshold DOUBLE,
+                start_date VARCHAR,
+                end_date VARCHAR,
                 create_time TIMESTAMP,
                 due_time TIMESTAMP,
                 handler VARCHAR,
@@ -130,6 +132,12 @@ class DuckDBClient:
                 resolve_time TIMESTAMP
             )
         """)
+        
+        try:
+            self.conn.execute("ALTER TABLE compliance_tasks ADD COLUMN IF NOT EXISTS start_date VARCHAR")
+            self.conn.execute("ALTER TABLE compliance_tasks ADD COLUMN IF NOT EXISTS end_date VARCHAR")
+        except Exception as e:
+            logger.info(f"Columns may already exist: {e}")
 
         logger.info("Database tables initialized")
 
@@ -218,18 +226,90 @@ class DuckDBClient:
         filters = f"status = '{status}'" if status else None
         return self.read_table("compliance_tasks", filters)
 
-    def update_anomaly_conclusion(self, anomaly_id: str, conclusion: str, 
-                                  resolved: bool = True) -> bool:
+    def save_anomaly_review(self, anomaly_id: str, review_notes: str, 
+                             handle_conclusion: str, resolved: bool = False) -> bool:
         try:
-            query = """
-                UPDATE anomaly_records 
-                SET handle_conclusion = ?, is_resolved = ?
-                WHERE anomaly_id = ?
-            """
-            self.conn.execute(query, (conclusion, resolved, anomaly_id))
+            existing = self.conn.execute(
+                "SELECT anomaly_id FROM anomaly_records WHERE anomaly_id = ?",
+                (anomaly_id,)
+            ).fetchone()
+            
+            if existing:
+                query = """
+                    UPDATE anomaly_records 
+                    SET review_notes = ?, handle_conclusion = ?, is_resolved = ?
+                    WHERE anomaly_id = ?
+                """
+                self.conn.execute(query, (review_notes, handle_conclusion, resolved, anomaly_id))
+            else:
+                query = """
+                    INSERT INTO anomaly_records 
+                    (anomaly_id, anomaly_type, detect_time, description, 
+                     review_notes, handle_conclusion, is_resolved)
+                    VALUES (?, 'unknown', NOW(), '', ?, ?, ?)
+                """
+                self.conn.execute(query, (anomaly_id, review_notes, handle_conclusion, resolved))
+            
             return True
         except Exception as e:
-            logger.error(f"Failed to update anomaly {anomaly_id}: {e}")
+            logger.error(f"Failed to save anomaly review {anomaly_id}: {e}")
+            return False
+
+    def get_anomaly_review(self, anomaly_id: str) -> Optional[Dict[str, Any]]:
+        try:
+            result = self.conn.execute(
+                "SELECT review_notes, handle_conclusion, is_resolved FROM anomaly_records WHERE anomaly_id = ?",
+                (anomaly_id,)
+            ).fetchone()
+            
+            if result:
+                return {
+                    "review_notes": result[0] or "",
+                    "handle_conclusion": result[1] or "",
+                    "is_resolved": result[2] or False
+                }
+            return None
+        except Exception as e:
+            logger.error(f"Failed to get anomaly review {anomaly_id}: {e}")
+            return None
+
+    def update_elder_profile(self, elder_id: str, updates: Dict[str, Any]) -> bool:
+        try:
+            allowed_fields = [
+                "name", "gender", "age", "room_number", "admission_date",
+                "health_level", "care_level", "medical_history", 
+                "contact_person", "contact_phone", "notes"
+            ]
+            
+            valid_updates = {k: v for k, v in updates.items() if k in allowed_fields}
+            
+            if not valid_updates:
+                return False
+            
+            set_clause = ", ".join([f"{k} = ?" for k in valid_updates.keys()])
+            params = list(valid_updates.values()) + [elder_id]
+            
+            query = f"UPDATE elders SET {set_clause} WHERE elder_id = ?"
+            self.conn.execute(query, params)
+            return True
+        except Exception as e:
+            logger.error(f"Failed to update elder {elder_id}: {e}")
+            return False
+
+    def check_duplicate_task(self, elder_id: str, start_date: str, end_date: str) -> bool:
+        try:
+            result = self.conn.execute(
+                """
+                SELECT COUNT(*) FROM compliance_tasks 
+                WHERE elder_id = ? 
+                  AND start_date = ?
+                  AND end_date = ?
+                """,
+                (elder_id, start_date, end_date)
+            ).fetchone()
+            return result[0] > 0
+        except Exception as e:
+            logger.error(f"Failed to check duplicate task: {e}")
             return False
 
     def update_compliance_task(self, task_id: str, resolution: str, 

@@ -7,15 +7,26 @@ import streamlit as st
 import xlsxwriter
 
 from config import get_compliance_rules_text
-from data import DuckDBClient
+from data import DuckDBClient, MinIOClient
 from processing import DataProcessor, ComplianceCalculator
 
 
 class DownloadHandler:
-    def __init__(self, db_client: Optional[DuckDBClient] = None):
+    def __init__(self, db_client: Optional[DuckDBClient] = None, 
+                 minio_client: Optional[MinIOClient] = None,
+                 use_streamlit: bool = True):
         self.db = db_client or DuckDBClient()
         self.processor = DataProcessor(self.db)
         self.calculator = ComplianceCalculator(self.db)
+        self.minio = minio_client
+        self.minio_available = minio_client is not None and minio_client.is_available()
+        self.use_streamlit = use_streamlit
+        
+        if self.use_streamlit:
+            if self.minio_available:
+                st.success("✅ MinIO 存储已连接，报表将自动备份到对象存储")
+            else:
+                st.info("ℹ️ MinIO 未连接，报表仅提供本地下载")
 
     def generate_report_data(self, start_date: str, end_date: str) -> Dict[str, Any]:
         activities = self.db.get_activities(start_date, end_date)
@@ -100,7 +111,68 @@ class DownloadHandler:
             self._write_compliance_rules_sheet(writer, workbook)
         
         output.seek(0)
-        return output.getvalue()
+        excel_data = output.getvalue()
+        
+        if self.minio_available:
+            start_date = data["report_params"]["start_date"]
+            end_date = data["report_params"]["end_date"]
+            
+            metadata = self.minio.upload_report(
+                report_data=excel_data,
+                report_type="funnel_report",
+                start_date=start_date,
+                end_date=end_date
+            )
+            
+            if metadata:
+                st.success(f"✅ 报表已备份到 MinIO 对象存储")
+                st.info(f"📦 存储路径: `{metadata['object_name']}`")
+                st.session_state["last_minio_upload"] = metadata
+        
+        return excel_data
+    
+    def render_history_reports(self) -> None:
+        if not self.minio_available:
+            return
+        
+        with st.expander("📦 MinIO 历史报表存储", expanded=False):
+            st.markdown("**已存储的历史报表**")
+            
+            reports = self.minio.list_reports("funnel_report")
+            
+            if reports:
+                for idx, report in enumerate(reports[:10]):
+                    with st.container():
+                        col1, col2, col3 = st.columns([3, 2, 1])
+                        with col1:
+                            st.markdown(f"**报表 #{idx + 1}**")
+                            st.caption(f"期间: {report.get('start_date', 'N/A')} ~ {report.get('end_date', 'N/A')}")
+                        with col2:
+                            st.caption(f"生成时间: {report.get('created_at', 'N/A')}")
+                            size_kb = report.get('size_bytes', 0) / 1024
+                            st.caption(f"大小: {size_kb:.1f} KB")
+                        with col3:
+                            object_name = report.get('object_name', '')
+                            if object_name and st.button("⬇️ 下载", key=f"dl_hist_{idx}"):
+                                try:
+                                    data = self.minio.client.get_object(
+                                        self.minio.bucket,
+                                        object_name
+                                    )
+                                    excel_bytes = data.read()
+                                    st.download_button(
+                                        label="📥 确认下载报表",
+                                        data=excel_bytes,
+                                        file_name=f"历史报表_{report.get('start_date', '')}_{report.get('end_date', '')}.xlsx",
+                                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                        key=f"confirm_dl_{idx}",
+                                        type="primary"
+                                    )
+                                except Exception as e:
+                                    st.error(f"下载失败: {e}")
+                        st.divider()
+            else:
+                st.info("暂无历史报表")
 
     def _write_summary_sheet(self, writer, data: Dict[str, Any], 
                               title_format, header_format, data_format):

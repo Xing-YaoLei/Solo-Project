@@ -121,6 +121,73 @@ class MinIOClient:
             logger.error(f"Failed to load JSON: {e}")
             return None
 
+    def upload_bytes(self, data: bytes, object_name: str, 
+                     content_type: str = 'application/octet-stream') -> Optional[str]:
+        try:
+            self.client.put_object(
+                self.bucket,
+                object_name,
+                io.BytesIO(data),
+                length=len(data),
+                content_type=content_type
+            )
+            url = f"{self.client._base_url}/{self.bucket}/{object_name}"
+            logger.info(f"Uploaded {len(data)} bytes to {object_name}")
+            return url
+        except Exception as e:
+            logger.error(f"Failed to upload bytes: {e}")
+            return None
+    
+    def upload_report(self, report_data: bytes, report_type: str, 
+                     start_date: str, end_date: str) -> Optional[Dict[str, Any]]:
+        try:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            object_name = f"reports/{report_type}/{start_date}_{end_date}/{report_type}_{timestamp}.xlsx"
+            
+            url = self.upload_bytes(
+                report_data,
+                object_name,
+                content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            )
+            
+            if url:
+                metadata = {
+                    "object_name": object_name,
+                    "report_type": report_type,
+                    "start_date": start_date,
+                    "end_date": end_date,
+                    "created_at": datetime.now().isoformat(),
+                    "size_bytes": len(report_data),
+                    "url": url
+                }
+                
+                meta_object = f"reports/{report_type}/{start_date}_{end_date}/metadata_{timestamp}.json"
+                self.save_json(metadata, meta_object)
+                
+                return metadata
+            return None
+        except Exception as e:
+            logger.error(f"Failed to upload report: {e}")
+            return None
+    
+    def list_reports(self, report_type: str = "") -> List[Dict[str, Any]]:
+        try:
+            prefix = f"reports/{report_type}" if report_type else "reports/"
+            objects = self.list_objects(prefix)
+            reports = []
+            
+            for obj in objects:
+                if obj.endswith('.json') and 'metadata' in obj:
+                    meta = self.load_json(obj)
+                    if meta:
+                        reports.append(meta)
+            
+            reports.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+            return reports
+        except Exception as e:
+            logger.error(f"Failed to list reports: {e}")
+            return []
+
     def is_available(self) -> bool:
         try:
             self.client.bucket_exists(self.bucket)

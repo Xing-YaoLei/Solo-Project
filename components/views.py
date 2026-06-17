@@ -181,34 +181,57 @@ class RiskEventView:
                         st.markdown(f"**未达标活动数**: {row['non_compliant_count']}")
                         st.markdown(f"**事件描述**: {row['description']}")
                         
-                        st.markdown("**📝 复盘说明（与异常点不分开）**")
-                        review_key = f"fall_review_{row['event_id']}"
-                        if review_key not in st.session_state:
-                            st.session_state[review_key] = ""
+                        st.markdown("**📝 复盘说明（与异常点不分开，保存到数据库）**")
+                        anomaly_id = f"fall_{row['event_id']}"
+                        
+                        saved_data = {}
+                        if anomaly_marker.db:
+                            saved_data = anomaly_marker.db.get_anomaly_review(anomaly_id) or {}
                         
                         review = st.text_area(
                             "复盘说明",
-                            value=st.session_state[review_key],
+                            value=saved_data.get("review_notes", ""),
                             key=f"fall_text_{row['event_id']}",
                             height=80,
                             placeholder="请输入本次跌倒事件的复盘说明..."
                         )
-                        st.session_state[review_key] = review
                         
-                        conclusion_key = f"fall_conclusion_{row['event_id']}"
-                        if conclusion_key not in st.session_state:
-                            st.session_state[conclusion_key] = ""
+                        col1, col2 = st.columns([3, 1])
+                        with col1:
+                            conclusion = st.text_input(
+                                "处理结论",
+                                value=saved_data.get("handle_conclusion", ""),
+                                key=f"fall_conclusion_{row['event_id']}",
+                                placeholder="处理结论（显示在图表旁边）"
+                            )
+                        with col2:
+                            resolved = st.checkbox(
+                                "已解决",
+                                value=saved_data.get("is_resolved", False),
+                                key=f"fall_resolved_{row['event_id']}"
+                            )
                         
-                        conclusion = st.text_input(
-                            "处理结论",
-                            value=st.session_state[conclusion_key],
-                            key=f"fall_conclusion_{row['event_id']}",
-                            placeholder="处理结论（显示在图表旁边）"
-                        )
-                        st.session_state[conclusion_key] = conclusion
+                        if st.button("💾 保存复盘", key=f"save_fall_{row['event_id']}", type="primary"):
+                            if anomaly_marker.db:
+                                success = anomaly_marker.db.save_anomaly_review(
+                                    anomaly_id=anomaly_id,
+                                    review_notes=review,
+                                    handle_conclusion=conclusion,
+                                    resolved=resolved
+                                )
+                                if success:
+                                    st.success("✅ 复盘说明和处理结论已保存到数据库，将显示在图表旁边")
+                                    st.rerun()
+                                else:
+                                    st.error("❌ 保存失败，请重试")
+                            else:
+                                st.warning("⚠️ 数据库连接不可用")
                         
-                        if st.button("保存处理结论", key=f"save_fall_{row['event_id']}"):
-                            st.success("✅ 处理结论已保存到图表旁边")
+                        if saved_data.get("handle_conclusion"):
+                            st.info(
+                                f"💡 已保存的处理结论：{saved_data['handle_conclusion']}"
+                                f"{' ✅' if saved_data.get('is_resolved') else ''}"
+                            )
         
         st.subheader("风险事件明细")
         display_events = risk_events.select([
@@ -299,25 +322,99 @@ class ElderProfileView:
             
             if len(elder_info) > 0:
                 elder_data = elder_info.row(0, named=True)
+                elder_id = elder_data["elder_id"]
                 
-                col1, col2 = st.columns(2)
+                edit_key = f"edit_elder_{elder_id}"
+                if edit_key not in st.session_state:
+                    st.session_state[edit_key] = False
                 
-                with col1:
-                    st.markdown(f"**姓名**: {elder_data['name']}")
-                    st.markdown(f"**性别**: {elder_data['gender']}")
-                    st.markdown(f"**年龄**: {elder_data['age']} 岁")
-                    st.markdown(f"**房间号**: {elder_data['room_number']}")
-                    st.markdown(f"**入院日期**: {elder_data['admission_date']}")
+                col_title, col_btn = st.columns([4, 1])
+                with col_title:
+                    st.subheader(f"👤 {elder_data['name']} 的档案")
+                with col_btn:
+                    if st.button(
+                        "📝 编辑档案" if not st.session_state[edit_key] else "❌ 取消编辑",
+                        key=f"toggle_edit_{elder_id}"
+                    ):
+                        st.session_state[edit_key] = not st.session_state[edit_key]
+                        st.rerun()
                 
-                with col2:
-                    st.markdown(f"**健康等级**: {elder_data['health_level']}")
-                    st.markdown(f"**护理等级**: {elder_data['care_level']}")
-                    st.markdown(f"**病史**: {elder_data['medical_history']}")
-                    st.markdown(f"**联系人**: {elder_data['contact_person']}")
-                    st.markdown(f"**联系电话**: {elder_data['contact_phone']}")
+                if st.session_state[edit_key]:
+                    st.info("💡 修改完成后点击底部的「保存档案」按钮提交到数据库")
+                    
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        edit_name = st.text_input("姓名", value=elder_data["name"], key=f"edit_name_{elder_id}")
+                        edit_gender = st.selectbox("性别", ["男", "女"], 
+                            index=0 if elder_data["gender"] == "男" else 1,
+                            key=f"edit_gender_{elder_id}")
+                        edit_age = st.number_input("年龄", min_value=0, max_value=120, 
+                            value=int(elder_data["age"]), key=f"edit_age_{elder_id}")
+                        edit_room = st.text_input("房间号", value=elder_data["room_number"] or "", 
+                            key=f"edit_room_{elder_id}")
+                        edit_admission = st.text_input("入院日期", value=elder_data["admission_date"] or "",
+                            key=f"edit_admission_{elder_id}")
+                        edit_medical = st.text_area("病史", value=elder_data["medical_history"] or "",
+                            key=f"edit_medical_{elder_id}", height=80)
+                    
+                    with col2:
+                        edit_health = st.selectbox("健康等级", 
+                            ["良好", "一般", "较差", "危重"],
+                            index=["良好", "一般", "较差", "危重"].index(elder_data["health_level"]) if elder_data["health_level"] in ["良好", "一般", "较差", "危重"] else 1,
+                            key=f"edit_health_{elder_id}")
+                        edit_care = st.selectbox("护理等级",
+                            ["特级护理", "一级护理", "二级护理", "三级护理"],
+                            index=["特级护理", "一级护理", "二级护理", "三级护理"].index(elder_data["care_level"]) if elder_data["care_level"] in ["特级护理", "一级护理", "二级护理", "三级护理"] else 1,
+                            key=f"edit_care_{elder_id}")
+                        edit_contact = st.text_input("联系人", value=elder_data["contact_person"] or "",
+                            key=f"edit_contact_{elder_id}")
+                        edit_phone = st.text_input("联系电话", value=elder_data["contact_phone"] or "",
+                            key=f"edit_phone_{elder_id}")
+                        edit_notes = st.text_area("备注", value=elder_data["notes"] or "",
+                            key=f"edit_notes_{elder_id}", height=80)
+                    
+                    if st.button("💾 保存档案", key=f"save_elder_{elder_id}", type="primary"):
+                        updates = {
+                            "name": edit_name,
+                            "gender": edit_gender,
+                            "age": edit_age,
+                            "room_number": edit_room,
+                            "admission_date": edit_admission,
+                            "health_level": edit_health,
+                            "care_level": edit_care,
+                            "medical_history": edit_medical,
+                            "contact_person": edit_contact,
+                            "contact_phone": edit_phone,
+                            "notes": edit_notes
+                        }
+                        success = self.db.update_elder_profile(elder_id, updates)
+                        if success:
+                            st.success("✅ 老人档案已保存到数据库！")
+                            st.session_state[edit_key] = False
+                            st.rerun()
+                        else:
+                            st.error("❌ 保存失败，请重试")
                 
-                if elder_data["notes"]:
-                    st.markdown(f"**备注**: {elder_data['notes']}")
+                else:
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.markdown(f"**姓名**: {elder_data['name']}")
+                        st.markdown(f"**性别**: {elder_data['gender']}")
+                        st.markdown(f"**年龄**: {elder_data['age']} 岁")
+                        st.markdown(f"**房间号**: {elder_data['room_number']}")
+                        st.markdown(f"**入院日期**: {elder_data['admission_date']}")
+                    
+                    with col2:
+                        st.markdown(f"**健康等级**: {elder_data['health_level']}")
+                        st.markdown(f"**护理等级**: {elder_data['care_level']}")
+                        st.markdown(f"**病史**: {elder_data['medical_history']}")
+                        st.markdown(f"**联系人**: {elder_data['contact_person']}")
+                        st.markdown(f"**联系电话**: {elder_data['contact_phone']}")
+                    
+                    if elder_data["notes"]:
+                        st.markdown(f"**备注**: {elder_data['notes']}")
                 
                 st.markdown("---")
                 st.subheader("近期康复活动")

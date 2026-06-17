@@ -135,6 +135,8 @@ class ComplianceTask:
     task_type: str
     compliance_rate: float
     threshold: float
+    start_date: str
+    end_date: str
     create_time: datetime
     due_time: Optional[datetime] = None
     handler: str = ""

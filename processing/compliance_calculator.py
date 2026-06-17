@@ -11,9 +11,9 @@ logger = logging.getLogger(__name__)
 
 
 class ComplianceCalculator:
-    def __init__(self, db_client: Optional[DuckDBClient] = None):
+    def __init__(self, db_client: Optional[DuckDBClient] = None, threshold: Optional[float] = None):
         self.db = db_client or DuckDBClient()
-        self.threshold = config.thresholds.compliance_threshold
+        self.threshold = threshold if threshold is not None else config.thresholds.compliance_threshold
 
     def calculate_compliance_rate(self, df: pl.DataFrame) -> float:
         if len(df) == 0:
@@ -117,9 +117,20 @@ class ComplianceCalculator:
             return False, 0.0, "无活动数据"
         
         compliance_rate = self.calculate_compliance_rate(activities)
-        is_below_threshold = compliance_rate < self.threshold
+        is_above_threshold = compliance_rate > self.threshold
         
-        return is_below_threshold, compliance_rate, self._get_compliance_level(compliance_rate)
+        return is_above_threshold, compliance_rate, self._get_compliance_level(compliance_rate)
+
+    def check_threshold(self, start_date: str, end_date: str) -> Tuple[bool, float, str]:
+        activities = self.db.get_activities(start_date, end_date)
+        
+        if len(activities) == 0:
+            return False, 0.0, "无活动数据"
+        
+        compliance_rate = self.calculate_compliance_rate(activities)
+        is_above_threshold = compliance_rate > self.threshold
+        
+        return is_above_threshold, compliance_rate, self._get_compliance_level(compliance_rate)
 
     def generate_compliance_tasks(self, start_date: str, end_date: str) -> List[ComplianceTask]:
         activities = self.db.get_activities(start_date, end_date)
@@ -132,27 +143,35 @@ class ComplianceCalculator:
             (pl.col("is_compliant").cast(pl.Int64).sum() * 100.0 / pl.col("activity_id").count()).alias("compliance_rate")
         )
         
-        below_threshold = elder_activities.filter(
-            (pl.col("compliance_rate") < self.threshold) &
+        above_threshold = elder_activities.filter(
+            (pl.col("compliance_rate") > self.threshold) &
             (pl.col("total_activities") >= 3)
         )
         
         tasks = []
         now = datetime.now()
         
-        for row in below_threshold.iter_rows(named=True):
+        for row in above_threshold.iter_rows(named=True):
+            elder_id = row["elder_id"]
+            
+            if self.db.check_duplicate_task(elder_id, start_date, end_date):
+                logger.info(f"Task for elder {elder_id} in {start_date}~{end_date} already exists, skipping")
+                continue
+            
             task_id = str(uuid.uuid4())
             task = ComplianceTask(
                 task_id=task_id,
-                elder_id=row["elder_id"],
+                elder_id=elder_id,
                 elder_name=row["elder_name"],
                 task_type="护理达标跟进",
                 compliance_rate=round(row["compliance_rate"], 2),
                 threshold=self.threshold,
+                start_date=start_date,
+                end_date=end_date,
                 create_time=now,
                 due_time=now + timedelta(days=3),
                 status="pending",
-                notes=f"老人{row['elder_name']}在{start_date}至{end_date}期间护理达标率为{row['compliance_rate']:.2f}%，低于阈值{self.threshold}%，请跟进处理。"
+                notes=f"老人{row['elder_name']}在{start_date}至{end_date}期间护理达标率为{row['compliance_rate']:.2f}%，超过阈值{self.threshold}%，请确认记录并进行复盘。"
             )
             tasks.append(task)
         
@@ -172,6 +191,8 @@ class ComplianceCalculator:
                 "task_type": task.task_type,
                 "compliance_rate": task.compliance_rate,
                 "threshold": task.threshold,
+                "start_date": task.start_date,
+                "end_date": task.end_date,
                 "create_time": task.create_time,
                 "due_time": task.due_time,
                 "handler": task.handler,
@@ -204,7 +225,9 @@ class ComplianceCalculator:
                 "compliance_rate": 0.0,
                 "level": "无数据",
                 "elder_count": 0,
-                "below_threshold_count": 0
+                "above_threshold_count": 0,
+                "below_threshold_count": 0,
+                "threshold": self.threshold
             }
         
         total = len(activities)
@@ -216,6 +239,7 @@ class ComplianceCalculator:
         )
         
         elder_count = len(elder_summary)
+        above_threshold = elder_summary.filter(pl.col("elder_rate") > self.threshold).height
         below_threshold = elder_summary.filter(pl.col("elder_rate") < self.threshold).height
         
         return {
@@ -224,6 +248,7 @@ class ComplianceCalculator:
             "compliance_rate": round(rate, 2),
             "level": self._get_compliance_level(rate),
             "elder_count": elder_count,
+            "above_threshold_count": above_threshold,
             "below_threshold_count": below_threshold,
             "threshold": self.threshold
         }

@@ -18,7 +18,7 @@ class TaskGenerator:
     def generate_tasks_if_needed(self, start_date: str, end_date: str) -> List[ComplianceTask]:
         summary = self.calculator.get_compliance_summary(start_date, end_date)
         
-        if summary["below_threshold_count"] > 0:
+        if summary["above_threshold_count"] > 0:
             tasks = self.calculator.generate_compliance_tasks(start_date, end_date)
             return tasks
         

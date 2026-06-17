@@ -6,8 +6,9 @@ import streamlit as st
 
 
 class AnomalyMarker:
-    def __init__(self, anomalies: Dict[str, pl.DataFrame]):
+    def __init__(self, anomalies: Dict[str, pl.DataFrame], db_client=None):
         self.anomalies = anomalies
+        self.db = db_client
         self.colors = {
             "terminal_delay": "#d62728",
             "charging_missing": "#ff7f0e",
@@ -132,41 +133,61 @@ class AnomalyMarker:
         return df
 
     def _render_review_section(self, anomaly_type: str, df: pl.DataFrame) -> None:
-        st.markdown("**📝 复盘说明**")
+        st.markdown("**📝 复盘说明（已保存至数据库）**")
         
         for idx, row in enumerate(df.iter_rows(named=True)):
             anomaly_id = self._get_anomaly_id(anomaly_type, row, idx)
             
+            saved_data = {}
+            if self.db:
+                saved_data = self.db.get_anomaly_review(anomaly_id) or {}
+            
             col1, col2 = st.columns([3, 1])
             with col1:
-                review_key = f"review_{anomaly_id}"
-                if review_key not in st.session_state:
-                    st.session_state[review_key] = ""
-                
                 review = st.text_area(
                     f"异常 {idx + 1} - 复盘说明",
-                    value=st.session_state[review_key],
+                    value=saved_data.get("review_notes", ""),
                     key=f"textarea_{anomaly_id}",
                     height=80,
                     placeholder="请输入复盘说明，不要与异常点分开..."
                 )
-                st.session_state[review_key] = review
             
             with col2:
-                conclusion_key = f"conclusion_{anomaly_id}"
-                if conclusion_key not in st.session_state:
-                    st.session_state[conclusion_key] = ""
-                
                 conclusion = st.text_input(
                     "处理结论",
-                    value=st.session_state[conclusion_key],
+                    value=saved_data.get("handle_conclusion", ""),
                     key=f"input_{anomaly_id}",
                     placeholder="处理结论"
                 )
-                st.session_state[conclusion_key] = conclusion
                 
-                if st.button("保存结论", key=f"save_{anomaly_id}"):
-                    st.success("✅ 处理结论已保存到图表旁边")
+                is_resolved = saved_data.get("is_resolved", False)
+                resolved = st.checkbox(
+                    "已解决",
+                    value=is_resolved,
+                    key=f"resolved_{anomaly_id}"
+                )
+                
+                if st.button("💾 保存", key=f"save_{anomaly_id}", type="primary"):
+                    if self.db:
+                        success = self.db.save_anomaly_review(
+                            anomaly_id=anomaly_id,
+                            review_notes=review,
+                            handle_conclusion=conclusion,
+                            resolved=resolved
+                        )
+                        if success:
+                            st.success("✅ 复盘说明和处理结论已保存到数据库，将显示在图表旁边")
+                            st.rerun()
+                        else:
+                            st.error("❌ 保存失败，请重试")
+                    else:
+                        st.warning("⚠️ 数据库连接不可用，无法保存")
+            
+            if saved_data.get("handle_conclusion"):
+                st.info(
+                    f"💡 已保存的处理结论：{saved_data['handle_conclusion']}"
+                    f"{' ✅' if saved_data.get('is_resolved') else ''}"
+                )
 
     def _get_anomaly_id(self, anomaly_type: str, row: Dict[str, Any], idx: int) -> str:
         if anomaly_type == "terminal_delay":
@@ -203,6 +224,37 @@ class AnomalyMarker:
                 )
         
         return fig
+
+    def get_saved_conclusions(self, anomaly_type: str) -> List[Dict[str, Any]]:
+        if not self.db:
+            return []
+        
+        conclusions = []
+        df = self.anomalies.get(anomaly_type, pl.DataFrame())
+        
+        for idx, row in enumerate(df.iter_rows(named=True)):
+            anomaly_id = self._get_anomaly_id(anomaly_type, row, idx)
+            saved = self.db.get_anomaly_review(anomaly_id)
+            if saved and saved.get("handle_conclusion"):
+                conclusions.append({
+                    "anomaly_id": anomaly_id,
+                    "conclusion": saved["handle_conclusion"],
+                    "is_resolved": saved.get("is_resolved", False),
+                    "description": self._get_anomaly_description(anomaly_type, row)
+                })
+        
+        return conclusions
+    
+    def _get_anomaly_description(self, anomaly_type: str, row: Dict[str, Any]) -> str:
+        if anomaly_type == "terminal_delay":
+            return f"签到延迟 - {row.get('elder_name', '未知')} - {row.get('check_time', '未知')}"
+        elif anomaly_type == "charging_missing":
+            return f"收费缺失 - {row.get('activity_name', '未知')} - {row.get('plan_date', '未知')}"
+        elif anomaly_type == "device_caliber_change":
+            return f"口径变化 - {row.get('check_date', '未知')}"
+        elif anomaly_type == "fall_impact":
+            return f"跌倒影响 - {row.get('elder_name', '未知')} - {row.get('fall_date', '未知')}"
+        return "异常"
 
     def get_affected_periods(self) -> List[Tuple[date, date, str]]:
         periods = []

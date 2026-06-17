@@ -100,7 +100,7 @@ def render_sidebar():
             min_value=60,
             max_value=95,
             value=int(config.thresholds.compliance_threshold),
-            help="低于该阈值将生成备注任务"
+            help="超过该阈值将生成备注任务进行复盘确认"
         )
         config.thresholds.compliance_threshold = float(threshold)
         
@@ -209,6 +209,22 @@ def render_funnel_view(db: DuckDBClient, processor: DataProcessor,
         fig_funnel = funnel_chart.create_funnel_figure()
         fig_funnel = anomaly_marker.add_anomaly_markers_to_chart(fig_funnel)
         st.plotly_chart(fig_funnel, use_container_width=True)
+        
+        st.markdown("**💡 已保存的处理结论（显示在图表旁边）**")
+        all_conclusions = []
+        for anomaly_type in ["terminal_delay", "charging_missing", "device_caliber_change", "fall_impact"]:
+            conclusions = anomaly_marker.get_saved_conclusions(anomaly_type)
+            all_conclusions.extend(conclusions)
+        
+        if all_conclusions:
+            for idx, conc in enumerate(all_conclusions[:5]):
+                status_icon = "✅" if conc["is_resolved"] else "⏳"
+                st.info(
+                    f"{status_icon} **{conc['description']}**\n\n"
+                    f"处理结论: {conc['conclusion']}"
+                )
+        else:
+            st.caption("暂无已保存的处理结论，请在下方异常检测区域录入")
         
         task_generator.display_task_conclusions_near_chart()
     
@@ -344,6 +360,8 @@ def render_download_section(download_handler: DownloadHandler):
     end_date_str = st.session_state.end_date.strftime("%Y-%m-%d")
     download_handler.render_download_button(start_date_str, end_date_str)
     
+    download_handler.render_history_reports()
+    
     with st.expander("📖 查看护理达标计算规则"):
         st.text(get_compliance_rules_text())
 
@@ -351,6 +369,7 @@ def main():
     init_session_state()
     
     db = get_db_client()
+    minio_client = get_minio_client()
     
     check_and_generate_sample_data(db)
     
@@ -359,7 +378,7 @@ def main():
     processor = DataProcessor(db)
     calculator = ComplianceCalculator(db)
     task_generator = TaskGenerator(db)
-    download_handler = DownloadHandler(db)
+    download_handler = DownloadHandler(db, minio_client)
     checkin_view = CheckinView(db)
     risk_view = RiskEventView(db)
     profile_view = ElderProfileView(db)
@@ -368,7 +387,7 @@ def main():
     end_date_str = st.session_state.end_date.strftime("%Y-%m-%d")
     
     anomalies = processor.detect_all_anomalies()
-    anomaly_marker = AnomalyMarker(anomalies)
+    anomaly_marker = AnomalyMarker(anomalies, db)
     
     render_header(anomaly_marker, task_generator)
     
