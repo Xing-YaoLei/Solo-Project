@@ -62,7 +62,7 @@ async def rejection_conclusion(
     return result
 
 
-@router.post("/remark-task", response_model=RemarkTaskOut)
+@router.post("/remark-task", response_model=RejectionRecordOut)
 async def remark_task_upsert(
     data: RemarkTaskUpsert,
     db: AsyncSession = Depends(get_db),

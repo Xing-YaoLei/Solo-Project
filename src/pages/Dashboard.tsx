@@ -40,7 +40,14 @@ export default function Dashboard() {
 
   const [summary, setSummary] = useState<SettlementSummary | null>(null)
   const [trend, setTrend] = useState<SettlementTrend[]>([])
-  const [completionData, setCompletionData] = useState<{ name: string; rate: number; target: number }[]>([])
+  const [completionData, setCompletionData] = useState<{
+    name: string
+    rate: number
+    target: number
+    rejectionStatus?: 'pending' | 'processing' | 'resolved' | null
+    rejectionAmount?: number
+    rejectionReason?: string
+  }[]>([])
   const [rejectionData, setRejectionData] = useState<{ name: string; value: number; count: number; pendingAmount: number; processingAmount: number; resolvedAmount: number }[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -53,19 +60,49 @@ export default function Dashboard() {
       getSettlementTrend('month', viewFilters),
       getTrainingCompletion(viewFilters),
       getRejectionReasons(viewFilters),
-    ]).then(([summaryRes, trendRes, prescriptions, reasonItems]) => {
+      getRejectionRecords(viewFilters),
+    ]).then(([summaryRes, trendRes, prescriptions, reasonItems, rejectionRecords]) => {
       if (cancelled) return
       setSummary(summaryRes)
       setTrend(trendRes)
 
+      const rejectionMap = new Map<string, { status: string; amount: number; reason: string }>()
+      for (const r of rejectionRecords) {
+        const status = r.remarkTask?.status || (r.status === 'concluded' ? 'resolved' : r.status === 'remarked' ? 'processing' : 'pending')
+        rejectionMap.set(r.patientId, {
+          status,
+          amount: r.rejectedAmount,
+          reason: r.rejectionReason,
+        })
+      }
+
       const completionItems = prescriptions
         .filter((p) => p.status === 'active')
+        .filter((p) => {
+          if (viewFilters?.completionRateRange) {
+            const [min, max] = viewFilters.completionRateRange
+            return p.completionRate >= min && p.completionRate <= max
+          }
+          return true
+        })
+        .filter((p) => {
+          if (viewFilters?.therapist) {
+            return p.therapistName === viewFilters.therapist
+          }
+          return true
+        })
         .slice(0, 8)
-        .map((p) => ({
-          name: p.prescriptionName,
-          rate: Math.round(p.completionRate * 10) / 10,
-          target: 80,
-        }))
+        .map((p) => {
+          const rej = rejectionMap.get(p.patientId)
+          return {
+            name: p.prescriptionName,
+            rate: Math.round(p.completionRate * 10) / 10,
+            target: 80,
+            rejectionStatus: rej?.status as 'pending' | 'processing' | 'resolved' || null,
+            rejectionAmount: rej?.amount,
+            rejectionReason: rej?.reason,
+          }
+        })
       setCompletionData(completionItems)
 
       setRejectionData(reasonItems.slice(0, 6))

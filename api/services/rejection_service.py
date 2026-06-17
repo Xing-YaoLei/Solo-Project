@@ -2,6 +2,7 @@ from typing import List, Optional
 from datetime import date, datetime
 from sqlalchemy import select, func, case
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from api.models import RejectionRecord, RemarkTask, Patient
 from api.schemas import RejectionRecordOut, RemarkTaskOut, RemarkCreate, ConclusionUpdate, RemarkTaskUpsert
@@ -293,18 +294,19 @@ async def update_conclusion(
 async def upsert_remark_task(
     db: AsyncSession,
     data: RemarkTaskUpsert,
-) -> Optional[RemarkTaskOut]:
+) -> Optional[RejectionRecordOut]:
     stmt = select(RemarkTask).where(RemarkTask.rejection_id == data.rejection_id)
     existing = (await db.execute(stmt)).scalar_one_or_none()
     now = datetime.now()
 
+    assignee = data.assigned_to or data.assignee
     status = data.status or ("pending" if not existing else existing.status)
     is_resolved = status == "resolved"
 
     if not existing:
         task = RemarkTask(
             rejection_id=data.rejection_id,
-            assigned_to=data.assignee,
+            assigned_to=assignee,
             content=data.content,
             status=status,
             completed=is_resolved,
@@ -312,8 +314,8 @@ async def upsert_remark_task(
         )
         db.add(task)
     else:
-        if data.assignee is not None:
-            existing.assigned_to = data.assignee
+        if assignee is not None:
+            existing.assigned_to = assignee
         if data.content is not None:
             existing.content = data.content
         existing.status = status
@@ -321,7 +323,7 @@ async def upsert_remark_task(
         if is_resolved:
             existing.resolved_at = now
 
-    rej_stmt = select(RejectionRecord).where(RejectionRecord.id == data.rejection_id)
+    rej_stmt = select(RejectionRecord).options(selectinload(RejectionRecord.patient)).where(RejectionRecord.id == data.rejection_id)
     rej = (await db.execute(rej_stmt)).scalar_one_or_none()
     if rej:
         if is_resolved:
@@ -335,18 +337,38 @@ async def upsert_remark_task(
 
     await db.commit()
 
-    stmt = select(RemarkTask).where(RemarkTask.rejection_id == data.rejection_id)
-    task = (await db.execute(stmt)).scalar_one_or_none()
-    if not task:
+    if not rej:
         return None
 
-    return RemarkTaskOut(
-        id=task.id,
-        rejection_id=task.rejection_id,
-        assignee=task.assigned_to,
-        content=task.content,
-        status=task.status,
-        created_at=task.created_at,
-        resolved_at=task.resolved_at,
-        completed=task.completed,
+    await db.refresh(rej)
+
+    task_stmt = select(RemarkTask).where(RemarkTask.rejection_id == data.rejection_id)
+    task = (await db.execute(task_stmt)).scalar_one_or_none()
+
+    task_out = None
+    if task:
+        task_out = RemarkTaskOut(
+            id=task.id,
+            rejection_id=task.rejection_id,
+            assigned_to=task.assigned_to,
+            assignee=task.assigned_to,
+            content=task.content,
+            status=task.status,
+            created_at=task.created_at,
+            resolved_at=task.resolved_at,
+            completed=task.completed,
+        )
+
+    return RejectionRecordOut(
+        id=rej.id,
+        settlement_id=None,
+        patient_id=rej.patient_id,
+        patient_name=rej.patient.name if rej.patient else "",
+        rejected_amount=rej.amount,
+        rejection_reason=rej.reason,
+        rejection_date=rej.rejection_date,
+        status=rej.status,
+        remark=rej.remark,
+        conclusion=rej.conclusion,
+        remark_task=task_out,
     )

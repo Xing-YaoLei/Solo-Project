@@ -53,6 +53,7 @@ export interface TrainingPrescription {
   startDate: string
   endDate: string
   status: 'active' | 'completed' | 'expired'
+  therapistName?: string
 }
 
 export interface TreatmentCalendarDay {
@@ -103,6 +104,7 @@ export interface RejectionRecord {
   rejectedAmount: number
   rejectionReason: string
   rejectionDate: string
+  status?: string
   remark?: string
   conclusion?: string
   remarkTask?: RemarkTask
@@ -112,8 +114,11 @@ export interface RemarkTask {
   id: string
   rejectionId: string
   assignee: string
+  assignedTo?: string
+  content?: string
   status: 'pending' | 'processing' | 'resolved'
   conclusion?: string
+  completed?: boolean
   createdAt: string
   resolvedAt?: string
 }

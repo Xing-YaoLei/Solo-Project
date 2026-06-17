@@ -37,9 +37,12 @@ async def list_prescriptions(
     patient_id: Optional[int] = Query(None),
     start_date: Optional[date] = Query(None),
     end_date: Optional[date] = Query(None),
+    therapist: Optional[str] = Query(None),
+    completion_rate_min: Optional[float] = Query(None),
+    completion_rate_max: Optional[float] = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
-    return await get_prescriptions(db, patient_id, start_date, end_date)
+    return await get_prescriptions(db, patient_id, start_date, end_date, therapist, completion_rate_min, completion_rate_max)
 
 
 @router.get("/training-completion", response_model=List[TrainingCompletionStats])

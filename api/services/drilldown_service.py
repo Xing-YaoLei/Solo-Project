@@ -78,6 +78,9 @@ async def get_prescriptions(
     patient_id: Optional[int] = None,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
+    therapist: Optional[str] = None,
+    completion_rate_min: Optional[float] = None,
+    completion_rate_max: Optional[float] = None,
 ) -> List[TrainingPrescriptionOut]:
     stmt = (
         select(TrainingPrescription, Patient.name)
@@ -100,13 +103,24 @@ async def get_prescriptions(
         s_stmt = select(
             func.count(TreatmentSession.id),
             func.sum(func.cast(TreatmentSession.status == "completed", type_=Integer)),
+            func.max(Therapist.name),
+        ).select_from(TreatmentSession).outerjoin(
+            Therapist, TreatmentSession.therapist_id == Therapist.id
         ).where(
             TreatmentSession.prescription_id == p.id,
         )
         s_row = (await db.execute(s_stmt)).one()
         total = s_row[0] or 0
         completed = int(s_row[1] or 0)
+        therapist_name = s_row[2]
         rate = round(completed / total * 100, 2) if total > 0 else 0.0
+
+        if completion_rate_min is not None and rate < completion_rate_min:
+            continue
+        if completion_rate_max is not None and rate > completion_rate_max:
+            continue
+        if therapist is not None and therapist_name != therapist:
+            continue
 
         end_dt = p.prescribed_at + timedelta(days=60)
         if total >= 20 and rate >= 90:
@@ -138,6 +152,7 @@ async def get_prescriptions(
             start_date=p.prescribed_at,
             end_date=end_dt,
             status=status,
+            therapist_name=therapist_name,
         ))
     return out_list
 

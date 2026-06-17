@@ -68,6 +68,7 @@ class TrainingPrescriptionOut(BaseModel):
     start_date: Optional[date] = None
     end_date: Optional[date] = None
     status: str = "active"
+    therapist_name: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -149,6 +150,7 @@ class SettlementOut(BaseModel):
 class RemarkTaskOut(BaseModel):
     id: int
     rejection_id: int
+    assigned_to: Optional[str] = None
     assignee: Optional[str] = None
     content: Optional[str] = None
     status: str = "pending"
@@ -209,6 +211,7 @@ class ConclusionUpdate(BaseModel):
 
 class RemarkTaskUpsert(BaseModel):
     rejection_id: int
+    assigned_to: Optional[str] = None
     assignee: Optional[str] = None
     content: Optional[str] = None
     status: Optional[str] = None

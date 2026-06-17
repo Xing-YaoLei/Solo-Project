@@ -88,6 +88,10 @@ function buildQueryParams(filters?: ViewFilters) {
   if (filters?.department) params.department = filters.department
   if (filters?.therapist) params.therapist = filters.therapist
   if (filters?.rejectionStatus) params.rejection_status = filters.rejectionStatus
+  if (filters?.completionRateRange) {
+    params.completion_rate_min = filters.completionRateRange[0]
+    params.completion_rate_max = filters.completionRateRange[1]
+  }
   return params
 }
 
@@ -364,14 +368,15 @@ export async function getRejectionReasons(
 }
 
 export async function upsertRemarkTask(
-  data: { rejectionId: string; content: string; assignedTo?: string; status?: 'pending' | 'processing' | 'resolved' },
+  data: { rejectionId: string; content: string; assignedTo?: string; assignee?: string; status?: 'pending' | 'processing' | 'resolved' },
 ): Promise<RejectionRecord | undefined> {
   try {
     const rid = parseInt(data.rejectionId)
     const raw = await apiPost<any>('/api/rejection/remark-task', {
       rejection_id: rid,
       content: data.content,
-      assigned_to: data.assignedTo || '当前用户',
+      assigned_to: data.assignedTo || data.assignee || '当前用户',
+      assignee: data.assignee || data.assignedTo || '当前用户',
       status: data.status || 'processing',
     })
     const r = toCamel<any>(raw)
@@ -384,6 +389,8 @@ export async function upsertRemarkTask(
         ...r.remarkTask,
         id: String(r.remarkTask.id),
         rejectionId: String(r.remarkTask.rejectionId),
+        assignee: r.remarkTask.assignee || r.remarkTask.assignedTo,
+        assignedTo: r.remarkTask.assignedTo || r.remarkTask.assignee,
       } : undefined,
     })
   } catch (e) {
