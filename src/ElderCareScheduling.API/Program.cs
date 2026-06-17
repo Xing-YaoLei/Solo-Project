@@ -98,10 +98,10 @@ app.UseAuthorization();
 app.UseHangfireDashboard("/hangfire", new DashboardOptions
 {
     DashboardTitle = "养老护理排班后台任务管理",
-    Authorization = new[]
+    Authorization = new Hangfire.Dashboard.IDashboardAuthorizationFilter[]
     {
         app.Environment.IsDevelopment()
-            ? new NoopDashboardAuthFilter()
+            ? (Hangfire.Dashboard.IDashboardAuthorizationFilter)new NoopDashboardAuthFilter()
             : new SimpleDashboardAuthFilter("admin", "Admin@123")
     }
 });
