@@ -161,18 +161,22 @@ def render_header(anomaly_marker: AnomalyMarker, task_generator: TaskGenerator):
         if st.button("🔄 刷新看板", type="primary", use_container_width=True):
             st.rerun()
     
-    if anomaly_marker.has_anomalies():
-        anomaly_summary = anomaly_marker.get_anomaly_summary()
-        warning_cols = st.columns(len(anomaly_summary))
-        for i, item in enumerate(anomaly_summary):
-            with warning_cols[i]:
-                st.markdown(
-                    f"<div style='padding:10px; border-radius:5px; "
-                    f"background-color:{item['color']}20; border:1px solid {item['color']}'>"
-                    f"<span style='color:{item['color']}'>{item['icon']} {item['label']}: {item['count']} 条</span>"
-                    f"</div>",
-                    unsafe_allow_html=True
-                )
+    try:
+        if anomaly_marker.has_anomalies():
+            anomaly_summary = anomaly_marker.get_anomaly_summary()
+            if anomaly_summary:
+                warning_cols = st.columns(len(anomaly_summary))
+                for i, item in enumerate(anomaly_summary):
+                    with warning_cols[i]:
+                        st.markdown(
+                            f"<div style='padding:10px; border-radius:5px; "
+                            f"background-color:{item['color']}20; border:1px solid {item['color']}'>"
+                            f"<span style='color:{item['color']}'>{item['icon']} {item['label']}: {item['count']} 条</span>"
+                            f"</div>",
+                            unsafe_allow_html=True
+                        )
+    except Exception as e:
+        logger.warning(f"Failed to render anomaly summary: {e}")
     
     task_generator.render_task_badges()
 
@@ -207,24 +211,13 @@ def render_funnel_view(db: DuckDBClient, processor: DataProcessor,
     with col1:
         st.subheader("📊 康复活动漏斗")
         fig_funnel = funnel_chart.create_funnel_figure()
-        fig_funnel = anomaly_marker.add_anomaly_markers_to_chart(fig_funnel)
+        try:
+            fig_funnel = anomaly_marker.add_anomaly_markers_to_chart(fig_funnel)
+        except Exception as e:
+            logger.warning(f"Failed to add anomaly markers to chart: {e}")
         st.plotly_chart(fig_funnel, use_container_width=True)
         
-        st.markdown("**💡 已保存的处理结论（显示在图表旁边）**")
-        all_conclusions = []
-        for anomaly_type in ["terminal_delay", "charging_missing", "device_caliber_change", "fall_impact"]:
-            conclusions = anomaly_marker.get_saved_conclusions(anomaly_type)
-            all_conclusions.extend(conclusions)
-        
-        if all_conclusions:
-            for idx, conc in enumerate(all_conclusions[:5]):
-                status_icon = "✅" if conc["is_resolved"] else "⏳"
-                st.info(
-                    f"{status_icon} **{conc['description']}**\n\n"
-                    f"处理结论: {conc['conclusion']}"
-                )
-        else:
-            st.caption("暂无已保存的处理结论，请在下方异常检测区域录入")
+        anomaly_marker.render_saved_conclusions_near_chart()
         
         task_generator.display_task_conclusions_near_chart()
     

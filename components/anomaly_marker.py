@@ -3,11 +3,14 @@ import polars as pl
 from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime, date
 import streamlit as st
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class AnomalyMarker:
     def __init__(self, anomalies: Dict[str, pl.DataFrame], db_client=None):
-        self.anomalies = anomalies
+        self.anomalies = anomalies or {}
         self.db = db_client
         self.colors = {
             "terminal_delay": "#d62728",
@@ -34,25 +37,30 @@ class AnomalyMarker:
     def get_anomaly_summary(self) -> List[Dict[str, Any]]:
         summary = []
         for key, df in self.anomalies.items():
-            if len(df) > 0:
-                summary.append({
-                    "type": key,
-                    "label": self.labels[key],
-                    "icon": self.icons[key],
-                    "color": self.colors[key],
-                    "count": len(df),
-                    "description": self._get_anomaly_description(key, df)
-                })
+            try:
+                if df is not None and len(df) > 0:
+                    summary.append({
+                        "type": key,
+                        "label": self.labels.get(key, key),
+                        "icon": self.icons.get(key, "⚠️"),
+                        "color": self.colors.get(key, "#ff7f0e"),
+                        "count": len(df),
+                        "description": self._get_overview_description(key, df)
+                    })
+            except Exception as e:
+                logger.warning(f"Failed to process anomaly {key}: {e}")
+                continue
         return summary
 
-    def _get_anomaly_description(self, anomaly_type: str, df: pl.DataFrame) -> str:
+    def _get_overview_description(self, anomaly_type: str, df: pl.DataFrame) -> str:
+        count = len(df) if df is not None else 0
         descriptions = {
-            "terminal_delay": f"检测到 {len(df)} 条签到记录延迟超过 24 小时",
-            "charging_missing": f"检测到 {len(df)} 条已完成活动缺少收费系统记录",
-            "device_caliber_change": f"检测到 {len(df)} 天健康设备数据异常波动",
-            "fall_impact": f"检测到 {len(df)} 位老人跌倒后康复活动受影响"
+            "terminal_delay": f"检测到 {count} 条签到记录延迟超过 24 小时",
+            "charging_missing": f"检测到 {count} 条已完成活动缺少收费系统记录",
+            "device_caliber_change": f"检测到 {count} 天健康设备数据异常波动",
+            "fall_impact": f"检测到 {count} 位老人跌倒后康复活动受影响"
         }
-        return descriptions.get(anomaly_type, f"检测到 {len(df)} 条异常记录")
+        return descriptions.get(anomaly_type, f"检测到 {count} 条异常记录")
 
     def render_anomaly_alerts(self, show_details: bool = True) -> None:
         summary = self.get_anomaly_summary()
@@ -232,29 +240,72 @@ class AnomalyMarker:
         conclusions = []
         df = self.anomalies.get(anomaly_type, pl.DataFrame())
         
+        if df is None or len(df) == 0:
+            return []
+        
         for idx, row in enumerate(df.iter_rows(named=True)):
             anomaly_id = self._get_anomaly_id(anomaly_type, row, idx)
-            saved = self.db.get_anomaly_review(anomaly_id)
-            if saved and saved.get("handle_conclusion"):
-                conclusions.append({
-                    "anomaly_id": anomaly_id,
-                    "conclusion": saved["handle_conclusion"],
-                    "is_resolved": saved.get("is_resolved", False),
-                    "description": self._get_anomaly_description(anomaly_type, row)
-                })
+            try:
+                saved = self.db.get_anomaly_review(anomaly_id)
+                if saved and saved.get("handle_conclusion"):
+                    conclusions.append({
+                        "anomaly_id": anomaly_id,
+                        "conclusion": saved["handle_conclusion"],
+                        "is_resolved": saved.get("is_resolved", False),
+                        "description": self._get_single_anomaly_description(anomaly_type, row)
+                    })
+            except Exception as e:
+                logger.warning(f"Failed to get saved conclusion for {anomaly_id}: {e}")
+                continue
         
         return conclusions
     
-    def _get_anomaly_description(self, anomaly_type: str, row: Dict[str, Any]) -> str:
-        if anomaly_type == "terminal_delay":
-            return f"签到延迟 - {row.get('elder_name', '未知')} - {row.get('check_time', '未知')}"
-        elif anomaly_type == "charging_missing":
-            return f"收费缺失 - {row.get('activity_name', '未知')} - {row.get('plan_date', '未知')}"
-        elif anomaly_type == "device_caliber_change":
-            return f"口径变化 - {row.get('check_date', '未知')}"
-        elif anomaly_type == "fall_impact":
-            return f"跌倒影响 - {row.get('elder_name', '未知')} - {row.get('fall_date', '未知')}"
-        return "异常"
+    def _get_single_anomaly_description(self, anomaly_type: str, row: Dict[str, Any]) -> str:
+        try:
+            if anomaly_type == "terminal_delay":
+                return f"签到延迟 - {row.get('elder_name', '未知')} - {row.get('checkin_time', row.get('check_time', '未知'))}"
+            elif anomaly_type == "charging_missing":
+                return f"收费缺失 - {row.get('activity_name', '未知')} - {row.get('plan_date', '未知')}"
+            elif anomaly_type == "device_caliber_change":
+                return f"口径变化 - {row.get('check_date', '未知')}"
+            elif anomaly_type == "fall_impact":
+                return f"跌倒影响 - {row.get('elder_name', '未知')} - {row.get('fall_date', '未知')}"
+        except Exception:
+            pass
+        return f"异常记录 - {anomaly_type}"
+
+    def get_all_saved_conclusions(self) -> List[Dict[str, Any]]:
+        all_conclusions = []
+        for anomaly_type in ["terminal_delay", "charging_missing", "device_caliber_change", "fall_impact"]:
+            try:
+                conclusions = self.get_saved_conclusions(anomaly_type)
+                all_conclusions.extend(conclusions)
+            except Exception as e:
+                logger.warning(f"Failed to get conclusions for {anomaly_type}: {e}")
+                continue
+        return all_conclusions
+
+    def render_saved_conclusions_near_chart(self, max_items: int = 5) -> None:
+        st.markdown("**💡 已保存的处理结论（显示在图表旁边）**")
+        
+        try:
+            all_conclusions = self.get_all_saved_conclusions()
+        except Exception as e:
+            logger.error(f"Failed to get saved conclusions: {e}")
+            st.caption("暂无已保存的处理结论")
+            return
+        
+        if not all_conclusions:
+            st.caption("暂无已保存的处理结论，请在下方异常检测区域录入")
+            return
+        
+        for conc in all_conclusions[:max_items]:
+            status_icon = "✅" if conc.get("is_resolved") else "⏳"
+            with st.container():
+                st.info(
+                    f"{status_icon} **{conc.get('description', '异常')}**\n\n"
+                    f"处理结论: {conc.get('conclusion', '')}"
+                )
 
     def get_affected_periods(self) -> List[Tuple[date, date, str]]:
         periods = []
