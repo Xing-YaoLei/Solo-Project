@@ -78,9 +78,10 @@ export default function ExportWithCaliber({
         filter_conditions: filterConditions,
         include_caliber: true,
       })
-      const fileName = `${values.export_name}_${dayjs().format('YYYYMMDDHHmmss')}.xlsx`
+      const serverFilename = (blob as any).__filename
+      const fileName = serverFilename || `${values.export_name}_${dayjs().format('YYYYMMDDHHmmss')}.xlsx`
       saveAs(blob, fileName)
-      message.success('导出成功')
+      message.success(`导出成功：${fileName}`)
       setVisible(false)
       onSuccess?.()
     } catch (error) {

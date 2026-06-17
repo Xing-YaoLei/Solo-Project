@@ -7,7 +7,7 @@ from ..schemas import UserCreate, UserLogin, UserResponse, Token
 from ..utils.auth import get_password_hash, verify_password, create_access_token, get_current_user
 from ..config import settings
 
-router = APIRouter(prefix="/auth", tags=["认证"])
+router = APIRouter(prefix="/api/auth", tags=["认证"])
 
 
 @router.post("/login", response_model=dict)

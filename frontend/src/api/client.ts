@@ -25,9 +25,49 @@ axiosInstance.interceptors.request.use(
   }
 )
 
+const parseFilenameFromDisposition = (disposition: string | null): string | null => {
+  if (!disposition) return null
+  const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i)
+  if (utf8Match) {
+    try {
+      return decodeURIComponent(utf8Match[1])
+    } catch {
+      // ignore
+    }
+  }
+  const simpleMatch = disposition.match(/filename="?([^";]+)"?/i)
+  if (simpleMatch) {
+    return simpleMatch[1]
+  }
+  return null
+}
+
 axiosInstance.interceptors.response.use(
-  (response: AxiosResponse<BaseResponse>) => {
-    const res = response.data
+  (response: AxiosResponse) => {
+    const contentType = String(response.headers?.['content-type'] || '')
+    const isBlobRequest = response.config.responseType === 'blob'
+
+    if (isBlobRequest) {
+      if (contentType.indexOf('application/json') !== -1) {
+        return new Promise((_, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => {
+            try {
+              const errData = JSON.parse(reader.result as string)
+              message.error(errData?.message || errData?.detail || '请求失败')
+              reject(new Error(errData?.message || errData?.detail || '请求失败'))
+            } catch {
+              reject(new Error('导出失败'))
+            }
+          }
+          reader.onerror = () => reject(new Error('读取响应失败'))
+          reader.readAsText(response.data as Blob)
+        }) as unknown as AxiosResponse
+      }
+      return response
+    }
+
+    const res = response.data as BaseResponse
     if (res.code !== 200 && res.code !== 0) {
       message.error(res.message || '请求失败')
       return Promise.reject(new Error(res.message || '请求失败'))
@@ -53,6 +93,11 @@ axiosInstance.interceptors.response.use(
   }
 )
 
+export interface DownloadResult {
+  blob: Blob
+  filename: string | null
+}
+
 export const request = {
   get: <T = any>(url: string, config?: AxiosRequestConfig): Promise<T> => {
     return axiosInstance.get<BaseResponse<T>>(url, config).then((res) => res.data.data)
@@ -76,7 +121,37 @@ export const request = {
     if (data !== undefined && method === 'POST') {
       requestConfig.data = data
     }
-    return axiosInstance(requestConfig).then((res) => res.data as unknown as Blob)
+    return axiosInstance(requestConfig).then((res) => {
+      const disposition = res.headers?.['content-disposition'] || null
+      const filename = parseFilenameFromDisposition(disposition)
+      const blob = res.data as Blob
+      if (filename) {
+        try {
+          Object.defineProperty(blob, '__filename', { value: filename, writable: false })
+        } catch {
+          // ignore
+        }
+      }
+      return blob
+    })
+  },
+  downloadWithMeta: (url: string, config?: AxiosRequestConfig, method: 'GET' | 'POST' = 'GET', data?: any): Promise<DownloadResult> => {
+    const requestConfig: AxiosRequestConfig = {
+      ...config,
+      url,
+      method,
+      responseType: 'blob',
+    }
+    if (data !== undefined && method === 'POST') {
+      requestConfig.data = data
+    }
+    return axiosInstance(requestConfig).then((res) => {
+      const disposition = res.headers?.['content-disposition'] || null
+      return {
+        blob: res.data as Blob,
+        filename: parseFilenameFromDisposition(disposition),
+      }
+    })
   },
   upload: <T = any>(url: string, formData: FormData, config?: AxiosRequestConfig): Promise<T> => {
     return axiosInstance
