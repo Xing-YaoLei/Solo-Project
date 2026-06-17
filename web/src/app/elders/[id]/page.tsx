@@ -6,7 +6,7 @@ import { useParams } from 'next/navigation'
 import { getElder } from '@/lib/api'
 import CareLevelBadge from '@/components/CareLevelBadge'
 import StatusBadge from '@/components/StatusBadge'
-import { User, Heart, Pill, Phone, MapPin, Calendar } from 'lucide-react'
+import { User, Heart, Pill, Phone, MapPin, Calendar, AlertTriangle, Pill as PillIcon } from 'lucide-react'
 import { formatDate } from '@/app/helpers'
 
 const tabs = [
@@ -122,43 +122,46 @@ export default function ElderDetailPage() {
         {activeTab === 'meds' && (
           <div>
             {elder.medications?.length > 0 ? (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-100">
-                    <th className="text-left py-3 text-slate-500 font-medium">药品名称</th>
-                    <th className="text-left py-3 text-slate-500 font-medium">剂量</th>
-                    <th className="text-left py-3 text-slate-500 font-medium">频率</th>
-                    <th className="text-left py-3 text-slate-500 font-medium">状态</th>
-                    <th className="text-left py-3 text-slate-500 font-medium">核对</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {elder.medications.map((m: any) => {
-                    const issues = checkMedication(elder, m)
-                    return (
-                      <tr key={m.id} className="border-b border-slate-50">
-                        <td className="py-3 font-medium text-slate-800">{m.medicationName}</td>
-                        <td className="py-3 text-slate-600">{m.dosage}</td>
-                        <td className="py-3 text-slate-600">{m.frequency}</td>
-                        <td className="py-3"><StatusBadge status={m.status} variant="reminder" /></td>
-                        <td className="py-3">
-                          {issues.length > 0 ? (
-                            <div className="space-y-0.5">
-                              {issues.map((issue, idx) => (
-                                <div key={idx} className="text-xs text-red-600 font-medium">
-                                  {issue}
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <span className="text-xs text-green-600">正常</span>
-                          )}
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+              <>
+                <MedicationSummary elder={elder} />
+                <table className="w-full text-sm mt-4">
+                  <thead>
+                    <tr className="border-b border-slate-100">
+                      <th className="text-left py-3 text-slate-500 font-medium">药品名称</th>
+                      <th className="text-left py-3 text-slate-500 font-medium">剂量</th>
+                      <th className="text-left py-3 text-slate-500 font-medium">频率</th>
+                      <th className="text-left py-3 text-slate-500 font-medium">状态</th>
+                      <th className="text-left py-3 text-slate-500 font-medium">核对</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {elder.medications.map((m: any) => {
+                      const issues = checkMedication(elder, m)
+                      return (
+                        <tr key={m.id} className="border-b border-slate-50">
+                          <td className="py-3 font-medium text-slate-800">{m.medicationName}</td>
+                          <td className="py-3 text-slate-600">{m.dosage}</td>
+                          <td className="py-3 text-slate-600">{m.frequency}</td>
+                          <td className="py-3"><StatusBadge status={m.status} variant="reminder" /></td>
+                          <td className="py-3">
+                            {issues.length > 0 ? (
+                              <div className="space-y-0.5">
+                                {issues.map((issue, idx) => (
+                                  <div key={idx} className="text-xs text-red-600 font-medium">
+                                    {issue}
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-xs text-green-600">正常</span>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </>
             ) : (
               <div className="text-center py-10 text-slate-400">暂无用药记录</div>
             )}
@@ -169,8 +172,8 @@ export default function ElderDetailPage() {
   )
 }
 
-function checkMedication(elder: any, med: any): string[] {
-  const issues: string[] = []
+function MedicationSummary({ elder }: { elder: any }) {
+  const medCount = elder.medications?.length ?? 0
   const careLevelLabels: Record<string, string> = {
     LEVEL_1: '一级护理',
     LEVEL_2: '二级护理',
@@ -180,8 +183,60 @@ function checkMedication(elder: any, med: any): string[] {
   }
   const careLabel = careLevelLabels[elder.careLevel] ?? elder.careLevel
 
+  const issues: string[] = []
+  if (elder.careLevel === 'LEVEL_5' && medCount < 2) {
+    issues.push(`${careLabel}老人用药种类偏少（仅 ${medCount} 种），建议复核用药清单`)
+  }
+  if (elder.careLevel === 'LEVEL_1' && medCount > 6) {
+    issues.push(`${careLabel}老人用药种类偏多（${medCount} 种），需关注药物相互作用`)
+  }
+
+  return (
+    <div className={`rounded-xl p-4 ${
+      issues.length > 0
+        ? 'border border-amber-200 bg-amber-50/50'
+        : 'border border-green-200 bg-green-50/50'
+    }`}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+            issues.length > 0 ? 'bg-amber-100' : 'bg-green-100'
+          }`}>
+            {issues.length > 0 ? (
+              <AlertTriangle className="w-5 h-5 text-amber-600" />
+            ) : (
+              <PillIcon className="w-5 h-5 text-green-600" />
+            )}
+          </div>
+          <div>
+            <div className="font-medium text-slate-800">用药清单核对</div>
+            <div className="text-xs text-slate-500">共 {medCount} 种用药 · {careLabel}</div>
+          </div>
+        </div>
+        <span className={`text-sm font-medium ${
+          issues.length > 0 ? 'text-amber-600' : 'text-green-600'
+        }`}>
+          {issues.length > 0 ? '需关注' : '正常'}
+        </span>
+      </div>
+      {issues.length > 0 && (
+        <ul className="mt-3 space-y-1.5">
+          {issues.map((issue, idx) => (
+            <li key={idx} className="flex items-start gap-2 text-sm text-amber-700">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0" />
+              {issue}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+function checkMedication(elder: any, med: any): string[] {
+  const issues: string[] = []
+
   const freq = med.frequency ?? ''
-  const freqLower = freq.toLowerCase()
 
   const isHypotensive = med.medicationName.includes('降压') ||
     med.medicationName.includes('硝苯地平') ||
@@ -195,8 +250,16 @@ function checkMedication(elder: any, med: any): string[] {
     med.medicationName.includes('氯吡格雷')
 
   if ((elder.careLevel === 'LEVEL_5' || elder.careLevel === 'LEVEL_4') &&
-      (freq === '每日一次' || freqLower === 'qd')) {
-    issues.push(`${careLabel}老人用药频率仅${freq}，建议复核`)
+      freq === '每日一次') {
+    const careLevelLabels: Record<string, string> = {
+      LEVEL_1: '一级护理',
+      LEVEL_2: '二级护理',
+      LEVEL_3: '三级护理',
+      LEVEL_4: '四级护理',
+      LEVEL_5: '五级护理',
+    }
+    const careLabel = careLevelLabels[elder.careLevel] ?? elder.careLevel
+    issues.push(`${careLabel}老人用药频率仅每日一次，建议复核`)
   }
 
   if (elder.fallRiskLevel === 'HIGH' && isHypotensive) {
