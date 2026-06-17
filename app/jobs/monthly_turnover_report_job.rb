@@ -14,31 +14,37 @@ class MonthlyTurnoverReportJob < ApplicationJob
     spots = ParkingSpot.all
     spots = spots.by_zone(filter_conditions["zone"]) if filter_conditions["zone"].present?
     spots = spots.by_spot_type(filter_conditions["spot_type"]) if filter_conditions["spot_type"].present?
+    spots = spots.to_a
 
-    turnover_data = spots.map do |spot|
-      bills = spot.parking_bills.where(check_out_at: start_date..end_date)
-      {
-        spot_number: spot.spot_number,
-        zone: spot.zone,
-        spot_type: spot.spot_type,
-        total_bills: bills.count,
-        paid_bills: bills.paid.count,
-        unpaid_bills: bills.unpaid.count,
-        total_revenue: bills.paid.sum(:amount),
-        turnover_rate: spot.turnover_rate(start_date: start_date, end_date: end_date)
-      }
+    if spots.any?
+      turnover_data = spots.map do |spot|
+        bills = spot.parking_bills.where(check_out_at: start_date..end_date)
+        {
+          spot_number: spot.spot_number,
+          zone: spot.zone,
+          spot_type: spot.spot_type,
+          total_bills: bills.count,
+          paid_bills: bills.paid.count,
+          unpaid_bills: bills.unpaid.count,
+          total_revenue: bills.paid.sum(:amount),
+          turnover_rate: spot.turnover_rate(start_date: start_date, end_date: end_date)
+        }
+      end
+    else
+      turnover_data = []
     end
 
     total_bills = turnover_data.sum { |d| d[:total_bills] }
     total_revenue = turnover_data.sum { |d| d[:total_revenue] }
-    avg_turnover = spots.any? ? turnover_data.sum { |d| d[:turnover_rate] } / spots.size : 0
+    avg_turnover = spots.any? ? turnover_data.sum { |d| d[:turnover_rate] } / spots.size : 0.0
+    occupied_count = spots.is_a?(Array) ? spots.count { |s| s.occupied? } : spots.occupied.count
 
     summary = {
-      total_spots: spots.count,
+      total_spots: spots.size,
       total_bills: total_bills,
       total_revenue: total_revenue,
       average_turnover_rate: avg_turnover.round(2),
-      occupancy_rate: (spots.occupied.count.to_f / spots.count * 100).round(2)
+      occupancy_rate: spots.any? ? (occupied_count.to_f / spots.size * 100).round(2) : 0.0
     }
 
     file_path = generate_excel(report, turnover_data, summary, filter_conditions, generated_by)
@@ -74,7 +80,7 @@ class MonthlyTurnoverReportJob < ApplicationJob
   def generate_excel(report, turnover_data, summary, filter_conditions, generated_by)
     require "axlsx"
 
-    file_name = "turnover_report_#{report.report_month.strftime('%Y%m')}.xlsx"
+    file_name = "turnover_report_#{report.id}_#{report.report_month.strftime('%Y%m')}.xlsx"
     temp_file = Rails.root.join("tmp", file_name)
 
     Axlsx::Package.new do |p|
