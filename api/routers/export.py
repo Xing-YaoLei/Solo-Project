@@ -179,7 +179,8 @@ async def export_data(
 
     elif req.view_type == "activities":
         stmt = (
-            select(ActivityRecord)
+            select(ActivityRecord, Elder.name)
+            .join(Elder, ActivityRecord.elder_id == Elder.id)
             .where(
                 and_(
                     ActivityRecord.scheduled_time >= req.start_date,
@@ -189,22 +190,83 @@ async def export_data(
             .order_by(ActivityRecord.scheduled_time)
         )
         result = await db.execute(stmt)
-        records = [ActivityRecordOut.model_validate(r, from_attributes=True) for r in result.scalars().all()]
+        all_rows = result.all()
 
-        writer.writerow(["ID", "老人ID", "活动名称", "计划时间", "是否签到", "签到时间"])
-        for r in records:
-            writer.writerow([r.id, r.elder_id, r.activity_name, r.scheduled_time, r.checked_in, r.check_in_time])
+        from collections import defaultdict
+        activity_groups: dict[str, list[tuple[ActivityRecord, str]]] = defaultdict(list)
+        for r, elder_name in all_rows:
+            date_key = r.scheduled_time.date().isoformat()
+            group_key = f"{r.activity_name}-{date_key}"
+            activity_groups[group_key].append((r, elder_name))
 
-        total = len(records)
-        checked_in = sum(1 for r in records if r.checked_in)
-        rate = f"{checked_in / total * 100:.1f}%" if total else "N/A"
-        is_compliant = (checked_in / total * 100) >= 90 if total else False
+        locations = ["1楼活动室", "2楼手工室", "3楼休闲区", "4楼多功能厅"]
+        activities = []
+        for idx, (group_key, records) in enumerate(activity_groups.items()):
+            first_record = records[0][0]
+            activity_name = first_record.activity_name
+            activity_date = first_record.scheduled_time.date().isoformat()
+            start_time = first_record.scheduled_time
+            end_time = start_time + timedelta(hours=1)
+            location = locations[idx % len(locations)]
+
+            attendees = []
+            for r, elder_name in records:
+                attendees.append({
+                    "elder_id": str(r.elder_id),
+                    "elder_name": elder_name,
+                    "check_in_time": r.check_in_time.isoformat() if r.check_in_time else None,
+                    "status": "checked_in" if r.checked_in else "absent",
+                })
+
+            activities.append({
+                "id": f"act-{idx}",
+                "activity_name": activity_name,
+                "activity_date": activity_date,
+                "start_time": start_time.isoformat(),
+                "end_time": end_time.isoformat(),
+                "location": location,
+                "attendees": attendees,
+            })
+
+        writer.writerow(["=== 活动签到明细 ==="])
+        total_attendees_all = 0
+        checked_in_all = 0
+
+        for act in activities:
+            writer.writerow([])
+            writer.writerow(["活动名称", act["activity_name"]])
+            writer.writerow(["活动日期", act["activity_date"]])
+            writer.writerow(["开始时间", act["start_time"]])
+            writer.writerow(["结束时间", act["end_time"]])
+            writer.writerow(["活动地点", act["location"]])
+            writer.writerow([])
+            writer.writerow(["序号", "老人ID", "老人姓名", "签到状态", "签到时间"])
+            for i, att in enumerate(act["attendees"], start=1):
+                status_label = "已签到" if att["status"] == "checked_in" else "未签到"
+                writer.writerow([
+                    i,
+                    att["elder_id"],
+                    att["elder_name"],
+                    status_label,
+                    att["check_in_time"] or "-",
+                ])
+            act_total = len(act["attendees"])
+            act_checked = sum(1 for a in act["attendees"] if a["status"] == "checked_in")
+            act_rate = f"{act_checked / act_total * 100:.1f}%" if act_total else "N/A"
+            writer.writerow([])
+            writer.writerow(["活动统计", f"应到 {act_total} 人", f"实到 {act_checked} 人", f"签到率 {act_rate}"])
+            total_attendees_all += act_total
+            checked_in_all += act_checked
+
         writer.writerow([])
         writer.writerow(["=== 护理达标计算 ==="])
         writer.writerow(["指标", "数值", "标准", "是否达标"])
-        writer.writerow(["活动签到率", rate, "≥90%", "是" if is_compliant else "否"])
-        writer.writerow(["总记录数", total, "-", "-"])
-        writer.writerow(["已签到数", checked_in, "-", "-"])
+        overall_rate = f"{checked_in_all / total_attendees_all * 100:.1f}%" if total_attendees_all else "N/A"
+        is_compliant = (checked_in_all / total_attendees_all * 100) >= 90 if total_attendees_all else False
+        writer.writerow(["活动签到率", overall_rate, "≥90%", "是" if is_compliant else "否"])
+        writer.writerow(["活动总数", len(activities), "-", "-"])
+        writer.writerow(["应到总人次", total_attendees_all, "-", "-"])
+        writer.writerow(["实到总人次", checked_in_all, "-", "-"])
 
     if req.include_compliance_rules:
         writer.writerow([])
