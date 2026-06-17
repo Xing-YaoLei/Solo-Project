@@ -504,9 +504,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     const item = ITEMS.find(i => i.id === itemId);
     if (!item) return false;
 
-    set(state => ({
-      itemUsedAt: { ...state.itemUsedAt, [itemId]: now },
-    }));
+    let success = true;
 
     switch (item.effect) {
       case 'show_hint': {
@@ -594,17 +592,72 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       case 'repair_device':
         if (state.activeEmergency) {
           get().resolveEmergency(state.activeEmergency.id);
+        } else {
+          success = false;
         }
         break;
-      case 'add_discount':
+      case 'add_discount': {
+        const targetBill = state.bills.find(b => 
+          !b.isPaid && (!b.appliedDiscount || b.appliedDiscount <= 0)
+        );
+        if (!targetBill) {
+          success = false;
+          break;
+        }
+        
+        const spot = state.spots.find(s => s.id === targetBill.spotId);
+        const record = state.accessRecords.find(r => r.vehiclePlate === targetBill.vehiclePlate);
+        const vehicleType = record?.vehicleType || 'car';
+        const durationMinutes = spot && spot.entryTime
+          ? (state.gameTime - spot.entryTime) / 60
+          : 0;
+        const fee = calculateParkingFee(
+          durationMinutes,
+          GAME_CONFIG.baseParkingRate,
+          vehicleType,
+          GAME_CONFIG.discountThresholdMinutes,
+          GAME_CONFIG.discountPercentage
+        );
+        const extraDiscount = fee.baseFee * 0.2;
+        
+        set(state => ({
+          bills: state.bills.map(b =>
+            b.id === targetBill.id
+              ? {
+                  ...b,
+                  appliedDiscount: extraDiscount,
+                  totalFee: Math.max(0, fee.totalFee - extraDiscount),
+                }
+              : b
+          ),
+        }));
+        
+        useAnalyticsStore.getState().trackEvent('item_use', {
+          itemId,
+          itemName: item.name,
+          effect: item.effect,
+          targetBillId: targetBill.id,
+          discountAmount: extraDiscount,
+        });
         break;
+      }
     }
 
-    useAnalyticsStore.getState().trackEvent('item_use', {
-      itemId,
-      itemName: item.name,
-      effect: item.effect,
-    });
+    if (!success) {
+      return false;
+    }
+
+    set(state => ({
+      itemUsedAt: { ...state.itemUsedAt, [itemId]: now },
+    }));
+
+    if (item.effect !== 'add_discount') {
+      useAnalyticsStore.getState().trackEvent('item_use', {
+        itemId,
+        itemName: item.name,
+        effect: item.effect,
+      });
+    }
 
     return true;
   },
