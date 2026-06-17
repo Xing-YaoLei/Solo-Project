@@ -1,15 +1,14 @@
+
 import React, { useState, useEffect, useCallback } from 'react'
 import {
-  List,
   Card,
   Tag,
   Space,
-  Badge,
   Input,
   Segmented,
   Empty,
-  PullToRefresh,
-  Avatar,
+  Button,
+  Spin,
 } from 'antd'
 import {
   ExclamationCircleOutlined,
@@ -18,6 +17,7 @@ import {
   SearchOutlined,
   RightOutlined,
   HomeOutlined,
+  ReloadOutlined,
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { todoApi } from '@/api'
@@ -48,7 +48,7 @@ const TodoList: React.FC = () => {
         searchKeyword: searchKeyword || undefined,
         pageSize: 100,
       })
-      setTodos(result.items)
+      setTodos(result.items || [])
     } catch (error) {
       console.error('获取待办列表失败:', error)
     } finally {
@@ -91,7 +91,6 @@ const TodoList: React.FC = () => {
   }
 
   const getBorderColor = (item: TodoTaskDto) => {
-    const priorityInfo = formatTodoPriority(item.priority)
     if (item.status === 3) return '#ff4d4f'
     if (item.status === 2) return '#52c41a'
     if (item.status === 1) return '#1677ff'
@@ -119,24 +118,29 @@ const TodoList: React.FC = () => {
         />
         <Segmented
           value={status}
-          onChange={setStatus}
+          onChange={setStatus as (value: any) => void}
           options={statusOptions}
           block
           size="small"
         />
       </Card>
 
-      <PullToRefresh
-        refreshing={refreshing}
-        onRefresh={handleRefresh}
-        style={{ height: 'calc(100vh - 240px)', overflow: 'auto' }}
-      >
+      <div style={{ textAlign: 'right', marginBottom: 12 }}>
+        <Button
+          type="text"
+          icon={<ReloadOutlined spin={refreshing} />}
+          onClick={handleRefresh}
+        >
+          {refreshing ? '刷新中...' : '刷新'}
+        </Button>
+      </div>
+
+      <Spin spinning={refreshing}>
         {todos.length === 0 ? (
           <Empty description="暂无待办任务" style={{ marginTop: 60 }} />
         ) : (
-          <List
-            dataSource={todos}
-            renderItem={(item) => {
+          <div>
+            {todos.map((item) => {
               const statusInfo = formatTodoStatus(item.status as TodoStatus)
               const priorityInfo = formatTodoPriority(item.priority as TodoPriority)
               return (
@@ -184,10 +188,10 @@ const TodoList: React.FC = () => {
                   </div>
                 </Card>
               )
-            }}
-          />
+            })}
+          </div>
         )}
-      </PullToRefresh>
+      </Spin>
     </div>
   )
 }

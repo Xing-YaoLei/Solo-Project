@@ -21,6 +21,7 @@ import {
   ReloadOutlined,
   EyeOutlined,
   ExclamationCircleOutlined,
+  DownloadOutlined,
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { orderApi, analysisApi } from '@/api'
@@ -100,6 +101,25 @@ const OrderList: React.FC = () => {
     form.resetFields()
     setPageNumber(1)
     setTimeout(fetchData, 0)
+  }
+
+  const handleExport = async () => {
+    try {
+      const values = form.getFieldsValue()
+      const params: MoveOutOrderQueryDto = {
+        searchKeyword: values.searchKeyword,
+        status: values.status,
+        building: values.building,
+        hasOverdueRent: values.hasOverdueRent,
+      }
+      if (values.moveOutDateRange && values.moveOutDateRange.length === 2) {
+        params.moveOutDateFrom = values.moveOutDateRange[0].format('YYYY-MM-DD')
+        params.moveOutDateTo = values.moveOutDateRange[1].format('YYYY-MM-DD')
+      }
+      await orderApi.exportOrders(params)
+    } catch (error) {
+      console.error('导出失败:', error)
+    }
   }
 
   const columns: ColumnsType<MoveOutOrderListDto> = [
@@ -299,6 +319,9 @@ const OrderList: React.FC = () => {
               </Button>
               <Button icon={<ReloadOutlined />} onClick={handleReset}>
                 重置
+              </Button>
+              <Button icon={<DownloadOutlined />} onClick={handleExport}>
+                导出
               </Button>
             </Space>
           </Form.Item>

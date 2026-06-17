@@ -1,4 +1,4 @@
-import { get, post, put, del } from '@/utils/request'
+import { get, post, put, del, download } from '@/utils/request'
 import type {
   PagedResult,
   MoveOutOrderListDto,
@@ -96,8 +96,8 @@ export const orderApi = {
     return post<ComplaintTagDto>(`/moveoutorders/${orderId}/complaints`, data)
   },
 
-  exportOrders: (params?: MoveOutOrderQueryDto): Promise<Blob> => {
-    return get<Blob>('/moveoutorders/export', { params, responseType: 'blob' })
+  exportOrders: (params?: MoveOutOrderQueryDto): Promise<void> => {
+    return download('/moveoutorders/export', params as Record<string, unknown>, `moveout_orders_${Date.now()}.csv`)
   },
 }
 

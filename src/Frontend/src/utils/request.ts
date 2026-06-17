@@ -25,7 +25,10 @@ request.interceptors.request.use(
 
 request.interceptors.response.use(
   (response: AxiosResponse) => {
-    const res = response.data as ApiResponse<unknown>
+    if (response.config.responseType === 'blob') {
+      return response
+    }
+    const res = response.data
     if (res && typeof res === 'object' && 'success' in res) {
       if (res.success) {
         return response
@@ -34,6 +37,7 @@ request.interceptors.response.use(
         return Promise.reject(new Error(res.message || '请求失败'))
       }
     }
+    response.data = { success: true, data: res } as ApiResponse<unknown>
     return response
   },
   (error) => {
@@ -82,6 +86,21 @@ export async function put<T>(url: string, data?: unknown, config?: AxiosRequestC
 export async function del<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
   const response = await request.delete<ApiResponse<T>>(url, config)
   return (response.data as ApiResponse<T>).data
+}
+
+export async function download(url: string, params?: Record<string, unknown>, filename?: string): Promise<void> {
+  const response = await request.get(url, {
+    params,
+    responseType: 'blob',
+  })
+  const blob = new Blob([response.data])
+  const link = document.createElement('a')
+  link.href = URL.createObjectURL(blob)
+  link.download = filename || `export_${Date.now()}.csv`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(link.href)
 }
 
 export default request

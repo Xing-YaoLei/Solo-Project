@@ -75,6 +75,12 @@ public class AppDbContext : DbContext
             .HasForeignKey(t => t.AssignedToId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        modelBuilder.Entity<TodoTask>()
+            .HasOne(t => t.CreatedByStaff)
+            .WithMany(s => s.CreatedTodos)
+            .HasForeignKey(t => t.CreatedById)
+            .OnDelete(DeleteBehavior.Restrict);
+
         modelBuilder.Entity<Staff>()
             .HasIndex(s => s.EmployeeId)
             .IsUnique();

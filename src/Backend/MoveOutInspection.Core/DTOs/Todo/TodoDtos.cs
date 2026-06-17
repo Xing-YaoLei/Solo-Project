@@ -55,3 +55,8 @@ public class TodoQueryDto : PagedQuery
     public DateTime? DueDateFrom { get; set; }
     public DateTime? DueDateTo { get; set; }
 }
+
+public class TodoStatusDto
+{
+    public TodoStatus Status { get; set; }
+}

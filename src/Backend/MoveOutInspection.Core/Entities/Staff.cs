@@ -15,5 +15,6 @@ public class Staff : EntityBase
 
     public ICollection<MoveOutOrder> AssignedOrders { get; set; } = new List<MoveOutOrder>();
     public ICollection<TodoTask> AssignedTodos { get; set; } = new List<TodoTask>();
+    public ICollection<TodoTask> CreatedTodos { get; set; } = new List<TodoTask>();
     public ICollection<TimelineEvent> TimelineEvents { get; set; } = new List<TimelineEvent>();
 }

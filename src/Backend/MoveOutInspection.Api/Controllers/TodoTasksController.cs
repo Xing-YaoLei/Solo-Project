@@ -235,7 +235,7 @@ public class TodoTasksController : ControllerBase
     }
 
     [HttpPut("{id}/complete")]
-    public async Task<IActionResult> CompleteTodo(Guid id, [FromBody] string? result)
+    public async Task<IActionResult> CompleteTodo(Guid id, [FromQuery] string? result)
     {
         var todo = await _unitOfWork.TodoTasks.GetByIdAsync(id);
         if (todo == null) return NotFound();
@@ -262,5 +262,90 @@ public class TodoTasksController : ControllerBase
         }
 
         return NoContent();
+    }
+
+    [HttpPut("{id}/status")]
+    public async Task<IActionResult> UpdateTodoStatus(Guid id, [FromBody] TodoStatusDto dto)
+    {
+        var todo = await _unitOfWork.TodoTasks.GetByIdAsync(id);
+        if (todo == null) return NotFound();
+
+        var oldStatus = todo.Status;
+        todo.Status = dto.Status;
+        if (dto.Status == TodoStatus.InProgress && !todo.StartedAt.HasValue)
+            todo.StartedAt = DateTime.Now;
+        if (dto.Status == TodoStatus.Completed && !todo.CompletedAt.HasValue)
+            todo.CompletedAt = DateTime.Now;
+        todo.UpdatedAt = DateTime.Now;
+        todo.UpdatedBy = "system";
+
+        _unitOfWork.TodoTasks.Update(todo);
+        await _unitOfWork.SaveChangesAsync();
+
+        if (todo.MoveOutOrderId.HasValue)
+        {
+            await _timelineService.AddEventAsync(
+                todo.MoveOutOrderId.Value,
+                TimelineEventType.CustomAction,
+                "待办状态已更新",
+                $"待办任务「{todo.Title}」状态由 {oldStatus} 变更为 {dto.Status}",
+                oldStatus.ToString(),
+                dto.Status.ToString(),
+                null, null, null, "系统",
+                todo.Id.ToString(),
+                nameof(TodoTask));
+        }
+
+        return NoContent();
+    }
+
+    [HttpGet("mine")]
+    public async Task<ActionResult<PagedResult<TodoTaskDto>>> GetMyTodos([FromQuery] TodoQueryDto query)
+    {
+        var staffId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+        query.AssignedToId = staffId;
+        return await GetTodos(query);
+    }
+
+    [HttpGet("order/{orderId}")]
+    public async Task<ActionResult<IEnumerable<TodoTaskDto>>> GetTodosByOrderId(Guid orderId)
+    {
+        var todos = await _unitOfWork.TodoTasks.FindAsync(t => t.MoveOutOrderId == orderId);
+        var dtos = new List<TodoTaskDto>();
+
+        foreach (var todo in todos)
+        {
+            var assignedTo = await _unitOfWork.Staffs.GetByIdAsync(todo.AssignedToId);
+            var createdBy = todo.CreatedById.HasValue
+                ? await _unitOfWork.Staffs.GetByIdAsync(todo.CreatedById.Value)
+                : null;
+            var order = await _unitOfWork.MoveOutOrders.GetByIdAsync(orderId);
+            var apartment = order != null ? await _unitOfWork.Apartments.GetByIdAsync(order.ApartmentId) : null;
+
+            dtos.Add(new TodoTaskDto
+            {
+                Id = todo.Id,
+                TaskNo = todo.TaskNo,
+                MoveOutOrderId = todo.MoveOutOrderId,
+                OrderNumber = order?.OrderNumber,
+                ApartmentNumber = apartment?.ApartmentNumber,
+                Title = todo.Title,
+                Description = todo.Description,
+                Status = todo.Status,
+                Priority = todo.Priority,
+                Category = todo.Category,
+                AssignedToId = todo.AssignedToId,
+                AssignedToName = assignedTo?.Name,
+                CreatedByName = createdBy?.Name,
+                DueDate = todo.DueDate,
+                StartedAt = todo.StartedAt,
+                CompletedAt = todo.CompletedAt,
+                Result = todo.Result,
+                AttachmentUrls = todo.AttachmentUrls,
+                CreatedAt = todo.CreatedAt
+            });
+        }
+
+        return Ok(dtos);
     }
 }

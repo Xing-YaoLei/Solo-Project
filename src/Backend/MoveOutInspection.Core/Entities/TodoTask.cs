@@ -16,7 +16,7 @@ public class TodoTask : EntityBase
     public Guid AssignedToId { get; set; }
     public Staff? AssignedTo { get; set; }
     public Guid? CreatedById { get; set; }
-    public Staff? CreatedBy { get; set; }
+    public Staff? CreatedByStaff { get; set; }
     public DateTime DueDate { get; set; }
     public DateTime? StartedAt { get; set; }
     public DateTime? CompletedAt { get; set; }

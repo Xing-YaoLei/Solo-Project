@@ -1,5 +1,6 @@
+
 import React, { useEffect, useState } from 'react'
-import { Layout, TabBar } from 'antd'
+import { Layout } from 'antd'
 import {
   UnorderedListOutlined,
   UserOutlined,
@@ -22,7 +23,7 @@ const MobileLayout: React.FC = () => {
     }
   }, [location.pathname])
 
-  const handleTabChange = (key: string) => {
+  const handleTabClick = (key: string) => {
     setActiveKey(key)
     if (key === 'todos') {
       navigate('/mobile')
@@ -35,12 +36,12 @@ const MobileLayout: React.FC = () => {
     {
       key: 'todos',
       title: '待办',
-      icon: <UnorderedListOutlined />,
+      icon: <UnorderedListOutlined style={{ fontSize: 20 }} />,
     },
     {
       key: 'profile',
       title: '我的',
-      icon: <UserOutlined />,
+      icon: <UserOutlined style={{ fontSize: 20 }} />,
     },
   ]
 
@@ -54,6 +55,8 @@ const MobileLayout: React.FC = () => {
           fontWeight: 600,
           fontSize: 18,
           padding: '0 16px',
+          height: 48,
+          lineHeight: '48px',
         }}
       >
         {user?.name ? `${user.name}的待办` : '待办事项'}
@@ -62,14 +65,49 @@ const MobileLayout: React.FC = () => {
         style={{
           padding: 12,
           overflow: 'auto',
-          paddingBottom: 60,
+          paddingBottom: 64,
+          height: 'calc(100vh - 48px)',
         }}
       >
         <Outlet />
       </Layout.Content>
-      <Layout.Footer style={{ padding: 0, position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 100 }}>
-        <TabBar activeKey={activeKey} onChange={handleTabChange} items={tabs} />
-      </Layout.Footer>
+      <div
+        style={{
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: 56,
+          background: '#fff',
+          boxShadow: '0 -2px 8px rgba(0,0,0,0.06)',
+          display: 'flex',
+          zIndex: 100,
+          borderTop: '1px solid #f0f0f0',
+        }}
+      >
+        {tabs.map((tab) => {
+          const isActive = activeKey === tab.key
+          return (
+            <div
+              key={tab.key}
+              onClick={() => handleTabClick(tab.key)}
+              style={{
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: isActive ? '#1677ff' : '#999',
+                transition: 'color 0.2s',
+              }}
+            >
+              {tab.icon}
+              <span style={{ fontSize: 11, marginTop: 2 }}>{tab.title}</span>
+            </div>
+          )
+        })}
+      </div>
     </Layout>
   )
 }
