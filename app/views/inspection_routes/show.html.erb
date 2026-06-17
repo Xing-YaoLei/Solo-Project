@@ -1,0 +1,72 @@
+<div class="page-header">
+  <h1>巡检路线详情</h1>
+  <div>
+    <%= link_to "编辑", edit_inspection_route_path(@inspection_route), class: "btn btn-primary" %>
+    <%= link_to "返回列表", inspection_routes_path, class: "btn" %>
+  </div>
+</div>
+
+<div class="detail-card">
+  <div class="detail-row">
+    <span class="detail-label">路线名称</span>
+    <span class="detail-value"><%= @inspection_route.name %></span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">巡检员</span>
+    <span class="detail-value"><%= @inspection_route.inspector_name %></span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">计划时间</span>
+    <span class="detail-value"><%= @inspection_route.scheduled_at.strftime('%Y-%m-%d %H:%M') %></span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">开始时间</span>
+    <span class="detail-value"><%= @inspection_route.started_at&.strftime('%Y-%m-%d %H:%M') || "-" %></span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">完成时间</span>
+    <span class="detail-value"><%= @inspection_route.completed_at&.strftime('%Y-%m-%d %H:%M') || "-" %></span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">状态</span>
+    <span class="detail-value"><span class="badge badge-<%= @inspection_route.status %>"><%= t("inspection_route.status.#{@inspection_route.status}", default: @inspection_route.status) %></span></span>
+  </div>
+  <% if @inspection_route.notes.present? %>
+    <div class="detail-row">
+      <span class="detail-label">备注</span>
+      <span class="detail-value"><%= @inspection_route.notes %></span>
+    </div>
+  <% end %>
+</div>
+
+<section class="panel">
+  <div class="panel-header">
+    <h2>检查点 (<%= @checkpoints.count %>)</h2>
+  </div>
+  <% if @checkpoints.any? %>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>序号</th>
+          <th>位置</th>
+          <th>状态</th>
+          <th>检查时间</th>
+          <th>备注</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @checkpoints.each do |cp| %>
+          <tr>
+            <td><%= cp.checkpoint_order %></td>
+            <td><%= cp.location %></td>
+            <td><span class="badge badge-<%= cp.status %>"><%= t("inspection_checkpoint.status.#{cp.status}", default: cp.status) %></span></td>
+            <td><%= cp.checked_at&.strftime('%Y-%m-%d %H:%M') || "-" %></td>
+            <td><%= cp.remark.presence || "-" %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% else %>
+    <p class="empty-text">暂无检查点</p>
+  <% end %>
+</section>

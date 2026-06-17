@@ -1,0 +1,47 @@
+<div class="page-header">
+  <h1>通知列表</h1>
+  <%= button_to "全部标记已读", mark_all_read_notifications_path, method: :post, class: "btn btn-sm btn-primary" %>
+</div>
+
+<%= form_with url: notifications_path, method: :get, class: "filter-form" do |f| %>
+  <%= f.select :role, options_for_select([["全部角色", ""], ["业主", "owner"], ["租户", "tenant"], ["物业人员", "staff"], ["管理员", "admin"]], params[:role]) %>
+  <%= f.select :unread, options_for_select([["全部状态", ""], ["未读", "true"]], params[:unread]) %>
+  <%= f.submit "筛选", class: "btn btn-sm" %>
+<% end %>
+
+<table class="data-table">
+  <thead>
+    <tr>
+      <th>标题</th>
+      <th>消息</th>
+      <th>接收角色</th>
+      <th>渠道</th>
+      <th>已读状态</th>
+      <th>创建时间</th>
+      <th>操作</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% @notifications.each do |notification| %>
+      <tr>
+        <td><%= notification.title %></td>
+        <td><%= notification.message %></td>
+        <td><%= notification.recipient_role %></td>
+        <td><%= notification.channel %></td>
+        <td>
+          <% if notification.read? %>
+            <span class="badge">已读</span>
+          <% else %>
+            <span class="badge badge-unread">未读</span>
+          <% end %>
+        </td>
+        <td><%= notification.created_at.strftime('%Y-%m-%d %H:%M') %></td>
+        <td>
+          <% unless notification.read? %>
+            <%= button_to "标记已读", mark_read_notification_path(notification), method: :post, class: "btn btn-sm" %>
+          <% end %>
+        </td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>

@@ -1,0 +1,61 @@
+<div class="page-header">
+  <h1>账单详情</h1>
+  <%= link_to "返回列表", parking_bills_path, class: "btn btn-sm" %>
+  <%= link_to "编辑", edit_parking_bill_path(@parking_bill), class: "btn btn-sm btn-primary" %>
+</div>
+
+<div class="detail-card">
+  <div class="detail-row">
+    <span class="detail-label">账单号</span>
+    <span class="detail-value"><%= @parking_bill.bill_number %></span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">车位</span>
+    <span class="detail-value"><%= link_to @parking_bill.parking_spot.spot_number, parking_spot_path(@parking_bill.parking_spot) %></span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">车牌号</span>
+    <span class="detail-value"><%= @parking_bill.plate_number %></span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">类型</span>
+    <span class="detail-value"><%= t("parking_bill.bill_type.#{@parking_bill.bill_type}", default: @parking_bill.bill_type) %></span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">金额</span>
+    <span class="detail-value">¥<%= @parking_bill.amount %></span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">状态</span>
+    <span class="detail-value">
+      <span class="badge badge-<%= @parking_bill.status %>"><%= t("parking_bill.status.#{@parking_bill.status}", default: @parking_bill.status) %></span>
+    </span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">入场时间</span>
+    <span class="detail-value"><%= @parking_bill.check_in_at&.strftime('%Y-%m-%d %H:%M') || "-" %></span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">出场时间</span>
+    <span class="detail-value"><%= @parking_bill.check_out_at&.strftime('%Y-%m-%d %H:%M') || "-" %></span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">停车时长</span>
+    <span class="detail-value"><%= @parking_bill.check_in_at && @parking_bill.check_out_at ? "#{@parking_bill.duration_minutes} 分钟" : "-" %></span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">支付时间</span>
+    <span class="detail-value"><%= @parking_bill.paid_at&.strftime('%Y-%m-%d %H:%M') || "-" %></span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">支付方式</span>
+    <span class="detail-value"><%= @parking_bill.payment_method || "-" %></span>
+  </div>
+</div>
+
+<% if @parking_bill.status == "unpaid" %>
+  <div class="form-actions">
+    <%= button_to "在线缴费", pay_parking_bill_path(@parking_bill, payment_method: "online"), method: :post, class: "btn btn-primary" %>
+    <%= button_to "现金缴费", pay_parking_bill_path(@parking_bill, payment_method: "cash"), method: :post, class: "btn" %>
+  </div>
+<% end %>

@@ -1,0 +1,35 @@
+<div class="page-header">
+  <h1>门禁记录</h1>
+</div>
+
+<%= form_with url: access_records_path, method: :get, class: "filter-form" do |f| %>
+  <%= f.select :direction, options_for_select([["全部方向", ""], ["入场", "in"], ["离场", "out"]], params[:direction]) %>
+  <%= f.date_field :start_date, value: params[:start_date] %>
+  <%= f.date_field :end_date, value: params[:end_date] %>
+  <%= f.submit "筛选", class: "btn btn-sm" %>
+<% end %>
+
+<table class="data-table">
+  <thead>
+    <tr>
+      <th>车牌号</th>
+      <th>方向</th>
+      <th>类型</th>
+      <th>时间</th>
+      <th>闸口</th>
+      <th>操作</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% @access_records.each do |record| %>
+      <tr>
+        <td><%= record.plate_number %></td>
+        <td><span class="badge badge-<%= record.direction %>"><%= record.direction == "in" ? "入场" : "离场" %></span></td>
+        <td><%= record.access_type == "vehicle" ? "车辆" : "行人" %></td>
+        <td><%= record.accessed_at&.strftime('%Y-%m-%d %H:%M') %></td>
+        <td><%= record.gate_name %></td>
+        <td><%= link_to "详情", access_record_path(record), class: "btn btn-sm" %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>

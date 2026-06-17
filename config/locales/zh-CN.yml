@@ -1,0 +1,137 @@
+zh-CN:
+  activerecord:
+    models:
+      tenant: 租户
+      tenant_contract: 租户合同
+      parking_spot: 车位
+      parking_bill: 停车账单
+      access_record: 门禁记录
+      inspection_route: 巡检路线
+      inspection_checkpoint: 检查点
+      equipment_downtime: 设备停机
+      downtime_action: 处理动作
+      notification: 通知
+      monthly_turnover_report: 车位周转月报
+    attributes:
+      tenant:
+        name: 名称
+        contact_person: 联系人
+        contact_phone: 联系电话
+        email: 邮箱
+        address: 地址
+        remark: 备注
+      tenant_contract:
+        contract_number: 合同编号
+        tenant_id: 租户
+        parking_spot_id: 车位
+        start_date: 起始日期
+        end_date: 结束日期
+        rent_amount: 月租金额
+        status: 状态
+        terms: 合同条款
+      parking_spot:
+        spot_number: 车位号
+        zone: 区域
+        spot_type: 车位类型
+        occupied: 占用状态
+        floor: 楼层
+        monthly_rate: 月费率
+      parking_bill:
+        bill_number: 账单号
+        parking_spot_id: 车位
+        access_record_id: 门禁记录
+        plate_number: 车牌号
+        bill_type: 账单类型
+        amount: 金额
+        status: 状态
+        check_in_at: 入场时间
+        check_out_at: 出场时间
+        paid_at: 支付时间
+        payment_method: 支付方式
+      access_record:
+        plate_number: 车牌号
+        direction: 方向
+        access_type: 通行类型
+        accessed_at: 通行时间
+        parking_spot_id: 关联车位
+        gate_name: 闸口
+      inspection_route:
+        name: 路线名称
+        inspector_name: 巡检员
+        scheduled_at: 计划时间
+        started_at: 开始时间
+        completed_at: 完成时间
+        status: 状态
+        notes: 备注
+      inspection_checkpoint:
+        location: 位置
+        checkpoint_order: 顺序
+        status: 状态
+        checked_at: 检查时间
+        remark: 备注
+      equipment_downtime:
+        equipment_name: 设备名称
+        equipment_type: 设备类型
+        reason: 停机原因
+        description: 详细描述
+        started_at: 开始时间
+        closed_at: 关闭时间
+        status: 状态
+        resolved_by: 处理人
+        action_taken: 处理动作
+      downtime_action:
+        action_description: 动作描述
+        performed_by: 执行人
+        performed_at: 执行时间
+      notification:
+        recipient_role: 接收角色
+        title: 标题
+        message: 消息
+        channel: 渠道
+        read_at: 已读时间
+      monthly_turnover_report:
+        report_month: 报告月份
+        generated_by: 操作人
+        filter_conditions: 筛选条件
+        generated_at: 生成时间
+        file_url: 文件路径
+
+  parking_bill:
+    bill_type:
+      temporary: 临时
+      monthly: 月租
+      hourly: 计时
+      daily: 日租
+    status:
+      unpaid: 未缴
+      paid: 已缴
+      overdue: 逾期
+      refunded: 已退
+
+  parking_spot:
+    spot_type:
+      regular: 普通
+      reserved: 预留
+      disabled: 无障碍
+      ev: 充电桩
+
+  inspection_route:
+    status:
+      pending: 待执行
+      in_progress: 执行中
+      completed: 已完成
+      cancelled: 已取消
+
+  inspection_checkpoint:
+    status:
+      pending: 待检查
+      checked: 已检查
+      issue_reported: 问题上报
+      issue_resolved: 问题已解决
+
+  equipment_downtime:
+    equipment_type:
+      barrier_camera: 道闸摄像头
+      payment_terminal: 缴费终端
+      access_gate: 门禁闸机
+      sensor: 传感器

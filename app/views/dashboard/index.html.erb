@@ -1,0 +1,129 @@
+<div class="dashboard">
+  <h1>物业园区总览</h1>
+
+  <% if @active_downtimes.any? %>
+    <div class="alert-banner">
+      <h3>⚠ 设备停机提醒</h3>
+      <% @active_downtimes.each do |dt| %>
+        <p><%= dt.equipment_name %> - <%= dt.reason %> (始于 <%= dt.started_at.strftime('%m-%d %H:%M') %>)</p>
+      <% end %>
+    </div>
+  <% end %>
+
+  <% if @unread_notifications.any? %>
+    <div class="notification-bar">
+      <span>📋 <%= @unread_notifications.count %> 条未读通知</span>
+      <%= link_to "查看全部", notifications_path(unread: true) %>
+    </div>
+  <% end %>
+
+  <div class="dashboard-grid">
+    <section class="panel access-records-panel">
+      <div class="panel-header">
+        <h2>门禁记录</h2>
+        <%= link_to "查看全部", access_records_path, class: "panel-link" %>
+      </div>
+      <%= form_with url: root_path, method: :get, class: "filter-form", data: { turbo_frame: "access_records_frame" } do |f| %>
+        <%= f.select :direction, options_for_select([["全部", ""], ["入场", "in"], ["离场", "out"]], params[:direction]) %>
+        <%= f.date_field :start_date, value: params[:start_date] %>
+        <%= f.date_field :end_date, value: params[:end_date] %>
+        <%= f.submit "筛选", class: "btn btn-sm" %>
+      <% end %>
+      <%= turbo_frame_tag "access_records_frame" do %>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>车牌号</th>
+              <th>方向</th>
+              <th>时间</th>
+              <th>闸口</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @access_records.each do |record| %>
+              <tr>
+                <td><%= record.plate_number %></td>
+                <td><span class="badge badge-<%= record.direction %>"><%= record.direction == "in" ? "入场" : "离场" %></span></td>
+                <td><%= record.accessed_at&.strftime('%m-%d %H:%M') %></td>
+                <td><%= record.gate_name %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      <% end %>
+    </section>
+
+    <section class="panel parking-bills-panel">
+      <div class="panel-header">
+        <h2>车位账单</h2>
+        <%= link_to "查看全部", parking_bills_path, class: "panel-link" %>
+      </div>
+      <%= form_with url: root_path, method: :get, class: "filter-form", data: { turbo_frame: "parking_bills_frame" } do |f| %>
+        <%= f.select :bill_status, options_for_select([["全部", ""], ["未缴", "unpaid"], ["已缴", "paid"], ["逾期", "overdue"]], params[:bill_status]) %>
+        <%= f.select :bill_type, options_for_select([["全部", ""], ["临时", "temporary"], ["月租", "monthly"], ["计时", "hourly"], ["日租", "daily"]], params[:bill_type]) %>
+        <%= f.submit "筛选", class: "btn btn-sm" %>
+      <% end %>
+      <%= turbo_frame_tag "parking_bills_frame" do %>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>账单号</th>
+              <th>车牌号</th>
+              <th>金额</th>
+              <th>状态</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @parking_bills.each do |bill| %>
+              <tr>
+                <td><%= bill.bill_number %></td>
+                <td><%= bill.plate_number %></td>
+                <td>¥<%= bill.amount %></td>
+                <td><span class="badge badge-<%= bill.status %>"><%= bill.status %></span></td>
+                <td>
+                  <% if bill.status == "unpaid" %>
+                    <%= button_to "缴费", pay_parking_bill_path(bill, payment_method: "online"), method: :post, class: "btn btn-sm btn-primary" %>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      <% end %>
+    </section>
+
+    <section class="panel inspection-routes-panel">
+      <div class="panel-header">
+        <h2>巡检路线</h2>
+        <%= link_to "查看全部", inspection_routes_path, class: "panel-link" %>
+      </div>
+      <%= form_with url: root_path, method: :get, class: "filter-form", data: { turbo_frame: "inspection_routes_frame" } do |f| %>
+        <%= f.select :route_status, options_for_select([["全部", ""], ["待执行", "pending"], ["执行中", "in_progress"], ["已完成", "completed"]], params[:route_status]) %>
+        <%= f.submit "筛选", class: "btn btn-sm" %>
+      <% end %>
+      <%= turbo_frame_tag "inspection_routes_frame" do %>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>路线名称</th>
+              <th>巡检员</th>
+              <th>计划时间</th>
+              <th>状态</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @inspection_routes.each do |route| %>
+              <tr>
+                <td><%= link_to route.name, inspection_route_path(route) %></td>
+                <td><%= route.inspector_name %></td>
+                <td><%= route.scheduled_at&.strftime('%m-%d %H:%M') %></td>
+                <td><span class="badge badge-<%= route.status %>"><%= route.status %></span></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      <% end %>
+    </section>
+  </div>
+</div>

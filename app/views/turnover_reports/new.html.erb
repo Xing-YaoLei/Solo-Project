@@ -1,0 +1,30 @@
+<div class="page-header">
+  <h1>生成车位周转月报</h1>
+</div>
+
+<%= form_with url: turnover_reports_path, method: :post, local: true do |f| %>
+  <div class="form-group">
+    <%= f.label :report_month, "报告月份" %>
+    <%= f.month_field :report_month, required: true %>
+  </div>
+
+  <div class="form-group">
+    <%= f.label :generated_by, "操作人" %>
+    <%= f.text_field :generated_by, required: true %>
+  </div>
+
+  <div class="form-group">
+    <%= f.label :zone, "区域" %>
+    <%= f.select :zone, options_from_collection_for_select(@zones.map { |z| [z, z] }, :first, :last), include_blank: "全部区域" %>
+  </div>
+
+  <div class="form-group">
+    <%= f.label :spot_type, "车位类型" %>
+    <%= f.select :spot_type, options_for_select([["全部", ""], ["临时", "temporary"], ["月租", "monthly"], ["计时", "hourly"], ["日租", "daily"]]) %>
+  </div>
+
+  <div class="form-actions">
+    <%= f.submit "生成报告", class: "btn btn-primary" %>
+    <%= link_to "取消", turnover_reports_path, class: "btn" %>
+  </div>
+<% end %>

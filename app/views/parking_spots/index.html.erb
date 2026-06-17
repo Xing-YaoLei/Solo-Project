@@ -1,0 +1,44 @@
+<div class="page-header">
+  <h1>车位管理</h1>
+  <%= link_to "新增车位", new_parking_spot_path, class: "btn btn-primary" %>
+</div>
+
+<%= form_with url: parking_spots_path, method: :get, class: "filter-form" do |f| %>
+  <%= f.select :zone, options_for_select(ParkingSpot.distinct.pluck(:zone).map { |z| [z, z] }.unshift(["全部区域", ""]), params[:zone]) %>
+  <%= f.select :available, options_for_select([["全部状态", ""], ["空闲", "true"]], params[:available]) %>
+  <%= f.submit "筛选", class: "btn btn-sm" %>
+<% end %>
+
+<table class="data-table">
+  <thead>
+    <tr>
+      <th>车位号</th>
+      <th>区域</th>
+      <th>类型</th>
+      <th>占用状态</th>
+      <th>楼层</th>
+      <th>月费率</th>
+      <th>操作</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% @parking_spots.each do |spot| %>
+      <tr>
+        <td><%= link_to spot.spot_number, parking_spot_path(spot) %></td>
+        <td><%= spot.zone %></td>
+        <td><span class="badge badge-<%= spot.spot_type %>"><%= t("parking_spot.spot_type.#{spot.spot_type}", default: spot.spot_type) %></span></td>
+        <td>
+          <span class="badge badge-<%= spot.occupied? ? 'occupied' : 'available' %>">
+            <%= spot.occupied? ? "已占用" : "空闲" %>
+          </span>
+        </td>
+        <td><%= spot.floor.presence || "-" %></td>
+        <td>¥<%= spot.monthly_rate %></td>
+        <td>
+          <%= link_to "详情", parking_spot_path(spot), class: "btn btn-sm" %>
+          <%= link_to "编辑", edit_parking_spot_path(spot), class: "btn btn-sm" %>
+        </td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>

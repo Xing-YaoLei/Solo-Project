@@ -1,0 +1,38 @@
+<div class="page-header">
+  <h1>巡检路线</h1>
+  <%= link_to "新建路线", new_inspection_route_path, class: "btn btn-primary" %>
+</div>
+
+<%= form_with url: inspection_routes_path, method: :get, class: "filter-form" do |f| %>
+  <%= f.select :status, options_for_select([["全部状态", ""], ["待执行", "pending"], ["执行中", "in_progress"], ["已完成", "completed"], ["已取消", "cancelled"]], params[:status]) %>
+  <%= f.date_field :date, value: params[:date] %>
+  <%= f.submit "筛选", class: "btn btn-sm" %>
+<% end %>
+
+<table class="data-table">
+  <thead>
+    <tr>
+      <th>路线名称</th>
+      <th>巡检员</th>
+      <th>计划时间</th>
+      <th>状态</th>
+      <th>检查点数</th>
+      <th>操作</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% @inspection_routes.each do |route| %>
+      <tr>
+        <td><%= link_to route.name, inspection_route_path(route) %></td>
+        <td><%= route.inspector_name %></td>
+        <td><%= route.scheduled_at.strftime('%Y-%m-%d %H:%M') %></td>
+        <td><span class="badge badge-<%= route.status %>"><%= t("inspection_route.status.#{route.status}", default: route.status) %></span></td>
+        <td><%= route.inspection_checkpoints.count %></td>
+        <td>
+          <%= link_to "详情", inspection_route_path(route), class: "btn btn-sm" %>
+          <%= link_to "编辑", edit_inspection_route_path(route), class: "btn btn-sm" %>
+        </td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>

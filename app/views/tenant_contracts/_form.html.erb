@@ -1,0 +1,56 @@
+<%= form_with model: tenant_contract, class: "tenant-contract-form" do |f| %>
+  <% if tenant_contract.errors.any? %>
+    <div class="form-errors">
+      <ul>
+        <% tenant_contract.errors.each do |error| %>
+          <li><%= error.full_message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="form-group">
+    <%= f.label :contract_number, "合同编号" %>
+    <%= f.text_field :contract_number %>
+  </div>
+
+  <div class="form-group">
+    <%= f.label :tenant_id, "租户" %>
+    <%= f.collection_select :tenant_id, Tenant.order(:name), :id, :name, prompt: "请选择租户" %>
+  </div>
+
+  <div class="form-group">
+    <%= f.label :parking_spot_id, "车位" %>
+    <%= f.collection_select :parking_spot_id, ParkingSpot.order(:spot_number), :id, :spot_number, prompt: "请选择车位" %>
+  </div>
+
+  <div class="form-group">
+    <%= f.label :start_date, "起始日期" %>
+    <%= f.date_field :start_date %>
+  </div>
+
+  <div class="form-group">
+    <%= f.label :end_date, "结束日期" %>
+    <%= f.date_field :end_date %>
+  </div>
+
+  <div class="form-group">
+    <%= f.label :rent_amount, "租金" %>
+    <%= f.number_field :rent_amount, step: "0.01", min: "0" %>
+  </div>
+
+  <div class="form-group">
+    <%= f.label :status, "状态" %>
+    <%= f.select :status, options_for_select([["生效中", "active"], ["已到期", "expired"], ["已终止", "terminated"]], tenant_contract.status), prompt: "请选择状态" %>
+  </div>
+
+  <div class="form-group">
+    <%= f.label :terms, "合同条款" %>
+    <%= f.text_area :terms, rows: 5 %>
+  </div>
+
+  <div class="form-actions">
+    <%= f.submit class: "btn btn-primary" %>
+    <%= link_to "取消", tenant_contracts_path, class: "btn" %>
+  </div>
+<% end %>

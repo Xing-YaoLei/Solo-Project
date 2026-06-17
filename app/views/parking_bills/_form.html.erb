@@ -1,0 +1,46 @@
+<%= form_with model: parking_bill, local: true do |f| %>
+  <% if parking_bill.errors.any? %>
+    <div class="form-errors">
+      <ul>
+        <% parking_bill.errors.full_messages.each do |msg| %>
+          <li><%= msg %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="form-group">
+    <%= f.label :parking_spot_id, "车位" %>
+    <%= f.collection_select :parking_spot_id, ParkingSpot.order(:zone, :spot_number), :id, :spot_number, prompt: "请选择车位" %>
+  </div>
+
+  <div class="form-group">
+    <%= f.label :plate_number, "车牌号" %>
+    <%= f.text_field :plate_number %>
+  </div>
+
+  <div class="form-group">
+    <%= f.label :bill_type, "类型" %>
+    <%= f.select :bill_type, options_for_select([["临时", "temporary"], ["月租", "monthly"], ["计时", "hourly"], ["日租", "daily"]], parking_bill.bill_type) %>
+  </div>
+
+  <div class="form-group">
+    <%= f.label :amount, "金额" %>
+    <%= f.number_field :amount, step: 0.01, min: 0 %>
+  </div>
+
+  <div class="form-group">
+    <%= f.label :check_in_at, "入场时间" %>
+    <%= f.datetime_local_field :check_in_at %>
+  </div>
+
+  <div class="form-group">
+    <%= f.label :check_out_at, "出场时间" %>
+    <%= f.datetime_local_field :check_out_at %>
+  </div>
+
+  <div class="form-actions">
+    <%= f.submit class: "btn btn-primary" %>
+    <%= link_to "取消", parking_bills_path, class: "btn" %>
+  </div>
+<% end %>

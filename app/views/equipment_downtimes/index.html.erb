@@ -1,0 +1,44 @@
+<div class="page-header">
+  <h1>设备停机记录</h1>
+  <%= link_to "登记停机", new_equipment_downtime_path, class: "btn btn-primary" %>
+</div>
+
+<%= form_with url: equipment_downtimes_path, method: :get, class: "filter-form" do |f| %>
+  <%= f.select :status, options_for_select([["全部状态", ""], ["停机中", "active"], ["已关闭", "resolved"]], params[:status]) %>
+  <%= f.select :equipment_type, options_for_select([["全部类型", ""], ["道闸摄像头", "barrier_camera"], ["缴费终端", "payment_terminal"], ["门禁闸机", "access_gate"], ["传感器", "sensor"]], params[:equipment_type]) %>
+  <%= f.submit "筛选", class: "btn btn-sm" %>
+<% end %>
+
+<table class="data-table">
+  <thead>
+    <tr>
+      <th>设备名称</th>
+      <th>设备类型</th>
+      <th>停机原因</th>
+      <th>开始时间</th>
+      <th>状态</th>
+      <th>操作</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% @equipment_downtimes.each do |dt| %>
+      <tr>
+        <td><%= link_to dt.equipment_name, equipment_downtime_path(dt) %></td>
+        <td><%= t("equipment_downtime.equipment_type.#{dt.equipment_type}", default: dt.equipment_type) %></td>
+        <td><%= truncate(dt.reason, length: 30) %></td>
+        <td><%= dt.started_at.strftime('%Y-%m-%d %H:%M') %></td>
+        <td>
+          <span class="badge badge-<%= dt.status %>">
+            <%= dt.status == "active" ? "停机中" : "已关闭" %>
+          </span>
+        </td>
+        <td>
+          <%= link_to "详情", equipment_downtime_path(dt), class: "btn btn-sm" %>
+          <% if dt.status == "active" %>
+            <%= button_to "关闭", resolve_equipment_downtime_path(dt), method: :post, class: "btn btn-sm btn-primary", params: { action_taken: "手动关闭" } %>
+          <% end %>
+        </td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>

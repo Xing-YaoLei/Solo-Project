@@ -1,0 +1,112 @@
+<div class="page-header">
+  <h1>门禁记录详情</h1>
+  <%= link_to "返回列表", access_records_path, class: "btn btn-sm" %>
+</div>
+
+<div class="record-tri-view">
+  <section class="panel tri-panel">
+    <div class="panel-header">
+      <h2>门禁记录</h2>
+    </div>
+    <div class="detail-card">
+      <div class="detail-row">
+        <span class="detail-label">车牌号</span>
+        <span class="detail-value"><%= @access_record.plate_number %></span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">方向</span>
+        <span class="detail-value">
+          <span class="badge badge-<%= @access_record.direction %>"><%= @access_record.direction == "in" ? "入场" : "离场" %></span>
+        </span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">类型</span>
+        <span class="detail-value"><%= @access_record.access_type == "vehicle" ? "车辆" : "行人" %></span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">时间</span>
+        <span class="detail-value"><%= @access_record.accessed_at&.strftime('%Y-%m-%d %H:%M:%S') %></span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">闸口</span>
+        <span class="detail-value"><%= @access_record.gate_name.presence || "-" %></span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">关联车位</span>
+        <span class="detail-value">
+          <% if @access_record.parking_spot %>
+            <%= link_to @access_record.parking_spot.spot_number, parking_spot_path(@access_record.parking_spot) %>
+          <% else %>
+            -
+          <% end %>
+        </span>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel tri-panel">
+    <div class="panel-header">
+      <h2>车位账单</h2>
+      <%= link_to "查看全部", parking_bills_path(plate_number: @access_record.plate_number), class: "panel-link" %>
+    </div>
+    <% if @related_bills.any? %>
+      <table class="data-table compact">
+        <thead>
+          <tr>
+            <th>账单号</th>
+            <th>金额</th>
+            <th>状态</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @related_bills.each do |bill| %>
+            <tr>
+              <td><%= bill.bill_number %></td>
+              <td>¥<%= bill.amount %></td>
+              <td><span class="badge badge-<%= bill.status %>"><%= t("parking_bill.status.#{bill.status}", default: bill.status) %></span></td>
+              <td>
+                <% if bill.status == "unpaid" %>
+                  <%= button_to "缴费", pay_parking_bill_path(bill, payment_method: "online"), method: :post, class: "btn btn-sm btn-primary" %>
+                <% else %>
+                  <%= link_to "详情", parking_bill_path(bill), class: "btn btn-sm" %>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% else %>
+      <p class="empty-text">暂无关联账单</p>
+    <% end %>
+  </section>
+
+  <section class="panel tri-panel">
+    <div class="panel-header">
+      <h2>当日巡检路线</h2>
+      <%= link_to "查看全部", inspection_routes_path, class: "panel-link" %>
+    </div>
+    <% if @related_routes.any? %>
+      <table class="data-table compact">
+        <thead>
+          <tr>
+            <th>路线名称</th>
+            <th>巡检员</th>
+            <th>状态</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @related_routes.each do |route| %>
+            <tr>
+              <td><%= link_to route.name, inspection_route_path(route) %></td>
+              <td><%= route.inspector_name %></td>
+              <td><span class="badge badge-<%= route.status %>"><%= t("inspection_route.status.#{route.status}", default: route.status) %></span></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% else %>
+      <p class="empty-text">当日无巡检路线</p>
+    <% end %>
+  </section>
+</div>

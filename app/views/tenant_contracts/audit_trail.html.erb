@@ -1,0 +1,69 @@
+<div class="page-header">
+  <h1>合同变更记录 - <%= @tenant_contract.contract_number %></h1>
+  <%= link_to "返回详情", tenant_contract_path(@tenant_contract), class: "btn btn-sm" %>
+</div>
+
+<% field_labels = {
+  "contract_number" => "合同编号",
+  "tenant_id" => "租户ID",
+  "parking_spot_id" => "车位ID",
+  "start_date" => "起始日期",
+  "end_date" => "结束日期",
+  "rent_amount" => "月租金额",
+  "status" => "状态",
+  "terms" => "合同条款"
+} %>
+
+<% if @versions.any? %>
+  <div class="audit-trail">
+    <% @versions.each do |version| %>
+      <div class="audit-entry">
+        <div class="audit-header">
+          <span class="audit-event badge badge-<%= version.event %>">
+            <%= { "update" => "修改", "destroy" => "删除", "create" => "创建" }[version.event] || version.event %>
+          </span>
+          <span class="audit-time"><%= version.created_at.strftime('%Y-%m-%d %H:%M:%S') %></span>
+          <span class="audit-operator">操作人: <%= version.whodunnit || "系统" %></span>
+        </div>
+
+        <% if version.event == "update" && version.object_changes.present? %>
+          <table class="data-table compact audit-changes">
+            <thead>
+              <tr>
+                <th>字段</th>
+                <th>修改前</th>
+                <th>修改后</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% version.object_changes.each do |field, changes| %>
+                <tr>
+                  <td><%= field_labels[field] || field %></td>
+                  <td class="old-value"><%= changes.is_a?(Array) ? changes[0] : changes %></td>
+                  <td class="new-value"><%= changes.is_a?(Array) ? changes[1] : changes %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        <% end %>
+
+        <% if version.event == "destroy" && version.object.present? %>
+          <div class="audit-snapshot">
+            <p class="snapshot-label">删除前快照:</p>
+            <table class="data-table compact">
+              <% version.object.each do |field, value| %>
+                <% next if %w[id created_at updated_at].include?(field) %>
+                <tr>
+                  <td><%= field_labels[field] || field %></td>
+                  <td><%= value %></td>
+                </tr>
+              <% end %>
+            </table>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+<% else %>
+  <p class="empty-text">暂无变更记录</p>
+<% end %>

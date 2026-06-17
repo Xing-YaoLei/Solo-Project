@@ -1,0 +1,43 @@
+<div class="page-header">
+  <h1>停车账单</h1>
+  <%= link_to "新增账单", new_parking_bill_path, class: "btn btn-primary" %>
+</div>
+
+<%= form_with url: parking_bills_path, method: :get, class: "filter-form" do |f| %>
+  <%= f.select :status, options_for_select([["全部状态", ""], ["未缴", "unpaid"], ["已缴", "paid"], ["逾期", "overdue"], ["已退", "refunded"]], params[:status]) %>
+  <%= f.select :bill_type, options_for_select([["全部类型", ""], ["临时", "temporary"], ["月租", "monthly"], ["计时", "hourly"], ["日租", "daily"]], params[:bill_type]) %>
+  <%= f.submit "筛选", class: "btn btn-sm" %>
+<% end %>
+
+<table class="data-table">
+  <thead>
+    <tr>
+      <th>账单号</th>
+      <th>车位</th>
+      <th>车牌号</th>
+      <th>类型</th>
+      <th>金额</th>
+      <th>状态</th>
+      <th>操作</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% @parking_bills.each do |bill| %>
+      <tr>
+        <td><%= link_to bill.bill_number, parking_bill_path(bill) %></td>
+        <td><%= bill.parking_spot&.spot_number %></td>
+        <td><%= bill.plate_number %></td>
+        <td><%= t("parking_bill.bill_type.#{bill.bill_type}", default: bill.bill_type) %></td>
+        <td>¥<%= bill.amount %></td>
+        <td><span class="badge badge-<%= bill.status %>"><%= t("parking_bill.status.#{bill.status}", default: bill.status) %></span></td>
+        <td>
+          <%= link_to "详情", parking_bill_path(bill), class: "btn btn-sm" %>
+          <%= link_to "编辑", edit_parking_bill_path(bill), class: "btn btn-sm" %>
+          <% if bill.status == "unpaid" %>
+            <%= button_to "缴费", pay_parking_bill_path(bill, payment_method: "online"), method: :post, class: "btn btn-sm btn-primary" %>
+          <% end %>
+        </td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>

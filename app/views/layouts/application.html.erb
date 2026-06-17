@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title><%= content_for(:title) || "物业园区停车缴费结算台" %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+
+    <%= yield :head %>
+
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" href="/icon.png" type="image/png">
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/icon.png">
+    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+  </head>
+
+  <body>
+    <nav class="main-nav">
+      <div class="nav-brand">物业园区停车缴费结算台</div>
+      <div class="nav-links">
+        <%= link_to "总览", root_path %>
+        <%= link_to "租户", tenants_path %>
+        <%= link_to "合同", tenant_contracts_path %>
+        <%= link_to "车位", parking_spots_path %>
+        <%= link_to "账单", parking_bills_path %>
+        <%= link_to "门禁记录", access_records_path %>
+        <%= link_to "巡检路线", inspection_routes_path %>
+        <%= link_to "设备停机", equipment_downtimes_path %>
+        <%= link_to "周转报告", turnover_reports_path %>
+        <%= link_to "通知", notifications_path %>
+      </div>
+    </nav>
+    <main class="main-content">
+      <% if notice %>
+        <div class="flash-notice"><%= notice %></div>
+      <% end %>
+      <% if alert %>
+        <div class="flash-alert"><%= alert %></div>
+      <% end %>
+      <%= yield %>
+    </main>
+  </body>
+</html>

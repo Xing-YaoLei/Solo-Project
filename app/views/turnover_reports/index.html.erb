@@ -1,0 +1,25 @@
+<div class="page-header">
+  <h1>车位周转月报</h1>
+  <%= link_to "生成新报告", new_turnover_report_path, class: "btn btn-primary" %>
+</div>
+
+<table class="data-table">
+  <thead>
+    <tr>
+      <th>报告月份</th>
+      <th>操作人</th>
+      <th>生成时间</th>
+      <th>操作</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% @reports.each do |report| %>
+      <tr>
+        <td><%= report.report_month.strftime('%Y年%m月') %></td>
+        <td><%= report.generated_by %></td>
+        <td><%= report.created_at.strftime('%Y-%m-%d %H:%M') %></td>
+        <td><%= link_to "下载", download_turnover_report_path(report), class: "btn btn-sm btn-primary" %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>

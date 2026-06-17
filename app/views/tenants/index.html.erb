@@ -1,0 +1,31 @@
+<div class="page-header">
+  <h1>租户管理</h1>
+  <%= link_to "新建租户", new_tenant_path, class: "btn btn-primary" %>
+</div>
+
+<table class="data-table">
+  <thead>
+    <tr>
+      <th>名称</th>
+      <th>联系人</th>
+      <th>联系电话</th>
+      <th>邮箱</th>
+      <th>操作</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% @tenants.each do |tenant| %>
+      <tr>
+        <td><%= link_to tenant.name, tenant_path(tenant) %></td>
+        <td><%= tenant.contact_person %></td>
+        <td><%= tenant.contact_phone %></td>
+        <td><%= tenant.email %></td>
+        <td>
+          <%= link_to "查看", tenant_path(tenant), class: "btn btn-sm" %>
+          <%= link_to "编辑", edit_tenant_path(tenant), class: "btn btn-sm" %>
+          <%= button_to "删除", tenant_path(tenant), method: :delete, class: "btn btn-sm btn-danger", form: { data: { turbo_confirm: "确认删除该租户？" } } %>
+        </td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>

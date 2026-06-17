@@ -1,0 +1,55 @@
+<div class="page-header">
+  <h1>合同详情</h1>
+  <div>
+    <%= link_to "编辑", edit_tenant_contract_path(@tenant_contract), class: "btn btn-primary" %>
+    <%= link_to "变更记录", audit_trail_tenant_contract_path(@tenant_contract), class: "btn" %>
+    <%= link_to "返回列表", tenant_contracts_path, class: "btn" %>
+  </div>
+</div>
+
+<div class="detail-card">
+  <div class="detail-row">
+    <span class="detail-label">合同编号</span>
+    <span class="detail-value"><%= @tenant_contract.contract_number %></span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">租户</span>
+    <span class="detail-value"><%= link_to @tenant_contract.tenant.name, tenant_path(@tenant_contract.tenant) %></span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">车位</span>
+    <span class="detail-value">
+      <% if @tenant_contract.parking_spot %>
+        <%= link_to @tenant_contract.parking_spot.spot_number, parking_spot_path(@tenant_contract.parking_spot) %>
+      <% else %>
+        -
+      <% end %>
+    </span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">起始日期</span>
+    <span class="detail-value"><%= @tenant_contract.start_date %></span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">结束日期</span>
+    <span class="detail-value"><%= @tenant_contract.end_date %></span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">月租金额</span>
+    <span class="detail-value">¥<%= @tenant_contract.rent_amount %></span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">状态</span>
+    <span class="detail-value">
+      <% if @tenant_contract.end_date >= Date.current && @tenant_contract.status != "terminated" %>
+        <span class="badge badge-active">生效中</span>
+      <% else %>
+        <span class="badge badge-expired"><%= @tenant_contract.status == "terminated" ? "已终止" : "已过期" %></span>
+      <% end %>
+    </span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">合同条款</span>
+    <span class="detail-value"><%= @tenant_contract.terms.presence || "-" %></span>
+  </div>
+</div>

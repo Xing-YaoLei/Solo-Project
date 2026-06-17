@@ -1,0 +1,51 @@
+<div class="page-header">
+  <h1>新建巡检路线</h1>
+  <%= link_to "返回列表", inspection_routes_path, class: "btn btn-sm" %>
+</div>
+
+<%= form_with model: @inspection_route, local: true do |f| %>
+  <% if @inspection_route.errors.any? %>
+    <div class="form-errors">
+      <ul>
+        <% @inspection_route.errors.full_messages.each do |msg| %>
+          <li><%= msg %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="form-group">
+    <%= f.label :name, "路线名称" %>
+    <%= f.text_field :name, required: true %>
+  </div>
+
+  <div class="form-group">
+    <%= f.label :inspector_name, "巡检员" %>
+    <%= f.text_field :inspector_name, required: true %>
+  </div>
+
+  <div class="form-group">
+    <%= f.label :scheduled_at, "计划时间" %>
+    <%= f.datetime_local_field :scheduled_at, required: true %>
+  </div>
+
+  <div class="form-group">
+    <%= f.label :status, "状态" %>
+    <%= f.select :status, options_for_select([
+      ["待执行", "pending"],
+      ["执行中", "in_progress"],
+      ["已完成", "completed"],
+      ["已取消", "cancelled"]
+    ], @inspection_route.status || "pending") %>
+  </div>
+
+  <div class="form-group">
+    <%= f.label :notes, "备注" %>
+    <%= f.text_area :notes, rows: 4 %>
+  </div>
+
+  <div class="form-actions">
+    <%= f.submit "创建路线", class: "btn btn-primary" %>
+    <%= link_to "取消", inspection_routes_path, class: "btn" %>
+  </div>
+<% end %>
