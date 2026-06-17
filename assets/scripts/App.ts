@@ -4,6 +4,7 @@ import { UIBuilder } from './utils/UIBuilder';
 import { GameManager } from './GameManager';
 import { ScoreManager } from './ScoreManager';
 import { levelManager } from './LevelManager';
+import { TiledMapController } from './TiledMapController';
 import { LEVEL_CONFIGS, LevelConfig } from './data/LevelConfig';
 import { MedicineItem, VisitRecord, ActivityItem, LevelResult, ElderlyProfile } from './data/ElderlyData';
 const { ccclass } = _decorator;
@@ -432,61 +433,31 @@ export class App extends Component {
     }
 
     buildTiledMapPreview(): void {
-        const mapNode = new Node('TiledMap');
-        mapNode.setContentSize(700, 180);
-        mapNode.setPosition(0, 370, 0);
-        const mapSprite = mapNode.addComponent(Sprite);
+        const mapContainer = new Node('TiledMap');
+        mapContainer.setContentSize(700, 240);
+        mapContainer.setPosition(0, 360, 0);
+        const mapSprite = mapContainer.addComponent(Sprite);
         mapSprite.spriteFrame = ResourceGenerator.getSpriteFrame('card_bg');
         mapSprite.type = Sprite.Type.SLICED;
-        this._rootNode!.addChild(mapNode);
+        this._rootNode!.addChild(mapContainer);
 
-        const g = mapNode.addComponent(Graphics);
-        const elderly = levelManager.elderlyProfiles;
-        const tileSize = 34;
-        const cols = 18;
-        const rows = 4;
-        const offsetX = -cols * tileSize / 2 + tileSize / 2;
-        const offsetY = rows * tileSize / 2 - tileSize / 2;
+        const mapNode = new Node('Map');
+        mapNode.addComponent(UITransform).setContentSize(700, 240);
+        mapNode.setPosition(0, 0, 0);
+        mapContainer.addChild(mapNode);
 
-        for (let r = 0; r < rows; r++) {
-            for (let c = 0; c < cols; c++) {
-                const x = offsetX + c * tileSize;
-                const y = offsetY - r * tileSize;
-                g.fillColor = (r + c) % 2 === 0
-                    ? new Color(245, 230, 210, 200)
-                    : new Color(232, 213, 183, 200);
-                g.rect(x - tileSize / 2 + 1, y - tileSize / 2 + 1, tileSize - 2, tileSize - 2);
-                g.fill();
-            }
-        }
+        const mapController = mapNode.addComponent(TiledMapController);
+        mapController.mapScale = 0.36;
+        mapController.showElderlyNames = false;
 
-        elderly.forEach((profile: ElderlyProfile, index: number) => {
-            const positions = [
-                { c: 2, r: 1 }, { c: 5, r: 1 }, { c: 8, r: 2 },
-                { c: 11, r: 1 }, { c: 14, r: 2 }, { c: 16, r: 1 },
-            ];
-            const pos = positions[index % positions.length];
-            const x = offsetX + pos.c * tileSize;
-            const y = offsetY - pos.r * tileSize;
+        const title = UIBuilder.createLabel('🏠 养老院楼层地图', 16, new Color(100, 100, 100, 255), 0);
+        title.setPosition(-330, 100, 0);
+        mapContainer.addChild(title);
 
-            g.fillColor = profile.gender === 'male'
-                ? new Color(74, 144, 217, 255)
-                : new Color(219, 112, 147, 255);
-            g.circle(x, y + 8, 10);
-            g.fill();
-
-            const labelNode = new Node('ElderlyName');
-            const label = labelNode.addComponent(Label);
-            label.string = profile.name;
-            label.fontSize = 11;
-            label.color = new Color(80, 80, 80, 255);
-            labelNode.setPosition(x, y - 16, 0);
-            mapNode.addChild(labelNode);
-        });
-
-        const title = UIBuilder.createLabel('👴 养老院楼层地图', 16, new Color(100, 100, 100, 255), 0);
-        title.setPosition(-330, 70, 0);
-        mapNode.addChild(title);
+        const elderlyCount = levelManager.elderlyProfiles.length;
+        const countLabel = UIBuilder.createLabel(`在住老人: ${elderlyCount}位`, 14, new Color(150, 150, 150, 255), 2);
+        countLabel.setPosition(320, 100, 0);
+        mapContainer.addChild(countLabel);
     }
 
     buildTaskTabs(config: LevelConfig): void {
@@ -611,6 +582,8 @@ export class App extends Component {
         if (this._processedTasks.has(task.id)) return;
         this._processedTasks.add(task.id);
 
+        levelManager.markTaskProcessed(task.id, this._currentTaskType);
+
         const isCorrect = task.isCorrect;
         let points = 0;
 
@@ -633,8 +606,9 @@ export class App extends Component {
             this.showComboPopup(this._scoreManager.combo);
         }
 
-        if (levelManager.isAllTasksCompleted() || this._scoreManager.isTimeUp) {
-            setTimeout(() => this.endGame(), 600);
+        if (levelManager.isAllTasksCompleted()) {
+            this._scoreManager.stopTimer();
+            this.endGame();
         }
     }
 
