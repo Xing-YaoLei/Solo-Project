@@ -164,9 +164,18 @@ async def seed():
                 ts = datetime.combine(day, datetime.min.time()) + timedelta(hours=hour, minutes=minute)
                 metadata_ = None
                 if ann_type == "terminal_delay":
-                    metadata_ = {"delay_minutes": random.randint(3, 20), "shift_type": random.choice(SHIFT_TYPES)}
+                    delay_mins = random.randint(3, 20)
+                    metadata_ = {"delay_minutes": delay_mins, "shift_type": random.choice(SHIFT_TYPES)}
                 elif ann_type == "access_missing":
-                    metadata_ = {"visitor_count": random.randint(1, 3), "floor": bed.floor}
+                    missing_start = ts - timedelta(minutes=random.randint(15, 45))
+                    duration = random.randint(40, 120)
+                    missing_end = missing_start + timedelta(minutes=duration)
+                    metadata_ = {
+                        "visitor_count": random.randint(1, 3),
+                        "floor": bed.floor,
+                        "missing_start": missing_start.isoformat(),
+                        "missing_end": missing_end.isoformat(),
+                    }
                 elif ann_type == "fall_event":
                     metadata_ = {"response_time_minutes": random.randint(1, 5)}
                 ann = RiskAnnotation(

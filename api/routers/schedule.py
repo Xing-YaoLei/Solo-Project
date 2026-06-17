@@ -119,8 +119,21 @@ async def get_annotations(
             if item["delayMinutes"]:
                 item["metadata"]["syncDelay"] = True
         if a.type == "access_missing":
-            item["missingStart"] = metadata.get("missing_start") or metadata.get("missingStart")
-            item["missingEnd"] = metadata.get("missing_end") or metadata.get("missingEnd")
+            missing_start = metadata.get("missing_start") or metadata.get("missingStart")
+            missing_end = metadata.get("missing_end") or metadata.get("missingEnd")
+            if missing_start and missing_end:
+                item["missingStart"] = missing_start.isoformat() if hasattr(missing_start, 'isoformat') else str(missing_start)
+                item["missingEnd"] = missing_end.isoformat() if hasattr(missing_end, 'isoformat') else str(missing_end)
+            else:
+                base_time = a.timestamp
+                start_offset = metadata.get("offset_minutes_before", 30)
+                duration = metadata.get("duration_minutes", 60)
+                computed_start = base_time - timedelta(minutes=int(start_offset))
+                computed_end = base_time + timedelta(minutes=int(duration - start_offset))
+                item["missingStart"] = computed_start.isoformat()
+                item["missingEnd"] = computed_end.isoformat()
+                item["metadata"]["missing_start"] = item["missingStart"]
+                item["metadata"]["missing_end"] = item["missingEnd"]
         if a.type == "billing_caliber_change":
             item["oldCaliber"] = metadata.get("old_caliber") or metadata.get("oldCaliber")
             item["newCaliber"] = metadata.get("new_caliber") or metadata.get("newCaliber")

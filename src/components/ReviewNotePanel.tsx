@@ -92,6 +92,45 @@ export default function ReviewNotePanel() {
           {selectedAnnotation.timestamp}
         </p>
         <p className="text-sm text-white/70">{selectedAnnotation.description}</p>
+
+        {selectedAnnotation.type === 'terminal_delay' && selectedAnnotation.delayMinutes && (
+          <div className="mt-2 flex items-center gap-1.5 px-2 py-1.5 rounded bg-amber-500/10 border border-amber-500/20 text-xs text-amber-400">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
+            终端延迟: <span className="font-bold font-[JetBrains_Mono,monospace]">{selectedAnnotation.delayMinutes}</span> 分钟
+          </div>
+        )}
+
+        {selectedAnnotation.type === 'access_missing' && selectedAnnotation.missingStart && selectedAnnotation.missingEnd && (
+          <div className="mt-2 flex items-center gap-1.5 px-2 py-1.5 rounded bg-red-500/10 border border-red-500/20 text-xs text-red-400">
+            <AlertTriangle size={11} />
+            记录缺失: <span className="font-bold font-[JetBrains_Mono,monospace]">{selectedAnnotation.missingStart.slice(11, 16)}</span>
+            {' → '}
+            <span className="font-bold font-[JetBrains_Mono,monospace]">{selectedAnnotation.missingEnd.slice(11, 16)}</span>
+          </div>
+        )}
+
+        {selectedAnnotation.type === 'billing_caliber_change' && selectedAnnotation.oldCaliber && selectedAnnotation.newCaliber && (
+          <div className="mt-2 flex items-center gap-1.5 px-2 py-1.5 rounded bg-blue-500/10 border border-blue-500/20 text-xs text-blue-400">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="16 3 21 3 21 8" />
+              <line x1="4" y1="20" x2="21" y2="3" />
+              <polyline points="21 16 21 21 16 21" />
+              <line x1="15" y1="15" x2="21" y2="21" />
+              <line x1="4" y1="4" x2="9" y2="9" />
+            </svg>
+            口径: <span className="font-medium">{selectedAnnotation.oldCaliber}</span> → <span className="font-bold">{selectedAnnotation.newCaliber}</span>
+          </div>
+        )}
+
+        {selectedAnnotation.type === 'fall_event' && selectedAnnotation.impactOnTrend && (
+          <div className="mt-2 flex items-center gap-1.5 px-2 py-1.5 rounded bg-rose-500/10 border border-rose-500/20 text-xs text-rose-400">
+            <AlertTriangle size={11} />
+            ⚠ 该事件已影响风险评分趋势，分析时需排除异常波动
+          </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
