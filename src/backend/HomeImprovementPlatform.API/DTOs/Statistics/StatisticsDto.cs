@@ -21,6 +21,25 @@ public class PaymentCycleDto
     public decimal ExpectedAmount { get; set; }
     public decimal ActualPaid { get; set; }
     public int AveragePaymentDays { get; set; }
+    public List<ProjectReferenceDto> Projects { get; set; } = new();
+    public List<DocumentReferenceDto> Documents { get; set; } = new();
+}
+
+public class ProjectReferenceDto
+{
+    public Guid ProjectId { get; set; }
+    public string ProjectName { get; set; } = string.Empty;
+    public string ProjectNumber { get; set; } = string.Empty;
+}
+
+public class DocumentReferenceDto
+{
+    public Guid DocumentId { get; set; }
+    public string DocumentNumber { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
+    public DocumentType Type { get; set; }
+    public Guid ProjectId { get; set; }
+    public string ProjectName { get; set; } = string.Empty;
 }
 
 public class ProjectPerformanceDto

@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("HomeImprovementPlatform.API")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a3bc874ead210d67e84967ce88cba8ca29f7292b")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+4739e0cbdd44e5e9b306cf1a4cbe03b3d7b188db")]
 [assembly: System.Reflection.AssemblyProductAttribute("HomeImprovementPlatform.API")]
 [assembly: System.Reflection.AssemblyTitleAttribute("HomeImprovementPlatform.API")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

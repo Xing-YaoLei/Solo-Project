@@ -55,9 +55,14 @@ public class StatisticsService : IStatisticsService
     {
         var startDate = DateTime.UtcNow.AddMonths(-months);
         
-        var paymentsByMonth = await _context.PaymentRecords
+        var payments = await _context.PaymentRecords
             .Include(p => p.Project)
+            .Include(p => p.Document)
             .Where(p => p.PaymentDate >= startDate && p.Status == PaymentStatus.Paid)
+            .OrderByDescending(p => p.PaymentDate)
+            .ToListAsync();
+
+        var paymentsByMonth = payments
             .GroupBy(p => new { p.PaymentDate!.Value.Year, p.PaymentDate!.Value.Month })
             .Select(g => new
             {
@@ -66,11 +71,34 @@ public class StatisticsService : IStatisticsService
                 ProjectCount = g.Select(p => p.ProjectId).Distinct().Count(),
                 ExpectedAmount = g.Sum(p => p.Project != null ? p.Project.TotalBudget : 0) / g.Count(),
                 ActualPaid = g.Sum(p => p.Amount),
-                AverageDays = (int)g.Average(p => (p.PaymentDate!.Value - p.CreatedAt).TotalDays)
+                AverageDays = (int)g.Average(p => (p.PaymentDate!.Value - p.CreatedAt).TotalDays),
+                Projects = g.Select(p => p.Project)
+                    .Where(p => p != null)
+                    .DistinctBy(p => p!.Id)
+                    .Select(p => new ProjectReferenceDto
+                    {
+                        ProjectId = p!.Id,
+                        ProjectName = p.Name,
+                        ProjectNumber = p.ProjectNumber
+                    })
+                    .ToList(),
+                Documents = g.Select(p => p.Document)
+                    .Where(d => d != null)
+                    .DistinctBy(d => d!.Id)
+                    .Select(d => new DocumentReferenceDto
+                    {
+                        DocumentId = d!.Id,
+                        DocumentNumber = d.DocumentNumber,
+                        Title = d.Title,
+                        Type = d.Type,
+                        ProjectId = d.ProjectId,
+                        ProjectName = d.Project?.Name ?? string.Empty
+                    })
+                    .ToList()
             })
             .OrderByDescending(g => g.Year)
             .ThenByDescending(g => g.Month)
-            .ToListAsync();
+            .ToList();
 
         return paymentsByMonth.Select(x => new PaymentCycleDto
         {
@@ -78,7 +106,9 @@ public class StatisticsService : IStatisticsService
             ProjectCount = x.ProjectCount,
             ExpectedAmount = x.ExpectedAmount,
             ActualPaid = x.ActualPaid,
-            AveragePaymentDays = x.AverageDays
+            AveragePaymentDays = x.AverageDays,
+            Projects = x.Projects,
+            Documents = x.Documents
         });
     }
 

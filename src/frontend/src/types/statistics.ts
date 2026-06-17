@@ -17,6 +17,23 @@ export interface PaymentCycle {
   expectedAmount: number
   actualPaid: number
   averagePaymentDays: number
+  projects: ProjectReference[]
+  documents: DocumentReference[]
+}
+
+export interface ProjectReference {
+  projectId: string
+  projectName: string
+  projectNumber: string
+}
+
+export interface DocumentReference {
+  documentId: string
+  documentNumber: string
+  title: string
+  type: DocumentType
+  projectId: string
+  projectName: string
 }
 
 export interface DocumentSummary {

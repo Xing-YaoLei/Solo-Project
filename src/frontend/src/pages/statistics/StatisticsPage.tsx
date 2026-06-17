@@ -17,6 +17,7 @@ import {
   Spin,
   Descriptions,
   List,
+  Empty,
 } from 'antd'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -96,11 +97,31 @@ const StatisticsPage: React.FC = () => {
       render: (text) => <Text strong>{text}</Text>,
     },
     {
-      title: '项目数',
+      title: '关联项目',
       dataIndex: 'projectCount',
       key: 'projectCount',
-      width: 100,
-      render: (value) => <Tag color="blue">{value}</Tag>,
+      width: 110,
+      render: (value) => (
+        <Space>
+          <Tag color="blue">{value} 个</Tag>
+          {value > 0 && (
+            <Text type="secondary">(展开查看)</Text>
+          )}
+        </Space>
+      ),
+    },
+    {
+      title: '关联单据',
+      key: 'documentCount',
+      width: 110,
+      render: (_, record) => (
+        <Space>
+          <Tag color="geekblue">{record.documents?.length || 0} 张</Tag>
+          {record.documents && record.documents.length > 0 && (
+            <Text type="secondary">(展开查看)</Text>
+          )}
+        </Space>
+      ),
     },
     {
       title: '预期金额',
@@ -154,6 +175,94 @@ const StatisticsPage: React.FC = () => {
       ),
     },
   ]
+
+  const expandedCycleRowRender = (record: PaymentCycle) => (
+    <Space direction="vertical" size="large" style={{ width: '100%', padding: '8px 16px' }}>
+      {record.projects && record.projects.length > 0 && (
+        <Card size="small" title={`关联项目 (${record.projects.length})`}>
+          <List
+            dataSource={record.projects}
+            size="small"
+            grid={{ gutter: 16, xs: 1, sm: 2, md: 3, lg: 4 }}
+            renderItem={(project) => (
+              <List.Item key={project.projectId}>
+                <Card hoverable size="small">
+                  <List.Item.Meta
+                    title={
+                      <Button type="link" onClick={() => navigate(`/projects/${project.projectId}`)}>
+                        {project.projectName}
+                      </Button>
+                    }
+                    description={
+                      <Tag color="blue">{project.projectNumber}</Tag>
+                    }
+                  />
+                </Card>
+              </List.Item>
+            )}
+          />
+        </Card>
+      )}
+
+      {record.documents && record.documents.length > 0 && (
+        <Card size="small" title={`关联单据 (${record.documents.length})`}>
+          <List
+            dataSource={record.documents}
+            size="small"
+            renderItem={(doc) => (
+              <List.Item
+                key={doc.documentId}
+                actions={[
+                  <Button
+                    key="view"
+                    type="link"
+                    size="small"
+                    onClick={() => navigate(`/documents/${doc.documentId}`)}
+                  >
+                    查看详情
+                  </Button>,
+                  <Button
+                    key="project"
+                    type="link"
+                    size="small"
+                    onClick={() => navigate(`/projects/${doc.projectId}`)}
+                  >
+                    所属项目
+                  </Button>,
+                ]}
+              >
+                <List.Item.Meta
+                  title={
+                    <Space>
+                      <Button type="link" onClick={() => navigate(`/documents/${doc.documentId}`)}>
+                        <FileTextOutlined /> {doc.documentNumber}
+                      </Button>
+                      <Text strong>{doc.title}</Text>
+                      <Tag color="geekblue">
+                        {documentTypeLabels[doc.type]}
+                      </Tag>
+                    </Space>
+                  }
+                  description={
+                    <Space>
+                      <Text type="secondary">所属项目:</Text>
+                      <Button type="link" size="small" onClick={() => navigate(`/projects/${doc.projectId}`)}>
+                        {doc.projectName}
+                      </Button>
+                    </Space>
+                  }
+                />
+              </List.Item>
+            )}
+          />
+        </Card>
+      )}
+
+      {(!record.projects || record.projects.length === 0) && (!record.documents || record.documents.length === 0) && (
+        <Empty description="该周期暂无关联的项目和单据数据" />
+      )}
+    </Space>
+  )
 
   const performanceColumns: ColumnsType<ProjectPerformance> = [
     {
@@ -633,6 +742,12 @@ const StatisticsPage: React.FC = () => {
               rowKey="period"
               loading={cyclesLoading}
               pagination={false}
+              expandable={{
+                expandedRowRender: expandedCycleRowRender,
+                rowExpandable: (record) => 
+                  (record.projects && record.projects.length > 0) || 
+                  (record.documents && record.documents.length > 0),
+              }}
             />
           </Card>
         </Space>
