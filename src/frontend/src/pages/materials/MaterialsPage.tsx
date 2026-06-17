@@ -59,7 +59,7 @@ const MaterialsPage: React.FC = () => {
     queryKey: ['materials', pagination.current, pagination.pageSize, searchText, categoryFilter, isActiveFilter],
     queryFn: () =>
       materialApi.getMaterials({
-        pageIndex: (pagination.current || 1) - 1,
+        pageIndex: pagination.current || 1,
         pageSize: pagination.pageSize,
         search: searchText || undefined,
         category: categoryFilter,

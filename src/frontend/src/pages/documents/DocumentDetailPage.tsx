@@ -17,7 +17,9 @@ import {
   Modal,
   Form,
   Input,
+  Upload,
   message,
+  Popconfirm,
 } from 'antd'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
@@ -32,6 +34,10 @@ import {
   CheckCircleOutlined,
   WarningOutlined,
   ClockCircleOutlined,
+  PaperClipOutlined,
+  UploadOutlined,
+  DeleteOutlined,
+  DownloadOutlined,
 } from '@ant-design/icons'
 import { useParams, useNavigate } from 'react-router-dom'
 import dayjs from 'dayjs'
@@ -49,8 +55,10 @@ import {
   AmountConsistencyStatus,
   type DocumentItem,
   type DocumentHistory,
+  type Attachment,
 } from '@/types'
 import type { ColumnsType } from 'antd/es/table'
+import type { UploadProps, UploadFile } from 'antd/es/upload'
 
 const { Title, Text } = Typography
 const { TextArea } = Input
@@ -64,6 +72,8 @@ const DocumentDetailPage: React.FC = () => {
   const [approvalType, setApprovalType] = useState<'approve' | 'reject'>('approve')
   const [approvalComment, setApprovalComment] = useState('')
   const [form] = Form.useForm()
+  const [uploadFileList, setUploadFileList] = useState<UploadFile[]>([])
+  const [uploadDescription, setUploadDescription] = useState('')
 
   const { data: document, isLoading, error } = useQuery({
     queryKey: ['document', id],
@@ -76,6 +86,58 @@ const DocumentDetailPage: React.FC = () => {
     queryFn: () => documentApi.getDocumentHistory(id!),
     enabled: !!id && activeTab === 'history',
   })
+
+  const { data: attachments } = useQuery({
+    queryKey: ['document', id, 'attachments'],
+    queryFn: () => documentApi.getAttachments(id!),
+    enabled: !!id,
+  })
+
+  const uploadAttachmentMutation = useMutation({
+    mutationFn: ({ file, description }: { file: File; description?: string }) =>
+      documentApi.uploadAttachment(id!, file, description),
+    onSuccess: () => {
+      message.success('附件上传成功')
+      setUploadFileList([])
+      setUploadDescription('')
+      queryClient.invalidateQueries({ queryKey: ['document', id] })
+      queryClient.invalidateQueries({ queryKey: ['document', id, 'attachments'] })
+    },
+    onError: () => {
+      message.error('附件上传失败')
+    },
+  })
+
+  const deleteAttachmentMutation = useMutation({
+    mutationFn: (attachmentId: string) => documentApi.deleteAttachment(attachmentId),
+    onSuccess: () => {
+      message.success('附件删除成功')
+      queryClient.invalidateQueries({ queryKey: ['document', id] })
+      queryClient.invalidateQueries({ queryKey: ['document', id, 'attachments'] })
+    },
+    onError: () => {
+      message.error('附件删除失败')
+    },
+  })
+
+  const handleUpload = () => {
+    if (uploadFileList.length === 0) {
+      message.warning('请先选择要上传的文件')
+      return
+    }
+    const file = uploadFileList[0].originFileObj as File
+    uploadAttachmentMutation.mutate({ file, description: uploadDescription || undefined })
+  }
+
+  const handleFileChange: UploadProps['onChange'] = (info) => {
+    setUploadFileList(info.fileList.slice(-1))
+  }
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
+  }
 
   const submitMutation = useMutation({
     mutationFn: () => documentApi.submitForApproval(id!),
@@ -469,6 +531,104 @@ const DocumentDetailPage: React.FC = () => {
             )}
           />
         </Card>
+      ),
+    },
+    {
+      key: 'attachments',
+      label: (
+        <span>
+          <PaperClipOutlined /> 附件管理 ({attachments?.length || 0})
+        </span>
+      ),
+      children: (
+        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+          <Card title="上传附件" type="inner">
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Upload
+                fileList={uploadFileList}
+                onChange={handleFileChange}
+                beforeUpload={() => false}
+                maxCount={1}
+                onRemove={() => setUploadFileList([])}
+              >
+                <Button icon={<UploadOutlined />}>选择文件</Button>
+              </Upload>
+              <Input
+                placeholder="附件描述（选填）"
+                value={uploadDescription}
+                onChange={(e) => setUploadDescription(e.target.value)}
+              />
+              <Button
+                type="primary"
+                onClick={handleUpload}
+                loading={uploadAttachmentMutation.isPending}
+                disabled={uploadFileList.length === 0}
+              >
+                上传附件
+              </Button>
+            </Space>
+          </Card>
+
+          <Card title="附件列表" type="inner">
+            <List
+              dataSource={attachments || []}
+              loading={!attachments}
+              locale={{ emptyText: '暂无附件' }}
+              renderItem={(item: Attachment) => (
+                <List.Item
+                  key={item.id}
+                  actions={[
+                    <Button
+                      key="download"
+                      type="link"
+                      icon={<DownloadOutlined />}
+                      onClick={() => window.open(item.filePath, '_blank')}
+                    >
+                      下载
+                    </Button>,
+                    <Popconfirm
+                      key="delete"
+                      title="确认删除该附件？"
+                      onConfirm={() => deleteAttachmentMutation.mutate(item.id)}
+                      okText="确认"
+                      cancelText="取消"
+                    >
+                      <Button
+                        type="link"
+                        danger
+                        icon={<DeleteOutlined />}
+                        loading={deleteAttachmentMutation.isPending && deleteAttachmentMutation.variables === item.id}
+                      >
+                        删除
+                      </Button>
+                    </Popconfirm>,
+                  ]}
+                >
+                  <List.Item.Meta
+                    avatar={<PaperClipOutlined style={{ fontSize: 24, color: '#1890ff' }} />}
+                    title={
+                      <Space>
+                        <Text strong>{item.originalFileName}</Text>
+                        <Tag color="blue">{formatFileSize(item.fileSize)}</Tag>
+                        {item.description && <Tag>{item.description}</Tag>}
+                      </Space>
+                    }
+                    description={
+                      <Space direction="vertical" size={0}>
+                        <Text type="secondary">
+                          上传时间: {dayjs(item.createdAt).format('YYYY-MM-DD HH:mm:ss')}
+                        </Text>
+                        {item.contentType && (
+                          <Text type="secondary">类型: {item.contentType}</Text>
+                        )}
+                      </Space>
+                    }
+                  />
+                </List.Item>
+              )}
+            />
+          </Card>
+        </Space>
       ),
     },
   ]

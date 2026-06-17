@@ -109,7 +109,7 @@ const DocumentsPage: React.FC = () => {
     amountConsistency: amountConsistencyFilter,
     projectId: projectFilter,
     search: searchText || undefined,
-    pageIndex: (pagination.current || 1) - 1,
+    pageIndex: pagination.current || 1,
     pageSize: pagination.pageSize,
   }
 

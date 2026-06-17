@@ -1,5 +1,7 @@
 import { api } from './axios'
 import { Project, CreateProjectDto, UpdateProjectDto } from '@/types/project'
+import { Document } from '@/types/document'
+import { Payment } from '@/types/payment'
 import { PaginatedResponse } from '@/types/statistics'
 
 export const projectApi = {
@@ -18,9 +20,9 @@ export const projectApi = {
   deleteProject: (id: string) => 
     api.delete<void>(`/projects/${id}`),
   
-  getProjectDocuments: (projectId: string) => 
-    api.get(`/projects/${projectId}/documents`),
+  getProjectDocuments: (projectId: string, params?: { pageIndex?: number; pageSize?: number; type?: string; status?: string; amountConsistency?: string }) => 
+    api.get<PaginatedResponse<Document>>(`/projects/${projectId}/documents`, { params }),
   
-  getProjectPayments: (projectId: string) => 
-    api.get(`/projects/${projectId}/payments`),
+  getProjectPayments: (projectId: string, params?: { pageIndex?: number; pageSize?: number; status?: string }) => 
+    api.get<PaginatedResponse<Payment>>(`/projects/${projectId}/payments`, { params }),
 }

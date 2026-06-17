@@ -1,5 +1,19 @@
 import { DocumentType, DocumentStatus, AmountConsistencyStatus } from './enums'
 
+export interface Attachment {
+  id: string
+  documentId: string
+  fileName: string
+  originalFileName: string
+  filePath: string
+  contentType: string
+  fileSize: number
+  description?: string
+  uploadedById: string
+  uploadedByName?: string
+  createdAt: string
+}
+
 export interface DocumentItem {
   id: string
   itemOrder: number

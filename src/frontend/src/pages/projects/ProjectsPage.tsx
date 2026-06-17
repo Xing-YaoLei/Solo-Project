@@ -57,7 +57,7 @@ const ProjectsPage: React.FC = () => {
     queryKey: ['projects', pagination.current, pagination.pageSize, searchText, statusFilter],
     queryFn: () =>
       projectApi.getProjects({
-        pageIndex: (pagination.current || 1) - 1,
+        pageIndex: pagination.current || 1,
         pageSize: pagination.pageSize,
         search: searchText || undefined,
         status: statusFilter,

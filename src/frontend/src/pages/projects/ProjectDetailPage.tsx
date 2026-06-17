@@ -14,6 +14,7 @@ import {
   Statistic,
   Row,
   Col,
+  message,
 } from 'antd'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -21,6 +22,7 @@ import {
   EditOutlined,
   FileTextOutlined,
   MoneyCollectOutlined,
+  PlusOutlined,
 } from '@ant-design/icons'
 import { useParams, useNavigate } from 'react-router-dom'
 import dayjs from 'dayjs'
@@ -37,8 +39,8 @@ import {
   userRoleLabels,
 } from '@/config/status'
 import { DocumentStatus, AmountConsistencyStatus, PaymentStatus, DocumentType } from '@/types'
-import type { ColumnsType } from 'antd/es/table'
-import type { DocumentItem, Payment } from '@/types'
+import type { ColumnsType, TablePaginationConfig } from 'antd/es/table'
+import type { Document, Payment } from '@/types'
 
 const { Title, Text } = Typography
 
@@ -46,6 +48,20 @@ const ProjectDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('info')
+  const [documentPagination, setDocumentPagination] = useState<TablePaginationConfig>({
+    current: 1,
+    pageSize: 10,
+    showSizeChanger: true,
+    showQuickJumper: true,
+    showTotal: (total) => `共 ${total} 条`,
+  })
+  const [paymentPagination, setPaymentPagination] = useState<TablePaginationConfig>({
+    current: 1,
+    pageSize: 10,
+    showSizeChanger: true,
+    showQuickJumper: true,
+    showTotal: (total) => `共 ${total} 条`,
+  })
 
   const { data: project, isLoading, error } = useQuery({
     queryKey: ['project', id],
@@ -54,16 +70,29 @@ const ProjectDetailPage: React.FC = () => {
   })
 
   const { data: documents } = useQuery({
-    queryKey: ['project', id, 'documents'],
-    queryFn: () => projectApi.getProjectDocuments(id!),
+    queryKey: ['project', id, 'documents', documentPagination.current, documentPagination.pageSize],
+    queryFn: () =>
+      projectApi.getProjectDocuments(id!, {
+        pageIndex: documentPagination.current || 1,
+        pageSize: documentPagination.pageSize,
+      }),
     enabled: !!id && activeTab === 'documents',
   })
 
   const { data: payments } = useQuery({
-    queryKey: ['project', id, 'payments'],
-    queryFn: () => projectApi.getProjectPayments(id!),
+    queryKey: ['project', id, 'payments', paymentPagination.current, paymentPagination.pageSize],
+    queryFn: () =>
+      projectApi.getProjectPayments(id!, {
+        pageIndex: paymentPagination.current || 1,
+        pageSize: paymentPagination.pageSize,
+      }),
     enabled: !!id && activeTab === 'payments',
   })
+
+  const createQuickDocument = () => {
+    message.info('即将跳转到新建单据页面')
+    navigate('/documents?create=true')
+  }
 
   if (isLoading) {
     return (
@@ -79,14 +108,14 @@ const ProjectDetailPage: React.FC = () => {
 
   const paymentProgress = project.totalBudget > 0 ? (project.paidAmount / project.totalBudget) * 100 : 0
 
-  const documentColumns: ColumnsType<DocumentItem> = [
+  const documentColumns: ColumnsType<Document> = [
     {
       title: '单据编号',
       dataIndex: 'documentNumber',
       key: 'documentNumber',
       width: 140,
       render: (text, record) => (
-        <Button type="link" onClick={() => navigate(`/documents/${(record as any).id}`)}>
+        <Button type="link" onClick={() => navigate(`/documents/${record.id}`)}>
           {text}
         </Button>
       ),
@@ -317,19 +346,19 @@ const ProjectDetailPage: React.FC = () => {
       key: 'documents',
       label: (
         <span>
-          <FileTextOutlined /> 相关单据 ({(documents as any)?.items?.length || 0})
+          <FileTextOutlined /> 相关单据 ({documents?.items?.length || 0})
         </span>
       ),
       children: (
         <Table
           columns={documentColumns}
-          dataSource={(documents as any)?.items || []}
+          dataSource={documents?.items || []}
           rowKey="id"
           loading={!documents}
           pagination={{
-            showSizeChanger: true,
-            showQuickJumper: true,
-            showTotal: (total) => `共 ${total} 条`,
+            ...documentPagination,
+            total: documents?.totalCount || 0,
+            onChange: (page, pageSize) => setDocumentPagination({ ...documentPagination, current: page, pageSize }),
           }}
         />
       ),
@@ -338,19 +367,19 @@ const ProjectDetailPage: React.FC = () => {
       key: 'payments',
       label: (
         <span>
-          <MoneyCollectOutlined /> 款项记录 ({(payments as any)?.items?.length || 0})
+          <MoneyCollectOutlined /> 款项记录 ({payments?.items?.length || 0})
         </span>
       ),
       children: (
         <Table
           columns={paymentColumns}
-          dataSource={(payments as any)?.items || []}
+          dataSource={payments?.items || []}
           rowKey="id"
           loading={!payments}
           pagination={{
-            showSizeChanger: true,
-            showQuickJumper: true,
-            showTotal: (total) => `共 ${total} 条`,
+            ...paymentPagination,
+            total: payments?.totalCount || 0,
+            onChange: (page, pageSize) => setPaymentPagination({ ...paymentPagination, current: page, pageSize }),
           }}
         />
       ),
@@ -371,7 +400,7 @@ const ProjectDetailPage: React.FC = () => {
         </Space>
         <Space>
           <Button icon={<EditOutlined />}>编辑项目</Button>
-          <Button type="primary" icon={<FileTextOutlined />}>
+          <Button type="primary" icon={<PlusOutlined />} onClick={createQuickDocument}>
             新建单据
           </Button>
         </Space>

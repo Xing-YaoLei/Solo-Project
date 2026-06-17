@@ -83,25 +83,53 @@ public class ProjectsController : ControllerBase
     }
 
     [HttpGet("{id}/documents")]
-    public async Task<ActionResult<IEnumerable<DocumentDto>>> GetProjectDocuments(
+    public async Task<ActionResult<PaginatedResponse<DocumentDto>>> GetProjectDocuments(
         Guid id,
         [FromQuery] DocumentType? type,
         [FromQuery] DocumentStatus? status,
-        [FromQuery] AmountConsistencyStatus? amountConsistency)
+        [FromQuery] AmountConsistencyStatus? amountConsistency,
+        [FromQuery] int pageIndex = 1,
+        [FromQuery] int pageSize = 20)
     {
         var userId = GetCurrentUserId();
         var userRole = GetCurrentUserRole();
-        var documents = await _documentService.GetAllAsync(type, status, amountConsistency, id, userRole, userId);
-        return Ok(documents);
+        var allDocuments = await _documentService.GetAllAsync(type, status, amountConsistency, id, userRole, userId);
+
+        var items = allDocuments.OrderByDescending(d => d.CreatedAt)
+                                .Skip((pageIndex - 1) * pageSize)
+                                .Take(pageSize)
+                                .ToList();
+
+        return Ok(new PaginatedResponse<DocumentDto>
+        {
+            Items = items,
+            TotalCount = allDocuments.Count(),
+            PageIndex = pageIndex,
+            PageSize = pageSize
+        });
     }
 
     [HttpGet("{id}/payments")]
-    public async Task<ActionResult<IEnumerable<PaymentRecordDto>>> GetProjectPayments(
+    public async Task<ActionResult<PaginatedResponse<PaymentRecordDto>>> GetProjectPayments(
         Guid id,
-        [FromQuery] PaymentStatus? status)
+        [FromQuery] PaymentStatus? status,
+        [FromQuery] int pageIndex = 1,
+        [FromQuery] int pageSize = 20)
     {
-        var payments = await _paymentService.GetAllAsync(status, id);
-        return Ok(payments);
+        var allPayments = await _paymentService.GetAllAsync(status, id);
+
+        var items = allPayments.OrderByDescending(p => p.CreatedAt)
+                               .Skip((pageIndex - 1) * pageSize)
+                               .Take(pageSize)
+                               .ToList();
+
+        return Ok(new PaginatedResponse<PaymentRecordDto>
+        {
+            Items = items,
+            TotalCount = allPayments.Count(),
+            PageIndex = pageIndex,
+            PageSize = pageSize
+        });
     }
 
     [HttpPost]
