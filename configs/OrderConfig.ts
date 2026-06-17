@@ -1,5 +1,11 @@
-import { IRepairOrder, OrderPriority, RepairCategory, IClue, IOrderStage } from '../assets/scripts/game/OrderTypes';
-import { calculateOrderTimeLimit } from '../assets/scripts/game/DispatchTypes';
+import {
+    IRepairOrder,
+    OrderPriority,
+    RepairCategory,
+    IClue,
+    IOrderStage,
+    calculateOrderTimeLimit
+} from '../assets/scripts/types/GameTypes';
 
 function createBaseOrder(
     id: string,
@@ -74,7 +80,7 @@ const lightBulbOrder: IRepairOrder = (() => {
         },
         {
             id: 'clue_001_3',
-            title: '隐藏线索-灯具型号',
+            title: '灯具型号',
             description: '经检查是LED感应灯，型号为XX-2023',
             category: 'detail',
             isHidden: true,
@@ -237,7 +243,7 @@ const waterLeakOrder: IRepairOrder = (() => {
         },
         {
             id: 'clue_002_4',
-            title: '隐藏线索-漏水来源',
+            title: '漏水来源',
             description: '初步判断是楼上401室水管问题',
             category: 'detail',
             isHidden: true,
@@ -312,9 +318,7 @@ const waterLeakOrder: IRepairOrder = (() => {
                 {
                     id: 'choice_002_2_c',
                     text: '派给王师傅（水暖工，但正在处理其他工单）',
-                    condition: (context) => {
-                        return true;
-                    },
+                    condition: () => true,
                     result: {
                         isCorrect: false,
                         nextState: 'stage_002_2',

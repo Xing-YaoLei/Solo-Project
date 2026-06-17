@@ -1,6 +1,4 @@
-import { ILevelConfig } from './AssetConfig';
-import { createWorker } from '../assets/scripts/game/DispatchTypes';
-import { RepairCategory } from '../assets/scripts/game/OrderTypes';
+import { ILevelConfig, createWorker } from '../assets/scripts/types/GameTypes';
 
 export const LEVEL_CONFIGS: ILevelConfig[] = [
     {

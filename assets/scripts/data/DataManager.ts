@@ -1,7 +1,7 @@
 import { getLevelConfig, getAllLevelConfigs, ILevelConfig } from '../../configs/LevelConfig';
-import { getOrdersForLevel, SAMPLE_ORDERS, IRepairOrder } from '../../configs/OrderConfig';
+import { getOrdersForLevel, SAMPLE_ORDERS } from '../../configs/OrderConfig';
 import { ASSET_CATEGORIES, IAssetConfig, IAssetCategory } from '../../configs/AssetConfig';
-import { IWorker } from '../game/DispatchTypes';
+import { IWorker, IRepairOrder } from '../types/GameTypes';
 import { SaveManager } from '../core/SaveManager';
 import { Logger } from '../core/Logger';
 
@@ -52,10 +52,10 @@ export class DataManager {
     private cloneOrders(orders: IRepairOrder[]): IRepairOrder[] {
         return orders.map(order => ({
             ...order,
-            stages: [...order.stages],
-            initialClues: [...order.initialClues],
+            stages: JSON.parse(JSON.stringify(order.stages)),
+            initialClues: JSON.parse(JSON.stringify(order.initialClues)),
             correctPath: [...order.correctPath],
-            commonErrors: [...order.commonErrors],
+            commonErrors: JSON.parse(JSON.stringify(order.commonErrors)),
             createdAt: Date.now(),
             deadline: Date.now() + order.timeLimit * 1000
         }));
@@ -63,12 +63,21 @@ export class DataManager {
 
     public getWorkersForLevel(levelId: number): IWorker[] {
         if (this.levelWorkersCache.has(levelId)) {
-            return JSON.parse(JSON.stringify(this.levelWorkersCache.get(levelId)!));
+            return JSON.parse(JSON.stringify(Array.from(this.levelWorkersCache.get(levelId)!.entries())));
         }
         const config = this.getLevelConfig(levelId);
         if (config) {
-            this.levelWorkersCache.set(levelId, config.workers);
-            return JSON.parse(JSON.stringify(config.workers));
+            const clonedWorkers = config.workers.map(w => ({
+                ...w,
+                skillLevel: new Map(w.skillLevel),
+                currentLoad: 0,
+                isAvailable: true
+            }));
+            this.levelWorkersCache.set(levelId, clonedWorkers);
+            return clonedWorkers.map(w => ({
+                ...w,
+                skillLevel: new Map(w.skillLevel)
+            }));
         }
         return [];
     }

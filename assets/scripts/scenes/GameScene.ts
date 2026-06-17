@@ -1,0 +1,327 @@
+import { _decorator, Component, Node, director, find, instantiate, Prefab, Sprite, Label, Color, UIOpacity, UITransform, Vec3, Layers } from 'cc';
+import { game } from '../Game';
+import { EventManager, GameEventType } from '../core/EventManager';
+import { Logger } from '../core/Logger';
+const { ccclass, property } = _decorator;
+
+export interface SceneRefs {
+    uiCanvas: Node;
+    mapContainer: Node;
+    hudLayer: Node;
+    dialogLayer: Node;
+    notificationLayer: Node;
+    tutorialLayer: Node;
+}
+
+@ccclass('GameScene')
+export class GameScene extends Component {
+    @property(Node)
+    uiCanvas: Node | null = null;
+
+    @property(Node)
+    mapContainer: Node | null = null;
+
+    @property(Node)
+    hudLayer: Node | null = null;
+
+    @property(Node)
+    dialogLayer: Node | null = null;
+
+    @property(Node)
+    notificationLayer: Node | null = null;
+
+    @property(Node)
+    tutorialLayer: Node | null = null;
+
+    @property(Prefab)
+    orderListPrefab: Prefab | null = null;
+
+    @property(Prefab)
+    orderPanelPrefab: Prefab | null = null;
+
+    @property(Prefab)
+    cluePanelPrefab: Prefab | null = null;
+
+    @property(Prefab)
+    dispatchPanelPrefab: Prefab | null = null;
+
+    @property(Prefab)
+    choiceDialogPrefab: Prefab | null = null;
+
+    @property(Prefab)
+    hudPanelPrefab: Prefab | null = null;
+
+    @property(Prefab)
+    tutorialPanelPrefab: Prefab | null = null;
+
+    @property(Prefab)
+    resultPanelPrefab: Prefab | null = null;
+
+    @property(Prefab)
+    reviewPanelPrefab: Prefab | null = null;
+
+    @property(Prefab)
+    notificationPrefab: Prefab | null = null;
+
+    private eventManager: EventManager;
+    private refs: SceneRefs;
+    private started = false;
+
+    constructor() {
+        super();
+        this.eventManager = EventManager.getInstance();
+        this.refs = {} as SceneRefs;
+    }
+
+    onLoad() {
+        this.cacheRefs();
+        this.setupEventListeners();
+        Logger.info('GameScene loaded');
+    }
+
+    async start() {
+        if (this.started) return;
+        this.started = true;
+
+        try {
+            await game.initialize();
+            this.spawnHUD();
+
+            const startLevel = 1;
+            Logger.info(`Starting game at level ${startLevel} from GameScene`);
+            await game.startGame(startLevel);
+            this.spawnOrderList();
+
+            if (game.getTutorialManager().shouldShowTutorial()) {
+                this.spawnTutorialPanel();
+            }
+        } catch (error) {
+            Logger.error('Failed to start game from scene:', error);
+        }
+    }
+
+    private cacheRefs() {
+        this.refs.uiCanvas = this.uiCanvas || find('Canvas') || this.node;
+        this.refs.mapContainer = this.mapContainer || find('Canvas/MapContainer') || this.refs.uiCanvas;
+        this.refs.hudLayer = this.hudLayer || this.ensureChild(this.refs.uiCanvas, 'HUDLayer');
+        this.refs.dialogLayer = this.dialogLayer || this.ensureChild(this.refs.uiCanvas, 'DialogLayer');
+        this.refs.notificationLayer = this.notificationLayer || this.ensureChild(this.refs.uiCanvas, 'NotificationLayer');
+        this.refs.tutorialLayer = this.tutorialLayer || this.ensureChild(this.refs.uiCanvas, 'TutorialLayer');
+    }
+
+    private ensureChild(parent: Node, name: string): Node {
+        let child = parent.getChildByName(name);
+        if (!child) {
+            child = new Node(name);
+            child.addComponent(UITransform);
+            const ui = child.getComponent(UITransform);
+            if (ui) {
+                const parentUi = parent.getComponent(UITransform);
+                if (parentUi) {
+                    ui.setContentSize(parentUi.contentSize);
+                }
+            }
+            child.layer = Layers.Enum.UI_2D;
+            parent.addChild(child);
+        }
+        return child;
+    }
+
+    private setupEventListeners() {
+        this.eventManager.on(GameEventType.ORDER_RECEIVED, (event) => {
+            Logger.info('[Scene] 新工单收到:', event.data?.order?.title);
+            this.showNotification('📩 新工单', event.data?.order?.title, 'info');
+        });
+
+        this.eventManager.on(GameEventType.ORDER_COMPLETED, (event) => {
+            Logger.info('[Scene] 工单完成:', event.data?.orderId);
+            this.showNotification('✅ 工单完成', `+${event.data?.score || 0} 分`, 'success');
+        });
+
+        this.eventManager.on(GameEventType.ORDER_FAILED, (event) => {
+            const desc = event.data?.penalty?.description || '处理失败';
+            const deduction = event.data?.scoreDeduction || 0;
+            Logger.warn('[Scene] 工单失败:', desc);
+            this.showNotification('❌ 处理失误', `${desc} -${deduction}分`, 'error');
+        });
+
+        this.eventManager.on(GameEventType.ORDER_TIMEOUT, (event) => {
+            Logger.warn('[Scene] 工单超时:', event.data?.orderId);
+            this.showNotification('⏰ 工单超时', '请加快处理速度', 'warning');
+        });
+
+        this.eventManager.on(GameEventType.CLUE_DISCOVERED, (event) => {
+            Logger.info('[Scene] 发现线索:', event.data?.clue?.title);
+            this.showNotification('🔍 发现线索', event.data?.clue?.title, 'success');
+        });
+
+        this.eventManager.on(GameEventType.RULE_UNLOCKED, (event) => {
+            Logger.info('[Scene] 规则解锁:', event.data?.ruleId);
+            this.showNotification('🎯 规则解锁', event.data?.rule?.name || '新规则可用', 'success');
+        });
+
+        this.eventManager.on(GameEventType.REVIEW_FAILED, (event) => {
+            Logger.warn('[Scene] 复核不通过:', event.data?.errorType);
+        });
+
+        this.eventManager.on(GameEventType.LEVEL_COMPLETE, (event) => {
+            Logger.info('[Scene] 关卡完成:', event.data?.levelId, '得分:', event.data?.score);
+            this.spawnResultPanel(true, event.data?.score || 0);
+        });
+
+        this.eventManager.on(GameEventType.LEVEL_FAIL, (event) => {
+            Logger.warn('[Scene] 关卡失败:', event.data?.reason);
+            this.spawnResultPanel(false, 0, event.data?.reason);
+        });
+    }
+
+    public getRefs(): SceneRefs {
+        return this.refs;
+    }
+
+    public spawnOrderList() {
+        if (!this.orderListPrefab || !this.refs.uiCanvas) return;
+        const node = instantiate(this.orderListPrefab);
+        node.name = 'OrderList';
+        node.setPosition(new Vec3(-560, 0, 0));
+        this.refs.uiCanvas.addChild(node);
+    }
+
+    public spawnOrderPanel() {
+        if (!this.orderPanelPrefab || !this.refs.dialogLayer) return;
+        const node = instantiate(this.orderPanelPrefab);
+        node.name = 'OrderPanel';
+        this.refs.dialogLayer.addChild(node);
+    }
+
+    public spawnCluePanel() {
+        if (!this.cluePanelPrefab || !this.refs.dialogLayer) return;
+        const node = instantiate(this.cluePanelPrefab);
+        node.name = 'CluePanel';
+        this.refs.dialogLayer.addChild(node);
+    }
+
+    public spawnDispatchPanel() {
+        if (!this.dispatchPanelPrefab || !this.refs.dialogLayer) return;
+        const node = instantiate(this.dispatchPanelPrefab);
+        node.name = 'DispatchPanel';
+        this.refs.dialogLayer.addChild(node);
+    }
+
+    public spawnChoiceDialog() {
+        if (!this.choiceDialogPrefab || !this.refs.dialogLayer) return;
+        const node = instantiate(this.choiceDialogPrefab);
+        node.name = 'ChoiceDialog';
+        this.refs.dialogLayer.addChild(node);
+    }
+
+    public spawnHUD() {
+        if (!this.hudPanelPrefab || !this.refs.hudLayer) return;
+        const node = instantiate(this.hudPanelPrefab);
+        node.name = 'HUDPanel';
+        node.setPosition(Vec3.ZERO);
+        this.refs.hudLayer.addChild(node);
+    }
+
+    public spawnTutorialPanel() {
+        if (!this.tutorialPanelPrefab || !this.refs.tutorialLayer) return;
+        const node = instantiate(this.tutorialPanelPrefab);
+        node.name = 'TutorialPanel';
+        this.refs.tutorialLayer.addChild(node);
+    }
+
+    public spawnResultPanel(passed: boolean, score: number, reason?: string) {
+        if (!this.resultPanelPrefab || !this.refs.dialogLayer) return;
+        const node = instantiate(this.resultPanelPrefab);
+        node.name = 'ResultPanel';
+        const label = node.getComponentInChildren(Label);
+        if (label) {
+            label.string = passed ? `🎉 关卡完成！\n得分: ${score}` : `😢 关卡失败\n${reason || ''}`;
+            label.color = passed ? new Color(80, 200, 120) : new Color(220, 80, 80);
+        }
+        this.refs.dialogLayer.addChild(node);
+    }
+
+    public spawnReviewPanel() {
+        if (!this.reviewPanelPrefab || !this.refs.dialogLayer) return;
+        const node = instantiate(this.reviewPanelPrefab);
+        node.name = 'ReviewPanel';
+        this.refs.dialogLayer.addChild(node);
+    }
+
+    public showNotification(title: string, message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') {
+        if (!this.refs.notificationLayer) return;
+
+        if (this.notificationPrefab) {
+            const node = instantiate(this.notificationPrefab);
+            node.name = `Notification_${Date.now()}`;
+            const labels = node.getComponentsInChildren(Label);
+            if (labels.length >= 2) {
+                labels[0].string = title;
+                labels[1].string = message;
+            } else if (labels.length === 1) {
+                labels[0].string = `${title} - ${message}`;
+            }
+            const colorMap: Record<string, Color> = {
+                info: new Color(80, 140, 255),
+                success: new Color(80, 200, 120),
+                warning: new Color(255, 180, 60),
+                error: new Color(220, 80, 80)
+            };
+            const bg = node.getComponent(Sprite) || node.getComponentInChildren(Sprite);
+            if (bg) bg.color = colorMap[type] || colorMap.info;
+
+            const opacity = node.addComponent(UIOpacity);
+            opacity.opacity = 0;
+            this.refs.notificationLayer.addChild(node);
+
+            let t = 0;
+            const fadeInDuration = 0.2;
+            const showDuration = 2.5;
+            const fadeOutDuration = 0.3;
+            const total = fadeInDuration + showDuration + fadeOutDuration;
+            const scheduler = director.getScheduler();
+            let scheduled = false;
+            const callback = () => {
+                t += 1 / 60;
+                if (t < fadeInDuration) {
+                    opacity.opacity = Math.round((t / fadeInDuration) * 255);
+                } else if (t < fadeInDuration + showDuration) {
+                    opacity.opacity = 255;
+                } else if (t < total) {
+                    const fadeT = (t - fadeInDuration - showDuration) / fadeOutDuration;
+                    opacity.opacity = Math.round((1 - fadeT) * 255);
+                } else {
+                    opacity.opacity = 0;
+                    if (node.isValid) node.destroy();
+                    if (scheduled) {
+                        scheduler.unschedule(callback, this);
+                    }
+                    return;
+                }
+                const existingY = node.position.y;
+                node.setPosition(new Vec3(node.position.x, existingY + (t < fadeInDuration ? 0.5 : 0), node.position.z));
+            };
+            scheduled = true;
+            scheduler.schedule(callback, this, 1 / 60, false);
+        } else {
+            Logger.info(`[通知] ${title}: ${message}`);
+        }
+    }
+
+    update(dt: number) {
+        if (this.started) {
+            game.update(dt);
+        }
+    }
+
+    onDestroy() {
+        this.eventManager.removeAllListeners();
+    }
+}
+
+export function findGameScene(): GameScene | null {
+    const canvas = find('Canvas');
+    if (!canvas) return null;
+    return canvas.getComponent(GameScene) || canvas.getComponentInChildren(GameScene);
+}
