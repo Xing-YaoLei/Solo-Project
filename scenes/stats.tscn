@@ -1,0 +1,94 @@
+[gd_scene load_steps=2 format=3 uid="uid://f1g2h3i4j5k6l"]
+
+[ext_resource type="Script" path="res://scripts/stats.gd" id="1"]
+
+[node name="Stats" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.93, 0.93, 0.93, 1)
+
+[node name="TopBar" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 70.0
+grow_horizontal = 2
+theme_override_constants/separation = 20
+
+[node name="BackBtn" type="Button" parent="TopBar"]
+layout_mode = 2
+custom_minimum_size = Vector2(100, 50)
+text = "← 返回"
+theme_override_font_sizes/font_size = 18
+
+[node name="Title" type="Label" parent="TopBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "训练统计"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 32
+theme_override_colors/font_color = Color(0.2, 0.4, 0.7, 1)
+
+[node name="Spacer" type="Control" parent="TopBar"]
+layout_mode = 2
+custom_minimum_size = Vector2(100, 0)
+
+[node name="ScrollContainer" type="ScrollContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 90.0
+offset_left = 40.0
+offset_right = -40.0
+offset_bottom = -40.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_scroll_mode = 0
+
+[node name="StatsVBox" type="VBoxContainer" parent="ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 15
+
+[node name="SummaryPanel" type="PanelContainer" parent="ScrollContainer/StatsVBox"]
+layout_mode = 2
+
+[node name="SummaryVBox" type="VBoxContainer" parent="ScrollContainer/StatsVBox/SummaryPanel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="SummaryTitle" type="Label" parent="ScrollContainer/StatsVBox/SummaryPanel/SummaryVBox"]
+layout_mode = 2
+text = "训练效果分析"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 22
+theme_override_colors/font_color = Color(0.2, 0.4, 0.7, 1)
+
+[node name="SummaryHint" type="Label" parent="ScrollContainer/StatsVBox/SummaryPanel/SummaryVBox"]
+layout_mode = 2
+text = "按租户满意度排序，了解哪些关卡训练效果更好"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.6, 0.6, 0.6, 1)
+
+[node name="LevelListLabel" type="Label" parent="ScrollContainer/StatsVBox"]
+layout_mode = 2
+text = "关卡排名"
+theme_override_font_sizes/font_size = 18
+theme_override_colors/font_color = Color(0.3, 0.3, 0.3, 1)
+
+[connection signal="pressed" from="TopBar/BackBtn" to="." method="_on_back_pressed"]

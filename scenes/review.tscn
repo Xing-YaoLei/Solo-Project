@@ -1,0 +1,291 @@
+[gd_scene load_steps=2 format=3 uid="uid://g7h8i9j0k1l2m"]
+
+[ext_resource type="Script" path="res://scripts/review.gd" id="1"]
+
+[node name="Review" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.93, 0.93, 0.93, 1)
+
+[node name="TopBar" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 70.0
+grow_horizontal = 2
+theme_override_constants/separation = 20
+
+[node name="BackBtn" type="Button" parent="TopBar"]
+layout_mode = 2
+custom_minimum_size = Vector2(100, 50)
+text = "← 返回"
+theme_override_font_sizes/font_size = 18
+
+[node name="Title" type="Label" parent="TopBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "关卡复盘"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 32
+theme_override_colors/font_color = Color(0.2, 0.4, 0.7, 1)
+
+[node name="Spacer" type="Control" parent="TopBar"]
+layout_mode = 2
+custom_minimum_size = Vector2(100, 0)
+
+[node name="CenterContainer" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 90.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ReviewVBox" type="VBoxContainer" parent="CenterContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(700, 500)
+alignment = 1
+theme_override_constants/separation = 15
+
+[node name="LevelName" type="Label" parent="CenterContainer/ReviewVBox"]
+layout_mode = 2
+text = "新手入门"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 26
+theme_override_colors/font_color = Color(0.2, 0.2, 0.2, 1)
+
+[node name="ScorePanel" type="PanelContainer" parent="CenterContainer/ReviewVBox"]
+layout_mode = 2
+
+[node name="ScoreVBox" type="VBoxContainer" parent="CenterContainer/ReviewVBox/ScorePanel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="ScoreTitle" type="Label" parent="CenterContainer/ReviewVBox/ScorePanel/ScoreVBox"]
+layout_mode = 2
+text = "本次成绩"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 20
+theme_override_colors/font_color = Color(0.2, 0.4, 0.7, 1)
+
+[node name="ScoreValue" type="Label" parent="CenterContainer/ReviewVBox/ScorePanel/ScoreVBox"]
+layout_mode = 2
+text = "2500"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 42
+theme_override_colors/font_color = Color(0.2, 0.4, 0.7, 1)
+
+[node name="SatisfactionBar" type="HBoxContainer" parent="CenterContainer/ReviewVBox/ScorePanel/ScoreVBox"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 10
+
+[node name="SatLabel" type="Label" parent="CenterContainer/ReviewVBox/ScorePanel/ScoreVBox/SatisfactionBar"]
+layout_mode = 2
+text = "租户满意度:"
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.5, 0.5, 0.5, 1)
+
+[node name="SatValue" type="Label" parent="CenterContainer/ReviewVBox/ScorePanel/ScoreVBox/SatisfactionBar"]
+layout_mode = 2
+text = "75%"
+theme_override_font_sizes/font_size = 20
+theme_override_colors/font_color = Color(0.3, 0.7, 0.3, 1)
+
+[node name="ComparePanel" type="PanelContainer" parent="CenterContainer/ReviewVBox"]
+layout_mode = 2
+
+[node name="CompareVBox" type="VBoxContainer" parent="CenterContainer/ReviewVBox/ComparePanel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="CompareTitle" type="Label" parent="CenterContainer/ReviewVBox/ComparePanel/CompareVBox"]
+layout_mode = 2
+text = "历史最佳对比"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 18
+theme_override_colors/font_color = Color(0.5, 0.5, 0.5, 1)
+
+[node name="CompareGrid" type="GridContainer" parent="CenterContainer/ReviewVBox/ComparePanel/CompareVBox"]
+layout_mode = 2
+columns = 3
+theme_override_constants/h_separation = 30
+theme_override_constants/v_separation = 8
+
+[node name="EmptyLabel" type="Label" parent="CenterContainer/ReviewVBox/ComparePanel/CompareVBox/CompareGrid"]
+layout_mode = 2
+text = ""
+theme_override_font_sizes/font_size = 14
+
+[node name="CurrentLabel" type="Label" parent="CenterContainer/ReviewVBox/ComparePanel/CompareVBox/CompareGrid"]
+layout_mode = 2
+text = "本次"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.2, 0.4, 0.7, 1)
+
+[node name="BestLabel" type="Label" parent="CenterContainer/ReviewVBox/ComparePanel/CompareVBox/CompareGrid"]
+layout_mode = 2
+text = "最佳"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.9, 0.6, 0.2, 1)
+
+[node name="ScoreRowLabel" type="Label" parent="CenterContainer/ReviewVBox/ComparePanel/CompareVBox/CompareGrid"]
+layout_mode = 2
+text = "得分"
+horizontal_alignment = 2
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.4, 0.4, 0.4, 1)
+
+[node name="CurrentScore" type="Label" parent="CenterContainer/ReviewVBox/ComparePanel/CompareVBox/CompareGrid"]
+layout_mode = 2
+text = "2500"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.2, 0.2, 0.2, 1)
+
+[node name="BestScore" type="Label" parent="CenterContainer/ReviewVBox/ComparePanel/CompareVBox/CompareGrid"]
+layout_mode = 2
+text = "3200"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.2, 0.2, 0.2, 1)
+
+[node name="SatRowLabel" type="Label" parent="CenterContainer/ReviewVBox/ComparePanel/CompareVBox/CompareGrid"]
+layout_mode = 2
+text = "满意度"
+horizontal_alignment = 2
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.4, 0.4, 0.4, 1)
+
+[node name="CurrentSat" type="Label" parent="CenterContainer/ReviewVBox/ComparePanel/CompareVBox/CompareGrid"]
+layout_mode = 2
+text = "75%"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.2, 0.2, 0.2, 1)
+
+[node name="BestSat" type="Label" parent="CenterContainer/ReviewVBox/ComparePanel/CompareVBox/CompareGrid"]
+layout_mode = 2
+text = "90%"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.2, 0.2, 0.2, 1)
+
+[node name="ComboRowLabel" type="Label" parent="CenterContainer/ReviewVBox/ComparePanel/CompareVBox/CompareGrid"]
+layout_mode = 2
+text = "最大连击"
+horizontal_alignment = 2
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.4, 0.4, 0.4, 1)
+
+[node name="CurrentCombo" type="Label" parent="CenterContainer/ReviewVBox/ComparePanel/CompareVBox/CompareGrid"]
+layout_mode = 2
+text = "8"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.2, 0.2, 0.2, 1)
+
+[node name="BestCombo" type="Label" parent="CenterContainer/ReviewVBox/ComparePanel/CompareVBox/CompareGrid"]
+layout_mode = 2
+text = "15"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.2, 0.2, 0.2, 1)
+
+[node name="StatsPanel" type="PanelContainer" parent="CenterContainer/ReviewVBox"]
+layout_mode = 2
+
+[node name="StatsGrid" type="GridContainer" parent="CenterContainer/ReviewVBox/StatsPanel"]
+layout_mode = 2
+columns = 2
+theme_override_constants/h_separation = 40
+theme_override_constants/v_separation = 8
+
+[node name="CorrectLabel" type="Label" parent="CenterContainer/ReviewVBox/StatsPanel/StatsGrid"]
+layout_mode = 2
+text = "正确数:"
+horizontal_alignment = 2
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.4, 0.4, 0.4, 1)
+
+[node name="CorrectValue" type="Label" parent="CenterContainer/ReviewVBox/StatsPanel/StatsGrid"]
+layout_mode = 2
+text = "12"
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.3, 0.7, 0.3, 1)
+
+[node name="WrongLabel" type="Label" parent="CenterContainer/ReviewVBox/StatsPanel/StatsGrid"]
+layout_mode = 2
+text = "错误数:"
+horizontal_alignment = 2
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.4, 0.4, 0.4, 1)
+
+[node name="WrongValue" type="Label" parent="CenterContainer/ReviewVBox/StatsPanel/StatsGrid"]
+layout_mode = 2
+text = "3"
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.9, 0.3, 0.3, 1)
+
+[node name="AccuracyLabel" type="Label" parent="CenterContainer/ReviewVBox/StatsPanel/StatsGrid"]
+layout_mode = 2
+text = "准确率:"
+horizontal_alignment = 2
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.4, 0.4, 0.4, 1)
+
+[node name="AccuracyValue" type="Label" parent="CenterContainer/ReviewVBox/StatsPanel/StatsGrid"]
+layout_mode = 2
+text = "80%"
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.2, 0.4, 0.7, 1)
+
+[node name="TimeLabel" type="Label" parent="CenterContainer/ReviewVBox/StatsPanel/StatsGrid"]
+layout_mode = 2
+text = "用时:"
+horizontal_alignment = 2
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.4, 0.4, 0.4, 1)
+
+[node name="TimeValue" type="Label" parent="CenterContainer/ReviewVBox/StatsPanel/StatsGrid"]
+layout_mode = 2
+text = "45秒"
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.9, 0.6, 0.2, 1)
+
+[node name="ButtonsHBox" type="HBoxContainer" parent="CenterContainer/ReviewVBox"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 20
+
+[node name="BtnRetry" type="Button" parent="CenterContainer/ReviewVBox/ButtonsHBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(180, 50)
+text = "再试一次"
+theme_override_font_sizes/font_size = 18
+
+[node name="BtnMenu" type="Button" parent="CenterContainer/ReviewVBox/ButtonsHBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(180, 50)
+text = "返回菜单"
+theme_override_font_sizes/font_size = 18
+
+[connection signal="pressed" from="TopBar/BackBtn" to="." method="_on_back_pressed"]
+[connection signal="pressed" from="CenterContainer/ReviewVBox/ButtonsHBox/BtnRetry" to="." method="_on_retry_pressed"]
+[connection signal="pressed" from="CenterContainer/ReviewVBox/ButtonsHBox/BtnMenu" to="." method="_on_menu_pressed"]

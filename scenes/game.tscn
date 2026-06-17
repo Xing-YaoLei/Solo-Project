@@ -1,0 +1,433 @@
+[gd_scene load_steps=2 format=3 uid="uid://d3m7p9q8r2s4t"]
+
+[ext_resource type="Script" path="res://scripts/game.gd" id="1"]
+
+[node name="Game" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.93, 0.93, 0.93, 1)
+
+[node name="TopBar" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 80.0
+grow_horizontal = 2
+
+
+[node name="TopHBox" type="HBoxContainer" parent="TopBar"]
+layout_mode = 2
+
+[node name="ScorePanel" type="VBoxContainer" parent="TopBar/TopHBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(150, 0)
+alignment = 1
+
+[node name="ScoreLabel" type="Label" parent="TopBar/TopHBox/ScorePanel"]
+layout_mode = 2
+text = "得分"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.5, 0.5, 0.5, 1)
+
+[node name="ScoreValue" type="Label" parent="TopBar/TopHBox/ScorePanel"]
+layout_mode = 2
+text = "0"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 28
+theme_override_colors/font_color = Color(0.2, 0.4, 0.7, 1)
+
+[node name="Divider1" type="VSeparator" parent="TopBar/TopHBox"]
+layout_mode = 2
+
+[node name="TimerPanel" type="VBoxContainer" parent="TopBar/TopHBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(150, 0)
+alignment = 1
+
+[node name="TimerLabel" type="Label" parent="TopBar/TopHBox/TimerPanel"]
+layout_mode = 2
+text = "剩余时间"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.5, 0.5, 0.5, 1)
+
+[node name="TimerValue" type="Label" parent="TopBar/TopHBox/TimerPanel"]
+layout_mode = 2
+text = "60"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 28
+theme_override_colors/font_color = Color(0.9, 0.3, 0.3, 1)
+
+[node name="Divider2" type="VSeparator" parent="TopBar/TopHBox"]
+layout_mode = 2
+
+[node name="ComboPanel" type="VBoxContainer" parent="TopBar/TopHBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(150, 0)
+alignment = 1
+
+[node name="ComboLabel" type="Label" parent="TopBar/TopHBox/ComboPanel"]
+layout_mode = 2
+text = "连击"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.5, 0.5, 0.5, 1)
+
+[node name="ComboValue" type="Label" parent="TopBar/TopHBox/ComboPanel"]
+layout_mode = 2
+text = "0"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 28
+theme_override_colors/font_color = Color(0.9, 0.6, 0.2, 1)
+
+[node name="SpacerRight" type="Control" parent="TopBar/TopHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ProgressPanel" type="VBoxContainer" parent="TopBar/TopHBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(150, 0)
+alignment = 1
+
+[node name="ProgressLabel" type="Label" parent="TopBar/TopHBox/ProgressPanel"]
+layout_mode = 2
+text = "进度"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.5, 0.5, 0.5, 1)
+
+[node name="ProgressValue" type="Label" parent="TopBar/TopHBox/ProgressPanel"]
+layout_mode = 2
+text = "0/8"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 20
+theme_override_colors/font_color = Color(0.3, 0.3, 0.3, 1)
+
+[node name="PauseBtn" type="Button" parent="TopBar/TopHBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(60, 60)
+text = "⏸"
+theme_override_font_sizes/font_size = 24
+
+[node name="CenterContainer" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_top = 0.0
+anchor_bottom = 1.0
+anchor_left = 0.0
+anchor_right = 1.0
+offset_top = 100.0
+offset_bottom = -20.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="TaskCard" type="PanelContainer" parent="CenterContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(600, 450)
+
+[node name="CardVBox" type="VBoxContainer" parent="CenterContainer/TaskCard"]
+layout_mode = 2
+theme_override_constants/separation = 15
+
+[node name="TaskTypeBadge" type="Label" parent="CenterContainer/TaskCard/CardVBox"]
+layout_mode = 2
+text = "水电读数"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0.2, 0.4, 0.7, 1)
+theme_override_constants/outline_size = 4
+
+[node name="TaskTitle" type="Label" parent="CenterContainer/TaskCard/CardVBox"]
+layout_mode = 2
+text = "水电读数核对"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 28
+theme_override_colors/font_color = Color(0.2, 0.2, 0.2, 1)
+
+[node name="HouseNumber" type="Label" parent="CenterContainer/TaskCard/CardVBox"]
+layout_mode = 2
+text = "101室"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 20
+theme_override_colors/font_color = Color(0.4, 0.4, 0.4, 1)
+
+[node name="TaskContent" type="VBoxContainer" parent="CenterContainer/TaskCard/CardVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+alignment = 1
+theme_override_constants/separation = 10
+
+[node name="WaterRow" type="HBoxContainer" parent="CenterContainer/TaskCard/CardVBox/TaskContent"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 30
+
+[node name="WaterLabel" type="Label" parent="CenterContainer/TaskCard/CardVBox/TaskContent/WaterRow"]
+layout_mode = 2
+text = "💧 水表读数"
+theme_override_font_sizes/font_size = 18
+theme_override_colors/font_color = Color(0.3, 0.3, 0.3, 1)
+
+[node name="WaterValue" type="Label" parent="CenterContainer/TaskCard/CardVBox/TaskContent/WaterRow"]
+layout_mode = 2
+text = "上次: 120  本次: 135"
+theme_override_font_sizes/font_size = 18
+theme_override_colors/font_color = Color(0.2, 0.4, 0.7, 1)
+
+[node name="ElectricRow" type="HBoxContainer" parent="CenterContainer/TaskCard/CardVBox/TaskContent"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 30
+
+[node name="ElectricLabel" type="Label" parent="CenterContainer/TaskCard/CardVBox/TaskContent/ElectricRow"]
+layout_mode = 2
+text = "⚡ 电表读数"
+theme_override_font_sizes/font_size = 18
+theme_override_colors/font_color = Color(0.3, 0.3, 0.3, 1)
+
+[node name="ElectricValue" type="Label" parent="CenterContainer/TaskCard/CardVBox/TaskContent/ElectricRow"]
+layout_mode = 2
+text = "上次: 450  本次: 480"
+theme_override_font_sizes/font_size = 18
+theme_override_colors/font_color = Color(0.9, 0.6, 0.2, 1)
+
+[node name="HintLabel" type="Label" parent="CenterContainer/TaskCard/CardVBox"]
+layout_mode = 2
+text = "提示：水表波动正常范围 ±20 吨"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.6, 0.6, 0.6, 1)
+
+[node name="ButtonsHBox" type="HBoxContainer" parent="CenterContainer/TaskCard/CardVBox"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 20
+
+[node name="BtnOption1" type="Button" parent="CenterContainer/TaskCard/CardVBox/ButtonsHBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(200, 60)
+text = "读数正常，通过"
+theme_override_font_sizes/font_size = 18
+
+[node name="BtnOption2" type="Button" parent="CenterContainer/TaskCard/CardVBox/ButtonsHBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(200, 60)
+text = "水电异常，驳回"
+theme_override_font_sizes/font_size = 18
+
+[node name="PauseOverlay" type="ColorRect" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.6)
+
+[node name="PausePanel" type="PanelContainer" parent="PauseOverlay"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -150.0
+offset_top = -120.0
+offset_right = 150.0
+offset_bottom = 120.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="PauseVBox" type="VBoxContainer" parent="PauseOverlay/PausePanel"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 15
+
+[node name="PauseTitle" type="Label" parent="PauseOverlay/PausePanel/PauseVBox"]
+layout_mode = 2
+text = "游戏暂停"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 24
+theme_override_colors/font_color = Color(0.2, 0.2, 0.2, 1)
+
+[node name="BtnResume" type="Button" parent="PauseOverlay/PausePanel/PauseVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(200, 50)
+text = "继续游戏"
+theme_override_font_sizes/font_size = 18
+
+[node name="BtnRestart" type="Button" parent="PauseOverlay/PausePanel/PauseVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(200, 50)
+text = "重新开始"
+theme_override_font_sizes/font_size = 18
+
+[node name="BtnQuit" type="Button" parent="PauseOverlay/PausePanel/PauseVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(200, 50)
+text = "返回菜单"
+theme_override_font_sizes/font_size = 18
+
+[node name="GameOverOverlay" type="ColorRect" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.7)
+
+[node name="GameOverPanel" type="PanelContainer" parent="GameOverOverlay"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -250.0
+offset_top = -280.0
+offset_right = 250.0
+offset_bottom = 280.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="GameOverVBox" type="VBoxContainer" parent="GameOverOverlay/GameOverPanel"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 12
+
+[node name="ResultTitle" type="Label" parent="GameOverOverlay/GameOverPanel/GameOverVBox"]
+layout_mode = 2
+text = "关卡完成！"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 32
+theme_override_colors/font_color = Color(0.2, 0.6, 0.3, 1)
+
+[node name="ResultScore" type="Label" parent="GameOverOverlay/GameOverPanel/GameOverVBox"]
+layout_mode = 2
+text = "得分: 2500"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 24
+theme_override_colors/font_color = Color(0.2, 0.4, 0.7, 1)
+
+[node name="SatisfactionBar" type="HBoxContainer" parent="GameOverOverlay/GameOverPanel/GameOverVBox"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 10
+
+[node name="SatisfactionLabel" type="Label" parent="GameOverOverlay/GameOverPanel/GameOverVBox/SatisfactionBar"]
+layout_mode = 2
+text = "租户满意度:"
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.4, 0.4, 0.4, 1)
+
+[node name="SatisfactionValue" type="Label" parent="GameOverOverlay/GameOverPanel/GameOverVBox/SatisfactionBar"]
+layout_mode = 2
+text = "75%"
+theme_override_font_sizes/font_size = 20
+theme_override_colors/font_color = Color(0.9, 0.6, 0.2, 1)
+
+[node name="StatsGrid" type="GridContainer" parent="GameOverOverlay/GameOverPanel/GameOverVBox"]
+layout_mode = 2
+columns = 2
+
+[node name="StatCorrectLabel" type="Label" parent="GameOverOverlay/GameOverPanel/GameOverVBox/StatsGrid"]
+layout_mode = 2
+text = "正确数:"
+horizontal_alignment = 2
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.4, 0.4, 0.4, 1)
+
+[node name="StatCorrectValue" type="Label" parent="GameOverOverlay/GameOverPanel/GameOverVBox/StatsGrid"]
+layout_mode = 2
+text = "12"
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.3, 0.7, 0.3, 1)
+
+[node name="StatWrongLabel" type="Label" parent="GameOverOverlay/GameOverPanel/GameOverVBox/StatsGrid"]
+layout_mode = 2
+text = "错误数:"
+horizontal_alignment = 2
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.4, 0.4, 0.4, 1)
+
+[node name="StatWrongValue" type="Label" parent="GameOverOverlay/GameOverPanel/GameOverVBox/StatsGrid"]
+layout_mode = 2
+text = "3"
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.9, 0.3, 0.3, 1)
+
+[node name="StatAccuracyLabel" type="Label" parent="GameOverOverlay/GameOverPanel/GameOverVBox/StatsGrid"]
+layout_mode = 2
+text = "准确率:"
+horizontal_alignment = 2
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.4, 0.4, 0.4, 1)
+
+[node name="StatAccuracyValue" type="Label" parent="GameOverOverlay/GameOverPanel/GameOverVBox/StatsGrid"]
+layout_mode = 2
+text = "80%"
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.2, 0.4, 0.7, 1)
+
+[node name="StatComboLabel" type="Label" parent="GameOverOverlay/GameOverPanel/GameOverVBox/StatsGrid"]
+layout_mode = 2
+text = "最大连击:"
+horizontal_alignment = 2
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.4, 0.4, 0.4, 1)
+
+[node name="StatComboValue" type="Label" parent="GameOverOverlay/GameOverPanel/GameOverVBox/StatsGrid"]
+layout_mode = 2
+text = "8"
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.9, 0.6, 0.2, 1)
+
+[node name="SpacerEnd" type="Control" parent="GameOverOverlay/GameOverPanel/GameOverVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 10)
+
+[node name="BtnRetry" type="Button" parent="GameOverOverlay/GameOverPanel/GameOverVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(250, 50)
+text = "重新挑战"
+theme_override_font_sizes/font_size = 18
+
+[node name="BtnReview" type="Button" parent="GameOverOverlay/GameOverPanel/GameOverVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(250, 50)
+text = "查看复盘"
+theme_override_font_sizes/font_size = 18
+
+[node name="BtnBackToMenu" type="Button" parent="GameOverOverlay/GameOverPanel/GameOverVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(250, 50)
+text = "返回菜单"
+theme_override_font_sizes/font_size = 18
+
+[connection signal="pressed" from="TopBar/TopHBox/PauseBtn" to="." method="_on_pause_btn_pressed"]
+[connection signal="pressed" from="CenterContainer/TaskCard/CardVBox/ButtonsHBox/BtnOption1" to="." method="_on_option1_pressed"]
+[connection signal="pressed" from="CenterContainer/TaskCard/CardVBox/ButtonsHBox/BtnOption2" to="." method="_on_option2_pressed"]
+[connection signal="pressed" from="PauseOverlay/PausePanel/PauseVBox/BtnResume" to="." method="_on_resume_pressed"]
+[connection signal="pressed" from="PauseOverlay/PausePanel/PauseVBox/BtnRestart" to="." method="_on_restart_pressed"]
+[connection signal="pressed" from="PauseOverlay/PausePanel/PauseVBox/BtnQuit" to="." method="_on_quit_pressed"]
+[connection signal="pressed" from="GameOverOverlay/GameOverPanel/GameOverVBox/BtnRetry" to="." method="_on_retry_pressed"]
+[connection signal="pressed" from="GameOverOverlay/GameOverPanel/GameOverVBox/BtnReview" to="." method="_on_review_pressed"]
+[connection signal="pressed" from="GameOverOverlay/GameOverPanel/GameOverVBox/BtnBackToMenu" to="." method="_on_back_to_menu_pressed"]
