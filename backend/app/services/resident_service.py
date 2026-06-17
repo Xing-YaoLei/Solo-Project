@@ -1,4 +1,4 @@
-from app.db.database import get_db
+from app.db.database import get_duckdb
 from datetime import datetime, timedelta
 
 
@@ -6,7 +6,7 @@ class ResidentService:
     
     @staticmethod
     def get_residents(page: int = 1, page_size: int = 20, care_level: str = None):
-        conn = get_db()
+        conn = get_duckdb()
         offset = (page - 1) * page_size
         
         query = """
@@ -60,7 +60,7 @@ class ResidentService:
     
     @staticmethod
     def get_bed_utilization():
-        conn = get_db()
+        conn = get_duckdb()
         
         data = conn.execute("""
             SELECT 
@@ -90,7 +90,7 @@ class ResidentService:
     
     @staticmethod
     def get_care_level_distribution():
-        conn = get_db()
+        conn = get_duckdb()
         
         data = conn.execute("""
             SELECT care_level, COUNT(*) as count
@@ -114,7 +114,7 @@ class ResidentService:
     
     @staticmethod
     def get_age_distribution():
-        conn = get_db()
+        conn = get_duckdb()
         
         age_groups = [
             ("65-70岁", 65, 70),
@@ -140,7 +140,7 @@ class ResidentService:
     
     @staticmethod
     def get_disease_distribution():
-        conn = get_db()
+        conn = get_duckdb()
         
         data = conn.execute("""
             SELECT primary_disease, COUNT(*) as count

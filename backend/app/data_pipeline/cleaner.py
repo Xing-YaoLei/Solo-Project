@@ -8,7 +8,7 @@ class DataCleaner:
     @staticmethod
     def clean_charging_data(df: pd.DataFrame) -> pd.DataFrame:
         df = df.copy()
-        df = df.drop_duplicates(subset=['resident_id', 'charge_date'])
+        df = df.drop_duplicates(subset=['resident_id', 'charge_date', 'item_type'])
         df['charge_date'] = pd.to_datetime(df['charge_date'], errors='coerce')
         df = df.dropna(subset=['charge_date'])
         df['amount'] = pd.to_numeric(df['amount'], errors='coerce')
@@ -19,7 +19,7 @@ class DataCleaner:
     @staticmethod
     def clean_access_control_data(df: pd.DataFrame) -> pd.DataFrame:
         df = df.copy()
-        df = df.drop_duplicates(subset=['resident_id', 'access_time'])
+        df = df.drop_duplicates(subset=['resident_id', 'access_time', 'direction'])
         df['access_time'] = pd.to_datetime(df['access_time'], errors='coerce')
         df = df.dropna(subset=['access_time'])
         df['direction'] = df['direction'].str.lower().str.strip()

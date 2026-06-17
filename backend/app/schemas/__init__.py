@@ -1,5 +1,5 @@
-from pydantic import BaseModel
-from typing import List, Optional
+from pydantic import BaseModel, Field
+from typing import List, Optional, Dict, Any
 from datetime import datetime, date
 
 
@@ -130,3 +130,70 @@ class FallReview(BaseModel):
 
 class RiskRemarkRequest(BaseModel):
     remark: str
+
+
+class ChargingImportItem(BaseModel):
+    resident_id: str
+    resident_name: Optional[str] = None
+    charge_date: date
+    item_type: Optional[str] = None
+    item_name: Optional[str] = None
+    amount: float
+    payment_method: Optional[str] = None
+    payment_status: Optional[str] = "paid"
+    source_system: Optional[str] = "charging_system"
+
+
+class AccessImportItem(BaseModel):
+    resident_id: str
+    resident_name: Optional[str] = None
+    access_time: datetime
+    direction: str
+    device_id: Optional[str] = None
+    device_location: Optional[str] = None
+    card_no: Optional[str] = None
+    source_system: Optional[str] = "access_control"
+
+
+class HealthImportItem(BaseModel):
+    resident_id: str
+    resident_name: Optional[str] = None
+    measure_time: datetime
+    metric_type: str
+    metric_value: float
+    metric_unit: Optional[str] = None
+    device_id: Optional[str] = None
+    device_type: Optional[str] = None
+    source_system: Optional[str] = "health_device"
+
+
+class ImportBatchResponse(BaseModel):
+    total: int
+    inserted: int
+    duplicates: int
+    errors: int
+    error_messages: Optional[List[str]] = None
+
+
+class ETLPipelineResult(BaseModel):
+    charging: Dict[str, int]
+    access: Dict[str, int]
+    health: Dict[str, int]
+    core_tables_synced: bool
+    status: str
+    error: Optional[str] = None
+
+
+class DataSourceStats(BaseModel):
+    sourceType: str
+    rawCount: int
+    cleanedCount: int
+    lastCleanedAt: Optional[str] = None
+
+
+class DBInfo(BaseModel):
+    pgAvailable: bool
+    pgHost: str
+    pgDatabase: str
+    duckdbPath: str
+    duckdbTables: List[str]

@@ -1,4 +1,4 @@
-from app.db.database import get_db
+from app.db.database import get_duckdb
 from datetime import datetime, timedelta
 
 
@@ -6,7 +6,7 @@ class DashboardService:
     
     @staticmethod
     def get_funnel_data():
-        conn = get_db()
+        conn = get_duckdb()
         
         total_residents = conn.execute(
             "SELECT COUNT(*) FROM residents WHERE bed_id IS NOT NULL"
@@ -53,7 +53,7 @@ class DashboardService:
     
     @staticmethod
     def get_core_metrics():
-        conn = get_db()
+        conn = get_duckdb()
         today = datetime.now()
         week_ago = today - timedelta(days=7)
         two_weeks_ago = today - timedelta(days=14)
@@ -129,7 +129,7 @@ class DashboardService:
     
     @staticmethod
     def get_recent_risks(limit: int = 10):
-        conn = get_db()
+        conn = get_duckdb()
         
         risks = conn.execute("""
             SELECT 

@@ -1,4 +1,4 @@
-from app.db.database import get_db
+from app.db.database import get_duckdb
 from datetime import datetime, timedelta
 
 
@@ -6,7 +6,7 @@ class ReviewService:
     
     @staticmethod
     def get_fall_review(event_id: str):
-        conn = get_db()
+        conn = get_duckdb()
         
         event = conn.execute("""
             SELECT 
@@ -146,7 +146,7 @@ class ReviewService:
     
     @staticmethod
     def get_fall_events(limit: int = 20):
-        conn = get_db()
+        conn = get_duckdb()
         
         events = conn.execute("""
             SELECT 

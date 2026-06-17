@@ -11,6 +11,7 @@ from app.api.risk import router as risk_router
 from app.api.resident import router as resident_router
 from app.api.threshold import router as threshold_router
 from app.api.review import router as review_router
+from app.api.data_import import router as data_import_router
 
 app = FastAPI(title="养老护理床位排班漏斗报表系统", version="1.0.0")
 
@@ -28,11 +29,20 @@ app.include_router(risk_router, prefix="/api")
 app.include_router(resident_router, prefix="/api")
 app.include_router(threshold_router, prefix="/api")
 app.include_router(review_router, prefix="/api")
+app.include_router(data_import_router, prefix="/api")
 
 
 @app.get("/api/health")
 async def health_check():
-    return {"code": 0, "message": "success", "data": {"status": "ok"}}
+    from app.db.database import is_pg_available
+    return {
+        "code": 0,
+        "message": "success",
+        "data": {
+            "status": "ok",
+            "pgAvailable": is_pg_available(),
+        }
+    }
 
 
 if __name__ == "__main__":

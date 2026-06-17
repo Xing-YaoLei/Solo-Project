@@ -1,4 +1,4 @@
-from app.db.database import get_db
+from app.db.database import get_duckdb
 from datetime import datetime, timedelta
 
 
@@ -6,7 +6,7 @@ class ActivityService:
     
     @staticmethod
     def get_trend(days: int = 30):
-        conn = get_db()
+        conn = get_duckdb()
         today = datetime.now()
         start_date = today - timedelta(days=days)
         
@@ -47,7 +47,7 @@ class ActivityService:
     
     @staticmethod
     def get_time_distribution():
-        conn = get_db()
+        conn = get_duckdb()
         
         data = conn.execute("""
             SELECT 
@@ -81,7 +81,7 @@ class ActivityService:
     
     @staticmethod
     def get_bed_area_comparison():
-        conn = get_db()
+        conn = get_duckdb()
         
         data = conn.execute("""
             SELECT 

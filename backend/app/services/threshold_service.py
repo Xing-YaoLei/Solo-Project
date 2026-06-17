@@ -1,13 +1,14 @@
-from app.db.database import get_db
+from app.db.database import get_duckdb, get_pg_session
 from datetime import datetime
 import uuid
+from app.db import models
 
 
 class ThresholdService:
     
     @staticmethod
     def get_all():
-        conn = get_db()
+        conn = get_duckdb()
         
         data = conn.execute("""
             SELECT id, metric_key, metric_name, warning_threshold, critical_threshold, unit, updated_by, updated_at
@@ -32,56 +33,69 @@ class ThresholdService:
     
     @staticmethod
     def update_threshold(threshold_id: str, warning_threshold: float, critical_threshold: float, changed_by: str = "当前用户"):
-        conn = get_db()
+        from app.data_pipeline.etl_pipeline import etl_pipeline
+        pg = get_pg_session()
+        try:
+            config = pg.query(models.ThresholdConfig).filter(
+                models.ThresholdConfig.id == threshold_id
+            ).first()
+            if not config:
+                return None
+            
+            old_warning = config.warning_threshold
+            old_critical = config.critical_threshold
+            
+            log_id = str(uuid.uuid4())
+            now = datetime.now()
+            
+            log = models.ThresholdChangeLog(
+                id=log_id,
+                threshold_id=threshold_id,
+                old_warning=old_warning,
+                new_warning=warning_threshold,
+                old_critical=old_critical,
+                new_critical=critical_threshold,
+                changed_by=changed_by,
+                changed_at=now,
+            )
+            pg.add(log)
+            
+            config.warning_threshold = warning_threshold
+            config.critical_threshold = critical_threshold
+            config.updated_by = changed_by
+            config.updated_at = now
+            pg.commit()
+            
+            etl_pipeline._sync_core_tables_to_duckdb(pg, get_duckdb())
+        except Exception as e:
+            pg.rollback()
+            raise e
+        finally:
+            pg.close()
         
-        old = conn.execute("""
-            SELECT warning_threshold, critical_threshold 
-            FROM threshold_configs 
-            WHERE id = ?
-        """, [threshold_id]).fetchone()
-        
-        if not old:
-            return None
-        
-        old_warning, old_critical = old
-        
-        log_id = str(uuid.uuid4())
-        now = datetime.now()
-        
-        conn.execute("""
-            INSERT INTO threshold_change_logs 
-            (id, threshold_id, old_warning, new_warning, old_critical, new_critical, changed_by, changed_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, [log_id, threshold_id, old_warning, warning_threshold, old_critical, critical_threshold, changed_by, now])
-        
-        conn.execute("""
-            UPDATE threshold_configs 
-            SET warning_threshold = ?, critical_threshold = ?, updated_by = ?, updated_at = ?
-            WHERE id = ?
-        """, [warning_threshold, critical_threshold, changed_by, now, threshold_id])
-        
-        conn.commit()
-        
+        conn = get_duckdb()
         updated = conn.execute("""
             SELECT id, metric_key, metric_name, warning_threshold, critical_threshold, unit, updated_by, updated_at
             FROM threshold_configs
             WHERE id = ?
         """, [threshold_id]).fetchone()
         
-        return {
-            "id": updated[0],
-            "metricKey": updated[1],
-            "metricName": updated[2],
-            "warningThreshold": updated[3],
-            "criticalThreshold": updated[4],
-            "unit": updated[5],
-            "updatedAt": updated[7].strftime("%Y-%m-%d %H:%M:%S") if updated[7] else "",
-            "updatedBy": updated[6] or ""
-        }
+        if updated:
+            return {
+                "id": updated[0],
+                "metricKey": updated[1],
+                "metricName": updated[2],
+                "warningThreshold": updated[3],
+                "criticalThreshold": updated[4],
+                "unit": updated[5],
+                "updatedAt": updated[7].strftime("%Y-%m-%d %H:%M:%S") if updated[7] else "",
+                "updatedBy": updated[6] or ""
+            }
+        return None
     
     @staticmethod
     def get_change_logs(threshold_id: str = None, limit: int = 20):
-        conn = get_db()
+        conn = get_duckdb()
         
         query = """
             SELECT 

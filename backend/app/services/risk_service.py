@@ -1,13 +1,14 @@
-from app.db.database import get_db
+from app.db.database import get_duckdb, get_pg_session
 from datetime import datetime, timedelta
 import uuid
+from app.db import models
 
 
 class RiskService:
     
     @staticmethod
     def get_events(page: int = 1, page_size: int = 20, event_type: str = None, level: str = None):
-        conn = get_db()
+        conn = get_duckdb()
         offset = (page - 1) * page_size
         
         query = """
@@ -72,7 +73,7 @@ class RiskService:
     
     @staticmethod
     def get_type_distribution(days: int = 30):
-        conn = get_db()
+        conn = get_duckdb()
         start_date = datetime.now() - timedelta(days=days)
         
         data = conn.execute("""
@@ -105,7 +106,7 @@ class RiskService:
     
     @staticmethod
     def get_daily_trend(days: int = 30):
-        conn = get_db()
+        conn = get_duckdb()
         today = datetime.now()
         start_date = today - timedelta(days=days)
         
@@ -145,17 +146,30 @@ class RiskService:
     
     @staticmethod
     def add_remark(event_id: str, remark: str, user_name: str = "当前用户"):
-        conn = get_db()
-        remark_id = str(uuid.uuid4())
-        now = datetime.now()
+        from app.data_pipeline.etl_pipeline import etl_pipeline
+        pg = get_pg_session()
+        try:
+            remark_id = str(uuid.uuid4())
+            now = datetime.now()
+            obj = models.RiskRemark(
+                id=remark_id,
+                risk_event_id=event_id,
+                content=remark,
+                user_name=user_name,
+                remark_type="review",
+                created_at=now,
+            )
+            pg.add(obj)
+            pg.commit()
+
+            etl_pipeline._sync_core_tables_to_duckdb(pg, get_duckdb())
+        except Exception as e:
+            pg.rollback()
+            raise e
+        finally:
+            pg.close()
         
-        conn.execute("""
-            INSERT INTO risk_remarks (id, risk_event_id, content, user_name, remark_type, created_at)
-            VALUES (?, ?, ?, ?, 'review', ?)
-        """, [remark_id, event_id, remark, user_name, now])
-        
-        conn.commit()
-        
+        conn = get_duckdb()
         event = conn.execute("""
             SELECT 
                 re.id,
