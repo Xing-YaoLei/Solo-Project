@@ -1,0 +1,157 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  password  String
+  name      String
+  role      String   @default("CAREGIVER")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  reportedFalls     FallIncident[]   @relation("FallReporter")
+  administeredMeds  MedicationReminder[] @relation("MedAdmin")
+  communicationLogs Communication[]
+  reviewConclusions ReviewConclusion[]
+
+  @@map("users")
+}
+
+model Elder {
+  id               String   @id @default(uuid())
+  name             String
+  age              Int
+  gender           String
+  careLevel        String   @default("LEVEL_3") @map("care_level")
+  fallRiskLevel    String   @default("LOW") @map("fall_risk_level")
+  roomNumber       String   @map("room_number")
+  allergies        String[]
+  emergencyContact String?  @map("emergency_contact")
+  emergencyPhone   String?  @map("emergency_phone")
+  status           String   @default("ACTIVE")
+  admissionDate    DateTime @map("admission_date")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  medications      MedicationReminder[]
+  fallIncidents    FallIncident[]
+  visitRecords     VisitRecord[]
+  activityCheckIns ActivityCheckIn[]
+
+  @@index([careLevel])
+  @@index([fallRiskLevel])
+  @@map("elders")
+}
+
+model MedicationReminder {
+  id              String    @id @default(uuid())
+  elderId         String    @map("elder_id")
+  medicationName  String    @map("medication_name")
+  dosage          String
+  frequency       String
+  scheduledTime   DateTime  @map("scheduled_time")
+  status          String    @default("PENDING")
+  shift           String
+  administeredBy  String?   @map("administered_by")
+  administeredAt  DateTime? @map("administered_at")
+  notes           String    @default("")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  elder  Elder? @relation(fields: [elderId], references: [id], onDelete: Cascade)
+  admin  User?  @relation("MedAdmin", fields: [administeredBy], references: [id])
+
+  @@index([elderId, shift])
+  @@index([scheduledTime])
+  @@index([status])
+  @@map("medication_reminders")
+}
+
+model FallIncident {
+  id           String   @id @default(uuid())
+  elderId      String   @map("elder_id")
+  reportedBy   String   @map("reported_by")
+  riskLevel    String   @default("LOW") @map("risk_level")
+  incidentTime DateTime @map("incident_time")
+  location     String
+  description  String
+  status       String   @default("REPORTED")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  elder           Elder?             @relation(fields: [elderId], references: [id], onDelete: Cascade)
+  reporter        User                @relation("FallReporter", fields: [reportedBy], references: [id])
+  communications  Communication[]
+  reviewConclusion ReviewConclusion?
+
+  @@index([elderId])
+  @@index([riskLevel])
+  @@map("fall_incidents")
+}
+
+model Communication {
+  id          String   @id @default(uuid())
+  incidentId  String   @map("incident_id")
+  authorId    String   @map("author_id")
+  authorName  String   @map("author_name")
+  content     String
+  type        String
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  incident FallIncident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  author   User         @relation(fields: [authorId], references: [id])
+
+  @@map("communications")
+}
+
+model ReviewConclusion {
+  id           String   @id @default(uuid())
+  incidentId   String   @unique @map("incident_id")
+  reviewerId   String   @map("reviewer_id")
+  reviewerName String   @map("reviewer_name")
+  conclusion   String
+  actionPlan   String   @map("action_plan")
+  followUpDate DateTime? @map("follow_up_date")
+  reviewedAt   DateTime @default(now()) @map("reviewed_at")
+
+  incident FallIncident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  reviewer User         @relation(fields: [reviewerId], references: [id])
+
+  @@map("review_conclusions")
+}
+
+model VisitRecord {
+  id           String   @id @default(uuid())
+  elderId      String   @map("elder_id")
+  visitorName  String   @map("visitor_name")
+  relationship String
+  visitTime    DateTime @map("visit_time")
+  duration     Int      @default(0)
+  notes        String   @default("")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  elder Elder? @relation(fields: [elderId], references: [id], onDelete: Cascade)
+
+  @@index([elderId])
+  @@map("visit_records")
+}
+
+model ActivityCheckIn {
+  id           String    @id @default(uuid())
+  elderId      String    @map("elder_id")
+  activityName String    @map("activity_name")
+  activityDate DateTime  @map("activity_date")
+  checkedIn    Boolean   @default(false) @map("checked_in")
+  checkInTime  DateTime? @map("check_in_time")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  elder Elder? @relation(fields: [elderId], references: [id], onDelete: Cascade)
+
+  @@index([elderId, activityDate])
+  @@map("activity_check_ins")
+}
