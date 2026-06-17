@@ -6,7 +6,7 @@ import { useParams } from 'next/navigation'
 import { getElder } from '@/lib/api'
 import CareLevelBadge from '@/components/CareLevelBadge'
 import StatusBadge from '@/components/StatusBadge'
-import { User, Heart, Pill, Phone, MapPin, Calendar, Shield } from 'lucide-react'
+import { User, Heart, Pill, Phone, MapPin, Calendar } from 'lucide-react'
 import { formatDate } from '@/app/helpers'
 
 const tabs = [
@@ -134,9 +134,7 @@ export default function ElderDetailPage() {
                 </thead>
                 <tbody>
                   {elder.medications.map((m: any) => {
-                    const mismatch =
-                      (elder.careLevel === 'LEVEL_5' || elder.careLevel === 'LEVEL_4') &&
-                      m.frequency === 'qd'
+                    const issues = checkMedication(elder, m)
                     return (
                       <tr key={m.id} className="border-b border-slate-50">
                         <td className="py-3 font-medium text-slate-800">{m.medicationName}</td>
@@ -144,8 +142,14 @@ export default function ElderDetailPage() {
                         <td className="py-3 text-slate-600">{m.frequency}</td>
                         <td className="py-3"><StatusBadge status={m.status} variant="reminder" /></td>
                         <td className="py-3">
-                          {mismatch ? (
-                            <span className="text-xs text-red-600 font-medium">需关注</span>
+                          {issues.length > 0 ? (
+                            <div className="space-y-0.5">
+                              {issues.map((issue, idx) => (
+                                <div key={idx} className="text-xs text-red-600 font-medium">
+                                  {issue}
+                                </div>
+                              ))}
+                            </div>
                           ) : (
                             <span className="text-xs text-green-600">正常</span>
                           )}
@@ -163,6 +167,64 @@ export default function ElderDetailPage() {
       </div>
     </div>
   )
+}
+
+function checkMedication(elder: any, med: any): string[] {
+  const issues: string[] = []
+  const careLevelLabels: Record<string, string> = {
+    LEVEL_1: '一级护理',
+    LEVEL_2: '二级护理',
+    LEVEL_3: '三级护理',
+    LEVEL_4: '四级护理',
+    LEVEL_5: '五级护理',
+  }
+  const careLabel = careLevelLabels[elder.careLevel] ?? elder.careLevel
+
+  const freq = med.frequency ?? ''
+  const freqLower = freq.toLowerCase()
+
+  const isHypotensive = med.medicationName.includes('降压') ||
+    med.medicationName.includes('硝苯地平') ||
+    med.medicationName.includes('氨氯地平') ||
+    med.medicationName.includes('美托洛尔')
+  const isSedative = med.medicationName.includes('安眠') ||
+    med.medicationName.includes('安定') ||
+    med.medicationName.includes('唑吡坦')
+  const isAnticoagulant = med.medicationName.includes('华法林') ||
+    med.medicationName.includes('阿司匹林') ||
+    med.medicationName.includes('氯吡格雷')
+
+  if ((elder.careLevel === 'LEVEL_5' || elder.careLevel === 'LEVEL_4') &&
+      (freq === '每日一次' || freqLower === 'qd')) {
+    issues.push(`${careLabel}老人用药频率仅${freq}，建议复核`)
+  }
+
+  if (elder.fallRiskLevel === 'HIGH' && isHypotensive) {
+    issues.push('高跌倒风险老人使用降压药，警惕体位性低血压')
+  }
+
+  if (elder.fallRiskLevel === 'HIGH' && isSedative) {
+    issues.push('高跌倒风险老人使用镇静催眠药，夜间跌倒风险增加')
+  }
+
+  if (elder.fallRiskLevel === 'HIGH' && isAnticoagulant) {
+    issues.push('高跌倒风险老人使用抗凝药，跌倒后出血风险高')
+  }
+
+  if (elder.allergies?.length > 0 &&
+      elder.allergies.some((a: string) => med.medicationName.includes(a))) {
+    issues.push('存在过敏史药物匹配警告，请立即核实')
+  }
+
+  if (med.status === 'MISSED') {
+    issues.push('该用药已漏服，需跟进原因')
+  }
+
+  if (med.status === 'ADVERSE_REACTION') {
+    issues.push('该用药出现不良反应，需重点关注')
+  }
+
+  return issues
 }
 
 function InfoItem({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
