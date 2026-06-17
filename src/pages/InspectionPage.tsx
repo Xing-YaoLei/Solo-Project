@@ -28,27 +28,35 @@ const InspectionPage: React.FC = () => {
   const level = currentLevelId ? levelManager.getLevelById(currentLevelId) : null;
   const observeTimeLimit = level?.inspection.observeTime || 15;
 
+  const woTimeout = level?.workOrders.timeout || 30;
+
   const {
     activeOrders,
-    timeoutCount,
     startGame: startWorkOrders,
     retryOrder,
     resolveOrder,
   } = useWorkOrder({
     orders: level?.workOrders.orders || [],
-    timeout: level?.workOrders.timeout || 30,
+    timeout: woTimeout,
     enabled: level?.workOrders.enabled || false,
-    onTrigger: (order, isRetrying) => {
-      const activeOrder: ActiveWorkOrder = {
+    onTrigger: (order) => {
+      setCurrentOrder({
         ...order,
         startTime: Date.now(),
-        remainingTime: level?.workOrders.timeout || 30,
-        isRetrying,
-      };
-      setCurrentOrder(activeOrder);
+        remainingTime: woTimeout,
+        isRetrying: false,
+      });
       setShowWorkOrder(true);
     },
     onTimeout: (order) => {
+      incrementTimeoutCount();
+      setCurrentOrder({
+        ...order,
+        startTime: Date.now(),
+        remainingTime: 0,
+        isRetrying: true,
+      });
+      setShowWorkOrder(true);
     },
     onComplete: (result: WorkOrderResult) => {
       completeWorkOrder(result);
@@ -148,6 +156,7 @@ const InspectionPage: React.FC = () => {
   const handleRetry = () => {
     if (currentOrder) {
       retryOrder(currentOrder.id);
+      setCurrentOrder((prev) => prev ? { ...prev, startTime: Date.now(), remainingTime: woTimeout, isRetrying: true } : null);
     }
   };
 
@@ -162,7 +171,6 @@ const InspectionPage: React.FC = () => {
   }
 
   const displayOrder = currentOrder || (activeOrders.length > 0 ? activeOrders[0] : null);
-  const displayIsRetrying = displayOrder?.isRetrying || (timeoutCount > 0 && !displayOrder);
 
   return (
     <GameContainer>
@@ -280,8 +288,8 @@ const InspectionPage: React.FC = () => {
         <WorkOrderPanel
           order={displayOrder}
           options={displayOrder.options}
-          timeout={level?.workOrders.timeout || 30}
-          isRetrying={displayIsRetrying}
+          timeout={displayOrder.isRetrying ? woTimeout : woTimeout}
+          isRetrying={displayOrder.isRetrying}
           onSelect={handleOrderSelect}
           onRetry={handleRetry}
           onResolve={handleOrderSelect}

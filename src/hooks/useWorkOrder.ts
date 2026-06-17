@@ -5,7 +5,7 @@ interface UseWorkOrderOptions {
   orders: WorkOrder[];
   timeout: number;
   enabled: boolean;
-  onTrigger: (order: WorkOrder, isRetrying: boolean) => void;
+  onTrigger: (order: WorkOrder) => void;
   onTimeout: (order: WorkOrder) => void;
   onComplete: (result: WorkOrderResult) => void;
 }
@@ -21,7 +21,6 @@ export function useWorkOrder(options: UseWorkOrderOptions) {
   const triggeredOrdersRef = useRef<Set<string>>(new Set());
   const timedOutOrdersRef = useRef<Set<string>>(new Set());
   const timersRef = useRef<Map<string, number>>(new Map());
-  const orderResultsRef = useRef<Map<string, WorkOrderResult>>(new Map());
   const onTriggerRef = useRef(onTrigger);
   const onTimeoutRef = useRef(onTimeout);
   const onCompleteRef = useRef(onComplete);
@@ -38,7 +37,6 @@ export function useWorkOrder(options: UseWorkOrderOptions) {
     timedOutOrdersRef.current.clear();
     timersRef.current.forEach((timerId) => clearTimeout(timerId));
     timersRef.current.clear();
-    orderResultsRef.current.clear();
     setActiveOrders([]);
     setCompletedOrders([]);
     setTimeoutCount(0);
@@ -52,16 +50,30 @@ export function useWorkOrder(options: UseWorkOrderOptions) {
     }
   }, []);
 
-  const triggerOrder = useCallback((order: WorkOrder, isRetrying = false) => {
+  const startOrderTimer = useCallback((orderId: string) => {
+    clearOrderTimer(orderId);
+
+    const timerId = window.setTimeout(() => {
+      const isFirstTimeout = !timedOutOrdersRef.current.has(orderId);
+      if (isFirstTimeout) {
+        timedOutOrdersRef.current.add(orderId);
+        setTimeoutCount((prev) => prev + 1);
+      }
+      onTimeoutRef.current(orders.find((o) => o.id === orderId)!);
+      timersRef.current.delete(orderId);
+    }, timeout * 1000);
+
+    timersRef.current.set(orderId, timerId);
+  }, [timeout, clearOrderTimer, orders]);
+
+  const triggerOrder = useCallback((order: WorkOrder) => {
     const startTime = Date.now();
-    
-    clearOrderTimer(order.id);
 
     const activeOrder: ActiveWorkOrder = {
       ...order,
       startTime,
       remainingTime: timeout,
-      isRetrying,
+      isRetrying: false,
     };
 
     setActiveOrders((prev) => {
@@ -72,29 +84,28 @@ export function useWorkOrder(options: UseWorkOrderOptions) {
       return [...prev, activeOrder];
     });
 
-    onTriggerRef.current(order, isRetrying);
-
-    const timerId = window.setTimeout(() => {
-      const isFirstTimeout = !timedOutOrdersRef.current.has(order.id);
-      if (isFirstTimeout) {
-        timedOutOrdersRef.current.add(order.id);
-        setTimeoutCount((prev) => prev + 1);
-        onTimeoutRef.current(order);
-      }
-
-      triggerOrder(order, true);
-      timersRef.current.delete(order.id);
-    }, timeout * 1000);
-
-    timersRef.current.set(order.id, timerId);
-  }, [timeout, clearOrderTimer]);
+    onTriggerRef.current(order);
+    startOrderTimer(order.id);
+  }, [timeout, startOrderTimer]);
 
   const retryOrder = useCallback((orderId: string) => {
     const order = orders.find((o) => o.id === orderId);
-    if (order) {
-      triggerOrder(order, true);
-    }
-  }, [orders, triggerOrder]);
+    if (!order) return;
+
+    const startTime = Date.now();
+    const activeOrder: ActiveWorkOrder = {
+      ...order,
+      startTime,
+      remainingTime: timeout,
+      isRetrying: true,
+    };
+
+    setActiveOrders((prev) =>
+      prev.map((o) => (o.id === orderId ? activeOrder : o))
+    );
+
+    startOrderTimer(orderId);
+  }, [orders, timeout, startOrderTimer]);
 
   const resolveOrder = useCallback((orderId: string, optionId: string) => {
     clearOrderTimer(orderId);
@@ -105,8 +116,8 @@ export function useWorkOrder(options: UseWorkOrderOptions) {
 
       const responseTime = Math.floor((Date.now() - activeOrder.startTime) / 1000);
       const isCorrect = optionId === activeOrder.correctOptionId;
-
       const hasTimedOut = timedOutOrdersRef.current.has(orderId);
+
       const result: WorkOrderResult = {
         orderId,
         optionId,
@@ -114,8 +125,6 @@ export function useWorkOrder(options: UseWorkOrderOptions) {
         isCorrect,
         retried: hasTimedOut,
       };
-
-      orderResultsRef.current.set(orderId, result);
 
       setCompletedOrders((completedPrev) => {
         const existingIndex = completedPrev.findIndex((o) => o.orderId === orderId);

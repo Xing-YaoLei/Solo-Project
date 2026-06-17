@@ -39,7 +39,6 @@ const MeterPage: React.FC = () => {
 
   const {
     activeOrders,
-    timeoutCount,
     startGame: startWorkOrders,
     retryOrder,
     resolveOrder,
@@ -47,17 +46,24 @@ const MeterPage: React.FC = () => {
     orders: level?.workOrders.orders || [],
     timeout: woTimeout,
     enabled: level?.workOrders.enabled || false,
-    onTrigger: (order, isRetrying) => {
-      const activeOrder: ActiveWorkOrder = {
+    onTrigger: (order) => {
+      setCurrentOrder({
         ...order,
         startTime: Date.now(),
         remainingTime: woTimeout,
-        isRetrying,
-      };
-      setCurrentOrder(activeOrder);
+        isRetrying: false,
+      });
       setShowWorkOrder(true);
     },
     onTimeout: (order) => {
+      incrementTimeoutCount();
+      setCurrentOrder({
+        ...order,
+        startTime: Date.now(),
+        remainingTime: 0,
+        isRetrying: true,
+      });
+      setShowWorkOrder(true);
     },
     onComplete: (result: WorkOrderResult) => {
       completeWorkOrder(result);
@@ -120,6 +126,7 @@ const MeterPage: React.FC = () => {
   const handleRetry = () => {
     if (currentOrder) {
       retryOrder(currentOrder.id);
+      setCurrentOrder((prev) => prev ? { ...prev, startTime: Date.now(), remainingTime: woTimeout, isRetrying: true } : null);
     }
   };
 
@@ -137,7 +144,6 @@ const MeterPage: React.FC = () => {
   const allCompleted = completedReadings === totalMeters;
 
   const displayOrder = currentOrder || (activeOrders.length > 0 ? activeOrders[0] : null);
-  const displayIsRetrying = displayOrder?.isRetrying || (timeoutCount > 0 && !displayOrder);
 
   return (
     <GameContainer>
@@ -293,7 +299,7 @@ const MeterPage: React.FC = () => {
           order={displayOrder}
           options={displayOrder.options}
           timeout={woTimeout}
-          isRetrying={displayIsRetrying}
+          isRetrying={displayOrder.isRetrying}
           onSelect={handleOrderSelect}
           onRetry={handleRetry}
           onResolve={handleOrderSelect}

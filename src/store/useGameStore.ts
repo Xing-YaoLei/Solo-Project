@@ -245,12 +245,24 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   },
 
   completeWorkOrder: (result: WorkOrderResult) => {
-    set((state) => ({
-      workOrders: {
-        ...state.workOrders,
-        completedOrders: [...state.workOrders.completedOrders, result],
-      },
-    }));
+    set((state) => {
+      const existingIndex = state.workOrders.completedOrders.findIndex(
+        (o) => o.orderId === result.orderId
+      );
+      let newCompletedOrders;
+      if (existingIndex >= 0) {
+        newCompletedOrders = [...state.workOrders.completedOrders];
+        newCompletedOrders[existingIndex] = result;
+      } else {
+        newCompletedOrders = [...state.workOrders.completedOrders, result];
+      }
+      return {
+        workOrders: {
+          ...state.workOrders,
+          completedOrders: newCompletedOrders,
+        },
+      };
+    });
   },
 
   incrementTimeoutCount: () => {

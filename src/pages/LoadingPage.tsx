@@ -22,6 +22,8 @@ const LoadingPage: React.FC = () => {
       return;
     }
 
+    let cancelled = false;
+
     const loadResources = async () => {
       const stages = [
         { progress: 20, status: '正在加载关卡配置...' },
@@ -34,20 +36,26 @@ const LoadingPage: React.FC = () => {
 
       for (const stage of stages) {
         await new Promise((resolve) => setTimeout(resolve, 400));
+        if (cancelled) return;
         setProgress(stage.progress);
         setLoadingStatus(stage.status);
       }
 
       await levelManager.loadLevel(currentLevelId);
+      if (cancelled) return;
       
-      setTimeout(() => {
-        setPhase('inspection');
-        navigate('/game/inspection');
-      }, 500);
+      setPhase('inspection');
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      if (cancelled) return;
+      window.location.href = '/game/inspection';
     };
 
     loadResources();
-  }, [currentLevelId, navigate, setPhase]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentLevelId]);
 
   return (
     <GameContainer>
