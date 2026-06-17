@@ -1,0 +1,21 @@
+version: "3.9"
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: rehab_postgres
+    environment:
+      POSTGRES_USER: rehab
+      POSTGRES_PASSWORD: rehab123
+      POSTGRES_DB: rehab_settlement
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rehab -d rehab_settlement"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:

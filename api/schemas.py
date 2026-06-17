@@ -73,18 +73,30 @@ class TrainingPrescriptionOut(BaseModel):
         from_attributes = True
 
 
+class EquipmentRecordBriefOut(BaseModel):
+    id: int
+    equipment_name: str
+    parameters: Optional[dict] = None
+    duration: Optional[int] = None
+    record_date: date
+
+    class Config:
+        from_attributes = True
+
+
 class TreatmentSessionOut(BaseModel):
     id: int
     patient_id: int
     patient_name: str
     therapist_id: int
     therapist_name: str
+    prescription_id: Optional[int] = None
     treatment_date: date
     time: Optional[str] = None
     project_name: Optional[str] = None
     duration_minutes: Optional[int] = None
     status: Optional[str] = None
-    equipment_id: Optional[str] = None
+    equipment_records: List[EquipmentRecordBriefOut] = []
 
     class Config:
         from_attributes = True
@@ -93,6 +105,7 @@ class TreatmentSessionOut(BaseModel):
 class CheckInRecordOut(BaseModel):
     id: int
     patient_id: int
+    session_id: Optional[int] = None
     check_in_date: date
     check_in_time: Optional[str] = None
 
@@ -104,13 +117,15 @@ class EquipmentRecordOut(BaseModel):
     id: int
     session_id: Optional[int] = None
     equipment_name: str
-    usage_count: Optional[int] = None
     parameters: Optional[dict] = None
-    recorded_at: Optional[datetime] = None
     duration: Optional[int] = None
     record_date: date
     department_id: Optional[int] = None
     department_name: Optional[str] = None
+    patient_name: Optional[str] = None
+    therapist_name: Optional[str] = None
+    treatment_date: Optional[date] = None
+    project_name: Optional[str] = None
 
     class Config:
         from_attributes = True

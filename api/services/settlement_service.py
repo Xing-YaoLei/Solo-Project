@@ -151,36 +151,46 @@ async def get_settlement_trend_olap(
     end_date: Optional[date],
     granularity: str = "monthly",
 ) -> List[SettlementTrendPoint]:
-    stmt = select(
+    settle_stmt = select(
         Settlement.settlement_date,
         Settlement.total_amount,
         Settlement.insurance_amount,
         Settlement.self_paid_amount,
     )
     if start_date:
-        stmt = stmt.where(Settlement.settlement_date >= start_date)
+        settle_stmt = settle_stmt.where(Settlement.settlement_date >= start_date)
     if end_date:
-        stmt = stmt.where(Settlement.settlement_date <= end_date)
-    result = await db.execute(stmt)
-    rows = result.all()
+        settle_stmt = settle_stmt.where(Settlement.settlement_date <= end_date)
+    settle_result = await db.execute(settle_stmt)
+    settle_rows = settle_result.all()
 
-    rejection_by_period = await _get_rejections_by_period(db, start_date, end_date, granularity)
-    completion_by_period = await _get_completion_by_period(db, start_date, end_date, granularity)
-
-    data = [
-        {
-            "settlement_date": r.settlement_date,
-            "total_amount": r.total_amount,
-            "insurance_amount": r.insurance_amount,
-            "self_paid_amount": r.self_paid_amount,
-        }
-        for r in rows
-    ]
-
-    if not data:
+    if not settle_rows:
         return []
 
+    session_stmt = select(
+        TreatmentSession.treatment_date,
+        TreatmentSession.status,
+    )
+    if start_date:
+        session_stmt = session_stmt.where(TreatmentSession.treatment_date >= start_date)
+    if end_date:
+        session_stmt = session_stmt.where(TreatmentSession.treatment_date <= end_date)
+    session_result = await db.execute(session_stmt)
+    session_rows = session_result.all()
+
+    rejection_stmt = select(
+        RejectionRecord.rejection_date,
+        RejectionRecord.amount,
+    )
+    if start_date:
+        rejection_stmt = rejection_stmt.where(RejectionRecord.rejection_date >= start_date)
+    if end_date:
+        rejection_stmt = rejection_stmt.where(RejectionRecord.rejection_date <= end_date)
+    rejection_result = await db.execute(rejection_stmt)
+    rejection_rows = rejection_result.all()
+
     con = duckdb.connect(":memory:")
+
     con.execute(
         "CREATE TABLE settlements (settlement_date DATE, total_amount DOUBLE, insurance_amount DOUBLE, self_paid_amount DOUBLE)"
     )
@@ -188,47 +198,108 @@ async def get_settlement_trend_olap(
         "INSERT INTO settlements VALUES (?, ?, ?, ?)",
         [
             (
-                d["settlement_date"].isoformat(),
-                d["total_amount"],
-                d["insurance_amount"],
-                d["self_paid_amount"],
+                r.settlement_date.isoformat(),
+                r.total_amount,
+                r.insurance_amount,
+                r.self_paid_amount,
             )
-            for d in data
+            for r in settle_rows
+        ],
+    )
+
+    con.execute(
+        "CREATE TABLE treatment_sessions (treatment_date DATE, status VARCHAR)"
+    )
+    con.executemany(
+        "INSERT INTO treatment_sessions VALUES (?, ?)",
+        [
+            (
+                r.treatment_date.isoformat(),
+                r.status,
+            )
+            for r in session_rows
+        ],
+    )
+
+    con.execute(
+        "CREATE TABLE rejection_records (rejection_date DATE, amount DOUBLE)"
+    )
+    con.executemany(
+        "INSERT INTO rejection_records VALUES (?, ?)",
+        [
+            (
+                r.rejection_date.isoformat(),
+                r.amount,
+            )
+            for r in rejection_rows
         ],
     )
 
     if granularity == "quarterly":
-        period_expr = "strftime(settlement_date, '%Y') || '-Q' || CAST(((MONTH(settlement_date) - 1) // 3 + 1) AS VARCHAR)"
+        settle_period = "strftime(settlement_date, '%Y') || '-Q' || CAST(((MONTH(settlement_date) - 1) // 3 + 1) AS VARCHAR)"
+        session_period = "strftime(treatment_date, '%Y') || '-Q' || CAST(((MONTH(treatment_date) - 1) // 3 + 1) AS VARCHAR)"
+        rejection_period = "strftime(rejection_date, '%Y') || '-Q' || CAST(((MONTH(rejection_date) - 1) // 3 + 1) AS VARCHAR)"
     else:
-        period_expr = "strftime(settlement_date, '%Y-%m')"
+        settle_period = "strftime(settlement_date, '%Y-%m')"
+        session_period = "strftime(treatment_date, '%Y-%m')"
+        rejection_period = "strftime(rejection_date, '%Y-%m')"
 
     olap_sql = f"""
-        SELECT {period_expr} AS period,
-               SUM(total_amount) AS total_amount,
-               SUM(insurance_amount) AS insurance_amount,
-               SUM(self_paid_amount) AS self_paid_amount,
-               COUNT(*) AS cnt
-        FROM settlements
-        GROUP BY period
-        ORDER BY period
+        WITH settle AS (
+            SELECT {settle_period} AS period,
+                   SUM(total_amount) AS total_amount,
+                   SUM(insurance_amount) AS insurance_amount,
+                   SUM(self_paid_amount) AS self_paid_amount,
+                   COUNT(*) AS cnt
+            FROM settlements
+            GROUP BY period
+        ),
+        rej AS (
+            SELECT {rejection_period} AS period,
+                   SUM(amount) AS rejected_amount
+            FROM rejection_records
+            GROUP BY period
+        ),
+        sess AS (
+            SELECT {session_period} AS period,
+                   COUNT(*) AS total_sessions,
+                   SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed_sessions
+            FROM treatment_sessions
+            GROUP BY period
+        )
+        SELECT s.period,
+               s.total_amount,
+               s.insurance_amount,
+               s.self_paid_amount,
+               s.cnt,
+               COALESCE(r.rejected_amount, 0) AS rejected_amount,
+               CASE
+                   WHEN s.total_amount > 0 THEN ROUND(COALESCE(r.rejected_amount, 0) / s.total_amount * 100, 2)
+                   ELSE 0.0
+               END AS rejection_rate,
+               CASE
+                   WHEN COALESCE(sess.total_sessions, 0) > 0 THEN ROUND(COALESCE(sess.completed_sessions, 0) * 100.0 / sess.total_sessions, 2)
+                   ELSE 0.0
+               END AS completion_rate
+        FROM settle s
+        LEFT JOIN rej r ON s.period = r.period
+        LEFT JOIN sess ON s.period = sess.period
+        ORDER BY s.period
     """
     olap_result = con.execute(olap_sql).fetchall()
     con.close()
 
     points = []
     for r in olap_result:
-        period = r[0]
-        total = round(r[1], 2)
-        rejected = round(rejection_by_period.get(period, 0.0), 2)
         points.append(
             SettlementTrendPoint(
-                period=period,
-                total_amount=total,
+                period=r[0],
+                total_amount=round(r[1], 2),
                 insurance_amount=round(r[2], 2),
                 self_paid_amount=round(r[3], 2),
-                rejected_amount=rejected,
-                rejection_rate=round(rejected / total * 100, 2) if total > 0 else 0.0,
-                completion_rate=completion_by_period.get(period, 0.0),
+                rejected_amount=round(r[5], 2),
+                rejection_rate=float(r[6]),
+                completion_rate=float(r[7]),
                 count=r[4],
             )
         )

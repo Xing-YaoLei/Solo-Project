@@ -50,22 +50,35 @@ export interface TreatmentCalendarDay {
   details: TreatmentSession[]
 }
 
+export interface EquipmentRecordBrief {
+  id: string
+  equipmentName: string
+  parameters: Record<string, number | string> | null
+  duration: number | null
+  recordDate: string
+}
+
 export interface TreatmentSession {
   id: string
   time: string
   projectName: string
   therapistName: string
   status: 'completed' | 'missed' | 'rejected' | 'scheduled'
-  equipmentId?: string
+  prescriptionId?: string
+  equipmentRecords: EquipmentRecordBrief[]
 }
 
 export interface EquipmentRecord {
   id: string
   sessionId: string
   equipmentName: string
-  parameters: Record<string, number | string>
-  recordedAt: string
-  duration: number
+  parameters: Record<string, number | string> | null
+  duration: number | null
+  recordDate: string
+  patientName?: string
+  therapistName?: string
+  treatmentDate?: string
+  projectName?: string
 }
 
 export interface RejectionRecord {

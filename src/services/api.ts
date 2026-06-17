@@ -213,6 +213,10 @@ export async function getTreatmentCalendar(
       details: (d.details || []).map((s: any) => ({
         ...s,
         id: String(s.id),
+        equipmentRecords: (s.equipmentRecords || []).map((e: any) => ({
+          ...e,
+          id: String(e.id),
+        })),
       })),
     })))
   } catch (e) {
@@ -234,7 +238,8 @@ export async function getEquipmentRecord(
       ...r,
       id: String(r.id),
       sessionId: r.sessionId ? String(r.sessionId) : recordId,
-      parameters: r.parameters || {},
+      parameters: r.parameters || null,
+      recordDate: r.recordDate || '',
     })
   } catch (e) {
     console.warn('equipment API failed', e)

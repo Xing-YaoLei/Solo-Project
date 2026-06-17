@@ -38,7 +38,7 @@ export default function EquipmentTimeline({ sessionId }: EquipmentTimelineProps)
     )
   }
 
-  const paramEntries = Object.entries(record.parameters)
+  const paramEntries = record.parameters ? Object.entries(record.parameters) : []
 
   return (
     <div className="max-w-2xl mx-auto py-4">
@@ -72,9 +72,9 @@ export default function EquipmentTimeline({ sessionId }: EquipmentTimelineProps)
             <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
               <span className="flex items-center gap-1">
                 <Clock className="h-3.5 w-3.5" />
-                {record.recordedAt}
+                {record.recordDate}
               </span>
-              <span>时长: {record.duration}分钟</span>
+              <span>时长: {record.duration ?? '-'}分钟</span>
             </div>
 
             {expanded && paramEntries.length > 0 && (

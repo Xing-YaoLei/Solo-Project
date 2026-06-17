@@ -56,7 +56,9 @@ function buildSessionRows(prescription: TrainingPrescription): SessionRow[] {
       plannedTime: planned,
       actualTime: status === 'completed' ? planned : status === 'scheduled' ? null : null,
       duration: status === 'completed' ? 30 + (i % 4) * 5 : 0,
-      equipmentId: status === 'completed' && Math.random() > 0.5 ? `EQ${(i % 10) + 1}` : undefined,
+      equipmentRecords: status === 'completed' && Math.random() > 0.5
+        ? [{ id: `EQ_${i+1}`, equipmentName: '康复设备', parameters: null, duration: 30, recordDate: dateStr }]
+        : [],
     })
   }
 

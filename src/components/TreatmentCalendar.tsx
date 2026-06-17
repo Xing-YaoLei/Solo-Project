@@ -221,8 +221,10 @@ export default function TreatmentCalendar({ patientId, month, onSessionDrill }: 
                   <span>{session.time}</span>
                   <span>{session.therapistName}</span>
                 </div>
-                {session.equipmentId && (
-                  <p className="text-[10px] text-teal-600 mt-1">关联设备 →</p>
+                {session.equipmentRecords && session.equipmentRecords.length > 0 && (
+                  <p className="text-[10px] text-teal-600 mt-1">
+                    关联设备: {session.equipmentRecords.map((e) => e.equipmentName).join(', ')} →
+                  </p>
                 )}
               </div>
             ))}

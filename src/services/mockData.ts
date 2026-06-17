@@ -212,7 +212,7 @@ export function generateTreatmentCalendar(): TreatmentCalendarDay[] {
         projectName: pick(PRESCRIPTION_NAMES),
         therapistName: pick(THERAPIST_NAMES),
         status,
-        equipmentId: Math.random() > 0.5 ? `EQ${randInt(1, 10)}` : undefined,
+        equipmentRecords: Math.random() > 0.5 ? [{ id: `EQ_${randInt(1, 10)}`, equipmentName: '康复设备', parameters: null, duration: 30, recordDate: dateStr }] : [],
       })
     }
 
@@ -266,7 +266,7 @@ export function generateEquipmentRecords(): EquipmentRecord[] {
       sessionId: `TS_2026_${i + 1}`,
       equipmentName,
       parameters,
-      recordedAt: `2026-${pad(month)}-${pad(day)}T${pad(randInt(8, 16))}:${pad(randInt(0, 59))}:00`,
+      recordDate: `2026-${pad(month)}-${pad(day)}`,
       duration: randInt(15, 60),
     })
   }
