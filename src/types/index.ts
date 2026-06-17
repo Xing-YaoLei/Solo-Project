@@ -43,6 +43,7 @@ export interface PrescriptionPhoto {
 }
 
 export interface TimelineEvent {
+  id?: string;
   timestamp: string;
   action: string;
   actor: string;
@@ -75,14 +76,17 @@ export interface ExceptionRecord {
   exception_no: string;
   prescription_id: string;
   prescription_no: string;
+  exception_type: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
   reason: string;
   impact_scope: string;
-  assignee_id: string;
+  assignee_id: string | null;
   assignee_name: string;
   status: 'open' | 'processing' | 'resolved' | 'closed';
-  resolution?: string;
+  resolution?: string | null;
   created_at: string;
-  resolved_at?: string;
+  updated_at: string;
+  resolved_at?: string | null;
 }
 
 export interface ExportRequest {

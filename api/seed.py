@@ -12,6 +12,7 @@ from api.models import (
     InsuranceRecord,
     MemberProfile,
     Prescription,
+    PrescriptionCaliberNote,
     PrescriptionPhoto,
     Region,
     Replenishment,
@@ -233,13 +234,61 @@ async def seed():
         await db.flush()
 
         for rx in prescriptions[:5]:
-            note = CaliberNote(
+            note = PrescriptionCaliberNote(
                 prescription_id=rx.id,
                 content=f"审核备注：注意核对{rx.diagnosis}相关药物用法用量",
                 category="review_note",
                 created_by=users[6 + (prescriptions.index(rx) % 4)].id,
             )
             db.add(note)
+        await db.flush()
+
+        caliber_notes_data = [
+            {
+                "metric": "处方审核通过率",
+                "definition": "统计周期内，通过审核的处方数量占所有提交审核处方数量的比例。计算公式：审核通过处方数 ÷ 提交审核处方总数 × 100%",
+                "exclusions": [
+                    "已作废的处方不计入统计",
+                    "草稿状态的处方不计入统计",
+                    "测试环境生成的处方数据需排除",
+                ],
+                "remarks": "按月度、季度、年度进行统计分析，可按区域、门店维度进行钻取",
+            },
+            {
+                "metric": "平均审核时长",
+                "definition": "从处方提交审核开始到审核完成（通过或驳回）的平均耗时。计算公式：Σ(审核完成时间 - 提交时间) ÷ 已审核处方总数",
+                "exclusions": [
+                    "超过72小时未审核的处方不计入",
+                    "异常状态处方不计入",
+                    "自动审核通过的处方需单独统计",
+                ],
+                "remarks": "时间单位为小时，支持按时间段、审核人员、门店等维度分析",
+            },
+            {
+                "metric": "医保匹配率",
+                "definition": "处方中成功匹配医保目录并完成结算的药品项占所有药品项的比例。计算公式：医保结算成功药品项数 ÷ 处方药品项总数 × 100%",
+                "exclusions": [
+                    "自费处方不计入统计",
+                    "医保结算失败的药品项不计入匹配成功",
+                    "特药、高价药需单独统计",
+                ],
+                "remarks": "可按医保类型、药品类别、门店等维度进行对比分析",
+            },
+            {
+                "metric": "异常处理时效",
+                "definition": "从处方标记为异常开始到异常处理完成（解决或关闭）的平均耗时。计算公式：Σ(异常处理完成时间 - 异常标记时间) ÷ 已处理异常总数",
+                "exclusions": [
+                    "超过7天未处理的异常不计入",
+                    "误报异常且直接关闭的不计入",
+                    "跨系统流转的异常需分段统计",
+                ],
+                "remarks": "时间单位为小时，可按异常类型、严重程度、处理人员等维度分析",
+            },
+        ]
+
+        for cnd in caliber_notes_data:
+            cn = CaliberNote(**cnd)
+            db.add(cn)
         await db.flush()
 
         await db.commit()

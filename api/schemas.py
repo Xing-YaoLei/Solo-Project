@@ -133,12 +133,12 @@ class TimelineEventOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class CaliberNoteCreate(BaseModel):
+class PrescriptionCaliberNoteCreate(BaseModel):
     content: str
     category: str | None = None
 
 
-class CaliberNoteOut(BaseModel):
+class PrescriptionCaliberNoteOut(BaseModel):
     id: str
     prescription_id: str
     content: str
@@ -191,7 +191,7 @@ class PrescriptionDetail(PrescriptionOut):
     photos: list[PrescriptionPhotoOut] = []
     timeline_events: list[TimelineEventOut] = []
     exceptions: list["ExceptionOut"] = []
-    caliber_notes: list[CaliberNoteOut] = []
+    caliber_notes: list[PrescriptionCaliberNoteOut] = []
 
 
 class PrescriptionListParams(BaseModel):
@@ -267,9 +267,23 @@ class DashboardStats(BaseModel):
     total_members: int
 
 
+class GlobalCaliberNoteOut(BaseModel):
+    id: str
+    metric: str
+    definition: str
+    exclusions: list[str]
+    remarks: str | None
+    created_at: datetime
+    model_config = {"from_attributes": True}
+
+
 class ExportRequest(BaseModel):
     export_type: str = "prescriptions"
     filters: dict | None = None
+    include_caliber: bool = True
+    dimensions: list[str] | None = None
+    date_range: dict | None = None
+    format: str = "xlsx"
 
 
 class ExportStatusResponse(BaseModel):

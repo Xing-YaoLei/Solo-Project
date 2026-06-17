@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useRouter } from '@tanstack/react-router';
+import { useRouter, Link } from '@tanstack/react-router';
 import { usePrescriptionStore } from '@/stores/prescriptionStore';
 import { StatusBadge, PageHeader, Card } from '@/components/UI';
 import { Timeline } from '@/components/Timeline';
@@ -16,6 +16,8 @@ import {
   Shield,
   Package,
   CreditCard,
+  Loader2,
+  ExternalLink,
 } from 'lucide-react';
 
 const prescriptionTypeLabels: Record<string, string> = {
@@ -49,7 +51,7 @@ export function PrescriptionDetail() {
   const pathname = router.state.location.pathname;
   const id = pathname.split('/').pop() || '';
 
-  const { prescriptions, updatePrescriptionStatus } = usePrescriptionStore();
+  const { prescriptions, exceptions, updatePrescriptionStatus, markException, loading } = usePrescriptionStore();
   const prescription = prescriptions.find((p) => p.id === id);
 
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
@@ -57,6 +59,27 @@ export function PrescriptionDetail() {
   const [exceptionReason, setExceptionReason] = useState('');
   const [exceptionScope, setExceptionScope] = useState('');
   const [exceptionAssignee, setExceptionAssignee] = useState('');
+  const [exceptionType, setExceptionType] = useState('');
+  const [exceptionSeverity, setExceptionSeverity] = useState<'low' | 'medium' | 'high' | 'critical'>('medium');
+  const [submittingException, setSubmittingException] = useState(false);
+
+  const EXCEPTION_TYPES = [
+    { value: 'rx_unclear', label: '处方信息不清' },
+    { value: 'batch_issue', label: '批次效期异常' },
+    { value: 'member_issue', label: '会员信息异常' },
+    { value: 'insurance_issue', label: '医保结算异常' },
+    { value: 'replenishment_issue', label: '补货流程异常' },
+    { value: 'other', label: '其他异常' },
+  ];
+
+  const SEVERITY_OPTIONS = [
+    { value: 'low', label: '低', color: 'bg-slate-100 text-slate-600 border-slate-200' },
+    { value: 'medium', label: '中', color: 'bg-amber-50 text-amber-600 border-amber-200' },
+    { value: 'high', label: '高', color: 'bg-orange-50 text-orange-600 border-orange-200' },
+    { value: 'critical', label: '紧急', color: 'bg-red-50 text-red-600 border-red-200' },
+  ];
+
+  const relatedExceptions = exceptions.filter((e) => e.prescription_id === id);
 
   if (!prescription) {
     return (
@@ -96,13 +119,30 @@ export function PrescriptionDetail() {
     updatePrescriptionStatus(id, 'rejected');
   };
 
-  const handleExceptionSubmit = () => {
-    if (!exceptionReason.trim() || !exceptionAssignee) return;
-    updatePrescriptionStatus(id, 'exception');
-    setShowExceptionModal(false);
-    setExceptionReason('');
-    setExceptionScope('');
-    setExceptionAssignee('');
+  const handleExceptionSubmit = async () => {
+    if (!exceptionType || !exceptionReason.trim() || !exceptionAssignee || !exceptionScope.trim()) return;
+    setSubmittingException(true);
+    const result = await markException(id, {
+      prescription_id: id,
+      exception_type: exceptionType,
+      severity: exceptionSeverity,
+      impact_scope: exceptionScope,
+      description: exceptionReason.trim(),
+      assignee_id: exceptionAssignee,
+    });
+    setSubmittingException(false);
+    if (result) {
+      setShowExceptionModal(false);
+      setExceptionType('');
+      setExceptionReason('');
+      setExceptionScope('');
+      setExceptionAssignee('');
+      setExceptionSeverity('medium');
+    }
+  };
+
+  const canSubmitException = () => {
+    return exceptionType && exceptionReason.trim() && exceptionAssignee && exceptionScope.trim();
   };
 
   return (
@@ -146,6 +186,56 @@ export function PrescriptionDetail() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 space-y-5">
+          {relatedExceptions.length > 0 && (
+            <Card
+              title={
+                <span className="flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-amber-400" />
+                  异常记录 ({relatedExceptions.length})
+                </span>
+              }
+            >
+              <div className="space-y-3">
+                {relatedExceptions.map((exc) => (
+                  <div
+                    key={exc.id}
+                    className="flex items-start justify-between p-3 rounded-lg border border-slate-100 hover:border-amber-200 hover:bg-amber-25 transition-colors"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className={`w-2 h-2 rounded-full mt-2 ${
+                        exc.severity === 'critical' ? 'bg-red-500' :
+                        exc.severity === 'high' ? 'bg-orange-500' :
+                        exc.severity === 'medium' ? 'bg-amber-500' : 'bg-slate-400'
+                      }`} />
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-slate-700">
+                            {exc.exception_no}
+                          </span>
+                          <StatusBadge status={exc.status} size="sm" />
+                        </div>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          {EXCEPTION_TYPES.find(t => t.value === exc.exception_type)?.label || exc.exception_type}
+                        </p>
+                        <p className="text-xs text-slate-400 mt-1">
+                          {exc.reason}
+                        </p>
+                      </div>
+                    </div>
+                    <Link
+                      to="/exceptions/$id"
+                      params={{ id: exc.id }}
+                      className="inline-flex items-center gap-1 px-2 py-1 text-xs text-brand-500 hover:bg-brand-50 rounded transition-colors shrink-0"
+                    >
+                      查看详情
+                      <ExternalLink className="w-3 h-3" />
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
           <Card
             title={
               <span className="flex items-center gap-2">
@@ -445,7 +535,47 @@ export function PrescriptionDetail() {
               </button>
             </div>
 
-            <div className="p-5 space-y-4">
+            <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                  异常类型 <span className="text-red-400">*</span>
+                </label>
+                <select
+                  value={exceptionType}
+                  onChange={(e) => setExceptionType(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400/30 focus:border-amber-400 bg-white"
+                >
+                  <option value="">请选择异常类型</option>
+                  {EXCEPTION_TYPES.map((t) => (
+                    <option key={t.value} value={t.value}>
+                      {t.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                  严重程度 <span className="text-red-400">*</span>
+                </label>
+                <div className="flex gap-2">
+                  {SEVERITY_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setExceptionSeverity(opt.value as any)}
+                      className={`flex-1 px-3 py-2 text-xs font-medium rounded-lg border transition-colors ${
+                        exceptionSeverity === opt.value
+                          ? opt.color + ' border-current font-semibold'
+                          : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1.5">
                   异常原因 <span className="text-red-400">*</span>
@@ -454,20 +584,25 @@ export function PrescriptionDetail() {
                   value={exceptionReason}
                   onChange={(e) => setExceptionReason(e.target.value)}
                   rows={3}
-                  placeholder="请描述异常原因..."
+                  placeholder="请详细描述异常原因和情况..."
                   className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400/30 focus:border-amber-400 resize-none placeholder:text-slate-300"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1.5">影响范围</label>
+                <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                  影响范围 <span className="text-red-400">*</span>
+                </label>
                 <input
                   type="text"
                   value={exceptionScope}
                   onChange={(e) => setExceptionScope(e.target.value)}
-                  placeholder="如：华东区 - 慢性病处方审核"
+                  placeholder="如：华东区 - 慢性病处方审核 - 可能影响 50+ 张处方"
                   className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400/30 focus:border-amber-400 placeholder:text-slate-300"
                 />
+                <p className="text-2xs text-slate-400 mt-1">
+                  说明异常可能影响的范围，如区域、门店、处方数量等
+                </p>
               </div>
 
               <div>
@@ -492,16 +627,24 @@ export function PrescriptionDetail() {
             <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-slate-100 bg-slate-25 rounded-b-xl">
               <button
                 onClick={() => setShowExceptionModal(false)}
-                className="px-4 py-2 text-xs font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+                disabled={submittingException}
+                className="px-4 py-2 text-xs font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50"
               >
                 取消
               </button>
               <button
                 onClick={handleExceptionSubmit}
-                disabled={!exceptionReason.trim() || !exceptionAssignee}
-                className="px-4 py-2 text-xs font-medium text-white bg-amber-400 rounded-lg hover:bg-amber-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={!canSubmitException() || submittingException}
+                className="px-4 py-2 text-xs font-medium text-white bg-amber-400 rounded-lg hover:bg-amber-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
               >
-                提交异常
+                {submittingException ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    提交中...
+                  </>
+                ) : (
+                  '提交异常'
+                )}
               </button>
             </div>
           </div>

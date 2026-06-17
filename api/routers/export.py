@@ -2,11 +2,12 @@ import os
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import FileResponse
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.dependencies import get_current_user, get_db_session
-from api.models import User
-from api.schemas import ExportRequest, ExportStatusResponse
+from api.models import User, CaliberNote
+from api.schemas import ExportRequest, ExportStatusResponse, GlobalCaliberNoteOut
 from api.services.export_service import create_export_record, get_export_record_by_task
 
 router = APIRouter(prefix="/export", tags=["数据导出"])
@@ -20,13 +21,29 @@ async def trigger_export(
 ):
     from api.tasks.export_tasks import export_prescriptions
 
-    task = export_prescriptions.delay(task_id="", filters=body.filters)
+    task = export_prescriptions.delay(
+        filters=body.filters,
+        include_caliber=body.include_caliber,
+        dimensions=body.dimensions,
+        date_range=body.date_range,
+        format=body.format,
+    )
     task_id = task.id
 
     await create_export_record(db, task_id, body.export_type, current_user.id)
     await db.commit()
 
     return ExportStatusResponse(task_id=task_id, status="pending")
+
+
+@router.get("/caliber-notes", response_model=list[GlobalCaliberNoteOut])
+async def get_caliber_notes(
+    db: AsyncSession = Depends(get_db_session),
+    current_user: User = Depends(get_current_user),
+):
+    result = await db.execute(select(CaliberNote).order_by(CaliberNote.created_at.asc()))
+    notes = result.scalars().all()
+    return notes
 
 
 @router.get("/status/{task_id}", response_model=ExportStatusResponse)

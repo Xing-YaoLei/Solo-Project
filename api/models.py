@@ -12,7 +12,7 @@ from sqlalchemy import (
     Text,
     func,
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from api.database import Base
@@ -122,7 +122,7 @@ class Prescription(Base):
     photos: Mapped[list["PrescriptionPhoto"]] = relationship(back_populates="prescription", lazy="selectin", cascade="all, delete-orphan")
     timeline_events: Mapped[list["TimelineEvent"]] = relationship(back_populates="prescription", lazy="selectin", cascade="all, delete-orphan")
     exceptions: Mapped[list["Exception"]] = relationship(back_populates="prescription", lazy="selectin", cascade="all, delete-orphan")
-    caliber_notes: Mapped[list["CaliberNote"]] = relationship(back_populates="prescription", lazy="selectin", cascade="all, delete-orphan")
+    caliber_notes: Mapped[list["PrescriptionCaliberNote"]] = relationship(back_populates="prescription", lazy="selectin", cascade="all, delete-orphan")
 
 
 class BatchItem(Base):
@@ -256,6 +256,17 @@ class ExportRecord(Base):
 
 class CaliberNote(Base):
     __tablename__ = "caliber_notes"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    metric: Mapped[str] = mapped_column(String(100), nullable=False)
+    definition: Mapped[str] = mapped_column(Text, nullable=False)
+    exclusions: Mapped[list] = mapped_column(JSONB, default=list)
+    remarks: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+
+
+class PrescriptionCaliberNote(Base):
+    __tablename__ = "prescription_caliber_notes"
 
     id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
     prescription_id: Mapped[str] = mapped_column(UUID(as_uuid=False), ForeignKey("prescriptions.id"), nullable=False)
