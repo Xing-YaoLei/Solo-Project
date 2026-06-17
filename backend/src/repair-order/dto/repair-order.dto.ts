@@ -71,6 +71,10 @@ export class AddDelayRecordDto {
 
   @IsString()
   reporterId: string;
+
+  @IsOptional()
+  @IsString()
+  routeId?: string;
 }
 
 export class AddMaterialDto {

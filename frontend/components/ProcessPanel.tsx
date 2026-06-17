@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import { useAppStore } from '../store/appStore';
-import { repairOrderApi } from '../services/api';
+import { repairOrderApi, routePlanApi } from '../services/api';
 import {
   statusLabels,
   statusColors,
   delayReasonLabels,
   reviewTagLabels,
   reviewTagColors,
+  formatDateTime,
 } from '../lib/utils';
 import { OrderStatus, DelayReason, ReviewTag } from '../types';
+import type { RoutePlan } from '../types';
 import {
   Wrench,
   Package,
@@ -30,11 +32,17 @@ import {
   AlertCircle,
   PenLine,
   Tags,
+  MapPin,
+  Play,
+  Flag,
+  Trash2,
+  Navigation,
 } from 'lucide-react';
 
 export default function ProcessPanel() {
-  const { selectedOrder, commonMaterials, repairPersons, refreshOrders } = useAppStore();
+  const { selectedOrder, commonMaterials, repairPersons, refreshOrders, fetchOrderDetail } = useAppStore();
   const [showAssign, setShowAssign] = useState(false);
+  const [showRoutes, setShowRoutes] = useState(false);
   const [showDelay, setShowDelay] = useState(false);
   const [showSignoff, setShowSignoff] = useState(false);
   const [showTags, setShowTags] = useState(false);
@@ -52,8 +60,12 @@ export default function ProcessPanel() {
   }
 
   const handleRefresh = async () => {
-    await refreshOrders();
+    await Promise.all([refreshOrders(), fetchOrderDetail(selectedOrder.id)]);
   };
+
+  const routes = selectedOrder.routePlans || [];
+  const hasRoutes = routes.length > 0;
+  const isCreated = selectedOrder.status === OrderStatus.CREATED;
 
   return (
     <div className="flex flex-col h-full bg-white rounded-xl shadow-sm border border-gray-200">
@@ -75,10 +87,6 @@ export default function ProcessPanel() {
 
       {/* 可滚动内容区 */}
       <div className="flex-1 overflow-y-auto scrollbar-thin p-3 space-y-3">
-        {/* ========================================================= */}
-        {/*  第一区域：状态流转操作 + 常用材料 - 核心区（始终可见）   */}
-        {/* ========================================================= */}
-
         {/* 核心处理区标题 */}
         <div className="flex items-center gap-2 px-1">
           <div className="w-1 h-5 bg-gradient-to-b from-primary-500 to-primary-300 rounded-full" />
@@ -103,9 +111,7 @@ export default function ProcessPanel() {
           <span className="text-[10px] text-gray-400">点击展开</span>
         </div>
 
-        {/* ========================================================= */}
-        {/*  第二区域：人员分派（可折叠）                              */}
-        {/* ========================================================= */}
+        {/* 人员分派（可折叠）- CREATED 状态高亮 */}
         <CollapsibleCard
           title="人员分派"
           desc="分配维修人员"
@@ -114,7 +120,8 @@ export default function ProcessPanel() {
           badgeBg="bg-purple-100"
           isOpen={showAssign}
           onToggle={() => setShowAssign(!showAssign)}
-          highlight={selectedOrder.status === OrderStatus.CREATED || !selectedOrder.assignPerson}
+          highlight={isCreated || !selectedOrder.assignPerson}
+          badge={selectedOrder.assignPerson ? '已分派' : '待分派'}
         >
           <AssignSection
             order={selectedOrder}
@@ -124,9 +131,25 @@ export default function ProcessPanel() {
           />
         </CollapsibleCard>
 
-        {/* ========================================================= */}
-        {/*  第三区域：延误上报（可折叠）                              */}
-        {/* ========================================================= */}
+        {/* 路线计划（可折叠）- 新功能 */}
+        <CollapsibleCard
+          title="路线计划"
+          desc="新增及路线状态管理"
+          icon={Navigation}
+          iconColor="text-blue-600"
+          badgeBg="bg-blue-100"
+          isOpen={showRoutes}
+          onToggle={() => setShowRoutes(!showRoutes)}
+          badge={hasRoutes ? `${routes.length}条` : '未规划'}
+        >
+          <RoutePlansSection
+            order={selectedOrder}
+            routes={routes}
+            onUpdated={handleRefresh}
+          />
+        </CollapsibleCard>
+
+        {/* 延误上报（可折叠） */}
         <CollapsibleCard
           title="延误上报"
           desc="记录延误情况"
@@ -139,14 +162,13 @@ export default function ProcessPanel() {
         >
           <DelaySection
             order={selectedOrder}
+            routes={routes}
             onUpdated={handleRefresh}
             onDone={() => setShowDelay(false)}
           />
         </CollapsibleCard>
 
-        {/* ========================================================= */}
-        {/*  第四区域：签收凭证（可折叠）                              */}
-        {/* ========================================================= */}
+        {/* 签收凭证（可折叠） */}
         <CollapsibleCard
           title="签收凭证"
           desc="创建客户签收"
@@ -165,9 +187,7 @@ export default function ProcessPanel() {
           />
         </CollapsibleCard>
 
-        {/* ========================================================= */}
-        {/*  第五区域：复盘标签（可折叠）                              */}
-        {/* ========================================================= */}
+        {/* 复盘标签（可折叠） */}
         <CollapsibleCard
           title="复盘标签"
           desc="标记复盘结论"
@@ -272,7 +292,6 @@ function StatusActions({ order, onUpdated }: { order: any; onUpdated: () => void
   const validTransitions = getValidTransitions(order.status);
 
   const statusButtons = [
-    { status: OrderStatus.ASSIGNED, label: '完成分派', icon: UserCheck, color: 'from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700' },
     { status: OrderStatus.IN_PROGRESS, label: '开始处理', icon: Wrench, color: 'from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700' },
     { status: OrderStatus.COMPLETED, label: '完成维修', icon: CheckCircle, color: 'from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700' },
     { status: OrderStatus.PENDING_SUPPLEMENT, label: '待补料', icon: Package, color: 'from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700' },
@@ -292,13 +311,15 @@ function StatusActions({ order, onUpdated }: { order: any; onUpdated: () => void
       });
       setRemark('');
       await onUpdated();
-    } catch (error) {
+    } catch (error: any) {
       console.error('状态更新失败', error);
-      alert('状态更新失败，请重试');
+      alert(error?.response?.data?.message || '状态更新失败，请重试');
     } finally {
       setLoading(false);
     }
   };
+
+  const isCreated = order.status === OrderStatus.CREATED;
 
   return (
     <div className="space-y-3">
@@ -307,20 +328,37 @@ function StatusActions({ order, onUpdated }: { order: any; onUpdated: () => void
         <Clock className="w-4 h-4 text-blue-600" />
         <span className="text-sm font-bold text-gray-800">状态流转</span>
         <span className="text-[10px] text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded">
-          {availableButtons.length}个可操作
+          {isCreated ? '请先分派人员' : `${availableButtons.length}个可操作`}
         </span>
       </div>
 
+      {/* CREATED 状态提示 */}
+      {isCreated && (
+        <div className="p-3 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg border border-purple-200">
+          <div className="flex items-start gap-2">
+            <UserPlus className="w-4 h-4 text-purple-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-xs font-semibold text-purple-700">待分派状态</p>
+              <p className="text-[11px] text-purple-600 mt-0.5">
+                请在下方「人员分派」中选择维修人员后完成分派
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 备注输入 */}
-      <div>
-        <textarea
-          value={remark}
-          onChange={(e) => setRemark(e.target.value)}
-          placeholder="操作备注（可选，记录本次操作的说明）"
-          className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent resize-none bg-white/80"
-          rows={2}
-        />
-      </div>
+      {!isCreated && (
+        <div>
+          <textarea
+            value={remark}
+            onChange={(e) => setRemark(e.target.value)}
+            placeholder="操作备注（可选，记录本次操作的说明）"
+            className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent resize-none bg-white/80"
+            rows={2}
+          />
+        </div>
+      )}
 
       {/* 操作按钮 */}
       {order.status === OrderStatus.CLOSED ? (
@@ -328,11 +366,11 @@ function StatusActions({ order, onUpdated }: { order: any; onUpdated: () => void
           <p className="text-sm font-medium text-slate-600">✓ 单据已关闭</p>
           <p className="text-[11px] text-slate-400 mt-1">可在历史记录中查看详情</p>
         </div>
-      ) : availableButtons.length === 0 ? (
+      ) : availableButtons.length === 0 && !isCreated ? (
         <div className="p-4 bg-gray-50 rounded-lg text-center">
           <p className="text-sm text-gray-400">当前状态无可操作项</p>
         </div>
-      ) : (
+      ) : !isCreated ? (
         <div className="grid grid-cols-2 gap-2">
           {availableButtons.map((btn) => (
             <button
@@ -346,7 +384,7 @@ function StatusActions({ order, onUpdated }: { order: any; onUpdated: () => void
             </button>
           ))}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -411,7 +449,6 @@ function MaterialsSection({ order, materials, onUpdated }: { order: any; materia
               key={material.id}
               className="p-2.5 bg-gradient-to-r from-white to-amber-50/50 rounded-lg border border-amber-100"
             >
-              {/* 材料信息 */}
               <div className="flex items-center justify-between mb-2">
                 <div className="min-w-0 flex-1 pr-2">
                   <p className="text-xs font-semibold text-gray-800 truncate">{material.name}</p>
@@ -420,7 +457,6 @@ function MaterialsSection({ order, materials, onUpdated }: { order: any; materia
                   </p>
                 </div>
               </div>
-              {/* 数量控制 + 添加按钮 */}
               <div className="flex items-center gap-1.5">
                 <div className="flex items-center border border-amber-200 rounded-md bg-white overflow-hidden">
                   <button
@@ -465,6 +501,298 @@ function MaterialsSection({ order, materials, onUpdated }: { order: any; materia
 }
 
 /* ========================================================= */
+/*  路线计划操作面板（新功能）                                 */
+/* ========================================================= */
+function RoutePlansSection({ order, routes, onUpdated }: { order: any; routes: RoutePlan[]; onUpdated: () => void }) {
+  const [showForm, setShowForm] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+  const [form, setForm] = useState({
+    fromLocation: '',
+    toLocation: '',
+    planDeparture: '',
+    planArrival: '',
+    distanceKm: '1.0',
+  });
+
+  const handleCreate = async () => {
+    if (!form.fromLocation || !form.toLocation || !form.planDeparture || !form.planArrival) {
+      alert('请填写完整路线信息');
+      return;
+    }
+    setLoading(true);
+    try {
+      await routePlanApi.create(order.id, {
+        fromLocation: form.fromLocation,
+        toLocation: form.toLocation,
+        planDeparture: new Date(form.planDeparture).toISOString(),
+        planArrival: new Date(form.planArrival).toISOString(),
+        distanceKm: parseFloat(form.distanceKm) || 1.0,
+      });
+      setForm({
+        fromLocation: '',
+        toLocation: '',
+        planDeparture: '',
+        planArrival: '',
+        distanceKm: '1.0',
+      });
+      setShowForm(false);
+      await onUpdated();
+    } catch (error: any) {
+      console.error('创建路线失败', error);
+      alert(error?.response?.data?.message || '创建路线失败，请重试');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStart = async (routeId: string) => {
+    setActionLoadingId(routeId);
+    try {
+      await routePlanApi.start(routeId);
+      await onUpdated();
+    } catch (error: any) {
+      console.error('开始路线失败', error);
+      alert(error?.response?.data?.message || '开始路线失败');
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const handleArrive = async (routeId: string) => {
+    setActionLoadingId(routeId);
+    try {
+      await routePlanApi.arrive(routeId);
+      await onUpdated();
+    } catch (error: any) {
+      console.error('抵达失败', error);
+      alert(error?.response?.data?.message || '抵达失败');
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const handleDelete = async (routeId: string) => {
+    if (!confirm('确定删除这条路线计划吗？')) return;
+    setActionLoadingId(routeId);
+    try {
+      await routePlanApi.remove(routeId);
+      await onUpdated();
+    } catch (error: any) {
+      console.error('删除路线失败', error);
+      alert(error?.response?.data?.message || '删除失败');
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const disabled = order.status === OrderStatus.CLOSED;
+  const sortedRoutes = [...routes].sort((a, b) => a.sequence - b.sequence);
+
+  const getRouteStatusInfo = (status: string) => {
+    switch (status) {
+      case 'PLANNED': return { label: '计划中', color: 'bg-gray-100 text-gray-600' };
+      case 'IN_PROGRESS': return { label: '进行中', color: 'bg-blue-100 text-blue-700' };
+      case 'COMPLETED': return { label: '已完成', color: 'bg-green-100 text-green-700' };
+      default: return { label: status, color: 'bg-gray-100 text-gray-600' };
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      {/* 路线列表 */}
+      {sortedRoutes.length === 0 ? (
+        <div className="text-center py-4 text-gray-400">
+          <MapPin className="w-10 h-10 mx-auto mb-2 opacity-50" />
+          <p className="text-xs">暂无路线计划</p>
+        </div>
+      ) : (
+        <div className="space-y-2 max-h-60 overflow-y-auto scrollbar-thin pr-0.5">
+          {sortedRoutes.map((route) => {
+            const statusInfo = getRouteStatusInfo(route.status);
+            const isLoading = actionLoadingId === route.id;
+            return (
+              <div key={route.id} className="p-3 bg-gradient-to-r from-blue-50/50 to-indigo-50/30 rounded-lg border border-blue-100">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 text-white text-xs font-bold flex items-center justify-center shadow-sm">
+                      {route.sequence}
+                    </span>
+                    <span className={`px-2 py-0.5 text-[10px] font-semibold rounded ${statusInfo.color}`}>
+                      {statusInfo.label}
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-gray-500">{route.distanceKm.toFixed(1)} km</span>
+                </div>
+
+                <div className="flex items-center gap-1 text-xs text-gray-600 mb-2">
+                  <MapPin className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                  <span className="truncate text-gray-500">{route.fromLocation}</span>
+                  <ChevronDown className="w-3 h-3 text-gray-300 flex-shrink-0 rotate-[-90deg]" />
+                  <span className="truncate font-semibold text-gray-800">{route.toLocation}</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-1.5 text-[10px] mb-2.5">
+                  <div className="bg-white/70 rounded px-2 py-1">
+                    <p className="text-gray-400">计划出发</p>
+                    <p className="text-gray-700 font-medium">{formatDateTime(route.planDeparture).slice(5, 16)}</p>
+                  </div>
+                  <div className="bg-white/70 rounded px-2 py-1">
+                    <p className="text-gray-400">计划到达</p>
+                    <p className="text-gray-700 font-medium">{formatDateTime(route.planArrival).slice(5, 16)}</p>
+                  </div>
+                  <div className="bg-white/70 rounded px-2 py-1">
+                    <p className="text-gray-400">实际出发</p>
+                    <p className={route.actualDeparture ? 'text-blue-600 font-medium' : 'text-gray-300'}>
+                      {route.actualDeparture ? formatDateTime(route.actualDeparture).slice(5, 16) : '-'}
+                    </p>
+                  </div>
+                  <div className="bg-white/70 rounded px-2 py-1">
+                    <p className="text-gray-400">实际到达</p>
+                    <p className={route.actualArrival ? 'text-green-600 font-medium' : 'text-gray-300'}>
+                      {route.actualArrival ? formatDateTime(route.actualArrival).slice(5, 16) : '-'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* 操作按钮 */}
+                <div className="flex items-center gap-1.5">
+                  {route.status === 'PLANNED' && (
+                    <button
+                      onClick={() => handleStart(route.id)}
+                      disabled={isLoading || disabled}
+                      className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white text-[10px] font-bold rounded-md hover:from-blue-600 hover:to-blue-700 transition-all active:scale-95 disabled:opacity-50"
+                    >
+                      <Play className="w-3 h-3" />
+                      开始出发
+                    </button>
+                  )}
+                  {route.status === 'IN_PROGRESS' && (
+                    <button
+                      onClick={() => handleArrive(route.id)}
+                      disabled={isLoading || disabled}
+                      className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-gradient-to-r from-emerald-500 to-green-600 text-white text-[10px] font-bold rounded-md hover:from-emerald-600 hover:to-green-700 transition-all active:scale-95 disabled:opacity-50"
+                    >
+                      <Flag className="w-3 h-3" />
+                      确认抵达
+                    </button>
+                  )}
+                  {route.status === 'COMPLETED' && (
+                    <div className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-green-100 text-green-700 text-[10px] font-bold rounded-md">
+                      <CheckCircle className="w-3 h-3" />
+                      已完成
+                    </div>
+                  )}
+                  {route.status !== 'COMPLETED' && !disabled && (
+                    <button
+                      onClick={() => handleDelete(route.id)}
+                      disabled={isLoading}
+                      className="px-2 py-1.5 text-red-500 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50"
+                      title="删除路线"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* 新增路线表单 */}
+      {!disabled && (
+        showForm ? (
+          <div className="space-y-2.5 p-3 bg-blue-50/50 rounded-lg border border-blue-200">
+            <p className="text-xs font-semibold text-blue-800">新增路线计划</p>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[10px] text-gray-500">出发地</label>
+                <input
+                  type="text"
+                  value={form.fromLocation}
+                  onChange={(e) => setForm({ ...form, fromLocation: e.target.value })}
+                  placeholder="如：维修站"
+                  className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-gray-500">目的地</label>
+                <input
+                  type="text"
+                  value={form.toLocation}
+                  onChange={(e) => setForm({ ...form, toLocation: e.target.value })}
+                  placeholder="如：A栋302"
+                  className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[10px] text-gray-500">计划出发</label>
+                <input
+                  type="datetime-local"
+                  value={form.planDeparture}
+                  onChange={(e) => setForm({ ...form, planDeparture: e.target.value })}
+                  className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-gray-500">计划到达</label>
+                <input
+                  type="datetime-local"
+                  value={form.planArrival}
+                  onChange={(e) => setForm({ ...form, planArrival: e.target.value })}
+                  className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-[10px] text-gray-500">距离（公里）</label>
+              <input
+                type="number"
+                step="0.1"
+                value={form.distanceKm}
+                onChange={(e) => setForm({ ...form, distanceKm: e.target.value })}
+                className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+              />
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowForm(false)}
+                className="flex-1 px-3 py-2 text-gray-600 text-xs font-medium bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleCreate}
+                disabled={loading}
+                className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-gradient-to-r from-blue-500 to-indigo-500 text-white text-xs font-bold rounded-md hover:from-blue-600 hover:to-indigo-600 transition-all disabled:opacity-50"
+              >
+                {loading ? (
+                  <span className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <Plus className="w-3 h-3" />
+                )}
+                创建路线
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowForm(true)}
+            className="w-full flex items-center justify-center gap-1.5 px-3 py-2 border-2 border-dashed border-blue-200 text-blue-600 text-xs font-semibold rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            新增路线计划
+          </button>
+        )
+      )}
+    </div>
+  );
+}
+
+/* ========================================================= */
 /*  分派组件（可折叠内）                                       */
 /* ========================================================= */
 function AssignSection({ order, persons, onAssigned, onDone }: { order: any; persons: any[]; onAssigned: () => void; onDone: () => void }) {
@@ -483,18 +811,34 @@ function AssignSection({ order, persons, onAssigned, onDone }: { order: any; per
       });
       await onAssigned();
       onDone();
-    } catch (error) {
+    } catch (error: any) {
       console.error('分派失败', error);
-      alert('分派失败，请重试');
+      alert(error?.response?.data?.message || '分派失败，请重试');
     } finally {
       setLoading(false);
     }
   };
 
   const disabled = order.status === OrderStatus.CLOSED;
+  const isCreated = order.status === OrderStatus.CREATED;
 
   return (
     <div className="space-y-3">
+      {isCreated && (
+        <div className="p-2.5 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg border border-purple-200">
+          <p className="text-[11px] font-semibold text-purple-700">
+            👆 请先选择维修人员，再点击确认分派
+          </p>
+        </div>
+      )}
+      {!isCreated && order.assignPerson && (
+        <div className="p-2.5 bg-green-50 rounded-lg border border-green-200">
+          <p className="text-[11px] text-green-700">
+            当前负责人：<span className="font-bold">{order.assignPerson.name}</span>
+          </p>
+          <p className="text-[10px] text-green-600 mt-0.5">可重新选择其他人进行改派</p>
+        </div>
+      )}
       <div className="space-y-1.5 max-h-56 overflow-y-auto scrollbar-thin pr-0.5">
         {persons.map((person) => (
           <div
@@ -517,7 +861,7 @@ function AssignSection({ order, persons, onAssigned, onDone }: { order: any; per
                 <p className="text-[10px] text-gray-500 truncate">{person.skill}</p>
               </div>
               {selectedPerson === person.id && (
-                <CheckCircle className="w-4.5 h-4.5 text-primary-500" />
+                <CheckCircle className="w-4 h-4 text-primary-500 flex-shrink-0" />
               )}
             </div>
           </div>
@@ -534,19 +878,20 @@ function AssignSection({ order, persons, onAssigned, onDone }: { order: any; per
         ) : (
           <Send className="w-4 h-4" />
         )}
-        确认分派
+        {isCreated ? '确认分派' : '改派人员'}
       </button>
     </div>
   );
 }
 
 /* ========================================================= */
-/*  延误组件（可折叠内）                                       */
+/*  延误组件（可折叠内） - 支持选择路线                         */
 /* ========================================================= */
-function DelaySection({ order, onUpdated, onDone }: { order: any; onUpdated: () => void; onDone: () => void }) {
+function DelaySection({ order, routes, onUpdated, onDone }: { order: any; routes: RoutePlan[]; onUpdated: () => void; onDone: () => void }) {
   const [reason, setReason] = useState<DelayReason | ''>('');
   const [duration, setDuration] = useState('');
   const [detail, setDetail] = useState('');
+  const [routeId, setRouteId] = useState<string>('');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
@@ -561,15 +906,17 @@ function DelaySection({ order, onUpdated, onDone }: { order: any; onUpdated: () 
         detail,
         duration: parseInt(duration),
         reporterId: 'current-user',
+        routeId: routeId || undefined,
       });
       setReason('');
       setDuration('');
       setDetail('');
+      setRouteId('');
       await onUpdated();
       onDone();
-    } catch (error) {
+    } catch (error: any) {
       console.error('上报延误失败', error);
-      alert('上报失败，请重试');
+      alert(error?.response?.data?.message || '上报失败，请重试');
     } finally {
       setLoading(false);
     }
@@ -577,16 +924,37 @@ function DelaySection({ order, onUpdated, onDone }: { order: any; onUpdated: () 
 
   const reasons = Object.values(DelayReason);
   const disabled = order.status === OrderStatus.CLOSED;
+  const sortedRoutes = [...routes].sort((a, b) => a.sequence - b.sequence);
 
   return (
     <div className="space-y-2.5">
+      {/* 选择关联路线 */}
+      <div>
+        <label className="block text-xs font-semibold text-gray-700 mb-1">
+          关联路线 <span className="text-gray-400 font-normal">（可选，指定是哪条路线延误）</span>
+        </label>
+        <select
+          value={routeId}
+          onChange={(e) => setRouteId(e.target.value)}
+          disabled={disabled}
+          className="w-full px-2.5 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent disabled:bg-gray-50"
+        >
+          <option value="">不指定（单据级延误）</option>
+          {sortedRoutes.map((route) => (
+            <option key={route.id} value={route.id}>
+              路线{route.sequence}：{route.fromLocation} → {route.toLocation}
+            </option>
+          ))}
+        </select>
+      </div>
+
       <div>
         <label className="block text-xs font-semibold text-gray-700 mb-1">延误原因 *</label>
         <select
           value={reason}
           onChange={(e) => setReason(e.target.value as DelayReason)}
           disabled={disabled}
-          className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent disabled:bg-gray-50"
+          className="w-full px-2.5 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent disabled:bg-gray-50"
         >
           <option value="">请选择原因</option>
           {reasons.map((r) => (
@@ -603,7 +971,7 @@ function DelaySection({ order, onUpdated, onDone }: { order: any; onUpdated: () 
           onChange={(e) => setDuration(e.target.value)}
           placeholder="例如：30"
           disabled={disabled}
-          className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent disabled:bg-gray-50"
+          className="w-full px-2.5 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent disabled:bg-gray-50"
         />
       </div>
 
@@ -615,7 +983,7 @@ function DelaySection({ order, onUpdated, onDone }: { order: any; onUpdated: () 
           placeholder="请详细描述延误情况，便于后续复盘"
           rows={3}
           disabled={disabled}
-          className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent resize-none disabled:bg-gray-50"
+          className="w-full px-2.5 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent resize-none disabled:bg-gray-50"
         />
       </div>
 
@@ -659,9 +1027,9 @@ function SignoffSection({ order, onUpdated, onDone }: { order: any; onUpdated: (
       });
       await onUpdated();
       onDone();
-    } catch (error) {
+    } catch (error: any) {
       console.error('创建签收凭证失败', error);
-      alert('创建失败，请重试');
+      alert(error?.response?.data?.message || '创建失败，请重试');
     } finally {
       setLoading(false);
     }
@@ -686,7 +1054,7 @@ function SignoffSection({ order, onUpdated, onDone }: { order: any; onUpdated: (
           onChange={(e) => setSignature(e.target.value)}
           placeholder="输入客户姓名"
           disabled={disabled}
-          className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent disabled:bg-gray-50"
+          className="w-full px-2.5 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent disabled:bg-gray-50"
         />
       </div>
 
@@ -698,7 +1066,7 @@ function SignoffSection({ order, onUpdated, onDone }: { order: any; onUpdated: (
           onChange={(e) => setSignedBy(e.target.value)}
           placeholder="执行签收的维修人员"
           disabled={disabled}
-          className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent disabled:bg-gray-50"
+          className="w-full px-2.5 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent disabled:bg-gray-50"
         />
       </div>
 
@@ -710,7 +1078,7 @@ function SignoffSection({ order, onUpdated, onDone }: { order: any; onUpdated: (
           placeholder="客户反馈、现场情况等"
           rows={2}
           disabled={disabled}
-          className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent resize-none disabled:bg-gray-50"
+          className="w-full px-2.5 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent resize-none disabled:bg-gray-50"
         />
       </div>
 
@@ -753,9 +1121,9 @@ function TagsSection({ order, onUpdated, onDone }: { order: any; onUpdated: () =
       await repairOrderApi.updateReviewTags(order.id, selectedTags);
       await onUpdated();
       onDone();
-    } catch (error) {
+    } catch (error: any) {
       console.error('保存标签失败', error);
-      alert('保存失败，请重试');
+      alert(error?.response?.data?.message || '保存失败，请重试');
     } finally {
       setLoading(false);
     }
@@ -812,7 +1180,7 @@ function TagsSection({ order, onUpdated, onDone }: { order: any; onUpdated: () =
 /* ========================================================= */
 function getValidTransitions(current: OrderStatus): OrderStatus[] {
   const transitions: Record<OrderStatus, OrderStatus[]> = {
-    [OrderStatus.CREATED]: [OrderStatus.ASSIGNED],
+    [OrderStatus.CREATED]: [],
     [OrderStatus.ASSIGNED]: [OrderStatus.IN_PROGRESS, OrderStatus.CREATED],
     [OrderStatus.IN_PROGRESS]: [OrderStatus.COMPLETED, OrderStatus.PENDING_SUPPLEMENT, OrderStatus.UNDER_REVIEW],
     [OrderStatus.COMPLETED]: [OrderStatus.CLOSED, OrderStatus.UNDER_REVIEW, OrderStatus.PENDING_SUPPLEMENT],

@@ -70,6 +70,8 @@ export interface OrderMaterial {
 export interface DelayRecord {
   id: string;
   orderId: string;
+  routeId?: string | null;
+  route?: RoutePlan | null;
   reason: DelayReason;
   detail: string;
   duration: number;

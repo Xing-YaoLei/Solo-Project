@@ -64,6 +64,7 @@ export const repairOrderApi = {
     detail: string;
     duration: number;
     reporterId: string;
+    routeId?: string;
   }) => api.post<DelayRecord>(`/repair-orders/${id}/delay-records`, data).then(r => r.data),
 
   addMaterial: (id: string, data: {

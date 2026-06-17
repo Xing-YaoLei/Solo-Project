@@ -119,32 +119,37 @@ model OrderMaterial {
 }
 
 model DelayRecord {
-  id         String     @id @default(cuid())
+  id         String      @id @default(cuid())
   orderId    String
   order      RepairOrder @relation(fields: [orderId], references: [id])
+  routeId    String?
+  route      RoutePlan?  @relation(fields: [routeId], references: [id])
   reason     DelayReason
   detail     String
   duration   Int
-  reportedAt DateTime   @default(now())
+  reportedAt DateTime    @default(now())
   reporterId String
-  createdAt  DateTime   @default(now())
+  createdAt  DateTime    @default(now())
+
+  @@index([routeId])
 }
 
 model RoutePlan {
-  id            String      @id @default(cuid())
-  orderId       String
-  order         RepairOrder @relation(fields: [orderId], references: [id])
-  sequence      Int
-  fromLocation  String
-  toLocation    String
-  planDeparture DateTime
-  planArrival   DateTime
+  id              String        @id @default(cuid())
+  orderId         String
+  order           RepairOrder   @relation(fields: [orderId], references: [id])
+  sequence        Int
+  fromLocation    String
+  toLocation      String
+  planDeparture   DateTime
+  planArrival     DateTime
   actualDeparture DateTime?
-  actualArrival DateTime?
-  distanceKm    Float
-  status        String      @default("PLANNED")
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  actualArrival   DateTime?
+  distanceKm      Float
+  status          String        @default("PLANNED")
+  delayRecords    DelayRecord[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 }
 
 model SignoffProof {

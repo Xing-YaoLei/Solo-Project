@@ -176,6 +176,10 @@ export class RepairOrderService {
     const fromStatus = order.status;
     const toStatus = dto.status;
 
+    if (fromStatus === OrderStatus.CREATED && toStatus === OrderStatus.ASSIGNED) {
+      throw new BadRequestException('请通过分派接口完成人员分派，不可直接修改状态');
+    }
+
     const validTransitions = this.getValidTransitions(fromStatus);
     if (!validTransitions.includes(toStatus)) {
       throw new BadRequestException(`无法从 ${fromStatus} 流转到 ${toStatus}`);
@@ -244,10 +248,26 @@ export class RepairOrderService {
   async addDelayRecord(id: string, dto: AddDelayRecordDto) {
     const order = await this.findOne(id);
 
+    if (dto.routeId) {
+      const route = await this.prisma.routePlan.findUnique({
+        where: { id: dto.routeId },
+      });
+      if (!route || route.orderId !== id) {
+        throw new BadRequestException('路线计划不存在或不属于该派单');
+      }
+    }
+
     const delayRecord = await this.prisma.delayRecord.create({
       data: {
-        ...dto,
+        reason: dto.reason,
+        detail: dto.detail,
+        duration: dto.duration,
+        reporterId: dto.reporterId,
         orderId: id,
+        routeId: dto.routeId || undefined,
+      },
+      include: {
+        route: true,
       },
     });
 

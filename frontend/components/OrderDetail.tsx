@@ -12,7 +12,7 @@ import {
   priorityLabels,
   priorityColors,
 } from '../lib/utils';
-import type { ReviewTag, DelayReason, OrderStatus } from '../types';
+import type { ReviewTag, DelayReason, OrderStatus, DelayRecord, RoutePlan } from '../types';
 import {
   MapPin,
   Clock,
@@ -272,7 +272,7 @@ export default function OrderDetail() {
                 </div>
               ) : (
                 <div className="space-y-2.5">
-                  {delays.map((delay: { id: string; reason: DelayReason; detail: string; duration: number; reportedAt: string }) => (
+                  {delays.map((delay: DelayRecord) => (
                     <div key={delay.id} className="bg-red-50 rounded-lg p-3 border border-red-100">
                       <div className="flex items-center justify-between mb-1.5">
                         <span className="text-xs px-2 py-0.5 rounded bg-red-100 text-red-700 font-medium">
@@ -282,6 +282,14 @@ export default function OrderDetail() {
                           {formatDuration(delay.duration)}
                         </span>
                       </div>
+                      {delay.route && (
+                        <div className="flex items-center gap-1 mb-1.5 text-[11px] text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                          <MapPin className="w-3 h-3 flex-shrink-0" />
+                          <span className="truncate">
+                            路线：{delay.route.fromLocation} → {delay.route.toLocation}
+                          </span>
+                        </div>
+                      )}
                       <p className="text-xs text-gray-600 mb-1 line-clamp-2">{delay.detail}</p>
                       <p className="text-[10px] text-gray-400">{formatDateTime(delay.reportedAt)}</p>
                     </div>
