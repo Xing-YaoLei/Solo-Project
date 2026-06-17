@@ -41,7 +41,9 @@ export class RepairOrderService {
       },
       include: {
         assignPerson: true,
-        delayRecords: true,
+        delayRecords: {
+          include: { route: true },
+        },
         routePlans: true,
         statusLogs: true,
         materials: {
@@ -83,7 +85,9 @@ export class RepairOrderService {
         orderBy: { createdAt: 'desc' },
         include: {
           assignPerson: true,
-          delayRecords: true,
+          delayRecords: {
+          include: { route: true },
+        },
           routePlans: true,
         },
       }),
@@ -100,6 +104,7 @@ export class RepairOrderService {
         assignPerson: true,
         delayRecords: {
           orderBy: { createdAt: 'desc' },
+          include: { route: true },
         },
         routePlans: {
           orderBy: { sequence: 'asc' },

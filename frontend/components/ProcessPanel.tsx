@@ -37,6 +37,7 @@ import {
   Flag,
   Trash2,
   Navigation,
+  Pencil,
 } from 'lucide-react';
 
 export default function ProcessPanel() {
@@ -505,6 +506,7 @@ function MaterialsSection({ order, materials, onUpdated }: { order: any; materia
 /* ========================================================= */
 function RoutePlansSection({ order, routes, onUpdated }: { order: any; routes: RoutePlan[]; onUpdated: () => void }) {
   const [showForm, setShowForm] = useState(false);
+  const [editingRouteId, setEditingRouteId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [form, setForm] = useState({
@@ -514,6 +516,36 @@ function RoutePlansSection({ order, routes, onUpdated }: { order: any; routes: R
     planArrival: '',
     distanceKm: '1.0',
   });
+
+  const resetForm = () => {
+    setForm({
+      fromLocation: '',
+      toLocation: '',
+      planDeparture: '',
+      planArrival: '',
+      distanceKm: '1.0',
+    });
+    setEditingRouteId(null);
+    setShowForm(false);
+  };
+
+  const startEditing = (route: RoutePlan) => {
+    const toLocalDatetime = (iso: string) => {
+      if (!iso) return '';
+      const d = new Date(iso);
+      const pad = (n: number) => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    };
+    setForm({
+      fromLocation: route.fromLocation,
+      toLocation: route.toLocation,
+      planDeparture: toLocalDatetime(route.planDeparture),
+      planArrival: toLocalDatetime(route.planArrival),
+      distanceKm: String(route.distanceKm),
+    });
+    setEditingRouteId(route.id);
+    setShowForm(true);
+  };
 
   const handleCreate = async () => {
     if (!form.fromLocation || !form.toLocation || !form.planDeparture || !form.planArrival) {
@@ -529,18 +561,36 @@ function RoutePlansSection({ order, routes, onUpdated }: { order: any; routes: R
         planArrival: new Date(form.planArrival).toISOString(),
         distanceKm: parseFloat(form.distanceKm) || 1.0,
       });
-      setForm({
-        fromLocation: '',
-        toLocation: '',
-        planDeparture: '',
-        planArrival: '',
-        distanceKm: '1.0',
-      });
-      setShowForm(false);
+      resetForm();
       await onUpdated();
     } catch (error: any) {
       console.error('创建路线失败', error);
       alert(error?.response?.data?.message || '创建路线失败，请重试');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdate = async () => {
+    if (!editingRouteId) return;
+    if (!form.fromLocation || !form.toLocation || !form.planDeparture || !form.planArrival) {
+      alert('请填写完整路线信息');
+      return;
+    }
+    setLoading(true);
+    try {
+      await routePlanApi.update(editingRouteId, {
+        fromLocation: form.fromLocation,
+        toLocation: form.toLocation,
+        planDeparture: new Date(form.planDeparture).toISOString(),
+        planArrival: new Date(form.planArrival).toISOString(),
+        distanceKm: parseFloat(form.distanceKm) || 1.0,
+      });
+      resetForm();
+      await onUpdated();
+    } catch (error: any) {
+      console.error('更新路线失败', error);
+      alert(error?.response?.data?.message || '更新路线失败，请重试');
     } finally {
       setLoading(false);
     }
@@ -600,7 +650,6 @@ function RoutePlansSection({ order, routes, onUpdated }: { order: any; routes: R
 
   return (
     <div className="space-y-3">
-      {/* 路线列表 */}
       {sortedRoutes.length === 0 ? (
         <div className="text-center py-4 text-gray-400">
           <MapPin className="w-10 h-10 mx-auto mb-2 opacity-50" />
@@ -655,7 +704,6 @@ function RoutePlansSection({ order, routes, onUpdated }: { order: any; routes: R
                   </div>
                 </div>
 
-                {/* 操作按钮 */}
                 <div className="flex items-center gap-1.5">
                   {route.status === 'PLANNED' && (
                     <button
@@ -684,14 +732,24 @@ function RoutePlansSection({ order, routes, onUpdated }: { order: any; routes: R
                     </div>
                   )}
                   {route.status !== 'COMPLETED' && !disabled && (
-                    <button
-                      onClick={() => handleDelete(route.id)}
-                      disabled={isLoading}
-                      className="px-2 py-1.5 text-red-500 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50"
-                      title="删除路线"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    <>
+                      <button
+                        onClick={() => startEditing(route)}
+                        disabled={isLoading}
+                        className="px-2 py-1.5 text-blue-500 hover:bg-blue-50 rounded-md transition-colors disabled:opacity-50"
+                        title="编辑路线"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(route.id)}
+                        disabled={isLoading}
+                        className="px-2 py-1.5 text-red-500 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50"
+                        title="删除路线"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
@@ -700,11 +758,12 @@ function RoutePlansSection({ order, routes, onUpdated }: { order: any; routes: R
         </div>
       )}
 
-      {/* 新增路线表单 */}
       {!disabled && (
         showForm ? (
           <div className="space-y-2.5 p-3 bg-blue-50/50 rounded-lg border border-blue-200">
-            <p className="text-xs font-semibold text-blue-800">新增路线计划</p>
+            <p className="text-xs font-semibold text-blue-800">
+              {editingRouteId ? '编辑路线计划' : '新增路线计划'}
+            </p>
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="text-[10px] text-gray-500">出发地</label>
@@ -759,28 +818,30 @@ function RoutePlansSection({ order, routes, onUpdated }: { order: any; routes: R
             </div>
             <div className="flex gap-2">
               <button
-                onClick={() => setShowForm(false)}
+                onClick={resetForm}
                 className="flex-1 px-3 py-2 text-gray-600 text-xs font-medium bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
               >
                 取消
               </button>
               <button
-                onClick={handleCreate}
+                onClick={editingRouteId ? handleUpdate : handleCreate}
                 disabled={loading}
                 className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-gradient-to-r from-blue-500 to-indigo-500 text-white text-xs font-bold rounded-md hover:from-blue-600 hover:to-indigo-600 transition-all disabled:opacity-50"
               >
                 {loading ? (
                   <span className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                ) : editingRouteId ? (
+                  <Pencil className="w-3 h-3" />
                 ) : (
                   <Plus className="w-3 h-3" />
                 )}
-                创建路线
+                {editingRouteId ? '保存修改' : '创建路线'}
               </button>
             </div>
           </div>
         ) : (
           <button
-            onClick={() => setShowForm(true)}
+            onClick={() => { setEditingRouteId(null); setShowForm(true); }}
             className="w-full flex items-center justify-center gap-1.5 px-3 py-2 border-2 border-dashed border-blue-200 text-blue-600 text-xs font-semibold rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-colors"
           >
             <Plus className="w-4 h-4" />
