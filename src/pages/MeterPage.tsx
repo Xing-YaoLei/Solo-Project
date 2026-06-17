@@ -58,16 +58,6 @@ const MeterPage: React.FC = () => {
       setShowWorkOrder(true);
     },
     onTimeout: (order) => {
-      incrementTimeoutCount();
-      const activeOrder: ActiveWorkOrder = {
-        ...order,
-        startTime: Date.now(),
-        remainingTime: woTimeout,
-        isRetrying: true,
-      };
-      setCurrentOrder(activeOrder);
-      setShowWorkOrder(true);
-      retryOrder(order.id);
     },
     onComplete: (result: WorkOrderResult) => {
       completeWorkOrder(result);

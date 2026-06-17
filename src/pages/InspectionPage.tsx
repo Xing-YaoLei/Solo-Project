@@ -49,16 +49,6 @@ const InspectionPage: React.FC = () => {
       setShowWorkOrder(true);
     },
     onTimeout: (order) => {
-      incrementTimeoutCount();
-      const activeOrder: ActiveWorkOrder = {
-        ...order,
-        startTime: Date.now(),
-        remainingTime: level?.workOrders.timeout || 30,
-        isRetrying: true,
-      };
-      setCurrentOrder(activeOrder);
-      setShowWorkOrder(true);
-      retryOrder(order.id);
     },
     onComplete: (result: WorkOrderResult) => {
       completeWorkOrder(result);

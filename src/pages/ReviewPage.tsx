@@ -114,7 +114,7 @@ const ReviewPage: React.FC = () => {
   }).length;
 
   const workOrderStats = {
-    total: workOrders.completedOrders.length + workOrders.timeoutCount,
+    total: level.workOrders.orders.length,
     completed: workOrders.completedOrders.length,
     correct: workOrders.completedOrders.filter((o) => o.isCorrect).length,
     avgResponseTime: workOrders.completedOrders.length > 0
@@ -513,7 +513,7 @@ const ReviewPage: React.FC = () => {
                       <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4 text-center">
                         <CheckCircle className="w-8 h-8 text-green-400 mx-auto mb-2" />
                         <p className="text-2xl font-bold text-white">
-                          {workOrderStats.correct}/{workOrderStats.total}
+                          {workOrderStats.correct}/{workOrderStats.completed}
                         </p>
                         <p className="text-sm text-gray-400">正确处理</p>
                       </div>
@@ -531,15 +531,15 @@ const ReviewPage: React.FC = () => {
                       <div className="bg-gray-800/50 rounded-xl p-6">
                         {workOrders.completedOrders.length > 0 ? (
                           <div className="space-y-3">
-                            {workOrders.completedOrders.map((order: WorkOrderResult, index: number) => {
+                            {workOrders.completedOrders.map((order: WorkOrderResult) => {
                               const maxTime = level.workOrders.timeout;
                               const percentage = Math.min((order.responseTime / maxTime) * 100, 100);
                               const orderInfo = level.workOrders.orders.find((o) => o.id === order.orderId);
                               return (
-                                <div key={index} className="space-y-1">
+                                <div key={order.orderId} className="space-y-1">
                                   <div className="flex items-center justify-between text-sm">
                                     <span className="text-gray-300">
-                                      {orderInfo?.title || `工单 ${index + 1}`}
+                                      {orderInfo?.title || `工单 ${order.orderId}`}
                                       {order.retried && (
                                         <span className="ml-2 px-2 py-0.5 bg-orange-500/20 text-orange-300 text-xs rounded">
                                           重判
