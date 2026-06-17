@@ -218,8 +218,8 @@ public class AppDbContext : DbContext
             }
         );
 
-        var tenantId1 = Guid.Parse("tttttttt-tttt-tttt-tttt-tttttttttttt");
-        var tenantId2 = Guid.Parse("uuuuuuuu-uuuu-uuuu-uuuu-uuuuuuuuuuuu");
+        var tenantId1 = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc");
+        var tenantId2 = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd");
 
         modelBuilder.Entity<Tenant>().HasData(
             new Tenant
@@ -256,8 +256,8 @@ public class AppDbContext : DbContext
             }
         );
 
-        var orderId1 = Guid.Parse("oooooooo-oooo-oooo-oooo-oooooooooooo");
-        var orderId2 = Guid.Parse("pppppppp-pppp-pppp-pppp-pppppppppppp");
+        var orderId1 = Guid.Parse("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee");
+        var orderId2 = Guid.Parse("ffffffff-ffff-ffff-ffff-ffffffffffff");
 
         modelBuilder.Entity<MoveOutOrder>().HasData(
             new MoveOutOrder
@@ -291,7 +291,7 @@ public class AppDbContext : DbContext
             }
         );
 
-        var templateId1 = Guid.Parse("iiiiiiii-iiii-iiii-iiii-iiiiiiiiiiii");
+        var templateId1 = Guid.Parse("aaaaaaaa-5555-5555-5555-555555555555");
 
         modelBuilder.Entity<InspectionTemplate>().HasData(
             new InspectionTemplate
@@ -389,9 +389,9 @@ public class AppDbContext : DbContext
             }
         );
 
-        var todoId1 = Guid.Parse("wwwwwwww-wwww-wwww-wwww-wwwwwwwwwwww");
-        var todoId2 = Guid.Parse("xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx");
-        var todoId3 = Guid.Parse("yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy");
+        var todoId1 = Guid.Parse("66666666-6666-6666-6666-666666666666");
+        var todoId2 = Guid.Parse("77777777-7777-7777-7777-777777777777");
+        var todoId3 = Guid.Parse("88888888-8888-8888-8888-888888888888");
 
         modelBuilder.Entity<TodoTask>().HasData(
             new TodoTask

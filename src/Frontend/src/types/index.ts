@@ -246,6 +246,7 @@ export interface TodoQueryDto extends PagedQuery {
   assignedToId?: string | null
   dueDateFrom?: string | null
   dueDateTo?: string | null
+  searchKeyword?: string | null
 }
 
 export interface StaffDto {

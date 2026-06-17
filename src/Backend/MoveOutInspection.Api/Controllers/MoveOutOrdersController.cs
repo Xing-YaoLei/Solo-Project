@@ -30,6 +30,13 @@ public class MoveOutOrdersController : ControllerBase
     public async Task<ActionResult<PagedResult<MoveOutOrderListDto>>> GetOrders(
         [FromQuery] MoveOutOrderQueryDto query)
     {
+        var paged = await QueryOrdersInternalAsync(query);
+        return Ok(paged);
+    }
+
+    private async Task<PagedResult<MoveOutOrderListDto>> QueryOrdersInternalAsync(
+        MoveOutOrderQueryDto query)
+    {
         Expression<Func<MoveOutOrder, bool>>? predicate = null;
         var predicates = new List<Expression<Func<MoveOutOrder, bool>>>();
 
@@ -48,6 +55,13 @@ public class MoveOutOrdersController : ControllerBase
                 o.OrderNumber.Contains(query.SearchKeyword) ||
                 (o.Tenant != null && o.Tenant.Name.Contains(query.SearchKeyword)) ||
                 (o.Apartment != null && o.Apartment.ApartmentNumber.Contains(query.SearchKeyword)));
+
+        if (query.HasOverdueRent.HasValue)
+        {
+            predicates.Add(o => _unitOfWork.RentOverdueRecords
+                .ExistsAsync(r => r.MoveOutOrderId == o.Id && !r.IsResolved)
+                .GetAwaiter().GetResult() == query.HasOverdueRent.Value);
+        }
 
         if (predicates.Any())
         {
@@ -102,13 +116,13 @@ public class MoveOutOrdersController : ControllerBase
             });
         }
 
-        return Ok(new PagedResult<MoveOutOrderListDto>
+        return new PagedResult<MoveOutOrderListDto>
         {
             Items = dtos,
             TotalCount = result.TotalCount,
             PageNumber = result.PageNumber,
             PageSize = result.PageSize
-        });
+        };
     }
 
     [HttpGet("{id}")]
@@ -284,13 +298,11 @@ public class MoveOutOrdersController : ControllerBase
     public async Task<IActionResult> ExportOrders([FromQuery] MoveOutOrderQueryDto query)
     {
         query.PageSize = 10000;
-        var result = await GetOrders(query);
-        var okResult = result.Result as OkObjectResult;
-        var pagedResult = okResult?.Value as PagedResult<MoveOutOrderListDto>;
-        var records = pagedResult?.Items ?? new List<MoveOutOrderListDto>();
+        var pagedResult = await QueryOrdersInternalAsync(query);
+        var records = pagedResult.Items ?? new List<MoveOutOrderListDto>();
 
         using var ms = new MemoryStream();
-        using var writer = new StreamWriter(ms);
+        using var writer = new StreamWriter(ms, System.Text.Encoding.UTF8);
         using var csv = new CsvWriter(writer, new CsvConfiguration(System.Globalization.CultureInfo.InvariantCulture));
 
         csv.WriteField("退租单号");
@@ -330,6 +342,7 @@ public class MoveOutOrdersController : ControllerBase
 
         writer.Flush();
         ms.Position = 0;
-        return File(ms.ToArray(), "text/csv", $"退租单_{DateTime.Now:yyyyMMdd_HHmmss}.csv");
+        var bytes = ms.ToArray();
+        return File(bytes, "text/csv; charset=utf-8", $"退租单_{DateTime.Now:yyyyMMdd_HHmmss}.csv");
     }
 }
