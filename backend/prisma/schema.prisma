@@ -1,0 +1,173 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum OrderSource {
+  PHONE
+  APP
+  WECHAT
+  WALK_IN
+  MAINTENANCE_TEAM
+}
+
+enum OrderStatus {
+  CREATED
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+  PENDING_SUPPLEMENT
+  UNDER_REVIEW
+  CLOSED
+}
+
+enum DelayReason {
+  TRAFFIC
+  MATERIAL_SHORTAGE
+  PREVIOUS_TASK_OVERRUN
+  PERSONNEL_ISSUE
+  WEATHER
+  OTHER
+}
+
+enum ReviewTag {
+  ON_TIME
+  DELAYED
+  HIGH_QUALITY
+  NEEDS_IMPROVEMENT
+  CUSTOMER_COMPLAINT
+  EXCELLENT_SERVICE
+}
+
+model RepairPerson {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String   @unique
+  skill     String
+  status    String   @default("AVAILABLE")
+  orders    RepairOrder[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Material {
+  id        String   @id @default(cuid())
+  name      String
+  sku       String   @unique
+  unit      String
+  price     Decimal  @db.Decimal(10, 2)
+  stock     Int      @default(0)
+  isCommon  Boolean  @default(false)
+  category  String
+  orderMaterials OrderMaterial[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model RepairOrder {
+  id              String        @id @default(cuid())
+  orderNo         String        @unique
+  source          OrderSource
+  apartmentNo     String
+  tenantName      String
+  tenantPhone     String
+  faultType       String
+  faultDesc       String
+  status          OrderStatus   @default(CREATED)
+  priority        Int           @default(1)
+  assignPersonId  String?
+  assignPerson    RepairPerson? @relation(fields: [assignPersonId], references: [id])
+  planStartTime   DateTime?
+  planEndTime     DateTime?
+  actualStartTime DateTime?
+  actualEndTime   DateTime?
+  isOnTime        Boolean?
+  delayRecords    DelayRecord[]
+  routePlans      RoutePlan[]
+  signoffProof    SignoffProof?
+  statusLogs      StatusLog[]
+  materials       OrderMaterial[]
+  reviewTags      ReviewTag[]
+  closeRemark     String?
+  closeTime       DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([status])
+  @@index([assignPersonId])
+  @@index([createdAt])
+}
+
+model OrderMaterial {
+  id         String   @id @default(cuid())
+  orderId    String
+  order      RepairOrder @relation(fields: [orderId], references: [id])
+  materialId String
+  material   Material @relation(fields: [materialId], references: [id])
+  quantity   Int
+  usedAt     DateTime?
+  createdAt  DateTime @default(now())
+
+  @@unique([orderId, materialId])
+}
+
+model DelayRecord {
+  id         String     @id @default(cuid())
+  orderId    String
+  order      RepairOrder @relation(fields: [orderId], references: [id])
+  reason     DelayReason
+  detail     String
+  duration   Int
+  reportedAt DateTime   @default(now())
+  reporterId String
+  createdAt  DateTime   @default(now())
+}
+
+model RoutePlan {
+  id            String      @id @default(cuid())
+  orderId       String
+  order         RepairOrder @relation(fields: [orderId], references: [id])
+  sequence      Int
+  fromLocation  String
+  toLocation    String
+  planDeparture DateTime
+  planArrival   DateTime
+  actualDeparture DateTime?
+  actualArrival DateTime?
+  distanceKm    Float
+  status        String      @default("PLANNED")
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+model SignoffProof {
+  id         String      @id @default(cuid())
+  orderId    String      @unique
+  order      RepairOrder @relation(fields: [orderId], references: [id])
+  signature  String?
+  photoUrls  String[]
+  remark     String?
+  signedBy   String
+  signedAt   DateTime
+  createdAt  DateTime    @default(now())
+}
+
+model StatusLog {
+  id        String      @id @default(cuid())
+  orderId   String
+  order     RepairOrder @relation(fields: [orderId], references: [id])
+  fromStatus OrderStatus
+  toStatus   OrderStatus
+  operatorId String
+  remark     String?
+  createdAt  DateTime   @default(now())
+
+  @@index([orderId])
+}
