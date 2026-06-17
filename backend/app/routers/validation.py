@@ -4,7 +4,7 @@ from typing import Optional, Dict, Any
 from decimal import Decimal
 
 from ..database import get_db
-from ..models import Contract, Bill, ExceptionOrder
+from ..models import Contract, Bill, ExceptionOrder, ExceptionAffectedObject
 from ..schemas import (
     AmountValidationRequest,
     AmountValidationResult,
@@ -16,6 +16,8 @@ router = APIRouter(prefix="/api/validation", tags=["金额校验"])
 
 DEFAULT_THRESHOLD = Decimal("0.05")
 EXCEPTION_THRESHOLD_AMOUNT = Decimal("1000")
+DEFAULT_HANDLER_ID = 2
+DEFAULT_SUPERVISOR_ID = 1
 
 
 @router.post("/amount")
@@ -86,12 +88,16 @@ def validate_and_create_exception(
         )
 
     db_contract = db.query(Contract).filter(Contract.id == request.contract_id).first()
+    db_bill = db.query(Bill).filter(Bill.id == request.bill_id).first() if request.bill_id else None
 
     exception_type = "amount_mismatch"
     title = request.description or f"金额差异异常-{db_contract.contract_no}"
     description = request.description or f"预期金额: {request.expected_amount}, 实际金额: {request.actual_amount}, 差异金额: {validation_data['diff_amount']}"
 
     exception_no = generate_exception_no(db)
+
+    diff_amt = Decimal(str(validation_data["diff_amount"]))
+    priority = "high" if diff_amt > Decimal("10000") else "normal"
 
     db_exception = ExceptionOrder(
         contract_id=request.contract_id,
@@ -102,12 +108,50 @@ def validate_and_create_exception(
         description=description,
         expected_amount=Decimal(str(request.expected_amount)),
         actual_amount=Decimal(str(request.actual_amount)),
-        diff_amount=Decimal(str(validation_data["diff_amount"])),
-        status="pending",
-        priority="high" if validation_data["diff_amount"] > 10000 else "normal",
+        diff_amount=diff_amt,
+        status="open",
+        priority=priority,
+        handler_id=DEFAULT_HANDLER_ID,
+        supervisor_id=DEFAULT_SUPERVISOR_ID,
     )
 
     db.add(db_exception)
+    db.flush()
+
+    affected_objects = []
+
+    affected_objects.append(ExceptionAffectedObject(
+        exception_order_id=db_exception.id,
+        object_type="contract",
+        object_id=db_contract.id,
+        object_name=db_contract.project_name,
+        object_no=db_contract.contract_no,
+        impact_level=priority,
+        impact_description=f"合同金额校验不通过，差异{diff_amt:.2f}元",
+    ))
+
+    if db_bill:
+        affected_objects.append(ExceptionAffectedObject(
+            exception_order_id=db_exception.id,
+            object_type="bill",
+            object_id=db_bill.id,
+            object_name=db_bill.bill_name,
+            object_no=db_bill.bill_no,
+            impact_level=priority,
+            impact_description=f"单据金额与预期不符，差异{diff_amt:.2f}元",
+        ))
+
+    affected_objects.append(ExceptionAffectedObject(
+        exception_order_id=db_exception.id,
+        object_type="customer",
+        object_id=db_contract.id,
+        object_name=db_contract.client_name,
+        object_no=db_contract.client_phone,
+        impact_level="medium",
+        impact_description="客户项目可能受金额差异影响",
+    ))
+
+    db.add_all(affected_objects)
     db.commit()
     db.refresh(db_exception)
 
@@ -117,6 +161,9 @@ def validate_and_create_exception(
             "exception_created": True,
             "exception_id": db_exception.id,
             "exception_no": db_exception.exception_no,
+            "handler_id": db_exception.handler_id,
+            "supervisor_id": db_exception.supervisor_id,
+            "affected_count": len(affected_objects),
             "message": "金额校验失败，已自动生成异常单",
         },
         "已自动生成异常单",
@@ -165,6 +212,8 @@ def validate_bill_amount(
 
     if auto_create_exception and needs_exception:
         exception_no = generate_exception_no(db)
+        db_contract = db.query(Contract).filter(Contract.id == db_bill.contract_id).first()
+        priority = "high" if float(diff_amount) > 10000 else "normal"
 
         db_exception = ExceptionOrder(
             contract_id=db_bill.contract_id,
@@ -176,17 +225,57 @@ def validate_bill_amount(
             expected_amount=bill_total,
             actual_amount=items_total,
             diff_amount=diff_amount,
-            status="pending",
-            priority="high" if float(diff_amount) > 10000 else "normal",
+            status="open",
+            priority=priority,
+            handler_id=DEFAULT_HANDLER_ID,
+            supervisor_id=DEFAULT_SUPERVISOR_ID,
         )
 
         db.add(db_exception)
+        db.flush()
+
+        affected_objects = []
+        if db_contract:
+            affected_objects.append(ExceptionAffectedObject(
+                exception_order_id=db_exception.id,
+                object_type="contract",
+                object_id=db_contract.id,
+                object_name=db_contract.project_name,
+                object_no=db_contract.contract_no,
+                impact_level=priority,
+                impact_description=f"关联单据金额校验不通过",
+            ))
+
+        affected_objects.append(ExceptionAffectedObject(
+            exception_order_id=db_exception.id,
+            object_type="bill",
+            object_id=db_bill.id,
+            object_name=db_bill.bill_name,
+            object_no=db_bill.bill_no,
+            impact_level=priority,
+            impact_description=f"单据明细与总金额不一致，差异{diff_amount:.2f}元",
+        ))
+
+        affected_objects.append(ExceptionAffectedObject(
+            exception_order_id=db_exception.id,
+            object_type="financial",
+            object_id=0,
+            object_name="财务对账",
+            object_no="FIN-001",
+            impact_level="high",
+            impact_description="财务对账金额不一致，影响回款周期",
+        ))
+
+        db.add_all(affected_objects)
         db.commit()
         db.refresh(db_exception)
 
         result["exception_created"] = True
         result["exception_id"] = db_exception.id
         result["exception_no"] = db_exception.exception_no
+        result["handler_id"] = db_exception.handler_id
+        result["supervisor_id"] = db_exception.supervisor_id
+        result["affected_count"] = len(affected_objects)
         result["message"] += "，已自动生成异常单"
 
     return success_response(result, "单据金额校验完成")
@@ -265,6 +354,8 @@ def get_validation_threshold():
         {
             "diff_percentage_threshold": float(DEFAULT_THRESHOLD) * 100,
             "exception_amount_threshold": float(EXCEPTION_THRESHOLD_AMOUNT),
+            "default_handler_id": DEFAULT_HANDLER_ID,
+            "default_supervisor_id": DEFAULT_SUPERVISOR_ID,
             "description": "当差异率超过阈值且差异金额超过异常阈值时，需要生成异常单",
         },
         "获取校验阈值成功",
