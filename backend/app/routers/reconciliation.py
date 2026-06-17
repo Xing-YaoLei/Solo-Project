@@ -14,11 +14,12 @@ from ..schemas import (
     PaginationParams,
 )
 from ..utils.timeline import create_timeline
+from ..utils.response import success_response
 
 router = APIRouter(prefix="/api/reconciliation", tags=["对账差异管理"])
 
 
-@router.post("", response_model=ReconciliationDiffResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", status_code=status.HTTP_201_CREATED)
 def create_reconciliation_diff(diff: ReconciliationDiffCreate, db: Session = Depends(get_db)):
     db_contract = db.query(Contract).filter(Contract.id == diff.contract_id).first()
     if not db_contract:
@@ -50,10 +51,10 @@ def create_reconciliation_diff(diff: ReconciliationDiffCreate, db: Session = Dep
         remark="创建对账差异记录",
     )
 
-    return db_diff
+    return success_response(db_diff, "创建对账差异记录成功")
 
 
-@router.get("", response_model=PaginatedResponse[ReconciliationDiffResponse])
+@router.get("")
 def get_reconciliation_diffs(
     pagination: PaginationParams = Depends(),
     contract_id: Optional[int] = None,
@@ -97,24 +98,27 @@ def get_reconciliation_diffs(
 
     total_pages = (total + pagination.page_size - 1) // pagination.page_size
 
-    return PaginatedResponse(
-        items=items,
-        total=total,
-        page=pagination.page,
-        page_size=pagination.page_size,
-        total_pages=total_pages,
+    return success_response(
+        PaginatedResponse(
+            items=items,
+            total=total,
+            page=pagination.page,
+            page_size=pagination.page_size,
+            total_pages=total_pages,
+        ),
+        "获取对账差异列表成功",
     )
 
 
-@router.get("/{diff_id}", response_model=ReconciliationDiffResponse)
+@router.get("/{diff_id}")
 def get_reconciliation_diff(diff_id: int, db: Session = Depends(get_db)):
     diff = db.query(ReconciliationDiff).filter(ReconciliationDiff.id == diff_id).first()
     if not diff:
         raise HTTPException(status_code=404, detail="对账差异记录不存在")
-    return diff
+    return success_response(diff, "获取对账差异详情成功")
 
 
-@router.put("/{diff_id}", response_model=ReconciliationDiffResponse)
+@router.put("/{diff_id}")
 def update_reconciliation_diff(
     diff_id: int,
     diff_update: ReconciliationDiffUpdate,
@@ -158,7 +162,7 @@ def update_reconciliation_diff(
             remark="更新对账差异记录",
         )
 
-    return db_diff
+    return success_response(db_diff, "更新对账差异记录成功")
 
 
 @router.delete("/{diff_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -173,7 +177,7 @@ def delete_reconciliation_diff(diff_id: int, db: Session = Depends(get_db)):
     return None
 
 
-@router.post("/{diff_id}/handle", response_model=ReconciliationDiffResponse)
+@router.post("/{diff_id}/handle")
 def handle_reconciliation_diff(
     diff_id: int,
     diff_update: ReconciliationDiffUpdate,
@@ -209,10 +213,10 @@ def handle_reconciliation_diff(
         remark=f"处理对账差异: {previous_status} -> {db_diff.status}",
     )
 
-    return db_diff
+    return success_response(db_diff, "处理对账差异成功")
 
 
-@router.get("/contract/{contract_id}", response_model=List[ReconciliationDiffResponse])
+@router.get("/contract/{contract_id}")
 def get_contract_reconciliation_diffs(
     contract_id: int,
     status: Optional[str] = None,
@@ -226,4 +230,7 @@ def get_contract_reconciliation_diffs(
     if status:
         query = query.filter(ReconciliationDiff.status == status)
 
-    return query.order_by(ReconciliationDiff.created_at.desc()).all()
+    return success_response(
+        query.order_by(ReconciliationDiff.created_at.desc()).all(),
+        "获取合同对账差异列表成功",
+    )

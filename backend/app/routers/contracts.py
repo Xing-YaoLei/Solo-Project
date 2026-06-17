@@ -19,6 +19,7 @@ from ..schemas import (
 )
 from ..config import settings
 from ..utils.timeline import create_timeline
+from ..utils.response import success_response
 
 router = APIRouter(prefix="/api/contracts", tags=["合同管理"])
 
@@ -29,7 +30,7 @@ def ensure_upload_dir():
     return upload_dir
 
 
-@router.post("", response_model=ContractResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", status_code=status.HTTP_201_CREATED)
 def create_contract(contract: ContractCreate, db: Session = Depends(get_db)):
     existing = db.query(Contract).filter(Contract.contract_no == contract.contract_no).first()
     if existing:
@@ -48,10 +49,10 @@ def create_contract(contract: ContractCreate, db: Session = Depends(get_db)):
         remark="创建合同",
     )
 
-    return db_contract
+    return success_response(db_contract, "创建合同成功")
 
 
-@router.get("", response_model=PaginatedResponse[ContractResponse])
+@router.get("")
 def get_contracts(
     pagination: PaginationParams = Depends(),
     client_name: Optional[str] = None,
@@ -92,7 +93,7 @@ def get_contracts(
 
     total_pages = (total + pagination.page_size - 1) // pagination.page_size
 
-    return PaginatedResponse(
+    result = PaginatedResponse(
         items=items,
         total=total,
         page=pagination.page,
@@ -100,8 +101,10 @@ def get_contracts(
         total_pages=total_pages,
     )
 
+    return success_response(result, "获取合同列表成功")
 
-@router.get("/{contract_id}", response_model=ContractResponse)
+
+@router.get("/{contract_id}")
 def get_contract(contract_id: int, db: Session = Depends(get_db)):
     contract = (
         db.query(Contract)
@@ -110,10 +113,10 @@ def get_contract(contract_id: int, db: Session = Depends(get_db)):
     )
     if not contract:
         raise HTTPException(status_code=404, detail="合同不存在")
-    return contract
+    return success_response(contract, "获取合同详情成功")
 
 
-@router.put("/{contract_id}", response_model=ContractResponse)
+@router.put("/{contract_id}")
 def update_contract(
     contract_id: int,
     contract_update: ContractUpdate,
@@ -150,7 +153,7 @@ def update_contract(
             remark="更新合同信息",
         )
 
-    return db_contract
+    return success_response(db_contract, "更新合同成功")
 
 
 @router.delete("/{contract_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -165,7 +168,7 @@ def delete_contract(contract_id: int, db: Session = Depends(get_db)):
     return None
 
 
-@router.post("/{contract_id}/attachments", response_model=ContractAttachmentResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/{contract_id}/attachments", status_code=status.HTTP_201_CREATED)
 async def upload_attachment(
     contract_id: int,
     file: UploadFile = File(...),
@@ -213,10 +216,10 @@ async def upload_attachment(
         remark=f"上传附件: {file.filename}",
     )
 
-    return db_attachment
+    return success_response(db_attachment, "上传附件成功")
 
 
-@router.get("/{contract_id}/attachments", response_model=List[ContractAttachmentResponse])
+@router.get("/{contract_id}/attachments")
 def get_contract_attachments(
     contract_id: int,
     category: Optional[str] = None,
@@ -230,7 +233,8 @@ def get_contract_attachments(
     if category:
         query = query.filter(ContractAttachment.category == category)
 
-    return query.order_by(ContractAttachment.created_at.desc()).all()
+    result = query.order_by(ContractAttachment.created_at.desc()).all()
+    return success_response(result, "获取附件列表成功")
 
 
 @router.get("/{contract_id}/attachments/{attachment_id}/download")

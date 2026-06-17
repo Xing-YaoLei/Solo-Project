@@ -66,13 +66,17 @@ export const request = {
   delete: <T = any>(url: string, config?: AxiosRequestConfig): Promise<T> => {
     return axiosInstance.delete<BaseResponse<T>>(url, config).then((res) => res.data.data)
   },
-  download: (url: string, config?: AxiosRequestConfig): Promise<Blob> => {
-    return axiosInstance
-      .get(url, {
-        ...config,
-        responseType: 'blob',
-      })
-      .then((res) => res.data as unknown as Blob)
+  download: (url: string, config?: AxiosRequestConfig, method: 'GET' | 'POST' = 'GET', data?: any): Promise<Blob> => {
+    const requestConfig: AxiosRequestConfig = {
+      ...config,
+      url,
+      method,
+      responseType: 'blob',
+    }
+    if (data !== undefined && method === 'POST') {
+      requestConfig.data = data
+    }
+    return axiosInstance(requestConfig).then((res) => res.data as unknown as Blob)
   },
   upload: <T = any>(url: string, formData: FormData, config?: AxiosRequestConfig): Promise<T> => {
     return axiosInstance

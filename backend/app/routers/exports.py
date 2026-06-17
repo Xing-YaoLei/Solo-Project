@@ -25,6 +25,7 @@ from ..schemas import (
 )
 from ..config import settings
 from ..utils.export_utils import create_excel_export, generate_export_caliber
+from ..utils.response import success_response
 
 router = APIRouter(prefix="/api/exports", tags=["导出管理"])
 
@@ -296,7 +297,7 @@ def export_data(
     )
 
 
-@router.get("/records", response_model=PaginatedResponse[ExportRecordResponse])
+@router.get("/records")
 def get_export_records(
     pagination: PaginationParams = Depends(),
     export_type: Optional[str] = None,
@@ -331,12 +332,15 @@ def get_export_records(
 
     total_pages = (total + pagination.page_size - 1) // pagination.page_size
 
-    return PaginatedResponse(
-        items=items,
-        total=total,
-        page=pagination.page,
-        page_size=pagination.page_size,
-        total_pages=total_pages,
+    return success_response(
+        PaginatedResponse(
+            items=items,
+            total=total,
+            page=pagination.page,
+            page_size=pagination.page_size,
+            total_pages=total_pages,
+        ),
+        "获取导出记录列表成功",
     )
 
 
@@ -361,12 +365,12 @@ def download_export_record(
     )
 
 
-@router.get("/records/{record_id}", response_model=ExportRecordResponse)
+@router.get("/records/{record_id}")
 def get_export_record(record_id: int, db: Session = Depends(get_db)):
     record = db.query(ExportRecord).filter(ExportRecord.id == record_id).first()
     if not record:
         raise HTTPException(status_code=404, detail="导出记录不存在")
-    return record
+    return success_response(record, "获取导出记录详情成功")
 
 
 @router.delete("/records/{record_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -386,12 +390,15 @@ def delete_export_record(record_id: int, db: Session = Depends(get_db)):
 
 @router.get("/types")
 def get_export_types():
-    return {
-        "types": list(DATA_FETCHERS.keys()),
-        "descriptions": {
-            "contracts": "导出合同数据",
-            "bills": "导出单据数据",
-            "reconciliation": "导出对账差异数据",
-            "exceptions": "导出异常单数据",
+    return success_response(
+        {
+            "types": list(DATA_FETCHERS.keys()),
+            "descriptions": {
+                "contracts": "导出合同数据",
+                "bills": "导出单据数据",
+                "reconciliation": "导出对账差异数据",
+                "exceptions": "导出异常单数据",
+            },
         },
-    }
+        "获取导出类型成功",
+    )

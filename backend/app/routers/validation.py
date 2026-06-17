@@ -10,6 +10,7 @@ from ..schemas import (
     AmountValidationResult,
 )
 from ..utils.no_generator import generate_exception_no
+from ..utils.response import success_response
 
 router = APIRouter(prefix="/api/validation", tags=["金额校验"])
 
@@ -17,7 +18,7 @@ DEFAULT_THRESHOLD = Decimal("0.05")
 EXCEPTION_THRESHOLD_AMOUNT = Decimal("1000")
 
 
-@router.post("/amount", response_model=AmountValidationResult)
+@router.post("/amount")
 def validate_amount(
     request: AmountValidationRequest,
     db: Session = Depends(get_db),
@@ -53,13 +54,16 @@ def validate_amount(
         if needs_exception:
             message += "，需要生成异常单"
 
-    return AmountValidationResult(
-        is_valid=is_valid,
-        diff_amount=float(diff_amount),
-        diff_percentage=diff_percentage,
-        threshold=float(DEFAULT_THRESHOLD) * 100,
-        needs_exception=needs_exception,
-        message=message,
+    return success_response(
+        AmountValidationResult(
+            is_valid=is_valid,
+            diff_amount=float(diff_amount),
+            diff_percentage=diff_percentage,
+            threshold=float(DEFAULT_THRESHOLD) * 100,
+            needs_exception=needs_exception,
+            message=message,
+        ),
+        "金额校验完成",
     )
 
 
@@ -69,19 +73,23 @@ def validate_and_create_exception(
     db: Session = Depends(get_db),
 ):
     result = validate_amount(request, db)
+    validation_data = result["data"]
 
-    if not result.needs_exception:
-        return {
-            "validation_result": result,
-            "exception_created": False,
-            "message": "差异未达到异常单生成条件",
-        }
+    if not validation_data["needs_exception"]:
+        return success_response(
+            {
+                "validation_result": validation_data,
+                "exception_created": False,
+                "message": "差异未达到异常单生成条件",
+            },
+            "校验完成，未生成异常单",
+        )
 
     db_contract = db.query(Contract).filter(Contract.id == request.contract_id).first()
 
     exception_type = "amount_mismatch"
     title = request.description or f"金额差异异常-{db_contract.contract_no}"
-    description = request.description or f"预期金额: {request.expected_amount}, 实际金额: {request.actual_amount}, 差异金额: {result.diff_amount}"
+    description = request.description or f"预期金额: {request.expected_amount}, 实际金额: {request.actual_amount}, 差异金额: {validation_data['diff_amount']}"
 
     exception_no = generate_exception_no(db)
 
@@ -94,25 +102,28 @@ def validate_and_create_exception(
         description=description,
         expected_amount=Decimal(str(request.expected_amount)),
         actual_amount=Decimal(str(request.actual_amount)),
-        diff_amount=Decimal(str(result.diff_amount)),
+        diff_amount=Decimal(str(validation_data["diff_amount"])),
         status="pending",
-        priority="high" if result.diff_amount > 10000 else "normal",
+        priority="high" if validation_data["diff_amount"] > 10000 else "normal",
     )
 
     db.add(db_exception)
     db.commit()
     db.refresh(db_exception)
 
-    return {
-        "validation_result": result,
-        "exception_created": True,
-        "exception_id": db_exception.id,
-        "exception_no": db_exception.exception_no,
-        "message": "金额校验失败，已自动生成异常单",
-    }
+    return success_response(
+        {
+            "validation_result": validation_data,
+            "exception_created": True,
+            "exception_id": db_exception.id,
+            "exception_no": db_exception.exception_no,
+            "message": "金额校验失败，已自动生成异常单",
+        },
+        "已自动生成异常单",
+    )
 
 
-@router.post("/bill/{bill_id}", response_model=Dict[str, Any])
+@router.post("/bill/{bill_id}")
 def validate_bill_amount(
     bill_id: int,
     auto_create_exception: bool = False,
@@ -178,10 +189,10 @@ def validate_bill_amount(
         result["exception_no"] = db_exception.exception_no
         result["message"] += "，已自动生成异常单"
 
-    return result
+    return success_response(result, "单据金额校验完成")
 
 
-@router.post("/contract/{contract_id}/bills", response_model=Dict[str, Any])
+@router.post("/contract/{contract_id}/bills")
 def validate_contract_bills(
     contract_id: int,
     db: Session = Depends(get_db),
@@ -231,24 +242,30 @@ def validate_contract_bills(
     else:
         overall_diff_percentage = float((overall_diff / total_bill_amount) * 100)
 
-    return {
-        "contract_id": contract_id,
-        "contract_no": db_contract.contract_no,
-        "total_bills": len(bills),
-        "invalid_bills": invalid_count,
-        "total_bill_amount": float(total_bill_amount),
-        "total_item_amount": float(total_item_amount),
-        "overall_diff_amount": float(overall_diff),
-        "overall_diff_percentage": overall_diff_percentage,
-        "all_valid": invalid_count == 0,
-        "bill_results": results,
-    }
+    return success_response(
+        {
+            "contract_id": contract_id,
+            "contract_no": db_contract.contract_no,
+            "total_bills": len(bills),
+            "invalid_bills": invalid_count,
+            "total_bill_amount": float(total_bill_amount),
+            "total_item_amount": float(total_item_amount),
+            "overall_diff_amount": float(overall_diff),
+            "overall_diff_percentage": overall_diff_percentage,
+            "all_valid": invalid_count == 0,
+            "bill_results": results,
+        },
+        "合同下所有单据金额校验完成",
+    )
 
 
 @router.get("/threshold")
 def get_validation_threshold():
-    return {
-        "diff_percentage_threshold": float(DEFAULT_THRESHOLD) * 100,
-        "exception_amount_threshold": float(EXCEPTION_THRESHOLD_AMOUNT),
-        "description": "当差异率超过阈值且差异金额超过异常阈值时，需要生成异常单",
-    }
+    return success_response(
+        {
+            "diff_percentage_threshold": float(DEFAULT_THRESHOLD) * 100,
+            "exception_amount_threshold": float(EXCEPTION_THRESHOLD_AMOUNT),
+            "description": "当差异率超过阈值且差异金额超过异常阈值时，需要生成异常单",
+        },
+        "获取校验阈值成功",
+    )

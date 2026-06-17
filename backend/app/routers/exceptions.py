@@ -18,11 +18,12 @@ from ..schemas import (
     PaginationParams,
 )
 from ..utils.timeline import create_timeline
+from ..utils.response import success_response
 
 router = APIRouter(prefix="/api/exceptions", tags=["异常单管理"])
 
 
-@router.post("", response_model=ExceptionOrderResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", status_code=status.HTTP_201_CREATED)
 def create_exception_order(exception: ExceptionOrderCreate, db: Session = Depends(get_db)):
     if exception.contract_id:
         db_contract = db.query(Contract).filter(Contract.id == exception.contract_id).first()
@@ -71,10 +72,10 @@ def create_exception_order(exception: ExceptionOrderCreate, db: Session = Depend
         remark="创建异常单",
     )
 
-    return db_exception
+    return success_response(db_exception, "创建异常单成功")
 
 
-@router.get("", response_model=PaginatedResponse[ExceptionOrderResponse])
+@router.get("")
 def get_exception_orders(
     pagination: PaginationParams = Depends(),
     contract_id: Optional[int] = None,
@@ -127,24 +128,27 @@ def get_exception_orders(
 
     total_pages = (total + pagination.page_size - 1) // pagination.page_size
 
-    return PaginatedResponse(
-        items=items,
-        total=total,
-        page=pagination.page,
-        page_size=pagination.page_size,
-        total_pages=total_pages,
+    return success_response(
+        PaginatedResponse(
+            items=items,
+            total=total,
+            page=pagination.page,
+            page_size=pagination.page_size,
+            total_pages=total_pages,
+        ),
+        "获取异常单列表成功",
     )
 
 
-@router.get("/{exception_id}", response_model=ExceptionOrderResponse)
+@router.get("/{exception_id}")
 def get_exception_order(exception_id: int, db: Session = Depends(get_db)):
     exception = db.query(ExceptionOrder).filter(ExceptionOrder.id == exception_id).first()
     if not exception:
         raise HTTPException(status_code=404, detail="异常单不存在")
-    return exception
+    return success_response(exception, "获取异常单详情成功")
 
 
-@router.put("/{exception_id}", response_model=ExceptionOrderResponse)
+@router.put("/{exception_id}")
 def update_exception_order(
     exception_id: int,
     exception_update: ExceptionOrderUpdate,
@@ -190,7 +194,7 @@ def update_exception_order(
             remark="更新异常单信息",
         )
 
-    return db_exception
+    return success_response(db_exception, "更新异常单成功")
 
 
 @router.delete("/{exception_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -205,16 +209,16 @@ def delete_exception_order(exception_id: int, db: Session = Depends(get_db)):
     return None
 
 
-@router.get("/{exception_id}/affected-objects", response_model=List[ExceptionAffectedObjectResponse])
+@router.get("/{exception_id}/affected-objects")
 def get_affected_objects(exception_id: int, db: Session = Depends(get_db)):
     db_exception = db.query(ExceptionOrder).filter(ExceptionOrder.id == exception_id).first()
     if not db_exception:
         raise HTTPException(status_code=404, detail="异常单不存在")
 
-    return db_exception.affected_objects
+    return success_response(db_exception.affected_objects, "获取影响对象列表成功")
 
 
-@router.post("/{exception_id}/affected-objects", response_model=ExceptionAffectedObjectResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/{exception_id}/affected-objects", status_code=status.HTTP_201_CREATED)
 def add_affected_object(
     exception_id: int,
     affected_object: ExceptionAffectedObjectCreate,
@@ -241,10 +245,10 @@ def add_affected_object(
         remark=f"添加影响对象: {affected_object.object_name}",
     )
 
-    return db_obj
+    return success_response(db_obj, "添加影响对象成功")
 
 
-@router.put("/{exception_id}/affected-objects/{obj_id}", response_model=ExceptionAffectedObjectResponse)
+@router.put("/{exception_id}/affected-objects/{obj_id}")
 def update_affected_object(
     exception_id: int,
     obj_id: int,
@@ -271,7 +275,7 @@ def update_affected_object(
     db.commit()
     db.refresh(db_obj)
 
-    return db_obj
+    return success_response(db_obj, "更新影响对象成功")
 
 
 @router.delete("/{exception_id}/affected-objects/{obj_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -299,7 +303,7 @@ def delete_affected_object(
     return None
 
 
-@router.post("/{exception_id}/close", response_model=ExceptionOrderResponse)
+@router.post("/{exception_id}/close")
 def close_exception_order(
     exception_id: int,
     final_conclusion: str = Query(...),
@@ -332,4 +336,4 @@ def close_exception_order(
         remark=f"关闭异常单: {final_conclusion}",
     )
 
-    return db_exception
+    return success_response(db_exception, "关闭异常单成功")

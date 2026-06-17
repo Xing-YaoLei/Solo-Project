@@ -10,11 +10,12 @@ from ..schemas import (
     PaginatedResponse,
     PaginationParams,
 )
+from ..utils.response import success_response
 
 router = APIRouter(prefix="/api/timelines", tags=["状态时间线"])
 
 
-@router.get("", response_model=PaginatedResponse[StatusTimelineResponse])
+@router.get("")
 def get_timelines(
     pagination: PaginationParams = Depends(),
     contract_id: Optional[int] = None,
@@ -64,16 +65,19 @@ def get_timelines(
 
     total_pages = (total + pagination.page_size - 1) // pagination.page_size
 
-    return PaginatedResponse(
-        items=items,
-        total=total,
-        page=pagination.page,
-        page_size=pagination.page_size,
-        total_pages=total_pages,
+    return success_response(
+        PaginatedResponse(
+            items=items,
+            total=total,
+            page=pagination.page,
+            page_size=pagination.page_size,
+            total_pages=total_pages,
+        ),
+        "获取时间线列表成功",
     )
 
 
-@router.get("/contract/{contract_id}", response_model=List[StatusTimelineResponse])
+@router.get("/contract/{contract_id}")
 def get_contract_timelines(
     contract_id: int,
     operation_type: Optional[str] = None,
@@ -87,10 +91,13 @@ def get_contract_timelines(
     if operation_type:
         query = query.filter(StatusTimeline.operation_type == operation_type)
 
-    return query.order_by(StatusTimeline.created_at.desc()).all()
+    return success_response(
+        query.order_by(StatusTimeline.created_at.desc()).all(),
+        "获取合同时间线列表成功",
+    )
 
 
-@router.get("/bill/{bill_id}", response_model=List[StatusTimelineResponse])
+@router.get("/bill/{bill_id}")
 def get_bill_timelines(
     bill_id: int,
     operation_type: Optional[str] = None,
@@ -104,10 +111,13 @@ def get_bill_timelines(
     if operation_type:
         query = query.filter(StatusTimeline.operation_type == operation_type)
 
-    return query.order_by(StatusTimeline.created_at.desc()).all()
+    return success_response(
+        query.order_by(StatusTimeline.created_at.desc()).all(),
+        "获取单据时间线列表成功",
+    )
 
 
-@router.get("/reconciliation/{diff_id}", response_model=List[StatusTimelineResponse])
+@router.get("/reconciliation/{diff_id}")
 def get_reconciliation_timelines(
     diff_id: int,
     operation_type: Optional[str] = None,
@@ -121,10 +131,13 @@ def get_reconciliation_timelines(
     if operation_type:
         query = query.filter(StatusTimeline.operation_type == operation_type)
 
-    return query.order_by(StatusTimeline.created_at.desc()).all()
+    return success_response(
+        query.order_by(StatusTimeline.created_at.desc()).all(),
+        "获取对账差异时间线列表成功",
+    )
 
 
-@router.get("/exception/{exception_id}", response_model=List[StatusTimelineResponse])
+@router.get("/exception/{exception_id}")
 def get_exception_timelines(
     exception_id: int,
     operation_type: Optional[str] = None,
@@ -138,12 +151,15 @@ def get_exception_timelines(
     if operation_type:
         query = query.filter(StatusTimeline.operation_type == operation_type)
 
-    return query.order_by(StatusTimeline.created_at.desc()).all()
+    return success_response(
+        query.order_by(StatusTimeline.created_at.desc()).all(),
+        "获取异常单时间线列表成功",
+    )
 
 
-@router.get("/{timeline_id}", response_model=StatusTimelineResponse)
+@router.get("/{timeline_id}")
 def get_timeline(timeline_id: int, db: Session = Depends(get_db)):
     timeline = db.query(StatusTimeline).filter(StatusTimeline.id == timeline_id).first()
     if not timeline:
         raise HTTPException(status_code=404, detail="时间线记录不存在")
-    return timeline
+    return success_response(timeline, "获取时间线详情成功")

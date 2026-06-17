@@ -18,6 +18,7 @@ from ..schemas import (
     PaginationParams,
 )
 from ..utils.timeline import create_timeline
+from ..utils.response import success_response
 
 router = APIRouter(prefix="/api/bills", tags=["单据管理"])
 
@@ -34,7 +35,7 @@ def validate_bill_amount(bill: Bill) -> dict:
     }
 
 
-@router.post("", response_model=BillResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", status_code=status.HTTP_201_CREATED)
 def create_bill(bill: BillCreate, db: Session = Depends(get_db)):
     db_contract = db.query(Contract).filter(Contract.id == bill.contract_id).first()
     if not db_contract:
@@ -73,10 +74,10 @@ def create_bill(bill: BillCreate, db: Session = Depends(get_db)):
         remark="创建单据",
     )
 
-    return db_bill
+    return success_response(db_bill, "创建单据成功")
 
 
-@router.get("", response_model=PaginatedResponse[BillResponse])
+@router.get("")
 def get_bills(
     pagination: PaginationParams = Depends(),
     contract_id: Optional[int] = None,
@@ -116,24 +117,27 @@ def get_bills(
 
     total_pages = (total + pagination.page_size - 1) // pagination.page_size
 
-    return PaginatedResponse(
-        items=items,
-        total=total,
-        page=pagination.page,
-        page_size=pagination.page_size,
-        total_pages=total_pages,
+    return success_response(
+        PaginatedResponse(
+            items=items,
+            total=total,
+            page=pagination.page,
+            page_size=pagination.page_size,
+            total_pages=total_pages,
+        ),
+        "获取单据列表成功",
     )
 
 
-@router.get("/{bill_id}", response_model=BillResponse)
+@router.get("/{bill_id}")
 def get_bill(bill_id: int, db: Session = Depends(get_db)):
     bill = db.query(Bill).filter(Bill.id == bill_id).first()
     if not bill:
         raise HTTPException(status_code=404, detail="单据不存在")
-    return bill
+    return success_response(bill, "获取单据详情成功")
 
 
-@router.put("/{bill_id}", response_model=BillResponse)
+@router.put("/{bill_id}")
 def update_bill(
     bill_id: int,
     bill_update: BillUpdate,
@@ -182,7 +186,7 @@ def update_bill(
             remark="更新单据信息",
         )
 
-    return db_bill
+    return success_response(db_bill, "更新单据成功")
 
 
 @router.delete("/{bill_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -197,16 +201,16 @@ def delete_bill(bill_id: int, db: Session = Depends(get_db)):
     return None
 
 
-@router.get("/{bill_id}/items", response_model=List[BillItemResponse])
+@router.get("/{bill_id}/items")
 def get_bill_items(bill_id: int, db: Session = Depends(get_db)):
     db_bill = db.query(Bill).filter(Bill.id == bill_id).first()
     if not db_bill:
         raise HTTPException(status_code=404, detail="单据不存在")
 
-    return db_bill.items
+    return success_response(db_bill.items, "获取单据明细列表成功")
 
 
-@router.post("/{bill_id}/items", response_model=BillItemResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/{bill_id}/items", status_code=status.HTTP_201_CREATED)
 def create_bill_item(
     bill_id: int,
     item: BillItemCreate,
@@ -239,10 +243,10 @@ def create_bill_item(
         remark=f"添加明细: {item.item_name}",
     )
 
-    return db_item
+    return success_response(db_item, "创建单据明细成功")
 
 
-@router.put("/{bill_id}/items/{item_id}", response_model=BillItemResponse)
+@router.put("/{bill_id}/items/{item_id}")
 def update_bill_item(
     bill_id: int,
     item_id: int,
@@ -281,7 +285,7 @@ def update_bill_item(
         remark=f"更新明细: {db_item.item_name}",
     )
 
-    return db_item
+    return success_response(db_item, "更新单据明细成功")
 
 
 @router.delete("/{bill_id}/items/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -329,4 +333,4 @@ def validate_bill(bill_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="单据不存在")
 
     validation = validate_bill_amount(db_bill)
-    return validation
+    return success_response(validation, "单据金额校验成功")

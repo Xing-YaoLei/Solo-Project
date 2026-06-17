@@ -17,11 +17,12 @@ from ..schemas import (
     PaginationParams,
 )
 from ..utils.timeline import create_timeline
+from ..utils.response import success_response
 
 router = APIRouter(prefix="/api/approval", tags=["审批管理"])
 
 
-@router.post("/nodes", response_model=ApprovalNodeResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/nodes", status_code=status.HTTP_201_CREATED)
 def create_approval_node(node: ApprovalNodeCreate, db: Session = Depends(get_db)):
     existing = db.query(ApprovalNode).filter(ApprovalNode.node_code == node.node_code).first()
     if existing:
@@ -32,10 +33,10 @@ def create_approval_node(node: ApprovalNodeCreate, db: Session = Depends(get_db)
     db.commit()
     db.refresh(db_node)
 
-    return db_node
+    return success_response(db_node, "创建审批节点成功")
 
 
-@router.get("/nodes", response_model=PaginatedResponse[ApprovalNodeResponse])
+@router.get("/nodes")
 def get_approval_nodes(
     pagination: PaginationParams = Depends(),
     is_active: Optional[int] = None,
@@ -66,24 +67,27 @@ def get_approval_nodes(
 
     total_pages = (total + pagination.page_size - 1) // pagination.page_size
 
-    return PaginatedResponse(
-        items=items,
-        total=total,
-        page=pagination.page,
-        page_size=pagination.page_size,
-        total_pages=total_pages,
+    return success_response(
+        PaginatedResponse(
+            items=items,
+            total=total,
+            page=pagination.page,
+            page_size=pagination.page_size,
+            total_pages=total_pages,
+        ),
+        "获取审批节点列表成功",
     )
 
 
-@router.get("/nodes/{node_id}", response_model=ApprovalNodeResponse)
+@router.get("/nodes/{node_id}")
 def get_approval_node(node_id: int, db: Session = Depends(get_db)):
     node = db.query(ApprovalNode).filter(ApprovalNode.id == node_id).first()
     if not node:
         raise HTTPException(status_code=404, detail="审批节点不存在")
-    return node
+    return success_response(node, "获取审批节点详情成功")
 
 
-@router.put("/nodes/{node_id}", response_model=ApprovalNodeResponse)
+@router.put("/nodes/{node_id}")
 def update_approval_node(
     node_id: int,
     node_update: ApprovalNodeUpdate,
@@ -100,7 +104,7 @@ def update_approval_node(
     db.commit()
     db.refresh(db_node)
 
-    return db_node
+    return success_response(db_node, "更新审批节点成功")
 
 
 @router.delete("/nodes/{node_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -119,7 +123,7 @@ def delete_approval_node(node_id: int, db: Session = Depends(get_db)):
     return None
 
 
-@router.post("/records", response_model=ApprovalRecordResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/records", status_code=status.HTTP_201_CREATED)
 def create_approval_record(record: ApprovalRecordCreate, db: Session = Depends(get_db)):
     db_bill = db.query(Bill).filter(Bill.id == record.bill_id).first()
     if not db_bill:
@@ -143,10 +147,10 @@ def create_approval_record(record: ApprovalRecordCreate, db: Session = Depends(g
         remark=f"提交审批到节点: {db_node.node_name}",
     )
 
-    return db_record
+    return success_response(db_record, "创建审批记录成功")
 
 
-@router.get("/records", response_model=PaginatedResponse[ApprovalRecordResponse])
+@router.get("/records")
 def get_approval_records(
     pagination: PaginationParams = Depends(),
     bill_id: Optional[int] = None,
@@ -182,24 +186,27 @@ def get_approval_records(
 
     total_pages = (total + pagination.page_size - 1) // pagination.page_size
 
-    return PaginatedResponse(
-        items=items,
-        total=total,
-        page=pagination.page,
-        page_size=pagination.page_size,
-        total_pages=total_pages,
+    return success_response(
+        PaginatedResponse(
+            items=items,
+            total=total,
+            page=pagination.page,
+            page_size=pagination.page_size,
+            total_pages=total_pages,
+        ),
+        "获取审批记录列表成功",
     )
 
 
-@router.get("/records/{record_id}", response_model=ApprovalRecordResponse)
+@router.get("/records/{record_id}")
 def get_approval_record(record_id: int, db: Session = Depends(get_db)):
     record = db.query(ApprovalRecord).filter(ApprovalRecord.id == record_id).first()
     if not record:
         raise HTTPException(status_code=404, detail="审批记录不存在")
-    return record
+    return success_response(record, "获取审批记录详情成功")
 
 
-@router.put("/records/{record_id}", response_model=ApprovalRecordResponse)
+@router.put("/records/{record_id}")
 def update_approval_record(
     record_id: int,
     record_update: ApprovalRecordUpdate,
@@ -236,10 +243,10 @@ def update_approval_record(
             remark=f"审批节点 {db_node.node_name}: {update_data['approval_status']}",
         )
 
-    return db_record
+    return success_response(db_record, "更新审批记录成功")
 
 
-@router.post("/records/{record_id}/approve", response_model=ApprovalRecordResponse)
+@router.post("/records/{record_id}/approve")
 def approve_record(
     record_id: int,
     approval_opinion: Optional[str] = Query(None),
@@ -271,10 +278,10 @@ def approve_record(
         remark=f"审批通过: {db_node.node_name}",
     )
 
-    return db_record
+    return success_response(db_record, "审批通过成功")
 
 
-@router.post("/records/{record_id}/reject", response_model=ApprovalRecordResponse)
+@router.post("/records/{record_id}/reject")
 def reject_record(
     record_id: int,
     approval_opinion: Optional[str] = Query(None),
@@ -306,10 +313,10 @@ def reject_record(
         remark=f"审批驳回: {db_node.node_name}",
     )
 
-    return db_record
+    return success_response(db_record, "审批驳回成功")
 
 
-@router.get("/bill/{bill_id}/records", response_model=List[ApprovalRecordResponse])
+@router.get("/bill/{bill_id}/records")
 def get_bill_approval_records(
     bill_id: int,
     approval_status: Optional[str] = None,
@@ -323,4 +330,7 @@ def get_bill_approval_records(
     if approval_status:
         query = query.filter(ApprovalRecord.approval_status == approval_status)
 
-    return query.order_by(ApprovalRecord.sort_order.asc(), ApprovalRecord.created_at.desc()).all()
+    return success_response(
+        query.order_by(ApprovalRecord.sort_order.asc(), ApprovalRecord.created_at.desc()).all(),
+        "获取单据审批记录列表成功",
+    )

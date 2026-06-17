@@ -145,10 +145,7 @@ export const validationApi = {
 
 export const exportApi = {
   exportData: (data: ExportRequest) =>
-    request.download('/exports', {
-      method: 'POST',
-      data,
-    }),
+    request.download('/exports', {}, 'POST', data),
   getExportTypes: () =>
     request.get<{ type: string; name: string }[]>('/exports/types'),
   getExportRecords: (params?: PaginationParams) =>
