@@ -1,0 +1,43 @@
+import { NextResponse } from "next/server";
+import { generateRouteSampleDetails } from "@/lib/mockData";
+
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const samples = generateRouteSampleDetails(id);
+
+    const delayedSamples = samples.filter((s) => !s.isOnTime);
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        routeId: id,
+        samples,
+        stats: {
+          totalSamples: samples.length,
+          onTimeCount: samples.filter((s) => s.isOnTime).length,
+          delayedCount: delayedSamples.length,
+          avgDelayMinutes:
+            delayedSamples.length > 0
+              ? Math.round(
+                  delayedSamples.reduce((sum, s) => sum + (s.delayMinutes ?? 0), 0) /
+                    delayedSamples.length
+                )
+              : 0,
+        },
+      },
+    });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        success: false,
+        message: "获取路线详情失败",
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 }
+    );
+  }
+}

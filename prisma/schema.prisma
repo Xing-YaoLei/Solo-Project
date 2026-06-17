@@ -1,0 +1,125 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model DispatchOrder {
+  id            String          @id @default(uuid())
+  orderNo       String          @unique
+  apartmentId   String
+  repairType    String
+  status        String
+  plannedTime   DateTime
+  actualTime    DateTime?
+  routeId       String?
+  amount        Decimal         @db.Decimal(10, 2)
+  isOnTime      Boolean
+  createdAt     DateTime        @default(now())
+  route         RoutePlan?      @relation(fields: [routeId], references: [id])
+  crmRecords    CrmRecord[]
+  payments      PaymentRecord[]
+  meterReadings MeterReading[]
+  loadingItems  LoadingItem[]
+}
+
+model CrmRecord {
+  id          String        @id @default(uuid())
+  orderId     String
+  source      String
+  data        Json
+  dataVersion String
+  syncedAt    DateTime      @default(now())
+  order       DispatchOrder @relation(fields: [orderId], references: [id])
+}
+
+model PaymentRecord {
+  id           String        @id @default(uuid())
+  orderId      String
+  version      Int
+  amount       Decimal       @db.Decimal(10, 2)
+  status       String
+  operator     String
+  changeReason String
+  changedAt    DateTime      @default(now())
+  order        DispatchOrder @relation(fields: [orderId], references: [id])
+}
+
+model MeterReading {
+  id           String        @id @default(uuid())
+  orderId      String
+  meterType    String
+  readingValue Decimal       @db.Decimal(10, 2)
+  rawData      Json
+  recordedAt   DateTime      @default(now())
+  order        DispatchOrder @relation(fields: [orderId], references: [id])
+}
+
+model RoutePlan {
+  id              String           @id @default(uuid())
+  routeName       String
+  driverId        String
+  plannedStart    DateTime
+  plannedEnd      DateTime
+  actualStart     DateTime?
+  actualEnd       DateTime?
+  plannedOrders   Int
+  completedOrders Int              @default(0)
+  status          String
+  driver          Driver           @relation(fields: [driverId], references: [id])
+  orders          DispatchOrder[]
+  checkins        DriverCheckin[]
+  trackPoints     TrackPoint[]
+  loadingItems    LoadingItem[]
+}
+
+model Driver {
+  id        String          @id @default(uuid())
+  name      String
+  phone     String
+  vehicleNo String
+  routes    RoutePlan[]
+  checkins  DriverCheckin[]
+}
+
+model DriverCheckin {
+  id          String    @id @default(uuid())
+  driverId    String
+  routeId     String
+  checkinTime DateTime
+  latitude    Decimal   @db.Decimal(10, 6)
+  longitude   Decimal   @db.Decimal(10, 6)
+  status      String
+  driver      Driver    @relation(fields: [driverId], references: [id])
+  route       RoutePlan @relation(fields: [routeId], references: [id])
+}
+
+model TrackPoint {
+  id        String    @id @default(uuid())
+  routeId   String
+  timestamp DateTime
+  latitude  Decimal   @db.Decimal(10, 6)
+  longitude Decimal   @db.Decimal(10, 6)
+  speed     Decimal   @db.Decimal(5, 2)
+  orderId   String?
+  route     RoutePlan @relation(fields: [routeId], references: [id])
+}
+
+model LoadingItem {
+  id               String        @id @default(uuid())
+  routeId          String
+  orderId          String
+  materialName     String
+  quantity         Int
+  unit             String
+  loadedQuantity   Int?
+  status           String
+  originalRecordId String
+  remark           String?
+  route            RoutePlan     @relation(fields: [routeId], references: [id])
+  order            DispatchOrder @relation(fields: [orderId], references: [id])
+}
