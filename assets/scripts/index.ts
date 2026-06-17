@@ -38,3 +38,4 @@ export * from './utils/ScorePopup';
 export * from './utils/AvatarGenerator';
 export * from './utils/ResourceGenerator';
 export * from './utils/UIBuilder';
+export * from './utils/RuntimeTmxLoader';

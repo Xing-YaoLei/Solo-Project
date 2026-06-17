@@ -1,0 +1,25 @@
+{
+  "ver": "1.1.50",
+  "importer": "image",
+  "imported": true,
+  "uuid": "9a2ae405-61d2-002a-436b-c30038f7afe9",
+  "files": [
+    ".json"
+  ],
+  "subMetas": {
+    "6c48a": {
+      "importer": "texture",
+      "uuid": "34421384-c76a-1a54-94cd-ce8abf6b0ab7",
+      "userData": {},
+      "displayName": "texture",
+      "id": "6c48a",
+      "name": "texture"
+    }
+  },
+  "userData": {
+    "type": "sprite-frame",
+    "hasAlpha": true,
+    "fixAlphaTransparencyArtifacts": false,
+    "redirect": "6c48a"
+  }
+}
