@@ -69,7 +69,7 @@ const PaymentsPage: React.FC = () => {
     queryKey: ['payments', pagination.current, pagination.pageSize, statusFilter, projectFilter],
     queryFn: () =>
       paymentApi.getPayments({
-        pageIndex: (pagination.current || 1) - 1,
+        pageIndex: pagination.current || 1,
         pageSize: pagination.pageSize,
         status: statusFilter,
         projectId: projectFilter,
