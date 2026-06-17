@@ -50,8 +50,6 @@ builder.Services.AddHangfireServer(options =>
     options.SchedulePollingInterval = TimeSpan.FromSeconds(15);
 });
 
-builder.Services.AddAutoMapper(typeof(Program));
-
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IElderRepository, ElderRepository>();
 builder.Services.AddScoped<IBedRepository, BedRepository>();
