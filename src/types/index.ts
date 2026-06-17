@@ -13,6 +13,12 @@ export interface RiskAnnotation {
   description: string;
   severity: Severity;
   metadata: Record<string, unknown>;
+  delayMinutes: number | null;
+  missingStart: string | null;
+  missingEnd: string | null;
+  oldCaliber: string | null;
+  newCaliber: string | null;
+  impactOnTrend: boolean | null;
 }
 
 export interface ReviewNote {
@@ -42,12 +48,11 @@ export interface MedicationRecord {
   id: string;
   elderId: string;
   elderName: string;
-  medicationId: string;
   medicationName: string;
   scheduledTime: string;
   actualTime: string | null;
-  status: 'completed' | 'delayed' | 'missed';
-  terminalDelay?: number;
+  status: string;
+  terminalDelay: number | null;
 }
 
 export interface VisitRecord {
@@ -58,8 +63,9 @@ export interface VisitRecord {
   visitorRelation: string;
   visitTime: string;
   leaveTime: string | null;
-  accessStatus: 'recorded' | 'missing_entry' | 'missing_exit';
-  missingPeriod?: { start: string; end: string };
+  accessRecordExists: boolean;
+  missingStart: string | null;
+  missingEnd: string | null;
 }
 
 export interface ActivityRecord {

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Send, AlertTriangle } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { createReviewNote, getReviewNotes } from '@/services/api';
@@ -19,10 +19,25 @@ const typeLabels: Record<string, string> = {
 };
 
 export default function ReviewNotePanel() {
-  const { selectedAnnotation, setSelectedAnnotation, reviewNotes, addReviewNote, setReviewNotes } =
+  const { selectedAnnotation, setSelectedAnnotation, reviewNotes, setReviewNotes } =
     useStore();
   const [noteText, setNoteText] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (selectedAnnotation) {
+      setLoading(true);
+      getReviewNotes(selectedAnnotation.id)
+        .then((notes) => {
+          setReviewNotes(notes);
+        })
+        .catch(() => {
+          setReviewNotes([]);
+        })
+        .finally(() => setLoading(false));
+    }
+  }, [selectedAnnotation, setReviewNotes]);
 
   if (!selectedAnnotation) return null;
 
@@ -32,17 +47,21 @@ export default function ReviewNotePanel() {
     if (!noteText.trim()) return;
     setSubmitting(true);
     try {
-      const note = await createReviewNote(selectedAnnotation.id, noteText.trim());
-      addReviewNote(note);
+      await createReviewNote(selectedAnnotation.id, '护理主管', noteText.trim());
+      const notes = await getReviewNotes(selectedAnnotation.id);
+      setReviewNotes(notes);
       setNoteText('');
     } catch {
-      addReviewNote({
-        id: `local-${Date.now()}`,
-        annotationId: selectedAnnotation.id,
-        content: noteText.trim(),
-        author: '当前用户',
-        createdAt: new Date().toISOString(),
-      });
+      setReviewNotes([
+        ...reviewNotes,
+        {
+          id: `local-${Date.now()}`,
+          annotationId: selectedAnnotation.id,
+          content: noteText.trim(),
+          author: '护理主管',
+          createdAt: new Date().toISOString(),
+        },
+      ]);
       setNoteText('');
     } finally {
       setSubmitting(false);
@@ -76,22 +95,25 @@ export default function ReviewNotePanel() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
-        {reviewNotes
-          .filter((n) => n.annotationId === selectedAnnotation.id)
-          .map((note) => (
-            <div key={note.id} className="bg-white/[0.03] rounded-lg p-3">
-              <p className="text-sm text-white/80">{note.content}</p>
-              <div className="flex items-center gap-2 mt-2 text-xs text-white/40">
-                <span>{note.author}</span>
-                <span>·</span>
-                <span className="font-[JetBrains_Mono,monospace]">
-                  {new Date(note.createdAt).toLocaleString('zh-CN')}
-                </span>
-              </div>
-            </div>
-          ))}
-        {reviewNotes.filter((n) => n.annotationId === selectedAnnotation.id).length === 0 && (
+        {loading ? (
+          <p className="text-xs text-white/30 text-center py-6">加载中...</p>
+        ) : reviewNotes.filter((n) => n.annotationId === selectedAnnotation.id).length === 0 ? (
           <p className="text-xs text-white/30 text-center py-6">暂无审核笔记</p>
+        ) : (
+          reviewNotes
+            .filter((n) => n.annotationId === selectedAnnotation.id)
+            .map((note) => (
+              <div key={note.id} className="bg-white/[0.03] rounded-lg p-3">
+                <p className="text-sm text-white/80">{note.content}</p>
+                <div className="flex items-center gap-2 mt-2 text-xs text-white/40">
+                  <span>{note.author}</span>
+                  <span>·</span>
+                  <span className="font-[JetBrains_Mono,monospace]">
+                    {new Date(note.createdAt).toLocaleString('zh-CN')}
+                  </span>
+                </div>
+              </div>
+            ))
         )}
       </div>
 

@@ -47,6 +47,12 @@ class RiskAnnotationOut(BaseModel):
     severity: str
     bed_id: uuid.UUID
     metadata_: dict | None = Field(None, alias="metadata")
+    delay_minutes: int | None = None
+    missing_start: datetime | None = None
+    missing_end: datetime | None = None
+    old_caliber: str | None = None
+    new_caliber: str | None = None
+    impact_on_trend: bool | None = None
 
     model_config = {"from_attributes": True, "populate_by_name": True}
 
@@ -78,10 +84,12 @@ class ReviewNoteCreate(BaseModel):
 class MedicationRecordOut(BaseModel):
     id: uuid.UUID
     elder_id: uuid.UUID
+    elder_name: str | None = None
     medication_name: str
     scheduled_time: datetime
     actual_time: datetime | None
     status: str
+    terminal_delay: int | None = None
 
     model_config = {"from_attributes": True}
 
@@ -97,10 +105,14 @@ class MedicationRecordCreate(BaseModel):
 class VisitRecordOut(BaseModel):
     id: uuid.UUID
     elder_id: uuid.UUID
+    elder_name: str | None = None
     visitor_name: str
+    visitor_relation: str | None = None
     scheduled_time: datetime
     actual_time: datetime | None
     access_record_exists: bool
+    missing_start: datetime | None = None
+    missing_end: datetime | None = None
 
     model_config = {"from_attributes": True}
 
@@ -113,13 +125,21 @@ class VisitRecordCreate(BaseModel):
     access_record_exists: bool = False
 
 
-class ActivityRecordOut(BaseModel):
-    id: uuid.UUID
+class ActivityAttendee(BaseModel):
     elder_id: uuid.UUID
-    activity_name: str
-    scheduled_time: datetime
-    checked_in: bool
+    elder_name: str
     check_in_time: datetime | None
+    status: str
+
+
+class ActivityRecordOut(BaseModel):
+    id: str
+    activity_name: str
+    activity_date: str
+    start_time: datetime
+    end_time: datetime
+    location: str
+    attendees: list[ActivityAttendee]
 
     model_config = {"from_attributes": True}
 

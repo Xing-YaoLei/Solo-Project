@@ -20,6 +20,96 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
   return res.json();
 }
 
+function toCamelCase(key: string): string {
+  return key.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+}
+
+function convertObject(obj: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    const camelKey = toCamelCase(key);
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      result[camelKey] = convertObject(value as Record<string, unknown>);
+    } else if (Array.isArray(value)) {
+      result[camelKey] = value.map((item) =>
+        item && typeof item === 'object' ? convertObject(item as Record<string, unknown>) : item
+      );
+    } else {
+      result[camelKey] = value;
+    }
+  }
+  return result;
+}
+
+function convertMedication(record: Record<string, unknown>): MedicationRecord {
+  const r = convertObject(record) as Record<string, unknown>;
+  const statusMap: Record<string, string> = {
+    '按时': 'completed',
+    '延迟': 'delayed',
+    '未执行': 'missed',
+  };
+  return {
+    id: String(r.id),
+    elderId: String(r.elderId),
+    elderName: String(r.elderName || ''),
+    medicationName: String(r.medicationName),
+    scheduledTime: String(r.scheduledTime),
+    actualTime: r.actualTime ? String(r.actualTime) : null,
+    status: statusMap[String(r.status)] || String(r.status),
+    terminalDelay: r.terminalDelay ? Number(r.terminalDelay) : null,
+  };
+}
+
+function convertVisit(record: Record<string, unknown>): VisitRecord {
+  const r = convertObject(record) as Record<string, unknown>;
+  return {
+    id: String(r.id),
+    elderId: String(r.elderId),
+    elderName: String(r.elderName || ''),
+    visitorName: String(r.visitorName),
+    visitorRelation: String(r.visitorRelation || ''),
+    visitTime: String(r.scheduledTime || r.visitTime),
+    leaveTime: r.actualTime ? String(r.actualTime) : null,
+    accessRecordExists: Boolean(r.accessRecordExists),
+    missingStart: r.missingStart ? String(r.missingStart) : null,
+    missingEnd: r.missingEnd ? String(r.missingEnd) : null,
+  };
+}
+
+function convertActivity(record: Record<string, unknown>): ActivityRecord {
+  const r = convertObject(record) as Record<string, unknown>;
+  const attendees = Array.isArray(r.attendees) ? r.attendees.map((a) => {
+    const att = convertObject(a as Record<string, unknown>);
+    const status = String(att.status);
+    return {
+      elderId: String(att.elderId),
+      elderName: String(att.elderName),
+      checkInTime: att.checkInTime ? String(att.checkInTime) : null,
+      status: ((status === 'checked_in' || status === 'absent') ? status : 'absent') as 'checked_in' | 'absent',
+    };
+  }) : [];
+  return {
+    id: String(r.id),
+    activityName: String(r.activityName),
+    activityDate: String(r.activityDate),
+    startTime: String(r.startTime),
+    endTime: String(r.endTime),
+    location: String(r.location),
+    attendees,
+  };
+}
+
+function convertReviewNote(note: Record<string, unknown>): ReviewNote {
+  const n = convertObject(note) as Record<string, unknown>;
+  return {
+    id: String(n.id),
+    annotationId: String(n.annotationId),
+    author: String(n.author),
+    content: String(n.content),
+    createdAt: String(n.createdAt),
+  };
+}
+
 export async function getScheduleTrend(
   startDate: string,
   endDate: string,
@@ -43,44 +133,51 @@ export async function getRiskAnnotations(
 
 export async function createReviewNote(
   annotationId: string,
+  author: string,
   content: string,
 ): Promise<ReviewNote> {
-  return request<ReviewNote>(`${BASE}/review-notes`, {
-    method: 'POST',
-    body: JSON.stringify({ annotation_id: annotationId, content }),
-  });
+  const data = await request<Record<string, unknown>>(
+    `${BASE}/annotations/${annotationId}/review-notes`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ author, content }),
+    },
+  );
+  return convertReviewNote(data);
 }
 
 export async function getReviewNotes(
   annotationId: string,
 ): Promise<ReviewNote[]> {
-  return request<ReviewNote[]>(
-    `${BASE}/review-notes?annotation_id=${annotationId}`,
+  const data = await request<Record<string, unknown>[]>(
+    `${BASE}/annotations/${annotationId}/review-notes`,
   );
+  return data.map(convertReviewNote);
 }
 
 export async function getMedicationRecords(
   elderId?: string,
 ): Promise<MedicationRecord[]> {
   const params = elderId ? `?elder_id=${elderId}` : '';
-  return request<MedicationRecord[]>(`${BASE}/medication-records${params}`);
+  const data = await request<Record<string, unknown>[]>(`${BASE}/medications${params}`);
+  return data.map(convertMedication);
 }
 
 export async function getVisitRecords(
-  startDate: string,
-  endDate: string,
+  elderId?: string,
 ): Promise<VisitRecord[]> {
-  return request<VisitRecord[]>(
-    `${BASE}/visit-records?start_date=${startDate}&end_date=${endDate}`,
-  );
+  const params = elderId ? `?elder_id=${elderId}` : '';
+  const data = await request<Record<string, unknown>[]>(`${BASE}/visits${params}`);
+  return data.map(convertVisit);
 }
 
 export async function getActivityRecords(
   date: string,
 ): Promise<ActivityRecord[]> {
-  return request<ActivityRecord[]>(
-    `${BASE}/activity-records?date=${date}`,
+  const data = await request<Record<string, unknown>[]>(
+    `${BASE}/activities?date=${date}`,
   );
+  return data.map(convertActivity);
 }
 
 export async function exportData(req: ExportRequest): Promise<Blob> {

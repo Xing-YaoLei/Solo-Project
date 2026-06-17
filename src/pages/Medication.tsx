@@ -18,7 +18,13 @@ export default function Medication() {
   useEffect(() => {
     setLoading(true);
     getMedicationRecords(elderFilter || undefined)
-      .then(setMedicationRecords)
+      .then((records) => {
+        if (records && records.length > 0) {
+          setMedicationRecords(records);
+        } else {
+          setMedicationRecords(mockRecords());
+        }
+      })
       .catch(() => setMedicationRecords(mockRecords()))
       .finally(() => setLoading(false));
   }, [elderFilter]);
@@ -104,12 +110,11 @@ function mockRecords(): MedicationRecord[] {
         id: `med-${ei}-${mi}`,
         elderId: `e${ei + 1}`,
         elderName: elder,
-        medicationId: `m${mi + 1}`,
         medicationName: med,
         scheduledTime: `2026-06-17T${8 + mi * 4}:00:00`,
         actualTime: status === 'missed' ? null : `2026-06-17T${8 + mi * 4 + (status === 'delayed' ? 1 : 0)}:15:00`,
-        status: status as MedicationRecord['status'],
-        terminalDelay: status === 'delayed' ? 23 : undefined,
+        status,
+        terminalDelay: status === 'delayed' ? 23 : null,
       };
     })
   );

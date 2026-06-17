@@ -100,19 +100,34 @@ async def get_annotations(
 
     for a in annotations:
         metadata = a.metadata_ or {}
-        if a.type == "terminal_delay":
-            metadata["syncDelay"] = True
-        if a.type == "fall_event":
-            metadata["impactOnTrend"] = True
-
-        result_list.append({
+        item = {
             "id": str(a.id),
             "type": a.type,
             "timestamp": a.timestamp.isoformat(),
             "description": a.description,
             "severity": a.severity,
             "metadata": metadata,
-        })
+            "delayMinutes": None,
+            "missingStart": None,
+            "missingEnd": None,
+            "oldCaliber": None,
+            "newCaliber": None,
+            "impactOnTrend": None,
+        }
+        if a.type == "terminal_delay":
+            item["delayMinutes"] = metadata.get("delay_minutes") or metadata.get("delayMinutes")
+            if item["delayMinutes"]:
+                item["metadata"]["syncDelay"] = True
+        if a.type == "access_missing":
+            item["missingStart"] = metadata.get("missing_start") or metadata.get("missingStart")
+            item["missingEnd"] = metadata.get("missing_end") or metadata.get("missingEnd")
+        if a.type == "billing_caliber_change":
+            item["oldCaliber"] = metadata.get("old_caliber") or metadata.get("oldCaliber")
+            item["newCaliber"] = metadata.get("new_caliber") or metadata.get("newCaliber")
+        if a.type == "fall_event":
+            item["impactOnTrend"] = True
+            item["metadata"]["impactOnTrend"] = True
+        result_list.append(item)
 
     for f in falls:
         result_list.append({
@@ -125,6 +140,12 @@ async def get_annotations(
                 "elderId": str(f.elder_id),
                 "impactOnTrend": True,
             },
+            "delayMinutes": None,
+            "missingStart": None,
+            "missingEnd": None,
+            "oldCaliber": None,
+            "newCaliber": None,
+            "impactOnTrend": True,
         })
 
     for bc in billing_changes:
@@ -138,6 +159,12 @@ async def get_annotations(
                 "oldCaliber": bc.old_caliber,
                 "newCaliber": bc.new_caliber,
             },
+            "delayMinutes": None,
+            "missingStart": None,
+            "missingEnd": None,
+            "oldCaliber": bc.old_caliber,
+            "newCaliber": bc.new_caliber,
+            "impactOnTrend": None,
         })
 
     result_list.sort(key=lambda x: x["timestamp"], reverse=True)

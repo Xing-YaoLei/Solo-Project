@@ -16,16 +16,28 @@ async def list_medications(
     limit: int = Query(default=100, le=500),
     db: AsyncSession = Depends(get_db),
 ):
-    stmt = select(MedicationRecord).order_by(MedicationRecord.scheduled_time.desc()).limit(limit)
+    stmt = select(MedicationRecord, Elder.name).join(
+        Elder, MedicationRecord.elder_id == Elder.id
+    ).order_by(MedicationRecord.scheduled_time.desc()).limit(limit)
     if elder_id:
         stmt = stmt.where(MedicationRecord.elder_id == elder_id)
     if status:
         stmt = stmt.where(MedicationRecord.status == status)
     result = await db.execute(stmt)
-    return [
-        MedicationRecordOut.model_validate(r, from_attributes=True)
-        for r in result.scalars().all()
-    ]
+    records = []
+    for r, elder_name in result.all():
+        record_data = {c.name: getattr(r, c.name) for c in r.__table__.columns}
+        terminal_delay = None
+        if record_data["actual_time"] and record_data["scheduled_time"]:
+            diff = (record_data["actual_time"] - record_data["scheduled_time"]).total_seconds() / 60
+            if diff > 0:
+                terminal_delay = int(diff)
+        records.append(MedicationRecordOut(
+            **record_data,
+            elder_name=elder_name,
+            terminal_delay=terminal_delay,
+        ))
+    return records
 
 
 @router.post("", response_model=MedicationRecordOut, summary="创建用药记录", status_code=201)

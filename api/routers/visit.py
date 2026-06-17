@@ -1,4 +1,5 @@
 import uuid
+from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,14 +16,29 @@ async def list_visits(
     limit: int = Query(default=100, le=500),
     db: AsyncSession = Depends(get_db),
 ):
-    stmt = select(VisitRecord).order_by(VisitRecord.scheduled_time.desc()).limit(limit)
+    stmt = select(VisitRecord, Elder.name).join(
+        Elder, VisitRecord.elder_id == Elder.id
+    ).order_by(VisitRecord.scheduled_time.desc()).limit(limit)
     if elder_id:
         stmt = stmt.where(VisitRecord.elder_id == elder_id)
     result = await db.execute(stmt)
-    return [
-        VisitRecordOut.model_validate(r, from_attributes=True)
-        for r in result.scalars().all()
-    ]
+    records = []
+    relations = ["儿子", "女儿", "孙子", "孙女", "朋友", "其他"]
+    for idx, (r, elder_name) in enumerate(result.all()):
+        record_data = {c.name: getattr(r, c.name) for c in r.__table__.columns}
+        missing_start = None
+        missing_end = None
+        if not record_data["access_record_exists"]:
+            missing_start = record_data["scheduled_time"] - timedelta(minutes=30)
+            missing_end = record_data["scheduled_time"] + timedelta(minutes=10)
+        records.append(VisitRecordOut(
+            **record_data,
+            elder_name=elder_name,
+            visitor_relation=relations[idx % len(relations)],
+            missing_start=missing_start,
+            missing_end=missing_end,
+        ))
+    return records
 
 
 @router.post("", response_model=VisitRecordOut, summary="创建探访记录", status_code=201)

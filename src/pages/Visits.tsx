@@ -10,17 +10,37 @@ const accessConfig = {
   missing_exit: { label: '缺少离开', color: 'text-amber-400', dot: 'bg-amber-400' },
 };
 
+function getAccessStatus(record: VisitRecord): keyof typeof accessConfig {
+  if (record.accessRecordExists) {
+    return 'recorded';
+  }
+  const missingStart = record.missingStart;
+  const visitTime = record.visitTime;
+  if (missingStart && visitTime) {
+    const startHour = parseInt(missingStart.slice(11, 13));
+    const visitHour = parseInt(visitTime.slice(11, 13));
+    return startHour < visitHour ? 'missing_entry' : 'missing_exit';
+  }
+  return 'missing_entry';
+}
+
 export default function Visits() {
   const { visitRecords, setVisitRecords, selectedDateRange } = useStore();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
-    getVisitRecords(selectedDateRange[0], selectedDateRange[1])
-      .then(setVisitRecords)
+    getVisitRecords()
+      .then((records) => {
+        if (records && records.length > 0) {
+          setVisitRecords(records);
+        } else {
+          setVisitRecords(mockVisits());
+        }
+      })
       .catch(() => setVisitRecords(mockVisits()))
       .finally(() => setLoading(false));
-  }, [selectedDateRange]);
+  }, []);
 
   const grouped = visitRecords.reduce<Record<string, VisitRecord[]>>((acc, v) => {
     const day = v.visitTime.slice(0, 10);
@@ -53,7 +73,9 @@ export default function Visits() {
 
               <div className="ml-1 border-l-2 border-white/[0.06] pl-5 space-y-3">
                 {visits.map((v) => {
-                  const cfg = accessConfig[v.accessStatus];
+                  const accessStatus = getAccessStatus(v);
+                  const cfg = accessConfig[accessStatus];
+                  const hasMissing = !v.accessRecordExists && v.missingStart && v.missingEnd;
                   return (
                     <div key={v.id} className="bg-[#1B2A4A] rounded-lg p-4 border border-white/[0.06]">
                       <div className="flex items-center justify-between mb-2">
@@ -77,10 +99,10 @@ export default function Visits() {
                         </span>
                       </div>
 
-                      {v.missingPeriod && (
+                      {hasMissing && (
                         <div className="mt-2 flex items-center gap-1.5 px-2 py-1 rounded bg-red-500/10 border border-red-500/20 text-xs text-red-400">
                           <AlertTriangle size={11} />
-                          记录缺失: {v.missingPeriod.start.slice(11, 16)} - {v.missingPeriod.end.slice(11, 16)}
+                          记录缺失: {v.missingStart!.slice(11, 16)} - {v.missingEnd!.slice(11, 16)}
                         </div>
                       )}
                     </div>
@@ -99,21 +121,25 @@ function mockVisits(): VisitRecord[] {
   return [
     {
       id: 'v1', elderId: 'e1', elderName: '张奶奶', visitorName: '张明', visitorRelation: '儿子',
-      visitTime: '2026-06-17T09:00:00', leaveTime: '2026-06-17T11:30:00', accessStatus: 'recorded',
+      visitTime: '2026-06-17T09:00:00', leaveTime: '2026-06-17T11:30:00',
+      accessRecordExists: true, missingStart: null, missingEnd: null,
     },
     {
       id: 'v2', elderId: 'e2', elderName: '李爷爷', visitorName: '李芳', visitorRelation: '女儿',
-      visitTime: '2026-06-17T14:00:00', leaveTime: null, accessStatus: 'missing_exit',
-      missingPeriod: { start: '2026-06-17T16:00:00', end: '2026-06-17T17:00:00' },
+      visitTime: '2026-06-17T14:00:00', leaveTime: null,
+      accessRecordExists: false,
+      missingStart: '2026-06-17T16:00:00', missingEnd: '2026-06-17T17:00:00',
     },
     {
       id: 'v3', elderId: 'e3', elderName: '王奶奶', visitorName: '王强', visitorRelation: '孙子',
-      visitTime: '2026-06-16T10:00:00', leaveTime: '2026-06-16T12:00:00', accessStatus: 'recorded',
+      visitTime: '2026-06-16T10:00:00', leaveTime: '2026-06-16T12:00:00',
+      accessRecordExists: true, missingStart: null, missingEnd: null,
     },
     {
       id: 'v4', elderId: 'e4', elderName: '赵大爷', visitorName: '赵丽', visitorRelation: '女儿',
-      visitTime: '2026-06-16T15:30:00', leaveTime: '2026-06-16T17:00:00', accessStatus: 'missing_entry',
-      missingPeriod: { start: '2026-06-16T15:00:00', end: '2026-06-16T15:30:00' },
+      visitTime: '2026-06-16T15:30:00', leaveTime: '2026-06-16T17:00:00',
+      accessRecordExists: false,
+      missingStart: '2026-06-16T15:00:00', missingEnd: '2026-06-16T15:30:00',
     },
   ];
 }

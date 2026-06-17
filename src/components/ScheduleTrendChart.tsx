@@ -29,16 +29,16 @@ function buildMarkPoints(annotations: RiskAnnotation[], dates: string[]) {
 
       let formatter = '';
       if (a.type === 'terminal_delay') {
-        const delayMin = (a.metadata as { delayMinutes?: number })?.delayMinutes || 0;
+        const delayMin = a.delayMinutes || 0;
         const timeStr = a.timestamp.slice(11, 16);
         formatter = `延迟${delayMin}分\n${timeStr}`;
       } else if (a.type === 'access_missing') {
-        const missingStart = (a.metadata as { missingStart?: string })?.missingStart || '';
-        const missingEnd = (a.metadata as { missingEnd?: string })?.missingEnd || '';
+        const missingStart = a.missingStart?.slice(11, 16) || '';
+        const missingEnd = a.missingEnd?.slice(11, 16) || '';
         formatter = `门禁缺失\n${missingStart}-${missingEnd}`;
       } else if (a.type === 'billing_caliber_change') {
-        const oldCal = (a.metadata as { oldCaliber?: string })?.oldCaliber || '';
-        const newCal = (a.metadata as { newCaliber?: string })?.newCaliber || '';
+        const oldCal = a.oldCaliber || '';
+        const newCal = a.newCaliber || '';
         formatter = `口径变更\n${oldCal}→${newCal}`;
       }
 
@@ -74,7 +74,7 @@ function buildMarkLines(annotations: RiskAnnotation[], dates: string[]) {
     const dateIndex = dates.indexOf(dateStr);
     const coordIndex = dateIndex >= 0 ? dateIndex : Math.floor(dates.length / 2);
     const timeStr = f.timestamp.slice(11, 16);
-    const impactOnTrend = (f.metadata as { impactOnTrend?: boolean })?.impactOnTrend;
+    const impactOnTrend = f.impactOnTrend;
 
     return {
       xAxis: coordIndex,
@@ -371,34 +371,58 @@ function mockAnnotations(): RiskAnnotation[] {
     {
       id: 'ann-1',
       type: 'terminal_delay',
-      timestamp: new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 16),
+      timestamp: new Date(Date.now() - 2 * 86400000).toISOString(),
       description: '3楼护士站终端数据同步延迟23分钟',
       severity: 'medium',
       metadata: { delayMinutes: 23, syncDelay: true },
+      delayMinutes: 23,
+      missingStart: null,
+      missingEnd: null,
+      oldCaliber: null,
+      newCaliber: null,
+      impactOnTrend: null,
     },
     {
       id: 'ann-2',
       type: 'access_missing',
-      timestamp: new Date(Date.now() - 1 * 86400000).toISOString().slice(0, 16),
+      timestamp: new Date(Date.now() - 1 * 86400000).toISOString(),
       description: '2楼东区门禁记录缺失，时段 14:00-15:30',
       severity: 'high',
       metadata: { zone: '2楼东区', missingStart: '14:00', missingEnd: '15:30' },
+      delayMinutes: null,
+      missingStart: '2026-06-16T14:00:00',
+      missingEnd: '2026-06-16T15:30:00',
+      oldCaliber: null,
+      newCaliber: null,
+      impactOnTrend: null,
     },
     {
       id: 'ann-3',
       type: 'billing_caliber_change',
-      timestamp: new Date(Date.now() - 0.5 * 86400000).toISOString().slice(0, 16),
+      timestamp: new Date(Date.now() - 0.5 * 86400000).toISOString(),
       description: '护理等级计费口径由III类调整为II类',
       severity: 'low',
       metadata: { affectedBeds: 8, oldCaliber: 'III类', newCaliber: 'II类' },
+      delayMinutes: null,
+      missingStart: null,
+      missingEnd: null,
+      oldCaliber: 'III类',
+      newCaliber: 'II类',
+      impactOnTrend: null,
     },
     {
       id: 'ann-4',
       type: 'fall_event',
-      timestamp: new Date(Date.now() - 3 * 86400000).toISOString().slice(0, 16),
+      timestamp: new Date(Date.now() - 3 * 86400000).toISOString(),
       description: '张奶奶(305床)在洗手间跌倒',
       severity: 'critical',
       metadata: { bedNo: '305', location: '洗手间', impactOnTrend: true },
+      delayMinutes: null,
+      missingStart: null,
+      missingEnd: null,
+      oldCaliber: null,
+      newCaliber: null,
+      impactOnTrend: true,
     },
   ];
 }
