@@ -1,0 +1,33 @@
+{
+  "compilerOptions": {
+    "target": "es2017",
+    "module": "es6",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "strict": true,
+    "jsx": "preserve",
+    "importHelpers": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "declaration": false,
+    "sourceMap": true,
+    "outDir": "./dist",
+    "baseUrl": ".",
+    "paths": {
+      "cc": ["./temp/declarations/cc.d.ts"]
+    }
+  },
+  "include": [
+    "assets/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "library",
+    "temp",
+    "build"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "name": "elderly-care-assessment-game",
+  "version": "1.0.0",
+  "description": "养老护理入住评估经营模拟游戏",
+  "creator": {
+    "version": "3.8.0"
+  },
+  "type": "3d",
+  "dependencies": {
+    "cocos-creator": "^3.8.0"
+  },
+  "scripts": {
+    "build": "cocos build",
+    "dev": "cocos run"
+  }
+}
