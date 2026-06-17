@@ -200,6 +200,76 @@ class ETLPipeline:
             except Exception as e:
                 logger.error(f"同步 {table_name} 到 DuckDB 失败: {e}")
 
+    def _update_duckdb_from_clean_tables(self, duck_conn):
+        try:
+            care_level_mapping = """
+                SELECT
+                    resident_id,
+                    CASE
+                        WHEN item_type IN ('care_independent', '自理', 'independent')
+                             OR item_name LIKE '%自理%' THEN 'independent'
+                        WHEN item_type IN ('care_semi', '半自理', 'semi', 'semi_dependent')
+                             OR item_name LIKE '%半自理%' OR item_name LIKE '%半护%' THEN 'semi_dependent'
+                        WHEN item_type IN ('care_dependent', '全护理', 'dependent')
+                             OR item_name LIKE '%全护理%' OR item_name LIKE '%全护%' OR item_name LIKE '%专护%' THEN 'dependent'
+                        WHEN item_type IN ('care_special', '特护', 'special')
+                             OR item_name LIKE '%特护%' THEN 'special'
+                        ELSE NULL
+                    END as inferred_level
+                FROM charging_records_clean
+                WHERE charge_date >= CURRENT_DATE - 30
+                  AND (
+                    item_type LIKE 'care_%'
+                    OR item_type IN ('自理', '半自理', '全护理', '特护', '护理费', '护理服务费',
+                                     'semi', 'dependent', 'independent', 'special')
+                    OR item_name LIKE '%护理%' OR item_name LIKE '%护%'
+                  )
+            """
+            resident_levels = duck_conn.execute(f"""
+                SELECT resident_id, inferred_level
+                FROM (
+                    {care_level_mapping}
+                ) AS t
+                WHERE inferred_level IS NOT NULL
+                GROUP BY resident_id, inferred_level
+                ORDER BY resident_id
+            """).fetchall()
+            updated_residents = 0
+            for rid, level in resident_levels:
+                if rid and level:
+                    duck_conn.execute(
+                        "UPDATE residents SET care_level = ? WHERE id = ? AND care_level != ?",
+                        [level, rid, level]
+                    )
+                    updated_residents += 1
+            if updated_residents:
+                logger.info(f"根据 charging clean 表口径更新 {updated_residents} 位老人护理等级")
+        except Exception as e:
+            logger.warning(f"根据 clean 表更新 residents 护理等级时跳过: {e}")
+
+        try:
+            bed_residents = duck_conn.execute("""
+                SELECT DISTINCT r.bed_id
+                FROM residents r
+                JOIN charging_records_clean c ON r.id = c.resident_id
+                WHERE c.charge_date >= CURRENT_DATE - 30
+                  AND r.bed_id IS NOT NULL
+                  AND (c.item_type IN ('accommodation', 'bed', '床位费', '住宿费')
+                       OR c.item_name LIKE '%床位%' OR c.item_name LIKE '%住宿%')
+            """).fetchall()
+            updated_beds = 0
+            for (bed_id,) in bed_residents:
+                if bed_id:
+                    duck_conn.execute(
+                        "UPDATE beds SET status = 'occupied' WHERE id = ? AND status != 'occupied'",
+                        [bed_id]
+                    )
+                    updated_beds += 1
+            if updated_beds:
+                logger.info(f"根据 charging clean 表口径更新 {updated_beds} 张床位状态为 occupied")
+        except Exception as e:
+            logger.warning(f"根据 clean 表更新 beds 状态时跳过: {e}")
+
     def extract_charging_data(self, pg_session) -> pd.DataFrame:
         records = pg_session.query(models.ChargingRecord).filter(
             models.ChargingRecord.is_cleaned == False
@@ -369,6 +439,7 @@ class ETLPipeline:
                 self._mark_as_cleaned(pg_session, health_cleaned["id"].tolist(), models.HealthMetric)
 
             self._sync_core_tables_to_duckdb(pg_session, duck_conn)
+            self._update_duckdb_from_clean_tables(duck_conn)
             result["core_tables_synced"] = True
 
         except Exception as e:

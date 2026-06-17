@@ -69,7 +69,7 @@ class ActivityService:
                 CAST(EXTRACT(HOUR FROM signin_time) AS INT) as hour,
                 COUNT(*) as count
             FROM activity_signins
-            WHERE signin_time >= DATE('now', '-30 days')
+            WHERE signin_time >= CURRENT_DATE - 30
             GROUP BY CAST(EXTRACT(HOUR FROM signin_time) AS INT)
         """).fetchall()
         
@@ -78,7 +78,7 @@ class ActivityService:
                 CAST(EXTRACT(HOUR FROM access_time) AS INT) as hour,
                 COUNT(*) as count
             FROM access_logs_clean
-            WHERE access_time >= DATE('now', '-30 days')
+            WHERE access_time >= CURRENT_DATE - 30
               AND direction IN ('out', '出口', '外出')
             GROUP BY CAST(EXTRACT(HOUR FROM access_time) AS INT)
         """).fetchall()
@@ -119,7 +119,7 @@ class ActivityService:
             FROM beds b
             JOIN residents r ON b.id = r.bed_id
             LEFT JOIN activity_signins s ON r.id = s.resident_id 
-                AND s.signin_time >= DATE('now', '-30 days')
+                AND s.signin_time >= CURRENT_DATE - 30
             GROUP BY b.area
         """).fetchall()
         
@@ -130,7 +130,7 @@ class ActivityService:
             FROM access_logs_clean a
             JOIN residents r ON a.resident_id = r.id
             JOIN beds b ON r.bed_id = b.id
-            WHERE a.access_time >= DATE('now', '-30 days')
+            WHERE a.access_time >= CURRENT_DATE - 30
               AND a.direction IN ('out', '出口', '外出')
               AND EXTRACT(HOUR FROM a.access_time) BETWEEN 6 AND 18
             GROUP BY b.area

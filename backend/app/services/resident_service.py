@@ -81,7 +81,7 @@ class ResidentService:
             JOIN beds b ON r.bed_id = b.id
             WHERE (c.item_type IN ('accommodation', 'bed', '床位费', '住宿费')
                    OR c.item_name LIKE '%床位%' OR c.item_name LIKE '%住宿%')
-              AND c.charge_date >= DATE('now', '-30 days')
+              AND c.charge_date >= CURRENT_DATE - 30
             GROUP BY b.area
         """).fetchall()
         
@@ -129,7 +129,7 @@ class ResidentService:
                 END as care_level,
                 COUNT(DISTINCT resident_id) as count
             FROM charging_records_clean
-            WHERE charge_date >= DATE('now', '-30 days')
+            WHERE charge_date >= CURRENT_DATE - 30
               AND (item_type LIKE 'care_%' 
                    OR item_type IN ('自理', '半自理', '全护理', '特护', '护理费', '护理服务费', 'semi', 'dependent', 'independent', 'special')
                    OR item_name LIKE '%护理%' OR item_name LIKE '%护%')

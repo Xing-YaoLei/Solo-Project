@@ -108,6 +108,7 @@ def is_pg_available() -> bool:
         
         from app.db import models
         Base.metadata.create_all(bind=_pg_engine)
+        _pg_session_local = None
         logger.info("PostgreSQL 连接校验通过，业务表初始化完成")
         return True
     except Exception as e:
