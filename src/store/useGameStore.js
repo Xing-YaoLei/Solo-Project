@@ -261,6 +261,11 @@ export const useGameStore = create((set, get) => ({
     
     if (riskMismatch) {
       set(state => ({
+        score: Math.max(0, state.score - 10),
+        combo: 0,
+        patients: state.patients.map(p =>
+          p.id === patientId ? { ...p, misallocatedCount: (p.misallocatedCount || 0) + 1 } : p
+        ),
         scheduledPatients: [
           ...state.scheduledPatients,
           {
@@ -282,6 +287,7 @@ export const useGameStore = create((set, get) => ({
           },
         },
       }))
+      return false
     }
     
     if (patient.insuranceRisk && Math.random() < 0.25) {
