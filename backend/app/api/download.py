@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from typing import Optional
 from datetime import date, datetime
 from io import BytesIO
+from urllib.parse import quote
 import pandas as pd
 
 from app.db.session import get_db
@@ -185,9 +186,7 @@ def download_funnel_report(
     return StreamingResponse(
         output,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={
-            "Content-Disposition": f"attachment; filename={filename}",
-        },
+        headers=_build_disposition_header(filename),
     )
 
 
@@ -328,10 +327,16 @@ def download_sales_trend_report(
     return StreamingResponse(
         output,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={
-            "Content-Disposition": f"attachment; filename={filename}",
-        },
+        headers=_build_disposition_header(filename),
     )
+
+
+def _build_disposition_header(filename: str) -> dict:
+    encoded = quote(filename, safe="")
+    ascii_name = "".join(c if ord(c) < 128 else "_" for c in filename)
+    return {
+        "Content-Disposition": f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{encoded}",
+    }
 
 
 def _auto_width(worksheet):
@@ -429,7 +434,7 @@ def download_rectification_report(
     return StreamingResponse(
         output,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": f"attachment; filename={filename}"},
+        headers=_build_disposition_header(filename),
     )
 
 
@@ -503,7 +508,7 @@ def download_display_photo_report(
     return StreamingResponse(
         output,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": f"attachment; filename={filename}"},
+        headers=_build_disposition_header(filename),
     )
 
 
@@ -563,7 +568,7 @@ def download_threshold_audit_report(db: Session = Depends(get_db)):
     return StreamingResponse(
         output,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": f"attachment; filename={filename}"},
+        headers=_build_disposition_header(filename),
     )
 
 
@@ -664,5 +669,5 @@ def download_exception_digest_report(
     return StreamingResponse(
         output,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": f"attachment; filename={filename}"},
+        headers=_build_disposition_header(filename),
     )
