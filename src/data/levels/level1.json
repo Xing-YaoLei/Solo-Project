@@ -1,0 +1,141 @@
+{
+  "id": "level-001",
+  "name": "新手训练：园区日常管理",
+  "description": "作为物业新入职员工，学习基础的巡检、合同审批和水电核算流程。",
+  "difficulty": 1,
+  "timeLimit": 600,
+  
+  "inspection": {
+    "mapLayout": "standard-park",
+    "patrolPoints": [
+      { "id": "p1", "x": 100, "y": 150, "name": "正门岗亭", "description": "园区主入口，检查人员登记情况" },
+      { "id": "p2", "x": 250, "y": 100, "name": "A座办公楼", "description": "检查消防设施和电梯运行状态" },
+      { "id": "p3", "x": 400, "y": 200, "name": "地下停车场", "description": "检查照明和监控系统" },
+      { "id": "p4", "x": 350, "y": 350, "name": "配电房", "description": "检查电力设备运行情况" },
+      { "id": "p5", "x": 150, "y": 300, "name": "绿化区", "description": "检查绿化养护和环境卫生" }
+    ],
+    "patrolRoute": [0, 1, 2, 3, 4],
+    "observeTime": 15,
+    "memoryTest": true
+  },
+  
+  "contracts": {
+    "tenants": [
+      {
+        "id": "t1",
+        "name": "科技创新有限公司",
+        "type": "office",
+        "area": 500,
+        "rentOffer": 80,
+        "contractTerm": 36,
+        "deposit": 240000,
+        "businessScope": "软件开发、技术咨询",
+        "industry": "科技",
+        "size": "中大型",
+        "creditRating": "A",
+        "specialRequirements": "需要24小时空调供应"
+      },
+      {
+        "id": "t2",
+        "name": "美味餐饮连锁",
+        "type": "restaurant",
+        "area": 200,
+        "rentOffer": 120,
+        "contractTerm": 24,
+        "deposit": 96000,
+        "businessScope": "中式餐饮、外卖服务",
+        "industry": "餐饮",
+        "size": "中型",
+        "creditRating": "B",
+        "specialRequirements": "需要独立排烟通道"
+      },
+      {
+        "id": "t3",
+        "name": "便利生活超市",
+        "type": "retail",
+        "area": 150,
+        "rentOffer": 100,
+        "contractTerm": 12,
+        "deposit": 45000,
+        "businessScope": "日用百货、食品零售",
+        "industry": "零售",
+        "size": "小型",
+        "creditRating": "B"
+      }
+    ],
+    "approvalOptions": [
+      { "id": "opt1", "label": "同意入驻", "type": "approve", "requiresComment": false, "description": "所有条件符合要求，直接通过" },
+      { "id": "opt2", "label": "需要协商条款", "type": "negotiate", "requiresComment": true, "description": "部分条款需要进一步沟通" },
+      { "id": "opt3", "label": "暂缓审批", "type": "escalate", "requiresComment": true, "description": "需要更多信息或上级审批" },
+      { "id": "opt4", "label": "拒绝入驻", "type": "reject", "requiresComment": true, "description": "不符合入驻条件" }
+    ],
+    "correctAnswers": {
+      "t1": "opt1",
+      "t2": "opt2",
+      "t3": "opt1"
+    },
+    "timePerContract": 60
+  },
+  
+  "meters": {
+    "waterMeters": [
+      { "id": "w1", "location": "A座3楼", "tenantId": "t1", "previousReading": 1200, "currentReading": 1350, "correctReading": 1350, "displayValue": 1350, "tolerance": 5 },
+      { "id": "w2", "location": "B座1楼", "tenantId": "t2", "previousReading": 800, "currentReading": 920, "correctReading": 920, "displayValue": 920, "tolerance": 5 },
+      { "id": "w3", "location": "C座2楼", "tenantId": "t3", "previousReading": 450, "currentReading": 510, "correctReading": 510, "displayValue": 510, "tolerance": 5 }
+    ],
+    "electricMeters": [
+      { "id": "e1", "location": "A座3楼", "tenantId": "t1", "previousReading": 15000, "currentReading": 18500, "correctReading": 18500, "displayValue": 18500, "tolerance": 50 },
+      { "id": "e2", "location": "B座1楼", "tenantId": "t2", "previousReading": 8000, "currentReading": 10200, "correctReading": 10200, "displayValue": 10200, "tolerance": 50 },
+      { "id": "e3", "location": "C座2楼", "tenantId": "t3", "previousReading": 3000, "currentReading": 3800, "correctReading": 3800, "displayValue": 3800, "tolerance": 50 }
+    ],
+    "unitPrices": {
+      "water": 5.5,
+      "electric": 1.2
+    },
+    "tolerance": 5
+  },
+  
+  "workOrders": {
+    "enabled": true,
+    "orders": [
+      {
+        "id": "wo1",
+        "type": "repair",
+        "title": "A座电梯故障",
+        "description": "A座办公楼3号电梯出现异响，需要紧急检修",
+        "urgency": "high",
+        "triggerAt": 30,
+        "options": [
+          { "id": "wo1-o1", "label": "立即联系电梯维保公司", "description": "优先级最高，确保安全" },
+          { "id": "wo1-o2", "label": "先记录，明天处理", "description": "非紧急，可延后处理" },
+          { "id": "wo1-o3", "label": "安排保安现场查看", "description": "先确认情况再处理" }
+        ],
+        "correctOptionId": "wo1-o1"
+      },
+      {
+        "id": "wo2",
+        "type": "complaint",
+        "title": "空调温度投诉",
+        "description": "B座3楼租户反映空调温度过低",
+        "urgency": "low",
+        "triggerAt": 120,
+        "options": [
+          { "id": "wo2-o1", "label": "立即安排工程人员调整", "description": "快速响应提升满意度" },
+          { "id": "wo2-o2", "label": "电话告知调节方法", "description": "远程指导，节省人力" },
+          { "id": "wo2-o3", "label": "记录在案，下次巡检处理", "description": "非紧急问题" }
+        ],
+        "correctOptionId": "wo2-o2"
+      }
+    ],
+    "timeout": 30,
+    "retryPenalty": 10
+  },
+  
+  "scoring": {
+    "inspectionWeight": 0.25,
+    "contractWeight": 0.35,
+    "meterWeight": 0.3,
+    "speedBonus": 0.05,
+    "accuracyBonus": 0.05
+  }
+}

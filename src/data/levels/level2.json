@@ -1,0 +1,175 @@
+{
+  "id": "level-002",
+  "name": "进阶挑战：复杂租户管理",
+  "description": "处理多个复杂租户合同，应对紧急工单和特殊需求。",
+  "difficulty": 3,
+  "timeLimit": 900,
+  
+  "inspection": {
+    "mapLayout": "business-park",
+    "patrolPoints": [
+      { "id": "p1", "x": 80, "y": 120, "name": "正门", "description": "园区主入口安保检查" },
+      { "id": "p2", "x": 200, "y": 80, "name": "办公楼A", "description": "甲级写字楼巡检" },
+      { "id": "p3", "x": 350, "y": 120, "name": "办公楼B", "description": "科技企业聚集地" },
+      { "id": "p4", "x": 450, "y": 200, "name": "商业裙楼", "description": "商铺和餐饮区" },
+      { "id": "p5", "x": 400, "y": 320, "name": "地下车库", "description": "车辆管理和安全" },
+      { "id": "p6", "x": 250, "y": 380, "name": "设备层", "description": "水电设备巡检" },
+      { "id": "p7", "x": 120, "y": 320, "name": "仓库区", "description": "物流和仓储管理" }
+    ],
+    "patrolRoute": [0, 1, 2, 3, 4, 5, 6],
+    "observeTime": 20,
+    "memoryTest": true
+  },
+  
+  "contracts": {
+    "tenants": [
+      {
+        "id": "t1",
+        "name": "金融投资集团",
+        "type": "office",
+        "area": 2000,
+        "rentOffer": 95,
+        "contractTerm": 60,
+        "deposit": 3800000,
+        "businessScope": "投资管理、金融咨询",
+        "industry": "金融",
+        "size": "大型",
+        "creditRating": "A",
+        "specialRequirements": "独立VIP电梯、顶层冠名权"
+      },
+      {
+        "id": "t2",
+        "name": "健身会所",
+        "type": "retail",
+        "area": 800,
+        "rentOffer": 75,
+        "contractTerm": 36,
+        "deposit": 540000,
+        "businessScope": "健身服务、瑜伽课程",
+        "industry": "健身",
+        "size": "中型",
+        "creditRating": "C",
+        "specialRequirements": "需要24小时营业、独立淋浴设施"
+      },
+      {
+        "id": "t3",
+        "name": "物流仓储公司",
+        "type": "warehouse",
+        "area": 3000,
+        "rentOffer": 45,
+        "contractTerm": 24,
+        "deposit": 405000,
+        "businessScope": "仓储服务、货物中转",
+        "industry": "物流",
+        "size": "大型",
+        "creditRating": "B",
+        "specialRequirements": "大型货车进出通道、夜间卸货许可"
+      },
+      {
+        "id": "t4",
+        "name": "高端西餐厅",
+        "type": "restaurant",
+        "area": 400,
+        "rentOffer": 150,
+        "contractTerm": 48,
+        "deposit": 480000,
+        "businessScope": "西式餐饮、商务宴请",
+        "industry": "餐饮",
+        "size": "中型",
+        "creditRating": "A",
+        "specialRequirements": "户外用餐区、独立燃气管道"
+      }
+    ],
+    "approvalOptions": [
+      { "id": "opt1", "label": "同意入驻", "type": "approve", "requiresComment": false, "description": "所有条件符合要求，直接通过" },
+      { "id": "opt2", "label": "需要协商条款", "type": "negotiate", "requiresComment": true, "description": "部分条款需要进一步沟通" },
+      { "id": "opt3", "label": "上报上级审批", "type": "escalate", "requiresComment": true, "description": "重大决策需要上级批准" },
+      { "id": "opt4", "label": "拒绝入驻", "type": "reject", "requiresComment": true, "description": "不符合入驻条件" }
+    ],
+    "correctAnswers": {
+      "t1": "opt3",
+      "t2": "opt2",
+      "t3": "opt1",
+      "t4": "opt1"
+    },
+    "timePerContract": 45
+  },
+  
+  "meters": {
+    "waterMeters": [
+      { "id": "w1", "location": "A座顶楼", "tenantId": "t1", "previousReading": 2500, "currentReading": 2780, "correctReading": 2780, "displayValue": 2780, "tolerance": 10 },
+      { "id": "w2", "location": "B座2楼", "tenantId": "t2", "previousReading": 1800, "currentReading": 2150, "correctReading": 2150, "displayValue": 2150, "tolerance": 10 },
+      { "id": "w3", "location": "仓库区", "tenantId": "t3", "previousReading": 800, "currentReading": 920, "correctReading": 920, "displayValue": 920, "tolerance": 10 },
+      { "id": "w4", "location": "裙楼1楼", "tenantId": "t4", "previousReading": 1200, "currentReading": 1420, "correctReading": 1420, "displayValue": 1420, "tolerance": 10 }
+    ],
+    "electricMeters": [
+      { "id": "e1", "location": "A座顶楼", "tenantId": "t1", "previousReading": 45000, "currentReading": 52000, "correctReading": 52000, "displayValue": 52000, "tolerance": 100 },
+      { "id": "e2", "location": "B座2楼", "tenantId": "t2", "previousReading": 22000, "currentReading": 28500, "correctReading": 28500, "displayValue": 28500, "tolerance": 100 },
+      { "id": "e3", "location": "仓库区", "tenantId": "t3", "previousReading": 12000, "currentReading": 15800, "correctReading": 15800, "displayValue": 15800, "tolerance": 100 },
+      { "id": "e4", "location": "裙楼1楼", "tenantId": "t4", "previousReading": 18000, "currentReading": 22400, "correctReading": 22400, "displayValue": 22400, "tolerance": 100 }
+    ],
+    "unitPrices": {
+      "water": 5.8,
+      "electric": 1.35
+    },
+    "tolerance": 3
+  },
+  
+  "workOrders": {
+    "enabled": true,
+    "orders": [
+      {
+        "id": "wo1",
+        "type": "emergency",
+        "title": "消防警报触发",
+        "description": "办公楼B座5楼烟雾报警器触发，请立即处理！",
+        "urgency": "critical",
+        "triggerAt": 20,
+        "options": [
+          { "id": "wo1-o1", "label": "立即启动消防应急预案", "description": "最高优先级，生命安全第一" },
+          { "id": "wo1-o2", "label": "先查看监控确认", "description": "确认是否误报" },
+          { "id": "wo1-o3", "label": "拨打119报警", "description": "通知消防部门" }
+        ],
+        "correctOptionId": "wo1-o1"
+      },
+      {
+        "id": "wo2",
+        "type": "repair",
+        "title": "中央空调故障",
+        "description": "商业裙楼中央空调主机故障，影响多个租户",
+        "urgency": "high",
+        "triggerAt": 80,
+        "options": [
+          { "id": "wo2-o1", "label": "联系空调厂商紧急维修", "description": "专业团队处理" },
+          { "id": "wo2-o2", "label": "安排内部工程人员检查", "description": "先尝试自行修复" },
+          { "id": "wo2-o3", "label": "提供临时风扇给租户", "description": "临时解决方案" }
+        ],
+        "correctOptionId": "wo2-o1"
+      },
+      {
+        "id": "wo3",
+        "type": "maintenance",
+        "title": "电梯年度维保",
+        "description": "办公楼A座电梯需要进行年度维保检测",
+        "urgency": "medium",
+        "triggerAt": 150,
+        "options": [
+          { "id": "wo3-o1", "label": "安排非工作时间进行维保", "description": "减少对租户影响" },
+          { "id": "wo3-o2", "label": "工作日白天进行", "description": "便于监督" },
+          { "id": "wo3-o3", "label": "延后一个月再处理", "description": "目前电梯运行正常" }
+        ],
+        "correctOptionId": "wo3-o1"
+      }
+    ],
+    "timeout": 20,
+    "retryPenalty": 15
+  },
+  
+  "scoring": {
+    "inspectionWeight": 0.2,
+    "contractWeight": 0.4,
+    "meterWeight": 0.25,
+    "speedBonus": 0.075,
+    "accuracyBonus": 0.075
+  }
+}
