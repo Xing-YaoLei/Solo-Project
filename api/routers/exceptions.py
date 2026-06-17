@@ -67,7 +67,7 @@ async def update_exception(
     exc = await exception_service.get_exception(db, exc_id)
     if not exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="异常记录不存在")
-    exc = await exception_service.update_exception(db, exc, body)
+    exc = await exception_service.update_exception(db, exc, body, current_user.id)
     await db.commit()
     await db.refresh(exc)
     return exc

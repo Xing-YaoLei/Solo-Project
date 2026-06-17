@@ -94,7 +94,7 @@ async def update_prescription(
     return rx
 
 
-@router.post("/{rx_id}/mark-exception", response_model=PrescriptionOut)
+@router.post("/{rx_id}/mark-exception", response_model=PrescriptionDetail)
 async def mark_exception(
     rx_id: str,
     body: MarkExceptionRequest,
@@ -106,9 +106,10 @@ async def mark_exception(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="处方不存在")
     if rx.status == "exception":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="处方已处于异常状态")
-    rx, _ = await prescription_service.mark_exception(db, rx, body, current_user.id)
+    rx, exc = await prescription_service.mark_exception(db, rx, body, current_user.id)
     await db.commit()
     await db.refresh(rx)
+    await db.refresh(exc)
     return rx
 
 

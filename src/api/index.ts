@@ -58,10 +58,29 @@ export const exportApi = {
     apiClient.post<ExportStatusResponse>('/export/trigger', data),
   getStatus: (taskId: string) =>
     apiClient.get<ExportStatusResponse>(`/export/status/${taskId}`),
-  download: (taskId: string) =>
-    `${apiClient.defaults.baseURL}/export/download/${taskId}`,
+  download: async (taskId: string, filename: string) => {
+    const url = `${apiClient.defaults.baseURL}/export/download/${taskId}`;
+    const token = localStorage.getItem('auth_token');
+    const response = await fetch(url, {
+      headers: {
+        'Authorization': token ? `Bearer ${token}` : '',
+      },
+    });
+    if (!response.ok) {
+      throw new Error('下载失败');
+    }
+    const blob = await response.blob();
+    const blobUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(blobUrl);
+  },
 };
 
 export const caliberApi = {
-  list: () => apiClient.get<CaliberNote[]>('/caliber-notes'),
+  list: () => apiClient.get<CaliberNote[]>('/export/caliber-notes'),
 };

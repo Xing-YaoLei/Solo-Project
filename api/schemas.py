@@ -1,6 +1,7 @@
 from datetime import datetime
+from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field, model_validator
 
 
 class LoginRequest(BaseModel):
@@ -242,8 +243,36 @@ class ExceptionOut(BaseModel):
     status: str
     created_at: datetime
     updated_at: datetime
+    resolved_at: datetime | None = None
 
     model_config = {"from_attributes": True}
+
+    @model_validator(mode="before")
+    @classmethod
+    def extract_related_data(cls, data: Any) -> Any:
+        if hasattr(data, "prescription") and data.prescription is not None:
+            object.__setattr__(data, "_prescription_rx_number", data.prescription.rx_number)
+        if hasattr(data, "assignee") and data.assignee is not None:
+            object.__setattr__(data, "_assignee_username", data.assignee.username)
+        return data
+
+    @computed_field
+    @property
+    def exception_no(self) -> str:
+        year = self.created_at.year
+        month = str(self.created_at.month).zfill(2)
+        seq = self.id[-4:].upper()
+        return f"EXC-{year}{month}{seq}"
+
+    @computed_field
+    @property
+    def prescription_no(self) -> str:
+        return getattr(self, "_prescription_rx_number", "")
+
+    @computed_field
+    @property
+    def assignee_name(self) -> str | None:
+        return getattr(self, "_assignee_username", None)
 
 
 class ExceptionListParams(BaseModel):

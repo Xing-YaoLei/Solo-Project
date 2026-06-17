@@ -56,8 +56,7 @@ export default function DataExport() {
         setApiAvailable(true);
         return res.data;
       } catch (e) {
-        console.warn('API unavailable, using mock caliber notes');
-        setApiAvailable(false);
+        console.warn('Caliber notes API failed, using mock');
         return mockCaliberNotes;
       }
     },
@@ -70,13 +69,14 @@ export default function DataExport() {
       if (!currentTaskId) return null;
       try {
         const res = await exportApi.getStatus(currentTaskId);
+        setApiAvailable(true);
         return res.data;
       } catch (e) {
         console.warn('Failed to fetch export status');
         return null;
       }
     },
-    enabled: !!currentTaskId && apiAvailable,
+    enabled: !!currentTaskId && !currentTaskId.startsWith('mock-'),
     refetchInterval: (query) => {
       const data = query.state.data as ExportStatusResponse | null | undefined;
       if (!data || data.status === 'completed' || data.status === 'failed') {
@@ -101,10 +101,11 @@ export default function DataExport() {
       return res.data;
     },
     onSuccess: (data) => {
+      setApiAvailable(true);
       setCurrentTaskId(data.task_id);
     },
-    onError: () => {
-      setApiAvailable(false);
+    onError: (error) => {
+      console.warn('Export trigger failed:', error);
       runMockExport();
     },
   });
@@ -180,21 +181,18 @@ export default function DataExport() {
     }
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (displayStatus?.status === 'completed' && currentTaskId) {
       if (apiAvailable) {
-        const token = localStorage.getItem('auth_token');
-        const url = exportApi.download(currentTaskId);
-        const link = document.createElement('a');
-        link.href = url;
-        if (token) {
-          link.href += `?token=${token}`;
+        try {
+          await exportApi.download(
+            currentTaskId,
+            `处方审核数据_${dateStart}_${dateEnd}.xlsx`
+          );
+        } catch (e) {
+          console.error('Download failed:', e);
+          alert('下载失败，请稍后重试');
         }
-        link.download = `处方审核数据_${dateStart}_${dateEnd}.xlsx`;
-        link.target = '_blank';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
       } else {
         alert('演示模式：真实导出文件需连接后端服务');
       }

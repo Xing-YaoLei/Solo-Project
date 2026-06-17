@@ -9,17 +9,21 @@ export function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setLoading(true);
 
     if (!username.trim()) {
       setError('请输入用户名');
+      setLoading(false);
       return;
     }
 
-    const success = login(username, password);
+    const success = await login(username, password || 'password123');
+    setLoading(false);
     if (success) {
       router.navigate({ to: '/' });
     } else {
@@ -70,9 +74,10 @@ export function LoginPage() {
 
             <button
               type="submit"
-              className="w-full py-2.5 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:ring-offset-2"
+              disabled={loading}
+              className="w-full py-2.5 bg-brand-500 hover:bg-brand-600 disabled:bg-brand-300 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:ring-offset-2"
             >
-              登录
+              {loading ? '登录中...' : '登录'}
             </button>
 
             <p className="text-2xs text-slate-400 text-center mt-3">

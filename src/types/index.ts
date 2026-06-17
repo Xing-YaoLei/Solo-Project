@@ -63,12 +63,14 @@ export interface Prescription {
   submitted_at: string;
   reviewed_at?: string;
   reviewer_id?: string;
+  updated_at?: string;
   batch_info: BatchInfo[];
   member_profile: MemberProfile;
   replenishment?: Replenishment;
   insurance_record?: InsuranceRecord;
   photos: PrescriptionPhoto[];
   timeline: TimelineEvent[];
+  exceptions?: ExceptionRecord[];
 }
 
 export interface ExceptionRecord {

@@ -231,8 +231,9 @@ class Exception(Base):
     )
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime)
 
-    prescription: Mapped["Prescription"] = relationship(back_populates="exceptions")
+    prescription: Mapped["Prescription"] = relationship(back_populates="exceptions", lazy="selectin")
     assignee: Mapped["User | None"] = relationship(lazy="selectin")
 
 
