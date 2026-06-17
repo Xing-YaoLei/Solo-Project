@@ -98,7 +98,7 @@ export default function TaskDetailPage() {
   };
 
   const handleSubmitBatch = async () => {
-    if (!batchNo.trim() || !expiryDate.trim()) return;
+    if (!batchNo.trim() || !productionDate || !expiryDate || !shelfLife.trim()) return;
     setSubmittingBatch(true);
     try {
       await followUpApi.submitBatchExpiry(id as string, {
@@ -373,7 +373,7 @@ export default function TaskDetailPage() {
                 />
                 <button
                   onClick={handleSubmitBatch}
-                  disabled={submittingBatch || !batchNo.trim() || !expiryDate.trim()}
+                  disabled={submittingBatch || !batchNo.trim() || !productionDate || !expiryDate || !shelfLife.trim()}
                   className="w-full px-4 py-2 bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 text-white text-sm rounded-lg transition-colors"
                 >
                   {submittingBatch ? '提交中...' : '提交'}

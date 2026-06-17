@@ -81,14 +81,14 @@ export default function TrackingPage() {
   };
 
   const handleSubmitBatch = async (taskId: string) => {
-    if (!batchNo.trim() || !productionDate || !expiryDate) return;
+    if (!batchNo.trim() || !productionDate || !expiryDate || !shelfLife.trim()) return;
     setSubmitting(`batch-${taskId}`);
     try {
       await followUpApi.submitBatchExpiry(taskId, {
         batchNo,
         productionDate,
         expiryDate,
-        shelfLife: shelfLife || '待定',
+        shelfLife,
       });
       const res = await followUpApi.getTaskDetail(taskId);
       const updated = res.data;
@@ -338,7 +338,7 @@ export default function TrackingPage() {
                             />
                             <button
                               onClick={() => handleSubmitBatch(task.id)}
-                              disabled={isSubmittingBatch || !batchNo.trim() || !productionDate || !expiryDate}
+                              disabled={isSubmittingBatch || !batchNo.trim() || !productionDate || !expiryDate || !shelfLife.trim()}
                               className="w-full py-2 bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors"
                             >
                               {isSubmittingBatch ? '提交中...' : '录入批号效期'}
