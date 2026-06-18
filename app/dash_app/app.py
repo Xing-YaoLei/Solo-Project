@@ -434,16 +434,18 @@ def _build_payment_cycle_chart(df: pd.DataFrame, user_role):
 
 
 def _decode_upload_contents(contents, filename):
-    """解析 base64 上传内容并保存到磁盘，返回绝对路径和文件大小"""
+    """解析 base64 上传内容，返回 (bytes_data, safe_filename, file_size)"""
     if not contents:
-        return None, 0
+        return None, "", 0
     parts = contents.split(",", 1)
     if len(parts) != 2:
-        return None, 0
-    data = base64.b64decode(parts[1])
+        return None, "", 0
+    try:
+        data = base64.b64decode(parts[1])
+    except Exception:
+        return None, "", 0
     size = len(data)
-
-    suffix = Path(filename).suffix
+    suffix = Path(filename).suffix if filename else ""
     safe_name = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}{suffix}"
     return data, safe_name, size
 
@@ -492,18 +494,26 @@ def register_callbacks(app: Dash):
         Output("login-error", "children", allow_duplicate=True),
         Output("share-open-result", "children"),
         Output("share-code-input", "value"),
+        Output("login-view", "style", allow_duplicate=True),
+        Output("main-app-view", "style", allow_duplicate=True),
+        Output("nav-placeholder", "children", allow_duplicate=True),
+        Output("main-app-view", "children", allow_duplicate=True),
         Input("url-location", "search"),
         State("session-store", "data"),
-        prevent_initial_call=False
+        prevent_initial_call='initial_duplicate'
     )
     def parse_url_share_code(search, session):
         session = session or {}
         result_info = no_update
         new_code_val = no_update
         err = no_update
+        lv_style = no_update
+        mv_style = no_update
+        nav_children = no_update
+        main_children = no_update
 
         if not search:
-            return session, err, result_info, new_code_val
+            return session, err, result_info, new_code_val, lv_style, mv_style, nav_children, main_children
 
         try:
             parsed = urlparse(search)
@@ -513,7 +523,7 @@ def register_callbacks(app: Dash):
             code = None
 
         if not code:
-            return session, err, result_info, new_code_val
+            return session, err, result_info, new_code_val, lv_style, mv_style, nav_children, main_children
 
         code = code.strip()
         CURRENT_SHARE["active"] = False
@@ -533,31 +543,45 @@ def register_callbacks(app: Dash):
                  f"访问码无效或已过期，或当前角色（{user_role.value}）无访问权限。"],
                 color="danger"
             )
-            return session, err, result_info, new_code_val
+            return session, err, result_info, new_code_val, lv_style, mv_style, nav_children, main_children
 
         session["share_code"] = code
         session["share_view"] = info
         CURRENT_SHARE["active"] = True
         CURRENT_SHARE["view"] = info
-        result_info = dbc.Alert(
-            [html.I(className="bi bi-check-circle-fill me-2"),
-             f"✅ 已载入分享视图：「{info['name']}」  —  请点击上方「账号登录」使用对应角色登录后查看。"],
-            color="success"
-        )
-        return session, err, result_info, new_code_val
+
+        if session.get("role"):
+            role = RoleEnum(session["role"])
+            user_full = session.get("full_name", session.get("username", "访客"))
+            CURRENT_USER["username"] = session.get("username")
+            CURRENT_USER["role"] = role
+            CURRENT_USER["full_name"] = user_full
+            nav_children = build_navbar(role, user_full, get_last_refresh_time(), False)
+            main_children = build_main_app_view(info)
+            lv_style = {"display": "none"}
+            mv_style = {"display": "block"}
+            result_info = no_update
+        else:
+            result_info = dbc.Alert(
+                [html.I(className="bi bi-check-circle-fill me-2"),
+                 f"✅ 已载入分享视图：「{info['name']}」  —  请点击上方「账号登录」使用对应角色登录后查看。"],
+                color="success"
+            )
+        return (session, err, result_info, new_code_val,
+                lv_style, mv_style, nav_children, main_children)
 
     @app.callback(
-        Output("login-error", "children"),
-        Output("session-store", "data"),
-        Output("login-view", "style"),
-        Output("main-app-view", "style"),
-        Output("nav-placeholder", "children"),
-        Output("main-app-view", "children"),
+        Output("login-error", "children", allow_duplicate=True),
+        Output("session-store", "data", allow_duplicate=True),
+        Output("login-view", "style", allow_duplicate=True),
+        Output("main-app-view", "style", allow_duplicate=True),
+        Output("nav-placeholder", "children", allow_duplicate=True),
+        Output("main-app-view", "children", allow_duplicate=True),
         Input("btn-login", "n_clicks"),
         State("login-username", "value"),
         State("login-password", "value"),
         State("session-store", "data"),
-        prevent_initial_call=False
+        prevent_initial_call='initial_duplicate'
     )
     def do_login(n_clicks, username, password, session):
         triggered = ctx.triggered_id
