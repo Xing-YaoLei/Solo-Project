@@ -13,6 +13,7 @@ export interface MistakeRecord {
 
 export interface MaterialDelayRecord {
   id: string;
+  delayId?: string;
   materialName: string;
   plannedDate: number;
   actualDate: number;

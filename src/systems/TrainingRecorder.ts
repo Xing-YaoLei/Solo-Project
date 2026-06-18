@@ -106,6 +106,7 @@ export class TrainingRecorder {
     eventBus.on(GameEvent.MATERIAL_DELAYED, (data) => {
       if (this.state.isRecording && data) {
         const delayData = data as {
+          delayId?: string;
           materialName: string;
           plannedDate: number;
           actualDate: number;
@@ -302,6 +303,14 @@ export class TrainingRecorder {
 
     const record = this.state.records.get(this.state.currentRecordId);
     if (!record) return;
+
+    const exists = record.materialDelays.some((d) => {
+      if (delay.delayId && d.delayId) {
+        return d.delayId === delay.delayId;
+      }
+      return d.materialName === delay.materialName && d.plannedDate === delay.plannedDate;
+    });
+    if (exists) return;
 
     const delayRecord: MaterialDelayRecord = {
       ...delay,

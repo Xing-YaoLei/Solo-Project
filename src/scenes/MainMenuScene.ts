@@ -363,7 +363,7 @@ export class MainMenuScene extends BaseScene {
     if (currentSave && !currentSave.tutorialCompleted) {
       this.transitionToScene('TutorialScene');
     } else {
-      this.transitionToScene('LevelSelectScene');
+      this.transitionToScene('TaskHallScene');
     }
   }
 

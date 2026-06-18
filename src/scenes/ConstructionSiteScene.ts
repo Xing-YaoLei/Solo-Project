@@ -1007,15 +1007,7 @@ export class ConstructionSiteScene extends BaseScene {
         this.currentDay += delay.delayDays;
 
         this.emitEvent(GameEvent.MATERIAL_DELAYED, {
-          materialName: delay.materialName,
-          plannedDate: delay.triggerDay,
-          actualDate: delay.triggerDay + delay.delayDays,
-          delayDays: delay.delayDays,
-          impact: delay.impact,
-          phase: this.currentPhase,
-        });
-
-        trainingRecorder.recordMaterialDelay({
+          delayId: delay.id,
           materialName: delay.materialName,
           plannedDate: delay.triggerDay,
           actualDate: delay.triggerDay + delay.delayDays,
@@ -1252,7 +1244,7 @@ export class ConstructionSiteScene extends BaseScene {
       this.qualityScore,
       this.currentBudget,
       this.totalCost,
-      this.currentDuration,
+      this.currentDay,
       this.currentDuration
     );
 
