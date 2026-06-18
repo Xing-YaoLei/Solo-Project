@@ -1,15 +1,12 @@
 <script setup>
-import { ref, getCurrentInstance } from 'vue';
-import { usePage, useForm, Head, Link, router } from '@inertiajs/vue3';
+import { ref } from 'vue';
+import { Head, Link, router } from '@inertiajs/vue3';
 import {
-    ArrowLeft, FileText, User, Calendar, Link2, AlertTriangle,
+    ArrowLeft, User, Calendar, Link2, AlertTriangle,
     Lightbulb, BookOpen, ClipboardList, Check, Paperclip, Edit,
-    History, ChevronRight, X, Plus, Unlink, Building2,
-    Target, Info, Eye, Car, Clock
+    History, ChevronRight, Plus, Unlink, Building2,
+    Target, Info, Car, Clock
 } from 'lucide-vue-next';
-
-const { proxy } = getCurrentInstance();
-const page = usePage();
 
 const props = defineProps({
     review: Object,
@@ -28,61 +25,62 @@ const tabs = [
     { key: 'timelines', label: '时间线', icon: History },
 ];
 
+const typeLabel = (type) => {
+    const map = {
+        1: '爽约复盘',
+        2: '投诉处理',
+        3: '事故复盘',
+        4: '优秀案例',
+        5: '日常复盘',
+        9: '其他',
+    };
+    return map[type] || '其他';
+};
+
 const levelBadgeClass = (level) => {
     const map = {
-        'low': 'badge-secondary',
-        'medium': 'badge-info',
-        'high': 'badge-warning',
-        'critical': 'badge-danger',
+        1: 'badge-secondary',
+        2: 'badge-info',
+        3: 'badge-warning',
+        4: 'badge-danger',
     };
     return map[level] || 'badge-secondary';
 };
 
 const levelLabel = (level) => {
     const map = {
-        'low': '低',
-        'medium': '中',
-        'high': '高',
-        'critical': '严重',
+        1: '一般',
+        2: '重要',
+        3: '紧急',
+        4: '重大',
     };
-    return map[level] || level;
+    return map[level] || '一般';
 };
 
 const statusBadgeClass = (status) => {
     const map = {
-        'draft': 'badge-gray',
-        'pending': 'badge-warning',
-        'reviewing': 'badge-info',
-        'approved': 'badge-success',
-        'rejected': 'badge-danger',
-        'closed': 'badge-secondary',
+        1: 'badge-gray',
+        2: 'badge-warning',
+        3: 'badge-success',
+        4: 'badge-secondary',
     };
-    return map[status] || 'badge-secondary';
+    return map[status] || 'badge-gray';
 };
 
 const statusLabel = (status) => {
     const map = {
-        'draft': '草稿',
-        'pending': '待审核',
-        'reviewing': '审核中',
-        'approved': '已通过',
-        'rejected': '已驳回',
-        'closed': '已关闭',
+        1: '草稿',
+        2: '待审核',
+        3: '已审核',
+        4: '已归档',
     };
-    return map[status] || status;
-};
-
-const unlinkSource = (sourceId, sourceType) => {
-    router.post(route('reviews.unlink-source', props.review.id), {
-        source_id: sourceId,
-        source_type: sourceType,
-    }, { preserveState: true });
+    return map[status] || '未知';
 };
 
 const unlinkTimeline = (timelineId) => {
-    router.post(route('reviews.unlink-timeline', props.review.id), {
-        timeline_id: timelineId,
-    }, { preserveState: true });
+    router.delete(route('reviews.unlink-timeline', [props.review.id, timelineId]), {
+        preserveState: true,
+    });
 };
 
 const toggleTimelineSelect = (id) => {
@@ -96,36 +94,45 @@ const toggleTimelineSelect = (id) => {
 
 const linkTimelines = () => {
     if (selectedTimelineIds.value.length === 0) return;
-    router.post(route('reviews.link-timelines', props.review.id), {
-        timeline_ids: selectedTimelineIds.value,
-    }, {
-        preserveState: true,
-        onSuccess: () => {
-            selectedTimelineIds.value = [];
-        }
+    const ids = [...selectedTimelineIds.value];
+    selectedTimelineIds.value = [];
+    ids.forEach(id => {
+        router.post(route('reviews.link-timeline', props.review.id), {
+            timeline_id: id,
+            relation_type: 1,
+            relation_note: '',
+        }, { preserveState: true });
     });
 };
 
 const categoryBadgeClass = (category) => {
     const map = {
-        'followup': 'badge-info',
-        'test_drive': 'badge-success',
-        'status_change': 'badge-warning',
-        'note': 'badge-secondary',
-        'attachment': 'badge-primary',
+        1: 'badge-warning',
+        2: 'badge-info',
+        3: 'badge-secondary',
+        4: 'badge-primary',
+        5: 'badge-primary',
+        6: 'badge-danger',
+        7: 'badge-info',
+        8: 'badge-success',
+        9: 'badge-gray',
     };
     return map[category] || 'badge-secondary';
 };
 
 const categoryLabel = (category) => {
     const map = {
-        'followup': '跟进',
-        'test_drive': '试驾',
-        'status_change': '状态变更',
-        'note': '备注',
-        'attachment': '附件',
+        1: '状态变更',
+        2: '字段修改',
+        3: '备注',
+        4: '分配',
+        5: '附件',
+        6: '责任',
+        7: '复盘',
+        8: '客户',
+        9: '系统',
     };
-    return map[category] || category || '其他';
+    return map[category] || '其他';
 };
 </script>
 
@@ -149,7 +156,7 @@ const categoryLabel = (category) => {
                     <div class="space-y-2">
                         <div class="flex flex-wrap items-center gap-2">
                             <span class="font-mono text-xs text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 px-2 py-0.5 rounded">{{ review.code }}</span>
-                            <span v-if="review.type" class="badge-info">{{ review.type }}</span>
+                            <span v-if="review.type" class="badge-info">{{ typeLabel(review.type) }}</span>
                             <span :class="levelBadgeClass(review.level)">{{ levelLabel(review.level) }}级别</span>
                             <span :class="statusBadgeClass(review.status)">{{ statusLabel(review.status) }}</span>
                         </div>
@@ -169,7 +176,7 @@ const categoryLabel = (category) => {
                             </span>
                             <span class="flex items-center gap-1">
                                 <Calendar class="w-4 h-4" />
-                                {{ proxy.$filters.date(review.created_at) }}
+                                {{ $filters.date(review.created_at) }}
                             </span>
                         </div>
                     </div>
@@ -192,26 +199,17 @@ const categoryLabel = (category) => {
                                 </div>
                                 <div class="min-w-0">
                                     <div class="flex items-center gap-2">
-                                        <span class="chip text-xs">
-                                            {{ source.type === 'test_drive' ? '试驾记录' : '客户档案' }}
-                                        </span>
+                                        <span class="chip text-xs">{{ source.label }}</span>
                                     </div>
                                     <Link
                                         :href="source.url"
                                         class="font-medium text-slate-900 dark:text-slate-100 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center gap-1 mt-0.5"
                                     >
-                                        <span class="truncate">{{ source.label }}</span>
+                                        <span class="truncate">{{ source.code }}</span>
                                         <ChevronRight class="w-3 h-3 flex-shrink-0" />
                                     </Link>
                                 </div>
                             </div>
-                            <button
-                                @click="unlinkSource(source.id, source.type)"
-                                class="btn-ghost p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 flex-shrink-0 ml-2"
-                                title="取消关联"
-                            >
-                                <Unlink class="w-4 h-4" />
-                            </button>
                         </div>
                         <p v-if="linkedSources.length === 0" class="col-span-2 text-center py-4 text-sm text-slate-500 dark:text-slate-400">
                             暂无追溯来源
@@ -264,23 +262,23 @@ const categoryLabel = (category) => {
                 </div>
             </div>
 
-            <div v-if="review.improvements" class="card">
+            <div v-if="review.improvement_measures" class="card">
                 <div class="card-body">
                     <h4 class="text-sm font-medium text-slate-500 dark:text-slate-400 mb-2 flex items-center gap-2">
                         <Lightbulb class="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                         改进措施
                     </h4>
-                    <p class="text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{{ review.improvements }}</p>
+                    <p class="text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{{ review.improvement_measures }}</p>
                 </div>
             </div>
 
-            <div v-if="review.lessons" class="card">
+            <div v-if="review.lessons_learned" class="card">
                 <div class="card-body">
                     <h4 class="text-sm font-medium text-slate-500 dark:text-slate-400 mb-2 flex items-center gap-2">
                         <BookOpen class="w-4 h-4 text-purple-600 dark:text-purple-400" />
                         经验教训
                     </h4>
-                    <p class="text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{{ review.lessons }}</p>
+                    <p class="text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{{ review.lessons_learned }}</p>
                 </div>
             </div>
 
@@ -306,7 +304,7 @@ const categoryLabel = (category) => {
                                     </span>
                                     <span v-if="item.due_date" class="flex items-center gap-1">
                                         <Calendar class="w-3 h-3" />
-                                        {{ proxy.$filters.date(item.due_date) }}
+                                        {{ $filters.date(item.due_date) }}
                                     </span>
                                 </div>
                             </div>
@@ -342,7 +340,7 @@ const categoryLabel = (category) => {
                                     <Link2 class="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                                     已关联处理记录
                                 </h3>
-                                <span class="badge-info">{{ proxy.$filters.number(review.timelinesLinked?.length || 0) }}</span>
+                                <span class="badge-info">{{ $filters.number(review.timelinesLinked?.length || 0) }}</span>
                             </div>
                             <div class="space-y-3 max-h-[500px] overflow-y-auto pr-2">
                                 <div
@@ -353,7 +351,7 @@ const categoryLabel = (category) => {
                                     <div class="flex items-start justify-between gap-3 mb-2">
                                         <div class="flex items-center gap-2 flex-wrap">
                                             <span :class="categoryBadgeClass(t.category)">{{ categoryLabel(t.category) }}</span>
-                                            <span class="text-sm font-medium text-slate-900 dark:text-slate-100">{{ t.action }}</span>
+                                            <span class="text-sm font-medium text-slate-900 dark:text-slate-100">{{ t.action_name }}</span>
                                         </div>
                                         <button
                                             @click="unlinkTimeline(t.id)"
@@ -371,7 +369,7 @@ const categoryLabel = (category) => {
                                         </span>
                                         <span class="flex items-center gap-1">
                                             <Clock class="w-3 h-3" />
-                                            {{ proxy.$filters.relative(t.created_at) }}
+                                            {{ $filters.relative(t.created_at) }}
                                         </span>
                                     </div>
                                 </div>
@@ -411,12 +409,12 @@ const categoryLabel = (category) => {
                                     <div class="flex-1 min-w-0">
                                         <div class="flex items-center gap-2 flex-wrap mb-1">
                                             <span :class="categoryBadgeClass(t.category)">{{ categoryLabel(t.category) }}</span>
-                                            <span class="text-sm font-medium text-slate-900 dark:text-slate-100">{{ t.action }}</span>
+                                            <span class="text-sm font-medium text-slate-900 dark:text-slate-100">{{ t.action_name }}</span>
                                         </div>
                                         <p v-if="t.content" class="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">{{ t.content }}</p>
                                         <div class="flex items-center gap-3 text-xs text-slate-400 mt-1">
                                             <span>{{ t.user?.name || '未知' }}</span>
-                                            <span>{{ proxy.$filters.date(t.created_at, 'MM-DD HH:mm') }}</span>
+                                            <span>{{ $filters.date(t.created_at, 'MM-DD HH:mm') }}</span>
                                         </div>
                                     </div>
                                 </label>
@@ -437,7 +435,7 @@ const categoryLabel = (category) => {
                         </div>
                         <div class="p-4 rounded-lg bg-slate-50 dark:bg-slate-700/40">
                             <p class="text-xs text-slate-500 dark:text-slate-400 mb-1">创建时间</p>
-                            <p class="font-medium text-slate-900 dark:text-slate-100">{{ proxy.$filters.date(review.created_at, 'YYYY-MM-DD HH:mm') }}</p>
+                            <p class="font-medium text-slate-900 dark:text-slate-100">{{ $filters.date(review.created_at, 'YYYY-MM-DD HH:mm') }}</p>
                         </div>
                         <div class="p-4 rounded-lg bg-slate-50 dark:bg-slate-700/40">
                             <p class="text-xs text-slate-500 dark:text-slate-400 mb-1">创建人</p>
@@ -453,7 +451,7 @@ const categoryLabel = (category) => {
                         </div>
                         <div class="p-4 rounded-lg bg-slate-50 dark:bg-slate-700/40">
                             <p class="text-xs text-slate-500 dark:text-slate-400 mb-1">更新时间</p>
-                            <p class="font-medium text-slate-900 dark:text-slate-100">{{ proxy.$filters.date(review.updated_at, 'YYYY-MM-DD HH:mm') }}</p>
+                            <p class="font-medium text-slate-900 dark:text-slate-100">{{ $filters.date(review.updated_at, 'YYYY-MM-DD HH:mm') }}</p>
                         </div>
                     </div>
                 </div>
@@ -467,7 +465,7 @@ const categoryLabel = (category) => {
                             </div>
                             <div class="flex-1 min-w-0">
                                 <p class="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">{{ a.name }}</p>
-                                <p class="text-xs text-slate-500 dark:text-slate-400">{{ proxy.$filters.date(a.created_at) }}</p>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">{{ $filters.date(a.created_at) }}</p>
                             </div>
                         </div>
                         <p v-if="!review.attachments || review.attachments.length === 0" class="col-span-full text-center py-8 text-sm text-slate-500 dark:text-slate-400">
@@ -481,8 +479,8 @@ const categoryLabel = (category) => {
                     <div class="space-y-3">
                         <div v-for="n in review.notes" :key="n.id" class="p-4 rounded-lg bg-slate-50 dark:bg-slate-700/40">
                             <div class="flex items-center justify-between mb-2">
-                                <span class="text-sm font-medium text-slate-900 dark:text-slate-100">{{ n.user?.name || '未知' }}</span>
-                                <span class="text-xs text-slate-500 dark:text-slate-400">{{ proxy.$filters.date(n.created_at) }}</span>
+                                <span class="text-sm font-medium text-slate-900 dark:text-slate-100">{{ n.creator?.name || '未知' }}</span>
+                                <span class="text-xs text-slate-500 dark:text-slate-400">{{ $filters.date(n.created_at) }}</span>
                             </div>
                             <p class="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{{ n.content }}</p>
                         </div>
@@ -504,9 +502,9 @@ const categoryLabel = (category) => {
                                 <div class="flex items-center justify-between mb-2">
                                     <div class="flex items-center gap-2">
                                         <span v-if="t.category" :class="categoryBadgeClass(t.category)">{{ categoryLabel(t.category) }}</span>
-                                        <span class="text-sm font-medium text-slate-900 dark:text-slate-100">{{ t.action }}</span>
+                                        <span class="text-sm font-medium text-slate-900 dark:text-slate-100">{{ t.action_name }}</span>
                                     </div>
-                                    <span class="text-xs text-slate-500 dark:text-slate-400">{{ proxy.$filters.relative(t.created_at) }}</span>
+                                    <span class="text-xs text-slate-500 dark:text-slate-400">{{ $filters.relative(t.created_at) }}</span>
                                 </div>
                                 <p v-if="t.content" class="text-sm text-slate-700 dark:text-slate-300">{{ t.content }}</p>
                             </div>

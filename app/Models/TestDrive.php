@@ -50,6 +50,22 @@ class TestDrive extends Model
         ];
     }
 
+    public function getStatusLabelAttribute(): ?string
+    {
+        return $this->status?->label();
+    }
+
+    public function getTestDriveTypeLabelAttribute(): string
+    {
+        return match ((int) $this->type) {
+            1 => '标准试驾',
+            2 => '深度试驾',
+            3 => '对比试驾',
+            4 => '家庭试驾',
+            default => '标准试驾',
+        };
+    }
+
     protected static function boot()
     {
         parent::boot();

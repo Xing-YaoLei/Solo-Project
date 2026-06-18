@@ -1,10 +1,10 @@
 <script setup>
-import { computed, ref, watch } from 'vue'
-import { usePage, useForm, router, Head, Link } from '@inertiajs/vue3'
+import { computed, watch } from 'vue'
+import { usePage, useForm, Head, Link } from '@inertiajs/vue3'
 import {
     User, Car, Building2, Clock, Calendar, Users,
     UserCheck, MapPin, Route, FileText, Save, ArrowLeft,
-    Search, Plus, Phone
+    Search
 } from 'lucide-vue-next'
 
 const page = usePage()
@@ -14,46 +14,50 @@ const options = computed(() => page.props.options || {
     stores: [],
     vehicles: [],
     salesUsers: [],
-    defaultStatus: 'pending',
+    defaultStatus: 10,
 })
 
+const preselectedCustomerId = new URLSearchParams(window.location.search).get('customer_id') || ''
+
 const form = useForm({
-    customer_id: '',
-    customer_name: '',
-    customer_phone: '',
-    vehicle_id: options.value.defaultVehicle || '',
-    store_id: options.value.defaultStore || '',
-    test_drive_type: 'standard',
-    scheduled_start: '',
-    scheduled_end: '',
+    customer_id: preselectedCustomerId,
+    vehicle_id: '',
+    store_id: '',
+    type: 1,
+    appointment_at: '',
+    appointment_end_at: '',
     planned_duration: 60,
-    sales_user_id: options.value.defaultSalesUser || '',
+    sales_user_id: '',
     companion_user_id: '',
-    assigned_user_id: options.value.defaultSalesUser || '',
+    assigned_user_id: '',
     pickup_location: '',
     return_location: '',
     planned_route: '',
-    remarks: '',
-    status: options.value.defaultStatus || 'pending',
+    remark: '',
 })
 
-const showCustomerPicker = ref(false)
+const typeOptions = [
+    { value: 1, label: '标准试驾' },
+    { value: 2, label: '深度试驾' },
+    { value: 3, label: '对比试驾' },
+    { value: 4, label: '家庭试驾' },
+]
 
-watch(() => form.scheduled_start, (val) => {
-    if (val && !form.scheduled_end) {
+watch(() => form.appointment_at, (val) => {
+    if (val && !form.appointment_end_at) {
         const d = new Date(val)
         d.setMinutes(d.getMinutes() + (form.planned_duration || 60))
         const pad = n => String(n).padStart(2, '0')
-        form.scheduled_end = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+        form.appointment_end_at = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
     }
 })
 
 watch(() => form.planned_duration, (val) => {
-    if (form.scheduled_start && val) {
-        const d = new Date(form.scheduled_start)
+    if (form.appointment_at && val) {
+        const d = new Date(form.appointment_at)
         d.setMinutes(d.getMinutes() + Number(val))
         const pad = n => String(n).padStart(2, '0')
-        form.scheduled_end = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+        form.appointment_end_at = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
     }
 })
 
@@ -88,39 +92,20 @@ function submit() {
                             <div>
                                 <label class="label flex items-center gap-1.5">
                                     <User class="w-4 h-4 text-slate-500" />
-                                    客户信息
+                                    客户ID
                                     <span class="text-red-500">*</span>
                                 </label>
-                                <div class="p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-700/20">
-                                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                                        <div class="sm:col-span-1">
-                                            <label class="text-xs text-slate-500 dark:text-slate-400 mb-1 block">客户ID</label>
-                                            <div class="relative">
-                                                <input v-model="form.customer_id" type="text" class="input" placeholder="输入或搜索" />
-                                                <button type="button" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                                                    <Search class="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label class="text-xs text-slate-500 dark:text-slate-400 mb-1 block">姓名 <span class="text-red-500">*</span></label>
-                                            <input v-model="form.customer_name" type="text" class="input" placeholder="客户姓名" />
-                                        </div>
-                                        <div>
-                                            <label class="text-xs text-slate-500 dark:text-slate-400 mb-1 block">电话 <span class="text-red-500">*</span></label>
-                                            <div class="relative">
-                                                <Phone class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                                <input v-model="form.customer_phone" type="tel" class="input pl-10" placeholder="手机号" />
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="mt-3">
-                                        <button type="button" class="btn-link text-xs">
-                                            <Plus class="w-3 h-3" />
-                                            从客户库选择
-                                        </button>
-                                    </div>
+                                <div class="relative">
+                                    <input v-model="form.customer_id" type="text" class="input pr-10" placeholder="输入客户ID" required />
+                                    <Link
+                                        :href="route('customers.index')"
+                                        class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600"
+                                        title="从客户库查找"
+                                    >
+                                        <Search class="w-4 h-4" />
+                                    </Link>
                                 </div>
+                                <p v-if="form.errors.customer_id" class="mt-1 text-xs text-red-500">{{ form.errors.customer_id }}</p>
                             </div>
 
                             <div>
@@ -132,32 +117,35 @@ function submit() {
                                 <select v-model="form.vehicle_id" class="select" required>
                                     <option value="">请选择试驾车辆</option>
                                     <option v-for="v in options.vehicles" :key="v.id" :value="v.id">
-                                        {{ v.brand }} {{ v.model }} · {{ v.plate_number }} ({{ v.year || '' }})
+                                        {{ v.brand }} {{ v.model }} · {{ v.plate_number }}
                                     </option>
                                 </select>
+                                <p v-if="form.errors.vehicle_id" class="mt-1 text-xs text-red-500">{{ form.errors.vehicle_id }}</p>
                             </div>
 
                             <div>
                                 <label class="label flex items-center gap-1.5">
                                     <Building2 class="w-4 h-4 text-slate-500" />
                                     门店
-                                    <span class="text-red-500">*</span>
                                 </label>
-                                <select v-model="form.store_id" class="select" required>
+                                <select v-model="form.store_id" class="select">
                                     <option value="">请选择门店</option>
                                     <option v-for="s in options.stores" :key="s.id" :value="s.id">
-                                        {{ s.name }} - {{ s.address || '' }}
+                                        {{ s.name }}
                                     </option>
                                 </select>
+                                <p v-if="form.errors.store_id" class="mt-1 text-xs text-red-500">{{ form.errors.store_id }}</p>
                             </div>
 
                             <div>
-                                <label class="label">试驾类型</label>
-                                <select v-model="form.test_drive_type" class="select">
-                                    <option value="standard">标准试驾</option>
-                                    <option value="extended">深度试驾</option>
-                                    <option value="comparison">对比试驾</option>
-                                    <option value="family">家庭试驾</option>
+                                <label class="label flex items-center gap-1.5">
+                                    <Route class="w-4 h-4 text-slate-500" />
+                                    试驾类型
+                                </label>
+                                <select v-model="form.type" class="select">
+                                    <option v-for="opt in typeOptions" :key="opt.value" :value="opt.value">
+                                        {{ opt.label }}
+                                    </option>
                                 </select>
                             </div>
                         </div>
@@ -170,14 +158,16 @@ function submit() {
                                         预约开始时间
                                         <span class="text-red-500">*</span>
                                     </label>
-                                    <input v-model="form.scheduled_start" type="datetime-local" class="input" required />
+                                    <input v-model="form.appointment_at" type="datetime-local" class="input" required />
+                                    <p v-if="form.errors.appointment_at" class="mt-1 text-xs text-red-500">{{ form.errors.appointment_at }}</p>
                                 </div>
                                 <div>
                                     <label class="label flex items-center gap-1.5">
                                         <Calendar class="w-4 h-4 text-slate-500" />
                                         预约结束时间
                                     </label>
-                                    <input v-model="form.scheduled_end" type="datetime-local" class="input" />
+                                    <input v-model="form.appointment_end_at" type="datetime-local" class="input" />
+                                    <p v-if="form.errors.appointment_end_at" class="mt-1 text-xs text-red-500">{{ form.errors.appointment_end_at }}</p>
                                 </div>
                             </div>
 
@@ -201,12 +191,11 @@ function submit() {
                                 <label class="label flex items-center gap-1.5">
                                     <Users class="w-4 h-4 text-slate-500" />
                                     销售顾问
-                                    <span class="text-red-500">*</span>
                                 </label>
-                                <select v-model="form.sales_user_id" class="select" required>
+                                <select v-model="form.sales_user_id" class="select">
                                     <option value="">请选择销售顾问</option>
                                     <option v-for="u in options.salesUsers" :key="u.id" :value="u.id">
-                                        {{ u.name }} ({{ u.role_label || '销售' }})
+                                        {{ u.name }}
                                     </option>
                                 </select>
                             </div>
@@ -277,7 +266,7 @@ function submit() {
                             备注
                         </label>
                         <textarea
-                            v-model="form.remarks"
+                            v-model="form.remark"
                             class="textarea"
                             rows="3"
                             placeholder="其他需要备注的信息..."
@@ -289,7 +278,7 @@ function submit() {
             <div class="card sticky bottom-4 z-10">
                 <div class="card-body flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div class="text-sm text-slate-500 dark:text-slate-400">
-                        <span v-if="form.errors">带 <span class="text-red-500">*</span> 为必填项</span>
+                        带 <span class="text-red-500">*</span> 为必填项
                     </div>
                     <div class="flex gap-2 sm:justify-end">
                         <Link :href="route('test-drives.index')" class="btn-secondary">

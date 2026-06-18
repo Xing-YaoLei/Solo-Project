@@ -22,60 +22,96 @@ const isMobile = computed(() => page.props.isMobile ?? false)
 const activeTab = ref('details')
 const showNoShowModal = ref(false)
 const showAdjustModal = ref(false)
+const showSupplementModal = ref(false)
 const isEditing = ref(false)
 
 const editForm = useForm({
-    scheduled_start: testDrive.value.scheduled_start || '',
-    scheduled_end: testDrive.value.scheduled_end || '',
-    vehicle_id: testDrive.value.vehicle_id || '',
+    appointment_at: testDrive.value.appointment_at || '',
+    appointment_end_at: testDrive.value.appointment_end_at || '',
+    type: testDrive.value.type || 1,
     sales_user_id: testDrive.value.sales_user_id || '',
     companion_user_id: testDrive.value.companion_user_id || '',
     assigned_user_id: testDrive.value.assigned_user_id || '',
-    test_drive_type: testDrive.value.test_drive_type || 'standard',
     pickup_location: testDrive.value.pickup_location || '',
     return_location: testDrive.value.return_location || '',
     planned_route: testDrive.value.planned_route || '',
-    remarks: testDrive.value.remarks || '',
+    remark: testDrive.value.remark || '',
 })
 
 const noShowForm = useForm({
-    reason: '',
-    impact_scope: '',
-    note: '',
+    no_show_reason: '',
+    no_show_impact_scope: '',
+    responsibility_role: '',
+    responsibility_note: '',
 })
 
 const adjustForm = useForm({
     new_responsibility_role: '',
     new_assigned_user_id: '',
     reason: '',
-    impact_scope: '',
-    additional_note: '',
-    link_review_material: '',
+    impacted_areas: '',
+    supplement_note: '',
+    review_material_id: '',
 })
 
+const supplementForm = useForm({
+    pickup_location: testDrive.value.pickup_location || '',
+    return_location: testDrive.value.return_location || '',
+    planned_route: testDrive.value.planned_route || '',
+    remark: testDrive.value.remark || '',
+    companion_user_id: testDrive.value.companion_user_id || '',
+})
+
+const noShowReasonOptions = [
+    { value: 1, label: '客户未到店' },
+    { value: 2, label: '客户取消' },
+    { value: 3, label: '无法联系' },
+    { value: 4, label: '天气原因' },
+    { value: 5, label: '其他' },
+]
+
+const typeOptions = [
+    { value: 1, label: '标准试驾' },
+    { value: 2, label: '深度试驾' },
+    { value: 3, label: '对比试驾' },
+    { value: 4, label: '家庭试驾' },
+]
+
+const STATUS = {
+    PENDING: 10,
+    CONFIRMED: 20,
+    IN_PROGRESS: 30,
+    COMPLETED: 40,
+    CANCELLED: 50,
+    NO_SHOW: 60,
+    CLOSED: 70,
+}
+
 const timelineSteps = [
-    { key: 'pending', label: '预约', desc: '已创建预约' },
-    { key: 'confirmed', label: '确认', desc: '已确认到店' },
-    { key: 'in_progress', label: '试驾中', desc: '正在试驾' },
-    { key: 'completed', label: '完成', desc: '试驾已完成' },
+    { key: STATUS.PENDING, label: '预约', desc: '已创建预约' },
+    { key: STATUS.CONFIRMED, label: '确认', desc: '已确认到店' },
+    { key: STATUS.IN_PROGRESS, label: '试驾中', desc: '正在试驾' },
+    { key: STATUS.COMPLETED, label: '完成', desc: '试驾已完成' },
 ]
 
 const statusColors = {
-    pending: 'badge-warning',
-    confirmed: 'badge-info',
-    in_progress: 'badge-primary',
-    completed: 'badge-success',
-    cancelled: 'badge-gray',
-    no_show: 'badge-danger',
+    [STATUS.PENDING]: 'badge-warning',
+    [STATUS.CONFIRMED]: 'badge-info',
+    [STATUS.IN_PROGRESS]: 'badge-primary',
+    [STATUS.COMPLETED]: 'badge-success',
+    [STATUS.CANCELLED]: 'badge-gray',
+    [STATUS.NO_SHOW]: 'badge-danger',
+    [STATUS.CLOSED]: 'badge-gray',
 }
 
 const statusBgColors = {
-    pending: 'bg-amber-500',
-    confirmed: 'bg-sky-500',
-    in_progress: 'bg-indigo-500',
-    completed: 'bg-emerald-500',
-    cancelled: 'bg-slate-500',
-    no_show: 'bg-red-500',
+    [STATUS.PENDING]: 'bg-amber-500',
+    [STATUS.CONFIRMED]: 'bg-sky-500',
+    [STATUS.IN_PROGRESS]: 'bg-indigo-500',
+    [STATUS.COMPLETED]: 'bg-emerald-500',
+    [STATUS.CANCELLED]: 'bg-slate-500',
+    [STATUS.NO_SHOW]: 'bg-red-500',
+    [STATUS.CLOSED]: 'bg-slate-500',
 }
 
 const currentStepIndex = computed(() => {
@@ -93,6 +129,16 @@ const tabs = [
 ]
 
 const renderStars = (rating) => Array.from({ length: 5 }, (_, i) => i < (rating || 0))
+
+function getTypeLabel(type) {
+    const opt = typeOptions.find(o => o.value === Number(type))
+    return opt ? opt.label : '标准试驾'
+}
+
+function getNoShowReasonLabel(reason) {
+    const opt = noShowReasonOptions.find(o => o.value === Number(reason))
+    return opt ? opt.label : reason || '待填写'
+}
 
 function saveEdit() {
     router.put(route('test-drives.update', testDrive.value.id), editForm.data(), {
@@ -118,13 +164,25 @@ function submitAdjust() {
     })
 }
 
+function submitSupplement() {
+    router.post(route('test-drives.supplement', testDrive.value.id), supplementForm.data(), {
+        onSuccess: () => {
+            showSupplementModal.value = false
+            supplementForm.reset()
+        }
+    })
+}
+
 function confirmAppointment() {
     router.post(route('test-drives.confirm', testDrive.value.id), {}, {})
 }
 
+const closeNote = ref('')
 function closeAppointment() {
     if (confirm('确定要关闭此试驾预约吗？')) {
-        router.post(route('test-drives.close', testDrive.value.id), {}, {})
+        router.post(route('test-drives.close', testDrive.value.id), { close_note: closeNote.value || '' }, {
+            onSuccess: () => { closeNote.value = '' }
+        })
     }
 }
 </script>
@@ -209,7 +267,7 @@ function closeAppointment() {
                                     <span class="font-semibold text-sm">客户爽约</span>
                                 </div>
                                 <p class="mt-1 text-xs text-red-600 dark:text-red-400">
-                                    {{ testDrive.no_show_reason || '需要您处理相关后续事宜' }}
+                                    {{ getNoShowReasonLabel(testDrive.no_show_reason) }}
                                 </p>
                             </div>
                             <div class="relative">
@@ -301,10 +359,10 @@ function closeAppointment() {
                     <span class="text-xs">预约时间</span>
                 </div>
                 <p class="mt-2 font-semibold text-sm text-slate-900 dark:text-white">
-                    {{ $filters.date(testDrive.scheduled_start, 'MM-DD') }}
+                    {{ $filters.date(testDrive.appointment_at, 'MM-DD') }}
                 </p>
                 <p class="text-xs text-slate-500 dark:text-slate-400">
-                    {{ $filters.date(testDrive.scheduled_start, 'HH:mm') }} - {{ $filters.date(testDrive.scheduled_end, 'HH:mm') }}
+                    {{ $filters.date(testDrive.appointment_at, 'HH:mm') }} - {{ $filters.date(testDrive.appointment_end_at, 'HH:mm') }}
                 </p>
             </div>
             <div class="stat-card">
@@ -313,10 +371,10 @@ function closeAppointment() {
                     <span class="text-xs">实际时间</span>
                 </div>
                 <p class="mt-2 font-semibold text-sm text-slate-900 dark:text-white">
-                    {{ testDrive.actual_start ? $filters.date(testDrive.actual_start, 'MM-DD') : '-' }}
+                    {{ testDrive.actual_start_at ? $filters.date(testDrive.actual_start_at, 'MM-DD') : '-' }}
                 </p>
                 <p class="text-xs text-slate-500 dark:text-slate-400">
-                    {{ testDrive.actual_start ? $filters.date(testDrive.actual_start, 'HH:mm') + ' - ' + $filters.date(testDrive.actual_end, 'HH:mm') : '未开始' }}
+                    {{ testDrive.actual_start_at ? $filters.date(testDrive.actual_start_at, 'HH:mm') + ' - ' + $filters.date(testDrive.actual_end_at, 'HH:mm') : '未开始' }}
                 </p>
             </div>
             <div class="stat-card">
@@ -339,12 +397,12 @@ function closeAppointment() {
                     <span class="text-xs">油位</span>
                 </div>
                 <div class="mt-2 flex items-baseline gap-1">
-                    <span class="font-semibold text-sm text-slate-900 dark:text-white">{{ testDrive.start_fuel || 0 }}%</span>
+                    <span class="font-semibold text-sm text-slate-900 dark:text-white">{{ testDrive.start_fuel_level || 0 }}%</span>
                     <span class="text-slate-400 text-xs">→</span>
-                    <span class="font-semibold text-sm text-slate-900 dark:text-white">{{ testDrive.end_fuel || 0 }}%</span>
+                    <span class="font-semibold text-sm text-slate-900 dark:text-white">{{ testDrive.end_fuel_level || 0 }}%</span>
                 </div>
-                <p :class="['text-xs', (testDrive.end_fuel ?? 100) < (testDrive.start_fuel ?? 100) ? 'text-amber-600' : 'text-slate-500']">
-                    {{ (testDrive.end_fuel ?? 0) < (testDrive.start_fuel ?? 0) ? '需加油' : '正常' }}
+                <p :class="['text-xs', (testDrive.end_fuel_level ?? 100) < (testDrive.start_fuel_level ?? 100) ? 'text-amber-600' : 'text-slate-500']">
+                    {{ (testDrive.end_fuel_level ?? 0) < (testDrive.start_fuel_level ?? 0) ? '需加油' : '正常' }}
                 </p>
             </div>
             <div class="stat-card">
@@ -354,14 +412,14 @@ function closeAppointment() {
                 </div>
                 <div class="mt-2 flex gap-0.5">
                     <Star
-                        v-for="(filled, i) in renderStars(testDrive.satisfaction)"
+                        v-for="(filled, i) in renderStars(testDrive.customer_satisfaction)"
                         :key="i"
                         class="w-4 h-4"
                         :class="filled ? 'text-amber-400 fill-amber-400' : 'text-slate-200 dark:text-slate-600'"
                     />
                 </div>
                 <p class="text-xs text-slate-500 dark:text-slate-400">
-                    {{ testDrive.satisfaction ? testDrive.satisfaction + '分' : '未评价' }}
+                    {{ testDrive.customer_satisfaction ? testDrive.customer_satisfaction + '分' : '未评价' }}
                 </p>
             </div>
             <div class="stat-card">
@@ -370,12 +428,12 @@ function closeAppointment() {
                     <span class="text-xs">异常记录</span>
                 </div>
                 <p class="mt-2 font-semibold text-sm">
-                    <span :class="(testDrive.has_accident || testDrive.has_violation) ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'">
-                        {{ (testDrive.has_accident || testDrive.has_violation) ? '有异常' : '无异常' }}
+                    <span :class="(testDrive.accident_record || testDrive.violation_record) ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'">
+                        {{ (testDrive.accident_record || testDrive.violation_record) ? '有异常' : '无异常' }}
                     </span>
                 </p>
                 <p class="text-xs text-slate-500 dark:text-slate-400">
-                    事故: {{ testDrive.has_accident ? '是' : '否' }} · 违章: {{ testDrive.has_violation ? '是' : '否' }}
+                    事故: {{ testDrive.accident_record || '无' }} · 违章: {{ testDrive.violation_record || '无' }}
                 </p>
             </div>
         </div>
@@ -411,11 +469,11 @@ function closeAppointment() {
                                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                                     <div>
                                         <p class="text-xs text-red-600 dark:text-red-400 font-medium">爽约原因</p>
-                                        <p class="mt-1 text-sm text-slate-700 dark:text-slate-300">{{ testDrive.no_show_reason || '待填写' }}</p>
+                                        <p class="mt-1 text-sm text-slate-700 dark:text-slate-300">{{ getNoShowReasonLabel(testDrive.no_show_reason) }}</p>
                                     </div>
                                     <div>
                                         <p class="text-xs text-red-600 dark:text-red-400 font-medium">影响范围</p>
-                                        <p class="mt-1 text-sm text-slate-700 dark:text-slate-300">{{ testDrive.no_show_impact || '待评估' }}</p>
+                                        <p class="mt-1 text-sm text-slate-700 dark:text-slate-300">{{ testDrive.no_show_impact_scope || '待评估' }}</p>
                                     </div>
                                     <div>
                                         <p class="text-xs text-red-600 dark:text-red-400 font-medium">当前责任归属</p>
@@ -426,14 +484,6 @@ function closeAppointment() {
                                     </div>
                                 </div>
                                 <div class="flex flex-wrap gap-2 pt-2">
-                                    <button
-                                        v-if="!testDrive.is_no_show"
-                                        @click="showNoShowModal = true"
-                                        class="btn-danger text-sm"
-                                    >
-                                        <UserX class="w-4 h-4" />
-                                        标记爽约
-                                    </button>
                                     <button
                                         v-if="canAdjustResponsibility"
                                         @click="showAdjustModal = true"
@@ -457,28 +507,25 @@ function closeAppointment() {
                             </div>
                             <div>
                                 <label class="label">试驾类型</label>
-                                <select v-if="isEditing" v-model="editForm.test_drive_type" class="select">
-                                    <option value="standard">标准试驾</option>
-                                    <option value="extended">深度试驾</option>
-                                    <option value="comparison">对比试驾</option>
-                                    <option value="family">家庭试驾</option>
+                                <select v-if="isEditing" v-model="editForm.type" class="select">
+                                    <option v-for="opt in typeOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
                                 </select>
                                 <p v-else class="text-sm text-slate-700 dark:text-slate-300">
-                                    {{ testDrive.test_drive_type_label || editForm.test_drive_type === 'standard' ? '标准试驾' : editForm.test_drive_type }}
+                                    {{ testDrive.test_drive_type_label || getTypeLabel(testDrive.type) }}
                                 </p>
                             </div>
                             <div>
                                 <label class="label">预约开始时间</label>
-                                <input v-if="isEditing" v-model="editForm.scheduled_start" type="datetime-local" class="input" />
+                                <input v-if="isEditing" v-model="editForm.appointment_at" type="datetime-local" class="input" />
                                 <p v-else class="text-sm text-slate-700 dark:text-slate-300">
-                                    {{ $filters.date(testDrive.scheduled_start, 'YYYY-MM-DD HH:mm') }}
+                                    {{ $filters.date(testDrive.appointment_at, 'YYYY-MM-DD HH:mm') }}
                                 </p>
                             </div>
                             <div>
                                 <label class="label">预约结束时间</label>
-                                <input v-if="isEditing" v-model="editForm.scheduled_end" type="datetime-local" class="input" />
+                                <input v-if="isEditing" v-model="editForm.appointment_end_at" type="datetime-local" class="input" />
                                 <p v-else class="text-sm text-slate-700 dark:text-slate-300">
-                                    {{ $filters.date(testDrive.scheduled_end, 'YYYY-MM-DD HH:mm') }}
+                                    {{ $filters.date(testDrive.appointment_end_at, 'YYYY-MM-DD HH:mm') }}
                                 </p>
                             </div>
                             <div>
@@ -533,8 +580,8 @@ function closeAppointment() {
                             </div>
                             <div>
                                 <label class="label">备注</label>
-                                <textarea v-if="isEditing" v-model="editForm.remarks" class="textarea" rows="3"></textarea>
-                                <p v-else class="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{{ testDrive.remarks || '-' }}</p>
+                                <textarea v-if="isEditing" v-model="editForm.remark" class="textarea" rows="3"></textarea>
+                                <p v-else class="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{{ testDrive.remark || '-' }}</p>
                             </div>
                         </div>
                     </div>
@@ -599,7 +646,7 @@ function closeAppointment() {
                     <div class="flex items-center justify-between">
                         <h3 class="font-semibold text-slate-900 dark:text-white">关联复盘材料</h3>
                         <Link
-                            :href="route('review-materials.create', { test_drive_id: testDrive.id })"
+                            :href="route('reviews.create', { test_drive_id: testDrive.id })"
                             class="btn-primary text-sm"
                         >
                             <Plus class="w-4 h-4" />
@@ -743,7 +790,7 @@ function closeAppointment() {
                 编辑信息
             </button>
             <button
-                v-if="testDrive.status === 'pending'"
+                v-if="testDrive.status === STATUS.PENDING"
                 @click="confirmAppointment"
                 class="w-full btn-success text-sm justify-start"
             >
@@ -751,14 +798,15 @@ function closeAppointment() {
                 确认预约
             </button>
             <button
-                v-if="['pending', 'confirmed'].includes(testDrive.status)"
+                v-if="[STATUS.PENDING, STATUS.CONFIRMED].includes(testDrive.status)"
+                @click="showSupplementModal = true"
                 class="w-full btn-primary text-sm justify-start"
             >
                 <Plus class="w-4 h-4" />
                 补充信息
             </button>
             <button
-                v-if="!testDrive.is_no_show && ['pending', 'confirmed', 'in_progress'].includes(testDrive.status)"
+                v-if="!testDrive.is_no_show && [STATUS.PENDING, STATUS.CONFIRMED, STATUS.IN_PROGRESS].includes(testDrive.status)"
                 @click="showNoShowModal = true"
                 class="w-full btn-danger text-sm justify-start"
             >
@@ -766,7 +814,7 @@ function closeAppointment() {
                 标记爽约
             </button>
             <button
-                v-if="canClose && ['pending', 'confirmed', 'in_progress'].includes(testDrive.status)"
+                v-if="canClose && [STATUS.PENDING, STATUS.CONFIRMED, STATUS.IN_PROGRESS].includes(testDrive.status)"
                 @click="closeAppointment"
                 class="w-full btn-warning text-sm justify-start"
             >
@@ -782,7 +830,7 @@ function closeAppointment() {
     >
         <div class="grid grid-cols-3 gap-2 max-w-lg mx-auto">
             <button
-                v-if="testDrive.status === 'pending'"
+                v-if="testDrive.status === STATUS.PENDING"
                 @click="confirmAppointment"
                 class="btn-success text-sm py-3"
             >
@@ -790,21 +838,22 @@ function closeAppointment() {
                 <span class="block text-xs mt-1">确认</span>
             </button>
             <button
-                v-if="['pending', 'confirmed'].includes(testDrive.status)"
+                v-if="[STATUS.PENDING, STATUS.CONFIRMED].includes(testDrive.status)"
+                @click="showSupplementModal = true"
                 class="btn-primary text-sm py-3"
             >
                 <Edit3 class="w-5 h-5 mx-auto" />
                 <span class="block text-xs mt-1">补充</span>
             </button>
             <button
-                v-if="canClose && ['pending', 'confirmed', 'in_progress'].includes(testDrive.status)"
+                v-if="canClose && [STATUS.PENDING, STATUS.CONFIRMED, STATUS.IN_PROGRESS].includes(testDrive.status)"
                 @click="closeAppointment"
                 class="btn-warning text-sm py-3"
             >
                 <XCircle class="w-5 h-5 mx-auto" />
                 <span class="block text-xs mt-1">关闭</span>
             </button>
-            <template v-if="!['pending', 'confirmed', 'in_progress'].includes(testDrive.status) && !['pending', 'confirmed'].includes(testDrive.status)">
+            <template v-if="![STATUS.PENDING, STATUS.CONFIRMED, STATUS.IN_PROGRESS].includes(testDrive.status)">
                 <button
                     v-if="canEdit"
                     @click="isEditing = true"
@@ -832,26 +881,34 @@ function closeAppointment() {
                 <form @submit.prevent="markNoShow" class="card-body space-y-4">
                     <div>
                         <label class="label">爽约原因 <span class="text-red-500">*</span></label>
-                        <textarea v-model="noShowForm.reason" class="textarea" rows="3" placeholder="请描述客户爽约的原因..." required></textarea>
-                    </div>
-                    <div>
-                        <label class="label">影响范围</label>
-                        <select v-model="noShowForm.impact_scope" class="select">
-                            <option value="">请选择影响范围</option>
-                            <option value="low">低（仅影响单个时段）</option>
-                            <option value="medium">中（影响半天排班）</option>
-                            <option value="high">高（影响整天及其他客户）</option>
-                            <option value="critical">严重（造成经济损失）</option>
+                        <select v-model="noShowForm.no_show_reason" class="select" required>
+                            <option value="">请选择爽约原因</option>
+                            <option v-for="opt in noShowReasonOptions" :key="opt.value" :value="opt.value">
+                                {{ opt.label }}
+                            </option>
                         </select>
                     </div>
                     <div>
-                        <label class="label">补充说明</label>
-                        <textarea v-model="noShowForm.note" class="textarea" rows="2" placeholder="其他需要备注的信息..."></textarea>
+                        <label class="label">影响范围</label>
+                        <textarea v-model="noShowForm.no_show_impact_scope" class="textarea" rows="3" placeholder="请描述影响范围..."></textarea>
+                    </div>
+                    <div>
+                        <label class="label">责任角色</label>
+                        <select v-model="noShowForm.responsibility_role" class="select">
+                            <option value="">请选择责任角色</option>
+                            <option v-for="opt in responsibilityOptions" :key="opt.value" :value="opt.value">
+                                {{ opt.label }}
+                            </option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="label">责任说明</label>
+                        <textarea v-model="noShowForm.responsibility_note" class="textarea" rows="2" placeholder="其他需要备注的信息..."></textarea>
                     </div>
                 </form>
                 <div class="card-footer flex justify-end gap-2">
                     <button @click="showNoShowModal = false" class="btn-secondary">取消</button>
-                    <button @click="markNoShow" :disabled="!noShowForm.reason || noShowForm.processing" class="btn-danger">
+                    <button @click="markNoShow" :disabled="!noShowForm.no_show_reason || noShowForm.processing" class="btn-danger">
                         {{ noShowForm.processing ? '处理中...' : '确认标记爽约' }}
                     </button>
                 </div>
@@ -892,24 +949,19 @@ function closeAppointment() {
                     </div>
                     <div>
                         <label class="label">调整原因 <span class="text-red-500">*</span></label>
-                        <textarea v-model="adjustForm.reason" class="textarea" rows="3" placeholder="请详细说明调整责任归属的原因..." required></textarea>
+                        <textarea v-model="adjustForm.reason" class="textarea" rows="3" placeholder="请详细说明调整责任归属的原因（至少5个字）..." required></textarea>
                     </div>
                     <div>
                         <label class="label">影响范围</label>
-                        <select v-model="adjustForm.impact_scope" class="select">
-                            <option value="">请选择影响范围</option>
-                            <option value="self">仅本次预约</option>
-                            <option value="customer">此客户所有关联</option>
-                            <option value="team">团队内部调整</option>
-                        </select>
+                        <textarea v-model="adjustForm.impacted_areas" class="textarea" rows="2" placeholder="请描述影响范围..."></textarea>
                     </div>
                     <div>
                         <label class="label">补充说明</label>
-                        <textarea v-model="adjustForm.additional_note" class="textarea" rows="2" placeholder="其他补充说明..."></textarea>
+                        <textarea v-model="adjustForm.supplement_note" class="textarea" rows="2" placeholder="其他补充说明..."></textarea>
                     </div>
                     <div>
                         <label class="label">关联复盘材料（可选）</label>
-                        <select v-model="adjustForm.link_review_material" class="select">
+                        <select v-model="adjustForm.review_material_id" class="select">
                             <option value="">不关联</option>
                             <option v-for="r in (testDrive.review_materials || [])" :key="'rv' + r.id" :value="r.id">
                                 {{ r.title }}
@@ -925,6 +977,62 @@ function closeAppointment() {
                         class="btn-primary"
                     >
                         {{ adjustForm.processing ? '提交中...' : '确认调整' }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </Teleport>
+
+    <Teleport to="body">
+        <div v-if="showSupplementModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+            <div class="card w-full max-w-lg">
+                <div class="card-header flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <Plus class="w-5 h-5 text-indigo-600" />
+                        <h3 class="font-semibold text-slate-900 dark:text-white">补充信息</h3>
+                    </div>
+                    <button @click="showSupplementModal = false" class="btn-ghost p-1">
+                        <X class="w-5 h-5" />
+                    </button>
+                </div>
+                <form @submit.prevent="submitSupplement" class="card-body space-y-4">
+                    <div>
+                        <label class="label flex items-center gap-1.5">
+                            <MapPin class="w-4 h-4" />
+                            取车地点
+                        </label>
+                        <input v-model="supplementForm.pickup_location" type="text" class="input" placeholder="请输入取车地点" />
+                    </div>
+                    <div>
+                        <label class="label flex items-center gap-1.5">
+                            <MapPin class="w-4 h-4" />
+                            还车地点
+                        </label>
+                        <input v-model="supplementForm.return_location" type="text" class="input" placeholder="请输入还车地点" />
+                    </div>
+                    <div>
+                        <label class="label flex items-center gap-1.5">
+                            <Route class="w-4 h-4" />
+                            计划路线
+                        </label>
+                        <textarea v-model="supplementForm.planned_route" class="textarea" rows="2" placeholder="请输入计划路线"></textarea>
+                    </div>
+                    <div>
+                        <label class="label">备注</label>
+                        <textarea v-model="supplementForm.remark" class="textarea" rows="3" placeholder="请输入备注信息"></textarea>
+                    </div>
+                    <div>
+                        <label class="label">陪同人员</label>
+                        <select v-model="supplementForm.companion_user_id" class="select">
+                            <option value="">无</option>
+                            <option v-for="u in (page.props.options?.salesUsers || [])" :key="'sp' + u.id" :value="u.id">{{ u.name }}</option>
+                        </select>
+                    </div>
+                </form>
+                <div class="card-footer flex justify-end gap-2">
+                    <button @click="showSupplementModal = false" class="btn-secondary">取消</button>
+                    <button @click="submitSupplement" :disabled="supplementForm.processing" class="btn-primary">
+                        {{ supplementForm.processing ? '提交中...' : '确认补充' }}
                     </button>
                 </div>
             </div>

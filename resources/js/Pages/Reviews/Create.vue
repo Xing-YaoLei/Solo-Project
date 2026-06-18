@@ -1,24 +1,19 @@
 <script setup>
-import { ref, getCurrentInstance } from 'vue';
-import { usePage, useForm, Head, Link, router } from '@inertiajs/vue3';
+import { ref } from 'vue';
+import { usePage, useForm, Head, Link } from '@inertiajs/vue3';
 import {
-    ArrowLeft, Save, FileText, Plus, Trash2, X, User,
+    ArrowLeft, Save, FileText, Plus, Trash2, User,
     Calendar, Target, AlertTriangle, Lightbulb, BookOpen,
     ClipboardList, Link2, Check
 } from 'lucide-vue-next';
 
-const { proxy } = getCurrentInstance();
 const page = usePage();
 
-const props = defineProps({
-    typeOptions: Array,
-    levelOptions: Array,
-    stores: Array,
-    testDrives: Array,
-    customers: Array,
-    sourceTimelines: Array,
-    preselected: Object,
-});
+const preselected = page.props.preselected || {};
+const sourceTimelines = page.props.sourceTimelines || [];
+const typeOptions = page.props.options?.types || [];
+const levelOptions = page.props.options?.levels || [];
+const storeOptions = page.props.options?.stores || [];
 
 const form = useForm({
     title: '',
@@ -28,11 +23,11 @@ const form = useForm({
     background: '',
     process_description: '',
     problem_analysis: '',
-    improvements: '',
-    lessons: '',
-    test_drive_id: props.preselected?.test_drive_id || '',
-    customer_id: props.preselected?.customer_id || '',
-    store_id: '',
+    improvement_measures: '',
+    lessons_learned: '',
+    test_drive_id: preselected.test_drive_id || '',
+    customer_id: preselected.customer_id || '',
+    store_id: preselected.store_id || '',
     action_items: [
         { content: '', assignee: '', due_date: '' }
     ],
@@ -62,6 +57,36 @@ const submit = () => {
     form.post(route('reviews.store'), {
         onSuccess: () => {},
     });
+};
+
+const categoryLabel = (category) => {
+    const map = {
+        1: '状态变更',
+        2: '字段修改',
+        3: '备注记录',
+        4: '附件上传',
+        5: '人员分配',
+        6: '责任调整',
+        7: '复盘相关',
+        8: '客户交互',
+        9: '系统操作',
+    };
+    return map[category] || '其他';
+};
+
+const categoryBadgeClass = (category) => {
+    const map = {
+        1: 'badge-warning',
+        2: 'badge-info',
+        3: 'badge-secondary',
+        4: 'badge-primary',
+        5: 'badge-info',
+        6: 'badge-warning',
+        7: 'badge-info',
+        8: 'badge-success',
+        9: 'badge-secondary',
+    };
+    return map[category] || 'badge-secondary';
 };
 </script>
 
@@ -97,7 +122,7 @@ const submit = () => {
                             <label class="label">复盘类型</label>
                             <select v-model="form.type" class="select">
                                 <option value="">请选择类型</option>
-                                <option v-for="t in typeOptions" :key="t" :value="t">{{ t }}</option>
+                                <option v-for="t in typeOptions" :key="t.value" :value="t.value">{{ t.label }}</option>
                             </select>
                         </div>
                         <div>
@@ -111,22 +136,18 @@ const submit = () => {
                             <label class="label">门店</label>
                             <select v-model="form.store_id" class="select">
                                 <option value="">请选择门店</option>
-                                <option v-for="s in stores" :key="s.id" :value="s.id">{{ s.name }}</option>
+                                <option v-for="s in storeOptions" :key="s.id" :value="s.id">{{ s.name }}</option>
                             </select>
                         </div>
-                        <div>
+                        <div v-if="form.test_drive_id">
                             <label class="label">关联试驾</label>
-                            <select v-model="form.test_drive_id" class="select">
-                                <option value="">请选择试驾（可选）</option>
-                                <option v-for="td in testDrives" :key="td.id" :value="td.id">{{ td.code }}</option>
-                            </select>
+                            <input type="text" class="input bg-slate-50 dark:bg-slate-700/40" :value="`试驾 #${form.test_drive_id}`" disabled />
+                            <input type="hidden" v-model="form.test_drive_id" />
                         </div>
-                        <div class="md:col-span-2">
+                        <div v-if="form.customer_id" class="md:col-span-2">
                             <label class="label">关联客户</label>
-                            <select v-model="form.customer_id" class="select">
-                                <option value="">请选择客户（可选）</option>
-                                <option v-for="c in customers" :key="c.id" :value="c.id">{{ c.name }} - {{ c.phone }}</option>
-                            </select>
+                            <input type="text" class="input bg-slate-50 dark:bg-slate-700/40" :value="`客户 #${form.customer_id}`" disabled />
+                            <input type="hidden" v-model="form.customer_id" />
                         </div>
                     </div>
                 </div>
@@ -189,7 +210,7 @@ const submit = () => {
                         </h3>
                     </div>
                     <div class="card-body">
-                        <textarea v-model="form.improvements" class="textarea" rows="3" placeholder="针对问题提出的改进方案..."></textarea>
+                        <textarea v-model="form.improvement_measures" class="textarea" rows="3" placeholder="针对问题提出的改进方案..."></textarea>
                     </div>
                 </div>
 
@@ -201,7 +222,7 @@ const submit = () => {
                         </h3>
                     </div>
                     <div class="card-body">
-                        <textarea v-model="form.lessons" class="textarea" rows="3" placeholder="总结可沉淀的经验与教训..."></textarea>
+                        <textarea v-model="form.lessons_learned" class="textarea" rows="3" placeholder="总结可沉淀的经验与教训..."></textarea>
                     </div>
                 </div>
             </div>
@@ -245,7 +266,7 @@ const submit = () => {
                 </div>
             </div>
 
-            <div v-if="sourceTimelines && sourceTimelines.length > 0" class="card">
+            <div v-if="sourceTimelines.length > 0" class="card">
                 <div class="card-header">
                     <h3 class="font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                         <Link2 class="w-4 h-4 text-sky-600 dark:text-sky-400" />
@@ -267,13 +288,13 @@ const submit = () => {
                         />
                         <div class="flex-1 min-w-0">
                             <div class="flex items-center gap-2 text-sm">
-                                <span v-if="t.category" class="badge-info">{{ t.category }}</span>
-                                <span class="font-medium text-slate-900 dark:text-slate-100">{{ t.action }}</span>
+                                <span v-if="t.category" :class="categoryBadgeClass(t.category)">{{ categoryLabel(t.category) }}</span>
+                                <span class="font-medium text-slate-900 dark:text-slate-100">{{ t.action_name }}</span>
                             </div>
                             <p v-if="t.content" class="mt-1 text-sm text-slate-600 dark:text-slate-300 line-clamp-2">{{ t.content }}</p>
                             <div class="mt-1 flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
-                                <span v-if="t.user">{{ t.user.name }}</span>
-                                <span>{{ proxy.$filters.date(t.created_at, 'YYYY-MM-DD HH:mm') }}</span>
+                                <span v-if="t.user_name">{{ t.user_name }}</span>
+                                <span>{{ $filters.date(t.created_at, 'YYYY-MM-DD HH:mm') }}</span>
                             </div>
                         </div>
                     </label>

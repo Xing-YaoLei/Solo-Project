@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 import { usePage, useForm, router, Head, Link } from '@inertiajs/vue3'
 import {
-    Search, Filter, ChevronDown, ChevronUp, Plus, Download,
+    Search, Filter, ChevronDown, ChevronUp, Plus,
     CheckCircle2, XCircle, UserCheck, Star, Calendar, Clock,
     Eye, Edit3, FileText, User, Car, Phone, Trash2,
     SlidersHorizontal, LayoutGrid, Users, AlertTriangle, X
@@ -23,7 +23,7 @@ const showAssignModal = ref(false)
 
 const form = useForm({
     search: filters.value.search || '',
-    status: filters.value.status || '',
+    status: filters.value.status ?? '',
     store_id: filters.value.store_id || '',
     sales_user_id: filters.value.sales_user_id || '',
     assigned_user_id: filters.value.assigned_user_id || '',
@@ -38,12 +38,13 @@ const assignForm = useForm({
 })
 
 const statusColors = {
-    pending: 'badge-warning',
-    confirmed: 'badge-info',
-    in_progress: 'badge-primary',
-    completed: 'badge-success',
-    cancelled: 'badge-gray',
-    no_show: 'badge-danger',
+    10: 'badge-warning',
+    20: 'badge-info',
+    30: 'badge-primary',
+    40: 'badge-success',
+    50: 'badge-gray',
+    60: 'badge-danger',
+    70: 'badge-gray',
 }
 
 const allSelected = computed(() => {
@@ -83,12 +84,13 @@ function setStatusFilter(status) {
 function resetFilters() {
     form.reset()
     form.is_no_show = ''
+    form.status = ''
     router.get(route('test-drives.index'), {}, { preserveState: true, replace: true })
 }
 
 function batchConfirm() {
     if (!selectedIds.value.length) return
-    router.post(route('test-drives.batch-confirm'), { ids: selectedIds.value }, {
+    router.post(route('test-drives.batch-update'), { ids: selectedIds.value, action: 'confirm' }, {
         onSuccess: () => { selectedIds.value = [] }
     })
 }
@@ -96,7 +98,7 @@ function batchConfirm() {
 function batchClose() {
     if (!selectedIds.value.length) return
     if (confirm('确定要批量关闭选中的预约吗？')) {
-        router.post(route('test-drives.batch-close'), { ids: selectedIds.value }, {
+        router.post(route('test-drives.batch-update'), { ids: selectedIds.value, action: 'close' }, {
             onSuccess: () => { selectedIds.value = [] }
         })
     }
@@ -109,8 +111,9 @@ function openAssignModal() {
 
 function submitAssign() {
     if (!selectedIds.value.length || !assignForm.assigned_user_id) return
-    router.post(route('test-drives.batch-assign'), {
+    router.post(route('test-drives.batch-update'), {
         ids: selectedIds.value,
+        action: 'assign',
         assigned_user_id: assignForm.assigned_user_id,
     }, {
         onSuccess: () => {
@@ -118,10 +121,6 @@ function submitAssign() {
             showAssignModal.value = false
         }
     })
-}
-
-function exportData() {
-    router.get(route('test-drives.export'), form.data())
 }
 
 function renderStars(rating) {
@@ -141,10 +140,6 @@ function renderStars(rating) {
                 </p>
             </div>
             <div class="flex flex-wrap gap-2">
-                <button @click="exportData" class="btn-secondary">
-                    <Download class="w-4 h-4" />
-                    导出
-                </button>
                 <Link :href="route('test-drives.create')" class="btn-primary">
                     <Plus class="w-4 h-4" />
                     新增试驾
@@ -156,7 +151,7 @@ function renderStars(rating) {
             <button
                 @click="setStatusFilter('')"
                 class="stat-card text-left transition-all hover:ring-2 hover:ring-indigo-500"
-                :class="!form.status ? 'ring-2 ring-indigo-500' : ''"
+                :class="form.status === '' ? 'ring-2 ring-indigo-500' : ''"
             >
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
@@ -169,9 +164,9 @@ function renderStars(rating) {
                 </div>
             </button>
             <button
-                @click="setStatusFilter('pending')"
+                @click="setStatusFilter(10)"
                 class="stat-card text-left transition-all hover:ring-2 hover:ring-amber-500"
-                :class="form.status === 'pending' ? 'ring-2 ring-amber-500' : ''"
+                :class="form.status === 10 ? 'ring-2 ring-amber-500' : ''"
             >
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-500/20 flex items-center justify-center">
@@ -184,9 +179,9 @@ function renderStars(rating) {
                 </div>
             </button>
             <button
-                @click="setStatusFilter('completed')"
+                @click="setStatusFilter(40)"
                 class="stat-card text-left transition-all hover:ring-2 hover:ring-emerald-500"
-                :class="form.status === 'completed' ? 'ring-2 ring-emerald-500' : ''"
+                :class="form.status === 40 ? 'ring-2 ring-emerald-500' : ''"
             >
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-lg bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center">
@@ -427,10 +422,10 @@ function renderStars(rating) {
                                         <Calendar class="w-4 h-4 text-slate-400 shrink-0" />
                                         <div>
                                             <div class="text-sm text-slate-700 dark:text-slate-300">
-                                                {{ $filters.date(td.scheduled_start, 'YYYY-MM-DD') }}
+                                                {{ $filters.date(td.appointment_at, 'YYYY-MM-DD') }}
                                             </div>
                                             <div class="text-xs text-slate-500 dark:text-slate-400">
-                                                {{ $filters.date(td.scheduled_start, 'HH:mm') }} - {{ $filters.date(td.scheduled_end, 'HH:mm') }}
+                                                {{ $filters.date(td.appointment_at, 'HH:mm') }} - {{ $filters.date(td.appointment_end_at, 'HH:mm') }}
                                             </div>
                                         </div>
                                     </div>
@@ -462,9 +457,9 @@ function renderStars(rating) {
                                     <span v-else class="text-xs text-slate-400">-</span>
                                 </td>
                                 <td>
-                                    <div v-if="td.satisfaction" class="flex items-center gap-0.5">
+                                    <div v-if="td.customer_satisfaction" class="flex items-center gap-0.5">
                                         <Star
-                                            v-for="(filled, i) in renderStars(td.satisfaction)"
+                                            v-for="(filled, i) in renderStars(td.customer_satisfaction)"
                                             :key="i"
                                             class="w-3.5 h-3.5"
                                             :class="filled ? 'text-amber-400 fill-amber-400' : 'text-slate-200 dark:text-slate-600'"
@@ -478,7 +473,7 @@ function renderStars(rating) {
                                             <Eye class="w-4 h-4" />
                                         </Link>
                                         <Link
-                                            v-if="td.status === 'pending'"
+                                            v-if="td.status === 10"
                                             :href="route('test-drives.show', td.id) + '#confirm'"
                                             class="btn-ghost p-1.5 text-emerald-600 hover:text-emerald-700"
                                             title="确认"
@@ -486,14 +481,14 @@ function renderStars(rating) {
                                             <CheckCircle2 class="w-4 h-4" />
                                         </Link>
                                         <button
-                                            v-if="td.status === 'completed' && !td.satisfaction"
+                                            v-if="td.status === 40 && !td.customer_satisfaction"
                                             class="btn-ghost p-1.5 text-indigo-600 hover:text-indigo-700"
                                             title="补充信息"
                                         >
                                             <Edit3 class="w-4 h-4" />
                                         </button>
                                         <button
-                                            v-if="['pending', 'confirmed', 'in_progress'].includes(td.status)"
+                                            v-if="[10, 20, 30].includes(td.status)"
                                             class="btn-ghost p-1.5 text-red-600 hover:text-red-700"
                                             title="关闭"
                                         >
