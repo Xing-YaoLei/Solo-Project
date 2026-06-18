@@ -12,8 +12,11 @@ public interface NoShowService {
     NoShowRecord close(Long id, Long handlerId, String actionTaken);
     NoShowRecord reschedule(Long id, Long handlerId, Long newAppointmentId);
     Optional<NoShowRecord> findById(Long id);
+    Optional<NoShowRecord> findByIdWithDetails(Long id);
     Optional<NoShowRecord> findByAppointmentId(Long appointmentId);
     List<NoShowRecord> findPending();
+    List<NoShowRecord> findPendingWithDetails();
     List<NoShowRecord> findAll();
+    List<NoShowRecord> findAllWithDetails();
     void detectAndMarkNoShows();
 }

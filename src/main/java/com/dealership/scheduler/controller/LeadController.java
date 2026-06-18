@@ -29,7 +29,20 @@ public class LeadController {
 
     @GetMapping
     public String list(@ModelAttribute LeadQueryDTO query, Model model) {
-        List<CustomerLead> leads = leadService.search(query);
+        List<CustomerLead> leads;
+        boolean hasQuery = query.getStatus() != null || query.getSource() != null ||
+                (query.getKeyword() != null && !query.getKeyword().isEmpty()) ||
+                query.getOwnerId() != null || query.getStartDate() != null || query.getEndDate() != null;
+        if (hasQuery) {
+            leads = leadService.search(query);
+            for (CustomerLead lead : leads) {
+                if (lead.getOwner() != null) {
+                    lead.getOwner().getRealName();
+                }
+            }
+        } else {
+            leads = leadService.findAllWithOwner();
+        }
         model.addAttribute("leads", leads);
         model.addAttribute("query", query);
         model.addAttribute("statuses", CustomerLead.LeadStatus.values());
@@ -69,7 +82,7 @@ public class LeadController {
 
     @GetMapping("/edit/{id}")
     public String editLead(@PathVariable Long id, Model model) {
-        Optional<CustomerLead> leadOpt = leadService.findById(id);
+        Optional<CustomerLead> leadOpt = leadService.findByIdWithOwner(id);
         if (leadOpt.isEmpty()) {
             return "redirect:/leads";
         }
@@ -82,7 +95,7 @@ public class LeadController {
 
     @GetMapping("/{id}")
     public String detail(@PathVariable Long id, Model model) {
-        Optional<CustomerLead> leadOpt = leadService.findById(id);
+        Optional<CustomerLead> leadOpt = leadService.findByIdWithOwner(id);
         if (leadOpt.isEmpty()) {
             return "redirect:/leads";
         }
@@ -94,7 +107,7 @@ public class LeadController {
 
     @GetMapping("/{id}/history")
     public String history(@PathVariable Long id, Model model) {
-        Optional<CustomerLead> leadOpt = leadService.findById(id);
+        Optional<CustomerLead> leadOpt = leadService.findByIdWithOwner(id);
         if (leadOpt.isEmpty()) {
             return "redirect:/leads";
         }

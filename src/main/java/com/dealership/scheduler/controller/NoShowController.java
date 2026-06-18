@@ -32,7 +32,7 @@ public class NoShowController {
 
     @GetMapping
     public String list(Model model) {
-        List<NoShowRecord> records = noShowService.findAll();
+        List<NoShowRecord> records = noShowService.findAllWithDetails();
         model.addAttribute("records", records);
         model.addAttribute("statuses", NoShowRecord.NoShowStatus.values());
         return "no-show/list";
@@ -40,7 +40,7 @@ public class NoShowController {
 
     @GetMapping("/pending")
     public String pending(Model model) {
-        List<NoShowRecord> records = noShowService.findPending();
+        List<NoShowRecord> records = noShowService.findPendingWithDetails();
         model.addAttribute("records", records);
         model.addAttribute("statuses", NoShowRecord.NoShowStatus.values());
         return "no-show/list";
@@ -48,7 +48,7 @@ public class NoShowController {
 
     @GetMapping("/{id}")
     public String detail(@PathVariable Long id, Model model) {
-        Optional<NoShowRecord> recordOpt = noShowService.findById(id);
+        Optional<NoShowRecord> recordOpt = noShowService.findByIdWithDetails(id);
         if (recordOpt.isEmpty()) {
             return "redirect:/no-show";
         }

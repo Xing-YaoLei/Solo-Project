@@ -98,8 +98,18 @@ public class CustomerLeadServiceImpl implements CustomerLeadService {
     }
 
     @Override
+    public Optional<CustomerLead> findByIdWithOwner(Long id) {
+        return leadRepository.findByIdWithOwner(id);
+    }
+
+    @Override
     public List<CustomerLead> findAll() {
         return leadRepository.findAll();
+    }
+
+    @Override
+    public List<CustomerLead> findAllWithOwner() {
+        return leadRepository.findAllWithOwner();
     }
 
     @Override

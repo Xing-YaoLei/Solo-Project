@@ -13,6 +13,16 @@ import java.util.List;
 
 @Repository
 public interface TestDriveAppointmentRepository extends JpaRepository<TestDriveAppointment, Long>, JpaSpecificationExecutor<TestDriveAppointment> {
+
+    @Query("SELECT a FROM TestDriveAppointment a LEFT JOIN FETCH a.lead LEFT JOIN FETCH a.salesConsultant WHERE a.appointmentDate = :date")
+    List<TestDriveAppointment> findByAppointmentDateWithDetails(@Param("date") LocalDate date);
+
+    @Query("SELECT a FROM TestDriveAppointment a LEFT JOIN FETCH a.lead LEFT JOIN FETCH a.salesConsultant WHERE a.id = :id")
+    Optional<TestDriveAppointment> findByIdWithDetails(@Param("id") Long id);
+
+    @Query("SELECT DISTINCT a FROM TestDriveAppointment a LEFT JOIN FETCH a.lead LEFT JOIN FETCH a.salesConsultant WHERE a.appointmentDate BETWEEN :startDate AND :endDate")
+    List<TestDriveAppointment> findByDateRangeWithDetails(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
+
     List<TestDriveAppointment> findByAppointmentDate(LocalDate date);
     List<TestDriveAppointment> findByLeadId(Long leadId);
     List<TestDriveAppointment> findBySalesConsultantId(Long salesId);

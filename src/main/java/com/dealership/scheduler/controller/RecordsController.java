@@ -32,24 +32,33 @@ public class RecordsController {
 
     @GetMapping
     public String list(Model model) {
-        List<TestDriveAppointment> appointments = testDriveService.searchAppointments(new com.dealership.scheduler.dto.AppointmentQueryDTO());
+        com.dealership.scheduler.dto.AppointmentQueryDTO query = new com.dealership.scheduler.dto.AppointmentQueryDTO();
+        List<TestDriveAppointment> appointments = testDriveService.searchAppointments(query);
+        for (TestDriveAppointment appt : appointments) {
+            if (appt.getSalesConsultant() != null) {
+                appt.getSalesConsultant().getRealName();
+            }
+            if (appt.getLead() != null) {
+                appt.getLead().getCustomerName();
+            }
+        }
         model.addAttribute("appointments", appointments);
         return "records/list";
     }
 
     @GetMapping("/{appointmentId}")
     public String detail(@PathVariable Long appointmentId, Model model) {
-        Optional<TestDriveAppointment> appointmentOpt = testDriveService.findAppointmentById(appointmentId);
+        Optional<TestDriveAppointment> appointmentOpt = testDriveService.findAppointmentByIdWithDetails(appointmentId);
         if (appointmentOpt.isEmpty()) {
             return "redirect:/records";
         }
         TestDriveAppointment appointment = appointmentOpt.get();
         model.addAttribute("appointment", appointment);
 
-        Optional<TestDriveRecord> record = testDriveService.findRecordByAppointmentId(appointmentId);
+        Optional<TestDriveRecord> record = testDriveService.findRecordByAppointmentIdWithDetails(appointmentId);
         model.addAttribute("record", record.orElse(null));
 
-        Optional<TestDriveFeedback> feedback = testDriveService.findFeedbackByAppointmentId(appointmentId);
+        Optional<TestDriveFeedback> feedback = testDriveService.findFeedbackByAppointmentIdWithDetails(appointmentId);
         model.addAttribute("feedback", feedback.orElse(null));
 
         return "records/detail";
@@ -57,7 +66,7 @@ public class RecordsController {
 
     @GetMapping("/{appointmentId}/record/new")
     public String newRecord(@PathVariable Long appointmentId, Model model) {
-        TestDriveAppointment appointment = testDriveService.findAppointmentById(appointmentId)
+        TestDriveAppointment appointment = testDriveService.findAppointmentByIdWithDetails(appointmentId)
                 .orElseThrow(() -> new RuntimeException("预约不存在"));
 
         TestDriveRecord record = new TestDriveRecord();
@@ -93,7 +102,7 @@ public class RecordsController {
 
     @GetMapping("/{appointmentId}/record/edit")
     public String editRecord(@PathVariable Long appointmentId, Model model) {
-        TestDriveRecord record = testDriveService.findRecordByAppointmentId(appointmentId)
+        TestDriveRecord record = testDriveService.findRecordByAppointmentIdWithDetails(appointmentId)
                 .orElse(new TestDriveRecord());
         model.addAttribute("record", record);
         model.addAttribute("drivers", userRepository.findByRole(SysUser.Role.SALES_CONSULTANT));
@@ -102,7 +111,7 @@ public class RecordsController {
 
     @GetMapping("/{appointmentId}/feedback/new")
     public String newFeedback(@PathVariable Long appointmentId, Model model) {
-        TestDriveAppointment appointment = testDriveService.findAppointmentById(appointmentId)
+        TestDriveAppointment appointment = testDriveService.findAppointmentByIdWithDetails(appointmentId)
                 .orElseThrow(() -> new RuntimeException("预约不存在"));
 
         TestDriveFeedback feedback = new TestDriveFeedback();
@@ -133,17 +142,17 @@ public class RecordsController {
 
     @GetMapping("/lead/{leadId}")
     public String leadRecords(@PathVariable Long leadId, Model model) {
-        Optional<CustomerLead> leadOpt = leadRepository.findById(leadId);
+        Optional<CustomerLead> leadOpt = leadRepository.findByIdWithOwner(leadId);
         if (leadOpt.isEmpty()) {
             return "redirect:/records";
         }
         CustomerLead lead = leadOpt.get();
         model.addAttribute("lead", lead);
 
-        List<TestDriveRecord> records = testDriveService.findRecordsByLeadId(leadId);
+        List<TestDriveRecord> records = testDriveService.findRecordsByLeadIdWithDetails(leadId);
         model.addAttribute("records", records);
 
-        List<TestDriveFeedback> feedbacks = testDriveService.findFeedbacksByLeadId(leadId);
+        List<TestDriveFeedback> feedbacks = testDriveService.findFeedbacksByLeadIdWithDetails(leadId);
         model.addAttribute("feedbacks", feedbacks);
 
         return "records/lead-records";

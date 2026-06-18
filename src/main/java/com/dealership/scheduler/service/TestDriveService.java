@@ -13,17 +13,23 @@ public interface TestDriveService {
     TestDriveAppointment createAppointment(TestDriveAppointment appointment);
     TestDriveAppointment updateAppointment(TestDriveAppointment appointment);
     Optional<TestDriveAppointment> findAppointmentById(Long id);
+    Optional<TestDriveAppointment> findAppointmentByIdWithDetails(Long id);
     List<TestDriveAppointment> searchAppointments(AppointmentQueryDTO query);
     List<TestDriveAppointment> findAppointmentsByDate(LocalDate date);
+    List<TestDriveAppointment> findAppointmentsByDateWithDetails(LocalDate date);
 
     TestDriveRecord createRecord(TestDriveRecord record);
     TestDriveRecord updateRecord(TestDriveRecord record);
     Optional<TestDriveRecord> findRecordByAppointmentId(Long appointmentId);
+    Optional<TestDriveRecord> findRecordByAppointmentIdWithDetails(Long appointmentId);
     List<TestDriveRecord> findRecordsByLeadId(Long leadId);
+    List<TestDriveRecord> findRecordsByLeadIdWithDetails(Long leadId);
 
     TestDriveFeedback createFeedback(TestDriveFeedback feedback);
     Optional<TestDriveFeedback> findFeedbackByAppointmentId(Long appointmentId);
+    Optional<TestDriveFeedback> findFeedbackByAppointmentIdWithDetails(Long appointmentId);
     List<TestDriveFeedback> findFeedbacksByLeadId(Long leadId);
+    List<TestDriveFeedback> findFeedbacksByLeadIdWithDetails(Long leadId);
 
     void cancelAppointment(Long id, String reason);
     void completeAppointment(Long id);

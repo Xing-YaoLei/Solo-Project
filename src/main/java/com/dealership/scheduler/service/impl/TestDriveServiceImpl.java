@@ -77,6 +77,11 @@ public class TestDriveServiceImpl implements TestDriveService {
     }
 
     @Override
+    public Optional<TestDriveAppointment> findAppointmentByIdWithDetails(Long id) {
+        return appointmentRepository.findByIdWithDetails(id);
+    }
+
+    @Override
     public List<TestDriveAppointment> searchAppointments(AppointmentQueryDTO query) {
         Specification<TestDriveAppointment> spec = (root, cq, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
@@ -113,6 +118,11 @@ public class TestDriveServiceImpl implements TestDriveService {
     }
 
     @Override
+    public List<TestDriveAppointment> findAppointmentsByDateWithDetails(LocalDate date) {
+        return appointmentRepository.findByAppointmentDateWithDetails(date);
+    }
+
+    @Override
     @Transactional
     public TestDriveRecord createRecord(TestDriveRecord record) {
         TestDriveRecord saved = recordRepository.save(record);
@@ -138,8 +148,18 @@ public class TestDriveServiceImpl implements TestDriveService {
     }
 
     @Override
+    public Optional<TestDriveRecord> findRecordByAppointmentIdWithDetails(Long appointmentId) {
+        return recordRepository.findByAppointmentIdWithDetails(appointmentId);
+    }
+
+    @Override
     public List<TestDriveRecord> findRecordsByLeadId(Long leadId) {
         return recordRepository.findByLeadId(leadId);
+    }
+
+    @Override
+    public List<TestDriveRecord> findRecordsByLeadIdWithDetails(Long leadId) {
+        return recordRepository.findByLeadIdWithDetails(leadId);
     }
 
     @Override
@@ -162,8 +182,18 @@ public class TestDriveServiceImpl implements TestDriveService {
     }
 
     @Override
+    public Optional<TestDriveFeedback> findFeedbackByAppointmentIdWithDetails(Long appointmentId) {
+        return feedbackRepository.findByAppointmentIdWithDetails(appointmentId);
+    }
+
+    @Override
     public List<TestDriveFeedback> findFeedbacksByLeadId(Long leadId) {
         return feedbackRepository.findByLeadId(leadId);
+    }
+
+    @Override
+    public List<TestDriveFeedback> findFeedbacksByLeadIdWithDetails(Long leadId) {
+        return feedbackRepository.findByLeadIdWithDetails(leadId);
     }
 
     @Override

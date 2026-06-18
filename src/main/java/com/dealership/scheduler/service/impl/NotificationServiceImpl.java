@@ -29,7 +29,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Transactional
-    public void createNoShowNotification(Long appointmentId, String customerName, String vehicleName) {
+    public void createNoShowNotification(Long noShowRecordId, String customerName, String vehicleName) {
         List<SysUser.Role> roles = Arrays.stream(notifyRoles.split(","))
                 .map(String::trim)
                 .map(SysUser.Role::valueOf)
@@ -41,7 +41,7 @@ public class NotificationServiceImpl implements NotificationService {
             notification.setTitle("试驾爽约提醒");
             notification.setContent("客户【" + customerName + "】预约试驾【" + vehicleName + "】出现爽约，请及时处理。");
             notification.setTargetRole(role);
-            notification.setRelatedId(appointmentId);
+            notification.setRelatedId(noShowRecordId);
             notification.setReadFlag(false);
             notificationRepository.save(notification);
         }

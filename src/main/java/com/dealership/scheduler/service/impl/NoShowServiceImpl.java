@@ -55,7 +55,7 @@ public class NoShowServiceImpl implements NoShowService {
         record.setStatus(NoShowRecord.NoShowStatus.PENDING);
         NoShowRecord saved = noShowRepository.save(record);
 
-        notificationService.createNoShowNotification(appointmentId,
+        notificationService.createNoShowNotification(saved.getId(),
                 appointment.getCustomerName(), appointment.getVehicleName());
 
         return saved;
@@ -119,6 +119,11 @@ public class NoShowServiceImpl implements NoShowService {
     }
 
     @Override
+    public Optional<NoShowRecord> findByIdWithDetails(Long id) {
+        return noShowRepository.findByIdWithDetails(id);
+    }
+
+    @Override
     public Optional<NoShowRecord> findByAppointmentId(Long appointmentId) {
         return noShowRepository.findByAppointmentId(appointmentId);
     }
@@ -129,8 +134,18 @@ public class NoShowServiceImpl implements NoShowService {
     }
 
     @Override
+    public List<NoShowRecord> findPendingWithDetails() {
+        return noShowRepository.findByStatusWithDetails(NoShowRecord.NoShowStatus.PENDING);
+    }
+
+    @Override
     public List<NoShowRecord> findAll() {
         return noShowRepository.findAll();
+    }
+
+    @Override
+    public List<NoShowRecord> findAllWithDetails() {
+        return noShowRepository.findAllWithDetails();
     }
 
     @Override

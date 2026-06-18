@@ -11,7 +11,9 @@ public interface CustomerLeadService {
     CustomerLead create(CustomerLead lead, Long operatorId);
     CustomerLead update(CustomerLead lead, Long operatorId);
     Optional<CustomerLead> findById(Long id);
+    Optional<CustomerLead> findByIdWithOwner(Long id);
     List<CustomerLead> findAll();
+    List<CustomerLead> findAllWithOwner();
     List<CustomerLead> search(LeadQueryDTO query);
     List<LeadChangeLog> getChangeLogs(Long leadId);
     void delete(Long id, Long operatorId);

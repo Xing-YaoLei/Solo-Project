@@ -12,6 +12,13 @@ import java.util.List;
 
 @Repository
 public interface CustomerLeadRepository extends JpaRepository<CustomerLead, Long>, JpaSpecificationExecutor<CustomerLead> {
+
+    @Query("SELECT DISTINCT cl FROM CustomerLead cl LEFT JOIN FETCH cl.owner ORDER BY cl.createTime DESC")
+    List<CustomerLead> findAllWithOwner();
+
+    @Query("SELECT cl FROM CustomerLead cl LEFT JOIN FETCH cl.owner WHERE cl.id = :id")
+    Optional<CustomerLead> findByIdWithOwner(@Param("id") Long id);
+
     List<CustomerLead> findByStatus(CustomerLead.LeadStatus status);
     List<CustomerLead> findByOwnerId(Long ownerId);
     List<CustomerLead> findByPhone(String phone);

@@ -36,7 +36,7 @@ public class SchedulerController {
         if (date == null) {
             date = LocalDate.now();
         }
-        List<TestDriveAppointment> appointments = testDriveService.findAppointmentsByDate(date);
+        List<TestDriveAppointment> appointments = testDriveService.findAppointmentsByDateWithDetails(date);
         model.addAttribute("appointments", appointments);
         model.addAttribute("currentDate", date);
         model.addAttribute("statuses", TestDriveAppointment.AppointmentStatus.values());
@@ -86,7 +86,7 @@ public class SchedulerController {
 
     @GetMapping("/edit/{id}")
     public String editAppointment(@PathVariable Long id, Model model) {
-        testDriveService.findAppointmentById(id).ifPresent(appointment -> {
+        testDriveService.findAppointmentByIdWithDetails(id).ifPresent(appointment -> {
             model.addAttribute("appointment", appointment);
         });
         model.addAttribute("leads", leadRepository.findAll());
