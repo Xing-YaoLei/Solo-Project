@@ -36,6 +36,8 @@ def get_last_refresh_time(refresh_type: str = "full_refresh") -> Optional[dateti
             .first()
         )
         return log.end_time if log else None
+    except Exception:
+        return None
     finally:
         db.close()
 
@@ -89,10 +91,16 @@ def get_project_funnel() -> pd.DataFrame:
                 "报价金额(万)": round(_to_float(total_amount) / 10000, 2)
             })
         df = pd.DataFrame(data)
+        if df.empty:
+            return pd.DataFrame(columns=["阶段", "项目数", "报价金额(万)", "转化率", "阶段留存率"])
         total = df["项目数"].sum()
         df["转化率"] = df["项目数"] / total if total > 0 else 0
         df["阶段留存率"] = df["项目数"] / df["项目数"].iloc[0] if not df.empty and df["项目数"].iloc[0] > 0 else 0
         return df
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"get_project_funnel 查询失败: {e}")
+        return pd.DataFrame(columns=["阶段", "项目数", "报价金额(万)", "转化率", "阶段留存率"])
     finally:
         db.close()
 
@@ -126,10 +134,21 @@ def get_reconciliation_trend(start_date: Optional[date] = None,
                 "状态": order.status or ""
             })
         df = pd.DataFrame(data)
-        if not df.empty:
-            df["日期"] = pd.to_datetime(df["日期"])
-            df["月份"] = df["日期"].dt.to_period("M").astype(str)
+        if df.empty:
+            return pd.DataFrame(columns=[
+                "日期", "采购单号", "项目ID", "供应商", "分类",
+                "预算金额", "实际金额", "差异金额", "差异率(%)", "状态", "月份"
+            ])
+        df["日期"] = pd.to_datetime(df["日期"], errors="coerce")
+        df["月份"] = df["日期"].dt.to_period("M").astype(str).replace("<NA>", "")
         return df
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"get_reconciliation_trend 查询失败: {e}")
+        return pd.DataFrame(columns=[
+            "日期", "采购单号", "项目ID", "供应商", "分类",
+            "预算金额", "实际金额", "差异金额", "差异率(%)", "状态", "月份"
+        ])
     finally:
         db.close()
 
@@ -160,7 +179,18 @@ def get_contract_attachments() -> pd.DataFrame:
                 "文件大小(KB)": round((att.file_size or 0) / 1024, 2),
                 "上传时间": att.uploaded_at
             })
-        return pd.DataFrame(data)
+        df = pd.DataFrame(data)
+        if df.empty:
+            return pd.DataFrame(columns=[
+                "合同编号", "项目编号", "项目名称", "附件类型", "文件名", "文件大小(KB)", "上传时间"
+            ])
+        return df
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"get_contract_attachments 查询失败: {e}")
+        return pd.DataFrame(columns=[
+            "合同编号", "项目编号", "项目名称", "附件类型", "文件名", "文件大小(KB)", "上传时间"
+        ])
     finally:
         db.close()
 
@@ -185,7 +215,14 @@ def get_attachment_type_stats() -> pd.DataFrame:
             }
             for r in result
         ]
-        return pd.DataFrame(data)
+        df = pd.DataFrame(data)
+        if df.empty:
+            return pd.DataFrame(columns=["附件类型", "数量", "总大小(MB)"])
+        return df
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"get_attachment_type_stats 查询失败: {e}")
+        return pd.DataFrame(columns=["附件类型", "数量", "总大小(MB)"])
     finally:
         db.close()
 
@@ -256,7 +293,13 @@ def get_document_details(
 
         data = [[_to_float(v) if isinstance(v, Decimal) else v for v in row] for row in items]
         df = pd.DataFrame(data, columns=columns)
+        if df.empty:
+            return pd.DataFrame(columns=columns)
         return df
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"get_document_details({doc_type}) 查询失败: {e}")
+        return pd.DataFrame()
     finally:
         db.close()
 
@@ -290,7 +333,7 @@ def get_approval_abnormal() -> pd.DataFrame:
                 "审批类型": ap.approval_type,
                 "关联单据": ap.ref_no or "",
                 "审批人": approver or "",
-                "状态": ap.status.value,
+                "状态": ap.status.value if ap.status else "",
                 "是否异常": "是" if ap.is_abnormal else "否",
                 "异常原因": ap.abnormal_reason or "",
                 "提交时间": ap.submit_time,
@@ -300,7 +343,22 @@ def get_approval_abnormal() -> pd.DataFrame:
                 "超时(小时)": delay_hours,
                 "备注": ap.remark or ""
             })
-        return pd.DataFrame(data)
+        df = pd.DataFrame(data)
+        if df.empty:
+            return pd.DataFrame(columns=[
+                "项目编号", "项目名称", "审批类型", "关联单据", "审批人",
+                "状态", "是否异常", "异常原因", "提交时间", "审批时间",
+                "期望时效(小时)", "实际耗时(小时)", "超时(小时)", "备注"
+            ])
+        return df
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"get_approval_abnormal 查询失败: {e}")
+        return pd.DataFrame(columns=[
+            "项目编号", "项目名称", "审批类型", "关联单据", "审批人",
+            "状态", "是否异常", "异常原因", "提交时间", "审批时间",
+            "期望时效(小时)", "实际耗时(小时)", "超时(小时)", "备注"
+        ])
     finally:
         db.close()
 
@@ -348,7 +406,24 @@ def get_payment_cycle_data() -> pd.DataFrame:
                 "回款周期(天)": cycle_days,
                 "逾期天数": delay_days
             })
-        return pd.DataFrame(data)
+        df = pd.DataFrame(data)
+        if df.empty:
+            return pd.DataFrame(columns=[
+                "项目编号", "项目名称", "合同签订日期", "项目状态",
+                "回款阶段", "计划回款日期", "实际回款日期",
+                "计划回款金额", "实际回款金额", "回款状态",
+                "回款周期(天)", "逾期天数"
+            ])
+        return df
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"get_payment_cycle_data 查询失败: {e}")
+        return pd.DataFrame(columns=[
+            "项目编号", "项目名称", "合同签订日期", "项目状态",
+            "回款阶段", "计划回款日期", "实际回款日期",
+            "计划回款金额", "实际回款金额", "回款状态",
+            "回款周期(天)", "逾期天数"
+        ])
     finally:
         db.close()
 
@@ -372,6 +447,19 @@ def get_project_list() -> pd.DataFrame:
             }
             for p in projects
         ]
-        return pd.DataFrame(data)
+        df = pd.DataFrame(data)
+        if df.empty:
+            return pd.DataFrame(columns=[
+                "id", "项目编号", "项目名称", "客户姓名", "户型",
+                "面积(m²)", "状态", "量房日期", "报价日期", "签单日期"
+            ])
+        return df
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"get_project_list 查询失败: {e}")
+        return pd.DataFrame(columns=[
+            "id", "项目编号", "项目名称", "客户姓名", "户型",
+            "面积(m²)", "状态", "量房日期", "报价日期", "签单日期"
+        ])
     finally:
         db.close()

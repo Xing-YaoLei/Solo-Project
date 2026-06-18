@@ -1,7 +1,8 @@
-from dash import dash_table
+from dash import html, dash_table
 import dash_bootstrap_components as dbc
 import plotly.graph_objects as go
 import plotly.express as px
+from plotly.subplots import make_subplots
 import pandas as pd
 
 from app.data.queries import get_attachment_type_stats, get_contract_attachments
@@ -31,46 +32,73 @@ def create_attachment_type_chart():
         return fig, df
 
     colors = px.colors.qualitative.Set2 + px.colors.qualitative.Pastel
-    fig = go.Figure()
 
-    fig.add_trace(go.Pie(
-        labels=df["附件类型"],
-        values=df["数量"],
-        name="数量",
-        hole=0.55,
-        marker=dict(colors=colors[:len(df)]),
-        textinfo="label+percent+value",
-        textposition="outside",
-        textfont=dict(size=11, family="微软雅黑"),
-        hovertemplate="<b>%{label}</b><br>数量: %{value}<br>占比: %{percent}<extra></extra>",
-        domain=dict(x=[0, 0.48])
-    ))
+    fig = make_subplots(
+        rows=1, cols=2,
+        column_widths=[0.45, 0.55],
+        specs=[[{"type": "pie"}, {"type": "xy"}]],
+        subplot_titles=("附件类型分布（数量）", "各类型文件总大小"),
+        horizontal_spacing=0.08,
+    )
 
-    fig.add_trace(go.Bar(
-        x=df["附件类型"],
-        y=df["总大小(MB)"],
-        name="总大小(MB)",
-        marker_color=COLOR_PALETTE['secondary'],
-        text=[f"{v:.1f}MB" for v in df["总大小(MB)"]],
-        textposition="outside",
-        domain=dict(x=[0.58, 1])
-    ))
+    fig.add_trace(
+        go.Pie(
+            labels=df["附件类型"],
+            values=df["数量"],
+            name="数量",
+            hole=0.55,
+            marker=dict(colors=colors[:len(df)],
+                        line=dict(color="white", width=2)),
+            textinfo="label+percent+value",
+            textfont=dict(size=10, family="微软雅黑"),
+            hovertemplate="<b>%{label}</b><br>数量: %{value}<br>占比: %{percent}<extra></extra>",
+        ),
+        row=1, col=1
+    )
+
+    fig.add_trace(
+        go.Bar(
+            x=df["附件类型"],
+            y=df["总大小(MB)"],
+            name="总大小(MB)",
+            marker_color=COLOR_PALETTE['secondary'],
+            marker_line_color=COLOR_PALETTE['primary'],
+            marker_line_width=1,
+            opacity=0.9,
+            text=[f"{v:.1f}MB" for v in df["总大小(MB)"]],
+            textposition="outside",
+            textfont=dict(size=9, family="微软雅黑"),
+            hovertemplate="<b>%{x}</b><br>大小: %{y:.2f} MB<extra></extra>",
+        ),
+        row=1, col=2
+    )
 
     fig.update_layout(
         title=dict(
             text="📎 合同附件构成（类型分布）",
             font=dict(size=15, color=COLOR_PALETTE['dark'], family="微软雅黑"),
-            x=0.5
+            x=0.5,
+            xanchor="center"
         ),
         height=420,
-        margin=dict(l=60, r=60, t=100, b=60),
+        margin=dict(l=40, r=40, t=100, b=80),
         paper_bgcolor="#FAFAFA",
         plot_bgcolor="#FAFAFA",
         font=dict(family="微软雅黑"),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-        yaxis=dict(title="文件大小（MB）", gridcolor="#E0E0E0", domain=[0, 1]),
-        yaxis2=dict(domain=[0, 1]),
+        legend=dict(orientation="h", yanchor="bottom", y=-0.15, xanchor="center", x=0.5),
+        yaxis2=dict(title="文件大小（MB）", gridcolor="#E0E0E0", zeroline=True),
+        xaxis2=dict(title="", tickangle=-25, tickfont=dict(size=10)),
+        annotations=[
+            dict(
+                text=f"合计：{df['数量'].sum()} 份 / {df['总大小(MB)'].sum():.1f} MB",
+                xref="paper", yref="paper",
+                x=0.5, y=1.06,
+                showarrow=False,
+                font=dict(size=11, color=COLOR_PALETTE['primary'])
+            )
+        ]
     )
+
     return fig, df
 
 
@@ -103,20 +131,22 @@ def create_attachment_legend_cards(df: pd.DataFrame):
     return cards
 
 
-from dash import html
-
-
 def create_attachment_detail_table(df: pd.DataFrame = None):
     if df is None:
         df = get_contract_attachments()
 
+    cols = ["合同编号", "项目编号", "项目名称", "附件类型", "文件名", "文件大小(KB)", "上传时间"]
     if df.empty:
         data = []
-        cols = ["合同编号", "项目编号", "项目名称", "附件类型", "文件名", "文件大小(KB)", "上传时间"]
     else:
-        cols = ["合同编号", "项目编号", "项目名称", "附件类型", "文件名", "文件大小(KB)", "上传时间"]
-        display = df[cols].copy()
-        display["上传时间"] = display["上传时间"].astype(str)
+        display = df.copy()
+        missing = [c for c in cols if c not in display.columns]
+        for c in missing:
+            display[c] = ""
+        display = display[cols]
+        for c in ["上传时间"]:
+            if c in display.columns:
+                display[c] = display[c].astype(str).replace("NaT", "").replace("nan", "")
         data = display.to_dict("records")
 
     style_header = {
