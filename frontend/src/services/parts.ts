@@ -12,7 +12,9 @@ export interface CreateShortagePayload {
 
 export const partsApi = {
   getList(params?: { keyword?: string }): Promise<PartsInfo[]> {
-    return request.get('/parts', { params });
+    return request
+      .get<any>('/parts', { params })
+      .then((res) => (res && res.items ? res.items : res || []));
   },
 
   getById(id: number): Promise<PartsInfo> {

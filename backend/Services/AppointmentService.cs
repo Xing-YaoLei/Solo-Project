@@ -431,7 +431,7 @@ public class AppointmentService : IAppointmentService
         record.UpdatedAt = DateTime.Now;
 
         var hasUnresolved = await _context.PartsShortageRecords
-            .AnyAsync(r => r.AppointmentId == appointmentId && r.Status != PartsShortageStatus.Resolved && r.Status != PartsShortageStatus.Cancelled);
+            .AnyAsync(r => r.Id != shortageId && r.AppointmentId == appointmentId && r.Status != PartsShortageStatus.Resolved && r.Status != PartsShortageStatus.Cancelled);
 
         if (!hasUnresolved)
         {

@@ -221,7 +221,8 @@ public class PartsService : IPartsService
         if (record.Appointment != null)
         {
             var hasUnresolved = await _context.PartsShortageRecords
-                .AnyAsync(r => r.AppointmentId == record.AppointmentId
+                .AnyAsync(r => r.Id != id
+                            && r.AppointmentId == record.AppointmentId
                             && r.Status != PartsShortageStatus.Resolved
                             && r.Status != PartsShortageStatus.Cancelled);
 
