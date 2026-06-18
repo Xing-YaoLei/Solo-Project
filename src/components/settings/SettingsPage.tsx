@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSettingsStore } from '@/stores/useSettingsStore'
 import { useProgressStore } from '@/stores/useProgressStore'
@@ -24,21 +24,15 @@ export default function SettingsPageComponent() {
   const setAnimationIntensity = useSettingsStore((s) => s.setAnimationIntensity)
   const setTutorialCompleted = useSettingsStore((s) => s.setTutorialCompleted)
 
-  const resetProgress = useProgressStore(() => {
-    return () => {
-      ;(useProgressStore.setState as unknown as (partial: object) => void)({
-        levelResults: {},
-        bestResults: {},
-        unlockedLevel: 1,
-      })
-    }
-  })
-
-  const handleResetAll = () => {
-    resetProgress()
+  const handleResetAll = useCallback(() => {
+    useProgressStore.setState({
+      levelResults: {},
+      bestResults: {},
+      unlockedLevel: 1,
+    })
     setTutorialCompleted(false)
     setShowResetConfirm(false)
-  }
+  }, [setTutorialCompleted])
 
   return (
     <div className="min-h-screen bg-[#1a1a2e] text-[#f5f0e8] p-6">
