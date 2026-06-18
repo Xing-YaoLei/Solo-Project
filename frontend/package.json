@@ -1,0 +1,33 @@
+{
+  "name": "cardealer-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev --port 3000",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "lint": "eslint .",
+    "typecheck": "nuxt typecheck"
+  },
+  "dependencies": {
+    "@vicons/antd": "^0.13.0",
+    "@vueuse/core": "^10.11.0",
+    "dayjs": "^1.11.11",
+    "echarts": "^5.5.0",
+    "naive-ui": "^2.39.0",
+    "nuxt": "^3.12.0",
+    "pinia": "^2.1.7",
+    "@pinia/nuxt": "^0.5.1",
+    "vue": "^3.4.31",
+    "vue-router": "^4.4.0"
+  },
+  "devDependencies": {
+    "@nuxt/devtools": "latest",
+    "@nuxtjs/tailwindcss": "^6.12.0",
+    "@types/node": "^20.14.10",
+    "typescript": "^5.5.3"
+  }
+}
