@@ -50,9 +50,10 @@ public class QuotesController : ControllerBase
     }
 
     [HttpPut("{id}/status")]
-    public async Task<ActionResult<QuoteDto>> UpdateStatus([FromRoute] Guid id, [FromBody] QuoteStatus status)
+    public async Task<ActionResult<QuoteDto>> UpdateStatus([FromRoute] Guid id, [FromBody] UpdateQuoteStatusRequest request)
     {
-        var quote = await _quoteService.UpdateStatusAsync(id, status);
+        if (request == null) return BadRequest();
+        var quote = await _quoteService.UpdateStatusAsync(id, request.Status);
         if (quote == null)
         {
             return NotFound();

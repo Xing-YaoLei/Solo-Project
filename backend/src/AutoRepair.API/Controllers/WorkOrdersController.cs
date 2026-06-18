@@ -86,9 +86,10 @@ public class WorkOrdersController : ControllerBase
     }
 
     [HttpPut("{id}/status")]
-    public async Task<ActionResult<WorkOrderDto>> UpdateStatus([FromRoute] Guid id, [FromBody] WorkOrderStatus status)
+    public async Task<ActionResult<WorkOrderDto>> UpdateStatus([FromRoute] Guid id, [FromBody] UpdateWorkOrderStatusRequest request)
     {
-        var workOrder = await _workOrderService.UpdateStatusAsync(id, status);
+        if (request == null) return BadRequest();
+        var workOrder = await _workOrderService.UpdateStatusAsync(id, request.Status);
         if (workOrder == null)
         {
             return NotFound();
