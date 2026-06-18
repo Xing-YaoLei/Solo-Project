@@ -293,8 +293,8 @@ export default function VehiclesIndex() {
                         {vehicle.missingDocuments && vehicle.missingDocuments.length > 0 ? (
                           <div className="missing-docs">
                             {vehicle.missingDocuments.slice(0, 3).map((doc) => (
-                              <span key={doc} className="missing-doc-tag" title={DOCUMENT_NAMES[doc] || doc}>
-                                {DOCUMENT_NAMES[doc] || doc}
+                              <span key={doc} className="missing-doc-tag" title={doc}>
+                                {doc}
                               </span>
                             ))}
                             {vehicle.missingDocuments.length > 3 && (

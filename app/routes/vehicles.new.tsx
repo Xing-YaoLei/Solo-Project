@@ -48,7 +48,10 @@ export const action: ActionFunction = async ({ request, context }) => {
   const formData = await request.formData();
 
   try {
-    const assignedTo = formData.get("assignedTo") as string;
+    const isManager = user.role === "manager";
+    const formAssignedTo = formData.get("assignedTo") as string;
+    const assignedTo = isManager && formAssignedTo ? formAssignedTo : user._id.toString();
+
     const vehicleData = {
       plateNumber: formData.get("plateNumber") as string,
       vin: formData.get("vin") as string,
@@ -64,7 +67,7 @@ export const action: ActionFunction = async ({ request, context }) => {
       firstOwnerName: formData.get("firstOwnerName") as string || undefined,
       firstOwnerPhone: formData.get("firstOwnerPhone") as string || undefined,
       notes: formData.get("notes") as string || undefined,
-      assignedTo: assignedTo || undefined,
+      assignedTo,
       documentCheck: {
         registration: formData.get("doc_registration") === "on",
         drivingLicense: formData.get("doc_drivingLicense") === "on",
@@ -282,14 +285,33 @@ export default function NewVehicle() {
                 <label className="form-label">
                   负责人 <span style={{ color: "#ef4444" }}>*</span>
                 </label>
-                <select name="assignedTo" className="form-input" required>
-                  <option value="">请选择负责人</option>
-                  {users.map((u) => (
-                    <option key={u._id} value={u._id}>
-                      {u.name} ({u.role === "manager" ? "经理" : "业务员"})
-                    </option>
-                  ))}
-                </select>
+                {user.role === "manager" ? (
+                  <select name="assignedTo" className="form-input" required>
+                    <option value="">请选择负责人</option>
+                    {users.map((u) => (
+                      <option key={u._id} value={u._id}>
+                        {u.name} ({u.role === "manager" ? "经理" : "业务员"})
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <>
+                    <input
+                      type="hidden"
+                      name="assignedTo"
+                      value={user._id}
+                    />
+                    <div
+                      className="form-input"
+                      style={{ backgroundColor: "#f9fafb", color: "#6b7280" }}
+                    >
+                      {user.name} ({user.role === "manager" ? "经理" : "业务员"})
+                    </div>
+                    <div style={{ fontSize: "12px", color: "#6b7280", marginTop: "4px" }}>
+                      执行员账号新增车辆时负责人固定为自己
+                    </div>
+                  </>
+                )}
               </div>
 
               <div className="form-group">

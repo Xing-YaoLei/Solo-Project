@@ -266,7 +266,7 @@ export default function VehicleDetail() {
               <div className="missing-docs">
                 {vehicle.missingDocuments.map((doc: string) => (
                   <span key={doc} className="missing-doc-tag">
-                  缺失：{DOCUMENT_NAMES[doc] || doc}
+                  缺失：{doc}
                 </span>
                 ))}
               </div>
