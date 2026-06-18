@@ -2,11 +2,9 @@ import { create } from 'zustand';
 import {
   GameState,
   GameMode,
-  GamePhase,
   Difficulty,
   MaterialType,
   DeliveryBatch,
-  UsageRecord,
   GameEvent,
   PlayerAction,
   StuckPoint
@@ -19,11 +17,10 @@ import {
   calculateInventory,
   calculateScore,
   checkAchievements,
-  calculateStatistics,
-  generateId
+  calculateStatistics
 } from '../utils/gameUtils';
 import { getConfigByDifficulty } from '../config/gameConfig';
-import { Level, getLevelById } from '../config/levels';
+import { getLevelById } from '../config/levels';
 
 interface GameActions {
   initGame: (levelId: string, mode: GameMode) => void;
@@ -36,6 +33,7 @@ interface GameActions {
   resolveEvent: (eventId: string) => void;
   useItem: (itemId: string) => void;
   recordAction: (action: string, details: Record<string, unknown>, thinkingTime?: number) => void;
+  markInteraction: () => void;
   recordStuckPoint: (reason: string, duration: number) => void;
   completeSettlement: () => void;
   goToReview: () => void;
@@ -47,6 +45,7 @@ interface GameActions {
 
 const initialState: Omit<GameState, 'mode' | 'difficulty'> = {
   phase: 'menu',
+  levelId: null,
   currentDay: 0,
   currentTime: 0,
   isPaused: false,
@@ -71,7 +70,8 @@ const initialState: Omit<GameState, 'mode' | 'difficulty'> = {
     decisionsMade: 0,
     hintsUsed: 0
   },
-  stuckPoints: []
+  stuckPoints: [],
+  lastActionTime: Date.now()
 };
 
 export const useGameStore = create<GameState & GameActions>((set, get) => ({
@@ -83,10 +83,9 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     const level = getLevelById(levelId);
     if (!level) return;
 
-    const config = getConfigByDifficulty(level.difficulty);
-
     set({
       mode,
+      levelId,
       difficulty: level.difficulty,
       phase: 'menu',
       currentDay: 0,
@@ -127,7 +126,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
 
   nextDay: () => {
     const state = get();
-    const level = getLevelById(state.mode === 'training' ? 'training_1' : 'free_1');
+    const level = getLevelById(state.levelId || (state.mode === 'training' ? 'training_1' : 'free_1'));
     if (!level) return;
 
     const config = getConfigByDifficulty(state.difficulty);
@@ -263,20 +262,48 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     get().recordAction('use_item', { itemId, itemName: item.name });
   },
 
+  markInteraction: () => {
+    set({ lastActionTime: Date.now() });
+  },
+
   recordAction: (action: string, details: Record<string, unknown>, thinkingTime?: number) => {
+    const now = Date.now();
+    const state = get();
+    const calculatedThinkingTime = thinkingTime ?? (now - state.lastActionTime);
+
+    if (calculatedThinkingTime > 15000 && state.phase === 'playing') {
+      const stuckReason = action === 'day_advance' 
+        ? '花费较长时间决定推进日期，可能在纠结配送时机'
+        : action === 'schedule_delivery'
+        ? '安排配送前思考时间较长'
+        : `执行${action}操作前犹豫不决`;
+      
+      const stuckPoint: StuckPoint = {
+        timestamp: now,
+        day: state.currentDay,
+        reason: stuckReason,
+        duration: calculatedThinkingTime
+      };
+
+      set(s => ({
+        stuckPoints: [...s.stuckPoints, stuckPoint]
+      }));
+    }
+
     const playerAction: PlayerAction = {
-      timestamp: Date.now(),
+      timestamp: now,
       action,
       details,
-      thinkingTime
+      thinkingTime: calculatedThinkingTime
     };
 
-    set(state => ({
-      playerActions: [...state.playerActions, playerAction],
+    set(s => ({
+      playerActions: [...s.playerActions, playerAction],
       statistics: {
-        ...state.statistics,
-        decisionsMade: state.statistics.decisionsMade + 1
-      }
+        ...s.statistics,
+        decisionsMade: s.statistics.decisionsMade + 1
+      },
+      lastActionTime: now
     }));
   },
 
@@ -304,7 +331,9 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
 
   resetGame: () => {
     const state = get();
-    get().initGame(state.mode === 'training' ? 'training_1' : 'free_1', state.mode);
+    if (state.levelId) {
+      get().initGame(state.levelId, state.mode);
+    }
   },
 
   backToMenu: () => {

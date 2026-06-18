@@ -13,7 +13,7 @@ export function ScheduleDeliveryModal({ onClose, preselectedSupplier }: Schedule
   const currentDay = useGameStore(state => state.currentDay);
   const scheduleDelivery = useGameStore(state => state.scheduleDelivery);
 
-  const [selectedSupplier, setSelectedSupplier] = useState<string | null>(preselectedSupplier);
+  const [selectedSupplier, setSelectedSupplier] = useState<string | null>(preselectedSupplier ?? null);
   const [selectedMaterial, setSelectedMaterial] = useState<MaterialType | null>(null);
   const [quantity, setQuantity] = useState(50);
   const [daysAhead, setDaysAhead] = useState(2);

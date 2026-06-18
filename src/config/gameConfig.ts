@@ -1,4 +1,4 @@
-import { GameConfig, Difficulty, Material, MaterialType } from '../types';
+import { GameConfig, Difficulty, Material, MaterialType, AchievementConfig, AchievementType } from '../types';
 
 export const MATERIALS: Record<MaterialType, Material> = {
   cement: {
@@ -136,33 +136,33 @@ export const ITEM_CONFIGS = [
   }
 ];
 
-export const ACHIEVEMENT_CONFIGS = [
+export const ACHIEVEMENT_CONFIGS: AchievementConfig[] = [
   {
-    id: 'perfect',
+    id: 'perfect' as AchievementType,
     name: '完美调度',
     description: '零短缺完成游戏',
     condition: 'totalShortages === 0'
   },
   {
-    id: 'speed',
+    id: 'speed' as AchievementType,
     name: '效率大师',
     description: '在最短时间内完成',
     condition: 'completionTime < averageTime * 0.7'
   },
   {
-    id: 'no_shortage',
+    id: 'no_shortage' as AchievementType,
     name: '应急专家',
     description: '成功处理5次以上短缺事件',
     condition: 'resolvedShortages >= 5'
   },
   {
-    id: 'master_planner',
+    id: 'master_planner' as AchievementType,
     name: '规划大师',
     description: '周转天数低于平均值30%',
     condition: 'averageTurnoverDays < globalAverage * 0.7'
   },
   {
-    id: 'survivor',
+    id: 'survivor' as AchievementType,
     name: '逆境生存',
     description: '困难难度通关',
     condition: 'difficulty === "hard" && completed'

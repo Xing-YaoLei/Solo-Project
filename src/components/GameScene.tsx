@@ -1,4 +1,4 @@
-import { Suspense, useRef } from 'react';
+import { Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Physics } from '@react-three/rapier';
 import { OrbitControls, Environment } from '@react-three/drei';
@@ -63,7 +63,7 @@ export function GameScene() {
           );
         })}
 
-        {pendingDeliveries.slice(0, 3).map((delivery, index) => {
+        {pendingDeliveries.slice(0, 3).map((delivery) => {
           const supplier = suppliers.find(s => s.id === delivery.supplierId);
           const material = MATERIALS[delivery.materialType];
           return (
@@ -72,7 +72,6 @@ export function GameScene() {
               delivery={delivery}
               supplier={supplier}
               material={material}
-              index={index}
               totalDays={currentDay}
             />
           );

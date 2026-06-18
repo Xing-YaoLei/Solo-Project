@@ -5,7 +5,6 @@ export function ItemBar() {
   const difficulty = useGameStore(state => state.difficulty);
   const itemCooldowns = useGameStore(state => state.itemCooldowns);
   const useItem = useGameStore(state => state.useItem);
-  const currentDay = useGameStore(state => state.currentDay);
 
   const config = getConfigByDifficulty(difficulty);
 

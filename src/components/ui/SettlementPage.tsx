@@ -12,11 +12,11 @@ export function SettlementPage({ onComplete }: SettlementPageProps) {
   const deliveries = useGameStore(state => state.deliveries);
   const usageRecords = useGameStore(state => state.usageRecords);
   const events = useGameStore(state => state.events);
-  const score = useGameStore(state => state.score);
   const totalScore = useGameStore(state => state.totalScore);
   const difficulty = useGameStore(state => state.difficulty);
   const completeSettlement = useGameStore(state => state.completeSettlement);
   const currentDay = useGameStore(state => state.currentDay);
+  const statistics = useGameStore(state => state.statistics);
 
   const [step, setStep] = useState(1);
   const [differencesChecked, setDifferencesChecked] = useState<Record<string, boolean>>({});
@@ -29,6 +29,15 @@ export function SettlementPage({ onComplete }: SettlementPageProps) {
   const totalShortageAmount = shortageDeliveries.reduce((sum, d) => sum + (d.shortageAmount || 0), 0);
   const resolvedEvents = events.filter(e => e.resolved);
   const unresolvedEvents = events.filter(e => !e.resolved);
+
+  const finalScore = Math.max(0, 
+    1000 
+    + currentDay * 50 
+    - totalShortageAmount * config.shortagePenalty 
+    - unresolvedEvents.length * 50 
+    + resolvedEvents.length * 30 
+    + statistics.perfectDeliveries * 20
+  );
 
   const reviewData = generateReviewData(useGameStore.getState(), currentDay);
 
@@ -370,11 +379,11 @@ export function SettlementPage({ onComplete }: SettlementPageProps) {
                   <span className="text-white text-xl font-bold">最终得分</span>
                   <div className="text-right">
                     <div className="text-4xl font-bold" style={{
-                      color: score >= totalScore * 0.85 ? '#22c55e' :
-                             score >= totalScore * 0.7 ? '#eab308' :
-                             score >= totalScore * 0.5 ? '#f97316' : '#ef4444'
+                      color: finalScore >= totalScore * 0.85 ? '#22c55e' :
+                             finalScore >= totalScore * 0.7 ? '#eab308' :
+                             finalScore >= totalScore * 0.5 ? '#f97316' : '#ef4444'
                     }}>
-                      {score}
+                      {finalScore}
                     </div>
                     <div className="text-gray-400 text-sm">/ {totalScore} 满分</div>
                   </div>

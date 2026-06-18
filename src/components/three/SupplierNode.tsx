@@ -22,7 +22,7 @@ export function SupplierNode({ supplier, onPositionChange }: SupplierNodeProps) 
   const colorIndex = parseInt(supplier.id.replace(/\D/g, '')) % supplierColors.length;
   const baseColor = supplierColors[colorIndex] || '#4A90D9';
 
-  useFrame((state, delta) => {
+  useFrame((state) => {
     if (meshRef.current && !isDragging) {
       meshRef.current.position.y = Math.sin(state.clock.elapsedTime * 0.8) * 0.1;
     }
@@ -31,7 +31,10 @@ export function SupplierNode({ supplier, onPositionChange }: SupplierNodeProps) 
   const handlePointerDown = useCallback((e: ThreeEvent<PointerEvent>) => {
     e.stopPropagation();
     setIsDragging(true);
-    e.target.setPointerCapture(e.pointerId);
+    const target = e.target as unknown as HTMLElement;
+    if (target && 'setPointerCapture' in target) {
+      target.setPointerCapture(e.pointerId);
+    }
   }, []);
 
   const handlePointerUp = useCallback((e: ThreeEvent<PointerEvent>) => {

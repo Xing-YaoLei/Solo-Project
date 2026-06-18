@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useGameStore, useGamePhase } from './store/gameStore';
 import { GameMode } from './types';
 import { MainMenu } from './components/ui/MainMenu';
@@ -12,7 +11,6 @@ function App() {
   const startGame = useGameStore(state => state.startGame);
   const resetGame = useGameStore(state => state.resetGame);
   const backToMenu = useGameStore(state => state.backToMenu);
-  const mode = useGameStore(state => state.mode);
 
   const handleStartGame = (_levelId: string, _mode: GameMode) => {
     startGame();

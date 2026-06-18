@@ -7,7 +7,8 @@ import {
   GameStatistics,
   ReviewData,
   GameState,
-  Achievement
+  Achievement,
+  AchievementType
 } from '../types';
 import {
   MATERIALS,
@@ -234,12 +235,13 @@ export const checkAchievements = (
   const config = getConfigByDifficulty(state.difficulty);
 
   ACHIEVEMENT_CONFIGS.forEach(configAch => {
-    const existing = achievements.find(a => a.id === configAch.id);
+    const achId = configAch.id as AchievementType;
+    const existing = achievements.find(a => a.id === achId);
     if (existing && existing.unlocked) return;
 
     let unlocked = false;
 
-    switch (configAch.id) {
+    switch (achId) {
       case 'perfect':
         unlocked = statistics.totalShortages === 0;
         break;
@@ -253,13 +255,13 @@ export const checkAchievements = (
         unlocked = statistics.averageTurnoverDays < 7;
         break;
       case 'survivor':
-        unlocked = state.difficulty === 'hard' && state.phase === 'review';
+        unlocked = state.difficulty === 'hard' && (state.phase === 'review' || state.phase === 'settlement');
         break;
     }
 
     if (unlocked) {
-      const achievement = existing || {
-        id: configAch.id,
+      const achievement: Achievement = existing ? { ...existing } : {
+        id: achId,
         name: configAch.name,
         description: configAch.description,
         unlocked: false
@@ -267,7 +269,7 @@ export const checkAchievements = (
       achievement.unlocked = true;
       achievement.unlockedAt = Date.now();
 
-      const index = achievements.findIndex(a => a.id === configAch.id);
+      const index = achievements.findIndex(a => a.id === achId);
       if (index >= 0) {
         achievements[index] = achievement;
       } else {

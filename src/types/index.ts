@@ -111,6 +111,7 @@ export interface AnalyticsConfig {
 export interface GameState {
   mode: GameMode;
   phase: GamePhase;
+  levelId: string | null;
   difficulty: Difficulty;
   currentDay: number;
   currentTime: number;
@@ -128,6 +129,7 @@ export interface GameState {
   itemCooldowns: Record<string, number>;
   statistics: GameStatistics;
   stuckPoints: StuckPoint[];
+  lastActionTime: number;
 }
 
 export interface GameStatistics {

@@ -8,14 +8,13 @@ interface DeliveryTruckProps {
   delivery: DeliveryBatch;
   supplier?: Supplier;
   material: Material;
-  index: number;
   totalDays: number;
 }
 
-export function DeliveryTruck({ delivery, supplier, material, index, totalDays }: DeliveryTruckProps) {
+export function DeliveryTruck({ delivery, supplier, material, totalDays }: DeliveryTruckProps) {
   const groupRef = useRef<Group>(null);
 
-  useFrame((state) => {
+  useFrame(() => {
     if (!groupRef.current) return;
     const daysUntilDelivery = delivery.scheduledDay - totalDays;
     const progress = Math.min(1, Math.max(0, 1 - daysUntilDelivery / 5));
@@ -45,23 +44,23 @@ export function DeliveryTruck({ delivery, supplier, material, index, totalDays }
           <meshStandardMaterial color="#333" />
         </mesh>
 
-        <mesh position={[-0.8, 0.2, 1.5]}>
-          <cylinderGeometry args={[0.3, 0.3, 0.2, 16]} rotation={[Math.PI / 2, 0, 0]} />
+        <mesh position={[-0.8, 0.2, 1.5]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.3, 0.3, 0.2, 16]} />
           <meshStandardMaterial color="#111" />
         </mesh>
 
-        <mesh position={[0.8, 0.2, 1.5]}>
-          <cylinderGeometry args={[0.3, 0.3, 0.2, 16]} rotation={[Math.PI / 2, 0, 0]} />
+        <mesh position={[0.8, 0.2, 1.5]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.3, 0.3, 0.2, 16]} />
           <meshStandardMaterial color="#111" />
         </mesh>
 
-        <mesh position={[-0.8, 0.2, -1.5]}>
-          <cylinderGeometry args={[0.3, 0.3, 0.2, 16]} rotation={[Math.PI / 2, 0, 0]} />
+        <mesh position={[-0.8, 0.2, -1.5]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.3, 0.3, 0.2, 16]} />
           <meshStandardMaterial color="#111" />
         </mesh>
 
-        <mesh position={[0.8, 0.2, -1.5]}>
-          <cylinderGeometry args={[0.3, 0.3, 0.2, 16]} rotation={[Math.PI / 2, 0, 0]} />
+        <mesh position={[0.8, 0.2, -1.5]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.3, 0.3, 0.2, 16]} />
           <meshStandardMaterial color="#111" />
         </mesh>
 
