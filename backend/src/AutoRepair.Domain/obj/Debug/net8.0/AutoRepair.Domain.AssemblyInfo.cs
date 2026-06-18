@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("AutoRepair.Domain")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f0ef367221607303e1e80cfd28a0afc03f6929ff")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+cc4a80a5ccf224b768c47c0418a581120bb6ece6")]
 [assembly: System.Reflection.AssemblyProductAttribute("AutoRepair.Domain")]
 [assembly: System.Reflection.AssemblyTitleAttribute("AutoRepair.Domain")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
