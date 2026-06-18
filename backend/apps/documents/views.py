@@ -1,6 +1,7 @@
 from rest_framework import viewsets, status, parsers
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
 from django_filters.rest_framework import FilterSet
 from .models import VehicleDocument, DocumentCategory, SourceType
@@ -33,10 +34,10 @@ class VehicleDocumentViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action in ['list', 'retrieve', 'download']:
-            return [viewsets.permissions.IsAuthenticated()]
+            return [IsAuthenticated()]
         if self.action in ['verify', 'close', 'add_process_log']:
             return [IsManager()]
-        return [viewsets.permissions.IsAuthenticated()]
+        return [IsAuthenticated()]
 
     @action(detail=False, methods=['post'], url_path='upload')
     def upload_document(self, request):

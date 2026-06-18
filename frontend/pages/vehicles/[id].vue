@@ -120,7 +120,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed, h, defineComponent } from 'vue'
-import { useRoute, useMessage, useDialog } from 'naive-ui'
+import { useMessage, useDialog } from 'naive-ui'
 import {
   SyncOutlined, CheckCircleOutlined, EditOutlined, FileTextOutlined,
   CarOutlined, WrenchOutlined, ThunderboltOutlined, FileProtectOutlined,

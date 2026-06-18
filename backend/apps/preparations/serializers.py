@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.db import models
 from .models import PreparationOrder, PreparationItem, PrepStatus, PrepCategory
 
 
@@ -67,6 +68,3 @@ class PreparationOrderSerializer(serializers.ModelSerializer):
 class VerifyPrepSerializer(serializers.Serializer):
     verified = serializers.BooleanField(default=True)
     note = serializers.CharField(required=False, allow_blank=True, default='')
-
-
-from django.db import models

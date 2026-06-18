@@ -1,6 +1,7 @@
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
 from django_filters.rest_framework import FilterSet
 from .models import PreparationOrder, PrepStatus
@@ -26,7 +27,7 @@ class PreparationOrderViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
-            return [viewsets.permissions.IsAuthenticated()]
+            return [IsAuthenticated()]
         if self.action in ['verify']:
             return [IsManager()]
         return [IsAppraiserOrManager()]

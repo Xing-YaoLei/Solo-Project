@@ -265,7 +265,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, h } from 'vue'
-import { useRouter, useMessage, type FormInst, type DataTableColumns, type DataTableCheckStrategy } from 'naive-ui'
+import { useMessage, type FormInst, type DataTableColumns, type DataTableCheckStrategy } from 'naive-ui'
 import {
   PlusOutlined, SearchOutlined, CheckSquareOutlined, ForwardOutlined,
   CheckCircleOutlined, CloseCircleOutlined, UserOutlined, EyeOutlined,

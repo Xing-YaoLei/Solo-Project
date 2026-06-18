@@ -6,7 +6,7 @@ from django.db import transaction
 from django.db.models import Q, Count
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend, FilterSet, CharFilter, NumberFilter
-from .models import Vehicle, VehicleStatus, ReviewStatus, ReviewRecord, StatusChangeLog
+from .models import Vehicle, VehicleStatus, ReviewStatus, ReviewRecord, StatusChangeLog, DocumentType
 from .serializers import (
     VehicleListSerializer, VehicleSerializer, ReviewRecordSerializer,
     StatusChangeLogSerializer, StatusChangeSerializer, BatchActionSerializer,
@@ -47,7 +47,6 @@ class VehicleFilter(FilterSet):
 
     def filter_missing_docs(self, queryset, name, value):
         if value.lower() in ['true', '1', 'yes']:
-            from apps.documents.models import VehicleDocument, DocumentType
             required = [DocumentType.REGISTRATION_CERT, DocumentType.DRIVING_LICENSE, DocumentType.INSURANCE]
             return queryset.annotate(
                 reg_count=Count('documents', filter=Q(documents__document_type=DocumentType.REGISTRATION_CERT)),
@@ -205,7 +204,6 @@ class VehicleViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'], url_path='missing-documents')
     def missing_documents(self, request):
-        from apps.documents.models import DocumentType
         required = [DocumentType.REGISTRATION_CERT, DocumentType.DRIVING_LICENSE, DocumentType.INSURANCE]
         qs = Vehicle.objects.annotate(
             reg_count=Count('documents', filter=Q(documents__document_type=DocumentType.REGISTRATION_CERT)),
@@ -225,6 +223,82 @@ class VehicleViewSet(viewsets.ModelViewSet):
         if page is not None:
             return self.get_paginated_response(data)
         return Response(data)
+
+    @action(detail=True, methods=['post'], url_path='mark-documents-supplemented')
+    def mark_documents_supplemented(self, request, pk=None):
+        vehicle = self.get_object()
+        doc_types = request.data.get('document_types', [])
+        remark = request.data.get('remark', '')
+        from apps.documents.models import VehicleDocument
+        updated = 0
+        with transaction.atomic():
+            for doc_type in doc_types:
+                docs = VehicleDocument.objects.filter(
+                    vehicle=vehicle, document_type=doc_type, is_closed=False
+                )
+                for doc in docs:
+                    doc.add_process_log('supplemented', operator=request.user, note=remark or '资料已补充')
+                    updated += 1
+            if doc_types:
+                vehicle.review_status = ReviewStatus.SUPPLEMENTED
+                vehicle.save(update_fields=['review_status'])
+        return Response({
+            'vehicle_id': vehicle.id,
+            'updated_documents': updated,
+            'supplemented_types': doc_types,
+        })
+
+    @action(detail=False, methods=['post'], url_path='batch-notify-missing')
+    def batch_notify_missing(self, request):
+        vehicle_ids = request.data.get('vehicle_ids', [])
+        vehicles = Vehicle.objects.filter(id__in=vehicle_ids)
+        results = []
+        for vehicle in vehicles:
+            missing = vehicle.document_status.get('missing_types', [])
+            handler = vehicle.appraiser or vehicle.salesperson or vehicle.created_by
+            results.append({
+                'vehicle_id': vehicle.id,
+                'vin': vehicle.vin,
+                'missing_types': missing,
+                'notified_user': handler.username if handler else None,
+                'notified_user_id': handler.id if handler else None,
+            })
+        return Response({
+            'notified_count': len(results),
+            'details': results,
+        })
+
+    @action(detail=False, methods=['post'], url_path='batch-assign')
+    def batch_assign(self, request):
+        vehicle_ids = request.data.get('vehicle_ids', [])
+        handler_id = request.data.get('handler_id')
+        notify_types = request.data.get('notify_types', ['system'])
+        remark = request.data.get('remark', '')
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        try:
+            handler = User.objects.get(id=handler_id)
+        except User.DoesNotExist:
+            return Response({'error': '处理人不存在'}, status=status.HTTP_400_BAD_REQUEST)
+        vehicles = Vehicle.objects.filter(id__in=vehicle_ids)
+        assigned = 0
+        with transaction.atomic():
+            for vehicle in vehicles:
+                vehicle.appraiser_id = handler_id
+                vehicle.save(update_fields=['appraiser'])
+                StatusChangeLog.objects.create(
+                    vehicle=vehicle,
+                    from_status=vehicle.status,
+                    to_status=vehicle.status,
+                    operator=request.user,
+                    remark=f'分配给 {handler.username}: {remark}',
+                )
+                assigned += 1
+        return Response({
+            'assigned_count': assigned,
+            'handler': handler.username,
+            'notify_types': notify_types,
+        })
 
 
 class ReviewRecordViewSet(viewsets.ReadOnlyModelViewSet):

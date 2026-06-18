@@ -87,7 +87,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed, nextTick, shallowRef } from 'vue'
-import { useRouter, useMessage } from 'naive-ui'
+import { useMessage } from 'naive-ui'
 import * as echarts from 'echarts'
 import {
   PlusOutlined, CarOutlined, EyeOutlined, ShopOutlined,

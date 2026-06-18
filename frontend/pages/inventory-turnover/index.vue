@@ -238,7 +238,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, nextTick, watch, shallowRef, h } from 'vue'
-import { useRouter, useMessage, type DataTableColumns } from 'naive-ui'
+import { useMessage, type DataTableColumns } from 'naive-ui'
 import * as echarts from 'echarts'
 import {
   ReloadOutlined, DownloadOutlined, CheckCircleOutlined,

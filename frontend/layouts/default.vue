@@ -1,9 +1,5 @@
 <template>
-  <NConfigProvider>
-    <NMessageProvider>
-      <NDialogProvider>
-        <NNotificationProvider>
-          <NLayout style="height: 100vh" has-sider>
+  <NLayout style="height: 100vh" has-sider>
             <NLayoutSider
               :width="220"
               :collapsed-width="64"
@@ -61,15 +57,11 @@
               </NLayoutContent>
             </NLayout>
           </NLayout>
-        </NNotificationProvider>
-      </NDialogProvider>
-    </NMessageProvider>
-  </NConfigProvider>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { useRoute, useRouter, useMessage, useDialog } from 'naive-ui'
+import { useMessage, useDialog } from 'naive-ui'
 import {
   DashboardOutlined, CarOutlined, FileTextOutlined,
   SettingOutlined, LogoutOutlined, CaretDownOutlined,
@@ -174,19 +166,13 @@ function onUserAction(key: string) {
       onPositiveClick: async () => {
         await authStore.logout()
         message.success('已退出')
-        await router.push('/login')
+        router.push('/login')
       },
     })
   } else if (key === 'profile') {
     message.info('个人资料功能开发中')
   }
 }
-
-watch(() => route.fullPath, () => {
-  if (route.fullPath !== '/login' && !authStore.isLoggedIn) {
-    router.push('/login')
-  }
-}, { immediate: true })
 </script>
 
 <style scoped>

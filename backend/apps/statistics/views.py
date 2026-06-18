@@ -6,7 +6,7 @@ from django.db.models import Count, Sum, Avg, Q, F, Case, When, IntegerField
 from django.db.models.functions import TruncMonth, TruncDay, ExtractWeek
 from django.utils import timezone
 from datetime import timedelta
-from apps.vehicles.models import Vehicle, VehicleStatus
+from apps.vehicles.models import Vehicle, VehicleStatus, DocumentType
 from apps.inspections.models import InspectionReport
 from apps.preparations.models import PreparationOrder
 from apps.testdrives.models import TestDriveRecord
@@ -53,7 +53,6 @@ class StatisticsViewSet(viewsets.GenericViewSet):
             created_at__date=today,
         ).count()
 
-        from apps.documents.models import DocumentType
         required_docs = [DocumentType.REGISTRATION_CERT, DocumentType.DRIVING_LICENSE, DocumentType.INSURANCE]
         vehicles_with_missing = Vehicle.objects.annotate(
             reg_count=Count('documents', filter=Q(documents__document_type=DocumentType.REGISTRATION_CERT)),
@@ -166,7 +165,6 @@ class StatisticsViewSet(viewsets.GenericViewSet):
                 'count': count,
             })
 
-        from apps.documents.models import DocumentType
         required_docs = [DocumentType.REGISTRATION_CERT, DocumentType.DRIVING_LICENSE, DocumentType.INSURANCE]
         doc_stats = {}
         for doc_type in required_docs:
@@ -185,7 +183,6 @@ class StatisticsViewSet(viewsets.GenericViewSet):
 
     @action(detail=False, methods=['get'], url_path='document-completion')
     def document_completion(self, request):
-        from apps.documents.models import DocumentType
         vehicles = Vehicle.objects.all()
         required = [
             (DocumentType.REGISTRATION_CERT, '登记证书'),

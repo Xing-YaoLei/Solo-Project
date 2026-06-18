@@ -12,26 +12,36 @@ class MinIOStorage:
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
-            cls._instance._init_client()
+            cls._instance._client = None
+            cls._instance._bucket = None
         return cls._instance
 
-    def _init_client(self):
+    def _ensure_client(self):
+        if self._client is not None:
+            return
         config = settings.MINIO_CONFIG
-        self.client = Minio(
+        self._client = Minio(
             config['endpoint'],
             access_key=config['access_key'],
             secret_key=config['secret_key'],
             secure=config['secure']
         )
-        self.bucket = config['bucket']
-        self._ensure_bucket()
-
-    def _ensure_bucket(self):
+        self._bucket = config['bucket']
         try:
-            if not self.client.bucket_exists(self.bucket):
-                self.client.make_bucket(self.bucket)
-        except S3Error:
+            if not self._client.bucket_exists(self._bucket):
+                self._client.make_bucket(self._bucket)
+        except Exception:
             pass
+
+    @property
+    def client(self):
+        self._ensure_client()
+        return self._client
+
+    @property
+    def bucket(self):
+        self._ensure_client()
+        return self._bucket
 
     def _generate_path(self, vehicle_id, category, filename):
         ext = filename.split('.')[-1].lower() if '.' in filename else 'bin'

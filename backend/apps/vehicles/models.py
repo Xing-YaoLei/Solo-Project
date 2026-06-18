@@ -109,13 +109,13 @@ class Vehicle(models.Model):
             DocumentType.INSURANCE,
         ]
         existed = set(
-            VehicleDocument.objects.filter(vehicle=self).values_list('document_type', flat=True)
+            VehicleDocument.objects.filter(vehicle_id=self.pk).values_list('document_type', flat=True)
         )
-        missing = [t for t in required if t not in existed]
+        missing = [t for t in required if t.value not in existed]
         return {
             'complete': len(missing) == 0,
             'missing_count': len(missing),
-            'missing_types': missing,
+            'missing_types': [t.value for t in missing],
         }
 
     @property

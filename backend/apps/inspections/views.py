@@ -1,6 +1,7 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
 from django.db import transaction
 from django.utils import timezone
 from django_filters.rest_framework import FilterSet
@@ -29,7 +30,7 @@ class InspectionReportViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
-            return [viewsets.permissions.IsAuthenticated()]
+            return [IsAuthenticated()]
         if self.action in ['verify']:
             return [IsManager()]
         return [IsAppraiserOrManager()]
