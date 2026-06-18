@@ -1,56 +1,24 @@
-import enum
-from datetime import datetime
-
-from sqlalchemy import (
-    Column,
-    DateTime,
-    Enum,
-    Float,
-    Integer,
-    String,
-    func,
-    Index
-)
+import uuid
+from sqlalchemy import Column, String, Float, DateTime, func
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
 
 
-class CreditRating(str, enum.Enum):
-    A = "A"
-    B = "B"
-    C = "C"
-
-
-class SupplierStatus(str, enum.Enum):
-    ACTIVE = "active"
-    INACTIVE = "inactive"
-
-
 class Supplier(Base):
     __tablename__ = "suppliers"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     name = Column(String(200), nullable=False, index=True)
-    contact_person = Column(String(50))
-    phone = Column(String(20))
-    email = Column(String(100))
+    contact_person = Column(String(100))
+    phone = Column(String(50))
+    email = Column(String(200))
     address = Column(String(500))
-    credit_rating = Column(Enum(CreditRating), default=CreditRating.B, nullable=False)
-    on_time_rate = Column(Float, default=0.0)
-    quality_score = Column(Float, default=0.0)
-    status = Column(
-        Enum(SupplierStatus), default=SupplierStatus.ACTIVE, nullable=False
-    )
-    created_at = Column(DateTime, server_default=func.now(), nullable=False)
-    updated_at = Column(
-        DateTime, server_default=func.now(), onupdate=func.now(), nullable=False
-    )
+    credit_rating = Column(String(50), default="B")
+    on_time_rate = Column(Float, default=0.9)
+    quality_score = Column(Float, default=85.0)
+    status = Column(String(50), default="active")
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
     material_batches = relationship("MaterialBatch", back_populates="supplier")
-
-    __table_args__ = (
-        Index("ix_suppliers_credit_rating", "credit_rating"),
-        Index("ix_suppliers_status", "status"),
-        Index("ix_suppliers_name", "name"),
-    )

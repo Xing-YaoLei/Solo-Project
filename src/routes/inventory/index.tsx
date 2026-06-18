@@ -31,6 +31,7 @@ function InventoryListPage() {
     try {
       const result = await api.getInventory({
         ...filters,
+        dateRange: filters.dateRange ?? undefined,
         page,
         pageSize,
         sortBy,

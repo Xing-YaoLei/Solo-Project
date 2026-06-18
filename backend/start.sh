@@ -1,26 +1,24 @@
 #!/bin/bash
+cd "$(dirname "$0")"
+export PYTHONPATH="$(pwd)"
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-export PYTHONPATH="${SCRIPT_DIR}:${PYTHONPATH}"
-
-cd "${SCRIPT_DIR}"
-
-if [ -f .env ]; then
-    export $(cat .env | grep -v '^#' | xargs)
+if [ ! -d "venv" ]; then
+    echo "📦 虚拟环境不存在，正在创建 venv..."
+    python3 -m venv venv
+    echo "✓ 虚拟环境创建完成"
 fi
 
-HOST="${HOST:-0.0.0.0}"
-PORT="${PORT:-8000}"
-WORKERS="${WORKERS:-1}"
+source venv/bin/activate
 
-echo "Starting Material Tracking Backend..."
-echo "PYTHONPATH: ${PYTHONPATH}"
-echo "Host: ${HOST}"
-echo "Port: ${PORT}"
-echo "Workers: ${WORKERS}"
+echo "📚 检查并安装依赖..."
+pip install -q -r requirements.txt
+echo "✓ 依赖安装完成"
 
-exec uvicorn app.main:app \
-    --host "${HOST}" \
-    --port "${PORT}" \
-    --workers "${WORKERS}" \
-    --reload
+echo ""
+echo "🚀 启动后端服务..."
+echo "   地址: http://localhost:8000"
+echo "   文档: http://localhost:8000/docs"
+echo "   用户: admin / admin123"
+echo ""
+
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload

@@ -1,91 +1,61 @@
-from datetime import datetime, date
-from typing import Optional
-from enum import Enum
-
-from pydantic import BaseModel, Field, ConfigDict
+from typing import Optional, List
+from datetime import date, datetime
+from pydantic import BaseModel, Field
 
 
-class ShortagePriority(str, Enum):
-    HIGH = "high"
-    MEDIUM = "medium"
-    LOW = "low"
-
-
-class ShortageOrderStatus(str, Enum):
-    PENDING = "pending"
-    PROCESSING = "processing"
-    SUPPLEMENTED = "supplemented"
-    RETRIED = "retried"
-    CLOSED = "closed"
-
-
-class ShortageActionType(str, Enum):
-    SUPPLEMENT = "supplement"
-    RETRY = "retry"
-    CLOSE = "close"
-
-
-class ShortageOrderBase(BaseModel):
-    batch_id: int = Field(..., description="批次ID")
-    material_name: str = Field(..., max_length=200, description="物料名称")
-    shortage_quantity: float = Field(..., gt=0, description="短缺数量")
-    unit: Optional[str] = Field(default=None, max_length=20, description="单位")
-    responsible_person: Optional[str] = Field(default=None, max_length=100, description="负责人")
-    priority: ShortagePriority = Field(default=ShortagePriority.MEDIUM, description="优先级")
-    status: ShortageOrderStatus = Field(default=ShortageOrderStatus.PENDING, description="状态")
-    deadline: Optional[date] = Field(default=None, description="截止日期")
-
-
-class ShortageOrderCreate(ShortageOrderBase):
-    pass
+class ShortageOrderCreate(BaseModel):
+    batch_id: Optional[str] = None
+    material_name: str = Field(..., description="材料名称")
+    shortage_quantity: float = Field(..., description="短缺数量")
+    unit: Optional[str] = None
+    responsible_person: Optional[str] = None
+    priority: str = "medium"
+    status: str = "pending"
+    deadline: Optional[date] = None
 
 
 class ShortageOrderUpdate(BaseModel):
-    material_name: Optional[str] = Field(default=None, max_length=200, description="物料名称")
-    shortage_quantity: Optional[float] = Field(default=None, gt=0, description="短缺数量")
-    unit: Optional[str] = Field(default=None, max_length=20, description="单位")
-    responsible_person: Optional[str] = Field(default=None, max_length=100, description="负责人")
-    priority: Optional[ShortagePriority] = Field(default=None, description="优先级")
-    status: Optional[ShortageOrderStatus] = Field(default=None, description="状态")
-    deadline: Optional[date] = Field(default=None, description="截止日期")
+    batch_id: Optional[str] = None
+    material_name: Optional[str] = None
+    shortage_quantity: Optional[float] = None
+    unit: Optional[str] = None
+    responsible_person: Optional[str] = None
+    priority: Optional[str] = None
+    status: Optional[str] = None
+    deadline: Optional[date] = None
 
 
-class ShortageOrderQueryParams(BaseModel):
-    status: Optional[ShortageOrderStatus] = Field(default=None, description="状态筛选")
-    priority: Optional[ShortagePriority] = Field(default=None, description="优先级筛选")
-    responsible_person: Optional[str] = Field(default=None, max_length=100, description="负责人筛选")
-    start_date: Optional[date] = Field(default=None, description="开始日期")
-    end_date: Optional[date] = Field(default=None, description="结束日期")
-    keyword: Optional[str] = Field(default=None, description="关键词搜索")
-    page: int = Field(default=1, ge=1, description="页码")
-    page_size: int = Field(default=10, ge=1, le=100, description="每页数量")
-
-    @property
-    def offset(self) -> int:
-        return (self.page - 1) * self.page_size
-
-    @property
-    def limit(self) -> int:
-        return self.page_size
+class ShortageHandleRequest(BaseModel):
+    action: str = Field(..., description="操作: supplement/retry/close")
+    remark: Optional[str] = None
+    supplement_quantity: Optional[float] = None
 
 
-class ShortageActionRequest(BaseModel):
-    action: ShortageActionType = Field(..., description="操作类型")
-    remark: Optional[str] = Field(default=None, description="操作备注")
-    supplement_quantity: Optional[float] = Field(default=None, gt=0, description="补货数量")
+class ShortageActionLogResponse(BaseModel):
+    id: str
+    shortage_order_id: str
+    action: str
+    operator_id: Optional[str] = None
+    operator: Optional[str] = None
+    remark: Optional[str] = None
+    supplement_quantity: Optional[float] = None
+    created_at: Optional[datetime] = None
+
+    model_config = {"from_attributes": True}
 
 
 class ShortageOrderResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    id: str
+    batch_id: Optional[str] = None
+    material_name: str
+    shortage_quantity: float
+    unit: Optional[str] = None
+    responsible_person: Optional[str] = None
+    priority: str
+    status: str
+    deadline: Optional[date] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    action_logs: Optional[List[ShortageActionLogResponse]] = None
 
-    id: int = Field(description="工单ID")
-    batch_id: int = Field(description="批次ID")
-    material_name: str = Field(description="物料名称")
-    shortage_quantity: float = Field(description="短缺数量")
-    unit: Optional[str] = Field(description="单位")
-    responsible_person: Optional[str] = Field(description="负责人")
-    priority: ShortagePriority = Field(description="优先级")
-    status: ShortageOrderStatus = Field(description="状态")
-    deadline: Optional[date] = Field(description="截止日期")
-    created_at: datetime = Field(description="创建时间")
-    updated_at: datetime = Field(description="更新时间")
+    model_config = {"from_attributes": True}

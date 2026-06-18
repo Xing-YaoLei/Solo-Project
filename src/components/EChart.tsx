@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import * as echarts from 'echarts';
 
 interface EChartProps {
-  option: echarts.EChartsOption;
+  option: any;
   style?: React.CSSProperties;
   className?: string;
 }

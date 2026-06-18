@@ -1,120 +1,99 @@
-from typing import List
-
+from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.core.database import get_db
-from app.models.supplier import Supplier
-from app.schemas.supplier import (
-    SupplierCreate,
-    SupplierUpdate,
-    SupplierQueryParams,
-    SupplierResponse,
-)
-from app.schemas.common import (
-    PaginatedResponse,
-    SuccessResponse,
-)
-from app.api.deps import get_current_user, get_current_active_admin
+from app.api.deps import get_db, get_current_user
+from app.models import Supplier
+from app.schemas.supplier import SupplierCreate, SupplierUpdate, SupplierResponse
+from app.schemas.material_batch import PaginatedResponse
 
-router = APIRouter(prefix="/suppliers", tags=["供应商管理"])
+router = APIRouter(prefix="/suppliers", tags=["供应商"])
 
 
-@router.get("", response_model=PaginatedResponse[SupplierResponse], summary="获取供应商列表")
-def get_suppliers(
-    params: SupplierQueryParams = Depends(),
+@router.get("", response_model=PaginatedResponse[SupplierResponse])
+def list_suppliers(
     page: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1, le=100),
+    keyword: Optional[str] = Query(None),
+    status: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    _=Depends(get_current_user),
 ):
     query = db.query(Supplier)
-
-    if params.keyword:
-        query = query.filter(Supplier.name.contains(params.keyword))
-    if params.status:
-        query = query.filter(Supplier.status == params.status)
-    if params.credit_rating:
-        query = query.filter(Supplier.credit_rating == params.credit_rating)
-
+    if keyword:
+        like = f"%{keyword}%"
+        query = query.filter(
+            (Supplier.name.like(like))
+            | (Supplier.contact_person.like(like))
+            | (Supplier.phone.like(like))
+        )
+    if status:
+        query = query.filter(Supplier.status == status)
     total = query.count()
     items = query.offset((page - 1) * page_size).limit(page_size).all()
-
-    total_pages = (total + page_size - 1) // page_size
-
-    return PaginatedResponse[SupplierResponse](
-        items=[SupplierResponse.model_validate(item) for item in items],
-        total=total,
-        page=page,
-        page_size=page_size,
-        total_pages=total_pages,
-    )
+    return PaginatedResponse(data=items, total=total, page=page, page_size=page_size)
 
 
-@router.get("/{supplier_id}", response_model=SupplierResponse, summary="获取供应商详情")
+@router.get("/all", response_model=List[SupplierResponse])
+def list_all_suppliers(
+    db: Session = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    return db.query(Supplier).order_by(Supplier.name).all()
+
+
+@router.get("/{supplier_id}", response_model=SupplierResponse)
 def get_supplier(
-    supplier_id: int,
+    supplier_id: str,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    _=Depends(get_current_user),
 ):
     supplier = db.query(Supplier).filter(Supplier.id == supplier_id).first()
     if not supplier:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="供应商不存在",
-        )
-    return SupplierResponse.model_validate(supplier)
+        raise HTTPException(status_code=404, detail="供应商不存在")
+    return supplier
 
 
-@router.post("", response_model=SupplierResponse, summary="创建供应商")
+@router.post("", response_model=SupplierResponse, status_code=status.HTTP_201_CREATED)
 def create_supplier(
-    request: SupplierCreate,
+    data: SupplierCreate,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_active_admin),
+    _=Depends(get_current_user),
 ):
-    db_supplier = Supplier(**request.model_dump())
-    db.add(db_supplier)
-    db.commit()
-    db.refresh(db_supplier)
-    return SupplierResponse.model_validate(db_supplier)
-
-
-@router.put("/{supplier_id}", response_model=SupplierResponse, summary="更新供应商")
-def update_supplier(
-    supplier_id: int,
-    request: SupplierUpdate,
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_active_admin),
-):
-    supplier = db.query(Supplier).filter(Supplier.id == supplier_id).first()
-    if not supplier:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="供应商不存在",
-        )
-
-    update_data = request.model_dump(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(supplier, key, value)
-
+    supplier = Supplier(**data.model_dump())
+    db.add(supplier)
     db.commit()
     db.refresh(supplier)
-    return SupplierResponse.model_validate(supplier)
+    return supplier
 
 
-@router.delete("/{supplier_id}", response_model=SuccessResponse, summary="删除供应商")
-def delete_supplier(
-    supplier_id: int,
+@router.put("/{supplier_id}", response_model=SupplierResponse)
+def update_supplier(
+    supplier_id: str,
+    data: SupplierUpdate,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_active_admin),
+    _=Depends(get_current_user),
 ):
     supplier = db.query(Supplier).filter(Supplier.id == supplier_id).first()
     if not supplier:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="供应商不存在",
-        )
+        raise HTTPException(status_code=404, detail="供应商不存在")
+    update_data = data.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(supplier, key, value)
+    db.commit()
+    db.refresh(supplier)
+    return supplier
 
+
+@router.delete("/{supplier_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_supplier(
+    supplier_id: str,
+    db: Session = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    supplier = db.query(Supplier).filter(Supplier.id == supplier_id).first()
+    if not supplier:
+        raise HTTPException(status_code=404, detail="供应商不存在")
     db.delete(supplier)
     db.commit()
-    return SuccessResponse(message="删除成功")
+    return None

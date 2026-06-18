@@ -1,49 +1,41 @@
-from datetime import datetime
 from typing import Optional
-
-from pydantic import BaseModel, Field, ConfigDict
-
-
-class SafetyStockConfigBase(BaseModel):
-    material_name: str = Field(..., max_length=200, description="物料名称")
-    category: str = Field(..., max_length=100, description="分类")
-    unit: Optional[str] = Field(default=None, max_length=20, description="单位")
-    region: str = Field(..., max_length=100, description="区域")
-    min_stock: float = Field(..., gt=0, description="最低库存")
-    warning_stock: float = Field(..., gt=0, description="预警库存")
-    max_stock: float = Field(..., gt=0, description="最高库存")
-    current_stock: float = Field(default=0.0, ge=0.0, description="当前库存")
-    daily_consumption_rate: float = Field(default=0.0, ge=0.0, description="每日消耗量")
+from pydantic import BaseModel, Field
 
 
-class SafetyStockConfigCreate(SafetyStockConfigBase):
-    pass
+class SafetyStockCreate(BaseModel):
+    material_name: str = Field(..., description="材料名称")
+    category: Optional[str] = None
+    unit: Optional[str] = None
+    region: str = Field(..., description="区域")
+    min_stock: float = 0.0
+    warning_stock: float = 0.0
+    max_stock: float = 0.0
+    current_stock: float = 0.0
+    daily_consumption_rate: float = 0.0
 
 
-class SafetyStockConfigUpdate(BaseModel):
-    material_name: Optional[str] = Field(default=None, max_length=200, description="物料名称")
-    category: Optional[str] = Field(default=None, max_length=100, description="分类")
-    unit: Optional[str] = Field(default=None, max_length=20, description="单位")
-    region: Optional[str] = Field(default=None, max_length=100, description="区域")
-    min_stock: Optional[float] = Field(default=None, gt=0, description="最低库存")
-    warning_stock: Optional[float] = Field(default=None, gt=0, description="预警库存")
-    max_stock: Optional[float] = Field(default=None, gt=0, description="最高库存")
-    current_stock: Optional[float] = Field(default=None, ge=0.0, description="当前库存")
-    daily_consumption_rate: Optional[float] = Field(default=None, ge=0.0, description="每日消耗量")
+class SafetyStockUpdate(BaseModel):
+    material_name: Optional[str] = None
+    category: Optional[str] = None
+    unit: Optional[str] = None
+    region: Optional[str] = None
+    min_stock: Optional[float] = None
+    warning_stock: Optional[float] = None
+    max_stock: Optional[float] = None
+    current_stock: Optional[float] = None
+    daily_consumption_rate: Optional[float] = None
 
 
-class SafetyStockConfigResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+class SafetyStockResponse(BaseModel):
+    id: str
+    material_name: str
+    category: Optional[str] = None
+    unit: Optional[str] = None
+    region: str
+    min_stock: float
+    warning_stock: float
+    max_stock: float
+    current_stock: float
+    daily_consumption_rate: float
 
-    id: int = Field(description="配置ID")
-    material_name: str = Field(description="物料名称")
-    category: str = Field(description="分类")
-    unit: Optional[str] = Field(description="单位")
-    region: str = Field(description="区域")
-    min_stock: float = Field(description="最低库存")
-    warning_stock: float = Field(description="预警库存")
-    max_stock: float = Field(description="最高库存")
-    current_stock: float = Field(description="当前库存")
-    daily_consumption_rate: float = Field(description="每日消耗量")
-    created_at: datetime = Field(description="创建时间")
-    updated_at: datetime = Field(description="更新时间")
+    model_config = {"from_attributes": True}

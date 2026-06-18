@@ -1,4 +1,5 @@
-import { createRootRoute, Outlet, Navigate } from '@tanstack/react-router';
+import { createRootRoute, Outlet, useRouter } from '@tanstack/react-router';
+import { useEffect } from 'react';
 import { Layout } from '@/components/Layout';
 import { useAuthStore } from '@/store/authStore';
 
@@ -7,18 +8,40 @@ export const Route = createRootRoute({
 });
 
 function RootComponent() {
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated } = useAuthStore();
+  const router = useRouter();
+  const pathname = typeof window !== 'undefined' ? window.location.pathname : '/';
+  const isLoginRoute = pathname === '/login' || pathname.startsWith('/login');
+
+  useEffect(() => {
+    if (isLoginRoute) {
+      if (isAuthenticated) {
+        router.navigate({ to: '/dashboard', replace: true });
+      }
+      return;
+    }
+    if (!isAuthenticated) {
+      router.navigate({ to: '/login', replace: true });
+      return;
+    }
+    if (pathname === '/') {
+      router.navigate({ to: '/dashboard', replace: true });
+    }
+  }, [isAuthenticated, isLoginRoute, pathname, router]);
+
+  if (isLoginRoute) {
+    if (isAuthenticated) {
+      return null;
+    }
+    return <Outlet />;
+  }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return null;
   }
 
-  if (window.location.pathname === '/' || window.location.pathname === '/login') {
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  if (window.location.pathname.startsWith('/login')) {
-    return <Outlet />;
+  if (pathname === '/') {
+    return null;
   }
 
   return (

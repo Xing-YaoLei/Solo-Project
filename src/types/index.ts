@@ -64,6 +64,8 @@ export interface Supplier {
   name: string;
   contact: string;
   phone: string;
+  email?: string;
+  address?: string;
   categories: string[];
   level: SupplierLevel;
   onTimeRate: number;
@@ -88,6 +90,7 @@ export interface InventoryThreshold {
   category: string;
   allowableErrorRate: number;
   excessWarningThreshold: number;
+  description?: string;
   createdAt: string;
 }
 
@@ -97,6 +100,7 @@ export interface ShortageOrder {
   batchNo: string;
   materialName: string;
   shortageQuantity: number;
+  unit?: string;
   priority: ShortagePriority;
   responsiblePersonId: string;
   responsiblePerson: string;
@@ -104,6 +108,7 @@ export interface ShortageOrder {
   dueDate: string;
   createdAt: string;
   updatedAt: string;
+  actionLogs?: ShortageActionLog[];
 }
 
 export interface ShortageActionLog {
@@ -124,6 +129,7 @@ export interface SafetyStockConfig {
   region: string;
   minStock: number;
   warningStock: number;
+  maxStock?: number;
   currentStock: number;
   consumptionRate: number;
   estimatedDaysLeft: number;

@@ -139,7 +139,7 @@ export function AdvancedFilter() {
             title="状态"
             options={statusOptions}
             selected={inventoryFilters.status}
-            onChange={(values) => setInventoryFilters({ status: values })}
+            onChange={(values) => setInventoryFilters({ status: values as any })}
           />
 
           <div className="border-b border-gray-100">

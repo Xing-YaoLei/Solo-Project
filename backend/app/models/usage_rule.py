@@ -1,14 +1,5 @@
-from sqlalchemy import (
-    Column,
-    DateTime,
-    Float,
-    Integer,
-    String,
-    Text,
-    Boolean,
-    func,
-    Index
-)
+import uuid
+from sqlalchemy import Column, String, Float, Boolean, Integer, Text, DateTime, func
 
 from app.core.database import Base
 
@@ -16,18 +7,11 @@ from app.core.database import Base
 class UsageRule(Base):
     __tablename__ = "usage_rules"
 
-    id = Column(Integer, primary_key=True, index=True)
-    material_category = Column(String(100), unique=True, index=True, nullable=False)
-    max_daily_usage = Column(Float, nullable=False)
-    requires_approval = Column(Boolean, default=False, nullable=False)
-    approval_level = Column(Integer, default=1)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    material_category = Column(String(100), unique=True, nullable=False, index=True)
+    max_daily_usage = Column(Float, default=1000.0)
+    requires_approval = Column(Boolean, default=False)
+    approval_level = Column(Integer, default=0)
     description = Column(Text)
-    created_at = Column(DateTime, server_default=func.now(), nullable=False)
-    updated_at = Column(
-        DateTime, server_default=func.now(), onupdate=func.now(), nullable=False
-    )
-
-    __table_args__ = (
-        Index("ix_usage_rules_material_category", "material_category"),
-        Index("ix_usage_rules_requires_approval", "requires_approval"),
-    )
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())

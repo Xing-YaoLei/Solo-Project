@@ -9,7 +9,7 @@ export const Route = createFileRoute('/login')({
 
 function LoginPage() {
   const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('123456');
+  const [password, setPassword] = useState('admin123');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -124,7 +124,7 @@ function LoginPage() {
                 <p className="text-gray-500">项目经理</p>
               </div>
             </div>
-            <p className="text-xs text-gray-400 text-center mt-2">密码均为: 123456</p>
+            <p className="text-xs text-gray-400 text-center mt-2">密码均为: admin123</p>
           </div>
         </div>
       </div>

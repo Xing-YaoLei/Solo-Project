@@ -1,55 +1,23 @@
-from datetime import datetime
 from typing import Optional
-from enum import Enum
-
-from pydantic import BaseModel, Field, ConfigDict, EmailStr
-
-
-class UserRole(str, Enum):
-    ADMIN = "admin"
-    MANAGER = "manager"
-    WORKER = "worker"
+from pydantic import BaseModel, Field
 
 
 class LoginRequest(BaseModel):
-    username: str = Field(..., min_length=3, max_length=50, description="用户名")
-    password: str = Field(..., min_length=6, max_length=100, description="密码")
-
-
-class UserBase(BaseModel):
-    username: str = Field(..., min_length=3, max_length=50, description="用户名")
-    email: EmailStr = Field(..., max_length=100, description="邮箱")
-    full_name: Optional[str] = Field(default=None, max_length=100, description="全名")
-    role: UserRole = Field(default=UserRole.WORKER, description="角色")
-
-
-class UserCreate(UserBase):
-    password: str = Field(..., min_length=6, max_length=100, description="密码")
-
-
-class UserUpdate(BaseModel):
-    email: Optional[EmailStr] = Field(default=None, max_length=100, description="邮箱")
-    full_name: Optional[str] = Field(default=None, max_length=100, description="全名")
-    role: Optional[UserRole] = Field(default=None, description="角色")
-    is_active: Optional[bool] = Field(default=None, description="是否激活")
-
-
-class UserResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int = Field(description="用户ID")
-    username: str = Field(description="用户名")
-    email: str = Field(description="邮箱")
-    full_name: Optional[str] = Field(description="全名")
-    role: UserRole = Field(description="角色")
-    is_active: bool = Field(description="是否激活")
-    created_at: datetime = Field(description="创建时间")
-    updated_at: datetime = Field(description="更新时间")
+    username: str = Field(..., description="用户名")
+    password: str = Field(..., description="密码")
 
 
 class TokenResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    access_token: str
+    token_type: str = "bearer"
 
-    access_token: str = Field(description="访问令牌")
-    token_type: str = Field(default="bearer", description="令牌类型")
-    user: UserResponse = Field(description="用户信息")
+
+class UserResponse(BaseModel):
+    id: str
+    username: str
+    email: str
+    full_name: str
+    role: str
+    is_active: bool
+
+    model_config = {"from_attributes": True}

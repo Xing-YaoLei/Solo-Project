@@ -1,210 +1,158 @@
+from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import or_, desc
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import joinedload
 
-from app.core.database import get_db
-from app.models.shortage_order import ShortageOrder, ShortageOrderStatus, ShortagePriority
-from app.models.material_batch import MaterialBatch, MaterialBatchStatus
-from app.models.shortage_action_log import ShortageActionLog, ShortageAction
+from app.api.deps import get_db, get_current_user
+from app.models import ShortageOrder, ShortageActionLog, User
 from app.schemas.shortage_order import (
     ShortageOrderCreate,
     ShortageOrderUpdate,
-    ShortageOrderQueryParams,
-    ShortageActionRequest,
-    ShortageActionType,
     ShortageOrderResponse,
+    ShortageHandleRequest,
 )
-from app.schemas.common import (
-    PaginatedResponse,
-    SuccessResponse,
-)
-from app.api.deps import get_current_user, get_current_active_admin
+from app.schemas.material_batch import PaginatedResponse
 
 router = APIRouter(prefix="/shortage", tags=["短缺工单"])
 
 
-@router.get("", response_model=PaginatedResponse[ShortageOrderResponse], summary="获取短缺工单列表")
-def get_shortage_orders(
-    params: ShortageOrderQueryParams = Depends(),
+@router.get("", response_model=PaginatedResponse[ShortageOrderResponse])
+def list_shortage_orders(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=200),
+    status: Optional[str] = Query(None),
+    priority: Optional[str] = Query(None),
+    keyword: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    _=Depends(get_current_user),
 ):
-    query = db.query(ShortageOrder)
+    query = db.query(ShortageOrder).options(joinedload(ShortageOrder.action_logs))
 
-    if params.status:
-        query = query.filter(ShortageOrder.status == params.status)
-    if params.priority:
-        query = query.filter(ShortageOrder.priority == params.priority)
-    if params.responsible_person:
-        query = query.filter(ShortageOrder.responsible_person == params.responsible_person)
-    if params.start_date:
-        query = query.filter(ShortageOrder.created_at >= params.start_date)
-    if params.end_date:
-        query = query.filter(ShortageOrder.created_at <= params.end_date)
-    if params.keyword:
+    if status:
+        query = query.filter(ShortageOrder.status == status)
+    if priority:
+        query = query.filter(ShortageOrder.priority == priority)
+    if keyword:
+        like = f"%{keyword}%"
         query = query.filter(
-            ShortageOrder.material_name.contains(params.keyword) |
-            ShortageOrder.responsible_person.contains(params.keyword)
+            or_(
+                ShortageOrder.material_name.like(like),
+                ShortageOrder.responsible_person.like(like),
+            )
         )
 
-    query = query.order_by(ShortageOrder.priority.desc(), ShortageOrder.created_at.desc())
-
+    query = query.order_by(desc(ShortageOrder.created_at))
     total = query.count()
-    items = query.offset(params.offset).limit(params.limit).all()
-
-    total_pages = (total + params.page_size - 1) // params.page_size
-
-    return PaginatedResponse[ShortageOrderResponse](
-        items=[ShortageOrderResponse.model_validate(item) for item in items],
-        total=total,
-        page=params.page,
-        page_size=params.page_size,
-        total_pages=total_pages,
-    )
+    items = query.offset((page - 1) * page_size).limit(page_size).all()
+    return PaginatedResponse(data=items, total=total, page=page, page_size=page_size)
 
 
-@router.get("/{order_id}", response_model=ShortageOrderResponse, summary="获取短缺工单详情")
+@router.get("/all", response_model=List[ShortageOrderResponse])
+def list_all_shortage_orders(
+    status: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    query = db.query(ShortageOrder).options(joinedload(ShortageOrder.action_logs))
+    if status:
+        query = query.filter(ShortageOrder.status == status)
+    return query.order_by(desc(ShortageOrder.created_at)).all()
+
+
+@router.get("/{order_id}", response_model=ShortageOrderResponse)
 def get_shortage_order(
-    order_id: int,
+    order_id: str,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    _=Depends(get_current_user),
 ):
-    order = db.query(ShortageOrder).filter(ShortageOrder.id == order_id).first()
-    if not order:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="短缺工单不存在",
-        )
-    return ShortageOrderResponse.model_validate(order)
-
-
-@router.post("", response_model=ShortageOrderResponse, summary="创建短缺工单")
-def create_shortage_order(
-    request: ShortageOrderCreate,
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
-):
-    batch = db.query(MaterialBatch).filter(MaterialBatch.id == request.batch_id).first()
-    if not batch:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="物料批次不存在",
-        )
-
-    db_order = ShortageOrder(**request.model_dump())
-    db.add(db_order)
-
-    batch.status = MaterialBatchStatus.SHORTAGE
-
-    action_log = ShortageActionLog(
-        shortage_order_id=0,
-        action=ShortageAction.CREATE,
-        operator_id=current_user.id,
-        operator=current_user.full_name or current_user.username,
-        remark=f"创建短缺工单，短缺数量: {request.shortage_quantity}",
+    order = (
+        db.query(ShortageOrder)
+        .options(joinedload(ShortageOrder.action_logs))
+        .filter(ShortageOrder.id == order_id)
+        .first()
     )
-    db.add(action_log)
-
-    db.commit()
-    db.refresh(db_order)
-
-    action_log.shortage_order_id = db_order.id
-    db.commit()
-
-    return ShortageOrderResponse.model_validate(db_order)
-
-
-@router.put("/{order_id}", response_model=ShortageOrderResponse, summary="更新短缺工单")
-def update_shortage_order(
-    order_id: int,
-    request: ShortageOrderUpdate,
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_active_admin),
-):
-    order = db.query(ShortageOrder).filter(ShortageOrder.id == order_id).first()
     if not order:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="短缺工单不存在",
-        )
+        raise HTTPException(status_code=404, detail="短缺工单不存在")
+    return order
 
-    update_data = request.model_dump(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(order, key, value)
+
+@router.post("", response_model=ShortageOrderResponse, status_code=status.HTTP_201_CREATED)
+def create_shortage_order(
+    data: ShortageOrderCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    order = ShortageOrder(**data.model_dump())
+    db.add(order)
+    db.flush()
+
+    log = ShortageActionLog(
+        shortage_order_id=order.id,
+        action="create",
+        operator_id=current_user.id,
+        operator=current_user.full_name,
+        remark="创建短缺工单",
+    )
+    db.add(log)
 
     db.commit()
     db.refresh(order)
-    return ShortageOrderResponse.model_validate(order)
+    return order
 
 
-@router.post("/{order_id}/action", response_model=SuccessResponse, summary="处理短缺工单")
-def process_shortage_order(
-    order_id: int,
-    request: ShortageActionRequest,
+@router.put("/{order_id}", response_model=ShortageOrderResponse)
+def update_shortage_order(
+    order_id: str,
+    data: ShortageOrderUpdate,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_active_admin),
+    _=Depends(get_current_user),
 ):
     order = db.query(ShortageOrder).filter(ShortageOrder.id == order_id).first()
     if not order:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="短缺工单不存在",
-        )
+        raise HTTPException(status_code=404, detail="短缺工单不存在")
+    update_data = data.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(order, key, value)
+    db.commit()
+    db.refresh(order)
+    return order
 
-    batch = db.query(MaterialBatch).filter(MaterialBatch.id == order.batch_id).first()
 
-    action_log = ShortageActionLog(
-        shortage_order_id=order_id,
-        action=ShortageAction(request.action),
-        operator_id=current_user.id,
-        operator=current_user.full_name or current_user.username,
-        remark=request.remark or "",
-    )
+@router.post("/{order_id}/handle", response_model=ShortageOrderResponse)
+def handle_shortage_order(
+    order_id: str,
+    data: ShortageHandleRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    order = db.query(ShortageOrder).filter(ShortageOrder.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="短缺工单不存在")
 
-    if request.action == ShortageActionType.SUPPLEMENT:
-        order.status = ShortageOrderStatus.SUPPLEMENTED
-        if batch:
-            batch.status = MaterialBatchStatus.IN_STOCK
-        supp_quantity = request.supplement_quantity or order.shortage_quantity
-        action_log.supplement_quantity = supp_quantity
-        if batch and request.supplement_quantity:
-            batch.quantity += request.supplement_quantity
-        action_log.remark += f"，补货数量: {supp_quantity}"
+    action = data.action
+    new_status = None
 
-    elif request.action == ShortageActionType.RETRY:
-        order.status = ShortageOrderStatus.RETRIED
-        if batch:
-            batch.status = MaterialBatchStatus.IN_USE
-
-    elif request.action == ShortageActionType.CLOSE:
-        order.status = ShortageOrderStatus.CLOSED
-        if batch:
-            batch.status = MaterialBatchStatus.COMPLETED
-
+    if action == "supplement":
+        new_status = "supplemented"
+    elif action == "retry":
+        new_status = "processing"
+    elif action == "close":
+        new_status = "closed"
     else:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="不支持的操作类型",
-        )
+        raise HTTPException(status_code=400, detail=f"不支持的操作: {action}")
 
-    db.add(action_log)
+    order.status = new_status
+
+    log = ShortageActionLog(
+        shortage_order_id=order.id,
+        action=action,
+        operator_id=current_user.id,
+        operator=current_user.full_name,
+        remark=data.remark,
+        supplement_quantity=data.supplement_quantity,
+    )
+    db.add(log)
     db.commit()
-
-    return SuccessResponse(message=f"工单{request.action}操作成功")
-
-
-@router.delete("/{order_id}", response_model=SuccessResponse, summary="删除短缺工单")
-def delete_shortage_order(
-    order_id: int,
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_admin),
-):
-    order = db.query(ShortageOrder).filter(ShortageOrder.id == order_id).first()
-    if not order:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="短缺工单不存在",
-        )
-
-    db.delete(order)
-    db.commit()
-    return SuccessResponse(message="删除成功")
+    db.refresh(order)
+    return order
