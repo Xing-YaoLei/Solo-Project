@@ -1,0 +1,22 @@
+{
+  "id": "task_002",
+  "title": "老房翻新挑战",
+  "description": "一栋20年房龄的老房子需要全面翻新。存在墙体开裂、水电老化、防水失效等问题，需要仔细检查并妥善处理。客户预算有限，但对质量要求较高。",
+  "clientName": "王阿姨",
+  "difficulty": "medium",
+  "budget": 150000,
+  "duration": 60,
+  "houseType": "两室一厅",
+  "area": 90,
+  "requirements": [
+    "整体水电改造",
+    "厨卫防水重做",
+    "墙体加固处理",
+    "北欧风格设计",
+    "适老化改造"
+  ],
+  "reward": 12000,
+  "penaltyRate": 0.08,
+  "unlocked": true,
+  "status": "available"
+}

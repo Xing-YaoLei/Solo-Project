@@ -1,0 +1,447 @@
+{
+  "id": "level_002",
+  "taskId": "task_002",
+  "name": "老房水电验收",
+  "description": "老房翻新的水电改造阶段验收。需要仔细检查隐蔽工程，防止后期出现严重问题。",
+  "phases": ["preparation", "demolition", "water_electric", "masonry", "inspection"],
+  "clues": [
+    {
+      "id": "clue_007",
+      "levelId": "level_002",
+      "type": "visual",
+      "title": "墙面开裂",
+      "description": "客厅承重墙面有明显的斜向裂缝，需要评估结构安全性。",
+      "position": { "x": 400, "y": 350 },
+      "photoId": "photo_005",
+      "problemType": "safety",
+      "severity": 5,
+      "isHidden": false,
+      "relatedClueIds": ["clue_008"],
+      "hint": "注意观察裂缝的走向和宽度，这可能是结构问题",
+      "requiredActions": ["action_009"]
+    },
+    {
+      "id": "clue_008",
+      "levelId": "level_002",
+      "type": "measurement",
+      "title": "钢筋外露",
+      "description": "墙面开槽时发现钢筋外露，可能影响结构安全。",
+      "position": { "x": 420, "y": 380 },
+      "photoId": "photo_005",
+      "problemType": "safety",
+      "severity": 5,
+      "isHidden": true,
+      "relatedClueIds": ["clue_007"],
+      "hint": "打开验收照片，仔细查看墙面开槽处",
+      "requiredActions": ["action_010"]
+    },
+    {
+      "id": "clue_009",
+      "levelId": "level_002",
+      "type": "photo",
+      "title": "防水失效",
+      "description": "卫生间防水层有多处破损，存在严重漏水隐患。",
+      "position": { "x": 250, "y": 450 },
+      "photoId": "photo_006",
+      "problemType": "quality",
+      "severity": 5,
+      "isHidden": false,
+      "relatedClueIds": ["clue_010"],
+      "hint": "仔细检查卫生间墙面和地面的接缝处",
+      "requiredActions": ["action_011"]
+    },
+    {
+      "id": "clue_010",
+      "levelId": "level_002",
+      "type": "document",
+      "title": "防水材料不符",
+      "description": "实际使用的防水材料型号与合同约定不符。",
+      "position": { "x": 270, "y": 470 },
+      "photoId": "photo_006",
+      "problemType": "fraud",
+      "severity": 4,
+      "isHidden": true,
+      "relatedClueIds": ["clue_009"],
+      "hint": "对比材料包装与合同约定",
+      "requiredActions": ["action_012"]
+    },
+    {
+      "id": "clue_011",
+      "levelId": "level_002",
+      "type": "visual",
+      "title": "水管布局混乱",
+      "description": "厨房水管冷热管交叉布局，可能影响使用体验。",
+      "position": { "x": 600, "y": 400 },
+      "photoId": "photo_007",
+      "problemType": "design",
+      "severity": 3,
+      "isHidden": false,
+      "relatedClueIds": [],
+      "hint": "注意水管的颜色标识和走向",
+      "requiredActions": ["action_013"]
+    },
+    {
+      "id": "clue_012",
+      "levelId": "level_002",
+      "type": "measurement",
+      "title": "水压不足",
+      "description": "测试发现主水管水压低于标准值。",
+      "position": { "x": 620, "y": 420 },
+      "photoId": "photo_007",
+      "problemType": "quality",
+      "severity": 4,
+      "isHidden": false,
+      "relatedClueIds": ["clue_011"],
+      "hint": "使用水压表测量各出水口",
+      "requiredActions": ["action_014"]
+    },
+    {
+      "id": "clue_013",
+      "levelId": "level_002",
+      "type": "photo",
+      "title": "电路接地不良",
+      "description": "多个插座接地测试不通过，存在安全隐患。",
+      "position": { "x": 800, "y": 300 },
+      "photoId": "photo_008",
+      "problemType": "safety",
+      "severity": 5,
+      "isHidden": false,
+      "relatedClueIds": ["clue_014"],
+      "hint": "使用专业检测仪测试每个插座",
+      "requiredActions": ["action_015"]
+    },
+    {
+      "id": "clue_014",
+      "levelId": "level_002",
+      "type": "document",
+      "title": "线路负荷过载",
+      "description": "多个大功率电器共用一条回路，存在过载风险。",
+      "position": { "x": 820, "y": 320 },
+      "photoId": "photo_008",
+      "problemType": "safety",
+      "severity": 5,
+      "isHidden": true,
+      "relatedClueIds": ["clue_013"],
+      "hint": "查看电路图，计算各回路负荷",
+      "requiredActions": ["action_016"]
+    }
+  ],
+  "photos": [
+    {
+      "id": "photo_005",
+      "levelId": "level_002",
+      "phase": "demolition",
+      "title": "承重墙裂缝检测",
+      "description": "客厅承重墙照片，需要检查是否存在结构安全问题。",
+      "imageUrl": "assets/images/photos/wall_crack.jpg",
+      "standardImageUrl": "assets/images/photos/standard/wall_crack_std.jpg",
+      "problemAreas": [
+        {
+          "id": "area_009",
+          "x": 150,
+          "y": 100,
+          "width": 200,
+          "height": 150,
+          "problemType": "safety",
+          "description": "墙面斜向裂缝",
+          "clueId": "clue_007"
+        },
+        {
+          "id": "area_010",
+          "x": 280,
+          "y": 250,
+          "width": 80,
+          "height": 60,
+          "problemType": "safety",
+          "description": "钢筋外露",
+          "clueId": "clue_008"
+        }
+      ],
+      "isUnlocked": true,
+      "unlockCondition": { "type": "phase", "targetId": "demolition", "value": "demolition" }
+    },
+    {
+      "id": "photo_006",
+      "levelId": "level_002",
+      "phase": "water_electric",
+      "title": "卫生间防水检测",
+      "description": "卫生间防水层施工照片，检查是否存在破损和偷工减料。",
+      "imageUrl": "assets/images/photos/waterproofing.jpg",
+      "standardImageUrl": "assets/images/photos/standard/waterproofing_std.jpg",
+      "problemAreas": [
+        {
+          "id": "area_011",
+          "x": 100,
+          "y": 200,
+          "width": 120,
+          "height": 100,
+          "problemType": "quality",
+          "description": "防水层破损",
+          "clueId": "clue_009"
+        },
+        {
+          "id": "area_012",
+          "x": 300,
+          "y": 150,
+          "width": 100,
+          "height": 80,
+          "problemType": "fraud",
+          "description": "防水材料不符",
+          "clueId": "clue_010"
+        }
+      ],
+      "isUnlocked": true,
+      "unlockCondition": { "type": "phase", "targetId": "water_electric", "value": "water_electric" }
+    },
+    {
+      "id": "photo_007",
+      "levelId": "level_002",
+      "phase": "water_electric",
+      "title": "厨房水管布局",
+      "description": "厨房水管安装照片，检查布局和水压是否正常。",
+      "imageUrl": "assets/images/photos/kitchen_plumbing.jpg",
+      "standardImageUrl": "assets/images/photos/standard/kitchen_plumbing_std.jpg",
+      "problemAreas": [
+        {
+          "id": "area_013",
+          "x": 180,
+          "y": 180,
+          "width": 150,
+          "height": 100,
+          "problemType": "design",
+          "description": "冷热水管交叉",
+          "clueId": "clue_011"
+        },
+        {
+          "id": "area_014",
+          "x": 350,
+          "y": 280,
+          "width": 80,
+          "height": 60,
+          "problemType": "quality",
+          "description": "水压不足",
+          "clueId": "clue_012"
+        }
+      ],
+      "isUnlocked": false,
+      "unlockCondition": { "type": "clue", "targetId": "clue_009", "value": "discovered" }
+    },
+    {
+      "id": "photo_008",
+      "levelId": "level_002",
+      "phase": "water_electric",
+      "title": "电路安全检测",
+      "description": "全屋电路检测照片，检查接地和负荷是否安全。",
+      "imageUrl": "assets/images/photos/electrical_safety.jpg",
+      "standardImageUrl": "assets/images/photos/standard/electrical_safety_std.jpg",
+      "problemAreas": [
+        {
+          "id": "area_015",
+          "x": 120,
+          "y": 150,
+          "width": 100,
+          "height": 80,
+          "problemType": "safety",
+          "description": "接地不良",
+          "clueId": "clue_013"
+        },
+        {
+          "id": "area_016",
+          "x": 280,
+          "y": 220,
+          "width": 120,
+          "height": 90,
+          "problemType": "safety",
+          "description": "线路过载",
+          "clueId": "clue_014"
+        }
+      ],
+      "isUnlocked": false,
+      "unlockCondition": { "type": "action", "targetId": "action_011", "value": "executed" }
+    }
+  ],
+  "availableActions": [
+    {
+      "id": "action_009",
+      "levelId": "level_002",
+      "type": "consult",
+      "title": "请结构工程师评估",
+      "description": "聘请专业结构工程师对裂缝进行评估并出具方案。",
+      "cost": 8000,
+      "duration": 5,
+      "risk": 2,
+      "qualityImpact": 10,
+      "applicableClueIds": ["clue_007"],
+      "requiredClueIds": ["clue_007"],
+      "consequences": [
+        { "type": "quality", "value": 10, "description": "结构问题得到专业解决", "probability": 0.95 },
+        { "type": "time", "value": 3, "description": "需要额外加固施工", "probability": 0.5 },
+        { "type": "cost", "value": 15000, "description": "需要结构加固", "probability": 0.4 }
+      ]
+    },
+    {
+      "id": "action_010",
+      "levelId": "level_002",
+      "type": "repair",
+      "title": "修复开槽处",
+      "description": "使用高强度砂浆修复钢筋外露部位。",
+      "cost": 3000,
+      "duration": 3,
+      "risk": 3,
+      "qualityImpact": 6,
+      "applicableClueIds": ["clue_007", "clue_008"],
+      "requiredClueIds": ["clue_008"],
+      "consequences": [
+        { "type": "quality", "value": 6, "description": "外露钢筋得到保护", "probability": 0.9 },
+        { "type": "time", "value": 2, "description": "砂浆养护需要时间", "probability": 0.4 }
+      ]
+    },
+    {
+      "id": "action_011",
+      "levelId": "level_002",
+      "type": "replace",
+      "title": "重做防水",
+      "description": "全部铲除原有防水层，重新做标准防水并做闭水试验。",
+      "cost": 12000,
+      "duration": 7,
+      "risk": 3,
+      "qualityImpact": 10,
+      "applicableClueIds": ["clue_009"],
+      "requiredClueIds": ["clue_009"],
+      "consequences": [
+        { "type": "quality", "value": 10, "description": "防水问题彻底解决", "probability": 0.95 },
+        { "type": "time", "value": 2, "description": "闭水试验需要额外时间", "probability": 0.6 },
+        { "type": "material", "value": 0, "description": "防水材料延期到货", "probability": 0.2 }
+      ]
+    },
+    {
+      "id": "action_012",
+      "levelId": "level_002",
+      "type": "report",
+      "title": "要求整改并索赔",
+      "description": "向施工方指出材料不符问题，要求更换并索赔。",
+      "cost": 0,
+      "duration": 3,
+      "risk": 2,
+      "qualityImpact": 5,
+      "applicableClueIds": ["clue_009", "clue_010"],
+      "requiredClueIds": ["clue_010"],
+      "consequences": [
+        { "type": "quality", "value": 5, "description": "材料问题得到解决", "probability": 0.8 },
+        { "type": "cost", "value": -5000, "description": "获得材料赔偿", "probability": 0.6 },
+        { "type": "time", "value": 5, "description": "施工方拖延整改", "probability": 0.3 }
+      ]
+    },
+    {
+      "id": "action_013",
+      "levelId": "level_002",
+      "type": "redesign",
+      "title": "调整水管布局",
+      "description": "重新设计水管走向，避免冷热水管交叉。",
+      "cost": 4000,
+      "duration": 4,
+      "risk": 2,
+      "qualityImpact": 6,
+      "applicableClueIds": ["clue_011"],
+      "requiredClueIds": ["clue_011"],
+      "consequences": [
+        { "type": "quality", "value": 6, "description": "水管布局更合理", "probability": 0.95 },
+        { "type": "cost", "value": 1000, "description": "需要额外管件", "probability": 0.3 }
+      ]
+    },
+    {
+      "id": "action_014",
+      "levelId": "level_002",
+      "type": "repair",
+      "title": "安装增压泵",
+      "description": "在主水管处安装增压泵解决水压问题。",
+      "cost": 6000,
+      "duration": 2,
+      "risk": 2,
+      "qualityImpact": 7,
+      "applicableClueIds": ["clue_011", "clue_012"],
+      "requiredClueIds": ["clue_012"],
+      "consequences": [
+        { "type": "quality", "value": 7, "description": "水压问题得到解决", "probability": 0.9 },
+        { "type": "cost", "value": 2000, "description": "需要额外电路改造", "probability": 0.3 }
+      ]
+    },
+    {
+      "id": "action_015",
+      "levelId": "level_002",
+      "type": "replace",
+      "title": "全面整改接地",
+      "description": "对所有不合格的接地进行全面整改。",
+      "cost": 8000,
+      "duration": 5,
+      "risk": 3,
+      "qualityImpact": 10,
+      "applicableClueIds": ["clue_013"],
+      "requiredClueIds": ["clue_013"],
+      "consequences": [
+        { "type": "quality", "value": 10, "description": "接地安全有保障", "probability": 0.95 },
+        { "type": "material", "value": 0, "description": "接地材料延期", "probability": 0.15 },
+        { "type": "time", "value": 2, "description": "需要重新开槽", "probability": 0.3 }
+      ]
+    },
+    {
+      "id": "action_016",
+      "levelId": "level_002",
+      "type": "redesign",
+      "title": "重新分配电路回路",
+      "description": "根据实际用电需求重新设计电路回路。",
+      "cost": 5000,
+      "duration": 4,
+      "risk": 2,
+      "qualityImpact": 8,
+      "applicableClueIds": ["clue_013", "clue_014"],
+      "requiredClueIds": ["clue_014"],
+      "consequences": [
+        { "type": "quality", "value": 8, "description": "电路负荷分配合理", "probability": 0.95 },
+        { "type": "time", "value": 2, "description": "需要客户确认方案", "probability": 0.4 }
+      ]
+    }
+  ],
+  "layout": {
+    "width": 1400,
+    "height": 900,
+    "walls": [
+      { "x": 0, "y": 0, "width": 1400, "height": 20 },
+      { "x": 0, "y": 880, "width": 1400, "height": 20 },
+      { "x": 0, "y": 0, "width": 20, "height": 900 },
+      { "x": 1380, "y": 0, "width": 20, "height": 900 },
+      { "x": 450, "y": 20, "width": 20, "height": 400 },
+      { "x": 800, "y": 480, "width": 20, "height": 400 },
+      { "x": 450, "y": 480, "width": 370, "height": 20 },
+      { "x": 200, "y": 300, "width": 20, "height": 280 }
+    ],
+    "objects": [
+      { "id": "obj_bathroom_tub", "x": 150, "y": 400, "type": "bathtub", "physics": false },
+      { "id": "obj_kitchen_sink", "x": 550, "y": 350, "type": "sink", "physics": false },
+      { "id": "obj_electric_panel", "x": 700, "y": 150, "type": "panel", "physics": false },
+      { "id": "obj_material_pile", "x": 900, "y": 600, "type": "materials", "physics": true },
+      { "id": "obj_living_room_sofa", "x": 1100, "y": 550, "type": "sofa", "physics": true },
+      { "id": "obj_toolbox", "x": 300, "y": 700, "type": "toolbox", "physics": true }
+    ]
+  },
+  "materialDelays": [
+    {
+      "id": "delay_003",
+      "materialName": "防水材料",
+      "phase": "water_electric",
+      "triggerDay": 7,
+      "delayDays": 3,
+      "impact": "防水施工需要等待材料"
+    },
+    {
+      "id": "delay_004",
+      "materialName": "大线径电线",
+      "phase": "water_electric",
+      "triggerDay": 10,
+      "delayDays": 4,
+      "impact": "电路整改工作延期"
+    }
+  ],
+  "perfectScore": 100,
+  "passingScore": 65
+}

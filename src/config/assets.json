@@ -1,0 +1,165 @@
+{
+  "version": "1.0.0",
+  "basePath": {
+    "images": "assets/images/",
+    "audio": "assets/audio/",
+    "fonts": "assets/fonts/",
+    "spritesheets": "assets/spritesheets/",
+    "tilemaps": "assets/tilemaps/"
+  },
+  "images": [
+    {
+      "id": "logo",
+      "path": "ui/logo.png",
+      "type": "png",
+      "preload": true
+    },
+    {
+      "id": "background_main",
+      "path": "backgrounds/main_menu.jpg",
+      "type": "jpg",
+      "preload": true
+    },
+    {
+      "id": "background_game",
+      "path": "backgrounds/game_bg.png",
+      "type": "png",
+      "preload": false
+    },
+    {
+      "id": "icon_clue",
+      "path": "icons/clue.png",
+      "type": "png",
+      "preload": true
+    },
+    {
+      "id": "icon_photo",
+      "path": "icons/photo.png",
+      "type": "png",
+      "preload": true
+    },
+    {
+      "id": "icon_task",
+      "path": "icons/task.png",
+      "type": "png",
+      "preload": true
+    },
+    {
+      "id": "icon_action",
+      "path": "icons/action.png",
+      "type": "png",
+      "preload": true
+    },
+    {
+      "id": "icon_warning",
+      "path": "icons/warning.png",
+      "type": "png",
+      "preload": true
+    },
+    {
+      "id": "icon_success",
+      "path": "icons/success.png",
+      "type": "png",
+      "preload": true
+    },
+    {
+      "id": "icon_error",
+      "path": "icons/error.png",
+      "type": "png",
+      "preload": true
+    },
+    {
+      "id": "tile_floor",
+      "path": "tiles/floor.png",
+      "type": "png",
+      "preload": false
+    },
+    {
+      "id": "tile_wall",
+      "path": "tiles/wall.png",
+      "type": "png",
+      "preload": false
+    },
+    {
+      "id": "tile_door",
+      "path": "tiles/door.png",
+      "type": "png",
+      "preload": false
+    },
+    {
+      "id": "tile_window",
+      "path": "tiles/window.png",
+      "type": "png",
+      "preload": false
+    },
+    {
+      "id": "furniture_sofa",
+      "path": "furniture/sofa.png",
+      "type": "png",
+      "preload": false
+    },
+    {
+      "id": "furniture_bed",
+      "path": "furniture/bed.png",
+      "type": "png",
+      "preload": false
+    },
+    {
+      "id": "furniture_table",
+      "path": "furniture/table.png",
+      "type": "png",
+      "preload": false
+    },
+    {
+      "id": "photo_placeholder",
+      "path": "photos/placeholder.png",
+      "type": "png",
+      "preload": true
+    }
+  ],
+  "audio": [
+    {
+      "id": "bgm_main",
+      "path": "music/main_theme.mp3",
+      "type": "mp3",
+      "category": "music",
+      "preload": true,
+      "loop": true
+    },
+    {
+      "id": "bgm_game",
+      "path": "music/gameplay.mp3",
+      "type": "mp3",
+      "category": "music",
+      "preload": false,
+      "loop": true
+    },
+    {
+      "id": "sfx_click",
+      "path": "sfx/click.mp3",
+      "type": "mp3",
+      "category": "sfx",
+      "preload": true,
+      "loop": false
+    },
+    {
+      "id": "sfx_clue_found",
+      "path": "sfx/clue_found.mp3",
+      "type": "mp3",
+      "category": "sfx",
+      "preload": true,
+      "loop": false
+    },
+    {
+      "id": "sfx_action_complete",
+      "path": "sfx/action_complete.mp3",
+      "type": "mp3",
+      "category": "sfx",
+      "preload": true,
+      "loop": false
+    }
+  ],
+  "spritesheets": [],
+  "fonts": [],
+  "tilemaps": []
+}

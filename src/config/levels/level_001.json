@@ -1,0 +1,415 @@
+{
+  "id": "level_001",
+  "taskId": "task_001",
+  "name": "水电改造阶段",
+  "description": "新手公寓改造第一阶段 - 水电改造。需要仔细检查原有水电线路，发现潜在问题并做出正确决策。",
+  "phases": ["preparation", "demolition", "water_electric", "inspection"],
+  "clues": [
+    {
+      "id": "clue_001",
+      "levelId": "level_001",
+      "type": "visual",
+      "title": "墙面水渍",
+      "description": "厨房墙面底部有明显水渍痕迹，可能存在漏水问题。",
+      "position": { "x": 300, "y": 400 },
+      "photoId": "photo_001",
+      "problemType": "quality",
+      "severity": 4,
+      "isHidden": false,
+      "relatedClueIds": ["clue_002"],
+      "hint": "仔细观察墙面底部的颜色变化，可能隐藏着水管问题",
+      "requiredActions": ["action_001", "action_003"]
+    },
+    {
+      "id": "clue_002",
+      "levelId": "level_001",
+      "type": "photo",
+      "title": "水管老化",
+      "description": "厨房冷热水管严重老化，出现锈蚀现象。",
+      "position": { "x": 320, "y": 420 },
+      "photoId": "photo_001",
+      "problemType": "material",
+      "severity": 5,
+      "isHidden": true,
+      "relatedClueIds": ["clue_001"],
+      "hint": "打开验收照片仔细对比，注意管道的颜色和连接处",
+      "requiredActions": ["action_002"]
+    },
+    {
+      "id": "clue_003",
+      "levelId": "level_001",
+      "type": "measurement",
+      "title": "电线负载不足",
+      "description": "原有电线线径不足，无法承载现代家电需求。",
+      "position": { "x": 500, "y": 300 },
+      "photoId": "photo_002",
+      "problemType": "safety",
+      "severity": 5,
+      "isHidden": false,
+      "relatedClueIds": ["clue_004"],
+      "hint": "用电笔检测各插座的负载能力",
+      "requiredActions": ["action_004"]
+    },
+    {
+      "id": "clue_004",
+      "levelId": "level_001",
+      "type": "document",
+      "title": "原始图纸不符",
+      "description": "实际电路布局与原始图纸存在多处不符。",
+      "position": { "x": 520, "y": 320 },
+      "photoId": "photo_002",
+      "problemType": "design",
+      "severity": 3,
+      "isHidden": true,
+      "relatedClueIds": ["clue_003"],
+      "hint": "对比验收照片中的线路走向与图纸",
+      "requiredActions": ["action_005"]
+    },
+    {
+      "id": "clue_005",
+      "levelId": "level_001",
+      "type": "visual",
+      "title": "地面倾斜",
+      "description": "客厅地面有轻微倾斜，可能影响后续施工。",
+      "position": { "x": 650, "y": 450 },
+      "photoId": "photo_003",
+      "problemType": "quality",
+      "severity": 2,
+      "isHidden": false,
+      "relatedClueIds": [],
+      "hint": "使用水平尺测量地面平整度",
+      "requiredActions": ["action_006"]
+    },
+    {
+      "id": "clue_006",
+      "levelId": "level_001",
+      "type": "photo",
+      "title": "插座位置不合理",
+      "description": "卧室插座位置过低且数量不足，不符合使用习惯。",
+      "position": { "x": 800, "y": 350 },
+      "photoId": "photo_004",
+      "problemType": "design",
+      "severity": 3,
+      "isHidden": false,
+      "relatedClueIds": [],
+      "hint": "考虑未来家具摆放位置，规划合理的插座布局",
+      "requiredActions": ["action_007"]
+    }
+  ],
+  "photos": [
+    {
+      "id": "photo_001",
+      "levelId": "level_001",
+      "phase": "water_electric",
+      "title": "厨房水管验收照",
+      "description": "厨房冷热水管安装位置照片，需要检查是否存在老化和漏水问题。",
+      "imageUrl": "assets/images/photos/kitchen_pipes.jpg",
+      "standardImageUrl": "assets/images/photos/standard/kitchen_pipes_std.jpg",
+      "problemAreas": [
+        {
+          "id": "area_001",
+          "x": 120,
+          "y": 200,
+          "width": 80,
+          "height": 60,
+          "problemType": "quality",
+          "description": "墙面水渍痕迹",
+          "clueId": "clue_001"
+        },
+        {
+          "id": "area_002",
+          "x": 250,
+          "y": 180,
+          "width": 60,
+          "height": 50,
+          "problemType": "material",
+          "description": "水管锈蚀严重",
+          "clueId": "clue_002"
+        },
+        {
+          "id": "area_003",
+          "x": 180,
+          "y": 280,
+          "width": 70,
+          "height": 40,
+          "problemType": "safety",
+          "description": "管道连接处渗水",
+          "clueId": "clue_001"
+        }
+      ],
+      "isUnlocked": true,
+      "unlockCondition": { "type": "phase", "targetId": "water_electric", "value": "water_electric" }
+    },
+    {
+      "id": "photo_002",
+      "levelId": "level_001",
+      "phase": "water_electric",
+      "title": "电路布线验收照",
+      "description": "客厅电路布线照片，需要检查线径和走向是否符合规范。",
+      "imageUrl": "assets/images/photos/electrical_wiring.jpg",
+      "standardImageUrl": "assets/images/photos/standard/electrical_wiring_std.jpg",
+      "problemAreas": [
+        {
+          "id": "area_004",
+          "x": 150,
+          "y": 150,
+          "width": 100,
+          "height": 80,
+          "problemType": "safety",
+          "description": "电线线径不足",
+          "clueId": "clue_003"
+        },
+        {
+          "id": "area_005",
+          "x": 300,
+          "y": 220,
+          "width": 90,
+          "height": 60,
+          "problemType": "design",
+          "description": "线路走向与图纸不符",
+          "clueId": "clue_004"
+        }
+      ],
+      "isUnlocked": true,
+      "unlockCondition": { "type": "clue", "targetId": "clue_001", "value": "discovered" }
+    },
+    {
+      "id": "photo_003",
+      "levelId": "level_001",
+      "phase": "preparation",
+      "title": "地面平整度检测",
+      "description": "客厅地面水平检测照片，检查是否存在倾斜问题。",
+      "imageUrl": "assets/images/photos/floor_level.jpg",
+      "standardImageUrl": "assets/images/photos/standard/floor_level_std.jpg",
+      "problemAreas": [
+        {
+          "id": "area_006",
+          "x": 200,
+          "y": 180,
+          "width": 120,
+          "height": 80,
+          "problemType": "quality",
+          "description": "地面轻微倾斜",
+          "clueId": "clue_005"
+        }
+      ],
+      "isUnlocked": true,
+      "unlockCondition": { "type": "phase", "targetId": "preparation", "value": "preparation" }
+    },
+    {
+      "id": "photo_004",
+      "levelId": "level_001",
+      "phase": "water_electric",
+      "title": "卧室插座布局",
+      "description": "卧室插座位置照片，检查是否符合使用需求。",
+      "imageUrl": "assets/images/photos/bedroom_outlets.jpg",
+      "standardImageUrl": "assets/images/photos/standard/bedroom_outlets_std.jpg",
+      "problemAreas": [
+        {
+          "id": "area_007",
+          "x": 180,
+          "y": 250,
+          "width": 60,
+          "height": 50,
+          "problemType": "design",
+          "description": "插座位置过低",
+          "clueId": "clue_006"
+        },
+        {
+          "id": "area_008",
+          "x": 350,
+          "y": 200,
+          "width": 50,
+          "height": 40,
+          "problemType": "design",
+          "description": "插座数量不足",
+          "clueId": "clue_006"
+        }
+      ],
+      "isUnlocked": false,
+      "unlockCondition": { "type": "action", "targetId": "action_004", "value": "executed" }
+    }
+  ],
+  "availableActions": [
+    {
+      "id": "action_001",
+      "levelId": "level_001",
+      "type": "repair",
+      "title": "修补漏水点",
+      "description": "找到漏水点并进行修补，防止进一步渗水。",
+      "cost": 2000,
+      "duration": 2,
+      "risk": 2,
+      "qualityImpact": 3,
+      "applicableClueIds": ["clue_001"],
+      "requiredClueIds": ["clue_001"],
+      "consequences": [
+        { "type": "quality", "value": 3, "description": "漏水问题解决", "probability": 0.9 },
+        { "type": "cost", "value": 500, "description": "发现更多隐蔽漏水点", "probability": 0.3 },
+        { "type": "time", "value": 1, "description": "施工难度超预期", "probability": 0.2 }
+      ]
+    },
+    {
+      "id": "action_002",
+      "levelId": "level_001",
+      "type": "replace",
+      "title": "更换老化水管",
+      "description": "全部更换为PPR水管，彻底解决水管老化问题。",
+      "cost": 8000,
+      "duration": 5,
+      "risk": 3,
+      "qualityImpact": 8,
+      "applicableClueIds": ["clue_001", "clue_002"],
+      "requiredClueIds": ["clue_002"],
+      "consequences": [
+        { "type": "quality", "value": 8, "description": "水管问题彻底解决", "probability": 0.95 },
+        { "type": "material", "value": 0, "description": "水管材料延期到货", "probability": 0.2 },
+        { "type": "cost", "value": 1000, "description": "墙体开槽超出预期", "probability": 0.25 }
+      ]
+    },
+    {
+      "id": "action_003",
+      "levelId": "level_001",
+      "type": "ignore",
+      "title": "暂不处理",
+      "description": "目前漏水不明显，先记录问题后续观察。",
+      "cost": 0,
+      "duration": 0,
+      "risk": 5,
+      "qualityImpact": -5,
+      "applicableClueIds": ["clue_001"],
+      "requiredClueIds": ["clue_001"],
+      "consequences": [
+        { "type": "quality", "value": -10, "description": "漏水加剧造成损失", "probability": 0.6 },
+        { "type": "cost", "value": 5000, "description": "后期维修成本大幅增加", "probability": 0.5 }
+      ]
+    },
+    {
+      "id": "action_004",
+      "levelId": "level_001",
+      "type": "replace",
+      "title": "重新布线",
+      "description": "全部更换为大线径电线，确保用电安全。",
+      "cost": 12000,
+      "duration": 7,
+      "risk": 3,
+      "qualityImpact": 10,
+      "applicableClueIds": ["clue_003", "clue_004"],
+      "requiredClueIds": ["clue_003"],
+      "consequences": [
+        { "type": "quality", "value": 10, "description": "电路安全有保障", "probability": 0.95 },
+        { "type": "material", "value": 0, "description": "电线延期到货", "probability": 0.25 },
+        { "type": "time", "value": 2, "description": "开槽遇到钢筋", "probability": 0.3 }
+      ]
+    },
+    {
+      "id": "action_005",
+      "levelId": "level_001",
+      "type": "redesign",
+      "title": "优化电路设计",
+      "description": "根据实际情况重新设计电路布局。",
+      "cost": 3000,
+      "duration": 3,
+      "risk": 2,
+      "qualityImpact": 5,
+      "applicableClueIds": ["clue_004"],
+      "requiredClueIds": ["clue_004"],
+      "consequences": [
+        { "type": "quality", "value": 5, "description": "电路布局更合理", "probability": 0.9 },
+        { "type": "time", "value": 1, "description": "设计方案确认耗时", "probability": 0.3 }
+      ]
+    },
+    {
+      "id": "action_006",
+      "levelId": "level_001",
+      "type": "repair",
+      "title": "地面找平",
+      "description": "对倾斜地面进行找平处理。",
+      "cost": 5000,
+      "duration": 4,
+      "risk": 2,
+      "qualityImpact": 5,
+      "applicableClueIds": ["clue_005"],
+      "requiredClueIds": ["clue_005"],
+      "consequences": [
+        { "type": "quality", "value": 5, "description": "地面平整度达标", "probability": 0.9 },
+        { "type": "time", "value": 2, "description": "水泥养护需要额外时间", "probability": 0.4 }
+      ]
+    },
+    {
+      "id": "action_007",
+      "levelId": "level_001",
+      "type": "redesign",
+      "title": "调整插座位置",
+      "description": "重新规划插座位置和数量。",
+      "cost": 1500,
+      "duration": 2,
+      "risk": 1,
+      "qualityImpact": 4,
+      "applicableClueIds": ["clue_006"],
+      "requiredClueIds": ["clue_006"],
+      "consequences": [
+        { "type": "quality", "value": 4, "description": "插座布局更合理", "probability": 0.95 },
+        { "type": "cost", "value": 500, "description": "需要额外材料", "probability": 0.2 }
+      ]
+    },
+    {
+      "id": "action_008",
+      "levelId": "level_001",
+      "type": "report",
+      "title": "记录并上报",
+      "description": "将发现的问题记录在案并上报客户。",
+      "cost": 0,
+      "duration": 1,
+      "risk": 1,
+      "qualityImpact": 1,
+      "applicableClueIds": ["clue_001", "clue_002", "clue_003", "clue_004", "clue_005", "clue_006"],
+      "requiredClueIds": [],
+      "consequences": [
+        { "type": "quality", "value": 1, "description": "问题得到记录", "probability": 1.0 }
+      ]
+    }
+  ],
+  "layout": {
+    "width": 1200,
+    "height": 800,
+    "walls": [
+      { "x": 0, "y": 0, "width": 1200, "height": 20 },
+      { "x": 0, "y": 780, "width": 1200, "height": 20 },
+      { "x": 0, "y": 0, "width": 20, "height": 800 },
+      { "x": 1180, "y": 0, "width": 20, "height": 800 },
+      { "x": 400, "y": 20, "width": 20, "height": 350 },
+      { "x": 700, "y": 430, "width": 20, "height": 350 },
+      { "x": 400, "y": 430, "width": 320, "height": 20 }
+    ],
+    "objects": [
+      { "id": "obj_kitchen_sink", "x": 250, "y": 350, "type": "sink", "physics": false },
+      { "id": "obj_kitchen_cabinet", "x": 350, "y": 400, "type": "cabinet", "physics": true },
+      { "id": "obj_material_pile", "x": 600, "y": 550, "type": "materials", "physics": true },
+      { "id": "obj_electric_panel", "x": 500, "y": 200, "type": "panel", "physics": false },
+      { "id": "obj_living_room_sofa", "x": 900, "y": 500, "type": "sofa", "physics": true },
+      { "id": "obj_bedroom_bed", "x": 1000, "y": 250, "type": "bed", "physics": true },
+      { "id": "obj_toolbox", "x": 150, "y": 600, "type": "toolbox", "physics": true }
+    ]
+  },
+  "materialDelays": [
+    {
+      "id": "delay_001",
+      "materialName": "PPR水管",
+      "phase": "water_electric",
+      "triggerDay": 5,
+      "delayDays": 2,
+      "impact": "水管安装工作需要等待材料到货"
+    },
+    {
+      "id": "delay_002",
+      "materialName": "电线",
+      "phase": "water_electric",
+      "triggerDay": 8,
+      "delayDays": 3,
+      "impact": "电路布线工作延期"
+    }
+  ],
+  "perfectScore": 100,
+  "passingScore": 60
+}

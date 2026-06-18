@@ -1,0 +1,179 @@
+{
+  "id": "tutorial_001",
+  "title": "新手引导：如何验收工地",
+  "description": "通过验收照片学习如何发现工地问题并做出正确决策",
+  "version": "1.0.0",
+  "isActive": true,
+  "requiredLevelId": null,
+  "steps": [
+    {
+      "id": "step_001",
+      "order": 1,
+      "title": "欢迎来到工地指挥家",
+      "content": "你将扮演一名装修项目经理，负责验收工地、发现问题、做出决策。你的目标是在预算内按时高质量完成装修任务。",
+      "type": "introduction",
+      "photoId": null,
+      "highlightElement": null,
+      "autoAdvance": false,
+      "advanceText": "开始学习",
+      "tips": [
+        "仔细观察验收照片是发现问题的关键",
+        "每一个决策都会影响成本、工期和质量",
+        "做错了也没关系，我们会记录下来帮助你复盘"
+      ]
+    },
+    {
+      "id": "step_002",
+      "order": 2,
+      "title": "认识验收照片",
+      "content": "这是一张厨房水管的验收照片。左侧是实际施工照片，右侧是标准施工照片。你的任务是对比两张照片，找出其中的问题。",
+      "type": "photo_intro",
+      "photoId": "photo_001",
+      "highlightElement": "photo_viewer",
+      "autoAdvance": false,
+      "advanceText": "继续",
+      "tips": [
+        "左侧照片显示实际施工情况",
+        "右侧照片显示标准施工规范",
+        "仔细对比颜色、位置、细节"
+      ]
+    },
+    {
+      "id": "step_003",
+      "order": 3,
+      "title": "发现第一个问题",
+      "content": "请看左侧照片中墙面底部的区域，你发现了什么？这里有明显的水渍痕迹，说明可能存在漏水问题。点击这个区域来标记问题。",
+      "type": "photo_interaction",
+      "photoId": "photo_001",
+      "highlightElement": "photo_area_001",
+      "autoAdvance": false,
+      "advanceText": "我找到了",
+      "requiredInteraction": "click_area_001",
+      "tips": [
+        "水渍通常呈现为深色或变色区域",
+        "漏水问题如果不及时处理会越来越严重",
+        "点击问题区域可以查看详细信息"
+      ]
+    },
+    {
+      "id": "step_004",
+      "order": 4,
+      "title": "查看问题详情",
+      "content": "很好！你发现了墙面水渍问题。现在查看右侧的问题详情面板，了解这个问题的严重程度和建议处理方式。",
+      "type": "clue_intro",
+      "photoId": "photo_001",
+      "highlightElement": "clue_panel",
+      "autoAdvance": false,
+      "advanceText": "明白了",
+      "tips": [
+        "严重程度5星的问题必须立即处理",
+        "每个问题都有对应的处理选项",
+        "有些问题是隐藏的，需要仔细观察才能发现"
+      ]
+    },
+    {
+      "id": "step_005",
+      "order": 5,
+      "title": "隐藏的问题",
+      "content": "有些问题不会直接显示，需要你仔细观察。再次查看照片，注意水管的颜色和连接处。锈蚀的水管会呈现暗褐色，而新水管应该是白色或银色。",
+      "type": "photo_interaction",
+      "photoId": "photo_001",
+      "highlightElement": "photo_area_002",
+      "autoAdvance": false,
+      "advanceText": "发现水管问题了",
+      "requiredInteraction": "click_area_002",
+      "tips": [
+        "隐藏问题往往更严重",
+        "锈蚀的水管可能随时爆裂",
+        "发现隐藏问题会获得额外分数"
+      ]
+    },
+    {
+      "id": "step_006",
+      "order": 6,
+      "title": "选择处理动作",
+      "content": "现在你发现了两个问题：墙面水渍和水管老化。请在下方的动作面板中选择合适的处理方式。对于水管老化问题，我们建议全部更换。",
+      "type": "action_selection",
+      "photoId": "photo_001",
+      "highlightElement": "action_panel",
+      "autoAdvance": false,
+      "advanceText": "继续",
+      "requiredInteraction": "select_action_002",
+      "tips": [
+        "每个动作都有成本、工期和风险",
+        "高风险动作可能带来意外后果",
+        "选择前请权衡利弊"
+      ]
+    },
+    {
+      "id": "step_007",
+      "order": 7,
+      "title": "理解动作后果",
+      "content": "你选择了\"更换老化水管\"。这个动作需要花费8000元，耗时5天，但能彻底解决问题。注意，有些动作可能触发随机事件，比如材料延期。",
+      "type": "consequence_intro",
+      "photoId": "photo_001",
+      "highlightElement": "consequence_panel",
+      "autoAdvance": false,
+      "advanceText": "继续",
+      "tips": [
+        "概率事件是模拟真实情况",
+        "材料延期会影响工期",
+        "记录每次决策有助于复盘提升"
+      ]
+    },
+    {
+      "id": "step_008",
+      "order": 8,
+      "title": "签署变更单",
+      "content": "重大设计变更需要签署变更单。变更单记录了变更原因、内容、费用和工期调整。请仔细核对后签署。",
+      "type": "change_order_intro",
+      "photoId": null,
+      "highlightElement": "change_order_modal",
+      "autoAdvance": false,
+      "advanceText": "明白了",
+      "tips": [
+        "变更单是法律文件",
+        "所有费用和工期变化都要记录",
+        "客户确认后才能执行"
+      ]
+    },
+    {
+      "id": "step_009",
+      "order": 9,
+      "title": "解锁更多照片",
+      "content": "完成动作后，你可能解锁更多验收照片。新的照片可能包含更多问题需要你去发现。继续探索吧！",
+      "type": "unlock_intro",
+      "photoId": "photo_002",
+      "highlightElement": "photo_thumbnail_002",
+      "autoAdvance": false,
+      "advanceText": "继续",
+      "tips": [
+        "发现问题→处理→解锁新照片→发现更多问题",
+        "隐藏问题往往在解锁的照片中",
+        "完整发现所有问题才能获得高分"
+      ]
+    },
+    {
+      "id": "step_010",
+      "order": 10,
+      "title": "评分与复盘",
+      "content": "关卡完成后会根据你的表现评分。我们会记录你的每一个决策，包括发现的问题、选择的动作、造成的后果。这有助于你复盘提升。",
+      "type": "settlement_intro",
+      "photoId": null,
+      "highlightElement": "settlement_panel",
+      "autoAdvance": false,
+      "advanceText": "开始游戏",
+      "tips": [
+        "评分由质量、成本、时间三部分组成",
+        "错误决策会被记录下来",
+        "从错误中学习是提升的关键"
+      ]
+    }
+  ],
+  "practiceLevelId": "level_001",
+  "completionReward": {
+    "type": "badge",
+    "value": "tutorial_completed",
+    "description": "新手教程完成徽章"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "id": "task_001",
+  "title": "新手公寓改造",
+  "description": "这是一个简单的一居室公寓改造任务，适合新手熟悉游戏流程。客户是一位年轻白领，希望在有限预算内打造温馨舒适的居住空间。",
+  "clientName": "李先生",
+  "difficulty": "easy",
+  "budget": 80000,
+  "duration": 30,
+  "houseType": "一居室",
+  "area": 65,
+  "requirements": [
+    "现代简约风格",
+    "开放式厨房设计",
+    "增加储物空间",
+    "改善采光",
+    "智能家电预留"
+  ],
+  "reward": 5000,
+  "penaltyRate": 0.05,
+  "unlocked": true,
+  "status": "available"
+}
