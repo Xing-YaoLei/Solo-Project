@@ -81,8 +81,9 @@ class Deduplicator:
     def dedup_vehicles(df: pd.DataFrame) -> Tuple[pd.DataFrame, int]:
         before = len(df)
         if 'vin' in df.columns:
+            df = df.copy()
             df = df.dropna(subset=['vin'])
-            df['vin_clean'] = df['vin'].apply(DataCleaner.clean_vin)
+            df.loc[:, 'vin_clean'] = df['vin'].apply(DataCleaner.clean_vin)
             df = df.drop_duplicates(subset=['vin_clean'], keep='last')
             df = df.drop(columns=['vin_clean'])
         removed = before - len(df)
@@ -179,36 +180,38 @@ class DataPipeline:
             stats['output'] = 0
             return df, stats
 
+        df = df.copy()
+
         if 'vin' in df.columns:
-            df['vin'] = df['vin'].apply(self.cleaner.clean_vin)
+            df.loc[:, 'vin'] = df['vin'].apply(self.cleaner.clean_vin)
             invalid_vin = df['vin'].str.len() < 5
             stats['invalid'] += int(invalid_vin.sum())
             df = df[~invalid_vin]
 
         if 'license_plate' in df.columns:
-            df['license_plate'] = df['license_plate'].apply(self.cleaner.clean_license_plate)
+            df.loc[:, 'license_plate'] = df['license_plate'].apply(self.cleaner.clean_license_plate)
 
         if 'owner_phone' in df.columns:
-            df['owner_phone'] = df['owner_phone'].apply(self.cleaner.clean_phone)
+            df.loc[:, 'owner_phone'] = df['owner_phone'].apply(self.cleaner.clean_phone)
 
         if 'first_registration_date' in df.columns:
-            df['first_registration_date'] = df['first_registration_date'].apply(self.cleaner.clean_date)
+            df.loc[:, 'first_registration_date'] = df['first_registration_date'].apply(self.cleaner.clean_date)
 
         if 'mileage' in df.columns:
-            df['mileage'] = pd.to_numeric(df['mileage'], errors='coerce').fillna(0).astype(int)
+            df.loc[:, 'mileage'] = pd.to_numeric(df['mileage'], errors='coerce').fillna(0).astype(int)
 
         if 'brand' in df.columns:
-            df['brand'] = df['brand'].apply(self.cleaner.clean_text)
+            df.loc[:, 'brand'] = df['brand'].apply(self.cleaner.clean_text)
 
         if 'model' in df.columns:
-            df['model'] = df['model'].apply(self.cleaner.clean_text)
+            df.loc[:, 'model'] = df['model'].apply(self.cleaner.clean_text)
 
         df, dedup_count = self.deduplicator.dedup_vehicles(df)
         stats['deduplicated'] = dedup_count
         stats['output'] = len(df)
 
         if 'source_system' not in df.columns:
-            df['source_system'] = source_system
+            df.loc[:, 'source_system'] = source_system
 
         return df, stats
 
@@ -219,40 +222,42 @@ class DataPipeline:
             stats['output'] = 0
             return df, stats
 
+        df = df.copy()
+
         if 'appointment_date' in df.columns:
-            df['appointment_date'] = df['appointment_date'].apply(self.cleaner.clean_date)
+            df.loc[:, 'appointment_date'] = df['appointment_date'].apply(self.cleaner.clean_date)
             invalid_date = df['appointment_date'].isna()
             stats['invalid'] += int(invalid_date.sum())
             df = df[~invalid_date]
 
         if 'actual_arrival_date' in df.columns:
-            df['actual_arrival_date'] = df['actual_arrival_date'].apply(self.cleaner.clean_date)
+            df.loc[:, 'actual_arrival_date'] = df['actual_arrival_date'].apply(self.cleaner.clean_date)
 
         if 'order_type' in df.columns:
-            df['order_type'] = df['order_type'].apply(self.matcher.match_order_type)
+            df.loc[:, 'order_type'] = df['order_type'].apply(self.matcher.match_order_type)
 
         for cost_col in ['total_cost', 'parts_cost', 'labor_cost']:
             if cost_col in df.columns:
-                df[cost_col] = df[cost_col].apply(self.cleaner.clean_money)
+                df.loc[:, cost_col] = df[cost_col].apply(self.cleaner.clean_money)
 
         if 'order_no' in df.columns:
-            df['order_no'] = df['order_no'].astype(str).str.strip()
+            df.loc[:, 'order_no'] = df['order_no'].astype(str).str.strip()
 
         if 'service_advisor' in df.columns:
-            df['service_advisor'] = df['service_advisor'].apply(self.cleaner.clean_text)
+            df.loc[:, 'service_advisor'] = df['service_advisor'].apply(self.cleaner.clean_text)
 
         if 'technician' in df.columns:
-            df['technician'] = df['technician'].apply(self.cleaner.clean_text)
+            df.loc[:, 'technician'] = df['technician'].apply(self.cleaner.clean_text)
 
         df, dedup_count = self.deduplicator.dedup_repair_orders(df)
         stats['deduplicated'] = dedup_count
         stats['output'] = len(df)
 
         if 'source_system' not in df.columns:
-            df['source_system'] = source_system
+            df.loc[:, 'source_system'] = source_system
 
         if 'source_id' not in df.columns and 'order_no' in df.columns:
-            df['source_id'] = df['order_no']
+            df.loc[:, 'source_id'] = df['order_no']
 
         return df, stats
 
@@ -263,20 +268,22 @@ class DataPipeline:
             stats['output'] = 0
             return df, stats
 
+        df = df.copy()
+
         if 'diagnosis_date' in df.columns:
-            df['diagnosis_date'] = df['diagnosis_date'].apply(self.cleaner.clean_date)
+            df.loc[:, 'diagnosis_date'] = df['diagnosis_date'].apply(self.cleaner.clean_date)
             invalid_date = df['diagnosis_date'].isna()
             stats['invalid'] += int(invalid_date.sum())
             df = df[~invalid_date]
 
         if 'fault_code' in df.columns:
-            df['fault_code'] = df['fault_code'].astype(str).str.strip().str.upper()
+            df.loc[:, 'fault_code'] = df['fault_code'].astype(str).str.strip().str.upper()
 
         if 'fault_description' in df.columns:
-            df['fault_description'] = df['fault_description'].apply(self.cleaner.clean_text)
+            df.loc[:, 'fault_description'] = df['fault_description'].apply(self.cleaner.clean_text)
 
         if 'fault_category' not in df.columns or df['fault_category'].isna().all():
-            df['fault_category'] = df.apply(
+            df.loc[:, 'fault_category'] = df.apply(
                 lambda row: self.matcher.match_fault_category(
                     row.get('fault_code', ''),
                     row.get('fault_description', '')
@@ -284,13 +291,13 @@ class DataPipeline:
             )
 
         if 'fault_severity' in df.columns:
-            df['fault_severity'] = df['fault_severity'].astype(str).str.strip()
+            df.loc[:, 'fault_severity'] = df['fault_severity'].astype(str).str.strip()
 
         if 'technician' in df.columns:
-            df['technician'] = df['technician'].apply(self.cleaner.clean_text)
+            df.loc[:, 'technician'] = df['technician'].apply(self.cleaner.clean_text)
 
         if 'diagnosis_result' in df.columns:
-            df['diagnosis_result'] = df['diagnosis_result'].apply(self.cleaner.clean_text)
+            df.loc[:, 'diagnosis_result'] = df['diagnosis_result'].apply(self.cleaner.clean_text)
 
         df, dedup_count = self.deduplicator.dedup_by_source_id(df, source_system, 'source_id')
         stats['deduplicated'] = dedup_count
@@ -305,29 +312,31 @@ class DataPipeline:
             stats['output'] = 0
             return df, stats
 
+        df = df.copy()
+
         if 'part_code' in df.columns:
-            df['part_code'] = df['part_code'].apply(self.matcher.normalize_part_code)
+            df.loc[:, 'part_code'] = df['part_code'].apply(self.matcher.normalize_part_code)
             invalid_code = df['part_code'].str.len() < 2
             stats['invalid'] += int(invalid_code.sum())
             df = df[~invalid_code]
 
         if 'part_name' in df.columns:
-            df['part_name'] = df['part_name'].apply(self.cleaner.clean_text)
+            df.loc[:, 'part_name'] = df['part_name'].apply(self.cleaner.clean_text)
 
         if 'unit_price' in df.columns:
-            df['unit_price'] = df['unit_price'].apply(self.cleaner.clean_money)
+            df.loc[:, 'unit_price'] = df['unit_price'].apply(self.cleaner.clean_money)
 
         if 'stock_quantity' in df.columns:
-            df['stock_quantity'] = pd.to_numeric(df['stock_quantity'], errors='coerce').fillna(0).astype(int)
+            df.loc[:, 'stock_quantity'] = pd.to_numeric(df['stock_quantity'], errors='coerce').fillna(0).astype(int)
 
         if 'part_category' in df.columns:
-            df['part_category'] = df['part_category'].apply(self.cleaner.clean_text)
+            df.loc[:, 'part_category'] = df['part_category'].apply(self.cleaner.clean_text)
 
         df, dedup_count = self.deduplicator.dedup_by_source_id(df, source_system, 'part_code')
         stats['deduplicated'] = dedup_count
         stats['output'] = len(df)
 
         if 'source_system' not in df.columns:
-            df['source_system'] = source_system
+            df.loc[:, 'source_system'] = source_system
 
         return df, stats

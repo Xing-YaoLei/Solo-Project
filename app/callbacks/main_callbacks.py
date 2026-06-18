@@ -2,9 +2,7 @@ from datetime import date, timedelta
 from dash import Input, Output, State, callback_context, html, dash_table, ALL, MATCH, no_update
 import dash_bootstrap_components as dbc
 import pandas as pd
-import random
 import json
-
 import dash
 
 from app.main import app
@@ -22,155 +20,42 @@ from app.components.charts import (
     create_parts_shortage_chart,
     create_parts_rework_correlation_chart,
 )
-
-CALIBER_INFO = {
-    "v1.0": {
-        "name": "基础口径",
-        "description": "同一车辆30天内同故障二次进厂计为返修",
-        "formula": "返修率 = 返修工单数 / 总工单数 × 100%",
-        "change_reason": "初始版本",
-    },
-    "v1.1": {
-        "name": "扩大口径",
-        "description": "同一车辆60天内同类故障二次进厂计为返修，包含配件质量问题",
-        "formula": "返修率 = 返修工单数(60天同类故障) / 总工单数 × 100%",
-        "change_reason": "扩大返修判定窗口，细化故障分类",
-    },
-}
-
-THRESHOLD_DEFAULTS = [
-    {"key": "rework_rate_warning", "name": "返修率预警阈值", "value": "5", "type": "number",
-     "category": "返修管理", "desc": "返修率超过此值触发预警"},
-    {"key": "rework_rate_critical", "name": "返修率严重阈值", "value": "8", "type": "number",
-     "category": "返修管理", "desc": "返修率超过此值触发严重告警"},
-    {"key": "parts_shortage_rate", "name": "配件缺货率阈值", "value": "3", "type": "number",
-     "category": "配件管理", "desc": "配件缺货率超过此值需要复盘"},
-    {"key": "appointment_fill_rate", "name": "预约到店率预警", "value": "85", "type": "number",
-     "category": "预约管理", "desc": "预约到店率低于此值预警"},
-    {"key": "rework_window_days", "name": "返修判定窗口(天)", "value": "30", "type": "number",
-     "category": "返修管理", "desc": "多少天内二次进厂算返修"},
-    {"key": "safe_stock_days", "name": "安全库存天数", "value": "7", "type": "number",
-     "category": "配件管理", "desc": "配件安全库存覆盖天数"},
-]
+from data.queries import DataQueryService
+from data.models import ReworkRateCaliberVersion
+from data.database import SessionLocal
 
 
-def generate_mock_appointment_data(start_date: date, end_date: date) -> pd.DataFrame:
-    dates = pd.date_range(start=start_date, end=end_date, freq='D')
-    data = []
-    for d in dates:
-        base = 20 + random.randint(-5, 10)
-        arrival = base - random.randint(0, 5)
-        data.append({
-            'date': d.date(),
-            '预约量': base,
-            '到店量': arrival,
-            '到店率': round(arrival / base * 100, 1) if base > 0 else 0,
-            '总金额': base * random.uniform(800, 2000),
-        })
-    return pd.DataFrame(data)
+def get_query_service():
+    return DataQueryService()
 
 
-def generate_mock_vehicle_data():
-    brands = ['大众', '丰田', '本田', '别克', '奥迪', '宝马', '奔驰', '日产', '现代', '其他']
-    counts = [random.randint(20, 80) for _ in brands]
-    return [{'brand': b, 'count': c} for b, c in zip(brands, counts)]
+def _get_threshold_defaults():
+    with get_query_service() as svc:
+        configs = svc.get_threshold_config()
+    return [{
+        "key": c['config_key'],
+        "name": c['config_name'],
+        "value": c['config_value'],
+        "type": c['config_type'],
+        "category": c['category'],
+        "desc": c['description']
+    } for c in configs]
 
 
-def generate_mock_diagnosis_data():
-    categories = ['动力系统', '车身系统', '底盘系统', '网络通讯', '电池管理', '电机控制', '其他']
-    severities = ['严重', '中等', '轻微']
-    data = []
-    for cat in categories:
-        for sev in severities:
-            data.append({
-                '故障类别': cat,
-                '严重程度': sev,
-                '数量': random.randint(1, 20),
-            })
-    return pd.DataFrame(data)
-
-
-def generate_mock_order_item_data():
-    types = ['常规保养', '故障维修', '事故维修', '检测诊断', '改装升级']
-    data = []
-    for t in types:
-        count = random.randint(10, 100)
-        data.append({
-            '项目类型': t,
-            '数量': count,
-            '总金额': count * random.uniform(300, 1500),
-        })
-    return pd.DataFrame(data)
-
-
-def generate_mock_rework_trend(start_date: date, end_date: date):
-    dates = pd.date_range(start=start_date, end=end_date, freq='W')
-    data = []
-    for d in dates:
-        data.append({
-            'date': d.date(),
-            'rework_rate': round(random.uniform(2, 7), 2),
-        })
-    return data
-
-
-def generate_mock_rework_reasons():
-    reasons = [
-        {'rework_type': '配件相关', 'count': random.randint(5, 15)},
-        {'rework_type': '工艺相关', 'count': random.randint(3, 10)},
-        {'rework_type': '诊断相关', 'count': random.randint(2, 8)},
-        {'rework_type': '客户相关', 'count': random.randint(1, 5)},
-        {'rework_type': '其他', 'count': random.randint(1, 4)},
-    ]
-    return reasons
-
-
-def generate_mock_parts_shortage():
-    parts = [
-        {'part_code': 'P001', 'part_name': '前刹车片', 'shortage_count': random.randint(5, 20), 'shortage_qty': random.randint(10, 50)},
-        {'part_code': 'P002', 'part_name': '机油滤芯', 'shortage_count': random.randint(3, 15), 'shortage_qty': random.randint(20, 80)},
-        {'part_code': 'P003', 'part_name': '空气滤芯', 'shortage_count': random.randint(3, 12), 'shortage_qty': random.randint(15, 60)},
-        {'part_code': 'P004', 'part_name': '火花塞', 'shortage_count': random.randint(2, 10), 'shortage_qty': random.randint(10, 40)},
-        {'part_code': 'P005', 'part_name': '蓄电池', 'shortage_count': random.randint(2, 8), 'shortage_qty': random.randint(5, 25)},
-        {'part_code': 'P006', 'part_name': '轮胎', 'shortage_count': random.randint(1, 7), 'shortage_qty': random.randint(5, 20)},
-        {'part_code': 'P007', 'part_name': '雨刮片', 'shortage_count': random.randint(5, 18), 'shortage_qty': random.randint(30, 100)},
-        {'part_code': 'P008', 'part_name': '变速箱油', 'shortage_count': random.randint(1, 6), 'shortage_qty': random.randint(8, 30)},
-        {'part_code': 'P009', 'part_name': '刹车油', 'shortage_count': random.randint(2, 9), 'shortage_qty': random.randint(12, 45)},
-        {'part_code': 'P010', 'part_name': '空调滤芯', 'shortage_count': random.randint(4, 14), 'shortage_qty': random.randint(20, 70)},
-    ]
-    return parts
-
-
-def generate_mock_orders_detail(start_date: date, end_date: date) -> pd.DataFrame:
-    dates = pd.date_range(start=start_date, end=end_date, freq='D')
-    data = []
-    order_types = ['常规保养', '故障维修', '事故维修', '检测诊断']
-    statuses = ['已完成', '进行中', '待处理']
-    brands = ['大众', '丰田', '本田', '别克', '奥迪']
-    advisors = ['张三', '李四', '王五', '赵六']
-    technicians = ['技师A', '技师B', '技师C', '技师D']
-
-    order_no = 1000
-    for d in dates:
-        daily_count = random.randint(15, 30)
-        for i in range(daily_count):
-            order_no += 1
-            is_rework = random.random() < 0.05
-            data.append({
-                '工单号': f'WO{order_no}',
-                '预约日期': d.date(),
-                '到店日期': d.date() if random.random() > 0.1 else None,
-                '工单类型': random.choice(order_types),
-                '状态': random.choice(statuses),
-                '车牌号': f'京A{random.randint(10000, 99999)}',
-                '品牌': random.choice(brands),
-                '车型': f'{random.choice(brands)}A6L',
-                '服务顾问': random.choice(advisors),
-                '技师': random.choice(technicians),
-                '总金额': round(random.uniform(300, 5000), 2),
-                '是否返修': '是' if is_rework else '否',
-            })
-    return pd.DataFrame(data)
+def _get_caliber_versions():
+    with get_query_service() as svc:
+        versions = svc.get_caliber_versions()
+    result = {}
+    for v in versions:
+        result[v['version_code']] = {
+            "name": v['version_name'],
+            "description": v['description'],
+            "formula": v['definition_formula'],
+            "change_reason": v['change_reason'],
+            "effective_date": v['effective_date'].isoformat() if v['effective_date'] else "",
+            "is_active": v['is_active']
+        }
+    return result
 
 
 @app.callback(
@@ -195,21 +80,70 @@ def update_overview(start_date, end_date, n_clicks, n_intervals):
     start = date.fromisoformat(start_date)
     end = date.fromisoformat(end_date)
 
-    df = generate_mock_appointment_data(start, end)
+    with get_query_service() as svc:
+        df = svc.get_appointment_trend(start, end)
+        rework_info = svc.get_rework_rate(start, end)
+        shortage_info = svc.get_parts_shortage_stats(start, end)
 
-    total_appointments = int(df['预约量'].sum())
-    total_arrivals = int(df['到店量'].sum())
+    if df.empty:
+        df = pd.DataFrame(columns=['date', '预约量', '到店量', '到店率', '总金额'])
+
+    total_appointments = int(df['预约量'].sum()) if not df.empty else 0
+    total_arrivals = int(df['到店量'].sum()) if not df.empty else 0
     arrival_rate = round(total_arrivals / total_appointments * 100, 1) if total_appointments > 0 else 0
 
-    rework_rate = round(random.uniform(3, 6), 2)
-    shortage_rate = round(random.uniform(1, 4), 2)
+    rework_rate = rework_info.get('rework_rate', 0)
+    shortage_rate = shortage_info.get('shortage_rate', 0)
 
-    appointment_trend = "↑ 较上期增长 5.2%"
-    arrival_trend = "↑ 较上期增长 2.1%"
-    rework_trend = "↓ 较上期下降 0.3%"
-    rework_trend_color = "text-success"
-    shortage_trend = "↑ 较上期上升 0.5%"
-    shortage_trend_color = "text-danger"
+    prev_start = start - (end - start)
+    prev_end = start - timedelta(days=1)
+
+    try:
+        with get_query_service() as svc_prev:
+            prev_df = svc_prev.get_appointment_trend(prev_start, prev_end)
+            prev_rework = svc_prev.get_rework_rate(prev_start, prev_end)
+            prev_shortage = svc_prev.get_parts_shortage_stats(prev_start, prev_end)
+
+        prev_appointments = int(prev_df['预约量'].sum()) if not prev_df.empty else 0
+        prev_arrivals = int(prev_df['到店量'].sum()) if not prev_df.empty else 0
+        prev_arrival_rate = round(prev_arrivals / prev_appointments * 100, 1) if prev_appointments > 0 else 0
+        prev_rework_rate = prev_rework.get('rework_rate', 0)
+        prev_shortage_rate = prev_shortage.get('shortage_rate', 0)
+
+        if prev_appointments > 10:
+            appt_change = (total_appointments - prev_appointments) / prev_appointments * 100
+            appointment_trend = f"{'↑' if appt_change >= 0 else '↓'} 较上期 {abs(appt_change):.1f}%"
+        else:
+            appointment_trend = "— 上期数据不足"
+
+        if prev_arrival_rate > 0:
+            arrival_change = arrival_rate - prev_arrival_rate
+            arrival_trend = f"{'↑' if arrival_change >= 0 else '↓'} 较上期 {abs(arrival_change):.1f}%"
+        else:
+            arrival_trend = "— 上期数据不足"
+
+        if prev_rework_rate > 0:
+            rework_change = rework_rate - prev_rework_rate
+            rework_trend = f"{'↑' if rework_change >= 0 else '↓'} 较上期 {abs(rework_change):.2f}%"
+            rework_trend_color = "text-success" if rework_change <= 0 else "text-danger"
+        else:
+            rework_trend = "— 上期数据不足"
+            rework_trend_color = "text-muted"
+
+        if prev_shortage_rate > 0:
+            shortage_change = shortage_rate - prev_shortage_rate
+            shortage_trend = f"{'↑' if shortage_change >= 0 else '↓'} 较上期 {abs(shortage_change):.2f}%"
+            shortage_trend_color = "text-danger" if shortage_change >= 0 else "text-success"
+        else:
+            shortage_trend = "— 上期数据不足"
+            shortage_trend_color = "text-muted"
+    except Exception as e:
+        appointment_trend = "— 上期数据不足"
+        arrival_trend = "— 上期数据不足"
+        rework_trend = "— 上期数据不足"
+        rework_trend_color = "text-muted"
+        shortage_trend = "— 上期数据不足"
+        shortage_trend_color = "text-muted"
 
     fig = create_appointment_trend_chart(df)
 
@@ -235,34 +169,33 @@ def update_overview(start_date, end_date, n_clicks, n_intervals):
      Input('btn-refresh', 'n_clicks')]
 )
 def update_vehicles_tab(start_date, end_date, n_clicks):
-    brand_data = generate_mock_vehicle_data()
-    age_data = [
-        {'age_group': '0-2年', 'count': 45},
-        {'age_group': '2-5年', 'count': 78},
-        {'age_group': '5-8年', 'count': 56},
-        {'age_group': '8年以上', 'count': 23},
-    ]
+    if not start_date or not end_date:
+        return {}, {}, html.Div()
 
+    start = date.fromisoformat(start_date)
+    end = date.fromisoformat(end_date)
+
+    with get_query_service() as svc:
+        vehicle_stats = svc.get_vehicle_stats(start, end)
+        age_data = svc.get_vehicle_age_distribution()
+        detail_df = svc.get_vehicles_detail(start, end)
+
+    brand_data = vehicle_stats.get('brand_distribution', [])
     brand_fig = create_vehicle_brand_chart(brand_data)
     age_fig = create_vehicle_age_chart(age_data)
 
-    detail_df = pd.DataFrame([
-        {'车牌号': '京A12345', '品牌': '大众', '车型': '迈腾', '车龄': 3,
-         '里程': 45000, '车主': '张三', '末次进厂': '2024-01-15'},
-        {'车牌号': '京B67890', '品牌': '丰田', '车型': '凯美瑞', '车龄': 5,
-         '里程': 82000, '车主': '李四', '末次进厂': '2024-01-10'},
-        {'车牌号': '京C11111', '品牌': '本田', '车型': '雅阁', '车龄': 2,
-         '里程': 28000, '车主': '王五', '末次进厂': '2024-01-18'},
-    ])
-
-    detail_table = dash_table.DataTable(
-        data=detail_df.to_dict('records'),
-        columns=[{'name': col, 'id': col} for col in detail_df.columns],
-        page_size=10,
-        style_table={'overflowX': 'auto'},
-        style_cell={'textAlign': 'left', 'padding': '8px'},
-        style_header={'backgroundColor': '#f8f9fa', 'fontWeight': 'bold'},
-    )
+    if detail_df.empty:
+        detail_table = html.Div("暂无车辆数据", className="text-center text-muted p-4")
+    else:
+        detail_table = dash_table.DataTable(
+            data=detail_df.to_dict('records'),
+            columns=[{'name': col, 'id': col} for col in detail_df.columns],
+            page_size=10,
+            style_table={'overflowX': 'auto'},
+            style_cell={'textAlign': 'left', 'padding': '8px'},
+            style_header={'backgroundColor': '#f8f9fa', 'fontWeight': 'bold'},
+            sort_action='native',
+        )
 
     return brand_fig, age_fig, detail_table
 
@@ -289,28 +222,31 @@ def toggle_vehicle_detail(n_clicks, current_style):
      Input('btn-refresh', 'n_clicks')]
 )
 def update_diagnosis_tab(start_date, end_date, n_clicks):
-    df = generate_mock_diagnosis_data()
+    if not start_date or not end_date:
+        return {}, {}, html.Div()
+
+    start = date.fromisoformat(start_date)
+    end = date.fromisoformat(end_date)
+
+    with get_query_service() as svc:
+        df = svc.get_diagnosis_stats(start, end)
+        detail_df = svc.get_diagnosis_detail(start, end)
 
     category_fig = create_diagnosis_category_chart(df)
     severity_fig = create_diagnosis_severity_chart(df)
 
-    detail_df = pd.DataFrame([
-        {'工单号': 'WO1001', '故障码': 'P0123', '故障描述': '节气门位置传感器故障',
-         '故障类别': '动力系统', '严重程度': '中等', '技师': '技师A'},
-        {'工单号': 'WO1002', '故障码': 'B0456', '故障描述': '左前车窗电机故障',
-         '故障类别': '车身系统', '严重程度': '轻微', '技师': '技师B'},
-        {'工单号': 'WO1003', '故障码': 'C0789', '故障描述': 'ABS传感器故障',
-         '故障类别': '底盘系统', '严重程度': '严重', '技师': '技师C'},
-    ])
-
-    detail_table = dash_table.DataTable(
-        data=detail_df.to_dict('records'),
-        columns=[{'name': col, 'id': col} for col in detail_df.columns],
-        page_size=10,
-        style_table={'overflowX': 'auto'},
-        style_cell={'textAlign': 'left', 'padding': '8px'},
-        style_header={'backgroundColor': '#f8f9fa', 'fontWeight': 'bold'},
-    )
+    if detail_df.empty:
+        detail_table = html.Div("暂无诊断数据", className="text-center text-muted p-4")
+    else:
+        detail_table = dash_table.DataTable(
+            data=detail_df.to_dict('records'),
+            columns=[{'name': col, 'id': col} for col in detail_df.columns],
+            page_size=10,
+            style_table={'overflowX': 'auto'},
+            style_cell={'textAlign': 'left', 'padding': '8px'},
+            style_header={'backgroundColor': '#f8f9fa', 'fontWeight': 'bold'},
+            sort_action='native',
+        )
 
     return category_fig, severity_fig, detail_table
 
@@ -337,29 +273,37 @@ def toggle_diagnosis_detail(n_clicks, current_style):
      Input('btn-refresh', 'n_clicks')]
 )
 def update_orders_tab(start_date, end_date, n_clicks):
-    df = generate_mock_order_item_data()
+    if not start_date or not end_date:
+        return {}, {}, html.Div()
+
+    start = date.fromisoformat(start_date)
+    end = date.fromisoformat(end_date)
+
+    with get_query_service() as svc:
+        df = svc.get_order_item_stats(start, end)
+        detail_df = svc.get_repair_orders_detail(start, end)
 
     type_fig = create_order_type_chart(df)
     amount_fig = create_order_amount_chart(df)
 
-    start = date.fromisoformat(start_date) if start_date else date.today()
-    end = date.fromisoformat(end_date) if end_date else date.today()
-    detail_df = generate_mock_orders_detail(start, end)
-
-    detail_table = dash_table.DataTable(
-        data=detail_df.to_dict('records'),
-        columns=[{'name': col, 'id': col} for col in detail_df.columns],
-        page_size=15,
-        style_table={'overflowX': 'auto'},
-        style_cell={'textAlign': 'left', 'padding': '8px'},
-        style_header={'backgroundColor': '#f8f9fa', 'fontWeight': 'bold'},
-        style_data_conditional=[
-            {
-                'if': {'filter_query': '{是否返修} = "是"'},
-                'backgroundColor': '#fef2f2',
-            }
-        ],
-    )
+    if detail_df.empty:
+        detail_table = html.Div("暂无工单数据", className="text-center text-muted p-4")
+    else:
+        detail_table = dash_table.DataTable(
+            data=detail_df.to_dict('records'),
+            columns=[{'name': col, 'id': col} for col in detail_df.columns],
+            page_size=15,
+            style_table={'overflowX': 'auto'},
+            style_cell={'textAlign': 'left', 'padding': '8px'},
+            style_header={'backgroundColor': '#f8f9fa', 'fontWeight': 'bold'},
+            style_data_conditional=[
+                {
+                    'if': {'filter_query': '{是否返修} = "是"'},
+                    'backgroundColor': '#fef2f2',
+                }
+            ],
+            sort_action='native',
+        )
 
     return type_fig, amount_fig, detail_table
 
@@ -387,32 +331,35 @@ def toggle_order_detail(n_clicks, current_style):
      Input('btn-refresh', 'n_clicks')]
 )
 def update_rework_tab(start_date, end_date, caliber_version, n_clicks):
-    start = date.fromisoformat(start_date) if start_date else date.today()
-    end = date.fromisoformat(end_date) if end_date else date.today()
+    if not start_date or not end_date:
+        return {}, {}, html.Div()
 
-    trend_data = generate_mock_rework_trend(start, end)
-    reason_data = generate_mock_rework_reasons()
+    start = date.fromisoformat(start_date)
+    end = date.fromisoformat(end_date)
+
+    if not caliber_version:
+        caliber_version = 'v1.0'
+
+    with get_query_service() as svc:
+        trend_data = svc.get_rework_trend(start, end, caliber_version)
+        reason_data = svc.get_rework_reason_stats(start, end, caliber_version)
+        detail_df = svc.get_rework_detail(start, end, caliber_version)
 
     trend_fig = create_rework_trend_chart(trend_data)
     reason_fig = create_rework_reason_chart(reason_data)
 
-    detail_df = pd.DataFrame([
-        {'返修工单号': 'WO1050', '原始工单号': 'WO1020', '车牌号': '京A12345',
-         '返修原因': '配件质量问题', '返修类型': '配件相关', '返修日期': '2024-01-20',
-         '口径版本': caliber_version},
-        {'返修工单号': 'WO1051', '原始工单号': 'WO1025', '车牌号': '京B67890',
-         '返修原因': '安装工艺问题', '返修类型': '工艺相关', '返修日期': '2024-01-18',
-         '口径版本': caliber_version},
-    ])
-
-    detail_table = dash_table.DataTable(
-        data=detail_df.to_dict('records'),
-        columns=[{'name': col, 'id': col} for col in detail_df.columns],
-        page_size=10,
-        style_table={'overflowX': 'auto'},
-        style_cell={'textAlign': 'left', 'padding': '8px'},
-        style_header={'backgroundColor': '#f8f9fa', 'fontWeight': 'bold'},
-    )
+    if detail_df.empty:
+        detail_table = html.Div("暂无返修数据", className="text-center text-muted p-4")
+    else:
+        detail_table = dash_table.DataTable(
+            data=detail_df.to_dict('records'),
+            columns=[{'name': col, 'id': col} for col in detail_df.columns],
+            page_size=10,
+            style_table={'overflowX': 'auto'},
+            style_cell={'textAlign': 'left', 'padding': '8px'},
+            style_header={'backgroundColor': '#f8f9fa', 'fontWeight': 'bold'},
+            sort_action='native',
+        )
 
     return trend_fig, reason_fig, detail_table
 
@@ -426,23 +373,36 @@ def update_rework_tab(start_date, end_date, caliber_version, n_clicks):
      Input('btn-refresh', 'n_clicks')]
 )
 def update_parts_tab(start_date, end_date, refresh_clicks):
-    parts_data = generate_mock_parts_shortage()
-    shortage_fig = create_parts_shortage_chart(parts_data)
-    corr_fig = create_parts_rework_correlation_chart()
+    if not start_date or not end_date:
+        return {}, {}, html.Div()
 
-    parts_df = pd.DataFrame(parts_data)
-    parts_table = dash_table.DataTable(
-        data=parts_df.to_dict('records'),
-        columns=[{'name': '配件编码', 'id': 'part_code'},
-                 {'name': '配件名称', 'id': 'part_name'},
-                 {'name': '缺货次数', 'id': 'shortage_count'},
-                 {'name': '缺货数量', 'id': 'shortage_qty'}],
-        page_size=10,
-        style_table={'overflowX': 'auto'},
-        style_cell={'textAlign': 'left', 'padding': '8px'},
-        style_header={'backgroundColor': '#f8f9fa', 'fontWeight': 'bold'},
-        sort_action='native',
-    )
+    start = date.fromisoformat(start_date)
+    end = date.fromisoformat(end_date)
+
+    with get_query_service() as svc:
+        shortage_info = svc.get_parts_shortage_stats(start, end)
+        correlation_data = svc.get_parts_rework_correlation(start, end)
+
+    parts_data = shortage_info.get('top_shortage_parts', [])
+    shortage_fig = create_parts_shortage_chart(parts_data)
+    corr_fig = create_parts_rework_correlation_chart(correlation_data)
+
+    if not parts_data:
+        parts_table = html.Div("暂无配件缺货数据", className="text-center text-muted p-4")
+    else:
+        parts_df = pd.DataFrame(parts_data)
+        parts_table = dash_table.DataTable(
+            data=parts_df.to_dict('records'),
+            columns=[{'name': '配件编码', 'id': 'part_code'},
+                     {'name': '配件名称', 'id': 'part_name'},
+                     {'name': '缺货次数', 'id': 'shortage_count'},
+                     {'name': '缺货数量', 'id': 'shortage_qty'}],
+            page_size=10,
+            style_table={'overflowX': 'auto'},
+            style_cell={'textAlign': 'left', 'padding': '8px'},
+            style_header={'backgroundColor': '#f8f9fa', 'fontWeight': 'bold'},
+            sort_action='native',
+        )
 
     return shortage_fig, corr_fig, parts_table
 
@@ -499,10 +459,27 @@ def save_threshold_config(save_clicks, input_values, input_ids, current_data):
     for i, inp_id in enumerate(input_ids):
         if inp_id.get('index') == threshold_key:
             new_value = input_values[i]
-            current_data[threshold_key] = str(new_value) if new_value is not None else current_data[threshold_key]
+            if new_value is not None:
+                str_value = str(new_value)
+
+                with get_query_service() as svc:
+                    success = svc.update_threshold_config(
+                        config_key=threshold_key,
+                        config_value=str_value,
+                        updated_by="dashboard_user"
+                    )
+
+                if success:
+                    current_data[threshold_key] = str_value
+                    toast_msg = f"阈值已保存：{threshold_key} = {str_value}"
+                else:
+                    toast_msg = f"保存失败：阈值配置不存在 - {threshold_key}"
+                    return current_data, True, toast_msg
+            else:
+                toast_msg = f"值不能为空"
+                return current_data, True, toast_msg
             break
 
-    toast_msg = f"阈值已更新：{threshold_key} = {current_data[threshold_key]}"
     return current_data, True, toast_msg
 
 
@@ -512,29 +489,37 @@ def save_threshold_config(save_clicks, input_values, input_ids, current_data):
 )
 def update_threshold_cards_from_store(threshold_data):
     cards = []
-    for th in THRESHOLD_DEFAULTS:
-        current_value = threshold_data.get(th['key'], th['value'])
+
+    with get_query_service() as svc:
+        configs = svc.get_threshold_config()
+
+    for c in configs:
+        current_value = threshold_data.get(c['config_key'], c['config_value'])
         card = dbc.Col(
             dbc.Card([
-                dbc.CardHeader(html.Strong(th['name'])),
+                dbc.CardHeader(html.Strong(c['config_name'])),
                 dbc.CardBody([
                     html.H4(current_value, className="text-primary mb-2"),
-                    html.P(th['desc'], className="text-muted small mb-2"),
+                    html.P(c['description'], className="text-muted small mb-2"),
                     dbc.Input(
-                        id={'type': 'threshold-input', 'index': th['key']},
-                        type=th['type'],
+                        id={'type': 'threshold-input', 'index': c['config_key']},
+                        type=c['config_type'],
                         value=current_value,
                         className="mb-2",
                         size="sm",
                     ),
                     dbc.Button(
                         "保存",
-                        id={'type': 'threshold-save', 'index': th['key']},
+                        id={'type': 'threshold-save', 'index': c['config_key']},
                         color="primary",
                         size="sm",
                     ),
                 ]),
-                dbc.CardFooter(html.Small(f"分类：{th['category']}", className="text-muted")),
+                dbc.CardFooter([
+                    html.Small(f"分类：{c['category']}", className="text-muted"),
+                    html.Br(),
+                    html.Small(f"上次更新：{c['updated_at'].strftime('%Y-%m-%d %H:%M') if c['updated_at'] else '未更新'}", className="text-muted"),
+                ]),
             ]),
             width=4,
         )
@@ -550,7 +535,8 @@ def update_caliber_options(caliber_data):
     versions = caliber_data.get('versions', {})
     options = []
     for code, info in versions.items():
-        label = f"{code} - {info['name']}"
+        active_marker = " (激活)" if info.get('is_active') else ""
+        label = f"{code} - {info['name']}{active_marker}"
         options.append({'label': label, 'value': code})
     return options
 
@@ -594,19 +580,24 @@ def update_caliber_info(caliber_version, caliber_data):
     State('caliber-store', 'data'),
 )
 def update_caliber_compare(start_date, end_date, caliber_data):
+    if not start_date or not end_date:
+        return {}
+
+    start = date.fromisoformat(start_date)
+    end = date.fromisoformat(end_date)
+
     versions = caliber_data.get('versions', {})
     compare_data = []
-    for code, info in versions.items():
-        if code == 'v1.0':
-            rate = 3.2
-        elif code == 'v1.1':
-            rate = 5.8
-        else:
-            rate = 4.0
-        compare_data.append({
-            'version': f"{code}\n({info.get('name', '')})",
-            'rate': rate
-        })
+
+    with get_query_service() as svc:
+        for code, info in versions.items():
+            rework_info = svc.get_rework_rate(start, end, caliber_version=code)
+            rate = rework_info.get('rework_rate', 0)
+            compare_data.append({
+                'version': f"{code}\n({info.get('name', '')})",
+                'rate': rate
+            })
+
     return create_caliber_compare_chart(compare_data)
 
 
@@ -620,72 +611,100 @@ def update_caliber_compare(start_date, end_date, caliber_data):
     State('caliber-version-selector', 'value'),
 )
 def generate_review_material(n_clicks, start_date, end_date, caliber_version):
+    if not start_date or not end_date:
+        return html.Div("请先选择日期范围"), False, ""
+
     if not caliber_version:
         caliber_version = 'v1.0'
 
-    review_materials = [
-        {
-            'title': '刹车片缺货专项复盘',
-            'date': '2024-01-15',
-            'type': '配件缺货',
-            'summary': '本月刹车片缺货导致3次延误，关联返修2单，建议增加安全库存',
-            'caliber': 'v1.0',
-            'status': '已完成',
-        },
-        {
-            'title': '火花塞质量问题返修分析',
-            'date': '2024-01-10',
-            'type': '配件质量',
-            'summary': '火花塞批次质量问题导致返修5单，已联系供应商处理',
-            'caliber': 'v1.0',
-            'status': '进行中',
-        },
-    ]
+    start = date.fromisoformat(start_date)
+    end = date.fromisoformat(end_date)
 
-    is_new = False
+    toast_open = False
     toast_msg = ""
 
     if n_clicks and n_clicks > 0:
-        is_new = True
+        with get_query_service() as svc:
+            rework_info = svc.get_rework_rate(start, end, caliber_version)
+            shortage_info = svc.get_parts_shortage_stats(start, end)
+            correlation = svc.get_parts_rework_correlation(start, end)
+
+            top_parts = shortage_info.get('top_shortage_parts', [])[:5]
+            related_part_codes = [p['part_code'] for p in top_parts]
+
+            total_rework = rework_info.get('rework_count', 0)
+            total_shortage = shortage_info.get('shortage_count', 0)
+            parts_related_rework = sum(c['rework_count'] for c in correlation[:5])
+
+            key_metrics = {
+                '总返修率': f"{rework_info.get('rework_rate', 0)}%",
+                '总返修工单': f"{total_rework}单",
+                '配件缺货次数': f"{total_shortage}次",
+                '配件相关返修': f"{parts_related_rework}单",
+                '口径版本': caliber_version
+            }
+
+            parts_desc = ', '.join([f'{p["part_name"]}({p["shortage_count"]}次)' for p in top_parts])
+            summary = (
+                f"基于{caliber_version}口径，分析{start_date}至{end_date}期间配件缺货与返修率的关联。"
+                f"本期返修率为{rework_info.get('rework_rate', 0)}%，共发生配件缺货{total_shortage}次，"
+                f"关联返修{parts_related_rework}单。"
+                f"Top缺货配件：{parts_desc}。"
+                f"建议：针对高频缺货配件增加安全库存。"
+            )
+
+            svc.create_review_material(
+                title=f'配件缺货返修复盘报告 ({start_date} ~ {end_date})',
+                summary=summary,
+                review_type='配件缺货',
+                caliber_version=caliber_version,
+                key_metrics=key_metrics,
+                related_part_codes=related_part_codes,
+                created_by='dashboard_user'
+            )
+
+        toast_open = True
         toast_msg = f"复盘材料已生成，口径版本：{caliber_version}"
-        new_report = {
-            'title': f'配件缺货返修复盘报告 ({start_date} ~ {end_date})',
-            'date': date.today().isoformat(),
-            'type': '配件缺货',
-            'summary': f'基于{caliber_version}口径，分析配件缺货与返修率的关联关系。'
-                       f'本月共发生配件缺货12次，关联返修3单，建议增加安全库存。',
-            'caliber': caliber_version,
-            'status': '已生成',
-        }
-        review_materials.insert(0, new_report)
+
+    with get_query_service() as svc:
+        review_materials = svc.get_review_materials()
 
     review_cards = []
     for rm in review_materials:
         status_color = 'success' if rm['status'] in ['已完成', '已生成'] else 'warning'
-        type_color = 'info' if rm['type'] == '配件缺货' else 'secondary'
+        type_color = 'info' if rm['review_type'] == '配件缺货' else 'secondary'
+        metrics_html = ""
+        if rm.get('key_metrics'):
+            metrics_parts = [f"{k}: {v}" for k, v in rm['key_metrics'].items()]
+            metrics_html = html.P(" | ".join(metrics_parts), className="text-info small mb-2")
+
         card = dbc.Card([
             dbc.CardBody([
                 dbc.Row([
                     dbc.Col([
                         html.H6(rm['title'], className="mb-1"),
+                        metrics_html,
                         html.P(rm['summary'], className="text-muted small mb-2"),
                         html.Div([
-                            dbc.Badge(rm['type'], color=type_color, className="me-2"),
-                            dbc.Badge(f"口径：{rm['caliber']}", color="secondary", className="me-2"),
+                            dbc.Badge(rm['review_type'], color=type_color, className="me-2"),
+                            dbc.Badge(f"口径：{rm['caliber_version']}", color="secondary", className="me-2"),
                             dbc.Badge(rm['status'], color=status_color),
                         ], className="small"),
                     ], width=10),
                     dbc.Col([
-                        html.Small(rm['date'], className="text-muted"),
+                        html.Small(rm['review_date'].isoformat(), className="text-muted"),
                         html.Br(),
-                        dbc.Button("查看详情", color="link", size="sm", className="p-0 mt-1"),
+                        html.Small(f"生成人：{rm.get('created_by', '')}", className="text-muted"),
                     ], width=2, className="text-end"),
                 ]),
             ])
         ], className="mb-2")
         review_cards.append(card)
 
-    return review_cards, is_new, toast_msg
+    if not review_cards:
+        review_cards = html.Div("暂无复盘材料", className="text-center text-muted p-4")
+
+    return review_cards, toast_open, toast_msg
 
 
 def register_callbacks():

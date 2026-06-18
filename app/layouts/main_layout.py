@@ -1,6 +1,37 @@
 from datetime import date, timedelta
 import dash_bootstrap_components as dbc
 from dash import dcc, html
+from data.queries import DataQueryService
+
+
+def _load_initial_data():
+    with DataQueryService() as svc:
+        configs = svc.get_threshold_config()
+        threshold_data = {}
+        for c in configs:
+            threshold_data[c['config_key']] = c['config_value']
+
+        versions = svc.get_caliber_versions()
+        caliber_versions = {}
+        active_version = 'v1.0'
+        for v in versions:
+            if v['is_active']:
+                active_version = v['version_code']
+            caliber_versions[v['version_code']] = {
+                'name': v['version_name'],
+                'description': v['description'],
+                'formula': v['definition_formula'],
+                'change_reason': v['change_reason'],
+                'effective_date': v['effective_date'].isoformat() if v['effective_date'] else '',
+                'is_active': v['is_active']
+            }
+
+        caliber_data = {
+            'active': active_version,
+            'versions': caliber_versions
+        }
+
+    return threshold_data, caliber_data
 
 
 def create_header():
@@ -296,16 +327,19 @@ def create_thresholds_tab():
 
 
 def create_main_layout():
-    return dbc.Container([
-        dcc.Store(id='threshold-store', data={
+    try:
+        threshold_data, caliber_data = _load_initial_data()
+    except Exception as e:
+        print(f"Warning: Failed to load initial data from DB: {e}")
+        threshold_data = {
             'rework_rate_warning': '5',
             'rework_rate_critical': '8',
             'parts_shortage_rate': '3',
             'appointment_fill_rate': '85',
             'rework_window_days': '30',
             'safe_stock_days': '7',
-        }),
-        dcc.Store(id='caliber-store', data={
+        }
+        caliber_data = {
             'active': 'v1.0',
             'versions': {
                 'v1.0': {
@@ -314,6 +348,7 @@ def create_main_layout():
                     'formula': '返修率 = 返修工单数 / 总工单数 × 100%',
                     'effective_date': '2024-01-01',
                     'change_reason': '初始版本',
+                    'is_active': True,
                 },
                 'v1.1': {
                     'name': '扩大口径',
@@ -321,9 +356,14 @@ def create_main_layout():
                     'formula': '返修率 = 返修工单数(60天同类故障) / 总工单数 × 100%',
                     'effective_date': '2024-06-01',
                     'change_reason': '扩大返修判定窗口，细化故障分类',
+                    'is_active': False,
                 },
             }
-        }),
+        }
+
+    return dbc.Container([
+        dcc.Store(id='threshold-store', data=threshold_data),
+        dcc.Store(id='caliber-store', data=caliber_data),
         dbc.Toast(
             id="threshold-toast",
             header="操作成功",
