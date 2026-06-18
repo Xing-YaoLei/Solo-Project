@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "com.playfab.unitysdk": "file:com.playfab.unitysdk",
     "com.unity.2d.sprite": "1.0.0",
     "com.unity.addressables": "1.21.20",
     "com.unity.ide.rider": "3.0.27",
@@ -18,15 +19,6 @@
     "com.unity.modules.unitywebrequesttexture": "1.0.0",
     "com.unity.modules.unitywebrequestwww": "1.0.0"
   },
-  "scopedRegistries": [
-    {
-      "name": "PlayFab Unity SDK (可选：启用云端排行榜/存档时取消注释以下依赖)",
-      "url": "https://github.com/PlayFab/UnitySDK.git",
-      "scopes": [
-        "com.playfab"
-      ]
-    }
-  ],
   "testables": [
     "com.unity.addressables",
     "com.unity.textmeshpro"

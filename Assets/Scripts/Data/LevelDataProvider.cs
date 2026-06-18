@@ -5,6 +5,7 @@ using UnityEngine;
 #if USE_ADDRESSABLES
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
+using UnityEngine.ResourceManagement.ResourceLocations;
 #endif
 
 namespace UsedCarGame.Data
@@ -16,8 +17,85 @@ namespace UsedCarGame.Data
         private readonly Dictionary<string, AsyncOperationHandle> _activeHandles = new Dictionary<string, AsyncOperationHandle>();
 #endif
 
+        public static readonly List<string> BuiltInLevelAddresses = new List<string>
+        {
+            "Levels/Level_001",
+            "Levels/Level_002",
+            "Levels/Level_003"
+        };
+
         public event Action<string, LevelConfig> OnLevelLoaded;
         public event Action<string> OnLevelLoadFailed;
+        public event Action<List<string>> OnLevelAddressesDiscovered;
+
+        public IEnumerator DiscoverLevelAddresses(Action<List<string>> onComplete = null)
+        {
+            var addresses = new List<string>();
+
+#if USE_ADDRESSABLES
+            try
+            {
+                var handle = Addressables.LoadResourceLocationsAsync("Levels", typeof(LevelConfig));
+                yield return handle;
+
+                if (handle.Status == AsyncOperationStatus.Succeeded && handle.Result != null)
+                {
+                    foreach (var loc in handle.Result)
+                    {
+                        if (loc != null && !string.IsNullOrEmpty(loc.PrimaryKey))
+                        {
+                            addresses.Add(loc.PrimaryKey);
+                        }
+                    }
+                }
+
+                try { Addressables.Release(handle); } catch { }
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[LevelDataProvider] Addressables discover failed, using built-in list: {e.Message}");
+                addresses = new List<string>(BuiltInLevelAddresses);
+            }
+
+            if (addresses.Count == 0)
+            {
+                Debug.Log("[LevelDataProvider] No Addressables found, falling back to built-in list.");
+                addresses = new List<string>(BuiltInLevelAddresses);
+            }
+#else
+            yield return null;
+            addresses = new List<string>(BuiltInLevelAddresses);
+#endif
+
+#if USE_PLAYFAB
+            try
+            {
+                var pf = Core.ServiceLocator.Get<Services.IPlayFabService>();
+                if (pf != null && pf.IsLoggedIn)
+                {
+                    List<string> cloudAddresses = null;
+                    yield return pf.LoadCloudLevelList(list => cloudAddresses = list);
+                    if (cloudAddresses != null)
+                    {
+                        foreach (var addr in cloudAddresses)
+                        {
+                            if (!addresses.Contains(addr))
+                            {
+                                addresses.Add(addr);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[LevelDataProvider] PlayFab cloud addresses failed: {e.Message}");
+            }
+#endif
+
+            OnLevelAddressesDiscovered?.Invoke(addresses);
+            onComplete?.Invoke(addresses);
+        }
 
         public IEnumerator LoadLevel(string address, Action<LevelConfig> onComplete = null)
         {
@@ -28,7 +106,6 @@ namespace UsedCarGame.Data
             }
 
             LevelConfig result = null;
-            bool done = false;
 
 #if USE_ADDRESSABLES
             AsyncOperationHandle<LevelConfig> handle;
@@ -40,7 +117,6 @@ namespace UsedCarGame.Data
             {
                 Debug.LogWarning($"[LevelDataProvider] Addressables not available for {address}, using fallback. Error: {e.Message}");
                 result = LoadFallback(address);
-                done = true;
                 yield break;
             }
 
@@ -86,6 +162,10 @@ namespace UsedCarGame.Data
             if (address.EndsWith("Level_002") || address.EndsWith("level_002"))
             {
                 return SampleLevelFactory.CreateLevel_002();
+            }
+            if (address.EndsWith("Level_003") || address.EndsWith("level_003"))
+            {
+                return SampleLevelFactory.CreateLevel_003();
             }
 
             Debug.LogWarning($"[LevelDataProvider] No fallback for address: {address}");

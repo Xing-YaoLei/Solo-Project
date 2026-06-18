@@ -15,6 +15,7 @@ namespace UsedCarGame.UI
         [SerializeField] private TMP_Text loadingText;
 
         private readonly List<GameObject> _spawnedCards = new List<GameObject>();
+        private readonly Dictionary<string, LevelConfig> _discoveredLevels = new Dictionary<string, LevelConfig>();
 
         public override void Initialize()
         {
@@ -26,20 +27,59 @@ namespace UsedCarGame.UI
         {
             base.OnShow();
             ClearCards();
+            _discoveredLevels.Clear();
             StartCoroutine(LoadLevelCards());
         }
 
         private IEnumerator LoadLevelCards()
         {
-            if (loadingText != null) loadingText.gameObject.SetActive(true);
+            if (loadingText != null)
+            {
+                loadingText.gameObject.SetActive(true);
+                loadingText.text = "⌛ 正在加载关卡列表...";
+            }
 
-            yield return null;
+            var provider = ServiceLocator.Get<LevelDataProvider>();
+            if (provider == null)
+            {
+                Debug.LogError("[LevelSelectPanel] LevelDataProvider not found in ServiceLocator.");
+                if (loadingText != null) loadingText.text = "❌ 服务未就绪，请返回重试";
+                yield break;
+            }
 
-            var level1 = SampleLevelFactory.CreateLevel_001();
-            SpawnLevelCard(level1, "Levels/Level_001", highlight: true);
+            List<string> addresses = null;
+            yield return provider.DiscoverLevelAddresses(list => addresses = list);
 
-            var level2 = SampleLevelFactory.CreateLevel_002();
-            SpawnLevelCard(level2, "Levels/Level_002", highlight: false);
+            if (addresses == null || addresses.Count == 0)
+            {
+                Debug.LogWarning("[LevelSelectPanel] No levels discovered, using built-in fallback.");
+                addresses = new List<string>(LevelDataProvider.BuiltInLevelAddresses);
+            }
+
+            if (loadingText != null) loadingText.text = $"⌛ 加载关卡中 (0/{addresses.Count})...";
+
+            for (int i = 0; i < addresses.Count; i++)
+            {
+                var addr = addresses[i];
+                LevelConfig config = null;
+                yield return provider.LoadLevel(addr, cfg => config = cfg);
+
+                if (config != null)
+                {
+                    _discoveredLevels[addr] = config;
+                    bool isFirst = i == 0;
+                    SpawnLevelCard(config, addr, highlight: isFirst);
+
+                    if (loadingText != null)
+                    {
+                        loadingText.text = $"⌛ 加载关卡中 ({i + 1}/{addresses.Count})...";
+                    }
+                }
+                else
+                {
+                    Debug.LogWarning($"[LevelSelectPanel] Failed to load level: {addr}");
+                }
+            }
 
             if (loadingText != null) loadingText.gameObject.SetActive(false);
         }

@@ -71,15 +71,31 @@ com.unity.textmeshpro      (3.0+)
 com.playfab.playfabcampsdk (可选：用于 PlayFab 集成)
 ```
 
-### 3. 启用 PlayFab（可选）
+### 3. 启用 PlayFab（可选，用于云端排行榜/存档）
 
-安装 PlayFab SDK 后，点击菜单：
+项目已内置 PlayFab SDK 占位包 `Packages/com.playfab.unitysdk/`（仅含 package.json 和空 asmdef），
+确保 `manifest.json` 可正常解析。要接入真正的 PlayFab 服务，需替换为真实 SDK：
+
+**方式 A（推荐）：替换本地占位包为官方 UnityPackage**
+1. 删除 `Packages/com.playfab.unitysdk/` 目录
+2. 从 https://learn.microsoft.com/en-us/gaming/playfab/sdks/unity/quickstart 下载 `PlayFabAllSDK.unitypackage`
+3. 在 Unity 中双击导入，或 `Assets → Import Package → Custom Package...`
+4. 在 `manifest.json` 中移除 `"com.playfab.unitysdk": "file:com.playfab.unitysdk"` 行
+
+**方式 B：通过 UPM Git URL 安装**
+1. 删除 `Packages/com.playfab.unitysdk/` 目录
+2. 在 `manifest.json` 中将 `"com.playfab.unitysdk": "file:com.playfab.unitysdk"` 替换为：
+   `"com.playfab.unitysdk": "https://github.com/PlayFab/UnitySDK.git#upm"`
+3. 菜单 `Window → Package Manager` 确认安装成功
+
+**启用条件编译宏**
 
 ```
-UsedCarGame → Build → Add USE_PLAYFAB Scripting Define
+Edit → Project Settings → Player → Other Settings → Script Compilation
+添加：USE_PLAYFAB
 ```
 
-然后在启动场景或代码中调用：
+**初始化（可选）**
 
 ```csharp
 var pf = ServiceLocator.Get<IPlayFabService>();
@@ -87,7 +103,24 @@ yield return pf.Initialize("YOUR_TITLE_ID");
 yield return pf.Login();
 ```
 
-### 4. 创建示例关卡
+未启用 PlayFab 时，所有云端接口为 no-op，游戏完全本地运行。
+
+### 4. 关卡数据源
+
+关卡列表通过 `LevelDataProvider.DiscoverLevelAddresses()` 动态获取，优先级：
+
+1. **Addressables**（启用 `USE_ADDRESSABLES` 时）：扫描 `Levels` 标签下所有 LevelConfig 资产
+2. **PlayFab 云端**（启用 `USE_PLAYFAB` 时）：通过 `LoadCloudLevelList` 获取远程地址列表
+3. **Fallback**：使用 `LevelDataProvider.BuiltInLevelAddresses` 内置列表（Level_001 ~ Level_003）
+
+新增关卡只需：
+- 将 LevelConfig 资产放入 Addressables Group 并标记 `Levels` 标签，或
+- 在 PlayFab Title Data 的 `LevelAddresses` 中追加地址，或
+- 在 `LevelDataProvider.BuiltInLevelAddresses` 中追加地址并在 `SampleLevelFactory` 中添加对应工厂方法
+
+关卡选择页会自动发现并生成可点击卡片。
+
+### 5. 创建示例关卡
 
 点击菜单：
 
@@ -98,20 +131,16 @@ UsedCarGame → Levels → Create Sample Level 001
 会在 `Assets/AddressableAssets/Levels/` 下生成 `Level_001.asset`。  
 将其标记为 Addressable（地址建议设为 `Levels/Level_001`）。
 
-### 5. 构建 UI 预制体
+### 5. UI 预制体（可选：运行时自动构建）
 
-每个 `UIPanelBase` 子类需要对应的 GameObject，字段命名与脚本 SerializeField 一致。  
-推荐在 `Assets/Prefabs/UI/` 下创建：
+本项目使用 **RuntimeUIBuilder** 在启动时自动构建完整 UI，无需手动创建预制体。  
+打开 `Assets/Scenes/Boot.unity` 并按下 Play 即可直接运行。
 
-- MainMenuPanel.prefab
-- LevelSelectPanel.prefab
-- GameplayPanel.prefab（含四个 Tab：报价历史、金融资料、车辆档案、检测报告）
-- SettlementPanel.prefab（三栏：Speed / Errors / Consecutive）
-- ReviewPanel.prefab
-- SettingsPanel.prefab
-- PausePanel.prefab
+如需自定义 UI 样式，可在以下文件中修改布局代码：
 
-将这些 Prefab 拖入 `UIManager` 对应字段。
+- `Assets/Scripts/Systems/UIPanelBuilders.cs` — 主菜单 / 关卡选择 / 设置 / 暂停
+- `Assets/Scripts/Systems/GameplayPanelBuilder.cs` — 限时答题界面（四 Tab + 三决策按钮）
+- `Assets/Scripts/Systems/SettlementAndReviewBuilders.cs` — 结算页（速度/错误/连击三栏评级）+ 库存周转复盘页
 
 ### 6. 构建 WebGL
 

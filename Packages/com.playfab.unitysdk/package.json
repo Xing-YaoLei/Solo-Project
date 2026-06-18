@@ -1,0 +1,8 @@
+{
+  "name": "com.playfab.unitysdk",
+  "version": "0.0.1-placeholder",
+  "displayName": "PlayFab SDK (Placeholder)",
+  "description": "Placeholder stub for PlayFab SDK. Replace with the real SDK via one of: (A) Import PlayFabAllSDK.unitypackage from https://learn.microsoft.com/en-us/gaming/playfab/sdks/unity/quickstart, (B) Add git URL https://github.com/PlayFab/UnitySDK.git#upm via Package Manager, or (C) Delete this folder and extract the real SDK to Packages/com.playfab.unitysdk/. Then add USE_PLAYFAB to Player Settings scripting defines.",
+  "unity": "2022.3",
+  "dependencies": {}
+}
