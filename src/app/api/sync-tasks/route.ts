@@ -3,7 +3,8 @@ import { getSyncTasks, executeSyncTask } from "@/lib/dataService";
 import { SyncTaskType } from "@/lib/constants";
 
 export async function GET() {
-  return NextResponse.json({ tasks: getSyncTasks() });
+  const tasks = await getSyncTasks();
+  return NextResponse.json({ tasks });
 }
 
 export async function POST(request: Request) {
