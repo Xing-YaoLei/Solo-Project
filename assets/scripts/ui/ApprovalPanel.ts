@@ -51,6 +51,8 @@ export class ApprovalPanel extends UIBase {
         this.registerInput('select_2', () => this.selectChoice(1));
         this.registerInput('select_3', () => this.selectChoice(2));
         this.registerInput('select_4', () => this.selectChoice(3));
+
+        this.bindButtonClick(this.continueButton, this.onContinueClicked.bind(this));
     }
 
     private onPhaseChanged(phase: string): void {

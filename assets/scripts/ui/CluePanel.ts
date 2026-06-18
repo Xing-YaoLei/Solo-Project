@@ -36,6 +36,9 @@ export class CluePanel extends UIBase {
         this.registerInput('down', this.onInputDown.bind(this));
         this.registerInput('confirm', this.onInputConfirm.bind(this));
         this.registerInput('next', this.onInputNext.bind(this));
+
+        this.bindButtonClick(this.continueButton, this.onContinueClicked.bind(this));
+        this.bindButtonClick(this.toDocumentButton, this.onContinueClicked.bind(this));
     }
 
     private onGameStart(levelConfig: any): void {

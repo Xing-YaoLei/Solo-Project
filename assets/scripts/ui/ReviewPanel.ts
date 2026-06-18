@@ -28,6 +28,7 @@ export class ReviewPanel extends UIBase {
 
     onStart(): void {
         this.on(GameEvents.PHASE_CHANGED, this.onPhaseChanged.bind(this));
+        this.bindButtonClick(this.backButton, this.onBackClicked.bind(this));
     }
 
     private onPhaseChanged(phase: string): void {

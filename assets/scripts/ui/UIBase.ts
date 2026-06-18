@@ -138,4 +138,12 @@ export class UIBase extends Component {
             })
             .start();
     }
+
+    protected bindButtonClick(buttonNode: Node | null, handler: () => void): void {
+        if (!buttonNode) return;
+        buttonNode.on(Node.EventType.TOUCH_END, (event: any) => {
+            event.stopPropagation();
+            handler();
+        }, this);
+    }
 }

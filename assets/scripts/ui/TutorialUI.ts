@@ -38,6 +38,10 @@ export class TutorialUI extends UIBase {
         this.registerInput('next', this.onNextClicked.bind(this));
         this.registerInput('prev', this.onPrevClicked.bind(this));
         this.registerInput('cancel', this.onCloseClicked.bind(this));
+
+        this.bindButtonClick(this.prevButton, this.onPrevClicked.bind(this));
+        this.bindButtonClick(this.nextButton, this.onNextClicked.bind(this));
+        this.bindButtonClick(this.closeButton, this.onCloseClicked.bind(this));
     }
 
     private onShowTutorial(): void {

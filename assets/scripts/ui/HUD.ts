@@ -39,6 +39,9 @@ export class HUD extends UIBase {
 
         this.registerInput('pause', this.onPauseToggle.bind(this));
         this.registerInput('menu', this.onMenuClicked.bind(this));
+
+        this.bindButtonClick(this.pauseButton, this.onPauseClicked.bind(this));
+        this.bindButtonClick(this.menuButton, this.onMenuClicked.bind(this));
     }
 
     private onGameStart(levelConfig: any): void {

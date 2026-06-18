@@ -35,6 +35,7 @@ export class LevelSelectPanel extends UIBase {
         this.on(GameEvents.LEVEL_UNLOCKED, this.onLevelUnlocked.bind(this));
 
         this.registerInput('cancel', this.onBackClicked.bind(this));
+        this.bindButtonClick(this.backButton, this.onBackClicked.bind(this));
     }
 
     private onShowPanel(): void {

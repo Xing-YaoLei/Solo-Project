@@ -35,6 +35,11 @@ export class MainMenu extends UIBase {
 
     onStart(): void {
         this.registerInput('confirm', this.onStartGame.bind(this));
+
+        this.bindButtonClick(this.startButton, this.onStartClicked.bind(this));
+        this.bindButtonClick(this.levelSelectButton, this.onLevelSelectClicked.bind(this));
+        this.bindButtonClick(this.leaderboardButton, this.onLeaderboardClicked.bind(this));
+        this.bindButtonClick(this.tutorialButton, this.onTutorialClicked.bind(this));
     }
 
     onShow(): void {

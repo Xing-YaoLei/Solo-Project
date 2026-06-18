@@ -1,5 +1,7 @@
-import { _decorator, Component, Node, TiledMap, TiledLayer, TiledObjectGroup, Vec3, UITransform } from 'cc';
+import { _decorator, Component, Node, TiledMap, TiledLayer, TiledObjectGroup, Vec3, UITransform, resources, TiledMapAsset, JsonAsset, log, error } from 'cc';
 import { TiledMapData } from '../core/LevelTypes';
+import { GameManager } from '../managers/GameManager';
+import { EventManager, GameEvents } from '../utils/EventManager';
 
 const { ccclass, property } = _decorator;
 
@@ -18,9 +20,44 @@ export class TiledMapController extends Component {
     private _currentLevelId: string = '';
 
     onLoad(): void {
+        EventManager.instance.on(GameEvents.GAME_START, this._onGameStart.bind(this));
     }
 
     start(): void {
+    }
+
+    private _onGameStart(levelConfig: any): void {
+        if (!levelConfig) return;
+        const tiledMapPath = levelConfig.tiledMap || levelConfig.mapData?.mapFile;
+        if (tiledMapPath) {
+            this.loadTiledMap(tiledMapPath);
+        }
+        if (levelConfig.mapData) {
+            this.setMap(levelConfig.id, levelConfig.mapData);
+        }
+        if (this.playerNode) {
+            const spawn = levelConfig.mapData?.spawnPoints?.[0];
+            if (spawn) {
+                this.movePlayerTo(spawn.x, spawn.y);
+            }
+        }
+        this.node.active = true;
+    }
+
+    public loadTiledMap(resourcePath: string): void {
+        const tmxPath = resourcePath.replace(/^tiled\//, 'tiled/');
+
+        resources.load(tmxPath, TiledMapAsset, (err: Error | null, tmxAsset: TiledMapAsset) => {
+            if (err) {
+                error(`[TiledMapController] Failed to load TMX: ${tmxPath}`, err);
+                return;
+            }
+            if (this.tiledMap) {
+                this.tiledMap.tmxAsset = tmxAsset;
+                this.applyScale();
+                log(`[TiledMapController] Loaded TMX: ${tmxPath}`);
+            }
+        });
     }
 
     public setMap(levelId: string, mapData: TiledMapData): void {

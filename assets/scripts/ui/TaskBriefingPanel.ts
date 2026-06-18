@@ -34,6 +34,7 @@ export class TaskBriefingPanel extends UIBase {
         this.on(GameEvents.PHASE_CHANGED, this.onPhaseChanged.bind(this));
 
         this.registerInput('confirm', this.onStartClicked.bind(this));
+        this.bindButtonClick(this.startButton, this.onStartClicked.bind(this));
     }
 
     private onGameStart(levelConfig: any): void {

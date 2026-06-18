@@ -141,20 +141,20 @@ async function main() {
 
   const creatorPath = findCocosCreator();
   if (!creatorPath) {
-    log('────────────────────────────────────────────');
-    log('[!] 未检测到 Cocos Creator 3.x 安装');
-    log('');
-    log('请选择以下任一方案：');
-    log('  1) 通过环境变量指定路径:');
-    log('     export COCOS_CREATOR_PATH="/path/to/CocosCreator"');
-    log('     然后再次运行 npm run build');
-    log('');
-    log('  2) 直接使用 Cocos Creator 3.8.x 打开项目目录，');
-    log('     点击菜单 "项目 → 构建发布" 进行可视化构建');
-    log('');
-    log('TypeScript 类型检查已通过，游戏脚本代码无错误 ✓');
-    log('────────────────────────────────────────────');
-    process.exit(0);
+    error('────────────────────────────────────────────');
+    error('未检测到 Cocos Creator 3.x 安装，无法生成构建产物！');
+    error('');
+    error('请选择以下任一方案：');
+    error('  1) 通过环境变量指定路径:');
+    error('     export COCOS_CREATOR_PATH="/path/to/CocosCreator"');
+    error('     然后再次运行 npm run build');
+    error('');
+    error('  2) 直接使用 Cocos Creator 3.8.x 打开项目目录，');
+    error('     点击菜单 "项目 → 构建发布" 进行可视化构建');
+    error('');
+    error('TypeScript 类型检查已通过，但构建产物未生成。');
+    error('────────────────────────────────────────────');
+    process.exit(1);
   }
 
   const results = [];

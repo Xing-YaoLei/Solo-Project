@@ -483,8 +483,10 @@ declare module 'cc' {
     screenToWorld(screenPos: Vec3, out?: Vec3): Vec3;
   }
 
+  export class TiledMapAsset extends Asset {}
+
   export class TiledMap extends Component {
-    tmxAsset: any;
+    tmxAsset: TiledMapAsset | null;
     enableCulling: boolean;
     getMapSize(): Size;
     getTileSize(): Size;

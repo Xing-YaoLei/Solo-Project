@@ -50,6 +50,8 @@ export class DocumentPanel extends UIBase {
         this.registerInput('select_4', () => this.onSelectNumber(4));
         this.registerInput('page_up', () => this.onPageUp());
         this.registerInput('page_down', () => this.onPageDown());
+
+        this.bindButtonClick(this.submitButton, this.onSubmitClicked.bind(this));
     }
 
     onShow(): void {
@@ -304,6 +306,10 @@ export class DocumentPanel extends UIBase {
 
     private onPhaseChanged(phase: string): void {
         if (phase === 'document_editing') {
+            const items = GameManager.instance.getDocumentItems();
+            const level = GameManager.instance.currentLevel;
+            const title = level ? `${level.name} - 报价单` : '报价单';
+            this.setDocument(items, title);
             this.show();
         } else {
             this.hide();

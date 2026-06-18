@@ -55,6 +55,11 @@ export class ResultPanel extends UIBase {
         this.registerInput('confirm', this.onInputConfirm.bind(this));
         this.registerInput('restart', this.onRestartClicked.bind(this));
         this.registerInput('cancel', this.onMenuClicked.bind(this));
+
+        this.bindButtonClick(this.restartButton, this.onRestartClicked.bind(this));
+        this.bindButtonClick(this.reviewButton, this.onReviewClicked.bind(this));
+        this.bindButtonClick(this.menuButton, this.onMenuClicked.bind(this));
+        this.bindButtonClick(this.nextLevelButton, this.onNextLevelClicked.bind(this));
     }
 
     private onPhaseChanged(phase: string): void {

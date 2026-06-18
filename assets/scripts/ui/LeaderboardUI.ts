@@ -39,6 +39,7 @@ export class LeaderboardUI extends UIBase {
     onStart(): void {
         this.on(GameEvents.UI_SHOW_LEADERBOARD, this.onShowLeaderboard.bind(this));
         this.registerInput('cancel', this.onBackClicked.bind(this));
+        this.bindButtonClick(this.backButton, this.onBackClicked.bind(this));
     }
 
     private onShowLeaderboard(): void {
