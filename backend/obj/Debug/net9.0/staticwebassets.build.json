@@ -1,0 +1,12 @@
+{
+  "Version": 1,
+  "Hash": "kVV353mWrRuwKh3NkpZIrBmz+TV96Rfd0t4BoHOF6vE=",
+  "Source": "CarServiceAppointment.API",
+  "BasePath": "_content/CarServiceAppointment.API",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": [],
+  "Endpoints": []
+}

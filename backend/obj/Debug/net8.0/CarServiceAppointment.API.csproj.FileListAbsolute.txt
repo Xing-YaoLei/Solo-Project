@@ -160,3 +160,5 @@
 /Users/yaoleyxing/Developer/solo-mange-pro/MP0347/backend/obj/Debug/net8.0/CarServiceAppointment.API.pdb
 /Users/yaoleyxing/Developer/solo-mange-pro/MP0347/backend/obj/Debug/net8.0/CarServiceAppointment.API.genruntimeconfig.cache
 /Users/yaoleyxing/Developer/solo-mange-pro/MP0347/backend/obj/Debug/net8.0/ref/CarServiceAppointment.API.dll
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0347/backend/bin/Debug/net8.0/Hangfire.InMemory.dll
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0347/backend/bin/Debug/net8.0/Microsoft.EntityFrameworkCore.InMemory.dll

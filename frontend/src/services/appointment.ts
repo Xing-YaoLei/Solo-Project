@@ -1,10 +1,5 @@
 import request from './request';
 import type { VehicleInfo, AppointmentSource } from '@/types';
-import { mockVehicles, mockAppointments } from '@/mock/data';
-
-const USE_MOCK = true;
-
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export interface CreateVehiclePayload {
   plateNumber: string;
@@ -27,271 +22,113 @@ export interface CreateAppointmentPayload {
 }
 
 export const vehicleApi = {
-  async getList(params?: { keyword?: string }): Promise<VehicleInfo[]> {
-    if (USE_MOCK) {
-      await delay(300);
-      let result = [...mockVehicles];
-      if (params?.keyword) {
-        const lower = params.keyword.toLowerCase();
-        result = result.filter(item =>
-          item.plateNumber.toLowerCase().includes(lower) ||
-          item.ownerName.includes(params.keyword!) ||
-          item.vinNumber.toLowerCase().includes(lower) ||
-          item.brand.includes(params.keyword!)
-        );
-      }
-      return result;
-    }
-    return request.get('/api/vehicles', { params });
+  getList(params?: { keyword?: string }): Promise<VehicleInfo[]> {
+    return request.get('/vehicles', { params });
   },
 
-  async getById(id: number): Promise<VehicleInfo | null> {
-    if (USE_MOCK) {
-      await delay(200);
-      return mockVehicles.find(v => v.id === id) || null;
-    }
-    return request.get(`/api/vehicles/${id}`);
+  getById(id: number): Promise<VehicleInfo> {
+    return request.get(`/vehicles/${id}`);
   },
 
-  async create(data: CreateVehiclePayload): Promise<VehicleInfo> {
-    if (USE_MOCK) {
-      await delay(300);
-      const newVehicle: VehicleInfo = {
-        id: Date.now(),
-        plateNumber: data.plateNumber,
-        vinNumber: data.vinNumber,
-        brand: data.brand,
-        model: data.model,
-        mileage: data.mileage,
-        ownerName: data.ownerName,
-        ownerPhone: data.ownerPhone,
-        lastMaintenanceDate: data.lastMaintenanceDate,
-        repairCount: 0,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      mockVehicles.push(newVehicle);
-      return newVehicle;
-    }
-    return request.post('/api/vehicles', data);
+  getByPlateNumber(plateNumber: string): Promise<VehicleInfo> {
+    return request.get(`/vehicles/by-plate/${encodeURIComponent(plateNumber)}`);
+  },
+
+  create(data: CreateVehiclePayload): Promise<VehicleInfo> {
+    return request.post('/vehicles', data);
+  },
+
+  update(id: number, data: Partial<CreateVehiclePayload>): Promise<VehicleInfo> {
+    return request.put(`/vehicles/${id}`, data);
+  },
+
+  remove(id: number): Promise<void> {
+    return request.delete(`/vehicles/${id}`);
   },
 };
 
 export const appointmentApi = {
-  async getList(params?: {
+  getList(params?: {
     status?: any;
     keyword?: string;
   }): Promise<any[]> {
-    if (USE_MOCK) {
-      await delay(300);
-      let result = [...mockAppointments];
-      if (params?.status) {
-        result = result.filter((item: any) => item.status === params.status);
-      }
-      if (params?.keyword) {
-        const lower = params.keyword.toLowerCase();
-        result = result.filter((item: any) =>
-          item.vehicle?.plateNumber.toLowerCase().includes(lower) ||
-          item.appointmentNo.toLowerCase().includes(lower) ||
-          item.vehicle?.ownerName.includes(params!.keyword!)
-        );
-      }
-      return result.map((item: any) => ({
-        id: item.id,
-        appointmentNo: item.appointmentNo,
-        vehicleId: item.vehicleId,
-        plateNumber: item.vehicle?.plateNumber || '',
-        ownerName: item.vehicle?.ownerName || '',
-        brand: item.vehicle?.brand,
-        model: item.vehicle?.model,
-        appointmentTime: item.appointmentTime,
-        checkInTime: item.checkInTime,
-        source: item.source,
-        personInCharge: item.personInCharge,
-        status: item.status,
-        faultDescription: item.faultDescription,
-      }));
-    }
-    return request.get('/api/appointments', { params });
+    return request.get('/appointments/list', { params });
   },
 
-  async getById(id: number): Promise<any> {
-    if (USE_MOCK) {
-      await delay(200);
-      return mockAppointments.find((item: any) => item.id === id) || null;
-    }
-    return request.get(`/api/appointments/${id}`);
+  getPaged(params?: any): Promise<any> {
+    return request.get('/appointments', { params });
   },
 
-  async create(data: CreateAppointmentPayload): Promise<any> {
-    if (USE_MOCK) {
-      await delay(300);
-      const vehicle = mockVehicles.find((v: any) => v.id === data.vehicleId);
-      const now = new Date();
-      const yy = now.getFullYear();
-      const mm = String(now.getMonth() + 1).padStart(2, '0');
-      const dd = String(now.getDate()).padStart(2, '0');
-      const rand = String(Math.floor(Math.random() * 1000)).padStart(3, '0');
-      const appointmentNo = `YY${yy}${mm}${dd}${rand}`;
-
-      const newAppointment: any = {
-        id: Date.now(),
-        appointmentNo,
-        vehicleId: data.vehicleId,
-        vehicle,
-        appointmentTime: data.appointmentTime,
-        source: data.source,
-        personInCharge: data.personInCharge,
-        faultDescription: data.faultDescription,
-        remarks: data.remarks,
-        status: 'Pending',
-        checkInTime: null,
-        completionTime: null,
-        closeTime: null,
-        quote: {
-          id: Date.now() + 1,
-          appointmentId: Date.now(),
-          appointmentNo,
-          laborCost: 0,
-          partsCost: 0,
-          totalAmount: 0,
-          status: 'Draft',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          quoteItems: [],
-        },
-        photos: [],
-        partsShortages: [],
-        serviceRecords: [],
-        historyRecords: [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      mockAppointments.unshift(newAppointment);
-      return newAppointment;
-    }
-    return request.post('/api/appointments', data);
+  getById(id: number): Promise<any> {
+    return request.get(`/appointments/${id}`);
   },
 
-  async updateStatus(id: number, status: any, remarks?: string): Promise<any> {
-    if (USE_MOCK) {
-      await delay(200);
-      const appointment: any = mockAppointments.find((item: any) => item.id === id);
-      if (appointment) {
-        appointment.status = status;
-        appointment.updatedAt = new Date().toISOString();
-        if (remarks) appointment.remarks = remarks;
-        if (status === 'InService' && !appointment.checkInTime) {
-          appointment.checkInTime = new Date().toISOString();
-        }
-        if (status === 'Completed') {
-          appointment.completionTime = new Date().toISOString();
-        }
-        if (status === 'Closed') {
-          appointment.closeTime = new Date().toISOString();
-        }
-        return appointment;
-      }
-      return null;
-    }
-    return request.put(`/api/appointments/${id}/status`, { status, remarks });
+  getDetail(id: number): Promise<any> {
+    return request.get(`/appointments/${id}/detail`);
   },
 
-  async checkIn(id: number): Promise<any> {
-    if (USE_MOCK) return this.updateStatus(id, 'InService');
-    return request.put(`/api/appointments/${id}/checkin`);
+  create(data: CreateAppointmentPayload): Promise<any> {
+    return request.post('/appointments', data);
   },
 
-  async complete(id: number): Promise<any> {
-    if (USE_MOCK) return this.updateStatus(id, 'Completed');
-    return request.put(`/api/appointments/${id}/complete`);
+  update(id: number, data: any): Promise<any> {
+    return request.put(`/appointments/${id}`, data);
   },
 
-  async close(id: number, remarks?: string): Promise<any> {
-    if (USE_MOCK) return this.updateStatus(id, 'Closed', remarks);
-    return request.put(`/api/appointments/${id}/close`, { remarks });
+  remove(id: number): Promise<void> {
+    return request.delete(`/appointments/${id}`);
   },
 
-  async reopen(id: number): Promise<any> {
-    if (USE_MOCK) return this.updateStatus(id, 'InService');
-    return request.put(`/api/appointments/${id}/reopen`);
+  changeStatus(id: number, status: any, remarks?: string): Promise<any> {
+    return request.put(`/appointments/${id}/status`, { status, remarks });
   },
 
-  async reportPartsShortage(id: number, data: any): Promise<any> {
-    if (USE_MOCK) {
-      await delay(200);
-      const appointment: any = mockAppointments.find((item: any) => item.id === id);
-      if (appointment) {
-        appointment.status = 'PartsShortage';
-        appointment.partsShortages = appointment.partsShortages || [];
-        appointment.partsShortages.push({
-          id: Date.now(),
-          appointmentId: id,
-          appointmentNo: appointment.appointmentNo,
-          partsId: data.partsId,
-          partName: data.partName,
-          partCode: data.partCode,
-          shortageQuantity: data.shortageQuantity,
-          expectedArrivalTime: data.expectedArrivalTime,
-          status: 'Pending',
-          handler: data.handler || '当前用户',
-          remarks: data.remarks,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        });
-        return appointment;
-      }
-      throw new Error('Appointment not found');
-    }
-    return request.post(`/api/appointments/${id}/parts-shortage`, data);
+  updateStatus(id: number, status: any, remarks?: string): Promise<any> {
+    return this.changeStatus(id, status, remarks);
   },
 
-  async resolvePartsShortage(appointmentId: number, shortageId: number): Promise<any> {
-    if (USE_MOCK) {
-      await delay(200);
-      const appointment: any = mockAppointments.find((item: any) => item.id === appointmentId);
-      if (appointment && appointment.partsShortages) {
-        const shortage = appointment.partsShortages.find((s: any) => s.id === shortageId);
-        if (shortage) {
-          shortage.status = 'Arrived';
-          shortage.actualArrivalTime = new Date().toISOString();
-        }
-        const allResolved = appointment.partsShortages.every((s: any) => s.status !== 'Pending');
-        if (allResolved) appointment.status = 'InService';
-        return appointment;
-      }
-      throw new Error('Appointment not found');
-    }
-    return request.put(`/api/appointments/${appointmentId}/parts-shortage/${shortageId}/resolve`);
+  checkIn(id: number): Promise<any> {
+    return request.put(`/appointments/${id}/checkin`);
   },
 
-  async supplementData(id: number, remarks?: string): Promise<any> {
-    if (USE_MOCK) return this.updateStatus(id, 'InService', remarks);
-    return request.put(`/api/appointments/${id}/supplement-data`, { remarks });
+  complete(id: number): Promise<any> {
+    return request.put(`/appointments/${id}/complete`);
   },
 
-  async requestReview(id: number, remarks?: string): Promise<any> {
-    if (USE_MOCK) return this.updateStatus(id, 'ReviewRequired', remarks);
-    return request.put(`/api/appointments/${id}/request-review`, { remarks });
+  close(id: number, remarks?: string): Promise<any> {
+    return request.put(`/appointments/${id}/close`, { remarks });
   },
 
-  async processReview(id: number, approved: boolean, remarks?: string): Promise<any> {
-    if (USE_MOCK) return this.updateStatus(id, approved ? 'InService' : 'PartsShortage', remarks);
-    return request.put(`/api/appointments/${id}/process-review`, { approved, remarks });
+  reopen(id: number): Promise<any> {
+    return request.put(`/appointments/${id}/reopen`);
   },
 
-  async updateQuote(id: number, quote: any): Promise<any> {
-    if (USE_MOCK) {
-      await delay(200);
-      const appointment: any = mockAppointments.find((item: any) => item.id === id);
-      if (appointment) {
-        appointment.quote = quote;
-        appointment.updatedAt = new Date().toISOString();
-        return appointment;
-      }
-      return null;
-    }
-    return request.put(`/api/appointments/${id}/quote`, quote);
+  reportPartsShortage(id: number, data: any): Promise<any> {
+    return request.post(`/appointments/${id}/parts-shortage`, data);
+  },
+
+  getPartsShortages(id: number): Promise<any[]> {
+    return request.get(`/appointments/${id}/parts-shortage`);
+  },
+
+  resolvePartsShortage(appointmentId: number, shortageId: number): Promise<any> {
+    return request.put(`/appointments/${appointmentId}/parts-shortage/${shortageId}/resolve`);
+  },
+
+  supplementData(id: number, remarks?: string): Promise<any> {
+    return request.put(`/appointments/${id}/supplement-data`, { remarks });
+  },
+
+  requestReview(id: number, remarks?: string): Promise<any> {
+    return request.post(`/appointments/${id}/request-review`, remarks ?? '');
+  },
+
+  processReview(id: number, approved: boolean, remarks?: string): Promise<any> {
+    return request.post(`/appointments/${id}/process-review`, { approved, remarks });
+  },
+
+  updateQuote(id: number, quote: any): Promise<any> {
+    return request.put(`/appointments/${id}/quote`, quote);
   },
 };
 

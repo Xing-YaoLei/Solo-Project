@@ -258,4 +258,129 @@ public class AppointmentDbContext : DbContext
             }
         );
     }
+
+    public static async Task SeedAsync(AppointmentDbContext context)
+    {
+        if (await context.Vehicles.AnyAsync()) return;
+
+        var vehicles = new List<Vehicle>
+        {
+            new()
+            {
+                PlateNumber = "京A12345",
+                VinNumber = "LFV3A23C8D3000001",
+                Brand = "大众",
+                Model = "迈腾 2023款 330TSI",
+                OwnerName = "张三",
+                OwnerPhone = "13800138001",
+                Mileage = 50000,
+                LastMaintenanceDate = new DateTime(2025, 12, 1),
+                CreatedAt = new DateTime(2026, 1, 1),
+                UpdatedAt = new DateTime(2026, 1, 1)
+            },
+            new()
+            {
+                PlateNumber = "京B67890",
+                VinNumber = "LFV3A23C8D3000002",
+                Brand = "丰田",
+                Model = "凯美瑞 2022款 2.5G",
+                OwnerName = "李四",
+                OwnerPhone = "13800138002",
+                Mileage = 32000,
+                LastMaintenanceDate = new DateTime(2026, 1, 15),
+                CreatedAt = new DateTime(2026, 1, 10),
+                UpdatedAt = new DateTime(2026, 1, 10)
+            },
+            new()
+            {
+                PlateNumber = "京C11111",
+                VinNumber = "LFV3A23C8D3000003",
+                Brand = "本田",
+                Model = "雅阁 2023款 260TURBO",
+                OwnerName = "王五",
+                OwnerPhone = "13800138003",
+                Mileage = 78000,
+                LastMaintenanceDate = new DateTime(2025, 11, 20),
+                CreatedAt = new DateTime(2026, 2, 1),
+                UpdatedAt = new DateTime(2026, 2, 1)
+            }
+        };
+        await context.Vehicles.AddRangeAsync(vehicles);
+
+        var parts = new List<Parts>
+        {
+            new()
+            {
+                PartNumber = "P001", Name = "机油滤清器", Specification = "通用型",
+                StockQuantity = 100, SafetyStock = 20, UnitPrice = 35.00m, Supplier = "供应商A",
+                CreatedAt = new DateTime(2026, 1, 1), UpdatedAt = new DateTime(2026, 1, 1)
+            },
+            new()
+            {
+                PartNumber = "P002", Name = "空气滤清器", Specification = "通用型",
+                StockQuantity = 15, SafetyStock = 30, UnitPrice = 45.00m, Supplier = "供应商A",
+                CreatedAt = new DateTime(2026, 1, 1), UpdatedAt = new DateTime(2026, 1, 1)
+            },
+            new()
+            {
+                PartNumber = "P003", Name = "刹车片", Specification = "前刹",
+                StockQuantity = 5, SafetyStock = 10, UnitPrice = 280.00m, Supplier = "供应商B",
+                CreatedAt = new DateTime(2026, 1, 1), UpdatedAt = new DateTime(2026, 1, 1)
+            },
+            new()
+            {
+                PartNumber = "P004", Name = "全合成机油", Specification = "5W-40 4L",
+                StockQuantity = 50, SafetyStock = 15, UnitPrice = 268.00m, Supplier = "供应商C",
+                CreatedAt = new DateTime(2026, 1, 1), UpdatedAt = new DateTime(2026, 1, 1)
+            }
+        };
+        await context.Parts.AddRangeAsync(parts);
+
+        var appointments = new List<Appointment>
+        {
+            new()
+            {
+                AppointmentNo = "AP202606200001",
+                VehicleId = 1,
+                AppointmentTime = new DateTime(2026, 6, 20, 9, 0, 0, DateTimeKind.Local),
+                Source = AppointmentSource.Online,
+                PersonInCharge = "张师傅",
+                Status = AppointmentStatus.Pending,
+                FaultDescription = "常规保养，更换机油机滤",
+                CreatedAt = new DateTime(2026, 6, 18),
+                UpdatedAt = new DateTime(2026, 6, 18)
+            },
+            new()
+            {
+                AppointmentNo = "AP202606150002",
+                VehicleId = 2,
+                AppointmentTime = new DateTime(2026, 6, 15, 10, 0, 0, DateTimeKind.Local),
+                CheckInTime = new DateTime(2026, 6, 15, 9, 45, 0, DateTimeKind.Local),
+                Source = AppointmentSource.Phone,
+                PersonInCharge = "李师傅",
+                Status = AppointmentStatus.InService,
+                FaultDescription = "发动机怠速异响，加速无力",
+                CreatedAt = new DateTime(2026, 6, 14),
+                UpdatedAt = new DateTime(2026, 6, 15)
+            },
+            new()
+            {
+                AppointmentNo = "AP202606100003",
+                VehicleId = 3,
+                AppointmentTime = new DateTime(2026, 6, 10, 14, 0, 0, DateTimeKind.Local),
+                CheckInTime = new DateTime(2026, 6, 10, 13, 50, 0, DateTimeKind.Local),
+                CompletionTime = new DateTime(2026, 6, 12, 16, 0, 0, DateTimeKind.Local),
+                CloseTime = new DateTime(2026, 6, 12, 17, 0, 0, DateTimeKind.Local),
+                Source = AppointmentSource.WalkIn,
+                PersonInCharge = "王师傅",
+                Status = AppointmentStatus.Closed,
+                FaultDescription = "刹车系统检修，更换前刹车片",
+                CreatedAt = new DateTime(2026, 6, 10),
+                UpdatedAt = new DateTime(2026, 6, 12)
+            }
+        };
+        await context.Appointments.AddRangeAsync(appointments);
+
+        await context.SaveChangesAsync();
+    }
 }
