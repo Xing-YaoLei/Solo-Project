@@ -172,6 +172,33 @@ def validate_shared_view(view_code: str, user_role: Optional[RoleEnum]) -> Optio
         db.close()
 
 
+def check_share_code_valid(view_code: str) -> Optional[Dict[str, Any]]:
+    db = SessionLocal()
+    try:
+        shared = db.query(SharedView).filter(
+            SharedView.view_code == view_code,
+            SharedView.is_active == True
+        ).first()
+
+        if not shared:
+            return None
+
+        if shared.expires_at and shared.expires_at < datetime.now():
+            return None
+
+        return {
+            "id": shared.id,
+            "name": shared.view_name,
+            "code": shared.view_code,
+            "config": shared.view_config or {},
+            "allowed_roles": shared.allowed_roles or [],
+            "expires_at": shared.expires_at,
+            "created_by": shared.created_by
+        }
+    finally:
+        db.close()
+
+
 def list_shared_views(created_by: Optional[int] = None) -> List[Dict[str, Any]]:
     db = SessionLocal()
     try:

@@ -18,7 +18,8 @@ from app.models import (
 )
 from app.auth import (
     create_default_users, authenticate, has_view_permission,
-    can_view_amount, RoleEnum, create_shared_view, validate_shared_view
+    can_view_amount, RoleEnum, create_shared_view,
+    validate_shared_view, check_share_code_valid
 )
 from app.data.queries import (
     get_last_refresh_time, get_project_funnel, get_refresh_history,
@@ -153,7 +154,8 @@ def build_login_view():
                             dbc.Tab(label="分享访问码", tab_id="tab-share", children=[
                                 html.Br(),
                                 dbc.Alert(
-                                    "🔒 分享视图仍严格受角色权限约束，未授权角色即使持有访问码也无法查看敏感数据。",
+                                    "🔒 分享视图严格受角色权限约束。输入访问码后需使用对应角色登录，"
+                                    "未授权角色即使持有访问码也无法查看。",
                                     color="info", is_open=True
                                 ),
                                 dbc.Row([
@@ -164,16 +166,18 @@ def build_login_view():
                                         width=7, className="mb-2"
                                     ),
                                     dbc.Col(
-                                        dbc.Button("打开", id="btn-share-open", color="success", n_clicks=0),
+                                        dbc.Button("确认", id="btn-share-open", color="success", n_clicks=0),
                                         width=2
                                     ),
                                 ], className="mt-2"),
                                 dbc.Row([
                                     dbc.Label("说明", width=3),
                                     dbc.Col([
-                                        html.Small("访问码由管理员/经理在主界面「分享视图」生成，有效期一般为 7 天。"),
+                                        html.Small("1. 输入访问码并点击「确认」，系统仅校验访问码有效性。"),
                                         html.Br(),
-                                        html.Small("访问视图会以您最近登录的身份为准（未登录则视为只读访客）。"),
+                                        html.Small("2. 确认后切换到「账号登录」，使用对应角色登录。"),
+                                        html.Br(),
+                                        html.Small("3. 登录后系统按真实角色校验权限，授权则打开视图，否则提示角色不匹配。"),
                                     ], width=9, className="text-muted"),
                                 ]),
                             ]),
@@ -531,26 +535,26 @@ def register_callbacks(app: Dash):
 
         if session.get("role"):
             user_role = RoleEnum(session["role"])
-        else:
-            user_role = RoleEnum.VIEWER
+            info = validate_shared_view(code, user_role)
+            if not info:
+                session["share_code"] = code
+                session["share_view"] = None
+                result_info = dbc.Alert(
+                    [html.I(className="bi bi-x-circle-fill me-2"),
+                     f"❌ 访问码有效但当前角色（{user_role.value}）无访问权限。",
+                     html.Br(),
+                     html.Small("此分享视图仅允许角色：" + "、".join(
+                         check_share_code_valid(code).get("allowed_roles", []) if check_share_code_valid(code) else []
+                     ) + "，请使用对应角色账号重新登录。")],
+                    color="danger"
+                )
+                return session, err, result_info, new_code_val, lv_style, mv_style, nav_children, main_children
 
-        info = validate_shared_view(code, user_role)
-        if not info:
-            session["share_code"] = None
-            session["share_view"] = None
-            result_info = dbc.Alert(
-                [html.I(className="bi bi-x-circle-fill me-2"),
-                 f"访问码无效或已过期，或当前角色（{user_role.value}）无访问权限。"],
-                color="danger"
-            )
-            return session, err, result_info, new_code_val, lv_style, mv_style, nav_children, main_children
+            session["share_code"] = code
+            session["share_view"] = info
+            CURRENT_SHARE["active"] = True
+            CURRENT_SHARE["view"] = info
 
-        session["share_code"] = code
-        session["share_view"] = info
-        CURRENT_SHARE["active"] = True
-        CURRENT_SHARE["view"] = info
-
-        if session.get("role"):
             role = RoleEnum(session["role"])
             user_full = session.get("full_name", session.get("username", "访客"))
             CURRENT_USER["username"] = session.get("username")
@@ -562,11 +566,29 @@ def register_callbacks(app: Dash):
             mv_style = {"display": "block"}
             result_info = no_update
         else:
-            result_info = dbc.Alert(
-                [html.I(className="bi bi-check-circle-fill me-2"),
-                 f"✅ 已载入分享视图：「{info['name']}」  —  请点击上方「账号登录」使用对应角色登录后查看。"],
-                color="success"
-            )
+            info = check_share_code_valid(code)
+            if not info:
+                session["share_code"] = None
+                session["share_view"] = None
+                result_info = dbc.Alert(
+                    [html.I(className="bi bi-x-circle-fill me-2"),
+                     "访问码无效或已过期，请检查后重试。"],
+                    color="danger"
+                )
+                return session, err, result_info, new_code_val, lv_style, mv_style, nav_children, main_children
+
+            session["share_code"] = code
+            session["share_view"] = None
+            allowed = "、".join(info.get("allowed_roles", []))
+            result_info = dbc.Alert([
+                html.I(className="bi bi-check-circle-fill me-2"),
+                html.B(f"✅ 访问码已确认：「{info['name']}」"),
+                html.Br(),
+                html.Small(f"此视图允许角色：{allowed}", className="me-3"),
+                html.Br(),
+                html.Small("👉 请切换到「账号登录」标签页，使用对应角色登录后自动打开报表视图。", className="fw-bold"),
+            ], color="success")
+
         return (session, err, result_info, new_code_val,
                 lv_style, mv_style, nav_children, main_children)
 
@@ -577,6 +599,7 @@ def register_callbacks(app: Dash):
         Output("main-app-view", "style", allow_duplicate=True),
         Output("nav-placeholder", "children", allow_duplicate=True),
         Output("main-app-view", "children", allow_duplicate=True),
+        Output("share-open-result", "children", allow_duplicate=True),
         Input("btn-login", "n_clicks"),
         State("login-username", "value"),
         State("login-password", "value"),
@@ -587,7 +610,8 @@ def register_callbacks(app: Dash):
         triggered = ctx.triggered_id
         session = session or {}
 
-        share_info = session.get("share_view")
+        _no = no_update
+        share_result = _no
 
         if triggered != "btn-login":
             if session and session.get("role"):
@@ -597,39 +621,61 @@ def register_callbacks(app: Dash):
                 CURRENT_USER["role"] = role
                 CURRENT_USER["full_name"] = user_full
                 nav = build_navbar(role, user_full, get_last_refresh_time(), False)
-                main = build_main_app_view(share_info)
-                return "", session, {"display": "none"}, {"display": "block"}, nav, main
-            return no_update, no_update, no_update, no_update, no_update, no_update
+                main = build_main_app_view(session.get("share_view"))
+                return "", session, {"display": "none"}, {"display": "block"}, nav, main, _no
+            return _no, _no, _no, _no, _no, _no, _no
 
         if not n_clicks:
-            return no_update, no_update, no_update, no_update, no_update, no_update
+            return _no, _no, _no, _no, _no, _no, _no
 
         if not username or not password:
-            return "请输入用户名和密码", no_update, no_update, no_update, no_update, no_update
+            return "请输入用户名和密码", _no, _no, _no, _no, _no, _no
 
         user = authenticate(username.strip(), password)
         if not user:
-            return "❌ 用户名或密码错误", no_update, no_update, no_update, no_update, no_update
+            return "❌ 用户名或密码错误", _no, _no, _no, _no, _no, _no
 
         CURRENT_USER["username"] = user.username
         CURRENT_USER["role"] = user.role
         CURRENT_USER["full_name"] = user.full_name
+
+        pending_share_code = session.get("share_code")
 
         session = {
             "username": user.username,
             "role": user.role.value,
             "full_name": user.full_name,
             "task_id": None,
-            "share_code": session.get("share_code"),
-            "share_view": session.get("share_view"),
+            "share_code": pending_share_code,
+            "share_view": None,
         }
-        if session.get("share_view"):
-            CURRENT_SHARE["active"] = True
-            CURRENT_SHARE["view"] = session["share_view"]
+
+        if pending_share_code:
+            info = validate_shared_view(pending_share_code, user.role)
+            if info:
+                session["share_view"] = info
+                CURRENT_SHARE["active"] = True
+                CURRENT_SHARE["view"] = info
+                nav = build_navbar(user.role, user.full_name, get_last_refresh_time(), False)
+                main = build_main_app_view(info)
+                return ("", session, {"display": "none"}, {"display": "block"},
+                        nav, main, _no)
+            else:
+                code_info = check_share_code_valid(pending_share_code)
+                allowed = "、".join(code_info.get("allowed_roles", [])) if code_info else "未知"
+                err_msg = f"❌ 登录成功，但当前角色（{user.role.value}）无权查看此分享视图"
+                share_result = dbc.Alert([
+                    html.I(className="bi bi-shield-lock-fill me-2"),
+                    html.B(err_msg),
+                    html.Br(),
+                    html.Small(f"此视图仅允许角色：{allowed}。请退出后使用对应角色账号登录。"),
+                ], color="warning")
+                return (err_msg, session, _no, _no, _no, _no, share_result)
 
         nav = build_navbar(user.role, user.full_name, get_last_refresh_time(), False)
-        main = build_main_app_view(session.get("share_view"))
-        return "", session, {"display": "none"}, {"display": "block"}, nav, main
+        main = build_main_app_view(None)
+        return ("", session, {"display": "none"}, {"display": "block"},
+                nav, main, _no)
 
     @app.callback(
         Output("toast-container", "children", allow_duplicate=True),
