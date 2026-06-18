@@ -13,16 +13,16 @@ export interface TestDriveLead {
 	id: string;
 	customerName: string;
 	phone: string;
-	vehicleModel: string;
-	salespersonId: string;
-	salespersonName: string;
-	appointmentTime: string;
+	vehicleModel?: string | null;
+	salespersonId?: string | null;
+	salespersonName?: string | null;
+	appointmentTime?: string | null;
 	status: LeadStatus;
-	financeApprovalId?: string;
-	crmLeadId?: string;
-	inspectionReportId?: string;
-	noShowNote?: string;
-	createdAt: string;
+	financeApprovalId?: string | null;
+	crmLeadId?: string | null;
+	inspectionReportId?: string | null;
+	noShowNote?: string | null;
+	createdAt?: string | null;
 	importBatchId: string;
 }
 

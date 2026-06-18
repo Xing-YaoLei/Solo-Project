@@ -1,8 +1,8 @@
 import { json, type RequestHandler } from '@sveltejs/kit';
 import { requireAuth, requireRole } from '$lib/server/utils/apiHelper';
-import { getBatchById } from '$lib/server/repositories/batchRepository';
 import db from '$lib/server/db';
-import type { SourceType } from '$lib/types';
+import { getBatchById } from '$lib/server/repositories/batchRepository';
+import { getLeadsByBatchId } from '$lib/server/repositories/leadRepository';
 
 export const GET: RequestHandler = async (event) => {
 	const user = requireAuth(event);
@@ -29,13 +29,7 @@ export const GET: RequestHandler = async (event) => {
 			.all(batchId);
 	}
 
-	const mergedLeads = db
-		.prepare(
-			`SELECT l.id, l.customer_name, l.phone, l.vehicle_model, l.status, u.name as salesperson_name
-			 FROM test_drive_leads l LEFT JOIN users u ON u.id = l.salesperson_id
-			 WHERE l.import_batch_id = ? LIMIT 100`
-		)
-		.all(batchId);
+	const mergedLeads = getLeadsByBatchId(batchId);
 
 	return json({ batch, records, mergedLeads });
 };

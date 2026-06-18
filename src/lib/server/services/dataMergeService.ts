@@ -1,6 +1,6 @@
 import db from '../db';
 import { createBatch, updateBatchStatus } from '../repositories/batchRepository';
-import { insertLead } from '../repositories/leadRepository';
+import { insertLead, addLeadBatchRelation } from '../repositories/leadRepository';
 import { hashPassword } from '../repositories/userRepository';
 import type { SourceType, LeadStatus } from '$lib/types';
 
@@ -192,13 +192,26 @@ export function seedMockData() {
 			if (note) {
 				db.prepare('UPDATE test_drive_leads SET no_show_note = ? WHERE id = ?').run(note, leadId);
 			}
+
+			let firstSource: 'finance' | 'crm' | 'inspection' | null = null;
+			if (financeId) {
+				firstSource = 'finance';
+				addLeadBatchRelation(leadId, financeBatch, 'created', 'finance');
+			}
+			if (crmId) {
+				addLeadBatchRelation(leadId, crmBatch, firstSource === null ? 'created' : 'merged', 'crm');
+				if (firstSource === null) firstSource = 'crm';
+			}
+			if (inspectionId) {
+				addLeadBatchRelation(leadId, inspectionBatch, firstSource === null ? 'created' : 'merged', 'inspection');
+			}
 		}
 
 		batches.forEach((b) => {
 			const count = db
-				.prepare('SELECT COUNT(*) as c FROM test_drive_leads WHERE import_batch_id = ?')
+				.prepare('SELECT COUNT(DISTINCT lead_id) as c FROM lead_batch_relations WHERE batch_id = ?')
 				.get(b.id) as { c: number };
-			updateBatchStatus(b.id, 'merged', count.c);
+			updateBatchStatus(b.id, 'merged', count?.c ?? 0);
 		});
 	});
 

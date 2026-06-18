@@ -2,6 +2,7 @@ import { json, type RequestHandler } from '@sveltejs/kit';
 import { requireAuth, requireRole } from '$lib/server/utils/apiHelper';
 import db from '$lib/server/db';
 import { createBatch, updateBatchStatus } from '$lib/server/repositories/batchRepository';
+import { addLeadBatchRelation } from '$lib/server/repositories/leadRepository';
 import type { SourceType } from '$lib/types';
 import * as XLSX from 'xlsx';
 
@@ -68,14 +69,16 @@ export const POST: RequestHandler = async (event) => {
 							db.prepare(
 								'UPDATE test_drive_leads SET finance_approval_id = ?, vehicle_model = COALESCE(NULLIF(?, \'\'), vehicle_model) WHERE id = ?'
 							).run(financeId, model, existing.id);
+							addLeadBatchRelation(existing.id, batchId, 'merged', 'finance');
 							mergedCount++;
 						} else {
 							const salesIds = db
 								.prepare("SELECT id FROM users WHERE role = 'sales' ORDER BY RANDOM() LIMIT 1")
 								.get() as { id: string } | undefined;
 
+							const newLeadId = genId('lead');
 							insertLead.run(
-								genId('lead'),
+								newLeadId,
 								name,
 								phone,
 								model,
@@ -84,6 +87,7 @@ export const POST: RequestHandler = async (event) => {
 								financeId,
 								batchId
 							);
+							addLeadBatchRelation(newLeadId, batchId, 'created', 'finance');
 							mergedCount++;
 						}
 					}
@@ -129,14 +133,16 @@ export const POST: RequestHandler = async (event) => {
 
 						if (existing) {
 							updateLead.run(crmId, sales?.id ?? null, existing.id);
+							addLeadBatchRelation(existing.id, batchId, 'merged', 'crm');
 							mergedCount++;
 						} else {
 							const salesIds = db
 								.prepare("SELECT id FROM users WHERE role = 'sales' ORDER BY RANDOM() LIMIT 1")
 								.get() as { id: string } | undefined;
 
+							const newLeadId = genId('lead');
 							insertLead.run(
-								genId('lead'),
+								newLeadId,
 								name,
 								phone,
 								sales?.id ?? salesIds?.id ?? null,
@@ -144,6 +150,7 @@ export const POST: RequestHandler = async (event) => {
 								crmId,
 								batchId
 							);
+							addLeadBatchRelation(newLeadId, batchId, 'created', 'crm');
 							mergedCount++;
 						}
 					}
@@ -174,13 +181,15 @@ export const POST: RequestHandler = async (event) => {
 
 						if (existing) {
 							updateLead.run(inspectionId, model, existing.id);
+							addLeadBatchRelation(existing.id, batchId, 'merged', 'inspection');
 							mergedCount++;
 						} else {
+							const newLeadId = genId('lead');
 							db.prepare(
 								`INSERT INTO test_drive_leads (id, customer_name, phone, vehicle_model, appointment_time, status, inspection_report_id, import_batch_id)
 								 VALUES (?, ?, ?, ?, ?, 'appointed', ?, ?)`
 							).run(
-								genId('lead'),
+								newLeadId,
 								'检测客户',
 								phone,
 								model,
@@ -188,6 +197,7 @@ export const POST: RequestHandler = async (event) => {
 								inspectionId,
 								batchId
 							);
+							addLeadBatchRelation(newLeadId, batchId, 'created', 'inspection');
 							mergedCount++;
 						}
 					}

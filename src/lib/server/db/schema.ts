@@ -80,5 +80,18 @@ export function initSchema() {
 		CREATE INDEX IF NOT EXISTS idx_leads_status ON test_drive_leads(status);
 		CREATE INDEX IF NOT EXISTS idx_leads_batch ON test_drive_leads(import_batch_id);
 		CREATE INDEX IF NOT EXISTS idx_leads_appointment ON test_drive_leads(appointment_time);
+
+		CREATE TABLE IF NOT EXISTS lead_batch_relations (
+			id TEXT PRIMARY KEY,
+			lead_id TEXT NOT NULL REFERENCES test_drive_leads(id),
+			batch_id TEXT NOT NULL REFERENCES import_batches(id),
+			relation_type TEXT NOT NULL CHECK (relation_type IN ('created', 'merged')),
+			source_type TEXT NOT NULL CHECK (source_type IN ('finance', 'crm', 'inspection')),
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			UNIQUE(lead_id, batch_id)
+		);
+
+		CREATE INDEX IF NOT EXISTS idx_relation_lead ON lead_batch_relations(lead_id);
+		CREATE INDEX IF NOT EXISTS idx_relation_batch ON lead_batch_relations(batch_id);
 	`);
 }

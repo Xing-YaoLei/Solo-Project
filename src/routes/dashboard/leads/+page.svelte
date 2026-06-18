@@ -50,8 +50,8 @@
 		return (
 			l.customerName.toLowerCase().includes(q) ||
 			l.phone.toLowerCase().includes(q) ||
-			l.vehicleModel.toLowerCase().includes(q) ||
-			l.salespersonName.toLowerCase().includes(q)
+			(l.vehicleModel?.toLowerCase() ?? '').includes(q) ||
+			(l.salespersonName?.toLowerCase() ?? '').includes(q)
 		);
 	});
 
@@ -69,10 +69,7 @@
 	}
 
 	async function submitNote() {
-		if (!selectedLead || !noteText.trim()) {
-			noteError = '请输入注释内容';
-			return;
-		}
+		if (!selectedLead) return;
 		noteSubmitting = true;
 		noteError = '';
 
@@ -80,7 +77,30 @@
 			const res = await fetch(`/api/leads/${selectedLead.id}/note`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ note: noteText.trim() })
+				body: JSON.stringify({ note: noteText.trim(), setNoShow: noteText.trim().length > 0 })
+			});
+			if (!res.ok) {
+				const d = await res.json();
+				throw new Error(d.error);
+			}
+			await loadLeads();
+			closeNoteModal();
+		} catch (e) {
+			noteError = (e as Error).message;
+		} finally {
+			noteSubmitting = false;
+		}
+	}
+
+	async function clearNote() {
+		if (!selectedLead) return;
+		noteSubmitting = true;
+		noteError = '';
+		try {
+			const res = await fetch(`/api/leads/${selectedLead.id}/note`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ note: '', setNoShow: false })
 			});
 			if (!res.ok) {
 				const d = await res.json();
@@ -198,22 +218,32 @@
 					<div class="text-navy-400">预约时间：<span class="text-white">{selectedLead.appointmentTime?.slice(0, 16).replace('T', ' ')}</span></div>
 				</div>
 				<div>
-					<label class="block text-navy-300 text-sm font-medium mb-2">爽约原因注释</label>
+					<label for="noteTextarea" class="block text-navy-300 text-sm font-medium mb-2">爽约原因注释</label>
 					<textarea
+						id="noteTextarea"
 						bind:value={noteText}
 						rows={4}
-						placeholder="请输入爽约原因或客户备注..."
+						placeholder="请输入爽约原因或客户备注，留空将清除现有注释"
 						class="input-field resize-none"
 					/>
 				</div>
 				{#if noteError}
 					<div class="bg-rose-500/10 border border-rose-500/30 text-rose-300 text-sm px-4 py-2.5 rounded-lg">{noteError}</div>
 				{/if}
-				<div class="flex justify-end gap-3 pt-2">
-					<button on:click={closeNoteModal} class="btn-secondary">取消</button>
-					<button on:click={submitNote} class="btn-primary" disabled={noteSubmitting}>
-						{noteSubmitting ? '保存中...' : '保存注释'}
+				<div class="flex justify-between items-center pt-2">
+					<button
+						on:click={clearNote}
+						class="text-navy-400 hover:text-rose-400 text-sm font-medium transition-colors"
+						disabled={noteSubmitting || !selectedLead?.noShowNote}
+					>
+						清除注释
 					</button>
+					<div class="flex gap-3">
+						<button on:click={closeNoteModal} class="btn-secondary" disabled={noteSubmitting}>取消</button>
+						<button on:click={submitNote} class="btn-primary" disabled={noteSubmitting}>
+							{noteSubmitting ? '保存中...' : '保存注释'}
+						</button>
+					</div>
 				</div>
 			</div>
 		</div>

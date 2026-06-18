@@ -9,10 +9,7 @@ export const POST: RequestHandler = async (event) => {
 	try {
 		const body = await event.request.json();
 		const note = String(body?.note ?? '');
-
-		if (!note || note.trim().length === 0) {
-			return json({ error: '注释内容不能为空' }, { status: 400 });
-		}
+		const setNoShow = body?.setNoShow !== false;
 
 		const lead = getLeadById(leadId);
 		if (!lead) {
@@ -24,10 +21,11 @@ export const POST: RequestHandler = async (event) => {
 		}
 
 		const trimmedNote = note.trim();
-		updateNoShowNote(leadId, trimmedNote);
+		updateNoShowNote(leadId, trimmedNote, setNoShow);
 
 		return json({ success: true, lead: getLeadById(leadId) });
 	} catch (e) {
-		return json({ error: '更新失败' }, { status: 500 });
+		console.error('Note update error:', e);
+		return json({ error: '更新失败：' + (e as Error).message }, { status: 500 });
 	}
 };

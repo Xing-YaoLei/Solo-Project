@@ -110,8 +110,57 @@ export function getLeadById(id: string): TestDriveLead | null {
 	return mapLead(row);
 }
 
-export function updateNoShowNote(id: string, note: string): void {
-	db.prepare("UPDATE test_drive_leads SET no_show_note = ?, status = 'no_show' WHERE id = ?").run(note, id);
+export function updateNoShowNote(id: string, note: string, setNoShowStatus = true): void {
+	const noteValue = note.length > 0 ? note : null;
+	if (setNoShowStatus) {
+		db.prepare(
+			"UPDATE test_drive_leads SET no_show_note = ?, status = 'no_show' WHERE id = ?"
+		).run(noteValue, id);
+	} else {
+		db.prepare(
+			"UPDATE test_drive_leads SET no_show_note = ? WHERE id = ?"
+		).run(noteValue, id);
+	}
+}
+
+export function addLeadBatchRelation(
+	leadId: string,
+	batchId: string,
+	relationType: 'created' | 'merged',
+	sourceType: 'finance' | 'crm' | 'inspection'
+): void {
+	const relationId = 'rel_' + Math.random().toString(36).slice(2, 10);
+	db.prepare(
+		`INSERT OR IGNORE INTO lead_batch_relations (id, lead_id, batch_id, relation_type, source_type)
+		 VALUES (?, ?, ?, ?, ?)`
+	).run(relationId, leadId, batchId, relationType, sourceType);
+}
+
+export function getLeadsByBatchId(batchId: string): TestDriveLead[] {
+	const sql = `
+		SELECT DISTINCT
+			l.id,
+			l.customer_name,
+			l.phone,
+			l.vehicle_model,
+			l.salesperson_id,
+			u.name as salesperson_name,
+			l.appointment_time,
+			l.status,
+			l.finance_approval_id,
+			l.crm_lead_id,
+			l.inspection_report_id,
+			l.no_show_note,
+			l.created_at,
+			l.import_batch_id
+		FROM test_drive_leads l
+		INNER JOIN lead_batch_relations r ON r.lead_id = l.id
+		LEFT JOIN users u ON u.id = l.salesperson_id
+		WHERE r.batch_id = ?
+		ORDER BY l.appointment_time DESC
+	`;
+	const rows = db.prepare(sql).all(batchId) as unknown as LeadRow[];
+	return rows.map(mapLead);
 }
 
 export function insertLead(
