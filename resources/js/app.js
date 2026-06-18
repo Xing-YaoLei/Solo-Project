@@ -18,9 +18,16 @@ createInertiaApp({
         return page;
     },
     setup({ el, App, props, plugin }) {
+        const ziggyConfig = (() => {
+            if (typeof window.Ziggy !== 'undefined') return window.Ziggy;
+            const shared = props?.initialPage?.props?.ziggy;
+            if (shared) return shared;
+            return null;
+        })();
+
         const app = createApp({ render: () => h(App, props) })
             .use(plugin)
-            .use(ZiggyVue, window.Ziggy)
+            .use(ZiggyVue, ziggyConfig)
             .component('InertiaLink', Link)
             .component('Toast', Toast)
             .mixin({

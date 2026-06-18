@@ -71,9 +71,11 @@ class TestDriveController extends Controller
             'filterOptions' => [
                 'statuses' => collect(TestDriveStatus::cases())->map(fn($s) => ['value' => $s->value, 'label' => $s->label(), 'color' => $s->color()]),
                 'responsibilities' => collect(ResponsibilityRole::cases())->map(fn($r) => ['value' => $r->value, 'label' => $r->label()]),
+                'responsibilityRoles' => collect(ResponsibilityRole::cases())->map(fn($r) => ['value' => $r->value, 'label' => $r->label()]),
                 'intentLevels' => collect(IntentLevel::cases())->map(fn($i) => ['value' => $i->value, 'label' => $i->label()]),
                 'stores' => Store::select('id', 'name')->where('status', 1)->get(),
                 'salesUsers' => User::select('id', 'name')->where('status', 1)->when($scopeStore, fn($q) => $q->where('store_id', $scopeStore))->get(),
+                'assignedUsers' => User::select('id', 'name')->where('status', 1)->when($scopeStore, fn($q) => $q->where('store_id', $scopeStore))->get(),
             ],
         ]);
     }
@@ -146,10 +148,26 @@ class TestDriveController extends Controller
             'timelines.user', 'timelines.reviewMaterials',
         ]);
 
+        $scopeStore = $request->user()->hasRole('store_manager') || $request->user()->hasRole('sales') ? $request->user()->store_id : null;
+
         return Inertia::render('TestDrives/Show', [
             'testDrive' => $testDrive,
             'statusOptions' => collect(TestDriveStatus::cases())->map(fn($s) => ['value' => $s->value, 'label' => $s->label(), 'color' => $s->color()]),
             'responsibilityOptions' => collect(ResponsibilityRole::cases())->map(fn($r) => ['value' => $r->value, 'label' => $r->label()]),
+            'options' => [
+                'salesUsers' => User::select('id', 'name')->where('status', 1)->when($scopeStore, fn($q) => $q->where('store_id', $scopeStore))->get(),
+                'assignedUsers' => User::select('id', 'name')->where('status', 1)->when($scopeStore, fn($q) => $q->where('store_id', $scopeStore))->get(),
+                'companionUsers' => User::select('id', 'name')->where('status', 1)->when($scopeStore, fn($q) => $q->where('store_id', $scopeStore))->get(),
+                'responsibilityRoles' => collect(ResponsibilityRole::cases())->map(fn($r) => ['value' => $r->value, 'label' => $r->label()]),
+                'reviewMaterials' => ReviewMaterial::select('id', 'title', 'code')
+                    ->where(function ($q) use ($testDrive) {
+                        $q->where('test_drive_id', $testDrive->id)
+                            ->orWhere('customer_id', $testDrive->customer_id);
+                    })
+                    ->latest()
+                    ->limit(50)
+                    ->get(),
+            ],
             'canEdit' => $request->user()->can('update', $testDrive),
             'canAdjustResponsibility' => $request->user()->can('adjustResponsibility', $testDrive),
             'canClose' => $request->user()->can('close', $testDrive),
