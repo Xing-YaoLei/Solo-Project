@@ -15,11 +15,15 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = True
 
-    DATABASE_URL: str = Field(default="sqlite:///./app_dev.db")
+    DATABASE_URL: str = Field(default="postgresql://postgres@localhost:5432/material_tracking")
+    USE_SQLITE: bool = False
 
     SECRET_KEY: str = Field(default="dev-secret-key-change-in-production-2024")
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
+
+    CELERY_BROKER_URL: str = Field(default="redis://localhost:6379/0")
+    CELERY_RESULT_BACKEND: str = Field(default="redis://localhost:6379/1")
 
     BACKEND_CORS_ORIGINS: Union[str, List[AnyHttpUrl]] = [
         "http://localhost:5173",

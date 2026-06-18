@@ -1,7 +1,7 @@
 """initial migration
 
 Revision ID: 0001
-Revises: 
+Revises:
 Create Date: 2026-06-18 00:00:00.000000
 
 """
@@ -9,70 +9,51 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
 
-# revision identifiers, used by Alembic.
+
 revision: str = '0001'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
-userrole_enum = postgresql.ENUM('ADMIN', 'MANAGER', 'WORKER', name='userrole')
-creditrating_enum = postgresql.ENUM('A', 'B', 'C', name='creditrating')
-supplierstatus_enum = postgresql.ENUM('ACTIVE', 'INACTIVE', name='supplierstatus')
-materialbatchstatus_enum = postgresql.ENUM('PENDING', 'IN_STOCK', 'IN_USE', 'SHORTAGE', 'COMPLETED', name='materialbatchstatus')
-inventoryrecordtype_enum = postgresql.ENUM('IN', 'OUT', 'TRANSFER', 'ADJUST', name='inventoryrecordtype')
-shortagepriority_enum = postgresql.ENUM('HIGH', 'MEDIUM', 'LOW', name='shortagepriority')
-shortageorderstatus_enum = postgresql.ENUM('PENDING', 'PROCESSING', 'SUPPLEMENTED', 'RETRIED', 'CLOSED', name='shortageorderstatus')
-shortageaction_enum = postgresql.ENUM('CREATE', 'ASSIGN', 'SUPPLEMENT', 'RETRY', 'CLOSE', name='shortageaction')
-
 
 def upgrade() -> None:
-    userrole_enum.create(op.get_bind(), checkfirst=True)
-    creditrating_enum.create(op.get_bind(), checkfirst=True)
-    supplierstatus_enum.create(op.get_bind(), checkfirst=True)
-    materialbatchstatus_enum.create(op.get_bind(), checkfirst=True)
-    inventoryrecordtype_enum.create(op.get_bind(), checkfirst=True)
-    shortagepriority_enum.create(op.get_bind(), checkfirst=True)
-    shortageorderstatus_enum.create(op.get_bind(), checkfirst=True)
-    shortageaction_enum.create(op.get_bind(), checkfirst=True)
-
     op.create_table(
         'users',
-        sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column('id', sa.String(length=36), nullable=False),
         sa.Column('username', sa.String(length=50), nullable=False),
-        sa.Column('email', sa.String(length=100), nullable=False),
-        sa.Column('password_hash', sa.String(length=255), nullable=False),
+        sa.Column('email', sa.String(length=100), nullable=True),
         sa.Column('full_name', sa.String(length=100), nullable=True),
-        sa.Column('role', userrole_enum, nullable=False, default='WORKER'),
-        sa.Column('is_active', sa.Boolean(), nullable=False, default=True),
+        sa.Column('password_hash', sa.String(length=255), nullable=False),
+        sa.Column('role', sa.String(length=50), nullable=False, server_default='worker'),
+        sa.Column('is_active', sa.Boolean(), nullable=False, server_default=sa.text('true')),
+        sa.Column('region', sa.String(length=100), nullable=True),
         sa.Column('created_at', sa.DateTime(), server_default=sa.func.now(), nullable=False),
-        sa.Column('updated_at', sa.DateTime(), server_default=sa.func.now(), onupdate=sa.func.now(), nullable=False),
+        sa.Column('updated_at', sa.DateTime(), server_default=sa.func.now(), nullable=False),
         sa.PrimaryKeyConstraint('id'),
         sa.UniqueConstraint('username'),
-        sa.UniqueConstraint('email')
     )
     op.create_index('ix_users_id', 'users', ['id'])
     op.create_index('ix_users_username', 'users', ['username'], unique=True)
-    op.create_index('ix_users_email', 'users', ['email'], unique=True)
     op.create_index('ix_users_role', 'users', ['role'])
     op.create_index('ix_users_is_active', 'users', ['is_active'])
 
     op.create_table(
         'suppliers',
-        sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column('id', sa.String(length=36), nullable=False),
         sa.Column('name', sa.String(length=200), nullable=False),
         sa.Column('contact_person', sa.String(length=50), nullable=True),
         sa.Column('phone', sa.String(length=20), nullable=True),
         sa.Column('email', sa.String(length=100), nullable=True),
         sa.Column('address', sa.String(length=500), nullable=True),
-        sa.Column('credit_rating', creditrating_enum, nullable=False, default='B'),
-        sa.Column('on_time_rate', sa.Float(), nullable=False, default=0.0),
-        sa.Column('quality_score', sa.Float(), nullable=False, default=0.0),
-        sa.Column('status', supplierstatus_enum, nullable=False, default='ACTIVE'),
+        sa.Column('credit_rating', sa.String(length=50), nullable=False, server_default='B'),
+        sa.Column('on_time_rate', sa.Float(), nullable=False, server_default='0.0'),
+        sa.Column('quality_score', sa.Float(), nullable=False, server_default='0.0'),
+        sa.Column('status', sa.String(length=50), nullable=False, server_default='active'),
+        sa.Column('categories', sa.Text(), nullable=True),
         sa.Column('created_at', sa.DateTime(), server_default=sa.func.now(), nullable=False),
-        sa.Column('updated_at', sa.DateTime(), server_default=sa.func.now(), onupdate=sa.func.now(), nullable=False),
-        sa.PrimaryKeyConstraint('id')
+        sa.Column('updated_at', sa.DateTime(), server_default=sa.func.now(), nullable=False),
+        sa.PrimaryKeyConstraint('id'),
     )
     op.create_index('ix_suppliers_id', 'suppliers', ['id'])
     op.create_index('ix_suppliers_name', 'suppliers', ['name'])
@@ -81,27 +62,28 @@ def upgrade() -> None:
 
     op.create_table(
         'material_batches',
-        sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column('id', sa.String(length=36), nullable=False),
         sa.Column('batch_no', sa.String(length=50), nullable=False),
         sa.Column('material_name', sa.String(length=200), nullable=False),
         sa.Column('category', sa.String(length=100), nullable=False),
         sa.Column('specification', sa.String(length=200), nullable=True),
-        sa.Column('unit', sa.String(length=20), nullable=True),
-        sa.Column('quantity', sa.Float(), nullable=False),
-        sa.Column('supplier_id', sa.Integer(), nullable=True),
+        sa.Column('unit', sa.String(length=50), nullable=True),
+        sa.Column('quantity', sa.Float(), nullable=False, server_default='0'),
+        sa.Column('supplier_id', sa.String(length=36), nullable=True),
         sa.Column('supplier_name', sa.String(length=200), nullable=True),
         sa.Column('region', sa.String(length=100), nullable=True),
         sa.Column('responsible_person', sa.String(length=100), nullable=True),
-        sa.Column('status', materialbatchstatus_enum, nullable=False, default='PENDING'),
+        sa.Column('responsible_person_id', sa.String(length=36), nullable=True),
+        sa.Column('status', sa.String(length=50), nullable=False, server_default='pending'),
         sa.Column('in_date', sa.Date(), nullable=True),
         sa.Column('expected_turnover_days', sa.Integer(), nullable=True),
         sa.Column('actual_turnover_days', sa.Integer(), nullable=True),
         sa.Column('remark', sa.Text(), nullable=True),
         sa.Column('created_at', sa.DateTime(), server_default=sa.func.now(), nullable=False),
-        sa.Column('updated_at', sa.DateTime(), server_default=sa.func.now(), onupdate=sa.func.now(), nullable=False),
+        sa.Column('updated_at', sa.DateTime(), server_default=sa.func.now(), nullable=False),
         sa.ForeignKeyConstraint(['supplier_id'], ['suppliers.id'], ),
         sa.PrimaryKeyConstraint('id'),
-        sa.UniqueConstraint('batch_no')
+        sa.UniqueConstraint('batch_no'),
     )
     op.create_index('ix_material_batches_id', 'material_batches', ['id'])
     op.create_index('ix_material_batches_batch_no', 'material_batches', ['batch_no'], unique=True)
@@ -115,18 +97,18 @@ def upgrade() -> None:
 
     op.create_table(
         'inventory_records',
-        sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column('batch_id', sa.Integer(), nullable=False),
-        sa.Column('type', inventoryrecordtype_enum, nullable=False),
+        sa.Column('id', sa.String(length=36), nullable=False),
+        sa.Column('batch_id', sa.String(length=36), nullable=False),
+        sa.Column('type', sa.String(length=50), nullable=False),
         sa.Column('quantity', sa.Float(), nullable=False),
-        sa.Column('operator_id', sa.Integer(), nullable=True),
+        sa.Column('operator_id', sa.String(length=36), nullable=True),
         sa.Column('operator', sa.String(length=100), nullable=True),
         sa.Column('region', sa.String(length=100), nullable=True),
         sa.Column('remark', sa.Text(), nullable=True),
         sa.Column('created_at', sa.DateTime(), server_default=sa.func.now(), nullable=False),
         sa.ForeignKeyConstraint(['batch_id'], ['material_batches.id'], ),
         sa.ForeignKeyConstraint(['operator_id'], ['users.id'], ),
-        sa.PrimaryKeyConstraint('id')
+        sa.PrimaryKeyConstraint('id'),
     )
     op.create_index('ix_inventory_records_id', 'inventory_records', ['id'])
     op.create_index('ix_inventory_records_type', 'inventory_records', ['type'])
@@ -137,16 +119,16 @@ def upgrade() -> None:
 
     op.create_table(
         'usage_rules',
-        sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column('id', sa.String(length=36), nullable=False),
         sa.Column('material_category', sa.String(length=100), nullable=False),
         sa.Column('max_daily_usage', sa.Float(), nullable=False),
-        sa.Column('requires_approval', sa.Boolean(), nullable=False, default=False),
-        sa.Column('approval_level', sa.Integer(), nullable=False, default=1),
+        sa.Column('requires_approval', sa.Boolean(), nullable=False, server_default=sa.text('false')),
+        sa.Column('approval_level', sa.Integer(), nullable=False, server_default='1'),
         sa.Column('description', sa.Text(), nullable=True),
         sa.Column('created_at', sa.DateTime(), server_default=sa.func.now(), nullable=False),
-        sa.Column('updated_at', sa.DateTime(), server_default=sa.func.now(), onupdate=sa.func.now(), nullable=False),
+        sa.Column('updated_at', sa.DateTime(), server_default=sa.func.now(), nullable=False),
         sa.PrimaryKeyConstraint('id'),
-        sa.UniqueConstraint('material_category')
+        sa.UniqueConstraint('material_category'),
     )
     op.create_index('ix_usage_rules_id', 'usage_rules', ['id'])
     op.create_index('ix_usage_rules_material_category', 'usage_rules', ['material_category'], unique=True)
@@ -154,35 +136,35 @@ def upgrade() -> None:
 
     op.create_table(
         'inventory_thresholds',
-        sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column('id', sa.String(length=36), nullable=False),
         sa.Column('material_category', sa.String(length=100), nullable=False),
-        sa.Column('allowed_error_rate', sa.Float(), nullable=False, default=0.05),
+        sa.Column('allowed_error_rate', sa.Float(), nullable=False, server_default='0.05'),
         sa.Column('overstock_warning_threshold', sa.Float(), nullable=False),
         sa.Column('description', sa.Text(), nullable=True),
         sa.Column('created_at', sa.DateTime(), server_default=sa.func.now(), nullable=False),
-        sa.Column('updated_at', sa.DateTime(), server_default=sa.func.now(), onupdate=sa.func.now(), nullable=False),
+        sa.Column('updated_at', sa.DateTime(), server_default=sa.func.now(), nullable=False),
         sa.PrimaryKeyConstraint('id'),
-        sa.UniqueConstraint('material_category')
+        sa.UniqueConstraint('material_category'),
     )
     op.create_index('ix_inventory_thresholds_id', 'inventory_thresholds', ['id'])
     op.create_index('ix_inventory_thresholds_material_category', 'inventory_thresholds', ['material_category'], unique=True)
 
     op.create_table(
         'safety_stock_configs',
-        sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column('id', sa.String(length=36), nullable=False),
         sa.Column('material_name', sa.String(length=200), nullable=False),
         sa.Column('category', sa.String(length=100), nullable=False),
-        sa.Column('unit', sa.String(length=20), nullable=True),
+        sa.Column('unit', sa.String(length=50), nullable=True),
         sa.Column('region', sa.String(length=100), nullable=False),
         sa.Column('min_stock', sa.Float(), nullable=False),
         sa.Column('warning_stock', sa.Float(), nullable=False),
-        sa.Column('max_stock', sa.Float(), nullable=False),
-        sa.Column('current_stock', sa.Float(), nullable=False, default=0.0),
-        sa.Column('daily_consumption_rate', sa.Float(), nullable=False, default=0.0),
+        sa.Column('max_stock', sa.Float(), nullable=True),
+        sa.Column('current_stock', sa.Float(), nullable=False, server_default='0.0'),
+        sa.Column('daily_consumption_rate', sa.Float(), nullable=False, server_default='0.0'),
         sa.Column('created_at', sa.DateTime(), server_default=sa.func.now(), nullable=False),
-        sa.Column('updated_at', sa.DateTime(), server_default=sa.func.now(), onupdate=sa.func.now(), nullable=False),
+        sa.Column('updated_at', sa.DateTime(), server_default=sa.func.now(), nullable=False),
         sa.PrimaryKeyConstraint('id'),
-        sa.UniqueConstraint('material_name', 'region', name='ix_safety_stock_configs_material_region')
+        sa.UniqueConstraint('material_name', 'region', name='ix_safety_stock_configs_material_region'),
     )
     op.create_index('ix_safety_stock_configs_id', 'safety_stock_configs', ['id'])
     op.create_index('ix_safety_stock_configs_material_name', 'safety_stock_configs', ['material_name'])
@@ -192,19 +174,20 @@ def upgrade() -> None:
 
     op.create_table(
         'shortage_orders',
-        sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column('batch_id', sa.Integer(), nullable=False),
+        sa.Column('id', sa.String(length=36), nullable=False),
+        sa.Column('batch_id', sa.String(length=36), nullable=True),
         sa.Column('material_name', sa.String(length=200), nullable=False),
         sa.Column('shortage_quantity', sa.Float(), nullable=False),
-        sa.Column('unit', sa.String(length=20), nullable=True),
+        sa.Column('unit', sa.String(length=50), nullable=True),
         sa.Column('responsible_person', sa.String(length=100), nullable=True),
-        sa.Column('priority', shortagepriority_enum, nullable=False, default='MEDIUM'),
-        sa.Column('status', shortageorderstatus_enum, nullable=False, default='PENDING'),
+        sa.Column('responsible_person_id', sa.String(length=36), nullable=True),
+        sa.Column('priority', sa.String(length=50), nullable=False, server_default='medium'),
+        sa.Column('status', sa.String(length=50), nullable=False, server_default='pending'),
         sa.Column('deadline', sa.Date(), nullable=True),
         sa.Column('created_at', sa.DateTime(), server_default=sa.func.now(), nullable=False),
-        sa.Column('updated_at', sa.DateTime(), server_default=sa.func.now(), onupdate=sa.func.now(), nullable=False),
+        sa.Column('updated_at', sa.DateTime(), server_default=sa.func.now(), nullable=False),
         sa.ForeignKeyConstraint(['batch_id'], ['material_batches.id'], ),
-        sa.PrimaryKeyConstraint('id')
+        sa.PrimaryKeyConstraint('id'),
     )
     op.create_index('ix_shortage_orders_id', 'shortage_orders', ['id'])
     op.create_index('ix_shortage_orders_material_name', 'shortage_orders', ['material_name'])
@@ -216,17 +199,17 @@ def upgrade() -> None:
 
     op.create_table(
         'shortage_action_logs',
-        sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column('shortage_order_id', sa.Integer(), nullable=False),
-        sa.Column('action', shortageaction_enum, nullable=False),
-        sa.Column('operator_id', sa.Integer(), nullable=True),
+        sa.Column('id', sa.String(length=36), nullable=False),
+        sa.Column('shortage_order_id', sa.String(length=36), nullable=False),
+        sa.Column('action', sa.String(length=50), nullable=False),
+        sa.Column('operator_id', sa.String(length=36), nullable=True),
         sa.Column('operator', sa.String(length=100), nullable=True),
         sa.Column('remark', sa.Text(), nullable=True),
         sa.Column('supplement_quantity', sa.Float(), nullable=True),
         sa.Column('created_at', sa.DateTime(), server_default=sa.func.now(), nullable=False),
         sa.ForeignKeyConstraint(['operator_id'], ['users.id'], ),
         sa.ForeignKeyConstraint(['shortage_order_id'], ['shortage_orders.id'], ),
-        sa.PrimaryKeyConstraint('id')
+        sa.PrimaryKeyConstraint('id'),
     )
     op.create_index('ix_shortage_action_logs_id', 'shortage_action_logs', ['id'])
     op.create_index('ix_shortage_action_logs_action', 'shortage_action_logs', ['action'])
@@ -293,16 +276,6 @@ def downgrade() -> None:
 
     op.drop_index('ix_users_is_active', table_name='users')
     op.drop_index('ix_users_role', table_name='users')
-    op.drop_index('ix_users_email', table_name='users')
     op.drop_index('ix_users_username', table_name='users')
     op.drop_index('ix_users_id', table_name='users')
     op.drop_table('users')
-
-    shortageaction_enum.drop(op.get_bind(), checkfirst=True)
-    shortageorderstatus_enum.drop(op.get_bind(), checkfirst=True)
-    shortagepriority_enum.drop(op.get_bind(), checkfirst=True)
-    inventoryrecordtype_enum.drop(op.get_bind(), checkfirst=True)
-    materialbatchstatus_enum.drop(op.get_bind(), checkfirst=True)
-    supplierstatus_enum.drop(op.get_bind(), checkfirst=True)
-    creditrating_enum.drop(op.get_bind(), checkfirst=True)
-    userrole_enum.drop(op.get_bind(), checkfirst=True)
