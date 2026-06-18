@@ -35,9 +35,11 @@ async def list_vehicles(
 @router.get("/risk-matrix", response_model=ApiResponse[List[dict]])
 async def get_risk_matrix_bubbles(
     store_id: str | None = None,
+    region: str | None = None,
+    days: int | None = None,
     mock: MockService = Depends(get_mock_data),
 ) -> ApiResponse:
-    bubbles = mock.generate_matrix_bubbles()
+    bubbles = mock.generate_risk_matrix_bubbles(store_id=store_id, region=region, days=days)
     return ApiResponse.ok(data=bubbles)
 
 

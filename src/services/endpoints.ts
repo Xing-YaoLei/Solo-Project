@@ -13,6 +13,7 @@ import type {
   PaginationParams,
   PaginatedResponse,
   Vehicle,
+  DocumentItem,
 } from '@shared/types';
 
 interface DashboardSummary {
@@ -50,6 +51,8 @@ interface ReviewData {
   testDriveRecords: {
     customerName: string;
     driveAt: string;
+    mileage: number;
+    salesPerson: string;
     rating: number;
     feedback?: string;
   }[];
@@ -60,6 +63,45 @@ interface ReviewData {
     isDeal: boolean;
     dealPrice?: number;
   }[];
+  timeline: {
+    stage: string;
+    label: string;
+    at: string;
+    hasDocIssue: boolean;
+    note: string;
+  }[];
+  thresholdHits: {
+    thresholdId: string;
+    thresholdName: string;
+    level: string;
+    message: string;
+  }[];
+}
+
+interface VehicleDetail extends Vehicle {
+  store: Store;
+  alerts: Alert[];
+  documents: DocumentItem[];
+}
+
+interface DocumentMissingDistribution {
+  documentType: string;
+  documentName: string;
+  count: number;
+  byAgeBucket: Record<string, number>;
+}
+
+interface FetchVehiclesParams {
+  page?: number;
+  pageSize?: number;
+  storeId?: string;
+  riskLevel?: string;
+  stage?: string;
+}
+
+interface UpdateThresholdResponse {
+  affectedCount: number;
+  affectedVehicleIds: string[];
 }
 
 export function fetchDashboardSummary(): Promise<ApiResponse<DashboardSummary>> {
@@ -207,16 +249,6 @@ export function fetchWarningThresholds(): Promise<ApiResponse<WarningThreshold[]
   });
 }
 
-export function updateWarningThreshold(
-  threshold: Partial<WarningThreshold> & { id: string }
-): Promise<ApiResponse<WarningThreshold>> {
-  return request<WarningThreshold>({
-    url: `/rules/thresholds/${threshold.id}`,
-    method: 'put',
-    data: threshold,
-  });
-}
-
 export function toggleWarningThreshold(
   id: string,
   enabled: boolean
@@ -276,8 +308,58 @@ export function updateRule(
   });
 }
 
-export function fetchReviewData(vin: string): Promise<ApiResponse<ReviewData>> {
-  return request<ReviewData>({
+export async function fetchReviewData(vin: string): Promise<ApiResponse<ReviewData>> {
+  const response = await request<ReviewData>({
     url: `/review/${vin}`,
+  });
+  return {
+    ...response,
+    data: {
+      ...response.data,
+      alerts: response.data.alerts.map((alert) => ({
+        id: alert.id,
+        level: alert.level,
+        message: alert.message,
+        triggeredAt: alert.triggeredAt,
+        resolved: alert.resolved,
+      })),
+    },
+  };
+}
+
+export function fetchVehicles(
+  params: FetchVehiclesParams = {}
+): Promise<ApiResponse<PaginatedResponse<Vehicle>>> {
+  const queryParams: Record<string, unknown> = {};
+  if (params.page !== undefined) queryParams.page = params.page;
+  if (params.pageSize !== undefined) queryParams.page_size = params.pageSize;
+  if (params.storeId !== undefined) queryParams.store_id = params.storeId;
+  if (params.riskLevel !== undefined) queryParams.risk_level = params.riskLevel;
+  if (params.stage !== undefined) queryParams.stage = params.stage;
+  return request<PaginatedResponse<Vehicle>>({
+    url: '/vehicles',
+    params: queryParams,
+  });
+}
+
+export function fetchDocumentMissingDistribution(): Promise<ApiResponse<DocumentMissingDistribution[]>> {
+  return request<DocumentMissingDistribution[]>({
+    url: '/vehicles/document-missing-distribution',
+  });
+}
+
+export function fetchVehicleByVin(vin: string): Promise<ApiResponse<VehicleDetail>> {
+  return request<VehicleDetail>({
+    url: `/vehicles/${vin}`,
+  });
+}
+
+export function updateWarningThreshold(
+  threshold: Partial<WarningThreshold> & { id: string }
+): Promise<ApiResponse<UpdateThresholdResponse>> {
+  return request<UpdateThresholdResponse>({
+    url: `/rules/thresholds/${threshold.id}`,
+    method: 'put',
+    data: threshold,
   });
 }

@@ -45,27 +45,59 @@ const INVALIDATE_KEYS = [
   QUERY_KEYS.alerts,
   QUERY_KEYS.dashboardSummary,
   QUERY_KEYS.vehicles,
+  QUERY_KEYS.documentMissing,
 ];
+
+interface ToastData {
+  message: string;
+  subMessage?: string;
+  variant?: 'success' | 'info';
+}
 
 export default function ManagementPage() {
   const [tab, setTab] = useState('threshold');
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<ToastData | null>(null);
 
   useEffect(() => {
     if (!toast) return;
-    const timer = setTimeout(() => setToast(null), 2500);
+    const timer = setTimeout(() => setToast(null), 3500);
     return () => clearTimeout(timer);
   }, [toast]);
 
-  const showToast = (msg: string) => setToast(msg);
+  const showToast = (data: ToastData | string) => {
+    if (typeof data === 'string') {
+      setToast({ message: data });
+    } else {
+      setToast(data);
+    }
+  };
 
   return (
     <div className="space-y-5 relative">
       {toast && (
         <div className="fixed top-6 right-6 z-50 animate-slide-up">
-          <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-emerald-500/15 border border-emerald-500/30 backdrop-blur-md shadow-lg">
-            <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
-            <span className="text-sm text-emerald-300 font-medium">{toast}</span>
+          <div className={cn(
+            'flex items-start gap-2 px-4 py-3 rounded-xl border backdrop-blur-md shadow-lg max-w-sm',
+            toast.variant === 'info'
+              ? 'bg-brand-500/15 border-brand-500/30'
+              : 'bg-emerald-500/15 border-emerald-500/30'
+          )}>
+            <CheckCircle2 size={16} className={cn(
+              'shrink-0 mt-0.5',
+              toast.variant === 'info' ? 'text-brand-400' : 'text-emerald-400'
+            )} />
+            <div>
+              <span className={cn(
+                'text-sm font-medium block',
+                toast.variant === 'info' ? 'text-brand-300' : 'text-emerald-300'
+              )}>{toast.message}</span>
+              {toast.subMessage && (
+                <span className={cn(
+                  'text-xs block mt-0.5',
+                  toast.variant === 'info' ? 'text-brand-400/70' : 'text-emerald-400/70'
+                )}>{toast.subMessage}</span>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -83,7 +115,7 @@ export default function ManagementPage() {
         </Tabs.List>
 
         <Tabs.Content value="threshold" className="mt-5">
-          <ThresholdsTab onSaved={() => showToast('阈值配置已保存，相关数据已刷新')} />
+          <ThresholdsTab onSaved={showToast} />
         </Tabs.Content>
         <Tabs.Content value="rules" className="mt-5">
           <RulesTab onSaved={(msg) => showToast(msg)} />
@@ -112,7 +144,7 @@ function TabTrigger({ value, icon: Icon, children }: { value: string; icon: any;
   );
 }
 
-function ThresholdsTab({ onSaved }: { onSaved: () => void }) {
+function ThresholdsTab({ onSaved }: { onSaved: (data: ToastData | string) => void }) {
   const thresholdsQuery = useQuery({
     queryKey: QUERY_KEYS.thresholds,
     queryFn: async () => (await fetchWarningThresholds()).data,
@@ -134,17 +166,30 @@ function ThresholdsTab({ onSaved }: { onSaved: () => void }) {
     setLocalThresholds((list) => list.map((t) => (t.id === id ? { ...t, ...patch } : t)));
   };
 
-  const invalidateAll = () => {
+  const invalidateAll = (affectedVehicleIds?: string[]) => {
     INVALIDATE_KEYS.forEach((key) => {
       queryClient.invalidateQueries({ queryKey: key });
     });
+    if (affectedVehicleIds && affectedVehicleIds.length > 0) {
+      affectedVehicleIds.slice(0, 5).forEach((id) => {
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.review(id) });
+      });
+    }
   };
 
   const updateThresholdMutate = useMutation({
     mutationFn: (patch: Partial<WarningThreshold> & { id: string }) => updateWarningThreshold(patch),
-    onSuccess: () => {
-      invalidateAll();
-      onSaved();
+    onSuccess: (response) => {
+      const data = response.data;
+      invalidateAll(data.affectedVehicleIds);
+      queryClient.setQueryData(QUERY_KEYS.thresholds, localThresholds);
+      onSaved({
+        message: `触发重新计算，受影响 ${data.affectedCount} 台车`,
+        subMessage: data.affectedVehicleIds && data.affectedVehicleIds.length > 0
+          ? `涉及车辆：${data.affectedVehicleIds.slice(0, 3).join('、')}${data.affectedVehicleIds.length > 3 ? '...' : ''}`
+          : undefined,
+        variant: 'info',
+      });
     },
   });
 
@@ -152,7 +197,7 @@ function ThresholdsTab({ onSaved }: { onSaved: () => void }) {
     mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) => toggleWarningThreshold(id, enabled),
     onSuccess: () => {
       invalidateAll();
-      onSaved();
+      onSaved('阈值配置已保存，相关数据已刷新');
     },
   });
 

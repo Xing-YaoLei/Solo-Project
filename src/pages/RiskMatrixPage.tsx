@@ -8,6 +8,8 @@ import {
   fetchStores,
   fetchRiskMatrix,
   fetchSyncDelayInfo,
+  fetchVehicles,
+  fetchDocumentMissingDistribution,
 } from '@/services/endpoints';
 import {
   mockStores,
@@ -20,7 +22,7 @@ import { DOCUMENT_TYPES, RISK_COLORS, RISK_LABELS, STOCK_AGE_BUCKETS } from '@/u
 import { SyncDelayBadge } from '@/components/SyncDelayBadge';
 import { cn } from '@/lib/utils';
 import { formatPercent, formatDays } from '@/utils/format';
-import { ChevronRight, Filter, Store, AlertTriangle } from 'lucide-react';
+import { ChevronRight, Filter, Store, AlertTriangle, AlertCircle } from 'lucide-react';
 import type { RiskLevel, DocumentType } from '@shared/types';
 
 export default function RiskMatrixPage() {
@@ -44,9 +46,22 @@ export default function RiskMatrixPage() {
   });
 
   const vehiclesQuery = useQuery({
-    queryKey: [...QUERY_KEYS.vehicles, { page: 1, pageSize: 50, storeId: selectedStores[0], risk: selectedRisk }],
-    queryFn: async () => mockVehicles,
+    queryKey: [...QUERY_KEYS.vehicles, { selectedStores, selectedRisk, ageRange }],
+    queryFn: async () => {
+      const r = await fetchVehicles({
+        pageSize: 100,
+        storeId: selectedStores[0] ?? undefined,
+        riskLevel: selectedRisk === 'all' ? undefined : selectedRisk,
+      });
+      return r.data?.items ?? mockVehicles;
+    },
     initialData: mockVehicles,
+  });
+
+  const missingDistQuery = useQuery({
+    queryKey: QUERY_KEYS.documentMissing,
+    queryFn: async () => (await fetchDocumentMissingDistribution()).data,
+    initialData: [] as { documentType: string; documentName: string; count: number; byAgeBucket: Record<string, number> }[],
   });
 
   const delaysQuery = useQuery({
@@ -76,21 +91,33 @@ export default function RiskMatrixPage() {
     });
   }, [vehicles, selectedStores, selectedRisk, selectedDocTypes, ageRange]);
 
+  const missingDist = missingDistQuery.data ?? [];
+
   const stackedBarData = useMemo(() => {
     const ages = STOCK_AGE_BUCKETS;
-    const getBucket = (d: number) =>
-      d <= 7 ? ages[0] : d <= 15 ? ages[1] : d <= 30 ? ages[2] : ages[3];
     const data: Record<string, Record<string, number>> = {};
     ages.forEach((a) => (data[a] = {}));
-    filteredVehicles.forEach((v) => {
-      const bucket = getBucket(v.stockDays);
-      const vDocs = mockDocuments.filter((d) => d.vehicleId === v.id && d.status !== 'present');
-      vDocs.forEach((d) => {
-        data[bucket][d.type] = (data[bucket][d.type] ?? 0) + 1;
+    if (missingDist.length > 0) {
+      missingDist.forEach((item) => {
+        ages.forEach((age) => {
+          if (item.byAgeBucket[age]) {
+            data[age][item.documentType] = item.byAgeBucket[age];
+          }
+        });
       });
-    });
+    } else {
+      const getBucket = (d: number) =>
+        d <= 7 ? ages[0] : d <= 15 ? ages[1] : d <= 30 ? ages[2] : ages[3];
+      filteredVehicles.forEach((v) => {
+        const bucket = getBucket(v.stockDays);
+        const vDocs = mockDocuments.filter((d) => d.vehicleId === v.id && d.status !== 'present');
+        vDocs.forEach((d) => {
+          data[bucket][d.type] = (data[bucket][d.type] ?? 0) + 1;
+        });
+      });
+    }
     return data;
-  }, [filteredVehicles]);
+  }, [missingDist, filteredVehicles]);
 
   const barOption = {
     backgroundColor: 'transparent',
@@ -259,13 +286,15 @@ export default function RiskMatrixPage() {
                   <th className="px-2 py-2.5 font-medium">品牌</th>
                   <th className="px-2 py-2.5 font-medium">库龄</th>
                   <th className="px-2 py-2.5 font-medium">完成度</th>
-                  <th className="px-2 py-2.5 font-medium">风险</th>
+                  <th className="px-2 py-2.5 font-medium">风险等级</th>
+                  <th className="px-2 py-2.5 font-medium">预警</th>
                   <th className="px-4 py-2.5 font-medium text-right">操作</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredVehicles.slice(0, 20).map((v) => {
                   const store = stores.find((s) => s.id === v.storeId)!;
+                  const alertsCount = ('alerts' in v && Array.isArray(v.alerts) ? v.alerts.length : 0) || 0;
                   return (
                     <tr
                       key={v.id}
@@ -279,12 +308,21 @@ export default function RiskMatrixPage() {
                       <td className="px-2 py-2.5 tabular-nums text-slate-300">{formatPercent(v.documentCompletion)}</td>
                       <td className="px-2 py-2.5">
                         <span
-                          className="inline-block w-2 h-2 rounded-full"
-                          style={{ background: RISK_COLORS[v.riskLevel] }}
-                        />
-                        <span className="ml-1.5 text-[11px]" style={{ color: RISK_COLORS[v.riskLevel] }}>
+                          className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md font-medium"
+                          style={{ background: `${RISK_COLORS[v.riskLevel]}20`, color: RISK_COLORS[v.riskLevel] }}
+                        >
                           {RISK_LABELS[v.riskLevel]}
                         </span>
+                      </td>
+                      <td className="px-2 py-2.5">
+                        {alertsCount > 0 ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md bg-rose-500/15 text-rose-400 font-medium">
+                            <AlertCircle size={10} />
+                            {alertsCount}
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-slate-600">—</span>
+                        )}
                       </td>
                       <td className="px-4 py-2.5 text-right">
                         <button className="inline-flex items-center gap-0.5 text-brand-400 hover:text-brand-300 text-[11px]">

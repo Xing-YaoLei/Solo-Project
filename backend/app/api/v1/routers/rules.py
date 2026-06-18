@@ -123,7 +123,17 @@ async def update_threshold(
     updated = mock.upsert_warning_threshold(update_dict)
     if not updated:
         raise HTTPException(status_code=404, detail="阈值不存在")
-    return ApiResponse.ok(data=updated, message="阈值更新成功")
+    recalc_result = mock.recalculate_all()
+    return ApiResponse.ok(data={
+        "updatedThreshold": updated,
+        "updated_threshold": updated,
+        "recalculationResult": recalc_result,
+        "recalculation_result": recalc_result,
+        "affectedCount": recalc_result["affectedCount"],
+        "affected_count": recalc_result["affected_count"],
+        "affectedVehicleIds": recalc_result["affectedVehicleIds"],
+        "affected_vehicle_ids": recalc_result["affected_vehicle_ids"],
+    }, message="阈值更新成功")
 
 
 @router.post("/thresholds", response_model=ApiResponse[dict])
@@ -145,7 +155,17 @@ async def toggle_threshold(
     toggled = mock.toggle_warning_threshold(threshold_id, body.enabled)
     if not toggled:
         raise HTTPException(status_code=404, detail="阈值不存在")
-    return ApiResponse.ok(data=toggled, message=f"阈值已{'启用' if toggled['enabled'] else '禁用'}")
+    recalc_result = mock.recalculate_all()
+    return ApiResponse.ok(data={
+        "updatedThreshold": toggled,
+        "updated_threshold": toggled,
+        "recalculationResult": recalc_result,
+        "recalculation_result": recalc_result,
+        "affectedCount": recalc_result["affectedCount"],
+        "affected_count": recalc_result["affected_count"],
+        "affectedVehicleIds": recalc_result["affectedVehicleIds"],
+        "affected_vehicle_ids": recalc_result["affected_vehicle_ids"],
+    }, message=f"阈值已{'启用' if toggled['enabled'] else '禁用'}")
 
 
 @router.get("/{rule_id}", response_model=ApiResponse[dict])

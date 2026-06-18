@@ -29,6 +29,7 @@ export const QUERY_KEYS = {
   quoteCandles: ['analytics', 'quote-candles'],
   review: (vin: string) => ['review', vin] as const,
   vehicles: ['vehicles'],
+  documentMissing: ['vehicles', 'document-missing'],
 } as const;
 
 createRoot(document.getElementById('root')!).render(

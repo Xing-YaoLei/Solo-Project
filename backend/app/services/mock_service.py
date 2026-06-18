@@ -87,6 +87,105 @@ class MockService:
         self._alerts = self.generate_mock_alerts(self._stores, self._vehicles)
         self._rules = self.generate_mock_rules()
         self._thresholds = self._generate_mock_warning_thresholds()
+        self.recalculate_all()
+
+    def recalculate_all(self) -> Dict[str, Any]:
+        self._alerts = []
+        affected_vehicle_ids = []
+        level_priority = {"low": 0, "medium": 1, "high": 2, "critical": 3}
+
+        for v in self._vehicles:
+            docs = v.get("documents", [])
+            vehicle_highest_level = "low"
+            vehicle_has_alert = False
+
+            present_count = sum(1 for d in docs if d.get("status") == "present")
+            total_docs = len(docs)
+            completion = round((present_count / total_docs) * 100) if total_docs > 0 else 0
+            v["documentCompletion"] = completion
+            v["document_completion"] = completion
+
+            for t in self._thresholds:
+                if not t.get("enabled", False):
+                    continue
+
+                doc = next((d for d in docs if d.get("documentType") == t.get("documentType")), None)
+                if doc is None:
+                    continue
+
+                if doc.get("status") == "present":
+                    continue
+
+                stage_required = t.get("stageRequired")
+                if stage_required:
+                    try:
+                        vehicle_stage_idx = STAGES.index(v.get("stage"))
+                        required_stage_idx = STAGES.index(stage_required)
+                        if vehicle_stage_idx >= required_stage_idx:
+                            continue
+                    except ValueError:
+                        continue
+
+                stock_days = v.get("stockDays", 0)
+                warning_days = t.get("warningDays", 0)
+                critical_days = t.get("criticalDays", 0)
+
+                alert_level = None
+                if stock_days > critical_days:
+                    alert_level = "critical"
+                elif stock_days > warning_days:
+                    alert_level = "high"
+
+                if alert_level:
+                    alert = {
+                        "id": _rand_uuid(),
+                        "vehicleId": v["id"],
+                        "vehicle_id": v["id"],
+                        "vin": v["vin"],
+                        "storeId": v["storeId"],
+                        "store_id": v["storeId"],
+                        "storeName": v.get("storeName", ""),
+                        "store_name": v.get("storeName", ""),
+                        "documentType": t.get("documentType"),
+                        "documentName": t.get("name", ""),
+                        "doc_type": t.get("documentType"),
+                        "thresholdId": t.get("id"),
+                        "threshold_id": t.get("id"),
+                        "ruleId": t.get("id"),
+                        "rule_id": t.get("id"),
+                        "ruleName": f"{t.get('name', '')}缺失超{warning_days}天",
+                        "rule_name": f"{t.get('name', '')}缺失超{warning_days}天",
+                        "level": alert_level,
+                        "message": f"车辆{v['vin']} - {t.get('name', '')}缺失已{stock_days}天，超过{warning_days}天阈值",
+                        "triggeredAt": datetime.now().isoformat(),
+                        "triggered_at": datetime.now().isoformat(),
+                        "acknowledged": False,
+                        "acknowledgedAt": None,
+                        "acknowledged_at": None,
+                        "resolved": False,
+                        "resolvedAt": None,
+                        "resolved_at": None,
+                        "stockDays": stock_days,
+                        "stock_days": stock_days,
+                    }
+                    self._alerts.append(alert)
+
+                    if level_priority.get(alert_level, 0) > level_priority.get(vehicle_highest_level, 0):
+                        vehicle_highest_level = alert_level
+                    vehicle_has_alert = True
+
+            v["riskLevel"] = vehicle_highest_level
+            v["risk_level"] = vehicle_highest_level
+
+            if vehicle_has_alert and v["id"] not in affected_vehicle_ids:
+                affected_vehicle_ids.append(v["id"])
+
+        return {
+            "affectedCount": len(affected_vehicle_ids),
+            "affected_count": len(affected_vehicle_ids),
+            "affectedVehicleIds": affected_vehicle_ids,
+            "affected_vehicle_ids": affected_vehicle_ids,
+        }
 
     def generate_mock_stores(self) -> List[Dict]:
         stores = []
@@ -511,6 +610,16 @@ class MockService:
 
         alerts_for_v = [a for a in self._alerts if a["vin"] == vehicle["vin"]]
 
+        alerts_by_threshold = {}
+        threshold_hits = []
+        for alert in alerts_for_v:
+            tid = alert.get("thresholdId")
+            if tid and tid not in alerts_by_threshold:
+                alerts_by_threshold[tid] = []
+                threshold_hits.append(tid)
+            if tid:
+                alerts_by_threshold[tid].append(alert)
+
         return {
             "vehicle": vehicle,
             "store": store,
@@ -520,6 +629,12 @@ class MockService:
             "quote_records": quote_records,
             "documents": vehicle["documents"],
             "alerts": alerts_for_v,
+            "alertsByThreshold": alerts_by_threshold,
+            "alerts_by_threshold": alerts_by_threshold,
+            "currentThresholds": self._thresholds,
+            "current_thresholds": self._thresholds,
+            "thresholdHits": threshold_hits,
+            "threshold_hits": threshold_hits,
             "risk_assessment": {
                 "level": vehicle["riskLevel"],
                 "score": random.randint(10, 90),
@@ -718,19 +833,56 @@ class MockService:
         }
 
     def get_document_missing_distribution(self) -> List[Dict]:
-        age_buckets = ["0-7天", "8-30天", "31-60天", "61+天"]
+        age_buckets = ["0-7", "8-15", "16-30", "31+"]
+
+        def get_age_bucket(days: int) -> str:
+            if days <= 7:
+                return "0-7"
+            elif days <= 15:
+                return "8-15"
+            elif days <= 30:
+                return "16-30"
+            else:
+                return "31+"
+
+        doc_type_map = {dt: dn for dt, dn in DOCUMENT_TYPES}
+        missing_counts = {}
+
+        for dt in doc_type_map:
+            missing_counts[dt] = {
+                "count": 0,
+                "byAgeBucket": {ab: 0 for ab in age_buckets},
+                "by_age_bucket": {ab: 0 for ab in age_buckets},
+            }
+
+        for v in self._vehicles:
+            docs = v.get("documents", [])
+            stock_days = v.get("stockDays", 0)
+            age_bucket = get_age_bucket(stock_days)
+
+            for doc in docs:
+                if doc.get("status") != "present":
+                    dt = doc.get("documentType")
+                    if dt in missing_counts:
+                        missing_counts[dt]["count"] += 1
+                        missing_counts[dt]["byAgeBucket"][age_bucket] += 1
+                        missing_counts[dt]["by_age_bucket"][age_bucket] += 1
+
         result = []
         for dt, dn in DOCUMENT_TYPES:
-            for ab in age_buckets:
-                result.append({
-                    "docType": dt,
-                    "doc_type": dt,
-                    "docName": dn,
-                    "doc_name": dn,
-                    "stockAgeBucket": ab,
-                    "stock_age_bucket": ab,
-                    "count": random.randint(0, 6),
-                })
+            data = missing_counts.get(dt, {"count": 0, "byAgeBucket": {ab: 0 for ab in age_buckets}})
+            result.append({
+                "documentType": dt,
+                "document_name": dt,
+                "documentName": dn,
+                "docType": dt,
+                "doc_type": dt,
+                "docName": dn,
+                "doc_name": dn,
+                "count": data["count"],
+                "byAgeBucket": data["byAgeBucket"],
+                "by_age_bucket": data.get("by_age_bucket", data["byAgeBucket"]),
+            })
         return result
 
     def _generate_mock_warning_thresholds(self) -> List[Dict]:
@@ -768,31 +920,68 @@ class MockService:
 
     def generate_risk_matrix_bubbles(self, store_id: Optional[str] = None, region: Optional[str] = None, days: Optional[int] = None) -> List[Dict]:
         age_buckets = ["0-7", "8-15", "16-30", "31+"]
-        comp_buckets = ["0-25", "26-50", "51-75", "76-100"]
-        bubbles = []
-        all_vehicle_ids = [v["id"] for v in self._vehicles]
-        if store_id:
-            all_vehicle_ids = [v["id"] for v in self._vehicles if v["storeId"] == store_id]
-        if region:
-            store_ids_in_region = [s["id"] for s in self._stores if s["region"] == region]
-            all_vehicle_ids = [v["id"] for v in self._vehicles if v["storeId"] in store_ids_in_region]
+        comp_buckets = ["0-25%", "26-50%", "51-75%", "76-100%"]
+        level_priority = {"low": 0, "medium": 1, "high": 2, "critical": 3}
+
+        def get_age_bucket(days_val: int) -> int:
+            if days_val <= 7:
+                return 0
+            elif days_val <= 15:
+                return 1
+            elif days_val <= 30:
+                return 2
+            else:
+                return 3
+
+        def get_comp_bucket(completion: int) -> int:
+            if completion <= 25:
+                return 0
+            elif completion <= 50:
+                return 1
+            elif completion <= 75:
+                return 2
+            else:
+                return 3
+
+        filtered_vehicles = []
+        for v in self._vehicles:
+            if store_id and v["storeId"] != store_id:
+                continue
+            if region:
+                store = next((s for s in self._stores if s["id"] == v["storeId"]), None)
+                if not store or store["region"] != region:
+                    continue
+            if days is not None and v["stockDays"] <= days:
+                continue
+            filtered_vehicles.append(v)
+
+        buckets = {}
         for si in range(len(age_buckets)):
             for ci in range(len(comp_buckets)):
-                dist_from_ideal = si + (3 - ci)
-                if dist_from_ideal <= 1:
-                    level = "low"
-                elif dist_from_ideal <= 3:
-                    level = "medium"
-                elif dist_from_ideal <= 5:
-                    level = "high"
-                else:
-                    level = "critical"
-                count = max(0, random.randint(0, 12) - int(dist_from_ideal * 0.8))
-                vid_count = min(count, len(all_vehicle_ids))
-                start_idx = si * 3 + ci
-                if start_idx + vid_count > len(all_vehicle_ids):
-                    start_idx = 0
-                vids = all_vehicle_ids[start_idx:start_idx + vid_count]
+                buckets[(si, ci)] = {
+                    "vehicleIds": [],
+                    "vehicle_ids": [],
+                    "highestLevel": "low",
+                }
+
+        for v in filtered_vehicles:
+            si = get_age_bucket(v["stockDays"])
+            ci = get_comp_bucket(v["documentCompletion"])
+            key = (si, ci)
+            if key in buckets:
+                buckets[key]["vehicleIds"].append(v["id"])
+                buckets[key]["vehicle_ids"].append(v["id"])
+                v_level = v.get("riskLevel", "low")
+                if level_priority.get(v_level, 0) > level_priority.get(buckets[key]["highestLevel"], 0):
+                    buckets[key]["highestLevel"] = v_level
+
+        bubbles = []
+        for si in range(len(age_buckets)):
+            for ci in range(len(comp_buckets)):
+                key = (si, ci)
+                data = buckets[key]
+                count = len(data["vehicleIds"])
+                level = data["highestLevel"] if count > 0 else "low"
                 bubbles.append({
                     "id": f"bubble-{si}-{ci}",
                     "stockAgeBucket": age_buckets[si],
@@ -804,8 +993,8 @@ class MockService:
                     "count": count,
                     "riskLevel": level,
                     "risk_level": level,
-                    "vehicleIds": vids,
-                    "vehicle_ids": vids,
+                    "vehicleIds": data["vehicleIds"],
+                    "vehicle_ids": data["vehicle_ids"],
                 })
         return bubbles
 

@@ -1,6 +1,9 @@
 import { useParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { QUERY_KEYS } from '@/main';
 import * as RadixTabs from '@radix-ui/react-tabs';
 import { QuoteCandleChart } from '@/components/charts/QuoteCandleChart';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   mockVehicles,
   mockStores,
@@ -12,6 +15,7 @@ import {
   mockQuoteCandles,
   mockSyncDelayInfo,
 } from '@/data/mockData';
+import { fetchReviewData, fetchVehicleByVin } from '@/services/endpoints';
 import { STAGE_META, STAGE_ICONS, RISK_COLORS, RISK_LABELS, DOCUMENT_TYPES } from '@/utils/constants';
 import { formatDate, formatDateTime, formatMoney } from '@/utils/format';
 import { cn } from '@/lib/utils';
@@ -31,20 +35,172 @@ import {
   Wrench,
   Users,
 } from 'lucide-react';
+import type { Vehicle, Store, Alert, DocumentItem } from '@shared/types';
+
+function mockGenerateReviewData(vin: string): ReviewData {
+  const vehicle = mockVehicles.find((v) => v.vin === vin) ?? mockVehicles[0];
+  return {
+    vehicle,
+    documents: mockDocuments.filter((d) => d.vehicleId === vehicle.id).map((d) => ({
+      type: d.type,
+      name: d.name,
+      status: d.status,
+      uploadedAt: d.uploadedAt,
+    })),
+    alerts: [],
+    preparationRecords: mockPreparationRecords,
+    testDriveRecords: mockTestDriveRecords.map((t) => ({
+      customerName: t.customerName,
+      driveAt: t.driveAt,
+      mileage: t.mileage,
+      salesPerson: t.salesPerson,
+      rating: t.rating,
+      feedback: t.feedback,
+    })),
+    quoteRecords: mockQuoteRecords.map((q) => ({
+      amount: q.amount,
+      source: q.source,
+      quotedAt: q.date,
+      isDeal: q.isDeal,
+      dealPrice: q.dealPrice,
+    })),
+    timeline: [...mockReviewTimeline],
+    thresholdHits: [],
+  };
+}
+
+interface ReviewData {
+  vehicle: Vehicle;
+  documents: {
+    type: string;
+    name: string;
+    status: string;
+    uploadedAt?: string;
+  }[];
+  alerts: {
+    id: string;
+    level: string;
+    message: string;
+    triggeredAt: string;
+    resolved: boolean;
+  }[];
+  preparationRecords: {
+    itemName: string;
+    category: string;
+    cost: number;
+    status: string;
+    startedAt?: string;
+    completedAt?: string;
+  }[];
+  testDriveRecords: {
+    customerName: string;
+    driveAt: string;
+    mileage: number;
+    salesPerson: string;
+    rating: number;
+    feedback?: string;
+  }[];
+  quoteRecords: {
+    amount: number;
+    source: string;
+    quotedAt: string;
+    isDeal: boolean;
+    dealPrice?: number;
+  }[];
+  timeline: {
+    stage: string;
+    label: string;
+    at: string;
+    hasDocIssue: boolean;
+    note: string;
+  }[];
+  thresholdHits: {
+    thresholdId: string;
+    thresholdName: string;
+    level: string;
+    message: string;
+  }[];
+}
 
 export default function ReviewPage() {
   const { vin = 'demo' } = useParams();
-  const vehicle = mockVehicles.find((v) => v.vin === vin) ?? mockVehicles[0];
-  const store = mockStores.find((s) => s.id === vehicle.storeId) ?? mockStores[0];
-  const vehicleDocs = mockDocuments.filter((d) => d.vehicleId === vehicle.id);
 
-  const prepTotal = mockPreparationRecords.reduce((acc, p) => acc + p.cost, 0);
+  interface VehicleDetail extends Vehicle {
+    store: Store;
+    alerts: Alert[];
+    documents: DocumentItem[];
+  }
+
+  const vehicleQuery = useQuery({
+    queryKey: QUERY_KEYS.review(vin),
+    queryFn: async () => (await fetchVehicleByVin(vin)).data as VehicleDetail,
+    initialData: (): VehicleDetail => {
+      const mockVehicle = mockVehicles.find((v) => v.vin === vin) ?? mockVehicles[0];
+      return {
+        ...mockVehicle,
+        store: mockStores.find((s) => s.id === mockVehicle.storeId) ?? mockStores[0],
+        alerts: [],
+        documents: mockDocuments.filter((d) => d.vehicleId === mockVehicle.id),
+      };
+    },
+  });
+
+  const reviewQuery = useQuery({
+    queryKey: [...QUERY_KEYS.review(vin), 'full'],
+    queryFn: async () => (await fetchReviewData(vin)).data,
+    initialData: (): ReviewData => mockGenerateReviewData(vin),
+  });
+
+  const vehicle = vehicleQuery.data;
+  const store = vehicle.store;
+  const vehicleDocs = vehicle.documents;
+
+  const reviewData = reviewQuery.data;
+  const timeline = reviewData.timeline;
+  const preparationRecords = reviewData.preparationRecords;
+  const testDriveRecords = reviewData.testDriveRecords;
+  const quoteRecords = reviewData.quoteRecords;
+  const thresholdHits = reviewData.thresholdHits;
+
+  const prepTotal = preparationRecords.reduce((acc, p) => acc + p.cost, 0);
   const avgPrepDays = Math.round(
-    mockPreparationRecords
+    preparationRecords
       .filter((p) => p.completedAt)
       .reduce((acc, p) => acc + dayjs(p.completedAt).diff(dayjs(p.startedAt), 'day', true), 0) /
-      Math.max(1, mockPreparationRecords.filter((p) => p.completedAt).length)
+      Math.max(1, preparationRecords.filter((p) => p.completedAt).length)
   );
+
+  if (vehicleQuery.isLoading || reviewQuery.isLoading) {
+    return (
+      <div className="space-y-5">
+        <div className="rounded-2xl bg-surface-card border border-surface-border p-6">
+          <div className="flex items-start gap-5">
+            <Skeleton className="w-20 h-20 rounded-2xl" />
+            <div className="flex-1 space-y-3">
+              <Skeleton className="h-7 w-64" />
+              <div className="flex gap-4">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-28" />
+              </div>
+              <div className="flex gap-2">
+                <Skeleton className="h-6 w-20" />
+                <Skeleton className="h-6 w-20" />
+                <Skeleton className="h-6 w-20" />
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+          <Skeleton className="h-80 rounded-2xl" />
+          <div className="xl:col-span-2 space-y-4">
+            <Skeleton className="h-10 w-80 rounded-xl" />
+            <Skeleton className="h-64 rounded-2xl" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">
@@ -137,7 +293,7 @@ export default function ReviewPage() {
           <div className="relative">
             <div className="absolute left-[15px] top-2 bottom-2 w-px bg-gradient-to-b from-brand-500/50 via-amber-500/30 to-slate-700" />
             <ul className="space-y-4">
-              {mockReviewTimeline.map((node, i) => {
+              {timeline.map((node, i) => {
                 const StageIcon = STAGE_ICONS[node.stage as keyof typeof STAGE_ICONS];
                 const stageMeta = STAGE_META.find((m) => m.key === node.stage)!;
                 return (
@@ -169,11 +325,25 @@ export default function ReviewPage() {
         </div>
 
         <div className="xl:col-span-2">
+          {thresholdHits.length > 0 && (
+            <div className="mb-4 flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-slate-400">命中规则：</span>
+              {thresholdHits.map((hit, i) => (
+                <span
+                  key={i}
+                  className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-md bg-rose-500/15 text-rose-300 border border-rose-500/30 font-medium"
+                >
+                  <AlertCircle size={9} />
+                  {hit.thresholdName}
+                </span>
+              ))}
+            </div>
+          )}
           <RadixTabs.Root defaultValue="preparation">
             <RadixTabs.List className="inline-flex bg-surface-card border border-surface-border rounded-xl p-1 gap-1 mb-4">
-              <ReviewTab value="preparation" icon={Wrench} count={mockPreparationRecords.length}>整备清单</ReviewTab>
-              <ReviewTab value="testdrive" icon={Users} count={mockTestDriveRecords.length}>试驾记录</ReviewTab>
-              <ReviewTab value="quote" icon={FileSpreadsheet} count={mockQuoteRecords.length}>报价历史</ReviewTab>
+              <ReviewTab value="preparation" icon={Wrench} count={preparationRecords.length}>整备清单</ReviewTab>
+              <ReviewTab value="testdrive" icon={Users} count={testDriveRecords.length}>试驾记录</ReviewTab>
+              <ReviewTab value="quote" icon={FileSpreadsheet} count={quoteRecords.length}>报价历史</ReviewTab>
             </RadixTabs.List>
 
             <RadixTabs.Content value="preparation" className="rounded-2xl bg-surface-card border border-surface-border overflow-hidden">
@@ -190,7 +360,7 @@ export default function ReviewPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {mockPreparationRecords.map((p, i) => (
+                    {preparationRecords.map((p, i) => (
                       <tr key={i} className="border-t border-surface-border hover:bg-white/[0.02]">
                         <td className="px-5 py-3 text-slate-200 font-medium">{p.itemName}</td>
                         <td className="px-4 py-3 text-slate-400">{p.category}</td>
@@ -229,7 +399,7 @@ export default function ReviewPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {mockTestDriveRecords.map((t, i) => (
+                    {testDriveRecords.map((t, i) => (
                       <tr key={i} className="border-t border-surface-border hover:bg-white/[0.02]">
                         <td className="px-5 py-3 text-slate-200 font-medium">{t.customerName}</td>
                         <td className="px-4 py-3 text-slate-300 tabular-nums">{t.mileage} km</td>
@@ -250,11 +420,11 @@ export default function ReviewPage() {
               </div>
               <div className="flex items-center justify-between px-5 py-3.5 bg-surface-elevated/30 border-t border-surface-border">
                 <div className="text-xs text-slate-400">
-                  试驾批次 <span className="text-white font-semibold ml-1 text-base">{mockTestDriveRecords.length} 次</span>
+                  试驾批次 <span className="text-white font-semibold ml-1 text-base">{testDriveRecords.length} 次</span>
                 </div>
                 <div className="text-xs text-slate-400">
                   平均评分 <span className="text-amber-400 font-semibold ml-1 text-base">
-                    {(mockTestDriveRecords.reduce((a, t) => a + t.rating, 0) / mockTestDriveRecords.length).toFixed(1)}
+                    {testDriveRecords.length > 0 ? (testDriveRecords.reduce((a, t) => a + t.rating, 0) / testDriveRecords.length).toFixed(1) : '0.0'}
                   </span>
                 </div>
               </div>
@@ -278,9 +448,9 @@ export default function ReviewPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {mockQuoteRecords.map((q, i) => (
+                      {quoteRecords.map((q, i) => (
                         <tr key={i} className="border-t border-surface-border hover:bg-white/[0.02]">
-                          <td className="px-5 py-3 text-slate-300">{q.date}</td>
+                          <td className="px-5 py-3 text-slate-300">{formatDate(q.quotedAt)}</td>
                           <td className="px-4 py-3 text-slate-200 tabular-nums font-medium">{formatMoney(q.amount)}</td>
                           <td className="px-4 py-3 text-slate-400">{q.source}</td>
                           <td className="px-4 py-3">
