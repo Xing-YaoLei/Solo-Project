@@ -177,14 +177,22 @@ class MockService:
             v["riskLevel"] = vehicle_highest_level
             v["risk_level"] = vehicle_highest_level
 
-            if vehicle_has_alert and v["id"] not in affected_vehicle_ids:
-                affected_vehicle_ids.append(v["id"])
+            if vehicle_has_alert:
+                if v["id"] not in affected_vehicle_ids:
+                    affected_vehicle_ids.append(v["id"])
+
+        affected_vin_list: List[str] = [
+            v["vin"] for v in self._vehicles
+            if v.get("vin") and v["id"] in affected_vehicle_ids
+        ]
 
         return {
             "affectedCount": len(affected_vehicle_ids),
             "affected_count": len(affected_vehicle_ids),
             "affectedVehicleIds": affected_vehicle_ids,
             "affected_vehicle_ids": affected_vehicle_ids,
+            "affectedVins": affected_vin_list,
+            "affected_vins": affected_vin_list,
         }
 
     def generate_mock_stores(self) -> List[Dict]:

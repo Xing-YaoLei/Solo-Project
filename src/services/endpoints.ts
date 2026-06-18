@@ -96,6 +96,7 @@ interface FetchVehiclesParams {
 interface UpdateThresholdResponse {
   affectedCount: number;
   affectedVehicleIds: string[];
+  affectedVins: string[];
 }
 
 export function fetchDashboardSummary(): Promise<ApiResponse<DashboardSummary>> {

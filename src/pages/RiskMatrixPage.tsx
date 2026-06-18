@@ -294,7 +294,13 @@ export default function RiskMatrixPage() {
               <tbody>
                 {filteredVehicles.slice(0, 20).map((v) => {
                   const store = stores.find((s) => s.id === v.storeId)!;
-                  const alertsCount = ('alerts' in v && Array.isArray(v.alerts) ? v.alerts.length : 0) || 0;
+                  const alertsCount =
+                    (v as unknown as { alertsCount?: number; alerts_count?: number }).alertsCount ??
+                    (v as unknown as { alertsCount?: number; alerts_count?: number }).alerts_count ??
+                    ('alerts' in v && Array.isArray((v as { alerts?: unknown[] }).alerts)
+                      ? (v as { alerts: unknown[] }).alerts.length
+                      : 0) ??
+                    0;
                   return (
                     <tr
                       key={v.id}

@@ -166,15 +166,48 @@ function ThresholdsTab({ onSaved }: { onSaved: (data: ToastData | string) => voi
     setLocalThresholds((list) => list.map((t) => (t.id === id ? { ...t, ...patch } : t)));
   };
 
-  const invalidateByVins = (data?: { recalculationResult?: { affectedVehicleIds?: string[] }; affectedVehicleIds?: string[] }) => {
-    const affectedVehicleIds = (data?.recalculationResult?.affectedVehicleIds ?? data?.affectedVehicleIds ?? []) as string[];
+  const invalidateByVins = (data?: {
+    recalculationResult?: { affectedVehicleIds?: string[]; affectedVins?: string[] };
+    affectedVehicleIds?: string[];
+    affectedVins?: string[];
+  }) => {
+    const result = data?.recalculationResult ?? data;
+    const affectedVinsFromApi = (result?.affectedVins ?? []) as string[];
+    const affectedVehicleIds = (result?.affectedVehicleIds ?? []) as string[];
 
-    const affectedVins = affectedVehicleIds
-      .map((id) => {
-        const cached = queryClient.getQueryData<PaginatedResponse<Vehicle>>([...QUERY_KEYS.vehicles]);
-        return cached?.items?.find((v) => v.id === id)?.vin;
-      })
-      .filter(Boolean) as string[];
+    const cached = queryClient.getQueryData<PaginatedResponse<Vehicle>>([...QUERY_KEYS.vehicles]);
+    const idToVin = new Map<string, string>();
+    cached?.items?.forEach((v) => idToVin.set(v.id, v.vin));
+
+    const invalidatedFromCache: string[] = [];
+    const vinsSet = new Set<string>(affectedVinsFromApi);
+    affectedVehicleIds.forEach((id) => {
+      const vin = idToVin.get(id);
+      if (vin) {
+        vinsSet.add(vin);
+        invalidatedFromCache.push(vin);
+      }
+    });
+
+    const fallbackOpenedReviewVins: string[] = [];
+    try {
+      queryClient.getQueryCache().findAll({ queryKey: ['review'] }).forEach(({ queryKey }) => {
+        if (Array.isArray(queryKey) && queryKey.length >= 2 && typeof queryKey[1] === 'string') {
+          const vin = queryKey[1];
+          if (!vinsSet.has(vin)) {
+            const v = cached?.items?.find((cv) => cv.vin === vin);
+            if (v && affectedVehicleIds.includes(v.id)) {
+              vinsSet.add(vin);
+              fallbackOpenedReviewVins.push(vin);
+            }
+          }
+        }
+      });
+    } catch {
+      /* noop */
+    }
+
+    const affectedVins = Array.from(vinsSet);
 
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.thresholds });
 
@@ -186,17 +219,22 @@ function ThresholdsTab({ onSaved }: { onSaved: (data: ToastData | string) => voi
       queryClient.invalidateQueries({ queryKey: key });
     });
 
-    return affectedVins;
+    return { affectedVins, invalidatedFromCache, fallbackOpenedReviewVins };
   };
 
   const updateThresholdMutate = useMutation({
     mutationFn: (patch: Partial<WarningThreshold> & { id: string }) => updateWarningThreshold(patch),
     onSuccess: (response) => {
-      const data = response.data as unknown as { recalculationResult?: { affectedVehicleIds?: string[] }; affectedVehicleIds?: string[]; affectedCount?: number };
-      const affectedVins = invalidateByVins(data);
+      const data = response.data as unknown as {
+        recalculationResult?: { affectedVehicleIds?: string[]; affectedVins?: string[] };
+        affectedVehicleIds?: string[];
+        affectedVins?: string[];
+        affectedCount?: number;
+      };
+      const { affectedVins, fallbackOpenedReviewVins } = invalidateByVins(data);
       queryClient.setQueryData(QUERY_KEYS.thresholds, localThresholds);
       onSaved({
-        message: `触发重新计算，受影响 ${data.affectedCount ?? affectedVins.length} 台车，已刷新 ${affectedVins.length} 辆车的复盘材料`,
+        message: `触发重新计算，受影响 ${data.affectedCount ?? affectedVins.length} 台车，已刷新 ${affectedVins.length} 辆车的复盘材料${fallbackOpenedReviewVins.length > 0 ? `（含已打开的 ${fallbackOpenedReviewVins.length} 个复盘页）` : ''}`,
         subMessage: affectedVins.length > 0
           ? `涉及车辆：${affectedVins.slice(0, 3).join('、')}${affectedVins.length > 3 ? '...' : ''}`
           : undefined,
@@ -208,8 +246,12 @@ function ThresholdsTab({ onSaved }: { onSaved: (data: ToastData | string) => voi
   const toggleThresholdMutate = useMutation({
     mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) => toggleWarningThreshold(id, enabled),
     onSuccess: (response) => {
-      const data = response.data as unknown as { recalculationResult?: { affectedVehicleIds?: string[] }; affectedVehicleIds?: string[] };
-      const affectedVins = invalidateByVins(data);
+      const data = response.data as unknown as {
+        recalculationResult?: { affectedVehicleIds?: string[]; affectedVins?: string[] };
+        affectedVehicleIds?: string[];
+        affectedVins?: string[];
+      };
+      const { affectedVins } = invalidateByVins(data);
       onSaved(`阈值配置已保存，已刷新 ${affectedVins.length} 辆车的复盘材料`);
     },
   });
