@@ -65,7 +65,7 @@ export const workOrderApi = {
   rework: (id: string, reason: string) =>
     api.post<WorkOrder>(`/work-orders/${id}/rework`, undefined, { params: { reason } }),
   batchUpdate: (ids: string[], status: string) =>
-    api.post('/work-orders/batch', { order_ids: ids }, { params: { status } }),
+    api.post('/work-orders/batch', ids, { params: { status } }),
 };
 
 export const partApi = {

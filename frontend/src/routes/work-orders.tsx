@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from '@tanstack/react-router';
+import { useNavigate, useSearch } from '@tanstack/react-router';
 import {
   Table, Card, Button, Space, Tag, Input, Select, DatePicker, message, Dropdown,
 } from 'antd';
@@ -14,45 +14,63 @@ import type { WorkOrder, OrderStatus } from '../lib/types';
 const { RangePicker } = DatePicker;
 
 const statusConfig: Record<string, { text: string; color: string }> = {
-  pending: { text: '待分配', color: 'default' },
-  assigned: { text: '已分配', color: 'processing' },
+  pending: { text: '待确认', color: 'default' },
+  confirmed: { text: '已确认', color: 'processing' },
   in_progress: { text: '进行中', color: 'blue' },
-  parts_issued: { text: '已发料', color: 'cyan' },
-  quality_check: { text: '质检中', color: 'orange' },
+  waiting_parts: { text: '待料', color: 'orange' },
+  in_inspection: { text: '质检中', color: 'purple' },
   completed: { text: '已完成', color: 'green' },
+  closed: { text: '已关闭', color: 'default' },
   rework: { text: '返工', color: 'red' },
 };
 
 const priorityConfig: Record<string, { text: string; color: string }> = {
-  low: { text: '低', color: 'default' },
   normal: { text: '普通', color: 'blue' },
-  high: { text: '高', color: 'orange' },
-  urgent: { text: '紧急', color: 'red' },
+  urgent: { text: '紧急', color: 'orange' },
+  critical: { text: '加急', color: 'red' },
 };
+
+const BATCH_STATUS_OPTIONS: { value: OrderStatus; label: string }[] = [
+  { value: 'confirmed', label: '已确认' },
+  { value: 'in_progress', label: '进行中' },
+  { value: 'waiting_parts', label: '待料' },
+  { value: 'in_inspection', label: '质检中' },
+  { value: 'completed', label: '已完成' },
+  { value: 'closed', label: '已关闭' },
+  { value: 'rework', label: '返工' },
+];
+
+interface WorkOrdersSearch {
+  status?: string;
+}
 
 export default function WorkOrdersPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const search = useSearch({ strict: false }) as WorkOrdersSearch;
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string | undefined>();
-  const [priorityFilter, setPriorityFilter] = useState<string | undefined>();
+  const [searchText, setSearchText] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string | undefined>(search.status);
   const [dateRange, setDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null] | null>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
 
+  useEffect(() => {
+    setStatusFilter(search.status);
+    setPage(1);
+  }, [search.status]);
+
   const { data, isLoading } = useQuery({
-    queryKey: ['work-orders', page, pageSize, search, statusFilter, priorityFilter, dateRange],
+    queryKey: ['work-orders', page, pageSize, searchText, statusFilter, dateRange],
     queryFn: () =>
       workOrderApi
         .list({
           page,
           page_size: pageSize,
-          search: search || undefined,
+          search: searchText || undefined,
           status: statusFilter,
-          priority: priorityFilter,
-          start_date: dateRange?.[0]?.format('YYYY-MM-DD'),
-          end_date: dateRange?.[1]?.format('YYYY-MM-DD'),
+          date_from: dateRange?.[0]?.format('YYYY-MM-DD'),
+          date_to: dateRange?.[1]?.format('YYYY-MM-DD'),
         })
         .then((r) => r.data),
   });
@@ -60,8 +78,9 @@ export default function WorkOrdersPage() {
   const batchStatusMutation = useMutation({
     mutationFn: ({ ids, status }: { ids: string[]; status: OrderStatus }) =>
       workOrderApi.batchUpdate(ids, status),
-    onSuccess: () => {
-      message.success('批量状态更新成功');
+    onSuccess: (res) => {
+      const d = res.data as { updated: number; total: number };
+      message.success(`批量更新成功：${d.updated ?? 0}/${d.total ?? 0} 条`);
       setSelectedRowKeys([]);
       queryClient.invalidateQueries({ queryKey: ['work-orders'] });
     },
@@ -92,13 +111,19 @@ export default function WorkOrdersPage() {
         return <Tag color={cfg.color}>{cfg.text}</Tag>;
       },
     },
-    { title: '顾问', dataIndex: 'consultant_name', key: 'consultant_name', width: 80 },
+    {
+      title: '顾问',
+      dataIndex: 'assigned_consultant_id',
+      key: 'assigned_consultant_id',
+      width: 90,
+      render: (v: string) => v ? v.slice(0, 8) : '-',
+    },
     {
       title: '技师',
-      dataIndex: 'technician_name',
-      key: 'technician_name',
-      width: 80,
-      render: (v: string) => v || '-',
+      dataIndex: 'assigned_technician_id',
+      key: 'assigned_technician_id',
+      width: 90,
+      render: (v: string) => v ? v.slice(0, 8) : '-',
     },
     {
       title: '预计完成',
@@ -110,13 +135,11 @@ export default function WorkOrdersPage() {
     {
       title: '操作',
       key: 'action',
-      width: 120,
+      width: 100,
       render: (_: unknown, record: WorkOrder) => (
-        <Space>
-          <Button type="link" size="small" onClick={() => navigate({ to: '/work-orders/$id', params: { id: String(record.id) } })}>
-            查看
-          </Button>
-        </Space>
+        <Button type="link" size="small" onClick={() => navigate({ to: '/work-orders/$id', params: { id: String(record.id) } })}>
+          查看
+        </Button>
       ),
     },
   ];
@@ -129,26 +152,26 @@ export default function WorkOrdersPage() {
             <Input
               placeholder="搜索工单号/客户/车牌"
               prefix={<SearchOutlined />}
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              value={searchText}
+              onChange={(e) => { setSearchText(e.target.value); setPage(1); }}
               style={{ width: 240 }}
               allowClear
             />
             <Select
               placeholder="状态筛选"
               value={statusFilter}
-              onChange={(v) => { setStatusFilter(v); setPage(1); }}
+              onChange={(v) => {
+                setStatusFilter(v);
+                setPage(1);
+                navigate({
+                  to: '/work-orders',
+                  search: v ? { status: v } : {},
+                  replace: true,
+                });
+              }}
               allowClear
-              style={{ width: 120 }}
+              style={{ width: 140 }}
               options={Object.entries(statusConfig).map(([k, v]) => ({ value: k, label: v.text }))}
-            />
-            <Select
-              placeholder="优先级"
-              value={priorityFilter}
-              onChange={(v) => { setPriorityFilter(v); setPage(1); }}
-              allowClear
-              style={{ width: 120 }}
-              options={Object.entries(priorityConfig).map(([k, v]) => ({ value: k, label: v.text }))}
             />
             <RangePicker
               value={dateRange}
@@ -172,13 +195,13 @@ export default function WorkOrdersPage() {
             <span>已选择 {selectedRowKeys.length} 项</span>
             <Dropdown
               menu={{
-                items: Object.entries(statusConfig).map(([k, v]) => ({
-                  key: k,
-                  label: v.text,
+                items: BATCH_STATUS_OPTIONS.map((opt) => ({
+                  key: opt.value,
+                  label: opt.label,
                   onClick: () =>
                     batchStatusMutation.mutate({
                       ids: selectedRowKeys.map(String),
-                      status: k as OrderStatus,
+                      status: opt.value,
                     }),
                 })),
               }}

@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Body, status
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -216,7 +216,7 @@ async def create_rework_order(
 
 @router.post("/batch", response_model=dict)
 async def batch_update_status(
-    order_ids: list[UUID],
+    order_ids: list[UUID] = Body(...),
     new_status: str = Query(..., alias="status"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.manager)),
