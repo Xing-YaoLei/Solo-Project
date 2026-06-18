@@ -1,7 +1,7 @@
-import { LoaderFunction, json } from "@remix-run/node";
+import { LoaderFunction, json, redirect } from "@remix-run/node";
 import { useLoaderData, useSearchParams, Link } from "@remix-run/react";
 import { useState, useEffect } from "react";
-import { api, VehicleListResponse } from "~/lib/api";
+import Layout from "~/components/Layout";
 import {
   STAGE_LABELS,
   STAGE_ORDER,
@@ -9,14 +9,32 @@ import {
   DOCUMENT_NAMES,
   FUEL_TYPE_LABELS,
 } from "~/lib/constants";
-import type { AcquisitionStage, RiskLevel, VehicleDocument } from "~/models/vehicle";
+import type { AcquisitionStage, RiskLevel } from "~/models/vehicle";
 import type { UserDocument } from "~/models/user";
+import { getUserFromSession } from "~/lib/auth.server";
+import { getVehicleList } from "~/lib/vehicles.server";
 
-interface VehicleWithAssignee extends Omit<VehicleDocument, "assignedTo"> {
-  assignedTo: UserDocument;
+interface VehicleWithAssignee {
+  _id: string;
+  plateNumber: string;
+  brand: string;
+  vehicleModel: string;
+  year: number;
+  color: string;
+  mileage: number;
+  fuelType: string;
+  transmission: string;
+  stage: AcquisitionStage;
+  riskLevel: RiskLevel;
+  missingDocuments: string[];
+  assignedTo?: UserDocument;
+  createdAt: string;
+  registerDate?: string;
+  [key: string]: any;
 }
 
 interface LoaderData {
+  user: UserDocument;
   vehicles: VehicleWithAssignee[];
   pagination: {
     page: number;
@@ -26,7 +44,12 @@ interface LoaderData {
   };
 }
 
-export const loader: LoaderFunction = async ({ request }) => {
+export const loader: LoaderFunction = async ({ request, context }) => {
+  const user = await getUserFromSession(context as any);
+  if (!user) {
+    return redirect("/login");
+  }
+
   const url = new URL(request.url);
   const stage = url.searchParams.get("stage") || undefined;
   const riskLevel = url.searchParams.get("riskLevel") || undefined;
@@ -35,20 +58,23 @@ export const loader: LoaderFunction = async ({ request }) => {
   const limit = url.searchParams.get("limit") ? parseInt(url.searchParams.get("limit")!, 10) : 20;
 
   try {
-    const data = await api.vehicles.list({
+    const data = await getVehicleList({
       stage,
       riskLevel,
       search,
       page,
       limit,
+      user,
     });
     return json<LoaderData>({
+      user: user.toJSON() as any,
       vehicles: data.vehicles as unknown as VehicleWithAssignee[],
       pagination: data.pagination,
     });
   } catch (error) {
     return json<LoaderData>(
       {
+        user: user.toJSON() as any,
         vehicles: [],
         pagination: {
           page: 1,
@@ -166,14 +192,17 @@ export default function VehiclesIndex() {
   };
 
   return (
-    <div className="main-content">
-      <div className="topbar">
-        <div className="page-title">车辆列表</div>
-        <div className="topbar-user">
-          <Link to="/vehicles/new" className="btn btn-primary">
-            + 新增车辆
-          </Link>
+    <Layout user={data.user} title="车辆列表">
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">车辆列表</h1>
+          <p style={{ color: "#6b7280", marginTop: "4px" }}>
+            管理所有收购车辆，按风险等级和阶段排序
+          </p>
         </div>
+        <Link to="/vehicles/new" className="btn btn-primary">
+          + 新增车辆
+        </Link>
       </div>
 
       <div className="container">
@@ -318,6 +347,6 @@ export default function VehiclesIndex() {
           )}
         </div>
       </div>
-    </div>
+    </Layout>
   );
 }

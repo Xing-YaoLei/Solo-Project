@@ -17,7 +17,7 @@ import {
   Cell,
 } from "recharts";
 import Layout from "~/components/Layout";
-import { api, StatisticsResponse } from "~/lib/api";
+import { StatisticsResponse } from "~/lib/api";
 import {
   STAGE_LABELS,
   RISK_LEVEL_LABELS,
@@ -25,26 +25,22 @@ import {
   formatCurrency,
 } from "~/lib/constants";
 import { UserDocument } from "~/models/user";
+import { getUserFromSession, requireManager } from "~/lib/auth.server";
+import { getStatistics } from "~/lib/vehicles.server";
 
 interface LoaderData {
   user: UserDocument;
   statistics: StatisticsResponse;
 }
 
-export const loader: LoaderFunction = async ({ request }) => {
+export const loader: LoaderFunction = async ({ request, context }) => {
   try {
-    const [userData, statsData] = await Promise.all([
-      api.auth.me(),
-      api.vehicles.statistics(),
-    ]);
-
-    if (userData.user.role !== "manager") {
-      return redirect("/dashboard");
-    }
+    const user = await requireManager(context as any);
+    const statistics = await getStatistics();
 
     return json<LoaderData>({
-      user: userData.user,
-      statistics: statsData,
+      user: user.toJSON() as any,
+      statistics,
     });
   } catch (e) {
     return redirect("/login");

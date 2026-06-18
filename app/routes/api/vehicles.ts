@@ -78,11 +78,30 @@ vehiclesRouter.get("/", async (req: AuthRequest, res: Response) => {
     .limit(limitNum)
     .lean();
 
+  const stagePriority: Record<string, number> = {
+    archive: 1,
+    inspection: 2,
+    preparation: 3,
+    testdrive: 4,
+    quoting: 5,
+    completed: 7,
+    cancelled: 6,
+  };
+
+  const riskPriority: Record<string, number> = {
+    critical: 0,
+    high: 1,
+    medium: 2,
+    low: 3,
+  };
+
   const sortedVehicles = (vehicles as any[]).sort((a, b) => {
-    const riskPriority = { critical: 0, high: 1, medium: 2, low: 3 };
-    const aPriority = riskPriority[a.riskLevel as keyof typeof riskPriority];
-    const bPriority = riskPriority[b.riskLevel as keyof typeof riskPriority];
-    return aPriority - bPriority || a.getStagePriority() - b.getStagePriority();
+    const aRisk = riskPriority[a.riskLevel as keyof typeof riskPriority] ?? 99;
+    const bRisk = riskPriority[b.riskLevel as keyof typeof riskPriority] ?? 99;
+    if (aRisk !== bRisk) return aRisk - bRisk;
+    const aStage = stagePriority[a.stage as keyof typeof stagePriority] ?? 99;
+    const bStage = stagePriority[b.stage as keyof typeof stagePriority] ?? 99;
+    return aStage - bStage;
   });
 
   const total = await Vehicle.countDocuments(filter);

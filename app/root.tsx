@@ -8,24 +8,20 @@ import {
   useLoaderData,
 } from "@remix-run/react";
 import { UserDocument } from "~/models/user";
+import { getUserFromSession, createDefaultUsers } from "~/lib/auth.server";
 
 interface LoaderData {
   user: UserDocument | null;
 }
 
-export const loader: LoaderFunction = async ({ request }) => {
+export const loader: LoaderFunction = async ({ context }) => {
   try {
-    const response = await fetch(`${new URL(request.url).origin}/api/auth/me`, {
-      headers: {
-        Cookie: request.headers.get("Cookie") || "",
-      },
-    });
-    if (response.ok) {
-      const data = await response.json();
-      return json<LoaderData>({ user: data.user });
-    }
-  } catch (e) {}
-  return json<LoaderData>({ user: null });
+    await createDefaultUsers();
+    const user = await getUserFromSession(context as any);
+    return json<LoaderData>({ user: user ? (user.toJSON() as any) : null });
+  } catch (e) {
+    return json<LoaderData>({ user: null });
+  }
 };
 
 export const links: LinksFunction = () => [

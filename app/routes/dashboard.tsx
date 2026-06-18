@@ -11,34 +11,36 @@ import {
   RISK_LEVEL_LABELS,
   formatDate,
 } from "~/lib/constants";
-import { api, StatisticsResponse } from "~/lib/api";
+import { StatisticsResponse } from "~/lib/api";
 import { UserDocument } from "~/models/user";
 import { VehicleDocument, AcquisitionStage, RiskLevel } from "~/models/vehicle";
+import { getUserFromSession } from "~/lib/auth.server";
+import { getVehicleList, getStatistics } from "~/lib/vehicles.server";
 
 interface LoaderData {
   user: UserDocument;
   statistics: StatisticsResponse | null;
-  vehicles: VehicleDocument[];
+  vehicles: any[];
 }
 
-export const loader: LoaderFunction = async ({ request }) => {
+export const loader: LoaderFunction = async ({ context }) => {
   try {
-    const authData = await api.auth.me();
+    const user = await getUserFromSession(context as any);
 
-    if (!authData.user) {
+    if (!user) {
       return redirect("/login");
     }
 
     const [vehiclesData, statsData] = await Promise.all([
-      api.vehicles.list({ limit: 100 }),
-      authData.user.role === "manager"
-        ? api.vehicles.statistics()
+      getVehicleList({ limit: 100, user }),
+      user.role === "manager"
+        ? getStatistics()
         : Promise.resolve(null),
     ]);
 
     return json<LoaderData>({
-      user: authData.user,
-      statistics: statsData,
+      user: user.toJSON() as any,
+      statistics: statsData as any,
       vehicles: vehiclesData.vehicles,
     });
   } catch (e) {

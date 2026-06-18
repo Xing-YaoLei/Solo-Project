@@ -1,26 +1,34 @@
 import { useState } from "react";
 import { Form, useActionData, redirect } from "@remix-run/react";
-import { json, ActionFunction } from "@remix-run/node";
-import { api } from "~/lib/api";
+import { json, ActionFunction, LoaderFunction } from "@remix-run/node";
+import { login, getUserFromSession } from "~/lib/auth.server";
 
 interface ActionData {
   error?: string;
 }
 
-export const action: ActionFunction = async ({ request }) => {
+export const loader: LoaderFunction = async ({ context }) => {
+  const user = await getUserFromSession(context as any);
+  if (user) {
+    return redirect("/dashboard");
+  }
+  return json({});
+};
+
+export const action: ActionFunction = async ({ request, context }) => {
   const formData = await request.formData();
   const username = formData.get("username") as string;
   const password = formData.get("password") as string;
 
+  if (!username || !password) {
+    return json<ActionData>({ error: "请输入用户名和密码" }, { status: 400 });
+  }
+
   try {
-    const data = await api.auth.login(username, password);
-    return redirect("/dashboard", {
-      headers: {
-        "Set-Cookie": request.headers.get("Cookie") || "",
-      },
-    });
+    const user = await login(username, password, context as any);
+    return redirect("/dashboard");
   } catch (e: any) {
-    return json<ActionData>({ error: e.message });
+    return json<ActionData>({ error: e.message }, { status: 401 });
   }
 };
 
