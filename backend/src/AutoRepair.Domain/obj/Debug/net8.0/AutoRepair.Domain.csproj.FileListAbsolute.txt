@@ -1,0 +1,13 @@
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0342/backend/src/AutoRepair.Domain/obj/Debug/net8.0/AutoRepair.Domain.GeneratedMSBuildEditorConfig.editorconfig
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0342/backend/src/AutoRepair.Domain/obj/Debug/net8.0/AutoRepair.Domain.AssemblyInfoInputs.cache
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0342/backend/src/AutoRepair.Domain/obj/Debug/net8.0/AutoRepair.Domain.AssemblyInfo.cs
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0342/backend/src/AutoRepair.Domain/obj/Debug/net8.0/AutoRepair.Domain.csproj.CoreCompileInputs.cache
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0342/backend/src/AutoRepair.Domain/obj/Debug/net8.0/AutoRepair.Domain.sourcelink.json
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0342/backend/src/AutoRepair.Domain/bin/Debug/net8.0/AutoRepair.Domain.deps.json
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0342/backend/src/AutoRepair.Domain/bin/Debug/net8.0/AutoRepair.Domain.dll
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0342/backend/src/AutoRepair.Domain/bin/Debug/net8.0/AutoRepair.Domain.pdb
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0342/backend/src/AutoRepair.Domain/obj/Debug/net8.0/AutoRepair.Domain.csproj.AssemblyReference.cache
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0342/backend/src/AutoRepair.Domain/obj/Debug/net8.0/AutoRepair.Domain.dll
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0342/backend/src/AutoRepair.Domain/obj/Debug/net8.0/refint/AutoRepair.Domain.dll
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0342/backend/src/AutoRepair.Domain/obj/Debug/net8.0/AutoRepair.Domain.pdb
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0342/backend/src/AutoRepair.Domain/obj/Debug/net8.0/ref/AutoRepair.Domain.dll

@@ -1,0 +1,16 @@
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0342/backend/src/AutoRepair.Application/obj/Debug/net8.0/AutoRepair.Application.csproj.AssemblyReference.cache
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0342/backend/src/AutoRepair.Application/obj/Debug/net8.0/AutoRepair.Application.GeneratedMSBuildEditorConfig.editorconfig
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0342/backend/src/AutoRepair.Application/obj/Debug/net8.0/AutoRepair.Application.AssemblyInfoInputs.cache
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0342/backend/src/AutoRepair.Application/obj/Debug/net8.0/AutoRepair.Application.AssemblyInfo.cs
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0342/backend/src/AutoRepair.Application/obj/Debug/net8.0/AutoRepair.Application.csproj.CoreCompileInputs.cache
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0342/backend/src/AutoRepair.Application/obj/Debug/net8.0/AutoRepair.Application.sourcelink.json
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0342/backend/src/AutoRepair.Application/bin/Debug/net8.0/AutoRepair.Application.deps.json
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0342/backend/src/AutoRepair.Application/bin/Debug/net8.0/AutoRepair.Application.dll
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0342/backend/src/AutoRepair.Application/bin/Debug/net8.0/AutoRepair.Application.pdb
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0342/backend/src/AutoRepair.Application/bin/Debug/net8.0/AutoRepair.Domain.dll
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0342/backend/src/AutoRepair.Application/bin/Debug/net8.0/AutoRepair.Domain.pdb
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0342/backend/src/AutoRepair.Application/obj/Debug/net8.0/AutoRepa.490A9ED7.Up2Date
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0342/backend/src/AutoRepair.Application/obj/Debug/net8.0/AutoRepair.Application.dll
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0342/backend/src/AutoRepair.Application/obj/Debug/net8.0/refint/AutoRepair.Application.dll
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0342/backend/src/AutoRepair.Application/obj/Debug/net8.0/AutoRepair.Application.pdb
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0342/backend/src/AutoRepair.Application/obj/Debug/net8.0/ref/AutoRepair.Application.dll

@@ -1,0 +1,12 @@
+{
+  "Version": 1,
+  "Hash": "6XfIXsm5pUQk/u8VSSYYRv7XWZBluvrkYXDuWWiQ114=",
+  "Source": "AutoRepair.API",
+  "BasePath": "_content/AutoRepair.API",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": [],
+  "Endpoints": []
+}
