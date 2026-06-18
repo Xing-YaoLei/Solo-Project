@@ -11,6 +11,7 @@ import com.usedcar.dashboard.service.ShareLinkService;
 import com.usedcar.dashboard.util.ViewIdResolver;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
@@ -22,6 +23,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/dashboard")
 @RequiredArgsConstructor
@@ -94,17 +96,17 @@ public class DashboardController {
 
     @GetMapping("/filter-views")
     public ApiResponse<List<FilterView>> getFilterViews() {
-        return ApiResponse.success(filterViewService.getAll());
+        return ApiResponse.success(filterViewService.getAllViews());
     }
 
     @PostMapping("/filter-views")
     public ApiResponse<FilterView> createFilterView(@RequestBody FilterView view) {
-        return ApiResponse.success(filterViewService.create(view));
+        return ApiResponse.success(filterViewService.createView(view));
     }
 
     @DeleteMapping("/filter-views/{id}")
     public ApiResponse<Void> deleteFilterView(@PathVariable Long id) {
-        filterViewService.delete(id);
+        filterViewService.deleteView(id);
         return ApiResponse.success();
     }
 
@@ -119,11 +121,15 @@ public class DashboardController {
         String viewId = body.get("viewId") != null ? (String) body.get("viewId") : null;
 
         DashboardFilter filters = null;
-        if (filtersMap != null) {
-            filters = objectMapper.convertValue(filtersMap, new TypeReference<>() {});
+        if (viewId != null && !viewId.isBlank()) {
+            FilterView savedView = filterViewService.getByViewId(viewId);
+            if (savedView != null && savedView.getFilters() != null) {
+                filters = savedView.getFilters();
+                filters.setViewId(viewId);
+            }
         }
-        if (viewId != null && !viewId.isBlank() && filters != null) {
-            filters.setViewId(viewId);
+        if (filters == null && filtersMap != null) {
+            filters = objectMapper.convertValue(filtersMap, new TypeReference<>() {});
         }
 
         return ApiResponse.success(shareLinkService.createShareLink(
@@ -142,10 +148,19 @@ public class DashboardController {
             @RequestParam(required = false) Boolean includeTurnover,
             @RequestParam(required = false) String viewId,
             @RequestHeader(value = "X-Share-Token", required = false) String shareToken) throws IOException {
+
         if (viewId != null && !viewId.isBlank()) {
             filter.setViewId(viewId);
         }
         filter = ViewIdResolver.resolve(filterViewService, filter);
+
+        if (!checkExportPermission(shareToken)) {
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            response.setContentType("application/json;charset=UTF-8");
+            response.getWriter().write(objectMapper.writeValueAsString(
+                    ApiResponse.error(403, "当前分享链接无导出权限，请联系分享者开通")));
+            return;
+        }
 
         boolean turnover = includeTurnover != null && includeTurnover;
 
@@ -172,10 +187,19 @@ public class DashboardController {
             @RequestParam(required = false) Boolean includeTurnover,
             @RequestParam(required = false) String viewId,
             @RequestHeader(value = "X-Share-Token", required = false) String shareToken) throws IOException {
+
         if (viewId != null && !viewId.isBlank()) {
             filter.setViewId(viewId);
         }
         filter = ViewIdResolver.resolve(filterViewService, filter);
+
+        if (!checkExportPermission(shareToken)) {
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            response.setContentType("application/json;charset=UTF-8");
+            response.getWriter().write(objectMapper.writeValueAsString(
+                    ApiResponse.error(403, "当前分享链接无导出权限，请联系分享者开通")));
+            return;
+        }
 
         boolean turnover = includeTurnover != null && includeTurnover;
 
@@ -192,6 +216,28 @@ public class DashboardController {
 
         try (OutputStream out = response.getOutputStream()) {
             excelExportService.writeExcel(out, overview, trend, inspection, prep, testDrive, turnover);
+        }
+    }
+
+    private boolean checkExportPermission(String shareToken) {
+        if (shareToken == null || shareToken.isBlank()) {
+            return true;
+        }
+        try {
+            ShareLinkValidation validation = shareLinkService.validateShareLink(shareToken);
+            if (!validation.getValid()) {
+                log.warn("Share token validation failed: {}", shareToken);
+                return false;
+            }
+            boolean hasExport = validation.getPermissions() != null
+                    && validation.getPermissions().contains("export");
+            if (!hasExport) {
+                log.warn("Share token has no export permission: {}", shareToken);
+            }
+            return hasExport;
+        } catch (Exception e) {
+            log.error("Error checking share token permission", e);
+            return false;
         }
     }
 }

@@ -233,13 +233,6 @@ BEGIN
     DECLARE v_inspection_status TINYINT;
     DECLARE v_listed_date DATETIME;
     DECLARE v_condition VARCHAR(16);
-    DECLARE cur CURSOR FOR
-        SELECT vehicle_id, store_id, inspection_status, listed_date, vehicle_condition
-        FROM t_vehicle_source
-        WHERE inspection_status IN (1, 2)
-        ORDER BY id;
-    DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = 1;
-
     DECLARE v_report_id VARCHAR(64);
     DECLARE v_category VARCHAR(32);
     DECLARE v_score DECIMAL(5,2);
@@ -253,6 +246,12 @@ BEGIN
     DECLARE v_counter INT DEFAULT 0;
     DECLARE v_rand INT;
     DECLARE v_day_offset INT;
+    DECLARE cur CURSOR FOR
+        SELECT vehicle_id, store_id, inspection_status, listed_date, vehicle_condition
+        FROM t_vehicle_source
+        WHERE inspection_status IN (1, 2)
+        ORDER BY id;
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = 1;
 
     OPEN cur;
     read_loop: LOOP
@@ -400,12 +399,6 @@ BEGIN
     DECLARE v_brand VARCHAR(64);
     DECLARE v_listed_date DATETIME;
     DECLARE v_prep_status TINYINT;
-    DECLARE cur CURSOR FOR
-        SELECT vehicle_id, store_id, brand, listed_date, prep_status
-        FROM t_vehicle_source
-        ORDER BY id;
-    DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = 1;
-
     DECLARE v_items_per_vehicle INT;
     DECLARE v_item_idx INT;
     DECLARE v_counter INT DEFAULT 0;
@@ -421,9 +414,12 @@ BEGIN
     DECLARE v_remark VARCHAR(512);
     DECLARE v_rand INT;
     DECLARE v_category_rand INT;
-
-    -- 整备项目模板
     DECLARE prep_names VARCHAR(1024) DEFAULT '前保险杠喷漆,左前翼子板钣金,机油更换+机滤,变速箱油更换,刹车片更换(前),刹车片更换(后),轮胎更换(4条),四轮定位+动平衡,空调清洗+消毒,内饰深度清洁,座椅真皮修复,中控台翻新,前挡风玻璃修复,大灯翻新抛光,底盘装甲喷涂,轮毂修复翻新,电瓶更换,火花塞更换(4支),发动机积碳清洗,门把手喷漆修复';
+    DECLARE cur CURSOR FOR
+        SELECT vehicle_id, store_id, brand, listed_date, prep_status
+        FROM t_vehicle_source
+        ORDER BY id;
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = 1;
 
     OPEN cur;
     vehicle_loop: LOOP

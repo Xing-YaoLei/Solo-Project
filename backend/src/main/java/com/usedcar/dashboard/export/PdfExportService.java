@@ -71,7 +71,7 @@ public class PdfExportService {
 
     private PdfFont getChineseFont() throws IOException {
         try {
-            return PdfFontFactory.createFont("STSong-Light", "UniGB-UCS2-H", PdfEncodings.IDENTITY_H);
+            return PdfFontFactory.createFont("STSong-Light", "UniGB-UCS2-H", PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
         } catch (Exception e) {
             return PdfFontFactory.createFont();
         }
