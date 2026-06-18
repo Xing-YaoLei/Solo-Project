@@ -86,6 +86,28 @@ def show_project_detail(project_id: str, focus_data_source: Optional[str] = None
 
     st.markdown("---")
 
+    st.markdown('<a id="project-detail-tabs"></a>', unsafe_allow_html=True)
+    if focus_data_source:
+        focus_label_map = {
+            "design_export": "📐 设计软件导出",
+            "payment_record": "💰 收款记录",
+            "purchase_order": "📦 采购单记录",
+        }
+        focus_label = focus_label_map.get(focus_data_source, focus_data_source)
+        focus_color_map = {
+            "design_export": "#3498db",
+            "payment_record": "#27ae60",
+            "purchase_order": "#e67e22",
+        }
+        focus_color = focus_color_map.get(focus_data_source, "#3498db")
+        st.markdown(
+            f"<div style='padding:10px 14px;border-left:5px solid {focus_color};"
+            f"background:rgba(52,152,219,0.06);border-radius:4px;margin-bottom:14px;'>"
+            f"🎯  <b>定位到目标数据源明细：</b>{focus_label} — 已自动切换到第 1 个 Tab 并高亮显示"
+            f"</div>",
+            unsafe_allow_html=True,
+        )
+
     all_tabs = [
         ("design_export", "📐 设计软件导出"),
         ("payment_record", "💰 收款记录"),
@@ -112,39 +134,72 @@ def show_project_detail(project_id: str, focus_data_source: Optional[str] = None
             if tab_key == "design_export":
                 design_df = repo.get_design_exports(project_id)
                 if design_df.height > 0:
-                    if focus_data_source == "design_export":
-                        st.info("📍 当前显示从首页缺失记录跳转的设计软件导出明细")
-                    display_dataframe_with_highlight(
-                        design_df,
-                        highlight_col="is_missing",
-                        page_size=20,
-                    )
+                    is_focus = focus_data_source == "design_export"
+                    if is_focus:
+                        with st.container(border=True):
+                            st.info(
+                                "📍 当前显示从首页缺失记录跳转的设计软件导出明细，"
+                                "以下表格中黄色/红色行表示缺失字段记录"
+                            )
+                            display_dataframe_with_highlight(
+                                design_df,
+                                highlight_col="is_missing",
+                                page_size=20,
+                            )
+                    else:
+                        display_dataframe_with_highlight(
+                            design_df,
+                            highlight_col="is_missing",
+                            page_size=20,
+                        )
                 else:
                     st.info("暂无设计软件导出记录")
 
             elif tab_key == "payment_record":
                 payment_df = repo.get_payment_records(project_id)
                 if payment_df.height > 0:
-                    if focus_data_source == "payment_record":
-                        st.info("📍 当前显示从首页缺失记录跳转的收款记录明细")
-                    display_dataframe_with_highlight(
-                        payment_df,
-                        highlight_col="is_missing",
-                        page_size=20,
-                    )
+                    is_focus = focus_data_source == "payment_record"
+                    if is_focus:
+                        with st.container(border=True):
+                            st.info(
+                                "📍 当前显示从首页缺失记录跳转的收款记录明细，"
+                                "以下表格中黄色/红色行表示缺失字段记录"
+                            )
+                            display_dataframe_with_highlight(
+                                payment_df,
+                                highlight_col="is_missing",
+                                page_size=20,
+                            )
+                    else:
+                        display_dataframe_with_highlight(
+                            payment_df,
+                            highlight_col="is_missing",
+                            page_size=20,
+                        )
                 else:
                     st.info("暂无收款记录")
 
             elif tab_key == "purchase_order":
                 purchase_df = repo.get_purchase_orders(project_id)
                 if purchase_df.height > 0:
-                    if focus_data_source == "purchase_order":
-                        st.info("📍 当前显示从首页缺失记录跳转的采购单记录明细")
-                    display_dataframe_with_highlight(
-                        purchase_df,
-                        highlight_col="is_missing",
-                        page_size=20,
-                    )
+                    is_focus = focus_data_source == "purchase_order"
+                    if is_focus:
+                        with st.container(border=True):
+                            st.info(
+                                "📍 当前显示从首页缺失记录跳转的采购单记录明细，"
+                                "以下表格中黄色/红色行表示缺失字段记录"
+                            )
+                            display_dataframe_with_highlight(
+                                purchase_df,
+                                highlight_col="is_missing",
+                                page_size=20,
+                            )
+                    else:
+                        display_dataframe_with_highlight(
+                            purchase_df,
+                            highlight_col="is_missing",
+                            page_size=20,
+                        )
                 else:
                     st.info("暂无采购单记录")
 
@@ -182,12 +237,29 @@ def main():
 
     repo = get_repository()
 
+    from_home = st.session_state.pop("_from_home_jump", False)
+    state_pid = st.session_state.get("selected_project_id")
+    state_ds = st.session_state.get("focus_data_source")
     query_pid = st.query_params.get("project_id", None)
     query_ds = st.query_params.get("data_source", None)
 
-    if query_pid and not st.session_state.get("selected_project_id"):
+    if from_home or state_pid:
+        if state_pid:
+            effective_pid = state_pid
+            effective_ds = state_ds
+        else:
+            effective_pid = query_pid
+            effective_ds = query_ds
+            st.session_state["selected_project_id"] = effective_pid
+            st.session_state["focus_data_source"] = effective_ds
+    elif query_pid:
         st.session_state["selected_project_id"] = query_pid
         st.session_state["focus_data_source"] = query_ds
+        effective_pid = query_pid
+        effective_ds = query_ds
+    else:
+        effective_pid = None
+        effective_ds = None
 
     user_id = st.session_state.get("current_user_id", "U004")
     auth_scope = repo.get_auth_scope(user_id)
@@ -197,8 +269,8 @@ def main():
             f"区域 **{auth_scope.get('region') or '全部区域'}**"
         )
 
-    selected_pid = st.session_state.get("selected_project_id")
-    focus_ds = st.session_state.get("focus_data_source", None)
+    selected_pid = effective_pid or st.session_state.get("selected_project_id")
+    focus_ds = effective_ds or st.session_state.get("focus_data_source", None)
     if selected_pid:
         show_project_detail(selected_pid, focus_data_source=focus_ds)
         return

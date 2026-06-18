@@ -227,6 +227,9 @@ def main():
             with col2:
                 btn_key = f"jump_home_{pid}_{src}_{idx}"
                 if st.button(f"➡️ 查看明细", key=btn_key, use_container_width=True):
+                    st.session_state["selected_project_id"] = pid
+                    st.session_state["focus_data_source"] = src
+                    st.session_state["_from_home_jump"] = True
                     st.query_params["project_id"] = pid
                     st.query_params["data_source"] = src
                     st.switch_page("pages/3_🔍_明细查询.py")
