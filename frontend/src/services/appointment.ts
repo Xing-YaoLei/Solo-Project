@@ -1,152 +1,186 @@
 import request from './request';
-import type {
-  Appointment,
-  AppointmentDetail,
-  AppointmentListItem,
-  AppointmentStatus,
-  PagedResult,
-} from '@/types';
-import { mockAppointments } from '@/mock/data';
+import type { VehicleInfo, AppointmentSource } from '@/types';
+import { mockVehicles, mockAppointments } from '@/mock/data';
 
 const USE_MOCK = true;
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-export const appointmentApi = {
-  async getList(params?: {
-    status?: AppointmentStatus;
-    keyword?: string;
-    pageIndex?: number;
-    pageSize?: number;
-  }): Promise<AppointmentListItem[]> {
+export interface CreateVehiclePayload {
+  plateNumber: string;
+  vinNumber: string;
+  brand: string;
+  model: string;
+  ownerName: string;
+  ownerPhone: string;
+  mileage: number;
+  lastMaintenanceDate?: string;
+}
+
+export interface CreateAppointmentPayload {
+  vehicleId: number;
+  appointmentTime: string;
+  source: AppointmentSource;
+  personInCharge?: string;
+  faultDescription?: string;
+  remarks?: string;
+}
+
+export const vehicleApi = {
+  async getList(params?: { keyword?: string }): Promise<VehicleInfo[]> {
     if (USE_MOCK) {
       await delay(300);
-      let result = [...mockAppointments];
-      if (params?.status) {
-        result = result.filter(item => item.status === params.status);
-      }
+      let result = [...mockVehicles];
       if (params?.keyword) {
         const lower = params.keyword.toLowerCase();
         result = result.filter(item =>
-          item.vehicle?.plateNumber.toLowerCase().includes(lower) ||
-          item.appointmentNo.toLowerCase().includes(lower) ||
-          item.vehicle?.ownerName.includes(params.keyword!)
+          item.plateNumber.toLowerCase().includes(lower) ||
+          item.ownerName.includes(params.keyword!) ||
+          item.vinNumber.toLowerCase().includes(lower) ||
+          item.brand.includes(params.keyword!)
         );
       }
-      return result.map(item => ({
-        id: item.id,
-        appointmentNo: item.appointmentNo,
-        vehicleId: item.vehicleId,
-        plateNumber: item.vehicle?.plateNumber || '',
-        ownerName: item.vehicle?.ownerName || '',
-        brand: item.vehicle?.brand,
-        model: item.vehicle?.model,
-        appointmentTime: item.appointmentTime,
-        checkInTime: item.checkInTime,
-        source: item.source,
-        personInCharge: item.personInCharge,
-        status: item.status,
-        faultDescription: item.faultDescription,
-      }));
+      return result;
     }
-    return request.get('/appointments/list', { params });
+    return request.get('/api/vehicles', { params });
   },
 
-  async getPaged(params?: {
-    status?: AppointmentStatus;
-    keyword?: string;
-    pageIndex?: number;
-    pageSize?: number;
-  }): Promise<PagedResult<AppointmentListItem>> {
-    if (USE_MOCK) {
-      await delay(300);
-      let result = [...mockAppointments];
-      if (params?.status) {
-        result = result.filter(item => item.status === params.status);
-      }
-      if (params?.keyword) {
-        const lower = params.keyword.toLowerCase();
-        result = result.filter(item =>
-          item.vehicle?.plateNumber.toLowerCase().includes(lower) ||
-          item.appointmentNo.toLowerCase().includes(lower) ||
-          item.vehicle?.ownerName.includes(params.keyword!)
-        );
-      }
-      const items = result.map(item => ({
-        id: item.id,
-        appointmentNo: item.appointmentNo,
-        vehicleId: item.vehicleId,
-        plateNumber: item.vehicle?.plateNumber || '',
-        ownerName: item.vehicle?.ownerName || '',
-        brand: item.vehicle?.brand,
-        model: item.vehicle?.model,
-        appointmentTime: item.appointmentTime,
-        checkInTime: item.checkInTime,
-        source: item.source,
-        personInCharge: item.personInCharge,
-        status: item.status,
-        faultDescription: item.faultDescription,
-      }));
-      return {
-        items,
-        totalCount: items.length,
-        pageIndex: params?.pageIndex || 1,
-        pageSize: params?.pageSize || 20,
-        totalPages: Math.ceil(items.length / (params?.pageSize || 20)),
-      };
-    }
-    return request.get('/appointments', { params });
-  },
-
-  async getById(id: number): Promise<AppointmentDetail | null> {
+  async getById(id: number): Promise<VehicleInfo | null> {
     if (USE_MOCK) {
       await delay(200);
-      const found = mockAppointments.find(item => item.id === id);
-      return found || null;
+      return mockVehicles.find(v => v.id === id) || null;
     }
-    return request.get(`/appointments/${id}/detail`);
+    return request.get(`/api/vehicles/${id}`);
   },
 
-  async create(data: any): Promise<Appointment> {
+  async create(data: CreateVehiclePayload): Promise<VehicleInfo> {
     if (USE_MOCK) {
       await delay(300);
-      const newAppointment: any = {
-        ...data,
+      const newVehicle: VehicleInfo = {
         id: Date.now(),
-        appointmentNo: 'AP' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + Math.floor(Math.random() * 1000).toString().padStart(3, '0'),
+        plateNumber: data.plateNumber,
+        vinNumber: data.vinNumber,
+        brand: data.brand,
+        model: data.model,
+        mileage: data.mileage,
+        ownerName: data.ownerName,
+        ownerPhone: data.ownerPhone,
+        lastMaintenanceDate: data.lastMaintenanceDate,
+        repairCount: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      mockVehicles.push(newVehicle);
+      return newVehicle;
+    }
+    return request.post('/api/vehicles', data);
+  },
+};
+
+export const appointmentApi = {
+  async getList(params?: {
+    status?: any;
+    keyword?: string;
+  }): Promise<any[]> {
+    if (USE_MOCK) {
+      await delay(300);
+      let result = [...mockAppointments];
+      if (params?.status) {
+        result = result.filter((item: any) => item.status === params.status);
+      }
+      if (params?.keyword) {
+        const lower = params.keyword.toLowerCase();
+        result = result.filter((item: any) =>
+          item.vehicle?.plateNumber.toLowerCase().includes(lower) ||
+          item.appointmentNo.toLowerCase().includes(lower) ||
+          item.vehicle?.ownerName.includes(params!.keyword!)
+        );
+      }
+      return result.map((item: any) => ({
+        id: item.id,
+        appointmentNo: item.appointmentNo,
+        vehicleId: item.vehicleId,
+        plateNumber: item.vehicle?.plateNumber || '',
+        ownerName: item.vehicle?.ownerName || '',
+        brand: item.vehicle?.brand,
+        model: item.vehicle?.model,
+        appointmentTime: item.appointmentTime,
+        checkInTime: item.checkInTime,
+        source: item.source,
+        personInCharge: item.personInCharge,
+        status: item.status,
+        faultDescription: item.faultDescription,
+      }));
+    }
+    return request.get('/api/appointments', { params });
+  },
+
+  async getById(id: number): Promise<any> {
+    if (USE_MOCK) {
+      await delay(200);
+      return mockAppointments.find((item: any) => item.id === id) || null;
+    }
+    return request.get(`/api/appointments/${id}`);
+  },
+
+  async create(data: CreateAppointmentPayload): Promise<any> {
+    if (USE_MOCK) {
+      await delay(300);
+      const vehicle = mockVehicles.find((v: any) => v.id === data.vehicleId);
+      const now = new Date();
+      const yy = now.getFullYear();
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const dd = String(now.getDate()).padStart(2, '0');
+      const rand = String(Math.floor(Math.random() * 1000)).padStart(3, '0');
+      const appointmentNo = `YY${yy}${mm}${dd}${rand}`;
+
+      const newAppointment: any = {
+        id: Date.now(),
+        appointmentNo,
+        vehicleId: data.vehicleId,
+        vehicle,
+        appointmentTime: data.appointmentTime,
+        source: data.source,
+        personInCharge: data.personInCharge,
+        faultDescription: data.faultDescription,
+        remarks: data.remarks,
         status: 'Pending',
+        checkInTime: null,
+        completionTime: null,
+        closeTime: null,
+        quote: {
+          id: Date.now() + 1,
+          appointmentId: Date.now(),
+          appointmentNo,
+          laborCost: 0,
+          partsCost: 0,
+          totalAmount: 0,
+          status: 'Draft',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          quoteItems: [],
+        },
+        photos: [],
+        partsShortages: [],
+        serviceRecords: [],
+        historyRecords: [],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
       mockAppointments.unshift(newAppointment);
       return newAppointment;
     }
-    return request.post('/appointments', data);
+    return request.post('/api/appointments', data);
   },
 
-  async update(id: number, data: any): Promise<Appointment> {
+  async updateStatus(id: number, status: any, remarks?: string): Promise<any> {
     if (USE_MOCK) {
       await delay(200);
-      const index = mockAppointments.findIndex(item => item.id === id);
-      if (index > -1) {
-        mockAppointments[index] = { ...mockAppointments[index], ...data };
-        return mockAppointments[index];
-      }
-      throw new Error('Appointment not found');
-    }
-    return request.put(`/appointments/${id}`, data);
-  },
-
-  async updateStatus(id: number, status: AppointmentStatus, remarks?: string): Promise<AppointmentDetail | null> {
-    if (USE_MOCK) {
-      await delay(200);
-      const appointment = mockAppointments.find(item => item.id === id) as any;
+      const appointment: any = mockAppointments.find((item: any) => item.id === id);
       if (appointment) {
         appointment.status = status;
         appointment.updatedAt = new Date().toISOString();
-        if (remarks) {
-          appointment.remarks = remarks;
-        }
+        if (remarks) appointment.remarks = remarks;
         if (status === 'InService' && !appointment.checkInTime) {
           appointment.checkInTime = new Date().toISOString();
         }
@@ -160,41 +194,33 @@ export const appointmentApi = {
       }
       return null;
     }
-    return request.put(`/appointments/${id}/status`, { status, remarks });
+    return request.put(`/api/appointments/${id}/status`, { status, remarks });
   },
 
-  async checkIn(id: number): Promise<AppointmentDetail> {
-    if (USE_MOCK) {
-      return this.updateStatus(id, 'InService') as any;
-    }
-    return request.put(`/appointments/${id}/checkin`);
+  async checkIn(id: number): Promise<any> {
+    if (USE_MOCK) return this.updateStatus(id, 'InService');
+    return request.put(`/api/appointments/${id}/checkin`);
   },
 
-  async complete(id: number): Promise<AppointmentDetail> {
-    if (USE_MOCK) {
-      return this.updateStatus(id, 'Completed') as any;
-    }
-    return request.put(`/appointments/${id}/complete`);
+  async complete(id: number): Promise<any> {
+    if (USE_MOCK) return this.updateStatus(id, 'Completed');
+    return request.put(`/api/appointments/${id}/complete`);
   },
 
-  async close(id: number, remarks?: string): Promise<AppointmentDetail> {
-    if (USE_MOCK) {
-      return this.updateStatus(id, 'Closed', remarks) as any;
-    }
-    return request.put(`/appointments/${id}/close`, { remarks });
+  async close(id: number, remarks?: string): Promise<any> {
+    if (USE_MOCK) return this.updateStatus(id, 'Closed', remarks);
+    return request.put(`/api/appointments/${id}/close`, { remarks });
   },
 
-  async reopen(id: number): Promise<AppointmentDetail> {
-    if (USE_MOCK) {
-      return this.updateStatus(id, 'InService') as any;
-    }
-    return request.put(`/appointments/${id}/reopen`);
+  async reopen(id: number): Promise<any> {
+    if (USE_MOCK) return this.updateStatus(id, 'InService');
+    return request.put(`/api/appointments/${id}/reopen`);
   },
 
-  async reportPartsShortage(id: number, data: any): Promise<AppointmentDetail> {
+  async reportPartsShortage(id: number, data: any): Promise<any> {
     if (USE_MOCK) {
       await delay(200);
-      const appointment = mockAppointments.find(item => item.id === id) as any;
+      const appointment: any = mockAppointments.find((item: any) => item.id === id);
       if (appointment) {
         appointment.status = 'PartsShortage';
         appointment.partsShortages = appointment.partsShortages || [];
@@ -217,13 +243,13 @@ export const appointmentApi = {
       }
       throw new Error('Appointment not found');
     }
-    return request.post(`/appointments/${id}/parts-shortage`, data);
+    return request.post(`/api/appointments/${id}/parts-shortage`, data);
   },
 
-  async resolvePartsShortage(appointmentId: number, shortageId: number): Promise<AppointmentDetail> {
+  async resolvePartsShortage(appointmentId: number, shortageId: number): Promise<any> {
     if (USE_MOCK) {
       await delay(200);
-      const appointment = mockAppointments.find(item => item.id === appointmentId) as any;
+      const appointment: any = mockAppointments.find((item: any) => item.id === appointmentId);
       if (appointment && appointment.partsShortages) {
         const shortage = appointment.partsShortages.find((s: any) => s.id === shortageId);
         if (shortage) {
@@ -231,41 +257,33 @@ export const appointmentApi = {
           shortage.actualArrivalTime = new Date().toISOString();
         }
         const allResolved = appointment.partsShortages.every((s: any) => s.status !== 'Pending');
-        if (allResolved) {
-          appointment.status = 'InService';
-        }
+        if (allResolved) appointment.status = 'InService';
         return appointment;
       }
       throw new Error('Appointment not found');
     }
-    return request.put(`/appointments/${appointmentId}/parts-shortage/${shortageId}/resolve`);
+    return request.put(`/api/appointments/${appointmentId}/parts-shortage/${shortageId}/resolve`);
   },
 
-  async supplementData(id: number, remarks?: string): Promise<AppointmentDetail> {
-    if (USE_MOCK) {
-      return this.updateStatus(id, 'InService', remarks) as any;
-    }
-    return request.put(`/appointments/${id}/supplement-data`, { remarks });
+  async supplementData(id: number, remarks?: string): Promise<any> {
+    if (USE_MOCK) return this.updateStatus(id, 'InService', remarks);
+    return request.put(`/api/appointments/${id}/supplement-data`, { remarks });
   },
 
-  async requestReview(id: number, remarks?: string): Promise<AppointmentDetail> {
-    if (USE_MOCK) {
-      return this.updateStatus(id, 'ReviewRequired', remarks) as any;
-    }
-    return request.put(`/appointments/${id}/request-review`, { remarks });
+  async requestReview(id: number, remarks?: string): Promise<any> {
+    if (USE_MOCK) return this.updateStatus(id, 'ReviewRequired', remarks);
+    return request.put(`/api/appointments/${id}/request-review`, { remarks });
   },
 
-  async processReview(id: number, approved: boolean, remarks?: string): Promise<AppointmentDetail> {
-    if (USE_MOCK) {
-      return this.updateStatus(id, approved ? 'InService' : 'PartsShortage', remarks) as any;
-    }
-    return request.put(`/appointments/${id}/process-review`, { approved, remarks });
+  async processReview(id: number, approved: boolean, remarks?: string): Promise<any> {
+    if (USE_MOCK) return this.updateStatus(id, approved ? 'InService' : 'PartsShortage', remarks);
+    return request.put(`/api/appointments/${id}/process-review`, { approved, remarks });
   },
 
-  async updateQuote(id: number, quote: any): Promise<AppointmentDetail | null> {
+  async updateQuote(id: number, quote: any): Promise<any> {
     if (USE_MOCK) {
       await delay(200);
-      const appointment = mockAppointments.find(item => item.id === id) as any;
+      const appointment: any = mockAppointments.find((item: any) => item.id === id);
       if (appointment) {
         appointment.quote = quote;
         appointment.updatedAt = new Date().toISOString();
@@ -273,8 +291,8 @@ export const appointmentApi = {
       }
       return null;
     }
-    return request.put(`/appointments/${id}/quote`, quote);
+    return request.put(`/api/appointments/${id}/quote`, quote);
   },
 };
 
-export default appointmentApi;
+export default { vehicleApi, appointmentApi };

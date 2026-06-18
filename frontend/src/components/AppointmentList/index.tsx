@@ -59,7 +59,10 @@ export default function AppointmentList({ selectedId, onSelect, loading }: Appoi
         Closed: 0,
       };
       all.forEach(item => {
-        newCounts[item.status]++;
+        const status = item.status as AppointmentStatus;
+        if (newCounts[status] !== undefined) {
+          newCounts[status]++;
+        }
       });
       setCounts(newCounts);
     } catch (error) {

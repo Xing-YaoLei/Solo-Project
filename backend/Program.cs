@@ -36,37 +36,50 @@ builder.Services.AddCors(options =>
 });
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+var isHangfireEnabled = builder.Configuration.GetValue<bool>("Hangfire:Enabled", true)
+    && !string.IsNullOrEmpty(connectionString);
 
 builder.Services.AddDbContext<AppointmentDbContext>(options =>
-    options.UseSqlServer(connectionString));
+    options.UseSqlServer(connectionString ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.")));
 
-builder.Services.AddHangfire(configuration => configuration
-    .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
-    .UseSimpleAssemblyNameTypeSerializer()
-    .UseRecommendedSerializerSettings()
-    .UseSqlServerStorage(connectionString, new SqlServerStorageOptions
+if (isHangfireEnabled)
+{
+    builder.Services.AddHangfire(configuration => configuration
+        .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+        .UseSimpleAssemblyNameTypeSerializer()
+        .UseRecommendedSerializerSettings()
+        .UseSqlServerStorage(connectionString, new SqlServerStorageOptions
+        {
+            CommandBatchMaxTimeout = TimeSpan.FromMinutes(5),
+            SlidingInvisibilityTimeout = TimeSpan.FromMinutes(5),
+            QueuePollInterval = TimeSpan.Zero,
+            UseRecommendedIsolationLevel = true,
+            DisableGlobalLocks = true,
+            PrepareSchemaIfNecessary = true
+        }));
+
+    builder.Services.AddHangfireServer(options =>
     {
-        CommandBatchMaxTimeout = TimeSpan.FromMinutes(5),
-        SlidingInvisibilityTimeout = TimeSpan.FromMinutes(5),
-        QueuePollInterval = TimeSpan.Zero,
-        UseRecommendedIsolationLevel = true,
-        DisableGlobalLocks = true
-    }));
-
-builder.Services.AddHangfireServer();
+        options.SchedulePollingInterval = TimeSpan.FromSeconds(15);
+    });
+}
 
 builder.Services.AddScoped<IAppointmentService, AppointmentService>();
 builder.Services.AddScoped<IQuoteService, QuoteService>();
 builder.Services.AddScoped<IInspectionService, InspectionService>();
 builder.Services.AddScoped<IPartsService, PartsService>();
 builder.Services.AddScoped<IStatisticsService, StatisticsService>();
+builder.Services.AddScoped<IVehicleService, VehicleService>();
 
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "汽车维修预约进厂排程台 API v1");
+    });
 }
 
 app.UseHttpsRedirection();
@@ -77,21 +90,39 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-app.UseHangfireDashboard();
+if (isHangfireEnabled)
+{
+    app.UseHangfireDashboard("/hangfire");
 
-RecurringJob.AddOrUpdate<PartsInventoryJob>(
-    "parts-inventory-check",
-    job => job.CheckLowInventoryAsync(),
-    Cron.Daily);
+    try
+    {
+        var jobOptions = new RecurringJobOptions
+        {
+            TimeZone = TimeZoneInfo.Local
+        };
 
-RecurringJob.AddOrUpdate<AppointmentReminderJob>(
-    "appointment-reminder",
-    job => job.SendRemindersAsync(),
-    Cron.EveryHour);
+        RecurringJob.AddOrUpdate<PartsInventoryJob>(
+            "parts-inventory-check",
+            job => job.CheckLowInventoryAsync(),
+            Cron.Daily(3, 0),
+            jobOptions);
 
-RecurringJob.AddOrUpdate<DataCleanupJob>(
-    "data-cleanup",
-    job => job.CleanupOldDataAsync(),
-    Cron.Weekly);
+        RecurringJob.AddOrUpdate<AppointmentReminderJob>(
+            "appointment-reminder",
+            job => job.SendRemindersAsync(),
+            "0 * * * *",
+            jobOptions);
+
+        RecurringJob.AddOrUpdate<DataCleanupJob>(
+            "data-cleanup",
+            job => job.CleanupOldDataAsync(),
+            Cron.Weekly(DayOfWeek.Sunday, 2, 0),
+            jobOptions);
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogWarning(ex, "Hangfire 周期任务注册失败（SQL Server 可能尚未就绪），但应用会继续启动。手动触发任务或重启应用即可重试。");
+    }
+}
 
 app.Run();
