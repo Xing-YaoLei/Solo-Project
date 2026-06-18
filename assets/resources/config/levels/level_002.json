@@ -1,0 +1,363 @@
+{
+  "id": "level_002",
+  "name": "第二关：两居室挑战",
+  "description": "面积更大的两居室，需要注意更多细节。",
+  "difficulty": 2,
+  "unlocked": false,
+  "starThresholds": [500, 700, 900],
+  "task": {
+    "id": "task_002",
+    "title": "两居室标准装修",
+    "description": "客户李先生的两居室需要做标准装修。房间更多，细节更复杂，仔细量房哦！",
+    "clientName": "李先生",
+    "houseType": "两居室",
+    "houseArea": 80,
+    "difficulty": 2,
+    "baseReward": 8000,
+    "timeLimit": 360,
+    "clueIds": ["clue_006", "clue_007", "clue_008", "clue_009", "clue_010", "clue_011"],
+    "documentId": "doc_002",
+    "approvalNodeIds": ["node_004", "node_005", "node_006", "node_007"]
+  },
+  "clues": [
+    {
+      "id": "clue_006",
+      "title": "主卧面积",
+      "content": "主卧长4.5米，宽4米，总面积18平米。地面铺实木地板，墙面刷壁纸。",
+      "clueType": "room",
+      "isKey": true,
+      "relatedDocumentItemIds": ["item_005", "item_007"]
+    },
+    {
+      "id": "clue_007",
+      "title": "次卧面积",
+      "content": "次卧长3.5米，宽3米，总面积10.5平米。地面铺复合地板，墙面刷乳胶漆。",
+      "clueType": "room",
+      "isKey": true,
+      "relatedDocumentItemIds": ["item_006", "item_008"]
+    },
+    {
+      "id": "clue_008",
+      "title": "客厅面积",
+      "content": "客厅长6米，宽4.5米，总面积27平米。地面铺地砖，墙面刷乳胶漆。",
+      "clueType": "room",
+      "isKey": true,
+      "relatedDocumentItemIds": ["item_009", "item_010"]
+    },
+    {
+      "id": "clue_009",
+      "title": "地砖价格",
+      "content": "东鹏地砖，每平米150元。客户强调要防滑的。",
+      "clueType": "price",
+      "isKey": true,
+      "relatedDocumentItemIds": ["item_009"]
+    },
+    {
+      "id": "clue_010",
+      "title": "木地板价格",
+      "content": "实木地板每平米280元，复合地板每平米180元。",
+      "clueType": "price",
+      "isKey": true,
+      "relatedDocumentItemIds": ["item_005", "item_006"]
+    },
+    {
+      "id": "clue_011",
+      "title": "特别要求",
+      "content": "客户想要在客厅做一个吊顶，费用约2000元。这个需要加进去。",
+      "clueType": "process",
+      "isKey": false,
+      "relatedDocumentItemIds": ["item_011"]
+    }
+  ],
+  "document": {
+    "id": "doc_002",
+    "title": "量房报价单",
+    "totalAmount": 0,
+    "correctTotalAmount": 15470,
+    "items": [
+      {
+        "id": "item_005",
+        "name": "主卧实木地板",
+        "category": "地面工程",
+        "unit": "㎡",
+        "quantity": 18,
+        "unitPrice": 250,
+        "correctQuantity": 18,
+        "correctUnitPrice": 280,
+        "tolerance": 0.05,
+        "isEditable": true,
+        "description": "主卧地面铺设实木地板"
+      },
+      {
+        "id": "item_006",
+        "name": "次卧复合地板",
+        "category": "地面工程",
+        "unit": "㎡",
+        "quantity": 12,
+        "unitPrice": 180,
+        "correctQuantity": 10.5,
+        "correctUnitPrice": 180,
+        "tolerance": 0.05,
+        "isEditable": true,
+        "description": "次卧地面铺设复合地板"
+      },
+      {
+        "id": "item_007",
+        "name": "主卧壁纸",
+        "category": "墙面工程",
+        "unit": "㎡",
+        "quantity": 30,
+        "unitPrice": 50,
+        "correctQuantity": 30,
+        "correctUnitPrice": 50,
+        "tolerance": 0.05,
+        "isEditable": true,
+        "description": "主卧墙面贴壁纸"
+      },
+      {
+        "id": "item_008",
+        "name": "次卧乳胶漆",
+        "category": "墙面工程",
+        "unit": "㎡",
+        "quantity": 25,
+        "unitPrice": 35,
+        "correctQuantity": 25,
+        "correctUnitPrice": 35,
+        "tolerance": 0.05,
+        "isEditable": true,
+        "description": "次卧墙面刷乳胶漆"
+      },
+      {
+        "id": "item_009",
+        "name": "客厅地砖",
+        "category": "地面工程",
+        "unit": "㎡",
+        "quantity": 25,
+        "unitPrice": 130,
+        "correctQuantity": 27,
+        "correctUnitPrice": 150,
+        "tolerance": 0.05,
+        "isEditable": true,
+        "description": "客厅地面铺防滑地砖"
+      },
+      {
+        "id": "item_010",
+        "name": "客厅乳胶漆",
+        "category": "墙面工程",
+        "unit": "㎡",
+        "quantity": 40,
+        "unitPrice": 35,
+        "correctQuantity": 45,
+        "correctUnitPrice": 35,
+        "tolerance": 0.05,
+        "isEditable": true,
+        "description": "客厅墙面刷乳胶漆"
+      },
+      {
+        "id": "item_011",
+        "name": "客厅吊顶",
+        "category": "天花工程",
+        "unit": "项",
+        "quantity": 0,
+        "unitPrice": 2000,
+        "correctQuantity": 1,
+        "correctUnitPrice": 2000,
+        "tolerance": 0,
+        "isEditable": true,
+        "description": "客厅造型吊顶"
+      },
+      {
+        "id": "item_012",
+        "name": "管理费",
+        "category": "其他",
+        "unit": "项",
+        "quantity": 1,
+        "unitPrice": 800,
+        "correctQuantity": 1,
+        "correctUnitPrice": 800,
+        "tolerance": 0,
+        "isEditable": false,
+        "description": "项目管理费用"
+      }
+    ]
+  },
+  "approvalNodes": [
+    {
+      "id": "node_004",
+      "title": "主卧审核",
+      "description": "请审核主卧地板价格是否正确。",
+      "nodeType": "price",
+      "requiresDocumentReview": true,
+      "minScoreToPass": 0,
+      "choices": [
+        {
+          "id": "choice_004_1",
+          "text": "250元/㎡，价格没问题",
+          "isCorrect": false,
+          "feedback": "错误！实木地板价格是280元/㎡，不是250元。",
+          "scoreDelta": -60,
+          "moneyDelta": -540,
+          "triggerMismatch": true
+        },
+        {
+          "id": "choice_004_2",
+          "text": "不对，应该是280元/㎡",
+          "isCorrect": true,
+          "feedback": "正确！实木地板确实是280元/㎡。",
+          "scoreDelta": 120,
+          "moneyDelta": 0
+        },
+        {
+          "id": "choice_004_3",
+          "text": "不对，应该是180元/㎡",
+          "isCorrect": false,
+          "feedback": "错误！180元是复合地板的价格，主卧用的是实木地板。",
+          "scoreDelta": -80,
+          "moneyDelta": -1260,
+          "triggerMismatch": true
+        },
+        {
+          "id": "choice_004_4",
+          "text": "我再看看线索",
+          "isCorrect": false,
+          "feedback": "好吧，仔细看看线索。注意区分实木和复合地板的价格。",
+          "scoreDelta": -15,
+          "moneyDelta": 0
+        }
+      ]
+    },
+    {
+      "id": "node_005",
+      "title": "次卧审核",
+      "description": "请审核次卧面积是否正确。",
+      "nodeType": "quantity",
+      "requiresDocumentReview": true,
+      "minScoreToPass": 0,
+      "choices": [
+        {
+          "id": "choice_005_1",
+          "text": "12平米，数量正确",
+          "isCorrect": false,
+          "feedback": "错误！次卧长3.5米宽3米，面积是10.5平米，不是12平米。",
+          "scoreDelta": -60,
+          "moneyDelta": -270,
+          "triggerMismatch": true
+        },
+        {
+          "id": "choice_005_2",
+          "text": "不对，应该是10.5平米",
+          "isCorrect": true,
+          "feedback": "正确！3.5×3=10.5平米。",
+          "scoreDelta": 120,
+          "moneyDelta": 0
+        },
+        {
+          "id": "choice_005_3",
+          "text": "不对，应该是14平米",
+          "isCorrect": false,
+          "feedback": "错误！14平米太大了，那是第一关的卧室面积。",
+          "scoreDelta": -80,
+          "moneyDelta": -630,
+          "triggerMismatch": true
+        },
+        {
+          "id": "choice_005_4",
+          "text": "让我再算一下",
+          "isCorrect": false,
+          "feedback": "仔细计算一下：3.5米 × 3米 = ?",
+          "scoreDelta": -15,
+          "moneyDelta": 0
+        }
+      ]
+    },
+    {
+      "id": "node_006",
+      "title": "客厅审核",
+      "description": "请审核客厅地砖的数量和价格。",
+      "nodeType": "quantity",
+      "requiresDocumentReview": true,
+      "minScoreToPass": 0,
+      "choices": [
+        {
+          "id": "choice_006_1",
+          "text": "25平米，130元/㎡，没问题",
+          "isCorrect": false,
+          "feedback": "错误！客厅面积是27平米，地砖单价是150元/㎡。两个都错了！",
+          "scoreDelta": -100,
+          "moneyDelta": -800,
+          "triggerMismatch": true
+        },
+        {
+          "id": "choice_006_2",
+          "text": "27平米，150元/㎡，都对",
+          "isCorrect": true,
+          "feedback": "完全正确！面积和价格都没错。",
+          "scoreDelta": 150,
+          "moneyDelta": 0
+        },
+        {
+          "id": "choice_006_3",
+          "text": "25平米，150元/㎡，价格对数量错",
+          "isCorrect": false,
+          "feedback": "只对了一半。价格是对的，但面积应该是27平米。",
+          "scoreDelta": -30,
+          "moneyDelta": -300,
+          "triggerMismatch": true
+        },
+        {
+          "id": "choice_006_4",
+          "text": "27平米，130元/㎡，数量对价格错",
+          "isCorrect": false,
+          "feedback": "只对了一半。面积是对的，但价格应该是150元/㎡。",
+          "scoreDelta": -30,
+          "moneyDelta": -540,
+          "triggerMismatch": true
+        }
+      ]
+    },
+    {
+      "id": "node_007",
+      "title": "最终审批",
+      "description": "客户特别要求的吊顶加了吗？",
+      "nodeType": "process",
+      "requiresDocumentReview": true,
+      "minScoreToPass": 0,
+      "choices": [
+        {
+          "id": "choice_007_1",
+          "text": "加了，2000元的吊顶",
+          "isCorrect": true,
+          "feedback": "正确！客户确实要求做吊顶，别忘了加进去。",
+          "scoreDelta": 100,
+          "moneyDelta": 0
+        },
+        {
+          "id": "choice_007_2",
+          "text": "没加，客户没说要",
+          "isCorrect": false,
+          "feedback": "错误！客户明确要求做吊顶的，在特别要求那条线索里。",
+          "scoreDelta": -100,
+          "moneyDelta": -2000,
+          "triggerMismatch": true
+        },
+        {
+          "id": "choice_007_3",
+          "text": "加了，但只收1500元",
+          "isCorrect": false,
+          "feedback": "价格不对，吊顶的费用是2000元。",
+          "scoreDelta": -50,
+          "moneyDelta": -500,
+          "triggerMismatch": true
+        },
+        {
+          "id": "choice_007_4",
+          "text": "不知道，我再看看",
+          "isCorrect": false,
+          "feedback": "看看特别要求那条线索吧。",
+          "scoreDelta": -10,
+          "moneyDelta": 0
+        }
+      ]
+    }
+  ]
+}

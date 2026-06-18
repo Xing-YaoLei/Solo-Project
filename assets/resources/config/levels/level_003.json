@@ -1,0 +1,382 @@
+{
+  "id": "level_003",
+  "name": "第三关：三居室进阶",
+  "description": "三居室大户型，更多房间和更复杂的工艺要求。",
+  "difficulty": 3,
+  "unlocked": false,
+  "starThresholds": [450, 650, 850],
+  "task": {
+    "id": "task_003",
+    "title": "三居室精装修",
+    "description": "王老板的三居室豪华装修，项目多、细节多，考验你的细心程度！",
+    "clientName": "王老板",
+    "houseType": "三居室",
+    "houseArea": 120,
+    "difficulty": 3,
+    "baseReward": 15000,
+    "timeLimit": 420,
+    "clueIds": ["clue_012", "clue_013", "clue_014", "clue_015", "clue_016", "clue_017", "clue_018"],
+    "documentId": "doc_003",
+    "approvalNodeIds": ["node_008", "node_009", "node_010", "node_011", "node_012"]
+  },
+  "clues": [
+    {
+      "id": "clue_012",
+      "title": "主卧套房",
+      "content": "主卧长5米宽4.5米，带独立卫生间3米×2.5米。主卧地面大理石，卫生间瓷砖。",
+      "clueType": "room",
+      "isKey": true
+    },
+    {
+      "id": "clue_013",
+      "title": "次卧两间",
+      "content": "次卧1：4米×3.5米；次卧2：3.5米×3米。都用复合地板。",
+      "clueType": "room",
+      "isKey": true
+    },
+    {
+      "id": "clue_014",
+      "title": "客餐厅",
+      "content": "客厅5.5米×4.5米，餐厅3米×3米，连通的。客餐厅都用地砖。",
+      "clueType": "room",
+      "isKey": true
+    },
+    {
+      "id": "clue_015",
+      "title": "大理石价格",
+      "content": "进口大理石每平米580元，国产的380元。客户指定要进口的。",
+      "clueType": "price",
+      "isKey": true
+    },
+    {
+      "id": "clue_016",
+      "title": "瓷砖价格",
+      "content": "卫生间墙砖120元/㎡，地砖150元/㎡。厨房的话墙砖100元/㎡，地砖130元/㎡。",
+      "clueType": "price",
+      "isKey": false
+    },
+    {
+      "id": "clue_017",
+      "title": "工艺要求",
+      "content": "全屋要做踢脚线，每米35元。大概总长度有50米左右。",
+      "clueType": "process",
+      "isKey": false
+    },
+    {
+      "id": "clue_018",
+      "title": "风险提示",
+      "content": "客户对价格很敏感，如果报价太高可能会跑单。但太低又没利润，要把握好度。",
+      "clueType": "risk",
+      "isKey": false
+    }
+  ],
+  "document": {
+    "id": "doc_003",
+    "title": "精装修报价单",
+    "totalAmount": 0,
+    "correctTotalAmount": 38500,
+    "items": [
+      {
+        "id": "item_013",
+        "name": "主卧大理石",
+        "category": "地面工程",
+        "unit": "㎡",
+        "quantity": 22.5,
+        "unitPrice": 380,
+        "correctQuantity": 22.5,
+        "correctUnitPrice": 580,
+        "tolerance": 0.05,
+        "isEditable": true,
+        "description": "主卧地面进口大理石"
+      },
+      {
+        "id": "item_014",
+        "name": "卫生间地砖",
+        "category": "地面工程",
+        "unit": "㎡",
+        "quantity": 7.5,
+        "unitPrice": 150,
+        "correctQuantity": 7.5,
+        "correctUnitPrice": 150,
+        "tolerance": 0.05,
+        "isEditable": true,
+        "description": "主卫地面防滑地砖"
+      },
+      {
+        "id": "item_015",
+        "name": "次卧室地板",
+        "category": "地面工程",
+        "unit": "㎡",
+        "quantity": 24,
+        "unitPrice": 180,
+        "correctQuantity": 24.5,
+        "correctUnitPrice": 180,
+        "tolerance": 0.05,
+        "isEditable": true,
+        "description": "两间次卧复合地板"
+      },
+      {
+        "id": "item_016",
+        "name": "客餐厅地砖",
+        "category": "地面工程",
+        "unit": "㎡",
+        "quantity": 30,
+        "unitPrice": 150,
+        "correctQuantity": 33.75,
+        "correctUnitPrice": 150,
+        "tolerance": 0.05,
+        "isEditable": true,
+        "description": "客餐厅连通地砖"
+      },
+      {
+        "id": "item_017",
+        "name": "踢脚线",
+        "category": "其他工程",
+        "unit": "米",
+        "quantity": 40,
+        "unitPrice": 35,
+        "correctQuantity": 50,
+        "correctUnitPrice": 35,
+        "tolerance": 0.1,
+        "isEditable": true,
+        "description": "全屋实木踢脚线"
+      },
+      {
+        "id": "item_018",
+        "name": "管理费",
+        "category": "其他",
+        "unit": "项",
+        "quantity": 1,
+        "unitPrice": 2000,
+        "correctQuantity": 1,
+        "correctUnitPrice": 2000,
+        "tolerance": 0,
+        "isEditable": false,
+        "description": "项目管理费用"
+      }
+    ]
+  },
+  "approvalNodes": [
+    {
+      "id": "node_008",
+      "title": "大理石审核",
+      "description": "主卧大理石的价格对吗？",
+      "nodeType": "price",
+      "requiresDocumentReview": true,
+      "minScoreToPass": 0,
+      "choices": [
+        {
+          "id": "choice_008_1",
+          "text": "380元/㎡，国产的就行",
+          "isCorrect": false,
+          "feedback": "错误！客户指定要进口大理石，580元/㎡。用国产的客户会不满意的。",
+          "scoreDelta": -80,
+          "moneyDelta": -4500,
+          "triggerMismatch": true
+        },
+        {
+          "id": "choice_008_2",
+          "text": "580元/㎡，进口的符合要求",
+          "isCorrect": true,
+          "feedback": "正确！客户明确要求进口大理石。",
+          "scoreDelta": 150,
+          "moneyDelta": 0
+        },
+        {
+          "id": "choice_008_3",
+          "text": "480元/㎡，中等价位",
+          "isCorrect": false,
+          "feedback": "不对，没有中等价位这个选项。要么进口要么国产。",
+          "scoreDelta": -50,
+          "moneyDelta": -2250,
+          "triggerMismatch": true
+        },
+        {
+          "id": "choice_008_4",
+          "text": "我再确认一下客户要求",
+          "isCorrect": false,
+          "feedback": "看看大理石价格那条线索吧。",
+          "scoreDelta": -20,
+          "moneyDelta": 0
+        }
+      ]
+    },
+    {
+      "id": "node_009",
+      "title": "次卧面积审核",
+      "description": "两间次卧的地板面积对吗？",
+      "nodeType": "quantity",
+      "requiresDocumentReview": true,
+      "minScoreToPass": 0,
+      "choices": [
+        {
+          "id": "choice_009_1",
+          "text": "24平米，差不多",
+          "isCorrect": false,
+          "feedback": "不对，次卧1是4×3.5=14㎡，次卧2是3.5×3=10.5㎡，总共24.5㎡。",
+          "scoreDelta": -60,
+          "moneyDelta": -90,
+          "triggerMismatch": true
+        },
+        {
+          "id": "choice_009_2",
+          "text": "24.5平米，计算正确",
+          "isCorrect": true,
+          "feedback": "正确！14 + 10.5 = 24.5平米。",
+          "scoreDelta": 130,
+          "moneyDelta": 0
+        },
+        {
+          "id": "choice_009_3",
+          "text": "26平米，多估点保险",
+          "isCorrect": false,
+          "feedback": "不要乱估，要准确计算。26平米太多了。",
+          "scoreDelta": -70,
+          "moneyDelta": -270,
+          "triggerMismatch": true
+        },
+        {
+          "id": "choice_009_4",
+          "text": "22平米，少点好谈价",
+          "isCorrect": false,
+          "feedback": "少报了后面增项更麻烦，还是准确点好。",
+          "scoreDelta": -40,
+          "moneyDelta": 450,
+          "triggerMismatch": true
+        }
+      ]
+    },
+    {
+      "id": "node_010",
+      "title": "客餐厅审核",
+      "description": "客餐厅的地砖面积对吗？",
+      "nodeType": "quantity",
+      "requiresDocumentReview": true,
+      "minScoreToPass": 0,
+      "choices": [
+        {
+          "id": "choice_010_1",
+          "text": "30平米，差不多吧",
+          "isCorrect": false,
+          "feedback": "不对，客厅5.5×4.5=24.75㎡，餐厅3×3=9㎡，总共33.75㎡。",
+          "scoreDelta": -70,
+          "moneyDelta": -562.5,
+          "triggerMismatch": true
+        },
+        {
+          "id": "choice_010_2",
+          "text": "33.75平米，准确无误",
+          "isCorrect": true,
+          "feedback": "完全正确！24.75 + 9 = 33.75平米。",
+          "scoreDelta": 150,
+          "moneyDelta": 0
+        },
+        {
+          "id": "choice_010_3",
+          "text": "25平米，客厅面积够了",
+          "isCorrect": false,
+          "feedback": "漏了餐厅！客餐厅是连通的，都要算。",
+          "scoreDelta": -100,
+          "moneyDelta": -1312.5,
+          "triggerMismatch": true
+        },
+        {
+          "id": "choice_010_4",
+          "text": "36平米，多算点不吃亏",
+          "isCorrect": false,
+          "feedback": "多算会让客户觉得你不专业，要准确。",
+          "scoreDelta": -50,
+          "moneyDelta": -337.5,
+          "triggerMismatch": true
+        }
+      ]
+    },
+    {
+      "id": "node_011",
+      "title": "踢脚线审核",
+      "description": "踢脚线的数量对吗？",
+      "nodeType": "quantity",
+      "requiresDocumentReport": true,
+      "minScoreToPass": 0,
+      "choices": [
+        {
+          "id": "choice_011_1",
+          "text": "40米，差不多",
+          "isCorrect": false,
+          "feedback": "不对，线索里说大概50米。40米差太多了。",
+          "scoreDelta": -50,
+          "moneyDelta": -350,
+          "triggerMismatch": true
+        },
+        {
+          "id": "choice_011_2",
+          "text": "50米，和估算一致",
+          "isCorrect": true,
+          "feedback": "正确！大概50米的踢脚线。",
+          "scoreDelta": 100,
+          "moneyDelta": 0
+        },
+        {
+          "id": "choice_011_3",
+          "text": "30米，省点材料",
+          "isCorrect": false,
+          "feedback": "30米太少了，不够用的。",
+          "scoreDelta": -80,
+          "moneyDelta": -700,
+          "triggerMismatch": true
+        },
+        {
+          "id": "choice_011_4",
+          "text": "60米，多备点货",
+          "isCorrect": false,
+          "feedback": "60米太多了，浪费材料。50米左右就够了。",
+          "scoreDelta": -30,
+          "moneyDelta": -350,
+          "triggerMismatch": true
+        }
+      ]
+    },
+    {
+      "id": "node_012",
+      "title": "最终审批",
+      "description": "整体报价怎么样？客户对价格敏感，我们要注意什么？",
+      "nodeType": "final",
+      "requiresDocumentReview": true,
+      "minScoreToPass": 0,
+      "choices": [
+        {
+          "id": "choice_012_1",
+          "text": "报价准确，正常提交",
+          "isCorrect": true,
+          "feedback": "好的！虽然客户对价格敏感，但诚信经营最重要。报价准确才能建立信任。",
+          "scoreDelta": 200,
+          "moneyDelta": 0
+        },
+        {
+          "id": "choice_012_2",
+          "text": "再加点价，利润高点",
+          "isCorrect": false,
+          "feedback": "不行！客户对价格很敏感，加价可能会跑单。而且不诚信。",
+          "scoreDelta": -150,
+          "moneyDelta": 0
+        },
+        {
+          "id": "choice_012_3",
+          "text": "打个折扣，吸引客户",
+          "isCorrect": false,
+          "feedback": "也不好。随意打折会让客户怀疑我们的专业性，而且利润也没了。",
+          "scoreDelta": -80,
+          "moneyDelta": -3000
+        },
+        {
+          "id": "choice_012_4",
+          "text": "先报低价，后面再增项",
+          "isCorrect": false,
+          "feedback": "绝对不行！这是欺骗客户的行为，会砸招牌的。",
+          "scoreDelta": -200,
+          "moneyDelta": 0
+        }
+      ]
+    }
+  ]
+}

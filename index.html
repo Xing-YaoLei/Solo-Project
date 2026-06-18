@@ -1,0 +1,1491 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>家装工地量房报价经营模拟游戏</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .game-container {
+      width: 100%;
+      max-width: 480px;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      overflow: hidden;
+    }
+    .game-header {
+      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+      color: white;
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .game-title {
+      font-size: 18px;
+      font-weight: bold;
+    }
+    .hud-info {
+      display: flex;
+      gap: 16px;
+      font-size: 14px;
+    }
+    .hud-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .hud-label {
+      font-size: 11px;
+      opacity: 0.8;
+    }
+    .hud-value {
+      font-weight: bold;
+      font-size: 16px;
+    }
+    .hud-value.warning {
+      color: #ff6b6b;
+    }
+    .game-body {
+      padding: 20px;
+      min-height: 500px;
+      position: relative;
+    }
+    .panel {
+      display: none;
+    }
+    .panel.active {
+      display: block;
+    }
+    .panel-title {
+      font-size: 20px;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 12px;
+    }
+    .panel-subtitle {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 20px;
+      line-height: 1.6;
+    }
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid #eee;
+      font-size: 14px;
+    }
+    .info-label {
+      color: #666;
+    }
+    .info-value {
+      color: #333;
+      font-weight: 500;
+    }
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-top: 12px;
+    }
+    .btn:active {
+      transform: scale(0.98);
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    .btn-secondary {
+      background: #f0f0f0;
+      color: #333;
+    }
+    .btn-success {
+      background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+      color: white;
+    }
+    .btn-danger {
+      background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
+      color: white;
+    }
+    .btn-small {
+      padding: 8px 16px;
+      font-size: 13px;
+      display: inline-block;
+      width: auto;
+      margin: 4px;
+    }
+    .clue-list {
+      max-height: 300px;
+      overflow-y: auto;
+      margin-bottom: 16px;
+    }
+    .clue-item {
+      padding: 12px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      border-left: 4px solid #ddd;
+      transition: all 0.2s;
+    }
+    .clue-item:hover {
+      background: #e9ecef;
+    }
+    .clue-item.viewed {
+      opacity: 0.6;
+    }
+    .clue-item.active {
+      border-left-color: #667eea;
+      background: #f0f2ff;
+    }
+    .clue-item.key {
+      border-left-color: #ffd93d;
+    }
+    .clue-type-tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+      background: #e9ecef;
+      color: #666;
+      margin-bottom: 8px;
+    }
+    .clue-content {
+      font-size: 14px;
+      color: #333;
+      line-height: 1.6;
+    }
+    .clue-nav {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .doc-item {
+      padding: 12px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      margin-bottom: 8px;
+    }
+    .doc-item-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .doc-item-name {
+      font-weight: 500;
+      color: #333;
+    }
+    .doc-item-category {
+      font-size: 12px;
+      color: #999;
+    }
+    .doc-item-controls {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+    }
+    .control-label {
+      font-size: 12px;
+      color: #666;
+      min-width: 40px;
+    }
+    .control-btn {
+      width: 28px;
+      height: 28px;
+      border: none;
+      background: #ddd;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    .control-btn:active {
+      background: #ccc;
+    }
+    .control-value {
+      min-width: 50px;
+      text-align: center;
+      font-weight: 500;
+    }
+    .doc-total {
+      padding: 16px;
+      background: #fff3cd;
+      border-radius: 8px;
+      margin: 16px 0;
+      text-align: center;
+    }
+    .doc-total-label {
+      font-size: 14px;
+      color: #856404;
+      margin-bottom: 4px;
+    }
+    .doc-total-value {
+      font-size: 24px;
+      font-weight: bold;
+      color: #856404;
+    }
+    .choice-item {
+      padding: 14px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: all 0.2s;
+    }
+    .choice-item:hover {
+      background: #e9ecef;
+    }
+    .choice-item.selected {
+      border-color: #667eea;
+      background: #f0f2ff;
+    }
+    .choice-item.correct {
+      border-color: #28a745;
+      background: #d4edda;
+    }
+    .choice-item.wrong {
+      border-color: #dc3545;
+      background: #f8d7da;
+    }
+    .choice-number {
+      display: inline-block;
+      width: 24px;
+      height: 24px;
+      line-height: 24px;
+      text-align: center;
+      background: #667eea;
+      color: white;
+      border-radius: 50%;
+      font-size: 12px;
+      margin-right: 10px;
+    }
+    .choice-text {
+      display: inline;
+      font-size: 14px;
+    }
+    .feedback-box {
+      padding: 14px;
+      border-radius: 8px;
+      margin: 16px 0;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .feedback-success {
+      background: #d4edda;
+      color: #155724;
+    }
+    .feedback-error {
+      background: #f8d7da;
+      color: #721c24;
+    }
+    .result-stars {
+      text-align: center;
+      font-size: 40px;
+      margin: 20px 0;
+    }
+    .star {
+      color: #ddd;
+      margin: 0 4px;
+    }
+    .star.active {
+      color: #ffd700;
+    }
+    .result-score {
+      text-align: center;
+      font-size: 48px;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 20px;
+    }
+    .result-stats {
+      display: flex;
+      justify-content: space-around;
+      margin: 20px 0;
+      padding: 16px;
+      background: #f8f9fa;
+      border-radius: 8px;
+    }
+    .stat-item {
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 20px;
+      font-weight: bold;
+      color: #333;
+    }
+    .stat-label {
+      font-size: 12px;
+      color: #666;
+      margin-top: 4px;
+    }
+    .level-select-item {
+      padding: 16px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .level-select-item:hover {
+      background: #e9ecef;
+    }
+    .level-select-item.locked {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .level-name {
+      font-weight: 500;
+      color: #333;
+    }
+    .level-difficulty {
+      font-size: 12px;
+      color: #ffd700;
+    }
+    .level-best {
+      font-size: 12px;
+      color: #666;
+    }
+    .tabs {
+      display: flex;
+      border-bottom: 2px solid #eee;
+      margin-bottom: 16px;
+    }
+    .tab {
+      flex: 1;
+      padding: 10px;
+      text-align: center;
+      cursor: pointer;
+      font-size: 14px;
+      color: #666;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+    }
+    .tab.active {
+      color: #667eea;
+      border-bottom-color: #667eea;
+    }
+    .error-list-item {
+      padding: 10px;
+      background: #f8d7da;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      font-size: 13px;
+      color: #721c24;
+    }
+    .mismatch-list-item {
+      padding: 10px;
+      background: #fff3cd;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      font-size: 13px;
+      color: #856404;
+    }
+    .tips-box {
+      padding: 16px;
+      background: #d1ecf1;
+      border-radius: 8px;
+      font-size: 13px;
+      color: #0c5460;
+      line-height: 1.8;
+    }
+    .menu-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 30px;
+    }
+    .game-logo {
+      text-align: center;
+      padding: 30px 0;
+    }
+    .game-logo h1 {
+      font-size: 28px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .game-logo p {
+      color: #666;
+      font-size: 14px;
+      margin-top: 8px;
+    }
+    .tutorial-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.7);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      padding: 20px;
+    }
+    .tutorial-overlay.active {
+      display: flex;
+    }
+    .tutorial-box {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      max-width: 400px;
+      width: 100%;
+    }
+    .tutorial-title {
+      font-size: 20px;
+      font-weight: bold;
+      margin-bottom: 12px;
+      color: #333;
+    }
+    .tutorial-content {
+      font-size: 15px;
+      line-height: 1.8;
+      color: #555;
+      margin-bottom: 20px;
+    }
+    .tutorial-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .tutorial-step {
+      font-size: 13px;
+      color: #999;
+    }
+    .difficulty-stars {
+      color: #ffd700;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="game-container">
+    <div class="game-header">
+      <div class="game-title" id="gameTitle">家装模拟训练</div>
+      <div class="hud-info">
+        <div class="hud-item">
+          <span class="hud-label">得分</span>
+          <span class="hud-value" id="hudScore">0</span>
+        </div>
+        <div class="hud-item">
+          <span class="hud-label">时间</span>
+          <span class="hud-value" id="hudTime">05:00</span>
+        </div>
+        <div class="hud-item">
+          <span class="hud-label">阶段</span>
+          <span class="hud-value" id="hudPhase">菜单</span>
+        </div>
+      </div>
+    </div>
+    <div class="game-body">
+      <!-- 主菜单 -->
+      <div class="panel active" id="panelMenu">
+        <div class="game-logo">
+          <h1>🏠 家装模拟</h1>
+          <p>量房报价经营训练游戏</p>
+        </div>
+        <div class="menu-buttons">
+          <button class="btn btn-primary" onclick="startGame()">开始游戏</button>
+          <button class="btn btn-secondary" onclick="showLevelSelect()">选择关卡</button>
+          <button class="btn btn-secondary" onclick="showTutorial()">新手教程</button>
+        </div>
+        <div style="margin-top: 30px; text-align: center; font-size: 12px; color: #999;">
+          <p>操作：点击/触屏 | 键盘方向键+回车</p>
+          <p>快捷键：R重开 P暂停 1-4选择</p>
+        </div>
+      </div>
+
+      <!-- 关卡选择 -->
+      <div class="panel" id="panelLevelSelect">
+        <div class="panel-title">选择关卡</div>
+        <div id="levelList"></div>
+        <button class="btn btn-secondary" onclick="showMenu()">返回</button>
+      </div>
+
+      <!-- 任务简报 -->
+      <div class="panel" id="panelBriefing">
+        <div class="panel-title" id="briefingTitle">任务标题</div>
+        <div class="panel-subtitle" id="briefingDesc">任务描述</div>
+        <div class="info-row">
+          <span class="info-label">客户</span>
+          <span class="info-value" id="briefingClient">-</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">房型</span>
+          <span class="info-value" id="briefingHouse">-</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">基础报酬</span>
+          <span class="info-value" id="briefingReward">-</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">难度</span>
+          <span class="difficulty-stars" id="briefingDiff">★★★☆☆</span>
+        </div>
+        <div style="margin-top: 24px;">
+          <button class="btn btn-primary" onclick="startGameplay()">开始任务</button>
+          <button class="btn btn-secondary" onclick="showMenu()">返回菜单</button>
+        </div>
+      </div>
+
+      <!-- 线索调查 -->
+      <div class="panel" id="panelClues">
+        <div class="panel-title">线索调查</div>
+        <div class="clue-list" id="clueList"></div>
+        <div class="clue-nav">
+          <button class="btn btn-small btn-secondary" onclick="prevClue()">上一条</button>
+          <span id="clueIndex">0/0</span>
+          <button class="btn btn-small btn-secondary" onclick="nextClue()">下一条</button>
+        </div>
+        <div id="clueDetail">
+          <span class="clue-type-tag" id="clueTypeTag">类型</span>
+          <div class="clue-content" id="clueContent">选择一条线索查看详情</div>
+        </div>
+        <div style="margin-top: 20px;">
+          <button class="btn btn-success" onclick="goToDocument()">填写单据</button>
+        </div>
+      </div>
+
+      <!-- 单据填写 -->
+      <div class="panel" id="panelDocument">
+        <div class="panel-title">单据填写</div>
+        <div id="documentItems" style="max-height: 300px; overflow-y: auto;"></div>
+        <div class="doc-total">
+          <div class="doc-total-label">总计金额</div>
+          <div class="doc-total-value" id="docTotal">¥0.00</div>
+        </div>
+        <button class="btn btn-secondary" onclick="goToClues()">返回线索</button>
+        <button class="btn btn-primary" onclick="goToApproval()">提交审批</button>
+      </div>
+
+      <!-- 审批环节 -->
+      <div class="panel" id="panelApproval">
+        <div class="panel-title" id="approvalTitle">审批节点</div>
+        <div class="panel-subtitle" id="approvalDesc">请选择正确答案</div>
+        <div id="approvalChoices"></div>
+        <div id="approvalFeedback" style="display: none;"></div>
+        <button class="btn btn-primary" id="approvalNextBtn" onclick="nextApproval()" style="display: none;">下一步</button>
+      </div>
+
+      <!-- 结果页面 -->
+      <div class="panel" id="panelResult">
+        <div class="panel-title" style="text-align: center;" id="resultTitle">任务完成</div>
+        <div class="result-stars" id="resultStars">
+          <span class="star">★</span>
+          <span class="star">★</span>
+          <span class="star">★</span>
+        </div>
+        <div class="result-score" id="resultScore">0</div>
+        <div class="result-stats">
+          <div class="stat-item">
+            <div class="stat-value" id="resultMoney">¥0</div>
+            <div class="stat-label">报酬</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value" id="resultTime">0分</div>
+            <div class="stat-label">用时</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value" id="resultRank">-</div>
+            <div class="stat-label">排名</div>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="restartGame()">再来一局</button>
+        <button class="btn btn-secondary" onclick="showReview()">查看复盘</button>
+        <button class="btn btn-secondary" onclick="showMenu()">返回菜单</button>
+      </div>
+
+      <!-- 复盘页面 -->
+      <div class="panel" id="panelReview">
+        <div class="panel-title">任务复盘</div>
+        <div class="tabs">
+          <div class="tab active" onclick="switchReviewTab(0)">总结</div>
+          <div class="tab" onclick="switchReviewTab(1)">错误分析</div>
+          <div class="tab" onclick="switchReviewTab(2)">改进建议</div>
+        </div>
+        <div id="reviewSummary">
+          <div class="panel-subtitle" id="reviewSummaryText"></div>
+        </div>
+        <div id="reviewErrors" style="display: none;"></div>
+        <div id="reviewTips" style="display: none;">
+          <div class="tips-box" id="reviewTipsText"></div>
+        </div>
+        <button class="btn btn-primary" onclick="restartGame()">再来一局</button>
+        <button class="btn btn-secondary" onclick="showResult()">返回结果</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 教程遮罩 -->
+  <div class="tutorial-overlay" id="tutorialOverlay">
+    <div class="tutorial-box">
+      <div class="tutorial-title" id="tutorialTitle">欢迎</div>
+      <div class="tutorial-content" id="tutorialContent">教程内容</div>
+      <div class="tutorial-footer">
+        <span class="tutorial-step" id="tutorialStep">1/5</span>
+        <div>
+          <button class="btn btn-small btn-secondary" onclick="skipTutorial()">跳过</button>
+          <button class="btn btn-small btn-primary" onclick="nextTutorialStep()">下一步</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let gameState = {
+      currentLevel: null,
+      currentPhase: 'menu',
+      score: 0,
+      timeRemaining: 0,
+      timer: null,
+      clueIndex: 0,
+      viewedClues: [],
+      documentChanges: {},
+      currentApprovalIndex: 0,
+      selectedChoice: null,
+      errors: [],
+      mismatches: [],
+      choicesMade: {},
+      totalMoney: 0,
+      startTime: 0,
+      levelProgress: {},
+      unlockedLevels: ['level_001'],
+      leaderboard: [],
+    };
+
+    let levels = {};
+    let currentLevelData = null;
+
+    async function loadLevels() {
+      try {
+        const levelFiles = ['level_001.json', 'level_002.json', 'level_003.json'];
+        for (const file of levelFiles) {
+          try {
+            const res = await fetch(`assets/resources/config/levels/${file}`);
+            if (res.ok) {
+              const data = await res.json();
+              levels[data.id] = data;
+            }
+          } catch(e) {}
+        }
+      } catch(e) {
+        console.log('使用内置关卡数据');
+      }
+    }
+
+    function initGame() {
+      loadSavedData();
+      loadLevels().then(() => {
+        renderLevelList();
+      });
+    }
+
+    function loadSavedData() {
+      try {
+        const saved = localStorage.getItem('hd_sim_save');
+        if (saved) {
+          const data = JSON.parse(saved);
+          gameState.levelProgress = data.levelProgress || {};
+          gameState.unlockedLevels = data.unlockedLevels || ['level_001'];
+          gameState.leaderboard = data.leaderboard || [];
+        }
+      } catch(e) {}
+    }
+
+    function saveGame() {
+      try {
+        localStorage.setItem('hd_sim_save', JSON.stringify({
+          levelProgress: gameState.levelProgress,
+          unlockedLevels: gameState.unlockedLevels,
+          leaderboard: gameState.leaderboard,
+        }));
+      } catch(e) {}
+    }
+
+    function showPanel(panelId) {
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      document.getElementById(panelId).classList.add('active');
+      gameState.currentPhase = panelId.replace('panel', '').toLowerCase();
+      updateHUD();
+    }
+
+    function updateHUD() {
+      document.getElementById('hudScore').textContent = gameState.score;
+      const mins = Math.floor(gameState.timeRemaining / 60);
+      const secs = gameState.timeRemaining % 60;
+      const timeStr = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+      const timeEl = document.getElementById('hudTime');
+      timeEl.textContent = timeStr;
+      if (gameState.timeRemaining <= 30) {
+        timeEl.classList.add('warning');
+      } else {
+        timeEl.classList.remove('warning');
+      }
+      const phaseNames = {
+        menu: '菜单',
+        levelselect: '选关',
+        briefing: '简报',
+        clues: '线索',
+        document: '单据',
+        approval: '审批',
+        result: '结算',
+        review: '复盘',
+      };
+      document.getElementById('hudPhase').textContent = phaseNames[gameState.currentPhase] || '-';
+    }
+
+    function showMenu() {
+      stopTimer();
+      showPanel('panelMenu');
+    }
+
+    function renderLevelList() {
+      const list = document.getElementById('levelList');
+      list.innerHTML = '';
+      
+      const levelOrder = ['level_001', 'level_002', 'level_003'];
+      for (const levelId of levelOrder) {
+        const level = levels[levelId];
+        if (!level) continue;
+
+        const isUnlocked = gameState.unlockedLevels.includes(levelId);
+        const progress = gameState.levelProgress[levelId];
+        
+        const div = document.createElement('div');
+        div.className = `level-select-item ${!isUnlocked ? 'locked' : ''}`;
+        div.innerHTML = `
+          <div>
+            <div class="level-name">${level.name}</div>
+            <div class="level-difficulty">${'★'.repeat(level.difficulty)}${'☆'.repeat(5-level.difficulty)}</div>
+            ${progress ? `<div class="level-best">最高分：${progress.bestScore}</div>` : ''}
+          </div>
+          <div>${isUnlocked ? '▶' : '🔒'}</div>
+        `;
+        if (isUnlocked) {
+          div.onclick = () => selectLevel(levelId);
+        }
+        list.appendChild(div);
+      }
+    }
+
+    function showLevelSelect() {
+      renderLevelList();
+      showPanel('panelLevelSelect');
+    }
+
+    function selectLevel(levelId) {
+      currentLevelData = levels[levelId];
+      if (!currentLevelData) return;
+
+      document.getElementById('briefingTitle').textContent = currentLevelData.task.title;
+      document.getElementById('briefingDesc').textContent = currentLevelData.task.description;
+      document.getElementById('briefingClient').textContent = currentLevelData.task.clientName;
+      document.getElementById('briefingHouse').textContent = 
+        `${currentLevelData.task.houseType} / ${currentLevelData.task.houseArea}㎡`;
+      document.getElementById('briefingReward').textContent = 
+        `¥${currentLevelData.task.baseReward.toLocaleString()}`;
+      document.getElementById('briefingDiff').textContent = 
+        '★'.repeat(currentLevelData.difficulty) + '☆'.repeat(5 - currentLevelData.difficulty);
+
+      showPanel('panelBriefing');
+    }
+
+    function startGame() {
+      if (!levels['level_001']) {
+        alert('正在加载关卡数据，请稍后...');
+        loadLevels().then(() => startGame());
+        return;
+      }
+      selectLevel('level_001');
+    }
+
+    function startGameplay() {
+      if (!currentLevelData) return;
+
+      gameState.score = 0;
+      gameState.timeRemaining = currentLevelData.task.timeLimit;
+      gameState.clueIndex = 0;
+      gameState.viewedClues = [];
+      gameState.documentChanges = {};
+      gameState.currentApprovalIndex = 0;
+      gameState.selectedChoice = null;
+      gameState.errors = [];
+      gameState.mismatches = [];
+      gameState.choicesMade = {};
+      gameState.totalMoney = currentLevelData.task.baseReward;
+      gameState.startTime = Date.now();
+
+      renderClueList();
+      updateClueDetail();
+      startTimer();
+      showPanel('panelClues');
+    }
+
+    function startTimer() {
+      stopTimer();
+      gameState.timer = setInterval(() => {
+        gameState.timeRemaining--;
+        updateHUD();
+        if (gameState.timeRemaining <= 0) {
+          gameOver('time_out');
+        }
+      }, 1000);
+    }
+
+    function stopTimer() {
+      if (gameState.timer) {
+        clearInterval(gameState.timer);
+        gameState.timer = null;
+      }
+    }
+
+    function renderClueList() {
+      const list = document.getElementById('clueList');
+      list.innerHTML = '';
+
+      const clues = currentLevelData.clues || [];
+      clues.forEach((clue, index) => {
+        const isViewed = gameState.viewedClues.includes(clue.id);
+        const isActive = index === gameState.clueIndex;
+        
+        const div = document.createElement('div');
+        div.className = `clue-item ${isViewed ? 'viewed' : ''} ${isActive ? 'active' : ''} ${clue.isKey ? 'key' : ''}`;
+        div.textContent = clue.title;
+        div.onclick = () => {
+          gameState.clueIndex = index;
+          viewClue(clue.id);
+          renderClueList();
+          updateClueDetail();
+        };
+        list.appendChild(div);
+      });
+
+      document.getElementById('clueIndex').textContent = 
+        `${gameState.clueIndex + 1}/${clues.length}`;
+    }
+
+    function viewClue(clueId) {
+      if (!gameState.viewedClues.includes(clueId)) {
+        gameState.viewedClues.push(clueId);
+      }
+    }
+
+    function updateClueDetail() {
+      const clues = currentLevelData.clues || [];
+      const clue = clues[gameState.clueIndex];
+      if (!clue) return;
+
+      viewClue(clue.id);
+
+      const typeLabels = {
+        room: '房间信息',
+        material: '材料信息',
+        process: '工艺信息',
+        price: '价格信息',
+        risk: '风险提示',
+      };
+      document.getElementById('clueTypeTag').textContent = typeLabels[clue.clueType] || clue.clueType;
+      document.getElementById('clueContent').textContent = clue.content;
+    }
+
+    function prevClue() {
+      if (gameState.clueIndex > 0) {
+        gameState.clueIndex--;
+        renderClueList();
+        updateClueDetail();
+      }
+    }
+
+    function nextClue() {
+      const clues = currentLevelData.clues || [];
+      if (gameState.clueIndex < clues.length - 1) {
+        gameState.clueIndex++;
+        renderClueList();
+        updateClueDetail();
+      }
+    }
+
+    function goToDocument() {
+      renderDocumentItems();
+      showPanel('panelDocument');
+    }
+
+    function goToClues() {
+      showPanel('panelClues');
+    }
+
+    function renderDocumentItems() {
+      const container = document.getElementById('documentItems');
+      container.innerHTML = '';
+
+      const items = currentLevelData.document.items || [];
+      items.forEach((item, index) => {
+        const change = gameState.documentChanges[item.id];
+        const qty = change ? change.quantity : item.quantity;
+        const price = change ? change.unitPrice : item.unitPrice;
+
+        const div = document.createElement('div');
+        div.className = 'doc-item';
+        div.innerHTML = `
+          <div class="doc-item-header">
+            <span class="doc-item-name">${item.name}</span>
+            <span class="doc-item-category">${item.category}</span>
+          </div>
+          <div class="doc-item-controls">
+            <div class="control-group">
+              <span class="control-label">数量</span>
+              <button class="control-btn" onclick="changeQty('${item.id}', -1)" ${!item.isEditable ? 'disabled' : ''}>-</button>
+              <span class="control-value">${qty}${item.unit}</span>
+              <button class="control-btn" onclick="changeQty('${item.id}', 1)" ${!item.isEditable ? 'disabled' : ''}>+</button>
+            </div>
+            <div class="control-group">
+              <span class="control-label">单价</span>
+              <button class="control-btn" onclick="changePrice('${item.id}', -10)" ${!item.isEditable ? 'disabled' : ''}>-</button>
+              <span class="control-value">¥${price}</span>
+              <button class="control-btn" onclick="changePrice('${item.id}', 10)" ${!item.isEditable ? 'disabled' : ''}>+</button>
+            </div>
+          </div>
+          <div style="margin-top: 8px; font-size: 12px; color: #666;">
+            小计：¥${(qty * price).toFixed(2)}
+          </div>
+        `;
+        container.appendChild(div);
+      });
+
+      updateDocTotal();
+    }
+
+    function changeQty(itemId, delta) {
+      const item = currentLevelData.document.items.find(i => i.id === itemId);
+      if (!item || !item.isEditable) return;
+
+      const change = gameState.documentChanges[itemId] || 
+        { quantity: item.quantity, unitPrice: item.unitPrice };
+      change.quantity = Math.max(0, change.quantity + delta);
+      gameState.documentChanges[itemId] = change;
+
+      checkMismatch(itemId, change.quantity, change.unitPrice);
+      renderDocumentItems();
+    }
+
+    function changePrice(itemId, delta) {
+      const item = currentLevelData.document.items.find(i => i.id === itemId);
+      if (!item || !item.isEditable) return;
+
+      const change = gameState.documentChanges[itemId] || 
+        { quantity: item.quantity, unitPrice: item.unitPrice };
+      change.unitPrice = Math.max(0, change.unitPrice + delta);
+      gameState.documentChanges[itemId] = change;
+
+      checkMismatch(itemId, change.quantity, change.unitPrice);
+      renderDocumentItems();
+    }
+
+    function checkMismatch(itemId, qty, price) {
+      const item = currentLevelData.document.items.find(i => i.id === itemId);
+      if (!item) return;
+
+      const expectedQty = item.correctQuantity ?? item.quantity;
+      const expectedPrice = item.correctUnitPrice ?? item.unitPrice;
+      const expected = expectedQty * expectedPrice;
+      const actual = qty * price;
+      const diff = Math.abs(actual - expected);
+      const tolerance = item.tolerance * expected;
+
+      if (diff > tolerance && diff > 0) {
+        const existing = gameState.mismatches.find(m => m.itemId === itemId);
+        if (!existing) {
+          gameState.mismatches.push({
+            itemId,
+            itemName: item.name,
+            expectedAmount: expected,
+            actualAmount: actual,
+            difference: actual - expected,
+            cause: getMismatchCause(item, qty, price),
+          });
+        }
+      }
+    }
+
+    function getMismatchCause(item, qty, price) {
+      const expectedQty = item.correctQuantity ?? item.quantity;
+      const expectedPrice = item.correctUnitPrice ?? item.unitPrice;
+      
+      if (Math.abs(qty - expectedQty) > 0.01) return '数量填写错误';
+      if (Math.abs(price - expectedPrice) > 0.01) return '单价填写错误';
+      return '金额计算错误';
+    }
+
+    function updateDocTotal() {
+      let total = 0;
+      const items = currentLevelData.document.items || [];
+      items.forEach(item => {
+        const change = gameState.documentChanges[item.id];
+        const qty = change ? change.quantity : item.quantity;
+        const price = change ? change.unitPrice : item.unitPrice;
+        total += qty * price;
+      });
+      document.getElementById('docTotal').textContent = `¥${total.toFixed(2)}`;
+    }
+
+    function goToApproval() {
+      renderApproval();
+      showPanel('panelApproval');
+    }
+
+    function renderApproval() {
+      const nodes = currentLevelData.approvalNodes || [];
+      const node = nodes[gameState.currentApprovalIndex];
+      if (!node) {
+        checkVictory();
+        return;
+      }
+
+      document.getElementById('approvalTitle').textContent = 
+        `${node.title} (${gameState.currentApprovalIndex + 1}/${nodes.length})`;
+      document.getElementById('approvalDesc').textContent = node.description;
+
+      const choicesEl = document.getElementById('approvalChoices');
+      choicesEl.innerHTML = '';
+
+      node.choices.forEach((choice, index) => {
+        const div = document.createElement('div');
+        div.className = 'choice-item';
+        div.innerHTML = `
+          <span class="choice-number">${index + 1}</span>
+          <span class="choice-text">${choice.text}</span>
+        `;
+        div.onclick = () => makeChoice(choice, index);
+        choicesEl.appendChild(div);
+      });
+
+      document.getElementById('approvalFeedback').style.display = 'none';
+      document.getElementById('approvalNextBtn').style.display = 'none';
+      gameState.selectedChoice = null;
+    }
+
+    function makeChoice(choice, index) {
+      if (gameState.selectedChoice) return;
+      gameState.selectedChoice = choice;
+
+      const choices = document.querySelectorAll('#approvalChoices .choice-item');
+      choices.forEach((c, i) => {
+        if (i === index) {
+          c.classList.add(choice.isCorrect ? 'correct' : 'wrong');
+        } else if (currentLevelData.approvalNodes[gameState.currentApprovalIndex].choices[i].isCorrect) {
+          c.classList.add('correct');
+        }
+      });
+
+      gameState.score += choice.scoreDelta;
+      gameState.totalMoney += choice.moneyDelta;
+      gameState.choicesMade[currentLevelData.approvalNodes[gameState.currentApprovalIndex].id] = choice.id;
+
+      if (!choice.isCorrect) {
+        gameState.errors.push({
+          errorType: 'wrong_choice',
+          description: choice.text,
+          feedback: choice.feedback,
+        });
+      }
+
+      const feedbackEl = document.getElementById('approvalFeedback');
+      feedbackEl.style.display = 'block';
+      feedbackEl.className = `feedback-box ${choice.isCorrect ? 'feedback-success' : 'feedback-error'}`;
+      feedbackEl.textContent = choice.feedback;
+
+      document.getElementById('approvalNextBtn').style.display = 'block';
+      updateHUD();
+    }
+
+    function nextApproval() {
+      gameState.currentApprovalIndex++;
+      if (gameState.currentApprovalIndex >= currentLevelData.approvalNodes.length) {
+        checkVictory();
+      } else {
+        renderApproval();
+      }
+    }
+
+    function checkVictory() {
+      const finalScore = calculateFinalScore();
+      gameState.score = finalScore;
+
+      const isVictory = finalScore >= currentLevelData.starThresholds[0];
+      const stars = isVictory ? calculateStars(finalScore) : 0;
+
+      const duration = Math.floor((Date.now() - gameState.startTime) / 1000);
+
+      const levelId = currentLevelData.id;
+      if (!gameState.levelProgress[levelId]) {
+        gameState.levelProgress[levelId] = {
+          bestScore: 0,
+          bestTime: 999999,
+          stars: 0,
+          completed: false,
+          attempts: 0,
+        };
+      }
+      const progress = gameState.levelProgress[levelId];
+      progress.attempts++;
+      if (finalScore > progress.bestScore) progress.bestScore = finalScore;
+      if (isVictory && duration < progress.bestTime) progress.bestTime = duration;
+      if (stars > progress.stars) progress.stars = stars;
+      if (isVictory) progress.completed = true;
+
+      if (isVictory) {
+        const levelIds = ['level_001', 'level_002', 'level_003'];
+        const currentIdx = levelIds.indexOf(levelId);
+        if (currentIdx >= 0 && currentIdx < levelIds.length - 1) {
+          const nextLevel = levelIds[currentIdx + 1];
+          if (!gameState.unlockedLevels.includes(nextLevel)) {
+            gameState.unlockedLevels.push(nextLevel);
+          }
+        }
+      }
+
+      gameState.leaderboard.push({
+        levelId,
+        score: finalScore,
+        stars,
+        time: duration,
+        timestamp: Date.now(),
+      });
+
+      saveGame();
+
+      showResult(isVictory, finalScore, stars, duration);
+    }
+
+    function calculateFinalScore() {
+      let score = 1000;
+      score += gameState.timeRemaining * 2;
+      score -= gameState.mismatches.length * 50;
+      score -= gameState.errors.length * 30;
+      return Math.max(0, score);
+    }
+
+    function calculateStars(score) {
+      const thresholds = currentLevelData.starThresholds;
+      let stars = 0;
+      for (const t of thresholds) {
+        if (score >= t) stars++;
+      }
+      return stars;
+    }
+
+    function showResult(isVictory, score, stars, duration) {
+      stopTimer();
+
+      document.getElementById('resultTitle').textContent = isVictory ? '任务完成！' : '任务失败';
+      
+      const starsEl = document.getElementById('resultStars');
+      starsEl.innerHTML = '';
+      for (let i = 0; i < 3; i++) {
+        const span = document.createElement('span');
+        span.className = `star ${i < stars ? 'active' : ''}`;
+        span.textContent = '★';
+        starsEl.appendChild(span);
+      }
+
+      document.getElementById('resultScore').textContent = score;
+      document.getElementById('resultMoney').textContent = 
+        `¥${gameState.totalMoney.toLocaleString()}`;
+      document.getElementById('resultTime').textContent = 
+        `${Math.floor(duration / 60)}分${duration % 60}秒`;
+
+      const rank = getPlayerRank(currentLevelData.id, score, duration);
+      document.getElementById('resultRank').textContent = `第${rank}名`;
+
+      showPanel('panelResult');
+    }
+
+    function getPlayerRank(levelId, score, time) {
+      const entries = gameState.leaderboard.filter(e => e.levelId === levelId);
+      let rank = 1;
+      for (const entry of entries) {
+        if (entry.score > score || (entry.score === score && entry.time < time)) {
+          rank++;
+        }
+      }
+      return rank;
+    }
+
+    function gameOver(reason) {
+      stopTimer();
+      const duration = Math.floor((Date.now() - gameState.startTime) / 1000);
+      gameState.errors.push({
+        errorType: 'time_out',
+        description: reason,
+        feedback: '时间用完了！合理分配时间很重要。',
+      });
+
+      const levelId = currentLevelData.id;
+      if (!gameState.levelProgress[levelId]) {
+        gameState.levelProgress[levelId] = {
+          bestScore: 0, bestTime: 999999, stars: 0, completed: false, attempts: 0,
+        };
+      }
+      gameState.levelProgress[levelId].attempts++;
+      saveGame();
+
+      showResult(false, gameState.score, 0, duration);
+    }
+
+    function restartGame() {
+      if (currentLevelData) {
+        startGameplay();
+      }
+    }
+
+    function showReview() {
+      renderReviewSummary();
+      showPanel('panelReview');
+    }
+
+    function showResult() {
+      showPanel('panelResult');
+    }
+
+    function switchReviewTab(index) {
+      document.querySelectorAll('.tab').forEach((t, i) => {
+        t.classList.toggle('active', i === index);
+      });
+      document.getElementById('reviewSummary').style.display = index === 0 ? 'block' : 'none';
+      document.getElementById('reviewErrors').style.display = index === 1 ? 'block' : 'none';
+      document.getElementById('reviewTips').style.display = index === 2 ? 'block' : 'none';
+
+      if (index === 1) renderReviewErrors();
+      if (index === 2) renderReviewTips();
+    }
+
+    function renderReviewSummary() {
+      const duration = Math.floor((Date.now() - gameState.startTime) / 1000);
+      const mismatches = gameState.mismatches.length;
+      const errors = gameState.errors.length;
+      const choices = Object.keys(gameState.choicesMade).length;
+
+      document.getElementById('reviewSummaryText').innerHTML = `
+        本次训练共进行了 <strong>${Math.floor(duration / 60)}分${duration % 60}秒</strong><br>
+        做出了 <strong>${choices}</strong> 个选择<br>
+        出现 <strong>${mismatches}</strong> 处金额不一致<br>
+        犯下 <strong>${errors}</strong> 个错误
+      `;
+    }
+
+    function renderReviewErrors() {
+      const container = document.getElementById('reviewErrors');
+      container.innerHTML = '';
+
+      const typeLabels = {
+        wrong_choice: '选择错误',
+        quantity_mismatch: '数量错误',
+        price_mismatch: '价格错误',
+        time_out: '超时',
+      };
+
+      if (gameState.errors.length === 0 && gameState.mismatches.length === 0) {
+        container.innerHTML = '<div class="feedback-box feedback-success">太棒了！本次没有犯任何错误！</div>';
+        return;
+      }
+
+      gameState.errors.forEach(err => {
+        const div = document.createElement('div');
+        div.className = 'error-list-item';
+        div.innerHTML = `
+          <strong>${typeLabels[err.errorType] || err.errorType}</strong><br>
+          ${err.feedback || err.description}
+        `;
+        container.appendChild(div);
+      });
+
+      gameState.mismatches.forEach(m => {
+        const div = document.createElement('div');
+        div.className = 'mismatch-list-item';
+        div.innerHTML = `
+          <strong>${m.itemName}</strong> - ${m.cause}<br>
+          偏差：${m.difference > 0 ? '+' : ''}¥${m.difference.toFixed(2)}
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function renderReviewTips() {
+      const tips = [];
+      const mismatches = gameState.mismatches.length;
+      const errors = gameState.errors.length;
+
+      if (mismatches > 2) {
+        tips.push('• 仔细阅读每条线索，特别是与价格和数量相关的信息');
+        tips.push('• 填写单据时多检查几遍，确保数量和单价正确');
+      }
+      if (errors > 2) {
+        tips.push('• 审批环节要谨慎思考，不要急于做选择');
+        tips.push('• 多联系类似的审批场景，积累经验');
+      }
+      if (gameState.score < currentLevelData.starThresholds[0]) {
+        tips.push('• 不要气馁，失败是成功之母');
+        tips.push('• 建议先从简单的关卡开始练习');
+      }
+      if (tips.length === 0) {
+        tips.push('• 表现很棒！继续保持');
+        tips.push('• 可以尝试挑战更高难度的关卡');
+      }
+
+      document.getElementById('reviewTipsText').innerHTML = tips.join('<br>');
+    }
+
+    let tutorialStep = 0;
+    const tutorialSteps = [
+      { title: '欢迎来到家装模拟训练！', content: '在这个游戏中，你将扮演一名家装设计师，负责量房和报价任务。通过不断练习，提升你的专业能力！' },
+      { title: '游戏流程', content: '游戏分为四个阶段：<br>1. 任务简报 - 了解任务内容<br>2. 线索调查 - 收集房间信息、价格等线索<br>3. 单据填写 - 根据线索填写报价单<br>4. 审批环节 - 回答问题，通过审核' },
+      { title: '线索很重要', content: '在「线索调查」阶段，你会看到各种线索。仔细阅读每条线索，它们包含了面积、价格、注意事项等关键信息。' },
+      { title: '填写单据', content: '在「单据填写」阶段，你需要根据线索调整每项的数量和单价。金额不一致会被扣分哦！' },
+      { title: '审批环节', content: '在「审批环节」，你需要回答一系列问题。选对了得分，选错了扣分还会扣钱。' },
+      { title: '操作方式', content: '触屏：点击按钮操作，滑动切换<br>键盘：方向键选择，回车确认，数字键1-4快速选择<br>快捷键：R键重新开始，P键暂停' },
+      { title: '失败了怎么办？', content: '失败了没关系！你可以快速重开再来一局。每次训练的得分、错因和金额不一致都会被记录下来，方便你复盘提升。' },
+      { title: '准备好了吗？', content: '现在，开始你的第一份量房报价任务吧！仔细看线索，认真填单据，争取拿高分！' },
+    ];
+
+    function showTutorial() {
+      tutorialStep = 0;
+      updateTutorial();
+      document.getElementById('tutorialOverlay').classList.add('active');
+    }
+
+    function updateTutorial() {
+      const step = tutorialSteps[tutorialStep];
+      document.getElementById('tutorialTitle').textContent = step.title;
+      document.getElementById('tutorialContent').innerHTML = step.content;
+      document.getElementById('tutorialStep').textContent = `${tutorialStep + 1}/${tutorialSteps.length}`;
+    }
+
+    function nextTutorialStep() {
+      if (tutorialStep < tutorialSteps.length - 1) {
+        tutorialStep++;
+        updateTutorial();
+      } else {
+        skipTutorial();
+      }
+    }
+
+    function skipTutorial() {
+      document.getElementById('tutorialOverlay').classList.remove('active');
+    }
+
+    document.addEventListener('keydown', (e) => {
+      const phase = gameState.currentPhase;
+      
+      if (e.key === 'r' || e.key === 'R') {
+        if (phase !== 'menu' && phase !== 'levelselect') {
+          restartGame();
+        }
+        return;
+      }
+
+      if (e.key === 'Escape') {
+        if (document.getElementById('tutorialOverlay').classList.contains('active')) {
+          skipTutorial();
+        }
+        return;
+      }
+
+      switch(phase) {
+        case 'clues':
+          if (e.key === 'ArrowLeft' || e.key === 'a') prevClue();
+          if (e.key === 'ArrowRight' || e.key === 'd') nextClue();
+          if (e.key === 'Enter') goToDocument();
+          break;
+        case 'document':
+          if (e.key === 'ArrowLeft') {
+            const items = currentLevelData?.document?.items;
+            if (items && items.length > 0) {
+              const editableItem = items.find(i => i.isEditable);
+              if (editableItem) changeQty(editableItem.id, -1);
+            }
+          }
+          if (e.key === 'ArrowRight') {
+            const items = currentLevelData?.document?.items;
+            if (items && items.length > 0) {
+              const editableItem = items.find(i => i.isEditable);
+              if (editableItem) changeQty(editableItem.id, 1);
+            }
+          }
+          if (e.key === 'Enter') goToApproval();
+          if (e.key === 'Escape') goToClues();
+          break;
+        case 'approval':
+          if (gameState.selectedChoice) {
+            if (e.key === 'Enter') nextApproval();
+          } else {
+            const nodes = currentLevelData?.approvalNodes;
+            const currentNode = nodes?.[gameState.currentApprovalIndex];
+            if (currentNode) {
+              if (e.key === '1' && currentNode.choices[0]) makeChoice(currentNode.choices[0], 0);
+              if (e.key === '2' && currentNode.choices[1]) makeChoice(currentNode.choices[1], 1);
+              if (e.key === '3' && currentNode.choices[2]) makeChoice(currentNode.choices[2], 2);
+              if (e.key === '4' && currentNode.choices[3]) makeChoice(currentNode.choices[3], 3);
+            }
+          }
+          break;
+        case 'result':
+          if (e.key === 'Enter' || e.key === 'r' || e.key === 'R') restartGame();
+          break;
+      }
+    });
+
+    let touchStartX = 0;
+    let touchStartY = 0;
+    
+    document.addEventListener('touchstart', (e) => {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+    });
+
+    document.addEventListener('touchend', (e) => {
+      const touchEndX = e.changedTouches[0].clientX;
+      const touchEndY = e.changedTouches[0].clientY;
+      const deltaX = touchEndX - touchStartX;
+      const deltaY = touchEndY - touchStartY;
+      const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+      
+      if (distance > 50) {
+        const phase = gameState.currentPhase;
+        if (phase === 'clues') {
+          if (deltaX > 0) prevClue();
+          else nextClue();
+        }
+      }
+    });
+
+    initGame();
+  </script>
+</body>
+</html>

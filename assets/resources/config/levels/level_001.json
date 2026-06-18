@@ -1,0 +1,256 @@
+{
+  "id": "level_001",
+  "name": "第一关：新手入门",
+  "description": "简单的一居室量房报价任务，适合新手熟悉基本流程。",
+  "difficulty": 1,
+  "unlocked": true,
+  "starThresholds": [600, 800, 950],
+  "tutorialId": "tutorial_001",
+  "task": {
+    "id": "task_001",
+    "title": "一居室简单装修",
+    "description": "客户张女士有一套50平米的一居室，需要做简单的基础装修。请仔细量房并给出准确的报价单。",
+    "clientName": "张女士",
+    "houseType": "一居室",
+    "houseArea": 50,
+    "difficulty": 1,
+    "baseReward": 5000,
+    "timeLimit": 300,
+    "clueIds": ["clue_001", "clue_002", "clue_003", "clue_004", "clue_005"],
+    "documentId": "doc_001",
+    "approvalNodeIds": ["node_001", "node_002", "node_003"]
+  },
+  "clues": [
+    {
+      "id": "clue_001",
+      "title": "客厅面积",
+      "content": "客厅长5米，宽4米，总面积20平米。地面需要铺地砖，墙面需要刷乳胶漆。",
+      "clueType": "room",
+      "isKey": true,
+      "relatedDocumentItemIds": ["item_001", "item_003"]
+    },
+    {
+      "id": "clue_002",
+      "title": "卧室面积",
+      "content": "卧室长4米，宽3.5米，总面积14平米。地面铺木地板，墙面刷乳胶漆。",
+      "clueType": "room",
+      "isKey": true,
+      "relatedDocumentItemIds": ["item_002", "item_003"]
+    },
+    {
+      "id": "clue_003",
+      "title": "地砖价格",
+      "content": "客户指定的地砖品牌为马可波罗，单价为每平米120元。",
+      "clueType": "price",
+      "isKey": true,
+      "relatedDocumentItemIds": ["item_001"]
+    },
+    {
+      "id": "clue_004",
+      "title": "乳胶漆价格",
+      "content": "使用立邦乳胶漆，每平米包工包料价格为35元。",
+      "clueType": "price",
+      "isKey": false,
+      "relatedDocumentItemIds": ["item_003"]
+    },
+    {
+      "id": "clue_005",
+      "title": "注意事项",
+      "content": "客户提到卧室有一个2米宽的飘窗，不计入地面面积，但墙面需要额外计算。飘窗高度为0.5米。",
+      "clueType": "risk",
+      "isKey": false
+    }
+  ],
+  "document": {
+    "id": "doc_001",
+    "title": "量房报价单",
+    "totalAmount": 0,
+    "correctTotalAmount": 7290,
+    "items": [
+      {
+        "id": "item_001",
+        "name": "客厅地砖",
+        "category": "地面工程",
+        "unit": "㎡",
+        "quantity": 25,
+        "unitPrice": 100,
+        "correctQuantity": 20,
+        "correctUnitPrice": 120,
+        "tolerance": 0.05,
+        "isEditable": true,
+        "description": "客厅地面铺设地砖"
+      },
+      {
+        "id": "item_002",
+        "name": "卧室木地板",
+        "category": "地面工程",
+        "unit": "㎡",
+        "quantity": 14,
+        "unitPrice": 150,
+        "correctQuantity": 14,
+        "correctUnitPrice": 150,
+        "tolerance": 0.05,
+        "isEditable": true,
+        "description": "卧室地面铺设实木复合地板"
+      },
+      {
+        "id": "item_003",
+        "name": "墙面乳胶漆",
+        "category": "墙面工程",
+        "unit": "㎡",
+        "quantity": 80,
+        "unitPrice": 35,
+        "correctQuantity": 85,
+        "correctUnitPrice": 35,
+        "tolerance": 0.05,
+        "isEditable": true,
+        "description": "全屋墙面刷乳胶漆，含飘窗面积"
+      },
+      {
+        "id": "item_004",
+        "name": "管理费",
+        "category": "其他",
+        "unit": "项",
+        "quantity": 1,
+        "unitPrice": 500,
+        "correctQuantity": 1,
+        "correctUnitPrice": 500,
+        "tolerance": 0,
+        "isEditable": false,
+        "description": "项目管理费用"
+      }
+    ]
+  },
+  "approvalNodes": [
+    {
+      "id": "node_001",
+      "title": "数量审核",
+      "description": "请审核地砖数量是否正确。",
+      "nodeType": "quantity",
+      "requiresDocumentReview": true,
+      "minScoreToPass": 0,
+      "choices": [
+        {
+          "id": "choice_001_1",
+          "text": "数量正确，无需修改",
+          "isCorrect": false,
+          "feedback": "错误！根据线索，客厅面积是20平米，不是25平米。请仔细查看客厅面积的线索。",
+          "scoreDelta": -50,
+          "moneyDelta": -600,
+          "triggerMismatch": true
+        },
+        {
+          "id": "choice_001_2",
+          "text": "数量不对，应该是20平米",
+          "isCorrect": true,
+          "feedback": "正确！客厅长5米宽4米，面积是20平米。",
+          "scoreDelta": 100,
+          "moneyDelta": 0
+        },
+        {
+          "id": "choice_001_3",
+          "text": "数量不对，应该是30平米",
+          "isCorrect": false,
+          "feedback": "错误！30平米太多了。请重新计算客厅面积。",
+          "scoreDelta": -80,
+          "moneyDelta": -1200,
+          "triggerMismatch": true
+        },
+        {
+          "id": "choice_001_4",
+          "text": "不确定，需要再看看线索",
+          "isCorrect": false,
+          "feedback": "没关系，多看看线索吧。客厅面积的线索很重要。",
+          "scoreDelta": -10,
+          "moneyDelta": 0
+        }
+      ]
+    },
+    {
+      "id": "node_002",
+      "title": "价格审核",
+      "description": "请审核地砖单价是否正确。",
+      "nodeType": "price",
+      "requiresDocumentReview": true,
+      "minScoreToPass": 0,
+      "choices": [
+        {
+          "id": "choice_002_1",
+          "text": "单价正确，就是100元/㎡",
+          "isCorrect": false,
+          "feedback": "错误！客户指定的马可波罗地砖单价是120元/㎡。",
+          "scoreDelta": -50,
+          "moneyDelta": -400,
+          "triggerMismatch": true
+        },
+        {
+          "id": "choice_002_2",
+          "text": "单价不对，应该是120元/㎡",
+          "isCorrect": true,
+          "feedback": "正确！马可波罗地砖单价确实是120元/㎡。",
+          "scoreDelta": 100,
+          "moneyDelta": 0
+        },
+        {
+          "id": "choice_002_3",
+          "text": "单价不对，应该是80元/㎡",
+          "isCorrect": false,
+          "feedback": "错误！80元/㎡的地砖质量可能不够，客户指定的是120元的。",
+          "scoreDelta": -30,
+          "moneyDelta": 800,
+          "triggerMismatch": true
+        },
+        {
+          "id": "choice_002_4",
+          "text": "我觉得可以再便宜点",
+          "isCorrect": false,
+          "feedback": "不能随便降价哦，要按照客户指定的品牌来报价。",
+          "scoreDelta": -20,
+          "moneyDelta": 0
+        }
+      ]
+    },
+    {
+      "id": "node_003",
+      "title": "最终审批",
+      "description": "请确认最终报价是否准确。",
+      "nodeType": "final",
+      "requiresDocumentReview": true,
+      "minScoreToPass": 0,
+      "choices": [
+        {
+          "id": "choice_003_1",
+          "text": "报价准确，可以提交给客户",
+          "isCorrect": true,
+          "feedback": "好的，报价已经确认！希望客户能够满意。",
+          "scoreDelta": 200,
+          "moneyDelta": 0
+        },
+        {
+          "id": "choice_003_2",
+          "text": "还需要再检查一下",
+          "isCorrect": false,
+          "feedback": "好吧，仔细检查是对的。不过这次的报价已经很准确了。",
+          "scoreDelta": -10,
+          "moneyDelta": 0
+        },
+        {
+          "id": "choice_003_3",
+          "text": "再加点利润",
+          "isCorrect": false,
+          "feedback": "不能随便加价哦，要诚信经营！",
+          "scoreDelta": -100,
+          "moneyDelta": 0
+        },
+        {
+          "id": "choice_003_4",
+          "text": "打个折扣吧",
+          "isCorrect": false,
+          "feedback": "随意打折会影响利润的，还是按照正常报价来吧。",
+          "scoreDelta": -30,
+          "moneyDelta": -500
+        }
+      ]
+    }
+  ]
+}
