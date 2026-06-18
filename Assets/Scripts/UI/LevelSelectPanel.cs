@@ -11,7 +11,6 @@ namespace UsedCarGame.UI
     public class LevelSelectPanel : UIPanelBase
     {
         [SerializeField] private Transform levelCardContainer;
-        [SerializeField] private GameObject levelCardPrefab;
         [SerializeField] private Button backButton;
         [SerializeField] private TMP_Text loadingText;
 
@@ -34,138 +33,110 @@ namespace UsedCarGame.UI
         {
             if (loadingText != null) loadingText.gameObject.SetActive(true);
 
-            var provider = ServiceLocator.Get<LevelDataProvider>();
-
-            var sampleLevel = SampleLevelFactory.CreateLevel_001();
             yield return null;
-            SpawnLevelCard(sampleLevel, "Levels/Level_001");
 
-            var sampleLevel2 = SampleLevelFactory.CreateLevel_002();
-            SpawnLevelCard(sampleLevel2, "Levels/Level_002");
+            var level1 = SampleLevelFactory.CreateLevel_001();
+            SpawnLevelCard(level1, "Levels/Level_001", highlight: true);
+
+            var level2 = SampleLevelFactory.CreateLevel_002();
+            SpawnLevelCard(level2, "Levels/Level_002", highlight: false);
 
             if (loadingText != null) loadingText.gameObject.SetActive(false);
         }
 
-        private void SpawnLevelCard(LevelConfig config, string address)
+        private void SpawnLevelCard(LevelConfig config, string address, bool highlight)
         {
             if (levelCardContainer == null) return;
 
-            GameObject card;
-            if (levelCardPrefab != null)
-            {
-                card = Instantiate(levelCardPrefab, levelCardContainer);
-                var rt = card.GetComponent<RectTransform>();
-                if (rt == null) rt = card.AddComponent<RectTransform>();
-                rt.sizeDelta = new Vector2(320, 180);
-            }
-            else
-            {
-                card = new GameObject("LevelCard");
-                card.transform.SetParent(levelCardContainer, false);
-                var rt = card.AddComponent<RectTransform>();
-                rt.sizeDelta = new Vector2(320, 180);
-                var bg = card.AddComponent<Image>();
-                bg.color = Color.white;
+            var card = new GameObject("LevelCard_" + config.levelId);
+            card.transform.SetParent(levelCardContainer, false);
 
-                var btn = card.AddComponent<Button>();
-                var colors = btn.colors;
-                colors.normalColor = Color.white;
-                colors.highlightedColor = new Color(0.95f, 0.97f, 1f, 1f);
-                colors.pressedColor = new Color(0.9f, 0.93f, 0.98f, 1f);
-                btn.colors = colors;
-                btn.onClick.AddListener(() => OnLevelSelected(address));
+            var rt = card.AddComponent<RectTransform>();
+            rt.sizeDelta = new Vector2(340, 200);
+
+            var bg = card.AddComponent<Image>();
+            bg.color = highlight ? new Color(0.95f, 0.98f, 1f, 1f) : Color.white;
+
+            var btn = card.AddComponent<Button>();
+            var colors = btn.colors;
+            colors.normalColor = highlight ? new Color(0.92f, 0.96f, 1f, 1f) : Color.white;
+            colors.highlightedColor = new Color(0.85f, 0.92f, 1f, 1f);
+            colors.pressedColor = new Color(0.75f, 0.85f, 1f, 1f);
+            colors.selectedColor = colors.highlightedColor;
+            btn.colors = colors;
+            btn.interactable = true;
+            btn.onClick.AddListener(() => OnLevelSelected(address));
+
+            if (highlight)
+            {
+                var outline = card.AddComponent<Outline>();
+                outline.effectColor = new Color(0.2f, 0.5f, 0.95f, 0.8f);
+                outline.effectDistance = new Vector2(2, -2);
             }
+
+            var titleGo = new GameObject("Title");
+            titleGo.transform.SetParent(card.transform, false);
+            var titleText = titleGo.AddComponent<TextMeshProUGUI>();
+            titleText.text = (highlight ? "✓ " : "") + config.levelName;
+            titleText.fontSize = 24;
+            titleText.fontStyle = FontStyles.Bold;
+            titleText.color = new Color(0.12f, 0.15f, 0.2f, 1f);
+            titleText.raycastTarget = false;
+            var tRt = titleText.rectTransform;
+            tRt.anchorMin = new Vector2(0.06f, 0.65f);
+            tRt.anchorMax = new Vector2(0.94f, 0.92f);
+            tRt.offsetMin = Vector2.zero;
+            tRt.offsetMax = Vector2.zero;
+
+            var descGo = new GameObject("Desc");
+            descGo.transform.SetParent(card.transform, false);
+            var descText = descGo.AddComponent<TextMeshProUGUI>();
+            descText.text = config.description;
+            descText.fontSize = 14;
+            descText.color = new Color(0.38f, 0.4f, 0.45f, 1f);
+            descText.alignment = TextAlignmentOptions.TopLeft;
+            descText.enableWordWrapping = true;
+            descText.raycastTarget = false;
+            var dRt = descText.rectTransform;
+            dRt.anchorMin = new Vector2(0.06f, 0.28f);
+            dRt.anchorMax = new Vector2(0.94f, 0.6f);
+            dRt.offsetMin = Vector2.zero;
+            dRt.offsetMax = Vector2.zero;
+
+            var infoGo = new GameObject("Info");
+            infoGo.transform.SetParent(card.transform, false);
+            var infoText = infoGo.AddComponent<TextMeshProUGUI>();
+            infoText.text = $"★{config.difficulty}   ·   {config.questionsPerSession} 题   ·   {config.totalTimeSeconds:F0} 秒";
+            infoText.fontSize = 14;
+            infoText.color = new Color(0.5f, 0.52f, 0.58f, 1f);
+            infoText.alignment = TextAlignmentOptions.Left;
+            infoText.raycastTarget = false;
+            var iRt = infoText.rectTransform;
+            iRt.anchorMin = new Vector2(0.06f, 0.06f);
+            iRt.anchorMax = new Vector2(0.94f, 0.24f);
+            iRt.offsetMin = Vector2.zero;
+            iRt.offsetMax = Vector2.zero;
+
+            var hintGo = new GameObject("Hint");
+            hintGo.transform.SetParent(card.transform, false);
+            var hintText = hintGo.AddComponent<TextMeshProUGUI>();
+            hintText.text = highlight ? "▶ 点击开始" : "";
+            hintText.fontSize = 13;
+            hintText.color = new Color(0.2f, 0.5f, 0.95f, 0.9f);
+            hintText.alignment = TextAlignmentOptions.Right;
+            hintText.raycastTarget = false;
+            var hRt = hintText.rectTransform;
+            hRt.anchorMin = new Vector2(0.5f, 0.06f);
+            hRt.anchorMax = new Vector2(0.94f, 0.24f);
+            hRt.offsetMin = Vector2.zero;
+            hRt.offsetMax = Vector2.zero;
 
             _spawnedCards.Add(card);
-
-            var nameTexts = card.GetComponentsInChildren<TMP_Text>();
-            if (nameTexts.Length == 0)
-            {
-                var titleGo = new GameObject("Title");
-                titleGo.transform.SetParent(card.transform, false);
-                var titleText = titleGo.AddComponent<TextMeshProUGUI>();
-                titleText.text = config.levelName;
-                titleText.fontSize = 22;
-                titleText.fontStyle = FontStyles.Bold;
-                titleText.color = new Color(0.15f, 0.15f, 0.2f, 1f);
-                var tRt = titleText.rectTransform;
-                tRt.anchorMin = new Vector2(0.05f, 0.6f);
-                tRt.anchorMax = new Vector2(0.95f, 0.9f);
-                tRt.offsetMin = Vector2.zero;
-                tRt.offsetMax = Vector2.zero;
-
-                var descGo = new GameObject("Desc");
-                descGo.transform.SetParent(card.transform, false);
-                var descText = descGo.AddComponent<TextMeshProUGUI>();
-                descText.text = config.description;
-                descText.fontSize = 14;
-                descText.color = new Color(0.4f, 0.4f, 0.45f, 1f);
-                descText.alignment = TextAlignmentOptions.TopLeft;
-                descText.enableWordWrapping = true;
-                var dRt = descText.rectTransform;
-                dRt.anchorMin = new Vector2(0.05f, 0.2f);
-                dRt.anchorMax = new Vector2(0.95f, 0.55f);
-                dRt.offsetMin = Vector2.zero;
-                dRt.offsetMax = Vector2.zero;
-
-                var infoGo = new GameObject("Info");
-                infoGo.transform.SetParent(card.transform, false);
-                var infoText = infoGo.AddComponent<TextMeshProUGUI>();
-                infoText.text = $"★{config.difficulty}  |  {config.questionsPerSession}题  |  {config.totalTimeSeconds:F0}秒";
-                infoText.fontSize = 13;
-                infoText.color = new Color(0.5f, 0.5f, 0.55f, 1f);
-                infoText.alignment = TextAlignmentOptions.Left;
-                var iRt = infoText.rectTransform;
-                iRt.anchorMin = new Vector2(0.05f, 0.05f);
-                iRt.anchorMax = new Vector2(0.95f, 0.18f);
-                iRt.offsetMin = Vector2.zero;
-                iRt.offsetMax = Vector2.zero;
-
-                var btn = card.GetComponent<Button>();
-                if (btn != null)
-                {
-                    btn.onClick.AddListener(() => OnLevelSelected(address));
-                }
-            }
-            else
-            {
-                foreach (var t in nameTexts)
-                {
-                    if (t.name.Contains("Name") || t.name.Contains("Title"))
-                    {
-                        t.text = config.levelName;
-                    }
-                    else if (t.name.Contains("Desc"))
-                    {
-                        t.text = config.description;
-                    }
-                    else if (t.name.Contains("Difficulty"))
-                    {
-                        t.text = $"难度：{new string('★', config.difficulty)}";
-                    }
-                    else if (t.name.Contains("Time"))
-                    {
-                        t.text = $"时长：{config.totalTimeSeconds:F0}秒";
-                    }
-                    else if (t.name.Contains("Count"))
-                    {
-                        t.text = $"题数：{config.questionsPerSession}";
-                    }
-                }
-
-                var buttons = card.GetComponentsInChildren<Button>();
-                foreach (var btn in buttons)
-                {
-                    if (btn.name.Contains("Start") || btn.name == card.name)
-                    {
-                        btn.onClick.AddListener(() => OnLevelSelected(address));
-                    }
-                }
-            }
         }
 
         private void OnLevelSelected(string levelAddress)
         {
+            Debug.Log($"[LevelSelect] 选中关卡：{levelAddress}");
             GameManager.Instance?.StartLevel(levelAddress);
         }
 

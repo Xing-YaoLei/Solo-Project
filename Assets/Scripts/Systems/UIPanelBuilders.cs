@@ -68,23 +68,62 @@ namespace UsedCarGame.Systems
             title.rectTransform.anchoredPosition = new Vector2(0, -50);
             title.fontStyle = FontStyles.Bold;
 
+            var subtitle = RuntimeUIBuilder.AddText(panel.transform, "★ 高亮为推荐关卡 · 点击卡片开始练习", 16);
+            (subtitle.rectTransform.anchorMin, subtitle.rectTransform.anchorMax) = (new Vector2(0, 1), new Vector2(1, 1));
+            subtitle.rectTransform.anchoredPosition = new Vector2(0, -95);
+            subtitle.color = new Color(0.5f, 0.52f, 0.58f, 1f);
+
+            var scrollGo = new GameObject("LevelCardScrollView");
+            scrollGo.transform.SetParent(panel.transform, false);
+            var srt = scrollGo.AddComponent<RectTransform>();
+            srt.anchorMin = new Vector2(0.05f, 0.15f);
+            srt.anchorMax = new Vector2(0.95f, 0.8f);
+            srt.offsetMin = Vector2.zero;
+            srt.offsetMax = Vector2.zero;
+
+            var scrollRect = scrollGo.AddComponent<ScrollRect>();
+            scrollRect.horizontal = false;
+            scrollRect.vertical = true;
+            scrollRect.movementType = ScrollRect.MovementType.Clamped;
+            scrollRect.scrollSensitivity = 25f;
+
+            var viewportGo = new GameObject("Viewport");
+            viewportGo.transform.SetParent(scrollGo.transform, false);
+            var vrt = viewportGo.AddComponent<RectTransform>();
+            vrt.anchorMin = Vector2.zero;
+            vrt.anchorMax = Vector2.one;
+            vrt.offsetMin = Vector2.zero;
+            vrt.offsetMax = Vector2.zero;
+            viewportGo.AddComponent<RectMask2D>();
+            scrollRect.viewport = vrt;
+
             var container = new GameObject("LevelCardContainer");
-            container.transform.SetParent(panel.transform, false);
+            container.transform.SetParent(viewportGo.transform, false);
             var crt = container.AddComponent<RectTransform>();
-            crt.anchorMin = new Vector2(0.05f, 0.15f);
-            crt.anchorMax = new Vector2(0.95f, 0.85f);
-            crt.offsetMin = Vector2.zero;
-            crt.offsetMax = Vector2.zero;
+            crt.anchorMin = new Vector2(0, 1);
+            crt.anchorMax = new Vector2(1, 1);
+            crt.pivot = new Vector2(0.5f, 1);
+            crt.sizeDelta = new Vector2(0, 500);
+            crt.anchoredPosition = Vector2.zero;
+            scrollRect.content = crt;
 
-            var cardPrefab = new GameObject("LevelCard");
-            cardPrefab.SetActive(false);
-            cardPrefab.AddComponent<RectTransform>().sizeDelta = new Vector2(350, 200);
-            var cardImg = cardPrefab.AddComponent<Image>();
-            cardImg.color = Color.white;
+            var layoutGroup = container.AddComponent<HorizontalLayoutGroup>();
+            layoutGroup.spacing = 24f;
+            layoutGroup.padding = new RectOffset(20, 20, 20, 20);
+            layoutGroup.childAlignment = TextAnchor.UpperLeft;
+            layoutGroup.childControlWidth = false;
+            layoutGroup.childControlHeight = false;
+            layoutGroup.childForceExpandWidth = false;
+            layoutGroup.childForceExpandHeight = false;
 
-            var loading = RuntimeUIBuilder.AddText(panel.transform, "⌛ 加载中...", 20);
+            var fitter = container.AddComponent<ContentSizeFitter>();
+            fitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+            fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+            var loading = RuntimeUIBuilder.AddText(panel.transform, "", 20);
             (loading.rectTransform.anchorMin, loading.rectTransform.anchorMax) = (new Vector2(0, 0.5f), new Vector2(1, 0.5f));
             loading.rectTransform.anchoredPosition = Vector2.zero;
+            loading.gameObject.SetActive(false);
 
             var backBtn = RuntimeUIBuilder.AddButton(panel.transform, "← 返回主菜单", "BackButton", 18);
             var brt = backBtn.GetComponent<RectTransform>();
@@ -92,10 +131,9 @@ namespace UsedCarGame.Systems
             brt.anchorMax = new Vector2(0, 0);
             brt.pivot = new Vector2(0, 0);
             brt.anchoredPosition = new Vector2(30, 30);
-            brt.sizeDelta = new Vector2(200, 50);
+            brt.sizeDelta = new Vector2(220, 50);
 
             UIManagerBinder.SetField(script, "levelCardContainer", container.transform);
-            UIManagerBinder.SetField(script, "levelCardPrefab", cardPrefab);
             UIManagerBinder.SetField(script, "backButton", backBtn);
             UIManagerBinder.SetField(script, "loadingText", loading);
 
