@@ -36,6 +36,7 @@ export default function ImportPage() {
     useMockData,
     fetchAllData,
     fetchImportBatches,
+    addImportResult,
   } = useDashboardStore();
 
   const [activeSource, setActiveSource] = useState<"PAYMENT" | "DESIGN_EXPORT" | "PHOTO">("PAYMENT");
@@ -174,6 +175,17 @@ export default function ImportPage() {
       const result = await response.json();
       setLastImportBatchId(result.importBatchId);
 
+      addImportResult({
+        source: "PAYMENT",
+        importBatchId: result.importBatchId,
+        batchNo: result.batchNo,
+        mergedCount: result.mergedCount,
+        newEntries: result.newEntries,
+        updatedEntries: result.updatedEntries,
+        warnings: result.warnings,
+        records,
+      });
+
       setUploadResult({
         success: true,
         message: `成功导入 ${result.mergedCount} 条收款记录`,
@@ -190,7 +202,9 @@ export default function ImportPage() {
 
       setPaymentFile(null);
       setPaymentPreview(null);
-      await fetchAllData();
+      if (!useMockData) {
+        await fetchAllData();
+      }
     } catch (error) {
       setUploadResult({
         success: false,
@@ -239,6 +253,17 @@ export default function ImportPage() {
 
       const result = await response.json();
 
+      addImportResult({
+        source: "DESIGN_EXPORT",
+        importBatchId: result.importBatchId,
+        batchNo: result.batchNo,
+        mergedCount: result.mergedCount,
+        newEntries: result.newEntries,
+        updatedEntries: result.updatedEntries,
+        warnings: result.warnings,
+        records,
+      });
+
       setUploadResult({
         success: true,
         message: `成功合并 ${result.mergedCount} 条设计导出记录`,
@@ -255,7 +280,9 @@ export default function ImportPage() {
       setDesignFile(null);
       setDesignPreview(null);
       setSelectedImportBatchId("");
-      await fetchAllData();
+      if (!useMockData) {
+        await fetchAllData();
+      }
     } catch (error) {
       setUploadResult({
         success: false,
@@ -305,6 +332,27 @@ export default function ImportPage() {
       const result = await response.json();
       const photoCount = validItems.filter((p) => p.file).length;
 
+      const photoRecords = validItems.map((item) => ({
+        batchNo: item.batchNo,
+        projectName: item.projectName || "默认项目",
+        hasPhoto: !!item.file,
+        materialName: `照片记录 - ${item.batchNo}`,
+        category: "监理资料",
+        quantity: 1,
+        supplierName: "监理方",
+      }));
+
+      addImportResult({
+        source: "PHOTO",
+        importBatchId: result.importBatchId,
+        batchNo: result.batchNo,
+        mergedCount: validItems.length,
+        newEntries: photoCount,
+        updatedEntries: validItems.length - photoCount,
+        warnings: result.warnings,
+        records: photoRecords,
+      });
+
       setUploadResult({
         success: true,
         message: `成功关联 ${validItems.length} 条批次记录`,
@@ -319,7 +367,9 @@ export default function ImportPage() {
       });
 
       setPhotoItems([{ id: "1", file: null, batchNo: "", projectName: "" }]);
-      await fetchAllData();
+      if (!useMockData) {
+        await fetchAllData();
+      }
     } catch (error) {
       setUploadResult({
         success: false,

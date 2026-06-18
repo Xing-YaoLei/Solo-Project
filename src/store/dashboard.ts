@@ -43,6 +43,21 @@ interface DashboardStore {
   addShortageNote: (entryId: string, note: string) => Promise<void>;
   addMaterialEntry: (entry: Partial<MaterialEntry>) => Promise<void>;
   addRequisition: (req: Partial<Requisition>) => Promise<void>;
+  addImportResult: (result: ImportResult) => void;
+}
+
+interface ImportResult {
+  source: "PAYMENT" | "DESIGN_EXPORT" | "PHOTO";
+  importBatchId: string;
+  batchNo: string;
+  mergedCount: number;
+  newEntries: number;
+  updatedEntries: number;
+  warnings?: string[];
+  records?: any[];
+  importBatch?: ImportBatch;
+  newMaterialEntries?: MaterialEntry[];
+  newBatches?: Batch[];
 }
 
 const STAFF_PROJECT_IDS = ["p-1", "p-2"];
@@ -78,6 +93,19 @@ function filterRequisitionsByProject(
 ): Requisition[] {
   if (role === "ADMIN") return reqs;
   return reqs.filter((req) => projectIds.includes(req.projectId));
+}
+
+function filterSuppliersByProject(
+  suppliers: Supplier[],
+  entries: MaterialEntry[],
+  batches: Batch[],
+  projectIds: string[],
+  role: "ADMIN" | "STAFF"
+): Supplier[] {
+  if (role === "ADMIN") return suppliers;
+  const filteredEntries = filterMaterialEntriesByProject(entries, batches, projectIds, role);
+  const supplierIds = Array.from(new Set(filteredEntries.map((e) => e.supplierId)));
+  return suppliers.filter((s) => supplierIds.includes(s.id));
 }
 
 export const useDashboardStore = create<DashboardStore>((set, get) => ({
@@ -145,10 +173,19 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
         (b) => b.status === "SHORTAGE"
       ).length;
 
+      const filteredSuppliers = filterSuppliersByProject(
+        mockSuppliers,
+        mockMaterialEntries,
+        mockBatches,
+        projectIds,
+        role
+      );
+
       set({
         materialEntries: filteredEntries,
         batches: filteredBatches,
         requisitions: filteredReqs,
+        suppliers: filteredSuppliers,
         kpiData: {
           monthlyTotal: filteredEntries.reduce((s, e) => s + e.quantity, 0),
           inStockTotal: inStockCount,
@@ -170,23 +207,61 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
       const role = get().currentUserRole;
       const projectIds =
         role === "ADMIN" ? ADMIN_PROJECT_IDS : STAFF_PROJECT_IDS;
+
+      const filteredEntries = filterMaterialEntriesByProject(
+        mockMaterialEntries,
+        mockBatches,
+        projectIds,
+        role
+      );
+      const filteredBatches = filterBatchesByProject(mockBatches, projectIds, role);
+      const filteredReqs = filterRequisitionsByProject(
+        mockRequisitions,
+        projectIds,
+        role
+      );
+      const filteredSuppliers = filterSuppliersByProject(
+        mockSuppliers,
+        mockMaterialEntries,
+        mockBatches,
+        projectIds,
+        role
+      );
+
+      const inStockCount = filteredEntries
+        .filter((e) => e.status === "IN_STOCK")
+        .reduce((s, e) => s + e.quantity, 0);
+      const reclaimedEntries = filteredEntries.filter(
+        (e) => e.status === "RECLAIMED"
+      );
+      const reclaimedCount = reclaimedEntries.length;
+
+      let avgTurnover = 0;
+      if (reclaimedCount > 0) {
+        const total = reclaimedEntries.reduce((s, e) => {
+          const entry = e as MaterialEntry & { turnoverDays?: number };
+          return s + (entry.turnoverDays || 0);
+        }, 0);
+        avgTurnover = total / reclaimedCount;
+      }
+
+      const shortageCount = filteredBatches.filter(
+        (b) => b.status === "SHORTAGE"
+      ).length;
+
       set({
-        materialEntries: filterMaterialEntriesByProject(
-          mockMaterialEntries,
-          mockBatches,
-          projectIds,
-          role
-        ),
-        batches: filterBatchesByProject(mockBatches, projectIds, role),
+        materialEntries: filteredEntries,
+        batches: filteredBatches,
         importBatches: mockImportBatches,
-        suppliers: mockSuppliers,
-        requisitions: filterRequisitionsByProject(
-          mockRequisitions,
-          projectIds,
-          role
-        ),
-        kpiData: getKpiData(),
-        alerts: getAlerts(),
+        suppliers: filteredSuppliers,
+        requisitions: filteredReqs,
+        kpiData: {
+          monthlyTotal: filteredEntries.reduce((s, e) => s + e.quantity, 0),
+          inStockTotal: inStockCount,
+          avgTurnoverDays: Math.round(avgTurnover),
+          shortageBatchCount: shortageCount,
+        },
+        alerts: getAlerts().slice(0, 10),
       });
     }
   },
@@ -271,7 +346,16 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
       const state = get();
       const res = await fetch(`/api/suppliers?mock=${state.useMockData}`);
       const data = await res.json();
-      set({ suppliers: data || [] });
+      const suppliers = data || [];
+
+      const filtered = filterSuppliersByProject(
+        suppliers,
+        state.materialEntries,
+        state.batches,
+        state.assignedProjectIds,
+        state.currentUserRole
+      );
+      set({ suppliers: filtered });
     } catch (error) {
       console.error("获取供应商列表失败:", error);
     }
@@ -411,5 +495,145 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
     } catch (error) {
       console.error("添加领用记录失败:", error);
     }
+  },
+
+  addImportResult: (result) => {
+    const state = get();
+    const now = new Date();
+    const todayStr = now.toISOString().split("T")[0];
+
+    const newImportBatch: ImportBatch = result.importBatch || {
+      id: result.importBatchId,
+      batchNo: result.batchNo,
+      source: result.source,
+      importedAt: now.toISOString(),
+      importedBy: state.currentUserId,
+      recordCount: result.mergedCount,
+      fileUrl: null,
+    };
+
+    let newMaterialEntries: MaterialEntry[] = [];
+    let newBatches: Batch[] = [];
+
+    if (result.newMaterialEntries && result.newMaterialEntries.length > 0) {
+      newMaterialEntries = result.newMaterialEntries;
+    } else if (result.records && result.records.length > 0) {
+      const projectIds = state.assignedProjectIds;
+      const categories = ["瓷砖", "玻璃", "木材", "电线", "五金", "涂料", "管材", "防水材料"];
+      const statuses: Array<"ARRIVED" | "IN_STOCK" | "RECLAIMED" | "EXPIRED"> = ["ARRIVED", "IN_STOCK", "RECLAIMED"];
+
+      result.records.forEach((record: any, idx: number) => {
+        const batchId = `batch-${result.importBatchId}-${idx}`;
+        const entryId = `entry-${result.importBatchId}-${idx}`;
+        const projectId = projectIds[idx % projectIds.length];
+        const projectName = projectId === "p-1" ? "杭州湾样板房" :
+                            projectId === "p-2" ? "上海青浦别墅" :
+                            projectId === "p-3" ? "苏州园区住宅" : "南京鼓楼公寓";
+
+        const materialName = record.materialName || `材料 ${idx + 1}`;
+        const category = record.category || categories[idx % categories.length];
+        const quantity = record.quantity || Math.floor(Math.random() * 100) + 10;
+        const supplierName = record.supplierName || `供应商 ${(idx % 5) + 1}`;
+        const supplierId = `s-${(idx % 5) + 1}`;
+        const status = statuses[idx % statuses.length];
+
+        const batch: Batch = {
+          id: batchId,
+          batchNo: result.batchNo,
+          importSource: result.source,
+          importBatchId: result.importBatchId,
+          projectId,
+          projectName,
+          status: "COMPLETE",
+          notes: null,
+          createdAt: todayStr,
+        };
+
+        const entry: MaterialEntry = {
+          id: entryId,
+          batchId,
+          materialName,
+          category,
+          specification: record.specification || "标准规格",
+          quantity,
+          unit: record.unit || "件",
+          supplierId,
+          supplierName,
+          entryDate: todayStr,
+          status,
+          shortageNote: null,
+          shortageNoteBy: null,
+          shortageNoteAt: null,
+          expiryDate: null,
+        };
+
+        newBatches.push(batch);
+        newMaterialEntries.push(entry);
+      });
+    }
+
+    if (result.newBatches && result.newBatches.length > 0) {
+      newBatches = [...newBatches, ...result.newBatches];
+    }
+
+    set((prev) => {
+      const allImportBatches = [newImportBatch, ...prev.importBatches];
+      const allBatches = [...newBatches, ...prev.batches];
+      const allEntries = [...newMaterialEntries, ...prev.materialEntries];
+
+      const filteredEntries = filterMaterialEntriesByProject(
+        allEntries,
+        allBatches,
+        state.assignedProjectIds,
+        state.currentUserRole
+      );
+      const filteredBatches = filterBatchesByProject(
+        allBatches,
+        state.assignedProjectIds,
+        state.currentUserRole
+      );
+      const filteredSuppliers = filterSuppliersByProject(
+        prev.suppliers,
+        allEntries,
+        allBatches,
+        state.assignedProjectIds,
+        state.currentUserRole
+      );
+
+      const inStockCount = filteredEntries
+        .filter((e) => e.status === "IN_STOCK")
+        .reduce((s, e) => s + e.quantity, 0);
+      const reclaimedEntries = filteredEntries.filter(
+        (e) => e.status === "RECLAIMED"
+      );
+      const reclaimedCount = reclaimedEntries.length;
+
+      let avgTurnover = 0;
+      if (reclaimedCount > 0) {
+        const total = reclaimedEntries.reduce((s, e) => {
+          const entry = e as MaterialEntry & { turnoverDays?: number };
+          return s + (entry.turnoverDays || 0);
+        }, 0);
+        avgTurnover = total / reclaimedCount;
+      }
+
+      const shortageCount = filteredBatches.filter(
+        (b) => b.status === "SHORTAGE"
+      ).length;
+
+      return {
+        importBatches: allImportBatches,
+        batches: allBatches,
+        materialEntries: allEntries,
+        suppliers: filteredSuppliers,
+        lastImportBatchId: result.importBatchId,
+        kpiData: {
+          monthlyTotal: filteredEntries.reduce((s, e) => s + e.quantity, 0),
+          inStockTotal: inStockCount,
+          avgTurnoverDays: Math.round(avgTurnover),
+          shortageBatchCount: shortageCount,
+        },
+      };
+    });
   },
 }));
