@@ -5,13 +5,20 @@ interface ModalProps {
   children: React.ReactNode;
   onClose: () => void;
   footer?: React.ReactNode;
+  size?: 'default' | 'large' | 'xlarge';
 }
 
-const Modal: React.FC<ModalProps> = ({ title, children, onClose, footer }) => {
+const sizeMap: Record<string, string> = {
+  default: 'max-w-2xl',
+  large: 'max-w-4xl',
+  xlarge: 'max-w-6xl',
+};
+
+const Modal: React.FC<ModalProps> = ({ title, children, onClose, footer, size = 'default' }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="fixed inset-0 bg-black bg-opacity-50" onClick={onClose} />
-      <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col">
+      <div className={`relative bg-white rounded-lg shadow-xl ${sizeMap[size]} w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col`}>
         <div className="flex items-center justify-between px-6 py-4 border-b">
           <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
           <button

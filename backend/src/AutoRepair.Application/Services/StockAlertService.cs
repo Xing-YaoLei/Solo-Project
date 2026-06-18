@@ -24,6 +24,8 @@ public class StockAlertService : IStockAlertService
                 .ThenInclude(c => c.FromUser)
             .Include(s => s.CommunicationLogs)
                 .ThenInclude(c => c.ToUser)
+            .Include(s => s.ReviewOpinions)
+                .ThenInclude(r => r.ReviewerUser)
             .AsQueryable();
 
         if (acknowledged.HasValue)
@@ -47,6 +49,8 @@ public class StockAlertService : IStockAlertService
                 .ThenInclude(c => c.FromUser)
             .Include(s => s.CommunicationLogs)
                 .ThenInclude(c => c.ToUser)
+            .Include(s => s.ReviewOpinions)
+                .ThenInclude(r => r.ReviewerUser)
             .FirstOrDefaultAsync(s => s.Id == id);
 
         return alert != null ? MapToDto(alert) : null;
@@ -159,6 +163,15 @@ public class StockAlertService : IStockAlertService
             Message = c.Message,
             AttachmentUrl = c.AttachmentUrl,
             SentAt = c.SentAt
-        }).ToList() ?? new List<CommunicationLogDto>()
+        }).ToList() ?? new List<CommunicationLogDto>(),
+        ReviewOpinions = s.ReviewOpinions?.Select(r => new ReviewOpinionDto
+        {
+            Id = r.Id,
+            ReviewerUserId = r.ReviewerUserId,
+            ReviewerUserName = r.ReviewerUser?.FullName ?? string.Empty,
+            Opinion = r.Opinion,
+            IsApproved = r.IsApproved,
+            ReviewedAt = r.ReviewedAt
+        }).ToList() ?? new List<ReviewOpinionDto>()
     };
 }

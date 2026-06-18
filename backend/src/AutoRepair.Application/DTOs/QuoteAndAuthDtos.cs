@@ -71,8 +71,9 @@ public class ReviewOpinionDto
 
 public class ReviewOpinionCreateDto
 {
-    public Guid QuoteId { get; set; }
+    public Guid? QuoteId { get; set; }
     public Guid? WorkOrderId { get; set; }
+    public Guid? StockAlertId { get; set; }
     public string Opinion { get; set; } = string.Empty;
     public bool IsApproved { get; set; }
 }

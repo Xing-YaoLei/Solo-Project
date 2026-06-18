@@ -179,6 +179,12 @@ public class AppDbContext : IdentityDbContext<AppUser>, IAppDbContext
             .OnDelete(DeleteBehavior.SetNull);
 
         builder.Entity<ReviewOpinion>()
+            .HasOne(r => r.StockAlert)
+            .WithMany(s => s.ReviewOpinions)
+            .HasForeignKey(r => r.StockAlertId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<ReviewOpinion>()
             .HasOne(r => r.ReviewerUser)
             .WithMany(u => u.ReviewOpinions)
             .HasForeignKey(r => r.ReviewerUserId)

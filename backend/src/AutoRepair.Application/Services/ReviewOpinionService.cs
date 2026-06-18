@@ -21,6 +21,7 @@ public class ReviewOpinionService : IReviewOpinionService
             Id = Guid.NewGuid(),
             QuoteId = dto.QuoteId,
             WorkOrderId = dto.WorkOrderId,
+            StockAlertId = dto.StockAlertId,
             ReviewerUserId = reviewerUserId,
             Opinion = dto.Opinion,
             IsApproved = dto.IsApproved,
@@ -34,6 +35,7 @@ public class ReviewOpinionService : IReviewOpinionService
             .Include(r => r.ReviewerUser)
             .Include(r => r.Quote)
             .Include(r => r.WorkOrder)
+            .Include(r => r.StockAlert)
             .FirstOrDefaultAsync(r => r.Id == reviewOpinion.Id);
 
         return MapToDto(saved ?? reviewOpinion);

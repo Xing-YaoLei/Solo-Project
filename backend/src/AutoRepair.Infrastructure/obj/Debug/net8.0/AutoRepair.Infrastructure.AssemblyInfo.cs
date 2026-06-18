@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("AutoRepair.Infrastructure")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+da0c2261061a9c37359ee2704038d20f64ebc84a")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+00f0132245a7328a7f6f871d705f8bc5a3048abb")]
 [assembly: System.Reflection.AssemblyProductAttribute("AutoRepair.Infrastructure")]
 [assembly: System.Reflection.AssemblyTitleAttribute("AutoRepair.Infrastructure")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

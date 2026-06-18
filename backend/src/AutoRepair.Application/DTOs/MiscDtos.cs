@@ -82,6 +82,7 @@ public class StockAlertDto
     public DateTime CreatedAt { get; set; }
     public DateTime? AcknowledgedAt { get; set; }
     public List<CommunicationLogDto> CommunicationLogs { get; set; } = new();
+    public List<ReviewOpinionDto> ReviewOpinions { get; set; } = new();
 }
 
 public class CommunicationLogDto

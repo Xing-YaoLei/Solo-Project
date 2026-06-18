@@ -14,4 +14,5 @@ public class StockAlert
     public PartInventory? PartInventory { get; set; }
     public AppUser? AcknowledgedByUser { get; set; }
     public ICollection<CommunicationLog> CommunicationLogs { get; set; } = new List<CommunicationLog>();
+    public ICollection<ReviewOpinion> ReviewOpinions { get; set; } = new List<ReviewOpinion>();
 }
