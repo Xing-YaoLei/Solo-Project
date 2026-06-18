@@ -15,6 +15,11 @@
           value-format="YYYY-MM"
           @change="loadStats"
         />
+        <el-select v-model="query.groupBy" placeholder="分组维度" style="width:130px" @change="loadStats">
+          <el-option label="按线索来源" value="leadSource" />
+          <el-option label="按销售顾问" value="salesPerson" />
+          <el-option label="按线索状态" value="leadStatus" />
+        </el-select>
         <el-input v-model="query.salesPerson" placeholder="销售顾问" clearable style="width:150px" @change="loadStats" />
         <el-select v-model="query.leadSource" placeholder="线索来源" clearable style="width:130px" @change="loadStats">
           <el-option label="线上推广" value="ONLINE" />
@@ -34,7 +39,7 @@
       <ConversionChart :data="stats" />
 
       <el-table :data="stats" stripe size="small" style="margin-top: 20px;">
-        <el-table-column prop="category" label="线索来源" />
+        <el-table-column prop="category" :label="groupLabel" />
         <el-table-column prop="total" label="总线索数" />
         <el-table-column prop="converted" label="转化数" />
         <el-table-column label="转化率">
@@ -67,19 +72,38 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { Download } from '@element-plus/icons-vue'
 import { getConversionStats, exportMonthlyReport, getExportMeta } from '../api/review'
 import ConversionChart from '../components/ConversionChart.vue'
 import dayjs from 'dayjs'
 import { ElMessage } from 'element-plus'
 
-const query = ref({ yearMonth: dayjs().format('YYYY-MM'), salesPerson: '', leadSource: '', leadStatus: '' })
+const query = ref({
+  yearMonth: dayjs().format('YYYY-MM'),
+  groupBy: 'leadSource',
+  salesPerson: '',
+  leadSource: '',
+  leadStatus: ''
+})
 const stats = ref([])
 const operator = ref('')
 const exporting = ref(false)
 const showExportMeta = ref(false)
 const exportMeta = ref(null)
+
+const groupLabel = computed(() => {
+  const map = { leadSource: '线索来源', salesPerson: '销售顾问', leadStatus: '线索状态' }
+  return map[query.value.groupBy] || '线索来源'
+})
+
+function buildExportParams() {
+  const p = { yearMonth: query.value.yearMonth, groupBy: query.value.groupBy, operator: operator.value }
+  if (query.value.salesPerson) p.salesPerson = query.value.salesPerson
+  if (query.value.leadSource) p.leadSource = query.value.leadSource
+  if (query.value.leadStatus) p.leadStatus = query.value.leadStatus
+  return p
+}
 
 async function loadStats() {
   try {
@@ -96,10 +120,7 @@ async function handleExport() {
   }
   exporting.value = true
   try {
-    const blob = await exportMonthlyReport(
-      query.value.yearMonth, query.value.salesPerson,
-      query.value.leadSource, query.value.leadStatus, operator.value
-    )
+    const blob = await exportMonthlyReport(buildExportParams())
     const url = window.URL.createObjectURL(new Blob([blob]))
     const a = document.createElement('a')
     a.href = url

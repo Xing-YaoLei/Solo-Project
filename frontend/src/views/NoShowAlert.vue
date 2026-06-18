@@ -1,7 +1,7 @@
 <template>
   <div class="no-show-alert-page">
-    <el-row :gutter="16">
-      <el-col :span="14">
+    <el-tabs v-model="activeTab" @tab-change="onTabChange">
+      <el-tab-pane label="待处理提醒" name="open">
         <el-card shadow="hover">
           <template #header>
             <div class="section-header">
@@ -14,11 +14,8 @@
           <el-table :data="openAlerts" stripe size="small" v-loading="loading">
             <el-table-column prop="appointmentId" label="预约ID" width="80" />
             <el-table-column prop="responsiblePerson" label="负责人" width="100" />
-            <el-table-column prop="reason" label="原因">
-              <template #default="{ row }">{{ row.reason || '待填写' }}</template>
-            </el-table-column>
-            <el-table-column prop="createdAt" label="创建时间" width="170" />
-            <el-table-column label="操作" width="120" fixed="right">
+            <el-table-column prop="createdAt" label="发生时间" width="170" />
+            <el-table-column label="操作" width="160" fixed="right">
               <template #default="{ row }">
                 <el-button link type="primary" size="small" @click="openHandleDialog(row)">
                   处理
@@ -30,22 +27,65 @@
             </el-table-column>
           </el-table>
         </el-card>
-      </el-col>
+      </el-tab-pane>
 
-      <el-col :span="10">
-        <NoShowLogPanel :logs="currentLogs" />
-      </el-col>
-    </el-row>
+      <el-tab-pane label="全部记录" name="all">
+        <el-card shadow="hover">
+          <template #header>
+            <div class="section-header">
+              <el-icon><List /></el-icon>
+              <span>爽约日志 — 全部记录</span>
+            </div>
+          </template>
+
+          <el-table :data="allLogs" stripe size="small" v-loading="loadingAll">
+            <el-table-column prop="appointmentId" label="预约ID" width="80" />
+            <el-table-column prop="responsiblePerson" label="负责人" width="90" />
+            <el-table-column prop="status" label="状态" width="80">
+              <template #default="{ row }">
+                <el-tag :type="row.status === 'OPEN' ? 'danger' : 'success'" size="small">
+                  {{ row.status === 'OPEN' ? '待处理' : '已关闭' }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="reason" label="爽约原因" min-width="120">
+              <template #default="{ row }">{{ row.reason || '—' }}</template>
+            </el-table-column>
+            <el-table-column prop="handleAction" label="处理动作" min-width="120">
+              <template #default="{ row }">{{ row.handleAction || '—' }}</template>
+            </el-table-column>
+            <el-table-column prop="closedBy" label="关闭人" width="90">
+              <template #default="{ row }">{{ row.closedBy || '—' }}</template>
+            </el-table-column>
+            <el-table-column prop="closedAt" label="关闭时间" width="170">
+              <template #default="{ row }">{{ row.closedAt || '—' }}</template>
+            </el-table-column>
+            <el-table-column prop="createdAt" label="创建时间" width="170" />
+            <el-table-column label="操作" width="80" fixed="right">
+              <template #default="{ row }">
+                <el-button v-if="row.status === 'OPEN'" link type="primary" size="small" @click="openHandleDialog(row)">
+                  处理
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-card>
+      </el-tab-pane>
+    </el-tabs>
+
+    <div style="margin-top: 16px;">
+      <NoShowLogPanel :logs="currentLogs" />
+    </div>
 
     <el-dialog v-model="showHandleDialog" title="处理爽约" width="480px">
       <el-form :model="handleForm" label-width="80px">
-        <el-form-item label="爽约原因">
+        <el-form-item label="爽约原因" required>
           <el-input v-model="handleForm.reason" type="textarea" :rows="3" placeholder="请填写爽约原因" />
         </el-form-item>
-        <el-form-item label="处理动作">
+        <el-form-item label="处理动作" required>
           <el-input v-model="handleForm.handleAction" type="textarea" :rows="3" placeholder="请填写处理动作" />
         </el-form-item>
-        <el-form-item label="处理人">
+        <el-form-item label="处理人" required>
           <el-input v-model="handleForm.closedBy" />
         </el-form-item>
       </el-form>
@@ -59,13 +99,16 @@
 
 <script setup>
 import { onMounted, ref } from 'vue'
-import { getNoShowAlerts, handleNoShow, getNoShowLogsByAppointment } from '../api/noshow'
+import { getNoShowAlerts, handleNoShow, getNoShowLogsByAppointment, getAllNoShowLogs } from '../api/noshow'
 import NoShowLogPanel from '../components/NoShowLogPanel.vue'
 import { ElMessage } from 'element-plus'
 
+const activeTab = ref('open')
 const openAlerts = ref([])
+const allLogs = ref([])
 const currentLogs = ref([])
 const loading = ref(false)
+const loadingAll = ref(false)
 const handling = ref(false)
 const showHandleDialog = ref(false)
 const handleForm = ref({ logId: null, reason: '', handleAction: '', closedBy: '' })
@@ -79,6 +122,22 @@ async function loadAlerts() {
   } finally {
     loading.value = false
   }
+}
+
+async function loadAllLogs() {
+  loadingAll.value = true
+  try {
+    allLogs.value = await getAllNoShowLogs()
+  } catch {
+    allLogs.value = []
+  } finally {
+    loadingAll.value = false
+  }
+}
+
+function onTabChange(tab) {
+  if (tab === 'open') loadAlerts()
+  else loadAllLogs()
 }
 
 function openHandleDialog(row) {
@@ -107,9 +166,10 @@ async function handleSave() {
       handleForm.value.handleAction,
       handleForm.value.closedBy
     )
-    ElMessage.success('处理完成，已写入日志')
+    ElMessage.success('处理完成，已写入日志（原因、处理动作、关闭时间已保存）')
     showHandleDialog.value = false
     loadAlerts()
+    if (activeTab.value === 'all') loadAllLogs()
   } catch {
     ElMessage.error('处理失败')
   } finally {

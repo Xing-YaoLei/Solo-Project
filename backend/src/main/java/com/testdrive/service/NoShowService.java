@@ -60,6 +60,13 @@ public class NoShowService {
     }
 
     @Transactional
+    public NoShowLog markAsNoShowByAppointmentId(Long appointmentId) {
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new RuntimeException("预约不存在: " + appointmentId));
+        return markAsNoShow(appointment);
+    }
+
+    @Transactional
     public NoShowLog handleNoShow(Long logId, String reason, String handleAction, String closedBy) {
         NoShowLog noShowLog = noShowLogRepository.findById(logId)
                 .orElseThrow(() -> new RuntimeException("爽约记录不存在: " + logId));
@@ -89,7 +96,11 @@ public class NoShowService {
     }
 
     public List<NoShowLog> getNoShowLogs(Long appointmentId) {
-        return noShowLogRepository.findByAppointmentId(appointmentId).stream().toList();
+        return noShowLogRepository.findByAppointmentId(appointmentId);
+    }
+
+    public List<NoShowLog> getAllLogs() {
+        return noShowLogRepository.findAllByOrderByCreatedAtDesc();
     }
 
     public boolean hasAlert(String responsiblePerson) {

@@ -22,6 +22,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -34,7 +35,7 @@ public class MonthlyReviewService {
     private static final String REVIEW_CACHE_PREFIX = "review:stats:";
 
     public List<ConversionStatVO> getConversionStats(MonthlyReviewQueryDTO query) {
-        String cacheKey = REVIEW_CACHE_PREFIX + query.getYearMonth();
+        String cacheKey = buildCacheKey(query);
         @SuppressWarnings("unchecked")
         List<ConversionStatVO> cached = (List<ConversionStatVO>) redisTemplate.opsForValue().get(cacheKey);
         if (cached != null) {
@@ -45,34 +46,49 @@ public class MonthlyReviewService {
         LocalDate end = start.plusMonths(1).minusDays(1);
 
         List<Appointment> appointments = appointmentRepository.findByAppointmentDateBetween(start, end);
+        if (appointments.isEmpty()) {
+            return Collections.emptyList();
+        }
 
-        Map<String, Long> totalBySource = new LinkedHashMap<>();
-        Map<String, Long> convertedBySource = new LinkedHashMap<>();
+        List<Long> appointmentIds = appointments.stream().map(Appointment::getId).collect(Collectors.toList());
+        Map<Long, Appointment> appointmentMap = appointments.stream()
+                .collect(Collectors.toMap(Appointment::getId, a -> a));
 
-        for (Appointment apt : appointments) {
-            List<SalesFollowUp> follows = salesFollowUpRepository.findByAppointmentId(apt.getId());
-            String source = follows.isEmpty() ? "未知" : follows.get(0).getLeadSource();
-            if (source == null) source = "未知";
+        List<SalesFollowUp> filteredFollows = salesFollowUpRepository.findByAppointmentIdsWithFilters(
+                appointmentIds,
+                query.getSalesPerson(),
+                query.getLeadSource(),
+                query.getLeadStatus()
+        );
 
-            totalBySource.merge(source, 1L, Long::sum);
-            if ("CONVERTED".equals(apt.getStatus())) {
-                convertedBySource.merge(source, 1L, Long::sum);
-            }
+        String groupField = query.getGroupBy() != null ? query.getGroupBy() : "leadSource";
+
+        Map<String, List<SalesFollowUp>> grouped = new LinkedHashMap<>();
+        for (SalesFollowUp sf : filteredFollows) {
+            String key = resolveGroupKey(sf, groupField);
+            grouped.computeIfAbsent(key, k -> new ArrayList<>()).add(sf);
         }
 
         List<ConversionStatVO> stats = new ArrayList<>();
-        for (String source : totalBySource.keySet()) {
+        for (Map.Entry<String, List<SalesFollowUp>> entry : grouped.entrySet()) {
             ConversionStatVO vo = new ConversionStatVO();
-            vo.setCategory(source);
-            vo.setTotal(totalBySource.getOrDefault(source, 0L));
-            vo.setConverted(convertedBySource.getOrDefault(source, 0L));
-            if (vo.getTotal() > 0) {
-                vo.setRate(BigDecimal.valueOf(vo.getConverted())
-                        .divide(BigDecimal.valueOf(vo.getTotal()), 4, RoundingMode.HALF_UP)
+            vo.setCategory(entry.getKey());
+            long total = entry.getValue().size();
+            long converted = entry.getValue().stream()
+                    .filter(sf -> "CONVERTED".equals(sf.getLeadStatus()))
+                    .count();
+            vo.setTotal(total);
+            vo.setConverted(converted);
+            if (total > 0) {
+                vo.setRate(BigDecimal.valueOf(converted)
+                        .divide(BigDecimal.valueOf(total), 4, RoundingMode.HALF_UP)
                         .multiply(BigDecimal.valueOf(100)));
             } else {
                 vo.setRate(BigDecimal.ZERO);
             }
+            if (query.getSalesPerson() != null) vo.setSalesPerson(query.getSalesPerson());
+            if (query.getLeadSource() != null) vo.setLeadSource(query.getLeadSource());
+            if (query.getLeadStatus() != null) vo.setLeadStatus(query.getLeadStatus());
             stats.add(vo);
         }
 
@@ -96,11 +112,17 @@ public class MonthlyReviewService {
             metaRow3.createCell(1).setCellValue(operator);
 
             Sheet dataSheet = workbook.createSheet("线索转化统计");
+            String groupField = query.getGroupBy() != null ? query.getGroupBy() : "leadSource";
+            String groupLabel = resolveGroupLabel(groupField);
+
             Row header = dataSheet.createRow(0);
-            header.createCell(0).setCellValue("线索来源");
+            header.createCell(0).setCellValue(groupLabel);
             header.createCell(1).setCellValue("总线索数");
             header.createCell(2).setCellValue("转化数");
             header.createCell(3).setCellValue("转化率(%)");
+            if (query.getSalesPerson() != null) header.createCell(4).setCellValue("筛选-销售顾问");
+            if (query.getLeadSource() != null) header.createCell(5).setCellValue("筛选-线索来源");
+            if (query.getLeadStatus() != null) header.createCell(6).setCellValue("筛选-线索状态");
 
             int rowIdx = 1;
             for (ConversionStatVO stat : stats) {
@@ -109,6 +131,10 @@ public class MonthlyReviewService {
                 row.createCell(1).setCellValue(stat.getTotal());
                 row.createCell(2).setCellValue(stat.getConverted());
                 row.createCell(3).setCellValue(stat.getRate().doubleValue());
+                int col = 4;
+                if (query.getSalesPerson() != null) row.createCell(col++).setCellValue(query.getSalesPerson());
+                if (query.getLeadSource() != null) row.createCell(col++).setCellValue(query.getLeadSource());
+                if (query.getLeadStatus() != null) row.createCell(col++).setCellValue(query.getLeadStatus());
             }
 
             workbook.write(out);
@@ -124,16 +150,42 @@ public class MonthlyReviewService {
         return meta;
     }
 
+    private String resolveGroupKey(SalesFollowUp sf, String groupField) {
+        return switch (groupField) {
+            case "salesPerson" -> sf.getSalesPerson() != null ? sf.getSalesPerson() : "未知";
+            case "leadStatus" -> sf.getLeadStatus() != null ? sf.getLeadStatus() : "未知";
+            default -> sf.getLeadSource() != null ? sf.getLeadSource() : "未知";
+        };
+    }
+
+    private String resolveGroupLabel(String groupField) {
+        return switch (groupField) {
+            case "salesPerson" -> "销售顾问";
+            case "leadStatus" -> "线索状态";
+            default -> "线索来源";
+        };
+    }
+
+    private String buildCacheKey(MonthlyReviewQueryDTO query) {
+        return REVIEW_CACHE_PREFIX + query.getYearMonth()
+                + ":" + query.getSalesPerson()
+                + ":" + query.getLeadSource()
+                + ":" + query.getLeadStatus()
+                + ":" + query.getGroupBy();
+    }
+
     private String buildFilterCriteria(MonthlyReviewQueryDTO query) {
         StringBuilder sb = new StringBuilder();
         sb.append("月份: ").append(query.getYearMonth());
-        if (query.getSalesPerson() != null) {
+        String groupField = query.getGroupBy() != null ? query.getGroupBy() : "leadSource";
+        sb.append("; 分组: ").append(resolveGroupLabel(groupField));
+        if (query.getSalesPerson() != null && !query.getSalesPerson().isBlank()) {
             sb.append("; 销售: ").append(query.getSalesPerson());
         }
-        if (query.getLeadSource() != null) {
+        if (query.getLeadSource() != null && !query.getLeadSource().isBlank()) {
             sb.append("; 来源: ").append(query.getLeadSource());
         }
-        if (query.getLeadStatus() != null) {
+        if (query.getLeadStatus() != null && !query.getLeadStatus().isBlank()) {
             sb.append("; 状态: ").append(query.getLeadStatus());
         }
         return sb.toString();

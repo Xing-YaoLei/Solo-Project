@@ -8,4 +8,5 @@ public class MonthlyReviewQueryDTO {
     private String salesPerson;
     private String leadSource;
     private String leadStatus;
+    private String groupBy;
 }

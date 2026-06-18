@@ -9,4 +9,7 @@ public class ConversionStatVO {
     private Long total;
     private Long converted;
     private BigDecimal rate;
+    private String salesPerson;
+    private String leadSource;
+    private String leadStatus;
 }

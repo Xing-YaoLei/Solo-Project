@@ -25,6 +25,11 @@ public class NoShowController {
         return noShowService.getNoShowLogs(appointmentId);
     }
 
+    @PostMapping("/mark/{appointmentId}")
+    public ResponseEntity<NoShowLog> markNoShow(@PathVariable Long appointmentId) {
+        return ResponseEntity.ok(noShowService.markAsNoShowByAppointmentId(appointmentId));
+    }
+
     @PutMapping("/{logId}/handle")
     public ResponseEntity<NoShowLog> handle(@PathVariable Long logId,
                                              @RequestParam String reason,
@@ -36,5 +41,10 @@ public class NoShowController {
     @GetMapping("/has-alert")
     public boolean hasAlert(@RequestParam String responsiblePerson) {
         return noShowService.hasAlert(responsiblePerson);
+    }
+
+    @GetMapping("/all")
+    public List<NoShowLog> getAllLogs() {
+        return noShowService.getAllLogs();
     }
 }

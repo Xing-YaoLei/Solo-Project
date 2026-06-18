@@ -8,9 +8,9 @@ export function getExportMeta(params) {
   return request.get('/api/monthly-review/export-meta', { params })
 }
 
-export function exportMonthlyReport(yearMonth, salesPerson, leadSource, leadStatus, operator) {
+export function exportMonthlyReport(params) {
   return request.get('/api/monthly-review/export', {
-    params: { yearMonth, salesPerson, leadSource, leadStatus, operator },
+    params,
     responseType: 'blob'
   })
 }

@@ -35,18 +35,24 @@
           </el-table-column>
           <el-table-column prop="appointmentStatus" label="状态" width="80">
             <template #default="{ row }">
-              <el-tag :type="statusType(row.appointmentStatus)" size="small">{{ row.appointmentStatus }}</el-tag>
+              <el-tag :type="statusType(row.appointmentStatus)" size="small">{{ statusLabel(row.appointmentStatus) }}</el-tag>
             </template>
           </el-table-column>
           <el-table-column prop="assignedTo" label="负责人" width="80" />
           <el-table-column prop="salesPerson" label="销售" width="80" />
-          <el-table-column label="操作" width="120" fixed="right">
+          <el-table-column label="操作" width="200" fixed="right">
             <template #default="{ row }">
               <el-button v-if="row.feedbackId" link type="primary" size="small" @click.stop="openFeedback(row)">
-                查看反馈
+                反馈
               </el-button>
               <el-button v-else link type="success" size="small" @click.stop="openFeedback(row)">
-                填写反馈
+                填反馈
+              </el-button>
+              <el-button
+                v-if="canMarkNoShow(row)"
+                link type="danger" size="small" @click.stop="confirmMarkNoShow(row)"
+              >
+                标记爽约
               </el-button>
             </template>
           </el-table-column>
@@ -109,11 +115,12 @@ import { computed, onMounted, ref } from 'vue'
 import { Refresh, Plus } from '@element-plus/icons-vue'
 import { useDispatchStore } from '../stores/dispatch'
 import { createAppointment } from '../api/appointment'
+import { markNoShow } from '../api/noshow'
 import VehicleArchive from '../components/VehicleArchive.vue'
 import SalesFollowUp from '../components/SalesFollowUp.vue'
 import AppointmentSlots from '../components/AppointmentSlots.vue'
 import FeedbackEditor from '../components/FeedbackEditor.vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 const store = useDispatchStore()
 const showCreateDialog = ref(false)
@@ -164,6 +171,26 @@ function onFeedbackSaved() {
   store.loadDispatch()
 }
 
+function canMarkNoShow(row) {
+  return row.appointmentStatus === 'CONFIRMED' || row.appointmentStatus === 'PENDING'
+}
+
+function confirmMarkNoShow(row) {
+  ElMessageBox.confirm(
+    `确认将「${row.customerName}」的预约标记为爽约？将通知负责人「${row.assignedTo}」并生成爽约日志。`,
+    '标记爽约',
+    { confirmButtonText: '确认', cancelButtonText: '取消', type: 'warning' }
+  ).then(async () => {
+    try {
+      await markNoShow(row.appointmentId)
+      ElMessage.success('已标记爽约，已通知负责人')
+      store.loadDispatch()
+    } catch {
+      ElMessage.error('标记爽约失败')
+    }
+  }).catch(() => {})
+}
+
 async function handleCreate() {
   try {
     await createAppointment(createForm.value)
@@ -183,6 +210,11 @@ function statusType(status) {
   return map[status] || 'info'
 }
 
+function statusLabel(status) {
+  const map = { 'PENDING': '待确认', 'CONFIRMED': '已确认', 'COMPLETED': '已完成', 'CANCELLED': '已取消', 'NO_SHOW': '爽约' }
+  return map[status] || status
+}
+
 onMounted(() => {
   store.loadDispatch()
 })
@@ -192,7 +224,7 @@ onMounted(() => {
 .dispatch-board { height: 100%; display: flex; flex-direction: column; }
 .board-toolbar { display: flex; gap: 12px; margin-bottom: 16px; align-items: center; }
 .board-content { flex: 1; display: flex; gap: 16px; min-height: 0; }
-.board-list { width: 620px; min-width: 500px; }
+.board-list { width: 680px; min-width: 560px; }
 .board-detail { flex: 1; min-width: 0; }
 .board-detail-empty { display: flex; align-items: center; justify-content: center; }
 .detail-panels { display: flex; flex-direction: column; gap: 12px; height: 100%; }
