@@ -40,7 +40,7 @@ public class AppointmentsController : ControllerBase
     {
         try
         {
-            var result = await _appointmentService.GetByIdAsync(id);
+            var result = await _appointmentService.GetDetailAsync(id);
             return Ok(result);
         }
         catch (KeyNotFoundException ex)

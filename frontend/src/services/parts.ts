@@ -1,6 +1,15 @@
 import request from './request';
 import type { PartsInfo, PartsShortageRecord } from '@/types';
 
+export interface CreateShortagePayload {
+  appointmentId: number;
+  partsId: number;
+  shortageQuantity: number;
+  expectedArrivalTime?: string;
+  handler?: string;
+  remarks?: string;
+}
+
 export const partsApi = {
   getList(params?: { keyword?: string }): Promise<PartsInfo[]> {
     return request.get('/parts', { params });
@@ -26,23 +35,27 @@ export const partsApi = {
     return request.put(`/parts/${id}`, data);
   },
 
-  updateStock(id: number, quantity: number): Promise<PartsInfo> {
-    return request.put(`/parts/${id}/stock`, { quantity });
+  addStock(id: number, quantity: number): Promise<PartsInfo> {
+    return request.put(`/parts/${id}/add-stock`, { quantity });
+  },
+
+  reduceStock(id: number, quantity: number): Promise<PartsInfo> {
+    return request.put(`/parts/${id}/reduce-stock`, { quantity });
   },
 
   getShortageList(appointmentId?: number): Promise<PartsShortageRecord[]> {
     if (appointmentId != null) {
       return request.get(`/appointments/${appointmentId}/parts-shortage`);
     }
-    return request.get('/parts/shortages');
+    return request.get('/parts/shortage-records');
   },
 
-  createShortage(appointmentId: number, data: any): Promise<PartsShortageRecord> {
-    return request.post(`/appointments/${appointmentId}/parts-shortage`, data);
+  createShortage(payload: CreateShortagePayload): Promise<PartsShortageRecord> {
+    return request.post('/parts/shortage-records', payload);
   },
 
-  resolveShortage(appointmentId: number, id: number): Promise<PartsShortageRecord> {
-    return request.put(`/appointments/${appointmentId}/parts-shortage/${id}/resolve`);
+  resolveShortage(id: number): Promise<PartsShortageRecord> {
+    return request.put(`/parts/shortage-records/${id}/resolve`);
   },
 };
 

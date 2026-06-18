@@ -225,9 +225,32 @@ export default function QuoteEditor({ quote, editable = true, loading, onSave }:
     });
   }
 
-  if (!quote && !loading) {
+  if (!quote && !loading && !(isEditing && editData)) {
+    const handleCreateEmpty = () => {
+      setEditData({
+        id: 0,
+        appointmentId: 0,
+        status: 'Draft',
+        totalAmount: 0,
+        laborCost: 0,
+        partsCost: 0,
+        remarks: '',
+        quoteItems: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      } as Quote);
+      setIsEditing(true);
+    };
     return (
-      <Card title="报价单" style={{ height: '100%' }}>
+      <Card
+        title="报价单"
+        extra={editable ? (
+          <Button icon={<PlusOutlined />} size="small" type="primary" onClick={handleCreateEmpty}>
+            新建报价单
+          </Button>
+        ) : null}
+        style={{ height: '100%' }}
+      >
         <div style={{ textAlign: 'center', color: '#999', padding: '40px 0' }}>
           暂无报价单
         </div>

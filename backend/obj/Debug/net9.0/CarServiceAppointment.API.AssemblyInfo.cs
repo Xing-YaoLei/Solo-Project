@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("CarServiceAppointment.API")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+b98d8b6a25379eb616f1aaea166ae54574075d78")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a3cade5ef5d56744a90a9fc23cad2e3b6edccd5c")]
 [assembly: System.Reflection.AssemblyProductAttribute("CarServiceAppointment.API")]
 [assembly: System.Reflection.AssemblyTitleAttribute("CarServiceAppointment.API")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -5,13 +5,24 @@ import VehicleCard from '@/components/VehicleCard';
 import QuoteEditor from '@/components/QuoteEditor';
 import PhotoGallery from '@/components/PhotoGallery';
 import ActionBar from '@/components/ActionBar';
-import type { AppointmentDetail, AppointmentListItem, AppointmentStatus, Quote } from '@/types';
-import { appointmentApi } from '@/services/appointment';
+import type { AppointmentDetail, AppointmentListItem, AppointmentStatus, Quote, PhotoType, PhotoRecord } from '@/types';
+import { appointmentApi, quoteApi, inspectionApi } from '@/services/appointment';
 
 export default function ScheduleDashboard() {
   const [selectedAppointment, setSelectedAppointment] = useState<AppointmentDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+
+  const refreshDetail = async (id: number) => {
+    try {
+      const detail = await appointmentApi.getById(id);
+      if (detail) {
+        setSelectedAppointment(detail);
+      }
+    } catch (error) {
+      message.error('刷新预约单详情失败');
+    }
+  };
 
   const handleSelect = async (appointment: AppointmentListItem) => {
     setLoading(true);
@@ -49,12 +60,69 @@ export default function ScheduleDashboard() {
     if (!selectedAppointment) return;
     
     try {
-      const updated = await appointmentApi.updateQuote(selectedAppointment.id, quote);
-      if (updated) {
-        setSelectedAppointment(updated);
+      const isNew = !(quote.id && quote.id > 0);
+      const payload: any = {
+        appointmentId: selectedAppointment.id,
+        remarks: quote.remarks,
+        quoteItems: quote.quoteItems.map(item => {
+          const base: any = {
+            name: item.name,
+            type: item.type,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            remarks: item.remarks,
+          };
+          if (!isNew && item.id && item.id > 0) {
+            base.id = item.id;
+          }
+          return base;
+        }),
+      };
+      let saved;
+      if (isNew) {
+        saved = await quoteApi.create(payload);
+      } else {
+        saved = await quoteApi.update(quote.id, payload);
+      }
+      if (saved) {
+        message.success('报价单保存成功');
+        await refreshDetail(selectedAppointment.id);
       }
     } catch (error) {
       message.error('保存报价单失败');
+    }
+  };
+
+  const handlePhotoUpload = async (photoType: PhotoType, file: File) => {
+    if (!selectedAppointment) return;
+    try {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const dataUrl = reader.result as string;
+        await inspectionApi.upload({
+          appointmentId: selectedAppointment.id,
+          photoUrl: dataUrl,
+          photoType,
+          uploader: '当前用户',
+          remarks: file.name,
+        });
+        message.success('照片上传成功');
+        await refreshDetail(selectedAppointment.id);
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      message.error('照片上传失败');
+    }
+  };
+
+  const handlePhotoDelete = async (id: number) => {
+    if (!selectedAppointment) return;
+    try {
+      await inspectionApi.remove(id);
+      message.success('照片已删除');
+      await refreshDetail(selectedAppointment.id);
+    } catch (error) {
+      message.error('删除照片失败');
     }
   };
 
@@ -125,6 +193,8 @@ export default function ScheduleDashboard() {
           <div style={{ height: '100%' }}>
             <PhotoGallery
               photos={selectedAppointment?.photos || []}
+              onUpload={handlePhotoUpload}
+              onDelete={handlePhotoDelete}
               loading={loading}
             />
           </div>

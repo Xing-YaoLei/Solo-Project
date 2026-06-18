@@ -62,3 +62,13 @@ public class PartsShortageRecordDto
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }
+
+public class CreatePartsShortageDto
+{
+    public int AppointmentId { get; set; }
+    public int PartsId { get; set; }
+    public int ShortageQuantity { get; set; }
+    public DateTime? ExpectedArrivalTime { get; set; }
+    public string? Handler { get; set; }
+    public string? Remarks { get; set; }
+}

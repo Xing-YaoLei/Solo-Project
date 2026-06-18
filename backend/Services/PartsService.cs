@@ -170,7 +170,74 @@ public class PartsService : IPartsService
             .OrderByDescending(r => r.CreatedAt)
             .ToListAsync();
 
-        return records.Select(r => new PartsShortageRecordDto
+        return records.Select(r => MapToShortageDto(r)).ToList();
+    }
+
+    public async Task<PartsShortageRecordDto> CreateShortageRecordAsync(int appointmentId, PartsShortageHandleDto dto)
+    {
+        var appointment = await _context.Appointments.FindAsync(appointmentId);
+        if (appointment == null)
+            throw new KeyNotFoundException($"预约单不存在: {appointmentId}");
+
+        var parts = await _context.Parts.FindAsync(dto.PartsId);
+        if (parts == null)
+            throw new KeyNotFoundException($"配件不存在: {dto.PartsId}");
+
+        var record = new PartsShortageRecord
+        {
+            AppointmentId = appointmentId,
+            PartsId = dto.PartsId,
+            ShortageQuantity = dto.ShortageQuantity,
+            ExpectedArrivalTime = dto.ExpectedArrivalTime,
+            Status = PartsShortageStatus.Pending,
+            Handler = dto.Handler,
+            Remarks = dto.Remarks,
+            CreatedAt = DateTime.Now,
+            UpdatedAt = DateTime.Now
+        };
+
+        appointment.Status = AppointmentStatus.PartsShortage;
+        appointment.UpdatedAt = DateTime.Now;
+
+        _context.PartsShortageRecords.Add(record);
+        await _context.SaveChangesAsync();
+
+        return MapToShortageDto(record);
+    }
+
+    public async Task<PartsShortageRecordDto> ResolveShortageRecordAsync(int id)
+    {
+        var record = await _context.PartsShortageRecords
+            .Include(r => r.Appointment)
+            .Include(r => r.Parts)
+            .FirstOrDefaultAsync(r => r.Id == id);
+        if (record == null)
+            throw new KeyNotFoundException($"缺货记录不存在: {id}");
+
+        record.Status = PartsShortageStatus.Resolved;
+        record.ActualArrivalTime = DateTime.Now;
+        record.UpdatedAt = DateTime.Now;
+
+        if (record.Appointment != null)
+        {
+            var hasUnresolved = await _context.PartsShortageRecords
+                .AnyAsync(r => r.AppointmentId == record.AppointmentId
+                            && r.Status != PartsShortageStatus.Resolved
+                            && r.Status != PartsShortageStatus.Cancelled);
+
+            if (!hasUnresolved)
+            {
+                record.Appointment.Status = AppointmentStatus.InService;
+            }
+        }
+
+        await _context.SaveChangesAsync();
+        return MapToShortageDto(record);
+    }
+
+    private static PartsShortageRecordDto MapToShortageDto(PartsShortageRecord r)
+    {
+        return new PartsShortageRecordDto
         {
             Id = r.Id,
             AppointmentId = r.AppointmentId,
@@ -186,7 +253,7 @@ public class PartsService : IPartsService
             Remarks = r.Remarks,
             CreatedAt = r.CreatedAt,
             UpdatedAt = r.UpdatedAt
-        }).ToList();
+        };
     }
 
     private static PartsDto MapToDto(Parts parts)

@@ -8,8 +8,9 @@ import {
   PlusOutlined, WarningOutlined, ClockCircleOutlined,
   CheckCircleOutlined, CloseCircleOutlined, FileTextOutlined
 } from '@ant-design/icons';
-import type { PartsShortageRecord } from '@/types';
+import type { PartsShortageRecord, PartsInfo, AppointmentListItem } from '@/types';
 import { partsApi } from '@/services/parts';
+import { appointmentApi } from '@/services/appointment';
 import dayjs from 'dayjs';
 
 const { Option } = Select;
@@ -17,7 +18,9 @@ const { Option } = Select;
 export default function PartsShortage() {
   const [form] = Form.useForm();
   const [shortageList, setShortageList] = useState<PartsShortageRecord[]>([]);
-  const [inventoryList, setInventoryList] = useState<any[]>([]);
+  const [inventoryList, setInventoryList] = useState<PartsInfo[]>([]);
+  const [appointmentList, setAppointmentList] = useState<AppointmentListItem[]>([]);
+  const [partsList, setPartsList] = useState<PartsInfo[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
 
@@ -28,12 +31,16 @@ export default function PartsShortage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [shortages, inventory] = await Promise.all([
+      const [shortages, inventory, appts, parts] = await Promise.all([
         partsApi.getShortageList(),
         partsApi.getInventoryWarning(),
+        appointmentApi.getList(),
+        partsApi.getList(),
       ]);
-      setShortageList(shortages);
-      setInventoryList(inventory);
+      setShortageList(shortages || []);
+      setInventoryList(inventory || []);
+      setAppointmentList(appts || []);
+      setPartsList(parts || []);
     } catch (error) {
       message.error('加载数据失败');
     } finally {
@@ -44,11 +51,13 @@ export default function PartsShortage() {
   const handleSubmit = async (values: any) => {
     setLoading(true);
     try {
-      await partsApi.createShortage(1, {
-        partName: values.partName,
-        partCode: values.partCode,
+      await partsApi.createShortage({
+        appointmentId: Number(values.appointmentId),
+        partsId: Number(values.partsId),
         shortageQuantity: values.quantity,
-        expectedArrivalTime: values.expectedArrivalDate.format('YYYY-MM-DD'),
+        expectedArrivalTime: values.expectedArrivalDate
+          ? values.expectedArrivalDate.toISOString()
+          : undefined,
         handler: '当前用户',
         remarks: values.remark,
       });
@@ -56,14 +65,36 @@ export default function PartsShortage() {
       setModalVisible(false);
       form.resetFields();
       loadData();
-    } catch (error) {
-      message.error('登记失败');
+    } catch (error: any) {
+      message.error(error?.response?.data || '登记失败');
     } finally {
       setLoading(false);
     }
   };
 
+  const handleResolve = async (record: PartsShortageRecord) => {
+    try {
+      await partsApi.resolveShortage(record.id);
+      message.success('缺货已解决');
+      loadData();
+    } catch (error: any) {
+      message.error(error?.response?.data || '操作失败');
+    }
+  };
+
   const shortageColumns = [
+    {
+      title: '关联预约',
+      dataIndex: 'appointmentNo',
+      key: 'appointmentNo',
+      width: 160,
+      render: (text: string, record: PartsShortageRecord) => (
+        <Space>
+          <Tag color="blue">{text}</Tag>
+          <span style={{ color: '#999', fontSize: 12 }}># {record.appointmentId}</span>
+        </Space>
+      ),
+    },
     {
       title: '配件名称',
       dataIndex: 'partName',
@@ -86,14 +117,15 @@ export default function PartsShortage() {
       title: '预计到货',
       dataIndex: 'expectedArrivalTime',
       key: 'expectedArrivalTime',
-      width: 120,
+      width: 150,
+      render: (text: string) => (text ? dayjs(text).format('YYYY-MM-DD HH:mm') : '-'),
     },
     {
       title: '实际到货',
       dataIndex: 'actualArrivalTime',
       key: 'actualArrivalTime',
-      width: 120,
-      render: (text: string) => text || '-',
+      width: 150,
+      render: (text: string) => (text ? dayjs(text).format('YYYY-MM-DD HH:mm') : '-'),
     },
     {
       title: '状态',
@@ -116,7 +148,7 @@ export default function PartsShortage() {
       dataIndex: 'createdAt',
       key: 'createdAt',
       width: 160,
-      render: (text: string) => text?.slice(0, 16),
+      render: (text: string) => dayjs(text).format('YYYY-MM-DD HH:mm'),
     },
     {
       title: '处理人',
@@ -124,25 +156,43 @@ export default function PartsShortage() {
       key: 'handler',
       width: 80,
     },
+    {
+      title: '操作',
+      key: 'action',
+      width: 110,
+      render: (_: any, record: PartsShortageRecord) =>
+        record.status === 'Pending' ? (
+          <Button
+            type="primary"
+            size="small"
+            icon={<CheckCircleOutlined />}
+            onClick={() => handleResolve(record)}
+          >
+            解决缺货
+          </Button>
+        ) : (
+          <span style={{ color: '#999' }}>—</span>
+        ),
+    },
   ];
 
   const inventoryColumns = [
     {
       title: '配件名称',
-      dataIndex: 'partName',
-      key: 'partName',
-      render: (text: string, record: any) => (
+      dataIndex: 'name',
+      key: 'name',
+      render: (text: string, record: PartsInfo) => (
         <Space>
           <Badge status="warning" />
           <span>{text}</span>
-          <span style={{ color: '#999', fontSize: 12 }}>{record.partCode}</span>
+          <span style={{ color: '#999', fontSize: 12 }}>{record.partNumber}</span>
         </Space>
       ),
     },
     {
       title: '当前库存',
-      dataIndex: 'stock',
-      key: 'stock',
+      dataIndex: 'stockQuantity',
+      key: 'stockQuantity',
       width: 100,
       render: (stock: number) => (
         <span style={{ color: '#f5222d', fontWeight: 'bold' }}>{stock}</span>
@@ -150,8 +200,8 @@ export default function PartsShortage() {
     },
     {
       title: '最低库存',
-      dataIndex: 'minStock',
-      key: 'minStock',
+      dataIndex: 'safetyStock',
+      key: 'safetyStock',
       width: 100,
     },
     {
@@ -171,26 +221,17 @@ export default function PartsShortage() {
     },
   ];
 
-  const timelineData = [
-    {
-      color: 'green',
-      title: '配件到货',
-      description: '前刹车片已到货，数量 10 套',
-      time: '2024-03-12 14:30',
-    },
-    {
-      color: 'blue',
-      title: '已下单',
-      description: '向博世配件采购前刹车片 10 套',
-      time: '2024-03-10 10:30',
-    },
-    {
-      color: 'orange',
-      title: '缺货登记',
-      description: '预约单 YY20240310003 登记缺货：前刹车片 2 套',
-      time: '2024-03-10 10:00',
-    },
-  ];
+  const timelineData = shortageList.slice(0, 3).map((r, idx) => ({
+    color: idx === 0 ? 'orange' : idx === 1 ? 'blue' : 'green',
+    title:
+      r.status === 'Resolved'
+        ? '缺货解决'
+        : r.status === 'Pending'
+        ? '缺货登记'
+        : '处理中',
+    description: `${r.partName} 缺 ${r.shortageQuantity} 件，关联单号 ${r.appointmentNo}`,
+    time: dayjs(r.createdAt).format('YYYY-MM-DD HH:mm'),
+  }));
 
   return (
     <div>
@@ -201,6 +242,7 @@ export default function PartsShortage() {
               <Space>
                 <WarningOutlined style={{ color: '#faad14' }} />
                 <span>缺货登记表</span>
+                <Badge count={shortageList.filter(s => s.status === 'Pending').length} size="small" />
               </Space>
             }
             extra={
@@ -235,7 +277,7 @@ export default function PartsShortage() {
             style={{ marginBottom: 16 }}
           >
             <Timeline
-              items={timelineData.map(item => ({
+              items={timelineData.length ? timelineData.map(item => ({
                 color: item.color as any,
                 children: (
                   <div>
@@ -246,7 +288,10 @@ export default function PartsShortage() {
                     <div style={{ color: '#999', fontSize: 12 }}>{item.time}</div>
                   </div>
                 ),
-              }))}
+              })) : [{
+                color: 'gray',
+                children: <span style={{ color: '#999' }}>暂无处理记录</span>,
+              }]}
             />
           </Card>
 
@@ -272,11 +317,11 @@ export default function PartsShortage() {
                 >
                   <List.Item.Meta
                     avatar={<Badge status="warning" />}
-                    title={item.partName}
+                    title={item.name}
                     description={
                       <span style={{ fontSize: 12 }}>
-                        当前库存：<span style={{ color: '#f5222d' }}>{item.stock}</span>
-                        {' / '}最低：{item.minStock}
+                        当前库存：<span style={{ color: '#f5222d' }}>{item.stockQuantity}</span>
+                        {' / '}最低：{item.safetyStock}
                       </span>
                     }
                   />
@@ -311,7 +356,8 @@ export default function PartsShortage() {
         open={modalVisible}
         onCancel={() => setModalVisible(false)}
         footer={null}
-        width={500}
+        width={520}
+        destroyOnClose
       >
         <Form
           form={form}
@@ -320,19 +366,31 @@ export default function PartsShortage() {
           initialValues={{ quantity: 1 }}
         >
           <Form.Item
-            name="partName"
-            label="配件名称"
-            rules={[{ required: true, message: '请输入配件名称' }]}
+            name="appointmentId"
+            label="关联预约单"
+            rules={[{ required: true, message: '请选择关联预约单' }]}
           >
-            <Input placeholder="请输入配件名称" />
+            <Select placeholder="请选择关联预约单" showSearch optionFilterProp="children">
+              {appointmentList.map(a => (
+                <Option key={a.id} value={a.id}>
+                  {a.appointmentNo} - {a.plateNumber} ({a.ownerName})
+                </Option>
+              ))}
+            </Select>
           </Form.Item>
 
           <Form.Item
-            name="partCode"
-            label="配件编码"
-            rules={[{ required: true, message: '请输入配件编码' }]}
+            name="partsId"
+            label="配件"
+            rules={[{ required: true, message: '请选择配件' }]}
           >
-            <Input placeholder="请输入配件编码" />
+            <Select placeholder="请选择缺货配件" showSearch optionFilterProp="children">
+              {partsList.map(p => (
+                <Option key={p.id} value={p.id}>
+                  {p.name}（{p.partNumber}）库存 {p.stockQuantity}
+                </Option>
+              ))}
+            </Select>
           </Form.Item>
 
           <Form.Item
@@ -346,19 +404,8 @@ export default function PartsShortage() {
           <Form.Item
             name="expectedArrivalDate"
             label="预计到货日期"
-            rules={[{ required: true, message: '请选择预计到货日期' }]}
           >
-            <DatePicker style={{ width: '100%' }} />
-          </Form.Item>
-
-          <Form.Item
-            name="appointmentId"
-            label="关联预约单"
-          >
-            <Select placeholder="请选择关联的预约单（可选）" allowClear>
-              <Option value="A003">YY20240310003 - 沪C11111</Option>
-              <Option value="A002">YY20240310002 - 京B67890</Option>
-            </Select>
+            <DatePicker showTime style={{ width: '100%' }} />
           </Form.Item>
 
           <Form.Item name="remark" label="备注">

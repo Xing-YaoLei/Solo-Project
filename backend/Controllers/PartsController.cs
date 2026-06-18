@@ -146,4 +146,41 @@ public class PartsController : ControllerBase
         var result = await _partsService.GetAllShortageRecordsAsync();
         return Ok(result);
     }
+
+    [HttpPost("shortage-records")]
+    [SwaggerOperation(Summary = "创建缺货记录")]
+    public async Task<ActionResult<PartsShortageRecordDto>> CreateShortageRecord([FromBody] CreatePartsShortageDto dto)
+    {
+        try
+        {
+            var result = await _partsService.CreateShortageRecordAsync(dto.AppointmentId, new PartsShortageHandleDto
+            {
+                PartsId = dto.PartsId,
+                ShortageQuantity = dto.ShortageQuantity,
+                ExpectedArrivalTime = dto.ExpectedArrivalTime,
+                Handler = dto.Handler,
+                Remarks = dto.Remarks
+            });
+            return CreatedAtAction(nameof(GetShortageRecords), result);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ex.Message);
+        }
+    }
+
+    [HttpPut("shortage-records/{id}/resolve")]
+    [SwaggerOperation(Summary = "解决缺货记录")]
+    public async Task<ActionResult<PartsShortageRecordDto>> ResolveShortageRecord(int id)
+    {
+        try
+        {
+            var result = await _partsService.ResolveShortageRecordAsync(id);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ex.Message);
+        }
+    }
 }

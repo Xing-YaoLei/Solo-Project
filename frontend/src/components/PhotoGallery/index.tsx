@@ -44,7 +44,6 @@ export default function PhotoGallery({
       if (onUpload) {
         onUpload(activeTab, file);
       }
-      message.success('照片上传成功');
       return false;
     },
     showUploadList: false,

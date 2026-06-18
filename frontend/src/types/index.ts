@@ -73,7 +73,7 @@ export interface QuoteItem {
 export interface Quote {
   id: number;
   appointmentId: number;
-  appointmentNo: string;
+  appointmentNo?: string;
   laborCost: number;
   partsCost: number;
   totalAmount: number;

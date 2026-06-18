@@ -14,4 +14,6 @@ public interface IPartsService
     Task<PartsDto> AddStockAsync(int id, UpdateStockDto dto);
     Task<PartsDto> ReduceStockAsync(int id, UpdateStockDto dto);
     Task<List<PartsShortageRecordDto>> GetAllShortageRecordsAsync();
+    Task<PartsShortageRecordDto> CreateShortageRecordAsync(int appointmentId, PartsShortageHandleDto dto);
+    Task<PartsShortageRecordDto> ResolveShortageRecordAsync(int id);
 }
