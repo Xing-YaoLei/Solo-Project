@@ -36,7 +36,7 @@ export function updateBatchStatus(id: string, status: BatchStatus, mergedCount?:
 export function listBatches(limit = 50): ImportBatch[] {
 	const rows = db
 		.prepare('SELECT * FROM import_batches ORDER BY created_at DESC LIMIT ?')
-		.all(limit) as BatchRow[];
+		.all(limit) as unknown as BatchRow[];
 	return rows.map(mapBatch);
 }
 

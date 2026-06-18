@@ -29,6 +29,7 @@
     "apache-arrow": "^17.0.0",
     "better-sqlite3": "^11.3.0",
     "echarts": "^5.5.1",
+    "sql.js": "^1.10.3",
     "xlsx": "^0.18.5"
   },
   "type": "module"

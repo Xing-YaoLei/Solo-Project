@@ -36,7 +36,7 @@ export function findUserByCredentials(name: string, passwordHash: string): User 
 export function listSalesUsers(): User[] {
 	const rows = db
 		.prepare("SELECT id, name, role, store_id FROM users WHERE role = 'sales'")
-		.all() as UserRow[];
+		.all() as unknown as UserRow[];
 	return rows.map((r) => ({
 		id: r.id,
 		name: r.name,

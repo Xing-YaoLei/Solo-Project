@@ -43,6 +43,10 @@ export const POST: RequestHandler = async (event) => {
 					`INSERT INTO finance_approvals (id, customer_name, phone, vehicle_model, approved_amount, approval_status, approval_date, import_batch_id)
 					 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
 				);
+				const insertLead = db.prepare(
+					`INSERT INTO test_drive_leads (id, customer_name, phone, vehicle_model, salesperson_id, appointment_time, status, finance_approval_id, import_batch_id)
+					 VALUES (?, ?, ?, ?, ?, ?, 'appointed', ?, ?)`
+				);
 
 				for (const row of rows) {
 					const name = String(row['客户姓名'] ?? row['customer_name'] ?? '');
@@ -53,28 +57,31 @@ export const POST: RequestHandler = async (event) => {
 					const date = String(row['审批日期'] ?? row['approval_date'] ?? new Date().toISOString().slice(0, 10));
 
 					if (name && phone) {
-						stmt.run(genId('fin'), name, phone, model, amount, status, date, batchId);
+						const financeId = genId('fin');
+						stmt.run(financeId, name, phone, model, amount, status, date, batchId);
 
 						const existing = db
 							.prepare('SELECT id FROM test_drive_leads WHERE phone = ?')
 							.get(phone) as { id: string } | undefined;
 
-						if (!existing) {
+						if (existing) {
+							db.prepare(
+								'UPDATE test_drive_leads SET finance_approval_id = ?, vehicle_model = COALESCE(NULLIF(?, \'\'), vehicle_model) WHERE id = ?'
+							).run(financeId, model, existing.id);
+							mergedCount++;
+						} else {
 							const salesIds = db
 								.prepare("SELECT id FROM users WHERE role = 'sales' ORDER BY RANDOM() LIMIT 1")
 								.get() as { id: string } | undefined;
 
-							db.prepare(
-								`INSERT INTO test_drive_leads (id, customer_name, phone, vehicle_model, salesperson_id, appointment_time, status, finance_approval_id, import_batch_id)
-								 VALUES (?, ?, ?, ?, ?, ?, 'appointed', ?, ?)`
-							).run(
+							insertLead.run(
 								genId('lead'),
 								name,
 								phone,
 								model,
 								salesIds?.id ?? null,
 								new Date().toISOString().replace('T', ' ').slice(0, 19),
-								genId('fin'),
+								financeId,
 								batchId
 							);
 							mergedCount++;
@@ -86,6 +93,13 @@ export const POST: RequestHandler = async (event) => {
 					`INSERT INTO crm_leads (id, customer_name, phone, lead_source, salesperson_id, created_at, import_batch_id)
 					 VALUES (?, ?, ?, ?, ?, ?, ?)`
 				);
+				const insertLead = db.prepare(
+					`INSERT INTO test_drive_leads (id, customer_name, phone, salesperson_id, appointment_time, status, crm_lead_id, import_batch_id)
+					 VALUES (?, ?, ?, ?, ?, 'appointed', ?, ?)`
+				);
+				const updateLead = db.prepare(
+					'UPDATE test_drive_leads SET crm_lead_id = ?, salesperson_id = COALESCE(?, salesperson_id) WHERE id = ?'
+				);
 
 				for (const row of rows) {
 					const name = String(row['客户姓名'] ?? row['customer_name'] ?? '');
@@ -94,12 +108,13 @@ export const POST: RequestHandler = async (event) => {
 					const salesName = String(row['销售'] ?? row['salesperson'] ?? '');
 
 					if (name && phone) {
+						const crmId = genId('crm');
 						const sales = db
 							.prepare('SELECT id FROM users WHERE name = ? OR id = ?')
 							.get(salesName, salesName) as { id: string } | undefined;
 
 						stmt.run(
-							genId('crm'),
+							crmId,
 							name,
 							phone,
 							source,
@@ -113,25 +128,20 @@ export const POST: RequestHandler = async (event) => {
 							.get(phone) as { id: string } | undefined;
 
 						if (existing) {
-							db.prepare(
-								'UPDATE test_drive_leads SET crm_lead_id = ?, salesperson_id = COALESCE(?, salesperson_id) WHERE id = ?'
-							).run(genId('crm'), sales?.id ?? null, existing.id);
+							updateLead.run(crmId, sales?.id ?? null, existing.id);
 							mergedCount++;
 						} else {
 							const salesIds = db
 								.prepare("SELECT id FROM users WHERE role = 'sales' ORDER BY RANDOM() LIMIT 1")
 								.get() as { id: string } | undefined;
 
-							db.prepare(
-								`INSERT INTO test_drive_leads (id, customer_name, phone, salesperson_id, appointment_time, status, crm_lead_id, import_batch_id)
-								 VALUES (?, ?, ?, ?, ?, 'appointed', ?, ?)`
-							).run(
+							insertLead.run(
 								genId('lead'),
 								name,
 								phone,
 								sales?.id ?? salesIds?.id ?? null,
 								new Date().toISOString().replace('T', ' ').slice(0, 19),
-								genId('crm'),
+								crmId,
 								batchId
 							);
 							mergedCount++;
@@ -143,6 +153,9 @@ export const POST: RequestHandler = async (event) => {
 					`INSERT INTO inspection_reports (id, vin_code, vehicle_model, customer_phone, inspection_result, inspection_date, import_batch_id)
 					 VALUES (?, ?, ?, ?, ?, ?, ?)`
 				);
+				const updateLead = db.prepare(
+					'UPDATE test_drive_leads SET inspection_report_id = ?, vehicle_model = COALESCE(NULLIF(?, \'\'), vehicle_model) WHERE id = ?'
+				);
 
 				for (const row of rows) {
 					const vin = String(row['VIN码'] ?? row['vin_code'] ?? '');
@@ -152,16 +165,29 @@ export const POST: RequestHandler = async (event) => {
 					const date = String(row['检测日期'] ?? row['inspection_date'] ?? new Date().toISOString().slice(0, 10));
 
 					if (phone) {
-						stmt.run(genId('ins'), vin, model, phone, result, date, batchId);
+						const inspectionId = genId('ins');
+						stmt.run(inspectionId, vin, model, phone, result, date, batchId);
 
 						const existing = db
 							.prepare('SELECT id FROM test_drive_leads WHERE phone = ?')
 							.get(phone) as { id: string } | undefined;
 
 						if (existing) {
+							updateLead.run(inspectionId, model, existing.id);
+							mergedCount++;
+						} else {
 							db.prepare(
-								'UPDATE test_drive_leads SET inspection_report_id = ?, vehicle_model = COALESCE(NULLIF(?, \'\'), vehicle_model) WHERE id = ?'
-							).run(genId('ins'), model, existing.id);
+								`INSERT INTO test_drive_leads (id, customer_name, phone, vehicle_model, appointment_time, status, inspection_report_id, import_batch_id)
+								 VALUES (?, ?, ?, ?, ?, 'appointed', ?, ?)`
+							).run(
+								genId('lead'),
+								'检测客户',
+								phone,
+								model,
+								new Date().toISOString().replace('T', ' ').slice(0, 19),
+								inspectionId,
+								batchId
+							);
 							mergedCount++;
 						}
 					}
@@ -175,6 +201,7 @@ export const POST: RequestHandler = async (event) => {
 
 		return json({ success: true, batchId, recordCount: rows.length, mergedCount });
 	} catch (e) {
-		return json({ error: '上传处理失败' }, { status: 500 });
+		console.error('Upload error:', e);
+		return json({ error: '上传处理失败：' + (e as Error).message }, { status: 500 });
 	}
 };

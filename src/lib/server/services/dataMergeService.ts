@@ -1,6 +1,7 @@
 import db from '../db';
 import { createBatch, updateBatchStatus } from '../repositories/batchRepository';
 import { insertLead } from '../repositories/leadRepository';
+import { hashPassword } from '../repositories/userRepository';
 import type { SourceType, LeadStatus } from '$lib/types';
 
 function genId(prefix: string): string {
@@ -87,14 +88,15 @@ export function seedMockData() {
 
 		db.prepare(
 			`INSERT INTO users (id, name, role, store_id, password_hash) VALUES (?, ?, 'manager', ?, ?)`
-		).run('u_manager', '李店长', 'store_001', 'h_manager123');
+		).run('u_manager', '李店长', 'store_001', hashPassword('manager123'));
 
 		const salesNames = ['张销售', '李销售', '王销售', '陈销售'];
+		const salesPasswords = ['sales_zhang', 'sales_li', 'sales_wang', 'sales_chen'];
 		const insertSales = db.prepare(
 			`INSERT INTO users (id, name, role, store_id, password_hash) VALUES (?, ?, 'sales', ?, ?)`
 		);
 		salesIds.forEach((id, i) => {
-			insertSales.run(id, salesNames[i], 'store_001', 'h_' + id.slice(2));
+			insertSales.run(id, salesNames[i], 'store_001', hashPassword(salesPasswords[i]));
 		});
 
 		const sourceTypes: SourceType[] = ['finance', 'crm', 'inspection'];

@@ -82,7 +82,7 @@ export function queryLeads(opts: LeadQueryOptions = {}): TestDriveLead[] {
 		LIMIT ? OFFSET ?`;
 	params.push(opts.limit ?? 200, opts.offset ?? 0);
 
-	const rows = db.prepare(sql).all(...params) as LeadRow[];
+	const rows = db.prepare(sql).all(...params) as unknown as LeadRow[];
 	return rows.map(mapLead);
 }
 
