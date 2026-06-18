@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.usedcar.dashboard.mapper.InspectionReportMapper">
+
+    <resultMap id="InspectionReportResultMap" type="com.usedcar.dashboard.entity.InspectionReport">
+        <id column="id" property="id"/>
+        <result column="report_id" property="reportId"/>
+        <result column="vehicle_id" property="vehicleId"/>
+        <result column="store_id" property="storeId"/>
+        <result column="inspector" property="inspector"/>
+        <result column="category" property="category"/>
+        <result column="description" property="description"/>
+        <result column="inspection_date" property="inspectionDate"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="overall_score" property="overallScore"/>
+        <result column="defect_count" property="defectCount"/>
+        <result column="has_accident" property="hasAccident"/>
+        <result column="has_flood" property="hasFlood"/>
+        <result column="has_fire" property="hasFire"/>
+        <result column="defect_details" property="defectDetails"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, report_id, vehicle_id, store_id, inspector, category, description,
+        inspection_date, created_at, updated_at, overall_score, defect_count,
+        has_accident, has_flood, has_fire, defect_details
+    </sql>
+
+    <select id="selectById" resultMap="InspectionReportResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_inspection_report
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectByReportId" resultMap="InspectionReportResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_inspection_report
+        WHERE report_id = #{reportId}
+    </select>
+
+    <select id="selectByVehicleId" resultMap="InspectionReportResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_inspection_report
+        WHERE vehicle_id = #{vehicleId}
+        ORDER BY inspection_date DESC
+    </select>
+
+    <select id="selectByFilter" resultMap="InspectionReportResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_inspection_report
+        <where>
+            <if test="filter != null and filter.hasStoreFilter()">
+                AND store_id IN
+                <foreach collection="filter.storeIds" item="sid" open="(" separator="," close=")">
+                    #{sid}
+                </foreach>
+            </if>
+            <if test="filter != null and filter.hasDateRange()">
+                AND inspection_date &gt;= #{filter.startDate}
+                AND inspection_date &lt;= #{filter.endDate}
+            </if>
+        </where>
+        ORDER BY inspection_date DESC
+    </select>
+
+    <select id="selectByDateRange" resultMap="InspectionReportResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_inspection_report
+        <where>
+            <if test="startDate != null">
+                AND inspection_date &gt;= #{startDate}
+            </if>
+            <if test="endDate != null">
+                AND inspection_date &lt;= #{endDate}
+            </if>
+            <if test="storeIds != null and storeIds.size() > 0">
+                AND store_id IN
+                <foreach collection="storeIds" item="sid" open="(" separator="," close=")">
+                    #{sid}
+                </foreach>
+            </if>
+        </where>
+        ORDER BY inspection_date DESC
+    </select>
+
+    <select id="countDefectiveByDateRange" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM t_inspection_report
+        <where>
+            (category IN ('poor', 'accident', 'flood', 'fire') OR defect_count > 0)
+            <if test="startDate != null">
+                AND inspection_date &gt;= #{startDate}
+            </if>
+            <if test="endDate != null">
+                AND inspection_date &lt;= #{endDate}
+            </if>
+            <if test="storeIds != null and storeIds.size() > 0">
+                AND store_id IN
+                <foreach collection="storeIds" item="sid" open="(" separator="," close=")">
+                    #{sid}
+                </foreach>
+            </if>
+        </where>
+    </select>
+
+    <select id="countPassRateByFilter" resultType="java.lang.Double">
+        SELECT
+            CASE WHEN COUNT(*) = 0 THEN 0.0
+                 ELSE (SUM(CASE WHEN category IN ('excellent', 'good', 'normal') THEN 1 ELSE 0 END) * 100.0 / COUNT(*))
+            END
+        FROM t_inspection_report
+        <where>
+            <if test="filter != null and filter.hasStoreFilter()">
+                AND store_id IN
+                <foreach collection="filter.storeIds" item="sid" open="(" separator="," close=")">
+                    #{sid}
+                </foreach>
+            </if>
+            <if test="filter != null and filter.hasDateRange()">
+                AND inspection_date &gt;= #{filter.startDate}
+                AND inspection_date &lt;= #{filter.endDate}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectCategoryGroupByFilter" resultMap="InspectionReportResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_inspection_report
+        <where>
+            <if test="filter != null and filter.hasStoreFilter()">
+                AND store_id IN
+                <foreach collection="filter.storeIds" item="sid" open="(" separator="," close=")">
+                    #{sid}
+                </foreach>
+            </if>
+            <if test="filter != null and filter.hasDateRange()">
+                AND inspection_date &gt;= #{filter.startDate}
+                AND inspection_date &lt;= #{filter.endDate}
+            </if>
+        </where>
+        ORDER BY category, inspection_date DESC
+    </select>
+
+    <insert id="insert" parameterType="com.usedcar.dashboard.entity.InspectionReport" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_inspection_report (
+            report_id, vehicle_id, store_id, inspector, category, description,
+            inspection_date, created_at, updated_at, overall_score, defect_count,
+            has_accident, has_flood, has_fire, defect_details
+        ) VALUES (
+            #{reportId}, #{vehicleId}, #{storeId}, #{inspector}, #{category}, #{description},
+            #{inspectionDate}, #{createdAt}, #{updatedAt}, #{overallScore}, #{defectCount},
+            #{hasAccident}, #{hasFlood}, #{hasFire}, #{defectDetails}
+        )
+    </insert>
+
+    <update id="update" parameterType="com.usedcar.dashboard.entity.InspectionReport">
+        UPDATE t_inspection_report
+        <set>
+            <if test="reportId != null">report_id = #{reportId},</if>
+            <if test="vehicleId != null">vehicle_id = #{vehicleId},</if>
+            <if test="storeId != null">store_id = #{storeId},</if>
+            <if test="inspector != null">inspector = #{inspector},</if>
+            <if test="category != null">category = #{category},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="inspectionDate != null">inspection_date = #{inspectionDate},</if>
+            <if test="overallScore != null">overall_score = #{overallScore},</if>
+            <if test="defectCount != null">defect_count = #{defectCount},</if>
+            <if test="hasAccident != null">has_accident = #{hasAccident},</if>
+            <if test="hasFlood != null">has_flood = #{hasFlood},</if>
+            <if test="hasFire != null">has_fire = #{hasFire},</if>
+            <if test="defectDetails != null">defect_details = #{defectDetails},</if>
+            updated_at = #{updatedAt}
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM t_inspection_report WHERE id = #{id}
+    </delete>
+
+</mapper>

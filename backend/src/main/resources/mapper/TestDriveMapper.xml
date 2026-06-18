@@ -1,0 +1,241 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.usedcar.dashboard.mapper.TestDriveMapper">
+
+    <resultMap id="TestDriveResultMap" type="com.usedcar.dashboard.entity.TestDrive">
+        <id column="id" property="id"/>
+        <result column="drive_id" property="driveId"/>
+        <result column="vehicle_id" property="vehicleId"/>
+        <result column="store_id" property="storeId"/>
+        <result column="driver_name" property="driverName"/>
+        <result column="driver_phone" property="driverPhone"/>
+        <result column="route_planned" property="routePlanned"/>
+        <result column="route_actual" property="routeActual"/>
+        <result column="anomaly_type" property="anomalyType"/>
+        <result column="anomaly_severity" property="anomalySeverity"/>
+        <result column="anomaly_desc" property="anomalyDesc"/>
+        <result column="report_status" property="reportStatus"/>
+        <result column="start_time" property="startTime"/>
+        <result column="end_time" property="endTime"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="duration_min" property="durationMin"/>
+        <result column="max_speed" property="maxSpeed"/>
+        <result column="speed_limit" property="speedLimit"/>
+        <result column="is_abnormal" property="isAbnormal"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, drive_id, vehicle_id, store_id, driver_name, driver_phone,
+        route_planned, route_actual, anomaly_type, anomaly_severity, anomaly_desc,
+        report_status, start_time, end_time, created_at, updated_at, duration_min,
+        max_speed, speed_limit, is_abnormal
+    </sql>
+
+    <select id="selectById" resultMap="TestDriveResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_test_drive
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectByDriveId" resultMap="TestDriveResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_test_drive
+        WHERE drive_id = #{driveId}
+    </select>
+
+    <select id="selectByVehicleId" resultMap="TestDriveResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_test_drive
+        WHERE vehicle_id = #{vehicleId}
+        ORDER BY start_time DESC
+    </select>
+
+    <select id="selectByFilter" resultMap="TestDriveResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_test_drive
+        <where>
+            <if test="filter != null and filter.hasStoreFilter()">
+                AND store_id IN
+                <foreach collection="filter.storeIds" item="sid" open="(" separator="," close=")">
+                    #{sid}
+                </foreach>
+            </if>
+            <if test="filter != null and filter.hasDateRange()">
+                AND start_time &gt;= #{filter.startDate}
+                AND start_time &lt;= #{filter.endDate}
+            </if>
+        </where>
+        ORDER BY start_time DESC
+    </select>
+
+    <select id="selectAbnormalByDateRange" resultMap="TestDriveResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_test_drive
+        WHERE is_abnormal = 1
+        <if test="startDate != null">
+            AND start_time &gt;= #{startDate}
+        </if>
+        <if test="endDate != null">
+            AND start_time &lt;= #{endDate}
+        </if>
+        <if test="storeIds != null and storeIds.size() > 0">
+            AND store_id IN
+            <foreach collection="storeIds" item="sid" open="(" separator="," close=")">
+                #{sid}
+            </foreach>
+        </if>
+        ORDER BY start_time DESC
+    </select>
+
+    <select id="countByDateRange" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM t_test_drive
+        <where>
+            <if test="startDate != null">
+                AND start_time &gt;= #{startDate}
+            </if>
+            <if test="endDate != null">
+                AND start_time &lt;= #{endDate}
+            </if>
+            <if test="storeIds != null and storeIds.size() > 0">
+                AND store_id IN
+                <foreach collection="storeIds" item="sid" open="(" separator="," close=")">
+                    #{sid}
+                </foreach>
+            </if>
+        </where>
+    </select>
+
+    <select id="countAbnormalByDateRange" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM t_test_drive
+        WHERE is_abnormal = 1
+        <if test="startDate != null">
+            AND start_time &gt;= #{startDate}
+        </if>
+        <if test="endDate != null">
+            AND start_time &lt;= #{endDate}
+        </if>
+        <if test="storeIds != null and storeIds.size() > 0">
+            AND store_id IN
+            <foreach collection="storeIds" item="sid" open="(" separator="," close=")">
+                #{sid}
+            </foreach>
+        </if>
+    </select>
+
+    <select id="countAbnormalByFilter" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM t_test_drive
+        WHERE is_abnormal = 1
+        <if test="filter != null and filter.hasStoreFilter()">
+            AND store_id IN
+            <foreach collection="filter.storeIds" item="sid" open="(" separator="," close=")">
+                #{sid}
+            </foreach>
+        </if>
+        <if test="filter != null and filter.hasDateRange()">
+            AND start_time &gt;= #{filter.startDate}
+            AND start_time &lt;= #{filter.endDate}
+        </if>
+    </select>
+
+    <select id="countByFilter" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM t_test_drive
+        <where>
+            <if test="filter != null and filter.hasStoreFilter()">
+                AND store_id IN
+                <foreach collection="filter.storeIds" item="sid" open="(" separator="," close=")">
+                    #{sid}
+                </foreach>
+            </if>
+            <if test="filter != null and filter.hasDateRange()">
+                AND start_time &gt;= #{filter.startDate}
+                AND start_time &lt;= #{filter.endDate}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectAbnormalTopN" resultMap="TestDriveResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_test_drive
+        WHERE is_abnormal = 1
+        <if test="filter != null and filter.hasStoreFilter()">
+            AND store_id IN
+            <foreach collection="filter.storeIds" item="sid" open="(" separator="," close=")">
+                #{sid}
+            </foreach>
+        </if>
+        <if test="filter != null and filter.hasDateRange()">
+            AND start_time &gt;= #{filter.startDate}
+            AND start_time &lt;= #{filter.endDate}
+        </if>
+        ORDER BY start_time DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectDailyDistributionByFilter" resultMap="TestDriveResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_test_drive
+        <where>
+            <if test="filter != null and filter.hasStoreFilter()">
+                AND store_id IN
+                <foreach collection="filter.storeIds" item="sid" open="(" separator="," close=")">
+                    #{sid}
+                </foreach>
+            </if>
+            <if test="filter != null and filter.hasDateRange()">
+                AND start_time &gt;= #{filter.startDate}
+                AND start_time &lt;= #{filter.endDate}
+            </if>
+        </where>
+        ORDER BY start_time
+    </select>
+
+    <insert id="insert" parameterType="com.usedcar.dashboard.entity.TestDrive" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_test_drive (
+            drive_id, vehicle_id, store_id, driver_name, driver_phone,
+            route_planned, route_actual, anomaly_type, anomaly_severity, anomaly_desc,
+            report_status, start_time, end_time, created_at, updated_at, duration_min,
+            max_speed, speed_limit, is_abnormal
+        ) VALUES (
+            #{driveId}, #{vehicleId}, #{storeId}, #{driverName}, #{driverPhone},
+            #{routePlanned}, #{routeActual}, #{anomalyType}, #{anomalySeverity}, #{anomalyDesc},
+            #{reportStatus}, #{startTime}, #{endTime}, #{createdAt}, #{updatedAt}, #{durationMin},
+            #{maxSpeed}, #{speedLimit}, #{isAbnormal}
+        )
+    </insert>
+
+    <update id="update" parameterType="com.usedcar.dashboard.entity.TestDrive">
+        UPDATE t_test_drive
+        <set>
+            <if test="driveId != null">drive_id = #{driveId},</if>
+            <if test="vehicleId != null">vehicle_id = #{vehicleId},</if>
+            <if test="storeId != null">store_id = #{storeId},</if>
+            <if test="driverName != null">driver_name = #{driverName},</if>
+            <if test="driverPhone != null">driver_phone = #{driverPhone},</if>
+            <if test="routePlanned != null">route_planned = #{routePlanned},</if>
+            <if test="routeActual != null">route_actual = #{routeActual},</if>
+            <if test="anomalyType != null">anomaly_type = #{anomalyType},</if>
+            <if test="anomalySeverity != null">anomaly_severity = #{anomalySeverity},</if>
+            <if test="anomalyDesc != null">anomaly_desc = #{anomalyDesc},</if>
+            <if test="reportStatus != null">report_status = #{reportStatus},</if>
+            <if test="startTime != null">start_time = #{startTime},</if>
+            <if test="endTime != null">end_time = #{endTime},</if>
+            <if test="durationMin != null">duration_min = #{durationMin},</if>
+            <if test="maxSpeed != null">max_speed = #{maxSpeed},</if>
+            <if test="speedLimit != null">speed_limit = #{speedLimit},</if>
+            <if test="isAbnormal != null">is_abnormal = #{isAbnormal},</if>
+            updated_at = #{updatedAt}
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM t_test_drive WHERE id = #{id}
+    </delete>
+
+</mapper>

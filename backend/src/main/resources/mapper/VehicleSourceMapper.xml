@@ -1,0 +1,304 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.usedcar.dashboard.mapper.VehicleSourceMapper">
+
+    <resultMap id="VehicleSourceResultMap" type="com.usedcar.dashboard.entity.VehicleSource">
+        <id column="id" property="id"/>
+        <result column="vehicle_id" property="vehicleId"/>
+        <result column="store_id" property="storeId"/>
+        <result column="brand" property="brand"/>
+        <result column="model" property="model"/>
+        <result column="vehicle_condition" property="vehicleCondition"/>
+        <result column="source_type" property="sourceType"/>
+        <result column="inspection_report_id" property="inspectionReportId"/>
+        <result column="finance_status" property="financeStatus"/>
+        <result column="purchase_price" property="purchasePrice"/>
+        <result column="listing_price" property="listingPrice"/>
+        <result column="mileage" property="mileage"/>
+        <result column="turnover_days" property="turnoverDays"/>
+        <result column="test_drive_count" property="testDriveCount"/>
+        <result column="abnormal_count" property="abnormalCount"/>
+        <result column="register_date" property="registerDate"/>
+        <result column="listed_date" property="listedDate"/>
+        <result column="delisted_date" property="delistedDate"/>
+        <result column="sold_date" property="soldDate"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="inspection_status" property="inspectionStatus"/>
+        <result column="prep_status" property="prepStatus"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, vehicle_id, store_id, brand, model, vehicle_condition, source_type,
+        inspection_report_id, finance_status, purchase_price, listing_price,
+        mileage, turnover_days, test_drive_count, abnormal_count, register_date,
+        listed_date, delisted_date, sold_date, created_at, updated_at,
+        inspection_status, prep_status
+    </sql>
+
+    <select id="selectById" resultMap="VehicleSourceResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_vehicle_source
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectByVehicleId" resultMap="VehicleSourceResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_vehicle_source
+        WHERE vehicle_id = #{vehicleId}
+    </select>
+
+    <select id="selectByStoreId" resultMap="VehicleSourceResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_vehicle_source
+        WHERE store_id = #{storeId}
+        ORDER BY listed_date DESC
+    </select>
+
+    <select id="selectByFilter" resultMap="VehicleSourceResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_vehicle_source
+        <where>
+            <if test="filter != null and filter.hasStoreFilter()">
+                AND store_id IN
+                <foreach collection="filter.storeIds" item="sid" open="(" separator="," close=")">
+                    #{sid}
+                </foreach>
+            </if>
+            <if test="filter != null and filter.hasDateRange()">
+                AND listed_date IS NOT NULL
+                AND listed_date &gt;= #{filter.startDate}
+                AND listed_date &lt;= #{filter.endDate}
+            </if>
+            <if test="filter != null and filter.hasBrandFilter()">
+                AND brand IN
+                <foreach collection="filter.brands" item="b" open="(" separator="," close=")">
+                    #{b}
+                </foreach>
+            </if>
+            <if test="filter != null and filter.hasSourceFilter()">
+                AND source_type IN
+                <foreach collection="filter.sourceTypes" item="s" open="(" separator="," close=")">
+                    #{s}
+                </foreach>
+            </if>
+            <if test="filter != null and filter.hasConditionFilter()">
+                AND vehicle_condition IN
+                <foreach collection="filter.vehicleCondition" item="c" open="(" separator="," close=")">
+                    #{c}
+                </foreach>
+            </if>
+        </where>
+        ORDER BY listed_date DESC
+    </select>
+
+    <select id="countListedByDateRange" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM t_vehicle_source
+        <where>
+            listed_date IS NOT NULL
+            <if test="startDate != null">
+                AND listed_date &gt;= #{startDate}
+            </if>
+            <if test="endDate != null">
+                AND listed_date &lt;= #{endDate}
+            </if>
+            <if test="storeIds != null and storeIds.size() > 0">
+                AND store_id IN
+                <foreach collection="storeIds" item="sid" open="(" separator="," close=")">
+                    #{sid}
+                </foreach>
+            </if>
+        </where>
+    </select>
+
+    <select id="countSoldByDateRange" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM t_vehicle_source
+        <where>
+            sold_date IS NOT NULL
+            <if test="startDate != null">
+                AND sold_date &gt;= #{startDate}
+            </if>
+            <if test="endDate != null">
+                AND sold_date &lt;= #{endDate}
+            </if>
+            <if test="storeIds != null and storeIds.size() > 0">
+                AND store_id IN
+                <foreach collection="storeIds" item="sid" open="(" separator="," close=")">
+                    #{sid}
+                </foreach>
+            </if>
+        </where>
+    </select>
+
+    <select id="countCurrentlyListed" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM t_vehicle_source
+        WHERE listed_date IS NOT NULL
+          AND (delisted_date IS NULL OR delisted_date > NOW())
+          AND sold_date IS NULL
+        <if test="storeIds != null and storeIds.size() > 0">
+            AND store_id IN
+            <foreach collection="storeIds" item="sid" open="(" separator="," close=")">
+                #{sid}
+            </foreach>
+        </if>
+    </select>
+
+    <select id="countCurrentlyListedByFilter" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM t_vehicle_source
+        WHERE listed_date IS NOT NULL
+          AND (delisted_date IS NULL OR delisted_date > NOW())
+          AND sold_date IS NULL
+        <if test="filter != null and filter.hasStoreFilter()">
+            AND store_id IN
+            <foreach collection="filter.storeIds" item="sid" open="(" separator="," close=")">
+                #{sid}
+            </foreach>
+        </if>
+        <if test="filter != null and filter.hasBrandFilter()">
+            AND brand IN
+            <foreach collection="filter.brands" item="b" open="(" separator="," close=")">
+                #{b}
+            </foreach>
+        </if>
+        <if test="filter != null and filter.hasSourceFilter()">
+            AND source_type IN
+            <foreach collection="filter.sourceTypes" item="s" open="(" separator="," close=")">
+                #{s}
+            </foreach>
+        </if>
+        <if test="filter != null and filter.hasConditionFilter()">
+            AND vehicle_condition IN
+            <foreach collection="filter.vehicleCondition" item="c" open="(" separator="," close=")">
+                #{c}
+            </foreach>
+        </if>
+    </select>
+
+    <select id="countDelistedByDateRange" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM t_vehicle_source
+        <where>
+            delisted_date IS NOT NULL
+            <if test="startDate != null">
+                AND delisted_date &gt;= #{startDate}
+            </if>
+            <if test="endDate != null">
+                AND delisted_date &lt;= #{endDate}
+            </if>
+            <if test="storeIds != null and storeIds.size() > 0">
+                AND store_id IN
+                <foreach collection="storeIds" item="sid" open="(" separator="," close=")">
+                    #{sid}
+                </foreach>
+            </if>
+        </where>
+    </select>
+
+    <select id="countFastMoving" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM t_vehicle_source
+        WHERE turnover_days IS NOT NULL AND turnover_days &lt;= 30
+          AND listed_date IS NOT NULL
+          AND (delisted_date IS NULL OR delisted_date > NOW())
+          AND sold_date IS NULL
+        <if test="filter != null and filter.hasStoreFilter()">
+            AND store_id IN
+            <foreach collection="filter.storeIds" item="sid" open="(" separator="," close=")">
+                #{sid}
+            </foreach>
+        </if>
+        <if test="filter != null and filter.hasBrandFilter()">
+            AND brand IN
+            <foreach collection="filter.brands" item="b" open="(" separator="," close=")">
+                #{b}
+            </foreach>
+        </if>
+        <if test="filter != null and filter.hasSourceFilter()">
+            AND source_type IN
+            <foreach collection="filter.sourceTypes" item="s" open="(" separator="," close=")">
+                #{s}
+            </foreach>
+        </if>
+    </select>
+
+    <select id="countSlowMoving" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM t_vehicle_source
+        WHERE turnover_days IS NOT NULL AND turnover_days &gt;= 60
+          AND listed_date IS NOT NULL
+          AND (delisted_date IS NULL OR delisted_date > NOW())
+          AND sold_date IS NULL
+        <if test="filter != null and filter.hasStoreFilter()">
+            AND store_id IN
+            <foreach collection="filter.storeIds" item="sid" open="(" separator="," close=")">
+                #{sid}
+            </foreach>
+        </if>
+        <if test="filter != null and filter.hasBrandFilter()">
+            AND brand IN
+            <foreach collection="filter.brands" item="b" open="(" separator="," close=")">
+                #{b}
+            </foreach>
+        </if>
+        <if test="filter != null and filter.hasSourceFilter()">
+            AND source_type IN
+            <foreach collection="filter.sourceTypes" item="s" open="(" separator="," close=")">
+                #{s}
+            </foreach>
+        </if>
+    </select>
+
+    <insert id="insert" parameterType="com.usedcar.dashboard.entity.VehicleSource" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_vehicle_source (
+            vehicle_id, store_id, brand, model, vehicle_condition, source_type,
+            inspection_report_id, finance_status, purchase_price, listing_price,
+            mileage, turnover_days, test_drive_count, abnormal_count, register_date,
+            listed_date, delisted_date, sold_date, created_at, updated_at,
+            inspection_status, prep_status
+        ) VALUES (
+            #{vehicleId}, #{storeId}, #{brand}, #{model}, #{vehicleCondition}, #{sourceType},
+            #{inspectionReportId}, #{financeStatus}, #{purchasePrice}, #{listingPrice},
+            #{mileage}, #{turnoverDays}, #{testDriveCount}, #{abnormalCount}, #{registerDate},
+            #{listedDate}, #{delistedDate}, #{soldDate}, #{createdAt}, #{updatedAt},
+            #{inspectionStatus}, #{prepStatus}
+        )
+    </insert>
+
+    <update id="update" parameterType="com.usedcar.dashboard.entity.VehicleSource">
+        UPDATE t_vehicle_source
+        <set>
+            <if test="vehicleId != null">vehicle_id = #{vehicleId},</if>
+            <if test="storeId != null">store_id = #{storeId},</if>
+            <if test="brand != null">brand = #{brand},</if>
+            <if test="model != null">model = #{model},</if>
+            <if test="vehicleCondition != null">vehicle_condition = #{vehicleCondition},</if>
+            <if test="sourceType != null">source_type = #{sourceType},</if>
+            <if test="inspectionReportId != null">inspection_report_id = #{inspectionReportId},</if>
+            <if test="financeStatus != null">finance_status = #{financeStatus},</if>
+            <if test="purchasePrice != null">purchase_price = #{purchasePrice},</if>
+            <if test="listingPrice != null">listing_price = #{listingPrice},</if>
+            <if test="mileage != null">mileage = #{mileage},</if>
+            <if test="turnoverDays != null">turnover_days = #{turnoverDays},</if>
+            <if test="testDriveCount != null">test_drive_count = #{testDriveCount},</if>
+            <if test="abnormalCount != null">abnormal_count = #{abnormalCount},</if>
+            <if test="registerDate != null">register_date = #{registerDate},</if>
+            <if test="listedDate != null">listed_date = #{listedDate},</if>
+            <if test="delistedDate != null">delisted_date = #{delistedDate},</if>
+            <if test="soldDate != null">sold_date = #{soldDate},</if>
+            <if test="inspectionStatus != null">inspection_status = #{inspectionStatus},</if>
+            <if test="prepStatus != null">prep_status = #{prepStatus},</if>
+            updated_at = #{updatedAt}
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM t_vehicle_source WHERE id = #{id}
+    </delete>
+
+</mapper>

@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.usedcar.dashboard.mapper.DatasourceSyncLogMapper">
+
+    <resultMap id="DatasourceSyncLogResultMap" type="com.usedcar.dashboard.entity.DatasourceSyncLog">
+        <id column="id" property="id"/>
+        <result column="source_name" property="sourceName"/>
+        <result column="status" property="status"/>
+        <result column="error_message" property="errorMessage"/>
+        <result column="sync_time" property="syncTime"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="record_count" property="recordCount"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, source_name, status, error_message, sync_time, created_at, record_count
+    </sql>
+
+    <select id="selectById" resultMap="DatasourceSyncLogResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_datasource_sync_log
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectBySourceName" resultMap="DatasourceSyncLogResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_datasource_sync_log
+        WHERE source_name = #{sourceName}
+        ORDER BY sync_time DESC
+        <if test="limit != null">
+            LIMIT #{limit}
+        </if>
+    </select>
+
+    <select id="selectLatestPerSource" resultMap="DatasourceSyncLogResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_datasource_sync_log t1
+        WHERE sync_time = (
+            SELECT MAX(sync_time)
+            FROM t_datasource_sync_log t2
+            WHERE t2.source_name = t1.source_name
+        )
+        ORDER BY source_name
+    </select>
+
+    <select id="selectByDateRange" resultMap="DatasourceSyncLogResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_datasource_sync_log
+        <where>
+            <if test="startTime != null">
+                AND sync_time &gt;= #{startTime}
+            </if>
+            <if test="endTime != null">
+                AND sync_time &lt;= #{endTime}
+            </if>
+        </where>
+        ORDER BY sync_time DESC
+    </select>
+
+    <insert id="insert" parameterType="com.usedcar.dashboard.entity.DatasourceSyncLog" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_datasource_sync_log (
+            source_name, status, error_message, sync_time, created_at, record_count
+        ) VALUES (
+            #{sourceName}, #{status}, #{errorMessage}, #{syncTime}, #{createdAt}, #{recordCount}
+        )
+    </insert>
+
+    <update id="update" parameterType="com.usedcar.dashboard.entity.DatasourceSyncLog">
+        UPDATE t_datasource_sync_log
+        <set>
+            <if test="sourceName != null">source_name = #{sourceName},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="errorMessage != null">error_message = #{errorMessage},</if>
+            <if test="syncTime != null">sync_time = #{syncTime},</if>
+            <if test="recordCount != null">record_count = #{recordCount},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM t_datasource_sync_log WHERE id = #{id}
+    </delete>
+
+</mapper>

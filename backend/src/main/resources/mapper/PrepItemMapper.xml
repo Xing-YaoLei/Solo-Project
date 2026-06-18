@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.usedcar.dashboard.mapper.PrepItemMapper">
+
+    <resultMap id="PrepItemResultMap" type="com.usedcar.dashboard.entity.PrepItem">
+        <id column="id" property="id"/>
+        <result column="vehicle_id" property="vehicleId"/>
+        <result column="store_id" property="storeId"/>
+        <result column="item_name" property="itemName"/>
+        <result column="item_category" property="itemCategory"/>
+        <result column="status" property="status"/>
+        <result column="remark" property="remark"/>
+        <result column="cost" property="cost"/>
+        <result column="start_date" property="startDate"/>
+        <result column="end_date" property="endDate"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="expected_days" property="expectedDays"/>
+        <result column="actual_days" property="actualDays"/>
+        <result column="is_overdue" property="isOverdue"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, vehicle_id, store_id, item_name, item_category, status, remark,
+        cost, start_date, end_date, created_at, updated_at, expected_days,
+        actual_days, is_overdue
+    </sql>
+
+    <select id="selectById" resultMap="PrepItemResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_prep_item
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectByVehicleId" resultMap="PrepItemResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_prep_item
+        WHERE vehicle_id = #{vehicleId}
+        ORDER BY start_date DESC
+    </select>
+
+    <select id="selectByFilter" resultMap="PrepItemResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_prep_item
+        <where>
+            <if test="filter != null and filter.hasStoreFilter()">
+                AND store_id IN
+                <foreach collection="filter.storeIds" item="sid" open="(" separator="," close=")">
+                    #{sid}
+                </foreach>
+            </if>
+            <if test="filter != null and filter.hasDateRange()">
+                AND start_date &gt;= #{filter.startDate}
+                AND start_date &lt;= #{filter.endDate}
+            </if>
+        </where>
+        ORDER BY start_date DESC
+    </select>
+
+    <select id="selectByStatus" resultMap="PrepItemResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_prep_item
+        WHERE status = #{status}
+        <if test="storeIds != null and storeIds.size() > 0">
+            AND store_id IN
+            <foreach collection="storeIds" item="sid" open="(" separator="," close=")">
+                #{sid}
+            </foreach>
+        </if>
+        ORDER BY start_date DESC
+    </select>
+
+    <select id="selectOverdueItems" resultMap="PrepItemResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_prep_item
+        WHERE is_overdue = 1
+        <if test="storeIds != null and storeIds.size() > 0">
+            AND store_id IN
+            <foreach collection="storeIds" item="sid" open="(" separator="," close=")">
+                #{sid}
+            </foreach>
+        </if>
+        ORDER BY start_date DESC
+    </select>
+
+    <select id="countByStatus" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM t_prep_item
+        WHERE status = #{status}
+        <if test="storeIds != null and storeIds.size() > 0">
+            AND store_id IN
+            <foreach collection="storeIds" item="sid" open="(" separator="," close=")">
+                #{sid}
+            </foreach>
+        </if>
+    </select>
+
+    <select id="countOverdue" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM t_prep_item
+        WHERE is_overdue = 1
+        <if test="storeIds != null and storeIds.size() > 0">
+            AND store_id IN
+            <foreach collection="storeIds" item="sid" open="(" separator="," close=")">
+                #{sid}
+            </foreach>
+        </if>
+    </select>
+
+    <select id="calcAvgPrepDaysByFilter" resultType="java.lang.Double">
+        SELECT
+            CASE WHEN COUNT(*) = 0 THEN 0.0
+                 ELSE AVG(actual_days)
+            END
+        FROM t_prep_item
+        WHERE actual_days IS NOT NULL AND actual_days > 0
+        <if test="filter != null and filter.hasStoreFilter()">
+            AND store_id IN
+            <foreach collection="filter.storeIds" item="sid" open="(" separator="," close=")">
+                #{sid}
+            </foreach>
+        </if>
+        <if test="filter != null and filter.hasDateRange()">
+            AND start_date &gt;= #{filter.startDate}
+            AND start_date &lt;= #{filter.endDate}
+        </if>
+    </select>
+
+    <select id="selectOverdueItemsTopN" resultMap="PrepItemResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_prep_item
+        WHERE is_overdue = 1
+        <if test="filter != null and filter.hasStoreFilter()">
+            AND store_id IN
+            <foreach collection="filter.storeIds" item="sid" open="(" separator="," close=")">
+                #{sid}
+            </foreach>
+        </if>
+        ORDER BY start_date DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="countByStatusAndFilter" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM t_prep_item
+        WHERE status = #{status}
+        <if test="filter != null and filter.hasStoreFilter()">
+            AND store_id IN
+            <foreach collection="filter.storeIds" item="sid" open="(" separator="," close=")">
+                #{sid}
+            </foreach>
+        </if>
+        <if test="filter != null and filter.hasDateRange()">
+            AND start_date &gt;= #{filter.startDate}
+            AND start_date &lt;= #{filter.endDate}
+        </if>
+    </select>
+
+    <insert id="insert" parameterType="com.usedcar.dashboard.entity.PrepItem" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_prep_item (
+            vehicle_id, store_id, item_name, item_category, status, remark,
+            cost, start_date, end_date, created_at, updated_at, expected_days,
+            actual_days, is_overdue
+        ) VALUES (
+            #{vehicleId}, #{storeId}, #{itemName}, #{itemCategory}, #{status}, #{remark},
+            #{cost}, #{startDate}, #{endDate}, #{createdAt}, #{updatedAt}, #{expectedDays},
+            #{actualDays}, #{isOverdue}
+        )
+    </insert>
+
+    <update id="update" parameterType="com.usedcar.dashboard.entity.PrepItem">
+        UPDATE t_prep_item
+        <set>
+            <if test="vehicleId != null">vehicle_id = #{vehicleId},</if>
+            <if test="storeId != null">store_id = #{storeId},</if>
+            <if test="itemName != null">item_name = #{itemName},</if>
+            <if test="itemCategory != null">item_category = #{itemCategory},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="cost != null">cost = #{cost},</if>
+            <if test="startDate != null">start_date = #{startDate},</if>
+            <if test="endDate != null">end_date = #{endDate},</if>
+            <if test="expectedDays != null">expected_days = #{expectedDays},</if>
+            <if test="actualDays != null">actual_days = #{actualDays},</if>
+            <if test="isOverdue != null">is_overdue = #{isOverdue},</if>
+            updated_at = #{updatedAt}
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM t_prep_item WHERE id = #{id}
+    </delete>
+
+</mapper>

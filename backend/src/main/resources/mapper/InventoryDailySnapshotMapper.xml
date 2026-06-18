@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.usedcar.dashboard.mapper.InventoryDailySnapshotMapper">
+
+    <resultMap id="InventoryDailySnapshotResultMap" type="com.usedcar.dashboard.entity.InventoryDailySnapshot">
+        <id column="id" property="id"/>
+        <result column="snapshot_date" property="snapshotDate"/>
+        <result column="store_id" property="storeId"/>
+        <result column="opening_count" property="openingCount"/>
+        <result column="new_listed" property="newListed"/>
+        <result column="delisted" property="delisted"/>
+        <result column="sold_count" property="soldCount"/>
+        <result column="closing_count" property="closingCount"/>
+        <result column="fast_moving_count" property="fastMovingCount"/>
+        <result column="slow_moving_count" property="slowMovingCount"/>
+        <result column="avg_turnover_days" property="avgTurnoverDays"/>
+        <result column="created_at" property="createdAt"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, snapshot_date, store_id, opening_count, new_listed, delisted,
+        sold_count, closing_count, fast_moving_count, slow_moving_count,
+        avg_turnover_days, created_at
+    </sql>
+
+    <select id="selectById" resultMap="InventoryDailySnapshotResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_inventory_daily_snapshot
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectByDateAndStore" resultMap="InventoryDailySnapshotResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_inventory_daily_snapshot
+        WHERE snapshot_date = #{snapshotDate}
+          AND store_id = #{storeId}
+    </select>
+
+    <select id="selectByDateRange" resultMap="InventoryDailySnapshotResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_inventory_daily_snapshot
+        <where>
+            <if test="startDate != null">
+                AND snapshot_date &gt;= #{startDate}
+            </if>
+            <if test="endDate != null">
+                AND snapshot_date &lt;= #{endDate}
+            </if>
+            <if test="storeIds != null and storeIds.size() > 0">
+                AND store_id IN
+                <foreach collection="storeIds" item="sid" open="(" separator="," close=")">
+                    #{sid}
+                </foreach>
+            </if>
+        </where>
+        ORDER BY store_id, snapshot_date
+    </select>
+
+    <select id="selectByStoreId" resultMap="InventoryDailySnapshotResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_inventory_daily_snapshot
+        WHERE store_id = #{storeId}
+        ORDER BY snapshot_date DESC
+        <if test="limit != null">
+            LIMIT #{limit}
+        </if>
+    </select>
+
+    <insert id="insert" parameterType="com.usedcar.dashboard.entity.InventoryDailySnapshot" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_inventory_daily_snapshot (
+            snapshot_date, store_id, opening_count, new_listed, delisted,
+            sold_count, closing_count, fast_moving_count, slow_moving_count,
+            avg_turnover_days, created_at
+        ) VALUES (
+            #{snapshotDate}, #{storeId}, #{openingCount}, #{newListed}, #{delisted},
+            #{soldCount}, #{closingCount}, #{fastMovingCount}, #{slowMovingCount},
+            #{avgTurnoverDays}, #{createdAt}
+        )
+    </insert>
+
+    <update id="update" parameterType="com.usedcar.dashboard.entity.InventoryDailySnapshot">
+        UPDATE t_inventory_daily_snapshot
+        <set>
+            <if test="snapshotDate != null">snapshot_date = #{snapshotDate},</if>
+            <if test="storeId != null">store_id = #{storeId},</if>
+            <if test="openingCount != null">opening_count = #{openingCount},</if>
+            <if test="newListed != null">new_listed = #{newListed},</if>
+            <if test="delisted != null">delisted = #{delisted},</if>
+            <if test="soldCount != null">sold_count = #{soldCount},</if>
+            <if test="closingCount != null">closing_count = #{closingCount},</if>
+            <if test="fastMovingCount != null">fast_moving_count = #{fastMovingCount},</if>
+            <if test="slowMovingCount != null">slow_moving_count = #{slowMovingCount},</if>
+            <if test="avgTurnoverDays != null">avg_turnover_days = #{avgTurnoverDays},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM t_inventory_daily_snapshot WHERE id = #{id}
+    </delete>
+
+    <select id="avgTurnoverDaysByFilter" resultType="java.lang.Double">
+        SELECT
+            CASE WHEN COUNT(*) = 0 THEN 0.0
+                 ELSE AVG(avg_turnover_days)
+            END
+        FROM t_inventory_daily_snapshot
+        <where>
+            <if test="filter != null and filter.hasStoreFilter()">
+                AND store_id IN
+                <foreach collection="filter.storeIds" item="sid" open="(" separator="," close=")">
+                    #{sid}
+                </foreach>
+            </if>
+            <if test="filter != null and filter.hasDateRange()">
+                AND snapshot_date &gt;= #{filter.startDate}
+                AND snapshot_date &lt;= #{filter.endDate}
+            </if>
+        </where>
+    </select>
+
+</mapper>
