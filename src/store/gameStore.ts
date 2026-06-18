@@ -264,10 +264,16 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   recordAction: (action: string, details: Record<string, unknown>, thinkingTime?: number) => {
     const now = Date.now();
     const state = get();
-    const calculatedThinkingTime = thinkingTime ?? (now - state.lastActionTime);
+    const config = getConfigByDifficulty(state.difficulty);
+    const analytics = config.analytics;
 
+    const calculatedThinkingTime = analytics.enabled && analytics.trackThinkingTime
+      ? (thinkingTime ?? (now - state.lastActionTime))
+      : undefined;
+
+    const shouldTrackStuck = analytics.enabled && analytics.trackThinkingTime;
     const decisionActions = ['day_advance', 'schedule_delivery', 'accept_delivery', 'resolve_event', 'use_item'];
-    if (decisionActions.includes(action) && calculatedThinkingTime > 8000) {
+    if (shouldTrackStuck && decisionActions.includes(action) && calculatedThinkingTime && calculatedThinkingTime > 8000) {
       const targetDay = action === 'day_advance' && typeof details.day === 'number' ? details.day : state.currentDay;
       const levelForCheck = getLevelById(state.levelId || '');
       const isLastDay = action === 'day_advance' && typeof details.day === 'number' && levelForCheck ? details.day >= levelForCheck.targetDays : false;
@@ -294,33 +300,40 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       }));
     }
 
-    const playerAction: PlayerAction = {
-      timestamp: now,
-      action,
-      details,
-      thinkingTime: calculatedThinkingTime
-    };
+    if (analytics.enabled && analytics.trackActions) {
+      const playerAction: PlayerAction = {
+        timestamp: now,
+        action,
+        details,
+        thinkingTime: calculatedThinkingTime
+      };
 
-    set(s => ({
-      playerActions: [...s.playerActions, playerAction],
-      statistics: {
-        ...s.statistics,
-        decisionsMade: s.statistics.decisionsMade + 1
-      },
-      lastActionTime: now
-    }));
+      set(s => ({
+        playerActions: [...s.playerActions, playerAction],
+        statistics: {
+          ...s.statistics,
+          decisionsMade: s.statistics.decisionsMade + 1
+        }
+      }));
+    }
+
+    set({ lastActionTime: now });
   },
 
   recordStuckPoint: (reason: string, duration: number) => {
+    const state = get();
+    const analytics = getConfigByDifficulty(state.difficulty).analytics;
+    if (!analytics.enabled || !analytics.trackThinkingTime) return;
+
     const stuckPoint: StuckPoint = {
       timestamp: Date.now(),
-      day: get().currentDay,
+      day: state.currentDay,
       reason,
       duration
     };
 
-    set(state => ({
-      stuckPoints: [...state.stuckPoints, stuckPoint]
+    set(s => ({
+      stuckPoints: [...s.stuckPoints, stuckPoint]
     }));
   },
 

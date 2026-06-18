@@ -16,8 +16,7 @@ import {
   DAILY_DEMAND_BASE,
   WORK_AREAS,
   EVENT_MESSAGES,
-  getConfigByDifficulty,
-  ACHIEVEMENT_CONFIGS
+  getConfigByDifficulty
 } from '../config/gameConfig';
 import { Level } from '../config/levels';
 
@@ -233,30 +232,34 @@ export const checkAchievements = (
 ): Achievement[] => {
   const achievements: Achievement[] = [...state.achievements];
   const config = getConfigByDifficulty(state.difficulty);
+  const resolvedShortages = state.events.filter(e => e.type === 'shortage' && e.resolved).length;
+  const globalAverageTurnover = 10;
 
-  ACHIEVEMENT_CONFIGS.forEach(configAch => {
+  const context = {
+    totalShortages: statistics.totalShortages,
+    completionTime: statistics.completionTime ?? 0,
+    averageTime: config.gameDays * 60000,
+    resolvedShortages,
+    averageTurnoverDays: statistics.averageTurnoverDays,
+    globalAverage: globalAverageTurnover,
+    difficulty: state.difficulty,
+    completed: state.phase === 'review' || state.phase === 'settlement'
+  };
+
+  config.achievements.forEach(configAch => {
     const achId = configAch.id as AchievementType;
     const existing = achievements.find(a => a.id === achId);
     if (existing && existing.unlocked) return;
 
     let unlocked = false;
-
-    switch (achId) {
-      case 'perfect':
-        unlocked = statistics.totalShortages === 0;
-        break;
-      case 'speed':
-        unlocked = statistics.completionTime !== undefined && statistics.completionTime < config.gameDays * 60000 * 0.7;
-        break;
-      case 'no_shortage':
-        unlocked = state.events.filter(e => e.type === 'shortage' && e.resolved).length >= 5;
-        break;
-      case 'master_planner':
-        unlocked = statistics.averageTurnoverDays < 7;
-        break;
-      case 'survivor':
-        unlocked = state.difficulty === 'hard' && (state.phase === 'review' || state.phase === 'settlement');
-        break;
+    try {
+      const evaluator = new Function(
+        ...Object.keys(context),
+        `'use strict'; return !!(${configAch.condition});`
+      );
+      unlocked = evaluator(...Object.values(context));
+    } catch (e) {
+      console.warn(`成就条件解析失败 [${configAch.id}]: ${configAch.condition}`, e);
     }
 
     if (unlocked) {
