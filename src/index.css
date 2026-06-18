@@ -1,0 +1,50 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=Noto+Serif+SC:wght@400;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-charcoal text-gray-200 font-sans antialiased;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply px-6 py-3 bg-amber text-charcoal-dark font-bold rounded-lg 
+           hover:bg-amber-light transition-all duration-300 
+           hover:shadow-[0_0_20px_rgba(212,165,116,0.3)] active:scale-95;
+  }
+  .btn-secondary {
+    @apply px-6 py-3 bg-charcoal-light text-amber border border-amber/30 
+           rounded-lg hover:bg-charcoal-light/80 transition-all duration-300 active:scale-95;
+  }
+  .card-dark {
+    @apply bg-charcoal-light border border-amber/20 rounded-xl p-6 
+           hover:border-amber/40 transition-all duration-300;
+  }
+  .glow-text {
+    text-shadow: 0 0 20px rgba(212,165,116,0.4);
+  }
+}
+
+@keyframes breathe {
+  0%, 100% { box-shadow: 0 0 10px rgba(212,165,116,0.2); }
+  50% { box-shadow: 0 0 25px rgba(212,165,116,0.5); }
+}
+
+.animate-breathe {
+  animation: breathe 3s ease-in-out infinite;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #1A1A2E;
+}
+::-webkit-scrollbar-thumb {
+  background: #D4A574;
+  border-radius: 3px;
+}
