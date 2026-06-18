@@ -10,6 +10,7 @@ import {
 } from "@/lib/data-processor";
 import type { PaymentRecord, DesignExportRecord, PhotoRecord } from "@/lib/data-processor";
 import { getPublicUrl, uploadToSupabase } from "@/lib/supabase";
+import { mockImportBatches } from "@/lib/mock-data";
 
 export async function POST(request: Request) {
   try {
@@ -104,6 +105,22 @@ export async function GET(request: Request) {
     const source = searchParams.get("source");
     const page = parseInt(searchParams.get("page") || "1");
     const pageSize = parseInt(searchParams.get("pageSize") || "20");
+    const isMock = searchParams.get("mock") === "true";
+
+    if (isMock) {
+      let filtered = [...mockImportBatches];
+      if (source) {
+        filtered = filtered.filter((b) => b.source === source);
+      }
+      const start = (page - 1) * pageSize;
+      const paginatedData = filtered.slice(start, start + pageSize);
+      return NextResponse.json({
+        data: paginatedData,
+        total: filtered.length,
+        page,
+        pageSize,
+      });
+    }
 
     const user = getCurrentUser();
 
