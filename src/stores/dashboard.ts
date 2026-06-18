@@ -28,6 +28,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
   const testDriveAnomaly = ref<TestDriveAnomaly | null>(null)
   const filterViews = ref<FilterView[]>([])
   const loading = ref(false)
+  const error = ref<string | null>(null)
 
   const filters = ref<FilterState>({
     storeIds: [],
@@ -38,20 +39,31 @@ export const useDashboardStore = defineStore('dashboard', () => {
   })
 
   const activeFilterView = ref<FilterView | null>(null)
+  const shareToken = ref<string | null>(null)
 
   const defaultView = computed(() => filterViews.value.find((v) => v.isDefault) ?? null)
-
   const isLoading = computed(() => loading.value)
+  const hasError = computed(() => error.value !== null)
+  const activeViewId = computed(() => activeFilterView.value?.id)
+
+  function setShareToken(token: string | null) {
+    shareToken.value = token
+  }
+
+  function clearError() {
+    error.value = null
+  }
 
   async function loadDashboard() {
     loading.value = true
+    error.value = null
     try {
       const [ov, vt, ir, pl, td, fv] = await Promise.all([
-        fetchOverview(),
-        fetchVehicleTrend(filters.value),
-        fetchInspectionReport(filters.value),
-        fetchPrepList(filters.value),
-        fetchTestDriveAnomaly(filters.value),
+        fetchOverview(shareToken.value ?? undefined),
+        fetchVehicleTrend(filters.value, activeViewId.value ?? undefined, shareToken.value ?? undefined),
+        fetchInspectionReport(filters.value, activeViewId.value ?? undefined, shareToken.value ?? undefined),
+        fetchPrepList(filters.value, activeViewId.value ?? undefined, shareToken.value ?? undefined),
+        fetchTestDriveAnomaly(filters.value, activeViewId.value ?? undefined, shareToken.value ?? undefined),
         fetchFilterViews(),
       ])
       overview.value = ov
@@ -60,10 +72,13 @@ export const useDashboardStore = defineStore('dashboard', () => {
       prepList.value = pl
       testDriveAnomaly.value = td
       filterViews.value = fv
-      if (defaultView.value) {
+      if (defaultView.value && !activeFilterView.value) {
         activeFilterView.value = defaultView.value
         filters.value = { ...defaultView.value.filters }
       }
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : '加载数据失败'
+      throw e
     } finally {
       loading.value = false
     }
@@ -71,19 +86,23 @@ export const useDashboardStore = defineStore('dashboard', () => {
 
   async function refreshData() {
     loading.value = true
+    error.value = null
     try {
       const [ov, vt, ir, pl, td] = await Promise.all([
-        fetchOverview(),
-        fetchVehicleTrend(filters.value),
-        fetchInspectionReport(filters.value),
-        fetchPrepList(filters.value),
-        fetchTestDriveAnomaly(filters.value),
+        fetchOverview(shareToken.value ?? undefined),
+        fetchVehicleTrend(filters.value, activeViewId.value ?? undefined, shareToken.value ?? undefined),
+        fetchInspectionReport(filters.value, activeViewId.value ?? undefined, shareToken.value ?? undefined),
+        fetchPrepList(filters.value, activeViewId.value ?? undefined, shareToken.value ?? undefined),
+        fetchTestDriveAnomaly(filters.value, activeViewId.value ?? undefined, shareToken.value ?? undefined),
       ])
       overview.value = ov
       vehicleTrend.value = vt
       inspectionReport.value = ir
       prepList.value = pl
       testDriveAnomaly.value = td
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : '刷新数据失败'
+      throw e
     } finally {
       loading.value = false
     }
@@ -102,18 +121,14 @@ export const useDashboardStore = defineStore('dashboard', () => {
   }
 
   async function saveCurrentView(name: string) {
-    const view: FilterView = {
-      id: `fv_${Date.now()}`,
+    const view = await saveFilterView({
       name,
       isDefault: false,
       filters: { ...filters.value },
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }
-    const saved = await saveFilterView(view)
-    filterViews.value.push(saved)
-    activeFilterView.value = saved
-    return saved
+    })
+    filterViews.value.push(view)
+    activeFilterView.value = view
+    return view
   }
 
   async function removeFilterView(id: string) {
@@ -124,6 +139,12 @@ export const useDashboardStore = defineStore('dashboard', () => {
     }
   }
 
+  async function setDefaultView(view: FilterView) {
+    filterViews.value.forEach((v) => {
+      v.isDefault = v.id === view.id
+    })
+  }
+
   return {
     overview,
     vehicleTrend,
@@ -131,15 +152,23 @@ export const useDashboardStore = defineStore('dashboard', () => {
     prepList,
     testDriveAnomaly,
     filterViews,
+    loading,
+    error,
     filters,
     activeFilterView,
+    shareToken,
     defaultView,
     isLoading,
+    hasError,
+    activeViewId,
+    setShareToken,
+    clearError,
     loadDashboard,
     refreshData,
     applyFilters,
     loadFilterView,
     saveCurrentView,
     removeFilterView,
+    setDefaultView,
   }
 })

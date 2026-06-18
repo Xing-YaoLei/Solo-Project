@@ -3,7 +3,8 @@
     <div class="flex items-center gap-3">
       <div class="relative" ref="shareMenuRef">
         <button
-          class="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent/15 text-accent text-sm font-sans hover:bg-accent/25 transition-colors"
+          class="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent/15 text-accent text-sm font-sans hover:bg-accent/25 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          :disabled="store.hasError"
           @click="shareOpen = !shareOpen"
         >
           <Share2 class="w-4 h-4" />
@@ -66,6 +67,9 @@
                 <Copy v-else class="w-3.5 h-3.5 text-ivory/60" />
               </button>
             </div>
+            <p v-if="generatedLink.expiresAt" class="mt-2 text-[10px] font-sans text-ivory/40">
+              链接有效期至 {{ new Date(generatedLink.expiresAt).toLocaleString('zh-CN') }}
+            </p>
           </div>
 
           <p class="mt-3 text-xs font-sans text-ivory/40 leading-relaxed">
@@ -76,7 +80,8 @@
 
       <div class="relative" ref="exportMenuRef">
         <button
-          class="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/10 text-ivory text-sm font-sans hover:bg-white/15 transition-colors"
+          class="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/10 text-ivory text-sm font-sans hover:bg-white/15 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          :disabled="store.hasError"
           @click="exportOpen = !exportOpen"
         >
           <Download class="w-4 h-4" />
@@ -98,7 +103,7 @@
 
           <button
             :disabled="exporting"
-            class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/10 transition-colors text-left"
+            class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/10 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
             @click="handleExport('pdf')"
           >
             <FileText class="w-4 h-4 text-danger" />
@@ -110,7 +115,7 @@
 
           <button
             :disabled="exporting"
-            class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/10 transition-colors text-left"
+            class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/10 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
             @click="handleExport('excel')"
           >
             <FileSpreadsheet class="w-4 h-4 text-success" />
@@ -128,9 +133,14 @@
       {{ successMessage }}
     </div>
 
+    <div v-else-if="errorMessage" class="flex items-center gap-2 text-sm font-sans text-danger animate-pulse">
+      <AlertCircle class="w-4 h-4" />
+      {{ errorMessage }}
+    </div>
+
     <div v-else class="flex items-center gap-4 text-xs font-sans text-ivory/50">
       <div class="flex items-center gap-1.5">
-        <RefreshCw class="w-3.5 h-3.5 text-accent/70" />
+        <RefreshCw class="w-3.5 h-3.5 text-accent/70" :class="{ 'animate-spin': store.isLoading }" />
         <span>数据每 5 分钟自动刷新</span>
       </div>
       <div v-if="store.overview?.turnover" class="flex items-center gap-1.5">
@@ -143,7 +153,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import { Share2, Download, Copy, Check, Loader2, FileText, FileSpreadsheet, CheckCircle, RefreshCw, BarChart3 } from 'lucide-vue-next'
+import { Share2, Download, Copy, Check, Loader2, FileText, FileSpreadsheet, CheckCircle, RefreshCw, BarChart3, AlertCircle } from 'lucide-vue-next'
 import { createShareLink, exportReport } from '@/mock/api'
 import type { ShareLink } from '@/types'
 import { useDashboardStore } from '@/stores/dashboard'
@@ -159,11 +169,13 @@ const generatedLink = ref<ShareLink | null>(null)
 const copied = ref(false)
 const exporting = ref(false)
 const successMessage = ref('')
+const errorMessage = ref('')
 
 const shareMenuRef = ref<HTMLElement | null>(null)
 const exportMenuRef = ref<HTMLElement | null>(null)
 
 let successTimer: ReturnType<typeof setTimeout> | null = null
+let errorTimer: ReturnType<typeof setTimeout> | null = null
 
 function showSuccess(msg: string) {
   successMessage.value = msg
@@ -173,12 +185,27 @@ function showSuccess(msg: string) {
   }, 3000)
 }
 
+function showError(msg: string) {
+  errorMessage.value = msg
+  if (errorTimer) clearTimeout(errorTimer)
+  errorTimer = setTimeout(() => {
+    errorMessage.value = ''
+  }, 3000)
+}
+
 async function handleCreateLink() {
   generatingLink.value = true
   try {
-    const link = await createShareLink(sharePermissions.value, includeTurnover.value)
+    const link = await createShareLink(
+      sharePermissions.value,
+      includeTurnover.value,
+      { ...store.filters },
+      store.activeViewId ?? undefined,
+    )
     generatedLink.value = link
     showSuccess('分享链接已生成')
+  } catch (e) {
+    showError(e instanceof Error ? e.message : '生成分享链接失败')
   } finally {
     generatingLink.value = false
   }
@@ -200,9 +227,17 @@ async function handleCopyLink() {
 async function handleExport(format: 'pdf' | 'excel') {
   exporting.value = true
   try {
-    const fileName = await exportReport(format, { ...store.filters }, includeTurnover.value)
+    const fileName = await exportReport(
+      format,
+      { ...store.filters },
+      includeTurnover.value,
+      store.activeViewId ?? undefined,
+      store.shareToken ?? undefined,
+    )
     exportOpen.value = false
     showSuccess(`已导出: ${fileName}`)
+  } catch (e) {
+    showError(e instanceof Error ? e.message : `导出${format.toUpperCase()}失败`)
   } finally {
     exporting.value = false
   }
@@ -225,5 +260,6 @@ onMounted(() => {
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
   if (successTimer) clearTimeout(successTimer)
+  if (errorTimer) clearTimeout(errorTimer)
 })
 </script>

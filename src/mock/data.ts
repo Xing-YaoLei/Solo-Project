@@ -211,13 +211,15 @@ export function getMockFilterViews(): FilterView[] {
   ]
 }
 
-export function getMockShareLink(): ShareLink {
+export function getMockShareLink(permissions: ('view' | 'export')[] = ['view'], includeTurnover: boolean = true): ShareLink {
+  const token = `share_${Math.random().toString(36).substring(2, 14)}`
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
   return {
-    token: 'share_abc123def456',
-    url: `${window.location.origin}/share/share_abc123def456`,
-    expiresIn: 86400,
-    permissions: ['view'],
-    includesTurnoverMetrics: true,
+    token,
+    url: `${window.location.origin}/share/${token}`,
+    expiresAt,
+    permissions,
+    includesTurnoverMetrics: includeTurnover,
   }
 }
 

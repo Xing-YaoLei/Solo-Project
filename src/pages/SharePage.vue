@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { ShieldAlert, Eye, Download, Loader2, BarChart3 } from 'lucide-vue-next'
+import { ShieldAlert, Eye, Download, Loader2, BarChart3, AlertCircle } from 'lucide-vue-next'
 import { useDashboardStore } from '@/stores/dashboard'
 import VehicleTrend from '@/components/VehicleTrend.vue'
 import InspectionReport from '@/components/InspectionReport.vue'
 import PrepListDetail from '@/components/PrepListDetail.vue'
 import TestDriveAnomaly from '@/components/TestDriveAnomaly.vue'
-import { exportReport } from '@/mock/api'
+import { validateShareLink, exportReport, type ShareLinkValidation } from '@/mock/api'
 
 const props = defineProps<{
   token: string
@@ -17,32 +17,41 @@ const store = useDashboardStore()
 const authorized = ref(false)
 const loading = ref(true)
 const initialLoading = ref(true)
-const permissions = ref<string[]>([])
-const includesTurnover = ref(false)
+const shareValidation = ref<ShareLinkValidation | null>(null)
 const exporting = ref(false)
 const successMessage = ref('')
+const errorMessage = ref('')
 
 onMounted(async () => {
-  await new Promise((resolve) => setTimeout(resolve, 500))
-  const validTokens: Record<string, { permissions: string[]; includesTurnover: boolean }> = {
-    share_abc123def456: { permissions: ['view', 'export'], includesTurnover: true },
-  }
-  const tokenConfig = validTokens[props.token]
-  if (tokenConfig) {
+  try {
+    const validation = await validateShareLink(props.token)
+
+    if (!validation.valid) {
+      authorized.value = false
+      errorMessage.value = '该分享链接已过期或已被撤销'
+      loading.value = false
+      return
+    }
+
     authorized.value = true
-    permissions.value = tokenConfig.permissions
-    includesTurnover.value = tokenConfig.includesTurnover
-    loading.value = false
+    shareValidation.value = validation
+
+    store.setShareToken(props.token)
+    store.filters = { ...validation.filters }
+
     await store.loadDashboard()
     initialLoading.value = false
-  } else {
+    loading.value = false
+  } catch (e) {
     authorized.value = false
+    errorMessage.value = e instanceof Error ? e.message : '链接验证失败'
     loading.value = false
   }
 })
 
-const canView = computed(() => permissions.value.includes('view'))
-const canExport = computed(() => permissions.value.includes('export'))
+const canView = computed(() => shareValidation.value?.permissions.includes('view') ?? false)
+const canExport = computed(() => shareValidation.value?.permissions.includes('export') ?? false)
+const includesTurnover = computed(() => shareValidation.value?.includesTurnoverMetrics ?? false)
 
 const dataSources = computed(() => {
   const ds = store.overview?.dataSources
@@ -54,12 +63,24 @@ const dataSources = computed(() => {
 })
 
 async function handleExport(format: 'pdf' | 'excel') {
+  if (!canExport.value) return
   exporting.value = true
   try {
-    const fileName = await exportReport(format, { ...store.filters }, includesTurnover.value)
+    const fileName = await exportReport(
+      format,
+      { ...store.filters },
+      includesTurnover.value,
+      store.activeViewId ?? undefined,
+      props.token,
+    )
     successMessage.value = `已导出: ${fileName}`
     setTimeout(() => {
       successMessage.value = ''
+    }, 3000)
+  } catch (e) {
+    errorMessage.value = e instanceof Error ? e.message : '导出失败'
+    setTimeout(() => {
+      errorMessage.value = ''
     }, 3000)
   } finally {
     exporting.value = false
@@ -80,11 +101,18 @@ async function handleExport(format: 'pdf' | 'excel') {
       <div class="text-center">
         <ShieldAlert class="w-16 h-16 text-danger mx-auto mb-4" />
         <h2 class="font-serif text-2xl text-ivory mb-2">无权访问</h2>
-        <p class="text-ivory/50 font-sans text-sm">该分享链接无效或已过期，请联系分享者获取新链接</p>
+        <p class="text-ivory/50 font-sans text-sm">
+          {{ errorMessage || '该分享链接无效或已过期，请联系分享者获取新链接' }}
+        </p>
       </div>
     </div>
 
     <template v-else-if="canView">
+      <div v-if="errorMessage" class="bg-danger/10 border-b border-danger/20 px-6 py-2 flex items-center gap-2">
+        <AlertCircle class="w-4 h-4 text-danger" />
+        <span class="text-sm font-sans text-danger">{{ errorMessage }}</span>
+      </div>
+
       <div class="bg-primary border-b border-white/5 px-6 py-3 flex items-center justify-between">
         <div class="flex items-center gap-3">
           <Eye class="w-5 h-5 text-accent" />
@@ -115,7 +143,7 @@ async function handleExport(format: 'pdf' | 'excel') {
           <div v-if="canExport" class="flex items-center gap-2 ml-3">
             <button
               :disabled="exporting"
-              class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/10 text-ivory text-xs font-sans hover:bg-white/15 transition-colors disabled:opacity-50"
+              class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/10 text-ivory text-xs font-sans hover:bg-white/15 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               @click="handleExport('pdf')"
             >
               <Loader2 v-if="exporting" class="w-3.5 h-3.5 animate-spin" />
@@ -124,7 +152,7 @@ async function handleExport(format: 'pdf' | 'excel') {
             </button>
             <button
               :disabled="exporting"
-              class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-accent/15 text-accent text-xs font-sans hover:bg-accent/25 transition-colors disabled:opacity-50"
+              class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-accent/15 text-accent text-xs font-sans hover:bg-accent/25 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               @click="handleExport('excel')"
             >
               <Download class="w-3.5 h-3.5" />
@@ -147,6 +175,9 @@ async function handleExport(format: 'pdf' | 'excel') {
           <div v-if="includesTurnover && store.overview?.turnover" class="flex items-center gap-1.5">
             <BarChart3 class="w-3.5 h-3.5 text-accent" />
             <span>周转口径：已包含 · 平均 <span class="font-mono text-ivory">{{ store.overview.turnover.avgTurnoverDays.toFixed(1) }}</span> 天 · 周转率 <span class="font-mono text-ivory">{{ store.overview.turnover.turnoverRate.toFixed(1) }}</span></span>
+          </div>
+          <div v-if="shareValidation?.expiresAt" class="flex items-center gap-1.5 text-ivory/40">
+            <span>链接有效期至 {{ new Date(shareValidation.expiresAt).toLocaleString('zh-CN') }}</span>
           </div>
         </div>
         <div v-if="successMessage" class="flex items-center gap-1.5 text-xs font-sans text-success animate-pulse">

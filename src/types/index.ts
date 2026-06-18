@@ -124,7 +124,7 @@ export interface FilterView {
 export interface ShareLink {
   token: string
   url: string
-  expiresIn: number
+  expiresAt: string
   permissions: ('view' | 'export')[]
   includesTurnoverMetrics: boolean
 }
