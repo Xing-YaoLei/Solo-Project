@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { LoaderFunction, json } from "@remix-run/node";
-import { useLoaderData, useParams, Form } from "@remix-run/react";
+import { LoaderFunction, json, redirect } from "@remix-run/node";
+import { useLoaderData, useParams, Form, Link } from "@remix-run/react";
+import Layout from "~/components/Layout";
 import { api, VehicleDetailResponse } from "~/lib/api";
 import {
   STAGE_LABELS,
@@ -20,8 +21,12 @@ import type { AcquisitionStage, RiskLevel } from "~/models/vehicle";
 import type { CommunicationType, CommunicationCategory } from "~/models/communication";
 import type { IInspectionItem } from "~/models/inspectionReport";
 import type { IPreparationItem } from "~/models/preparationList";
+import { UserDocument } from "~/models/user";
+import { getUserFromSession } from "~/lib/auth.server";
+import { getVehicleById } from "~/lib/vehicles.server";
 
 interface LoaderData {
+  user: UserDocument;
   vehicle: VehicleDetailResponse["vehicle"];
   error?: string;
 }
@@ -43,22 +48,31 @@ const TAB_LABELS: Record<TabType, string> = {
   communication: "沟通记录",
 };
 
-export const loader: LoaderFunction = async ({ params, request }) => {
+export const loader: LoaderFunction = async ({ params, request, context }) => {
+  const user = await getUserFromSession(context as any);
+  if (!user) {
+    return redirect("/login");
+  }
+
   try {
     const id = params.id;
     if (!id) {
-      return json<LoaderData>({ vehicle: {} as any, error: "车辆ID不存在" });
+      return json<LoaderData>({ user: user.toJSON() as any, vehicle: {} as any, error: "车辆ID不存在" });
     }
-    const data = await api.vehicles.get(id);
-    return json<LoaderData>({ vehicle: data.vehicle });
+    const data = await getVehicleById(id, user);
+    if (!data) {
+      return json<LoaderData>({ user: user.toJSON() as any, vehicle: {} as any, error: "车辆不存在或无权限访问" });
+    }
+    return json<LoaderData>({ user: user.toJSON() as any, vehicle: data as any });
   } catch (e: any) {
-    return json<LoaderData>({ vehicle: {} as any, error: e.message || "加载失败" });
+    return json<LoaderData>({ user: user.toJSON() as any, vehicle: {} as any, error: e.message || "加载失败" });
   }
 };
 
 export default function VehicleDetail() {
   const loaderData = useLoaderData<LoaderData>();
   const vehicle = loaderData.vehicle as VehicleDetailResponse["vehicle"];
+  const user = loaderData.user as any;
   const error = loaderData.error;
   const [activeTab, setActiveTab] = useState<TabType>("archive");
   const [showAddCommunication, setShowAddCommunication] = useState(false);
@@ -67,11 +81,12 @@ export default function VehicleDetail() {
 
   if (error) {
     return (
-      <div className="main-content">
-        <div className="container">
-          <div className="alert alert-error">{error}</div>
-        </div>
-      </div>
+      <Layout user={user} title="车辆详情">
+        <div className="alert alert-error">{error}</div>
+        <Link to="/vehicles" className="btn btn-secondary" style={{ marginTop: "16px" }}>
+          ← 返回车辆列表
+        </Link>
+      </Layout>
     );
   }
 
@@ -1297,25 +1312,27 @@ export default function VehicleDetail() {
   };
 
   return (
-    <div className="main-content">
-      <div className="topbar">
+    <Layout user={user} title={`${vehicle.brand} ${vehicle.vehicleModel}`}>
+      <div className="page-header">
         <div>
-          <div className="page-title">
+          <h1 className="page-title">
             {vehicle.brand} {vehicle.vehicleModel} ({vehicle.year})
-          </div>
-          <div style={{ fontSize: "14px", color: "#6b7280" }}>
-            车牌号：{vehicle.plateNumber}
+          </h1>
+          <div style={{ color: "#6b7280", marginTop: "4px" }}>
+            车牌号：{vehicle.plateNumber} · {STAGE_LABELS[vehicle.stage as AcquisitionStage]}
           </div>
         </div>
-        <div className="topbar-user">
-          <span
-            className={`badge badge-stage`}>
+        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+          <Link to="/vehicles" className="btn btn-secondary">
+            ← 返回列表
+          </Link>
+          <span className={`badge badge-stage`}>
             {STAGE_LABELS[vehicle.stage as AcquisitionStage]}
           </span>
         </div>
       </div>
 
-      <div className="container">
+      <div>
         {renderRiskIndicator()}
         {renderProgressBar()}
 
@@ -1335,6 +1352,6 @@ export default function VehicleDetail() {
 
       {renderAddCommunicationModal()}
       {renderReviewModal()}
-    </div>
+    </Layout>
   );
 }

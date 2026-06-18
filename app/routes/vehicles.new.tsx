@@ -13,11 +13,12 @@ import {
   DOCUMENT_NAMES,
 } from "~/lib/constants";
 import { UserDocument } from "~/models/user";
-import { getUserFromSession } from "~/lib/auth.server";
+import { getUserFromSession, getAllUsers } from "~/lib/auth.server";
 import { createVehicle } from "~/lib/vehicles.server";
 
 interface LoaderData {
   user: UserDocument;
+  users: { _id: string; name: string; role: string }[];
 }
 
 interface ActionData {
@@ -31,7 +32,11 @@ export const loader: LoaderFunction = async ({ context }) => {
   if (!user) {
     return redirect("/login");
   }
-  return json<LoaderData>({ user: user.toJSON() as any });
+  const allUsers = await getAllUsers();
+  return json<LoaderData>({
+    user: user.toJSON() as any,
+    users: allUsers.map((u) => ({ _id: u._id.toString(), name: u.name, role: u.role })),
+  });
 };
 
 export const action: ActionFunction = async ({ request, context }) => {
@@ -43,6 +48,7 @@ export const action: ActionFunction = async ({ request, context }) => {
   const formData = await request.formData();
 
   try {
+    const assignedTo = formData.get("assignedTo") as string;
     const vehicleData = {
       plateNumber: formData.get("plateNumber") as string,
       vin: formData.get("vin") as string,
@@ -58,6 +64,7 @@ export const action: ActionFunction = async ({ request, context }) => {
       firstOwnerName: formData.get("firstOwnerName") as string || undefined,
       firstOwnerPhone: formData.get("firstOwnerPhone") as string || undefined,
       notes: formData.get("notes") as string || undefined,
+      assignedTo: assignedTo || undefined,
       documentCheck: {
         registration: formData.get("doc_registration") === "on",
         drivingLicense: formData.get("doc_drivingLicense") === "on",
@@ -86,6 +93,7 @@ export default function NewVehicle() {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const user = loaderData.user as any;
+  const users = loaderData.users;
 
   const documentKeys = [
     "registration",
@@ -270,6 +278,20 @@ export default function NewVehicle() {
           <div className="form-section">
             <h3 className="form-section-title">车主信息</h3>
             <div className="form-grid">
+              <div className="form-group">
+                <label className="form-label">
+                  负责人 <span style={{ color: "#ef4444" }}>*</span>
+                </label>
+                <select name="assignedTo" className="form-input" required>
+                  <option value="">请选择负责人</option>
+                  {users.map((u) => (
+                    <option key={u._id} value={u._id}>
+                      {u.name} ({u.role === "manager" ? "经理" : "业务员"})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div className="form-group">
                 <label className="form-label">原车主姓名</label>
                 <input

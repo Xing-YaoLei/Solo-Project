@@ -134,3 +134,14 @@ export async function createDefaultUsers(): Promise<void> {
 
   console.log("✅ 默认账号已创建");
 }
+
+export async function getAllUsers(): Promise<UserDocument[]> {
+  const connected = await connectToMongo();
+  if (!connected) return [];
+
+  try {
+    return await User.find({ isActive: true }).select("-password").sort({ name: 1 });
+  } catch {
+    return [];
+  }
+}
