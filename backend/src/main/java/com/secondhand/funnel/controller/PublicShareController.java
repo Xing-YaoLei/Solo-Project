@@ -128,17 +128,20 @@ public class PublicShareController {
     }
 
     private UserRole parseRole(String role) {
+        if (role == null || role.trim().isEmpty()) {
+            return UserRole.EXTERNAL;
+        }
         try {
-            switch (role.toLowerCase()) {
-                case "manager": return UserRole.STORE_MANAGER;
+            return UserRole.valueOf(role.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            switch (role.trim().toLowerCase()) {
                 case "assessor": return UserRole.ASSESSOR;
                 case "sales": return UserRole.SALES;
                 case "finance": return UserRole.FINANCE_STAFF;
+                case "manager": return UserRole.STORE_MANAGER;
                 case "external": return UserRole.EXTERNAL;
                 default: return UserRole.EXTERNAL;
             }
-        } catch (Exception e) {
-            return UserRole.EXTERNAL;
         }
     }
 }

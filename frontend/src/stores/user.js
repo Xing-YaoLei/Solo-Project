@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { login as loginApi, logout as logoutApi, getUserInfo } from '@/api/user'
-import { ROLES, ROLE_LABELS } from '@/utils/permission'
+import { ROLES, ROLE_LABELS, toBackendRole } from '@/utils/permission'
 
 export const useUserStore = defineStore('user', () => {
   const token = ref(localStorage.getItem('token') || '')
@@ -14,7 +14,13 @@ export const useUserStore = defineStore('user', () => {
   const userAvatar = computed(() => userInfo.value?.avatar || '')
   const roleLabel = computed(() => ROLE_LABELS[userRole.value] || '')
   const isAdmin = computed(() => userRole.value === ROLES.ADMIN)
-  const isExternal = computed(() => userRole.value === ROLES.EXTERNAL)
+  const isExternal = computed(() => {
+    const role = userRole.value
+    if (!role) return true
+    const backendRole = toBackendRole(role)
+    return backendRole === 'EXTERNAL'
+  })
+  const backendRole = computed(() => toBackendRole(userRole.value))
 
   async function login(loginForm) {
     loginLoading.value = true
@@ -70,6 +76,7 @@ export const useUserStore = defineStore('user', () => {
     roleLabel,
     isAdmin,
     isExternal,
+    backendRole,
     login,
     logout,
     fetchUserInfo,

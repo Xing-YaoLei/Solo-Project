@@ -125,10 +125,12 @@ import {
 } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
 import { getPublicShareData } from '@/api/share'
-import { filterSensitiveData } from '@/utils/permission'
+import { filterSensitiveData, toBackendRole } from '@/utils/permission'
+import { useUserStore } from '@/stores/user'
 
 const route = useRoute()
 const router = useRouter()
+const userStore = useUserStore()
 
 const loading = ref(true)
 const error = ref(false)
@@ -180,23 +182,15 @@ onMounted(async () => {
     return
   }
 
+  let accessRole = 'EXTERNAL'
+
   const queryRole = route.query.role
-  let accessRole = null
   if (queryRole) {
-    accessRole = String(queryRole).toUpperCase()
+    accessRole = toBackendRole(queryRole)
+  } else if (userStore.isLoggedIn && userStore.backendRole) {
+    accessRole = userStore.backendRole
   }
-  if (!accessRole) {
-    try {
-      const u = localStorage.getItem('funnel_user')
-      if (u) {
-        const parsed = JSON.parse(u)
-        accessRole = parsed?.role
-      }
-    } catch (e) {}
-  }
-  if (!accessRole) {
-    accessRole = 'EXTERNAL'
-  }
+
   isExternal.value = accessRole === 'EXTERNAL'
 
   try {
