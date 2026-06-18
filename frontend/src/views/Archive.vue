@@ -452,7 +452,18 @@ function fillForm(row) {
   })
   if (row.archiveData) {
     Object.assign(archiveForm, row.archiveData)
+    if (row.archiveData.mileage) {
+      form.mileage = String(row.archiveData.mileage).replace('万公里', '')
+    }
   }
+}
+
+function validateArchiveComplete() {
+  const requiredBase = ['plateNumber', 'vin', 'brand', 'model', 'year', 'mileage', 'color', 'operator']
+  const baseOk = requiredBase.every(f => form[f] && String(form[f]).trim() !== '')
+  const requiredArchive = ['condition', 'accidentHistory', 'maintenanceRecords', 'interior', 'paint', 'tireWear', 'engineStatus', 'gearboxStatus']
+  const archiveOk = requiredArchive.every(f => archiveForm[f] && String(archiveForm[f]).trim() !== '')
+  return baseOk && archiveOk
 }
 
 async function handleSave() {
@@ -462,7 +473,18 @@ async function handleSave() {
   }
   submitting.value = true
   try {
-    const archiveData = { ...archiveForm }
+    const archiveData = {
+      ...archiveForm,
+      plateNumber: form.plateNumber,
+      vin: form.vin,
+      brand: form.brand,
+      model: form.model,
+      year: form.year,
+      mileage: form.mileage,
+      color: form.color,
+      operator: form.operator
+    }
+    const isComplete = validateArchiveComplete()
     let targetCarId = form.carId
     if (!targetCarId) {
       for (const [id, car] of vehicleMap.value.entries()) {
@@ -478,9 +500,9 @@ async function handleSave() {
     }
     const saved = await saveArchiveByCar(targetCarId, {
       archiveData,
-      isComplete: form.isComplete
+      isComplete
     })
-    ElMessage.success('档案保存成功')
+    ElMessage.success(isComplete ? '档案保存成功，已标记为完整' : '档案保存成功，请补充完整后标记为已完成')
     dialogVisible.value = false
     await loadData()
   } catch (e) {

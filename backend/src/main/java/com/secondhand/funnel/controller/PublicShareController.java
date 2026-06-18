@@ -36,17 +36,12 @@ public class PublicShareController {
             @PathVariable String token,
             @RequestHeader(value = "X-User-Role", required = false) String roleHeader) {
 
-        UserRole accessRole;
-        try {
-            ShareLink link = shareLinkService.getByToken(token);
-            String scope = link.getRoleScope();
-            boolean includeSensitive = Boolean.TRUE.equals(link.getIncludeSensitive());
-            accessRole = roleHeader != null ? parseRole(roleHeader) :
-                    (includeSensitive ? UserRole.STORE_MANAGER : UserRole.EXTERNAL);
-            shareLinkService.validateAndAccess(token, accessRole);
-        } catch (Exception e) {
-            accessRole = UserRole.EXTERNAL;
-        }
+        ShareLink link = shareLinkService.getByToken(token);
+        String scope = link.getRoleScope();
+        boolean includeSensitive = Boolean.TRUE.equals(link.getIncludeSensitive());
+        UserRole accessRole = roleHeader != null ? parseRole(roleHeader) :
+                (includeSensitive ? UserRole.STORE_MANAGER : UserRole.EXTERNAL);
+        shareLinkService.validateAndAccess(token, accessRole);
 
         boolean isExternal = accessRole == UserRole.EXTERNAL;
 

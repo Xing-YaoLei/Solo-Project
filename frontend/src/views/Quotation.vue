@@ -6,6 +6,7 @@
         <p class="page-desc">查看所有车辆的报价记录和历史变更</p>
       </div>
       <div class="header-actions">
+        <el-button :icon="Plus" type="primary" @click="openAddQuotation">新增报价</el-button>
         <el-button :icon="Download" @click="handleExport">导出 Excel</el-button>
       </div>
     </div>
@@ -86,9 +87,10 @@
         <el-table-column prop="updatedAt" label="更新时间" width="170">
           <template #default="{ row }">{{ formatTime(row.updatedAt) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="100" fixed="right">
+        <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" size="small" link @click="showHistory(row)">详情</el-button>
+            <el-button type="primary" size="small" link @click="openEditQuotation(row)">编辑报价</el-button>
+            <el-button type="success" size="small" link @click="showHistory(row)">历史</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -104,6 +106,55 @@
         />
       </div>
     </el-card>
+
+    <el-dialog v-model="quotationVisible" :title="quotationMode === 'add' ? '新增报价' : '编辑报价'" width="560px">
+      <el-form :model="quotationForm" label-width="100px" ref="quotationFormRef">
+        <el-form-item label="选择车辆" required>
+          <el-select
+            v-model="quotationForm.carId"
+            placeholder="请选择车辆"
+            style="width:100%"
+            filterable
+            :disabled="quotationMode === 'edit'"
+          >
+            <el-option
+              v-for="v in carOptions"
+              :key="v.id"
+              :label="`${v.plateNumber} - ${v.brand} ${v.model}`"
+              :value="v.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="报价(元)" required>
+          <el-input-number
+            v-model="quotationForm.price"
+            :min="0"
+            :step="1000"
+            :precision="2"
+            style="width:100%"
+          />
+        </el-form-item>
+        <el-form-item label="有效期(天)" required>
+          <el-input-number
+            v-model="quotationForm.validDays"
+            :min="1"
+            :max="365"
+            style="width:100%"
+          />
+        </el-form-item>
+        <el-form-item label="报价人">
+          <el-select v-model="quotationForm.quotedBy" style="width:100%">
+            <el-option label="评估师1" :value="1" />
+            <el-option label="评估师2" :value="2" />
+            <el-option label="评估师3" :value="3" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="quotationVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleSaveQuotation" :loading="submitting">保存</el-button>
+      </template>
+    </el-dialog>
 
     <el-dialog v-model="historyVisible" title="报价历史记录" width="640px">
       <el-timeline v-if="currentVehicle">
@@ -139,13 +190,15 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { exportToExcel } from '@/utils/download'
-import { Download, Search, RefreshLeft } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
+import { Download, Search, RefreshLeft, Plus } from '@element-plus/icons-vue'
+import { ElMessage, ElForm } from 'element-plus'
 import dayjs from 'dayjs'
 import {
   getQuotationList,
   getQuotationsByCar,
-  getQuotationsByUser
+  getQuotationsByUser,
+  createQuotation,
+  updateQuotation
 } from '@/api/quotation'
 import { getAllFunnelVehicles } from '@/api/funnel'
 
@@ -154,6 +207,19 @@ const userStore = useUserStore()
 const loading = ref(false)
 const historyVisible = ref(false)
 const currentVehicle = ref(null)
+const quotationVisible = ref(false)
+const quotationMode = ref('add')
+const submitting = ref(false)
+const quotationFormRef = ref()
+const quotationForm = reactive({
+  id: null,
+  carId: null,
+  price: null,
+  validDays: 7,
+  quotedBy: 1
+})
+
+const carOptions = computed(() => Array.from(vehicleMap.value.values()).filter(v => v.plateNumber))
 
 const filters = reactive({
   brand: '',
@@ -307,6 +373,61 @@ function getPriceDiffClass(diff) {
 function showHistory(row) {
   currentVehicle.value = row
   historyVisible.value = true
+}
+
+function openAddQuotation() {
+  quotationMode.value = 'add'
+  Object.assign(quotationForm, {
+    id: null,
+    carId: null,
+    price: null,
+    validDays: 7,
+    quotedBy: 1
+  })
+  quotationVisible.value = true
+}
+
+function openEditQuotation(row) {
+  quotationMode.value = 'edit'
+  Object.assign(quotationForm, {
+    id: row.id,
+    carId: row.carId,
+    price: row.currentPrice,
+    validDays: 7,
+    quotedBy: 1
+  })
+  quotationVisible.value = true
+}
+
+async function handleSaveQuotation() {
+  if (!quotationForm.carId) {
+    ElMessage.warning('请选择车辆')
+    return
+  }
+  if (!quotationForm.price || quotationForm.price <= 0) {
+    ElMessage.warning('请输入有效的报价金额')
+    return
+  }
+  if (!quotationForm.validDays || quotationForm.validDays < 1) {
+    ElMessage.warning('请输入有效的有效期')
+    return
+  }
+  submitting.value = true
+  try {
+    await createQuotation({
+      carId: Number(quotationForm.carId),
+      price: Number(quotationForm.price),
+      validDays: Number(quotationForm.validDays),
+      quotedBy: Number(quotationForm.quotedBy)
+    })
+    ElMessage.success(quotationMode.value === 'add' ? '报价创建成功' : '报价更新成功')
+    quotationVisible.value = false
+    await loadData()
+  } catch (e) {
+    ElMessage.error('保存失败：' + (e?.message || '未知错误'))
+  } finally {
+    submitting.value = false
+  }
 }
 
 function handleSearch() {

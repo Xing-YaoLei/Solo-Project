@@ -19,8 +19,9 @@ import java.util.Optional;
 public class VehicleArchiveServiceImpl implements VehicleArchiveService {
 
     private static final List<String> REQUIRED_FIELDS = List.of(
-            "carVin", "plateNumber", "brand", "model", "mileage",
-            "registerDate", "ownerInfo", "accidentHistory", "maintenanceRecords"
+            "vin", "plateNumber", "brand", "model", "year", "mileage", "color", "operator",
+            "condition", "accidentHistory", "maintenanceRecords", "interior",
+            "paint", "tireWear", "engineStatus", "gearboxStatus"
     );
 
     private final VehicleArchiveRepository vehicleArchiveRepository;
