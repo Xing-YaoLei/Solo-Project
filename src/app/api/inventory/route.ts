@@ -10,17 +10,17 @@ export async function GET(request: Request) {
 
   switch (action) {
     case "safety":
-      return NextResponse.json({ items: getSafetyStocks(siteId) });
+      return NextResponse.json({ items: await getSafetyStocks(siteId) });
     case "inventory":
-      return NextResponse.json({ items: getInventoryRecords(siteId, materialId) });
+      return NextResponse.json({ items: await getInventoryRecords(siteId, materialId) });
     case "diffs":
-      return NextResponse.json({ items: getStockCountDiffs(siteId) });
+      return NextResponse.json({ items: await getStockCountDiffs(siteId) });
     case "drilldown":
       if (!diffId) return NextResponse.json({ error: "diffId required" }, { status: 400 });
-      return NextResponse.json(getStockDiffDrilldown(diffId));
+      return NextResponse.json(await getStockDiffDrilldown(diffId));
     case "samples":
       if (!diffId) return NextResponse.json({ error: "diffId required" }, { status: 400 });
-      return NextResponse.json({ items: getRawSamples(diffId) });
+      return NextResponse.json({ items: await getRawSamples(diffId) });
     default:
       return NextResponse.json({ error: "unknown action" }, { status: 400 });
   }

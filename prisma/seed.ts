@@ -226,6 +226,65 @@ async function main() {
     ],
   });
 
+  const supervisorPhotos: any[] = [];
+  for (let i = 0; i < 156; i++) {
+    const site = sites[i % sites.length];
+    const isFailed = i < 8;
+    supervisorPhotos.push({
+      siteId: site.id,
+      fileName: `photo_${String(20260601 + i).padStart(8, "0")}.jpg`,
+      photoType: pick([PhotoType.ACCEPTANCE, PhotoType.DELIVERY, PhotoType.MATERIAL, PhotoType.SITE, PhotoType.INSPECTION]),
+      photoUrl: `https://picsum.photos/seed/photo${i}/800/600`,
+      takenAt: daysAgo(Math.round(rnd(1, 30))),
+      uploader: pick(["李监理", "王监理", "张监理", "陈监理"]),
+      remark: isFailed ? pick(["上传超时", "文件损坏", "格式不支持", "鉴权失败"]) : "正常",
+      syncStatus: isFailed ? SyncStatus.FAILED : SyncStatus.SYNCED,
+      syncError: isFailed ? pick(["OSS 返回 403 Forbidden", "网络超时 ETIMEDOUT", "图片格式校验失败", "Supabase 鉴权失败", "文件大小超出限制 50MB"]) : null,
+    });
+  }
+  const createdPhotos = await prisma.supervisorPhoto.createManyAndReturn({ data: supervisorPhotos });
+  console.log(`  📷 监理照片: 共 ${createdPhotos.length} 条，其中 ${supervisorPhotos.filter(p => p.syncStatus === SyncStatus.FAILED).length} 条 FAILED`);
+
+  const paymentRecords: any[] = [];
+  for (let i = 0; i < 45; i++) {
+    const site = sites[i % sites.length];
+    const isFailed = i < 3;
+    paymentRecords.push({
+      siteId: site.id,
+      voucherNo: `SK${String(202606000 + i).padStart(8, "0")}`,
+      amount: Math.round(rnd(3000, 80000)),
+      paymentType: pick([PaymentType.CASH, PaymentType.BANK_TRANSFER, PaymentType.ALIPAY, PaymentType.WECHAT]),
+      payer: pick(["张先生", "李女士", "王先生", "陈先生", "赵女士"]),
+      payee: "家装公司财务部",
+      paidAt: daysAgo(Math.round(rnd(1, 45))),
+      purchaseOrderId: null,
+      remark: isFailed ? pick(["凭证号重复", "金额不匹配", "付款人信息缺失"]) : "已确认到账",
+      syncStatus: isFailed ? SyncStatus.FAILED : SyncStatus.SYNCED,
+      syncError: isFailed ? pick(["财务系统凭证号重复", "ERP 返回金额不匹配", "付款人 ID 与合同不一致", "银行接口异常"]) : null,
+    });
+  }
+  const createdPayments = await prisma.paymentRecord.createManyAndReturn({ data: paymentRecords });
+  console.log(`  💰 收款记录: 共 ${createdPayments.length} 条，其中 ${paymentRecords.filter(p => p.syncStatus === SyncStatus.FAILED).length} 条 FAILED`);
+
+  const purchaseOrders: any[] = [];
+  for (let i = 0; i < 92; i++) {
+    const site = sites[i % sites.length];
+    const isFailed = i < 4;
+    purchaseOrders.push({
+      siteId: site.id,
+      orderNo: `PO${String(202606000 + i).padStart(8, "0")}`,
+      supplier: pick(["华东建材有限公司", "绿源木业", "恒通管材", "金盾涂料", "恒辉瓷砖"]),
+      totalAmount: Math.round(rnd(5000, 120000)),
+      status: pick([PurchaseStatus.PENDING, PurchaseStatus.SUBMITTED, PurchaseStatus.APPROVED, PurchaseStatus.RECEIVED, PurchaseStatus.CLOSED]),
+      orderedAt: daysAgo(Math.round(rnd(2, 60))),
+      remark: isFailed ? pick(["供应商未确认", "审批人已离职", "物料编码错误"]) : "正常流转",
+      syncStatus: isFailed ? SyncStatus.FAILED : SyncStatus.SYNCED,
+      syncError: isFailed ? pick(["ERP 订单状态回写失败", "供应商接口 500", "审批节点不存在", "物料编码在主数据中查无此人"]) : null,
+    });
+  }
+  const createdOrders = await prisma.purchaseOrder.createManyAndReturn({ data: purchaseOrders });
+  console.log(`  📋 采购单: 共 ${createdOrders.length} 条，其中 ${purchaseOrders.filter(p => p.syncStatus === SyncStatus.FAILED).length} 条 FAILED`);
+
   console.log("✅ 种子数据创建完成");
 }
 

@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     caliberVersion: body.caliberVersion || CALIBER_VERSION,
   };
 
-  const exportData = buildExportData(params);
+  const exportData = await buildExportData(params);
   const wb = XLSX.utils.book_new();
 
   const metaSheet = [

@@ -21,7 +21,7 @@ import {
   MockPurchaseOrder,
   MockSyncTask,
 } from "./mockData";
-import { STAGE_ORDER, CALIBER_VERSION, SYNC_TASK_LABELS, ANOMALY_TYPE_LABELS } from "./constants";
+import { STAGE_ORDER, STAGE_LABELS, CALIBER_VERSION, SYNC_TASK_LABELS, ANOMALY_TYPE_LABELS } from "./constants";
 
 const DB_CONFIG_ERROR = `PostgreSQL/Supabase 未配置或连接失败，请在项目根目录创建 .env 文件并配置 DATABASE_URL，然后执行 npx prisma db push && npx prisma seed。同步异常和任务状态必须持久化写入数据库。`;
 
@@ -86,57 +86,73 @@ export interface FunnelStageData {
   conversionRate: number;
 }
 
-export function getFunnelData(filters: FunnelFilters = {}) {
-  let arrivals = [...MOCK_ARRIVALS];
-  if (filters.siteId) arrivals = arrivals.filter((a) => a.siteId === filters.siteId);
+export async function getFunnelData(filters: FunnelFilters = {}) {
+  const prisma = await getPrisma(true);
+
+  const where: any = {};
+  if (filters.siteId) where.siteId = filters.siteId;
+  if (filters.caliberVersion) where.caliberVersion = filters.caliberVersion;
+  if (filters.dateFrom || filters.dateTo) {
+    where.plannedDate = {};
+    if (filters.dateFrom) where.plannedDate.gte = new Date(filters.dateFrom);
+    if (filters.dateTo) where.plannedDate.lte = new Date(filters.dateTo);
+  }
+
   if (filters.materialCategory) {
-    const matIds = MOCK_MATERIALS.filter((m) => m.category === filters.materialCategory).map((m) => m.id);
-    arrivals = arrivals.filter((a) => matIds.includes(a.materialId));
+    const materials = await prisma.material.findMany({
+      where: { category: filters.materialCategory },
+      select: { id: true },
+    });
+    where.materialId = { in: materials.map((m: any) => m.id) };
   }
-  if (filters.dateFrom) {
-    const from = new Date(filters.dateFrom);
-    arrivals = arrivals.filter((a) => a.plannedDate >= from);
-  }
-  if (filters.dateTo) {
-    const to = new Date(filters.dateTo);
-    arrivals = arrivals.filter((a) => a.plannedDate <= to);
-  }
+
+  const arrivals = await prisma.materialArrival.findMany({
+    where,
+    include: { material: true },
+  });
 
   const stages: FunnelStageData[] = STAGE_ORDER.map((stage, idx) => {
     const stageIdx = STAGE_ORDER.indexOf(stage);
-    const stageArrivals = arrivals.filter((a) => {
+    const stageArrivals = arrivals.filter((a: any) => {
       const aIdx = STAGE_ORDER.indexOf(a.stage);
       return aIdx >= stageIdx;
     });
-    const qtySum = stageArrivals.reduce((s, a) => s + (stageIdx === 0 ? a.plannedQty : a.actualQty || 0), 0);
-    const shortageArrivals = stageArrivals.filter((a) => a.hasShortage);
-    const validTurnover = stageArrivals.filter((a) => a.turnoverDays !== null) as (MockMaterialArrival & { turnoverDays: number })[];
+    const qtySum = stageArrivals.reduce(
+      (s: number, a: any) => s + (stageIdx === 0 ? Number(a.plannedQty) : Number(a.actualQty || 0)),
+      0
+    );
+    const shortageArrivals = stageArrivals.filter((a: any) => a.hasShortage);
+    const validTurnover = stageArrivals.filter((a: any) => a.turnoverDays !== null);
 
     const prevStage = idx > 0 ? STAGE_ORDER[idx - 1] : null;
     let prevQty = 0;
     if (prevStage) {
       const prevIdx = STAGE_ORDER.indexOf(prevStage);
-      const prevArrivals = arrivals.filter((a) => {
+      const prevArrivals = arrivals.filter((a: any) => {
         const aIdx = STAGE_ORDER.indexOf(a.stage);
         return aIdx >= prevIdx;
       });
-      prevQty = prevArrivals.reduce((s, a) => s + (prevIdx === 0 ? a.plannedQty : a.actualQty || 0), 0);
+      prevQty = prevArrivals.reduce(
+        (s: number, a: any) => s + (prevIdx === 0 ? Number(a.plannedQty) : Number(a.actualQty || 0)),
+        0
+      );
     }
 
     return {
       stage,
-      label: STAGE_ORDER[idx] === FunnelStage.DEMAND_PLAN ? "需求计划" :
-        STAGE_ORDER[idx] === FunnelStage.PURCHASE_ORDER ? "采购下单" :
-        STAGE_ORDER[idx] === FunnelStage.WAREHOUSE_OUT ? "仓库出库" :
-        STAGE_ORDER[idx] === FunnelStage.SITE_DELIVERY ? "工地送达" :
-        STAGE_ORDER[idx] === FunnelStage.SITE_ACCEPTANCE ? "现场验收" : "实际使用",
+      label: STAGE_LABELS[stage],
       value: qtySum,
       count: stageArrivals.length,
-      shortageQty: shortageArrivals.reduce((s, a) => s + a.shortageQty, 0),
+      shortageQty: shortageArrivals.reduce((s: number, a: any) => s + Number(a.shortageQty), 0),
       shortageCount: shortageArrivals.length,
-      avgTurnoverDays: validTurnover.length > 0
-        ? Math.round((validTurnover.reduce((s, a) => s + a.turnoverDays, 0) / validTurnover.length) * 10) / 10
-        : 0,
+      avgTurnoverDays:
+        validTurnover.length > 0
+          ? Math.round(
+              (validTurnover.reduce((s: number, a: any) => s + Number(a.turnoverDays), 0) /
+                validTurnover.length) *
+                10
+            ) / 10
+          : 0,
       conversionRate: prevQty > 0 ? Math.round((qtySum / prevQty) * 1000) / 10 : 100,
     };
   });
@@ -145,23 +161,39 @@ export function getFunnelData(filters: FunnelFilters = {}) {
     stages,
     filters: {
       ...filters,
-      caliberVersion: filters.caliberVersion || "v1.0",
+      caliberVersion: filters.caliberVersion || CALIBER_VERSION,
     },
     totalPlanned: stages[0]?.value || 0,
     totalCompleted: stages[stages.length - 1]?.value || 0,
-    overallConversion: stages[0]?.value > 0
-      ? Math.round((stages[stages.length - 1].value / stages[0].value) * 1000) / 10
-      : 0,
+    overallConversion:
+      stages[0]?.value > 0
+        ? Math.round((stages[stages.length - 1].value / stages[0].value) * 1000) / 10
+        : 0,
     totalShortage: stages.reduce((s, st) => s + st.shortageQty, 0),
   };
 }
 
-export function getSites() {
-  return MOCK_SITES;
+export async function getSites() {
+  const prisma = await getPrisma(true);
+  return prisma.constructionSite.findMany({
+    orderBy: { projectNo: "asc" },
+  });
 }
 
-export function getMaterials() {
-  return MOCK_MATERIALS;
+export async function getMaterials() {
+  const prisma = await getPrisma(true);
+  return prisma.material.findMany({
+    orderBy: { code: "asc" },
+  });
+}
+
+export async function getMaterialCategories() {
+  const prisma = await getPrisma(true);
+  const materials = await prisma.material.findMany({
+    select: { category: true },
+    distinct: ["category"],
+  });
+  return materials.map((m: any) => m.category);
 }
 
 export async function getSyncTasks() {
@@ -169,17 +201,6 @@ export async function getSyncTasks() {
   const tasks = await prisma.syncTask.findMany({
     orderBy: { createdAt: "asc" },
   });
-  if (tasks.length === 0) {
-    return MOCK_SYNC_TASKS.map((t) => ({
-      id: t.id,
-      taskType: t.taskType,
-      status: t.status,
-      totalCount: t.totalCount,
-      successCount: t.successCount,
-      failedCount: t.failedCount,
-      lastRun: t.lastRun,
-    }));
-  }
   return tasks.map((t: any) => ({
     id: t.id,
     taskType: t.taskType,
@@ -220,7 +241,7 @@ export async function getAnomalies(filters: AnomalyFilters = {}) {
     },
   });
 
-  const result = anomalies.map((a: any) => ({
+  return anomalies.map((a: any) => ({
     id: a.id,
     anomalyType: a.anomalyType,
     severity: a.severity,
@@ -239,11 +260,6 @@ export async function getAnomalies(filters: AnomalyFilters = {}) {
     materialName: a.arrival?.material?.name,
     batchNo: a.arrival?.batchNo,
   }));
-
-  if (result.length === 0 && Object.keys(filters).every((k) => !(filters as any)[k])) {
-    return MOCK_ANOMALIES.map((a) => enrichAnomaly(a));
-  }
-  return result;
 }
 
 function enrichAnomaly(a: MockAnomaly) {
@@ -259,96 +275,158 @@ function enrichAnomaly(a: MockAnomaly) {
   };
 }
 
-export function getSafetyStocks(siteId?: string) {
-  let list = MOCK_SAFETY_STOCKS;
-  if (siteId) list = list.filter((s) => s.siteId === siteId);
-  return list.map((s) => ({
+export async function getSafetyStocks(siteId?: string) {
+  const prisma = await getPrisma(true);
+  const where: any = {};
+  if (siteId) where.siteId = siteId;
+  const stocks = await prisma.safetyStock.findMany({
+    where,
+    include: { material: true },
+  });
+  return stocks.map((s: any) => ({
     ...s,
-    materialName: MOCK_MATERIALS.find((m) => m.id === s.materialId)?.name,
-    materialCode: MOCK_MATERIALS.find((m) => m.id === s.materialId)?.code,
-    unit: MOCK_MATERIALS.find((m) => m.id === s.materialId)?.unit,
-    status: s.currentStock < s.minQty ? "不足" : s.currentStock > s.maxQty ? "过高" : "正常",
+    materialName: s.material?.name,
+    materialCode: s.material?.code,
+    unit: s.material?.unit,
+    status:
+      Number(s.currentStock) < Number(s.minQty)
+        ? "不足"
+        : Number(s.currentStock) > Number(s.maxQty)
+          ? "过高"
+          : "正常",
   }));
 }
 
-export function getInventoryRecords(siteId?: string, materialId?: string, limit = 50) {
-  let list = [...MOCK_INVENTORY_RECORDS];
-  if (siteId) list = list.filter((r) => r.siteId === siteId);
-  if (materialId) list = list.filter((r) => r.materialId === materialId);
-  list.sort((a, b) => b.occurredAt.getTime() - a.occurredAt.getTime());
-  return list.slice(0, limit).map((r) => ({
+export async function getInventoryRecords(siteId?: string, materialId?: string, limit = 50) {
+  const prisma = await getPrisma(true);
+  const where: any = {};
+  if (siteId) where.siteId = siteId;
+  if (materialId) where.materialId = materialId;
+  const records = await prisma.inventoryRecord.findMany({
+    where,
+    take: limit,
+    orderBy: { occurredAt: "desc" },
+    include: { material: true, site: true },
+  });
+  return records.map((r: any) => ({
     ...r,
-    materialName: MOCK_MATERIALS.find((m) => m.id === r.materialId)?.name,
-    unit: MOCK_MATERIALS.find((m) => m.id === r.materialId)?.unit,
-    siteName: MOCK_SITES.find((s) => s.id === r.siteId)?.name,
+    materialName: r.material?.name,
+    unit: r.material?.unit,
+    siteName: r.site?.name,
   }));
 }
 
-export function getStockCountDiffs(siteId?: string) {
-  let list = MOCK_STOCK_COUNT_DIFFS;
-  if (siteId) list = list.filter((d) => d.siteId === siteId);
-  return list.map((d) => ({
+export async function getStockCountDiffs(siteId?: string) {
+  const prisma = await getPrisma(true);
+  const where: any = {};
+  if (siteId) where.siteId = siteId;
+  const diffs = await prisma.stockCountDiff.findMany({
+    where,
+    orderBy: { createdAt: "desc" },
+    include: { material: true, site: true, rawSamples: true },
+  });
+  return diffs.map((d: any) => ({
     ...d,
-    materialName: MOCK_MATERIALS.find((m) => m.id === d.materialId)?.name,
-    unit: MOCK_MATERIALS.find((m) => m.id === d.materialId)?.unit,
-    siteName: MOCK_SITES.find((s) => s.id === d.siteId)?.name,
-    hasRawSample: !!d.rawSampleRef,
+    materialName: d.material?.name,
+    unit: d.material?.unit,
+    siteName: d.site?.name,
+    hasRawSample: (d.rawSamples?.length || 0) > 0,
   }));
 }
 
-export function getRawSamples(diffId: string) {
-  return MOCK_RAW_SAMPLES.filter((s) => s.diffId === diffId);
+export async function getRawSamples(diffId: string) {
+  const prisma = await getPrisma(true);
+  return prisma.rawSample.findMany({
+    where: { diffId },
+    orderBy: { capturedAt: "asc" },
+  });
 }
 
-export function getStockDiffDrilldown(diffId: string) {
-  const diff = MOCK_STOCK_COUNT_DIFFS.find((d) => d.id === diffId);
+export async function getStockDiffDrilldown(diffId: string) {
+  const prisma = await getPrisma(true);
+  const diff = await prisma.stockCountDiff.findFirst({
+    where: { id: diffId },
+    include: { material: true },
+  });
   if (!diff) return null;
-  const material = MOCK_MATERIALS.find((m) => m.id === diff.materialId);
-  const safety = MOCK_SAFETY_STOCKS.find((s) => s.materialId === diff.materialId && s.siteId === diff.siteId);
-  const inventory = getInventoryRecords(diff.siteId, diff.materialId, 20);
-  const samples = getRawSamples(diffId);
-  const notes = getNotes({ stockDiffId: diffId });
+
+  const [safety, inventory, samples, notes] = await Promise.all([
+    prisma.safetyStock.findFirst({
+      where: { materialId: diff.materialId, siteId: diff.siteId },
+      include: { material: true },
+    }),
+    prisma.inventoryRecord.findMany({
+      where: { siteId: diff.siteId, materialId: diff.materialId },
+      take: 20,
+      orderBy: { occurredAt: "desc" },
+      include: { material: true, site: true },
+    }),
+    prisma.rawSample.findMany({ where: { diffId }, orderBy: { capturedAt: "asc" } }),
+    prisma.note.findMany({
+      where: { stockDiffId: diffId },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
+
   return {
     diff: {
       ...diff,
-      materialName: material?.name,
-      materialCode: material?.code,
-      unit: material?.unit,
-      standardDays: material?.standardDays,
+      materialName: diff.material?.name,
+      materialCode: diff.material?.code,
+      unit: diff.material?.unit,
+      standardDays: diff.material?.standardDays,
     },
-    safetyStock: safety ? {
-      ...safety,
-      materialName: material?.name,
-      materialCode: material?.code,
-      unit: material?.unit,
-      status: safety.currentStock < safety.minQty ? "不足" : safety.currentStock > safety.maxQty ? "过高" : "正常",
-    } : null,
-    inventoryRecords: inventory,
+    safetyStock: safety
+      ? {
+          ...safety,
+          materialName: safety.material?.name,
+          materialCode: safety.material?.code,
+          unit: safety.material?.unit,
+          status:
+            Number(safety.currentStock) < Number(safety.minQty)
+              ? "不足"
+              : Number(safety.currentStock) > Number(safety.maxQty)
+                ? "过高"
+                : "正常",
+        }
+      : null,
+    inventoryRecords: inventory.map((r: any) => ({
+      ...r,
+      materialName: r.material?.name,
+      unit: r.material?.unit,
+      siteName: r.site?.name,
+    })),
     rawSamples: samples,
     notes,
   };
 }
 
-export function getNotes(filters: { siteId?: string; stockDiffId?: string } = {}) {
-  let list = [...MOCK_NOTES];
-  if (filters.siteId) list = list.filter((n) => n.siteId === filters.siteId);
-  if (filters.stockDiffId) list = list.filter((n) => n.stockDiffId === filters.stockDiffId);
-  list.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-  return list;
+export async function getNotes(filters: { siteId?: string; stockDiffId?: string } = {}) {
+  const prisma = await getPrisma(true);
+  const where: any = {};
+  if (filters.siteId) where.siteId = filters.siteId;
+  if (filters.stockDiffId) where.stockDiffId = filters.stockDiffId;
+  return prisma.note.findMany({
+    where,
+    orderBy: { createdAt: "desc" },
+  });
 }
 
-let noteIdCounter = 100;
-export function addNote(input: { content: string; author: string; siteId: string; stockDiffId?: string | null }) {
-  const note: MockNote = {
-    id: `note-new-${noteIdCounter++}`,
-    content: input.content,
-    author: input.author,
-    siteId: input.siteId,
-    stockDiffId: input.stockDiffId || null,
-    createdAt: new Date(),
-  };
-  (MOCK_NOTES as unknown as MockNote[]).push(note);
-  return note;
+export async function addNote(input: {
+  content: string;
+  author: string;
+  siteId: string;
+  stockDiffId?: string | null;
+}) {
+  const prisma = await getPrisma(true);
+  return prisma.note.create({
+    data: {
+      content: input.content,
+      author: input.author,
+      siteId: input.siteId,
+      stockDiffId: input.stockDiffId || undefined,
+    },
+  });
 }
 
 export interface ExportParams {
@@ -359,35 +437,53 @@ export interface ExportParams {
   caliberVersion: string;
 }
 
-export function buildExportData(params: ExportParams) {
-  const funnel = getFunnelData(params);
-  const arrivals = MOCK_ARRIVALS
-    .filter((a) => (params.siteId ? a.siteId === params.siteId : true))
-    .map((a) => {
-      const site = MOCK_SITES.find((s) => s.id === a.siteId);
-      const mat = MOCK_MATERIALS.find((m) => m.id === a.materialId);
-      return {
-        项目编号: site?.projectNo,
-        工地名称: site?.name,
-        材料名称: mat?.name,
-        材料编码: mat?.code,
-        批次号: a.batchNo,
-        当前阶段: funnel.stages.find((s) => s.stage === a.stage)?.label,
-        状态: a.status,
-        计划数量: a.plannedQty,
-        实际数量: a.actualQty,
-        单位: mat?.unit,
-        是否短缺: a.hasShortage ? "是" : "否",
-        短缺数量: a.shortageQty,
-        计划日期: a.plannedDate.toISOString().slice(0, 10),
-        实际日期: a.actualDate?.toISOString().slice(0, 10) || "",
-        周转天数: a.turnoverDays ?? "未完成",
-        标准周转天数: mat?.standardDays,
-        采购单号: a.purchaseRef,
-        验收人: a.inspector,
-        口径版本: a.caliberVersion,
-      };
+export async function buildExportData(params: ExportParams) {
+  const prisma = await getPrisma(true);
+  const funnel = await getFunnelData(params);
+
+  const where: any = {};
+  if (params.siteId) where.siteId = params.siteId;
+  if (params.caliberVersion) where.caliberVersion = params.caliberVersion;
+  if (params.dateFrom || params.dateTo) {
+    where.plannedDate = {};
+    if (params.dateFrom) where.plannedDate.gte = new Date(params.dateFrom);
+    if (params.dateTo) where.plannedDate.lte = new Date(params.dateTo);
+  }
+  if (params.materialCategory) {
+    const materials = await prisma.material.findMany({
+      where: { category: params.materialCategory },
+      select: { id: true },
     });
+    where.materialId = { in: materials.map((m: any) => m.id) };
+  }
+
+  const arrivals = await prisma.materialArrival.findMany({
+    where,
+    include: { site: true, material: true },
+    orderBy: { plannedDate: "desc" },
+  });
+
+  const rows = arrivals.map((a: any) => ({
+    项目编号: a.site?.projectNo,
+    工地名称: a.site?.name,
+    材料名称: a.material?.name,
+    材料编码: a.material?.code,
+    批次号: a.batchNo,
+    当前阶段: funnel.stages.find((s) => s.stage === a.stage)?.label,
+    状态: a.status,
+    计划数量: Number(a.plannedQty),
+    实际数量: Number(a.actualQty || 0),
+    单位: a.material?.unit,
+    是否短缺: a.hasShortage ? "是" : "否",
+    短缺数量: Number(a.shortageQty),
+    计划日期: a.plannedDate.toISOString().slice(0, 10),
+    实际日期: a.actualDate ? a.actualDate.toISOString().slice(0, 10) : "",
+    周转天数: a.turnoverDays !== null ? Number(a.turnoverDays) : "未完成",
+    标准周转天数: a.material?.standardDays,
+    采购单号: a.purchaseRef,
+    验收人: a.inspector,
+    口径版本: a.caliberVersion,
+  }));
 
   return {
     meta: {
@@ -409,27 +505,31 @@ export function buildExportData(params: ExportParams) {
         转化率: `${s.conversionRate}%`,
       })),
     },
-    arrivals,
+    arrivals: rows,
   };
 }
 
-export function getArrivals(filters: FunnelFilters = {}) {
-  let arrivals = [...MOCK_ARRIVALS];
-  if (filters.siteId) arrivals = arrivals.filter((a) => a.siteId === filters.siteId);
-  if (filters.dateFrom) arrivals = arrivals.filter((a) => a.plannedDate >= new Date(filters.dateFrom!));
-  if (filters.dateTo) arrivals = arrivals.filter((a) => a.plannedDate <= new Date(filters.dateTo!));
-  arrivals.sort((a, b) => b.plannedDate.getTime() - a.plannedDate.getTime());
-  return arrivals.map((a) => ({
+export async function getArrivals(filters: FunnelFilters = {}) {
+  const prisma = await getPrisma(true);
+  const where: any = {};
+  if (filters.siteId) where.siteId = filters.siteId;
+  if (filters.caliberVersion) where.caliberVersion = filters.caliberVersion;
+  if (filters.dateFrom || filters.dateTo) {
+    where.plannedDate = {};
+    if (filters.dateFrom) where.plannedDate.gte = new Date(filters.dateFrom);
+    if (filters.dateTo) where.plannedDate.lte = new Date(filters.dateTo);
+  }
+  const arrivals = await prisma.materialArrival.findMany({
+    where,
+    include: { site: true, material: true },
+    orderBy: { plannedDate: "desc" },
+  });
+  return arrivals.map((a: any) => ({
     ...a,
-    siteName: MOCK_SITES.find((s) => s.id === a.siteId)?.name,
-    materialName: MOCK_MATERIALS.find((m) => m.id === a.materialId)?.name,
-    unit: MOCK_MATERIALS.find((m) => m.id === a.materialId)?.unit,
+    siteName: a.site?.name,
+    materialName: a.material?.name,
+    unit: a.material?.unit,
   }));
-}
-
-export function getMaterialCategories() {
-  const set = new Set(MOCK_MATERIALS.map((m) => m.category));
-  return Array.from(set);
 }
 
 export interface SyncExecuteResult {
