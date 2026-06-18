@@ -1,0 +1,39 @@
+{
+  "name": "used-car-transfer-puzzle",
+  "version": "1.0.0",
+  "description": "二手车门店过户材料调度解谜游戏 - 新人培训系统",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "webpack serve --mode development",
+    "build": "webpack --mode production",
+    "start": "webpack serve --mode development --open",
+    "test": "jest"
+  },
+  "keywords": [
+    "playcanvas",
+    "typescript",
+    "ammojs",
+    "game",
+    "training"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/jest": "^29.5.0",
+    "@types/node": "^20.0.0",
+    "copy-webpack-plugin": "^11.0.0",
+    "css-loader": "^6.8.0",
+    "html-webpack-plugin": "^5.5.0",
+    "jest": "^29.5.0",
+    "style-loader": "^3.3.0",
+    "ts-jest": "^29.1.0",
+    "ts-loader": "^9.4.0",
+    "typescript": "^5.0.0",
+    "webpack": "^5.80.0",
+    "webpack-cli": "^5.0.0",
+    "webpack-dev-server": "^4.13.0"
+  },
+  "dependencies": {
+    "playcanvas": "^1.65.0"
+  }
+}
