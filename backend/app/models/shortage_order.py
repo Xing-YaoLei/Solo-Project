@@ -13,6 +13,7 @@ class ShortageOrder(Base):
     material_name = Column(String(200), nullable=False, index=True)
     shortage_quantity = Column(Float, nullable=False)
     unit = Column(String(50))
+    region = Column(String(100), index=True)
     responsible_person = Column(String(100), index=True)
     priority = Column(String(50), default="medium", index=True)
     status = Column(String(50), default="pending", index=True)

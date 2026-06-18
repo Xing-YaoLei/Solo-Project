@@ -1,7 +1,7 @@
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import func, and_
+from sqlalchemy import func, and_, text
 
 from app.tasks.celery_app import celery_app
 from app.core.database import SessionLocal
@@ -43,12 +43,13 @@ def check_safety_stock_task(self):
             shortage_qty = int(max(item.warning_stock - item.current_stock, item.min_stock))
             order = ShortageOrder(
                 material_name=item.material_name,
+                region=item.region,
                 unit=item.unit,
                 shortage_quantity=shortage_qty,
                 responsible_person="系统自动分派",
                 priority="high" if item.current_stock < item.min_stock else "medium",
                 status="pending",
-                deadline=(datetime.utcnow() + timedelta(days=3)).date(),
+                deadline=(datetime.now(timezone.utc) + timedelta(days=3)).date(),
             )
             db.add(order)
             db.flush()
@@ -57,7 +58,7 @@ def check_safety_stock_task(self):
                 shortage_order_id=order.id,
                 action="create",
                 operator="系统自动检测",
-                remark=f"安全库存自动触发：当前库存 {item.current_stock} {item.unit}，低于下限 {item.min_stock} {item.unit}",
+                remark=f"安全库存自动触发：{item.region} {item.material_name} 当前库存 {item.current_stock} {item.unit}，低于下限 {item.min_stock} {item.unit}",
             )
             db.add(log)
             created_count += 1
@@ -142,12 +143,12 @@ def daily_snapshot_task(self):
         )
 
         result = {
-            "date": datetime.utcnow().date().isoformat(),
+            "date": datetime.now(timezone.utc).date().isoformat(),
             "total_batches": int(total_batches),
             "in_stock_batches": int(in_stock_batches),
             "total_quantity": float(total_qty),
             "pending_shortages": int(pending_shortages),
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
         logger.info(f"每日库存快照: {result}")
@@ -164,8 +165,8 @@ def test_connection_task():
     """测试任务：验证Celery worker和数据库连接正常"""
     db = SessionLocal()
     try:
-        db.execute("SELECT 1")
-        return {"status": "ok", "database": "connected", "time": datetime.utcnow().isoformat()}
+        db.execute(text("SELECT 1"))
+        return {"status": "ok", "database": "connected", "time": datetime.now(timezone.utc).isoformat()}
     except Exception as e:
         return {"status": "error", "error": str(e)}
     finally:

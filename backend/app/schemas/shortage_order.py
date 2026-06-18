@@ -8,6 +8,7 @@ class ShortageOrderCreate(BaseModel):
     material_name: str = Field(..., description="材料名称")
     shortage_quantity: float = Field(..., description="短缺数量")
     unit: Optional[str] = None
+    region: Optional[str] = None
     responsible_person: Optional[str] = None
     priority: str = "medium"
     status: str = "pending"
@@ -19,6 +20,7 @@ class ShortageOrderUpdate(BaseModel):
     material_name: Optional[str] = None
     shortage_quantity: Optional[float] = None
     unit: Optional[str] = None
+    region: Optional[str] = None
     responsible_person: Optional[str] = None
     priority: Optional[str] = None
     status: Optional[str] = None
@@ -50,6 +52,7 @@ class ShortageOrderResponse(BaseModel):
     material_name: str
     shortage_quantity: float
     unit: Optional[str] = None
+    region: Optional[str] = None
     responsible_person: Optional[str] = None
     priority: str
     status: str
