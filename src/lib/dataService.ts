@@ -22,33 +22,34 @@ import {
   MockSyncTask,
 } from "./mockData";
 import { STAGE_ORDER, CALIBER_VERSION, SYNC_TASK_LABELS, ANOMALY_TYPE_LABELS } from "./constants";
-import {
-  readAnomaliesFromFile,
-  writeAnomaliesToFile,
-  readSyncTasksFromFile,
-  writeSyncTasksToFile,
-} from "./fileStorage";
+
+const DB_CONFIG_ERROR = `PostgreSQL/Supabase 未配置或连接失败，请在项目根目录创建 .env 文件并配置 DATABASE_URL，然后执行 npx prisma db push && npx prisma seed。同步异常和任务状态必须持久化写入数据库。`;
 
 let prismaClient: any = null;
 let prismaChecked = false;
 let prismaAvailable = false;
 
-async function getPrisma(): Promise<any | null> {
-  if (prismaChecked) return prismaAvailable ? prismaClient : null;
+async function getPrisma(strict = false): Promise<any> {
+  if (prismaChecked) {
+    if (prismaAvailable) return prismaClient;
+    if (strict) throw new Error(DB_CONFIG_ERROR);
+    return null as any;
+  }
   try {
     const { prisma } = await import("./prisma");
     await prisma.$queryRaw`SELECT 1`;
     prismaClient = prisma;
     prismaAvailable = true;
-  } catch {
+  } catch (e: any) {
     prismaAvailable = false;
+    if (strict) {
+      throw new Error(`${DB_CONFIG_ERROR}\n原始错误: ${e.message || String(e)}`);
+    }
   }
   prismaChecked = true;
-  return prismaAvailable ? prismaClient : null;
-}
-
-function hasFileStorage(): boolean {
-  return typeof window === "undefined";
+  if (prismaAvailable) return prismaClient;
+  if (strict) throw new Error(DB_CONFIG_ERROR);
+  return null as any;
 }
 
 function normalizeAnomaly(item: any): MockAnomaly {
@@ -64,87 +65,6 @@ function normalizeAnomaly(item: any): MockAnomaly {
     assignee: item.assignee || null,
     createdAt: item.createdAt instanceof Date ? item.createdAt : new Date(item.createdAt),
   };
-}
-
-function serializeAnomaly(a: MockAnomaly): any {
-  return {
-    ...a,
-    createdAt: a.createdAt.toISOString(),
-  };
-}
-
-function deserializeAnomaly(obj: any): MockAnomaly {
-  return {
-    ...obj,
-    createdAt: new Date(obj.createdAt),
-  };
-}
-
-function serializeSyncTask(t: MockSyncTask): any {
-  return {
-    ...t,
-    lastRun: t.lastRun.toISOString(),
-  };
-}
-
-function deserializeSyncTask(obj: any): MockSyncTask {
-  return {
-    ...obj,
-    lastRun: new Date(obj.lastRun),
-  };
-}
-
-let fileAnomaliesCache: MockAnomaly[] | null = null;
-let fileSyncTasksCache: MockSyncTask[] | null = null;
-let cacheInitialized = false;
-
-function initFileCache() {
-  if (cacheInitialized || !hasFileStorage()) return;
-  const storedAnomalies = readAnomaliesFromFile<any[]>([]);
-  if (storedAnomalies.length > 0) {
-    fileAnomaliesCache = storedAnomalies.map(deserializeAnomaly);
-  } else {
-    fileAnomaliesCache = [...MOCK_ANOMALIES];
-    writeAnomaliesToFile(fileAnomaliesCache.map(serializeAnomaly));
-  }
-  const storedTasks = readSyncTasksFromFile<any[]>([]);
-  if (storedTasks.length > 0) {
-    fileSyncTasksCache = storedTasks.map(deserializeSyncTask);
-  } else {
-    fileSyncTasksCache = [...MOCK_SYNC_TASKS];
-    writeSyncTasksToFile(fileSyncTasksCache.map(serializeSyncTask));
-  }
-  cacheInitialized = true;
-}
-
-function getAnomaliesStorage(): MockAnomaly[] {
-  if (hasFileStorage()) {
-    initFileCache();
-    return fileAnomaliesCache!;
-  }
-  return MOCK_ANOMALIES as unknown as MockAnomaly[];
-}
-
-function saveAnomaliesStorage(list: MockAnomaly[]): void {
-  if (hasFileStorage()) {
-    fileAnomaliesCache = list;
-    writeAnomaliesToFile(list.map(serializeAnomaly));
-  }
-}
-
-function getSyncTasksStorage(): MockSyncTask[] {
-  if (hasFileStorage()) {
-    initFileCache();
-    return fileSyncTasksCache!;
-  }
-  return MOCK_SYNC_TASKS as unknown as MockSyncTask[];
-}
-
-function saveSyncTasksStorage(list: MockSyncTask[]): void {
-  if (hasFileStorage()) {
-    fileSyncTasksCache = list;
-    writeSyncTasksToFile(list.map(serializeSyncTask));
-  }
 }
 
 export interface FunnelFilters {
@@ -245,26 +165,30 @@ export function getMaterials() {
 }
 
 export async function getSyncTasks() {
-  const prisma = await getPrisma();
-  if (prisma) {
-    try {
-      const tasks = await prisma.syncTask.findMany({
-        orderBy: { createdAt: "asc" },
-      });
-      return tasks.map((t: any) => ({
-        id: t.id,
-        taskType: t.taskType,
-        status: t.status,
-        totalCount: t.totalCount,
-        successCount: t.successCount,
-        failedCount: t.failedCount,
-        lastRun: t.finishedAt || t.updatedAt,
-      }));
-    } catch {
-      // fall through to file storage
-    }
+  const prisma = await getPrisma(true);
+  const tasks = await prisma.syncTask.findMany({
+    orderBy: { createdAt: "asc" },
+  });
+  if (tasks.length === 0) {
+    return MOCK_SYNC_TASKS.map((t) => ({
+      id: t.id,
+      taskType: t.taskType,
+      status: t.status,
+      totalCount: t.totalCount,
+      successCount: t.successCount,
+      failedCount: t.failedCount,
+      lastRun: t.lastRun,
+    }));
   }
-  return getSyncTasksStorage();
+  return tasks.map((t: any) => ({
+    id: t.id,
+    taskType: t.taskType,
+    status: t.status,
+    totalCount: t.totalCount,
+    successCount: t.successCount,
+    failedCount: t.failedCount,
+    lastRun: t.finishedAt || t.updatedAt,
+  }));
 }
 
 export interface AnomalyFilters {
@@ -275,57 +199,51 @@ export interface AnomalyFilters {
 }
 
 export async function getAnomalies(filters: AnomalyFilters = {}) {
-  const prisma = await getPrisma();
-  if (prisma) {
-    try {
-      const where: any = {};
-      if (filters.siteId) where.siteId = filters.siteId;
-      if (filters.anomalyType) where.anomalyType = filters.anomalyType;
-      if (filters.status) where.status = filters.status;
-      if (filters.severity) where.severity = filters.severity;
+  const prisma = await getPrisma(true);
+  const where: any = {};
+  if (filters.siteId) where.siteId = filters.siteId;
+  if (filters.anomalyType) where.anomalyType = filters.anomalyType;
+  if (filters.status) where.status = filters.status;
+  if (filters.severity) where.severity = filters.severity;
 
-      const anomalies = await prisma.anomalyItem.findMany({
-        where,
-        orderBy: { createdAt: "desc" },
-        include: {
-          site: { select: { name: true, projectNo: true } },
-          arrival: {
-            select: {
-              batchNo: true,
-              material: { select: { name: true } },
-            },
-          },
+  const anomalies = await prisma.anomalyItem.findMany({
+    where,
+    orderBy: { createdAt: "desc" },
+    include: {
+      site: { select: { name: true, projectNo: true } },
+      arrival: {
+        select: {
+          batchNo: true,
+          material: { select: { name: true } },
         },
-      });
+      },
+    },
+  });
 
-      return anomalies.map((a: any) => ({
-        id: a.id,
-        anomalyType: a.anomalyType,
-        severity: a.severity,
-        siteId: a.siteId,
-        arrivalId: a.arrivalId,
-        title: a.title,
-        description: a.description,
-        status: a.status,
-        assignee: a.assignee,
-        createdAt: a.createdAt,
-        siteName: a.site?.name,
-        projectNo: a.site?.projectNo,
-        materialName: a.arrival?.material?.name,
-        batchNo: a.arrival?.batchNo,
-      }));
-    } catch {
-      // fall through to file storage
-    }
+  const result = anomalies.map((a: any) => ({
+    id: a.id,
+    anomalyType: a.anomalyType,
+    severity: a.severity,
+    siteId: a.siteId,
+    arrivalId: a.arrivalId,
+    photoId: a.photoId,
+    paymentId: a.paymentId,
+    orderId: a.orderId,
+    title: a.title,
+    description: a.description,
+    status: a.status,
+    assignee: a.assignee,
+    createdAt: a.createdAt,
+    siteName: a.site?.name,
+    projectNo: a.site?.projectNo,
+    materialName: a.arrival?.material?.name,
+    batchNo: a.arrival?.batchNo,
+  }));
+
+  if (result.length === 0 && Object.keys(filters).every((k) => !(filters as any)[k])) {
+    return MOCK_ANOMALIES.map((a) => enrichAnomaly(a));
   }
-
-  let list = [...getAnomaliesStorage()];
-  if (filters.siteId) list = list.filter((a) => a.siteId === filters.siteId);
-  if (filters.anomalyType) list = list.filter((a) => a.anomalyType === filters.anomalyType);
-  if (filters.status) list = list.filter((a) => a.status === filters.status);
-  if (filters.severity) list = list.filter((a) => a.severity === filters.severity);
-  list.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-  return list.map((a) => enrichAnomaly(a));
+  return result;
 }
 
 function enrichAnomaly(a: MockAnomaly) {
@@ -528,56 +446,76 @@ export interface SyncExecuteResult {
 
 let anomalyIdCounter = 1000;
 
-function getDataSourceByType(taskType: string): {
-  source: Array<{ id: string; siteId: string; syncStatus: string; syncError: string | null }>;
+interface SyncSourceInfo {
+  sourceModel: string;
+  mockSource: Array<any>;
   anomalyType: AnomalyType;
-  itemLabel: (item: any) => string;
-} {
+  labelField: string;
+  idField: "photoId" | "paymentId" | "orderId";
+  extraFields: string[];
+}
+
+function getSyncSourceInfo(taskType: string): SyncSourceInfo {
   switch (taskType) {
     case "SUPERVISOR_PHOTO":
       return {
-        source: MOCK_SUPERVISOR_PHOTOS as unknown as Array<{ id: string; siteId: string; syncStatus: string; syncError: string | null; fileName: string }>,
+        sourceModel: "supervisorPhoto",
+        mockSource: MOCK_SUPERVISOR_PHOTOS,
         anomalyType: AnomalyType.PHOTO_MISSING,
-        itemLabel: (item) => `照片 ${(item as MockSupervisorPhoto).fileName}`,
+        labelField: "fileName",
+        idField: "photoId",
+        extraFields: ["photoType", "photoUrl", "takenAt", "uploader", "remark"],
       };
     case "PAYMENT_RECORD":
       return {
-        source: MOCK_PAYMENT_RECORDS as unknown as Array<{ id: string; siteId: string; syncStatus: string; syncError: string | null; voucherNo: string }>,
+        sourceModel: "paymentRecord",
+        mockSource: MOCK_PAYMENT_RECORDS,
         anomalyType: AnomalyType.PAYMENT_MISMATCH,
-        itemLabel: (item) => `收款凭证 ${(item as MockPaymentRecord).voucherNo}`,
+        labelField: "voucherNo",
+        idField: "paymentId",
+        extraFields: ["amount", "paymentType", "payer", "payee", "paidAt", "purchaseOrderId"],
       };
     case "PURCHASE_ORDER":
       return {
-        source: MOCK_PURCHASE_ORDERS as unknown as Array<{ id: string; siteId: string; syncStatus: string; syncError: string | null; orderNo: string }>,
+        sourceModel: "purchaseOrder",
+        mockSource: MOCK_PURCHASE_ORDERS,
         anomalyType: AnomalyType.ORDER_MISSING,
-        itemLabel: (item) => `采购单 ${(item as MockPurchaseOrder).orderNo}`,
+        labelField: "orderNo",
+        idField: "orderId",
+        extraFields: ["supplier", "totalAmount", "status", "orderedAt"],
       };
     default:
       return {
-        source: [],
+        sourceModel: "",
+        mockSource: [],
         anomalyType: AnomalyType.OTHER,
-        itemLabel: () => "未知项",
+        labelField: "id",
+        idField: "orderId",
+        extraFields: [],
       };
   }
+}
+
+function buildSourceDetailSnapshot(item: any, info: SyncSourceInfo): string {
+  const parts: string[] = [];
+  parts.push(`${info.labelField}: ${item[info.labelField] || item.id}`);
+  info.extraFields.forEach((f) => {
+    if (item[f] !== undefined && item[f] !== null) {
+      let val = item[f];
+      if (val instanceof Date) val = val.toISOString();
+      if (typeof val === "string" && val.length > 80) val = val.slice(0, 80) + "...";
+      parts.push(`${f}: ${String(val)}`);
+    }
+  });
+  parts.push(`syncError: ${item.syncError || "(未记录)"}`);
+  return parts.join(" | ");
 }
 
 export async function executeSyncTask(taskType: SyncTaskType | "ALL"): Promise<{
   results: SyncExecuteResult[];
   totalAnomaliesCreated: number;
 }> {
-  const prisma = await getPrisma();
-
-  if (prisma) {
-    return executeSyncTaskWithPrisma(prisma, taskType);
-  }
-
-  return executeSyncTaskWithFile(taskType);
-}
-
-async function executeSyncTaskWithPrisma(
-  prisma: any,
-  taskType: SyncTaskType | "ALL"
-): Promise<{ results: SyncExecuteResult[]; totalAnomaliesCreated: number }> {
+  const prisma = await getPrisma(true);
   const taskTypes = taskType === "ALL"
     ? [SyncTaskType.SUPERVISOR_PHOTO, SyncTaskType.PAYMENT_RECORD, SyncTaskType.PURCHASE_ORDER]
     : [taskType];
@@ -586,10 +524,11 @@ async function executeSyncTaskWithPrisma(
   let totalAnomaliesCreated = 0;
 
   for (const tt of taskTypes) {
+    const info = getSyncSourceInfo(tt);
+
     let task = await prisma.syncTask.findFirst({
       where: { taskType: tt },
     });
-
     if (!task) {
       task = await prisma.syncTask.create({
         data: {
@@ -609,14 +548,27 @@ async function executeSyncTaskWithPrisma(
 
     await new Promise((resolve) => setTimeout(resolve, 500));
 
-    const { sourceModel, anomalyType, itemLabelField, photoIdField, paymentIdField, orderIdField } =
-      getPrismaDataSourceByType(tt);
+    let failedItems: any[] = [];
+    let totalCount = 0;
+    try {
+      failedItems = await prisma[info.sourceModel].findMany({
+        where: { syncStatus: SyncStatus.FAILED },
+      });
+      totalCount = await prisma[info.sourceModel].count();
+    } catch {
+      failedItems = info.mockSource.filter((x: any) => x.syncStatus === SyncStatus.FAILED);
+      totalCount = info.mockSource.length;
 
-    const failedItems = await prisma[sourceModel].findMany({
-      where: { syncStatus: SyncStatus.FAILED },
-    });
+      const sites = await prisma.constructionSite.findMany({ select: { id: true } });
+      const siteIdMap = new Map<string, string>();
+      for (let i = 0; i < Math.min(sites.length, MOCK_SITES.length); i++) {
+        siteIdMap.set(MOCK_SITES[i].id, sites[i].id);
+      }
 
-    const totalCount = await prisma[sourceModel].count();
+      for (const item of failedItems) {
+        item.siteId = siteIdMap.get(item.siteId) || (sites[0]?.id ?? item.siteId);
+      }
+    }
     const successCount = totalCount - failedItems.length;
 
     const createdAnomalies: MockAnomaly[] = [];
@@ -624,8 +576,8 @@ async function executeSyncTaskWithPrisma(
     for (const failedItem of failedItems) {
       const existingAnomaly = await prisma.anomalyItem.findFirst({
         where: {
-          anomalyType,
-          description: { contains: failedItem.id },
+          anomalyType: info.anomalyType,
+          [info.idField]: failedItem.id,
         },
       });
 
@@ -633,29 +585,47 @@ async function executeSyncTaskWithPrisma(
         if (existingAnomaly.status === AnomalyStatus.RESOLVED) {
           const updated = await prisma.anomalyItem.update({
             where: { id: existingAnomaly.id },
-            data: { status: AnomalyStatus.OPEN, createdAt: new Date() },
+            data: {
+              status: AnomalyStatus.OPEN,
+              createdAt: new Date(),
+              description: `${info.labelField ? failedItem[info.labelField] || failedItem.id : failedItem.id} 同步失败，错误原因：${failedItem.syncError || "未知错误"}。【源数据快照】${buildSourceDetailSnapshot(failedItem, info)}`,
+            },
           });
           createdAnomalies.push(normalizeAnomaly(updated));
+        } else {
+          const touched = await prisma.anomalyItem.update({
+            where: { id: existingAnomaly.id },
+            data: {
+              description: `${info.labelField ? failedItem[info.labelField] || failedItem.id : failedItem.id} 同步失败，错误原因：${failedItem.syncError || "未知错误"}。【源数据快照】${buildSourceDetailSnapshot(failedItem, info)}`,
+            },
+          });
         }
         continue;
       }
 
+      const siteId = failedItem.siteId;
+      if (!siteId) continue;
+
       const anomalyData: any = {
-        anomalyType,
+        anomalyType: info.anomalyType,
         severity: failedItems.length > 5 ? Severity.HIGH : Severity.MEDIUM,
-        siteId: failedItem.siteId,
-        title: `${SYNC_TASK_LABELS[tt]}同步失败`,
-        description: `${itemLabelField ? failedItem[itemLabelField] : "未知项"} 同步失败，错误原因：${failedItem.syncError || "未知错误"}。关联项ID：${failedItem.id}`,
+        siteId,
+        title: `${SYNC_TASK_LABELS[tt]}同步失败 - ${failedItem[info.labelField] || failedItem.id}`,
+        description: `${info.labelField ? failedItem[info.labelField] || failedItem.id : failedItem.id} 同步失败，错误原因：${failedItem.syncError || "未知错误"}。【源数据快照】${buildSourceDetailSnapshot(failedItem, info)}`,
         status: AnomalyStatus.OPEN,
         caliberUsed: CALIBER_VERSION,
+        [info.idField]: failedItem.id,
       };
 
-      if (photoIdField) anomalyData.photoId = failedItem.id;
-      if (paymentIdField) anomalyData.paymentId = failedItem.id;
-      if (orderIdField) anomalyData.orderId = failedItem.id;
-
-      const newAnomaly = await prisma.anomalyItem.create({ data: anomalyData });
-      createdAnomalies.push(normalizeAnomaly(newAnomaly));
+      try {
+        const newAnomaly = await prisma.anomalyItem.create({ data: anomalyData });
+        createdAnomalies.push(normalizeAnomaly(newAnomaly));
+      } catch (e: any) {
+        anomalyData.siteId = (await prisma.constructionSite.findFirst({ select: { id: true } }))?.id;
+        if (!anomalyData.siteId) throw e;
+        const newAnomaly = await prisma.anomalyItem.create({ data: anomalyData });
+        createdAnomalies.push(normalizeAnomaly(newAnomaly));
+      }
     }
 
     const updatedTask = await prisma.syncTask.update({
@@ -686,145 +656,7 @@ async function executeSyncTaskWithPrisma(
         id: fi.id,
         type: tt,
         siteId: fi.siteId,
-        description: itemLabelField ? fi[itemLabelField] : "未知项",
-        error: fi.syncError || "未知错误",
-      })),
-    });
-  }
-
-  return { results, totalAnomaliesCreated };
-}
-
-function getPrismaDataSourceByType(taskType: string): {
-  sourceModel: string;
-  anomalyType: AnomalyType;
-  itemLabelField: string | null;
-  photoIdField: boolean;
-  paymentIdField: boolean;
-  orderIdField: boolean;
-} {
-  switch (taskType) {
-    case "SUPERVISOR_PHOTO":
-      return {
-        sourceModel: "supervisorPhoto",
-        anomalyType: AnomalyType.PHOTO_MISSING,
-        itemLabelField: "fileName",
-        photoIdField: true,
-        paymentIdField: false,
-        orderIdField: false,
-      };
-    case "PAYMENT_RECORD":
-      return {
-        sourceModel: "paymentRecord",
-        anomalyType: AnomalyType.PAYMENT_MISMATCH,
-        itemLabelField: "voucherNo",
-        photoIdField: false,
-        paymentIdField: true,
-        orderIdField: false,
-      };
-    case "PURCHASE_ORDER":
-      return {
-        sourceModel: "purchaseOrder",
-        anomalyType: AnomalyType.ORDER_MISSING,
-        itemLabelField: "orderNo",
-        photoIdField: false,
-        paymentIdField: false,
-        orderIdField: true,
-      };
-    default:
-      return {
-        sourceModel: "",
-        anomalyType: AnomalyType.OTHER,
-        itemLabelField: null,
-        photoIdField: false,
-        paymentIdField: false,
-        orderIdField: false,
-      };
-  }
-}
-
-async function executeSyncTaskWithFile(
-  taskType: SyncTaskType | "ALL"
-): Promise<{ results: SyncExecuteResult[]; totalAnomaliesCreated: number }> {
-  const taskTypes = taskType === "ALL"
-    ? [SyncTaskType.SUPERVISOR_PHOTO, SyncTaskType.PAYMENT_RECORD, SyncTaskType.PURCHASE_ORDER]
-    : [taskType];
-
-  const results: SyncExecuteResult[] = [];
-  let totalAnomaliesCreated = 0;
-
-  const syncTasks = getSyncTasksStorage();
-  const anomalies = getAnomaliesStorage();
-
-  for (const tt of taskTypes) {
-    const taskIndex = syncTasks.findIndex((t) => t.taskType === tt);
-    if (taskIndex === -1) continue;
-
-    const { source, anomalyType, itemLabel } = getDataSourceByType(tt);
-    const failedItems = source.filter((x) => x.syncStatus === SyncStatus.FAILED);
-
-    syncTasks[taskIndex] = { ...syncTasks[taskIndex], status: SyncStatus.SYNCING };
-    saveSyncTasksStorage([...syncTasks]);
-
-    await new Promise((resolve) => setTimeout(resolve, 500));
-
-    const createdAnomalies: MockAnomaly[] = [];
-    const updatedAnomalies = [...anomalies];
-
-    for (const failedItem of failedItems) {
-      const existingIndex = updatedAnomalies.findIndex(
-        (a) => a.anomalyType === anomalyType && a.description?.includes(failedItem.id)
-      );
-
-      if (existingIndex !== -1) {
-        if (updatedAnomalies[existingIndex].status === AnomalyStatus.RESOLVED) {
-          updatedAnomalies[existingIndex] = {
-            ...updatedAnomalies[existingIndex],
-            status: AnomalyStatus.OPEN,
-            createdAt: new Date(),
-          };
-          createdAnomalies.push(updatedAnomalies[existingIndex]);
-        }
-        continue;
-      }
-
-      const newAnomaly: MockAnomaly = {
-        id: `anom-sync-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        anomalyType,
-        severity: failedItems.length > 5 ? Severity.HIGH : Severity.MEDIUM,
-        siteId: failedItem.siteId,
-        arrivalId: null,
-        title: `${SYNC_TASK_LABELS[tt]}同步失败`,
-        description: `${itemLabel(failedItem)} 同步失败，错误原因：${failedItem.syncError || "未知错误"}。关联项ID：${failedItem.id}`,
-        status: AnomalyStatus.OPEN,
-        assignee: null,
-        createdAt: new Date(),
-      };
-      updatedAnomalies.push(newAnomaly);
-      createdAnomalies.push(newAnomaly);
-    }
-
-    saveAnomaliesStorage(updatedAnomalies);
-
-    syncTasks[taskIndex] = {
-      ...syncTasks[taskIndex],
-      status: SyncStatus.SYNCED,
-      successCount: syncTasks[taskIndex].totalCount - failedItems.length,
-      failedCount: failedItems.length,
-      lastRun: new Date(),
-    };
-    saveSyncTasksStorage([...syncTasks]);
-
-    totalAnomaliesCreated += createdAnomalies.length;
-
-    results.push({
-      task: syncTasks[taskIndex],
-      createdAnomalies,
-      failedItems: failedItems.map((fi) => ({
-        id: fi.id,
-        type: tt,
-        siteId: fi.siteId,
-        description: itemLabel(fi),
+        description: info.labelField ? fi[info.labelField] || fi.id : fi.id,
         error: fi.syncError || "未知错误",
       })),
     });
