@@ -34,7 +34,15 @@ public class MonthlyReviewService {
 
     private static final String REVIEW_CACHE_PREFIX = "review:stats:";
 
+    private static final List<String> FILTER_COLUMN_ORDER = List.of("salesPerson", "leadSource", "leadStatus");
+    private static final Map<String, String> FILTER_LABELS = Map.of(
+            "salesPerson", "筛选-销售顾问",
+            "leadSource", "筛选-线索来源",
+            "leadStatus", "筛选-线索状态"
+    );
+
     public List<ConversionStatVO> getConversionStats(MonthlyReviewQueryDTO query) {
+        normalizeQuery(query);
         String cacheKey = buildCacheKey(query);
         @SuppressWarnings("unchecked")
         List<ConversionStatVO> cached = (List<ConversionStatVO>) redisTemplate.opsForValue().get(cacheKey);
@@ -51,8 +59,6 @@ public class MonthlyReviewService {
         }
 
         List<Long> appointmentIds = appointments.stream().map(Appointment::getId).collect(Collectors.toList());
-        Map<Long, Appointment> appointmentMap = appointments.stream()
-                .collect(Collectors.toMap(Appointment::getId, a -> a));
 
         List<SalesFollowUp> filteredFollows = salesFollowUpRepository.findByAppointmentIdsWithFilters(
                 appointmentIds,
@@ -97,7 +103,10 @@ public class MonthlyReviewService {
     }
 
     public byte[] exportMonthlyReport(MonthlyReviewQueryDTO query, String operator) throws IOException {
+        normalizeQuery(query);
         List<ConversionStatVO> stats = getConversionStats(query);
+
+        List<String> activeFilters = getActiveFilterColumns(query);
 
         try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Sheet metaSheet = workbook.createSheet("导出说明");
@@ -120,9 +129,11 @@ public class MonthlyReviewService {
             header.createCell(1).setCellValue("总线索数");
             header.createCell(2).setCellValue("转化数");
             header.createCell(3).setCellValue("转化率(%)");
-            if (query.getSalesPerson() != null) header.createCell(4).setCellValue("筛选-销售顾问");
-            if (query.getLeadSource() != null) header.createCell(5).setCellValue("筛选-线索来源");
-            if (query.getLeadStatus() != null) header.createCell(6).setCellValue("筛选-线索状态");
+
+            int filterColStart = 4;
+            for (int i = 0; i < activeFilters.size(); i++) {
+                header.createCell(filterColStart + i).setCellValue(FILTER_LABELS.get(activeFilters.get(i)));
+            }
 
             int rowIdx = 1;
             for (ConversionStatVO stat : stats) {
@@ -131,10 +142,11 @@ public class MonthlyReviewService {
                 row.createCell(1).setCellValue(stat.getTotal());
                 row.createCell(2).setCellValue(stat.getConverted());
                 row.createCell(3).setCellValue(stat.getRate().doubleValue());
-                int col = 4;
-                if (query.getSalesPerson() != null) row.createCell(col++).setCellValue(query.getSalesPerson());
-                if (query.getLeadSource() != null) row.createCell(col++).setCellValue(query.getLeadSource());
-                if (query.getLeadStatus() != null) row.createCell(col++).setCellValue(query.getLeadStatus());
+
+                Map<String, String> filterValues = buildFilterValueMap(query);
+                for (int i = 0; i < activeFilters.size(); i++) {
+                    row.createCell(filterColStart + i).setCellValue(filterValues.get(activeFilters.get(i)));
+                }
             }
 
             workbook.write(out);
@@ -143,11 +155,50 @@ public class MonthlyReviewService {
     }
 
     public ExportMetaDTO getExportMeta(MonthlyReviewQueryDTO query, String operator) {
+        normalizeQuery(query);
         ExportMetaDTO meta = new ExportMetaDTO();
         meta.setFilterCriteria(buildFilterCriteria(query));
         meta.setGeneratedAt(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
         meta.setOperator(operator);
         return meta;
+    }
+
+    private void normalizeQuery(MonthlyReviewQueryDTO query) {
+        if (query.getSalesPerson() != null && query.getSalesPerson().isBlank()) {
+            query.setSalesPerson(null);
+        }
+        if (query.getLeadSource() != null && query.getLeadSource().isBlank()) {
+            query.setLeadSource(null);
+        }
+        if (query.getLeadStatus() != null && query.getLeadStatus().isBlank()) {
+            query.setLeadStatus(null);
+        }
+    }
+
+    private List<String> getActiveFilterColumns(MonthlyReviewQueryDTO query) {
+        List<String> active = new ArrayList<>();
+        for (String col : FILTER_COLUMN_ORDER) {
+            switch (col) {
+                case "salesPerson":
+                    if (query.getSalesPerson() != null) active.add(col);
+                    break;
+                case "leadSource":
+                    if (query.getLeadSource() != null) active.add(col);
+                    break;
+                case "leadStatus":
+                    if (query.getLeadStatus() != null) active.add(col);
+                    break;
+            }
+        }
+        return active;
+    }
+
+    private Map<String, String> buildFilterValueMap(MonthlyReviewQueryDTO query) {
+        Map<String, String> map = new HashMap<>();
+        if (query.getSalesPerson() != null) map.put("salesPerson", query.getSalesPerson());
+        if (query.getLeadSource() != null) map.put("leadSource", query.getLeadSource());
+        if (query.getLeadStatus() != null) map.put("leadStatus", query.getLeadStatus());
+        return map;
     }
 
     private String resolveGroupKey(SalesFollowUp sf, String groupField) {
@@ -168,10 +219,10 @@ public class MonthlyReviewService {
 
     private String buildCacheKey(MonthlyReviewQueryDTO query) {
         return REVIEW_CACHE_PREFIX + query.getYearMonth()
-                + ":" + query.getSalesPerson()
-                + ":" + query.getLeadSource()
-                + ":" + query.getLeadStatus()
-                + ":" + query.getGroupBy();
+                + ":" + (query.getSalesPerson() == null ? "" : query.getSalesPerson())
+                + ":" + (query.getLeadSource() == null ? "" : query.getLeadSource())
+                + ":" + (query.getLeadStatus() == null ? "" : query.getLeadStatus())
+                + ":" + (query.getGroupBy() == null ? "" : query.getGroupBy());
     }
 
     private String buildFilterCriteria(MonthlyReviewQueryDTO query) {
@@ -179,13 +230,13 @@ public class MonthlyReviewService {
         sb.append("月份: ").append(query.getYearMonth());
         String groupField = query.getGroupBy() != null ? query.getGroupBy() : "leadSource";
         sb.append("; 分组: ").append(resolveGroupLabel(groupField));
-        if (query.getSalesPerson() != null && !query.getSalesPerson().isBlank()) {
+        if (query.getSalesPerson() != null) {
             sb.append("; 销售: ").append(query.getSalesPerson());
         }
-        if (query.getLeadSource() != null && !query.getLeadSource().isBlank()) {
+        if (query.getLeadSource() != null) {
             sb.append("; 来源: ").append(query.getLeadSource());
         }
-        if (query.getLeadStatus() != null && !query.getLeadStatus().isBlank()) {
+        if (query.getLeadStatus() != null) {
             sb.append("; 状态: ").append(query.getLeadStatus());
         }
         return sb.toString();
