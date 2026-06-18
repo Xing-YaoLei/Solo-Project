@@ -269,3 +269,230 @@ export async function getStatistics() {
     avgDaysInStock: avgDaysResult[0]?.avgDays || 0,
   };
 }
+
+export interface AddInspectionData {
+  overallGrade: "A" | "B" | "C" | "D";
+  inspectionDate?: string;
+  totalEstimatedCost: number;
+  status?: "pending" | "in_progress" | "completed" | "rejected";
+  notes?: string;
+  accidentHistory: {
+    hasAccident: boolean;
+    description?: string;
+  };
+  testResult: {
+    brakeTest: boolean;
+    emissionTest: boolean;
+    suspensionTest: boolean;
+  };
+  exteriorItems: Array<{ name: string; condition: "excellent" | "good" | "fair" | "poor"; estimatedCost?: number }>;
+  interiorItems: Array<{ name: string; condition: "excellent" | "good" | "fair" | "poor"; estimatedCost?: number }>;
+  mechanicalItems: Array<{ name: string; condition: "excellent" | "good" | "fair" | "poor"; estimatedCost?: number }>;
+  electricalItems: Array<{ name: string; condition: "excellent" | "good" | "fair" | "poor"; estimatedCost?: number }>;
+}
+
+export async function addInspection(
+  vehicleId: string,
+  data: AddInspectionData,
+  inspectorId: string,
+  user?: UserDocument
+) {
+  const connected = await connectToMongo();
+  if (!connected) {
+    throw new Error("数据库连接失败");
+  }
+
+  const filter: Record<string, any> = { _id: new Types.ObjectId(vehicleId), isActive: true };
+  if (user?.role === "executive") {
+    filter.assignedTo = user._id;
+  }
+
+  const vehicle = await Vehicle.findOne(filter);
+  if (!vehicle) {
+    throw new Error("车辆不存在或无权限访问");
+  }
+
+  const existing = await InspectionReport.findOne({ vehicleId: vehicle._id });
+  if (existing) {
+    throw new Error("该车辆已有检测报告");
+  }
+
+  const inspection = new InspectionReport({
+    ...data,
+    vehicleId: vehicle._id,
+    inspectorId: new Types.ObjectId(inspectorId),
+    inspectionDate: data.inspectionDate ? new Date(data.inspectionDate) : new Date(),
+  });
+  await inspection.save();
+
+  if (vehicle.stage === "archive") {
+    vehicle.stage = "inspection";
+    await vehicle.save();
+  }
+
+  return inspection.toObject();
+}
+
+export interface AddPreparationData {
+  items: Array<{
+    name: string;
+    category: string;
+    priority: "low" | "medium" | "high";
+    estimatedCost: number;
+  }>;
+  totalEstimatedCost: number;
+  notes?: string;
+}
+
+export async function addPreparation(
+  vehicleId: string,
+  data: AddPreparationData,
+  preparedBy: string,
+  user?: UserDocument
+) {
+  const connected = await connectToMongo();
+  if (!connected) {
+    throw new Error("数据库连接失败");
+  }
+
+  const filter: Record<string, any> = { _id: new Types.ObjectId(vehicleId), isActive: true };
+  if (user?.role === "executive") {
+    filter.assignedTo = user._id;
+  }
+
+  const vehicle = await Vehicle.findOne(filter);
+  if (!vehicle) {
+    throw new Error("车辆不存在或无权限访问");
+  }
+
+  const existing = await PreparationList.findOne({ vehicleId: vehicle._id });
+  if (existing) {
+    throw new Error("该车辆已有整备清单");
+  }
+
+  const preparation = new PreparationList({
+    ...data,
+    vehicleId: vehicle._id,
+    preparedBy: new Types.ObjectId(preparedBy),
+    startDate: new Date(),
+    items: data.items.map((item) => ({
+      ...item,
+      status: "pending",
+      actualCost: 0,
+    })),
+  });
+  await preparation.save();
+
+  if (vehicle.stage === "inspection") {
+    vehicle.stage = "preparation";
+    await vehicle.save();
+  }
+
+  return preparation.toObject();
+}
+
+export interface AddTestDriveData {
+  date?: string;
+  startTime: string;
+  endTime: string;
+  startMileage: number;
+  endMileage: number;
+  route: string;
+  clientName?: string;
+  clientPhone?: string;
+  clientInterest?: "low" | "medium" | "high";
+  overallRating: number;
+  issuesFound?: string;
+  clientNotes?: string;
+  feedback: {
+    engine: number;
+    transmission: number;
+    suspension: number;
+    brake: number;
+    steering: number;
+    noise: number;
+  };
+}
+
+export async function addTestDrive(
+  vehicleId: string,
+  data: AddTestDriveData,
+  driverId: string,
+  user?: UserDocument
+) {
+  const connected = await connectToMongo();
+  if (!connected) {
+    throw new Error("数据库连接失败");
+  }
+
+  const filter: Record<string, any> = { _id: new Types.ObjectId(vehicleId), isActive: true };
+  if (user?.role === "executive") {
+    filter.assignedTo = user._id;
+  }
+
+  const vehicle = await Vehicle.findOne(filter);
+  if (!vehicle) {
+    throw new Error("车辆不存在或无权限访问");
+  }
+
+  const testDrive = new TestDriveRecord({
+    ...data,
+    vehicleId: vehicle._id,
+    driverId: new Types.ObjectId(driverId),
+    date: data.date ? new Date(data.date) : new Date(),
+  });
+  await testDrive.save();
+
+  if (vehicle.stage === "preparation") {
+    vehicle.stage = "testdrive";
+    await vehicle.save();
+  }
+
+  return testDrive.toObject();
+}
+
+export interface AddQuoteData {
+  price: number;
+  offeredToName?: string;
+  offeredToPhone?: string;
+  validUntil?: string;
+  conditions?: string;
+  status?: "proposed" | "negotiating" | "accepted" | "rejected" | "expired";
+}
+
+export async function addQuote(
+  vehicleId: string,
+  data: AddQuoteData,
+  offeredById: string,
+  user?: UserDocument
+) {
+  const connected = await connectToMongo();
+  if (!connected) {
+    throw new Error("数据库连接失败");
+  }
+
+  const filter: Record<string, any> = { _id: new Types.ObjectId(vehicleId), isActive: true };
+  if (user?.role === "executive") {
+    filter.assignedTo = user._id;
+  }
+
+  const vehicle = await Vehicle.findOne(filter);
+  if (!vehicle) {
+    throw new Error("车辆不存在或无权限访问");
+  }
+
+  const quote = new PriceQuote({
+    ...data,
+    vehicleId: vehicle._id,
+    offeredById: new Types.ObjectId(offeredById),
+    validUntil: data.validUntil ? new Date(data.validUntil) : undefined,
+  });
+  await quote.save();
+
+  if (vehicle.stage === "testdrive") {
+    vehicle.stage = "quoting";
+    await vehicle.save();
+  }
+
+  return quote.toObject();
+}
