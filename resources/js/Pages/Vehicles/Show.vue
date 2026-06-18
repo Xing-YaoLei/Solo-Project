@@ -417,7 +417,7 @@
                                 attachable-type="App\\Models\\Vehicle"
                                 :attachable-id="vehicle.id"
                                 category="photo"
-                                label=""
+                                label="车辆照片"
                                 :existing-attachments="vehicle.attachments"
                                 can-delete
                             />
@@ -428,7 +428,7 @@
         </div>
 
         <Modal v-model:show="showStatusModal" title="变更车辆状态">
-            <form @submit.prevent="submitStatusChange" class="space-y-4">
+            <form id="statusForm" @submit.prevent="submitStatusChange" class="space-y-4">
                 <div>
                     <label class="label">目标状态</label>
                     <select v-model="statusForm.status" class="select-field" required>
@@ -439,15 +439,15 @@
                     <label class="label">备注说明</label>
                     <textarea v-model="statusForm.remark" class="textarea-field" rows="3"></textarea>
                 </div>
-                <template #footer>
-                    <button type="button" @click="showStatusModal = false" class="btn-secondary w-full sm:order-1">取消</button>
-                    <button type="submit" class="btn-primary w-full sm:order-2">确认变更</button>
-                </template>
             </form>
+            <template #footer>
+                <button type="button" @click="showStatusModal = false" class="btn-secondary w-full sm:order-1">取消</button>
+                <button type="submit" form="statusForm" class="btn-primary w-full sm:order-2">确认变更</button>
+            </template>
         </Modal>
 
         <Modal v-model:show="showAnomalyModal" title="上报异常">
-            <form @submit.prevent="submitAnomaly" class="space-y-4">
+            <form id="anomalyForm" @submit.prevent="submitAnomaly" class="space-y-4">
                 <div>
                     <label class="label">异常类型</label>
                     <select v-model="anomalyForm.type" class="select-field" required>
@@ -481,15 +481,15 @@
                     category="document"
                     label="相关附件"
                 />
-                <template #footer>
-                    <button type="button" @click="showAnomalyModal = false" class="btn-secondary w-full sm:order-1">取消</button>
-                    <button type="submit" class="btn-danger w-full sm:order-2">确认上报</button>
-                </template>
             </form>
+            <template #footer>
+                <button type="button" @click="showAnomalyModal = false" class="btn-secondary w-full sm:order-1">取消</button>
+                <button type="submit" form="anomalyForm" class="btn-danger w-full sm:order-2">确认上报</button>
+            </template>
         </Modal>
 
         <Modal v-model:show="showPreparationModal" title="整备项目">
-            <form @submit.prevent="submitPreparation" class="space-y-4">
+            <form id="preparationForm" @submit.prevent="submitPreparation" class="space-y-4">
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="label">分类</label>
@@ -540,15 +540,15 @@
                     label="相关附件"
                     :existing-attachments="editingPreparation?.attachments || []"
                 />
-                <template #footer>
-                    <button type="button" @click="showPreparationModal = false" class="btn-secondary w-full sm:order-1">取消</button>
-                    <button type="submit" class="btn-primary w-full sm:order-2">{{ editingPreparation ? '保存修改' : '添加项目' }}</button>
-                </template>
             </form>
+            <template #footer>
+                <button type="button" @click="showPreparationModal = false" class="btn-secondary w-full sm:order-1">取消</button>
+                <button type="submit" form="preparationForm" class="btn-primary w-full sm:order-2">{{ editingPreparation ? '保存修改' : '添加项目' }}</button>
+            </template>
         </Modal>
 
         <Modal v-model:show="showQuoteModal" title="报价记录">
-            <form @submit.prevent="submitQuote" class="space-y-4">
+            <form id="quoteForm" @submit.prevent="submitQuote" class="space-y-4">
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="label">报价阶段</label>
@@ -590,15 +590,15 @@
                     <label class="label">备注</label>
                     <textarea v-model="quoteForm.remark" class="textarea-field" rows="2"></textarea>
                 </div>
-                <template #footer>
-                    <button type="button" @click="showQuoteModal = false" class="btn-secondary w-full sm:order-1">取消</button>
-                    <button type="submit" class="btn-primary w-full sm:order-2">{{ editingQuote ? '保存修改' : '添加报价' }}</button>
-                </template>
             </form>
+            <template #footer>
+                <button type="button" @click="showQuoteModal = false" class="btn-secondary w-full sm:order-1">取消</button>
+                <button type="submit" form="quoteForm" class="btn-primary w-full sm:order-2">{{ editingQuote ? '保存修改' : '添加报价' }}</button>
+            </template>
         </Modal>
 
         <Modal v-model:show="showFinanceDocModal" title="金融资料">
-            <form @submit.prevent="submitFinanceDoc" class="space-y-4">
+            <form id="financeDocForm" @submit.prevent="submitFinanceDoc" class="space-y-4">
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="label">资料类型</label>
@@ -652,15 +652,15 @@
                     label="资料附件"
                     :existing-attachments="editingFinanceDoc?.attachments || []"
                 />
-                <template #footer>
-                    <button type="button" @click="showFinanceDocModal = false" class="btn-secondary w-full sm:order-1">取消</button>
-                    <button type="submit" class="btn-primary w-full sm:order-2">{{ editingFinanceDoc ? '保存修改' : '添加资料' }}</button>
-                </template>
             </form>
+            <template #footer>
+                <button type="button" @click="showFinanceDocModal = false" class="btn-secondary w-full sm:order-1">取消</button>
+                <button type="submit" form="financeDocForm" class="btn-primary w-full sm:order-2">{{ editingFinanceDoc ? '保存修改' : '添加资料' }}</button>
+            </template>
         </Modal>
 
         <Modal v-model:show="showTestDriveModal" title="试驾详情">
-            <form @submit.prevent="submitTestDrive" class="space-y-4">
+            <form id="testDriveForm" @submit.prevent="submitTestDrive" class="space-y-4">
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="label">试驾时间</label>
@@ -736,11 +736,11 @@
                     label="相关照片"
                     :existing-attachments="editingTestDrive?.attachments || []"
                 />
-                <template #footer>
-                    <button type="button" @click="showTestDriveModal = false" class="btn-secondary w-full sm:order-1">取消</button>
-                    <button type="submit" class="btn-primary w-full sm:order-2">{{ editingTestDrive ? '保存修改' : '添加试驾' }}</button>
-                </template>
             </form>
+            <template #footer>
+                <button type="button" @click="showTestDriveModal = false" class="btn-secondary w-full sm:order-1">取消</button>
+                <button type="submit" form="testDriveForm" class="btn-primary w-full sm:order-2">{{ editingTestDrive ? '保存修改' : '添加试驾' }}</button>
+            </template>
         </Modal>
     </AppLayout>
 </template>

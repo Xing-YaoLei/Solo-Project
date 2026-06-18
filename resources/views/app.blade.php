@@ -6,7 +6,7 @@
     <title inertia>{{ config('app.name', '二手车收购协同系统') }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     @routes
-    @vite(['resources/js/app.js', "resources/js/Pages/{$page['component']}.vue"])
+    @vite('resources/js/app.js')
     @inertiaHead
 </head>
 <body class="font-sans antialiased bg-gray-50">

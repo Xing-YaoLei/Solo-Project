@@ -5,6 +5,8 @@ namespace Database\Seeders;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
+use App\Models\Vehicle;
+use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
@@ -132,6 +134,78 @@ class DatabaseSeeder extends Seeder
             if ($role && !$user->roles->contains($role->id)) {
                 $user->roles()->attach($role);
             }
+        }
+
+        $manager = User::where('email', 'manager@example.com')->first();
+
+        $vehicles = [
+            [
+                'vin' => 'LSVAM4183G2123456',
+                'brand' => '大众',
+                'model' => '帕萨特',
+                'year' => 2019,
+                'color' => '黑色',
+                'mileage' => 68000,
+                'displacement' => '1.8T',
+                'transmission' => '自动',
+                'fuel_type' => '汽油',
+                'first_register_date' => '2019-03-15',
+                'arrival_date' => Carbon::now()->subDays(15)->toDateString(),
+                'status' => 'available',
+                'source' => '个人车主',
+                'owner_name' => '张先生',
+                'owner_phone' => '13800138001',
+                'purchase_price' => 125000,
+                'expected_sale_price' => 148000,
+                'created_by' => $manager?->id ?? 1,
+                'remark' => '车况良好，全程4S店保养，有轻微划痕',
+            ],
+            [
+                'vin' => 'LGBF1DE04DY123456',
+                'brand' => '别克',
+                'model' => '君越',
+                'year' => 2020,
+                'color' => '白色',
+                'mileage' => 45000,
+                'displacement' => '2.0T',
+                'transmission' => '自动',
+                'fuel_type' => '汽油',
+                'first_register_date' => '2020-06-20',
+                'arrival_date' => Carbon::now()->subDays(8)->toDateString(),
+                'status' => 'preparing',
+                'source' => '置换',
+                'owner_name' => '李女士',
+                'owner_phone' => '13900139002',
+                'purchase_price' => 158000,
+                'expected_sale_price' => 185000,
+                'created_by' => $manager?->id ?? 1,
+                'remark' => '需要做前保险杠喷漆和轮胎更换',
+            ],
+            [
+                'vin' => 'WVWSR7A30ME123456',
+                'brand' => '奥迪',
+                'model' => 'A4L',
+                'year' => 2021,
+                'color' => '银色',
+                'mileage' => 32000,
+                'displacement' => '2.0T',
+                'transmission' => '自动',
+                'fuel_type' => '汽油',
+                'first_register_date' => '2021-09-10',
+                'arrival_date' => Carbon::now()->subDays(3)->toDateString(),
+                'status' => 'pending',
+                'source' => '中介介绍',
+                'owner_name' => '王先生',
+                'owner_phone' => '13700137003',
+                'purchase_price' => 220000,
+                'expected_sale_price' => 258000,
+                'created_by' => $manager?->id ?? 1,
+                'remark' => '待评估，车主急售',
+            ],
+        ];
+
+        foreach ($vehicles as $vehicleData) {
+            Vehicle::firstOrCreate(['vin' => $vehicleData['vin']], $vehicleData);
         }
     }
 }

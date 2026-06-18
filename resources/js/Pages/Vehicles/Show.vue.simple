@@ -1,0 +1,18 @@
+<template>
+    <AppLayout title="车辆详情">
+        <div class="card">
+            <div class="card-body">
+                <p>车辆详情页加载中...</p>
+            </div>
+        </div>
+    </AppLayout>
+</template>
+
+<script setup>
+import AppLayout from '@/Components/AppLayout.vue';
+
+defineProps({
+    vehicle: Object,
+    can: Object,
+});
+</script>
