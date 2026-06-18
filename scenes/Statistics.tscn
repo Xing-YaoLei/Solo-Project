@@ -1,0 +1,176 @@
+[gd_scene load_steps=2 format=3 uid="uid://statistics001"]
+
+[ext_resource type="Script" path="res://scripts/Statistics.gd" id="1_stats"]
+
+[node name="Statistics" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_stats")
+
+[node name="BG" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.09, 0.11, 0.17, 1)
+
+[node name="TitleLabel" type="Label" parent="."]
+layout_mode = 0
+offset_left = 480.0
+offset_top = 25.0
+offset_right = 800.0
+offset_bottom = 70.0
+theme_override_font_sizes/font_size = 38
+text = "训练数据统计"
+horizontal_alignment = 1
+
+[node name="OverviewPanel" type="Panel" parent="."]
+layout_mode = 0
+offset_left = 40.0
+offset_top = 85.0
+offset_right = 620.0
+offset_bottom = 350.0
+
+[node name="OverviewBG" type="ColorRect" parent="OverviewPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.14, 0.17, 0.26, 1)
+
+[node name="OverviewTitle" type="Label" parent="OverviewPanel"]
+layout_mode = 0
+offset_left = 20.0
+offset_top = 12.0
+offset_right = 560.0
+offset_bottom = 48.0
+theme_override_colors/font_color = Color(0.74, 0.82, 1, 1)
+theme_override_font_sizes/font_size = 24
+text = "整体概览"
+
+[node name="OverviewContent" type="VBoxContainer" parent="OverviewPanel"]
+layout_mode = 0
+offset_left = 20.0
+offset_top = 55.0
+offset_right = 560.0
+offset_bottom = 250.0
+theme_override_constants/separation = 10
+
+[node name="CompletenessPanel" type="Panel" parent="."]
+layout_mode = 0
+offset_left = 660.0
+offset_top = 85.0
+offset_right = 1240.0
+offset_bottom = 350.0
+
+[node name="CompletenessBG" type="ColorRect" parent="CompletenessPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.14, 0.17, 0.26, 1)
+
+[node name="CompletenessTitle" type="Label" parent="CompletenessPanel"]
+layout_mode = 0
+offset_left = 20.0
+offset_top = 12.0
+offset_right = 560.0
+offset_bottom = 48.0
+theme_override_colors/font_color = Color(0.74, 0.82, 1, 1)
+theme_override_font_sizes/font_size = 24
+text = "资料完整率趋势"
+
+[node name="CompletenessChart" type="RichTextLabel" parent="CompletenessPanel"]
+layout_mode = 0
+offset_left = 20.0
+offset_top = 55.0
+offset_right = 560.0
+offset_bottom = 250.0
+bbcode_enabled = true
+theme_override_font_sizes/normal_font_size = 16
+text = ""
+scroll_active = false
+
+[node name="MistakesPanel" type="Panel" parent="."]
+layout_mode = 0
+offset_left = 40.0
+offset_top = 370.0
+offset_right = 620.0
+offset_bottom = 650.0
+
+[node name="MistakesBG" type="ColorRect" parent="MistakesPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.14, 0.17, 0.26, 1)
+
+[node name="MistakesTitle" type="Label" parent="MistakesPanel"]
+layout_mode = 0
+offset_left = 20.0
+offset_top = 12.0
+offset_right = 560.0
+offset_bottom = 48.0
+theme_override_colors/font_color = Color(0.74, 0.82, 1, 1)
+theme_override_font_sizes/font_size = 24
+text = "错因分布"
+
+[node name="MistakesContent" type="RichTextLabel" parent="MistakesPanel"]
+layout_mode = 0
+offset_left = 20.0
+offset_top = 55.0
+offset_right = 560.0
+offset_bottom = 260.0
+bbcode_enabled = true
+theme_override_font_sizes/normal_font_size = 16
+text = ""
+scroll_active = true
+
+[node name="HistoryPanel" type="Panel" parent="."]
+layout_mode = 0
+offset_left = 660.0
+offset_top = 370.0
+offset_right = 1240.0
+offset_bottom = 650.0
+
+[node name="HistoryBG" type="ColorRect" parent="HistoryPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.14, 0.17, 0.26, 1)
+
+[node name="HistoryTitle" type="Label" parent="HistoryPanel"]
+layout_mode = 0
+offset_left = 20.0
+offset_top = 12.0
+offset_right = 560.0
+offset_bottom = 48.0
+theme_override_colors/font_color = Color(0.74, 0.82, 1, 1)
+theme_override_font_sizes/font_size = 24
+text = "历史训练记录"
+
+[node name="HistoryContent" type="RichTextLabel" parent="HistoryPanel"]
+layout_mode = 0
+offset_left = 20.0
+offset_top = 55.0
+offset_right = 560.0
+offset_bottom = 260.0
+bbcode_enabled = true
+theme_override_font_sizes/normal_font_size = 16
+text = ""
+scroll_active = true
+
+[node name="BackBtn" type="Button" parent="."]
+layout_mode = 0
+offset_left = 20.0
+offset_top = 20.0
+offset_right = 140.0
+offset_bottom = 55.0
+text = "← 返回"
+custom_minimum_size = Vector2(120, 35)
+theme_override_font_sizes/font_size = 16

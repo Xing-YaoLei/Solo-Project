@@ -1,0 +1,136 @@
+[gd_scene load_steps=2 format=3 uid="uid://settlement001"]
+
+[ext_resource type="Script" path="res://scripts/Settlement.gd" id="1_settlement"]
+
+[node name="Settlement" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_settlement")
+
+[node name="BG" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.09, 0.11, 0.17, 1)
+
+[node name="TitleLabel" type="Label" parent="."]
+layout_mode = 0
+offset_left = 440.0
+offset_top = 30.0
+offset_right = 840.0
+offset_bottom = 80.0
+theme_override_font_sizes/font_size = 40
+text = "训练结算报告"
+horizontal_alignment = 1
+
+[node name="ScoreLabel" type="Label" parent="."]
+layout_mode = 0
+offset_left = 340.0
+offset_top = 90.0
+offset_right = 940.0
+offset_bottom = 145.0
+theme_override_colors/font_color = Color(1, 0.85, 0.4, 1)
+theme_override_font_sizes/font_size = 48
+text = "总分: 0"
+horizontal_alignment = 1
+
+[node name="StatsPanel" type="VBoxContainer" parent="."]
+layout_mode = 0
+offset_left = 100.0
+offset_top = 165.0
+offset_right = 1180.0
+offset_bottom = 420.0
+theme_override_constants/separation = 8
+
+[node name="CompletenessLabel" type="Label" parent="StatsPanel"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.92, 1, 1)
+theme_override_font_sizes/font_size = 22
+text = "资料完整率: 0%"
+
+[node name="TotalStepsLabel" type="Label" parent="StatsPanel"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.92, 1, 1)
+theme_override_font_sizes/font_size = 22
+text = "总操作步数: 0"
+
+[node name="MistakeCountLabel" type="Label" parent="StatsPanel"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95, 0.5, 0.55, 1)
+theme_override_font_sizes/font_size = 22
+text = "错误次数: 0"
+
+[node name="SlowStepsLabel" type="Label" parent="StatsPanel"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95, 0.75, 0.3, 1)
+theme_override_font_sizes/font_size = 22
+text = "卡顿步骤: 0"
+
+[node name="HistoryMistakesTitle" type="Label" parent="StatsPanel"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.74, 0.82, 1, 1)
+theme_override_font_sizes/font_size = 24
+text = "┈┈ 错因分类（含历史记录相关） ┈┈"
+
+[node name="MistakeBreakdown" type="RichTextLabel" parent="StatsPanel"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/default_color = Color(0.9, 0.92, 0.98, 1)
+bbcode_enabled = true
+theme_override_font_sizes/normal_font_size = 17
+text = ""
+custom_minimum_size = Vector2(0, 150)
+scroll_active = false
+
+[node name="MistakesTitle" type="Label" parent="."]
+layout_mode = 0
+offset_left = 100.0
+offset_top = 430.0
+offset_right = 1180.0
+offset_bottom = 460.0
+theme_override_colors/font_color = Color(0.74, 0.82, 1, 1)
+theme_override_font_sizes/font_size = 22
+text = "本次错误明细（点击进入复盘可查看详情）"
+
+[node name="MistakesList" type="RichTextLabel" parent="."]
+layout_mode = 0
+offset_left = 100.0
+offset_top = 470.0
+offset_right = 1180.0
+offset_bottom = 600.0
+theme_override_colors/default_color = Color(0.9, 0.92, 0.98, 1)
+bbcode_enabled = true
+theme_override_font_sizes/normal_font_size = 16
+text = ""
+scroll_active = true
+
+[node name="ButtonsPanel" type="HBoxContainer" parent="."]
+layout_mode = 0
+offset_left = 300.0
+offset_top = 620.0
+offset_right = 980.0
+offset_bottom = 690.0
+theme_override_constants/separation = 30
+
+[node name="RetryBtn" type="Button" parent="ButtonsPanel"]
+layout_mode = 2
+text = "再来一次"
+custom_minimum_size = Vector2(200, 60)
+theme_override_font_sizes/font_size = 22
+
+[node name="ReplayBtn" type="Button" parent="ButtonsPanel"]
+layout_mode = 2
+text = "复盘回放"
+custom_minimum_size = Vector2(200, 60)
+theme_override_font_sizes/font_size = 22
+
+[node name="MenuBtn" type="Button" parent="ButtonsPanel"]
+layout_mode = 2
+text = "返回主菜单"
+custom_minimum_size = Vector2(200, 60)
+theme_override_font_sizes/font_size = 22
