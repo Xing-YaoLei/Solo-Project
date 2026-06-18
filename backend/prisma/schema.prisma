@@ -1,0 +1,238 @@
+// Prisma schema 数据模型
+// 家装工地客户确认任务分派台
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  OWNER
+  FOREMAN
+  DESIGNER
+  SUPERVISOR
+  PROJECT_MANAGER
+  ADMIN
+}
+
+enum TaskType {
+  NODE_ACCEPTANCE
+  DESIGN_CHANGE
+  MATERIAL_REPLACEMENT
+  ADDITIONAL_QUOTE
+}
+
+enum TaskStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  DISPUTED
+  OVERDUE
+}
+
+enum DisputeStatus {
+  OPEN
+  RESOLVED
+  CLOSED
+}
+
+enum ReminderType {
+  OVERDUE
+  MISSING_DOCUMENTS
+  TASK_ASSIGNED
+  DISPUTE_OPENED
+}
+
+enum ReminderStatus {
+  PENDING
+  SENT
+  READ
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  phone         String?   @unique
+  password      String
+  name          String
+  avatar        String?
+  role          UserRole
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  ownedProjects       Project[] @relation("Owner")
+  managedProjects     Project[] @relation("ProjectManager")
+  assignedTasks       ConfirmationTask[] @relation("AssignedTo")
+  createdTasks        ConfirmationTask[] @relation("CreatedBy")
+  confirmedTasks      ConfirmationTask[] @relation("ConfirmedBy")
+  confirmationVersions ConfirmationVersion[] @relation("VersionCreator")
+  quoteVersions       QuoteVersion[] @relation("QuoteVersionCreator")
+  chatMessages        ChatMessage[]
+  disputesCreated     Dispute[] @relation("DisputeCreator")
+  disputesResolved    Dispute[] @relation("DisputeResolver")
+  reminders           Reminder[]
+  generatedReports    Report[] @relation("ReportGenerator")
+}
+
+model Project {
+  id                String    @id @default(uuid())
+  name              String
+  address           String
+  description       String?
+  ownerId           String
+  projectManagerId  String?
+  status            String    @default("IN_PROGRESS")
+  startDate         DateTime?
+  endDate           DateTime?
+  totalBudget       Decimal?  @db.Decimal(12, 2)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  owner             User      @relation("Owner", fields: [ownerId], references: [id])
+  projectManager    User?     @relation("ProjectManager", fields: [projectManagerId], references: [id])
+  tasks             ConfirmationTask[]
+}
+
+model ConfirmationTask {
+  id              String      @id @default(uuid())
+  projectId       String
+  title           String
+  type            TaskType
+  status          TaskStatus  @default(PENDING)
+  description     String?
+  nodeName        String?
+  location        String?
+  amount          Decimal?    @db.Decimal(12, 2)
+  deadline        DateTime?
+  assignedToId    String?
+  createdById     String
+  currentVersion  Int         @default(1)
+  isOverdue       Boolean     @default(false)
+  confirmedAt     DateTime?
+  confirmedById   String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  project         Project     @relation(fields: [projectId], references: [id])
+  assignedTo      User?       @relation("AssignedTo", fields: [assignedToId], references: [id])
+  createdBy       User        @relation("CreatedBy", fields: [createdById], references: [id])
+  confirmedBy     User?       @relation("ConfirmedBy", fields: [confirmedById], references: [id])
+  versions        ConfirmationVersion[]
+  quoteVersions   QuoteVersion[]
+  images          TaskImage[]
+  chatMessages    ChatMessage[]
+  disputes        Dispute[]
+  reminders       Reminder[]
+}
+
+model ConfirmationVersion {
+  id              String    @id @default(uuid())
+  taskId          String
+  version         Int
+  title           String
+  description     String?
+  nodeName        String?
+  location        String?
+  amount          Decimal?  @db.Decimal(12, 2)
+  changeReason    String?
+  createdById     String
+  createdAt       DateTime  @default(now())
+
+  task            ConfirmationTask @relation(fields: [taskId], references: [id])
+  createdBy       User      @relation("VersionCreator", fields: [createdById], references: [id])
+  images          TaskImage[]
+}
+
+model QuoteVersion {
+  id              String    @id @default(uuid())
+  taskId          String
+  version         Int
+  amount          Decimal   @db.Decimal(12, 2)
+  description     String?
+  items           Json?
+  createdById     String
+  createdAt       DateTime  @default(now())
+
+  task            ConfirmationTask @relation(fields: [taskId], references: [id])
+  createdBy       User      @relation("QuoteVersionCreator", fields: [createdById], references: [id])
+}
+
+model TaskImage {
+  id              String    @id @default(uuid())
+  taskId          String
+  versionId       String?
+  type            String    // BEFORE, AFTER, OTHER
+  url             String
+  thumbnailUrl    String?
+  description     String?
+  order           Int       @default(0)
+  createdAt       DateTime  @default(now())
+
+  task            ConfirmationTask @relation(fields: [taskId], references: [id])
+  version         ConfirmationVersion? @relation(fields: [versionId], references: [id])
+}
+
+model ChatMessage {
+  id              String    @id @default(uuid())
+  taskId          String
+  userId          String
+  content         String
+  type            String    @default("TEXT") // TEXT, IMAGE, SYSTEM
+  metadata        Json?
+  createdAt       DateTime  @default(now())
+
+  task            ConfirmationTask @relation(fields: [taskId], references: [id])
+  user            User      @relation(fields: [userId], references: [id])
+}
+
+model Dispute {
+  id              String          @id @default(uuid())
+  taskId          String
+  title           String
+  description     String?
+  status          DisputeStatus   @default(OPEN)
+  reason          String?
+  createdById     String
+  resolvedById    String?
+  resolution      String?
+  createdAt       DateTime        @default(now())
+  resolvedAt      DateTime?
+
+  task            ConfirmationTask @relation(fields: [taskId], references: [id])
+  createdBy       User            @relation("DisputeCreator", fields: [createdById], references: [id])
+  resolvedBy      User?           @relation("DisputeResolver", fields: [resolvedById], references: [id])
+}
+
+model Reminder {
+  id              String          @id @default(uuid())
+  taskId          String?
+  userId          String
+  type            ReminderType
+  title           String
+  content         String?
+  status          ReminderStatus  @default(PENDING)
+  scheduledAt     DateTime?
+  sentAt          DateTime?
+  readAt          DateTime?
+  metadata        Json?
+  createdAt       DateTime        @default(now())
+
+  task            ConfirmationTask? @relation(fields: [taskId], references: [id])
+  user            User            @relation(fields: [userId], references: [id])
+}
+
+model Report {
+  id              String    @id @default(uuid())
+  type            String
+  period          String
+  data            Json
+  generatedById   String?
+  createdAt       DateTime  @default(now())
+
+  generatedBy     User?     @relation("ReportGenerator", fields: [generatedById], references: [id])
+}
