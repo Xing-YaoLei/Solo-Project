@@ -31,6 +31,41 @@ class RuleUpdate(BaseModel):
     params: Optional[dict] = None
 
 
+class ThresholdCreate(BaseModel):
+    id: Optional[str] = None
+    documentType: Optional[str] = None
+    docType: Optional[str] = None
+    name: Optional[str] = None
+    warningDays: Optional[int] = None
+    warning_days: Optional[int] = None
+    criticalDays: Optional[int] = None
+    critical_days: Optional[int] = None
+    escalationInterval: Optional[int] = 24
+    escalation_interval: Optional[int] = 24
+    enabled: Optional[bool] = True
+    stageRequired: Optional[str] = None
+    stage_required: Optional[str] = None
+
+
+class ThresholdUpdate(BaseModel):
+    documentType: Optional[str] = None
+    docType: Optional[str] = None
+    name: Optional[str] = None
+    warningDays: Optional[int] = None
+    warning_days: Optional[int] = None
+    criticalDays: Optional[int] = None
+    critical_days: Optional[int] = None
+    escalationInterval: Optional[int] = None
+    escalation_interval: Optional[int] = None
+    enabled: Optional[bool] = None
+    stageRequired: Optional[str] = None
+    stage_required: Optional[str] = None
+
+
+class ThresholdToggle(BaseModel):
+    enabled: Optional[bool] = None
+
+
 @router.get("", response_model=ApiResponse[PaginatedData[dict]])
 async def list_rules(
     page: int = Query(1, ge=1),
@@ -67,6 +102,50 @@ async def get_warning_thresholds(
         {"ruleName": "保单30天内到期", "docType": "insurance_policy", "threshold": 30, "unit": "天", "level": "low"},
     ]
     return ApiResponse.ok(data=thresholds)
+
+
+@router.get("/thresholds/full", response_model=ApiResponse[List[dict]])
+async def get_warning_thresholds_full(
+    mock: MockService = Depends(get_mock_data),
+) -> ApiResponse:
+    data = mock.get_warning_thresholds_full()
+    return ApiResponse.ok(data=data)
+
+
+@router.put("/thresholds/{threshold_id}", response_model=ApiResponse[dict])
+async def update_threshold(
+    threshold_id: str,
+    data: ThresholdUpdate,
+    mock: MockService = Depends(get_mock_data),
+) -> ApiResponse:
+    update_dict = data.model_dump(exclude_unset=True)
+    update_dict["id"] = threshold_id
+    updated = mock.upsert_warning_threshold(update_dict)
+    if not updated:
+        raise HTTPException(status_code=404, detail="阈值不存在")
+    return ApiResponse.ok(data=updated, message="阈值更新成功")
+
+
+@router.post("/thresholds", response_model=ApiResponse[dict])
+async def create_threshold(
+    data: ThresholdCreate,
+    mock: MockService = Depends(get_mock_data),
+) -> ApiResponse:
+    create_dict = data.model_dump(exclude_unset=True)
+    new_threshold = mock.upsert_warning_threshold(create_dict)
+    return ApiResponse.ok(data=new_threshold, message="阈值创建成功")
+
+
+@router.patch("/thresholds/{threshold_id}/toggle", response_model=ApiResponse[dict])
+async def toggle_threshold(
+    threshold_id: str,
+    body: ThresholdToggle = Body(default_factory=ThresholdToggle),
+    mock: MockService = Depends(get_mock_data),
+) -> ApiResponse:
+    toggled = mock.toggle_warning_threshold(threshold_id, body.enabled)
+    if not toggled:
+        raise HTTPException(status_code=404, detail="阈值不存在")
+    return ApiResponse.ok(data=toggled, message=f"阈值已{'启用' if toggled['enabled'] else '禁用'}")
 
 
 @router.get("/{rule_id}", response_model=ApiResponse[dict])

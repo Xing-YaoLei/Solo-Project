@@ -45,6 +45,48 @@ api.interceptors.response.use(
 
 export default api;
 
+function isPaginatedData(data: unknown): data is Record<string, unknown> {
+  if (!data || typeof data !== 'object') return false;
+  const d = data as Record<string, unknown>;
+  return (
+    Array.isArray(d.items) &&
+    typeof d.total === 'number' &&
+    typeof d.page === 'number' &&
+    (typeof d.page_size === 'number' || typeof d.pageSize === 'number')
+  );
+}
+
+function normalizePaginatedData(data: Record<string, unknown>): Record<string, unknown> {
+  const pageSize = (typeof data.page_size === 'number' ? data.page_size : data.pageSize) as number;
+  const totalPages = (typeof data.total_pages === 'number'
+    ? data.total_pages
+    : typeof data.totalPages === 'number'
+      ? data.totalPages
+      : Math.ceil((data.total as number) / Math.max(pageSize, 1))) as number;
+  return {
+    ...data,
+    pageSize,
+    totalPages,
+  };
+}
+
+function normalizeResponseData<T>(data: T): T {
+  if (isPaginatedData(data)) {
+    return normalizePaginatedData(data) as T;
+  }
+  if (Array.isArray(data)) {
+    return data.map((item) => normalizeResponseData(item)) as T;
+  }
+  if (data && typeof data === 'object') {
+    const result: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
+      result[key] = normalizeResponseData(value);
+    }
+    return result as T;
+  }
+  return data;
+}
+
 export async function request<T>(config: {
   url: string;
   method?: 'get' | 'post' | 'put' | 'delete' | 'patch';
@@ -57,5 +99,8 @@ export async function request<T>(config: {
     params: config.params,
     data: config.data,
   });
+  if (response.data && typeof response.data === 'object' && 'data' in response.data) {
+    response.data.data = normalizeResponseData(response.data.data);
+  }
   return response.data;
 }

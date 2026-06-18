@@ -3,6 +3,9 @@ import type { Store } from '@shared/types';
 import { RISK_COLORS, RISK_LABELS } from '@/utils/constants';
 import { cn } from '@/lib/utils';
 import { MapPin, AlertTriangle, Package, Shield } from 'lucide-react';
+import Map, { Source, Layer, Popup, NavigationControl, ScaleControl } from 'react-map-gl/mapbox';
+import 'mapbox-gl/dist/mapbox-gl.css';
+import type { CirclePaint } from 'mapbox-gl';
 
 interface Props {
   stores: Store[];
@@ -11,6 +14,13 @@ interface Props {
 }
 
 const MAPBOX_TOKEN = (import.meta as any).env?.VITE_MAPBOX_TOKEN;
+
+function getRiskLevel(score: number): 'low' | 'medium' | 'high' | 'critical' {
+  if (score > 75) return 'critical';
+  if (score > 55) return 'high';
+  if (score > 40) return 'medium';
+  return 'low';
+}
 
 export function StoreMap({ stores, onSelect, className }: Props) {
   if (MAPBOX_TOKEN) {
@@ -23,7 +33,7 @@ function SvgFallbackMap({ stores, onSelect, className }: Props) {
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const { viewW, viewH, project, bounds } = useMemo(() => {
+  const { viewW, viewH, project } = useMemo(() => {
     const lngs = stores.map((s) => s.lng);
     const lats = stores.map((s) => s.lat);
     const minLng = Math.min(...lngs) - 2;
@@ -38,7 +48,7 @@ function SvgFallbackMap({ stores, onSelect, className }: Props) {
       const y = h - pad - ((lat - minLat) / (maxLat - minLat)) * (h - pad * 2);
       return { x, y };
     };
-    return { viewW: w, viewH: h, project, bounds: { minLng, maxLng, minLat, maxLat } };
+    return { viewW: w, viewH: h, project };
   }, [stores]);
 
   const maxStock = Math.max(...stores.map((s) => s.inStockCount), 1);
@@ -67,7 +77,7 @@ function SvgFallbackMap({ stores, onSelect, className }: Props) {
         {stores.map((s) => {
           const { x, y } = project(s.lng, s.lat);
           const r = 6 + (s.inStockCount / maxStock) * 22;
-          const color = RISK_COLORS[s.riskScore > 75 ? 'critical' : s.riskScore > 55 ? 'high' : s.riskScore > 40 ? 'medium' : 'low'];
+          const color = RISK_COLORS[getRiskLevel(s.riskScore)];
           const isHigh = s.riskScore > 55;
           const isHover = hoverId === s.id || selectedId === s.id;
           return (
@@ -88,8 +98,8 @@ function SvgFallbackMap({ stores, onSelect, className }: Props) {
       {stores.map((s) => {
         const { x, y } = project(s.lng, s.lat);
         if (hoverId !== s.id && selectedId !== s.id) return null;
-        const color = RISK_COLORS[s.riskScore > 75 ? 'critical' : s.riskScore > 55 ? 'high' : s.riskScore > 40 ? 'medium' : 'low'];
-        const levelLabel = RISK_LABELS[s.riskScore > 75 ? 'critical' : s.riskScore > 55 ? 'high' : s.riskScore > 40 ? 'medium' : 'low'];
+        const color = RISK_COLORS[getRiskLevel(s.riskScore)];
+        const levelLabel = RISK_LABELS[getRiskLevel(s.riskScore)];
         const pctX = (x / viewW) * 100;
         const pctY = (y / viewH) * 100;
         return (
@@ -141,10 +151,175 @@ function SvgFallbackMap({ stores, onSelect, className }: Props) {
   );
 }
 
-function MapboxMap({ stores, className }: Props) {
+function MapboxMap({ stores, onSelect, className }: Props) {
+  const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null);
+
+  const { initialViewState, maxStock } = useMemo(() => {
+    if (stores.length === 0) {
+      return { initialViewState: { longitude: 104.1954, latitude: 35.8617, zoom: 4 }, maxStock: 1 };
+    }
+    const lngs = stores.map((s) => s.lng);
+    const lats = stores.map((s) => s.lat);
+    const avgLng = lngs.reduce((a, b) => a + b, 0) / lngs.length;
+    const avgLat = lats.reduce((a, b) => a + b, 0) / lats.length;
+    const maxStk = Math.max(...stores.map((s) => s.inStockCount), 1);
+    return {
+      initialViewState: { longitude: avgLng, latitude: avgLat, zoom: 4 },
+      maxStock: maxStk,
+    };
+  }, [stores]);
+
+  const geojson = useMemo(() => {
+    return {
+      type: 'FeatureCollection' as const,
+      features: stores.map((s) => ({
+        type: 'Feature' as const,
+        geometry: {
+          type: 'Point' as const,
+          coordinates: [s.lng, s.lat],
+        },
+        properties: {
+          id: s.id,
+          name: s.name,
+          code: s.code,
+          region: s.region,
+          address: s.address,
+          inStockCount: s.inStockCount,
+          alertCount: s.alertCount,
+          riskScore: s.riskScore,
+          riskLevel: getRiskLevel(s.riskScore),
+          radius: 6 + (s.inStockCount / maxStock) * 22,
+          isHigh: s.riskScore > 55 ? 1 : 0,
+        },
+      })),
+    };
+  }, [stores, maxStock]);
+
+  const selectedStore = useMemo(
+    () => stores.find((s) => s.id === selectedStoreId) || null,
+    [stores, selectedStoreId]
+  );
+
+  const circleLayer = {
+    id: 'store-circles',
+    type: 'circle' as const,
+    paint: {
+      'circle-radius': ['get', 'radius'] as unknown as CirclePaint['circle-radius'],
+      'circle-color': [
+        'match',
+        ['get', 'riskLevel'],
+        'low',
+        RISK_COLORS.low,
+        'medium',
+        RISK_COLORS.medium,
+        'high',
+        RISK_COLORS.high,
+        'critical',
+        RISK_COLORS.critical,
+        RISK_COLORS.low,
+      ] as unknown as CirclePaint['circle-color'],
+      'circle-opacity': [
+        'case',
+        ['boolean', ['get', 'isHigh'], false],
+        0.85,
+        0.72,
+      ] as unknown as CirclePaint['circle-opacity'],
+      'circle-stroke-width': [
+        'case',
+        ['boolean', ['get', 'isHigh'], false],
+        3,
+        1,
+      ] as unknown as CirclePaint['circle-stroke-width'],
+      'circle-stroke-color': '#ffffff' as CirclePaint['circle-stroke-color'],
+      'circle-stroke-opacity': [
+        'case',
+        ['boolean', ['get', 'isHigh'], false],
+        0.7,
+        0.3,
+      ] as unknown as CirclePaint['circle-stroke-opacity'],
+    },
+  };
+
   return (
-    <div className={cn('w-full h-full min-h-[480px] rounded-2xl bg-surface-card border border-surface-border flex items-center justify-center text-slate-500 text-sm', className)}>
-      Mapbox Map (requires token) - {stores.length} stores
+    <div className={cn('relative w-full h-full min-h-[480px] rounded-2xl bg-surface-card border border-surface-border overflow-hidden', className)}>
+      <Map
+        mapboxAccessToken={MAPBOX_TOKEN}
+        initialViewState={initialViewState}
+        mapStyle="mapbox://styles/mapbox/dark-v10"
+        style={{ width: '100%', height: '100%' }}
+        interactiveLayerIds={['store-circles']}
+        onClick={(event) => {
+          const feature = event.features?.[0] as { properties?: { id?: string } } | undefined;
+          if (feature && feature.properties?.id) {
+            const storeId = feature.properties.id as string;
+            setSelectedStoreId(storeId);
+            const store = stores.find((s) => s.id === storeId);
+            if (store) onSelect?.(store);
+          }
+        }}
+      >
+        <Source id="stores" type="geojson" data={geojson}>
+          <Layer {...circleLayer} />
+        </Source>
+        <NavigationControl position="top-right" showCompass={false} />
+        <ScaleControl position="bottom-right" unit="metric" />
+
+        {selectedStore && (
+          <Popup
+            longitude={selectedStore.lng}
+            latitude={selectedStore.lat}
+            anchor="bottom"
+            onClose={() => setSelectedStoreId(null)}
+            closeButton={true}
+            closeOnClick={false}
+            offset={20}
+            className="store-popup"
+          >
+            <div className="min-w-[200px] bg-surface-elevated border border-surface-border rounded-xl shadow-card p-3 backdrop-blur-xl">
+              {(() => {
+                const color = RISK_COLORS[getRiskLevel(selectedStore.riskScore)];
+                const levelLabel = RISK_LABELS[getRiskLevel(selectedStore.riskScore)];
+                return (
+                  <>
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <MapPin size={14} style={{ color }} />
+                      <span className="text-sm font-semibold text-white truncate max-w-[160px]">{selectedStore.name}</span>
+                    </div>
+                    <div className="text-[11px] text-slate-400 mb-2">{selectedStore.region} · {selectedStore.code}</div>
+                    <div className="grid grid-cols-3 gap-2 text-[11px]">
+                      <div>
+                        <div className="text-slate-500">在库</div>
+                        <div className="text-slate-200 font-semibold flex items-center gap-1"><Package size={10} />{selectedStore.inStockCount}</div>
+                      </div>
+                      <div>
+                        <div className="text-slate-500">预警</div>
+                        <div className="text-rose-400 font-semibold flex items-center gap-1"><AlertTriangle size={10} />{selectedStore.alertCount}</div>
+                      </div>
+                      <div>
+                        <div className="text-slate-500">风险</div>
+                        <div className="font-semibold flex items-center gap-1" style={{ color }}><Shield size={10} />{selectedStore.riskScore}</div>
+                      </div>
+                    </div>
+                    <div className="mt-2 text-[10px] text-slate-500">风险等级: <span style={{ color }}>{levelLabel}</span></div>
+                  </>
+                );
+              })()}
+            </div>
+          </Popup>
+        )}
+      </Map>
+
+      <div className="absolute top-4 left-4 z-10 bg-surface-elevated/80 backdrop-blur-xl border border-surface-border rounded-xl px-3 py-2">
+        <div className="text-xs font-semibold text-white mb-1.5">门店分布图</div>
+        <div className="flex gap-3 text-[10px]">
+          {(['low', 'medium', 'high', 'critical'] as const).map((l) => (
+            <div key={l} className="flex items-center gap-1">
+              <span className="w-2.5 h-2.5 rounded-full" style={{ background: RISK_COLORS[l] }} />
+              <span className="text-slate-400">{RISK_LABELS[l]}</span>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

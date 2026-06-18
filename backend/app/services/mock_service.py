@@ -73,6 +73,7 @@ class MockService:
     _vehicles: List[Dict] = []
     _alerts: List[Dict] = []
     _rules: List[Dict] = []
+    _thresholds: List[Dict] = []
 
     def __new__(cls):
         if cls._instance is None:
@@ -85,6 +86,7 @@ class MockService:
         self._vehicles = self.generate_mock_vehicles(self._stores)
         self._alerts = self.generate_mock_alerts(self._stores, self._vehicles)
         self._rules = self.generate_mock_rules()
+        self._thresholds = self._generate_mock_warning_thresholds()
 
     def generate_mock_stores(self) -> List[Dict]:
         stores = []
@@ -730,6 +732,133 @@ class MockService:
                     "count": random.randint(0, 6),
                 })
         return result
+
+    def _generate_mock_warning_thresholds(self) -> List[Dict]:
+        doc_types_sorted = [
+            ("driving_license", "行驶证"),
+            ("registration_cert", "登记证"),
+            ("purchase_tax", "购置税完税证明"),
+            ("insurance_policy", "交强险保单"),
+            ("invoice", "购车发票"),
+            ("other", "其他材料"),
+        ]
+        warning_days_list = [10, 8, 12, 15, 7, 20]
+        critical_days_list = [20, 15, 25, 30, 14, 40]
+        escalation_list = [24, 24, 48, 24, 12, 72]
+        enabled_list = [True, True, True, True, True, False]
+        stage_list = ["preparation", "preparation", "test_drive", "test_drive", "quoting", "quoting"]
+        thresholds = []
+        for i, (dt, dn) in enumerate(doc_types_sorted):
+            thresholds.append({
+                "id": f"th-{i + 1}",
+                "documentType": dt,
+                "docType": dt,
+                "name": dn,
+                "warningDays": warning_days_list[i],
+                "warning_days": warning_days_list[i],
+                "criticalDays": critical_days_list[i],
+                "critical_days": critical_days_list[i],
+                "escalationInterval": escalation_list[i],
+                "escalation_interval": escalation_list[i],
+                "enabled": enabled_list[i],
+                "stageRequired": stage_list[i],
+                "stage_required": stage_list[i],
+            })
+        return thresholds
+
+    def generate_risk_matrix_bubbles(self, store_id: Optional[str] = None, region: Optional[str] = None, days: Optional[int] = None) -> List[Dict]:
+        age_buckets = ["0-7", "8-15", "16-30", "31+"]
+        comp_buckets = ["0-25", "26-50", "51-75", "76-100"]
+        bubbles = []
+        all_vehicle_ids = [v["id"] for v in self._vehicles]
+        if store_id:
+            all_vehicle_ids = [v["id"] for v in self._vehicles if v["storeId"] == store_id]
+        if region:
+            store_ids_in_region = [s["id"] for s in self._stores if s["region"] == region]
+            all_vehicle_ids = [v["id"] for v in self._vehicles if v["storeId"] in store_ids_in_region]
+        for si in range(len(age_buckets)):
+            for ci in range(len(comp_buckets)):
+                dist_from_ideal = si + (3 - ci)
+                if dist_from_ideal <= 1:
+                    level = "low"
+                elif dist_from_ideal <= 3:
+                    level = "medium"
+                elif dist_from_ideal <= 5:
+                    level = "high"
+                else:
+                    level = "critical"
+                count = max(0, random.randint(0, 12) - int(dist_from_ideal * 0.8))
+                vid_count = min(count, len(all_vehicle_ids))
+                start_idx = si * 3 + ci
+                if start_idx + vid_count > len(all_vehicle_ids):
+                    start_idx = 0
+                vids = all_vehicle_ids[start_idx:start_idx + vid_count]
+                bubbles.append({
+                    "id": f"bubble-{si}-{ci}",
+                    "stockAgeBucket": age_buckets[si],
+                    "stock_age_bucket": age_buckets[si],
+                    "completionBucket": comp_buckets[ci],
+                    "completion_bucket": comp_buckets[ci],
+                    "x": si,
+                    "y": ci,
+                    "count": count,
+                    "riskLevel": level,
+                    "risk_level": level,
+                    "vehicleIds": vids,
+                    "vehicle_ids": vids,
+                })
+        return bubbles
+
+    def get_warning_thresholds_full(self) -> List[Dict]:
+        return self._thresholds
+
+    def upsert_warning_threshold(self, t: Dict) -> Dict:
+        tid = t.get("id")
+        if tid:
+            for i, existing in enumerate(self._thresholds):
+                if existing["id"] == tid:
+                    merged = dict(existing)
+                    for k, v in t.items():
+                        if v is not None:
+                            merged[k] = v
+                    if "documentType" in merged:
+                        merged["docType"] = merged["documentType"]
+                    if "warningDays" in merged:
+                        merged["warning_days"] = merged["warningDays"]
+                    if "criticalDays" in merged:
+                        merged["critical_days"] = merged["criticalDays"]
+                    if "escalationInterval" in merged:
+                        merged["escalation_interval"] = merged["escalationInterval"]
+                    if "stageRequired" in merged:
+                        merged["stage_required"] = merged["stageRequired"]
+                    self._thresholds[i] = merged
+                    return merged
+        new_id = tid or f"th-{len(self._thresholds) + 1}"
+        new_threshold = {
+            "id": new_id,
+            "documentType": t.get("documentType", t.get("docType", "other")),
+            "docType": t.get("documentType", t.get("docType", "other")),
+            "name": t.get("name", "新阈值"),
+            "warningDays": t.get("warningDays", t.get("warning_days", 7)),
+            "warning_days": t.get("warningDays", t.get("warning_days", 7)),
+            "criticalDays": t.get("criticalDays", t.get("critical_days", 14)),
+            "critical_days": t.get("criticalDays", t.get("critical_days", 14)),
+            "escalationInterval": t.get("escalationInterval", t.get("escalation_interval", 24)),
+            "escalation_interval": t.get("escalationInterval", t.get("escalation_interval", 24)),
+            "enabled": t.get("enabled", True),
+            "stageRequired": t.get("stageRequired", t.get("stage_required")),
+            "stage_required": t.get("stageRequired", t.get("stage_required")),
+        }
+        self._thresholds.append(new_threshold)
+        return new_threshold
+
+    def toggle_warning_threshold(self, threshold_id: str, enabled: Optional[bool] = None) -> Optional[Dict]:
+        for i, t in enumerate(self._thresholds):
+            if t["id"] == threshold_id:
+                new_enabled = enabled if enabled is not None else (not t["enabled"])
+                self._thresholds[i]["enabled"] = new_enabled
+                return self._thresholds[i]
+        return None
 
     def get_sync_status(self) -> Dict:
         return {

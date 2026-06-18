@@ -1,10 +1,24 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { QUERY_KEYS, queryClient } from '@/main';
 import * as Tabs from '@radix-ui/react-tabs';
 import * as Switch from '@radix-ui/react-switch';
 import * as Slider from '@radix-ui/react-slider';
 import * as Dialog from '@radix-ui/react-dialog';
 import { DOCUMENT_TYPES, RISK_COLORS, RISK_LABELS, STAGE_META } from '@/utils/constants';
-import { mockWarningThresholds, mockRules, mockVehicles, mockDocuments } from '@/data/mockData';
+import {
+  mockWarningThresholds,
+  mockRules,
+} from '@/data/mockData';
+import {
+  fetchWarningThresholds,
+  fetchRules,
+  updateWarningThreshold,
+  toggleWarningThreshold,
+  createRule,
+  updateRule,
+  deleteRule,
+} from '@/services/endpoints';
 import { cn } from '@/lib/utils';
 import { formatDays } from '@/utils/format';
 import {
@@ -19,14 +33,43 @@ import {
   MessageCircle,
   Users,
   ChevronDown,
+  CheckCircle2,
+  Loader2,
 } from 'lucide-react';
-import type { WarningThreshold, RuleConfig, RiskLevel, TurnoverStage, DocumentType } from '@shared/types';
+import type { WarningThreshold, RuleConfig, RiskLevel, TurnoverStage } from '@shared/types';
+
+const INVALIDATE_KEYS = [
+  QUERY_KEYS.thresholds,
+  QUERY_KEYS.rules,
+  QUERY_KEYS.riskMatrix,
+  QUERY_KEYS.alerts,
+  QUERY_KEYS.dashboardSummary,
+  QUERY_KEYS.vehicles,
+];
 
 export default function ManagementPage() {
   const [tab, setTab] = useState('threshold');
+  const [toast, setToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 2500);
+    return () => clearTimeout(timer);
+  }, [toast]);
+
+  const showToast = (msg: string) => setToast(msg);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 relative">
+      {toast && (
+        <div className="fixed top-6 right-6 z-50 animate-slide-up">
+          <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-emerald-500/15 border border-emerald-500/30 backdrop-blur-md shadow-lg">
+            <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
+            <span className="text-sm text-emerald-300 font-medium">{toast}</span>
+          </div>
+        </div>
+      )}
+
       <div>
         <h1 className="font-display text-2xl font-bold text-white tracking-tight">预警管理配置</h1>
         <p className="text-sm text-slate-400 mt-0.5">阈值、规则引擎与通知渠道配置</p>
@@ -40,10 +83,10 @@ export default function ManagementPage() {
         </Tabs.List>
 
         <Tabs.Content value="threshold" className="mt-5">
-          <ThresholdsTab />
+          <ThresholdsTab onSaved={() => showToast('阈值配置已保存，相关数据已刷新')} />
         </Tabs.Content>
         <Tabs.Content value="rules" className="mt-5">
-          <RulesTab />
+          <RulesTab onSaved={(msg) => showToast(msg)} />
         </Tabs.Content>
         <Tabs.Content value="notify" className="mt-5">
           <NotifyTab />
@@ -69,26 +112,93 @@ function TabTrigger({ value, icon: Icon, children }: { value: string; icon: any;
   );
 }
 
-function ThresholdsTab() {
-  const [thresholds, setThresholds] = useState<WarningThreshold[]>(mockWarningThresholds);
+function ThresholdsTab({ onSaved }: { onSaved: () => void }) {
+  const thresholdsQuery = useQuery({
+    queryKey: QUERY_KEYS.thresholds,
+    queryFn: async () => (await fetchWarningThresholds()).data,
+    initialData: mockWarningThresholds,
+    select: (data) => data ?? mockWarningThresholds,
+  });
+
+  const [localThresholds, setLocalThresholds] = useState<WarningThreshold[]>(thresholdsQuery.data ?? mockWarningThresholds);
+
+  useEffect(() => {
+    if (thresholdsQuery.data) {
+      setLocalThresholds(thresholdsQuery.data);
+    }
+  }, [thresholdsQuery.data]);
+
   const stages: TurnoverStage[] = ['inbound', 'preparation', 'test_drive', 'quoting', 'deal', 'transfer'];
 
-  const update = (id: string, patch: Partial<WarningThreshold>) => {
-    setThresholds((list) => list.map((t) => (t.id === id ? { ...t, ...patch } : t)));
+  const updateLocal = (id: string, patch: Partial<WarningThreshold>) => {
+    setLocalThresholds((list) => list.map((t) => (t.id === id ? { ...t, ...patch } : t)));
   };
 
-  const affectedCount = (dt: DocumentType, critical: number) => {
-    return mockVehicles.filter((v) => {
-      const doc = mockDocuments.find((d) => d.vehicleId === v.id && d.type === dt);
-      return (doc ? doc.status !== 'present' : false) || v.stockDays > critical;
-    }).length;
+  const invalidateAll = () => {
+    INVALIDATE_KEYS.forEach((key) => {
+      queryClient.invalidateQueries({ queryKey: key });
+    });
   };
+
+  const updateThresholdMutate = useMutation({
+    mutationFn: (patch: Partial<WarningThreshold> & { id: string }) => updateWarningThreshold(patch),
+    onSuccess: () => {
+      invalidateAll();
+      onSaved();
+    },
+  });
+
+  const toggleThresholdMutate = useMutation({
+    mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) => toggleWarningThreshold(id, enabled),
+    onSuccess: () => {
+      invalidateAll();
+      onSaved();
+    },
+  });
+
+  const handleSave = (t: WarningThreshold) => {
+    updateThresholdMutate.mutate({
+      id: t.id,
+      warningDays: t.warningDays,
+      criticalDays: t.criticalDays,
+      stageRequired: t.stageRequired,
+      enabled: t.enabled,
+    });
+  };
+
+  const handleToggle = (id: string, enabled: boolean) => {
+    updateLocal(id, { enabled });
+    toggleThresholdMutate.mutate({ id, enabled });
+  };
+
+  if (thresholdsQuery.isLoading) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="rounded-2xl bg-surface-card border border-surface-border p-5 animate-pulse">
+            <div className="h-9 w-9 rounded-lg bg-white/5 mb-4" />
+            <div className="h-4 w-32 bg-white/5 rounded mb-1" />
+            <div className="h-3 w-24 bg-white/5 rounded mb-4" />
+            <div className="space-y-3.5">
+              <div className="h-10 bg-white/5 rounded" />
+              <div className="h-10 bg-white/5 rounded" />
+              <div className="h-9 bg-white/5 rounded" />
+            </div>
+            <div className="h-9 w-full bg-white/5 rounded mt-4" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  const thresholds = localThresholds;
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
       {thresholds.map((t) => {
         const meta = DOCUMENT_TYPES.find((d) => d.key === t.documentType)!;
         const Icon = meta.icon;
+        const isSaving = updateThresholdMutate.isPending;
         return (
           <div key={t.id} className="rounded-2xl bg-surface-card border border-surface-border p-5">
             <div className="flex items-start justify-between mb-4">
@@ -98,12 +208,12 @@ function ThresholdsTab() {
                 </div>
                 <div>
                   <h4 className="text-sm font-semibold text-white">{t.name}</h4>
-                  <p className="text-[11px] text-slate-500 mt-0.5">当前影响 {affectedCount(t.documentType, t.criticalDays)} 台车</p>
+                  <p className="text-[11px] text-slate-500 mt-0.5">保存后刷新影响数</p>
                 </div>
               </div>
               <Switch.Root
                 checked={t.enabled}
-                onCheckedChange={(v) => update(t.id, { enabled: v })}
+                onCheckedChange={(v) => handleToggle(t.id, v)}
                 className={cn(
                   'w-10 h-5 rounded-full relative transition-colors',
                   t.enabled ? 'bg-emerald-500/70' : 'bg-slate-700'
@@ -126,9 +236,9 @@ function ThresholdsTab() {
                 min={0}
                 max={30}
                 value={[t.warningDays]}
-                onValueChange={(v) => update(t.id, { warningDays: v[0] })}
+                onValueChange={(v) => updateLocal(t.id, { warningDays: v[0] })}
                 numericValue={t.warningDays}
-                onNumberChange={(n) => update(t.id, { warningDays: n })}
+                onNumberChange={(n) => updateLocal(t.id, { warningDays: n })}
               />
               <SliderRow
                 label="严重阈值 (天)"
@@ -136,16 +246,16 @@ function ThresholdsTab() {
                 min={0}
                 max={60}
                 value={[t.criticalDays]}
-                onValueChange={(v) => update(t.id, { criticalDays: v[0] })}
+                onValueChange={(v) => updateLocal(t.id, { criticalDays: v[0] })}
                 numericValue={t.criticalDays}
-                onNumberChange={(n) => update(t.id, { criticalDays: n })}
+                onNumberChange={(n) => updateLocal(t.id, { criticalDays: n })}
               />
               <div>
                 <div className="text-[11px] text-slate-500 mb-1">必须齐备阶段前</div>
                 <div className="relative">
                   <select
                     value={t.stageRequired}
-                    onChange={(e) => update(t.id, { stageRequired: e.target.value as TurnoverStage })}
+                    onChange={(e) => updateLocal(t.id, { stageRequired: e.target.value as TurnoverStage })}
                     className="w-full h-9 px-3 pr-8 rounded-lg bg-surface-elevated/60 border border-surface-border text-xs text-slate-200 focus:outline-none focus:border-brand-500/40 appearance-none"
                   >
                     {stages.map((st) => (
@@ -157,8 +267,25 @@ function ThresholdsTab() {
               </div>
             </div>
 
-            <button className="mt-4 w-full inline-flex items-center justify-center gap-1.5 h-9 rounded-lg bg-brand-500/20 border border-brand-500/30 text-brand-300 text-xs font-medium hover:bg-brand-500/25 transition-colors">
-              <Save size={12} /> 保存配置
+            <button
+              onClick={() => handleSave(t)}
+              disabled={isSaving}
+              className={cn(
+                'mt-4 w-full inline-flex items-center justify-center gap-1.5 h-9 rounded-lg text-xs font-medium transition-colors',
+                isSaving
+                  ? 'bg-slate-700/50 text-slate-400 cursor-not-allowed'
+                  : 'bg-brand-500/20 border border-brand-500/30 text-brand-300 hover:bg-brand-500/25'
+              )}
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 size={12} className="animate-spin" /> 保存中...
+                </>
+              ) : (
+                <>
+                  <Save size={12} /> 保存配置
+                </>
+              )}
             </button>
           </div>
         );
@@ -222,24 +349,94 @@ function SliderRow({
   );
 }
 
-function RulesTab() {
+function RulesTab({ onSaved }: { onSaved: (msg: string) => void }) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<RuleConfig | null>(null);
-  const [rules, setRules] = useState<RuleConfig[]>(mockRules);
+
+  const rulesQuery = useQuery({
+    queryKey: QUERY_KEYS.rules,
+    queryFn: async () => {
+      const r = await fetchRules({ pageSize: 100 });
+      return r.data?.items ?? mockRules;
+    },
+    initialData: mockRules,
+    select: (data) => data ?? mockRules,
+  });
+
+  const [localRules, setLocalRules] = useState<RuleConfig[]>(rulesQuery.data ?? mockRules);
+
+  useEffect(() => {
+    if (rulesQuery.data) {
+      setLocalRules(rulesQuery.data);
+    }
+  }, [rulesQuery.data]);
+
+  const invalidateRules = () => {
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.rules });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.alerts });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.riskMatrix });
+  };
+
+  const toggleRuleMutate = useMutation({
+    mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) =>
+      updateRule({ id, enabled }),
+    onSuccess: () => {
+      invalidateRules();
+      onSaved('规则状态已更新');
+    },
+  });
+
+  const saveRuleMutate = useMutation({
+    mutationFn: (rule: RuleConfig) => {
+      if (rule.id.startsWith('rule-') && rule.createdAt === rule.updatedAt) {
+        return createRule({
+          name: rule.name,
+          description: rule.description,
+          expression: rule.expression,
+          level: rule.level,
+          enabled: rule.enabled,
+        });
+      }
+      return updateRule(rule);
+    },
+    onSuccess: () => {
+      invalidateRules();
+      onSaved('规则已保存');
+    },
+  });
+
+  const deleteRuleMutate = useMutation({
+    mutationFn: (id: string) => deleteRule(id),
+    onSuccess: () => {
+      invalidateRules();
+      onSaved('规则已删除');
+    },
+  });
 
   const levels: RiskLevel[] = ['low', 'medium', 'high', 'critical'];
 
-  const saveRule = (rule: RuleConfig) => {
-    setRules((list) =>
-      list.find((r) => r.id === rule.id) ? list.map((r) => (r.id === rule.id ? rule : r)) : [...list, rule]
+  const handleToggle = (id: string, enabled: boolean) => {
+    setLocalRules((list) => list.map((r) => (r.id === id ? { ...r, enabled } : r)));
+    toggleRuleMutate.mutate({ id, enabled });
+  };
+
+  const handleSave = (rule: RuleConfig) => {
+    setLocalRules((list) =>
+      list.find((r) => r.id === rule.id)
+        ? list.map((r) => (r.id === rule.id ? rule : r))
+        : [...list, rule]
     );
+    saveRuleMutate.mutate(rule);
     setOpen(false);
     setEditing(null);
   };
 
-  const toggleEnabled = (id: string) => {
-    setRules((list) => list.map((r) => (r.id === id ? { ...r, enabled: !r.enabled } : r)));
+  const handleDelete = (id: string) => {
+    setLocalRules((list) => list.filter((x) => x.id !== id));
+    deleteRuleMutate.mutate(id);
   };
+
+  const rules = localRules;
 
   return (
     <div className="rounded-2xl bg-surface-card border border-surface-border overflow-hidden">
@@ -294,11 +491,11 @@ function RulesTab() {
                 <td className="px-4 py-3.5">
                   <Switch.Root
                     checked={r.enabled}
-                    onCheckedChange={() => toggleEnabled(r.id)}
+                    onCheckedChange={(v) => handleToggle(r.id, v)}
                     className={cn('w-9 h-5 rounded-full relative transition-colors', r.enabled ? 'bg-emerald-500/70' : 'bg-slate-700')}
                   >
                     <Switch.Thumb
-                      className={cn('block w-4 h-4 bg-white rounded-full shadow-md transition-transform', r.enabled ? 'translate-x-4.5' : 'translate-x-0.5')}
+                      className={cn('block w-4 h-4 bg-white rounded-full shadow-md transition-transform')}
                       style={{ marginTop: 2, transform: r.enabled ? 'translateX(18px)' : 'translateX(2px)' }}
                     />
                   </Switch.Root>
@@ -314,7 +511,7 @@ function RulesTab() {
                     <Pencil size={12} /> 编辑
                   </button>
                   <button
-                    onClick={() => setRules((list) => list.filter((x) => x.id !== r.id))}
+                    onClick={() => handleDelete(r.id)}
                     className="inline-flex items-center gap-1 px-2 py-1.5 rounded-md text-[11px] text-rose-400 hover:bg-rose-500/10"
                   >
                     <Trash2 size={12} /> 删除
@@ -340,12 +537,13 @@ function RulesTab() {
               initial={editing}
               levels={levels}
               onSubmit={(r) => {
-                saveRule(r);
+                handleSave(r);
               }}
               onCancel={() => {
                 setOpen(false);
                 setEditing(null);
               }}
+              isSubmitting={saveRuleMutate.isPending}
             />
           </Dialog.Content>
         </Dialog.Portal>
@@ -359,11 +557,13 @@ function RuleForm({
   levels,
   onSubmit,
   onCancel,
+  isSubmitting,
 }: {
   initial: RuleConfig | null;
   levels: RiskLevel[];
   onSubmit: (r: RuleConfig) => void;
   onCancel: () => void;
+  isSubmitting?: boolean;
 }) {
   const [name, setName] = useState(initial?.name ?? '');
   const [expression, setExpression] = useState(initial?.expression ?? '');
@@ -455,9 +655,23 @@ function RuleForm({
         </button>
         <button
           type="submit"
-          className="h-9 px-5 rounded-lg bg-brand-500 text-white text-xs font-medium hover:bg-brand-600 transition-colors shadow-glow-blue inline-flex items-center gap-1.5"
+          disabled={isSubmitting}
+          className={cn(
+            'h-9 px-5 rounded-lg text-xs font-medium transition-colors shadow-glow-blue inline-flex items-center gap-1.5',
+            isSubmitting
+              ? 'bg-slate-700/50 text-slate-400 cursor-not-allowed shadow-none'
+              : 'bg-brand-500 text-white hover:bg-brand-600'
+          )}
         >
-          <Save size={13} /> 保存规则
+          {isSubmitting ? (
+            <>
+              <Loader2 size={13} className="animate-spin" /> 保存中...
+            </>
+          ) : (
+            <>
+              <Save size={13} /> 保存规则
+            </>
+          )}
         </button>
       </div>
     </form>

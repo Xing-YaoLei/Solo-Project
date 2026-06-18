@@ -25,6 +25,14 @@ tests = [
     ("POST", "/api/v1/auth/login",
      {"username": "admin", "password": "123", "role": "risk_admin"},
      "登录"),
+    ("GET",  "/api/v1/analytics/risk-matrix", {},           "风险矩阵(新路由)"),
+    ("GET",  "/api/v1/sync/delay-info", {},                 "同步延迟别名(sync)"),
+    ("GET",  "/api/v1/rules/thresholds/full", {},           "阈值完整列表"),
+    ("PUT",  "/api/v1/rules/thresholds/th-1",
+     {"warningDays": 12, "criticalDays": 25},               "阈值更新PUT"),
+    ("PATCH", "/api/v1/rules/thresholds/th-1/toggle",
+     {"enabled": False},                                    "阈值切换toggle"),
+    ("GET",  "/api/v1/analytics/test-drive-distribution?days=84", {}, "试驾分布别名(dash)"),
 ]
 
 passed = 0
@@ -34,8 +42,14 @@ print("-" * 90)
 for method, path, payload, name in tests:
     if method == "GET":
         r = client.get(path)
-    else:
+    elif method == "POST":
         r = client.post(path, json=payload)
+    elif method == "PUT":
+        r = client.put(path, json=payload)
+    elif method == "PATCH":
+        r = client.patch(path, json=payload)
+    else:
+        r = client.request(method, path, json=payload)
     body = r.json() if r.content else {}
     code = body.get("code") if isinstance(body, dict) else "N/A"
     data_size = 0

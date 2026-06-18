@@ -1,7 +1,14 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { QUERY_KEYS } from '@/main';
 import ReactECharts from 'echarts-for-react';
 import { RiskMatrixChart } from '@/components/RiskMatrixChart';
+import {
+  fetchStores,
+  fetchRiskMatrix,
+  fetchSyncDelayInfo,
+} from '@/services/endpoints';
 import {
   mockStores,
   mockVehicles,
@@ -23,8 +30,38 @@ export default function RiskMatrixPage() {
   const [selectedDocTypes, setSelectedDocTypes] = useState<DocumentType[]>([]);
   const [ageRange, setAgeRange] = useState<[number, number]>([0, 60]);
 
+  const storeMapQuery = useQuery({
+    queryKey: QUERY_KEYS.storeMap,
+    queryFn: async () => (await fetchStores()).data,
+    initialData: mockStores,
+  });
+
+  const matrixQuery = useQuery({
+    queryKey: [...QUERY_KEYS.riskMatrix, { selectedStores, ageRange, selectedRisk, selectedDocTypes }],
+    queryFn: async () =>
+      (await fetchRiskMatrix({ days: 30, storeId: selectedStores[0] ?? undefined })).data,
+    initialData: mockMatrixBubbles,
+  });
+
+  const vehiclesQuery = useQuery({
+    queryKey: [...QUERY_KEYS.vehicles, { page: 1, pageSize: 50, storeId: selectedStores[0], risk: selectedRisk }],
+    queryFn: async () => mockVehicles,
+    initialData: mockVehicles,
+  });
+
+  const delaysQuery = useQuery({
+    queryKey: QUERY_KEYS.syncDelay,
+    queryFn: async () => (await fetchSyncDelayInfo()).data,
+    initialData: mockSyncDelayInfo,
+  });
+
+  const stores = storeMapQuery.data ?? mockStores;
+  const matrixData = matrixQuery.data ?? mockMatrixBubbles;
+  const vehicles = vehiclesQuery.data ?? mockVehicles;
+  const delays = delaysQuery.data ?? mockSyncDelayInfo;
+
   const filteredVehicles = useMemo(() => {
-    return mockVehicles.filter((v) => {
+    return vehicles.filter((v) => {
       if (selectedStores.length && !selectedStores.includes(v.storeId)) return false;
       if (selectedRisk !== 'all' && v.riskLevel !== selectedRisk) return false;
       if (v.stockDays < ageRange[0] || v.stockDays > ageRange[1]) return false;
@@ -37,7 +74,7 @@ export default function RiskMatrixPage() {
       }
       return true;
     });
-  }, [selectedStores, selectedRisk, selectedDocTypes, ageRange]);
+  }, [vehicles, selectedStores, selectedRisk, selectedDocTypes, ageRange]);
 
   const stackedBarData = useMemo(() => {
     const ages = STOCK_AGE_BUCKETS;
@@ -112,7 +149,7 @@ export default function RiskMatrixPage() {
           <h1 className="font-display text-2xl font-bold text-white tracking-tight">过户材料风险矩阵</h1>
           <p className="text-sm text-slate-400 mt-0.5">库龄 × 材料完成度二维交叉分析</p>
         </div>
-        <SyncDelayBadge delays={mockSyncDelayInfo} />
+        <SyncDelayBadge delays={delays} />
       </div>
 
       <div className="rounded-2xl bg-surface-card border border-surface-border p-4">
@@ -125,7 +162,7 @@ export default function RiskMatrixPage() {
           <div>
             <div className="text-[11px] text-slate-500 mb-1.5">门店 (多选)</div>
             <div className="flex flex-wrap gap-1.5">
-              {mockStores.map((s) => (
+              {stores.map((s) => (
                 <button
                   key={s.id}
                   onClick={() => toggleStore(s.id)}
@@ -194,7 +231,7 @@ export default function RiskMatrixPage() {
         </div>
       </div>
 
-      <RiskMatrixChart bubbles={mockMatrixBubbles} />
+      <RiskMatrixChart bubbles={matrixData} />
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
         <div className="rounded-2xl bg-surface-card border border-surface-border overflow-hidden p-4">
@@ -228,12 +265,12 @@ export default function RiskMatrixPage() {
               </thead>
               <tbody>
                 {filteredVehicles.slice(0, 20).map((v) => {
-                  const store = mockStores.find((s) => s.id === v.storeId)!;
+                  const store = stores.find((s) => s.id === v.storeId)!;
                   return (
                     <tr
                       key={v.id}
                       className="border-t border-surface-border hover:bg-white/[0.03] transition-colors cursor-pointer"
-                      onClick={() => navigate(`/review/${v.vin}`)}
+                      onClick={() => navigate(`/review/${v.vin ?? v.id}`)}
                     >
                       <td className="px-4 py-2.5 font-mono text-slate-300">{v.vin.slice(-8)}</td>
                       <td className="px-2 py-2.5 text-slate-400">{store.name.slice(0, 5)}</td>

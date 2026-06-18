@@ -5,7 +5,7 @@ import * as Tooltip from '@radix-ui/react-tooltip';
 import App from './App';
 import './index.css';
 
-const queryClient = new QueryClient({
+export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false,
@@ -14,6 +14,22 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+export const QUERY_KEYS = {
+  dashboardSummary: ['dashboard', 'summary'],
+  syncDelay: ['sync', 'delay'],
+  stores: ['stores'],
+  storeMap: ['stores', 'geo'],
+  alerts: ['alerts'],
+  rules: ['rules'],
+  thresholds: ['rules', 'thresholds'],
+  riskMatrix: ['analytics', 'risk-matrix'],
+  preparationTrend: ['analytics', 'preparation-trend'],
+  testDriveDist: ['analytics', 'test-drive-distribution'],
+  quoteCandles: ['analytics', 'quote-candles'],
+  review: (vin: string) => ['review', vin] as const,
+  vehicles: ['vehicles'],
+} as const;
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

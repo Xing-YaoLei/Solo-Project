@@ -36,10 +36,37 @@ async def get_preparation_trend(
 @router.get("/testdrive-distribution", response_model=ApiResponse[list])
 async def get_testdrive_distribution(
     weeks: int = Query(12, ge=4, le=52),
+    days: int | None = Query(None, ge=7, le=365),
     store_id: str | None = None,
     mock: MockService = Depends(get_mock_data),
 ) -> ApiResponse:
-    data = mock.generate_test_drive_distribution(weeks=weeks)
+    actual_weeks = (days // 7) if days else weeks
+    actual_weeks = max(4, min(52, actual_weeks))
+    data = mock.generate_test_drive_distribution(weeks=actual_weeks)
+    return ApiResponse.ok(data=data)
+
+
+@router.get("/test-drive-distribution", response_model=ApiResponse[list])
+async def get_test_drive_distribution_alias(
+    weeks: int = Query(12, ge=4, le=52),
+    days: int | None = Query(None, ge=7, le=365),
+    store_id: str | None = None,
+    mock: MockService = Depends(get_mock_data),
+) -> ApiResponse:
+    actual_weeks = (days // 7) if days else weeks
+    actual_weeks = max(4, min(52, actual_weeks))
+    data = mock.generate_test_drive_distribution(weeks=actual_weeks)
+    return ApiResponse.ok(data=data)
+
+
+@router.get("/risk-matrix", response_model=ApiResponse[list])
+async def get_risk_matrix(
+    store_id: str | None = None,
+    region: str | None = None,
+    days: int | None = Query(None, ge=1, le=365),
+    mock: MockService = Depends(get_mock_data),
+) -> ApiResponse:
+    data = mock.generate_risk_matrix_bubbles(store_id=store_id, region=region, days=days)
     return ApiResponse.ok(data=data)
 
 
