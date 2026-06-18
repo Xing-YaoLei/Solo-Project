@@ -91,7 +91,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   tickTimer: () => {
     const { timeRemaining, isPlaying, isPaused } = get()
     if (!isPlaying || isPaused) return
-    if (timeRemaining <= 0) {
+    if (timeRemaining <= 1) {
       set({ isPlaying: false, timeRemaining: 0 })
       return
     }

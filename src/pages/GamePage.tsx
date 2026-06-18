@@ -224,11 +224,12 @@ export default function GamePage() {
         canvasRef.current.createScreenParticles('#ff6b35', particleCount(60))
       }
       saveGameResult()
+      const delay = timeRemaining <= 0 ? 0 : 600
       setTimeout(() => {
         navigate(`/result/${currentLevel}`)
-      }, 800)
+      }, delay)
     }
-  }, [isPlaying, gameStarted, currentLevel, navigate, saveGameResult, particleCount, shouldAnimate])
+  }, [isPlaying, gameStarted, currentLevel, navigate, saveGameResult, particleCount, shouldAnimate, timeRemaining])
 
   useEffect(() => {
     if (gameStarted && allResolved && isPlaying) {

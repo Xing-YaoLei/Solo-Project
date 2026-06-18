@@ -28,6 +28,7 @@ export default function SettingsPageComponent() {
     return () => {
       ;(useProgressStore.setState as unknown as (partial: object) => void)({
         levelResults: {},
+        bestResults: {},
         unlockedLevel: 1,
       })
     }
