@@ -179,7 +179,7 @@ def main():
     st.markdown("---")
 
     st.subheader("📋 资料缺失样本（点击跳转明细）")
-    st.caption("下表展示各数据源中存在字段缺失的记录，可点击下方按钮跳转至对应明细页面")
+    st.caption("下表展示各数据源中存在字段缺失的记录，可点击每行下方按钮跳转至对应项目明细页")
 
     if missing_samples.height > 0:
         from ui_components import display_dataframe_with_highlight
@@ -198,18 +198,38 @@ def main():
             ).alias("数据源")
         ).to_pandas()
 
-        st.dataframe(display_df, use_container_width=True, height=300)
+        st.dataframe(display_df, use_container_width=True, height=min(400, missing_samples.height * 35 + 60))
 
-        jump_col1, jump_col2, jump_col3 = st.columns(3)
-        with jump_col1:
-            if st.button("🔍 查看设计软件导出明细", use_container_width=True):
-                st.switch_page("pages/3_🔍_明细查询.py")
-        with jump_col2:
-            if st.button("💰 查看收款记录明细", use_container_width=True):
-                st.switch_page("pages/3_🔍_明细查询.py")
-        with jump_col3:
-            if st.button("📦 查看采购单记录明细", use_container_width=True):
-                st.switch_page("pages/3_🔍_明细查询.py")
+        st.markdown("##### 🚀 记录级快速跳转")
+        data_source_icon = {
+            "design_export": "📐",
+            "payment_record": "💰",
+            "purchase_order": "📦",
+        }
+        data_source_tab_label = {
+            "design_export": "� 设计软件导出",
+            "payment_record": "💰 收款记录",
+            "purchase_order": "📦 采购单记录",
+        }
+        for idx, row in enumerate(missing_samples.to_dicts()):
+            pid = row.get("project_id", "-")
+            pname = row.get("project_name", "-")
+            src = row.get("data_source", "")
+            src_label = data_source_tab_label.get(src, src)
+            icon = data_source_icon.get(src, "🔍")
+
+            col1, col2 = st.columns([5, 1])
+            with col1:
+                st.caption(
+                    f"{idx + 1}. 项目 **{pname}** ({pid}) · 数据源：{icon} {src_label} "
+                    f"· 缺失字段：`{row.get('missing_fields', '-')}`"
+                )
+            with col2:
+                btn_key = f"jump_home_{pid}_{src}_{idx}"
+                if st.button(f"➡️ 查看明细", key=btn_key, use_container_width=True):
+                    st.query_params["project_id"] = pid
+                    st.query_params["data_source"] = src
+                    st.switch_page("pages/3_🔍_明细查询.py")
     else:
         st.success("✅ 当前暂无资料缺失记录，数据完整！")
 

@@ -223,9 +223,32 @@ class DuckDBEngine:
     def get_last_update_time(self, table_name: str) -> Optional[datetime]:
         try:
             with self.get_connection() as conn:
-                result = conn.execute(
-                    f"SELECT MAX(updated_at) FROM {table_name}"
-                ).fetchone()
-                return result[0] if result and result[0] else None
+                cols_result = conn.execute(
+                    "SELECT column_name FROM information_schema.columns WHERE table_name = ?",
+                    [table_name.lower()],
+                ).fetchall()
+                col_names = [row[0] for row in cols_result]
+
+                if "updated_at" in col_names:
+                    result = conn.execute(
+                        f"SELECT MAX(updated_at) FROM {table_name}"
+                    ).fetchone()
+                    return result[0] if result and result[0] else None
+                elif "created_at" in col_names:
+                    result = conn.execute(
+                        f"SELECT MAX(created_at) FROM {table_name}"
+                    ).fetchone()
+                    return result[0] if result and result[0] else None
+                elif "last_updated" in col_names:
+                    result = conn.execute(
+                        f"SELECT MAX(last_updated) FROM {table_name}"
+                    ).fetchone()
+                    return result[0] if result and result[0] else None
+                elif "changed_at" in col_names:
+                    result = conn.execute(
+                        f"SELECT MAX(changed_at) FROM {table_name}"
+                    ).fetchone()
+                    return result[0] if result and result[0] else None
+                return None
         except Exception:
             return None

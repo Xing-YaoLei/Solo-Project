@@ -167,6 +167,8 @@ def main():
                         chart_func=create_mom_yoy_chart,
                         component_name=f"标签[{selected_tag}]同环比图",
                         last_update_time=last_update,
+                        retry_callback=reload_attachments,
+                        retry_key=f"tag_mom_{selected_tag}_retry",
                         df=mom_yoy_df,
                         title=f"标签「{selected_tag}」附件数量同环比分析",
                     )
@@ -203,6 +205,8 @@ def main():
                 chart_func=create_mom_yoy_chart,
                 component_name=f"类别[{cat_for_mom}]同环比图",
                 last_update_time=last_update,
+                retry_callback=reload_attachments,
+                retry_key=f"cat_mom_{cat_for_mom}_retry",
                 df=mom_yoy_cat,
                 title=f"「{cat_for_mom}」附件数量同环比分析",
             )
