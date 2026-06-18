@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head>
+    <th:block th:insert="~{fragments/layout :: head('爽约处理 - 二手车试驾预约系统')}"></th:block>
+</head>
+<body>
+<div th:insert="~{fragments/layout :: navbar}"></div>
+<div th:insert="~{fragments/layout :: alerts}"></div>
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="section-title">爽约处理</h3>
+        <div class="btn-group">
+            <a th:href="@{/no-show/pending}" class="btn btn-outline-warning">待处理</a>
+            <a th:href="@{/no-show}" class="btn btn-outline-primary">全部</a>
+            <a th:href="@{/no-show/notifications}" class="btn btn-outline-info">通知中心</a>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <table class="table table-hover">
+                <thead>
+                <tr>
+                    <th>客户</th>
+                    <th>车辆</th>
+                    <th>预约时间</th>
+                    <th>状态</th>
+                    <th>原因</th>
+                    <th>处理人</th>
+                    <th>处理动作</th>
+                    <th>关闭时间</th>
+                    <th>操作</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="r : ${records}">
+                    <td th:text="${r.appointment.customerName}"></td>
+                    <td th:text="${r.appointment.vehicleName}"></td>
+                    <td>
+                        <span th:text="${r.appointment.appointmentDate}"></span>
+                        <span th:text="${r.appointment.appointmentTime}"></span>
+                    </td>
+                    <td><span class="status-badge" th:class="'status-' + ${r.status.name()}" th:text="${r.status.name()}"></span></td>
+                    <td th:text="${r.reason}"></td>
+                    <td th:text="${r.handler?.realName}"></td>
+                    <td th:text="${r.actionTaken}"></td>
+                    <td th:if="${r.closeTime != null}" th:text="${#temporals.format(r.closeTime, 'yyyy-MM-dd HH:mm')}"></td>
+                    <td th:if="${r.closeTime == null}">-</td>
+                    <td>
+                        <a th:href="@{/no-show/{id}(id=${r.id})}" class="btn btn-sm btn-outline-primary">处理</a>
+                    </td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(records)}">
+                    <td colspan="9" class="text-center text-muted py-4">暂无数据</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div th:insert="~{fragments/layout :: footer}"></div>
+</body>
+</html>

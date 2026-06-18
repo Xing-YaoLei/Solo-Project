@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head>
+    <th:block th:insert="~{fragments/layout :: head(${record.id == null} ? '新建试驾记录' : '编辑试驾记录')}"></th:block>
+</head>
+<body>
+<div th:insert="~{fragments/layout :: navbar}"></div>
+<div th:insert="~{fragments/layout :: alerts}"></div>
+
+<div class="container mt-4">
+    <h3 class="section-title mb-4" th:text="${record.id == null} ? '新建试驾记录' : '编辑试驾记录'"></h3>
+
+    <div class="card">
+        <div class="card-body">
+            <form th:action="@{/records/record/save}" th:object="${record}" method="post">
+                <input type="hidden" th:field="*{id}" />
+                <input type="hidden" th:field="*{appointment.id}" />
+                <input type="hidden" th:field="*{lead.id}" />
+                <input type="hidden" th:field="*{vehicleId}" />
+                <input type="hidden" th:field="*{vehicleName}" />
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">开始时间 <span class="text-danger">*</span></label>
+                        <input type="datetime-local" th:field="*{startTime}" class="form-control" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">结束时间</label>
+                        <input type="datetime-local" th:field="*{endTime}" class="form-control">
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">起始里程</label>
+                        <input type="text" th:field="*{startMileage}" class="form-control" placeholder="如：12,500 km">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">结束里程</label>
+                        <input type="text" th:field="*{endMileage}" class="form-control" placeholder="如：12,580 km">
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">陪驾人</label>
+                        <select name="driverId" class="form-select">
+                            <option value="">-- 请选择 --</option>
+                            <option th:each="d : ${drivers}"
+                                    th:value="${d.id}"
+                                    th:text="${d.realName}"
+                                    th:selected="${d.id == record.driver?.id}"></option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">试驾路线</label>
+                    <input type="text" th:field="*{routeDescription}" class="form-control" placeholder="如：门店-主干道-环城路-门店">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">备注</label>
+                    <textarea th:field="*{remark}" class="form-control" rows="3"></textarea>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">保存</button>
+                    <a th:href="@{/records/{id}(id=${record.appointment.id})}" class="btn btn-secondary">返回</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div th:insert="~{fragments/layout :: footer}"></div>
+</body>
+</html>

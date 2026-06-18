@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head>
+    <th:block th:insert="~{fragments/layout :: head('预约列表 - 二手车试驾预约系统')}"></th:block>
+</head>
+<body>
+<div th:insert="~{fragments/layout :: navbar}"></div>
+<div th:insert="~{fragments/layout :: alerts}"></div>
+
+<div class="container mt-4">
+    <h3 class="section-title mb-4">预约搜索</h3>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <form th:action="@{/scheduler/search}" th:object="${query}" method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">开始日期</label>
+                    <input type="date" th:field="*{startDate}" class="form-control">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">结束日期</label>
+                    <input type="date" th:field="*{endDate}" class="form-control">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">客户姓名</label>
+                    <input type="text" th:field="*{customerName}" class="form-control">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">状态</label>
+                    <select th:field="*{status}" class="form-select">
+                        <option value="">全部</option>
+                        <option th:each="s : ${statuses}" th:value="${s.name()}" th:text="${s.name()}"></option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">销售</label>
+                    <select th:field="*{salesId}" class="form-select">
+                        <option value="">全部</option>
+                        <option th:each="u : ${salesList}" th:value="${u.id}" th:text="${u.realName}"></option>
+                    </select>
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">搜索</button>
+                    <a th:href="@{/scheduler/search}" class="btn btn-outline-secondary">重置</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <table class="table table-hover">
+                <thead>
+                <tr>
+                    <th>预约日期</th>
+                    <th>时段</th>
+                    <th>客户</th>
+                    <th>电话</th>
+                    <th>车辆</th>
+                    <th>销售</th>
+                    <th>状态</th>
+                    <th>操作</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="appt : ${appointments}">
+                    <td th:text="${appt.appointmentDate}"></td>
+                    <td th:text="${appt.appointmentTime}"></td>
+                    <td th:text="${appt.customerName}"></td>
+                    <td th:text="${appt.customerPhone}"></td>
+                    <td th:text="${appt.vehicleName}"></td>
+                    <td th:text="${appt.salesConsultant?.realName}"></td>
+                    <td><span class="status-badge" th:class="'status-' + ${appt.status.name()}" th:text="${appt.status.name()}"></span></td>
+                    <td>
+                        <a th:href="@{/records/{id}(id=${appt.id})}" class="btn btn-sm btn-outline-info">查看</a>
+                        <a th:href="@{/scheduler/edit/{id}(id=${appt.id})}" class="btn btn-sm btn-outline-primary">编辑</a>
+                    </td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(appointments)}">
+                    <td colspan="8" class="text-center text-muted py-4">暂无数据</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div th:insert="~{fragments/layout :: footer}"></div>
+</body>
+</html>

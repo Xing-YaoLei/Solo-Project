@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head>
+    <th:block th:insert="~{fragments/layout :: head(${lead.id == null} ? '新增线索' : '编辑线索')}"></th:block>
+</head>
+<body>
+<div th:insert="~{fragments/layout :: navbar}"></div>
+<div th:insert="~{fragments/layout :: alerts}"></div>
+
+<div class="container mt-4">
+    <h3 class="section-title mb-4" th:text="${lead.id == null} ? '新增客户线索' : '编辑客户线索'"></h3>
+
+    <div class="card">
+        <div class="card-body">
+            <form th:action="@{/leads/save}" th:object="${lead}" method="post">
+                <input type="hidden" th:field="*{id}" />
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">客户姓名 <span class="text-danger">*</span></label>
+                        <input type="text" th:field="*{customerName}" class="form-control" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">联系电话 <span class="text-danger">*</span></label>
+                        <input type="tel" th:field="*{phone}" class="form-control" required>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">微信号</label>
+                        <input type="text" th:field="*{wechatId}" class="form-control">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">意向车型</label>
+                        <input type="text" th:field="*{intendedVehicle}" class="form-control" placeholder="如：宝马3系 2023款">
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label">线索状态</label>
+                        <select th:field="*{status}" class="form-select">
+                            <option th:each="s : ${statuses}" th:value="${s.name()}" th:text="${s.name()}"></option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">线索来源</label>
+                        <select th:field="*{source}" class="form-select">
+                            <option value="">-- 请选择 --</option>
+                            <option th:each="s : ${sources}" th:value="${s.name()}" th:text="${s.name()}"></option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">负责人</label>
+                        <select name="ownerId" class="form-select">
+                            <option value="">-- 请选择 --</option>
+                            <option th:each="o : ${owners}"
+                                    th:value="${o.id}"
+                                    th:text="${o.realName}"
+                                    th:selected="${o.id == lead.owner?.id}"></option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">客户需求</label>
+                    <textarea th:field="*{requirements}" class="form-control" rows="3"></textarea>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">备注</label>
+                    <textarea th:field="*{remark}" class="form-control" rows="3"></textarea>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">保存</button>
+                    <a th:href="@{/leads}" class="btn btn-secondary">返回</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div th:insert="~{fragments/layout :: footer}"></div>
+</body>
+</html>

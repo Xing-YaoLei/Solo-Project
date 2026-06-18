@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head>
+    <th:block th:insert="~{fragments/layout :: head('爽约详情处理')}"></th:block>
+</head>
+<body>
+<div th:insert="~{fragments/layout :: navbar}"></div>
+<div th:insert="~{fragments/layout :: alerts}"></div>
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="section-title">爽约处理 - <span th:text="${record.appointment.customerName}"></span></h3>
+        <a th:href="@{/no-show}" class="btn btn-outline-secondary">返回列表</a>
+    </div>
+
+    <div class="row">
+        <div class="col-md-5">
+            <div class="card">
+                <div class="card-header">预约信息</div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tr><th style="width:100px">客户</th><td th:text="${record.appointment.customerName}"></td></tr>
+                        <tr><th>电话</th><td th:text="${record.appointment.customerPhone}"></td></tr>
+                        <tr><th>车辆</th><td th:text="${record.appointment.vehicleName}"></td></tr>
+                        <tr><th>预约日期</th><td th:text="${record.appointment.appointmentDate}"></td></tr>
+                        <tr><th>时段</th><td th:text="${record.appointment.appointmentTime}"></td></tr>
+                        <tr><th>销售</th><td th:text="${record.appointment.salesConsultant?.realName}"></td></tr>
+                        <tr><th>状态</th>
+                            <td><span class="status-badge" th:class="'status-' + ${record.status.name()}" th:text="${record.status.name()}"></span></td>
+                        </tr>
+                        <tr><th>创建时间</th><td th:text="${#temporals.format(record.createTime, 'yyyy-MM-dd HH:mm')}"></td></tr>
+                        <tr th:if="${record.closeTime != null}"><th>关闭时间</th>
+                            <td th:text="${#temporals.format(record.closeTime, 'yyyy-MM-dd HH:mm')}"></td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header">爽约原因</div>
+                <div class="card-body">
+                    <form th:action="@{/no-show/{id}/reason(id=${record.id})}" method="post">
+                        <div class="mb-3">
+                            <textarea name="reason" class="form-control" rows="3"
+                                      th:attr="${record.reason != null} ? 'placeholder=请输入爽约原因' : ''"
+                                      th:text="${record.reason}"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm">保存原因</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-7">
+            <div class="card">
+                <div class="card-header">处理动作</div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <h6>标记为处理中</h6>
+                        <form th:action="@{/no-show/{id}/handle(id=${record.id})}" method="post" class="row g-2">
+                            <div class="col-md-8">
+                                <input type="text" name="actionTaken" class="form-control" placeholder="请输入处理动作描述">
+                            </div>
+                            <div class="col-md-4">
+                                <button type="submit" class="btn btn-warning w-100"
+                                        th:disabled="${record.status.name() == 'CLOSED' or record.status.name() == 'RESCHEDULED'}">开始处理</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="mb-4">
+                        <h6>重新预约</h6>
+                        <form th:action="@{/no-show/{id}/reschedule(id=${record.id})}" method="post" class="row g-2">
+                            <div class="col-md-8">
+                                <input type="number" name="newAppointmentId" class="form-control" placeholder="新预约ID">
+                            </div>
+                            <div class="col-md-4">
+                                <button type="submit" class="btn btn-success w-100"
+                                        th:disabled="${record.status.name() == 'CLOSED' or record.status.name() == 'RESCHEDULED'}">标记已重新预约</button>
+                            </div>
+                        </form>
+                        <div class="mt-2">
+                            <a th:href="@{/scheduler/new(leadId=${record.lead?.id})}" class="btn btn-outline-success btn-sm">
+                                去创建新预约
+                            </a>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h6>关闭记录</h6>
+                        <form th:action="@{/no-show/{id}/close(id=${record.id})}" method="post" class="row g-2">
+                            <div class="col-md-8">
+                                <input type="text" name="actionTaken" class="form-control" placeholder="请输入最终处理结果">
+                            </div>
+                            <div class="col-md-4">
+                                <button type="submit" class="btn btn-secondary w-100"
+                                        th:disabled="${record.status.name() == 'CLOSED'}">关闭记录</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mt-3" th:if="${record.actionTaken != null}">
+                <div class="card-header">当前处理信息</div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tr><th style="width:100px">处理人</th><td th:text="${record.handler?.realName}"></td></tr>
+                        <tr><th>处理动作</th><td th:text="${record.actionTaken}"></td></tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div th:insert="~{fragments/layout :: footer}"></div>
+</body>
+</html>

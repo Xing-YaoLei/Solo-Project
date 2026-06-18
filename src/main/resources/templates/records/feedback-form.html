@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head>
+    <th:block th:insert="~{fragments/layout :: head('试驾反馈')}"></th:block>
+</head>
+<body>
+<div th:insert="~{fragments/layout :: navbar}"></div>
+<div th:insert="~{fragments/layout :: alerts}"></div>
+
+<div class="container mt-4">
+    <h3 class="section-title mb-4">新建试驾反馈</h3>
+
+    <div class="card">
+        <div class="card-body">
+            <form th:action="@{/records/feedback/save}" th:object="${feedback}" method="post">
+                <input type="hidden" th:field="*{appointment.id}" />
+                <input type="hidden" th:field="*{lead.id}" />
+
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <label class="form-label">总体评分</label>
+                        <div class="mb-2">
+                            <span th:each="i : ${#numbers.sequence(1, 5)}">
+                                <input type="radio" name="overallRating" th:value="${i}" th:checked="${feedback.overallRating == i}" class="btn-check" th:id="'overall-' + ${i}">
+                                <label class="btn btn-outline-warning" th:for="'overall-' + ${i}" th:text="${i} + '星'"></label>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">舒适度评分</label>
+                        <div class="mb-2">
+                            <span th:each="i : ${#numbers.sequence(1, 5)}">
+                                <input type="radio" name="vehicleComfortRating" th:value="${i}" th:checked="${feedback.vehicleComfortRating == i}" class="btn-check" th:id="'comfort-' + ${i}">
+                                <label class="btn btn-outline-warning" th:for="'comfort-' + ${i}" th:text="${i} + '星'"></label>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">性能评分</label>
+                        <div class="mb-2">
+                            <span th:each="i : ${#numbers.sequence(1, 5)}">
+                                <input type="radio" name="vehiclePerformanceRating" th:value="${i}" th:checked="${feedback.vehiclePerformanceRating == i}" class="btn-check" th:id="'perf-' + ${i}">
+                                <label class="btn btn-outline-warning" th:for="'perf-' + ${i}" th:text="${i} + '星'"></label>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">服务评分</label>
+                        <div class="mb-2">
+                            <span th:each="i : ${#numbers.sequence(1, 5)}">
+                                <input type="radio" name="salesServiceRating" th:value="${i}" th:checked="${feedback.salesServiceRating == i}" class="btn-check" th:id="'service-' + ${i}">
+                                <label class="btn btn-outline-warning" th:for="'service-' + ${i}" th:text="${i} + '星'"></label>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">购买意向</label>
+                        <select th:field="*{purchaseIntent}" class="form-select">
+                            <option value="">-- 请选择 --</option>
+                            <option th:each="p : ${purchaseIntents}" th:value="${p.name()}" th:text="${p.name()}"></option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">满意点</label>
+                    <textarea th:field="*{likes}" class="form-control" rows="2" placeholder="客户满意的方面"></textarea>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">不满意点</label>
+                    <textarea th:field="*{dislikes}" class="form-control" rows="2" placeholder="客户不满意的方面"></textarea>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">客户评论</label>
+                    <textarea th:field="*{customerComment}" class="form-control" rows="3"></textarea>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">销售评价</label>
+                    <textarea th:field="*{salesComment}" class="form-control" rows="3"></textarea>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">保存</button>
+                    <a th:href="@{/records/{id}(id=${feedback.appointment.id})}" class="btn btn-secondary">返回</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div th:insert="~{fragments/layout :: footer}"></div>
+</body>
+</html>

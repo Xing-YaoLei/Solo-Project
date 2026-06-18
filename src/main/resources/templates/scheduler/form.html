@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head>
+    <th:block th:insert="~{fragments/layout :: head(${appointment.id == null} ? '新增预约' : '编辑预约')}"></th:block>
+</head>
+<body>
+<div th:insert="~{fragments/layout :: navbar}"></div>
+<div th:insert="~{fragments/layout :: alerts}"></div>
+
+<div class="container mt-4">
+    <h3 class="section-title mb-4" th:text="${appointment.id == null} ? '新增试驾预约' : '编辑试驾预约'"></h3>
+
+    <div class="card">
+        <div class="card-body">
+            <form th:action="@{/scheduler/save}" th:object="${appointment}" method="post">
+                <input type="hidden" th:field="*{id}" />
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">客户姓名 <span class="text-danger">*</span></label>
+                        <input type="text" th:field="*{customerName}" class="form-control" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">联系电话 <span class="text-danger">*</span></label>
+                        <input type="tel" th:field="*{customerPhone}" class="form-control" required>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">关联线索</label>
+                        <select name="leadId" class="form-select">
+                            <option value="">-- 请选择 --</option>
+                            <option th:each="lead : ${leads}"
+                                    th:value="${lead.id}"
+                                    th:text="${lead.customerName + ' - ' + lead.phone}"
+                                    th:selected="${lead.id == appointment.lead?.id}"></option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">销售顾问</label>
+                        <select name="salesId" class="form-select">
+                            <option value="">-- 请选择 --</option>
+                            <option th:each="sales : ${salesList}"
+                                    th:value="${sales.id}"
+                                    th:text="${sales.realName}"
+                                    th:selected="${sales.id == appointment.salesConsultant?.id}"></option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label">车辆编号 <span class="text-danger">*</span></label>
+                        <input type="text" th:field="*{vehicleId}" class="form-control" required placeholder="如：CAR001">
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label">车辆名称 <span class="text-danger">*</span></label>
+                        <input type="text" th:field="*{vehicleName}" class="form-control" required placeholder="如：2023款 宝马3系">
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">预约日期 <span class="text-danger">*</span></label>
+                        <input type="date" th:field="*{appointmentDate}" class="form-control" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">预约时段 <span class="text-danger">*</span></label>
+                        <input type="time" th:field="*{appointmentTime}" class="form-control" required>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">预约状态</label>
+                        <select th:field="*{status}" class="form-select">
+                            <option th:each="s : ${statuses}"
+                                    th:value="${s.name()}"
+                                    th:text="${s.name()}"></option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">备注</label>
+                    <textarea th:field="*{appointmentRemark}" class="form-control" rows="3" placeholder="选填"></textarea>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">保存</button>
+                    <a th:href="@{/scheduler}" class="btn btn-secondary">返回</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div th:insert="~{fragments/layout :: footer}"></div>
+</body>
+</html>

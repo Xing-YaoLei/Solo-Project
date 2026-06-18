@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head>
+    <th:block th:insert="~{fragments/layout :: head('客户试驾历史')}"></th:block>
+</head>
+<body>
+<div th:insert="~{fragments/layout :: navbar}"></div>
+<div th:insert="~{fragments/layout :: alerts}"></div>
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="section-title">客户试驾历史 - <span th:text="${lead.customerName}"></span></h3>
+        <a th:href="@{/records}" class="btn btn-outline-secondary">返回</a>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">试驾记录</div>
+                <div class="card-body">
+                    <div th:if="${#lists.isEmpty(records)}" class="text-center text-muted py-4">暂无记录</div>
+                    <div th:each="r : ${records}" class="change-log-item">
+                        <strong th:text="${r.vehicleName}"></strong>
+                        <div class="text-muted small">
+                            <span th:text="${#temporals.format(r.startTime, 'yyyy-MM-dd HH:mm')}"></span> ~
+                            <span th:text="${r.endTime != null} ? ${#temporals.format(r.endTime, 'HH:mm')} : '进行中'"></span>
+                        </div>
+                        <div class="small mt-1">
+                            里程: <span th:text="${r.startMileage}"></span> - <span th:text="${r.endMileage}"></span>
+                            | 陪驾: <span th:text="${r.driver?.realName}"></span>
+                        </div>
+                        <div th:if="${r.remark}" class="small mt-1 text-muted" th:text="'备注: ' + ${r.remark}"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">试驾反馈</div>
+                <div class="card-body">
+                    <div th:if="${#lists.isEmpty(feedbacks)}" class="text-center text-muted py-4">暂无反馈</div>
+                    <div th:each="f : ${feedbacks}" class="change-log-item">
+                        <div>
+                            <span class="rating-stars" th:each="i : ${#numbers.sequence(1, f.overallRating)}">&#9733;</span>
+                            <span class="ms-2 badge bg-info" th:if="${f.purchaseIntent != null}" th:text="${f.purchaseIntent.name()}"></span>
+                        </div>
+                        <div class="small mt-1">
+                            舒适度: <span class="rating-stars" style="font-size:1rem" th:each="i : ${#numbers.sequence(1, f.vehicleComfortRating)}">&#9733;</span>
+                        </div>
+                        <div class="small">
+                            性能: <span class="rating-stars" style="font-size:1rem" th:each="i : ${#numbers.sequence(1, f.vehiclePerformanceRating)}">&#9733;</span>
+                        </div>
+                        <div class="small">
+                            服务: <span class="rating-stars" style="font-size:1rem" th:each="i : ${#numbers.sequence(1, f.salesServiceRating)}">&#9733;</span>
+                        </div>
+                        <div th:if="${f.customerComment}" class="mt-2 small" th:text="'客户: ' + ${f.customerComment}"></div>
+                        <div th:if="${f.salesComment}" class="small text-muted" th:text="'销售: ' + ${f.salesComment}"></div>
+                        <div class="text-muted small mt-1" th:text="${#temporals.format(f.createTime, 'yyyy-MM-dd HH:mm')}"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div th:insert="~{fragments/layout :: footer}"></div>
+</body>
+</html>

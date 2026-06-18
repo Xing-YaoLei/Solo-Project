@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head>
+    <th:block th:insert="~{fragments/layout :: head('月底复盘 - 二手车试驾预约系统')}"></th:block>
+</head>
+<body>
+<div th:insert="~{fragments/layout :: navbar}"></div>
+<div th:insert="~{fragments/layout :: alerts}"></div>
+
+<div class="container mt-4">
+    <h3 class="section-title mb-4">月底复盘 - 线索转化分析</h3>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <form th:action="@{/review/generate}" th:object="${query}" method="post" class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">开始日期</label>
+                    <input type="date" th:field="*{startDate}" class="form-control">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">结束日期</label>
+                    <input type="date" th:field="*{endDate}" class="form-control">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">销售顾问</label>
+                    <select th:field="*{salesId}" class="form-select">
+                        <option value="">全部</option>
+                        <option th:each="u : ${salesList}" th:value="${u.id}" th:text="${u.realName}"></option>
+                    </select>
+                </div>
+                <div class="col-md-3 align-self-end">
+                    <button type="submit" class="btn btn-primary me-2">生成报告</button>
+                    <button type="submit" formaction="/review/export" formmethod="post" class="btn btn-success">
+                        导出Excel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div th:if="${review == null}" class="card">
+        <div class="card-body text-center py-5 text-muted">
+            <h5>请选择统计条件并点击"生成报告"</h5>
+            <p class="small mt-2">系统将根据筛选条件生成线索转化分析报告</p>
+        </div>
+    </div>
+
+    <div th:if="${review != null}">
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="metric-card">
+                    <div class="metric-value" th:text="${review.totalLeads}"></div>
+                    <div class="metric-label">总线索数</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="metric-card green">
+                    <div class="metric-value" th:text="${review.convertedLeads}"></div>
+                    <div class="metric-label">已转化</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="metric-card orange">
+                    <div class="metric-value" th:text="${#numbers.formatDecimal(review.conversionRate, 1, 2)} + '%'"></div>
+                    <div class="metric-label">转化率</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="metric-card blue">
+                    <div class="metric-value" th:text="${review.totalAppointments}"></div>
+                    <div class="metric-label">总预约数</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">试驾统计</div>
+                    <div class="card-body">
+                        <table class="table table-sm">
+                            <tr><th>已完成试驾</th><td class="text-end" th:text="${review.completedTestDrives}"></td></tr>
+                            <tr><th>爽约数</th><td class="text-end text-danger" th:text="${review.noShows}"></td></tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">线索状态分布</div>
+                    <div class="card-body">
+                        <table class="table table-sm">
+                            <tr th:each="entry : ${review.statusDistribution}">
+                                <th th:text="${entry.key}"></th>
+                                <td class="text-end" th:text="${entry.value}"></td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">销售业绩</div>
+                    <div class="card-body">
+                        <table class="table table-sm">
+                            <tr th:each="entry : ${review.salesPerformance}">
+                                <th th:text="${entry.key}"></th>
+                                <td class="text-end" th:text="${entry.value}"></td>
+                            </tr>
+                            <tr th:if="${#maps.isEmpty(review.salesPerformance)}">
+                                <td colspan="2" class="text-center text-muted small">暂无数据</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">报告信息</div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <tr><th style="width:150px">筛选条件</th><td th:text="${review.filterConditions}"></td></tr>
+                    <tr><th>生成时间</th>
+                        <td th:text="${#temporals.format(review.generatedAt, 'yyyy-MM-dd HH:mm:ss')}"></td>
+                    </tr>
+                    <tr><th>操作人</th><td th:text="${review.operatorName}"></td></tr>
+                </table>
+                <div class="mt-3">
+                    <form th:action="@{/review/export}" th:object="${query}" method="post">
+                        <input type="hidden" th:field="*{startDate}" />
+                        <input type="hidden" th:field="*{endDate}" />
+                        <input type="hidden" th:field="*{salesId}" />
+                        <input type="hidden" th:field="*{source}" />
+                        <button type="submit" class="btn btn-success">下载Excel报告</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div th:insert="~{fragments/layout :: footer}"></div>
+</body>
+</html>
