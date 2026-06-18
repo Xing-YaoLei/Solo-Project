@@ -253,6 +253,10 @@ export default function ImportPage() {
 
       const result = await response.json();
 
+      const targetBatchInfo = selectedImportBatchId
+        ? importBatches.find((b) => b.id === selectedImportBatchId)
+        : null;
+
       addImportResult({
         source: "DESIGN_EXPORT",
         importBatchId: result.importBatchId,
@@ -262,15 +266,22 @@ export default function ImportPage() {
         updatedEntries: result.updatedEntries,
         warnings: result.warnings,
         records,
+        mergedIntoExistingBatch: !!selectedImportBatchId,
+        targetImportBatchId: selectedImportBatchId || undefined,
+        targetBatchNo: targetBatchInfo?.batchNo,
       });
 
       setUploadResult({
         success: true,
-        message: `成功合并 ${result.mergedCount} 条设计导出记录`,
+        message: selectedImportBatchId
+          ? `成功合并 ${result.mergedCount} 条设计导出记录到 ${targetBatchInfo?.batchNo || "指定批次"}`
+          : `成功导入 ${result.mergedCount} 条设计导出记录`,
         details: [
+          selectedImportBatchId
+            ? `合并模式: 合并到已有批次 ${targetBatchInfo?.batchNo || selectedImportBatchId}`
+            : `批次类型: 新建导入批次`,
           `新建记录: ${result.newEntries} 条`,
           `匹配更新: ${result.updatedEntries} 条`,
-          `合并批次: ${selectedImportBatchId ? "已合并到指定批次" : "新建批次"}`,
           ...(result.warnings || []),
         ],
         importBatchId: result.importBatchId,

@@ -58,6 +58,9 @@ interface ImportResult {
   importBatch?: ImportBatch;
   newMaterialEntries?: MaterialEntry[];
   newBatches?: Batch[];
+  mergedIntoExistingBatch?: boolean;
+  targetImportBatchId?: string;
+  targetBatchNo?: string;
 }
 
 const STAFF_PROJECT_IDS = ["p-1", "p-2"];
@@ -502,15 +505,31 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
     const now = new Date();
     const todayStr = now.toISOString().split("T")[0];
 
-    const newImportBatch: ImportBatch = result.importBatch || {
-      id: result.importBatchId,
-      batchNo: result.batchNo,
-      source: result.source,
-      importedAt: now.toISOString(),
-      importedBy: state.currentUserId,
-      recordCount: result.mergedCount,
-      fileUrl: null,
-    };
+    const isMerge = result.mergedIntoExistingBatch && result.targetImportBatchId;
+    const effectiveBatchNo = isMerge && result.targetBatchNo ? result.targetBatchNo : result.batchNo;
+
+    let newImportBatch: ImportBatch;
+    if (isMerge && result.targetImportBatchId) {
+      newImportBatch = {
+        id: result.importBatchId,
+        batchNo: effectiveBatchNo,
+        source: result.source,
+        importedAt: now.toISOString(),
+        importedBy: state.currentUserId,
+        recordCount: result.mergedCount,
+        fileUrl: null,
+      };
+    } else {
+      newImportBatch = result.importBatch || {
+        id: result.importBatchId,
+        batchNo: effectiveBatchNo,
+        source: result.source,
+        importedAt: now.toISOString(),
+        importedBy: state.currentUserId,
+        recordCount: result.mergedCount,
+        fileUrl: null,
+      };
+    }
 
     let newMaterialEntries: MaterialEntry[] = [];
     let newBatches: Batch[] = [];
@@ -519,29 +538,62 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
       newMaterialEntries = result.newMaterialEntries;
     } else if (result.records && result.records.length > 0) {
       const projectIds = state.assignedProjectIds;
+      const projectNameToId: Record<string, string> = {
+        "杭州湾样板房": "p-1",
+        "上海青浦别墅": "p-2",
+        "苏州园区住宅": "p-3",
+        "南京鼓楼公寓": "p-4",
+      };
       const categories = ["瓷砖", "玻璃", "木材", "电线", "五金", "涂料", "管材", "防水材料"];
       const statuses: Array<"ARRIVED" | "IN_STOCK" | "RECLAIMED" | "EXPIRED"> = ["ARRIVED", "IN_STOCK", "RECLAIMED"];
 
       result.records.forEach((record: any, idx: number) => {
         const batchId = `batch-${result.importBatchId}-${idx}`;
         const entryId = `entry-${result.importBatchId}-${idx}`;
-        const projectId = projectIds[idx % projectIds.length];
-        const projectName = projectId === "p-1" ? "杭州湾样板房" :
-                            projectId === "p-2" ? "上海青浦别墅" :
-                            projectId === "p-3" ? "苏州园区住宅" : "南京鼓楼公寓";
+
+        const recordProjectName = record.projectName?.trim();
+        let projectId: string;
+        let projectName: string;
+
+        if (recordProjectName && projectNameToId[recordProjectName]) {
+          projectId = projectNameToId[recordProjectName];
+          projectName = recordProjectName;
+        } else if (recordProjectName) {
+          const mappedId = projectIds[idx % projectIds.length];
+          projectNameToId[recordProjectName] = mappedId;
+          projectId = mappedId;
+          projectName = recordProjectName;
+        } else {
+          projectId = projectIds[idx % projectIds.length];
+          projectName = projectId === "p-1" ? "杭州湾样板房" :
+                       projectId === "p-2" ? "上海青浦别墅" :
+                       projectId === "p-3" ? "苏州园区住宅" : "南京鼓楼公寓";
+        }
 
         const materialName = record.materialName || `材料 ${idx + 1}`;
         const category = record.category || categories[idx % categories.length];
         const quantity = record.quantity || Math.floor(Math.random() * 100) + 10;
-        const supplierName = record.supplierName || `供应商 ${(idx % 5) + 1}`;
-        const supplierId = `s-${(idx % 5) + 1}`;
+
+        const recordSupplierName = record.supplierName?.trim();
+        const supplierName = recordSupplierName || `供应商 ${(idx % 5) + 1}`;
+        let supplierId: string;
+        if (recordSupplierName) {
+          let hash = 0;
+          for (let i = 0; i < recordSupplierName.length; i++) {
+            hash = (hash + recordSupplierName.charCodeAt(i)) >>> 0;
+          }
+          supplierId = `s-${(hash % 20) + 1}`;
+        } else {
+          supplierId = `s-${(idx % 5) + 1}`;
+        }
+
         const status = statuses[idx % statuses.length];
 
         const batch: Batch = {
           id: batchId,
-          batchNo: result.batchNo,
+          batchNo: effectiveBatchNo,
           importSource: result.source,
-          importBatchId: result.importBatchId,
+          importBatchId: isMerge && result.targetImportBatchId ? result.targetImportBatchId : result.importBatchId,
           projectId,
           projectName,
           status: "COMPLETE",
@@ -577,7 +629,20 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
     }
 
     set((prev) => {
-      const allImportBatches = [newImportBatch, ...prev.importBatches];
+      let allImportBatches: ImportBatch[];
+      if (isMerge && result.targetImportBatchId) {
+        allImportBatches = [
+          newImportBatch,
+          ...prev.importBatches.map((b) =>
+            b.id === result.targetImportBatchId
+              ? { ...b, recordCount: b.recordCount + result.mergedCount }
+              : b
+          ),
+        ];
+      } else {
+        allImportBatches = [newImportBatch, ...prev.importBatches];
+      }
+
       const allBatches = [...newBatches, ...prev.batches];
       const allEntries = [...newMaterialEntries, ...prev.materialEntries];
 
