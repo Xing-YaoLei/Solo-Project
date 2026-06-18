@@ -38,8 +38,16 @@ export class LeaderboardUI extends UIBase {
 
     onStart(): void {
         this.on(GameEvents.UI_SHOW_LEADERBOARD, this.onShowLeaderboard.bind(this));
+        this.on(GameEvents.PHASE_CHANGED, this.onPhaseChanged.bind(this));
         this.registerInput('cancel', this.onBackClicked.bind(this));
         this.bindButtonClick(this.backButton, this.onBackClicked.bind(this));
+    }
+
+    private onPhaseChanged(phase: string): void {
+        const gamePhase = ['task_briefing', 'clue_investigation', 'document_editing', 'approval', 'result', 'review'];
+        if (gamePhase.includes(phase)) {
+            this.hide();
+        }
     }
 
     private onShowLeaderboard(): void {

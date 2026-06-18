@@ -1,6 +1,5 @@
-import { _decorator, Component, Node, TiledMap, TiledLayer, TiledObjectGroup, Vec3, UITransform, resources, TiledMapAsset, JsonAsset, log, error } from 'cc';
+import { _decorator, Component, Node, TiledMap, TiledLayer, TiledObjectGroup, Vec3, UITransform, resources, TiledMapAsset, log, error } from 'cc';
 import { TiledMapData } from '../core/LevelTypes';
-import { GameManager } from '../managers/GameManager';
 import { EventManager, GameEvents } from '../utils/EventManager';
 
 const { ccclass, property } = _decorator;
@@ -21,9 +20,11 @@ export class TiledMapController extends Component {
 
     onLoad(): void {
         EventManager.instance.on(GameEvents.GAME_START, this._onGameStart.bind(this));
+        EventManager.instance.on(GameEvents.UI_SHOW_MENU, this._onShowMenu.bind(this));
     }
 
     start(): void {
+        this.node.active = false;
     }
 
     private _onGameStart(levelConfig: any): void {
@@ -42,6 +43,13 @@ export class TiledMapController extends Component {
             }
         }
         this.node.active = true;
+    }
+
+    private _onShowMenu(): void {
+        this.node.active = false;
+        if (this.tiledMap) {
+            this.tiledMap.tmxAsset = null;
+        }
     }
 
     public loadTiledMap(resourcePath: string): void {
@@ -137,5 +145,7 @@ export class TiledMapController extends Component {
     }
 
     onDestroy(): void {
+        EventManager.instance.off(GameEvents.GAME_START, this);
+        EventManager.instance.off(GameEvents.UI_SHOW_MENU, this);
     }
 }

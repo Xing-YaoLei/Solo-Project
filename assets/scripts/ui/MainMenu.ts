@@ -35,11 +35,20 @@ export class MainMenu extends UIBase {
 
     onStart(): void {
         this.registerInput('confirm', this.onStartGame.bind(this));
+        this.on(GameEvents.PHASE_CHANGED, this.onPhaseChanged.bind(this));
 
         this.bindButtonClick(this.startButton, this.onStartClicked.bind(this));
         this.bindButtonClick(this.levelSelectButton, this.onLevelSelectClicked.bind(this));
         this.bindButtonClick(this.leaderboardButton, this.onLeaderboardClicked.bind(this));
         this.bindButtonClick(this.tutorialButton, this.onTutorialClicked.bind(this));
+    }
+
+    private onPhaseChanged(phase: string): void {
+        if (phase === 'task_briefing' || phase === 'clue_investigation' || 
+            phase === 'document_editing' || phase === 'approval' || 
+            phase === 'result' || phase === 'review') {
+            this.hide();
+        }
     }
 
     onShow(): void {

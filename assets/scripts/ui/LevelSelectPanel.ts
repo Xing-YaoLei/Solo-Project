@@ -33,9 +33,18 @@ export class LevelSelectPanel extends UIBase {
     onStart(): void {
         this.on(GameEvents.UI_SHOW_LEVEL_SELECT, this.onShowPanel.bind(this));
         this.on(GameEvents.LEVEL_UNLOCKED, this.onLevelUnlocked.bind(this));
+        this.on(GameEvents.PHASE_CHANGED, this.onPhaseChanged.bind(this));
 
         this.registerInput('cancel', this.onBackClicked.bind(this));
         this.bindButtonClick(this.backButton, this.onBackClicked.bind(this));
+    }
+
+    private onPhaseChanged(phase: string): void {
+        if (phase === 'task_briefing' || phase === 'clue_investigation' ||
+            phase === 'document_editing' || phase === 'approval' ||
+            phase === 'result' || phase === 'review') {
+            this.hide();
+        }
     }
 
     private onShowPanel(): void {

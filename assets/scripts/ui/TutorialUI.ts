@@ -33,6 +33,7 @@ export class TutorialUI extends UIBase {
         this.on(GameEvents.UI_SHOW_TUTORIAL, this.onShowTutorial.bind(this));
         this.on(GameEvents.TUTORIAL_STEP_CHANGED, this.onStepChanged.bind(this));
         this.on(GameEvents.TUTORIAL_COMPLETED, this.onTutorialCompleted.bind(this));
+        this.on(GameEvents.PHASE_CHANGED, this.onPhaseChanged.bind(this));
 
         this.registerInput('confirm', this.onNextClicked.bind(this));
         this.registerInput('next', this.onNextClicked.bind(this));
@@ -42,6 +43,15 @@ export class TutorialUI extends UIBase {
         this.bindButtonClick(this.prevButton, this.onPrevClicked.bind(this));
         this.bindButtonClick(this.nextButton, this.onNextClicked.bind(this));
         this.bindButtonClick(this.closeButton, this.onCloseClicked.bind(this));
+    }
+
+    private onPhaseChanged(phase: string): void {
+        if (phase !== 'result' && phase !== 'review') {
+            const gamePhase = ['task_briefing', 'clue_investigation', 'document_editing', 'approval'];
+            if (gamePhase.includes(phase)) {
+                this.hide();
+            }
+        }
     }
 
     private onShowTutorial(): void {

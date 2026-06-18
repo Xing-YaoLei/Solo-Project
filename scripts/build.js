@@ -102,8 +102,13 @@ function buildWithCocos(creatorPath, platform) {
 
     proc.on('exit', (code) => {
       if (code === 0) {
-        log(`[✓] ${platform} 构建成功！产物在: ${buildDir}`);
-        resolve(true);
+        if (dirExists(buildDir) && fileExists(path.join(buildDir, 'index.html'))) {
+          log(`[✓] ${platform} 构建成功！产物在: ${buildDir}`);
+          resolve(true);
+        } else {
+          error(`[✗] ${platform} 进程退出码为 0，但未找到构建产物目录 ${buildDir} 或 index.html`);
+          resolve(false);
+        }
       } else {
         error(`[✗] ${platform} 构建失败 (exit code: ${code})`);
         resolve(false);

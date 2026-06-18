@@ -1,6 +1,8 @@
 import { _decorator, Label, Node, Button, Sprite, Color, instantiate } from 'cc';
 import { UIBase } from './UIBase';
 import { GameManager } from '../managers/GameManager';
+import { DataManager } from '../managers/DataManager';
+import { LevelManager } from '../managers/LevelManager';
 import { AudioManager } from '../managers/AudioManager';
 import { GameEvents } from '../utils/EventManager';
 
@@ -158,6 +160,18 @@ export class ResultPanel extends UIBase {
 
     public onNextLevelClicked(): void {
         AudioManager.instance.playClick();
+        const state = GameManager.instance.gameState;
+        if (!state) return;
+
+        const allLevels = DataManager.instance ? DataManager.instance.getAllLevels() : [];
+        const currentIndex = allLevels.findIndex(l => l.id === state.currentLevelId);
+
+        if (currentIndex >= 0 && currentIndex < allLevels.length - 1) {
+            const nextLevel = allLevels[currentIndex + 1];
+            if (LevelManager.instance.isLevelUnlocked(nextLevel.id)) {
+                GameManager.instance.startLevel(nextLevel.id);
+            }
+        }
     }
 
     onShow(): void {

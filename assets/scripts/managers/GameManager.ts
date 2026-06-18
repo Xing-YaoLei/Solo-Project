@@ -421,6 +421,7 @@ export class GameManager {
     this._isRunning = false;
     this._gameState = null;
     this._currentLevel = null;
+    EventManager.instance.emit(GameEvents.UI_SHOW_MENU);
   }
 
   public getSessionRecord(): GameSessionRecord | null {
