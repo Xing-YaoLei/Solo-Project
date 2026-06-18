@@ -166,14 +166,25 @@
               placeholder="请选择要上传的证件类型"
             />
           </NFormItem>
-          <NFormItem label="证件标题">
+          <NFormItem label="资料类别">
+            <NSelect
+              v-model:value="uploadForm.category"
+              :options="categoryOptions"
+              placeholder="资料类别"
+              style="width: 200px"
+            />
+          </NFormItem>
+          <NFormItem label="证件标题" required>
             <NInput v-model:value="uploadForm.title" placeholder="请输入文件标题" />
           </NFormItem>
           <NFormItem label="选择文件" required>
             <NUpload
               :max="1"
               accept=".pdf,.jpg,.jpeg,.png"
-              :on-before-upload="onBeforeUpload"
+              :show-file-list="true"
+              :default-file-list="uploadForm.file ? [uploadForm.file] : []"
+              @change="onUploadFileChange"
+              :custom-request="() => {}"
             >
               <NButton>
                 <NIcon :component="UploadOutlined" class="mr-1" />
@@ -181,15 +192,15 @@
               </NButton>
             </NUpload>
           </NFormItem>
-          <NFormItem label="备注">
-            <NInput v-model:value="uploadForm.remark" type="textarea" :rows="2" placeholder="可填写备注信息" />
+          <NFormItem label="描述说明">
+            <NInput v-model:value="uploadForm.description" type="textarea" :rows="2" placeholder="可填写描述说明" />
           </NFormItem>
         </NForm>
       </template>
       <template #footer>
         <NSpace justify="end">
           <NButton @click="closeUploadModal">取消</NButton>
-          <NButton type="primary" @click="submitUpload">提交上传</NButton>
+          <NButton type="primary" :loading="uploadLoading" @click="submitUpload">提交上传</NButton>
         </NSpace>
       </template>
     </NModal>
@@ -222,7 +233,7 @@
       <template #footer>
         <NSpace justify="end">
           <NButton @click="showSupplementModal = false">取消</NButton>
-          <NButton type="primary" @click="submitSupplement">确认标记</NButton>
+          <NButton type="primary" :loading="supplementLoading" @click="submitSupplement">确认标记</NButton>
         </NSpace>
       </template>
     </NModal>
@@ -256,7 +267,7 @@
       <template #footer>
         <NSpace justify="end">
           <NButton @click="showAssignModal = false">取消</NButton>
-          <NButton type="primary" @click="submitAssign">确认分配</NButton>
+          <NButton type="primary" :loading="assignLoading" @click="submitAssign">确认分配</NButton>
         </NSpace>
       </template>
     </NModal>
@@ -265,7 +276,10 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed, h } from 'vue'
-import { useMessage, useDialog, useNotification } from 'naive-ui'
+import {
+  NIcon, NTag, NSpace, NButton, NAvatar,
+  useMessage, useDialog, useNotification,
+} from 'naive-ui'
 import {
   AlertOutlined, FileProtectOutlined, SearchOutlined, ReloadOutlined,
   BellOutlined, UserOutlined, UploadOutlined, CarOutlined,
@@ -289,8 +303,10 @@ interface MissingVehicleItem {
   status_display: string
   missing_count: number
   missing_types: DocumentType[]
+  missing_doc_types?: DocumentType[]
   inventory_days: number
   appraiser_info: SimpleUser | null
+  appraiser?: SimpleUser | null
   created_at: string
 }
 
@@ -339,6 +355,15 @@ const docTypeMap: Record<DocumentType, { label: string; color: string; bg: strin
   other: { label: '其他', color: '#8c8c8c', bg: '#f5f5f5' },
 }
 
+const categoryOptions = [
+  { label: '车辆档案', value: 'vehicle_archive' },
+  { label: '检测报告', value: 'inspection' },
+  { label: '整备资料', value: 'preparation' },
+  { label: '试驾资料', value: 'testdrive' },
+  { label: '金融资料', value: 'finance' },
+  { label: '其他', value: 'other' },
+]
+
 const docStats = computed(() => {
   const order: DocumentType[] = ['registration_cert', 'driving_license', 'insurance', 'maintenance_record', 'keys']
   return order.map(t => ({
@@ -375,22 +400,39 @@ const docTypeOptions: { label: string; value: DocumentType }[] = Object.entries(
   value: k as DocumentType,
 }))
 
-const handlerOptions = [
-  { label: '张三 (评估师)', value: 1 },
-  { label: '李四 (销售)', value: 2 },
-  { label: '王五 (检测师)', value: 3 },
-  { label: '赵六 (整备师)', value: 4 },
-]
+const handlerOptions = ref<{ label: string; value: number }[]>([])
+
+async function loadHandlerOptions() {
+  try {
+    const { $api } = useNuxtApp()
+    const users = await $api.get<any, any>('/users/')
+    const list = users?.results || users || []
+    handlerOptions.value = list
+      .filter((u: any) => ['appraiser', 'sales', 'manager'].includes(u.role))
+      .map((u: any) => ({
+        label: `${u.first_name || ''}${u.last_name || ''}${u.role ? ' (' + ({ appraiser: '评估师', sales: '销售', manager: '店长' } as any)[u.role] + ')' : ''}`,
+        value: u.id,
+      }))
+  } catch (e: any) {
+    message.error(e.message || '加载处理人列表失败')
+  }
+}
 
 const showUploadModal = ref(false)
 const showSupplementModal = ref(false)
 const showAssignModal = ref(false)
 const currentRow = ref<MissingVehicleItem | null>(null)
 
+const uploadLoading = ref(false)
+const supplementLoading = ref(false)
+const assignLoading = ref(false)
+
 const uploadForm = reactive({
   doc_type: null as DocumentType | null,
+  category: 'vehicle_archive' as string,
   title: '',
-  remark: '',
+  description: '',
+  file: null as any,
 })
 
 const supplementForm = reactive({
@@ -434,28 +476,31 @@ const columns = [
   },
   {
     title: '阶段状态', key: 'status', width: 110,
-    render: (row: MissingVehicleItem) => h(NTag, { size: 'small', type: statusType(row.status), bordered: false }, () => row.status_display),
+    render: (row: MissingVehicleItem) => h(NTag, { size: 'small', type: statusType(row.status), bordered: false }, () => row.status_display || row.status),
   },
   {
     title: '缺失证件', key: 'missing', minWidth: 260,
-    render: (row: MissingVehicleItem) => h('div', null, [
-      h('div', { class: 'flex items-center gap-1 mb-1.5' }, [
-        h(NIcon, { component: ExclamationCircleOutlined, size: 14, style: { color: '#f5222d' } }),
-        h('span', { class: 'text-xs font-medium text-red-600' }, `缺失 ${row.missing_count} 项`),
-      ]),
-      h(NSpace, { size: 4, wrap: true }, () =>
-        row.missing_types.map((t, i) => {
-          const cfg = docTypeMap[t]
-          return h(NTag, {
-            key: i, size: 'small', bordered: false,
-            style: { backgroundColor: cfg.bg, color: cfg.color, border: `1px solid ${cfg.color}30` },
-          }, () => [
-            h(NIcon, { component: AlertOutlined, size: 10, class: 'mr-0.5' }),
-            cfg.label,
-          ])
-        })
-      ),
-    ]),
+    render: (row: MissingVehicleItem) => {
+      const missingTypes = row.missing_types || row.missing_doc_types || []
+      return h('div', null, [
+        h('div', { class: 'flex items-center gap-1 mb-1.5' }, [
+          h(NIcon, { component: ExclamationCircleOutlined, size: 14, style: { color: '#f5222d' } }),
+          h('span', { class: 'text-xs font-medium text-red-600' }, `缺失 ${missingTypes.length} 项`),
+        ]),
+        h(NSpace, { size: 4, wrap: true }, () =>
+          missingTypes.map((t, i) => {
+            const cfg = docTypeMap[t] || { label: t, color: '#8c8c8c', bg: '#f5f5f5' }
+            return h(NTag, {
+              key: i, size: 'small', bordered: false,
+              style: { backgroundColor: cfg.bg, color: cfg.color, border: `1px solid ${cfg.color}30` },
+            }, () => [
+              h(NIcon, { component: AlertOutlined, size: 10, class: 'mr-0.5' }),
+              cfg.label,
+            ])
+          })
+        ),
+      ])
+    },
   },
   {
     title: '库存天数', key: 'inventory_days', width: 110, align: 'center' as const,
@@ -478,22 +523,25 @@ const columns = [
     ]),
   },
   {
-    title: '负责人', key: 'handler', width: 100,
-    render: (row: MissingVehicleItem) => row.appraiser_info
-      ? h('div', { class: 'flex items-center gap-2' }, [
-        h(NAvatar, { round: true, size: 'small', style: 'background: #18a058' }, () => row.appraiser_info?.first_name?.[0] || 'U'),
-        h('span', { class: 'text-sm' }, `${row.appraiser_info?.first_name}${row.appraiser_info?.last_name}`),
-      ])
-      : h(NTag, { size: 'small', type: 'warning', bordered: false }, () => '未分配'),
+    title: '负责人', key: 'handler', width: 120,
+    render: (row: MissingVehicleItem) => {
+      const info = row.appraiser_info || row.appraiser
+      return info
+        ? h('div', { class: 'flex items-center gap-2' }, [
+            h(NAvatar, { round: true, size: 'small', style: 'background: #18a058' }, () => (info.first_name || info.username || 'U').slice(0, 1)),
+            h('span', { class: 'text-sm' }, `${info.first_name || ''}${info.last_name || ''}` || info.username),
+          ])
+        : h(NTag, { size: 'small', type: 'warning', bordered: false }, () => '未分配')
+    },
   },
   {
-    title: '操作', key: 'actions', width: 200, fixed: 'right' as const,
+    title: '操作', key: 'actions', width: 220, fixed: 'right' as const,
     render: (row: MissingVehicleItem) => h(NSpace, { size: 4, wrap: true }, () => [
       h(NButton, { size: 'tiny', type: 'primary', ghost, onClick: () => router.push(`/vehicles/${row.id}`) }, () => [
         h(NIcon, { component: EyeOutlined, size: 12, class: 'mr-0.5' }), '详情',
       ]),
       h(NButton, { size: 'tiny', type: 'success', ghost, onClick: () => openUploadModal(row) }, () => [
-        h(NIcon, { component: UploadOutlined, size: 12, class: 'mr-0.5' }), '上传',
+        h(NIcon, { component: UploadOutlined, size: 12, class: 'mr-0.5' }), '上传补件',
       ]),
       h(NButton, { size: 'tiny', type: 'warning', ghost, onClick: () => openSupplementModal(row) }, () => [
         h(NIcon, { component: CheckOutlined, size: 12, class: 'mr-0.5' }), '标记补充',
@@ -503,8 +551,9 @@ const columns = [
 ]
 
 function getMissingDocTypeOptions(row: MissingVehicleItem) {
-  return row.missing_types.map(t => ({
-    label: docTypeMap[t].label,
+  const types = row.missing_types || row.missing_doc_types || []
+  return types.map(t => ({
+    label: docTypeMap[t]?.label || t,
     value: t,
   }))
 }
@@ -532,19 +581,26 @@ function resetFilters() {
 function openUploadModal(row: MissingVehicleItem) {
   currentRow.value = row
   uploadForm.doc_type = null
+  uploadForm.category = 'vehicle_archive'
   uploadForm.title = ''
-  uploadForm.remark = ''
+  uploadForm.description = ''
+  uploadForm.file = null
   showUploadModal.value = true
 }
 
 function closeUploadModal() {
   showUploadModal.value = false
   currentRow.value = null
+  uploadForm.file = null
 }
 
-function onBeforeUpload() {
-  message.success('文件选择成功（演示）')
-  return false
+function onUploadFileChange({ file, fileList }: any) {
+  if (file && file.file) {
+    uploadForm.file = file.file
+  } else if (file && fileList && fileList.length > 0) {
+    const last = fileList[fileList.length - 1]
+    uploadForm.file = last.file || last
+  }
 }
 
 async function submitUpload() {
@@ -552,21 +608,32 @@ async function submitUpload() {
     message.warning('请选择证件类型')
     return
   }
+  if (!uploadForm.title.trim()) {
+    message.warning('请输入证件标题')
+    return
+  }
+  if (!uploadForm.file) {
+    message.warning('请选择要上传的文件')
+    return
+  }
+  uploadLoading.value = true
   try {
     const { $api } = useNuxtApp()
     const formData = new FormData()
-    formData.append('vehicle', String(currentRow.value?.id))
+    formData.append('vehicle_id', String(currentRow.value?.id))
     formData.append('document_type', uploadForm.doc_type)
-    if (uploadForm.title) formData.append('title', uploadForm.title)
-    if (uploadForm.remark) formData.append('remark', uploadForm.remark)
-    await $api.upload('/documents/', formData)
+    formData.append('category', uploadForm.category)
+    formData.append('title', uploadForm.title)
+    if (uploadForm.description) formData.append('description', uploadForm.description)
+    formData.append('file', uploadForm.file)
+    await $api.upload('/documents/upload/', formData)
     message.success('上传成功')
     closeUploadModal()
     loadData()
   } catch (e: any) {
-    message.warning(e.message || '上传功能演示成功')
-    closeUploadModal()
-    loadMockData()
+    message.error(e.message || '上传失败')
+  } finally {
+    uploadLoading.value = false
   }
 }
 
@@ -582,6 +649,7 @@ async function submitSupplement() {
     message.warning('请选择已补充的证件')
     return
   }
+  supplementLoading.value = true
   try {
     const { $api } = useNuxtApp()
     await $api.post(`/vehicles/${currentRow.value?.id}/mark-documents-supplemented/`, {
@@ -592,9 +660,9 @@ async function submitSupplement() {
     showSupplementModal.value = false
     loadData()
   } catch (e: any) {
-    message.warning(e.message || '标记功能演示成功')
-    showSupplementModal.value = false
-    loadMockData()
+    message.error(e.message || '标记失败')
+  } finally {
+    supplementLoading.value = false
   }
 }
 
@@ -615,9 +683,7 @@ async function batchNotify() {
         checkedRowKeys.value = []
         selectedRows.value = []
       } catch (e: any) {
-        notification.success({ title: '通知已发送（演示）', content: `已向 ${selectedRows.value.length} 位负责人发送模拟通知`, duration: 3000 })
-        checkedRowKeys.value = []
-        selectedRows.value = []
+        message.error(e.message || '通知发送失败')
       }
     },
   })
@@ -628,6 +694,7 @@ async function submitAssign() {
     message.warning('请选择处理人员')
     return
   }
+  assignLoading.value = true
   try {
     const { $api } = useNuxtApp()
     await $api.post('/vehicles/batch-assign/', {
@@ -645,13 +712,9 @@ async function submitAssign() {
     assignForm.remark = ''
     loadData()
   } catch (e: any) {
-    message.warning(e.message || `分配演示成功：${selectedRows.value.length} 台车辆`)
-    showAssignModal.value = false
-    checkedRowKeys.value = []
-    selectedRows.value = []
-    assignForm.handler = null
-    assignForm.notify_types = ['system']
-    assignForm.remark = ''
+    message.error(e.message || '分配失败')
+  } finally {
+    assignLoading.value = false
   }
 }
 
@@ -670,17 +733,16 @@ async function loadData() {
     if (filters.max_days !== null) params.max_days = filters.max_days
 
     const res = await $api.get<any, any>('/vehicles/missing-documents/', params)
-    dataList.value = res.results || res.items || res || []
-    total.value = res.count || res.total || dataList.value.length
+    const list = res.results || res.items || res || []
+    dataList.value = list
+    total.value = res.count || res.total || list.length
     loaded.value = true
-
-    if (res.stats) {
-      stats.value = res.stats
-    } else {
-      calcStats()
-    }
-  } catch {
-    loadMockData()
+    calcStats()
+  } catch (e: any) {
+    message.error(e.message || '加载失败')
+    dataList.value = []
+    total.value = 0
+    loaded.value = true
   } finally {
     loading.value = false
   }
@@ -689,7 +751,8 @@ async function loadData() {
 function calcStats() {
   const byType: Record<string, number> = {}
   dataList.value.forEach(v => {
-    v.missing_types.forEach(t => {
+    const types = v.missing_types || v.missing_doc_types || []
+    types.forEach(t => {
       byType[t] = (byType[t] || 0) + 1
     })
   })
@@ -707,56 +770,8 @@ function calcStats() {
   }
 }
 
-function loadMockData() {
-  const brands = ['宝马', '奔驰', '奥迪', '丰田', '本田', '大众', '特斯拉', '比亚迪']
-  const models = ['3系', 'C级', 'A4L', '凯美瑞', '雅阁', '帕萨特', 'Model 3', '汉']
-  const statuses: { value: VehicleStatus; label: string }[] = [
-    { value: 'pending_evaluation', label: '待评估' },
-    { value: 'pending_inspection', label: '待检测' },
-    { value: 'pending_preparation', label: '待整备' },
-    { value: 'pending_testdrive', label: '待试驾' },
-    { value: 'pending_review', label: '待审核' },
-    { value: 'listed', label: '已上架' },
-  ]
-  const allDocTypes: DocumentType[] = ['registration_cert', 'driving_license', 'insurance', 'maintenance_record', 'keys', 'invoice', 'other']
-  const names = ['张三', '李四', '王五', '赵六', '钱七', '孙八']
-
-  dataList.value = Array.from({ length: 23 }, (_, i) => {
-    const brand = brands[i % brands.length]
-    const missCount = 1 + (i % 3)
-    const missingTypes = allDocTypes.slice(i % 5, (i % 5) + missCount)
-    const si = statuses[i % statuses.length]
-    const ni = i % names.length
-    return {
-      id: 1000 + i,
-      vin: `LVGBH42K${89012300 + i}`,
-      plate_number: ['沪A', '沪B', '沪C', '沪D'][i % 4] + '·' + String(10000 + i).slice(-5),
-      brand,
-      model: models[i % models.length],
-      year: 2020 + (i % 4),
-      color: ['白色', '黑色', '灰色', '蓝色', '红色'][i % 5],
-      status: si.value,
-      status_display: si.label,
-      missing_count: missingTypes.length,
-      missing_types: missingTypes,
-      inventory_days: 3 + i * 2,
-      appraiser_info: {
-        id: ni + 1,
-        username: `user_${ni + 1}`,
-        first_name: names[ni][0],
-        last_name: names[ni][1],
-        role_display: ['评估师', '销售', '检测师', '整备师'][ni % 4],
-      },
-      created_at: dayjs().subtract(3 + i * 2, 'day').toISOString(),
-    }
-  })
-
-  total.value = dataList.value.length
-  calcStats()
-  loaded.value = true
-}
-
 onMounted(() => {
+  loadHandlerOptions()
   loadData()
 })
 </script>
