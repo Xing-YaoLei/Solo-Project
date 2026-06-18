@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { Table, Card, Button, Space, Tag, Select } from 'antd';
+import type { ColumnType } from 'antd/es/table';
 import { ReloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { inspectionApi, workOrderApi } from '../lib/api';
@@ -27,13 +28,13 @@ export default function InspectionsPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['inspections', typeFilter, resultFilter],
     queryFn: async () => {
-      const inspections = await inspectionApi
-        .list({ type: typeFilter, result: resultFilter })
-        .then((r) => r.data as unknown as Inspection[]);
+      const res = await inspectionApi
+        .list({ type: typeFilter, result: resultFilter });
+      const inspections = res.data.items;
       const orderMap = new Map<string, string>();
       try {
         const ordersRes = await workOrderApi.list({ page: 1, page_size: 500 });
-        (ordersRes.data?.items ?? []).forEach((o: { id: string; order_no: string }) => {
+        (ordersRes.data?.items ?? []).forEach((o) => {
           orderMap.set(o.id, o.order_no);
         });
       } catch {
@@ -43,7 +44,7 @@ export default function InspectionsPage() {
     },
   });
 
-  const columns = [
+  const columns: ColumnType<Inspection>[] = [
     {
       title: '工单号',
       dataIndex: 'work_order_id',
@@ -68,7 +69,6 @@ export default function InspectionsPage() {
         return <Tag color={cfg.color}>{cfg.text}</Tag>;
       },
     },
-    { title: '检验员', dataIndex: 'inspector_name', key: 'inspector_name', width: 100, render: (v: string) => v || '-' },
     {
       title: '时间',
       dataIndex: 'created_at',

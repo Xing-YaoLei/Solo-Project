@@ -5,7 +5,6 @@ import {
   OrderedListOutlined,
   DollarOutlined,
   AuditOutlined,
-  AppstoreOutlined,
   ExclamationCircleOutlined,
   BarChartOutlined,
   LogoutOutlined,
@@ -14,7 +13,7 @@ import {
   ToolOutlined,
 } from '@ant-design/icons';
 import zhCN from 'antd/locale/zh_CN';
-import type { UserRole, User } from '../lib/types';
+import type { User } from '../lib/types';
 import { getStoredUser, logout, roleLabels } from '../lib/auth';
 import { canAccess } from '../lib/auth';
 

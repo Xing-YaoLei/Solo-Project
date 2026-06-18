@@ -58,8 +58,8 @@ export default function WorkOrdersPage() {
   });
 
   const batchStatusMutation = useMutation({
-    mutationFn: ({ ids, status }: { ids: number[]; status: OrderStatus }) =>
-      Promise.all(ids.map((id) => workOrderApi.changeStatus(id, status))),
+    mutationFn: ({ ids, status }: { ids: string[]; status: OrderStatus }) =>
+      workOrderApi.batchUpdate(ids, status),
     onSuccess: () => {
       message.success('批量状态更新成功');
       setSelectedRowKeys([]);
@@ -177,7 +177,7 @@ export default function WorkOrdersPage() {
                   label: v.text,
                   onClick: () =>
                     batchStatusMutation.mutate({
-                      ids: selectedRowKeys.map(Number),
+                      ids: selectedRowKeys.map(String),
                       status: k as OrderStatus,
                     }),
                 })),

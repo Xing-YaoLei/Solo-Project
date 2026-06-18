@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { Table, Card, Button, Space, Tag, Select } from 'antd';
+import type { ColumnType } from 'antd/es/table';
 import { ReloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { quoteApi, workOrderApi } from '../lib/api';
@@ -21,13 +22,13 @@ export default function QuotesPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['quotes', statusFilter],
     queryFn: async () => {
-      const quotes = await quoteApi
-        .list({ status: statusFilter })
-        .then((r) => r.data as unknown as Quote[]);
+      const quotesRes = await quoteApi
+        .list({ status: statusFilter });
+      const quotes = quotesRes.data.items;
       const orderMap = new Map<string, { order_no: string; customer_name: string }>();
       try {
         const ordersRes = await workOrderApi.list({ page: 1, page_size: 500 });
-        (ordersRes.data?.items ?? []).forEach((o: { id: string; order_no: string; customer_name: string }) => {
+        (ordersRes.data?.items ?? []).forEach((o) => {
           orderMap.set(o.id, { order_no: o.order_no, customer_name: o.customer_name });
         });
       } catch {
@@ -37,7 +38,7 @@ export default function QuotesPage() {
     },
   });
 
-  const columns = [
+  const columns: ColumnType<Quote>[] = [
     { title: '报价单号', dataIndex: 'quote_no', key: 'quote_no', width: 180 },
     {
       title: '工单号',

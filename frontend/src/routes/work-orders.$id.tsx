@@ -3,14 +3,14 @@ import { useParams, useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Card, Tabs, Descriptions, Table, Tag, Button, Space, Steps, Modal, Form,
-  Input, Select, InputNumber, message, Timeline, Image,
+  Input, Select, message, Image,
 } from 'antd';
 import {
   ArrowLeftOutlined, UndoOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { workOrderApi, partApi, inspectionApi, shortageApi } from '../lib/api';
-import type { OrderStatus, OrderPart } from '../lib/types';
+import { workOrderApi, inspectionApi, shortageApi } from '../lib/api';
+import type { OrderStatus } from '../lib/types';
 
 const statusConfig: Record<string, { text: string; color: string }> = {
   pending: { text: '待确认', color: 'default' },
@@ -40,25 +40,13 @@ export default function WorkOrderDetailPage() {
   const [activeTab, setActiveTab] = useState('basic');
   const [statusModalOpen, setStatusModalOpen] = useState(false);
   const [reworkModalOpen, setReworkModalOpen] = useState(false);
-  const [issueModalOpen, setIssueModalOpen] = useState(false);
-  const [selectedPart, setSelectedPart] = useState<OrderPart | null>(null);
   const [statusForm] = Form.useForm();
   const [reworkForm] = Form.useForm();
-  const [issueForm] = Form.useForm();
 
   const { data: order, isLoading } = useQuery({
     queryKey: ['work-order', id],
     queryFn: () => workOrderApi.get(id).then((r) => r.data),
     enabled: !!id,
-  });
-
-  const { data: parts } = useQuery({
-    queryKey: ['work-order-parts', id],
-    queryFn: async () => {
-      const orderData = await workOrderApi.get(id).then((r) => r.data);
-      return orderData as Record<string, unknown>;
-    },
-    enabled: !!id && activeTab === 'parts',
   });
 
   const { data: inspections } = useQuery({
@@ -86,7 +74,7 @@ export default function WorkOrderDetailPage() {
   });
 
   const reworkMutation = useMutation({
-    mutationFn: () => workOrderApi.rework(id),
+    mutationFn: (reason: string) => workOrderApi.rework(id, reason),
     onSuccess: (res) => {
       message.success('返工工单已创建');
       setReworkModalOpen(false);
@@ -94,18 +82,6 @@ export default function WorkOrderDetailPage() {
       navigate({ to: '/work-orders/$id', params: { id: String(res.data.id) } });
     },
     onError: () => message.error('返工工单创建失败'),
-  });
-
-  const issueMutation = useMutation({
-    mutationFn: () =>
-      partApi.issuePart(id, selectedPart!.id),
-    onSuccess: () => {
-      message.success('发料成功');
-      setIssueModalOpen(false);
-      issueForm.resetFields();
-      queryClient.invalidateQueries({ queryKey: ['work-order', id] });
-    },
-    onError: () => message.error('发料失败'),
   });
 
   if (isLoading) return <Card loading />;
@@ -321,22 +297,9 @@ export default function WorkOrderDetailPage() {
         onCancel={() => setReworkModalOpen(false)}
         onOk={() => reworkForm.submit()}
       >
-        <Form form={reworkForm} onFinish={() => reworkMutation.mutate()} layout="vertical">
+        <Form form={reworkForm} onFinish={(v) => reworkMutation.mutate(v.reason)} layout="vertical">
           <Form.Item name="reason" label="返工原因" rules={[{ required: true, message: '请输入返工原因' }]}>
             <Input.TextArea rows={4} />
-          </Form.Item>
-        </Form>
-      </Modal>
-
-      <Modal
-        title={`发料 - ${selectedPart?.part_name ?? ''}`}
-        open={issueModalOpen}
-        onCancel={() => setIssueModalOpen(false)}
-        onOk={() => issueForm.submit()}
-      >
-        <Form form={issueForm} onFinish={() => issueMutation.mutate()} layout="vertical">
-          <Form.Item name="quantity" label="发料数量" rules={[{ required: true, message: '请输入数量' }]}>
-            <InputNumber min={1} style={{ width: '100%' }} />
           </Form.Item>
         </Form>
       </Modal>

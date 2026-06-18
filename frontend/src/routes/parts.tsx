@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Table, Card, Button, Space, Tag, Input, Select, Modal, Form, InputNumber, message,
 } from 'antd';
+import type { ColumnType } from 'antd/es/table';
 import {
   PlusOutlined, SearchOutlined, ReloadOutlined,
 } from '@ant-design/icons';
@@ -22,7 +23,7 @@ export default function PartsPage() {
     queryFn: () =>
       partApi
         .list({ search: search || undefined, category: categoryFilter })
-        .then((r) => r.data as unknown as Part[]),
+        .then((r) => r.data.items),
   });
 
   const createMutation = useMutation({
@@ -50,7 +51,7 @@ export default function PartsPage() {
     setModalOpen(true);
   };
 
-  const columns = [
+  const columns: ColumnType<Part>[] = [
     { title: '配件编号', dataIndex: 'part_no', key: 'part_no', width: 120 },
     { title: '名称', dataIndex: 'name', key: 'name', width: 150 },
     { title: '分类', dataIndex: 'category', key: 'category', width: 100, render: (v: string) => v || '-' },

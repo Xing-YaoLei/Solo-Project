@@ -62,7 +62,7 @@ export default function ShortageDetailPage() {
   const updateMutation = useMutation({
     mutationFn: (values: Record<string, unknown>) => {
       const payload: ShortageUpdate = {};
-      if (values.status) payload.status = values.status as string;
+      if (values.status) payload.status = values.status as ShortageUpdate['status'];
       if (values.expected_arrival) {
         payload.expected_arrival = (values.expected_arrival as dayjs.Dayjs).toISOString();
       }

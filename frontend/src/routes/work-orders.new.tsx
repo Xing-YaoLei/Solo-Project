@@ -2,7 +2,6 @@ import { useNavigate } from '@tanstack/react-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, Form, Input, Select, DatePicker, Button, message, Space } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
-import dayjs from 'dayjs';
 import { workOrderApi } from '../lib/api';
 import type { WorkOrderCreate } from '../lib/types';
 
@@ -82,7 +81,7 @@ export default function WorkOrderNewPage() {
           </Form.Item>
 
           <Form.Item
-            name="complaint"
+            name="customer_complaint"
             label="维修描述"
             rules={[{ required: true, message: '请输入维修描述' }]}
           >
@@ -95,10 +94,9 @@ export default function WorkOrderNewPage() {
                 <Select
                   placeholder="优先级"
                   options={[
-                    { value: 'low', label: '低' },
                     { value: 'normal', label: '普通' },
-                    { value: 'high', label: '高' },
                     { value: 'urgent', label: '紧急' },
+                    { value: 'critical', label: '加急' },
                   ]}
                 />
               </Form.Item>

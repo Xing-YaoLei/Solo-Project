@@ -2,25 +2,26 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import {
-  Card, Row, Col, Statistic, Table, Tag, Button, Select, DatePicker, Space, Typography,
+  Card, Row, Col, Statistic, Table, Tag, Select, DatePicker, Space,
 } from 'antd';
 import {
   OrderedListOutlined, CheckCircleOutlined, WarningOutlined,
-  ClockCircleOutlined, DollarOutlined, ArrowRightOutlined,
+  ClockCircleOutlined, ArrowRightOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { statisticsApi } from '../lib/api';
+import type { OrderStatusDistribution, TechnicianPerformance } from '../lib/types';
 
-const { Title } = Typography;
 const { RangePicker } = DatePicker;
 
 const statusLabels: Record<string, string> = {
   pending: '待分配',
-  assigned: '已分配',
+  confirmed: '已确认',
   in_progress: '进行中',
-  parts_issued: '已发料',
-  quality_check: '质检中',
+  waiting_parts: '待料',
+  in_inspection: '质检中',
   completed: '已完成',
+  closed: '已关闭',
   rework: '返工',
 };
 
@@ -48,7 +49,7 @@ export default function StatisticsPage() {
 
   const { data: orderDistribution } = useQuery({
     queryKey: ['statistics', 'order-distribution'],
-    queryFn: () => statisticsApi.getOrderStatusDistribution().then((r) => r.data),
+    queryFn: () => statisticsApi.getStatusDistribution().then((r) => r.data),
   });
 
   const { data: technicianPerformance } = useQuery({
@@ -96,8 +97,8 @@ export default function StatisticsPage() {
         <Col span={4}>
           <Card>
             <Statistic
-              title="已完成"
-              value={overview?.completed_orders ?? 0}
+              title="本月完成"
+              value={overview?.completed_this_month ?? 0}
               prefix={<CheckCircleOutlined />}
               valueStyle={{ color: '#52c41a' }}
             />
@@ -106,8 +107,8 @@ export default function StatisticsPage() {
         <Col span={4}>
           <Card>
             <Statistic
-              title="返工数"
-              value={overview?.rework_orders ?? 0}
+              title="待处理缺件"
+              value={overview?.pending_shortages ?? 0}
               prefix={<WarningOutlined />}
               valueStyle={{ color: '#ff4d4f' }}
             />
@@ -127,9 +128,9 @@ export default function StatisticsPage() {
         <Col span={4}>
           <Card>
             <Statistic
-              title="平均完成天数"
-              value={overview?.avg_completion_days ?? 0}
-              suffix="天"
+              title="平均完成(小时)"
+              value={overview?.avg_completion_hours ?? 0}
+              suffix="h"
               prefix={<ClockCircleOutlined />}
             />
           </Card>
@@ -137,9 +138,9 @@ export default function StatisticsPage() {
         <Col span={4}>
           <Card>
             <Statistic
-              title="总收入"
-              value={overview?.total_revenue ?? 0}
-              prefix={<DollarOutlined />}
+              title="进行中"
+              value={overview?.active_orders ?? 0}
+              prefix={<OrderedListOutlined />}
               valueStyle={{ color: '#1890ff' }}
             />
           </Card>
@@ -204,8 +205,8 @@ export default function StatisticsPage() {
                 {
                   title: '占比',
                   key: 'ratio',
-                  render: (_: unknown, record: { count: number }) => {
-                    const total = (orderDistribution ?? []).reduce((s, d) => s + d.count, 0);
+                  render: (_: unknown, record: OrderStatusDistribution) => {
+                    const total = (orderDistribution ?? []).reduce((s: number, d: OrderStatusDistribution) => s + d.count, 0);
                     const pct = total > 0 ? ((record.count / total) * 100).toFixed(1) : '0';
                     return `${pct}%`;
                   },
@@ -226,22 +227,25 @@ export default function StatisticsPage() {
               pagination={false}
               columns={[
                 { title: '技师', dataIndex: 'technician_name', key: 'technician_name' },
-                { title: '总工单', dataIndex: 'total_orders', key: 'total_orders' },
                 { title: '完成数', dataIndex: 'completed_orders', key: 'completed_orders' },
-                { title: '返工数', dataIndex: 'rework_orders', key: 'rework_orders' },
+                { title: '返工数', dataIndex: 'rework_count', key: 'rework_count' },
                 {
                   title: '返工率',
-                  dataIndex: 'rework_rate',
                   key: 'rework_rate',
-                  render: (v: number) => (
-                    <span style={{ color: v > 5 ? '#ff4d4f' : '#52c41a' }}>{v.toFixed(1)}%</span>
-                  ),
+                  render: (_: unknown, record: TechnicianPerformance) => {
+                    const rate = record.completed_orders > 0
+                      ? (record.rework_count / record.completed_orders) * 100
+                      : 0;
+                    return (
+                      <span style={{ color: rate > 5 ? '#ff4d4f' : '#52c41a' }}>{rate.toFixed(1)}%</span>
+                    );
+                  },
                 },
                 {
-                  title: '平均完成天数',
-                  dataIndex: 'avg_completion_days',
-                  key: 'avg_completion_days',
-                  render: (v: number) => `${v.toFixed(1)}天`,
+                  title: '平均完成(小时)',
+                  dataIndex: 'avg_completion_hours',
+                  key: 'avg_completion_hours',
+                  render: (v: number) => `${(v ?? 0).toFixed(1)}h`,
                 },
               ]}
             />
@@ -257,7 +261,6 @@ export default function StatisticsPage() {
               columns={[
                 { title: '配件编号', dataIndex: 'part_no', key: 'part_no' },
                 { title: '名称', dataIndex: 'part_name', key: 'part_name' },
-                { title: '分类', dataIndex: 'category', key: 'category' },
                 { title: '使用量', dataIndex: 'total_used', key: 'total_used' },
                 {
                   title: '总金额',

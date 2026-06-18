@@ -12,7 +12,6 @@ import type {
   Quote,
   QuoteCreate,
   Inspection,
-  InspectionCreate,
   Shortage,
   ShortageCreate,
   ShortageUpdate,
@@ -62,11 +61,11 @@ export const workOrderApi = {
   update: (id: string, data: Partial<WorkOrderCreate>) =>
     api.put<WorkOrder>(`/work-orders/${id}`, data),
   changeStatus: (id: string, status: string) =>
-    api.patch(`/work-orders/${id}/status`, { status }),
-  rework: (id: string) =>
-    api.post<WorkOrder>(`/work-orders/${id}/rework`),
+    api.patch<WorkOrder>(`/work-orders/${id}/status`, undefined, { params: { status } }),
+  rework: (id: string, reason: string) =>
+    api.post<WorkOrder>(`/work-orders/${id}/rework`, undefined, { params: { reason } }),
   batchUpdate: (ids: string[], status: string) =>
-    api.post('/work-orders/batch', { order_ids: ids, status }),
+    api.post('/work-orders/batch', { order_ids: ids }, { params: { status } }),
 };
 
 export const partApi = {
@@ -89,7 +88,7 @@ export const quoteApi = {
   get: (id: string) => api.get<Quote>(`/quotes/${id}`),
   create: (data: QuoteCreate) => api.post<Quote>('/quotes', data),
   changeStatus: (id: string, status: string, notes?: string) =>
-    api.patch(`/quotes/${id}/status`, { status, notes }),
+    api.patch<Quote>(`/quotes/${id}/status`, undefined, { params: { status, notes } }),
 };
 
 export const inspectionApi = {
@@ -113,7 +112,7 @@ export const shortageApi = {
   create: (data: ShortageCreate) =>
     api.post<Shortage>('/shortages', data),
   update: (id: string, data: ShortageUpdate) =>
-    api.patch(`/shortages/${id}`, data),
+    api.patch<Shortage>(`/shortages/${id}`, data),
 };
 
 export const statisticsApi = {
@@ -128,6 +127,21 @@ export const statisticsApi = {
     api.get<TechnicianPerformance[]>('/statistics/technician-performance', { params }),
   getPartsUsage: (params?: { start_date?: string; end_date?: string }) =>
     api.get<PartsUsage[]>('/statistics/parts-usage', { params }),
+};
+
+export const dashboardApi = {
+  getStats: () => api.get<StatisticsOverview>('/statistics/overview').then((r) => ({
+    data: {
+      active_orders: r.data.active_orders,
+      pending_shortages: r.data.pending_shortages,
+      today_appointments: 0,
+      pending_quotes: 0,
+      completed_today: r.data.completed_this_month,
+      rework_rate: r.data.rework_rate,
+    },
+  })),
+  getRecentOrders: (params?: Record<string, unknown>) =>
+    api.get<PaginatedResponse<WorkOrder>>('/work-orders', { params: { page: 1, page_size: 10, ...params } }).then((r) => ({ data: r.data.items })),
 };
 
 export default api;

@@ -4,6 +4,7 @@ import { useNavigate } from '@tanstack/react-router';
 import {
   Table, Card, Button, Space, Tag, Select, Badge, Tooltip,
 } from 'antd';
+import type { ColumnType } from 'antd/es/table';
 import { ReloadOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { shortageApi, workOrderApi } from '../lib/api';
@@ -25,13 +26,13 @@ export default function ShortagesPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['shortages', statusFilter],
     queryFn: async () => {
-      const shortages = await shortageApi
-        .list({ status: statusFilter })
-        .then((r) => r.data as unknown as Shortage[]);
+      const shortageRes = await shortageApi
+        .list({ status: statusFilter });
+      const shortages = shortageRes.data.items;
       const orderMap = new Map<string, string>();
       try {
         const ordersRes = await workOrderApi.list({ page: 1, page_size: 500 });
-        (ordersRes.data?.items ?? []).forEach((o: { id: string; order_no: string }) => {
+        (ordersRes.data?.items ?? []).forEach((o) => {
           orderMap.set(o.id, o.order_no);
         });
       } catch {
@@ -49,7 +50,7 @@ export default function ShortagesPage() {
 
   const pendingCount = (data?.shortages ?? []).filter((s) => s.status === 'pending').length;
 
-  const columns = [
+  const columns: ColumnType<Shortage>[] = [
     {
       title: '工单号',
       dataIndex: 'work_order_id',

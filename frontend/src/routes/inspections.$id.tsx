@@ -74,7 +74,7 @@ export default function InspectionDetailPage() {
               {resultConfig[inspection?.result ?? '']?.text}
             </Tag>
           </Descriptions.Item>
-          <Descriptions.Item label="检验员">{inspection?.inspector_name || '-'}</Descriptions.Item>
+          <Descriptions.Item label="检验员">-</Descriptions.Item>
           <Descriptions.Item label="时间">
             {dayjs(inspection?.created_at).format('YYYY-MM-DD HH:mm')}
           </Descriptions.Item>

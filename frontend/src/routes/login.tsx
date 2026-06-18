@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
-import { Form, Input, Button, Card, Typography, message, App, Alert, Divider } from 'antd';
+import { Form, Input, Button, Card, Typography, message, App, Alert } from 'antd';
 import { UserOutlined, LockOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { login } from '../lib/auth';
 

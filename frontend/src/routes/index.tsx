@@ -10,7 +10,7 @@ import {
   WarningOutlined,
   PlusOutlined,
 } from '@ant-design/icons';
-import { dashboardApi, workOrderApi } from '../lib/api';
+import { dashboardApi } from '../lib/api';
 import type { WorkOrder } from '../lib/types';
 import { getStoredUser } from '../lib/auth';
 

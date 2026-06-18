@@ -167,7 +167,7 @@ export default function QuoteDetailPage() {
           dataSource={items}
           pagination={false}
           size="small"
-          summary={(rows: QuoteItem[]) => {
+          summary={(rows: readonly QuoteItem[]) => {
             const total = rows.reduce((sum, item) => sum + (item.amount ?? 0), 0);
             return (
               <Table.Summary.Row>
