@@ -1,0 +1,99 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-primary: #0F2419;
+    --color-primary-light: #1A3A28;
+    --color-accent: #D4A843;
+    --color-accent-light: #E4C06A;
+    --color-graphite: #2D3436;
+    --color-ivory: #F8F9FA;
+    --color-danger: #E74C3C;
+    --color-success: #27AE60;
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: 'Noto Sans SC', sans-serif;
+    background-color: #081210;
+    color: #F8F9FA;
+    line-height: 1.5;
+    font-weight: 400;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+}
+
+@layer components {
+  .chart-card {
+    @apply bg-primary-light/80 backdrop-blur-sm rounded-xl border border-white/5 overflow-hidden transition-all duration-300;
+  }
+
+  .chart-card:hover {
+    @apply border-white/10 shadow-lg shadow-black/20 -translate-y-0.5;
+  }
+
+  .chart-tooltip {
+    @apply fixed pointer-events-none bg-graphite/95 backdrop-blur-md rounded-lg px-3 py-2 text-xs text-ivory border border-white/10 shadow-xl z-50;
+    transition: opacity 0.15s ease;
+  }
+
+  .status-dot {
+    @apply w-2 h-2 rounded-full inline-block;
+  }
+
+  .status-dot-online {
+    @apply bg-success;
+    box-shadow: 0 0 6px rgba(39, 174, 96, 0.5);
+  }
+
+  .status-dot-delayed {
+    @apply bg-warning;
+    box-shadow: 0 0 6px rgba(243, 156, 18, 0.5);
+  }
+
+  .status-dot-offline {
+    @apply bg-danger;
+    box-shadow: 0 0 6px rgba(231, 76, 60, 0.5);
+  }
+
+  .filter-tag {
+    @apply inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-accent/15 text-accent-light text-xs font-medium;
+  }
+
+  .pulse-anomaly {
+    animation: pulse-anomaly 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  @keyframes pulse-anomaly {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+}
