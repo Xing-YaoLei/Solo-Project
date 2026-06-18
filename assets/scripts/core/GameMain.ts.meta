@@ -1,0 +1,14 @@
+{
+  "ver": "1.1.35",
+  "importer": "typescript",
+  "imported": true,
+  "uuid": "2382058b-f069-4023-b941-7b4df093c232",
+  "files": [
+    ".json"
+  ],
+  "subMetas": {},
+  "userData": {
+    "isNewScript": false,
+    "name": "GameMain"
+  }
+}

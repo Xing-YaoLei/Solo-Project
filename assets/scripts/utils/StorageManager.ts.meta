@@ -1,0 +1,14 @@
+{
+  "ver": "1.1.35",
+  "importer": "typescript",
+  "imported": true,
+  "uuid": "57c7cf1f-9da1-4bc5-9f10-d0d5995e278a",
+  "files": [
+    ".json"
+  ],
+  "subMetas": {},
+  "userData": {
+    "isNewScript": false,
+    "name": "StorageManager"
+  }
+}

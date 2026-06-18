@@ -1,0 +1,14 @@
+{
+  "ver": "1.1.35",
+  "importer": "typescript",
+  "imported": true,
+  "uuid": "8e7b7819-2a17-483e-b8d0-0a72971edefa",
+  "files": [
+    ".json"
+  ],
+  "subMetas": {},
+  "userData": {
+    "isNewScript": false,
+    "name": "TiledMapController"
+  }
+}

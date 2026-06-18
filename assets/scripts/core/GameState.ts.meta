@@ -1,0 +1,14 @@
+{
+  "ver": "1.1.35",
+  "importer": "typescript",
+  "imported": true,
+  "uuid": "71fd8eee-61b3-4eac-81fe-73051be1416a",
+  "files": [
+    ".json"
+  ],
+  "subMetas": {},
+  "userData": {
+    "isNewScript": false,
+    "name": "GameState"
+  }
+}

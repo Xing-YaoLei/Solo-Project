@@ -1,0 +1,25 @@
+{
+  "ver": "1.1.35",
+  "importer": "image",
+  "imported": true,
+  "uuid": "6571e905-95a6-4b4b-9849-342f430126af",
+  "files": [
+    ".json"
+  ],
+  "subMetas": {},
+  "userData": {
+    "type": "sprite-frame",
+    "hasAlpha": false,
+    "fixAlphaTransparencyArtifacts": true,
+    "wrapModeS": "clamp-to-edge",
+    "wrapModeT": "clamp-to-edge",
+    "minfilter": "linear",
+    "magfilter": "linear",
+    "mipfilter": "linear",
+    "anisotropy": 0,
+    "isUuid": true,
+    "imageUuidOrDatabaseUri": "",
+    "locale": "zh-cn",
+    "name": "interior_tiles"
+  }
+}

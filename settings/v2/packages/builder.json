@@ -1,0 +1,169 @@
+{
+    "__version__": "3.8.0",
+    "android": {
+        "appABIs": [
+            "arm64-v8a",
+            "armeabi-v7a"
+        ],
+        "backGround": "./settings/v2/packages/launch-tile-background.png",
+        "banner": "./settings/v2/packages/launch-image.png",
+        "apiLevel": "android-32",
+        "appBundle": false,
+        "debugKeystorePath": "",
+        "debugKeystorePass": "",
+        "debugKeystoreAlias": "",
+        "debugKeystoreAliasPass": "",
+        "keystorePath": "",
+        "keystorePass": "",
+        "keystoreAlias": "",
+        "keystoreAliasPass": "",
+        "packageName": "com.homedecoration.simulator",
+        "orientation": {
+            "landscapeRight": true,
+            "landscapeLeft": true,
+            "portrait": false,
+            "portraitUpsideDown": false
+        },
+        "remoteURL": "",
+        "sdkVersion": "targetSdkVersion=32,compileSdkVersion=32",
+        "versionCode": 1,
+        "versionName": "1.0.0",
+        "useDebugKeystore": true
+    },
+    "common": {
+        "title": "家装工地量房报价模拟器",
+        "platform": "web-mobile",
+        "buildPath": "build",
+        "scenes": [
+            "db://assets/scenes/Main.scene"
+        ],
+        "startSceneAsset": "db://assets/scenes/Main.scene",
+        "mainBundleCompressionType": "merge_all_json",
+        "mainBundleIsRemote": false,
+        "separateEngine": false,
+        "engineOrientation": "auto",
+        "packages": ""
+    },
+    "ios": {
+        "orientation": {
+            "landscapeRight": true,
+            "landscapeLeft": true,
+            "portrait": false,
+            "portraitUpsideDown": false
+        },
+        "appBundleId": "com.homedecoration.simulator",
+        "version": "1.0.0",
+        "buildVersion": "1",
+        "iPhoneOrientation": {
+            "landscapeRight": true,
+            "landscapeLeft": true,
+            "portrait": false,
+            "portraitUpsideDown": false
+        },
+        "iPodOrientation": {
+            "landscapeRight": true,
+            "landscapeLeft": true,
+            "portrait": false,
+            "portraitUpsideDown": false
+        },
+        "iPadOrientation": {
+            "landscapeRight": true,
+            "landscapeLeft": true,
+            "portrait": false,
+            "portraitUpsideDown": false
+        },
+        "targetOSVersion": "12.0",
+        "renderBackEnd": "METAL"
+    },
+    "mac": {
+        "appBundleName": "家装工地量房报价模拟器",
+        "appBundleId": "com.homedecoration.simulator",
+        "appBundleVersion": "1.0.0",
+        "appBundleShortVersion": "1.0.0",
+        "appCategory": "public.app-category.games",
+        "isMetal": true,
+        "useAppSandbox": false,
+        "isNetworkServer": false,
+        "isNetworkClient": true,
+        "isCamera": false,
+        "isMicrophone": false,
+        "isLocation": false,
+        "isPrint": false,
+        "isAppleEvents": false,
+        "targetOSVersion": "10.15",
+        "orientation": {
+            "landscapeRight": true,
+            "landscapeLeft": true,
+            "portrait": false,
+            "portraitUpsideDown": false
+        }
+    },
+    "wechatgame": {
+        "appid": "",
+        "appid_ignore": false,
+        "orientation": "landscape",
+        "subpackages": [],
+        "remoteURL": "",
+        "envVersion": "release",
+        "showStatusBar": false,
+        "renderBackEnd": "webgl2",
+        "separateEngine": false,
+        "useOpenDataContext": false,
+        "esmodule": false
+    },
+    "web-desktop": {
+        "debug": false,
+        "sourceMaps": false,
+        "previewWidth": 960,
+        "previewHeight": 640,
+        "polyfills": [
+            "promise",
+            "async-functions"
+        ],
+        "md5Cache": true,
+        "autoReleaseAssets": false,
+        "inlineSpriteFrames": true,
+        "mergeStartScene": true,
+        "optimizeHotUpdate": true,
+        "orientation": "auto",
+        "webOrientation": "auto",
+        "embedWebDebugger": false
+    },
+    "web-mobile": {
+        "debug": false,
+        "sourceMaps": false,
+        "previewWidth": 960,
+        "previewHeight": 640,
+        "polyfills": [
+            "promise",
+            "async-functions"
+        ],
+        "md5Cache": true,
+        "autoReleaseAssets": false,
+        "inlineSpriteFrames": true,
+        "mergeStartScene": true,
+        "optimizeHotUpdate": true,
+        "orientation": "auto",
+        "webOrientation": "auto",
+        "embedWebDebugger": false,
+        "prerender": false
+    },
+    "win32": {
+        "appName": "家装工地量房报价模拟器",
+        "appBundle": "",
+        "appVersion": "1.0.0",
+        "companyName": "",
+        "packageName": "home-decoration-simulator",
+        "exeName": "HomeDecorationSimulator",
+        "renderer": "default",
+        "winRt": false,
+        "is64bit": true,
+        "vscodeProject": false,
+        "orientation": {
+            "landscapeRight": true,
+            "landscapeLeft": true,
+            "portrait": false,
+            "portraitUpsideDown": false
+        }
+    }
+}

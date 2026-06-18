@@ -1,12 +1,24 @@
 {
   "name": "home-decoration-simulator",
   "version": "1.0.0",
-  "description": "家装工地量房报价经营模拟游戏",
+  "description": "家装工地量房报价经营模拟游戏 - 基于 Cocos Creator 3.x + TypeScript + Tiled",
   "scripts": {
-    "build": "npm run typecheck",
+    "build": "npm run build:web-mobile",
+    "build:web-mobile": "node scripts/build.js web-mobile",
+    "build:web-desktop": "node scripts/build.js web-desktop",
+    "build:wechatgame": "node scripts/build.js wechatgame",
+    "build:all": "node scripts/build.js web-mobile web-desktop wechatgame",
     "typecheck": "./node_modules/.bin/tsc --noEmit --skipLibCheck",
     "typecheck:watch": "./node_modules/.bin/tsc --noEmit --skipLibCheck --watch",
-    "start": "echo '请使用 Cocos Creator 3.x 打开项目并运行'"
+    "start": "echo '请使用 Cocos Creator 3.8.x 打开项目目录: $(pwd)'"
+  },
+  "cocosCreator": {
+    "version": "3.8.0",
+    "projectName": "家装工地量房报价模拟器",
+    "startScene": "db://assets/scenes/Main.scene",
+    "scenes": [
+      "db://assets/scenes/Main.scene"
+    ]
   },
   "devDependencies": {
     "typescript": "^4.9.5"
