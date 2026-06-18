@@ -6,15 +6,28 @@ logger = logging.getLogger(__name__)
 
 
 @celery_app.task(name="app.celery_tasks.tasks.check_low_stock_alert")
-def check_low_stock_alert(part_id: int, current_quantity: int, safety_stock: int):
+def check_low_stock_alert(
+    part_id: int,
+    current_quantity: int,
+    safety_stock: int,
+    handler_id: int = None,
+    shortage_id: int = None,
+):
     logger.warning(
         f"[LOW STOCK ALERT] Part ID: {part_id}, current: {current_quantity}, "
-        f"safety level: {safety_stock}. Triggering notification."
+        f"safety level: {safety_stock}, handler_id: {handler_id}, shortage_id: {shortage_id}"
     )
+    if handler_id:
+        logger.info(
+            f"[NOTIFICATION] Sending in-app / push notification to handler user #{handler_id} "
+            f"for shortage record #{shortage_id or 'N/A'}"
+        )
     return {
         "part_id": part_id,
         "current_quantity": current_quantity,
         "safety_stock": safety_stock,
+        "handler_id": handler_id,
+        "shortage_id": shortage_id,
         "alert_time": datetime.utcnow().isoformat(),
     }
 

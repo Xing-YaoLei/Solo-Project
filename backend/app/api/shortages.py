@@ -11,8 +11,19 @@ from ..schemas import (
     PartShortageUpdate,
     PartShortageResponse,
 )
+from ..services.stock_service import get_open_shortage_count
 
 router = APIRouter(prefix="/shortages", tags=["缺货管理"])
+
+
+@router.get("/summary/count")
+def shortage_count(
+    mine_only: bool = False,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    user_id = current_user.id if mine_only else None
+    return {"open_count": get_open_shortage_count(db, user_id)}
 
 
 @router.get("", response_model=List[PartShortageResponse])
