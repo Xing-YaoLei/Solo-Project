@@ -15,7 +15,7 @@
       <el-col :span="6">
         <el-card class="stat-card card-shadow" shadow="hover">
           <div class="stat-content">
-            <div class="stat-label">待审批</div>
+            <div class="stat-label">待补充资料</div>
             <div class="stat-value" style="color:#e6a23c">{{ stats.pending }}</div>
           </div>
         </el-card>
@@ -23,24 +23,24 @@
       <el-col :span="6">
         <el-card class="stat-card card-shadow" shadow="hover">
           <div class="stat-content">
-            <div class="stat-label">审批通过</div>
-            <div class="stat-value" style="color:#67c23a">{{ stats.approved }}</div>
+            <div class="stat-label">资料完整</div>
+            <div class="stat-value" style="color:#67c23a">{{ stats.complete }}</div>
           </div>
         </el-card>
       </el-col>
       <el-col :span="6">
         <el-card class="stat-card card-shadow" shadow="hover">
           <div class="stat-content">
-            <div class="stat-label">已拒绝</div>
-            <div class="stat-value" style="color:#f56c6c">{{ stats.rejected }}</div>
+            <div class="stat-label">资料总数</div>
+            <div class="stat-value" style="color:#409eff">{{ stats.total }}</div>
           </div>
         </el-card>
       </el-col>
       <el-col :span="6">
         <el-card class="stat-card card-shadow" shadow="hover">
           <div class="stat-content">
-            <div class="stat-label">资料缺失</div>
-            <div class="stat-value" style="color:#409eff">{{ stats.missingDocs }}</div>
+            <div class="stat-label">缺失资料数</div>
+            <div class="stat-value" style="color:#f56c6c">{{ stats.missingDocs }}</div>
           </div>
         </el-card>
       </el-col>
@@ -50,12 +50,11 @@
       <div class="table-header flex-between mb-20">
         <el-tabs v-model="activeTab" @tab-change="handleTabChange">
           <el-tab-pane label="全部资料" name="all" />
-          <el-tab-pane label="待审批" name="pending" />
-          <el-tab-pane label="审批通过" name="approved" />
-          <el-tab-pane label="已拒绝" name="rejected" />
+          <el-tab-pane label="待补充" name="pending" />
+          <el-tab-pane label="已完整" name="complete" />
           <el-tab-pane label="资料缺失" name="missing" />
         </el-tabs>
-        <el-input v-model="searchKw" placeholder="搜索车牌号/客户" style="width: 220px" size="default">
+        <el-input v-model="searchKw" placeholder="搜索车牌号/VIN" style="width: 220px" size="default">
           <template #prefix><el-icon><Search /></el-icon></template>
         </el-input>
       </div>
@@ -70,12 +69,7 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="customerName" label="客户姓名" width="100" />
-        <el-table-column prop="loanAmount" label="贷款金额" width="120" align="right">
-          <template #default="{ row }">¥{{ (row.loanAmount / 10000).toFixed(2) }}万</template>
-        </el-table-column>
-        <el-table-column prop="financeCompany" label="金融机构" width="120" />
-        <el-table-column label="资料清单" min-width="260">
+        <el-table-column label="资料清单" min-width="320">
           <template #default="{ row }">
             <div class="doc-tags">
               <el-tag
@@ -86,19 +80,28 @@
                 effect="plain"
                 class="doc-tag"
               >
-                <el-icon><component :is="doc.uploaded ? 'CircleCheck' : 'WarningFilled'" /></el-icon>
+                <el-icon><component :is="doc.uploaded ? CircleCheck : WarningFilled" /></el-icon>
                 {{ doc.name }}
               </el-tag>
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="status" label="审批状态" width="100">
+        <el-table-column label="资料完整度" width="110" align="center">
+          <template #default="{ row }">
+            <el-progress
+              :percentage="row.completePercent"
+              :color="row.completePercent === 100 ? '#67c23a' : row.completePercent >= 50 ? '#e6a23c' : '#f56c6c'"
+              :stroke-width="10"
+            />
+          </template>
+        </el-table-column>
+        <el-table-column label="状态" width="100">
           <template #default="{ row }">
             <el-tag :type="statusType(row.status)" effect="light">{{ statusLabel(row.status) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="submitDate" label="提交时间" width="120">
-          <template #default="{ row }">{{ dayjs(row.submitDate).format('MM-DD') }}</template>
+        <el-table-column prop="lastUpload" label="最近上传" width="160">
+          <template #default="{ row }">{{ row.lastUpload ? formatTime(row.lastUpload) : '--' }}</template>
         </el-table-column>
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
@@ -106,18 +109,10 @@
             <el-button
               size="small"
               link
-              type="success"
-              v-if="row.status === 'pending'"
-              @click="handleApprove(row)"
-            >通过</el-button>
-            <el-button
-              size="small"
-              link
-              type="danger"
-              v-if="row.status === 'pending'"
-              @click="handleReject(row)"
-            >拒绝</el-button>
-            <el-button size="small" link type="warning" @click="uploadVisible = true">补资料</el-button>
+              type="warning"
+              v-if="row.status !== 'complete'"
+              @click="uploadVisible = true; currentCar = row"
+            >补资料</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -126,18 +121,22 @@
     <el-dialog v-model="uploadVisible" title="上传金融资料" width="560px">
       <el-form :model="uploadForm" label-width="100px">
         <el-form-item label="选择车辆">
-          <el-select v-model="uploadForm.vehicleId" placeholder="请选择车辆" style="width:100%">
-            <el-option v-for="v in filteredData" :key="v.id" :label="v.plateNumber" :value="v.id" />
+          <el-select v-model="uploadForm.vehicleId" placeholder="请选择车辆" style="width:100%" filterable>
+            <el-option
+              v-for="v in carOptions"
+              :key="v.id"
+              :label="`${v.plateNumber} - ${v.brand}${v.model}`"
+              :value="v.id"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="资料类型">
           <el-checkbox-group v-model="uploadForm.docTypes">
-            <el-checkbox label="身份证" />
-            <el-checkbox label="驾驶证" />
-            <el-checkbox label="银行流水" />
-            <el-checkbox label="工作证明" />
-            <el-checkbox label="征信报告" />
-            <el-checkbox label="车辆登记证" />
+            <el-checkbox
+              v-for="t in docTypeOptions"
+              :key="t.value"
+              :label="t.value"
+            >{{ t.label }}</el-checkbox>
           </el-checkbox-group>
         </el-form-item>
         <el-form-item label="上传文件">
@@ -167,19 +166,38 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { exportToExcel } from '@/utils/download'
 import dayjs from 'dayjs'
-import { Download, Upload, UploadFilled, Search, CircleCheck, WarningFilled } from '@element-plus/icons-vue'
+import {
+  Download, Upload, UploadFilled, Search, CircleCheck, WarningFilled
+} from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import {
+  getFinanceList,
+  getMissingCars,
+  createFinance,
+  updateFinance
+} from '@/api/finance'
+import { getAllFunnelVehicles } from '@/api/funnel'
 
 const loading = ref(false)
 const activeTab = ref('all')
 const searchKw = ref('')
 const uploadVisible = ref(false)
+const currentCar = ref(null)
+
+const docTypeOptions = [
+  { value: 'ID_CARD', label: '身份证' },
+  { value: 'DRIVING_LICENSE', label: '驾驶证' },
+  { value: 'REGISTRATION_CERT', label: '车辆登记证' },
+  { value: 'INSURANCE', label: '保险单' },
+  { value: 'BANK_STATEMENT', label: '银行流水' },
+  { value: 'OTHER', label: '其他资料' }
+]
 
 const stats = reactive({
-  pending: 18,
-  approved: 124,
-  rejected: 15,
-  missingDocs: 9
+  pending: 0,
+  complete: 0,
+  total: 0,
+  missingDocs: 0
 })
 
 const uploadForm = reactive({
@@ -187,13 +205,79 @@ const uploadForm = reactive({
   docTypes: []
 })
 
-const rawData = ref([])
+const vehicleMap = ref(new Map())
+const carOptions = computed(() => Array.from(vehicleMap.value.values()))
+const rawDocs = ref([])
+
+const mergedData = computed(() => {
+  const carDocs = new Map()
+  rawDocs.value.forEach(d => {
+    if (!carDocs.has(d.carId)) {
+      carDocs.set(d.carId, [])
+    }
+    carDocs.get(d.carId).push(d)
+  })
+
+  const result = []
+  carDocs.forEach((docs, carId) => {
+    const car = vehicleMap.value.get(carId) || {
+      plateNumber: `--${carId}`,
+      brand: '未知',
+      model: '车型',
+      year: 2020,
+      carVin: `VIN${carId}`
+    }
+    const docMap = new Map()
+    docTypeOptions.forEach(t => docMap.set(t.value, {
+      name: t.label,
+      value: t.value,
+      uploaded: false
+    }))
+    let lastUpload = null
+    docs.forEach(d => {
+      const opt = docMap.get(d.docType)
+      if (opt) {
+        opt.uploaded = !d.isMissing
+        if (d.uploadedAt) {
+          if (!lastUpload || dayjs(d.uploadedAt).isAfter(dayjs(lastUpload))) {
+            lastUpload = d.uploadedAt
+          }
+        }
+      }
+    })
+    const documents = Array.from(docMap.values())
+    const uploadedCount = documents.filter(d => d.uploaded).length
+    const completePercent = Math.round(uploadedCount / documents.length * 100)
+    const missingCount = documents.length - uploadedCount
+    const status = missingCount === 0 ? 'complete' : missingCount >= 3 ? 'missing' : 'pending'
+
+    result.push({
+      id: carId,
+      plateNumber: car.plateNumber,
+      vin: car.carVin || car.vin,
+      brand: car.brand,
+      model: car.model,
+      year: car.registerDate ? dayjs(car.registerDate).year() : (car.year || 2020),
+      documents,
+      completePercent,
+      missingCount,
+      status,
+      lastUpload
+    })
+  })
+
+  stats.total = result.length
+  stats.pending = result.filter(r => r.status === 'pending').length
+  stats.complete = result.filter(r => r.status === 'complete').length
+  stats.missingDocs = result.reduce((s, r) => s + r.missingCount, 0)
+  return result.sort((a, b) => a.completePercent - b.completePercent)
+})
 
 const filteredData = computed(() => {
-  let data = rawData.value
+  let data = mergedData.value
   if (activeTab.value !== 'all') {
     if (activeTab.value === 'missing') {
-      data = data.filter(d => d.documents.some(doc => !doc.uploaded))
+      data = data.filter(d => d.status === 'missing')
     } else {
       data = data.filter(d => d.status === activeTab.value)
     }
@@ -201,93 +285,97 @@ const filteredData = computed(() => {
   if (searchKw.value) {
     const kw = searchKw.value.toLowerCase()
     data = data.filter(d =>
-      d.plateNumber.toLowerCase().includes(kw) ||
-      (d.customerName && d.customerName.toLowerCase().includes(kw))
+      d.plateNumber?.toLowerCase().includes(kw) ||
+      d.vin?.toLowerCase().includes(kw) ||
+      d.brand?.toLowerCase().includes(kw)
     )
   }
   return data
 })
 
-function generateMock() {
-  const docNames = ['身份证', '驾驶证', '银行流水', '工作证明', '征信报告', '车辆登记证']
-  const statuses = ['pending', 'approved', 'rejected']
-  const institutions = ['招商银行', '平安银行', '工商银行', '比亚迪金融', '吉致金融']
-  const data = []
-  for (let i = 0; i < 30; i++) {
-    const docs = docNames.map(name => ({
-      name,
-      uploaded: Math.random() > 0.15
-    }))
-    data.push({
-      id: i + 1,
-      plateNumber: `京${['A','B','C','D'][Math.floor(Math.random()*4)]}${Math.floor(Math.random()*90000+10000)}`,
-      vin: `LBV${Math.random().toString(36).substring(2,13).toUpperCase()}`,
-      brand: ['宝马','奔驰','奥迪','丰田','比亚迪'][Math.floor(Math.random()*5)],
-      model: ['3系','C级','A4L','凯美瑞','汉EV'][Math.floor(Math.random()*5)],
-      year: 2019 + Math.floor(Math.random() * 5),
-      customerName: `客户${i + 1}`,
-      loanAmount: Math.floor(Math.random() * 300000 + 50000),
-      financeCompany: institutions[Math.floor(Math.random() * institutions.length)],
-      documents: docs,
-      status: statuses[Math.floor(Math.random() * statuses.length)],
-      submitDate: new Date(Date.now() - Math.random() * 20 * 86400000).toISOString(),
-      operator: ['张三','李四','王五'][Math.floor(Math.random()*3)]
-    })
+async function loadData() {
+  loading.value = true
+  try {
+    const [docs, vehicles] = await Promise.all([
+      getFinanceList(),
+      getAllFunnelVehicles()
+    ])
+    rawDocs.value = Array.isArray(docs) ? docs : []
+    const list = Array.isArray(vehicles) ? vehicles : []
+    const m = new Map()
+    list.forEach(v => m.set(v.id || v.carId, v))
+    vehicleMap.value = m
+  } catch (e) {
+    ElMessage.error('加载金融资料失败：' + (e?.message || '未知错误'))
+  } finally {
+    loading.value = false
   }
-  return data
 }
 
 onMounted(() => {
-  rawData.value = generateMock()
+  loadData()
 })
 
 function statusType(s) {
-  return { pending: 'warning', approved: 'success', rejected: 'danger' }[s] || 'info'
+  return { pending: 'warning', complete: 'success', missing: 'danger' }[s] || 'info'
 }
 function statusLabel(s) {
-  return { pending: '待审批', approved: '已通过', rejected: '已拒绝' }[s] || s
+  return { pending: '待补充', complete: '已完整', missing: '缺失较多' }[s] || s
+}
+
+function formatTime(t) {
+  return t ? dayjs(t).format('YYYY-MM-DD HH:mm') : ''
 }
 
 function handleTabChange() {}
 
 function viewDetail(row) {
-  ElMessage.info(`查看 ${row.plateNumber} 的金融资料详情`)
+  ElMessage.info(`查看 ${row.plateNumber} 的金融资料详情：${row.completePercent}% 完整`)
 }
-function handleApprove(row) {
-  ElMessageBox.confirm(`确认通过 ${row.plateNumber} 的审批？`, '审批确认', {
-    type: 'success'
-  }).then(() => {
-    row.status = 'approved'
-    stats.pending--; stats.approved++
-    ElMessage.success('审批已通过')
-  }).catch(() => {})
+
+async function handleUploadSubmit() {
+  if (!uploadForm.vehicleId) {
+    ElMessage.warning('请选择车辆')
+    return
+  }
+  if (!uploadForm.docTypes || uploadForm.docTypes.length === 0) {
+    ElMessage.warning('请至少选择一种资料类型')
+    return
+  }
+  loading.value = true
+  try {
+    const now = dayjs().format()
+    const results = await Promise.allSettled(
+      uploadForm.docTypes.map(dt => createFinance({
+        carId: Number(uploadForm.vehicleId),
+        docType: dt,
+        isMissing: false,
+        uploadedAt: now
+      }))
+    )
+    const successCount = results.filter(r => r.status === 'fulfilled').length
+    ElMessage.success(`成功提交 ${successCount} 项资料`)
+    uploadVisible.value = false
+    uploadForm.vehicleId = ''
+    uploadForm.docTypes = []
+    await loadData()
+  } catch (e) {
+    ElMessage.error('提交失败：' + (e?.message || '未知错误'))
+  } finally {
+    loading.value = false
+  }
 }
-function handleReject(row) {
-  ElMessageBox.prompt('请输入拒绝原因', '拒绝确认', {
-    confirmButtonText: '确认拒绝',
-    type: 'warning'
-  }).then(() => {
-    row.status = 'rejected'
-    stats.pending--; stats.rejected++
-    ElMessage.success('已拒绝')
-  }).catch(() => {})
-}
-function handleUploadSubmit() {
-  ElMessage.success('资料已提交，等待审核')
-  uploadVisible.value = false
-}
+
 function handleExport() {
   const exportData = filteredData.value.map(r => ({
     '车牌号': r.plateNumber,
     'VIN': r.vin,
     '品牌': r.brand,
     '型号': r.model,
-    '客户': r.customerName,
-    '贷款金额(万)': (r.loanAmount / 10000).toFixed(2),
-    '金融机构': r.financeCompany,
-    '资料完整度': `${r.documents.filter(d=>d.uploaded).length}/${r.documents.length}`,
+    '资料完整度': `${r.completePercent}%`,
     '状态': statusLabel(r.status),
-    '提交日期': dayjs(r.submitDate).format('YYYY-MM-DD')
+    '缺失资料': r.documents.filter(d => !d.uploaded).map(d => d.name).join(',') || '无',
+    '最近上传': formatTime(r.lastUpload)
   }))
   exportToExcel(exportData, '金融资料清单', '金融资料')
   ElMessage.success('导出成功')

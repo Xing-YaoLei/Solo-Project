@@ -200,8 +200,14 @@ onMounted(async () => {
   isExternal.value = accessRole === 'EXTERNAL'
 
   try {
-    const { data } = await getPublicShareData(token, accessRole)
-    const filtered = isExternal.value ? filterSensitiveData(data || {}) : (data || {})
+    const data = await getPublicShareData(token, accessRole)
+    const raw = data || {}
+
+    if (!raw || Object.keys(raw).length === 0 || raw._invalid || raw._expired) {
+      throw new Error(raw._errorMsg || '分享链接无效或已过期')
+    }
+
+    const filtered = isExternal.value ? filterSensitiveData(raw) : raw
 
     shareData.title = filtered.title || `漏斗数据报告 - ${dayjs().format('YYYY-MM-DD')}`
     shareData.exportTime = filtered.exportTime || new Date().toISOString()
@@ -210,13 +216,23 @@ onMounted(async () => {
     shareData.anomalies = filtered.anomalies || []
     shareData.notice = filtered.notice || (isExternal.value ? '外部访问：敏感数据（价格、客户信息等）已隐藏' : '')
     hideSensitive.value = !filtered.includeSensitive || isExternal.value
+
+    if (isExternal.value && shareData.summary) {
+      Object.keys(shareData.summary).forEach(k => {
+        if (shareData.summary[k] === '--' || shareData.summary[k] === null || shareData.summary[k] === undefined) {
+          shareData.summary[k] = '--'
+        }
+      })
+    }
   } catch (e) {
-    console.warn('获取分享数据失败，使用兜底展示', e?.message)
-    shareData.title = `漏斗数据报告 - ${dayjs().format('YYYY-MM-DD')}`
-    shareData.exportTime = new Date().toISOString()
-    shareData.notice = isExternal.value ? '外部访问：敏感数据（价格、客户信息等）已隐藏' : ''
-  } finally {
     loading.value = false
+    error.value = true
+    errorMsg.value = e?.message || '分享链接无效或已过期'
+    return
+  } finally {
+    if (!error.value) {
+      loading.value = false
+    }
   }
 })
 </script>

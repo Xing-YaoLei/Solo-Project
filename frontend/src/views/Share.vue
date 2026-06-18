@@ -175,7 +175,8 @@ import {
   ROLE_OPTIONS,
   getShareList,
   createShareLink,
-  deleteShareLink
+  deleteShareLink,
+  updateShareLink
 } from '@/api/share'
 
 const createVisible = ref(false)
@@ -204,8 +205,8 @@ const shareLinks = ref([])
 async function loadData() {
   loading.value = true
   try {
-    const { data } = await getShareList()
-    shareLinks.value = (data || []).map(l => ({
+    const data = await getShareList()
+    shareLinks.value = (Array.isArray(data) ? data : []).map(l => ({
       ...l,
       token: l.linkToken || l.token
     }))
@@ -213,7 +214,7 @@ async function loadData() {
     shareStats.active = shareLinks.value.filter(l => !isExpired(l)).length
     shareStats.views = shareLinks.value.reduce((s, l) => s + (l.viewCount || 0), 0)
   } catch (e) {
-    console.warn('加载分享列表失败，使用本地兜底数据', e?.message)
+    ElMessage.error('加载分享列表失败：' + (e?.message || '未知错误'))
     shareLinks.value = []
   } finally {
     loading.value = false
@@ -265,11 +266,20 @@ function viewLogs(row) {
 function editRow(row) {
   ElMessage.info(`编辑 ${row.title || '链接'}`)
 }
-function revoke(row) {
-  ElMessageBox.confirm(`确认撤销分享链接 ${row.title || ''}？`, '撤销确认', { type: 'warning' }).then(() => {
-    row.expireAt = new Date().toISOString()
-    shareStats.active = Math.max(0, shareStats.active - 1)
-    ElMessage.success('链接已撤销')
+async function revoke(row) {
+  ElMessageBox.confirm(`确认撤销分享链接 ${row.title || ''}？`, '撤销确认', { type: 'warning' }).then(async () => {
+    try {
+      const nowExpire = dayjs().toISOString()
+      await updateShareLink(row.id, {
+        ...row,
+        expireAt: nowExpire
+      })
+      row.expireAt = nowExpire
+      shareStats.active = Math.max(0, shareStats.active - 1)
+      ElMessage.success('链接已撤销')
+    } catch (e) {
+      ElMessage.error('撤销失败：' + (e?.message || '未知错误'))
+    }
   }).catch(() => {})
 }
 async function del(row) {
@@ -297,22 +307,23 @@ async function handleCreate() {
   }
   submitting.value = true
   try {
-    const { data } = await createShareLink({
+    const data = await createShareLink({
       ...shareForm,
       createdBy: 1
     })
+    const saved = data || {}
     const newLink = {
-      ...data,
-      title: shareForm.title,
-      dataType: shareForm.dataType,
-      token: data.linkToken || data.token,
-      linkToken: data.linkToken || data.token,
-      roleScope: shareForm.roleScope.join(','),
-      includeSensitive: shareForm.includeSensitive,
-      viewCount: 0,
-      createdAt: new Date().toISOString(),
-      expireAt: new Date(Date.now() + shareForm.validDays * 86400000).toISOString(),
-      createdBy: '当前用户'
+      ...saved,
+      title: saved.title || shareForm.title,
+      dataType: saved.dataType || shareForm.dataType,
+      token: saved.linkToken || saved.token,
+      linkToken: saved.linkToken || saved.token,
+      roleScope: saved.roleScope || shareForm.roleScope.join(','),
+      includeSensitive: saved.includeSensitive !== undefined ? saved.includeSensitive : shareForm.includeSensitive,
+      viewCount: saved.viewCount || 0,
+      createdAt: saved.createdAt || new Date().toISOString(),
+      expireAt: saved.expireAt || new Date(Date.now() + shareForm.validDays * 86400000).toISOString(),
+      createdBy: saved.createdBy || '当前用户'
     }
     shareLinks.value.unshift(newLink)
     shareStats.total++

@@ -19,11 +19,8 @@
         </el-form-item>
         <el-form-item label="报价状态">
           <el-select v-model="filters.status" placeholder="全部状态" clearable style="width: 140px">
-            <el-option label="初评" value="initial" />
-            <el-option label="已确认" value="confirmed" />
-            <el-option label="已议价" value="negotiated" />
-            <el-option label="已成交" value="closed" />
-            <el-option label="已放弃" value="abandoned" />
+            <el-option label="有效中" value="valid" />
+            <el-option label="已过期" value="expired" />
           </el-select>
         </el-form-item>
         <el-form-item label="报价时间">
@@ -50,14 +47,14 @@
 
     <el-card class="card-shadow">
       <el-table
-        :data="tableData"
+        :data="pagedData"
         v-loading="loading"
         stripe
         border
         style="width: 100%"
       >
         <el-table-column prop="plateNumber" label="车牌号" width="110" />
-        <el-table-column prop="vehicleInfo" label="车辆信息" min-width="180">
+        <el-table-column label="车辆信息" min-width="180">
           <template #default="{ row }">
             <div>
               <div class="vehicle-name">{{ row.brand }} {{ row.model }} {{ row.year }}款</div>
@@ -65,32 +62,22 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="initialPrice" label="初评价格" width="120" align="right" v-if="!userStore.isExternal">
-          <template #default="{ row }">
-            <span class="price">¥{{ formatPrice(row.initialPrice) }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="currentPrice" label="当前报价" width="120" align="right" v-if="!userStore.isExternal">
+        <el-table-column label="当前报价" width="120" align="right" v-if="!userStore.isExternal">
           <template #default="{ row }">
             <span class="price current">¥{{ formatPrice(row.currentPrice) }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="priceDiff" label="价格变动" width="110" align="right" v-if="!userStore.isExternal">
+        <el-table-column label="价格变动" width="110" align="right" v-if="!userStore.isExternal">
           <template #default="{ row }">
             <span :class="getPriceDiffClass(row.priceDiff)">{{ row.priceDiff > 0 ? '+' : '' }}{{ formatPrice(row.priceDiff) }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="customerName" label="客户" width="100" v-if="!userStore.isExternal">
-          <template #default="{ row }">
-            {{ row.customerName || '-' }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="status" label="状态" width="100">
+        <el-table-column label="报价状态" width="100">
           <template #default="{ row }">
             <el-tag :type="getStatusType(row.status)" effect="light">{{ getStatusLabel(row.status) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="historyCount" label="报价次数" width="90" align="center">
+        <el-table-column label="报价次数" width="90" align="center">
           <template #default="{ row }">
             <el-button type="primary" link @click="showHistory(row)">{{ row.historyCount }}次</el-button>
           </template>
@@ -101,7 +88,7 @@
         </el-table-column>
         <el-table-column label="操作" width="100" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" size="small" link>详情</el-button>
+            <el-button type="primary" size="small" link @click="showHistory(row)">详情</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -136,25 +123,31 @@
                 ¥{{ formatPrice(item.price) }}
               </span>
             </div>
-            <p class="history-note">{{ item.note || '无备注' }}</p>
+            <p class="history-note">有效期 {{ item.validDays }} 天</p>
             <div class="history-meta flex-between mt-10">
               <span>操作人: {{ item.operator }}</span>
-              <span v-if="!userStore.isExternal && item.customerName">客户: {{ item.customerName }}</span>
             </div>
           </el-card>
         </el-timeline-item>
       </el-timeline>
+      <el-empty v-if="!currentVehicle || !currentVehicle.history?.length" description="暂无报价历史" />
     </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { exportToExcel } from '@/utils/download'
 import { Download, Search, RefreshLeft } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import dayjs from 'dayjs'
+import {
+  getQuotationList,
+  getQuotationsByCar,
+  getQuotationsByUser
+} from '@/api/quotation'
+import { getAllFunnelVehicles } from '@/api/funnel'
 
 const userStore = useUserStore()
 
@@ -177,57 +170,109 @@ const pagination = reactive({
   total: 0
 })
 
-const tableData = ref([])
+const vehicleMap = ref(new Map())
+const quotationList = ref([])
 
-function generateMockData() {
-  const statuses = ['initial', 'confirmed', 'negotiated', 'closed', 'abandoned']
-  const operators = ['张三', '李四', '王五', '赵六']
-  const data = []
-  for (let i = 0; i < 35; i++) {
-    const brandIdx = Math.floor(Math.random() * brandList.length)
-    const initial = Math.floor(Math.random() * 300000 + 50000)
-    const current = initial + Math.floor(Math.random() * 40000 - 20000)
-    data.push({
-      id: i + 1,
-      plateNumber: `京${['A','B','C','D','E','F'][Math.floor(Math.random()*6)]}${Math.floor(Math.random()*90000+10000)}`,
-      vin: `LBV${Math.random().toString(36).substring(2,13).toUpperCase()}`,
-      brand: brandList[brandIdx],
-      model: ['3系','C级','A4L','凯美瑞','雅阁','帕萨特','Model 3','汉EV'][brandIdx],
-      year: 2018 + Math.floor(Math.random() * 7),
-      initialPrice: initial,
-      currentPrice: current,
-      priceDiff: current - initial,
-      customerName: `客户${i + 1}`,
-      status: statuses[Math.floor(Math.random() * statuses.length)],
-      historyCount: Math.floor(Math.random() * 5 + 1),
-      operator: operators[Math.floor(Math.random() * operators.length)],
-      updatedAt: new Date(Date.now() - Math.random() * 30 * 86400000).toISOString()
-    })
-  }
-  data.forEach(d => {
-    d.history = []
-    for (let i = 0; i < d.historyCount; i++) {
-      d.history.push({
-        price: Math.floor(Math.random() * 300000 + 50000),
-        status: statuses[Math.floor(Math.random() * statuses.length)],
-        time: new Date(Date.now() - i * 86400000).toISOString(),
-        operator: operators[Math.floor(Math.random() * operators.length)],
-        customerName: i < 2 ? d.customerName : null,
-        note: ['初次评估定价', '客户议价调整', '市场行情更新', '检测后调整价格', '最终成交价格'][i % 5]
-      })
-    }
+const mergedData = computed(() => {
+  const carQuotations = new Map()
+  quotationList.value.forEach(q => {
+    if (!carQuotations.has(q.carId)) carQuotations.set(q.carId, [])
+    carQuotations.get(q.carId).push(q)
   })
-  return data
-}
 
-onMounted(() => {
-  tableData.value = generateMockData()
-  pagination.total = tableData.value.length
+  const result = []
+  carQuotations.forEach((quotes, carId) => {
+    const car = vehicleMap.value.get(carId) || {
+      plateNumber: `--`,
+      brand: '未知',
+      model: '车型',
+      year: 2020,
+      vin: `VIN${carId}`,
+      assessorId: null
+    }
+    const sorted = [...quotes].sort((a, b) => dayjs(b.quotedAt).valueOf() - dayjs(a.quotedAt).valueOf())
+    const latest = sorted[0]
+    const oldest = sorted[sorted.length - 1]
+    const now = dayjs()
+    const expireDate = dayjs(latest.quotedAt).add(latest.validDays || 7, 'day')
+    const status = expireDate.isBefore(now) ? 'expired' : 'valid'
+
+    const history = sorted.map((q, i) => ({
+      price: Number(q.price),
+      status: i === 0 ? status : 'history',
+      time: q.quotedAt,
+      operator: `评估师${q.quotedBy || 1}`,
+      validDays: q.validDays || 7,
+      note: i === 0 ? '最新报价' : '历史报价'
+    }))
+
+    result.push({
+      id: carId,
+      plateNumber: car.plateNumber,
+      vin: car.carVin || car.vin,
+      brand: car.brand,
+      model: car.model,
+      year: car.registerDate ? dayjs(car.registerDate).year() : (car.year || 2020),
+      initialPrice: Number(oldest?.price || 0),
+      currentPrice: Number(latest?.price || 0),
+      priceDiff: Number(latest?.price || 0) - Number(oldest?.price || 0),
+      customerName: null,
+      status,
+      historyCount: sorted.length,
+      operator: `评估师${latest?.quotedBy || car.assessorId || 1}`,
+      updatedAt: latest?.quotedAt,
+      history
+    })
+  })
+
+  let list = result
+  if (filters.brand) list = list.filter(r => r.brand === filters.brand)
+  if (filters.status) list = list.filter(r => r.status === filters.status)
+  if (filters.dateRange?.length === 2) {
+    const [s, e] = filters.dateRange
+    list = list.filter(r => dayjs(r.updatedAt).isBetween(dayjs(s), dayjs(e), null, '[]'))
+  }
+  if (filters.keyword) {
+    const kw = filters.keyword.toLowerCase()
+    list = list.filter(r =>
+      r.plateNumber?.toLowerCase().includes(kw) ||
+      r.vin?.toLowerCase().includes(kw)
+    )
+  }
+  list.sort((a, b) => dayjs(b.updatedAt).valueOf() - dayjs(a.updatedAt).valueOf())
+  return list
 })
 
+const pagedData = computed(() => {
+  const start = (pagination.page - 1) * pagination.pageSize
+  return mergedData.value.slice(start, start + pagination.pageSize)
+})
+
+async function loadData() {
+  loading.value = true
+  try {
+    const [quotes, vehicles] = await Promise.all([
+      getQuotationList(),
+      getAllFunnelVehicles()
+    ])
+    quotationList.value = Array.isArray(quotes) ? quotes : []
+    const list = Array.isArray(vehicles) ? vehicles : []
+    const m = new Map()
+    list.forEach(v => m.set(v.id || v.carId, v))
+    vehicleMap.value = m
+    pagination.total = mergedData.value.length
+  } catch (e) {
+    ElMessage.error('加载报价数据失败：' + (e?.message || '未知错误'))
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(loadData)
+
 function formatPrice(p) {
-  if (!p) return '--'
-  return (p / 10000).toFixed(2) + '万'
+  if (!p && p !== 0) return '--'
+  return (Number(p) / 10000).toFixed(2) + '万'
 }
 
 function formatTime(t) {
@@ -237,22 +282,18 @@ function formatTime(t) {
 
 function getStatusType(s) {
   const map = {
-    initial: 'info',
-    confirmed: 'primary',
-    negotiated: 'warning',
-    closed: 'success',
-    abandoned: 'danger'
+    valid: 'success',
+    expired: 'danger',
+    history: 'info'
   }
   return map[s] || 'info'
 }
 
 function getStatusLabel(s) {
   const map = {
-    initial: '初评',
-    confirmed: '已确认',
-    negotiated: '已议价',
-    closed: '已成交',
-    abandoned: '已放弃'
+    valid: '有效中',
+    expired: '已过期',
+    history: '历史'
   }
   return map[s] || s
 }
@@ -269,11 +310,9 @@ function showHistory(row) {
 }
 
 function handleSearch() {
-  loading.value = true
-  setTimeout(() => {
-    loading.value = false
-    ElMessage.success('查询完成')
-  }, 500)
+  pagination.page = 1
+  pagination.total = mergedData.value.length
+  ElMessage.success('查询完成，共 ' + pagination.total + ' 条记录')
 }
 
 function resetFilters() {
@@ -281,15 +320,17 @@ function resetFilters() {
   filters.status = ''
   filters.dateRange = []
   filters.keyword = ''
+  pagination.page = 1
+  pagination.total = mergedData.value.length
 }
 
 function handleExport() {
-  const exportData = tableData.value.map(r => ({
+  const exportData = mergedData.value.map(r => ({
     '车牌号': r.plateNumber,
     '品牌': r.brand,
     '型号': r.model,
     '年款': r.year,
-    '初评价格(万)': (r.initialPrice / 10000).toFixed(2),
+    '初始报价(万)': (r.initialPrice / 10000).toFixed(2),
     '当前报价(万)': (r.currentPrice / 10000).toFixed(2),
     '价格变动(万)': (r.priceDiff / 10000).toFixed(2),
     '状态': getStatusLabel(r.status),

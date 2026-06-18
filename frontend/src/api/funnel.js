@@ -53,3 +53,19 @@ export function exportFunnelReport(params = {}) {
     responseType: 'blob'
   })
 }
+
+export async function getAllFunnelVehicles() {
+  const stages = [0, 1, 2, 3, 4]
+  const results = await Promise.allSettled(
+    stages.map(i => getFunnelVehiclesByStage(i))
+  )
+  const map = new Map()
+  results.forEach(r => {
+    if (r.status === 'fulfilled' && Array.isArray(r.value)) {
+      r.value.forEach(v => {
+        if (v && v.id && !map.has(v.id)) map.set(v.id, v)
+      })
+    }
+  })
+  return Array.from(map.values())
+}
