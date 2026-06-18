@@ -361,7 +361,7 @@ export class MainMenuScene extends BaseScene {
   private startGame(): void {
     const currentSave = this.saveSystem.getCurrentSave();
     if (currentSave && !currentSave.tutorialCompleted) {
-      this.transitionToScene('TutorialScene');
+      this.transitionToScene('TutorialScene', { fromScene: 'TaskHallScene' });
     } else {
       this.transitionToScene('TaskHallScene');
     }
