@@ -1,0 +1,88 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+	html {
+		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+			'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+	}
+
+	::-webkit-scrollbar {
+		width: 8px;
+		height: 8px;
+	}
+
+	::-webkit-scrollbar-track {
+		background: rgba(15, 23, 42, 0.5);
+	}
+
+	::-webkit-scrollbar-thumb {
+		background: rgba(34, 211, 238, 0.3);
+		border-radius: 4px;
+	}
+
+	::-webkit-scrollbar-thumb:hover {
+		background: rgba(34, 211, 238, 0.5);
+	}
+}
+
+@layer components {
+	.card {
+		@apply bg-navy-900/60 backdrop-blur-sm border border-navy-700/50 rounded-xl;
+	}
+
+	.card-header {
+		@apply px-6 py-4 border-b border-navy-700/40;
+	}
+
+	.card-body {
+		@apply p-6;
+	}
+
+	.btn-primary {
+		@apply inline-flex items-center justify-center px-4 py-2 rounded-lg
+			bg-cyan-500 text-navy-950 font-medium text-sm
+			hover:bg-cyan-400 transition-all duration-200
+			active:scale-95;
+	}
+
+	.btn-secondary {
+		@apply inline-flex items-center justify-center px-4 py-2 rounded-lg
+			bg-navy-800 text-white font-medium text-sm border border-navy-600
+			hover:bg-navy-700 transition-all duration-200
+			active:scale-95;
+	}
+
+	.input-field {
+		@apply w-full px-4 py-2.5 rounded-lg
+			bg-navy-800/80 border border-navy-600 text-white text-sm
+			placeholder:text-navy-400
+			focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500
+			transition-all duration-200;
+	}
+
+	.badge {
+		@apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+	}
+
+	.status-appointed {
+		@apply bg-blue-500/20 text-blue-300;
+	}
+
+	.status-arrived {
+		@apply bg-yellow-500/20 text-yellow-300;
+	}
+
+	.status-completed {
+		@apply bg-emerald-500/20 text-emerald-300;
+	}
+
+	.status-no_show {
+		@apply bg-rose-500/20 text-rose-300;
+	}
+
+	.status-closed {
+		@apply bg-gray-500/20 text-gray-300;
+	}
+}

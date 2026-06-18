@@ -1,0 +1,13 @@
+.DS_Store
+node_modules
+/build
+/.svelte-kit
+/data
+*.db
+*.sqlite
+*.sqlite3
+.env
+.env.*
+!.env.example
+Vercel
+.vercel
