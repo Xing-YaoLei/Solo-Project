@@ -9,6 +9,7 @@ import type {
   ExceptionItem,
   AnalyticsOverview,
   PaginatedResponse,
+  UserSummary,
 } from '~/types'
 
 export function useApi() {
