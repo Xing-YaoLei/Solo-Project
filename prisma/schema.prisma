@@ -1,0 +1,109 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  role      String   @default("STAFF")
+  createdAt DateTime @default(now())
+
+  importBatches ImportBatch[] @relation("ImportedBy")
+  requisitions  Requisition[] @relation("RequestedBy")
+  projects      Project[]     @relation("ManagerOf")
+  shortageNotes MaterialEntry[] @relation("ShortageNotedBy")
+}
+
+model Project {
+  id        String   @id @default(uuid())
+  name      String
+  address   String?
+  managerId String?
+  createdAt DateTime @default(now())
+
+  manager     User?         @relation("ManagerOf", fields: [managerId], references: [id])
+  batches     Batch[]
+  requisitions Requisition[]
+}
+
+model Supplier {
+  id            String  @id @default(uuid())
+  name          String
+  contactPerson String?
+  phone         String?
+  onTimeRate    Float   @default(0)
+  shortageRate  Float   @default(0)
+  qualityScore  Float   @default(0)
+
+  materialEntries MaterialEntry[]
+}
+
+model ImportBatch {
+  id          String   @id @default(uuid())
+  batchNo     String   @unique
+  source      String
+  importedAt  DateTime @default(now())
+  importedBy  String
+  recordCount Int      @default(0)
+  fileUrl     String?
+
+  importer User    @relation("ImportedBy", fields: [importedBy], references: [id])
+  batches  Batch[]
+}
+
+model Batch {
+  id             String   @id @default(uuid())
+  batchNo        String
+  importSource   String
+  importBatchId  String
+  projectId      String
+  status         String   @default("COMPLETE")
+  notes          String?
+  createdAt      DateTime @default(now())
+
+  importBatch    ImportBatch    @relation(fields: [importBatchId], references: [id])
+  project        Project        @relation(fields: [projectId], references: [id])
+  materialEntries MaterialEntry[]
+}
+
+model MaterialEntry {
+  id             String    @id @default(uuid())
+  batchId        String
+  materialName   String
+  category       String
+  specification  String?
+  quantity       Float
+  unit           String
+  supplierId     String
+  entryDate      DateTime
+  status         String    @default("ARRIVED")
+  shortageNote   String?
+  shortageNoteBy String?
+  shortageNoteAt DateTime?
+  expiryDate     DateTime?
+
+  batch          Batch       @relation(fields: [batchId], references: [id])
+  supplier       Supplier    @relation(fields: [supplierId], references: [id])
+  shortageUser   User?       @relation("ShortageNotedBy", fields: [shortageNoteBy], references: [id])
+  requisitions   Requisition[]
+}
+
+model Requisition {
+  id              String   @id @default(uuid())
+  materialEntryId String
+  projectId       String
+  requestedBy     String
+  quantity        Float
+  requestedAt     DateTime @default(now())
+  status          String   @default("PENDING")
+
+  materialEntry MaterialEntry @relation(fields: [materialEntryId], references: [id])
+  project      Project       @relation(fields: [projectId], references: [id])
+  requester    User          @relation("RequestedBy", fields: [requestedBy], references: [id])
+}
