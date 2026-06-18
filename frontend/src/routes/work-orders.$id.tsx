@@ -3,14 +3,15 @@ import { useParams, useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Card, Tabs, Descriptions, Table, Tag, Button, Space, Steps, Modal, Form,
-  Input, Select, message, Image,
+  Input, Select, InputNumber, message, Image,
 } from 'antd';
+import type { ColumnType } from 'antd/es/table';
 import {
   ArrowLeftOutlined, UndoOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { workOrderApi, inspectionApi, shortageApi } from '../lib/api';
-import type { OrderStatus } from '../lib/types';
+import { workOrderApi, inspectionApi, shortageApi, partApi } from '../lib/api';
+import type { OrderStatus, OrderPart } from '../lib/types';
 
 const statusConfig: Record<string, { text: string; color: string }> = {
   pending: { text: '待确认', color: 'default' },
@@ -40,8 +41,11 @@ export default function WorkOrderDetailPage() {
   const [activeTab, setActiveTab] = useState('basic');
   const [statusModalOpen, setStatusModalOpen] = useState(false);
   const [reworkModalOpen, setReworkModalOpen] = useState(false);
+  const [issueModalOpen, setIssueModalOpen] = useState(false);
+  const [selectedPart, setSelectedPart] = useState<OrderPart | null>(null);
   const [statusForm] = Form.useForm();
   const [reworkForm] = Form.useForm();
+  const [issueForm] = Form.useForm();
 
   const { data: order, isLoading } = useQuery({
     queryKey: ['work-order', id],
@@ -49,15 +53,21 @@ export default function WorkOrderDetailPage() {
     enabled: !!id,
   });
 
+  const { data: orderParts } = useQuery({
+    queryKey: ['work-order-parts', id],
+    queryFn: () => partApi.getOrderParts(id).then((r) => r.data),
+    enabled: !!id && activeTab === 'parts',
+  });
+
   const { data: inspections } = useQuery({
     queryKey: ['inspections-for-order', id],
-    queryFn: () => inspectionApi.list({ work_order_id: id }).then((r) => r.data.items),
+    queryFn: () => inspectionApi.list({ work_order_id: id }).then((r) => r.data),
     enabled: !!id && activeTab === 'inspections',
   });
 
   const { data: shortages } = useQuery({
     queryKey: ['shortages-for-order', id],
-    queryFn: () => shortageApi.list({ work_order_id: id }).then((r) => r.data.items),
+    queryFn: () => shortageApi.list({ work_order_id: id }).then((r) => r.data),
     enabled: !!id && activeTab === 'shortages',
   });
 
@@ -82,6 +92,18 @@ export default function WorkOrderDetailPage() {
       navigate({ to: '/work-orders/$id', params: { id: String(res.data.id) } });
     },
     onError: () => message.error('返工工单创建失败'),
+  });
+
+  const issueMutation = useMutation({
+    mutationFn: () =>
+      partApi.issuePart(id, selectedPart!.id),
+    onSuccess: () => {
+      message.success('发料成功');
+      setIssueModalOpen(false);
+      issueForm.resetFields();
+      queryClient.invalidateQueries({ queryKey: ['work-order-parts', id] });
+    },
+    onError: () => message.error('发料失败'),
   });
 
   if (isLoading) return <Card loading />;
@@ -155,9 +177,82 @@ export default function WorkOrderDetailPage() {
     </div>
   );
 
+  const partStatusConfig: Record<string, { text: string; color: string }> = {
+    pending: { text: '待出库', color: 'orange' },
+    issued: { text: '已出库', color: 'green' },
+    returned: { text: '已退回', color: 'default' },
+  };
+
   const partsTab = (
-    <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>
-      配件清单在工单关联配件后显示
+    <div>
+      {(orderParts ?? []).length > 0 ? (
+        <Table<OrderPart>
+          rowKey="id"
+          dataSource={orderParts ?? []}
+          pagination={false}
+          columns={[
+            { title: '配件编号', dataIndex: 'part_id', key: 'part_id', width: 180, render: (v: string) => v?.slice(0, 10) },
+            { title: '配件名称', dataIndex: 'part_name', key: 'part_name', width: 180 },
+            { title: '数量', dataIndex: 'quantity', key: 'quantity', width: 80 },
+            {
+              title: '单价',
+              dataIndex: 'unit_price',
+              key: 'unit_price',
+              width: 100,
+              render: (v: number) => `¥${Number(v ?? 0).toFixed(2)}`,
+            },
+            {
+              title: '小计',
+              key: 'amount',
+              width: 100,
+              render: (_: unknown, r: OrderPart) =>
+                `¥${(Number(r.quantity ?? 0) * Number(r.unit_price ?? 0)).toFixed(2)}`,
+            },
+            {
+              title: '状态',
+              dataIndex: 'status',
+              key: 'status',
+              width: 100,
+              render: (v: string) => {
+                const cfg = partStatusConfig[v] || { text: v, color: 'default' };
+                return <Tag color={cfg.color}>{cfg.text}</Tag>;
+              },
+            },
+            {
+              title: '发料人',
+              dataIndex: 'issued_by',
+              key: 'issued_by',
+              width: 100,
+              render: (v: string) => v ? v.slice(0, 8) : '-',
+            },
+            {
+              title: '发料时间',
+              dataIndex: 'issued_at',
+              key: 'issued_at',
+              width: 160,
+              render: (v: string) => v ? dayjs(v).format('YYYY-MM-DD HH:mm') : '-',
+            },
+            {
+              title: '操作',
+              key: 'action',
+              width: 100,
+              fixed: 'right',
+              render: (_: unknown, record: OrderPart) =>
+                record.status !== 'issued' ? (
+                  <Button
+                    type="primary"
+                    size="small"
+                    onClick={() => { setSelectedPart(record); setIssueModalOpen(true); }}
+                  >
+                    发料
+                  </Button>
+                ) : null,
+            },
+          ] as ColumnType<OrderPart>[]}
+        />
+      ) : (
+        <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>暂无配件</div>
+      )}
     </div>
   );
 
@@ -300,6 +395,25 @@ export default function WorkOrderDetailPage() {
         <Form form={reworkForm} onFinish={(v) => reworkMutation.mutate(v.reason)} layout="vertical">
           <Form.Item name="reason" label="返工原因" rules={[{ required: true, message: '请输入返工原因' }]}>
             <Input.TextArea rows={4} />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        title={`发料 - ${selectedPart?.part_name ?? ''}`}
+        open={issueModalOpen}
+        onCancel={() => setIssueModalOpen(false)}
+        onOk={() => issueForm.submit()}
+      >
+        <Form form={issueForm} onFinish={() => issueMutation.mutate()} layout="vertical">
+          <Form.Item label="发料数量">
+            <InputNumber
+              min={1}
+              max={selectedPart?.quantity}
+              defaultValue={selectedPart?.quantity}
+              style={{ width: '100%' }}
+              disabled
+            />
           </Form.Item>
         </Form>
       </Modal>

@@ -23,7 +23,7 @@ export default function PartsPage() {
     queryFn: () =>
       partApi
         .list({ search: search || undefined, category: categoryFilter })
-        .then((r) => r.data.items),
+        .then((r) => r.data),
   });
 
   const createMutation = useMutation({

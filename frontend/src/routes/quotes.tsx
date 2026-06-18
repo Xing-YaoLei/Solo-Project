@@ -24,7 +24,7 @@ export default function QuotesPage() {
     queryFn: async () => {
       const quotesRes = await quoteApi
         .list({ status: statusFilter });
-      const quotes = quotesRes.data.items;
+      const quotes = quotesRes.data;
       const orderMap = new Map<string, { order_no: string; customer_name: string }>();
       try {
         const ordersRes = await workOrderApi.list({ page: 1, page_size: 500 });

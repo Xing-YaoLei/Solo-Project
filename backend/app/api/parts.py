@@ -117,6 +117,32 @@ async def get_low_stock_parts(
     return result.scalars().all()
 
 
+@router.get("/work-orders/{order_id}/parts", response_model=list[WorkOrderPartResponse])
+async def list_order_parts(
+    order_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    order_result = await db.execute(select(WorkOrder).where(WorkOrder.id == order_id))
+    if not order_result.scalar_one_or_none():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="工单不存在")
+
+    result = await db.execute(
+        select(WorkOrderPart, Part.name)
+        .join(Part, WorkOrderPart.part_id == Part.id, isouter=True)
+        .where(WorkOrderPart.work_order_id == order_id)
+    )
+    rows = result.all()
+
+    responses: list[WorkOrderPartResponse] = []
+    for wop, part_name in rows:
+        resp = WorkOrderPartResponse.model_validate(wop)
+        if part_name:
+            resp.part_name = part_name
+        responses.append(resp)
+    return responses
+
+
 @router.post("/work-orders/{order_id}/parts", response_model=WorkOrderPartResponse, status_code=status.HTTP_201_CREATED)
 async def add_part_to_order(
     order_id: UUID,

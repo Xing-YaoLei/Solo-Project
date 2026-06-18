@@ -70,21 +70,23 @@ export const workOrderApi = {
 
 export const partApi = {
   list: (params?: Record<string, unknown>) =>
-    api.get<PaginatedResponse<Part>>('/parts', { params }),
+    api.get<Part[]>('/parts', { params }),
   get: (id: string) => api.get<Part>(`/parts/${id}`),
   create: (data: PartCreate) => api.post<Part>('/parts', data),
   update: (id: string, data: Partial<PartCreate>) =>
     api.put<Part>(`/parts/${id}`, data),
   getLowStock: () => api.get<Part[]>('/parts/low-stock'),
+  getOrderParts: (orderId: string) =>
+    api.get<OrderPart[]>(`/work-orders/${orderId}/parts`),
   addToOrder: (orderId: string, data: { part_id: string; quantity: number; unit_price: number }) =>
     api.post<OrderPart>(`/work-orders/${orderId}/parts`, data),
   issuePart: (orderId: string, partId: string) =>
-    api.patch(`/work-orders/${orderId}/parts/${partId}/issue`),
+    api.patch<OrderPart>(`/work-orders/${orderId}/parts/${partId}/issue`),
 };
 
 export const quoteApi = {
   list: (params?: Record<string, unknown>) =>
-    api.get<PaginatedResponse<Quote>>('/quotes', { params }),
+    api.get<Quote[]>('/quotes', { params }),
   get: (id: string) => api.get<Quote>(`/quotes/${id}`),
   create: (data: QuoteCreate) => api.post<Quote>('/quotes', data),
   changeStatus: (id: string, status: string, notes?: string) =>
@@ -93,7 +95,7 @@ export const quoteApi = {
 
 export const inspectionApi = {
   list: (params?: Record<string, unknown>) =>
-    api.get<PaginatedResponse<Inspection>>('/inspections', { params }),
+    api.get<Inspection[]>('/inspections', { params }),
   get: (id: string) => api.get<Inspection>(`/inspections/${id}`),
   create: (data: FormData) =>
     api.post<Inspection>('/inspections', data, {
@@ -107,7 +109,7 @@ export const inspectionApi = {
 
 export const shortageApi = {
   list: (params?: Record<string, unknown>) =>
-    api.get<PaginatedResponse<Shortage>>('/shortages', { params }),
+    api.get<Shortage[]>('/shortages', { params }),
   get: (id: string) => api.get<Shortage>(`/shortages/${id}`),
   create: (data: ShortageCreate) =>
     api.post<Shortage>('/shortages', data),

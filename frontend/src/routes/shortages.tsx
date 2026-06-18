@@ -28,7 +28,7 @@ export default function ShortagesPage() {
     queryFn: async () => {
       const shortageRes = await shortageApi
         .list({ status: statusFilter });
-      const shortages = shortageRes.data.items;
+      const shortages = shortageRes.data;
       const orderMap = new Map<string, string>();
       try {
         const ordersRes = await workOrderApi.list({ page: 1, page_size: 500 });

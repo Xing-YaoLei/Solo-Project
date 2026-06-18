@@ -30,7 +30,7 @@ export default function InspectionsPage() {
     queryFn: async () => {
       const res = await inspectionApi
         .list({ type: typeFilter, result: resultFilter });
-      const inspections = res.data.items;
+      const inspections = res.data;
       const orderMap = new Map<string, string>();
       try {
         const ordersRes = await workOrderApi.list({ page: 1, page_size: 500 });
