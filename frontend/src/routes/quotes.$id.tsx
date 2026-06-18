@@ -3,15 +3,21 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, Descriptions, Table, Tag, Button, Space, message, Modal, Input } from 'antd';
 import { ArrowLeftOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { quoteApi } from '../lib/api';
-import type { QuoteItem } from '../lib/types';
+import { quoteApi, workOrderApi } from '../lib/api';
+import type { Quote, QuoteItem } from '../lib/types';
 import { getStoredUser, isRole } from '../lib/auth';
 
 const statusConfig: Record<string, { text: string; color: string }> = {
   draft: { text: '草稿', color: 'default' },
-  pending_approval: { text: '待审批', color: 'processing' },
+  sent: { text: '已发送', color: 'processing' },
   approved: { text: '已通过', color: 'green' },
   rejected: { text: '已驳回', color: 'red' },
+};
+
+const itemTypeLabels: Record<string, string> = {
+  labor: '工时',
+  part: '配件',
+  other: '其他',
 };
 
 export default function QuoteDetailPage() {
@@ -22,18 +28,26 @@ export default function QuoteDetailPage() {
 
   const { data: quote, isLoading } = useQuery({
     queryKey: ['quote', id],
-    queryFn: () => quoteApi.get(Number(id)).then((r) => r.data),
+    queryFn: () => quoteApi.get(id).then((r) => r.data as unknown as Quote),
     enabled: !!id,
   });
 
-  const { data: items } = useQuery({
-    queryKey: ['quote-items', id],
-    queryFn: () => quoteApi.getItems(Number(id)).then((r) => r.data),
-    enabled: !!id,
+  const { data: orderInfo } = useQuery({
+    queryKey: ['quote-order', quote?.work_order_id],
+    queryFn: async () => {
+      if (!quote?.work_order_id) return null;
+      try {
+        const r = await workOrderApi.get(quote.work_order_id);
+        return r.data;
+      } catch {
+        return null;
+      }
+    },
+    enabled: !!quote?.work_order_id,
   });
 
   const approveMutation = useMutation({
-    mutationFn: () => quoteApi.approve(Number(id)),
+    mutationFn: () => quoteApi.changeStatus(id, 'approved'),
     onSuccess: () => {
       message.success('审批通过');
       queryClient.invalidateQueries({ queryKey: ['quote', id] });
@@ -42,7 +56,7 @@ export default function QuoteDetailPage() {
   });
 
   const rejectMutation = useMutation({
-    mutationFn: (reason: string) => quoteApi.reject(Number(id), reason),
+    mutationFn: (reason: string) => quoteApi.changeStatus(id, 'rejected', reason),
     onSuccess: () => {
       message.success('已驳回');
       queryClient.invalidateQueries({ queryKey: ['quote', id] });
@@ -64,8 +78,8 @@ export default function QuoteDetailPage() {
     });
   };
 
-  const canApprove = user && isRole(user, 'manager');
-  const isPendingApproval = quote?.status === 'pending_approval';
+  const canApprove = !!(user && isRole(user, 'manager'));
+  const canBeApproved = quote?.status === 'sent' || quote?.status === 'draft';
 
   if (isLoading) return <Card loading />;
 
@@ -74,8 +88,12 @@ export default function QuoteDetailPage() {
       title: '类型',
       dataIndex: 'item_type',
       key: 'item_type',
-      width: 80,
-      render: (v: string) => (v === 'labor' ? '工时' : '配件'),
+      width: 90,
+      render: (v: string) => (
+        <Tag color={v === 'labor' ? 'blue' : v === 'part' ? 'green' : 'default'}>
+          {itemTypeLabels[v] ?? v}
+        </Tag>
+      ),
     },
     { title: '描述', dataIndex: 'description', key: 'description' },
     { title: '数量', dataIndex: 'quantity', key: 'quantity', width: 80 },
@@ -83,17 +101,21 @@ export default function QuoteDetailPage() {
       title: '单价',
       dataIndex: 'unit_price',
       key: 'unit_price',
-      width: 100,
-      render: (v: number) => `¥${v.toFixed(2)}`,
+      width: 110,
+      render: (v: number) => `¥${Number(v ?? 0).toFixed(2)}`,
     },
     {
       title: '金额',
       dataIndex: 'amount',
       key: 'amount',
-      width: 100,
-      render: (v: number) => `¥${v.toFixed(2)}`,
+      width: 120,
+      render: (v: number) => `¥${Number(v ?? 0).toFixed(2)}`,
     },
   ];
+
+  const items = quote?.items ?? [];
+  const laborTotal = items.filter((i) => i.item_type === 'labor').reduce((s, i) => s + (i.amount ?? 0), 0);
+  const partsTotal = items.filter((i) => i.item_type === 'part').reduce((s, i) => s + (i.amount ?? 0), 0);
 
   return (
     <div>
@@ -110,20 +132,31 @@ export default function QuoteDetailPage() {
       <Card bordered={false} style={{ marginBottom: 16 }}>
         <Descriptions column={3}>
           <Descriptions.Item label="报价单号">{quote?.quote_no}</Descriptions.Item>
-          <Descriptions.Item label="工单号">{quote?.order_no}</Descriptions.Item>
-          <Descriptions.Item label="客户">{quote?.customer_name}</Descriptions.Item>
-          <Descriptions.Item label="工时费用">¥{(quote?.labor_amount ?? 0).toFixed(2)}</Descriptions.Item>
-          <Descriptions.Item label="配件费用">¥{(quote?.parts_amount ?? 0).toFixed(2)}</Descriptions.Item>
+          <Descriptions.Item label="关联工单号">
+            {orderInfo?.order_no ?? quote?.work_order_id?.slice(0, 8)}
+          </Descriptions.Item>
+          <Descriptions.Item label="客户">
+            {orderInfo?.customer_name ?? '-'}
+          </Descriptions.Item>
+          <Descriptions.Item label="工时费用">¥{laborTotal.toFixed(2)}</Descriptions.Item>
+          <Descriptions.Item label="配件费用">¥{partsTotal.toFixed(2)}</Descriptions.Item>
           <Descriptions.Item label="总金额">
             <span style={{ fontWeight: 700, fontSize: 16, color: '#1890ff' }}>
-              ¥{(quote?.total_amount ?? 0).toFixed(2)}
+              ¥{Number(quote?.total_amount ?? 0).toFixed(2)}
             </span>
           </Descriptions.Item>
-          <Descriptions.Item label="审批人">{quote?.approved_by || '-'}</Descriptions.Item>
-          <Descriptions.Item label="审批时间">
-            {quote?.approved_at ? dayjs(quote.approved_at).format('YYYY-MM-DD HH:mm') : '-'}
+          <Descriptions.Item label="创建时间">
+            {quote?.created_at ? dayjs(quote.created_at).format('YYYY-MM-DD HH:mm') : '-'}
           </Descriptions.Item>
-          <Descriptions.Item label="备注">{quote?.remark || '-'}</Descriptions.Item>
+          <Descriptions.Item label="更新时间">
+            {quote?.updated_at ? dayjs(quote.updated_at).format('YYYY-MM-DD HH:mm') : '-'}
+          </Descriptions.Item>
+          <Descriptions.Item label="审批人">
+            {quote?.approved_by ? quote.approved_by.slice(0, 8) : '-'}
+          </Descriptions.Item>
+          <Descriptions.Item label="备注" span={3}>
+            {quote?.notes || '-'}
+          </Descriptions.Item>
         </Descriptions>
       </Card>
 
@@ -131,11 +164,11 @@ export default function QuoteDetailPage() {
         <Table
           rowKey="id"
           columns={columns}
-          dataSource={items ?? []}
+          dataSource={items}
           pagination={false}
           size="small"
-          summary={(data: QuoteItem[]) => {
-            const total = data.reduce((sum, item) => sum + item.amount, 0);
+          summary={(rows: QuoteItem[]) => {
+            const total = rows.reduce((sum, item) => sum + (item.amount ?? 0), 0);
             return (
               <Table.Summary.Row>
                 <Table.Summary.Cell index={0} colSpan={4}><strong>合计</strong></Table.Summary.Cell>
@@ -146,7 +179,7 @@ export default function QuoteDetailPage() {
         />
       </Card>
 
-      {canApprove && isPendingApproval && (
+      {canApprove && canBeApproved && (
         <Space>
           <Button
             type="primary"

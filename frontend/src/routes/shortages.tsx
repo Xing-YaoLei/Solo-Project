@@ -4,43 +4,61 @@ import { useNavigate } from '@tanstack/react-router';
 import {
   Table, Card, Button, Space, Tag, Select, Badge, Tooltip,
 } from 'antd';
-import { ReloadOutlined, ExclamationCircleOutlined, ClockCircleOutlined } from '@ant-design/icons';
+import { ReloadOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { shortageApi } from '../lib/api';
+import { shortageApi, workOrderApi } from '../lib/api';
+import type { Shortage } from '../lib/types';
 
 const statusConfig: Record<string, { text: string; color: string }> = {
   pending: { text: '待处理', color: 'red' },
-  ordered: { text: '已下单', color: 'orange' },
-  partial: { text: '部分到货', color: 'blue' },
-  resolved: { text: '已解决', color: 'green' },
+  procuring: { text: '采购中', color: 'orange' },
+  arrived: { text: '已到货', color: 'blue' },
+  substituted: { text: '已替代', color: 'purple' },
+  cancelled: { text: '已取消', color: 'default' },
 };
 
 export default function ShortagesPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['shortages', page, pageSize, statusFilter],
-    queryFn: () =>
-      shortageApi
-        .list({ page, page_size: pageSize, status: statusFilter })
-        .then((r) => r.data),
+    queryKey: ['shortages', statusFilter],
+    queryFn: async () => {
+      const shortages = await shortageApi
+        .list({ status: statusFilter })
+        .then((r) => r.data as unknown as Shortage[]);
+      const orderMap = new Map<string, string>();
+      try {
+        const ordersRes = await workOrderApi.list({ page: 1, page_size: 500 });
+        (ordersRes.data?.items ?? []).forEach((o: { id: string; order_no: string }) => {
+          orderMap.set(o.id, o.order_no);
+        });
+      } catch {
+        /* ignore */
+      }
+      return { shortages, orderMap };
+    },
   });
 
   const isUrgent = (createdAt: string, status: string) => {
-    if (status === 'resolved') return false;
+    if (status === 'arrived' || status === 'substituted' || status === 'cancelled') return false;
     const days = dayjs().diff(dayjs(createdAt), 'day');
     return days >= 3;
   };
 
+  const pendingCount = (data?.shortages ?? []).filter((s) => s.status === 'pending').length;
+
   const columns = [
-    { title: '工单号', dataIndex: 'order_no', key: 'order_no', width: 130 },
-    { title: '配件名称', dataIndex: 'part_name', key: 'part_name', width: 130 },
-    { title: '配件编号', dataIndex: 'part_no', key: 'part_no', width: 110 },
-    { title: '需求数量', dataIndex: 'required_quantity', key: 'required_quantity', width: 90 },
+    {
+      title: '工单号',
+      dataIndex: 'work_order_id',
+      key: 'work_order_id',
+      width: 130,
+      render: (v: string) => data?.orderMap.get(v) ?? v?.slice(0, 8),
+    },
+    { title: '配件名称', dataIndex: 'part_name', key: 'part_name', width: 150 },
+    { title: '需求数量', dataIndex: 'requested_quantity', key: 'requested_quantity', width: 90 },
     { title: '可用数量', dataIndex: 'available_quantity', key: 'available_quantity', width: 90 },
     {
       title: '状态',
@@ -56,14 +74,14 @@ export default function ShortagesPage() {
       title: '预计到货',
       dataIndex: 'expected_arrival',
       key: 'expected_arrival',
-      width: 110,
+      width: 120,
       render: (v: string) => v ? dayjs(v).format('YYYY-MM-DD') : '-',
     },
     {
       title: '紧急',
       key: 'urgent',
-      width: 60,
-      render: (_: unknown, record: { created_at: string; status: string }) =>
+      width: 70,
+      render: (_: unknown, record: Shortage) =>
         isUrgent(record.created_at, record.status) ? (
           <Tooltip title="等待超过3天">
             <Tag color="volcano" icon={<ExclamationCircleOutlined />}>紧急</Tag>
@@ -74,8 +92,9 @@ export default function ShortagesPage() {
       title: '操作',
       key: 'action',
       width: 80,
-      render: (_: unknown, record: { id: number }) => (
-        <Button type="link" size="small" onClick={() => navigate({ to: '/shortages/$id', params: { id: String(record.id) } })}>
+      fixed: 'right',
+      render: (_: unknown, record: Shortage) => (
+        <Button type="link" size="small" onClick={() => navigate({ to: '/shortages/$id', params: { id: record.id } })}>
           处理
         </Button>
       ),
@@ -90,12 +109,12 @@ export default function ShortagesPage() {
             <Select
               placeholder="状态筛选"
               value={statusFilter}
-              onChange={(v) => { setStatusFilter(v); setPage(1); }}
+              onChange={(v) => setStatusFilter(v)}
               allowClear
               style={{ width: 140 }}
               options={Object.entries(statusConfig).map(([k, v]) => ({ value: k, label: v.text }))}
             />
-            <Badge count={data?.items?.filter((s) => s.status === 'pending').length ?? 0} offset={[6, 0]}>
+            <Badge count={pendingCount} offset={[6, 0]}>
               <Tag color="red">待处理</Tag>
             </Badge>
           </Space>
@@ -111,20 +130,18 @@ export default function ShortagesPage() {
         <Table
           rowKey="id"
           columns={columns}
-          dataSource={data?.items ?? []}
+          dataSource={data?.shortages ?? []}
           loading={isLoading}
-          rowClassName={(record) => {
-            if (record.status === 'resolved') return '';
+          rowClassName={(record: Shortage) => {
+            if (record.status === 'arrived' || record.status === 'substituted' || record.status === 'cancelled') return '';
             return isUrgent(record.created_at, record.status) ? 'shortage-urgent-row' : 'shortage-pending-row';
           }}
           pagination={{
-            current: page,
-            pageSize,
-            total: data?.total ?? 0,
+            pageSize: 20,
             showSizeChanger: true,
             showTotal: (total) => `共 ${total} 条`,
-            onChange: (p, ps) => { setPage(p); setPageSize(ps); },
           }}
+          scroll={{ x: 850 }}
         />
       </Card>
 

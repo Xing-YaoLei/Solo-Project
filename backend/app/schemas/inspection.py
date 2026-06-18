@@ -7,15 +7,14 @@ from pydantic import BaseModel
 
 
 class InspectionType(str, enum.Enum):
-    pre_work = "pre_work"
-    in_process = "in_process"
-    post_work = "post_work"
-    delivery = "delivery"
+    pre_inspection = "pre_inspection"
+    in_progress = "in_progress"
+    final = "final"
 
 
 class InspectionResult(str, enum.Enum):
-    passed = "passed"
-    failed = "failed"
+    pass_ = "pass"
+    fail = "fail"
     conditional = "conditional"
 
 

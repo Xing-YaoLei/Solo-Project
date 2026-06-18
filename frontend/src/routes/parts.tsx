@@ -4,15 +4,13 @@ import {
   Table, Card, Button, Space, Tag, Input, Select, Modal, Form, InputNumber, message,
 } from 'antd';
 import {
-  PlusOutlined, SearchOutlined, ReloadOutlined, WarningOutlined,
+  PlusOutlined, SearchOutlined, ReloadOutlined,
 } from '@ant-design/icons';
 import { partApi } from '../lib/api';
 import type { Part, PartCreate } from '../lib/types';
 
 export default function PartsPage() {
   const queryClient = useQueryClient();
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string | undefined>();
   const [modalOpen, setModalOpen] = useState(false);
@@ -20,11 +18,11 @@ export default function PartsPage() {
   const [form] = Form.useForm<PartCreate>();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['parts', page, pageSize, search, categoryFilter],
+    queryKey: ['parts', search, categoryFilter],
     queryFn: () =>
       partApi
-        .list({ page, page_size: pageSize, search: search || undefined, category: categoryFilter })
-        .then((r) => r.data),
+        .list({ search: search || undefined, category: categoryFilter })
+        .then((r) => r.data as unknown as Part[]),
   });
 
   const createMutation = useMutation({
@@ -55,12 +53,13 @@ export default function PartsPage() {
   const columns = [
     { title: '配件编号', dataIndex: 'part_no', key: 'part_no', width: 120 },
     { title: '名称', dataIndex: 'name', key: 'name', width: 150 },
-    { title: '分类', dataIndex: 'category', key: 'category', width: 100 },
+    { title: '分类', dataIndex: 'category', key: 'category', width: 100, render: (v: string) => v || '-' },
+    { title: '单位', dataIndex: 'unit', key: 'unit', width: 60, render: (v: string) => v || '个' },
     {
       title: '库存',
-      dataIndex: 'stock',
-      key: 'stock',
-      width: 80,
+      dataIndex: 'stock_quantity',
+      key: 'stock_quantity',
+      width: 90,
       render: (stock: number, record: Part) =>
         stock <= record.min_stock ? (
           <Space>
@@ -72,12 +71,13 @@ export default function PartsPage() {
         ),
     },
     { title: '最低库存', dataIndex: 'min_stock', key: 'min_stock', width: 90 },
-    { title: '单价', dataIndex: 'unit_price', key: 'unit_price', width: 90, render: (v: number) => `¥${v.toFixed(2)}` },
-    { title: '位置', dataIndex: 'location', key: 'location', width: 100, render: (v: string) => v || '-' },
+    { title: '单价', dataIndex: 'unit_price', key: 'unit_price', width: 100, render: (v: number) => `¥${Number(v ?? 0).toFixed(2)}` },
+    { title: '存放位置', dataIndex: 'location', key: 'location', width: 100, render: (v: string) => v || '-' },
     {
       title: '操作',
       key: 'action',
       width: 80,
+      fixed: 'right',
       render: (_: unknown, record: Part) => (
         <Button type="link" size="small" onClick={() => handleEdit(record)}>
           编辑
@@ -95,14 +95,14 @@ export default function PartsPage() {
               placeholder="搜索编号/名称"
               prefix={<SearchOutlined />}
               value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              onChange={(e) => setSearch(e.target.value)}
               style={{ width: 240 }}
               allowClear
             />
             <Select
               placeholder="分类筛选"
               value={categoryFilter}
-              onChange={(v) => { setCategoryFilter(v); setPage(1); }}
+              onChange={(v) => setCategoryFilter(v)}
               allowClear
               style={{ width: 140 }}
               options={[
@@ -130,17 +130,14 @@ export default function PartsPage() {
         <Table
           rowKey="id"
           columns={columns}
-          dataSource={data?.items ?? []}
+          dataSource={data ?? []}
           loading={isLoading}
           pagination={{
-            current: page,
-            pageSize,
-            total: data?.total ?? 0,
+            pageSize: 20,
             showSizeChanger: true,
             showTotal: (total) => `共 ${total} 条`,
-            onChange: (p, ps) => { setPage(p); setPageSize(ps); },
           }}
-          scroll={{ x: 900 }}
+          scroll={{ x: 950 }}
         />
       </Card>
 
@@ -152,41 +149,47 @@ export default function PartsPage() {
         width={600}
       >
         <Form form={form} layout="vertical" onFinish={createMutation.mutate}>
-          <Form.Item name="part_no" label="配件编号" rules={[{ required: true, message: '请输入配件编号' }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item name="name" label="名称" rules={[{ required: true, message: '请输入名称' }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item name="category" label="分类" rules={[{ required: true, message: '请选择分类' }]}>
-            <Select
-              options={[
-                { value: 'engine', label: '发动机' },
-                { value: 'brake', label: '制动系统' },
-                { value: 'electrical', label: '电气系统' },
-                { value: 'body', label: '车身' },
-                { value: 'suspension', label: '悬挂系统' },
-                { value: 'other', label: '其他' },
-              ]}
-            />
-          </Form.Item>
           <Space style={{ width: '100%' }} size="large">
-            <Form.Item name="stock" label="库存" rules={[{ required: true }]} style={{ width: 200 }}>
+            <Form.Item name="part_no" label="配件编号" rules={[{ required: true, message: '请输入配件编号' }]} style={{ flex: 1 }}>
+              <Input />
+            </Form.Item>
+            <Form.Item name="name" label="名称" rules={[{ required: true, message: '请输入名称' }]} style={{ flex: 1 }}>
+              <Input />
+            </Form.Item>
+          </Space>
+          <Space style={{ width: '100%' }} size="large">
+            <Form.Item name="category" label="分类" style={{ flex: 1 }}>
+              <Select
+                options={[
+                  { value: 'engine', label: '发动机' },
+                  { value: 'brake', label: '制动系统' },
+                  { value: 'electrical', label: '电气系统' },
+                  { value: 'body', label: '车身' },
+                  { value: 'suspension', label: '悬挂系统' },
+                  { value: 'other', label: '其他' },
+                ]}
+              />
+            </Form.Item>
+            <Form.Item name="unit" label="单位" style={{ flex: 1 }}>
+              <Input placeholder="个/套/支等" />
+            </Form.Item>
+          </Space>
+          <Space style={{ width: '100%' }} size="large">
+            <Form.Item name="stock_quantity" label="库存数量" rules={[{ required: true }]} style={{ flex: 1 }}>
               <InputNumber min={0} style={{ width: '100%' }} />
             </Form.Item>
-            <Form.Item name="min_stock" label="最低库存" rules={[{ required: true }]} style={{ width: 200 }}>
+            <Form.Item name="min_stock" label="最低库存" rules={[{ required: true }]} style={{ flex: 1 }}>
               <InputNumber min={0} style={{ width: '100%' }} />
             </Form.Item>
           </Space>
-          <Form.Item name="unit_price" label="单价" rules={[{ required: true, message: '请输入单价' }]}>
-            <InputNumber min={0} step={0.01} style={{ width: '100%' }} prefix="¥" />
-          </Form.Item>
-          <Form.Item name="location" label="存放位置">
-            <Input placeholder="如: A-3-2" />
-          </Form.Item>
-          <Form.Item name="description" label="描述">
-            <Input.TextArea rows={2} />
-          </Form.Item>
+          <Space style={{ width: '100%' }} size="large">
+            <Form.Item name="unit_price" label="单价" rules={[{ required: true, message: '请输入单价' }]} style={{ flex: 1 }}>
+              <InputNumber min={0} step={0.01} style={{ width: '100%' }} prefix="¥" />
+            </Form.Item>
+            <Form.Item name="location" label="存放位置" style={{ flex: 1 }}>
+              <Input placeholder="如: A-3-2" />
+            </Form.Item>
+          </Space>
         </Form>
       </Modal>
     </div>

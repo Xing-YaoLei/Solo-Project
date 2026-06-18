@@ -14,7 +14,7 @@ class ItemType(str, enum.Enum):
 
 class QuoteStatus(str, enum.Enum):
     draft = "draft"
-    submitted = "submitted"
+    sent = "sent"
     approved = "approved"
     rejected = "rejected"
 

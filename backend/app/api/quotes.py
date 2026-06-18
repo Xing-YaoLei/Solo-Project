@@ -134,7 +134,7 @@ async def update_quote_status(
     except ValueError:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="无效的状态值")
 
-    if quote.status not in (QuoteStatus.submitted, QuoteStatus.draft, QuoteStatus.sent):
+    if quote.status not in (QuoteStatus.sent, QuoteStatus.draft, QuoteStatus.approved):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="当前状态不允许审批")
 
     if target_status not in (QuoteStatus.approved, QuoteStatus.rejected):

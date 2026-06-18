@@ -22,13 +22,7 @@ import ShortageDetailPage from './routes/shortages.$id';
 import StatisticsPage from './routes/statistics';
 
 const rootRoute = createRootRoute({
-  component: RootLayout,
-  beforeLoad: () => {
-    const token = getToken();
-    if (!token) {
-      throw redirect({ to: '/login' });
-    }
-  },
+  component: Outlet,
 });
 
 const loginRoute = createRoute({
@@ -43,14 +37,26 @@ const loginRoute = createRoute({
   component: LoginPage,
 });
 
-const indexRoute = createRoute({
+const layoutRoute = createRoute({
   getParentRoute: () => rootRoute,
+  id: '__layout',
+  component: RootLayout,
+  beforeLoad: () => {
+    const token = getToken();
+    if (!token) {
+      throw redirect({ to: '/login' });
+    }
+  },
+});
+
+const indexRoute = createRoute({
+  getParentRoute: () => layoutRoute,
   path: '/',
   component: DashboardPage,
 });
 
 const workOrdersRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => layoutRoute,
   path: '/work-orders',
   beforeLoad: () => {
     const user = getStoredUser();
@@ -62,19 +68,19 @@ const workOrdersRoute = createRoute({
 });
 
 const workOrderDetailRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => layoutRoute,
   path: '/work-orders/$id',
   component: WorkOrderDetailPage,
 });
 
 const workOrderNewRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => layoutRoute,
   path: '/work-orders/new',
   component: WorkOrderNewPage,
 });
 
 const partsRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => layoutRoute,
   path: '/parts',
   beforeLoad: () => {
     const user = getStoredUser();
@@ -86,7 +92,7 @@ const partsRoute = createRoute({
 });
 
 const quotesRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => layoutRoute,
   path: '/quotes',
   beforeLoad: () => {
     const user = getStoredUser();
@@ -98,13 +104,13 @@ const quotesRoute = createRoute({
 });
 
 const quoteDetailRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => layoutRoute,
   path: '/quotes/$id',
   component: QuoteDetailPage,
 });
 
 const inspectionsRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => layoutRoute,
   path: '/inspections',
   beforeLoad: () => {
     const user = getStoredUser();
@@ -116,13 +122,13 @@ const inspectionsRoute = createRoute({
 });
 
 const inspectionDetailRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => layoutRoute,
   path: '/inspections/$id',
   component: InspectionDetailPage,
 });
 
 const shortagesRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => layoutRoute,
   path: '/shortages',
   beforeLoad: () => {
     const user = getStoredUser();
@@ -134,13 +140,13 @@ const shortagesRoute = createRoute({
 });
 
 const shortageDetailRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => layoutRoute,
   path: '/shortages/$id',
   component: ShortageDetailPage,
 });
 
 const statisticsRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => layoutRoute,
   path: '/statistics',
   beforeLoad: () => {
     const user = getStoredUser();
@@ -153,18 +159,20 @@ const statisticsRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   loginRoute,
-  indexRoute,
-  workOrdersRoute,
-  workOrderDetailRoute,
-  workOrderNewRoute,
-  partsRoute,
-  quotesRoute,
-  quoteDetailRoute,
-  inspectionsRoute,
-  inspectionDetailRoute,
-  shortagesRoute,
-  shortageDetailRoute,
-  statisticsRoute,
+  layoutRoute.addChildren([
+    indexRoute,
+    workOrdersRoute,
+    workOrderDetailRoute,
+    workOrderNewRoute,
+    partsRoute,
+    quotesRoute,
+    quoteDetailRoute,
+    inspectionsRoute,
+    inspectionDetailRoute,
+    shortagesRoute,
+    shortageDetailRoute,
+    statisticsRoute,
+  ]),
 ]);
 
 export const router = createRouter({ routeTree });

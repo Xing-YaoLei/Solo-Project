@@ -2,35 +2,57 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { Table, Card, Button, Space, Tag, Select } from 'antd';
-import { PlusOutlined, SearchOutlined, ReloadOutlined } from '@ant-design/icons';
+import { ReloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { quoteApi } from '../lib/api';
+import { quoteApi, workOrderApi } from '../lib/api';
+import type { Quote } from '../lib/types';
 
 const statusConfig: Record<string, { text: string; color: string }> = {
   draft: { text: '草稿', color: 'default' },
-  pending_approval: { text: '待审批', color: 'processing' },
+  sent: { text: '已发送', color: 'processing' },
   approved: { text: '已通过', color: 'green' },
   rejected: { text: '已驳回', color: 'red' },
 };
 
 export default function QuotesPage() {
   const navigate = useNavigate();
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['quotes', page, pageSize, statusFilter],
-    queryFn: () =>
-      quoteApi
-        .list({ page, page_size: pageSize, status: statusFilter })
-        .then((r) => r.data),
+    queryKey: ['quotes', statusFilter],
+    queryFn: async () => {
+      const quotes = await quoteApi
+        .list({ status: statusFilter })
+        .then((r) => r.data as unknown as Quote[]);
+      const orderMap = new Map<string, { order_no: string; customer_name: string }>();
+      try {
+        const ordersRes = await workOrderApi.list({ page: 1, page_size: 500 });
+        (ordersRes.data?.items ?? []).forEach((o: { id: string; order_no: string; customer_name: string }) => {
+          orderMap.set(o.id, { order_no: o.order_no, customer_name: o.customer_name });
+        });
+      } catch {
+        /* ignore */
+      }
+      return { quotes, orderMap };
+    },
   });
 
   const columns = [
-    { title: '报价单号', dataIndex: 'quote_no', key: 'quote_no', width: 140 },
-    { title: '工单号', dataIndex: 'order_no', key: 'order_no', width: 140 },
-    { title: '客户', dataIndex: 'customer_name', key: 'customer_name', width: 100 },
+    { title: '报价单号', dataIndex: 'quote_no', key: 'quote_no', width: 180 },
+    {
+      title: '工单号',
+      dataIndex: 'work_order_id',
+      key: 'work_order_id',
+      width: 140,
+      render: (v: string) => data?.orderMap.get(v)?.order_no ?? v?.slice(0, 8),
+    },
+    {
+      title: '客户',
+      dataIndex: 'work_order_id',
+      key: 'customer_name',
+      width: 120,
+      render: (v: string) => data?.orderMap.get(v)?.customer_name ?? '-',
+    },
     {
       title: '状态',
       dataIndex: 'status',
@@ -46,21 +68,22 @@ export default function QuotesPage() {
       dataIndex: 'total_amount',
       key: 'total_amount',
       width: 120,
-      render: (v: number) => `¥${(v ?? 0).toFixed(2)}`,
+      render: (v: number) => `¥${Number(v ?? 0).toFixed(2)}`,
     },
     {
       title: '创建时间',
       dataIndex: 'created_at',
       key: 'created_at',
-      width: 160,
+      width: 170,
       render: (v: string) => dayjs(v).format('YYYY-MM-DD HH:mm'),
     },
     {
       title: '操作',
       key: 'action',
       width: 80,
-      render: (_: unknown, record: { id: number }) => (
-        <Button type="link" size="small" onClick={() => navigate({ to: '/quotes/$id', params: { id: String(record.id) } })}>
+      fixed: 'right',
+      render: (_: unknown, record: Quote) => (
+        <Button type="link" size="small" onClick={() => navigate({ to: '/quotes/$id', params: { id: record.id } })}>
           查看
         </Button>
       ),
@@ -75,14 +98,14 @@ export default function QuotesPage() {
             <Select
               placeholder="状态筛选"
               value={statusFilter}
-              onChange={(v) => { setStatusFilter(v); setPage(1); }}
+              onChange={(v) => setStatusFilter(v)}
               allowClear
               style={{ width: 140 }}
               options={Object.entries(statusConfig).map(([k, v]) => ({ value: k, label: v.text }))}
             />
           </Space>
           <Space>
-            <Button icon={<ReloadOutlined />} onClick={() => {}}>
+            <Button icon={<ReloadOutlined />} onClick={() => navigate({ to: '/quotes' })}>
               刷新
             </Button>
           </Space>
@@ -93,17 +116,14 @@ export default function QuotesPage() {
         <Table
           rowKey="id"
           columns={columns}
-          dataSource={data?.items ?? []}
+          dataSource={data?.quotes ?? []}
           loading={isLoading}
           pagination={{
-            current: page,
-            pageSize,
-            total: data?.total ?? 0,
+            pageSize: 20,
             showSizeChanger: true,
             showTotal: (total) => `共 ${total} 条`,
-            onChange: (p, ps) => { setPage(p); setPageSize(ps); },
           }}
-          scroll={{ x: 800 }}
+          scroll={{ x: 900 }}
         />
       </Card>
     </div>
