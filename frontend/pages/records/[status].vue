@@ -1,23 +1,10 @@
 <template>
   <div class="page-container">
     <NSpace justify="space-between" align="center" style="margin-bottom: 16px;">
-      <h1 class="page-title" style="margin: 0;">记录池管理</h1>
+      <h1 class="page-title" style="margin: 0;">{{ poolTitle }}</h1>
       <NButton type="primary" @click="showCreateModal = true">新建过户记录</NButton>
     </NSpace>
-    <NTabs v-model:value="activeTab" type="line" animated @update:value="handleTabChange">
-      <NTabPane name="pending" tab="待处理">
-        <RecordTable :records="recordsStore.records" status="pending" @open="openWorkspace" @refresh="refreshList" />
-      </NTabPane>
-      <NTabPane name="review" tab="待复核">
-        <RecordTable :records="recordsStore.records" status="review" @open="openWorkspace" @refresh="refreshList" />
-      </NTabPane>
-      <NTabPane name="completed" tab="已完成">
-        <RecordTable :records="recordsStore.records" status="completed" @open="openWorkspace" @refresh="refreshList" />
-      </NTabPane>
-      <NTabPane name="exception" tab="异常">
-        <RecordTable :records="recordsStore.records" status="exception" @open="openWorkspace" @refresh="refreshList" />
-      </NTabPane>
-    </NTabs>
+    <RecordTable :records="recordsStore.records" :status="status" @open="openWorkspace" @refresh="refreshList" />
 
     <NModal v-model:show="showCreateModal" preset="dialog" title="新建过户记录" positive-text="创建" negative-text="取消" :loading="creating" @positive-click="handleCreate">
       <NForm ref="formRef" :model="createForm" :rules="formRules" label-placement="left" label-width="auto" style="margin-top: 16px;">
@@ -39,33 +26,39 @@
         <NFormItem label="过户税费" path="transfer_tax">
           <NInputNumber v-model:value="createForm.transfer_tax" :min="0" :precision="2" style="width: 100%;" placeholder="请输入金额" />
         </NFormItem>
-        <NFormItem v-if="authStore.user?.role !== 'specialist'" label="负责人" path="assignee">
-          <NSelect
-            v-model:value="createForm.assignee"
-            :options="assigneeOptions"
-            placeholder="请选择负责人（留空默认自己）"
-            clearable
-          />
-        </NFormItem>
       </NForm>
     </NModal>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, watch } from 'vue'
-import type { FormInst, FormRules, SelectOption } from 'naive-ui'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
+import type { FormInst, FormRules } from 'naive-ui'
 
-const api = useApi()
+const route = useRoute()
 const recordsStore = useRecordsStore()
 const authStore = useAuthStore()
 const { message } = useNaiveDiscrete()
 
-const activeTab = ref('pending')
+const status = computed(() => {
+  const s = route.params.status as string
+  if (['pending', 'review', 'completed', 'exception'].includes(s)) return s
+  return 'pending'
+})
+
+const poolTitle = computed(() => {
+  const map: Record<string, string> = {
+    pending: '待处理池',
+    review: '待复核池',
+    completed: '已完成池',
+    exception: '异常池',
+  }
+  return map[status.value] || '记录池'
+})
+
 const showCreateModal = ref(false)
 const creating = ref(false)
 const formRef = ref<FormInst | null>(null)
-const assigneeOptions = ref<SelectOption[]>([])
 
 const createForm = reactive({
   contract_no: '',
@@ -74,20 +67,6 @@ const createForm = reactive({
   seller_name: '',
   seller_id_no: '',
   transfer_tax: 0,
-  assignee: null as string | number | null,
-})
-
-async function loadAssigneeOptions() {
-  try {
-    const users = await api.getUsers({ role: 'specialist' })
-    assigneeOptions.value = users.map(u => ({ label: u.username, value: u.id }))
-  } catch {}
-}
-
-watch(showCreateModal, async (val) => {
-  if (val && authStore.user?.role !== 'specialist') {
-    await loadAssigneeOptions()
-  }
 })
 
 const formRules: FormRules = {
@@ -99,13 +78,8 @@ const formRules: FormRules = {
   transfer_tax: { type: 'number', required: true, message: '请输入过户税费', trigger: 'blur' },
 }
 
-function handleTabChange(tab: string) {
-  activeTab.value = tab
-  refreshList()
-}
-
 function refreshList() {
-  recordsStore.fetchRecords({ status: activeTab.value, page_size: 50 })
+  recordsStore.fetchRecords({ status: status.value, page_size: 50 })
 }
 
 function openWorkspace(id: string) {
@@ -120,20 +94,10 @@ async function handleCreate() {
   }
   creating.value = true
   try {
-    const payload: any = {
-      contract_no: createForm.contract_no,
-      buyer_name: createForm.buyer_name,
-      buyer_id_no: createForm.buyer_id_no,
-      seller_name: createForm.seller_name,
-      seller_id_no: createForm.seller_id_no,
-      transfer_tax: createForm.transfer_tax,
-    }
-    if (authStore.user?.role === 'specialist') {
-      payload.assignee = authStore.userId ?? undefined
-    } else if (createForm.assignee) {
-      payload.assignee = createForm.assignee
-    }
-    const record = await recordsStore.createRecord(payload)
+    const record = await recordsStore.createRecord({
+      ...createForm,
+      assignee: authStore.userId ?? '',
+    })
     showCreateModal.value = false
     Object.assign(createForm, {
       contract_no: '',
@@ -142,7 +106,6 @@ async function handleCreate() {
       seller_name: '',
       seller_id_no: '',
       transfer_tax: 0,
-      assignee: null,
     })
     message.success('创建成功')
     navigateTo(`/workspace/${record.id}`)
@@ -154,7 +117,6 @@ async function handleCreate() {
   }
 }
 
-onMounted(() => {
-  refreshList()
-})
+onMounted(refreshList)
+watch(() => route.params.status, () => refreshList())
 </script>

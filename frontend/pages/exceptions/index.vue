@@ -22,7 +22,7 @@
               @click="openDetail(item)"
             >
               <div style="display: flex; justify-content: space-between; align-items: start;">
-                <NText strong style="font-size: 13px;">{{ (item as any).record?.contract_no || '-' }}</NText>
+                <NText strong style="font-size: 13px;">{{ item.record?.contract_no || '-' }}</NText>
                 <NTag :type="urgencyTagType(item.urgency)" size="tiny">{{ urgencyLabel(item.urgency) }}</NTag>
               </div>
               <NText depth="3" style="font-size: 12px; margin-top: 4px; display: block;">
@@ -36,7 +36,7 @@
       </div>
     </NSpin>
 
-    <NModal v-model:show="showDetailModal" preset="card" :title="`异常详情 - ${(selectedItem as any)?.record?.contract_no || ''}`" style="width: 640px;">
+    <NModal v-model:show="showDetailModal" preset="card" :title="`异常详情 - ${selectedItem?.record?.contract_no || ''}`" style="width: 640px;">
       <template v-if="selectedItem">
         <NDescriptions bordered :column="2" size="small">
           <NDescriptionsItem label="缺失类型">{{ missingTypeLabel(selectedItem.missing_type) }}</NDescriptionsItem>
@@ -66,7 +66,15 @@
         <NInput v-model:value="newNote" type="textarea" placeholder="添加处理备注..." :rows="3" />
         <NSpace style="margin-top: 8px; justify-content: flex-end;">
           <NButton :disabled="!newNote.trim()" @click="handleAddNote">添加备注</NButton>
+        </NSpace>
+
+        <NDivider>操作</NDivider>
+        <NSpace>
           <NButton type="info" @click="goToWorkspace">前往工作台</NButton>
+          <NButton v-if="selectedItem?.record?.status === 'pending' || selectedItem?.record?.status === 'exception'" type="warning" @click="goToWorkspace">处理资料</NButton>
+          <NButton v-if="selectedItem?.record?.status === 'pending' || selectedItem?.record?.status === 'exception'" type="primary" @click="handleSubmitReviewFromException">提交复核</NButton>
+          <NButton v-if="selectedItem?.record?.status === 'review'" type="success" @click="goToWorkspace">复核记录</NButton>
+          <NButton v-if="selectedItem?.record?.status === 'completed'" type="info" @click="goToWorkspace">回看记录</NButton>
         </NSpace>
       </template>
     </NModal>
@@ -223,7 +231,22 @@ async function handleAddNote() {
 
 function goToWorkspace() {
   if (!selectedItem.value) return
-  navigateTo(`/workspace/${selectedItem.value.record_id}`)
+  const recordId = selectedItem.value.record?.id || selectedItem.value.record_id
+  if (recordId) navigateTo(`/workspace/${recordId}`)
+}
+
+async function handleSubmitReviewFromException() {
+  if (!selectedItem.value) return
+  const recordId = selectedItem.value.record?.id || selectedItem.value.record_id
+  if (!recordId) return
+  try {
+    await api.post(`/transfer-records/${recordId}/submit_review/`, {})
+    message.success('已提交复核')
+    await loadExceptions()
+    showDetailModal.value = false
+  } catch (e: any) {
+    message.error(e.message || '提交复核失败')
+  }
 }
 
 onMounted(loadExceptions)

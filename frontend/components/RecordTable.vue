@@ -113,10 +113,13 @@ const actionsColumn = {
 
 const visibleColumns = computed(() => {
   const cols = [...baseColumns]
-  if (props.status === 'pending') {
+  if (props.status === 'pending' || props.status === 'exception') {
     cols.push(exceptionCountColumn)
   }
   if (props.status === 'completed') {
+    cols.push(reviewTagsColumn)
+  }
+  if (props.status === 'review') {
     cols.push(reviewTagsColumn)
   }
   cols.push(actionsColumn)

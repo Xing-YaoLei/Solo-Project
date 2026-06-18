@@ -15,4 +15,5 @@ urlpatterns = [
     path('auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('analytics/overview/', views.analytics_overview, name='analytics-overview'),
     path('dashboard/stats/', views.dashboard_stats, name='dashboard-stats'),
+    path('users/', views.user_list, name='user-list'),
 ]

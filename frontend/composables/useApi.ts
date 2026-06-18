@@ -53,6 +53,11 @@ export function useApi() {
 
     del: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
 
+    getUsers: (params: Record<string, string> = {}) => {
+      const qs = new URLSearchParams(params).toString()
+      return request<UserSummary[]>(`/users/?${qs}`)
+    },
+
     upload: async <T>(path: string, formData: FormData) => {
       const token = useCookie('token').value
       const headers: Record<string, string> = {}

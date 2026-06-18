@@ -10,6 +10,11 @@ export const useAuthStore = defineStore('auth', {
     isAuthenticated: (state) => !!state.token,
     isManager: (state) => state.user?.role === 'manager',
     isFinance: (state) => state.user?.role === 'finance',
+    userId: (state): number | null => {
+      if (!state.user?.id) return null
+      const n = Number(state.user.id)
+      return isNaN(n) ? null : n
+    },
   },
   actions: {
     init() {

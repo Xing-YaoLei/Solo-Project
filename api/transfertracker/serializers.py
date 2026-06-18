@@ -36,12 +36,23 @@ class ExceptionNoteSerializer(serializers.ModelSerializer):
         fields = ['id', 'author', 'content', 'created_at']
 
 
+class ExceptionItemRecordSummarySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TransferRecord
+        fields = ['id', 'contract_no', 'status']
+
+
 class ExceptionItemSerializer(serializers.ModelSerializer):
+    record = ExceptionItemRecordSummarySerializer(read_only=True)
+    record_id = serializers.SerializerMethodField()
     notes = ExceptionNoteSerializer(many=True, read_only=True)
 
     class Meta:
         model = ExceptionItem
-        fields = ['id', 'record', 'missing_type', 'urgency', 'status', 'discovered_at', 'resolved_at', 'notes']
+        fields = ['id', 'record', 'record_id', 'missing_type', 'urgency', 'status', 'discovered_at', 'resolved_at', 'notes']
+
+    def get_record_id(self, obj):
+        return str(obj.record_id) if obj.record_id else None
 
 
 class ReviewTagSerializer(serializers.ModelSerializer):
@@ -119,9 +130,12 @@ class TransferRecordDetailSerializer(serializers.ModelSerializer):
 
 
 class TransferRecordCreateSerializer(serializers.ModelSerializer):
+    assignee = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), write_only=True, required=False, allow_null=True)
+
     class Meta:
         model = TransferRecord
-        fields = ['contract_no', 'buyer_name', 'buyer_id_no', 'seller_name', 'seller_id_no', 'transfer_tax', 'assignee']
+        fields = ['id', 'contract_no', 'buyer_name', 'buyer_id_no', 'seller_name', 'seller_id_no', 'transfer_tax', 'assignee']
+        read_only_fields = ['id']
 
 
 class TransferRecordUpdateSerializer(serializers.ModelSerializer):

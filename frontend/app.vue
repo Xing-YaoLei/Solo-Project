@@ -1,15 +1,17 @@
 <template>
-  <NConfigProvider :theme-overrides="themeOverrides">
-    <NMessageProvider>
-      <NDialogProvider>
-        <NNotificationProvider>
-          <NuxtLayout>
-            <NuxtPage />
-          </NuxtLayout>
-        </NNotificationProvider>
-      </NDialogProvider>
-    </NMessageProvider>
-  </NConfigProvider>
+  <ClientOnly>
+    <NConfigProvider :theme-overrides="themeOverrides">
+      <NMessageProvider>
+        <NDialogProvider>
+          <NNotificationProvider>
+            <NuxtLayout>
+              <NuxtPage />
+            </NuxtLayout>
+          </NNotificationProvider>
+        </NDialogProvider>
+      </NMessageProvider>
+    </NConfigProvider>
+  </ClientOnly>
 </template>
 
 <script setup lang="ts">

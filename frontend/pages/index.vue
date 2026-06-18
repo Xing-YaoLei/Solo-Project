@@ -90,6 +90,14 @@
             <template #prefix>¥</template>
           </NInputNumber>
         </NFormItem>
+        <NFormItem v-if="authStore.user?.role !== 'specialist'" label="负责人" path="assignee">
+          <NSelect
+            v-model:value="createForm.assignee"
+            :options="assigneeOptions"
+            placeholder="请选择负责人"
+            clearable
+          />
+        </NFormItem>
       </NForm>
       <template #footer>
         <NSpace justify="end">
@@ -102,7 +110,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { format } from 'date-fns'
 import {
   TimeOutline,
@@ -112,8 +120,8 @@ import {
   AddCircleOutline,
   ArrowForwardOutline,
 } from '@vicons/ionicons5'
-import type { FormInst, FormRules } from 'naive-ui'
-import type { TransferRecord, TransferRecordCreate } from '~/types'
+import type { FormInst, FormRules, SelectOption } from 'naive-ui'
+import type { TransferRecord, TransferRecordCreate, UserSummary } from '~/types'
 
 const api = useApi()
 const recordsStore = useRecordsStore()
@@ -138,6 +146,7 @@ const recentRecords = ref<TransferRecord[]>([])
 const showCreateModal = ref(false)
 const creating = ref(false)
 const createFormRef = ref<FormInst | null>(null)
+const assigneeOptions = ref<SelectOption[]>([])
 
 const createForm = reactive({
   contract_no: '',
@@ -146,6 +155,20 @@ const createForm = reactive({
   seller_name: '',
   seller_id_no: '',
   transfer_tax: null as number | null,
+  assignee: null as string | number | null,
+})
+
+async function loadAssigneeOptions() {
+  try {
+    const users = await api.getUsers({ role: 'specialist' })
+    assigneeOptions.value = users.map(u => ({ label: u.username, value: u.id }))
+  } catch {}
+}
+
+watch(showCreateModal, async (val) => {
+  if (val && authStore.user?.role !== 'specialist') {
+    await loadAssigneeOptions()
+  }
 })
 
 const createRules: FormRules = {
@@ -206,11 +229,15 @@ async function handleCreate() {
       seller_name: createForm.seller_name,
       seller_id_no: createForm.seller_id_no,
       transfer_tax: createForm.transfer_tax ?? 0,
-      assignee_id: authStore.user?.id || '',
+    }
+    if (authStore.user?.role === 'specialist') {
+      payload.assignee = authStore.userId ?? undefined
+    } else if (createForm.assignee) {
+      payload.assignee = createForm.assignee
     }
     const record = await recordsStore.createRecord(payload)
     showCreateModal.value = false
-    Object.assign(createForm, { contract_no: '', buyer_name: '', buyer_id_no: '', seller_name: '', seller_id_no: '', transfer_tax: null })
+    Object.assign(createForm, { contract_no: '', buyer_name: '', buyer_id_no: '', seller_name: '', seller_id_no: '', transfer_tax: null, assignee: null })
     message.success('过户记录创建成功')
     navigateTo(`/workspace/${record.id}`)
   } catch (e: any) {

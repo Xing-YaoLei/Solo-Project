@@ -31,7 +31,7 @@ export interface TransferRecordCreate {
   seller_name: string
   seller_id_no: string
   transfer_tax: number
-  assignee_id: string
+  assignee?: number | string | null
 }
 
 export interface TransferRecordUpdate {
@@ -97,8 +97,15 @@ export type MissingType = 'buyer_id' | 'seller_id' | 'license' | 'registration' 
 export type UrgencyLevel = 'low' | 'medium' | 'high'
 export type ExceptionStatus = 'open' | 'reminded' | 'escalated' | 'resolved' | 'closed'
 
+export interface ExceptionItemRecordSummary {
+  id: string
+  contract_no: string
+  status: string
+}
+
 export interface ExceptionItem {
   id: string
+  record: ExceptionItemRecordSummary
   record_id: string
   missing_type: MissingType
   urgency: UrgencyLevel

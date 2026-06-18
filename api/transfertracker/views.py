@@ -1,7 +1,7 @@
 from datetime import timedelta
 
 from django.contrib.auth.models import User
-from django.db.models import Count, Avg, F, ExpressionWrapper, FloatField
+from django.db.models import Count, Avg, F, ExpressionWrapper, FloatField, Q
 from django.db.models.functions import TruncMonth
 from django.utils import timezone
 from rest_framework import viewsets, status, permissions, parsers
@@ -77,7 +77,7 @@ class TransferRecordViewSet(viewsets.ModelViewSet):
         return TransferRecordDetailSerializer
 
     def get_queryset(self):
-        qs = super().get_queryset()
+        qs = TransferRecord.objects.select_related('assignee__profile', 'reviewer__profile').prefetch_related('review_tags').all()
         user_role = self.request.user.profile.role
         status_filter = self.request.query_params.get('status')
         assignee_filter = self.request.query_params.get('assignee')
@@ -90,13 +90,34 @@ class TransferRecordViewSet(viewsets.ModelViewSet):
         if assignee_filter:
             qs = qs.filter(assignee_id=assignee_filter)
 
-        return qs.annotate(exception_count=Count('exception_items', filter=F('exception_items__status') != 'closed'))
+        return qs.annotate(
+            exception_count=Count(
+                'exception_items',
+                filter=~Q(exception_items__status__in=('closed', 'resolved')),
+                distinct=True
+            )
+        )
+
+    def perform_create(self, serializer):
+        user_role = self.request.user.profile.role
+        assignee = serializer.validated_data.get('assignee')
+        if not assignee or user_role == 'specialist':
+            assignee = self.request.user
+        serializer.save(assignee=assignee)
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        instance = TransferRecord.objects.select_related('assignee__profile', 'reviewer__profile').get(pk=serializer.instance.pk)
+        output_serializer = TransferRecordDetailSerializer(instance, context={'request': request})
+        return Response(output_serializer.data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'])
     def submit_review(self, request, pk=None):
         record = self.get_object()
-        if record.status != 'pending':
-            return Response({'detail': '仅待处理记录可提交复核'}, status=status.HTTP_400_BAD_REQUEST)
+        if record.status not in ('pending', 'exception'):
+            return Response({'detail': '仅待处理或异常记录可提交复核'}, status=status.HTTP_400_BAD_REQUEST)
         record.status = 'review'
         record.save()
         serializer = TransferRecordDetailSerializer(record, context={'request': request})
@@ -185,13 +206,10 @@ class TransferRecordViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get', 'patch'])
     def finance(self, request, pk=None):
         record = self.get_object()
+        finance_doc, _ = FinanceDoc.objects.get_or_create(record=record)
         if request.method == 'GET':
-            finance_doc = FinanceDoc.objects.filter(record=record).first()
-            if not finance_doc:
-                return Response({'detail': '金融资料不存在'}, status=status.HTTP_404_NOT_FOUND)
             serializer = FinanceDocSerializer(finance_doc, context={'request': request})
             return Response(serializer.data)
-        finance_doc, _ = FinanceDoc.objects.get_or_create(record=record)
         serializer = FinanceDocUpdateSerializer(finance_doc, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
@@ -200,16 +218,13 @@ class TransferRecordViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get', 'patch'])
     def vehicle(self, request, pk=None):
         record = self.get_object()
-        if request.method == 'GET':
-            vehicle = VehicleProfile.objects.filter(record=record).first()
-            if not vehicle:
-                return Response({'detail': '车辆档案不存在'}, status=status.HTTP_404_NOT_FOUND)
-            serializer = VehicleProfileSerializer(vehicle, context={'request': request})
-            return Response(serializer.data)
         vehicle, _ = VehicleProfile.objects.get_or_create(
             record=record,
             defaults={'brand': '未知', 'model': '未知', 'vin': f'TEMP-{record.id}'[:17]},
         )
+        if request.method == 'GET':
+            serializer = VehicleProfileSerializer(vehicle, context={'request': request})
+            return Response(serializer.data)
         serializer = VehicleProfileUpdateSerializer(vehicle, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
@@ -223,6 +238,9 @@ class ExceptionItemViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
+        user_role = self.request.user.profile.role
+        if user_role == 'specialist':
+            qs = qs.filter(record__assignee=self.request.user)
         status_filter = self.request.query_params.get('status')
         urgency_filter = self.request.query_params.get('urgency')
         missing_type_filter = self.request.query_params.get('missing_type')
@@ -354,7 +372,7 @@ def analytics_overview(request):
                     output_field=FloatField(),
                 )
             ),
-            exception_count=Count('exception_items', filter=~F('exception_items__status') == 'closed'),
+            exception_count=Count('exception_items', filter=~Q(exception_items__status='closed')),
             total_count=Count('exception_items'),
         )
     )
@@ -397,14 +415,37 @@ def dashboard_stats(request):
     pending_count = TransferRecord.objects.filter(status='pending').count() if role != 'specialist' else TransferRecord.objects.filter(status='pending', assignee=user).count()
     review_count = TransferRecord.objects.filter(status='review').count()
     exception_count = ExceptionItem.objects.filter(status__in=('open', 'reminded', 'escalated')).count()
+    if role == 'specialist':
+        exception_count = ExceptionItem.objects.filter(
+            status__in=('open', 'reminded', 'escalated'),
+            record__assignee=user
+        ).count()
     completed_this_month = TransferRecord.objects.filter(
         status='completed',
         reviewed_at__month=timezone.now().month,
         reviewed_at__year=timezone.now().year,
     ).count()
+    if role == 'specialist':
+        completed_this_month = TransferRecord.objects.filter(
+            status='completed',
+            assignee=user,
+            reviewed_at__month=timezone.now().month,
+            reviewed_at__year=timezone.now().year,
+        ).count()
     return Response({
         'pending_count': pending_count,
         'review_count': review_count,
         'exception_count': exception_count,
         'completed_this_month': completed_this_month,
     })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def user_list(request):
+    role_filter = request.query_params.get('role')
+    qs = User.objects.select_related('profile').all().order_by('username')
+    if role_filter:
+        qs = qs.filter(profile__role=role_filter)
+    serializer = UserSummarySerializer(qs, many=True)
+    return Response(serializer.data)

@@ -8,10 +8,11 @@
       </NBreadcrumb>
       <NSpace align="center">
         <NTag :type="statusTagType(currentRecord?.status)" size="large">{{ statusLabel(currentRecord?.status) }}</NTag>
-        <NButton v-if="currentRecord?.status === 'pending'" type="primary" @click="handleSubmitReview">提交复核</NButton>
+        <NButton v-if="currentRecord?.status === 'pending' || currentRecord?.status === 'exception'" type="primary" @click="handleSubmitReview">提交复核</NButton>
         <NButton v-if="canReview" type="success" @click="showApproveModal = true">通过</NButton>
         <NButton v-if="canReview" type="warning" @click="showRejectModal = true">退回</NButton>
         <NButton v-if="currentRecord?.status === 'completed'" @click="showTagModal = true">添加复盘标签</NButton>
+        <NButton v-if="currentRecord?.status === 'completed'" secondary @click="navigateTo('/records/completed')">返回已完成池</NButton>
       </NSpace>
     </NSpace>
 
@@ -36,12 +37,12 @@
           </NTimeline>
           <NEmpty v-if="recordsStore.quotations.length === 0" description="暂无报价" style="margin-top: 40px;" />
           <NDivider />
-          <NButton dashed block :disabled="isCompleted" @click="showQuotationModal = true">新增报价</NButton>
+          <NButton dashed block :disabled="!canEdit" @click="showQuotationModal = true">新增报价</NButton>
         </div>
 
         <div class="workspace-panel">
           <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: var(--color-primary);">过户材料</h3>
-          <NForm :model="recordForm" label-placement="left" label-width="100px" :disabled="isCompleted">
+          <NForm :model="recordForm" label-placement="left" label-width="100px" :disabled="!canEdit">
             <NFormItem label="合同编号">
               <NInput v-model:value="recordForm.contract_no" />
             </NFormItem>
@@ -63,7 +64,7 @@
             <NFormItem v-if="isCompleted && currentRecord?.review_note" label="复核备注">
               <NInput type="textarea" :value="currentRecord.review_note" readonly />
             </NFormItem>
-            <NFormItem v-if="!isCompleted">
+            <NFormItem v-if="canEdit">
               <NSpace>
                 <NButton type="primary" @click="handleSaveRecord">保存</NButton>
                 <NButton @click="showExceptionModal = true">标记异常</NButton>
@@ -100,7 +101,7 @@
         <div class="workspace-panel">
           <NCollapse :default-expanded-names="['vehicle', 'finance']">
             <NCollapseItem title="车辆档案" name="vehicle">
-              <NForm v-if="vehicleForm" :model="vehicleForm" label-placement="left" label-width="80px" :disabled="isCompleted" size="small">
+              <NForm :model="vehicleForm" label-placement="left" label-width="80px" :disabled="!canEdit" size="small">
                 <NFormItem label="品牌"><NInput v-model:value="vehicleForm.brand" /></NFormItem>
                 <NFormItem label="型号"><NInput v-model:value="vehicleForm.model" /></NFormItem>
                 <NFormItem label="VIN码"><NInput v-model:value="vehicleForm.vin" /></NFormItem>
@@ -114,16 +115,15 @@
                 </NFormItem>
                 <NFormItem><NButton type="primary" size="small" @click="handleSaveVehicle">保存车辆信息</NButton></NFormItem>
               </NForm>
-              <NEmpty v-else description="暂无车辆信息" />
               <NDivider />
               <h4 style="font-size: 13px; margin-bottom: 8px;">行驶证 / 登记证</h4>
               <NUpload :max="5" accept="image/*,.pdf" :custom-request="(opts: any) => handleFileUpload(opts, 'vehicle_license')">
-                <NButton size="small" :disabled="isCompleted">上传证件</NButton>
+                <NButton size="small" :disabled="!canEdit">上传证件</NButton>
               </NUpload>
             </NCollapseItem>
 
             <NCollapseItem title="金融资料" name="finance">
-              <NForm v-if="financeForm" :model="financeForm" label-placement="left" label-width="80px" :disabled="isCompleted" size="small">
+              <NForm :model="financeForm" label-placement="left" label-width="80px" :disabled="!canEdit" size="small">
                 <NFormItem label="贷款方案"><NInput v-model:value="financeForm.loan_scheme" /></NFormItem>
                 <NFormItem label="首付比例"><NInputNumber v-model:value="financeForm.down_payment_ratio" :min="0" :max="1" :step="0.01" :precision="4" style="width: 100%;" /></NFormItem>
                 <NFormItem label="月供金额"><NInputNumber v-model:value="financeForm.monthly_payment" :min="0" :precision="2" style="width: 100%;" /></NFormItem>
@@ -131,11 +131,10 @@
                 <NFormItem label="金融机构"><NInput v-model:value="financeForm.institution" /></NFormItem>
                 <NFormItem><NButton type="primary" size="small" @click="handleSaveFinance">保存金融信息</NButton></NFormItem>
               </NForm>
-              <NEmpty v-else description="暂无金融资料" />
               <NDivider />
               <h4 style="font-size: 13px; margin-bottom: 8px;">金融附件</h4>
               <NUpload :max="10" accept="image/*,.pdf" :custom-request="(opts: any) => handleFileUpload(opts, 'finance')">
-                <NButton size="small" :disabled="isCompleted">上传附件</NButton>
+                <NButton size="small" :disabled="!canEdit">上传附件</NButton>
               </NUpload>
             </NCollapseItem>
           </NCollapse>
@@ -198,6 +197,10 @@ const isRejected = computed(() => {
 
 const canReview = computed(() => {
   return currentRecord.value?.status === 'review' && (authStore.isManager || authStore.isFinance)
+})
+
+const canEdit = computed(() => {
+  return currentRecord.value && currentRecord.value.status !== 'completed'
 })
 
 const recordForm = reactive({
@@ -306,10 +309,24 @@ function syncFormFromRecord() {
     })
   }
   if (recordsStore.vehicleProfile) {
-    Object.assign(vehicleForm, recordsStore.vehicleProfile)
+    Object.assign(vehicleForm, {
+      brand: recordsStore.vehicleProfile.brand || '',
+      model: recordsStore.vehicleProfile.model || '',
+      vin: recordsStore.vehicleProfile.vin || '',
+      mileage: recordsStore.vehicleProfile.mileage ?? null,
+      condition_grade: recordsStore.vehicleProfile.condition_grade ?? null,
+      registration_date: recordsStore.vehicleProfile.registration_date ? new Date(recordsStore.vehicleProfile.registration_date).getTime() : null,
+      source_channel: recordsStore.vehicleProfile.source_channel || '',
+    })
   }
   if (recordsStore.financeDoc) {
-    Object.assign(financeForm, recordsStore.financeDoc)
+    Object.assign(financeForm, {
+      loan_scheme: recordsStore.financeDoc.loan_scheme || '',
+      down_payment_ratio: recordsStore.financeDoc.down_payment_ratio ?? null,
+      monthly_payment: recordsStore.financeDoc.monthly_payment ?? null,
+      months: recordsStore.financeDoc.months ?? null,
+      institution: recordsStore.financeDoc.institution || '',
+    })
   }
 }
 
