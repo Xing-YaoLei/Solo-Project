@@ -36,7 +36,7 @@ import {
   CheckCircle2,
   Loader2,
 } from 'lucide-react';
-import type { WarningThreshold, RuleConfig, RiskLevel, TurnoverStage } from '@shared/types';
+import type { WarningThreshold, RuleConfig, RiskLevel, TurnoverStage, PaginatedResponse, Vehicle } from '@shared/types';
 
 const INVALIDATE_KEYS = [
   QUERY_KEYS.thresholds,
@@ -166,27 +166,39 @@ function ThresholdsTab({ onSaved }: { onSaved: (data: ToastData | string) => voi
     setLocalThresholds((list) => list.map((t) => (t.id === id ? { ...t, ...patch } : t)));
   };
 
-  const invalidateAll = (affectedVehicleIds?: string[]) => {
-    INVALIDATE_KEYS.forEach((key) => {
+  const invalidateByVins = (data?: { recalculationResult?: { affectedVehicleIds?: string[] }; affectedVehicleIds?: string[] }) => {
+    const affectedVehicleIds = (data?.recalculationResult?.affectedVehicleIds ?? data?.affectedVehicleIds ?? []) as string[];
+
+    const affectedVins = affectedVehicleIds
+      .map((id) => {
+        const cached = queryClient.getQueryData<PaginatedResponse<Vehicle>>([...QUERY_KEYS.vehicles]);
+        return cached?.items?.find((v) => v.id === id)?.vin;
+      })
+      .filter(Boolean) as string[];
+
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.thresholds });
+
+    affectedVins.forEach((vin) => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.review(vin) });
+    });
+
+    [QUERY_KEYS.rules, QUERY_KEYS.riskMatrix, QUERY_KEYS.alerts, QUERY_KEYS.dashboardSummary, QUERY_KEYS.vehicles, QUERY_KEYS.documentMissing].forEach((key) => {
       queryClient.invalidateQueries({ queryKey: key });
     });
-    if (affectedVehicleIds && affectedVehicleIds.length > 0) {
-      affectedVehicleIds.slice(0, 5).forEach((id) => {
-        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.review(id) });
-      });
-    }
+
+    return affectedVins;
   };
 
   const updateThresholdMutate = useMutation({
     mutationFn: (patch: Partial<WarningThreshold> & { id: string }) => updateWarningThreshold(patch),
     onSuccess: (response) => {
-      const data = response.data;
-      invalidateAll(data.affectedVehicleIds);
+      const data = response.data as unknown as { recalculationResult?: { affectedVehicleIds?: string[] }; affectedVehicleIds?: string[]; affectedCount?: number };
+      const affectedVins = invalidateByVins(data);
       queryClient.setQueryData(QUERY_KEYS.thresholds, localThresholds);
       onSaved({
-        message: `触发重新计算，受影响 ${data.affectedCount} 台车`,
-        subMessage: data.affectedVehicleIds && data.affectedVehicleIds.length > 0
-          ? `涉及车辆：${data.affectedVehicleIds.slice(0, 3).join('、')}${data.affectedVehicleIds.length > 3 ? '...' : ''}`
+        message: `触发重新计算，受影响 ${data.affectedCount ?? affectedVins.length} 台车，已刷新 ${affectedVins.length} 辆车的复盘材料`,
+        subMessage: affectedVins.length > 0
+          ? `涉及车辆：${affectedVins.slice(0, 3).join('、')}${affectedVins.length > 3 ? '...' : ''}`
           : undefined,
         variant: 'info',
       });
@@ -195,9 +207,10 @@ function ThresholdsTab({ onSaved }: { onSaved: (data: ToastData | string) => voi
 
   const toggleThresholdMutate = useMutation({
     mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) => toggleWarningThreshold(id, enabled),
-    onSuccess: () => {
-      invalidateAll();
-      onSaved('阈值配置已保存，相关数据已刷新');
+    onSuccess: (response) => {
+      const data = response.data as unknown as { recalculationResult?: { affectedVehicleIds?: string[] }; affectedVehicleIds?: string[] };
+      const affectedVins = invalidateByVins(data);
+      onSaved(`阈值配置已保存，已刷新 ${affectedVins.length} 辆车的复盘材料`);
     },
   });
 

@@ -25,38 +25,32 @@ interface DashboardSummary {
   storeCount: number;
 }
 
-interface ReviewData {
-  vehicle: Vehicle;
-  documents: {
-    type: string;
-    name: string;
-    status: string;
-    uploadedAt?: string;
-  }[];
-  alerts: {
-    id: string;
-    level: string;
-    message: string;
-    triggeredAt: string;
-    resolved: boolean;
-  }[];
+export interface ReviewData {
+  vehicle: Vehicle & { alertsCount?: number; documents?: DocumentItem[] };
+  store?: Store;
+  documents: DocumentItem[];
+  alerts: Alert[];
   preparationRecords: {
+    id?: string;
     itemName: string;
     category: string;
     cost: number;
-    status: string;
+    status: 'done' | 'in_progress' | 'pending';
     startedAt?: string;
     completedAt?: string;
   }[];
   testDriveRecords: {
+    id?: string;
     customerName: string;
     driveAt: string;
-    mileage: number;
-    salesPerson: string;
+    mileageBefore?: number;
+    mileageAfter?: number;
+    salesPerson?: string;
     rating: number;
     feedback?: string;
   }[];
   quoteRecords: {
+    id?: string;
     amount: number;
     source: string;
     quotedAt: string;
@@ -79,7 +73,7 @@ interface ReviewData {
 }
 
 interface VehicleDetail extends Vehicle {
-  store: Store;
+  store?: Store;
   alerts: Alert[];
   documents: DocumentItem[];
 }
@@ -308,23 +302,10 @@ export function updateRule(
   });
 }
 
-export async function fetchReviewData(vin: string): Promise<ApiResponse<ReviewData>> {
-  const response = await request<ReviewData>({
+export function fetchReviewData(vin: string): Promise<ApiResponse<ReviewData>> {
+  return request<ReviewData>({
     url: `/review/${vin}`,
   });
-  return {
-    ...response,
-    data: {
-      ...response.data,
-      alerts: response.data.alerts.map((alert) => ({
-        id: alert.id,
-        level: alert.level,
-        message: alert.message,
-        triggeredAt: alert.triggeredAt,
-        resolved: alert.resolved,
-      })),
-    },
-  };
 }
 
 export function fetchVehicles(

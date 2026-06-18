@@ -159,11 +159,105 @@ def test_review_alerts_based_on_thresholds():
         print("✓ 复盘数据正确，该车无预警")
     new_tests_passed += 1
 
+def test_vehicles_list_fields():
+    global new_tests_passed, new_tests_failed
+    print("\n5. 测试 GET /api/v1/vehicles?page=1&page_size=1 (列表字段)")
+    r = client.get("/api/v1/vehicles?page=1&page_size=1")
+    body = r.json()
+    assert r.status_code == 200, f"HTTP状态码错误: {r.status_code}"
+    data = body.get("data")
+    assert data is not None, "data 字段不存在"
+    items = data.get("items")
+    assert items is not None, "items 字段不存在"
+    assert len(items) >= 1, "items 列表为空"
+    v = items[0]
+    assert "alertsCount" in v, "列表项缺少 alertsCount 字段"
+    assert "alerts_count" in v, "列表项缺少 alerts_count 字段"
+    assert v["alertsCount"] == v["alerts_count"], "alertsCount 与 alerts_count 不一致"
+    assert "alerts" in v, "列表项缺少 alerts 字段"
+    assert isinstance(v["alerts"], list), "alerts 应该是列表"
+    assert len(v["alerts"]) <= 3, f"alerts 最多 3 条，实际 {len(v['alerts'])} 条"
+    assert "documents" in v, "列表项缺少 documents 字段"
+    assert isinstance(v["documents"], list), "documents 应该是列表"
+    assert "storeName" in v, "列表项缺少 storeName 字段"
+    assert "store_name" in v, "列表项缺少 store_name 字段"
+    print(f"✓ 车辆列表字段完整，alertsCount={v['alertsCount']}, documents={len(v['documents'])}")
+    new_tests_passed += 1
+
+
+def test_review_unified_package():
+    global new_tests_passed, new_tests_failed
+    print("\n6. 测试 GET /api/v1/review/EXVTUKC2TZ1ER4XKZ (统一复盘包)")
+    r = client.get("/api/v1/review/EXVTUKC2TZ1ER4XKZ")
+    body = r.json()
+    assert r.status_code == 200, f"HTTP状态码错误: {r.status_code}"
+    data = body.get("data")
+    assert data is not None, "data 字段不存在"
+
+    assert "preparationRecords" in data, "缺少 preparationRecords (camelCase) 字段"
+    assert isinstance(data["preparationRecords"], list), "preparationRecords 应该是列表"
+    assert "testDriveRecords" in data, "缺少 testDriveRecords (camelCase) 字段"
+    assert isinstance(data["testDriveRecords"], list), "testDriveRecords 应该是列表"
+    assert "quoteRecords" in data, "缺少 quoteRecords (camelCase) 字段"
+    assert isinstance(data["quoteRecords"], list), "quoteRecords 应该是列表"
+    assert "thresholdHits" in data, "缺少 thresholdHits (camelCase) 字段"
+    assert isinstance(data["thresholdHits"], list), "thresholdHits 应该是列表"
+
+    assert "timeline" in data, "缺少 timeline 字段"
+    assert isinstance(data["timeline"], list), "timeline 应该是列表"
+    assert len(data["timeline"]) == 6, f"timeline 应有 6 个阶段，实际 {len(data['timeline'])} 个"
+    for t in data["timeline"]:
+        assert "stage" in t, "timeline 项缺少 stage"
+        assert "label" in t, "timeline 项缺少 label"
+        assert "at" in t, "timeline 项缺少 at"
+        assert "hasDocIssue" in t, "timeline 项缺少 hasDocIssue"
+        assert "note" in t, "timeline 项缺少 note"
+
+    assert isinstance(data["thresholdHits"], list), "thresholdHits 应该是列表"
+    for th in data["thresholdHits"]:
+        assert isinstance(th, dict), "thresholdHits 应该是对象数组"
+        assert "thresholdId" in th, "thresholdHits 项缺少 thresholdId"
+        assert "thresholdName" in th, "thresholdHits 项缺少 thresholdName"
+        assert "level" in th, "thresholdHits 项缺少 level"
+        assert "message" in th, "thresholdHits 项缺少 message"
+
+    print(f"✓ 统一复盘包结构正确，preparationRecords={len(data['preparationRecords'])}, timeline={len(data['timeline'])}, thresholdHits={len(data['thresholdHits'])}")
+    new_tests_passed += 1
+
+
+def test_review_vehicle_risk_consistency():
+    global new_tests_passed, new_tests_failed
+    print("\n7. 测试车辆 riskLevel 一致性 (vehicles vs review")
+    rv = client.get("/api/v1/vehicles?page=1&page_size=1")
+    rv_body = rv.json()
+    assert rv.status_code == 200
+    rv_data = rv_body.get("data")
+    assert rv_data is not None
+    items = rv_data.get("items")
+    assert items and len(items) >= 1
+    vin = items[0]["vin"]
+    list_risk = items[0]["riskLevel"]
+
+    rr = client.get(f"/api/v1/review/{vin}")
+    rr_body = rr.json()
+    assert rr.status_code == 200
+    rr_data = rr_body.get("data")
+    assert rr_data is not None
+    review_risk = rr_data["vehicle"]["riskLevel"]
+
+    assert list_risk == review_risk, f"riskLevel 不一致: 列表={list_risk}, 复盘={review_risk}"
+    print(f"✓ VIN={vin} riskLevel 一致: {list_risk}")
+    new_tests_passed += 1
+
+
 try:
     test_thresholds_full()
     test_update_threshold()
     test_risk_matrix_not_random()
     test_review_alerts_based_on_thresholds()
+    test_vehicles_list_fields()
+    test_review_unified_package()
+    test_review_vehicle_risk_consistency()
 except AssertionError as e:
     print(f"✗ 测试失败: {e}")
     new_tests_failed += 1

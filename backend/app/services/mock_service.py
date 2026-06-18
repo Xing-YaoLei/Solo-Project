@@ -522,32 +522,57 @@ class MockService:
     def generate_review_data(self, vin: str) -> Dict:
         vehicle = next((v for v in self._vehicles if v["vin"].lower() == vin.lower()), self._vehicles[0])
         store = next((s for s in self._stores if s["id"] == vehicle["storeId"]), self._stores[0])
+        base_days = vehicle["stockDays"]
+
+        alerts_for_v = [a for a in self._alerts if a["vin"] == vehicle["vin"]]
+
+        vehicle_with_extra = dict(vehicle)
+        vehicle_with_extra["alertsCount"] = len(alerts_for_v)
+        vehicle_with_extra["alerts_count"] = len(alerts_for_v)
+        vehicle_with_extra["documents"] = vehicle["documents"]
+
+        stage_label_map = {
+            "inbound": "入库",
+            "preparation": "整备中",
+            "test_drive": "试驾",
+            "quoting": "报价",
+            "deal": "成交",
+            "transfer": "过户",
+        }
+        stage_note_base = {
+            "inbound": "车辆入库验收完成",
+            "preparation": "整备工作进行中",
+            "test_drive": "客户试驾体验",
+            "quoting": "与意向客户洽谈报价",
+            "deal": "达成交易意向并签约",
+            "transfer": "车管所过户手续办理",
+        }
+
+        missing_docs = [d for d in vehicle["documents"] if d.get("status") != "present"]
+        missing_doc_names = [d.get("documentName", d.get("docType", "")) for d in missing_docs]
 
         timeline = []
-        base_days = vehicle["stockDays"]
-        timeline.append({
-            "time": _days_ago(base_days).isoformat(),
-            "stage": "inbound",
-            "title": "车辆入库",
-            "description": f"{vehicle['brand']} {vehicle['model']} 入库 {store['name']}",
-            "operator": "系统自动",
-        })
-        stages_timeline = [
-            ("preparation", "开始整备", "车辆进入整备车间"),
-            ("test_drive", "试驾登记", f"完成{random.randint(1, 5)}次客户试驾"),
-            ("quoting", "报价阶段", f"收到{random.randint(2, 8)}条报价"),
-            ("deal", "成交签约", "与客户达成交易意向"),
-            ("transfer", "过户办理", "车管所过户手续办理中"),
-        ]
-        done_count = min(random.randint(1, len(stages_timeline)), STAGES.index(vehicle["stage"]))
-        for i in range(done_count):
-            key, title, desc = stages_timeline[i]
+        vehicle_stage_idx = STAGES.index(vehicle["stage"]) if vehicle["stage"] in STAGES else 0
+        for i, stage in enumerate(STAGES):
+            is_done = i <= vehicle_stage_idx
+            days_offset = base_days - i * random.randint(2, 8) if is_done else base_days + (i - vehicle_stage_idx) * random.randint(3, 10)
+            at_date = _days_ago(max(0, days_offset)).isoformat()
+
+            has_doc_issue = False
+            note = stage_note_base.get(stage, "")
+            if stage == "preparation" and missing_docs:
+                has_doc_issue = True
+                note = f"{missing_doc_names[0]}缺失，需联系原车主补办" if missing_doc_names else "材料待补充"
+            elif stage == "quoting" and len(missing_docs) >= 2:
+                has_doc_issue = True
+                note = f"材料不完整（缺{'、'.join(missing_doc_names[:2])}），报价存在风险"
+
             timeline.append({
-                "time": _days_ago(max(1, base_days - (i + 1) * random.randint(3, 10))).isoformat(),
-                "stage": key,
-                "title": title,
-                "description": desc,
-                "operator": random.choice(["张经理", "李主管", "王顾问"]),
+                "stage": stage,
+                "label": stage_label_map.get(stage, stage),
+                "at": at_date,
+                "hasDocIssue": has_doc_issue,
+                "note": note,
             })
 
         prep_records = []
@@ -556,23 +581,25 @@ class MockService:
         for name, cat in prep_items[:random.randint(3, 6)]:
             cost = random.randint(100, 2000)
             started = _days_ago(random.randint(5, base_days))
+            prep_status = random.choice(["done", "done", "in_progress", "pending"])
             prep_records.append({
                 "id": _rand_uuid(),
                 "itemName": name,
                 "item_name": name,
                 "category": cat,
                 "cost": cost,
-                "status": random.choice(["done", "done", "in_progress"]),
+                "status": prep_status,
                 "startedAt": started.isoformat(),
                 "started_at": started.isoformat(),
-                "completedAt": (started + timedelta(hours=random.randint(2, 24))).isoformat(),
-                "completed_at": (started + timedelta(hours=random.randint(2, 24))).isoformat(),
+                "completedAt": (started + timedelta(hours=random.randint(2, 24))).isoformat() if prep_status == "done" else None,
+                "completed_at": (started + timedelta(hours=random.randint(2, 24))).isoformat() if prep_status == "done" else None,
             })
 
         td_records = []
         for _ in range(random.randint(1, 5)):
             mb = vehicle["mileage"] + random.randint(0, 100)
             ma = mb + random.randint(5, 50)
+            sales_person = random.choice(["销售小王", "顾问小李", "销售小张"])
             td_records.append({
                 "id": _rand_uuid(),
                 "customerName": random.choice(["陈先生", "刘女士", "赵先生", "孙先生", "周女士"]),
@@ -580,10 +607,11 @@ class MockService:
                 "customerPhone": f"138{random.randint(10000000, 99999999)}",
                 "customer_phone": f"138{random.randint(10000000, 99999999)}",
                 "mileageBefore": mb,
-                "mileage_after": ma,
-                "mileageAfter": ma,
                 "mileage_before": mb,
-                "salesman": random.choice(["销售小王", "顾问小李", "销售小张"]),
+                "mileageAfter": ma,
+                "mileage_after": ma,
+                "salesPerson": sales_person,
+                "salesperson": sales_person,
                 "rating": random.randint(3, 5),
                 "driveAt": _days_ago(random.randint(1, base_days)).isoformat(),
                 "drive_at": _days_ago(random.randint(1, base_days)).isoformat(),
@@ -608,33 +636,58 @@ class MockService:
                 "quoted_at": _days_ago(random.randint(1, base_days)).isoformat(),
             })
 
-        alerts_for_v = [a for a in self._alerts if a["vin"] == vehicle["vin"]]
-
-        alerts_by_threshold = {}
-        threshold_hits = []
+        threshold_hits_objs = []
+        threshold_hits_ids = []
+        seen_thresholds = set()
         for alert in alerts_for_v:
             tid = alert.get("thresholdId")
-            if tid and tid not in alerts_by_threshold:
-                alerts_by_threshold[tid] = []
-                threshold_hits.append(tid)
-            if tid:
-                alerts_by_threshold[tid].append(alert)
+            if tid and tid not in seen_thresholds:
+                seen_thresholds.add(tid)
+                t_obj = next((t for t in self._thresholds if t["id"] == tid), None)
+                t_name = t_obj.get("name", "") if t_obj else alert.get("documentName", "")
+                threshold_hits_objs.append({
+                    "thresholdId": tid,
+                    "thresholdName": t_name,
+                    "level": alert.get("level", "medium"),
+                    "message": alert.get("message", ""),
+                })
+                threshold_hits_ids.append(tid)
+
+        documents_unified = []
+        for d in vehicle["documents"]:
+            doc = dict(d)
+            if "uploadedAt" not in doc and "uploaded_at" in doc:
+                doc["uploadedAt"] = doc["uploaded_at"]
+            if "uploaded_at" not in doc and "uploadedAt" in doc:
+                doc["uploaded_at"] = doc["uploadedAt"]
+            if "type" not in doc:
+                doc["type"] = doc.get("documentType", doc.get("docType", ""))
+            if "name" not in doc:
+                doc["name"] = doc.get("documentName", doc.get("display_name", ""))
+            if "status" not in doc:
+                doc["status"] = "present"
+            if "verified" not in doc:
+                doc["verified"] = doc.get("status") == "present"
+            documents_unified.append(doc)
 
         return {
-            "vehicle": vehicle,
+            "vehicle": vehicle_with_extra,
             "store": store,
-            "timeline": timeline,
-            "preparation_records": prep_records,
-            "test_drive_records": td_records,
-            "quote_records": quote_records,
-            "documents": vehicle["documents"],
+            "documents": documents_unified,
             "alerts": alerts_for_v,
-            "alertsByThreshold": alerts_by_threshold,
-            "alerts_by_threshold": alerts_by_threshold,
+            "preparationRecords": prep_records,
+            "preparation_records": prep_records,
+            "testDriveRecords": td_records,
+            "test_drive_records": td_records,
+            "quoteRecords": quote_records,
+            "quote_records": quote_records,
+            "timeline": timeline,
+            "thresholdHits": threshold_hits_objs,
+            "threshold_hits": threshold_hits_objs,
+            "alertsByThreshold": {},
+            "alerts_by_threshold": {},
             "currentThresholds": self._thresholds,
             "current_thresholds": self._thresholds,
-            "thresholdHits": threshold_hits,
-            "threshold_hits": threshold_hits,
             "risk_assessment": {
                 "level": vehicle["riskLevel"],
                 "score": random.randint(10, 90),
@@ -669,7 +722,25 @@ class MockService:
         total = len(filtered)
         start = (page - 1) * page_size
         end = start + page_size
-        items = filtered[start:end]
+        raw_items = filtered[start:end]
+
+        items = []
+        for v in raw_items:
+            item = dict(v)
+            alerts_for_v = [a for a in self._alerts if a["vin"] == v["vin"]]
+            item["alerts"] = alerts_for_v[:3]
+            item["alertsCount"] = len(alerts_for_v)
+            item["alerts_count"] = len(alerts_for_v)
+            item["documents"] = v.get("documents", [])
+            if "storeName" not in item:
+                store = next((s for s in self._stores if s["id"] == v["storeId"]), None)
+                if store:
+                    item["storeName"] = store["name"]
+                    item["store_name"] = store["name"]
+            elif "store_name" not in item:
+                item["store_name"] = item["storeName"]
+            items.append(item)
+
         return {"items": items, "total": total, "page": page, "page_size": page_size, "totalPages": (total + page_size - 1) // page_size}
 
     def get_vehicle_by_vin(self, vin: str) -> Optional[Dict]:

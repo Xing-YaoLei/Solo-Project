@@ -15,7 +15,7 @@ import {
   mockQuoteCandles,
   mockSyncDelayInfo,
 } from '@/data/mockData';
-import { fetchReviewData, fetchVehicleByVin } from '@/services/endpoints';
+import { fetchReviewData, type ReviewData } from '@/services/endpoints';
 import { STAGE_META, STAGE_ICONS, RISK_COLORS, RISK_LABELS, DOCUMENT_TYPES } from '@/utils/constants';
 import { formatDate, formatDateTime, formatMoney } from '@/utils/format';
 import { cn } from '@/lib/utils';
@@ -35,24 +35,37 @@ import {
   Wrench,
   Users,
 } from 'lucide-react';
-import type { Vehicle, Store, Alert, DocumentItem } from '@shared/types';
 
-function mockGenerateReviewData(vin: string): ReviewData {
+const THRESHOLD_LEVEL_COLORS: Record<string, string> = {
+  critical: 'bg-rose-500/15 text-rose-300 border-rose-500/30',
+  high: 'bg-orange-500/15 text-orange-300 border-orange-500/30',
+  medium: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+  warning: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+  low: 'bg-sky-500/15 text-sky-300 border-sky-500/30',
+  info: 'bg-slate-500/15 text-slate-300 border-slate-500/30',
+};
+
+function getThresholdColor(level: string): string {
+  return THRESHOLD_LEVEL_COLORS[level] ?? THRESHOLD_LEVEL_COLORS.info;
+}
+
+function createMockReviewData(vin: string): ReviewData {
   const vehicle = mockVehicles.find((v) => v.vin === vin) ?? mockVehicles[0];
+  const store = mockStores.find((s) => s.id === vehicle.storeId) ?? mockStores[0];
+  const documents = mockDocuments.filter((d) => d.vehicleId === vehicle.id);
   return {
-    vehicle,
-    documents: mockDocuments.filter((d) => d.vehicleId === vehicle.id).map((d) => ({
-      type: d.type,
-      name: d.name,
-      status: d.status,
-      uploadedAt: d.uploadedAt,
-    })),
+    vehicle: { ...vehicle, alertsCount: 0, documents },
+    store,
+    documents,
     alerts: [],
-    preparationRecords: mockPreparationRecords,
+    preparationRecords: mockPreparationRecords.map((p) => ({
+      ...p,
+      status: (p.status === 'completed' ? 'done' : p.status) as 'done' | 'in_progress' | 'pending',
+    })),
     testDriveRecords: mockTestDriveRecords.map((t) => ({
       customerName: t.customerName,
       driveAt: t.driveAt,
-      mileage: t.mileage,
+      mileageAfter: t.mileage,
       salesPerson: t.salesPerson,
       rating: t.rating,
       feedback: t.feedback,
@@ -69,108 +82,35 @@ function mockGenerateReviewData(vin: string): ReviewData {
   };
 }
 
-interface ReviewData {
-  vehicle: Vehicle;
-  documents: {
-    type: string;
-    name: string;
-    status: string;
-    uploadedAt?: string;
-  }[];
-  alerts: {
-    id: string;
-    level: string;
-    message: string;
-    triggeredAt: string;
-    resolved: boolean;
-  }[];
-  preparationRecords: {
-    itemName: string;
-    category: string;
-    cost: number;
-    status: string;
-    startedAt?: string;
-    completedAt?: string;
-  }[];
-  testDriveRecords: {
-    customerName: string;
-    driveAt: string;
-    mileage: number;
-    salesPerson: string;
-    rating: number;
-    feedback?: string;
-  }[];
-  quoteRecords: {
-    amount: number;
-    source: string;
-    quotedAt: string;
-    isDeal: boolean;
-    dealPrice?: number;
-  }[];
-  timeline: {
-    stage: string;
-    label: string;
-    at: string;
-    hasDocIssue: boolean;
-    note: string;
-  }[];
-  thresholdHits: {
-    thresholdId: string;
-    thresholdName: string;
-    level: string;
-    message: string;
-  }[];
-}
-
 export default function ReviewPage() {
   const { vin = 'demo' } = useParams();
 
-  interface VehicleDetail extends Vehicle {
-    store: Store;
-    alerts: Alert[];
-    documents: DocumentItem[];
-  }
-
-  const vehicleQuery = useQuery({
-    queryKey: QUERY_KEYS.review(vin),
-    queryFn: async () => (await fetchVehicleByVin(vin)).data as VehicleDetail,
-    initialData: (): VehicleDetail => {
-      const mockVehicle = mockVehicles.find((v) => v.vin === vin) ?? mockVehicles[0];
-      return {
-        ...mockVehicle,
-        store: mockStores.find((s) => s.id === mockVehicle.storeId) ?? mockStores[0],
-        alerts: [],
-        documents: mockDocuments.filter((d) => d.vehicleId === mockVehicle.id),
-      };
-    },
-  });
-
   const reviewQuery = useQuery({
-    queryKey: [...QUERY_KEYS.review(vin), 'full'],
+    queryKey: QUERY_KEYS.review(vin),
     queryFn: async () => (await fetchReviewData(vin)).data,
-    initialData: (): ReviewData => mockGenerateReviewData(vin),
+    initialData: (): ReviewData => createMockReviewData(vin),
   });
 
-  const vehicle = vehicleQuery.data;
-  const store = vehicle.store;
-  const vehicleDocs = vehicle.documents;
+  const vehicle = reviewQuery.data?.vehicle;
+  const store = reviewQuery.data?.store;
+  const vehicleDocs = reviewQuery.data?.documents ?? [];
 
-  const reviewData = reviewQuery.data;
-  const timeline = reviewData.timeline;
-  const preparationRecords = reviewData.preparationRecords;
-  const testDriveRecords = reviewData.testDriveRecords;
-  const quoteRecords = reviewData.quoteRecords;
-  const thresholdHits = reviewData.thresholdHits;
+  const timeline = reviewQuery.data?.timeline ?? [];
+  const preparationRecords = reviewQuery.data?.preparationRecords ?? [];
+  const testDriveRecords = reviewQuery.data?.testDriveRecords ?? [];
+  const quoteRecords = reviewQuery.data?.quoteRecords ?? [];
+  const thresholdHits = reviewQuery.data?.thresholdHits ?? [];
 
   const prepTotal = preparationRecords.reduce((acc, p) => acc + p.cost, 0);
-  const avgPrepDays = Math.round(
-    preparationRecords
-      .filter((p) => p.completedAt)
-      .reduce((acc, p) => acc + dayjs(p.completedAt).diff(dayjs(p.startedAt), 'day', true), 0) /
-      Math.max(1, preparationRecords.filter((p) => p.completedAt).length)
-  );
+  const completedPreps = preparationRecords.filter((p) => p.completedAt);
+  const avgPrepDays = completedPreps.length > 0
+    ? Math.round(
+        completedPreps.reduce((acc, p) => acc + dayjs(p.completedAt!).diff(dayjs(p.startedAt), 'day', true), 0) /
+          completedPreps.length
+      )
+    : 0;
 
-  if (vehicleQuery.isLoading || reviewQuery.isLoading) {
+  if (reviewQuery.isLoading || !vehicle) {
     return (
       <div className="space-y-5">
         <div className="rounded-2xl bg-surface-card border border-surface-border p-6">
@@ -238,10 +178,12 @@ export default function ReviewPage() {
                   <Car size={11} className="text-slate-500" />
                   车牌: <span className="text-slate-300">{vehicle.plateNumber}</span>
                 </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <Package size={11} className="text-slate-500" />
-                  {store.name}
-                </span>
+                {store && (
+                  <span className="inline-flex items-center gap-1.5">
+                    <Package size={11} className="text-slate-500" />
+                    {store.name}
+                  </span>
+                )}
                 <span className="inline-flex items-center gap-1.5">
                   <Calendar size={11} className="text-slate-500" />
                   入库: <span className="text-slate-300">{formatDate(vehicle.inboundDate)}</span>
@@ -331,10 +273,10 @@ export default function ReviewPage() {
               {thresholdHits.map((hit, i) => (
                 <span
                   key={i}
-                  className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-md bg-rose-500/15 text-rose-300 border border-rose-500/30 font-medium"
+                  className={cn('inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-md border font-medium', getThresholdColor(hit.level))}
                 >
                   <AlertCircle size={9} />
-                  {hit.thresholdName}
+                  {hit.thresholdName}（{hit.level}）
                 </span>
               ))}
             </div>
@@ -402,8 +344,14 @@ export default function ReviewPage() {
                     {testDriveRecords.map((t, i) => (
                       <tr key={i} className="border-t border-surface-border hover:bg-white/[0.02]">
                         <td className="px-5 py-3 text-slate-200 font-medium">{t.customerName}</td>
-                        <td className="px-4 py-3 text-slate-300 tabular-nums">{t.mileage} km</td>
-                        <td className="px-4 py-3 text-slate-400">{t.salesPerson}</td>
+                        <td className="px-4 py-3 text-slate-300 tabular-nums">
+                          {t.mileageAfter !== undefined
+                            ? `${t.mileageBefore ?? '—'} → ${t.mileageAfter} km`
+                            : t.mileageBefore !== undefined
+                            ? `${t.mileageBefore} km`
+                            : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-slate-400">{t.salesPerson ?? '—'}</td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-0.5 text-amber-400">
                             {Array.from({ length: t.rating }).map((_, j) => (
@@ -411,7 +359,7 @@ export default function ReviewPage() {
                             ))}
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-slate-400 max-w-[260px] truncate">{t.feedback}</td>
+                        <td className="px-4 py-3 text-slate-400 max-w-[260px] truncate">{t.feedback ?? '—'}</td>
                         <td className="px-5 py-3 text-slate-400 text-[11px]">{formatDateTime(t.driveAt)}</td>
                       </tr>
                     ))}
@@ -504,7 +452,7 @@ function ReviewTab({ value, icon: Icon, count, children }: { value: string; icon
 
 function StatusBadge({ status }: { status: string }) {
   const cfg =
-    status === 'completed'
+    status === 'done' || status === 'completed'
       ? { text: '已完成', cls: 'bg-emerald-500/15 text-emerald-400' }
       : status === 'in_progress'
       ? { text: '进行中', cls: 'bg-amber-500/15 text-amber-400' }
