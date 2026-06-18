@@ -1,0 +1,8 @@
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0347/backend/obj/Debug/net8.0/CarServiceAppointment.API.csproj.AssemblyReference.cache
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0347/backend/obj/Debug/net8.0/CarServiceAppointment.API.GeneratedMSBuildEditorConfig.editorconfig
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0347/backend/obj/Debug/net8.0/CarServiceAppointment.API.AssemblyInfoInputs.cache
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0347/backend/obj/Debug/net8.0/CarServiceAppointment.API.AssemblyInfo.cs
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0347/backend/obj/Debug/net8.0/CarServiceAppointment.API.csproj.CoreCompileInputs.cache
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0347/backend/obj/Debug/net8.0/CarServiceAppointment.API.MvcApplicationPartsAssemblyInfo.cs
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0347/backend/obj/Debug/net8.0/CarServiceAppointment.API.MvcApplicationPartsAssemblyInfo.cache
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0347/backend/obj/Debug/net8.0/CarServiceAppointment.API.sourcelink.json
