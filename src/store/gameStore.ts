@@ -33,7 +33,6 @@ interface GameActions {
   resolveEvent: (eventId: string) => void;
   useItem: (itemId: string) => void;
   recordAction: (action: string, details: Record<string, unknown>, thinkingTime?: number) => void;
-  markInteraction: () => void;
   recordStuckPoint: (reason: string, duration: number) => void;
   completeSettlement: () => void;
   goToReview: () => void;
@@ -262,22 +261,23 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     get().recordAction('use_item', { itemId, itemName: item.name });
   },
 
-  markInteraction: () => {
-    set({ lastActionTime: Date.now() });
-  },
-
   recordAction: (action: string, details: Record<string, unknown>, thinkingTime?: number) => {
     const now = Date.now();
     const state = get();
     const calculatedThinkingTime = thinkingTime ?? (now - state.lastActionTime);
 
-    if (calculatedThinkingTime > 15000 && state.phase === 'playing') {
-      const stuckReason = action === 'day_advance' 
-        ? '花费较长时间决定推进日期，可能在纠结配送时机'
+    const decisionActions = ['day_advance', 'schedule_delivery', 'accept_delivery', 'resolve_event', 'use_item'];
+    if (decisionActions.includes(action) && calculatedThinkingTime > 8000 && state.phase === 'playing') {
+      const stuckReason = action === 'day_advance'
+        ? `第${state.currentDay}天推进前犹豫${Math.round(calculatedThinkingTime / 1000)}秒，可能在纠结配送时机或等待到货`
         : action === 'schedule_delivery'
-        ? '安排配送前思考时间较长'
-        : `执行${action}操作前犹豫不决`;
-      
+        ? `安排配送前思考${Math.round(calculatedThinkingTime / 1000)}秒，可能在权衡供应商和数量`
+        : action === 'accept_delivery'
+        ? `签收配送前犹豫${Math.round(calculatedThinkingTime / 1000)}秒，可能在核实到货情况`
+        : action === 'resolve_event'
+        ? `处理突发事件前思考${Math.round(calculatedThinkingTime / 1000)}秒，可能在评估影响`
+        : `使用道具前犹豫${Math.round(calculatedThinkingTime / 1000)}秒`;
+
       const stuckPoint: StuckPoint = {
         timestamp: now,
         day: state.currentDay,

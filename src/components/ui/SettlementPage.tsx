@@ -1,10 +1,21 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useGameStore } from '../../store/gameStore';
 import { MATERIALS, getConfigByDifficulty } from '../../config/gameConfig';
 import { generateReviewData } from '../../utils/gameUtils';
+import { MaterialType } from '../../types';
 
 interface SettlementPageProps {
   onComplete: () => void;
+}
+
+interface InventoryDifference {
+  materialType: MaterialType;
+  theoretical: number;
+  actual: number;
+  playerInput: string;
+  difference: number;
+  playerDifference: number;
+  accuracy: number;
 }
 
 export function SettlementPage({ onComplete }: SettlementPageProps) {
@@ -19,8 +30,9 @@ export function SettlementPage({ onComplete }: SettlementPageProps) {
   const statistics = useGameStore(state => state.statistics);
 
   const [step, setStep] = useState(1);
-  const [differencesChecked, setDifferencesChecked] = useState<Record<string, boolean>>({});
-  const [allChecked, setAllChecked] = useState(false);
+  const [playerCounts, setPlayerCounts] = useState<Record<string, string>>({});
+  const [submitted, setSubmitted] = useState(false);
+  const [differences, setDifferences] = useState<InventoryDifference[]>([]);
 
   const config = getConfigByDifficulty(difficulty);
 
@@ -30,40 +42,68 @@ export function SettlementPage({ onComplete }: SettlementPageProps) {
   const resolvedEvents = events.filter(e => e.resolved);
   const unresolvedEvents = events.filter(e => !e.resolved);
 
-  const finalScore = Math.max(0, 
-    1000 
-    + currentDay * 50 
-    - totalShortageAmount * config.shortagePenalty 
-    - unresolvedEvents.length * 50 
-    + resolvedEvents.length * 30 
-    + statistics.perfectDeliveries * 20
-  );
-
   const reviewData = generateReviewData(useGameStore.getState(), currentDay);
 
-  const handleCheckDifference = (materialType: string) => {
-    setDifferencesChecked(prev => {
-      const updated = { ...prev, [materialType]: true };
-      const allChecked = inventory.every(inv => updated[inv.materialType]);
-      setAllChecked(allChecked);
-      return updated;
+  const theoreticalInventory = useMemo(() => {
+    const result: Record<string, number> = {};
+    inventory.forEach(inv => {
+      const totalDelivered = acceptedDeliveries
+        .filter(d => d.materialType === inv.materialType)
+        .reduce((sum, d) => sum + d.quantity - (d.shortageAmount || 0), 0);
+      const totalUsed = usageRecords
+        .filter(u => u.materialType === inv.materialType)
+        .reduce((sum, u) => sum + u.quantity, 0);
+      result[inv.materialType] = totalDelivered - totalUsed;
     });
+    return result;
+  }, [inventory, acceptedDeliveries, usageRecords]);
+
+  const allFilled = inventory.every(inv => {
+    const val = playerCounts[inv.materialType];
+    return val !== undefined && val !== '';
+  });
+
+  const handleSubmitInventory = () => {
+    const diffs: InventoryDifference[] = inventory.map(inv => {
+      const theoretical = theoreticalInventory[inv.materialType];
+      const actual = inv.quantity;
+      const playerInput = playerCounts[inv.materialType] || '0';
+      const playerVal = parseInt(playerInput) || 0;
+      const difference = actual - theoretical;
+      const playerDifference = playerVal - theoretical;
+      const accuracy = theoretical !== 0
+        ? Math.max(0, 100 - Math.abs(actual - playerVal) / Math.abs(theoretical) * 100)
+        : (playerVal === actual ? 100 : 0);
+
+      return {
+        materialType: inv.materialType,
+        theoretical,
+        actual,
+        playerInput,
+        difference,
+        playerDifference,
+        accuracy: Math.round(accuracy)
+      };
+    });
+    setDifferences(diffs);
+    setSubmitted(true);
   };
 
-  const calculateDifference = (inv: typeof inventory[0]) => {
-    const totalDelivered = acceptedDeliveries
-      .filter(d => d.materialType === inv.materialType)
-      .reduce((sum, d) => sum + d.quantity - (d.shortageAmount || 0), 0);
-    const totalUsed = usageRecords
-      .filter(u => u.materialType === inv.materialType)
-      .reduce((sum, u) => sum + u.quantity, 0);
-    const expected = totalDelivered - totalUsed;
-    return {
-      expected,
-      actual: inv.quantity,
-      difference: inv.quantity - expected
-    };
-  };
+  const overallAccuracy = differences.length > 0
+    ? Math.round(differences.reduce((sum, d) => sum + d.accuracy, 0) / differences.length)
+    : 0;
+
+  const accuracyBonus = Math.round(overallAccuracy * 2);
+
+  const finalScore = Math.max(0,
+    1000
+    + currentDay * 50
+    - totalShortageAmount * config.shortagePenalty
+    - unresolvedEvents.length * 50
+    + resolvedEvents.length * 30
+    + statistics.perfectDeliveries * 20
+    + accuracyBonus
+  );
 
   const handleComplete = () => {
     completeSettlement();
@@ -167,87 +207,182 @@ export function SettlementPage({ onComplete }: SettlementPageProps) {
         {step === 2 && (
           <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 mb-6">
             <h2 className="text-2xl font-bold text-white mb-4">2️⃣ 库存盘点差异</h2>
-            <p className="text-gray-400 mb-4">请核对每种材料的理论库存和实际库存差异</p>
+            {!submitted ? (
+              <>
+                <p className="text-gray-400 mb-2">
+                  请根据配送和领用记录，填写每种材料的<span className="text-yellow-400 font-bold">实际盘点数量</span>
+                </p>
+                <p className="text-blue-300 text-sm mb-6">
+                  提示：理论库存 = 签收到货 - 累计领用，你需要判断实际库存与理论库存的差异
+                </p>
 
-            <div className="space-y-3 mb-6">
-              {inventory.map(inv => {
-                const material = MATERIALS[inv.materialType];
-                const diff = calculateDifference(inv);
-                const isChecked = differencesChecked[inv.materialType];
-                const hasDifference = diff.difference !== 0;
+                <div className="space-y-3 mb-6">
+                  {inventory.map(inv => {
+                    const material = MATERIALS[inv.materialType];
+                    const totalDelivered = acceptedDeliveries
+                      .filter(d => d.materialType === inv.materialType)
+                      .reduce((sum, d) => sum + d.quantity - (d.shortageAmount || 0), 0);
+                    const totalUsed = usageRecords
+                      .filter(u => u.materialType === inv.materialType)
+                      .reduce((sum, u) => sum + u.quantity, 0);
 
-                return (
-                  <div
-                    key={inv.materialType}
-                    className={`bg-white/5 rounded-xl p-4 border-2 transition-all ${
-                      isChecked
-                        ? hasDifference
-                          ? 'border-orange-500'
-                          : 'border-green-500'
-                        : 'border-transparent'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl">{material.icon}</span>
-                        <div>
-                          <div className="text-white font-bold">{material.name}</div>
-                          <div className="text-gray-400 text-sm">{material.unit}</div>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => handleCheckDifference(inv.materialType)}
-                        className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                          isChecked
-                            ? 'bg-green-500/20 text-green-400'
-                            : 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30'
-                        }`}
+                    return (
+                      <div
+                        key={inv.materialType}
+                        className="bg-white/5 rounded-xl p-4"
                       >
-                        {isChecked ? '✓ 已核对' : '核对'}
-                      </button>
-                    </div>
-
-                    {isChecked && (
-                      <div className="grid grid-cols-3 gap-4 text-sm">
-                        <div className="text-center">
-                          <div className="text-gray-400 mb-1">理论库存</div>
-                          <div className="text-white font-bold">{diff.expected} {material.unit}</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-gray-400 mb-1">实际库存</div>
-                          <div className="text-white font-bold">{diff.actual} {material.unit}</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-gray-400 mb-1">差异</div>
-                          <div className={`font-bold ${
-                            diff.difference > 0 ? 'text-green-400' :
-                            diff.difference < 0 ? 'text-red-400' : 'text-gray-400'
-                          }`}>
-                            {diff.difference > 0 ? '+' : ''}{diff.difference} {material.unit}
+                        <div className="flex items-center gap-3 mb-3">
+                          <span className="text-2xl">{material.icon}</span>
+                          <div className="flex-1">
+                            <div className="text-white font-bold">{material.name}</div>
+                            <div className="text-gray-400 text-xs mt-1">
+                              签收 {totalDelivered} {material.unit} - 领用 {totalUsed} {material.unit}
+                              = 理论 <span className="text-blue-300 font-medium">{totalDelivered - totalUsed}</span> {material.unit}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <label className="text-gray-300 text-sm">盘点数量:</label>
+                            <input
+                              type="number"
+                              value={playerCounts[inv.materialType] || ''}
+                              onChange={(e) => setPlayerCounts(prev => ({
+                                ...prev,
+                                [inv.materialType]: e.target.value
+                              }))}
+                              placeholder="0"
+                              className="w-24 px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white text-center text-lg font-bold focus:border-blue-500 focus:outline-none"
+                            />
+                            <span className="text-gray-400 text-sm">{material.unit}</span>
                           </div>
                         </div>
                       </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                    );
+                  })}
+                </div>
 
-            <div className="flex gap-3">
-              <button
-                onClick={() => setStep(1)}
-                className="flex-1 py-3 bg-gray-700 hover:bg-gray-600 text-white font-bold rounded-xl transition-colors"
-              >
-                ← 上一步
-              </button>
-              <button
-                onClick={() => setStep(3)}
-                disabled={!allChecked}
-                className="flex-1 py-3 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-colors"
-              >
-                下一步：事件处理 →
-              </button>
-            </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setStep(1)}
+                    className="flex-1 py-3 bg-gray-700 hover:bg-gray-600 text-white font-bold rounded-xl transition-colors"
+                  >
+                    ← 上一步
+                  </button>
+                  <button
+                    onClick={handleSubmitInventory}
+                    disabled={!allFilled}
+                    className="flex-1 py-3 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 disabled:from-gray-500 disabled:to-gray-600 text-white font-bold rounded-xl transition-all disabled:cursor-not-allowed"
+                  >
+                    📋 提交盘点结果
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="mb-6 p-4 rounded-xl bg-blue-500/10 border border-blue-500/30">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-white font-bold text-lg">盘点准确率</span>
+                    <span className={`text-3xl font-bold ${
+                      overallAccuracy >= 90 ? 'text-green-400' :
+                      overallAccuracy >= 70 ? 'text-yellow-400' : 'text-red-400'
+                    }`}>
+                      {overallAccuracy}%
+                    </span>
+                  </div>
+                  <div className="w-full h-3 bg-white/10 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full transition-all duration-700 ${
+                        overallAccuracy >= 90 ? 'bg-green-500' :
+                        overallAccuracy >= 70 ? 'bg-yellow-500' : 'bg-red-500'
+                      }`}
+                      style={{ width: `${overallAccuracy}%` }}
+                    />
+                  </div>
+                  <p className="text-blue-300 text-sm mt-2">
+                    准确率奖励: +{accuracyBonus} 分
+                  </p>
+                </div>
+
+                <div className="space-y-3 mb-6">
+                  {differences.map(diff => {
+                    const material = MATERIALS[diff.materialType];
+                    const playerVal = parseInt(diff.playerInput) || 0;
+                    const isCorrect = playerVal === diff.actual;
+                    const isClose = Math.abs(playerVal - diff.actual) <= Math.abs(diff.actual * 0.1);
+
+                    return (
+                      <div
+                        key={diff.materialType}
+                        className={`bg-white/5 rounded-xl p-4 border-2 ${
+                          isCorrect ? 'border-green-500' :
+                          isClose ? 'border-yellow-500' : 'border-red-500'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 mb-3">
+                          <span className="text-2xl">{material.icon}</span>
+                          <span className="text-white font-bold">{material.name}</span>
+                          <span className={`ml-auto text-sm px-3 py-1 rounded-full font-bold ${
+                            isCorrect ? 'bg-green-500/20 text-green-400' :
+                            isClose ? 'bg-yellow-500/20 text-yellow-400' :
+                            'bg-red-500/20 text-red-400'
+                          }`}>
+                            {isCorrect ? '✓ 完全正确' : isClose ? '≈ 接近' : '✗ 偏差较大'}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-4 gap-3 text-sm">
+                          <div className="text-center">
+                            <div className="text-gray-400 mb-1">理论库存</div>
+                            <div className="text-blue-300 font-bold">{diff.theoretical}</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-gray-400 mb-1">你的盘点</div>
+                            <div className="text-white font-bold">{playerVal}</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-gray-400 mb-1">实际库存</div>
+                            <div className="text-green-400 font-bold">{diff.actual}</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-gray-400 mb-1">准确率</div>
+                            <div className={`font-bold ${
+                              diff.accuracy >= 90 ? 'text-green-400' :
+                              diff.accuracy >= 70 ? 'text-yellow-400' : 'text-red-400'
+                            }`}>
+                              {diff.accuracy}%
+                            </div>
+                          </div>
+                        </div>
+                        {diff.difference !== 0 && (
+                          <div className={`mt-2 text-xs px-2 py-1 rounded inline-block ${
+                            diff.difference > 0 ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
+                          }`}>
+                            实际差异: {diff.difference > 0 ? '+' : ''}{diff.difference} {material.unit}
+                            {diff.difference > 0 ? ' (盘盈)' : ' (盘亏)'}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setSubmitted(false);
+                      setDifferences([]);
+                    }}
+                    className="flex-1 py-3 bg-gray-700 hover:bg-gray-600 text-white font-bold rounded-xl transition-colors"
+                  >
+                    ← 重新盘点
+                  </button>
+                  <button
+                    onClick={() => setStep(3)}
+                    className="flex-1 py-3 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl transition-colors"
+                  >
+                    确认差异，下一步 →
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         )}
 
@@ -371,6 +506,10 @@ export function SettlementPage({ onComplete }: SettlementPageProps) {
                 <div className="flex items-center justify-between py-3 border-b border-white/10">
                   <span className="text-gray-400">完美配送 ({reviewData.statistics.perfectDeliveries}个 × 20分)</span>
                   <span className="text-green-400 font-bold">+{reviewData.statistics.perfectDeliveries * 20} 分</span>
+                </div>
+                <div className="flex items-center justify-between py-3 border-b border-white/10">
+                  <span className="text-gray-400">盘点准确率奖励 ({overallAccuracy}%)</span>
+                  <span className="text-green-400 font-bold">+{accuracyBonus} 分</span>
                 </div>
               </div>
 

@@ -20,7 +20,6 @@ export function GameUI() {
   const resumeGame = useGameStore(state => state.resumeGame);
   const backToMenu = useGameStore(state => state.backToMenu);
   const statistics = useGameStore(state => state.statistics);
-  const markInteraction = useGameStore(state => state.markInteraction);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [selectedSupplier, setSelectedSupplier] = useState<string | null>(null);
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -32,18 +31,6 @@ export function GameUI() {
     }, 1000);
     return () => clearInterval(interval);
   }, [isPaused, statistics.startTime]);
-
-  useEffect(() => {
-    const onUserActivity = () => {
-      markInteraction();
-    };
-    window.addEventListener('click', onUserActivity);
-    window.addEventListener('keydown', onUserActivity);
-    return () => {
-      window.removeEventListener('click', onUserActivity);
-      window.removeEventListener('keydown', onUserActivity);
-    };
-  }, [markInteraction]);
 
   const scorePercentage = Math.round((score / totalScore) * 100);
 
