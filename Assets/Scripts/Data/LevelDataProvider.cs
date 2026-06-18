@@ -2,15 +2,19 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+#if USE_ADDRESSABLES
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
+#endif
 
 namespace UsedCarGame.Data
 {
     public class LevelDataProvider
     {
         private readonly Dictionary<string, LevelConfig> _loadedLevels = new Dictionary<string, LevelConfig>();
+#if USE_ADDRESSABLES
         private readonly Dictionary<string, AsyncOperationHandle> _activeHandles = new Dictionary<string, AsyncOperationHandle>();
+#endif
 
         public event Action<string, LevelConfig> OnLevelLoaded;
         public event Action<string> OnLevelLoadFailed;
@@ -23,6 +27,10 @@ namespace UsedCarGame.Data
                 yield break;
             }
 
+            LevelConfig result = null;
+            bool done = false;
+
+#if USE_ADDRESSABLES
             AsyncOperationHandle<LevelConfig> handle;
             try
             {
@@ -30,33 +38,58 @@ namespace UsedCarGame.Data
             }
             catch (Exception e)
             {
-                Debug.LogError($"[LevelDataProvider] Failed to start load for {address}: {e.Message}");
-                OnLevelLoadFailed?.Invoke(address);
-                onComplete?.Invoke(null);
+                Debug.LogWarning($"[LevelDataProvider] Addressables not available for {address}, using fallback. Error: {e.Message}");
+                result = LoadFallback(address);
+                done = true;
                 yield break;
             }
 
             _activeHandles[address] = handle;
-
             yield return handle;
 
             if (handle.Status == AsyncOperationStatus.Succeeded)
             {
-                var config = handle.Result;
-                _loadedLevels[address] = config;
-                OnLevelLoaded?.Invoke(address, config);
-                onComplete?.Invoke(config);
+                result = handle.Result;
             }
             else
             {
-                Debug.LogError($"[LevelDataProvider] Failed to load level at {address}");
+                Debug.LogWarning($"[LevelDataProvider] Addressables load failed for {address}, using fallback.");
+                result = LoadFallback(address);
+            }
+#else
+            result = LoadFallback(address);
+            yield return null;
+#endif
+
+            if (result != null)
+            {
+                _loadedLevels[address] = result;
+                OnLevelLoaded?.Invoke(address, result);
+                onComplete?.Invoke(result);
+            }
+            else
+            {
+                Debug.LogError($"[LevelDataProvider] Failed to load level: {address}");
                 OnLevelLoadFailed?.Invoke(address);
                 onComplete?.Invoke(null);
-                if (_activeHandles.ContainsKey(address))
-                {
-                    _activeHandles.Remove(address);
-                }
             }
+        }
+
+        private static LevelConfig LoadFallback(string address)
+        {
+            if (string.IsNullOrEmpty(address)) return null;
+
+            if (address.EndsWith("Level_001") || address.EndsWith("level_001"))
+            {
+                return SampleLevelFactory.CreateLevel_001();
+            }
+            if (address.EndsWith("Level_002") || address.EndsWith("level_002"))
+            {
+                return SampleLevelFactory.CreateLevel_002();
+            }
+
+            Debug.LogWarning($"[LevelDataProvider] No fallback for address: {address}");
+            return null;
         }
 
         public IEnumerator LoadLevelList(List<string> addresses, Action<List<LevelConfig>> onComplete = null)
@@ -89,6 +122,7 @@ namespace UsedCarGame.Data
                 _loadedLevels.Remove(address);
             }
 
+#if USE_ADDRESSABLES
             if (_activeHandles.TryGetValue(address, out var handle))
             {
                 try
@@ -101,6 +135,7 @@ namespace UsedCarGame.Data
                 }
                 _activeHandles.Remove(address);
             }
+#endif
         }
 
         public void UnloadAll()

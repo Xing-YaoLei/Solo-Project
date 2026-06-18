@@ -21,6 +21,8 @@ namespace UsedCarGame.UI
         private readonly Dictionary<GameManager.GameState, UIPanelBase> _panelMap =
             new Dictionary<GameManager.GameState, UIPanelBase>();
 
+        private bool _eventRegistered;
+
         private void Awake()
         {
             if (Instance != null && Instance != this)
@@ -35,28 +37,61 @@ namespace UsedCarGame.UI
 
         private void Start()
         {
-            RegisterPanels();
+            EnsureEventRegistered();
+            RefreshPanelRegistry();
+        }
+
+        public void SetPanels(
+            MainMenuPanel mainMenu,
+            LevelSelectPanel levelSelect,
+            GameplayPanel gameplay,
+            SettlementPanel settlement,
+            ReviewPanel review,
+            SettingsPanel settings,
+            PausePanel pause)
+        {
+            mainMenuPanel = mainMenu;
+            levelSelectPanel = levelSelect;
+            gameplayPanel = gameplay;
+            settlementPanel = settlement;
+            reviewPanel = review;
+            settingsPanel = settings;
+            pausePanel = pause;
+
+            EnsureEventRegistered();
+            RefreshPanelRegistry();
+
             if (GameManager.Instance != null)
             {
-                GameManager.Instance.OnStateChanged += HandleGameStateChanged;
                 HandleGameStateChanged(GameManager.GameState.Boot, GameManager.Instance.CurrentState);
             }
         }
 
-        private void RegisterPanels()
+        private void RefreshPanelRegistry()
         {
-            _panelMap[GameManager.GameState.MainMenu] = mainMenuPanel;
-            _panelMap[GameManager.GameState.LevelSelect] = levelSelectPanel;
-            _panelMap[GameManager.GameState.Playing] = gameplayPanel;
-            _panelMap[GameManager.GameState.Settlement] = settlementPanel;
-            _panelMap[GameManager.GameState.Review] = reviewPanel;
-            _panelMap[GameManager.GameState.Settings] = settingsPanel;
-            _panelMap[GameManager.GameState.Paused] = pausePanel;
-
             foreach (var kvp in _panelMap)
             {
                 kvp.Value?.Hide();
             }
+
+            _panelMap.Clear();
+
+            if (mainMenuPanel != null) _panelMap[GameManager.GameState.MainMenu] = mainMenuPanel;
+            if (levelSelectPanel != null) _panelMap[GameManager.GameState.LevelSelect] = levelSelectPanel;
+            if (gameplayPanel != null) _panelMap[GameManager.GameState.Playing] = gameplayPanel;
+            if (settlementPanel != null) _panelMap[GameManager.GameState.Settlement] = settlementPanel;
+            if (reviewPanel != null) _panelMap[GameManager.GameState.Review] = reviewPanel;
+            if (settingsPanel != null) _panelMap[GameManager.GameState.Settings] = settingsPanel;
+            if (pausePanel != null) _panelMap[GameManager.GameState.Paused] = pausePanel;
+        }
+
+        private void EnsureEventRegistered()
+        {
+            if (_eventRegistered) return;
+            if (GameManager.Instance == null) return;
+
+            GameManager.Instance.OnStateChanged += HandleGameStateChanged;
+            _eventRegistered = true;
         }
 
         private void HandleGameStateChanged(GameManager.GameState oldState, GameManager.GameState newState)

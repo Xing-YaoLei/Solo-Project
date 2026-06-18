@@ -1,6 +1,5 @@
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace UsedCarGame.Core
@@ -27,6 +26,8 @@ namespace UsedCarGame.Core
         [Header("Game Settings")]
         [SerializeField] private string defaultLevelAddress = "Levels/Level_001";
 
+        private bool _isReady;
+
         private void Awake()
         {
             if (Instance != null && Instance != this)
@@ -42,7 +43,8 @@ namespace UsedCarGame.Core
 
         private IEnumerator Start()
         {
-            yield return ServiceLocator.Initialize();
+            yield return new WaitUntil(() => ServiceLocator.IsInitialized);
+            _isReady = true;
             ChangeState(GameState.MainMenu);
         }
 
@@ -65,9 +67,17 @@ namespace UsedCarGame.Core
 
         public void StartLevel(string levelAddress)
         {
+            StartCoroutine(StartLevelCoroutine(levelAddress));
+        }
+
+        private IEnumerator StartLevelCoroutine(string levelAddress)
+        {
             ChangeState(GameState.Playing);
             var session = ServiceLocator.Get<GameSession>();
-            session?.StartNewSession(levelAddress);
+            if (session != null)
+            {
+                yield return session.StartNewSession(levelAddress);
+            }
         }
 
         public void CompleteCurrentLevel()

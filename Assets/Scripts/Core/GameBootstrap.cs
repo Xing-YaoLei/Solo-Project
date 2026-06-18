@@ -1,17 +1,23 @@
+using System.Collections;
 using UnityEngine;
-using UsedCarGame.Core;
 using UsedCarGame.Services;
+using UsedCarGame.UI;
 
 namespace UsedCarGame.Core
 {
     public class GameBootstrap : MonoBehaviour
     {
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
-        private static void Boot()
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        private static void BootAfterSceneLoad()
         {
-            if (GameObject.Find("[GameBootstrap]") != null) return;
+            EnsureCoreSystems();
+        }
 
-            var go = new GameObject("[GameBootstrap]");
+        private static void EnsureCoreSystems()
+        {
+            if (GameManager.Instance != null) return;
+
+            var go = new GameObject("[GameSystems]");
             DontDestroyOnLoad(go);
 
             go.AddComponent<GameManager>();
@@ -20,22 +26,20 @@ namespace UsedCarGame.Core
             if (!ServiceLocator.IsInitialized)
             {
                 var runner = go.AddComponent<BootstrapRunner>();
-                runner.RunInit();
+                runner.StartCoroutine(runner.InitServices());
             }
 
-            var uiGo = new GameObject("[UIManager]");
-            DontDestroyOnLoad(uiGo);
-            uiGo.AddComponent<UIManager>();
+            if (UIManager.Instance == null)
+            {
+                var uiGo = new GameObject("[UIManager]");
+                DontDestroyOnLoad(uiGo);
+                uiGo.AddComponent<UIManager>();
+            }
         }
 
         private class BootstrapRunner : MonoBehaviour
         {
-            public void RunInit()
-            {
-                StartCoroutine(InitServices());
-            }
-
-            private System.Collections.IEnumerator InitServices()
+            public IEnumerator InitServices()
             {
                 yield return ServiceLocator.Initialize();
 
