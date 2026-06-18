@@ -10,8 +10,8 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
-import { RequisitionTrend } from "@/types";
-import { getRequisitionTrends } from "@/lib/mock-data";
+import { useDashboardStore } from "@/store/dashboard";
+import { useMemo } from "react";
 
 const CATEGORY_COLORS: Record<string, string> = {
   "瓷砖": "#F59E0B",
@@ -21,28 +21,37 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 export default function RequisitionTrendChart() {
-  const rawData = getRequisitionTrends();
-  const categories = Object.keys(CATEGORY_COLORS);
+  const { requisitions, currentUserRole } = useDashboardStore();
 
-  const aggregated = rawData.reduce<Record<string, Record<string, number>>>((acc, item) => {
-    if (!acc[item.date]) acc[item.date] = {};
-    acc[item.date][item.category] = (acc[item.date][item.category] || 0) + item.quantity;
-    return acc;
-  }, {});
+  const data = useMemo(() => {
+    const categories = Object.keys(CATEGORY_COLORS);
+    const aggregated: Record<string, Record<string, number>> = {};
 
-  const data = Object.entries(aggregated)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, cats]) => {
-      const point: Record<string, string | number> = { date: date.slice(5) };
-      categories.forEach((cat) => {
-        point[cat] = cats[cat] || 0;
-      });
-      return point;
+    requisitions.forEach((req) => {
+      if (!CATEGORY_COLORS[req.category]) return;
+      if (!aggregated[req.requestedAt]) aggregated[req.requestedAt] = {};
+      aggregated[req.requestedAt][req.category] =
+        (aggregated[req.requestedAt][req.category] || 0) + req.quantity;
     });
+
+    return Object.entries(aggregated)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-60)
+      .map(([date, cats]) => {
+        const point: Record<string, string | number> = { date: date.slice(5) };
+        categories.forEach((cat) => {
+          point[cat] = cats[cat] || 0;
+        });
+        return point;
+      });
+  }, [requisitions]);
+
+  const categories = Object.keys(CATEGORY_COLORS);
+  const label = currentUserRole === "ADMIN" ? "领用记录变化" : "领用记录变化（负责项目）";
 
   return (
     <div className="bg-white rounded-xl p-5 border border-slate-100 card-shadow">
-      <h3 className="font-display font-semibold text-navy-900 text-sm mb-4">领用记录变化</h3>
+      <h3 className="font-display font-semibold text-navy-900 text-sm mb-4">{label}</h3>
       <div className="h-[280px]">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>

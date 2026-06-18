@@ -10,11 +10,31 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { SupplierRanking } from "@/types";
+import { useDashboardStore } from "@/store/dashboard";
+import { useMemo } from "react";
 
-export default function SupplierRankingChart({ data }: { data: SupplierRanking[] }) {
+export default function SupplierRankingChart() {
+  const { suppliers, currentUserRole } = useDashboardStore();
+
+  const data: SupplierRanking[] = useMemo(() => {
+    return suppliers
+      .map((s) => ({
+        supplierId: s.id,
+        supplierName: s.name,
+        onTimeRate: s.onTimeRate,
+        shortageRate: s.shortageRate,
+        qualityScore: s.qualityScore,
+        totalDeliveries: s.totalDeliveries,
+      }))
+      .sort((a, b) => b.onTimeRate - a.onTimeRate)
+      .slice(0, 8);
+  }, [suppliers]);
+
+  const label = currentUserRole === "ADMIN" ? "供应商信息排行" : "供应商信息排行（负责项目）";
+
   return (
     <div className="bg-white rounded-xl p-5 border border-slate-100 card-shadow">
-      <h3 className="font-display font-semibold text-navy-900 text-sm mb-4">供应商信息排行</h3>
+      <h3 className="font-display font-semibold text-navy-900 text-sm mb-4">{label}</h3>
       <div className="h-[280px]">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} layout="vertical" margin={{ top: 5, right: 30, left: 80, bottom: 5 }}>

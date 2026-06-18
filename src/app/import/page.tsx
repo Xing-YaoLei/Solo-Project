@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Upload, FileSpreadsheet, Camera, Clock, CheckCircle2, Loader2, AlertTriangle, X, Plus, Trash2 } from "lucide-react";
+import { Upload, FileSpreadsheet, Camera, Clock, CheckCircle2, Loader2, AlertTriangle, Plus, Trash2 } from "lucide-react";
 import { useDashboardStore } from "@/store/dashboard";
 import { parsePaymentFile, parseDesignFile } from "@/lib/file-upload";
 import clsx from "clsx";
@@ -20,12 +20,20 @@ interface PhotoItem {
   previewUrl?: string;
 }
 
+interface ParsedPreview {
+  fileName: string;
+  recordCount: number;
+  categories: string[];
+  sampleRows: string[][];
+}
+
 export default function ImportPage() {
   const {
     importBatches,
     batches,
     lastImportBatchId,
     setLastImportBatchId,
+    useMockData,
     fetchAllData,
     fetchImportBatches,
   } = useDashboardStore();
@@ -41,7 +49,9 @@ export default function ImportPage() {
   } | null>(null);
 
   const [paymentFile, setPaymentFile] = useState<File | null>(null);
+  const [paymentPreview, setPaymentPreview] = useState<ParsedPreview | null>(null);
   const [designFile, setDesignFile] = useState<File | null>(null);
+  const [designPreview, setDesignPreview] = useState<ParsedPreview | null>(null);
   const [selectedImportBatchId, setSelectedImportBatchId] = useState<string>("");
 
   const [photoItems, setPhotoItems] = useState<PhotoItem[]>([
@@ -50,7 +60,6 @@ export default function ImportPage() {
 
   const paymentFileRef = useRef<HTMLInputElement>(null);
   const designFileRef = useRef<HTMLInputElement>(null);
-  const photoFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchImportBatches();
@@ -61,6 +70,25 @@ export default function ImportPage() {
     if (!file) return;
     setPaymentFile(file);
     setUploadResult(null);
+
+    try {
+      const records = await parsePaymentFile(file);
+      const categories = Array.from(new Set(records.map((r) => r.category)));
+      const sampleRows = records.slice(0, 3).map((r) => [
+        r.materialName,
+        String(r.quantity),
+        r.supplierName,
+        r.projectName,
+      ]);
+      setPaymentPreview({
+        fileName: file.name,
+        recordCount: records.length,
+        categories,
+        sampleRows,
+      });
+    } catch {
+      setPaymentPreview(null);
+    }
   };
 
   const handleDesignFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -68,18 +96,24 @@ export default function ImportPage() {
     if (!file) return;
     setDesignFile(file);
     setUploadResult(null);
-  };
 
-  const handlePhotoFileSelect = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const previewUrl = URL.createObjectURL(file);
-    setPhotoItems((prev) =>
-      prev.map((item, i) =>
-        i === index ? { ...item, file, previewUrl } : item
-      )
-    );
+    try {
+      const records = await parseDesignFile(file);
+      const categories = Array.from(new Set(records.map((r) => r.category)));
+      const sampleRows = records.slice(0, 3).map((r) => [
+        r.materialName,
+        String(r.quantity),
+        r.projectName,
+      ]);
+      setDesignPreview({
+        fileName: file.name,
+        recordCount: records.length,
+        categories,
+        sampleRows,
+      });
+    } catch {
+      setDesignPreview(null);
+    }
   };
 
   const addPhotoItem = () => {
@@ -94,15 +128,16 @@ export default function ImportPage() {
     setPhotoItems((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const updatePhotoBatchNo = (index: number, value: string) => {
+  const updatePhotoField = (index: number, field: "batchNo" | "projectName", value: string) => {
     setPhotoItems((prev) =>
-      prev.map((item, i) => (i === index ? { ...item, batchNo: value } : item))
+      prev.map((item, i) => (i === index ? { ...item, [field]: value } : item))
     );
   };
 
-  const updatePhotoProjectName = (index: number, value: string) => {
+  const updatePhotoFile = (index: number, file: File) => {
+    const previewUrl = URL.createObjectURL(file);
     setPhotoItems((prev) =>
-      prev.map((item, i) => (i === index ? { ...item, projectName: value } : item))
+      prev.map((item, i) => (i === index ? { ...item, file, previewUrl } : item))
     );
   };
 
@@ -116,13 +151,19 @@ export default function ImportPage() {
     setUploadResult(null);
 
     try {
-      const formData = new FormData();
-      formData.append("source", "PAYMENT");
-      formData.append("file", paymentFile);
+      const records = await parsePaymentFile(paymentFile);
+      if (records.length === 0) {
+        throw new Error("文件中未找到有效记录");
+      }
 
-      const response = await fetch("/api/import", {
+      const response = await fetch(`/api/import${useMockData ? "?mock=true" : ""}`, {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          source: "PAYMENT",
+          records,
+          mock: useMockData,
+        }),
       });
 
       if (!response.ok) {
@@ -140,12 +181,15 @@ export default function ImportPage() {
           `新建记录: ${result.newEntries} 条`,
           `更新记录: ${result.updatedEntries} 条`,
           `批次号: ${result.batchNo || "已生成"}`,
+          `解析材料类别: ${paymentPreview?.categories.join("、") || "自动识别"}`,
           ...(result.warnings || []),
         ],
         importBatchId: result.importBatchId,
         batchNo: result.batchNo,
       });
 
+      setPaymentFile(null);
+      setPaymentPreview(null);
       await fetchAllData();
     } catch (error) {
       setUploadResult({
@@ -167,17 +211,25 @@ export default function ImportPage() {
     setUploadResult(null);
 
     try {
-      const formData = new FormData();
-      formData.append("source", "DESIGN_EXPORT");
-      formData.append("file", designFile);
-
-      if (selectedImportBatchId) {
-        formData.append("importBatchId", selectedImportBatchId);
+      const records = await parseDesignFile(designFile);
+      if (records.length === 0) {
+        throw new Error("文件中未找到有效记录");
       }
 
-      const response = await fetch("/api/import", {
+      const body: Record<string, unknown> = {
+        source: "DESIGN_EXPORT",
+        records,
+        mock: useMockData,
+      };
+
+      if (selectedImportBatchId) {
+        body.importBatchId = selectedImportBatchId;
+      }
+
+      const response = await fetch(`/api/import${useMockData ? "?mock=true" : ""}`, {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
       });
 
       if (!response.ok) {
@@ -193,11 +245,16 @@ export default function ImportPage() {
         details: [
           `新建记录: ${result.newEntries} 条`,
           `匹配更新: ${result.updatedEntries} 条`,
+          `合并批次: ${selectedImportBatchId ? "已合并到指定批次" : "新建批次"}`,
           ...(result.warnings || []),
         ],
         importBatchId: result.importBatchId,
+        batchNo: result.batchNo,
       });
 
+      setDesignFile(null);
+      setDesignPreview(null);
+      setSelectedImportBatchId("");
       await fetchAllData();
     } catch (error) {
       setUploadResult({
@@ -210,9 +267,9 @@ export default function ImportPage() {
   };
 
   const handlePhotoUpload = async () => {
-    const validPhotos = photoItems.filter((p) => p.file && p.batchNo);
-    if (validPhotos.length === 0) {
-      setUploadResult({ success: false, message: "请至少上传一张照片并填写批次号" });
+    const validItems = photoItems.filter((p) => p.batchNo.trim());
+    if (validItems.length === 0) {
+      setUploadResult({ success: false, message: "请至少填写一条批次号" });
       return;
     }
 
@@ -223,12 +280,16 @@ export default function ImportPage() {
       const formData = new FormData();
       formData.append("source", "PHOTO");
 
-      validPhotos.forEach((photo, index) => {
-        if (photo.file) {
-          formData.append("files", photo.file);
-          formData.append("batchNos", photo.batchNo);
-          formData.append("projectNames", photo.projectName || "默认项目");
+      if (useMockData) {
+        formData.append("mock", "true");
+      }
+
+      validItems.forEach((item) => {
+        if (item.file) {
+          formData.append("files", item.file);
         }
+        formData.append("batchNos", item.batchNo.trim());
+        formData.append("projectNames", item.projectName.trim() || "默认项目");
       });
 
       const response = await fetch("/api/import", {
@@ -242,17 +303,22 @@ export default function ImportPage() {
       }
 
       const result = await response.json();
+      const photoCount = validItems.filter((p) => p.file).length;
 
       setUploadResult({
         success: true,
-        message: `成功关联 ${result.mergedCount} 张监理照片`,
+        message: `成功关联 ${validItems.length} 条批次记录`,
         details: [
-          `成功关联: ${result.updatedEntries} 张`,
+          photoCount > 0 ? `照片上传: ${photoCount} 张` : "仅批次关联（无照片上传）",
+          `关联批次: ${validItems.map((p) => p.batchNo).join("、")}`,
+          `批次号: ${result.batchNo || "已生成"}`,
           ...(result.warnings || []),
         ],
         importBatchId: result.importBatchId,
+        batchNo: result.batchNo,
       });
 
+      setPhotoItems([{ id: "1", file: null, batchNo: "", projectName: "" }]);
       await fetchAllData();
     } catch (error) {
       setUploadResult({
@@ -269,8 +335,6 @@ export default function ImportPage() {
       icon: <FileSpreadsheet size={32} />,
       title: "收款记录导入",
       desc: "上传收款记录文件，系统自动解析加工为材料进场数据",
-      accept: ".xlsx,.csv",
-      color: "amber",
       colorHex: "#F59E0B",
       bgLight: "#FFFBEB",
     },
@@ -278,8 +342,6 @@ export default function ImportPage() {
       icon: <FileSpreadsheet size={32} />,
       title: "设计软件导出合并",
       desc: "导入设计软件材料清单，与收款记录自动匹配",
-      accept: ".xlsx,.csv,.json",
-      color: "blue",
       colorHex: "#3B82F6",
       bgLight: "#EFF6FF",
     },
@@ -287,14 +349,10 @@ export default function ImportPage() {
       icon: <Camera size={32} />,
       title: "监理照片关联",
       desc: "上传监理照片，与进场批次关联归档",
-      accept: "image/*",
-      color: "emerald",
       colorHex: "#10B981",
       bgLight: "#ECFDF5",
     },
   };
-
-  const config = sourceConfig[activeSource];
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -347,7 +405,7 @@ export default function ImportPage() {
                 收款记录导入
               </h3>
               <p className="text-xs text-slate-500 mb-4">
-                上传 .xlsx 或 .csv 格式的收款记录，系统将自动解析材料、数量、供应商等信息并生成带时间戳的导入批次
+                上传 .xlsx 或 .csv 格式的收款记录，系统将在前端解析后生成带时间戳的导入批次
               </p>
             </div>
 
@@ -388,6 +446,24 @@ export default function ImportPage() {
                 </>
               )}
             </div>
+
+            {paymentPreview && (
+              <div className="p-4 rounded-lg bg-amber-50 border border-amber-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <CheckCircle2 size={14} className="text-amber-600" />
+                  <span className="text-xs font-medium text-amber-700">解析预览</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs text-slate-600">
+                  <span>识别记录: <strong className="text-navy-900">{paymentPreview.recordCount} 条</strong></span>
+                  <span>材料类别: <strong className="text-navy-900">{paymentPreview.categories.length} 类</strong></span>
+                </div>
+                {paymentPreview.sampleRows.length > 0 && (
+                  <div className="mt-2 text-xs text-slate-500">
+                    示例: {paymentPreview.sampleRows[0].join(" · ")}
+                  </div>
+                )}
+              </div>
+            )}
 
             <button
               onClick={handlePaymentUpload}
@@ -476,6 +552,19 @@ export default function ImportPage() {
               )}
             </div>
 
+            {designPreview && (
+              <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <CheckCircle2 size={14} className="text-blue-600" />
+                  <span className="text-xs font-medium text-blue-700">解析预览</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs text-slate-600">
+                  <span>识别记录: <strong className="text-navy-900">{designPreview.recordCount} 条</strong></span>
+                  <span>材料类别: <strong className="text-navy-900">{designPreview.categories.length} 类</strong></span>
+                </div>
+              </div>
+            )}
+
             <button
               onClick={handleDesignUpload}
               disabled={!designFile || uploading}
@@ -501,7 +590,7 @@ export default function ImportPage() {
                 监理照片关联
               </h3>
               <p className="text-xs text-slate-500 mb-4">
-                上传监理现场照片，填写对应批次号进行关联归档
+                填写批次号和项目名称进行关联，照片为可选项
               </p>
             </div>
 
@@ -520,14 +609,7 @@ export default function ImportPage() {
                         input.accept = "image/*";
                         input.onchange = (e: any) => {
                           const file = e.target.files?.[0];
-                          if (file) {
-                            const previewUrl = URL.createObjectURL(file);
-                            setPhotoItems((prev) =>
-                              prev.map((it, i) =>
-                                i === index ? { ...it, file, previewUrl } : it
-                              )
-                            );
-                          }
+                          if (file) updatePhotoFile(index, file);
                         };
                         input.click();
                       }}
@@ -539,19 +621,22 @@ export default function ImportPage() {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <Camera size={24} className="text-slate-400" />
+                        <div className="text-center">
+                          <Camera size={20} className="mx-auto text-slate-400" />
+                          <span className="text-[10px] text-slate-400 mt-1 block">可选</span>
+                        </div>
                       )}
                     </div>
 
                     <div className="flex-1 space-y-2">
                       <div>
                         <label className="block text-xs font-medium text-slate-600 mb-1">
-                          批次号
+                          批次号 <span className="text-red-400">*</span>
                         </label>
                         <input
                           type="text"
                           value={item.batchNo}
-                          onChange={(e) => updatePhotoBatchNo(index, e.target.value)}
+                          onChange={(e) => updatePhotoField(index, "batchNo", e.target.value)}
                           placeholder="如：BATCH-2025-001"
                           className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                         />
@@ -563,7 +648,7 @@ export default function ImportPage() {
                         <input
                           type="text"
                           value={item.projectName}
-                          onChange={(e) => updatePhotoProjectName(index, e.target.value)}
+                          onChange={(e) => updatePhotoField(index, "projectName", e.target.value)}
                           placeholder="如：杭州湾样板房"
                           className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                         />

@@ -10,20 +10,53 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { EntryTrendPoint } from "@/types";
-import { getEntryTrend } from "@/lib/mock-data";
+import { useDashboardStore } from "@/store/dashboard";
 import clsx from "clsx";
 
 export default function EntryTrendChart() {
   const [range, setRange] = useState<30 | 90>(30);
   const [metric, setMetric] = useState<"quantity" | "count">("quantity");
-  const data = getEntryTrend(range);
+  const { materialEntries, currentUserRole } = useDashboardStore();
+
+  const data: EntryTrendPoint[] = useMemo(() => {
+    const now = new Date("2026-06-18");
+    const startDate = new Date(now);
+    startDate.setDate(startDate.getDate() - range);
+
+    const byDate: Record<string, { count: number; quantity: number }> = {};
+
+    for (let i = 0; i < range; i++) {
+      const d = new Date(startDate);
+      d.setDate(d.getDate() + i);
+      const key = d.toISOString().split("T")[0];
+      byDate[key] = { count: 0, quantity: 0 };
+    }
+
+    materialEntries.forEach((e) => {
+      const dateStr = e.entryDate;
+      if (byDate[dateStr] !== undefined) {
+        byDate[dateStr].count += 1;
+        byDate[dateStr].quantity += e.quantity;
+      }
+    });
+
+    return Object.entries(byDate)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, vals]) => ({
+        date: `${parseInt(date.split("-")[1])}/${parseInt(date.split("-")[2])}`,
+        count: vals.count,
+        quantity: vals.quantity,
+      }));
+  }, [materialEntries, range]);
+
+  const label = currentUserRole === "ADMIN" ? "材料进场趋势" : "材料进场趋势（负责项目）";
 
   return (
     <div className="bg-white rounded-xl p-5 border border-slate-100 card-shadow">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-display font-semibold text-navy-900 text-sm">材料进场趋势</h3>
+        <h3 className="font-display font-semibold text-navy-900 text-sm">{label}</h3>
         <div className="flex items-center gap-2">
           <div className="flex bg-slate-100 rounded-lg p-0.5">
             <button

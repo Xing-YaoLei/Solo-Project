@@ -4,14 +4,11 @@ import InventoryDistributionChart from "@/components/InventoryDistributionChart"
 import FunnelChart from "@/components/FunnelChart";
 import SupplierRankingChart from "@/components/SupplierRankingChart";
 import RequisitionTrendChart from "@/components/RequisitionTrendChart";
-import { getFunnelStages, getSupplierRankings } from "@/lib/mock-data";
 import { useDashboardStore } from "@/store/dashboard";
 import { Shield, User } from "lucide-react";
 
 export default function AnalyticsPage() {
   const { currentUserRole } = useDashboardStore();
-  const funnelData = getFunnelStages();
-  const supplierData = getSupplierRankings();
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -34,11 +31,11 @@ export default function AnalyticsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <InventoryDistributionChart />
-        <FunnelChart data={funnelData} />
+        <FunnelChart />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <SupplierRankingChart data={supplierData} />
+        <SupplierRankingChart />
         <RequisitionTrendChart />
       </div>
     </div>

@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import {
   PieChart,
   Pie,
@@ -9,17 +8,38 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
-import { InventoryDistribution } from "@/types";
-import { getInventoryDistribution } from "@/lib/mock-data";
+import { useDashboardStore } from "@/store/dashboard";
+import { useMemo } from "react";
 
 const COLORS = ["#F59E0B", "#10B981", "#3B82F6", "#8B5CF6", "#EF4444", "#06B6D4", "#F97316", "#EC4899"];
 
 export default function InventoryDistributionChart() {
-  const data = getInventoryDistribution();
+  const { materialEntries, currentUserRole } = useDashboardStore();
+
+  const data = useMemo(() => {
+    const inStock = materialEntries.filter((e) => e.status === "IN_STOCK");
+    const total = inStock.reduce((s, e) => s + e.quantity, 0);
+    if (total === 0) return [];
+
+    const byCategory: Record<string, number> = {};
+    inStock.forEach((e) => {
+      byCategory[e.category] = (byCategory[e.category] || 0) + e.quantity;
+    });
+
+    return Object.entries(byCategory)
+      .map(([category, quantity]) => ({
+        category,
+        quantity,
+        percentage: Math.round((quantity / total) * 1000) / 10,
+      }))
+      .sort((a, b) => b.quantity - a.quantity);
+  }, [materialEntries]);
+
+  const label = currentUserRole === "ADMIN" ? "库存台账分布" : "库存台账分布（负责项目）";
 
   return (
     <div className="bg-white rounded-xl p-5 border border-slate-100 card-shadow">
-      <h3 className="font-display font-semibold text-navy-900 text-sm mb-4">库存台账分布</h3>
+      <h3 className="font-display font-semibold text-navy-900 text-sm mb-4">{label}</h3>
       <div className="flex flex-col lg:flex-row items-center gap-4">
         <div className="h-[240px] w-full lg:w-1/2">
           <ResponsiveContainer width="100%" height="100%">
