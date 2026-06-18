@@ -24,27 +24,6 @@ namespace AutoRepair.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "AspNetRoleClaims",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    RoleId = table.Column<string>(type: "nvarchar(450)", nullable: false),
-                    ClaimType = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    ClaimValue = table.Column<string>(type: "nvarchar(max)", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_AspNetRoleClaims", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_AspNetRoleClaims_AspNetRoles_RoleId",
-                        column: x => x.RoleId,
-                        principalTable: "AspNetRoles",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "AspNetUsers",
                 columns: table => new
                 {
@@ -64,11 +43,78 @@ namespace AutoRepair.Infrastructure.Migrations
                     LockoutEnabled = table.Column<bool>(type: "bit", nullable: false),
                     AccessFailedCount = table.Column<int>(type: "int", nullable: false),
                     FullName = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Role = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                    Department = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Position = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_AspNetUsers", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Parts",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    PartNumber = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Brand = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Specification = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Category = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    UnitPrice = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Parts", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Vehicles",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    LicensePlate = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    VinCode = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    Brand = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Model = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Series = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    ManufactureYear = table.Column<int>(type: "int", nullable: true),
+                    Color = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Mileage = table.Column<int>(type: "int", nullable: false),
+                    OwnerName = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    OwnerPhone = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    LastMaintenanceDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    NextMaintenanceMileage = table.Column<int>(type: "int", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Vehicles", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "AspNetRoleClaims",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    RoleId = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    ClaimType = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    ClaimValue = table.Column<string>(type: "nvarchar(max)", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AspNetRoleClaims", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_AspNetRoleClaims_AspNetRoles_RoleId",
+                        column: x => x.RoleId,
+                        principalTable: "AspNetRoles",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -157,64 +203,16 @@ namespace AutoRepair.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Parts",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    PartNumber = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Category = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Brand = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    SuitableModels = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    UnitPrice = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
-                    Specification = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Remark = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Parts", x => x.Id);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "Vehicles",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    PlateNumber = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Brand = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Model = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Year = table.Column<int>(type: "int", nullable: false),
-                    Vin = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Color = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Mileage = table.Column<int>(type: "int", nullable: false),
-                    OwnerName = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    OwnerPhone = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    LastMaintenanceDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    Remark = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Vehicles", x => x.Id);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "PartInventories",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     PartId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    Warehouse = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Location = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Quantity = table.Column<int>(type: "int", nullable: false),
+                    QuantityInStock = table.Column<int>(type: "int", nullable: false),
+                    ReservedQuantity = table.Column<int>(type: "int", nullable: false),
                     ReorderLevel = table.Column<int>(type: "int", nullable: false),
-                    SafetyStock = table.Column<int>(type: "int", nullable: false),
-                    LastCountDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                    Location = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    LastUpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -234,7 +232,7 @@ namespace AutoRepair.Infrastructure.Migrations
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     VehicleId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     ReminderType = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Description = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     DueDate = table.Column<DateTime>(type: "datetime2", nullable: false),
                     DueMileage = table.Column<int>(type: "int", nullable: true),
                     IsNotified = table.Column<bool>(type: "bit", nullable: false),
@@ -254,62 +252,22 @@ namespace AutoRepair.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "StockAlerts",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    PartId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    CurrentQuantity = table.Column<int>(type: "int", nullable: false),
-                    ReorderLevel = table.Column<int>(type: "int", nullable: false),
-                    SafetyStock = table.Column<int>(type: "int", nullable: false),
-                    ShortageQuantity = table.Column<int>(type: "int", nullable: false),
-                    RiskLevel = table.Column<int>(type: "int", nullable: false),
-                    AffectedWorkOrders = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    IsAcknowledged = table.Column<bool>(type: "bit", nullable: false),
-                    AcknowledgedDate = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    AcknowledgedByUserId = table.Column<string>(type: "nvarchar(450)", nullable: true),
-                    IsResolved = table.Column<bool>(type: "bit", nullable: false),
-                    ResolvedDate = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_StockAlerts", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_StockAlerts_AspNetUsers_AcknowledgedByUserId",
-                        column: x => x.AcknowledgedByUserId,
-                        principalTable: "AspNetUsers",
-                        principalColumn: "Id");
-                    table.ForeignKey(
-                        name: "FK_StockAlerts_Parts_PartId",
-                        column: x => x.PartId,
-                        principalTable: "Parts",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "WorkOrders",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    WorkOrderNumber = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    OrderNumber = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     VehicleId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    Description = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Status = table.Column<int>(type: "int", nullable: false),
                     AssignedToUserId = table.Column<string>(type: "nvarchar(450)", nullable: true),
+                    Status = table.Column<int>(type: "int", nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     ScheduledDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    StartDate = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    CompletionDate = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    MileageIn = table.Column<int>(type: "int", nullable: true),
-                    MileageOut = table.Column<int>(type: "int", nullable: true),
-                    IsReturnVisit = table.Column<bool>(type: "bit", nullable: false),
-                    ParentWorkOrderId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
-                    Remark = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    CreatedByUserId = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    StartedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    CompletedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    IsRework = table.Column<bool>(type: "bit", nullable: false),
+                    OriginalOrderId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -318,13 +276,8 @@ namespace AutoRepair.Infrastructure.Migrations
                         name: "FK_WorkOrders_AspNetUsers_AssignedToUserId",
                         column: x => x.AssignedToUserId,
                         principalTable: "AspNetUsers",
-                        principalColumn: "Id");
-                    table.ForeignKey(
-                        name: "FK_WorkOrders_AspNetUsers_CreatedByUserId",
-                        column: x => x.CreatedByUserId,
-                        principalTable: "AspNetUsers",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
                         name: "FK_WorkOrders_Vehicles_VehicleId",
                         column: x => x.VehicleId,
@@ -332,37 +285,38 @@ namespace AutoRepair.Infrastructure.Migrations
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "FK_WorkOrders_WorkOrders_ParentWorkOrderId",
-                        column: x => x.ParentWorkOrderId,
+                        name: "FK_WorkOrders_WorkOrders_OriginalOrderId",
+                        column: x => x.OriginalOrderId,
                         principalTable: "WorkOrders",
                         principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
-                name: "CommunicationLogs",
+                name: "StockAlerts",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    StockAlertId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
-                    QuoteId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
-                    Content = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    LogDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    LoggedByUserId = table.Column<string>(type: "nvarchar(450)", nullable: false),
-                    LogType = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                    PartInventoryId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    RiskLevel = table.Column<int>(type: "int", nullable: false),
+                    AlertMessage = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    IsAcknowledged = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    AcknowledgedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    AcknowledgedByUserId = table.Column<string>(type: "nvarchar(450)", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_CommunicationLogs", x => x.Id);
+                    table.PrimaryKey("PK_StockAlerts", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_CommunicationLogs_AspNetUsers_LoggedByUserId",
-                        column: x => x.LoggedByUserId,
+                        name: "FK_StockAlerts_AspNetUsers_AcknowledgedByUserId",
+                        column: x => x.AcknowledgedByUserId,
                         principalTable: "AspNetUsers",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
-                        name: "FK_CommunicationLogs_StockAlerts_StockAlertId",
-                        column: x => x.StockAlertId,
-                        principalTable: "StockAlerts",
+                        name: "FK_StockAlerts_PartInventories_PartInventoryId",
+                        column: x => x.PartInventoryId,
+                        principalTable: "PartInventories",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -374,22 +328,23 @@ namespace AutoRepair.Infrastructure.Migrations
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     VehicleId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     WorkOrderId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
-                    Symptoms = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    DiagnosisResult = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    FaultCodes = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    RepairRecommendation = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    DiagnosisDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    TechnicianUserId = table.Column<string>(type: "nvarchar(450)", nullable: false)
+                    DiagnosedByUserId = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    SymptomDescription = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    DiagnosticResult = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    FaultCodes = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Recommendations = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    DiagnosedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Diagnoses", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Diagnoses_AspNetUsers_TechnicianUserId",
-                        column: x => x.TechnicianUserId,
+                        name: "FK_Diagnoses_AspNetUsers_DiagnosedByUserId",
+                        column: x => x.DiagnosedByUserId,
                         principalTable: "AspNetUsers",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_Diagnoses_Vehicles_VehicleId",
                         column: x => x.VehicleId,
@@ -400,7 +355,8 @@ namespace AutoRepair.Infrastructure.Migrations
                         name: "FK_Diagnoses_WorkOrders_WorkOrderId",
                         column: x => x.WorkOrderId,
                         principalTable: "WorkOrders",
-                        principalColumn: "Id");
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
                 });
 
             migrationBuilder.CreateTable(
@@ -408,31 +364,28 @@ namespace AutoRepair.Infrastructure.Migrations
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    QuoteNumber = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    QuoteNumber = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     WorkOrderId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    VehicleId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    CreatedByUserId = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    Status = table.Column<int>(type: "int", nullable: false),
                     PartsTotal = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     LaborTotal = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
-                    TotalAmount = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
-                    Status = table.Column<int>(type: "int", nullable: false),
-                    ApprovalDate = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    ApprovedByUserId = table.Column<string>(type: "nvarchar(450)", nullable: true),
-                    Remark = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Discount = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    Tax = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    GrandTotal = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    CustomerNotes = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    InternalNotes = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    ValidUntil = table.Column<DateTime>(type: "datetime2", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Quotes", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Quotes_AspNetUsers_ApprovedByUserId",
-                        column: x => x.ApprovedByUserId,
+                        name: "FK_Quotes_AspNetUsers_CreatedByUserId",
+                        column: x => x.CreatedByUserId,
                         principalTable: "AspNetUsers",
-                        principalColumn: "Id");
-                    table.ForeignKey(
-                        name: "FK_Quotes_Vehicles_VehicleId",
-                        column: x => x.VehicleId,
-                        principalTable: "Vehicles",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
@@ -440,7 +393,7 @@ namespace AutoRepair.Infrastructure.Migrations
                         column: x => x.WorkOrderId,
                         principalTable: "WorkOrders",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -449,14 +402,14 @@ namespace AutoRepair.Infrastructure.Migrations
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     WorkOrderId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    PartId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     ItemName = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    ItemType = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     Quantity = table.Column<int>(type: "int", nullable: false),
                     UnitPrice = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     LaborCost = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
-                    Subtotal = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
-                    Remark = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                    IsCompleted = table.Column<bool>(type: "bit", nullable: false),
+                    CompletedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    PartId = table.Column<Guid>(type: "uniqueidentifier", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -465,7 +418,8 @@ namespace AutoRepair.Infrastructure.Migrations
                         name: "FK_WorkOrderItems_Parts_PartId",
                         column: x => x.PartId,
                         principalTable: "Parts",
-                        principalColumn: "Id");
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
                         name: "FK_WorkOrderItems_WorkOrders_WorkOrderId",
                         column: x => x.WorkOrderId,
@@ -475,19 +429,67 @@ namespace AutoRepair.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "CommunicationLogs",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    StockAlertId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    QuoteId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    WorkOrderId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    FromUserId = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    ToUserId = table.Column<string>(type: "nvarchar(450)", nullable: true),
+                    Message = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    AttachmentUrl = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    SentAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_CommunicationLogs", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_CommunicationLogs_AspNetUsers_FromUserId",
+                        column: x => x.FromUserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_CommunicationLogs_AspNetUsers_ToUserId",
+                        column: x => x.ToUserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_CommunicationLogs_Quotes_QuoteId",
+                        column: x => x.QuoteId,
+                        principalTable: "Quotes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_CommunicationLogs_StockAlerts_StockAlertId",
+                        column: x => x.StockAlertId,
+                        principalTable: "StockAlerts",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_CommunicationLogs_WorkOrders_WorkOrderId",
+                        column: x => x.WorkOrderId,
+                        principalTable: "WorkOrders",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "QuoteItems",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     QuoteId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    PartId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     ItemName = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    ItemType = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     Quantity = table.Column<int>(type: "int", nullable: false),
                     UnitPrice = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     LaborCost = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
-                    Subtotal = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
-                    Remark = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                    IsPart = table.Column<bool>(type: "bit", nullable: false),
+                    PartId = table.Column<Guid>(type: "uniqueidentifier", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -496,7 +498,8 @@ namespace AutoRepair.Infrastructure.Migrations
                         name: "FK_QuoteItems_Parts_PartId",
                         column: x => x.PartId,
                         principalTable: "Parts",
-                        principalColumn: "Id");
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
                         name: "FK_QuoteItems_Quotes_QuoteId",
                         column: x => x.QuoteId,
@@ -512,10 +515,11 @@ namespace AutoRepair.Infrastructure.Migrations
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     QuoteId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     WorkOrderId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    StockAlertId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    ReviewerUserId = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     Opinion = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     IsApproved = table.Column<bool>(type: "bit", nullable: false),
-                    ReviewedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    ReviewerUserId = table.Column<string>(type: "nvarchar(450)", nullable: false)
+                    ReviewedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -525,7 +529,7 @@ namespace AutoRepair.Infrastructure.Migrations
                         column: x => x.ReviewerUserId,
                         principalTable: "AspNetUsers",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_ReviewOpinions_Quotes_QuoteId",
                         column: x => x.QuoteId,
@@ -533,22 +537,20 @@ namespace AutoRepair.Infrastructure.Migrations
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
+                        name: "FK_ReviewOpinions_StockAlerts_StockAlertId",
+                        column: x => x.StockAlertId,
+                        principalTable: "StockAlerts",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
                         name: "FK_ReviewOpinions_WorkOrders_WorkOrderId",
                         column: x => x.WorkOrderId,
                         principalTable: "WorkOrders",
-                        principalColumn: "Id");
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
                 });
 
-            // 为 CommunicationLogs 添加对 Quote 的 FK
-            migrationBuilder.AddForeignKey(
-                name: "FK_CommunicationLogs_Quotes_QuoteId",
-                table: "CommunicationLogs",
-                column: "QuoteId",
-                principalTable: "Quotes",
-                principalColumn: "Id",
-                onDelete: ReferentialAction.Cascade);
-
-            // 索引
+            // === 索引 ===
             migrationBuilder.CreateIndex(
                 name: "IX_AspNetRoleClaims_RoleId",
                 table: "AspNetRoleClaims",
@@ -589,9 +591,9 @@ namespace AutoRepair.Infrastructure.Migrations
                 filter: "[NormalizedUserName] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
-                name: "IX_CommunicationLogs_LoggedByUserId",
+                name: "IX_CommunicationLogs_FromUserId",
                 table: "CommunicationLogs",
-                column: "LoggedByUserId");
+                column: "FromUserId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_CommunicationLogs_QuoteId",
@@ -604,9 +606,19 @@ namespace AutoRepair.Infrastructure.Migrations
                 column: "StockAlertId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Diagnoses_TechnicianUserId",
+                name: "IX_CommunicationLogs_ToUserId",
+                table: "CommunicationLogs",
+                column: "ToUserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CommunicationLogs_WorkOrderId",
+                table: "CommunicationLogs",
+                column: "WorkOrderId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Diagnoses_DiagnosedByUserId",
                 table: "Diagnoses",
-                column: "TechnicianUserId");
+                column: "DiagnosedByUserId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Diagnoses_VehicleId",
@@ -626,7 +638,14 @@ namespace AutoRepair.Infrastructure.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_PartInventories_PartId",
                 table: "PartInventories",
-                column: "PartId");
+                column: "PartId",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Parts_PartNumber",
+                table: "Parts",
+                column: "PartNumber",
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_QuoteItems_PartId",
@@ -639,14 +658,15 @@ namespace AutoRepair.Infrastructure.Migrations
                 column: "QuoteId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Quotes_ApprovedByUserId",
+                name: "IX_Quotes_CreatedByUserId",
                 table: "Quotes",
-                column: "ApprovedByUserId");
+                column: "CreatedByUserId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Quotes_VehicleId",
+                name: "IX_Quotes_QuoteNumber",
                 table: "Quotes",
-                column: "VehicleId");
+                column: "QuoteNumber",
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_Quotes_WorkOrderId",
@@ -659,14 +679,19 @@ namespace AutoRepair.Infrastructure.Migrations
                 column: "QuoteId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_ReviewOpinions_WorkOrderId",
-                table: "ReviewOpinions",
-                column: "WorkOrderId");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_ReviewOpinions_ReviewerUserId",
                 table: "ReviewOpinions",
                 column: "ReviewerUserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ReviewOpinions_StockAlertId",
+                table: "ReviewOpinions",
+                column: "StockAlertId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ReviewOpinions_WorkOrderId",
+                table: "ReviewOpinions",
+                column: "WorkOrderId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_StockAlerts_AcknowledgedByUserId",
@@ -674,9 +699,21 @@ namespace AutoRepair.Infrastructure.Migrations
                 column: "AcknowledgedByUserId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_StockAlerts_PartId",
+                name: "IX_StockAlerts_PartInventoryId",
                 table: "StockAlerts",
-                column: "PartId");
+                column: "PartInventoryId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Vehicles_LicensePlate",
+                table: "Vehicles",
+                column: "LicensePlate",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Vehicles_VinCode",
+                table: "Vehicles",
+                column: "VinCode",
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_WorkOrderItems_PartId",
@@ -694,14 +731,15 @@ namespace AutoRepair.Infrastructure.Migrations
                 column: "AssignedToUserId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_WorkOrders_CreatedByUserId",
+                name: "IX_WorkOrders_OrderNumber",
                 table: "WorkOrders",
-                column: "CreatedByUserId");
+                column: "OrderNumber",
+                unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_WorkOrders_ParentWorkOrderId",
+                name: "IX_WorkOrders_OriginalOrderId",
                 table: "WorkOrders",
-                column: "ParentWorkOrderId");
+                column: "OriginalOrderId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_WorkOrders_VehicleId",
@@ -711,10 +749,6 @@ namespace AutoRepair.Infrastructure.Migrations
 
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropForeignKey(
-                name: "FK_CommunicationLogs_Quotes_QuoteId",
-                table: "CommunicationLogs");
-
             migrationBuilder.DropTable(
                 name: "AspNetRoleClaims");
 
@@ -740,9 +774,6 @@ namespace AutoRepair.Infrastructure.Migrations
                 name: "MaintenanceReminders");
 
             migrationBuilder.DropTable(
-                name: "PartInventories");
-
-            migrationBuilder.DropTable(
                 name: "QuoteItems");
 
             migrationBuilder.DropTable(
@@ -755,22 +786,25 @@ namespace AutoRepair.Infrastructure.Migrations
                 name: "AspNetRoles");
 
             migrationBuilder.DropTable(
-                name: "StockAlerts");
-
-            migrationBuilder.DropTable(
                 name: "Quotes");
 
             migrationBuilder.DropTable(
-                name: "Parts");
+                name: "StockAlerts");
+
+            migrationBuilder.DropTable(
+                name: "PartInventories");
 
             migrationBuilder.DropTable(
                 name: "WorkOrders");
 
             migrationBuilder.DropTable(
-                name: "Vehicles");
+                name: "AspNetUsers");
 
             migrationBuilder.DropTable(
-                name: "AspNetUsers");
+                name: "Parts");
+
+            migrationBuilder.DropTable(
+                name: "Vehicles");
         }
     }
 }
