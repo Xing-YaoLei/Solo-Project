@@ -1,3 +1,4 @@
+import compat  # noqa: F401  — must load before any SQLAlchemy model
 import os
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine

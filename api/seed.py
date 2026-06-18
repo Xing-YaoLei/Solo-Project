@@ -1,4 +1,5 @@
 import asyncio
+import compat  # noqa: F401
 import random
 from datetime import date, timedelta, datetime
 

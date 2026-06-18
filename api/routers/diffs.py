@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import select, func
+from sqlalchemy import select, func, distinct
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db
-from models import DataDiff, Vehicle
+from models import DataDiff, Vehicle, Store
 from schemas import DiffSummary, SourceVsCrm, DetectorVersionDiff, VersionEntry, DiffRecord
 
 router = APIRouter(prefix="/diffs", tags=["diffs"])
@@ -17,25 +17,50 @@ async def get_diff_summary(db: AsyncSession = Depends(get_db)):
     )).scalar() or 0
     pending = total - resolved
 
+    # Aggregate detector versions from Vehicle table (D3.0, D4.1, etc.)
     version_rows = (
         await db.execute(
-            select(DataDiff.source, func.count(DataDiff.diff_id))
-            .where(DataDiff.source.ilike("D%"))
-            .group_by(DataDiff.source)
+            select(
+                Vehicle.detector_version,
+                func.count(Vehicle.vehicle_id).label("vehicle_count"),
+            )
+            .where(Vehicle.detector_version.isnot(None), Vehicle.detector_version != "")
+            .group_by(Vehicle.detector_version)
+            .order_by(Vehicle.detector_version)
         )
     ).all()
 
-    versions = [
-        VersionEntry(
-            version=v,
-            count=c,
-            change_date="2025-01-15",
-            affected_stores=[],
-        )
-        for v, c in version_rows
-    ]
+    versions: list[VersionEntry] = []
+    for ver, cnt in version_rows:
+        if not ver:
+            continue
 
-    version_total = sum(v.count for v in versions) if versions else 0
+        # Find stores affected by this detector version
+        store_rows = (
+            await db.execute(
+                select(distinct(Store.store_name))
+                .join(Vehicle, Vehicle.store_id == Store.store_id)
+                .where(Vehicle.detector_version == ver)
+            )
+        ).scalars().all()
+
+        # Find earliest entry_date for this version as change_date
+        earliest = (
+            await db.execute(
+                select(func.min(Vehicle.entry_date))
+                .where(Vehicle.detector_version == ver)
+            )
+        ).scalar()
+        change_date = str(earliest) if earliest else ""
+
+        versions.append(VersionEntry(
+            version=ver,
+            count=cnt,
+            change_date=change_date,
+            affected_stores=list(store_rows),
+        ))
+
+    version_total = sum(v.count for v in versions)
 
     return DiffSummary(
         source_vs_crm=SourceVsCrm(total=total, resolved=resolved, pending=pending),

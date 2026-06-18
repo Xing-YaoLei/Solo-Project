@@ -13,19 +13,19 @@ import type {
   MaterialTrendPoint,
 } from "@/types"
 import { apiClient } from "@/lib/api"
-import {
-  mockDashboardKPI,
-  mockStoreMapPoints,
-  mockTurnoverTrends,
-  mockMaterialHeatmap,
-  mockVehicleList,
-  mockDiffSummary,
-  mockDiffRecords,
-  mockTurnoverComparisons,
-  mockTurnoverGapSamples,
-  mockMaterialTrend,
-  mockVehicleDetail,
-} from "@/mock/data"
+
+const EMPTY_KPI: DashboardKPI = {
+  total_vehicles: 0,
+  transfer_completion_rate: 0,
+  avg_turnover_days: 0,
+  material_missing_rate: 0,
+  kpi_trends: [],
+}
+
+const EMPTY_DIFF: DiffSummary = {
+  source_vs_crm: { total: 0, resolved: 0, pending: 0 },
+  detector_version_diff: { total: 0, versions: [] },
+}
 
 interface LoadState {
   loading: boolean
@@ -33,7 +33,6 @@ interface LoadState {
 }
 
 interface AppState {
-  // Data
   dashboardKPI: DashboardKPI
   storeMapPoints: StoreMapPoint[]
   turnoverTrends: TurnoverTrend[]
@@ -46,7 +45,6 @@ interface AppState {
   turnoverComparisons: TurnoverComparison[]
   turnoverGapSamples: TurnoverGapSample[]
 
-  // UI State
   selectedVehicleId: string | null
   selectedMaterialType: string | null
   selectedStoreName: string | null
@@ -54,11 +52,8 @@ interface AppState {
   diffFilterResolved: string | null
   turnoverTimeRange: string
   apiConnected: boolean
-
-  // Load states
   loadStates: Record<string, LoadState>
 
-  // Actions - UI
   setSelectedVehicleId: (id: string | null) => void
   setSelectedMaterialType: (t: string | null) => void
   setSelectedStoreName: (s: string | null) => void
@@ -66,7 +61,6 @@ interface AppState {
   setDiffFilterResolved: (s: string | null) => void
   setTurnoverTimeRange: (r: string) => void
 
-  // Actions - Data fetchers
   fetchHealth: () => Promise<void>
   fetchDashboardKPI: () => Promise<void>
   fetchStoreMapPoints: () => Promise<void>
@@ -81,26 +75,22 @@ interface AppState {
   fetchTurnoverGapSamples: () => Promise<void>
   fetchAll: () => Promise<void>
 
-  // Utility
-  _setLoadState: (key: string, state: Partial<LoadState>) => void
-  _fallback: <T>(key: string, fallback: T, err: unknown) => T
+  _ls: (key: string, patch: Partial<LoadState>) => void
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
-  // ------- Initial data (fallbacks before API loads) -------
-  dashboardKPI: mockDashboardKPI,
-  storeMapPoints: mockStoreMapPoints,
-  turnoverTrends: mockTurnoverTrends,
-  materialHeatmap: mockMaterialHeatmap,
-  materialTrendPoints: mockMaterialTrend,
-  vehicleList: mockVehicleList,
-  vehicleDetail: mockVehicleDetail,
-  diffSummary: mockDiffSummary,
-  diffRecords: mockDiffRecords,
-  turnoverComparisons: mockTurnoverComparisons,
-  turnoverGapSamples: mockTurnoverGapSamples,
+  dashboardKPI: EMPTY_KPI,
+  storeMapPoints: [],
+  turnoverTrends: [],
+  materialHeatmap: [],
+  materialTrendPoints: [],
+  vehicleList: [],
+  vehicleDetail: {},
+  diffSummary: EMPTY_DIFF,
+  diffRecords: [],
+  turnoverComparisons: [],
+  turnoverGapSamples: [],
 
-  // ------- UI State -------
   selectedVehicleId: null,
   selectedMaterialType: null,
   selectedStoreName: null,
@@ -108,10 +98,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   diffFilterResolved: null,
   turnoverTimeRange: "12m",
   apiConnected: false,
-
   loadStates: {},
 
-  // ------- UI setters -------
   setSelectedVehicleId: (id) => set({ selectedVehicleId: id }),
   setSelectedMaterialType: (t) => set({ selectedMaterialType: t }),
   setSelectedStoreName: (s) => set({ selectedStoreName: s }),
@@ -119,163 +107,143 @@ export const useAppStore = create<AppState>((set, get) => ({
   setDiffFilterResolved: (s) => set({ diffFilterResolved: s }),
   setTurnoverTimeRange: (r) => set({ turnoverTimeRange: r }),
 
-  // ------- Utilities -------
-  _setLoadState: (key, state) =>
+  _ls: (key, patch) =>
     set((s) => ({
-      loadStates: { ...s.loadStates, [key]: { loading: false, error: null, ...s.loadStates[key], ...state } },
+      loadStates: {
+        ...s.loadStates,
+        [key]: { loading: false, error: null, ...s.loadStates[key], ...patch },
+      },
     })),
 
-  _fallback: <T,>(key: string, fallback: T, err: unknown): T => {
-    console.warn(`[api] ${key} failed, using fallback:`, err)
-    return fallback
-  },
-
-  // ------- Fetchers -------
   fetchHealth: async () => {
-    const key = "health"
-    get()._setLoadState(key, { loading: true, error: null })
     try {
-      const res = await apiClient.health()
-      set({ apiConnected: res.status === "ok" })
-      get()._setLoadState(key, { loading: false })
-    } catch (e) {
+      const r = await apiClient.health()
+      set({ apiConnected: r.status === "ok" })
+    } catch {
       set({ apiConnected: false })
-      get()._setLoadState(key, { loading: false, error: String(e) })
     }
   },
 
   fetchDashboardKPI: async () => {
-    const key = "dashboardKPI"
-    get()._setLoadState(key, { loading: true, error: null })
+    get()._ls("dashboardKPI", { loading: true })
     try {
-      const data = await apiClient.dashboard.kpi()
-      set({ dashboardKPI: data })
-      get()._setLoadState(key, { loading: false })
+      const d = await apiClient.dashboard.kpi()
+      set({ dashboardKPI: d })
+      get()._ls("dashboardKPI", { loading: false })
     } catch (e) {
-      get()._setLoadState(key, { loading: false, error: String(e) })
+      get()._ls("dashboardKPI", { loading: false, error: String(e) })
     }
   },
 
   fetchStoreMapPoints: async () => {
-    const key = "storeMapPoints"
-    get()._setLoadState(key, { loading: true, error: null })
+    get()._ls("storeMapPoints", { loading: true })
     try {
-      const data = await apiClient.dashboard.stores()
-      set({ storeMapPoints: data })
-      get()._setLoadState(key, { loading: false })
+      const d = await apiClient.dashboard.stores()
+      set({ storeMapPoints: d })
+      get()._ls("storeMapPoints", { loading: false })
     } catch (e) {
-      get()._setLoadState(key, { loading: false, error: String(e) })
+      get()._ls("storeMapPoints", { loading: false, error: String(e) })
     }
   },
 
   fetchTurnoverTrends: async () => {
-    const key = "turnoverTrends"
-    get()._setLoadState(key, { loading: true, error: null })
+    get()._ls("turnoverTrends", { loading: true })
     try {
-      const data = await apiClient.dashboard.turnoverTrends()
-      set({ turnoverTrends: data })
-      get()._setLoadState(key, { loading: false })
+      const d = await apiClient.dashboard.turnoverTrends()
+      set({ turnoverTrends: d })
+      get()._ls("turnoverTrends", { loading: false })
     } catch (e) {
-      get()._setLoadState(key, { loading: false, error: String(e) })
+      get()._ls("turnoverTrends", { loading: false, error: String(e) })
     }
   },
 
   fetchMaterialHeatmap: async () => {
-    const key = "materialHeatmap"
-    get()._setLoadState(key, { loading: true, error: null })
+    get()._ls("materialHeatmap", { loading: true })
     try {
-      const data = await apiClient.dashboard.materialHeatmap()
-      set({ materialHeatmap: data })
-      get()._setLoadState(key, { loading: false })
+      const d = await apiClient.dashboard.materialHeatmap()
+      set({ materialHeatmap: d })
+      get()._ls("materialHeatmap", { loading: false })
     } catch (e) {
-      get()._setLoadState(key, { loading: false, error: String(e) })
+      get()._ls("materialHeatmap", { loading: false, error: String(e) })
     }
   },
 
   fetchMaterialTrend: async () => {
-    const key = "materialTrendPoints"
-    get()._setLoadState(key, { loading: true, error: null })
+    get()._ls("materialTrendPoints", { loading: true })
     try {
-      const data = await apiClient.dashboard.materialTrends()
-      set({ materialTrendPoints: data })
-      get()._setLoadState(key, { loading: false })
+      const d = await apiClient.dashboard.materialTrends()
+      set({ materialTrendPoints: d })
+      get()._ls("materialTrendPoints", { loading: false })
     } catch (e) {
-      get()._setLoadState(key, { loading: false, error: String(e) })
+      get()._ls("materialTrendPoints", { loading: false, error: String(e) })
     }
   },
 
   fetchVehicleList: async () => {
-    const key = "vehicleList"
-    get()._setLoadState(key, { loading: true, error: null })
+    get()._ls("vehicleList", { loading: true })
     try {
-      const data = await apiClient.vehicles.list({ page_size: 50 })
-      set({ vehicleList: data })
-      get()._setLoadState(key, { loading: false })
+      const d = await apiClient.vehicles.list({ page_size: 100 })
+      set({ vehicleList: d })
+      get()._ls("vehicleList", { loading: false })
     } catch (e) {
-      get()._setLoadState(key, { loading: false, error: String(e) })
+      get()._ls("vehicleList", { loading: false, error: String(e) })
     }
   },
 
   fetchVehicleDetail: async (vehicle_id, force = false) => {
     const key = `vehicleDetail:${vehicle_id}`
-    const existing = get().vehicleDetail[vehicle_id]
-    if (existing && !force) return
-
-    get()._setLoadState(key, { loading: true, error: null })
+    if (get().vehicleDetail[vehicle_id] && !force) return
+    get()._ls(key, { loading: true })
     try {
-      const data = await apiClient.vehicles.detail(vehicle_id)
-      set((s) => ({ vehicleDetail: { ...s.vehicleDetail, [vehicle_id]: data } }))
-      get()._setLoadState(key, { loading: false })
+      const d = await apiClient.vehicles.detail(vehicle_id)
+      set((s) => ({ vehicleDetail: { ...s.vehicleDetail, [vehicle_id]: d } }))
+      get()._ls(key, { loading: false })
     } catch (e) {
-      get()._setLoadState(key, { loading: false, error: String(e) })
+      get()._ls(key, { loading: false, error: String(e) })
     }
   },
 
   fetchDiffSummary: async () => {
-    const key = "diffSummary"
-    get()._setLoadState(key, { loading: true, error: null })
+    get()._ls("diffSummary", { loading: true })
     try {
-      const data = await apiClient.diffs.summary()
-      set({ diffSummary: data })
-      get()._setLoadState(key, { loading: false })
+      const d = await apiClient.diffs.summary()
+      set({ diffSummary: d })
+      get()._ls("diffSummary", { loading: false })
     } catch (e) {
-      get()._setLoadState(key, { loading: false, error: String(e) })
+      get()._ls("diffSummary", { loading: false, error: String(e) })
     }
   },
 
   fetchDiffRecords: async () => {
-    const key = "diffRecords"
-    get()._setLoadState(key, { loading: true, error: null })
+    get()._ls("diffRecords", { loading: true })
     try {
-      const data = await apiClient.diffs.records({ page_size: 50 })
-      set({ diffRecords: data })
-      get()._setLoadState(key, { loading: false })
+      const d = await apiClient.diffs.records({ page_size: 50 })
+      set({ diffRecords: d })
+      get()._ls("diffRecords", { loading: false })
     } catch (e) {
-      get()._setLoadState(key, { loading: false, error: String(e) })
+      get()._ls("diffRecords", { loading: false, error: String(e) })
     }
   },
 
   fetchTurnoverComparisons: async () => {
-    const key = "turnoverComparisons"
-    get()._setLoadState(key, { loading: true, error: null })
+    get()._ls("turnoverComparisons", { loading: true })
     try {
-      const data = await apiClient.turnover.comparison()
-      set({ turnoverComparisons: data })
-      get()._setLoadState(key, { loading: false })
+      const d = await apiClient.turnover.comparison()
+      set({ turnoverComparisons: d })
+      get()._ls("turnoverComparisons", { loading: false })
     } catch (e) {
-      get()._setLoadState(key, { loading: false, error: String(e) })
+      get()._ls("turnoverComparisons", { loading: false, error: String(e) })
     }
   },
 
   fetchTurnoverGapSamples: async () => {
-    const key = "turnoverGapSamples"
-    get()._setLoadState(key, { loading: true, error: null })
+    get()._ls("turnoverGapSamples", { loading: true })
     try {
-      const data = await apiClient.turnover.gapSamples({ page_size: 30 })
-      set({ turnoverGapSamples: data })
-      get()._setLoadState(key, { loading: false })
+      const d = await apiClient.turnover.gapSamples({ page_size: 30 })
+      set({ turnoverGapSamples: d })
+      get()._ls("turnoverGapSamples", { loading: false })
     } catch (e) {
-      get()._setLoadState(key, { loading: false, error: String(e) })
+      get()._ls("turnoverGapSamples", { loading: false, error: String(e) })
     }
   },
 
