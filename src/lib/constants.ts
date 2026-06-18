@@ -19,6 +19,11 @@ export type AnomalyType =
   | "OTHER";
 export type Severity = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
 export type AnomalyStatus = "OPEN" | "IN_PROGRESS" | "RESOLVED" | "IGNORED";
+export type InventoryType = "INBOUND" | "OUTBOUND" | "ADJUSTMENT" | "RETURN";
+export type CountStatus = "DRAFT" | "CONFIRMED" | "ADJUSTED";
+export type PhotoType = "MATERIAL_LOADING" | "MATERIAL_UNLOADING" | "SITE_INSPECTION" | "QUALITY_CHECK" | "OTHER";
+export type PaymentType = "ADVANCE" | "PARTIAL" | "FINAL" | "DEPOSIT";
+export type PurchaseStatus = "DRAFT" | "APPROVED" | "ORDERED" | "PARTIAL_ARRIVED" | "FULLY_ARRIVED" | "CLOSED";
 
 export const FunnelStage: Record<FunnelStage, FunnelStage> = {
   DEMAND_PLAN: "DEMAND_PLAN",
@@ -73,6 +78,43 @@ export const AnomalyStatus: Record<AnomalyStatus, AnomalyStatus> = {
   IN_PROGRESS: "IN_PROGRESS",
   RESOLVED: "RESOLVED",
   IGNORED: "IGNORED",
+};
+
+export const InventoryType: Record<InventoryType, InventoryType> = {
+  INBOUND: "INBOUND",
+  OUTBOUND: "OUTBOUND",
+  ADJUSTMENT: "ADJUSTMENT",
+  RETURN: "RETURN",
+};
+
+export const CountStatus: Record<CountStatus, CountStatus> = {
+  DRAFT: "DRAFT",
+  CONFIRMED: "CONFIRMED",
+  ADJUSTED: "ADJUSTED",
+};
+
+export const PhotoType: Record<PhotoType, PhotoType> = {
+  MATERIAL_LOADING: "MATERIAL_LOADING",
+  MATERIAL_UNLOADING: "MATERIAL_UNLOADING",
+  SITE_INSPECTION: "SITE_INSPECTION",
+  QUALITY_CHECK: "QUALITY_CHECK",
+  OTHER: "OTHER",
+};
+
+export const PaymentType: Record<PaymentType, PaymentType> = {
+  ADVANCE: "ADVANCE",
+  PARTIAL: "PARTIAL",
+  FINAL: "FINAL",
+  DEPOSIT: "DEPOSIT",
+};
+
+export const PurchaseStatus: Record<PurchaseStatus, PurchaseStatus> = {
+  DRAFT: "DRAFT",
+  APPROVED: "APPROVED",
+  ORDERED: "ORDERED",
+  PARTIAL_ARRIVED: "PARTIAL_ARRIVED",
+  FULLY_ARRIVED: "FULLY_ARRIVED",
+  CLOSED: "CLOSED",
 };
 
 export const STAGE_LABELS: Record<FunnelStage, string> = {

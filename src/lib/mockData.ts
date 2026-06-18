@@ -7,7 +7,10 @@ import {
   AnomalyStatus,
   InventoryType,
   CountStatus,
-} from "@prisma/client";
+  PhotoType,
+  PaymentType,
+  PurchaseStatus,
+} from "./constants";
 import { CALIBER_VERSION } from "./constants";
 
 const today = new Date("2026-06-18");
@@ -333,3 +336,112 @@ export const MOCK_NOTES: MockNote[] = [
   { id: "note-2", content: "现场找到漏登瓷砖5片，属于上月盘点差异调整", author: "李工", siteId: "site-2", stockDiffId: MOCK_STOCK_COUNT_DIFFS[0]?.id || null, createdAt: daysAgo(1) },
   { id: "note-3", content: "监理照片已补拍，等待审核上传", author: "张监理", siteId: "site-1", stockDiffId: null, createdAt: daysAgo(0) },
 ];
+
+export interface MockSupervisorPhoto {
+  id: string;
+  siteId: string;
+  photoUrl: string;
+  fileName: string;
+  photoType: PhotoType;
+  takenAt: Date;
+  uploader: string;
+  remark: string | null;
+  syncStatus: SyncStatus;
+  syncError: string | null;
+}
+
+export interface MockPaymentRecord {
+  id: string;
+  siteId: string;
+  purchaseOrderId: string | null;
+  amount: number;
+  paymentType: PaymentType;
+  payer: string | null;
+  payee: string | null;
+  paidAt: Date | null;
+  voucherNo: string | null;
+  syncStatus: SyncStatus;
+  syncError: string | null;
+}
+
+export interface MockPurchaseOrder {
+  id: string;
+  siteId: string;
+  orderNo: string;
+  supplier: string | null;
+  totalAmount: number;
+  status: PurchaseStatus;
+  syncStatus: SyncStatus;
+  syncError: string | null;
+}
+
+export const MOCK_SUPERVISOR_PHOTOS: MockSupervisorPhoto[] = (() => {
+  const arr: MockSupervisorPhoto[] = [];
+  const photoTypes = Object.values(PhotoType);
+  let n = 1;
+  MOCK_SITES.forEach((s, si) => {
+    for (let i = 0; i < 30 + si * 5; i++) {
+      const isFailed = si === 0 && i % 4 === 0;
+      arr.push({
+        id: `photo-${n++}`,
+        siteId: s.id,
+        photoUrl: `https://picsum.photos/seed/photo${n}/800/600`,
+        fileName: `IMG_${String(20260000 + n)}.jpg`,
+        photoType: pick(photoTypes as unknown as PhotoType[]),
+        takenAt: daysAgo(Math.round(randomBetween(1, 20))),
+        uploader: pick(["李监理", "王监理", "张监理"]),
+        remark: i % 7 === 0 ? "材料验收" : null,
+        syncStatus: isFailed ? SyncStatus.FAILED : SyncStatus.SYNCED,
+        syncError: isFailed ? pick(["上传超时", "文件损坏", "元数据缺失", "存储空间不足"]) : null,
+      });
+    }
+  });
+  return arr;
+})();
+
+export const MOCK_PAYMENT_RECORDS: MockPaymentRecord[] = (() => {
+  const arr: MockPaymentRecord[] = [];
+  const paymentTypes = Object.values(PaymentType);
+  let n = 1;
+  MOCK_SITES.forEach((s, si) => {
+    for (let i = 0; i < 8 + si; i++) {
+      const isFailed = si === 1 && i % 3 === 2;
+      arr.push({
+        id: `pay-${n++}`,
+        siteId: s.id,
+        purchaseOrderId: i % 2 === 0 ? `PO-${String(10000 + n).padStart(5, "0")}` : null,
+        amount: Math.round(randomBetween(5000, 100000)),
+        paymentType: pick(paymentTypes as unknown as PaymentType[]),
+        payer: s.owner,
+        payee: pick(["建材供应商A", "建材供应商B", "装修公司", "劳务队"]),
+        paidAt: daysAgo(Math.round(randomBetween(1, 15))),
+        voucherNo: `V${String(20260000 + n)}`,
+        syncStatus: isFailed ? SyncStatus.FAILED : SyncStatus.SYNCED,
+        syncError: isFailed ? pick(["金额不匹配", "凭证号重复", "缺少审批记录", "银行回执未上传"]) : null,
+      });
+    }
+  });
+  return arr;
+})();
+
+export const MOCK_PURCHASE_ORDERS: MockPurchaseOrder[] = (() => {
+  const arr: MockPurchaseOrder[] = [];
+  const statuses = Object.values(PurchaseStatus);
+  let n = 1;
+  MOCK_SITES.forEach((s, si) => {
+    for (let i = 0; i < 15 + si * 3; i++) {
+      const isFailed = si === 2 && i % 5 === 3;
+      arr.push({
+        id: `po-${n++}`,
+        siteId: s.id,
+        orderNo: `PO-${String(10000 + n).padStart(5, "0")}`,
+        supplier: pick(["建材供应商A", "建材供应商B", "瓷砖专营店", "水电材料批发"]),
+        totalAmount: Math.round(randomBetween(10000, 200000)),
+        status: pick(statuses as unknown as PurchaseStatus[]),
+        syncStatus: isFailed ? SyncStatus.FAILED : SyncStatus.SYNCED,
+        syncError: isFailed ? pick(["物料编码不匹配", "采购单价超预算", "供应商信息缺失", "审批流程未完成"]) : null,
+      });
+    }
+  });
+  return arr;
+})();

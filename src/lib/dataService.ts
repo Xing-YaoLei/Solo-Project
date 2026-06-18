@@ -1,4 +1,4 @@
-import { FunnelStage } from "@prisma/client";
+import { FunnelStage, AnomalyType, Severity, AnomalyStatus, SyncStatus, SyncTaskType } from "./constants";
 import {
   MOCK_SITES,
   MOCK_MATERIALS,
@@ -10,11 +10,18 @@ import {
   MOCK_STOCK_COUNT_DIFFS,
   MOCK_RAW_SAMPLES,
   MOCK_NOTES,
+  MOCK_SUPERVISOR_PHOTOS,
+  MOCK_PAYMENT_RECORDS,
+  MOCK_PURCHASE_ORDERS,
   MockMaterialArrival,
   MockAnomaly,
   MockNote,
+  MockSupervisorPhoto,
+  MockPaymentRecord,
+  MockPurchaseOrder,
+  MockSyncTask,
 } from "./mockData";
-import { STAGE_ORDER } from "./constants";
+import { STAGE_ORDER, CALIBER_VERSION, SYNC_TASK_LABELS, ANOMALY_TYPE_LABELS } from "./constants";
 
 export interface FunnelFilters {
   siteId?: string;
@@ -318,4 +325,164 @@ export function getArrivals(filters: FunnelFilters = {}) {
 export function getMaterialCategories() {
   const set = new Set(MOCK_MATERIALS.map((m) => m.category));
   return Array.from(set);
+}
+
+export interface SyncExecuteResult {
+  task: MockSyncTask;
+  createdAnomalies: MockAnomaly[];
+  failedItems: Array<{
+    id: string;
+    type: string;
+    siteId: string;
+    description: string;
+    error: string;
+  }>;
+}
+
+let anomalyIdCounter = 1000;
+
+function getDataSourceByType(taskType: string): {
+  source: Array<{ id: string; siteId: string; syncStatus: string; syncError: string | null }>;
+  anomalyType: AnomalyType;
+  itemLabel: (item: any) => string;
+} {
+  switch (taskType) {
+    case "SUPERVISOR_PHOTO":
+      return {
+        source: MOCK_SUPERVISOR_PHOTOS as unknown as Array<{ id: string; siteId: string; syncStatus: string; syncError: string | null; fileName: string }>,
+        anomalyType: AnomalyType.PHOTO_MISSING,
+        itemLabel: (item) => `照片 ${(item as MockSupervisorPhoto).fileName}`,
+      };
+    case "PAYMENT_RECORD":
+      return {
+        source: MOCK_PAYMENT_RECORDS as unknown as Array<{ id: string; siteId: string; syncStatus: string; syncError: string | null; voucherNo: string }>,
+        anomalyType: AnomalyType.PAYMENT_MISMATCH,
+        itemLabel: (item) => `收款凭证 ${(item as MockPaymentRecord).voucherNo}`,
+      };
+    case "PURCHASE_ORDER":
+      return {
+        source: MOCK_PURCHASE_ORDERS as unknown as Array<{ id: string; siteId: string; syncStatus: string; syncError: string | null; orderNo: string }>,
+        anomalyType: AnomalyType.ORDER_MISSING,
+        itemLabel: (item) => `采购单 ${(item as MockPurchaseOrder).orderNo}`,
+      };
+    default:
+      return {
+        source: [],
+        anomalyType: AnomalyType.OTHER,
+        itemLabel: () => "未知项",
+      };
+  }
+}
+
+export async function executeSyncTask(taskType: SyncTaskType | "ALL"): Promise<{
+  results: SyncExecuteResult[];
+  totalAnomaliesCreated: number;
+}> {
+  const taskTypes = taskType === "ALL"
+    ? [SyncTaskType.SUPERVISOR_PHOTO, SyncTaskType.PAYMENT_RECORD, SyncTaskType.PURCHASE_ORDER]
+    : [taskType];
+
+  const results: SyncExecuteResult[] = [];
+  let totalAnomaliesCreated = 0;
+
+  for (const tt of taskTypes) {
+    const task = MOCK_SYNC_TASKS.find((t) => t.taskType === tt);
+    if (!task) continue;
+
+    const { source, anomalyType, itemLabel } = getDataSourceByType(tt);
+    const failedItems = source.filter((x) => x.syncStatus === SyncStatus.FAILED);
+
+    (MOCK_SYNC_TASKS as unknown as MockSyncTask[]).forEach((t) => {
+      if (t.taskType === tt) {
+        t.status = SyncStatus.SYNCING;
+      }
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    const createdAnomalies: MockAnomaly[] = [];
+
+    for (const failedItem of failedItems) {
+      const existingAnomaly = MOCK_ANOMALIES.find(
+        (a) => a.anomalyType === anomalyType && a.description?.includes(failedItem.id)
+      );
+      if (existingAnomaly) {
+        if (existingAnomaly.status === AnomalyStatus.RESOLVED) {
+          existingAnomaly.status = AnomalyStatus.OPEN;
+          existingAnomaly.createdAt = new Date();
+          createdAnomalies.push(existingAnomaly);
+        }
+        continue;
+      }
+
+      const site = MOCK_SITES.find((s) => s.id === failedItem.siteId);
+      const newAnomaly: MockAnomaly = {
+        id: `anom-sync-${anomalyIdCounter++}`,
+        anomalyType,
+        severity: failedItems.length > 5 ? Severity.HIGH : Severity.MEDIUM,
+        siteId: failedItem.siteId,
+        arrivalId: null,
+        title: `${SYNC_TASK_LABELS[tt]}同步失败`,
+        description: `${itemLabel(failedItem)} 同步失败，错误原因：${failedItem.syncError || "未知错误"}。关联项ID：${failedItem.id}`,
+        status: AnomalyStatus.OPEN,
+        assignee: null,
+        createdAt: new Date(),
+      };
+      (MOCK_ANOMALIES as unknown as MockAnomaly[]).push(newAnomaly);
+      createdAnomalies.push(newAnomaly);
+    }
+
+    (MOCK_SYNC_TASKS as unknown as MockSyncTask[]).forEach((t) => {
+      if (t.taskType === tt) {
+        t.status = SyncStatus.SYNCED;
+        t.successCount = t.totalCount - failedItems.length;
+        t.failedCount = failedItems.length;
+        t.lastRun = new Date();
+      }
+    });
+
+    totalAnomaliesCreated += createdAnomalies.length;
+
+    const updatedTask = MOCK_SYNC_TASKS.find((t) => t.taskType === tt)!;
+    results.push({
+      task: updatedTask,
+      createdAnomalies,
+      failedItems: failedItems.map((fi) => ({
+        id: fi.id,
+        type: tt,
+        siteId: fi.siteId,
+        description: itemLabel(fi),
+        error: fi.syncError || "未知错误",
+      })),
+    });
+  }
+
+  return { results, totalAnomaliesCreated };
+}
+
+export function getSupervisorPhotos(siteId?: string) {
+  let list = MOCK_SUPERVISOR_PHOTOS;
+  if (siteId) list = list.filter((p) => p.siteId === siteId);
+  return list.map((p) => ({
+    ...p,
+    siteName: MOCK_SITES.find((s) => s.id === p.siteId)?.name,
+  }));
+}
+
+export function getPaymentRecords(siteId?: string) {
+  let list = MOCK_PAYMENT_RECORDS;
+  if (siteId) list = list.filter((p) => p.siteId === siteId);
+  return list.map((p) => ({
+    ...p,
+    siteName: MOCK_SITES.find((s) => s.id === p.siteId)?.name,
+  }));
+}
+
+export function getPurchaseOrders(siteId?: string) {
+  let list = MOCK_PURCHASE_ORDERS;
+  if (siteId) list = list.filter((p) => p.siteId === siteId);
+  return list.map((p) => ({
+    ...p,
+    siteName: MOCK_SITES.find((s) => s.id === p.siteId)?.name,
+  }));
 }

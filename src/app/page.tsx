@@ -88,6 +88,13 @@ export default function FunnelReportPage() {
   const thirtyDaysAgo = new Date(now);
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
+  const [isMounted, setIsMounted] = useState(false);
+  const [currentTime, setCurrentTime] = useState<string>("");
+  useEffect(() => {
+    setIsMounted(true);
+    setCurrentTime(new Date().toLocaleString("zh-CN"));
+  }, []);
+
   const [filters, setFilters] = useState<FilterState>({
     siteId: "",
     materialCategory: "",
@@ -151,16 +158,31 @@ export default function FunnelReportPage() {
 
   async function handleRunSync(type: string) {
     setSyncRunning(true);
-    setTimeout(() => {
-      setSyncTasks((prev) =>
-        prev.map((t) =>
-          type === "ALL" || t.taskType === type
-            ? { ...t, status: "SYNCED", failedCount: 0, successCount: t.totalCount, lastRun: new Date() }
-            : t
-        )
-      );
+    try {
+      const res = await fetch("/api/sync-tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ taskType: type }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "同步失败");
+      }
+      const data = await res.json();
+
+      if (data.message) {
+        alert(data.message);
+      }
+
+      loadSyncTasks();
+      const anomalyRes = await fetch(`/api/anomalies?siteId=${filters.siteId || ""}`);
+      const anomalyData = await anomalyRes.json();
+      setAnomalies(anomalyData.items || []);
+    } catch (e) {
+      alert("同步失败：" + (e as Error).message);
+    } finally {
       setSyncRunning(false);
-    }, 1200);
+    }
   }
 
   async function handleExport() {
@@ -222,7 +244,7 @@ export default function FunnelReportPage() {
               📖 查看口径定义
             </button>
             <span className="text-xs text-slate-400">
-              更新于 {now.toLocaleString("zh-CN")}
+              更新于 {isMounted ? currentTime : "--"}
             </span>
           </div>
         </div>

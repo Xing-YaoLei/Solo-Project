@@ -107,15 +107,17 @@ export function MaterialFunnelChart({ stages, onClickStage }: MaterialFunnelChar
               <Funnel
                 dataKey="value"
                 data={data}
-                isAnimationActive
+                isAnimationActive={false}
               >
                 <LabelList
                   position="right"
                   fill="#0f172a"
                   stroke="none"
-                  formatter={(v: number, _: unknown, p: { payload: FunnelStageItem }) => (
-                    `${p.payload.label} · ${v.toLocaleString()}`
-                  )}
+                  formatter={(v: number, index: number) => {
+                    const entry = data[Number(index)];
+                    const label = entry?.label || "";
+                    return `${label} · ${v.toLocaleString()}`;
+                  }}
                   fontSize={13}
                 />
                 {data.map((entry, index) => {
