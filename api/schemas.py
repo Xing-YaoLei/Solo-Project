@@ -166,3 +166,12 @@ class TurnoverGapSample(BaseModel):
     turnover_days: int
     gap_reason: str
     test_drive_anomaly: TestDriveRecord | None
+
+
+class MaterialTrendPoint(BaseModel):
+    month: str
+    登记证: float
+    行驶证: float
+    购车发票: float
+    保险单: float
+    完税证明: float

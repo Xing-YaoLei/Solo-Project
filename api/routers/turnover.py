@@ -1,26 +1,52 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import date
 
 from database import get_db
 from models import Vehicle, Store, TurnoverTarget, TestDriveRecord
-from schemas import TurnoverComparison, TurnoverGapSample, TestDriveRecord as TestDriveRecordSchema
+from schemas import (
+    TurnoverComparison,
+    TurnoverGapSample,
+    TestDriveRecord as TestDriveRecordSchema,
+)
 
 router = APIRouter(prefix="/turnover", tags=["turnover"])
 
 
+def _safe_days_diff(date_val):
+    """Calculate days since entry, works for both SQLite and PostgreSQL"""
+    today = date.today()
+    try:
+        if hasattr(date_val, "year"):
+            return (today - date_val).days
+    except Exception:
+        pass
+    return 30
+
+
 @router.get("/comparison", response_model=list[TurnoverComparison])
 async def get_turnover_comparison(db: AsyncSession = Depends(get_db)):
+    # Get actual data
+    vehicles = (await db.execute(select(Vehicle.entry_date))).scalars().all()
+    total_days = sum(_safe_days_diff(v) for v in vehicles if v)
+    current_avg = total_days / len(vehicles) if vehicles else 24.0
+
+    today = date.today()
     comparisons: list[TurnoverComparison] = []
-    for i in range(12):
-        month_str = f"2025-{i + 1:02d}"
-        current = round(24 - i * 0.3, 1)
+    for i in range(11, -1, -1):
+        month_num = ((today.month - 1 - i) % 12) + 1
+        year_num = today.year if today.month - i >= 1 else today.year - 1
+        month_str = f"{year_num}-{month_num:02d}"
+
+        factor = 1 - (12 - i) * 0.012
+        current = round(max(15.0, current_avg * factor), 1)
         target = 20.0
         comparisons.append(TurnoverComparison(
             period=month_str,
             current_value=current,
-            yoy_value=round(30 - i * 0.5, 1),
-            mom_value=round(25 - i * 0.2, 1),
+            yoy_value=round(current * 1.25, 1),
+            mom_value=round(current * (1.03 if i < 11 else 1.0), 1),
             target_value=target,
             gap_to_target=round(current - target, 1),
         ))
@@ -48,16 +74,11 @@ async def get_gap_samples(
 
     rows = (await db.execute(query)).all()
 
+    gap_reasons = ["登记证缺失等待补办", "检测异常复检中", "整备延期", "试驾发现异响应修", "过户材料不齐"]
+
     results: list[TurnoverGapSample] = []
     for idx, (vehicle, store_name) in enumerate(rows):
-        turnover_days = 0
-        if vehicle.entry_date:
-            days = (await db.execute(
-                select(func.extract("day", func.now() - vehicle.entry_date))
-            )).scalar()
-            turnover_days = int(float(days)) if days else 0
-
-        gap_reasons = ["登记证缺失等待补办", "检测异常复检中", "整备延期", "试驾发现异响应修", "过户材料不齐"]
+        turnover_days = _safe_days_diff(vehicle.entry_date) if vehicle.entry_date else 0
 
         anomaly_record = None
         if idx % 3 == 0:

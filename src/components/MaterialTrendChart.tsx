@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   LineChart,
   Line,
@@ -59,27 +59,24 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
 }
 
 export default function MaterialTrendChart() {
-  const dashboardKPI = useAppStore((s) => s.dashboardKPI)
+  const materialTrendPoints = useAppStore((s) => s.materialTrendPoints)
+  const fetchMaterialTrend = useAppStore((s) => s.fetchMaterialTrend)
   const [chartType, setChartType] = useState<"line" | "area">("line")
 
-  const trendData = dashboardKPI.kpi_trends.map((t) => ({
-    month: t.date.slice(5),
-    "整体缺失率": t.missing_rate,
+  useEffect(() => {
+    void fetchMaterialTrend()
+  }, [fetchMaterialTrend])
+
+  const materialTypes = ["登记证", "行驶证", "购车发票", "保险单", "完税证明"] as const
+
+  const detailedTrendData = materialTrendPoints.map((p) => ({
+    month: p.month.slice(5),
+    "登记证": p["登记证"],
+    "行驶证": p["行驶证"],
+    "购车发票": p["购车发票"],
+    "保险单": p["保险单"],
+    "完税证明": p["完税证明"],
   }))
-
-  const materialTypes = ["登记证", "行驶证", "购车发票", "保险单", "完税证明"]
-
-  const detailedTrendData = dashboardKPI.kpi_trends.map((t, idx) => {
-    const baseRate = t.missing_rate
-    return {
-      month: t.date.slice(5),
-      "登记证": Math.max(0.02, baseRate * (0.6 + Math.sin(idx * 0.5) * 0.15)),
-      "行驶证": Math.max(0.03, baseRate * (0.9 + Math.cos(idx * 0.4) * 0.2)),
-      "购车发票": Math.max(0.015, baseRate * (0.5 + Math.sin(idx * 0.6) * 0.1)),
-      "保险单": Math.max(0.025, baseRate * (0.7 + Math.cos(idx * 0.3) * 0.15)),
-      "完税证明": Math.max(0.02, baseRate * (0.65 + Math.sin(idx * 0.45) * 0.18)),
-    }
-  })
 
   const latestData = detailedTrendData[detailedTrendData.length - 1]
   const previousData = detailedTrendData[detailedTrendData.length - 2]
@@ -92,7 +89,7 @@ export default function MaterialTrendChart() {
             过户材料缺失趋势
           </h3>
           <p className="mt-0.5 text-xs" style={{ color: "var(--text-muted)" }}>
-            各类材料缺失率月度变化
+            各类材料缺失率月度变化（来自车源库+检测仪版本）
           </p>
         </div>
         <div className="flex items-center gap-1 rounded-lg p-0.5" style={{ backgroundColor: "var(--bg-primary)" }}>

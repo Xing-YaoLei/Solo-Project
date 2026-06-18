@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import {
   FileText,
   ClipboardCheck,
@@ -469,6 +469,8 @@ function TestDriveTab({ records }: { records: TestDriveRecord[] }) {
 export default function VehicleDetail() {
   const selectedVehicleId = useAppStore((s) => s.selectedVehicleId)
   const vehicleDetailMap = useAppStore((s) => s.vehicleDetail)
+  const fetchVehicleDetail = useAppStore((s) => s.fetchVehicleDetail)
+  const loadStates = useAppStore((s) => s.loadStates)
 
   const [activeTab, setActiveTab] = useState<TabKey>("basic")
   const [highlightedInspectionItem, setHighlightedInspectionItem] = useState<string | null>(null)
@@ -476,7 +478,40 @@ export default function VehicleDetail() {
   const [inspectionFilter, setInspectionFilter] = useState<InspectionFilter>("all")
   const [prepFilter, setPrepFilter] = useState<PrepFilter>("all")
 
+  useEffect(() => {
+    if (selectedVehicleId) {
+      void fetchVehicleDetail(selectedVehicleId)
+    }
+  }, [selectedVehicleId, fetchVehicleDetail])
+
   const detail = selectedVehicleId ? vehicleDetailMap[selectedVehicleId] ?? null : null
+  const loading = selectedVehicleId ? loadStates[`vehicleDetail:${selectedVehicleId}`]?.loading : false
+
+  if (!selectedVehicleId) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <div className="text-center">
+          <Car className="mx-auto h-12 w-12" style={{ color: "var(--text-muted)" }} />
+          <p className="mt-3 text-sm" style={{ color: "var(--text-muted)" }}>
+            请选择车辆查看档案
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  if (loading && !detail) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <div className="text-center">
+          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-brand-amber border-t-transparent" />
+          <p className="mt-3 text-sm" style={{ color: "var(--text-muted)" }}>
+            正在加载车辆档案...
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   if (!detail) {
     return (
@@ -484,7 +519,7 @@ export default function VehicleDetail() {
         <div className="text-center">
           <Car className="mx-auto h-12 w-12" style={{ color: "var(--text-muted)" }} />
           <p className="mt-3 text-sm" style={{ color: "var(--text-muted)" }}>
-            请选择车辆查看档案
+            车辆档案加载失败
           </p>
         </div>
       </div>

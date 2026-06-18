@@ -9,6 +9,7 @@ import type {
   DiffRecord,
   TurnoverComparison,
   TurnoverGapSample,
+  MaterialTrendPoint,
 } from "@/types"
 
 export const mockDashboardKPI: DashboardKPI = {
@@ -181,3 +182,18 @@ export const mockTurnoverGapSamples: TurnoverGapSample[] = Array.from({ length: 
       }
     : null,
 }))
+
+const materialTypes = ["登记证", "行驶证", "购车发票", "保险单", "完税证明"] as const
+export const mockMaterialTrend: MaterialTrendPoint[] = Array.from({ length: 12 }, (_, i) => {
+  const d = new Date(2025, i, 1)
+  const baseFactor = 1 - (12 - i) * 0.02
+  const noise = (seed: number) => 0.9 + 0.2 * (Math.sin(seed) * 0.5 + 0.5)
+  return {
+    month: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
+    登记证: Math.max(0.01, +(0.13 * baseFactor * noise(i + 1)).toFixed(4)),
+    行驶证: Math.max(0.01, +(0.09 * baseFactor * noise(i + 2)).toFixed(4)),
+    购车发票: Math.max(0.01, +(0.15 * baseFactor * noise(i + 3)).toFixed(4)),
+    保险单: Math.max(0.01, +(0.11 * baseFactor * noise(i + 4)).toFixed(4)),
+    完税证明: Math.max(0.01, +(0.07 * baseFactor * noise(i + 5)).toFixed(4)),
+  } as MaterialTrendPoint
+})

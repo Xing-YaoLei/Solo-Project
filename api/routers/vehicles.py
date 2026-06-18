@@ -1,13 +1,31 @@
-from fastapi import APIRouter, Depends, Query
-from sqlalchemy import select, func
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+from datetime import date
 
 from database import get_db
-from models import Vehicle, Store, InspectionReport, InspectionItem, PreparationTask, TestDriveRecord
-from schemas import VehicleListItem, VehicleDetail, InspectionReport as InspectionReportSchema, InspectionItem as InspectionItemSchema, PreparationItem, TestDriveRecord as TestDriveRecordSchema
+from models import Vehicle, Store, InspectionReport, PreparationTask, TestDriveRecord
+from schemas import (
+    VehicleListItem, VehicleDetail,
+    InspectionReport as InspectionReportSchema,
+    InspectionItem as InspectionItemSchema,
+    PreparationItem,
+    TestDriveRecord as TestDriveRecordSchema,
+)
 
 router = APIRouter(prefix="/vehicles", tags=["vehicles"])
+
+
+def _safe_days_diff(date_val):
+    """Calculate days since entry, works for both SQLite and PostgreSQL"""
+    today = date.today()
+    try:
+        if hasattr(date_val, "year"):
+            return (today - date_val).days
+    except Exception:
+        pass
+    return 30
 
 
 @router.get("", response_model=list[VehicleListItem])
@@ -30,7 +48,9 @@ async def list_vehicles(
         query = query.where(Vehicle.store_id == store_id)
     if keyword:
         query = query.where(
-            (Vehicle.vin.ilike(f"%{keyword}%")) | (Vehicle.model.ilike(f"%{keyword}%")) | (Vehicle.brand.ilike(f"%{keyword}%"))
+            (Vehicle.vin.ilike(f"%{keyword}%")) |
+            (Vehicle.model.ilike(f"%{keyword}%")) |
+            (Vehicle.brand.ilike(f"%{keyword}%"))
         )
 
     query = query.order_by(Vehicle.entry_date.desc())
@@ -40,12 +60,7 @@ async def list_vehicles(
 
     results: list[VehicleListItem] = []
     for vehicle, store_name in rows:
-        turnover_days = 0
-        if vehicle.entry_date:
-            turnover_days = (await db.execute(
-                select(func.extract("day", func.now() - vehicle.entry_date))
-            )).scalar()
-            turnover_days = int(float(turnover_days)) if turnover_days else 0
+        turnover_days = _safe_days_diff(vehicle.entry_date) if vehicle.entry_date else 0
 
         results.append(VehicleListItem(
             vehicle_id=vehicle.vehicle_id,
@@ -76,7 +91,6 @@ async def get_vehicle(vehicle_id: str, db: AsyncSession = Depends(get_db)):
     ).scalar_one_or_none()
 
     if not vehicle:
-        from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Vehicle not found")
 
     inspection_reports = [
@@ -121,13 +135,6 @@ async def get_vehicle(vehicle_id: str, db: AsyncSession = Depends(get_db)):
         )
         for r in vehicle.test_drive_records
     ]
-
-    turnover_days = 0
-    if vehicle.entry_date:
-        days = (await db.execute(
-            select(func.extract("day", func.now() - vehicle.entry_date))
-        )).scalar()
-        turnover_days = int(float(days)) if days else 0
 
     return VehicleDetail(
         vehicle_id=vehicle.vehicle_id,

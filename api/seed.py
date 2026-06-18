@@ -1,9 +1,12 @@
 import asyncio
 import random
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 
 from database import async_session, init_db
-from models import Store, Vehicle, InspectionReport, InspectionItem, PreparationTask, TestDriveRecord, DataDiff, TurnoverTarget, MaterialItem
+from models import (
+    Store, Vehicle, InspectionReport, InspectionItem, PreparationTask,
+    TestDriveRecord, DataDiff, TurnoverTarget, MaterialItem
+)
 
 STORES = [
     {"store_name": "朝阳旗舰店", "lng": 116.481, "lat": 39.921, "city": "北京", "region": "朝阳"},
@@ -148,7 +151,7 @@ async def seed():
                 source_value=["45200", "宝马", "3系", "in_stock", "2025-01-15"][i % 5],
                 crm_value=["45000", "BMW", "3 Series", "available", "2025-01-16"][i % 5],
                 source=DIFF_SOURCES[i % 3],
-                detected_at=date(2025, (i // 5) + 1, (i % 28) + 1),
+                detected_at=datetime(2025, (i // 5) + 1, (i % 28) + 1, 10, 30, 0),
                 resolved=(i % 3 != 0),
             )
             session.add(diff)

@@ -150,3 +150,12 @@ export interface TurnoverGapSample {
   gap_reason: string
   test_drive_anomaly: TestDriveRecord | null
 }
+
+export interface MaterialTrendPoint {
+  month: string
+  登记证: number
+  行驶证: number
+  购车发票: number
+  保险单: number
+  完税证明: number
+}

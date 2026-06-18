@@ -14,7 +14,11 @@ if USE_POSTGRES:
 else:
     SQLITE_PATH = os.path.join(os.path.dirname(__file__), "dev.db")
     ASYNC_DATABASE_URL = f"sqlite+aiosqlite:///{SQLITE_PATH}"
-    engine = create_async_engine(ASYNC_DATABASE_URL, echo=False)
+    engine = create_async_engine(
+        ASYNC_DATABASE_URL,
+        echo=False,
+        connect_args={"check_same_thread": False},
+    )
 
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
@@ -31,7 +35,6 @@ async def get_db():
 async def init_db():
     async with engine.begin() as conn:
         if USE_POSTGRES:
-            await conn.execute(
-                __import__("sqlalchemy").text("CREATE EXTENSION IF NOT EXISTS postgis")
-            )
+            from sqlalchemy import text
+            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
         await conn.run_sync(Base.metadata.create_all)
