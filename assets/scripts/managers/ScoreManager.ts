@@ -9,6 +9,7 @@ export class ScoreManager {
   private _currentMismatches: MismatchRecord[] = [];
   private _currentErrors: ErrorRecord[] = [];
   private _currentChoices: Record<string, string> = {};
+  private _inited = false;
 
   private _lastSessionRecord: GameSessionRecord | null = null;
   private _sessionHistory: GameSessionRecord[] = [];
@@ -33,6 +34,8 @@ export class ScoreManager {
   }
 
   public init(): void {
+    if (this._inited) return;
+    this._inited = true;
     this._sessionHistory = StorageManager.instance.load<GameSessionRecord[]>('session_history', []);
   }
 
@@ -44,9 +47,11 @@ export class ScoreManager {
     this._currentChoices = {};
   }
 
-  public endSession(isVictory: boolean, stars: number): GameSessionRecord {
+  public endSession(isVictory: boolean, stars: number, baseScore: number = 1000, totalMoney: number = 0): GameSessionRecord {
     const endTime = Date.now();
     const duration = Math.floor((endTime - this._sessionStartTime) / 1000);
+
+    const finalScore = this.calculateFinalScore(baseScore);
 
     const record: GameSessionRecord = {
       id: `session_${this._sessionStartTime}_${Math.random().toString(36).substr(2, 9)}`,
@@ -54,8 +59,8 @@ export class ScoreManager {
       startTime: this._sessionStartTime,
       endTime,
       duration,
-      finalScore: this.calculateFinalScore(),
-      finalMoney: this.calculateFinalMoney(),
+      finalScore,
+      finalMoney: totalMoney,
       isVictory,
       stars,
       mismatches: [...this._currentMismatches],
@@ -70,15 +75,11 @@ export class ScoreManager {
     return record;
   }
 
-  private calculateFinalScore(): number {
-    let score = 1000;
+  private calculateFinalScore(baseScore: number): number {
+    let score = baseScore;
     score -= this._currentMismatches.length * 50;
     score -= this._currentErrors.length * 30;
     return Math.max(0, score);
-  }
-
-  private calculateFinalMoney(): number {
-    return 0;
   }
 
   public recordMismatch(mismatch: MismatchRecord): void {
@@ -182,6 +183,23 @@ export class ScoreManager {
     const avgRecoveryTime = recoveryCount > 0 ? totalRecoveryTime / recoveryCount : 0;
 
     return { avgRecoveryTime, successRate, totalAttempts };
+  }
+
+  public getImprovementSuggestions(): string[] {
+    const suggestions: string[] = [];
+    if (this._currentMismatches.length > 2) {
+      suggestions.push('仔细阅读每条线索，特别是与价格和数量相关的信息');
+      suggestions.push('填写单据时多检查几遍，确保数量和单价正确');
+    }
+    if (this._currentErrors.length > 2) {
+      suggestions.push('审批环节要谨慎思考，不要急于做选择');
+      suggestions.push('多练习类似的审批场景，积累经验');
+    }
+    if (suggestions.length === 0) {
+      suggestions.push('表现很棒！继续保持');
+      suggestions.push('可以尝试挑战更高难度的关卡');
+    }
+    return suggestions;
   }
 
   public clearHistory(): void {

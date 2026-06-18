@@ -1,4 +1,5 @@
 import { StorageManager } from '../utils/StorageManager';
+import { DataManager } from './DataManager';
 
 export interface TutorialStep {
   id: string;
@@ -25,6 +26,7 @@ export class TutorialManager {
   private _currentStepIndex: number = -1;
   private _currentTutorial: TutorialConfig | null = null;
   private _isPlaying: boolean = false;
+  private _inited = false;
 
   public static get instance(): TutorialManager {
     if (!this._instance) {
@@ -43,19 +45,19 @@ export class TutorialManager {
   }
 
   public init(): void {
+    if (this._inited) return;
+    this._inited = true;
     this._completedTutorials = StorageManager.instance.load<string[]>('completed_tutorials', []);
   }
 
   public async loadTutorials(): Promise<void> {
     try {
-      if (typeof cc !== 'undefined' && cc.resources) {
-        cc.resources.loadDir('config/tutorials', cc.JsonAsset, (err, assets) => {
-          if (!err) {
-            for (const asset of assets) {
-              this._tutorials.set(asset.name, asset.json as TutorialConfig);
-            }
-          }
-        });
+      const tutorialIds = await DataManager.instance.loadTutorialIndex();
+      for (const tutorialId of tutorialIds) {
+        const config = await DataManager.instance.loadTutorialConfig(tutorialId);
+        if (config) {
+          this._tutorials.set(tutorialId, config as TutorialConfig);
+        }
       }
     } catch (e) {
       console.error('Load tutorials error:', e);
@@ -139,6 +141,15 @@ export class TutorialManager {
       }
     }
     return null;
+  }
+
+  public getFirstUncompletedTutorial(): TutorialConfig | null {
+    for (const [id, tutorial] of this._tutorials) {
+      if (!this.isTutorialCompleted(id)) {
+        return tutorial;
+      }
+    }
+    return this._tutorials.size > 0 ? this._tutorials.values().next().value : null;
   }
 
   public resetProgress(): void {

@@ -1,4 +1,4 @@
-import { EventManager, GameEvents } from '../utils/EventManager';
+import { TiledMap } from 'cc';
 
 export interface MapObject {
   id: string;
@@ -13,10 +13,9 @@ export interface MapObject {
 
 export class TiledMapController {
   private _node: any = null;
-  private _tiledMap: any = null;
+  private _tiledMap: TiledMap | null = null;
   private _mapObjects: MapObject[] = [];
   private _interactiveObjects: MapObject[] = [];
-  private _playerPosition: { x: number; y: number } = { x: 0, y: 0 };
 
   constructor(node?: any) {
     this._node = node || null;
@@ -31,10 +30,10 @@ export class TiledMapController {
   }
 
   public init(tiledMapAsset?: any): void {
-    if (tiledMapAsset && this._node) {
-      const tiledMap = this._node.getComponent(cc.TiledMap);
+    if (this._node) {
+      const tiledMap = this._node.getComponent(TiledMap) as TiledMap | null;
       if (tiledMap) {
-        tiledMap.tmxAsset = tiledMapAsset;
+        this._tiledMap = tiledMap;
       }
     }
     this.parseMapObjects();
@@ -42,7 +41,7 @@ export class TiledMapController {
 
   private parseMapObjects(): void {
     if (!this._tiledMap && this._node) {
-      this._tiledMap = this._node.getComponent(cc.TiledMap);
+      this._tiledMap = this._node.getComponent(TiledMap) as TiledMap | null;
     }
 
     if (!this._tiledMap) return;
@@ -50,13 +49,11 @@ export class TiledMapController {
     this._mapObjects = [];
     this._interactiveObjects = [];
 
-    const objectGroups = this._tiledMap.getObjectGroups();
+    const objectGroups = (this._tiledMap as any).getObjectGroups?.();
     if (!objectGroups) return;
 
     for (const group of objectGroups) {
-      const objects = group.getObjects();
-      if (!objects) continue;
-
+      const objects = group.getObjects?.() || [];
       for (const obj of objects) {
         const mapObj: MapObject = {
           id: obj.id || obj.name || '',
@@ -86,52 +83,17 @@ export class TiledMapController {
     return this._mapObjects.filter(o => o.type === type);
   }
 
-  public getObjectPosition(obj: MapObject): { x: number; y: number } {
-    if (!this._tiledMap) return { x: 0, y: 0 };
-
-    const mapSize = this._tiledMap.getMapSize();
-    const tileSize = this._tiledMap.getTileSize();
-
-    return {
-      x: obj.x,
-      y: mapSize.height * tileSize.height - obj.y,
-    };
-  }
-
-  public worldToTile(worldX: number, worldY: number): { x: number; y: number } {
-    if (!this._tiledMap) return { x: 0, y: 0 };
-
-    const tileSize = this._tiledMap.getTileSize();
-    const mapSize = this._tiledMap.getMapSize();
-
-    return {
-      x: Math.floor(worldX / tileSize.width),
-      y: Math.floor((mapSize.height * tileSize.height - worldY) / tileSize.height),
-    };
-  }
-
-  public isWalkable(tileX: number, tileY: number): boolean {
-    if (!this._tiledMap) return true;
-
-    const collisionLayer = this._tiledMap.getLayer('collision');
-    if (!collisionLayer) return true;
-
-    const tile = collisionLayer.getTileAt(tileX, tileY);
-    return !tile;
-  }
-
   public getPlayerSpawnPoint(): { x: number; y: number } | null {
     const spawnPoints = this.getObjectsByType('spawn');
     if (spawnPoints.length > 0) {
-      return this.getObjectPosition(spawnPoints[0]);
+      return { x: spawnPoints[0].x, y: spawnPoints[0].y };
     }
     return null;
   }
 
   public onObjectAtPosition(x: number, y: number): MapObject | null {
     for (const obj of this._interactiveObjects) {
-      const pos = this.getObjectPosition(obj);
-      const distance = Math.sqrt(Math.pow(x - pos.x, 2) + Math.pow(y - pos.y, 2));
+      const distance = Math.sqrt(Math.pow(x - obj.x, 2) + Math.pow(y - obj.y, 2));
       if (distance < 50) {
         return obj;
       }

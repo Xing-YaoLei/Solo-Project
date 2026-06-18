@@ -10,17 +10,24 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "outDir": "temp",
-    "declaration": true,
+    "outDir": "temp/compiled",
+    "declaration": false,
+    "sourceMap": false,
     "lib": ["es2017", "dom"],
-    "types": []
+    "types": [],
+    "baseUrl": "./",
+    "paths": {
+      "cc": ["./temp/declarations/cc.d.ts"]
+    }
   },
   "include": [
-    "assets/**/*.ts"
+    "assets/**/*.ts",
+    "temp/declarations/**/*.d.ts"
   ],
   "exclude": [
     "node_modules",
-    "temp",
-    "library"
+    "temp/compiled",
+    "library",
+    "build"
   ]
 }

@@ -1,3 +1,4 @@
+import { input, KeyCode, Input, log } from 'cc';
 import { EventManager, GameEvents } from '../utils/EventManager';
 
 export type InputAction =
@@ -28,18 +29,33 @@ export interface TouchInfo {
   deltaY: number;
 }
 
+interface IEventKeyboard {
+  keyCode: number;
+  isPressed: boolean;
+}
+
+interface IEventTouch {
+  touches: any[];
+  getLocation(): { x: number; y: number };
+  getLocationInView(): { x: number; y: number };
+  getUILocation(): { x: number; y: number };
+  getUIStartLocation(): { x: number; y: number };
+  getPreviousLocation(): { x: number; y: number };
+  getStartLocation(): { x: number; y: number };
+  getDelta(): { x: number; y: number };
+  getID(): number;
+}
+
 export class InputManager {
   private static _instance: InputManager | null = null;
 
-  private _keyMap: Map<string, InputAction> = new Map();
-  private _keyStates: Map<string, boolean> = new Map();
+  private _keyMap: Map<number, InputAction> = new Map();
+  private _keyStates: Map<number, boolean> = new Map();
   private _touchStart: { x: number; y: number } | null = null;
   private _isTouching: boolean = false;
   private _swipeThreshold: number = 50;
   private _enabled: boolean = true;
-
-  private _onKeyDownBound: (e: KeyboardEvent) => void;
-  private _onKeyUpBound: (e: KeyboardEvent) => void;
+  private _inited = false;
 
   public static get instance(): InputManager {
     if (!this._instance) {
@@ -49,8 +65,6 @@ export class InputManager {
   }
 
   private constructor() {
-    this._onKeyDownBound = this.onKeyDown.bind(this);
-    this._onKeyUpBound = this.onKeyUp.bind(this);
     this.initKeyMap();
   }
 
@@ -63,98 +77,97 @@ export class InputManager {
   }
 
   private initKeyMap(): void {
-    this._keyMap.set('Enter', 'confirm');
-    this._keyMap.set('Space', 'confirm');
-    this._keyMap.set('Escape', 'cancel');
-    this._keyMap.set('ArrowUp', 'up');
-    this._keyMap.set('w', 'up');
-    this._keyMap.set('W', 'up');
-    this._keyMap.set('ArrowDown', 'down');
-    this._keyMap.set('s', 'down');
-    this._keyMap.set('S', 'down');
-    this._keyMap.set('ArrowLeft', 'left');
-    this._keyMap.set('a', 'left');
-    this._keyMap.set('A', 'left');
-    this._keyMap.set('ArrowRight', 'right');
-    this._keyMap.set('d', 'right');
-    this._keyMap.set('D', 'right');
-    this._keyMap.set('m', 'menu');
-    this._keyMap.set('M', 'menu');
-    this._keyMap.set('r', 'restart');
-    this._keyMap.set('R', 'restart');
-    this._keyMap.set('p', 'pause');
-    this._keyMap.set('P', 'pause');
-    this._keyMap.set('Tab', 'next');
-    this._keyMap.set('n', 'next');
-    this._keyMap.set('N', 'next');
-    this._keyMap.set('p', 'prev');
-    this._keyMap.set('P', 'prev');
-    this._keyMap.set('1', 'select_1');
-    this._keyMap.set('2', 'select_2');
-    this._keyMap.set('3', 'select_3');
-    this._keyMap.set('4', 'select_4');
-    this._keyMap.set('PageUp', 'page_up');
-    this._keyMap.set('PageDown', 'page_down');
+    this._keyMap.set(KeyCode.ENTER, 'confirm');
+    this._keyMap.set(KeyCode.SPACE, 'confirm');
+    this._keyMap.set(KeyCode.ESCAPE, 'cancel');
+    this._keyMap.set(KeyCode.ARROW_UP, 'up');
+    this._keyMap.set(KeyCode.ARROW_DOWN, 'down');
+    this._keyMap.set(KeyCode.ARROW_LEFT, 'left');
+    this._keyMap.set(KeyCode.ARROW_RIGHT, 'right');
+    this._keyMap.set(KeyCode.W, 'up');
+    this._keyMap.set(KeyCode.S, 'down');
+    this._keyMap.set(KeyCode.A, 'left');
+    this._keyMap.set(KeyCode.D, 'right');
+    this._keyMap.set(KeyCode.M, 'menu');
+    this._keyMap.set(KeyCode.R, 'restart');
+    this._keyMap.set(KeyCode.P, 'pause');
+    this._keyMap.set(KeyCode.TAB, 'next');
+    this._keyMap.set(KeyCode.N, 'next');
+    this._keyMap.set(KeyCode.KEY_1, 'select_1');
+    this._keyMap.set(KeyCode.KEY_2, 'select_2');
+    this._keyMap.set(KeyCode.KEY_3, 'select_3');
+    this._keyMap.set(KeyCode.KEY_4, 'select_4');
+    this._keyMap.set(KeyCode.PAGE_UP, 'page_up');
+    this._keyMap.set(KeyCode.PAGE_DOWN, 'page_down');
   }
 
   public attach(): void {
-    if (typeof document !== 'undefined') {
-      document.addEventListener('keydown', this._onKeyDownBound);
-      document.addEventListener('keyup', this._onKeyUpBound);
+    if (this._inited) return;
+    this._inited = true;
+
+    if (input && input.on) {
+      input.on(Input.EventType.KEY_DOWN, this.onKeyDown, this);
+      input.on(Input.EventType.KEY_UP, this.onKeyUp, this);
+      input.on(Input.EventType.TOUCH_START, this.onTouchStart, this);
+      input.on(Input.EventType.TOUCH_MOVE, this.onTouchMove, this);
+      input.on(Input.EventType.TOUCH_END, this.onTouchEnd, this);
+      log('[InputManager] Input events attached');
     }
   }
 
   public detach(): void {
-    if (typeof document !== 'undefined') {
-      document.removeEventListener('keydown', this._onKeyDownBound);
-      document.removeEventListener('keyup', this._onKeyUpBound);
+    if (!this._inited) return;
+    this._inited = false;
+
+    if (input && input.off) {
+      input.off(Input.EventType.KEY_DOWN, this.onKeyDown, this);
+      input.off(Input.EventType.KEY_UP, this.onKeyUp, this);
+      input.off(Input.EventType.TOUCH_START, this.onTouchStart, this);
+      input.off(Input.EventType.TOUCH_MOVE, this.onTouchMove, this);
+      input.off(Input.EventType.TOUCH_END, this.onTouchEnd, this);
     }
   }
 
-  private onKeyDown(e: KeyboardEvent): void {
+  private onKeyDown(event: IEventKeyboard): void {
     if (!this._enabled) return;
-    if (e.repeat) return;
 
-    const action = this._keyMap.get(e.code) || this._keyMap.get(e.key);
+    const keyCode = event.keyCode;
+    if (this._keyStates.get(keyCode)) return;
+
+    this._keyStates.set(keyCode, true);
+
+    const action = this._keyMap.get(keyCode);
     if (action) {
-      this._keyStates.set(e.code || e.key, true);
       EventManager.instance.emit(GameEvents.INPUT_ACTION, action, 'keyboard');
-      e.preventDefault();
     }
   }
 
-  private onKeyUp(e: KeyboardEvent): void {
-    this._keyStates.delete(e.code || e.key);
+  private onKeyUp(event: IEventKeyboard): void {
+    this._keyStates.delete(event.keyCode);
   }
 
-  public isActionPressed(action: InputAction): boolean {
-    for (const [key, mappedAction] of this._keyMap) {
-      if (mappedAction === action && this._keyStates.has(key)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  public handleTouchStart(x: number, y: number): void {
+  private onTouchStart(event: IEventTouch): void {
     if (!this._enabled) return;
 
     this._isTouching = true;
-    this._touchStart = { x, y };
+    const location = event.getUILocation ? event.getUILocation() : event.getLocation();
+    this._touchStart = { x: location.x, y: location.y };
   }
 
-  public handleTouchMove(x: number, y: number): void {
+  private onTouchMove(event: IEventTouch): void {
     if (!this._enabled || !this._isTouching || !this._touchStart) return;
 
-    const deltaX = x - this._touchStart.x;
-    const deltaY = y - this._touchStart.y;
+    const location = event.getUILocation ? event.getUILocation() : event.getLocation();
+    const deltaX = location.x - this._touchStart.x;
+    const deltaY = location.y - this._touchStart.y;
   }
 
-  public handleTouchEnd(x: number, y: number): void {
+  private onTouchEnd(event: IEventTouch): void {
     if (!this._enabled || !this._touchStart) return;
 
-    const deltaX = x - this._touchStart.x;
-    const deltaY = y - this._touchStart.y;
+    const location = event.getUILocation ? event.getUILocation() : event.getLocation();
+    const deltaX = location.x - this._touchStart.x;
+    const deltaY = location.y - this._touchStart.y;
     const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
 
     if (distance > this._swipeThreshold) {
@@ -169,17 +182,24 @@ export class InputManager {
         }
       } else {
         if (deltaY > 0) {
-          EventManager.instance.emit(GameEvents.INPUT_ACTION, 'down', 'touch');
-        } else {
           EventManager.instance.emit(GameEvents.INPUT_ACTION, 'up', 'touch');
+        } else {
+          EventManager.instance.emit(GameEvents.INPUT_ACTION, 'down', 'touch');
         }
       }
-    } else {
-      EventManager.instance.emit(GameEvents.INPUT_ACTION, 'confirm', 'touch');
     }
 
     this._isTouching = false;
     this._touchStart = null;
+  }
+
+  public isActionPressed(action: InputAction): boolean {
+    for (const [key, mappedAction] of this._keyMap) {
+      if (mappedAction === action && this._keyStates.has(key)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   public handleTap(x: number, y: number): void {
@@ -197,25 +217,16 @@ export class InputManager {
     EventManager.instance.emit(GameEvents.INPUT_ACTION, direction, 'touch');
   }
 
-  public addKeyMapping(key: string, action: InputAction): void {
-    this._keyMap.set(key, action);
+  public addKeyMapping(keyCode: number, action: InputAction): void {
+    this._keyMap.set(keyCode, action);
   }
 
-  public removeKeyMapping(key: string): void {
-    this._keyMap.delete(key);
+  public removeKeyMapping(keyCode: number): void {
+    this._keyMap.delete(keyCode);
   }
 
   public clearKeyMappings(): void {
     this._keyMap.clear();
-  }
-
-  public getActionKey(action: InputAction): string | null {
-    for (const [key, mappedAction] of this._keyMap) {
-      if (mappedAction === action) {
-        return key;
-      }
-    }
-    return null;
   }
 
   public setSwipeThreshold(threshold: number): void {

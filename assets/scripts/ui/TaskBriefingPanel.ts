@@ -1,84 +1,87 @@
+import { _decorator, Label, Node, Button } from 'cc';
 import { UIBase } from './UIBase';
-import { EventManager, GameEvents } from '../utils/EventManager';
 import { GameManager } from '../managers/GameManager';
-import { Task } from '../core/Types';
+import { AudioManager } from '../managers/AudioManager';
+import { GameEvents } from '../utils/EventManager';
 
+const { ccclass, property } = _decorator;
+
+@ccclass('TaskBriefingPanel')
 export class TaskBriefingPanel extends UIBase {
-  private _task: Task | null = null;
+    @property(Label)
+    levelTitleLabel: Label | null = null;
 
-  constructor(node?: any) {
-    super(node);
-    this.registerEvents();
-  }
+    @property(Label)
+    descriptionLabel: Label | null = null;
 
-  private registerEvents(): void {
-    EventManager.instance.on(GameEvents.GAME_START, this.onGameStart.bind(this));
-  }
+    @property(Label)
+    objectiveLabel: Label | null = null;
 
-  private onGameStart(levelConfig: any): void {
-    this._task = levelConfig.task;
-    this.refresh();
-  }
+    @property(Label)
+    rewardLabel: Label | null = null;
 
-  public refresh(): void {
-    if (!this._task) return;
+    @property(Label)
+    timeLimitLabel: Label | null = null;
 
-    this.updateTitle(this._task.title);
-    this.updateClient(this._task.clientName);
-    this.updateHouseInfo(this._task.houseType, this._task.houseArea);
-    this.updateDescription(this._task.description);
-    this.updateReward(this._task.baseReward);
-    this.updateTimeLimit(this._task.timeLimit);
-    this.updateDifficulty(this._task.difficulty);
-  }
+    @property(Label)
+    difficultyLabel: Label | null = null;
 
-  private updateTitle(title: string): void {
-    this.setLabelText('titleLabel', title);
-  }
+    @property(Node)
+    startButton: Node | null = null;
 
-  private updateClient(clientName: string): void {
-    this.setLabelText('clientLabel', `客户：${clientName}`);
-  }
+    onStart(): void {
+        this.on(GameEvents.GAME_START, this.onGameStart.bind(this));
+        this.on(GameEvents.PHASE_CHANGED, this.onPhaseChanged.bind(this));
 
-  private updateHouseInfo(type: string, area: number): void {
-    this.setLabelText('houseInfoLabel', `房型：${type} / 面积：${area}㎡`);
-  }
-
-  private updateDescription(desc: string): void {
-    this.setLabelText('descLabel', desc);
-  }
-
-  private updateReward(reward: number): void {
-    this.setLabelText('rewardLabel', `基础报酬：¥${reward.toLocaleString()}`);
-  }
-
-  private updateTimeLimit(timeLimit: number): void {
-    const minutes = Math.floor(timeLimit / 60);
-    const seconds = timeLimit % 60;
-    this.setLabelText('timeLimitLabel', `时间限制：${minutes}分${seconds}秒`);
-  }
-
-  private updateDifficulty(difficulty: number): void {
-    const stars = '★'.repeat(difficulty) + '☆'.repeat(Math.max(0, 5 - difficulty));
-    this.setLabelText('difficultyLabel', `难度：${stars}`);
-  }
-
-  public onStartClick(): void {
-    GameManager.instance.startGameplay();
-  }
-
-  public onCancelClick(): void {
-    GameManager.instance.exitToMenu();
-  }
-
-  private setLabelText(labelName: string, text: string): void {
-    if (!this.node) return;
-    const label = this.node.getChildByName(labelName);
-    if (label && label.getComponent) {
-      const labelComp = label.getComponent(cc.Label);
-      if (labelComp) {
-        labelComp.string = text;
-      }
+        this.registerInput('confirm', this.onStartClicked.bind(this));
     }
-  }
+
+    private onGameStart(levelConfig: any): void {
+        this.updateInfo(levelConfig);
+        this.show();
+    }
+
+    private onPhaseChanged(phase: string): void {
+        if (phase === 'task_briefing') {
+            this.show();
+        } else if (this.node.active) {
+            this.hide();
+        }
+    }
+
+    public updateInfo(levelConfig: any): void {
+        if (this.levelTitleLabel) {
+            this.levelTitleLabel.string = levelConfig.name;
+        }
+        if (this.descriptionLabel) {
+            this.descriptionLabel.string = levelConfig.description;
+        }
+        if (this.objectiveLabel) {
+            this.objectiveLabel.string = `目标：${levelConfig.task.objective}`;
+        }
+        if (this.rewardLabel) {
+            this.rewardLabel.string = `基础奖励：¥${levelConfig.task.baseReward}`;
+        }
+        if (this.timeLimitLabel) {
+            this.timeLimitLabel.string = `时间限制：${levelConfig.task.timeLimit}秒`;
+        }
+        if (this.difficultyLabel) {
+            const stars = '★'.repeat(levelConfig.difficulty) + '☆'.repeat(5 - levelConfig.difficulty);
+            this.difficultyLabel.string = `难度：${stars}`;
+        }
+    }
+
+    public onStartClicked(): void {
+        AudioManager.instance.playConfirm();
+        GameManager.instance.startGameplay();
+    }
+
+    public onBackClicked(): void {
+        AudioManager.instance.playClick();
+        this.emit(GameEvents.UI_SHOW_MENU);
+    }
+
+    onShow(): void {
+        this.playShowAnimation();
+    }
 }

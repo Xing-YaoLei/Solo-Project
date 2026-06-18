@@ -12,6 +12,7 @@ export interface LevelConfig {
   document: Document;
   approvalNodes: ApprovalNode[];
   tutorialId?: string;
+  tiledMap?: string;
   mapData?: TiledMapData;
 }
 

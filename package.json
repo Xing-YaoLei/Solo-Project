@@ -3,8 +3,10 @@
   "version": "1.0.0",
   "description": "家装工地量房报价经营模拟游戏",
   "scripts": {
-    "build": "cocos build",
-    "start": "cocos run"
+    "build": "npm run typecheck",
+    "typecheck": "./node_modules/.bin/tsc --noEmit --skipLibCheck",
+    "typecheck:watch": "./node_modules/.bin/tsc --noEmit --skipLibCheck --watch",
+    "start": "echo '请使用 Cocos Creator 3.x 打开项目并运行'"
   },
   "devDependencies": {
     "typescript": "^4.9.5"

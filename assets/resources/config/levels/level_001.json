@@ -6,6 +6,7 @@
   "unlocked": true,
   "starThresholds": [600, 800, 950],
   "tutorialId": "tutorial_001",
+  "tiledMap": "tiled/level_001",
   "task": {
     "id": "task_001",
     "title": "一居室简单装修",

@@ -1,175 +1,124 @@
+import { _decorator, Label, Node, Button, Sprite, Color, instantiate } from 'cc';
 import { UIBase } from './UIBase';
-import { GameManager } from '../managers/GameManager';
 import { LevelManager } from '../managers/LevelManager';
 import { DataManager } from '../managers/DataManager';
-import { LevelConfig } from '../core/LevelTypes';
+import { GameManager } from '../managers/GameManager';
+import { AudioManager } from '../managers/AudioManager';
+import { GameEvents } from '../utils/EventManager';
 
+const { ccclass, property } = _decorator;
+
+@ccclass('LevelSelectPanel')
 export class LevelSelectPanel extends UIBase {
-  private _levels: LevelConfig[] = [];
-  private _selectedIndex: number = 0;
+    @property(Node)
+    levelList: Node | null = null;
 
-  constructor(node?: any) {
-    super(node);
-  }
+    @property(Node)
+    levelItemTemplate: Node | null = null;
 
-  public refresh(): void {
-    this._levels = DataManager.instance.getAllLevels();
-    this.refreshLevelList();
-    this.refreshLevelDetail();
-  }
+    @property(Node)
+    backButton: Node | null = null;
 
-  private refreshLevelList(): void {
-    if (!this.node) return;
-    const listNode = this.node.getChildByName('levelList');
-    if (!listNode) return;
+    @property(Label)
+    titleLabel: Label | null = null;
 
-    const content = listNode.getChildByName('content');
-    if (!content) return;
+    private _levelNodes: Node[] = [];
 
-    this.clearListContent(content);
-
-    for (let i = 0; i < this._levels.length; i++) {
-      const level = this._levels[i];
-      const item = this.createLevelItem(level, i);
-      content.addChild(item);
-    }
-  }
-
-  private clearListContent(content: any): void {
-    if (!content || !content.removeAllChildren) return;
-    content.removeAllChildren();
-  }
-
-  private createLevelItem(level: LevelConfig, index: number): any {
-    if (typeof cc === 'undefined') return {} as any;
-
-    const node = new cc.Node(`level_${level.id}`);
-    node.setContentSize(200, 80);
-
-    const isUnlocked = LevelManager.instance.isLevelUnlocked(level.id);
-    const progress = LevelManager.instance.getLevelProgress(level.id);
-
-    if (index === this._selectedIndex) {
-      node.addComponent(cc.Sprite);
+    onInit(): void {
+        if (this.levelItemTemplate) {
+            this.levelItemTemplate.active = false;
+        }
     }
 
-    if (!isUnlocked) {
-      node.opacity = 100;
+    onStart(): void {
+        this.on(GameEvents.UI_SHOW_LEVEL_SELECT, this.onShowPanel.bind(this));
+        this.on(GameEvents.LEVEL_UNLOCKED, this.onLevelUnlocked.bind(this));
+
+        this.registerInput('cancel', this.onBackClicked.bind(this));
     }
 
-    const nameNode = new cc.Node('name');
-    nameNode.parent = node;
-    nameNode.anchorX = 0;
-    const nameLabel = nameNode.addComponent(cc.Label);
-    nameLabel.string = level.name;
-    nameLabel.fontSize = 16;
-    nameNode.setPosition(-90, 20);
-
-    const diffNode = new cc.Node('diff');
-    diffNode.parent = node;
-    diffNode.anchorX = 0;
-    const diffLabel = diffNode.addComponent(cc.Label);
-    const stars = '★'.repeat(level.difficulty) + '☆'.repeat(Math.max(0, 5 - level.difficulty));
-    diffLabel.string = `难度：${stars}`;
-    diffLabel.fontSize = 12;
-    diffNode.setPosition(-90, 0);
-
-    if (progress && progress.completed) {
-      const scoreNode = new cc.Node('score');
-      scoreNode.parent = node;
-      scoreNode.anchorX = 0;
-      const scoreLabel = scoreNode.addComponent(cc.Label);
-      scoreLabel.string = `最高分：${progress.bestScore}`;
-      scoreLabel.fontSize = 11;
-      scoreNode.setPosition(-90, -20);
-
-      const starNode = new cc.Node('star');
-      starNode.parent = node;
-      starNode.anchorX = 1;
-      const starLabel = starNode.addComponent(cc.Label);
-      starLabel.string = '★'.repeat(progress.stars);
-      starLabel.fontSize = 12;
-      starNode.setPosition(90, 0);
+    private onShowPanel(): void {
+        this.show();
+        this.refreshLevels();
     }
 
-    if (!isUnlocked) {
-      const lockNode = new cc.Node('lock');
-      lockNode.parent = node;
-      const lockLabel = lockNode.addComponent(cc.Label);
-      lockLabel.string = '🔒';
-      lockLabel.fontSize = 20;
-      lockNode.setPosition(70, 0);
+    private onLevelUnlocked(levelId: string): void {
+        this.refreshLevels();
     }
 
-    node.on(cc.Node.EventType.TOUCH_END, () => {
-      if (isUnlocked) {
-        this._selectedIndex = index;
-        this.refreshLevelList();
-        this.refreshLevelDetail();
-      }
-    });
+    private refreshLevels(): void {
+        if (!this.levelList || !this.levelItemTemplate) return;
 
-    return node;
-  }
+        for (const node of this._levelNodes) {
+            node.off(Node.EventType.TOUCH_END);
+            node.destroy();
+        }
+        this._levelNodes = [];
 
-  private refreshLevelDetail(): void {
-    const level = this._levels[this._selectedIndex];
-    if (!level) return;
+        const levels = DataManager.instance.getAllLevels();
+        const cols = 3;
 
-    this.setLabelText('levelName', level.name);
-    this.setLabelText('levelDesc', level.description);
-    this.setLabelText('levelReward', `基础报酬：¥${level.task.baseReward.toLocaleString()}`);
-    this.setLabelText('levelTime', `时间限制：${Math.floor(level.task.timeLimit / 60)}分钟`);
-    this.setLabelText('levelDifficulty', `难度：${'★'.repeat(level.difficulty)}${'☆'.repeat(Math.max(0, 5 - level.difficulty))}`);
+        levels.forEach((level, index) => {
+            const levelNode = instantiate(this.levelItemTemplate!);
+            levelNode.active = true;
 
-    const progress = LevelManager.instance.getLevelProgress(level.id);
-    if (progress) {
-      this.setLabelText('levelAttempts', `挑战次数：${progress.attempts}`);
-      this.setLabelText('levelBestScore', `最高分：${progress.bestScore}`);
-    } else {
-      this.setLabelText('levelAttempts', '尚未挑战');
-      this.setLabelText('levelBestScore', '-');
+            const col = index % cols;
+            const row = Math.floor(index / cols);
+            levelNode.setPosition((col - 1) * 200, -row * 180, 0);
+
+            const unlocked = LevelManager.instance.isLevelUnlocked(level.id);
+            const progress = LevelManager.instance.getLevelProgress(level.id);
+
+            const nameLabel = levelNode.getChildByName('nameLabel')?.getComponent(Label);
+            const descLabel = levelNode.getChildByName('descLabel')?.getComponent(Label);
+            const lockSprite = levelNode.getChildByName('lockSprite')?.getComponent(Sprite);
+            const starsContainer = levelNode.getChildByName('starsContainer');
+
+            if (nameLabel) nameLabel.string = level.name;
+            if (descLabel) descLabel.string = level.description;
+            if (lockSprite) lockSprite.node.active = !unlocked;
+
+            if (starsContainer && progress) {
+                for (let i = 0; i < 3; i++) {
+                    const starNode = starsContainer.getChildByName(`star_${i}`);
+                    if (starNode) {
+                        const star = starNode.getComponent(Sprite);
+                        if (star) {
+                            star.color = i < (progress.stars || 0)
+                                ? new Color(255, 200, 0, 255)
+                                : new Color(200, 200, 200, 255);
+                        }
+                    }
+                }
+            }
+
+            if (unlocked) {
+                levelNode.on(Node.EventType.TOUCH_END, () => {
+                    this.onLevelTapped(level.id);
+                }, this);
+            }
+
+            this.levelList!.addChild(levelNode);
+            this._levelNodes.push(levelNode);
+        });
     }
-  }
 
-  public onStartClick(): void {
-    const level = this._levels[this._selectedIndex];
-    if (!level) return;
+    private onLevelTapped(levelId: string): void {
+        if (!LevelManager.instance.isLevelUnlocked(levelId)) return;
 
-    if (!LevelManager.instance.isLevelUnlocked(level.id)) {
-      return;
+        AudioManager.instance.playClick();
+        if (GameManager.instance.startLevel(levelId)) {
+            this.hide();
+        }
     }
 
-    GameManager.instance.startLevel(level.id);
-  }
-
-  public onBackClick(): void {
-  }
-
-  public onPrevLevel(): void {
-    if (this._selectedIndex > 0) {
-      this._selectedIndex--;
-      this.refreshLevelList();
-      this.refreshLevelDetail();
+    public onBackClicked(): void {
+        AudioManager.instance.playClick();
+        this.hide();
+        this.emit(GameEvents.UI_SHOW_MENU);
     }
-  }
 
-  public onNextLevel(): void {
-    if (this._selectedIndex < this._levels.length - 1) {
-      this._selectedIndex++;
-      this.refreshLevelList();
-      this.refreshLevelDetail();
+    onShow(): void {
+        this.playShowAnimation();
     }
-  }
-
-  private setLabelText(labelName: string, text: string): void {
-    if (!this.node) return;
-    const label = this.node.getChildByName(labelName);
-    if (label && label.getComponent) {
-      const labelComp = label.getComponent(cc.Label);
-      if (labelComp) {
-        labelComp.string = text;
-      }
-    }
-  }
 }

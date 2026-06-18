@@ -1,5 +1,6 @@
+import { _decorator, log, error } from 'cc';
 import { GameState, GamePhase, GameSessionRecord, MismatchRecord, ErrorRecord, ErrorType } from '../core/GameState';
-import { LevelConfig, LevelProgress } from '../core/LevelTypes';
+import { LevelConfig } from '../core/LevelTypes';
 import { DataManager } from './DataManager';
 import { LevelManager } from './LevelManager';
 import { EventManager, GameEvents } from '../utils/EventManager';
@@ -13,6 +14,7 @@ export class GameManager {
   private _sessionStartTime: number = 0;
   private _timerInterval: any = null;
   private _isRunning: boolean = false;
+  private _inited = false;
 
   public static get instance(): GameManager {
     if (!this._instance) {
@@ -34,18 +36,22 @@ export class GameManager {
   }
 
   public init(): void {
+    if (this._inited) return;
+    this._inited = true;
     LevelManager.instance.init();
+    ScoreManager.instance.init();
+    log('[GameManager] Initialized');
   }
 
   public startLevel(levelId: string): boolean {
     const levelConfig = DataManager.instance.getLevel(levelId);
     if (!levelConfig) {
-      console.error(`Level ${levelId} not found`);
+      error(`[GameManager] Level ${levelId} not found`);
       return false;
     }
 
     if (!LevelManager.instance.isLevelUnlocked(levelId)) {
-      console.error(`Level ${levelId} is locked`);
+      error(`[GameManager] Level ${levelId} is locked`);
       return false;
     }
 
@@ -72,6 +78,7 @@ export class GameManager {
     EventManager.instance.emit(GameEvents.GAME_START, levelConfig);
     EventManager.instance.emit(GameEvents.PHASE_CHANGED, 'task_briefing');
 
+    log(`[GameManager] Started level: ${levelId}`);
     return true;
   }
 
@@ -122,6 +129,7 @@ export class GameManager {
     if (!this._gameState) return;
     this._gameState.currentPhase = phase;
     EventManager.instance.emit(GameEvents.PHASE_CHANGED, phase);
+    log(`[GameManager] Phase changed: ${phase}`);
   }
 
   public viewClue(clueId: string): void {
@@ -146,7 +154,7 @@ export class GameManager {
   }
 
   private checkDocumentMismatch(itemId: string, quantity: number, unitPrice: number): void {
-    if (!this._currentLevel) return;
+    if (!this._currentLevel || !this._gameState) return;
 
     const item = this._currentLevel.document.items.find(i => i.id === itemId);
     if (!item) return;
@@ -156,18 +164,18 @@ export class GameManager {
     const diff = Math.abs(actualAmount - expectedAmount);
     const tolerance = item.tolerance * expectedAmount;
 
-    if (diff > tolerance) {
+    if (diff > tolerance && diff > 0) {
       const mismatch: MismatchRecord = {
         id: `mismatch_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         timestamp: Date.now(),
-        levelId: this._gameState!.currentLevelId,
+        levelId: this._gameState.currentLevelId,
         itemId,
         itemName: item.name,
         expectedAmount,
         actualAmount,
         difference: actualAmount - expectedAmount,
         cause: this.getMismatchCause(item, quantity, unitPrice),
-        phase: this._gameState!.currentPhase,
+        phase: this._gameState.currentPhase,
       };
 
       ScoreManager.instance.recordMismatch(mismatch);
@@ -175,7 +183,7 @@ export class GameManager {
     }
   }
 
-  private getMismatchCause(item: any, quantity: number, unitPrice: string): string {
+  private getMismatchCause(item: any, quantity: number, unitPrice: number): string {
     const expectedQty = item.correctQuantity ?? item.quantity;
     const expectedPrice = item.correctUnitPrice ?? item.unitPrice;
 
@@ -202,6 +210,7 @@ export class GameManager {
     if (!choice) return;
 
     this._gameState.selectedChoices[currentNode.id] = choiceId;
+    ScoreManager.instance.recordChoice(currentNode.id, choiceId);
 
     const scoreDelta = choice.scoreDelta;
     const moneyDelta = choice.moneyDelta;
@@ -233,8 +242,6 @@ export class GameManager {
       if (nextIndex >= 0) {
         this._gameState.currentApprovalIndex = nextIndex;
       }
-    } else {
-      this.advanceApproval();
     }
   }
 
@@ -301,7 +308,13 @@ export class GameManager {
 
     this.unlockNextLevel();
 
-    const sessionRecord = ScoreManager.instance.endSession(true, stars);
+    const sessionRecord = ScoreManager.instance.endSession(
+      true,
+      stars,
+      this._gameState.score,
+      this._gameState.totalMoney
+    );
+
     EventManager.instance.emit(GameEvents.GAME_VICTORY, {
       score: this._gameState.score,
       stars,
@@ -312,6 +325,7 @@ export class GameManager {
     });
 
     this.changePhase('result');
+    log(`[GameManager] Victory! Score: ${this._gameState.score}, Stars: ${stars}`);
   }
 
   private gameOver(reason: string): void {
@@ -346,7 +360,13 @@ export class GameManager {
       false
     );
 
-    const sessionRecord = ScoreManager.instance.endSession(false, 0);
+    const sessionRecord = ScoreManager.instance.endSession(
+      false,
+      0,
+      this._gameState.score,
+      this._gameState.totalMoney
+    );
+
     EventManager.instance.emit(GameEvents.GAME_OVER, {
       score: this._gameState.score,
       money: this._gameState.totalMoney,
@@ -356,6 +376,7 @@ export class GameManager {
     });
 
     this.changePhase('result');
+    log(`[GameManager] Game over. Reason: ${reason}, Score: ${this._gameState.score}`);
   }
 
   private getGameOverFeedback(reason: string): string {
@@ -380,6 +401,7 @@ export class GameManager {
       if (nextLevel.difficulty <= this._currentLevel.difficulty + 1) {
         LevelManager.instance.unlockLevel(nextLevel.id);
         EventManager.instance.emit(GameEvents.LEVEL_UNLOCKED, nextLevel.id);
+        log(`[GameManager] Unlocked level: ${nextLevel.id}`);
       }
     }
   }

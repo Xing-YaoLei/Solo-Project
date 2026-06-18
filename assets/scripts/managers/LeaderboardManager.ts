@@ -14,6 +14,7 @@ export class LeaderboardManager {
   private static _instance: LeaderboardManager | null = null;
   private _entries: LeaderboardEntry[] = [];
   private _playerName: string = '玩家';
+  private _inited = false;
 
   public static get instance(): LeaderboardManager {
     if (!this._instance) {
@@ -27,6 +28,9 @@ export class LeaderboardManager {
   }
 
   public init(): void {
+    if (this._inited) return;
+    this._inited = true;
+
     this._entries = StorageManager.instance.load<LeaderboardEntry[]>('leaderboard', []);
     this._playerName = StorageManager.instance.load<string>('player_name', '玩家');
   }
@@ -64,7 +68,7 @@ export class LeaderboardManager {
     return levelEntries.slice(0, limit);
   }
 
-  public getPlayerRank(levelId: string, score: number, time: number): number {
+  public getPlayerRankByScore(levelId: string, score: number, time: number): number {
     const levelEntries = this._entries.filter(e => e.levelId === levelId);
     let rank = 1;
     for (const entry of levelEntries) {
@@ -120,6 +124,29 @@ export class LeaderboardManager {
   public clearAll(): void {
     this._entries = [];
     this.save();
+  }
+
+  public getPlayerRank(playerName: string, levelId: string): number {
+    const levelEntries = this._entries
+      .filter(e => e.levelId === levelId && e.playerName === playerName)
+      .sort((a, b) => b.score - a.score);
+
+    if (levelEntries.length === 0) return 0;
+
+    const bestScore = levelEntries[0].score;
+    const allEntries = this._entries
+      .filter(e => e.levelId === levelId)
+      .sort((a, b) => b.score - a.score);
+
+    return allEntries.findIndex(e => e.score <= bestScore) + 1;
+  }
+
+  public getPlayerBestScore(playerName: string, levelId: string): number {
+    const levelEntries = this._entries
+      .filter(e => e.levelId === levelId && e.playerName === playerName)
+      .sort((a, b) => b.score - a.score);
+
+    return levelEntries.length > 0 ? levelEntries[0].score : 0;
   }
 
   private save(): void {

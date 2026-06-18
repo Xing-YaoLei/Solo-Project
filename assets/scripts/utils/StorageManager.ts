@@ -1,3 +1,5 @@
+import { sys } from 'cc';
+
 export class StorageManager {
   private static _instance: StorageManager | null = null;
   private _prefix = 'hd_sim_';
@@ -12,9 +14,9 @@ export class StorageManager {
   public save(key: string, value: any): void {
     try {
       const data = JSON.stringify(value);
-      if (typeof cc !== 'undefined' && cc.sys && cc.sys.localStorage) {
-        cc.sys.localStorage.setItem(this._prefix + key, data);
-      } else {
+      if (sys && sys.localStorage) {
+        sys.localStorage.setItem(this._prefix + key, data);
+      } else if (typeof localStorage !== 'undefined') {
         localStorage.setItem(this._prefix + key, data);
       }
     } catch (e) {
@@ -25,9 +27,9 @@ export class StorageManager {
   public load<T>(key: string, defaultValue: T): T {
     try {
       let data: string | null = null;
-      if (typeof cc !== 'undefined' && cc.sys && cc.sys.localStorage) {
-        data = cc.sys.localStorage.getItem(this._prefix + key);
-      } else {
+      if (sys && sys.localStorage) {
+        data = sys.localStorage.getItem(this._prefix + key);
+      } else if (typeof localStorage !== 'undefined') {
         data = localStorage.getItem(this._prefix + key);
       }
       if (data) {
@@ -41,9 +43,9 @@ export class StorageManager {
 
   public remove(key: string): void {
     try {
-      if (typeof cc !== 'undefined' && cc.sys && cc.sys.localStorage) {
-        cc.sys.localStorage.removeItem(this._prefix + key);
-      } else {
+      if (sys && sys.localStorage) {
+        sys.localStorage.removeItem(this._prefix + key);
+      } else if (typeof localStorage !== 'undefined') {
         localStorage.removeItem(this._prefix + key);
       }
     } catch (e) {
@@ -53,17 +55,18 @@ export class StorageManager {
 
   public clearAll(): void {
     try {
-      if (typeof cc !== 'undefined' && cc.sys && cc.sys.localStorage) {
-        const keys = [];
-        for (let i = 0; i < cc.sys.localStorage.length; i++) {
-          const key = cc.sys.localStorage.key(i);
+      if (sys && sys.localStorage) {
+        const keys: string[] = [];
+        const storage = sys.localStorage;
+        for (let i = 0; i < storage.length; i++) {
+          const key = storage.key(i);
           if (key && key.startsWith(this._prefix)) {
             keys.push(key);
           }
         }
-        keys.forEach(k => cc.sys.localStorage.removeItem(k));
-      } else {
-        const keys = [];
+        keys.forEach(k => sys.localStorage!.removeItem(k));
+      } else if (typeof localStorage !== 'undefined') {
+        const keys: string[] = [];
         for (let i = 0; i < localStorage.length; i++) {
           const key = localStorage.key(i);
           if (key && key.startsWith(this._prefix)) {

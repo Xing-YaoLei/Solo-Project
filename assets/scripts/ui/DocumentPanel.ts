@@ -1,209 +1,317 @@
+import { _decorator, Label, Node, Sprite, Color, Button, EventTouch, Vec3, instantiate } from 'cc';
 import { UIBase } from './UIBase';
-import { EventManager, GameEvents } from '../utils/EventManager';
 import { GameManager } from '../managers/GameManager';
-import { DocumentItem } from '../core/Types';
+import { AudioManager } from '../managers/AudioManager';
+import { GameEvents } from '../utils/EventManager';
 
+const { ccclass, property } = _decorator;
+
+@ccclass('DocumentPanel')
 export class DocumentPanel extends UIBase {
-  private _items: DocumentItem[] = [];
-  private _selectedIndex: number = 0;
-  private _changes: Record<string, { quantity: number; unitPrice: number }> = {};
-  private _editMode: 'quantity' | 'unitPrice' | null = null;
+    @property(Node)
+    itemList: Node | null = null;
 
-  constructor(node?: any) {
-    super(node);
-    this.registerEvents();
-  }
+    @property(Node)
+    itemTemplate: Node | null = null;
 
-  private registerEvents(): void {
-    EventManager.instance.on(GameEvents.GAME_START, this.onGameStart.bind(this));
-    EventManager.instance.on(GameEvents.DOCUMENT_UPDATED, this.onDocumentUpdated.bind(this));
-    EventManager.instance.on(GameEvents.MISMATCH_DETECTED, this.onMismatchDetected.bind(this));
-  }
+    @property(Label)
+    totalLabel: Label | null = null;
 
-  private onGameStart(levelConfig: any): void {
-    this._items = levelConfig.document?.items || [];
-    this._changes = {};
-    this._selectedIndex = 0;
-    this._editMode = null;
-    this.refresh();
-  }
+    @property(Label)
+    documentTitleLabel: Label | null = null;
 
-  private onDocumentUpdated(itemId: string, quantity: number, unitPrice: number): void {
-    this._changes[itemId] = { quantity, unitPrice };
-    this.refreshTotal();
-  }
+    @property(Node)
+    submitButton: Node | null = null;
 
-  private onMismatchDetected(mismatch: any): void {
-    this.showMismatchWarning(mismatch);
-  }
+    private _items: any[] = [];
+    private _selectedIndex: number = -1;
+    private _editMode: 'none' | 'quantity' | 'unitPrice' = 'none';
+    private _itemNodes: Map<string, Node> = new Map();
 
-  public refresh(): void {
-    this.refreshItemList();
-    this.refreshDetail();
-    this.refreshTotal();
-  }
-
-  private refreshItemList(): void {
-    if (!this.node) return;
-    const listNode = this.node.getChildByName('itemList');
-    if (!listNode) return;
-
-    const content = listNode.getChildByName('content');
-    if (!content) return;
-
-    this.clearListContent(content);
-
-    for (let i = 0; i < this._items.length; i++) {
-      const item = this._items[i];
-      const itemNode = this.createListItem(item, i);
-      content.addChild(itemNode);
-    }
-  }
-
-  private clearListContent(content: any): void {
-    if (!content || !content.removeAllChildren) return;
-    content.removeAllChildren();
-  }
-
-  private createListItem(item: DocumentItem, index: number): any {
-    if (typeof cc === 'undefined') return {} as any;
-
-    const node = new cc.Node(`item_${item.id}`);
-    node.setContentSize(300, 40);
-
-    if (index === this._selectedIndex) {
-      node.addComponent(cc.Sprite);
+    onInit(): void {
+        if (this.itemTemplate) {
+            this.itemTemplate.active = false;
+        }
     }
 
-    const nameNode = new cc.Node('name');
-    nameNode.parent = node;
-    nameNode.anchorX = 0;
-    const nameLabel = nameNode.addComponent(cc.Label);
-    nameLabel.string = item.name;
-    nameLabel.fontSize = 14;
-    nameNode.setPosition(-140, 0);
+    onStart(): void {
+        this.on(GameEvents.DOCUMENT_UPDATED, this.onDocumentUpdated.bind(this));
+        this.on(GameEvents.PHASE_CHANGED, this.onPhaseChanged.bind(this));
 
-    const qtyNode = new cc.Node('qty');
-    qtyNode.parent = node;
-    const qtyLabel = qtyNode.addComponent(cc.Label);
-    const change = this._changes[item.id];
-    const qty = change ? change.quantity : item.quantity;
-    qtyLabel.string = `${qty}${item.unit}`;
-    qtyLabel.fontSize = 12;
-    qtyNode.setPosition(20, 0);
-
-    const priceNode = new cc.Node('price');
-    priceNode.parent = node;
-    const priceLabel = priceNode.addComponent(cc.Label);
-    const price = change ? change.unitPrice : item.unitPrice;
-    priceLabel.string = `¥${price}`;
-    priceLabel.fontSize = 12;
-    priceNode.setPosition(80, 0);
-
-    const totalNode = new cc.Node('total');
-    totalNode.parent = node;
-    const totalLabel = totalNode.addComponent(cc.Label);
-    const total = qty * price;
-    totalLabel.string = `¥${total.toFixed(2)}`;
-    totalLabel.fontSize = 12;
-    totalNode.setPosition(130, 0);
-
-    node.on(cc.Node.EventType.TOUCH_END, () => {
-      this._selectedIndex = index;
-      this.refreshItemList();
-      this.refreshDetail();
-    });
-
-    return node;
-  }
-
-  private refreshDetail(): void {
-    const item = this._items[this._selectedIndex];
-    if (!item) return;
-
-    const change = this._changes[item.id];
-    const qty = change ? change.quantity : item.quantity;
-    const price = change ? change.unitPrice : item.unitPrice;
-
-    this.setLabelText('detailName', item.name);
-    this.setLabelText('detailCategory', `类别：${item.category}`);
-    this.setLabelText('detailUnit', `单位：${item.unit}`);
-    this.setLabelText('detailQuantity', `数量：${qty}`);
-    this.setLabelText('detailUnitPrice', `单价：¥${price}`);
-    this.setLabelText('detailTotal', `小计：¥${(qty * price).toFixed(2)}`);
-
-    if (item.description) {
-      this.setLabelText('detailDesc', item.description);
+        this.registerInput('up', this.onInputUp.bind(this));
+        this.registerInput('down', this.onInputDown.bind(this));
+        this.registerInput('left', this.onInputLeft.bind(this));
+        this.registerInput('right', this.onInputRight.bind(this));
+        this.registerInput('confirm', this.onInputConfirm.bind(this));
+        this.registerInput('cancel', this.onInputCancel.bind(this));
+        this.registerInput('select_1', () => this.onSelectNumber(1));
+        this.registerInput('select_2', () => this.onSelectNumber(2));
+        this.registerInput('select_3', () => this.onSelectNumber(3));
+        this.registerInput('select_4', () => this.onSelectNumber(4));
+        this.registerInput('page_up', () => this.onPageUp());
+        this.registerInput('page_down', () => this.onPageDown());
     }
-  }
 
-  private refreshTotal(): void {
-    let total = 0;
-    for (const item of this._items) {
-      const change = this._changes[item.id];
-      const qty = change ? change.quantity : item.quantity;
-      const price = change ? change.unitPrice : item.unitPrice;
-      total += qty * price;
+    onShow(): void {
+        this.refreshItems();
+        if (this._items.length > 0 && this._selectedIndex < 0) {
+            this.selectItem(0);
+        }
+        this.playShowAnimation();
     }
-    this.setLabelText('totalAmount', `总计：¥${total.toFixed(2)}`);
-  }
 
-  public onQuantityIncrease(): void {
-    const item = this._items[this._selectedIndex];
-    if (!item || !item.isEditable) return;
-
-    const change = this._changes[item.id] || { quantity: item.quantity, unitPrice: item.unitPrice };
-    change.quantity += 1;
-    GameManager.instance.updateDocumentItem(item.id, change.quantity, change.unitPrice);
-  }
-
-  public onQuantityDecrease(): void {
-    const item = this._items[this._selectedIndex];
-    if (!item || !item.isEditable) return;
-
-    const change = this._changes[item.id] || { quantity: item.quantity, unitPrice: item.unitPrice };
-    change.quantity = Math.max(0, change.quantity - 1);
-    GameManager.instance.updateDocumentItem(item.id, change.quantity, change.unitPrice);
-  }
-
-  public onPriceIncrease(): void {
-    const item = this._items[this._selectedIndex];
-    if (!item || !item.isEditable) return;
-
-    const change = this._changes[item.id] || { quantity: item.quantity, unitPrice: item.unitPrice };
-    change.unitPrice += 10;
-    GameManager.instance.updateDocumentItem(item.id, change.quantity, change.unitPrice);
-  }
-
-  public onPriceDecrease(): void {
-    const item = this._items[this._selectedIndex];
-    if (!item || !item.isEditable) return;
-
-    const change = this._changes[item.id] || { quantity: item.quantity, unitPrice: item.unitPrice };
-    change.unitPrice = Math.max(0, change.unitPrice - 10);
-    GameManager.instance.updateDocumentItem(item.id, change.quantity, change.unitPrice);
-  }
-
-  public onConfirmClick(): void {
-    GameManager.instance.goToApproval();
-  }
-
-  public onBackClick(): void {
-    GameManager.instance.changePhase('clue_investigation');
-  }
-
-  private showMismatchWarning(mismatch: any): void {
-    console.log('Mismatch detected:', mismatch);
-  }
-
-  private setLabelText(labelName: string, text: string): void {
-    if (!this.node) return;
-    const label = this.node.getChildByName(labelName);
-    if (label && label.getComponent) {
-      const labelComp = label.getComponent(cc.Label);
-      if (labelComp) {
-        labelComp.string = text;
-      }
+    onHide(): void {
     }
-  }
+
+    public setDocument(items: any[], title?: string): void {
+        this._items = items;
+        if (title && this.documentTitleLabel) {
+            this.documentTitleLabel.string = title;
+        }
+        this.refreshItems();
+        this.updateTotal();
+    }
+
+    private refreshItems(): void {
+        if (!this.itemList || !this.itemTemplate) return;
+
+        for (const [, node] of this._itemNodes) {
+            node.off(Node.EventType.TOUCH_END);
+            node.destroy();
+        }
+        this._itemNodes.clear();
+
+        this._items.forEach((item, index) => {
+            const itemNode = instantiate(this.itemTemplate!);
+            itemNode.active = true;
+            itemNode.setPosition(0, -index * 60, 0);
+            itemNode.name = `item_${item.id}`;
+
+            const nameLabel = itemNode.getChildByName('nameLabel')?.getComponent(Label);
+            const quantityLabel = itemNode.getChildByName('quantityLabel')?.getComponent(Label);
+            const unitPriceLabel = itemNode.getChildByName('unitPriceLabel')?.getComponent(Label);
+            const amountLabel = itemNode.getChildByName('amountLabel')?.getComponent(Label);
+
+            if (nameLabel) nameLabel.string = item.name;
+            if (quantityLabel) quantityLabel.string = item.quantity.toString();
+            if (unitPriceLabel) unitPriceLabel.string = `¥${item.unitPrice}`;
+            if (amountLabel) amountLabel.string = `¥${(item.quantity * item.unitPrice).toFixed(2)}`;
+
+            itemNode.on(Node.EventType.TOUCH_END, () => {
+                this.onItemTapped(index);
+            }, this);
+
+            this.itemList!.addChild(itemNode);
+            this._itemNodes.set(item.id, itemNode);
+        });
+
+        this._selectedIndex = -1;
+    }
+
+    private onItemTapped(index: number): void {
+        if (index === this._selectedIndex) {
+            if (this._editMode === 'none') {
+                this._editMode = 'quantity';
+            } else if (this._editMode === 'quantity') {
+                this._editMode = 'unitPrice';
+            } else {
+                this._editMode = 'none';
+            }
+            this.updateSelectionVisual();
+        } else {
+            this.selectItem(index);
+        }
+        AudioManager.instance.playClick();
+    }
+
+    private selectItem(index: number): void {
+        if (index < 0 || index >= this._items.length) return;
+        this._selectedIndex = index;
+        this._editMode = 'none';
+        this.updateSelectionVisual();
+    }
+
+    private updateSelectionVisual(): void {
+        this._items.forEach((item, index) => {
+            const node = this._itemNodes.get(item.id);
+            if (!node) return;
+
+            const bg = node.getChildByName('bg')?.getComponent(Sprite);
+            const quantityLabel = node.getChildByName('quantityLabel')?.getComponent(Label);
+            const unitPriceLabel = node.getChildByName('unitPriceLabel')?.getComponent(Label);
+
+            if (bg) {
+                if (index === this._selectedIndex) {
+                    bg.color = new Color(100, 180, 255, 255);
+                } else {
+                    bg.color = new Color(255, 255, 255, 255);
+                }
+            }
+
+            if (quantityLabel) {
+                quantityLabel.color = (index === this._selectedIndex && this._editMode === 'quantity')
+                    ? new Color(255, 200, 0, 255)
+                    : new Color(50, 50, 50, 255);
+            }
+
+            if (unitPriceLabel) {
+                unitPriceLabel.color = (index === this._selectedIndex && this._editMode === 'unitPrice')
+                    ? new Color(255, 200, 0, 255)
+                    : new Color(50, 50, 50, 255);
+            }
+        });
+    }
+
+    private onInputUp(source: string): void {
+        if (this._editMode !== 'none') return;
+        if (this._selectedIndex > 0) {
+            this.selectItem(this._selectedIndex - 1);
+            AudioManager.instance.playClick();
+        }
+    }
+
+    private onInputDown(source: string): void {
+        if (this._editMode !== 'none') return;
+        if (this._selectedIndex < this._items.length - 1) {
+            this.selectItem(this._selectedIndex + 1);
+            AudioManager.instance.playClick();
+        }
+    }
+
+    private onInputLeft(source: string): void {
+        if (this._selectedIndex < 0) return;
+        const item = this._items[this._selectedIndex];
+
+        if (this._editMode === 'quantity') {
+            const newQty = Math.max(0, item.quantity - 1);
+            this.updateItemValue(item.id, newQty, item.unitPrice);
+        } else if (this._editMode === 'unitPrice') {
+            const newPrice = Math.max(0, item.unitPrice - 10);
+            this.updateItemValue(item.id, item.quantity, newPrice);
+        } else {
+            this._editMode = 'unitPrice';
+            this.updateSelectionVisual();
+        }
+        AudioManager.instance.playClick();
+    }
+
+    private onInputRight(source: string): void {
+        if (this._selectedIndex < 0) return;
+        const item = this._items[this._selectedIndex];
+
+        if (this._editMode === 'quantity') {
+            const newQty = item.quantity + 1;
+            this.updateItemValue(item.id, newQty, item.unitPrice);
+        } else if (this._editMode === 'unitPrice') {
+            const newPrice = item.unitPrice + 10;
+            this.updateItemValue(item.id, item.quantity, newPrice);
+        } else {
+            this._editMode = 'quantity';
+            this.updateSelectionVisual();
+        }
+        AudioManager.instance.playClick();
+    }
+
+    private onInputConfirm(source: string): void {
+        if (this._selectedIndex < 0) return;
+
+        if (this._editMode === 'none') {
+            this._editMode = 'quantity';
+            this.updateSelectionVisual();
+        } else if (this._editMode === 'quantity') {
+            this._editMode = 'unitPrice';
+            this.updateSelectionVisual();
+        } else {
+            this._editMode = 'none';
+            this.updateSelectionVisual();
+        }
+        AudioManager.instance.playConfirm();
+    }
+
+    private onInputCancel(source: string): void {
+        if (this._editMode !== 'none') {
+            this._editMode = 'none';
+            this.updateSelectionVisual();
+            AudioManager.instance.playClick();
+        }
+    }
+
+    private onSelectNumber(num: number): void {
+        if (this._selectedIndex < 0) return;
+        const item = this._items[this._selectedIndex];
+
+        if (this._editMode === 'quantity') {
+            this.updateItemValue(item.id, num, item.unitPrice);
+            AudioManager.instance.playClick();
+        }
+    }
+
+    private onPageUp(): void {
+        if (this._editMode === 'none') {
+            this.selectItem(Math.max(0, this._selectedIndex - 3));
+        }
+    }
+
+    private onPageDown(): void {
+        if (this._editMode === 'none') {
+            this.selectItem(Math.min(this._items.length - 1, this._selectedIndex + 3));
+        }
+    }
+
+    private updateItemValue(itemId: string, quantity: number, unitPrice: number): void {
+        const item = this._items.find(i => i.id === itemId);
+        if (!item) return;
+
+        item.quantity = quantity;
+        item.unitPrice = unitPrice;
+
+        const itemNode = this._itemNodes.get(itemId);
+        if (itemNode) {
+            const quantityLabel = itemNode.getChildByName('quantityLabel')?.getComponent(Label);
+            const unitPriceLabel = itemNode.getChildByName('unitPriceLabel')?.getComponent(Label);
+            const amountLabel = itemNode.getChildByName('amountLabel')?.getComponent(Label);
+
+            if (quantityLabel) quantityLabel.string = quantity.toString();
+            if (unitPriceLabel) unitPriceLabel.string = `¥${unitPrice}`;
+            if (amountLabel) amountLabel.string = `¥${(quantity * unitPrice).toFixed(2)}`;
+        }
+
+        this.updateTotal();
+        GameManager.instance.updateDocumentItem(itemId, quantity, unitPrice);
+    }
+
+    private updateTotal(): void {
+        if (!this.totalLabel) return;
+        const total = this._items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
+        this.totalLabel.string = `合计: ¥${total.toFixed(2)}`;
+    }
+
+    private onDocumentUpdated(itemId: string, quantity: number, unitPrice: number): void {
+        const item = this._items.find(i => i.id === itemId);
+        if (!item) return;
+
+        item.quantity = quantity;
+        item.unitPrice = unitPrice;
+
+        const itemNode = this._itemNodes.get(itemId);
+        if (itemNode) {
+            const amountLabel = itemNode.getChildByName('amountLabel')?.getComponent(Label);
+            if (amountLabel) amountLabel.string = `¥${(quantity * unitPrice).toFixed(2)}`;
+        }
+
+        this.updateTotal();
+    }
+
+    private onPhaseChanged(phase: string): void {
+        if (phase === 'document_editing') {
+            this.show();
+        } else {
+            this.hide();
+        }
+    }
+
+    public onSubmitClicked(): void {
+        AudioManager.instance.playConfirm();
+        GameManager.instance.goToApproval();
+    }
 }

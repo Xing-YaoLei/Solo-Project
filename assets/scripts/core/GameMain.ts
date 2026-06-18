@@ -1,32 +1,30 @@
-const { ccclass, property } = (typeof cc !== 'undefined' ? cc : { ccclass: () => (c: any) => c, property: () => () => {} });
+import { _decorator, Component, Node, find } from 'cc';
 import { GameSceneController } from './GameSceneController';
 
+const { ccclass, property } = _decorator;
+
 @ccclass('GameMain')
-export class GameMain {
-  @property(cc.Node)
-  canvas: cc.Node | null = null;
+export class GameMain extends Component {
+    @property(Node)
+    canvas: Node | null = null;
 
-  private _controller: GameSceneController | null = null;
+    private _controller: GameSceneController | null = null;
 
-  onLoad(): void {
-    console.log('GameMain onLoad');
-    this._controller = new GameSceneController(this.canvas);
-    this._controller.init();
-  }
-
-  start(): void {
-    console.log('GameMain start');
-  }
-
-  update(dt: number): void {
-    if (this._controller) {
-      this._controller.update(dt);
+    onLoad(): void {
+        const canvasNode = this.canvas || find('Canvas');
+        this._controller = new GameSceneController(canvasNode);
+        this._controller.init();
     }
-  }
 
-  onDestroy(): void {
-    if (this._controller) {
-      this._controller.destroy();
+    update(dt: number): void {
+        if (this._controller) {
+            this._controller.update(dt);
+        }
     }
-  }
+
+    onDestroy(): void {
+        if (this._controller) {
+            this._controller.destroy();
+        }
+    }
 }

@@ -1,278 +1,161 @@
+import { _decorator, Label, Node, Button, Sprite, Color, instantiate } from 'cc';
 import { UIBase } from './UIBase';
-import { EventManager, GameEvents } from '../utils/EventManager';
 import { GameManager } from '../managers/GameManager';
-import { LeaderboardManager } from '../managers/LeaderboardManager';
+import { AudioManager } from '../managers/AudioManager';
+import { GameEvents } from '../utils/EventManager';
 
+const { ccclass, property } = _decorator;
+
+@ccclass('ResultPanel')
 export class ResultPanel extends UIBase {
-  private _isVictory: boolean = false;
-  private _score: number = 0;
-  private _stars: number = 0;
-  private _money: number = 0;
-  private _time: number = 0;
-  private _reason: string = '';
-  private _sessionRecord: any = null;
+    @property(Label)
+    resultTitleLabel: Label | null = null;
 
-  constructor(node?: any) {
-    super(node);
-    this.registerEvents();
-  }
+    @property(Label)
+    scoreLabel: Label | null = null;
 
-  private registerEvents(): void {
-    EventManager.instance.on(GameEvents.GAME_VICTORY, this.onVictory.bind(this));
-    EventManager.instance.on(GameEvents.GAME_OVER, this.onGameOver.bind(this));
-  }
+    @property(Label)
+    moneyLabel: Label | null = null;
 
-  private onVictory(data: any): void {
-    this._isVictory = true;
-    this._score = data.score;
-    this._stars = data.stars;
-    this._money = data.money;
-    this._time = data.time;
-    this._sessionRecord = data.sessionRecord;
+    @property(Label)
+    timeLabel: Label | null = null;
 
-    LeaderboardManager.instance.addScore(
-      GameManager.instance.gameState?.currentLevelId || '',
-      data.score,
-      data.stars,
-      data.time
-    );
+    @property(Node)
+    starsContainer: Node | null = null;
 
-    this.refresh();
-  }
+    @property(Node)
+    starTemplate: Node | null = null;
 
-  private onGameOver(data: any): void {
-    this._isVictory = false;
-    this._score = data.score;
-    this._money = data.money;
-    this._time = data.time;
-    this._reason = data.reason;
-    this._stars = 0;
-    this._sessionRecord = data.sessionRecord;
+    @property(Node)
+    restartButton: Node | null = null;
 
-    this.refresh();
-  }
+    @property(Node)
+    reviewButton: Node | null = null;
 
-  public refresh(): void {
-    if (this._isVictory) {
-      this.setLabelText('resultTitle', '任务完成！');
-      this.setLabelText('resultSubtitle', '恭喜你成功完成了量房报价任务');
-      this.showStars(this._stars);
-    } else {
-      this.setLabelText('resultTitle', '任务失败');
-      this.setLabelText('resultSubtitle', this.getReasonText());
-      this.hideStars();
+    @property(Node)
+    menuButton: Node | null = null;
+
+    @property(Node)
+    nextLevelButton: Node | null = null;
+
+    private _isVictory: boolean = false;
+    private _stars: number = 0;
+
+    onInit(): void {
+        if (this.starTemplate) {
+            this.starTemplate.active = false;
+        }
     }
 
-    this.setLabelText('scoreValue', `${this._score}`);
-    this.setLabelText('moneyValue', `¥${this._money.toLocaleString()}`);
-    this.setLabelText('timeValue', this.formatTime(this._time));
+    onStart(): void {
+        this.on(GameEvents.GAME_VICTORY, this.onVictory.bind(this));
+        this.on(GameEvents.GAME_OVER, this.onGameOver.bind(this));
+        this.on(GameEvents.PHASE_CHANGED, this.onPhaseChanged.bind(this));
 
-    const rank = LeaderboardManager.instance.getPlayerRank(
-      GameManager.instance.gameState?.currentLevelId || '',
-      this._score,
-      this._time
-    );
-    this.setLabelText('rankValue', `第 ${rank} 名`);
-
-    this.refreshErrorList();
-    this.refreshMismatchList();
-  }
-
-  private getReasonText(): string {
-    switch (this._reason) {
-      case 'time_out':
-        return '时间不够用了，下次要更快哦！';
-      case 'low_score':
-        return '分数不足，仔细看看线索再试试吧！';
-      default:
-        return '再接再厉，下次一定行！';
-    }
-  }
-
-  private showStars(stars: number): void {
-    for (let i = 1; i <= 3; i++) {
-      const starNode = this.node?.getChildByName(`star${i}`);
-      if (starNode) {
-        starNode.active = i <= stars;
-      }
-    }
-  }
-
-  private hideStars(): void {
-    for (let i = 1; i <= 3; i++) {
-      const starNode = this.node?.getChildByName(`star${i}`);
-      if (starNode) {
-        starNode.active = false;
-      }
-    }
-  }
-
-  private refreshErrorList(): void {
-    if (!this.node) return;
-    const listNode = this.node.getChildByName('errorList');
-    if (!listNode) return;
-
-    const content = listNode.getChildByName('content');
-    if (!content) return;
-
-    this.clearListContent(content);
-
-    if (this._sessionRecord && this._sessionRecord.errors) {
-      for (const error of this._sessionRecord.errors) {
-        const item = this.createErrorItem(error);
-        content.addChild(item);
-      }
+        this.registerInput('confirm', this.onInputConfirm.bind(this));
+        this.registerInput('restart', this.onRestartClicked.bind(this));
+        this.registerInput('cancel', this.onMenuClicked.bind(this));
     }
 
-    if (this._sessionRecord && this._sessionRecord.errors.length === 0) {
-      const emptyNode = this.createEmptyItem('没有错误记录，表现很棒！');
-      content.addChild(emptyNode);
-    }
-  }
-
-  private refreshMismatchList(): void {
-    if (!this.node) return;
-    const listNode = this.node.getChildByName('mismatchList');
-    if (!listNode) return;
-
-    const content = listNode.getChildByName('content');
-    if (!content) return;
-
-    this.clearListContent(content);
-
-    if (this._sessionRecord && this._sessionRecord.mismatches) {
-      for (const mismatch of this._sessionRecord.mismatches) {
-        const item = this.createMismatchItem(mismatch);
-        content.addChild(item);
-      }
+    private onPhaseChanged(phase: string): void {
+        if (phase === 'result') {
+            this.show();
+        } else {
+            this.hide();
+        }
     }
 
-    if (this._sessionRecord && this._sessionRecord.mismatches.length === 0) {
-      const emptyNode = this.createEmptyItem('所有单据都正确无误！');
-      content.addChild(emptyNode);
+    private onVictory(data: any): void {
+        this._isVictory = true;
+        this._stars = data.stars || 0;
+        this.updateResult(true, data.score, data.money, data.time, data.stars);
     }
-  }
 
-  private clearListContent(content: any): void {
-    if (!content || !content.removeAllChildren) return;
-    content.removeAllChildren();
-  }
-
-  private createErrorItem(error: any): any {
-    if (typeof cc === 'undefined') return {} as any;
-
-    const node = new cc.Node(`error_${error.id}`);
-    node.setContentSize(280, 40);
-
-    const typeNode = new cc.Node('type');
-    typeNode.parent = node;
-    const typeLabel = typeNode.addComponent(cc.Label);
-    typeLabel.string = this.getErrorTypeLabel(error.errorType);
-    typeLabel.fontSize = 12;
-    typeNode.setPosition(-120, 0);
-
-    const descNode = new cc.Node('desc');
-    descNode.parent = node;
-    descNode.anchorX = 0;
-    const descLabel = descNode.addComponent(cc.Label);
-    descLabel.string = error.feedback || error.description;
-    descLabel.fontSize = 11;
-    descNode.setPosition(-60, 0);
-
-    return node;
-  }
-
-  private createMismatchItem(mismatch: any): any {
-    if (typeof cc === 'undefined') return {} as any;
-
-    const node = new cc.Node(`mismatch_${mismatch.id}`);
-    node.setContentSize(280, 40);
-
-    const nameNode = new cc.Node('name');
-    nameNode.parent = node;
-    nameNode.anchorX = 0;
-    const nameLabel = nameNode.addComponent(cc.Label);
-    nameLabel.string = mismatch.itemName;
-    nameLabel.fontSize = 12;
-    nameNode.setPosition(-130, 10);
-
-    const diffNode = new cc.Node('diff');
-    diffNode.parent = node;
-    diffNode.anchorX = 0;
-    const diffLabel = diffNode.addComponent(cc.Label);
-    const diffText = mismatch.difference > 0 ? `+¥${mismatch.difference.toFixed(2)}` : `-¥${Math.abs(mismatch.difference).toFixed(2)}`;
-    diffLabel.string = diffText;
-    diffLabel.fontSize = 11;
-    diffNode.setPosition(-130, -10);
-
-    const causeNode = new cc.Node('cause');
-    causeNode.parent = node;
-    causeNode.anchorX = 1;
-    const causeLabel = causeNode.addComponent(cc.Label);
-    causeLabel.string = mismatch.cause;
-    causeLabel.fontSize = 10;
-    causeNode.setPosition(130, 0);
-
-    return node;
-  }
-
-  private createEmptyItem(text: string): any {
-    if (typeof cc === 'undefined') return {} as any;
-
-    const node = new cc.Node('empty');
-    node.setContentSize(280, 40);
-
-    const textNode = new cc.Node('text');
-    textNode.parent = node;
-    const textLabel = textNode.addComponent(cc.Label);
-    textLabel.string = text;
-    textLabel.fontSize = 12;
-    textNode.setPosition(0, 0);
-
-    return node;
-  }
-
-  private getErrorTypeLabel(type: string): string {
-    const labels: Record<string, string> = {
-      wrong_choice: '选择错误',
-      quantity_mismatch: '数量错误',
-      price_mismatch: '价格错误',
-      total_mismatch: '总价错误',
-      process_error: '流程错误',
-      time_out: '超时',
-    };
-    return labels[type] || type;
-  }
-
-  private formatTime(seconds: number): string {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}分${secs}秒`;
-  }
-
-  public onRestartClick(): void {
-    GameManager.instance.restartLevel();
-  }
-
-  public onReviewClick(): void {
-    GameManager.instance.showReview();
-  }
-
-  public onMenuClick(): void {
-    GameManager.instance.exitToMenu();
-  }
-
-  public onNextLevelClick(): void {
-  }
-
-  private setLabelText(labelName: string, text: string): void {
-    if (!this.node) return;
-    const label = this.node.getChildByName(labelName);
-    if (label && label.getComponent) {
-      const labelComp = label.getComponent(cc.Label);
-      if (labelComp) {
-        labelComp.string = text;
-      }
+    private onGameOver(data: any): void {
+        this._isVictory = false;
+        this.updateResult(false, data.score, data.money, data.time, 0);
     }
-  }
+
+    private updateResult(isVictory: boolean, score: number, money: number, time: number, stars: number): void {
+        if (this.resultTitleLabel) {
+            this.resultTitleLabel.string = isVictory ? '任务完成！' : '任务失败';
+            this.resultTitleLabel.color = isVictory
+                ? new Color(50, 180, 50, 255)
+                : new Color(200, 50, 50, 255);
+        }
+
+        if (this.scoreLabel) {
+            this.scoreLabel.string = `得分：${score}`;
+        }
+        if (this.moneyLabel) {
+            this.moneyLabel.string = `回款：¥${money}`;
+        }
+        if (this.timeLabel) {
+            const minutes = Math.floor(time / 60);
+            const seconds = time % 60;
+            this.timeLabel.string = `用时：${minutes}分${seconds}秒`;
+        }
+
+        this.updateStars(stars);
+
+        if (this.nextLevelButton) {
+            this.nextLevelButton.active = isVictory;
+        }
+
+        if (isVictory) {
+            AudioManager.instance.playSuccess();
+        } else {
+            AudioManager.instance.playError();
+        }
+    }
+
+    private updateStars(stars: number): void {
+        if (!this.starsContainer || !this.starTemplate) return;
+
+        this.starsContainer.removeAllChildren();
+
+        for (let i = 0; i < 3; i++) {
+            const starNode = instantiate(this.starTemplate);
+            starNode.active = true;
+            starNode.setPosition(i * 60 - 60, 0, 0);
+
+            const starSprite = starNode.getComponent(Sprite);
+            if (starSprite) {
+                starSprite.color = i < stars
+                    ? new Color(255, 200, 0, 255)
+                    : new Color(200, 200, 200, 255);
+            }
+
+            this.starsContainer.addChild(starNode);
+        }
+    }
+
+    private onInputConfirm(source: string): void {
+        if (!this.node.active) return;
+        this.onRestartClicked();
+    }
+
+    public onRestartClicked(): void {
+        AudioManager.instance.playClick();
+        GameManager.instance.restartLevel();
+    }
+
+    public onReviewClicked(): void {
+        AudioManager.instance.playClick();
+        GameManager.instance.showReview();
+    }
+
+    public onMenuClicked(): void {
+        AudioManager.instance.playClick();
+        GameManager.instance.exitToMenu();
+        this.emit(GameEvents.UI_SHOW_MENU);
+    }
+
+    public onNextLevelClicked(): void {
+        AudioManager.instance.playClick();
+    }
+
+    onShow(): void {
+        this.playShowAnimation();
+    }
 }

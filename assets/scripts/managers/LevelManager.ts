@@ -5,6 +5,7 @@ export class LevelManager {
   private static _instance: LevelManager | null = null;
   private _progress: Map<string, LevelProgress> = new Map();
   private _unlockedLevels: string[] = [];
+  private _inited = false;
 
   public static get instance(): LevelManager {
     if (!this._instance) {
@@ -14,6 +15,9 @@ export class LevelManager {
   }
 
   public init(): void {
+    if (this._inited) return;
+    this._inited = true;
+
     const savedProgress = StorageManager.instance.load<Record<string, LevelProgress>>('level_progress', {});
     for (const levelId in savedProgress) {
       this._progress.set(levelId, savedProgress[levelId]);

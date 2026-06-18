@@ -5,6 +5,7 @@
   "difficulty": 2,
   "unlocked": false,
   "starThresholds": [500, 700, 900],
+  "tiledMap": "tiled/level_002",
   "task": {
     "id": "task_002",
     "title": "两居室标准装修",

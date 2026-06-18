@@ -1,87 +1,107 @@
+import { _decorator, Label, Node, Button } from 'cc';
 import { UIBase } from './UIBase';
-import { TutorialManager, TutorialStep } from '../managers/TutorialManager';
-import { EventManager, GameEvents } from '../utils/EventManager';
+import { TutorialManager } from '../managers/TutorialManager';
+import { AudioManager } from '../managers/AudioManager';
+import { GameEvents } from '../utils/EventManager';
 
+const { ccclass, property } = _decorator;
+
+@ccclass('TutorialUI')
 export class TutorialUI extends UIBase {
-  private _currentStep: TutorialStep | null = null;
+    @property(Label)
+    tutorialTitleLabel: Label | null = null;
 
-  constructor(node?: any) {
-    super(node);
-    this.registerEvents();
-  }
+    @property(Label)
+    stepContentLabel: Label | null = null;
 
-  private registerEvents(): void {
-    EventManager.instance.on(GameEvents.PHASE_CHANGED, this.onPhaseChanged.bind(this));
-  }
+    @property(Label)
+    stepIndexLabel: Label | null = null;
 
-  private onPhaseChanged(phase: string): void {
-    if (TutorialManager.instance.isPlaying) {
-      this.refresh();
-    }
-  }
+    @property(Node)
+    prevButton: Node | null = null;
 
-  public refresh(): void {
-    this._currentStep = TutorialManager.instance.currentStep;
-    if (!this._currentStep) {
-      this.hide();
-      return;
-    }
+    @property(Node)
+    nextButton: Node | null = null;
 
-    this.show();
-    this.setLabelText('stepTitle', this._currentStep.title);
-    this.setLabelText('stepContent', this._currentStep.content);
-    this.setLabelText('stepIndex', `第 ${TutorialManager.instance.getCurrentStepNumber()} / ${TutorialManager.instance.getTotalSteps()} 步`);
+    @property(Node)
+    closeButton: Node | null = null;
 
-    const prevBtn = this.node?.getChildByName('prevBtn');
-    if (prevBtn) {
-      prevBtn.active = TutorialManager.instance.getCurrentStepNumber() > 1;
+    @property(Node)
+    highlightNode: Node | null = null;
+
+    onStart(): void {
+        this.on(GameEvents.UI_SHOW_TUTORIAL, this.onShowTutorial.bind(this));
+        this.on(GameEvents.TUTORIAL_STEP_CHANGED, this.onStepChanged.bind(this));
+        this.on(GameEvents.TUTORIAL_COMPLETED, this.onTutorialCompleted.bind(this));
+
+        this.registerInput('confirm', this.onNextClicked.bind(this));
+        this.registerInput('next', this.onNextClicked.bind(this));
+        this.registerInput('prev', this.onPrevClicked.bind(this));
+        this.registerInput('cancel', this.onCloseClicked.bind(this));
     }
 
-    const nextBtn = this.node?.getChildByName('nextBtn');
-    if (nextBtn) {
-      const isLastStep = TutorialManager.instance.getCurrentStepNumber() >= TutorialManager.instance.getTotalSteps();
-      const finishLabel = nextBtn.getChildByName('label');
-      if (finishLabel && finishLabel.getComponent) {
-        const label = finishLabel.getComponent(cc.Label);
-        if (label) {
-          label.string = isLastStep ? '完成' : '下一步';
+    private onShowTutorial(): void {
+        this.show();
+        const tutorial = TutorialManager.instance.getFirstUncompletedTutorial();
+        if (tutorial) {
+            TutorialManager.instance.startTutorial(tutorial.id);
+            this.updateUI(tutorial.id, 0, tutorial.steps[0]);
         }
-      }
     }
-  }
 
-  public onPrevClick(): void {
-    TutorialManager.instance.prevStep();
-    this.refresh();
-  }
-
-  public onNextClick(): void {
-    if (TutorialManager.instance.getCurrentStepNumber() >= TutorialManager.instance.getTotalSteps()) {
-      this.onComplete();
-    } else {
-      TutorialManager.instance.nextStep();
-      this.refresh();
+    private onStepChanged(tutorialId: string, stepIndex: number, step: any): void {
+        this.updateUI(tutorialId, stepIndex, step);
     }
-  }
 
-  public onSkipClick(): void {
-    TutorialManager.instance.stopTutorial();
-    this.hide();
-  }
-
-  public onComplete(): void {
-    TutorialManager.instance.completeTutorial();
-    this.hide();
-  }
-
-  private setLabelText(labelName: string, text: string): void {
-    if (!this.node) return;
-    const label = this.node.getChildByName(labelName);
-    if (label && label.getComponent) {
-      const labelComp = label.getComponent(cc.Label);
-      if (labelComp) {
-        labelComp.string = text;
-      }
+    private onTutorialCompleted(tutorialId: string): void {
+        this.hide();
     }
-  }
+
+    private updateUI(tutorialId: string, stepIndex: number, step: any): void {
+        const tutorial = TutorialManager.instance.getTutorial(tutorialId);
+        const totalSteps = tutorial?.steps?.length || 0;
+
+        if (this.tutorialTitleLabel) {
+            this.tutorialTitleLabel.string = tutorial?.name || '';
+        }
+        if (this.stepContentLabel) {
+            this.stepContentLabel.string = step?.content || '';
+        }
+        if (this.stepIndexLabel) {
+            this.stepIndexLabel.string = `${stepIndex + 1} / ${totalSteps}`;
+        }
+        if (this.prevButton) {
+            this.prevButton.active = stepIndex > 0;
+        }
+        if (this.nextButton) {
+            this.nextButton.active = stepIndex < totalSteps - 1;
+        }
+        if (this.highlightNode && step?.target) {
+            this.highlightNode.active = true;
+        } else if (this.highlightNode) {
+            this.highlightNode.active = false;
+        }
+    }
+
+    public onPrevClicked(): void {
+        AudioManager.instance.playClick();
+        TutorialManager.instance.prevStep();
+    }
+
+    public onNextClicked(): void {
+        AudioManager.instance.playClick();
+        if (!TutorialManager.instance.nextStep()) {
+            this.hide();
+        }
+    }
+
+    public onCloseClicked(): void {
+        AudioManager.instance.playClick();
+        TutorialManager.instance.completeTutorial();
+        this.hide();
+    }
+
+    onShow(): void {
+        this.playShowAnimation();
+    }
 }

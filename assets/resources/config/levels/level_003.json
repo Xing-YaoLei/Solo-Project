@@ -5,6 +5,7 @@
   "difficulty": 3,
   "unlocked": false,
   "starThresholds": [450, 650, 850],
+  "tiledMap": "tiled/level_003",
   "task": {
     "id": "task_003",
     "title": "三居室精装修",

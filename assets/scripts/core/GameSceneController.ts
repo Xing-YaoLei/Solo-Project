@@ -62,42 +62,42 @@ export class GameSceneController {
 
     const hudNode = this._node.getChildByName('HUD');
     if (hudNode) {
-      this._hud = new HUD(hudNode);
+      this._hud = hudNode.addComponent(HUD);
     }
 
     const taskPanelNode = this._node.getChildByName('TaskBriefingPanel');
     if (taskPanelNode) {
-      this._taskBriefingPanel = new TaskBriefingPanel(taskPanelNode);
+      this._taskBriefingPanel = taskPanelNode.addComponent(TaskBriefingPanel);
     }
 
     const cluePanelNode = this._node.getChildByName('CluePanel');
     if (cluePanelNode) {
-      this._cluePanel = new CluePanel(cluePanelNode);
+      this._cluePanel = cluePanelNode.addComponent(CluePanel);
     }
 
     const docPanelNode = this._node.getChildByName('DocumentPanel');
     if (docPanelNode) {
-      this._documentPanel = new DocumentPanel(docPanelNode);
+      this._documentPanel = docPanelNode.addComponent(DocumentPanel);
     }
 
     const approvalPanelNode = this._node.getChildByName('ApprovalPanel');
     if (approvalPanelNode) {
-      this._approvalPanel = new ApprovalPanel(approvalPanelNode);
+      this._approvalPanel = approvalPanelNode.addComponent(ApprovalPanel);
     }
 
     const resultPanelNode = this._node.getChildByName('ResultPanel');
     if (resultPanelNode) {
-      this._resultPanel = new ResultPanel(resultPanelNode);
+      this._resultPanel = resultPanelNode.addComponent(ResultPanel);
     }
 
     const reviewPanelNode = this._node.getChildByName('ReviewPanel');
     if (reviewPanelNode) {
-      this._reviewPanel = new ReviewPanel(reviewPanelNode);
+      this._reviewPanel = reviewPanelNode.addComponent(ReviewPanel);
     }
 
     const tutorialUINode = this._node.getChildByName('TutorialUI');
     if (tutorialUINode) {
-      this._tutorialUI = new TutorialUI(tutorialUINode);
+      this._tutorialUI = tutorialUINode.addComponent(TutorialUI);
     }
   }
 
@@ -184,79 +184,49 @@ export class GameSceneController {
 
   private handleTaskBriefingInput(action: InputAction): void {
     if (action === 'confirm' || action === 'next') {
-      this._taskBriefingPanel?.onStartClick();
+      this._taskBriefingPanel?.onStartClicked();
     } else if (action === 'cancel') {
-      this._taskBriefingPanel?.onCancelClick();
+      this._taskBriefingPanel?.onBackClicked();
     }
   }
 
   private handleClueInput(action: InputAction): void {
     if (action === 'left' || action === 'prev') {
-      this._cluePanel?.onPrevClick();
+      this._cluePanel?.onBackClicked();
     } else if (action === 'right' || action === 'next') {
-      this._cluePanel?.onNextClick();
+      this._cluePanel?.onContinueClicked();
     } else if (action === 'confirm') {
-      this._cluePanel?.onConfirmClick();
-    } else if (action === 'up' || action === 'page_up') {
-    } else if (action === 'down' || action === 'page_down') {
+      this._cluePanel?.onContinueClicked();
     }
   }
 
   private handleDocumentInput(action: InputAction): void {
-    if (action === 'up' || action === 'prev') {
-    } else if (action === 'down' || action === 'next') {
-    } else if (action === 'left') {
-      this._documentPanel?.onQuantityDecrease();
-    } else if (action === 'right') {
-      this._documentPanel?.onQuantityIncrease();
-    } else if (action === 'confirm') {
-      this._documentPanel?.onConfirmClick();
-    } else if (action === 'cancel') {
-      this._documentPanel?.onBackClick();
-    } else if (action === 'select_1') {
-      this._documentPanel?.onPriceDecrease();
-    } else if (action === 'select_2') {
-      this._documentPanel?.onPriceIncrease();
+    if (action === 'confirm') {
+      this._documentPanel?.onSubmitClicked();
     }
   }
 
   private handleApprovalInput(action: InputAction): void {
-    if (action === 'select_1') {
-      this._approvalPanel?.onChoice1Click();
-    } else if (action === 'select_2') {
-      this._approvalPanel?.onChoice2Click();
-    } else if (action === 'select_3') {
-      this._approvalPanel?.onChoice3Click();
-    } else if (action === 'select_4') {
-      this._approvalPanel?.onChoice4Click();
-    } else if (action === 'confirm') {
-      this._approvalPanel?.onConfirmClick();
+    if (action === 'confirm') {
+      this._approvalPanel?.onContinueClicked();
     }
   }
 
   private handleResultInput(action: InputAction): void {
-    if (action === 'confirm' || action === 'restart') {
-      this._resultPanel?.onRestartClick();
-    } else if (action === 'select_1') {
-      this._resultPanel?.onRestartClick();
+    if (action === 'confirm' || action === 'restart' || action === 'select_1') {
+      this._resultPanel?.onRestartClicked();
     } else if (action === 'select_2') {
-      this._resultPanel?.onReviewClick();
+      this._resultPanel?.onReviewClicked();
     } else if (action === 'select_3') {
-      this._resultPanel?.onMenuClick();
+      this._resultPanel?.onMenuClicked();
     }
   }
 
   private handleReviewInput(action: InputAction): void {
     if (action === 'cancel') {
-      this._reviewPanel?.onBackClick();
+      this._reviewPanel?.onBackClicked();
     } else if (action === 'restart') {
-      this._reviewPanel?.onRestartClick();
-    } else if (action === 'select_1') {
-      this._reviewPanel?.onTab1Click();
-    } else if (action === 'select_2') {
-      this._reviewPanel?.onTab2Click();
-    } else if (action === 'select_3') {
-      this._reviewPanel?.onTab3Click();
+      this._resultPanel?.onRestartClicked();
     }
   }
 

@@ -1,193 +1,154 @@
+import { _decorator, Label, Node, Button, Sprite, Color } from 'cc';
 import { UIBase } from './UIBase';
-import { EventManager, GameEvents } from '../utils/EventManager';
-import { GameManager } from '../managers/GameManager';
 import { ScoreManager } from '../managers/ScoreManager';
-import { GameSessionRecord } from '../core/GameState';
+import { AudioManager } from '../managers/AudioManager';
+import { GameEvents } from '../utils/EventManager';
 
+const { ccclass, property } = _decorator;
+
+@ccclass('ReviewPanel')
 export class ReviewPanel extends UIBase {
-  private _sessionRecord: GameSessionRecord | null = null;
-  private _tabIndex: number = 0;
+    @property(Node)
+    errorList: Node | null = null;
 
-  constructor(node?: any) {
-    super(node);
-    this.registerEvents();
-  }
+    @property(Node)
+    mismatchList: Node | null = null;
 
-  private registerEvents(): void {
-    EventManager.instance.on(GameEvents.PHASE_CHANGED, this.onPhaseChanged.bind(this));
-  }
+    @property(Label)
+    summaryLabel: Label | null = null;
 
-  private onPhaseChanged(phase: string): void {
-    if (phase === 'review') {
-      this._sessionRecord = ScoreManager.instance.lastSessionRecord;
-      this.refresh();
-    }
-  }
+    @property(Label)
+    improvementLabel: Label | null = null;
 
-  public refresh(): void {
-    if (!this._sessionRecord) return;
+    @property(Node)
+    backButton: Node | null = null;
 
-    this.setLabelText('reviewTitle', '任务复盘');
-    this.setLabelText('scoreValue', `${this._sessionRecord.finalScore}`);
-    this.setLabelText('timeValue', this.formatTime(this._sessionRecord.duration));
-    this.setLabelText('resultValue', this._sessionRecord.isVictory ? '成功' : '失败');
+    private _errorNodes: Node[] = [];
+    private _mismatchNodes: Node[] = [];
 
-    this.refreshSummary();
-    this.refreshErrorAnalysis();
-    this.refreshMismatchAnalysis();
-    this.refreshImprovementTips();
-  }
-
-  private refreshSummary(): void {
-    if (!this._sessionRecord) return;
-
-    const mismatches = this._sessionRecord.mismatches.length;
-    const errors = this._sessionRecord.errors.length;
-    const choices = Object.keys(this._sessionRecord.choicesMade).length;
-
-    this.setLabelText('summaryText',
-      `本次训练共进行了 ${this.formatTime(this._sessionRecord.duration)}\n` +
-      `做出了 ${choices} 个选择\n` +
-      `出现 ${mismatches} 处金额不一致\n` +
-      `犯下 ${errors} 个错误`
-    );
-  }
-
-  private refreshErrorAnalysis(): void {
-    if (!this._sessionRecord) return;
-
-    const byType: Record<string, number> = {};
-    for (const error of this._sessionRecord.errors) {
-      byType[error.errorType] = (byType[error.errorType] || 0) + 1;
+    onStart(): void {
+        this.on(GameEvents.PHASE_CHANGED, this.onPhaseChanged.bind(this));
     }
 
-    let text = '错误类型分析：\n';
-    for (const type in byType) {
-      text += `  ${this.getErrorTypeLabel(type)}：${byType[type]} 次\n`;
+    private onPhaseChanged(phase: string): void {
+        if (phase === 'review') {
+            this.show();
+            this.refreshReview();
+        } else {
+            this.hide();
+        }
     }
 
-    this.setLabelText('errorAnalysisText', text);
-  }
+    private refreshReview(): void {
+        const errors = ScoreManager.instance.currentErrors;
+        const mismatches = ScoreManager.instance.currentMismatches;
 
-  private refreshMismatchAnalysis(): void {
-    if (!this._sessionRecord) return;
-
-    const byItem: Record<string, { count: number; totalDiff: number }> = {};
-    for (const mismatch of this._sessionRecord.mismatches) {
-      if (!byItem[mismatch.itemName]) {
-        byItem[mismatch.itemName] = { count: 0, totalDiff: 0 };
-      }
-      byItem[mismatch.itemName].count++;
-      byItem[mismatch.itemName].totalDiff += Math.abs(mismatch.difference);
+        this.refreshErrorList(errors);
+        this.refreshMismatchList(mismatches);
+        this.updateSummary(errors.length, mismatches.length);
+        this.updateImprovements(errors, mismatches);
     }
 
-    let text = '金额不一致分析：\n';
-    for (const itemName in byItem) {
-      const data = byItem[itemName];
-      text += `  ${itemName}：${data.count} 次，累计偏差 ¥${data.totalDiff.toFixed(2)}\n`;
+    private refreshErrorList(errors: any[]): void {
+        if (!this.errorList) return;
+
+        for (const node of this._errorNodes) {
+            node.destroy();
+        }
+        this._errorNodes = [];
+
+        errors.forEach((error, index) => {
+            const errorNode = new Node(`error_${index}`);
+            errorNode.setPosition(0, -index * 60, 0);
+
+            const bgNode = new Node('bg');
+            const bg = bgNode.addComponent(Sprite);
+            bg.color = new Color(255, 240, 240, 255);
+            bgNode.setContentSize(500, 50);
+            errorNode.addChild(bgNode);
+
+            const typeNode = new Node('type');
+            const typeLabel = typeNode.addComponent(Label);
+            typeLabel.string = `[${this.getErrorTypeName(error.errorType)}]`;
+            typeLabel.fontSize = 12;
+            typeLabel.color = new Color(200, 50, 50, 255);
+            typeNode.setPosition(-230, 10, 0);
+            errorNode.addChild(typeNode);
+
+            const descNode = new Node('desc');
+            const descLabel = descNode.addComponent(Label);
+            descLabel.string = error.description || '';
+            descLabel.fontSize = 12;
+            descLabel.overflow = Label.Overflow.RESIZE_HEIGHT;
+            descLabel.node.setContentSize(460, 30);
+            descNode.setPosition(-230, -10, 0);
+            errorNode.addChild(descNode);
+
+            this.errorList!.addChild(errorNode);
+            this._errorNodes.push(errorNode);
+        });
     }
 
-    if (this._sessionRecord.mismatches.length === 0) {
-      text = '本次没有出现金额不一致，做得很好！';
+    private refreshMismatchList(mismatches: any[]): void {
+        if (!this.mismatchList) return;
+
+        for (const node of this._mismatchNodes) {
+            node.destroy();
+        }
+        this._mismatchNodes = [];
+
+        mismatches.forEach((mismatch, index) => {
+            const node = new Node(`mismatch_${index}`);
+            node.setPosition(0, -index * 50, 0);
+
+            const bgNode = new Node('bg');
+            const bg = bgNode.addComponent(Sprite);
+            bg.color = new Color(255, 250, 230, 255);
+            bgNode.setContentSize(500, 40);
+            node.addChild(bgNode);
+
+            const textNode = new Node('text');
+            const textLabel = textNode.addComponent(Label);
+            const diffStr = mismatch.difference >= 0 ? `+${mismatch.difference}` : `${mismatch.difference}`;
+            textLabel.string = `${mismatch.itemName}: 预期¥${mismatch.expectedAmount} 实际¥${mismatch.actualAmount} (${diffStr})`;
+            textLabel.fontSize = 12;
+            textNode.setPosition(-240, 0, 0);
+            node.addChild(textNode);
+
+            this.mismatchList!.addChild(node);
+            this._mismatchNodes.push(node);
+        });
     }
 
-    this.setLabelText('mismatchAnalysisText', text);
-  }
-
-  private refreshImprovementTips(): void {
-    if (!this._sessionRecord) return;
-
-    const tips: string[] = [];
-
-    const mismatches = this._sessionRecord.mismatches.length;
-    const errors = this._sessionRecord.errors.length;
-
-    if (mismatches > 2) {
-      tips.push('• 仔细阅读每条线索，特别是与价格和数量相关的信息');
-      tips.push('• 填写单据时多检查几遍，确保数量和单价正确');
+    private getErrorTypeName(type: string): string {
+        const names: Record<string, string> = {
+            'wrong_choice': '选择错误',
+            'time_out': '超时',
+            'process_error': '流程错误',
+            'document_error': '单据错误',
+        };
+        return names[type] || type;
     }
 
-    if (errors > 2) {
-      tips.push('• 审批环节要谨慎思考，不要急于做选择');
-      tips.push('• 多联系类似的审批场景，积累经验');
+    private updateSummary(errorCount: number, mismatchCount: number): void {
+        if (this.summaryLabel) {
+            this.summaryLabel.string = `错误：${errorCount}处 | 金额不一致：${mismatchCount}处`;
+        }
     }
 
-    if (!this._sessionRecord.isVictory) {
-      tips.push('• 不要气馁，失败是成功之母');
-      tips.push('• 建议先从简单的关卡开始练习');
+    private updateImprovements(errors: any[], mismatches: any[]): void {
+        const suggestions = ScoreManager.instance.getImprovementSuggestions();
+        if (this.improvementLabel) {
+            this.improvementLabel.string = suggestions.join('\n\n');
+        }
     }
 
-    if (tips.length === 0) {
-      tips.push('• 表现很棒！继续保持');
-      tips.push('• 可以尝试挑战更高难度的关卡');
+    public onBackClicked(): void {
+        AudioManager.instance.playClick();
+        this.emit(GameEvents.UI_SHOW_RESULT);
     }
 
-    this.setLabelText('tipsText', tips.join('\n'));
-  }
-
-  private getErrorTypeLabel(type: string): string {
-    const labels: Record<string, string> = {
-      wrong_choice: '选择错误',
-      quantity_mismatch: '数量错误',
-      price_mismatch: '价格错误',
-      total_mismatch: '总价错误',
-      process_error: '流程错误',
-      time_out: '超时',
-    };
-    return labels[type] || type;
-  }
-
-  private formatTime(seconds: number): string {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}分${secs}秒`;
-  }
-
-  public onTab1Click(): void {
-    this._tabIndex = 0;
-    this.switchTab();
-  }
-
-  public onTab2Click(): void {
-    this._tabIndex = 1;
-    this.switchTab();
-  }
-
-  public onTab3Click(): void {
-    this._tabIndex = 2;
-    this.switchTab();
-  }
-
-  private switchTab(): void {
-    const tabs = ['summaryPanel', 'errorPanel', 'mismatchPanel'];
-    for (let i = 0; i < tabs.length; i++) {
-      const tabNode = this.node?.getChildByName(tabs[i]);
-      if (tabNode) {
-        tabNode.active = i === this._tabIndex;
-      }
+    onShow(): void {
+        this.playShowAnimation();
     }
-  }
-
-  public onRestartClick(): void {
-    GameManager.instance.restartLevel();
-  }
-
-  public onBackClick(): void {
-    GameManager.instance.changePhase('result');
-  }
-
-  public onMenuClick(): void {
-    GameManager.instance.exitToMenu();
-  }
-
-  private setLabelText(labelName: string, text: string): void {
-    if (!this.node) return;
-    const label = this.node.getChildByName(labelName);
-    if (label && label.getComponent) {
-      const labelComp = label.getComponent(cc.Label);
-      if (labelComp) {
-        labelComp.string = text;
-      }
-    }
-  }
 }

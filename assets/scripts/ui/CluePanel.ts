@@ -1,151 +1,145 @@
+import { _decorator, Label, Node, Button, Sprite, Color } from 'cc';
 import { UIBase } from './UIBase';
-import { EventManager, GameEvents } from '../utils/EventManager';
 import { GameManager } from '../managers/GameManager';
-import { Clue } from '../core/Types';
+import { AudioManager } from '../managers/AudioManager';
+import { GameEvents } from '../utils/EventManager';
 
+const { ccclass, property } = _decorator;
+
+@ccclass('CluePanel')
 export class CluePanel extends UIBase {
-  private _clues: Clue[] = [];
-  private _currentIndex: number = 0;
-  private _viewedIds: Set<string> = new Set();
+    @property(Node)
+    clueList: Node | null = null;
 
-  constructor(node?: any) {
-    super(node);
-    this.registerEvents();
-  }
+    @property(Label)
+    clueContentLabel: Label | null = null;
 
-  private registerEvents(): void {
-    EventManager.instance.on(GameEvents.GAME_START, this.onGameStart.bind(this));
-    EventManager.instance.on(GameEvents.CLUE_VIEWED, this.onClueViewed.bind(this));
-  }
+    @property(Node)
+    clueDetailNode: Node | null = null;
 
-  private onGameStart(levelConfig: any): void {
-    this._clues = levelConfig.clues || [];
-    this._currentIndex = 0;
-    this._viewedIds.clear();
-    this.refresh();
-  }
+    @property(Node)
+    continueButton: Node | null = null;
 
-  private onClueViewed(clueId: string): void {
-    this._viewedIds.add(clueId);
-    this.refreshClueList();
-  }
+    @property(Node)
+    toDocumentButton: Node | null = null;
 
-  public refresh(): void {
-    this.refreshClueList();
-    this.refreshCurrentClue();
-  }
+    private _clues: any[] = [];
+    private _selectedClueId: string | null = null;
+    private _clueNodes: Map<string, Node> = new Map();
 
-  private refreshClueList(): void {
-    if (!this.node) return;
-    const listNode = this.node.getChildByName('clueList');
-    if (!listNode) return;
+    onStart(): void {
+        this.on(GameEvents.PHASE_CHANGED, this.onPhaseChanged.bind(this));
+        this.on(GameEvents.GAME_START, this.onGameStart.bind(this));
+        this.on(GameEvents.CLUE_VIEWED, this.onClueViewed.bind(this));
 
-    const content = listNode.getChildByName('content');
-    if (!content) return;
-
-    this.clearListContent(content);
-
-    for (let i = 0; i < this._clues.length; i++) {
-      const clue = this._clues[i];
-      const item = this.createClueItem(clue, i);
-      content.addChild(item);
-    }
-  }
-
-  private clearListContent(content: any): void {
-    if (!content || !content.removeAllChildren) return;
-    content.removeAllChildren();
-  }
-
-  private createClueItem(clue: Clue, index: number): any {
-    if (typeof cc === 'undefined') return {} as any;
-
-    const node = new cc.Node(`clue_${clue.id}`);
-    node.setContentSize(200, 50);
-
-    const bg = node.addComponent(cc.Sprite);
-    if (this._viewedIds.has(clue.id)) {
-      node.opacity = 150;
+        this.registerInput('up', this.onInputUp.bind(this));
+        this.registerInput('down', this.onInputDown.bind(this));
+        this.registerInput('confirm', this.onInputConfirm.bind(this));
+        this.registerInput('next', this.onInputNext.bind(this));
     }
 
-    const labelNode = new cc.Node('label');
-    labelNode.parent = node;
-    const label = labelNode.addComponent(cc.Label);
-    label.string = clue.title;
-    label.fontSize = 16;
-    labelNode.setPosition(0, 0);
-
-    if (clue.isKey) {
-      const keyNode = new cc.Node('key');
-      keyNode.parent = node;
-      const keyLabel = keyNode.addComponent(cc.Label);
-      keyLabel.string = '★';
-      keyLabel.fontSize = 14;
-      keyNode.setPosition(-90, 0);
+    private onGameStart(levelConfig: any): void {
+        this._clues = levelConfig.clues || [];
+        this.refreshClueList();
     }
 
-    node.on(cc.Node.EventType.TOUCH_END, () => {
-      this._currentIndex = index;
-      this.viewClue(clue.id);
-      this.refreshCurrentClue();
-    });
-
-    return node;
-  }
-
-  private refreshCurrentClue(): void {
-    if (!this._clues[this._currentIndex]) return;
-    const clue = this._clues[this._currentIndex];
-
-    this.setLabelText('clueTitle', clue.title);
-    this.setLabelText('clueContent', clue.content);
-    this.setLabelText('clueType', this.getTypeLabel(clue.clueType));
-    this.setLabelText('clueIndex', `${this._currentIndex + 1}/${this._clues.length}`);
-  }
-
-  private getTypeLabel(type: string): string {
-    const labels: Record<string, string> = {
-      room: '房间信息',
-      material: '材料信息',
-      process: '工艺信息',
-      price: '价格信息',
-      risk: '风险提示',
-    };
-    return labels[type] || type;
-  }
-
-  public viewClue(clueId: string): void {
-    GameManager.instance.viewClue(clueId);
-  }
-
-  public onPrevClick(): void {
-    if (this._currentIndex > 0) {
-      this._currentIndex--;
-      this.viewClue(this._clues[this._currentIndex].id);
-      this.refreshCurrentClue();
+    private onPhaseChanged(phase: string): void {
+        if (phase === 'clue_investigation') {
+            this.show();
+        } else {
+            this.hide();
+        }
     }
-  }
 
-  public onNextClick(): void {
-    if (this._currentIndex < this._clues.length - 1) {
-      this._currentIndex++;
-      this.viewClue(this._clues[this._currentIndex].id);
-      this.refreshCurrentClue();
+    private refreshClueList(): void {
+        if (!this.clueList) return;
+
+        for (const [, node] of this._clueNodes) {
+            node.off(Node.EventType.TOUCH_END);
+            node.destroy();
+        }
+        this._clueNodes.clear();
+
+        this._clues.forEach((clue, index) => {
+            const clueNode = new Node(`clue_${clue.id}`);
+            clueNode.setPosition(0, -index * 50, 0);
+
+            const bgNode = new Node('bg');
+            const bg = bgNode.addComponent(Sprite);
+            bg.color = new Color(240, 240, 240, 255);
+            bgNode.setContentSize(280, 40);
+            clueNode.addChild(bgNode);
+
+            const titleNode = new Node('title');
+            const titleLabel = titleNode.addComponent(Label);
+            titleLabel.string = clue.title;
+            titleLabel.fontSize = 14;
+            titleNode.setPosition(-130, 0, 0);
+            clueNode.addChild(titleNode);
+
+            clueNode.on(Node.EventType.TOUCH_END, () => {
+                this.onClueTapped(clue.id);
+            }, this);
+
+            this.clueList!.addChild(clueNode);
+            this._clueNodes.set(clue.id, clueNode);
+        });
     }
-  }
 
-  public onConfirmClick(): void {
-    GameManager.instance.goToDocumentEditing();
-  }
-
-  private setLabelText(labelName: string, text: string): void {
-    if (!this.node) return;
-    const label = this.node.getChildByName(labelName);
-    if (label && label.getComponent) {
-      const labelComp = label.getComponent(cc.Label);
-      if (labelComp) {
-        labelComp.string = text;
-      }
+    private onClueTapped(clueId: string): void {
+        const clue = this._clues.find(c => c.id === clueId);
+        if (clue) {
+            this._selectedClueId = clueId;
+            this.showClueDetail(clue);
+            GameManager.instance.viewClue(clueId);
+            AudioManager.instance.playClick();
+        }
     }
-  }
+
+    private showClueDetail(clue: any): void {
+        if (this.clueContentLabel) {
+            this.clueContentLabel.string = clue.content;
+        }
+        if (this.clueDetailNode) {
+            this.clueDetailNode.active = true;
+        }
+    }
+
+    private onClueViewed(clueId: string): void {
+        const node = this._clueNodes.get(clueId);
+        if (node) {
+            const bg = node.getChildByName('bg')?.getComponent(Sprite);
+            if (bg) {
+                bg.color = new Color(200, 230, 255, 255);
+            }
+        }
+    }
+
+    private onInputUp(source: string): void {
+    }
+
+    private onInputDown(source: string): void {
+    }
+
+    private onInputConfirm(source: string): void {
+    }
+
+    private onInputNext(source: string): void {
+    }
+
+    public onContinueClicked(): void {
+        AudioManager.instance.playClick();
+        GameManager.instance.goToDocumentEditing();
+    }
+
+    public onBackClicked(): void {
+        AudioManager.instance.playClick();
+        if (this.clueDetailNode) {
+            this.clueDetailNode.active = false;
+        }
+    }
+
+    onShow(): void {
+        this.playShowAnimation();
+    }
 }
