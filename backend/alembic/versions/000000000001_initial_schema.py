@@ -76,11 +76,23 @@ def upgrade() -> None:
     op.create_index(op.f("ix_parts_sku"), "parts", ["sku"], unique=True)
 
     op.create_table(
+        "stations",
+        sa.Column("id", sa.Integer(), primary_key=True, nullable=False),
+        sa.Column("name", sa.String(length=50), unique=True, nullable=False),
+        sa.Column("type", sa.String(length=30), nullable=True),
+        sa.Column("status", station_status_enum, nullable=True, server_default="idle"),
+        sa.Column(
+            "current_work_order_id", sa.Integer(), nullable=True
+        ),
+    )
+    op.create_index(op.f("ix_stations_id"), "stations", ["id"], unique=False)
+
+    op.create_table(
         "work_orders",
         sa.Column("id", sa.Integer(), primary_key=True, nullable=False),
         sa.Column("order_no", sa.String(length=30), unique=True, nullable=False),
         sa.Column("vehicle_id", sa.Integer(), sa.ForeignKey("vehicles.id"), nullable=False),
-        sa.Column("station_id", sa.Integer(), nullable=True),
+        sa.Column("station_id", sa.Integer(), sa.ForeignKey("stations.id"), nullable=True),
         sa.Column("technician_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=True),
         sa.Column(
             "status", work_order_status_enum, nullable=True, server_default="pending"
@@ -98,17 +110,6 @@ def upgrade() -> None:
     op.create_index(op.f("ix_work_orders_id"), "work_orders", ["id"], unique=False)
     op.create_index(op.f("ix_work_orders_order_no"), "work_orders", ["order_no"], unique=True)
 
-    op.create_table(
-        "stations",
-        sa.Column("id", sa.Integer(), primary_key=True, nullable=False),
-        sa.Column("name", sa.String(length=50), unique=True, nullable=False),
-        sa.Column("type", sa.String(length=30), nullable=True),
-        sa.Column("status", station_status_enum, nullable=True, server_default="idle"),
-        sa.Column(
-            "current_work_order_id", sa.Integer(), sa.ForeignKey("work_orders.id"), nullable=True
-        ),
-    )
-    op.create_index(op.f("ix_stations_id"), "stations", ["id"], unique=False)
     op.create_foreign_key("fk_stations_work_order", "stations", "work_orders", ["current_work_order_id"], ["id"])
 
     op.create_table(

@@ -18,6 +18,7 @@ import { Route as AppScheduleRouteImport } from './routes/_app/schedule'
 import { Route as AppReportsRouteImport } from './routes/_app/reports'
 import { Route as AppRecordsRouteImport } from './routes/_app/records'
 import { Route as AppInventoryRouteImport } from './routes/_app/inventory'
+import { Route as AppRecordsIndexRouteImport } from './routes/_app/records.index'
 import { Route as AppRecordsIdRouteImport } from './routes/_app/records.$id'
 
 const LoginRoute = LoginRouteImport.update({
@@ -64,6 +65,11 @@ const AppInventoryRoute = AppInventoryRouteImport.update({
   path: '/inventory',
   getParentRoute: () => AppRoute,
 } as any)
+const AppRecordsIndexRoute = AppRecordsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppRecordsRoute,
+} as any)
 const AppRecordsIdRoute = AppRecordsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -80,17 +86,18 @@ export interface FileRoutesByFullPath {
   '/shortages': typeof AppShortagesRoute
   '/vehicles': typeof AppVehiclesRoute
   '/records/$id': typeof AppRecordsIdRoute
+  '/records/': typeof AppRecordsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/inventory': typeof AppInventoryRoute
-  '/records': typeof AppRecordsRouteWithChildren
   '/reports': typeof AppReportsRoute
   '/schedule': typeof AppScheduleRoute
   '/shortages': typeof AppShortagesRoute
   '/vehicles': typeof AppVehiclesRoute
   '/records/$id': typeof AppRecordsIdRoute
+  '/records': typeof AppRecordsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -104,6 +111,7 @@ export interface FileRoutesById {
   '/_app/shortages': typeof AppShortagesRoute
   '/_app/vehicles': typeof AppVehiclesRoute
   '/_app/records/$id': typeof AppRecordsIdRoute
+  '/_app/records/': typeof AppRecordsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -117,17 +125,18 @@ export interface FileRouteTypes {
     | '/shortages'
     | '/vehicles'
     | '/records/$id'
+    | '/records/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/login'
     | '/inventory'
-    | '/records'
     | '/reports'
     | '/schedule'
     | '/shortages'
     | '/vehicles'
     | '/records/$id'
+    | '/records'
   id:
     | '__root__'
     | '/'
@@ -140,6 +149,7 @@ export interface FileRouteTypes {
     | '/_app/shortages'
     | '/_app/vehicles'
     | '/_app/records/$id'
+    | '/_app/records/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -213,6 +223,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppInventoryRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/records/': {
+      id: '/_app/records/'
+      path: '/'
+      fullPath: '/records/'
+      preLoaderRoute: typeof AppRecordsIndexRouteImport
+      parentRoute: typeof AppRecordsRoute
+    }
     '/_app/records/$id': {
       id: '/_app/records/$id'
       path: '/$id'
@@ -225,10 +242,12 @@ declare module '@tanstack/react-router' {
 
 interface AppRecordsRouteChildren {
   AppRecordsIdRoute: typeof AppRecordsIdRoute
+  AppRecordsIndexRoute: typeof AppRecordsIndexRoute
 }
 
 const AppRecordsRouteChildren: AppRecordsRouteChildren = {
   AppRecordsIdRoute: AppRecordsIdRoute,
+  AppRecordsIndexRoute: AppRecordsIndexRoute,
 }
 
 const AppRecordsRouteWithChildren = AppRecordsRoute._addFileChildren(

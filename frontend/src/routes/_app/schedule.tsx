@@ -91,7 +91,7 @@ function SchedulePage() {
                     </div>
                     <button
                       className="btn btn-secondary w-full justify-center"
-                      onClick={() => navigate({ to: `/records/$id`, params: { id: String(station.current_work_order!.id) } })}
+                      onClick={() => navigate({ to: '/records/$id', params: { id: String(station.current_work_order!.id) } })}
                     >
                       <Eye size={14} />
                       查看详情
@@ -140,7 +140,7 @@ function SchedulePage() {
                     <td>
                       <button
                         className="text-primary-600 hover:text-primary-700 text-sm flex items-center gap-1"
-                        onClick={() => navigate({ to: `/records/$id`, params: { id: String(order.id) } })}
+                        onClick={() => navigate({ to: '/records/$id', params: { id: String(order.id) } })}
                       >
                         处理 <ChevronRight size={14} />
                       </button>
