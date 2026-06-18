@@ -489,8 +489,397 @@ namespace UsedCarGame.Data
             config.targetInventoryDays = 21f;
             config.maxInventoryDaysForRating = 60f;
 
-            config.questionPool = new List<QuestionData>();
+            config.questionPool = new List<QuestionData>
+            {
+                CreateQuestion_002_01(),
+                CreateQuestion_002_02(),
+                CreateQuestion_002_03(),
+                CreateQuestion_002_04(),
+                CreateQuestion_002_05(),
+                CreateQuestion_002_06()
+            };
             return config;
+        }
+
+        private static QuestionData CreateQuestion_002_01()
+        {
+            return new QuestionData
+            {
+                questionId = "q_002_01",
+                type = QuestionType.FinancialDocument,
+                timeLimit = 35f,
+                vehicle = new VehicleInfo
+                {
+                    brand = "本田",
+                    model = "雅阁 2018款 260TURBO 豪华版",
+                    year = 2018,
+                    mileage = 58000,
+                    color = "黑色",
+                    plateNumber = "粤C·A1B23",
+                    vin = "LHGMC2630JA123456"
+                },
+                askedPrice = 138000f,
+                estimatedMarketPrice = 148000f,
+                minAcceptableMargin = 5000f,
+                priceHistory = new List<PriceHistoryEntry>
+                {
+                    new PriceHistoryEntry { date = System.DateTime.Now.AddMonths(-2), price = 155000f, source = "平台均价", region = "深圳" }
+                },
+                financialDoc = new FinancialDocument
+                {
+                    documentType = "登记证+行驶证",
+                    ownerName = "王八",
+                    hasLoan = true,
+                    loanBalance = 45000f,
+                    hasAccidentRecord = true,
+                    accidentCount = 2,
+                    isMortgaged = true,
+                    flags = new List<string> { "2次出险记录", "抵押贷款中" }
+                },
+                vehicleRecord = new VehicleRecord
+                {
+                    ownershipCount = 2,
+                    transferCount = 1,
+                    firstRegisterDate = System.DateTime.Now.AddYears(-5),
+                    lastTransferDate = System.DateTime.Now.AddYears(-2),
+                    hasInsurance = true,
+                    insuranceExpiry = System.DateTime.Now.AddMonths(1),
+                    violationRecords = new List<string>()
+                },
+                inspectionReport = new InspectionReport
+                {
+                    inspectorName = "赵师傅",
+                    inspectionDate = System.DateTime.Now,
+                    overallScore = 70f,
+                    items = new List<InspectionItem>
+                    {
+                        new InspectionItem { category = "底盘", itemName = "前防撞梁", condition = "变形", description = "轻度变形，未更换", estimatedRepairCost = 2000f },
+                        new InspectionItem { category = "外观", itemName = "前保险杠", condition = "更换", description = "非原厂", estimatedRepairCost = 1500f }
+                    },
+                    majorIssues = new List<string> { "前防撞梁变形", "前杠更换" },
+                    summary = "前方有追尾历史，防撞梁变形但未更换，属于一般事故车。"
+                },
+                correctDecision = DecisionAction.NeedMoreInfo,
+                explanation = "报价13.8万，市场价14.8万，利润空间看似1万。但有2次出险+抵押贷款4.5万+前防撞梁变形，存在重大不确定性。需确认：1)卖方能否自行结清贷款；2)事故是否伤及纵梁；3)保险记录详细情况。建议补充信息后再决策。"
+            };
+        }
+
+        private static QuestionData CreateQuestion_002_02()
+        {
+            return new QuestionData
+            {
+                questionId = "q_002_02",
+                type = QuestionType.VehicleRecord,
+                timeLimit = 40f,
+                vehicle = new VehicleInfo
+                {
+                    brand = "奥迪",
+                    model = "A4L 2019款 40 TFSI 时尚型",
+                    year = 2019,
+                    mileage = 52000,
+                    color = "白色",
+                    plateNumber = "浙D·98765",
+                    vin = "LFV3A28W0K3987654"
+                },
+                askedPrice = 205000f,
+                estimatedMarketPrice = 215000f,
+                minAcceptableMargin = 6000f,
+                priceHistory = new List<PriceHistoryEntry>
+                {
+                    new PriceHistoryEntry { date = System.DateTime.Now.AddMonths(-1), price = 220000f, source = "平台均价", region = "杭州" },
+                    new PriceHistoryEntry { date = System.DateTime.Now.AddDays(-10), price = 216000f, source = "同区域成交", region = "杭州" }
+                },
+                financialDoc = new FinancialDocument
+                {
+                    documentType = "登记证+行驶证",
+                    ownerName = "周九",
+                    hasLoan = false,
+                    loanBalance = 0f,
+                    hasAccidentRecord = false,
+                    accidentCount = 0,
+                    isMortgaged = false,
+                    flags = new List<string> { "全程4S店保养" }
+                },
+                vehicleRecord = new VehicleRecord
+                {
+                    ownershipCount = 1,
+                    transferCount = 0,
+                    firstRegisterDate = System.DateTime.Now.AddYears(-4),
+                    lastTransferDate = System.DateTime.Now.AddYears(-4),
+                    hasInsurance = true,
+                    insuranceExpiry = System.DateTime.Now.AddMonths(6),
+                    violationRecords = new List<string> { "超速一次", "违停两次" }
+                },
+                inspectionReport = new InspectionReport
+                {
+                    inspectorName = "钱师傅",
+                    inspectionDate = System.DateTime.Now,
+                    overallScore = 88f,
+                    items = new List<InspectionItem>
+                    {
+                        new InspectionItem { category = "外观", itemName = "后保险杠", condition = "喷漆", description = "后杠局部喷漆", estimatedRepairCost = 0f },
+                        new InspectionItem { category = "轮胎", itemName = "前轮胎", condition = "更换", description = "非原厂，品牌一致", estimatedRepairCost = 0f }
+                    },
+                    majorIssues = new List<string>(),
+                    summary = "车况优秀，全程4S保养，仅后杠轻微喷漆。"
+                },
+                correctDecision = DecisionAction.Approve,
+                explanation = "报价20.5万，市场价21.5万，利润1万。一手车无事故无贷款，全程4S保养，车况评分88。违停记录不影响车辆价值，奥迪品牌保值率高库存周转快，建议收购。"
+            };
+        }
+
+        private static QuestionData CreateQuestion_002_03()
+        {
+            return new QuestionData
+            {
+                questionId = "q_002_03",
+                type = QuestionType.InspectionReport,
+                timeLimit = 50f,
+                vehicle = new VehicleInfo
+                {
+                    brand = "日产",
+                    model = "天籁 2020款 2.0L XL 舒适版",
+                    year = 2020,
+                    mileage = 42000,
+                    color = "银色",
+                    plateNumber = "苏E·45678",
+                    vin = "LGBF5DE05LY123456"
+                },
+                askedPrice = 132000f,
+                estimatedMarketPrice = 140000f,
+                minAcceptableMargin = 4000f,
+                priceHistory = new List<PriceHistoryEntry>
+                {
+                    new PriceHistoryEntry { date = System.DateTime.Now.AddMonths(-2), price = 148000f, source = "平台均价", region = "南京" }
+                },
+                financialDoc = new FinancialDocument
+                {
+                    documentType = "登记证+行驶证",
+                    ownerName = "吴十",
+                    hasLoan = false,
+                    loanBalance = 0f,
+                    hasAccidentRecord = false,
+                    accidentCount = 0,
+                    isMortgaged = false,
+                    flags = new List<string>()
+                },
+                vehicleRecord = new VehicleRecord
+                {
+                    ownershipCount = 1,
+                    transferCount = 0,
+                    firstRegisterDate = System.DateTime.Now.AddYears(-3),
+                    lastTransferDate = System.DateTime.Now.AddYears(-3),
+                    hasInsurance = true,
+                    insuranceExpiry = System.DateTime.Now.AddMonths(5),
+                    violationRecords = new List<string>()
+                },
+                inspectionReport = new InspectionReport
+                {
+                    inspectorName = "孙师傅",
+                    inspectionDate = System.DateTime.Now,
+                    overallScore = 55f,
+                    items = new List<InspectionItem>
+                    {
+                        new InspectionItem { category = "发动机", itemName = "气缸", condition = "烧机油", description = "排气管明显蓝烟，2000公里烧1升", estimatedRepairCost = 20000f },
+                        new InspectionItem { category = "变速箱", itemName = "CVT变速箱", condition = "顿挫", description = "低速换挡顿挫明显", estimatedRepairCost = 8000f },
+                        new InspectionItem { category = "底盘", itemName = "减震器", condition = "渗油", description = "后减震器严重渗油", estimatedRepairCost = 3000f }
+                    },
+                    majorIssues = new List<string> { "发动机烧机油", "CVT变速箱顿挫", "后减震器渗油" },
+                    summary = "发动机和变速箱都有问题，维修成本高，不建议收购。"
+                },
+                correctDecision = DecisionAction.Reject,
+                explanation = "检测评分仅55分。发动机烧机油（维修约2万）+CVT变速箱顿挫（维修约8千）+减震器渗油，三大件有两项重大问题。即使报价低于市场8千，维修成本远超利润空间，且烧机油车辆后续维权风险高，坚决拒绝。"
+            };
+        }
+
+        private static QuestionData CreateQuestion_002_04()
+        {
+            return new QuestionData
+            {
+                questionId = "q_002_04",
+                type = QuestionType.PriceHistory,
+                timeLimit = 35f,
+                vehicle = new VehicleInfo
+                {
+                    brand = "别克",
+                    model = "君威 2021款 552T 精英型",
+                    year = 2021,
+                    mileage = 28000,
+                    color = "灰色",
+                    plateNumber = "鲁F·12321",
+                    vin = "LSGGA53H0MF123456"
+                },
+                askedPrice = 128000f,
+                estimatedMarketPrice = 135000f,
+                minAcceptableMargin = 4000f,
+                priceHistory = new List<PriceHistoryEntry>
+                {
+                    new PriceHistoryEntry { date = System.DateTime.Now.AddMonths(-6), price = 158000f, source = "平台均价", region = "青岛" },
+                    new PriceHistoryEntry { date = System.DateTime.Now.AddMonths(-3), price = 145000f, source = "平台均价", region = "青岛" },
+                    new PriceHistoryEntry { date = System.DateTime.Now.AddMonths(-1), price = 138000f, source = "平台均价", region = "青岛" },
+                    new PriceHistoryEntry { date = System.DateTime.Now.AddDays(-5), price = 132000f, source = "同区域成交", region = "青岛" }
+                },
+                financialDoc = new FinancialDocument
+                {
+                    documentType = "登记证+行驶证+保险单",
+                    ownerName = "郑十一",
+                    hasLoan = false,
+                    loanBalance = 0f,
+                    hasAccidentRecord = false,
+                    accidentCount = 0,
+                    isMortgaged = false,
+                    flags = new List<string> { "一手车" }
+                },
+                vehicleRecord = new VehicleRecord
+                {
+                    ownershipCount = 1,
+                    transferCount = 0,
+                    firstRegisterDate = System.DateTime.Now.AddYears(-2),
+                    lastTransferDate = System.DateTime.Now.AddYears(-2),
+                    hasInsurance = true,
+                    insuranceExpiry = System.DateTime.Now.AddMonths(9),
+                    violationRecords = new List<string>()
+                },
+                inspectionReport = new InspectionReport
+                {
+                    inspectorName = "冯师傅",
+                    inspectionDate = System.DateTime.Now,
+                    overallScore = 82f,
+                    items = new List<InspectionItem>(),
+                    majorIssues = new List<string>(),
+                    summary = "车况良好，无事故无维修，正常使用痕迹。"
+                },
+                correctDecision = DecisionAction.NeedMoreInfo,
+                explanation = "报价12.8万，当前市场价13.5万，利润空间7千。但近6个月价格从15.8万暴跌至13.2万，月均跌幅超过4%，车型贬值速度异常。需要确认：1)是否存在改款换代消息；2)同车型新车终端优惠幅度；3)该车型近期销量走势。否则可能出现收车后继续贬值的风险。"
+            };
+        }
+
+        private static QuestionData CreateQuestion_002_05()
+        {
+            return new QuestionData
+            {
+                questionId = "q_002_05",
+                type = QuestionType.InspectionReport,
+                timeLimit = 45f,
+                vehicle = new VehicleInfo
+                {
+                    brand = "马自达",
+                    model = "阿特兹 2020款 2.5L 蓝天运动版",
+                    year = 2020,
+                    mileage = 35000,
+                    color = "红色",
+                    plateNumber = "闽G·54321",
+                    vin = "LFPM5ACP8M1987654"
+                },
+                askedPrice = 145000f,
+                estimatedMarketPrice = 158000f,
+                minAcceptableMargin = 5000f,
+                priceHistory = new List<PriceHistoryEntry>
+                {
+                    new PriceHistoryEntry { date = System.DateTime.Now.AddMonths(-2), price = 165000f, source = "平台均价", region = "厦门" }
+                },
+                financialDoc = new FinancialDocument
+                {
+                    documentType = "登记证+行驶证",
+                    ownerName = "陈十二",
+                    hasLoan = false,
+                    loanBalance = 0f,
+                    hasAccidentRecord = true,
+                    accidentCount = 1,
+                    isMortgaged = false,
+                    flags = new List<string> { "一次出险记录" }
+                },
+                vehicleRecord = new VehicleRecord
+                {
+                    ownershipCount = 1,
+                    transferCount = 0,
+                    firstRegisterDate = System.DateTime.Now.AddYears(-3),
+                    lastTransferDate = System.DateTime.Now.AddYears(-3),
+                    hasInsurance = true,
+                    insuranceExpiry = System.DateTime.Now.AddMonths(4),
+                    violationRecords = new List<string>()
+                },
+                inspectionReport = new InspectionReport
+                {
+                    inspectorName = "褚师傅",
+                    inspectionDate = System.DateTime.Now,
+                    overallScore = 78f,
+                    items = new List<InspectionItem>
+                    {
+                        new InspectionItem { category = "外观", itemName = "右后门", condition = "钣金修复", description = "明显钣金痕迹，漆面厚度超标", estimatedRepairCost = 2000f },
+                        new InspectionItem { category = "外观", itemName = "右后翼子板", condition = "喷漆", description = "整喷修复", estimatedRepairCost = 1500f },
+                        new InspectionItem { category = "内饰", itemName = "A柱内饰板", condition = "拆装痕迹", description = "卡扣有撬动痕迹", estimatedRepairCost = 0f }
+                    },
+                    majorIssues = new List<string> { "右后门钣金修复", "右后翼子板喷漆" },
+                    summary = "右侧有碰撞修复痕迹，B柱和纵梁正常，属于一般剐蹭事故。"
+                },
+                correctDecision = DecisionAction.Approve,
+                explanation = "报价14.5万，市场价15.8万，利润1.3万。检测评分78，右后门钣金+右后翼子板喷漆属于普通事故，不影响结构安全。马自达创驰蓝天发动机口碑好，红色是阿特兹畅销色。只要收购价合理、利润空间足够，可以收购。"
+            };
+        }
+
+        private static QuestionData CreateQuestion_002_06()
+        {
+            return new QuestionData
+            {
+                questionId = "q_002_06",
+                type = QuestionType.VehicleRecord,
+                timeLimit = 30f,
+                vehicle = new VehicleInfo
+                {
+                    brand = "雪佛兰",
+                    model = "迈锐宝XL 2019款 535T CVT锐动版",
+                    year = 2019,
+                    mileage = 85000,
+                    color = "黑色",
+                    plateNumber = "冀H·13579",
+                    vin = "LSGZR53H2KU123456"
+                },
+                askedPrice = 78000f,
+                estimatedMarketPrice = 85000f,
+                minAcceptableMargin = 3000f,
+                priceHistory = new List<PriceHistoryEntry>
+                {
+                    new PriceHistoryEntry { date = System.DateTime.Now.AddMonths(-1), price = 88000f, source = "平台均价", region = "石家庄" }
+                },
+                financialDoc = new FinancialDocument
+                {
+                    documentType = "登记证+行驶证",
+                    ownerName = "韩十三",
+                    hasLoan = false,
+                    loanBalance = 0f,
+                    hasAccidentRecord = false,
+                    accidentCount = 0,
+                    isMortgaged = false,
+                    flags = new List<string> { "营转非" }
+                },
+                vehicleRecord = new VehicleRecord
+                {
+                    ownershipCount = 3,
+                    transferCount = 2,
+                    firstRegisterDate = System.DateTime.Now.AddYears(-5),
+                    lastTransferDate = System.DateTime.Now.AddMonths(-6),
+                    hasInsurance = true,
+                    insuranceExpiry = System.DateTime.Now.AddMonths(2),
+                    violationRecords = new List<string> { "超速2次", "闯红灯1次" },
+                    isCommercialVehicle = true,
+                    commercialRetirementDate = System.DateTime.Now.AddYears(2)
+                },
+                inspectionReport = new InspectionReport
+                {
+                    inspectorName = "杨师傅",
+                    inspectionDate = System.DateTime.Now,
+                    overallScore = 70f,
+                    items = new List<InspectionItem>
+                    {
+                        new InspectionItem { category = "发动机", itemName = "正时链条", condition = "正常", description = "无异常", estimatedRepairCost = 0f }
+                    },
+                    majorIssues = new List<string>(),
+                    summary = "公里数较高但车况尚可，需注意营转非车辆强制报废年限。"
+                },
+                correctDecision = DecisionAction.Reject,
+                explanation = "报价7.8万看似低于市场7千，但这是营转非车辆，还有2年强制报废。3次过户+8.5万公里高里程+强制报废，残值风险极高。美系车贬值快，2年后报废几乎不值钱，坚决拒绝收购。"
+            };
         }
 
         public static LevelConfig CreateLevel_003()

@@ -63,6 +63,9 @@ namespace UsedCarGame.Data
         public bool hasInsurance;
         public DateTime insuranceExpiry;
         public List<string> violationRecords;
+
+        public bool isCommercialVehicle;
+        public DateTime commercialRetirementDate;
     }
 
     [Serializable]

@@ -1,7 +1,9 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Reflection;
 using UnityEngine;
+using System.Linq;
 #if USE_ADDRESSABLES
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
@@ -13,26 +15,57 @@ namespace UsedCarGame.Data
     public class LevelDataProvider
     {
         private readonly Dictionary<string, LevelConfig> _loadedLevels = new Dictionary<string, LevelConfig>();
+        private readonly Dictionary<string, Func<LevelConfig>> _fallbackFactories = new Dictionary<string, Func<LevelConfig>>();
+        private bool _fallbackDiscovered;
+
 #if USE_ADDRESSABLES
         private readonly Dictionary<string, AsyncOperationHandle> _activeHandles = new Dictionary<string, AsyncOperationHandle>();
 #endif
 
-        public static readonly List<string> BuiltInLevelAddresses = new List<string>
-        {
-            "Levels/Level_001",
-            "Levels/Level_002",
-            "Levels/Level_003"
-        };
-
         public event Action<string, LevelConfig> OnLevelLoaded;
         public event Action<string> OnLevelLoadFailed;
         public event Action<List<string>> OnLevelAddressesDiscovered;
+
+        public LevelDataProvider()
+        {
+            DiscoverFallbackFactories();
+        }
+
+        private void DiscoverFallbackFactories()
+        {
+            _fallbackFactories.Clear();
+            var factoryTypes = AppDomain.CurrentDomain.GetAssemblies()
+                .SelectMany(a => a.GetTypes())
+                .Where(t => t.Name == "SampleLevelFactory" || t.IsClass && t.GetMethods(BindingFlags.Static | BindingFlags.Public)
+                    .Any(m => m.ReturnType == typeof(LevelConfig) && m.Name.StartsWith("CreateLevel_")));
+
+            foreach (var type in factoryTypes)
+            {
+                var methods = type.GetMethods(BindingFlags.Static | BindingFlags.Public)
+                    .Where(m => m.ReturnType == typeof(LevelConfig)
+                             && m.Name.StartsWith("CreateLevel_")
+                             && m.GetParameters().Length == 0);
+
+                foreach (var method in methods)
+                {
+                    var levelId = method.Name.Substring("CreateLevel_".Length);
+                    var address = "Levels/Level_" + levelId;
+                    if (!_fallbackFactories.ContainsKey(address))
+                    {
+                        _fallbackFactories[address] = () => (LevelConfig)method.Invoke(null, null);
+                    }
+                }
+            }
+
+            _fallbackDiscovered = true;
+        }
 
         public IEnumerator DiscoverLevelAddresses(Action<List<string>> onComplete = null)
         {
             var addresses = new List<string>();
 
 #if USE_ADDRESSABLES
+            bool addressablesOk = false;
             try
             {
                 var handle = Addressables.LoadResourceLocationsAsync("Levels", typeof(LevelConfig));
@@ -44,27 +77,41 @@ namespace UsedCarGame.Data
                     {
                         if (loc != null && !string.IsNullOrEmpty(loc.PrimaryKey))
                         {
-                            addresses.Add(loc.PrimaryKey);
+                            if (!addresses.Contains(loc.PrimaryKey))
+                            {
+                                addresses.Add(loc.PrimaryKey);
+                            }
                         }
                     }
+                    addressablesOk = addresses.Count > 0;
+                    Debug.Log($"[LevelDataProvider] Found {addresses.Count} levels via Addressables 'Levels' label.");
                 }
 
                 try { Addressables.Release(handle); } catch { }
             }
             catch (Exception e)
             {
-                Debug.LogWarning($"[LevelDataProvider] Addressables discover failed, using built-in list: {e.Message}");
-                addresses = new List<string>(BuiltInLevelAddresses);
+                Debug.LogWarning($"[LevelDataProvider] Addressables discover failed: {e.Message}");
             }
 
-            if (addresses.Count == 0)
+            if (!addressablesOk)
             {
-                Debug.Log("[LevelDataProvider] No Addressables found, falling back to built-in list.");
-                addresses = new List<string>(BuiltInLevelAddresses);
+                Debug.Log("[LevelDataProvider] No Addressables levels found, using fallback discovery.");
+                foreach (var kvp in _fallbackFactories)
+                {
+                    if (!addresses.Contains(kvp.Key))
+                    {
+                        addresses.Add(kvp.Key);
+                    }
+                }
             }
 #else
             yield return null;
-            addresses = new List<string>(BuiltInLevelAddresses);
+            foreach (var kvp in _fallbackFactories)
+            {
+                addresses.Add(kvp.Key);
+            }
+            Debug.Log($"[LevelDataProvider] Using fallback discovery: {addresses.Count} levels found.");
 #endif
 
 #if USE_PLAYFAB
@@ -75,13 +122,14 @@ namespace UsedCarGame.Data
                 {
                     List<string> cloudAddresses = null;
                     yield return pf.LoadCloudLevelList(list => cloudAddresses = list);
-                    if (cloudAddresses != null)
+                    if (cloudAddresses != null && cloudAddresses.Count > 0)
                     {
                         foreach (var addr in cloudAddresses)
                         {
                             if (!addresses.Contains(addr))
                             {
                                 addresses.Add(addr);
+                                Debug.Log($"[LevelDataProvider] Added cloud level: {addr}");
                             }
                         }
                     }
@@ -99,6 +147,12 @@ namespace UsedCarGame.Data
 
         public IEnumerator LoadLevel(string address, Action<LevelConfig> onComplete = null)
         {
+            if (string.IsNullOrEmpty(address))
+            {
+                onComplete?.Invoke(null);
+                yield break;
+            }
+
             if (_loadedLevels.TryGetValue(address, out var cached))
             {
                 onComplete?.Invoke(cached);
@@ -126,6 +180,7 @@ namespace UsedCarGame.Data
             if (handle.Status == AsyncOperationStatus.Succeeded)
             {
                 result = handle.Result;
+                Debug.Log($"[LevelDataProvider] Loaded level from Addressables: {address}");
             }
             else
             {
@@ -151,24 +206,52 @@ namespace UsedCarGame.Data
             }
         }
 
-        private static LevelConfig LoadFallback(string address)
+        private LevelConfig LoadFallback(string address)
         {
             if (string.IsNullOrEmpty(address)) return null;
+            if (!_fallbackDiscovered) DiscoverFallbackFactories();
 
-            if (address.EndsWith("Level_001") || address.EndsWith("level_001"))
+            if (_fallbackFactories.TryGetValue(address, out var factory))
             {
-                return SampleLevelFactory.CreateLevel_001();
-            }
-            if (address.EndsWith("Level_002") || address.EndsWith("level_002"))
-            {
-                return SampleLevelFactory.CreateLevel_002();
-            }
-            if (address.EndsWith("Level_003") || address.EndsWith("level_003"))
-            {
-                return SampleLevelFactory.CreateLevel_003();
+                try
+                {
+                    var config = factory.Invoke();
+                    if (config != null)
+                    {
+                        Debug.Log($"[LevelDataProvider] Fallback loaded: {address} ({config.levelName})");
+                        return config;
+                    }
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError($"[LevelDataProvider] Fallback factory error for {address}: {e.Message}");
+                }
             }
 
-            Debug.LogWarning($"[LevelDataProvider] No fallback for address: {address}");
+            var lastSlash = address.LastIndexOf('/');
+            var key = lastSlash >= 0 ? address.Substring(lastSlash + 1) : address;
+
+            foreach (var kvp in _fallbackFactories)
+            {
+                if (kvp.Key.EndsWith(key) || kvp.Key.EndsWith(key, StringComparison.OrdinalIgnoreCase))
+                {
+                    try
+                    {
+                        var config = kvp.Value.Invoke();
+                        if (config != null)
+                        {
+                            Debug.Log($"[LevelDataProvider] Fallback loaded via match: {address} -> {kvp.Key}");
+                            return config;
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.LogError($"[LevelDataProvider] Fallback factory error: {e.Message}");
+                    }
+                }
+            }
+
+            Debug.LogWarning($"[LevelDataProvider] No fallback factory for address: {address}");
             return null;
         }
 
@@ -193,6 +276,12 @@ namespace UsedCarGame.Data
         public bool IsLevelLoaded(string address)
         {
             return _loadedLevels.ContainsKey(address);
+        }
+
+        public int GetFallbackLevelCount()
+        {
+            if (!_fallbackDiscovered) DiscoverFallbackFactories();
+            return _fallbackFactories.Count;
         }
 
         public void UnloadLevel(string address)
@@ -225,6 +314,12 @@ namespace UsedCarGame.Data
             {
                 UnloadLevel(key);
             }
+        }
+
+        public void ReloadFallbackFactories()
+        {
+            _fallbackDiscovered = false;
+            DiscoverFallbackFactories();
         }
     }
 }

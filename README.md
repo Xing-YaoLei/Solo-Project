@@ -157,8 +157,8 @@ File → Build Settings → WebGL → Build
 
 1. `Assets/Create → UsedCarGame → Level Config` 新建关卡资产
 2. 填写关卡基础信息、时间设置、题目池
-3. 将该资产放入 Addressables Group，配置地址（如 `Levels/Level_003`）
-4. 启动游戏，关卡选择页自动加载
+3. 将该资产放入 Addressables Group，标记 `Levels` 标签，配置地址（如 `Levels/Level_004`）
+4. 启动游戏，关卡选择页自动发现并生成可点击卡片
 
 > 或使用菜单 `UsedCarGame → Levels → Create Empty Level Config` 快速创建。
 
