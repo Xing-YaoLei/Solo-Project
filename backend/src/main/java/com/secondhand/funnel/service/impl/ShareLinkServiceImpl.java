@@ -1,11 +1,9 @@
 package com.secondhand.funnel.service.impl;
 
 import com.secondhand.funnel.dto.ShareLinkCreateDTO;
-import com.secondhand.funnel.entity.SysUser;
 import com.secondhand.funnel.entity.ShareLink;
 import com.secondhand.funnel.enums.UserRole;
 import com.secondhand.funnel.exception.BusinessException;
-import com.secondhand.funnel.repository.SysUserRepository;
 import com.secondhand.funnel.repository.ShareLinkRepository;
 import com.secondhand.funnel.service.ShareLinkService;
 import lombok.RequiredArgsConstructor;
@@ -24,33 +22,43 @@ import java.util.stream.Collectors;
 public class ShareLinkServiceImpl implements ShareLinkService {
 
     private final ShareLinkRepository shareLinkRepository;
-    private final SysUserRepository sysUserRepository;
 
     @Override
     @Transactional
     public ShareLink create(ShareLinkCreateDTO dto) {
-        SysUser creator = sysUserRepository.findById(dto.getCreatedBy())
-                .orElseThrow(() -> new BusinessException("创建用户不存在: " + dto.getCreatedBy()));
-
-        if (dto.getExpireAt().isBefore(LocalDateTime.now())) {
-            throw new BusinessException("过期时间不能早于当前时间");
-        }
-
         ShareLink shareLink = new ShareLink();
         shareLink.setLinkToken(generateToken());
-        shareLink.setCreatedBy(dto.getCreatedBy());
+
+        Long createdBy = dto.getCreatedBy() != null ? dto.getCreatedBy() : 1L;
+        shareLink.setCreatedBy(createdBy);
+
         if (dto.getRoleScope() != null && !dto.getRoleScope().isEmpty()) {
             String roleScope = dto.getRoleScope().stream()
                     .map(Enum::name)
                     .collect(Collectors.joining(","));
             shareLink.setRoleScope(roleScope);
         }
-        shareLink.setExpireAt(dto.getExpireAt());
+
+        LocalDateTime expireAt;
+        if (dto.getValidDays() != null && dto.getValidDays() > 0) {
+            if (dto.getValidDays() >= 90) {
+                expireAt = LocalDateTime.now().plusYears(10);
+            } else {
+                expireAt = LocalDateTime.now().plusDays(dto.getValidDays());
+            }
+        } else {
+            expireAt = LocalDateTime.now().plusDays(7);
+        }
+        if (expireAt.isBefore(LocalDateTime.now())) {
+            throw new BusinessException("过期时间不能早于当前时间");
+        }
+        shareLink.setExpireAt(expireAt);
         shareLink.setViewCount(0);
         shareLink.setIncludeSensitive(Boolean.TRUE.equals(dto.getIncludeSensitive()));
 
         ShareLink saved = shareLinkRepository.save(shareLink);
-        log.info("创建分享链接成功: id={}, token={}", saved.getId(), saved.getLinkToken());
+        log.info("创建分享链接成功: id={}, token={}, roleScope={}",
+                saved.getId(), saved.getLinkToken(), saved.getRoleScope());
         return saved;
     }
 
@@ -76,13 +84,16 @@ public class ShareLinkServiceImpl implements ShareLinkService {
                     break;
                 }
             }
-            if (!hasPermission) {
+            if (!hasPermission && userRole != UserRole.EXTERNAL) {
                 throw new BusinessException(403, "您没有权限访问此分享链接");
+            }
+            if (!hasPermission && userRole == UserRole.EXTERNAL) {
+                shareLink.setIncludeSensitive(false);
             }
         }
 
         incrementViewCount(shareLink.getId());
-        log.info("访问分享链接成功: token={}, viewCount={}", token, shareLink.getViewCount() + 1);
+        log.info("访问分享链接成功: token={}, userRole={}", token, userRole);
 
         return shareLinkRepository.findById(shareLink.getId()).orElse(shareLink);
     }
@@ -101,7 +112,7 @@ public class ShareLinkServiceImpl implements ShareLinkService {
     @Override
     @Transactional
     public void delete(Long id) {
-        if (!shareLinkRepository.existsById(id)) {
+        if (shareLinkRepository.existsById(id)) {
             shareLinkRepository.deleteById(id);
             log.info("删除分享链接成功: id={}", id);
         }
@@ -114,7 +125,7 @@ public class ShareLinkServiceImpl implements ShareLinkService {
     }
 
     private String generateToken() {
-        return UUID.randomUUID().toString().replace("-", "")
-                + System.currentTimeMillis();
+        return UUID.randomUUID().toString().replace("-", "").substring(0, 16)
+                + System.currentTimeMillis() % 10000;
     }
 }

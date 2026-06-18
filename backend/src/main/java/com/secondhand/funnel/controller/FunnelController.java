@@ -47,9 +47,7 @@ public class FunnelController {
                 }
             } catch (Exception ignored) {}
         }
-
         Map<String, Object> data = buildFunnelData();
-
         try {
             redisTemplate.opsForValue().set(CACHE_KEY, data, 15, TimeUnit.MINUTES);
         } catch (Exception ignored) {}
@@ -80,7 +78,6 @@ public class FunnelController {
                 .filter(f -> !f.getIsCompleted() || stage == FunnelStage.LISTING_SUCCESS)
                 .map(ListingFunnel::getCarId)
                 .collect(Collectors.toSet());
-
         if (stage != FunnelStage.LISTING_SUCCESS) {
             carIds.addAll(funnels.stream()
                     .filter(ListingFunnel::getIsCompleted)
@@ -100,18 +97,22 @@ public class FunnelController {
             m.put("plateNumber", car.getPlateNumber());
             m.put("brand", car.getBrand());
             m.put("model", car.getModel());
-            m.put("year", car.getRegisterDate() != null ? car.getRegisterDate().getYear() + 1900 : 2020);
+            m.put("year", car.getRegisterDate() != null ? car.getRegisterDate().getYear() : 2020);
             m.put("color", "黑色");
-            m.put("mileage", car.getMileage() != null ? car.getMileage().divide(new BigDecimal("10000"), 1, RoundingMode.HALF_UP) + "万公里" : "未知");
-            m.put("price", car.getStatus().name().equals("LISTED") ? Math.round(Math.random() * 300000 + 80000) : Math.round(Math.random() * 250000 + 60000));
-            m.put("costPrice", Math.round(Math.random() * 200000 + 50000));
+            m.put("mileage", car.getMileage() != null
+                    ? car.getMileage().divide(new BigDecimal("10000"), 1, RoundingMode.HALF_UP) + "万公里"
+                    : "未知");
+            int basePrice = car.getStatus() != null && car.getStatus().name().equals("LISTED") ? 80000 : 60000;
+            m.put("price", Math.abs((car.getId() * 37 + car.getBrand().hashCode()) % 300000) + basePrice);
+            m.put("costPrice", Math.abs((car.getId() * 23 + car.getBrand().hashCode()) % 200000) + 40000);
             m.put("customerName", "客户" + car.getId());
-            m.put("customerPhone", "138****" + String.format("%04d", car.getId() * 37 % 10000));
+            m.put("customerPhone", "138****" + String.format("%04d", (car.getId() * 37) % 10000));
             m.put("stage", STAGE_NAMES[index]);
             m.put("stageIndex", index);
-            long days = car.getCreatedAt() != null ?
-                    (System.currentTimeMillis() - car.getCreatedAt().getTime()) / 86400000L : 5;
-            m.put("daysInStage", Math.max(1, days % 20));
+            long days = car.getCreatedAt() != null
+                    ? (System.currentTimeMillis() - car.getCreatedAt().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()) / 86400000L
+                    : 5;
+            m.put("daysInStage", Math.max(1, (int) (days % 20)));
             m.put("hasAnomaly", anomalyCarIds.contains(car.getId()));
             m.put("missingDetector", Boolean.TRUE.equals(car.getDetectorMissing()));
             m.put("operator", car.getAssessorId() != null ? ("评估师" + car.getAssessorId()) : "未分配");
@@ -130,17 +131,38 @@ public class FunnelController {
     @PostMapping("/review-note")
     public Result<Map<String, Object>> addReviewNote(@RequestBody NoteRequest req) {
         ReviewNote note = new ReviewNote();
-        String carIdStr = req.getCarId() != null ? req.getCarId().toString() : "0";
-        note.setCarId(Long.parseLong(carIdStr));
-        note.setStage(req.getStage());
+        Long carId = 1L;
+        try {
+            if (req.getCarId() != null) {
+                carId = Long.valueOf(req.getCarId().toString());
+            } else if (req.getAnomalyId() != null) {
+                String aid = req.getAnomalyId().toString();
+                String[] parts = aid.split("-");
+                if (parts.length >= 3) {
+                    carId = Long.parseLong(parts[parts.length - 1]) + 1;
+                }
+            }
+        } catch (Exception ignored) {}
+        note.setCarId(carId);
+        note.setStage(req.getStage() != null ? req.getStage() : "GENERAL");
         note.setNoteContent(req.getContent() != null ? req.getContent() : "");
-        note.setCreatedBy(req.getUserId() != null ? Long.parseLong(req.getUserId().toString()) : 1L);
-        note.setCreatedAt(Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant()));
+        Long createdBy = 1L;
+        try {
+            if (req.getUserId() != null) {
+                createdBy = Long.valueOf(req.getUserId().toString());
+            }
+        } catch (Exception ignored) {}
+        note.setCreatedBy(createdBy);
+        note.setCreatedAt(LocalDateTime.now());
         ReviewNote saved = reviewNoteRepository.save(note);
-        Map<String, Object> m = new HashMap<>();
-        m.put("id", saved.getId());
-        m.put("anomalyId", req.getAnomalyId());
-        return Result.success(m);
+
+        Map<String, Object> resp = new HashMap<>();
+        resp.put("id", saved.getId());
+        resp.put("anomalyId", req.getAnomalyId());
+        resp.put("carId", saved.getCarId());
+        resp.put("content", saved.getNoteContent());
+        resp.put("createdAt", saved.getCreatedAt());
+        return Result.success(resp);
     }
 
     @GetMapping("/review-note/{anomalyId}")
@@ -150,30 +172,22 @@ public class FunnelController {
 
     private Map<String, Object> buildFunnelData() {
         Map<String, Object> data = new HashMap<>();
-
         List<FunnelStageStatsDTO> stageStats = funnelStatsService.getStageStats();
         List<Map<String, Object>> stagesList = new ArrayList<>();
-        int[] counts = new int[STAGES.length];
+        int[] counts = {50, 44, 37, 31, 26};
 
         for (int i = 0; i < STAGES.length; i++) {
             FunnelStage stage = STAGES[i];
             long completed = listingFunnelRepository.countByStageAndIsCompleted(stage, true);
             long current = listingFunnelRepository.countDistinctCarIdByStage(stage);
-            int count = (int) Math.max(completed, current);
-            if (i == 0) count = 50;
-            if (i == 1) count = 44;
-            if (i == 2) count = 37;
-            if (i == 3) count = 31;
-            if (i == 4) count = 26;
-            counts[i] = count;
+            counts[i] = (int) Math.max(Math.max(completed, current), counts[i]);
 
             Map<String, Object> stageMap = new HashMap<>();
             stageMap.put("name", STAGE_NAMES[i]);
-            stageMap.put("count", count);
-            double conv = i == 0 ? 100.0 : (counts[i - 1] == 0 ? 0 : (count * 100.0 / counts[i - 1]));
+            stageMap.put("count", counts[i]);
+            double conv = i == 0 ? 100.0 : (counts[i - 1] == 0 ? 0 : (counts[i] * 100.0 / counts[i - 1]));
             stageMap.put("conversionRate", String.format("%.1f", conv));
             stageMap.put("avgDays", i == 0 ? 1 : i == 1 ? 2 : i == 2 ? 5 : i == 3 ? 3 : 2);
-
             int missingDetector = 0;
             if (i == 1) missingDetector = 5;
             if (i == 2) missingDetector = 8;
@@ -192,13 +206,10 @@ public class FunnelController {
         library.put("libraryDelayCount", libraryDelay);
         library.put("detectorMissingCount", detectorMissing);
         library.put("caliberChangedCount", caliberChanged);
-        library.put("lastUpdate", Date.from(LocalDateTime.now().minusHours(2).atZone(ZoneId.systemDefault()).toInstant()));
+        library.put("lastUpdate", LocalDateTime.now().minusHours(2));
         data.put("library", library);
-        data.put("libraryLastUpdate", Date.from(LocalDateTime.now().minusHours(6).atZone(ZoneId.systemDefault()).toInstant()));
-
-        List<Map<String, Object>> anomalyList = buildAnomalyList();
-        data.put("anomalies", anomalyList);
-
+        data.put("libraryLastUpdate", LocalDateTime.now().minusHours(6));
+        data.put("anomalies", buildAnomalyList());
         return data;
     }
 
@@ -210,10 +221,16 @@ public class FunnelController {
             Map<String, Object> a = new HashMap<>();
             a.put("type", "LIBRARY_DELAY");
             a.put("count", libDelayUnresolved);
-            a.put("details", "有 " + libDelayUnresolved + " 辆车的源库数据更新延迟，影响 " + libDelayUnresolved + " 个评估/报价流程进度");
+            a.put("details", "有 " + libDelayUnresolved + " 辆车的源库数据更新延迟，影响评估/报价/资料收集流程进度");
             a.put("stageRange", Arrays.asList(0, 1, 2));
-            a.put("detectedAt", Date.from(LocalDateTime.now().minusHours(6).atZone(ZoneId.systemDefault()).toInstant()));
-            a.put("config", buildConfig("LIBRARY_DELAY", "#e6a23c", "车源库延迟"));
+            a.put("detectedAt", LocalDateTime.now().minusHours(6));
+            Map<String, Object> cfg = new HashMap<>();
+            cfg.put("type", "LIBRARY_DELAY");
+            cfg.put("label", "车源库延迟");
+            cfg.put("color", "#e6a23c");
+            cfg.put("description", "车源库数据同步延迟，影响评估和报价");
+            cfg.put("icon", "WarningFilled");
+            a.put("config", cfg);
             anomalyList.add(a);
         }
 
@@ -224,8 +241,14 @@ public class FunnelController {
             a.put("count", detectorUnresolved);
             a.put("details", "有 " + detectorUnresolved + " 辆车存在检测仪缺失/故障，评估数据不完整");
             a.put("stageRange", Arrays.asList(1, 2, 3));
-            a.put("detectedAt", Date.from(LocalDateTime.now().minusHours(4).atZone(ZoneId.systemDefault()).toInstant()));
-            a.put("config", buildConfig("DETECTOR_MISSING", "#f56c6c", "检测仪缺失"));
+            a.put("detectedAt", LocalDateTime.now().minusHours(4));
+            Map<String, Object> cfg = new HashMap<>();
+            cfg.put("type", "DETECTOR_MISSING");
+            cfg.put("label", "检测仪缺失");
+            cfg.put("color", "#f56c6c");
+            cfg.put("description", "检测仪数据缺失或故障，影响评估准确性");
+            cfg.put("icon", "CircleCloseFilled");
+            a.put("config", cfg);
             anomalyList.add(a);
         }
 
@@ -234,10 +257,16 @@ public class FunnelController {
             Map<String, Object> a = new HashMap<>();
             a.put("type", "FINANCE_CALIBER_CHANGE");
             a.put("count", caliberUnresolved);
-            a.put("details", "金融审批表口径已更新（6月1日起执行），有 " + caliberUnresolved + " 辆车需按新标准重新评估审批");
-            a.put("stageRange", Arrays.asList(3));
-            a.put("detectedAt", Date.from(LocalDateTime.now().minusDays(18).atZone(ZoneId.systemDefault()).toInstant()));
-            a.put("config", buildConfig("FINANCE_CALIBER_CHANGE", "#909399", "金融口径变化"));
+            a.put("details", "金融审批表口径已更新（6月1日起执行），涉及 " + caliberUnresolved + " 辆车需重新评估");
+            a.put("stageRange", Collections.singletonList(3));
+            a.put("detectedAt", LocalDateTime.now().minusDays(18));
+            Map<String, Object> cfg = new HashMap<>();
+            cfg.put("type", "FINANCE_CALIBER_CHANGE");
+            cfg.put("label", "金融口径变化");
+            cfg.put("color", "#909399");
+            cfg.put("description", "金融审批口径已调整，需重新审核");
+            cfg.put("icon", "InfoFilled");
+            a.put("config", cfg);
             anomalyList.add(a);
         }
 
@@ -246,22 +275,20 @@ public class FunnelController {
             Map<String, Object> a = new HashMap<>();
             a.put("type", "DOCUMENT_MISSING");
             a.put("count", docUnresolved);
-            a.put("details", "有 " + docUnresolved + " 辆车的金融资料存在缺失，影响曲线下降趋势");
+            a.put("details", "有 " + docUnresolved + " 辆车金融资料缺失，影响漏斗曲线下降趋势");
             a.put("stageRange", Arrays.asList(2, 3));
-            a.put("detectedAt", Date.from(LocalDateTime.now().minusHours(3).atZone(ZoneId.systemDefault()).toInstant()));
-            a.put("config", buildConfig("DOCUMENT_MISSING", "#67c23a", "资料缺失影响"));
+            a.put("detectedAt", LocalDateTime.now().minusHours(3));
+            Map<String, Object> cfg = new HashMap<>();
+            cfg.put("type", "DOCUMENT_MISSING");
+            cfg.put("label", "资料缺失影响");
+            cfg.put("color", "#67c23a");
+            cfg.put("description", "金融资料不完整，影响审批进度");
+            cfg.put("icon", "Document");
+            a.put("config", cfg);
             anomalyList.add(a);
         }
 
         return anomalyList;
-    }
-
-    private Map<String, Object> buildConfig(String type, String color, String label) {
-        Map<String, Object> c = new HashMap<>();
-        c.put("type", type);
-        c.put("color", color);
-        c.put("label", label);
-        return c;
     }
 
     @Data

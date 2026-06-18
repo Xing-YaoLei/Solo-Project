@@ -10,8 +10,9 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -119,9 +120,8 @@ public class StoreServiceImpl implements StoreService {
     @Override
     public void evictCache() {
         try {
-            List<String> cacheKeys = Collections.list(
-                    redisTemplate.keys(CACHE_KEY_STORE + "*")
-            );
+            Set<String> keySet = redisTemplate.keys(CACHE_KEY_STORE + "*");
+            List<String> cacheKeys = keySet != null ? new ArrayList<>(keySet) : new ArrayList<>();
             cacheKeys.add(CACHE_KEY_STORE_LIST);
             redisTemplate.delete(cacheKeys);
         } catch (Exception e) {

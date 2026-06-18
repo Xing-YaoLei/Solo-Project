@@ -1,4 +1,4 @@
-USE secondhand_funnel;
+-- H2 兼容 Mock 数据
 
 -- 初始化门店
 INSERT INTO store (id, store_name, address, manager_id) VALUES
@@ -126,22 +126,22 @@ INSERT INTO listing_funnel (car_id, stage, completed_at, is_completed, remark) V
 
 -- 阶段2: 报价 (44辆完成报价)
 INSERT INTO listing_funnel (car_id, stage, completed_at, is_completed, remark)
-SELECT id, 'QUOTATION', DATE_ADD(created_at, INTERVAL 1 DAY), 1, NULL
+SELECT id, 'QUOTATION', DATEADD('DAY', 1, created_at), TRUE, NULL
 FROM car_inventory WHERE id NOT IN (28, 29, 35, 38, 40, 43);
 
 -- 阶段3: 资料收集 (37辆完成资料收集)
 INSERT INTO listing_funnel (car_id, stage, completed_at, is_completed, remark)
-SELECT id, 'DATA_COLLECTION', DATE_ADD(created_at, INTERVAL 3 DAY), 1, NULL
+SELECT id, 'DATA_COLLECTION', DATEADD('DAY', 3, created_at), TRUE, NULL
 FROM car_inventory WHERE id IN (1,2,3,4,5,6,7,10,11,13,15,16,17,18,19,20,22,23,24,25,26,27,30,31,32,33,34,36,37,39,41,42,44,45,46,48,50);
 
 -- 阶段4: 金融审批 (31辆通过金融审批)
 INSERT INTO listing_funnel (car_id, stage, completed_at, is_completed, remark)
-SELECT id, 'FINANCE_APPROVAL', DATE_ADD(created_at, INTERVAL 5 DAY), 1, NULL
+SELECT id, 'FINANCE_APPROVAL', DATEADD('DAY', 5, created_at), TRUE, NULL
 FROM car_inventory WHERE id IN (1,2,3,4,5,6,7,10,13,15,17,18,19,20,22,23,24,25,26,30,31,32,33,36,37,39,41,42,44,46,48);
 
 -- 阶段5: 上架成功 (26辆上架成功)
 INSERT INTO listing_funnel (car_id, stage, completed_at, is_completed, remark)
-SELECT id, 'LISTING_SUCCESS', DATE_ADD(created_at, INTERVAL 6 DAY), 1, NULL
+SELECT id, 'LISTING_SUCCESS', DATEADD('DAY', 6, created_at), TRUE, NULL
 FROM car_inventory WHERE id IN (1,2,3,4,5,25,26,31,32,36,44,6,7,13,15,17,20,22,23,24,30,33,37,39,42,46);
 
 -- 未完成的阶段记录 (当前所在阶段)

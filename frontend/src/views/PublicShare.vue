@@ -5,9 +5,17 @@
         <el-icon :size="28" color="#409eff"><DataBoard /></el-icon>
         <span class="brand-name">Solo 漏斗看板 · 数据分享</span>
       </div>
-      <el-tag v-if="shareData.hideSensitive" type="info" effect="light" size="small">
-        <el-icon><Lock /></el-icon>已隐藏敏感字段
-      </el-tag>
+      <div class="header-right">
+        <el-tag v-if="isExternal" type="warning" effect="light" size="small">
+          <el-icon><View /></el-icon>外部访问 · 敏感数据已脱敏
+        </el-tag>
+        <el-tag v-else-if="hideSensitive" type="info" effect="light" size="small">
+          <el-icon><Lock /></el-icon>已隐藏敏感字段
+        </el-tag>
+        <el-tag v-else type="success" effect="light" size="small">
+          <el-icon><Unlock /></el-icon>完整数据
+        </el-tag>
+      </div>
     </div>
 
     <div v-if="loading" class="loading-area flex-center">
@@ -25,27 +33,35 @@
 
     <div v-else class="share-content">
       <div class="summary-row mb-20">
-        <h2 class="share-title">{{ shareData.title }}</h2>
+        <h2 class="share-title">{{ shareData.title || '车源上架漏斗数据报告' }}</h2>
         <p class="share-time">分享时间: {{ formatTime(shareData.exportTime) }}</p>
+        <p v-if="shareData.notice" class="share-notice">
+          <el-icon><InfoFilled /></el-icon>{{ shareData.notice }}
+        </p>
       </div>
 
       <el-row :gutter="16" class="mb-20">
         <el-col :span="8">
           <el-card class="stat-card card-shadow">
             <div class="stat-label">总评估数</div>
-            <div class="stat-value">{{ shareData.summary?.total || 0 }}</div>
+            <div class="stat-value">{{ shareData.summary?.totalCars || '--' }}</div>
           </el-card>
         </el-col>
         <el-col :span="8">
           <el-card class="stat-card card-shadow">
             <div class="stat-label">上架成功</div>
-            <div class="stat-value">{{ shareData.summary?.success || 0 }}</div>
+            <div class="stat-value">{{ shareData.summary?.listedCars || '--' }}</div>
           </el-card>
         </el-col>
         <el-col :span="8">
           <el-card class="stat-card card-shadow">
             <div class="stat-label">整体转化率</div>
-            <div class="stat-value">{{ shareData.summary?.conversionRate || '0%' }}</div>
+            <div class="stat-value">
+              <span v-if="shareData.summary?.overallConversion && shareData.summary.overallConversion !== '--'">
+                {{ shareData.summary.overallConversion }}%
+              </span>
+              <span v-else>--</span>
+            </div>
           </el-card>
         </el-col>
       </el-row>
@@ -63,9 +79,29 @@
           <el-table-column prop="conversionRate" label="阶段转化率(%)" width="140" align="right" />
           <el-table-column label="阶段进度" min-width="200">
             <template #default="{ row }">
-              <el-progress :percentage="Number(row.conversionRate)" :color="row.color" />
+              <el-progress :percentage="Number(row.conversionRate) || 0" :color="row.color" />
             </template>
           </el-table-column>
+        </el-table>
+      </el-card>
+
+      <el-card v-if="shareData.anomalies && shareData.anomalies.length" class="card-shadow mb-20">
+        <template #header>
+          <div class="card-title">
+            <el-icon color="#e6a23c"><WarningFilled /></el-icon>
+            <span>数据异常标记</span>
+          </div>
+        </template>
+        <el-table :data="shareData.anomalies" size="small" stripe>
+          <el-table-column label="类型" width="140">
+            <template #default="{ row }">
+              <el-tag :color="row.config?.color" effect="light">
+                {{ row.config?.label || row.type }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="count" label="影响车源" width="100" align="right" />
+          <el-table-column prop="details" label="异常说明" />
         </el-table>
       </el-card>
 
@@ -73,7 +109,8 @@
         <el-divider />
         <div class="footer-text">
           <el-icon><InfoFilled /></el-icon>
-          本分享链接由 Solo 漏斗看板系统生成，数据仅供参考，不包含价格、客户等敏感信息。
+          本分享链接由 Solo 漏斗看板系统生成，数据仅供参考。
+          <span v-if="isExternal">外部访问状态下，价格、客户信息等敏感明细已自动脱敏隐藏。</span>
         </div>
       </div>
     </div>
@@ -83,8 +120,12 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Loading, DataBoard, Lock, Histogram, InfoFilled } from '@element-plus/icons-vue'
+import {
+  Loading, DataBoard, Lock, Unlock, Histogram, InfoFilled, WarningFilled, View
+} from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
+import { getPublicShareData } from '@/api/share'
+import { filterSensitiveData } from '@/utils/permission'
 
 const route = useRoute()
 const router = useRouter()
@@ -92,46 +133,35 @@ const router = useRouter()
 const loading = ref(true)
 const error = ref(false)
 const errorMsg = ref('')
+const isExternal = ref(false)
+const hideSensitive = ref(true)
 
 const shareData = reactive({
   title: '',
   exportTime: '',
-  hideSensitive: true,
-  summary: { total: 0, success: 0, conversionRate: '0%' },
-  stages: []
+  summary: { totalCars: '--', listedCars: '--', soldCars: '--', overallConversion: '--' },
+  stages: [],
+  anomalies: [],
+  notice: ''
 })
 
 const stageColors = ['#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de']
 const stageNames = ['评估', '报价', '资料收集', '金融审批', '上架成功']
 
 const stagesView = computed(() => {
-  const counts = [320, 280, 235, 198, 165]
-  return counts.map((count, i) => ({
-    name: stageNames[i],
-    count,
-    color: stageColors[i],
-    conversionRate: i === 0 ? '100.00' : (counts[i] / counts[i - 1] * 100).toFixed(2)
+  const stages = shareData.stages && shareData.stages.length ? shareData.stages : [
+    { name: '评估', count: 0, conversionRate: '100.00' },
+    { name: '报价', count: 0, conversionRate: '0' },
+    { name: '资料收集', count: 0, conversionRate: '0' },
+    { name: '金融审批', count: 0, conversionRate: '0' },
+    { name: '上架成功', count: 0, conversionRate: '0' }
+  ]
+  return stages.map((s, i) => ({
+    name: s.name || stageNames[i] || `阶段${i + 1}`,
+    count: s.count ?? 0,
+    color: stageColors[i] || '#5470c6',
+    conversionRate: s.conversionRate || (i === 0 ? '100.00' : '0')
   }))
-})
-
-onMounted(() => {
-  setTimeout(() => {
-    loading.value = false
-    const token = route.params.token
-    if (!token || token.length < 4) {
-      error.value = true
-      errorMsg.value = '分享链接参数无效'
-      return
-    }
-    shareData.title = `漏斗数据报告 - ${dayjs().format('YYYY-MM-DD')}`
-    shareData.exportTime = new Date().toISOString()
-    shareData.hideSensitive = true
-    shareData.summary = {
-      total: 320,
-      success: 165,
-      conversionRate: (165 / 320 * 100).toFixed(2) + '%'
-    }
-  }, 800)
 })
 
 function formatTime(t) {
@@ -140,6 +170,55 @@ function formatTime(t) {
 function goLogin() {
   router.push('/login')
 }
+
+onMounted(async () => {
+  const token = route.params.token
+  if (!token || token.length < 4) {
+    loading.value = false
+    error.value = true
+    errorMsg.value = '分享链接参数无效'
+    return
+  }
+
+  const queryRole = route.query.role
+  let accessRole = null
+  if (queryRole) {
+    accessRole = String(queryRole).toUpperCase()
+  }
+  if (!accessRole) {
+    try {
+      const u = localStorage.getItem('funnel_user')
+      if (u) {
+        const parsed = JSON.parse(u)
+        accessRole = parsed?.role
+      }
+    } catch (e) {}
+  }
+  if (!accessRole) {
+    accessRole = 'EXTERNAL'
+  }
+  isExternal.value = accessRole === 'EXTERNAL'
+
+  try {
+    const { data } = await getPublicShareData(token, accessRole)
+    const filtered = isExternal.value ? filterSensitiveData(data || {}) : (data || {})
+
+    shareData.title = filtered.title || `漏斗数据报告 - ${dayjs().format('YYYY-MM-DD')}`
+    shareData.exportTime = filtered.exportTime || new Date().toISOString()
+    shareData.summary = filtered.summary || shareData.summary
+    shareData.stages = filtered.stages || []
+    shareData.anomalies = filtered.anomalies || []
+    shareData.notice = filtered.notice || (isExternal.value ? '外部访问：敏感数据（价格、客户信息等）已隐藏' : '')
+    hideSensitive.value = !filtered.includeSensitive || isExternal.value
+  } catch (e) {
+    console.warn('获取分享数据失败，使用兜底展示', e?.message)
+    shareData.title = `漏斗数据报告 - ${dayjs().format('YYYY-MM-DD')}`
+    shareData.exportTime = new Date().toISOString()
+    shareData.notice = isExternal.value ? '外部访问：敏感数据（价格、客户信息等）已隐藏' : ''
+  } finally {
+    loading.value = false
+  }
+})
 </script>
 
 <style lang="scss" scoped>
@@ -161,6 +240,7 @@ function goLogin() {
 
   .brand { gap: 8px; }
   .brand-name { font-size: 16px; font-weight: 600; color: #303133; }
+  .header-right { display: flex; align-items: center; gap: 10px; }
 }
 .share-content {
   max-width: 1100px;
@@ -184,6 +264,7 @@ function goLogin() {
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.06);
   .share-title { margin: 0 0 4px; font-size: 22px; font-weight: 600; color: #303133; }
   .share-time { margin: 0; font-size: 13px; color: #909399; }
+  .share-notice { margin: 8px 0 0; font-size: 13px; color: #e6a23c; display: flex; align-items: center; gap: 4px; }
 }
 .stat-card :deep(.el-card__body) { padding: 16px 20px; }
 .stat-label { font-size: 13px; color: #909399; margin-bottom: 6px; }
@@ -199,5 +280,6 @@ function goLogin() {
 .footer-text {
   display: flex; align-items: center; gap: 6px;
   font-size: 12px; color: #909399; justify-content: center;
+  flex-wrap: wrap;
 }
 </style>

@@ -2,7 +2,7 @@ import request from '@/utils/request'
 
 export function getQuotationList(params = {}) {
   return request({
-    url: '/quotation/list',
+    url: '/quotations',
     method: 'get',
     params
   })
@@ -10,14 +10,14 @@ export function getQuotationList(params = {}) {
 
 export function getQuotationDetail(id) {
   return request({
-    url: `/quotation/${id}`,
+    url: `/quotations/${id}`,
     method: 'get'
   })
 }
 
 export function createQuotation(data) {
   return request({
-    url: '/quotation',
+    url: '/quotations',
     method: 'post',
     data
   })
@@ -25,7 +25,7 @@ export function createQuotation(data) {
 
 export function updateQuotation(id, data) {
   return request({
-    url: `/quotation/${id}`,
+    url: `/quotations/${id}`,
     method: 'put',
     data
   })
@@ -33,21 +33,28 @@ export function updateQuotation(id, data) {
 
 export function deleteQuotation(id) {
   return request({
-    url: `/quotation/${id}`,
+    url: `/quotations/${id}`,
     method: 'delete'
   })
 }
 
 export function getQuotationHistory(vehicleId) {
   return request({
-    url: `/quotation/vehicle/${vehicleId}/history`,
+    url: `/quotations/car/${vehicleId}`,
+    method: 'get'
+  })
+}
+
+export function getQuotationsByUser(userId) {
+  return request({
+    url: `/quotations/quoted-by/${userId}`,
     method: 'get'
   })
 }
 
 export function exportQuotationList(params = {}) {
   return request({
-    url: '/quotation/export',
+    url: '/export/funnel',
     method: 'get',
     params,
     responseType: 'blob'

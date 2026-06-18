@@ -1,24 +1,28 @@
 package com.secondhand.funnel.dto;
 
 import com.secondhand.funnel.enums.UserRole;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 import java.io.Serializable;
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
 public class ShareLinkCreateDTO implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    @NotNull(message = "创建人ID不能为空")
-    private Long createdBy;
+    @NotBlank(message = "链接名称不能为空")
+    private String title;
+
+    private String dataType = "funnel";
 
     private List<UserRole> roleScope;
 
-    @NotNull(message = "过期时间不能为空")
-    private LocalDateTime expireAt;
+    private Integer validDays = 7;
 
     private Boolean includeSensitive = false;
+
+    private String password;
+
+    private Long createdBy = 1L;
 }

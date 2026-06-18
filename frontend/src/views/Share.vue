@@ -41,37 +41,45 @@
     </el-row>
 
     <el-card class="card-shadow">
-      <el-table :data="shareLinks" stripe border>
+      <el-table :data="shareLinks" stripe border v-loading="loading">
         <el-table-column prop="title" label="链接名称" min-width="160">
           <template #default="{ row }">
             <div class="share-title">
               <el-icon color="#409eff"><Link /></el-icon>
-              {{ row.title }}
+              {{ row.title || '未命名链接' }}
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="token" label="分享码" width="120">
+        <el-table-column prop="linkToken" label="分享码" width="120">
           <template #default="{ row }">
-            <el-tag size="small" effect="plain" type="info" monospaced>{{ row.token }}</el-tag>
+            <el-tag size="small" effect="plain" type="info" monospaced>{{ row.linkToken || row.token }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="dataType" label="数据类型" width="110">
+        <el-table-column label="数据类型" width="110">
           <template #default="{ row }">
-            <el-tag size="small" :type="row.dataType === 'funnel' ? 'primary' : 'success'" effect="light">
-              {{ row.dataType === 'funnel' ? '漏斗数据' : '报价数据' }}
+            <el-tag size="small" :type="dataTypeTag(row.dataType)" effect="light">
+              {{ dataTypeLabel(row.dataType) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="allowedRole" label="可见范围" width="120">
+        <el-table-column label="可见范围" width="200">
           <template #default="{ row }">
-            <el-tag size="small" :type="roleType(row.allowedRole)" effect="light">
-              {{ roleLabel(row.allowedRole) }}
-            </el-tag>
+            <div class="role-tags">
+              <el-tag
+                v-for="r in parseRoleScope(row.roleScope)"
+                :key="r.value"
+                size="small"
+                :type="roleType(r.value)"
+                effect="light"
+                style="margin-right:4px"
+              >{{ r.label }}</el-tag>
+              <span v-if="!row.roleScope" class="empty-scope">未设置</span>
+            </div>
           </template>
         </el-table-column>
         <el-table-column label="敏感字段" width="140">
           <template #default="{ row }">
-            <span v-if="row.hideSensitive" style="color:#67c23a" class="flex-center">
+            <span v-if="!row.includeSensitive" style="color:#67c23a" class="flex-center">
               <el-icon><Lock /></el-icon>已隐藏
             </span>
             <span v-else style="color:#f56c6c" class="flex-center">
@@ -80,7 +88,7 @@
           </template>
         </el-table-column>
         <el-table-column prop="viewCount" label="访问次数" width="90" align="right" />
-        <el-table-column prop="expireAt" label="有效期" width="180">
+        <el-table-column label="有效期" width="180">
           <template #default="{ row }">
             <div class="expire-info">
               <span>{{ dayjs(row.createdAt).format('MM-DD') }} ~ {{ dayjs(row.expireAt).format('MM-DD') }}</span>
@@ -102,8 +110,8 @@
       </el-table>
     </el-card>
 
-    <el-dialog v-model="createVisible" title="创建分享链接" width="520px">
-      <el-form :model="shareForm" label-width="100px">
+    <el-dialog v-model="createVisible" title="创建分享链接" width="560px">
+      <el-form :model="shareForm" label-width="110px">
         <el-form-item label="链接名称">
           <el-input v-model="shareForm.title" placeholder="请输入分享链接名称" />
         </el-form-item>
@@ -115,11 +123,15 @@
           </el-radio-group>
         </el-form-item>
         <el-form-item label="可见范围">
-          <el-select v-model="shareForm.allowedRole" style="width:100%">
-            <el-option label="所有人(含外部)" value="all" />
-            <el-option label="仅内部员工" value="internal" />
-            <el-option label="仅运营/管理" value="operator_plus" />
+          <el-select v-model="shareForm.roleScope" multiple style="width:100%" placeholder="选择可访问的角色">
+            <el-option
+              v-for="opt in ROLE_OPTIONS"
+              :key="opt.value"
+              :label="opt.label"
+              :value="opt.value"
+            />
           </el-select>
+          <div class="form-tip">外部人员默认只能访问脱敏数据，不在此列选</div>
         </el-form-item>
         <el-form-item label="有效期">
           <el-radio-group v-model="shareForm.validDays">
@@ -130,7 +142,7 @@
           </el-radio-group>
         </el-form-item>
         <el-form-item label="隐私保护">
-          <el-checkbox v-model="shareForm.hideSensitive">隐藏价格、客户等敏感字段</el-checkbox>
+          <el-checkbox v-model="shareForm.includeSensitive">允许查看价格、客户等敏感字段（仅内部角色可见）</el-checkbox>
         </el-form-item>
         <el-form-item label="访问密码">
           <el-input v-model="shareForm.password" placeholder="留空表示无需密码" show-password />
@@ -138,7 +150,7 @@
       </el-form>
       <template #footer>
         <el-button @click="createVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleCreate">生成链接</el-button>
+        <el-button type="primary" @click="handleCreate" :loading="submitting">生成链接</el-button>
       </template>
     </el-dialog>
 
@@ -149,20 +161,28 @@
         <el-table-column prop="location" label="地理位置" width="140" />
         <el-table-column prop="ua" label="浏览器" />
       </el-table>
+      <el-empty v-if="!currentLogs.length" description="暂无访问记录" />
     </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { exportToExcel } from '@/utils/download'
 import dayjs from 'dayjs'
 import { Plus, Link, CircleCheckFilled, View, Lock, Unlock } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import {
+  ROLE_OPTIONS,
+  getShareList,
+  createShareLink,
+  deleteShareLink
+} from '@/api/share'
 
 const createVisible = ref(false)
 const logsVisible = ref(false)
 const currentLogs = ref([])
+const loading = ref(false)
+const submitting = ref(false)
 
 const shareStats = reactive({
   total: 0,
@@ -173,120 +193,146 @@ const shareStats = reactive({
 const shareForm = reactive({
   title: '',
   dataType: 'funnel',
-  allowedRole: 'all',
+  roleScope: ['ASSESSOR', 'SALES', 'FINANCE_STAFF', 'STORE_MANAGER'],
   validDays: 7,
-  hideSensitive: true,
+  includeSensitive: false,
   password: ''
 })
 
 const shareLinks = ref([])
 
-function generateMock() {
-  const titles = ['每日漏斗数据分享', '周报数据', '客户报价汇总', '呆滞库存清单', '金融审批进度']
-  const creators = ['张经理', '李运营', '王金融']
-  const links = []
-  for (let i = 0; i < 15; i++) {
-    const days = [1, 7, 30, 90][Math.floor(Math.random() * 4)]
-    const createdAt = new Date(Date.now() - Math.random() * 30 * 86400000)
-    const expireAt = new Date(createdAt.getTime() + days * 86400000)
-    links.push({
-      id: i + 1,
-      title: titles[i % titles.length],
-      token: Math.random().toString(36).substring(2, 10),
-      dataType: ['funnel', 'quotation', 'archive'][i % 3],
-      allowedRole: ['all', 'internal', 'operator_plus'][i % 3],
-      hideSensitive: Math.random() > 0.2,
-      viewCount: Math.floor(Math.random() * 200),
-      createdAt: createdAt.toISOString(),
-      expireAt: expireAt.toISOString(),
-      createdBy: creators[i % creators.length]
-    })
+async function loadData() {
+  loading.value = true
+  try {
+    const { data } = await getShareList()
+    shareLinks.value = (data || []).map(l => ({
+      ...l,
+      token: l.linkToken || l.token
+    }))
+    shareStats.total = shareLinks.value.length
+    shareStats.active = shareLinks.value.filter(l => !isExpired(l)).length
+    shareStats.views = shareLinks.value.reduce((s, l) => s + (l.viewCount || 0), 0)
+  } catch (e) {
+    console.warn('加载分享列表失败，使用本地兜底数据', e?.message)
+    shareLinks.value = []
+  } finally {
+    loading.value = false
   }
-  return links
 }
 
-onMounted(() => {
-  shareLinks.value = generateMock()
-  shareStats.total = shareLinks.value.length
-  shareStats.active = shareLinks.value.filter(l => !isExpired(l)).length
-  shareStats.views = shareLinks.value.reduce((s, l) => s + l.viewCount, 0)
-})
+onMounted(loadData)
 
+function dataTypeTag(t) {
+  return { funnel: 'primary', quotation: 'success', archive: 'warning' }[t] || 'info'
+}
+function dataTypeLabel(t) {
+  return { funnel: '漏斗数据', quotation: '报价数据', archive: '车辆档案' }[t] || t
+}
 function roleType(r) {
-  return { all: 'info', internal: 'warning', operator_plus: 'primary' }[r] || 'info'
+  return {
+    ASSESSOR: 'success',
+    SALES: 'warning',
+    FINANCE_STAFF: 'primary',
+    STORE_MANAGER: 'danger'
+  }[r] || 'info'
 }
-function roleLabel(r) {
-  return { all: '所有人', internal: '内部员工', operator_plus: '运营/管理' }[r] || r
+function parseRoleScope(scope) {
+  if (!scope) return []
+  const arr = Array.isArray(scope) ? scope : String(scope).split(/[,\s]+/).filter(Boolean)
+  return arr.map(r => {
+    const opt = ROLE_OPTIONS.find(o => o.value === r)
+    return opt || { value: r, label: r }
+  })
 }
 function isExpired(row) {
+  if (!row.expireAt) return false
   return new Date(row.expireAt) < new Date()
 }
 
 function copyLink(row) {
-  const link = `${window.location.origin}/public/share/${row.token}`
+  const token = row.linkToken || row.token
+  const link = `${window.location.origin}/public/share/${token}`
   navigator.clipboard.writeText(link).then(() => {
     ElMessage.success('链接已复制到剪贴板')
+  }).catch(() => {
+    ElMessage.success(`请手动复制：${link}`)
   })
 }
 function viewLogs(row) {
-  const logs = []
-  for (let i = 0; i < Math.min(row.viewCount, 15); i++) {
-    logs.push({
-      time: dayjs(new Date(Date.now() - Math.random() * 30 * 86400000)).format('YYYY-MM-DD HH:mm:ss'),
-      ip: `${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}`,
-      location: ['北京', '上海', '广州', '深圳', '杭州'][Math.floor(Math.random()*5)],
-      ua: ['Chrome', 'Safari', 'Edge', 'Firefox'][Math.floor(Math.random()*4)]
-    })
-  }
-  currentLogs.value = logs
+  currentLogs.value = []
   logsVisible.value = true
 }
 function editRow(row) {
-  ElMessage.info(`编辑 ${row.title}`)
+  ElMessage.info(`编辑 ${row.title || '链接'}`)
 }
 function revoke(row) {
-  ElMessageBox.confirm(`确认撤销分享链接 ${row.title}？`, '撤销确认', { type: 'warning' }).then(() => {
+  ElMessageBox.confirm(`确认撤销分享链接 ${row.title || ''}？`, '撤销确认', { type: 'warning' }).then(() => {
     row.expireAt = new Date().toISOString()
-    shareStats.active--
+    shareStats.active = Math.max(0, shareStats.active - 1)
     ElMessage.success('链接已撤销')
   }).catch(() => {})
 }
-function del(row) {
-  ElMessageBox.confirm(`确认删除 ${row.title}？`, '删除确认', { type: 'error' }).then(() => {
-    const idx = shareLinks.value.findIndex(l => l.id === row.id)
-    if (idx >= 0) shareLinks.value.splice(idx, 1)
-    shareStats.total--
-    if (!isExpired(row)) shareStats.active--
-    ElMessage.success('已删除')
+async function del(row) {
+  ElMessageBox.confirm(`确认删除 ${row.title || '该链接'}？`, '删除确认', { type: 'error' }).then(async () => {
+    try {
+      if (row.id) await deleteShareLink(row.id)
+      const idx = shareLinks.value.findIndex(l => l.id === row.id)
+      if (idx >= 0) shareLinks.value.splice(idx, 1)
+      shareStats.total = Math.max(0, shareStats.total - 1)
+      if (!isExpired(row)) shareStats.active = Math.max(0, shareStats.active - 1)
+      ElMessage.success('已删除')
+    } catch (e) {
+      ElMessage.error('删除失败：' + (e?.message || '未知错误'))
+    }
   }).catch(() => {})
 }
-function handleCreate() {
+async function handleCreate() {
   if (!shareForm.title) {
     ElMessage.warning('请输入链接名称')
     return
   }
-  const link = {
-    id: Date.now(),
-    title: shareForm.title,
-    token: Math.random().toString(36).substring(2, 10),
-    dataType: shareForm.dataType,
-    allowedRole: shareForm.allowedRole,
-    hideSensitive: shareForm.hideSensitive,
-    viewCount: 0,
-    createdAt: new Date().toISOString(),
-    expireAt: new Date(Date.now() + shareForm.validDays * 86400000).toISOString(),
-    createdBy: '当前用户'
+  if (!shareForm.roleScope || shareForm.roleScope.length === 0) {
+    ElMessage.warning('请至少选择一个可见角色')
+    return
   }
-  shareLinks.value.unshift(link)
-  shareStats.total++
-  shareStats.active++
-  const fullLink = `${window.location.origin}/public/share/${link.token}`
-  ElMessageBox.alert(
-    `链接已生成：<code style="background:#f5f7fa;padding:4px 8px;border-radius:4px;word-break:break-all;display:block;margin-top:8px;">${fullLink}</code>`,
-    '创建成功',
-    { dangerouslyUseHTMLString: true }
-  )
-  createVisible.value = false
+  submitting.value = true
+  try {
+    const { data } = await createShareLink({
+      ...shareForm,
+      createdBy: 1
+    })
+    const newLink = {
+      ...data,
+      title: shareForm.title,
+      dataType: shareForm.dataType,
+      token: data.linkToken || data.token,
+      linkToken: data.linkToken || data.token,
+      roleScope: shareForm.roleScope.join(','),
+      includeSensitive: shareForm.includeSensitive,
+      viewCount: 0,
+      createdAt: new Date().toISOString(),
+      expireAt: new Date(Date.now() + shareForm.validDays * 86400000).toISOString(),
+      createdBy: '当前用户'
+    }
+    shareLinks.value.unshift(newLink)
+    shareStats.total++
+    shareStats.active++
+    const fullLink = `${window.location.origin}/public/share/${newLink.token}`
+    ElMessageBox.alert(
+      `链接已生成：<code style="background:#f5f7fa;padding:4px 8px;border-radius:4px;word-break:break-all;display:block;margin-top:8px;">${fullLink}</code>`,
+      '创建成功',
+      { dangerouslyUseHTMLString: true }
+    )
+    createVisible.value = false
+    shareForm.title = ''
+    shareForm.validDays = 7
+    shareForm.includeSensitive = false
+    shareForm.password = ''
+  } catch (e) {
+    ElMessage.error('创建失败：' + (e?.message || '未知错误'))
+  } finally {
+    submitting.value = false
+  }
 }
 </script>
 
@@ -308,5 +354,7 @@ function handleCreate() {
   }
   .share-title { display: flex; align-items: center; gap: 6px; font-weight: 500; }
   .expire-info { display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
+  .role-tags { .empty-scope { color: #c0c4cc; font-size: 12px; } }
+  .form-tip { margin-top: 4px; font-size: 12px; color: #909399; }
 }
 </style>
