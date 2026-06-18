@@ -151,17 +151,31 @@ class DataRepository:
             DataSource.PAYMENT_RECORD: "payment_records",
             DataSource.PURCHASE_ORDER: "purchase_orders",
         }
+        common_cols = [
+            "id", "project_id", "project_name", "region", "is_missing",
+            "missing_fields", "batch_id",
+        ]
         for src in sources:
             table = table_map.get(src)
-            if table:
+            if not table:
+                continue
+            try:
                 df = self.duckdb.query_df(
                     f"SELECT *, '{src}' as data_source FROM {table} WHERE is_missing = true LIMIT 100"
                 )
                 if df.height > 0:
-                    dfs.append(df)
-        if dfs:
-            return pl.concat(dfs, how="diagonal")
-        return pl.DataFrame()
+                    available = [c for c in common_cols if c in df.columns]
+                    available.append("data_source")
+                    dfs.append(df.select(available))
+            except Exception:
+                continue
+        if not dfs:
+            return pl.DataFrame(schema={
+                "id": pl.Utf8, "project_id": pl.Utf8, "project_name": pl.Utf8,
+                "region": pl.Utf8, "is_missing": pl.Boolean, "missing_fields": pl.Utf8,
+                "batch_id": pl.Utf8, "data_source": pl.Utf8,
+            })
+        return pl.concat(dfs, how="diagonal")
 
     def get_design_exports(self, project_id: Optional[str] = None) -> pl.DataFrame:
         sql = "SELECT * FROM design_exports"

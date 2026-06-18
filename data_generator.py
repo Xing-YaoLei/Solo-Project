@@ -94,13 +94,13 @@ def generate_design_exports(n: int = 50, projects: Optional[List[Dict]] = None) 
             "confirmed_at": export_time + timedelta(days=random.randint(0, 7)) if random.random() > 0.4 else None,
         }
 
-        if _random_missing(0.12):
+        if _random_missing(0.35):
             missing_fields = random.sample(
-                ["design_version", "export_time", "file_path", "customer_id"],
+                ["design_version", "export_time", "file_path", "project_name"],
                 k=random.randint(1, 2),
             )
             for f in missing_fields:
-                if f in row and random.random() > 0.3:
+                if f in row:
                     row[f] = None
 
         rows.append(row)
@@ -128,13 +128,13 @@ def generate_payment_records(n: int = 60, projects: Optional[List[Dict]] = None)
             "payment_status": random.choice(PAYMENT_STATUS),
         }
 
-        if _random_missing(0.1):
+        if _random_missing(0.3):
             missing_fields = random.sample(
                 ["payment_amount", "payment_time", "payment_method"],
                 k=random.randint(1, 2),
             )
             for f in missing_fields:
-                if f in row and random.random() > 0.3:
+                if f in row:
                     row[f] = None
 
         rows.append(row)
@@ -161,13 +161,13 @@ def generate_purchase_orders(n: int = 70, projects: Optional[List[Dict]] = None)
             "order_status": random.choice(ORDER_STATUS),
         }
 
-        if _random_missing(0.08):
+        if _random_missing(0.3):
             missing_fields = random.sample(
                 ["supplier_name", "material_name", "order_amount", "order_time"],
                 k=random.randint(1, 2),
             )
             for f in missing_fields:
-                if f in row and random.random() > 0.3:
+                if f in row:
                     row[f] = None
 
         rows.append(row)

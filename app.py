@@ -1,4 +1,5 @@
 import streamlit as st
+import polars as pl
 from datetime import datetime
 
 from config import AppConfig
