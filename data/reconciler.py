@@ -171,6 +171,8 @@ def compute_payment_cycle(project_id=None):
         paid_amount = group["amount"].sum()
         paid_count = len(group)
 
+        first_payment = None
+        last_payment = None
         if signed_date and not group.empty:
             first_payment = group["payment_date"].min()
             last_payment = group["payment_date"].max()
@@ -179,6 +181,8 @@ def compute_payment_cycle(project_id=None):
         else:
             days_to_first = None
             days_to_last = None
+
+        sort_date = first_payment or signed_date or None
 
         cycles.append(
             {
@@ -195,6 +199,10 @@ def compute_payment_cycle(project_id=None):
                 "paid_count": paid_count,
                 "days_to_first": days_to_first,
                 "days_to_last": days_to_last,
+                "signed_date": signed_date,
+                "first_payment_date": first_payment,
+                "last_payment_date": last_payment,
+                "sort_date": sort_date,
             }
         )
 

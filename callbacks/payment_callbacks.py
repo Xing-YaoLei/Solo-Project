@@ -7,6 +7,19 @@ from data.loader import load_payment_records, load_reconciliation_results
 from config import RECONCILIATION_STATUS_COLORS
 
 
+def _build_filter_label(status_filter, gap_filter, matched_count=None):
+    filters = []
+    if status_filter != "all":
+        filters.append(f"状态={status_filter}")
+    if gap_filter != "all":
+        filters.append(f"缺口={'有' if gap_filter == '1' else '无'}")
+    suffix = ""
+    if filters:
+        count_suffix = f"，命中{matched_count}条" if matched_count is not None else ""
+        suffix = f"（筛选: {' / '.join(filters)}{count_suffix}）"
+    return suffix
+
+
 @callback(
     [
         Output("payment-timeline-chart", "figure"),
@@ -24,19 +37,30 @@ def update_payment_flow(selected_project, status_filter, gap_filter):
     pid = None if selected_project == "all" else selected_project
 
     payments_df = load_payment_records(pid)
-    recon_df = load_reconciliation_results(pid)
+    recon_df_raw = load_reconciliation_results(pid)
 
-    filtered_project_ids = None
+    recon_df = recon_df_raw.copy() if not recon_df_raw.empty else recon_df_raw
     if not recon_df.empty:
         if status_filter != "all":
             recon_df = recon_df[recon_df["status"] == status_filter]
         if gap_filter != "all":
             recon_df = recon_df[recon_df["gap_flag"] == int(gap_filter)]
-        filtered_project_ids = set(recon_df["project_id"].unique()) if not recon_df.empty else None
+
+    filtered_project_ids = set()
+    if status_filter == "all" and gap_filter == "all":
+        filtered_project_ids = None
+    elif not recon_df.empty:
+        filtered_project_ids = set(recon_df["project_id"].unique())
 
     display_payments = payments_df
-    if filtered_project_ids and not payments_df.empty:
-        display_payments = payments_df[payments_df["project_id"].isin(filtered_project_ids)]
+    if filtered_project_ids is not None:
+        if not payments_df.empty and filtered_project_ids:
+            display_payments = payments_df[payments_df["project_id"].isin(filtered_project_ids)]
+        elif filtered_project_ids == set():
+            display_payments = payments_df.iloc[0:0].copy()
+
+    matched_recon_count = len(recon_df) if not recon_df.empty else 0
+    filter_label = _build_filter_label(status_filter, gap_filter, matched_recon_count)
 
     if not display_payments.empty and "payment_date" in display_payments.columns:
         display_payments = display_payments.sort_values("payment_date")
@@ -81,17 +105,8 @@ def update_payment_flow(selected_project, status_filter, gap_filter):
                         font=dict(color="red", size=12),
                     )
 
-        filter_title = ""
-        if status_filter != "all" or gap_filter != "all":
-            filters = []
-            if status_filter != "all":
-                filters.append(f"状态={status_filter}")
-            if gap_filter != "all":
-                filters.append(f"缺口={'有' if gap_filter == '1' else '无'}")
-            filter_title = f"（筛选: {', '.join(filters)}）"
-
         timeline_fig.update_layout(
-            title=f"支付流水时间线{filter_title}",
+            title=f"支付流水时间线{filter_label}",
             xaxis_title="日期",
             yaxis_title="金额（元）",
             height=350,
@@ -99,9 +114,7 @@ def update_payment_flow(selected_project, status_filter, gap_filter):
         )
     else:
         timeline_fig = go.Figure()
-        filter_hint = ""
-        if status_filter != "all" or gap_filter != "all":
-            filter_hint = "（当前筛选条件下无数据）"
+        filter_hint = filter_label if filter_label else "（暂无数据）"
         timeline_fig.update_layout(title=f"支付流水时间线{filter_hint}", height=350)
 
     if not recon_df.empty:
@@ -125,7 +138,7 @@ def update_payment_flow(selected_project, status_filter, gap_filter):
             ]
         )
         diff_fig.update_layout(
-            title="对账差异汇总",
+            title=f"对账差异汇总{filter_label}",
             yaxis_title="差额（元）",
             height=350,
         )
@@ -146,18 +159,21 @@ def update_payment_flow(selected_project, status_filter, gap_filter):
                 ]
             )
             gap_fig.update_layout(
-                title="缺口金额瀑布图",
+                title=f"缺口金额瀑布图{filter_label}",
                 yaxis_title="差额（元）",
                 height=350,
             )
         else:
             gap_fig = go.Figure()
-            gap_fig.update_layout(title="缺口金额瀑布图（无缺口）", height=350)
+            gap_title = "（过滤后无缺口）" if filter_label else "（无缺口）"
+            gap_fig.update_layout(title=f"缺口金额瀑布图{gap_title}", height=350)
     else:
         diff_fig = go.Figure()
-        diff_fig.update_layout(title="对账差异汇总（暂无数据）", height=350)
+        diff_hint = filter_label if filter_label else "（暂无数据）"
+        diff_fig.update_layout(title=f"对账差异汇总{diff_hint}", height=350)
         gap_fig = go.Figure()
-        gap_fig.update_layout(title="缺口金额瀑布图（暂无数据）", height=350)
+        gap_hint = filter_label if filter_label else "（暂无数据）"
+        gap_fig.update_layout(title=f"缺口金额瀑布图{gap_hint}", height=350)
 
     if not recon_df.empty:
         display_df = recon_df.copy()
@@ -176,8 +192,18 @@ def update_payment_flow(selected_project, status_filter, gap_filter):
             page_size=15,
             style_table={"overflowX": "auto"},
         )
-        table_component = detail_table
+        table_component = html.Div(
+            [
+                html.P(
+                    f"对账明细 {filter_label.strip('()')}" if filter_label else "对账明细",
+                    className="text-muted mb-2 small",
+                ),
+                detail_table,
+            ]
+        )
     else:
-        table_component = html.Div("暂无对账明细数据", className="text-muted")
+        empty_hint = filter_label.strip("()") if filter_label else ""
+        empty_hint = f"筛选条件 [{empty_hint}] 下暂无对账明细数据" if empty_hint else "暂无对账明细数据"
+        table_component = html.Div(empty_hint, className="text-muted")
 
     return timeline_fig, diff_fig, gap_fig, table_component

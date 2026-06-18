@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from dash import Input, Output, callback, State
 import plotly.graph_objects as go
 import dash_bootstrap_components as dbc
@@ -22,10 +24,15 @@ def update_contract_cycle(selected_project):
     cycles = compute_payment_cycle(pid)
     recon_df = load_reconciliation_results(pid)
 
+    sorted_cycles = []
     if cycles:
-        contract_nos = [c["contract_no"] for c in cycles]
-        days_to_first = [c["days_to_first"] or 0 for c in cycles]
-        days_to_last = [c["days_to_last"] or 0 for c in cycles]
+        sorted_cycles = sorted(
+            cycles,
+            key=lambda c: c.get("sort_date") or datetime.max,
+        )
+        contract_nos = [c["contract_no"] for c in sorted_cycles]
+        days_to_first = [c["days_to_first"] or 0 for c in sorted_cycles]
+        days_to_last = [c["days_to_last"] or 0 for c in sorted_cycles]
 
         trend_fig = go.Figure()
         trend_fig.add_trace(
@@ -34,6 +41,8 @@ def update_contract_cycle(selected_project):
                 x=contract_nos,
                 y=days_to_first,
                 marker_color="#3498db",
+                text=[f"{d}天" for d in days_to_first],
+                textposition="auto",
             )
         )
         trend_fig.add_trace(
@@ -42,18 +51,20 @@ def update_contract_cycle(selected_project):
                 x=contract_nos,
                 y=days_to_last,
                 marker_color="#e74c3c",
+                text=[f"{d}天" for d in days_to_last],
+                textposition="auto",
             )
         )
         trend_fig.update_layout(
-            title="回款周期趋势",
+            title="回款周期趋势（按合同/回款时间排序）",
             barmode="group",
             yaxis_title="天数",
             height=350,
         )
 
-        paid_ratios = [c["paid_ratio"] * 100 for c in cycles]
-        contract_amounts = [c["contract_amount"] for c in cycles]
-        paid_amounts = [c["paid_amount"] for c in cycles]
+        paid_ratios = [c["paid_ratio"] * 100 for c in sorted_cycles]
+        contract_amounts = [c["contract_amount"] for c in sorted_cycles]
+        paid_amounts = [c["paid_amount"] for c in sorted_cycles]
 
         ratio_fig = go.Figure()
         ratio_fig.add_trace(
@@ -62,6 +73,8 @@ def update_contract_cycle(selected_project):
                 x=contract_nos,
                 y=contract_amounts,
                 marker_color="#3498db",
+                text=[f"¥{a:,.0f}" for a in contract_amounts],
+                textposition="auto",
             )
         )
         ratio_fig.add_trace(
@@ -70,6 +83,8 @@ def update_contract_cycle(selected_project):
                 x=contract_nos,
                 y=paid_amounts,
                 marker_color="#2ecc71",
+                text=[f"¥{a:,.0f}" for a in paid_amounts],
+                textposition="auto",
             )
         )
         ratio_fig.add_trace(
@@ -80,10 +95,12 @@ def update_contract_cycle(selected_project):
                 yaxis="y2",
                 mode="lines+markers",
                 line=dict(color="#f39c12", width=2),
+                text=[f"{r:.1f}%" for r in paid_ratios],
+                textposition="top center",
             )
         )
         ratio_fig.update_layout(
-            title="回款率分析",
+            title="回款率分析（按合同/回款时间排序）",
             yaxis=dict(title="金额（元）"),
             yaxis2=dict(title="回款率(%)", overlaying="y", side="right", range=[0, 120]),
             barmode="group",
@@ -159,10 +176,15 @@ def update_contract_cycle(selected_project):
     else:
         table_component = html.Div("暂无合同数据", className="text-muted")
 
-    if cycles and len(cycles) >= 2:
-        sorted_cycles = sorted(cycles, key=lambda x: x.get("days_to_first") or 9999)
-        labels = [c["contract_no"] for c in sorted_cycles]
+    if sorted_cycles and len(sorted_cycles) >= 2:
+        labels = []
+        for c in sorted_cycles:
+            sd = c.get("signed_date")
+            date_tag = sd.strftime("%Y-%m") if sd else "—"
+            labels.append(f"{c['contract_no']}\n({date_tag}签)")
+
         first_days = [c["days_to_first"] or 0 for c in sorted_cycles]
+        last_days = [c["days_to_last"] or 0 for c in sorted_cycles]
 
         improvement_fig = go.Figure()
         improvement_fig.add_trace(
@@ -170,42 +192,91 @@ def update_contract_cycle(selected_project):
                 x=labels,
                 y=first_days,
                 mode="lines+markers+text",
+                name="首笔回款天数",
                 text=[f"{d}天" for d in first_days],
                 textposition="top center",
                 line=dict(color="#2ecc71", width=3),
-                marker=dict(size=10),
+                marker=dict(size=12, symbol="circle"),
+            )
+        )
+        improvement_fig.add_trace(
+            go.Scatter(
+                x=labels,
+                y=last_days,
+                mode="lines+markers+text",
+                name="末笔回款天数",
+                text=[f"{d}天" for d in last_days],
+                textposition="bottom center",
+                line=dict(color="#3498db", width=2, dash="dash"),
+                marker=dict(size=10, symbol="diamond"),
             )
         )
         improvement_fig.update_layout(
-            title="回款周期改善趋势（首笔回款天数）",
-            yaxis_title="天数",
+            title="回款周期改善趋势（按合同签署时间，左早→右晚）",
+            yaxis_title="天数（相对于合同签署日）",
             height=400,
+            hovermode="x unified",
         )
 
-        if len(first_days) >= 2:
-            trend_diff = first_days[-1] - first_days[0]
-            if trend_diff < 0:
-                improvement_fig.add_annotation(
-                    x=labels[-1],
-                    y=first_days[-1],
-                    text=f"改善 {abs(trend_diff)} 天 ✓",
-                    showarrow=True,
-                    arrowhead=2,
-                    font=dict(color="green", size=14),
-                )
+        total_improve_first = first_days[-1] - first_days[0]
+        total_improve_last = last_days[-1] - last_days[0]
+
+        for i in range(1, len(sorted_cycles)):
+            diff_first = first_days[i] - first_days[i - 1]
+            x_mid = labels[i]
+            y_mid = (first_days[i] + first_days[i - 1]) / 2
+
+            if diff_first < 0:
+                label_txt = f"↓ 改善{abs(diff_first)}天 ✓"
+                clr = "#2ecc71"
+            elif diff_first > 0:
+                label_txt = f"↑ 恶化{diff_first}天 ✗"
+                clr = "#e74c3c"
             else:
-                improvement_fig.add_annotation(
-                    x=labels[-1],
-                    y=first_days[-1],
-                    text=f"恶化 {trend_diff} 天 ✗",
-                    showarrow=True,
-                    arrowhead=2,
-                    font=dict(color="red", size=14),
-                )
+                label_txt = "持平"
+                clr = "#7f8c8d"
+
+            improvement_fig.add_annotation(
+                x=x_mid,
+                y=first_days[i] + 3,
+                text=label_txt,
+                showarrow=False,
+                font=dict(color=clr, size=12, family="Arial Bold"),
+                bgcolor="white",
+                bordercolor=clr,
+                borderwidth=1,
+                borderpad=2,
+                opacity=0.95,
+            )
+
+        def _summary_text(diff, name):
+            if diff < 0:
+                return f"{name}整体改善{abs(diff)}天 ✓"
+            elif diff > 0:
+                return f"{name}整体恶化{diff}天 ✗"
+            return f"{name}持平"
+
+        summary_lines = []
+        summary_lines.append(_summary_text(total_improve_first, "首笔"))
+        summary_lines.append(_summary_text(total_improve_last, "末笔"))
+        overall_y = max(first_days + last_days) + 10
+        improvement_fig.add_annotation(
+            x=labels[-1],
+            y=overall_y,
+            text="<br>".join(summary_lines),
+            showarrow=False,
+            align="right",
+            xanchor="right",
+            font=dict(size=13),
+            bgcolor="#f8f9fa",
+            bordercolor="#343a40",
+            borderwidth=1,
+            borderpad=6,
+        )
     else:
         improvement_fig = go.Figure()
         improvement_fig.update_layout(
-            title="回款周期改善趋势（需至少2个合同）", height=400
+            title="回款周期改善趋势（需至少2个合同，按签署时间排序）", height=400
         )
 
     return trend_fig, ratio_fig, table_component, improvement_fig
