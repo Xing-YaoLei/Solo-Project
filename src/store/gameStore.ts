@@ -131,6 +131,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     const config = getConfigByDifficulty(state.difficulty);
     const nextDay = state.currentDay + 1;
 
+    get().recordAction('day_advance', { day: nextDay, score: state.score });
+
     const dailyUsageCount = 3 + Math.floor(Math.random() * 3);
     const newUsages = generateDailyUsages(nextDay, dailyUsageCount, level.dailyDemandMultiplier);
 
@@ -183,11 +185,6 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       updatedStatistics
     );
 
-    if (nextDay > level.targetDays) {
-      set({ phase: 'settlement' });
-      get().recordAction('game_complete', { finalDay: nextDay });
-    }
-
     set({
       currentDay: nextDay,
       usageRecords: [...state.usageRecords, ...newUsages],
@@ -201,7 +198,10 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       statistics: updatedStatistics
     });
 
-    get().recordAction('day_advance', { day: nextDay, score: newScore });
+    if (nextDay >= level.targetDays) {
+      set({ phase: 'settlement' });
+      get().recordAction('game_complete', { finalDay: nextDay });
+    }
   },
 
   scheduleDelivery: (supplierId: string, materialType: MaterialType, quantity: number, daysAhead: number) => {
@@ -267,9 +267,13 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     const calculatedThinkingTime = thinkingTime ?? (now - state.lastActionTime);
 
     const decisionActions = ['day_advance', 'schedule_delivery', 'accept_delivery', 'resolve_event', 'use_item'];
-    if (decisionActions.includes(action) && calculatedThinkingTime > 8000 && state.phase === 'playing') {
+    if (decisionActions.includes(action) && calculatedThinkingTime > 8000) {
+      const targetDay = action === 'day_advance' && typeof details.day === 'number' ? details.day : state.currentDay;
+      const levelForCheck = getLevelById(state.levelId || '');
+      const isLastDay = action === 'day_advance' && typeof details.day === 'number' && levelForCheck ? details.day >= levelForCheck.targetDays : false;
+
       const stuckReason = action === 'day_advance'
-        ? `第${state.currentDay}天推进前犹豫${Math.round(calculatedThinkingTime / 1000)}秒，可能在纠结配送时机或等待到货`
+        ? `推进至第${targetDay}天前犹豫${Math.round(calculatedThinkingTime / 1000)}秒，可能在纠结配送时机或等待到货${isLastDay ? '（收官决策）' : ''}`
         : action === 'schedule_delivery'
         ? `安排配送前思考${Math.round(calculatedThinkingTime / 1000)}秒，可能在权衡供应商和数量`
         : action === 'accept_delivery'
@@ -280,7 +284,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
 
       const stuckPoint: StuckPoint = {
         timestamp: now,
-        day: state.currentDay,
+        day: targetDay as number,
         reason: stuckReason,
         duration: calculatedThinkingTime
       };
