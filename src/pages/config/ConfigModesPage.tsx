@@ -1,10 +1,10 @@
-import { useState } from 'react'
-import { Rocket, Compass, FileCheck, Save, Info, Lightbulb, Timer, RefreshCw } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Rocket, Compass, FileCheck, Save, Info, Lightbulb, Timer, RefreshCw, CheckCircle2 } from 'lucide-react'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import { useConfigStore } from '@/stores/useConfigStore'
-import { mockModes } from '@/utils/mockData'
 import { cn } from '@/lib/utils'
+import type { ModeParam } from '@/types/config'
 
 type ModeType = 'campaign' | 'practice' | 'exam'
 
@@ -59,16 +59,54 @@ const DEFAULT_MODES: ModeConfig[] = [
   },
 ]
 
-export default function ConfigModesPage() {
-  const modes = useConfigStore((s) => s.modes)
-  const saveConfig = useConfigStore((s) => s.saveConfig)
-
-  const [modeConfigs, setModeConfigs] = useState<ModeConfig[]>(() => {
-    if (mockModes && mockModes.length > 0) {
-      return DEFAULT_MODES
+const paramsToModeConfigs = (params: ModeParam[]): ModeConfig[] => {
+  const configs: ModeConfig[] = DEFAULT_MODES.map((m) => ({ ...m, params: { ...m.params } }))
+  params.forEach((p) => {
+    const [modeKey, ...paramParts] = p.key.split('-')
+    const paramKey = paramParts.join('-')
+    const config = configs.find((c) => c.key === modeKey)
+    if (config && paramKey) {
+      let value: string | boolean | number = p.value
+      if (value === 'true') value = true
+      else if (value === 'false') value = false
+      else if (!isNaN(Number(value))) value = Number(value)
+      config.params[paramKey] = value
     }
-    return DEFAULT_MODES
   })
+  return configs
+}
+
+const modeConfigsToParams = (configs: ModeConfig[]): ModeParam[] => {
+  const params: ModeParam[] = []
+  configs.forEach((config) => {
+    Object.entries(config.params).forEach(([key, value]) => {
+      params.push({
+        id: `${config.key}-${key}`,
+        key: `${config.key}-${key}`,
+        value: String(value),
+      })
+    })
+  })
+  return params
+}
+
+export default function ConfigModesPage() {
+  const storeModes = useConfigStore((s) => s.modes)
+  const updateModes = useConfigStore((s) => s.updateModes)
+  const loadConfig = useConfigStore((s) => s.loadConfig)
+
+  const [modeConfigs, setModeConfigs] = useState<ModeConfig[]>(DEFAULT_MODES)
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    loadConfig()
+  }, [loadConfig])
+
+  useEffect(() => {
+    if (storeModes.length > 0) {
+      setModeConfigs(paramsToModeConfigs(storeModes))
+    }
+  }, [storeModes])
 
   const updateParam = (modeKey: ModeType, paramKey: string, value: string | boolean | number) => {
     setModeConfigs((prev) =>
@@ -78,10 +116,14 @@ export default function ConfigModesPage() {
           : m
       )
     )
+    setSaved(false)
   }
 
   const handleSave = () => {
-    saveConfig()
+    const params = modeConfigsToParams(modeConfigs)
+    updateModes(params)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
   }
 
   const formatTime = (seconds: number) => {
@@ -99,9 +141,18 @@ export default function ConfigModesPage() {
             <h2 className="text-lg font-semibold text-neutral-800">训练模式配置</h2>
             <p className="text-sm text-neutral-500">配置三种训练模式的参数和规则</p>
           </div>
-          <Button onClick={handleSave}>
-            <Save className="h-4 w-4" />
-            保存配置
+          <Button onClick={handleSave} disabled={saved}>
+            {saved ? (
+              <>
+                <CheckCircle2 className="h-4 w-4" />
+                已保存
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4" />
+                保存配置
+              </>
+            )}
           </Button>
         </div>
 

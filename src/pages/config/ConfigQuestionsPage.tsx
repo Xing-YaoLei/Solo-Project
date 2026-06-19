@@ -1,13 +1,11 @@
-import { useState } from 'react'
-import { Plus, Edit2, Search, Tag, CalendarClock, ListTodo } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Plus, Edit2, Search, Tag, CalendarClock, ListTodo, Trash2 } from 'lucide-react'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import QuestionForm from '@/components/config/QuestionForm'
 import { useConfigStore } from '@/stores/useConfigStore'
-import { mockQuestions } from '@/utils/mockData'
 import { cn } from '@/lib/utils'
 import type { Question, QuestionType } from '@/types/training'
-import type { Question as MockQuestion } from '@/utils/mockData'
 
 const TYPE_LABELS: Record<QuestionType, { label: string; icon: typeof Search; color: string }> = {
   evidence: { label: '证据识别', icon: Search, color: 'bg-indigo-100 text-indigo-600' },
@@ -24,23 +22,21 @@ const LEVEL_NAMES: Record<string, string> = {
 
 export default function ConfigQuestionsPage() {
   const storeQuestions = useConfigStore((s) => s.questions)
+  const loadConfig = useConfigStore((s) => s.loadConfig)
+  const addQuestion = useConfigStore((s) => s.addQuestion)
+  const updateQuestion = useConfigStore((s) => s.updateQuestion)
+  const deleteQuestion = useConfigStore((s) => s.deleteQuestion)
+  
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [filterType, setFilterType] = useState<QuestionType | 'all'>('all')
 
-  const displayQuestions: Question[] = storeQuestions.length > 0
-    ? storeQuestions
-    : mockQuestions.map((q) => ({
-        id: q.id,
-        levelId: q.levelId,
-        type: q.type,
-        description: q.description,
-        score: q.score,
-        correctReason: q.correctReason,
-      }))
+  useEffect(() => {
+    loadConfig()
+  }, [loadConfig])
 
-  const filteredQuestions = displayQuestions.filter((q) => {
+  const filteredQuestions = storeQuestions.filter((q) => {
     const matchesSearch = q.description.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesType = filterType === 'all' || q.type === filterType
     return matchesSearch && matchesType
@@ -59,6 +55,12 @@ export default function ConfigQuestionsPage() {
   const handleCancel = () => {
     setShowForm(false)
     setEditingQuestion(null)
+  }
+
+  const handleDelete = (id: string) => {
+    if (window.confirm('确定删除该题目吗？')) {
+      deleteQuestion(id)
+    }
   }
 
   if (showForm) {
@@ -165,13 +167,21 @@ export default function ConfigQuestionsPage() {
                       <span className="text-sm font-medium text-neutral-800">{question.score}</span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <button
-                        onClick={() => handleEdit(question)}
-                        className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-sm text-neutral-600 transition hover:bg-neutral-100 hover:text-primary"
-                      >
-                        <Edit2 className="h-4 w-4" />
-                        编辑
-                      </button>
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => handleEdit(question)}
+                          className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-sm text-neutral-600 transition hover:bg-neutral-100 hover:text-primary"
+                        >
+                          <Edit2 className="h-4 w-4" />
+                          编辑
+                        </button>
+                        <button
+                          onClick={() => handleDelete(question.id)}
+                          className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-sm text-neutral-600 transition hover:bg-danger/10 hover:text-danger"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 )

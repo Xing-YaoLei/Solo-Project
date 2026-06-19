@@ -44,7 +44,7 @@ export default function ReplayPage() {
     }
   }, [recordId, loadReplays, playReplay, currentReplay])
 
-  const formatDate = (date: Date) => {
+  const formatDate = (date: Date | string) => {
     return new Date(date).toLocaleString('zh-CN', {
       month: '2-digit',
       day: '2-digit',

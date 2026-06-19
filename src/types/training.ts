@@ -20,8 +20,8 @@ export interface Level {
   name: string;
   difficulty: number;
   isOpen: boolean;
-  openTime: Date;
-  closeTime: Date;
+  openTime: string;
+  closeTime: string;
 }
 
 export interface Question {
@@ -53,8 +53,8 @@ export interface CalendarTask {
   id: string;
   questionId: string;
   roomId: string;
-  checkOut: Date;
-  nextCheckIn: Date;
+  checkOut: string;
+  nextCheckIn: string;
   priority: number;
   requiredMinutes: number;
 }
@@ -65,7 +65,7 @@ export interface CleaningTask {
   roomId: string;
   type: string;
   priority: number;
-  deadline: Date;
+  deadline: string;
   assignedTo: string;
 }
 
@@ -76,6 +76,7 @@ export interface QuestionResult {
   type: QuestionType;
   isCorrect: boolean;
   timeSpent: number;
+  recommendedTime: number;
   hesitationPoints: number;
   userAnswer: string;
 }
@@ -86,7 +87,8 @@ export interface TrainingRecord {
   levelId: string;
   score: number;
   onTimeRate: number;
-  status: string;
-  startTime: Date;
-  endTime: Date;
+  status: 'completed' | 'failed';
+  startTime: string;
+  endTime: string;
+  results: QuestionResult[];
 }

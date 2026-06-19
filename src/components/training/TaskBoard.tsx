@@ -45,7 +45,7 @@ export default function TaskBoard({ question, tasks, cleaners }: TaskBoardProps)
     setSubmitted(false)
   }
 
-  const formatDeadline = (date: Date) => {
+  const formatDeadline = (date: Date | string) => {
     return new Date(date).toLocaleTimeString('zh-CN', {
       hour: '2-digit',
       minute: '2-digit',

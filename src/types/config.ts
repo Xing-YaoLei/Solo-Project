@@ -7,8 +7,7 @@ export interface RewardConfig {
 
 export interface RewardItem {
   id: string;
-  configId: string;
-  type: string;
+  type: 'points' | 'badge' | 'level';
   threshold: number;
   value: string;
 }
@@ -20,7 +19,6 @@ export interface ScheduleConfig {
 
 export interface TimeSlot {
   id: string;
-  configId: string;
   dayOfWeek: string;
   startTime: string;
   endTime: string;
@@ -34,7 +32,6 @@ export interface ModeConfig {
 
 export interface ModeParam {
   id: string;
-  configId: string;
   key: string;
   value: string;
 }
@@ -45,20 +42,13 @@ export interface Asset {
   type: 'model' | 'image' | 'audio';
   url: string;
   questionId?: string;
-  uploadedAt: Date;
+  uploadedAt: string;
+  fileSize?: number;
 }
 
 export interface ConfigBundle {
-  questions: Question[];
-  evidences: Evidence[];
-  tagOptions: TagOption[];
-  calendarTasks: CalendarTask[];
-  cleaningTasks: CleaningTask[];
+  rewards: RewardItem[];
+  schedule: TimeSlot[];
+  modes: ModeParam[];
   assets: Asset[];
-  rewardConfigs: RewardConfig[];
-  rewardItems: RewardItem[];
-  scheduleConfigs: ScheduleConfig[];
-  timeSlots: TimeSlot[];
-  modeConfigs: ModeConfig[];
-  modeParams: ModeParam[];
 }

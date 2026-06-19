@@ -16,7 +16,7 @@ export default function RecordList({ onSelectRecord }: RecordListProps) {
     fetchRecords()
   }, [fetchRecords])
 
-  const formatDate = (date: Date) => {
+  const formatDate = (date: Date | string) => {
     return new Date(date).toLocaleDateString('zh-CN', {
       month: '2-digit',
       day: '2-digit',
@@ -25,7 +25,7 @@ export default function RecordList({ onSelectRecord }: RecordListProps) {
     })
   }
 
-  const formatDuration = (start: Date, end: Date) => {
+  const formatDuration = (start: Date | string, end: Date | string) => {
     const diff = new Date(end).getTime() - new Date(start).getTime()
     const minutes = Math.floor(diff / 60000)
     const seconds = Math.floor((diff % 60000) / 1000)

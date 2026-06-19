@@ -122,7 +122,7 @@ export default function QuestionForm({ editingQuestion, onCancel }: QuestionForm
   }
 
   const addCalendarTask = () => {
-    const now = new Date()
+    const now = new Date().toISOString()
     setCalendarTasks((prev) => [
       ...prev,
       {
@@ -154,7 +154,7 @@ export default function QuestionForm({ editingQuestion, onCancel }: QuestionForm
         roomId: '',
         type: 'daily',
         priority: 2,
-        deadline: new Date(),
+        deadline: new Date().toISOString(),
         assignedTo: '',
       },
     ])

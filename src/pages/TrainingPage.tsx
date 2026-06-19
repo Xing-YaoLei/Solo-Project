@@ -91,8 +91,8 @@ export default function TrainingPage() {
       id: t.id,
       questionId,
       roomId: t.roomId,
-      checkOut: new Date(t.checkOut),
-      nextCheckIn: new Date(t.nextCheckIn),
+      checkOut: t.checkOut,
+      nextCheckIn: t.nextCheckIn,
       priority: t.priority,
       requiredMinutes: t.requiredMinutes,
     }))
@@ -104,7 +104,7 @@ export default function TrainingPage() {
       roomId: t.roomId,
       type: t.type,
       priority: t.priority,
-      deadline: new Date(t.deadline),
+      deadline: t.deadline,
       assignedTo: t.assignedTo,
     }))
 
@@ -115,8 +115,8 @@ export default function TrainingPage() {
         name: l.name,
         difficulty: l.difficulty,
         isOpen: l.isOpen,
-        openTime: new Date(l.openTime),
-        closeTime: new Date(l.closeTime),
+        openTime: l.openTime,
+        closeTime: l.closeTime,
       })))
     }
     const levelQuestions = mockQuestions.filter((q) => q.levelId === levelId)
@@ -156,15 +156,15 @@ export default function TrainingPage() {
     setIsCorrect(correct)
     setFeedbackReason(currentQuestion?.correctReason ?? '')
     setEarnedScore(correct ? currentQuestion?.score ?? 0 : 0)
-    submitAnswer(currentQuestion?.id ?? '', { correct })
+    submitAnswer(currentQuestion?.id ?? '', { correct }, correct)
     setShowFeedback(true)
   }
 
   const handleFeedbackContinue = () => {
     setShowFeedback(false)
     if (isLastQuestion) {
-      finishTraining()
-      navigate('/records')
+      const { recordId, isSuccess } = finishTraining()
+      navigate(`/records?recordId=${recordId}&isSuccess=${isSuccess}`)
     }
   }
 

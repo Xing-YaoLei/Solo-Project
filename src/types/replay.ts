@@ -22,7 +22,8 @@ export interface PlaybackState {
 export interface ReplayData {
   id: string;
   recordId: string;
+  levelId?: string;
   actionLog: ActionLog[];
   hesitationThreshold: number;
-  createdAt: Date;
+  createdAt: string;
 }

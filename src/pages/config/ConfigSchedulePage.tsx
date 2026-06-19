@@ -1,10 +1,11 @@
-import { useState } from 'react'
-import { Calendar, Clock, Plus, Trash2, Save, Lock, Unlock } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Calendar, Clock, Plus, Trash2, Save, Lock, Unlock, CheckCircle2 } from 'lucide-react'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import { useConfigStore } from '@/stores/useConfigStore'
-import { mockSchedule, mockLevels } from '@/utils/mockData'
+import { mockLevels } from '@/utils/mockData'
 import { cn } from '@/lib/utils'
+import type { TimeSlot } from '@/types/config'
 
 const DAYS_OF_WEEK = [
   { key: 'Monday', label: '周一' },
@@ -16,44 +17,53 @@ const DAYS_OF_WEEK = [
   { key: 'Sunday', label: '周日' },
 ]
 
-interface TimeSlot {
-  id: string
-  dayOfWeek: string
-  startTime: string
-  endTime: string
-  maxAttempts: number
-}
-
 export default function ConfigSchedulePage() {
-  const schedules = useConfigStore((s) => s.schedules)
-  const saveConfig = useConfigStore((s) => s.saveConfig)
+  const storeSchedules = useConfigStore((s) => s.schedules)
+  const updateSchedules = useConfigStore((s) => s.updateSchedules)
+  const loadConfig = useConfigStore((s) => s.loadConfig)
 
-  const [slots, setSlots] = useState<TimeSlot[]>(mockSchedule)
+  const [slots, setSlots] = useState<TimeSlot[]>([])
   const [dailyLimit, setDailyLimit] = useState(5)
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    loadConfig()
+  }, [loadConfig])
+
+  useEffect(() => {
+    if (storeSchedules.length > 0) {
+      setSlots(storeSchedules)
+    }
+  }, [storeSchedules])
 
   const updateSlot = (id: string, updates: Partial<TimeSlot>) => {
     setSlots((prev) => prev.map((s) => (s.id === id ? { ...s, ...updates } : s)))
+    setSaved(false)
   }
 
   const addSlot = (dayOfWeek: string) => {
     setSlots((prev) => [
       ...prev,
       {
-        id: `slot-new-${prev.length}`,
+        id: `slot-${Date.now()}`,
         dayOfWeek,
         startTime: '09:00',
         endTime: '18:00',
         maxAttempts: 5,
       },
     ])
+    setSaved(false)
   }
 
   const removeSlot = (id: string) => {
     setSlots((prev) => prev.filter((s) => s.id !== id))
+    setSaved(false)
   }
 
   const handleSave = () => {
-    saveConfig()
+    updateSchedules(slots)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
   }
 
   const slotsByDay = DAYS_OF_WEEK.reduce((acc, day) => {
@@ -69,9 +79,18 @@ export default function ConfigSchedulePage() {
             <h2 className="text-lg font-semibold text-neutral-800">开放时间配置</h2>
             <p className="text-sm text-neutral-500">设置各关卡的开放时间段和每日训练次数限制</p>
           </div>
-          <Button onClick={handleSave}>
-            <Save className="h-4 w-4" />
-            保存配置
+          <Button onClick={handleSave} disabled={saved}>
+            {saved ? (
+              <>
+                <CheckCircle2 className="h-4 w-4" />
+                已保存
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4" />
+                保存配置
+              </>
+            )}
           </Button>
         </div>
 

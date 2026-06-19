@@ -1,60 +1,63 @@
-import { useState } from 'react'
-import { Gift, Star, Trophy, Medal, Plus, Trash2, Save, Eye } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Gift, Star, Trophy, Medal, Plus, Trash2, Save, Eye, CheckCircle2 } from 'lucide-react'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import { useConfigStore } from '@/stores/useConfigStore'
-import { mockRewards } from '@/utils/mockData'
 import { cn } from '@/lib/utils'
+import type { RewardItem } from '@/types/config'
 
-interface RewardRule {
-  id: string
-  type: 'points' | 'badge' | 'level'
-  threshold: number
-  value: string
-}
-
-const TYPE_CONFIG: Record<RewardRule['type'], { label: string; icon: typeof Star; color: string }> = {
+const TYPE_CONFIG: Record<RewardItem['type'], { label: string; icon: typeof Star; color: string }> = {
   points: { label: '积分奖励', icon: Star, color: 'bg-amber-100 text-amber-600' },
   badge: { label: '徽章奖励', icon: Medal, color: 'bg-indigo-100 text-indigo-600' },
   level: { label: '等级称号', icon: Trophy, color: 'bg-emerald-100 text-emerald-600' },
 }
 
 export default function ConfigRewardsPage() {
-  const rewards = useConfigStore((s) => s.rewards)
-  const saveConfig = useConfigStore((s) => s.saveConfig)
+  const storeRewards = useConfigStore((s) => s.rewards)
+  const updateRewards = useConfigStore((s) => s.updateRewards)
+  const loadConfig = useConfigStore((s) => s.loadConfig)
 
-  const [rules, setRules] = useState<RewardRule[]>(
-    mockRewards.map((r) => ({
-      id: r.id,
-      type: r.type as RewardRule['type'],
-      threshold: r.threshold,
-      value: r.value,
-    }))
-  )
+  const [rules, setRules] = useState<RewardItem[]>([])
   const [showPreview, setShowPreview] = useState(false)
+  const [saved, setSaved] = useState(false)
 
-  const addRule = (type: RewardRule['type']) => {
+  useEffect(() => {
+    loadConfig()
+  }, [loadConfig])
+
+  useEffect(() => {
+    if (storeRewards.length > 0) {
+      setRules(storeRewards)
+    }
+  }, [storeRewards])
+
+  const addRule = (type: 'points' | 'badge' | 'level') => {
     setRules((prev) => [
       ...prev,
       {
-        id: `rule-new-${prev.length}`,
+        id: `rule-${Date.now()}`,
         type,
         threshold: 0,
         value: '',
       },
     ])
+    setSaved(false)
   }
 
-  const updateRule = (id: string, updates: Partial<RewardRule>) => {
+  const updateRule = (id: string, updates: Partial<RewardItem>) => {
     setRules((prev) => prev.map((r) => (r.id === id ? { ...r, ...updates } : r)))
+    setSaved(false)
   }
 
   const removeRule = (id: string) => {
     setRules((prev) => prev.filter((r) => r.id !== id))
+    setSaved(false)
   }
 
   const handleSave = () => {
-    saveConfig()
+    updateRewards(rules)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
   }
 
   const groupedRules = {
@@ -76,9 +79,18 @@ export default function ConfigRewardsPage() {
               <Eye className="h-4 w-4" />
               {showPreview ? '隐藏预览' : '预览效果'}
             </Button>
-            <Button onClick={handleSave}>
-              <Save className="h-4 w-4" />
-              保存配置
+            <Button onClick={handleSave} disabled={saved}>
+              {saved ? (
+                <>
+                  <CheckCircle2 className="h-4 w-4" />
+                  已保存
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4" />
+                  保存配置
+                </>
+              )}
             </Button>
           </div>
         </div>

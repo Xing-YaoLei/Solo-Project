@@ -82,7 +82,7 @@ export default function CalendarSorter({ question, tasks }: CalendarSorterProps)
     setSubmitted(false)
   }
 
-  const formatTime = (date: Date) => {
+  const formatTime = (date: Date | string) => {
     return new Date(date).toLocaleTimeString('zh-CN', {
       hour: '2-digit',
       minute: '2-digit',

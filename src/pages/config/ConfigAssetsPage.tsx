@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react'
-import { Upload, Image, Box, Music, Trash2, Download, Plus, Search } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { Upload, Image, Box, Music, Trash2, Download, Plus, Search, CheckCircle2, Save } from 'lucide-react'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import { useConfigStore } from '@/stores/useConfigStore'
@@ -13,11 +13,24 @@ const TYPE_CONFIG: Record<Asset['type'], { label: string; icon: typeof Image; co
 }
 
 export default function ConfigAssetsPage() {
-  const assets = useConfigStore((s) => s.assets)
+  const storeAssets = useConfigStore((s) => s.assets)
+  const updateAssets = useConfigStore((s) => s.updateAssets)
+  const loadConfig = useConfigStore((s) => s.loadConfig)
+  
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [dragOver, setDragOver] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [filterType, setFilterType] = useState<Asset['type'] | 'all'>('all')
+  const [assets, setAssets] = useState<Asset[]>([])
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    loadConfig()
+  }, [loadConfig])
+
+  useEffect(() => {
+    setAssets(storeAssets)
+  }, [storeAssets])
 
   const filteredAssets = assets.filter((asset) => {
     const matchesSearch = asset.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -26,23 +39,48 @@ export default function ConfigAssetsPage() {
   })
 
   const handleUpload = (files: FileList | null) => {
-    if (!files) return
-    console.log('上传文件:', files)
+    if (!files || files.length === 0) return
+    
+    const newAssets: Asset[] = Array.from(files).map((file) => ({
+      id: `asset-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      name: file.name,
+      type: file.type.startsWith('image/') ? 'image' :
+            file.type.startsWith('audio/') ? 'audio' : 'model',
+      url: URL.createObjectURL(file),
+      uploadedAt: new Date().toISOString(),
+      fileSize: file.size,
+    }))
+    
+    setAssets((prev) => [...prev, ...newAssets])
+    setSaved(false)
   }
 
   const handleDelete = (id: string) => {
     if (window.confirm('确定删除该素材吗？')) {
-      console.log('删除素材:', id)
+      setAssets((prev) => prev.filter((a) => a.id !== id))
+      setSaved(false)
     }
   }
 
-  const formatDate = (date: Date) => {
+  const handleSave = () => {
+    updateAssets(assets)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
+  }
+
+  const formatDate = (date: Date | string) => {
     return new Date(date).toLocaleDateString('zh-CN', {
       month: '2-digit',
       day: '2-digit',
       hour: '2-digit',
       minute: '2-digit',
     })
+  }
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return bytes + ' B'
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
   }
 
   return (
@@ -53,10 +91,25 @@ export default function ConfigAssetsPage() {
             <h2 className="text-lg font-semibold text-neutral-800">素材管理</h2>
             <p className="text-sm text-neutral-500">共 {filteredAssets.length} 个素材资源</p>
           </div>
-          <Button onClick={() => fileInputRef.current?.click()}>
-            <Plus className="h-4 w-4" />
-            上传素材
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={handleSave} disabled={saved}>
+              {saved ? (
+                <>
+                  <CheckCircle2 className="h-4 w-4" />
+                  已保存
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4" />
+                  保存配置
+                </>
+              )}
+            </Button>
+            <Button onClick={() => fileInputRef.current?.click()}>
+              <Plus className="h-4 w-4" />
+              上传素材
+            </Button>
+          </div>
           <input
             ref={fileInputRef}
             type="file"

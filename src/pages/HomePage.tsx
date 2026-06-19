@@ -29,13 +29,19 @@ export default function HomePage() {
   const displayLevels: MockLevel[] = levels.length > 0
     ? levels.map((l) => {
         const mock = mockLevels.find((m) => m.id === l.id)
+        const openTimeStr = typeof l.openTime === 'string' 
+          ? l.openTime 
+          : new Date(l.openTime as Date).toISOString()
+        const closeTimeStr = typeof l.closeTime === 'string' 
+          ? l.closeTime 
+          : new Date(l.closeTime as Date).toISOString()
         return {
           id: l.id,
           name: l.name,
           difficulty: l.difficulty as 1 | 2 | 3,
           isOpen: l.isOpen,
-          openTime: l.openTime.toISOString(),
-          closeTime: l.closeTime.toISOString(),
+          openTime: openTimeStr,
+          closeTime: closeTimeStr,
           description: mock?.description ?? '',
           reward: mock?.reward ?? 0,
         }
@@ -49,8 +55,8 @@ export default function HomePage() {
         name: l.name,
         difficulty: l.difficulty,
         isOpen: l.isOpen,
-        openTime: new Date(l.openTime),
-        closeTime: new Date(l.closeTime),
+        openTime: l.openTime,
+        closeTime: l.closeTime,
       })))
     }
     if (!user) {
