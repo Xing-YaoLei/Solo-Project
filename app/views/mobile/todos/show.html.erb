@@ -1,0 +1,61 @@
+<div class="p-4 space-y-4">
+  <div class="bg-white rounded-xl p-5 shadow-sm">
+    <div class="flex items-start justify-between">
+      <h1 class="text-lg font-semibold text-gray-900"><%= @todo.title %></h1>
+      <span class="px-3 py-1 rounded-full text-sm font-medium <%= status_bg_class(@todo.status) %>">
+        <%= status_text(@todo.status) %>
+      </span>
+    </div>
+
+    <div class="mt-4 space-y-3 text-sm">
+      <div class="flex items-center text-gray-600">
+        <span class="w-20 text-gray-500">优先级：</span>
+        <span class="<%= priority_text_class(@todo.priority) %> font-medium"><%= @todo.priority_text %></span>
+      </div>
+      <div class="flex items-center text-gray-600">
+        <span class="w-20 text-gray-500">创建人：</span>
+        <span><%= @todo.creator&.name || "-" %></span>
+      </div>
+      <div class="flex items-center text-gray-600">
+        <span class="w-20 text-gray-500">截止时间：</span>
+        <span><%= @todo.due_date&.strftime("%Y-%m-%d %H:%M") || "-" %></span>
+      </div>
+      <% if @todo.todoable_type.present? %>
+        <div class="flex items-center text-gray-600">
+          <span class="w-20 text-gray-500">关联对象：</span>
+          <span><%= @todo.todoable_type.constantize.model_name.human %> #<%= @todo.todoable_id %></span>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <% if @todo.description.present? %>
+    <div class="bg-white rounded-xl p-5 shadow-sm">
+      <h3 class="text-sm font-medium text-gray-900 mb-2">任务描述</h3>
+      <p class="text-sm text-gray-600 leading-relaxed"><%= @todo.description %></p>
+    </div>
+  <% end %>
+
+  <div class="bg-white rounded-xl p-5 shadow-sm">
+    <h3 class="text-sm font-medium text-gray-900 mb-4">操作</h3>
+    <div class="grid grid-cols-2 gap-3">
+      <% if @todo.may_start? %>
+        <%= button_to start_todo_path(@todo), method: :patch, class: "w-full py-3 bg-indigo-600 text-white rounded-lg text-sm font-medium" do %>
+          开始处理
+        <% end %>
+      <% end %>
+
+      <% if @todo.may_complete? %>
+        <%= button_to complete_todo_path(@todo), method: :patch, class: "w-full py-3 bg-green-600 text-white rounded-lg text-sm font-medium" do %>
+          完成任务
+        <% end %>
+      <% end %>
+
+      <% if @todo.may_cancel? %>
+        <%= button_to cancel_todo_path(@todo), method: :patch, class: "w-full py-3 bg-gray-500 text-white rounded-lg text-sm font-medium" do %>
+          取消任务
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+</div>

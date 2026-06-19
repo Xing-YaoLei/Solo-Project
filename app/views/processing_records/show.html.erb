@@ -1,0 +1,110 @@
+<div class="space-y-6">
+  <div class="flex items-center gap-4">
+    <%= link_to processing_records_path, class: "p-2 rounded-lg hover:bg-gray-100" do %>
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+      </svg>
+    <% end %>
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">处理记录详情</h1>
+      <p class="text-gray-500 mt-1"><%= @processing_record.action_type %></p>
+    </div>
+    <div class="ml-auto flex gap-2">
+      <%= link_to "编辑", edit_processing_record_path(@processing_record), class: "px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50" %>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="lg:col-span-2 space-y-6">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100">
+        <div class="p-5 border-b border-gray-100">
+          <h2 class="text-lg font-semibold text-gray-900">记录信息</h2>
+        </div>
+        <div class="p-5">
+          <dl class="grid grid-cols-2 gap-4">
+            <div>
+              <dt class="text-sm text-gray-500">操作类型</dt>
+              <dd class="mt-1 text-gray-900 font-medium"><%= @processing_record.action_type %></dd>
+            </div>
+            <div>
+              <dt class="text-sm text-gray-500">状态</dt>
+              <dd class="mt-1">
+                <span class="px-2 py-1 text-xs rounded-full <%= status_class(@processing_record.status) %>">
+                  <%= status_text(@processing_record.status) %>
+                </span>
+              </dd>
+            </div>
+            <div>
+              <dt class="text-sm text-gray-500">经办人</dt>
+              <dd class="mt-1 text-gray-900 font-medium"><%= @processing_record.handler.name %></dd>
+            </div>
+            <div>
+              <dt class="text-sm text-gray-500">创建时间</dt>
+              <dd class="mt-1 text-gray-900 font-medium"><%= format_datetime(@processing_record.created_at) %></dd>
+            </div>
+            <div>
+              <dt class="text-sm text-gray-500">关联对象</dt>
+              <dd class="mt-1 text-gray-900 font-medium">
+                <%= @processing_record.recordable_type %> #<%= @processing_record.recordable_id %>
+              </dd>
+            </div>
+            <div>
+              <dt class="text-sm text-gray-500">更新时间</dt>
+              <dd class="mt-1 text-gray-900 font-medium"><%= format_datetime(@processing_record.updated_at) %></dd>
+            </div>
+          </dl>
+
+          <% if @processing_record.notes.present? %>
+            <div class="mt-6 pt-6 border-t border-gray-100">
+              <dt class="text-sm text-gray-500 mb-2">备注说明</dt>
+              <dd class="text-gray-700 whitespace-pre-wrap"><%= @processing_record.notes %></dd>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100">
+        <div class="p-5 border-b border-gray-100 flex items-center justify-between">
+          <h2 class="text-lg font-semibold text-gray-900">附件</h2>
+          <%= button_to "上传附件", add_attachment_processing_record_path(@processing_record), method: :post, class: "px-3 py-1.5 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700", multipart: true do %>
+            <input type="file" name="attachments[]" multiple class="hidden" id="file-upload" onchange="this.form.submit()">
+            <label for="file-upload" class="cursor-pointer">上传附件</label>
+          <% end %>
+        </div>
+        <div class="divide-y divide-gray-100">
+          <% if @processing_record.attachments.attached? %>
+            <% @processing_record.attachments.each do |attachment| %>
+              <div class="p-4 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                  </svg>
+                  <div>
+                    <%= link_to attachment.filename.to_s, rails_blob_path(attachment, disposition: "attachment"), class: "text-indigo-600 hover:text-indigo-900 font-medium" %>
+                    <p class="text-xs text-gray-500"><%= number_to_human_size(attachment.byte_size) %></p>
+                  </div>
+                </div>
+                <%= button_to "删除", remove_attachment_processing_record_path(@processing_record, attachment_id: attachment.id), method: :delete, class: "text-red-600 hover:text-red-700 text-sm", data: { confirm: "确定删除？" } %>
+              </div>
+            <% end %>
+          <% else %>
+            <div class="p-8 text-center text-gray-500">
+              暂无附件
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <div class="space-y-6">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+        <h3 class="font-semibold text-gray-900 mb-4">关联对象</h3>
+        <% if @processing_record.recordable.present? %>
+          <%= link_to @processing_record.recordable, class: "block w-full px-4 py-2 text-center bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100" do %>
+            查看 <%= @processing_record.recordable_type %>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

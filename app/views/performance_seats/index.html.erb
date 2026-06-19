@@ -1,0 +1,62 @@
+<div class="space-y-6">
+  <div class="flex items-center justify-between">
+    <h1 class="text-2xl font-bold text-gray-900">演出座位</h1>
+    <div class="flex gap-3">
+      <%= link_to "返回演出", performance_path(@performance), class: "px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50" %>
+      <%= link_to "新增座位", new_performance_performance_seat_path(@performance), class: "px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700" %>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-xl p-4 shadow-sm">
+    <%= form_with url: performance_performance_seats_path(@performance), method: :get, local: true do |f| %>
+      <div class="flex gap-3">
+        <%= select_tag :status, options_for_select(PerformanceSeat.statuses.map { |k, v| [status_text(k), k] }, params[:status]), include_blank: "全部状态", class: "px-3 py-2 border border-gray-300 rounded-lg" %>
+        <%= text_field_tag :section, params[:section], placeholder: "区域", class: "px-3 py-2 border border-gray-300 rounded-lg" %>
+        <button type="submit" class="px-4 py-2 bg-gray-600 text-white rounded-lg">筛选</button>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+    <table class="min-w-full divide-y divide-gray-200">
+      <thead class="bg-gray-50">
+        <tr>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">座位号</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">区域</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">排号</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">价格</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
+        </tr>
+      </thead>
+      <tbody class="bg-white divide-y divide-gray-200">
+        <% @performance_seats.each do |seat| %>
+          <tr>
+            <td class="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
+              <%= seat.seat_number %>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-gray-500">
+              <%= seat.section %>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-gray-500">
+              <%= seat.row_number %>排
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-gray-900 font-medium">
+              <%= format_money(seat.price) %>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <span class="px-2 py-1 text-xs font-medium rounded-full <%= status_bg_class(seat.status) %>">
+                <%= status_text(seat.status) %>
+              </span>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+
+  <% if @performance_seats.total_pages > 1 %>
+    <div class="flex justify-center">
+      <%= paginate @performance_seats %>
+    </div>
+  <% end %>
+</div>

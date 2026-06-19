@@ -1,0 +1,146 @@
+<div class="space-y-6">
+  <div class="flex items-center gap-4">
+    <%= link_to performances_path, class: "p-2 rounded-lg hover:bg-gray-100" do %>
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+      </svg>
+    <% end %>
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900"><%= @performance.name %></h1>
+      <p class="text-gray-500 mt-1">演出详情</p>
+    </div>
+    <div class="ml-auto flex gap-2">
+      <%= link_to "编辑", edit_performance_path(@performance), class: "px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50" %>
+      <% unless @performance.cancelled? %>
+        <%= link_to "取消演出", new_performance_cancellation_path(@performance), class: "px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700" %>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="lg:col-span-2 space-y-6">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100">
+        <div class="p-5 border-b border-gray-100">
+          <h2 class="text-lg font-semibold text-gray-900">演出信息</h2>
+        </div>
+        <div class="p-5">
+          <dl class="grid grid-cols-2 gap-4">
+            <div>
+              <dt class="text-sm text-gray-500">演出名称</dt>
+              <dd class="mt-1 text-gray-900 font-medium"><%= @performance.name %></dd>
+            </div>
+            <div>
+              <dt class="text-sm text-gray-500">场馆</dt>
+              <dd class="mt-1 text-gray-900 font-medium"><%= @performance.venue %></dd>
+            </div>
+            <div>
+              <dt class="text-sm text-gray-500">开始时间</dt>
+              <dd class="mt-1 text-gray-900 font-medium"><%= format_datetime(@performance.start_time) %></dd>
+            </div>
+            <div>
+              <dt class="text-sm text-gray-500">结束时间</dt>
+              <dd class="mt-1 text-gray-900 font-medium"><%= format_datetime(@performance.end_time) %></dd>
+            </div>
+            <div>
+              <dt class="text-sm text-gray-500">总座位数</dt>
+              <dd class="mt-1 text-gray-900 font-medium"><%= @performance.total_seats %> 座</dd>
+            </div>
+            <div>
+              <dt class="text-sm text-gray-500">状态</dt>
+              <dd class="mt-1">
+                <span class="px-2 py-1 text-xs rounded-full <%= status_class(@performance.status) %>">
+                  <%= status_text(@performance.status) %>
+                </span>
+              </dd>
+            </div>
+          </dl>
+
+          <% if @performance.description.present? %>
+            <div class="mt-6 pt-6 border-t border-gray-100">
+              <dt class="text-sm text-gray-500 mb-2">演出描述</dt>
+              <dd class="text-gray-700"><%= @performance.description %></dd>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100">
+        <div class="p-5 border-b border-gray-100 flex items-center justify-between">
+          <h2 class="text-lg font-semibold text-gray-900">座位信息</h2>
+          <div class="flex items-center gap-4">
+            <span class="text-sm text-gray-500">
+              已售 <%= @performance.sold_seats_count %> / <%= @performance.total_seats %>
+            </span>
+            <%= link_to "管理座位", performance_performance_seats_path(@performance), class: "text-sm text-indigo-600 hover:text-indigo-700" %>
+          </div>
+        </div>
+        <div class="p-5">
+          <div class="w-full bg-gray-200 rounded-full h-3">
+            <div class="bg-indigo-600 h-3 rounded-full" style="width: <%= @performance.total_seats > 0 ? (@performance.sold_seats_count.to_f / @performance.total_seats * 100 : 0 %>%"></div>
+          </div>
+          <div class="flex justify-between mt-2 text-xs text-gray-500">
+            <span>售票进度</span>
+            <span><%= @performance.total_seats > 0 ? ((@performance.sold_seats_count.to_f / @performance.total_seats * 100).round(1) : 0 %>%</span>
+          </div>
+        </div>
+      </div>
+
+      <% if @cancellation.present? %>
+        <div class="bg-red-50 border border-red-200 rounded-xl p-5">
+          <div class="flex items-start justify-between">
+            <div>
+              <h3 class="font-semibold text-red-800">演出已取消</h3>
+              <p class="text-sm text-red-600 mt-1"><%= @cancellation.reason %></p>
+            </div>
+            <%= link_to "查看详情", performance_cancellation_path(@cancellation), class: "text-sm text-red-600 hover:text-red-700" %>
+          </div>
+        </div>
+      <% end %>
+
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100">
+        <div class="p-5 border-b border-gray-100 flex items-center justify-between">
+          <h2 class="text-lg font-semibold text-gray-900">处理记录</h2>
+          <%= link_to "添加记录", new_performance_processing_record_path(@performance), class: "text-sm text-indigo-600 hover:text-indigo-700" %>
+        </div>
+        <div class="divide-y divide-gray-100">
+          <% if @processing_records.any? %>
+            <% @processing_records.each do |record| %>
+            <div class="p-4">
+              <div class="flex items-start justify-between">
+                <div>
+                  <p class="font-medium text-gray-900"><%= record.action_type %></p>
+                  <p class="text-sm text-gray-500 mt-1"><%= record.notes %></p>
+                </div>
+                <span class="px-2 py-1 text-xs rounded-full <%= status_class(record.status) %>">
+                  <%= status_text(record.status) %>
+                </span>
+              </div>
+              <div class="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                <span>经办人: <%= record.handler.name %></span>
+                <span><%= format_datetime(record.created_at) %></span>
+              </div>
+            </div>
+          <% end %>
+          <% else %>
+            <div class="p-8 text-center text-gray-500">
+              暂无处理记录
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <div class="space-y-6">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+        <h3 class="font-semibold text-gray-900 mb-4">快速操作</h3>
+        <div class="space-y-2">
+          <%= link_to "管理座位", performance_performance_seats_path(@performance), class: "block w-full px-4 py-2 text-center bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100" %>
+          <%= link_to "新增处理记录", new_performance_processing_record_path(@performance), class: "block w-full px-4 py-2 text-center border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50" %>
+          <% unless @performance.cancelled? %>
+            <%= link_to "取消演出", new_performance_cancellation_path(@performance), class: "block w-full px-4 py-2 text-center bg-red-50 text-red-700 rounded-lg hover:bg-red-100" %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

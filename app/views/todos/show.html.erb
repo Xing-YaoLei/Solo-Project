@@ -1,0 +1,84 @@
+<div class="space-y-6">
+  <div class="flex items-center gap-4">
+    <%= link_to todos_path, class: "p-2 rounded-lg hover:bg-gray-100" do %>
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+      </svg>
+    <% end %>
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900"><%= @todo.title %></h1>
+      <p class="text-gray-500 mt-1">待办详情</p>
+    </div>
+    <div class="ml-auto flex gap-2">
+      <% if @todo.pending? %>
+        <%= button_to "开始处理", start_todo_path(@todo), method: :patch, class: "px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700" %>
+      <% end %>
+      <% if @todo.in_progress? %>
+        <%= button_to "完成", complete_todo_path(@todo), method: :patch, class: "px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700" %>
+      <% end %>
+      <% if !@todo.completed? && !@todo.cancelled? %>
+        <%= button_to "取消", cancel_todo_path(@todo), method: :patch, class: "px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50", data: { confirm: "确定取消？" } %>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="lg:col-span-2 space-y-6">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100">
+        <div class="p-5 border-b border-gray-100">
+          <h2 class="text-lg font-semibold text-gray-900">任务详情</h2>
+        </div>
+        <div class="p-5">
+          <dl class="grid grid-cols-2 gap-4">
+            <div>
+              <dt class="text-sm text-gray-500">状态</dt>
+              <dd class="mt-1">
+                <span class="px-2 py-1 text-xs rounded-full <%= status_class(@todo.status) %>">
+                  <%= status_text(@todo.status) %>
+                </span>
+              </dd>
+            </div>
+            <div>
+              <dt class="text-sm text-gray-500">优先级</dt>
+              <dd class="mt-1">
+                <span class="px-2 py-1 text-xs rounded-full <%= priority_class(@todo.priority) %>">
+                  <%= priority_text(@todo.priority) %>
+                </span>
+              </dd>
+            </div>
+            <div>
+              <dt class="text-sm text-gray-500">截止日期</dt>
+              <dd class="mt-1 text-gray-900 font-medium"><%= format_date(@todo.due_date) %></dd>
+            </div>
+            <div>
+              <dt class="text-sm text-gray-500">创建人</dt>
+              <dd class="mt-1 text-gray-900 font-medium"><%= @todo.creator&.name %></dd>
+            </div>
+            <div>
+              <dt class="text-sm text-gray-500">创建时间</dt>
+              <dd class="mt-1 text-gray-900 font-medium"><%= format_datetime(@todo.created_at) %></dd>
+            </div>
+          </dl>
+
+          <% if @todo.description.present? %>
+            <div class="mt-6 pt-6 border-t border-gray-100">
+              <dt class="text-sm text-gray-500 mb-2">任务描述</dt>
+              <dd class="text-gray-700 whitespace-pre-wrap"><%= @todo.description %></dd>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <div class="space-y-6">
+      <% if @todo.source.present? %>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+          <h3 class="font-semibold text-gray-900 mb-4">关联来源</h3>
+          <%= link_to @todo.source, class: "block w-full px-4 py-2 text-center bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100" do %>
+            查看 <%= @todo.source_type %>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

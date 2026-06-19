@@ -1,0 +1,221 @@
+<div class="space-y-6">
+  <div class="flex items-center gap-4">
+    <%= link_to performance_cancellations_path, class: "p-2 rounded-lg hover:bg-gray-100" do %>
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+      </svg>
+    <% end %>
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">演出取消 - <%= @cancellation.performance.name %></h1>
+      <p class="text-gray-500 mt-1">取消处理详情</p>
+    </div>
+    <div class="ml-auto">
+      <span class="px-3 py-1 text-sm rounded-full <%= status_class(@cancellation.status) %>">
+        <%= status_text(@cancellation.status) %>
+      </span>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="lg:col-span-2 space-y-6">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100">
+        <div class="p-5 border-b border-gray-100">
+          <h2 class="text-lg font-semibold text-gray-900">基本信息</h2>
+        </div>
+        <div class="p-5">
+          <dl class="grid grid-cols-2 gap-4">
+            <div>
+              <dt class="text-sm text-gray-500">演出名称</dt>
+              <dd class="mt-1 text-gray-900 font-medium"><%= @cancellation.performance.name %></dd>
+            </div>
+            <div>
+              <dt class="text-sm text-gray-500">演出场馆</dt>
+              <dd class="mt-1 text-gray-900 font-medium"><%= @cancellation.performance.venue %></dd>
+            </div>
+            <div>
+              <dt class="text-sm text-gray-500">原开始时间</dt>
+              <dd class="mt-1 text-gray-900 font-medium"><%= format_datetime(@cancellation.performance.start_time) %></dd>
+            </div>
+            <div>
+              <dt class="text-sm text-gray-500">上报时间</dt>
+              <dd class="mt-1 text-gray-900 font-medium"><%= format_datetime(@cancellation.created_at) %></dd>
+            </div>
+            <div>
+              <dt class="text-sm text-gray-500">受影响观众</dt>
+              <dd class="mt-1 text-gray-900 font-medium"><%= @cancellation.affected_audience_count %> 人</dd>
+            </div>
+            <div>
+              <dt class="text-sm text-gray-500">受影响商户</dt>
+              <dd class="mt-1 text-gray-900 font-medium"><%= @cancellation.affected_merchant_count %> 家</dd>
+            </div>
+            <div>
+              <dt class="text-sm text-gray-500">当前责任人</dt>
+              <dd class="mt-1 text-gray-900 font-medium"><%= @cancellation.current_handler&.name || "未分配" %></dd>
+            </div>
+            <div>
+              <dt class="text-sm text-gray-500">解决时间</dt>
+              <dd class="mt-1 text-gray-900 font-medium"><%= @cancellation.resolved_at ? format_datetime(@cancellation.resolved_at) : "未解决" %></dd>
+            </div>
+          </dl>
+
+          <div class="mt-6 pt-6 border-t border-gray-100">
+            <dt class="text-sm text-gray-500 mb-2">取消原因</dt>
+            <dd class="text-gray-700"><%= @cancellation.reason %></dd>
+          </div>
+
+          <% if @cancellation.resolution_notes.present? %>
+            <div class="mt-6 pt-6 border-t border-gray-100">
+              <dt class="text-sm text-gray-500 mb-2">解决方案</dt>
+              <dd class="text-gray-700"><%= @cancellation.resolution_notes %></dd>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100">
+        <div class="p-5 border-b border-gray-100 flex items-center justify-between">
+          <h2 class="text-lg font-semibold text-gray-900">处理记录</h2>
+        </div>
+        <div class="divide-y divide-gray-100">
+          <% if @processing_records.any? %>
+            <% @processing_records.each do |record| %>
+              <div class="p-4">
+                <div class="flex items-start justify-between">
+                  <div>
+                    <p class="font-medium text-gray-900"><%= record.action_type %></p>
+                    <p class="text-sm text-gray-500 mt-1"><%= record.notes %></p>
+                  </div>
+                  <span class="px-2 py-1 text-xs rounded-full <%= status_class(record.status) %>">
+                    <%= status_text(record.status) %>
+                  </span>
+                </div>
+                <div class="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                  <span>经办人: <%= record.handler.name %></span>
+                  <span><%= format_datetime(record.created_at) %></span>
+                </div>
+              </div>
+            <% end %>
+          <% else %>
+            <div class="p-8 text-center text-gray-500">
+              暂无处理记录
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <div class="space-y-6">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+        <h3 class="font-semibold text-gray-900 mb-4">操作</h3>
+        <div class="space-y-3">
+          <% if @cancellation.reported? || @cancellation.in_progress? %>
+            <% if @cancellation.current_handler != current_user %>
+              <%= button_to "接手处理", take_over_performance_cancellation_path(@cancellation), method: :post, class: "w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700" %>
+            <% end %>
+
+            <button id="add-notes-btn" class="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
+              补充说明
+            </button>
+
+            <button id="change-handler-btn" class="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
+              变更责任人
+            </button>
+
+            <% if @cancellation.in_progress? && @cancellation.current_handler == current_user %>
+              <button id="resolve-btn" class="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                标记解决
+              </button>
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+
+      <div id="add-notes-form" class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 hidden">
+        <h3 class="font-semibold text-gray-900 mb-4">补充说明</h3>
+        <%= form_with(url: add_notes_performance_cancellation_path(@cancellation), method: :post) do |form| %>
+          <%= form.text_area :notes, rows: 4, class: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500", placeholder: "请输入补充说明..." %>
+          <div class="mt-4 flex gap-2">
+            <%= form.submit "提交", class: "flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700" %>
+            <button type="button" id="cancel-notes-btn" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">取消</button>
+          </div>
+        <% end %>
+      </div>
+
+      <div id="change-handler-form" class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 hidden">
+        <h3 class="font-semibold text-gray-900 mb-4">变更责任人</h3>
+        <%= form_with(url: change_handler_performance_cancellation_path(@cancellation), method: :post) do |form| %>
+          <div class="mb-4">
+            <%= form.label :new_handler_id, "新责任人", class: "block text-sm font-medium text-gray-700 mb-2" %>
+            <%= form.select :new_handler_id, options_from_collection_for_select(User.all, :id, :name), {}, class: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500" %>
+          </div>
+          <div class="mb-4">
+            <%= form.label :reason, "变更原因", class: "block text-sm font-medium text-gray-700 mb-2" %>
+            <%= form.text_field :reason, class: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500" %>
+          </div>
+          <div class="flex gap-2">
+            <%= form.submit "提交", class: "flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700" %>
+            <button type="button" id="cancel-handler-btn" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">取消</button>
+          </div>
+        <% end %>
+      </div>
+
+      <div id="resolve-form" class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 hidden">
+        <h3 class="font-semibold text-gray-900 mb-4">标记解决</h3>
+        <%= form_with(url: resolve_performance_cancellation_path(@cancellation), method: :post) do |form| %>
+          <%= form.text_area :resolution_notes, rows: 4, class: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500", placeholder: "请输入解决方案..." %>
+          <div class="mt-4 flex gap-2">
+            <%= form.submit "提交", class: "flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700" %>
+            <button type="button" id="cancel-resolve-btn" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">取消</button>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const addNotesBtn = document.getElementById('add-notes-btn');
+    const addNotesForm = document.getElementById('add-notes-form');
+    const cancelNotesBtn = document.getElementById('cancel-notes-btn');
+    const changeHandlerBtn = document.getElementById('change-handler-btn');
+    const changeHandlerForm = document.getElementById('change-handler-form');
+    const cancelHandlerBtn = document.getElementById('cancel-handler-btn');
+    const resolveBtn = document.getElementById('resolve-btn');
+    const resolveForm = document.getElementById('resolve-form');
+    const cancelResolveBtn = document.getElementById('cancel-resolve-btn');
+
+    if (addNotesBtn && addNotesForm) {
+      addNotesBtn.addEventListener('click', function() {
+        addNotesForm.classList.toggle('hidden');
+      });
+    }
+    if (cancelNotesBtn && addNotesForm) {
+      cancelNotesBtn.addEventListener('click', function() {
+        addNotesForm.classList.add('hidden');
+      });
+    }
+
+    if (changeHandlerBtn && changeHandlerForm) {
+      changeHandlerBtn.addEventListener('click', function() {
+        changeHandlerForm.classList.toggle('hidden');
+      });
+    }
+    if (cancelHandlerBtn && changeHandlerForm) {
+      cancelHandlerBtn.addEventListener('click', function() {
+        changeHandlerForm.classList.add('hidden');
+      });
+    }
+
+    if (resolveBtn && resolveForm) {
+      resolveBtn.addEventListener('click', function() {
+        resolveForm.classList.toggle('hidden');
+      });
+    }
+    if (cancelResolveBtn && resolveForm) {
+      cancelResolveBtn.addEventListener('click', function() {
+        resolveForm.classList.add('hidden');
+      });
+    }
+  });
+</script>

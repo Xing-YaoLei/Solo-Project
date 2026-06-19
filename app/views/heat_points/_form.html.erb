@@ -1,0 +1,59 @@
+<%= form_with(model: heat_point) do |form| %>
+  <% if heat_point.errors.any? %>
+    <div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+      <h2 class="text-red-800 font-semibold mb-2"><%= pluralize(heat_point.errors.count, "个错误") %> 导致提交失败：</h2>
+      <ul class="list-disc list-inside text-red-600 text-sm">
+        <% heat_point.errors.each do |error| %>
+          <li><%= error.full_message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div>
+      <%= form.label :name, "点位名称", class: "block text-sm font-medium text-gray-700 mb-2" %>
+      <%= form.text_field :name, class: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500" %>
+    </div>
+
+    <div>
+      <%= form.label :zone, "所属区域", class: "block text-sm font-medium text-gray-700 mb-2" %>
+      <%= form.text_field :zone, class: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500" %>
+    </div>
+
+    <div>
+      <%= form.label :heat_level, "热度等级", class: "block text-sm font-medium text-gray-700 mb-2" %>
+      <%= form.select :heat_level, options_for_select((1..5).map { |i| [heat_level_text(i), i] }, heat_point.heat_level), {}, class: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500" %>
+    </div>
+
+    <div>
+      <%= form.label :category, "分类", class: "block text-sm font-medium text-gray-700 mb-2" %>
+      <%= form.text_field :category, class: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500" %>
+    </div>
+
+    <div>
+      <%= form.label :latitude, "纬度", class: "block text-sm font-medium text-gray-700 mb-2" %>
+      <%= form.number_field :latitude, step: 0.000001, class: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500" %>
+    </div>
+
+    <div>
+      <%= form.label :longitude, "经度", class: "block text-sm font-medium text-gray-700 mb-2" %>
+      <%= form.number_field :longitude, step: 0.000001, class: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500" %>
+    </div>
+
+    <div>
+      <%= form.label :status, "状态", class: "block text-sm font-medium text-gray-700 mb-2" %>
+      <%= form.select :status, HeatPoint.statuses.map { |k, v| [status_text(k), v] }, {}, class: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500" %>
+    </div>
+
+    <div class="lg:col-span-2">
+      <%= form.label :description, "描述", class: "block text-sm font-medium text-gray-700 mb-2" %>
+      <%= form.text_area :description, rows: 4, class: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500" %>
+    </div>
+  </div>
+
+  <div class="mt-8 flex justify-end gap-3">
+    <%= link_to "取消", heat_points_path, class: "px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50" %>
+    <%= form.submit "保存", class: "px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700" %>
+  </div>
+<% end %>

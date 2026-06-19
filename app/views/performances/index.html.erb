@@ -1,0 +1,83 @@
+<div class="space-y-6">
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">演出管理</h1>
+      <p class="text-gray-500 mt-1">演出与座位管理</p>
+    </div>
+    <%= link_to "新增演出", new_performance_path, class: "px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700" %>
+  </div>
+
+  <div class="bg-white rounded-xl shadow-sm border border-gray-100">
+    <div class="p-4 border-b border-gray-100">
+      <%= search_form_for @q, url: performances_path, method: :get do |f| %>
+        <div class="flex flex-wrap gap-4 items-end">
+          <div>
+            <%= f.label :name_cont, "演出名称", class: "block text-sm font-medium text-gray-700 mb-1" %>
+            <%= f.search_field :name_cont, class: "px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500" %>
+          </div>
+          <div>
+            <%= f.label :venue_eq, "场馆", class: "block text-sm font-medium text-gray-700 mb-1" %>
+            <%= f.select :venue_eq, options_for_select(Performance.distinct.pluck(:venue).compact), { include_blank: "全部" }, class: "px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500" %>
+          </div>
+          <div>
+            <%= f.label :status_eq, "状态", class: "block text-sm font-medium text-gray-700 mb-1" %>
+            <%= f.select :status_eq, Performance.statuses.map { |k, v| [status_text(k), v] }, { include_blank: "全部" }, class: "px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500" %>
+          </div>
+          <div class="flex gap-2">
+            <%= f.submit "搜索", class: "px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700" %>
+            <%= link_to "重置", performances_path, class: "px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50" %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">演出名称</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">开始时间</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">场馆</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">座位数</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
+            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200">
+          <% @performances.each do |performance| %>
+            <tr class="hover:bg-gray-50">
+              <td class="px-6 py-4 whitespace-nowrap">
+                <%= link_to performance.name, performance, class: "text-indigo-600 hover:text-indigo-900 font-medium" %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <%= format_datetime(performance.start_time) %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <%= performance.venue %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <%= performance.total_seats %> 座
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="px-2 py-1 text-xs rounded-full <%= status_class(performance.status) %>">
+                  <%= status_text(performance.status) %>
+                </span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <%= link_to "查看", performance, class: "text-indigo-600 hover:text-indigo-900" %>
+                <%= link_to "座位", performance_performance_seats_path(performance), class: "text-gray-600 hover:text-gray-900 ml-3" %>
+                <% if performance.cancelled? %>
+                  <%= link_to "取消记录", performance_cancellation_path(performance.performance_cancellation), class: "text-red-600 hover:text-red-900 ml-3" if performance.performance_cancellation.present? %>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="px-6 py-4 border-t border-gray-100">
+      <%= paginate @performances %>
+    </div>
+  </div>
+</div>

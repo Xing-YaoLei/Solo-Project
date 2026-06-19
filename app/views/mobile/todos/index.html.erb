@@ -1,0 +1,63 @@
+<div class="p-4 space-y-4">
+  <div class="grid grid-cols-3 gap-3">
+    <div class="bg-white rounded-xl p-3 shadow-sm">
+      <div class="text-2xl font-bold text-gray-900"><%= @pending_count %></div>
+      <div class="text-xs text-gray-500 mt-1">待处理</div>
+    </div>
+    <div class="bg-white rounded-xl p-3 shadow-sm">
+      <div class="text-2xl font-bold text-blue-600"><%= @in_progress_count %></div>
+      <div class="text-xs text-gray-500 mt-1">进行中</div>
+    </div>
+    <div class="bg-white rounded-xl p-3 shadow-sm">
+      <div class="text-2xl font-bold text-orange-600"><%= @today_count %></div>
+      <div class="text-xs text-gray-500 mt-1">今日到期</div>
+    </div>
+  </div>
+
+  <div class="flex gap-2 overflow-x-auto pb-2">
+    <%= link_to mobile_todos_path, class: "px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap bg-indigo-600 text-white" do %>
+      全部
+    <% end %>
+    <%= link_to mobile_todos_path(status: "pending"), class: "px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap bg-white text-gray-700" do %>
+      待处理
+    <% end %>
+    <%= link_to mobile_todos_path(status: "in_progress"), class: "px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap bg-white text-gray-700" do %>
+      进行中
+    <% end %>
+    <%= link_to mobile_todos_path(status: "completed"), class: "px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap bg-white text-gray-700" do %>
+      已完成
+    <% end %>
+  </div>
+
+  <div class="space-y-3">
+    <% @todos.each do |todo| %>
+      <%= link_to mobile_todo_path(todo), class: "block bg-white rounded-xl p-4 shadow-sm" do %>
+        <div class="flex items-start gap-3">
+          <div class="flex-shrink-0">
+            <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg <%= priority_bg_class(todo.priority) %>">
+              <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+            </span>
+          </div>
+          <div class="flex-1 min-w-0">
+            <h3 class="font-medium text-gray-900 truncate"><%= todo.title %></h3>
+            <p class="text-sm text-gray-500 mt-1 line-clamp-2"><%= todo.description %></p>
+            <div class="flex items-center gap-3 mt-2 text-xs text-gray-400">
+              <span class="px-2 py-0.5 rounded-full <%= status_bg_class(todo.status) %>"><%= status_text(todo.status) %></span>
+              <% if todo.due_date.present? %>
+                <span><%= todo.due_date.strftime("%m-%d %H:%M") %></span>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+
+  <% if @todos.total_pages > 1 %>
+    <div class="flex justify-center pt-4">
+      <%= paginate @todos, theme: "twitter-bootstrap-3" %>
+    </div>
+  <% end %>
+</div>

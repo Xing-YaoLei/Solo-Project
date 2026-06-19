@@ -1,0 +1,178 @@
+<div class="space-y-6">
+  <div>
+    <h1 class="text-2xl font-bold text-gray-900">运营概览</h1>
+    <p class="text-gray-500 mt-1">景区导览路线结算台 - 数据总览</p>
+  </div>
+
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <%= link_to heat_points_path, class: "bg-white rounded-xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow" do %>
+      <div class="flex items-center gap-4">
+        <div class="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
+          <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+          </svg>
+        </div>
+        <div>
+          <p class="text-2xl font-bold text-gray-900"><%= @heat_points_count %></p>
+          <p class="text-sm text-gray-500">热力点位</p>
+        </div>
+      </div>
+    <% end %>
+
+    <%= link_to guide_contents_path, class: "bg-white rounded-xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow" do %>
+      <div class="flex items-center gap-4">
+        <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+          <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+          </svg>
+        </div>
+        <div>
+          <p class="text-2xl font-bold text-gray-900"><%= @guide_contents_count %></p>
+          <p class="text-sm text-gray-500">导览内容</p>
+        </div>
+      </div>
+    <% end %>
+
+    <%= link_to performances_path, class: "bg-white rounded-xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow" do %>
+      <div class="flex items-center gap-4">
+        <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+          <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+          </svg>
+        </div>
+        <div>
+          <p class="text-2xl font-bold text-gray-900"><%= @performances_count %></p>
+          <p class="text-sm text-gray-500">进行中演出</p>
+        </div>
+      </div>
+    <% end %>
+
+    <%= link_to merchant_contracts_path, class: "bg-white rounded-xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow" do %>
+      <div class="flex items-center gap-4">
+        <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+          <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+          </svg>
+        </div>
+        <div>
+          <p class="text-2xl font-bold text-gray-900"><%= @merchant_contracts_count %></p>
+          <p class="text-sm text-gray-500">有效合同</p>
+        </div>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="lg:col-span-2 space-y-6">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100">
+        <div class="p-5 border-b border-gray-100">
+          <h2 class="text-lg font-semibold text-gray-900">待办事项</h2>
+        </div>
+        <div class="divide-y divide-gray-100">
+          <% if @recent_todos.any? %>
+            <% @recent_todos.each do |todo| %>
+              <%= link_to todo, class: "flex items-center justify-between p-4 hover:bg-gray-50" do %>
+                <div class="flex items-center gap-3">
+                  <div class="w-2 h-2 rounded-full <%= todo.priority == 'urgent' ? 'bg-red-500' : todo.priority == 'high' ? 'bg-orange-500' : 'bg-blue-500' %>"></div>
+                  <div>
+                    <p class="font-medium text-gray-900"><%= todo.title %></p>
+                    <p class="text-sm text-gray-500">截止: <%= todo.due_date&.strftime('%Y-%m-%d') %></p>
+                  </div>
+                </div>
+                <span class="px-2 py-1 text-xs rounded-full <%= status_class(todo.status) %>">
+                  <%= status_text(todo.status) %>
+                </span>
+              <% end %>
+            <% end %>
+          <% else %>
+            <div class="p-8 text-center text-gray-500">
+              暂无待办事项
+            </div>
+          <% end %>
+        </div>
+        <div class="p-4 border-t border-gray-100">
+          <%= link_to "查看全部待办", todos_path, class: "text-sm text-indigo-600 hover:text-indigo-700" %>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100">
+        <div class="p-5 border-b border-gray-100">
+          <h2 class="text-lg font-semibold text-gray-900">近期演出</h2>
+        </div>
+        <div class="divide-y divide-gray-100">
+          <% if @upcoming_performances.any? %>
+            <% @upcoming_performances.each do |performance| %>
+              <%= link_to performance, class: "flex items-center justify-between p-4 hover:bg-gray-50" do %>
+                <div>
+                  <p class="font-medium text-gray-900"><%= performance.name %></p>
+                  <p class="text-sm text-gray-500"><%= performance.start_time.strftime('%Y-%m-%d %H:%M') %> · <%= performance.venue %></p>
+                </div>
+                <span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700">
+                  <%= status_text(performance.status) %>
+                </span>
+              <% end %>
+            <% end %>
+          <% else %>
+            <div class="p-8 text-center text-gray-500">
+              暂无近期演出
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <div class="space-y-6">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100">
+        <div class="p-5 border-b border-gray-100">
+          <h2 class="text-lg font-semibold text-gray-900">今日二消</h2>
+        </div>
+        <div class="p-5">
+          <p class="text-3xl font-bold text-green-600">¥<%= number_with_delimiter(@secondary_consumption_today / 100.0) %></p>
+          <p class="text-sm text-gray-500 mt-1">较昨日 <%= "+12.5%" %></p>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100">
+        <div class="p-5 border-b border-gray-100">
+          <h2 class="text-lg font-semibold text-gray-900">处理记录</h2>
+        </div>
+        <div class="divide-y divide-gray-100 max-h-96 overflow-y-auto">
+          <% if @recent_processing_records.any? %>
+            <% @recent_processing_records.each do |record| %>
+              <div class="p-4">
+                <div class="flex items-center justify-between">
+                  <p class="text-sm font-medium text-gray-900"><%= record.action_type %></p>
+                  <span class="text-xs text-gray-500"><%= time_ago_in_words(record.created_at) %>前</span>
+                </div>
+                <p class="text-xs text-gray-500 mt-1">
+                  <%= record.handler.name %> · <%= record.recordable_type %>
+                </p>
+              </div>
+            <% end %>
+          <% else %>
+            <div class="p-8 text-center text-gray-500 text-sm">
+              暂无处理记录
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <% if @open_cancellations_count > 0 %>
+        <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-5">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
+              <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+              </svg>
+            </div>
+            <div>
+              <p class="font-semibold text-yellow-800"><%= @open_cancellations_count %> 个演出取消待处理</p>
+              <%= link_to "立即处理", performance_cancellations_path, class: "text-sm text-yellow-700 hover:text-yellow-800 underline" %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

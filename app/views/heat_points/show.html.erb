@@ -1,0 +1,127 @@
+<div class="space-y-6">
+  <div class="flex items-center gap-4">
+    <%= link_to heat_points_path, class: "p-2 rounded-lg hover:bg-gray-100" do %>
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+      </svg>
+    <% end %>
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900"><%= @heat_point.name %></h1>
+      <p class="text-gray-500 mt-1">热力点位详情</p>
+    </div>
+    <div class="ml-auto flex gap-2">
+      <%= link_to "编辑", edit_heat_point_path(@heat_point), class: "px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50" %>
+      <%= link_to "删除", @heat_point, method: :delete, class: "px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700", data: { confirm: "确定要删除吗？" } %>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="lg:col-span-2 space-y-6">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100">
+        <div class="p-5 border-b border-gray-100">
+          <h2 class="text-lg font-semibold text-gray-900">基本信息</h2>
+        </div>
+        <div class="p-5">
+          <dl class="grid grid-cols-2 gap-4">
+            <div>
+              <dt class="text-sm text-gray-500">名称</dt>
+              <dd class="mt-1 text-gray-900 font-medium"><%= @heat_point.name %></dd>
+            </div>
+            <div>
+              <dt class="text-sm text-gray-500">区域</dt>
+              <dd class="mt-1 text-gray-900 font-medium"><%= @heat_point.zone %></dd>
+            </div>
+            <div>
+              <dt class="text-sm text-gray-500">热度等级</dt>
+              <dd class="mt-1">
+                <div class="flex items-center gap-2">
+                  <div class="w-3 h-3 rounded-full <%= heat_level_color(@heat_point.heat_level) %>"></div>
+                  <span class="text-gray-900 font-medium"><%= heat_level_text(@heat_point.heat_level) %></span>
+                </div>
+              </dd>
+            </div>
+            <div>
+              <dt class="text-sm text-gray-500">分类</dt>
+              <dd class="mt-1 text-gray-900 font-medium"><%= @heat_point.category %></dd>
+            </div>
+            <div>
+              <dt class="text-sm text-gray-500">状态</dt>
+              <dd class="mt-1">
+                <span class="px-2 py-1 text-xs rounded-full <%= status_class(@heat_point.status) %>">
+                  <%= status_text(@heat_point.status) %>
+                </span>
+              </dd>
+            </div>
+            <div>
+              <dt class="text-sm text-gray-500">坐标</dt>
+              <dd class="mt-1 text-gray-900 font-medium">
+                <% if @heat_point.latitude && @heat_point.longitude %>
+                  <%= @heat_point.latitude %>, <%= @heat_point.longitude %>
+                <% else %>
+                  未设置
+                <% end %>
+              </dd>
+            </div>
+          </dl>
+
+          <% if @heat_point.description.present? %>
+            <div class="mt-6 pt-6 border-t border-gray-100">
+              <dt class="text-sm text-gray-500 mb-2">描述</dt>
+              <dd class="text-gray-700"><%= @heat_point.description %></dd>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100">
+        <div class="p-5 border-b border-gray-100 flex items-center justify-between">
+          <h2 class="text-lg font-semibold text-gray-900">处理记录</h2>
+          <%= link_to "添加记录", new_heat_point_processing_record_path(@heat_point), class: "text-sm text-indigo-600 hover:text-indigo-700" %>
+        </div>
+        <div class="divide-y divide-gray-100">
+          <% if @processing_records.any? %>
+            <% @processing_records.each do |record| %>
+              <div class="p-4">
+                <div class="flex items-start justify-between">
+                  <div>
+                    <p class="font-medium text-gray-900"><%= record.action_type %></p>
+                    <p class="text-sm text-gray-500 mt-1"><%= record.notes %></p>
+                  </div>
+                  <span class="px-2 py-1 text-xs rounded-full <%= status_class(record.status) %>">
+                    <%= status_text(record.status) %>
+                  </span>
+                </div>
+                <div class="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                  <span>经办人: <%= record.handler.name %></span>
+                  <span><%= format_datetime(record.created_at) %></span>
+                  <% if record.attachments.attached? %>
+                    <span><%= record.attachments.count %> 个附件</span>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          <% else %>
+            <div class="p-8 text-center text-gray-500">
+              暂无处理记录
+            </div>
+          <% end %>
+        </div>
+        <% if @processing_records.total_pages > 1 %>
+          <div class="p-4 border-t border-gray-100">
+            <%= paginate @processing_records %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="space-y-6">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+        <h3 class="font-semibold text-gray-900 mb-4">快速操作</h3>
+        <div class="space-y-2">
+          <%= link_to "新增处理记录", new_heat_point_processing_record_path(@heat_point), class: "block w-full px-4 py-2 text-center bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100" %>
+          <%= link_to "查看所有记录", heat_point_processing_records_path(@heat_point), class: "block w-full px-4 py-2 text-center border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50" %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

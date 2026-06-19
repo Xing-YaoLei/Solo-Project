@@ -1,0 +1,93 @@
+<div class="space-y-6">
+  <div class="flex items-center justify-between">
+    <h1 class="text-2xl font-bold text-gray-900">二消转化分析</h1>
+    <div class="flex gap-3">
+      <%= link_to "导出数据", desktop_exports_path, class: "px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50" %>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-4 gap-6">
+    <div class="bg-white rounded-xl p-6 shadow-sm">
+      <div class="text-sm text-gray-500">累计消费金额</div>
+      <div class="text-3xl font-bold text-gray-900"><%= format_currency(@secondary_consumption_total) %></div>
+      <div class="mt-2 text-sm text-green-600">+12.5% 较上月</div>
+    </div>
+    <div class="bg-white rounded-xl p-6 shadow-sm">
+      <div class="text-sm text-gray-500">消费订单数</div>
+      <div class="mt-2 text-3xl font-bold text-gray-900"><%= @secondary_consumption_count %></div>
+      <div class="mt-2 text-sm text-green-600">+8.3% 较上月</div>
+    </div>
+    <div class="bg-white rounded-xl p-6 shadow-sm">
+      <div class="text-sm text-gray-500">消费人数</div>
+      <div class="mt-2 text-3xl font-bold text-gray-900"><%= @customer_count %></div>
+      <div class="mt-2 text-sm text-green-600">+5.2% 较上月</div>
+    </div>
+    <div class="bg-white rounded-xl p-6 shadow-sm">
+      <div class="text-sm text-gray-500">客单价</div>
+      <div class="mt-2 text-3xl font-bold text-gray-900">
+        <% if @customer_count > 0 %>
+          <%= format_currency(@secondary_consumption_total / @customer_count) %>
+        <% else %>
+          ¥0.00
+        <% end %>
+      </div>
+      <div class="mt-2 text-sm text-orange-600">+3.1% 较上月</div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-2 gap-6">
+    <div class="bg-white rounded-xl p-6 shadow-sm">
+      <h3 class="text-lg font-semibold text-gray-900 mb-4">消费来源分布</h3>
+      <div class="space-y-3">
+        <% @top_sources.each do |source, cents| %>
+          <div>
+            <div class="flex justify-between text-sm mb-1">
+              <span class="text-gray-600"><%= source %></span>
+              <span class="font-medium text-gray-900"><%= format_currency(cents) %></span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-2">
+              <% percent = (cents.to_f / @top_sources.values.max * 100).round %>
+              <div class="bg-indigo-600 h-2 rounded-full" style="width: <%= percent %>%"></div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl p-6 shadow-sm">
+      <h3 class="text-lg font-semibold text-gray-900 mb-4">商户消费排行</h3>
+      <div class="space-y-3">
+        <% @top_merchants.each_with_index do |contract, index| %>
+          <div class="flex items-center gap-4">
+            <span class="w-6 h-6 flex items-center justify-center rounded-full <%= index < 3 ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500' %> text-sm font-semibold">
+              <%= index + 1 %>
+            </span>
+            <div class="flex-1">
+              <div class="font-medium text-gray-900"><%= contract.merchant_name %></div>
+              <div class="text-sm text-gray-500"><%= contract.category %></div>
+            </div>
+            <div class="text-right">
+              <div class="font-medium text-gray-900"><%= contract.secondary_consumptions.count %> 笔</div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-xl p-6 shadow-sm">
+    <h3 class="text-lg font-semibold text-gray-900 mb-4">近30天消费趋势</h3>
+    <div class="h-64 flex items-end gap-1">
+      <% if @daily_data.present? %>
+        <% max_value = @daily_data.values.max || 0 %>
+        <% @daily_data.each do |date, cents| %>
+          <% height = max_value > 0 ? (cents.to_f / max_value * 100).round : 0 %>
+          <div class="flex-1 flex flex-col items-center">
+            <div class="w-full bg-indigo-500 rounded-t" style="height: <%= height %>%"></div>
+            <div class="text-xs text-gray-500 mt-2"><%= date.strftime("%m/%d") %></div>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+</div>

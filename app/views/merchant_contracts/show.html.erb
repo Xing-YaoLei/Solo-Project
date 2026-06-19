@@ -1,0 +1,149 @@
+<div class="space-y-6">
+  <div class="flex items-center gap-4">
+    <%= link_to merchant_contracts_path, class: "p-2 rounded-lg hover:bg-gray-100" do %>
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+      </svg>
+    <% end %>
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900"><%= @merchant_contract.merchant_name %></h1>
+      <p class="text-gray-500 mt-1">合同详情</p>
+    </div>
+    <div class="ml-auto flex gap-2">
+      <%= link_to "编辑", edit_merchant_contract_path(@merchant_contract), class: "px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50" %>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="lg:col-span-2 space-y-6">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100">
+        <div class="p-5 border-b border-gray-100">
+          <h2 class="text-lg font-semibold text-gray-900">合同信息</h2>
+        </div>
+        <div class="p-5">
+          <dl class="grid grid-cols-2 gap-4">
+            <div>
+              <dt class="text-sm text-gray-500">商户名称</dt>
+              <dd class="mt-1 text-gray-900 font-medium"><%= @merchant_contract.merchant_name %></dd>
+            </div>
+            <div>
+              <dt class="text-sm text-gray-500">合同编号</dt>
+              <dd class="mt-1 text-gray-900 font-medium"><%= @merchant_contract.contract_number %></dd>
+            </div>
+            <div>
+              <dt class="text-sm text-gray-500">分类</dt>
+              <dd class="mt-1 text-gray-900 font-medium"><%= @merchant_contract.category %></dd>
+            </div>
+            <div>
+              <dt class="text-sm text-gray-500">合同金额</dt>
+              <dd class="mt-1 text-gray-900 font-medium"><%= format_currency(@merchant_contract.amount_cents) %></dd>
+            </div>
+            <div>
+              <dt class="text-sm text-gray-500">开始日期</dt>
+              <dd class="mt-1 text-gray-900 font-medium"><%= format_date(@merchant_contract.start_date) %></dd>
+            </div>
+            <div>
+              <dt class="text-sm text-gray-500">结束日期</dt>
+              <dd class="mt-1 text-gray-900 font-medium"><%= format_date(@merchant_contract.end_date) %></dd>
+            </div>
+            <div>
+              <dt class="text-sm text-gray-500">佣金率</dt>
+              <dd class="mt-1 text-gray-900 font-medium"><%= @merchant_contract.commission_rate %>%</dd>
+            </div>
+            <div>
+              <dt class="text-sm text-gray-500">状态</dt>
+              <dd class="mt-1">
+                <span class="px-2 py-1 text-xs rounded-full <%= status_class(@merchant_contract.status) %>">
+                  <%= status_text(@merchant_contract.status) %>
+                </span>
+              </dd>
+            </div>
+            <div>
+              <dt class="text-sm text-gray-500">联系人</dt>
+              <dd class="mt-1 text-gray-900 font-medium"><%= @merchant_contract.contact_person %></dd>
+            </div>
+            <div>
+              <dt class="text-sm text-gray-500">联系电话</dt>
+              <dd class="mt-1 text-gray-900 font-medium"><%= @merchant_contract.contact_phone %></dd>
+            </div>
+            <div class="col-span-2">
+              <dt class="text-sm text-gray-500">店铺位置</dt>
+              <dd class="mt-1 text-gray-900 font-medium"><%= @merchant_contract.shop_location %></dd>
+            </div>
+          </dl>
+
+          <% if @merchant_contract.terms.present? %>
+            <div class="mt-6 pt-6 border-t border-gray-100">
+              <dt class="text-sm text-gray-500 mb-2">合同条款</dt>
+              <dd class="text-gray-700 whitespace-pre-wrap"><%= @merchant_contract.terms %></dd>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100">
+        <div class="p-5 border-b border-gray-100">
+          <h2 class="text-lg font-semibold text-gray-900">二消数据</h2>
+        </div>
+        <div class="p-5">
+          <div class="grid grid-cols-3 gap-4">
+            <div class="text-center p-4 bg-gray-50 rounded-lg">
+              <p class="text-2xl font-bold text-green-600"><%= format_currency(@total_consumption) %></p>
+              <p class="text-sm text-gray-500 mt-1">累计消费</p>
+            </div>
+            <div class="text-center p-4 bg-gray-50 rounded-lg">
+              <p class="text-2xl font-bold text-indigo-600"><%= format_currency(@merchant_contract.commission_amount) %></p>
+              <p class="text-sm text-gray-500 mt-1">预计佣金</p>
+            </div>
+            <div class="text-center p-4 bg-gray-50 rounded-lg">
+              <p class="text-2xl font-bold text-orange-600"><%= @merchant_contract.secondary_consumptions.count %></p>
+              <p class="text-sm text-gray-500 mt-1">交易笔数</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100">
+        <div class="p-5 border-b border-gray-100 flex items-center justify-between">
+          <h2 class="text-lg font-semibold text-gray-900">处理记录</h2>
+          <%= link_to "添加记录", new_merchant_contract_processing_record_path(@merchant_contract), class: "text-sm text-indigo-600 hover:text-indigo-700" %>
+        </div>
+        <div class="divide-y divide-gray-100">
+          <% if @processing_records.any? %>
+            <% @processing_records.each do |record| %>
+              <div class="p-4">
+                <div class="flex items-start justify-between">
+                  <div>
+                    <p class="font-medium text-gray-900"><%= record.action_type %></p>
+                    <p class="text-sm text-gray-500 mt-1"><%= record.notes %></p>
+                  </div>
+                  <span class="px-2 py-1 text-xs rounded-full <%= status_class(record.status) %>">
+                    <%= status_text(record.status) %>
+                  </span>
+                </div>
+                <div class="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                  <span>经办人: <%= record.handler.name %></span>
+                  <span><%= format_datetime(record.created_at) %></span>
+                </div>
+              </div>
+            <% end %>
+          <% else %>
+            <div class="p-8 text-center text-gray-500">
+              暂无处理记录
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <div class="space-y-6">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+        <h3 class="font-semibold text-gray-900 mb-4">快速操作</h3>
+        <div class="space-y-2">
+          <%= link_to "新增处理记录", new_merchant_contract_processing_record_path(@merchant_contract), class: "block w-full px-4 py-2 text-center bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100" %>
+          <%= link_to "查看二消明细", merchant_contract_secondary_consumptions_path(@merchant_contract), class: "block w-full px-4 py-2 text-center border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50" %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,62 @@
+<div class="space-y-6">
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">演出取消</h1>
+      <p class="text-gray-500 mt-1">演出取消处理流程</p>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-xl shadow-sm border border-gray-100">
+    <div class="p-4 border-b border-gray-100">
+      <%= search_form_for @q, url: performance_cancellations_path, method: :get do |f| %>
+        <div class="flex flex-wrap gap-4 items-end">
+          <div>
+            <%= f.label :status_eq, "状态", class: "block text-sm font-medium text-gray-700 mb-1" %>
+            <%= f.select :status_eq, PerformanceCancellation.statuses.map { |k, v| [status_text(k), v] }, { include_blank: "全部" }, class: "px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500" %>
+          </div>
+          <div>
+            <%= f.label :current_handler_id_eq, "当前责任人", class: "block text-sm font-medium text-gray-700 mb-1" %>
+            <%= f.select :current_handler_id_eq, options_from_collection_for_select(User.all, :id, :name), { include_blank: "全部" }, class: "px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500" %>
+          </div>
+          <div class="flex gap-2">
+            <%= f.submit "搜索", class: "px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700" %>
+            <%= link_to "重置", performance_cancellations_path, class: "px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50" %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="divide-y divide-gray-200">
+      <% @cancellations.each do |cancellation| %>
+        <div class="p-4 hover:bg-gray-50">
+          <div class="flex items-start justify-between">
+            <div>
+              <%= link_to cancellation.performance.name, cancellation, class: "font-medium text-gray-900 hover:text-indigo-600" %>
+              <p class="text-sm text-gray-500 mt-1">
+                受影响观众: <%= cancellation.affected_audience_count %> 人 ·
+                受影响商户: <%= cancellation.affected_merchant_count %> 家
+              </p>
+              <div class="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                <span>上报时间: <%= format_datetime(cancellation.created_at) %></span>
+                <span>当前责任人: <%= cancellation.current_handler&.name || "未分配" %></span>
+              </div>
+            </div>
+            <span class="px-2 py-1 text-xs rounded-full <%= status_class(cancellation.status) %>">
+              <%= status_text(cancellation.status) %>
+            </span>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <% if @cancellations.empty? %>
+      <div class="p-8 text-center text-gray-500">
+        暂无演出取消记录
+      </div>
+    <% end %>
+
+    <div class="px-6 py-4 border-t border-gray-100">
+      <%= paginate @cancellations %>
+    </div>
+  </div>
+</div>
