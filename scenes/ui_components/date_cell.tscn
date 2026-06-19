@@ -1,0 +1,52 @@
+[gd_scene load_steps=3 format=3 uid="uid://cdate_cell"]
+
+[ext_resource type="Script" path="res://scripts/ui/date_cell.gd" id="1_date"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_date"]
+bg_color = Color(0.12, 0.15, 0.18, 1)
+border_color = Color(0.25, 0.3, 0.35, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+content_margin_left = 8
+content_margin_top = 6
+content_margin_right = 8
+content_margin_bottom = 6
+
+[node name="DateCell" type="PanelContainer"]
+offset_right = 80.0
+offset_bottom = 80.0
+script = ExtResource("1_date")
+
+[node name="Panel" type="Panel" parent="."]
+offset_right = 80.0
+offset_bottom = 80.0
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+offset_right = 80.0
+offset_bottom = 80.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_date")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer"]
+offset_left = 8.0
+offset_top = 6.0
+offset_right = 72.0
+offset_bottom = 74.0
+
+[node name="DayLabel" type="Label" parent="MarginContainer/VBoxContainer"]
+offset_right = 64.0
+offset_bottom = 36.0
+text = "1"
+horizontal_alignment = 1
+
+[node name="StatusLabel" type="Label" parent="MarginContainer/VBoxContainer"]
+offset_top = 40.0
+offset_right = 64.0
+offset_bottom = 68.0
+text = "状态"
+horizontal_alignment = 1

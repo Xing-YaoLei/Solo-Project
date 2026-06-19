@@ -1,0 +1,144 @@
+[gd_scene load_steps=3 format=3 uid="uid://result001"]
+
+[ext_resource type="Script" path="res://scripts/ui/result_screen.gd" id="1_result"]
+[ext_resource type="Theme" path="res://scenes/theme.tres" id="2_theme"]
+
+[node name="ResultScreen" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("2_theme")
+script = ExtResource("1_result")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.08, 0.1, 0.12, 1)
+
+[node name="Panel" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 60.0
+offset_top = 40.0
+offset_right = -60.0
+offset_bottom = -40.0
+
+[node name="MarginContainer" type="MarginContainer" parent="Panel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/margin_left = 40
+theme_override_constants/margin_top = 40
+theme_override_constants/margin_right = 40
+theme_override_constants/margin_bottom = 40
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Panel/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 24
+
+[node name="ResultTitle" type="Label" parent="Panel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+text = "挑战成功！"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 36
+theme_override_colors/font_color = Color(0.18, 0.8, 0.44, 1)
+
+[node name="StarsContainer" type="HBoxContainer" parent="Panel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 16
+
+[node name="StatsGrid" type="GridContainer" parent="Panel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+columns = 2
+theme_override_constants/h_separation = 40
+theme_override_constants/v_separation = 16
+
+[node name="ScoreLabel" type="Label" parent="Panel/MarginContainer/VBoxContainer/StatsGrid"]
+layout_mode = 2
+text = "得分："
+theme_override_font_sizes/font_size = 20
+
+[node name="ScoreValue" type="Label" parent="Panel/MarginContainer/VBoxContainer/StatsGrid"]
+layout_mode = 2
+text = "0"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 20
+theme_override_colors/font_color = Color(0.2, 0.6, 0.86, 1)
+
+[node name="CorrectLabel" type="Label" parent="Panel/MarginContainer/VBoxContainer/StatsGrid"]
+layout_mode = 2
+text = "正确数："
+theme_override_font_sizes/font_size = 20
+
+[node name="CorrectValue" type="Label" parent="Panel/MarginContainer/VBoxContainer/StatsGrid"]
+layout_mode = 2
+text = "0"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 20
+theme_override_colors/font_color = Color(0.18, 0.8, 0.44, 1)
+
+[node name="TotalLabel" type="Label" parent="Panel/MarginContainer/VBoxContainer/StatsGrid"]
+layout_mode = 2
+text = "总数："
+theme_override_font_sizes/font_size = 20
+
+[node name="TotalValue" type="Label" parent="Panel/MarginContainer/VBoxContainer/StatsGrid"]
+layout_mode = 2
+text = "0"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 20
+
+[node name="ConversionLabel" type="Label" parent="Panel/MarginContainer/VBoxContainer/StatsGrid"]
+layout_mode = 2
+text = "转化率："
+theme_override_font_sizes/font_size = 20
+
+[node name="ConversionValue" type="Label" parent="Panel/MarginContainer/VBoxContainer/StatsGrid"]
+layout_mode = 2
+text = "0.0%"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 20
+theme_override_colors/font_color = Color(1, 0.84, 0, 1)
+
+[node name="TimeLabel" type="Label" parent="Panel/MarginContainer/VBoxContainer/StatsGrid"]
+layout_mode = 2
+text = "用时："
+theme_override_font_sizes/font_size = 20
+
+[node name="TimeValue" type="Label" parent="Panel/MarginContainer/VBoxContainer/StatsGrid"]
+layout_mode = 2
+text = "00:00"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 20
+
+[node name="ButtonRow" type="VBoxContainer" parent="Panel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 12
+size_flags_horizontal = 4
+
+[node name="ReplayButton" type="Button" parent="Panel/MarginContainer/VBoxContainer/ButtonRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 56)
+text = "重新挑战"
+theme_override_font_sizes/font_size = 20
+
+[node name="LevelSelectButton" type="Button" parent="Panel/MarginContainer/VBoxContainer/ButtonRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 56)
+text = "返回关卡选择"
+theme_override_font_sizes/font_size = 20
+
+[node name="MainMenuButton" type="Button" parent="Panel/MarginContainer/VBoxContainer/ButtonRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 56)
+text = "返回主菜单"
+theme_override_font_sizes/font_size = 20

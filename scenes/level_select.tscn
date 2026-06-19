@@ -1,0 +1,199 @@
+[gd_scene load_steps=3 format=3 uid="uid://level_select_001"]
+
+[ext_resource type="Script" path="res://scripts/ui/level_select.gd" id="1_level"]
+[ext_resource type="Theme" path="res://scenes/theme.tres" id="2_theme"]
+
+[node name="LevelSelect" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme = ExtResource("2_theme")
+script = ExtResource("1_level")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.09, 0.13, 0.17, 1)
+
+[node name="MainContainer" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = 20.0
+offset_right = -20.0
+offset_bottom = -20.0
+theme_override_constants/separation = 20
+
+[node name="TitleLabel" type="Label" parent="MainContainer"]
+layout_mode = 2
+text = "选择关卡"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.2, 0.6, 0.86, 1)
+theme_override_font_sizes/font_size = 32
+
+[node name="ContentContainer" type="HBoxContainer" parent="MainContainer"]
+layout_mode = 2
+theme_override_constants/separation = 20
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="LeftPanel" type="VBoxContainer" parent="MainContainer/ContentContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="TabContainer" type="TabContainer" parent="MainContainer/ContentContainer/LeftPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_font_sizes/font_size = 16
+
+[node name="TrainingTab" type="VBoxContainer" parent="MainContainer/ContentContainer/LeftPanel/TabContainer"]
+layout_mode = 2
+name = "训练关卡"
+
+[node name="TrainingScroll" type="ScrollContainer" parent="MainContainer/ContentContainer/LeftPanel/TabContainer/TrainingTab"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="TrainingGrid" type="GridContainer" parent="MainContainer/ContentContainer/LeftPanel/TabContainer/TrainingTab/TrainingScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+columns = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/h_separation = 16
+theme_override_constants/v_separation = 16
+
+[node name="PracticeTab" type="VBoxContainer" parent="MainContainer/ContentContainer/LeftPanel/TabContainer"]
+layout_mode = 2
+name = "自由练习"
+
+[node name="PracticeScroll" type="ScrollContainer" parent="MainContainer/ContentContainer/LeftPanel/TabContainer/PracticeTab"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="PracticeGrid" type="GridContainer" parent="MainContainer/ContentContainer/LeftPanel/TabContainer/PracticeTab/PracticeScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+columns = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/h_separation = 16
+theme_override_constants/v_separation = 16
+
+[node name="RightPanel" type="VBoxContainer" parent="MainContainer/ContentContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+custom_minimum_size = Vector2(320, 0)
+theme_override_constants/separation = 16
+
+[node name="LevelInfoPanel" type="PanelContainer" parent="MainContainer/ContentContainer/RightPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+visible = false
+
+[node name="InfoVBox" type="VBoxContainer" parent="MainContainer/ContentContainer/RightPanel/LevelInfoPanel"]
+layout_mode = 2
+theme_override_constants/separation = 12
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="InfoTitle" type="Label" parent="MainContainer/ContentContainer/RightPanel/LevelInfoPanel/InfoVBox"]
+layout_mode = 2
+text = "关卡详情"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.2, 0.6, 0.86, 1)
+theme_override_font_sizes/font_size = 20
+
+[node name="Divider1" type="HSeparator" parent="MainContainer/ContentContainer/RightPanel/LevelInfoPanel/InfoVBox"]
+layout_mode = 2
+
+[node name="LevelNameLabel" type="Label" parent="MainContainer/ContentContainer/RightPanel/LevelInfoPanel/InfoVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "关卡名称"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 18
+
+[node name="LevelDescLabel" type="Label" parent="MainContainer/ContentContainer/RightPanel/LevelInfoPanel/InfoVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "关卡描述"
+autowrap_mode = 3
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.7, 0.75, 0.8, 1)
+theme_override_font_sizes/font_size = 14
+
+[node name="Divider2" type="HSeparator" parent="MainContainer/ContentContainer/RightPanel/LevelInfoPanel/InfoVBox"]
+layout_mode = 2
+
+[node name="LevelDifficultyLabel" type="Label" parent="MainContainer/ContentContainer/RightPanel/LevelInfoPanel/InfoVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "难度: 简单"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 16
+
+[node name="LevelTargetLabel" type="Label" parent="MainContainer/ContentContainer/RightPanel/LevelInfoPanel/InfoVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "目标转化率: 70%"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.6, 0.8, 0.6, 1)
+theme_override_font_sizes/font_size = 16
+
+[node name="LevelTimeLabel" type="Label" parent="MainContainer/ContentContainer/RightPanel/LevelInfoPanel/InfoVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "时间限制: 300秒"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.8, 0.8, 0.6, 1)
+theme_override_font_sizes/font_size = 16
+
+[node name="Spacer" type="Control" parent="MainContainer/ContentContainer/RightPanel/LevelInfoPanel/InfoVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="StartButton" type="Button" parent="MainContainer/ContentContainer/RightPanel/LevelInfoPanel/InfoVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "开始"
+disabled = true
+theme_override_font_sizes/font_size = 18
+custom_minimum_size = Vector2(0, 48)
+
+[node name="EmptyHint" type="Label" parent="MainContainer/ContentContainer/RightPanel"]
+layout_mode = 2
+text = "请选择一个关卡"
+horizontal_alignment = 1
+vertical_alignment = 1
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0.5, 0.55, 0.6, 1)
+theme_override_font_sizes/font_size = 18
+
+[node name="BottomContainer" type="HBoxContainer" parent="MainContainer"]
+layout_mode = 2
+alignment = 0
+
+[node name="BackButton" type="Button" parent="MainContainer/BottomContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "返回"
+theme_override_font_sizes/font_size = 16
+custom_minimum_size = Vector2(120, 44)

@@ -1,0 +1,404 @@
+[gd_scene load_steps=3 format=3 uid="uid://cgame_main_scene"]
+
+[ext_resource type="Theme" path="res://scenes/theme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/game_main.gd" id="2_game_main"]
+
+[node name="GameMain" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("1_theme")
+script = ExtResource("2_game_main")
+
+[node name="MainContainer" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 0
+
+[node name="TopBar" type="PanelContainer" parent="MainContainer"]
+layout_mode = 2
+
+[node name="Panel" type="Panel" parent="MainContainer/TopBar"]
+layout_mode = 2
+
+[node name="MarginContainer" type="MarginContainer" parent="MainContainer/TopBar"]
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 12
+
+[node name="HBoxContainer" type="HBoxContainer" parent="MainContainer/TopBar/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 30
+
+[node name="TimerLabel" type="Label" parent="MainContainer/TopBar/MarginContainer/HBoxContainer"]
+layout_mode = 2
+text = "05:00"
+horizontal_alignment = 1
+
+[node name="ScoreLabel" type="Label" parent="MainContainer/TopBar/MarginContainer/HBoxContainer"]
+layout_mode = 2
+text = "分数: 0"
+horizontal_alignment = 1
+
+[node name="ProgressLabel" type="Label" parent="MainContainer/TopBar/MarginContainer/HBoxContainer"]
+layout_mode = 2
+text = "进度: 0/0 (0%)"
+horizontal_alignment = 1
+size_flags_horizontal = 3
+
+[node name="ComboLabel" type="Label" parent="MainContainer/TopBar/MarginContainer/HBoxContainer"]
+layout_mode = 2
+text = "连击: x0"
+horizontal_alignment = 1
+visible = false
+
+[node name="PauseButton" type="Button" parent="MainContainer/TopBar/MarginContainer/HBoxContainer"]
+layout_mode = 2
+text = "暂停"
+
+[node name="MainContent" type="HSplitContainer" parent="MainContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+split_offset = 320
+collapsed = false
+
+[node name="LeftPanel" type="ScrollContainer" parent="MainContainer/MainContent"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+custom_minimum_size = Vector2(300, 0)
+
+[node name="Content" type="VBoxContainer" parent="MainContainer/MainContent/LeftPanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="TitleLabel" type="Label" parent="MainContainer/MainContent/LeftPanel/Content"]
+layout_mode = 2
+text = "价格规则"
+horizontal_alignment = 1
+
+[node name="PriceRulesContainer" type="VBoxContainer" parent="MainContainer/MainContent/LeftPanel/Content"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="CenterPanel" type="ScrollContainer" parent="MainContainer/MainContent"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MainContainer/MainContent/CenterPanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 16
+
+[node name="TaskArea" type="PanelContainer" parent="MainContainer/MainContent/CenterPanel/VBoxContainer"]
+layout_mode = 2
+
+[node name="Panel" type="Panel" parent="MainContainer/MainContent/CenterPanel/VBoxContainer/TaskArea"]
+layout_mode = 2
+
+[node name="Content" type="VBoxContainer" parent="MainContainer/MainContent/CenterPanel/VBoxContainer/TaskArea"]
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 16
+
+[node name="TaskTitle" type="Label" parent="MainContainer/MainContent/CenterPanel/VBoxContainer/TaskArea/Content"]
+layout_mode = 2
+text = "当前任务"
+horizontal_alignment = 0
+
+[node name="TaskDescription" type="Label" parent="MainContainer/MainContent/CenterPanel/VBoxContainer/TaskArea/Content"]
+layout_mode = 2
+text = "请等待游戏开始..."
+horizontal_alignment = 0
+autowrap_mode = 2
+
+[node name="TaskHint" type="Label" parent="MainContainer/MainContent/CenterPanel/VBoxContainer/TaskArea/Content"]
+layout_mode = 2
+text = ""
+horizontal_alignment = 0
+autowrap_mode = 2
+visible = false
+
+[node name="PackagesArea" type="PanelContainer" parent="MainContainer/MainContent/CenterPanel/VBoxContainer"]
+layout_mode = 2
+
+[node name="Panel" type="Panel" parent="MainContainer/MainContent/CenterPanel/VBoxContainer/PackagesArea"]
+layout_mode = 2
+
+[node name="Content" type="VBoxContainer" parent="MainContainer/MainContent/CenterPanel/VBoxContainer/PackagesArea"]
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 16
+
+[node name="PackagesTitle" type="Label" parent="MainContainer/MainContent/CenterPanel/VBoxContainer/PackagesArea/Content"]
+layout_mode = 2
+text = "选择套餐"
+horizontal_alignment = 0
+
+[node name="PackagesContainer" type="HBoxContainer" parent="MainContainer/MainContent/CenterPanel/VBoxContainer/PackagesArea/Content"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="DateArea" type="PanelContainer" parent="MainContainer/MainContent/CenterPanel/VBoxContainer"]
+layout_mode = 2
+
+[node name="Panel" type="Panel" parent="MainContainer/MainContent/CenterPanel/VBoxContainer/DateArea"]
+layout_mode = 2
+
+[node name="Content" type="VBoxContainer" parent="MainContainer/MainContent/CenterPanel/VBoxContainer/DateArea"]
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 16
+
+[node name="DateTitle" type="Label" parent="MainContainer/MainContent/CenterPanel/VBoxContainer/DateArea/Content"]
+layout_mode = 2
+text = "选择入住日期"
+horizontal_alignment = 0
+
+[node name="CalendarNav" type="HBoxContainer" parent="MainContainer/MainContent/CenterPanel/VBoxContainer/DateArea/Content"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="PrevMonthButton" type="Button" parent="MainContainer/MainContent/CenterPanel/VBoxContainer/DateArea/Content/CalendarNav"]
+layout_mode = 2
+text = "◀"
+custom_minimum_size = Vector2(48, 0)
+
+[node name="CalendarHeader" type="Label" parent="MainContainer/MainContent/CenterPanel/VBoxContainer/DateArea/Content/CalendarNav"]
+layout_mode = 2
+text = "2026年7月"
+horizontal_alignment = 1
+size_flags_horizontal = 3
+
+[node name="NextMonthButton" type="Button" parent="MainContainer/MainContent/CenterPanel/VBoxContainer/DateArea/Content/CalendarNav"]
+layout_mode = 2
+text = "▶"
+custom_minimum_size = Vector2(48, 0)
+
+[node name="CalendarGrid" type="GridContainer" parent="MainContainer/MainContent/CenterPanel/VBoxContainer/DateArea/Content"]
+layout_mode = 2
+columns = 7
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="OptionsArea" type="PanelContainer" parent="MainContainer/MainContent/CenterPanel/VBoxContainer"]
+layout_mode = 2
+
+[node name="Panel" type="Panel" parent="MainContainer/MainContent/CenterPanel/VBoxContainer/OptionsArea"]
+layout_mode = 2
+
+[node name="Content" type="VBoxContainer" parent="MainContainer/MainContent/CenterPanel/VBoxContainer/OptionsArea"]
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 16
+
+[node name="OptionsTitle" type="Label" parent="MainContainer/MainContent/CenterPanel/VBoxContainer/OptionsArea/Content"]
+layout_mode = 2
+text = "入住信息"
+horizontal_alignment = 0
+
+[node name="StayDaysRow" type="HBoxContainer" parent="MainContainer/MainContent/CenterPanel/VBoxContainer/OptionsArea/Content"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="StayDaysLabel" type="Label" parent="MainContainer/MainContent/CenterPanel/VBoxContainer/OptionsArea/Content/StayDaysRow"]
+layout_mode = 2
+text = "入住天数:"
+size_flags_horizontal = 8
+
+[node name="StayDaysSpin" type="SpinBox" parent="MainContainer/MainContent/CenterPanel/VBoxContainer/OptionsArea/Content/StayDaysRow"]
+layout_mode = 2
+min_value = 1.0
+max_value = 30.0
+value = 1.0
+step = 1.0
+
+[node name="GuestCountRow" type="HBoxContainer" parent="MainContainer/MainContent/CenterPanel/VBoxContainer/OptionsArea/Content"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="GuestCountLabel" type="Label" parent="MainContainer/MainContent/CenterPanel/VBoxContainer/OptionsArea/Content/GuestCountRow"]
+layout_mode = 2
+text = "入住人数:"
+size_flags_horizontal = 8
+
+[node name="GuestCountSpin" type="SpinBox" parent="MainContainer/MainContent/CenterPanel/VBoxContainer/OptionsArea/Content/GuestCountRow"]
+layout_mode = 2
+min_value = 1.0
+max_value = 4.0
+value = 2.0
+step = 1.0
+
+[node name="PreviewArea" type="PanelContainer" parent="MainContainer/MainContent/CenterPanel/VBoxContainer"]
+layout_mode = 2
+
+[node name="Panel" type="Panel" parent="MainContainer/MainContent/CenterPanel/VBoxContainer/PreviewArea"]
+layout_mode = 2
+
+[node name="Content" type="VBoxContainer" parent="MainContainer/MainContent/CenterPanel/VBoxContainer/PreviewArea"]
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 16
+
+[node name="PreviewTitle" type="Label" parent="MainContainer/MainContent/CenterPanel/VBoxContainer/PreviewArea/Content"]
+layout_mode = 2
+text = "价格预览"
+horizontal_alignment = 0
+
+[node name="PreviewMessage" type="Label" parent="MainContainer/MainContent/CenterPanel/VBoxContainer/PreviewArea/Content"]
+layout_mode = 2
+text = "请选择套餐和日期"
+horizontal_alignment = 1
+
+[node name="PreviewBasePrice" type="Label" parent="MainContainer/MainContent/CenterPanel/VBoxContainer/PreviewArea/Content"]
+layout_mode = 2
+text = "基础价格: ¥0.00"
+horizontal_alignment = 0
+visible = false
+
+[node name="PreviewRulesContainer" type="VBoxContainer" parent="MainContainer/MainContent/CenterPanel/VBoxContainer/PreviewArea/Content"]
+layout_mode = 2
+theme_override_constants/separation = 4
+visible = false
+
+[node name="PreviewFinalPrice" type="Label" parent="MainContainer/MainContent/CenterPanel/VBoxContainer/PreviewArea/Content"]
+layout_mode = 2
+text = "总价: ¥0.00"
+horizontal_alignment = 2
+visible = false
+
+[node name="SubmitButton" type="Button" parent="MainContainer/MainContent/CenterPanel/VBoxContainer"]
+layout_mode = 2
+text = "确认核销"
+disabled = true
+custom_minimum_size = Vector2(0, 56)
+
+[node name="RightPanel" type="ScrollContainer" parent="MainContainer/MainContent"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+custom_minimum_size = Vector2(340, 0)
+
+[node name="Content" type="VBoxContainer" parent="MainContainer/MainContent/RightPanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="TitleLabel" type="Label" parent="MainContainer/MainContent/RightPanel/Content"]
+layout_mode = 2
+text = "核销记录"
+horizontal_alignment = 1
+
+[node name="RecordsContainer" type="VBoxContainer" parent="MainContainer/MainContent/RightPanel/Content"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ResultPanel" type="Control" parent="MainContainer"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+visible = false
+
+[node name="BgColorRect" type="ColorRect" parent="MainContainer/ResultPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.7)
+
+[node name="Content" type="VBoxContainer" parent="MainContainer/ResultPanel"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -250.0
+offset_top = -200.0
+offset_right = 250.0
+offset_bottom = 200.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="PanelContainer" type="PanelContainer" parent="MainContainer/ResultPanel/Content"]
+layout_mode = 2
+
+[node name="Panel" type="Panel" parent="MainContainer/ResultPanel/Content/PanelContainer"]
+layout_mode = 2
+
+[node name="MarginContainer" type="MarginContainer" parent="MainContainer/ResultPanel/Content/PanelContainer"]
+layout_mode = 2
+theme_override_constants/margin_left = 40
+theme_override_constants/margin_top = 40
+theme_override_constants/margin_right = 40
+theme_override_constants/margin_bottom = 40
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MainContainer/ResultPanel/Content/PanelContainer/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="ResultTitle" type="Label" parent="MainContainer/ResultPanel/Content/PanelContainer/MarginContainer/VBoxContainer"]
+layout_mode = 2
+text = "游戏结束"
+horizontal_alignment = 1
+
+[node name="ResultScore" type="Label" parent="MainContainer/ResultPanel/Content/PanelContainer/MarginContainer/VBoxContainer"]
+layout_mode = 2
+text = "最终得分: 0"
+horizontal_alignment = 1
+
+[node name="ResultStats" type="Label" parent="MainContainer/ResultPanel/Content/PanelContainer/MarginContainer/VBoxContainer"]
+layout_mode = 2
+text = "正确: 0/0 (0%)\n用时: 00:00 / 00:00\n最大连击: x0"
+horizontal_alignment = 1
+
+[node name="RestartButton" type="Button" parent="MainContainer/ResultPanel/Content/PanelContainer/MarginContainer/VBoxContainer"]
+layout_mode = 2
+text = "重新开始"
+custom_minimum_size = Vector2(0, 48)
+
+[node name="BackButton" type="Button" parent="MainContainer/ResultPanel/Content/PanelContainer/MarginContainer/VBoxContainer"]
+layout_mode = 2
+text = "返回主菜单"
+custom_minimum_size = Vector2(0, 48)
+
+[node name="FeedbackLabel" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 10
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -300.0
+offset_top = -100.0
+offset_right = 300.0
+offset_bottom = -50.0
+grow_horizontal = 2
+text = ""
+horizontal_alignment = 1
+visible = false

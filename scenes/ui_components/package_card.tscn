@@ -1,0 +1,60 @@
+[gd_scene load_steps=2 format=3 uid="uid://cpackage_card"]
+
+[ext_resource type="Script" path="res://scripts/ui/package_card.gd" id="1_package"]
+
+[node name="PackageCard" type="Panel"]
+offset_right = 260.0
+offset_bottom = 240.0
+script = ExtResource("1_package")
+
+[node name="ContentContainer" type="VBoxContainer" parent="."]
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 244.0
+offset_bottom = 224.0
+
+[node name="NameLabel" type="Label" parent="ContentContainer"]
+offset_right = 228.0
+offset_bottom = 30.0
+text = "套餐名称"
+horizontal_alignment = 1
+
+[node name="TypeLabel" type="Label" parent="ContentContainer"]
+offset_top = 34.0
+offset_right = 228.0
+offset_bottom = 54.0
+text = "类型"
+horizontal_alignment = 1
+
+[node name="PriceLabel" type="Label" parent="ContentContainer"]
+offset_top = 58.0
+offset_right = 228.0
+offset_bottom = 82.0
+text = "¥0/晚"
+horizontal_alignment = 1
+
+[node name="DescLabel" type="Label" parent="ContentContainer"]
+offset_top = 86.0
+offset_right = 228.0
+offset_bottom = 110.0
+text = "描述"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="IncludesContainer" type="VBoxContainer" parent="ContentContainer"]
+offset_top = 114.0
+offset_right = 228.0
+offset_bottom = 158.0
+
+[node name="InfoLabel" type="Label" parent="ContentContainer"]
+offset_top = 162.0
+offset_right = 228.0
+offset_bottom = 182.0
+text = "最多2人 | 最少1晚"
+horizontal_alignment = 1
+
+[node name="SelectButton" type="Button" parent="ContentContainer"]
+offset_top = 186.0
+offset_right = 228.0
+offset_bottom = 208.0
+text = "选择"

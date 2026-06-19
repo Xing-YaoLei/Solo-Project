@@ -1,0 +1,76 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[application]
+
+config/name="民宿套餐售卖调度"
+config/description="旅游民宿套餐售卖流程演练解谜游戏"
+run/main_scene="res://scenes/main_menu.tscn"
+config/features=PackedStringArray("4.2", "GL Compatibility")
+config/icon="res://icon.svg"
+
+[autoload]
+
+GameData="*res://scripts/game_data.gd"
+GameManager="*res://scripts/game_manager.gd"
+AudioManager="*res://scripts/audio_manager.gd"
+SettingsManager="*res://scripts/settings_manager.gd"
+LeaderboardManager="*res://scripts/leaderboard_manager.gd"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/size/resizable=false
+window/handheld/orientation=1
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+
+[importer_defaults]
+
+cubemap_basis_universal/high_quality=false
+cubemap_basis_universal/normal_map=false
+cubemap_basis_universal/quality=0.6
+cubemap_webp/high_quality=false
+cubemap_webp/normal_map=false
+cubemap_webp/quality=0.75
+texture_2d_basis_universal/high_quality=false
+texture_2d_basis_universal/normal_map=false
+texture_2d_basis_universal/quality=0.6
+texture_2d_webp/high_quality=false
+texture_2d_webp/normal_map=false
+texture_2d_webp/quality=0.75
+texture_3d_basis_universal/high_quality=false
+texture_3d_basis_universal/normal_map=false
+texture_3d_basis_universal/quality=0.6
+
+[input]
+
+ui_accept={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":0,"physical_keycode":4194309,"key_label":0,"unicode":32,"echo":false,"script":null)
+, Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":0,"physical_keycode":4194306,"key_label":0,"unicode":13,"echo":false,"script":null)
+]
+}
+
+[layer_names]
+
+2d_physics/layer_1="UI"
+
+[rendering]
+
+textures/canvas_textures/default_texture_filter=0
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+environment/defaults/default_clear_color=Color(0.09, 0.13, 0.17, 1)
+
+[physics]
+
+common/physics_ticks_per_second=60
