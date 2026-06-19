@@ -73,8 +73,36 @@ func _ready():
 	guest_count_spin.value_changed.connect(_on_guest_count_changed)
 	
 	_init_weekday_labels()
+	
+	if GameManager.current_level:
+		_initialize_from_level(GameManager.current_level)
+	elif GameManager.is_game_active:
+		_initialize_from_level(GameManager.current_level)
+	else:
+		_update_calendar()
+		_update_preview()
+
+func _initialize_from_level(level_data):
+	current_year = 2026
+	current_month = 7
+	selected_package_id = ""
+	selected_date_str = ""
+	feedback_label.visible = false
+	result_panel.visible = false
+	
+	_load_price_rules(level_data)
+	_load_packages(level_data)
+	
+	var task = GameManager.get_current_task()
+	if task:
+		_set_calendar_to_date(task.date)
+	
 	_update_calendar()
+	_update_task()
+	_update_progress()
+	_update_records()
 	_update_preview()
+	_update_timer_display()
 
 func _init_weekday_labels():
 	var weekdays = ["日", "一", "二", "三", "四", "五", "六"]
@@ -87,6 +115,24 @@ func _init_weekday_labels():
 		calendar_grid.add_child(label)
 		weekday_labels.append(label)
 
+func _set_calendar_to_date(date_str: String):
+	if date_str == "":
+		return
+	var parts = date_str.split("-")
+	if parts.size() == 3:
+		current_year = int(parts[0])
+		current_month = int(parts[1])
+
+func _update_timer_display():
+	var time_remaining = GameManager.get_time_remaining()
+	timer_label.text = _format_time(time_remaining)
+	if time_remaining < 30:
+		timer_label.add_theme_color_override("font_color", Color(0.91, 0.3, 0.24))
+	elif time_remaining < 60:
+		timer_label.add_theme_color_override("font_color", Color(0.95, 0.61, 0.07))
+	else:
+		timer_label.add_theme_color_override("font_color", Color(0.95, 0.95, 0.95, 1))
+
 func _on_game_started(level_data):
 	current_year = 2026
 	current_month = 7
@@ -97,11 +143,17 @@ func _on_game_started(level_data):
 	
 	_load_price_rules(level_data)
 	_load_packages(level_data)
+	
+	var task = GameManager.get_current_task()
+	if task:
+		_set_calendar_to_date(task.date)
+	
 	_update_calendar()
 	_update_task()
 	_update_progress()
 	_update_records()
 	_update_preview()
+	_update_timer_display()
 
 func _load_price_rules(level_data):
 	for child in price_rules_container.get_children():
@@ -129,10 +181,10 @@ func _load_packages(level_data):
 			package_cards[pkg_id] = card
 
 func _update_calendar():
-	for child in calendar_grid.get_children():
-		if child is VBoxContainer || child is Label:
-			if child not in weekday_labels:
-				child.queue_free()
+	var children = calendar_grid.get_children()
+	for child in children:
+		if child not in weekday_labels:
+			child.queue_free()
 	
 	date_cells.clear()
 	
@@ -321,6 +373,16 @@ func _on_task_completed(result):
 		AudioManager.play_sfx("wrong")
 	_show_feedback(result["message"], result["is_correct"])
 	_update_progress()
+	
+	var new_task = GameManager.get_current_task()
+	if new_task:
+		_set_calendar_to_date(new_task.date)
+		_update_calendar()
+		selected_date_str = ""
+		selected_package_id = ""
+		for pkg_id in package_cards:
+			package_cards[pkg_id].set_selected(false)
+	
 	_update_task()
 	_update_preview()
 

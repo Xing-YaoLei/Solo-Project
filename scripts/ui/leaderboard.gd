@@ -2,7 +2,7 @@ extends Control
 
 @onready var tab_container: TabContainer = $Panel/MarginContainer/VBoxContainer/TabContainer
 @onready var conversion_list: VBoxContainer = $Panel/MarginContainer/VBoxContainer/TabContainer/ConversionTab/ScrollContainer/ConversionList
-@onready var time_list: VBoxContainer = $Panel/MarginContainer/VBoxContainer/TabContainer/TimeTab/ScrollContainer/TimeList
+@onready var time_list: VBoxContainer = $Panel/MarginContainer/VBoxContainer/TabContainer/TimeTab/ScrollContainer2/TimeList
 @onready var level_filter: OptionButton = $Panel/MarginContainer/VBoxContainer/FilterBar/LevelFilter
 @onready var back_button: Button = $Panel/MarginContainer/VBoxContainer/BackButton
 

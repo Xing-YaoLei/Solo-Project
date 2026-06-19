@@ -1,12 +1,12 @@
 extends Control
 
 @onready var sound_toggle: CheckBox = $Panel/MarginContainer/VBoxContainer/ScrollContainer/SettingsList/SoundRow/CheckBox
-@onready var vibration_toggle: CheckBox = $Panel/MarginContainer/VBoxContainer/ScrollContainer/SettingsList/VibrationRow/CheckBox
-@onready var animation_toggle: CheckBox = $Panel/MarginContainer/VBoxContainer/ScrollContainer/SettingsList/AnimationRow/CheckBox
+@onready var vibration_toggle: CheckBox = $Panel/MarginContainer/VBoxContainer/ScrollContainer/SettingsList/VibrationRow/CheckBox2
+@onready var animation_toggle: CheckBox = $Panel/MarginContainer/VBoxContainer/ScrollContainer/SettingsList/AnimationRow/CheckBox3
 @onready var music_slider: HSlider = $Panel/MarginContainer/VBoxContainer/ScrollContainer/SettingsList/MusicRow/HSlider
 @onready var music_value: Label = $Panel/MarginContainer/VBoxContainer/ScrollContainer/SettingsList/MusicRow/ValueLabel
-@onready var sfx_slider: HSlider = $Panel/MarginContainer/VBoxContainer/ScrollContainer/SettingsList/SfxRow/HSlider
-@onready var sfx_value: Label = $Panel/MarginContainer/VBoxContainer/ScrollContainer/SettingsList/SfxRow/ValueLabel
+@onready var sfx_slider: HSlider = $Panel/MarginContainer/VBoxContainer/ScrollContainer/SettingsList/SfxRow/HSlider2
+@onready var sfx_value: Label = $Panel/MarginContainer/VBoxContainer/ScrollContainer/SettingsList/SfxRow/ValueLabel2
 @onready var reset_button: Button = $Panel/MarginContainer/VBoxContainer/ButtonRow/ResetButton
 @onready var back_button: Button = $Panel/MarginContainer/VBoxContainer/ButtonRow/BackButton
 

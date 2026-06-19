@@ -5,7 +5,7 @@ signal game_completed(result)
 signal task_completed(task_result)
 signal timer_updated(time_remaining)
 
-var current_level: Dictionary = null
+var current_level = null
 var current_task_index: int = 0
 var completed_tasks: Array = []
 var correct_tasks: int = 0
@@ -56,13 +56,19 @@ func start_game(level_id: String):
 func _generate_random_tasks(level):
 	var packages = level.packages
 	var rules = _get_active_rules(level)
-	var dates = GameData.generate_dates_for_month(2026, 7)
+	var months_to_use: Array = [1, 2, 7, 8, 10, 6]
+	var all_dates: Array = []
+	for m in months_to_use:
+		all_dates.append_array(GameData.generate_dates_for_month(2026, m))
+	
+	if all_dates.is_empty():
+		all_dates = GameData.generate_dates_for_month(2026, 7)
 	
 	var task_count = level.target_sales
 	for i in range(task_count):
 		var pkg_id = packages[randi() % len(packages)]
 		var pkg = GameData.get_package(pkg_id)
-		var date = dates[randi() % len(dates)]
+		var date = all_dates[randi() % len(all_dates))
 		var stay_days = randi() % 5 + 1
 		var guests = randi() % pkg.max_guests + 1
 		
@@ -101,7 +107,14 @@ func select_package(package_id: String):
 	return selected_package != null
 
 func select_date(date_str: String):
-	var dates = GameData.generate_dates_for_month(2026, 7)
+	if date_str == "":
+		return false
+	var parts = date_str.split("-")
+	if parts.size() != 3:
+		return false
+	var year = int(parts[0])
+	var month = int(parts[1])
+	var dates = GameData.generate_dates_for_month(year, month)
 	for d in dates:
 		if d.date == date_str:
 			selected_date = d
@@ -282,3 +295,6 @@ func get_current_preview() -> Dictionary:
 	result["stay_days"] = selected_stay_days
 	result["guest_count"] = selected_guest_count
 	return result
+
+func get_time_remaining() -> float:
+	return time_remaining
