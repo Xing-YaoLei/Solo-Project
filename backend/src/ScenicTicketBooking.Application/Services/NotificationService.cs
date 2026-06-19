@@ -9,7 +9,7 @@ namespace ScenicTicketBooking.Application.Services;
 public interface INotificationService
 {
     Task<Notification> CreateNotificationAsync(NotificationChannel channel, string title, string content, string? recipient, Guid? conflictLogId, CancellationToken cancellationToken = default);
-    Task<IEnumerable<NotificationDto>> GetNotificationsAsync(string? recipient = null, bool? isRead = null, int limit = 50, CancellationToken cancellationToken = default);
+    Task<PagedResult<NotificationDto>> GetNotificationsAsync(NotificationChannel? channel = null, bool? isRead = null, string? recipient = null, int pageIndex = 1, int pageSize = 20, CancellationToken cancellationToken = default);
     Task<int> GetUnreadCountAsync(string? recipient = null, CancellationToken cancellationToken = default);
     Task<bool> MarkAsReadAsync(Guid id, CancellationToken cancellationToken = default);
     Task<bool> MarkAllAsReadAsync(string? recipient = null, CancellationToken cancellationToken = default);
@@ -54,13 +54,18 @@ public class NotificationService : INotificationService
         return notification;
     }
 
-    public async Task<IEnumerable<NotificationDto>> GetNotificationsAsync(
-        string? recipient = null,
+    public async Task<PagedResult<NotificationDto>> GetNotificationsAsync(
+        NotificationChannel? channel = null,
         bool? isRead = null,
-        int limit = 50,
+        string? recipient = null,
+        int pageIndex = 1,
+        int pageSize = 20,
         CancellationToken cancellationToken = default)
     {
         var queryable = _unitOfWork.Query<Notification>();
+
+        if (channel.HasValue)
+            queryable = queryable.Where(n => n.Channel == channel.Value);
 
         if (!string.IsNullOrWhiteSpace(recipient))
             queryable = queryable.Where(n => n.Recipient == recipient);
@@ -68,31 +73,41 @@ public class NotificationService : INotificationService
         if (isRead.HasValue)
             queryable = queryable.Where(n => n.IsRead == isRead.Value);
 
-        queryable = queryable
-            .OrderByDescending(n => n.CreatedAt)
-            .Take(limit);
+        var totalCount = await queryable.CountAsync(cancellationToken);
 
-        return await queryable.Select(n => new NotificationDto
+        var items = await queryable
+            .OrderByDescending(n => n.CreatedAt)
+            .Skip((pageIndex - 1) * pageSize)
+            .Take(pageSize)
+            .Select(n => new NotificationDto
+            {
+                Id = n.Id,
+                Channel = n.Channel,
+                Title = n.Title,
+                Content = n.Content,
+                Recipient = n.Recipient,
+                ConflictLogId = n.ConflictLogId,
+                IsRead = n.IsRead,
+                ReadAt = n.ReadAt,
+                IsSent = n.IsSent,
+                SentAt = n.SentAt,
+                RetryCount = n.RetryCount,
+                CreatedAt = n.CreatedAt
+            }).ToListAsync(cancellationToken);
+
+        return new PagedResult<NotificationDto>
         {
-            Id = n.Id,
-            Channel = n.Channel,
-            Title = n.Title,
-            Content = n.Content,
-            Recipient = n.Recipient,
-            ConflictLogId = n.ConflictLogId,
-            IsRead = n.IsRead,
-            ReadAt = n.ReadAt,
-            IsSent = n.IsSent,
-            SentAt = n.SentAt,
-            RetryCount = n.RetryCount,
-            CreatedAt = n.CreatedAt
-        }).ToListAsync(cancellationToken);
+            Items = items,
+            TotalCount = totalCount,
+            PageIndex = pageIndex,
+            PageSize = pageSize
+        };
     }
 
     public async Task<int> GetUnreadCountAsync(string? recipient = null, CancellationToken cancellationToken = default)
     {
         var queryable = _unitOfWork.Query<Notification>()
-            .Where(n => !n.IsRead && n.Channel == NotificationChannel.System);
+            .Where(n => !n.IsRead);
 
         if (!string.IsNullOrWhiteSpace(recipient))
             queryable = queryable.Where(n => n.Recipient == recipient);
@@ -115,7 +130,7 @@ public class NotificationService : INotificationService
     public async Task<bool> MarkAllAsReadAsync(string? recipient = null, CancellationToken cancellationToken = default)
     {
         var queryable = _unitOfWork.Query<Notification>()
-            .Where(n => !n.IsRead && n.Channel == NotificationChannel.System);
+            .Where(n => !n.IsRead);
 
         if (!string.IsNullOrWhiteSpace(recipient))
             queryable = queryable.Where(n => n.Recipient == recipient);

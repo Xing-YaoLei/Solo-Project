@@ -10,6 +10,7 @@ public interface IConflictDetectionService
 {
     Task<ConflictDetectionResult> DetectAndLogConflictsAsync(TicketBooking booking, CancellationToken cancellationToken = default);
     Task<ConflictDetectionResult> CheckConflictsForBookingAsync(Guid scenicSpotId, Guid timeSlotId, Guid visitorId, int quantity, CancellationToken cancellationToken = default);
+    Task<ConflictDetectionResult> CheckConflictsByIdCardAsync(Guid scenicSpotId, Guid timeSlotId, string visitorIdCard, int quantity, CancellationToken cancellationToken = default);
     Task<IEnumerable<ConflictLogDto>> GetActiveConflictsAsync(Guid? scenicSpotId = null, CancellationToken cancellationToken = default);
     Task<ConflictLogDto?> GetConflictByIdAsync(Guid id, CancellationToken cancellationToken = default);
     Task<ConflictLogDto> ProcessConflictAsync(Guid id, ProcessConflictDto dto, CancellationToken cancellationToken = default);
@@ -168,6 +169,16 @@ public class ConflictDetectionService : IConflictDetectionService
 
         if (timeSlot != null)
         {
+            if (timeSlot.BookedCount + quantity > timeSlot.Capacity)
+            {
+                result.Conflicts.Add(new ConflictLogBriefDto
+                {
+                    ConflictType = ConflictType.CapacityExceeded,
+                    Status = ConflictStatus.Detected,
+                    Reason = $"时段容量不足：剩余 {timeSlot.Capacity - timeSlot.BookedCount} 人，本次预约 {quantity} 人"
+                });
+            }
+
             var overlapBookings = await _unitOfWork.Query<TicketBooking>()
                 .Include(b => b.TimeSlot)
                 .Where(b => b.VisitorId == visitorId
@@ -184,6 +195,70 @@ public class ConflictDetectionService : IConflictDetectionService
                     Status = ConflictStatus.Detected,
                     Reason = $"时段重叠：与预约 [{overlap.BookingNo}] 时段 {overlap.TimeSlot.StartTime:hh\\:mm}-{overlap.TimeSlot.EndTime:hh\\:mm} 重叠"
                 });
+            }
+        }
+
+        result.HasConflict = result.Conflicts.Any();
+        result.Summary = result.HasConflict ? $"检测到 {result.Conflicts.Count} 个潜在冲突" : "未检测到冲突";
+        return result;
+    }
+
+    public async Task<ConflictDetectionResult> CheckConflictsByIdCardAsync(
+        Guid scenicSpotId, Guid timeSlotId, string visitorIdCard, int quantity,
+        CancellationToken cancellationToken = default)
+    {
+        var result = new ConflictDetectionResult();
+
+        var timeSlot = await _unitOfWork.TimeSlots.GetByIdAsync(timeSlotId, cancellationToken);
+        var scenicSpot = await _unitOfWork.ScenicSpots.GetByIdAsync(scenicSpotId, cancellationToken);
+
+        if (timeSlot != null)
+        {
+            if (timeSlot.BookedCount + quantity > timeSlot.Capacity)
+            {
+                result.Conflicts.Add(new ConflictLogBriefDto
+                {
+                    ConflictType = ConflictType.CapacityExceeded,
+                    Status = ConflictStatus.Detected,
+                    Reason = $"时段容量不足：该时段容量 {timeSlot.Capacity} 人，已预约 {timeSlot.BookedCount} 人，本次预约 {quantity} 人"
+                });
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(visitorIdCard))
+        {
+            var visitor = await _unitOfWork.Query<Visitor>()
+                .FirstOrDefaultAsync(v => v.IdCardNumber == visitorIdCard.Trim(), cancellationToken);
+
+            if (visitor != null && visitor.IsBlacklisted)
+            {
+                result.Conflicts.Add(new ConflictLogBriefDto
+                {
+                    ConflictType = ConflictType.BlacklistVisitor,
+                    Status = ConflictStatus.Detected,
+                    Reason = $"黑名单预警：访客 {visitor.Name}（身份证 {visitor.IdCardNumber}），原因为「{visitor.BlacklistReason ?? "未说明"}」，请拒绝入园或人工核实"
+                });
+            }
+
+            if (timeSlot != null && visitor != null)
+            {
+                var overlapBookings = await _unitOfWork.Query<TicketBooking>()
+                    .Include(b => b.TimeSlot)
+                    .Where(b => b.VisitorId == visitor.Id
+                        && b.TimeSlot.Date == timeSlot.Date
+                        && b.Status != BookingStatus.Cancelled
+                        && ((b.TimeSlot.StartTime < timeSlot.EndTime && b.TimeSlot.EndTime > timeSlot.StartTime)))
+                    .ToListAsync(cancellationToken);
+
+                foreach (var overlap in overlapBookings)
+                {
+                    result.Conflicts.Add(new ConflictLogBriefDto
+                    {
+                        ConflictType = ConflictType.TimeSlotOverlap,
+                        Status = ConflictStatus.Detected,
+                        Reason = $"时段重叠：该访客当天已有预约 [{overlap.BookingNo}]，时段 {overlap.TimeSlot.StartTime:hh\\:mm}-{overlap.TimeSlot.EndTime:hh\\:mm}"
+                    });
+                }
             }
         }
 

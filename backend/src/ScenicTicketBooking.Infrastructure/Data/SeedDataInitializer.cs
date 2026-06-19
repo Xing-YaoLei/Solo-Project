@@ -395,7 +395,7 @@ public static class SeedDataInitializer
 
             reschedules.Add(new RescheduleRecord
             {
-                Id = Guid.Parse($"R{b.Id.ToString("N").Substring(0, 30)}"),
+                Id = Guid.Parse($"{b.Id.ToString("N").Substring(0, 28)}01"),
                 BookingId = b.Id,
                 OriginalTimeSlotId = originalSlot.Id,
                 NewTimeSlotId = newSlot.Id,

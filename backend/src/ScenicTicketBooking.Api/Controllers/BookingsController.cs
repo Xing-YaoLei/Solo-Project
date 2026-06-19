@@ -153,14 +153,42 @@ public class BookingsController : ControllerBase
 
         if (request.TimeSlotId != Guid.Empty)
         {
-            var result = await _conflictService.CheckConflictsForBookingAsync(
-                request.ScenicSpotId,
-                request.TimeSlotId,
-                request.VisitorId ?? Guid.Empty,
-                request.Quantity,
-                cancellationToken);
+            ConflictDetectionResult? result = null;
 
-            if (result.HasConflict)
+            if (!string.IsNullOrWhiteSpace(request.VisitorIdCard))
+            {
+                result = await _conflictService.CheckConflictsByIdCardAsync(
+                    request.ScenicSpotId,
+                    request.TimeSlotId,
+                    request.VisitorIdCard,
+                    request.Quantity,
+                    cancellationToken);
+            }
+            else if (request.VisitorId.HasValue && request.VisitorId != Guid.Empty)
+            {
+                result = await _conflictService.CheckConflictsForBookingAsync(
+                    request.ScenicSpotId,
+                    request.TimeSlotId,
+                    request.VisitorId.Value,
+                    request.Quantity,
+                    cancellationToken);
+            }
+            else
+            {
+                var timeSlot = await _conflictService.CheckConflictsForBookingAsync(
+                    request.ScenicSpotId,
+                    request.TimeSlotId,
+                    Guid.Empty,
+                    request.Quantity,
+                    cancellationToken);
+                var onlyCapacity = new ConflictDetectionResult();
+                foreach (var c in timeSlot.Conflicts.Where(c => c.ConflictType == Domain.Enums.ConflictType.CapacityExceeded))
+                    onlyCapacity.Conflicts.Add(c);
+                onlyCapacity.HasConflict = onlyCapacity.Conflicts.Any();
+                result = onlyCapacity;
+            }
+
+            if (result != null && result.HasConflict)
             {
                 warnings.AddRange(result.Conflicts.Select(c => $"{c.ConflictType}: {c.Reason}"));
             }

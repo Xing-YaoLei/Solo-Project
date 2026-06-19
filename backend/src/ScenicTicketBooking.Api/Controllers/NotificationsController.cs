@@ -17,14 +17,21 @@ public class NotificationsController : ControllerBase
     }
 
     [HttpGet]
-    [ProducesResponseType(typeof(IEnumerable<NotificationDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<IEnumerable<NotificationDto>>> GetAll(
-        [FromQuery] string? recipient,
+    [ProducesResponseType(typeof(PagedResult<NotificationDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PagedResult<NotificationDto>>> GetAll(
+        [FromQuery] int? channel,
         [FromQuery] bool? isRead,
-        [FromQuery] int limit = 50,
+        [FromQuery] string? recipient,
+        [FromQuery] int pageIndex = 1,
+        [FromQuery] int pageSize = 20,
         CancellationToken cancellationToken = default)
     {
-        var result = await _notificationService.GetNotificationsAsync(recipient, isRead, limit, cancellationToken);
+        Domain.Enums.NotificationChannel? parsedChannel = null;
+        if (channel.HasValue && Enum.IsDefined(typeof(Domain.Enums.NotificationChannel), channel.Value))
+            parsedChannel = (Domain.Enums.NotificationChannel)channel.Value;
+
+        var result = await _notificationService.GetNotificationsAsync(
+            parsedChannel, isRead, recipient, pageIndex, pageSize, cancellationToken);
         return Ok(result);
     }
 
