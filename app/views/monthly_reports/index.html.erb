@@ -3,23 +3,35 @@
     <h1 class="text-3xl font-bold text-gray-800 mb-6">月度复盘报告</h1>
 
     <div class="bg-white rounded-lg shadow p-6 mb-6">
-      <div class="flex flex-wrap items-end gap-4">
-        <%= form_tag monthly_reports_path, method: :get, class: "flex flex-wrap items-end gap-4" do %>
+      <%= form_tag monthly_reports_path, method: :get, id: "filter-form" do %>
+        <div class="flex flex-wrap items-end gap-4">
           <div>
             <%= label_tag :month, "选择月份", class: "block text-sm font-medium text-gray-700 mb-1" %>
             <%= month_field_tag :month, (@selected_month.strftime("%Y-%m") if @selected_month), class: "border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" %>
           </div>
+          <div>
+            <%= label_tag :property_id, "房源筛选", class: "block text-sm font-medium text-gray-700 mb-1" %>
+            <%= select_tag :property_id,
+                options_from_collection_for_select(Property.all, :id, :name, params[:property_id]),
+                include_blank: "全部房源",
+                class: "border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" %>
+          </div>
           <div class="flex gap-2">
             <%= submit_tag "筛选", class: "bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-md transition-colors" %>
-            <%= link_to "全部", monthly_reports_path, class: "bg-white hover:bg-gray-50 text-gray-700 font-medium py-2 px-4 rounded-md border border-gray-300 transition-colors" %>
+            <%= link_to "重置", monthly_reports_path, class: "bg-white hover:bg-gray-50 text-gray-700 font-medium py-2 px-4 rounded-md border border-gray-300 transition-colors" %>
           </div>
-        <% end %>
 
-        <div class="flex gap-2 ml-auto">
-          <%= button_to "生成/更新本月报告", generate_monthly_reports_path(month: Date.current.strftime("%Y-%m")), method: :post, class: "bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors" %>
-          <%= link_to "下载报告", download_monthly_reports_path(month: @selected_month&.strftime("%Y-%m") || Date.current.strftime("%Y-%m")), class: "bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md transition-colors" %>
+          <div class="flex gap-2 ml-auto">
+            <%= button_to "生成/更新本月报告", generate_monthly_reports_path(month: @selected_month&.strftime("%Y-%m") || Date.current.strftime("%Y-%m")), method: :post, class: "bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors" %>
+            <%= link_to "下载报告",
+                download_monthly_reports_path(
+                  month: @selected_month&.strftime("%Y-%m") || Date.current.strftime("%Y-%m"),
+                  property_id: params[:property_id]
+                ),
+                class: "bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md transition-colors" %>
+          </div>
         </div>
-      </div>
+      <% end %>
     </div>
 
     <% if @available_months.present? %>

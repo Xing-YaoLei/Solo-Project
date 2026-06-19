@@ -1,8 +1,12 @@
 class MonthlyReportsController < ApplicationController
+  require "csv"
+
   def index
     @selected_month = Date.parse(params[:month]) rescue Date.current.beginning_of_month
+    @selected_property_id = params[:property_id]
     @monthly_reports = MonthlyReport.includes(:property).order(report_month: :desc)
     @monthly_reports = @monthly_reports.for_month(@selected_month) if params[:month].present?
+    @monthly_reports = @monthly_reports.for_property(@selected_property_id) if @selected_property_id.present?
     @available_months = MonthlyReport.distinct.pluck(:report_month).sort.reverse
   end
 

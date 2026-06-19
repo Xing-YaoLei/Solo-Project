@@ -10,7 +10,7 @@ class CheckInDocument < ApplicationRecord
   validates :name, presence: true
   validates :id_number, presence: true
 
-  before_update :log_changes
+  after_save :log_changes
 
   def id_type_i18n
     I18n.t("id_types.#{id_type}", default: id_type)
@@ -23,10 +23,11 @@ class CheckInDocument < ApplicationRecord
   private
 
   def log_changes
-    return unless saved_changes.any?
-    current_operator = User.first
+    return unless previous_changes.any?
 
-    saved_changes.each do |field, (old_val, new_val)|
+    current_operator = Current.user || User.first
+
+    previous_changes.each do |field, (old_val, new_val)|
       next if %w[updated_at created_at].include?(field)
       next if old_val == new_val
 

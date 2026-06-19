@@ -41,7 +41,14 @@
               <%= link_to "房源", properties_path, class: nav_link_class(properties_path) %>
               <%= link_to "订单", channel_orders_path, class: nav_link_class(channel_orders_path) %>
               <%= link_to "保洁任务", cleaning_tasks_path, class: nav_link_class(cleaning_tasks_path) %>
-              <%= link_to "房态冲突", room_conflicts_path, class: nav_link_class(room_conflicts_path) %>
+              <%= link_to room_conflicts_path, class: "#{nav_link_class(room_conflicts_path)} relative" do %>
+                房态冲突
+                <% if open_conflicts_count > 0 %>
+                  <span class="absolute -top-1 -right-1 flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-red-500 rounded-full">
+                    <%= open_conflicts_count %>
+                  </span>
+                <% end %>
+              <% end %>
               <%= link_to "入住证件", check_in_documents_path, class: nav_link_class(check_in_documents_path) %>
               <%= link_to "月底复盘", monthly_reports_path, class: nav_link_class(monthly_reports_path) %>
               <%= link_to "下载记录", report_downloads_path, class: nav_link_class(report_downloads_path) %>
@@ -64,7 +71,14 @@
           <%= link_to "房源", properties_path, class: mobile_nav_link_class(properties_path) %>
           <%= link_to "订单", channel_orders_path, class: mobile_nav_link_class(channel_orders_path) %>
           <%= link_to "保洁任务", cleaning_tasks_path, class: mobile_nav_link_class(cleaning_tasks_path) %>
-          <%= link_to "房态冲突", room_conflicts_path, class: mobile_nav_link_class(room_conflicts_path) %>
+          <%= link_to room_conflicts_path, class: "flex items-center justify-between #{mobile_nav_link_class(room_conflicts_path)}" do %>
+            <span>房态冲突</span>
+            <% if open_conflicts_count > 0 %>
+              <span class="flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-red-500 rounded-full">
+                <%= open_conflicts_count %>
+              </span>
+            <% end %>
+          <% end %>
           <%= link_to "入住证件", check_in_documents_path, class: mobile_nav_link_class(check_in_documents_path) %>
           <%= link_to "月底复盘", monthly_reports_path, class: mobile_nav_link_class(monthly_reports_path) %>
           <%= link_to "下载记录", report_downloads_path, class: mobile_nav_link_class(report_downloads_path) %>
