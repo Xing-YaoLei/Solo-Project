@@ -128,8 +128,10 @@ class AnalyticsEngine:
                 SELECT 
                     order_id,
                     package_id,
-                    LIST(DISTINCT promised_refund_policy) as refund_policies,
-                    LIST(DISTINCT CAST(promised_delivery_time AS VARCHAR)) as delivery_times,
+                    LIST(DISTINCT promised_refund_policy) FILTER (WHERE promised_refund_policy IS NOT NULL) as refund_policies,
+                    LIST(DISTINCT CAST(promised_delivery_time AS VARCHAR)) FILTER (WHERE promised_delivery_time IS NOT NULL) as delivery_times,
+                    STRING_AGG(DISTINCT promised_refund_policy, ' | ') FILTER (WHERE promised_refund_policy IS NOT NULL) as refund_policy_text,
+                    STRING_AGG(DISTINCT CAST(promised_delivery_time AS VARCHAR), ' | ') FILTER (WHERE promised_delivery_time IS NOT NULL) as delivery_time_text,
                     COUNT(*) as message_count,
                     MAX(message_time) as last_message
                 FROM customer_service_messages
@@ -151,13 +153,16 @@ class AnalyticsEngine:
                 cp.package_id,
                 cp.refund_policies,
                 cp.delivery_times,
+                cp.refund_policy_text,
+                cp.delivery_time_text,
                 cp.message_count,
                 oa.actual_checkin,
                 oa.actual_refund,
                 CASE 
-                    WHEN ARRAY_SIZE(cp.refund_policies) > 1 THEN '退款政策口径不一致'
-                    WHEN ARRAY_SIZE(cp.delivery_times) > 1 THEN '入住时间口径不一致'
-                    WHEN oa.actual_checkin IS NOT NULL AND ARRAY_SIZE(cp.delivery_times) > 0 
+                    WHEN len(cp.refund_policies) > 1 THEN '退款政策口径不一致'
+                    WHEN len(cp.delivery_times) > 1 THEN '入住时间口径不一致'
+                    WHEN oa.actual_checkin IS NOT NULL 
+                         AND len(cp.delivery_times) > 0 
                          AND cp.delivery_times[1] IS NOT NULL 
                          AND CAST(oa.actual_checkin AS VARCHAR) != cp.delivery_times[1] 
                          THEN '承诺入住时间与实际不符'

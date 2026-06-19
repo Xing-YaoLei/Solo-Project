@@ -25,9 +25,10 @@ class VersionController:
             )
             
             self.conn.execute("""
-                INSERT INTO data_versions (table_name, record_id, snapshot_data, change_reason, changed_by)
-                VALUES (?, ?, ?, ?, ?)
-            """, [table_name, record_id, json.dumps(current_data, ensure_ascii=False, default=str), 
+                INSERT INTO data_versions (record_version, table_name, record_id, snapshot_data, change_reason, changed_by)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, [current_version, table_name, record_id, 
+                  json.dumps(current_data, ensure_ascii=False, default=str), 
                   change_reason, changed_by])
         else:
             new_version = 1
@@ -62,14 +63,14 @@ class VersionController:
         try:
             db_versions = self.conn.execute("""
                 SELECT 
-                    version_id,
+                    record_version,
                     snapshot_data,
                     change_reason,
                     changed_at,
                     changed_by
                 FROM data_versions
                 WHERE table_name = ? AND record_id = ?
-                ORDER BY changed_at DESC
+                ORDER BY record_version DESC
             """, [table_name, record_id]).fetchall()
             
             for row in db_versions:
@@ -84,7 +85,7 @@ class VersionController:
         except Exception:
             pass
 
-        return minio_versions
+        return sorted(minio_versions, key=lambda x: x.get('version', 0))
 
     def compare_versions(self, version_a: dict, version_b: dict) -> dict:
         snapshot_a = version_a.get('snapshot', {})
@@ -117,12 +118,16 @@ class VersionController:
             'payment_records', payment_id, updates, change_reason, changed_by
         )
         
-        set_clause = ", ".join([f"{k} = ?" for k in updates.keys()])
-        params = list(updates.values()) + [new_version, payment_id]
+        safe_updates = {k: v for k, v in updates.items() 
+                        if k in ('status', 'amount', 'payment_method', 'channel', 'deposit_amount')}
+        safe_updates['version'] = new_version
+        
+        set_clause = ", ".join([f"{k} = ?" for k in safe_updates.keys()])
+        params = list(safe_updates.values()) + [payment_id]
         
         self.conn.execute(f"""
             UPDATE payment_records 
-            SET {set_clause}, version = ?
+            SET {set_clause}
             WHERE payment_id = ?
         """, params)
 
@@ -132,12 +137,16 @@ class VersionController:
             'door_lock_records', lock_id, updates, change_reason, changed_by
         )
         
-        set_clause = ", ".join([f"{k} = ?" for k in updates.keys()])
-        params = list(updates.values()) + [new_version, lock_id]
+        safe_updates = {k: v for k, v in updates.items() 
+                        if k in ('status', 'checkin_time', 'checkout_time', 'door_open_count', 'last_open_time')}
+        safe_updates['version'] = new_version
+        
+        set_clause = ", ".join([f"{k} = ?" for k in safe_updates.keys()])
+        params = list(safe_updates.values()) + [lock_id]
         
         self.conn.execute(f"""
             UPDATE door_lock_records 
-            SET {set_clause}, version = ?
+            SET {set_clause}
             WHERE lock_id = ?
         """, params)
 

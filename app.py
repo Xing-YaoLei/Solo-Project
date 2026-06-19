@@ -196,6 +196,34 @@ if page == "📊 销售漏斗总览":
     )
     st.plotly_chart(fig_compare, use_container_width=True)
 
+    try:
+        remark_tasks_df = analytics.get_pending_remark_tasks()
+        resolved_remarks = remark_tasks_df.filter(
+            (pl.col('status') == '已处理') & (pl.col('task_type') == '转化率超阈值') & (pl.col('conclusion').is_not_null())
+        )
+        if resolved_remarks.height > 0:
+            pkg_ids_in_view = set(conversion_df['package_id'].to_list()) if conversion_df.height > 0 else set()
+            relevant = resolved_remarks.filter(pl.col('package_id').is_in(list(pkg_ids_in_view)))
+            if relevant.height > 0:
+                st.markdown('<p class="section-header">📋 转化率超阈值备注结论（图表旁留存）</p>', unsafe_allow_html=True)
+                for row in relevant.iter_rows(named=True):
+                    pkg_name = row.get('package_name') or row['package_id']
+                    trigger_val = float(row['trigger_value'])
+                    handler = row.get('handler') or '未指定'
+                    conclusion = row['conclusion']
+                    resolved_time = row.get('resolved_time') or '未知'
+                    st.markdown(f"""
+                    <div style="background:#f0fdf4; border:1px solid #86efac; border-radius:8px; padding:0.8rem; margin-bottom:0.5rem;">
+                        <strong style="color:#166534;">📌 {pkg_name}</strong> 
+                        <span style="color:#6b7280; font-size:0.85rem;">| 触发值 {trigger_val:.2%} | 处理人 {handler} | {resolved_time}</span>
+                        <div style="margin-top:0.4rem; padding:0.4rem; background:#dcfce7; border-radius:4px;">
+                            💬 <strong>结论</strong>：{conclusion}
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+    except Exception:
+        pass
+
     col_left, col_right = st.columns([2, 1])
     
     with col_left:
@@ -350,6 +378,34 @@ elif page == "📈 转化率分析与复盘":
             yaxis1_tickformat='.0%'
         )
         st.plotly_chart(fig_trend, use_container_width=True)
+
+    try:
+        remark_tasks_all = analytics.get_pending_remark_tasks()
+        resolved_here = remark_tasks_all.filter(
+            (pl.col('status') == '已处理') & (pl.col('task_type') == '转化率超阈值') & (pl.col('conclusion').is_not_null())
+        )
+        if resolved_here.height > 0:
+            if selected_package:
+                resolved_here = resolved_here.filter(pl.col('package_id') == selected_package)
+            if resolved_here.height > 0:
+                st.markdown('<p class="section-header">📋 超阈值备注结论（留存于转化率图表旁）</p>', unsafe_allow_html=True)
+                for row in resolved_here.iter_rows(named=True):
+                    pkg_name = row.get('package_name') or row['package_id']
+                    trigger_val = float(row['trigger_value'])
+                    handler = row.get('handler') or '未指定'
+                    conclusion = row['conclusion']
+                    resolved_time = row.get('resolved_time') or '未知'
+                    st.markdown(f"""
+                    <div style="background:#f0fdf4; border:1px solid #86efac; border-radius:8px; padding:0.8rem; margin-bottom:0.5rem;">
+                        <strong style="color:#166534;">📌 {pkg_name}</strong> 
+                        <span style="color:#6b7280; font-size:0.85rem;">| 触发值 {trigger_val:.2%} | 处理人 {handler} | {resolved_time}</span>
+                        <div style="margin-top:0.4rem; padding:0.4rem; background:#dcfce7; border-radius:4px;">
+                            💬 <strong>结论</strong>：{conclusion}
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+    except Exception:
+        pass
 
     col1, col2 = st.columns(2)
     
@@ -1284,7 +1340,7 @@ elif page == "📚 数据版本追溯":
                     changed_by = st.text_input("操作人", placeholder="财务-李四")
                 
                 if st.form_submit_button("📝 创建新版本并保存快照"):
-                    updates = {'status': new_status, 'updated_at': datetime.now()}
+                    updates = {'status': new_status}
                     version_ctrl.update_payment_with_versioning(
                         selected_payment, updates, change_reason or "手动更新演示", changed_by or "system"
                     )

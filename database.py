@@ -150,20 +150,43 @@ class DatabaseManager:
             )
         """)
 
-        self.conn.execute("""
-            CREATE TABLE IF NOT EXISTS data_versions (
-                version_id INTEGER PRIMARY KEY,
-                table_name VARCHAR NOT NULL,
-                record_id VARCHAR NOT NULL,
-                snapshot_data JSON NOT NULL,
-                change_reason VARCHAR,
-                changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                changed_by VARCHAR
-            )
-        """)
+        try:
+            self.conn.execute("CREATE SEQUENCE IF NOT EXISTS data_versions_seq START 1")
+        except Exception:
+            pass
+
+        self._migrate_data_versions()
+
+        try:
+            cols = [row[0] for row in self.conn.execute("DESCRIBE data_versions").fetchall()]
+        except Exception:
+            cols = []
+
+        if not cols:
+            self.conn.execute("""
+                CREATE TABLE data_versions (
+                    version_id INTEGER PRIMARY KEY DEFAULT nextval('data_versions_seq'),
+                    record_version INTEGER NOT NULL,
+                    table_name VARCHAR NOT NULL,
+                    record_id VARCHAR NOT NULL,
+                    snapshot_data JSON NOT NULL,
+                    change_reason VARCHAR,
+                    changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    changed_by VARCHAR
+                )
+            """)
 
     def get_conn(self):
         return self.conn
+
+    def _migrate_data_versions(self):
+        try:
+            cols = [row[0] for row in self.conn.execute("DESCRIBE data_versions").fetchall()]
+            if 'record_version' not in cols:
+                self.conn.execute("ALTER TABLE data_versions ADD COLUMN record_version INTEGER DEFAULT 1")
+                self.conn.execute("UPDATE data_versions SET record_version = version_id WHERE record_version IS NULL")
+        except Exception:
+            pass
 
     def query_polars(self, sql: str) -> pl.DataFrame:
         return self.conn.sql(sql).pl()
