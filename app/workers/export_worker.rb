@@ -64,4 +64,3 @@ class ExportWorker
     file_path.to_s
   end
 end
-end

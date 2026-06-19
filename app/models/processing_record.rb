@@ -26,4 +26,16 @@ class ProcessingRecord < ApplicationRecord
   def self.ransackable_associations(auth_object = nil)
     %w[attachments_attachments attachments_blobs handler recordable]
   end
+
+  def status_change?
+    next_status.present? && previous_status.present? && next_status != previous_status
+  end
+
+  def apply_status_change!
+    return unless status_change? && recordable.respond_to?(:status=) && recordable.class.respond_to?(:statuses)
+
+    if recordable.class.statuses.key?(next_status)
+      recordable.update!(status: next_status)
+    end
+  end
 end

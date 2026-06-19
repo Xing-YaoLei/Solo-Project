@@ -13,7 +13,9 @@ class ProcessingRecordsController < ApplicationController
   end
 
   def update
+    old_next_status = @processing_record.next_status
     if @processing_record.update(processing_record_params)
+      @processing_record.apply_status_change! if old_next_status != @processing_record.next_status
       redirect_to @processing_record, notice: "处理记录更新成功。"
     else
       render :edit, status: :unprocessable_entity
@@ -50,6 +52,6 @@ class ProcessingRecordsController < ApplicationController
   end
 
   def processing_record_params
-    params.require(:processing_record).permit(:status, :action_type, :notes)
+    params.require(:processing_record).permit(:status, :action_type, :notes, :previous_status, :next_status)
   end
 end

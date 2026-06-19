@@ -12,9 +12,11 @@ class GuideContents::ProcessingRecordsController < ApplicationController
   def create
     @processing_record = @guide_content.processing_records.new(processing_record_params)
     @processing_record.handler = current_user
-    @processing_record.previous_status = @guide_content.status if @processing_record.status_change
+    @processing_record.previous_status ||= @guide_content.status.to_s if @processing_record.next_status.present?
 
     if @processing_record.save
+      @processing_record.apply_status_change!
+
       if params[:processing_record]&.[](:attachments).present?
         params[:processing_record][:attachments].each do |attachment|
           @processing_record.attachments.attach(attachment)
@@ -33,6 +35,6 @@ class GuideContents::ProcessingRecordsController < ApplicationController
   end
 
   def processing_record_params
-    params.require(:processing_record).permit(:action_type, :status, :notes, attachments: [])
+    params.require(:processing_record).permit(:action_type, :status, :notes, :previous_status, :next_status, attachments: [])
   end
 end
