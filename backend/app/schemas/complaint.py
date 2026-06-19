@@ -9,6 +9,17 @@ from app.schemas.review import ReviewResponse
 from app.schemas.visit_result import VisitResultResponse
 
 
+class HandlingRecordResponse(BaseModel):
+    id: uuid.UUID
+    complaint_id: uuid.UUID
+    handler_id: Optional[uuid.UUID] = None
+    action: str
+    description: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 class ComplaintCreate(BaseModel):
     title: str
     description: str
@@ -51,6 +62,7 @@ class ComplaintResponse(BaseModel):
     tags: list[str] = []
     visit_results: list[VisitResultResponse] = []
     responsibilities: list[ResponsibilityResponse] = []
+    handling_records: list[HandlingRecordResponse] = []
     reviews: list[ReviewResponse] = []
 
     model_config = {"from_attributes": True}

@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createFileRoute, useNavigate, useParams } from '@tanstack/react-router'
-import { ArrowLeft, Clock, AlertTriangle, Plus, Send } from 'lucide-react'
+import { ArrowLeft, Clock, AlertTriangle, Plus } from 'lucide-react'
 import { api } from '@/api/client'
 import StatusBadge from '@/components/StatusBadge'
 import VisitResultPanel from '@/components/VisitResultPanel'
 import ResponsibilityPanel from '@/components/ResponsibilityPanel'
 import TagPanel from '@/components/TagPanel'
 import { STATUS_LABELS, PRIORITY_LABELS, PRIORITY_COLORS } from '@/types'
-import type { Complaint, ComplaintStatus, HandlingRecord, Review } from '@/types'
+import type { Complaint, ComplaintStatus, Review } from '@/types'
 
 const STATUS_TRANSITIONS: Record<ComplaintStatus, ComplaintStatus[]> = {
   pending: ['processing'],
@@ -26,7 +26,6 @@ function ComplaintDetailPage() {
   const { complaintId } = useParams({ strict: false }) as { complaintId: string }
   const navigate = useNavigate()
   const [complaint, setComplaint] = useState<Complaint | null>(null)
-  const [handlingRecords, setHandlingRecords] = useState<HandlingRecord[]>([])
   const [reviews, setReviews] = useState<Review[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -46,13 +45,11 @@ function ComplaintDetailPage() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [c, h, r] = await Promise.all([
+      const [c, r] = await Promise.all([
         api.complaints.get(complaintId),
-        Promise.resolve([] as HandlingRecord[]),
         api.reviews.list(complaintId),
       ])
       setComplaint(c)
-      setHandlingRecords(h)
       setReviews(r)
     } catch {
       setComplaint(null)
@@ -287,12 +284,12 @@ function ComplaintDetailPage() {
           </div>
         )}
         <div className="px-4 py-3">
-          {handlingRecords.length === 0 ? (
+          {(complaint?.handling_records || []).length === 0 ? (
             <p className="text-sm text-slate-400 text-center py-4">暂无处理记录</p>
           ) : (
             <div className="relative pl-6">
               <div className="absolute left-2 top-0 bottom-0 w-0.5 bg-slate-200" />
-              {handlingRecords.map(record => (
+              {(complaint?.handling_records || []).map(record => (
                 <div key={record.id} className="relative mb-4 last:mb-0">
                   <div className="absolute -left-[18px] top-1 w-3 h-3 rounded-full bg-blue-400 border-2 border-white" />
                   <div>

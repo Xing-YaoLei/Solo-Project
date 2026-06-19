@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
@@ -15,6 +16,13 @@ from app.schemas.responsibility import (
 router = APIRouter(prefix="/api/responsibilities", tags=["responsibilities"])
 
 
+def _parse_datetime(value: str) -> datetime:
+    try:
+        return datetime.fromisoformat(value)
+    except ValueError:
+        return datetime.strptime(value, "%Y-%m-%d")
+
+
 @router.post("/", response_model=ResponsibilityResponse, status_code=201)
 async def create_responsibility(
     data: ResponsibilityCreate,
@@ -26,7 +34,7 @@ async def create_responsibility(
         responsible_person=data.responsible_person,
         judgment_basis=data.judgment_basis,
         determined_by=data.determined_by,
-        determined_at=data.determined_at,
+        determined_at=_parse_datetime(data.determined_at),
     )
     db.add(responsibility)
     await db.commit()

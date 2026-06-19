@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
@@ -9,6 +10,13 @@ from app.models.visit_result import VisitResult
 from app.schemas.visit_result import VisitResultCreate, VisitResultResponse, VisitResultUpdate
 
 router = APIRouter(prefix="/api/visit-results", tags=["visit-results"])
+
+
+def _parse_datetime(value: str) -> datetime:
+    try:
+        return datetime.fromisoformat(value)
+    except ValueError:
+        return datetime.strptime(value, "%Y-%m-%d")
 
 
 @router.post("/", response_model=VisitResultResponse, status_code=201)
@@ -22,7 +30,7 @@ async def create_visit_result(
         visitor_name=data.visitor_name,
         satisfaction=data.satisfaction,
         feedback=data.feedback,
-        visit_at=data.visit_at,
+        visit_at=_parse_datetime(data.visit_at),
     )
     db.add(visit_result)
     await db.commit()
@@ -63,7 +71,7 @@ async def update_visit_result(
     if data.feedback is not None:
         visit_result.feedback = data.feedback
     if data.visit_at is not None:
-        visit_result.visit_at = data.visit_at
+        visit_result.visit_at = _parse_datetime(data.visit_at)
 
     await db.commit()
     await db.refresh(visit_result)

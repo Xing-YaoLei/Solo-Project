@@ -26,6 +26,7 @@ export interface Complaint {
   tags: string[]
   visit_results: VisitResult[]
   responsibilities: Responsibility[]
+  handling_records: HandlingRecord[]
   reviews: Review[]
 }
 

@@ -12,6 +12,13 @@ from app.schemas.review import ReviewCreate, ReviewResponse, ReviewUpdate
 router = APIRouter(prefix="/api/reviews", tags=["reviews"])
 
 
+def _parse_datetime(value: str) -> datetime:
+    try:
+        return datetime.fromisoformat(value)
+    except ValueError:
+        return datetime.strptime(value, "%Y-%m-%d")
+
+
 @router.post("/", response_model=ReviewResponse, status_code=201)
 async def create_review(
     data: ReviewCreate,
@@ -23,7 +30,7 @@ async def create_review(
         summary=data.summary,
         improvement_measures=data.improvement_measures,
         reviewer_name=data.reviewer_name,
-        reviewed_at=data.reviewed_at or datetime.now().isoformat(),
+        reviewed_at=_parse_datetime(data.reviewed_at) if data.reviewed_at else datetime.now(),
     )
     db.add(review)
     await db.commit()

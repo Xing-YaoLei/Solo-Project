@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models.complaint import Complaint
-from app.models.handler import Handler
+from app.models.responsibility import Responsibility
 from app.models.review import Review
 from app.schemas.stats import (
     StatsByChannel,
@@ -28,19 +28,17 @@ async def stats_by_channel(db: AsyncSession = Depends(get_db)):
     )
     return [StatsByChannel(channel=row.channel, count=row.count) for row in result.all()]
 
-
 @router.get("/by-handler", response_model=list[StatsByHandler])
 async def stats_by_handler(db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         select(
-            Handler.name.label("handler_name"),
-            func.count(Complaint.id).label("count"),
+            Responsibility.responsible_person.label("handler_name"),
+            func.count(Responsibility.id).label("count"),
         )
-        .join(Handler, Complaint.handler_id == Handler.id, isouter=True)
-        .group_by(Handler.name)
-        .order_by(func.count(Complaint.id).desc())
+        .group_by(Responsibility.responsible_person)
+        .order_by(func.count(Responsibility.id).desc())
     )
-    return [StatsByHandler(handler_name=row.handler_name or "未分配", count=row.count) for row in result.all()]
+    return [StatsByHandler(handler_name=row.handler_name, count=row.count) for row in result.all()]
 
 
 @router.get("/by-closure-duration", response_model=list[StatsByClosureDuration])

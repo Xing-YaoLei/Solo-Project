@@ -53,6 +53,7 @@ async def _build_response(complaint: Complaint, db: AsyncSession) -> ComplaintRe
         tags=[t.tag for t in complaint.tags],
         visit_results=complaint.visit_results,
         responsibilities=complaint.responsibilities,
+        handling_records=complaint.handling_records,
         reviews=complaint.reviews,
     )
 
@@ -143,6 +144,7 @@ async def create_complaint(
             selectinload(Complaint.tags),
             selectinload(Complaint.visit_results),
             selectinload(Complaint.responsibilities),
+            selectinload(Complaint.handling_records),
             selectinload(Complaint.reviews),
         )
         .where(Complaint.id == complaint.id)
@@ -163,6 +165,7 @@ async def get_complaint(
             selectinload(Complaint.tags),
             selectinload(Complaint.visit_results),
             selectinload(Complaint.responsibilities),
+            selectinload(Complaint.handling_records),
             selectinload(Complaint.reviews),
         )
         .where(Complaint.id == complaint_id)
@@ -203,6 +206,7 @@ async def update_complaint(
             selectinload(Complaint.tags),
             selectinload(Complaint.visit_results),
             selectinload(Complaint.responsibilities),
+            selectinload(Complaint.handling_records),
             selectinload(Complaint.reviews),
         )
         .where(Complaint.id == complaint_id)
@@ -238,6 +242,7 @@ async def update_complaint_status(
             selectinload(Complaint.tags),
             selectinload(Complaint.visit_results),
             selectinload(Complaint.responsibilities),
+            selectinload(Complaint.handling_records),
             selectinload(Complaint.reviews),
         )
         .where(Complaint.id == complaint_id)
