@@ -5,7 +5,7 @@ var current_quote: Quote = null
 var order_cards: Dictionary = {}
 
 @onready var orders_container: VBoxContainer = $MainContent/LeftPanel/OrdersScroll/OrdersContainer
-@onready var parts_panel: Control = $MainContent/RightPanel/RightContent/PartsInventoryPanel
+@onready var parts_panel: Control = $MainContent/MiddlePanel/MiddleContent/PartsInventoryPanel
 @onready var quote_panel: Control = $MainContent/RightPanel/RightContent/QuotePanel
 @onready var result_popup: Control = $ResultPopup
 @onready var pause_menu: Control = $PauseMenu
@@ -17,8 +17,6 @@ var order_cards: Dictionary = {}
 @onready var repair_rate_label: Label = $TopBar/Content/RepairRateLabel
 @onready var pause_button: Button = $TopBar/Content/PauseButton
 @onready var end_button: Button = $TopBar/Content/EndButton
-@onready var parts_tab_button: Button = $MainContent/RightPanel/RightContent/TabContainer/PartsTab
-@onready var quote_tab_button: Button = $MainContent/RightPanel/RightContent/TabContainer/QuoteTab
 
 func _ready():
 	_setup_connections()
@@ -30,8 +28,6 @@ func _ready():
 func _setup_connections() -> void:
 	pause_button.pressed.connect(_on_pause_pressed)
 	end_button.pressed.connect(_on_end_pressed)
-	parts_tab_button.pressed.connect(_on_parts_tab_pressed)
-	quote_tab_button.pressed.connect(_on_quote_tab_pressed)
 
 	GameManager.work_order_added.connect(_on_work_order_added)
 	GameManager.work_order_completed.connect(_on_work_order_completed)
@@ -57,7 +53,6 @@ func _start_game() -> void:
 
 	_update_top_bar()
 	_refresh_quote_panel()
-	_switch_to_parts_tab()
 
 func _start_tutorial() -> void:
 	var instruction_label = tutorial_panel.get_node_or_null("TutorialBg/TutorialContent/InstructionLabel")
@@ -150,7 +145,7 @@ func _on_order_action_triggered(p_action: String, p_order: WorkOrder) -> void:
 		if order:
 			selected_order = order
 			_create_quote_for_order(order)
-			_switch_to_quote_tab()
+			_highlight_quote_panel()
 			TutorialManager.check_step_completion("select_order", {"order_id": order.id})
 
 func _create_quote_for_order(p_order: WorkOrder) -> void:
@@ -166,7 +161,7 @@ func _create_quote_for_order(p_order: WorkOrder) -> void:
 	_refresh_quote_panel()
 
 	if not availability["all_available"]:
-		_switch_to_parts_tab()
+		_highlight_parts_panel()
 		TutorialManager.check_step_completion("view_parts", {})
 
 func _refresh_quote_panel() -> void:
@@ -326,26 +321,22 @@ func _on_main_menu_pressed() -> void:
 	GameManager.go_to_main_menu()
 	AudioManager.play_click()
 
-func _on_parts_tab_pressed() -> void:
-	parts_panel.visible = true
-	quote_panel.visible = false
-	parts_tab_button.disabled = true
-	quote_tab_button.disabled = false
-	AudioManager.play_click()
-	TutorialManager.check_step_completion("view_parts", {})
+func _highlight_quote_panel() -> void:
+	if SettingsManager.should_play_animation(SettingsManager.AnimationIntensity.LOW):
+		var parent = quote_panel.get_parent()
+		if parent and parent is PanelContainer:
+			var tween = create_tween()
+			parent.modulate = Color(1.2, 1.2, 1.2)
+			tween.tween_property(parent, "modulate", Color.WHITE, 0.3)
 
-func _on_quote_tab_pressed() -> void:
-	parts_panel.visible = false
-	quote_panel.visible = true
-	parts_tab_button.disabled = false
-	quote_tab_button.disabled = true
-	AudioManager.play_click()
-
-func _switch_to_parts_tab() -> void:
-	_on_parts_tab_pressed()
-
-func _switch_to_quote_tab() -> void:
-	_on_quote_tab_pressed()
+func _highlight_parts_panel() -> void:
+	if SettingsManager.should_play_animation(SettingsManager.AnimationIntensity.MEDIUM):
+		var parent = parts_panel.get_parent()
+		if parent and parent is PanelContainer:
+			var tween = create_tween()
+			parent.modulate = Color(1.3, 1.0, 0.7)
+			tween.tween_property(parent, "modulate", Color.WHITE, 0.5)
+	AudioManager.play_warning()
 
 func _on_tutorial_completed() -> void:
 	pass

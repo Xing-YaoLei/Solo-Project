@@ -89,6 +89,7 @@ anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_top = 70.0
+offset_left = 10.0
 offset_right = -10.0
 offset_bottom = -10.0
 grow_horizontal = 2
@@ -98,6 +99,7 @@ theme_override_constants/spacing = 10
 [node name="LeftPanel" type="VBoxContainer" parent="MainContent"]
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_stretch_ratio = 3.0
 theme_override_constants/spacing = 10
 
 [node name="LeftTitle" type="Label" parent="MainContent/LeftPanel"]
@@ -116,40 +118,46 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/spacing = 10
 
+[node name="MiddlePanel" type="PanelContainer" parent="MainContent"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 2.5
+theme_override_constants/spacing = 10
+
+[node name="MiddleContent" type="VBoxContainer" parent="MainContent/MiddlePanel"]
+layout_mode = 2
+theme_override_constants/spacing = 10
+
+[node name="MiddleTitle" type="Label" parent="MainContent/MiddlePanel/MiddleContent"]
+layout_mode = 2
+text = "配件库存"
+theme_override_font_sizes/font_size = 18
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+
+[node name="PartsInventoryPanel" parent="MainContent/MiddlePanel/MiddleContent" instance=ExtResource("2")]
+layout_mode = 2
+size_flags_vertical = 3
+visible = true
+
 [node name="RightPanel" type="PanelContainer" parent="MainContent"]
 layout_mode = 2
 size_flags_horizontal = 3
-custom_minimum_size = Vector2(500, 0)
+size_flags_stretch_ratio = 3.0
 
 [node name="RightContent" type="VBoxContainer" parent="MainContent/RightPanel"]
 layout_mode = 2
 theme_override_constants/spacing = 10
 
-[node name="TabContainer" type="HBoxContainer" parent="MainContent/RightPanel/RightContent"]
+[node name="RightTitle" type="Label" parent="MainContent/RightPanel/RightContent"]
 layout_mode = 2
-theme_override_constants/spacing = 0
-
-[node name="PartsTab" type="Button" parent="MainContent/RightPanel/RightContent/TabContainer"]
-layout_mode = 2
-custom_minimum_size = Vector2(120, 40)
-text = "配件库存"
-theme_override_font_sizes/font_size = 14
-
-[node name="QuoteTab" type="Button" parent="MainContent/RightPanel/RightContent/TabContainer"]
-layout_mode = 2
-custom_minimum_size = Vector2(120, 40)
 text = "报价单"
-theme_override_font_sizes/font_size = 14
-
-[node name="PartsInventoryPanel" parent="MainContent/RightPanel/RightContent" instance=ExtResource("2")]
-layout_mode = 2
-size_flags_vertical = 3
-visible = true
+theme_override_font_sizes/font_size = 18
+theme_override_colors/font_color = Color(1, 1, 1, 1)
 
 [node name="QuotePanel" parent="MainContent/RightPanel/RightContent" instance=ExtResource("3")]
 layout_mode = 2
 size_flags_vertical = 3
-visible = false
+visible = true
 
 [node name="TutorialPanel" type="Control" parent="."]
 layout_mode = 1
