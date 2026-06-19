@@ -57,6 +57,7 @@ func _start_game() -> void:
 
 	_update_top_bar()
 	_refresh_quote_panel()
+	_switch_to_parts_tab()
 
 func _start_tutorial() -> void:
 	var instruction_label = tutorial_panel.get_node_or_null("TutorialBg/TutorialContent/InstructionLabel")

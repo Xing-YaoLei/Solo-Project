@@ -35,6 +35,7 @@ func _ready():
 		send_button.pressed.connect(_on_send_pressed)
 	if discount_slider:
 		discount_slider.value_changed.connect(_on_discount_changed)
+	clear_quote()
 
 func set_quote(p_quote: Quote, p_order: WorkOrder = null) -> void:
 	current_quote = p_quote
@@ -169,6 +170,16 @@ func _create_item_row(p_item: Quote.QuoteItem, p_index: int) -> Control:
 	return hbox
 
 func _refresh_summary() -> void:
+	if not current_quote:
+		labor_cost_label.text = "¥0.00"
+		parts_cost_label.text = "¥0.00"
+		subtotal_label.text = "¥0.00"
+		discount_label.text = "¥0.00"
+		tax_label.text = "¥0.00"
+		total_label.text = "¥0.00"
+		time_remaining_label.text = "--:--"
+		return
+
 	labor_cost_label.text = "¥%.2f" % current_quote.labor_cost
 	parts_cost_label.text = "¥%.2f" % current_quote.parts_cost
 	subtotal_label.text = "¥%.2f" % current_quote.get_subtotal()
@@ -187,6 +198,16 @@ func _refresh_summary() -> void:
 		time_remaining_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.3))
 
 func _update_button_states() -> void:
+	if not current_quote:
+		send_button.disabled = true
+		send_button.visible = false
+		approve_button.visible = false
+		reject_button.visible = false
+		discount_slider.editable = false
+		if discount_slider:
+			discount_slider.value = 0
+		return
+
 	match current_quote.status:
 		Quote.Status.DRAFT:
 			send_button.disabled = false
@@ -244,19 +265,30 @@ func _process(delta: float) -> void:
 
 func clear_quote() -> void:
 	current_quote = null
-	work_order = null
+	current_order = null
 
 	header_label.text = "报价单"
-	quote_id_label.text = ""
-	status_label.text = ""
+	quote_id_label.text = "请选择工单"
+	status_label.text = "待选择工单"
+	status_label.add_theme_color_override("font_color", Color(0.5, 0.6, 0.7))
 	customer_label.text = ""
 	order_id_label.text = ""
 	discount_slider.value = 0
+	discount_slider.editable = false
 	if discount_value_label:
 		discount_value_label.text = "0%"
 
 	for child in items_list.get_children():
 		child.queue_free()
+
+	var hint_label = Label.new()
+	hint_label.text = "点击左侧工单卡片，系统将自动生成报价单"
+	hint_label.add_theme_font_size_override("font_size", 13)
+	hint_label.add_theme_color_override("font_color", Color(0.5, 0.6, 0.7, 0.8))
+	hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint_label.custom_minimum_size = Vector2(0, 80)
+	hint_label.size_flags_vertical = SIZE_SHRINK_CENTER
+	items_list.add_child(hint_label)
 
 	labor_cost_label.text = "¥0.00"
 	parts_cost_label.text = "¥0.00"
@@ -265,5 +297,6 @@ func clear_quote() -> void:
 	tax_label.text = "¥0.00"
 	total_label.text = "¥0.00"
 	time_remaining_label.text = "--:--"
+	time_remaining_label.add_theme_color_override("font_color", Color(0.5, 0.6, 0.7))
 
 	_update_button_states()
