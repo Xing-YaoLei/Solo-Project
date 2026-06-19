@@ -174,7 +174,7 @@ export default function FunnelDashboard() {
   const handleViewOrder = (record) => {
     if (record.repair_order_id) {
       setDetailModal({ ...detailModal, open: false })
-      navigate(`/repair-orders/${record.repair_order_id}`)
+      navigate(`/repair-order/${record.repair_order_id}`)
     }
   }
 

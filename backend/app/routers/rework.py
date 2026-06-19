@@ -67,22 +67,40 @@ def get_rework_stats(
             "rework_rate": rate_val,
         })
 
-    reason_keys = ["配件质量问题", "安装工艺问题", "故障诊断错误", "客户使用不当", "其他原因"]
+    reason_category = case(
+        (RepairOrder.rework_reason.like("%配件质量%"), "配件质量问题"),
+        (RepairOrder.rework_reason.like("%安装工艺%"), "安装工艺问题"),
+        (RepairOrder.rework_reason.like("%故障诊断%"), "故障诊断错误"),
+        (RepairOrder.rework_reason.like("%客户使用%"), "客户使用不当"),
+        (RepairOrder.rework_reason.like("%配件不匹配%"), "配件不匹配"),
+        else_="其他原因"
+    ).label("reason_category")
+
+    by_reason_result = db.query(
+        reason_category,
+        func.count(RepairOrder.id).label("count"),
+    ).filter(
+        date_filter,
+        RepairOrder.is_rework == True,
+        RepairOrder.rework_reason.isnot(None),
+    ).group_by(reason_category).order_by(func.count(RepairOrder.id).desc()).all()
+
     reasons_data = []
-    if rework_orders > 0:
-        import random
-        random.seed(123)
-        remaining = rework_orders
-        for i, reason in enumerate(reason_keys):
-            if i == len(reason_keys) - 1:
-                cnt = remaining
-            else:
-                cnt = int(remaining * random.uniform(0.15, 0.3))
-                cnt = max(1, cnt)
-                remaining -= cnt
-            pct = round(cnt / rework_orders * 100, 1) if rework_orders > 0 else 0.0
-            reasons_data.append({"reason": reason, "count": cnt, "percentage": pct})
-        reasons_data.sort(key=lambda x: x["count"], reverse=True)
+    for row in by_reason_result:
+        cnt = row.count or 0
+        pct = round(cnt / rework_orders * 100, 1) if rework_orders > 0 else 0.0
+        reasons_data.append({
+            "reason": row.reason_category,
+            "count": cnt,
+            "percentage": pct,
+        })
+
+    if not reasons_data and rework_orders > 0:
+        reasons_data.append({
+            "reason": "原因未记录",
+            "count": rework_orders,
+            "percentage": 100.0,
+        })
 
     by_month_data = []
     now = datetime.now()
