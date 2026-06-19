@@ -1,0 +1,62 @@
+[
+  {
+    "id": "item_quick_clean",
+    "name": "快速保洁",
+    "description": "将保洁任务时间缩短50%",
+    "icon": "item_quick_clean",
+    "cooldown": 60,
+    "duration": 30,
+    "effectType": "task_speed",
+    "effectValue": 0.5
+  },
+  {
+    "id": "item_room_upgrade",
+    "name": "免费升级",
+    "description": "将客人免费升级到更高房型，解决冲突",
+    "icon": "item_room_upgrade",
+    "cooldown": 120,
+    "duration": 0,
+    "effectType": "room_upgrade",
+    "effectValue": 1
+  },
+  {
+    "id": "item_order_hold",
+    "name": "订单暂缓",
+    "description": "延长待处理订单的过期时间30秒",
+    "icon": "item_order_hold",
+    "cooldown": 90,
+    "duration": 0,
+    "effectType": "order_extend",
+    "effectValue": 30
+  },
+  {
+    "id": "item_double_reward",
+    "name": "双倍奖励",
+    "description": "下次完成任务获得双倍金币",
+    "icon": "item_double_reward",
+    "cooldown": 180,
+    "duration": 60,
+    "effectType": "reward_multiplier",
+    "effectValue": 2
+  },
+  {
+    "id": "item_emergency_fix",
+    "name": "紧急维修",
+    "description": "立即完成一个维修类任务",
+    "icon": "item_emergency_fix",
+    "cooldown": 150,
+    "duration": 0,
+    "effectType": "task_complete",
+    "effectValue": 1
+  },
+  {
+    "id": "item_auto_assign",
+    "name": "智能排房",
+    "description": "自动为当前待处理订单分配最优房间",
+    "icon": "item_auto_assign",
+    "cooldown": 200,
+    "duration": 0,
+    "effectType": "auto_assign",
+    "effectValue": 1
+  }
+]

@@ -1,0 +1,107 @@
+[
+  {
+    "id": "level_01",
+    "name": "新手试炼",
+    "description": "3间客房，3天经营，学习基本的房态管理操作",
+    "roomCount": 3,
+    "roomTypes": ["standard"],
+    "dayCount": 3,
+    "orderFrequency": 0.4,
+    "conflictProbability": 0.05,
+    "channelTypes": ["direct", "walk_in"],
+    "taskTypes": ["cleaning"],
+    "timeScale": 1.0,
+    "targetOccupancy": 0.6,
+    "targetSatisfaction": 0.7,
+    "maxPenalty": 500,
+    "stars": [
+      { "threshold": 0.5, "stars": 1 },
+      { "threshold": 0.7, "stars": 2 },
+      { "threshold": 0.9, "stars": 3 }
+    ]
+  },
+  {
+    "id": "level_02",
+    "name": "旺季来临",
+    "description": "5间客房，5天经营，订单量增加，渠道变多",
+    "roomCount": 5,
+    "roomTypes": ["standard", "deluxe"],
+    "dayCount": 5,
+    "orderFrequency": 0.6,
+    "conflictProbability": 0.15,
+    "channelTypes": ["direct", "walk_in", "ota_a"],
+    "taskTypes": ["cleaning", "inspection"],
+    "timeScale": 1.2,
+    "targetOccupancy": 0.7,
+    "targetSatisfaction": 0.7,
+    "maxPenalty": 800,
+    "stars": [
+      { "threshold": 0.55, "stars": 1 },
+      { "threshold": 0.75, "stars": 2 },
+      { "threshold": 0.9, "stars": 3 }
+    ]
+  },
+  {
+    "id": "level_03",
+    "name": "多渠道挑战",
+    "description": "8间客房，7天经营，多个OTA平台同时接单",
+    "roomCount": 8,
+    "roomTypes": ["standard", "deluxe", "suite"],
+    "dayCount": 7,
+    "orderFrequency": 0.7,
+    "conflictProbability": 0.25,
+    "channelTypes": ["direct", "walk_in", "ota_a", "ota_b"],
+    "taskTypes": ["cleaning", "inspection", "laundry"],
+    "timeScale": 1.4,
+    "targetOccupancy": 0.75,
+    "targetSatisfaction": 0.75,
+    "maxPenalty": 1200,
+    "stars": [
+      { "threshold": 0.6, "stars": 1 },
+      { "threshold": 0.8, "stars": 2 },
+      { "threshold": 0.95, "stars": 3 }
+    ]
+  },
+  {
+    "id": "level_04",
+    "name": "高峰压力",
+    "description": "12间客房，7天经营，旺季高负荷运营",
+    "roomCount": 12,
+    "roomTypes": ["standard", "deluxe", "suite", "family"],
+    "dayCount": 7,
+    "orderFrequency": 0.85,
+    "conflictProbability": 0.35,
+    "channelTypes": ["direct", "walk_in", "ota_a", "ota_b", "ota_c"],
+    "taskTypes": ["cleaning", "inspection", "laundry", "restock"],
+    "timeScale": 1.6,
+    "targetOccupancy": 0.8,
+    "targetSatisfaction": 0.8,
+    "maxPenalty": 1800,
+    "stars": [
+      { "threshold": 0.65, "stars": 1 },
+      { "threshold": 0.82, "stars": 2 },
+      { "threshold": 0.95, "stars": 3 }
+    ]
+  },
+  {
+    "id": "level_05",
+    "name": "全渠道大师",
+    "description": "15间客房，10天经营，所有渠道全开，突发事件频发",
+    "roomCount": 15,
+    "roomTypes": ["standard", "deluxe", "suite", "family"],
+    "dayCount": 10,
+    "orderFrequency": 0.95,
+    "conflictProbability": 0.45,
+    "channelTypes": ["direct", "walk_in", "ota_a", "ota_b", "ota_c", "phone"],
+    "taskTypes": ["cleaning", "inspection", "laundry", "restock", "maintenance"],
+    "timeScale": 1.8,
+    "targetOccupancy": 0.85,
+    "targetSatisfaction": 0.85,
+    "maxPenalty": 2500,
+    "stars": [
+      { "threshold": 0.7, "stars": 1 },
+      { "threshold": 0.85, "stars": 2 },
+      { "threshold": 0.97, "stars": 3 }
+    ]
+  }
+]

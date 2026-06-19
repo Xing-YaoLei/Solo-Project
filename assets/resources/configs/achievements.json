@@ -1,0 +1,82 @@
+[
+  {
+    "id": "ach_first_checkin",
+    "name": "初次接待",
+    "description": "成功办理第一次入住",
+    "icon": "ach_first_checkin",
+    "conditionType": "total_checkins",
+    "conditionValue": 1,
+    "reward": 50,
+    "hidden": false
+  },
+  {
+    "id": "ach_perfect_day",
+    "name": "完美一天",
+    "description": "单日入住率达到100%",
+    "icon": "ach_perfect_day",
+    "conditionType": "daily_occupancy",
+    "conditionValue": 1.0,
+    "reward": 200,
+    "hidden": false
+  },
+  {
+    "id": "ach_conflict_master",
+    "name": "冲突克星",
+    "description": "连续解决5次房态冲突",
+    "icon": "ach_conflict_master",
+    "conditionType": "consecutive_conflicts_resolved",
+    "conditionValue": 5,
+    "reward": 300,
+    "hidden": false
+  },
+  {
+    "id": "ach_speed_clean",
+    "name": "闪电保洁",
+    "description": "在任务时限的50%内完成保洁",
+    "icon": "ach_speed_clean",
+    "conditionType": "task_speed_ratio",
+    "conditionValue": 0.5,
+    "reward": 150,
+    "hidden": true
+  },
+  {
+    "id": "ach_no_cancel",
+    "name": "零取消",
+    "description": "整个关卡中没有订单被取消",
+    "icon": "ach_no_cancel",
+    "conditionType": "level_no_cancel",
+    "conditionValue": 1,
+    "reward": 250,
+    "hidden": false
+  },
+  {
+    "id": "ach_three_stars",
+    "name": "三星满级",
+    "description": "获得第一个三星评价",
+    "icon": "ach_three_stars",
+    "conditionType": "max_stars",
+    "conditionValue": 3,
+    "reward": 500,
+    "hidden": false
+  },
+  {
+    "id": "ach_revenue_5k",
+    "name": "小有积蓄",
+    "description": "单关卡收入超过5000",
+    "icon": "ach_revenue_5k",
+    "conditionType": "level_revenue",
+    "conditionValue": 5000,
+    "reward": 300,
+    "hidden": true
+  },
+  {
+    "id": "ach_all_channels",
+    "name": "渠道全开",
+    "description": "同时接收来自所有渠道的订单",
+    "icon": "ach_all_channels",
+    "conditionType": "active_channels",
+    "conditionValue": 6,
+    "reward": 400,
+    "hidden": true
+  }
+]

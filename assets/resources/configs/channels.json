@@ -1,0 +1,62 @@
+[
+  {
+    "type": "direct",
+    "name": "直客",
+    "color": "#4CAF50",
+    "icon": "channel_direct",
+    "commissionRate": 0,
+    "orderWeight": 0.3,
+    "cancelProbability": 0.05,
+    "avgLeadTime": 3
+  },
+  {
+    "type": "walk_in",
+    "name": "散客",
+    "color": "#FF9800",
+    "icon": "channel_walkin",
+    "commissionRate": 0,
+    "orderWeight": 0.15,
+    "cancelProbability": 0.02,
+    "avgLeadTime": 0
+  },
+  {
+    "type": "ota_a",
+    "name": "携程",
+    "color": "#2196F3",
+    "icon": "channel_ota_a",
+    "commissionRate": 0.15,
+    "orderWeight": 0.25,
+    "cancelProbability": 0.1,
+    "avgLeadTime": 7
+  },
+  {
+    "type": "ota_b",
+    "name": "美团",
+    "color": "#FFC107",
+    "icon": "channel_ota_b",
+    "commissionRate": 0.12,
+    "orderWeight": 0.2,
+    "cancelProbability": 0.08,
+    "avgLeadTime": 5
+  },
+  {
+    "type": "ota_c",
+    "name": "飞猪",
+    "color": "#9C27B0",
+    "icon": "channel_ota_c",
+    "commissionRate": 0.1,
+    "orderWeight": 0.15,
+    "cancelProbability": 0.07,
+    "avgLeadTime": 6
+  },
+  {
+    "type": "phone",
+    "name": "电话预订",
+    "color": "#607D8B",
+    "icon": "channel_phone",
+    "commissionRate": 0,
+    "orderWeight": 0.1,
+    "cancelProbability": 0.12,
+    "avgLeadTime": 2
+  }
+]
