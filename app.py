@@ -40,11 +40,11 @@ def init_repository():
 
 
 @st.cache_resource(show_spinner="正在初始化业务逻辑...")
-def init_services(repo):
+def init_services(_repo):
     return {
-        "sales": SalesAnalyzer(repo),
-        "conversion": ConversionRateCalculator(repo),
-        "oversell": OversellDetector(repo),
+        "sales": SalesAnalyzer(_repo),
+        "conversion": ConversionRateCalculator(_repo),
+        "oversell": OversellDetector(_repo),
     }
 
 
@@ -68,9 +68,13 @@ def init_database():
 def format_number(num):
     if num is None:
         return "0"
+    try:
+        num = float(num)
+    except (ValueError, TypeError):
+        return "0"
     if isinstance(num, float):
         return f"{num:,.2f}"
-    return f"{num:,}"
+    return f"{int(num):,}"
 
 
 def format_currency(num):
@@ -82,11 +86,19 @@ def format_currency(num):
 def format_percent(num):
     if num is None:
         return "0%"
+    try:
+        num = float(num)
+    except (ValueError, TypeError):
+        return "0%"
     return f"{num:.2f}%"
 
 
 def get_delta_color(value):
     if value is None:
+        return "off"
+    try:
+        value = float(value)
+    except (ValueError, TypeError):
         return "off"
     if value > 0:
         return "normal"
@@ -133,12 +145,12 @@ def render_sidebar():
             f"{row['version_code']} - {row['version_name']}"
             for row in conversion_versions.iter_rows(named=True)
         ]
+        version_map = dict(zip(version_options, version_labels))
+
         selected_version = st.sidebar.selectbox(
             "选择口径版本",
             options=version_options,
-            format_func=lambda x: next(
-                (label for label in version_labels if label.startswith(x)), x
-            ),
+            format_func=lambda x: version_map.get(x, x),
             key="conversion_version",
         )
 
@@ -175,45 +187,49 @@ def render_kpi_cards(sales_summary, comparison):
 
     with col1:
         current = sales_summary["total_revenue"]
-        prev = comparison["total_revenue"]["previous"]
-        delta = comparison["total_revenue"]["relative_difference"]
+        comp = comparison.get("total_revenue", {})
+        prev = comp.get("previous", 0)
+        delta = comp.get("relative_difference")
         st.metric(
             "总营收",
             format_currency(current),
-            f"{delta:+.2f}%" if delta else None,
+            f"{delta:+.2f}%" if delta is not None else None,
             delta_color=get_delta_color(delta),
         )
 
     with col2:
         current = sales_summary["total_orders"]
-        prev = comparison["total_orders"]["previous"]
-        delta = comparison["total_orders"]["relative_difference"]
+        comp = comparison.get("total_orders", {})
+        prev = comp.get("previous", 0)
+        delta = comp.get("relative_difference")
         st.metric(
             "订单数",
             format_number(current),
-            f"{delta:+.2f}%" if delta else None,
+            f"{delta:+.2f}%" if delta is not None else None,
             delta_color=get_delta_color(delta),
         )
 
     with col3:
         current = sales_summary["total_rooms"]
-        prev = comparison["total_rooms"]["previous"]
-        delta = comparison["total_rooms"]["relative_difference"]
+        comp = comparison.get("total_rooms", {})
+        prev = comp.get("previous", 0)
+        delta = comp.get("relative_difference")
         st.metric(
             "售房间数",
             format_number(current),
-            f"{delta:+.2f}%" if delta else None,
+            f"{delta:+.2f}%" if delta is not None else None,
             delta_color=get_delta_color(delta),
         )
 
     with col4:
         current = sales_summary["avg_order_value"]
-        prev = comparison["avg_order_value"]["previous"]
-        delta = comparison["avg_order_value"]["relative_difference"]
+        comp = comparison.get("avg_order_value", {})
+        prev = comp.get("previous", 0)
+        delta = comp.get("relative_difference")
         st.metric(
             "客单价",
             format_currency(current),
-            f"{delta:+.2f}%" if delta else None,
+            f"{delta:+.2f}%" if delta is not None else None,
             delta_color=get_delta_color(delta),
         )
 
@@ -226,9 +242,10 @@ def render_kpi_cards(sales_summary, comparison):
         )
 
     with col6:
+        los = sales_summary.get("avg_length_of_stay", 0)
         st.metric(
             "平均入住天数",
-            f"{sales_summary['avg_length_of_stay']:.1f} 晚",
+            f"{los:.1f} 晚" if los else "0 晚",
         )
 
     with col7:
@@ -376,8 +393,58 @@ def render_conversion_rate(filters, orders_df, inventory_df):
             st.error(f"计算转化率时出错: {e}")
 
     with col2:
-        st.markdown("#### 同环比分析")
+        st.markdown("#### 📋 口径版本对比")
         try:
+            all_versions = services["conversion"].repository.get_conversion_rate_versions(is_active=True)
+            if not all_versions.is_empty():
+                version_codes = all_versions["version_code"].to_list()
+                col_a, col_b = st.columns(2)
+                with col_a:
+                    v1 = st.selectbox("版本A", options=version_codes, index=0, key="cmp_v1")
+                with col_b:
+                    v2 = st.selectbox("版本B", options=version_codes, index=min(1, len(version_codes) - 1), key="cmp_v2")
+
+                if st.button("🔍 对比差异", key="compare_btn", use_container_width=True):
+                    with st.spinner("正在分析版本差异..."):
+                        explanation = services["conversion"].explain_difference(
+                            orders_df, inventory_df, v1, v2
+                        )
+                        st.session_state["version_explanation"] = explanation
+                        st.session_state["version_codes"] = (v1, v2)
+
+                if "version_explanation" in st.session_state:
+                    exp = st.session_state["version_explanation"]
+                    m1, m2 = exp["metrics_1"], exp["metrics_2"]
+                    col_x, col_y = st.columns(2)
+                    with col_x:
+                        st.metric(
+                            f"{st.session_state['version_codes'][0]} 转化率",
+                            format_percent(m1["conversion_rate"]),
+                            delta=f"分子: {m1['numerator']:,}",
+                        )
+                    with col_y:
+                        delta_color = "normal" if exp["relative_difference"] and exp["relative_difference"] > 0 else "inverse" if exp["relative_difference"] and exp["relative_difference"] < 0 else "off"
+                        st.metric(
+                            f"{st.session_state['version_codes'][1]} 转化率",
+                            format_percent(m2["conversion_rate"]),
+                            delta=f"{exp['relative_difference']:+.2f}%" if exp["relative_difference"] is not None else "-",
+                            delta_color=delta_color,
+                        )
+                    st.markdown(f"**绝对差值**: {exp['absolute_difference']:.2f} 个百分点")
+
+                    with st.expander("📝 差异明细解释", expanded=True):
+                        st.info(exp["summary"])
+                        if exp["differences"]:
+                            st.markdown("#### 口径差异项")
+                            for d in exp["differences"]:
+                                with st.container():
+                                    st.markdown(f"**{d['field']}**")
+                                    c1, c2, c3 = st.columns([2, 2, 2])
+                                    c1.caption(f"A: {d['value_1']}")
+                                    c2.caption(f"B: {d['value_2']}")
+                                    c3.caption(f"影响: {d['impact']}")
+                                    st.markdown("---")
+
             versions = ["v1.0", "v1.1", "v2.0", "v2.1"]
             comparison = services["conversion"].compare_versions(
                 orders_df, inventory_df, versions
@@ -430,9 +497,9 @@ def render_channel_performance(channel_perf):
             channel_perf.to_pandas(),
             x="channel",
             y="revenue",
-            color="conversion_rate",
-            title="各渠道营收与转化率",
-            labels={"channel": "渠道", "revenue": "营收 (元)", "conversion_rate": "转化率"},
+            color="orders_count",
+            title="各渠道营收与订单数",
+            labels={"channel": "渠道", "revenue": "营收 (元)", "orders_count": "订单数"},
             color_continuous_scale="Blues",
             height=350,
         )
@@ -516,114 +583,304 @@ def render_package_performance(package_perf):
 
 
 def render_oversell_alerts(filters):
-    st.subheader("⚠️ 超卖预警")
+    st.subheader("⚠️ 超卖预警与复盘")
 
-    oversells = services["oversell"].get_pending_oversells()
-
-    if oversells.is_empty():
-        st.success("✅ 当前无待处理的超卖记录")
-        return
-
-    stats = services["oversell"].get_oversell_statistics(
-        filters["start_date"], filters["end_date"]
+    view_mode = st.radio(
+        "视图模式",
+        options=["🔴 待处理超卖", "📋 历史复盘（含处理结论）"],
+        horizontal=True,
     )
 
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        st.metric("超卖事件总数", stats["total_incidents"])
-    with col2:
-        st.metric("超卖房间总数", stats["total_oversell_rooms"])
-    with col3:
-        st.metric("待处理", stats["pending_count"], delta_color="inverse")
-    with col4:
-        st.metric("平均处理时长", f"{stats['avg_resolution_time_hours']:.1f} 小时")
+    if view_mode == "🔴 待处理超卖":
+        oversells = services["oversell"].get_pending_oversells()
 
-    st.markdown("#### 待处理超卖记录")
-    for row in oversells.iter_rows(named=True):
-        with st.container():
-            col1, col2, col3, col4 = st.columns([2, 1, 1, 2])
+        if oversells.is_empty():
+            st.success("✅ 当前无待处理的超卖记录")
+            st.info("可切换到「历史复盘」视图查看已处理的记录")
+        else:
+            stats = services["oversell"].get_oversell_statistics(
+                filters["start_date"], filters["end_date"]
+            )
+
+            col1, col2, col3, col4 = st.columns(4)
             with col1:
-                pkg_name = PACKAGE_NAMES.get(row["package_id"], row["package_id"])
-                st.markdown(f"**{pkg_name}** - {row['oversell_date']}")
-                st.caption(f"超卖 {row['oversell_rooms']} 间房 | 状态: {row['status']}")
+                st.metric("超卖事件总数", stats["total_incidents"])
             with col2:
-                st.metric("超卖房间", row["oversell_rooms"], delta_color="inverse")
+                st.metric("超卖房间总数", stats["total_oversell_rooms"])
             with col3:
-                status_colors = {
-                    "pending": "🔴",
-                    "processing": "🟡",
-                    "resolved": "🟢",
-                }
-                st.markdown(f"### {status_colors.get(row['status'], '⚪')}")
+                st.metric("待处理", stats["pending_count"], delta_color="inverse")
             with col4:
-                if st.button("📝 处理", key=f"handle_{row['oversell_id']}"):
-                    st.session_state[f"selected_oversell_{row['oversell_id']}"] = True
+                st.metric("平均处理时长", f"{stats['avg_resolution_time_hours']:.1f} 小时")
 
-        if st.session_state.get(f"selected_oversell_{row['oversell_id']}"):
-            with st.expander("🔍 超卖详情与处理", expanded=True):
-                root_cause = services["oversell"].analyze_oversell_root_cause(
-                    row["package_id"], row["oversell_date"]
-                )
+            st.markdown("#### 待处理超卖记录")
+            for row in oversells.iter_rows(named=True):
+                with st.container():
+                    col1, col2, col3, col4 = st.columns([2, 1, 1, 2])
+                    with col1:
+                        pkg_name = PACKAGE_NAMES.get(row["package_id"], row["package_id"])
+                        st.markdown(f"**{pkg_name}** - {row['oversell_date']}")
+                        st.caption(f"超卖 {row['oversell_rooms']} 间房 | 状态: {row['status']}")
+                    with col2:
+                        st.metric("超卖房间", row["oversell_rooms"], delta_color="inverse")
+                    with col3:
+                        status_colors = {
+                            "pending": "🔴",
+                            "processing": "🟡",
+                            "resolved": "🟢",
+                        }
+                        st.markdown(f"### {status_colors.get(row['status'], '⚪')}")
+                    with col4:
+                        if st.button("📝 处理", key=f"handle_{row['oversell_id']}"):
+                            st.session_state[f"selected_oversell_{row['oversell_id']}"] = True
 
-                col_a, col_b = st.columns(2)
-                with col_a:
-                    st.markdown("#### 📊 根因分析")
-                    for cause in root_cause["potential_causes"]:
-                        st.warning(f"• {cause}")
-
-                    st.markdown("#### 👥 受影响订单")
-                    affected = services["oversell"].get_affected_orders(
-                        row["package_id"], row["oversell_date"]
-                    )
-                    if not affected.is_empty():
-                        st.dataframe(
-                            affected.select(["order_id", "channel", "checkin_date", "checkout_date", "rooms", "customer_name"]).to_pandas(),
-                            use_container_width=True,
+                if st.session_state.get(f"selected_oversell_{row['oversell_id']}"):
+                    with st.expander("🔍 超卖详情与处理", expanded=True):
+                        root_cause = services["oversell"].analyze_oversell_root_cause(
+                            row["package_id"], row["oversell_date"]
                         )
 
-                with col_b:
-                    st.markdown("#### ✅ 处理操作")
-                    handling_result = st.text_area(
-                        "处理结果",
-                        placeholder="请输入处理结果，如：协调客户升级房型、退款补偿等",
-                        key=f"result_{row['oversell_id']}",
-                    )
-                    remark = st.text_area(
-                        "备注",
-                        placeholder="其他需要记录的信息",
-                        key=f"remark_{row['oversell_id']}",
-                    )
-                    handler = st.text_input(
-                        "处理人",
-                        value=st.session_state.get("current_user", "管理员"),
-                        key=f"handler_{row['oversell_id']}",
-                    )
+                        col_a, col_b = st.columns(2)
+                        with col_a:
+                            st.markdown("#### 📊 根因分析")
+                            for cause in root_cause["potential_causes"]:
+                                st.warning(f"• {cause}")
 
-                    if st.button("✅ 标记已解决", key=f"resolve_{row['oversell_id']}", type="primary"):
-                        if handling_result:
-                            services["oversell"].resolve_oversell(
-                                row["oversell_id"], handling_result, remark
+                            st.markdown("#### 👥 受影响订单")
+                            affected = services["oversell"].get_affected_orders(
+                                row["package_id"], row["oversell_date"]
                             )
-                            st.success("已标记为已解决！")
-                            st.session_state[f"selected_oversell_{row['oversell_id']}"] = False
-                            st.rerun()
-                        else:
-                            st.error("请填写处理结果")
+                            if not affected.is_empty():
+                                st.dataframe(
+                                    affected.select(["order_id", "channel", "checkin_date", "checkout_date", "rooms", "customer_name"]).to_pandas(),
+                                    use_container_width=True,
+                                )
 
-                notes = repo.get_analysis_notes(
-                    record_type="oversell",
-                    record_id=row["oversell_id"],
-                )
-                if not notes.is_empty():
-                    st.markdown("#### 📝 历史备注")
-                    for note_row in notes.iter_rows(named=True):
-                        st.info(
-                            f"**{note_row['analysis_date']}** - {note_row['analyst']}\n\n"
-                            f"{note_row['content']}\n\n"
-                            f"**结论**: {note_row.get('conclusion', 'N/A')}"
+                        with col_b:
+                            st.markdown("#### ✅ 处理操作")
+                            handling_result = st.text_area(
+                                "处理结果",
+                                placeholder="请输入处理结果，如：协调客户升级房型、退款补偿等",
+                                key=f"result_{row['oversell_id']}",
+                            )
+                            remark = st.text_area(
+                                "备注",
+                                placeholder="其他需要记录的信息",
+                                key=f"remark_{row['oversell_id']}",
+                            )
+                            handler = st.text_input(
+                                "处理人",
+                                value=st.session_state.get("current_user", "管理员"),
+                                key=f"handler_{row['oversell_id']}",
+                            )
+
+                            if st.button("✅ 标记已解决", key=f"resolve_{row['oversell_id']}", type="primary"):
+                                if handling_result:
+                                    services["oversell"].resolve_oversell(
+                                        row["oversell_id"], handling_result, remark
+                                    )
+                                    st.success("已标记为已解决！处理结论已保存，可在复盘视图中查看。")
+                                    st.session_state[f"selected_oversell_{row['oversell_id']}"] = False
+                                    st.rerun()
+                                else:
+                                    st.error("请填写处理结果")
+
+                        notes = repo.get_analysis_notes(
+                            record_type="oversell",
+                            record_id=row["oversell_id"],
                         )
+                        if not notes.is_empty():
+                            st.markdown("#### 📝 历史备注")
+                            for note_row in notes.iter_rows(named=True):
+                                st.info(
+                                    f"**{note_row['analysis_date']}** - {note_row['analyst']}\n\n"
+                                    f"{note_row['content']}\n\n"
+                                    f"**结论**: {note_row.get('conclusion', 'N/A')}"
+                                )
 
-        st.markdown("---")
+                st.markdown("---")
+
+    else:
+        st.markdown("#### 📋 超卖历史复盘（含处理结论）")
+
+        status_options = ["全部", "resolved", "processing", "pending", "cancelled"]
+        col_s1, col_s2, col_s3 = st.columns(3)
+        with col_s1:
+            filter_status = st.selectbox(
+                "按状态筛选",
+                options=status_options,
+                key="hist_status_filter",
+            )
+        with col_s2:
+            pkg_options = ["全部套餐"] + list(PACKAGE_NAMES.keys())
+            filter_pkg = st.selectbox(
+                "按套餐筛选",
+                options=pkg_options,
+                format_func=lambda x: f"{x} - {PACKAGE_NAMES.get(x, '')}" if x != "全部套餐" else "全部套餐",
+                key="hist_pkg_filter",
+            )
+        with col_s3:
+            only_with_conclusion = st.checkbox(
+                "仅显示有处理结论的",
+                value=False,
+                key="hist_conclusion_only",
+            )
+
+        query_status = None if filter_status == "全部" else [filter_status]
+        query_pkg = None if filter_pkg == "全部套餐" else filter_pkg
+
+        all_oversells = repo.get_oversell_records(
+            start_date=filters["start_date"],
+            end_date=filters["end_date"],
+            status=query_status,
+            package_id=query_pkg,
+        )
+
+        if only_with_conclusion:
+            all_oversells = all_oversells.filter(
+                pl.col("handling_result").is_not_null() & (pl.col("handling_result") != "")
+            )
+
+        if all_oversells.is_empty():
+            st.info("暂无符合条件的超卖记录")
+        else:
+            hist_stats = {
+                "total": len(all_oversells),
+                "resolved": (all_oversells["status"] == "resolved").sum(),
+                "processing": (all_oversells["status"] == "processing").sum(),
+                "pending": (all_oversells["status"] == "pending").sum(),
+            }
+            col_h1, col_h2, col_h3, col_h4 = st.columns(4)
+            col_h1.metric("记录总数", hist_stats["total"])
+            col_h2.metric("已解决", hist_stats["resolved"], delta_color="normal")
+            col_h3.metric("处理中", hist_stats["processing"])
+            col_h4.metric("待处理", hist_stats["pending"], delta_color="inverse")
+
+            st.markdown("---")
+
+            for idx, row in enumerate(all_oversells.iter_rows(named=True)):
+                pkg_name = PACKAGE_NAMES.get(row["package_id"], row["package_id"])
+                status_colors = {
+                    "pending": ("🔴", "待处理", "error"),
+                    "processing": ("🟡", "处理中", "warning"),
+                    "resolved": ("🟢", "已解决", "success"),
+                    "cancelled": ("⚪", "已取消", "info"),
+                }
+                icon, status_label, alert_type = status_colors.get(
+                    row["status"], ("⚪", row["status"], "info")
+                )
+
+                with st.container():
+                    title_col1, title_col2, title_col3 = st.columns([4, 2, 2])
+                    with title_col1:
+                        st.markdown(
+                            f"##### {icon} {pkg_name} - {row['oversell_date']}  "
+                            f"<span style='color:gray;font-size:small'>#{row['oversell_id']}</span>",
+                            unsafe_allow_html=True,
+                        )
+                    with title_col2:
+                        st.markdown(f"**超卖房间**: {row['oversell_rooms']} 间")
+                    with title_col3:
+                        st.markdown(f"**状态**: `{status_label}`")
+
+                    detail_col1, detail_col2 = st.columns([2, 3])
+                    with detail_col1:
+                        st.markdown("**📊 基本信息**")
+                        info_items = [
+                            ("检测时间", str(row.get("detected_at", "N/A"))[:16]),
+                            ("影响订单数", row.get("affected_orders", 0)),
+                            ("渠道订单", row.get("channel_orders", 0)),
+                            ("处理人", row.get("handler") or "未指定"),
+                            ("处理时间", str(row.get("handled_at", "未处理"))[:16]),
+                        ]
+                        for label, value in info_items:
+                            st.caption(f"- **{label}**: {value}")
+
+                        root_cause = row.get("root_cause")
+                        if root_cause:
+                            st.markdown("**🔍 根因**")
+                            st.warning(root_cause)
+
+                    with detail_col2:
+                        st.markdown("**✅ 处理结论**")
+                        handling_result = row.get("handling_result")
+                        if handling_result:
+                            st.success(handling_result)
+                        else:
+                            st.info("暂无处理结论，请切换至「待处理超卖」进行处理")
+
+                        remark = row.get("remark")
+                        if remark:
+                            st.markdown("**📝 备注**")
+                            st.info(remark)
+
+                    with st.expander("🔗 关联数据追溯（订单→收款→门锁）", expanded=False):
+                        affected = services["oversell"].get_affected_orders(
+                            row["package_id"], row["oversell_date"]
+                        )
+                        if not affected.is_empty():
+                            st.markdown("**受影响订单**")
+                            order_display = affected.with_columns(
+                                checkin_date=pl.col("checkin_date").cast(pl.Utf8),
+                                checkout_date=pl.col("checkout_date").cast(pl.Utf8),
+                            )
+                            st.dataframe(
+                                order_display.select([
+                                    "order_id", "channel", "checkin_date", "checkout_date",
+                                    "rooms", "order_amount", "paid_amount", "customer_name"
+                                ]).to_pandas(),
+                                use_container_width=True,
+                            )
+
+                            if len(affected) > 0:
+                                sample_order_id = affected["order_id"][0]
+                                st.markdown(f"**订单 `{sample_order_id}` 追溯**")
+
+                                payments = repo.get_payment_transactions(order_id=sample_order_id)
+                                if not payments.is_empty():
+                                    st.markdown("💰 **收款流水**")
+                                    pay_display = payments.with_columns(
+                                        transaction_date=pl.col("transaction_date").cast(pl.Utf8)
+                                    )
+                                    st.dataframe(
+                                        pay_display.select([
+                                            "transaction_id", "transaction_date", "amount",
+                                            "payment_method", "transaction_status", "channel_fee", "net_amount"
+                                        ]).to_pandas(),
+                                        use_container_width=True,
+                                    )
+
+                                door_records = repo.get_door_lock_records(order_id=sample_order_id)
+                                if not door_records.is_empty():
+                                    st.markdown("🔑 **门锁记录**")
+                                    door_display = door_records.with_columns(
+                                        checkin_time=pl.col("checkin_time").cast(pl.Utf8),
+                                        checkout_time=pl.col("checkout_time").cast(pl.Utf8),
+                                    )
+                                    st.dataframe(
+                                        door_display.select([
+                                            "record_id", "room_id", "checkin_time",
+                                            "checkout_time", "guest_name", "operator"
+                                        ]).to_pandas(),
+                                        use_container_width=True,
+                                    )
+                        else:
+                            st.caption("未找到关联订单数据")
+
+                    analysis_notes = repo.get_analysis_notes(
+                        record_type="oversell",
+                        record_id=row["oversell_id"],
+                    )
+                    if not analysis_notes.is_empty():
+                        with st.expander("📝 分析备注", expanded=False):
+                            for note_row in analysis_notes.iter_rows(named=True):
+                                st.info(
+                                    f"**{note_row['analysis_date']}** - {note_row['analyst']}\n\n"
+                                    f"{note_row['content']}\n\n"
+                                    f"**结论**: {note_row.get('conclusion', 'N/A')}\n\n"
+                                    f"**行动项**: {note_row.get('action_items', 'N/A')}"
+                                )
+
+                st.markdown("---")
 
 
 def render_drill_down(filters):

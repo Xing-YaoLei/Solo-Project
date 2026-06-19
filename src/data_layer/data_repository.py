@@ -13,8 +13,31 @@ class DataRepository:
         self.warehouse = DuckDBWarehouse(config.duckdb)
         self.use_minio = use_minio
         if use_minio:
-            self.minio = MinioClient(config.minio)
+            try:
+                self.minio = MinioClient(config.minio)
+            except Exception:
+                self.use_minio = False
         self.processor = PolarsProcessor()
+
+    def _dual_write(self, table_name: str, df: pl.DataFrame, pk_cols: Optional[List[str]] = None) -> None:
+        self.warehouse.insert_dataframe(table_name, df)
+        if self.use_minio:
+            try:
+                ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+                object_name = f"{table_name}/{table_name}_{ts}.parquet"
+                self.minio.upload_dataframe(df, object_name, format="parquet")
+            except Exception:
+                pass
+
+    def _dual_upsert(self, table_name: str, df: pl.DataFrame, conflict_columns: List[str]) -> None:
+        self.warehouse.upsert_dataframe(table_name, df, conflict_columns)
+        if self.use_minio:
+            try:
+                ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+                object_name = f"{table_name}/{table_name}_{ts}.parquet"
+                self.minio.upload_dataframe(df, object_name, format="parquet")
+            except Exception:
+                pass
 
     def get_ota_orders(
         self,
@@ -227,7 +250,7 @@ class DataRepository:
         oversell_id = f"OS{datetime.now().strftime('%Y%m%d%H%M%S')}{random_suffix}"
         data["oversell_id"] = oversell_id
         df = pl.DataFrame([data])
-        self.warehouse.insert_dataframe("oversell_records", df)
+        self._dual_write("oversell_records", df)
         return oversell_id
 
     def update_oversell_status(
@@ -264,7 +287,7 @@ class DataRepository:
         note_id = f"AN{datetime.now().strftime('%Y%m%d%H%M%S')}{random_suffix}"
         data["note_id"] = note_id
         df = pl.DataFrame([data])
-        self.warehouse.insert_dataframe("analysis_notes", df)
+        self._dual_write("analysis_notes", df)
         return note_id
 
     def save_conversion_rate_version(self, data: Dict[str, Any]) -> str:
@@ -274,8 +297,29 @@ class DataRepository:
         version_id = f"CV{datetime.now().strftime('%Y%m%d%H%M%S')}{random_suffix}"
         data["version_id"] = version_id
         df = pl.DataFrame([data])
-        self.warehouse.insert_dataframe("conversion_rate_versions", df)
+        self._dual_write("conversion_rate_versions", df)
         return version_id
+
+    def save_ota_orders_batch(self, df: pl.DataFrame) -> None:
+        self._dual_write("ota_orders", df)
+
+    def save_door_lock_records_batch(self, df: pl.DataFrame) -> None:
+        self._dual_write("door_lock_records", df)
+
+    def save_payment_transactions_batch(self, df: pl.DataFrame) -> None:
+        self._dual_write("payment_transactions", df)
+
+    def save_package_inventory_batch(self, df: pl.DataFrame) -> None:
+        self._dual_upsert("package_inventory", df, ["package_id", "date"])
+
+    def save_pricing_rules_batch(self, df: pl.DataFrame) -> None:
+        self._dual_write("pricing_rules", df)
+
+    def save_analysis_notes_batch(self, df: pl.DataFrame) -> None:
+        self._dual_write("analysis_notes", df)
+
+    def save_conversion_rate_versions_batch(self, df: pl.DataFrame) -> None:
+        self._dual_write("conversion_rate_versions", df)
 
     def sync_from_minio(self, object_prefix: str) -> None:
         if not self.use_minio:

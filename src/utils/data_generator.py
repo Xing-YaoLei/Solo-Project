@@ -60,7 +60,7 @@ class MockDataGenerator:
             })
 
         df = pl.DataFrame(rules)
-        self.repository.warehouse.insert_dataframe("pricing_rules", df)
+        self.repository.save_pricing_rules_batch(df)
         return df
 
     def generate_package_inventory(self, start_date: date, end_date: date) -> pl.DataFrame:
@@ -99,9 +99,7 @@ class MockDataGenerator:
             current_date += timedelta(days=1)
 
         df = pl.DataFrame(inventory_records)
-        self.repository.warehouse.upsert_dataframe(
-            "package_inventory", df, ["package_id", "date"]
-        )
+        self.repository.save_package_inventory_batch(df)
         return df
 
     def generate_ota_orders(self, start_date: date, end_date: date, count: int = 500) -> pl.DataFrame:
@@ -152,7 +150,7 @@ class MockDataGenerator:
             })
 
         df = pl.DataFrame(orders)
-        self.repository.warehouse.insert_dataframe("ota_orders", df)
+        self.repository.save_ota_orders_batch(df)
         return df
 
     def generate_door_lock_records(self, orders: pl.DataFrame) -> pl.DataFrame:
@@ -181,7 +179,7 @@ class MockDataGenerator:
                     })
 
         df = pl.DataFrame(records)
-        self.repository.warehouse.insert_dataframe("door_lock_records", df)
+        self.repository.save_door_lock_records_batch(df)
         return df
 
     def generate_payment_transactions(self, orders: pl.DataFrame) -> pl.DataFrame:
@@ -227,7 +225,7 @@ class MockDataGenerator:
                 })
 
         df = pl.DataFrame(transactions)
-        self.repository.warehouse.insert_dataframe("payment_transactions", df)
+        self.repository.save_payment_transactions_batch(df)
         return df
 
     def generate_conversion_rate_versions(self) -> pl.DataFrame:
@@ -295,7 +293,7 @@ class MockDataGenerator:
         ]
 
         df = pl.DataFrame(versions)
-        self.repository.warehouse.insert_dataframe("conversion_rate_versions", df)
+        self.repository.save_conversion_rate_versions_batch(df)
         return df
 
     def generate_analysis_notes(self, start_date: date, end_date: date) -> pl.DataFrame:
@@ -348,7 +346,7 @@ class MockDataGenerator:
             })
 
         df = pl.DataFrame(notes)
-        self.repository.warehouse.insert_dataframe("analysis_notes", df)
+        self.repository.save_analysis_notes_batch(df)
         return df
 
     def generate_all_data(self, start_date: date, end_date: date, order_count: int = 500) -> Dict[str, pl.DataFrame]:
