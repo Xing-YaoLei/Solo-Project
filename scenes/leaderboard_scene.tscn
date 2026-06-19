@@ -1,0 +1,107 @@
+[gd_scene load_steps=2 format=3 uid="uid://leaderboardscene"]
+
+[ext_resource type="Script" path="res://scripts/ui/leaderboard_scene.gd" id="1"]
+
+[node name="LeaderboardScene" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.08, 0.1, 0.15, 1)
+
+[node name="TopBar" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 130.0
+grow_horizontal = 2
+theme_override_constants/spacing = 10
+offset_left = 20.0
+offset_top = 20.0
+offset_right = -20.0
+
+[node name="TitleRow" type="HBoxContainer" parent="TopBar"]
+layout_mode = 2
+theme_override_constants/spacing = 15
+
+[node name="BackButton" type="Button" parent="TopBar/TitleRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(100, 40)
+text = "← 返回"
+theme_override_font_sizes/font_size = 14
+
+[node name="TitleLabel" type="Label" parent="TopBar/TitleRow"]
+layout_mode = 2
+text = "最快完成排行榜"
+size_flags_horizontal = 3
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 28
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+
+[node name="Spacer" type="Control" parent="TopBar/TitleRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(100, 0)
+
+[node name="TabContainer" type="HBoxContainer" parent="TopBar"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/spacing = 0
+
+[node name="TimeTab" type="Button" parent="TopBar/TabContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(180, 44)
+text = "最快完成榜"
+theme_override_font_sizes/font_size = 16
+disabled = true
+
+[node name="RepairTab" type="Button" parent="TopBar/TabContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(180, 44)
+text = "最低返修榜"
+theme_override_font_sizes/font_size = 16
+
+[node name="FilterRow" type="HBoxContainer" parent="TopBar"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/spacing = 15
+
+[node name="ModeFilter" type="OptionButton" parent="TopBar/FilterRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(150, 36)
+text = "全部模式"
+theme_override_font_sizes/font_size = 13
+
+[node name="LevelFilter" type="OptionButton" parent="TopBar/FilterRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(150, 36)
+text = "全部关卡"
+theme_override_font_sizes/font_size = 13
+
+[node name="ScrollContainer" type="ScrollContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 150.0
+offset_left = 20.0
+offset_right = -20.0
+offset_bottom = -20.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_scroll_mode = 0
+
+[node name="LeaderboardList" type="VBoxContainer" parent="ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/spacing = 8

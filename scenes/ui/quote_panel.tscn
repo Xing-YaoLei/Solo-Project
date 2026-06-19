@@ -1,0 +1,270 @@
+[gd_scene load_steps=2 format=3 uid="uid://quotepanel"]
+
+[ext_resource type="Script" path="res://scripts/ui/quote_panel.gd" id="1"]
+
+[node name="QuotePanel" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+
+[node name="Header" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 50.0
+grow_horizontal = 2
+theme_override_constants/spacing = 15
+
+[node name="Label" type="Label" parent="Header"]
+layout_mode = 2
+text = "报价单"
+theme_override_font_sizes/font_size = 20
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+
+[node name="QuoteIdLabel" type="Label" parent="Header"]
+layout_mode = 2
+text = "QT_0001"
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.7, 0.8, 0.9, 1)
+
+[node name="StatusLabel" type="Label" parent="Header"]
+layout_mode = 2
+text = "草稿"
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+
+[node name="CustomerInfo" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 0
+anchor_right = 1.0
+offset_top = 55.0
+offset_bottom = 85.0
+grow_horizontal = 2
+theme_override_constants/spacing = 20
+
+[node name="CustomerLabel" type="Label" parent="CustomerInfo"]
+layout_mode = 2
+text = "客户: 张先生"
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.8, 0.85, 0.9, 1)
+
+[node name="OrderIdLabel" type="Label" parent="CustomerInfo"]
+layout_mode = 2
+text = "工单: WO_0001"
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.8, 0.85, 0.9, 1)
+
+[node name="DiscountRow" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 0
+anchor_right = 1.0
+offset_top = 90.0
+offset_bottom = 120.0
+grow_horizontal = 2
+theme_override_constants/spacing = 15
+
+[node name="DiscountLabel" type="Label" parent="DiscountRow"]
+layout_mode = 2
+text = "折扣:"
+custom_minimum_size = Vector2(60, 0)
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.8, 0.85, 0.9, 1)
+
+[node name="DiscountSlider" type="HSlider" parent="DiscountRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.0
+max_value = 30.0
+step = 1.0
+value = 0.0
+
+[node name="DiscountValueLabel" type="Label" parent="DiscountRow"]
+layout_mode = 2
+text = "0%"
+custom_minimum_size = Vector2(50, 0)
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.8, 1, 0.8, 1)
+
+[node name="ScrollContainer" type="ScrollContainer" parent="."]
+layout_mode = 1
+anchors_preset = 0
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_top = 125.0
+grow_horizontal = 2
+grow_vertical = 1
+horizontal_scroll_mode = 0
+
+[node name="ItemsList" type="VBoxContainer" parent="ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/spacing = 4
+
+[node name="Summary" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 10.0
+grow_horizontal = 2
+grow_vertical = 1
+theme_override_constants/spacing = 6
+
+[node name="LaborRow" type="HBoxContainer" parent="Summary"]
+layout_mode = 2
+theme_override_constants/spacing = 10
+
+[node name="Label2" type="Label" parent="Summary/LaborRow"]
+layout_mode = 2
+text = "工时费:"
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.8, 0.85, 0.9, 1)
+
+[node name="LaborCostLabel" type="Label" parent="Summary/LaborRow"]
+layout_mode = 2
+text = "¥0.00"
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.9, 0.9, 0.9, 1)
+
+[node name="PartsRow" type="HBoxContainer" parent="Summary"]
+layout_mode = 2
+theme_override_constants/spacing = 10
+
+[node name="Label3" type="Label" parent="Summary/PartsRow"]
+layout_mode = 2
+text = "配件费:"
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.8, 0.85, 0.9, 1)
+
+[node name="PartsCostLabel" type="Label" parent="Summary/PartsRow"]
+layout_mode = 2
+text = "¥0.00"
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.9, 0.9, 0.9, 1)
+
+[node name="SubtotalRow" type="HBoxContainer" parent="Summary"]
+layout_mode = 2
+theme_override_constants/spacing = 10
+
+[node name="Label4" type="Label" parent="Summary/SubtotalRow"]
+layout_mode = 2
+text = "小计:"
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.8, 0.85, 0.9, 1)
+
+[node name="SubtotalLabel" type="Label" parent="Summary/SubtotalRow"]
+layout_mode = 2
+text = "¥0.00"
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.9, 0.9, 0.9, 1)
+
+[node name="DiscountRow2" type="HBoxContainer" parent="Summary"]
+layout_mode = 2
+theme_override_constants/spacing = 10
+
+[node name="Label5" type="Label" parent="Summary/DiscountRow2"]
+layout_mode = 2
+text = "折扣:"
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.8, 0.85, 0.9, 1)
+
+[node name="DiscountLabel" type="Label" parent="Summary/DiscountRow2"]
+layout_mode = 2
+text = "¥0.00"
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(1, 0.7, 0.7, 1)
+
+[node name="TaxRow" type="HBoxContainer" parent="Summary"]
+layout_mode = 2
+theme_override_constants/spacing = 10
+
+[node name="Label6" type="Label" parent="Summary/TaxRow"]
+layout_mode = 2
+text = "税费:"
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.8, 0.85, 0.9, 1)
+
+[node name="TaxLabel" type="Label" parent="Summary/TaxRow"]
+layout_mode = 2
+text = "¥0.00"
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.9, 0.9, 0.9, 1)
+
+[node name="Separator" type="HSeparator" parent="Summary"]
+layout_mode = 2
+
+[node name="TotalRow" type="HBoxContainer" parent="Summary"]
+layout_mode = 2
+theme_override_constants/spacing = 10
+
+[node name="Label7" type="Label" parent="Summary/TotalRow"]
+layout_mode = 2
+text = "总计:"
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+
+[node name="TotalLabel" type="Label" parent="Summary/TotalRow"]
+layout_mode = 2
+text = "¥0.00"
+theme_override_font_sizes/font_size = 18
+theme_override_colors/font_color = Color(0.8, 1, 0.8, 1)
+
+[node name="TimeRow" type="HBoxContainer" parent="Summary"]
+layout_mode = 2
+theme_override_constants/spacing = 10
+
+[node name="Label8" type="Label" parent="Summary/TimeRow"]
+layout_mode = 2
+text = "报价有效期:"
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 12
+theme_override_colors/font_color = Color(0.7, 0.75, 0.8, 1)
+
+[node name="TimeRemainingLabel" type="Label" parent="Summary/TimeRow"]
+layout_mode = 2
+text = "2:00:00"
+theme_override_font_sizes/font_size = 12
+theme_override_colors/font_color = Color(0.8, 0.8, 0.3, 1)
+
+[node name="Buttons" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 6
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -50.0
+grow_horizontal = 2
+grow_vertical = 0
+alignment = 2
+theme_override_constants/spacing = 10
+
+[node name="SendButton" type="Button" parent="Buttons"]
+layout_mode = 2
+custom_minimum_size = Vector2(100, 36)
+text = "发送报价"
+theme_override_font_sizes/font_size = 14
+
+[node name="ApproveButton" type="Button" parent="Buttons"]
+layout_mode = 2
+custom_minimum_size = Vector2(100, 36)
+text = "批准"
+theme_override_font_sizes/font_size = 14
+visible = false
+
+[node name="RejectButton" type="Button" parent="Buttons"]
+layout_mode = 2
+custom_minimum_size = Vector2(100, 36)
+text = "拒绝"
+theme_override_font_sizes/font_size = 14
+visible = false

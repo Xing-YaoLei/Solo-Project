@@ -1,0 +1,179 @@
+[gd_scene load_steps=2 format=3 uid="uid://levelselectscene"]
+
+[ext_resource type="Script" path="res://scripts/ui/level_select_scene.gd" id="1"]
+
+[node name="LevelSelectScene" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.08, 0.1, 0.15, 1)
+
+[node name="TopBar" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 70.0
+grow_horizontal = 2
+theme_override_constants/spacing = 15
+offset_left = 20.0
+offset_top = 20.0
+offset_right = -20.0
+
+[node name="BackButton" type="Button" parent="TopBar"]
+layout_mode = 2
+custom_minimum_size = Vector2(100, 40)
+text = "← 返回"
+theme_override_font_sizes/font_size = 14
+
+[node name="TitleLabel" type="Label" parent="TopBar"]
+layout_mode = 2
+text = "训练关卡选择"
+size_flags_horizontal = 3
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 28
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+
+[node name="ResetTutorialButton" type="Button" parent="TopBar"]
+layout_mode = 2
+custom_minimum_size = Vector2(120, 40)
+text = "重置教程"
+theme_override_font_sizes/font_size = 13
+
+[node name="ScrollContainer" type="ScrollContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 0.6
+anchor_bottom = 1.0
+offset_top = 90.0
+offset_left = 20.0
+offset_bottom = -20.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_scroll_mode = 0
+
+[node name="LevelsGrid" type="GridContainer" parent="ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 3
+theme_override_constants/h_separation = 15
+theme_override_constants/v_separation = 15
+
+[node name="DetailsPanel" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_left = 0.62
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 90.0
+offset_right = -20.0
+offset_bottom = -20.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="PanelStyleBox" type="StyleBoxFlat" parent="."]
+bg_color = Color(0.15, 0.18, 0.25, 0.95)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+content_margin_left = 20
+content_margin_right = 20
+content_margin_top = 20
+content_margin_bottom = 20
+
+[node name="Content" type="VBoxContainer" parent="DetailsPanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/spacing = 12
+
+[node name="LevelNameLabel" type="Label" parent="DetailsPanel/Content"]
+layout_mode = 2
+text = "关卡名称"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 24
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+
+[node name="DifficultyLabel" type="Label" parent="DetailsPanel/Content"]
+layout_mode = 2
+text = "入门"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.5, 1, 0.5, 1)
+
+[node name="Separator1" type="HSeparator" parent="DetailsPanel/Content"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="LevelDescLabel" type="Label" parent="DetailsPanel/Content"]
+layout_mode = 2
+text = "关卡描述"
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.7, 0.8, 0.9, 1)
+autowrap_mode = 2
+
+[node name="ObjectiveLabel" type="Label" parent="DetailsPanel/Content"]
+layout_mode = 2
+text = "训练目标"
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.9, 0.95, 1, 1)
+autowrap_mode = 2
+
+[node name="Separator2" type="HSeparator" parent="DetailsPanel/Content"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="TargetTimeLabel" type="Label" parent="DetailsPanel/Content"]
+layout_mode = 2
+text = "目标时间: 5分钟"
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.7, 0.8, 0.9, 1)
+
+[node name="TargetRepairLabel" type="Label" parent="DetailsPanel/Content"]
+layout_mode = 2
+text = "目标返修率: ≤20%"
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.7, 0.8, 0.9, 1)
+
+[node name="MinScoreLabel" type="Label" parent="DetailsPanel/Content"]
+layout_mode = 2
+text = "目标分数: ≥500"
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.7, 0.8, 0.9, 1)
+
+[node name="OrderCountLabel" type="Label" parent="DetailsPanel/Content"]
+layout_mode = 2
+text = "工单数: 5"
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.7, 0.8, 0.9, 1)
+
+[node name="Spacer" type="Control" parent="DetailsPanel/Content"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="StartButton" type="Button" parent="DetailsPanel/Content"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 50)
+text = "开始训练"
+theme_override_font_sizes/font_size = 16
+
+[node name="LockedOverlay" type="Control" parent="DetailsPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
