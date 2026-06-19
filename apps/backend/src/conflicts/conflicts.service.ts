@@ -23,6 +23,13 @@ export class ConflictsService {
     if (riskLevel) where.riskLevel = riskLevel;
     if (roomId) where.roomId = roomId;
 
+    if (user.role === UserRole.FRONTLINE) {
+      where.OR = [
+        { createdById: user.userId },
+        { handledById: user.userId },
+      ];
+    }
+
     const [conflicts, total] = await Promise.all([
       this.prisma.roomConflict.findMany({
         where,
@@ -179,12 +186,19 @@ export class ConflictsService {
     });
   }
 
-  async getHighRiskConflicts(propertyId?: number) {
+  async getHighRiskConflicts(user: any, propertyId?: number) {
     const where: any = {
       riskLevel: { in: [ConflictRiskLevel.HIGH, ConflictRiskLevel.CRITICAL] },
       status: { in: [ConflictStatus.OPEN, ConflictStatus.IN_PROGRESS] },
     };
     if (propertyId) where.propertyId = propertyId;
+
+    if (user.role === UserRole.FRONTLINE) {
+      where.OR = [
+        { createdById: user.userId },
+        { handledById: user.userId },
+      ];
+    }
 
     return this.prisma.roomConflict.findMany({
       where,
@@ -212,9 +226,16 @@ export class ConflictsService {
     return this.prisma.roomConflict.delete({ where: { id } });
   }
 
-  async getStatistics(propertyId?: number) {
+  async getStatistics(user: any, propertyId?: number) {
     const where: any = {};
     if (propertyId) where.propertyId = propertyId;
+
+    if (user.role === UserRole.FRONTLINE) {
+      where.OR = [
+        { createdById: user.userId },
+        { handledById: user.userId },
+      ];
+    }
 
     const [total, open, inProgress, resolved, highRisk] = await Promise.all([
       this.prisma.roomConflict.count({ where }),

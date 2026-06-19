@@ -8,6 +8,27 @@ export class DashboardService {
 
   async getOverview(user: any, propertyId?: number) {
     const propertyWhere = propertyId ? { propertyId } : {};
+    const isFrontline = user.role === UserRole.FRONTLINE;
+    const userId = user.userId;
+
+    const orderWhere: any = { ...propertyWhere };
+    const documentWhere: any = {};
+    if (propertyId) documentWhere.order = { propertyId };
+    const conflictWhere: any = { ...propertyWhere };
+    const cleaningWhere: any = {
+      ...propertyWhere,
+      status: { in: [CleaningStatus.PENDING, CleaningStatus.ASSIGNED, CleaningStatus.IN_PROGRESS] },
+    };
+
+    if (isFrontline) {
+      orderWhere.createdById = userId;
+      documentWhere.order = { ...(documentWhere.order || {}), createdById: userId };
+      conflictWhere.OR = [
+        { createdById: userId },
+        { handledById: userId },
+      ];
+      cleaningWhere.assignedToId = userId;
+    }
 
     const [
       totalProperties,
@@ -28,7 +49,7 @@ export class DashboardService {
         : this.prisma.room.count({ where: { isActive: true } }),
       this.prisma.channelOrder.count({
         where: {
-          ...propertyWhere,
+          ...orderWhere,
           checkInDate: {
             gte: new Date(new Date().setHours(0, 0, 0, 0)),
             lt: new Date(new Date().setHours(24, 0, 0, 0)),
@@ -38,7 +59,7 @@ export class DashboardService {
       }),
       this.prisma.channelOrder.count({
         where: {
-          ...propertyWhere,
+          ...orderWhere,
           checkOutDate: {
             gte: new Date(new Date().setHours(0, 0, 0, 0)),
             lt: new Date(new Date().setHours(24, 0, 0, 0)),
@@ -48,27 +69,22 @@ export class DashboardService {
       }),
       this.prisma.channelOrder.count({
         where: {
-          ...propertyWhere,
+          ...orderWhere,
           checkInDate: { lte: new Date() },
           checkOutDate: { gt: new Date() },
           status: OrderStatus.CHECKED_IN,
         },
       }),
-      this.prisma.cleaningTask.count({
-        where: {
-          ...propertyWhere,
-          status: { in: [CleaningStatus.PENDING, CleaningStatus.ASSIGNED, CleaningStatus.IN_PROGRESS] },
-        },
-      }),
+      this.prisma.cleaningTask.count({ where: cleaningWhere }),
       this.prisma.roomConflict.count({
         where: {
-          ...propertyWhere,
+          ...conflictWhere,
           status: { in: [ConflictStatus.OPEN, ConflictStatus.IN_PROGRESS] },
         },
       }),
       this.prisma.roomConflict.count({
         where: {
-          ...propertyWhere,
+          ...conflictWhere,
           riskLevel: { in: [ConflictRiskLevel.HIGH, ConflictRiskLevel.CRITICAL] },
           status: { in: [ConflictStatus.OPEN, ConflictStatus.IN_PROGRESS] },
         },
@@ -76,7 +92,7 @@ export class DashboardService {
       this.prisma.checkinDocument.count({
         where: {
           status: DocumentStatus.PENDING,
-          ...(propertyId ? { order: { propertyId } } : {}),
+          ...documentWhere,
         },
       }),
     ]);
@@ -101,17 +117,22 @@ export class DashboardService {
 
   async getTodayTasks(user: any, propertyId?: number) {
     const propertyWhere = propertyId ? { propertyId } : {};
+    const isFrontline = user.role === UserRole.FRONTLINE;
+    const userId = user.userId;
     const todayStart = new Date(new Date().setHours(0, 0, 0, 0));
     const todayEnd = new Date(new Date().setHours(23, 59, 59, 999));
 
     const tasks: any[] = [];
 
+    const arrivalWhere: any = {
+      ...propertyWhere,
+      checkInDate: { gte: todayStart, lt: todayEnd },
+      status: { in: [OrderStatus.CONFIRMED, OrderStatus.CHECKED_IN] },
+    };
+    if (isFrontline) arrivalWhere.createdById = userId;
+
     const arrivals = await this.prisma.channelOrder.findMany({
-      where: {
-        ...propertyWhere,
-        checkInDate: { gte: todayStart, lt: todayEnd },
-        status: { in: [OrderStatus.CONFIRMED, OrderStatus.CHECKED_IN] },
-      },
+      where: arrivalWhere,
       include: {
         property: { select: { name: true } },
         room: { select: { roomNumber: true } },
@@ -132,12 +153,15 @@ export class DashboardService {
       });
     }
 
+    const departureWhere: any = {
+      ...propertyWhere,
+      checkOutDate: { gte: todayStart, lt: todayEnd },
+      status: { in: [OrderStatus.CHECKED_IN, OrderStatus.CHECKED_OUT] },
+    };
+    if (isFrontline) departureWhere.createdById = userId;
+
     const departures = await this.prisma.channelOrder.findMany({
-      where: {
-        ...propertyWhere,
-        checkOutDate: { gte: todayStart, lt: todayEnd },
-        status: { in: [OrderStatus.CHECKED_IN, OrderStatus.CHECKED_OUT] },
-      },
+      where: departureWhere,
       include: {
         property: { select: { name: true } },
         room: { select: { roomNumber: true } },
@@ -163,7 +187,7 @@ export class DashboardService {
       status: { in: [CleaningStatus.PENDING, CleaningStatus.ASSIGNED, CleaningStatus.IN_PROGRESS] },
       scheduledAt: { gte: todayStart, lte: todayEnd },
     };
-    if (user.role === UserRole.FRONTLINE) {
+    if (isFrontline) {
       cleaningWhere.assignedToId = user.userId;
     }
 
@@ -189,12 +213,20 @@ export class DashboardService {
       });
     }
 
+    const conflictWhere: any = {
+      ...propertyWhere,
+      riskLevel: { in: [ConflictRiskLevel.HIGH, ConflictRiskLevel.CRITICAL] },
+      status: { in: [ConflictStatus.OPEN, ConflictStatus.IN_PROGRESS] },
+    };
+    if (isFrontline) {
+      conflictWhere.OR = [
+        { createdById: userId },
+        { handledById: userId },
+      ];
+    }
+
     const highRiskConflicts = await this.prisma.roomConflict.findMany({
-      where: {
-        ...propertyWhere,
-        riskLevel: { in: [ConflictRiskLevel.HIGH, ConflictRiskLevel.CRITICAL] },
-        status: { in: [ConflictStatus.OPEN, ConflictStatus.IN_PROGRESS] },
-      },
+      where: conflictWhere,
       include: {
         property: { select: { name: true } },
         room: { select: { roomNumber: true } },

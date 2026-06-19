@@ -36,16 +36,24 @@ export class ConflictsController {
 
   @Get('statistics')
   @ApiOperation({ summary: '获取冲突统计' })
-  getStatistics(@Query('propertyId') propertyId?: string) {
+  getStatistics(
+    @Req() req: any,
+    @Query('propertyId') propertyId?: string,
+  ) {
     return this.conflictsService.getStatistics(
+      req.user,
       propertyId ? parseInt(propertyId) : undefined,
     );
   }
 
   @Get('high-risk')
   @ApiOperation({ summary: '获取高风险冲突' })
-  getHighRiskConflicts(@Query('propertyId') propertyId?: string) {
+  getHighRiskConflicts(
+    @Req() req: any,
+    @Query('propertyId') propertyId?: string,
+  ) {
     return this.conflictsService.getHighRiskConflicts(
+      req.user,
       propertyId ? parseInt(propertyId) : undefined,
     );
   }

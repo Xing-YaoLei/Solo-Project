@@ -1,12 +1,12 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { OrderStatus, ChannelType, RoomStatus } from '@prisma/client';
+import { OrderStatus, ChannelType, RoomStatus, UserRole } from '@prisma/client';
 
 @Injectable()
 export class OrdersService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll(params: {
+  async findAll(user: any, params: {
     page?: number;
     pageSize?: number;
     propertyId?: number;
@@ -36,6 +36,10 @@ export class OrdersService {
     }
     if (dateTo) {
       where.checkOutDate = { ...where.checkOutDate, lte: new Date(dateTo) };
+    }
+
+    if (user.role === UserRole.FRONTLINE) {
+      where.createdById = user.userId;
     }
 
     const [orders, total] = await Promise.all([
@@ -159,12 +163,16 @@ export class OrdersService {
     });
   }
 
-  async getStatistics(params: { propertyId?: number; date?: string }) {
+  async getStatistics(user: any, params: { propertyId?: number; date?: string }) {
     const { propertyId, date } = params;
     const targetDate = date ? new Date(date) : new Date();
 
     const where: any = {};
     if (propertyId) where.propertyId = propertyId;
+
+    if (user.role === UserRole.FRONTLINE) {
+      where.createdById = user.userId;
+    }
 
     const [todayArrivals, todayDepartures, inHouse, totalOrders] = await Promise.all([
       this.prisma.channelOrder.count({

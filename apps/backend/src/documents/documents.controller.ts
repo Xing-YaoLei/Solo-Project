@@ -15,6 +15,7 @@ export class DocumentsController {
   @Get()
   @ApiOperation({ summary: '获取证件列表' })
   findAll(
+    @Req() req: any,
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
     @Query('orderId') orderId?: string,
@@ -22,7 +23,7 @@ export class DocumentsController {
     @Query('keyword') keyword?: string,
     @Query('propertyId') propertyId?: string,
   ) {
-    return this.documentsService.findAll({
+    return this.documentsService.findAll(req.user, {
       page: page ? parseInt(page) : undefined,
       pageSize: pageSize ? parseInt(pageSize) : undefined,
       orderId: orderId ? parseInt(orderId) : undefined,
@@ -34,8 +35,12 @@ export class DocumentsController {
 
   @Get('pending-count')
   @ApiOperation({ summary: '获取待审核证件数量' })
-  getPendingCount(@Query('propertyId') propertyId?: string) {
+  getPendingCount(
+    @Req() req: any,
+    @Query('propertyId') propertyId?: string,
+  ) {
     return this.documentsService.getPendingCount(
+      req.user,
       propertyId ? parseInt(propertyId) : undefined,
     );
   }

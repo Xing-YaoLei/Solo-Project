@@ -1,12 +1,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { DepositStatus } from '@prisma/client';
+import { DepositStatus, UserRole } from '@prisma/client';
 
 @Injectable()
 export class DepositsService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll(params: {
+  async findAll(user: any, params: {
     page?: number;
     pageSize?: number;
     orderId?: number;
@@ -22,6 +22,23 @@ export class DepositsService {
     if (status) where.status = status;
     if (propertyId) {
       where.order = { propertyId };
+    }
+
+    if (user.role === UserRole.FRONTLINE) {
+      where.order = {
+        ...(where.order || {}),
+        createdById: user.userId,
+      };
+    }
+
+    if (keyword) {
+      where.order = {
+        ...(where.order || {}),
+        OR: [
+          { orderNo: { contains: keyword } },
+          { guestName: { contains: keyword } },
+        ],
+      };
     }
 
     const [deposits, total] = await Promise.all([

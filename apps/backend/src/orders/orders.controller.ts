@@ -15,6 +15,7 @@ export class OrdersController {
   @Get()
   @ApiOperation({ summary: '获取订单列表' })
   findAll(
+    @Req() req: any,
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
     @Query('propertyId') propertyId?: string,
@@ -24,7 +25,7 @@ export class OrdersController {
     @Query('dateFrom') dateFrom?: string,
     @Query('dateTo') dateTo?: string,
   ) {
-    return this.ordersService.findAll({
+    return this.ordersService.findAll(req.user, {
       page: page ? parseInt(page) : undefined,
       pageSize: pageSize ? parseInt(pageSize) : undefined,
       propertyId: propertyId ? parseInt(propertyId) : undefined,
@@ -39,10 +40,11 @@ export class OrdersController {
   @Get('statistics')
   @ApiOperation({ summary: '获取订单统计' })
   getStatistics(
+    @Req() req: any,
     @Query('propertyId') propertyId?: string,
     @Query('date') date?: string,
   ) {
-    return this.ordersService.getStatistics({
+    return this.ordersService.getStatistics(req.user, {
       propertyId: propertyId ? parseInt(propertyId) : undefined,
       date,
     });

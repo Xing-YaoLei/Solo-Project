@@ -1,12 +1,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { DocumentStatus } from '@prisma/client';
+import { DocumentStatus, UserRole } from '@prisma/client';
 
 @Injectable()
 export class DocumentsService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll(params: {
+  async findAll(user: any, params: {
     page?: number;
     pageSize?: number;
     orderId?: number;
@@ -28,6 +28,14 @@ export class DocumentsService {
     }
     if (propertyId) {
       where.order = { propertyId };
+    }
+
+    if (user.role === UserRole.FRONTLINE) {
+      where.OR = [
+        ...(where.OR || []),
+        { verifiedById: user.userId },
+        { order: { createdById: user.userId } },
+      ];
     }
 
     const [documents, total] = await Promise.all([
@@ -107,10 +115,17 @@ export class DocumentsService {
     return this.prisma.checkinDocument.delete({ where: { id } });
   }
 
-  async getPendingCount(propertyId?: number) {
+  async getPendingCount(user: any, propertyId?: number) {
     const where: any = { status: DocumentStatus.PENDING };
     if (propertyId) {
       where.order = { propertyId };
+    }
+
+    if (user.role === UserRole.FRONTLINE) {
+      where.order = {
+        ...(where.order || {}),
+        createdById: user.userId,
+      };
     }
 
     return this.prisma.checkinDocument.count({ where });

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query, UseGuards, Req } from '@nestjs/common';
 import { DepositsService } from './deposits.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -15,6 +15,7 @@ export class DepositsController {
   @Get()
   @ApiOperation({ summary: '获取押金列表' })
   findAll(
+    @Req() req: any,
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
     @Query('orderId') orderId?: string,
@@ -22,7 +23,7 @@ export class DepositsController {
     @Query('keyword') keyword?: string,
     @Query('propertyId') propertyId?: string,
   ) {
-    return this.depositsService.findAll({
+    return this.depositsService.findAll(req.user, {
       page: page ? parseInt(page) : undefined,
       pageSize: pageSize ? parseInt(pageSize) : undefined,
       orderId: orderId ? parseInt(orderId) : undefined,
