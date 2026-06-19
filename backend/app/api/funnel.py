@@ -17,7 +17,10 @@ async def read_funnel(
     data = await get_funnel_data(session, date_start, date_end)
     timeout_intervals = get_funnel_timeout_intervals()
     return {
-        "funnel": data,
+        "funnel": data["funnel"],
+        "total": data["total"],
+        "avg_closure_work_hours": data["avg_closure_work_hours"],
+        "closure_rule": data["closure_rule"],
         "timeout_intervals": timeout_intervals,
     }
 

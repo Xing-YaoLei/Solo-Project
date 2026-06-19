@@ -1,8 +1,11 @@
 import { useState } from 'react';
-import type { SavedView } from '../types';
+import type { SavedView, DateRange } from '../types';
 
 interface ViewSelectorProps {
   views: SavedView[];
+  activeViewType: SavedView['viewType'];
+  dateRange: DateRange;
+  onViewTypeChange: (viewType: SavedView['viewType']) => void;
   onSaveView: (viewName: string, viewType: SavedView['viewType'], filtersJson: string) => void;
   onSelectView: (view: SavedView) => void;
   onDeleteView?: (viewId: string) => void;
@@ -14,15 +17,26 @@ const VIEW_TABS: { key: SavedView['viewType']; label: string }[] = [
   { key: 'problem_tag', label: '问题标签' },
 ];
 
-export default function ViewSelector({ views, onSaveView, onSelectView, onDeleteView }: ViewSelectorProps) {
-  const [activeTab, setActiveTab] = useState<SavedView['viewType']>('revisit_result');
+export default function ViewSelector({
+  views,
+  activeViewType,
+  dateRange,
+  onViewTypeChange,
+  onSaveView,
+  onSelectView,
+  onDeleteView,
+}: ViewSelectorProps) {
   const [newViewName, setNewViewName] = useState('');
 
-  const filteredViews = views.filter((v) => v.viewType === activeTab);
+  const filteredViews = views.filter((v) => v.viewType === activeViewType);
 
   const handleSave = () => {
     if (!newViewName.trim()) return;
-    onSaveView(newViewName.trim(), activeTab, JSON.stringify({ viewType: activeTab }));
+    const filters = {
+      viewType: activeViewType,
+      dateRange,
+    };
+    onSaveView(newViewName.trim(), activeViewType, JSON.stringify(filters));
     setNewViewName('');
   };
 
@@ -33,8 +47,8 @@ export default function ViewSelector({ views, onSaveView, onSelectView, onDelete
         {VIEW_TABS.map((tab) => (
           <button
             key={tab.key}
-            className={`view-tab ${activeTab === tab.key ? 'active' : ''}`}
-            onClick={() => setActiveTab(tab.key)}
+            className={`view-tab ${activeViewType === tab.key ? 'active' : ''}`}
+            onClick={() => onViewTypeChange(tab.key)}
           >
             {tab.label}
           </button>
@@ -52,7 +66,7 @@ export default function ViewSelector({ views, onSaveView, onSelectView, onDelete
             <div className="view-item-main" onClick={() => onSelectView(view)}>
               <span className="view-item-name">{view.viewName}</span>
               <span className="view-item-meta">
-                {view.createdBy} · {view.createdAt}
+                {view.createdBy} · {new Date(view.createdAt).toLocaleDateString()}
               </span>
             </div>
             {onDeleteView && (

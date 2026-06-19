@@ -11,8 +11,9 @@ import type { SavedView, SavedViewCreateData, DateRange } from './types';
 
 export default function App() {
   const { data, loading, dateRange, setDateRange, refresh: refreshFunnel } = useFunnelData();
-  const { anomalies, detecting, detect, refresh: refreshAnomaly } = useAnomaly();
+  const { anomalies, detecting, refresh: refreshAnomaly } = useAnomaly();
   const [savedViews, setSavedViews] = useState<SavedView[]>([]);
+  const [activeViewType, setActiveViewType] = useState<SavedView['viewType']>('revisit_result');
   const [selectedComplaintId, setSelectedComplaintId] = useState('');
   const [selectedAnomalyFlagId, setSelectedAnomalyFlagId] = useState<string | undefined>();
 
@@ -62,7 +63,13 @@ export default function App() {
     try {
       const filters = JSON.parse(view.filtersJson);
       if (filters.dateRange) {
-        setDateRange(filters.dateRange as DateRange);
+        const dr = filters.dateRange as DateRange;
+        if (dr.start && dr.end) {
+          setDateRange(dr);
+        }
+      }
+      if (filters.viewType) {
+        setActiveViewType(filters.viewType as SavedView['viewType']);
       }
     } catch {
       // ignore parse error
@@ -85,7 +92,7 @@ export default function App() {
           <AnomalyFlags
             anomalies={anomalies}
             detecting={detecting}
-            onDetect={detect}
+            onDetect={refreshAnomaly}
             onAnomalyClick={(complaintId, anomalyFlagId) => {
               setSelectedComplaintId(complaintId);
               setSelectedAnomalyFlagId(anomalyFlagId);
@@ -98,6 +105,9 @@ export default function App() {
         <aside className="sidebar-right">
           <ViewSelector
             views={savedViews}
+            activeViewType={activeViewType}
+            dateRange={dateRange}
+            onViewTypeChange={setActiveViewType}
             onSaveView={handleSaveView}
             onSelectView={handleSelectView}
             onDeleteView={handleDeleteView}
