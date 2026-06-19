@@ -47,41 +47,21 @@ def sync_ota_orders(self, records: Optional[List[Dict[str, Any]]] = None, sync_f
 
         clean_result = DataCleaner.clean_ota_orders(records)
 
-        records_processed = 0
+        records_processed, records_failed = _sync_records_to_db(
+            clean_result.cleaned_data,
+            OTAOrder,
+            "order_no",
+            ["property_id"]
+        )
         records_anomaly = clean_result.anomaly_count
 
-        with get_db_session() as db:
-            for cleaned in clean_result.cleaned_data:
-                try:
-                    existing = db.query(OTAOrder).filter(
-                        OTAOrder.order_no == cleaned["order_no"]
-                    ).first()
-
-                    if existing:
-                        for key, value in cleaned.items():
-                            if hasattr(existing, key) and key not in ["id", "created_at"]:
-                                setattr(existing, key, value)
-                        existing.synced_at = datetime.utcnow()
-                    else:
-                        order = OTAOrder(**{
-                            k: v for k, v in cleaned.items()
-                            if hasattr(OTAOrder, k) and k != "id"
-                        })
-                        order.synced_at = datetime.utcnow()
-                        db.add(order)
-
-                    records_processed += 1
-
-                    if records_processed % settings.SYNC_BATCH_SIZE == 0:
-                        db.flush()
-
-                except Exception as e:
-                    logger.error(f"处理OTA订单 {cleaned.get('order_no')} 失败: {str(e)}")
-                    continue
-
-            if clean_result.anomalies:
+        if clean_result.anomalies:
+            try:
                 save_anomalies_to_db(clean_result.anomalies)
+            except Exception:
+                pass
 
+        with get_db_session() as db:
             if sync_log_id:
                 sync_log = db.get(SyncLog, sync_log_id)
                 if sync_log:
@@ -97,6 +77,7 @@ def sync_ota_orders(self, records: Optional[List[Dict[str, Any]]] = None, sync_f
         return {
             "status": "completed",
             "records_processed": records_processed,
+            "records_failed": records_failed,
             "anomaly_count": records_anomaly
         }
 
@@ -144,40 +125,21 @@ def sync_payment_transactions(self, records: Optional[List[Dict[str, Any]]] = No
 
         clean_result = DataCleaner.clean_payment_transactions(records)
 
-        records_processed = 0
+        records_processed, records_failed = _sync_records_to_db(
+            clean_result.cleaned_data,
+            PaymentTransaction,
+            "transaction_no",
+            ["property_id", "order_id"]
+        )
         records_anomaly = clean_result.anomaly_count
 
-        with get_db_session() as db:
-            for cleaned in clean_result.cleaned_data:
-                try:
-                    existing = db.query(PaymentTransaction).filter(
-                        PaymentTransaction.transaction_no == cleaned["transaction_no"]
-                    ).first()
-
-                    if existing:
-                        for key, value in cleaned.items():
-                            if hasattr(existing, key) and key not in ["id", "created_at"]:
-                                setattr(existing, key, value)
-                        existing.synced_at = datetime.utcnow()
-                    else:
-                        payment = PaymentTransaction(**{
-                            k: v for k, v in cleaned.items()
-                            if hasattr(PaymentTransaction, k) and k != "id"
-                        })
-                        payment.synced_at = datetime.utcnow()
-                        db.add(payment)
-
-                    records_processed += 1
-                    if records_processed % settings.SYNC_BATCH_SIZE == 0:
-                        db.flush()
-
-                except Exception as e:
-                    logger.error(f"处理收款流水 {cleaned.get('transaction_no')} 失败: {str(e)}")
-                    continue
-
-            if clean_result.anomalies:
+        if clean_result.anomalies:
+            try:
                 save_anomalies_to_db(clean_result.anomalies)
+            except Exception:
+                pass
 
+        with get_db_session() as db:
             if sync_log_id:
                 sync_log = db.get(SyncLog, sync_log_id)
                 if sync_log:
@@ -189,6 +151,7 @@ def sync_payment_transactions(self, records: Optional[List[Dict[str, Any]]] = No
         return {
             "status": "completed",
             "records_processed": records_processed,
+            "records_failed": records_failed,
             "anomaly_count": records_anomaly
         }
 
@@ -236,40 +199,21 @@ def sync_door_lock_records(self, records: Optional[List[Dict[str, Any]]] = None,
 
         clean_result = DataCleaner.clean_door_lock_records(records)
 
-        records_processed = 0
+        records_processed, records_failed = _sync_records_to_db(
+            clean_result.cleaned_data,
+            DoorLockRecord,
+            "record_no",
+            ["property_id"]
+        )
         records_anomaly = clean_result.anomaly_count
 
-        with get_db_session() as db:
-            for cleaned in clean_result.cleaned_data:
-                try:
-                    existing = db.query(DoorLockRecord).filter(
-                        DoorLockRecord.record_no == cleaned["record_no"]
-                    ).first()
-
-                    if existing:
-                        for key, value in cleaned.items():
-                            if hasattr(existing, key) and key not in ["id", "created_at"]:
-                                setattr(existing, key, value)
-                        existing.synced_at = datetime.utcnow()
-                    else:
-                        lock = DoorLockRecord(**{
-                            k: v for k, v in cleaned.items()
-                            if hasattr(DoorLockRecord, k) and k != "id"
-                        })
-                        lock.synced_at = datetime.utcnow()
-                        db.add(lock)
-
-                    records_processed += 1
-                    if records_processed % settings.SYNC_BATCH_SIZE == 0:
-                        db.flush()
-
-                except Exception as e:
-                    logger.error(f"处理门锁记录 {cleaned.get('record_no')} 失败: {str(e)}")
-                    continue
-
-            if clean_result.anomalies:
+        if clean_result.anomalies:
+            try:
                 save_anomalies_to_db(clean_result.anomalies)
+            except Exception:
+                pass
 
+        with get_db_session() as db:
             if sync_log_id:
                 sync_log = db.get(SyncLog, sync_log_id)
                 if sync_log:
@@ -281,6 +225,7 @@ def sync_door_lock_records(self, records: Optional[List[Dict[str, Any]]] = None,
         return {
             "status": "completed",
             "records_processed": records_processed,
+            "records_failed": records_failed,
             "anomaly_count": records_anomaly
         }
 
@@ -431,7 +376,7 @@ def _fetch_ota_orders_from_source(sync_from: Optional[str] = None) -> List[Dict[
         paid_ratio = 1.0 if status in ["已入住", "已退房", "已完成"] else random.uniform(0.3, 1.0)
 
         records.append({
-            "order_no": f"OTA{datetime.now().strftime('%Y%m%d')}{random.randint(100000, 999999)}",
+            "order_no": f"OTA{datetime.now().strftime('%Y%m%d%H%M%S%f')}{random.randint(100000, 999999)}",
             "property_id": prop["id"],
             "channel": channel,
             "check_in_date": check_in.isoformat(),
@@ -455,7 +400,7 @@ def _fetch_ota_orders_from_source(sync_from: Optional[str] = None) -> List[Dict[
     for i in range(3):
         prop = random.choice(properties)
         records.append({
-            "order_no": f"ANOM{datetime.now().strftime('%Y%m%d')}{i:03d}",
+            "order_no": f"ANOM{datetime.now().strftime('%Y%m%d%H%M%S%f')}{i:03d}",
             "property_id": prop["id"],
             "channel": random.choice(CHANNELS),
             "check_in_date": (date.today() + timedelta(days=5)).isoformat(),
@@ -526,7 +471,7 @@ def _fetch_payments_from_source(sync_from: Optional[str] = None) -> List[Dict[st
             ) + timedelta(hours=random.randint(8, 20), minutes=random.randint(0, 59))
 
             records.append({
-                "transaction_no": f"PAY{datetime.now().strftime('%Y%m%d%H%M%S')}{random.randint(1000, 9999)}",
+                "transaction_no": f"PAY{datetime.now().strftime('%Y%m%d%H%M%S%f')}{random.randint(100000, 999999)}",
                 "order_id": order["id"],
                 "property_id": order["property_id"],
                 "channel": order["channel"],
@@ -552,7 +497,7 @@ def _fetch_payments_from_source(sync_from: Optional[str] = None) -> List[Dict[st
         ) + timedelta(hours=random.randint(6, 23), minutes=random.randint(0, 59))
 
         records.append({
-            "transaction_no": f"PAY{datetime.now().strftime('%Y%m%d%H%M%S')}{random.randint(1000, 9999)}",
+            "transaction_no": f"PAY{datetime.now().strftime('%Y%m%d%H%M%S%f')}{random.randint(100000, 999999)}",
             "property_id": prop["id"],
             "channel": "线下",
             "payment_method": random.choice(PAYMENT_METHODS),
@@ -612,7 +557,7 @@ def _fetch_door_locks_from_source(sync_from: Optional[str] = None) -> List[Dict[
             ) + timedelta(hours=random.randint(6, 23), minutes=random.randint(0, 59), seconds=random.randint(0, 59))
 
             records.append({
-                "record_no": f"LOCK{datetime.now().strftime('%Y%m%d%H%M%S')}{random.randint(1000, 9999)}",
+                "record_no": f"LOCK{datetime.now().strftime('%Y%m%d%H%M%S%f')}{random.randint(100000, 999999)}",
                 "property_id": prop["id"],
                 "lock_device_id": f"DEV-{prop['property_code']}-{random.randint(1, max(prop['room_count'], 1))}",
                 "action_type": random.choice(LOCK_ACTIONS),
@@ -749,6 +694,67 @@ def ensure_demo_properties():
         return True
 
 
+def _sync_records_to_db(records: List[Dict[str, Any]],
+                        Model,
+                        unique_field: str,
+                        uuid_fields: List[str]) -> Tuple[int, int]:
+    import uuid as uuid_lib
+    records_processed = 0
+    records_failed = 0
+
+    with get_db_session() as db:
+        for cleaned in records:
+            try:
+                unique_value = cleaned.get(unique_field)
+                if not unique_value:
+                    records_failed += 1
+                    continue
+
+                existing = db.query(Model).filter(
+                    getattr(Model, unique_field) == unique_value
+                ).first()
+
+                if existing:
+                    for key, value in cleaned.items():
+                        if key in uuid_fields and value:
+                            try:
+                                setattr(existing, key, uuid_lib.UUID(value))
+                                continue
+                            except Exception:
+                                pass
+                        if hasattr(existing, key) and key not in ["id", "created_at"]:
+                            setattr(existing, key, value)
+                    existing.synced_at = datetime.utcnow()
+                else:
+                    data = {}
+                    for k, v in cleaned.items():
+                        if not hasattr(Model, k) or k == "id":
+                            continue
+                        if k in uuid_fields and v:
+                            try:
+                                data[k] = uuid_lib.UUID(v)
+                                continue
+                            except Exception:
+                                pass
+                        data[k] = v
+                    if "property_id" not in data or not data["property_id"]:
+                        records_failed += 1
+                        continue
+                    obj = Model(**data)
+                    obj.synced_at = datetime.utcnow()
+                    db.add(obj)
+
+                db.flush()
+                records_processed += 1
+            except Exception as e:
+                db.rollback()
+                records_failed += 1
+                logger.error(f"处理 {Model.__name__} {cleaned.get(unique_field)} 失败: {str(e)}")
+                continue
+
+    return records_processed, records_failed
+
+
 def run_local_full_sync(sync_from: Optional[str] = None) -> Dict[str, Any]:
     logger.info("执行本地全量同步（不依赖Celery）...")
     import traceback
@@ -764,58 +770,23 @@ def run_local_full_sync(sync_from: Optional[str] = None) -> Dict[str, Any]:
     try:
         ota_records = _fetch_ota_orders_from_source(sync_from)
         clean_result = DataCleaner.clean_ota_orders(ota_records)
-        records_processed = 0
-
-        with get_db_session() as db:
-            for cleaned in clean_result.cleaned_data:
-                try:
-                    import uuid as uuid_lib
-                    existing = db.query(OTAOrder).filter(
-                        OTAOrder.order_no == cleaned["order_no"]
-                    ).first()
-
-                    if existing:
-                        for key, value in cleaned.items():
-                            if key == "property_id" and value:
-                                try:
-                                    setattr(existing, key, uuid_lib.UUID(value))
-                                    continue
-                                except Exception:
-                                    pass
-                            if hasattr(existing, key) and key not in ["id", "created_at"]:
-                                setattr(existing, key, value)
-                        existing.synced_at = datetime.utcnow()
-                    else:
-                        order_data = {}
-                        import uuid as uuid_lib2
-                        for k, v in cleaned.items():
-                            if not hasattr(OTAOrder, k) or k == "id":
-                                continue
-                            if k == "property_id" and v:
-                                try:
-                                    order_data[k] = uuid_lib2.UUID(v)
-                                    continue
-                                except Exception:
-                                    pass
-                            order_data[k] = v
-                        if "property_id" not in order_data or not order_data["property_id"]:
-                            continue
-                        order = OTAOrder(**order_data)
-                        order.synced_at = datetime.utcnow()
-                        db.add(order)
-                    records_processed += 1
-                except Exception as e:
-                    logger.error(f"处理订单 {cleaned.get('order_no')} 失败: {str(e)}")
-                    continue
-
-            if clean_result.anomalies:
+        records_processed, records_failed = _sync_records_to_db(
+            clean_result.cleaned_data,
+            OTAOrder,
+            "order_no",
+            ["property_id"]
+        )
+        if clean_result.anomalies:
+            try:
                 save_anomalies_to_db(clean_result.anomalies)
-
+            except Exception:
+                pass
         results["ota_orders"] = {
             "records_processed": records_processed,
+            "records_failed": records_failed,
             "anomaly_count": clean_result.anomaly_count
         }
-        logger.info(f"OTA订单同步完成: {records_processed} 条, {clean_result.anomaly_count} 个异常")
+        logger.info(f"OTA订单同步完成: {records_processed} 条, 失败 {records_failed} 条, 异常 {clean_result.anomaly_count} 个")
     except Exception as e:
         logger.error(f"OTA订单同步失败: {str(e)}\n{traceback.format_exc()}")
         results["ota_orders"] = {"error": str(e)}
@@ -823,58 +794,23 @@ def run_local_full_sync(sync_from: Optional[str] = None) -> Dict[str, Any]:
     try:
         pay_records = _fetch_payments_from_source(sync_from)
         clean_result = DataCleaner.clean_payment_transactions(pay_records)
-        records_processed = 0
-
-        with get_db_session() as db:
-            for cleaned in clean_result.cleaned_data:
-                try:
-                    import uuid as uuid_lib3
-                    existing = db.query(PaymentTransaction).filter(
-                        PaymentTransaction.transaction_no == cleaned["transaction_no"]
-                    ).first()
-
-                    if existing:
-                        for key, value in cleaned.items():
-                            if key in ("property_id", "order_id") and value:
-                                try:
-                                    setattr(existing, key, uuid_lib3.UUID(value))
-                                    continue
-                                except Exception:
-                                    pass
-                            if hasattr(existing, key) and key not in ["id", "created_at"]:
-                                setattr(existing, key, value)
-                        existing.synced_at = datetime.utcnow()
-                    else:
-                        pay_data = {}
-                        import uuid as uuid_lib4
-                        for k, v in cleaned.items():
-                            if not hasattr(PaymentTransaction, k) or k == "id":
-                                continue
-                            if k in ("property_id", "order_id") and v:
-                                try:
-                                    pay_data[k] = uuid_lib4.UUID(v)
-                                    continue
-                                except Exception:
-                                    pass
-                            pay_data[k] = v
-                        if "property_id" not in pay_data or not pay_data["property_id"]:
-                            continue
-                        payment = PaymentTransaction(**pay_data)
-                        payment.synced_at = datetime.utcnow()
-                        db.add(payment)
-                    records_processed += 1
-                except Exception as e:
-                    logger.error(f"处理流水 {cleaned.get('transaction_no')} 失败: {str(e)}")
-                    continue
-
-            if clean_result.anomalies:
+        records_processed, records_failed = _sync_records_to_db(
+            clean_result.cleaned_data,
+            PaymentTransaction,
+            "transaction_no",
+            ["property_id", "order_id"]
+        )
+        if clean_result.anomalies:
+            try:
                 save_anomalies_to_db(clean_result.anomalies)
-
+            except Exception:
+                pass
         results["payment_transactions"] = {
             "records_processed": records_processed,
+            "records_failed": records_failed,
             "anomaly_count": clean_result.anomaly_count
         }
-        logger.info(f"收款流水同步完成: {records_processed} 条, {clean_result.anomaly_count} 个异常")
+        logger.info(f"收款流水同步完成: {records_processed} 条, 失败 {records_failed} 条, 异常 {clean_result.anomaly_count} 个")
     except Exception as e:
         logger.error(f"收款流水同步失败: {str(e)}\n{traceback.format_exc()}")
         results["payment_transactions"] = {"error": str(e)}
@@ -882,58 +818,23 @@ def run_local_full_sync(sync_from: Optional[str] = None) -> Dict[str, Any]:
     try:
         lock_records = _fetch_door_locks_from_source(sync_from)
         clean_result = DataCleaner.clean_door_lock_records(lock_records)
-        records_processed = 0
-
-        with get_db_session() as db:
-            for cleaned in clean_result.cleaned_data:
-                try:
-                    import uuid as uuid_lib5
-                    existing = db.query(DoorLockRecord).filter(
-                        DoorLockRecord.record_no == cleaned["record_no"]
-                    ).first()
-
-                    if existing:
-                        for key, value in cleaned.items():
-                            if key == "property_id" and value:
-                                try:
-                                    setattr(existing, key, uuid_lib5.UUID(value))
-                                    continue
-                                except Exception:
-                                    pass
-                            if hasattr(existing, key) and key not in ["id", "created_at"]:
-                                setattr(existing, key, value)
-                        existing.synced_at = datetime.utcnow()
-                    else:
-                        lock_data = {}
-                        import uuid as uuid_lib6
-                        for k, v in cleaned.items():
-                            if not hasattr(DoorLockRecord, k) or k == "id":
-                                continue
-                            if k == "property_id" and v:
-                                try:
-                                    lock_data[k] = uuid_lib6.UUID(v)
-                                    continue
-                                except Exception:
-                                    pass
-                            lock_data[k] = v
-                        if "property_id" not in lock_data or not lock_data["property_id"]:
-                            continue
-                        lock = DoorLockRecord(**lock_data)
-                        lock.synced_at = datetime.utcnow()
-                        db.add(lock)
-                    records_processed += 1
-                except Exception as e:
-                    logger.error(f"处理门锁 {cleaned.get('record_no')} 失败: {str(e)}")
-                    continue
-
-            if clean_result.anomalies:
+        records_processed, records_failed = _sync_records_to_db(
+            clean_result.cleaned_data,
+            DoorLockRecord,
+            "record_no",
+            ["property_id"]
+        )
+        if clean_result.anomalies:
+            try:
                 save_anomalies_to_db(clean_result.anomalies)
-
+            except Exception:
+                pass
         results["door_lock_records"] = {
             "records_processed": records_processed,
+            "records_failed": records_failed,
             "anomaly_count": clean_result.anomaly_count
         }
-        logger.info(f"门锁记录同步完成: {records_processed} 条, {clean_result.anomaly_count} 个异常")
+        logger.info(f"门锁记录同步完成: {records_processed} 条, 失败 {records_failed} 条, 异常 {clean_result.anomaly_count} 个")
     except Exception as e:
         logger.error(f"门锁记录同步失败: {str(e)}\n{traceback.format_exc()}")
         results["door_lock_records"] = {"error": str(e)}

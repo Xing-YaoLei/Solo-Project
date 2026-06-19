@@ -196,52 +196,76 @@ def register_callbacks(app):
         selected_date_str = custom_data.get("date")
         property_id = custom_data.get("property_id")
         has_conflict = custom_data.get("has_conflict", False)
+        room_types = custom_data.get("room_types", [])
 
         _selected_context.update({
             "entity_type": "room_status",
             "property_id": property_id,
             "property_name": property_name,
-            "date": selected_date_str
+            "date": selected_date_str,
+            "room_types": room_types
         })
 
         selected_date = parse_date(selected_date_str)
         start_date = parse_date(start_date_str)
         end_date = parse_date(end_date_str)
 
-        pids = [property_id] if property_id else None
+        if not selected_date or not property_id:
+            orders_content = html.Div("无效的下钻参数", className="text-warning text-center py-4")
+            cleaning_content = html.Div("无效的下钻参数", className="text-warning text-center py-4")
+            raw_contents = [html.Div("无效的下钻参数", className="text-warning text-center py-4")]
+            return True, f"{property_name} - 无效参数", orders_content, cleaning_content, raw_contents
+
+        pids = [str(property_id)] if property_id else None
 
         orders_df = get_ota_orders(start_date or selected_date, end_date or selected_date, pids)
-        if not orders_df.empty and selected_date:
+        if not orders_df.empty:
             orders_df = orders_df[
                 (orders_df["check_in_date"] <= selected_date) &
                 (orders_df["check_out_date"] > selected_date)
             ]
+            if room_types and len(room_types) > 0 and "room_type" in orders_df.columns:
+                filtered_orders = orders_df[orders_df["room_type"].isin(room_types)]
+                if not filtered_orders.empty:
+                    orders_df = filtered_orders
         orders_content = render_orders_table(orders_df)
 
         cleaning_df = get_cleaning_tasks(selected_date, selected_date, pids)
+        if not cleaning_df.empty and room_types and len(room_types) > 0 and "room_type" in cleaning_df.columns:
+            filtered_cleaning = cleaning_df[cleaning_df["room_type"].isin(room_types)]
+            if not filtered_cleaning.empty:
+                cleaning_df = filtered_cleaning
         cleaning_content = render_cleaning_table(cleaning_df)
 
         raw_dfs = []
         if not orders_df.empty:
             raw_orders = orders_df.copy()
             if "raw_data" in raw_orders.columns:
-                raw_dfs.append(("OTA订单原始样本", raw_orders[["order_no", "raw_data"]]))
+                raw_dfs.append(("OTA订单原始样本", raw_orders[["order_no", "channel", "check_in_date", "check_out_date", "room_type", "raw_data"]]))
+            else:
+                raw_dfs.append(("OTA订单原始样本", raw_orders[["order_no", "channel", "check_in_date", "check_out_date", "room_type"]]))
 
         payments_df = get_payment_transactions(
             datetime.combine(selected_date, datetime.min.time()) if selected_date else None,
             datetime.combine(selected_date, datetime.max.time()) if selected_date else None,
             pids
         )
-        if not payments_df.empty and "raw_data" in payments_df.columns:
-            raw_dfs.append(("收款流水原始样本", payments_df[["transaction_no", "raw_data"]]))
+        if not payments_df.empty:
+            if "raw_data" in payments_df.columns:
+                raw_dfs.append(("收款流水原始样本", payments_df[["transaction_no", "payment_method", "amount", "transaction_status", "raw_data"]]))
+            else:
+                raw_dfs.append(("收款流水原始样本", payments_df[["transaction_no", "payment_method", "amount", "transaction_status"]]))
 
         door_locks_df = get_door_lock_records(
             datetime.combine(selected_date, datetime.min.time()) if selected_date else None,
             datetime.combine(selected_date, datetime.max.time()) if selected_date else None,
             pids
         )
-        if not door_locks_df.empty and "raw_data" in door_locks_df.columns:
-            raw_dfs.append(("门锁记录原始样本", door_locks_df[["record_no", "raw_data"]]))
+        if not door_locks_df.empty:
+            if "raw_data" in door_locks_df.columns:
+                raw_dfs.append(("门锁记录原始样本", door_locks_df[["record_no", "action_type", "action_time", "operator", "raw_data"]]))
+            else:
+                raw_dfs.append(("门锁记录原始样本", door_locks_df[["record_no", "action_type", "action_time", "operator"]]))
 
         raw_contents = []
         if not raw_dfs:
@@ -511,14 +535,14 @@ def handle_init_demo(n_clicks, start_str, end_str, property_ids, channels, group
 
         try:
             calendar_df = get_room_status_calendar(start_date, end_date, property_ids)
-            fig_heatmap = create_heatmap_figure(calendar_df)
+            fig_heatmap = create_heatmap_figure(calendar_df, start_date, end_date)
         except Exception as e:
             print(f"热力图失败: {e}")
             fig_heatmap = no_update
 
         try:
             orders_df = get_ota_orders(start_date, end_date, property_ids, channels)
-            fig_trend = create_occupancy_trend_chart(orders_df, calendar_df, group_by)
+            fig_trend = create_occupancy_trend_chart(orders_df, group_by)
             fig_pie = create_channel_pie_chart(orders_df)
         except Exception as e:
             print(f"趋势/渠道图失败: {e}")
