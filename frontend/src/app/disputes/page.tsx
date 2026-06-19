@@ -73,7 +73,7 @@ export default function DisputesPage() {
 
   const handleViewDetail = async (record: any) => {
     try {
-      const res: any = await disputeApi.findById(record.id);
+      const res: any = await disputeApi.getDetail(record.id);
       setDetailData(res.data);
       setDetailOpen(true);
     } catch (e) {

@@ -85,7 +85,7 @@ export default function PerformancesPage() {
 
   const handleViewDetail = async (record: any) => {
     try {
-      const res: any = await performanceApi.findById(record.id);
+      const res: any = await performanceApi.getDetail(record.id);
       setDetailData(res.data);
       setDetailOpen(true);
     } catch (e) {

@@ -20,6 +20,7 @@ export default function OrdersPage() {
   const [searchText, setSearchText] = useState('');
   const [schedules, setSchedules] = useState<any[]>([]);
   const [ticketTypes, setTicketTypes] = useState<any[]>([]);
+  const [formTicketTypes, setFormTicketTypes] = useState<any[]>([]);
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailData, setDetailData] = useState<any>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -43,6 +44,19 @@ export default function OrdersPage() {
     try {
       const res: any = await ticketApi.getList({ scheduleId: parseInt(scheduleId), page: 1, pageSize: 100 });
       setTicketTypes(res.data.data || []);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const fetchFormTicketTypes = async (scheduleIdForForm: number) => {
+    if (!scheduleIdForForm) {
+      setFormTicketTypes([]);
+      return;
+    }
+    try {
+      const res: any = await ticketApi.getList({ scheduleId: scheduleIdForForm, page: 1, pageSize: 100 });
+      setFormTicketTypes(res.data.data || []);
     } catch (e) {
       console.error(e);
     }
@@ -85,7 +99,7 @@ export default function OrdersPage() {
 
   const handleViewDetail = async (record: any) => {
     try {
-      const res: any = await orderApi.findById(record.id);
+      const res: any = await orderApi.getDetail(record.id);
       setDetailData(res.data);
       setDetailOpen(true);
     } catch (e) {
@@ -96,12 +110,14 @@ export default function OrdersPage() {
   const handleAdd = () => {
     setCurrentRecord(null);
     form.resetFields();
+    setFormTicketTypes([]);
     setModalOpen(true);
   };
 
   const handleEdit = (record: any) => {
     setCurrentRecord(record);
     form.setFieldsValue(record);
+    fetchFormTicketTypes(record.scheduleId);
     setModalOpen(true);
   };
 
@@ -121,7 +137,7 @@ export default function OrdersPage() {
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
-      const ticket = ticketTypes.find(t => t.id === values.ticketTypeId);
+      const ticket = formTicketTypes.find(t => t.id === values.ticketTypeId);
       const totalAmount = ticket ? Number(ticket.price) * values.quantity : 0;
       
       const submitData = {
@@ -397,15 +413,28 @@ export default function OrdersPage() {
       >
         <Form form={form} layout="vertical">
           <Form.Item name="scheduleId" label="选择演出" rules={[{ required: true }]}>
-            <Select onChange={(val) => { form.setFieldValue('ticketTypeId', null); }}>
+            <Select
+              onChange={(val) => {
+                form.setFieldValue('ticketTypeId', null);
+                fetchFormTicketTypes(val);
+              }}
+              showSearch
+              optionFilterProp="children"
+              placeholder="请选择演出"
+            >
               {schedules.map(s => (
                 <Option key={s.id} value={s.id}>{s.title}</Option>
               ))}
             </Select>
           </Form.Item>
           <Form.Item name="ticketTypeId" label="选择票种" rules={[{ required: true }]}>
-            <Select disabled={!scheduleId && !currentRecord}>
-              {ticketTypes.map(t => (
+            <Select
+              placeholder="请先选择演出"
+              disabled={!form.getFieldValue('scheduleId')}
+              showSearch
+              optionFilterProp="children"
+            >
+              {formTicketTypes.map(t => (
                 <Option key={t.id} value={t.id}>{t.name} - ¥{t.price}</Option>
               ))}
             </Select>
