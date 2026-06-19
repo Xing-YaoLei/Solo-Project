@@ -5,7 +5,7 @@ from typing import Optional
 import pandas as pd
 from sqlalchemy.orm import Session
 
-from .celery_app import celery_app
+from ..core.celery_app import celery_app
 from ..database import SessionLocal
 from ..models import HeatPoint, GuideContent, Seat, MerchantContract, RecordStatusEnum, User, RoleEnum
 from ..core.audit import log_batch_update, log_create

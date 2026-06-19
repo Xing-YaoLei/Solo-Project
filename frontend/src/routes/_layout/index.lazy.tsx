@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createLazyFileRoute } from '@tanstack/react-router';
 import { Card, Col, Row, Statistic, Space, Typography, List, Tag } from 'antd';
 import {
   EnvironmentOutlined,
@@ -16,7 +16,7 @@ import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
 
-export const Route = createFileRoute('/_layout/')({
+export const Route = createLazyFileRoute('/_layout/')({
   component: DashboardPage,
 });
 

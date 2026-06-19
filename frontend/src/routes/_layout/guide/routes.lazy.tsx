@@ -1,7 +1,7 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createLazyFileRoute } from '@tanstack/react-router';
 import {
   Card, Table, Tag, Button, Space, Input, Select, Modal, Form,
-  message, Descriptions, Drawer, Timeline, Popconfirm, App as AntdApp, Tooltip, Row, Col, Statistic,
+  message, Descriptions, Drawer, Timeline, Popconfirm, App as AntdApp, Tooltip, Row, Col, Statistic, Typography,
 } from 'antd';
 import {
   PlusOutlined, SearchOutlined, ReloadOutlined, CheckCircleOutlined,
@@ -15,9 +15,8 @@ import dayjs from 'dayjs';
 const { Option } = Select;
 const { TextArea } = Input;
 const { Title } = Typography;
-const { Typography } = require('antd');
 
-export const Route = createFileRoute('/_layout/guide/routes')({
+export const Route = createLazyFileRoute('/_layout/guide/routes')({
   component: GuideRoutesPage,
 });
 
@@ -268,7 +267,6 @@ function GuideRoutesPage() {
         </Tooltip>
         <div style={{ marginTop: 16 }}>
           <Timeline
-            locale={{ empty: '暂无操作记录' }}
             items={trace.map((t) => ({
               color: t.action === 'create' ? 'green' : t.action === 'delete' ? 'red' : 'blue',
               children: (

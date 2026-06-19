@@ -1,8 +1,8 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createLazyFileRoute } from '@tanstack/react-router';
 import {
   Card, Table, Tag, Button, Space, Input, Select, Modal, Form,
   message, Drawer, Timeline, App as AntdApp, Row, Col, Statistic,
-  Tooltip, Radio, Upload, Empty,
+  Tooltip, Radio, Upload, Empty, Typography,
 } from 'antd';
 import {
   PlusOutlined, SearchOutlined, ReloadOutlined, CheckCircleOutlined,
@@ -10,16 +10,15 @@ import {
   AudioOutlined, VideoCameraOutlined,
 } from '@ant-design/icons';
 import { useEffect, useState, useMemo } from 'react';
-import { api } from '../../../../api';
-import { STATUS_COLORS, STATUS_LABELS, GuideContent, GuideRoute, RecordStatusEnum, TraceItem } from '../../../../types';
+import { api } from '../../../api';
+import { STATUS_COLORS, STATUS_LABELS, GuideContent, GuideRoute, RecordStatusEnum, TraceItem } from '../../../types';
 import dayjs from 'dayjs';
 
 const { Option } = Select;
 const { TextArea } = Input;
-const Typography = require('antd').Typography;
 const { Title, Paragraph, Text } = Typography;
 
-export const Route = createFileRoute('/_layout/guide/contents')({
+export const Route = createLazyFileRoute('/_layout/guide/contents')({
   component: GuideContentsPage,
 });
 
@@ -162,7 +161,8 @@ function GuideContentsPage() {
     { title: '语言', dataIndex: 'language', width: 80, render: (v: string) => <Tag color="blue">{v}</Tag> },
     {
       title: '所属路线', dataIndex: 'route_id', width: 140,
-      render: (v: number) => routeMap[v] || `#${v}` },
+      render: (v: number) => routeMap[v] || `#${v}`,
+    },
     { title: '排序', dataIndex: 'sort_order', width: 70 },
     {
       title: '状态', dataIndex: 'status', width: 100,
@@ -196,7 +196,7 @@ function GuideContentsPage() {
     onChange: (info: any) => {
       if (info.file.status === 'done') {
         message.success(`${info.file.name} 上传成功`);
-        showAttachments(attachTarget!.id);
+        if (attachTarget) showAttachments(attachTarget.id);
       } else if (info.file.status === 'error') {
         message.error(`${info.file.name} 上传失败`);
       }
@@ -290,7 +290,7 @@ function GuideContentsPage() {
           <Form form={form} layout="vertical">
             <Form.Item label="所属路线" name="route_id" rules={[{ required: true }]}>
               <Select>
-                {routes.map((r) => <Option key={r.id} value={r.id}>{r.name}</Option>}
+                {routes.map((r) => <Option key={r.id} value={r.id}>{r.name}</Option>)}
               </Select>
             </Form.Item>
             <Row gutter={12}>
@@ -361,7 +361,6 @@ function GuideContentsPage() {
 
       <Drawer title="处理痕迹" open={traceOpen} onClose={() => setTraceOpen(false)} width={600}>
         <Timeline
-          locale={{ empty: '暂无记录' }}
           items={trace.map((t) => ({
             color: t.action === 'create' ? 'green' : t.action === 'verify' ? 'cyan' : 'blue',
             children: (
@@ -373,10 +372,10 @@ function GuideContentsPage() {
                 </Space>
                 {t.field && (
                   <div style={{ marginTop: 6, padding: 8, background: '#fafafa', borderRadius: 4 }}>
-                  <div>字段：{t.field}</div>
-                  {t.old && <div style={{ color: '#f00' }}>原: {t.old}</div>}
-                  {t.new && <div style={{ color: '#0a0' }}>新: {t.new}</div>}
-                </div>
+                    <div>字段：{t.field}</div>
+                    {t.old && <div style={{ color: '#f00' }}>原: {t.old}</div>}
+                    {t.new && <div style={{ color: '#0a0' }}>新: {t.new}</div>}
+                  </div>
                 )}
                 {t.remarks && <div>{t.remarks}</div>}
               </div>
@@ -388,10 +387,10 @@ function GuideContentsPage() {
       <Drawer title="附件管理" open={attachOpen} onClose={() => setAttachOpen(false)} width={500}>
         <div style={{ marginBottom: 16 }}>
           <Upload.Dragger {...uploadProps as any} multiple>
-          <p className="ant-upload-drag-icon"><PaperClipOutlined style={{ fontSize: 36 }} /></p>
-          <p>点击或拖拽文件到此处上传</p>
-          <p style={{ color: '#999' }}>支持任意类型文件上传</p>
-        </Upload.Dragger>
+            <p className="ant-upload-drag-icon"><PaperClipOutlined style={{ fontSize: 36 }} /></p>
+            <p>点击或拖拽文件到此处上传</p>
+            <p style={{ color: '#999' }}>支持任意类型文件上传</p>
+          </Upload.Dragger>
         </div>
         <div style={{ marginTop: 24 }}>
           <Title level={5}>已上传 ({attachList.length})</Title>
@@ -402,12 +401,12 @@ function GuideContentsPage() {
               {attachList.map((a: any) => (
                 <Card size="small" key={a.id}>
                   <Space style={{ width: '100%' }}>
-                  <PaperClipOutlined />
-                  <a href={`/api/v1/attachments/${a.id}/download`} download>
-                    {a.original_name || a.file_name}
-                  </a>
-                  <Tag>{(a.file_size / 1024).toFixed(1)} KB</Tag>
-                  <span style={{ color: '#999' }}>{dayjs(a.created_at).format('MM-DD HH:mm')}</span>
+                    <PaperClipOutlined />
+                    <a href={`/api/v1/attachments/${a.id}/download`} download>
+                      {a.original_name || a.file_name}
+                    </a>
+                    <Tag>{(a.file_size / 1024).toFixed(1)} KB</Tag>
+                    <span style={{ color: '#999' }}>{dayjs(a.created_at).format('MM-DD HH:mm')}</span>
                   </Space>
                 </Card>
               ))}

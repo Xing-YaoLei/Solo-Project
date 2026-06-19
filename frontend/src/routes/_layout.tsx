@@ -15,8 +15,8 @@ import {
   HomeOutlined,
 } from '@ant-design/icons';
 import { useEffect, useState } from 'react';
-import { useAuth } from '../../store/auth';
-import { ROLE_LABELS, RoleEnum } from '../../types';
+import { useAuth } from '../store/auth';
+import { ROLE_LABELS, RoleEnum } from '../types';
 
 const { Header, Sider, Content } = Layout;
 

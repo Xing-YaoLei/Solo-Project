@@ -1,7 +1,7 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createLazyFileRoute } from '@tanstack/react-router';
 import {
   Card, Row, Col, Statistic, DatePicker, Tabs, Table, Tag, Button,
-  Space, Select, Form, Modal, Descriptions, Progress, Tooltip, App as AntdApp,
+  Space, Select, Form, Modal, Descriptions, Progress, Tooltip, App as AntdApp, Typography,
 } from 'antd';
 import {
   DollarOutlined, RiseOutlined, ShoppingCartOutlined,
@@ -10,16 +10,15 @@ import {
 } from '@ant-design/icons';
 import { useEffect, useState, useMemo } from 'react';
 import ReactECharts from 'echarts-for-react';
-import { api } from '../../../api';
-import { TicketStatistics, DailyConversion, SecondarySaleStatistics, Ticket, SecondarySale } from '../../../types';
+import { api } from '../../api';
+import { TicketStatistics, DailyConversion, SecondarySaleStatistics, Ticket, SecondarySale } from '../../types';
 import dayjs from 'dayjs';
 
 const { RangePicker } = DatePicker;
 const { Option } = Select;
-const Typography = require('antd').Typography;
 const { Title, Text } = Typography;
 
-export const Route = createFileRoute('/_layout/statistics')({
+export const Route = createLazyFileRoute('/_layout/statistics')({
   component: StatisticsPage,
 });
 

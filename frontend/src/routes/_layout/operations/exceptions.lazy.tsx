@@ -1,8 +1,8 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createLazyFileRoute } from '@tanstack/react-router';
 import {
   Card, Table, Tag, Button, Space, Input, Select, Modal, Form,
   message, Drawer, Timeline, App as AntdApp, Row, Col, Statistic,
-  Tooltip, Badge, Descriptions, Alert, Divider,
+  Tooltip, Badge, Descriptions, Alert, Divider, Typography,
 } from 'antd';
 import {
   PlusOutlined, SearchOutlined, ReloadOutlined, CheckCircleOutlined,
@@ -12,16 +12,15 @@ import {
   ExclamationCircleOutlined, EnvironmentOutlined,
 } from '@ant-design/icons';
 import { useEffect, useState } from 'react';
-import { api } from '../../../../api';
+import { api } from '../../../api';
 import {
   STATUS_COLORS, STATUS_LABELS, ExceptionRecord, RecordStatusEnum,
   TraceItem, EXCEPTION_LABELS, ExceptionTypeEnum,
-} from '../../../../types';
+} from '../../../types';
 import dayjs from 'dayjs';
 
 const { Option } = Select;
 const { TextArea } = Input;
-const Typography = require('antd').Typography;
 const { Title, Text, Paragraph } = Typography;
 
 const EXCEPTION_ICONS: Record<ExceptionTypeEnum, any> = {
@@ -42,7 +41,7 @@ const EXCEPTION_COLORS: Record<ExceptionTypeEnum, string> = {
   other: '#8c8c8c',
 };
 
-export const Route = createFileRoute('/_layout/operations/exceptions')({
+export const Route = createLazyFileRoute('/_layout/operations/exceptions')({
   component: ExceptionsPage,
 });
 
@@ -220,7 +219,7 @@ function ExceptionsPage() {
           {r.status !== 'completed' && r.status !== 'cancelled' && (
             <>
               <Button type="link" size="small" onClick={() => openModal('update', r)}>更新</Button>
-              <Button type="link" size="small" type="primary" icon={<CheckCircleOutlined />} onClick={() => resolve(r)}>
+              <Button size="small" type="primary" icon={<CheckCircleOutlined />} onClick={() => resolve(r)}>
                 处理完成
               </Button>
             </>

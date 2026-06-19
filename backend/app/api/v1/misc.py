@@ -3,7 +3,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import func, and_, cast, Date as SqlDate
+from sqlalchemy import func, and_, cast, case, Date as SqlDate
 import os
 import uuid
 
@@ -180,7 +180,7 @@ def get_ticket_statistics(
         date_col.label("date"),
         func.count(Ticket.id).label("total_tickets"),
         func.coalesce(func.sum(Ticket.price), 0).label("total_revenue"),
-        func.sum(func.case((Ticket.status == RecordStatusEnum.COMPLETED, 1), else_=0)).label("used_tickets"),
+        func.sum(case((Ticket.status == RecordStatusEnum.COMPLETED, 1), else_=0)).label("used_tickets"),
     ).filter(
         and_(date_col >= start_date, date_col <= end_date)
     ).group_by(date_col).order_by(date_col)

@@ -1,8 +1,8 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createLazyFileRoute } from '@tanstack/react-router';
 import {
   Card, Table, Tag, Button, Space, Input, Select, Modal, Form,
   message, Drawer, Timeline, App as AntdApp, Row, Col, Statistic,
-  Tooltip, Upload, Empty, Divider, Tabs, DatePicker, InputNumber,
+  Tooltip, Upload, Empty, Divider, Tabs, DatePicker, InputNumber, Typography,
 } from 'antd';
 import {
   PlusOutlined, SearchOutlined, ReloadOutlined, CheckCircleOutlined,
@@ -11,16 +11,15 @@ import {
   FileExcelOutlined, CalendarOutlined, DollarOutlined,
 } from '@ant-design/icons';
 import { useEffect, useState } from 'react';
-import { api } from '../../../../api';
-import { STATUS_COLORS, STATUS_LABELS, Merchant, MerchantContract, RecordStatusEnum, TraceItem } from '../../../../types';
+import { api } from '../../../api';
+import { STATUS_COLORS, STATUS_LABELS, Merchant, MerchantContract, RecordStatusEnum, TraceItem } from '../../../types';
 import dayjs from 'dayjs';
 
 const { Option } = Select;
 const { TextArea } = Input;
-const Typography = require('antd').Typography;
 const { Title, Text, Paragraph } = Typography;
 
-export const Route = createFileRoute('/_layout/operations/merchants')({
+export const Route = createLazyFileRoute('/_layout/operations/merchants')({
   component: MerchantsPage,
 });
 

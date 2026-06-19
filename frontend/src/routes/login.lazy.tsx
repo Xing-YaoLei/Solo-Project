@@ -1,13 +1,13 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { createLazyFileRoute, useNavigate } from '@tanstack/react-router';
 import { Form, Input, Button, Card, Typography, Space, Divider, message } from 'antd';
 import { UserOutlined, LockOutlined, LoginOutlined, UserAddOutlined } from '@ant-design/icons';
-import { useAuth } from '../../store/auth';
-import { RoleEnum, ROLE_LABELS } from '../../types';
+import { useAuth } from '../store/auth';
+import { RoleEnum, ROLE_LABELS } from '../types';
 import { useState } from 'react';
 
 const { Title, Text } = Typography;
 
-export const Route = createFileRoute('/login')({
+export const Route = createLazyFileRoute('/login')({
   component: LoginPage,
 });
 

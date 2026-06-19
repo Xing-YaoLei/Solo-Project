@@ -1,8 +1,8 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createLazyFileRoute } from '@tanstack/react-router';
 import {
   Card, Table, Tag, Button, Space, Input, Select, DatePicker,
   App as AntdApp, Row, Col, Statistic, Timeline, Descriptions,
-  Drawer, Tooltip, Badge,
+  Drawer, Tooltip, Badge, Typography, Alert,
 } from 'antd';
 import {
   SearchOutlined, ReloadOutlined, DownloadOutlined, HistoryOutlined,
@@ -11,13 +11,12 @@ import {
   TeamOutlined, ClockCircleOutlined,
 } from '@ant-design/icons';
 import { useEffect, useState, useMemo } from 'react';
-import { api } from '../../../api';
-import { AuditLog, TraceItem } from '../../../types';
+import { api } from '../../api';
+import { AuditLog, TraceItem } from '../../types';
 import dayjs from 'dayjs';
 
 const { RangePicker } = DatePicker;
 const { Option } = Select;
-const Typography = require('antd').Typography;
 const { Title, Text } = Typography;
 
 const ACTION_COLORS: Record<string, string> = {
@@ -42,7 +41,7 @@ const ACTION_LABELS: Record<string, string> = {
   verify: '复核',
 };
 
-export const Route = createFileRoute('/_layout/audit-logs')({
+export const Route = createLazyFileRoute('/_layout/audit-logs')({
   component: AuditLogsPage,
 });
 

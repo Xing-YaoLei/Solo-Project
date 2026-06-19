@@ -1,6 +1,17 @@
 export type RoleEnum = 'tourist' | 'ticket_clerk' | 'patrol' | 'operation' | 'admin';
 export type RecordStatusEnum = 'draft' | 'pending' | 'approved' | 'rejected' | 'cancelled' | 'completed';
-export type ExceptionTypeEnum = 'performance_cancel' | 'route_change' | 'equipment_failure' | 'weather_issue' | 'staff_absence' | 'other';
+export type ExceptionType = 'performance_cancel' | 'route_change' | 'equipment_failure' | 'weather_issue' | 'staff_absence' | 'other';
+
+export const ExceptionTypeEnum = {
+  PERFORMANCE_CANCEL: 'performance_cancel',
+  ROUTE_CHANGE: 'route_change',
+  EQUIPMENT_FAILURE: 'equipment_failure',
+  WEATHER_ISSUE: 'weather_issue',
+  STAFF_ABSENCE: 'staff_absence',
+  OTHER: 'other',
+} as const;
+
+export type ExceptionTypeEnum = typeof ExceptionTypeEnum[keyof typeof ExceptionTypeEnum];
 
 export interface Pagination<T> {
   items: T[];

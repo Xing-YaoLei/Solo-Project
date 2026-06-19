@@ -1,28 +1,26 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createLazyFileRoute } from '@tanstack/react-router';
 import {
   Card, Table, Tag, Button, Space, Input, Select, Modal, Form,
   message, Drawer, Timeline, App as AntdApp, Row, Col, Upload,
-  Statistic, Tooltip, Popover, InputNumber,
+  Statistic, Tooltip, InputNumber,
 } from 'antd';
 import {
   PlusOutlined, SearchOutlined, ReloadOutlined, CheckCircleOutlined,
-  HistoryOutlined, EnvironmentOutlined, CheckSquareOutlined,
-  FileExcelOutlined, UploadOutlined, PaperClipOutlined,
+  HistoryOutlined, EnvironmentOutlined,
+  FileExcelOutlined, PaperClipOutlined,
 } from '@ant-design/icons';
 import { useEffect, useState, useMemo } from 'react';
-import { api } from '../../../../api';
-import { STATUS_COLORS, STATUS_LABELS, HeatPoint, GuideRoute, RecordStatusEnum, TraceItem, AttachmentResponse } from '../../../../types';
+import { api } from '../../../api';
+import { STATUS_COLORS, STATUS_LABELS, HeatPoint, GuideRoute, RecordStatusEnum, TraceItem } from '../../../types';
 import dayjs from 'dayjs';
 import type { UploadProps } from 'antd';
 
 const { Option } = Select;
 const { TextArea } = Input;
 
-export const Route = createFileRoute('/_layout/guide/heat-points')({
+export const Route = createLazyFileRoute('/_layout/guide/heat-points')({
   component: HeatPointsPage,
 });
-
-type AttachmentResponse = any;
 
 function HeatPointsPage() {
   const { message, modal } = AntdApp.useApp();
@@ -152,11 +150,11 @@ function HeatPointsPage() {
     multiple: true,
     action: '/api/v1/attachments/upload',
     headers: { Authorization: `Bearer ${localStorage.getItem('access_token') || ''}` },
-    data: (file) => ({ record_type: attachTarget?.type, record_id: attachTarget?.id }),
+    data: () => ({ record_type: attachTarget?.type, record_id: attachTarget?.id }),
     onChange(info) {
       if (info.file.status === 'done') {
         message.success(`${info.file.name} 上传成功`);
-        showAttachments(attachTarget!.id);
+        if (attachTarget) showAttachments(attachTarget.id);
       } else if (info.file.status === 'error') {
         message.error(`${info.file.name} 上传失败`);
       }
@@ -168,10 +166,10 @@ function HeatPointsPage() {
     showUploadList: false,
     action: '/api/v1/import/heat-points',
     headers: { Authorization: `Bearer ${localStorage.getItem('access_token') || ''}` },
-    data: (file) => ({ route_id: filters.route_id || 1 }),
+    data: () => ({ route_id: filters.route_id || 1 }),
     onChange(info) {
       if (info.file.status === 'done') {
-        message.success(info.file.data?.message || '导入任务已提交');
+        message.success('导入任务已提交');
         fetch();
       }
     },
@@ -193,8 +191,7 @@ function HeatPointsPage() {
     { title: '纬度', dataIndex: 'latitude', width: 100, render: (v: number) => v?.toFixed(5) },
     { title: '经度', dataIndex: 'longitude', width: 100, render: (v: number) => v?.toFixed(5) },
     { title: '半径(米)', dataIndex: 'radius_meters', width: 80 },
-    {
-      title: '排序', dataIndex: 'sort_order', width: 70 },
+    { title: '排序', dataIndex: 'sort_order', width: 70 },
     {
       title: '状态', dataIndex: 'status', width: 100,
       render: (v: RecordStatusEnum) => <Tag color={STATUS_COLORS[v]}>{STATUS_LABELS[v]}</Tag>,
@@ -370,28 +367,59 @@ function HeatPointsPage() {
 
       <Drawer title="处理痕迹" open={traceOpen} onClose={() => setTraceOpen(false)} width={600}>
         <Timeline
-          locale={{ empty: '暂无记录' }}
           items={trace.map((t) => ({
             color: t.action === 'create' ? 'green' : t.action === 'verify' ? 'cyan' : 'blue',
             children: (
               <div style={{ marginBottom: 12 }}>
-              <Space>
-                <Tag>{t.action}</Tag>
-                <b>{t.user_name || '系统'}</b>
-                <span style={{ color: '#999' }}>{dayjs(t.at).format('MM-DD HH:mm')}</span>
-              </Space>
-              {t.field && (
-                <div style={{ marginTop: 6 }}>
-                  <div><b>字段</b>: {t.field}</div>
-                  {t.old && <div style={{ color: '#f00' }}>原: {t.old}</div>}
-                  {t.new && <div style={{ color: '#0a0' }}>新: {t.new}</div>}
-                </div>
-              )}
-              {t.remarks && <div style={{ color: '#666' }}>{t.remarks}</div>
-            </div>
-          ),
-        }))}
-      />
+                <Space>
+                  <Tag>{t.action}</Tag>
+                  <b>{t.user_name || '系统'}</b>
+                  <span style={{ color: '#999' }}>{dayjs(t.at).format('MM-DD HH:mm')}</span>
+                </Space>
+                {t.field && (
+                  <div style={{ marginTop: 6 }}>
+                    <div><b>字段</b>: {t.field}</div>
+                    {t.old && <div style={{ color: '#f00' }}>原: {t.old}</div>}
+                    {t.new && <div style={{ color: '#0a0' }}>新: {t.new}</div>}
+                  </div>
+                )}
+                {t.remarks && <div style={{ color: '#666' }}>{t.remarks}</div>}
+              </div>
+            ),
+          }))}
+        />
+      </Drawer>
+
+      <Drawer title="附件管理" open={attachOpen} onClose={() => setAttachOpen(false)} width={500}>
+        <div style={{ marginBottom: 16 }}>
+          <Upload.Dragger {...uploadProps as any} multiple>
+            <p className="ant-upload-drag-icon"><PaperClipOutlined style={{ fontSize: 36 }} /></p>
+            <p>点击或拖拽文件到此处上传</p>
+            <p style={{ color: '#999' }}>支持任意类型文件上传</p>
+          </Upload.Dragger>
+        </div>
+        <div style={{ marginTop: 24 }}>
+          <h5>已上传 ({attachList.length})</h5>
+          {attachList.length === 0 ? (
+            <span style={{ color: '#999' }}>暂无附件</span>
+          ) : (
+            <Space direction="vertical" style={{ width: '100%' }}>
+              {attachList.map((a: any) => (
+                <Card size="small" key={a.id}>
+                  <Space style={{ width: '100%' }}>
+                    <PaperClipOutlined />
+                    <a href={`/api/v1/attachments/${a.id}/download`} download>
+                      {a.original_name || a.file_name}
+                    </a>
+                    <Tag>{(a.file_size / 1024).toFixed(1)} KB</Tag>
+                    <span style={{ color: '#999' }}>{dayjs(a.created_at).format('MM-DD HH:mm')}</span>
+                  </Space>
+                </Card>
+              ))}
+            </Space>
+          )}
+        </div>
+      </Drawer>
     </Space>
   );
 }

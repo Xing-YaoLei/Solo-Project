@@ -1,24 +1,23 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { createLazyFileRoute } from '@tanstack/react-router';
 import {
   Card, Table, Tag, Button, Space, Input, Select, Modal, Form,
   message, Drawer, Timeline, App as AntdApp, Row, Col, Statistic,
-  InputNumber, Empty, Tooltip, Cascader, Checkbox, Alert,
+  InputNumber, Empty, Tooltip, Typography, Alert,
 } from 'antd';
 import {
   PlusOutlined, SearchOutlined, ReloadOutlined, CheckCircleOutlined,
   HistoryOutlined, CheckSquareOutlined, PaperClipOutlined,
-  InboxOutlined, DeleteOutlined, FileTextOutlined,
+  FileTextOutlined,
 } from '@ant-design/icons';
 import { useEffect, useState, useMemo } from 'react';
-import { api } from '../../../../api';
-import { STATUS_COLORS, STATUS_LABELS, Seat, PerformanceSession, RecordStatusEnum, TraceItem } from '../../../../types';
+import { api } from '../../../api';
+import { STATUS_COLORS, STATUS_LABELS, Seat, PerformanceSession, RecordStatusEnum, TraceItem } from '../../../types';
 import dayjs from 'dayjs';
 
 const { Option } = Select;
-const Typography = require('antd').Typography;
 const { Title, Text } = Typography;
 
-export const Route = createFileRoute('/_layout/operations/seats')({
+export const Route = createLazyFileRoute('/_layout/operations/seats')({
   component: SeatsPage,
 });
 
@@ -31,11 +30,6 @@ function SeatsPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
   const [filters, setFilters] = useState<{ session_id?: number; zone?: string; is_available?: boolean; is_verified?: boolean }>({});
-
-  const [batchOpen, setBatchOpen] = useState(false);
-  const [batchForm] = Form.useForm();
-
-  const [verifyAll, setVerifyAll] = useState(false);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'single' | 'batch'>('single');
@@ -60,7 +54,10 @@ function SeatsPage() {
   };
   useEffect(fetch, [page, pageSize, filters]);
 
-  const sessMap = useMemo(() => Object.fromEntries(sessions.map((s) => [s.id, `${s.performance_id} · ${dayjs(s.start_time).format('MM-DD HH:mm')}`]) as any, [sessions]);
+  const sessMap = useMemo(
+    () => Object.fromEntries(sessions.map((s) => [s.id, `演出#${s.performance_id} · ${dayjs(s.start_time).format('MM-DD HH:mm')}`])),
+    [sessions]
+  );
 
   const handleSubmit = async () => {
     try {
@@ -70,7 +67,6 @@ function SeatsPage() {
           await api.post('/operations/seats', v);
           message.success('添加成功');
         } else {
-          // 座位更新 - 实际可以添加update接口，如果没有就不处理
           message.success('更新成功');
         }
       } else {
@@ -154,7 +150,6 @@ function SeatsPage() {
     });
   };
 
-  // 分组展示：按排(row)分组成矩阵
   const groupedByRow = useMemo(() => {
     const m = new Map<string, Seat[]>();
     data.forEach((s) => {
@@ -308,10 +303,9 @@ function SeatsPage() {
           </Space>
         </div>
 
-        {/* 座位矩阵视图 */}
         {filters.session_id && groupedByRow.length > 0 && (
           <div style={{ padding: 24, background: '#fafafa' }}>
-            <Title level={5} style={{ marginBottom: 16 }}>🎭 座位矩阵图</Title>
+            <Title level={5} style={{ marginBottom: 16 }}>座位矩阵图</Title>
             <div style={{ overflowX: 'auto' }}>
               {groupedByRow.map((g) => (
                 <div key={g.row} style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
@@ -454,7 +448,6 @@ function SeatsPage() {
 
       <Drawer title="处理痕迹" open={traceOpen} onClose={() => setTraceOpen(false)} width={600}>
         <Timeline
-          locale={{ empty: '暂无记录' }}
           items={trace.map((t) => ({
             color: t.action === 'create' ? 'green' : t.action === 'verify' ? 'cyan' : t.action === 'batch_update' ? 'purple' : 'blue',
             children: (

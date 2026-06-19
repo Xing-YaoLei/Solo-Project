@@ -1,7 +1,7 @@
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import {
   Table, Tag, Button, Space, Input, Select, Form, Modal, Drawer,
-  Descriptions, App as AntdApp, Popconfirm, Upload, Tooltip,
+  Descriptions, App as AntdApp, Popconfirm, Upload, Tooltip, Typography, Timeline,
 } from 'antd';
 import type { TableProps } from 'antd';
 import { PlusOutlined, SearchOutlined, ReloadOutlined, EditOutlined, CheckCircleOutlined, DeleteOutlined, UploadOutlined, HistoryOutlined } from '@ant-design/icons';
@@ -12,6 +12,7 @@ import dayjs from 'dayjs';
 
 const { Option } = Select;
 const { TextArea } = Input;
+const { Text } = Typography;
 
 export interface ColumnConfig<T = any> {
   title: string;
@@ -53,11 +54,6 @@ export function buildCRUD<T extends { id: number }>(opts: UseCRUDOptions<T>) {
   const [current, setCurrent] = useState<T | null>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [trace, setTrace] = useState<TraceItem[]>([]);
-
-  const useState = (() => {
-    const { useState: rUseState } = require('react');
-    return rUseState;
-  })();
 
   const canEdit = !opts.role || (Array.isArray(opts.role) ? opts.role.some(r => hasRole(r as any)) : hasRole(opts.role as any));
 
@@ -285,8 +281,6 @@ export function buildCRUD<T extends { id: number }>(opts: UseCRUDOptions<T>) {
             showTotal: (t) => `共 ${t} 条`,
             onChange: (p, ps) => { setPage(p); setPageSize(ps); },
           }}
-          onMount={fetchData}
-          data-fetch={fetchData}
           scroll={{ x: 1200 }}
         />
 

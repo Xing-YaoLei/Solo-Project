@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createLazyFileRoute } from '@tanstack/react-router';
 import {
   Card, Table, Tag, Button, Space, Input, Select, Modal, Form,
   message, Drawer, Timeline, App as AntdApp, Row, Col, Statistic,
@@ -10,18 +10,18 @@ import {
   SafetyCertificateOutlined, CloseCircleOutlined,
 } from '@ant-design/icons';
 import { useEffect, useState } from 'react';
-import { api } from '../../../../api';
+import { api } from '../../../api';
 import {
   STATUS_COLORS, STATUS_LABELS, Performance, PerformanceSession,
   RecordStatusEnum, TraceItem, EXCEPTION_LABELS, ExceptionTypeEnum,
-} from '../../../../types';
+} from '../../../types';
 import dayjs from 'dayjs';
 
 const { Option } = Select;
 const { RangePicker } = DatePicker;
 const { TextArea } = Input;
 
-export const Route = createFileRoute('/_layout/operations/performances')({
+export const Route = createLazyFileRoute('/_layout/operations/performances')({
   component: PerformancesPage,
 });
 
