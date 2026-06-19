@@ -12,6 +12,7 @@ class MinIOConfig:
     secret_key: str
     secure: bool
     bucket: str
+    enabled: bool
 
 
 @dataclass
@@ -33,6 +34,7 @@ def load_config() -> AppConfig:
         secret_key=os.getenv("MINIO_SECRET_KEY", "minioadmin"),
         secure=os.getenv("MINIO_SECURE", "False").lower() == "true",
         bucket=os.getenv("MINIO_BUCKET", "homestay-data"),
+        enabled=os.getenv("MINIO_ENABLED", "True").lower() == "true",
     )
 
     duckdb_config = DuckDBConfig(

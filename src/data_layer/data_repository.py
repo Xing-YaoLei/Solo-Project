@@ -20,6 +20,12 @@ TABLE_PRIMARY_KEYS: Dict[str, List[str]] = {
     "analysis_notes": ["note_id"],
 }
 
+CORE_TABLES: List[str] = [
+    "ota_orders",
+    "door_lock_records",
+    "payment_transactions",
+]
+
 
 class DualWriteResult:
     def __init__(self, table_name: str, row_count: int):
@@ -57,9 +63,9 @@ class DataRepository:
     def __init__(self, config: AppConfig, use_minio: bool = False):
         self.config = config
         self.warehouse = DuckDBWarehouse(config.duckdb)
-        self.use_minio = use_minio
+        self.use_minio = use_minio and config.minio.enabled
         self.minio_init_error: Optional[str] = None
-        if use_minio:
+        if self.use_minio:
             try:
                 self.minio = MinioClient(config.minio)
                 logger.info(f"MinIO 已连接: endpoint={config.minio.endpoint}, bucket={config.minio.bucket}")
@@ -67,6 +73,9 @@ class DataRepository:
                 self.use_minio = False
                 self.minio_init_error = str(e)
                 logger.error(f"MinIO 连接失败，已降级为仅 DuckDB: {e}")
+        elif use_minio and not config.minio.enabled:
+            self.minio_init_error = "MinIO 已在配置中禁用 (MINIO_ENABLED=false)"
+            logger.warning(f"MinIO 配置已禁用，所有写入将仅保留在 DuckDB。")
         self.processor = PolarsProcessor()
 
     def _dual_write(self, table_name: str, df: pl.DataFrame, pk_cols: Optional[List[str]] = None) -> DualWriteResult:
@@ -81,6 +90,16 @@ class DataRepository:
             raise
 
         if not self.use_minio:
+            if table_name in CORE_TABLES:
+                error_msg = (
+                    f"核心交易表 [{table_name}] 必须双写 MinIO，"
+                    f"但 MinIO 当前不可用: {self.minio_init_error or '未初始化'}. "
+                    f"DuckDB 已写入 ({len(df)} 行)，但 MinIO 对象缺失。"
+                )
+                result.minio_ok = False
+                result.minio_error = error_msg
+                logger.error(error_msg)
+                raise RuntimeError(error_msg)
             return result
 
         try:
@@ -116,6 +135,16 @@ class DataRepository:
             raise
 
         if not self.use_minio:
+            if table_name in CORE_TABLES:
+                error_msg = (
+                    f"核心交易表 [{table_name}] 必须双写 MinIO，"
+                    f"但 MinIO 当前不可用: {self.minio_init_error or '未初始化'}. "
+                    f"DuckDB 已 upsert ({len(df)} 行)，但 MinIO 对象缺失。"
+                )
+                result.minio_ok = False
+                result.minio_error = error_msg
+                logger.error(error_msg)
+                raise RuntimeError(error_msg)
             return result
 
         try:
@@ -447,6 +476,13 @@ class DataRepository:
                 logger.warning(f"sync_from_minio: 未知表 {table_name}，跳过")
                 continue
 
+            is_core = table_name in CORE_TABLES
+            if is_core:
+                logger.info(
+                    f"sync_from_minio 核心交易表 [{table_name}]: "
+                    f"目录前缀={prefix}, 使用主键={primary_keys} 做 upsert"
+                )
+
             objects = self.minio.list_objects(prefix=prefix, recursive=True)
             target_objects = [
                 obj for obj in objects
@@ -487,8 +523,20 @@ class DataRepository:
                 "objects_fail": table_objs_fail,
                 "rows_synced": table_rows,
                 "primary_keys": primary_keys,
+                "primary_keys_used": primary_keys,
+                "is_core_table": is_core,
                 "errors": errors,
             }
+
+        summary_parts = [
+            f"sync_from_minio 完成: {len(sync_results)} 张表",
+        ]
+        for t, info in sync_results.items():
+            tag = " [核心]" if info["is_core_table"] else ""
+            summary_parts.append(
+                f"  {t}{tag}: {info['rows_synced']} 行, 主键={info['primary_keys']}"
+            )
+        logger.info("\n".join(summary_parts))
 
         return sync_results
 

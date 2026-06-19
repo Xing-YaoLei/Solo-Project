@@ -10,7 +10,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from src.utils.config import load_config
-from src.data_layer.data_repository import DataRepository
+from src.data_layer.data_repository import DataRepository, CORE_TABLES, TABLE_PRIMARY_KEYS
 from src.business_logic.sales_analysis import SalesAnalyzer
 from src.business_logic.conversion_rate import ConversionRateCalculator
 from src.business_logic.oversell_detector import OversellDetector
@@ -53,12 +53,49 @@ def init_database():
     config = load_config()
 
     if not os.path.exists(config.duckdb.db_path) or st.session_state.get("force_regenerate", False):
+        if repo.use_minio is False and config.minio.enabled:
+            st.error(
+                f"❌ MinIO 配置已启用但连接失败，无法生成演示数据。\n\n"
+                f"**初始化错误**: {repo.minio_init_error}\n\n"
+                f"请选择以下方案之一：\n"
+                f"1. 启动 MinIO 服务（默认端口 9000），确保 endpoint={config.minio.endpoint} 可访问\n"
+                f"2. 修改 config.yaml 将 `minio.enabled` 设为 false（但核心交易表将无法写入）\n"
+                f"3. 在侧边栏先使用「同步 DuckDB 到 MinIO」补发已有的 DuckDB 数据"
+            )
+            st.stop()
+
         st.info("正在生成演示数据...")
         generator = MockDataGenerator(repo)
         end_date = date.today()
         start_date = end_date - timedelta(days=180)
-        generator.generate_all_data(start_date, end_date, order_count=800)
-        st.success("演示数据生成完成！")
+        try:
+            result = generator.generate_all_data(start_date, end_date, order_count=800)
+            write_results = result.get("write_results", {})
+            core_tables = ["ota_orders", "door_lock_records", "payment_transactions"]
+            core_failures = [
+                t for t in core_tables
+                if t in write_results and write_results[t].minio_ok is False
+            ]
+            core_missing = [
+                t for t in core_tables
+                if t in write_results and write_results[t].minio_ok is None
+            ]
+            if core_failures or core_missing:
+                parts = []
+                if core_failures:
+                    parts.append(f"核心表 MinIO 写入失败: {', '.join(core_failures)}")
+                if core_missing:
+                    parts.append(f"核心表未写入 MinIO（对象缺失）: {', '.join(core_missing)}")
+                st.error(
+                    "⚠️ 演示数据生成完成，但核心交易表未完整写入 MinIO：\n"
+                    + "\n".join(f"- {p}" for p in parts)
+                    + "\n\n可使用侧边栏「同步 DuckDB 到 MinIO」补发。"
+                )
+            else:
+                st.success("演示数据生成完成！所有核心表已双写到 DuckDB + MinIO。")
+        except Exception as e:
+            st.error(f"❌ 数据生成失败: {e}")
+            raise
         st.session_state["force_regenerate"] = False
         st.rerun()
 
@@ -1113,10 +1150,14 @@ def handle_minio_sync(repo, trigger: str):
                 results = repo.sync_from_minio()
                 rows = []
                 total_rows = 0
+                core_proof = []
                 for table, info in results.items():
+                    is_core = table in CORE_TABLES
+                    pk_str = ", ".join(info["primary_keys"])
                     rows.append({
+                        "核心表": "✅" if is_core else "—",
                         "表名": table,
-                        "主键": ", ".join(info["primary_keys"]),
+                        "使用主键": pk_str,
                         "扫描对象": info["objects_total"],
                         "同步成功": info["objects_ok"],
                         "同步失败": info["objects_fail"],
@@ -1127,8 +1168,26 @@ def handle_minio_sync(repo, trigger: str):
                         with st.expander(f"⚠️ {table} 失败详情 ({info['objects_fail']} 个对象)"):
                             for e in info["errors"]:
                                 st.error(e)
+                    if is_core:
+                        core_proof.append(
+                            f"**{table}** 用主键 `{pk_str}` 做 ON CONFLICT upsert，"
+                            f"从 {info['objects_total']} 个对象回灌了 {info['rows_synced']} 行。"
+                        )
+
                 st.success(f"✅ 回灌完成，共 {total_rows} 行写入 DuckDB。")
                 st.dataframe(pl.DataFrame(rows), use_container_width=True, hide_index=True)
+
+                if core_proof:
+                    with st.expander("🧾 核心交易表主键使用证明", expanded=True):
+                        st.markdown("#### 三张核心交易表按各自主键进行 upsert 回灌：")
+                        for proof in core_proof:
+                            st.markdown(f"- {proof}")
+                        st.caption(
+                            "表→主键映射关系：\n"
+                            f"- ota_orders → {TABLE_PRIMARY_KEYS['ota_orders']}\n"
+                            f"- door_lock_records → {TABLE_PRIMARY_KEYS['door_lock_records']}\n"
+                            f"- payment_transactions → {TABLE_PRIMARY_KEYS['payment_transactions']}"
+                        )
             except Exception as e:
                 st.error(f"回灌失败: {e}")
 

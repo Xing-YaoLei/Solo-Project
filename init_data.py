@@ -8,7 +8,7 @@ from datetime import date, timedelta
 import argparse
 import logging
 from src.utils.config import load_config
-from src.data_layer.data_repository import DataRepository
+from src.data_layer.data_repository import DataRepository, CORE_TABLES
 from src.utils.data_generator import MockDataGenerator
 
 logging.basicConfig(
@@ -68,7 +68,19 @@ def main():
         print(f"📡 MinIO 已连接: endpoint={config.minio.endpoint}, bucket={config.minio.bucket}")
     else:
         print(f"⚠️  MinIO 未启用或连接失败: {repo.minio_init_error}")
-        print("    数据将只写入 DuckDB，可稍后通过 sync_to_minio 补发对象")
+        if config.minio.enabled:
+            print("🚨 配置已启用 MinIO，但连接失败。核心交易表（OTA订单/门锁记录/收款流水）将无法写入！")
+            print("   请选择：")
+            print("   1. 启动 MinIO 服务后重试")
+            print("   2. 设置环境变量 MINIO_ENABLED=false 禁用 MinIO（仅用于本地开发）")
+            if not args.force:
+                confirm = input("   仍要继续？(y/N): ")
+                if confirm.lower() != "y":
+                    print("❌ 已取消")
+                    return
+        else:
+            print("ℹ️  MinIO 已在配置中禁用，所有数据仅写入 DuckDB。")
+            print("   核心交易表的 MinIO 对象将缺失，可后续通过 sync_to_minio 补发。")
 
     print(f"🎲 使用随机种子: {args.seed}")
     generator = MockDataGenerator(repo, seed=args.seed)
@@ -108,26 +120,42 @@ def main():
             fail_count = 0
             skip_count = 0
             fail_details = []
+            missing_details = []
             for table, r in write_results.items():
+                is_core = " 🔴" if table in CORE_TABLES else ""
                 if r.minio_ok is True:
                     ok_count += 1
                     print(f"  ✅ {table:30s} {r.row_count:>6} 行 → {r.minio_object_name}")
                 elif r.minio_ok is False:
                     fail_count += 1
-                    print(f"  ❌ {table:30s} {r.row_count:>6} 行 → 失败: {r.minio_error}")
+                    print(f"  ❌{is_core} {table:30s} {r.row_count:>6} 行 → 写入失败: {r.minio_error}")
                     fail_details.append((table, r.minio_error))
                 else:
                     skip_count += 1
-                    print(f"  ⏭️  {table:30s} {r.row_count:>6} 行 → MinIO 未启用 (仅 DuckDB)")
+                    print(f"  ⚠️{is_core} {table:30s} {r.row_count:>6} 行 → 对象缺失 (MinIO 未启用/未连接)")
+                    missing_details.append((table, r.minio_error or repo.minio_init_error or "未知原因"))
             print()
-            print(f"   MinIO 成功: {ok_count} 表  |  失败: {fail_count} 表  |  跳过: {skip_count} 表")
-            if fail_details:
+            print(f"   MinIO 成功: {ok_count} 表  |  失败: {fail_count} 表  |  缺失: {skip_count} 表")
+
+            core_missing = [t for t in CORE_TABLES if t in write_results and write_results[t].minio_ok is not True]
+            core_fail = [t for t in CORE_TABLES if t in write_results and write_results[t].minio_ok is False]
+            if core_missing:
                 print()
-                print("⚠️  以下表仅写入了 DuckDB（MinIO 对象缺失），可调用 repo.sync_to_minio 补发:")
+                print(f"🚨 核心交易表 {core_missing} 未写入 MinIO，对象已缺失！")
+                print("   请确保 MinIO 服务正常后，使用 sync_to_minio 补发数据。")
+            if fail_details or missing_details:
+                print()
+                print("⚠️  以下表仅写入了 DuckDB（MinIO 对象缺失）：")
                 for t, e in fail_details:
-                    print(f"    - {t}: {e}")
-            else:
-                print("   所有对象均已保留在 MinIO。")
+                    tag = " [核心]" if t in CORE_TABLES else ""
+                    print(f"    - {t}{tag}: 写入失败: {e}")
+                for t, e in missing_details:
+                    tag = " [核心]" if t in CORE_TABLES else ""
+                    print(f"    - {t}{tag}: 未写入 MinIO: {e}")
+                print()
+                print("   可调用 `repo.sync_to_minio([table_names])` 补发对象到 MinIO。")
+            elif ok_count > 0 and skip_count == 0 and fail_count == 0:
+                print("   ✅ 所有对象均已保留在 MinIO。")
             print()
 
         print(f"💾 数据库文件: {config.duckdb.db_path}")
