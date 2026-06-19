@@ -432,12 +432,22 @@ def generate_parts_shortage(n: int = 80, inventory_history: Optional[pl.DataFram
 
     valid_original_refs = []
     valid_sample_ids = {}
+    existing_sample_ids = set()
+    used_sample_ids = set()
     if inventory_history is not None and not inventory_history.is_empty():
         history_with_sample = inventory_history.filter(pl.col("sample_record_id").is_not_null())
         valid_original_refs = inventory_history["original_record_ref"].to_list()
         if not history_with_sample.is_empty():
             for row in history_with_sample.to_dicts():
                 valid_sample_ids[row["sample_record_id"]] = row["original_record_ref"]
+                existing_sample_ids.add(row["sample_record_id"])
+
+    def _generate_unique_sample_id() -> str:
+        while True:
+            candidate = f"SMP{random.randint(1000, 9999)}"
+            if candidate not in existing_sample_ids and candidate not in used_sample_ids:
+                used_sample_ids.add(candidate)
+                return candidate
 
     for i in range(1, n + 1):
         part_id = f"P{random.randint(1, 150):05d}"
@@ -448,14 +458,23 @@ def generate_parts_shortage(n: int = 80, inventory_history: Optional[pl.DataFram
         sample_id = None
 
         if valid_sample_ids and random.random() < 0.8:
-            sample_id, orig_ref = random.choice(list(valid_sample_ids.items()))
-            source_ref = orig_ref
+            available_samples = [(s, r) for s, r in valid_sample_ids.items() if s not in used_sample_ids]
+            if available_samples:
+                sample_id, orig_ref = random.choice(available_samples)
+                used_sample_ids.add(sample_id)
+                source_ref = orig_ref
+            elif valid_original_refs:
+                source_ref = random.choice(valid_original_refs)
+                sample_id = _generate_unique_sample_id()
+            else:
+                source_ref = f"REF{random.randint(1, 2000):06d}"
+                sample_id = _generate_unique_sample_id()
         elif valid_original_refs and random.random() < 0.5:
             source_ref = random.choice(valid_original_refs)
-            sample_id = f"SMP{random.randint(1000, 9999)}"
+            sample_id = _generate_unique_sample_id()
         else:
             source_ref = f"REF{random.randint(1, 2000):06d}"
-            sample_id = f"SMP{random.randint(1000, 9999)}"
+            sample_id = _generate_unique_sample_id()
 
         data.append({
             "shortage_id": f"SH{i:05d}",
