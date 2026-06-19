@@ -1,0 +1,185 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Hotel {
+  id        String   @id @default(uuid())
+  name      String
+  address   String
+  roomCount Int
+  createdAt DateTime @default(now())
+  rooms     Room[]
+  staff     Staff[]
+  orders    OtaOrder[]
+  users     User[]
+}
+
+model Room {
+  id           String           @id @default(uuid())
+  hotelId      String
+  roomNumber   String
+  roomType     String
+  floor        Int
+  hotel        Hotel            @relation(fields: [hotelId], references: [id])
+  doorRecords  DoorLockRecord[]
+  schedules    CleaningSchedule[]
+}
+
+model Staff {
+  id        String   @id @default(uuid())
+  hotelId   String
+  name      String
+  role      String
+  phone     String
+  hotel     Hotel    @relation(fields: [hotelId], references: [id])
+  schedules CleaningSchedule[]
+}
+
+model OtaOrder {
+  id              String             @id @default(uuid())
+  orderNumber     String             @unique
+  platform        String
+  hotelId         String
+  guestName       String
+  checkinDate     DateTime
+  checkoutDate    DateTime
+  totalAmount     Float
+  depositAmount   Float
+  status          String
+  createdAt       DateTime           @default(now())
+  hotel           Hotel              @relation(fields: [hotelId], references: [id])
+  checkinRecords  CheckinRecord[]
+  deposits        DepositRecord[]
+  complaints      Complaint[]
+  reviews         Review[]
+  schedules       CleaningSchedule[]
+}
+
+model CheckinRecord {
+  id           String     @id @default(uuid())
+  orderId      String
+  checkinDate  DateTime
+  idType       String
+  idNumber     String
+  isAnomaly    Boolean    @default(false)
+  anomalyType  String?
+  order        OtaOrder   @relation(fields: [orderId], references: [id])
+}
+
+model DepositRecord {
+  id               String     @id @default(uuid())
+  orderId          String
+  totalAmount      Float
+  status           String
+  refundedAmount   Float      @default(0)
+  deductedAmount   Float      @default(0)
+  deductionReason  String?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  order            OtaOrder   @relation(fields: [orderId], references: [id])
+}
+
+model Complaint {
+  id         String            @id @default(uuid())
+  orderId    String
+  type       String
+  severity   String
+  status     String
+  description String?
+  createdAt  DateTime          @default(now())
+  order      OtaOrder          @relation(fields: [orderId], references: [id])
+  messages   CustomerMessage[]
+}
+
+model CustomerMessage {
+  id          String     @id @default(uuid())
+  complaintId String
+  sender      String
+  content     String
+  timestamp   DateTime
+  attachments String
+  complaint   Complaint  @relation(fields: [complaintId], references: [id])
+}
+
+model Review {
+  id         String      @id @default(uuid())
+  orderId    String
+  rating     Int
+  content    String
+  platform   String
+  reviewDate DateTime
+  order      OtaOrder    @relation(fields: [orderId], references: [id])
+  tags       ReviewTag[]
+}
+
+model ReviewTag {
+  id         String  @id @default(uuid())
+  reviewId   String
+  tagName    String
+  sentiment  String
+  isAnomaly  Boolean @default(false)
+  review     Review  @relation(fields: [reviewId], references: [id])
+}
+
+model CleaningSchedule {
+  id                String              @id @default(uuid())
+  orderId           String?
+  roomId            String
+  staffId           String?
+  scheduledTime     DateTime
+  actualStartTime   DateTime?
+  actualEndTime     DateTime?
+  status            String
+  punctualityScore  Float?
+  order             OtaOrder?           @relation(fields: [orderId], references: [id])
+  room              Room                @relation(fields: [roomId], references: [id])
+  staff             Staff?              @relation(fields: [staffId], references: [id])
+  doorLockRecords   DoorLockRecord[]
+}
+
+model DoorLockRecord {
+  id                String              @id @default(uuid())
+  roomId            String
+  cleaningScheduleId String?
+  eventType         String
+  timestamp         DateTime
+  operator          String
+  success           Boolean
+  room              Room                @relation(fields: [roomId], references: [id])
+  cleaningSchedule  CleaningSchedule?   @relation(fields: [cleaningScheduleId], references: [id])
+}
+
+model User {
+  id         String      @id @default(uuid())
+  email      String      @unique
+  role       String
+  hotelId    String?
+  hotel      Hotel?      @relation(fields: [hotelId], references: [id])
+  shareLinks ShareLink[]
+}
+
+model ShareLink {
+  id           String   @id @default(uuid())
+  token        String   @unique
+  userId       String
+  role         String
+  expiresAt    DateTime?
+  passwordHash String?
+  dataScope    String
+  accessCount  Int      @default(0)
+  createdAt    DateTime @default(now())
+  lastAccessed DateTime?
+  user         User     @relation(fields: [userId], references: [id])
+}
+
+model RolePermission {
+  id           String @id @default(uuid())
+  roleName     String @unique
+  permissions  String
+  dataFilters  String
+}
