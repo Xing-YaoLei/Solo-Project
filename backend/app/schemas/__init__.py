@@ -176,7 +176,10 @@ class AttachmentResponse(BaseModel):
 class TimelineRecordBase(BaseModel):
     event_type: TimelineEventType
     description: Optional[str] = None
-    metadata: Optional[dict] = None
+    metadata: Optional[dict] = Field(default=None, alias="event_metadata")
+
+    class Config:
+        populate_by_name = True
 
 
 class TimelineRecordCreate(TimelineRecordBase):
@@ -193,6 +196,7 @@ class TimelineRecordResponse(TimelineRecordBase):
 
     class Config:
         from_attributes = True
+        populate_by_name = True
 
 
 class ConflictAffectedObjectResponse(BaseModel):

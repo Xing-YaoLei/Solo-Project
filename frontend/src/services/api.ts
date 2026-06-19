@@ -68,6 +68,12 @@ export const reservationApi = {
     api.post<any, { message: string }>('/reservations/batch', null, {
       params: { operation, reservation_ids: reservationIds },
     }),
+
+  export: (params?: {
+    start_date?: string
+    end_date?: string
+    status?: string
+  }) => api.get<any, { filename: string; count: number; data: any[] }>('/export/reservations', { params }),
 }
 
 export const timeSlotApi = {
@@ -137,6 +143,9 @@ export const statsApi = {
     api.get<any, AttendanceStats[]>('/stats/attendance', { params }),
 
   getSummary: () => api.get<any, StatsSummary>('/stats/summary'),
+
+  export: (params?: { start_date?: string; end_date?: string }) =>
+    api.get<any, { filename: string; count: number; data: any[] }>('/export/statistics', { params }),
 }
 
 export const timelineApi = {

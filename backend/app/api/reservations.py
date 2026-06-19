@@ -90,7 +90,7 @@ def create_reservation(reservation: ReservationCreate, db: Session = Depends(get
         reservation_id=db_reservation.id,
         event_type=TimelineEventType.CREATED,
         description=f"创建预约单 {reservation_no}",
-        metadata={"visitor_count": reservation.visitor_count}
+        event_metadata={"visitor_count": reservation.visitor_count}
     )
     db.add(timeline)
     db.commit()
@@ -126,7 +126,7 @@ def update_reservation(
             reservation_id=reservation_id,
             event_type=TimelineEventType.STATUS_CHANGED,
             description=f"状态变更：{old_status} -> {update_data['status']}",
-            metadata={"old_status": old_status, "new_status": update_data["status"]}
+            event_metadata={"old_status": old_status, "new_status": update_data["status"]}
         )
         db.add(timeline)
 

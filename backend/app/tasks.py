@@ -75,7 +75,7 @@ def detect_conflicts_task():
                             reservation_id=res.id,
                             event_type=TimelineEventType.CONFLICT_DETECTED,
                             description=f"检测到时段容量冲突，超出 {total_reserved - slot.capacity} 人",
-                            metadata={"conflict_id": db_conflict.id}
+                            event_metadata={"conflict_id": db_conflict.id}
                         )
                         db.add(timeline)
 

@@ -77,7 +77,7 @@ def reschedule_reservation(
         event_type=TimelineEventType.RESCHEDULED,
         description=f"改约至新时段，新预约单号：{new_reservation.reservation_no}",
         operator_id=operator_id,
-        metadata={
+        event_metadata={
             "new_reservation_id": new_reservation.id,
             "new_time_slot_id": reschedule.new_time_slot_id,
             "reason": reschedule.reason
@@ -90,7 +90,7 @@ def reschedule_reservation(
         event_type=TimelineEventType.CREATED,
         description=f"由 {original_res.reservation_no} 改约而来",
         operator_id=operator_id,
-        metadata={"original_reservation_id": reservation_id}
+        event_metadata={"original_reservation_id": reservation_id}
     )
     db.add(timeline_new)
 
@@ -251,4 +251,99 @@ def get_stats_summary(db: Session = Depends(get_db)):
         },
         "pending_conflicts": pending_conflicts,
         "active_time_slots": total_time_slots
+    }
+
+
+@router.get("/export/reservations")
+def export_reservations(
+    start_date: Optional[date] = Query(None),
+    end_date: Optional[date] = Query(None),
+    status: Optional[str] = Query(None),
+    db: Session = Depends(get_db)
+):
+    query = db.query(Reservation).join(TimeSlot)
+    if start_date:
+        query = query.filter(TimeSlot.date >= start_date)
+    if end_date:
+        query = query.filter(TimeSlot.date <= end_date)
+    if status:
+        status_list = status.split(",")
+        query = query.filter(Reservation.status.in_(status_list))
+
+    reservations = query.order_by(Reservation.created_at.desc()).all()
+
+    data = []
+    for r in reservations:
+        data.append({
+            "预约单号": r.reservation_no,
+            "游客姓名": r.visitor_name,
+            "联系电话": r.visitor_phone,
+            "人数": r.visitor_count,
+            "票种": r.ticket_type or "",
+            "状态": r.status,
+            "时段日期": r.time_slot.date.strftime("%Y-%m-%d") if r.time_slot else "",
+            "时段时间": f"{r.time_slot.start_time}-{r.time_slot.end_time}" if r.time_slot else "",
+            "来源": r.source or "",
+            "创建时间": r.created_at.strftime("%Y-%m-%d %H:%M:%S") if r.created_at else "",
+            "签到时间": r.check_in_time.strftime("%Y-%m-%d %H:%M:%S") if r.check_in_time else "",
+            "备注": r.remark or ""
+        })
+
+    return {
+        "filename": f"reservations_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+        "count": len(data),
+        "data": data
+    }
+
+
+@router.get("/export/statistics")
+def export_statistics(
+    start_date: Optional[date] = Query(None),
+    end_date: Optional[date] = Query(None),
+    db: Session = Depends(get_db)
+):
+    if not start_date:
+        start_date = date.today() - timedelta(days=7)
+    if not end_date:
+        end_date = date.today()
+
+    stats = []
+    current_date = start_date
+    while current_date <= end_date:
+        next_date = current_date + timedelta(days=1)
+
+        day_reservations = db.query(Reservation).join(TimeSlot).filter(
+            TimeSlot.date >= current_date,
+            TimeSlot.date < next_date
+        ).all()
+
+        total_reservations = len(day_reservations)
+        total_visitors = sum(r.visitor_count for r in day_reservations)
+        checked_in = sum(1 for r in day_reservations if r.status == ReservationStatus.CHECKED_IN)
+        checked_in_visitors = sum(
+            r.visitor_count for r in day_reservations
+            if r.status == ReservationStatus.CHECKED_IN
+        )
+        cancelled = sum(1 for r in day_reservations if r.status == ReservationStatus.CANCELLED)
+        pending = sum(1 for r in day_reservations if r.status in [ReservationStatus.PENDING, ReservationStatus.CONFIRMED])
+
+        check_in_rate = checked_in_visitors / total_visitors if total_visitors > 0 else 0.0
+
+        stats.append({
+            "日期": current_date.isoformat(),
+            "预约数": total_reservations,
+            "游客数": total_visitors,
+            "已签到数": checked_in,
+            "签到游客数": checked_in_visitors,
+            "到场率": f"{round(check_in_rate * 100, 2)}%",
+            "已取消": cancelled,
+            "待处理": pending
+        })
+
+        current_date = next_date
+
+    return {
+        "filename": f"attendance_stats_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+        "count": len(stats),
+        "data": stats
     }

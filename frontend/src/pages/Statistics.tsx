@@ -11,7 +11,7 @@ import {
 } from 'lucide-react'
 import { statsApi } from '@/services/api'
 import type { AttendanceStats, StatsSummary } from '@/types'
-import { cn } from '@/utils'
+import { cn, exportToCSV } from '@/utils'
 import dayjs from 'dayjs'
 
 export default function Statistics() {
@@ -60,8 +60,34 @@ export default function Statistics() {
     }
   }
 
-  const handleExport = () => {
-    alert('导出功能需配合后端 Celery 任务使用')
+  const handleExport = async () => {
+    try {
+      let start_date, end_date
+
+      switch (dateRange) {
+        case '7d':
+          start_date = dayjs().subtract(6, 'day').format('YYYY-MM-DD')
+          end_date = dayjs().format('YYYY-MM-DD')
+          break
+        case '30d':
+          start_date = dayjs().subtract(29, 'day').format('YYYY-MM-DD')
+          end_date = dayjs().format('YYYY-MM-DD')
+          break
+        case 'thisMonth':
+          start_date = dayjs().startOf('month').format('YYYY-MM-DD')
+          end_date = dayjs().format('YYYY-MM-DD')
+          break
+        default:
+          start_date = dayjs().subtract(6, 'day').format('YYYY-MM-DD')
+          end_date = dayjs().format('YYYY-MM-DD')
+      }
+
+      const result = await statsApi.export({ start_date, end_date })
+      exportToCSV(result.data, result.filename)
+    } catch (error) {
+      console.error('导出统计数据失败:', error)
+      alert('导出失败，请重试')
+    }
   }
 
   const maxRate = Math.max(...attendanceData.map((d) => d.check_in_rate), 1)

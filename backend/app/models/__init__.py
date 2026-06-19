@@ -142,7 +142,7 @@ class TimelineRecord(Base):
     event_type = Column(Enum(TimelineEventType), nullable=False)
     description = Column(Text)
     operator_id = Column(Integer, ForeignKey("users.id"))
-    metadata = Column(JSON)
+    event_metadata = Column("metadata", JSON)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     reservation = relationship("Reservation", back_populates="timeline_events")

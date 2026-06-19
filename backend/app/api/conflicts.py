@@ -88,7 +88,7 @@ def create_conflict(conflict: ConflictRecordCreate, db: Session = Depends(get_db
                 reservation_id=res_id,
                 event_type=TimelineEventType.CONFLICT_DETECTED,
                 description=f"检测到时段冲突，冲突编号：{conflict_no}",
-                metadata={"conflict_id": db_conflict.id, "conflict_no": conflict_no}
+                event_metadata={"conflict_id": db_conflict.id, "conflict_no": conflict_no}
             )
             db.add(timeline)
 
@@ -121,7 +121,7 @@ def update_conflict(
                     reservation_id=obj.reservation_id,
                     event_type=TimelineEventType.HANDOVER,
                     description=f"冲突已分配处理人，冲突编号：{db_conflict.conflict_no}",
-                    metadata={"assigned_to": update_data["assigned_to"]}
+                    event_metadata={"assigned_to": update_data["assigned_to"]}
                 )
                 db.add(timeline)
 
@@ -139,7 +139,7 @@ def update_conflict(
                     reservation_id=obj.reservation_id,
                     event_type=TimelineEventType.CONFLICT_RESOLVED,
                     description=f"冲突已解决，冲突编号：{db_conflict.conflict_no}",
-                    metadata={"conflict_id": conflict_id}
+                    event_metadata={"conflict_id": conflict_id}
                 )
                 db.add(timeline)
 
@@ -171,7 +171,7 @@ def add_conflict_note(
             event_type=TimelineEventType.REMARK,
             description=f"[冲突处理] {note}",
             operator_id=operator_id,
-            metadata={"conflict_id": conflict_id, "conflict_no": db_conflict.conflict_no}
+            event_metadata={"conflict_id": conflict_id, "conflict_no": db_conflict.conflict_no}
         )
         db.add(timeline)
 
@@ -233,7 +233,7 @@ def detect_conflicts(time_slot_id: Optional[int] = None, db: Session = Depends(g
                         reservation_id=res.id,
                         event_type=TimelineEventType.CONFLICT_DETECTED,
                         description=f"检测到时段容量冲突，超出 {total_reserved - slot.capacity} 人",
-                        metadata={"conflict_id": db_conflict.id, "over_capacity": total_reserved - slot.capacity}
+                        event_metadata={"conflict_id": db_conflict.id, "over_capacity": total_reserved - slot.capacity}
                     )
                     db.add(timeline)
 

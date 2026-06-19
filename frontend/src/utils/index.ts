@@ -107,3 +107,35 @@ export function getTimelineEventTypeColor(type: string): string {
   }
   return colorMap[type] || 'bg-gray-500'
 }
+
+export function exportToCSV(data: any[], filename: string) {
+  if (!data || data.length === 0) {
+    alert('没有可导出的数据')
+    return
+  }
+
+  const headers = Object.keys(data[0])
+  const csvContent = [
+    headers.join(','),
+    ...data.map((row) =>
+      headers
+        .map((header) => {
+          const cell = String(row[header] ?? '')
+          return `"${cell.replace(/"/g, '""')}"`
+        })
+        .join(',')
+    ),
+  ].join('\n')
+
+  const BOM = '\uFEFF'
+  const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' })
+  const link = document.createElement('a')
+  const url = URL.createObjectURL(blob)
+  link.setAttribute('href', url)
+  link.setAttribute('download', filename.replace('.xlsx', '.csv'))
+  link.style.visibility = 'hidden'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+}

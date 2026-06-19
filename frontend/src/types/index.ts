@@ -119,7 +119,7 @@ export interface ConflictAffectedObject {
 export interface ConflictRecord {
   id: number
   conflict_no: string
-  time_slot_id: int
+  time_slot_id: number
   conflict_type: string
   description?: string
   status: ConflictStatus

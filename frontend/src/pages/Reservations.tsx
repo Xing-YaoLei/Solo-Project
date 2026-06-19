@@ -1,8 +1,7 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import {
   Plus,
-  Search,
   Filter,
   Download,
   CheckSquare,
@@ -15,14 +14,17 @@ import {
   MoreHorizontal,
   Check,
   X,
+  XCircle,
+  CalendarDays,
 } from 'lucide-react'
-import { reservationApi } from '@/services/api'
-import type { Reservation } from '@/types'
+import { reservationApi, timeSlotApi } from '@/services/api'
+import type { Reservation, TimeSlot } from '@/types'
 import {
   formatDateTime,
   getStatusLabel,
   getStatusColor,
   cn,
+  exportToCSV,
 } from '@/utils'
 
 const statusOptions = [
@@ -35,15 +37,33 @@ const statusOptions = [
   { value: 'conflict', label: '有冲突' },
 ]
 
+const ticketTypeOptions = [
+  { value: 'adult', label: '成人票' },
+  { value: 'child', label: '儿童票' },
+  { value: 'senior', label: '老人票' },
+  { value: 'family', label: '家庭票' },
+  { value: 'group', label: '团体票' },
+]
+
+const sourceOptions = [
+  { value: 'online', label: '线上预约' },
+  { value: 'offline', label: '现场购票' },
+  { value: 'phone', label: '电话预约' },
+  { value: 'agent', label: '旅行社' },
+]
+
 export default function Reservations() {
   const navigate = useNavigate()
   const [reservations, setReservations] = useState<Reservation[]>([])
+  const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [pageSize] = useState(20)
   const [loading, setLoading] = useState(false)
   const [showFilter, setShowFilter] = useState(false)
   const [selectedIds, setSelectedIds] = useState<number[]>([])
+  const [showCreate, setShowCreate] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const [filters, setFilters] = useState({
     status: '',
     visitor_name: '',
@@ -51,6 +71,17 @@ export default function Reservations() {
     start_date: '',
     end_date: '',
   })
+  const [formData, setFormData] = useState({
+    time_slot_id: 0,
+    visitor_name: '',
+    visitor_phone: '',
+    visitor_count: 1,
+    ticket_type: 'adult',
+    source: 'online',
+    remark: '',
+  })
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({})
+  const [submitting, setSubmitting] = useState(false)
 
   const loadReservations = async () => {
     try {
@@ -75,9 +106,24 @@ export default function Reservations() {
     }
   }
 
+  const loadTimeSlots = async () => {
+    try {
+      const data = await timeSlotApi.getList({ is_active: true })
+      setTimeSlots(data)
+    } catch (error) {
+      console.error('加载时段失败:', error)
+    }
+  }
+
   useEffect(() => {
     loadReservations()
   }, [page, filters.status])
+
+  useEffect(() => {
+    if (showCreate) {
+      loadTimeSlots()
+    }
+  }, [showCreate])
 
   const totalPages = Math.ceil(total / pageSize)
 
@@ -103,6 +149,7 @@ export default function Reservations() {
       loadReservations()
     } catch (error) {
       console.error('批量取消失败:', error)
+      alert('批量取消失败')
     }
   }
 
@@ -113,6 +160,7 @@ export default function Reservations() {
       loadReservations()
     } catch (error) {
       console.error('批量确认失败:', error)
+      alert('批量确认失败')
     }
   }
 
@@ -122,6 +170,7 @@ export default function Reservations() {
       loadReservations()
     } catch (error) {
       console.error('签到失败:', error)
+      alert('签到失败')
     }
   }
 
@@ -129,6 +178,62 @@ export default function Reservations() {
     e.preventDefault()
     setPage(1)
     loadReservations()
+  }
+
+  const validateForm = () => {
+    const errors: Record<string, string> = {}
+    if (!formData.time_slot_id) errors.time_slot_id = '请选择预约时段'
+    if (!formData.visitor_name.trim()) errors.visitor_name = '请输入游客姓名'
+    if (!formData.visitor_phone.trim()) errors.visitor_phone = '请输入联系电话'
+    if (!/^1[3-9]\d{9}$/.test(formData.visitor_phone.trim()))
+      errors.visitor_phone = '请输入正确的手机号码'
+    if (formData.visitor_count < 1) errors.visitor_count = '人数至少为1'
+    setFormErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
+  const handleSubmitCreate = async () => {
+    if (!validateForm()) return
+    try {
+      setSubmitting(true)
+      await reservationApi.create(formData)
+      alert('预约创建成功！')
+      setShowCreate(false)
+      setFormData({
+        time_slot_id: 0,
+        visitor_name: '',
+        visitor_phone: '',
+        visitor_count: 1,
+        ticket_type: 'adult',
+        source: 'online',
+        remark: '',
+      })
+      setFormErrors({})
+      loadReservations()
+    } catch (error: any) {
+      console.error('创建预约失败:', error)
+      alert(error?.response?.data?.detail || '创建预约失败，请检查时段容量')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleExport = async () => {
+    try {
+      setExporting(true)
+      const params: any = {}
+      if (filters.start_date) params.start_date = filters.start_date
+      if (filters.end_date) params.end_date = filters.end_date
+      if (filters.status) params.status = filters.status
+
+      const result = await reservationApi.export(params)
+      exportToCSV(result.data, result.filename)
+    } catch (error) {
+      console.error('导出失败:', error)
+      alert('导出失败')
+    } finally {
+      setExporting(false)
+    }
   }
 
   return (
@@ -152,15 +257,16 @@ export default function Reservations() {
             <Filter size={16} className="mr-1.5" />
             筛选
           </button>
-          <Link
-            to="/reservations"
-            className="hidden sm:flex items-center px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
+          <button
+            onClick={handleExport}
+            disabled={exporting}
+            className="hidden sm:flex items-center px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
           >
             <Download size={16} className="mr-1.5" />
-            导出
-          </Link>
+            {exporting ? '导出中...' : '导出'}
+          </button>
           <button
-            onClick={() => {}}
+            onClick={() => setShowCreate(true)}
             className="flex items-center px-4 py-2 bg-primary-500 text-white rounded-lg text-sm font-medium hover:bg-primary-600 transition-colors"
           >
             <Plus size={16} className="mr-1.5" />
@@ -295,6 +401,16 @@ export default function Reservations() {
           </div>
         </div>
       )}
+
+      {/* 手机端导出按钮 */}
+      <button
+        onClick={handleExport}
+        disabled={exporting}
+        className="sm:hidden flex w-full items-center justify-center px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 disabled:opacity-50"
+      >
+        <Download size={16} className="mr-1.5" />
+        {exporting ? '导出中...' : '导出数据'}
+      </button>
 
       {/* 预约列表 - 桌面端表格 */}
       <div className="hidden lg:block bg-white rounded-xl shadow-sm overflow-hidden">
@@ -512,6 +628,195 @@ export default function Reservations() {
           </button>
         </div>
       </div>
+
+      {/* 新增预约弹窗 */}
+      {showCreate && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">新增预约</h3>
+              <button
+                onClick={() => {
+                  setShowCreate(false)
+                  setFormErrors({})
+                }}
+                className="p-1 text-gray-400 hover:text-gray-600"
+              >
+                <XCircle size={20} />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  预约时段 <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={formData.time_slot_id}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      time_slot_id: Number(e.target.value),
+                    })
+                  }
+                  className={cn(
+                    'w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent',
+                    formErrors.time_slot_id ? 'border-red-300' : 'border-gray-300'
+                  )}
+                >
+                  <option value={0}>请选择时段</option>
+                  {timeSlots.map((slot) => (
+                    <option key={slot.id} value={slot.id}>
+                      {slot.date.slice(0, 10)} {slot.start_time}-{slot.end_time} (剩余{slot.remaining_capacity}/{slot.capacity}人)
+                    </option>
+                  ))}
+                </select>
+                {formErrors.time_slot_id && (
+                  <p className="mt-1 text-xs text-red-500">{formErrors.time_slot_id}</p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    游客姓名 <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.visitor_name}
+                    onChange={(e) =>
+                      setFormData({ ...formData, visitor_name: e.target.value })
+                    }
+                    className={cn(
+                      'w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent',
+                      formErrors.visitor_name ? 'border-red-300' : 'border-gray-300'
+                    )}
+                    placeholder="请输入姓名"
+                  />
+                  {formErrors.visitor_name && (
+                    <p className="mt-1 text-xs text-red-500">{formErrors.visitor_name}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    联系电话 <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    value={formData.visitor_phone}
+                    onChange={(e) =>
+                      setFormData({ ...formData, visitor_phone: e.target.value })
+                    }
+                    className={cn(
+                      'w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent',
+                      formErrors.visitor_phone ? 'border-red-300' : 'border-gray-300'
+                    )}
+                    placeholder="请输入手机号"
+                  />
+                  {formErrors.visitor_phone && (
+                    <p className="mt-1 text-xs text-red-500">{formErrors.visitor_phone}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    预约人数 <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={formData.visitor_count}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        visitor_count: Math.max(1, Number(e.target.value)),
+                      })
+                    }
+                    className={cn(
+                      'w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent',
+                      formErrors.visitor_count ? 'border-red-300' : 'border-gray-300'
+                    )}
+                  />
+                  {formErrors.visitor_count && (
+                    <p className="mt-1 text-xs text-red-500">{formErrors.visitor_count}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    票种
+                  </label>
+                  <select
+                    value={formData.ticket_type}
+                    onChange={(e) =>
+                      setFormData({ ...formData, ticket_type: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  >
+                    {ticketTypeOptions.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  来源渠道
+                </label>
+                <select
+                  value={formData.source}
+                  onChange={(e) =>
+                    setFormData({ ...formData, source: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                >
+                  {sourceOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  备注
+                </label>
+                <textarea
+                  value={formData.remark}
+                  onChange={(e) =>
+                    setFormData({ ...formData, remark: e.target.value })
+                  }
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
+                  placeholder="请输入备注信息（选填）"
+                />
+              </div>
+            </div>
+            <div className="px-5 py-4 border-t border-gray-100 flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  setShowCreate(false)
+                  setFormErrors({})
+                }}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleSubmitCreate}
+                disabled={submitting}
+                className="px-4 py-2 bg-primary-500 text-white rounded-lg font-medium hover:bg-primary-600 disabled:opacity-50"
+              >
+                {submitting ? '提交中...' : '确认提交'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

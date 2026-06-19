@@ -16,7 +16,7 @@ import {
   Plus,
   MessageSquare,
 } from 'lucide-react'
-import { reservationApi, timeSlotApi } from '@/services/api'
+import { reservationApi, timeSlotApi, timelineApi } from '@/services/api'
 import type {
   Reservation,
   TimelineRecord,
@@ -46,6 +46,9 @@ export default function ReservationDetail() {
   const [rescheduleReason, setRescheduleReason] = useState('')
   const [showAddNote, setShowAddNote] = useState(false)
   const [noteText, setNoteText] = useState('')
+  const [showUpload, setShowUpload] = useState(false)
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+  const [uploading, setUploading] = useState(false)
 
   useEffect(() => {
     loadData()
@@ -102,20 +105,45 @@ export default function ReservationDetail() {
   const handleAddNote = async () => {
     if (!noteText.trim()) return
     try {
-      // 直接通过时间线接口添加备注
-      await fetch(`/api/reservations/${id}/timeline`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          event_type: 'remark',
-          description: noteText,
-        }),
+      await timelineApi.addRecord(Number(id), {
+        event_type: 'remark',
+        description: noteText,
       })
       setNoteText('')
       setShowAddNote(false)
       loadData()
     } catch (error) {
       console.error('添加备注失败:', error)
+      alert('添加备注失败，请重试')
+    }
+  }
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setSelectedFiles(Array.from(e.target.files))
+    }
+  }
+
+  const handleUploadAttachments = async () => {
+    if (selectedFiles.length === 0) {
+      alert('请选择要上传的文件')
+      return
+    }
+    try {
+      setUploading(true)
+      const timelineRecord = await timelineApi.addRecord(Number(id), {
+        event_type: 'attachment_added',
+        description: `上传了 ${selectedFiles.length} 个附件`,
+      })
+      await timelineApi.uploadAttachments(timelineRecord.id, selectedFiles)
+      setSelectedFiles([])
+      setShowUpload(false)
+      loadData()
+    } catch (error) {
+      console.error('上传附件失败:', error)
+      alert('上传附件失败，请重试')
+    } finally {
+      setUploading(false)
     }
   }
 
@@ -230,6 +258,13 @@ export default function ReservationDetail() {
             >
               <MessageSquare size={16} className="mr-1.5" />
               添加备注
+            </button>
+            <button
+              onClick={() => setShowUpload(true)}
+              className="flex items-center px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200"
+            >
+              <Paperclip size={16} className="mr-1.5" />
+              上传附件
             </button>
           </div>
         </div>
@@ -479,6 +514,58 @@ export default function ReservationDetail() {
                 className="px-4 py-2 bg-primary-500 text-white rounded-lg font-medium hover:bg-primary-600"
               >
                 保存
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showUpload && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl w-full max-w-md">
+            <div className="px-5 py-4 border-b border-gray-100">
+              <h3 className="text-lg font-semibold text-gray-900">上传附件</h3>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  选择文件
+                </label>
+                <input
+                  type="file"
+                  multiple
+                  onChange={handleFileSelect}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+              {selectedFiles.length > 0 && (
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-gray-700">已选择文件：</p>
+                  {selectedFiles.map((file, index) => (
+                    <p key={index} className="text-xs text-gray-500">
+                      {file.name} ({(file.size / 1024).toFixed(1)} KB)
+                    </p>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="px-5 py-4 border-t border-gray-100 flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  setShowUpload(false)
+                  setSelectedFiles([])
+                }}
+                disabled={uploading}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 disabled:opacity-50"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleUploadAttachments}
+                disabled={uploading}
+                className="px-4 py-2 bg-primary-500 text-white rounded-lg font-medium hover:bg-primary-600 disabled:opacity-50"
+              >
+                {uploading ? '上传中...' : '上传'}
               </button>
             </div>
           </div>
