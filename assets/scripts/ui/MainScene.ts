@@ -380,7 +380,7 @@ export class MainScene extends Component {
         const firstDate = room.slots[0].date;
         const lastDate = room.slots[room.slots.length - 1].date;
         if (checkIn < firstDate) return false;
-        if (checkOut > lastDate) return false;
+        if (checkIn > lastDate) return false;
         const stayDays = this.calculateStayDays(checkIn, checkOut);
         let slotCount = 0;
         for (const slot of room.slots) {

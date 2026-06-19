@@ -1,0 +1,23 @@
+{
+  "ver": "1.0.27",
+  "importer": "image",
+  "imported": true,
+  "uuid": "tiled-tiles-uuid-0001-000000000004",
+  "files": [
+    ".json"
+  ],
+  "subMetas": {
+    "6c48a": {
+      "importer": "sprite-frame",
+      "uuid": "tiled-tiles-spriteframe-0001",
+      "displayName": "inn_tiles",
+      "userData": {
+        "isUuid": true
+      }
+    }
+  },
+  "userData": {
+    "hasAlpha": true,
+    "type": "sprite-frame"
+  }
+}

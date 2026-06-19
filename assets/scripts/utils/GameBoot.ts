@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, UITransform, Sprite, Label, Color } from "cc";
+import { _decorator, Component, Node, UITransform, Sprite, Label, Color, resources, TiledMap, TiledMapAsset, Size, view } from "cc";
 import { MainScene } from "../ui/MainScene";
 
 const { ccclass, executionOrder } = _decorator;
@@ -13,6 +13,7 @@ export class GameBoot extends Component {
     private buildUILayout(): void {
         const root = this.node;
 
+        this.createInnMap(root);
         this.createHUD(root);
         this.createRoomCalendar(root);
         this.createOrderPanel(root);
@@ -369,5 +370,32 @@ export class GameBoot extends Component {
         node.setPosition(x, y, 0);
         node.parent = parent;
         return node;
+    }
+
+    private createInnMap(parent: Node): void {
+        const mapNode = new Node("InnMap");
+        const transform = mapNode.addComponent(UITransform);
+        transform.setContentSize(1280, 720);
+        mapNode.setPosition(0, 0, 0);
+
+        const mapBg = mapNode.addComponent(Sprite);
+        mapBg.color = new Color(25, 25, 35, 255);
+
+        const tiledNode = new Node("TiledMap");
+        const tiledTransform = tiledNode.addComponent(UITransform);
+        tiledTransform.setContentSize(1280, 768);
+        tiledNode.setPosition(0, -20, 0);
+        tiledNode.parent = mapNode;
+
+        resources.load("maps/inn_layout", TiledMapAsset, (err, asset) => {
+            if (err) {
+                console.warn("Failed to load Tiled map:", err);
+                return;
+            }
+            const tiledMap = tiledNode.addComponent(TiledMap);
+            tiledMap.tmxAsset = asset;
+        });
+
+        mapNode.parent = parent;
     }
 }
