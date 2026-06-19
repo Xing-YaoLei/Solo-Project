@@ -20,6 +20,7 @@ interface WorkOrderItemView {
 interface PhysicsTool {
   body: Matter.Body;
   type: string;
+  label: Phaser.GameObjects.Text;
 }
 
 export class GameScene extends Phaser.Scene {
@@ -165,6 +166,11 @@ export class GameScene extends Phaser.Scene {
         });
         this.draggingBody.velocity.x = 0;
         this.draggingBody.velocity.y = 0;
+        const tool = this.physicsTools.find(t => t.body === this.draggingBody);
+        if (tool) {
+          tool.label.setPosition(this.draggingBody.position.x, this.draggingBody.position.y);
+          tool.label.setRotation(this.draggingBody.angle);
+        }
       }
     });
 
@@ -197,7 +203,7 @@ export class GameScene extends Phaser.Scene {
     });
     this.matter.world.add(body);
 
-    this.physicsTools.push({ body, type });
+    this.physicsTools.push({ body, type, label });
 
     label.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       this.isDragging = true;
@@ -209,10 +215,8 @@ export class GameScene extends Phaser.Scene {
     });
 
     this.matter.world.on('afterupdate', () => {
-      if (!this.isDragging || this.draggingBody !== body) {
-        label.setPosition(body.position.x, body.position.y);
-        label.setRotation(body.angle);
-      }
+      label.setPosition(body.position.x, body.position.y);
+      label.setRotation(body.angle);
     });
   }
 
@@ -1129,17 +1133,20 @@ export class GameScene extends Phaser.Scene {
 
   private resetPhysicsTools(): void {
     const toolDefs = [
-      { x: 60 }, { x: 120 }, { x: 400 }, { x: 180 }, { x: 300 },
-      { x: 520 }, { x: 700 }, { x: 850 }, { x: 1000 }, { x: 1100 },
-      { x: 250 }, { x: 600 }
+      { x: 60, y: 120 }, { x: 120, y: 80 }, { x: 400, y: 150 }, { x: 180, y: 100 },
+      { x: 300, y: 90 }, { x: 520, y: 130 }, { x: 700, y: 110 }, { x: 850, y: 140 },
+      { x: 1000, y: 100 }, { x: 1100, y: 130 }, { x: 250, y: 70 }, { x: 600, y: 85 }
     ];
 
     this.physicsTools.forEach((tool, index) => {
-      const def = toolDefs[index] || { x: 100 };
-      Matter.Body.setPosition(tool.body, { x: def.x, y: 100 + Math.random() * 50 });
+      const def = toolDefs[index] || { x: 100, y: 100 };
+      const posY = def.y + Math.random() * 20;
+      Matter.Body.setPosition(tool.body, { x: def.x, y: posY });
       Matter.Body.setVelocity(tool.body, { x: 0, y: 0 });
       Matter.Body.setAngle(tool.body, 0);
       Matter.Body.setAngularVelocity(tool.body, 0);
+      tool.label.setPosition(def.x, posY);
+      tool.label.setRotation(0);
     });
   }
 }
