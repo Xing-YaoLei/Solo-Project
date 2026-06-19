@@ -95,7 +95,7 @@ func _initialize_from_level(level_data):
 	
 	var task = GameManager.get_current_task()
 	if task:
-		_set_calendar_to_date(task.date)
+		_set_calendar_to_date(task.checkin_date)
 	
 	_update_calendar()
 	_update_task()
@@ -146,7 +146,7 @@ func _on_game_started(level_data):
 	
 	var task = GameManager.get_current_task()
 	if task:
-		_set_calendar_to_date(task.date)
+		_set_calendar_to_date(task.checkin_date)
 	
 	_update_calendar()
 	_update_task()
@@ -372,16 +372,23 @@ func _on_task_completed(result):
 	else:
 		AudioManager.play_sfx("wrong")
 	_show_feedback(result["message"], result["is_correct"])
+	
+	_update_records()
 	_update_progress()
+	
+	selected_date_str = ""
+	selected_package_id = ""
+	for pkg_id in package_cards:
+		package_cards[pkg_id].set_selected(false)
 	
 	var new_task = GameManager.get_current_task()
 	if new_task:
-		_set_calendar_to_date(new_task.date)
+		_set_calendar_to_date(new_task.checkin_date)
 		_update_calendar()
-		selected_date_str = ""
-		selected_package_id = ""
-		for pkg_id in package_cards:
-			package_cards[pkg_id].set_selected(false)
+		stay_days_spin.value = new_task.stay_days
+		guest_count_spin.value = new_task.guest_count
+		GameManager.set_stay_days(new_task.stay_days)
+		GameManager.set_guest_count(new_task.guest_count)
 	
 	_update_task()
 	_update_preview()

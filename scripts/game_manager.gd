@@ -201,12 +201,12 @@ func submit_selection() -> Dictionary:
 	verification_records.append(record)
 	completed_tasks.append(result)
 	
-	GameData.verification_completed.emit(result)
-	task_completed.emit(result)
-	
 	current_task_index += 1
 	selected_package = null
 	selected_date = null
+	
+	GameData.verification_completed.emit(result)
+	task_completed.emit(result)
 	
 	if current_task_index >= total_tasks:
 		_end_game()
