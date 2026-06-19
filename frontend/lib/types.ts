@@ -287,11 +287,7 @@ export interface PartUsageStat {
 }
 
 export interface KanbanStats {
-  pending: number;
-  approved: number;
-  rejected: number;
-  procuring: number;
-  completed: number;
-  timeout: number;
+  statusDistribution: Record<string, number>;
+  timeoutCount: number;
   total: number;
 }

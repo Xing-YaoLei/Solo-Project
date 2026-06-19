@@ -18,7 +18,7 @@ export class StatisticsController {
   constructor(private readonly statisticsService: StatisticsService) {}
 
   @Get('dashboard')
-  @Roles(RoleEnum.MANAGER, RoleEnum.ADVISOR)
+  @Roles(RoleEnum.MANAGER, RoleEnum.ADVISOR, RoleEnum.TECHNICIAN, RoleEnum.PARTS_CLERK)
   @Permissions('statistics:read')
   getDashboardStats() {
     return this.statisticsService.getDashboardStats();
@@ -32,7 +32,7 @@ export class StatisticsController {
   }
 
   @Get('rework-rate')
-  @Roles(RoleEnum.MANAGER)
+  @Roles(RoleEnum.MANAGER, RoleEnum.ADVISOR)
   @Permissions('statistics:read')
   getReworkRate(
     @Query('startDate') startDate?: string,

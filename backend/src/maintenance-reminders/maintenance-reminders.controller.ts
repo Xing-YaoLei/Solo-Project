@@ -32,7 +32,7 @@ export class MaintenanceRemindersController {
   }
 
   @Get()
-  @Roles(RoleEnum.MANAGER, RoleEnum.ADVISOR, RoleEnum.TECHNICIAN)
+  @Roles(RoleEnum.MANAGER, RoleEnum.ADVISOR, RoleEnum.TECHNICIAN, RoleEnum.PARTS_CLERK)
   @Permissions('reminder:read')
   findAll(
     @Query('page') page = 1,
@@ -44,7 +44,7 @@ export class MaintenanceRemindersController {
   }
 
   @Get(':id')
-  @Roles(RoleEnum.MANAGER, RoleEnum.ADVISOR, RoleEnum.TECHNICIAN)
+  @Roles(RoleEnum.MANAGER, RoleEnum.ADVISOR, RoleEnum.TECHNICIAN, RoleEnum.PARTS_CLERK)
   @Permissions('reminder:read')
   findOne(@Param('id') id: string) {
     return this.maintenanceRemindersService.findOne(id);

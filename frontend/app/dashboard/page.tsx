@@ -19,10 +19,10 @@ import { formatDate, formatCurrency } from '@/lib/utils';
 import { workOrderStatusLabels, workOrderStatusColors, maintenanceTypeLabels } from '@/lib/auth';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { statsApi, workOrderApi, reminderApi } from '@/lib/api-endpoints';
-import type { DashboardStats, WorkOrder, MaintenanceReminder, ReworkRateData } from '@/lib/types';
+import type { DashboardStats, WorkOrder, MaintenanceReminder, ReworkRateData, UserRole } from '@/lib/types';
 
 export default function DashboardPage() {
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, user, hasRole } = useAuth();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [reworkRate, setReworkRate] = useState<ReworkRateData | null>(null);
   const [recentOrders, setRecentOrders] = useState<WorkOrder[]>([]);
@@ -30,23 +30,30 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const canViewReworkRate = hasRole(['MANAGER', 'ADVISOR']);
+
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !user) return;
     let cancelled = false;
     async function fetchData() {
       try {
         setLoading(true);
-        const [dashboardStats, reworkData, ordersRes, remindersRes] = await Promise.all([
+        const requests: Promise<any>[] = [
           statsApi.getDashboardStats(),
-          statsApi.getReworkRate(),
           workOrderApi.getAll({ page: 1, pageSize: 5 }),
           reminderApi.getAll({ page: 1, pageSize: 5, isCompleted: false }),
-        ]);
+        ];
+        if (canViewReworkRate) {
+          requests.push(statsApi.getReworkRate());
+        }
+        const [dashboardStats, ordersRes, remindersRes, reworkData] = await Promise.all(requests);
         if (cancelled) return;
         setStats(dashboardStats);
-        setReworkRate(reworkData);
         setRecentOrders(ordersRes.data);
         setReminders(remindersRes.data);
+        if (reworkData) {
+          setReworkRate(reworkData);
+        }
       } catch (err: any) {
         if (!cancelled) setError(err?.message || '加载数据失败');
       } finally {
@@ -55,7 +62,7 @@ export default function DashboardPage() {
     }
     fetchData();
     return () => { cancelled = true; };
-  }, [isAuthenticated]);
+  }, [isAuthenticated, user, canViewReworkRate]);
 
   if (authLoading) {
     return (
@@ -92,15 +99,71 @@ export default function DashboardPage() {
     );
   }
 
+  const role = user?.role?.code as UserRole;
+
+  const statCards = [
+    {
+      key: 'total',
+      title: '今日工单',
+      value: stats?.total ?? 0,
+      icon: Wrench,
+      iconClassName: 'bg-blue-100 text-blue-600',
+      show: true,
+    },
+    {
+      key: 'inProgress',
+      title: '进行中',
+      value: stats?.inProgress ?? 0,
+      icon: Clock,
+      iconClassName: 'bg-amber-100 text-amber-600',
+      show: true,
+    },
+    {
+      key: 'waitingParts',
+      title: '待配件',
+      value: stats?.waitingParts ?? 0,
+      icon: Package,
+      iconClassName: 'bg-orange-100 text-orange-600',
+      show: true,
+    },
+    {
+      key: 'completed',
+      title: '已完成',
+      value: stats?.completed ?? 0,
+      icon: CheckCircle,
+      iconClassName: 'bg-green-100 text-green-600',
+      show: true,
+    },
+    {
+      key: 'reworkRate',
+      title: '返修率',
+      value: reworkRate ? `${reworkRate.reworkRate}%` : '-',
+      icon: AlertTriangle,
+      iconClassName: 'bg-red-100 text-red-600',
+      show: canViewReworkRate,
+    },
+    {
+      key: 'todayRevenue',
+      title: '今日营收',
+      value: formatCurrency(stats?.todayRevenue ?? 0),
+      icon: DollarSign,
+      iconClassName: 'bg-emerald-100 text-emerald-600',
+      show: hasRole(['MANAGER', 'ADVISOR']),
+    },
+  ].filter((card) => card.show);
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-        <StatCard title="今日工单" value={stats?.total ?? 0} icon={Wrench} iconClassName="bg-blue-100 text-blue-600" />
-        <StatCard title="进行中" value={stats?.inProgress ?? 0} icon={Clock} iconClassName="bg-amber-100 text-amber-600" />
-        <StatCard title="待配件" value={stats?.waitingParts ?? 0} icon={Package} iconClassName="bg-orange-100 text-orange-600" />
-        <StatCard title="已完成" value={stats?.completed ?? 0} icon={CheckCircle} iconClassName="bg-green-100 text-green-600" />
-        <StatCard title="返修率" value={reworkRate ? `${reworkRate.reworkRate}%` : '-'} icon={AlertTriangle} iconClassName="bg-red-100 text-red-600" />
-        <StatCard title="今日营收" value={formatCurrency(stats?.todayRevenue ?? 0)} icon={DollarSign} iconClassName="bg-emerald-100 text-emerald-600" />
+        {statCards.map((card) => (
+          <StatCard
+            key={card.key}
+            title={card.title}
+            value={card.value}
+            icon={card.icon}
+            iconClassName={card.iconClassName}
+          />
+        ))}
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
