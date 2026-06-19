@@ -61,16 +61,24 @@
 <div class="space-y-4">
 	<div class="flex items-center justify-between">
 		<h1 class="text-2xl font-bold text-slate-800">数据报表</h1>
-		<div class="flex items-center gap-3">
-			<button
-				onclick={() => {}}
-				class="inline-flex items-center gap-2 px-4 py-2 border border-slate-300 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition"
-			>
-				<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-					<path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-				</svg>
-				导出报表
-			</button>
+		<div class="flex items-center gap-2">
+			{#if data.canExport}
+				<a
+					href={(() => {
+						const params = new URLSearchParams();
+						params.set('type', activeTab === 'duration' ? 'duration' : activeTab === 'date' ? 'date' : activeTab === 'assignee' ? 'assignee' : 'all');
+						if (data.filters.startDate) params.set('startDate', data.filters.startDate);
+						if (data.filters.endDate) params.set('endDate', data.filters.endDate);
+						return `/api/export?${params.toString()}`;
+					})()}
+					class="inline-flex items-center gap-2 px-4 py-2 border border-slate-300 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition"
+				>
+					<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+						<path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+					</svg>
+					导出报表
+				</a>
+			{/if}
 		</div>
 	</div>
 

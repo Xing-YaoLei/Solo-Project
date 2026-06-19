@@ -200,8 +200,13 @@ export const complaintRouter = router({
 	create: complaintGuard('complaint:create')
 		.input(z.object({
 			description: z.string(),
-			tagIds: z.array(z.string()),
-			deadline: z.string().optional()
+			tagIds: z.array(z.string()).optional().default([]),
+			deadline: z.string().optional(),
+			attachments: z.array(z.object({
+				fileName: z.string(),
+				fileUrl: z.string(),
+				fileType: z.string()
+			})).optional()
 		}))
 		.mutation(async ({ ctx, input }) => {
 			const [created] = await db.insert(complaints).values({
@@ -211,11 +216,23 @@ export const complaintRouter = router({
 				deadline: input.deadline ? new Date(input.deadline) : null
 			}).returning();
 
-			if (input.tagIds.length > 0) {
+			if (input.tagIds && input.tagIds.length > 0) {
 				await db.insert(complaintTags).values(
 					input.tagIds.map((tagId) => ({
 						complaintId: created.id,
 						tagId
+					}))
+				);
+			}
+
+			if (input.attachments && input.attachments.length > 0) {
+				await db.insert(attachments).values(
+					input.attachments.map((att) => ({
+						complaintId: created.id,
+						fileName: att.fileName,
+						fileUrl: att.fileUrl,
+						fileType: att.fileType,
+						uploadedBy: ctx.user.id
 					}))
 				);
 			}

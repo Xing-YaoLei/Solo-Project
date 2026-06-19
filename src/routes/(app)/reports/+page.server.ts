@@ -14,10 +14,14 @@ export const load: PageServerLoad = async (event) => {
 		caller.report.byAssignee()
 	]);
 
+	const canExport = (event.locals.user as any)?.permissions?.includes('report:export')
+		|| (event.locals.user as any)?.permissions?.includes('complaint:export');
+
 	return {
 		closureDurationReport,
 		dateReport,
 		assigneeReport,
-		filters: { startDate: startDate ?? null, endDate: endDate ?? null }
+		filters: { startDate: startDate ?? null, endDate: endDate ?? null },
+		canExport
 	};
 };

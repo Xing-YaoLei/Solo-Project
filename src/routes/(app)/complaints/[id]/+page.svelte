@@ -209,9 +209,8 @@
 	}
 
 	const overdue = $derived(getOverdueStatus());
-	const isVisitor = $derived(false);
-	const canProcessComplaint = $derived(true);
-	const userPermissions = $derived<string[]>([]);
+	const isVisitor = $derived(data.userRoleName === 'visitor');
+	const hasPerm = (code: string) => (data as any).userPermissions?.includes(code) ?? false;
 </script>
 
 <svelte:head>
@@ -414,7 +413,7 @@
 			<div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
 				<h3 class="text-sm font-semibold text-slate-800 mb-4">处理操作</h3>
 				<div class="space-y-2">
-					{#if data.complaint.status === 'pending'}
+					{#if data.complaint.status === 'pending' && hasPerm('complaint:assign')}
 						<button
 							onclick={() => showAssignModal = true}
 							class="w-full py-2 px-4 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition"
@@ -423,7 +422,7 @@
 						</button>
 					{/if}
 
-					{#if data.complaint.status === 'assigned'}
+					{#if data.complaint.status === 'assigned' && (hasPerm('complaint:assign') || hasPerm('complaint:create'))}
 						<button
 							onclick={handleStartProgress}
 							disabled={submitting}
@@ -433,7 +432,7 @@
 						</button>
 					{/if}
 
-					{#if data.complaint.status === 'in_progress'}
+					{#if data.complaint.status === 'in_progress' && (hasPerm('complaint:assign') || hasPerm('complaint:close'))}
 						<button
 							onclick={handleResolve}
 							disabled={submitting}
@@ -443,7 +442,7 @@
 						</button>
 					{/if}
 
-					{#if data.complaint.status === 'resolved'}
+					{#if data.complaint.status === 'resolved' && hasPerm('complaint:close')}
 						<button
 							onclick={handleClose}
 							disabled={submitting}
@@ -453,7 +452,7 @@
 						</button>
 					{/if}
 
-					{#if data.complaint.status !== 'closed' && data.complaint.status !== 'rejected'}
+					{#if data.complaint.status !== 'closed' && data.complaint.status !== 'rejected' && hasPerm('complaint:escalate')}
 						<button
 							onclick={() => showEscalateModal = true}
 							class="w-full py-2 px-4 border border-red-300 text-red-600 text-sm font-medium rounded-lg hover:bg-red-50 transition"
@@ -462,7 +461,7 @@
 						</button>
 					{/if}
 
-					{#if data.complaint.status !== 'closed' && data.complaint.status !== 'rejected'}
+					{#if data.complaint.status !== 'closed' && data.complaint.status !== 'rejected' && (hasPerm('complaint:supplement') || hasPerm('complaint:create'))}
 						<button
 							onclick={() => showSupplementModal = true}
 							class="w-full py-2 px-4 border border-slate-300 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition"
@@ -471,7 +470,7 @@
 						</button>
 					{/if}
 
-					{#if data.complaint.status !== 'closed' && data.complaint.status !== 'rejected'}
+					{#if data.complaint.status !== 'closed' && data.complaint.status !== 'rejected' && hasPerm('complaint:reject')}
 						<button
 							onclick={() => showRejectModal = true}
 							class="w-full py-2 px-4 border border-orange-300 text-orange-600 text-sm font-medium rounded-lg hover:bg-orange-50 transition"
@@ -480,7 +479,7 @@
 						</button>
 					{/if}
 
-					{#if data.complaint.status === 'rejected'}
+					{#if data.complaint.status === 'rejected' && (hasPerm('complaint:resubmit') || isVisitor)}
 						<button
 							onclick={() => showResubmitModal = true}
 							class="w-full py-2 px-4 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition"
@@ -489,7 +488,7 @@
 						</button>
 					{/if}
 
-					{#if data.complaint.assigneeId && data.complaint.status !== 'closed'}
+					{#if data.complaint.assigneeId && data.complaint.status !== 'closed' && hasPerm('complaint:reassign')}
 						<button
 							onclick={() => showReassignModal = true}
 							class="w-full py-2 px-4 border border-amber-300 text-amber-600 text-sm font-medium rounded-lg hover:bg-amber-50 transition"
@@ -498,13 +497,28 @@
 						</button>
 					{/if}
 
-					{#if data.complaint.status === 'resolved' || data.complaint.status === 'closed'}
+					{#if (data.complaint.status === 'resolved' || data.complaint.status === 'closed') && hasPerm('complaint:callback')}
 						<button
 							onclick={() => showCallbackModal = true}
 							class="w-full py-2 px-4 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition"
 						>
 							回访记录
 						</button>
+					{/if}
+
+					{#if ![
+						data.complaint.status === 'pending' && hasPerm('complaint:assign'),
+						data.complaint.status === 'assigned' && (hasPerm('complaint:assign') || hasPerm('complaint:create')),
+						data.complaint.status === 'in_progress' && (hasPerm('complaint:assign') || hasPerm('complaint:close')),
+						data.complaint.status === 'resolved' && hasPerm('complaint:close'),
+						data.complaint.status !== 'closed' && data.complaint.status !== 'rejected' && hasPerm('complaint:escalate'),
+						data.complaint.status !== 'closed' && data.complaint.status !== 'rejected' && (hasPerm('complaint:supplement') || hasPerm('complaint:create')),
+						data.complaint.status !== 'closed' && data.complaint.status !== 'rejected' && hasPerm('complaint:reject'),
+						data.complaint.status === 'rejected' && (hasPerm('complaint:resubmit') || isVisitor),
+						data.complaint.assigneeId && data.complaint.status !== 'closed' && hasPerm('complaint:reassign'),
+						(data.complaint.status === 'resolved' || data.complaint.status === 'closed') && hasPerm('complaint:callback')
+					].some(Boolean)}
+						<p class="text-xs text-slate-400 text-center py-2">暂无可用操作</p>
 					{/if}
 				</div>
 			</div>

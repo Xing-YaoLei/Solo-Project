@@ -13,4 +13,16 @@ declare global {
 	}
 }
 
+declare module 'lucia' {
+	interface Register {
+		UserId: string;
+		DatabaseUserAttributes: {
+			username: string;
+			display_name: string;
+			role_id: string;
+			phone?: string | null;
+		};
+	}
+}
+
 export {};
