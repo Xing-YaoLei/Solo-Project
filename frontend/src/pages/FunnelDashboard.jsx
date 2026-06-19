@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
-import { Row, Col, DatePicker, Card, Tag, Table, Modal, List, Progress } from 'antd'
+import { Row, Col, DatePicker, Card, Tag, Table, Modal, List, Progress, Button, Space } from 'antd'
 import ReactECharts from 'echarts-for-react'
 import dayjs from 'dayjs'
 import { useNavigate } from 'react-router-dom'
-import { ArrowRightOutlined } from '@ant-design/icons'
+import { ArrowRightOutlined, EyeOutlined } from '@ant-design/icons'
 import { funnelApi, stockTaskApi } from '../api'
 
 const { RangePicker } = DatePicker
@@ -140,6 +140,7 @@ export default function FunnelDashboard() {
 
   const getStockOption = () => {
     if (!stockSummary) return {}
+    const pending = stockSummary.pending_count || stockSummary.open || 0
     return {
       tooltip: { trigger: 'item' },
       series: [
@@ -164,9 +165,16 @@ export default function FunnelDashboard() {
             fontWeight: 'bolder',
             formatter: '{value}',
           },
-          data: [{ value: stockSummary.open || 0, name: '待处理缺货任务' }],
+          data: [{ value: pending, name: '待处理缺货任务' }],
         },
       ],
+    }
+  }
+
+  const handleViewOrder = (record) => {
+    if (record.repair_order_id) {
+      setDetailModal({ ...detailModal, open: false })
+      navigate(`/repair-orders/${record.repair_order_id}`)
     }
   }
 
@@ -191,10 +199,52 @@ export default function FunnelDashboard() {
       render: (v) => (v ? <Tag color="blue">保险</Tag> : <Tag>自费</Tag>),
     },
     {
+      title: '关联工单',
+      dataIndex: 'repair_order_no',
+      key: 'repair_order_no',
+      render: (v, record) => {
+        if (v) {
+          return (
+            <Button
+              type="link"
+              size="small"
+              icon={<EyeOutlined />}
+              onClick={(e) => {
+                e.stopPropagation()
+                handleViewOrder(record)
+              }}
+            >
+              {v}
+            </Button>
+          )
+        }
+        return <span style={{ color: '#999' }}>—</span>
+      },
+    },
+    {
       title: '创建时间',
       dataIndex: 'created_at',
       key: 'created_at',
       render: (v) => dayjs(v).format('YYYY-MM-DD HH:mm'),
+    },
+    {
+      title: '操作',
+      key: 'action',
+      width: 100,
+      render: (_, record) => (
+        <Space>
+          {record.repair_order_id && (
+            <Button
+              type="primary"
+              size="small"
+              icon={<ArrowRightOutlined />}
+              onClick={() => handleViewOrder(record)}
+            >
+              查单
+            </Button>
+          )}
+        </Space>
+      ),
     },
   ]
 
@@ -209,7 +259,8 @@ export default function FunnelDashboard() {
       key: 'conversion_rate',
       render: (v) => <Progress percent={v} size="small" />,
     },
-    { title: '总金额', dataIndex: 'total_amount', key: 'total_amount', render: (v) => `¥${(v || 0).toLocaleString()}` },
+    { title: '成交金额', dataIndex: 'converted_amount', key: 'converted_amount', render: (v) => `¥${(v || 0).toLocaleString()}` },
+    { title: '报价总金额', dataIndex: 'total_amount', key: 'total_amount', render: (v) => `¥${(v || 0).toLocaleString()}` },
   ]
 
   return (
@@ -297,6 +348,20 @@ export default function FunnelDashboard() {
                     <div style={{ color: '#666', fontSize: 12 }}>紧急</div>
                     <div style={{ fontSize: 18, fontWeight: 600, color: '#ff4d4f' }}>
                       {stockSummary?.urgent || 0}
+                    </div>
+                  </Col>
+                </Row>
+                <Row style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #f0f0f0' }}>
+                  <Col span={12} style={{ textAlign: 'center' }}>
+                    <div style={{ color: '#666', fontSize: 12 }}>解决率</div>
+                    <div style={{ fontSize: 16, fontWeight: 600, color: '#1677ff' }}>
+                      {stockSummary?.resolution_rate || 0}%
+                    </div>
+                  </Col>
+                  <Col span={12} style={{ textAlign: 'center' }}>
+                    <div style={{ color: '#666', fontSize: 12 }}>平均解决天数</div>
+                    <div style={{ fontSize: 16, fontWeight: 600, color: '#faad14' }}>
+                      {stockSummary?.avg_resolution_days || 0}天
                     </div>
                   </Col>
                 </Row>

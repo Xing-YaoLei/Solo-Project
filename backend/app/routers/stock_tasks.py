@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import func, case
 from typing import Optional, List
 from datetime import datetime, timedelta
 
 from ..database import get_db
-from ..models import StockTask
+from ..models import StockTask, StockTaskStatus
 from .. import schemas
 
 router = APIRouter()
@@ -22,7 +23,7 @@ def list_stock_tasks(
     query = db.query(StockTask)
 
     if status:
-        query = query.filter(StockTask.status == status)
+        query = query.filter(StockTask.status == StockTaskStatus(status))
     if priority:
         query = query.filter(StockTask.priority == priority)
     if assigned_to:
@@ -42,7 +43,7 @@ def list_stock_tasks(
                 "part_code": t.part_code,
                 "part_name": t.part_name,
                 "required_qty": t.required_qty,
-                "status": t.status,
+                "status": t.status.value if hasattr(t.status, 'value') else t.status,
                 "priority": t.priority,
                 "notes": t.notes,
                 "resolution": t.resolution,
@@ -59,19 +60,48 @@ def list_stock_tasks(
 
 @router.get("/summary")
 def get_stock_tasks_summary(db: Session = Depends(get_db)):
-    open_count = db.query(StockTask).filter(StockTask.status == "open").count()
-    in_progress_count = db.query(StockTask).filter(StockTask.status == "in_progress").count()
-    resolved_count = db.query(StockTask).filter(StockTask.status == "resolved").count()
-    total = db.query(StockTask).count()
+    result = db.query(
+        func.count(StockTask.id).label("total"),
+        func.sum(case((StockTask.status == StockTaskStatus.OPEN, 1), else_=0)).label("open"),
+        func.sum(case((StockTask.status == StockTaskStatus.IN_PROGRESS, 1), else_=0)).label("in_progress"),
+        func.sum(case((StockTask.status == StockTaskStatus.RESOLVED, 1), else_=0)).label("resolved"),
+        func.sum(case((StockTask.status == StockTaskStatus.CLOSED, 1), else_=0)).label("closed"),
+        func.sum(case((StockTask.priority == "urgent", 1), else_=0)).label("urgent"),
+        func.sum(case((StockTask.priority == "high", 1), else_=0)).label("high_priority"),
+    ).first()
 
-    urgent = db.query(StockTask).filter(StockTask.priority == "urgent").count()
+    total = result.total or 0
+    open_count = result.open or 0
+    in_progress_count = result.in_progress or 0
+    resolved_count = result.resolved or 0
+    closed_count = result.closed or 0
+    urgent = result.urgent or 0
+    high_priority = result.high_priority or 0
+
+    avg_resolution_days = 0
+    resolved_tasks = db.query(StockTask).filter(
+        StockTask.status.in_([StockTaskStatus.RESOLVED, StockTaskStatus.CLOSED]),
+        StockTask.resolved_at.isnot(None),
+    ).limit(20).all()
+    if resolved_tasks:
+        total_days = 0
+        for t in resolved_tasks:
+            if t.resolved_at and t.created_at:
+                delta = t.resolved_at - t.created_at
+                total_days += delta.total_seconds() / 86400
+        avg_resolution_days = round(total_days / len(resolved_tasks), 1)
 
     return {
         "total": total,
         "open": open_count,
         "in_progress": in_progress_count,
         "resolved": resolved_count,
+        "closed": closed_count,
         "urgent": urgent,
+        "high_priority": high_priority,
+        "pending_count": open_count + in_progress_count,
+        "resolution_rate": round((resolved_count + closed_count) / total * 100, 1) if total > 0 else 0,
+        "avg_resolution_days": avg_resolution_days,
     }
 
 
