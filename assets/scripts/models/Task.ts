@@ -18,6 +18,7 @@ export interface Task {
     id: string;
     type: TaskType;
     roomId: string;
+    orderId?: string;
     description: string;
     status: TaskStatus;
     duration: number;

@@ -353,6 +353,9 @@ export class MainScene extends Component {
         const room = roomMgr.getRoom(roomId);
         if (!room) return false;
 
+        const inBounds = this.isDateRangeInBounds(room, checkInDate, checkOutDate);
+        if (!inBounds) return false;
+
         const allAvailable = this.isDateRangeAvailable(room, checkInDate, checkOutDate);
         if (!allAvailable) return false;
 
@@ -370,6 +373,22 @@ export class MainScene extends Component {
         const d = new Date(dateStr);
         d.setDate(d.getDate() + days);
         return d.toISOString().split('T')[0];
+    }
+
+    private isDateRangeInBounds(room: any, checkIn: string, checkOut: string): boolean {
+        if (room.slots.length === 0) return false;
+        const firstDate = room.slots[0].date;
+        const lastDate = room.slots[room.slots.length - 1].date;
+        if (checkIn < firstDate) return false;
+        if (checkOut > lastDate) return false;
+        const stayDays = this.calculateStayDays(checkIn, checkOut);
+        let slotCount = 0;
+        for (const slot of room.slots) {
+            if (slot.date >= checkIn && slot.date < checkOut) {
+                slotCount++;
+            }
+        }
+        return slotCount === stayDays;
     }
 
     private isDateRangeAvailable(room: any, checkIn: string, checkOut: string): boolean {
@@ -461,6 +480,16 @@ export class MainScene extends Component {
 
         if (task.type === TaskType.CLEANING) {
             this.completedCheckIns += 1;
+            if (task.orderId) {
+                const orderMgr = gm.getOrderManager();
+                if (orderMgr) {
+                    const order = orderMgr.getOrder(task.orderId);
+                    if (order) {
+                        const stayDays = this.calculateStayDays(order.checkIn, order.checkOut);
+                        gm.addCompletedRoomNights(stayDays);
+                    }
+                }
+            }
         }
 
         const elapsedRatio = task.duration > 0 ? task.elapsed / task.duration : 1;
@@ -511,7 +540,7 @@ export class MainScene extends Component {
             }
         }
 
-        const task = taskMgr.createCleaningTask(roomId);
+        const task = taskMgr.createCleaningTask(roomId, orderId);
         taskMgr.startTask(task.id);
 
         if (this.calendar) {
@@ -624,11 +653,12 @@ export class MainScene extends Component {
         const pendingOrders = orderMgr.getPendingOrders();
 
         const totalRooms = roomMgr.getAllRooms().length;
-        const targetCheckIns = Math.ceil(totalRooms * level.dayCount * level.targetOccupancy);
+        const targetRoomNights = Math.ceil(totalRooms * level.dayCount * level.targetOccupancy);
 
-        const hasEnoughCheckIns = this.completedCheckIns >= targetCheckIns;
+        const completedNights = gm.getCompletedRoomNights();
+        const hasEnoughCheckIns = completedNights >= targetRoomNights;
 
-        if (this.completedCheckIns > 0 && activeTasks.length === 0 && 
+        if (completedNights > 0 && activeTasks.length === 0 && 
             pendingOrders.length === 0 && hasEnoughCheckIns) {
             if (!this.settlementShown) {
                 gm.enterSettlement();

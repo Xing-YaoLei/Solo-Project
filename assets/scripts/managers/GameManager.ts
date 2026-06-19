@@ -52,6 +52,7 @@ export class GameManager extends Component {
     private totalPenalty: number = 0;
     private bottlenecks: BottleneckRecord[] = [];
     private currentDayIndex: number = 0;
+    private completedRoomNights: number = 0;
 
     private onStateChanged: ((state: GameState) => void) | null = null;
     private onDayChanged: ((day: number) => void) | null = null;
@@ -122,6 +123,7 @@ export class GameManager extends Component {
         this.totalPenalty = 0;
         this.bottlenecks = [];
         this.currentDayIndex = 0;
+        this.completedRoomNights = 0;
         this.itemCooldowns.clear();
 
         this.roomManager!.init(this.currentLevel);
@@ -226,6 +228,21 @@ export class GameManager extends Component {
         this.totalPenalty += amount;
     }
 
+    public addCompletedRoomNights(nights: number): void {
+        this.completedRoomNights += Math.max(0, nights);
+    }
+
+    public getCompletedRoomNights(): number {
+        return this.completedRoomNights;
+    }
+
+    public getCompletedOccupancyRate(): number {
+        if (!this.currentLevel || !this.roomManager) return 0;
+        const totalRooms = this.roomManager.getAllRooms().length;
+        const totalNights = totalRooms * this.currentLevel.dayCount;
+        return totalNights > 0 ? this.completedRoomNights / totalNights : 0;
+    }
+
     public recordBottleneck(type: string, duration: number, description: string): void {
         this.bottlenecks.push({
             type,
@@ -236,7 +253,7 @@ export class GameManager extends Component {
     }
 
     public generateReviewStats(): ReviewStats {
-        const occupancyRate = this.roomManager!.getOverallOccupancyRate();
+        const occupancyRate = this.getCompletedOccupancyRate();
 
         const allOrders = this.orderManager!.getAllOrders();
         const completedOrders = allOrders.filter(o =>

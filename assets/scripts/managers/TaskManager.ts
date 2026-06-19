@@ -36,7 +36,7 @@ export class TaskManager extends Component {
         }
     }
 
-    public createCleaningTask(roomId: string, urgency: number = 1): Task {
+    public createCleaningTask(roomId: string, orderId?: string, urgency: number = 1): Task {
         const baseDuration = 15;
         const duration = baseDuration / urgency;
         const task = this.createTask(
@@ -47,6 +47,7 @@ export class TaskManager extends Component {
             50,
             20
         );
+        task.orderId = orderId;
         return task;
     }
 
