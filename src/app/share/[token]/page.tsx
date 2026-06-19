@@ -33,6 +33,7 @@ export default function SharePage() {
 
   const [isValid, setIsValid] = useState<boolean | null>(null);
   const [role, setRole] = useState<UserRole>("external");
+  const [scope, setScope] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [overviewData, setOverviewData] = useState<OverviewData | null>(null);
@@ -46,6 +47,8 @@ export default function SharePage() {
 
   const permissions = getRolePermissions(role);
 
+  const canAccess = (module: string) => scope.length === 0 || scope.includes(module);
+
   useEffect(() => {
     const validateToken = async () => {
       try {
@@ -55,6 +58,7 @@ export default function SharePage() {
         if (data.valid) {
           setIsValid(true);
           setRole(data.role || "advisor");
+          setScope(data.scope || []);
         } else {
           setIsValid(false);
         }
@@ -76,37 +80,50 @@ export default function SharePage() {
 
     const fetchData = async () => {
       try {
-        const [overview, quotation, inspection, vehicles, diagnosis] =
-          await Promise.all([
-            fetch(`/api/reports/overview?role=${role}`).then((res) =>
-              res.json()
-            ),
-            fetch(`/api/reports/quotation-trend?role=${role}`).then((res) =>
-              res.json()
-            ),
-            fetch(`/api/reports/inspection?role=${role}`).then((res) =>
-              res.json()
-            ),
-            fetch(`/api/reports/vehicles?role=${role}`).then((res) =>
-              res.json()
-            ),
-            fetch(`/api/reports/diagnosis?role=${role}`).then((res) =>
-              res.json()
-            ),
-          ]);
+        const requests: Promise<any>[] = [];
+        const requestTypes: string[] = [];
 
-        if (!overview.error) setOverviewData(overview);
-        if (!quotation.error) setQuotationData(quotation);
-        if (!inspection.error) setInspectionData(inspection);
-        if (!vehicles.error) setVehicleData(vehicles);
-        if (!diagnosis.error) setDiagnosisData(diagnosis);
+        if (canAccess("overview")) {
+          requests.push(fetch(`/api/reports/overview?role=${role}`).then((res) => res.json()));
+          requestTypes.push("overview");
+        }
+        if (canAccess("quotation")) {
+          requests.push(fetch(`/api/reports/quotation-trend?role=${role}`).then((res) => res.json()));
+          requestTypes.push("quotation");
+        }
+        if (canAccess("inspection")) {
+          requests.push(fetch(`/api/reports/inspection?role=${role}`).then((res) => res.json()));
+          requestTypes.push("inspection");
+        }
+        if (canAccess("vehicles")) {
+          requests.push(fetch(`/api/reports/vehicles?role=${role}`).then((res) => res.json()));
+          requestTypes.push("vehicles");
+        }
+        if (canAccess("diagnosis")) {
+          requests.push(fetch(`/api/reports/diagnosis?role=${role}`).then((res) => res.json()));
+          requestTypes.push("diagnosis");
+        }
+
+        const results = await Promise.all(requests);
+
+        results.forEach((result, index) => {
+          const type = requestTypes[index];
+          if (result.error) return;
+          switch (type) {
+            case "overview": setOverviewData(result); break;
+            case "quotation": setQuotationData(result); break;
+            case "inspection": setInspectionData(result); break;
+            case "vehicles": setVehicleData(result); break;
+            case "diagnosis": setDiagnosisData(result); break;
+          }
+        });
       } catch (error) {
         console.error("Fetch data error:", error);
       }
     };
 
     fetchData();
-  }, [isValid, role]);
+  }, [isValid, role, scope]);
 
   if (loading) {
     return (
@@ -176,7 +193,7 @@ export default function SharePage() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-8">
         {/* KPI Cards */}
-        {permissions.canViewOverview && overviewData && (
+        {permissions.canViewOverview && canAccess("overview") && overviewData && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <KpiCard
               title="工单总量"
@@ -217,7 +234,7 @@ export default function SharePage() {
 
         {/* Charts Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {permissions.canViewQuotation && quotationData && (
+          {permissions.canViewQuotation && canAccess("quotation") && quotationData && (
             <QuotationTrendChart
               data={quotationData.data}
               lastUpdated={quotationData.lastUpdated}
@@ -225,7 +242,7 @@ export default function SharePage() {
             />
           )}
 
-          {permissions.canViewInspection && inspectionData && (
+          {permissions.canViewInspection && canAccess("inspection") && inspectionData && (
             <InspectionChart
               summary={inspectionData.summary}
               issues={inspectionData.issues}
@@ -235,17 +252,18 @@ export default function SharePage() {
           )}
         </div>
 
-        {permissions.canViewVehicles && vehicleData && (
+        {permissions.canViewVehicles && canAccess("vehicles") && vehicleData && (
           <div className="mb-8">
             <VehicleTable
               data={vehicleData.data}
               lastUpdated={vehicleData.lastUpdated}
               canViewParts={permissions.canViewParts}
+              canViewInsurance={permissions.canViewInsurance && canAccess("insurance")}
             />
           </div>
         )}
 
-        {permissions.canViewDiagnosis && diagnosisData && (
+        {permissions.canViewDiagnosis && canAccess("diagnosis") && diagnosisData && (
           <DiagnosisChart
             abnormalItems={diagnosisData.abnormalItems}
             trend={diagnosisData.trend}
@@ -254,11 +272,12 @@ export default function SharePage() {
         )}
 
         {/* No Permission */}
-        {!permissions.canViewOverview &&
-          !permissions.canViewQuotation &&
-          !permissions.canViewInspection &&
-          !permissions.canViewVehicles &&
-          !permissions.canViewDiagnosis && (
+        {((!permissions.canViewOverview || !canAccess("overview")) &&
+          (!permissions.canViewQuotation || !canAccess("quotation")) &&
+          (!permissions.canViewInspection || !canAccess("inspection")) &&
+          (!permissions.canViewVehicles || !canAccess("vehicles")) &&
+          (!permissions.canViewInsurance || !canAccess("insurance")) &&
+          (!permissions.canViewDiagnosis || !canAccess("diagnosis"))) && (
             <div className="text-center py-24">
               <div className="w-16 h-16 rounded-2xl bg-slate-800/50 flex items-center justify-center mx-auto mb-4">
                 <AlertTriangle className="w-8 h-8 text-slate-500" />

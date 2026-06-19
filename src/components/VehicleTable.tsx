@@ -9,9 +9,10 @@ import {
   Wrench,
   DollarSign,
   Calendar,
+  Shield,
 } from "lucide-react";
 import { ChartCard } from "./ChartCard";
-import { VehicleRecord, VehiclePart } from "@/types";
+import { VehicleRecord, VehiclePart, InsuranceDoc } from "@/types";
 import { formatCurrency, formatNumber, formatDate } from "@/utils/format";
 import clsx from "clsx";
 
@@ -19,6 +20,7 @@ interface VehicleTableProps {
   data: VehicleRecord[];
   lastUpdated: string;
   canViewParts: boolean;
+  canViewInsurance?: boolean;
   onRefresh?: () => void;
 }
 
@@ -26,6 +28,7 @@ export function VehicleTable({
   data,
   lastUpdated,
   canViewParts,
+  canViewInsurance = false,
   onRefresh,
 }: VehicleTableProps) {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -89,6 +92,11 @@ export function VehicleTable({
               <th className="text-right py-3 px-4 text-xs font-medium text-slate-400 uppercase tracking-wider">
                 累计金额
               </th>
+              {canViewInsurance && (
+                <th className="text-center py-3 px-4 text-xs font-medium text-slate-400 uppercase tracking-wider">
+                  保险理赔
+                </th>
+              )}
               {canViewParts && (
                 <th className="text-center py-3 px-4 text-xs font-medium text-slate-400 uppercase tracking-wider">
                   配件明细
@@ -105,7 +113,7 @@ export function VehicleTable({
                     "border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer",
                     index % 2 === 0 ? "bg-transparent" : "bg-white/[0.02]"
                   )}
-                  onClick={() => canViewParts && toggleRow(vehicle.id)}
+                  onClick={() => (canViewParts || canViewInsurance) && toggleRow(vehicle.id)}
                 >
                   <td className="py-4 px-4">
                     <div className="flex items-center gap-3">
@@ -135,7 +143,19 @@ export function VehicleTable({
                   <td className="py-4 px-4 text-right font-mono text-slate-200">
                     {formatCurrency(vehicle.totalAmount)}
                   </td>
-                  {canViewParts && (
+                  {canViewInsurance && (
+                    <td className="py-4 px-4 text-center">
+                      {vehicle.insuranceDocs && vehicle.insuranceDocs.length > 0 ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400">
+                          <Shield className="w-3 h-3 mr-1" />
+                          {vehicle.insuranceDocs.length} 笔
+                        </span>
+                      ) : (
+                        <span className="text-slate-500 text-xs">-</span>
+                      )}
+                    </td>
+                  )}
+                  {(canViewParts || canViewInsurance) && (
                     <td className="py-4 px-4 text-center">
                       <button className="text-slate-400 hover:text-industrial-400 transition-colors">
                         {expandedRows.has(vehicle.id) ? (
@@ -147,43 +167,99 @@ export function VehicleTable({
                     </td>
                   )}
                 </tr>
-                {canViewParts && expandedRows.has(vehicle.id) && vehicle.parts && (
+                {(canViewParts || canViewInsurance) && expandedRows.has(vehicle.id) && (
                   <tr className="bg-slate-800/30">
-                    <td colSpan={7} className="py-4 px-8">
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium text-slate-300 mb-3">
-                          配件使用明细
-                        </p>
-                        <div className="grid grid-cols-2 gap-3">
-                          {vehicle.parts.map((part) => (
-                            <div
-                              key={part.partId}
-                              className="flex items-center justify-between p-3 rounded-lg bg-slate-700/30 border border-white/5"
-                            >
-                              <div>
-                                <p className="text-sm text-slate-200">
-                                  {part.partName}
-                                </p>
-                                <p className="text-xs text-slate-500 mt-0.5">
-                                  {part.usedDate}
-                                </p>
-                              </div>
-                              <div className="text-right">
-                                <p className="text-sm text-slate-200">
-                                  ×{part.quantity}
-                                </p>
-                                <p className="text-xs text-slate-400">
-                                  {formatCurrency(part.unitPrice)}/件
-                                </p>
-                              </div>
-                            </div>
-                          ))}
-                          {vehicle.parts.length === 0 && (
-                            <p className="col-span-2 text-sm text-slate-500 text-center py-4">
-                              暂无配件使用记录
+                    <td colSpan={canViewParts && canViewInsurance ? 8 : canViewParts || canViewInsurance ? 7 : 6} className="py-4 px-8">
+                      <div className="space-y-6">
+                        {canViewInsurance && vehicle.insuranceDocs && (
+                          <div>
+                            <p className="text-sm font-medium text-slate-300 mb-3 flex items-center gap-2">
+                              <Shield className="w-4 h-4 text-emerald-400" />
+                              保险理赔记录
                             </p>
-                          )}
-                        </div>
+                            {vehicle.insuranceDocs.length > 0 ? (
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                {vehicle.insuranceDocs.map((doc) => (
+                                  <div
+                                    key={doc.id}
+                                    className="p-3 rounded-lg bg-slate-700/30 border border-white/5"
+                                  >
+                                    <div className="flex items-start justify-between mb-2">
+                                      <div>
+                                        <p className="text-sm font-medium text-slate-200">
+                                          {doc.company}
+                                        </p>
+                                        <p className="text-xs text-slate-500">
+                                          保单号: {doc.policyNumber}
+                                        </p>
+                                      </div>
+                                      <span className={clsx(
+                                        "text-xs px-2 py-0.5 rounded-full",
+                                        doc.claimStatus === "settled" ? "bg-emerald-500/10 text-emerald-400" :
+                                        doc.claimStatus === "approved" ? "bg-blue-500/10 text-blue-400" :
+                                        "bg-amber-500/10 text-amber-400"
+                                      )}>
+                                        {doc.claimStatus === "settled" ? "已结算" :
+                                         doc.claimStatus === "approved" ? "已批准" : "待处理"}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-xs">
+                                      <span className="text-slate-400">
+                                        理赔金额: <span className="text-slate-200 font-mono">{formatCurrency(doc.claimAmount)}</span>
+                                      </span>
+                                      <span className="text-slate-500">
+                                        {doc.filedDate}
+                                      </span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-sm text-slate-500 text-center py-4">
+                                暂无保险理赔记录
+                              </p>
+                            )}
+                          </div>
+                        )}
+
+                        {canViewParts && vehicle.parts && (
+                          <div>
+                            <p className="text-sm font-medium text-slate-300 mb-3 flex items-center gap-2">
+                              <Wrench className="w-4 h-4 text-industrial-400" />
+                              配件使用明细
+                            </p>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              {vehicle.parts.map((part) => (
+                                <div
+                                  key={part.partId}
+                                  className="flex items-center justify-between p-3 rounded-lg bg-slate-700/30 border border-white/5"
+                                >
+                                  <div>
+                                    <p className="text-sm text-slate-200">
+                                      {part.partName}
+                                    </p>
+                                    <p className="text-xs text-slate-500 mt-0.5">
+                                      {part.usedDate}
+                                    </p>
+                                  </div>
+                                  <div className="text-right">
+                                    <p className="text-sm text-slate-200">
+                                      ×{part.quantity}
+                                    </p>
+                                    <p className="text-xs text-slate-400">
+                                      {formatCurrency(part.unitPrice)}/件
+                                    </p>
+                                  </div>
+                                </div>
+                              ))}
+                              {vehicle.parts.length === 0 && (
+                                <p className="col-span-2 text-sm text-slate-500 text-center py-4">
+                                  暂无配件使用记录
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </td>
                   </tr>

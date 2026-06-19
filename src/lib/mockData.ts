@@ -105,13 +105,16 @@ export async function getVehicleRecords(
         {
           partId: "p001",
           partName: "前刹车片",
+          partCode: "PC-001",
           quantity: 4,
           unitPrice: 380,
+          subtotal: 1520,
           usedDate: "2024-06-15",
         },
         {
           partId: "p002",
           partName: "机油滤清器",
+          partCode: "PC-002",
           quantity: 1,
           unitPrice: 120,
           usedDate: "2024-06-15",
@@ -230,7 +233,7 @@ export async function getVehicleRecords(
   ];
 
   return {
-    data: vehicles,
+    data: vehicles as any,
     total: 56,
     lastUpdated: new Date().toISOString(),
   };

@@ -210,6 +210,7 @@ export default function ReportPage() {
               data={vehicleData.data}
               lastUpdated={vehicleData.lastUpdated}
               canViewParts={permissions.canViewParts}
+              canViewInsurance={permissions.canViewInsurance}
               onRefresh={fetchAllData}
             />
           </div>

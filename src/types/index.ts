@@ -47,9 +47,22 @@ export interface InspectionResponse {
 export interface VehiclePart {
   partId: string;
   partName: string;
+  partCode: string;
   quantity: number;
   unitPrice: number;
+  subtotal: number;
   usedDate: string;
+}
+
+export interface InsuranceDoc {
+  id: string;
+  orderId: string;
+  company: string;
+  policyNumber: string;
+  claimAmount: number;
+  claimStatus: string;
+  filedDate: string;
+  settledDate?: string;
 }
 
 export interface VehicleRecord {
@@ -61,6 +74,34 @@ export interface VehicleRecord {
   serviceCount: number;
   totalAmount: number;
   parts?: VehiclePart[];
+  insuranceDocs?: InsuranceDoc[];
+}
+
+export interface InsuranceSummary {
+  totalClaims: number;
+  totalClaimAmount: number;
+  pendingCount: number;
+  approvedCount: number;
+  settledCount: number;
+  avgClaimAmount: number;
+}
+
+export interface InsuranceClaimItem {
+  id: string;
+  plateNumber: string;
+  vehicleModel: string;
+  company: string;
+  policyNumber: string;
+  claimAmount: number;
+  claimStatus: string;
+  filedDate: string;
+  settledDate?: string;
+}
+
+export interface InsuranceResponse {
+  summary: InsuranceSummary;
+  claims: InsuranceClaimItem[];
+  lastUpdated: string;
 }
 
 export interface VehicleResponse {
@@ -114,6 +155,7 @@ export interface RolePermissions {
   canViewVehicles: boolean;
   canViewAllVehicles: boolean;
   canViewParts: boolean;
+  canViewInsurance: boolean;
   canViewDiagnosis: boolean;
   canExport: boolean;
   canExportFull: boolean;
@@ -138,6 +180,7 @@ export function getRolePermissions(role: UserRole): RolePermissions {
       canViewVehicles: true,
       canViewAllVehicles: true,
       canViewParts: true,
+      canViewInsurance: true,
       canViewDiagnosis: true,
       canExport: true,
       canExportFull: true,
@@ -151,6 +194,7 @@ export function getRolePermissions(role: UserRole): RolePermissions {
       canViewVehicles: true,
       canViewAllVehicles: true,
       canViewParts: false,
+      canViewInsurance: true,
       canViewDiagnosis: true,
       canExport: true,
       canExportFull: false,
@@ -164,6 +208,7 @@ export function getRolePermissions(role: UserRole): RolePermissions {
       canViewVehicles: true,
       canViewAllVehicles: false,
       canViewParts: false,
+      canViewInsurance: false,
       canViewDiagnosis: true,
       canExport: false,
       canExportFull: false,
@@ -177,6 +222,7 @@ export function getRolePermissions(role: UserRole): RolePermissions {
       canViewVehicles: true,
       canViewAllVehicles: true,
       canViewParts: true,
+      canViewInsurance: false,
       canViewDiagnosis: false,
       canExport: true,
       canExportFull: false,
@@ -190,6 +236,7 @@ export function getRolePermissions(role: UserRole): RolePermissions {
       canViewVehicles: false,
       canViewAllVehicles: false,
       canViewParts: false,
+      canViewInsurance: false,
       canViewDiagnosis: false,
       canExport: false,
       canExportFull: false,

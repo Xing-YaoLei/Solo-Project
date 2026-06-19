@@ -241,6 +241,7 @@ export async function getVehicleRecordsFromDB(page: number = 1, pageSize: number
       workOrders: {
         include: {
           parts: true,
+          insuranceDoc: true,
         },
         orderBy: {
           createdAt: "desc",
@@ -275,6 +276,19 @@ export async function getVehicleRecordsFromDB(page: number = 1, pageSize: number
       }))
     );
 
+    const insuranceDocs = vehicle.workOrders
+      .filter((order: any) => order.insuranceDoc)
+      .map((order: any) => ({
+        id: order.insuranceDoc.id,
+        orderId: order.insuranceDoc.orderId,
+        company: order.insuranceDoc.company,
+        policyNumber: order.insuranceDoc.policyNumber,
+        claimAmount: Number(order.insuranceDoc.claimAmount.toFixed(2)),
+        claimStatus: order.insuranceDoc.claimStatus,
+        filedDate: order.insuranceDoc.filedAt ? formatDate(order.insuranceDoc.filedAt) : "",
+        settledDate: order.insuranceDoc.settledAt ? formatDate(order.insuranceDoc.settledAt) : undefined,
+      }));
+
     return {
       id: vehicle.id,
       plateNumber: vehicle.plateNumber,
@@ -287,6 +301,7 @@ export async function getVehicleRecordsFromDB(page: number = 1, pageSize: number
       serviceCount: vehicle.workOrders.length,
       totalAmount: Number(totalAmount.toFixed(2)),
       parts,
+      insuranceDocs,
     };
   });
 
@@ -431,5 +446,54 @@ export async function validateShareTokenInDB(token: string) {
     role: shareLink.role,
     scope: shareLink.scope,
     expiresAt: shareLink.expiresAt?.toISOString(),
+  };
+}
+
+export async function getInsuranceDataFromDB() {
+  const insuranceDocs = await prisma.insuranceDoc.findMany({
+    include: {
+      workOrder: {
+        include: {
+          vehicle: true,
+        },
+      },
+    },
+    orderBy: {
+      filedAt: "desc",
+    },
+  });
+
+  const totalClaims = insuranceDocs.length;
+  const totalClaimAmount = insuranceDocs.reduce(
+    (sum, doc) => sum.add(doc.claimAmount),
+    new Decimal(0)
+  );
+  const pendingCount = insuranceDocs.filter((d) => d.claimStatus === "pending").length;
+  const approvedCount = insuranceDocs.filter((d) => d.claimStatus === "approved").length;
+  const settledCount = insuranceDocs.filter((d) => d.claimStatus === "settled").length;
+
+  const claims = insuranceDocs.map((doc) => ({
+    id: doc.id,
+    plateNumber: doc.workOrder?.vehicle?.plateNumber || "",
+    vehicleModel: doc.workOrder?.vehicle?.model || "",
+    company: doc.company,
+    policyNumber: doc.policyNumber,
+    claimAmount: Number(doc.claimAmount.toFixed(2)),
+    claimStatus: doc.claimStatus,
+    filedDate: doc.filedAt ? formatDate(doc.filedAt) : "",
+    settledDate: doc.settledAt ? formatDate(doc.settledAt) : undefined,
+  }));
+
+  return {
+    summary: {
+      totalClaims,
+      totalClaimAmount: Number(totalClaimAmount.toFixed(2)),
+      pendingCount,
+      approvedCount,
+      settledCount,
+      avgClaimAmount: totalClaims > 0 ? Number(totalClaimAmount.div(totalClaims).toFixed(2)) : 0,
+    },
+    claims,
+    lastUpdated: new Date().toISOString(),
   };
 }
