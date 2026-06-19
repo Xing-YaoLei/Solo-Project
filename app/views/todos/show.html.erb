@@ -41,8 +41,8 @@
             <div>
               <dt class="text-sm text-gray-500">优先级</dt>
               <dd class="mt-1">
-                <span class="px-2 py-1 text-xs rounded-full <%= priority_class(@todo.priority) %>">
-                  <%= priority_text(@todo.priority) %>
+                <span class="px-2 py-1 text-xs rounded-full <%= status_bg_class(@todo.priority == 'urgent' ? 'reported' : 'pending') %>">
+                  <span class="<%= priority_text_class(@todo.priority) %>"><%= priority_text(@todo.priority) %></span>
                 </span>
               </dd>
             </div>

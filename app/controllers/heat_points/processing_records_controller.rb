@@ -12,10 +12,11 @@ class HeatPoints::ProcessingRecordsController < ApplicationController
   def create
     @processing_record = @heat_point.processing_records.new(processing_record_params)
     @processing_record.handler = current_user
+    @processing_record.previous_status = @heat_point.status if @processing_record.status_change
 
     if @processing_record.save
-      if params[:attachments].present?
-        params[:attachments].each do |attachment|
+      if params[:processing_record]&.[](:attachments).present?
+        params[:processing_record][:attachments].each do |attachment|
           @processing_record.attachments.attach(attachment)
         end
       end
@@ -32,6 +33,6 @@ class HeatPoints::ProcessingRecordsController < ApplicationController
   end
 
   def processing_record_params
-    params.require(:processing_record).permit(:action_type, :status, :notes)
+    params.require(:processing_record).permit(:action_type, :status, :notes, attachments: [])
   end
 end

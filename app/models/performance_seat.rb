@@ -11,4 +11,12 @@ class PerformanceSeat < ApplicationRecord
   scope :by_row, ->(row) { where(row_number: row) if row.present? }
 
   monetize :price_cents, allow_nil: true
+
+  def self.ransackable_attributes(auth_object = nil)
+    %w[created_at id performance_id price_cents row_number section seat_number status updated_at]
+  end
+
+  def self.ransackable_associations(auth_object = nil)
+    %w[performance]
+  end
 end

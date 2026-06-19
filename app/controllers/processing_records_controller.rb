@@ -26,8 +26,9 @@ class ProcessingRecordsController < ApplicationController
   end
 
   def add_attachment
-    if params[:attachments].present?
-      params[:attachments].each do |attachment|
+    attachments = params[:attachments] || params.dig(:processing_record, :attachments)
+    if attachments.present?
+      attachments.each do |attachment|
         @processing_record.attachments.attach(attachment)
       end
       redirect_to @processing_record, notice: "附件上传成功。"

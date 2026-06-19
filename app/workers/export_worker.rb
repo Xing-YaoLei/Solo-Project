@@ -47,8 +47,6 @@ class ExportWorker
   end
 
   def create_excel_file(export, data)
-    require "axlsx"
-
     p = Axlsx::Package.new
     wb = p.workbook
 
@@ -56,13 +54,14 @@ class ExportWorker
       if data.any?
         sheet.add_row data.first.attributes.keys
         data.each do |record|
-          sheet.add_row record.attributes.values
+          sheet.add_row record.attributes.values.map { |v| v.is_a?(Money) ? v.to_f : v }
         end
       end
     end
 
     file_path = Rails.root.join("tmp", "export_#{export.id}.xlsx")
-    p.serialize(file_path)
-    file_path
+    p.serialize(file_path.to_s)
+    file_path.to_s
   end
+end
 end

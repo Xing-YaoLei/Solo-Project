@@ -20,10 +20,10 @@
         <span class="w-20 text-gray-500">截止时间：</span>
         <span><%= @todo.due_date&.strftime("%Y-%m-%d %H:%M") || "-" %></span>
       </div>
-      <% if @todo.todoable_type.present? %>
+      <% if @todo.source.present? %>
         <div class="flex items-center text-gray-600">
           <span class="w-20 text-gray-500">关联对象：</span>
-          <span><%= @todo.todoable_type.constantize.model_name.human %> #<%= @todo.todoable_id %></span>
+          <span><%= link_to "#{@todo.source_type} ##{@todo.source_id}", @todo.source, class: "text-indigo-600 hover:text-indigo-900" %></span>
         </div>
       <% end %>
     </div>

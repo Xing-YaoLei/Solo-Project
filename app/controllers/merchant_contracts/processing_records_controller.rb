@@ -12,8 +12,14 @@ class MerchantContracts::ProcessingRecordsController < ApplicationController
   def create
     @processing_record = @merchant_contract.processing_records.new(processing_record_params)
     @processing_record.handler = current_user
+    @processing_record.previous_status = @merchant_contract.status if @processing_record.status_change
 
     if @processing_record.save
+      if params[:processing_record]&.[](:attachments).present?
+        params[:processing_record][:attachments].each do |attachment|
+          @processing_record.attachments.attach(attachment)
+        end
+      end
       redirect_to @merchant_contract, notice: "处理记录创建成功。"
     else
       render :new, status: :unprocessable_entity
@@ -27,6 +33,6 @@ class MerchantContracts::ProcessingRecordsController < ApplicationController
   end
 
   def processing_record_params
-    params.require(:processing_record).permit(:action_type, :status, :notes)
+    params.require(:processing_record).permit(:action_type, :status, :notes, attachments: [])
   end
 end
