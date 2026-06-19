@@ -159,7 +159,7 @@ func submit_selection() -> Dictionary:
 	
 	var calculated_price = price_result["final_price"]
 	var expected_price = task.expected_price
-	var is_correct = abs(calculated_price - expected_price) < 0.01
+	var is_correct = abs(calculated_price - expected_price) < 0.01 and selected_date.date == task.checkin_date
 	
 	result["success"] = true
 	result["is_correct"] = is_correct
@@ -184,7 +184,10 @@ func submit_selection() -> Dictionary:
 			result["message"] += " 连击x%d！" % combo_count
 	else:
 		combo_count = 0
-		result["message"] = "错误！正确价格：¥%.2f，你的计算：¥%.2f" % [expected_price, calculated_price]
+		if selected_date.date != task.checkin_date:
+			result["message"] = "错误！日期不正确，任务日期：%s，你选择的：%s" % [task.checkin_date, selected_date.date]
+		else:
+			result["message"] = "错误！正确价格：¥%.2f，你的计算：¥%.2f" % [expected_price, calculated_price]
 	
 	var record = GameData.VerificationRecord.new(
 		"rec_%d_%d" % [Time.get_unix_time_from_system(), current_task_index],

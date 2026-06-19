@@ -516,7 +516,7 @@ func _get_first_day_of_month(year: int, month: int) -> int:
 	var k = y % 100
 	var j = y / 100
 	var h = (1 + int(13 * (m + 1) / 5) + k + int(k / 4) + int(j / 4) + 5 * j) % 7
-	return (h + 5) % 7
+	return (h + 6) % 7
 
 func _get_date_status(date_str: String, month: int, day_of_week: int) -> int:
 	if month >= 7 and month <= 8:
