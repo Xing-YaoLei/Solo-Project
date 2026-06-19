@@ -31,10 +31,7 @@ public class BookingService : IBookingService
 
     public async Task<PagedResult<BookingRecordDto>> GetPagedBookingsAsync(BookingQueryDto query, CancellationToken cancellationToken = default)
     {
-        var queryable = _unitOfWork.TicketBookings as IQueryable<TicketBooking>;
-
-        if (queryable is null)
-            return new PagedResult<BookingRecordDto>();
+        IQueryable<TicketBooking> queryable = _unitOfWork.Query<TicketBooking>();
 
         queryable = queryable
             .Include(b => b.ScenicSpot)
@@ -97,7 +94,7 @@ public class BookingService : IBookingService
 
     public async Task<BookingRecordDto?> GetBookingByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var booking = await (_unitOfWork.TicketBookings as IQueryable<TicketBooking>)!
+        var booking = await _unitOfWork.Query<TicketBooking>()
             .Include(b => b.ScenicSpot)
             .Include(b => b.TimeSlot)
             .Include(b => b.TicketType)
@@ -136,7 +133,7 @@ public class BookingService : IBookingService
             }
             else if (!string.IsNullOrWhiteSpace(dto.VisitorIdCard))
             {
-                var existingVisitor = (_unitOfWork.Visitors as IQueryable<Visitor>)!
+                var existingVisitor = _unitOfWork.Query<Visitor>()
                     .FirstOrDefault(v => v.IdCardNumber == dto.VisitorIdCard);
                 if (existingVisitor != null)
                 {
@@ -271,7 +268,7 @@ public class BookingService : IBookingService
             {
                 var spotId = dto.NewScenicSpotId.Value;
                 var slotDate = dto.NewSlotDate.Value;
-                var slots = (_unitOfWork.TimeSlots as IQueryable<TimeSlot>)!
+                var slots = _unitOfWork.Query<TimeSlot>()
                     .Where(t => t.ScenicSpotId == spotId && t.Date == slotDate && t.IsActive && !t.IsFull)
                     .OrderBy(t => t.StartTime)
                     .ToList();

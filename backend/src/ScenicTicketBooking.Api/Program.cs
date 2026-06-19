@@ -1,10 +1,12 @@
 using Hangfire;
 using Hangfire.SqlServer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using OfficeOpenXml;
 using ScenicTicketBooking.Application;
 using ScenicTicketBooking.Application.Jobs;
 using ScenicTicketBooking.Infrastructure;
+using ScenicTicketBooking.Infrastructure.Data;
 
 ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
 
@@ -42,19 +44,23 @@ builder.Services.AddCors(options =>
 builder.Services.AddInfrastructureServices(builder.Configuration);
 builder.Services.AddApplicationServices();
 
+var hangfireCs = builder.Configuration.GetConnectionString("HangfireConnection")
+                 ?? builder.Configuration.GetConnectionString("DefaultConnection");
+
 builder.Services.AddHangfire(configuration => configuration
     .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
     .UseSimpleAssemblyNameTypeSerializer()
     .UseRecommendedSerializerSettings()
-    .UseSqlServerStorage(builder.Configuration.GetConnectionString("HangfireConnection")
-        ?? builder.Configuration.GetConnectionString("DefaultConnection"), new SqlServerStorageOptions
-        {
-            CommandBatchMaxTimeout = TimeSpan.FromMinutes(5),
-            SlidingInvisibilityTimeout = TimeSpan.FromMinutes(5),
-            QueuePollInterval = TimeSpan.Zero,
-            UseRecommendedIsolationLevel = true,
-            DisableGlobalLocks = true
-        }));
+    .UseSqlServerStorage(hangfireCs, new SqlServerStorageOptions
+    {
+        CommandBatchMaxTimeout = TimeSpan.FromMinutes(5),
+        SlidingInvisibilityTimeout = TimeSpan.FromMinutes(5),
+        QueuePollInterval = TimeSpan.Zero,
+        UseRecommendedIsolationLevel = true,
+        DisableGlobalLocks = true,
+        PrepareSchemaIfNecessary = true,
+        TryAutoDetectSchemaDependentOptions = true
+    }));
 
 builder.Services.AddHangfireServer(options =>
 {
@@ -63,6 +69,47 @@ builder.Services.AddHangfireServer(options =>
 });
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var dbReady = false;
+    try
+    {
+        dbReady = await db.Database.CanConnectAsync();
+        if (!dbReady)
+        {
+            logger.LogWarning("无法连接到 SQL Server，将尝试自动创建数据库...");
+            dbReady = await db.Database.EnsureCreatedAsync();
+        }
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "数据库连接/自动创建失败。请检查 appsettings.json 中 DefaultConnection 连接字符串，" +
+                           "确保 LocalDB / SQL Server 实例可用。当前连接：{Connection}",
+            builder.Configuration.GetConnectionString("DefaultConnection"));
+        dbReady = false;
+    }
+
+    if (dbReady)
+    {
+        try
+        {
+            await SeedDataInitializer.EnsureDatabaseAndSeedAsync(db);
+            logger.LogInformation("数据库种子数据初始化完成。");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "数据库种子数据初始化失败：{Error}", ex.Message);
+        }
+    }
+    else
+    {
+        logger.LogCritical("数据库不可用。API 将正常启动，但依赖数据库的接口会返回异常。" +
+                           "建议使用 Visual Studio / SSMS 启动 LocalDB 后重试。");
+    }
+}
 
 if (app.Environment.IsDevelopment())
 {
@@ -94,7 +141,7 @@ try
 }
 catch (Exception ex)
 {
-    app.Logger.LogWarning(ex, "Hangfire 定时任务初始化失败，稍后将重试");
+    app.Logger.LogWarning(ex, "Hangfire 定时任务初始化失败，稍后将由仪表板自动重试");
 }
 
 app.Run();

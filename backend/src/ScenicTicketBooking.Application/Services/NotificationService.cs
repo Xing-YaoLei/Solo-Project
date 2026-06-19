@@ -60,7 +60,7 @@ public class NotificationService : INotificationService
         int limit = 50,
         CancellationToken cancellationToken = default)
     {
-        var queryable = (_unitOfWork.Notifications as IQueryable<Notification>)!;
+        var queryable = _unitOfWork.Query<Notification>();
 
         if (!string.IsNullOrWhiteSpace(recipient))
             queryable = queryable.Where(n => n.Recipient == recipient);
@@ -91,7 +91,7 @@ public class NotificationService : INotificationService
 
     public async Task<int> GetUnreadCountAsync(string? recipient = null, CancellationToken cancellationToken = default)
     {
-        var queryable = (_unitOfWork.Notifications as IQueryable<Notification>)!
+        var queryable = _unitOfWork.Query<Notification>()
             .Where(n => !n.IsRead && n.Channel == NotificationChannel.System);
 
         if (!string.IsNullOrWhiteSpace(recipient))
@@ -114,7 +114,7 @@ public class NotificationService : INotificationService
 
     public async Task<bool> MarkAllAsReadAsync(string? recipient = null, CancellationToken cancellationToken = default)
     {
-        var queryable = (_unitOfWork.Notifications as IQueryable<Notification>)!
+        var queryable = _unitOfWork.Query<Notification>()
             .Where(n => !n.IsRead && n.Channel == NotificationChannel.System);
 
         if (!string.IsNullOrWhiteSpace(recipient))
@@ -135,7 +135,7 @@ public class NotificationService : INotificationService
 
     public async Task SendPendingNotificationsAsync(CancellationToken cancellationToken = default)
     {
-        var pendingNotifications = await (_unitOfWork.Notifications as IQueryable<Notification>)!
+        var pendingNotifications = await _unitOfWork.Query<Notification>()
             .Where(n => !n.IsSent && n.Channel != NotificationChannel.System && n.RetryCount < 3)
             .ToListAsync(cancellationToken);
 
@@ -161,7 +161,7 @@ public class NotificationService : INotificationService
 
     public async Task<bool> SendCustomNotificationAsync(SendNotificationDto dto, CancellationToken cancellationToken = default)
     {
-        var reminderLists = await (_unitOfWork.ReminderLists as IQueryable<ReminderList>)!
+        var reminderLists = await _unitOfWork.Query<ReminderList>()
             .Include(r => r.Items)
             .Where(r => dto.ReminderListIds.Contains(r.Id) && r.IsActive)
             .ToListAsync(cancellationToken);

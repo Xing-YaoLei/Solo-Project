@@ -206,10 +206,9 @@ export const notificationApi = {
     api.get('/notifications/unread-count').then((r) => r.data),
 
   markAsRead: (id: string): Promise<void> =>
-    api.post(`/notifications/${id}/mark-read`).then((r) => r.data),
-
-  markAllAsRead: (): Promise<void> =>
-    api.post('/notifications/mark-all-read').then((r) => r.data),
+    api.put(`/notifications/${id}/read`).then((r) => r.data),
+  markAllAsRead: (recipient?: string): Promise<void> =>
+    api.put('/notifications/read-all' + (recipient ? `?recipient=${encodeURIComponent(recipient)}` : '')).then((r) => r.data),
 
   sendCustom: (data: any): Promise<Notification> =>
     api.post('/notifications/send', {

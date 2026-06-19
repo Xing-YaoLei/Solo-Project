@@ -23,7 +23,7 @@ public class MasterDataController : ControllerBase
     [HttpGet("scenicspots")]
     public async Task<ActionResult<IEnumerable<ScenicSpot>>> GetScenicSpots(CancellationToken cancellationToken)
     {
-        var result = await (_unitOfWork.ScenicSpots as IQueryable<ScenicSpot>)!
+        var result = await _unitOfWork.Query<ScenicSpot>()
             .Where(s => s.IsActive)
             .OrderBy(s => s.Name)
             .ToListAsync(cancellationToken);
@@ -79,7 +79,7 @@ public class MasterDataController : ControllerBase
         [FromQuery] DateOnly? endDate,
         CancellationToken cancellationToken)
     {
-        var query = (_unitOfWork.TimeSlots as IQueryable<TimeSlot>)!
+        var query = _unitOfWork.Query<TimeSlot>()
             .Where(t => t.ScenicSpotId == scenicSpotId && t.IsActive);
 
         if (!string.IsNullOrWhiteSpace(date) && DateOnly.TryParse(date, out var d))
@@ -142,7 +142,7 @@ public class MasterDataController : ControllerBase
         [FromQuery] Guid? scenicSpotId,
         CancellationToken cancellationToken)
     {
-        var query = (_unitOfWork.TicketTypes as IQueryable<TicketType>)!
+        var query = _unitOfWork.Query<TicketType>()
             .Where(t => t.IsActive);
         if (scenicSpotId.HasValue)
             query = query.Where(t => t.ScenicSpotId == scenicSpotId.Value);
@@ -179,7 +179,7 @@ public class MasterDataController : ControllerBase
         [FromQuery] int pageSize = 20,
         CancellationToken cancellationToken = default)
     {
-        var query = (_unitOfWork.Visitors as IQueryable<Visitor>)!;
+        var query = _unitOfWork.Query<Visitor>();
         if (!string.IsNullOrWhiteSpace(keyword))
         {
             query = query.Where(v =>
@@ -210,7 +210,7 @@ public class MasterDataController : ControllerBase
         [FromBody] Visitor dto,
         CancellationToken cancellationToken)
     {
-        var existing = await (_unitOfWork.Visitors as IQueryable<Visitor>)!
+        var existing = await _unitOfWork.Query<Visitor>()
             .FirstOrDefaultAsync(v => v.IdCardNumber == dto.IdCardNumber, cancellationToken);
 
         if (existing != null)

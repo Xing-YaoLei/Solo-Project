@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using ScenicTicketBooking.Domain.Entities;
 using ScenicTicketBooking.Domain.Interfaces;
@@ -38,6 +39,8 @@ public class UnitOfWork : IUnitOfWork
         ReminderListItems = new Repository<ReminderListItem>(context);
         ReminderListChangeLogs = new Repository<ReminderListChangeLog>(context);
     }
+
+    public IQueryable<T> Query<T>() where T : class => _context.Set<T>().AsNoTracking();
 
     public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {

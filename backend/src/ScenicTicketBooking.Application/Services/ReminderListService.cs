@@ -27,7 +27,7 @@ public class ReminderListService : IReminderListService
 
     public async Task<IEnumerable<ReminderListDto>> GetAllReminderListsAsync(Guid? scenicSpotId = null, CancellationToken cancellationToken = default)
     {
-        IQueryable<ReminderList> queryable = (_unitOfWork.ReminderLists as IQueryable<ReminderList>)!
+        IQueryable<ReminderList> queryable = _unitOfWork.Query<ReminderList>()
             .Include(r => r.Items)
             .Include(r => r.ScenicSpot);
 
@@ -42,7 +42,7 @@ public class ReminderListService : IReminderListService
 
     public async Task<ReminderListDto?> GetReminderListByIdAsync(Guid id, bool includeChangeLogs = false, CancellationToken cancellationToken = default)
     {
-        IQueryable<ReminderList> queryable = (_unitOfWork.ReminderLists as IQueryable<ReminderList>)!
+        IQueryable<ReminderList> queryable = _unitOfWork.Query<ReminderList>()
             .Include(r => r.Items)
             .Include(r => r.ScenicSpot);
 
@@ -127,7 +127,7 @@ public class ReminderListService : IReminderListService
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
         try
         {
-            var list = await (_unitOfWork.ReminderLists as IQueryable<ReminderList>)!
+            var list = await _unitOfWork.Query<ReminderList>()
                 .Include(r => r.Items)
                 .FirstOrDefaultAsync(r => r.Id == id, cancellationToken)
                 ?? throw new InvalidOperationException($"提醒名单不存在: {id}");
@@ -296,7 +296,7 @@ public class ReminderListService : IReminderListService
 
     public async Task<IEnumerable<ReminderListChangeLogDto>> GetChangeLogsAsync(Guid reminderListId, CancellationToken cancellationToken = default)
     {
-        var logs = await (_unitOfWork.ReminderListChangeLogs as IQueryable<ReminderListChangeLog>)!
+        var logs = await _unitOfWork.Query<ReminderListChangeLog>()
             .Where(l => l.ReminderListId == reminderListId)
             .OrderByDescending(l => l.ChangedAt)
             .Select(l => new

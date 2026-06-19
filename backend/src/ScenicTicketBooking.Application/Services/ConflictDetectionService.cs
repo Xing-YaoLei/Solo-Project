@@ -52,7 +52,7 @@ public class ConflictDetectionService : IConflictDetectionService
             conflicts.Add(conflict);
         }
 
-        var overlapBookings = await (_unitOfWork.TicketBookings as IQueryable<TicketBooking>)!
+        var overlapBookings = await _unitOfWork.Query<TicketBooking>()
             .Include(b => b.Visitor)
             .Include(b => b.TimeSlot)
             .Where(b => b.Id != booking.Id
@@ -84,7 +84,7 @@ public class ConflictDetectionService : IConflictDetectionService
         var dayStart = timeSlot.Date.ToDateTime(TimeOnly.MinValue);
         var dayEnd = timeSlot.Date.ToDateTime(TimeOnly.MaxValue);
 
-        var dayBookings = await (_unitOfWork.TicketBookings as IQueryable<TicketBooking>)!
+        var dayBookings = await _unitOfWork.Query<TicketBooking>()
             .Where(b => b.Id != booking.Id
                 && b.VisitorId == booking.VisitorId
                 && b.TimeSlot.Date == timeSlot.Date
@@ -95,7 +95,7 @@ public class ConflictDetectionService : IConflictDetectionService
         if (scenicSpot != null && scenicSpot.MaxDailyCapacity > 0)
         {
             var totalDayQuantity = dayBookings + booking.Quantity;
-            var dailyBookingsCount = await (_unitOfWork.TicketBookings as IQueryable<TicketBooking>)!
+            var dailyBookingsCount = await _unitOfWork.Query<TicketBooking>()
                 .Where(b => b.ScenicSpotId == booking.ScenicSpotId
                     && b.TimeSlot.Date == timeSlot.Date
                     && b.Status != BookingStatus.Cancelled)
@@ -168,7 +168,7 @@ public class ConflictDetectionService : IConflictDetectionService
 
         if (timeSlot != null)
         {
-            var overlapBookings = await (_unitOfWork.TicketBookings as IQueryable<TicketBooking>)!
+            var overlapBookings = await _unitOfWork.Query<TicketBooking>()
                 .Include(b => b.TimeSlot)
                 .Where(b => b.VisitorId == visitorId
                     && b.TimeSlot.Date == timeSlot.Date
@@ -194,7 +194,7 @@ public class ConflictDetectionService : IConflictDetectionService
 
     public async Task<IEnumerable<ConflictLogDto>> GetActiveConflictsAsync(Guid? scenicSpotId = null, CancellationToken cancellationToken = default)
     {
-        var queryable = (_unitOfWork.ConflictLogs as IQueryable<ConflictLog>)!
+        var queryable = _unitOfWork.Query<ConflictLog>()
             .Include(c => c.Booking)
             .Include(c => c.RelatedBooking)
             .Include(c => c.TimeSlot)
@@ -211,7 +211,7 @@ public class ConflictDetectionService : IConflictDetectionService
 
     public async Task<ConflictLogDto?> GetConflictByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var conflict = await (_unitOfWork.ConflictLogs as IQueryable<ConflictLog>)!
+        var conflict = await _unitOfWork.Query<ConflictLog>()
             .Include(c => c.Booking)
             .Include(c => c.RelatedBooking)
             .Include(c => c.TimeSlot)
@@ -246,7 +246,7 @@ public class ConflictDetectionService : IConflictDetectionService
     public async Task RunScheduledConflictDetectionAsync(CancellationToken cancellationToken = default)
     {
         var today = DateOnly.FromDateTime(DateTime.Today);
-        var bookingsToCheck = await (_unitOfWork.TicketBookings as IQueryable<TicketBooking>)!
+        var bookingsToCheck = await _unitOfWork.Query<TicketBooking>()
             .Include(b => b.TimeSlot)
             .Include(b => b.Visitor)
             .Where(b => (b.Status == BookingStatus.Confirmed || b.Status == BookingStatus.Rescheduled)
@@ -269,7 +269,7 @@ public class ConflictDetectionService : IConflictDetectionService
 
     private async Task NotifyConflictToResponsiblePersonsAsync(ConflictLog conflict, ScenicSpot? scenicSpot, CancellationToken cancellationToken)
     {
-        var reminderLists = await (_unitOfWork.ReminderLists as IQueryable<ReminderList>)!
+        var reminderLists = await _unitOfWork.Query<ReminderList>()
             .Include(r => r.Items)
             .Where(r => r.IsActive
                 && (!r.ScenicSpotId.HasValue || (scenicSpot != null && r.ScenicSpotId == scenicSpot.Id)))

@@ -43,7 +43,7 @@ public class StatisticsService : IStatisticsService
             Month = query.Month
         };
 
-        IQueryable<TicketBooking> bookingQuery = (_unitOfWork.TicketBookings as IQueryable<TicketBooking>)!
+        IQueryable<TicketBooking> bookingQuery = _unitOfWork.Query<TicketBooking>()
             .Include(b => b.ScenicSpot)
             .Include(b => b.TimeSlot)
             .Include(b => b.TicketType)
@@ -64,7 +64,7 @@ public class StatisticsService : IStatisticsService
         result.TotalVisitors = bookings.Sum(b => b.Quantity);
         result.TotalRevenue = bookings.Where(b => b.Status != BookingStatus.Cancelled).Sum(b => b.TotalAmount);
 
-        IQueryable<ConflictLog> conflictQuery = (_unitOfWork.ConflictLogs as IQueryable<ConflictLog>)!;
+        IQueryable<ConflictLog> conflictQuery = _unitOfWork.Query<ConflictLog>();
 
         if (query.ScenicSpotId.HasValue)
             conflictQuery = conflictQuery
@@ -127,7 +127,7 @@ public class ExportService : IExportService
         string operatorName,
         CancellationToken cancellationToken = default)
     {
-        IQueryable<TicketBooking> bookingQuery = (_unitOfWork.TicketBookings as IQueryable<TicketBooking>)!
+        IQueryable<TicketBooking> bookingQuery = _unitOfWork.Query<TicketBooking>()
             .Include(b => b.ScenicSpot)
             .Include(b => b.TimeSlot)
             .Include(b => b.TicketType)

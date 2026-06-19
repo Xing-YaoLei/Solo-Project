@@ -16,6 +16,8 @@ public interface IUnitOfWork : IDisposable
     IRepository<ReminderListItem> ReminderListItems { get; }
     IRepository<ReminderListChangeLog> ReminderListChangeLogs { get; }
 
+    IQueryable<T> Query<T>() where T : class;
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
     Task BeginTransactionAsync(CancellationToken cancellationToken = default);
     Task CommitTransactionAsync(CancellationToken cancellationToken = default);
