@@ -13,6 +13,7 @@ class HandlingRecordResponse(BaseModel):
     id: uuid.UUID
     complaint_id: uuid.UUID
     handler_id: Optional[uuid.UUID] = None
+    handler_name: Optional[str] = None
     action: str
     description: str
     created_at: datetime
@@ -28,11 +29,11 @@ class ComplaintCreate(BaseModel):
     complainant_name: str
     complainant_contact: str
     homestay_name: str
-    room_number: str
+    room_number: Optional[str] = ""
     check_in_date: date
     check_out_date: Optional[date] = None
     handler_id: Optional[uuid.UUID] = None
-    tags: list[str]
+    tags: list[str] = []
 
 
 class ComplaintUpdate(BaseModel):

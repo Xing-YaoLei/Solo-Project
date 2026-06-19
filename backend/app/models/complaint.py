@@ -19,7 +19,7 @@ class Complaint(Base):
     complainant_name = Column(String(100), nullable=False)
     complainant_contact = Column(String(100), nullable=False)
     homestay_name = Column(String(200), nullable=False)
-    room_number = Column(String(50), nullable=False)
+    room_number = Column(String(50), nullable=True)
     check_in_date = Column(Date, nullable=False)
     check_out_date = Column(Date, nullable=True)
     handler_id = Column(UUID(as_uuid=True), ForeignKey("handler.id"), nullable=True)

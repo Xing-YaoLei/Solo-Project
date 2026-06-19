@@ -19,6 +19,7 @@ from app.schemas.complaint import (
     ComplaintStatusUpdate,
     ComplaintUpdate,
     HandlingRecordCreate,
+    HandlingRecordResponse,
     TagCreate,
 )
 
@@ -32,6 +33,28 @@ async def _build_response(complaint: Complaint, db: AsyncSession) -> ComplaintRe
         handler = handler_result.scalar_one_or_none()
         if handler:
             handler_name = handler.name
+
+    handler_ids = {hr.handler_id for hr in complaint.handling_records if hr.handler_id}
+    handler_name_map: dict[str, str] = {}
+    if handler_ids:
+        result = await db.execute(select(Handler).where(Handler.id.in_(handler_ids)))
+        for h in result.scalars().all():
+            handler_name_map[str(h.id)] = h.name
+
+    handling_records = []
+    for hr in complaint.handling_records:
+        handling_records.append(
+            HandlingRecordResponse(
+                id=hr.id,
+                complaint_id=hr.complaint_id,
+                handler_id=hr.handler_id,
+                handler_name=handler_name_map.get(str(hr.handler_id)) if hr.handler_id else None,
+                action=hr.action,
+                description=hr.description,
+                created_at=hr.created_at,
+            )
+        )
+
     return ComplaintResponse(
         id=complaint.id,
         title=complaint.title,
@@ -53,7 +76,7 @@ async def _build_response(complaint: Complaint, db: AsyncSession) -> ComplaintRe
         tags=[t.tag for t in complaint.tags],
         visit_results=complaint.visit_results,
         responsibilities=complaint.responsibilities,
-        handling_records=complaint.handling_records,
+        handling_records=handling_records,
         reviews=complaint.reviews,
     )
 
@@ -123,7 +146,7 @@ async def create_complaint(
         complainant_name=data.complainant_name,
         complainant_contact=data.complainant_contact,
         homestay_name=data.homestay_name,
-        room_number=data.room_number,
+        room_number=data.room_number or None,
         check_in_date=data.check_in_date,
         check_out_date=data.check_out_date,
         handler_id=data.handler_id,

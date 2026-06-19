@@ -40,7 +40,7 @@ def upgrade() -> None:
         sa.Column('complainant_name', sa.String(length=100), nullable=False),
         sa.Column('complainant_contact', sa.String(length=100), nullable=False),
         sa.Column('homestay_name', sa.String(length=200), nullable=False),
-        sa.Column('room_number', sa.String(length=50), nullable=False),
+        sa.Column('room_number', sa.String(length=50), nullable=True),
         sa.Column('check_in_date', sa.Date(), nullable=False),
         sa.Column('check_out_date', sa.Date(), nullable=True),
         sa.Column('handler_id', postgresql.UUID(as_uuid=True), nullable=True),

@@ -76,7 +76,8 @@ export interface Review {
 export interface HandlingRecord {
   id: string
   complaint_id: string
-  handler_id: string
+  handler_id: string | null
+  handler_name: string | null
   action: string
   description: string
   created_at: string

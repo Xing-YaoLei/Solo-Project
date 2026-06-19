@@ -308,8 +308,8 @@ function ComplaintDetailPage() {
                   <div>
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-medium text-slate-700">{record.action}</p>
-                      {record.handler_id && (
-                        <span className="text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">处理人：{complaint.handler_name || '未知'}</span>
+                      {record.handler_name && (
+                        <span className="text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">处理人：{record.handler_name}</span>
                       )}
                     </div>
                     <p className="text-sm text-slate-500 mt-0.5">{record.description}</p>
