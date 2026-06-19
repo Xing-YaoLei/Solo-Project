@@ -378,13 +378,21 @@ class OrderService:
         if status:
             query = query.filter(Order.status == status)
         if verification_status:
-            query = query.join(Verification, Verification.order_id == Order.id).filter(
-                Verification.status == verification_status
-            )
+            try:
+                vs = VerificationStatus(verification_status)
+                query = query.join(Verification, Verification.order_id == Order.id).filter(
+                    Verification.status == vs
+                )
+            except ValueError:
+                pass
         if deposit_status:
-            query = query.join(Deposit, Deposit.order_id == Order.id).filter(
-                Deposit.status == deposit_status
-            )
+            try:
+                ds = DepositStatus(deposit_status)
+                query = query.join(Deposit, Deposit.order_id == Order.id).filter(
+                    Deposit.status == ds
+                )
+            except ValueError:
+                pass
         if package_id:
             query = query.filter(Order.package_id == package_id)
         if keyword:

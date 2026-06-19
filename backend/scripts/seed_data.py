@@ -11,7 +11,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app.core.database import SessionLocal, Base, engine
 from app.models import (
     Package, PriceRule, StayDate, PackageInventory, Order,
-    OrderStatus, VerificationStatus, DepositStatus
+    OrderStatus, VerificationStatus, DepositStatus,
+    Verification, Deposit, OrderStatusLog
 )
 from app.schemas import (
     PackageCreate, PriceRuleCreate, PackageInventoryCreate,
@@ -153,14 +154,112 @@ def seed_demo_data():
             )
             order = OrderService.create(db, order_create, operator="seed_script")
             print(f"  📦 创建订单 {order.order_no} - {name} @{pkg.name}")
+        db.flush()
+
+        orders = db.query(Order).order_by(Order.id.asc()).all()
+
+        if len(orders) >= 2:
+            o1 = orders[0]
+            o1.status = OrderStatus.CONFIRMED
+            db.add(OrderStatusLog(
+                order_id=o1.id, from_status=OrderStatus.PENDING,
+                to_status=OrderStatus.CONFIRMED, operator="小王", reason="确认订单"
+            ))
+            v1 = db.query(Verification).filter(Verification.order_id == o1.id).first()
+            if v1:
+                v1.verification_code = o1.order_no[-8:]
+            d1 = db.query(Deposit).filter(Deposit.order_id == o1.id).first()
+            if d1:
+                d1.paid_amount = d1.total_amount
+                d1.status = DepositStatus.PAID
+                d1.payment_method = "wechat"
+                d1.payment_ref = f"WX{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
+                d1.paid_at = datetime.utcnow()
+                d1.handler = "小王"
+
+        if len(orders) >= 3:
+            o2 = orders[1]
+            o2.status = OrderStatus.CHECKED_IN
+            db.add(OrderStatusLog(
+                order_id=o2.id, from_status=OrderStatus.PENDING,
+                to_status=OrderStatus.CONFIRMED, operator="小李", reason="确认订单"
+            ))
+            db.add(OrderStatusLog(
+                order_id=o2.id, from_status=OrderStatus.CONFIRMED,
+                to_status=OrderStatus.CHECKED_IN, operator="前台小张", reason="客人到店入住"
+            ))
+            v2 = db.query(Verification).filter(Verification.order_id == o2.id).first()
+            if v2:
+                v2.status = VerificationStatus.VERIFIED
+                v2.verification_code = o2.order_no[-8:]
+                v2.verified_at = datetime.utcnow()
+                v2.verified_by = "前台小张"
+                v2.check_in_actual = datetime.utcnow()
+                v2.guest_ids_verified = ["330102000101001"]
+            d2 = db.query(Deposit).filter(Deposit.order_id == o2.id).first()
+            if d2:
+                d2.paid_amount = d2.total_amount
+                d2.status = DepositStatus.PAID
+                d2.payment_method = "alipay"
+                d2.payment_ref = f"ALI{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
+                d2.paid_at = datetime.utcnow()
+                d2.handler = "小李"
+
+        if len(orders) >= 5:
+            o4 = orders[3]
+            o4.status = OrderStatus.CHECKED_OUT
+            db.add(OrderStatusLog(
+                order_id=o4.id, from_status=OrderStatus.PENDING,
+                to_status=OrderStatus.CONFIRMED, operator="小王", reason="确认订单"
+            ))
+            db.add(OrderStatusLog(
+                order_id=o4.id, from_status=OrderStatus.CONFIRMED,
+                to_status=OrderStatus.CHECKED_IN, operator="前台小张", reason="入住"
+            ))
+            db.add(OrderStatusLog(
+                order_id=o4.id, from_status=OrderStatus.CHECKED_IN,
+                to_status=OrderStatus.CHECKED_OUT, operator="前台小张", reason="退房"
+            ))
+            v4 = db.query(Verification).filter(Verification.order_id == o4.id).first()
+            if v4:
+                v4.status = VerificationStatus.VERIFIED
+                v4.verification_code = o4.order_no[-8:]
+                v4.verified_at = datetime.utcnow() - timedelta(days=1)
+                v4.verified_by = "前台小张"
+                v4.check_in_actual = datetime.utcnow() - timedelta(days=1)
+                v4.check_out_actual = datetime.utcnow()
+                v4.guest_ids_verified = ["330103199501011234"]
+            d4 = db.query(Deposit).filter(Deposit.order_id == o4.id).first()
+            if d4:
+                d4.paid_amount = d4.total_amount
+                d4.status = DepositStatus.REFUNDED
+                d4.payment_method = "cash"
+                d4.payment_ref = f"CASH{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
+                d4.paid_at = datetime.utcnow() - timedelta(days=1)
+                d4.refunded_amount = d4.total_amount
+                d4.refund_method = "cash"
+                d4.refund_ref = f"REF{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
+                d4.refunded_at = datetime.utcnow()
+                d4.handler = "前台小张"
 
         db.commit()
         print("\n🎉 种子数据初始化完成！")
+
+        ver_count = db.query(Verification).count()
+        dep_count = db.query(Deposit).count()
+        ver_pending = db.query(Verification).filter(Verification.status == VerificationStatus.PENDING).count()
+        ver_verified = db.query(Verification).filter(Verification.status == VerificationStatus.VERIFIED).count()
+        dep_unpaid = db.query(Deposit).filter(Deposit.status == DepositStatus.UNPAID).count()
+        dep_paid = db.query(Deposit).filter(Deposit.status == DepositStatus.PAID).count()
+        dep_refunded = db.query(Deposit).filter(Deposit.status == DepositStatus.REFUNDED).count()
+
         print(f"   - 套餐: {db.query(Package).count()}")
         print(f"   - 价格规则: {db.query(PriceRule).count()}")
         print(f"   - 入住日期: {db.query(StayDate).count()}")
         print(f"   - 库存记录: {db.query(PackageInventory).count()}")
         print(f"   - 订单: {db.query(Order).count()}")
+        print(f"   - 核销: {ver_count} (待核销:{ver_pending} 已核销:{ver_verified})")
+        print(f"   - 押金: {dep_count} (未付:{dep_unpaid} 已付:{dep_paid} 已退:{dep_refunded})")
 
     except Exception as e:
         print(f"❌ 初始化失败: {e}")

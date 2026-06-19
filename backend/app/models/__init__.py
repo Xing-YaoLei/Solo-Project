@@ -2,11 +2,15 @@ from datetime import datetime, date
 from enum import Enum as PyEnum
 from sqlalchemy import (
     Column, Integer, String, Text, DateTime, Date, Float, Boolean,
-    ForeignKey, Enum, JSON, BigInteger, Numeric, PrimaryKeyConstraint,
+    ForeignKey, Enum, JSON, BigInteger, Numeric,
     UniqueConstraint, Index
 )
 from sqlalchemy.orm import relationship
 from ..core.database import Base
+
+
+def _vc(enum_cls):
+    return [e.value for e in enum_cls]
 
 
 class OrderStatus(PyEnum):
@@ -153,7 +157,7 @@ class Order(Base):
     discount_amount = Column(Numeric(12, 2), default=0, comment="优惠金额")
     final_amount = Column(Numeric(12, 2), nullable=False, comment="实收金额")
     deposit_amount = Column(Numeric(12, 2), default=0, comment="押金金额")
-    status = Column(Enum(OrderStatus), default=OrderStatus.PENDING, index=True, comment="订单状态")
+    status = Column(Enum(OrderStatus, values_callable=_vc, name="orderstatus", create_constraint=True), default=OrderStatus.PENDING, index=True, comment="订单状态")
     sales_channel = Column(String(50), nullable=True, comment="销售渠道")
     sales_person = Column(String(100), nullable=True, comment="销售负责人")
     operator = Column(String(100), nullable=True, comment="操作人")
@@ -173,8 +177,8 @@ class OrderStatusLog(Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True, index=True)
     order_id = Column(BigInteger, ForeignKey("orders.id", ondelete="CASCADE"), nullable=False, index=True)
-    from_status = Column(Enum(OrderStatus), nullable=True)
-    to_status = Column(Enum(OrderStatus), nullable=False)
+    from_status = Column(Enum(OrderStatus, values_callable=_vc, name="orderstatus", create_constraint=True), nullable=True)
+    to_status = Column(Enum(OrderStatus, values_callable=_vc, name="orderstatus", create_constraint=True), nullable=False)
     operator = Column(String(100), nullable=True)
     reason = Column(String(500), nullable=True)
     extra_data = Column(JSON, nullable=True)
@@ -188,7 +192,7 @@ class Verification(Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True, index=True)
     order_id = Column(BigInteger, ForeignKey("orders.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
-    status = Column(Enum(VerificationStatus), default=VerificationStatus.PENDING, index=True)
+    status = Column(Enum(VerificationStatus, values_callable=_vc, name="verificationstatus", create_constraint=True), default=VerificationStatus.PENDING, index=True)
     verification_code = Column(String(100), nullable=True, comment="核销码")
     verified_at = Column(DateTime, nullable=True, comment="核销时间")
     verified_by = Column(String(100), nullable=True, comment="核销人")
@@ -210,7 +214,7 @@ class Deposit(Base):
     total_amount = Column(Numeric(12, 2), nullable=False, comment="应付押金总额")
     paid_amount = Column(Numeric(12, 2), default=0, comment="已付金额")
     refunded_amount = Column(Numeric(12, 2), default=0, comment="已退金额")
-    status = Column(Enum(DepositStatus), default=DepositStatus.UNPAID, index=True)
+    status = Column(Enum(DepositStatus, values_callable=_vc, name="depositstatus", create_constraint=True), default=DepositStatus.UNPAID, index=True)
     payment_method = Column(String(50), nullable=True, comment="支付方式: cash/wechat/alipay/card")
     payment_ref = Column(String(255), nullable=True, comment="支付流水号")
     paid_at = Column(DateTime, nullable=True, comment="支付时间")
@@ -234,13 +238,13 @@ class AnomalyOrder(Base):
     anomaly_no = Column(String(50), unique=True, nullable=False, index=True, comment="异常单号")
     order_id = Column(BigInteger, ForeignKey("orders.id"), nullable=True, index=True)
     package_id = Column(BigInteger, ForeignKey("packages.id"), nullable=True, index=True)
-    anomaly_type = Column(Enum(AnomalyType), nullable=False, index=True)
-    status = Column(Enum(AnomalyStatus), default=AnomalyStatus.OPEN, index=True)
+    anomaly_type = Column(Enum(AnomalyType, values_callable=_vc, name="anomalytype", create_constraint=True), nullable=False, index=True)
+    status = Column(Enum(AnomalyStatus, values_callable=_vc, name="anomalystatus", create_constraint=True), default=AnomalyStatus.OPEN, index=True)
     title = Column(String(500), nullable=False, comment="异常标题")
     description = Column(Text, nullable=True, comment="异常描述")
     impact_scope = Column(JSON, nullable=True, comment="影响范围 {orders: [], dates: [], rooms: []}")
     impact_level = Column(String(20), default="medium", comment="影响等级: low/medium/high/critical")
-    responsibility_owner = Column(Enum(ResponsibilityOwner), nullable=True, comment="责任归属")
+    responsibility_owner = Column(Enum(ResponsibilityOwner, values_callable=_vc, name="responsibilityowner", create_constraint=True), nullable=True, comment="责任归属")
     responsible_person = Column(String(100), nullable=True, comment="具体责任人")
     root_cause = Column(Text, nullable=True, comment="根本原因")
     handling_process = Column(JSON, nullable=True, comment="处理过程 [{time, operator, action, note}]")

@@ -10,17 +10,10 @@ from .api import router as api_router
 from .api.export import router as export_router
 
 
-def init_database():
-    try:
-        Base.metadata.create_all(bind=engine)
-        print("✅ 数据库表初始化完成")
-    except Exception as e:
-        print(f"⚠️  数据库表初始化跳过（连接失败或已存在）: {e}")
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    init_database()
+    Base.metadata.create_all(bind=engine)
+    print("✅ PostgreSQL 数据库表初始化完成")
     yield
 
 
@@ -69,7 +62,8 @@ def health_check():
     db_ok = False
     try:
         db = SessionLocal()
-        db.execute("SELECT 1")
+        from sqlalchemy import text
+        db.execute(text("SELECT 1"))
         db_ok = True
     except Exception:
         db_ok = False
