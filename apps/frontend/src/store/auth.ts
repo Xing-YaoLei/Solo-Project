@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import api from '@/lib/api';
+import { setToken, clearToken, subscribe, initTokenStore } from '@/lib/token';
 
 export type UserRole = 'ADMIN' | 'MANAGER' | 'FRONTLINE';
 
@@ -24,7 +25,7 @@ interface AuthState {
   logout: () => Promise<void>;
   fetchProfile: () => Promise<boolean>;
   setUser: (user: User | null) => void;
-  setToken: (token: string | null) => void;
+  setTokenValue: (token: string | null) => void;
   initFromStorage: () => void;
   hasRole: (roles: UserRole[]) => boolean;
 }
@@ -39,33 +40,28 @@ export const useAuthStore = create<AuthState>()(
 
       initFromStorage: () => {
         if (typeof window === 'undefined') return;
+        initTokenStore();
+
         try {
           const stored = localStorage.getItem('auth-storage');
           if (stored) {
             const parsed = JSON.parse(stored);
             if (parsed.state?.token) {
-              localStorage.setItem('token', parsed.state.token);
+              set({ token: parsed.state.token });
             }
             if (parsed.state?.user) {
-              localStorage.setItem('user', JSON.stringify(parsed.state.user));
+              set({ user: parsed.state.user });
             }
           } else {
-            const token = localStorage.getItem('token');
-            const userStr = localStorage.getItem('user');
-            if (token) {
-              set({ token });
-            }
-            if (userStr) {
-              try {
-                set({ user: JSON.parse(userStr) });
-              } catch (e) {
-                // ignore
-              }
+            const t = localStorage.getItem('token');
+            const u = localStorage.getItem('user');
+            if (t) set({ token: t });
+            if (u) {
+              try { set({ user: JSON.parse(u) }); } catch (_) { /* ignore */ }
             }
           }
-        } catch (e) {
-          // ignore
-        }
+        } catch (_) { /* ignore */ }
+
         set({ initialized: true });
       },
 
@@ -75,8 +71,8 @@ export const useAuthStore = create<AuthState>()(
           const response = await api.post('/auth/login', { username, password });
           const { accessToken, user } = response.data;
           set({ token: accessToken, user, isLoading: false });
+          setToken(accessToken);
           if (typeof window !== 'undefined') {
-            localStorage.setItem('token', accessToken);
             localStorage.setItem('user', JSON.stringify(user));
           }
         } catch (error: any) {
@@ -88,33 +84,24 @@ export const useAuthStore = create<AuthState>()(
       logout: async () => {
         try {
           await api.post('/auth/logout');
-        } catch (e) {
-          // ignore
-        }
+        } catch (_) { /* ignore */ }
         set({ token: null, user: null });
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          localStorage.removeItem('auth-storage');
-        }
+        clearToken();
       },
 
       fetchProfile: async () => {
         try {
           const response = await api.get('/auth/profile');
-          set({ user: response.data });
+          const user = response.data;
+          set({ user });
           if (typeof window !== 'undefined') {
-            localStorage.setItem('user', JSON.stringify(response.data));
+            localStorage.setItem('user', JSON.stringify(user));
           }
           return true;
-        } catch (e: any) {
-          if (e.response?.status === 401) {
+        } catch (error: any) {
+          if (error.response?.status === 401) {
             set({ token: null, user: null });
-            if (typeof window !== 'undefined') {
-              localStorage.removeItem('token');
-              localStorage.removeItem('user');
-              localStorage.removeItem('auth-storage');
-            }
+            clearToken();
           }
           return false;
         }
@@ -127,15 +114,9 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      setToken: (token) => {
+      setTokenValue: (token) => {
         set({ token });
-        if (typeof window !== 'undefined') {
-          if (token) {
-            localStorage.setItem('token', token);
-          } else {
-            localStorage.removeItem('token');
-          }
-        }
+        setToken(token);
       },
 
       hasRole: (roles: UserRole[]) => {
@@ -150,3 +131,9 @@ export const useAuthStore = create<AuthState>()(
     }
   )
 );
+
+subscribe((token) => {
+  if (token === null) {
+    useAuthStore.setState({ token: null, user: null });
+  }
+});

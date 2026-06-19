@@ -3,14 +3,28 @@ import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import Layout from '@/components/Layout';
 import { useAuthStore, UserRole } from '@/store/auth';
-import { Lock } from 'lucide-react';
+import { Lock, Shield } from 'lucide-react';
 import '@/styles/globals.css';
 
 const MANAGER_ROUTES = ['/reports', '/properties'];
 const ADMIN_ROUTES = ['/users'];
 
-const checkRoutePermission = (pathname: string, userRole: UserRole | undefined): { allowed: boolean; reason?: string } => {
-  if (!userRole) return { allowed: true };
+const isRestrictedRoute = (pathname: string): boolean => {
+  return MANAGER_ROUTES.includes(pathname) || ADMIN_ROUTES.includes(pathname);
+};
+
+const checkRoutePermission = (
+  pathname: string,
+  userRole: UserRole | undefined,
+  userLoaded: boolean
+): { allowed: boolean; reason?: string; pending?: boolean } => {
+  if (!isRestrictedRoute(pathname)) {
+    return { allowed: true };
+  }
+
+  if (!userLoaded || !userRole) {
+    return { allowed: false, pending: true };
+  }
 
   if (ADMIN_ROUTES.includes(pathname) && userRole !== 'ADMIN') {
     return { allowed: false, reason: '该页面仅系统管理员可访问' };
@@ -40,11 +54,25 @@ function PermissionDenied({ reason, onGoHome }: { reason: string; onGoHome: () =
   );
 }
 
+function PermissionPending() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+      <div className="card p-8 max-w-md w-full text-center">
+        <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Shield className="w-8 h-8 text-yellow-500" />
+        </div>
+        <h2 className="text-xl font-bold text-gray-800 mb-2">正在验证权限</h2>
+        <p className="text-gray-500">请稍候，正在确认您的访问权限...</p>
+      </div>
+    </div>
+  );
+}
+
 export default function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
   const { token, user, initialized, initFromStorage, fetchProfile } = useAuthStore();
   const [isHydrated, setIsHydrated] = useState(false);
-  const [isAuthed, setIsAuthed] = useState<boolean | null>(null);
+  const [profileFetched, setProfileFetched] = useState(false);
 
   useEffect(() => {
     setIsHydrated(true);
@@ -56,36 +84,23 @@ export default function App({ Component, pageProps }: AppProps) {
   useEffect(() => {
     if (!isHydrated) return;
 
-    if (router.pathname === '/login') {
-      setIsAuthed(true);
-      return;
-    }
+    if (router.pathname === '/login') return;
 
     if (!token) {
-      setIsAuthed(false);
       router.replace('/login');
       return;
     }
 
-    setIsAuthed(true);
-
-    if (!user) {
+    if (!user && !profileFetched) {
+      setProfileFetched(true);
       fetchProfile();
     }
-  }, [isHydrated, token, user, router, fetchProfile]);
+  }, [isHydrated, token, user, router, fetchProfile, profileFetched]);
 
-  if (!isHydrated || isAuthed === null) {
+  if (!isHydrated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-gray-500">加载中...</div>
-      </div>
-    );
-  }
-
-  if (!isAuthed || (!token && router.pathname !== '/login')) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-gray-500">正在跳转登录页...</div>
       </div>
     );
   }
@@ -94,8 +109,21 @@ export default function App({ Component, pageProps }: AppProps) {
     return <Component {...pageProps} />;
   }
 
-  const permission = checkRoutePermission(router.pathname, user?.role);
+  if (!token) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-gray-500">正在跳转登录页...</div>
+      </div>
+    );
+  }
+
+  const userLoaded = !!user;
+  const permission = checkRoutePermission(router.pathname, user?.role, userLoaded);
+
   if (!permission.allowed) {
+    if (permission.pending) {
+      return <PermissionPending />;
+    }
     return (
       <PermissionDenied
         reason={permission.reason || '权限不足'}

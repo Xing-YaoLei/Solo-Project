@@ -201,7 +201,7 @@ export class ConflictsService {
           },
         },
         order: { select: { orderNo: true, guestName: true } },
-        reportedBy: { select: { fullName: true } },
+        createdBy: { select: { id: true, fullName: true, role: true } },
         communications: { select: { id: true } },
       },
       take: 10,
