@@ -397,7 +397,7 @@ def update_anomaly_status(anomaly_id, status, handled_by=None, handle_result=Non
         db.close()
 
 
-def get_rework_rate_stats(start_date=None, end_date=None, group_by="day"):
+def get_rework_rate_stats(start_date=None, end_date=None, status=None, repair_type=None, has_parts_shortage=None, risk_level=None):
     db = SessionLocal()
     try:
         query = db.query(
@@ -411,6 +411,14 @@ def get_rework_rate_stats(start_date=None, end_date=None, group_by="day"):
             filters.append(WorkOrder.created_at >= start_date)
         if end_date:
             filters.append(WorkOrder.created_at <= end_date)
+        if repair_type and repair_type != "all":
+            filters.append(WorkOrder.repair_type == repair_type)
+        if has_parts_shortage is not None:
+            filters.append(WorkOrder.has_parts_shortage == has_parts_shortage)
+
+        if risk_level and risk_level != "all":
+            query = query.outerjoin(Appointment, WorkOrder.appointment_id == Appointment.id)
+            filters.append(Appointment.risk_level == risk_level)
 
         if filters:
             query = query.filter(and_(*filters))
@@ -503,7 +511,7 @@ def get_work_order_by_id(order_id):
         db.close()
 
 
-def get_repair_type_distribution(start_date=None, end_date=None):
+def get_repair_type_distribution(start_date=None, end_date=None, status=None, repair_type=None, has_parts_shortage=None, risk_level=None):
     db = SessionLocal()
     try:
         query = db.query(
@@ -517,6 +525,16 @@ def get_repair_type_distribution(start_date=None, end_date=None):
             filters.append(WorkOrder.created_at >= start_date)
         if end_date:
             filters.append(WorkOrder.created_at <= end_date)
+        if status and status != "all":
+            filters.append(WorkOrder.status == status)
+        if repair_type and repair_type != "all":
+            filters.append(WorkOrder.repair_type == repair_type)
+        if has_parts_shortage is not None:
+            filters.append(WorkOrder.has_parts_shortage == has_parts_shortage)
+
+        if risk_level and risk_level != "all":
+            query = query.outerjoin(Appointment, WorkOrder.appointment_id == Appointment.id)
+            filters.append(Appointment.risk_level == risk_level)
 
         if filters:
             query = query.filter(and_(*filters))

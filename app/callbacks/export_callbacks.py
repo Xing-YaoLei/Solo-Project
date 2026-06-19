@@ -45,11 +45,18 @@ def export_rework_report(n_clicks, filter_state):
     repair_dist = get_repair_type_distribution(
         start_date=start_date,
         end_date=end_date,
+        status=status,
+        repair_type=repair_type,
+        has_parts_shortage=shortage_filter,
+        risk_level=risk_level,
     )
 
     rework_stats = get_rework_rate_stats(
         start_date=start_date,
         end_date=end_date,
+        repair_type=repair_type,
+        has_parts_shortage=shortage_filter,
+        risk_level=risk_level,
     )
 
     completed_orders = orders_df[orders_df["status"] == "completed"] if not orders_df.empty else pd.DataFrame()
