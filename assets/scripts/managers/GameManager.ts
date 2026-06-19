@@ -1,8 +1,8 @@
-import { _decorator, Component, director } from "cc";
+import { _decorator, Component, director, resources, JsonAsset } from "cc";
 import { RoomManager } from "./RoomManager";
 import { OrderManager } from "./OrderManager";
 import { TaskManager } from "./TaskManager";
-import { LevelConfig, GameSettings, ReviewStats, BottleneckRecord, ItemConfig } from "../models/Config";
+import { LevelConfig, GameSettings, ReviewStats, BottleneckRecord, ItemConfig, AchievementConfig } from "../models/Config";
 import { RoomStatus } from "../models/Room";
 import { OrderStatus } from "../models/Order";
 import { TaskStatus } from "../models/Task";
@@ -34,6 +34,7 @@ export class GameManager extends Component {
     private levels: LevelConfig[] = [];
     private channels: Channel[] = [];
     private items: ItemConfig[] = [];
+    private achievements: AchievementConfig[] = [];
     private itemCooldowns: Map<string, number> = new Map();
 
     private settings: GameSettings = {
@@ -90,14 +91,16 @@ export class GameManager extends Component {
 
             const itemsRes = await this.loadJSON("configs/items");
             this.items = itemsRes as ItemConfig[];
+
+            const achievementsRes = await this.loadJSON("configs/achievements");
+            this.achievements = achievementsRes as AchievementConfig[];
         } catch (e) {
             console.error("Failed to load configs:", e);
         }
     }
 
-    private async loadJSON(path: string): Promise<unknown> {
+    private loadJSON(path: string): Promise<unknown> {
         return new Promise((resolve, reject) => {
-            import { resources, JsonAsset } from "cc";
             resources.load(path, JsonAsset, (err, asset) => {
                 if (err) {
                     reject(err);
@@ -284,6 +287,10 @@ export class GameManager extends Component {
         return this.currentLevel;
     }
 
+    public getCurrentLevelIndex(): number {
+        return this.currentLevelIndex;
+    }
+
     public getCurrentState(): GameState {
         return this.currentState;
     }
@@ -311,6 +318,10 @@ export class GameManager extends Component {
 
     public getChannels(): Channel[] {
         return this.channels;
+    }
+
+    public getAchievements(): AchievementConfig[] {
+        return this.achievements;
     }
 
     public setOnStateChanged(cb: (state: GameState) => void): void {

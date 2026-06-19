@@ -1,8 +1,7 @@
 import { _decorator, Component, Node, Label, Sprite, Color, Vec3, UITransform, tween } from "cc";
 import { GameManager, GameState } from "../managers/GameManager";
-import { LevelConfig } from "../models/Config";
 import { RoomCalendar } from "../components/RoomCalendar";
-import { OrderPanel } from "../components/OrderCard";
+import { OrderPanel, OrderCard } from "../components/OrderCard";
 import { TaskPanel } from "../ui/TaskPanel";
 import { ConflictDialog } from "../ui/ConflictDialog";
 import { SettlementPanel } from "../ui/SettlementPanel";
@@ -13,10 +12,12 @@ import { AchievementManager } from "../managers/AchievementManager";
 import { AudioManager } from "../utils/AudioManager";
 import { VibrationManager } from "../utils/VibrationManager";
 import { Order, OrderStatus } from "../models/Order";
-import { Task, TaskStatus } from "../models/Task";
+import { Task, TaskStatus, TaskType } from "../models/Task";
 import { RoomStatus } from "../models/Room";
+import { LevelSelectPanel } from "../ui/LevelSelectPanel";
+import { SettingsPanel } from "../ui/SettingsPanel";
 
-const { ccclass, property } = _decorator;
+const { ccclass } = _decorator;
 
 @ccclass("HUD")
 export class HUD extends Component {
@@ -96,10 +97,16 @@ export class HUD extends Component {
     }
 
     private onSettingsClicked(): void {
-        // Toggle settings panel visibility
         const settingsPanel = this.node.parent?.getChildByName("SettingsPanel");
         if (settingsPanel) {
             settingsPanel.active = !settingsPanel.active;
+            if (settingsPanel.active) {
+                let panel = settingsPanel.getComponent(SettingsPanel);
+                if (!panel) {
+                    panel = settingsPanel.addComponent(SettingsPanel);
+                }
+                panel.init();
+            }
         }
     }
 }
@@ -115,8 +122,12 @@ export class MainScene extends Component {
     private orderPanel: OrderPanel | null = null;
     private taskPanel: TaskPanel | null = null;
     private hud: HUD | null = null;
+    private levelSelectPanel: LevelSelectPanel | null = null;
+    private settingsPanel: SettingsPanel | null = null;
 
     private conflictCheckTimer: number = 0;
+    private isConfigsLoaded: boolean = false;
+    private settlementShown: boolean = false;
 
     async onLoad(): Promise<void> {
         this.gameManager = this.node.getComponent(GameManager) || this.node.addComponent(GameManager);
@@ -128,7 +139,9 @@ export class MainScene extends Component {
         this.node.addComponent(VibrationManager);
 
         await this.gameManager.loadConfigs();
-        this.achievementManager.init(await this.loadAchievementConfigs());
+        this.isConfigsLoaded = true;
+
+        this.achievementManager.init(this.gameManager.getAchievements());
         this.tutorialManager.init();
 
         this.setupUI();
@@ -141,37 +154,39 @@ export class MainScene extends Component {
         this.showLevelSelect();
     }
 
-    private async loadAchievementConfigs(): Promise<any[]> {
-        try {
-            const res = await this.gameManager!["loadJSON"]("configs/achievements");
-            return res as any[];
-        } catch {
-            return [];
-        }
-    }
-
     private setupUI(): void {
         const calendarNode = this.node.getChildByName("RoomCalendar");
         if (calendarNode) {
-            this.calendar = calendarNode.addComponent(RoomCalendar);
+            this.calendar = calendarNode.getComponent(RoomCalendar) || calendarNode.addComponent(RoomCalendar);
         }
 
         const orderNode = this.node.getChildByName("OrderPanel");
         if (orderNode) {
-            this.orderPanel = orderNode.addComponent(OrderPanel);
+            this.orderPanel = orderNode.getComponent(OrderPanel) || orderNode.addComponent(OrderPanel);
             this.orderPanel.init();
         }
 
         const taskNode = this.node.getChildByName("TaskPanel");
         if (taskNode) {
-            this.taskPanel = taskNode.addComponent(TaskPanel);
+            this.taskPanel = taskNode.getComponent(TaskPanel) || taskNode.addComponent(TaskPanel);
             this.taskPanel.init();
         }
 
         const hudNode = this.node.getChildByName("HUD");
         if (hudNode) {
-            this.hud = hudNode.addComponent(HUD);
+            this.hud = hudNode.getComponent(HUD) || hudNode.addComponent(HUD);
             this.hud.init();
+        }
+
+        const levelSelectNode = this.node.getChildByName("LevelSelectPanel");
+        if (levelSelectNode) {
+            this.levelSelectPanel = levelSelectNode.getComponent(LevelSelectPanel) || levelSelectNode.addComponent(LevelSelectPanel);
+        }
+
+        const settingsNode = this.node.getChildByName("SettingsPanel");
+        if (settingsNode) {
+            this.settingsPanel = settingsNode.getComponent(SettingsPanel) || settingsNode.addComponent(SettingsPanel);
+            settingsNode.active = false;
         }
     }
 
@@ -184,6 +199,7 @@ export class MainScene extends Component {
                 if (this.orderPanel) {
                     const channel = gm.getChannels().find(c => c.type === order.channelType) || null;
                     this.orderPanel.addOrderCard(order, channel);
+                    this.bindOrderCardEvents(order.id);
                 }
                 this.achievementManager?.incrementProgress("total_checkins", 1);
             });
@@ -205,18 +221,7 @@ export class MainScene extends Component {
         const taskMgr = gm.getTaskManager();
         if (taskMgr) {
             taskMgr.setOnTaskCompleted((task) => {
-                if (this.taskPanel) {
-                    this.taskPanel.removeTaskItem(task.id);
-                }
-                gm.addRevenue(task.reward);
-                this.achievementManager?.incrementProgress("task_speed_ratio", 1);
-
-                const roomMgr = gm.getRoomManager();
-                if (roomMgr) {
-                    roomMgr.releaseRoom(task.roomId, new Date().toISOString().slice(0, 10));
-                }
-
-                this.checkSettlementReady();
+                this.handleTaskCompleted(task);
             });
 
             taskMgr.setOnTaskFailed((task) => {
@@ -256,30 +261,196 @@ export class MainScene extends Component {
                 this.onTaskClicked(taskId);
             });
         }
+
+        if (this.levelSelectPanel) {
+            this.levelSelectPanel.setOnLevelSelected((index) => {
+                this.startLevel(index);
+                const levelNode = this.node.getChildByName("LevelSelectPanel");
+                if (levelNode) levelNode.active = false;
+            });
+        }
+
+        gm.setOnStateChanged((state) => {
+            if (state === GameState.SETTLEMENT && !this.settlementShown) {
+                this.settlementShown = true;
+                this.showSettlement();
+            }
+        });
+    }
+
+    private bindOrderCardEvents(orderId: string): void {
+        if (!this.orderPanel) return;
+
+        const card = this.orderPanel.getOrderCard(orderId);
+        if (!card) return;
+
+        card.setOnDragEnd((order, worldPos) => {
+            this.handleOrderDragEnd(order, worldPos);
+        });
+
+        card.setOnConfirm((orderId, roomId) => {
+            this.confirmOrder(orderId, roomId);
+        });
+    }
+
+    private handleOrderDragEnd(order: Order, worldPos: Vec3): void {
+        const calendarNode = this.node.getChildByName("RoomCalendar");
+        if (!calendarNode) return;
+
+        const calendarTransform = calendarNode.getComponent(UITransform);
+        if (!calendarTransform) return;
+
+        const localPos = calendarTransform.convertToNodeSpaceAR(worldPos);
+
+        const calendarSize = calendarTransform.contentSize;
+        const halfW = calendarSize.width / 2;
+        const halfH = calendarSize.height / 2;
+
+        const cellsOffsetX = 60;
+        const cellsOffsetY = 40;
+
+        const relX = localPos.x + halfW - cellsOffsetX;
+        const relY = halfH - localPos.y - cellsOffsetY;
+
+        const cellWidth = 80;
+        const cellHeight = 50;
+        const cellX = Math.floor(relX / cellWidth);
+        const rowIndex = Math.floor(relY / cellHeight);
+
+        const gm = GameManager.instance;
+        if (!gm) return;
+
+        const roomMgr = gm.getRoomManager();
+        if (!roomMgr) return;
+
+        const rooms = roomMgr.getAllRooms();
+        if (rowIndex < 0 || rowIndex >= rooms.length) return;
+
+        const targetRoom = rooms[rowIndex];
+        if (cellX < 0 || cellX >= targetRoom.slots.length) return;
+
+        const targetSlot = targetRoom.slots[cellX];
+        if (targetSlot.status !== RoomStatus.VACANT && targetSlot.status !== RoomStatus.CLEANING) return;
+
+        this.confirmOrder(order.id, targetRoom.id);
+    }
+
+    private confirmOrder(orderId: string, roomId: string): boolean {
+        const gm = GameManager.instance;
+        if (!gm) return false;
+
+        const orderMgr = gm.getOrderManager();
+        const roomMgr = gm.getRoomManager();
+        if (!orderMgr || !roomMgr) return false;
+
+        const order = orderMgr.getOrder(orderId);
+        if (!order || order.status !== OrderStatus.PENDING) return false;
+
+        const success = roomMgr.assignOrderToRoom(roomId, order.checkIn, order.checkOut, orderId);
+        if (!success) return false;
+
+        orderMgr.confirmOrder(orderId, roomId);
+        orderMgr.checkInOrder(orderId);
+
+        gm.addRevenue(order.price);
+
+        if (this.orderPanel) {
+            this.orderPanel.removeOrderCard(orderId);
+        }
+
+        if (this.calendar) {
+            this.calendar.refresh();
+        }
+
+        this.achievementManager?.updateProgress("daily_occupancy", roomMgr.getOverallOccupancyRate());
+
+        return true;
+    }
+
+    private handleTaskCompleted(task: Task): void {
+        const gm = GameManager.instance;
+        if (!gm) return;
+
+        if (this.taskPanel) {
+            this.taskPanel.removeTaskItem(task.id);
+        }
+
+        gm.addRevenue(task.reward);
+
+        const roomMgr = gm.getRoomManager();
+        if (roomMgr) {
+            const room = roomMgr.getRoom(task.roomId);
+            if (room) {
+                for (const slot of room.slots) {
+                    if (slot.status === RoomStatus.CLEANING) {
+                        slot.status = RoomStatus.VACANT;
+                        slot.orderId = null;
+                        slot.checkIn = null;
+                        slot.checkOut = null;
+                    }
+                }
+            }
+        }
+
+        const elapsedRatio = task.duration > 0 ? task.elapsed / task.duration : 1;
+        this.achievementManager?.updateProgress("task_speed_ratio", elapsedRatio);
+
+        if (this.calendar) {
+            this.calendar.refresh();
+        }
+
+        this.checkSettlementReady();
     }
 
     private onCalendarCellClicked(roomId: string, date: string): void {
-        const gm = this.gameManager!;
-        const roomMgr = gm.getRoomManager();
+        const gm = GameManager.instance;
+        const roomMgr = gm?.getRoomManager();
         if (!roomMgr) return;
 
         const slot = roomMgr.getSlot(roomId, date);
         if (!slot) return;
 
-        if (slot.status === RoomStatus.CHECKING_OUT) {
-            const taskMgr = gm.getTaskManager();
-            if (taskMgr) {
-                const task = taskMgr.createCleaningTask(roomId);
-                taskMgr.startTask(task.id);
+        if (slot.status === RoomStatus.OCCUPIED && slot.orderId) {
+            this.checkOutAndStartCleaning(roomId, date, slot.orderId);
+        }
+    }
+
+    private checkOutAndStartCleaning(roomId: string, date: string, orderId: string): void {
+        const gm = GameManager.instance;
+        if (!gm) return;
+
+        const orderMgr = gm.getOrderManager();
+        const taskMgr = gm.getTaskManager();
+        const roomMgr = gm.getRoomManager();
+        if (!orderMgr || !taskMgr || !roomMgr) return;
+
+        const order = orderMgr.getOrder(orderId);
+        if (!order) return;
+
+        orderMgr.checkOutOrder(orderId);
+
+        const room = roomMgr.getRoom(roomId);
+        if (room) {
+            for (const slot of room.slots) {
+                if (slot.orderId === orderId) {
+                    slot.status = RoomStatus.CLEANING;
+                    slot.checkIn = null;
+                    slot.checkOut = null;
+                }
             }
-            roomMgr.releaseRoom(roomId, date);
-            if (this.calendar) this.calendar.refresh();
+        }
+
+        const task = taskMgr.createCleaningTask(roomId);
+        taskMgr.startTask(task.id);
+
+        if (this.calendar) {
+            this.calendar.refresh();
         }
     }
 
     private onTaskClicked(taskId: string): void {
-        const gm = this.gameManager!;
-        const taskMgr = gm.getTaskManager();
+        const gm = GameManager.instance;
+        const taskMgr = gm?.getTaskManager();
         if (!taskMgr) return;
 
         const task = taskMgr.getTask(taskId);
@@ -290,26 +461,31 @@ export class MainScene extends Component {
 
     private showConflictDialog(conflict: any): void {
         const dialogNode = this.node.getChildByName("ConflictDialog");
-        if (dialogNode) {
-            const dialog = dialogNode.getComponent(ConflictDialog) || dialogNode.addComponent(ConflictDialog);
-            dialog.init(conflict);
-            dialog.setOnResolved((conflictId, optionId) => {
-                this.conflictManager?.resolveConflict(conflictId, optionId);
-                dialogNode.active = false;
-            });
-            dialogNode.active = true;
+        if (!dialogNode) {
+            console.warn("ConflictDialog node not found");
+            return;
         }
+
+        let dialog = dialogNode.getComponent(ConflictDialog);
+        if (!dialog) {
+            dialog = dialogNode.addComponent(ConflictDialog);
+        }
+
+        dialog.init(conflict);
+        dialog.setOnResolved((conflictId, optionId) => {
+            this.conflictManager?.resolveConflict(conflictId, optionId);
+            dialogNode.active = false;
+        });
+
+        dialogNode.active = true;
     }
 
     private showLevelSelect(): void {
+        if (!this.levelSelectPanel || !this.gameManager) return;
+
         const panelNode = this.node.getChildByName("LevelSelectPanel");
         if (panelNode) {
-            const panel = panelNode.getComponent("LevelSelectPanel") as any || panelNode.addComponent(require("./ui/LevelSelectPanel").LevelSelectPanel);
-            panel.init(this.gameManager!.getLevels());
-            panel.setOnLevelSelected((index: number) => {
-                this.startLevel(index);
-                panelNode.active = false;
-            });
+            this.levelSelectPanel.init(this.gameManager.getLevels());
             panelNode.active = true;
         }
     }
@@ -319,11 +495,12 @@ export class MainScene extends Component {
         gm.startLevel(index);
         this.conflictManager?.init();
 
+        this.settlementShown = false;
+        this.conflictCheckTimer = 0;
+
         if (this.calendar) this.calendar.init();
         if (this.orderPanel) this.orderPanel.init();
         if (this.taskPanel) this.taskPanel.init();
-
-        this.conflictCheckTimer = 0;
     }
 
     update(dt: number): void {
@@ -342,35 +519,49 @@ export class MainScene extends Component {
             if (this.calendar) {
                 this.calendar.refresh();
             }
+
+            this.checkSettlementReady();
         }
 
         if (this.tutorialManager && this.tutorialManager.isActive()) {
-            // Tutorial is active, waiting for user actions
+            if (gm.getCurrentState() === GameState.PLAYING) {
+                this.tutorialManager.advanceStep("start_game");
+            }
         }
     }
 
     private checkSettlementReady(): void {
         const gm = this.gameManager;
         if (!gm) return;
+
+        if (gm.getCurrentState() !== GameState.PLAYING) return;
+
+        const roomMgr = gm.getRoomManager();
         const taskMgr = gm.getTaskManager();
-        if (!taskMgr) return;
+        const orderMgr = gm.getOrderManager();
+        if (!roomMgr || !taskMgr || !orderMgr) return;
+
+        const level = gm.getCurrentLevel();
+        if (!level) return;
 
         const allTasks = taskMgr.getAllTasks();
         const activeTasks = allTasks.filter(t =>
             t.status === TaskStatus.PENDING || t.status === TaskStatus.IN_PROGRESS
         );
 
-        if (activeTasks.length === 0 && gm.getCurrentState() === GameState.PLAYING) {
-            const level = gm.getCurrentLevel();
-            if (level) {
-                const roomMgr = gm.getRoomManager();
-                if (roomMgr) {
-                    const occupancy = roomMgr.getOverallOccupancyRate();
-                    if (occupancy >= level.targetOccupancy) {
-                        gm.enterSettlement();
-                        this.showSettlement();
-                    }
-                }
+        const pendingOrders = orderMgr.getPendingOrders();
+        const allRoomsClean = roomMgr.getAllRooms().every(room =>
+            room.slots.every(slot =>
+                slot.status === RoomStatus.VACANT || slot.status === RoomStatus.CLEANING
+            )
+        );
+
+        const occupancy = roomMgr.getOverallOccupancyRate();
+        const hasStarted = occupancy > 0;
+
+        if (hasStarted && activeTasks.length === 0 && pendingOrders.length === 0 && occupancy >= level.targetOccupancy) {
+            if (!this.settlementShown) {
+                gm.enterSettlement();
             }
         }
     }
@@ -380,31 +571,58 @@ export class MainScene extends Component {
         const stats = gm.generateReviewStats();
 
         const panelNode = this.node.getChildByName("SettlementPanel");
-        if (panelNode) {
-            const panel = panelNode.getComponent("SettlementPanel") as any || panelNode.addComponent(require("./ui/SettlementPanel").SettlementPanel);
-            panel.init(stats);
-            panel.setOnNext(() => {
-                panelNode.active = false;
-                this.showReview(stats);
-            });
-            panel.setOnRetry(() => {
-                panelNode.active = false;
-                gm.startLevel(gm.getCurrentLevelIndex);
-            });
-            panelNode.active = true;
+        if (!panelNode) {
+            console.warn("SettlementPanel node not found");
+            return;
         }
+
+        let panel = panelNode.getComponent(SettlementPanel);
+        if (!panel) {
+            panel = panelNode.addComponent(SettlementPanel);
+        }
+
+        panel.init(stats);
+        panel.setOnNext(() => {
+            panelNode.active = false;
+            this.showReview(stats);
+        });
+        panel.setOnRetry(() => {
+            panelNode.active = false;
+            this.settlementShown = false;
+            gm.startLevel(gm.getCurrentLevelIndex());
+        });
+
+        panelNode.active = true;
     }
 
     private showReview(stats: any): void {
         const panelNode = this.node.getChildByName("ReviewPanel");
-        if (panelNode) {
-            const panel = panelNode.getComponent("ReviewPanel") as any || panelNode.addComponent(require("./ui/SettlementPanel").ReviewPanel);
-            panel.init(stats);
-            panel.setOnBack(() => {
-                panelNode.active = false;
-                this.showLevelSelect();
-            });
-            panelNode.active = true;
+        if (!panelNode) {
+            console.warn("ReviewPanel node not found");
+            return;
         }
+
+        let panel = panelNode.getComponent(ReviewPanel);
+        if (!panel) {
+            panel = panelNode.addComponent(ReviewPanel);
+        }
+
+        panel.init(stats);
+        panel.setOnBack(() => {
+            panelNode.active = false;
+            const gm = GameManager.instance;
+            if (gm) {
+                const levelIndex = gm.getCurrentLevelIndex();
+                if (levelIndex + 1 < gm.getLevels().length && stats.starRating >= 1) {
+                    if (this.levelSelectPanel) {
+                        this.levelSelectPanel.unlockLevel(levelIndex + 1);
+                    }
+                }
+            }
+            gm?.setState(GameState.MENU);
+            this.showLevelSelect();
+        });
+
+        panelNode.active = true;
     }
 }
