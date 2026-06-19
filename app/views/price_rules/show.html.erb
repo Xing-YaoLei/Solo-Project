@@ -1,0 +1,67 @@
+<% content_for :title, @price_rule.name %>
+
+<div class="page-header">
+  <h1 class="page-title">💰 价格规则详情</h1>
+  <div class="btn-group">
+    <%= link_to "返回列表", package_price_rules_path(@price_rule.package), class: "btn btn-secondary" %>
+    <% if policy(@price_rule).edit? %>
+      <%= link_to "编辑规则", edit_price_rule_path(@price_rule), class: "btn btn-primary" %>
+    <% end %>
+  </div>
+</div>
+
+<div class="card">
+  <div class="form-row">
+    <div class="detail-section">
+      <div class="detail-label">规则名称</div>
+      <div class="detail-value"><%= @price_rule.name %></div>
+    </div>
+    <div class="detail-section">
+      <div class="detail-label">状态</div>
+      <div class="detail-value">
+        <span class="badge badge-<%= @price_rule.status %>">
+          <%= @price_rule.active? ? '启用' : '禁用' %>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-row">
+    <div class="detail-section">
+      <div class="detail-label">适用套餐</div>
+      <div class="detail-value"><%= link_to @price_rule.package.name, @price_rule.package %></div>
+    </div>
+    <div class="detail-section">
+      <div class="detail-label">适用渠道</div>
+      <div class="detail-value"><%= @price_rule.channel ? @price_rule.channel.name : '全部渠道' %></div>
+    </div>
+  </div>
+
+  <div class="form-row">
+    <div class="detail-section">
+      <div class="detail-label">规则类型</div>
+      <div class="detail-value"><%= rule_type_label(@price_rule) %></div>
+    </div>
+    <div class="detail-section">
+      <div class="detail-label">值</div>
+      <div class="detail-value"><%= rule_value_label(@price_rule) %></div>
+    </div>
+  </div>
+
+  <div class="form-row">
+    <div class="detail-section">
+      <div class="detail-label">有效期</div>
+      <div class="detail-value">
+        <% if @price_rule.start_date || @price_rule.end_date %>
+          <%= @price_rule.start_date&.strftime('%Y-%m-%d') || '不限' %> - <%= @price_rule.end_date&.strftime('%Y-%m-%d') || '不限' %>
+        <% else %>
+          永久有效
+        <% end %>
+      </div>
+    </div>
+    <div class="detail-section">
+      <div class="detail-label">最低购买数量</div>
+      <div class="detail-value"><%= @price_rule.min_quantity %></div>
+    </div>
+  </div>
+</div>

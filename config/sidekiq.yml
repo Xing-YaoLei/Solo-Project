@@ -1,0 +1,23 @@
+development:
+  :concurrency: 5
+  :queues:
+    - default
+    - mailers
+    - inventory
+    - orders
+
+production:
+  :concurrency: 10
+  :queues:
+    - default
+    - mailers
+    - inventory
+    - orders
+
+test:
+  :concurrency: 1
+  :queues:
+    - default
+    - mailers
+    - inventory
+    - orders

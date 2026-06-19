@@ -1,0 +1,81 @@
+<% content_for :title, "套餐管理" %>
+
+<div class="page-header">
+  <h1 class="page-title">📦 套餐管理</h1>
+  <% if policy(Package).create? %>
+    <%= link_to "新建套餐", new_package_path, class: "btn btn-primary" %>
+  <% end %>
+</div>
+
+<%= form_tag packages_path, method: :get, class: 'filters-bar' do %>
+  <div class="filter-item">
+    <label>状态</label>
+    <%= select_tag :status, options_for_select([['全部', ''], ['上架', 'active'], ['下架', 'inactive']], params[:status]), class: 'filter-select', onchange: 'this.form.submit()' %>
+  </div>
+<% end %>
+
+<div class="card">
+  <% if @packages.any? %>
+    <div class="table-container">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>套餐名称</th>
+            <th>基础价格</th>
+            <th>总库存</th>
+            <th>可用库存</th>
+            <th>已售</th>
+            <th>转化率</th>
+            <th>状态</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @packages.each do |package| %>
+            <tr>
+              <td>
+                <strong><%= link_to package.name, package %></strong>
+                <% if package.description.present? %>
+                  <div style="font-size: 0.85rem; color: #718096;"><%= truncate(package.description, length: 50) %></div>
+                <% end %>
+              </td>
+              <td>¥<%= number_with_precision(package.base_price, precision: 2) %></td>
+              <td><%= package.total_inventory %></td>
+              <td>
+                <div><%= package.available_inventory %></div>
+                <div class="inventory-bar">
+                  <% percentage = package.total_inventory > 0 ? (package.available_inventory.to_f / package.total_inventory * 100) : 0 %>
+                  <% css_class = if percentage <= 10 then 'critical' elsif percentage <= 30 then 'low' else '' end %>
+                  <div class="inventory-bar-fill <%= css_class %>" style="width: <%= percentage %>%;"></div>
+                </div>
+              </td>
+              <td><%= package.sold_count %></td>
+              <td><%= package.conversion_rate %>%</td>
+              <td>
+                <span class="badge badge-<%= package.status %>">
+                  <%= package.active? ? '上架' : '下架' %>
+                </span>
+              </td>
+              <td>
+                <div class="btn-group">
+                  <%= link_to "查看", package, class: "btn btn-secondary btn-sm" %>
+                  <% if policy(package).edit? %>
+                    <%= link_to "编辑", edit_package_path(package), class: "btn btn-secondary btn-sm" %>
+                  <% end %>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% else %>
+    <div class="empty-state">
+      <div class="empty-state-icon">📦</div>
+      <p>暂无套餐数据</p>
+      <% if policy(Package).create? %>
+        <%= link_to "创建第一个套餐", new_package_path, class: "btn btn-primary" %>
+      <% end %>
+    </div>
+  <% end %>
+</div>

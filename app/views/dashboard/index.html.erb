@@ -1,0 +1,151 @@
+<% content_for :title, "仪表盘" %>
+
+<div class="page-header">
+  <h1 class="page-title">
+    <% if current_user.manager? %>
+      📊 管理仪表盘
+    <% else %>
+      🏠 工作台
+    <% end %>
+  </h1>
+</div>
+
+<% if current_user.manager? %>
+  <div class="stats-grid">
+    <div class="stat-card primary">
+      <div class="stat-label">在售套餐</div>
+      <div class="stat-value"><%= @total_packages %></div>
+    </div>
+    <div class="stat-card success">
+      <div class="stat-label">总订单数</div>
+      <div class="stat-value"><%= @total_orders %></div>
+    </div>
+    <div class="stat-card warning">
+      <div class="stat-label">总营收</div>
+      <div class="stat-value">¥<%= number_with_precision(@total_revenue, precision: 2) %></div>
+    </div>
+    <div class="stat-card danger">
+      <div class="stat-label">超卖订单</div>
+      <div class="stat-value"><%= @oversold_orders_count %></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">📈 近30天订单趋势</h2>
+    </div>
+    <div style="height: 300px;">
+      <%= line_chart @conversion_data, colors: ["#667eea"], library: { maintainAspectRatio: false } %>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">🏆 热销套餐 TOP 5</h2>
+      <%= link_to "查看全部", packages_path, class: "btn btn-secondary btn-sm" %>
+    </div>
+    <% if @packages.any? %>
+      <div class="table-container">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>套餐名称</th>
+              <th>已售数量</th>
+              <th>总库存</th>
+              <th>转化率</th>
+              <th>库存状态</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @packages.each do |package| %>
+              <tr>
+                <td><%= link_to package.name, package %></td>
+                <td><%= package.sold_count %></td>
+                <td><%= package.total_inventory %></td>
+                <td><%= package.conversion_rate %>%</td>
+                <td>
+                  <% if package.available_inventory == 0 %>
+                    <span class="badge badge-cancelled">已售罄</span>
+                  <% elsif package.available_inventory <= 10 %>
+                    <span class="badge badge-pending">库存紧张</span>
+                  <% else %>
+                    <span class="badge badge-confirmed">库存充足</span>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <div class="empty-state">
+        <div class="empty-state-icon">📦</div>
+        <p>暂无套餐数据</p>
+      </div>
+    <% end %>
+  </div>
+<% else %>
+  <div class="stats-grid">
+    <div class="stat-card primary">
+      <div class="stat-label">待处理订单</div>
+      <div class="stat-value"><%= @pending_orders %></div>
+    </div>
+    <div class="stat-card success">
+      <div class="stat-label">今日入住</div>
+      <div class="stat-value"><%= @today_check_ins %></div>
+    </div>
+    <div class="stat-card danger">
+      <div class="stat-label">超卖订单</div>
+      <div class="stat-value"><%= @oversold_orders_count %></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">📋 最近订单</h2>
+      <%= link_to "全部订单", orders_path, class: "btn btn-secondary btn-sm" %>
+    </div>
+    <% if @my_orders.any? %>
+      <div class="table-container">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>订单号</th>
+              <th>套餐</th>
+              <th>客户</th>
+              <th>入住日期</th>
+              <th>状态</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @my_orders.each do |order| %>
+              <tr class="<%= 'oversold-row' if order.is_oversold? %>">
+                <td><%= order.order_number %></td>
+                <td><%= order.package.name %></td>
+                <td><%= order.customer_name %></td>
+                <td><%= order.check_in_date&.strftime('%Y-%m-%d') || '-' %></td>
+                <td>
+                  <span class="badge badge-<%= order.status %>">
+                    <%= I18n.t("order_status.#{order.status}", default: order.status) %>
+                  </span>
+                  <% if order.is_oversold? %>
+                    <span class="badge badge-oversold">超卖</span>
+                  <% end %>
+                </td>
+                <td>
+                  <%= link_to "详情", order, class: "btn btn-secondary btn-sm" %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <div class="empty-state">
+        <div class="empty-state-icon">📝</div>
+        <p>暂无订单</p>
+      </div>
+    <% end %>
+  </div>
+<% end %>

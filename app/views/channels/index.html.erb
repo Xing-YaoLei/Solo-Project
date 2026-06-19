@@ -1,0 +1,56 @@
+<% content_for :title, "渠道管理" %>
+
+<div class="page-header">
+  <h1 class="page-title">🔌 渠道管理</h1>
+  <% if policy(Channel).create? %>
+    <%= link_to "新建渠道", new_channel_path, class: "btn btn-primary" %>
+  <% end %>
+</div>
+
+<div class="card">
+  <% if @channels.any? %>
+    <div class="table-container">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>渠道名称</th>
+            <th>渠道代码</th>
+            <th>佣金比例</th>
+            <th>状态</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @channels.each do |channel| %>
+            <tr>
+              <td><strong><%= link_to channel.name, channel %></strong></td>
+              <td><code><%= channel.code %></code></td>
+              <td><%= channel.commission_rate %>%</td>
+              <td>
+                <span class="badge badge-<%= channel.status %>">
+                  <%= channel_status_label(channel) %>
+                </span>
+              </td>
+              <td>
+                <div class="btn-group">
+                  <%= link_to "查看", channel, class: "btn btn-secondary btn-sm" %>
+                  <% if policy(channel).edit? %>
+                    <%= link_to "编辑", edit_channel_path(channel), class: "btn btn-secondary btn-sm" %>
+                  <% end %>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% else %>
+    <div class="empty-state">
+      <div class="empty-state-icon">🔌</div>
+      <p>暂无渠道数据</p>
+      <% if policy(Channel).create? %>
+        <%= link_to "创建第一个渠道", new_channel_path, class: "btn btn-primary" %>
+      <% end %>
+    </div>
+  <% end %>
+</div>

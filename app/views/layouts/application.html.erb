@@ -1,29 +1,63 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title><%= content_for(:title) || "Mp0364" %></title>
+    <title><%= content_for(:title) || "民宿套餐结算台" %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="application-name" content="Mp0364">
+    <meta name="application-name" content="Homestay Settlement">
     <meta name="mobile-web-app-capable" content="yes">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
 
     <%= yield :head %>
 
-    <%# Enable PWA manifest for installable apps (make sure to enable in config/routes.rb too!) %>
-    <%#= tag.link rel: "manifest", href: pwa_manifest_path(format: :json) %>
-
     <link rel="icon" href="/icon.png" type="image/png">
     <link rel="icon" href="/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="/icon.png">
 
-    <%# Includes all stylesheet files in app/assets/stylesheets %>
-    <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <%= javascript_include_tag "chartkick", "Chart.bundle", "data-turbo-track": "reload" %>
     <%= javascript_importmap_tags %>
   </head>
-
   <body>
-    <%= yield %>
+    <% if user_signed_in? %>
+      <nav class="navbar">
+        <div class="navbar-container">
+          <div class="navbar-brand">
+            <%= link_to "🏨 民宿套餐结算台", root_path, class: "brand-link" %>
+          </div>
+          <div class="navbar-menu">
+            <% if current_user.manager? %>
+              <%= link_to "仪表盘", dashboard_path, class: "nav-link #{'active' if current_page?(dashboard_path)}" %>
+              <%= link_to "套餐管理", packages_path, class: "nav-link" %>
+              <%= link_to "渠道管理", channels_path, class: "nav-link" %>
+              <%= link_to "订单管理", orders_path, class: "nav-link" %>
+              <%= link_to "超卖订单", oversold_orders_path, class: "nav-link nav-link-warning" %>
+              <%= link_to "核销记录", redemption_records_path, class: "nav-link" %>
+            <% else %>
+              <%= link_to "我的订单", orders_path, class: "nav-link" %>
+              <%= link_to "今日入住", check_in_records_path, class: "nav-link" %>
+              <%= link_to "核销", redemption_records_path, class: "nav-link" %>
+            <% end %>
+          </div>
+          <div class="navbar-user">
+            <span class="user-name"><%= current_user.name %></span>
+            <span class="user-role"><%= current_user.manager? ? "管理层" : "一线人员" %></span>
+            <%= button_to "退出", destroy_user_session_path, method: :delete, class: "btn btn-outline btn-sm" %>
+          </div>
+        </div>
+      </nav>
+    <% end %>
+
+    <main class="main-content">
+      <% if notice %>
+        <div class="flash flash-notice"><%= notice %></div>
+      <% end %>
+      <% if alert %>
+        <div class="flash flash-alert"><%= alert %></div>
+      <% end %>
+
+      <%= yield %>
+    </main>
   </body>
 </html>

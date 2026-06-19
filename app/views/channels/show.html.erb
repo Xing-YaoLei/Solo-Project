@@ -1,0 +1,78 @@
+<% content_for :title, @channel.name %>
+
+<div class="page-header">
+  <h1 class="page-title">🔌 渠道详情</h1>
+  <div class="btn-group">
+    <%= link_to "返回列表", channels_path, class: "btn btn-secondary" %>
+    <% if policy(@channel).edit? %>
+      <%= link_to "编辑渠道", edit_channel_path(@channel), class: "btn btn-primary" %>
+    <% end %>
+  </div>
+</div>
+
+<div class="detail-grid">
+  <div>
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">基本信息</h2>
+      </div>
+
+      <div class="form-row">
+        <div class="detail-section">
+          <div class="detail-label">渠道名称</div>
+          <div class="detail-value"><%= @channel.name %></div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">渠道代码</div>
+          <div class="detail-value"><code><%= @channel.code %></code></div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="detail-section">
+          <div class="detail-label">佣金比例</div>
+          <div class="detail-value"><%= @channel.commission_rate %>%</div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">状态</div>
+          <div class="detail-value">
+            <span class="badge badge-<%= @channel.status %>">
+              <%= channel_status_label(@channel) %>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <% if @channel.description.present? %>
+        <div class="detail-section">
+          <div class="detail-label">描述</div>
+          <div class="detail-value" style="white-space: pre-wrap;"><%= @channel.description %></div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">💰 渠道价格规则</h2>
+      </div>
+
+      <% if @price_rules.any? %>
+        <% @price_rules.each do |rule| %>
+          <div style="padding: 12px 0; border-bottom: 1px solid #e2e8f0;">
+            <div style="font-weight: 500;"><%= rule.package.name %></div>
+            <div style="font-size: 0.85rem; color: #718096; margin-top: 4px;">
+              <%= rule_type_label(rule) %>：<%= rule_value_label(rule) %>
+            </div>
+          </div>
+        <% end %>
+      <% else %>
+        <div class="empty-state">
+          <div class="empty-state-icon">💰</div>
+          <p>暂无价格规则</p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

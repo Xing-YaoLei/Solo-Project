@@ -1,0 +1,57 @@
+<% content_for :title, "入住记录" %>
+
+<div class="page-header">
+  <h1 class="page-title">🏠 入住记录</h1>
+</div>
+
+<div class="card">
+  <% if @check_in_records.any? %>
+    <div class="table-container">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>订单号</th>
+            <th>套餐</th>
+            <th>客户</th>
+            <th>入住时间</th>
+            <th>离店时间</th>
+            <th>人数</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @check_in_records.each do |record| %>
+            <tr>
+              <td><%= link_to record.order.order_number, record.order %></td>
+              <td><%= record.order.package.name %></td>
+              <td><%= record.order.customer_name %></td>
+              <td>
+                <% if record.actual_check_in_at.present? %>
+                  <%= record.actual_check_in_at.strftime('%Y-%m-%d %H:%M') %>
+                <% else %>
+                  -
+                <% end %>
+              </td>
+              <td>
+                <% if record.actual_check_out_at.present? %>
+                  <%= record.actual_check_out_at.strftime('%Y-%m-%d %H:%M') %>
+                <% else %>
+                  -
+                <% end %>
+              </td>
+              <td><%= record.guest_count %></td>
+              <td>
+                <%= link_to "详情", record.order, class: "btn btn-secondary btn-sm" %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% else %>
+    <div class="empty-state">
+      <div class="empty-state-icon">🏠</div>
+      <p>暂无入住记录</p>
+    </div>
+  <% end %>
+</div>

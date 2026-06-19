@@ -1,0 +1,41 @@
+<% content_for :title, "添加复核意见" %>
+
+<div class="page-header">
+  <h1 class="page-title">📋 添加复核意见</h1>
+  <%= link_to "返回订单", order_path(@order), class: "btn btn-secondary" %>
+</div>
+
+<div class="card">
+  <div class="oversold-banner" style="margin-bottom: 20px;">
+    <div class="oversold-banner-icon">⚠️</div>
+    <div class="oversold-banner-text">
+      <div class="oversold-banner-title">订单超卖复核</div>
+      <div>订单号：<%= @order.order_number %></div>
+    </div>
+  </div>
+
+  <%= form_with model: @oversell_review, url: order_oversell_reviews_path(@order) do |f| %>
+    <div class="form-group">
+      <%= f.label :resolution, "处理方案", class: "form-label" %>
+      <%= f.select :resolution, [
+        ['待处理', 'pending'],
+        ['退款处理', 'refund'],
+        ['升级套餐', 'upgrade'],
+        ['安排替代方案', 'alternative'],
+        ['已解决', 'resolved'],
+        ['驳回', 'rejected']
+      ], {}, class: "form-select", required: true %>
+    </div>
+
+    <div class="form-group">
+      <%= f.label :review_opinion, "复核意见", class: "form-label" %>
+      <%= f.text_area :review_opinion, class: "form-textarea", rows: 6, required: true,
+          placeholder: "请详细描述复核意见和处理方案..." %>
+    </div>
+
+    <div class="form-actions">
+      <%= f.submit "提交复核意见", class: "btn btn-primary" %>
+      <%= link_to "取消", order_path(@order), class: "btn btn-secondary" %>
+    </div>
+  <% end %>
+</div>

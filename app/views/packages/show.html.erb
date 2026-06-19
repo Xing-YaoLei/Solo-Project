@@ -1,0 +1,191 @@
+<% content_for :title, @package.name %>
+
+<div class="page-header">
+  <h1 class="page-title">📦 套餐详情</h1>
+  <div class="btn-group">
+    <%= link_to "返回列表", packages_path, class: "btn btn-secondary" %>
+    <% if policy(@package).edit? %>
+      <%= link_to "编辑套餐", edit_package_path(@package), class: "btn btn-primary" %>
+    <% end %>
+  </div>
+</div>
+
+<div class="detail-grid">
+  <div>
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">套餐信息</h2>
+      </div>
+
+      <div class="detail-section">
+        <div class="detail-label">套餐名称</div>
+        <div class="detail-value"><%= @package.name %></div>
+      </div>
+
+      <% if @package.description.present? %>
+        <div class="detail-section">
+          <div class="detail-label">套餐描述</div>
+          <div class="detail-value" style="white-space: pre-wrap;"><%= @package.description %></div>
+        </div>
+      <% end %>
+
+      <div class="form-row">
+        <div class="detail-section">
+          <div class="detail-label">基础价格</div>
+          <div class="detail-value">¥<%= number_with_precision(@package.base_price, precision: 2) %></div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">状态</div>
+          <div class="detail-value">
+            <span class="badge badge-<%= @package.status %>">
+              <%= @package.active? ? '上架' : '下架' %>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="detail-section">
+          <div class="detail-label">总库存</div>
+          <div class="detail-value"><%= @package.total_inventory %></div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">可用库存</div>
+          <div class="detail-value">
+            <%= @package.available_inventory %>
+            <% if @package.available_inventory <= 10 %>
+              <span class="badge badge-pending">库存紧张</span>
+            <% end %>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="detail-section">
+          <div class="detail-label">已售数量</div>
+          <div class="detail-value"><%= @package.sold_count %></div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">转化率</div>
+          <div class="detail-value"><%= @package.conversion_rate %>%</div>
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <div class="detail-label">库存状态</div>
+        <div class="inventory-bar">
+          <% percentage = @package.total_inventory > 0 ? (@package.available_inventory.to_f / @package.total_inventory * 100) : 0 %>
+          <% css_class = if percentage <= 10 then 'critical' elsif percentage <= 30 then 'low' else '' end %>
+          <div class="inventory-bar-fill <%= css_class %>" style="width: <%= percentage %>%;"></div>
+        </div>
+        <div style="margin-top: 4px; font-size: 0.85rem; color: #718096;">
+          可用库存占比 <%= percentage.round(1) %>%
+        </div>
+      </div>
+
+      <% if policy(@package).adjust_inventory? %>
+        <div class="detail-section" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
+          <div class="detail-label" style="margin-bottom: 12px;">库存调整</div>
+          <%= form_with model: @package, url: adjust_inventory_package_path(@package), method: :post do |f| %>
+            <div class="form-row">
+              <div class="form-group">
+                <%= label_tag :adjustment_type, "调整类型", class: "form-label" %>
+                <%= select_tag :adjustment_type, options_for_select([['增加库存', 'increase'], ['减少库存', 'decrease']]), class: "form-select" %>
+              </div>
+              <div class="form-group">
+                <%= label_tag :adjustment, "调整数量", class: "form-label" %>
+                <%= number_field_tag :adjustment, 1, min: 1, class: "form-input" %>
+              </div>
+            </div>
+            <%= submit_tag "确认调整", class: "btn btn-primary" %>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">💰 价格规则</h2>
+        <% if policy(PriceRule).create? %>
+          <%= link_to "添加规则", new_package_price_rule_path(@package), class: "btn btn-primary btn-sm" %>
+        <% end %>
+      </div>
+
+      <% if @price_rules.any? %>
+        <div class="table-container">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>规则名称</th>
+                <th>类型</th>
+                <th>值</th>
+                <th>适用渠道</th>
+                <th>有效期</th>
+                <th>状态</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @price_rules.each do |rule| %>
+                <tr>
+                  <td><%= rule.name %></td>
+                  <td><%= rule_type_label(rule) %></td>
+                  <td><%= rule_value_label(rule) %></td>
+                  <td><%= rule.channel ? rule.channel.name : '全部渠道' %></td>
+                  <td>
+                    <% if rule.start_date || rule.end_date %>
+                      <%= rule.start_date&.strftime('%Y-%m-%d') || '不限' %> - <%= rule.end_date&.strftime('%Y-%m-%d') || '不限' %>
+                    <% else %>
+                      永久有效
+                    <% end %>
+                  </td>
+                  <td>
+                    <span class="badge badge-<%= rule.status %>">
+                      <%= rule.active? ? '启用' : '禁用' %>
+                    </span>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% else %>
+        <div class="empty-state">
+          <div class="empty-state-icon">💰</div>
+          <p>暂无价格规则</p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">📋 最近订单</h2>
+      </div>
+
+      <% if @recent_orders.any? %>
+        <% @recent_orders.each do |order| %>
+          <div style="padding: 12px 0; border-bottom: 1px solid #e2e8f0;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <strong><%= link_to order.order_number, order %></strong>
+              <span class="badge badge-<%= order.status %>">
+                <%= order_status_label(order) %>
+              </span>
+            </div>
+            <div style="font-size: 0.85rem; color: #718096; margin-top: 4px;">
+              <%= order.customer_name %> · <%= order.quantity %>份 · ¥<%= number_with_precision(order.total_amount, precision: 2) %>
+            </div>
+            <div style="font-size: 0.8rem; color: #a0aec0; margin-top: 2px;">
+              <%= order.created_at.strftime('%Y-%m-%d %H:%M') %>
+            </div>
+          </div>
+        <% end %>
+      <% else %>
+        <div class="empty-state">
+          <div class="empty-state-icon">📝</div>
+          <p>暂无订单</p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

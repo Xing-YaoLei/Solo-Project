@@ -1,0 +1,309 @@
+<% content_for :title, "订单 #{@order.order_number}" %>
+
+<div class="page-header">
+  <h1 class="page-title">📋 订单详情</h1>
+  <div class="btn-group">
+    <%= link_to "返回列表", orders_path, class: "btn btn-secondary" %>
+    <% if policy(@order).edit? %>
+      <%= link_to "编辑订单", edit_order_path(@order), class: "btn btn-primary" %>
+    <% end %>
+  </div>
+</div>
+
+<% if @order.is_oversold? %>
+  <div class="oversold-banner">
+    <div class="oversold-banner-icon">⚠️</div>
+    <div class="oversold-banner-text">
+      <div class="oversold-banner-title">此订单存在超卖</div>
+      <div>库存不足，请及时处理并与客户沟通</div>
+    </div>
+  </div>
+<% end %>
+
+<div class="detail-grid">
+  <div>
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">订单信息</h2>
+        <span class="badge badge-<%= @order.status %>"><%= order_status_label(@order) %></span>
+      </div>
+
+      <div class="form-row">
+        <div class="detail-section">
+          <div class="detail-label">订单号</div>
+          <div class="detail-value"><%= @order.order_number %></div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">外部订单号</div>
+          <div class="detail-value"><%= @order.external_order_id || '-' %></div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="detail-section">
+          <div class="detail-label">套餐</div>
+          <div class="detail-value"><%= link_to @order.package.name, @order.package %></div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">渠道</div>
+          <div class="detail-value"><%= @order.channel.name %></div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="detail-section">
+          <div class="detail-label">客户姓名</div>
+          <div class="detail-value"><%= @order.customer_name %></div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">联系电话</div>
+          <div class="detail-value"><%= @order.customer_phone || '-' %></div>
+        </div>
+      </div>
+
+      <% if @order.customer_email.present? %>
+        <div class="detail-section">
+          <div class="detail-label">邮箱</div>
+          <div class="detail-value"><%= @order.customer_email %></div>
+        </div>
+      <% end %>
+
+      <div class="form-row">
+        <div class="detail-section">
+          <div class="detail-label">入住日期</div>
+          <div class="detail-value"><%= @order.check_in_date&.strftime('%Y-%m-%d') || '-' %></div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">离店日期</div>
+          <div class="detail-value"><%= @order.check_out_date&.strftime('%Y-%m-%d') || '-' %></div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="detail-section">
+          <div class="detail-label">购买数量</div>
+          <div class="detail-value"><%= @order.quantity %> 份</div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">住宿天数</div>
+          <div class="detail-value"><%= @order.days_stay %> 晚</div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="detail-section">
+          <div class="detail-label">单价</div>
+          <div class="detail-value">¥<%= number_with_precision(@order.unit_price, precision: 2) %></div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">渠道结算价</div>
+          <div class="detail-value">
+            <% if @order.channel_price.present? %>
+              ¥<%= number_with_precision(@order.channel_price, precision: 2) %>
+            <% else %>
+              -
+            <% end %>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <div class="detail-label">订单总额</div>
+        <div class="detail-value" style="font-size: 1.5rem; color: #667eea;">
+          ¥<%= number_with_precision(@order.total_amount, precision: 2) %>
+        </div>
+      </div>
+
+      <% if @order.notes.present? %>
+        <div class="detail-section">
+          <div class="detail-label">备注</div>
+          <div class="detail-value" style="white-space: pre-wrap;"><%= @order.notes %></div>
+        </div>
+      <% end %>
+
+      <% if @order.staff.present? %>
+        <div class="form-row">
+          <div class="detail-section">
+            <div class="detail-label">负责人员</div>
+            <div class="detail-value"><%= @order.staff.name %></div>
+          </div>
+          <div class="detail-section">
+            <div class="detail-label">下单时间</div>
+            <div class="detail-value"><%= @order.created_at.strftime('%Y-%m-%d %H:%M') %></div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">⚡ 快捷操作</h2>
+      </div>
+
+      <div class="btn-group" style="flex-wrap: wrap;">
+        <% if @order.pending? %>
+          <%= button_to "确认订单", confirm_order_path(@order), method: :post, class: "btn btn-success" %>
+          <%= button_to "取消订单", cancel_order_path(@order), method: :post,
+              class: "btn btn-danger", data: { confirm: "确定要取消这个订单吗？" } %>
+        <% end %>
+
+        <% if @order.confirmed? %>
+          <%= button_to "办理入住", check_in_order_path(@order), method: :post, class: "btn btn-primary" %>
+          <%= button_to "取消订单", cancel_order_path(@order), method: :post,
+              class: "btn btn-danger", data: { confirm: "确定要取消这个订单吗？" } %>
+        <% end %>
+
+        <% if @order.checked_in? %>
+          <%= button_to "完成订单", complete_order_path(@order), method: :post, class: "btn btn-success" %>
+        <% end %>
+
+        <%= link_to "添加核销码", new_order_redemption_record_path(@order), class: "btn btn-secondary" %>
+      </div>
+    </div>
+
+    <% if @order.is_oversold? %>
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">💬 超卖沟通记录</h2>
+        </div>
+
+        <% if @oversell_communications.any? %>
+          <div class="communication-list">
+            <% @oversell_communications.each do |comm| %>
+              <div class="communication-item <%= comm.direction %>">
+                <div class="communication-meta">
+                  <%= direction_label(comm) %> · <%= communication_type_label(comm) %> ·
+                  <%= comm.user&.name || '系统' %> ·
+                  <%= comm.created_at.strftime('%Y-%m-%d %H:%M') %>
+                </div>
+                <div class="communication-content"><%= comm.content %></div>
+              </div>
+            <% end %>
+          </div>
+        <% else %>
+          <div class="empty-state">
+            <div class="empty-state-icon">💬</div>
+            <p>暂无沟通记录</p>
+          </div>
+        <% end %>
+
+        <div style="margin-top: 16px;">
+          <%= form_with model: @order.oversell_communications.build, url: order_oversell_communications_path(@order) do |f| %>
+            <div class="form-row">
+              <div class="form-group">
+                <%= f.label :direction, "沟通方向", class: "form-label" %>
+                <%= f.select :direction, [['客户来电', 'incoming'], ['我方呼出', 'outgoing'], ['内部备注', 'internal']], {}, class: "form-select" %>
+              </div>
+              <div class="form-group">
+                <%= f.label :communication_type, "沟通方式", class: "form-label" %>
+                <%= f.select :communication_type, [['电话', 'phone'], ['微信', 'wechat'], ['短信', 'sms'], ['邮件', 'email'], ['备注', 'note']], {}, class: "form-select" %>
+              </div>
+            </div>
+            <div class="form-group">
+              <%= f.label :content, "沟通内容", class: "form-label" %>
+              <%= f.text_area :content, class: "form-textarea", rows: 3, required: true %>
+            </div>
+            <%= f.submit "添加记录", class: "btn btn-primary" %>
+          <% end %>
+        </div>
+      </div>
+
+      <% if current_user.manager? %>
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">📋 复核意见</h2>
+            <%= link_to "添加复核意见", new_order_oversell_review_path(@order), class: "btn btn-primary btn-sm" %>
+          </div>
+
+          <% if @oversell_reviews.any? %>
+            <% @oversell_reviews.each do |review| %>
+              <div class="review-item">
+                <div class="review-meta">
+                  <%= review.reviewer&.name || '未知' %> ·
+                  <span class="badge badge-pending"><%= resolution_label(review) %></span> ·
+                  <%= review.reviewed_at&.strftime('%Y-%m-%d %H:%M') || '未复核' %>
+                </div>
+                <div class="review-opinion"><%= review.review_opinion %></div>
+              </div>
+            <% end %>
+          <% else %>
+            <div class="empty-state">
+              <div class="empty-state-icon">📋</div>
+              <p>暂无复核意见</p>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+
+  <div>
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">🏠 入住记录</h2>
+      </div>
+
+      <% if @check_in_records.any? %>
+        <% @check_in_records.each do |record| %>
+          <div style="padding: 12px 0; border-bottom: 1px solid #e2e8f0;">
+            <div style="font-weight: 500;">
+              <%= record.actual_check_in_at&.strftime('%Y-%m-%d %H:%M') || '未入住' %>
+              →
+              <%= record.actual_check_out_at&.strftime('%Y-%m-%d %H:%M') || '未离店' %>
+            </div>
+            <div style="font-size: 0.85rem; color: #718096; margin-top: 4px;">
+              <%= record.staff&.name || '-' %> · <%= record.guest_count %> 人
+            </div>
+            <% if record.notes.present? %>
+              <div style="font-size: 0.85rem; color: #4a5568; margin-top: 4px;"><%= record.notes %></div>
+            <% end %>
+          </div>
+        <% end %>
+      <% else %>
+        <div class="empty-state">
+          <div class="empty-state-icon">🏠</div>
+          <p>暂无入住记录</p>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">🎫 核销记录</h2>
+        <%= link_to "添加核销码", new_order_redemption_record_path(@order), class: "btn btn-primary btn-sm" %>
+      </div>
+
+      <% if @redemption_records.any? %>
+        <% @redemption_records.each do |record| %>
+          <div style="padding: 12px 0; border-bottom: 1px solid #e2e8f0;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <code style="background: #f7fafc; padding: 4px 8px; border-radius: 4px;"><%= record.redemption_code %></code>
+              <span class="badge badge-<%= record.status %>"><%= redemption_status_label(record) %></span>
+            </div>
+            <% if record.redeemed_at.present? %>
+              <div style="font-size: 0.85rem; color: #718096; margin-top: 4px;">
+                核销时间：<%= record.redeemed_at.strftime('%Y-%m-%d %H:%M') %>
+              </div>
+              <div style="font-size: 0.85rem; color: #718096;">
+                核销人：<%= record.staff&.name || '-' %>
+              </div>
+            <% end %>
+            <% if record.notes.present? %>
+              <div style="font-size: 0.85rem; color: #4a5568; margin-top: 4px;"><%= record.notes %></div>
+            <% end %>
+            <% if record.pending? %>
+              <div style="margin-top: 8px;">
+                <%= button_to "核销", redeem_redemption_record_path(record), method: :post, class: "btn btn-success btn-sm" %>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+      <% else %>
+        <div class="empty-state">
+          <div class="empty-state-icon">🎫</div>
+          <p>暂无核销记录</p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

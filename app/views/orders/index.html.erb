@@ -1,0 +1,110 @@
+<% content_for :title, "订单管理" %>
+
+<div class="page-header">
+  <h1 class="page-title">
+    <% if params[:oversold] == "true" %>
+      ⚠️ 超卖订单
+    <% else %>
+      📋 订单管理
+    <% end %>
+  </h1>
+  <% if policy(Order).create? %>
+    <%= link_to "新建订单", new_order_path, class: "btn btn-primary" %>
+  <% end %>
+</div>
+
+<%= form_tag orders_path, method: :get, class: 'filters-bar' do %>
+  <div class="filter-item">
+    <label>状态</label>
+    <%= select_tag :status, options_for_select([
+      ['全部状态', ''],
+      ['待确认', 'pending'],
+      ['已确认', 'confirmed'],
+      ['已入住', 'checked_in'],
+      ['已完成', 'completed'],
+      ['已取消', 'cancelled']
+    ], params[:status]), class: 'filter-select', onchange: 'this.form.submit()' %>
+  </div>
+
+  <% if current_user.manager? %>
+    <div class="filter-item">
+      <label>套餐</label>
+      <%= select_tag :package_id, options_from_collection_for_select(Package.all, :id, :name, params[:package_id]),
+                     include_blank: '全部套餐', class: 'filter-select', onchange: 'this.form.submit()' %>
+    </div>
+    <div class="filter-item">
+      <label>渠道</label>
+      <%= select_tag :channel_id, options_from_collection_for_select(Channel.all, :id, :name, params[:channel_id]),
+                     include_blank: '全部渠道', class: 'filter-select', onchange: 'this.form.submit()' %>
+    </div>
+  <% end %>
+<% end %>
+
+<div class="card">
+  <% if @orders.any? %>
+    <div class="table-container">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>订单号</th>
+            <th>套餐</th>
+            <th>渠道</th>
+            <th>客户</th>
+            <th>数量</th>
+            <th>金额</th>
+            <th>入住日期</th>
+            <th>状态</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @orders.each do |order| %>
+            <tr class="<%= 'oversold-row' if order.is_oversold? %>">
+              <td>
+                <strong><%= order.order_number %></strong>
+                <% if order.is_oversold? %>
+                  <div><span class="badge badge-oversold">超卖</span></div>
+                <% end %>
+              </td>
+              <td><%= order.package.name %></td>
+              <td><%= order.channel.name %></td>
+              <td>
+                <div><%= order.customer_name %></div>
+                <% if order.customer_phone.present? %>
+                  <div style="font-size: 0.85rem; color: #718096;"><%= order.customer_phone %></div>
+                <% end %>
+              </td>
+              <td><%= order.quantity %></td>
+              <td>¥<%= number_with_precision(order.total_amount, precision: 2) %></td>
+              <td>
+                <% if order.check_in_date %>
+                  <%= order.check_in_date.strftime('%Y-%m-%d') %>
+                <% else %>
+                  -
+                <% end %>
+              </td>
+              <td>
+                <span class="badge badge-<%= order.status %>">
+                  <%= order_status_label(order) %>
+                </span>
+              </td>
+              <td>
+                <div class="btn-group">
+                  <%= link_to "详情", order, class: "btn btn-secondary btn-sm" %>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% else %>
+    <div class="empty-state">
+      <div class="empty-state-icon">📝</div>
+      <p>暂无订单数据</p>
+      <% if policy(Order).create? %>
+        <%= link_to "创建第一个订单", new_order_path, class: "btn btn-primary" %>
+      <% end %>
+    </div>
+  <% end %>
+</div>
