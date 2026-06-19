@@ -58,7 +58,7 @@ def get_appointments_df(start_date=None, end_date=None, status=None, risk_level=
         db.close()
 
 
-def get_work_orders_df(start_date=None, end_date=None, status=None, repair_type=None, is_rework=None, has_parts_shortage=None):
+def get_work_orders_df(start_date=None, end_date=None, status=None, repair_type=None, is_rework=None, has_parts_shortage=None, risk_level=None):
     db = SessionLocal()
     try:
         query = db.query(WorkOrder)
@@ -76,6 +76,10 @@ def get_work_orders_df(start_date=None, end_date=None, status=None, repair_type=
             filters.append(WorkOrder.is_rework == is_rework)
         if has_parts_shortage is not None:
             filters.append(WorkOrder.has_parts_shortage == has_parts_shortage)
+
+        if risk_level and risk_level != "all":
+            query = query.outerjoin(Appointment, WorkOrder.appointment_id == Appointment.id)
+            filters.append(Appointment.risk_level == risk_level)
 
         if filters:
             query = query.filter(and_(*filters))
@@ -406,7 +410,12 @@ def get_rework_rate_stats(start_date=None, end_date=None, status=None, repair_ty
             func.sum(WorkOrder.is_rework.cast("int")).label("rework_count"),
         )
 
-        filters = [WorkOrder.status == "completed"]
+        filters = []
+        if status and status != "all":
+            filters.append(WorkOrder.status == status)
+        else:
+            filters.append(WorkOrder.status == "completed")
+
         if start_date:
             filters.append(WorkOrder.created_at >= start_date)
         if end_date:

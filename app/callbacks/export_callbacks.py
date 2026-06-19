@@ -40,6 +40,7 @@ def export_rework_report(n_clicks, filter_state):
         status=status_filter,
         repair_type=repair_type_filter,
         has_parts_shortage=shortage_filter,
+        risk_level=risk_level,
     )
 
     repair_dist = get_repair_type_distribution(
@@ -54,6 +55,7 @@ def export_rework_report(n_clicks, filter_state):
     rework_stats = get_rework_rate_stats(
         start_date=start_date,
         end_date=end_date,
+        status=status,
         repair_type=repair_type,
         has_parts_shortage=shortage_filter,
         risk_level=risk_level,
