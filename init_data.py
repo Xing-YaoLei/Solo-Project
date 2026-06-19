@@ -56,7 +56,7 @@ def main():
         os.remove(config.duckdb.db_path)
 
     print(f"📊 初始化数据仓库...")
-    repo = DataRepository(config, use_minio=False)
+    repo = DataRepository(config, use_minio=True)
 
     print(f"🎲 使用随机种子: {args.seed}")
     generator = MockDataGenerator(repo, seed=args.seed)

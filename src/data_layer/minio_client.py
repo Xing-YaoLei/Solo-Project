@@ -27,27 +27,40 @@ class MinioClient:
                 raise
 
     def upload_dataframe(
-        self, df: pl.DataFrame, object_name: str, metadata: Optional[Dict[str, Any]] = None
+        self,
+        df: pl.DataFrame,
+        object_name: str,
+        metadata: Optional[Dict[str, Any]] = None,
+        format: str = "csv",
     ) -> None:
-        csv_bytes = df.write_csv().encode("utf-8")
-        csv_io = io.BytesIO(csv_bytes)
+        if format == "parquet":
+            data_bytes = df.write_parquet()
+            content_type = "application/octet-stream"
+        else:
+            data_bytes = df.write_csv().encode("utf-8")
+            content_type = "text/csv"
+
+        data_io = io.BytesIO(data_bytes)
         self.client.put_object(
             bucket_name=self.config.bucket,
             object_name=object_name,
-            data=csv_io,
-            length=len(csv_bytes),
-            content_type="text/csv",
+            data=data_io,
+            length=len(data_bytes),
+            content_type=content_type,
             metadata=metadata,
         )
 
-    def download_dataframe(self, object_name: str) -> pl.DataFrame:
+    def download_dataframe(self, object_name: str, format: str = "csv") -> pl.DataFrame:
         try:
             response = self.client.get_object(
                 bucket_name=self.config.bucket,
                 object_name=object_name,
             )
-            csv_content = response.read().decode("utf-8")
-            return pl.read_csv(io.StringIO(csv_content))
+            data = response.read()
+            if format == "parquet":
+                return pl.read_parquet(io.BytesIO(data))
+            else:
+                return pl.read_csv(io.StringIO(data.decode("utf-8")))
         finally:
             response.close()
             response.release_conn()

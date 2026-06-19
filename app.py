@@ -35,7 +35,7 @@ PACKAGE_NAMES = {
 @st.cache_resource(show_spinner="正在初始化数据仓库...")
 def init_repository():
     config = load_config()
-    repo = DataRepository(config, use_minio=False)
+    repo = DataRepository(config, use_minio=True)
     return repo
 
 

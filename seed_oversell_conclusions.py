@@ -7,7 +7,7 @@ import random
 from datetime import datetime, timedelta
 
 config = load_config()
-repo = DataRepository(config, use_minio=False)
+repo = DataRepository(config, use_minio=True)
 
 oversells = repo.get_oversell_records()
 print(f"共有 {len(oversells)} 条超卖记录")

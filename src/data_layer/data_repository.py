@@ -318,6 +318,9 @@ class DataRepository:
     def save_analysis_notes_batch(self, df: pl.DataFrame) -> None:
         self._dual_write("analysis_notes", df)
 
+    def save_oversell_records_batch(self, df: pl.DataFrame) -> None:
+        self._dual_write("oversell_records", df)
+
     def save_conversion_rate_versions_batch(self, df: pl.DataFrame) -> None:
         self._dual_write("conversion_rate_versions", df)
 
@@ -327,17 +330,21 @@ class DataRepository:
 
         objects = self.minio.list_objects(prefix=object_prefix)
         for obj_name in objects:
-            if obj_name.endswith(".csv"):
-                df = self.minio.download_dataframe(obj_name)
+            if obj_name.endswith(".parquet"):
+                df = self.minio.download_dataframe(obj_name, format="parquet")
+                table_name = obj_name.split("/")[-1].rsplit("_", 1)[0]
+                self.warehouse.upsert_dataframe(table_name, df, ["package_id", "date"])
+            elif obj_name.endswith(".csv"):
+                df = self.minio.download_dataframe(obj_name, format="csv")
                 table_name = obj_name.split("/")[-1].replace(".csv", "")
                 self.warehouse.upsert_dataframe(table_name, df, ["order_id"])
 
-    def sync_to_minio(self, table_name: str, object_name: str) -> None:
+    def sync_to_minio(self, table_name: str, object_name: str, format: str = "parquet") -> None:
         if not self.use_minio:
             raise RuntimeError("MinIO client not initialized")
 
         df = self.warehouse.execute_query(f"SELECT * FROM {table_name}")
-        self.minio.upload_dataframe(df, object_name)
+        self.minio.upload_dataframe(df, object_name, format=format)
 
     def close(self) -> None:
         self.warehouse.close()
