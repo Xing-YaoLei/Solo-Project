@@ -1355,8 +1355,18 @@ elif page == "📚 数据版本追溯":
             else:
                 st.success(f"找到 {len(payment_versions)} 个历史版本（MinIO + DuckDB），记录版本号已从 data_versions.record_version 读取")
                 
+                duckdb_count = sum(1 for v in payment_versions if v.get('source') == 'DuckDB')
+                minio_count = sum(1 for v in payment_versions if v.get('source', 'MinIO') == 'MinIO')
+                st.info(f"📦 DuckDB 快照: {duckdb_count} 条 | ☁️ MinIO 快照: {minio_count} 条")
+                
                 col_v1, col_v2 = st.columns(2)
-                version_indices = [f"📌 V{v.get('version', i+1)} ({v.get('source', 'MinIO')}) - {v.get('timestamp', '未知时间')}" for i, v in enumerate(payment_versions)]
+                version_indices = []
+                for i, v in enumerate(payment_versions):
+                    source = v.get('source', 'MinIO')
+                    ver = v.get('version', i+1)
+                    ts = v.get('timestamp', '未知时间')
+                    source_tag = '📦 DuckDB' if source == 'DuckDB' else '☁️ MinIO'
+                    version_indices.append(f"📌 V{ver} ({source_tag}) - {ts}")
                 
                 with col_v1:
                     ver_a_idx = st.selectbox("选择版本A", range(len(version_indices)), format_func=lambda x: version_indices[x], key="ver_a_pay")
@@ -1382,16 +1392,22 @@ elif page == "📚 数据版本追溯":
                     else:
                         st.info("两个版本内容完全一致")
                 
-                st.markdown("**各版本快照详情**")
+                st.markdown("**各版本快照详情（含 DuckDB 持久化版本）**")
                 for i, ver in enumerate(payment_versions):
                     ver_num = ver.get('version', i+1)
                     source = ver.get('source', 'MinIO')
-                    with st.expander(f"🔖 V{ver_num} ({source}) - {ver.get('timestamp', 'N/A')} | 变更原因: {ver.get('change_reason', '无')}"):
+                    is_duckdb = source == 'DuckDB'
+                    source_badge = "🟢 📦 DuckDB持久化" if is_duckdb else "🔵 ☁️ MinIO缓存"
+                    with st.expander(f"{source_badge} | 记录版本 V{ver_num} - {ver.get('timestamp', 'N/A')} | 变更原因: {ver.get('change_reason', '无')}"):
                         snapshot = ver.get('snapshot', {})
+                        if is_duckdb:
+                            st.markdown(f"<div style='background:#dcfce7; padding:0.5rem; border-radius:4px; margin-bottom:0.5rem;'><strong>✅ 这是从 DuckDB.data_versions 表读取的持久化版本（version_id 从 MAX(version_id)+1 生成）</strong></div>", unsafe_allow_html=True)
+                        else:
+                            st.markdown(f"<div style='background:#dbeafe; padding:0.5rem; border-radius:4px; margin-bottom:0.5rem;'><strong>ℹ️ 这是从 MinIO 读取的版本快照</strong></div>", unsafe_allow_html=True)
                         snap_df = pd.DataFrame([
                             {'字段': k, '值': str(v)} for k, v in snapshot.items()
                         ])
-                        st.dataframe(snap_df, hide_index=True, use_container_width=True)
+                        st.dataframe(snap_df, hide_index=True, width='stretch')
     
     with tab2:
         st.markdown("**门锁记录版本追溯**")
@@ -1453,17 +1469,26 @@ elif page == "📚 数据版本追溯":
             if len(lock_versions) == 0:
                 st.info("该记录暂无历史版本，请先执行更新操作")
             else:
+                duckdb_count = sum(1 for v in lock_versions if v.get('source') == 'DuckDB')
+                minio_count = sum(1 for v in lock_versions if v.get('source', 'MinIO') == 'MinIO')
                 st.success(f"找到 {len(lock_versions)} 个历史版本，版本号来自 data_versions.record_version")
+                st.info(f"📦 DuckDB 持久化快照: {duckdb_count} 条 | ☁️ MinIO 缓存快照: {minio_count} 条")
                 
                 for i, ver in enumerate(lock_versions):
                     ver_num = ver.get('version', i+1)
                     source = ver.get('source', 'MinIO')
-                    with st.expander(f"🔒 记录版本 V{ver_num} ({source}) - {ver.get('timestamp', 'N/A')} | {ver.get('change_reason', '无')}"):
+                    is_duckdb = source == 'DuckDB'
+                    source_badge = "🟢 📦 DuckDB持久化" if is_duckdb else "🔵 ☁️ MinIO缓存"
+                    with st.expander(f"{source_badge} | 🔒 记录版本 V{ver_num} - {ver.get('timestamp', 'N/A')} | {ver.get('change_reason', '无')}"):
                         snapshot = ver.get('snapshot', {})
+                        if is_duckdb:
+                            st.markdown(f"<div style='background:#dcfce7; padding:0.5rem; border-radius:4px; margin-bottom:0.5rem;'><strong>✅ 这是从 DuckDB.data_versions 表读取的持久化版本（version_id 从 MAX(version_id)+1 生成）</strong></div>", unsafe_allow_html=True)
+                        else:
+                            st.markdown(f"<div style='background:#dbeafe; padding:0.5rem; border-radius:4px; margin-bottom:0.5rem;'><strong>ℹ️ 这是从 MinIO 读取的版本快照</strong></div>", unsafe_allow_html=True)
                         snap_df = pd.DataFrame([
                             {'字段': k, '值': str(v)} for k, v in snapshot.items()
                         ])
-                        st.dataframe(snap_df, hide_index=True, use_container_width=True)
+                        st.dataframe(snap_df, hide_index=True, width='stretch')
 
 st.markdown("---")
 st.caption("""
