@@ -1,5 +1,6 @@
 package com.usedcar.scheduling.service.impl;
 
+import com.usedcar.scheduling.domain.FinanceDocument;
 import com.usedcar.scheduling.domain.User;
 import com.usedcar.scheduling.domain.Vehicle;
 import com.usedcar.scheduling.domain.VehicleArchive;
@@ -8,6 +9,7 @@ import com.usedcar.scheduling.dto.ReportDTO;
 import com.usedcar.scheduling.enums.TodoStatus;
 import com.usedcar.scheduling.enums.UserRole;
 import com.usedcar.scheduling.enums.VehicleStatus;
+import com.usedcar.scheduling.repository.FinanceDocumentRepository;
 import com.usedcar.scheduling.repository.TodoItemRepository;
 import com.usedcar.scheduling.repository.UserRepository;
 import com.usedcar.scheduling.repository.VehicleArchiveRepository;
@@ -36,10 +38,21 @@ public class ReportServiceImpl implements ReportService {
     private final VehicleArchiveRepository vehicleArchiveRepository;
     private final TodoItemRepository todoItemRepository;
     private final UserRepository userRepository;
+    private final FinanceDocumentRepository financeDocumentRepository;
 
     private List<Vehicle> filterVehiclesByRole(List<Vehicle> vehicles, UserRole userRole, Long currentUserId) {
         if (userRole == null || currentUserId == null || userRole == UserRole.MANAGER) {
             return vehicles;
+        }
+        if (userRole == UserRole.FINANCE) {
+            List<FinanceDocument> docs = financeDocumentRepository.findByUploaderId(currentUserId);
+            List<Long> vehicleIds = docs.stream()
+                    .map(d -> d.getVehicle().getId())
+                    .distinct()
+                    .toList();
+            return vehicles.stream()
+                    .filter(v -> vehicleIds.contains(v.getId()))
+                    .toList();
         }
         return vehicles.stream()
                 .filter(v -> {
@@ -234,8 +247,16 @@ public class ReportServiceImpl implements ReportService {
             long vehicleCount;
             if (user.getRole() == UserRole.ASSESSOR) {
                 vehicleCount = allVehicles.stream().filter(v -> v.getAssessor() != null && v.getAssessor().getId().equals(user.getId())).count();
-            } else {
+            } else if (user.getRole() == UserRole.SALES) {
                 vehicleCount = allVehicles.stream().filter(v -> v.getSales() != null && v.getSales().getId().equals(user.getId())).count();
+            } else if (user.getRole() == UserRole.FINANCE) {
+                List<FinanceDocument> financeDocs = financeDocumentRepository.findByUploaderId(user.getId());
+                vehicleCount = financeDocs.stream()
+                        .map(d -> d.getVehicle().getId())
+                        .distinct()
+                        .count();
+            } else {
+                vehicleCount = allVehicles.size();
             }
             pr.setVehicleCount(vehicleCount);
 
@@ -244,6 +265,12 @@ public class ReportServiceImpl implements ReportService {
                     .filter(v -> (v.getSales() != null && v.getSales().getId().equals(user.getId()))
                             || (v.getAssessor() != null && v.getAssessor().getId().equals(user.getId())))
                     .count();
+            if (user.getRole() == UserRole.FINANCE) {
+                List<FinanceDocument> financeDocs = financeDocumentRepository.findByUploaderId(user.getId());
+                completedCount = financeDocs.stream()
+                        .filter(d -> d.getStatus() != null && d.getStatus().name().equals("APPROVED"))
+                        .count();
+            }
             pr.setCompletedCount(completedCount);
 
             long overdueCount = todoItemRepository.findByAssigneeIdAndStatus(user.getId(), TodoStatus.PENDING)

@@ -12,6 +12,8 @@ public interface FinanceDocumentRepository extends JpaRepository<FinanceDocument
 
     List<FinanceDocument> findByVehicleIdAndStatus(Long vehicleId, DocumentStatus status);
 
+    List<FinanceDocument> findByUploaderId(Long uploaderId);
+
     List<FinanceDocument> findByStatus(DocumentStatus status);
 
     long countByVehicleIdAndStatus(Long vehicleId, DocumentStatus status);
