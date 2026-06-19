@@ -2,7 +2,6 @@ from typing import List
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_pg_session
-from app.models import AnomalyFlag
 from app.schemas import AnomalyFlagResponse
 from app.services.anomaly_service import detect_anomalies, get_anomaly_flags
 
@@ -26,9 +25,9 @@ async def get_complaint_anomalies(
     return flags
 
 
-@router.post("/detect")
+@router.post("/detect", response_model=List[AnomalyFlagResponse])
 async def trigger_detect(
     session: AsyncSession = Depends(get_pg_session),
 ):
-    detected = await detect_anomalies(session)
-    return {"detected_count": len(detected), "anomalies": detected}
+    flags = await detect_anomalies(session)
+    return flags

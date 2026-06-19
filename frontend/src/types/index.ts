@@ -40,6 +40,13 @@ export interface SavedView {
   createdAt: string;
 }
 
+export interface SavedViewCreateData {
+  viewName: string;
+  viewType: SavedView['viewType'];
+  filtersJson: string;
+  createdBy: string;
+}
+
 export interface FunnelData {
   stages: FunnelStage[];
   timeoutIntervals: TimeoutInterval[];

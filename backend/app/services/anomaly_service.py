@@ -1,14 +1,14 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import AnomalyFlag, Complaint, ComplaintStatus, FlagType
 
 
-async def detect_anomalies(session: AsyncSession) -> list[dict]:
+async def detect_anomalies(session: AsyncSession) -> List[AnomalyFlag]:
     result = await session.execute(select(Complaint))
     complaints = result.scalars().all()
-    detected = []
+    new_flags: List[AnomalyFlag] = []
 
     for c in complaints:
         if c.complaint_type and "门锁" in c.complaint_type:
@@ -27,11 +27,7 @@ async def detect_anomalies(session: AsyncSession) -> list[dict]:
                     severity="high",
                 )
                 session.add(flag)
-                detected.append({
-                    "complaint_id": c.id,
-                    "flag_type": FlagType.door_lock_delay,
-                    "severity": "high",
-                })
+                new_flags.append(flag)
 
         if c.status == ComplaintStatus.closed and not c.revisit_result:
             existing = await session.execute(
@@ -49,11 +45,7 @@ async def detect_anomalies(session: AsyncSession) -> list[dict]:
                     severity="medium",
                 )
                 session.add(flag)
-                detected.append({
-                    "complaint_id": c.id,
-                    "flag_type": FlagType.payment_gap,
-                    "severity": "medium",
-                })
+                new_flags.append(flag)
 
         if c.assigned_to and "口径" in (c.complaint_content or ""):
             existing = await session.execute(
@@ -71,20 +63,20 @@ async def detect_anomalies(session: AsyncSession) -> list[dict]:
                     severity="medium",
                 )
                 session.add(flag)
-                detected.append({
-                    "complaint_id": c.id,
-                    "flag_type": FlagType.cs_message_change,
-                    "severity": "medium",
-                })
+                new_flags.append(flag)
 
     await session.commit()
-    return detected
+    for flag in new_flags:
+        await session.refresh(flag)
+
+    all_flags_result = await session.execute(select(AnomalyFlag))
+    return list(all_flags_result.scalars().all())
 
 
 async def get_anomaly_flags(
     session: AsyncSession,
     complaint_id: Optional[int] = None,
-) -> list[AnomalyFlag]:
+) -> List[AnomalyFlag]:
     query = select(AnomalyFlag)
     if complaint_id is not None:
         query = query.where(AnomalyFlag.complaint_id == complaint_id)

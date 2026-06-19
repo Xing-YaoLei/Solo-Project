@@ -9,6 +9,7 @@ from app.api.funnel import router as funnel_router
 from app.api.anomaly import router as anomaly_router
 from app.api.notes import router as notes_router
 from app.api.export import router as export_router
+from app.api.views import router as views_router
 from app.services.funnel_service import calc_workday_hours
 from datetime import datetime, timedelta
 import random
@@ -97,6 +98,7 @@ app.include_router(funnel_router)
 app.include_router(anomaly_router)
 app.include_router(notes_router)
 app.include_router(export_router)
+app.include_router(views_router)
 
 
 @app.get("/api/health")

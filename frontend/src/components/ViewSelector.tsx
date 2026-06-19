@@ -5,6 +5,7 @@ interface ViewSelectorProps {
   views: SavedView[];
   onSaveView: (viewName: string, viewType: SavedView['viewType'], filtersJson: string) => void;
   onSelectView: (view: SavedView) => void;
+  onDeleteView?: (viewId: string) => void;
 }
 
 const VIEW_TABS: { key: SavedView['viewType']; label: string }[] = [
@@ -13,7 +14,7 @@ const VIEW_TABS: { key: SavedView['viewType']; label: string }[] = [
   { key: 'problem_tag', label: '问题标签' },
 ];
 
-export default function ViewSelector({ views, onSaveView, onSelectView }: ViewSelectorProps) {
+export default function ViewSelector({ views, onSaveView, onSelectView, onDeleteView }: ViewSelectorProps) {
   const [activeTab, setActiveTab] = useState<SavedView['viewType']>('revisit_result');
   const [newViewName, setNewViewName] = useState('');
 
@@ -47,12 +48,24 @@ export default function ViewSelector({ views, onSaveView, onSelectView }: ViewSe
           <div
             key={view.id}
             className="view-item"
-            onClick={() => onSelectView(view)}
           >
-            <span className="view-item-name">{view.viewName}</span>
-            <span className="view-item-meta">
-              {view.createdBy} · {view.createdAt}
-            </span>
+            <div className="view-item-main" onClick={() => onSelectView(view)}>
+              <span className="view-item-name">{view.viewName}</span>
+              <span className="view-item-meta">
+                {view.createdBy} · {view.createdAt}
+              </span>
+            </div>
+            {onDeleteView && (
+              <button
+                className="view-delete-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDeleteView(view.id);
+                }}
+              >
+                ×
+              </button>
+            )}
           </div>
         ))}
       </div>

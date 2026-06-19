@@ -5,6 +5,8 @@ import type {
   TimeoutInterval,
   AnomalyFlag,
   ReviewNote,
+  SavedView,
+  SavedViewCreateData,
   DateRange,
   AnomalyFetchParams,
   NoteCreateData,
@@ -68,26 +70,36 @@ function mapAnomalyFlag(raw: Record<string, unknown>): AnomalyFlag {
   };
 }
 
+function mapAnomalyList(data: unknown): AnomalyFlag[] {
+  if (Array.isArray(data)) {
+    return (data as Record<string, unknown>[]).map(mapAnomalyFlag);
+  }
+  if (data && typeof data === 'object') {
+    const obj = data as Record<string, unknown>;
+    if (Array.isArray(obj.anomalies)) {
+      return (obj.anomalies as Record<string, unknown>[]).map(mapAnomalyFlag);
+    }
+  }
+  return [];
+}
+
 export async function fetchAnomalies(params?: AnomalyFetchParams): Promise<AnomalyFlag[]> {
   const mapped: Record<string, unknown> = {};
   if (params?.flagType) mapped.flag_type = params.flagType;
   if (params?.severity) mapped.severity = params.severity;
   if (params?.complaintId) mapped.complaint_id = params.complaintId;
   const res = await api.get('/anomalies', { params: mapped });
-  const items = res.data as Record<string, unknown>[];
-  return items.map(mapAnomalyFlag);
+  return mapAnomalyList(res.data);
 }
 
 export async function fetchAnomaliesByComplaint(id: string): Promise<AnomalyFlag[]> {
   const res = await api.get(`/anomalies/complaint/${id}`);
-  const items = res.data as Record<string, unknown>[];
-  return items.map(mapAnomalyFlag);
+  return mapAnomalyList(res.data);
 }
 
 export async function detectAnomalies(): Promise<AnomalyFlag[]> {
   const res = await api.post('/anomalies/detect');
-  const items = (res.data.anomalies ?? res.data) as Record<string, unknown>[];
-  return items.map(mapAnomalyFlag);
+  return mapAnomalyList(res.data);
 }
 
 function mapReviewNote(raw: Record<string, unknown>): ReviewNote {
@@ -130,4 +142,38 @@ export async function exportReport(format: 'csv' | 'excel', dateRange: DateRange
     responseType: 'blob',
   });
   return res.data;
+}
+
+function mapSavedView(raw: Record<string, unknown>): SavedView {
+  return {
+    id: String(raw.id),
+    viewName: (raw.view_name as string) ?? '',
+    viewType: raw.view_type as SavedView['viewType'],
+    filtersJson: (raw.filters_json as string) ?? '{}',
+    createdBy: (raw.created_by as string) ?? '',
+    createdAt: (raw.created_at as string) ?? '',
+  };
+}
+
+export async function fetchSavedViews(viewType?: SavedView['viewType']): Promise<SavedView[]> {
+  const params: Record<string, unknown> = {};
+  if (viewType) params.view_type = viewType;
+  const res = await api.get('/views', { params });
+  const items = res.data as Record<string, unknown>[];
+  return items.map(mapSavedView);
+}
+
+export async function createSavedView(data: SavedViewCreateData): Promise<SavedView> {
+  const payload = {
+    view_name: data.viewName,
+    view_type: data.viewType,
+    filters_json: data.filtersJson,
+    created_by: data.createdBy,
+  };
+  const res = await api.post('/views', payload);
+  return mapSavedView(res.data);
+}
+
+export async function deleteSavedView(id: string): Promise<void> {
+  await api.delete(`/views/${id}`);
 }

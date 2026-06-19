@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useFunnelData } from './hooks/useFunnelData';
 import { useAnomaly } from './hooks/useAnomaly';
 import FunnelChart from './components/FunnelChart';
@@ -6,25 +6,56 @@ import AnomalyFlags from './components/AnomalyFlags';
 import ViewSelector from './components/ViewSelector';
 import NoteEditor from './components/NoteEditor';
 import ExportPanel from './components/ExportPanel';
-import type { SavedView, DateRange } from './types';
+import { fetchSavedViews, createSavedView, deleteSavedView } from './api';
+import type { SavedView, SavedViewCreateData, DateRange } from './types';
 
 export default function App() {
-  const { data, loading, dateRange, setDateRange, refresh } = useFunnelData();
-  const { anomalies, detecting, detect } = useAnomaly();
+  const { data, loading, dateRange, setDateRange, refresh: refreshFunnel } = useFunnelData();
+  const { anomalies, detecting, detect, refresh: refreshAnomaly } = useAnomaly();
   const [savedViews, setSavedViews] = useState<SavedView[]>([]);
   const [selectedComplaintId, setSelectedComplaintId] = useState('');
   const [selectedAnomalyFlagId, setSelectedAnomalyFlagId] = useState<string | undefined>();
 
-  const handleSaveView = (viewName: string, viewType: SavedView['viewType'], filtersJson: string) => {
-    const view: SavedView = {
-      id: crypto.randomUUID(),
+  const loadViews = useCallback(async () => {
+    try {
+      const views = await fetchSavedViews();
+      setSavedViews(views);
+    } catch {
+      // silently ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    loadViews();
+  }, [loadViews]);
+
+  const handleRefresh = async () => {
+    refreshFunnel();
+    refreshAnomaly();
+  };
+
+  const handleSaveView = async (viewName: string, viewType: SavedView['viewType'], filtersJson: string) => {
+    const data: SavedViewCreateData = {
       viewName,
       viewType,
       filtersJson,
       createdBy: 'current_user',
-      createdAt: new Date().toISOString(),
     };
-    setSavedViews((prev) => [...prev, view]);
+    try {
+      const newView = await createSavedView(data);
+      setSavedViews((prev) => [newView, ...prev]);
+    } catch {
+      // silently ignore
+    }
+  };
+
+  const handleDeleteView = async (viewId: string) => {
+    try {
+      await deleteSavedView(viewId);
+      setSavedViews((prev) => prev.filter((v) => v.id !== viewId));
+    } catch {
+      // silently ignore
+    }
   };
 
   const handleSelectView = (view: SavedView) => {
@@ -44,7 +75,7 @@ export default function App() {
         <h1 className="app-title">旅游民宿客诉处理漏斗报表</h1>
         <div className="header-controls">
           <ExportPanel dateRange={dateRange} onDateRangeChange={setDateRange} />
-          <button className="refresh-btn" onClick={refresh}>
+          <button className="refresh-btn" onClick={handleRefresh}>
             刷新数据
           </button>
         </div>
@@ -69,6 +100,7 @@ export default function App() {
             views={savedViews}
             onSaveView={handleSaveView}
             onSelectView={handleSelectView}
+            onDeleteView={handleDeleteView}
           />
           {selectedComplaintId && (
             <NoteEditor
