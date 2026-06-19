@@ -128,6 +128,7 @@ export class MainScene extends Component {
     private conflictCheckTimer: number = 0;
     private isConfigsLoaded: boolean = false;
     private settlementShown: boolean = false;
+    private completedCheckIns: number = 0;
 
     async onLoad(): Promise<void> {
         this.gameManager = this.node.getComponent(GameManager) || this.node.addComponent(GameManager);
@@ -306,14 +307,14 @@ export class MainScene extends Component {
         const halfW = calendarSize.width / 2;
         const halfH = calendarSize.height / 2;
 
-        const cellsOffsetX = 60;
-        const cellsOffsetY = 40;
-
-        const relX = localPos.x + halfW - cellsOffsetX;
-        const relY = halfH - localPos.y - cellsOffsetY;
-
+        const headerHeight = 60;
+        const labelWidth = 80;
         const cellWidth = 80;
         const cellHeight = 50;
+
+        const relX = localPos.x + halfW - labelWidth;
+        const relY = halfH - localPos.y - headerHeight;
+
         const cellX = Math.floor(relX / cellWidth);
         const rowIndex = Math.floor(relY / cellHeight);
 
@@ -329,10 +330,57 @@ export class MainScene extends Component {
         const targetRoom = rooms[rowIndex];
         if (cellX < 0 || cellX >= targetRoom.slots.length) return;
 
-        const targetSlot = targetRoom.slots[cellX];
-        if (targetSlot.status !== RoomStatus.VACANT && targetSlot.status !== RoomStatus.CLEANING) return;
+        const dropDate = targetRoom.slots[cellX].date;
 
-        this.confirmOrder(order.id, targetRoom.id);
+        this.tryAssignOrderAtDate(order.id, targetRoom.id, dropDate);
+    }
+
+    private tryAssignOrderAtDate(orderId: string, roomId: string, dropDate: string): boolean {
+        const gm = GameManager.instance;
+        if (!gm) return false;
+
+        const orderMgr = gm.getOrderManager();
+        const roomMgr = gm.getRoomManager();
+        if (!orderMgr || !roomMgr) return false;
+
+        const order = orderMgr.getOrder(orderId);
+        if (!order || order.status !== OrderStatus.PENDING) return false;
+
+        const stayDays = this.calculateStayDays(order.checkIn, order.checkOut);
+        const checkInDate = dropDate;
+        const checkOutDate = this.addDaysToDate(dropDate, stayDays);
+
+        const room = roomMgr.getRoom(roomId);
+        if (!room) return false;
+
+        const allAvailable = this.isDateRangeAvailable(room, checkInDate, checkOutDate);
+        if (!allAvailable) return false;
+
+        return this.confirmOrderWithDates(orderId, roomId, checkInDate, checkOutDate);
+    }
+
+    private calculateStayDays(checkIn: string, checkOut: string): number {
+        const d1 = new Date(checkIn);
+        const d2 = new Date(checkOut);
+        const diff = Math.ceil((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24));
+        return Math.max(1, diff);
+    }
+
+    private addDaysToDate(dateStr: string, days: number): string {
+        const d = new Date(dateStr);
+        d.setDate(d.getDate() + days);
+        return d.toISOString().split('T')[0];
+    }
+
+    private isDateRangeAvailable(room: any, checkIn: string, checkOut: string): boolean {
+        for (const slot of room.slots) {
+            if (slot.date >= checkIn && slot.date < checkOut) {
+                if (slot.status !== RoomStatus.VACANT && slot.status !== RoomStatus.CLEANING) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     private confirmOrder(orderId: string, roomId: string): boolean {
@@ -346,13 +394,31 @@ export class MainScene extends Component {
         const order = orderMgr.getOrder(orderId);
         if (!order || order.status !== OrderStatus.PENDING) return false;
 
-        const success = roomMgr.assignOrderToRoom(roomId, order.checkIn, order.checkOut, orderId);
+        return this.confirmOrderWithDates(orderId, roomId, order.checkIn, order.checkOut);
+    }
+
+    private confirmOrderWithDates(orderId: string, roomId: string, checkIn: string, checkOut: string): boolean {
+        const gm = GameManager.instance;
+        if (!gm) return false;
+
+        const orderMgr = gm.getOrderManager();
+        const roomMgr = gm.getRoomManager();
+        if (!orderMgr || !roomMgr) return false;
+
+        const order = orderMgr.getOrder(orderId);
+        if (!order || order.status !== OrderStatus.PENDING) return false;
+
+        const success = roomMgr.assignOrderToRoom(roomId, checkIn, checkOut, orderId);
         if (!success) return false;
 
         orderMgr.confirmOrder(orderId, roomId);
         orderMgr.checkInOrder(orderId);
 
-        gm.addRevenue(order.price);
+        const stayDays = this.calculateStayDays(checkIn, checkOut);
+        const dailyRate = order.price / Math.max(1, this.calculateStayDays(order.checkIn, order.checkOut));
+        const actualRevenue = Math.round(dailyRate * stayDays);
+
+        gm.addRevenue(actualRevenue);
 
         if (this.orderPanel) {
             this.orderPanel.removeOrderCard(orderId);
@@ -363,6 +429,7 @@ export class MainScene extends Component {
         }
 
         this.achievementManager?.updateProgress("daily_occupancy", roomMgr.getOverallOccupancyRate());
+        this.achievementManager?.incrementProgress("total_checkins", 1);
 
         return true;
     }
@@ -390,6 +457,10 @@ export class MainScene extends Component {
                     }
                 }
             }
+        }
+
+        if (task.type === TaskType.CLEANING) {
+            this.completedCheckIns += 1;
         }
 
         const elapsedRatio = task.duration > 0 ? task.elapsed / task.duration : 1;
@@ -497,6 +568,7 @@ export class MainScene extends Component {
 
         this.settlementShown = false;
         this.conflictCheckTimer = 0;
+        this.completedCheckIns = 0;
 
         if (this.calendar) this.calendar.init();
         if (this.orderPanel) this.orderPanel.init();
@@ -550,16 +622,14 @@ export class MainScene extends Component {
         );
 
         const pendingOrders = orderMgr.getPendingOrders();
-        const allRoomsClean = roomMgr.getAllRooms().every(room =>
-            room.slots.every(slot =>
-                slot.status === RoomStatus.VACANT || slot.status === RoomStatus.CLEANING
-            )
-        );
 
-        const occupancy = roomMgr.getOverallOccupancyRate();
-        const hasStarted = occupancy > 0;
+        const totalRooms = roomMgr.getAllRooms().length;
+        const targetCheckIns = Math.ceil(totalRooms * level.dayCount * level.targetOccupancy);
 
-        if (hasStarted && activeTasks.length === 0 && pendingOrders.length === 0 && occupancy >= level.targetOccupancy) {
+        const hasEnoughCheckIns = this.completedCheckIns >= targetCheckIns;
+
+        if (this.completedCheckIns > 0 && activeTasks.length === 0 && 
+            pendingOrders.length === 0 && hasEnoughCheckIns) {
             if (!this.settlementShown) {
                 gm.enterSettlement();
             }
