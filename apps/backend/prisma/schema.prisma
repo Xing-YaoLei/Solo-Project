@@ -1,0 +1,337 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  FRONTLINE
+}
+
+enum RoomStatus {
+  AVAILABLE
+  OCCUPIED
+  CLEANING
+  MAINTENANCE
+  BLOCKED
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  CHECKED_IN
+  CHECKED_OUT
+  CANCELLED
+}
+
+enum CleaningStatus {
+  PENDING
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+  INSPECTED
+  FAILED
+}
+
+enum DocumentStatus {
+  PENDING
+  UPLOADED
+  VERIFIED
+  REJECTED
+}
+
+enum DepositStatus {
+  PENDING
+  PAID
+  REFUNDED
+  DEDUCTED
+  PARTIAL_REFUNDED
+}
+
+enum ConflictRiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ConflictStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum ChannelType {
+  AIRBNB
+  TRIP_ADVISOR
+  BOOKING_COM
+  MEITUAN
+  XIANCHENG
+  DIRECT
+  OTHER
+}
+
+model User {
+  id            Int      @id @default(autoincrement())
+  username      String   @unique
+  email         String   @unique
+  passwordHash  String
+  fullName      String
+  phone         String?
+  role          UserRole @default(FRONTLINE)
+  department    String?
+  isActive      Boolean  @default(true)
+  avatarUrl     String?
+  lastLoginAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  assignedCleaningTasks  CleaningTask[] @relation("CleanerAssignee")
+  createdCleaningTasks   CleaningTask[] @relation("CleaningTaskCreator")
+  createdConflicts       RoomConflict[] @relation("ConflictCreator")
+  handledConflicts       RoomConflict[] @relation("ConflictHandler")
+  communications         Communication[]
+  reviewRecords          ReviewRecord[]
+  createdOrders          ChannelOrder[] @relation("OrderCreator")
+
+  @@map("users")
+}
+
+model Property {
+  id           Int      @id @default(autoincrement())
+  name         String
+  address      String
+  city         String
+  district     String?
+  totalRooms   Int      @default(0)
+  description  String?
+  managerId    Int?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  rooms       Room[]
+  calendars   RoomCalendar[]
+  orders      ChannelOrder[]
+  cleaningTasks CleaningTask[]
+  conflicts   RoomConflict[]
+
+  @@map("properties")
+}
+
+model Room {
+  id           Int      @id @default(autoincrement())
+  propertyId   Int
+  roomNumber   String
+  roomType     String?
+  floor        Int?
+  pricePerNight Decimal @default(0)
+  description  String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  property     Property   @relation(fields: [propertyId], references: [id])
+  calendars    RoomCalendar[]
+  orders       ChannelOrder[]
+  cleaningTasks CleaningTask[]
+  documents    CheckinDocument[]
+  deposits     Deposit[]
+  conflicts    RoomConflict[]
+
+  @@unique([propertyId, roomNumber])
+  @@map("rooms")
+}
+
+model RoomCalendar {
+  id          Int        @id @default(autoincrement())
+  propertyId  Int
+  roomId      Int?
+  date        DateTime
+  status      RoomStatus @default(AVAILABLE)
+  price       Decimal    @default(0)
+  notes       String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  property    Property   @relation(fields: [propertyId], references: [id])
+  room        Room?      @relation(fields: [roomId], references: [id])
+
+  @@unique([roomId, date])
+  @@unique([propertyId, date])
+  @@map("room_calendars")
+}
+
+model ChannelOrder {
+  id              Int         @id @default(autoincrement())
+  orderNo         String      @unique
+  propertyId      Int
+  roomId          Int?
+  channel         ChannelType @default(OTHER)
+  channelOrderNo  String?
+  guestName       String
+  guestPhone      String?
+  guestEmail      String?
+  guestCount      Int         @default(1)
+  checkInDate     DateTime
+  checkOutDate    DateTime
+  nights          Int         @default(1)
+  totalAmount     Decimal     @default(0)
+  status          OrderStatus @default(PENDING)
+  specialRequests String?
+  createdById     Int?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  property    Property           @relation(fields: [propertyId], references: [id])
+  room        Room?              @relation(fields: [roomId], references: [id])
+  createdBy   User?              @relation("OrderCreator", fields: [createdById], references: [id])
+  documents   CheckinDocument[]
+  deposits    Deposit[]
+  conflicts   RoomConflict[]
+
+  @@index([propertyId, checkInDate, checkOutDate])
+  @@map("channel_orders")
+}
+
+model CleaningTask {
+  id           Int            @id @default(autoincrement())
+  taskNo       String         @unique
+  propertyId   Int
+  roomId       Int?
+  orderId      Int?
+  status       CleaningStatus @default(PENDING)
+  priority     Int            @default(0)
+  assignedToId Int?
+  createdById  Int?
+  scheduledAt  DateTime?
+  startedAt    DateTime?
+  completedAt  DateTime?
+  remarks      String?
+  inspectionNotes String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  property    Property @relation(fields: [propertyId], references: [id])
+  room        Room?    @relation(fields: [roomId], references: [id])
+  order       ChannelOrder? @relation(fields: [orderId], references: [id])
+  assignedTo  User?    @relation("CleanerAssignee", fields: [assignedToId], references: [id])
+  createdBy   User?    @relation("CleaningTaskCreator", fields: [createdById], references: [id])
+
+  @@index([propertyId, status])
+  @@index([assignedToId, status])
+  @@map("cleaning_tasks")
+}
+
+model CheckinDocument {
+  id           Int             @id @default(autoincrement())
+  orderId      Int
+  roomId       Int?
+  documentType String
+  documentNo   String
+  guestName    String
+  status       DocumentStatus  @default(PENDING)
+  uploadUrl    String?
+  verifiedById Int?
+  verifiedAt   DateTime?
+  remarks      String?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  order        ChannelOrder @relation(fields: [orderId], references: [id])
+  room         Room?        @relation(fields: [roomId], references: [id])
+
+  @@index([orderId])
+  @@map("checkin_documents")
+}
+
+model Deposit {
+  id          Int           @id @default(autoincrement())
+  orderId     Int
+  roomId      Int?
+  amount      Decimal       @default(0)
+  paidAmount  Decimal       @default(0)
+  refundAmount Decimal      @default(0)
+  status      DepositStatus @default(PENDING)
+  paymentMethod String?
+  paidAt      DateTime?
+  refundedAt  DateTime?
+  deductionReason String?
+  remarks     String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  order  ChannelOrder @relation(fields: [orderId], references: [id])
+  room   Room?        @relation(fields: [roomId], references: [id])
+
+  @@index([orderId])
+  @@map("deposits")
+}
+
+model RoomConflict {
+  id             Int              @id @default(autoincrement())
+  conflictNo     String           @unique
+  propertyId     Int
+  roomId         Int?
+  orderId        Int?
+  conflictType   String
+  description    String
+  riskLevel      ConflictRiskLevel @default(MEDIUM)
+  status         ConflictStatus   @default(OPEN)
+  createdById    Int?
+  handledById    Int?
+  resolution     String?
+  resolvedAt     DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  property      Property        @relation(fields: [propertyId], references: [id])
+  room          Room?           @relation(fields: [roomId], references: [id])
+  order         ChannelOrder?   @relation(fields: [orderId], references: [id])
+  createdBy     User?           @relation("ConflictCreator", fields: [createdById], references: [id])
+  handledBy     User?           @relation("ConflictHandler", fields: [handledById], references: [id])
+  communications Communication[]
+  reviewRecords  ReviewRecord[]
+
+  @@index([propertyId, status, riskLevel])
+  @@map("room_conflicts")
+}
+
+model Communication {
+  id         Int      @id @default(autoincrement())
+  conflictId Int
+  userId     Int
+  message    String
+  attachments Json?
+  createdAt  DateTime @default(now())
+
+  conflict   RoomConflict @relation(fields: [conflictId], references: [id])
+  user       User         @relation(fields: [userId], references: [id])
+
+  @@index([conflictId])
+  @@map("communications")
+}
+
+model ReviewRecord {
+  id          Int      @id @default(autoincrement())
+  conflictId  Int
+  userId      Int
+  reviewType  String
+  opinion     String
+  isApproved  Boolean?
+  createdAt   DateTime @default(now())
+
+  conflict    RoomConflict @relation(fields: [conflictId], references: [id])
+  user        User         @relation(fields: [userId], references: [id])
+
+  @@index([conflictId])
+  @@map("review_records")
+}
