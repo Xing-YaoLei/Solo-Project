@@ -28,14 +28,14 @@ class ProcessingRecord < ApplicationRecord
   end
 
   def status_change?
-    next_status.present? && previous_status.present? && next_status != previous_status
+    previous_status.present? && next_status.present? && previous_status.to_s != next_status.to_s
   end
 
   def apply_status_change!
     return unless status_change? && recordable.respond_to?(:status=) && recordable.class.respond_to?(:statuses)
 
-    if recordable.class.statuses.key?(next_status)
-      recordable.update!(status: next_status)
+    if recordable.class.statuses.key?(next_status.to_s)
+      recordable.update!(status: next_status.to_s)
     end
   end
 end

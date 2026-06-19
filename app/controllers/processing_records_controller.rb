@@ -14,8 +14,16 @@ class ProcessingRecordsController < ApplicationController
 
   def update
     old_next_status = @processing_record.next_status
+
+    if processing_record_params[:next_status].present?
+      @processing_record.previous_status = @processing_record.recordable.status.to_s
+    elsif processing_record_params[:next_status].blank?
+      @processing_record.next_status = nil
+      @processing_record.previous_status = nil
+    end
+
     if @processing_record.update(processing_record_params)
-      @processing_record.apply_status_change! if old_next_status != @processing_record.next_status
+      @processing_record.apply_status_change! if old_next_status != @processing_record.next_status && @processing_record.status_change?
       redirect_to @processing_record, notice: "处理记录更新成功。"
     else
       render :edit, status: :unprocessable_entity
