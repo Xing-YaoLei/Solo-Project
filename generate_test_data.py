@@ -257,6 +257,7 @@ def insert_repair_orders(days=90):
     order_id_map = {}
     total_parts_cost = 0
     total_labor_cost = 0
+    all_insurance_data = []
 
     for idx, (raw_order, vehicle, parts_list, order_date, order_type) in enumerate(all_orders_data):
         if idx >= len(processed_orders):
@@ -337,21 +338,21 @@ def insert_repair_orders(days=90):
             db.add(labor_item)
 
         if order_type == '事故维修' and random.random() < 0.7:
-            insurance = InsuranceMaterial(
-                order_id=order.id,
-                insurance_company=random.choice(INSURANCE_COMPANIES),
-                policy_no=f'POL{random.randint(100000, 999999)}',
-                claim_no=f'CL{random.randint(100000, 999999)}',
-                damage_type=random.choice(DAMAGE_TYPES),
-                accident_date=order_date - timedelta(days=random.randint(0, 7)),
-                damage_description=f'车辆{random.choice(DAMAGE_TYPES)}，需修复',
-                estimated_amount=random.uniform(2000, 15000),
-                approved_amount=random.uniform(1800, 14000),
-                claim_status=random.choice(['已赔付', '审核中', '已受理']),
-                source_system='insurance',
-                source_id=f'INS{random.randint(100000, 999999)}',
-            )
-            db.add(insurance)
+            raw_insurance = {
+                'order_no': order.order_no,
+                'insurance_company': random.choice(['人民保险', '平安', '太保', '国寿财险', '阳光', 'picc', 'pingan']),
+                'policy_no': f'POL{random.randint(100000, 999999)}',
+                'claim_no': f'CL{random.randint(100000, 999999)}',
+                'damage_type': random.choice(['追尾', '正面碰撞', '侧面', '剐蹭', '冰雹', '水淹', '刮擦']),
+                'accident_date': order_date - timedelta(days=random.randint(0, 7)),
+                'damage_description': f'车辆{random.choice(DAMAGE_TYPES)}，需修复',
+                'estimated_amount': random.uniform(2000, 15000),
+                'approved_amount': random.uniform(1800, 14000),
+                'claim_status': random.choice(['受理', '审核', '已通过', '赔付中', '已赔付', 'received', 'approved']),
+                'source_system': 'insurance',
+                'source_id': f'INS{random.randint(100000, 999999)}',
+            }
+            all_insurance_data.append(raw_insurance)
 
         if order_type == '故障维修' and random.random() < 0.8:
             fault = random.choice(FAULT_CODES)
@@ -414,6 +415,32 @@ def insert_repair_orders(days=90):
                     caliber_version='v1.1',
                 )
                 db.add(rework_v2)
+
+    if all_insurance_data:
+        insurance_df = pd.DataFrame(all_insurance_data)
+        processed_insurance, ins_stats = pipeline.process_insurance(insurance_df, 'insurance')
+        print(f'  Insurance processed: {ins_stats}')
+
+        for _, ins_row in processed_insurance.iterrows():
+            order_no = ins_row.get('order_no')
+            order_id = order_id_map.get(order_no)
+            if order_id is None:
+                continue
+            insurance = InsuranceMaterial(
+                order_id=order_id,
+                insurance_company=ins_row.get('insurance_company'),
+                policy_no=ins_row.get('policy_no'),
+                claim_no=ins_row.get('claim_no'),
+                damage_type=ins_row.get('damage_type'),
+                accident_date=ins_row.get('accident_date'),
+                damage_description=ins_row.get('damage_description'),
+                estimated_amount=ins_row.get('estimated_amount'),
+                approved_amount=ins_row.get('approved_amount'),
+                claim_status=ins_row.get('claim_status'),
+                source_system=ins_row.get('source_system', 'insurance'),
+                source_id=ins_row.get('source_id'),
+            )
+            db.add(insurance)
 
     db.commit()
 

@@ -5,7 +5,7 @@ from sqlalchemy import func, and_, or_, cast, Date, text
 from data.database import SessionLocal
 from data.models import (
     RepairOrder, Vehicle, DiagnosisResult, OrderItem,
-    PartsInventory, PartsUsage, ReworkRecord,
+    InsuranceMaterial, PartsInventory, PartsUsage, ReworkRecord,
     ReworkRateCaliberVersion, ThresholdConfig, ReviewMaterial
 )
 
@@ -615,3 +615,116 @@ class DataQueryService:
         self.db.add(material)
         self.db.commit()
         return material
+
+    def get_insurance_stats(self, start_date: date, end_date: date) -> Dict:
+        query = self.db.query(
+            InsuranceMaterial.insurance_company,
+            InsuranceMaterial.damage_type,
+            InsuranceMaterial.claim_status,
+            func.count(InsuranceMaterial.id).label('claim_count'),
+            func.sum(InsuranceMaterial.estimated_amount).label('total_estimated'),
+            func.sum(InsuranceMaterial.approved_amount).label('total_approved')
+        ).join(
+            RepairOrder, InsuranceMaterial.order_id == RepairOrder.id
+        ).filter(
+            and_(
+                RepairOrder.appointment_date >= start_date,
+                RepairOrder.appointment_date <= end_date
+            )
+        ).group_by(
+            InsuranceMaterial.insurance_company,
+            InsuranceMaterial.damage_type,
+            InsuranceMaterial.claim_status
+        )
+        df = pd.DataFrame([{
+            'insurance_company': r.insurance_company,
+            'damage_type': r.damage_type,
+            'claim_status': r.claim_status,
+            'claim_count': r.claim_count,
+            'total_estimated': float(r.total_estimated or 0),
+            'total_approved': float(r.total_approved or 0)
+        } for r in query.all()])
+
+        company_dist = []
+        damage_dist = []
+        status_dist = []
+        total_estimated = 0.0
+        total_approved = 0.0
+
+        if not df.empty:
+            company_df = df.groupby('insurance_company').agg(
+                claim_count=('claim_count', 'sum'),
+                total_estimated=('total_estimated', 'sum'),
+                total_approved=('total_approved', 'sum')
+            ).reset_index().sort_values('claim_count', ascending=False)
+            company_dist = company_df.to_dict('records')
+
+            damage_df = df.groupby('damage_type').agg(
+                claim_count=('claim_count', 'sum'),
+                total_estimated=('total_estimated', 'sum'),
+                total_approved=('total_approved', 'sum')
+            ).reset_index().sort_values('claim_count', ascending=False)
+            damage_dist = damage_df.to_dict('records')
+
+            status_df = df.groupby('claim_status').agg(
+                claim_count=('claim_count', 'sum')
+            ).reset_index().sort_values('claim_count', ascending=False)
+            status_dist = status_df.to_dict('records')
+
+            total_estimated = float(df['total_estimated'].sum())
+            total_approved = float(df['total_approved'].sum())
+
+        return {
+            'company_distribution': company_dist,
+            'damage_distribution': damage_dist,
+            'status_distribution': status_dist,
+            'total_claims': int(df['claim_count'].sum()) if not df.empty else 0,
+            'total_estimated': round(total_estimated, 2),
+            'total_approved': round(total_approved, 2),
+            'approval_rate': round(
+                (total_approved / total_estimated * 100) if total_estimated > 0 else 0, 2
+            )
+        }
+
+    def get_insurance_detail(self, start_date: date, end_date: date) -> pd.DataFrame:
+        query = self.db.query(
+            InsuranceMaterial.id,
+            RepairOrder.order_no,
+            Vehicle.license_plate,
+            Vehicle.vin,
+            InsuranceMaterial.insurance_company,
+            InsuranceMaterial.policy_no,
+            InsuranceMaterial.claim_no,
+            InsuranceMaterial.damage_type,
+            InsuranceMaterial.accident_date,
+            InsuranceMaterial.estimated_amount,
+            InsuranceMaterial.approved_amount,
+            InsuranceMaterial.claim_status,
+            RepairOrder.appointment_date
+        ).join(
+            RepairOrder, InsuranceMaterial.order_id == RepairOrder.id
+        ).join(
+            Vehicle, RepairOrder.vehicle_id == Vehicle.id
+        ).filter(
+            and_(
+                RepairOrder.appointment_date >= start_date,
+                RepairOrder.appointment_date <= end_date
+            )
+        ).order_by(
+            RepairOrder.appointment_date.desc()
+        )
+        df = pd.DataFrame([{
+            '工单号': r.order_no,
+            '车牌号': r.license_plate or '',
+            'VIN': r.vin or '',
+            '保险公司': r.insurance_company or '',
+            '保单号': r.policy_no or '',
+            '理赔号': r.claim_no or '',
+            '损伤类型': r.damage_type or '',
+            '事故日期': str(r.accident_date) if r.accident_date else '',
+            '定损金额(元)': round(float(r.estimated_amount or 0), 2),
+            '核赔金额(元)': round(float(r.approved_amount or 0), 2),
+            '理赔状态': r.claim_status or '',
+            '进厂日期': str(r.appointment_date) if r.appointment_date else ''
+        } for r in query.all()])
+        return df

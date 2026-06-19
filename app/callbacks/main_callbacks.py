@@ -12,6 +12,9 @@ from app.components.charts import (
     create_vehicle_age_chart,
     create_diagnosis_category_chart,
     create_diagnosis_severity_chart,
+    create_insurance_company_chart,
+    create_insurance_damage_chart,
+    create_insurance_status_chart,
     create_order_type_chart,
     create_order_amount_chart,
     create_rework_trend_chart,
@@ -257,6 +260,65 @@ def update_diagnosis_tab(start_date, end_date, n_clicks):
     State('diagnosis-detail-section', 'style')
 )
 def toggle_diagnosis_detail(n_clicks, current_style):
+    if n_clicks is None:
+        return current_style
+    if current_style.get('display') == 'none':
+        return {'display': 'block'}
+    return {'display': 'none'}
+
+
+@app.callback(
+    [Output('insurance-company-chart', 'figure'),
+     Output('insurance-damage-chart', 'figure'),
+     Output('insurance-status-chart', 'figure'),
+     Output('insurance-kpi', 'children'),
+     Output('insurance-detail-table', 'children')],
+    [Input('date-range-picker', 'start_date'),
+     Input('date-range-picker', 'end_date'),
+     Input('btn-refresh', 'n_clicks')]
+)
+def update_insurance_tab(start_date, end_date, n_clicks):
+    if not start_date or not end_date:
+        return {}, {}, {}, "", html.Div()
+
+    start = date.fromisoformat(start_date)
+    end = date.fromisoformat(end_date)
+
+    with get_query_service() as svc:
+        stats = svc.get_insurance_stats(start, end)
+        detail_df = svc.get_insurance_detail(start, end)
+
+    company_fig = create_insurance_company_chart(stats.get('company_distribution', []))
+    damage_fig = create_insurance_damage_chart(stats.get('damage_distribution', []))
+    status_fig = create_insurance_status_chart(stats.get('status_distribution', []))
+
+    kpi_text = (f"理赔 {stats.get('total_claims', 0)} 单 · "
+                f"定损 ¥{stats.get('total_estimated', 0):,.2f} · "
+                f"核赔 ¥{stats.get('total_approved', 0):,.2f} · "
+                f"赔付率 {stats.get('approval_rate', 0)}%")
+
+    if detail_df.empty:
+        detail_table = html.Div("暂无保险材料数据", className="text-center text-muted p-4")
+    else:
+        detail_table = dash_table.DataTable(
+            data=detail_df.to_dict('records'),
+            columns=[{'name': col, 'id': col} for col in detail_df.columns],
+            page_size=10,
+            style_table={'overflowX': 'auto'},
+            style_cell={'textAlign': 'left', 'padding': '8px'},
+            style_header={'backgroundColor': '#f8f9fa', 'fontWeight': 'bold'},
+            sort_action='native',
+        )
+
+    return company_fig, damage_fig, status_fig, kpi_text, detail_table
+
+
+@app.callback(
+    Output('insurance-detail-section', 'style'),
+    Input('btn-insurance-detail', 'n_clicks'),
+    State('insurance-detail-section', 'style')
+)
+def toggle_insurance_detail(n_clicks, current_style):
     if n_clicks is None:
         return current_style
     if current_style.get('display') == 'none':

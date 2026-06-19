@@ -83,13 +83,10 @@ def create_vehicle_brand_chart(brand_data: List[Dict]) -> go.Figure:
 
 
 def create_vehicle_age_chart(age_data: List[Dict] = None) -> go.Figure:
-    if not age_data:
-        age_data = [
-            {'age_group': '0-2年', 'count': 45},
-            {'age_group': '2-5年', 'count': 78},
-            {'age_group': '5-8年', 'count': 56},
-            {'age_group': '8年以上', 'count': 23},
-        ]
+    if not age_data or len(age_data) == 0:
+        fig = go.Figure()
+        fig.add_annotation(text="暂无数据", showarrow=False, font=dict(size=20, color="gray"))
+        return fig
     df = pd.DataFrame(age_data)
     fig = px.bar(
         df,
@@ -240,14 +237,10 @@ def create_rework_trend_chart(trend_data: List[Dict]) -> go.Figure:
 
 
 def create_rework_reason_chart(reason_data: List[Dict]) -> go.Figure:
-    if not reason_data:
-        reason_data = [
-            {'rework_type': '配件相关', 'count': 12},
-            {'rework_type': '工艺相关', 'count': 8},
-            {'rework_type': '诊断相关', 'count': 5},
-            {'rework_type': '客户相关', 'count': 3},
-            {'rework_type': '其他', 'count': 2},
-        ]
+    if not reason_data or len(reason_data) == 0:
+        fig = go.Figure()
+        fig.add_annotation(text="暂无数据", showarrow=False, font=dict(size=20, color="gray"))
+        return fig
     df = pd.DataFrame(reason_data)
     df = df.sort_values('count', ascending=True)
 
@@ -269,11 +262,10 @@ def create_rework_reason_chart(reason_data: List[Dict]) -> go.Figure:
 
 
 def create_caliber_compare_chart(compare_data: List[Dict]) -> go.Figure:
-    if not compare_data:
-        compare_data = [
-            {'version': 'v1.0', 'rate': 3.2},
-            {'version': 'v1.1', 'rate': 5.8},
-        ]
+    if not compare_data or len(compare_data) == 0:
+        fig = go.Figure()
+        fig.add_annotation(text="暂无数据", showarrow=False, font=dict(size=20, color="gray"))
+        return fig
     df = pd.DataFrame(compare_data)
 
     fig = go.Figure()
@@ -320,14 +312,10 @@ def create_parts_shortage_chart(parts_data: List[Dict]) -> go.Figure:
 
 
 def create_parts_rework_correlation_chart(corr_data: List[Dict] = None) -> go.Figure:
-    if not corr_data:
-        corr_data = [
-            {'part_name': '刹车片', 'shortage_count': 15, 'rework_count': 3},
-            {'part_name': '机油滤芯', 'shortage_count': 12, 'rework_count': 1},
-            {'part_name': '空气滤芯', 'shortage_count': 10, 'rework_count': 2},
-            {'part_name': '火花塞', 'shortage_count': 8, 'rework_count': 4},
-            {'part_name': '蓄电池', 'shortage_count': 6, 'rework_count': 1},
-        ]
+    if not corr_data or len(corr_data) == 0:
+        fig = go.Figure()
+        fig.add_annotation(text="暂无数据", showarrow=False, font=dict(size=20, color="gray"))
+        return fig
     df = pd.DataFrame(corr_data)
 
     fig = go.Figure()
@@ -349,5 +337,91 @@ def create_parts_rework_correlation_chart(corr_data: List[Dict] = None) -> go.Fi
         xaxis=dict(title='缺货次数'),
         yaxis=dict(title='关联返修次数'),
         margin=dict(l=40, r=20, t=20, b=40),
+    )
+    return fig
+
+
+def create_insurance_company_chart(company_data: List[Dict] = None) -> go.Figure:
+    if not company_data or len(company_data) == 0:
+        fig = go.Figure()
+        fig.add_annotation(text="暂无数据", showarrow=False, font=dict(size=20, color="gray"))
+        return fig
+    df = pd.DataFrame(company_data)
+
+    fig = px.pie(
+        df,
+        values='claim_count',
+        names='insurance_company',
+        color_discrete_sequence=px.colors.qualitative.Pastel,
+        hole=0.4,
+    )
+    fig.update_traces(
+        hovertemplate='%{label}: %{value}单 (%{percent})',
+        textinfo='label+percent',
+    )
+    fig.update_layout(
+        showlegend=False,
+        margin=dict(l=10, r=10, t=10, b=10),
+    )
+    return fig
+
+
+def create_insurance_damage_chart(damage_data: List[Dict] = None) -> go.Figure:
+    if not damage_data or len(damage_data) == 0:
+        fig = go.Figure()
+        fig.add_annotation(text="暂无数据", showarrow=False, font=dict(size=20, color="gray"))
+        return fig
+    df = pd.DataFrame(damage_data)
+    df = df.sort_values('claim_count', ascending=True)
+
+    fig = px.bar(
+        df,
+        y='damage_type',
+        x='claim_count',
+        color='damage_type',
+        orientation='h',
+        color_discrete_sequence=px.colors.qualitative.Set2,
+    )
+    fig.update_layout(
+        xaxis_title='理赔单数',
+        yaxis_title='',
+        showlegend=False,
+        margin=dict(l=100, r=20, t=20, b=20),
+    )
+    return fig
+
+
+def create_insurance_status_chart(status_data: List[Dict] = None) -> go.Figure:
+    if not status_data or len(status_data) == 0:
+        fig = go.Figure()
+        fig.add_annotation(text="暂无数据", showarrow=False, font=dict(size=20, color="gray"))
+        return fig
+    df = pd.DataFrame(status_data)
+
+    color_map = {
+        '已赔付': '#10b981',
+        '已通过': '#3b82f6',
+        '审核中': '#f59e0b',
+        '已受理': '#8b5cf6',
+        '已拒赔': '#ef4444',
+        '已作废': '#9ca3af',
+        '未知': '#6b7280',
+    }
+
+    fig = px.pie(
+        df,
+        values='claim_count',
+        names='claim_status',
+        color='claim_status',
+        color_discrete_map=color_map,
+        hole=0.4,
+    )
+    fig.update_traces(
+        hovertemplate='%{label}: %{value}单 (%{percent})',
+        textinfo='label+percent',
+    )
+    fig.update_layout(
+        showlegend=False,
+        margin=dict(l=10, r=10, t=10, b=10),
     )
     return fig

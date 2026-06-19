@@ -69,11 +69,17 @@ class DataCleaner:
 
 class Deduplicator:
     @staticmethod
-    def dedup_by_source_id(df: pd.DataFrame, source_col: str, id_col: str) -> Tuple[pd.DataFrame, int]:
-        if source_col not in df.columns or id_col not in df.columns:
-            return df, 0
+    def dedup_by_source_id(df: pd.DataFrame, source_system_value: str, id_col: str) -> Tuple[pd.DataFrame, int]:
         before = len(df)
-        deduped = df.drop_duplicates(subset=[source_col, id_col], keep='last')
+        if id_col not in df.columns:
+            return df, 0
+
+        if 'source_system' in df.columns:
+            deduped = df.drop_duplicates(subset=['source_system', id_col], keep='last')
+        else:
+            df = df.copy()
+            df.loc[:, 'source_system'] = source_system_value
+            deduped = df.drop_duplicates(subset=['source_system', id_col], keep='last')
         removed = before - len(deduped)
         return deduped, removed
 
@@ -126,6 +132,38 @@ class CaliberMatcher:
         '客户原因': '客户相关', 'customer': '客户相关',
     }
 
+    DAMAGE_TYPE_MAP = {
+        '追尾': '追尾事故', 'rear end': '追尾事故', ' rear': '追尾事故',
+        '正面': '正面碰撞', 'front': '正面碰撞', '车头': '正面碰撞',
+        '侧面': '侧面碰撞', 'side': '侧面碰撞', '侧方': '侧面碰撞',
+        '剐蹭': '剐蹭事故', 'scratch': '剐蹭事故', '刮擦': '剐蹭事故',
+        '冰雹': '冰雹损伤', 'hail': '冰雹损伤',
+        '水淹': '水淹车', 'water': '水淹车', '泡水': '水淹车',
+        '火灾': '火烧车', 'fire': '火烧车',
+        '高空坠物': '高空坠物损伤',
+    }
+
+    CLAIM_STATUS_MAP = {
+        '受理': '已受理', 'received': '已受理', '已接收': '已受理',
+        '审核': '审核中', 'review': '审核中', 'pending': '审核中',
+        '已通过': '已通过', 'approved': '已通过', '赔付中': '已通过',
+        '已赔付': '已赔付', 'paid': '已赔付', '结算': '已赔付',
+        '拒赔': '已拒赔', 'rejected': '已拒赔', '拒绝': '已拒赔',
+        '作废': '已作废', 'cancel': '已作废', '取消': '已作废',
+    }
+
+    INSURANCE_COMPANY_MAP = {
+        '人民保险': '人保财险', 'picc': '人保财险', '人保': '人保财险', 'PICC': '人保财险',
+        '平安': '平安车险', 'pingan': '平安车险', '中国平安': '平安车险',
+        '太保': '太平洋保险', 'cpic': '太平洋保险', '太平洋': '太平洋保险',
+        '国寿财险': '中国人寿财险', 'chinalife': '中国人寿财险', '人寿': '中国人寿财险',
+        '阳光': '阳光财险', 'ygsic': '阳光财险', '阳光保险': '阳光财险',
+        '中华': '中华联合', 'cic': '中华联合', '中华财险': '中华联合',
+        '大地': '大地财险', 'ccic': '大地财险',
+        '天安': '天安财险',
+        '华安': '华安财险',
+    }
+
     @classmethod
     def match_fault_category(cls, fault_code: str, description: str = "") -> str:
         if not fault_code and not description:
@@ -165,6 +203,44 @@ class CaliberMatcher:
         code = str(code).strip().upper()
         code = re.sub(r'[^A-Z0-9-]', '', code)
         return code
+
+    @classmethod
+    def match_damage_type(cls, raw_type: str) -> str:
+        if not raw_type:
+            return '其他损伤'
+        raw_type = str(raw_type).strip().lower()
+        for key, matched in cls.DAMAGE_TYPE_MAP.items():
+            if key.lower() in raw_type:
+                return matched
+        return raw_type if raw_type else '其他损伤'
+
+    @classmethod
+    def match_claim_status(cls, raw_status: str) -> str:
+        if not raw_status:
+            return '未知'
+        raw_status = str(raw_status).strip().lower()
+        for key, matched in cls.CLAIM_STATUS_MAP.items():
+            if key.lower() in raw_status:
+                return matched
+        return raw_status if raw_status else '未知'
+
+    @classmethod
+    def match_insurance_company(cls, raw_name: str) -> str:
+        if not raw_name:
+            return '其他'
+        raw_name = str(raw_name).strip().lower()
+        for key, matched in cls.INSURANCE_COMPANY_MAP.items():
+            if key.lower() in raw_name:
+                return matched
+        return raw_name if raw_name else '其他'
+
+    @staticmethod
+    def clean_policy_no(policy_no: str) -> str:
+        if not policy_no:
+            return ""
+        policy_no = str(policy_no).strip().upper()
+        policy_no = re.sub(r'[^A-Z0-9]', '', policy_no)
+        return policy_no
 
 
 class DataPipeline:
@@ -299,6 +375,15 @@ class DataPipeline:
         if 'diagnosis_result' in df.columns:
             df.loc[:, 'diagnosis_result'] = df['diagnosis_result'].apply(self.cleaner.clean_text)
 
+        if 'source_system' not in df.columns:
+            df.loc[:, 'source_system'] = source_system
+
+        if 'source_id' not in df.columns:
+            if 'fault_code' in df.columns:
+                df.loc[:, 'source_id'] = df['fault_code'].astype(str) + '_' + df['diagnosis_date'].astype(str)
+            else:
+                df.loc[:, 'source_id'] = [f'diag_{i}' for i in range(len(df))]
+
         df, dedup_count = self.deduplicator.dedup_by_source_id(df, source_system, 'source_id')
         stats['deduplicated'] = dedup_count
         stats['output'] = len(df)
@@ -338,5 +423,59 @@ class DataPipeline:
 
         if 'source_system' not in df.columns:
             df.loc[:, 'source_system'] = source_system
+
+        return df, stats
+
+    def process_insurance(self, df: pd.DataFrame, source_system: str) -> Tuple[pd.DataFrame, Dict]:
+        stats = {'input': len(df), 'invalid': 0, 'deduplicated': 0, 'output': 0}
+
+        if df.empty:
+            stats['output'] = 0
+            return df, stats
+
+        df = df.copy()
+
+        if 'policy_no' in df.columns:
+            df.loc[:, 'policy_no'] = df['policy_no'].apply(self.matcher.clean_policy_no)
+            invalid_policy = df['policy_no'].str.len() < 3
+            stats['invalid'] += int(invalid_policy.sum())
+            df = df[~invalid_policy]
+
+        if 'claim_no' in df.columns:
+            df.loc[:, 'claim_no'] = df['claim_no'].apply(self.matcher.clean_policy_no)
+
+        if 'insurance_company' in df.columns:
+            df.loc[:, 'insurance_company'] = df['insurance_company'].apply(self.matcher.match_insurance_company)
+
+        if 'damage_type' in df.columns:
+            df.loc[:, 'damage_type'] = df['damage_type'].apply(self.matcher.match_damage_type)
+
+        if 'claim_status' in df.columns:
+            df.loc[:, 'claim_status'] = df['claim_status'].apply(self.matcher.match_claim_status)
+
+        if 'accident_date' in df.columns:
+            df.loc[:, 'accident_date'] = df['accident_date'].apply(self.cleaner.clean_date)
+
+        for amount_col in ['estimated_amount', 'approved_amount']:
+            if amount_col in df.columns:
+                df.loc[:, amount_col] = df[amount_col].apply(self.cleaner.clean_money)
+
+        if 'damage_description' in df.columns:
+            df.loc[:, 'damage_description'] = df['damage_description'].apply(self.cleaner.clean_text)
+
+        if 'source_system' not in df.columns:
+            df.loc[:, 'source_system'] = source_system
+
+        if 'source_id' not in df.columns:
+            if 'claim_no' in df.columns:
+                df.loc[:, 'source_id'] = df['claim_no'].astype(str)
+            elif 'policy_no' in df.columns:
+                df.loc[:, 'source_id'] = df['policy_no'].astype(str)
+            else:
+                df.loc[:, 'source_id'] = [f'ins_{i}' for i in range(len(df))]
+
+        df, dedup_count = self.deduplicator.dedup_by_source_id(df, source_system, 'source_id')
+        stats['deduplicated'] = dedup_count
+        stats['output'] = len(df)
 
         return df, stats

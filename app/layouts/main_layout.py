@@ -200,6 +200,41 @@ def create_diagnosis_tab():
     ], className="mb-4")
 
 
+def create_insurance_tab():
+    return dbc.Card([
+        dbc.CardHeader([
+            dbc.Row([
+                dbc.Col(html.H5("保险材料分析", className="mb-0"), width=6),
+                dbc.Col([
+                    html.Span(id='insurance-kpi', className="text-muted"),
+                    dbc.Button("查看明细", id="btn-insurance-detail", color="link", size="sm", className="ms-3"),
+                ], width=6, className="text-end"),
+            ])
+        ]),
+        dbc.CardBody([
+            dbc.Row([
+                dbc.Col([
+                    html.H6("保险公司分布", className="text-center"),
+                    dcc.Graph(id='insurance-company-chart', style={'height': '350px'}),
+                ], width=4),
+                dbc.Col([
+                    html.H6("损伤类型分布", className="text-center"),
+                    dcc.Graph(id='insurance-damage-chart', style={'height': '350px'}),
+                ], width=4),
+                dbc.Col([
+                    html.H6("理赔状态分布", className="text-center"),
+                    dcc.Graph(id='insurance-status-chart', style={'height': '350px'}),
+                ], width=4),
+            ]),
+            html.Hr(),
+            html.Div(id='insurance-detail-section', style={'display': 'none'}, children=[
+                html.H6("保险材料明细表"),
+                html.Div(id='insurance-detail-table'),
+            ]),
+        ]),
+    ], className="mb-4")
+
+
 def create_orders_tab():
     return dbc.Card([
         dbc.CardHeader([
@@ -386,6 +421,7 @@ def create_main_layout():
             dbc.Tab(create_overview_tab(), label="数据概览", tab_id="overview"),
             dbc.Tab(create_vehicles_tab(), label="车辆档案", tab_id="vehicles"),
             dbc.Tab(create_diagnosis_tab(), label="诊断结果", tab_id="diagnosis"),
+            dbc.Tab(create_insurance_tab(), label="保险材料", tab_id="insurance"),
             dbc.Tab(create_orders_tab(), label="工单项目", tab_id="orders"),
             dbc.Tab(create_rework_tab(), label="返修分析", tab_id="rework"),
             dbc.Tab(create_parts_tab(), label="配件复盘", tab_id="parts"),
