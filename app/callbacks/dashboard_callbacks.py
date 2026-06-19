@@ -486,12 +486,3 @@ def store_filter_state(start_date, end_date, status, repair_type, shortage_only,
         "risk_level": risk_level,
         "export_caliber": "返修率按完工工单计算，日期范围以工单创建时间为准",
     }
-
-
-@callback(
-    Output("btn-export-rework", "href"),
-    [Input("current-filter-state", "data")],
-    prevent_initial_call=True
-)
-def export_rework_report(filter_state):
-    return "/export/rework"

@@ -1,6 +1,5 @@
 import dash_bootstrap_components as dbc
-from dash import html, dcc
-import dash_table
+from dash import html, dcc, dash_table
 
 
 def create_work_order_detail_layout():
