@@ -1,0 +1,11 @@
+node_modules
+.svelte-kit
+dist
+build
+.env
+.env.*
+!.env.example
+*.db
+*.db-journal
+drizzle
+.DS_Store
