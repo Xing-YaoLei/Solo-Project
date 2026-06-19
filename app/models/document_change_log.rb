@@ -1,10 +1,8 @@
 class DocumentChangeLog < ApplicationRecord
   belongs_to :check_in_document
-  belongs_to :operator, class_name: "User"
+  belongs_to :operator, class_name: "User", optional: true
 
   validates :changed_field, presence: true
-  validates :old_value, presence: true
-  validates :new_value, presence: true
 
   scope :for_document, ->(doc_id) { where(check_in_document_id: doc_id) }
   scope :recent, -> { order(created_at: :desc) }

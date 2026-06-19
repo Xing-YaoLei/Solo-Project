@@ -23,19 +23,24 @@ class CheckInDocument < ApplicationRecord
   private
 
   def log_changes
-    return unless previous_changes.any?
+    return if previous_changes.empty?
+    return if previous_changes.key?("id") && previous_changes["id"].first.nil?
 
     current_operator = Current.user || User.first
+    tracked_fields = %w[id_type id_number name gender nationality]
 
     previous_changes.each do |field, (old_val, new_val)|
-      next if %w[updated_at created_at].include?(field)
-      next if old_val == new_val
+      next unless tracked_fields.include?(field)
+
+      old_str = old_val.nil? ? "" : old_val.to_s
+      new_str = new_val.nil? ? "" : new_val.to_s
+      next if old_str == new_str
 
       document_change_logs.create!(
         operator: current_operator,
         changed_field: field,
-        old_value: old_val.to_s,
-        new_value: new_val.to_s
+        old_value: old_str,
+        new_value: new_str
       )
     end
   end

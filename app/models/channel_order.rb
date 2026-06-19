@@ -19,7 +19,7 @@ class ChannelOrder < ApplicationRecord
   scope :for_property, ->(property_id) { where(property_id: property_id) }
   scope :active, -> { where(status: %w[pending confirmed checked_in]) }
 
-  before_save :detect_conflicts, if: :will_save_change_to_status?
+  after_commit :detect_conflicts_on_save, on: [:create, :update]
   after_commit :update_room_statuses, on: [:create, :update]
   after_commit :schedule_cleaning, on: [:create, :update]
 
@@ -58,8 +58,14 @@ class ChannelOrder < ApplicationRecord
     errors.add(:check_out, "必须晚于入住日期") if check_out <= check_in
   end
 
-  def detect_conflicts
+  def detect_conflicts_on_save
     return unless %w[confirmed checked_in].include?(status)
+
+    trigger_fields = %w[status property_id check_in check_out]
+    has_trigger_change = trigger_fields.any? { |f| previous_changes.key?(f) }
+
+    return unless has_trigger_change
+
     ConflictDetectionJob.perform_later(id)
   end
 
