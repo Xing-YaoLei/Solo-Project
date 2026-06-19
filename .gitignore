@@ -1,0 +1,62 @@
+# ===== .NET =====
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+.vscode/
+bin/
+obj/
+*.dll
+*.exe
+*.pdb
+*.cache
+*.ilk
+*.lib
+Build/
+publish/
+*.nupkg
+
+# ===== Entity Framework =====
+Migrations/Applied/
+*.dbmdl
+*.jfm
+
+# ===== Node / Frontend =====
+node_modules/
+dist/
+build/
+coverage/
+*.log
+.npm
+.cache/
+.parcel-cache/
+.eslintcache
+.yarn/
+.pnp.*
+
+# ===== Environment configs (sensitive) =====
+**/appsettings.Production.json
+**/appsettings.Staging.json
+.env.local
+.env.*.local
+*.pfx
+*.pem
+*.key
+secrets.json
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ===== IDE =====
+.idea/
+*.swp
+*.swo
+*~
+
+# ===== Hangfire temp =====
+*.hangfire-tmp
