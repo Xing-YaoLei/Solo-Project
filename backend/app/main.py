@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
@@ -8,7 +9,20 @@ from .core.database import Base, engine
 from .api import router as api_router
 from .api.export import router as export_router
 
-Base.metadata.create_all(bind=engine)
+
+def init_database():
+    try:
+        Base.metadata.create_all(bind=engine)
+        print("✅ 数据库表初始化完成")
+    except Exception as e:
+        print(f"⚠️  数据库表初始化跳过（连接失败或已存在）: {e}")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_database()
+    yield
+
 
 app = FastAPI(
     title="旅游民宿套餐售卖跟进台",
@@ -26,7 +40,8 @@ app = FastAPI(
     8. 数据导出（含口径说明） & 套餐转化率分析
     9. Celery 异步超卖巡检 + 异步导出
     """,
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 app.add_middleware(
@@ -51,6 +66,7 @@ def root():
 @app.get("/health", tags=["系统"])
 def health_check():
     from .core.database import SessionLocal
+    db_ok = False
     try:
         db = SessionLocal()
         db.execute("SELECT 1")
@@ -58,7 +74,10 @@ def health_check():
     except Exception:
         db_ok = False
     finally:
-        db.close()
+        try:
+            db.close()
+        except Exception:
+            pass
     return {
         "status": "ok" if db_ok else "degraded",
         "database": "connected" if db_ok else "disconnected",

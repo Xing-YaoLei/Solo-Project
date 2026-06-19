@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timedelta, date
 from typing import Optional, List, Tuple
 from decimal import Decimal
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, and_, or_, between, cast, Date as SqlaDate
 
 from ..models import (
@@ -364,13 +364,27 @@ class OrderService:
     @staticmethod
     def list(db: Session, skip: int = 0, limit: int = 20,
              status: Optional[OrderStatus] = None,
+             verification_status: Optional[str] = None,
+             deposit_status: Optional[str] = None,
              package_id: Optional[int] = None,
              keyword: Optional[str] = None,
              start_date: Optional[date] = None,
              end_date: Optional[date] = None) -> Tuple[List[Order], int]:
-        query = db.query(Order)
+        query = db.query(Order).options(
+            joinedload(Order.package),
+            joinedload(Order.verification),
+            joinedload(Order.deposit)
+        )
         if status:
             query = query.filter(Order.status == status)
+        if verification_status:
+            query = query.join(Verification, Verification.order_id == Order.id).filter(
+                Verification.status == verification_status
+            )
+        if deposit_status:
+            query = query.join(Deposit, Deposit.order_id == Order.id).filter(
+                Deposit.status == deposit_status
+            )
         if package_id:
             query = query.filter(Order.package_id == package_id)
         if keyword:

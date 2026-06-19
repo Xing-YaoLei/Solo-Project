@@ -234,6 +234,8 @@ def list_orders(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     status: Optional[OrderStatus] = None,
+    verification_status: Optional[str] = None,
+    deposit_status: Optional[str] = None,
     package_id: Optional[int] = None,
     keyword: Optional[str] = None,
     start_date: Optional[date] = None,
@@ -242,8 +244,10 @@ def list_orders(
 ):
     items, total = OrderService.list(
         db, skip=(page - 1) * page_size, limit=page_size,
-        status=status, package_id=package_id,
-        keyword=keyword, start_date=start_date, end_date=end_date
+        status=status, verification_status=verification_status,
+        deposit_status=deposit_status,
+        package_id=package_id, keyword=keyword,
+        start_date=start_date, end_date=end_date
     )
     return {"items": items, "total": total, "page": page, "page_size": page_size}
 

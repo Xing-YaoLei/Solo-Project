@@ -20,7 +20,10 @@ function DepositsPage() {
   async function load() {
     const p = { page, page_size: 10, ...filters }
     if (!p.keyword) delete p.keyword
-    if (!p.status) delete p.status
+    if (p.status) {
+      p.deposit_status = p.status
+      delete p.status
+    }
     const d = await api.listOrders(p)
     setData(d)
   }

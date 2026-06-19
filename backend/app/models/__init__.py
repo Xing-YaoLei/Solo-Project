@@ -2,7 +2,8 @@ from datetime import datetime, date
 from enum import Enum as PyEnum
 from sqlalchemy import (
     Column, Integer, String, Text, DateTime, Date, Float, Boolean,
-    ForeignKey, Enum, JSON, BigInteger, Numeric
+    ForeignKey, Enum, JSON, BigInteger, Numeric, PrimaryKeyConstraint,
+    UniqueConstraint, Index
 )
 from sqlalchemy.orm import relationship
 from ..core.database import Base
@@ -113,7 +114,7 @@ class StayDate(Base):
     inventories = relationship("PackageInventory", back_populates="stay_date", cascade="all, delete-orphan")
 
     __table_args__ = (
-        {"postgresql_partition_by": "RANGE (stay_date)"},
+        UniqueConstraint("package_id", "stay_date", name="uq_package_stay_date"),
     )
 
 

@@ -28,7 +28,10 @@ function VerificationsPage() {
   async function load() {
     const p = { page, page_size: 10, ...filters }
     if (!p.keyword) delete p.keyword
-    if (!p.status) delete p.status
+    if (p.status) {
+      p.verification_status = p.status
+      delete p.status
+    }
     const d = await api.listOrders(p)
     setData(d)
     const ids = d.items.filter(o => o.status !== 'cancelled' && o.status !== 'refunded').map(o => o.id)

@@ -231,6 +231,8 @@ class OrderOut(OrderBase):
     created_at: datetime
     updated_at: datetime
     package: Optional[PackageOut] = None
+    verification: Optional["VerificationOut"] = None
+    deposit: Optional["DepositOut"] = None
 
 
 class OrderListOut(BaseModel):

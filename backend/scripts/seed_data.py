@@ -13,9 +13,13 @@ from app.models import (
     Package, PriceRule, StayDate, PackageInventory, Order,
     OrderStatus, VerificationStatus, DepositStatus
 )
+from app.schemas import (
+    PackageCreate, PriceRuleCreate, PackageInventoryCreate,
+    OrderCreate
+)
 from app.services import (
     PackageService, PriceRuleService, StayDateService, InventoryService,
-    OrderService, OrderCreate
+    OrderService
 )
 
 
@@ -57,18 +61,12 @@ def seed_demo_data():
             "base_price": Decimal("1888.00"),
             "is_active": True
         }
-        p1 = PackageService.create(db, type('O', (), pkg1_data)())
-        p2 = PackageService.create(db, type('O', (), pkg2_data)())
-        p3 = PackageService.create(db, type('O', (), pkg3_data)())
-
-        from app.schemas import PackageCreate
         p1 = PackageService.create(db, PackageCreate(**pkg1_data))
         p2 = PackageService.create(db, PackageCreate(**pkg2_data))
         p3 = PackageService.create(db, PackageCreate(**pkg3_data))
         db.flush()
         print(f"✅ 创建套餐 {p1.name}, {p2.name}, {p3.name}")
 
-        from app.schemas import PriceRuleCreate
         rules = [
             PriceRuleCreate(package_id=p1.id, rule_name="平日价", rule_type="weekday",
                             price_adjustment_type="fixed", price_adjustment_value=Decimal("0"),
@@ -105,16 +103,6 @@ def seed_demo_data():
                 wd = sd.stay_date.weekday()
                 base = pkg.base_price
                 extra = Decimal("200") if wd in [5, 6] else Decimal("0")
-                inv_obj = type('I', (), {
-                    "package_id": pkg.id,
-                    "stay_date_id": sd.id,
-                    "inventory_date": sd.stay_date,
-                    "total_quantity": 3 if pkg.id == p3.id else 5,
-                    "sold_quantity": 0,
-                    "reserved_quantity": 0,
-                    "unit_price": base + extra
-                })()
-                from app.schemas import PackageInventoryCreate
                 inv_obj = PackageInventoryCreate(
                     package_id=pkg.id,
                     stay_date_id=sd.id,
