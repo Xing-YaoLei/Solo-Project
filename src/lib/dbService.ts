@@ -38,6 +38,30 @@ async function getPartUsagesFromSupabase(orderId?: string) {
 }
 
 async function calculateReworkRate(startDate: Date, endDate: Date): Promise<number> {
+  if (isSupabaseConfigured()) {
+    const { data: totalData, error: totalError, count: totalCount } = await supabase
+      .from("WorkOrder")
+      .select("*", { count: "exact", head: false })
+      .gte("createdAt", startDate.toISOString())
+      .lte("createdAt", endDate.toISOString())
+      .eq("status", "completed");
+
+    if (totalError) throw totalError;
+    if (!totalCount || totalCount === 0) return 0;
+
+    const { data: reworkData, error: reworkError, count: reworkCount } = await supabase
+      .from("WorkOrder")
+      .select("*", { count: "exact", head: false })
+      .gte("createdAt", startDate.toISOString())
+      .lte("createdAt", endDate.toISOString())
+      .eq("status", "completed")
+      .eq("isRework", true);
+
+    if (reworkError) throw reworkError;
+
+    return (reworkCount || 0) / totalCount;
+  }
+
   const totalOrders = await prisma.workOrder.count({
     where: {
       createdAt: {
@@ -69,6 +93,82 @@ export async function getOverviewDataFromDB() {
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+
+  if (isSupabaseConfigured()) {
+    const { data: totalOrders, count: totalWorkOrders, error: totalError } = await supabase
+      .from("WorkOrder")
+      .select("*", { count: "exact" })
+      .gte("createdAt", startOfMonth.toISOString())
+      .lte("createdAt", now.toISOString());
+
+    if (totalError) throw totalError;
+
+    const { data: completedOrders, error: completedError } = await supabase
+      .from("WorkOrder")
+      .select("startedAt, completedAt")
+      .gte("createdAt", startOfMonth.toISOString())
+      .lte("createdAt", now.toISOString())
+      .eq("status", "completed")
+      .not("startedAt", "is", null)
+      .not("completedAt", "is", null);
+
+    if (completedError) throw completedError;
+
+    let avgRepairDuration = 0;
+    if (completedOrders && completedOrders.length > 0) {
+      const totalHours = completedOrders.reduce((sum: number, order: any) => {
+        if (order.startedAt && order.completedAt) {
+          return sum + (new Date(order.completedAt).getTime() - new Date(order.startedAt).getTime()) / (1000 * 60 * 60);
+        }
+        return sum;
+      }, 0);
+      avgRepairDuration = Number((totalHours / completedOrders.length).toFixed(1));
+    }
+
+    const reworkRate = await calculateReworkRate(startOfMonth, now);
+
+    const { data: stations, count: totalStations, error: stationError } = await supabase
+      .from("WorkStation")
+      .select("*", { count: "exact" })
+      .eq("isActive", true);
+
+    if (stationError) throw stationError;
+
+    let stationUtilization = 0;
+    if (totalStations && totalStations > 0) {
+      const { data: stationOrders, error: stationError2 } = await supabase
+        .from("WorkOrder")
+        .select("stationId")
+        .gte("createdAt", startOfMonth.toISOString())
+        .lte("createdAt", now.toISOString())
+        .not("stationId", "is", null);
+
+      if (stationError2) throw stationError2;
+
+      const stationMap: Record<string, number> = {};
+      stationOrders?.forEach((order: any) => {
+        if (order.stationId) {
+          stationMap[order.stationId] = (stationMap[order.stationId] || 0) + 1;
+        }
+      });
+
+      const daysInMonth = Math.ceil(
+        (now.getTime() - startOfMonth.getTime()) / (1000 * 60 * 60 * 24)
+      );
+      const totalPossibleSlots = totalStations * daysInMonth * 8;
+      const occupiedSlots = Object.values(stationMap).reduce((sum, count) => sum + count, 0);
+      stationUtilization = Math.min(occupiedSlots / totalPossibleSlots, 1);
+    }
+
+    return {
+      totalWorkOrders: totalWorkOrders || 0,
+      avgRepairDuration,
+      reworkRate: Number(reworkRate.toFixed(3)),
+      stationUtilization: Number(stationUtilization.toFixed(3)),
+      lastUpdated: new Date().toISOString(),
+      dataSource: "supabase" as const,
+    };
+  }
 
   const totalWorkOrders = await prisma.workOrder.count({
     where: {
@@ -145,7 +245,7 @@ export async function getOverviewDataFromDB() {
     reworkRate: Number(reworkRate.toFixed(3)),
     stationUtilization: Number(stationUtilization.toFixed(3)),
     lastUpdated: new Date().toISOString(),
-    dataSource: getDataSource(),
+    dataSource: "prisma" as const,
   };
 }
 
@@ -163,6 +263,54 @@ export async function getQuotationTrendFromDB(period: "day" | "week" | "month" =
   } else {
     startDate = new Date(now.getTime() - 12 * 30 * 24 * 60 * 60 * 1000);
     groupByFormat = "month";
+  }
+
+  if (isSupabaseConfigured()) {
+    const { data: orders, error } = await supabase
+      .from("WorkOrder")
+      .select("createdAt, totalAmount")
+      .gte("createdAt", startDate.toISOString())
+      .lte("createdAt", now.toISOString())
+      .order("createdAt", { ascending: true });
+
+    if (error) throw error;
+
+    const groupedData: Record<string, { count: number; total: number }> = {};
+
+    orders?.forEach((order: any) => {
+      let key: string;
+      const d = new Date(order.createdAt);
+      if (groupByFormat === "day") {
+        key = formatDate(d);
+      } else if (groupByFormat === "week") {
+        const weekStart = new Date(d);
+        weekStart.setDate(d.getDate() - d.getDay());
+        key = formatDate(weekStart);
+      } else {
+        key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      }
+
+      if (!groupedData[key]) {
+        groupedData[key] = { count: 0, total: 0 };
+      }
+      groupedData[key].count++;
+      groupedData[key].total += Number(order.totalAmount || 0);
+    });
+
+    const data = Object.entries(groupedData)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, values]) => ({
+        date,
+        orderCount: values.count,
+        totalAmount: Number(values.total.toFixed(2)),
+        avgAmount: values.count > 0 ? Number((values.total / values.count).toFixed(2)) : 0,
+      }));
+
+    return {
+      data,
+      lastUpdated: new Date().toISOString(),
+      dataSource: "supabase" as const,
+    };
   }
 
   const orders = await prisma.workOrder.findMany({
@@ -212,12 +360,55 @@ export async function getQuotationTrendFromDB(period: "day" | "week" | "month" =
   return {
     data,
     lastUpdated: new Date().toISOString(),
+    dataSource: "prisma" as const,
   };
 }
 
 export async function getInspectionDataFromDB() {
   const now = new Date();
   const startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+  if (isSupabaseConfigured()) {
+    const { data: inspections, error } = await supabase
+      .from("InspectionPhoto")
+      .select("inspectionType, isPassed")
+      .gte("createdAt", startDate.toISOString())
+      .lte("createdAt", now.toISOString());
+
+    if (error) throw error;
+
+    const total = inspections?.length || 0;
+    const passed = inspections?.filter((i: any) => i.isPassed).length || 0;
+    const failed = total - passed;
+
+    const issueCounts: Record<string, number> = {};
+    inspections
+      ?.filter((i: any) => !i.isPassed)
+      .forEach((i: any) => {
+        const type = i.inspectionType || "其他";
+        issueCounts[type] = (issueCounts[type] || 0) + 1;
+      });
+
+    const issues = Object.entries(issueCounts)
+      .sort(([, a], [, b]) => b - a)
+      .map(([type, count]) => ({
+        type,
+        count,
+        percentage: failed > 0 ? Number((count / failed).toFixed(3)) : 0,
+      }));
+
+    return {
+      summary: {
+        total,
+        passed,
+        failed,
+        passRate: total > 0 ? Number((passed / total).toFixed(3)) : 0,
+      },
+      issues,
+      lastUpdated: new Date().toISOString(),
+      dataSource: "supabase" as const,
+    };
+  }
 
   const inspections = await prisma.inspectionPhoto.findMany({
     where: {
@@ -261,11 +452,105 @@ export async function getInspectionDataFromDB() {
     },
     issues,
     lastUpdated: new Date().toISOString(),
+    dataSource: "prisma" as const,
   };
 }
 
 export async function getVehicleRecordsFromDB(page: number = 1, pageSize: number = 10) {
   const skip = (page - 1) * pageSize;
+
+  if (isSupabaseConfigured()) {
+    const { data: vehicles, error, count: totalCount } = await supabase
+      .from("Vehicle")
+      .select(
+        `
+        *,
+        workOrders:WorkOrder (
+          *,
+          parts:PartUsage (*),
+          insuranceDoc:InsuranceDoc (*)
+        )
+      `,
+        { count: "exact" }
+      )
+      .order("createdAt", { ascending: false })
+      .range(skip, skip + pageSize - 1);
+
+    if (error) throw error;
+
+    const data = (vehicles || []).map((vehicle: any) => {
+      const workOrders = (vehicle.workOrders || []).sort(
+        (a: any, b: any) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+
+      const totalAmount = workOrders.reduce(
+        (sum: number, order: any) => sum + Number(order.totalAmount || 0),
+        0
+      );
+
+      const lastOrder = workOrders[0];
+      const lastServiceDate = lastOrder
+        ? formatDate(new Date(lastOrder.createdAt))
+        : "-";
+
+      const parts = workOrders.flatMap((order: any) =>
+        (order.parts || []).map((p: any) => ({
+          partId: p.partId,
+          partName: p.partName,
+          partCode: p.partCode || "",
+          quantity: p.quantity,
+          unitPrice: Number(Number(p.unitPrice || 0).toFixed(2)),
+          subtotal: Number(Number(p.subtotal || 0).toFixed(2)),
+          usedDate: p.usedAt ? formatDate(new Date(p.usedAt)) : "",
+        }))
+      );
+
+      const insuranceDocs = workOrders
+        .filter((order: any) => order.insuranceDoc)
+        .map((order: any) => ({
+          id: order.insuranceDoc.id,
+          orderId: order.insuranceDoc.orderId,
+          company: order.insuranceDoc.company,
+          policyNumber: order.insuranceDoc.policyNumber,
+          claimAmount: Number(
+            Number(order.insuranceDoc.claimAmount || 0).toFixed(2)
+          ),
+          claimStatus: order.insuranceDoc.claimStatus,
+          filedDate: order.insuranceDoc.filedAt
+            ? formatDate(new Date(order.insuranceDoc.filedAt))
+            : "",
+          settledDate: order.insuranceDoc.settledAt
+            ? formatDate(new Date(order.insuranceDoc.settledAt))
+            : undefined,
+        }));
+
+      return {
+        id: vehicle.id,
+        plateNumber: vehicle.plateNumber,
+        vehicleModel: vehicle.model,
+        ownerName: vehicle.ownerName,
+        ownerPhone: vehicle.ownerPhone,
+        vin: vehicle.vin || "",
+        mileage: vehicle.mileage || 0,
+        lastServiceDate,
+        serviceCount: workOrders.length,
+        totalAmount: Number(totalAmount.toFixed(2)),
+        parts,
+        insuranceDocs,
+      };
+    });
+
+    return {
+      data,
+      totalCount: totalCount || 0,
+      page,
+      pageSize,
+      totalPages: Math.ceil((totalCount || 0) / pageSize),
+      lastUpdated: new Date().toISOString(),
+      dataSource: "supabase" as const,
+    };
+  }
 
   const vehicles = await prisma.vehicle.findMany({
     skip,
@@ -318,8 +603,12 @@ export async function getVehicleRecordsFromDB(page: number = 1, pageSize: number
         policyNumber: order.insuranceDoc.policyNumber,
         claimAmount: Number(order.insuranceDoc.claimAmount.toFixed(2)),
         claimStatus: order.insuranceDoc.claimStatus,
-        filedDate: order.insuranceDoc.filedAt ? formatDate(order.insuranceDoc.filedAt) : "",
-        settledDate: order.insuranceDoc.settledAt ? formatDate(order.insuranceDoc.settledAt) : undefined,
+        filedDate: order.insuranceDoc.filedAt
+          ? formatDate(order.insuranceDoc.filedAt)
+          : "",
+        settledDate: order.insuranceDoc.settledAt
+          ? formatDate(order.insuranceDoc.settledAt)
+          : undefined,
       }));
 
     return {
@@ -345,12 +634,74 @@ export async function getVehicleRecordsFromDB(page: number = 1, pageSize: number
     pageSize,
     totalPages: Math.ceil(totalCount / pageSize),
     lastUpdated: new Date().toISOString(),
+    dataSource: "prisma" as const,
   };
 }
 
 export async function getDiagnosisDataFromDB() {
   const now = new Date();
   const startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+  if (isSupabaseConfigured()) {
+    const { data: abnormalItems, error } = await supabase
+      .from("DiagnosisResult")
+      .select(
+        `
+        *,
+        workOrder:WorkOrder (
+          *,
+          vehicle:Vehicle (*),
+          technician:Technician (*)
+        )
+      `
+      )
+      .eq("isAbnormal", true)
+      .gte("createdAt", startDate.toISOString())
+      .lte("createdAt", now.toISOString())
+      .order("createdAt", { ascending: false });
+
+    if (error) throw error;
+
+    const items = (abnormalItems || []).map((item: any) => ({
+      id: item.id,
+      date: formatDate(new Date(item.createdAt)),
+      vehiclePlate: item.workOrder?.vehicle?.plateNumber || "",
+      diagnosisItem: item.itemName,
+      result: item.result,
+      severity: item.severity,
+      isRework: item.workOrder?.isRework || false,
+      technician: item.workOrder?.technician?.name || "未分配",
+    }));
+
+    const trendData: Record<string, { abnormal: number; rework: number }> = {};
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+      trendData[formatDate(d)] = { abnormal: 0, rework: 0 };
+    }
+
+    (abnormalItems || []).forEach((item: any) => {
+      const dateKey = formatDate(new Date(item.createdAt));
+      if (trendData[dateKey]) {
+        trendData[dateKey].abnormal++;
+        if (item.workOrder?.isRework) {
+          trendData[dateKey].rework++;
+        }
+      }
+    });
+
+    const trend = Object.entries(trendData).map(([date, values]) => ({
+      date,
+      abnormalCount: values.abnormal,
+      reworkCount: values.rework,
+    }));
+
+    return {
+      abnormalItems: items,
+      trend,
+      lastUpdated: new Date().toISOString(),
+      dataSource: "supabase" as const,
+    };
+  }
 
   const abnormalItems = await prisma.diagnosisResult.findMany({
     where: {
@@ -410,6 +761,7 @@ export async function getDiagnosisDataFromDB() {
     abnormalItems: items,
     trend,
     lastUpdated: new Date().toISOString(),
+    dataSource: "prisma" as const,
   };
 }
 
