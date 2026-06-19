@@ -118,7 +118,7 @@ export class PartRequestsService {
       throw new NotFoundException('配件申请不存在');
     }
 
-    return this.prisma.partRequest.update({
+    const updated = await this.prisma.partRequest.update({
       where: { id },
       data: updatePartRequestDto,
       include: {
@@ -126,6 +126,12 @@ export class PartRequestsService {
         part: true,
       },
     });
+
+    if (updatePartRequestDto.status && updatePartRequestDto.status !== partRequest.status) {
+      await this.redisService.del('partrequest:kanban');
+    }
+
+    return updated;
   }
 
   async updateStatus(
