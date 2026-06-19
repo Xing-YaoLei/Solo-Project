@@ -29,6 +29,11 @@ class GameApplication implements SceneEventListener, UICallbacks {
 
     gameCore.initialize();
     await this.physicsManager.initialize();
+    
+    if (!this.physicsManager.isReady()) {
+      throw new Error('物理引擎初始化失败，请刷新页面重试');
+    }
+    
     await this.sceneManager.initialize();
     this.sceneManager.addListener(this);
 
@@ -43,6 +48,7 @@ class GameApplication implements SceneEventListener, UICallbacks {
 
     this.initialized = true;
     console.log('🎮 二手车过户培训系统已启动');
+    console.log('🔧 物理引擎状态:', this.physicsManager.isReady() ? '正常运行' : '未启动');
   }
 
   private render(): void {
@@ -63,9 +69,7 @@ class GameApplication implements SceneEventListener, UICallbacks {
   }
 
   onUpdate(dt: number): void {
-    if (this.physicsManager.isReady()) {
-      this.physicsManager.update(dt);
-    }
+    this.physicsManager.update(dt);
   }
 
   onStartLevel(level: Level): void {
@@ -122,11 +126,23 @@ window.addEventListener('DOMContentLoaded', async () => {
     console.error('Failed to initialize game:', error);
     const container = document.getElementById('ui-root');
     if (container) {
+      const errorMsg = error instanceof Error ? error.message : '未知错误';
       container.innerHTML = `
-        <div style="padding: 40px; color: #fff; background: #1a1a2e; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-          <h1 style="color: #ff6b6b; margin-bottom: 16px;">启动失败</h1>
-          <p style="color: rgba(255,255,255,0.7);">${error instanceof Error ? error.message : '未知错误'}</p>
-          <p style="color: rgba(255,255,255,0.5); margin-top: 24px;">请运行 npm install 后再试</p>
+        <div style="padding: 40px; color: #fff; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+          <h1 style="color: #ff6b6b; margin-bottom: 16px; font-size: 28px;">启动失败</h1>
+          <p style="color: rgba(255,255,255,0.8); font-size: 16px; text-align: center; max-width: 500px; line-height: 1.6;">${errorMsg}</p>
+          <div style="margin-top: 32px; padding: 16px 24px; background: rgba(255,255,255,0.05); border-radius: 10px;">
+            <p style="color: rgba(255,255,255,0.5); font-size: 14px;">请尝试以下解决方案：</p>
+            <ul style="color: rgba(255,255,255,0.6); font-size: 14px; margin-top: 8px; padding-left: 20px; line-height: 1.8;">
+              <li>刷新页面重试</li>
+              <li>检查网络连接</li>
+              <li>清除浏览器缓存后再试</li>
+              <li>确保已正确安装依赖 (npm install)</li>
+            </ul>
+          </div>
+          <button onclick="location.reload()" style="margin-top: 32px; padding: 12px 32px; font-size: 16px; background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; border: none; border-radius: 25px; cursor: pointer; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);">
+            重新加载
+          </button>
         </div>
       `;
     }

@@ -1,11 +1,15 @@
 import { ReplaySession, ReplayFrame, GameResult, Level, PlayerAction } from '../models';
 
-const STORAGE_KEY = 'replay_sessions';
-const MAX_REPLAYS = 3;
+const STORAGE_KEY = 'replay_sessions_by_vehicle';
+const MAX_REPLAYS_PER_VEHICLE = 3;
 const STALL_THRESHOLD_MS = 30000;
 
+interface StoredReplays {
+  [vehicleArchiveId: string]: ReplaySession[];
+}
+
 export class ReplayManager {
-  private sessions: ReplaySession[] = [];
+  private sessionsByVehicle: StoredReplays = {};
 
   constructor() {
     this.loadFromStorage();
@@ -15,22 +19,27 @@ export class ReplayManager {
     try {
       const data = localStorage.getItem(STORAGE_KEY);
       if (data) {
-        this.sessions = JSON.parse(data) as ReplaySession[];
+        this.sessionsByVehicle = JSON.parse(data) as StoredReplays;
       }
     } catch {
-      this.sessions = [];
+      this.sessionsByVehicle = {};
     }
   }
 
   private saveToStorage(): void {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.sessions));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.sessionsByVehicle));
     } catch {
       // Storage full or unavailable
     }
   }
 
-  saveReplay(level: Level, result: GameResult, actions: PlayerAction[]): ReplaySession {
+  saveReplay(level: Level, result: GameResult, actions: PlayerAction[]): ReplaySession | null {
+    if (result.passed) {
+      console.log('✅ 游戏通过，不保存失败回放');
+      return null;
+    }
+
     const frames: ReplayFrame[] = [];
     let cumulativeScore = 0;
     let cumulativeErrors = 0;
@@ -51,31 +60,79 @@ export class ReplayManager {
     const session: ReplaySession = {
       id: `replay_${Date.now()}`,
       levelId: level.id,
+      vehicleArchiveId: level.vehicleArchive.id,
+      vehicleInfo: {
+        brand: level.vehicleArchive.basicInfo.brand,
+        model: level.vehicleArchive.basicInfo.model,
+        plateNumber: level.vehicleArchive.basicInfo.plateNumber,
+        vin: level.vehicleArchive.basicInfo.vin
+      },
       result,
       frames,
       createdAt: new Date().toISOString()
     };
 
-    this.sessions = [session, ...this.sessions].slice(0, MAX_REPLAYS);
+    const vehicleId = level.vehicleArchive.id;
+    if (!this.sessionsByVehicle[vehicleId]) {
+      this.sessionsByVehicle[vehicleId] = [];
+    }
+
+    this.sessionsByVehicle[vehicleId] = [
+      session,
+      ...this.sessionsByVehicle[vehicleId]
+    ].slice(0, MAX_REPLAYS_PER_VEHICLE);
+
     this.saveToStorage();
 
+    console.log(`💾 已保存车辆 [${level.vehicleArchive.basicInfo.plateNumber}] 的失败回放，当前共 ${this.sessionsByVehicle[vehicleId].length} 次`);
     return session;
   }
 
   getAllReplays(): ReplaySession[] {
-    return this.sessions;
+    const allSessions: ReplaySession[] = [];
+    Object.values(this.sessionsByVehicle).forEach((sessions) => {
+      allSessions.push(...sessions);
+    });
+    return allSessions.sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
   }
 
   getReplayById(id: string): ReplaySession | undefined {
-    return this.sessions.find((s) => s.id === id);
+    for (const sessions of Object.values(this.sessionsByVehicle)) {
+      const found = sessions.find((s) => s.id === id);
+      if (found) return found;
+    }
+    return undefined;
+  }
+
+  getReplaysByVehicle(vehicleArchiveId: string): ReplaySession[] {
+    return this.sessionsByVehicle[vehicleArchiveId] ?? [];
   }
 
   getReplaysByLevel(levelId: string): ReplaySession[] {
-    return this.sessions.filter((s) => s.levelId === levelId);
+    return this.getAllReplays().filter((s) => s.levelId === levelId);
   }
 
   getLatestReplay(): ReplaySession | undefined {
-    return this.sessions[0];
+    const all = this.getAllReplays();
+    return all[0];
+  }
+
+  getVehicleIds(): string[] {
+    return Object.keys(this.sessionsByVehicle);
+  }
+
+  getVehiclesWithReplays(): Array<{
+    vehicleArchiveId: string;
+    vehicleInfo: ReplaySession['vehicleInfo'];
+    replayCount: number;
+  }> {
+    return Object.entries(this.sessionsByVehicle).map(([vehicleId, sessions]) => ({
+      vehicleArchiveId: vehicleId,
+      vehicleInfo: sessions[0].vehicleInfo,
+      replayCount: sessions.length
+    }));
   }
 
   getStallPoints(result: GameResult): Array<{
@@ -92,6 +149,113 @@ export class ReplayManager {
       thresholdMs: STALL_THRESHOLD_MS,
       isOverThreshold: action.timeSpentMs >= STALL_THRESHOLD_MS
     }));
+  }
+
+  getStallStepsWithClues(result: GameResult, level: Level): Array<{
+    stepNumber: number;
+    stepPrompt: string;
+    timeSpentMs: number;
+    thresholdMs: number;
+    isOverThreshold: boolean;
+    relatedDocs: Array<{
+      docType: 'vehicle' | 'quote' | 'finance';
+      section: string;
+      keyInfo: string;
+    }>;
+  }> {
+    const stallPoints = this.getStallPoints(result);
+    
+    return stallPoints
+      .filter((sp) => sp.isOverThreshold)
+      .map((stall) => {
+        const step = level.task.steps[stall.stepNumber - 1];
+        const relatedDocs = this.getRelatedDocClues(step, level);
+        return {
+          ...stall,
+          stepPrompt: step?.prompt || stall.stepPrompt,
+          relatedDocs
+        };
+      });
+  }
+
+  private getRelatedDocClues(step: any, level: Level): Array<{
+    docType: 'vehicle' | 'quote' | 'finance';
+    section: string;
+    keyInfo: string;
+  }> {
+    const clues: Array<{
+      docType: 'vehicle' | 'quote' | 'finance';
+      section: string;
+      keyInfo: string;
+    }> = [];
+    const stepPrompt = step?.prompt?.toLowerCase() || '';
+
+    if (stepPrompt.includes('抵押') || stepPrompt.includes('贷款') || stepPrompt.includes('产权')) {
+      clues.push({
+        docType: 'vehicle',
+        section: '产权信息',
+        keyInfo: `抵押状态: ${level.vehicleArchive.hasEncumbrance ? '有抵押' : '无抵押'}`
+      });
+      if (level.vehicleArchive.encumbranceDescription) {
+        clues.push({
+          docType: 'vehicle',
+          section: '抵押说明',
+          keyInfo: level.vehicleArchive.encumbranceDescription
+        });
+      }
+      clues.push({
+        docType: 'finance',
+        section: '贷款信息',
+        keyInfo: `贷款状态: ${level.financeDocuments.finance.hasLoan ? '有贷款' : '无贷款'}`
+      });
+    }
+
+    if (stepPrompt.includes('身份证') || stepPrompt.includes('身份') || stepPrompt.includes('车主')) {
+      clues.push({
+        docType: 'vehicle',
+        section: '产权信息',
+        keyInfo: `车主: ${level.vehicleArchive.ownership.ownerName}`
+      });
+    }
+
+    if (stepPrompt.includes('登记证书') || stepPrompt.includes('过户') || stepPrompt.includes('合同')) {
+      clues.push({
+        docType: 'vehicle',
+        section: '车辆状态',
+        keyInfo: `查封状态: ${level.vehicleArchive.isSeized ? '已查封' : '正常'}`
+      });
+    }
+
+    if (stepPrompt.includes('价格') || stepPrompt.includes('报价') || stepPrompt.includes('钱')) {
+      clues.push({
+        docType: 'quote',
+        section: '报价概况',
+        keyInfo: `成交价: ${level.quoteHistory.finalNegotiatedPrice} 万元`
+      });
+    }
+
+    if (stepPrompt.includes('保险') || stepPrompt.includes('保单')) {
+      clues.push({
+        docType: 'finance',
+        section: '保险信息',
+        keyInfo: `保险到期: ${level.financeDocuments.insurance.policyEndDate}`
+      });
+    }
+
+    if (clues.length === 0) {
+      clues.push({
+        docType: 'vehicle',
+        section: '基本信息',
+        keyInfo: `${level.vehicleArchive.basicInfo.brand} ${level.vehicleArchive.basicInfo.model}, ${level.vehicleArchive.basicInfo.year}年款`
+      });
+      clues.push({
+        docType: 'vehicle',
+        section: '车辆状况',
+        keyInfo: `车况评估: ${level.vehicleArchive.condition.overallAssessment}`
+      });
+    }
+
+    return clues;
   }
 
   findStallDetails(result: GameResult, stepNumber: number, steps: any[]): {
@@ -128,16 +292,17 @@ export class ReplayManager {
   }
 
   clearAllReplays(): void {
-    this.sessions = [];
+    this.sessionsByVehicle = {};
     this.saveToStorage();
   }
 
-  canSaveMoreReplays(): boolean {
-    return this.sessions.length < MAX_REPLAYS;
+  clearReplaysByVehicle(vehicleArchiveId: string): void {
+    delete this.sessionsByVehicle[vehicleArchiveId];
+    this.saveToStorage();
   }
 
-  getMaxReplays(): number {
-    return MAX_REPLAYS;
+  getMaxReplaysPerVehicle(): number {
+    return MAX_REPLAYS_PER_VEHICLE;
   }
 
   getStallThreshold(): number {

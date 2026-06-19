@@ -1226,7 +1226,7 @@ export class UIManager {
       });
 
       const replayTitle = document.createElement('h3');
-      replayTitle.textContent = `📼 历史回放 (保留最近${gameCore.replayManager.getMaxReplays()}次)`;
+      replayTitle.textContent = `📼 历史回放 (按车辆各保留最近3次)`;
       this.styleElement(replayTitle, {
         color: '#667eea',
         fontSize: '18px',
@@ -1405,7 +1405,7 @@ export class UIManager {
 
     const content = this.createContainer('content');
     this.styleElement(content, {
-      maxWidth: '900px',
+      maxWidth: '1000px',
       margin: '0 auto'
     });
 
@@ -1418,7 +1418,7 @@ export class UIManager {
     });
 
     const title = document.createElement('h2');
-    title.textContent = '📼 复盘回放';
+    title.textContent = '📼 复盘回放 - 按车辆分组';
     this.styleElement(title, {
       color: '#fff',
       fontSize: '28px',
@@ -1441,11 +1441,11 @@ export class UIManager {
     header.appendChild(title);
     header.appendChild(backBtn);
 
-    const replays = gameCore.replayManager.getAllReplays();
+    const vehicles = gameCore.replayManager.getVehiclesWithReplays();
 
-    if (replays.length === 0) {
+    if (vehicles.length === 0) {
       const empty = document.createElement('div');
-      empty.textContent = '暂无回放记录';
+      empty.textContent = '暂无失败回放记录，通过测试后将不会保存回放';
       this.styleElement(empty, {
         color: 'rgba(255,255,255,0.5)',
         textAlign: 'center',
@@ -1459,157 +1459,305 @@ export class UIManager {
       return;
     }
 
-    replays.forEach((replay: ReplaySession, idx: number) => {
-      const card = this.createContainer('replay-card');
-      this.styleElement(card, {
-        background: 'rgba(255,255,255,0.05)',
-        borderRadius: '16px',
-        padding: '24px',
-        marginBottom: idx < replays.length - 1 ? '16px' : '0',
-        border: '1px solid rgba(255,255,255,0.1)'
+    vehicles.forEach((vehicle, vIdx) => {
+      const vehicleGroup = this.createContainer('vehicle-group');
+      this.styleElement(vehicleGroup, {
+        marginBottom: vIdx < vehicles.length - 1 ? '32px' : '0'
       });
 
-      const cardHeader = this.createContainer('card-header');
-      this.styleElement(cardHeader, {
+      const vehicleHeader = this.createContainer('vehicle-header');
+      this.styleElement(vehicleHeader, {
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
+        background: 'linear-gradient(135deg, rgba(255,107,107,0.1), rgba(255,159,67,0.1))',
+        border: '1px solid rgba(255,107,107,0.2)',
+        borderRadius: '12px',
+        padding: '16px 20px',
         marginBottom: '16px'
       });
 
-      const replayTitle = document.createElement('h3');
-      replayTitle.textContent = replay.result.levelName;
-      this.styleElement(replayTitle, {
+      const vehicleTitle = document.createElement('h3');
+      vehicleTitle.textContent = `🚗 ${vehicle.vehicleInfo.brand} ${vehicle.vehicleInfo.model} (${vehicle.vehicleInfo.plateNumber})`;
+      this.styleElement(vehicleTitle, {
         color: '#fff',
         fontSize: '18px',
         margin: '0'
       });
 
-      const gradeEl = document.createElement('div');
-      gradeEl.textContent = replay.result.grade;
-      this.styleElement(gradeEl, {
-        color: replay.result.grade === 'S' || replay.result.grade === 'A' ? '#51cf66' : '#ff6b6b',
-        fontSize: '24px',
-        fontWeight: '900'
-      });
-
-      cardHeader.appendChild(replayTitle);
-      cardHeader.appendChild(gradeEl);
-
-      const metaRow = this.createContainer('meta-row');
-      this.styleElement(metaRow, {
+      const vehicleMeta = document.createElement('div');
+      vehicleMeta.innerHTML = `
+        <span style="color: rgba(255,255,255,0.5); font-size: 13px;">VIN: ${vehicle.vehicleInfo.vin}</span>
+        <span style="background: rgba(255,107,107,0.2); color: #ff6b6b; padding: 4px 12px; border-radius: 12px; font-size: 12px; margin-left: 12px;">失败 ${vehicle.replayCount}/3 次</span>
+      `;
+      this.styleElement(vehicleMeta, {
         display: 'flex',
-        gap: '24px',
-        marginBottom: '16px',
-        flexWrap: 'wrap'
+        alignItems: 'center'
       });
 
-      const timeEl = document.createElement('span');
-      timeEl.textContent = `⏱ 用时: ${this.formatTime(replay.result.totalTimeMs)}`;
-      this.styleElement(timeEl, { color: 'rgba(255,255,255,0.6)', fontSize: '14px' });
+      vehicleHeader.appendChild(vehicleTitle);
+      vehicleHeader.appendChild(vehicleMeta);
+      vehicleGroup.appendChild(vehicleHeader);
 
-      const scoreEl = document.createElement('span');
-      scoreEl.textContent = `🎯 得分: ${replay.result.totalScore}/${replay.result.maxScore}`;
-      this.styleElement(scoreEl, { color: 'rgba(255,255,255,0.6)', fontSize: '14px' });
-
-      const accEl = document.createElement('span');
-      accEl.textContent = `✅ 准确率: ${replay.result.accuracyPercentage}%`;
-      this.styleElement(accEl, { color: 'rgba(255,255,255,0.6)', fontSize: '14px' });
-
-      metaRow.appendChild(timeEl);
-      metaRow.appendChild(scoreEl);
-      metaRow.appendChild(accEl);
-
-      if (replay.result.stallPoints.length > 0 || replay.result.errors.length > 0) {
-        const timeline = this.createContainer('timeline');
-        this.styleElement(timeline, {
-          borderLeft: '2px solid rgba(255,255,255,0.1)',
-          paddingLeft: '20px',
-          marginTop: '16px'
+      const replays = gameCore.replayManager.getReplaysByVehicle(vehicle.vehicleArchiveId);
+      replays.forEach((replay: ReplaySession, idx: number) => {
+        const level = gameCore.levelManager.getLevelById(replay.levelId);
+        const card = this.createContainer('replay-card');
+        this.styleElement(card, {
+          background: 'rgba(255,255,255,0.05)',
+          borderRadius: '12px',
+          padding: '20px',
+          marginBottom: idx < replays.length - 1 ? '12px' : '0',
+          border: '1px solid rgba(255,255,255,0.1)'
         });
 
-        replay.frames.forEach((frame: ReplayFrame, fIdx: number) => {
-          if (!frame.action) return;
+        const cardHeader = this.createContainer('card-header');
+        this.styleElement(cardHeader, {
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '12px'
+        });
 
-          const step = frame.stepIndex + 1;
-          const stepEl = this.createContainer('timeline-step');
-          this.styleElement(stepEl, {
-            position: 'relative',
-            padding: '12px',
-            background: 'rgba(255,255,255,0.03)',
-            borderRadius: '8px',
-            marginBottom: '10px'
-          });
+        const replayTitle = document.createElement('h4');
+        replayTitle.textContent = `#${replays.length - idx} ${replay.result.levelName}`;
+        this.styleElement(replayTitle, {
+          color: '#fff',
+          fontSize: '16px',
+          margin: '0'
+        });
 
-          const dot = document.createElement('div');
-          this.styleElement(dot, {
-            position: 'absolute',
-            left: '-28px',
-            top: '18px',
-            width: '12px',
-            height: '12px',
-            borderRadius: '50%',
-            background: frame.action.isCorrect ? '#51cf66' : '#ff6b6b',
-            boxShadow: frame.action.timeSpentMs >= 30000 ? '0 0 10px #ffa94d' : 'none'
-          });
+        const gradeEl = document.createElement('div');
+        gradeEl.textContent = replay.result.grade;
+        this.styleElement(gradeEl, {
+          color: replay.result.grade === 'S' || replay.result.grade === 'A' ? '#51cf66' : '#ff6b6b',
+          fontSize: '20px',
+          fontWeight: '900'
+        });
 
-          const stepHeader = this.createContainer('step-header');
-          this.styleElement(stepHeader, {
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '6px'
-          });
+        cardHeader.appendChild(replayTitle);
+        cardHeader.appendChild(gradeEl);
 
-          const stepLabel = document.createElement('span');
-          stepLabel.textContent = `步骤 ${step}`;
-          this.styleElement(stepLabel, {
-            color: '#fff',
-            fontSize: '14px',
-            fontWeight: '600'
-          });
+        const metaRow = this.createContainer('meta-row');
+        this.styleElement(metaRow, {
+          display: 'flex',
+          gap: '20px',
+          marginBottom: '16px',
+          flexWrap: 'wrap'
+        });
 
-          const stepTime = document.createElement('span');
-          stepTime.textContent = this.formatTime(frame.action.timeSpentMs);
-          this.styleElement(stepTime, {
-            color: frame.action.timeSpentMs >= 30000 ? '#ffa94d' : 'rgba(255,255,255,0.5)',
-            fontSize: '13px',
-            fontWeight: frame.action.timeSpentMs >= 30000 ? '600' : '400'
-          });
+        const timeEl = document.createElement('span');
+        timeEl.textContent = `⏱ 用时: ${this.formatTime(replay.result.totalTimeMs)}`;
+        this.styleElement(timeEl, { color: 'rgba(255,255,255,0.6)', fontSize: '13px' });
 
-          stepHeader.appendChild(stepLabel);
-          stepHeader.appendChild(stepTime);
+        const scoreEl = document.createElement('span');
+        scoreEl.textContent = `🎯 得分: ${replay.result.totalScore}/${replay.result.maxScore}`;
+        this.styleElement(scoreEl, { color: 'rgba(255,255,255,0.6)', fontSize: '13px' });
 
-          const resultLabel = document.createElement('div');
-          resultLabel.textContent = frame.action.isCorrect ? '✅ 正确' : `❌ 错误 (扣${frame.action.pointsDeducted}分)`;
-          this.styleElement(resultLabel, {
-            color: frame.action.isCorrect ? '#51cf66' : '#ff6b6b',
-            fontSize: '13px'
-          });
+        const accEl = document.createElement('span');
+        accEl.textContent = `✅ 准确率: ${replay.result.accuracyPercentage}%`;
+        this.styleElement(accEl, { color: 'rgba(255,255,255,0.6)', fontSize: '13px' });
 
-          if (frame.action.timeSpentMs >= 30000) {
-            const stallLabel = document.createElement('div');
-            stallLabel.textContent = '⚠️ 此步骤存在卡顿，建议加强学习';
-            this.styleElement(stallLabel, {
-              color: '#ffa94d',
-              fontSize: '12px',
-              marginTop: '4px'
+        const dateEl = document.createElement('span');
+        const replayDate = new Date(replay.createdAt);
+        dateEl.textContent = `📅 ${replayDate.toLocaleDateString('zh-CN')} ${replayDate.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`;
+        this.styleElement(dateEl, { color: 'rgba(255,255,255,0.5)', fontSize: '12px' });
+
+        metaRow.appendChild(timeEl);
+        metaRow.appendChild(scoreEl);
+        metaRow.appendChild(accEl);
+        metaRow.appendChild(dateEl);
+
+        card.appendChild(cardHeader);
+        card.appendChild(metaRow);
+
+        if (level) {
+          const stallSteps = gameCore.replayManager.getStallStepsWithClues(replay.result, level);
+          
+          if (stallSteps.length > 0) {
+            const stallSection = this.createContainer('stall-section');
+            this.styleElement(stallSection, {
+              marginTop: '16px',
+              padding: '16px',
+              background: 'rgba(255,159,67,0.05)',
+              borderRadius: '10px',
+              border: '1px solid rgba(255,159,67,0.2)'
             });
-            stepEl.appendChild(stallLabel);
+
+            const stallTitle = document.createElement('h5');
+            stallTitle.textContent = `⚠️ 卡顿点分析 (共 ${stallSteps.length} 处)`;
+            this.styleElement(stallTitle, {
+              color: '#ffa94d',
+              fontSize: '15px',
+              margin: '0 0 12px 0'
+            });
+            stallSection.appendChild(stallTitle);
+
+            stallSteps.forEach((stall, sIdx) => {
+              const stallItem = this.createContainer('stall-item');
+              this.styleElement(stallItem, {
+                background: 'rgba(255,255,255,0.03)',
+                borderRadius: '8px',
+                padding: '12px',
+                marginBottom: sIdx < stallSteps.length - 1 ? '10px' : '0'
+              });
+
+              const stallHeader = this.createContainer('stall-header');
+              this.styleElement(stallHeader, {
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '8px'
+              });
+
+              const stepNum = document.createElement('span');
+              stepNum.textContent = `步骤 ${stall.stepNumber}`;
+              this.styleElement(stepNum, {
+                color: '#fff',
+                fontWeight: '600',
+                fontSize: '14px'
+              });
+
+              const stepTime = document.createElement('span');
+              stepTime.textContent = `⏱ ${this.formatTime(stall.timeSpentMs)} (超阈值 ${((stall.timeSpentMs / stall.thresholdMs) * 100 - 100).toFixed(0)}%)`;
+              this.styleElement(stepTime, {
+                color: '#ffa94d',
+                fontSize: '13px',
+                fontWeight: '600'
+              });
+
+              stallHeader.appendChild(stepNum);
+              stallHeader.appendChild(stepTime);
+
+              const stepPrompt = document.createElement('p');
+              stepPrompt.textContent = stall.stepPrompt;
+              this.styleElement(stepPrompt, {
+                color: 'rgba(255,255,255,0.8)',
+                fontSize: '13px',
+                margin: '0 0 10px 0',
+                lineHeight: '1.5'
+              });
+
+              const cluesSection = this.createContainer('clues-section');
+              this.styleElement(cluesSection, {
+                marginTop: '10px'
+              });
+
+              const cluesTitle = document.createElement('span');
+              cluesTitle.textContent = '🔍 相关资料线索：';
+              this.styleElement(cluesTitle, {
+                color: 'rgba(255,255,255,0.6)',
+                fontSize: '12px',
+                display: 'block',
+                marginBottom: '8px'
+              });
+              cluesSection.appendChild(cluesTitle);
+
+              stall.relatedDocs.forEach((doc) => {
+                const docTag = this.createContainer('doc-tag');
+                this.styleElement(docTag, {
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '8px',
+                  padding: '8px 12px',
+                  background: 'rgba(255,255,255,0.03)',
+                  borderRadius: '6px',
+                  marginBottom: '6px'
+                });
+
+                const docIcon = document.createElement('span');
+                const iconMap = { vehicle: '📋', quote: '💰', finance: '💳' };
+                docIcon.textContent = iconMap[doc.docType];
+                this.styleElement(docIcon, { fontSize: '14px' });
+
+                const docContent = document.createElement('div');
+                docContent.innerHTML = `
+                  <div style="color: rgba(255,255,255,0.7); font-size: 12px; margin-bottom: 2px;">
+                    ${doc.docType === 'vehicle' ? '车辆档案' : doc.docType === 'quote' ? '报价历史' : '金融资料'} → ${doc.section}
+                  </div>
+                  <div style="color: #fff; font-size: 13px; font-weight: 500;">
+                    ${doc.keyInfo}
+                  </div>
+                `;
+
+                docTag.appendChild(docIcon);
+                docTag.appendChild(docContent);
+                cluesSection.appendChild(docTag);
+              });
+
+              stallItem.appendChild(stallHeader);
+              stallItem.appendChild(stepPrompt);
+              stallItem.appendChild(cluesSection);
+              stallSection.appendChild(stallItem);
+            });
+
+            card.appendChild(stallSection);
           }
+        }
 
-          stepEl.appendChild(dot);
-          stepEl.appendChild(stepHeader);
-          stepEl.appendChild(resultLabel);
-          timeline.appendChild(stepEl);
-        });
+        if (replay.result.errors.length > 0) {
+          const errorsSection = this.createContainer('errors-section');
+          this.styleElement(errorsSection, {
+            marginTop: '16px',
+            padding: '16px',
+            background: 'rgba(255,107,107,0.05)',
+            borderRadius: '10px',
+            border: '1px solid rgba(255,107,107,0.2)'
+          });
 
-        card.appendChild(timeline);
-      }
+          const errorsTitle = document.createElement('h5');
+          errorsTitle.textContent = `❌ 错误动作 (共 ${replay.result.errors.length} 处)`;
+          this.styleElement(errorsTitle, {
+            color: '#ff6b6b',
+            fontSize: '15px',
+            margin: '0 0 12px 0'
+          });
+          errorsSection.appendChild(errorsTitle);
 
-      card.appendChild(cardHeader);
-      card.appendChild(metaRow);
-      content.appendChild(card);
+          replay.result.errors.forEach((err, eIdx) => {
+            const errorItem = this.createContainer('error-item');
+            this.styleElement(errorItem, {
+              background: 'rgba(255,255,255,0.03)',
+              borderRadius: '8px',
+              padding: '12px',
+              marginBottom: eIdx < replay.result.errors.length - 1 ? '10px' : '0'
+            });
+
+            const errorHeader = document.createElement('div');
+            errorHeader.innerHTML = `
+              <span style="color: #ff6b6b; font-weight: 600; font-size: 14px;">步骤 ${err.stepNumber}</span>
+              <span style="color: rgba(255,255,255,0.5); font-size: 12px; margin-left: 10px;">⏱ ${this.formatTime(err.timeSpentMs)}</span>
+            `;
+            this.styleElement(errorHeader, { marginBottom: '6px' });
+
+            const stepPrompt = document.createElement('p');
+            stepPrompt.textContent = err.stepPrompt;
+            this.styleElement(stepPrompt, {
+              color: 'rgba(255,255,255,0.8)',
+              fontSize: '13px',
+              margin: '0 0 8px 0'
+            });
+
+            const errorDetail = document.createElement('div');
+            errorDetail.innerHTML = `
+              <div style="color: #ff6b6b; font-size: 12px; margin-bottom: 4px;">❌ 你的选择: ${err.wrongAction}</div>
+              <div style="color: #51cf66; font-size: 12px; margin-bottom: 4px;">✅ 正确选择: ${err.correctAction}</div>
+              <div style="color: rgba(255,255,255,0.5); font-size: 12px;">📝 错误原因: ${err.reason}</div>
+            `;
+
+            errorItem.appendChild(errorHeader);
+            errorItem.appendChild(stepPrompt);
+            errorItem.appendChild(errorDetail);
+            errorsSection.appendChild(errorItem);
+          });
+
+          card.appendChild(errorsSection);
+        }
+
+        vehicleGroup.appendChild(card);
+      });
+
+      content.appendChild(vehicleGroup);
     });
 
     container.appendChild(header);

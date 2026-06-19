@@ -34,28 +34,22 @@ export class PhysicsManager {
   async initialize(): Promise<void> {
     if (this.initialized) return;
 
-    try {
-      if (typeof Ammo === 'undefined') {
-        console.warn('Ammo.js is not loaded. Physics simulation will be disabled.');
-        this.initialized = true;
-        return;
-      }
-
-      if (typeof Ammo === 'function') {
-        await Ammo();
-      }
-
-      this.ammoReady = true;
-      this.setupPhysicsWorld();
-      this.initialized = true;
-    } catch (error) {
-      console.warn('Failed to initialize Ammo.js physics:', error);
-      this.initialized = true;
+    if (typeof Ammo === 'undefined') {
+      throw new Error('Ammo.js 物理引擎未加载，请确保 ammo.js 已正确引入');
     }
+
+    if (typeof Ammo === 'function') {
+      await Ammo();
+    }
+
+    this.ammoReady = true;
+    this.setupPhysicsWorld();
+    this.initialized = true;
+    console.log('🎯 Ammo.js 物理引擎初始化成功');
   }
 
   private setupPhysicsWorld(): void {
-    if (!this.ammoReady || typeof Ammo === 'undefined') return;
+    if (!this.ammoReady) return;
 
     this.collisionConfiguration = new Ammo.btDefaultCollisionConfiguration();
     this.dispatcher = new Ammo.btCollisionDispatcher(this.collisionConfiguration);
@@ -73,7 +67,7 @@ export class PhysicsManager {
   }
 
   addStaticBox(id: string, entity: pc.Entity, halfExtents: [number, number, number]): PhysicsBody | null {
-    if (!this.ammoReady || !this.physicsWorld || typeof Ammo === 'undefined') return null;
+    if (!this.ammoReady || !this.physicsWorld) return null;
 
     const transform = new Ammo.btTransform();
     transform.setIdentity();
@@ -104,7 +98,7 @@ export class PhysicsManager {
   }
 
   addDynamicBox(id: string, entity: pc.Entity, halfExtents: [number, number, number], mass: number = 1): PhysicsBody | null {
-    if (!this.ammoReady || !this.physicsWorld || typeof Ammo === 'undefined') return null;
+    if (!this.ammoReady || !this.physicsWorld) return null;
 
     const transform = new Ammo.btTransform();
     transform.setIdentity();
@@ -150,7 +144,7 @@ export class PhysicsManager {
 
   applyImpulse(id: string, impulse: [number, number, number]): void {
     const body = this.bodies.get(id);
-    if (!body || !body.rigidBody || typeof Ammo === 'undefined') return;
+    if (!body || !body.rigidBody) return;
 
     body.rigidBody.activate(true);
     body.rigidBody.applyCentralImpulse(new Ammo.btVector3(...impulse));
@@ -158,7 +152,7 @@ export class PhysicsManager {
 
   applyForce(id: string, force: [number, number, number]): void {
     const body = this.bodies.get(id);
-    if (!body || !body.rigidBody || typeof Ammo === 'undefined') return;
+    if (!body || !body.rigidBody) return;
 
     body.rigidBody.activate(true);
     body.rigidBody.applyCentralForce(new Ammo.btVector3(...force));
@@ -166,7 +160,7 @@ export class PhysicsManager {
 
   setPosition(id: string, position: [number, number, number]): void {
     const body = this.bodies.get(id);
-    if (!body || !body.rigidBody || typeof Ammo === 'undefined') return;
+    if (!body || !body.rigidBody) return;
 
     const transform = new Ammo.btTransform();
     transform.setIdentity();
@@ -183,8 +177,7 @@ export class PhysicsManager {
     const fixedDt = Math.min(dt, 1 / 30);
     this.physicsWorld.stepSimulation(fixedDt, 10, 1 / 60);
 
-    const transform = typeof Ammo !== 'undefined' ? new Ammo.btTransform() : null;
-    if (!transform) return;
+    const transform = new Ammo.btTransform();
 
     this.bodies.forEach((body) => {
       if (body.isStatic || !body.rigidBody) return;
@@ -212,7 +205,7 @@ export class PhysicsManager {
 
   destroy(): void {
     this.clearAll();
-    if (this.physicsWorld && typeof Ammo !== 'undefined') {
+    if (this.physicsWorld) {
       Ammo.destroy(this.physicsWorld);
       Ammo.destroy(this.solver);
       Ammo.destroy(this.overlappingPairCache);

@@ -39,14 +39,22 @@ module.exports = {
     }),
     new CopyWebpackPlugin({
       patterns: [
-        { from: 'public', to: 'public', noErrorOnMissing: true }
+        { from: 'public', to: 'public', noErrorOnMissing: true },
+        { 
+          from: 'node_modules/ammo.js/ammo.js', 
+          to: 'ammo.js',
+          transform(content) {
+            return content.toString().replace('root.Ammo = factory()', 'window.Ammo = factory()');
+          }
+        }
       ]
     })
   ],
   devServer: {
-    static: {
-      directory: path.join(__dirname, 'public')
-    },
+    static: [
+      { directory: path.join(__dirname, 'public') },
+      { directory: path.join(__dirname, 'dist') }
+    ],
     compress: true,
     port: 8080,
     hot: true,

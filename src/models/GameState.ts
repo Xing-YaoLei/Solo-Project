@@ -56,6 +56,13 @@ export interface ReplayFrame {
 export interface ReplaySession {
   id: string;
   levelId: string;
+  vehicleArchiveId: string;
+  vehicleInfo: {
+    brand: string;
+    model: string;
+    plateNumber: string;
+    vin: string;
+  };
   result: GameResult;
   frames: ReplayFrame[];
   createdAt: string;
