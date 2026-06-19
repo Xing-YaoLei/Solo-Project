@@ -3,15 +3,30 @@
     "id": "diag_01",
     "description": "发动机异响，怠速时明显，加速后声音变化",
     "photoPaths": [
-      "inspection-photos/engine_belt_tension",
-      "inspection-photos/engine_valve_clearance",
-      "inspection-photos/engine_mount_condition"
+      "textures/inspection-photos/engine_belt_tension",
+      "textures/inspection-photos/engine_valve_clearance",
+      "textures/inspection-photos/engine_mount_condition"
     ],
     "correctQuoteId": "quote_01_a",
     "quoteOptions": [
-      { "id": "quote_01_a", "name": "更换正时皮带及张紧轮", "price": 1800, "isCorrect": true },
-      { "id": "quote_01_b", "name": "更换发动机机脚垫", "price": 1200, "isCorrect": false },
-      { "id": "quote_01_c", "name": "更换气门挺杆", "price": 2500, "isCorrect": false }
+      {
+        "id": "quote_01_a",
+        "name": "更换正时皮带及张紧轮",
+        "price": 1800,
+        "isCorrect": true
+      },
+      {
+        "id": "quote_01_b",
+        "name": "更换发动机机脚垫",
+        "price": 1200,
+        "isCorrect": false
+      },
+      {
+        "id": "quote_01_c",
+        "name": "更换气门挺杆",
+        "price": 2500,
+        "isCorrect": false
+      }
     ],
     "severityLevel": 2,
     "reworkRisk": 0.3
@@ -20,14 +35,24 @@
     "id": "diag_02",
     "description": "刹车片严重磨损，制动距离明显变长",
     "photoPaths": [
-      "inspection-photos/brake_pad_thickness",
-      "inspection-photos/brake_disc_surface",
-      "inspection-photos/brake_caliper_condition"
+      "textures/inspection-photos/brake_pad_thickness",
+      "textures/inspection-photos/brake_disc_surface",
+      "textures/inspection-photos/brake_caliper_condition"
     ],
     "correctQuoteId": "quote_02_a",
     "quoteOptions": [
-      { "id": "quote_02_a", "name": "更换前刹车片及刹车盘", "price": 1500, "isCorrect": true },
-      { "id": "quote_02_b", "name": "仅更换刹车片", "price": 600, "isCorrect": false }
+      {
+        "id": "quote_02_a",
+        "name": "更换前刹车片及刹车盘",
+        "price": 1500,
+        "isCorrect": true
+      },
+      {
+        "id": "quote_02_b",
+        "name": "仅更换刹车片",
+        "price": 600,
+        "isCorrect": false
+      }
     ],
     "severityLevel": 3,
     "reworkRisk": 0.4
@@ -36,14 +61,24 @@
     "id": "diag_03",
     "description": "变速箱底部渗漏油液，液位偏低",
     "photoPaths": [
-      "inspection-photos/transmission_seal_leak",
-      "inspection-photos/transmission_fluid_level",
-      "inspection-photos/transmission_pan_gasket"
+      "textures/inspection-photos/transmission_seal_leak",
+      "textures/inspection-photos/transmission_fluid_level",
+      "textures/inspection-photos/transmission_pan_gasket"
     ],
     "correctQuoteId": "quote_03_a",
     "quoteOptions": [
-      { "id": "quote_03_a", "name": "更换变速箱油封及垫片", "price": 2200, "isCorrect": true },
-      { "id": "quote_03_b", "name": "添加变速箱油", "price": 300, "isCorrect": false }
+      {
+        "id": "quote_03_a",
+        "name": "更换变速箱油封及垫片",
+        "price": 2200,
+        "isCorrect": true
+      },
+      {
+        "id": "quote_03_b",
+        "name": "添加变速箱油",
+        "price": 300,
+        "isCorrect": false
+      }
     ],
     "severityLevel": 4,
     "reworkRisk": 0.5
@@ -52,14 +87,24 @@
     "id": "diag_04",
     "description": "空调系统不制冷，出风口温度异常",
     "photoPaths": [
-      "inspection-photos/ac_compressor_pressure",
-      "inspection-photos/ac_refrigerant_level",
-      "inspection-photos/ac_condenser_condition"
+      "textures/inspection-photos/ac_compressor_pressure",
+      "textures/inspection-photos/ac_refrigerant_level",
+      "textures/inspection-photos/ac_condenser_condition"
     ],
     "correctQuoteId": "quote_04_a",
     "quoteOptions": [
-      { "id": "quote_04_a", "name": "补充冷媒并检漏", "price": 500, "isCorrect": true },
-      { "id": "quote_04_b", "name": "更换空调压缩机", "price": 3000, "isCorrect": false }
+      {
+        "id": "quote_04_a",
+        "name": "补充冷媒并检漏",
+        "price": 500,
+        "isCorrect": true
+      },
+      {
+        "id": "quote_04_b",
+        "name": "更换空调压缩机",
+        "price": 3000,
+        "isCorrect": false
+      }
     ],
     "severityLevel": 1,
     "reworkRisk": 0.2
@@ -68,14 +113,24 @@
     "id": "diag_05",
     "description": "轮胎偏磨严重，内侧磨损明显",
     "photoPaths": [
-      "inspection-photos/tire_tread_depth",
-      "inspection-photos/suspension_alignment",
-      "inspection-photos/tie_rod_condition"
+      "textures/inspection-photos/tire_tread_depth",
+      "textures/inspection-photos/suspension_alignment",
+      "textures/inspection-photos/tie_rod_condition"
     ],
     "correctQuoteId": "quote_05_a",
     "quoteOptions": [
-      { "id": "quote_05_a", "name": "四轮定位并更换轮胎", "price": 1600, "isCorrect": true },
-      { "id": "quote_05_b", "name": "仅更换轮胎", "price": 1000, "isCorrect": false }
+      {
+        "id": "quote_05_a",
+        "name": "四轮定位并更换轮胎",
+        "price": 1600,
+        "isCorrect": true
+      },
+      {
+        "id": "quote_05_b",
+        "name": "仅更换轮胎",
+        "price": 1000,
+        "isCorrect": false
+      }
     ],
     "severityLevel": 2,
     "reworkRisk": 0.35
@@ -84,14 +139,24 @@
     "id": "diag_06",
     "description": "电瓶亏电，车辆启动困难",
     "photoPaths": [
-      "inspection-photos/battery_voltage",
-      "inspection-photos/battery_terminal_corrosion",
-      "inspection-photos/alternator_output"
+      "textures/inspection-photos/battery_voltage",
+      "textures/inspection-photos/battery_terminal_corrosion",
+      "textures/inspection-photos/alternator_output"
     ],
     "correctQuoteId": "quote_06_a",
     "quoteOptions": [
-      { "id": "quote_06_a", "name": "更换蓄电池", "price": 800, "isCorrect": true },
-      { "id": "quote_06_b", "name": "充电后继续使用", "price": 100, "isCorrect": false }
+      {
+        "id": "quote_06_a",
+        "name": "更换蓄电池",
+        "price": 800,
+        "isCorrect": true
+      },
+      {
+        "id": "quote_06_b",
+        "name": "充电后继续使用",
+        "price": 100,
+        "isCorrect": false
+      }
     ],
     "severityLevel": 2,
     "reworkRisk": 0.25

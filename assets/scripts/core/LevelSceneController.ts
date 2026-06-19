@@ -37,7 +37,7 @@ const GIVEN_NAMES = ['伟', '芳', '娜', '敏', '静', '强', '磊', '军', '�
 @ccclass('LevelSceneController')
 export class LevelSceneController extends Component {
 
-    @property({ type: Node, tooltip: 'Tiled地图根' })
+    @property({ type: Node, tooltip: 'Tiled地图根节点（挂载TiledMap组件）' })
     mapRoot: Node | null = null;
 
     @property({ type: Node, tooltip: 'HUD层(计时显示、分数、准确率)' })
@@ -46,10 +46,10 @@ export class LevelSceneController extends Component {
     @property({ type: Label, tooltip: '计时显示文本' })
     timerLabel: Label | null = null;
 
-    @property({ type: Label })
+    @property({ type: Label, tooltip: '分数显示文本' })
     scoreLabel: Label | null = null;
 
-    @property({ type: Label })
+    @property({ type: Label, tooltip: '准确率显示文本' })
     accuracyLabel: Label | null = null;
 
     @property({ type: Label, tooltip: '当前诊断描述' })
@@ -79,19 +79,19 @@ export class LevelSceneController extends Component {
     @property({ type: Node, tooltip: '结算面板根' })
     settlementRoot: Node | null = null;
 
-    @property({ type: SettlementComponent })
+    @property({ type: SettlementComponent, tooltip: '结算面板组件' })
     settlementComponent: SettlementComponent | null = null;
 
     @property({ type: Node, tooltip: '复盘面板根' })
     reviewRoot: Node | null = null;
 
-    @property({ type: ReviewPageComponent })
+    @property({ type: ReviewPageComponent, tooltip: '复盘面板组件' })
     reviewComponent: ReviewPageComponent | null = null;
 
     @property({ type: Node, tooltip: '事件弹窗根' })
     eventPopupRoot: Node | null = null;
 
-    @property({ type: Node })
+    @property({ type: Node, tooltip: '暂停按钮' })
     pauseBtn: Node | null = null;
 
     private _gameController: GameController | null = null;
