@@ -43,14 +43,36 @@ export default function SharePage() {
 
   useEffect(() => {
     const validateToken = async () => {
-      const result = await validateShareToken(token);
-      if (result.valid && result.authContext) {
-        setAuth(result.authContext);
-        setIsValid(true);
-        await loadDashboardData();
-      } else {
+      try {
+        const res = await fetch(`/api/share?token=${encodeURIComponent(token)}`);
+        const result = await res.json();
+        if (result.success && result.data) {
+          const link = result.data;
+          const dataScope = link.dataScope || {};
+          const authContext: AuthContext = {
+            user: { id: link.id, email: `share@${link.role}`, role: link.role as any },
+            dataScope: {
+              role: link.role,
+              ...dataScope,
+            },
+            permissions: {
+              canViewAllHotels: dataScope.canViewAllHotels || ROLE_PERMISSIONS[link.role]?.canViewAllHotels || false,
+              canViewDetails: dataScope.canViewDetails ?? ROLE_PERMISSIONS[link.role]?.canViewDetails ?? true,
+              canExport: dataScope.canExport ?? ROLE_PERMISSIONS[link.role]?.canExport ?? true,
+              canShare: dataScope.canShare ?? ROLE_PERMISSIONS[link.role]?.canShare ?? false,
+              canAdjustSchedule: dataScope.canAdjustSchedule ?? ROLE_PERMISSIONS[link.role]?.canAdjustSchedule ?? false,
+            },
+          };
+          setAuth(authContext);
+          setIsValid(true);
+          await loadDashboardData();
+        } else {
+          setIsValid(false);
+          setError(result.error?.message || '链接无效');
+        }
+      } catch (err) {
         setIsValid(false);
-        setError(result.error || '链接无效');
+        setError('验证失败');
       }
     };
     validateToken();

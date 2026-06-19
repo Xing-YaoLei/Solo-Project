@@ -268,7 +268,7 @@ async function main() {
       doorRecords.push({
         roomId: room.id,
         cleaningScheduleId: scheduleId,
-        eventType: pick(['checkin', 'cleaning', 'checkout']),
+        eventType: e === 0 ? 'unlock' : pick(['unlock', 'lock', 'status_check']),
         timestamp: new Date(actualStart.getTime() + e * rand(5, 20) * 60000),
         operator: staff?.name || 'system',
         success: Math.random() > 0.05,

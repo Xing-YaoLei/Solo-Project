@@ -12,17 +12,19 @@ import {
 } from '@/lib/dbService';
 
 export async function POST(request: Request) {
-  let auth = await getAuthContext();
   const body = await request.json();
   const { type, format, shareToken, sharePassword } = body;
 
-  let dataScope: DataScope = auth.dataScope;
+  let dataScope: DataScope;
   if (shareToken) {
     const validation = await validateShareToken(shareToken, sharePassword);
-    if (validation.valid && validation.authContext) {
-      auth = validation.authContext;
-      dataScope = auth.dataScope;
+    if (!validation.valid) {
+      return NextResponse.json({ success: false, error: { code: 'SHARE_INVALID', message: validation.error || '分享链接无效' } } as unknown as ApiResponse<null>, { status: 403 });
     }
+    dataScope = validation.authContext!.dataScope;
+  } else {
+    const auth = await getAuthContext();
+    dataScope = auth.dataScope;
   }
 
   const punctuality = await getCleaningPunctuality(dataScope);

@@ -4,31 +4,38 @@ import type { ApiResponse, DashboardSummary, DataScope } from '@/types';
 import { CLEANING_PUNCTUALITY_RULE } from '@/lib/utils';
 import { getDashboardSummary, getCleaningPunctuality } from '@/lib/dbService';
 
-async function resolveDataScope(request: Request) {
+async function resolveAndValidateDataScope(request: Request): Promise<{ dataScope: DataScope; error?: string }> {
   const headers = new Headers(request.headers);
   const shareToken = headers.get('X-Share-Token') || undefined;
   const sharePassword = headers.get('X-Share-Password') || undefined;
   const { searchParams } = new URL(request.url);
   const roleParam = searchParams.get('role') as any;
 
-  let baseAuth = await getAuthContext();
-  let dataScope: DataScope = baseAuth.dataScope;
-
   if (shareToken) {
     const validation = await validateShareToken(shareToken, sharePassword);
-    if (validation.valid && validation.authContext) {
-      baseAuth = validation.authContext;
-      dataScope = baseAuth.dataScope;
+    if (!validation.valid) {
+      return { dataScope: {} as DataScope, error: validation.error || '分享链接无效' };
     }
-  } else if (roleParam) {
+    if (validation.authContext) {
+      return { dataScope: validation.authContext.dataScope };
+    }
+  }
+
+  const baseAuth = await getAuthContext();
+  let dataScope: DataScope = baseAuth.dataScope;
+
+  if (roleParam) {
     dataScope = { ...baseAuth.dataScope, role: roleParam };
   }
 
-  return { auth: baseAuth, dataScope };
+  return { dataScope };
 }
 
 export async function GET(request: Request) {
-  const { dataScope } = await resolveDataScope(request);
+  const { dataScope, error } = await resolveAndValidateDataScope(request);
+  if (error) {
+    return NextResponse.json({ success: false, error: { code: 'SHARE_INVALID', message: error } } as unknown as ApiResponse<null>, { status: 403 });
+  }
 
   const summary = await getDashboardSummary(dataScope);
   const punctuality = await getCleaningPunctuality(dataScope);

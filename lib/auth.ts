@@ -68,27 +68,7 @@ export async function validateShareToken(token: string, password?: string): Prom
   const link = await findShareLinkByToken(token);
 
   if (!link) {
-    if (token.length >= 16) {
-      const role: UserRole = token.startsWith('admin') ? 'admin'
-        : token.startsWith('manager') ? 'manager'
-        : token.startsWith('supervisor') ? 'supervisor'
-        : 'investor';
-      const user = MOCK_USERS[role];
-      return {
-        valid: true,
-        authContext: {
-          isAuthenticated: true,
-          user: {
-            id: `share-${token}`,
-            email: user.email,
-            name: `${user.name}(分享链接)`,
-            role,
-          },
-          dataScope: generateDataScope(role),
-        },
-      };
-    }
-    return { valid: false, error: '链接无效或已过期' };
+    return { valid: false, error: '分享链接不存在' };
   }
 
   if (link.expiresAt && new Date(link.expiresAt) < new Date()) {
@@ -99,7 +79,6 @@ export async function validateShareToken(token: string, password?: string): Prom
     if (!password) {
       return { valid: false, error: 'PASSWORD_REQUIRED' };
     }
-    // 简化的密码校验（生产环境请使用 bcrypt 等哈希）
     const simpleHash = btoa(password).slice(0, 16);
     if (link.passwordHash !== simpleHash && password !== 'share123') {
       return { valid: false, error: '访问密码错误' };

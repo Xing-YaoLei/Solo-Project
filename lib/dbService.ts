@@ -106,31 +106,63 @@ export async function getCleaningPunctuality(dataScope: DataScope): Promise<Clea
 
   if (available) {
     const hotelFilter = dataScope.hotelIds && dataScope.hotelIds.length > 0
-      ? { room: { hotelId: { in: dataScope.hotelIds } } }
-      : {};
+      ? { cleaningSchedule: { room: { hotelId: { in: dataScope.hotelIds } } } }
+      : { cleaningSchedule: { room: { hotelId: { not: undefined } } } };
 
-    const all = await prisma.cleaningSchedule.findMany({
+    const lockRecords = await prisma.doorLockRecord.findMany({
       where: {
-        scheduledTime: { gte: start, lte: now },
-        status: 'completed',
+        eventType: 'unlock',
+        success: true,
+        timestamp: { gte: start, lte: now },
+        cleaningScheduleId: { not: null },
         ...hotelFilter,
       },
-      select: { scheduledTime: true, actualStartTime: true },
+      select: {
+        timestamp: true,
+        cleaningSchedule: {
+          select: {
+            scheduledTime: true,
+            status: true,
+          },
+        },
+      },
+      take: 10000,
     });
 
-    let onTime = 0;
-    for (const s of all) {
-      if (s.actualStartTime) {
-        const delayMin = (s.actualStartTime.getTime() - s.scheduledTime.getTime()) / 60000;
-        if (delayMin <= 30) onTime++;
+    let totalTasks = 0;
+    let onTimeTasks = 0;
+    const seenSchedules = new Set<string>();
+
+    for (const r of lockRecords) {
+      if (!r.cleaningSchedule) continue;
+      const schedule = r.cleaningSchedule;
+      const key = `${r.timestamp.toISOString()}_${schedule.scheduledTime.toISOString()}`;
+      if (seenSchedules.has(key)) continue;
+      seenSchedules.add(key);
+
+      if (schedule.status === 'completed' || schedule.status === 'in_progress') {
+        totalTasks++;
+        const delayMin = (r.timestamp.getTime() - schedule.scheduledTime.getTime()) / 60000;
+        if (delayMin <= 30) onTimeTasks++;
       }
     }
 
+    const schedulesCompleted = await prisma.cleaningSchedule.count({
+      where: {
+        scheduledTime: { gte: start, lte: now },
+        status: 'completed',
+        ...(dataScope.hotelIds && dataScope.hotelIds.length > 0
+          ? { room: { hotelId: { in: dataScope.hotelIds } } }
+          : {}),
+      },
+    });
+    const totalCount = Math.max(totalTasks, schedulesCompleted);
+
     return {
-      onTimeCount: onTime,
-      delayedCount: all.length - onTime,
-      totalCount: all.length,
-      punctualityRate: calculatePunctualityRate(onTime, all.length),
+      onTimeCount: onTimeTasks,
+      delayedCount: totalCount - onTimeTasks,
+      totalCount,
+      punctualityRate: calculatePunctualityRate(onTimeTasks, totalCount),
       timeRange: { start, end: now },
       calculationRule: CLEANING_PUNCTUALITY_RULE,
     };

@@ -59,13 +59,41 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const auth = await getAuthContext();
   const body = await request.json();
-  const { role, expiresAt, password, dataScope: customDataScope } = body;
+  const { role, expiresAt, expiresInDays, password, dataScope: customDataScope } = body;
 
   const selectedRole = (role || auth.dataScope.role) as UserRole;
   const dataScope: DataScope = customDataScope || {
     ...auth.dataScope,
     role: selectedRole,
   };
+
+  let finalExpiresAt: Date | undefined = expiresAt ? new Date(expiresAt) : undefined;
+  if (!finalExpiresAt && expiresInDays) {
+    finalExpiresAt = new Date(Date.now() + expiresInDays * 24 * 3600 * 1000);
+  }
+
+  let userId = auth.user?.id;
+  if (!userId) {
+    try {
+      const existingUser = await prisma.user.findFirst({
+        where: { role: selectedRole },
+        select: { id: true },
+      });
+      userId = existingUser?.id;
+      if (!userId) {
+        const fallback = await prisma.user.findFirst({
+          where: { role: 'admin' },
+          select: { id: true },
+        });
+        userId = fallback?.id;
+      }
+    } catch (e) {
+      console.warn('share: find user failed, using fallback');
+    }
+  }
+  if (!userId) {
+    userId = (await prisma.user.findFirstOrThrow({ where: { role: 'admin' }, select: { id: true } })).id;
+  }
 
   const token = `${selectedRole}_${generateToken().slice(0, 20)}`;
 
@@ -76,9 +104,9 @@ export async function POST(request: Request) {
 
   const saved = await saveShareLink({
     token,
-    userId: auth.user?.id || `user-${auth.dataScope.role}`,
+    userId,
     role: selectedRole,
-    expiresAt: expiresAt ? new Date(expiresAt) : undefined,
+    expiresAt: finalExpiresAt,
     passwordHash,
     dataScope,
   });
