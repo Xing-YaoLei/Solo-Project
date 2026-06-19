@@ -97,7 +97,7 @@ export function checkDependencies(
 
   const completedDiagnosisIds = new Set(
     completedOrders
-      .filter((o) => o.status === 'completed' || o.status === 'reworked')
+      .filter((o) => o.status === 'completed' || o.status === 'reworked' || o.status === 'skipped')
       .map((o) => o.diagnosisId)
   );
 

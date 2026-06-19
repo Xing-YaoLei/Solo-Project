@@ -1,5 +1,4 @@
 import { useGameStore } from '@/store/useGameStore';
-import { checkDependencies } from '@/utils/dispatch';
 import { motion } from 'framer-motion';
 import {
   Stethoscope,
@@ -71,7 +70,7 @@ export default function DiagnosisPanel() {
   } = useGameStore();
 
   const completedOrders = workOrders.filter(
-    (wo) => wo.status === 'completed' || wo.status === 'reworked'
+    (wo) => wo.status === 'completed' || wo.status === 'reworked' || wo.status === 'skipped'
   );
 
   const filteredDiagnoses = selectedVehicleId
@@ -149,10 +148,11 @@ export default function DiagnosisPanel() {
         {sortedDiagnoses.map((diagnosis, idx) => {
           const order = workOrders.find((wo) => wo.diagnosisId === diagnosis.id);
           const requiredParts = parts.filter((p) => diagnosis.requiredParts.includes(p.id));
-          const depCheck = checkDependencies(diagnosis, diagnoses, completedOrders);
           const style = severityStyles[diagnosis.severity];
           const isSelected = selectedDiagnosisId === diagnosis.id;
           const isCompleted = order && (order.status === 'completed' || order.status === 'reworked');
+          const isSkipped = order && order.status === 'skipped';
+          const isDone = isCompleted || isSkipped;
           const isInProgress = order && order.status === 'in_progress';
           const isAssigned = order && order.status === 'assigned';
 
@@ -164,14 +164,14 @@ export default function DiagnosisPanel() {
               transition={{ delay: idx * 0.03 }}
             >
               <button
-                onClick={() => !isCompleted && handleSelectDiagnosis(diagnosis.id)}
-                disabled={!!isCompleted}
+                onClick={() => !isDone && handleSelectDiagnosis(diagnosis.id)}
+                disabled={!!isDone}
                 className={cn(
                   'relative w-full overflow-hidden rounded-2xl border p-4 text-left transition-all',
                   isSelected
                     ? 'border-blue-500/50 bg-blue-500/10 shadow-[0_0_0_1px_rgba(59,130,246,0.3)]'
                     : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.06]',
-                  isCompleted && 'opacity-60 cursor-not-allowed'
+                  isDone && 'opacity-60 cursor-not-allowed'
                 )}
               >
                 <div className={cn(
@@ -220,6 +220,12 @@ export default function DiagnosisPanel() {
                             <CheckCircle2 className="h-3 w-3" />
                           )}
                           {order?.status === 'reworked' ? '已返修' : '已完成'}
+                        </span>
+                      )}
+                      {isSkipped && (
+                        <span className="flex items-center gap-1 rounded-md bg-orange-500/20 px-2 py-1 text-xs font-medium text-orange-400">
+                          <AlertOctagon className="h-3 w-3" />
+                          已跳过
                         </span>
                       )}
                       {isInProgress && (
@@ -320,18 +326,18 @@ export default function DiagnosisPanel() {
                       <div className="flex flex-wrap gap-1.5">
                         {diagnosis.dependencies.map((depId) => {
                           const depDiag = diagnoses.find((d) => d.id === depId);
-                          const isDepMet = depCheck.met;
+                          const isDepDone = completedOrders.some((o) => o.diagnosisId === depId);
                           return (
                             <span
                               key={depId}
                               className={cn(
                                 'flex items-center gap-1 rounded-md border px-2 py-1 text-xs',
-                                isDepMet
+                                isDepDone
                                   ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
                                   : 'border-amber-500/30 bg-amber-500/10 text-amber-400'
                               )}
                             >
-                              {isDepMet ? (
+                              {isDepDone ? (
                                 <CheckCircle2 className="h-3 w-3" />
                               ) : (
                                 <XCircle className="h-3 w-3" />
@@ -344,7 +350,7 @@ export default function DiagnosisPanel() {
                     </div>
                   )}
 
-                  {!isCompleted && (
+                  {!isDone && (
                     <div className="mt-4 flex items-center justify-end gap-2 border-t border-white/5 pt-3">
                       <span className="text-xs text-white/40">点击分配工序</span>
                       <ChevronRight className="h-4 w-4 text-white/30" />

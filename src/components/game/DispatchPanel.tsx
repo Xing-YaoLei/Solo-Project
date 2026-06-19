@@ -57,7 +57,7 @@ export default function DispatchPanel() {
 
   const selectedDiagnosis = diagnoses.find((d) => d.id === selectedDiagnosisId);
   const completedOrders = workOrders.filter(
-    (wo) => wo.status === 'completed' || wo.status === 'reworked'
+    (wo) => wo.status === 'completed' || wo.status === 'reworked' || wo.status === 'skipped'
   );
   const currentTime = Date.now();
 
