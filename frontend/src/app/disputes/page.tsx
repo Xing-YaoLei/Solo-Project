@@ -30,6 +30,7 @@ export default function DisputesPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [logForm] = Form.useForm();
   const [createForm] = Form.useForm();
+  const [actionForm] = Form.useForm();
   const [actionModalOpen, setActionModalOpen] = useState(false);
   const [actionType, setActionType] = useState<string>('');
 
@@ -104,26 +105,27 @@ export default function DisputesPage() {
   const handleAssign = (record: any) => {
     setCurrentRecord(record);
     setActionType('assign');
+    actionForm.resetFields();
     setActionModalOpen(true);
   };
 
   const handleResolve = (record: any) => {
     setCurrentRecord(record);
     setActionType('resolve');
-    logForm.resetFields();
+    actionForm.resetFields();
     setActionModalOpen(true);
   };
 
   const handleClose = (record: any) => {
     setCurrentRecord(record);
     setActionType('close');
-    logForm.resetFields();
+    actionForm.resetFields();
     setActionModalOpen(true);
   };
 
   const handleActionSubmit = async () => {
     try {
-      const values = await logForm.validateFields();
+      const values = await actionForm.validateFields();
       
       if (actionType === 'assign') {
         await disputeApi.assignHandler(currentRecord.id, {
@@ -430,7 +432,7 @@ export default function DisputesPage() {
         onCancel={() => setActionModalOpen(false)}
         width={500}
       >
-        <Form form={logForm} layout="vertical">
+        <Form form={actionForm} layout="vertical">
           {actionType === 'assign' && (
             <Form.Item name="handlerId" label="选择处理人" rules={[{ required: true }]}>
               <Select placeholder="请选择处理人">

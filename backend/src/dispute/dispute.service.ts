@@ -45,11 +45,11 @@ export class DisputeService {
         include: {
           order: {
             include: {
-              schedule: { select: { id: true, title: true, startTime: true } },
-              ticketType: { select: { id: true, name: true, price: true } },
+              schedule: true,
+              ticketType: true,
             },
           },
-          handler: { select: { id: true, name: true, role: true } },
+          handler: true,
           _count: { select: { logs: true } },
         },
       }),
@@ -63,7 +63,12 @@ export class DisputeService {
     return this.prisma.refundDispute.findUnique({
       where: { id },
       include: {
-        order: { include: { schedule: true, ticketType: true, buyerName: true, buyerPhone: true } as any },
+        order: {
+          include: {
+            schedule: true,
+            ticketType: true,
+          },
+        },
         handler: true,
         logs: {
           orderBy: { createdAt: 'asc' },

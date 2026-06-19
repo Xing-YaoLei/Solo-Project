@@ -131,16 +131,20 @@ export class OrderService {
   }
 
   async update(id: number, data: any, operatorId?: number) {
-    const oldOrder = await this.prisma.order.findUnique({ where: { id } });
+    const oldOrder = await this.prisma.order.findUnique({
+      where: { id },
+      include: { schedule: true, ticketType: true },
+    });
+
     const order = await this.prisma.order.update({
       where: { id },
       data,
       include: { schedule: true, ticketType: true },
     });
 
-    const changeLogs = [];
-    const fields = ['buyerName', 'buyerPhone', 'quantity', 'totalAmount', 'status', 'remark'];
-    for (const field of fields) {
+    const changeLogs: any[] = [];
+    const simpleFields = ['buyerName', 'buyerPhone', 'quantity', 'totalAmount', 'status', 'remark'];
+    for (const field of simpleFields) {
       if (data[field] !== undefined && data[field] !== oldOrder[field]) {
         changeLogs.push({
           orderId: id,
@@ -150,6 +154,26 @@ export class OrderService {
           operatorId,
         });
       }
+    }
+
+    if (data.scheduleId !== undefined && data.scheduleId !== oldOrder.scheduleId) {
+      changeLogs.push({
+        orderId: id,
+        fieldName: 'scheduleId',
+        oldValue: oldOrder.schedule ? `${oldOrder.scheduleId} (${oldOrder.schedule.title})` : String(oldOrder.scheduleId),
+        newValue: order.schedule ? `${order.scheduleId} (${order.schedule.title})` : String(order.scheduleId),
+        operatorId,
+      });
+    }
+
+    if (data.ticketTypeId !== undefined && data.ticketTypeId !== oldOrder.ticketTypeId) {
+      changeLogs.push({
+        orderId: id,
+        fieldName: 'ticketTypeId',
+        oldValue: oldOrder.ticketType ? `${oldOrder.ticketTypeId} (${oldOrder.ticketType.name})` : String(oldOrder.ticketTypeId),
+        newValue: order.ticketType ? `${order.ticketTypeId} (${order.ticketType.name})` : String(order.ticketTypeId),
+        operatorId,
+      });
     }
 
     if (changeLogs.length > 0) {

@@ -29,10 +29,10 @@ export class RecordService {
         include: {
           order: {
             include: {
-              ticketType: { select: { id: true, name: true } },
+              ticketType: true,
             },
           },
-          verifier: { select: { id: true, name: true } },
+          verifier: true,
         },
       }),
       this.prisma.ticketType.findMany({

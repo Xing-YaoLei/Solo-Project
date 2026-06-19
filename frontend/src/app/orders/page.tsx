@@ -85,7 +85,7 @@ export default function OrdersPage() {
 
   const handleViewDetail = async (record: any) => {
     try {
-      const res: any = await orderApi.getDetail(record.id);
+      const res: any = await orderApi.findById(record.id);
       setDetailData(res.data);
       setDetailOpen(true);
     } catch (e) {
@@ -180,6 +180,7 @@ export default function OrdersPage() {
       totalAmount: '总金额',
       status: '状态',
       remark: '备注',
+      scheduleId: '演出排期',
       ticketTypeId: '票种',
     };
     return textMap[field] || field;
