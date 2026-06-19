@@ -1,0 +1,170 @@
+wb = xlsx_package.workbook
+
+status_map = {
+  'pending' => '待处理',
+  'quoted' => '已报价',
+  'in_progress' => '处理中',
+  'completed' => '已完成',
+  'cancelled' => '已取消'
+}
+
+priority_map = {
+  'low' => '低',
+  'normal' => '普通',
+  'high' => '高',
+  'urgent' => '紧急'
+}
+
+header_style = wb.styles.add_style(
+  bg_color: '4F81BD',
+  fg_color: 'FFFFFF',
+  bold: true,
+  alignment: { horizontal: :center, vertical: :center },
+  border: { style: :thin, color: '000000' }
+)
+
+cell_style = wb.styles.add_style(
+  alignment: { horizontal: :center, vertical: :center },
+  border: { style: :thin, color: '000000' }
+)
+
+currency_style = wb.styles.add_style(
+  format_code: '¥#,##0.00',
+  alignment: { horizontal: :center, vertical: :center },
+  border: { style: :thin, color: '000000' }
+)
+
+date_style = wb.styles.add_style(
+  format_code: 'yyyy-mm-dd hh:mm',
+  alignment: { horizontal: :center, vertical: :center },
+  border: { style: :thin, color: '000000' }
+)
+
+repair_true_style = wb.styles.add_style(
+  bg_color: 'FFC7CE',
+  fg_color: '9C0006',
+  alignment: { horizontal: :center, vertical: :center },
+  border: { style: :thin, color: '000000' }
+)
+
+repair_false_style = wb.styles.add_style(
+  alignment: { horizontal: :center, vertical: :center },
+  border: { style: :thin, color: '000000' }
+)
+
+wb.add_worksheet(name: '工单数据') do |sheet|
+  headers = [
+    '工单号', '客户名', '电话', '车牌', '品牌', '车型', '里程',
+    '状态', '优先级', '处理人', '总金额', '是否返修', '创建时间', '完成时间'
+  ]
+  sheet.add_row headers, style: header_style
+
+  @work_orders.each do |wo|
+    row = [
+      wo.work_order_no,
+      wo.customer_name,
+      wo.customer_phone,
+      wo.vehicle_plate,
+      wo.vehicle_brand,
+      wo.vehicle_model,
+      wo.vehicle_mileage,
+      status_map[wo.status] || wo.status,
+      priority_map[wo.priority] || wo.priority,
+      wo.assigned_to&.name || '-',
+      wo.total_amount.to_f,
+      wo.is_repair ? '是' : '否',
+      wo.created_at,
+      wo.completed_at
+    ]
+
+    styles = [
+      cell_style, cell_style, cell_style, cell_style, cell_style, cell_style, cell_style,
+      cell_style, cell_style, cell_style, currency_style,
+      wo.is_repair ? repair_true_style : repair_false_style,
+      date_style, date_style
+    ]
+
+    sheet.add_row row, style: styles
+  end
+
+  column_widths = [20, 12, 15, 12, 10, 12, 12, 10, 10, 12, 12, 10, 20, 20]
+  column_widths.each_with_index do |width, i|
+    sheet.column_info[i].width = width
+  end
+end
+
+wb.add_worksheet(name: '返修率统计') do |sheet|
+  total_count = @work_orders.count
+  repair_count = @work_orders.select(&:is_repair).count
+  normal_count = total_count - repair_count
+  repair_rate = total_count.zero? ? 0.0 : (repair_count.to_f / total_count * 100).round(2)
+
+  title_style = wb.styles.add_style(
+    bg_color: '4F81BD',
+    fg_color: 'FFFFFF',
+    bold: true,
+    font_size: 14,
+    alignment: { horizontal: :center, vertical: :center },
+    border: { style: :thin, color: '000000' }
+  )
+
+  stat_header_style = wb.styles.add_style(
+    bg_color: 'DCE6F1',
+    bold: true,
+    alignment: { horizontal: :center, vertical: :center },
+    border: { style: :thin, color: '000000' }
+  )
+
+  stat_value_style = wb.styles.add_style(
+    alignment: { horizontal: :center, vertical: :center },
+    border: { style: :thin, color: '000000' }
+  )
+
+  rate_style = wb.styles.add_style(
+    bg_color: 'FFC7CE',
+    fg_color: '9C0006',
+    bold: true,
+    font_size: 12,
+    alignment: { horizontal: :center, vertical: :center },
+    border: { style: :thin, color: '000000' }
+  )
+
+  sheet.add_row ['工单返修率统计报告'], style: title_style
+  sheet.merge_cells('A1:D1')
+
+  sheet.add_row []
+
+  sheet.add_row ['统计项目', '数量', '占比', '备注'], style: stat_header_style
+  sheet.add_row ['总工单数', total_count, "#{total_count.zero? ? 0 : 100}%", '所有导出工单'], style: stat_value_style
+  sheet.add_row ['正常工单', normal_count, "#{total_count.zero? ? 0 : (normal_count.to_f / total_count * 100).round(2)}%", '非返修工单'], style: stat_value_style
+  sheet.add_row ['返修工单', repair_count, "#{repair_rate}%", 'is_repair = true'], style: stat_value_style
+
+  sheet.add_row []
+
+  sheet.add_row ['返修率', "#{repair_rate}%", '', '返修工单 / 总工单'], style: rate_style
+  sheet.merge_cells("A#{sheet.rows.length}:B#{sheet.rows.length}")
+
+  sheet.add_row []
+
+  sheet.add_row ['按状态统计'], style: stat_header_style
+  sheet.merge_cells("A#{sheet.rows.length}:D#{sheet.rows.length}")
+
+  sheet.add_row ['状态', '总数', '返修数', '返修率'], style: stat_header_style
+  statuses = @work_orders.group_by(&:status)
+  statuses.each do |status, wos|
+    status_total = wos.count
+    status_repair = wos.count(&:is_repair)
+    status_rate = status_total.zero? ? 0.0 : (status_repair.to_f / status_total * 100).round(2)
+    sheet.add_row [
+      status_map[status] || status,
+      status_total,
+      status_repair,
+      "#{status_rate}%"
+    ], style: stat_value_style
+  end
+
+  sheet.column_info[0].width = 20
+  sheet.column_info[1].width = 15
+  sheet.column_info[2].width = 15
+  sheet.column_info[3].width = 25
+end

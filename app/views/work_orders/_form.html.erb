@@ -1,0 +1,86 @@
+<%= form_with model: work_order, local: true, html: { class: 'space-y-6' } do |f| %>
+  <% if work_order.errors.any? %>
+    <div class="rounded-lg bg-red-50 border border-red-200 p-4">
+      <h3 class="text-sm font-medium text-red-800 mb-2"><%= pluralize(work_order.errors.count, "个错误") %> 阻止了工单保存:</h3>
+      <ul class="list-disc pl-5 space-y-1">
+        <% work_order.errors.each do |error| %>
+          <li class="text-sm text-red-700"><%= error.full_message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div>
+      <%= f.label :customer_name, '客户姓名', class: 'block text-sm font-medium text-gray-700 mb-1' %>
+      <%= f.text_field :customer_name, class: 'w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500', placeholder: '请输入客户姓名' %>
+    </div>
+
+    <div>
+      <%= f.label :customer_phone, '客户电话', class: 'block text-sm font-medium text-gray-700 mb-1' %>
+      <%= f.text_field :customer_phone, class: 'w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500', placeholder: '请输入客户电话' %>
+    </div>
+
+    <div>
+      <%= f.label :vehicle_plate, '车牌号', class: 'block text-sm font-medium text-gray-700 mb-1' %>
+      <%= f.text_field :vehicle_plate, class: 'w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500', placeholder: '请输入车牌号' %>
+    </div>
+
+    <div>
+      <%= f.label :vehicle_brand, '车辆品牌', class: 'block text-sm font-medium text-gray-700 mb-1' %>
+      <%= f.text_field :vehicle_brand, class: 'w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500', placeholder: '请输入车辆品牌' %>
+    </div>
+
+    <div>
+      <%= f.label :vehicle_model, '车辆型号', class: 'block text-sm font-medium text-gray-700 mb-1' %>
+      <%= f.text_field :vehicle_model, class: 'w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500', placeholder: '请输入车辆型号' %>
+    </div>
+
+    <div>
+      <%= f.label :vehicle_mileage, '车辆里程 (km)', class: 'block text-sm font-medium text-gray-700 mb-1' %>
+      <%= f.number_field :vehicle_mileage, class: 'w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500', placeholder: '请输入里程数' %>
+    </div>
+
+    <div>
+      <%= f.label :status, '状态', class: 'block text-sm font-medium text-gray-700 mb-1' %>
+      <%= f.select :status, WorkOrder::STATUSES.map { |s| [I18n.t("work_orders.statuses.#{s}", default: { pending: '待处理', quoted: '已报价', in_progress: '处理中', completed: '已完成', cancelled: '已取消' }[s.to_sym] || s), s] }, {}, class: 'w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500' %>
+    </div>
+
+    <div>
+      <%= f.label :priority, '优先级', class: 'block text-sm font-medium text-gray-700 mb-1' %>
+      <%= f.select :priority, WorkOrder::PRIORITIES.map { |p| [I18n.t("work_orders.priorities.#{p}", default: { low: '低', normal: '普通', high: '高', urgent: '紧急' }[p.to_sym] || p), p] }, {}, class: 'w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500' %>
+    </div>
+
+    <div>
+      <%= f.label :assigned_to_id, '处理人', class: 'block text-sm font-medium text-gray-700 mb-1' %>
+      <%= f.select :assigned_to_id, User.all.map { |u| [u.name, u.id] }, { include_blank: '未分配' }, class: 'w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500' %>
+    </div>
+
+    <div class="flex items-end">
+      <label class="flex items-center space-x-2">
+        <%= f.check_box :is_repair, class: 'h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500' %>
+        <span class="text-sm font-medium text-gray-700">返修工单</span>
+      </label>
+    </div>
+
+    <div>
+      <%= f.label :total_amount, '总金额', class: 'block text-sm font-medium text-gray-700 mb-1' %>
+      <%= f.number_field :total_amount, step: '0.01', class: 'w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500', placeholder: '0.00' %>
+    </div>
+
+    <div>
+      <%= f.label :parent_work_order_id, '关联父工单', class: 'block text-sm font-medium text-gray-700 mb-1' %>
+      <%= f.select :parent_work_order_id, WorkOrder.where.not(id: work_order.id).map { |wo| [wo.work_order_no, wo.id] }, { include_blank: '无' }, class: 'w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500' %>
+    </div>
+  </div>
+
+  <div>
+    <%= f.label :description, '工单描述', class: 'block text-sm font-medium text-gray-700 mb-1' %>
+    <%= f.text_area :description, rows: 4, class: 'w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500', placeholder: '请输入工单描述...' %>
+  </div>
+
+  <div class="flex flex-col sm:flex-row justify-end gap-2 pt-4 border-t border-gray-200">
+    <%= link_to '取消', work_orders_path, class: 'inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2' %>
+    <%= f.submit class: 'inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2' %>
+  </div>
+<% end %>

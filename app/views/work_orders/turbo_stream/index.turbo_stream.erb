@@ -1,0 +1,3 @@
+<%= turbo_stream.replace :work_orders_list do %>
+  <%= render 'work_orders/work_order_row', collection: @work_orders, as: :work_order %>
+<% end %>

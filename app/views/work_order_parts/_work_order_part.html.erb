@@ -1,0 +1,96 @@
+<%# 桌面端: 表格行 %><tr class="<%= work_order_part.is_out_of_stock? ? 'bg-red-50' : '' %> hover:bg-gray-50 transition-colors" id="<%= dom_id(work_order_part) %>">
+  <td class="px-4 py-3">
+    <div class="flex items-center">
+      <% if work_order_part.is_out_of_stock? %>
+        <span class="inline-flex items-center justify-center rounded-full bg-red-100 p-1 mr-2" title="缺货">
+          <svg class="h-4 w-4 text-red-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+        </span>
+      <% end %>
+      <span class="text-sm font-medium text-gray-900"><%= work_order_part.part&.name %></span>
+    </div>
+  </td>
+  <td class="px-4 py-3 text-sm text-gray-500"><%= work_order_part.part&.sku %></td>
+  <td class="px-4 py-3 text-sm text-gray-900 text-right"><%= work_order_part.quantity %></td>
+  <td class="px-4 py-3 text-sm text-gray-900 text-right"><%= format_money(work_order_part.unit_price) %></td>
+  <td class="px-4 py-3 text-sm font-medium text-gray-900 text-right"><%= format_money(work_order_part.subtotal) %></td>
+  <td class="px-4 py-3 whitespace-nowrap">
+    <% if work_order_part.is_out_of_stock? %>
+      <div class="flex flex-col gap-1">
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
+          <%= work_order_part.shortage_confirmed? ? '已确认缺货' : '缺货' %>
+        </span>
+        <% unless work_order_part.shortage_handled_at.present? %>
+          <%= button_to '处理缺货', work_order_stock_alerts_path(work_order), method: :post, params: { part_id: work_order_part.part_id, work_order_part_id: work_order_part.id }, class: 'inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-red-600 text-white hover:bg-red-700' do %>
+            处理缺货
+          <% end %>
+        <% else %>
+          <span class="text-xs text-gray-500">
+            已处理 · <%= work_order_part.shortage_handled_by&.name %>
+          </span>
+        <% end %>
+      </div>
+    <% else %>
+      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+        库存充足
+      </span>
+    <% end %>
+  </td>
+  <td class="px-4 py-3 text-right text-sm font-medium whitespace-nowrap">
+    <% unless work_order_part.is_out_of_stock? %>
+      <%= button_to '标记缺货', work_order_work_order_part_path(work_order, work_order_part, work_order_part: { is_out_of_stock: true }), method: :patch, data: { turbo_confirm: '确定标记此配件为缺货？' }, class: 'text-orange-600 hover:text-orange-900 mr-3 bg-transparent p-0' %>
+    <% end %>
+    <%= button_to '编辑', edit_work_order_work_order_part_path(work_order, work_order_part), method: :get, data: { turbo_frame: dom_id(work_order_part) }, class: 'text-blue-600 hover:text-blue-900 mr-3 bg-transparent p-0' %>
+    <%= button_to '删除', work_order_work_order_part_path(work_order, work_order_part), method: :delete, data: { turbo_confirm: '确定删除此配件？' }, class: 'text-red-600 hover:text-red-900 bg-transparent p-0' %>
+  </td>
+</tr>
+
+<%# 移动端: 卡片 %><div class="md:hidden <%= work_order_part.is_out_of_stock? ? 'border-red-300 bg-red-50' : '' %> rounded-lg border border-gray-200 p-4" id="<%= dom_id(work_order_part) %>">
+  <div class="flex justify-between items-start mb-2">
+    <div class="flex items-start gap-2">
+      <% if work_order_part.is_out_of_stock? %>
+        <span class="inline-flex items-center justify-center rounded-full bg-red-100 p-1" title="缺货">
+          <svg class="h-4 w-4 text-red-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+        </span>
+      <% end %>
+      <div>
+        <div class="font-medium text-gray-900"><%= work_order_part.part&.name %></div>
+        <div class="text-xs text-gray-500">SKU: <%= work_order_part.part&.sku %></div>
+      </div>
+    </div>
+    <% if work_order_part.is_out_of_stock? %>
+      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
+        <%= work_order_part.shortage_confirmed? ? '已确认缺货' : '缺货' %>
+      </span>
+    <% else %>
+      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+        库存充足
+      </span>
+    <% end %>
+  </div>
+
+  <div class="grid grid-cols-2 gap-2 text-sm mt-2">
+    <div><span class="text-gray-500">数量:</span> <span class="text-gray-900"><%= work_order_part.quantity %></span></div>
+    <div><span class="text-gray-500">单价:</span> <span class="text-gray-900"><%= format_money(work_order_part.unit_price) %></span></div>
+  </div>
+
+  <% if work_order_part.is_out_of_stock? && work_order_part.shortage_note.present? %>
+    <div class="mt-2 text-xs text-gray-600 bg-white rounded p-2">
+      <span class="font-medium">缺货备注:</span> <%= work_order_part.shortage_note %>
+    </div>
+  <% end %>
+
+  <div class="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center">
+    <div class="font-medium text-gray-900">小计: <%= format_money(work_order_part.subtotal) %></div>
+    <div class="flex gap-2 flex-wrap">
+      <% if work_order_part.is_out_of_stock? %>
+        <% unless work_order_part.shortage_handled_at.present? %>
+          <%= button_to '处理缺货', work_order_stock_alerts_path(work_order), method: :post, params: { part_id: work_order_part.part_id, work_order_part_id: work_order_part.id }, class: 'inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-red-600 text-white hover:bg-red-700' %>
+        <% end %>
+      <% else %>
+        <%= button_to '标记缺货', work_order_work_order_part_path(work_order, work_order_part, work_order_part: { is_out_of_stock: true }), method: :patch, data: { turbo_confirm: '确定标记此配件为缺货？' }, class: 'text-xs text-orange-600 hover:text-orange-900 bg-transparent p-0' %>
+      <% end %>
+      <%= button_to '编辑', edit_work_order_work_order_part_path(work_order, work_order_part), method: :get, data: { turbo_frame: dom_id(work_order_part) }, class: 'text-xs text-blue-600 hover:text-blue-900 bg-transparent p-0' %>
+      <%= button_to '删除', work_order_work_order_part_path(work_order, work_order_part), method: :delete, data: { turbo_confirm: '确定删除此配件？' }, class: 'text-xs text-red-600 hover:text-red-900 bg-transparent p-0' %>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,38 @@
+<div class="mb-6 flex items-center justify-between">
+  <h2 class="text-xl font-semibold text-gray-900">报价单</h2>
+  <%= link_to new_work_order_quote_path(@work_order), class: "inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700" do %>
+    <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+    新建报价单
+  <% end %>
+</div>
+
+<% if @quotes.any? %>
+  <div class="overflow-hidden rounded-lg border border-gray-200 bg-white">
+    <table class="min-w-full divide-y divide-gray-200">
+      <thead class="bg-gray-50">
+        <tr>
+          <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">报价单号</th>
+          <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">状态</th>
+          <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">总金额</th>
+          <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">有效期至</th>
+          <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">创建人</th>
+          <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">审批状态</th>
+          <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">操作</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-200 bg-white">
+        <% @quotes.each do |quote| %>
+          <%= render quote, work_order: @work_order %>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+<% else %>
+  <div class="rounded-lg border border-gray-200 bg-white py-12 text-center">
+    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+    </svg>
+    <h3 class="mt-2 text-sm font-medium text-gray-900">暂无报价单</h3>
+    <p class="mt-1 text-sm text-gray-500">点击上方按钮创建第一个报价单</p>
+  </div>
+<% end %>

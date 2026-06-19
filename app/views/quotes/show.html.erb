@@ -1,0 +1,144 @@
+<div class="mb-6 flex items-center justify-between">
+  <div class="flex items-center space-x-4">
+    <%= link_to work_order_quotes_path(@work_order), class: "text-gray-400 hover:text-gray-600" do %>
+      <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+    <% end %>
+    <h2 class="text-xl font-semibold text-gray-900">报价单 <%= @quote.quote_no %></h2>
+    <% status_colors = { draft: "bg-gray-100 text-gray-800", sent: "bg-blue-100 text-blue-800", approved: "bg-green-100 text-green-800", rejected: "bg-red-100 text-red-800", expired: "bg-yellow-100 text-yellow-800" } %>
+    <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium <%= status_colors[@quote.status.to_sym] %>">
+      <%= I18n.t("quote_status.#{@quote.status}", default: @quote.status) %>
+    </span>
+  </div>
+  <div class="flex space-x-3">
+    <% if @quote.draft? || @quote.sent? %>
+      <%= link_to edit_work_order_quote_path(@work_order, @quote), class: "inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50" do %>
+        编辑
+      <% end %>
+    <% end %>
+    <% if @quote.sent? %>
+      <%= button_to approve_work_order_quote_path(@work_order, @quote), method: :post, class: "inline-flex items-center rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700" do %>
+        批准
+      <% end %>
+    <% end %>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+  <div class="lg:col-span-2 space-y-6">
+    <div class="rounded-lg border border-gray-200 bg-white p-6">
+      <h3 class="mb-4 text-lg font-medium text-gray-900">基本信息</h3>
+      <dl class="grid grid-cols-2 gap-4">
+        <div>
+          <dt class="text-sm text-gray-500">报价单号</dt>
+          <dd class="mt-1 text-sm font-medium text-gray-900"><%= @quote.quote_no %></dd>
+        </div>
+        <div>
+          <dt class="text-sm text-gray-500">关联工单</dt>
+          <dd class="mt-1 text-sm font-medium text-gray-900"><%= link_to @work_order.work_order_no, @work_order %></dd>
+        </div>
+        <div>
+          <dt class="text-sm text-gray-500">创建人</dt>
+          <dd class="mt-1 text-sm font-medium text-gray-900"><%= @quote.created_by&.name || '-' %></dd>
+        </div>
+        <div>
+          <dt class="text-sm text-gray-500">创建时间</dt>
+          <dd class="mt-1 text-sm font-medium text-gray-900"><%= @quote.created_at.strftime('%Y-%m-%d %H:%M') %></dd>
+        </div>
+        <div>
+          <dt class="text-sm text-gray-500">有效期至</dt>
+          <dd class="mt-1 text-sm font-medium text-gray-900"><%= @quote.valid_until&.strftime('%Y-%m-%d') || '-' %></dd>
+        </div>
+        <div>
+          <dt class="text-sm text-gray-500">客户确认</dt>
+          <dd class="mt-1">
+            <% if @quote.customer_approved? %>
+              <span class="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">已确认</span>
+            <% else %>
+              <span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">未确认</span>
+            <% end %>
+          </dd>
+        </div>
+        <% if @quote.approved? %>
+          <div>
+            <dt class="text-sm text-gray-500">审批人</dt>
+            <dd class="mt-1 text-sm font-medium text-gray-900"><%= @quote.approved_by&.name || '-' %></dd>
+          </div>
+          <div>
+            <dt class="text-sm text-gray-500">审批时间</dt>
+            <dd class="mt-1 text-sm font-medium text-gray-900"><%= @quote.approved_at&.strftime('%Y-%m-%d %H:%M') || '-' %></dd>
+          </div>
+        <% end %>
+      </dl>
+    </div>
+
+    <div class="rounded-lg border border-gray-200 bg-white p-6">
+      <h3 class="mb-4 text-lg font-medium text-gray-900">报价项目</h3>
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">项目名称</th>
+              <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">类型</th>
+              <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">数量</th>
+              <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">单价</th>
+              <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">折扣</th>
+              <th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">小计</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200">
+            <% @quote_items.each do |item| %>
+              <tr>
+                <td class="px-4 py-3">
+                  <div class="text-sm font-medium text-gray-900"><%= item.name %></div>
+                  <% if item.description.present? %>
+                    <div class="mt-1 text-xs text-gray-500"><%= item.description %></div>
+                  <% end %>
+                </td>
+                <td class="px-4 py-3">
+                  <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium <%= item.service? ? 'bg-purple-100 text-purple-800' : 'bg-orange-100 text-orange-800' %>">
+                    <%= item.service? ? '服务' : '配件' %>
+                  </span>
+                </td>
+                <td class="px-4 py-3 text-sm text-gray-900"><%= item.quantity %></td>
+                <td class="px-4 py-3 text-sm text-gray-900">¥<%= number_with_precision(item.unit_price, precision: 2) %></td>
+                <td class="px-4 py-3 text-sm text-gray-900"><%= item.discount_rate %>%</td>
+                <td class="px-4 py-3 text-right text-sm font-medium text-gray-900">¥<%= number_with_precision(item.subtotal, precision: 2) %></td>
+              </tr>
+            <% end %>
+          </tbody>
+          <tfoot class="bg-gray-50">
+            <tr>
+              <td colspan="5" class="px-4 py-3 text-right text-sm font-medium text-gray-900">总计</td>
+              <td class="px-4 py-3 text-right text-lg font-semibold text-gray-900">¥<%= number_with_precision(@quote.total_amount, precision: 2) %></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="space-y-6">
+    <div class="rounded-lg border border-gray-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-6">
+      <h3 class="mb-4 text-lg font-medium text-gray-900">报价摘要</h3>
+      <div class="space-y-4">
+        <div class="flex items-baseline justify-between">
+          <span class="text-sm text-gray-600">项目数</span>
+          <span class="text-2xl font-bold text-gray-900"><%= @quote_items.size %></span>
+        </div>
+        <div class="flex items-baseline justify-between">
+          <span class="text-sm text-gray-600">总金额</span>
+          <span class="text-2xl font-bold text-blue-600">¥<%= number_with_precision(@quote.total_amount, precision: 2) %></span>
+        </div>
+        <% if @quote.valid_until %>
+          <div class="flex items-baseline justify-between">
+            <span class="text-sm text-gray-600">剩余有效天数</span>
+            <% days_left = (@quote.valid_until.to_date - Date.today).to_i %>
+            <span class="text-lg font-semibold <%= days_left > 7 ? 'text-green-600' : days_left > 0 ? 'text-yellow-600' : 'text-red-600' %>">
+              <%= days_left > 0 ? "#{days_left} 天" : '已过期' %>
+            </span>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

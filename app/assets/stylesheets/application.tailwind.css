@@ -1,0 +1,10 @@
+@import "tailwindcss";
+
+@source "../views/**/*.{erb,html,js}";
+@source "../helpers/**/*.rb";
+@source "../javascript/**/*.{js,ts,jsx,tsx}";
+@source "../../components/**/*.{erb,html,js}";
+
+@theme {
+  --font-sans: ui-sans-serif, system-ui, sans-serif;
+}

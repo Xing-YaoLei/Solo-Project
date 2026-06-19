@@ -1,0 +1,21 @@
+<%= form_with model: [work_order, work_order.notes.build], local: true, class: "rounded-lg border border-gray-200 bg-white p-6" do |form| %>
+  <h3 class="mb-4 text-lg font-medium text-gray-900">添加备注</h3>
+  <div class="space-y-4">
+    <div>
+      <%= form.label :content, class: "block text-sm font-medium text-gray-700" %>
+      <%= form.text_area :content, rows: 4, required: true, class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
+    </div>
+    <div>
+      <label class="flex items-center">
+        <%= form.check_box :is_private, class: "h-4 w-4 rounded border-gray-300 text-yellow-600 focus:ring-yellow-500" %>
+        <span class="ml-2 text-sm text-gray-700">私密备注（仅内部可见）</span>
+      </label>
+    </div>
+  </div>
+  <div class="mt-6 flex justify-end space-x-3">
+    <button type="button" data-action="notes#hideForm" class="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+      取消
+    </button>
+    <%= form.submit "添加", class: "inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700" %>
+  </div>
+<% end %>

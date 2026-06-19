@@ -1,0 +1,109 @@
+<%= turbo_frame_tag :work_order_items do %>
+  <div class="space-y-4">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+      <h2 class="text-lg font-semibold text-gray-900">维修项目</h2>
+      <%= button_tag '新增项目', type: 'button', data: { work_order_item_form_toggle: true }, class: 'inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2' do %>
+        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+        新增项目
+      <% end %>
+    </div>
+
+    <div data-work_order_item_form_container="true" class="hidden bg-gray-50 rounded-lg border border-gray-200 p-4">
+      <%= render 'work_order_items/form', work_order: @work_order, work_order_item: WorkOrderItem.new %>
+    </div>
+
+    <% if @work_order_items.empty? %>
+      <div class="text-center py-12 bg-gray-50 rounded-lg border border-gray-200">
+        <p class="text-gray-500">暂无维修项目</p>
+      </div>
+    <% else %>
+      <div class="hidden md:block bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">项目名称</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">描述</th>
+                <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">数量</th>
+                <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">单价</th>
+                <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">工时费</th>
+                <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">小计</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">技术员</th>
+                <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+              </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+              <% @work_order_items.each do |item| %>
+                <tr class="hover:bg-gray-50 transition-colors" id="<%= dom_id(item) %>">
+                  <td class="px-4 py-3 text-sm font-medium text-gray-900"><%= item.name %></td>
+                  <td class="px-4 py-3 text-sm text-gray-500"><%= truncate(item.description, length: 30) %></td>
+                  <td class="px-4 py-3 text-sm text-gray-900 text-right"><%= item.quantity %></td>
+                  <td class="px-4 py-3 text-sm text-gray-900 text-right"><%= format_money(item.unit_price) %></td>
+                  <td class="px-4 py-3 text-sm text-gray-900 text-right"><%= format_money(item.labor_fee) %></td>
+                  <td class="px-4 py-3 text-sm font-medium text-gray-900 text-right"><%= format_money(item.subtotal) %></td>
+                  <td class="px-4 py-3 whitespace-nowrap"><%= render_work_order_item_status_badge(item.status) %></td>
+                  <td class="px-4 py-3 text-sm text-gray-500"><%= item.technician&.name || '未分配' %></td>
+                  <td class="px-4 py-3 text-right text-sm font-medium whitespace-nowrap">
+                    <%= button_to '编辑', edit_work_order_work_order_item_path(@work_order, item), method: :get, data: { turbo_frame: dom_id(item) }, class: 'text-blue-600 hover:text-blue-900 mr-3 bg-transparent p-0' %>
+                    <%= button_to '删除', work_order_work_order_item_path(@work_order, item), method: :delete, data: { turbo_confirm: '确定删除此项目？' }, class: 'text-red-600 hover:text-red-900 bg-transparent p-0' %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+            <tfoot class="bg-gray-50">
+              <tr>
+                <td colspan="5" class="px-4 py-3 text-sm font-medium text-gray-900 text-right">合计:</td>
+                <td class="px-4 py-3 text-sm font-bold text-gray-900 text-right"><%= format_money(@work_order_items.sum(&:subtotal)) %></td>
+                <td colspan="3"></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+      <div class="md:hidden space-y-3">
+        <% @work_order_items.each do |item| %>
+          <div id="<%= dom_id(item) %>" class="bg-white rounded-lg border border-gray-200 p-4">
+            <div class="flex justify-between items-start mb-2">
+              <div class="font-medium text-gray-900"><%= item.name %></div>
+              <%= render_work_order_item_status_badge(item.status) %>
+            </div>
+            <% if item.description.present? %>
+              <p class="text-sm text-gray-500 mb-2"><%= item.description %></p>
+            <% end %>
+            <div class="grid grid-cols-2 gap-2 text-sm">
+              <div><span class="text-gray-500">数量:</span> <span class="text-gray-900"><%= item.quantity %></span></div>
+              <div><span class="text-gray-500">单价:</span> <span class="text-gray-900"><%= format_money(item.unit_price) %></span></div>
+              <div><span class="text-gray-500">工时费:</span> <span class="text-gray-900"><%= format_money(item.labor_fee) %></span></div>
+              <div><span class="text-gray-500">技术员:</span> <span class="text-gray-900"><%= item.technician&.name || '未分配' %></span></div>
+            </div>
+            <div class="mt-2 pt-2 border-t border-gray-100 flex justify-between items-center">
+              <div class="font-medium text-gray-900">小计: <%= format_money(item.subtotal) %></div>
+              <div class="flex gap-2">
+                <%= button_to '编辑', edit_work_order_work_order_item_path(@work_order, item), method: :get, data: { turbo_frame: dom_id(item) }, class: 'text-sm text-blue-600 hover:text-blue-900 bg-transparent p-0' %>
+                <%= button_to '删除', work_order_work_order_item_path(@work_order, item), method: :delete, data: { turbo_confirm: '确定删除此项目？' }, class: 'text-sm text-red-600 hover:text-red-900 bg-transparent p-0' %>
+              </div>
+            </div>
+          </div>
+        <% end %>
+        <div class="bg-white rounded-lg border border-gray-200 p-4 text-right">
+          <span class="text-gray-600">合计:</span>
+          <span class="ml-2 font-bold text-gray-900"><%= format_money(@work_order_items.sum(&:subtotal)) %></span>
+        </div>
+      </div>
+    <% end %>
+  </div>
+<% end %>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const toggleBtn = document.querySelector('[data-work_order_item_form_toggle]');
+  const formContainer = document.querySelector('[data-work_order_item_form_container]');
+  if (toggleBtn && formContainer) {
+    toggleBtn.addEventListener('click', function() {
+      formContainer.classList.toggle('hidden');
+    });
+  }
+});
+</script>

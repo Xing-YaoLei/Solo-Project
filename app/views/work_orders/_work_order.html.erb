@@ -1,0 +1,33 @@
+<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow">
+  <div class="flex justify-between items-start mb-3">
+    <div>
+      <%= link_to work_order_path(work_order), class: 'block' do %>
+        <div class="font-semibold text-gray-900 hover:text-blue-600"><%= work_order.work_order_no %></div>
+      <% end %>
+      <div class="text-sm text-gray-500 mt-1"><%= work_order.vehicle_plate %></div>
+    </div>
+    <div class="flex flex-col items-end gap-1">
+      <%= render_work_order_status_badge(work_order.status) %>
+      <%= render_work_order_priority_badge(work_order.priority) %>
+    </div>
+  </div>
+
+  <div class="space-y-2">
+    <div class="flex items-center justify-between text-sm">
+      <span class="text-gray-500">客户:</span>
+      <span class="text-gray-900 font-medium"><%= work_order.customer_name %></span>
+    </div>
+    <div class="flex items-center justify-between text-sm">
+      <span class="text-gray-500">处理人:</span>
+      <span class="text-gray-900"><%= work_order.assigned_to&.name || '未分配' %></span>
+    </div>
+  </div>
+
+  <div class="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
+    <span class="text-xs text-gray-400"><%= work_order.created_at.strftime('%Y-%m-%d %H:%M') %></span>
+    <div class="flex gap-2">
+      <%= link_to '查看', work_order_path(work_order), class: 'text-sm text-blue-600 hover:text-blue-800' %>
+      <%= link_to '编辑', edit_work_order_path(work_order), class: 'text-sm text-gray-600 hover:text-gray-800' %>
+    </div>
+  </div>
+</div>

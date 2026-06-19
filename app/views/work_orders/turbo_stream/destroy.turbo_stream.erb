@@ -1,0 +1,5 @@
+<%= turbo_stream.remove @work_order %>
+
+<%= turbo_stream.replace :work_orders_count do %>
+  <%= WorkOrder.count %>
+<% end %>

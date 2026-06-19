@@ -1,0 +1,3 @@
+<%= turbo_stream.replace @work_order do %>
+  <%= render 'work_orders/work_order_row', work_order: @work_order %>
+<% end %>

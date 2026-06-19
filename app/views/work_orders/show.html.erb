@@ -1,0 +1,195 @@
+<% provide(:title, "工单 #{@work_order.work_order_no}") %>
+
+<div class="min-h-screen bg-gray-50">
+  <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
+    <div class="mb-6">
+      <%= link_to '返回列表', work_orders_path, class: 'inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-4' do %>
+        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        返回列表
+      <% end %>
+
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+        <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+          <div class="flex-1">
+            <div class="flex flex-wrap items-center gap-2 mb-3">
+              <h1 class="text-xl sm:text-2xl font-bold text-gray-900"><%= @work_order.work_order_no %></h1>
+              <%= render_work_order_status_badge(@work_order.status) %>
+              <%= render_work_order_priority_badge(@work_order.priority) %>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div>
+                <h3 class="text-sm font-medium text-gray-500 mb-1">客户信息</h3>
+                <p class="text-sm font-medium text-gray-900"><%= @work_order.customer_name %></p>
+                <p class="text-sm text-gray-500"><%= @work_order.customer_phone %></p>
+              </div>
+              <div>
+                <h3 class="text-sm font-medium text-gray-500 mb-1">车辆信息</h3>
+                <p class="text-sm font-medium text-gray-900"><%= @work_order.vehicle_plate %></p>
+                <p class="text-sm text-gray-500"><%= "#{@work_order.vehicle_brand} #{@work_order.vehicle_model}" %></p>
+                <p class="text-sm text-gray-500">里程: <%= @work_order.vehicle_mileage %> km</p>
+              </div>
+              <div>
+                <h3 class="text-sm font-medium text-gray-500 mb-1">处理人</h3>
+                <p class="text-sm font-medium text-gray-900"><%= @work_order.assigned_to&.name || '未分配' %></p>
+                <p class="text-sm text-gray-500">创建人: <%= @work_order.created_by&.name %></p>
+                <p class="text-sm text-gray-500">创建时间: <%= @work_order.created_at.strftime('%Y-%m-%d %H:%M') %></p>
+              </div>
+            </div>
+
+            <% if @work_order.description.present? %>
+              <div class="mt-4">
+                <h3 class="text-sm font-medium text-gray-500 mb-1">工单描述</h3>
+                <p class="text-sm text-gray-700"><%= @work_order.description %></p>
+              </div>
+            <% end %>
+          </div>
+
+          <div class="flex flex-wrap lg:flex-col gap-2">
+            <%= link_to '编辑工单', edit_work_order_path(@work_order), class: 'inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2' %>
+            <%= button_to '删除工单', work_order_path(@work_order), method: :delete, data: { turbo_confirm: '确定删除此工单？' }, class: 'inline-flex items-center justify-center rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2' %>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+      <div class="hidden md:block border-b border-gray-200">
+        <nav class="flex space-x-4 px-4 sm:px-6" aria-label="Tabs">
+          <% tabs = [
+            { id: 'work_order_items', label: '工单项目', icon: '🔧' },
+            { id: 'work_order_parts', label: '配件库存', icon: '📦' },
+            { id: 'quotes', label: '报价单', icon: '📋' },
+            { id: 'inspection_photos', label: '质检照片', icon: '📷' },
+            { id: 'attachments', label: '附件', icon: '📎' },
+            { id: 'notes', label: '备注', icon: '📝' },
+            { id: 'timeline', label: '时间线', icon: '⏱️' }
+          ] %>
+          <% tabs.each do |tab| %>
+            <button data-tab-target="<%= tab[:id] %>" class="work-order-tab py-4 px-1 border-b-2 text-sm font-medium whitespace-nowrap transition-colors data-[active=true]:border-blue-500 data-[active=true]:text-blue-600 data-[active=false]:border-transparent data-[active=false]:text-gray-500 data-[active=false]:hover:text-gray-700 data-[active=false]:hover:border-gray-300" data-active="<%= tab[:id] == 'work_order_items' %>">
+              <%= tab[:icon] %> <%= tab[:label] %>
+            </button>
+          <% end %>
+        </nav>
+      </div>
+
+      <div class="md:hidden border-b border-gray-200 p-2">
+        <select id="mobile_tab_select" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+          <% tabs = [
+            { id: 'work_order_items', label: '🔧 工单项目' },
+            { id: 'work_order_parts', label: '📦 配件库存' },
+            { id: 'quotes', label: '📋 报价单' },
+            { id: 'inspection_photos', label: '📷 质检照片' },
+            { id: 'attachments', label: '📎 附件' },
+            { id: 'notes', label: '📝 备注' },
+            { id: 'timeline', label: '⏱️ 时间线' }
+          ] %>
+          <% tabs.each do |tab| %>
+            <option value="<%= tab[:id] %>"><%= tab[:label] %></option>
+          <% end %>
+        </select>
+      </div>
+
+      <div class="p-4 sm:p-6">
+        <div data-tab-content="work_order_items" class="tab-content">
+          <%= turbo_frame_tag :work_order_items, src: work_order_work_order_items_path(@work_order), loading: :lazy do %>
+            <div class="flex justify-center items-center py-12">
+              <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+          <% end %>
+        </div>
+
+        <div data-tab-content="work_order_parts" class="tab-content hidden">
+          <%= turbo_frame_tag :work_order_parts, src: work_order_work_order_parts_path(@work_order), loading: :lazy do %>
+            <div class="flex justify-center items-center py-12">
+              <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+          <% end %>
+        </div>
+
+        <div data-tab-content="quotes" class="tab-content hidden">
+          <%= turbo_frame_tag :quotes, src: work_order_quotes_path(@work_order), loading: :lazy do %>
+            <div class="text-center py-12">
+              <p class="text-gray-500">报价单内容</p>
+              <%= link_to '创建报价单', new_work_order_quote_path(@work_order), class: 'inline-flex items-center justify-center mt-4 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700' %>
+            </div>
+          <% end %>
+        </div>
+
+        <div data-tab-content="inspection_photos" class="tab-content hidden">
+          <%= turbo_frame_tag :inspection_photos, src: work_order_inspection_photos_path(@work_order), loading: :lazy do %>
+            <div class="text-center py-12">
+              <p class="text-gray-500">质检照片</p>
+              <%= link_to '上传照片', new_work_order_inspection_photo_path(@work_order), class: 'inline-flex items-center justify-center mt-4 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700' %>
+            </div>
+          <% end %>
+        </div>
+
+        <div data-tab-content="attachments" class="tab-content hidden">
+          <%= turbo_frame_tag :attachments, src: work_order_attachments_path(@work_order), loading: :lazy do %>
+            <div class="text-center py-12">
+              <p class="text-gray-500">附件</p>
+              <%= link_to '上传附件', new_work_order_attachment_path(@work_order), class: 'inline-flex items-center justify-center mt-4 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700' %>
+            </div>
+          <% end %>
+        </div>
+
+        <div data-tab-content="notes" class="tab-content hidden">
+          <%= turbo_frame_tag :notes, src: work_order_notes_path(@work_order), loading: :lazy do %>
+            <div class="text-center py-12">
+              <p class="text-gray-500">备注</p>
+              <%= link_to '添加备注', new_work_order_note_path(@work_order), class: 'inline-flex items-center justify-center mt-4 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700' %>
+            </div>
+          <% end %>
+        </div>
+
+        <div data-tab-content="timeline" class="tab-content hidden">
+          <%= turbo_frame_tag :timeline, src: work_order_timeline_events_path(@work_order), loading: :lazy do %>
+            <div class="flex justify-center items-center py-12">
+              <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const tabs = document.querySelectorAll('.work-order-tab');
+  const tabContents = document.querySelectorAll('.tab-content');
+  const mobileSelect = document.getElementById('mobile_tab_select');
+
+  function activateTab(targetId) {
+    tabs.forEach(tab => {
+      tab.dataset.active = (tab.dataset.tabTarget === targetId).toString();
+    });
+    tabContents.forEach(content => {
+      content.classList.toggle('hidden', content.dataset.tabContent !== targetId);
+    });
+    if (mobileSelect) {
+      mobileSelect.value = targetId;
+    }
+    if (window.localStorage) {
+      localStorage.setItem('work_order_active_tab', targetId);
+    }
+  }
+
+  const savedTab = window.localStorage ? localStorage.getItem('work_order_active_tab') : null;
+  const initialTab = savedTab || 'work_order_items';
+  activateTab(initialTab);
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', function() {
+      activateTab(this.dataset.tabTarget);
+    });
+  });
+
+  if (mobileSelect) {
+    mobileSelect.addEventListener('change', function() {
+      activateTab(this.value);
+    });
+  }
+});
+</script>

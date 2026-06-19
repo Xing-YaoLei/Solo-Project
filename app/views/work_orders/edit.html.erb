@@ -1,0 +1,17 @@
+<% provide(:title, "编辑工单 #{@work_order.work_order_no}") %>
+
+<div class="min-h-screen bg-gray-50">
+  <div class="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-6">
+    <div class="mb-6">
+      <%= link_to '返回详情', work_order_path(@work_order), class: 'inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-4' do %>
+        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        返回详情
+      <% end %>
+      <h1 class="text-2xl font-bold text-gray-900">编辑工单 - <%= @work_order.work_order_no %></h1>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+      <%= render 'form', work_order: @work_order %>
+    </div>
+  </div>
+</div>

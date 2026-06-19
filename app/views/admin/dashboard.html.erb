@@ -1,0 +1,102 @@
+<div class="mb-6">
+  <h2 class="text-2xl font-bold text-gray-900">管理员仪表盘</h2>
+  <p class="mt-1 text-sm text-gray-500">业务概览与关键指标</p>
+</div>
+
+<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+  <% stats = [
+    { label: "今日新增工单", value: @today_work_orders, icon: "clipboard", color: "bg-blue-500", bg: "bg-blue-50", text: "text-blue-600", path: work_orders_path },
+    { label: "待处理工单", value: @pending_work_orders, icon: "clock", color: "bg-yellow-500", bg: "bg-yellow-50", text: "text-yellow-600", path: work_orders_path(status: 'pending') },
+    { label: "进行中工单", value: @in_progress_work_orders, icon: "play", color: "bg-indigo-500", bg: "bg-indigo-50", text: "text-indigo-600", path: work_orders_path(status: 'in_progress') },
+    { label: "近30天返修率", value: "#{@repair_rate}%", icon: "refresh", color: "bg-red-500", bg: "bg-red-50", text: "text-red-600", path: repair_rate_analysis_admin_path },
+    { label: "低库存配件", value: @low_stock_parts, icon: "alert", color: "bg-orange-500", bg: "bg-orange-50", text: "text-orange-600", path: parts_path(filter: 'low_stock') },
+    { label: "缺货配件", value: @out_of_stock_parts, icon: "x", color: "bg-rose-500", bg: "bg-rose-50", text: "text-rose-600", path: parts_path(filter: 'out_of_stock') }
+  ] %>
+
+  <% stats.each do |stat| %>
+    <%= link_to stat[:path], class: "rounded-lg border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition-shadow" do %>
+      <div class="flex items-start justify-between">
+        <div>
+          <p class="text-sm font-medium text-gray-500"><%= stat[:label] %></p>
+          <p class="mt-2 text-2xl font-bold text-gray-900"><%= stat[:value] %></p>
+        </div>
+        <div class="flex h-10 w-10 items-center justify-center rounded-lg <%= stat[:bg] %>">
+          <% case stat[:icon]
+             when 'clipboard' %>
+            <svg class="h-5 w-5 <%= stat[:text] %>" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+          <% when 'clock' %>
+            <svg class="h-5 w-5 <%= stat[:text] %>" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <% when 'play' %>
+            <svg class="h-5 w-5 <%= stat[:text] %>" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <% when 'refresh' %>
+            <svg class="h-5 w-5 <%= stat[:text] %>" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          <% when 'alert' %>
+            <svg class="h-5 w-5 <%= stat[:text] %>" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+          <% when 'x' %>
+            <svg class="h-5 w-5 <%= stat[:text] %>" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  <% end %>
+</div>
+
+<div class="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
+  <div class="rounded-lg border border-gray-200 bg-white p-6">
+    <div class="mb-4 flex items-center justify-between">
+      <h3 class="text-lg font-medium text-gray-900">最近工单</h3>
+      <%= link_to "查看全部", work_orders_path, class: "text-sm text-blue-600 hover:text-blue-800" %>
+    </div>
+
+    <% if @recent_work_orders.any? %>
+      <div class="space-y-3">
+        <% @recent_work_orders.each do |work_order| %>
+          <%= link_to work_order, class: "flex items-center justify-between rounded-md border border-gray-100 p-3 hover:bg-gray-50" do %>
+            <div class="flex items-center space-x-3">
+              <div class="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100">
+                <svg class="h-5 w-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+              </div>
+              <div>
+                <p class="text-sm font-medium text-gray-900"><%= work_order.work_order_no %></p>
+                <p class="text-xs text-gray-500"><%= work_order.customer_name.presence || work_order.vehicle_plate.presence || '未填写' %></p>
+              </div>
+            </div>
+            <div class="text-right">
+              <% status_colors = { pending: "bg-yellow-100 text-yellow-800", quoted: "bg-blue-100 text-blue-800", in_progress: "bg-indigo-100 text-indigo-800", completed: "bg-green-100 text-green-800", cancelled: "bg-gray-100 text-gray-800" } %>
+              <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium <%= status_colors[work_order.status.to_sym] %>">
+                <%= I18n.t("work_order_status.#{work_order.status}", default: work_order.status) %>
+              </span>
+              <p class="mt-1 text-xs text-gray-500"><%= work_order.created_at.strftime('%m-%d %H:%M') %></p>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+    <% else %>
+      <p class="text-sm text-gray-500">暂无工单</p>
+    <% end %>
+  </div>
+
+  <div class="rounded-lg border border-gray-200 bg-white p-6">
+    <div class="mb-4 flex items-center justify-between">
+      <h3 class="text-lg font-medium text-gray-900">快捷操作</h3>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <%= link_to work_orders_path, class: "flex flex-col items-center justify-center rounded-lg border border-gray-200 bg-gray-50 p-4 hover:bg-gray-100" do %>
+        <svg class="h-8 w-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+        <span class="mt-2 text-sm font-medium text-gray-700">工单管理</span>
+      <% end %>
+      <%= link_to parts_path, class: "flex flex-col items-center justify-center rounded-lg border border-gray-200 bg-gray-50 p-4 hover:bg-gray-100" do %>
+        <svg class="h-8 w-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+        <span class="mt-2 text-sm font-medium text-gray-700">配件库存</span>
+      <% end %>
+      <%= link_to stock_alerts_path, class: "flex flex-col items-center justify-center rounded-lg border border-gray-200 bg-gray-50 p-4 hover:bg-gray-100" do %>
+        <svg class="h-8 w-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        <span class="mt-2 text-sm font-medium text-gray-700">缺货提醒</span>
+      <% end %>
+      <%= link_to repair_rate_analysis_admin_path, class: "flex flex-col items-center justify-center rounded-lg border border-gray-200 bg-gray-50 p-4 hover:bg-gray-100" do %>
+        <svg class="h-8 w-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+        <span class="mt-2 text-sm font-medium text-gray-700">返修率分析</span>
+      <% end %>
+    </div>
+  </div>
+</div>

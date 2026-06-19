@@ -1,0 +1,167 @@
+<% provide(:title, '工单列表') %>
+
+<div class="min-h-screen bg-gray-50">
+  <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
+    <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <h1 class="text-2xl font-bold text-gray-900">工单列表</h1>
+      <%= link_to '新建工单', new_work_order_path, class: 'inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2' %>
+    </div>
+
+    <%= turbo_frame_tag 'work_orders_search' do %>
+      <%= search_form_for @q, url: work_orders_path, method: :get, data: { turbo_frame: 'work_orders_list' }, html: { class: 'mb-6 bg-white rounded-xl shadow-sm border border-gray-200 p-4' } do |f| %>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div>
+            <%= f.label :status_eq, '状态', class: 'block text-sm font-medium text-gray-700 mb-1' %>
+            <%= f.select :status_eq, WorkOrder::STATUSES.map { |s| [I18n.t("work_orders.statuses.#{s}", default: s), s] }, { include_blank: '全部状态' }, class: 'w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500' %>
+          </div>
+          <div>
+            <%= f.label :priority_eq, '优先级', class: 'block text-sm font-medium text-gray-700 mb-1' %>
+            <%= f.select :priority_eq, WorkOrder::PRIORITIES.map { |p| [I18n.t("work_orders.priorities.#{p}", default: p), p] }, { include_blank: '全部优先级' }, class: 'w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500' %>
+          </div>
+          <div>
+            <%= f.label :vehicle_plate_cont, '车牌号', class: 'block text-sm font-medium text-gray-700 mb-1' %>
+            <%= f.text_field :vehicle_plate_cont, class: 'w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500', placeholder: '输入车牌号' %>
+          </div>
+          <div>
+            <%= f.label :customer_name_cont, '客户名', class: 'block text-sm font-medium text-gray-700 mb-1' %>
+            <%= f.text_field :customer_name_cont, class: 'w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500', placeholder: '输入客户名' %>
+          </div>
+          <div class="lg:col-span-2">
+            <%= f.label :created_at_gteq, '开始日期', class: 'block text-sm font-medium text-gray-700 mb-1' %>
+            <%= f.date_field :created_at_gteq, class: 'w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500' %>
+          </div>
+          <div class="lg:col-span-2">
+            <%= f.label :created_at_lteq, '结束日期', class: 'block text-sm font-medium text-gray-700 mb-1' %>
+            <%= f.date_field :created_at_lteq, class: 'w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500' %>
+          </div>
+        </div>
+        <div class="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2">
+          <%= f.submit '搜索', class: 'inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2' %>
+          <%= link_to '重置', work_orders_path, class: 'inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2' %>
+        </div>
+      <% end %>
+    <% end %>
+
+    <%= turbo_frame_tag 'work_orders_list' do %>
+      <%= form_tag bulk_update_status_work_orders_path, method: :patch, id: 'bulk_actions_form', class: 'space-y-4' do %>
+        <div class="mb-4 flex flex-wrap gap-2">
+          <%= submit_tag '导出选中', formaction: export_work_orders_admin_dashboard_path, formmethod: :post, class: 'inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed', disabled: true, id: 'export_selected_btn' %>
+          <%= select_tag :bulk_status, options_for_select([['批量更新状态', ''], ['待处理', 'pending'], ['已报价', 'quoted'], ['处理中', 'in_progress'], ['已完成', 'completed'], ['已取消', 'cancelled']]), class: 'rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500', id: 'bulk_status_select', disabled: true %>
+          <%= submit_tag '更新', class: 'inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed', disabled: true, id: 'bulk_update_btn' %>
+        </div>
+
+        <div class="hidden md:block bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-4 py-3 text-left">
+                    <input type="checkbox" id="select_all_work_orders" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                  </th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">工单号</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">客户</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">车辆</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">优先级</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">处理人</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">创建时间</th>
+                  <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                </tr>
+              </thead>
+              <tbody class="bg-white divide-y divide-gray-200">
+                <% @work_orders.each do |work_order| %>
+                  <tr class="hover:bg-gray-50 transition-colors">
+                    <td class="px-4 py-4">
+                      <input type="checkbox" name="work_order_ids[]" value="<%= work_order.id %>" class="work_order_checkbox h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                    </td>
+                    <td class="px-4 py-4 whitespace-nowrap">
+                      <%= link_to work_order.work_order_no, work_order_path(work_order), class: 'text-blue-600 hover:text-blue-900 font-medium' %>
+                    </td>
+                    <td class="px-4 py-4 whitespace-nowrap">
+                      <div class="text-sm font-medium text-gray-900"><%= work_order.customer_name %></div>
+                      <div class="text-sm text-gray-500"><%= work_order.customer_phone %></div>
+                    </td>
+                    <td class="px-4 py-4 whitespace-nowrap">
+                      <div class="text-sm text-gray-900"><%= work_order.vehicle_plate %></div>
+                      <div class="text-sm text-gray-500"><%= "#{work_order.vehicle_brand} #{work_order.vehicle_model}" %></div>
+                    </td>
+                    <td class="px-4 py-4 whitespace-nowrap">
+                      <%= render_work_order_status_badge(work_order.status) %>
+                    </td>
+                    <td class="px-4 py-4 whitespace-nowrap">
+                      <%= render_work_order_priority_badge(work_order.priority) %>
+                    </td>
+                    <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <%= work_order.assigned_to&.name || '未分配' %>
+                    </td>
+                    <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <%= work_order.created_at.strftime('%Y-%m-%d %H:%M') %>
+                    </td>
+                    <td class="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <%= link_to '查看', work_order_path(work_order), class: 'text-blue-600 hover:text-blue-900 mr-3' %>
+                      <%= link_to '编辑', edit_work_order_path(work_order), class: 'text-gray-600 hover:text-gray-900' %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="md:hidden space-y-3">
+          <% @work_orders.each do |work_order| %>
+            <%= link_to work_order_path(work_order), class: 'block bg-white rounded-xl shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow' do %>
+              <div class="flex justify-between items-start mb-2">
+                <div>
+                  <div class="font-semibold text-gray-900"><%= work_order.work_order_no %></div>
+                  <div class="text-sm text-gray-500"><%= work_order.vehicle_plate %></div>
+                </div>
+                <div class="flex flex-col items-end gap-1">
+                  <%= render_work_order_status_badge(work_order.status) %>
+                </div>
+              </div>
+              <div class="mt-2 flex items-center justify-between text-sm">
+                <span class="text-gray-600"><%= work_order.customer_name %></span>
+                <%= render_work_order_priority_badge(work_order.priority) %>
+              </div>
+              <div class="mt-2 text-xs text-gray-400">
+                <%= work_order.created_at.strftime('%Y-%m-%d %H:%M') %>
+              </div>
+            <% end %>
+          <% end %>
+        </div>
+
+        <div class="mt-6">
+          <%== pagy_nav(@pagy) %>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const selectAll = document.getElementById('select_all_work_orders');
+  const checkboxes = document.querySelectorAll('.work_order_checkbox');
+  const exportBtn = document.getElementById('export_selected_btn');
+  const bulkSelect = document.getElementById('bulk_status_select');
+  const bulkBtn = document.getElementById('bulk_update_btn');
+
+  function updateButtons() {
+    const checked = document.querySelectorAll('.work_order_checkbox:checked');
+    const hasChecked = checked.length > 0;
+    [exportBtn, bulkSelect, bulkBtn].forEach(el => {
+      if (el) el.disabled = !hasChecked;
+    });
+  }
+
+  if (selectAll) {
+    selectAll.addEventListener('change', function() {
+      checkboxes.forEach(cb => cb.checked = this.checked);
+      updateButtons();
+    });
+  }
+
+  checkboxes.forEach(cb => cb.addEventListener('change', updateButtons));
+});
+</script>

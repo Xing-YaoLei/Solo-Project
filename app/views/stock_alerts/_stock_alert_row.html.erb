@@ -1,0 +1,21 @@
+<tr id="<%= dom_id(stock_alert) %>" class="hover:bg-gray-50 <%= stock_alert_tr_class(stock_alert) %>">
+  <td class="whitespace-nowrap px-6 py-4">
+    <div class="text-sm font-medium text-gray-900"><%= stock_alert.part&.name || '-' %></div>
+    <div class="text-xs text-gray-500"><%= stock_alert.part&.sku || '-' %></div>
+  </td>
+  <td class="whitespace-nowrap px-6 py-4">
+    <%= stock_alert_work_order_link(stock_alert) %>
+  </td>
+  <td class="whitespace-nowrap px-6 py-4">
+    <%= render_stock_alert_status_badge(stock_alert.status) %>
+  </td>
+  <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
+    <%= stock_alert_handler_name(stock_alert) %>
+  </td>
+  <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
+    <%= format_stock_alert_created_at(stock_alert) %>
+  </td>
+  <td class="whitespace-nowrap px-6 py-4 text-sm font-medium">
+    <%= link_to "查看", stock_alert_path(stock_alert), class: "text-blue-600 hover:text-blue-900" %>
+  </td>
+</tr>

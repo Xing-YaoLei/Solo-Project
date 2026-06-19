@@ -1,0 +1,73 @@
+<div class="mb-6 flex items-center justify-between">
+  <h2 class="text-xl font-semibold text-gray-900">附件</h2>
+  <button type="button" data-attachments-target="toggleForm" class="inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+    <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+    上传附件
+  </button>
+</div>
+
+<div data-attachments-target="formContainer" class="mb-6 hidden">
+  <%= render "attachments/form", work_order: @work_order %>
+</div>
+
+<% if @work_order.attachments.any? %>
+  <div class="overflow-hidden rounded-lg border border-gray-200 bg-white">
+    <ul class="divide-y divide-gray-200">
+      <% @work_order.attachments.order(created_at: :desc).each do |attachment| %>
+        <li class="flex items-center justify-between p-4 hover:bg-gray-50">
+          <div class="flex min-w-0 items-center space-x-4">
+            <div class="flex-shrink-0">
+              <% file_type_icon = case attachment.file_type.to_s.split('/').first
+                                   when 'image' then 'bg-purple-100 text-purple-600'
+                                   when 'video' then 'bg-pink-100 text-pink-600'
+                                   when 'audio' then 'bg-yellow-100 text-yellow-600'
+                                   when 'application' then 'bg-blue-100 text-blue-600'
+                                   else 'bg-gray-100 text-gray-600'
+                                 end %>
+              <div class="flex h-10 w-10 items-center justify-center rounded-lg <%= file_type_icon %>">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+              </div>
+            </div>
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center space-x-2">
+                <p class="truncate text-sm font-medium text-gray-900">
+                  <%= attachment.name.presence || (attachment.file.filename if attachment.file.attached?) || '未命名文件' %>
+                </p>
+                <% if attachment.file_type.present? %>
+                  <span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+                    <%= attachment.file_type.split('/').last.upcase %>
+                  </span>
+                <% end %>
+              </div>
+              <div class="mt-1 flex items-center space-x-4 text-xs text-gray-500">
+                <span><%= attachment.uploaded_by&.name || '未知用户' %></span>
+                <span><%= attachment.created_at.strftime('%Y-%m-%d %H:%M') %></span>
+                <% if attachment.description.present? %>
+                  <span class="truncate"><%= attachment.description %></span>
+                <% end %>
+              </div>
+            </div>
+          </div>
+          <div class="ml-4 flex flex-shrink-0 items-center space-x-2">
+            <% if attachment.file.attached? %>
+              <%= link_to url_for(attachment.file), target: "_blank", class: "inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50" do %>
+                <svg class="mr-1 h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                下载
+              <% end %>
+            <% end %>
+            <%= button_to [@work_order, attachment], method: :delete, class: "inline-flex items-center rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50", form: { data: { turbo_confirm: "确定删除此附件？" } } do %>
+              <svg class="mr-1 h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3"/></svg>
+              删除
+            <% end %>
+          </div>
+        </li>
+      <% end %>
+    </ul>
+  </div>
+<% else %>
+  <div class="rounded-lg border border-gray-200 bg-white py-12 text-center">
+    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+    <h3 class="mt-2 text-sm font-medium text-gray-900">暂无附件</h3>
+    <p class="mt-1 text-sm text-gray-500">点击上方按钮上传附件</p>
+  </div>
+<% end %>

@@ -1,0 +1,191 @@
+<div class="mb-6 flex items-center justify-between">
+  <div class="flex items-center space-x-4">
+    <%= link_to stock_alerts_path, class: "text-gray-400 hover:text-gray-600" do %>
+      <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+    <% end %>
+    <h2 class="text-xl font-semibold text-gray-900">缺货提醒详情</h2>
+    <% status_colors = { pending: "bg-yellow-100 text-yellow-800", processing: "bg-blue-100 text-blue-800", resolved: "bg-green-100 text-green-800" } %>
+    <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium <%= status_colors[@stock_alert.status.to_sym] %>">
+      <%= { pending: '待处理', processing: '处理中', resolved: '已解决' }[@stock_alert.status.to_sym] %>
+    </span>
+  </div>
+  <% if !@stock_alert.resolved? %>
+    <%= button_to "标记已解决", resolve_stock_alert_path(@stock_alert), method: :post, class: "inline-flex items-center rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700", form: { data: { turbo_confirm: "确定标记为已解决？" } } %>
+  <% end %>
+</div>
+
+<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+  <div class="lg:col-span-2 space-y-6">
+    <div class="rounded-lg border border-gray-200 bg-white p-6">
+      <h3 class="mb-4 text-lg font-medium text-gray-900">基本信息</h3>
+      <dl class="grid grid-cols-2 gap-4">
+        <div>
+          <dt class="text-sm text-gray-500">配件名称</dt>
+          <dd class="mt-1 text-sm font-medium text-gray-900"><%= @stock_alert.part&.name || '-' %></dd>
+        </div>
+        <div>
+          <dt class="text-sm text-gray-500">配件SKU</dt>
+          <dd class="mt-1 text-sm font-medium text-gray-900"><%= @stock_alert.part&.sku || '-' %></dd>
+        </div>
+        <div>
+          <dt class="text-sm text-gray-500">关联工单</dt>
+          <dd class="mt-1 text-sm font-medium text-gray-900">
+            <%= @work_order ? link_to(@work_order.work_order_no, @work_order, class: "text-blue-600 hover:text-blue-800") : '-' %>
+          </dd>
+        </div>
+        <div>
+          <dt class="text-sm text-gray-500">当前库存</dt>
+          <dd class="mt-1">
+            <% if @stock_alert.part %>
+              <% if @stock_alert.part.stock_quantity == 0 %>
+                <span class="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800">缺货</span>
+              <% else %>
+                <span class="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800">低库存 (<%= @stock_alert.part.stock_quantity %>)</span>
+              <% end %>
+            <% else %>
+              -
+            <% end %>
+          </dd>
+        </div>
+        <div>
+          <dt class="text-sm text-gray-500">责任人</dt>
+          <dd class="mt-1 text-sm font-medium text-gray-900"><%= @stock_alert.handler&.name || '未指派' %></dd>
+        </div>
+        <div>
+          <dt class="text-sm text-gray-500">创建时间</dt>
+          <dd class="mt-1 text-sm font-medium text-gray-900"><%= @stock_alert.created_at.strftime('%Y-%m-%d %H:%M') %></dd>
+        </div>
+        <% if @stock_alert.resolved? %>
+          <div>
+            <dt class="text-sm text-gray-500">解决时间</dt>
+            <dd class="mt-1 text-sm font-medium text-gray-900"><%= @stock_alert.resolved_at&.strftime('%Y-%m-%d %H:%M') %></dd>
+          </div>
+        <% end %>
+      </dl>
+    </div>
+
+    <% if @stock_alert.affected_scope.present? || @stock_alert.status != 'pending' %>
+      <div class="rounded-lg border border-gray-200 bg-white p-6">
+        <h3 class="mb-4 text-lg font-medium text-gray-900">影响范围</h3>
+        <p class="text-sm text-gray-700 whitespace-pre-wrap"><%= @stock_alert.affected_scope.presence || '暂无' %></p>
+      </div>
+    <% end %>
+
+    <% if @stock_alert.supplementary_note.present? || @stock_alert.reassigned_to.present? %>
+      <div class="rounded-lg border border-gray-200 bg-white p-6">
+        <h3 class="mb-4 text-lg font-medium text-gray-900">补充说明</h3>
+        <dl class="space-y-3">
+          <% if @stock_alert.reassigned_to.present? %>
+            <div>
+              <dt class="text-sm text-gray-500">转交给</dt>
+              <dd class="mt-1 text-sm font-medium text-gray-900"><%= @stock_alert.reassigned_to&.name %></dd>
+            </div>
+          <% end %>
+          <% if @stock_alert.supplementary_note.present? %>
+            <div>
+              <dt class="text-sm text-gray-500">补充说明</dt>
+              <dd class="mt-1 text-sm text-gray-700 whitespace-pre-wrap"><%= @stock_alert.supplementary_note %></dd>
+            </div>
+          <% end %>
+        </dl>
+      </div>
+    <% end %>
+
+    <% if @stock_alert.status == 'pending' %>
+      <div class="rounded-lg border border-gray-200 bg-white p-6">
+        <h3 class="mb-4 text-lg font-medium text-gray-900">确认影响范围</h3>
+        <%= form_with url: confirm_impact_stock_alert_path(@stock_alert), method: :post, local: true do |form| %>
+          <div class="space-y-4">
+            <div>
+              <%= form.label :affected_scope, "影响范围描述", class: "block text-sm font-medium text-gray-700" %>
+              <%= form.text_area :affected_scope, rows: 3, required: true, class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm", placeholder: "请描述该配件缺货可能影响的工单范围、预计影响时间等" %>
+            </div>
+            <div>
+              <%= form.label :handler_id, "指定责任人", class: "block text-sm font-medium text-gray-700" %>
+              <%= form.select :handler_id, User.all.map { |u| [u.name || u.email, u.id] }, { include_blank: "请选择责任人" }, class: "mt-1 block w-full rounded-md border-gray-300 py-2 px-3 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
+            </div>
+          </div>
+          <div class="mt-4">
+            <%= form.submit "确认并开始处理", class: "inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700" %>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+
+    <% if @stock_alert.status == 'processing' %>
+      <div class="rounded-lg border border-gray-200 bg-white p-6">
+        <h3 class="mb-4 text-lg font-medium text-gray-900">调整责任人</h3>
+        <%= form_with url: reassign_stock_alert_path(@stock_alert), method: :post, local: true do |form| %>
+          <div class="space-y-4">
+            <div>
+              <%= form.label :reassigned_to_id, "新责任人", class: "block text-sm font-medium text-gray-700" %>
+              <%= form.select :reassigned_to_id, User.all.map { |u| [u.name || u.email, u.id] }, { include_blank: "请选择新责任人" }, class: "mt-1 block w-full rounded-md border-gray-300 py-2 px-3 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
+            </div>
+            <div>
+              <%= form.label :supplementary_note, "补充说明", class: "block text-sm font-medium text-gray-700" %>
+              <%= form.text_area :supplementary_note, rows: 3, class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm", placeholder: "请填写转交原因或补充说明" %>
+            </div>
+          </div>
+          <div class="mt-4">
+            <%= form.submit "转交责任人", class: "inline-flex items-center rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700" %>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+
+    <% if @work_order %>
+      <div class="rounded-lg border border-gray-200 bg-white p-6">
+        <h3 class="mb-4 text-lg font-medium text-gray-900">处理时间线</h3>
+        <% events = @work_order.timeline_events.where(event_type: 'part_shortage').order(created_at: :desc) %>
+        <% if events.any? %>
+          <div class="relative">
+            <div class="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200"></div>
+            <div class="space-y-4">
+              <% events.each do |event| %>
+                <div class="relative pl-10">
+                  <div class="absolute left-0 top-1 flex h-8 w-8 items-center justify-center rounded-full bg-red-100 text-red-600 ring-4 ring-white">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                  </div>
+                  <div class="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                    <div class="flex items-center justify-between">
+                      <span class="text-sm font-medium text-gray-900"><%= event.user&.name || '系统' %></span>
+                      <span class="text-xs text-gray-500"><%= event.created_at.strftime('%Y-%m-%d %H:%M') %></span>
+                    </div>
+                    <p class="mt-1 text-sm text-gray-700"><%= event.content %></p>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        <% else %>
+          <p class="text-sm text-gray-500">暂无处理记录</p>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="space-y-6">
+    <div class="rounded-lg border border-gray-200 bg-gradient-to-br from-red-50 to-orange-50 p-6">
+      <h3 class="mb-4 text-lg font-medium text-gray-900">处理摘要</h3>
+      <div class="space-y-4">
+        <div class="flex items-baseline justify-between">
+          <span class="text-sm text-gray-600">状态</span>
+          <% status_colors = { pending: "bg-yellow-100 text-yellow-800", processing: "bg-blue-100 text-blue-800", resolved: "bg-green-100 text-green-800" } %>
+          <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium <%= status_colors[@stock_alert.status.to_sym] %>">
+            <%= { pending: '待处理', processing: '处理中', resolved: '已解决' }[@stock_alert.status.to_sym] %>
+          </span>
+        </div>
+        <div class="flex items-baseline justify-between">
+          <span class="text-sm text-gray-600">责任人</span>
+          <span class="text-sm font-medium text-gray-900"><%= @stock_alert.handler&.name || '未指派' %></span>
+        </div>
+        <% if @stock_alert.part %>
+          <div class="flex items-baseline justify-between">
+            <span class="text-sm text-gray-600">安全库存</span>
+            <span class="text-sm font-medium text-gray-900"><%= @stock_alert.part.safety_stock %></span>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

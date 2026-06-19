@@ -1,0 +1,156 @@
+<div class="mb-6 flex items-center justify-between">
+  <div>
+    <h2 class="text-2xl font-bold text-gray-900">返修率分析</h2>
+    <p class="mt-1 text-sm text-gray-500">监控工单返修情况，分析质量趋势</p>
+  </div>
+  <%= link_to "返回仪表盘", admin_dashboard_path, class: "inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50" do %>
+    <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+    返回
+  <% end %>
+</div>
+
+<div class="mb-6 rounded-lg border border-gray-200 bg-white p-6">
+  <%= form_with url: repair_rate_analysis_admin_path, method: :get, local: true, html: { class: "grid grid-cols-1 gap-4 md:grid-cols-3" } do |form| %>
+    <div>
+      <%= form.label :start_date, "开始日期", class: "block text-sm font-medium text-gray-700" %>
+      <%= form.date_field :start_date, value: @start_date, class: "mt-1 block w-full rounded-md border-gray-300 py-2 px-3 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
+    </div>
+    <div>
+      <%= form.label :end_date, "结束日期", class: "block text-sm font-medium text-gray-700" %>
+      <%= form.date_field :end_date, value: @end_date, class: "mt-1 block w-full rounded-md border-gray-300 py-2 px-3 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
+    </div>
+    <div class="flex items-end space-x-2">
+      <%= form.submit "查询", class: "inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700" %>
+      <%= link_to "重置", repair_rate_analysis_admin_path, class: "inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50" %>
+    </div>
+  <% end %>
+</div>
+
+<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+  <div class="rounded-lg border border-gray-200 bg-white p-6">
+    <div class="flex items-center justify-between">
+      <p class="text-sm font-medium text-gray-500">总工单数</p>
+      <svg class="h-8 w-8 text-blue-100" fill="currentColor" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+    </div>
+    <p class="mt-2 text-3xl font-bold text-gray-900"><%= @total_work_orders %></p>
+    <p class="mt-1 text-xs text-gray-500"><%= @start_date.strftime('%Y-%m-%d') %> 至 <%= @end_date.strftime('%Y-%m-%d') %></p>
+  </div>
+
+  <div class="rounded-lg border border-gray-200 bg-white p-6">
+    <div class="flex items-center justify-between">
+      <p class="text-sm font-medium text-gray-500">返修工单</p>
+      <svg class="h-8 w-8 text-red-100" fill="currentColor" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+    </div>
+    <p class="mt-2 text-3xl font-bold text-red-600"><%= @repair_count %></p>
+    <p class="mt-1 text-xs text-gray-500">需要返修处理的工单</p>
+  </div>
+
+  <div class="rounded-lg border border-gray-200 bg-gradient-to-br
+    <%= @repair_rate > 10 ? 'from-red-50 to-orange-50' : @repair_rate > 5 ? 'from-yellow-50 to-orange-50' : 'from-green-50 to-emerald-50' %> p-6">
+    <div class="flex items-center justify-between">
+      <p class="text-sm font-medium text-gray-500">返修率</p>
+      <svg class="h-8 w-8
+        <%= @repair_rate > 10 ? 'text-red-200' : @repair_rate > 5 ? 'text-yellow-200' : 'text-green-200' %>" fill="currentColor" viewBox="0 0 24 24">
+        <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+      </svg>
+    </div>
+    <p class="mt-2 text-3xl font-bold
+      <%= @repair_rate > 10 ? 'text-red-600' : @repair_rate > 5 ? 'text-yellow-600' : 'text-green-600' %>">
+      <%= @repair_rate %>%
+    </p>
+    <p class="mt-1 text-xs text-gray-500">
+      <% if @repair_rate > 10 %>
+        返修率偏高，建议排查
+      <% elsif @repair_rate > 5 %>
+        返修率处于警戒水平
+      <% else %>
+        返修率控制良好
+      <% end %>
+    </p>
+  </div>
+</div>
+
+<div class="mt-6 rounded-lg border border-gray-200 bg-white p-6">
+  <h3 class="mb-4 text-lg font-medium text-gray-900">返修率趋势</h3>
+
+  <% if @daily_data.any? %>
+    <div class="relative h-64">
+      <% max_rate = [@daily_data.values.max, 1].max %>
+      <div class="absolute inset-0 flex items-end justify-between gap-1 px-2">
+        <% @daily_data.each do |date, rate| %>
+          <div class="flex flex-1 flex-col items-center justify-end">
+            <div class="w-full flex flex-col items-center">
+              <span class="mb-1 text-xs font-medium
+                <%= rate > 10 ? 'text-red-600' : rate > 5 ? 'text-yellow-600' : 'text-green-600' %>">
+                <%= rate %>%
+              </span>
+              <div class="w-full rounded-t-md
+                <%= rate > 10 ? 'bg-red-500' : rate > 5 ? 'bg-yellow-500' : 'bg-green-500' %>"
+                style="height: <%= [rate / max_rate * 160, 4].max %>px;"></div>
+            </div>
+            <span class="mt-2 text-xs text-gray-500"><%= date.strftime('%m/%d') %></span>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="mt-6 flex items-center justify-center space-x-6 text-sm">
+      <div class="flex items-center space-x-2">
+        <div class="h-3 w-3 rounded bg-green-500"></div>
+        <span class="text-gray-600">正常 (≤5%)</span>
+      </div>
+      <div class="flex items-center space-x-2">
+        <div class="h-3 w-3 rounded bg-yellow-500"></div>
+        <span class="text-gray-600">警戒 (5%-10%)</span>
+      </div>
+      <div class="flex items-center space-x-2">
+        <div class="h-3 w-3 rounded bg-red-500"></div>
+        <span class="text-gray-600">偏高 (>10%)</span>
+      </div>
+    </div>
+  <% else %>
+    <p class="text-sm text-gray-500">该时段内无数据</p>
+  <% end %>
+</div>
+
+<div class="mt-6 rounded-lg border border-gray-200 bg-white p-6">
+  <h3 class="mb-4 text-lg font-medium text-gray-900">每日详细数据</h3>
+
+  <% if @daily_data.any? %>
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">日期</th>
+            <th class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">返修率</th>
+            <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">状态</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200 bg-white">
+          <% @daily_data.sort.reverse.each do |date, rate| %>
+            <tr class="hover:bg-gray-50">
+              <td class="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
+                <%= date.strftime('%Y-%m-%d') %>
+              </td>
+              <td class="whitespace-nowrap px-6 py-4 text-right text-sm font-medium
+                <%= rate > 10 ? 'text-red-600' : rate > 5 ? 'text-yellow-600' : 'text-green-600' %>">
+                <%= rate %>%
+              </td>
+              <td class="whitespace-nowrap px-6 py-4">
+                <% if rate > 10 %>
+                  <span class="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800">偏高</span>
+                <% elsif rate > 5 %>
+                  <span class="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800">警戒</span>
+                <% else %>
+                  <span class="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">正常</span>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% else %>
+    <p class="text-sm text-gray-500">该时段内无数据</p>
+  <% end %>
+</div>

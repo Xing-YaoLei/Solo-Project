@@ -1,0 +1,92 @@
+<%= turbo_frame_tag dom_id(work_order_part || WorkOrderPart.new) do %>
+  <%= form_with model: [work_order, work_order_part], local: true, html: { class: 'space-y-4' } do |f| %>
+    <% if work_order_part&.errors&.any? %>
+      <div class="rounded-lg bg-red-50 border border-red-200 p-4">
+        <ul class="list-disc pl-5 space-y-1">
+          <% work_order_part.errors.each do |error| %>
+            <li class="text-sm text-red-700"><%= error.full_message %></li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <%= f.label :part_id, '选择配件', class: 'block text-sm font-medium text-gray-700 mb-1' %>
+        <%= f.select :part_id, Part.all.map { |p| ["#{p.name} (#{p.sku})", p.id, { 'data-stock' => p.stock_quantity }] }, { include_blank: '请选择配件' }, class: 'w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500', id: 'part_select' %>
+      </div>
+      <div>
+        <%= f.label :quantity, '数量', class: 'block text-sm font-medium text-gray-700 mb-1' %>
+        <%= f.number_field :quantity, min: 1, class: 'w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500' %>
+      </div>
+      <div>
+        <%= f.label :unit_price, '单价', class: 'block text-sm font-medium text-gray-700 mb-1' %>
+        <%= f.number_field :unit_price, step: '0.01', class: 'w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500', placeholder: '0.00' %>
+      </div>
+      <div class="flex items-end">
+        <label class="flex items-center space-x-2">
+          <%= f.check_box :is_out_of_stock, class: 'h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500' %>
+          <span class="text-sm font-medium text-gray-700">标记缺货</span>
+        </label>
+      </div>
+    </div>
+
+    <% if work_order_part.is_out_of_stock? %>
+      <div class="bg-red-50 border border-red-200 rounded-lg p-4 space-y-3">
+        <div>
+          <%= f.label :shortage_confirmed, '缺货已确认', class: 'flex items-center space-x-2' do %>
+            <%= f.check_box :shortage_confirmed, class: 'h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500' %>
+            <span class="text-sm font-medium text-gray-700">已确认缺货</span>
+          <% end %>
+        </div>
+        <div>
+          <%= f.label :shortage_note, '缺货备注', class: 'block text-sm font-medium text-gray-700 mb-1' %>
+          <%= f.text_area :shortage_note, rows: 2, class: 'w-full rounded-lg border-gray-300 focus:border-red-500 focus:ring-red-500', placeholder: '缺货情况说明...' %>
+        </div>
+        <% if work_order_part.shortage_handled? %>
+          <div class="text-sm text-gray-600">
+            <p>处理人: <%= work_order_part.shortage_handled_by&.name %></p>
+            <p>处理时间: <%= work_order_part.shortage_handled_at&.strftime('%Y-%m-%d %H:%M') %></p>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+
+    <div class="flex flex-col sm:flex-row justify-end gap-2 pt-2">
+      <% if work_order_part.persisted? %>
+        <%= button_tag '取消', type: 'button', data: { work_order_part_form_cancel: dom_id(work_order_part) }, class: 'inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2' %>
+      <% else %>
+        <%= button_tag '取消', type: 'button', data: { work_order_part_form_toggle: true }, class: 'inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2' %>
+      <% end %>
+      <%= f.submit class: 'inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2' %>
+    </div>
+  <% end %>
+<% end %>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('[data-work_order_part_form_cancel]').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const frameId = this.dataset.work_order_part_form_cancel;
+      const frame = document.getElementById(frameId);
+      if (frame) frame.reload();
+    });
+  });
+
+  const partSelect = document.getElementById('part_select');
+  if (partSelect) {
+    partSelect.addEventListener('change', function() {
+      const option = this.options[this.selectedIndex];
+      const stock = option.dataset.stock;
+      const quantityInput = this.closest('form').querySelector('input[name*="quantity"]');
+      const outOfStockCheckbox = this.closest('form').querySelector('input[name*="is_out_of_stock"]');
+      if (stock && quantityInput) {
+        const requestedQty = parseInt(quantityInput.value) || 1;
+        if (parseInt(stock) < requestedQty) {
+          outOfStockCheckbox.checked = true;
+        }
+      }
+    });
+  }
+});
+</script>

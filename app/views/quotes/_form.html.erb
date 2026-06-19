@@ -1,0 +1,59 @@
+<%= form_with model: [@work_order, @quote], local: true, class: "space-y-6" do |form| %>
+  <% if @quote.errors.any? %>
+    <div class="rounded-lg border border-red-200 bg-red-50 p-4">
+      <h3 class="text-sm font-medium text-red-800">存在以下错误：</h3>
+      <ul class="mt-2 list-disc pl-5 text-sm text-red-700">
+        <% @quote.errors.full_messages.each do |message| %>
+          <li><%= message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="rounded-lg border border-gray-200 bg-white p-6">
+    <h3 class="mb-4 text-lg font-medium text-gray-900">基本信息</h3>
+    <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+      <div>
+        <%= form.label :status, class: "block text-sm font-medium text-gray-700" %>
+        <%= form.select :status, Quote::STATUSES.map { |s| [I18n.t("quote_status.#{s}", default: s), s] }, {}, class: "mt-1 block w-full rounded-md border-gray-300 py-2 px-3 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
+      </div>
+      <div>
+        <%= form.label :valid_until, class: "block text-sm font-medium text-gray-700" %>
+        <%= form.date_field :valid_until, class: "mt-1 block w-full rounded-md border-gray-300 py-2 px-3 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
+      </div>
+      <div class="md:col-span-2">
+        <label class="flex items-center">
+          <%= form.check_box :customer_approved, class: "h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" %>
+          <span class="ml-2 text-sm text-gray-700">客户已确认</span>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <div class="rounded-lg border border-gray-200 bg-white p-6">
+    <div class="mb-4 flex items-center justify-between">
+      <h3 class="text-lg font-medium text-gray-900">报价项目</h3>
+      <button type="button" data-action="quote-form#addItem" class="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
+        <svg class="mr-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+        添加项目
+      </button>
+    </div>
+
+    <div data-quote-form-target="items" class="space-y-4">
+      <%= form.fields_for :quote_items do |item_form| %>
+        <%= render "quote_item_fields", form: item_form %>
+      <% end %>
+    </div>
+
+    <template data-quote-form-target="template">
+      <%= form.fields_for :quote_items, QuoteItem.new, child_index: "NEW_RECORD" do |item_form| %>
+        <%= render "quote_item_fields", form: item_form %>
+      <% end %>
+    </template>
+  </div>
+
+  <div class="flex justify-end space-x-3">
+    <%= link_to "取消", work_order_quotes_path(@work_order), class: "inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50" %>
+    <%= form.submit class: "inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700" %>
+  </div>
+<% end %>

@@ -1,0 +1,7 @@
+<%= turbo_stream.append :work_orders do %>
+  <%= render 'work_orders/work_order_row', work_order: @work_order %>
+<% end %>
+
+<%= turbo_stream.replace :work_orders_count do %>
+  <%= WorkOrder.count %>
+<% end %>
