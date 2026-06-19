@@ -1,0 +1,36 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+dist/
+build/
+.env
+.venv/
+venv/
+env/
+.Python
+
+# PyCharm / VSCode
+.idea/
+.vscode/
+
+# Database
+*.db
+*.sqlite
+
+# Backend exports
+backend/exports/*
+!backend/exports/.gitkeep
+
+# Alembic migrations (optional if auto-generated)
+backend/alembic/versions/*_*.py
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+.DS_Store
+*.log
+
+# OS
+Thumbs.db
