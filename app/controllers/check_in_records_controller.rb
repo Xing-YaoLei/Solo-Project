@@ -13,22 +13,22 @@ class CheckInRecordsController < ApplicationController
   end
 
   def new
-    @order = Order.find(params[:order_id]) if params[:order_id].present?
-    @check_in_record = CheckInRecord.new
-    @check_in_record.order = @order if @order.present?
+    @order = Order.find(params[:order_id])
+    @check_in_record = CheckInRecord.new(order: @order)
+    @check_in_record.actual_check_in_at = Time.current
     authorize @check_in_record
   end
 
   def create
+    @order = Order.find(params[:order_id])
     @check_in_record = CheckInRecord.new(check_in_record_params)
-    @check_in_record.order = Order.find(params[:order_id]) if params[:order_id].present?
+    @check_in_record.order = @order
     @check_in_record.staff = current_user
     authorize @check_in_record
 
     if @check_in_record.save
       redirect_to @check_in_record.order, notice: "入住记录创建成功。"
     else
-      @order = @check_in_record.order
       render :new, status: :unprocessable_entity
     end
   end

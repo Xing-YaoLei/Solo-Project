@@ -14,21 +14,21 @@ class RedemptionRecordsController < ApplicationController
   end
 
   def new
-    @order = Order.find(params[:order_id]) if params[:order_id].present?
-    @redemption_record = RedemptionRecord.new
-    @redemption_record.order = @order if @order.present?
+    @order = Order.find(params[:order_id])
+    @redemption_record = RedemptionRecord.new(order: @order)
     authorize @redemption_record
   end
 
   def create
+    @order = Order.find(params[:order_id])
     @redemption_record = RedemptionRecord.new(redemption_record_params)
-    @redemption_record.order = Order.find(params[:order_id]) if params[:order_id].present?
+    @redemption_record.order = @order
+    @redemption_record.staff = current_user
     authorize @redemption_record
 
     if @redemption_record.save
       redirect_to @redemption_record.order, notice: "核销记录创建成功。"
     else
-      @order = @redemption_record.order
       render :new, status: :unprocessable_entity
     end
   end

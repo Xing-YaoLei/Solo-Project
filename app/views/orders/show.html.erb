@@ -141,23 +141,25 @@
       </div>
 
       <div class="btn-group" style="flex-wrap: wrap;">
-        <% if @order.pending? %>
+        <% if @order.pending? && policy(@order).confirm? %>
           <%= button_to "确认订单", confirm_order_path(@order), method: :post, class: "btn btn-success" %>
+        <% end %>
+        <% if (@order.pending? || @order.confirmed?) && policy(@order).cancel? %>
           <%= button_to "取消订单", cancel_order_path(@order), method: :post,
               class: "btn btn-danger", data: { confirm: "确定要取消这个订单吗？" } %>
         <% end %>
 
-        <% if @order.confirmed? %>
+        <% if @order.confirmed? && policy(@order).check_in? %>
           <%= button_to "办理入住", check_in_order_path(@order), method: :post, class: "btn btn-primary" %>
-          <%= button_to "取消订单", cancel_order_path(@order), method: :post,
-              class: "btn btn-danger", data: { confirm: "确定要取消这个订单吗？" } %>
         <% end %>
 
-        <% if @order.checked_in? %>
+        <% if @order.checked_in? && policy(@order).complete? %>
           <%= button_to "完成订单", complete_order_path(@order), method: :post, class: "btn btn-success" %>
         <% end %>
 
-        <%= link_to "添加核销码", new_order_redemption_record_path(@order), class: "btn btn-secondary" %>
+        <% if policy(@redemption_records.new(order: @order)).create? %>
+          <%= link_to "添加核销码", new_order_redemption_record_path(@order), class: "btn btn-secondary" %>
+        <% end %>
       </div>
     </div>
 
@@ -270,7 +272,9 @@
     <div class="card">
       <div class="card-header">
         <h2 class="card-title">🎫 核销记录</h2>
-        <%= link_to "添加核销码", new_order_redemption_record_path(@order), class: "btn btn-primary btn-sm" %>
+        <% if policy(RedemptionRecord.new(order: @order)).create? %>
+          <%= link_to "添加核销码", new_order_redemption_record_path(@order), class: "btn btn-primary btn-sm" %>
+        <% end %>
       </div>
 
       <% if @redemption_records.any? %>

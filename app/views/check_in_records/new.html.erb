@@ -1,0 +1,41 @@
+<% content_for :title, "办理入住" %>
+
+<div class="page-header">
+  <h1 class="page-title">🏠 办理入住</h1>
+  <%= link_to "返回订单", order_path(@order), class: "btn btn-secondary" %>
+</div>
+
+<div class="card">
+  <%= form_with model: @check_in_record, url: order_check_in_records_path(@order) do |f| %>
+    <div class="form-group">
+      <label class="form-label">关联订单</label>
+      <div class="detail-value"><%= @order.order_number %> - <%= @order.package.name %></div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <%= f.label :actual_check_in_at, "实际入住时间", class: "form-label" %>
+        <%= f.datetime_local_field :actual_check_in_at, class: "form-input" %>
+      </div>
+      <div class="form-group">
+        <%= f.label :guest_count, "入住人数", class: "form-label" %>
+        <%= f.number_field :guest_count, class: "form-input", min: 1, value: @order.quantity %>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <%= f.label :id_card_number, "身份证号", class: "form-label" %>
+      <%= f.text_field :id_card_number, class: "form-input" %>
+    </div>
+
+    <div class="form-group">
+      <%= f.label :notes, "备注", class: "form-label" %>
+      <%= f.text_area :notes, class: "form-textarea", rows: 3 %>
+    </div>
+
+    <div class="form-actions">
+      <%= f.submit "确认入住", class: "btn btn-primary" %>
+      <%= link_to "取消", order_path(@order), class: "btn btn-secondary" %>
+    </div>
+  <% end %>
+</div>
