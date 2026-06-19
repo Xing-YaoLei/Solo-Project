@@ -1,7 +1,17 @@
 import { NextResponse } from 'next/server';
-import { getMockWorkorderTrend } from '@/lib/mockData';
+import { getWorkorderTrend } from '@/lib/dataService';
 
-export async function GET() {
-  const data = getMockWorkorderTrend();
-  return NextResponse.json(data);
+export async function GET(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const days = Number(searchParams.get('days')) || 30;
+    const data = await getWorkorderTrend(days);
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error('[API workorders/trend] 错误:', error);
+    return NextResponse.json(
+      { error: '获取工单趋势数据失败' },
+      { status: 500 }
+    );
+  }
 }

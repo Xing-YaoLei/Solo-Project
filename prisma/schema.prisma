@@ -35,6 +35,20 @@ enum AnnotationType {
   OTHER
 }
 
+enum TransactionType {
+  CASH
+  CARD
+  INSURANCE
+  OTHER
+}
+
+enum InsuranceStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SETTLED
+}
+
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
@@ -73,6 +87,8 @@ model Workorder {
   user      User     @relation(fields: [userId], references: [id])
   quote     Quote?
   inspections Inspection[]
+  cashierTransactions CashierTransaction[]
+  insuranceClaims InsuranceClaim[]
 }
 
 model Quote {
@@ -143,7 +159,40 @@ model ShareLink {
   allowedRole UserRole
   scope       Json
   expiresAt   DateTime?
+  signature   String?
   createdAt   DateTime @default(now())
 
   creator     User     @relation(fields: [creatorId], references: [id])
+}
+
+model CashierTransaction {
+  id            String          @id @default(uuid())
+  transactionNo String          @unique
+  workorderId   String?
+  amount        Decimal         @default(0)
+  type          TransactionType @default(CARD)
+  payerName     String?
+  vehiclePlate  String?
+  isSettled     Boolean         @default(true)
+  settledAt     DateTime?
+  createdAt     DateTime        @default(now())
+
+  workorder     Workorder?      @relation(fields: [workorderId], references: [id])
+}
+
+model InsuranceClaim {
+  id             String          @id @default(uuid())
+  claimNo        String          @unique
+  workorderId    String?
+  vehiclePlate   String
+  insuranceCompany String
+  claimAmount    Decimal         @default(0)
+  approvedAmount Decimal?
+  status         InsuranceStatus @default(PENDING)
+  materials      Json[]
+  submittedAt    DateTime?
+  settledAt      DateTime?
+  createdAt      DateTime        @default(now())
+
+  workorder      Workorder?      @relation(fields: [workorderId], references: [id])
 }

@@ -19,8 +19,9 @@ function formatTime(iso: string) {
 
 export function TopBar() {
   const { user, dashboardData, isLoading, refreshData, setExportModalOpen, setShareModalOpen } = useDashboardStore();
-  const canExport = hasPermission(user.role, 'dashboard:export');
-  const canShare = hasPermission(user.role, 'dashboard:share');
+  const userRole = user?.role || 'viewer';
+  const canExport = hasPermission(userRole, 'dashboard:export');
+  const canShare = hasPermission(userRole, 'dashboard:share');
 
   return (
     <header className="sticky top-0 z-40 border-b border-industrial-700 bg-industrial-900/95 backdrop-blur">
@@ -80,11 +81,11 @@ export function TopBar() {
               <User className="h-3.5 w-3.5 text-industrial-300" />
             </div>
             <div className="text-xs">
-              <div className="font-medium text-white">{user.name}</div>
+              <div className="font-medium text-white">{user?.name || '未登录'}</div>
             </div>
             <span className="flex items-center gap-1 rounded bg-gradient-to-r from-risk-info/20 to-blue-700/20 px-2 py-0.5 text-[10px] font-semibold text-risk-info">
               <Shield className="h-2.5 w-2.5" />
-              {ROLE_LABELS[user.role]}
+              {ROLE_LABELS[userRole as keyof typeof ROLE_LABELS] || '只读'}
             </span>
           </div>
         </div>

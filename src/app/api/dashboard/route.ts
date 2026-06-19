@@ -1,7 +1,15 @@
 import { NextResponse } from 'next/server';
-import { getMockDashboardData } from '@/lib/mockData';
+import { getDashboardData } from '@/lib/dataService';
 
 export async function GET() {
-  const data = getMockDashboardData();
-  return NextResponse.json(data);
+  try {
+    const data = await getDashboardData();
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error('[API dashboard] 错误:', error);
+    return NextResponse.json(
+      { error: '获取仪表盘数据失败' },
+      { status: 500 }
+    );
+  }
 }

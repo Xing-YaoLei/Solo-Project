@@ -1,7 +1,15 @@
 import { NextResponse } from 'next/server';
-import { getMockInspections } from '@/lib/mockData';
+import { getInspections } from '@/lib/dataService';
 
 export async function GET() {
-  const data = getMockInspections();
-  return NextResponse.json(data);
+  try {
+    const data = await getInspections();
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error('[API inspections] 错误:', error);
+    return NextResponse.json(
+      { error: '获取质检数据失败' },
+      { status: 500 }
+    );
+  }
 }

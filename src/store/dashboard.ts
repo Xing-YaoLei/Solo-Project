@@ -7,17 +7,9 @@ import {
   Inspection,
   User,
 } from '@/types';
-import {
-  MOCK_USER,
-  getMockDashboardData,
-  getMockWorkorderTrend,
-  getMockInventoryData,
-  getMockQuotes,
-  getMockInspections,
-} from '@/lib/mockData';
 
 interface DashboardState {
-  user: User;
+  user: User | null;
   dashboardData: DashboardData | null;
   workorderTrend: WorkorderTrendPoint[];
   inventoryData: InventoryCategoryData[];
@@ -27,16 +19,20 @@ interface DashboardState {
   isExportModalOpen: boolean;
   isShareModalOpen: boolean;
   expandedQuoteId: string | null;
+  shareScope: string[] | null;
+  shareRole: string | null;
 
-  loadAllData: () => Promise<void>;
+  loadAllData: (scope?: string[]) => Promise<void>;
   refreshData: () => Promise<void>;
   toggleQuoteExpand: (id: string) => void;
   setExportModalOpen: (open: boolean) => void;
   setShareModalOpen: (open: boolean) => void;
+  setShareContext: (role: string, scope: string[]) => void;
+  hasPermission: (permission: string) => boolean;
 }
 
 export const useDashboardStore = create<DashboardState>((set, get) => ({
-  user: MOCK_USER,
+  user: null,
   dashboardData: null,
   workorderTrend: [],
   inventoryData: [],
@@ -46,31 +42,66 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
   isExportModalOpen: false,
   isShareModalOpen: false,
   expandedQuoteId: null,
+  shareScope: null,
+  shareRole: null,
 
-  loadAllData: async () => {
+  loadAllData: async (scope) => {
     set({ isLoading: true });
-    await new Promise((r) => setTimeout(r, 600));
-    set({
-      dashboardData: getMockDashboardData(),
-      workorderTrend: getMockWorkorderTrend(),
-      inventoryData: getMockInventoryData(),
-      quotes: getMockQuotes(),
-      inspections: getMockInspections(),
-      isLoading: false,
-    });
+
+    try {
+      const [userRes, dashboardRes, trendRes, inventoryRes, quotesRes, inspectionsRes] =
+        await Promise.all([
+          fetch('/api/auth/me'),
+          fetch('/api/dashboard'),
+          fetch('/api/workorders/trend?days=30'),
+          fetch('/api/inventory'),
+          fetch('/api/quotes'),
+          fetch('/api/inspections'),
+        ]);
+
+      const user = userRes.ok ? await userRes.json() : null;
+      const dashboardData = dashboardRes.ok ? await dashboardRes.json() : null;
+      const workorderTrend = trendRes.ok ? await trendRes.json() : [];
+      const inventoryData = inventoryRes.ok ? await inventoryRes.json() : [];
+      const quotes = quotesRes.ok ? await quotesRes.json() : [];
+      const inspections = inspectionsRes.ok ? await inspectionsRes.json() : [];
+
+      if (scope && scope.length > 0) {
+        const filteredQuotes = scope.includes('quotes:view') ? quotes : [];
+        const filteredInspections = scope.includes('inspection:view') ? inspections : [];
+        const filteredInventory = scope.includes('inventory:view') ? inventoryData : [];
+        const filteredTrend = scope.includes('dashboard:view') ? workorderTrend : [];
+        const filteredDashboard = scope.includes('dashboard:view') ? dashboardData : null;
+
+        set({
+          user,
+          dashboardData: filteredDashboard,
+          workorderTrend: filteredTrend,
+          inventoryData: filteredInventory,
+          quotes: filteredQuotes,
+          inspections: filteredInspections,
+          isLoading: false,
+        });
+      } else {
+        set({
+          user,
+          dashboardData,
+          workorderTrend,
+          inventoryData,
+          quotes,
+          inspections,
+          isLoading: false,
+        });
+      }
+    } catch (error) {
+      console.error('[dashboard store] 加载数据失败:', error);
+      set({ isLoading: false });
+    }
   },
 
   refreshData: async () => {
-    set({ isLoading: true });
-    await new Promise((r) => setTimeout(r, 800));
-    set({
-      dashboardData: getMockDashboardData(),
-      workorderTrend: getMockWorkorderTrend(),
-      inventoryData: getMockInventoryData(),
-      quotes: getMockQuotes(),
-      inspections: getMockInspections(),
-      isLoading: false,
-    });
+    const { shareScope } = get();
+    await get().loadAllData(shareScope || undefined);
   },
 
   toggleQuoteExpand: (id: string) => {
@@ -80,4 +111,17 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
 
   setExportModalOpen: (open: boolean) => set({ isExportModalOpen: open }),
   setShareModalOpen: (open: boolean) => set({ isShareModalOpen: open }),
+
+  setShareContext: (role, scope) => {
+    set({ shareRole: role, shareScope: scope });
+  },
+
+  hasPermission: (permission) => {
+    const { shareScope, user } = get();
+    if (shareScope) {
+      return shareScope.includes(permission);
+    }
+    if (user?.role === 'admin') return true;
+    return false;
+  },
 }));

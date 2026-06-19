@@ -1,37 +1,44 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { Shield, AlertTriangle, Clock, ArrowRight } from 'lucide-react';
 import { ROLE_LABELS } from '@/types';
 import { WarningCards } from '@/components/WarningCards';
 import { WorkorderTrendChart } from '@/components/WorkorderTrendChart';
 import { InventoryPieChart } from '@/components/InventoryPieChart';
+import { QuoteTable } from '@/components/QuoteTable';
+import { InspectionGallery } from '@/components/InspectionGallery';
 import { useDashboardStore } from '@/store/dashboard';
 
 export default function ShareViewPage() {
   const params = useParams();
-  const { loadAllData } = useDashboardStore();
+  const searchParams = useSearchParams();
+  const { loadAllData, setShareContext } = useDashboardStore();
   const [shareInfo, setShareInfo] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    loadAllData();
     const verify = async () => {
       try {
-        const res = await fetch(`/api/share?token=${params.token}`);
+        const sig = searchParams.get('sig') || searchParams.get('signature');
+        const query = new URLSearchParams({ token: params.token as string });
+        if (sig) query.set('signature', sig);
+        const res = await fetch(`/api/share?${query.toString()}`);
         const data = await res.json();
         if (!data.valid) {
           setError(data.error || '无效的分享链接');
         } else {
           setShareInfo(data);
+          setShareContext(data.allowedRole, data.scope);
+          loadAllData(data.scope);
         }
       } catch {
         setError('验证分享链接失败');
       }
     };
     verify();
-  }, [params.token, loadAllData]);
+  }, [params.token, searchParams, loadAllData, setShareContext]);
 
   if (error) {
     return (
@@ -60,6 +67,11 @@ export default function ShareViewPage() {
       </div>
     );
   }
+
+  const canViewDashboard = shareInfo.scope?.includes('dashboard:view');
+  const canViewInventory = shareInfo.scope?.includes('inventory:view');
+  const canViewQuotes = shareInfo.scope?.includes('quotes:view');
+  const canViewInspection = shareInfo.scope?.includes('inspection:view');
 
   return (
     <div className="min-h-screen bg-industrial-900">
@@ -109,11 +121,16 @@ export default function ShareViewPage() {
         </div>
 
         <div className="space-y-6">
-          <WarningCards />
+          {canViewDashboard && <WarningCards />}
+
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <WorkorderTrendChart />
-            <InventoryPieChart />
+            {canViewDashboard && <WorkorderTrendChart />}
+            {canViewInventory && <InventoryPieChart />}
           </div>
+
+          {canViewQuotes && <QuoteTable />}
+
+          {canViewInspection && <InspectionGallery />}
         </div>
       </main>
     </div>
