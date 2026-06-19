@@ -4,7 +4,7 @@ class RedemptionRecordPolicy < ApplicationPolicy
   end
 
   def show?
-    true
+    user.manager? || record.staff_id == user.id || record.order&.staff_id == user.id
   end
 
   def create?
@@ -16,7 +16,7 @@ class RedemptionRecordPolicy < ApplicationPolicy
   end
 
   def update?
-    true
+    user.manager? || record.staff_id == user.id || record.order&.staff_id == user.id
   end
 
   def edit?
@@ -28,12 +28,16 @@ class RedemptionRecordPolicy < ApplicationPolicy
   end
 
   def redeem?
-    true
+    user.manager? || record.order&.staff_id == user.id
   end
 
   class Scope < Scope
     def resolve
-      scope.all
+      if user.manager?
+        scope.all
+      else
+        scope.joins(:order).where("redemption_records.staff_id = ? OR orders.staff_id = ?", user.id, user.id)
+      end
     end
   end
 end

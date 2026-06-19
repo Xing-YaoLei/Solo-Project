@@ -3,7 +3,7 @@ class RedemptionRecordsController < ApplicationController
 
   def index
     authorize RedemptionRecord
-    scope = RedemptionRecord.all.order(created_at: :desc)
+    scope = policy_scope(RedemptionRecord).order(created_at: :desc)
     scope = scope.where(status: params[:status]) if params[:status].present?
     scope = scope.where(order_id: params[:order_id]) if params[:order_id].present?
     @redemption_records = scope.page(params[:page]).per(20)
@@ -14,18 +14,21 @@ class RedemptionRecordsController < ApplicationController
   end
 
   def new
+    @order = Order.find(params[:order_id]) if params[:order_id].present?
     @redemption_record = RedemptionRecord.new
-    @redemption_record.order = Order.find(params[:order_id]) if params[:order_id].present?
+    @redemption_record.order = @order if @order.present?
     authorize @redemption_record
   end
 
   def create
     @redemption_record = RedemptionRecord.new(redemption_record_params)
+    @redemption_record.order = Order.find(params[:order_id]) if params[:order_id].present?
     authorize @redemption_record
 
     if @redemption_record.save
       redirect_to @redemption_record.order, notice: "核销记录创建成功。"
     else
+      @order = @redemption_record.order
       render :new, status: :unprocessable_entity
     end
   end

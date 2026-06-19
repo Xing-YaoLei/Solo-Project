@@ -32,10 +32,51 @@
 
   <div class="card">
     <div class="card-header">
-      <h2 class="card-title">📈 近30天订单趋势</h2>
+      <h2 class="card-title">📈 近30天套餐转化率趋势</h2>
+    </div>
+    <div style="height: 350px;">
+      <%= line_chart @package_conversion_trend,
+                     colors: ["#667eea", "#f093fb", "#43e97b"],
+                     library: {
+                       maintainAspectRatio: false,
+                       scales: {
+                         y: {
+                           beginAtZero: true,
+                           max: 100,
+                           ticks: {
+                             callback: "function(value) { return value + '%'; }"
+                           }
+                         }
+                       },
+                       plugins: {
+                         legend: {
+                           position: "bottom"
+                         }
+                       }
+                     } %>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">📊 套餐转化率排名</h2>
     </div>
     <div style="height: 300px;">
-      <%= line_chart @conversion_data, colors: ["#667eea"], library: { maintainAspectRatio: false } %>
+      <%= bar_chart @package_conversion_ranking,
+                    colors: ["#667eea"],
+                    library: {
+                      maintainAspectRatio: false,
+                      indexAxis: "y",
+                      scales: {
+                        x: {
+                          beginAtZero: true,
+                          max: 100,
+                          ticks: {
+                            callback: "function(value) { return value + '%'; }"
+                          }
+                        }
+                      }
+                    } %>
     </div>
   </div>
 

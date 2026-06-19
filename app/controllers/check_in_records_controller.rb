@@ -3,7 +3,7 @@ class CheckInRecordsController < ApplicationController
 
   def index
     authorize CheckInRecord
-    scope = CheckInRecord.all.order(actual_check_in_at: :desc)
+    scope = policy_scope(CheckInRecord).order(actual_check_in_at: :desc)
     scope = scope.where(order_id: params[:order_id]) if params[:order_id].present?
     @check_in_records = scope.page(params[:page]).per(20)
   end
@@ -13,19 +13,22 @@ class CheckInRecordsController < ApplicationController
   end
 
   def new
+    @order = Order.find(params[:order_id]) if params[:order_id].present?
     @check_in_record = CheckInRecord.new
-    @check_in_record.order = Order.find(params[:order_id]) if params[:order_id].present?
+    @check_in_record.order = @order if @order.present?
     authorize @check_in_record
   end
 
   def create
     @check_in_record = CheckInRecord.new(check_in_record_params)
+    @check_in_record.order = Order.find(params[:order_id]) if params[:order_id].present?
     @check_in_record.staff = current_user
     authorize @check_in_record
 
     if @check_in_record.save
       redirect_to @check_in_record.order, notice: "入住记录创建成功。"
     else
+      @order = @check_in_record.order
       render :new, status: :unprocessable_entity
     end
   end

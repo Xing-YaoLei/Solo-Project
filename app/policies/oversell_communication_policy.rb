@@ -1,6 +1,6 @@
 class OversellCommunicationPolicy < ApplicationPolicy
   def create?
-    true
+    user.manager? || record&.order&.staff_id == user.id
   end
 
   def new?

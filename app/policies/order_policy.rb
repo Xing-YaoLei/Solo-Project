@@ -4,7 +4,7 @@ class OrderPolicy < ApplicationPolicy
   end
 
   def show?
-    true
+    user.manager? || record.staff_id == user.id
   end
 
   def create?
@@ -16,7 +16,7 @@ class OrderPolicy < ApplicationPolicy
   end
 
   def update?
-    true
+    user.manager? || record.staff_id == user.id
   end
 
   def edit?
@@ -28,19 +28,19 @@ class OrderPolicy < ApplicationPolicy
   end
 
   def confirm?
-    true
+    user.manager? || record.staff_id == user.id
   end
 
   def cancel?
-    true
+    user.manager? || record.staff_id == user.id
   end
 
   def check_in?
-    true
+    user.manager? || record.staff_id == user.id
   end
 
   def complete?
-    true
+    user.manager? || record.staff_id == user.id
   end
 
   def oversold_index?
