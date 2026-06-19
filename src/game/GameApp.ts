@@ -17,6 +17,14 @@ export function createGame(): Phaser.Game {
       width: GAME_CONFIG.WIDTH,
       height: GAME_CONFIG.HEIGHT
     },
+    physics: {
+      default: 'matter',
+      matter: {
+        gravity: { x: 0, y: 1 },
+        debug: false,
+        enableSleeping: true
+      }
+    },
     scene: [BootScene, MenuScene, GameScene, TutorialScene, LeaderboardScene],
     render: {
       antialias: true,

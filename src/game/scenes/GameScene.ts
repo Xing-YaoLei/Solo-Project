@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import Matter from 'matter-js';
 import { GAME_CONFIG, TUTORIAL_STEPS } from '@/config/constants';
 import { InputManager } from '@/game/systems/InputManager';
 import { useGameStore } from '@/game/store/useGameStore';
@@ -14,6 +15,11 @@ interface WorkOrderItemView {
   bg: Phaser.GameObjects.Rectangle;
   checkMark: Phaser.GameObjects.Text;
   checkboxBg: Phaser.GameObjects.Rectangle;
+}
+
+interface PhysicsTool {
+  body: Phaser.Physics.Matter.Image;
+  type: string;
 }
 
 export class GameScene extends Phaser.Scene {
@@ -50,6 +56,10 @@ export class GameScene extends Phaser.Scene {
   private workOrderViews: Map<string, WorkOrderItemView> = new Map();
   private diagnosisItemsContainer: Phaser.GameObjects.Container | null = null;
 
+  private physicsTools: PhysicsTool[] = [];
+  private physicsLayer: Phaser.GameObjects.Container | null = null;
+  private isDragging: boolean = false;
+
   constructor() {
     super('Game');
   }
@@ -67,12 +77,13 @@ export class GameScene extends Phaser.Scene {
 
     this.restartKey = this.input.keyboard!.addKey('R');
 
+    this.initPhysics();
     this.createTopBar();
     this.createVehicleCard();
     this.createDiagnosisPanel();
     this.createWorkOrderList();
     this.createQuotePanel();
-    this.createFooterDecorations();
+    this.createPhysicsWorkshop();
     this.loadNewVehicle();
     this.startTimer();
     this.setupKeyboardControls();
@@ -81,6 +92,130 @@ export class GameScene extends Phaser.Scene {
     if (this.isFirstPlay) {
       this.showTutorialStep(0);
     }
+  }
+
+  private initPhysics(): void {
+    this.matter.world.setBounds(0, 0, this.scale.width, this.scale.height);
+    this.matter.world.setGravity(0, 0.8);
+    this.matter.world.engine.positionIterations = 6;
+    this.matter.world.engine.velocityIterations = 8;
+  }
+
+  private createPhysicsWorkshop(): void {
+    const { width, height } = this.scale;
+
+    this.physicsLayer = this.add.container(0, 0);
+    this.physicsLayer.setDepth(5);
+
+    const floorY = height - 50;
+    this.matter.add.rectangle(width / 2, floorY + 20, width, 40, {
+      isStatic: true,
+      friction: 0.8,
+      restitution: 0.1,
+      label: 'floor'
+    });
+
+    const leftWall = this.matter.add.rectangle(-20, height / 2, 40, height, {
+      isStatic: true,
+      friction: 0.5,
+      label: 'leftWall'
+    });
+    const rightWall = this.matter.add.rectangle(width + 20, height / 2, 40, height, {
+      isStatic: true,
+      friction: 0.5,
+      label: 'rightWall'
+    });
+
+    const toolDefs = [
+      { emoji: '🔧', type: 'wrench', size: 40, x: 60, y: 120 },
+      { emoji: '🔩', type: 'bolt', size: 30, x: 120, y: 80 },
+      { emoji: '⚙️', type: 'gear', size: 45, x: 400, y: 150 },
+      { emoji: '🛠️', type: 'hammer', size: 42, x: 180, y: 100 },
+      { emoji: '🔨', type: 'mallet', size: 38, x: 300, y: 90 },
+      { emoji: '🧰', type: 'toolbox', size: 50, x: 520, y: 130 },
+      { emoji: '📦', type: 'box', size: 44, x: 700, y: 110 },
+      { emoji: '⛽', type: 'oil', size: 36, x: 850, y: 140 },
+      { emoji: '🔋', type: 'battery', size: 38, x: 1000, y: 100 },
+      { emoji: '💡', type: 'bulb', size: 32, x: 1100, y: 130 },
+      { emoji: '🔑', type: 'key', size: 28, x: 250, y: 70 },
+      { emoji: '🧽', type: 'sponge', size: 34, x: 600, y: 85 }
+    ];
+
+    toolDefs.forEach((def, index) => {
+      this.createPhysicsTool(def.emoji, def.type, def.size, def.x, def.y, index);
+    });
+
+    this.add.text(80, height - 80, '👆 拖拽车间里的工具！', {
+      fontFamily: 'Noto Sans SC, sans-serif',
+      fontSize: '13px',
+      color: '#94A3B8'
+    }).setOrigin(0, 0.5).setAlpha(0.8);
+
+    this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
+      if (this.isDragging && this.matter.world) {
+        const bodies = this.matter.intersectPoint(pointer.x, pointer.y);
+        if (bodies.length > 0) {
+          const body = bodies[0];
+          const matterBody = (body as any).body as Matter.Body;
+          if (matterBody.label && matterBody.label.startsWith('tool_')) {
+            Matter.Body.setPosition(matterBody, { x: pointer.x, y: pointer.y });
+            matterBody.velocity.x = 0;
+            matterBody.velocity.y = 0;
+          }
+        }
+      }
+    });
+
+    this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      if (pointer.y < 180 || pointer.y > height - 100) {
+        const bodies = this.matter.intersectPoint(pointer.x, pointer.y);
+        const toolBody = bodies.find(b => {
+          const mb = (b as any).body as Matter.Body;
+          return mb.label && mb.label.startsWith('tool_');
+        });
+        if (toolBody) {
+          this.isDragging = true;
+          const mb = (toolBody as any).body as Matter.Body;
+          Matter.Body.setVelocity(mb, { x: 0, y: 0 });
+          Matter.Body.setStatic(mb, false);
+        }
+      }
+    });
+
+    this.input.on('pointerup', () => {
+      this.isDragging = false;
+    });
+
+    this.input.on('pointerupoutside', () => {
+      this.isDragging = false;
+    });
+  }
+
+  private createPhysicsTool(emoji: string, type: string, size: number, x: number, y: number, index: number): void {
+    const tool = this.matter.add.image(x, y, '__EMPTY', undefined, {
+      shape: { type: 'circle', radius: size / 2 },
+      friction: 0.4,
+      restitution: 0.3,
+      density: 0.001,
+      label: `tool_${type}_${index}`
+    });
+
+    tool.setVisible(false);
+
+    const label = this.add.text(x, y, emoji, {
+      fontSize: `${size}px`
+    }).setOrigin(0.5);
+
+    label.setDepth(10);
+
+    this.physicsTools.push({ body: tool, type });
+
+    this.matter.world.on('afterupdate', () => {
+      if (tool.body) {
+        label.setPosition(tool.x, tool.y);
+        label.setRotation(tool.rotation);
+      }
+    });
   }
 
   private createTopBar(): void {
@@ -120,7 +255,7 @@ export class GameScene extends Phaser.Scene {
 
   private createVehicleCard(): void {
     const cx = 240;
-    const cy = 190;
+    const cy = 280;
     const cardW = 420;
     const cardH = 200;
 
@@ -193,7 +328,7 @@ export class GameScene extends Phaser.Scene {
 
   private createDiagnosisPanel(): void {
     const cx = 240;
-    const cy = 400;
+    const cy = 490;
     const cardW = 420;
     const cardH = 180;
 
@@ -213,9 +348,9 @@ export class GameScene extends Phaser.Scene {
   private createWorkOrderList(): void {
     const { width } = this.scale;
     const x = 480;
-    const y = 90;
+    const y = 180;
     const cardW = width - 510;
-    const cardH = 400;
+    const cardH = 310;
 
     this.add.rectangle(x + cardW / 2, y + cardH / 2, cardW, cardH, GAME_CONFIG.COLORS.BG_LIGHT, 1)
       .setStrokeStyle(1, GAME_CONFIG.COLORS.METAL, 0.4);
@@ -296,20 +431,6 @@ export class GameScene extends Phaser.Scene {
     submitBg.on('pointerdown', () => this.submitQuote());
   }
 
-  private createFooterDecorations(): void {
-    const { width, height } = this.scale;
-    const floorY = height - 50;
-
-    this.add.rectangle(width / 2, floorY + 25, width, 50, GAME_CONFIG.COLORS.METAL_DARK, 0.3);
-
-    const tools = ['🔩', '🔧', '⚙️', '🛠️', '📦', '🧰'];
-    for (let i = 0; i < 6; i++) {
-      const x = 80 + i * (width - 160) / 5;
-      this.add.text(x, floorY - 5, tools[i], { fontSize: '24px' })
-        .setOrigin(0.5).setAlpha(0.6);
-    }
-  }
-
   private loadNewVehicle(): void {
     this.currentVehicle = getRandomVehicle();
     this.repairItems = getRepairItemsByFaultCodes(this.currentVehicle.faultCodes);
@@ -344,7 +465,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     const baseX = 50;
-    const baseY = 360;
+    const baseY = 420;
 
     this.diagnosisResults.forEach((diag, index) => {
       const y = baseY + index * 40;
@@ -391,10 +512,10 @@ export class GameScene extends Phaser.Scene {
   private updateWorkOrderList(): void {
     const { width } = this.scale;
     const x = 480;
-    const y = 90;
+    const y = 180;
     const cardW = width - 510;
     const itemHeight = 55;
-    const maxVisible = 6;
+    const maxVisible = 5;
 
     this.workOrderViews.forEach(view => {
       view.container.destroy();
@@ -485,6 +606,7 @@ export class GameScene extends Phaser.Scene {
 
   private toggleRepairItem(itemId: string): void {
     if (this.resultModal) return;
+    if (this.tutorialOverlay) return;
 
     if (this.selectedItems.has(itemId)) {
       this.selectedItems.delete(itemId);
@@ -585,7 +707,7 @@ export class GameScene extends Phaser.Scene {
       if (this.resultModal) {
         this.hideResultModal();
       } else if (this.tutorialOverlay) {
-        this.nextTutorialStep();
+        this.hideTutorial();
       }
     });
 
@@ -597,6 +719,7 @@ export class GameScene extends Phaser.Scene {
 
     for (let i = 1; i <= 8; i++) {
       this.inputManager.onKey(i.toString(), () => {
+        if (this.tutorialOverlay) return;
         const item = this.repairItems[i - 1];
         if (item) this.toggleRepairItem(item.id);
       });
@@ -611,7 +734,7 @@ export class GameScene extends Phaser.Scene {
 
     this.inputManager.onKeys(['ArrowDown', 's', 'S'], () => {
       if (this.resultModal || this.tutorialOverlay) return;
-      const maxIdx = Math.min(this.repairItems.length, 6) - 1;
+      const maxIdx = Math.min(this.repairItems.length, 5) - 1;
       this.selectedWorkOrderIndex = Math.min(maxIdx, this.selectedWorkOrderIndex + 1);
       this.updateWorkOrderListVisuals();
       this.highlightWorkOrderSelection();
@@ -628,13 +751,22 @@ export class GameScene extends Phaser.Scene {
 
   private setupSwipeControls(): void {
     this.inputManager.setSwipeHandlers({
-      left: () => this.scene.start('Menu'),
-      right: () => this.restartLevel()
+      left: () => {
+        if (!this.tutorialOverlay && !this.resultModal) {
+          this.scene.start('Menu');
+        }
+      },
+      right: () => {
+        if (!this.tutorialOverlay && !this.resultModal) {
+          this.restartLevel();
+        }
+      }
     });
   }
 
   private submitQuote(): void {
     if (this.resultModal) return;
+    if (this.tutorialOverlay) return;
     if (this.selectedItems.size === 0) {
       this.flashWarning('请至少选择一个维修项目！');
       return;
@@ -660,9 +792,38 @@ export class GameScene extends Phaser.Scene {
     });
 
     this.showResultModal(result);
+    this.spawnCelebrationParticles(result.success);
 
     if (!result.isRework && !result.isComplaint && this.isFirstPlay) {
       setTutorialComplete(true);
+    }
+  }
+
+  private spawnCelebrationParticles(success: boolean): void {
+    const { width, height } = this.scale;
+    const emojis = success ? ['🎉', '⭐', '✨', '🎊', '💫'] : ['💥', '⚠️', '❌'];
+
+    for (let i = 0; i < 20; i++) {
+      const emoji = emojis[Phaser.Math.Between(0, emojis.length - 1)];
+      const x = Phaser.Math.Between(100, width - 100);
+      const y = Phaser.Math.Between(100, height - 200);
+
+      const particle = this.add.text(x, y, emoji, {
+        fontSize: `${Phaser.Math.Between(20, 40)}px`
+      }).setOrigin(0.5).setAlpha(0);
+
+      this.tweens.add({
+        targets: particle,
+        alpha: { from: 0, to: 1, duration: 200 },
+        y: { from: y + 50, to: y - 100, duration: 800 },
+        scaleX: { from: 0.5, to: 1.5, duration: 600 },
+        scaleY: { from: 0.5, to: 1.5, duration: 600 },
+        hold: 200,
+        alphaEnd: 0,
+        delay: i * 30,
+        ease: 'Back.easeOut',
+        onComplete: () => particle.destroy()
+      });
     }
   }
 
@@ -692,8 +853,10 @@ export class GameScene extends Phaser.Scene {
     const { width, height } = this.scale;
 
     this.resultModal = this.add.container(width / 2, height / 2);
+    this.resultModal.setDepth(100);
 
     const mask = this.add.rectangle(0, 0, width * 3, height * 3, 0x000000, 0.7);
+    mask.setInteractive();
 
     const modalW = 560;
     const modalH = 520;
@@ -779,7 +942,7 @@ export class GameScene extends Phaser.Scene {
       fontSize: '18px',
       fontStyle: 'bold',
       color: '#FFFFFF'
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
 
     const nextBtnBg = this.add.rectangle(modalW / 2 - 60 - btnW / 2, btnY + btnH / 2, btnW, btnH, 0xFFFFFF, 1);
 
@@ -790,30 +953,15 @@ export class GameScene extends Phaser.Scene {
       fontSize: '18px',
       fontStyle: 'bold',
       color: nextTextColor
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
 
     this.resultModal.add([
       mask, modalBg, resultIcon, statusText, starsText, scoreText, messageText,
       retryBtnBg, retryText, nextBtnBg, nextText
     ]);
 
-    retryBtnBg.setInteractive({ useHandCursor: true });
-    retryBtnBg.on('pointerdown', () => this.restartLevel());
-    retryText.setInteractive({ useHandCursor: true });
     retryText.on('pointerdown', () => this.restartLevel());
 
-    nextBtnBg.setInteractive({ useHandCursor: true });
-    nextBtnBg.on('pointerdown', () => {
-      if (result.success) {
-        this.hideResultModal();
-        this.loadNewVehicle();
-        this.timerText.setColor('#E85D04');
-        this.startTimer();
-      } else {
-        this.scene.start('Menu');
-      }
-    });
-    nextText.setInteractive({ useHandCursor: true });
     nextText.on('pointerdown', () => {
       if (result.success) {
         this.hideResultModal();
@@ -871,8 +1019,11 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.tutorialOverlay = this.add.container(0, 0);
+    this.tutorialOverlay.setDepth(200);
 
-    this.add.rectangle(width / 2, height / 2, width * 2, height * 2, 0x000000, 0.75);
+    const mask = this.add.rectangle(width / 2, height / 2, width * 2, height * 2, 0x000000, 0.75);
+    mask.setInteractive();
+    this.tutorialOverlay.add(mask);
 
     const tipW = 480;
     const tipH = 180;
@@ -881,28 +1032,32 @@ export class GameScene extends Phaser.Scene {
 
     const tipBg = this.add.rectangle(tipX, tipY, tipW, tipH, GAME_CONFIG.COLORS.PRIMARY_DARK, 0.98)
       .setStrokeStyle(3, GAME_CONFIG.COLORS.ACCENT, 0.8);
+    this.tutorialOverlay.add(tipBg);
 
-    this.add.text(tipX - tipW / 2 + 24, tipY - tipH / 2 + 20,
+    const stepLabel = this.add.text(tipX - tipW / 2 + 24, tipY - tipH / 2 + 20,
       `步骤 ${step + 1} / ${TUTORIAL_STEPS.length}`, {
         fontFamily: 'Orbitron, sans-serif',
         fontSize: '13px',
         fontStyle: 'bold',
         color: '#E85D04'
       });
+    this.tutorialOverlay.add(stepLabel);
 
-    this.add.text(tipX - tipW / 2 + 24, tipY - tipH / 2 + 48, stepData.title, {
+    const title = this.add.text(tipX - tipW / 2 + 24, tipY - tipH / 2 + 48, stepData.title, {
       fontFamily: 'Noto Sans SC, sans-serif',
       fontSize: '22px',
       fontStyle: 'bold',
       color: '#F1F5F9'
     });
+    this.tutorialOverlay.add(title);
 
-    this.add.text(tipX - tipW / 2 + 24, tipY - tipH / 2 + 85, stepData.desc, {
+    const desc = this.add.text(tipX - tipW / 2 + 24, tipY - tipH / 2 + 85, stepData.desc, {
       fontFamily: 'Noto Sans SC, sans-serif',
       fontSize: '15px',
       color: '#94A3B8',
       wordWrap: { width: tipW - 48 }
     });
+    this.tutorialOverlay.add(desc);
 
     const skipBtn = this.add.text(tipX - tipW / 2 + 24, tipY + tipH / 2 - 35, '跳过引导 [Esc]', {
       fontFamily: 'Noto Sans SC, sans-serif',
@@ -910,13 +1065,15 @@ export class GameScene extends Phaser.Scene {
       color: '#6B7280'
     }).setInteractive({ useHandCursor: true });
     skipBtn.on('pointerdown', () => this.hideTutorial());
+    this.tutorialOverlay.add(skipBtn);
 
     const nextBtnW = 140;
     const nextBtnH = 44;
     const nextBtnX = tipX + tipW / 2 - nextBtnW / 2 - 24;
     const nextBtnY = tipY + tipH / 2 - nextBtnH / 2 - 18;
 
-    this.add.rectangle(nextBtnX, nextBtnY, nextBtnW, nextBtnH, GAME_CONFIG.COLORS.ACCENT, 1);
+    const nextBtnBg = this.add.rectangle(nextBtnX, nextBtnY, nextBtnW, nextBtnH, GAME_CONFIG.COLORS.ACCENT, 1);
+    this.tutorialOverlay.add(nextBtnBg);
 
     const nextLabel = step === TUTORIAL_STEPS.length - 1 ? '开始游戏 ✔' : '下一步 →';
     const nextBtn = this.add.text(nextBtnX, nextBtnY, nextLabel, {
@@ -926,6 +1083,7 @@ export class GameScene extends Phaser.Scene {
       color: '#FFFFFF'
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     nextBtn.on('pointerdown', () => this.nextTutorialStep());
+    this.tutorialOverlay.add(nextBtn);
 
     this.tutorialOverlay.setAlpha(0);
     this.tweens.add({
@@ -968,5 +1126,24 @@ export class GameScene extends Phaser.Scene {
     this.loadNewVehicle();
     this.timerText.setColor('#E85D04');
     this.startTimer();
+    this.resetPhysicsTools();
+  }
+
+  private resetPhysicsTools(): void {
+    const toolDefs = [
+      { x: 60 }, { x: 120 }, { x: 400 }, { x: 180 }, { x: 300 },
+      { x: 520 }, { x: 700 }, { x: 850 }, { x: 1000 }, { x: 1100 },
+      { x: 250 }, { x: 600 }
+    ];
+
+    this.physicsTools.forEach((tool, index) => {
+      if (tool.body && (tool.body as any).body) {
+        const mb = (tool.body as any).body as Matter.Body;
+        const def = toolDefs[index] || { x: 100 };
+        Matter.Body.setPosition(mb, { x: def.x, y: 100 + Math.random() * 50 });
+        Matter.Body.setVelocity(mb, { x: 0, y: 0 });
+        Matter.Body.setAngle(mb, 0);
+      }
+    });
   }
 }
