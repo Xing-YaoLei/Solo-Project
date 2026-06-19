@@ -1,4 +1,5 @@
-from typing import Optional, List, Dict, Any
+import logging
+from typing import Optional, List, Dict, Any, Tuple
 from datetime import date, datetime
 import polars as pl
 from src.data_layer.duckdb_warehouse import DuckDBWarehouse
@@ -6,38 +7,137 @@ from src.data_layer.minio_client import MinioClient
 from src.data_layer.polars_processor import PolarsProcessor
 from src.utils.config import AppConfig
 
+logger = logging.getLogger(__name__)
+
+TABLE_PRIMARY_KEYS: Dict[str, List[str]] = {
+    "ota_orders": ["order_id"],
+    "door_lock_records": ["record_id"],
+    "payment_transactions": ["transaction_id"],
+    "package_inventory": ["package_id", "date"],
+    "pricing_rules": ["rule_id"],
+    "oversell_records": ["oversell_id"],
+    "conversion_rate_versions": ["version_id"],
+    "analysis_notes": ["note_id"],
+}
+
+
+class DualWriteResult:
+    def __init__(self, table_name: str, row_count: int):
+        self.table_name = table_name
+        self.row_count = row_count
+        self.duckdb_ok: bool = True
+        self.duckdb_error: Optional[str] = None
+        self.minio_ok: Optional[bool] = None
+        self.minio_error: Optional[str] = None
+        self.minio_object_name: Optional[str] = None
+
+    @property
+    def duckdb_only(self) -> bool:
+        return self.duckdb_ok and (self.minio_ok is False or self.minio_ok is None)
+
+    def summary(self) -> str:
+        parts = [f"[{self.table_name}] {self.row_count}行"]
+        if self.duckdb_ok:
+            parts.append("DuckDB:OK")
+        else:
+            parts.append(f"DuckDB:FAIL({self.duckdb_error})")
+        if self.minio_ok is True:
+            parts.append(f"MinIO:OK({self.minio_object_name})")
+        elif self.minio_ok is False:
+            parts.append(f"MinIO:FAIL({self.minio_error})")
+        else:
+            parts.append("MinIO:SKIP")
+        return " | ".join(parts)
+
+    def __repr__(self) -> str:
+        return self.summary()
+
 
 class DataRepository:
     def __init__(self, config: AppConfig, use_minio: bool = False):
         self.config = config
         self.warehouse = DuckDBWarehouse(config.duckdb)
         self.use_minio = use_minio
+        self.minio_init_error: Optional[str] = None
         if use_minio:
             try:
                 self.minio = MinioClient(config.minio)
-            except Exception:
+                logger.info(f"MinIO 已连接: endpoint={config.minio.endpoint}, bucket={config.minio.bucket}")
+            except Exception as e:
                 self.use_minio = False
+                self.minio_init_error = str(e)
+                logger.error(f"MinIO 连接失败，已降级为仅 DuckDB: {e}")
         self.processor = PolarsProcessor()
 
-    def _dual_write(self, table_name: str, df: pl.DataFrame, pk_cols: Optional[List[str]] = None) -> None:
-        self.warehouse.insert_dataframe(table_name, df)
-        if self.use_minio:
-            try:
-                ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-                object_name = f"{table_name}/{table_name}_{ts}.parquet"
-                self.minio.upload_dataframe(df, object_name, format="parquet")
-            except Exception:
-                pass
+    def _dual_write(self, table_name: str, df: pl.DataFrame, pk_cols: Optional[List[str]] = None) -> DualWriteResult:
+        result = DualWriteResult(table_name, len(df))
 
-    def _dual_upsert(self, table_name: str, df: pl.DataFrame, conflict_columns: List[str]) -> None:
-        self.warehouse.upsert_dataframe(table_name, df, conflict_columns)
-        if self.use_minio:
-            try:
-                ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-                object_name = f"{table_name}/{table_name}_{ts}.parquet"
-                self.minio.upload_dataframe(df, object_name, format="parquet")
-            except Exception:
-                pass
+        try:
+            self.warehouse.insert_dataframe(table_name, df)
+        except Exception as e:
+            result.duckdb_ok = False
+            result.duckdb_error = str(e)
+            logger.error(f"DuckDB 写入失败 [{table_name}]: {e}")
+            raise
+
+        if not self.use_minio:
+            return result
+
+        try:
+            ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+            object_name = f"{table_name}/{table_name}_{ts}.parquet"
+            self.minio.upload_dataframe(df, object_name, format="parquet")
+            result.minio_ok = True
+            result.minio_object_name = object_name
+            logger.info(f"MinIO 写入成功 [{table_name}]: {object_name} ({len(df)} 行)")
+        except Exception as e:
+            result.minio_ok = False
+            result.minio_error = str(e)
+            logger.error(
+                f"MinIO 写入失败 [{table_name}]: {e} "
+                f"—— 数据已保留在 DuckDB，可稍后通过 sync_to_minio 补发"
+            )
+            raise RuntimeError(
+                f"MinIO 写入失败 [{table_name}]: {e}. "
+                f"DuckDB 已完成写入 ({len(df)} 行)，但对象未保存。"
+            ) from e
+
+        return result
+
+    def _dual_upsert(self, table_name: str, df: pl.DataFrame, conflict_columns: List[str]) -> DualWriteResult:
+        result = DualWriteResult(table_name, len(df))
+
+        try:
+            self.warehouse.upsert_dataframe(table_name, df, conflict_columns)
+        except Exception as e:
+            result.duckdb_ok = False
+            result.duckdb_error = str(e)
+            logger.error(f"DuckDB upsert 失败 [{table_name}]: {e}")
+            raise
+
+        if not self.use_minio:
+            return result
+
+        try:
+            ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+            object_name = f"{table_name}/{table_name}_{ts}.parquet"
+            self.minio.upload_dataframe(df, object_name, format="parquet")
+            result.minio_ok = True
+            result.minio_object_name = object_name
+            logger.info(f"MinIO 写入成功 [{table_name} upsert]: {object_name} ({len(df)} 行)")
+        except Exception as e:
+            result.minio_ok = False
+            result.minio_error = str(e)
+            logger.error(
+                f"MinIO 写入失败 [{table_name} upsert]: {e} "
+                f"—— 数据已保留在 DuckDB，可稍后通过 sync_to_minio 补发"
+            )
+            raise RuntimeError(
+                f"MinIO 写入失败 [{table_name} upsert]: {e}. "
+                f"DuckDB 已完成 upsert ({len(df)} 行)，但对象未保存。"
+            ) from e
+
+        return result
 
     def get_ota_orders(
         self,
@@ -300,51 +400,149 @@ class DataRepository:
         self._dual_write("conversion_rate_versions", df)
         return version_id
 
-    def save_ota_orders_batch(self, df: pl.DataFrame) -> None:
-        self._dual_write("ota_orders", df)
+    def save_ota_orders_batch(self, df: pl.DataFrame) -> DualWriteResult:
+        return self._dual_write("ota_orders", df)
 
-    def save_door_lock_records_batch(self, df: pl.DataFrame) -> None:
-        self._dual_write("door_lock_records", df)
+    def save_door_lock_records_batch(self, df: pl.DataFrame) -> DualWriteResult:
+        return self._dual_write("door_lock_records", df)
 
-    def save_payment_transactions_batch(self, df: pl.DataFrame) -> None:
-        self._dual_write("payment_transactions", df)
+    def save_payment_transactions_batch(self, df: pl.DataFrame) -> DualWriteResult:
+        return self._dual_write("payment_transactions", df)
 
-    def save_package_inventory_batch(self, df: pl.DataFrame) -> None:
-        self._dual_upsert("package_inventory", df, ["package_id", "date"])
+    def save_package_inventory_batch(self, df: pl.DataFrame) -> DualWriteResult:
+        return self._dual_upsert("package_inventory", df, ["package_id", "date"])
 
-    def save_pricing_rules_batch(self, df: pl.DataFrame) -> None:
-        self._dual_write("pricing_rules", df)
+    def save_pricing_rules_batch(self, df: pl.DataFrame) -> DualWriteResult:
+        return self._dual_write("pricing_rules", df)
 
-    def save_analysis_notes_batch(self, df: pl.DataFrame) -> None:
-        self._dual_write("analysis_notes", df)
+    def save_analysis_notes_batch(self, df: pl.DataFrame) -> DualWriteResult:
+        return self._dual_write("analysis_notes", df)
 
-    def save_oversell_records_batch(self, df: pl.DataFrame) -> None:
-        self._dual_write("oversell_records", df)
+    def save_oversell_records_batch(self, df: pl.DataFrame) -> DualWriteResult:
+        return self._dual_write("oversell_records", df)
 
-    def save_conversion_rate_versions_batch(self, df: pl.DataFrame) -> None:
-        self._dual_write("conversion_rate_versions", df)
+    def save_conversion_rate_versions_batch(self, df: pl.DataFrame) -> DualWriteResult:
+        return self._dual_write("conversion_rate_versions", df)
 
-    def sync_from_minio(self, object_prefix: str) -> None:
+    def sync_from_minio(
+        self,
+        table_names: Optional[List[str]] = None,
+        object_prefix: Optional[str] = None,
+    ) -> Dict[str, Dict[str, Any]]:
         if not self.use_minio:
-            raise RuntimeError("MinIO client not initialized")
+            raise RuntimeError(
+                "MinIO 客户端未初始化。" +
+                (f" 初始化错误: {self.minio_init_error}" if self.minio_init_error else "")
+            )
 
-        objects = self.minio.list_objects(prefix=object_prefix)
-        for obj_name in objects:
-            if obj_name.endswith(".parquet"):
-                df = self.minio.download_dataframe(obj_name, format="parquet")
-                table_name = obj_name.split("/")[-1].rsplit("_", 1)[0]
-                self.warehouse.upsert_dataframe(table_name, df, ["package_id", "date"])
-            elif obj_name.endswith(".csv"):
-                df = self.minio.download_dataframe(obj_name, format="csv")
-                table_name = obj_name.split("/")[-1].replace(".csv", "")
-                self.warehouse.upsert_dataframe(table_name, df, ["order_id"])
+        if table_names is None:
+            table_names = list(TABLE_PRIMARY_KEYS.keys())
 
-    def sync_to_minio(self, table_name: str, object_name: str, format: str = "parquet") -> None:
+        sync_results: Dict[str, Dict[str, Any]] = {}
+
+        for table_name in table_names:
+            prefix = object_prefix or f"{table_name}/"
+            primary_keys = TABLE_PRIMARY_KEYS.get(table_name)
+            if primary_keys is None:
+                logger.warning(f"sync_from_minio: 未知表 {table_name}，跳过")
+                continue
+
+            objects = self.minio.list_objects(prefix=prefix, recursive=True)
+            target_objects = [
+                obj for obj in objects
+                if obj.startswith(prefix) and (obj.endswith(".parquet") or obj.endswith(".csv"))
+            ]
+
+            table_rows = 0
+            table_objs_ok = 0
+            table_objs_fail = 0
+            errors: List[str] = []
+
+            for obj_name in sorted(target_objects):
+                try:
+                    if obj_name.endswith(".parquet"):
+                        df = self.minio.download_dataframe(obj_name, format="parquet")
+                    else:
+                        df = self.minio.download_dataframe(obj_name, format="csv")
+
+                    if df.is_empty():
+                        continue
+
+                    self.warehouse.upsert_dataframe(table_name, df, primary_keys)
+                    table_rows += len(df)
+                    table_objs_ok += 1
+                    logger.info(
+                        f"sync_from_minio [{table_name}]: "
+                        f"已同步 {obj_name} ({len(df)} 行), 主键={primary_keys}"
+                    )
+                except Exception as e:
+                    table_objs_fail += 1
+                    error_msg = f"对象 {obj_name} 同步失败: {e}"
+                    errors.append(error_msg)
+                    logger.error(f"sync_from_minio [{table_name}]: {error_msg}")
+
+            sync_results[table_name] = {
+                "objects_total": len(target_objects),
+                "objects_ok": table_objs_ok,
+                "objects_fail": table_objs_fail,
+                "rows_synced": table_rows,
+                "primary_keys": primary_keys,
+                "errors": errors,
+            }
+
+        return sync_results
+
+    def sync_to_minio(
+        self,
+        table_names: Optional[List[str]] = None,
+        format: str = "parquet",
+    ) -> Dict[str, Dict[str, Any]]:
         if not self.use_minio:
-            raise RuntimeError("MinIO client not initialized")
+            raise RuntimeError(
+                "MinIO 客户端未初始化。" +
+                (f" 初始化错误: {self.minio_init_error}" if self.minio_init_error else "")
+            )
 
-        df = self.warehouse.execute_query(f"SELECT * FROM {table_name}")
-        self.minio.upload_dataframe(df, object_name, format=format)
+        if table_names is None:
+            table_names = list(TABLE_PRIMARY_KEYS.keys())
+
+        sync_results: Dict[str, Dict[str, Any]] = {}
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+        for table_name in table_names:
+            try:
+                df = self.warehouse.execute_query(f"SELECT * FROM {table_name}")
+                object_name = f"{table_name}/{table_name}_full_sync_{ts}.{format}"
+                self.minio.upload_dataframe(df, object_name, format=format)
+                sync_results[table_name] = {
+                    "success": True,
+                    "rows": len(df),
+                    "object_name": object_name,
+                }
+                logger.info(
+                    f"sync_to_minio [{table_name}]: {object_name} ({len(df)} 行)"
+                )
+            except Exception as e:
+                sync_results[table_name] = {
+                    "success": False,
+                    "error": str(e),
+                }
+                logger.error(f"sync_to_minio [{table_name}] 失败: {e}")
+
+        return sync_results
+
+    def list_minio_objects(
+        self,
+        table_name: Optional[str] = None,
+        prefix: Optional[str] = None,
+    ) -> List[str]:
+        if not self.use_minio:
+            raise RuntimeError(
+                "MinIO 客户端未初始化。" +
+                (f" 初始化错误: {self.minio_init_error}" if self.minio_init_error else "")
+            )
+        search_prefix = prefix or (f"{table_name}/" if table_name else "")
+        return self.minio.list_objects(prefix=search_prefix, recursive=True)
 
     def close(self) -> None:
         self.warehouse.close()

@@ -172,6 +172,24 @@ def render_sidebar():
         st.cache_data.clear()
         st.rerun()
 
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("📡 MinIO 同步")
+    repo_status = services["conversion"].repository
+    minio_status = "✅ 已连接" if repo_status.use_minio else f"⚠️ 未连接: {repo_status.minio_init_error}"
+    st.sidebar.caption(minio_status)
+
+    if st.sidebar.button("🔽 从 MinIO 回灌数据"):
+        st.session_state["minio_sync_trigger"] = "from"
+        st.rerun()
+
+    if st.sidebar.button("🔼 同步 DuckDB 到 MinIO"):
+        st.session_state["minio_sync_trigger"] = "to"
+        st.rerun()
+
+    if st.sidebar.button("📋 查看 MinIO 对象"):
+        st.session_state["minio_sync_trigger"] = "list"
+        st.rerun()
+
     return {
         "start_date": start_date,
         "end_date": end_date,
@@ -1079,6 +1097,96 @@ def render_drill_down(filters):
             st.info("暂无价格规则数据")
 
 
+def handle_minio_sync(repo, trigger: str):
+    with st.expander("📡 MinIO 同步结果", expanded=True):
+        if not repo.use_minio:
+            st.error(
+                "MinIO 未连接，无法执行同步。\n"
+                f"初始化错误: {repo.minio_init_error}\n"
+                "请先启动 MinIO 服务并检查配置后重试。"
+            )
+            return
+
+        if trigger == "from":
+            st.info("🔽 正在从 MinIO 回灌数据到 DuckDB（按目录前缀 + 各表主键 upsert）...")
+            try:
+                results = repo.sync_from_minio()
+                rows = []
+                total_rows = 0
+                for table, info in results.items():
+                    rows.append({
+                        "表名": table,
+                        "主键": ", ".join(info["primary_keys"]),
+                        "扫描对象": info["objects_total"],
+                        "同步成功": info["objects_ok"],
+                        "同步失败": info["objects_fail"],
+                        "回灌行数": info["rows_synced"],
+                    })
+                    total_rows += info["rows_synced"]
+                    if info["errors"]:
+                        with st.expander(f"⚠️ {table} 失败详情 ({info['objects_fail']} 个对象)"):
+                            for e in info["errors"]:
+                                st.error(e)
+                st.success(f"✅ 回灌完成，共 {total_rows} 行写入 DuckDB。")
+                st.dataframe(pl.DataFrame(rows), use_container_width=True, hide_index=True)
+            except Exception as e:
+                st.error(f"回灌失败: {e}")
+
+        elif trigger == "to":
+            st.info("🔼 正在将 DuckDB 全表同步到 MinIO...")
+            try:
+                results = repo.sync_to_minio()
+                rows = []
+                for table, info in results.items():
+                    if info.get("success"):
+                        rows.append({
+                            "表名": table,
+                            "状态": "✅ 成功",
+                            "导出行数": info.get("rows", 0),
+                            "对象路径": info.get("object_name", ""),
+                        })
+                    else:
+                        rows.append({
+                            "表名": table,
+                            "状态": f"❌ {info.get('error', '未知错误')}",
+                            "导出行数": 0,
+                            "对象路径": "",
+                        })
+                st.success("✅ 同步完成。")
+                st.dataframe(pl.DataFrame(rows), use_container_width=True, hide_index=True)
+            except Exception as e:
+                st.error(f"同步失败: {e}")
+
+        elif trigger == "list":
+            st.info("📋 正在列出 MinIO 对象清单...")
+            try:
+                objects = repo.list_minio_objects()
+                if not objects:
+                    st.info("MinIO 中暂无对象。")
+                    return
+
+                rows = []
+                from collections import defaultdict
+                by_table = defaultdict(list)
+                for obj in objects:
+                    table = obj.split("/")[0] if "/" in obj else "(根目录)"
+                    by_table[table].append(obj)
+                for table, objs in by_table.items():
+                    rows.append({
+                        "表/目录": table,
+                        "对象数量": len(objs),
+                        "示例对象": objs[0],
+                        "最后对象": objs[-1],
+                    })
+                st.success(f"共 {len(objects)} 个 MinIO 对象。")
+                st.dataframe(pl.DataFrame(rows), use_container_width=True, hide_index=True)
+                with st.expander("📂 完整对象列表"):
+                    for obj in sorted(objects):
+                        st.code(obj)
+            except Exception as e:
+                st.error(f"列出对象失败: {e}")
+
+
 def main():
     global repo, services
 
@@ -1089,6 +1197,11 @@ def main():
     services = init_services(repo)
 
     filters = render_sidebar()
+
+    sync_trigger = st.session_state.pop("minio_sync_trigger", None)
+    if sync_trigger:
+        with st.container():
+            handle_minio_sync(repo, sync_trigger)
 
     if filters["start_date"] >= filters["end_date"]:
         st.error("开始日期必须早于结束日期")

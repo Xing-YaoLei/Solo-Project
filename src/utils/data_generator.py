@@ -4,7 +4,7 @@ import random
 import string
 import numpy as np
 import polars as pl
-from src.data_layer.data_repository import DataRepository
+from src.data_layer.data_repository import DataRepository, DualWriteResult
 
 
 class MockDataGenerator:
@@ -24,6 +24,7 @@ class MockDataGenerator:
 
     def __init__(self, repository: DataRepository, seed: int = 42):
         self.repository = repository
+        self.write_results: Dict[str, DualWriteResult] = {}
         random.seed(seed)
         np.random.seed(seed)
 
@@ -60,7 +61,8 @@ class MockDataGenerator:
             })
 
         df = pl.DataFrame(rules)
-        self.repository.save_pricing_rules_batch(df)
+        result = self.repository.save_pricing_rules_batch(df)
+        self.write_results["pricing_rules"] = result
         return df
 
     def generate_package_inventory(self, start_date: date, end_date: date) -> pl.DataFrame:
@@ -99,7 +101,8 @@ class MockDataGenerator:
             current_date += timedelta(days=1)
 
         df = pl.DataFrame(inventory_records)
-        self.repository.save_package_inventory_batch(df)
+        result = self.repository.save_package_inventory_batch(df)
+        self.write_results["package_inventory"] = result
         return df
 
     def generate_ota_orders(self, start_date: date, end_date: date, count: int = 500) -> pl.DataFrame:
@@ -150,7 +153,8 @@ class MockDataGenerator:
             })
 
         df = pl.DataFrame(orders)
-        self.repository.save_ota_orders_batch(df)
+        result = self.repository.save_ota_orders_batch(df)
+        self.write_results["ota_orders"] = result
         return df
 
     def generate_door_lock_records(self, orders: pl.DataFrame) -> pl.DataFrame:
@@ -179,7 +183,8 @@ class MockDataGenerator:
                     })
 
         df = pl.DataFrame(records)
-        self.repository.save_door_lock_records_batch(df)
+        result = self.repository.save_door_lock_records_batch(df)
+        self.write_results["door_lock_records"] = result
         return df
 
     def generate_payment_transactions(self, orders: pl.DataFrame) -> pl.DataFrame:
@@ -225,7 +230,8 @@ class MockDataGenerator:
                 })
 
         df = pl.DataFrame(transactions)
-        self.repository.save_payment_transactions_batch(df)
+        result = self.repository.save_payment_transactions_batch(df)
+        self.write_results["payment_transactions"] = result
         return df
 
     def generate_conversion_rate_versions(self) -> pl.DataFrame:
@@ -293,7 +299,8 @@ class MockDataGenerator:
         ]
 
         df = pl.DataFrame(versions)
-        self.repository.save_conversion_rate_versions_batch(df)
+        result = self.repository.save_conversion_rate_versions_batch(df)
+        self.write_results["conversion_rate_versions"] = result
         return df
 
     def generate_analysis_notes(self, start_date: date, end_date: date) -> pl.DataFrame:
@@ -346,10 +353,11 @@ class MockDataGenerator:
             })
 
         df = pl.DataFrame(notes)
-        self.repository.save_analysis_notes_batch(df)
+        result = self.repository.save_analysis_notes_batch(df)
+        self.write_results["analysis_notes"] = result
         return df
 
-    def generate_all_data(self, start_date: date, end_date: date, order_count: int = 500) -> Dict[str, pl.DataFrame]:
+    def generate_all_data(self, start_date: date, end_date: date, order_count: int = 500) -> Dict[str, Any]:
         print(f"生成数据范围: {start_date} ~ {end_date}")
 
         print("1. 生成定价规则...")
@@ -395,4 +403,5 @@ class MockDataGenerator:
             "versions": versions,
             "notes": notes,
             "oversells": oversells,
+            "write_results": self.write_results,
         }

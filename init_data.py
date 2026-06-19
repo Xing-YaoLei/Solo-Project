@@ -6,9 +6,16 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from datetime import date, timedelta
 import argparse
+import logging
 from src.utils.config import load_config
 from src.data_layer.data_repository import DataRepository
 from src.utils.data_generator import MockDataGenerator
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%H:%M:%S",
+)
 
 
 def main():
@@ -57,6 +64,11 @@ def main():
 
     print(f"📊 初始化数据仓库...")
     repo = DataRepository(config, use_minio=True)
+    if repo.use_minio:
+        print(f"📡 MinIO 已连接: endpoint={config.minio.endpoint}, bucket={config.minio.bucket}")
+    else:
+        print(f"⚠️  MinIO 未启用或连接失败: {repo.minio_init_error}")
+        print("    数据将只写入 DuckDB，可稍后通过 sync_to_minio 补发对象")
 
     print(f"🎲 使用随机种子: {args.seed}")
     generator = MockDataGenerator(repo, seed=args.seed)
@@ -87,6 +99,37 @@ def main():
         print(f"分析备注: {len(result['notes'])} 条")
         print(f"超卖记录: {len(result['oversells'])} 条")
         print()
+
+        write_results = result.get("write_results", {})
+        if write_results:
+            print("📡 MinIO 双写结果统计")
+            print("------------------------------")
+            ok_count = 0
+            fail_count = 0
+            skip_count = 0
+            fail_details = []
+            for table, r in write_results.items():
+                if r.minio_ok is True:
+                    ok_count += 1
+                    print(f"  ✅ {table:30s} {r.row_count:>6} 行 → {r.minio_object_name}")
+                elif r.minio_ok is False:
+                    fail_count += 1
+                    print(f"  ❌ {table:30s} {r.row_count:>6} 行 → 失败: {r.minio_error}")
+                    fail_details.append((table, r.minio_error))
+                else:
+                    skip_count += 1
+                    print(f"  ⏭️  {table:30s} {r.row_count:>6} 行 → MinIO 未启用 (仅 DuckDB)")
+            print()
+            print(f"   MinIO 成功: {ok_count} 表  |  失败: {fail_count} 表  |  跳过: {skip_count} 表")
+            if fail_details:
+                print()
+                print("⚠️  以下表仅写入了 DuckDB（MinIO 对象缺失），可调用 repo.sync_to_minio 补发:")
+                for t, e in fail_details:
+                    print(f"    - {t}: {e}")
+            else:
+                print("   所有对象均已保留在 MinIO。")
+            print()
+
         print(f"💾 数据库文件: {config.duckdb.db_path}")
         print()
         print("🚀 启动命令:")
