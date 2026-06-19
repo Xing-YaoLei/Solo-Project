@@ -99,7 +99,9 @@ export default function TasksPage() {
   };
 
   const handleCreate = async () => {
-    if (!createForm.propertyId || !createForm.taskDate) return;
+    if (!createForm.propertyId || !createForm.taskDate || !createForm.assignedToId || !currentUser?.id) {
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -108,13 +110,13 @@ export default function TasksPage() {
 
       await api.post('/cleaning-tasks', {
         propertyId: createForm.propertyId,
-        assignedToId: createForm.assignedToId || undefined,
+        assignedToId: createForm.assignedToId,
         taskDate: new Date(createForm.taskDate),
         scheduledStart,
         scheduledEnd,
         priority: createForm.priority,
         notes: createForm.notes || undefined,
-        createdById: currentUser?.id,
+        createdById: currentUser.id,
       });
 
       setShowCreateModal(false);
@@ -295,7 +297,7 @@ export default function TasksPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  指派保洁员
+                  指派保洁员 <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={createForm.assignedToId}
@@ -304,7 +306,7 @@ export default function TasksPage() {
                   }
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
                 >
-                  <option value="">暂不指派</option>
+                  <option value="">请选择保洁员</option>
                   {housekeepers.map((u) => (
                     <option key={u.id} value={u.id}>
                       {u.name}
@@ -413,7 +415,7 @@ export default function TasksPage() {
               </button>
               <button
                 onClick={handleCreate}
-                disabled={submitting || !createForm.propertyId || !createForm.taskDate}
+                disabled={submitting || !createForm.propertyId || !createForm.taskDate || !createForm.assignedToId || !currentUser?.id}
                 className="btn"
               >
                 {submitting ? '提交中...' : '创建并指派'}
