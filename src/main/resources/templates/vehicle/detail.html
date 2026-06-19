@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout}"
+      lang="zh-CN">
+<head>
+  <title>车辆详情</title>
+</head>
+<body>
+<div layout:fragment="content">
+
+  <div class="page-header">
+    <h1 class="page-header__title">车辆详情</h1>
+    <a class="btn btn--secondary" th:href="@{/vehicles}">&larr; 返回列表</a>
+  </div>
+
+  <div class="card">
+    <div class="card__header">
+      <h2 class="card__title" th:text="${vehicle.vin}">VIN</h2>
+      <span th:replace="~{fragments/common :: statusBadge(${vehicle.status})}">状态</span>
+    </div>
+    <div class="card__body">
+      <div class="grid grid--4">
+        <div class="info-item">
+          <span class="info-item__label">品牌</span>
+          <span class="info-item__value" th:text="${vehicle.brand}">品牌</span>
+        </div>
+        <div class="info-item">
+          <span class="info-item__label">车型</span>
+          <span class="info-item__value" th:text="${vehicle.model}">车型</span>
+        </div>
+        <div class="info-item">
+          <span class="info-item__label">年份</span>
+          <span class="info-item__value" th:text="${vehicle.year}">年份</span>
+        </div>
+        <div class="info-item">
+          <span class="info-item__label">颜色</span>
+          <span class="info-item__value" th:text="${vehicle.color}">颜色</span>
+        </div>
+        <div class="info-item">
+          <span class="info-item__label">里程(km)</span>
+          <span class="info-item__value" th:text="${vehicle.mileage}">里程</span>
+        </div>
+        <div class="info-item">
+          <span class="info-item__label">收购价</span>
+          <span class="info-item__value" th:text="${vehicle.purchasePrice}">收购价</span>
+        </div>
+        <div class="info-item">
+          <span class="info-item__label">挂牌价</span>
+          <span class="info-item__value" th:text="${vehicle.listingPrice}">挂牌价</span>
+        </div>
+        <div class="info-item">
+          <span class="info-item__label">门店</span>
+          <span class="info-item__value" th:text="${vehicle.storeName}">门店</span>
+        </div>
+        <div class="info-item">
+          <span class="info-item__label">评估师</span>
+          <span class="info-item__value" th:text="${vehicle.assessorName}">评估师</span>
+        </div>
+        <div class="info-item">
+          <span class="info-item__label">销售</span>
+          <span class="info-item__value" th:text="${vehicle.salesName}">销售</span>
+        </div>
+        <div class="info-item">
+          <span class="info-item__label">收购日期</span>
+          <span class="info-item__value" th:text="${vehicle.purchaseDate}">收购日期</span>
+        </div>
+        <div class="info-item">
+          <span class="info-item__label">上架日期</span>
+          <span class="info-item__value" th:text="${vehicle.listingDate}">上架日期</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card__header">
+      <h2 class="card__title">状态流转</h2>
+    </div>
+    <div class="card__body">
+      <div class="step-flow">
+        <div class="step-flow__item"
+             th:classappend="${vehicle.status == 'PENDING_PREPARATION'} ? 'step-flow__item--active' : (${vehicle.status == 'PREPARING' or vehicle.status == 'PENDING_INSPECTION' or vehicle.status == 'INSPECTING' or vehicle.status == 'PENDING_LISTING' or vehicle.status == 'LISTED' or vehicle.status == 'SOLD'} ? 'step-flow__item--done' : '')">
+          <span class="step-flow__label">待整备</span>
+        </div>
+        <div class="step-flow__connector"></div>
+        <div class="step-flow__item"
+             th:classappend="${vehicle.status == 'PREPARING'} ? 'step-flow__item--active' : (${vehicle.status == 'PENDING_INSPECTION' or vehicle.status == 'INSPECTING' or vehicle.status == 'PENDING_LISTING' or vehicle.status == 'LISTED' or vehicle.status == 'SOLD'} ? 'step-flow__item--done' : '')">
+          <span class="step-flow__label">整备中</span>
+        </div>
+        <div class="step-flow__connector"></div>
+        <div class="step-flow__item"
+             th:classappend="${vehicle.status == 'PENDING_INSPECTION'} ? 'step-flow__item--active' : (${vehicle.status == 'INSPECTING' or vehicle.status == 'PENDING_LISTING' or vehicle.status == 'LISTED' or vehicle.status == 'SOLD'} ? 'step-flow__item--done' : '')">
+          <span class="step-flow__label">待检验</span>
+        </div>
+        <div class="step-flow__connector"></div>
+        <div class="step-flow__item"
+             th:classappend="${vehicle.status == 'INSPECTING'} ? 'step-flow__item--active' : (${vehicle.status == 'PENDING_LISTING' or vehicle.status == 'LISTED' or vehicle.status == 'SOLD'} ? 'step-flow__item--done' : '')">
+          <span class="step-flow__label">检验中</span>
+        </div>
+        <div class="step-flow__connector"></div>
+        <div class="step-flow__item"
+             th:classappend="${vehicle.status == 'PENDING_LISTING'} ? 'step-flow__item--active' : (${vehicle.status == 'LISTED' or vehicle.status == 'SOLD'} ? 'step-flow__item--done' : '')">
+          <span class="step-flow__label">待上架</span>
+        </div>
+        <div class="step-flow__connector"></div>
+        <div class="step-flow__item"
+             th:classappend="${vehicle.status == 'LISTED'} ? 'step-flow__item--active' : (${vehicle.status == 'SOLD'} ? 'step-flow__item--done' : '')">
+          <span class="step-flow__label">已上架</span>
+        </div>
+        <div class="step-flow__connector"></div>
+        <div class="step-flow__item"
+             th:classappend="${vehicle.status == 'SOLD'} ? 'step-flow__item--active' : ''">
+          <span class="step-flow__label">已售出</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid--2">
+
+    <div>
+      <div class="card">
+        <div class="card__header">
+          <h2 class="card__title">整备清单</h2>
+        </div>
+        <div class="card__body">
+          <table class="table table--sm" th:if="${preparations != null and !preparations.isEmpty()}">
+            <thead>
+              <tr>
+                <th>项目</th>
+                <th>状态</th>
+                <th>操作人</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr th:each="p : ${preparations}">
+                <td th:text="${p.itemName}">项目名</td>
+                <td><span th:replace="~{fragments/common :: statusBadge(${p.status})}">状态</span></td>
+                <td th:text="${p.operatorName}">操作人</td>
+                <td>
+                  <form th:action="@{/preparations/{id}/status(id=${p.id})}" method="post"
+                        th:if="${currentRole == 'ASSESSOR' or currentRole == 'MANAGER'}">
+                    <input type="hidden" name="status" th:value="${p.status == 'PENDING' ? 'DONE' : 'PENDING'}">
+                    <input type="hidden" name="operatorId" th:value="${currentUserId}">
+                    <button type="submit" class="btn btn--sm btn--primary"
+                            th:text="${p.status == 'PENDING' ? '完成' : '撤销'}">切换</button>
+                  </form>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div th:if="${preparations == null or preparations.isEmpty()}">
+            <div th:replace="~{fragments/common :: emptyState('暂无整备项目')}"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card__header">
+          <h2 class="card__title">试驾记录</h2>
+          <a class="btn btn--sm btn--primary" th:href="@{/test-drives(create=true, vehicleId=${vehicle.id})}"
+             th:if="${currentRole == 'SALES' or currentRole == 'MANAGER'}">新增试驾</a>
+        </div>
+        <div class="card__body">
+          <table class="table table--sm" th:if="${testDrives != null and !testDrives.isEmpty()}">
+            <thead>
+              <tr>
+                <th>客户</th>
+                <th>日期</th>
+                <th>里程前/后</th>
+                <th>反馈</th>
+                <th>销售</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr th:each="td : ${testDrives}">
+                <td th:text="${td.customerName}">客户</td>
+                <td th:text="${td.driveDate}">日期</td>
+                <td th:text="${td.mileageBefore + ' / ' + td.mileageAfter}">里程</td>
+                <td th:text="${td.feedback}">反馈</td>
+                <td th:text="${td.salesName}">销售</td>
+              </tr>
+            </tbody>
+          </table>
+          <div th:if="${testDrives == null or testDrives.isEmpty()}">
+            <div th:replace="~{fragments/common :: emptyState('暂无试驾记录')}"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card__header">
+          <h2 class="card__title">报价历史</h2>
+          <a class="btn btn--sm btn--primary" th:href="@{/quotations(create=true, vehicleId=${vehicle.id})}"
+             th:if="${currentRole == 'SALES' or currentRole == 'MANAGER'}">新增报价</a>
+        </div>
+        <div class="card__body">
+          <table class="table table--sm" th:if="${quotations != null and !quotations.isEmpty()}">
+            <thead>
+              <tr>
+                <th>报价金额</th>
+                <th>类型</th>
+                <th>客户</th>
+                <th>操作人</th>
+                <th>时间</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr th:each="q : ${quotations}">
+                <td th:text="${q.quotationPrice}">金额</td>
+                <td th:text="${q.quotationType}">类型</td>
+                <td th:text="${q.customerName}">客户</td>
+                <td th:text="${q.operatorName}">操作人</td>
+                <td th:text="${#temporals.format(q.createdAt, 'yyyy-MM-dd HH:mm')}">时间</td>
+              </tr>
+            </tbody>
+          </table>
+          <div th:if="${quotations == null or quotations.isEmpty()}">
+            <div th:replace="~{fragments/common :: emptyState('暂无报价记录')}"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <div class="card__header">
+          <h2 class="card__title">金融资料</h2>
+          <form th:action="@{/finance/documents/upload}" method="post" enctype="multipart/form-data"
+                th:if="${currentRole == 'FINANCE' or currentRole == 'MANAGER'}"
+                class="form form--inline">
+            <input type="hidden" name="vehicleId" th:value="${vehicle.id}">
+            <input type="hidden" name="operatorId" th:value="${currentUserId}">
+            <select class="form-group__input" name="documentType" required>
+              <option value="">资料类型</option>
+              <option value="LOAN_APPLICATION">贷款申请</option>
+              <option value="IDENTITY_COPY">身份证明</option>
+              <option value="INSURANCE_POLICY">保单</option>
+              <option value="CONTRACT">合同</option>
+            </select>
+            <input class="form-group__input" type="file" name="file" required>
+            <button type="submit" class="btn btn--sm btn--primary">上传</button>
+          </form>
+        </div>
+        <div class="card__body">
+          <table class="table table--sm" th:if="${financeDocs != null and !financeDocs.isEmpty()}">
+            <thead>
+              <tr>
+                <th>资料类型</th>
+                <th>状态</th>
+                <th>上传人</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr th:each="doc : ${financeDocs}">
+                <td th:text="${doc.documentType}">类型</td>
+                <td><span th:replace="~{fragments/common :: statusBadge(${doc.status})}">状态</span></td>
+                <td th:text="${doc.uploaderName}">上传人</td>
+                <td>
+                  <form th:action="@{/finance/documents/{id}/status(id=${doc.id})}" method="post"
+                        th:if="${currentRole == 'FINANCE' or currentRole == 'MANAGER'}"
+                        class="form form--inline">
+                    <input type="hidden" name="operatorId" th:value="${currentUserId}">
+                    <select class="form-group__input" name="status">
+                      <option value="APPROVED" th:selected="${doc.status == 'PENDING'}">审核通过</option>
+                      <option value="REJECTED" th:selected="${doc.status == 'PENDING'}">退回</option>
+                    </select>
+                    <button type="submit" class="btn btn--sm btn--primary">更新</button>
+                  </form>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div th:if="${financeDocs == null or financeDocs.isEmpty()}">
+            <div th:replace="~{fragments/common :: emptyState('暂无金融资料')}"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card__header">
+          <h2 class="card__title">车辆档案留痕</h2>
+        </div>
+        <div class="card__body">
+          <div class="timeline" th:if="${archives != null and !archives.isEmpty()}">
+            <div class="timeline__item" th:each="archive : ${archives}">
+              <div class="timeline__marker"></div>
+              <div class="timeline__content">
+                <div class="timeline__header">
+                  <span th:replace="~{fragments/common :: statusBadge(${archive.archiveType.name()})}">类型</span>
+                  <span class="timeline__time" th:text="${#temporals.format(archive.createdAt, 'yyyy-MM-dd HH:mm')}">时间</span>
+                </div>
+                <div class="timeline__body">
+                  <span th:text="${archive.oldValue}">旧值</span>
+                  &rarr;
+                  <span th:text="${archive.newValue}">新值</span>
+                </div>
+                <div class="timeline__footer" th:if="${archive.operator != null}">
+                  <span th:text="'操作人: ' + ${archive.operator.name}">操作人</span>
+                  <span th:text="${archive.remark}" th:if="${archive.remark != null}">备注</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div th:if="${archives == null or archives.isEmpty()}">
+            <div th:replace="~{fragments/common :: emptyState('暂无档案记录')}"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card__header">
+          <h2 class="card__title">待办事项</h2>
+        </div>
+        <div class="card__body">
+          <ul class="todo-list" th:if="${todos != null and !todos.isEmpty()}">
+            <li class="todo-list__item" th:each="todo : ${todos}">
+              <div class="todo-list__info">
+                <span class="todo-list__title" th:text="${todo.title}">标题</span>
+                <span th:replace="~{fragments/common :: statusBadge(${todo.status})}">状态</span>
+                <span class="badge badge--danger" th:if="${todo.isOverdue}">逾期</span>
+                <span class="todo-list__meta" th:text="${todo.dueDate}">截止日期</span>
+              </div>
+              <div class="todo-list__actions">
+                <form th:action="@{/todos/{id}/complete(id=${todo.id})}" method="post"
+                      th:if="${todo.status != 'DONE'}">
+                  <input type="hidden" name="operatorId" th:value="${currentUserId}">
+                  <button type="submit" class="btn btn--sm btn--success">完成</button>
+                </form>
+              </div>
+            </li>
+          </ul>
+          <div th:if="${todos == null or todos.isEmpty()}">
+            <div th:replace="~{fragments/common :: emptyState('暂无待办事项')}"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="grid grid--3" th:if="${currentRole == 'MANAGER' or currentRole == 'ASSESSOR' or currentRole == 'SALES'}">
+    <div class="card">
+      <div class="card__header">
+        <h2 class="card__title">状态变更</h2>
+      </div>
+      <div class="card__body">
+        <form class="form" th:action="@{/vehicles/{id}/status(id=${vehicle.id})}" method="post">
+          <div class="form-group">
+            <label class="form-group__label" for="newStatus">新状态</label>
+            <select class="form-group__input" id="newStatus" name="newStatus" required>
+              <option value="">选择状态</option>
+              <option value="PENDING_PREPARATION">待整备</option>
+              <option value="PREPARING">整备中</option>
+              <option value="PENDING_INSPECTION">待检验</option>
+              <option value="INSPECTING">检验中</option>
+              <option value="PENDING_LISTING">待上架</option>
+              <option value="LISTED">已上架</option>
+              <option value="SOLD">已售出</option>
+              <option value="OFFLINE">下线</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-group__label" for="statusRemark">备注</label>
+            <input class="form-group__input" type="text" id="statusRemark" name="remark" placeholder="可选备注">
+          </div>
+          <input type="hidden" name="operatorId" th:value="${currentUserId}">
+          <button type="submit" class="btn btn--primary">提交变更</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__header">
+        <h2 class="card__title">调价</h2>
+      </div>
+      <div class="card__body">
+        <form class="form" th:action="@{/vehicles/{id}/price(id=${vehicle.id})}" method="post">
+          <div class="form-group">
+            <label class="form-group__label" for="newPrice">新挂牌价</label>
+            <input class="form-group__input" type="number" id="newPrice" name="newPrice"
+                   th:value="${vehicle.listingPrice}" step="0.01" required>
+          </div>
+          <div class="form-group">
+            <label class="form-group__label" for="priceRemark">备注</label>
+            <input class="form-group__input" type="text" id="priceRemark" name="remark" placeholder="调价原因">
+          </div>
+          <input type="hidden" name="operatorId" th:value="${currentUserId}">
+          <button type="submit" class="btn btn--primary">提交调价</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__header">
+        <h2 class="card__title">指派人员</h2>
+      </div>
+      <div class="card__body">
+        <form class="form" th:action="@{/vehicles/{id}/assign-assessor(id=${vehicle.id})}" method="post"
+              th:if="${currentRole == 'MANAGER'}">
+          <div class="form-group">
+            <label class="form-group__label">评估师</label>
+            <select class="form-group__input" name="assessorId" required>
+              <option value="">选择评估师</option>
+            </select>
+          </div>
+          <input type="hidden" name="operatorId" th:value="${currentUserId}">
+          <button type="submit" class="btn btn--primary btn--block">指派评估师</button>
+        </form>
+        <hr class="divider" th:if="${currentRole == 'MANAGER'}">
+        <form class="form" th:action="@{/vehicles/{id}/assign-sales(id=${vehicle.id})}" method="post"
+              th:if="${currentRole == 'MANAGER'}">
+          <div class="form-group">
+            <label class="form-group__label">销售</label>
+            <select class="form-group__input" name="salesId" required>
+              <option value="">选择销售</option>
+            </select>
+          </div>
+          <input type="hidden" name="operatorId" th:value="${currentUserId}">
+          <button type="submit" class="btn btn--primary btn--block">指派销售</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

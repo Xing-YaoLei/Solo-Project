@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout}"
+      lang="zh-CN">
+<head>
+  <title>车源管理</title>
+</head>
+<body>
+<div layout:fragment="content">
+
+  <div class="page-header">
+    <h1 class="page-header__title">车源管理</h1>
+    <a class="btn btn--primary" th:href="@{/vehicles/create}" th:if="${currentRole == 'MANAGER'}">新建车源</a>
+  </div>
+
+  <div class="card">
+    <div class="card__header">
+      <h2 class="card__title">筛选条件</h2>
+    </div>
+    <div class="card__body">
+      <form class="form form--inline" th:action="@{/vehicles}" method="get">
+        <div class="form-group">
+          <label class="form-group__label" for="status">状态</label>
+          <select class="form-group__input" id="status" name="status">
+            <option value="">全部</option>
+            <option th:each="s : ${statuses}"
+                    th:value="${s}"
+                    th:text="${s}"
+                    th:selected="${param.status != null and param.status[0] == s.name()}">状态</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-group__label" for="brand">品牌</label>
+          <input class="form-group__input" type="text" id="brand" name="brand"
+                 th:value="${param.brand != null ? param.brand[0] : ''}" placeholder="品牌">
+        </div>
+        <div class="form-group">
+          <label class="form-group__label" for="model">车型</label>
+          <input class="form-group__input" type="text" id="model" name="model"
+                 th:value="${param.model != null ? param.model[0] : ''}" placeholder="车型">
+        </div>
+        <div class="form-group">
+          <label class="form-group__label" for="storeId">门店</label>
+          <select class="form-group__input" id="storeId" name="storeId">
+            <option value="">全部门店</option>
+            <option th:each="store : ${stores}"
+                    th:value="${store.id}"
+                    th:text="${store.name}"
+                    th:selected="${param.storeId != null and param.storeId[0] == store.id.toString()}">门店</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <button type="submit" class="btn btn--primary">搜索</button>
+          <a class="btn btn--secondary" th:href="@{/vehicles}">重置</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card__body">
+      <table class="table" th:if="${vehicles != null and !vehicles.isEmpty()}">
+        <thead>
+          <tr>
+            <th>VIN</th>
+            <th>品牌/车型/年份</th>
+            <th>颜色</th>
+            <th>里程(km)</th>
+            <th>收购价</th>
+            <th>挂牌价</th>
+            <th>状态</th>
+            <th>评估师</th>
+            <th>销售</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr th:each="v : ${vehicles}">
+            <td>
+              <a th:href="@{/vehicles/{id}(id=${v.id})}" th:text="${v.vin}">VIN</a>
+            </td>
+            <td th:text="${v.brand + ' ' + v.model + ' ' + v.year}">品牌 型号 年份</td>
+            <td th:text="${v.color}">颜色</td>
+            <td th:text="${v.mileage}">里程</td>
+            <td th:text="${v.purchasePrice}">收购价</td>
+            <td th:text="${v.listingPrice}">挂牌价</td>
+            <td><span th:replace="~{fragments/common :: statusBadge(${v.status})}">状态</span></td>
+            <td th:text="${v.assessorName}">评估师</td>
+            <td th:text="${v.salesName}">销售</td>
+            <td>
+              <div class="btn-group">
+                <a class="btn btn--sm btn--secondary"
+                   th:href="@{/vehicles/{id}(id=${v.id})}">详情</a>
+                <a class="btn btn--sm btn--primary"
+                   th:href="@{/vehicles/{id}(id=${v.id})}"
+                   th:if="${currentRole == 'MANAGER'} and (${v.status == 'PENDING_PREPARATION'} or ${v.status == 'PREPARING'} or ${v.status == 'PENDING_INSPECTION'} or ${v.status == 'PENDING_LISTING'})">
+                  状态变更
+                </a>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div th:if="${vehicles == null or vehicles.isEmpty()}">
+        <div th:replace="~{fragments/common :: emptyState('暂无车辆数据')}"></div>
+      </div>
+    </div>
+  </div>
+
+  <div th:replace="~{fragments/common :: pagination(${vehicles})}"></div>
+
+</div>
+</body>
+</html>

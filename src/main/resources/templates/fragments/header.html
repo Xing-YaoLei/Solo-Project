@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout">
+<head>
+  <meta charset="UTF-8">
+</head>
+<body>
+  <nav th:fragment="header" class="navbar" role="navigation">
+    <div class="navbar__brand">
+      <a href="/" class="navbar__logo">二手车排程台</a>
+    </div>
+
+    <ul class="navbar__nav">
+      <li class="navbar__item">
+        <a href="/" class="navbar__link" th:classappend="${#strings.equals(currentPath, '/')} ? 'navbar__link--active' : ''">仪表盘</a>
+      </li>
+      <li class="navbar__item">
+        <a href="/vehicles" class="navbar__link" th:classappend="${#strings.equals(currentPath, '/vehicles')} ? 'navbar__link--active' : ''">车源管理</a>
+      </li>
+      <li class="navbar__item">
+        <a href="/todos" class="navbar__link" th:classappend="${#strings.equals(currentPath, '/todos')} ? 'navbar__link--active' : ''">待办池</a>
+      </li>
+      <li class="navbar__item">
+        <a href="/reports" class="navbar__link" th:classappend="${#strings.equals(currentPath, '/reports')} ? 'navbar__link--active' : ''">报表</a>
+      </li>
+
+      <li class="navbar__item" th:if="${currentRole == 'ASSESSOR'} or ${currentRole == 'MANAGER'}">
+        <a href="/preparations" class="navbar__link" th:classappend="${#strings.equals(currentPath, '/preparations')} ? 'navbar__link--active' : ''">整备清单</a>
+      </li>
+
+      <li class="navbar__item" th:if="${currentRole == 'SALES'} or ${currentRole == 'MANAGER'}">
+        <a href="/test-drives" class="navbar__link" th:classappend="${#strings.equals(currentPath, '/test-drives')} ? 'navbar__link--active' : ''">试驾记录</a>
+      </li>
+      <li class="navbar__item" th:if="${currentRole == 'SALES'} or ${currentRole == 'MANAGER'}">
+        <a href="/quotations" class="navbar__link" th:classappend="${#strings.equals(currentPath, '/quotations')} ? 'navbar__link--active' : ''">报价历史</a>
+      </li>
+
+      <li class="navbar__item" th:if="${currentRole == 'FINANCE'} or ${currentRole == 'MANAGER'}">
+        <a href="/finance" class="navbar__link" th:classappend="${#strings.equals(currentPath, '/finance')} ? 'navbar__link--active' : ''">金融资料</a>
+      </li>
+    </ul>
+
+    <div class="navbar__user">
+      <span class="navbar__username" th:text="${currentUserName}">用户名</span>
+      <span class="navbar__role badge badge--role" th:text="${currentRole}">角色</span>
+    </div>
+  </nav>
+</body>
+</html>

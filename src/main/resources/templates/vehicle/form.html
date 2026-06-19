@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout}"
+      lang="zh-CN">
+<head>
+  <title>新建车源</title>
+</head>
+<body>
+<div layout:fragment="content">
+
+  <div class="page-header">
+    <h1 class="page-header__title">新建车源</h1>
+    <a class="btn btn--secondary" th:href="@{/vehicles}">&larr; 返回列表</a>
+  </div>
+
+  <div class="card">
+    <div class="card__body">
+      <form class="form" th:action="@{/vehicles}" method="post">
+
+        <div class="grid grid--2">
+          <div class="form-group">
+            <label class="form-group__label" for="vin">VIN码 <span class="required">*</span></label>
+            <input class="form-group__input" type="text" id="vin" name="vin" required
+                   placeholder="请输入17位VIN码" maxlength="17">
+          </div>
+
+          <div class="form-group">
+            <label class="form-group__label" for="brand">品牌 <span class="required">*</span></label>
+            <input class="form-group__input" type="text" id="brand" name="brand" required
+                   placeholder="如：宝马">
+          </div>
+
+          <div class="form-group">
+            <label class="form-group__label" for="model">车型 <span class="required">*</span></label>
+            <input class="form-group__input" type="text" id="model" name="model" required
+                   placeholder="如：3系">
+          </div>
+
+          <div class="form-group">
+            <label class="form-group__label" for="year">年份 <span class="required">*</span></label>
+            <input class="form-group__input" type="number" id="year" name="year" required
+                   placeholder="如：2023" min="1900" max="2099">
+          </div>
+
+          <div class="form-group">
+            <label class="form-group__label" for="color">颜色</label>
+            <input class="form-group__input" type="text" id="color" name="color"
+                   placeholder="如：白色">
+          </div>
+
+          <div class="form-group">
+            <label class="form-group__label" for="mileage">里程(km)</label>
+            <input class="form-group__input" type="number" id="mileage" name="mileage"
+                   placeholder="如：50000" min="0">
+          </div>
+
+          <div class="form-group">
+            <label class="form-group__label" for="purchasePrice">收购价 <span class="required">*</span></label>
+            <input class="form-group__input" type="number" id="purchasePrice" name="purchasePrice"
+                   required step="0.01" min="0" placeholder="0.00">
+          </div>
+
+          <div class="form-group">
+            <label class="form-group__label" for="listingPrice">挂牌价 <span class="required">*</span></label>
+            <input class="form-group__input" type="number" id="listingPrice" name="listingPrice"
+                   required step="0.01" min="0" placeholder="0.00">
+          </div>
+
+          <div class="form-group">
+            <label class="form-group__label" for="storeId">门店</label>
+            <select class="form-group__input" id="storeId" name="store.id">
+              <option value="">选择门店</option>
+              <option th:each="store : ${stores}"
+                      th:value="${store.id}"
+                      th:text="${store.name}">门店</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-group__label" for="assessorId">评估师</label>
+            <select class="form-group__input" id="assessorId" name="assessor.id">
+              <option value="">选择评估师</option>
+              <option th:each="assessor : ${assessors}"
+                      th:value="${assessor.id}"
+                      th:text="${assessor.name}">评估师</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-group__label" for="salesId">销售</label>
+            <select class="form-group__input" id="salesId" name="sales.id">
+              <option value="">选择销售</option>
+              <option th:each="s : ${salesList}"
+                      th:value="${s.id}"
+                      th:text="${s.name}">销售</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn--primary">提交</button>
+          <a class="btn btn--secondary" th:href="@{/vehicles}">取消</a>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout}"
+      lang="zh-CN">
+<head>
+  <title>报价历史</title>
+</head>
+<body>
+<div layout:fragment="content">
+
+  <div class="page-header">
+    <h1 class="page-header__title">报价历史</h1>
+  </div>
+
+  <div class="card">
+    <div class="card__header">
+      <h2 class="card__title">筛选条件</h2>
+    </div>
+    <div class="card__body">
+      <form class="form form--inline" th:action="@{/quotations}" method="get">
+        <div class="form-group">
+          <label class="form-group__label" for="vehicleId">车辆ID</label>
+          <input class="form-group__input" type="text" id="vehicleId" name="vehicleId"
+                 th:value="${param.vehicleId != null ? param.vehicleId[0] : ''}" placeholder="车辆ID">
+        </div>
+        <div class="form-group">
+          <button type="submit" class="btn btn--primary">搜索</button>
+          <a class="btn btn--secondary" th:href="@{/quotations}">重置</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="card" th:if="${currentRole == 'SALES' or currentRole == 'MANAGER'}">
+    <div class="card__header">
+      <h2 class="card__title">新增报价</h2>
+    </div>
+    <div class="card__body">
+      <form class="form" th:action="@{/quotations}" method="post">
+        <div class="grid grid--3">
+          <div class="form-group">
+            <label class="form-group__label" for="quotationPrice">报价金额</label>
+            <input class="form-group__input" type="number" id="quotationPrice" name="quotationPrice" step="0.01" required>
+          </div>
+          <div class="form-group">
+            <label class="form-group__label" for="quotationType">报价类型</label>
+            <select class="form-group__input" id="quotationType" name="quotationType" required>
+              <option value="">请选择</option>
+              <option value="INITIAL">初始报价</option>
+              <option value="ADJUSTED">调整报价</option>
+              <option value="FINAL">最终报价</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-group__label" for="customerName">客户姓名</label>
+            <input class="form-group__input" type="text" id="customerName" name="customerName">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-group__label" for="remark">备注</label>
+          <textarea class="form-group__input" id="remark" name="remark" rows="3"></textarea>
+        </div>
+        <input type="hidden" name="vehicleId" th:value="${param.vehicleId != null ? param.vehicleId[0] : ''}">
+        <input type="hidden" name="operatorId" th:value="${currentUserId}">
+        <button type="submit" class="btn btn--primary">提交</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card__header">
+      <h2 class="card__title">报价列表</h2>
+    </div>
+    <div class="card__body">
+      <table class="table" th:if="${quotations != null and !quotations.isEmpty()}">
+        <thead>
+          <tr>
+            <th>车辆信息</th>
+            <th>报价金额</th>
+            <th>报价类型</th>
+            <th>操作人</th>
+            <th>客户</th>
+            <th>备注</th>
+            <th>创建时间</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr th:each="q : ${quotations}">
+            <td>
+              <a th:href="@{/vehicles/{id}(id=${q.vehicleId})}" th:text="${q.vehicleInfo}">车辆</a>
+            </td>
+            <td th:text="${q.quotationPrice}">金额</td>
+            <td><span th:replace="~{fragments/common :: statusBadge(${q.quotationType})}">类型</span></td>
+            <td th:text="${q.operatorName}">操作人</td>
+            <td th:text="${q.customerName}">客户</td>
+            <td th:text="${q.remark}">备注</td>
+            <td th:text="${#temporals.format(q.createdAt, 'yyyy-MM-dd HH:mm')}">时间</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div th:if="${quotations == null or quotations.isEmpty()}">
+        <div th:replace="~{fragments/common :: emptyState('暂无报价记录')}"></div>
+      </div>
+    </div>
+  </div>
+
+  <div th:replace="~{fragments/common :: pagination(${quotations})}"></div>
+
+</div>
+</body>
+</html>

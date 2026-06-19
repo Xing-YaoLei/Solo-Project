@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout}"
+      lang="zh-CN">
+<head>
+  <title>整备清单</title>
+</head>
+<body>
+<div layout:fragment="content">
+
+  <div class="page-header">
+    <h1 class="page-header__title">整备清单</h1>
+  </div>
+
+  <div class="card">
+    <div class="card__header">
+      <h2 class="card__title">筛选条件</h2>
+    </div>
+    <div class="card__body">
+      <form class="form form--inline" th:action="@{/preparations}" method="get">
+        <div class="form-group">
+          <label class="form-group__label" for="vehicleId">车辆ID</label>
+          <input class="form-group__input" type="text" id="vehicleId" name="vehicleId"
+                 th:value="${param.vehicleId != null ? param.vehicleId[0] : ''}" placeholder="车辆ID">
+        </div>
+        <div class="form-group">
+          <button type="submit" class="btn btn--primary">搜索</button>
+          <a class="btn btn--secondary" th:href="@{/preparations}">重置</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="card" th:if="${vehicle != null}">
+    <div class="card__header">
+      <h2 class="card__title">车辆信息</h2>
+    </div>
+    <div class="card__body">
+      <div class="grid grid--4">
+        <div class="info-item">
+          <span class="info-item__label">VIN</span>
+          <span class="info-item__value" th:text="${vehicle.vin}">VIN</span>
+        </div>
+        <div class="info-item">
+          <span class="info-item__label">品牌/车型</span>
+          <span class="info-item__value" th:text="${vehicle.brand + ' ' + vehicle.model}">品牌 型号</span>
+        </div>
+        <div class="info-item">
+          <span class="info-item__label">状态</span>
+          <span class="info-item__value">
+            <span th:replace="~{fragments/common :: statusBadge(${vehicle.status})}">状态</span>
+          </span>
+        </div>
+        <div class="info-item">
+          <span class="info-item__label">评估师</span>
+          <span class="info-item__value" th:text="${vehicle.assessorName}">评估师</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card__header">
+      <h2 class="card__title">整备项目</h2>
+      <form th:action="@{/preparations/init}" method="post"
+            th:if="${items == null or items.isEmpty()} and ${vehicle != null}"
+            class="form form--inline">
+        <input type="hidden" name="vehicleId" th:value="${vehicle.id}">
+        <input type="hidden" name="operatorId" th:value="${currentUserId}">
+        <button type="submit" class="btn btn--sm btn--primary">初始化清单</button>
+      </form>
+    </div>
+    <div class="card__body">
+      <table class="table" th:if="${items != null and !items.isEmpty()}">
+        <thead>
+          <tr>
+            <th>车辆信息</th>
+            <th>项目名称</th>
+            <th>状态</th>
+            <th>操作人</th>
+            <th>完成时间</th>
+            <th>备注</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr th:each="item : ${items}">
+            <td>
+              <a th:href="@{/vehicles/{id}(id=${item.vehicleId})}" th:text="${item.vehicleInfo}">车辆</a>
+            </td>
+            <td th:text="${item.itemName}">项目名</td>
+            <td><span th:replace="~{fragments/common :: statusBadge(${item.status})}">状态</span></td>
+            <td th:text="${item.operatorName}">操作人</td>
+            <td th:text="${item.completedAt}">完成时间</td>
+            <td th:text="${item.remark}">备注</td>
+            <td>
+              <div class="btn-group">
+                <form th:action="@{/preparations/{id}/status(id=${item.id})}" method="post"
+                      th:if="${currentRole == 'ASSESSOR' or currentRole == 'MANAGER'}">
+                  <input type="hidden" name="operatorId" th:value="${currentUserId}">
+                  <input type="hidden" name="status" th:value="${item.status == 'PENDING' ? 'IN_PROGRESS' : (item.status == 'IN_PROGRESS' ? 'DONE' : 'PENDING')}">
+                  <button type="submit" class="btn btn--sm btn--primary"
+                          th:text="${item.status == 'PENDING' ? '开始' : (item.status == 'IN_PROGRESS' ? '完成' : '重置')}">状态变更</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div th:if="${items == null or items.isEmpty()}">
+        <div th:replace="~{fragments/common :: emptyState('暂无整备项目')}"></div>
+      </div>
+    </div>
+  </div>
+
+  <div th:replace="~{fragments/common :: pagination(${items})}"></div>
+
+</div>
+</body>
+</html>

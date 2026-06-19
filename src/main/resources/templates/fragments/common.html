@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout">
+<head>
+  <meta charset="UTF-8">
+</head>
+<body>
+
+  <nav th:fragment="pagination(page)" class="pagination" role="navigation" aria-label="分页导航"
+       th:if="${page != null and page.totalPages > 0}">
+    <ul class="pagination__list">
+      <li class="pagination__item">
+        <a class="pagination__link pagination__link--prev"
+           th:href="@{${currentPath}(page=${page.number - 1}, size=${page.size})}"
+           th:if="${page.hasPrevious()}"
+           aria-label="上一页">上一页</a>
+        <span class="pagination__link pagination__link--prev pagination__link--disabled"
+              th:unless="${page.hasPrevious()}">上一页</span>
+      </li>
+
+      <li class="pagination__item" th:each="i : ${#numbers.sequence(0, page.totalPages - 1)}">
+        <a class="pagination__link"
+           th:href="@{${currentPath}(page=${i}, size=${page.size})}"
+           th:text="${i + 1}"
+           th:classappend="${i == page.number} ? 'pagination__link--active'">1</a>
+      </li>
+
+      <li class="pagination__item">
+        <a class="pagination__link pagination__link--next"
+           th:href="@{${currentPath}(page=${page.number + 1}, size=${page.size})}"
+           th:if="${page.hasNext()}"
+           aria-label="下一页">下一页</a>
+        <span class="pagination__link pagination__link--next pagination__link--disabled"
+              th:unless="${page.hasNext()}">下一页</span>
+      </li>
+    </ul>
+    <p class="pagination__info">
+      第 <span th:text="${page.number + 1}">1</span> / <span th:text="${page.totalPages}">1</span> 页，
+      共 <span th:text="${page.totalElements}">0</span> 条
+    </p>
+  </nav>
+
+  <span th:fragment="statusBadge(status)" class="badge"
+        th:classappend="
+          ${status == 'PENDING_PREPARATION'} or ${status == 'PENDING_INSPECTION'} or ${status == 'PENDING_LISTING'} or ${status == 'PENDING'} or ${status == 'MISSING'} ? 'badge--warning' :
+          ${status == 'PREPARING'} or ${status == 'INSPECTING'} or ${status == 'IN_PROGRESS'} or ${status == 'PROCESSING'} ? 'badge--info' :
+          ${status == 'LISTED'} or ${status == 'APPROVED'} or ${status == 'DONE'} ? 'badge--success' :
+          ${status == 'SOLD'} ? 'badge--primary' :
+          ${status == 'OFFLINE'} or ${status == 'REJECTED'} ? 'badge--danger' :
+          'badge--default'"
+        th:text="${status}">状态</span>
+
+  <div th:fragment="confirmModal(id, title, message, actionUrl)" class="modal" th:id="${id}" role="dialog" aria-modal="true" aria-labelledby="${id} + '-title'">
+    <div class="modal__backdrop" data-dismiss="modal"></div>
+    <div class="modal__dialog">
+      <div class="modal__header">
+        <h3 class="modal__title" th:id="${id} + '-title'" th:text="${title}">确认操作</h3>
+        <button class="modal__close" data-dismiss="modal" aria-label="关闭">&times;</button>
+      </div>
+      <div class="modal__body">
+        <p th:text="${message}">确定要执行此操作吗？</p>
+      </div>
+      <div class="modal__footer">
+        <button class="btn btn--secondary" data-dismiss="modal">取消</button>
+        <form th:action="${actionUrl}" method="post" class="modal__form">
+          <button type="submit" class="btn btn--danger">确认</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div th:fragment="emptyState(message)" class="empty-state" role="status">
+    <div class="empty-state__icon" aria-hidden="true">
+      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
+        <polyline points="13 2 13 9 20 9"/>
+      </svg>
+    </div>
+    <p class="empty-state__text" th:text="${message}">暂无数据</p>
+  </div>
+
+</body>
+</html>

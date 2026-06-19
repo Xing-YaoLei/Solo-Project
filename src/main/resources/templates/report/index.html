@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout}"
+      lang="zh-CN">
+<head>
+  <title>报表分析</title>
+</head>
+<body>
+<div layout:fragment="content">
+
+  <div class="page-header">
+    <h1 class="page-header__title">报表分析</h1>
+  </div>
+
+  <div class="card">
+    <div class="card__header">
+      <div class="tab-bar" role="tablist">
+        <button type="button" class="tab-bar__item tab-bar__item--active" role="tab"
+                data-tab="inventory" onclick="switchTab('inventory')">库存周转</button>
+        <button type="button" class="tab-bar__item" role="tab"
+                data-tab="date" onclick="switchTab('date')"
+                th:if="${currentRole == 'MANAGER'}">日期下钻</button>
+        <button type="button" class="tab-bar__item" role="tab"
+                data-tab="person" onclick="switchTab('person')"
+                th:if="${currentRole == 'MANAGER'}">负责人下钻</button>
+      </div>
+    </div>
+    <div class="card__body">
+      <form class="form form--inline" th:action="@{/reports}" method="get">
+        <div class="form-group">
+          <label class="form-group__label" for="startDate">开始日期</label>
+          <input class="form-group__input" type="date" id="startDate" name="startDate"
+                 th:value="${param.startDate != null ? param.startDate[0] : ''}">
+        </div>
+        <div class="form-group">
+          <label class="form-group__label" for="endDate">结束日期</label>
+          <input class="form-group__input" type="date" id="endDate" name="endDate"
+                 th:value="${param.endDate != null ? param.endDate[0] : ''}">
+        </div>
+        <div class="form-group" id="storeFilterGroup">
+          <label class="form-group__label" for="storeId">门店</label>
+          <select class="form-group__input" id="storeId" name="storeId">
+            <option value="">全部门店</option>
+            <option th:each="store : ${stores}"
+                    th:value="${store.id}"
+                    th:text="${store.name}">门店</option>
+          </select>
+        </div>
+        <div class="form-group" id="personFilterGroup" style="display:none">
+          <label class="form-group__label" for="personId">负责人</label>
+          <select class="form-group__input" id="personId" name="personId">
+            <option value="">全部</option>
+            <option th:each="person : ${persons}"
+                    th:value="${person.id}"
+                    th:text="${person.name}">负责人</option>
+          </select>
+        </div>
+        <input type="hidden" name="type" id="reportType" value="inventory">
+        <div class="form-group">
+          <button type="submit" class="btn btn--primary">生成报表</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div th:if="${report != null}">
+    <div class="grid grid--5">
+      <div class="card card--stat">
+        <div class="card__body">
+          <span class="card__label">车辆总数</span>
+          <span class="card__value" th:text="${report.totalVehicles}">0</span>
+        </div>
+      </div>
+      <div class="card card--stat">
+        <div class="card__body">
+          <span class="card__label">已售车辆</span>
+          <span class="card__value" th:text="${report.soldVehicles}">0</span>
+        </div>
+      </div>
+      <div class="card card--stat">
+        <div class="card__body">
+          <span class="card__label">平均销售天数</span>
+          <span class="card__value" th:text="${report.avgDaysToSell}">0</span>
+        </div>
+      </div>
+      <div class="card card--stat">
+        <div class="card__body">
+          <span class="card__label">库存周转率</span>
+          <span class="card__value" th:text="${report.inventoryTurnoverRate}">0</span>
+        </div>
+      </div>
+      <div class="card card--stat">
+        <div class="card__body">
+          <span class="card__label">总收入</span>
+          <span class="card__value" th:text="${report.revenue}">0</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" th:if="${report.storeBreakdown != null and !report.storeBreakdown.isEmpty()}">
+      <div class="card__header">
+        <h2 class="card__title">按门店统计</h2>
+      </div>
+      <div class="card__body">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>门店名称</th>
+              <th>车辆数量</th>
+              <th>已售数量</th>
+              <th>周转率</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr th:each="store : ${report.storeBreakdown}">
+              <td th:text="${store.storeName}">门店</td>
+              <td th:text="${store.vehicleCount}">0</td>
+              <td th:text="${store.soldCount}">0</td>
+              <td th:text="${store.turnoverRate}">0</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" th:if="${report.personBreakdown != null and !report.personBreakdown.isEmpty()}">
+      <div class="card__header">
+        <h2 class="card__title">按负责人统计</h2>
+      </div>
+      <div class="card__body">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>姓名</th>
+              <th>角色</th>
+              <th>车辆数量</th>
+              <th>完成数量</th>
+              <th>逾期数量</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr th:each="person : ${report.personBreakdown}">
+              <td th:text="${person.personName}">姓名</td>
+              <td th:text="${person.roleName}">角色</td>
+              <td th:text="${person.vehicleCount}">0</td>
+              <td th:text="${person.completedCount}">0</td>
+              <td th:text="${person.overdueCount}">0</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__header">
+        <h2 class="card__title">数据图表</h2>
+      </div>
+      <div class="card__body">
+        <div id="reportChart" class="chart-container" style="height:400px">
+          <p class="text--muted">图表区域（待集成 Chart.js）</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div th:if="${report == null}">
+    <div th:replace="~{fragments/common :: emptyState('请选择筛选条件后生成报表')}"></div>
+  </div>
+
+  <script th:inline="javascript">
+    function switchTab(tabName) {
+      document.querySelectorAll('.tab-bar__item').forEach(function(item) {
+        item.classList.remove('tab-bar__item--active');
+      });
+      document.querySelector('[data-tab="' + tabName + '"]').classList.add('tab-bar__item--active');
+      document.getElementById('reportType').value = tabName;
+      var storeGroup = document.getElementById('storeFilterGroup');
+      var personGroup = document.getElementById('personFilterGroup');
+      if (tabName === 'inventory') {
+        storeGroup.style.display = '';
+        personGroup.style.display = 'none';
+      } else if (tabName === 'person') {
+        storeGroup.style.display = 'none';
+        personGroup.style.display = '';
+      } else {
+        storeGroup.style.display = 'none';
+        personGroup.style.display = 'none';
+      }
+    }
+  </script>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout">
+<head>
+  <meta charset="UTF-8">
+</head>
+<body>
+  <aside th:fragment="sidebar" class="sidebar" role="complementary">
+    <button class="sidebar__toggle" aria-label="折叠侧边栏" title="折叠侧边栏">&#laquo;</button>
+
+    <div class="sidebar__content">
+
+      <section class="sidebar__section" th:if="${currentRole == 'ASSESSOR'} or ${currentRole == 'SALES'} or ${currentRole == 'MANAGER'}">
+        <h3 class="sidebar__section-title">操作区</h3>
+        <ul class="sidebar__list">
+          <li class="sidebar__item" th:if="${currentRole == 'ASSESSOR'} or ${currentRole == 'MANAGER'}">
+            <a href="/preparations" class="sidebar__link">整备清单</a>
+          </li>
+          <li class="sidebar__item" th:if="${currentRole == 'SALES'} or ${currentRole == 'MANAGER'}">
+            <a href="/test-drives" class="sidebar__link">试驾记录</a>
+          </li>
+          <li class="sidebar__item" th:if="${currentRole == 'SALES'} or ${currentRole == 'MANAGER'}">
+            <a href="/quotations" class="sidebar__link">报价历史</a>
+          </li>
+        </ul>
+      </section>
+
+      <section class="sidebar__section" th:if="${currentRole == 'FINANCE'} or ${currentRole == 'MANAGER'}">
+        <h3 class="sidebar__section-title">配置区</h3>
+        <ul class="sidebar__list">
+          <li class="sidebar__item" th:if="${currentRole == 'FINANCE'} or ${currentRole == 'MANAGER'}">
+            <a href="/finance/config" class="sidebar__link">金融资料配置</a>
+          </li>
+          <li class="sidebar__item" th:if="${currentRole == 'MANAGER'}">
+            <a href="/vehicles/archive" class="sidebar__link">车辆档案留痕</a>
+          </li>
+        </ul>
+      </section>
+
+      <section class="sidebar__section">
+        <h3 class="sidebar__section-title">筛选区</h3>
+        <div class="sidebar__filter">
+          <details class="sidebar__filter-group">
+            <summary class="sidebar__filter-label">按状态筛选</summary>
+            <ul class="sidebar__filter-options">
+              <li><a href="/vehicles?status=PENDING_PREPARATION" class="sidebar__filter-link">待整备</a></li>
+              <li><a href="/vehicles?status=PREPARING" class="sidebar__filter-link">整备中</a></li>
+              <li><a href="/vehicles?status=LISTED" class="sidebar__filter-link">已上架</a></li>
+              <li><a href="/vehicles?status=SOLD" class="sidebar__filter-link">已售出</a></li>
+            </ul>
+          </details>
+
+          <details class="sidebar__filter-group">
+            <summary class="sidebar__filter-label">按品牌筛选</summary>
+            <ul class="sidebar__filter-options">
+              <li th:each="brand : ${brands}" th:if="${brands != null}">
+                <a href="#" th:href="@{/vehicles(brand=${brand})}" class="sidebar__filter-link" th:text="${brand}">品牌</a>
+              </li>
+            </ul>
+          </details>
+
+          <details class="sidebar__filter-group">
+            <summary class="sidebar__filter-label">按负责人筛选</summary>
+            <ul class="sidebar__filter-options">
+              <li th:each="assignee : ${assignees}" th:if="${assignees != null}">
+                <a href="#" th:href="@{/todos(assignee=${assignee})}" class="sidebar__filter-link" th:text="${assignee}">负责人</a>
+              </li>
+            </ul>
+          </details>
+        </div>
+      </section>
+
+    </div>
+  </aside>
+</body>
+</html>
