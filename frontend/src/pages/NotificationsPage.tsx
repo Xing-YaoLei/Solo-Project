@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import {
   App, Button, Card, Col, Descriptions, Drawer, Form, Input,
-  List, MessageInstance, Modal, NotificationInstance,
+  List, Modal,
   Row, Select, Space, Switch, Table, Tag, Typography,
 } from 'antd'
 import {
@@ -35,7 +35,7 @@ const channelColors: Record<NotificationChannel, string> = {
 }
 
 function NotificationsPage() {
-  const { message }: { message: MessageInstance; notification: NotificationInstance } = App.useApp()
+  const { message } = App.useApp()
   const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(20)
@@ -113,7 +113,7 @@ function NotificationsPage() {
         </Space>
       ),
     },
-    { title: '接收方', dataIndex: 'recipient', key: 'rec', width: 160, render: (v) => v || '-' },
+    { title: '接收方', dataIndex: 'recipient', key: 'rec', width: 160, render: (v: string) => v || '-' },
     {
       title: '已发送',
       key: 'sent',

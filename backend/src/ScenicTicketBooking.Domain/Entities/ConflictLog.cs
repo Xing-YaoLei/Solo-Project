@@ -55,4 +55,6 @@ public class ConflictLog
 
     [MaxLength(100)]
     public string? CreatedBy { get; set; }
+
+    public virtual ICollection<Notification> Notifications { get; set; } = new List<Notification>();
 }

@@ -60,6 +60,17 @@ function BookingsPage() {
     enabled: !!createForm.getFieldValue('scenicSpotId') && !!createForm.getFieldValue('slotDate'),
   })
 
+  const rescheduleTimeSlotsQuery = useQuery({
+    queryKey: ['reschedule-time-slots', rescheduleForm.getFieldValue('newScenicSpotId'), rescheduleForm.getFieldValue('newSlotDate')?.format('YYYY-MM-DD')],
+    queryFn: () => {
+      const spotId = rescheduleForm.getFieldValue('newScenicSpotId')
+      const date: Dayjs | undefined = rescheduleForm.getFieldValue('newSlotDate')
+      if (!spotId || !date) return Promise.resolve([])
+      return masterDataApi.getTimeSlots(spotId, date.format('YYYY-MM-DD')).catch(() => [])
+    },
+    enabled: !!rescheduleForm.getFieldValue('newScenicSpotId') && !!rescheduleForm.getFieldValue('newSlotDate'),
+  })
+
   const ticketTypesQuery = useQuery({
     queryKey: ['ticket-types', createForm.getFieldValue('scenicSpotId')],
     queryFn: () => {
@@ -224,7 +235,7 @@ function BookingsPage() {
     { title: '手机号', dataIndex: 'phoneNumber', key: 'phoneNumber', width: 120 },
     { title: '票种', dataIndex: 'ticketTypeName', key: 'ticketTypeName', width: 100 },
     { title: '数量', dataIndex: 'quantity', key: 'quantity', width: 70 },
-    { title: '金额', dataIndex: 'totalAmount', key: 'totalAmount', width: 90, render: (v) => `¥${v.toFixed(2)}` },
+    { title: '金额', dataIndex: 'totalAmount', key: 'totalAmount', width: 90, render: (v: number) => `¥${v.toFixed(2)}` },
     {
       title: '冲突',
       key: 'hasConflict',
@@ -277,6 +288,7 @@ function BookingsPage() {
   const bookingData = bookingsQuery.data?.items || []
   const spots = spotsQuery.data || []
   const timeSlots = timeSlotsQuery.data || []
+  const rescheduleTimeSlots = rescheduleTimeSlotsQuery.data || []
   const ticketTypes = ticketTypesQuery.data || []
 
   const renderConflictDetails = (record: BookingRecord) => {
@@ -645,14 +657,30 @@ function BookingsPage() {
             <Row gutter={16}>
               <Col span={12}>
                 <Form.Item label="新景区" name="newScenicSpotId" rules={[{ required: true }]} initialValue={selectedBooking.scenicSpotId}>
-                  <Select>
+                  <Select
+                    onChange={() => { rescheduleForm.setFieldsValue({ newTimeSlotId: undefined }) }}
+                  >
                     {spots.map((s) => <Option key={s.id} value={s.id}>{s.name}</Option>)}
                   </Select>
                 </Form.Item>
               </Col>
               <Col span={12}>
                 <Form.Item label="新日期" name="newSlotDate" rules={[{ required: true }]}>
-                  <DatePicker style={{ width: '100%' }} />
+                  <DatePicker
+                    style={{ width: '100%' }}
+                    onChange={() => { rescheduleForm.setFieldsValue({ newTimeSlotId: undefined }) }}
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={24}>
+                <Form.Item label="新时段" name="newTimeSlotId" rules={[{ required: true }]}>
+                  <Select loading={rescheduleTimeSlotsQuery.isLoading} showSearch optionFilterProp="children">
+                    {rescheduleTimeSlots.map((t) => (
+                      <Option key={t.id} value={t.id} disabled={t.isFull}>
+                        {t.startTime} - {t.endTime}（剩 {t.availableCount}/{t.capacity}）
+                      </Option>
+                    ))}
+                  </Select>
                 </Form.Item>
               </Col>
               <Col span={24}>

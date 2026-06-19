@@ -20,6 +20,7 @@ import {
   ConflictStatusText,
   ConflictType,
   ConflictTypeText,
+  NotificationChannel,
   NotificationChannelText,
 } from '../types'
 
@@ -251,16 +252,16 @@ function ConflictsPage() {
                   size="small"
                   rowKey="id"
                   pagination={false}
-                  data={detail.notifications || []}
+                  dataSource={detail.notifications || []}
                   columns={[
-                    { title: '渠道', key: 'ch', width: 90, render: (_, r) => <Tag>{NotificationChannelText[r.channel]}</Tag> },
+                    { title: '渠道', key: 'ch', width: 90, render: (_, r: any) => <Tag>{NotificationChannelText[r.channel as NotificationChannel]}</Tag> },
                     { title: '标题', dataIndex: 'title', key: 'title' },
                     { title: '接收方', dataIndex: 'recipient', key: 'rec', width: 140 },
                     { title: '已发送', key: 'sent', width: 80,
-                      render: (_, r) => r.isSent ? <Tag color="green">是</Tag> : <Tag color="red">否</Tag> },
+                      render: (_, r: any) => r.isSent ? <Tag color="green">是</Tag> : <Tag color="red">否</Tag> },
                     { title: '重试', dataIndex: 'retryCount', key: 'retry', width: 60 },
                     { title: '发送时间', key: 't', width: 150,
-                      render: (_, r) => r.sentAt ? dayjs(r.sentAt).format('MM-DD HH:mm') : '-' },
+                      render: (_, r: any) => r.sentAt ? dayjs(r.sentAt).format('MM-DD HH:mm') : '-' },
                   ]}
                 />
               )}

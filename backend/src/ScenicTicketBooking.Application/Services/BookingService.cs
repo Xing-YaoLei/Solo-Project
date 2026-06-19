@@ -126,6 +126,51 @@ public class BookingService : IBookingService
             if (timeSlot.BookedCount + dto.Quantity > timeSlot.Capacity)
                 throw new InvalidOperationException("该时段已超出容量限制");
 
+            Guid visitorId;
+            if (dto.VisitorId.HasValue && dto.VisitorId.Value != Guid.Empty)
+            {
+                visitorId = dto.VisitorId.Value;
+                var existingVisitor = await _unitOfWork.Visitors.GetByIdAsync(visitorId, cancellationToken);
+                if (existingVisitor == null)
+                    throw new InvalidOperationException($"游客不存在: {visitorId}");
+            }
+            else if (!string.IsNullOrWhiteSpace(dto.VisitorIdCard))
+            {
+                var existingVisitor = (_unitOfWork.Visitors as IQueryable<Visitor>)!
+                    .FirstOrDefault(v => v.IdCardNumber == dto.VisitorIdCard);
+                if (existingVisitor != null)
+                {
+                    visitorId = existingVisitor.Id;
+                    if (!string.IsNullOrWhiteSpace(dto.VisitorName))
+                        existingVisitor.Name = dto.VisitorName;
+                    if (!string.IsNullOrWhiteSpace(dto.VisitorPhone))
+                        existingVisitor.PhoneNumber = dto.VisitorPhone;
+                    existingVisitor.UpdatedAt = DateTime.UtcNow;
+                    _unitOfWork.Visitors.Update(existingVisitor);
+                }
+                else
+                {
+                    if (string.IsNullOrWhiteSpace(dto.VisitorName))
+                        throw new InvalidOperationException("游客姓名不能为空");
+
+                    var newVisitor = new Visitor
+                    {
+                        Id = Guid.NewGuid(),
+                        Name = dto.VisitorName,
+                        IdCardNumber = dto.VisitorIdCard,
+                        PhoneNumber = dto.VisitorPhone,
+                        Gender = 0,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    await _unitOfWork.Visitors.AddAsync(newVisitor, cancellationToken);
+                    visitorId = newVisitor.Id;
+                }
+            }
+            else
+            {
+                throw new InvalidOperationException("必须提供 VisitorId 或 VisitorIdCard");
+            }
+
             var booking = new TicketBooking
             {
                 Id = Guid.NewGuid(),
@@ -133,7 +178,7 @@ public class BookingService : IBookingService
                 ScenicSpotId = dto.ScenicSpotId,
                 TimeSlotId = dto.TimeSlotId,
                 TicketTypeId = dto.TicketTypeId,
-                VisitorId = dto.VisitorId,
+                VisitorId = visitorId,
                 Quantity = dto.Quantity,
                 TotalAmount = ticketType.Price * dto.Quantity,
                 Remarks = dto.Remarks,
@@ -217,8 +262,30 @@ public class BookingService : IBookingService
             var originalTimeSlot = await _unitOfWork.TimeSlots.GetByIdAsync(booking.TimeSlotId, cancellationToken)
                 ?? throw new InvalidOperationException("原时段不存在");
 
-            var newTimeSlot = await _unitOfWork.TimeSlots.GetByIdAsync(dto.NewTimeSlotId, cancellationToken)
-                ?? throw new InvalidOperationException($"新时段不存在: {dto.NewTimeSlotId}");
+            Guid newTimeSlotId;
+            if (dto.NewTimeSlotId.HasValue && dto.NewTimeSlotId.Value != Guid.Empty)
+            {
+                newTimeSlotId = dto.NewTimeSlotId.Value;
+            }
+            else if (dto.NewScenicSpotId.HasValue && dto.NewSlotDate.HasValue)
+            {
+                var spotId = dto.NewScenicSpotId.Value;
+                var slotDate = dto.NewSlotDate.Value;
+                var slots = (_unitOfWork.TimeSlots as IQueryable<TimeSlot>)!
+                    .Where(t => t.ScenicSpotId == spotId && t.Date == slotDate && t.IsActive && !t.IsFull)
+                    .OrderBy(t => t.StartTime)
+                    .ToList();
+                if (slots.Count == 0)
+                    throw new InvalidOperationException($"所选日期 {slotDate:yyyy-MM-dd} 没有可用时段");
+                newTimeSlotId = slots.First().Id;
+            }
+            else
+            {
+                throw new InvalidOperationException("必须提供 NewTimeSlotId 或 NewScenicSpotId + NewSlotDate");
+            }
+
+            var newTimeSlot = await _unitOfWork.TimeSlots.GetByIdAsync(newTimeSlotId, cancellationToken)
+                ?? throw new InvalidOperationException($"新时段不存在: {newTimeSlotId}");
 
             if (originalTimeSlot.Id == newTimeSlot.Id)
                 throw new InvalidOperationException("新时段不能与原时段相同");
@@ -233,7 +300,7 @@ public class BookingService : IBookingService
                 OriginalTimeSlotId = originalTimeSlot.Id,
                 NewTimeSlotId = newTimeSlot.Id,
                 Reason = dto.Reason,
-                Operator = dto.Operator,
+                Operator = dto.OperatorName,
                 CreatedAt = DateTime.UtcNow
             };
             await _unitOfWork.RescheduleRecords.AddAsync(rescheduleRecord, cancellationToken);
@@ -248,7 +315,7 @@ public class BookingService : IBookingService
 
             booking.TimeSlotId = newTimeSlot.Id;
             booking.Status = BookingStatus.Rescheduled;
-            booking.UpdatedBy = dto.Operator;
+            booking.UpdatedBy = dto.OperatorName;
             booking.UpdatedAt = DateTime.UtcNow;
             _unitOfWork.TicketBookings.Update(booking);
 
@@ -283,8 +350,8 @@ public class BookingService : IBookingService
 
         booking.Status = BookingStatus.Arrived;
         booking.ArrivalTime = dto.ArrivalTime ?? DateTime.UtcNow;
-        booking.ArrivalOperator = dto.Operator;
-        booking.UpdatedBy = dto.Operator;
+        booking.ArrivalOperator = dto.OperatorName;
+        booking.UpdatedBy = dto.OperatorName;
         booking.UpdatedAt = DateTime.UtcNow;
 
         _unitOfWork.TicketBookings.Update(booking);

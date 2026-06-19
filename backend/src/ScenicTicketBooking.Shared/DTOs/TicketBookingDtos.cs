@@ -68,8 +68,16 @@ public class CreateBookingDto
     [Required]
     public Guid TicketTypeId { get; set; }
 
-    [Required]
-    public Guid VisitorId { get; set; }
+    public Guid? VisitorId { get; set; }
+
+    [MaxLength(100)]
+    public string? VisitorName { get; set; }
+
+    [MaxLength(18)]
+    public string? VisitorIdCard { get; set; }
+
+    [MaxLength(11)]
+    public string? VisitorPhone { get; set; }
 
     public int Quantity { get; set; } = 1;
 
@@ -95,22 +103,25 @@ public class UpdateBookingDto
 
 public class RescheduleBookingDto
 {
-    [Required]
-    public Guid NewTimeSlotId { get; set; }
+    public Guid? NewTimeSlotId { get; set; }
+
+    public Guid? NewScenicSpotId { get; set; }
+
+    public DateOnly? NewSlotDate { get; set; }
 
     [MaxLength(500)]
     public string? Reason { get; set; }
 
     [Required]
     [MaxLength(100)]
-    public string Operator { get; set; } = string.Empty;
+    public string OperatorName { get; set; } = string.Empty;
 }
 
 public class MarkArrivalDto
 {
     [Required]
     [MaxLength(100)]
-    public string Operator { get; set; } = string.Empty;
+    public string OperatorName { get; set; } = string.Empty;
 
     public DateTime? ArrivalTime { get; set; }
 }

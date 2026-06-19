@@ -27,7 +27,7 @@ public class ReminderListService : IReminderListService
 
     public async Task<IEnumerable<ReminderListDto>> GetAllReminderListsAsync(Guid? scenicSpotId = null, CancellationToken cancellationToken = default)
     {
-        var queryable = (_unitOfWork.ReminderLists as IQueryable<ReminderList>)!
+        IQueryable<ReminderList> queryable = (_unitOfWork.ReminderLists as IQueryable<ReminderList>)!
             .Include(r => r.Items)
             .Include(r => r.ScenicSpot);
 
@@ -36,12 +36,13 @@ public class ReminderListService : IReminderListService
 
         queryable = queryable.OrderByDescending(r => r.CreatedAt);
 
-        return await queryable.Select(r => MapToDto(r)).ToListAsync(cancellationToken);
+        var entities = await queryable.ToListAsync(cancellationToken);
+        return entities.Select(r => MapToDto(r, false)).ToList();
     }
 
     public async Task<ReminderListDto?> GetReminderListByIdAsync(Guid id, bool includeChangeLogs = false, CancellationToken cancellationToken = default)
     {
-        var queryable = (_unitOfWork.ReminderLists as IQueryable<ReminderList>)!
+        IQueryable<ReminderList> queryable = (_unitOfWork.ReminderLists as IQueryable<ReminderList>)!
             .Include(r => r.Items)
             .Include(r => r.ScenicSpot);
 
@@ -231,7 +232,7 @@ public class ReminderListService : IReminderListService
 
                     if (changes.Any())
                     {
-                        var newSnapshot = ItemToSnapshot(incoming);
+                        var newSnapshot = ItemDtoToSnapshot(incoming);
                         await LogChangeAsync(list.Id, existingItem.Id, "Update", "Item",
                             string.Join("; ", changes), null, oldSnapshot, newSnapshot, changedBy, changeReason, cancellationToken);
                     }
@@ -298,24 +299,38 @@ public class ReminderListService : IReminderListService
         var logs = await (_unitOfWork.ReminderListChangeLogs as IQueryable<ReminderListChangeLog>)!
             .Where(l => l.ReminderListId == reminderListId)
             .OrderByDescending(l => l.ChangedAt)
-            .Select(l => new ReminderListChangeLogDto
+            .Select(l => new
             {
-                Id = l.Id,
-                ReminderListId = l.ReminderListId,
-                ReminderListItemId = l.ReminderListItemId,
-                ChangeType = l.ChangeType,
-                FieldName = l.FieldName,
-                OldValue = l.OldValue,
-                NewValue = l.NewValue,
-                OldValues = string.IsNullOrEmpty(l.OldValuesSnapshot) ? null : JsonSerializer.Deserialize<Dictionary<string, object?>>(l.OldValuesSnapshot),
-                NewValues = string.IsNullOrEmpty(l.NewValuesSnapshot) ? null : JsonSerializer.Deserialize<Dictionary<string, object?>>(l.NewValuesSnapshot),
-                ChangeReason = l.ChangeReason,
-                ChangedBy = l.ChangedBy,
-                ChangedAt = l.ChangedAt
+                l.Id,
+                l.ReminderListId,
+                l.ReminderListItemId,
+                l.ChangeType,
+                l.FieldName,
+                l.OldValue,
+                l.NewValue,
+                l.OldValuesSnapshot,
+                l.NewValuesSnapshot,
+                l.ChangeReason,
+                l.ChangedBy,
+                l.ChangedAt
             })
             .ToListAsync(cancellationToken);
 
-        return logs;
+        return logs.Select(l => new ReminderListChangeLogDto
+        {
+            Id = l.Id,
+            ReminderListId = l.ReminderListId,
+            ReminderListItemId = l.ReminderListItemId,
+            ChangeType = l.ChangeType,
+            FieldName = l.FieldName,
+            OldValue = l.OldValue,
+            NewValue = l.NewValue,
+            OldValues = string.IsNullOrEmpty(l.OldValuesSnapshot) ? null : JsonSerializer.Deserialize<Dictionary<string, object?>>(l.OldValuesSnapshot),
+            NewValues = string.IsNullOrEmpty(l.NewValuesSnapshot) ? null : JsonSerializer.Deserialize<Dictionary<string, object?>>(l.NewValuesSnapshot),
+            ChangeReason = l.ChangeReason,
+            ChangedBy = l.ChangedBy,
+            ChangedAt = l.ChangedAt
+        }).ToList();
     }
 
     private async Task LogChangeAsync(
@@ -369,6 +384,22 @@ public class ReminderListService : IReminderListService
         };
     }
 
+    private static Dictionary<string, object?> ItemDtoToSnapshot(ReminderListItemDto i)
+    {
+        return new Dictionary<string, object?>
+        {
+            [nameof(i.PersonName)] = i.PersonName,
+            [nameof(i.PhoneNumber)] = i.PhoneNumber,
+            [nameof(i.Email)] = i.Email,
+            [nameof(i.IdCardNumber)] = i.IdCardNumber,
+            [nameof(i.Role)] = i.Role,
+            [nameof(i.ReceiveConflictNotifications)] = i.ReceiveConflictNotifications,
+            [nameof(i.ReceiveDailySummary)] = i.ReceiveDailySummary,
+            [nameof(i.ReceiveMonthlyReport)] = i.ReceiveMonthlyReport,
+            [nameof(i.IsActive)] = i.IsActive
+        };
+    }
+
     private static Dictionary<string, object?> ListToSnapshot(ReminderList list)
     {
         return new Dictionary<string, object?>
@@ -381,7 +412,7 @@ public class ReminderListService : IReminderListService
         };
     }
 
-    private static ReminderListDto MapToDto(ReminderList r, bool includeChangeLogs = false)
+    private static ReminderListDto MapToDto(ReminderList r, bool includeChangeLogs)
     {
         var dto = new ReminderListDto
         {

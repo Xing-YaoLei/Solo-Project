@@ -17,13 +17,37 @@ public class ConflictsController : ControllerBase
     }
 
     [HttpGet("active")]
-    [ProducesResponseType(typeof(IEnumerable<ConflictLogDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<IEnumerable<ConflictLogDto>>> GetActiveConflicts(
+    [ProducesResponseType(typeof(PagedResult<ConflictLogDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PagedResult<ConflictLogDto>>> GetActiveConflicts(
         [FromQuery] Guid? scenicSpotId,
-        CancellationToken cancellationToken)
+        [FromQuery] int? status,
+        [FromQuery] int? conflictType,
+        [FromQuery] int pageIndex = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken cancellationToken = default)
     {
-        var result = await _conflictService.GetActiveConflictsAsync(scenicSpotId, cancellationToken);
-        return Ok(result);
+        var all = await _conflictService.GetActiveConflictsAsync(scenicSpotId, cancellationToken);
+        var query = all.AsEnumerable();
+
+        if (status.HasValue)
+            query = query.Where(c => (int)c.Status == status.Value);
+        if (conflictType.HasValue)
+            query = query.Where(c => (int)c.ConflictType == conflictType.Value);
+
+        var total = query.Count();
+        var items = query
+            .OrderByDescending(c => c.CreatedAt)
+            .Skip((pageIndex - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+
+        return Ok(new PagedResult<ConflictLogDto>
+        {
+            Items = items,
+            TotalCount = total,
+            PageIndex = pageIndex,
+            PageSize = pageSize
+        });
     }
 
     [HttpGet("{id:guid}")]
@@ -36,6 +60,7 @@ public class ConflictsController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPost("{id:guid}/process")]
     [HttpPut("{id:guid}/process")]
     [ProducesResponseType(typeof(ConflictLogDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -55,11 +80,12 @@ public class ConflictsController : ControllerBase
         }
     }
 
+    [HttpPost("trigger-detection")]
     [HttpPost("run-detection")]
     [ProducesResponseType(StatusCodes.Status202Accepted)]
-    public async Task<IActionResult> RunDetection(CancellationToken cancellationToken)
+    public async Task<IActionResult> TriggerDetection(CancellationToken cancellationToken)
     {
         await _conflictService.RunScheduledConflictDetectionAsync(cancellationToken);
-        return Accepted();
+        return Accepted(new { message = "冲突检测已触发执行" });
     }
 }

@@ -2,23 +2,26 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ScenicTicketBooking.Domain.Entities;
 using ScenicTicketBooking.Domain.Interfaces;
+using ScenicTicketBooking.Shared.DTOs;
 
 namespace ScenicTicketBooking.Api.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/masterdata")]
 [Produces("application/json")]
-public class ScenicSpotsController : ControllerBase
+public class MasterDataController : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork;
 
-    public ScenicSpotsController(IUnitOfWork unitOfWork)
+    public MasterDataController(IUnitOfWork unitOfWork)
     {
         _unitOfWork = unitOfWork;
     }
 
-    [HttpGet]
-    public async Task<ActionResult<IEnumerable<ScenicSpot>>> GetAll(CancellationToken cancellationToken)
+    #region ScenicSpots
+
+    [HttpGet("scenicspots")]
+    public async Task<ActionResult<IEnumerable<ScenicSpot>>> GetScenicSpots(CancellationToken cancellationToken)
     {
         var result = await (_unitOfWork.ScenicSpots as IQueryable<ScenicSpot>)!
             .Where(s => s.IsActive)
@@ -27,31 +30,30 @@ public class ScenicSpotsController : ControllerBase
         return Ok(result);
     }
 
-    [HttpGet("{id:guid}")]
-    public async Task<ActionResult<ScenicSpot>> GetById(Guid id, CancellationToken cancellationToken)
+    [HttpGet("scenicspots/{id:guid}")]
+    public async Task<ActionResult<ScenicSpot>> GetScenicSpotById(Guid id, CancellationToken cancellationToken)
     {
         var result = await _unitOfWork.ScenicSpots.GetByIdAsync(id, cancellationToken);
         if (result == null) return NotFound();
         return Ok(result);
     }
 
-    [HttpPost]
-    public async Task<ActionResult<ScenicSpot>> Create([FromBody] ScenicSpot dto, CancellationToken cancellationToken)
+    [HttpPost("scenicspots")]
+    public async Task<ActionResult<ScenicSpot>> CreateScenicSpot([FromBody] ScenicSpot dto, CancellationToken cancellationToken)
     {
         dto.Id = Guid.NewGuid();
         dto.CreatedAt = DateTime.UtcNow;
         dto.IsActive = true;
         var result = await _unitOfWork.ScenicSpots.AddAsync(dto, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
-        return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
+        return CreatedAtAction(nameof(GetScenicSpotById), new { id = result.Id }, result);
     }
 
-    [HttpPut("{id:guid}")]
-    public async Task<IActionResult> Update(Guid id, [FromBody] ScenicSpot dto, CancellationToken cancellationToken)
+    [HttpPut("scenicspots/{id:guid}")]
+    public async Task<IActionResult> UpdateScenicSpot(Guid id, [FromBody] ScenicSpot dto, CancellationToken cancellationToken)
     {
         var entity = await _unitOfWork.ScenicSpots.GetByIdAsync(id, cancellationToken);
         if (entity == null) return NotFound();
-
         entity.Name = dto.Name;
         entity.Description = dto.Description;
         entity.Address = dto.Address;
@@ -60,28 +62,19 @@ public class ScenicSpotsController : ControllerBase
         entity.MaxDailyCapacity = dto.MaxDailyCapacity;
         entity.IsActive = dto.IsActive;
         entity.UpdatedAt = DateTime.UtcNow;
-
         _unitOfWork.ScenicSpots.Update(entity);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
-        return NoContent();
-    }
-}
-
-[ApiController]
-[Route("api/scenicspots/{scenicSpotId:guid}/timeslots")]
-[Produces("application/json")]
-public class TimeSlotsController : ControllerBase
-{
-    private readonly IUnitOfWork _unitOfWork;
-
-    public TimeSlotsController(IUnitOfWork unitOfWork)
-    {
-        _unitOfWork = unitOfWork;
+        return Ok(entity);
     }
 
-    [HttpGet]
-    public async Task<ActionResult<IEnumerable<TimeSlot>>> GetByScenicSpot(
+    #endregion
+
+    #region TimeSlots
+
+    [HttpGet("scenicspots/{scenicSpotId:guid}/timeslots")]
+    public async Task<ActionResult<IEnumerable<TimeSlot>>> GetTimeSlots(
         Guid scenicSpotId,
+        [FromQuery] string? date,
         [FromQuery] DateOnly? startDate,
         [FromQuery] DateOnly? endDate,
         CancellationToken cancellationToken)
@@ -89,10 +82,15 @@ public class TimeSlotsController : ControllerBase
         var query = (_unitOfWork.TimeSlots as IQueryable<TimeSlot>)!
             .Where(t => t.ScenicSpotId == scenicSpotId && t.IsActive);
 
-        if (startDate.HasValue)
-            query = query.Where(t => t.Date >= startDate.Value);
-        if (endDate.HasValue)
-            query = query.Where(t => t.Date <= endDate.Value);
+        if (!string.IsNullOrWhiteSpace(date) && DateOnly.TryParse(date, out var d))
+        {
+            query = query.Where(t => t.Date == d);
+        }
+        else
+        {
+            if (startDate.HasValue) query = query.Where(t => t.Date >= startDate.Value);
+            if (endDate.HasValue) query = query.Where(t => t.Date <= endDate.Value);
+        }
 
         var result = await query
             .OrderBy(t => t.Date)
@@ -101,48 +99,28 @@ public class TimeSlotsController : ControllerBase
         return Ok(result);
     }
 
-    [HttpGet("{id:guid}")]
-    public async Task<ActionResult<TimeSlot>> GetById(Guid scenicSpotId, Guid id, CancellationToken cancellationToken)
-    {
-        var result = await _unitOfWork.TimeSlots.GetByIdAsync(id, cancellationToken);
-        if (result == null || result.ScenicSpotId != scenicSpotId) return NotFound();
-        return Ok(result);
-    }
-
-    [HttpPost]
-    public async Task<ActionResult<TimeSlot>> Create(
-        Guid scenicSpotId,
-        [FromBody] TimeSlot dto,
+    [HttpPost("timeslots/bulk-generate")]
+    [ProducesResponseType(typeof(IEnumerable<TimeSlot>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IEnumerable<TimeSlot>>> BulkGenerateTimeSlots(
+        [FromBody] BulkTimeSlotGenerateRequest request,
         CancellationToken cancellationToken)
     {
-        dto.Id = Guid.NewGuid();
-        dto.ScenicSpotId = scenicSpotId;
-        dto.CreatedAt = DateTime.UtcNow;
-        dto.IsActive = true;
-        var result = await _unitOfWork.TimeSlots.AddAsync(dto, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-        return CreatedAtAction(nameof(GetById), new { scenicSpotId, id = result.Id }, result);
-    }
+        if (request.EndDate < request.StartDate)
+            return BadRequest(new { message = "结束日期不能早于开始日期" });
 
-    [HttpPost("bulk")]
-    public async Task<ActionResult<IEnumerable<TimeSlot>>> BulkCreate(
-        Guid scenicSpotId,
-        [FromBody] BulkTimeSlotCreateDto dto,
-        CancellationToken cancellationToken)
-    {
         var created = new List<TimeSlot>();
-        for (var date = dto.StartDate; date <= dto.EndDate; date = date.AddDays(1))
+        for (var date = request.StartDate; date <= request.EndDate; date = date.AddDays(1))
         {
-            foreach (var slot in dto.TimeRanges)
+            foreach (var range in request.TimeRanges)
             {
                 var entity = new TimeSlot
                 {
                     Id = Guid.NewGuid(),
-                    ScenicSpotId = scenicSpotId,
+                    ScenicSpotId = request.ScenicSpotId,
                     Date = date,
-                    StartTime = slot.StartTime,
-                    EndTime = slot.EndTime,
-                    Capacity = dto.Capacity,
+                    StartTime = range.StartTime,
+                    EndTime = range.EndTime,
+                    Capacity = request.Capacity,
                     BookedCount = 0,
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow
@@ -154,77 +132,52 @@ public class TimeSlotsController : ControllerBase
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return Ok(created);
     }
-}
 
-public class BulkTimeSlotCreateDto
-{
-    public DateOnly StartDate { get; set; }
-    public DateOnly EndDate { get; set; }
-    public int Capacity { get; set; } = 100;
-    public List<TimeRangeDto> TimeRanges { get; set; } = new();
-}
+    #endregion
 
-public class TimeRangeDto
-{
-    public TimeSpan StartTime { get; set; }
-    public TimeSpan EndTime { get; set; }
-}
+    #region TicketTypes
 
-[ApiController]
-[Route("api/scenicspots/{scenicSpotId:guid}/tickettypes")]
-[Produces("application/json")]
-public class TicketTypesController : ControllerBase
-{
-    private readonly IUnitOfWork _unitOfWork;
-
-    public TicketTypesController(IUnitOfWork unitOfWork)
+    [HttpGet("tickettypes")]
+    public async Task<ActionResult<IEnumerable<TicketType>>> GetTicketTypes(
+        [FromQuery] Guid? scenicSpotId,
+        CancellationToken cancellationToken)
     {
-        _unitOfWork = unitOfWork;
-    }
+        var query = (_unitOfWork.TicketTypes as IQueryable<TicketType>)!
+            .Where(t => t.IsActive);
+        if (scenicSpotId.HasValue)
+            query = query.Where(t => t.ScenicSpotId == scenicSpotId.Value);
 
-    [HttpGet]
-    public async Task<ActionResult<IEnumerable<TicketType>>> GetByScenicSpot(Guid scenicSpotId, CancellationToken cancellationToken)
-    {
-        var result = await (_unitOfWork.TicketTypes as IQueryable<TicketType>)!
-            .Where(t => t.ScenicSpotId == scenicSpotId && t.IsActive)
+        var result = await query
             .OrderBy(t => t.SortOrder)
             .ThenBy(t => t.Name)
             .ToListAsync(cancellationToken);
         return Ok(result);
     }
 
-    [HttpPost]
-    public async Task<ActionResult<TicketType>> Create(
-        Guid scenicSpotId,
+    [HttpPost("tickettypes")]
+    public async Task<ActionResult<TicketType>> CreateTicketType(
         [FromBody] TicketType dto,
         CancellationToken cancellationToken)
     {
         dto.Id = Guid.NewGuid();
-        dto.ScenicSpotId = scenicSpotId;
         dto.CreatedAt = DateTime.UtcNow;
         dto.IsActive = true;
         var result = await _unitOfWork.TicketTypes.AddAsync(dto, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
-        return CreatedAtAction(nameof(GetByScenicSpot), new { scenicSpotId }, result);
-    }
-}
-
-[ApiController]
-[Route("api/visitors")]
-[Produces("application/json")]
-public class VisitorsController : ControllerBase
-{
-    private readonly IUnitOfWork _unitOfWork;
-
-    public VisitorsController(IUnitOfWork unitOfWork)
-    {
-        _unitOfWork = unitOfWork;
+        return Ok(result);
     }
 
-    [HttpGet]
-    public async Task<ActionResult<IEnumerable<Visitor>>> Search(
+    #endregion
+
+    #region Visitors
+
+    [HttpGet("visitors")]
+    [ProducesResponseType(typeof(PagedResult<Visitor>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PagedResult<Visitor>>> GetVisitors(
         [FromQuery] string? keyword,
-        CancellationToken cancellationToken)
+        [FromQuery] int pageIndex = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken cancellationToken = default)
     {
         var query = (_unitOfWork.Visitors as IQueryable<Visitor>)!;
         if (!string.IsNullOrWhiteSpace(keyword))
@@ -234,23 +187,28 @@ public class VisitorsController : ControllerBase
                 v.IdCardNumber.Contains(keyword) ||
                 (v.PhoneNumber != null && v.PhoneNumber.Contains(keyword)));
         }
-        var result = await query
+
+        var total = await query.CountAsync(cancellationToken);
+        var items = await query
             .OrderByDescending(v => v.CreatedAt)
-            .Take(100)
+            .Skip((pageIndex - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync(cancellationToken);
-        return Ok(result);
+
+        return Ok(new PagedResult<Visitor>
+        {
+            Items = items,
+            TotalCount = total,
+            PageIndex = pageIndex,
+            PageSize = pageSize
+        });
     }
 
-    [HttpGet("{id:guid}")]
-    public async Task<ActionResult<Visitor>> GetById(Guid id, CancellationToken cancellationToken)
-    {
-        var result = await _unitOfWork.Visitors.GetByIdAsync(id, cancellationToken);
-        if (result == null) return NotFound();
-        return Ok(result);
-    }
-
-    [HttpPost]
-    public async Task<ActionResult<Visitor>> CreateOrUpdate([FromBody] Visitor dto, CancellationToken cancellationToken)
+    [HttpPost("visitors")]
+    [ProducesResponseType(typeof(Visitor), StatusCodes.Status200OK)]
+    public async Task<ActionResult<Visitor>> CreateVisitor(
+        [FromBody] Visitor dto,
+        CancellationToken cancellationToken)
     {
         var existing = await (_unitOfWork.Visitors as IQueryable<Visitor>)!
             .FirstOrDefaultAsync(v => v.IdCardNumber == dto.IdCardNumber, cancellationToken);
@@ -263,6 +221,8 @@ public class VisitorsController : ControllerBase
             existing.Gender = dto.Gender;
             existing.Age = dto.Age;
             existing.Remarks = dto.Remarks;
+            existing.IsBlacklisted = dto.IsBlacklisted;
+            existing.BlacklistReason = dto.BlacklistReason;
             existing.UpdatedAt = DateTime.UtcNow;
             _unitOfWork.Visitors.Update(existing);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -273,6 +233,48 @@ public class VisitorsController : ControllerBase
         dto.CreatedAt = DateTime.UtcNow;
         var result = await _unitOfWork.Visitors.AddAsync(dto, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
-        return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
+        return Ok(result);
     }
+
+    [HttpPut("visitors/{id:guid}")]
+    [ProducesResponseType(typeof(Visitor), StatusCodes.Status200OK)]
+    public async Task<ActionResult<Visitor>> UpdateVisitor(
+        Guid id,
+        [FromBody] Visitor dto,
+        CancellationToken cancellationToken)
+    {
+        var existing = await _unitOfWork.Visitors.GetByIdAsync(id, cancellationToken);
+        if (existing == null) return NotFound();
+
+        existing.Name = dto.Name;
+        existing.IdCardNumber = dto.IdCardNumber;
+        existing.PhoneNumber = dto.PhoneNumber;
+        existing.Email = dto.Email;
+        existing.Gender = dto.Gender;
+        existing.Age = dto.Age;
+        existing.Remarks = dto.Remarks;
+        existing.IsBlacklisted = dto.IsBlacklisted;
+        existing.BlacklistReason = dto.BlacklistReason;
+        existing.UpdatedAt = DateTime.UtcNow;
+        _unitOfWork.Visitors.Update(existing);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return Ok(existing);
+    }
+
+    #endregion
+}
+
+public class BulkTimeSlotGenerateRequest
+{
+    public Guid ScenicSpotId { get; set; }
+    public DateOnly StartDate { get; set; }
+    public DateOnly EndDate { get; set; }
+    public int Capacity { get; set; } = 100;
+    public List<TimeRangeItem> TimeRanges { get; set; } = new();
+}
+
+public class TimeRangeItem
+{
+    public TimeSpan StartTime { get; set; }
+    public TimeSpan EndTime { get; set; }
 }

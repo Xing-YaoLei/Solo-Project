@@ -104,7 +104,7 @@ public class BookingsController : ControllerBase
         }
     }
 
-    [HttpPost("{id:guid}/arrival")]
+    [HttpPost("{id:guid}/mark-arrival")]
     [ProducesResponseType(typeof(BookingRecordDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<BookingRecordDto>> MarkArrival(
@@ -128,13 +128,13 @@ public class BookingsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BookingRecordDto>> Cancel(
         Guid id,
-        [FromQuery] string reason,
-        [FromQuery] string operatorName,
+        [FromBody] CancelBookingRequest request,
         CancellationToken cancellationToken)
     {
         try
         {
-            var result = await _bookingService.CancelBookingAsync(id, reason, operatorName, cancellationToken);
+            var result = await _bookingService.CancelBookingAsync(
+                id, request.Reason, request.OperatorName, cancellationToken);
             return Ok(result);
         }
         catch (InvalidOperationException ex)
@@ -143,17 +143,55 @@ public class BookingsController : ControllerBase
         }
     }
 
-    [HttpGet("check-conflicts")]
-    [ProducesResponseType(typeof(ConflictDetectionResult), StatusCodes.Status200OK)]
-    public async Task<ActionResult<ConflictDetectionResult>> CheckConflicts(
-        [FromQuery] Guid scenicSpotId,
-        [FromQuery] Guid timeSlotId,
-        [FromQuery] Guid visitorId,
-        [FromQuery] int quantity = 1,
-        CancellationToken cancellationToken = default)
+    [HttpPost("precheck-conflicts")]
+    [ProducesResponseType(typeof(PrecheckConflictResponse), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PrecheckConflictResponse>> PrecheckConflicts(
+        [FromBody] PrecheckConflictRequest request,
+        CancellationToken cancellationToken)
     {
-        var result = await _conflictService.CheckConflictsForBookingAsync(
-            scenicSpotId, timeSlotId, visitorId, quantity, cancellationToken);
-        return Ok(result);
+        var warnings = new List<string>();
+
+        if (request.TimeSlotId != Guid.Empty)
+        {
+            var result = await _conflictService.CheckConflictsForBookingAsync(
+                request.ScenicSpotId,
+                request.TimeSlotId,
+                request.VisitorId ?? Guid.Empty,
+                request.Quantity,
+                cancellationToken);
+
+            if (result.HasConflict)
+            {
+                warnings.AddRange(result.Conflicts.Select(c => $"{c.ConflictType}: {c.Reason}"));
+            }
+        }
+
+        return Ok(new PrecheckConflictResponse
+        {
+            HasWarnings = warnings.Count > 0,
+            Warnings = warnings
+        });
     }
+}
+
+public class CancelBookingRequest
+{
+    public string Reason { get; set; } = string.Empty;
+    public string OperatorName { get; set; } = string.Empty;
+}
+
+public class PrecheckConflictRequest
+{
+    public Guid ScenicSpotId { get; set; }
+    public Guid TimeSlotId { get; set; }
+    public Guid? VisitorId { get; set; }
+    public string? VisitorIdCard { get; set; }
+    public int Quantity { get; set; } = 1;
+    public string? SlotDate { get; set; }
+}
+
+public class PrecheckConflictResponse
+{
+    public bool HasWarnings { get; set; }
+    public List<string> Warnings { get; set; } = new();
 }

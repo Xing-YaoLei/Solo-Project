@@ -1,9 +1,12 @@
 using Hangfire;
 using Hangfire.SqlServer;
 using Microsoft.OpenApi.Models;
+using OfficeOpenXml;
 using ScenicTicketBooking.Application;
 using ScenicTicketBooking.Application.Jobs;
 using ScenicTicketBooking.Infrastructure;
+
+ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
 
 var builder = WebApplication.CreateBuilder(args);
 

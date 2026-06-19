@@ -53,21 +53,26 @@ function StatisticsPage() {
     mutationFn: async (values: any) => {
       const year = selectedMonth.year()
       const month = selectedMonth.month() + 1
-      const payload = {
-        filterCriteria: {
-          year,
-          month,
-          scenicSpotId: values.scenicSpotId,
-          status: values.status,
-          exportType,
-          exportTitle: exportType === 'monthly' ? `${year}年${month}月运营复盘报告` : '预约记录明细',
-        },
-        generatedBy: '运营管理员',
-        format: values.format || 'excel',
+      const filterCriteria = {
+        year,
+        month,
+        scenicSpotId: values.scenicSpotId,
+        status: values.status,
       }
       const response = exportType === 'monthly'
-        ? await statisticsApi.exportMonthlyReport(payload)
-        : await statisticsApi.exportBookings(payload)
+        ? await statisticsApi.exportMonthlyReport({
+            year,
+            month,
+            scenicSpotId: values.scenicSpotId,
+            filterCriteria,
+            generatedBy: '运营管理员',
+            format: values.format || 'excel',
+          })
+        : await statisticsApi.exportBookings({
+            filterCriteria,
+            generatedBy: '运营管理员',
+            format: values.format || 'excel',
+          })
       return response
     },
     onSuccess: (response: any) => {
