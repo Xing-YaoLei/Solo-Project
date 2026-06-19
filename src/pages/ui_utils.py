@@ -35,6 +35,7 @@ def render_date_range_filter(
     label: str = "选择日期范围",
     default_start: Optional[date] = None,
     default_end: Optional[date] = None,
+    key: Optional[str] = None,
 ) -> tuple:
     today = date.today()
     if default_start is None:
@@ -42,11 +43,13 @@ def render_date_range_filter(
     if default_end is None:
         default_end = today
 
+    key_suffix = f"_{key}" if key else ""
+
     col1, col2 = st.columns(2)
     with col1:
-        start_date = st.date_input(f"{label} - 开始", value=default_start, key=f"{label}_start")
+        start_date = st.date_input(f"{label} - 开始", value=default_start, key=f"{label}_start{key_suffix}")
     with col2:
-        end_date = st.date_input(f"{label} - 结束", value=default_end, key=f"{label}_end")
+        end_date = st.date_input(f"{label} - 结束", value=default_end, key=f"{label}_end{key_suffix}")
 
     return start_date, end_date
 

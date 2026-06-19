@@ -1,6 +1,6 @@
 import random
 from datetime import datetime, date, timedelta
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 import polars as pl
 import numpy as np
@@ -288,7 +288,8 @@ def generate_parts_inventory_history(n: int = 2000) -> pl.DataFrame:
             "operator": f"仓管{random.randint(1, 10):02d}",
             "remark": "",
             "original_source": random.choice(["采购系统", "工单系统", "盘点系统"]),
-            "original_record_ref": f"REF{random.randint(100000, 999999)}",
+            "original_record_ref": f"REF{i:06d}",
+            "sample_record_id": f"SMP{1000 + i}" if random.random() < 0.4 else None,
         })
 
     return pl.DataFrame(data).sort("change_date")
@@ -425,14 +426,36 @@ def generate_rework_records(n: int = 120) -> pl.DataFrame:
     return pl.DataFrame(data).sort("rework_date")
 
 
-def generate_parts_shortage(n: int = 80) -> pl.DataFrame:
+def generate_parts_shortage(n: int = 80, inventory_history: Optional[pl.DataFrame] = None) -> pl.DataFrame:
     data: List[Dict[str, Any]] = []
     today = date.today()
+
+    valid_history_ids = []
+    valid_sample_ids = {}
+    if inventory_history is not None and not inventory_history.is_empty():
+        history_with_sample = inventory_history.filter(pl.col("sample_record_id").is_not_null())
+        valid_history_ids = inventory_history["history_id"].to_list()
+        if not history_with_sample.is_empty():
+            for row in history_with_sample.to_dicts():
+                valid_sample_ids[row["sample_record_id"]] = row["history_id"]
 
     for i in range(1, n + 1):
         part_id = f"P{random.randint(1, 150):05d}"
         needed_qty = random.randint(2, 20)
         stock_qty = random.randint(0, needed_qty - 1)
+
+        source_ref = None
+        sample_id = None
+
+        if valid_sample_ids and random.random() < 0.8:
+            sample_id, hist_id = random.choice(list(valid_sample_ids.items()))
+            source_ref = hist_id
+        elif valid_history_ids and random.random() < 0.5:
+            source_ref = random.choice(valid_history_ids)
+            sample_id = f"SMP{random.randint(1000, 9999)}"
+        else:
+            source_ref = f"HIST{random.randint(1, 2000):07d}"
+            sample_id = f"SMP{random.randint(1000, 9999)}"
 
         data.append({
             "shortage_id": f"SH{i:05d}",
@@ -447,8 +470,8 @@ def generate_parts_shortage(n: int = 80) -> pl.DataFrame:
             "status": random.choice(["待补货", "已补货", "已替代", "客户取消", "在途"]),
             "estimated_arrival_date": _random_date(today, today + timedelta(days=30)) if random.random() < 0.6 else None,
             "supplier": f"供应商{random.randint(1, 20):02d}",
-            "sample_record_id": f"SMP{random.randint(1000, 9999)}",
-            "source_record_ref": f"HIST{random.randint(1, 2000):07d}",
+            "sample_record_id": sample_id,
+            "source_record_ref": source_ref,
             "remark": "",
         })
 

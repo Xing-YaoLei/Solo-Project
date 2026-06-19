@@ -360,40 +360,65 @@ def _render_shortage_tab():
         key="shortage_sample_search",
     )
     if selected_sample:
-        sample_shortage = shortage.filter(pl.col("sample_record_id") == selected_sample.strip())
-        if sample_shortage.is_empty():
-            st.warning(f"未找到样本 {selected_sample} 的缺货记录")
+        sample_id = selected_sample.strip()
+        sample_shortage = shortage.filter(pl.col("sample_record_id") == sample_id)
+
+        hist_by_sample = None
+        if repository.parts_inventory_history is not None:
+            hist_by_sample = repository.parts_inventory_history.filter(
+                pl.col("sample_record_id") == sample_id
+            )
+
+        if sample_shortage.is_empty() and (hist_by_sample is None or hist_by_sample.is_empty()):
+            st.warning(f"未找到样本 {sample_id} 的缺货记录或出入库记录")
         else:
-            st.markdown(f"**缺货样本 {selected_sample} 详情**")
-            render_dataframe(sample_shortage, height=150)
+            if not sample_shortage.is_empty():
+                st.markdown(f"**缺货样本 {sample_id} 详情**")
+                render_dataframe(sample_shortage, height=150)
 
-            part_id = sample_shortage["part_id"][0]
-            if repository.parts_inventory is not None:
-                part_info = repository.parts_inventory.filter(pl.col("part_id") == part_id)
-                if not part_info.is_empty():
-                    st.markdown(f"**配件 {part_id} 当前库存状态**")
-                    render_dataframe(part_info, height=150)
+                part_id = sample_shortage["part_id"][0]
+                if repository.parts_inventory is not None:
+                    part_info = repository.parts_inventory.filter(pl.col("part_id") == part_id)
+                    if not part_info.is_empty():
+                        st.markdown(f"**配件 {part_id} 当前库存状态**")
+                        render_dataframe(part_info, height=150)
 
-            if repository.parts_inventory_history is not None:
-                source_ref = sample_shortage["source_record_ref"][0]
-                if source_ref:
-                    hist = repository.parts_inventory_history.filter(
-                        pl.col("original_record_ref") == source_ref
+                if repository.parts_inventory_history is not None:
+                    source_ref = sample_shortage["source_record_ref"][0]
+                    if source_ref:
+                        hist = repository.parts_inventory_history.filter(
+                            pl.col("history_id") == source_ref
+                        )
+                        if not hist.is_empty():
+                            st.markdown(f"**关联出入库记录（history_id: {source_ref}）**")
+                            render_dataframe(hist, height=250)
+                        elif hist_by_sample is None or hist_by_sample.is_empty():
+                            st.info(f"未找到 history_id={source_ref} 的原始出入库记录")
+
+                wo_id = sample_shortage["requested_work_order"][0]
+                if wo_id and repository.work_order_items is not None:
+                    wo_items = repository.work_order_items.filter(
+                        (pl.col("work_order_id") == wo_id) & (pl.col("item_type") == "配件")
                     )
-                    if not hist.is_empty():
-                        st.markdown(f"**原始出入库记录（source_ref: {source_ref}）**")
-                        render_dataframe(hist, height=250)
-                    else:
-                        st.info(f"未找到 source_ref={source_ref} 的原始出入库记录")
+                    if not wo_items.is_empty():
+                        st.markdown(f"**关联工单 {wo_id} 的配件需求**")
+                        render_dataframe(wo_items, height=250)
 
-            wo_id = sample_shortage["requested_work_order"][0]
-            if wo_id and repository.work_order_items is not None:
-                wo_items = repository.work_order_items.filter(
-                    (pl.col("work_order_id") == wo_id) & (pl.col("item_type") == "配件")
-                )
-                if not wo_items.is_empty():
-                    st.markdown(f"**关联工单 {wo_id} 的配件需求**")
-                    render_dataframe(wo_items, height=250)
+            if hist_by_sample is not None and not hist_by_sample.is_empty():
+                if sample_shortage.is_empty():
+                    st.markdown(f"**通过 sample_record_id {sample_id} 找到出入库记录**")
+                else:
+                    st.markdown(f"**同 sample_record_id 关联的出入库历史**")
+                render_dataframe(hist_by_sample, height=250)
+
+                for hist_row in hist_by_sample.to_dicts():
+                    orig_ref = hist_row.get("original_record_ref")
+                    if orig_ref:
+                        st.caption(
+                            f"💡 原始记录号: {orig_ref} | "
+                            f"来源系统: {hist_row.get('original_source', 'N/A')} | "
+                            f"关联单号: {hist_row.get('related_order_id', 'N/A')}"
+                        )
 
 
 def _render_history_trace_tab():
@@ -473,21 +498,22 @@ def _render_history_trace_tab():
     display_cols = [
         "history_id", "inventory_id", "change_date", "change_type",
         "quantity_change", "quantity_before", "quantity_after",
-        "related_order_id", "operator", "original_source", "original_record_ref", "remark",
+        "related_order_id", "operator", "original_source",
+        "original_record_ref", "sample_record_id", "remark",
     ]
     render_dataframe(
         filtered.select(display_cols).sort("change_date", descending=True),
         title=f"出入库历史明细（共 {filtered.shape[0]} 条）",
         height=450,
     )
-    st.caption("💡 点击 original_record_ref 可跳转至各业务系统（采购/工单/盘点）的原始记录")
+    st.caption("💡 点击 original_record_ref 可跳转至各业务系统（采购/工单/盘点）的原始记录；通过 sample_record_id 可关联缺货记录")
 
     st.markdown("#### 原始记录溯源查询")
     col_s1, col_s2 = st.columns(2)
     with col_s1:
         search_type = st.selectbox(
             "搜索类型",
-            options=["original_record_ref", "related_order_id", "inventory_id", "history_id"],
+            options=["original_record_ref", "related_order_id", "inventory_id", "history_id", "sample_record_id"],
             key="hist_search_type",
         )
     with col_s2:
@@ -500,12 +526,34 @@ def _render_history_trace_tab():
             result = filtered.filter(pl.col("related_order_id") == search_value.strip())
         elif search_type == "inventory_id":
             result = filtered.filter(pl.col("inventory_id") == search_value.strip())
+        elif search_type == "sample_record_id":
+            result = filtered.filter(pl.col("sample_record_id") == search_value.strip())
         else:
             result = filtered.filter(pl.col("history_id") == search_value.strip())
 
         if not result.is_empty():
             st.success(f"找到 {result.shape[0]} 条匹配记录")
             render_dataframe(result, height=200)
+
+            for row in result.to_dicts():
+                hist_id = row.get("history_id", "")
+                orig_ref = row.get("original_record_ref", "")
+                sample_id = row.get("sample_record_id", "")
+
+                if orig_ref:
+                    st.caption(
+                        f"📝 history_id: {hist_id} | "
+                        f"原始记录号: {orig_ref} | "
+                        f"来源系统: {row.get('original_source', 'N/A')}"
+                    )
+
+                if sample_id and repository.parts_shortage is not None:
+                    shortage_rec = repository.parts_shortage.filter(
+                        pl.col("sample_record_id") == sample_id
+                    )
+                    if not shortage_rec.is_empty():
+                        st.markdown(f"**关联缺货记录（sample_id: {sample_id}）**")
+                        render_dataframe(shortage_rec, height=150)
 
             if repository.work_orders is not None and search_type == "related_order_id":
                 wo_id = result["related_order_id"][0]

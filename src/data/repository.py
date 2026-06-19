@@ -41,7 +41,9 @@ class DataRepository:
         self.diagnosis_results = mock_data.generate_diagnosis_results()
         self.maintenance_reminders = mock_data.generate_maintenance_reminders()
         self.rework_records = mock_data.generate_rework_records()
-        self.parts_shortage = mock_data.generate_parts_shortage()
+        self.parts_shortage = mock_data.generate_parts_shortage(
+            inventory_history=self.parts_inventory_history
+        )
 
     def _load_from_store(self) -> None:
         data_map = {
