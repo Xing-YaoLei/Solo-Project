@@ -70,6 +70,8 @@ export class WorkOrdersService {
       '创建工单',
     );
 
+    await this.updateCacheStats();
+
     return workOrder;
   }
 
@@ -261,6 +263,8 @@ export class WorkOrdersService {
       where: { id },
     });
 
+    await this.updateCacheStats();
+
     return { message: '删除成功' };
   }
 
@@ -378,6 +382,8 @@ export class WorkOrdersService {
       ),
     );
 
+    await this.updateCacheStats();
+
     return {
       success: true,
       count: updatedWorkOrders.length,
@@ -428,6 +434,8 @@ export class WorkOrdersService {
       technicianId,
     );
 
+    await this.updateCacheStats();
+
     return updatedWorkOrder;
   }
 
@@ -466,6 +474,7 @@ export class WorkOrdersService {
       stats['TOTAL'] = total;
 
       await this.redisService.setJson('workorder:stats', stats, 300);
+      await this.redisService.del('statistics:dashboard');
     } catch (error) {
       console.error('Failed to update work order stats cache:', error);
     }

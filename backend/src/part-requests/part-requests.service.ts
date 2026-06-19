@@ -27,7 +27,7 @@ export class PartRequestsService {
   async create(createPartRequestDto: CreatePartRequestDto) {
     const requestNumber = this.generateRequestNumber();
 
-    return this.prisma.partRequest.create({
+    const result = await this.prisma.partRequest.create({
       data: {
         ...createPartRequestDto,
         requestNumber,
@@ -42,6 +42,10 @@ export class PartRequestsService {
         part: true,
       },
     });
+
+    await this.redisService.del('partrequest:kanban');
+
+    return result;
   }
 
   async findAll(
@@ -187,6 +191,7 @@ export class PartRequestsService {
       conclusion,
     );
 
+    await this.redisService.del('partrequest:kanban');
     await this.updatePartStockWarningCache();
 
     return updatedPartRequest;
@@ -204,6 +209,8 @@ export class PartRequestsService {
     await this.prisma.partRequest.delete({
       where: { id },
     });
+
+    await this.redisService.del('partrequest:kanban');
 
     return { message: '删除成功' };
   }

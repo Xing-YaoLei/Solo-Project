@@ -44,7 +44,7 @@ export class PartRequestsController {
   }
 
   @Get('kanban/stats')
-  @Roles(RoleEnum.MANAGER, RoleEnum.PARTS_CLERK, RoleEnum.ADVISOR)
+  @Roles(RoleEnum.MANAGER, RoleEnum.PARTS_CLERK, RoleEnum.ADVISOR, RoleEnum.TECHNICIAN)
   @Permissions('partrequest:read')
   getKanbanStats() {
     return this.partRequestsService.getKanbanStats();
