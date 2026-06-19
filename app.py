@@ -1347,67 +1347,106 @@ elif page == "📚 数据版本追溯":
                     st.success(f"✅ 新版本创建成功！收款记录版本号已递增，历史快照已保存到 MinIO 和 DuckDB.data_versions（含 record_version）")
                     st.rerun()
             
-            st.markdown("**步骤3: 查看历史版本**")
-            payment_versions = version_ctrl.get_record_versions('payment_records', selected_payment)
+            st.markdown("**步骤3: 查看历史版本（同一次保存的 MinIO 与 DuckDB 快照配对展示）**")
+            payment_versions_grouped = version_ctrl.get_record_versions_grouped(
+                'payment_records', selected_payment
+            )
+            payment_versions_flat = version_ctrl.get_record_versions(
+                'payment_records', selected_payment
+            )
             
-            if len(payment_versions) == 0:
+            version_count = len(payment_versions_grouped)
+            duckdb_count = sum(1 for v in payment_versions_grouped.values() if v['duckdb'] is not None)
+            minio_count = sum(1 for v in payment_versions_grouped.values() if v['minio'] is not None)
+            
+            if version_count == 0:
                 st.info("该记录暂无历史版本（当前为V1），请先执行步骤2创建版本")
             else:
-                st.success(f"找到 {len(payment_versions)} 个历史版本（MinIO + DuckDB），记录版本号已从 data_versions.record_version 读取")
-                
-                duckdb_count = sum(1 for v in payment_versions if v.get('source') == 'DuckDB')
-                minio_count = sum(1 for v in payment_versions if v.get('source', 'MinIO') == 'MinIO')
-                st.info(f"📦 DuckDB 快照: {duckdb_count} 条 | ☁️ MinIO 快照: {minio_count} 条")
+                st.success(f"找到 {version_count} 个记录版本，其中 MinIO/本地快照 {minio_count} 个，DuckDB 持久化快照 {duckdb_count} 个")
+                st.info("💡 同一版本号 Vx 对应同一次保存操作产生的双写快照")
                 
                 col_v1, col_v2 = st.columns(2)
-                version_indices = []
-                for i, v in enumerate(payment_versions):
-                    source = v.get('source', 'MinIO')
-                    ver = v.get('version', i+1)
-                    ts = v.get('timestamp', '未知时间')
-                    source_tag = '📦 DuckDB' if source == 'DuckDB' else '☁️ MinIO'
-                    version_indices.append(f"📌 V{ver} ({source_tag}) - {ts}")
+                version_numbers = sorted(payment_versions_grouped.keys(), reverse=True)
+                version_labels = [f"V{v} - {payment_versions_grouped[v].get('minio', {}).get('timestamp', payment_versions_grouped[v].get('duckdb', {}).get('timestamp', '未知时间'))}" 
+                                for v in version_numbers]
                 
                 with col_v1:
-                    ver_a_idx = st.selectbox("选择版本A", range(len(version_indices)), format_func=lambda x: version_indices[x], key="ver_a_pay")
+                    ver_a_num_idx = st.selectbox("选择版本A", range(len(version_labels)), 
+                                               format_func=lambda x: version_labels[x], key="ver_a_pay")
                 with col_v2:
-                    ver_b_idx = st.selectbox("选择版本B", range(len(version_indices)), format_func=lambda x: version_indices[x], key="ver_b_pay", index=min(1, len(version_indices)-1))
+                    ver_b_num_idx = st.selectbox("选择版本B", range(len(version_labels)), 
+                                               format_func=lambda x: version_labels[x], 
+                                               key="ver_b_pay", 
+                                               index=min(1, len(version_labels)-1))
                 
-                if ver_a_idx != ver_b_idx:
-                    comparison = version_ctrl.compare_versions(
-                        payment_versions[ver_a_idx], payment_versions[ver_b_idx]
-                    )
+                ver_a_num = version_numbers[ver_a_num_idx]
+                ver_b_num = version_numbers[ver_b_num_idx]
+                
+                if ver_a_num != ver_b_num:
+                    ver_a_data = (payment_versions_grouped[ver_a_num]['minio'] or 
+                                 payment_versions_grouped[ver_a_num]['duckdb'])
+                    ver_b_data = (payment_versions_grouped[ver_b_num]['minio'] or 
+                                 payment_versions_grouped[ver_b_num]['duckdb'])
                     
-                    if comparison['has_changes']:
-                        st.warning(f"检测到 {len(comparison['differences'])} 处字段差异：")
-                        diff_df = pd.DataFrame([
-                            {
-                                '字段名': k,
-                                f'Version {comparison["version_a"]} 值': v['version_a_value'],
-                                f'Version {comparison["version_b"]} 值': v['version_b_value']
-                            }
-                            for k, v in comparison['differences'].items()
-                        ])
-                        st.dataframe(diff_df, hide_index=True, use_container_width=True)
-                    else:
-                        st.info("两个版本内容完全一致")
-                
-                st.markdown("**各版本快照详情（含 DuckDB 持久化版本）**")
-                for i, ver in enumerate(payment_versions):
-                    ver_num = ver.get('version', i+1)
-                    source = ver.get('source', 'MinIO')
-                    is_duckdb = source == 'DuckDB'
-                    source_badge = "🟢 📦 DuckDB持久化" if is_duckdb else "🔵 ☁️ MinIO缓存"
-                    with st.expander(f"{source_badge} | 记录版本 V{ver_num} - {ver.get('timestamp', 'N/A')} | 变更原因: {ver.get('change_reason', '无')}"):
-                        snapshot = ver.get('snapshot', {})
-                        if is_duckdb:
-                            st.markdown(f"<div style='background:#dcfce7; padding:0.5rem; border-radius:4px; margin-bottom:0.5rem;'><strong>✅ 这是从 DuckDB.data_versions 表读取的持久化版本（version_id 从 MAX(version_id)+1 生成）</strong></div>", unsafe_allow_html=True)
+                    if ver_a_data and ver_b_data:
+                        comparison = version_ctrl.compare_versions(ver_a_data, ver_b_data)
+                        if comparison['has_changes']:
+                            st.warning(f"检测到 {len(comparison['differences'])} 处字段差异：")
+                            diff_df = pd.DataFrame([
+                                {
+                                    '字段名': k,
+                                    f'V{comparison["version_a"]} 值': v['version_a_value'],
+                                    f'V{comparison["version_b"]} 值': v['version_b_value']
+                                }
+                                for k, v in comparison['differences'].items()
+                            ])
+                            st.dataframe(diff_df, hide_index=True, width='stretch')
                         else:
-                            st.markdown(f"<div style='background:#dbeafe; padding:0.5rem; border-radius:4px; margin-bottom:0.5rem;'><strong>ℹ️ 这是从 MinIO 读取的版本快照</strong></div>", unsafe_allow_html=True)
-                        snap_df = pd.DataFrame([
-                            {'字段': k, '值': str(v)} for k, v in snapshot.items()
-                        ])
-                        st.dataframe(snap_df, hide_index=True, width='stretch')
+                            st.info("两个版本内容完全一致")
+                
+                st.markdown("**各版本双写快照详情**")
+                for ver_num, ver_group in payment_versions_grouped.items():
+                    has_minio = ver_group['minio'] is not None
+                    has_duckdb = ver_group['duckdb'] is not None
+                    
+                    minio_data = ver_group['minio']
+                    duckdb_data = ver_group['duckdb']
+                    
+                    ts = minio_data.get('timestamp', duckdb_data.get('timestamp', 'N/A')) if (minio_data or duckdb_data) else 'N/A'
+                    reason = minio_data.get('change_reason', duckdb_data.get('change_reason', '无')) if (minio_data or duckdb_data) else '无'
+                    
+                    status_tag = "✅ 双写一致" if has_minio and has_duckdb else ("⚠️ 仅MinIO" if has_minio else "⚠️ 仅DuckDB")
+                    
+                    with st.expander(f"📌 记录版本 V{ver_num} | {status_tag} | {ts} | 变更原因: {reason}", expanded=(ver_num == version_numbers[0])):
+                        col_m, col_d = st.columns(2)
+                        
+                        with col_m:
+                            if minio_data:
+                                st.markdown(f"<div style='background:#dbeafe; padding:0.5rem; border-radius:6px; border-left:4px solid #3b82f6; margin-bottom:0.5rem;'><strong>☁️ MinIO / 本地存储快照</strong></div>", unsafe_allow_html=True)
+                                snap = minio_data.get('snapshot', {})
+                                snap_df = pd.DataFrame([{'字段': k, '值': str(v)} for k, v in snap.items()])
+                                st.dataframe(snap_df, hide_index=True, width='stretch', height=250)
+                            else:
+                                st.markdown("<div style='background:#fef2f2; padding:0.5rem; border-radius:6px; color:#991b1b;'><strong>❌ MinIO 快照缺失</strong><br/>本次保存 MinIO 写入失败或无数据</div>", unsafe_allow_html=True)
+                        
+                        with col_d:
+                            if duckdb_data:
+                                st.markdown(f"<div style='background:#dcfce7; padding:0.5rem; border-radius:6px; border-left:4px solid #10b981; margin-bottom:0.5rem;'><strong>📦 DuckDB 持久化快照</strong></div>", unsafe_allow_html=True)
+                                snap = duckdb_data.get('snapshot', {})
+                                snap_df = pd.DataFrame([{'字段': k, '值': str(v)} for k, v in snap.items()])
+                                st.dataframe(snap_df, hide_index=True, width='stretch', height=250)
+                            else:
+                                st.markdown("<div style='background:#fef2f2; padding:0.5rem; border-radius:6px; color:#991b1b;'><strong>❌ DuckDB 快照缺失</strong><br/>本次保存 DuckDB 写入失败或无数据</div>", unsafe_allow_html=True)
+                        
+                        if has_minio and has_duckdb:
+                            minio_snap = minio_data.get('snapshot', {})
+                            duckdb_snap = duckdb_data.get('snapshot', {})
+                            all_keys = set(minio_snap.keys()) | set(duckdb_snap.keys())
+                            diff_fields = [k for k in all_keys if str(minio_snap.get(k)) != str(duckdb_snap.get(k))]
+                            if diff_fields:
+                                st.warning(f"⚠️ 同版本双写内容存在 {len(diff_fields)} 处差异: {', '.join(diff_fields)}")
+                            else:
+                                st.success("✅ 同版本 MinIO 与 DuckDB 快照内容完全一致")
     
     with tab2:
         st.markdown("**门锁记录版本追溯**")
@@ -1463,32 +1502,63 @@ elif page == "📚 数据版本追溯":
                     st.success(f"✅ 门锁记录新版本创建成功！版本号已递增，历史快照已保存（含 record_version）")
                     st.rerun()
             
-            st.markdown("**门锁记录历史版本**")
-            lock_versions = version_ctrl.get_record_versions('door_lock_records', selected_lock)
+            st.markdown("**门锁记录历史版本（同一次保存的 MinIO 与 DuckDB 快照配对展示）**")
+            lock_versions_grouped = version_ctrl.get_record_versions_grouped(
+                'door_lock_records', selected_lock
+            )
             
-            if len(lock_versions) == 0:
+            version_count = len(lock_versions_grouped)
+            duckdb_count = sum(1 for v in lock_versions_grouped.values() if v['duckdb'] is not None)
+            minio_count = sum(1 for v in lock_versions_grouped.values() if v['minio'] is not None)
+            
+            if version_count == 0:
                 st.info("该记录暂无历史版本，请先执行更新操作")
             else:
-                duckdb_count = sum(1 for v in lock_versions if v.get('source') == 'DuckDB')
-                minio_count = sum(1 for v in lock_versions if v.get('source', 'MinIO') == 'MinIO')
-                st.success(f"找到 {len(lock_versions)} 个历史版本，版本号来自 data_versions.record_version")
-                st.info(f"📦 DuckDB 持久化快照: {duckdb_count} 条 | ☁️ MinIO 缓存快照: {minio_count} 条")
+                st.success(f"找到 {version_count} 个记录版本，其中 MinIO/本地快照 {minio_count} 个，DuckDB 持久化快照 {duckdb_count} 个")
+                st.info("💡 同一版本号 Vx 对应同一次保存操作产生的双写快照")
                 
-                for i, ver in enumerate(lock_versions):
-                    ver_num = ver.get('version', i+1)
-                    source = ver.get('source', 'MinIO')
-                    is_duckdb = source == 'DuckDB'
-                    source_badge = "🟢 📦 DuckDB持久化" if is_duckdb else "🔵 ☁️ MinIO缓存"
-                    with st.expander(f"{source_badge} | 🔒 记录版本 V{ver_num} - {ver.get('timestamp', 'N/A')} | {ver.get('change_reason', '无')}"):
-                        snapshot = ver.get('snapshot', {})
-                        if is_duckdb:
-                            st.markdown(f"<div style='background:#dcfce7; padding:0.5rem; border-radius:4px; margin-bottom:0.5rem;'><strong>✅ 这是从 DuckDB.data_versions 表读取的持久化版本（version_id 从 MAX(version_id)+1 生成）</strong></div>", unsafe_allow_html=True)
-                        else:
-                            st.markdown(f"<div style='background:#dbeafe; padding:0.5rem; border-radius:4px; margin-bottom:0.5rem;'><strong>ℹ️ 这是从 MinIO 读取的版本快照</strong></div>", unsafe_allow_html=True)
-                        snap_df = pd.DataFrame([
-                            {'字段': k, '值': str(v)} for k, v in snapshot.items()
-                        ])
-                        st.dataframe(snap_df, hide_index=True, width='stretch')
+                for ver_num, ver_group in lock_versions_grouped.items():
+                    has_minio = ver_group['minio'] is not None
+                    has_duckdb = ver_group['duckdb'] is not None
+                    
+                    minio_data = ver_group['minio']
+                    duckdb_data = ver_group['duckdb']
+                    
+                    ts = minio_data.get('timestamp', duckdb_data.get('timestamp', 'N/A')) if (minio_data or duckdb_data) else 'N/A'
+                    reason = minio_data.get('change_reason', duckdb_data.get('change_reason', '无')) if (minio_data or duckdb_data) else '无'
+                    
+                    status_tag = "✅ 双写一致" if has_minio and has_duckdb else ("⚠️ 仅MinIO" if has_minio else "⚠️ 仅DuckDB")
+                    
+                    with st.expander(f"🔒 记录版本 V{ver_num} | {status_tag} | {ts} | 变更原因: {reason}", expanded=(ver_num == sorted(lock_versions_grouped.keys(), reverse=True)[0])):
+                        col_m, col_d = st.columns(2)
+                        
+                        with col_m:
+                            if minio_data:
+                                st.markdown(f"<div style='background:#dbeafe; padding:0.5rem; border-radius:6px; border-left:4px solid #3b82f6; margin-bottom:0.5rem;'><strong>☁️ MinIO / 本地存储快照</strong></div>", unsafe_allow_html=True)
+                                snap = minio_data.get('snapshot', {})
+                                snap_df = pd.DataFrame([{'字段': k, '值': str(v)} for k, v in snap.items()])
+                                st.dataframe(snap_df, hide_index=True, width='stretch', height=250)
+                            else:
+                                st.markdown("<div style='background:#fef2f2; padding:0.5rem; border-radius:6px; color:#991b1b;'><strong>❌ MinIO 快照缺失</strong><br/>本次保存 MinIO 写入失败或无数据</div>", unsafe_allow_html=True)
+                        
+                        with col_d:
+                            if duckdb_data:
+                                st.markdown(f"<div style='background:#dcfce7; padding:0.5rem; border-radius:6px; border-left:4px solid #10b981; margin-bottom:0.5rem;'><strong>📦 DuckDB 持久化快照</strong></div>", unsafe_allow_html=True)
+                                snap = duckdb_data.get('snapshot', {})
+                                snap_df = pd.DataFrame([{'字段': k, '值': str(v)} for k, v in snap.items()])
+                                st.dataframe(snap_df, hide_index=True, width='stretch', height=250)
+                            else:
+                                st.markdown("<div style='background:#fef2f2; padding:0.5rem; border-radius:6px; color:#991b1b;'><strong>❌ DuckDB 快照缺失</strong><br/>本次保存 DuckDB 写入失败或无数据</div>", unsafe_allow_html=True)
+                        
+                        if has_minio and has_duckdb:
+                            minio_snap = minio_data.get('snapshot', {})
+                            duckdb_snap = duckdb_data.get('snapshot', {})
+                            all_keys = set(minio_snap.keys()) | set(duckdb_snap.keys())
+                            diff_fields = [k for k in all_keys if str(minio_snap.get(k)) != str(duckdb_snap.get(k))]
+                            if diff_fields:
+                                st.warning(f"⚠️ 同版本双写内容存在 {len(diff_fields)} 处差异: {', '.join(diff_fields)}")
+                            else:
+                                st.success("✅ 同版本 MinIO 与 DuckDB 快照内容完全一致")
 
 st.markdown("---")
 st.caption("""

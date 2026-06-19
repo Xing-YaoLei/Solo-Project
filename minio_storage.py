@@ -29,17 +29,20 @@ class MinioManager:
             self.client.make_bucket(settings.MINIO_BUCKET_NAME)
 
     def save_data_version(self, table_name: str, record_id: str, data: dict, 
-                          version: int, change_reason: str = None):
-        object_name = f"versions/{table_name}/{record_id}/v{version}_{datetime.now().strftime('%Y%m%d%H%M%S')}.json"
+                          version: int, change_reason: str = None) -> tuple[bool, str]:
+        timestamp_str = datetime.now().strftime('%Y%m%d%H%M%S')
+        object_name = f"versions/{table_name}/{record_id}/v{version}.json"
         payload = {
             "table_name": table_name,
             "record_id": record_id,
             "version": version,
             "snapshot": data,
             "change_reason": change_reason,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
+            "save_batch_id": f"{version}_{timestamp_str}"
         }
         json_bytes = json.dumps(payload, ensure_ascii=False, default=str).encode('utf-8')
+        storage_type = "MinIO"
         
         if self.available:
             try:
@@ -50,12 +53,14 @@ class MinioManager:
                     length=len(json_bytes),
                     content_type='application/json'
                 )
-                return True
+                return True, storage_type
             except S3Error as e:
-                print(f"MinIO 存储失败: {e}")
-                return self._save_local(object_name, json_bytes)
-        else:
-            return self._save_local(object_name, json_bytes)
+                print(f"MinIO 存储失败，降级本地: {e}")
+                success = self._save_local(object_name, json_bytes)
+                return success, "本地存储(降级)"
+        
+        success = self._save_local(object_name, json_bytes)
+        return success, "本地存储"
 
     def _save_local(self, object_name: str, data: bytes) -> bool:
         try:

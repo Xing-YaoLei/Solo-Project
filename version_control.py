@@ -45,13 +45,19 @@ class VersionController:
         current_version = current_data.get('version', 1)
         new_version = current_version + 1
         
-        minio_mgr.save_data_version(
+        minio_success, minio_storage_type = minio_mgr.save_data_version(
             table_name=table_name,
             record_id=record_id,
             data=current_data,
             version=current_version,
             change_reason=change_reason
         )
+        
+        if not minio_success:
+            raise RuntimeError(
+                f"版本快照保存失败（{minio_storage_type}），"
+                f"当前记录 {record_id} 未更新。请检查存储配置。"
+            )
         
         try:
             cols = [row[0] for row in self.conn.execute("DESCRIBE data_versions").fetchall()]
@@ -86,16 +92,18 @@ class VersionController:
             params = [table_name, record_id,
                       snapshot_json, change_reason, changed_by]
         
+        duckdb_success = True
         try:
             self.conn.execute(insert_sql, params)
         except Exception as e:
+            duckdb_success = False
             try:
                 self.conn.execute("ROLLBACK")
             except Exception:
                 pass
             raise RuntimeError(
                 f"DuckDB 版本快照写入失败，已回滚。当前记录 {record_id} 未更新。"
-                f"SQL: {insert_sql}, 错误: {e}"
+                f"存储类型: {minio_storage_type}, 错误: {e}"
             ) from e
         
         return new_version
@@ -216,6 +224,26 @@ class VersionController:
             traceback.print_exc()
 
         return sorted(minio_versions, key=lambda x: int(x.get('version', 0)))
+
+    def get_record_versions_grouped(self, table_name: str, record_id: str) -> dict:
+        versions_list = self.get_record_versions(table_name, record_id)
+        grouped = {}
+        
+        for ver in versions_list:
+            ver_num = int(ver.get('version', 0))
+            source = ver.get('source', 'MinIO')
+            source_key = 'duckdb' if source == 'DuckDB' else 'minio'
+            
+            if ver_num not in grouped:
+                grouped[ver_num] = {
+                    'version': ver_num,
+                    'minio': None,
+                    'duckdb': None
+                }
+            
+            grouped[ver_num][source_key] = ver
+        
+        return dict(sorted(grouped.items(), key=lambda x: x[0], reverse=True))
 
     def compare_versions(self, version_a: dict, version_b: dict) -> dict:
         snapshot_a = version_a.get('snapshot', {})
