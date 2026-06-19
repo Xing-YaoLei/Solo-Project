@@ -16,9 +16,13 @@ public interface TodoItemRepository extends JpaRepository<TodoItem, Long> {
 
     Page<TodoItem> findByAssigneeIdAndStatus(Long assigneeId, TodoStatus status, Pageable pageable);
 
+    Page<TodoItem> findByAssigneeId(Long assigneeId, Pageable pageable);
+
     Page<TodoItem> findByStatus(TodoStatus status, Pageable pageable);
 
     Page<TodoItem> findByStatusAndTodoType(TodoStatus status, TodoType type, Pageable pageable);
+
+    Page<TodoItem> findByTodoType(TodoType type, Pageable pageable);
 
     List<TodoItem> findByAssigneeIdAndStatus(Long assigneeId, TodoStatus status);
 

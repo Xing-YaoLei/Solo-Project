@@ -39,11 +39,14 @@ public class ReportController {
         model.addAttribute("currentType", type);
         model.addAttribute("vehicles", vehicleService.findAll(PageRequest.of(0, 1000)));
 
+        UserRole userRole = getUserRole(request);
+        Long currentUserId = getCurrentUserId(request);
+
         if (type != null) {
             ReportDTO report = switch (type) {
-                case "inventory" -> reportService.getInventoryReport(startDate, endDate, storeId);
-                case "date" -> reportService.getDateDrilldownReport(startDate, endDate);
-                case "person" -> reportService.getPersonReport(startDate, endDate, personId);
+                case "inventory" -> reportService.getInventoryReport(startDate, endDate, storeId, userRole, currentUserId);
+                case "date" -> reportService.getDateDrilldownReport(startDate, endDate, userRole, currentUserId);
+                case "person" -> reportService.getPersonReport(startDate, endDate, personId, userRole, currentUserId);
                 default -> null;
             };
             if (report != null) {
@@ -88,29 +91,64 @@ public class ReportController {
     @ResponseBody
     public ReportDTO getInventoryReport(@RequestParam(required = false) LocalDate startDate,
                                         @RequestParam(required = false) LocalDate endDate,
-                                        @RequestParam(required = false) Long storeId) {
-        return reportService.getInventoryReport(startDate, endDate, storeId);
+                                        @RequestParam(required = false) Long storeId,
+                                        HttpServletRequest request) {
+        UserRole userRole = getUserRole(request);
+        Long currentUserId = getCurrentUserId(request);
+        return reportService.getInventoryReport(startDate, endDate, storeId, userRole, currentUserId);
     }
 
     @GetMapping("/reports/person")
     @ResponseBody
     public ReportDTO getPersonReport(@RequestParam(required = false) LocalDate startDate,
                                      @RequestParam(required = false) LocalDate endDate,
-                                     @RequestParam(required = false) Long personId) {
-        return reportService.getPersonReport(startDate, endDate, personId);
+                                     @RequestParam(required = false) Long personId,
+                                     HttpServletRequest request) {
+        UserRole userRole = getUserRole(request);
+        Long currentUserId = getCurrentUserId(request);
+        return reportService.getPersonReport(startDate, endDate, personId, userRole, currentUserId);
     }
 
     @GetMapping("/reports/date")
     @ResponseBody
     public ReportDTO getDateDrilldownReport(@RequestParam(required = false) LocalDate startDate,
-                                            @RequestParam(required = false) LocalDate endDate) {
-        return reportService.getDateDrilldownReport(startDate, endDate);
+                                            @RequestParam(required = false) LocalDate endDate,
+                                            HttpServletRequest request) {
+        UserRole userRole = getUserRole(request);
+        Long currentUserId = getCurrentUserId(request);
+        return reportService.getDateDrilldownReport(startDate, endDate, userRole, currentUserId);
     }
 
     @GetMapping("/reports/dashboard")
     @ResponseBody
-    public DashboardDTO getDashboard() {
-        return reportService.getDashboardData(null);
+    public DashboardDTO getDashboard(HttpServletRequest request) {
+        UserRole userRole = getUserRole(request);
+        Long currentUserId = getCurrentUserId(request);
+        return reportService.getDashboardData(null, userRole, currentUserId);
+    }
+
+    private UserRole getUserRole(HttpServletRequest request) {
+        String roleHeader = request.getHeader("X-User-Role");
+        if (roleHeader != null) {
+            try {
+                return UserRole.valueOf(roleHeader);
+            } catch (IllegalArgumentException e) {
+                return UserRole.MANAGER;
+            }
+        }
+        return UserRole.MANAGER;
+    }
+
+    private Long getCurrentUserId(HttpServletRequest request) {
+        String userIdHeader = request.getHeader("X-User-Id");
+        if (userIdHeader != null) {
+            try {
+                return Long.parseLong(userIdHeader);
+            } catch (NumberFormatException e) {
+                return 1L;
+            }
+        }
+        return 1L;
     }
 
     private void addCommonAttributes(Model model, HttpServletRequest request) {

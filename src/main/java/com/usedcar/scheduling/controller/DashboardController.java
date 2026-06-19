@@ -1,6 +1,7 @@
 package com.usedcar.scheduling.controller;
 
 import com.usedcar.scheduling.dto.DashboardDTO;
+import com.usedcar.scheduling.enums.UserRole;
 import com.usedcar.scheduling.service.ReportService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -18,14 +19,42 @@ public class DashboardController {
     @GetMapping("/")
     public String dashboard(Model model, HttpServletRequest request) {
         addCommonAttributes(model, request);
-        model.addAttribute("dashboardDTO", reportService.getDashboardData(null));
+        UserRole userRole = getUserRole(request);
+        Long currentUserId = getCurrentUserId(request);
+        model.addAttribute("dashboardDTO", reportService.getDashboardData(null, userRole, currentUserId));
         return "dashboard";
     }
 
     @GetMapping("/api/dashboard")
     @ResponseBody
-    public DashboardDTO dashboardApi() {
-        return reportService.getDashboardData(null);
+    public DashboardDTO dashboardApi(HttpServletRequest request) {
+        UserRole userRole = getUserRole(request);
+        Long currentUserId = getCurrentUserId(request);
+        return reportService.getDashboardData(null, userRole, currentUserId);
+    }
+
+    private UserRole getUserRole(HttpServletRequest request) {
+        String roleHeader = request.getHeader("X-User-Role");
+        if (roleHeader != null) {
+            try {
+                return UserRole.valueOf(roleHeader);
+            } catch (IllegalArgumentException e) {
+                return UserRole.MANAGER;
+            }
+        }
+        return UserRole.MANAGER;
+    }
+
+    private Long getCurrentUserId(HttpServletRequest request) {
+        String userIdHeader = request.getHeader("X-User-Id");
+        if (userIdHeader != null) {
+            try {
+                return Long.parseLong(userIdHeader);
+            } catch (NumberFormatException e) {
+                return 1L;
+            }
+        }
+        return 1L;
     }
 
     private void addCommonAttributes(Model model, HttpServletRequest request) {

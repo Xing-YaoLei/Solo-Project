@@ -24,18 +24,31 @@ public class TodoPoolController {
     @GetMapping("/todos")
     public String pool(@RequestParam(required = false) TodoStatus status,
                        @RequestParam(required = false) TodoType todoType,
+                       @RequestParam(required = false) Long assigneeId,
                        @RequestParam(defaultValue = "0") int page,
                        @RequestParam(defaultValue = "20") int size,
                        Model model, HttpServletRequest request) {
         addCommonAttributes(model, request);
-        Long currentUserId = request.getHeader("X-User-Id") != null ? Long.parseLong(request.getHeader("X-User-Id")) : 1L;
-        Page<TodoItemDTO> todos = todoPoolService.findAllTodos(status, todoType, PageRequest.of(page, size))
+        Long currentUserId = getCurrentUserId(request);
+        UserRole currentRole = getUserRole(request);
+
+        Long filterAssigneeId = assigneeId;
+        if (currentRole != UserRole.MANAGER) {
+            filterAssigneeId = currentUserId;
+        }
+
+        Page<TodoItemDTO> todos = todoPoolService
+                .findAllTodos(status, todoType, filterAssigneeId, PageRequest.of(page, size))
                 .map(todoPoolService::toDTO);
         model.addAttribute("todos", todos);
         model.addAttribute("todoTypes", TodoType.values());
         model.addAttribute("todoStatuses", TodoStatus.values());
         model.addAttribute("assignees", userRepository.findAll());
+        model.addAttribute("selectedAssigneeId", filterAssigneeId);
+        model.addAttribute("selectedStatus", status);
+        model.addAttribute("selectedType", todoType);
         model.addAttribute("currentUserId", currentUserId);
+        model.addAttribute("currentRole", currentRole.name());
         return "todo/pool";
     }
 
@@ -70,6 +83,30 @@ public class TodoPoolController {
                            @RequestParam(required = false) String remark) {
         todoPoolService.reassignTodo(id, newAssigneeId, operatorId, remark);
         return "redirect:/todos";
+    }
+
+    private UserRole getUserRole(HttpServletRequest request) {
+        String roleHeader = request.getHeader("X-User-Role");
+        if (roleHeader != null) {
+            try {
+                return UserRole.valueOf(roleHeader);
+            } catch (IllegalArgumentException e) {
+                return UserRole.MANAGER;
+            }
+        }
+        return UserRole.MANAGER;
+    }
+
+    private Long getCurrentUserId(HttpServletRequest request) {
+        String userIdHeader = request.getHeader("X-User-Id");
+        if (userIdHeader != null) {
+            try {
+                return Long.parseLong(userIdHeader);
+            } catch (NumberFormatException e) {
+                return 1L;
+            }
+        }
+        return 1L;
     }
 
     private void addCommonAttributes(Model model, HttpServletRequest request) {

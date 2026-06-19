@@ -44,15 +44,30 @@ public class TodoPoolServiceImpl implements TodoPoolService {
 
     @Override
     public Page<TodoItem> findMyTodos(Long assigneeId, TodoStatus status, Pageable pageable) {
-        return todoItemRepository.findByAssigneeIdAndStatus(assigneeId, status, pageable);
+        if (status != null) {
+            return todoItemRepository.findByAssigneeIdAndStatus(assigneeId, status, pageable);
+        }
+        return todoItemRepository.findByAssigneeId(assigneeId, pageable);
     }
 
     @Override
-    public Page<TodoItem> findAllTodos(TodoStatus status, TodoType type, Pageable pageable) {
-        if (type != null) {
+    public Page<TodoItem> findAllTodos(TodoStatus status, TodoType type, Long assigneeId, Pageable pageable) {
+        if (assigneeId != null && status != null) {
+            return todoItemRepository.findByAssigneeIdAndStatus(assigneeId, status, pageable);
+        }
+        if (assigneeId != null) {
+            return todoItemRepository.findByAssigneeId(assigneeId, pageable);
+        }
+        if (type != null && status != null) {
             return todoItemRepository.findByStatusAndTodoType(status, type, pageable);
         }
-        return todoItemRepository.findByStatus(status, pageable);
+        if (type != null) {
+            return todoItemRepository.findByTodoType(type, pageable);
+        }
+        if (status != null) {
+            return todoItemRepository.findByStatus(status, pageable);
+        }
+        return todoItemRepository.findAll(pageable);
     }
 
     @Override

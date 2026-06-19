@@ -64,7 +64,7 @@ public class VehicleController {
                 financeDocumentService.findByVehicleId(id).stream().map(financeDocumentService::toDTO).toList());
         viewModel.addAttribute("archives", vehicleArchiveService.findByVehicleId(id));
         viewModel.addAttribute("todos",
-                todoPoolService.findAllTodos(null, null, PageRequest.of(0, 20))
+                todoPoolService.findAllTodos(null, null, null, PageRequest.of(0, 20))
                                 .stream().map(todoPoolService::toDTO).toList());
         viewModel.addAttribute("assessors", userRepository.findByRole(UserRole.ASSESSOR));
         viewModel.addAttribute("salesList", userRepository.findByRole(UserRole.SALES));

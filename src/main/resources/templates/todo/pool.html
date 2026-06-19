@@ -25,28 +25,29 @@
         <div class="form-group">
           <label class="form-group__label" for="todoType">待办类型</label>
           <select class="form-group__input" id="todoType" name="todoType">
-            <option value="">全部</option>
-            <option value="MISSING_DOCUMENT" th:if="${currentRole == 'ASSESSOR' or currentRole == 'FINANCE' or currentRole == 'MANAGER'}">资料缺失</option>
-            <option value="PREPARATION_OVERDUE" th:if="${currentRole == 'ASSESSOR' or currentRole == 'MANAGER'}">整备逾期</option>
-            <option value="LISTING_REMINDER" th:if="${currentRole == 'SALES' or currentRole == 'MANAGER'}">上架提醒</option>
-            <option value="PRICE_ADJUSTMENT" th:if="${currentRole == 'SALES' or currentRole == 'MANAGER'}">调价建议</option>
+            <option value="" th:selected="${selectedType == null}">全部</option>
+            <option value="MISSING_DOCUMENT" th:selected="${selectedType != null and selectedType.name() == 'MISSING_DOCUMENT'}" th:if="${currentRole == 'ASSESSOR' or currentRole == 'FINANCE' or currentRole == 'MANAGER'}">资料缺失</option>
+            <option value="PREPARATION_OVERDUE" th:selected="${selectedType != null and selectedType.name() == 'PREPARATION_OVERDUE'}" th:if="${currentRole == 'ASSESSOR' or currentRole == 'MANAGER'}">整备逾期</option>
+            <option value="LISTING_REMINDER" th:selected="${selectedType != null and selectedType.name() == 'LISTING_REMINDER'}" th:if="${currentRole == 'SALES' or currentRole == 'MANAGER'}">上架提醒</option>
+            <option value="PRICE_ADJUSTMENT" th:selected="${selectedType != null and selectedType.name() == 'PRICE_ADJUSTMENT'}" th:if="${currentRole == 'SALES' or currentRole == 'MANAGER'}">调价建议</option>
           </select>
         </div>
         <div class="form-group">
           <label class="form-group__label" for="status">状态</label>
           <select class="form-group__input" id="status" name="status">
-            <option value="">全部</option>
-            <option value="PENDING">待处理</option>
-            <option value="PROCESSING">处理中</option>
-            <option value="DONE">已完成</option>
+            <option value="" th:selected="${selectedStatus == null}">全部</option>
+            <option value="PENDING" th:selected="${selectedStatus != null and selectedStatus.name() == 'PENDING'}">待处理</option>
+            <option value="PROCESSING" th:selected="${selectedStatus != null and selectedStatus.name() == 'PROCESSING'}">处理中</option>
+            <option value="DONE" th:selected="${selectedStatus != null and selectedStatus.name() == 'DONE'}">已完成</option>
           </select>
         </div>
         <div class="form-group" th:if="${currentRole == 'MANAGER'}">
           <label class="form-group__label" for="assigneeId">负责人</label>
           <select class="form-group__input" id="assigneeId" name="assigneeId">
-            <option value="">全部</option>
+            <option value="" th:selected="${selectedAssigneeId == null}">全部</option>
             <option th:each="user : ${assignees}"
                     th:value="${user.id}"
+                    th:selected="${selectedAssigneeId != null and selectedAssigneeId == user.id}"
                     th:text="${user.realName}">负责人</option>
           </select>
         </div>

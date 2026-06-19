@@ -229,7 +229,7 @@
       <div class="card">
         <div class="card__header">
           <h2 class="card__title">金融资料</h2>
-          <form th:action="@{/finance}" method="post" enctype="multipart/form-data"
+          <form th:action="@{/finance}" method="post"
                 th:if="${currentRole == 'FINANCE' or currentRole == 'MANAGER'}"
                 class="form form--inline">
             <input type="hidden" name="vehicleId" th:value="${vehicle.id}">
@@ -238,11 +238,11 @@
             <select class="form-group__input" name="documentType" required>
               <option value="">资料类型</option>
               <option value="LOAN_APPLICATION">贷款申请</option>
-              <option value="IDENTITY_COPY">身份证明</option>
-              <option value="INSURANCE_POLICY">保单</option>
-              <option value="CONTRACT">合同</option>
+              <option value="INSURANCE">保险</option>
+              <option value="GUARANTEE">担保函</option>
+              <option value="OTHER">其他</option>
             </select>
-            <input class="form-group__input" type="file" name="file" required>
+            <input class="form-group__input" type="url" name="documentUrl" placeholder="资料链接" required>
             <button type="submit" class="btn btn--sm btn--primary">上传</button>
           </form>
         </div>

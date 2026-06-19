@@ -158,6 +158,36 @@
       </div>
     </div>
 
+    <div class="card" th:if="${report.dateBreakdown != null and !report.dateBreakdown.isEmpty()}">
+      <div class="card__header">
+        <h2 class="card__title">日期维度明细</h2>
+      </div>
+      <div class="card__body">
+        <div class="table-wrapper">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>日期</th>
+                <th>在库车辆数</th>
+                <th>新增上架</th>
+                <th>售出数量</th>
+                <th>销售收入</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr th:each="dateReport : ${report.dateBreakdown.values()}">
+                <td th:text="${dateReport.date}">日期</td>
+                <td th:text="${dateReport.vehicleCount}">0</td>
+                <td th:text="${dateReport.newListingCount}">0</td>
+                <td th:text="${dateReport.soldCount}">0</td>
+                <td th:text="${dateReport.revenue}">0</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <div class="card">
       <div class="card__header">
         <h2 class="card__title">数据图表</h2>

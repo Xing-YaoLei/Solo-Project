@@ -37,13 +37,73 @@ public class ReportServiceImpl implements ReportService {
     private final TodoItemRepository todoItemRepository;
     private final UserRepository userRepository;
 
+    private List<Vehicle> filterVehiclesByRole(List<Vehicle> vehicles, UserRole userRole, Long currentUserId) {
+        if (userRole == null || currentUserId == null || userRole == UserRole.MANAGER) {
+            return vehicles;
+        }
+        return vehicles.stream()
+                .filter(v -> {
+                    if (userRole == UserRole.ASSESSOR) {
+                        return v.getAssessor() != null && v.getAssessor().getId().equals(currentUserId);
+                    } else if (userRole == UserRole.SALES) {
+                        return v.getSales() != null && v.getSales().getId().equals(currentUserId);
+                    }
+                    return true;
+                })
+                .toList();
+    }
+
+    private Map<String, ReportDTO.DateReport> buildDateBreakdown(List<Vehicle> vehicles, LocalDate startDate, LocalDate endDate) {
+        Map<String, ReportDTO.DateReport> dateBreakdown = new LinkedHashMap<>();
+        LocalDate current = startDate;
+
+        while (!current.isAfter(endDate)) {
+            final LocalDate date = current;
+            ReportDTO.DateReport dateReport = new ReportDTO.DateReport();
+            String dateStr = date.toString();
+            dateReport.setDate(dateStr);
+
+            long vehicleCount = vehicles.stream()
+                    .filter(v -> v.getListingDate() != null && !v.getListingDate().isAfter(date))
+                    .count();
+            dateReport.setVehicleCount(vehicleCount);
+
+            long soldCount = vehicles.stream()
+                    .filter(v -> v.getStatus() == VehicleStatus.SOLD
+                            && v.getListingDate() != null
+                            && v.getListingDate().equals(date))
+                    .count();
+            dateReport.setSoldCount(soldCount);
+
+            long newListingCount = vehicles.stream()
+                    .filter(v -> v.getListingDate() != null && v.getListingDate().equals(date))
+                    .count();
+            dateReport.setNewListingCount(newListingCount);
+
+            BigDecimal revenue = vehicles.stream()
+                    .filter(v -> v.getStatus() == VehicleStatus.SOLD
+                            && v.getListingDate() != null
+                            && v.getListingDate().equals(date)
+                            && v.getListingPrice() != null)
+                    .map(Vehicle::getListingPrice)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            dateReport.setRevenue(revenue);
+
+            dateBreakdown.put(dateStr, dateReport);
+            current = current.plusDays(1);
+        }
+
+        return dateBreakdown;
+    }
+
     @Override
-    public DashboardDTO getDashboardData(Long storeId) {
+    public DashboardDTO getDashboardData(Long storeId, UserRole userRole, Long currentUserId) {
         DashboardDTO dto = new DashboardDTO();
 
         List<Vehicle> allVehicles = storeId != null
                 ? vehicleRepository.findByStoreId(storeId)
                 : vehicleRepository.findAll();
+        allVehicles = filterVehiclesByRole(allVehicles, userRole, currentUserId);
 
         dto.setTotalVehicles((long) allVehicles.size());
         dto.setListedVehicles(allVehicles.stream().filter(v -> v.getStatus() == VehicleStatus.LISTED).count());
@@ -81,13 +141,14 @@ public class ReportServiceImpl implements ReportService {
     }
 
     @Override
-    public ReportDTO getInventoryReport(LocalDate startDate, LocalDate endDate, Long storeId) {
+    public ReportDTO getInventoryReport(LocalDate startDate, LocalDate endDate, Long storeId, UserRole userRole, Long currentUserId) {
         ReportDTO dto = new ReportDTO();
         dto.setPeriod(startDate + " ~ " + endDate);
 
         List<Vehicle> vehicles = storeId != null
                 ? vehicleRepository.findByStoreId(storeId)
                 : vehicleRepository.findAll();
+        vehicles = filterVehiclesByRole(vehicles, userRole, currentUserId);
 
         LocalDateTime start = startDate.atStartOfDay();
         LocalDateTime end = endDate.atTime(23, 59, 59);
@@ -137,18 +198,28 @@ public class ReportServiceImpl implements ReportService {
         }
         dto.setStoreBreakdown(byStore);
 
+        Map<String, ReportDTO.DateReport> dateBreakdown = buildDateBreakdown(vehicles, startDate, endDate);
+        dto.setDateBreakdown(dateBreakdown);
+
         return dto;
     }
 
     @Override
-    public ReportDTO getPersonReport(LocalDate startDate, LocalDate endDate, Long personId) {
+    public ReportDTO getPersonReport(LocalDate startDate, LocalDate endDate, Long personId, UserRole userRole, Long currentUserId) {
         ReportDTO dto = new ReportDTO();
         dto.setPeriod(startDate + " ~ " + endDate);
 
         List<Vehicle> allVehicles = vehicleRepository.findAll();
-        List<User> users = personId != null
-                ? userRepository.findById(personId).map(List::of).orElse(List.of())
-                : userRepository.findAll();
+        allVehicles = filterVehiclesByRole(allVehicles, userRole, currentUserId);
+
+        List<User> users;
+        if (userRole != null && userRole != UserRole.MANAGER && currentUserId != null) {
+            users = userRepository.findById(currentUserId).map(List::of).orElse(List.of());
+        } else {
+            users = personId != null
+                    ? userRepository.findById(personId).map(List::of).orElse(List.of())
+                    : userRepository.findAll();
+        }
 
         dto.setTotalVehicles((long) allVehicles.size());
         long soldCount = allVehicles.stream().filter(v -> v.getStatus() == VehicleStatus.SOLD).count();
@@ -189,11 +260,12 @@ public class ReportServiceImpl implements ReportService {
     }
 
     @Override
-    public ReportDTO getDateDrilldownReport(LocalDate startDate, LocalDate endDate) {
+    public ReportDTO getDateDrilldownReport(LocalDate startDate, LocalDate endDate, UserRole userRole, Long currentUserId) {
         ReportDTO dto = new ReportDTO();
         dto.setPeriod(startDate + " ~ " + endDate);
 
         List<Vehicle> allVehicles = vehicleRepository.findAll();
+        allVehicles = filterVehiclesByRole(allVehicles, userRole, currentUserId);
         dto.setTotalVehicles((long) allVehicles.size());
 
         long soldInPeriod = allVehicles.stream()
@@ -230,6 +302,9 @@ public class ReportServiceImpl implements ReportService {
                 .map(Vehicle::getListingPrice)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         dto.setRevenue(revenue);
+
+        Map<String, ReportDTO.DateReport> dateBreakdown = buildDateBreakdown(allVehicles, startDate, endDate);
+        dto.setDateBreakdown(dateBreakdown);
 
         return dto;
     }

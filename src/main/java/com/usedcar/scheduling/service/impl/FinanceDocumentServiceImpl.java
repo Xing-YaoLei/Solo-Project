@@ -34,6 +34,9 @@ public class FinanceDocumentServiceImpl implements FinanceDocumentService {
     @Override
     @Transactional
     public FinanceDocument upload(FinanceDocument document) {
+        if (document.getStatus() == null) {
+            document.setStatus(DocumentStatus.PENDING);
+        }
         return financeDocumentRepository.save(document);
     }
 

@@ -16,6 +16,7 @@ public class ReportDTO {
     private BigDecimal revenue;
     private Map<String, StoreReport> storeBreakdown;
     private Map<String, PersonReport> personBreakdown;
+    private Map<String, DateReport> dateBreakdown;
 
     @Data
     public static class StoreReport {
@@ -34,5 +35,15 @@ public class ReportDTO {
         private Long vehicleCount;
         private Long completedCount;
         private Long overdueCount;
+    }
+
+    @Data
+    public static class DateReport {
+
+        private String date;
+        private Long vehicleCount;
+        private Long soldCount;
+        private Long newListingCount;
+        private BigDecimal revenue;
     }
 }

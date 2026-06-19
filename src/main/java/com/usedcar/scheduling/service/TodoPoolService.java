@@ -11,7 +11,7 @@ public interface TodoPoolService {
 
     Page<TodoItem> findMyTodos(Long assigneeId, TodoStatus status, Pageable pageable);
 
-    Page<TodoItem> findAllTodos(TodoStatus status, TodoType type, Pageable pageable);
+    Page<TodoItem> findAllTodos(TodoStatus status, TodoType type, Long assigneeId, Pageable pageable);
 
     TodoItem createTodo(TodoItem todo);
 
