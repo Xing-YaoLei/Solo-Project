@@ -37,7 +37,15 @@ public class ReportController {
         model.addAttribute("stores", storeRepository.findAll());
         model.addAttribute("persons", userRepository.findAll());
         model.addAttribute("currentType", type);
-        model.addAttribute("vehicles", vehicleService.findAll(PageRequest.of(0, 1000)));
+
+        if (startDate == null) {
+            startDate = LocalDate.now().minusMonths(1);
+        }
+        if (endDate == null) {
+            endDate = LocalDate.now();
+        }
+        model.addAttribute("defaultStartDate", startDate);
+        model.addAttribute("defaultEndDate", endDate);
 
         UserRole userRole = getUserRole(request);
         Long currentUserId = getCurrentUserId(request);
@@ -93,6 +101,8 @@ public class ReportController {
                                         @RequestParam(required = false) LocalDate endDate,
                                         @RequestParam(required = false) Long storeId,
                                         HttpServletRequest request) {
+        if (startDate == null) startDate = LocalDate.now().minusMonths(1);
+        if (endDate == null) endDate = LocalDate.now();
         UserRole userRole = getUserRole(request);
         Long currentUserId = getCurrentUserId(request);
         return reportService.getInventoryReport(startDate, endDate, storeId, userRole, currentUserId);
@@ -104,6 +114,8 @@ public class ReportController {
                                      @RequestParam(required = false) LocalDate endDate,
                                      @RequestParam(required = false) Long personId,
                                      HttpServletRequest request) {
+        if (startDate == null) startDate = LocalDate.now().minusMonths(1);
+        if (endDate == null) endDate = LocalDate.now();
         UserRole userRole = getUserRole(request);
         Long currentUserId = getCurrentUserId(request);
         return reportService.getPersonReport(startDate, endDate, personId, userRole, currentUserId);
@@ -114,6 +126,8 @@ public class ReportController {
     public ReportDTO getDateDrilldownReport(@RequestParam(required = false) LocalDate startDate,
                                             @RequestParam(required = false) LocalDate endDate,
                                             HttpServletRequest request) {
+        if (startDate == null) startDate = LocalDate.now().minusMonths(1);
+        if (endDate == null) endDate = LocalDate.now();
         UserRole userRole = getUserRole(request);
         Long currentUserId = getCurrentUserId(request);
         return reportService.getDateDrilldownReport(startDate, endDate, userRole, currentUserId);

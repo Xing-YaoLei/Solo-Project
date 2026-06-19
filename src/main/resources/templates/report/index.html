@@ -24,12 +24,10 @@
                 data-tab="inventory" onclick="switchTab('inventory')">库存周转</button>
         <button type="button" class="tab-bar__item" role="tab"
                 th:classappend="${currentType == 'date'} ? 'tab-bar__item--active' : ''"
-                data-tab="date" onclick="switchTab('date')"
-                th:if="${currentRole == 'MANAGER'}">日期下钻</button>
+                data-tab="date" onclick="switchTab('date')">日期下钻</button>
         <button type="button" class="tab-bar__item" role="tab"
                 th:classappend="${currentType == 'person'} ? 'tab-bar__item--active' : ''"
-                data-tab="person" onclick="switchTab('person')"
-                th:if="${currentRole == 'MANAGER'}">负责人下钻</button>
+                data-tab="person" onclick="switchTab('person')">负责人下钻</button>
       </div>
     </div>
     <div class="card__body">
@@ -37,12 +35,12 @@
         <div class="form-group">
           <label class="form-group__label" for="startDate">开始日期</label>
           <input class="form-group__input" type="date" id="startDate" name="startDate"
-                 th:value="${param.startDate != null ? param.startDate[0] : ''}">
+                 th:value="${param.startDate != null and param.startDate[0] != '' ? param.startDate[0] : defaultStartDate}">
         </div>
         <div class="form-group">
           <label class="form-group__label" for="endDate">结束日期</label>
           <input class="form-group__input" type="date" id="endDate" name="endDate"
-                 th:value="${param.endDate != null ? param.endDate[0] : ''}">
+                 th:value="${param.endDate != null and param.endDate[0] != '' ? param.endDate[0] : defaultEndDate}">
         </div>
         <div class="form-group" id="storeFilterGroup">
           <label class="form-group__label" for="storeId">门店</label>
