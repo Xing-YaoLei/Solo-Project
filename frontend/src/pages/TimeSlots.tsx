@@ -172,9 +172,12 @@ export default function TimeSlots() {
     if (!validateRuleForm()) return
     try {
       setSubmitting(true)
-      let parsedValue: any = ruleForm.rule_value
+      let parsedValue: any
       try {
         parsedValue = JSON.parse(ruleForm.rule_value)
+        if (parsedValue === null || typeof parsedValue !== 'object') {
+          parsedValue = { value: parsedValue }
+        }
       } catch {
         parsedValue = { value: ruleForm.rule_value }
       }

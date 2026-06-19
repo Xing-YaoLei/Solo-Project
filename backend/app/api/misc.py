@@ -267,8 +267,13 @@ def export_reservations(
     if end_date:
         query = query.filter(TimeSlot.date <= end_date)
     if status:
-        status_list = status.split(",")
-        query = query.filter(Reservation.status.in_(status_list))
+        status_list = [
+            ReservationStatus(s.strip())
+            for s in status.split(",")
+            if s.strip()
+        ]
+        if status_list:
+            query = query.filter(Reservation.status.in_(status_list))
 
     reservations = query.order_by(Reservation.created_at.desc()).all()
 

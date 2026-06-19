@@ -5,7 +5,7 @@ from typing import List, Optional
 from datetime import datetime, date
 import uuid
 from ..database import get_db
-from ..models import Reservation, TimeSlot, TimelineRecord, TimelineEventType, User
+from ..models import Reservation, TimeSlot, TimelineRecord, TimelineEventType, User, ReservationStatus
 from ..schemas import (
     ReservationCreate, ReservationUpdate, ReservationResponse, ReservationListResponse,
     TimelineRecordCreate, TimelineRecordResponse
@@ -34,7 +34,11 @@ def get_reservations(
     if time_slot_id:
         query = query.filter(Reservation.time_slot_id == time_slot_id)
     if status:
-        query = query.filter(Reservation.status == status)
+        try:
+            status_enum = ReservationStatus(status)
+            query = query.filter(Reservation.status == status_enum)
+        except ValueError:
+            query = query.filter(Reservation.status == status)
     if visitor_name:
         query = query.filter(Reservation.visitor_name.contains(visitor_name))
     if visitor_phone:

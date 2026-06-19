@@ -112,6 +112,8 @@ export const conflictApi = {
     severity?: string
     time_slot_id?: number
     assigned_to?: number
+    sort?: string
+    order?: string
   }) => api.get<any, ConflictListResponse>('/conflicts', { params }),
 
   getDetail: (id: number) => api.get<any, ConflictRecord>(`/conflicts/${id}`),

@@ -30,6 +30,8 @@ def get_conflicts(
     severity: Optional[str] = None,
     time_slot_id: Optional[int] = None,
     assigned_to: Optional[int] = None,
+    sort: Optional[str] = Query("detected_at", description="排序字段"),
+    order: Optional[str] = Query("desc", description="排序方向: asc 或 desc"),
     db: Session = Depends(get_db)
 ):
     query = db.query(ConflictRecord)
@@ -42,8 +44,14 @@ def get_conflicts(
     if assigned_to is not None:
         query = query.filter(ConflictRecord.assigned_to == assigned_to)
 
+    sort_column = getattr(ConflictRecord, sort, ConflictRecord.detected_at)
+    if order == "asc":
+        query = query.order_by(sort_column.asc())
+    else:
+        query = query.order_by(sort_column.desc())
+
     total = query.count()
-    items = query.order_by(ConflictRecord.detected_at.desc()).offset(
+    items = query.offset(
         (page - 1) * page_size
     ).limit(page_size).all()
 
