@@ -445,10 +445,10 @@ func _initialize_training_levels():
 	level2.packages = ["pkg_std", "pkg_prm", "pkg_fam"]
 	level2.rules = ["rule_weekend_surcharge", "rule_long_stay_discount"]
 	level2.tasks = [
-		Task.new("t1", "家庭顾客预订7月1日（周二）入住家庭套房3晚", PackageType.FAMILY, "2026-07-01", 3, 4, 1808.64, "注意：长住8折+家庭套餐立减100"),
-		Task.new("t2", "顾客预订7月3日（周四）入住豪华间3晚", PackageType.PREMIUM, "2026-07-03", 3, 2, 1435.2, "周四非周末，长住3天享8折"),
-		Task.new("t3", "顾客预订7月5日（周六）入住标准间3晚", PackageType.STANDARD, "2026-06-27", 3, 2, 858.24, "周六起住3晚，周末加价+长住优惠"),
-		Task.new("t4", "顾客预订7月6日（周日）入住标准间1晚", PackageType.STANDARD, "2026-07-06", 1, 2, 357.6, "周日属于周末，需加20%")
+		Task.new("t1", "家庭顾客预订7月1日（周三）入住家庭套房3晚", PackageType.FAMILY, "2026-07-01", 3, 4, 2131.2, "提示：长住3天享8折优惠"),
+		Task.new("t2", "顾客预订7月6日（周一）入住豪华间3晚", PackageType.PREMIUM, "2026-07-06", 3, 2, 1435.2, "提示：周一非周末，长住3天享8折"),
+		Task.new("t3", "顾客预订7月3日（周五）入住标准间3晚", PackageType.STANDARD, "2026-07-03", 3, 2, 858.24, "提示：周五起住3晚，先长住8折，再周末加价20%"),
+		Task.new("t4", "顾客预订7月4日（周六）入住标准间1晚", PackageType.STANDARD, "2026-07-04", 1, 2, 357.6, "提示：周六入住，周末加价20%")
 	]
 	all_levels["train_002"] = level2
 	
