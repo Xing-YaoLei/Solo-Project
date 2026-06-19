@@ -252,28 +252,42 @@ export const useGameStore = create<GameState>()(
         const diagnosis = state.diagnoses.find((d) => d.id === workOrder.diagnosisId);
         if (!diagnosis) return;
 
-        let shortagePartId: string | null = null;
-        let shortagePartName: string | undefined;
+        const usedAlternative = workOrder.shortageSolution === 'alternative' && workOrder.usedAlternativePartId;
+        const shortageResolved = workOrder.shortageHandled && (
+          workOrder.shortageSolution === 'wait' || workOrder.shortageSolution === 'alternative'
+        );
 
-        for (const partId of diagnosis.requiredParts) {
-          const part = state.parts.find((p) => p.id === partId);
-          if (!part || part.stockCount <= 0) {
-            shortagePartId = partId;
-            shortagePartName = part?.name;
-            break;
+        if (!usedAlternative && !shortageResolved) {
+          let shortagePartId: string | null = null;
+          let shortagePartName: string | undefined;
+
+          for (const partId of diagnosis.requiredParts) {
+            const part = state.parts.find((p) => p.id === partId);
+            if (!part || part.stockCount <= 0) {
+              shortagePartId = partId;
+              shortagePartName = part?.name;
+              break;
+            }
+          }
+
+          if (shortagePartId) {
+            if (workOrder.stationId) {
+              get().setStationBusy(workOrder.stationId, true, workOrderId);
+            }
+            get().openShortageModal(shortagePartId, workOrderId, shortagePartName);
+            return;
+          }
+
+          for (const partId of diagnosis.requiredParts) {
+            get().updatePartStock(partId, -1);
           }
         }
 
-        if (shortagePartId) {
-          if (workOrder.stationId) {
-            get().setStationBusy(workOrder.stationId, true, workOrderId);
+        if (usedAlternative && workOrder.usedAlternativePartId) {
+          const altPart = state.parts.find((p) => p.id === workOrder.usedAlternativePartId);
+          if (altPart && altPart.stockCount > 0) {
+            get().updatePartStock(workOrder.usedAlternativePartId, -1);
           }
-          get().openShortageModal(shortagePartId, workOrderId, shortagePartName);
-          return;
-        }
-
-        for (const partId of diagnosis.requiredParts) {
-          get().updatePartStock(partId, -1);
         }
 
         if (workOrder.stationId) {
@@ -379,6 +393,7 @@ export const useGameStore = create<GameState>()(
                       ...wo,
                       shortageHandled: true,
                       shortageSolution: 'wait',
+                      shortagePartId: partId,
                       stationId: null,
                       status: 'pending' as WorkOrderStatus,
                       startTime: null,
@@ -390,10 +405,8 @@ export const useGameStore = create<GameState>()(
             releaseStation();
             break;
 
-          case 'alternative':
-            if (part?.isAlternativeAvailable && part.alternativePartId) {
-              get().updatePartStock(part.alternativePartId, -1);
-            }
+          case 'alternative': {
+            const altPartId = part?.isAlternativeAvailable ? part.alternativePartId : undefined;
             set({
               workOrders: state.workOrders.map((wo) =>
                 wo.id === workOrderId
@@ -401,6 +414,8 @@ export const useGameStore = create<GameState>()(
                       ...wo,
                       shortageHandled: true,
                       shortageSolution: 'alternative',
+                      usedAlternativePartId: altPartId ?? null,
+                      shortagePartId: partId,
                       stationId: null,
                       status: 'pending' as WorkOrderStatus,
                       startTime: null,
@@ -411,6 +426,7 @@ export const useGameStore = create<GameState>()(
             get().deductScore(10);
             releaseStation();
             break;
+          }
 
           case 'skip':
             set({
@@ -420,6 +436,7 @@ export const useGameStore = create<GameState>()(
                       ...wo,
                       shortageHandled: true,
                       shortageSolution: 'skip',
+                      shortagePartId: partId,
                       status: 'skipped' as WorkOrderStatus,
                       reworked: true,
                       reworkReason: '跳过工序导致质量问题',
@@ -451,7 +468,7 @@ export const useGameStore = create<GameState>()(
         ).length;
 
         const completedWorkOrders = state.workOrders.filter(
-          (wo) => wo.status === 'completed' || wo.status === 'reworked'
+          (wo) => wo.status === 'completed' || wo.status === 'reworked' || wo.status === 'skipped'
         );
         const reworkedOrders = completedWorkOrders.filter((wo) => wo.reworked);
 
@@ -483,6 +500,17 @@ export const useGameStore = create<GameState>()(
           completedWorkOrders.map((wo) => wo.vehicleId)
         ).size;
 
+        const shortageWaitCount = state.workOrders.filter(
+          (wo) => wo.shortageHandled && wo.shortageSolution === 'wait'
+        ).length;
+        const shortageAlternativeCount = state.workOrders.filter(
+          (wo) => wo.shortageHandled && wo.shortageSolution === 'alternative'
+        ).length;
+        const shortageSkipCount = state.workOrders.filter(
+          (wo) => wo.shortageHandled && wo.shortageSolution === 'skip'
+        ).length;
+        const skipCount = state.workOrders.filter((wo) => wo.status === 'skipped').length;
+
         const record: GameRecord = {
           id: generateId(),
           levelId: state.currentLevelId,
@@ -495,6 +523,10 @@ export const useGameStore = create<GameState>()(
           totalVehicles: state.vehicles.length,
           completedVehicles: uniqueVehicles,
           reworkCount: state.reworkCount,
+          skipCount,
+          shortageWaitCount,
+          shortageAlternativeCount,
+          shortageSkipCount,
         };
 
         get().addGameRecord(record);

@@ -16,12 +16,19 @@ import {
   Target,
   Timer,
   Percent,
+  Package,
+  Clock3,
+  RefreshCw,
+  Ban,
+  TrendingDown,
+  BarChart3,
 } from 'lucide-react';
 import { useGameStore } from '@/store/useGameStore';
 import { formatNumber, formatPercent, formatSeconds, formatStars, formatMileage } from '@/utils/format';
 import { getStarsDescription } from '@/utils/scoring';
+import { calculateShortageBreakdown } from '@/utils/rework';
 import { cn } from '@/lib/utils';
-import type { WorkOrder, VehicleWithDetails } from '@/types';
+import type { WorkOrder, VehicleWithDetails, ShortageSolution } from '@/types';
 
 function CircularProgress({
   value,
@@ -168,6 +175,82 @@ function StarRating({ stars, maxStars = 3 }: { stars: number; maxStars?: number 
   );
 }
 
+interface ShortageCompareCardProps {
+  solution: ShortageSolution | undefined;
+  title: string;
+  description: string;
+  Icon: React.ComponentType<{ className?: string }>;
+  iconClass: string;
+  stats: { count: number; reworkCount: number; reworkRate: number };
+}
+
+function ShortageCompareCard({
+  title,
+  description,
+  Icon,
+  iconClass,
+  stats,
+}: ShortageCompareCardProps) {
+  return (
+    <div className="p-4 sm:p-5 flex flex-col gap-3 hover:bg-gray-50/50 dark:hover:bg-gray-700/20 transition-colors">
+      <div className="flex items-center gap-2">
+        <div className={cn('flex h-9 w-9 items-center justify-center rounded-lg', iconClass)}>
+          <Icon className="h-4.5 w-4.5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">
+            {title}
+          </div>
+          <div className="text-[11px] text-gray-500 dark:text-gray-400 truncate">
+            {description}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-baseline gap-1.5">
+        <span className="text-2xl font-black text-gray-900 dark:text-white tabular-nums">
+          {stats.count}
+        </span>
+        <span className="text-[11px] text-gray-500 dark:text-gray-400">次</span>
+      </div>
+
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between text-[11px]">
+          <span className="text-gray-500 dark:text-gray-400">返修率</span>
+          <span className={cn(
+            'font-bold tabular-nums',
+            stats.reworkRate >= 0.4 ? 'text-red-500'
+              : stats.reworkRate >= 0.2 ? 'text-orange-500'
+              : stats.reworkRate > 0 ? 'text-amber-500'
+              : 'text-emerald-500'
+          )}>
+            {formatPercent(stats.reworkRate, { decimals: 0 })}
+          </span>
+        </div>
+        <div className="h-1.5 w-full rounded-full bg-gray-100 dark:bg-gray-700/50 overflow-hidden">
+          <motion.div
+            initial={{ width: 0 }}
+            animate={{ width: `${Math.min(100, stats.reworkRate * 100)}%` }}
+            transition={{ duration: 0.8, delay: 2.3 }}
+            className={cn(
+              'h-full rounded-full',
+              stats.reworkRate >= 0.4 ? 'bg-red-500'
+                : stats.reworkRate >= 0.2 ? 'bg-orange-500'
+                : stats.reworkRate > 0 ? 'bg-amber-500'
+                : 'bg-emerald-500'
+            )}
+          />
+        </div>
+        {stats.count > 0 && stats.reworkCount > 0 && (
+          <div className="text-[10px] text-gray-500 dark:text-gray-400 tabular-nums">
+            共 {stats.reworkCount}/{stats.count} 项返修
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 interface VehicleTimelineProps {
   vehicle: VehicleWithDetails;
   isRework: boolean;
@@ -240,14 +323,14 @@ function VehicleTimeline({ vehicle, isRework, index }: VehicleTimelineProps) {
           </div>
         </div>
         <div className="text-right">
-          <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            {vehicleOrders.filter((o) => o.status === 'completed' || o.status === 'reworked').length}/
-            {vehicle.diagnoses.length} 工序
+            <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              {vehicleOrders.filter((o) => ['completed', 'reworked', 'skipped'].includes(o.status)).length}/
+              {vehicle.diagnoses.length} 工序
+            </div>
+            <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              {vehicleOrders.reduce((acc, o) => acc + (o.actualMinutes || 0), 0)} 分钟
+            </div>
           </div>
-          <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-            {vehicleOrders.reduce((acc, o) => acc + (o.actualMinutes || 0), 0)} 分钟
-          </div>
-        </div>
       </div>
 
       <div className="relative pl-6 space-y-3 mt-4">
@@ -264,6 +347,7 @@ function VehicleTimeline({ vehicle, isRework, index }: VehicleTimelineProps) {
                   'absolute -left-[19px] top-1.5 flex h-5 w-5 items-center justify-center rounded-full border-2 bg-white dark:bg-gray-900',
                   order?.status === 'completed' && 'border-emerald-500',
                   order?.status === 'reworked' && 'border-rose-500',
+                  order?.status === 'skipped' && 'border-orange-500',
                   !order && 'border-gray-300 dark:border-gray-600',
                   order?.status === 'in_progress' && 'border-sky-500',
                   (order?.status === 'assigned' || order?.status === 'pending') && 'border-amber-500'
@@ -320,6 +404,8 @@ function getStatusIcon(order?: WorkOrder) {
       return <CheckCircle2 className="h-3 w-3 text-emerald-500 fill-emerald-500" />;
     case 'reworked':
       return <AlertTriangle className="h-3 w-3 text-rose-500 fill-rose-500" />;
+    case 'skipped':
+      return <Ban className="h-3 w-3 text-orange-500 fill-orange-500" />;
     case 'in_progress':
       return <Clock className="h-2.5 w-2.5 text-sky-500 fill-sky-500" />;
     default:
@@ -361,11 +447,17 @@ export default function ReviewPage() {
     return v.workOrders.some((wo) => wo.reworked);
   };
 
+  const shortageStats = useMemo(() => {
+    return calculateShortageBreakdown(
+      workOrders.filter((wo) => wo.vehicleId && vehicles.some((v) => v.id === wo.vehicleId))
+    );
+  }, [workOrders, vehicles]);
+
   const stats = useMemo(() => {
     const totalDiagnoses = vehiclesWithDetails.reduce((acc, v) => acc + v.diagnoses.length, 0);
     const completedOrders = workOrders.filter(
       (wo) => wo.vehicleId && vehicles.some((v) => v.id === wo.vehicleId) &&
-        (wo.status === 'completed' || wo.status === 'reworked')
+        (wo.status === 'completed' || wo.status === 'reworked' || wo.status === 'skipped')
     );
     const reworkCount = completedOrders.filter((o) => o.reworked).length;
     const completionRate = totalDiagnoses > 0 ? completedOrders.length / totalDiagnoses : 0;
@@ -541,6 +633,94 @@ export default function ReviewPage() {
             </div>
           )}
         </motion.div>
+
+        {(() => {
+          const totalShortage = shortageStats.wait.count + shortageStats.alternative.count + shortageStats.skip.count;
+          return totalShortage > 0 || shortageStats.noShortage.count > 0;
+        })() && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 2.2 }}
+            className="mb-8"
+          >
+            <div className="flex items-center gap-2 mb-4">
+              <BarChart3 className="h-5 w-5 text-orange-500" />
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">缺货处理差异对比</h2>
+            </div>
+
+            <div className="rounded-2xl bg-white/80 dark:bg-gray-800/50 backdrop-blur border border-gray-100 dark:border-gray-700/50 overflow-hidden">
+              <div className="grid grid-cols-4 divide-x divide-gray-100 dark:divide-gray-700/50">
+                <ShortageCompareCard
+                  solution="wait"
+                  title="等待配送"
+                  description="扣时-30s / 扣分-20"
+                  Icon={Clock3}
+                  iconClass="text-sky-500 bg-sky-50 dark:bg-sky-500/10"
+                  stats={shortageStats.wait}
+                />
+                <ShortageCompareCard
+                  solution="alternative"
+                  title="使用替代件"
+                  description="扣分-10 / +15%返修"
+                  Icon={RefreshCw}
+                  iconClass="text-violet-500 bg-violet-50 dark:bg-violet-500/10"
+                  stats={shortageStats.alternative}
+                />
+                <ShortageCompareCard
+                  solution="skip"
+                  title="跳过工序"
+                  description="不得分 / +40%返修"
+                  Icon={Ban}
+                  iconClass="text-orange-500 bg-orange-50 dark:bg-orange-500/10"
+                  stats={shortageStats.skip}
+                />
+                <ShortageCompareCard
+                  solution={undefined}
+                  title="无缺货(正常)"
+                  description="常规维修，无额外损失"
+                  Icon={Package}
+                  iconClass="text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10"
+                  stats={shortageStats.noShortage}
+                />
+              </div>
+
+              <div className="border-t border-gray-100 dark:border-gray-700/50 px-5 py-3 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-500/5 dark:to-orange-500/5">
+                <div className="flex items-start sm:items-center justify-between flex-col sm:flex-row gap-2">
+                  <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
+                    <TrendingDown className="h-4 w-4 text-amber-500" />
+                    <span className="font-medium">
+                      本次共触发 <span className="text-amber-600 dark:text-amber-400 font-bold">{shortageStats.wait.count + shortageStats.alternative.count + shortageStats.skip.count}</span> 次缺货
+                    </span>
+                    {(shortageStats.wait.count || shortageStats.alternative.count || shortageStats.skip.count) > 0 && (
+                      <span className="text-gray-500 dark:text-gray-400">
+                        ·
+                      </span>
+                    )}
+                    {shortageStats.wait.count > 0 && (
+                      <span className="text-sky-600 dark:text-sky-400">
+                        等待×{shortageStats.wait.count}
+                      </span>
+                    )}
+                    {shortageStats.alternative.count > 0 && (
+                      <span className="text-violet-600 dark:text-violet-400">
+                        替代×{shortageStats.alternative.count}
+                      </span>
+                    )}
+                    {shortageStats.skip.count > 0 && (
+                      <span className="text-orange-600 dark:text-orange-400">
+                        跳过×{shortageStats.skip.count}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                    无缺货正常维修 {shortageStats.noShortage.count} 项，返修率 {formatPercent(shortageStats.noShortage.reworkRate, { decimals: 0 })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}

@@ -185,7 +185,7 @@ function pickReworkReason(
 
 export function calculateReworkRate(orders: WorkOrder[]): number {
   const completed = orders.filter(
-    (o) => o.status === 'completed' || o.status === 'reworked'
+    (o) => o.status === 'completed' || o.status === 'reworked' || o.status === 'skipped'
   );
 
   if (completed.length === 0) {
@@ -203,7 +203,7 @@ export function calculateVehicleLevelReworkRate(
   const vehicleOrders = orders.filter(
     (o) =>
       o.vehicleId === vehicleId &&
-      (o.status === 'completed' || o.status === 'reworked')
+      (o.status === 'completed' || o.status === 'reworked' || o.status === 'skipped')
   );
 
   if (vehicleOrders.length === 0) {
@@ -212,6 +212,36 @@ export function calculateVehicleLevelReworkRate(
 
   const reworked = vehicleOrders.filter((o) => o.reworked).length;
   return reworked / vehicleOrders.length;
+}
+
+export interface ShortageSolutionBreakdown {
+  wait: { count: number; reworkCount: number; reworkRate: number };
+  alternative: { count: number; reworkCount: number; reworkRate: number };
+  skip: { count: number; reworkCount: number; reworkRate: number };
+  noShortage: { count: number; reworkCount: number; reworkRate: number };
+}
+
+export function calculateShortageBreakdown(orders: WorkOrder[]): ShortageSolutionBreakdown {
+  const filterBySolution = (solution: string | undefined, hasShortage: boolean) =>
+    orders.filter((o) => {
+      if (hasShortage) {
+        return o.shortageHandled && o.shortageSolution === solution;
+      }
+      return !o.shortageHandled && (o.status === 'completed' || o.status === 'reworked');
+    });
+
+  const calc = (list: WorkOrder[]) => ({
+    count: list.length,
+    reworkCount: list.filter((o) => o.reworked).length,
+    reworkRate: list.length > 0 ? list.filter((o) => o.reworked).length / list.length : 0,
+  });
+
+  return {
+    wait: calc(filterBySolution('wait', true)),
+    alternative: calc(filterBySolution('alternative', true)),
+    skip: calc(filterBySolution('skip', true)),
+    noShortage: calc(filterBySolution(undefined, false)),
+  };
 }
 
 export function getRiskLevel(probability: number): {

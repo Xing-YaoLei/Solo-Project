@@ -165,6 +165,21 @@ export interface WorkOrder {
   partsUsed?: string[];
   shortageHandled?: boolean;
   shortageSolution?: ShortageSolution;
+  usedAlternativePartId?: string | null;
+  shortagePartId?: string | null;
+}
+
+export interface ShortageStats {
+  waitCount: number;
+  alternativeCount: number;
+  skipCount: number;
+  totalCount: number;
+  waitReworkRate: number;
+  alternativeReworkRate: number;
+  skipReworkRate: number;
+  waitScoreDeducted: number;
+  alternativeScoreDeducted: number;
+  skipScoreDeducted: number;
 }
 
 export interface GameRecord {
@@ -179,6 +194,10 @@ export interface GameRecord {
   totalVehicles: number;
   completedVehicles: number;
   reworkCount: number;
+  skipCount: number;
+  shortageWaitCount: number;
+  shortageAlternativeCount: number;
+  shortageSkipCount: number;
 }
 
 export interface VehicleWithDetails extends Vehicle {
