@@ -126,8 +126,10 @@ export const conflictApi = {
     affected_reservations?: number[]
   }) => api.post<any, ConflictRecord>('/conflicts', data),
 
-  update: (id: number, data: any) =>
-    api.put<any, ConflictRecord>(`/conflicts/${id}`, data),
+  update: (id: number, data: any, operatorId?: number) =>
+    api.put<any, ConflictRecord>(`/conflicts/${id}`, data, {
+      params: operatorId != null ? { operator_id: operatorId } : undefined,
+    }),
 
   addNote: (id: number, note: string, operatorId?: number) =>
     api.post<any, { message: string }>(`/conflicts/${id}/add-note`, null, {

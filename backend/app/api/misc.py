@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, and_
 from typing import List, Optional
 from datetime import datetime, date, timedelta
@@ -128,7 +128,10 @@ def add_timeline_record(
     )
     db.add(timeline)
     db.commit()
-    db.refresh(timeline)
+    timeline = db.query(TimelineRecord).options(
+        joinedload(TimelineRecord.operator),
+        joinedload(TimelineRecord.attachments)
+    ).filter(TimelineRecord.id == timeline.id).first()
     return timeline
 
 

@@ -17,6 +17,7 @@ import {
   MessageSquare,
 } from 'lucide-react'
 import { reservationApi, timeSlotApi, timelineApi } from '@/services/api'
+import { useOperator } from '@/context/OperatorContext'
 import type {
   Reservation,
   TimelineRecord,
@@ -36,6 +37,7 @@ import Timeline from '@/components/Timeline'
 export default function ReservationDetail() {
   const { id } = useParams({ from: '/reservations/$id' })
   const navigate = useNavigate()
+  const { currentOperator } = useOperator()
   const [reservation, setReservation] = useState<Reservation | null>(null)
   const [timeline, setTimeline] = useState<TimelineRecord[]>([])
   const [rescheduleHistory, setRescheduleHistory] = useState<RescheduleRecord[]>([])
@@ -77,6 +79,13 @@ export default function ReservationDetail() {
   const handleCheckIn = async () => {
     try {
       await reservationApi.checkIn(Number(id))
+      if (currentOperator) {
+        await timelineApi.addRecord(Number(id), {
+          event_type: 'status_changed',
+          description: '游客已到场签到',
+          operator_id: currentOperator.id,
+        })
+      }
       loadData()
     } catch (error) {
       console.error('签到失败:', error)
@@ -108,6 +117,7 @@ export default function ReservationDetail() {
       await timelineApi.addRecord(Number(id), {
         event_type: 'remark',
         description: noteText,
+        operator_id: currentOperator?.id,
       })
       setNoteText('')
       setShowAddNote(false)
@@ -134,6 +144,7 @@ export default function ReservationDetail() {
       const timelineRecord = await timelineApi.addRecord(Number(id), {
         event_type: 'attachment_added',
         description: `上传了 ${selectedFiles.length} 个附件`,
+        operator_id: currentOperator?.id,
       })
       await timelineApi.uploadAttachments(timelineRecord.id, selectedFiles)
       setSelectedFiles([])

@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, and_
 from typing import List, Optional
 from datetime import datetime, date
@@ -205,6 +205,9 @@ def batch_operation(
 
 @router.get("/{reservation_id}/timeline", response_model=List[TimelineRecordResponse])
 def get_reservation_timeline(reservation_id: int, db: Session = Depends(get_db)):
-    return db.query(TimelineRecord).filter(
+    return db.query(TimelineRecord).options(
+        joinedload(TimelineRecord.operator),
+        joinedload(TimelineRecord.attachments)
+    ).filter(
         TimelineRecord.reservation_id == reservation_id
     ).order_by(TimelineRecord.created_at.desc()).all()

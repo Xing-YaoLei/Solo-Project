@@ -1,8 +1,13 @@
 import { RouterProvider } from '@tanstack/react-router'
 import { router } from './routes'
+import { OperatorProvider } from '@/context/OperatorContext'
 
 function App() {
-  return <RouterProvider router={router} />
+  return (
+    <OperatorProvider>
+      <RouterProvider router={router} />
+    </OperatorProvider>
+  )
 }
 
 export default App

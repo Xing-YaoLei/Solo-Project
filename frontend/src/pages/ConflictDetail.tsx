@@ -12,7 +12,8 @@ import {
   UserPlus,
   FileText,
 } from 'lucide-react'
-import { conflictApi, reservationApi } from '@/services/api'
+import { conflictApi, reservationApi, timelineApi } from '@/services/api'
+import { useOperator } from '@/context/OperatorContext'
 import type { ConflictRecord, TimelineRecord } from '@/types'
 import {
   formatDateTime,
@@ -29,6 +30,7 @@ import Timeline from '@/components/Timeline'
 export default function ConflictDetail() {
   const { id } = useParams({ from: '/conflicts/$id' })
   const navigate = useNavigate()
+  const { currentOperator } = useOperator()
   const [conflict, setConflict] = useState<ConflictRecord | null>(null)
   const [timeline, setTimeline] = useState<TimelineRecord[]>([])
   const [loading, setLoading] = useState(true)
@@ -72,7 +74,7 @@ export default function ConflictDetail() {
   const handleAddNote = async () => {
     if (!noteText.trim()) return
     try {
-      await conflictApi.addNote(Number(id), noteText)
+      await conflictApi.addNote(Number(id), noteText, currentOperator?.id)
       setNoteText('')
       loadData()
     } catch (error) {
@@ -86,10 +88,14 @@ export default function ConflictDetail() {
       return
     }
     try {
-      await conflictApi.update(Number(id), {
-        assigned_to: selectedOperator,
-        status: 'assigned',
-      })
+      await conflictApi.update(
+        Number(id),
+        {
+          assigned_to: selectedOperator,
+          status: 'assigned',
+        },
+        currentOperator?.id
+      )
       setShowAssignDialog(false)
       setSelectedOperator(null)
       loadData()
@@ -104,10 +110,14 @@ export default function ConflictDetail() {
       return
     }
     try {
-      await conflictApi.update(Number(id), {
-        status: 'resolved',
-        resolution,
-      })
+      await conflictApi.update(
+        Number(id),
+        {
+          status: 'resolved',
+          resolution,
+        },
+        currentOperator?.id
+      )
       setShowResolveDialog(false)
       setResolution('')
       loadData()
@@ -118,7 +128,11 @@ export default function ConflictDetail() {
 
   const handleStartProcess = async () => {
     try {
-      await conflictApi.update(Number(id), { status: 'in_progress' })
+      await conflictApi.update(
+        Number(id),
+        { status: 'in_progress' },
+        currentOperator?.id
+      )
       loadData()
     } catch (error) {
       console.error('开始处理失败:', error)

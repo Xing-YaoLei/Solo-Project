@@ -109,6 +109,7 @@ def create_conflict(conflict: ConflictRecordCreate, db: Session = Depends(get_db
 def update_conflict(
     conflict_id: int,
     conflict: ConflictRecordUpdate,
+    operator_id: Optional[int] = Query(None),
     db: Session = Depends(get_db)
 ):
     db_conflict = db.query(ConflictRecord).filter(ConflictRecord.id == conflict_id).first()
@@ -129,6 +130,7 @@ def update_conflict(
                     reservation_id=obj.reservation_id,
                     event_type=TimelineEventType.HANDOVER,
                     description=f"冲突已分配处理人，冲突编号：{db_conflict.conflict_no}",
+                    operator_id=operator_id,
                     event_metadata={"assigned_to": update_data["assigned_to"]}
                 )
                 db.add(timeline)
@@ -147,7 +149,21 @@ def update_conflict(
                     reservation_id=obj.reservation_id,
                     event_type=TimelineEventType.CONFLICT_RESOLVED,
                     description=f"冲突已解决，冲突编号：{db_conflict.conflict_no}",
+                    operator_id=operator_id,
                     event_metadata={"conflict_id": conflict_id}
+                )
+                db.add(timeline)
+        elif update_data["status"] == ConflictStatus.IN_PROGRESS and old_status != ConflictStatus.IN_PROGRESS:
+            affected_objs = db.query(ConflictAffectedObject).filter(
+                ConflictAffectedObject.conflict_id == conflict_id
+            ).all()
+            for obj in affected_objs:
+                timeline = TimelineRecord(
+                    reservation_id=obj.reservation_id,
+                    event_type=TimelineEventType.STATUS_CHANGED,
+                    description=f"冲突开始处理，冲突编号：{db_conflict.conflict_no}",
+                    operator_id=operator_id,
+                    event_metadata={"conflict_id": conflict_id, "old_status": old_status.value, "new_status": "in_progress"}
                 )
                 db.add(timeline)
 
