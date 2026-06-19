@@ -32,6 +32,7 @@ export class CleaningTasksController {
   create(@Body() data: {
     propertyId: string;
     bookingId?: string;
+    assignedToId?: string;
     taskDate: Date;
     scheduledStart: Date;
     scheduledEnd: Date;

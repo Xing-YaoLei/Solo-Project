@@ -115,7 +115,7 @@ model Booking {
 model CleaningTask {
   id              String              @id @default(uuid())
   propertyId      String
-  bookingId       String?
+  bookingId       String?             @unique
   assignedToId    String?
   createdById     String?
   completedById   String?
@@ -140,8 +140,8 @@ model CleaningTask {
   createdBy       User?       @relation("createdTasks", fields: [createdById], references: [id])
   completedBy     User?       @relation("completedTasks", fields: [completedById], references: [id])
   
-  logs            SystemLog[]
-  
+  missedOrder     MissedOrder?
+
   @@index([propertyId, taskDate])
   @@index([assignedToId, status])
   @@index([status, taskDate])
@@ -238,8 +238,7 @@ model SystemLog {
   createdAt     DateTime  @default(now())
   
   createdBy     User?     @relation("createdLogs", fields: [createdById], references: [id])
-  task          CleaningTask? @relation(fields: [entityId], references: [id])
-  
+
   @@index([entityType, entityId])
   @@index([action, createdAt])
   @@map("system_logs")

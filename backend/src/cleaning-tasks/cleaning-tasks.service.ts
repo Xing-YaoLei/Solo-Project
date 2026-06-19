@@ -47,23 +47,27 @@ export class CleaningTasksService {
         createdBy: { select: { id: true, name: true, role: true } },
         completedBy: { select: { id: true, name: true, role: true } },
         booking: true,
-        logs: {
-          orderBy: { createdAt: 'desc' },
-          include: { createdBy: { select: { id: true, name: true } } },
-        },
+        missedOrder: true,
       },
     });
     
     if (!task) {
       throw new NotFoundException('保洁任务不存在');
     }
+
+    const logs = await this.prisma.systemLog.findMany({
+      where: { entityType: 'CleaningTask', entityId: id },
+      orderBy: { createdAt: 'desc' },
+      include: { createdBy: { select: { id: true, name: true } } },
+    });
     
-    return task;
+    return { ...task, logs };
   }
 
   async create(data: {
     propertyId: string;
     bookingId?: string;
+    assignedToId?: string;
     taskDate: Date;
     scheduledStart: Date;
     scheduledEnd: Date;
@@ -80,9 +84,20 @@ export class CleaningTasksService {
       entityId: task.id,
       action: LogAction.CREATE,
       reason: '创建保洁任务',
-      details: JSON.stringify({ taskDate: data.taskDate }),
+      details: JSON.stringify({ taskDate: data.taskDate, assignedToId: data.assignedToId }),
       createdById: data.createdById,
     });
+
+    if (data.assignedToId) {
+      await this.systemLogsService.create({
+        entityType: 'CleaningTask',
+        entityId: task.id,
+        action: LogAction.ASSIGN,
+        reason: '创建任务时直接指派保洁员',
+        details: JSON.stringify({ assignedToId: data.assignedToId }),
+        createdById: data.createdById,
+      });
+    }
 
     return task;
   }

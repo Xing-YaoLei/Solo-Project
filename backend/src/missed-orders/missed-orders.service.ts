@@ -3,7 +3,8 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { RedisService } from '../redis/redis.service';
-import { CleaningTaskStatus, NotificationType, UserRole } from '@prisma/client';
+import { SystemLogsService } from '../system-logs/system-logs.service';
+import { CleaningTaskStatus, LogAction, NotificationType, UserRole } from '@prisma/client';
 
 @Injectable()
 export class MissedOrdersService {
@@ -13,6 +14,7 @@ export class MissedOrdersService {
     private prisma: PrismaService,
     private notificationsService: NotificationsService,
     private redisService: RedisService,
+    private systemLogsService: SystemLogsService,
   ) {}
 
   @Cron(CronExpression.EVERY_HOUR)
@@ -94,6 +96,20 @@ export class MissedOrdersService {
       });
     }
 
+    await this.systemLogsService.create({
+      entityType: 'MissedOrder',
+      entityId: missedOrder.id,
+      action: LogAction.CREATE,
+      reason: '任务超时未完成，系统自动生成漏单记录',
+      details: JSON.stringify({
+        taskId: task.id,
+        propertyId: task.propertyId,
+        propertyName: task.property?.name,
+        assignedToId: task.assignedToId,
+        scheduledEnd: task.scheduledEnd,
+      }),
+    });
+
     await this.redisService.publish(
       'missed_orders:new',
       JSON.stringify(missedOrder),
@@ -132,7 +148,23 @@ export class MissedOrdersService {
   }
 
   async resolve(id: string, resolvedById: string, reason: string) {
-    return this.prisma.missedOrder.update({
+    const missedOrder = await this.prisma.missedOrder.findUnique({
+      where: { id },
+      include: {
+        task: {
+          include: {
+            property: { select: { name: true, roomNumber: true } },
+            assignedTo: { select: { name: true } },
+          },
+        },
+      },
+    });
+
+    if (!missedOrder) {
+      throw new Error('漏单记录不存在');
+    }
+
+    const resolved = await this.prisma.missedOrder.update({
       where: { id },
       data: {
         status: 'resolved',
@@ -140,5 +172,24 @@ export class MissedOrdersService {
         reason,
       },
     });
+
+    const log = await this.systemLogsService.create({
+      entityType: 'MissedOrder',
+      entityId: id,
+      action: LogAction.COMPLETE,
+      reason,
+      details: JSON.stringify({
+        missedOrderId: id,
+        taskId: missedOrder.taskId,
+        propertyName: missedOrder.task?.property?.name,
+        housekeeper: missedOrder.task?.assignedTo?.name,
+        resolvedById,
+      }),
+      createdById: resolvedById,
+    });
+
+    await this.systemLogsService.closeLog(log.id, reason, resolvedById);
+
+    return resolved;
   }
 }

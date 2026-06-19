@@ -9,6 +9,12 @@ interface Property {
   address: string;
 }
 
+interface User {
+  id: string;
+  name: string;
+  role: string;
+}
+
 interface Booking {
   id: string;
   guestName: string;
@@ -55,6 +61,26 @@ interface RecordData {
   documents: CheckinDocument[];
 }
 
+interface CreateTaskForm {
+  propertyId: string;
+  assignedToId: string;
+  taskDate: string;
+  scheduledStartTime: string;
+  scheduledEndTime: string;
+  priority: string;
+  notes: string;
+}
+
+const emptyForm: CreateTaskForm = {
+  propertyId: '',
+  assignedToId: '',
+  taskDate: new Date().toISOString().split('T')[0],
+  scheduledStartTime: '09:00',
+  scheduledEndTime: '11:00',
+  priority: 'normal',
+  notes: '',
+};
+
 export default function RecordsPage() {
   const [data, setData] = useState<RecordData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -70,9 +96,22 @@ export default function RecordsPage() {
     return d.toISOString().split('T')[0];
   });
 
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createForm, setCreateForm] = useState<CreateTaskForm>({ ...emptyForm });
+  const [housekeepers, setHousekeepers] = useState<User[]>([]);
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+
   useEffect(() => {
     fetchData();
   }, [selectedProperty, startDate, endDate]);
+
+  useEffect(() => {
+    if (showCreateModal) {
+      fetchHousekeepers();
+      fetchProperties();
+    }
+  }, [showCreateModal]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -101,6 +140,63 @@ export default function RecordsPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchHousekeepers = async () => {
+    try {
+      const result = await api.get('/users', {
+        params: { role: 'HOUSEKEEPER' },
+      }) as unknown as User[];
+      setHousekeepers(result);
+    } catch {
+      setHousekeepers([]);
+    }
+  };
+
+  const fetchProperties = async () => {
+    try {
+      const result = await api.get('/properties') as unknown as Property[];
+      setProperties(result);
+    } catch {
+      setProperties([]);
+    }
+  };
+
+  const handleCreateTask = async () => {
+    if (!createForm.propertyId || !createForm.taskDate) return;
+
+    setSubmitting(true);
+    try {
+      const scheduledStart = new Date(`${createForm.taskDate}T${createForm.scheduledStartTime}:00`);
+      const scheduledEnd = new Date(`${createForm.taskDate}T${createForm.scheduledEndTime}:00`);
+
+      await api.post('/cleaning-tasks', {
+        propertyId: createForm.propertyId,
+        assignedToId: createForm.assignedToId || undefined,
+        taskDate: new Date(createForm.taskDate),
+        scheduledStart,
+        scheduledEnd,
+        priority: createForm.priority,
+        notes: createForm.notes || undefined,
+        createdById: 'demo-user-id',
+      });
+
+      setShowCreateModal(false);
+      setCreateForm({ ...emptyForm });
+      fetchData();
+    } catch (error) {
+      console.error('创建任务失败:', error);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const openCreateModal = (propertyId?: string) => {
+    setCreateForm({
+      ...emptyForm,
+      propertyId: propertyId || '',
+    });
+    setShowCreateModal(true);
   };
 
   return (
@@ -146,8 +242,11 @@ export default function RecordsPage() {
               ))}
             </select>
           </div>
-          <button onClick={fetchData} className="btn">
+          <button onClick={fetchData} className="btn-secondary">
             🔄 刷新
+          </button>
+          <button onClick={() => openCreateModal()} className="btn">
+            + 新建保洁任务
           </button>
         </div>
 
@@ -189,11 +288,13 @@ export default function RecordsPage() {
       ) : (
         <div className="grid grid-cols-3 gap-6">
           <div className="card">
-            <div className="p-4 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900">📅 房源日历</h3>
-              <p className="text-sm text-gray-500 mt-1">
-                {formatDate(startDate)} ~ {formatDate(endDate)}
-              </p>
+            <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">📅 房源日历</h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  {formatDate(startDate)} ~ {formatDate(endDate)}
+                </p>
+              </div>
             </div>
             <div className="p-4 max-h-[600px] overflow-y-auto space-y-4">
               {data?.calendarData.map((item) => (
@@ -205,9 +306,18 @@ export default function RecordsPage() {
                     <h4 className="font-medium text-gray-900">
                       {item.property.name}
                     </h4>
-                    <span className="text-xs text-gray-500">
-                      {item.property.roomNumber}
-                    </span>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-xs text-gray-500">
+                        {item.property.roomNumber}
+                      </span>
+                      <button
+                        onClick={() => openCreateModal(item.property.id)}
+                        className="text-xs text-primary-600 hover:text-primary-800 font-medium"
+                        title="为该房源新建保洁任务"
+                      >
+                        + 保洁
+                      </button>
+                    </div>
                   </div>
                   <div className="space-y-1">
                     {item.bookings.slice(0, 2).map((booking) => (
@@ -226,6 +336,7 @@ export default function RecordsPage() {
                         }`}
                       >
                         保洁 · {statusMap[task.status]?.label}
+                        {task.assignedTo?.name && ` · ${task.assignedTo.name}`}
                       </div>
                     ))}
                     {item.bookings.length === 0 &&
@@ -326,6 +437,165 @@ export default function RecordsPage() {
               {data?.documents.length === 0 && (
                 <p className="text-center text-gray-400 py-8">暂无证件记录</p>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg font-semibold mb-1">新建保洁任务</h3>
+            <p className="text-sm text-gray-500 mb-5">
+              创建保洁任务并指派保洁员
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  房源 <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={createForm.propertyId}
+                  onChange={(e) =>
+                    setCreateForm({ ...createForm, propertyId: e.target.value })
+                  }
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                >
+                  <option value="">请选择房源</option>
+                  {properties.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} - {p.roomNumber}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  指派保洁员
+                </label>
+                <select
+                  value={createForm.assignedToId}
+                  onChange={(e) =>
+                    setCreateForm({ ...createForm, assignedToId: e.target.value })
+                  }
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                >
+                  <option value="">暂不指派</option>
+                  {housekeepers.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name}
+                    </option>
+                  ))}
+                </select>
+                {housekeepers.length === 0 && (
+                  <p className="text-xs text-gray-400 mt-1">
+                    暂无保洁员，请先在用户管理中添加
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  任务日期 <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="date"
+                  value={createForm.taskDate}
+                  onChange={(e) =>
+                    setCreateForm({ ...createForm, taskDate: e.target.value })
+                  }
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    计划开始时间 <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="time"
+                    value={createForm.scheduledStartTime}
+                    onChange={(e) =>
+                      setCreateForm({
+                        ...createForm,
+                        scheduledStartTime: e.target.value,
+                      })
+                    }
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    计划结束时间 <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="time"
+                    value={createForm.scheduledEndTime}
+                    onChange={(e) =>
+                      setCreateForm({
+                        ...createForm,
+                        scheduledEndTime: e.target.value,
+                      })
+                    }
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  优先级
+                </label>
+                <select
+                  value={createForm.priority}
+                  onChange={(e) =>
+                    setCreateForm({ ...createForm, priority: e.target.value })
+                  }
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                >
+                  <option value="low">低</option>
+                  <option value="normal">普通</option>
+                  <option value="high">高</option>
+                  <option value="urgent">紧急</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  备注
+                </label>
+                <textarea
+                  value={createForm.notes}
+                  onChange={(e) =>
+                    setCreateForm({ ...createForm, notes: e.target.value })
+                  }
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                  rows={3}
+                  placeholder="可选，填写任务相关备注"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowCreateModal(false);
+                  setCreateForm({ ...emptyForm });
+                }}
+                className="btn-secondary"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleCreateTask}
+                disabled={submitting || !createForm.propertyId || !createForm.taskDate}
+                className="btn"
+              >
+                {submitting ? '提交中...' : '创建并指派'}
+              </button>
             </div>
           </div>
         </div>

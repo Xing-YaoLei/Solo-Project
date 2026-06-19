@@ -39,16 +39,21 @@ export class ReportsService {
       }),
     ]);
 
-    const onTimeTasks = await this.prisma.cleaningTask.count({
+    const completedTasksWithActualEnd = await this.prisma.cleaningTask.findMany({
       where: {
         taskDate: { gte: startDate, lte: endDate },
         status: CleaningTaskStatus.COMPLETED,
         actualEnd: { not: null },
       },
+      select: { id: true, actualEnd: true, scheduledEnd: true },
     });
 
+    const trulyOnTimeTasks = completedTasksWithActualEnd.filter(
+      (t) => t.actualEnd && t.scheduledEnd && new Date(t.actualEnd) <= new Date(t.scheduledEnd),
+    ).length;
+
     const punctualityRate = totalTasks > 0 
-      ? Math.round((onTimeTasks / totalTasks) * 10000) / 100 
+      ? Math.round((trulyOnTimeTasks / totalTasks) * 10000) / 100 
       : 0;
 
     const tasksByProperty = await this.prisma.cleaningTask.groupBy({
@@ -75,7 +80,7 @@ export class ReportsService {
       totalTasks,
       completedTasks,
       missedTasks,
-      onTimeTasks,
+      onTimeTasks: trulyOnTimeTasks,
       punctualityRate,
       completionRate: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 10000) / 100 : 0,
       tasksByProperty,
@@ -93,13 +98,18 @@ export class ReportsService {
       where: { taskDate: { gte: startDate, lte: endDate } },
     });
 
-    const onTimeTasks = await this.prisma.cleaningTask.count({
+    const completedTasksWithActualEnd = await this.prisma.cleaningTask.findMany({
       where: {
         taskDate: { gte: startDate, lte: endDate },
         status: CleaningTaskStatus.COMPLETED,
         actualEnd: { not: null },
       },
+      select: { id: true, actualEnd: true, scheduledEnd: true },
     });
+
+    const onTimeTasks = completedTasksWithActualEnd.filter(
+      (t) => t.actualEnd && t.scheduledEnd && new Date(t.actualEnd) <= new Date(t.scheduledEnd),
+    ).length;
 
     return {
       totalTasks,
