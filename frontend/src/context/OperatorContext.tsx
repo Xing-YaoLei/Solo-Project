@@ -1,32 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import type { User } from '@/types'
-
-export const OPERATOR_USERS: User[] = [
-  {
-    id: 1,
-    username: 'zhangsan',
-    full_name: '张三',
-    role: 'admin',
-    is_active: true,
-    created_at: '2024-01-01T00:00:00Z',
-  },
-  {
-    id: 2,
-    username: 'lisi',
-    full_name: '李四',
-    role: 'operator',
-    is_active: true,
-    created_at: '2024-01-01T00:00:00Z',
-  },
-  {
-    id: 3,
-    username: 'wangwu',
-    full_name: '王五',
-    role: 'supervisor',
-    is_active: true,
-    created_at: '2024-01-01T00:00:00Z',
-  },
-]
+import { userApi } from '@/services/api'
 
 const STORAGE_KEY = 'current_operator_id'
 
@@ -34,24 +8,42 @@ interface OperatorContextValue {
   currentOperator: User | null
   setCurrentOperator: (user: User | null) => void
   operatorUsers: User[]
+  loading: boolean
 }
 
 const OperatorContext = createContext<OperatorContextValue | undefined>(undefined)
 
 export function OperatorProvider({ children }: { children: ReactNode }) {
+  const [operatorUsers, setOperatorUsers] = useState<User[]>([])
   const [currentOperator, setCurrentOperatorState] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const savedId = localStorage.getItem(STORAGE_KEY)
-    if (savedId) {
-      const user = OPERATOR_USERS.find((u) => u.id === Number(savedId))
-      if (user) {
-        setCurrentOperatorState(user)
-        return
-      }
-    }
-    setCurrentOperatorState(OPERATOR_USERS[0])
+    loadUsers()
   }, [])
+
+  const loadUsers = async () => {
+    try {
+      const users = await userApi.getList()
+      setOperatorUsers(users)
+
+      const savedId = localStorage.getItem(STORAGE_KEY)
+      if (savedId && users.length > 0) {
+        const user = users.find((u) => u.id === Number(savedId))
+        if (user) {
+          setCurrentOperatorState(user)
+          return
+        }
+      }
+      if (users.length > 0) {
+        setCurrentOperatorState(users[0])
+      }
+    } catch (error) {
+      console.error('加载用户列表失败:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const setCurrentOperator = (user: User | null) => {
     setCurrentOperatorState(user)
@@ -64,7 +56,7 @@ export function OperatorProvider({ children }: { children: ReactNode }) {
 
   return (
     <OperatorContext.Provider
-      value={{ currentOperator, setCurrentOperator, operatorUsers: OPERATOR_USERS }}
+      value={{ currentOperator, setCurrentOperator, operatorUsers, loading }}
     >
       {children}
     </OperatorContext.Provider>

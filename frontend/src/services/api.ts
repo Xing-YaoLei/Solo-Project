@@ -10,6 +10,7 @@ import type {
   RescheduleRecord,
   AttendanceStats,
   StatsSummary,
+  User,
 } from '@/types'
 
 const api = axios.create({
@@ -168,6 +169,11 @@ export const timelineApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
   },
+}
+
+export const userApi = {
+  getList: (params?: { include_inactive?: boolean }) =>
+    api.get<any, User[]>('/users', { params }),
 }
 
 export default api

@@ -30,7 +30,7 @@ import Timeline from '@/components/Timeline'
 export default function ConflictDetail() {
   const { id } = useParams({ from: '/conflicts/$id' })
   const navigate = useNavigate()
-  const { currentOperator } = useOperator()
+  const { currentOperator, operatorUsers } = useOperator()
   const [conflict, setConflict] = useState<ConflictRecord | null>(null)
   const [timeline, setTimeline] = useState<TimelineRecord[]>([])
   const [loading, setLoading] = useState(true)
@@ -390,11 +390,7 @@ export default function ConflictDetail() {
             </div>
             <div className="p-5">
               <div className="space-y-2">
-                {[
-                  { id: 1, name: '张三', role: '运营主管' },
-                  { id: 2, name: '李四', role: '票务专员' },
-                  { id: 3, name: '王五', role: '现场调度' },
-                ].map((user) => (
+                {operatorUsers.map((user) => (
                   <label
                     key={user.id}
                     className={cn(
@@ -414,8 +410,15 @@ export default function ConflictDetail() {
                         className="mr-3"
                       />
                       <div>
-                        <p className="font-medium text-gray-900">{user.name}</p>
-                        <p className="text-xs text-gray-500">{user.role}</p>
+                        <p className="font-medium text-gray-900">
+                          {user.full_name || user.username}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {user.role === 'admin' && '管理员'}
+                          {user.role === 'operator' && '票务专员'}
+                          {user.role === 'supervisor' && '运营主管'}
+                          {user.role === 'viewer' && '查看员'}
+                        </p>
                       </div>
                     </div>
                   </label>

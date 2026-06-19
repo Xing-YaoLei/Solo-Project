@@ -12,7 +12,7 @@ from ..models import (
 )
 from ..schemas import (
     RescheduleCreate, RescheduleResponse, TimelineRecordResponse,
-    AttachmentResponse, AttendanceStats
+    AttachmentResponse, AttendanceStats, UserResponse
 )
 
 router = APIRouter(prefix="/api", tags=["改约与时间线"])
@@ -355,3 +355,14 @@ def export_statistics(
         "count": len(stats),
         "data": stats
     }
+
+
+@router.get("/users", response_model=List[UserResponse])
+def get_users(
+    include_inactive: bool = Query(False),
+    db: Session = Depends(get_db)
+):
+    query = db.query(User)
+    if not include_inactive:
+        query = query.filter(User.is_active == True)
+    return query.order_by(User.id.asc()).all()
