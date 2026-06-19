@@ -18,7 +18,7 @@ interface WorkOrderItemView {
 }
 
 interface PhysicsTool {
-  body: Phaser.Physics.Matter.Image;
+  body: Matter.Body;
   type: string;
 }
 
@@ -110,23 +110,27 @@ export class GameScene extends Phaser.Scene {
     this.physicsLayer.setDepth(5);
 
     const floorY = height - 50;
-    this.matter.add.rectangle(width / 2, floorY + 20, width, 40, {
+    const floor = Matter.Bodies.rectangle(width / 2, floorY + 20, width, 40, {
       isStatic: true,
       friction: 0.8,
       restitution: 0.1,
       label: 'floor'
     });
+    this.matter.world.add(floor);
 
-    this.matter.add.rectangle(-20, height / 2, 40, height, {
+    const leftWall = Matter.Bodies.rectangle(-20, height / 2, 40, height, {
       isStatic: true,
       friction: 0.5,
       label: 'leftWall'
     });
-    this.matter.add.rectangle(width + 20, height / 2, 40, height, {
+    this.matter.world.add(leftWall);
+
+    const rightWall = Matter.Bodies.rectangle(width + 20, height / 2, 40, height, {
       isStatic: true,
       friction: 0.5,
       label: 'rightWall'
     });
+    this.matter.world.add(rightWall);
 
     const toolDefs = [
       { emoji: '🔧', type: 'wrench', size: 40, x: 60, y: 120 },
@@ -185,29 +189,29 @@ export class GameScene extends Phaser.Scene {
     label.setData('type', type);
     label.setData('index', index);
 
-    const body = this.matter.add.circle(x, y, size / 2, {
+    const body = Matter.Bodies.circle(x, y, size / 2, {
       friction: 0.4,
       restitution: 0.3,
       density: 0.001,
       label: `tool_${type}_${index}`
     });
+    this.matter.world.add(body);
 
-    const matterBody = (body as any).body as Matter.Body;
-    this.physicsTools.push({ body: body as any, type });
+    this.physicsTools.push({ body, type });
 
     label.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       this.isDragging = true;
-      this.draggingBody = matterBody;
-      this.dragOffset.x = matterBody.position.x - pointer.x;
-      this.dragOffset.y = matterBody.position.y - pointer.y;
-      Matter.Body.setStatic(matterBody, false);
-      Matter.Body.setVelocity(matterBody, { x: 0, y: 0 });
+      this.draggingBody = body;
+      this.dragOffset.x = body.position.x - pointer.x;
+      this.dragOffset.y = body.position.y - pointer.y;
+      Matter.Body.setStatic(body, false);
+      Matter.Body.setVelocity(body, { x: 0, y: 0 });
     });
 
     this.matter.world.on('afterupdate', () => {
-      if (!this.isDragging || this.draggingBody !== matterBody) {
-        label.setPosition(matterBody.position.x, matterBody.position.y);
-        label.setRotation(matterBody.angle);
+      if (!this.isDragging || this.draggingBody !== body) {
+        label.setPosition(body.position.x, body.position.y);
+        label.setRotation(body.angle);
       }
     });
   }
@@ -1131,13 +1135,11 @@ export class GameScene extends Phaser.Scene {
     ];
 
     this.physicsTools.forEach((tool, index) => {
-      if (tool.body && (tool.body as any).body) {
-        const mb = (tool.body as any).body as Matter.Body;
-        const def = toolDefs[index] || { x: 100 };
-        Matter.Body.setPosition(mb, { x: def.x, y: 100 + Math.random() * 50 });
-        Matter.Body.setVelocity(mb, { x: 0, y: 0 });
-        Matter.Body.setAngle(mb, 0);
-      }
+      const def = toolDefs[index] || { x: 100 };
+      Matter.Body.setPosition(tool.body, { x: def.x, y: 100 + Math.random() * 50 });
+      Matter.Body.setVelocity(tool.body, { x: 0, y: 0 });
+      Matter.Body.setAngle(tool.body, 0);
+      Matter.Body.setAngularVelocity(tool.body, 0);
     });
   }
 }
