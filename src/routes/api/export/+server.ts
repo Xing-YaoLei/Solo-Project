@@ -24,6 +24,11 @@ export const GET: RequestHandler = async (event: RequestEvent) => {
 		throw error(401, '请先登录');
 	}
 
+	const perms = event.locals.user.permissions ?? [];
+	if (!perms.includes('report:export') && !perms.includes('complaint:export')) {
+		throw error(403, '权限不足：需要 report:export 或 complaint:export 权限');
+	}
+
 	const caller = await createCaller(event);
 	const url = event.url;
 	const type = url.searchParams.get('type') ?? 'all';
@@ -94,6 +99,7 @@ export const GET: RequestHandler = async (event: RequestEvent) => {
 			}
 		});
 	} catch (e: any) {
+		if (e?.status) throw e;
 		throw error(500, e?.message || '导出失败');
 	}
 };

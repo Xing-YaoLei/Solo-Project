@@ -3,6 +3,7 @@ import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async (event) => {
 	const caller = await createCaller(event);
+	const perms = event.locals.user?.permissions ?? [];
 
 	const [pendingRes, inProgressRes, overdueRes, closedRes] = await Promise.all([
 		caller.complaint.list({ status: 'pending', pageSize: 1 }),
@@ -20,17 +21,28 @@ export const load: PageServerLoad = async (event) => {
 
 	const overdueItems = await caller.complaint.overdueList({ pageSize: 5 });
 
-	const [closureDurationReport, dateReport, assigneeReport] = await Promise.all([
-		caller.report.byClosureDuration(),
-		caller.report.byDate({}),
-		caller.report.byAssignee()
-	]);
+	let closureDurationReport = { buckets: [] as Array<{ label: string; count: number; avgHours: number }> };
+	let dateReport = { dates: [] as Array<{ date: string; total: number; pending: number; inProgress: number; resolved: number; closed: number }> };
+	let assigneeReport = { assignees: [] as Array<{ assigneeId: string | null; assigneeName: string; total: number; pending: number; inProgress: number; resolved: number; closed: number; avgCloseHours: number }> };
+
+	if (perms.includes('report:view')) {
+		try {
+			[closureDurationReport, dateReport, assigneeReport] = await Promise.all([
+				caller.report.byClosureDuration(),
+				caller.report.byDate({}),
+				caller.report.byAssignee()
+			]);
+		} catch {
+			// ignore report errors on dashboard
+		}
+	}
 
 	return {
 		complaintStats,
 		overdueItems,
 		closureDurationReport,
 		dateReport,
-		assigneeReport
+		assigneeReport,
+		canViewReport: perms.includes('report:view')
 	};
 };
