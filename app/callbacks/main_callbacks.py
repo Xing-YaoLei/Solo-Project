@@ -231,10 +231,6 @@ def register_callbacks(app):
         orders_content = render_orders_table(orders_df)
 
         cleaning_df = get_cleaning_tasks(selected_date, selected_date, pids)
-        if not cleaning_df.empty and room_types and len(room_types) > 0 and "room_type" in cleaning_df.columns:
-            filtered_cleaning = cleaning_df[cleaning_df["room_type"].isin(room_types)]
-            if not filtered_cleaning.empty:
-                cleaning_df = filtered_cleaning
         cleaning_content = render_cleaning_table(cleaning_df)
 
         raw_dfs = []
@@ -517,9 +513,15 @@ def handle_init_demo(n_clicks, start_str, end_str, property_ids, channels, group
             end_date = date.today()
 
         try:
-            total_occ, avg_occ, total_room_nights, total_conflicts = calculate_occupancy_rate(
-                start_date, end_date, property_ids
-            )
+            occupancy_df = calculate_occupancy_rate(start_date, end_date, property_ids, group_by)
+            if not occupancy_df.empty:
+                avg_occ = float(occupancy_df["occupancy_rate"].mean()) / 100.0
+                total_room_nights = int(occupancy_df["occupied_count"].sum())
+                total_conflicts = int(occupancy_df["conflict_count"].sum())
+            else:
+                avg_occ = 0.0
+                total_room_nights = 0
+                total_conflicts = 0
             prop_count = len(property_ids) if property_ids else len(props_df)
             kpi_props = f"{prop_count} 套", generate_kpi_subtitle("房源总数", prop_count)
             kpi_occ = f"{avg_occ * 100:.1f}%", generate_kpi_subtitle("平均入住率", avg_occ, is_pct=True,
@@ -528,33 +530,42 @@ def handle_init_demo(n_clicks, start_str, end_str, property_ids, channels, group
             kpi_conflicts_val = f"{total_conflicts} 个", generate_kpi_subtitle("房态冲突", total_conflicts)
         except Exception as e:
             print(f"KPI计算失败: {e}")
+            import traceback
+            traceback.print_exc()
             kpi_props = ("-", "")
             kpi_occ = ("-", "")
             kpi_orders_val = ("-", "")
             kpi_conflicts_val = ("-", "")
+            occupancy_df = pd.DataFrame()
 
         try:
             calendar_df = get_room_status_calendar(start_date, end_date, property_ids)
             fig_heatmap = create_heatmap_figure(calendar_df, start_date, end_date)
         except Exception as e:
             print(f"热力图失败: {e}")
+            import traceback
+            traceback.print_exc()
             fig_heatmap = no_update
 
         try:
             orders_df = get_ota_orders(start_date, end_date, property_ids, channels)
-            fig_trend = create_occupancy_trend_chart(orders_df, group_by)
+            fig_trend = create_occupancy_trend_chart(occupancy_df, group_by)
             fig_pie = create_channel_pie_chart(orders_df)
         except Exception as e:
             print(f"趋势/渠道图失败: {e}")
+            import traceback
+            traceback.print_exc()
             fig_trend = no_update
             fig_pie = no_update
 
         try:
-            anomalies_df = get_data_anomalies(start_date, end_date, property_ids)
+            anomalies_df = get_data_anomalies(is_resolved=False)
             fig_anomaly = create_anomaly_bar_chart(anomalies_df)
             fig_severity = create_anomaly_severity_chart(anomalies_df)
         except Exception as e:
             print(f"异常图失败: {e}")
+            import traceback
+            traceback.print_exc()
             fig_anomaly = no_update
             fig_severity = no_update
 

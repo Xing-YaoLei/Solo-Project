@@ -581,86 +581,122 @@ def _fetch_door_locks_from_source(sync_from: Optional[str] = None) -> List[Dict[
 @celery_app.task(name="auto_generate_cleaning_tasks")
 def _auto_generate_cleaning_tasks():
     logger.info("根据已同步订单自动生成保洁任务...")
-    from datetime import timedelta
+    from datetime import timedelta, date as date_cls
     import random
 
     CLEANING_TYPES = ["日常保洁", "退房保洁", "深度清洁", "布草更换"]
     CLEANING_STATUSES = ["待执行", "进行中", "已完成", "已取消"]
     STAFF = ["张阿姨", "李阿姨", "王师傅", "陈保洁", "刘阿姨", "赵阿姨"]
 
-    with get_db_session() as db:
-        from data.models import CleaningTask, OTAOrder
+    generated = 0
+    records_failed = 0
 
-        orders_for_cleaning = db.query(OTAOrder).filter(
+    orders_for_cleaning = []
+    existing_order_ids = set()
+    active_props = []
+
+    with get_db_session() as db:
+        from data.models import CleaningTask, OTAOrder, Property
+
+        orders_query = db.query(OTAOrder).filter(
             OTAOrder.order_status.in_(["已退房", "已完成"])
         ).all()
+        order_ids = [order.id for order in orders_query]
 
-        generated = 0
-        for order in orders_for_cleaning:
-            existing = db.query(CleaningTask).filter(
-                CleaningTask.order_id == order.id
-            ).first()
-            if existing:
-                continue
+        if order_ids:
+            existing = db.query(CleaningTask.order_id).filter(
+                CleaningTask.order_id.in_(order_ids)
+            ).all()
+            existing_order_ids = {row[0] for row in existing}
 
-            task_status = random.choices(
-                CLEANING_STATUSES, weights=[20, 10, 60, 10]
-            )[0]
-            completed_at = None
-            if task_status == "已完成":
-                completed_at = datetime.combine(order.check_out_date, datetime.min.time()) \
-                    + timedelta(hours=random.randint(12, 18))
+        for order in orders_query:
+            orders_for_cleaning.append({
+                "id": order.id,
+                "property_id": order.property_id,
+                "room_type": order.room_type,
+                "check_out_date": order.check_out_date
+            })
 
-            task = CleaningTask(
-                task_no=f"CLEAN{datetime.now().strftime('%Y%m%d')}{random.randint(10000, 99999)}",
-                property_id=order.property_id,
-                order_id=order.id,
-                room_type=order.room_type,
-                scheduled_date=order.check_out_date,
-                task_type="退房保洁",
-                task_status=task_status,
-                assigned_to=random.choice(STAFF),
-                completed_at=completed_at,
-                remark=random.choice(["", "客人特别要求换床单", "需要补充洗护用品", "空调滤网已检查"])
-            )
-            db.add(task)
+        props_query = db.query(Property).filter(Property.status == "active").all()
+        for prop in props_query:
+            active_props.append({"id": prop.id})
+
+    for order_dict in orders_for_cleaning:
+        if order_dict["id"] in existing_order_ids:
+            continue
+        try:
+            with get_db_session() as db:
+                from data.models import CleaningTask
+
+                task_status = random.choices(
+                    CLEANING_STATUSES, weights=[20, 10, 60, 10]
+                )[0]
+                completed_at = None
+                if task_status == "已完成":
+                    completed_at = datetime.combine(order_dict["check_out_date"], datetime.min.time()) \
+                        + timedelta(hours=random.randint(12, 18))
+
+                task = CleaningTask(
+                    task_no=f"CLEAN{datetime.now().strftime('%Y%m%d%H%M%S%f')}{random.randint(100000, 999999)}",
+                    property_id=order_dict["property_id"],
+                    order_id=order_dict["id"],
+                    room_type=order_dict["room_type"],
+                    scheduled_date=order_dict["check_out_date"],
+                    task_type="退房保洁",
+                    task_status=task_status,
+                    assigned_to=random.choice(STAFF),
+                    completed_at=completed_at,
+                    remark=random.choice(["", "客人特别要求换床单", "需要补充洗护用品", "空调滤网已检查"])
+                )
+                db.add(task)
+
             generated += 1
+        except Exception as e:
+            records_failed += 1
+            logger.error(f"生成保洁任务失败 order_id={order_dict['id']}: {str(e)}")
+            continue
 
-        from datetime import date as date_cls
-        today = date_cls.today()
-        regular_count = random.randint(30, 80)
-        for _ in range(regular_count):
-            from data.models import Property as Prop
-            props = db.query(Prop).filter(Prop.status == "active").all()
-            if not props:
-                break
-            prop = random.choice(props)
-            sched_date = today - timedelta(days=random.randint(0, 30))
+    today = date_cls.today()
+    regular_count = random.randint(30, 80)
+    for _ in range(regular_count):
+        if not active_props:
+            break
+        try:
+            with get_db_session() as db:
+                from data.models import CleaningTask
 
-            task_status = random.choices(
-                CLEANING_STATUSES, weights=[15, 10, 70, 5]
-            )[0]
-            completed_at = None
-            if task_status == "已完成":
-                completed_at = datetime.combine(sched_date, datetime.min.time()) \
-                    + timedelta(hours=random.randint(9, 17))
+                prop_dict = random.choice(active_props)
+                sched_date = today - timedelta(days=random.randint(0, 30))
 
-            task = CleaningTask(
-                task_no=f"CLEAN{datetime.now().strftime('%Y%m%d')}{random.randint(10000, 99999)}",
-                property_id=prop.id,
-                room_type=random.choice(["大床房", "双床房", "套房", "家庭房"]),
-                scheduled_date=sched_date,
-                task_type=random.choice(CLEANING_TYPES),
-                task_status=task_status,
-                assigned_to=random.choice(STAFF),
-                completed_at=completed_at,
-                remark=random.choice(["", "定期维护", "补充布草", "客人反馈后跟进"])
-            )
-            db.add(task)
+                task_status = random.choices(
+                    CLEANING_STATUSES, weights=[15, 10, 70, 5]
+                )[0]
+                completed_at = None
+                if task_status == "已完成":
+                    completed_at = datetime.combine(sched_date, datetime.min.time()) \
+                        + timedelta(hours=random.randint(9, 17))
+
+                task = CleaningTask(
+                    task_no=f"CLEAN{datetime.now().strftime('%Y%m%d%H%M%S%f')}{random.randint(100000, 999999)}",
+                    property_id=prop_dict["id"],
+                    room_type=random.choice(["大床房", "双床房", "套房", "家庭房"]),
+                    scheduled_date=sched_date,
+                    task_type=random.choice(CLEANING_TYPES),
+                    task_status=task_status,
+                    assigned_to=random.choice(STAFF),
+                    completed_at=completed_at,
+                    remark=random.choice(["", "定期维护", "补充布草", "客人反馈后跟进"])
+                )
+                db.add(task)
+
             generated += 1
+        except Exception as e:
+            records_failed += 1
+            logger.error(f"生成常规保洁任务失败: {str(e)}")
+            continue
 
-    logger.info(f"自动生成 {generated} 条保洁任务")
-    return {"status": "completed", "generated": generated}
+    logger.info(f"自动生成 {generated} 条保洁任务, 失败 {records_failed} 条")
+    return {"status": "completed", "generated": generated, "failed": records_failed}
 
 
 def ensure_demo_properties():
@@ -702,14 +738,14 @@ def _sync_records_to_db(records: List[Dict[str, Any]],
     records_processed = 0
     records_failed = 0
 
-    with get_db_session() as db:
-        for cleaned in records:
-            try:
-                unique_value = cleaned.get(unique_field)
-                if not unique_value:
-                    records_failed += 1
-                    continue
+    for cleaned in records:
+        try:
+            unique_value = cleaned.get(unique_field)
+            if not unique_value:
+                records_failed += 1
+                continue
 
+            with get_db_session() as db:
                 existing = db.query(Model).filter(
                     getattr(Model, unique_field) == unique_value
                 ).first()
@@ -744,13 +780,11 @@ def _sync_records_to_db(records: List[Dict[str, Any]],
                     obj.synced_at = datetime.utcnow()
                     db.add(obj)
 
-                db.flush()
-                records_processed += 1
-            except Exception as e:
-                db.rollback()
-                records_failed += 1
-                logger.error(f"处理 {Model.__name__} {cleaned.get(unique_field)} 失败: {str(e)}")
-                continue
+            records_processed += 1
+        except Exception as e:
+            records_failed += 1
+            logger.error(f"处理 {Model.__name__} {cleaned.get(unique_field)} 失败: {str(e)}")
+            continue
 
     return records_processed, records_failed
 

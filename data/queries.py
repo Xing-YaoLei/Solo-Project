@@ -255,22 +255,24 @@ def calculate_occupancy_rate(
         df = pd.read_sql(query.statement, db.bind)
 
         if not df.empty:
-            df["occupancy_rate"] = df.apply(
+            df = df.assign(occupancy_rate=df.apply(
                 lambda x: round(float(x["occupied_count"]) / max(float(x["room_count"]), 1) * 100, 2),
                 axis=1
-            )
+            ))
 
         if group_by == "week":
-            df["week"] = pd.to_datetime(df["status_date"]).dt.isocalendar().week
-            df = df.groupby(["property_code", "property_name", "week"]).agg({
+            df = df.assign(
+                week=pd.to_datetime(df["status_date"]).dt.isocalendar().week
+            ).groupby(["property_code", "property_name", "week"]).agg({
                 "room_count": "mean",
                 "occupied_count": "sum",
                 "conflict_count": "sum",
                 "occupancy_rate": "mean"
             }).reset_index()
         elif group_by == "month":
-            df["month"] = pd.to_datetime(df["status_date"]).dt.to_period("M").astype(str)
-            df = df.groupby(["property_code", "property_name", "month"]).agg({
+            df = df.assign(
+                month=pd.to_datetime(df["status_date"]).dt.to_period("M").astype(str)
+            ).groupby(["property_code", "property_name", "month"]).agg({
                 "room_count": "mean",
                 "occupied_count": "sum",
                 "conflict_count": "sum",

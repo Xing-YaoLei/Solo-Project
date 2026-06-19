@@ -96,7 +96,7 @@ def create_heatmap_figure(df: pd.DataFrame, start_date, end_date):
 
     date_range = pd.date_range(start=start_date, end=end_date, freq="D")
 
-    df["status_date"] = pd.to_datetime(df["status_date"])
+    df = df.assign(status_date=pd.to_datetime(df["status_date"]))
 
     properties = sorted(df["property_name"].unique()) if "property_name" in df.columns else []
 

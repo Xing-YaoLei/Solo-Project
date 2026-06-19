@@ -225,9 +225,8 @@ def create_anomaly_bar_chart(df: pd.DataFrame):
         "door_lock_records": "门锁记录",
         "room_status": "房态"
     }
-    source_counts["source_table"] = source_counts["source_table"].map(
-        lambda x: label_map.get(x, x)
-    )
+    source_zh = source_counts["source_table"].map(lambda x: label_map.get(x, x))
+    source_counts = source_counts.assign(source_table=source_zh)
 
     fig = go.Figure(go.Bar(
         x=source_counts["count"],
@@ -268,11 +267,12 @@ def create_anomaly_severity_chart(df: pd.DataFrame):
         return fig
 
     severity_counts = df.groupby("severity").size().reset_index(name="count")
-    severity_counts["severity"] = severity_counts["severity"].map({
+    severity_zh = severity_counts["severity"].map({
         "error": "严重错误",
         "warning": "警告",
         "info": "提示"
-    }).fillna(severity_counts["severity"])
+    })
+    severity_counts = severity_counts.assign(severity=severity_zh.fillna(severity_counts["severity"]))
 
     color_map = {"严重错误": "#dc3545", "警告": "#ffc107", "提示": "#0d6efd"}
     colors = [color_map.get(s, "#6c757d") for s in severity_counts["severity"]]
