@@ -2,7 +2,7 @@ import { createLazyFileRoute } from '@tanstack/react-router';
 import {
   Card, Table, Tag, Button, Space, Input, Select, Modal, Form,
   message, Drawer, Timeline, App as AntdApp, Row, Col, Statistic,
-  Tooltip, Upload, Empty, Divider, Tabs, DatePicker, InputNumber, Typography,
+  Tooltip, Upload, Empty, Divider, Tabs, DatePicker, InputNumber, Typography, Descriptions,
 } from 'antd';
 import {
   PlusOutlined, SearchOutlined, ReloadOutlined, CheckCircleOutlined,
@@ -313,7 +313,7 @@ function MerchantsPage() {
         <Table
           rowKey="id"
           loading={loading}
-          dataSource={tab === 'merchants' ? merchData : contData}
+          dataSource={(tab === 'merchants' ? merchData : contData) as any}
           columns={(tab === 'merchants' ? merchColumns : contColumns) as any}
           rowSelection={tab === 'contracts' ? { selectedRowKeys, onChange: setSelectedRowKeys } : undefined}
           pagination={{
@@ -455,7 +455,6 @@ function MerchantsPage() {
 
       <Drawer title="处理痕迹" open={traceOpen} onClose={() => setTraceOpen(false)} width={600}>
         <Timeline
-          locale={{ empty: '暂无记录' }}
           items={trace.map((t) => ({
             color: t.action === 'create' ? 'green' : t.action === 'verify' ? 'cyan' : t.action === 'batch_update' ? 'purple' : 'blue',
             children: (

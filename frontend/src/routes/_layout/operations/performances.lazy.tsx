@@ -229,7 +229,7 @@ function PerformancesPage() {
         <Table
           rowKey="id"
           loading={loading}
-          dataSource={tab === 'performances' ? perfData : sessData}
+          dataSource={(tab === 'performances' ? perfData : sessData) as any}
           columns={(tab === 'performances' ? perfColumns : sessColumns) as any}
           pagination={{
             current: page, pageSize, total: tab === 'performances' ? perfTotal : sessTotal,
@@ -319,7 +319,6 @@ function PerformancesPage() {
 
       <Drawer title="处理痕迹" open={traceOpen} onClose={() => setTraceOpen(false)} width={600}>
         <Timeline
-          locale={{ empty: '暂无记录' }}
           items={trace.map((t) => ({
             color: t.action === 'create' ? 'green' : t.action === 'cancel' ? 'red' : 'blue',
             children: (

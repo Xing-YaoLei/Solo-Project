@@ -320,16 +320,17 @@ def update_contract(
     current_user: User = Depends(require_roles(RoleEnum.OPERATION)),
     db: Session = Depends(get_db),
 ):
-    c = db.query(MerchantContract).filter(MerchantContract.id == cid).first()
-    if not c:
+    contract = db.query(MerchantContract).filter(MerchantContract.id == cid).first()
+    if not contract:
         raise HTTPException(status_code=404, detail="合同不存在")
-    old_data = {c.name: getattr(c, c.name) for c in c.__table__.columns}
-    for k, v in c_in.model_dump(exclude_unset=True).items():
-        setattr(c, k, v)
-    log_update_fields(db, current_user, "merchant_contract", cid, old_data, c_in.model_dump(exclude_unset=True))
+    old_data = {col.name: getattr(contract, col.name) for col in contract.__table__.columns}
+    update_data = c_in.model_dump(exclude_unset=True)
+    for k, v in update_data.items():
+        setattr(contract, k, v)
+    log_update_fields(db, current_user, "merchant_contract", cid, old_data, update_data)
     db.commit()
-    db.refresh(c)
-    return c
+    db.refresh(contract)
+    return contract
 
 
 @router.post("/contracts/{cid}/verify", response_model=Message)

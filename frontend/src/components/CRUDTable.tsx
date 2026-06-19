@@ -109,13 +109,14 @@ export function buildCRUD<T extends { id: number }>(opts: UseCRUDOptions<T>) {
   };
 
   const handleDelete = async (record: T) => {
-    if (!opts.deleteUrl) return;
+    const deleteFn = opts.deleteUrl;
+    if (!deleteFn) return;
     modal.confirm({
       title: '确认删除？',
       content: `删除后不可恢复`,
       okButtonProps: { danger: true },
       onOk: async () => {
-        await api.delete(opts.deleteUrl(record.id));
+        await api.delete(deleteFn(record.id));
         message.success('删除成功');
         fetchData();
       },
@@ -347,7 +348,6 @@ export function buildCRUD<T extends { id: number }>(opts: UseCRUDOptions<T>) {
                 </Space>
               ),
             }))}
-            locale={{ empty: '暂无操作痕迹' }}
           />
         </Drawer>
       </Space>
