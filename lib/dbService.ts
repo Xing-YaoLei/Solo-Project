@@ -22,17 +22,36 @@ import {
 } from './mockData';
 
 let prismaAvailable: boolean | null = null;
+let prismaCheckPromise: Promise<boolean> | null = null;
 
 async function checkPrismaAvailable(): Promise<boolean> {
   if (prismaAvailable !== null) return prismaAvailable;
-  try {
-    await prisma.$queryRaw`SELECT 1`;
-    prismaAvailable = true;
-  } catch (e) {
-    console.warn('[dbService] Prisma unavailable, falling back to in-memory data:', (e as Error).message);
+  if (prismaCheckPromise) return prismaCheckPromise;
+  if (process.env.USE_MEMORY_STORE === 'true' || process.env.SKIP_PRISMA === 'true') {
     prismaAvailable = false;
+    return false;
   }
-  return prismaAvailable;
+
+  prismaCheckPromise = (async () => {
+    try {
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Prisma connection timeout')), 500);
+      });
+      await Promise.race([prisma.$queryRaw`SELECT 1`, timeoutPromise]);
+      prismaAvailable = true;
+      return true;
+    } catch (e) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('[dbService] Prisma unavailable, using in-memory data store');
+      }
+      prismaAvailable = false;
+      return false;
+    } finally {
+      prismaCheckPromise = null;
+    }
+  })();
+
+  return prismaCheckPromise;
 }
 
 const inMemoryStore: {
