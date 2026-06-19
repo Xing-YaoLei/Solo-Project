@@ -841,6 +841,6 @@ export const getDiagnosisById = (id: string): Diagnosis | undefined => {
   return diagnoses.find((d) => d.id === id);
 };
 
-export const getDiagnosesByLevel = (levelId: string, vehicleIds: string[]): Diagnosis[] => {
+export const getDiagnosesByLevel = (levelId: string): Diagnosis[] => {
   return diagnoses.filter((d) => d.vehicleId.startsWith(`vehicle-${levelId.slice(-2)}`));
 };

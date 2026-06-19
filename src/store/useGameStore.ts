@@ -249,6 +249,33 @@ export const useGameStore = create<GameState>()(
         const workOrder = state.workOrders.find((wo) => wo.id === workOrderId);
         if (!workOrder || !workOrder.stationId) return;
 
+        const diagnosis = state.diagnoses.find((d) => d.id === workOrder.diagnosisId);
+        if (!diagnosis) return;
+
+        let shortagePartId: string | null = null;
+        let shortagePartName: string | undefined;
+
+        for (const partId of diagnosis.requiredParts) {
+          const part = state.parts.find((p) => p.id === partId);
+          if (!part || part.stockCount <= 0) {
+            shortagePartId = partId;
+            shortagePartName = part?.name;
+            break;
+          }
+        }
+
+        if (shortagePartId) {
+          if (workOrder.stationId) {
+            get().setStationBusy(workOrder.stationId, true, workOrderId);
+          }
+          get().openShortageModal(shortagePartId, workOrderId, shortagePartName);
+          return;
+        }
+
+        for (const partId of diagnosis.requiredParts) {
+          get().updatePartStock(partId, -1);
+        }
+
         if (workOrder.stationId) {
           get().setStationBusy(workOrder.stationId, true, workOrderId);
         }
@@ -329,35 +356,60 @@ export const useGameStore = create<GameState>()(
           return;
         }
 
+        const workOrder = state.workOrders.find((wo) => wo.id === workOrderId);
+        const stationId = workOrder?.stationId;
         const part = state.parts.find((p) => p.id === partId);
+
+        const releaseStation = () => {
+          if (stationId) {
+            get().setStationBusy(stationId, false);
+          }
+        };
 
         switch (solution) {
           case 'wait':
+            if (partId) {
+              get().updatePartStock(partId, 1);
+            }
             set({
               timeRemaining: Math.max(0, state.timeRemaining - 30),
               workOrders: state.workOrders.map((wo) =>
                 wo.id === workOrderId
-                  ? { ...wo, shortageHandled: true, shortageSolution: 'wait' }
+                  ? {
+                      ...wo,
+                      shortageHandled: true,
+                      shortageSolution: 'wait',
+                      stationId: null,
+                      status: 'pending' as WorkOrderStatus,
+                      startTime: null,
+                    }
                   : wo
               ),
             });
             get().deductScore(20);
+            releaseStation();
             break;
 
           case 'alternative':
-            if (part?.isAlternativeAvailable) {
-              if (part.alternativePartId) {
-                get().updatePartStock(part.alternativePartId, -1);
-              }
+            if (part?.isAlternativeAvailable && part.alternativePartId) {
+              get().updatePartStock(part.alternativePartId, -1);
             }
             set({
               workOrders: state.workOrders.map((wo) =>
                 wo.id === workOrderId
-                  ? { ...wo, shortageHandled: true, shortageSolution: 'alternative' }
+                  ? {
+                      ...wo,
+                      shortageHandled: true,
+                      shortageSolution: 'alternative',
+                      stationId: null,
+                      status: 'pending' as WorkOrderStatus,
+                      startTime: null,
+                    }
                   : wo
               ),
             });
             get().deductScore(10);
+            releaseStation();
             break;
 
           case 'skip':
@@ -376,7 +428,9 @@ export const useGameStore = create<GameState>()(
                   : wo
               ),
               reworkCount: state.reworkCount + 1,
+              completedCount: state.completedCount + 1,
             });
+            releaseStation();
             break;
         }
 

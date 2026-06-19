@@ -6,7 +6,6 @@ import type { WorkOrder, Diagnosis } from '@/types';
 
 const TICK_INTERVAL_MS = 100;
 const GAME_TIME_SCALE = 30;
-const SHORTAGE_TRIGGER_CHANCE = 0.08;
 
 function useGameLoop() {
   const navigate = useNavigate();
@@ -20,15 +19,12 @@ function useGameLoop() {
     currentLevelId,
     workOrders,
     diagnoses,
-    parts,
     stations,
     shortageModal,
     tickTime,
     startWorkOrder,
     completeWorkOrder,
     finishLevel,
-    openShortageModal,
-    selectStation,
   } = useGameStore();
 
   const checkLevelEnd = useCallback(() => {
@@ -71,23 +67,6 @@ function useGameLoop() {
         if (station && !station.busy) {
           startWorkOrder(wo.id);
           workOrderProgressRef.current.set(wo.id, 0);
-
-          if (!shortageCheckedRef.current.has(wo.id)) {
-            shortageCheckedRef.current.add(wo.id);
-            const diagnosis = state.diagnoses.find((d: Diagnosis) => d.id === wo.diagnosisId);
-            if (diagnosis && diagnosis.requiredParts.length > 0) {
-              const partId = diagnosis.requiredParts[0];
-              const part = state.parts.find((p) => p.id === partId);
-              const stock = part?.stockCount ?? 0;
-
-              const shouldTriggerShortage = stock <= 0 || Math.random() < SHORTAGE_TRIGGER_CHANCE;
-              if (shouldTriggerShortage && stock <= 0) {
-                openShortageModal(partId, wo.id, part?.name);
-              } else if (part && stock > 0 && Math.random() < SHORTAGE_TRIGGER_CHANCE * 0.3) {
-                openShortageModal(partId, wo.id, part.name);
-              }
-            }
-          }
         }
       }
 
@@ -122,7 +101,7 @@ function useGameLoop() {
         }
       }
     });
-  }, [isPaused, shortageModal.open, startWorkOrder, openShortageModal, completeWorkOrder]);
+  }, [isPaused, shortageModal.open, startWorkOrder, completeWorkOrder]);
 
   useEffect(() => {
     if (!currentLevelId) return;

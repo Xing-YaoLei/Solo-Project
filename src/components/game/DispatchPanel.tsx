@@ -6,7 +6,7 @@ import {
   recommendStations,
 } from '@/utils/dispatch';
 import { calculateReworkRisk, getRiskLevel } from '@/utils/rework';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   ClipboardList,
   Wrench,

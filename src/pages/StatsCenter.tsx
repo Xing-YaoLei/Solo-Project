@@ -131,9 +131,6 @@ function ReworkRateBarChart() {
             const x = padding.left + i * (barWidth + 16);
             const reworkH = (chartHeight - padding.top - padding.bottom) * (item.avgReworkRate / maxRate);
             const completionH = (chartHeight - padding.top - padding.bottom) * (item.completionRate / maxRate);
-            const yRework = yToPx(item.avgReworkRate);
-            const yCompletion = yToPx(item.completionRate);
-
             const reworkGradient =
               item.avgReworkRate <= 0.1 ? 'url(#barGradientGood)' :
               item.avgReworkRate <= 0.25 ? 'url(#barGradientWarn)' : 'url(#barGradientBad)';
@@ -544,14 +541,14 @@ const ACHIEVEMENTS: AchievementDef[] = [
     description: '解锁并完成3个不同关卡',
     icon: Trophy,
     color: 'from-indigo-400 to-blue-600',
-    check: (records, levels) => {
+    check: (records) => {
       const completedLevels = new Set(
         records.filter((r) => r.stars >= 1).map((r) => r.levelId)
       );
-      const unlockedLevels = levels.filter((l) => l.unlocked).length;
-      return completedLevels.size >= 3 && unlockedLevels >= 3;
+      const unlockedCount = records.length >= 3 ? 3 : records.length;
+      return completedLevels.size >= 3 && unlockedCount >= 3;
     },
-    progress: (records, levels) => {
+    progress: (records) => {
       const completedLevels = new Set(
         records.filter((r) => r.stars >= 1).map((r) => r.levelId)
       );

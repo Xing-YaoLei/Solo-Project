@@ -10,7 +10,6 @@ export default function HUD() {
     timeRemaining,
     score,
     completedCount,
-    reworkCount,
     diagnoses,
     workOrders,
     isPaused,
