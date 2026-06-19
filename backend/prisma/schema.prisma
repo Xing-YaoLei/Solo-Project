@@ -1,0 +1,264 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  HOUSEKEEPER
+  RECEPTIONIST
+  MANAGER
+}
+
+enum CleaningTaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  MISSED
+}
+
+enum DepositStatus {
+  COLLECTED
+  PARTIAL_REFUNDED
+  FULLY_REFUNDED
+  DEDUCTED
+}
+
+enum NotificationType {
+  MISSED_ORDER
+  TASK_ASSIGNED
+  TASK_COMPLETED
+  DEPOSIT_CHANGED
+  SYSTEM_ALERT
+}
+
+enum NotificationStatus {
+  UNREAD
+  READ
+  ARCHIVED
+}
+
+enum LogAction {
+  CREATE
+  UPDATE
+  DELETE
+  COMPLETE
+  CANCEL
+  ASSIGN
+  NOTIFY
+}
+
+model User {
+  id            String    @id @default(uuid())
+  name          String
+  email         String    @unique
+  phone         String?
+  role          UserRole
+  avatar        String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  assignedTasks     CleaningTask[] @relation("assignedTasks")
+  createdTasks      CleaningTask[] @relation("createdTasks")
+  completedTasks    CleaningTask[] @relation("completedTasks")
+  notifications     Notification[]
+  createdLogs       SystemLog[] @relation("createdLogs")
+  
+  @@map("users")
+}
+
+model Property {
+  id            String    @id @default(uuid())
+  name          String
+  address       String
+  roomNumber    String
+  type          String
+  area          Float?
+  beds          Int       @default(1)
+  maxGuests     Int       @default(2)
+  status        String    @default("active")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  bookings      Booking[]
+  cleaningTasks CleaningTask[]
+  documents     CheckinDocument[]
+  
+  @@map("properties")
+}
+
+model Booking {
+  id            String    @id @default(uuid())
+  propertyId    String
+  guestName     String
+  guestPhone    String
+  checkInDate   DateTime
+  checkOutDate  DateTime
+  status        String    @default("confirmed")
+  depositAmount Decimal   @default(0) @db.Decimal(10, 2)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  property      Property  @relation(fields: [propertyId], references: [id])
+  cleaningTask  CleaningTask?
+  deposit       Deposit?
+  documents     CheckinDocument[]
+  
+  @@map("bookings")
+}
+
+model CleaningTask {
+  id              String              @id @default(uuid())
+  propertyId      String
+  bookingId       String?
+  assignedToId    String?
+  createdById     String?
+  completedById   String?
+  taskDate        DateTime
+  startTime       DateTime?
+  endTime         DateTime?
+  scheduledStart  DateTime
+  scheduledEnd    DateTime
+  status          CleaningTaskStatus  @default(PENDING)
+  priority        String              @default("normal")
+  notes           String?
+  actualStart     DateTime?
+  actualEnd       DateTime?
+  rating          Int?
+  feedback        String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  property        Property    @relation(fields: [propertyId], references: [id])
+  booking         Booking?    @relation(fields: [bookingId], references: [id])
+  assignedTo      User?       @relation("assignedTasks", fields: [assignedToId], references: [id])
+  createdBy       User?       @relation("createdTasks", fields: [createdById], references: [id])
+  completedBy     User?       @relation("completedTasks", fields: [completedById], references: [id])
+  
+  logs            SystemLog[]
+  
+  @@index([propertyId, taskDate])
+  @@index([assignedToId, status])
+  @@index([status, taskDate])
+  @@map("cleaning_tasks")
+}
+
+model Deposit {
+  id            String        @id @default(uuid())
+  bookingId     String        @unique
+  amount        Decimal       @db.Decimal(10, 2)
+  status        DepositStatus @default(COLLECTED)
+  refundAmount  Decimal       @default(0) @db.Decimal(10, 2)
+  deductAmount  Decimal       @default(0) @db.Decimal(10, 2)
+  deductReason  String?
+  collectedAt   DateTime      @default(now())
+  refundedAt    DateTime?
+  notes         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  
+  booking       Booking       @relation(fields: [bookingId], references: [id])
+  auditLogs     DepositAuditLog[]
+  
+  @@map("deposits")
+}
+
+model DepositAuditLog {
+  id            String    @id @default(uuid())
+  depositId     String
+  fieldName     String
+  oldValue      String?
+  newValue      String?
+  changedById   String?
+  changeReason  String?
+  createdAt     DateTime  @default(now())
+  
+  deposit       Deposit   @relation(fields: [depositId], references: [id])
+  
+  @@index([depositId, createdAt])
+  @@map("deposit_audit_logs")
+}
+
+model CheckinDocument {
+  id            String    @id @default(uuid())
+  bookingId     String
+  propertyId    String
+  documentType  String
+  documentNumber String
+  documentImage String?
+  guestName     String
+  issueDate     DateTime?
+  expiryDate    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  booking       Booking   @relation(fields: [bookingId], references: [id])
+  property      Property  @relation(fields: [propertyId], references: [id])
+  
+  @@index([bookingId])
+  @@index([propertyId])
+  @@map("checkin_documents")
+}
+
+model Notification {
+  id            String              @id @default(uuid())
+  userId        String
+  type          NotificationType
+  title         String
+  content       String
+  status        NotificationStatus  @default(UNREAD)
+  relatedId     String?
+  relatedType   String?
+  createdAt     DateTime            @default(now())
+  readAt        DateTime?
+  
+  user          User                @relation(fields: [userId], references: [id])
+  
+  @@index([userId, status])
+  @@index([type, createdAt])
+  @@map("notifications")
+}
+
+model SystemLog {
+  id            String    @id @default(uuid())
+  entityType    String
+  entityId      String
+  action        LogAction
+  reason        String?
+  details       String?
+  createdById   String?
+  closedAt      DateTime?
+  closedById    String?
+  closeReason   String?
+  createdAt     DateTime  @default(now())
+  
+  createdBy     User?     @relation("createdLogs", fields: [createdById], references: [id])
+  task          CleaningTask? @relation(fields: [entityId], references: [id])
+  
+  @@index([entityType, entityId])
+  @@index([action, createdAt])
+  @@map("system_logs")
+}
+
+model MissedOrder {
+  id            String    @id @default(uuid())
+  taskId        String    @unique
+  propertyId    String
+  detectedAt    DateTime  @default(now())
+  resolvedAt    DateTime?
+  reason        String?
+  status        String    @default("open")
+  notifiedRoles String[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  task          CleaningTask @relation(fields: [taskId], references: [id])
+  
+  @@index([status, detectedAt])
+  @@map("missed_orders")
+}
