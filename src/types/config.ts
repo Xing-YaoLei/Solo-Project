@@ -47,6 +47,7 @@ export interface Asset {
 }
 
 export interface ConfigBundle {
+  questions: Question[];
   rewards: RewardItem[];
   schedule: TimeSlot[];
   modes: ModeParam[];

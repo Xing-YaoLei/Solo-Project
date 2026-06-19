@@ -1,10 +1,10 @@
 import { create } from 'zustand'
 import type { ActionLog } from '@/types/replay'
-import type { TrainingRecord, QuestionResult } from '@/types/training'
+import type { TrainingRecord, QuestionResult, Question } from '@/types/training'
 import { addRecord as storageAddRecord } from '@/utils/storage'
 import { addReplay as storageAddReplay } from '@/utils/storage'
 import { calculateOnTimeRate } from '@/utils/scoring'
-import { mockQuestions } from '@/utils/mockData'
+import { useConfigStore } from './useConfigStore'
 
 interface Answer {
   questionId: string
@@ -86,7 +86,7 @@ const logActionMiddleware = (config: (set: (fn: (state: TrainingState) => Partia
       submitAnswer: (questionId: string, answer: unknown, isCorrect?: boolean) => {
         const questionStartTime = get().questionStartTime ?? Date.now()
         const timeSpent = Date.now() - questionStartTime
-        const question = mockQuestions.find((q) => q.id === questionId)
+        const question = useConfigStore.getState().questions.find((q) => q.id === questionId)
         const recommendedTime = (question?.recommendedTime ?? 60) * 1000
         
         let actualIsCorrect = isCorrect
@@ -129,11 +129,12 @@ const logActionMiddleware = (config: (set: (fn: (state: TrainingState) => Partia
         const levelId = state.levelId ?? 'unknown'
         const endTime = Date.now()
         
+        const configQuestions = useConfigStore.getState().questions
         const questionResults: QuestionResult[] = state.answers.map((a) => ({
           id: `qr-${a.questionId}`,
           recordId: '',
           questionId: a.questionId,
-          type: mockQuestions.find((q) => q.id === a.questionId)?.type ?? 'evidence',
+          type: configQuestions.find((q) => q.id === a.questionId)?.type ?? 'evidence',
           isCorrect: a.isCorrect,
           timeSpent: a.timeSpent,
           recommendedTime: a.recommendedTime,
@@ -142,7 +143,10 @@ const logActionMiddleware = (config: (set: (fn: (state: TrainingState) => Partia
         }))
         
         const onTimeRate = calculateOnTimeRate(questionResults)
-        const maxPossibleScore = state.answers.length * 25
+        const maxPossibleScore = state.answers.reduce((sum, a) => {
+          const question = configQuestions.find((q) => q.id === a.questionId)
+          return sum + (question?.score ?? 0)
+        }, 0)
         const isSuccess = state.score >= maxPossibleScore * 0.6 && onTimeRate >= 60
         
         const recordId = `rec-${Date.now()}`

@@ -30,7 +30,19 @@ export interface Question {
   type: QuestionType;
   description: string;
   score: number;
+  recommendedTime: number;
   correctReason: string;
+  reviewText?: string;
+  evidences?: Evidence[];
+  tagOptions?: TagOption[];
+  calendarTasks?: CalendarTask[];
+  cleaningTasks?: CleaningTask[];
+}
+
+export interface EvidencePosition {
+  x: number;
+  y: number;
+  z: number;
 }
 
 export interface Evidence {
@@ -39,7 +51,7 @@ export interface Evidence {
   name: string;
   description: string;
   isCorrect: boolean;
-  position: string;
+  position: EvidencePosition;
 }
 
 export interface TagOption {

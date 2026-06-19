@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import { Physics } from '@react-three/rapier'
@@ -20,10 +20,10 @@ import TaskBoard from '@/components/training/TaskBoard'
 import FeedbackModal from '@/components/training/FeedbackModal'
 import { useTrainingStore } from '@/stores/useTrainingStore'
 import { useLevelStore } from '@/stores/useLevelStore'
-import { mockLevels, mockQuestions } from '@/utils/mockData'
+import { useConfigStore } from '@/stores/useConfigStore'
+import { mockLevels } from '@/utils/mockData'
 import { cn } from '@/lib/utils'
-import type { QuestionType } from '@/types/training'
-import type { Question as MockQuestion } from '@/utils/mockData'
+import type { QuestionType, Question, Evidence, TagOption, CalendarTask, CleaningTask } from '@/types/training'
 
 const QUESTION_TABS = [
   { key: 'evidence', label: '证据识别' },
@@ -41,11 +41,19 @@ export default function TrainingPage() {
   const currentQuestionIndex = useTrainingStore((s) => s.currentQuestionIndex)
   const score = useTrainingStore((s) => s.score)
   const isPlaying = useTrainingStore((s) => s.isPlaying)
+  const answers = useTrainingStore((s) => s.answers)
   const startTraining = useTrainingStore((s) => s.startTraining)
   const submitAnswer = useTrainingStore((s) => s.submitAnswer)
   const finishTraining = useTrainingStore((s) => s.finishTraining)
+  const nextQuestion = useTrainingStore((s) => s.nextQuestion)
+  const configQuestions = useConfigStore((s) => s.questions)
+  const loadConfig = useConfigStore((s) => s.loadConfig)
 
-  const [questions, setQuestions] = useState<MockQuestion[]>([])
+  const questions = useMemo(
+    () => configQuestions.filter((q) => q.levelId === levelId),
+    [configQuestions, levelId]
+  )
+
   const [activeTab, setActiveTab] = useState<QuestionType>('evidence')
   const [showFeedback, setShowFeedback] = useState(false)
   const [isCorrect, setIsCorrect] = useState(false)
@@ -59,54 +67,9 @@ export default function TrainingPage() {
     { id: 'cleaner-3', name: '张阿姨', level: 1 },
   ]
 
-  const convertToTrainingQuestion = (q: MockQuestion) => ({
-    id: q.id,
-    levelId: q.levelId,
-    type: q.type,
-    description: q.description,
-    score: q.score,
-    correctReason: q.correctReason,
-  })
-
-  const convertEvidences = (evs: MockQuestion['evidences'] = [], questionId: string) =>
-    evs.map((ev) => ({
-      id: ev.id,
-      questionId,
-      name: ev.name,
-      description: ev.description,
-      isCorrect: ev.isCorrect,
-      position: `${ev.position.x},${ev.position.y},${ev.position.z}`,
-    }))
-
-  const convertTagOptions = (tags: MockQuestion['tagOptions'] = [], questionId: string) =>
-    tags.map((t) => ({
-      id: t.id,
-      questionId,
-      label: t.label,
-      isCorrect: t.isCorrect,
-    }))
-
-  const convertCalendarTasks = (tasks: MockQuestion['calendarTasks'] = [], questionId: string) =>
-    tasks.map((t) => ({
-      id: t.id,
-      questionId,
-      roomId: t.roomId,
-      checkOut: t.checkOut,
-      nextCheckIn: t.nextCheckIn,
-      priority: t.priority,
-      requiredMinutes: t.requiredMinutes,
-    }))
-
-  const convertCleaningTasks = (tasks: MockQuestion['cleaningTasks'] = [], questionId: string) =>
-    tasks.map((t) => ({
-      id: t.id,
-      questionId,
-      roomId: t.roomId,
-      type: t.type,
-      priority: t.priority,
-      deadline: t.deadline,
-      assignedTo: t.assignedTo,
-    }))
+  useEffect(() => {
+    loadConfig()
+  }, [loadConfig])
 
   useEffect(() => {
     if (levels.length === 0) {
@@ -119,8 +82,6 @@ export default function TrainingPage() {
         closeTime: l.closeTime,
       })))
     }
-    const levelQuestions = mockQuestions.filter((q) => q.levelId === levelId)
-    setQuestions(levelQuestions)
     if (!isPlaying) {
       startTraining(levelId)
     }
@@ -151,13 +112,26 @@ export default function TrainingPage() {
     return `${m}:${s.toString().padStart(2, '0')}`
   }
 
+  const currentAnswer = answers.find((a) => a.questionId === currentQuestion?.id)
+  const currentQuestionSubmitted = !!currentAnswer
+
   const handleSubmit = () => {
-    const correct = Math.random() > 0.3
-    setIsCorrect(correct)
-    setFeedbackReason(currentQuestion?.correctReason ?? '')
-    setEarnedScore(correct ? currentQuestion?.score ?? 0 : 0)
-    submitAnswer(currentQuestion?.id ?? '', { correct }, correct)
-    setShowFeedback(true)
+    if (currentAnswer) {
+      setIsCorrect(currentAnswer.isCorrect)
+      setFeedbackReason(currentQuestion?.correctReason ?? '')
+      setEarnedScore(currentAnswer.isCorrect ? currentQuestion?.score ?? 0 : 0)
+      setShowFeedback(true)
+    }
+  }
+
+  const handleNextFromFeedback = () => {
+    setShowFeedback(false)
+    if (isLastQuestion) {
+      const { recordId, isSuccess } = finishTraining()
+      navigate(`/records?recordId=${recordId}&isSuccess=${isSuccess}`)
+    } else {
+      nextQuestion()
+    }
   }
 
   const handleFeedbackContinue = () => {
@@ -165,6 +139,8 @@ export default function TrainingPage() {
     if (isLastQuestion) {
       const { recordId, isSuccess } = finishTraining()
       navigate(`/records?recordId=${recordId}&isSuccess=${isSuccess}`)
+    } else {
+      nextQuestion()
     }
   }
 
@@ -179,6 +155,8 @@ export default function TrainingPage() {
       useTrainingStore.setState((s) => ({ currentQuestionIndex: s.currentQuestionIndex + 1 }))
     }
   }
+
+  const allQuestionsSubmitted = questions.length > 0 && answers.length >= questions.length
 
   const currentLevel = levels.find((l) => l.id === levelId)
 
@@ -287,27 +265,27 @@ export default function TrainingPage() {
                 <Card className="p-4">
                   {activeTab === 'evidence' && (
                     <EvidencePanel
-                      question={convertToTrainingQuestion(currentQuestion)}
-                      evidences={convertEvidences(currentQuestion.evidences, currentQuestion.id)}
+                      question={currentQuestion}
+                      evidences={currentQuestion.evidences ?? []}
                     />
                   )}
                   {activeTab === 'tag' && (
                     <TagSelector
-                      question={convertToTrainingQuestion(currentQuestion)}
+                      question={currentQuestion}
                       reviewText={currentQuestion.reviewText ?? ''}
-                      tagOptions={convertTagOptions(currentQuestion.tagOptions, currentQuestion.id)}
+                      tagOptions={currentQuestion.tagOptions ?? []}
                     />
                   )}
                   {activeTab === 'calendar' && (
                     <CalendarSorter
-                      question={convertToTrainingQuestion(currentQuestion)}
-                      tasks={convertCalendarTasks(currentQuestion.calendarTasks, currentQuestion.id)}
+                      question={currentQuestion}
+                      tasks={currentQuestion.calendarTasks ?? []}
                     />
                   )}
                   {activeTab === 'task' && (
                     <TaskBoard
-                      question={convertToTrainingQuestion(currentQuestion)}
-                      tasks={convertCleaningTasks(currentQuestion.cleaningTasks, currentQuestion.id)}
+                      question={currentQuestion}
+                      tasks={currentQuestion.cleaningTasks ?? []}
                       cleaners={cleaners}
                     />
                   )}
@@ -333,14 +311,13 @@ export default function TrainingPage() {
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               ) : (
-                <Button onClick={handleSubmit} className="flex-1">
+                <Button
+                  onClick={handleSubmit}
+                  disabled={!currentQuestionSubmitted}
+                  className="flex-1"
+                >
                   <Send className="h-4 w-4" />
-                  提交
-                </Button>
-              )}
-              {!isLastQuestion && (
-                <Button onClick={handleSubmit}>
-                  <Send className="h-4 w-4" />
+                  {currentQuestionSubmitted ? '完成训练' : '请先提交答案'}
                 </Button>
               )}
             </div>

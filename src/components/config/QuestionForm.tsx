@@ -22,12 +22,14 @@ export default function QuestionForm({ editingQuestion, onCancel }: QuestionForm
   const deleteQuestion = useConfigStore((s) => s.deleteQuestion)
   const saveConfig = useConfigStore((s) => s.saveConfig)
 
-  const [formData, setFormData] = useState<Omit<Question, 'id'>>({
+  const [formData, setFormData] = useState<Omit<Question, 'id' | 'evidences' | 'tagOptions' | 'calendarTasks' | 'cleaningTasks'>>({
     levelId: 'level-1',
     type: 'evidence',
     description: '',
     score: 100,
+    recommendedTime: 60,
     correctReason: '',
+    reviewText: '',
   })
 
   const [evidences, setEvidences] = useState<Evidence[]>([])
@@ -42,15 +44,23 @@ export default function QuestionForm({ editingQuestion, onCancel }: QuestionForm
         type: editingQuestion.type,
         description: editingQuestion.description,
         score: editingQuestion.score,
+        recommendedTime: editingQuestion.recommendedTime ?? 60,
         correctReason: editingQuestion.correctReason,
+        reviewText: editingQuestion.reviewText ?? '',
       })
+      setEvidences(editingQuestion.evidences ?? [])
+      setTagOptions(editingQuestion.tagOptions ?? [])
+      setCalendarTasks(editingQuestion.calendarTasks ?? [])
+      setCleaningTasks(editingQuestion.cleaningTasks ?? [])
     } else {
       setFormData({
         levelId: 'level-1',
         type: 'evidence',
         description: '',
         score: 100,
+        recommendedTime: 60,
         correctReason: '',
+        reviewText: '',
       })
       setEvidences([])
       setTagOptions([])
@@ -59,13 +69,31 @@ export default function QuestionForm({ editingQuestion, onCancel }: QuestionForm
     }
   }, [editingQuestion])
 
+  const buildQuestionData = (): Omit<Question, 'id'> => {
+    const base = { ...formData }
+    switch (formData.type) {
+      case 'evidence':
+        return { ...base, evidences }
+      case 'tag':
+        return { ...base, tagOptions }
+      case 'calendar':
+        return { ...base, calendarTasks }
+      case 'task':
+        return { ...base, cleaningTasks }
+      default:
+        return base
+    }
+  }
+
   const handleSubmit = () => {
     if (!formData.description.trim()) return
 
+    const questionData = buildQuestionData()
+
     if (editingQuestion) {
-      updateQuestion(editingQuestion.id, formData)
+      updateQuestion(editingQuestion.id, questionData)
     } else {
-      addQuestion(formData)
+      addQuestion(questionData)
     }
     saveConfig()
     onCancel?.()
@@ -88,7 +116,7 @@ export default function QuestionForm({ editingQuestion, onCancel }: QuestionForm
         name: '',
         description: '',
         isCorrect: false,
-        position: '',
+        position: { x: 0, y: 0, z: 0 },
       },
     ])
   }
@@ -232,14 +260,25 @@ export default function QuestionForm({ editingQuestion, onCancel }: QuestionForm
           />
         </div>
 
-        <div>
-          <label className="mb-1.5 block text-sm font-medium text-gray-700">分值</label>
-          <input
-            type="number"
-            value={formData.score}
-            onChange={(e) => setFormData({ ...formData, score: Number(e.target.value) })}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-          />
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-gray-700">分值</label>
+            <input
+              type="number"
+              value={formData.score}
+              onChange={(e) => setFormData({ ...formData, score: Number(e.target.value) })}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-gray-700">建议用时(秒)</label>
+            <input
+              type="number"
+              value={formData.recommendedTime}
+              onChange={(e) => setFormData({ ...formData, recommendedTime: Number(e.target.value) })}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            />
+          </div>
         </div>
 
         <div>
@@ -308,6 +347,16 @@ export default function QuestionForm({ editingQuestion, onCancel }: QuestionForm
 
         {formData.type === 'tag' && (
           <div>
+            <div className="mb-3">
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">点评原文</label>
+              <textarea
+                value={formData.reviewText}
+                onChange={(e) => setFormData({ ...formData, reviewText: e.target.value })}
+                rows={3}
+                className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                placeholder="请输入住客点评原文"
+              />
+            </div>
             <div className="mb-2 flex items-center justify-between">
               <label className="text-sm font-medium text-gray-700">标签选项</label>
               <button

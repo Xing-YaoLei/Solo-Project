@@ -31,16 +31,49 @@ const convertMockQuestion = (q: typeof mockQuestions[0]): Question => ({
   type: q.type,
   description: q.description,
   score: q.score,
+  recommendedTime: q.recommendedTime,
   correctReason: q.correctReason,
+  reviewText: q.reviewText,
+  evidences: q.evidences?.map((ev) => ({
+    id: ev.id,
+    questionId: q.id,
+    name: ev.name,
+    description: ev.description,
+    isCorrect: ev.isCorrect,
+    position: { ...ev.position },
+  })),
+  tagOptions: q.tagOptions?.map((t) => ({
+    id: t.id,
+    questionId: q.id,
+    label: t.label,
+    isCorrect: t.isCorrect,
+  })),
+  calendarTasks: q.calendarTasks?.map((ct) => ({
+    id: ct.id,
+    questionId: q.id,
+    roomId: ct.roomId,
+    checkOut: ct.checkOut,
+    nextCheckIn: ct.nextCheckIn,
+    priority: ct.priority,
+    requiredMinutes: ct.requiredMinutes,
+  })),
+  cleaningTasks: q.cleaningTasks?.map((clt) => ({
+    id: clt.id,
+    questionId: q.id,
+    roomId: clt.roomId,
+    type: clt.type,
+    priority: clt.priority,
+    deadline: clt.deadline,
+    assignedTo: clt.assignedTo,
+  })),
 })
 
-const initializeConfig = (): ConfigBundle & { questions: Question[] } => {
-  const stored = getConfig()
-  if (stored && 'rewards' in stored) {
-    const mockQs = mockQuestions.map(convertMockQuestion)
-    return { ...stored, questions: mockQs } as ConfigBundle & { questions: Question[] }
+const initializeConfig = (): ConfigBundle => {
+  const stored = getConfig() as ConfigBundle | null
+  if (stored && stored.questions && stored.questions.length > 0) {
+    return stored
   }
-  const defaultConfig: ConfigBundle & { questions: Question[] } = {
+  const defaultConfig: ConfigBundle = {
     questions: mockQuestions.map(convertMockQuestion),
     assets: [],
     rewards: mockRewards.map((r) => ({
@@ -126,6 +159,7 @@ export const useConfigStore = create<ConfigState>((set, get) => {
     saveConfig: () => {
       const { questions, assets, rewards, schedules, modes } = get()
       const bundle: ConfigBundle = {
+        questions,
         assets,
         rewards,
         schedule: schedules,
