@@ -26,7 +26,8 @@ from app.components.trend_charts import (
 try:
     from tasks.sync_tasks import (
         sync_ota_orders, sync_payment_transactions,
-        sync_door_lock_records, run_full_sync
+        sync_door_lock_records, run_full_sync,
+        run_local_full_sync as _run_local_sync, ensure_demo_properties
     )
     CELERY_AVAILABLE = True
 except Exception as e:
@@ -35,6 +36,13 @@ except Exception as e:
     sync_door_lock_records = None
     run_full_sync = None
     CELERY_AVAILABLE = False
+    try:
+        from tasks.sync_tasks import (
+            run_local_full_sync as _run_local_sync, ensure_demo_properties
+        )
+    except Exception:
+        _run_local_sync = None
+        ensure_demo_properties = None
 
 
 _selected_context: Dict[str, Any] = {}
@@ -57,7 +65,7 @@ def register_callbacks(app):
         Output("property-dropdown", "options"),
         Output("channel-dropdown", "options"),
         Input("refresh-btn", "n_clicks"),
-        Input({"type": "initial-load", "index": "main"}, "data")
+        Input({"type": "initial-load", "index": "main"}, "n_intervals")
     )
     def init_dropdowns(n_clicks, _initial):
         try:
@@ -99,9 +107,9 @@ def register_callbacks(app):
         Input("group-by-dropdown", "value"),
         Input("show-anomaly-switch", "value"),
         Input("show-conflict-only-switch", "value"),
-        State({"type": "initial-load", "index": "main"}, "data")
+        State({"type": "initial-load", "index": "main"}, "n_intervals")
     )
-    def update_all_views(
+    def update_all_charts(
         n_clicks, start_date_str, end_date_str,
         property_ids, channels, group_by,
         show_anomaly, conflict_only, _initial
@@ -291,8 +299,10 @@ def register_callbacks(app):
         return True, "", ""
 
     @callback(
-        Output("note-save-toast", "children"),
-        Output("note-save-toast", "is_open"),
+        Output("note-save-toast", "children", allow_duplicate=True),
+        Output("note-save-toast", "header", allow_duplicate=True),
+        Output("note-save-toast", "icon", allow_duplicate=True),
+        Output("note-save-toast", "is_open", allow_duplicate=True),
         Input("save-note-btn", "n_clicks"),
         State("note-content-input", "value"),
         State("note-author-input", "value"),
@@ -300,36 +310,23 @@ def register_callbacks(app):
     )
     def save_note(n_clicks, content, author):
         if not content or not content.strip():
-            return dbc.Toast(
-                "备注内容不能为空",
-                header="保存失败",
-                icon="danger",
-                duration=3000
-            ), True
+            return "备注内容不能为空", "保存失败", "danger", True
 
         entity_type = _selected_context.get("entity_type", "general")
         entity_id = _selected_context.get("property_id") or _selected_context.get("date") or str(uuid.uuid4())
 
         try:
             add_note(entity_type, str(entity_id), content.strip(), author or "system")
-            return dbc.Toast(
-                "备注保存成功",
-                header="操作成功",
-                icon="success",
-                duration=3000
-            ), True
+            return "备注保存成功", "操作成功", "success", True
         except Exception as e:
-            return dbc.Toast(
-                f"保存失败: {str(e)}",
-                header="错误",
-                icon="danger",
-                duration=4000
-            ), True
+            return f"保存失败: {str(e)}", "错误", "danger", True
 
     @callback(
         Output("export-download", "data"),
-        Output("export-toast", "children"),
-        Output("export-toast", "is_open"),
+        Output("export-toast", "children", allow_duplicate=True),
+        Output("export-toast", "header", allow_duplicate=True),
+        Output("export-toast", "icon", allow_duplicate=True),
+        Output("export-toast", "is_open", allow_duplicate=True),
         Input("export-btn", "n_clicks"),
         State("date-range-picker", "start_date"),
         State("date-range-picker", "end_date"),
@@ -346,12 +343,7 @@ def register_callbacks(app):
         end_date = parse_date(end_str)
 
         if not start_date or not end_date:
-            return no_update, dbc.Toast(
-                "请先选择日期范围",
-                header="导出失败",
-                icon="warning",
-                duration=3000
-            ), True
+            return no_update, "请先选择日期范围", "导出失败", "warning", True
 
         try:
             filter_desc_parts = []
@@ -370,35 +362,22 @@ def register_callbacks(app):
                 filter_description=filter_desc
             )
 
-            return dcc.send_file(str(filepath)), dbc.Toast(
-                f"报表已导出: {filepath.name}",
-                header="导出成功",
-                icon="success",
-                duration=4000
-            ), True
+            return dcc.send_file(str(filepath)), f"报表已导出: {filepath.name}", "导出成功", "success", True
 
         except Exception as e:
             print(f"导出失败: {e}")
-            return no_update, dbc.Toast(
-                f"导出失败: {str(e)}",
-                header="错误",
-                icon="danger",
-                duration=4000
-            ), True
+            return no_update, f"导出失败: {str(e)}", "错误", "danger", True
 
 
 def group_by_map(group_by: str) -> str:
     return {"day": "按天", "week": "按周", "month": "按月"}.get(group_by, "")
 
 
-_sync_toast_outputs = [
-    Output("note-save-toast", "children", allow_duplicate=True),
-    Output("note-save-toast", "is_open", allow_duplicate=True)
-]
-
-
 @callback(
-    *_sync_toast_outputs,
+    Output("sync-toast", "children", allow_duplicate=True),
+    Output("sync-toast", "header", allow_duplicate=True),
+    Output("sync-toast", "icon", allow_duplicate=True),
+    Output("sync-toast", "is_open", allow_duplicate=True),
     Input("menu-sync-ota", "n_clicks"),
     Input("menu-sync-payment", "n_clicks"),
     Input("menu-sync-lock", "n_clicks"),
@@ -421,12 +400,7 @@ def handle_sync_menu(ota_clicks, pay_clicks, lock_clicks, all_clicks):
         raise PreventUpdate
 
     if not CELERY_AVAILABLE:
-        return dbc.Toast(
-            "Celery服务未连接，请确保Redis和Celery Worker已启动",
-            header="同步不可用",
-            icon="warning",
-            duration=5000
-        ), True
+        return "Celery服务未连接，请确保Redis和Celery Worker已启动", "同步不可用", "warning", True
 
     try:
         if triggered == "menu-sync-all":
@@ -436,16 +410,168 @@ def handle_sync_menu(ota_clicks, pay_clicks, lock_clicks, all_clicks):
             result = task_func.delay()
             toast_msg = f"{sync_name}任务已提交，任务ID: {str(result.task_id)[:8]}..."
 
-        return dbc.Toast(
-            toast_msg,
-            header="同步任务已启动",
-            icon="success",
-            duration=5000
-        ), True
+        return toast_msg, "同步任务已启动", "success", True
     except Exception as e:
-        return dbc.Toast(
-            f"启动同步失败: {str(e)}",
-            header="错误",
-            icon="danger",
-            duration=5000
-        ), True
+        return f"启动同步失败: {str(e)}", "错误", "danger", True
+
+
+@callback(
+    Output("sync-toast", "children", allow_duplicate=True),
+    Output("sync-toast", "header", allow_duplicate=True),
+    Output("sync-toast", "icon", allow_duplicate=True),
+    Output("sync-toast", "is_open", allow_duplicate=True),
+    Output("property-dropdown", "options", allow_duplicate=True),
+    Output("channel-dropdown", "options", allow_duplicate=True),
+    Output("kpi-total-properties", "children", allow_duplicate=True),
+    Output("kpi-total-properties-sub", "children", allow_duplicate=True),
+    Output("kpi-occupancy-rate", "children", allow_duplicate=True),
+    Output("kpi-occupancy-rate-sub", "children", allow_duplicate=True),
+    Output("kpi-confirmed-orders", "children", allow_duplicate=True),
+    Output("kpi-confirmed-orders-sub", "children", allow_duplicate=True),
+    Output("kpi-conflicts", "children", allow_duplicate=True),
+    Output("kpi-conflicts-sub", "children", allow_duplicate=True),
+    Output("room-status-heatmap", "figure", allow_duplicate=True),
+    Output("occupancy-trend-chart", "figure", allow_duplicate=True),
+    Output("channel-pie-chart", "figure", allow_duplicate=True),
+    Output("anomaly-bar-chart", "figure", allow_duplicate=True),
+    Output("anomaly-severity-chart", "figure", allow_duplicate=True),
+    Input("init-demo-btn", "n_clicks"),
+    State("date-range-picker", "start_date"),
+    State("date-range-picker", "end_date"),
+    State("property-dropdown", "value"),
+    State("channel-dropdown", "value"),
+    State("group-by-dropdown", "value"),
+    prevent_initial_call=True
+)
+def handle_init_demo(n_clicks, start_str, end_str, property_ids, channels, group_by):
+    if not n_clicks:
+        raise PreventUpdate
+
+    if not _run_local_sync:
+        return (
+            "本地同步函数加载失败，请检查tasks/sync_tasks.py",
+            "初始化失败", "danger", True,
+            *[no_update] * 15
+        )
+
+    try:
+        from data.queries import (
+            get_all_properties, get_available_channels, calculate_occupancy_rate,
+            get_room_status_calendar, get_ota_orders, get_data_anomalies
+        )
+        from app.components.kpi_cards import generate_kpi_subtitle
+        from datetime import date
+
+        results = _run_local_sync()
+
+        summary_parts = []
+        for k, v in results.items():
+            if isinstance(v, dict):
+                if "error" in v:
+                    summary_parts.append(f"{k}:❌")
+                elif "records_processed" in v:
+                    summary_parts.append(f"{k[0]}:{v['records_processed']}条")
+            elif v == "completed":
+                summary_parts.append(f"{k[0].upper()}:✅")
+        summary = " | ".join(summary_parts) if summary_parts else "完成"
+
+        props_df = get_all_properties()
+        prop_options = []
+        if not props_df.empty:
+            prop_options = [
+                {"label": f"{row['property_code']} - {row['property_name']}", "value": str(row["id"])}
+                for _, row in props_df.iterrows()
+            ]
+        channels_list = get_available_channels()
+        channel_options = [{"label": c, "value": c} for c in channels_list]
+
+        start_date = parse_date(start_str)
+        end_date = parse_date(end_str)
+        if not start_date:
+            start_date = date.today()
+        if not end_date:
+            end_date = date.today()
+
+        try:
+            total_occ, avg_occ, total_room_nights, total_conflicts = calculate_occupancy_rate(
+                start_date, end_date, property_ids
+            )
+            prop_count = len(property_ids) if property_ids else len(props_df)
+            kpi_props = f"{prop_count} 套", generate_kpi_subtitle("房源总数", prop_count)
+            kpi_occ = f"{avg_occ * 100:.1f}%", generate_kpi_subtitle("平均入住率", avg_occ, is_pct=True,
+                                                                     reference=(date.today() - start_date).days + 1)
+            kpi_orders_val = f"{total_room_nights:,}", generate_kpi_subtitle("间夜数", total_room_nights)
+            kpi_conflicts_val = f"{total_conflicts} 个", generate_kpi_subtitle("房态冲突", total_conflicts)
+        except Exception as e:
+            print(f"KPI计算失败: {e}")
+            kpi_props = ("-", "")
+            kpi_occ = ("-", "")
+            kpi_orders_val = ("-", "")
+            kpi_conflicts_val = ("-", "")
+
+        try:
+            calendar_df = get_room_status_calendar(start_date, end_date, property_ids)
+            fig_heatmap = create_heatmap_figure(calendar_df)
+        except Exception as e:
+            print(f"热力图失败: {e}")
+            fig_heatmap = no_update
+
+        try:
+            orders_df = get_ota_orders(start_date, end_date, property_ids, channels)
+            fig_trend = create_occupancy_trend_chart(orders_df, calendar_df, group_by)
+            fig_pie = create_channel_pie_chart(orders_df)
+        except Exception as e:
+            print(f"趋势/渠道图失败: {e}")
+            fig_trend = no_update
+            fig_pie = no_update
+
+        try:
+            anomalies_df = get_data_anomalies(start_date, end_date, property_ids)
+            fig_anomaly = create_anomaly_bar_chart(anomalies_df)
+            fig_severity = create_anomaly_severity_chart(anomalies_df)
+        except Exception as e:
+            print(f"异常图失败: {e}")
+            fig_anomaly = no_update
+            fig_severity = no_update
+
+        return (
+            f"演示数据初始化完成：{summary}，看板已刷新",
+            "初始化成功", "success", True,
+            prop_options, channel_options,
+            kpi_props[0], kpi_props[1],
+            kpi_occ[0], kpi_occ[1],
+            kpi_orders_val[0], kpi_orders_val[1],
+            kpi_conflicts_val[0], kpi_conflicts_val[1],
+            fig_heatmap, fig_trend, fig_pie, fig_anomaly, fig_severity
+        )
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return (
+            f"初始化演示数据失败: {str(e)}",
+            "错误", "danger", True,
+            *[no_update] * 15
+        )
+
+
+@callback(
+    Output("sync-toast", "children", allow_duplicate=True),
+    Output("sync-toast", "header", allow_duplicate=True),
+    Output("sync-toast", "icon", allow_duplicate=True),
+    Output("sync-toast", "is_open", allow_duplicate=True),
+    Input({"type": "initial-load", "index": "main"}, "n_intervals"),
+    prevent_initial_call='initial_duplicate'
+)
+def auto_check_first_launch(_initial):
+    try:
+        from data.queries import get_all_properties
+        props_df = get_all_properties()
+        if props_df.empty:
+            return (
+                "首次启动暂无数据！请点击左上角【初始化演示数据】按钮生成完整的可下钻数据，包含OTA订单、收款流水、门锁记录、房态日历和保洁任务。",
+                "欢迎使用民宿房态看板", "info", True
+            )
+    except Exception:
+        pass
+    raise PreventUpdate

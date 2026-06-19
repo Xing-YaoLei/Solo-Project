@@ -79,6 +79,13 @@ def build_filter_panel():
                     html.Label("&nbsp;", className="fw-bold d-block"),
                     dbc.ButtonGroup([
                         dbc.Button(
+                            "初始化演示数据",
+                            id="init-demo-btn",
+                            color="info",
+                            className="me-2",
+                            outline=True
+                        ),
+                        dbc.Button(
                             "刷新数据",
                             id="refresh-btn",
                             color="primary",
@@ -90,7 +97,7 @@ def build_filter_panel():
                             color="success"
                         )
                     ])
-                ], md=3)
+                ], md=4)
             ])
         ]),
         className="mb-4"

@@ -24,20 +24,42 @@ def create_app() -> Dash:
         dcc.Store(id="store-selected-context", data={}),
         dcc.Download(id="export-download"),
 
-        dbc.Toast(
-            id="note-save-toast",
-            is_open=False,
-            position="top-end",
-            style={"marginTop": "80px", "marginRight": "20px"}
-        ),
-        dbc.Toast(
-            id="export-toast",
-            is_open=False,
-            position="top-end",
-            style={"marginTop": "80px", "marginRight": "20px"}
-        ),
+        html.Div([
+            dbc.Toast(
+                id="note-save-toast",
+                header="提示",
+                icon="info",
+                duration=4000,
+                is_open=False,
+                dismissable=True,
+                style={"marginTop": "0px", "width": "360px"}
+            ),
+            dbc.Toast(
+                id="export-toast",
+                header="导出提示",
+                icon="info",
+                duration=4000,
+                is_open=False,
+                dismissable=True,
+                style={"marginTop": "10px", "width": "360px"}
+            ),
+            dbc.Toast(
+                id="sync-toast",
+                header="同步提示",
+                icon="info",
+                duration=5000,
+                is_open=False,
+                dismissable=True,
+                style={"marginTop": "10px", "width": "360px"}
+            ),
+        ], style={
+            "position": "fixed",
+            "top": "80px",
+            "right": "20px",
+            "zIndex": 9999
+        }),
 
-        dcc.Interval(id={"type": "initial-load", "index": "main"}, interval=1, max_intervals=1),
+        dcc.Interval(id={"type": "initial-load", "index": "main"}, interval=500, max_intervals=1, n_intervals=0),
 
         dbc.NavbarSimple(
             brand=[
@@ -93,6 +115,9 @@ def create_app() -> Dash:
 
 if __name__ == "__main__":
     app = create_app()
+    import sys
+    if sys.version_info >= (3, 12):
+        settings.DASH_DEBUG = False
     app.run(
         host=settings.DASH_HOST,
         port=settings.DASH_PORT,
