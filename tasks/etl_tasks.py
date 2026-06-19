@@ -230,6 +230,69 @@ def etl_parts_inventory_task(self, source_system: str, source_data: list = None)
         raise self.retry(exc=e, countdown=60)
 
 
+@celery_app.task(bind=True, max_retries=3)
+def etl_insurance_task(self, source_system: str, source_data: list = None):
+    log_id = log_etl_start("etl_insurance", source_system, date.today())
+    stats = {'input': 0, 'output': 0, 'deduplicated': 0, 'invalid': 0}
+
+    try:
+        if source_data:
+            df = pd.DataFrame(source_data)
+        else:
+            df = pd.DataFrame()
+
+        stats['input'] = len(df)
+
+        if df.empty:
+            log_etl_finish(log_id, "success", stats)
+            return stats
+
+        processed_df, proc_stats = pipeline.process_insurance(df, source_system)
+        stats.update(proc_stats)
+
+        db = SessionLocal()
+        try:
+            for _, row in processed_df.iterrows():
+                existing = db.query(InsuranceMaterial).filter(
+                    InsuranceMaterial.source_system == source_system,
+                    InsuranceMaterial.source_id == str(row.get('source_id', ''))
+                ).first()
+
+                order_id = None
+                if 'order_no' in row and row['order_no']:
+                    order = db.query(RepairOrder).filter(
+                        RepairOrder.order_no == row['order_no']
+                    ).first()
+                    if order:
+                        order_id = order.id
+
+                if existing:
+                    if order_id:
+                        existing.order_id = order_id
+                    for col in processed_df.columns:
+                        if (col in row and row[col] is not None
+                                and hasattr(existing, col)
+                                and col not in ('id', 'order_id')):
+                            setattr(existing, col, row[col])
+                else:
+                    ins_data = {k: v for k, v in row.items()
+                                if k in InsuranceMaterial.__table__.columns and k != 'id'}
+                    if order_id:
+                        ins_data['order_id'] = order_id
+                    insurance = InsuranceMaterial(**ins_data)
+                    db.add(insurance)
+            db.commit()
+        finally:
+            db.close()
+
+        log_etl_finish(log_id, "success", stats)
+        return stats
+
+    except Exception as e:
+        log_etl_finish(log_id, "failed", stats, str(e))
+        raise self.retry(exc=e, countdown=60)
+
+
 @celery_app.task(bind=True)
 def etl_full_pipeline_task(self, source_systems: list = None):
     if source_systems is None:
@@ -240,9 +303,16 @@ def etl_full_pipeline_task(self, source_systems: list = None):
         try:
             vehicle_result = etl_vehicles_task.apply_async(args=[system, None])
             order_result = etl_repair_orders_task.apply_async(args=[system, None])
+            diag_result = etl_diagnosis_task.apply_async(args=[system, None])
+            parts_result = etl_parts_inventory_task.apply_async(args=[system, None])
+            insurance_result = etl_insurance_task.apply_async(args=[system, None])
+
             results[system] = {
                 'vehicles_task_id': vehicle_result.id,
                 'orders_task_id': order_result.id,
+                'diagnosis_task_id': diag_result.id,
+                'parts_task_id': parts_result.id,
+                'insurance_task_id': insurance_result.id,
             }
         except Exception as e:
             results[system] = {'error': str(e)}
