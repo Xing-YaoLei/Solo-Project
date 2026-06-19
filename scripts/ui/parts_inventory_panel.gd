@@ -4,9 +4,9 @@ signal part_selected(p_part: Part)
 signal part_restock_requested(p_part: Part)
 
 @onready var parts_list: VBoxContainer = $ScrollContainer/PartsList
-@onready var category_filter: OptionButton = $TopBar/CategoryFilter
-@onready var search_input: LineEdit = $TopBar/SearchInput
-@onready var status_filter: OptionButton = $TopBar/StatusFilter
+@onready var category_filter: OptionButton = $TopBar/FiltersRow/CategoryFilter
+@onready var search_input: LineEdit = $TopBar/FiltersRow/SearchInput
+@onready var status_filter: OptionButton = $TopBar/FiltersRow/StatusFilter
 
 var selected_part: Part = null
 var parts: Array[Part] = []

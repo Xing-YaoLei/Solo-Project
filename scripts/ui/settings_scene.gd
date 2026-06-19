@@ -2,20 +2,20 @@ extends Control
 
 @onready var back_button: Button = $TopBar/BackButton
 @onready var reset_button: Button = $TopBar/ResetButton
-@onready var sfx_slider: HSlider = $Content/AudioSection/SFXSlider
-@onready var music_slider: HSlider = $Content/AudioSection/MusicSlider
-@onready var vibration_checkbox: CheckBox = $Content/AudioSection/VibrationCheckbox
-@onready var sfx_value_label: Label = $Content/AudioSection/SFXValueLabel
-@onready var music_value_label: Label = $Content/AudioSection/MusicValueLabel
-@onready var inventory_sound_checkbox: CheckBox = $Content/AudioSection/InventorySoundCheckbox
-@onready var low_stock_warning_checkbox: CheckBox = $Content/AudioSection/LowStockWarningCheckbox
-@onready var animation_option: OptionButton = $Content/VisualSection/AnimationOption
-@onready var particle_effect_checkbox: CheckBox = $Content/VisualSection/ParticleEffectCheckbox
-@onready var screen_shake_checkbox: CheckBox = $Content/VisualSection/ScreenShakeCheckbox
-@onready var auto_save_checkbox: CheckBox = $Content/GameplaySection/AutoSaveCheckbox
-@onready var show_hints_checkbox: CheckBox = $Content/GameplaySection/ShowHintsCheckbox
-@onready var language_option: OptionButton = $Content/GameplaySection/LanguageOption
-@onready var player_name_lineedit: LineEdit = $Content/GameplaySection/PlayerNameLineEdit
+@onready var sfx_slider: HSlider = $Content/MainContainer/AudioSection/SFXRow/SFXSlider
+@onready var music_slider: HSlider = $Content/MainContainer/AudioSection/MusicRow/MusicSlider
+@onready var vibration_checkbox: CheckBox = $Content/MainContainer/AudioSection/CheckboxRow1/VibrationCheckbox
+@onready var sfx_value_label: Label = $Content/MainContainer/AudioSection/SFXRow/SFXValueLabel
+@onready var music_value_label: Label = $Content/MainContainer/AudioSection/MusicRow/MusicValueLabel
+@onready var inventory_sound_checkbox: CheckBox = $Content/MainContainer/AudioSection/CheckboxRow1/InventorySoundCheckbox
+@onready var low_stock_warning_checkbox: CheckBox = $Content/MainContainer/AudioSection/LowStockWarningCheckbox
+@onready var animation_option: OptionButton = $Content/MainContainer/VisualSection/AnimationRow/AnimationOption
+@onready var particle_effect_checkbox: CheckBox = $Content/MainContainer/VisualSection/CheckboxRow2/ParticleEffectCheckbox
+@onready var screen_shake_checkbox: CheckBox = $Content/MainContainer/VisualSection/CheckboxRow2/ScreenShakeCheckbox
+@onready var auto_save_checkbox: CheckBox = $Content/MainContainer/GameplaySection/CheckboxRow3/AutoSaveCheckbox
+@onready var show_hints_checkbox: CheckBox = $Content/MainContainer/GameplaySection/CheckboxRow3/ShowHintsCheckbox
+@onready var language_option: OptionButton = $Content/MainContainer/GameplaySection/LanguageRow/LanguageOption
+@onready var player_name_lineedit: LineEdit = $Content/MainContainer/GameplaySection/PlayerNameRow/PlayerNameLineEdit
 
 func _ready():
 	_setup_connections()

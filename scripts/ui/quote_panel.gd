@@ -13,17 +13,18 @@ var current_order: WorkOrder
 @onready var customer_label: Label = $CustomerInfo/CustomerLabel
 @onready var order_id_label: Label = $CustomerInfo/OrderIdLabel
 @onready var items_list: VBoxContainer = $ScrollContainer/ItemsList
-@onready var labor_cost_label: Label = $Summary/LaborCostLabel
-@onready var parts_cost_label: Label = $Summary/PartsCostLabel
-@onready var subtotal_label: Label = $Summary/SubtotalLabel
-@onready var discount_label: Label = $Summary/DiscountLabel
-@onready var tax_label: Label = $Summary/TaxLabel
-@onready var total_label: Label = $Summary/TotalLabel
-@onready var time_remaining_label: Label = $Summary/TimeRemainingLabel
+@onready var labor_cost_label: Label = $Summary/LaborRow/LaborCostLabel
+@onready var parts_cost_label: Label = $Summary/PartsRow/PartsCostLabel
+@onready var subtotal_label: Label = $Summary/SubtotalRow/SubtotalLabel
+@onready var discount_label: Label = $Summary/DiscountRow2/DiscountLabel
+@onready var tax_label: Label = $Summary/TaxRow/TaxLabel
+@onready var total_label: Label = $Summary/TotalRow/TotalLabel
+@onready var time_remaining_label: Label = $Summary/TimeRow/TimeRemainingLabel
 @onready var approve_button: Button = $Buttons/ApproveButton
 @onready var reject_button: Button = $Buttons/RejectButton
 @onready var send_button: Button = $Buttons/SendButton
-@onready var discount_slider: HSlider = $DiscountSlider
+@onready var discount_slider: HSlider = $DiscountRow/DiscountSlider
+@onready var discount_value_label: Label = $DiscountRow/DiscountValueLabel
 
 func _ready():
 	if approve_button:
@@ -65,6 +66,8 @@ func _refresh_display() -> void:
 	_refresh_items_list()
 	_refresh_summary()
 	_update_button_states()
+	if discount_value_label:
+		discount_value_label.text = "%.0f%%" % (current_quote.discount * 100)
 
 func _refresh_items_list() -> void:
 	for child in items_list.get_children():
@@ -210,6 +213,8 @@ func _on_discount_changed(p_value: float) -> void:
 	if current_quote and current_quote.status == Quote.Status.DRAFT:
 		current_quote.set_discount_percentage(p_value / 100.0)
 		_refresh_summary()
+	if discount_value_label:
+		discount_value_label.text = "%.0f%%" % p_value
 
 func _on_approve_pressed() -> void:
 	if current_quote:

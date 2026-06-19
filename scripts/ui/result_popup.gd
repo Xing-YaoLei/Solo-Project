@@ -11,7 +11,7 @@ var auto_close_time: float = 3.0
 @onready var message_label: Label = $Container/VBox/MessageLabel
 @onready var score_label: Label = $Container/VBox/ScoreLabel
 @onready var details_vbox: VBoxContainer = $Container/VBox/DetailsVBox
-@onready var icon: ColorRect = $Container/VBox/Icon
+@onready var icon: ColorRect = $Container/VBox/IconRow/Icon
 @onready var close_button: Button = $Container/VBox/CloseButton
 
 func _ready():

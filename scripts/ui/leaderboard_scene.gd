@@ -6,11 +6,11 @@ var current_level: int = -1
 
 @onready var time_tab_button: Button = $TopBar/TabContainer/TimeTab
 @onready var repair_tab_button: Button = $TopBar/TabContainer/RepairTab
-@onready var back_button: Button = $TopBar/BackButton
+@onready var back_button: Button = $TopBar/TitleRow/BackButton
 @onready var mode_filter: OptionButton = $TopBar/FilterRow/ModeFilter
 @onready var level_filter: OptionButton = $TopBar/FilterRow/LevelFilter
 @onready var leaderboard_list: VBoxContainer = $ScrollContainer/LeaderboardList
-@onready var title_label: Label = $TopBar/TitleLabel
+@onready var title_label: Label = $TopBar/TitleRow/TitleLabel
 
 func _ready():
 	_setup_connections()

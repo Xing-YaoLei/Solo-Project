@@ -4,21 +4,21 @@ var selected_order: WorkOrder = null
 var current_quote: Quote = null
 var order_cards: Dictionary = {}
 
-@onready var orders_container: VBoxContainer = $MainContent/LeftPanel/OrdersContainer
-@onready var parts_panel: Control = $MainContent/RightPanel/PartsInventoryPanel
-@onready var quote_panel: Control = $MainContent/RightPanel/QuotePanel
+@onready var orders_container: VBoxContainer = $MainContent/LeftPanel/OrdersScroll/OrdersContainer
+@onready var parts_panel: Control = $MainContent/RightPanel/RightContent/PartsInventoryPanel
+@onready var quote_panel: Control = $MainContent/RightPanel/RightContent/QuotePanel
 @onready var result_popup: Control = $ResultPopup
 @onready var pause_menu: Control = $PauseMenu
 @onready var game_over_panel: Control = $GameOverPanel
 @onready var tutorial_panel: Control = $TutorialPanel
-@onready var score_label: Label = $TopBar/ScoreLabel
-@onready var time_label: Label = $TopBar/TimeLabel
-@onready var order_count_label: Label = $TopBar/OrderCountLabel
-@onready var repair_rate_label: Label = $TopBar/RepairRateLabel
-@onready var pause_button: Button = $TopBar/PauseButton
-@onready var end_button: Button = $TopBar/EndButton
-@onready var parts_tab_button: Button = $MainContent/RightPanel/TabContainer/PartsTab
-@onready var quote_tab_button: Button = $MainContent/RightPanel/TabContainer/QuoteTab
+@onready var score_label: Label = $TopBar/Content/ScoreLabel
+@onready var time_label: Label = $TopBar/Content/TimeLabel
+@onready var order_count_label: Label = $TopBar/Content/OrderCountLabel
+@onready var repair_rate_label: Label = $TopBar/Content/RepairRateLabel
+@onready var pause_button: Button = $TopBar/Content/PauseButton
+@onready var end_button: Button = $TopBar/Content/EndButton
+@onready var parts_tab_button: Button = $MainContent/RightPanel/RightContent/TabContainer/PartsTab
+@onready var quote_tab_button: Button = $MainContent/RightPanel/RightContent/TabContainer/QuoteTab
 
 func _ready():
 	_setup_connections()
@@ -42,11 +42,11 @@ func _setup_connections() -> void:
 
 	TutorialManager.tutorial_completed.connect(_on_tutorial_completed)
 
-	$PauseMenu/ResumeButton.pressed.connect(_on_resume_pressed)
-	$PauseMenu/QuitButton.pressed.connect(_on_quit_pressed)
+	$PauseMenu/PauseContainer/PauseVBox/ResumeButton.pressed.connect(_on_resume_pressed)
+	$PauseMenu/PauseContainer/PauseVBox/QuitButton.pressed.connect(_on_quit_pressed)
 
-	$GameOverPanel/PlayAgainButton.pressed.connect(_on_play_again_pressed)
-	$GameOverPanel/MainMenuButton.pressed.connect(_on_main_menu_pressed)
+	$GameOverPanel/GameOverContainer/GameOverVBox/PlayAgainButton.pressed.connect(_on_play_again_pressed)
+	$GameOverPanel/GameOverContainer/GameOverVBox/MainMenuButton.pressed.connect(_on_main_menu_pressed)
 
 func _start_game() -> void:
 	selected_order = null
@@ -59,7 +59,7 @@ func _start_game() -> void:
 	_refresh_quote_panel()
 
 func _start_tutorial() -> void:
-	var instruction_label = tutorial_panel.get_node_or_null("InstructionLabel")
+	var instruction_label = tutorial_panel.get_node_or_null("TutorialBg/TutorialContent/InstructionLabel")
 	var highlight_root = $MainContent
 	if instruction_label and highlight_root:
 		TutorialManager.start_tutorial(GameManager.current_level, highlight_root, instruction_label)
@@ -254,15 +254,16 @@ func _show_game_over(p_result: Dictionary) -> void:
 	if game_over_panel:
 		game_over_panel.visible = true
 
-		var time_label = game_over_panel.get_node_or_null("TimeLabel")
-		var score_label = game_over_panel.get_node_or_null("ScoreLabel")
-		var completed_label = game_over_panel.get_node_or_null("CompletedLabel")
-		var failed_label = game_over_panel.get_node_or_null("FailedLabel")
-		var repair_label = game_over_panel.get_node_or_null("RepairLabel")
-		var repair_rate_label = game_over_panel.get_node_or_null("RepairRateLabel")
-		var earnings_label = game_over_panel.get_node_or_null("EarningsLabel")
-		var time_rank_label = game_over_panel.get_node_or_null("TimeRankLabel")
-		var repair_rank_label = game_over_panel.get_node_or_null("RepairRankLabel")
+		var stats_grid = game_over_panel.get_node_or_null("GameOverContainer/GameOverVBox/StatsGrid")
+	var time_label = game_over_panel.get_node_or_null("GameOverContainer/GameOverVBox/StatsGrid/TimeLabel")
+	var score_label = game_over_panel.get_node_or_null("GameOverContainer/GameOverVBox/StatsGrid/ScoreLabel")
+	var completed_label = game_over_panel.get_node_or_null("GameOverContainer/GameOverVBox/StatsGrid/CompletedLabel")
+	var failed_label = game_over_panel.get_node_or_null("GameOverContainer/GameOverVBox/StatsGrid/FailedLabel")
+	var repair_label = game_over_panel.get_node_or_null("GameOverContainer/GameOverVBox/StatsGrid/RepairLabel")
+	var repair_rate_label = game_over_panel.get_node_or_null("GameOverContainer/GameOverVBox/StatsGrid/RepairRateLabel")
+	var earnings_label = game_over_panel.get_node_or_null("GameOverContainer/GameOverVBox/StatsGrid/EarningsLabel")
+	var time_rank_label = game_over_panel.get_node_or_null("GameOverContainer/GameOverVBox/TimeRankLabel")
+	var repair_rank_label = game_over_panel.get_node_or_null("GameOverContainer/GameOverVBox/RepairRankLabel")
 
 		if time_label:
 			time_label.text = LeaderboardManager.format_time(p_result.get("total_time", 0.0))

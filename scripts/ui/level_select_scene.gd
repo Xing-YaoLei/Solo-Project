@@ -39,10 +39,10 @@ func _initialize_levels() -> void:
 		3,
 		true
 	)
-	tutorial_level.add_tutorial_step("work_order_card", "点击左侧任意一张工单卡片开始处理", "选择一个待处理的工单", "LeftPanel/OrdersContainer")
-	tutorial_level.add_tutorial_step("quote_builder", "查看右侧自动生成的报价单，确认配件和工时费用", "报价单包含配件费用和工时费", "RightPanel/QuotePanel")
-	tutorial_level.add_tutorial_step("confirm_button", "点击'发送报价'按钮发送给客户", "发送报价后需要等待客户批准", "RightPanel/QuotePanel/SendButton")
-	tutorial_level.add_tutorial_step("schedule_button", "客户批准后点击'批准'完成工单", "批准后工单完成，获得积分", "RightPanel/QuotePanel/ApproveButton")
+	tutorial_level.add_tutorial_step("work_order_card", "点击左侧任意一张工单卡片开始处理", "选择一个待处理的工单", "LeftPanel/OrdersScroll/OrdersContainer")
+	tutorial_level.add_tutorial_step("quote_builder", "查看右侧自动生成的报价单，确认配件和工时费用", "报价单包含配件费用和工时费", "RightPanel/RightContent/QuotePanel")
+	tutorial_level.add_tutorial_step("confirm_button", "点击'发送报价'按钮发送给客户", "发送报价后需要等待客户批准", "RightPanel/RightContent/QuotePanel/Buttons/SendButton")
+	tutorial_level.add_tutorial_step("schedule_button", "客户批准后点击'批准'完成工单", "批准后工单完成，获得积分", "RightPanel/RightContent/QuotePanel/Buttons/ApproveButton")
 	training_levels.append(tutorial_level)
 
 	var level1 = TrainingLevel.new(
