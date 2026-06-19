@@ -89,6 +89,7 @@ class TagCreate(BaseModel):
 
 class HandlingRecordCreate(BaseModel):
     handler_id: Optional[uuid.UUID] = None
+    handler_name: Optional[str] = None
     action: str
     description: str
 

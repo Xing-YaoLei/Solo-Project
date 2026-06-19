@@ -12,7 +12,7 @@ class HandlingRecord(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     complaint_id = Column(UUID(as_uuid=True), ForeignKey("complaint.id"), nullable=False)
-    handler_id = Column(UUID(as_uuid=True), ForeignKey("handler.id"), nullable=False)
+    handler_id = Column(UUID(as_uuid=True), ForeignKey("handler.id"), nullable=True)
     action = Column(String(200), nullable=False)
     description = Column(Text, nullable=False)
     created_at = Column(DateTime, server_default=func.now())

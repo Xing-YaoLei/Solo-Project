@@ -265,9 +265,27 @@ async def add_handling_record(
     if not complaint:
         raise HTTPException(status_code=404, detail="Complaint not found")
 
+    handler_id = None
+    if data.handler_id is not None:
+        handler_id = data.handler_id
+    elif data.handler_name:
+        result = await db.execute(
+            select(Handler).where(Handler.name == data.handler_name).limit(1)
+        )
+        handler = result.scalar_one_or_none()
+        if handler:
+            handler_id = handler.id
+        else:
+            new_handler = Handler(name=data.handler_name, role="临时处理人")
+            db.add(new_handler)
+            await db.flush()
+            handler_id = new_handler.id
+    else:
+        handler_id = complaint.handler_id
+
     record = HandlingRecord(
         complaint_id=complaint_id,
-        handler_id=data.handler_id or complaint.handler_id,
+        handler_id=handler_id,
         action=data.action,
         description=data.description,
     )

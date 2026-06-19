@@ -32,6 +32,7 @@ function ComplaintDetailPage() {
   const [showRecordForm, setShowRecordForm] = useState(false)
   const [recordAction, setRecordAction] = useState('')
   const [recordDesc, setRecordDesc] = useState('')
+  const [recordHandlerName, setRecordHandlerName] = useState('')
   const [submittingRecord, setSubmittingRecord] = useState(false)
 
   const [showReviewForm, setShowReviewForm] = useState(false)
@@ -80,10 +81,12 @@ function ComplaintDetailPage() {
       await api.complaints.addHandlingRecord(complaintId, {
         action: recordAction,
         description: recordDesc,
+        handler_name: recordHandlerName || null,
       })
       setShowRecordForm(false)
       setRecordAction('')
       setRecordDesc('')
+      setRecordHandlerName('')
       fetchData()
     } finally {
       setSubmittingRecord(false)
@@ -263,6 +266,16 @@ function ComplaintDetailPage() {
                     className="w-full border border-slate-300 rounded-md px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
                 </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">处理人<small className="text-slate-400 ml-1">(可选)</small></label>
+                  <input
+                    type="text"
+                    value={recordHandlerName}
+                    onChange={e => setRecordHandlerName(e.target.value)}
+                    placeholder="填写处理人姓名"
+                    className="w-full border border-slate-300 rounded-md px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">描述</label>
@@ -293,7 +306,12 @@ function ComplaintDetailPage() {
                 <div key={record.id} className="relative mb-4 last:mb-0">
                   <div className="absolute -left-[18px] top-1 w-3 h-3 rounded-full bg-blue-400 border-2 border-white" />
                   <div>
-                    <p className="text-sm font-medium text-slate-700">{record.action}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium text-slate-700">{record.action}</p>
+                      {record.handler_id && (
+                        <span className="text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">处理人：{complaint.handler_name || '未知'}</span>
+                      )}
+                    </div>
                     <p className="text-sm text-slate-500 mt-0.5">{record.description}</p>
                     <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
                       <Clock className="w-3 h-3" />
