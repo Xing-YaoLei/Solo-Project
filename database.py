@@ -155,14 +155,12 @@ class DatabaseManager:
         except Exception:
             pass
 
-        self._migrate_data_versions()
-
         try:
-            cols = [row[0] for row in self.conn.execute("DESCRIBE data_versions").fetchall()]
+            existing_cols = [row[0] for row in self.conn.execute("DESCRIBE data_versions").fetchall()]
         except Exception:
-            cols = []
+            existing_cols = []
 
-        if not cols:
+        if not existing_cols:
             self.conn.execute("""
                 CREATE TABLE data_versions (
                     version_id INTEGER PRIMARY KEY DEFAULT nextval('data_versions_seq'),
@@ -175,18 +173,53 @@ class DatabaseManager:
                     changed_by VARCHAR
                 )
             """)
+        else:
+            self._migrate_data_versions(existing_cols)
 
     def get_conn(self):
         return self.conn
 
-    def _migrate_data_versions(self):
+    def _migrate_data_versions(self, existing_cols: list):
         try:
-            cols = [row[0] for row in self.conn.execute("DESCRIBE data_versions").fetchall()]
-            if 'record_version' not in cols:
+            if 'record_version' not in existing_cols:
                 self.conn.execute("ALTER TABLE data_versions ADD COLUMN record_version INTEGER DEFAULT 1")
-                self.conn.execute("UPDATE data_versions SET record_version = version_id WHERE record_version IS NULL")
-        except Exception:
-            pass
+                existing_cols.append('record_version')
+            
+            if 'version_id' in existing_cols and 'record_version' in existing_cols:
+                try:
+                    self.conn.execute("""
+                        UPDATE data_versions 
+                        SET record_version = COALESCE(record_version, version_id, 1)
+                    """)
+                except Exception:
+                    pass
+            
+            try:
+                col_info = self.conn.execute(
+                    "SELECT column_name, column_default FROM information_schema.columns "
+                    "WHERE table_name = 'data_versions' AND column_name = 'version_id'"
+                ).fetchone()
+                if col_info and (col_info[1] is None or 'nextval' not in str(col_info[1]).lower()):
+                    try:
+                        self.conn.execute("""
+                            ALTER TABLE data_versions 
+                            ALTER COLUMN version_id SET DEFAULT nextval('data_versions_seq')
+                        """)
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+            
+            try:
+                has_null_rid = self.conn.execute(
+                    "SELECT COUNT(*) FROM data_versions WHERE record_version IS NULL"
+                ).fetchone()[0]
+                if has_null_rid and has_null_rid > 0:
+                    self.conn.execute("UPDATE data_versions SET record_version = 1 WHERE record_version IS NULL")
+            except Exception:
+                pass
+        except Exception as e:
+            print(f"Migration warning: {e}")
 
     def query_polars(self, sql: str) -> pl.DataFrame:
         return self.conn.sql(sql).pl()

@@ -8,6 +8,23 @@ class VersionController:
     def __init__(self):
         self.conn = db.get_conn()
 
+    def _get_next_version_id(self) -> int:
+        try:
+            result = self.conn.execute("SELECT nextval('data_versions_seq')").fetchone()
+            if result and result[0] is not None:
+                return int(result[0])
+        except Exception:
+            pass
+        
+        try:
+            max_id = self.conn.execute("SELECT COALESCE(MAX(version_id), 0) + 1 FROM data_versions").fetchone()
+            if max_id and max_id[0] is not None:
+                return int(max_id[0])
+        except Exception:
+            pass
+        
+        return int(datetime.now().timestamp() * 1000000) % (2**31)
+
     def snapshot_and_version(self, table_name: str, record_id: str, 
                              new_data: dict, change_reason: str = None, 
                              changed_by: str = None) -> int:
@@ -24,12 +41,60 @@ class VersionController:
                 change_reason=change_reason
             )
             
-            self.conn.execute("""
-                INSERT INTO data_versions (record_version, table_name, record_id, snapshot_data, change_reason, changed_by)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, [current_version, table_name, record_id, 
-                  json.dumps(current_data, ensure_ascii=False, default=str), 
-                  change_reason, changed_by])
+            try:
+                cols = [row[0] for row in self.conn.execute("DESCRIBE data_versions").fetchall()]
+            except Exception:
+                cols = []
+            
+            version_id = self._get_next_version_id()
+            has_record_version = 'record_version' in cols
+            has_version_id = 'version_id' in cols
+            
+            if has_version_id and has_record_version:
+                insert_sql = """
+                    INSERT INTO data_versions (version_id, record_version, table_name, record_id, snapshot_data, change_reason, changed_by)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                """
+                params = [version_id, current_version, table_name, record_id,
+                          json.dumps(current_data, ensure_ascii=False, default=str),
+                          change_reason, changed_by]
+            elif has_record_version:
+                insert_sql = """
+                    INSERT INTO data_versions (record_version, table_name, record_id, snapshot_data, change_reason, changed_by)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                """
+                params = [current_version, table_name, record_id,
+                          json.dumps(current_data, ensure_ascii=False, default=str),
+                          change_reason, changed_by]
+            else:
+                insert_sql = """
+                    INSERT INTO data_versions (table_name, record_id, snapshot_data, change_reason, changed_by)
+                    VALUES (?, ?, ?, ?, ?)
+                """
+                params = [table_name, record_id,
+                          json.dumps(current_data, ensure_ascii=False, default=str),
+                          change_reason, changed_by]
+            
+            try:
+                self.conn.execute(insert_sql, params)
+            except Exception as e:
+                try:
+                    if has_version_id:
+                        self.conn.execute("""
+                            INSERT INTO data_versions (version_id, record_version, table_name, record_id, snapshot_data, change_reason, changed_by)
+                            VALUES (?, ?, ?, ?, ?, ?, ?)
+                        """, [version_id, current_version, table_name, record_id,
+                              json.dumps(current_data, ensure_ascii=False, default=str),
+                              change_reason, changed_by])
+                    else:
+                        self.conn.execute("""
+                            INSERT INTO data_versions (record_version, table_name, record_id, snapshot_data, change_reason, changed_by)
+                            VALUES (?, ?, ?, ?, ?, ?)
+                        """, [current_version, table_name, record_id,
+                              json.dumps(current_data, ensure_ascii=False, default=str),
+                              change_reason, changed_by])
+                except Exception as e2:
+                    print(f"DuckDB 快照写入失败: {e2}")
         else:
             new_version = 1
 
@@ -61,31 +126,61 @@ class VersionController:
         minio_versions = minio_mgr.get_data_versions(table_name, record_id)
         
         try:
-            db_versions = self.conn.execute("""
-                SELECT 
-                    record_version,
-                    snapshot_data,
-                    change_reason,
-                    changed_at,
-                    changed_by
+            try:
+                cols = [row[0] for row in self.conn.execute("DESCRIBE data_versions").fetchall()]
+            except Exception:
+                cols = []
+            
+            has_record_version = 'record_version' in cols
+            has_version_id = 'version_id' in cols
+            
+            select_fields = []
+            if has_record_version:
+                select_fields.append('record_version')
+            if has_version_id:
+                select_fields.append('version_id')
+            select_fields.extend(['snapshot_data', 'change_reason', 'changed_at', 'changed_by'])
+            
+            order_by = 'record_version DESC' if has_record_version else 'version_id DESC'
+            
+            sql = f"""
+                SELECT {', '.join(select_fields)}
                 FROM data_versions
                 WHERE table_name = ? AND record_id = ?
-                ORDER BY record_version DESC
-            """, [table_name, record_id]).fetchall()
+                ORDER BY {order_by}
+            """
+            
+            db_versions = self.conn.execute(sql, [table_name, record_id]).fetchall()
             
             for row in db_versions:
+                version_num = None
+                idx = 0
+                if has_record_version:
+                    version_num = row[idx]
+                    idx += 1
+                if has_version_id and version_num is None:
+                    version_num = row[idx]
+                    idx += 1
+                if version_num is None:
+                    version_num = 1
+                
+                snapshot = row[idx]
+                change_reason = row[idx+1]
+                changed_at = row[idx+2]
+                changed_by = row[idx+3]
+                
                 minio_versions.append({
-                    'version': row[0],
-                    'snapshot': json.loads(row[1]) if row[1] else {},
-                    'change_reason': row[2],
-                    'timestamp': str(row[3]),
-                    'changed_by': row[4],
+                    'version': int(version_num) if version_num is not None else 1,
+                    'snapshot': json.loads(snapshot) if snapshot else {},
+                    'change_reason': change_reason,
+                    'timestamp': str(changed_at),
+                    'changed_by': changed_by,
                     'source': 'DuckDB'
                 })
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"读取版本历史失败: {e}")
 
-        return sorted(minio_versions, key=lambda x: x.get('version', 0))
+        return sorted(minio_versions, key=lambda x: int(x.get('version', 0)))
 
     def compare_versions(self, version_a: dict, version_b: dict) -> dict:
         snapshot_a = version_a.get('snapshot', {})

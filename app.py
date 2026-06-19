@@ -1344,7 +1344,8 @@ elif page == "📚 数据版本追溯":
                     version_ctrl.update_payment_with_versioning(
                         selected_payment, updates, change_reason or "手动更新演示", changed_by or "system"
                     )
-                    st.success("新版本创建成功！旧版本快照已保存到 MinIO 和 DuckDB")
+                    st.success(f"✅ 新版本创建成功！收款记录版本号已递增，历史快照已保存到 MinIO 和 DuckDB.data_versions（含 record_version）")
+                    st.rerun()
             
             st.markdown("**步骤3: 查看历史版本**")
             payment_versions = version_ctrl.get_record_versions('payment_records', selected_payment)
@@ -1352,10 +1353,10 @@ elif page == "📚 数据版本追溯":
             if len(payment_versions) == 0:
                 st.info("该记录暂无历史版本（当前为V1），请先执行步骤2创建版本")
             else:
-                st.success(f"找到 {len(payment_versions)} 个历史版本（MinIO + DuckDB）")
+                st.success(f"找到 {len(payment_versions)} 个历史版本（MinIO + DuckDB），记录版本号已从 data_versions.record_version 读取")
                 
                 col_v1, col_v2 = st.columns(2)
-                version_indices = [f"V{v.get('version', i+1)} - {v.get('timestamp', '未知时间')}" for i, v in enumerate(payment_versions)]
+                version_indices = [f"📌 V{v.get('version', i+1)} ({v.get('source', 'MinIO')}) - {v.get('timestamp', '未知时间')}" for i, v in enumerate(payment_versions)]
                 
                 with col_v1:
                     ver_a_idx = st.selectbox("选择版本A", range(len(version_indices)), format_func=lambda x: version_indices[x], key="ver_a_pay")
@@ -1443,7 +1444,8 @@ elif page == "📚 数据版本追溯":
                     version_ctrl.update_door_lock_with_versioning(
                         selected_lock, updates, lock_reason or "手动更新演示"
                     )
-                    st.success("门锁记录新版本创建成功！历史版本已快照保存")
+                    st.success(f"✅ 门锁记录新版本创建成功！版本号已递增，历史快照已保存（含 record_version）")
+                    st.rerun()
             
             st.markdown("**门锁记录历史版本**")
             lock_versions = version_ctrl.get_record_versions('door_lock_records', selected_lock)
@@ -1451,12 +1453,12 @@ elif page == "📚 数据版本追溯":
             if len(lock_versions) == 0:
                 st.info("该记录暂无历史版本，请先执行更新操作")
             else:
-                st.success(f"找到 {len(lock_versions)} 个历史版本")
+                st.success(f"找到 {len(lock_versions)} 个历史版本，版本号来自 data_versions.record_version")
                 
                 for i, ver in enumerate(lock_versions):
                     ver_num = ver.get('version', i+1)
                     source = ver.get('source', 'MinIO')
-                    with st.expander(f"🔒 V{ver_num} ({source}) - {ver.get('timestamp', 'N/A')} | {ver.get('change_reason', '无')}"):
+                    with st.expander(f"🔒 记录版本 V{ver_num} ({source}) - {ver.get('timestamp', 'N/A')} | {ver.get('change_reason', '无')}"):
                         snapshot = ver.get('snapshot', {})
                         snap_df = pd.DataFrame([
                             {'字段': k, '值': str(v)} for k, v in snapshot.items()
