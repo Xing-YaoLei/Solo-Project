@@ -31,8 +31,11 @@ export function ShareModal() {
         }),
       });
       const data = await res.json();
-      const separator = data.url.includes('?') ? '&' : '?';
-      setShareUrl(`${window.location.origin}${data.url}${separator}sig=${data.signature}`);
+      let url = `${window.location.origin}${data.url}`;
+      if (!data.persisted) {
+        url += `${data.url.includes('?') ? '&' : '?'}sig=${data.signature}`;
+      }
+      setShareUrl(url);
     } finally {
       setSharing(false);
     }

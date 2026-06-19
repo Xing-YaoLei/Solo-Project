@@ -9,11 +9,11 @@ def curl(url):
     r = subprocess.run(["curl", "-s", url], capture_output=True, text=True)
     return r.stdout
 
-def curl_with_code(url):
+def curl_code(url):
     r = subprocess.run(["curl", "-s", "-o", "/dev/null", "-w", "%{http_code}", url], capture_output=True, text=True)
     return r.stdout
 
-print("=== Step 1: 生成 viewer 分享 token ===")
+print("=== Step 1: Generate viewer share token ===")
 r = subprocess.run(
     ["curl", "-s", "-X", "POST", f"{BASE}/api/share",
      "-H", "Content-Type: application/json",
@@ -28,30 +28,37 @@ data = json.loads(r.stdout)
 token = data["token"]
 sig = data["signature"]
 scope = data["scope"]
-print(f"服务端过滤后 scope: {scope}")
-print(f"token: {token[:20]}...")
+persisted = data.get("persisted", False)
+print(f"Server-filtered scope: {scope}")
+print(f"Persisted: {persisted}")
 print()
 
-print("=== Step 2: 用 shareToken 调用各 API ===")
-qs = f"shareToken={urllib.parse.quote(token)}&sig={urllib.parse.quote(sig)}"
+qs_full = f"shareToken={urllib.parse.quote(token)}&sig={urllib.parse.quote(sig)}"
+qs_token_only = f"shareToken={urllib.parse.quote(token)}"
 
-print("--- /api/dashboard (有权限, 应200) ---")
-print(f"HTTP {curl_with_code(f'{BASE}/api/dashboard?{qs}')}")
-
-print("--- /api/workorders/trend (dashboard有权限) ---")
-d = json.loads(curl(f"{BASE}/api/workorders/trend?days=7&{qs}"))
-print(f"返回数据点: {len(d)}")
-
-print("--- /api/inventory (viewer无权限, 应返回 []) ---")
-print(curl(f"{BASE}/api/inventory?{qs}"))
-
-print("--- /api/quotes (viewer无权限, 应返回 []) ---")
-print(curl(f"{BASE}/api/quotes?{qs}"))
-
-print("--- /api/inspections (viewer无权限, 应返回 []) ---")
-print(curl(f"{BASE}/api/inspections?{qs}"))
-
+print("=== Scenario A: token + sig (signature mode) ===")
+print(f"  dashboard: HTTP {curl_code(f'{BASE}/api/dashboard?{qs_full}')}")
+print(f"  inventory: {curl(f'{BASE}/api/inventory?{qs_full}')}")
+print(f"  quotes:    {curl(f'{BASE}/api/quotes?{qs_full}')}")
+print(f"  inspect:   {curl(f'{BASE}/api/inspections?{qs_full}')}")
 print()
-print("=== Step 3: 客户端伪造 scope 参数应被忽略 ===")
-print("--- /api/quotes 带 scope=quotes:view 伪造参数 (仍应返回 []) ---")
-print(curl(f"{BASE}/api/quotes?{qs}&scope=quotes%3Aview"))
+
+print("=== Scenario B: token only, no sig (persistence mode) ===")
+print(f"  dashboard: HTTP {curl_code(f'{BASE}/api/dashboard?{qs_token_only}')}")
+print(f"  inventory: {curl(f'{BASE}/api/inventory?{qs_token_only}')}")
+print(f"  quotes:    {curl(f'{BASE}/api/quotes?{qs_token_only}')}")
+print(f"  inspect:   {curl(f'{BASE}/api/inspections?{qs_token_only}')}")
+print()
+
+print("=== Scenario C: no token (normal admin) ===")
+print(f"  dashboard: HTTP {curl_code(f'{BASE}/api/dashboard')}")
+inv = json.loads(curl(f"{BASE}/api/inventory"))
+qt = json.loads(curl(f"{BASE}/api/quotes"))
+insp = json.loads(curl(f"{BASE}/api/inspections"))
+print(f"  inventory: {len(inv)} items")
+print(f"  quotes:    {len(qt)} items")
+print(f"  inspect:   {len(insp)} items")
+print()
+
+print("=== Scenario D: fake scope param should be ignored ===")
+print(f"  quotes with scope=quotes:view: {curl(f'{BASE}/api/quotes?{qs_full}&scope=quotes%3Aview')}")

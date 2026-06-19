@@ -605,73 +605,87 @@ export async function getShareScopeByToken(
   }
 
   let shareLink: any = null;
-  let fromDb = false;
+  let dbAvailable = false;
 
   try {
     shareLink = await prisma.shareLink.findUnique({
       where: { token: shareToken },
     });
-    fromDb = true;
+    dbAvailable = true;
   } catch (e) {
     // 数据库不可用，尝试签名模式
   }
 
-  if (fromDb && shareLink) {
-    if (shareLink.expiresAt && new Date(shareLink.expiresAt) < new Date()) {
-      return { valid: false, scope: [], allowedRole: 'viewer', fromShare: true };
-    }
-    if (shareLink.signature) {
-      const payload = {
-        token: shareLink.token,
-        allowedRole: shareLink.allowedRole.toLowerCase(),
-        scope: shareLink.scope,
-        expiresAt: shareLink.expiresAt?.toISOString(),
-        createdAt: shareLink.createdAt.toISOString(),
-      };
-      if (!verifyShareToken(payload, shareLink.signature)) {
+  if (dbAvailable) {
+    if (shareLink) {
+      if (shareLink.expiresAt && new Date(shareLink.expiresAt) < new Date()) {
         return { valid: false, scope: [], allowedRole: 'viewer', fromShare: true };
       }
-    }
-    return {
-      valid: true,
-      scope: (shareLink.scope as string[]) || [],
-      allowedRole: shareLink.allowedRole.toLowerCase(),
-      fromShare: true,
-    };
-  }
-
-  if (signature) {
-    try {
-      let base64 = shareToken.replace(/-/g, '+').replace(/_/g, '/');
-      const pad = 4 - (base64.length % 4);
-      if (pad !== 4) base64 += '='.repeat(pad);
-      const decoded = JSON.parse(Buffer.from(base64, 'base64').toString());
-
-      const payload = {
-        token: decoded.token,
-        allowedRole: decoded.allowedRole,
-        scope: decoded.scope,
-        expiresAt: decoded.expiresAt,
-        createdAt: decoded.createdAt,
-      };
-
-      if (!verifyShareToken(payload, signature)) {
-        return { valid: false, scope: [], allowedRole: 'viewer', fromShare: true };
+      if (shareLink.signature) {
+        const payload = {
+          token: shareLink.token,
+          allowedRole: shareLink.allowedRole.toLowerCase(),
+          scope: shareLink.scope,
+          expiresAt: shareLink.expiresAt?.toISOString(),
+          createdAt: shareLink.createdAt.toISOString(),
+        };
+        if (!verifyShareToken(payload, shareLink.signature)) {
+          return { valid: false, scope: [], allowedRole: 'viewer', fromShare: true };
+        }
       }
-      if (decoded.expiresAt && new Date(decoded.expiresAt) < new Date()) {
-        return { valid: false, scope: [], allowedRole: 'viewer', fromShare: true };
-      }
-
       return {
         valid: true,
-        scope: (decoded.scope as string[]) || [],
-        allowedRole: decoded.allowedRole || 'viewer',
+        scope: (shareLink.scope as string[]) || [],
+        allowedRole: shareLink.allowedRole.toLowerCase(),
         fromShare: true,
       };
-    } catch (e) {
+    } else {
+      // DB 可用但 token 不存在，仍可尝试签名模式
+      if (signature) {
+        return verifySignatureMode(shareToken, signature);
+      }
+      // DB 可用、无签名、token 不是持久化记录 → 无效
       return { valid: false, scope: [], allowedRole: 'viewer', fromShare: true };
     }
+  }
+
+  // DB 不可用，必须靠签名模式
+  if (signature) {
+    return verifySignatureMode(shareToken, signature);
   }
 
   return { valid: false, scope: [], allowedRole: 'viewer', fromShare: true };
+}
+
+function verifySignatureMode(shareToken: string, signature: string): ShareAuthResult {
+  try {
+    let base64 = shareToken.replace(/-/g, '+').replace(/_/g, '/');
+    const pad = 4 - (base64.length % 4);
+    if (pad !== 4) base64 += '='.repeat(pad);
+    const decoded = JSON.parse(Buffer.from(base64, 'base64').toString());
+
+    const payload = {
+      token: decoded.token,
+      allowedRole: decoded.allowedRole,
+      scope: decoded.scope,
+      expiresAt: decoded.expiresAt,
+      createdAt: decoded.createdAt,
+    };
+
+    if (!verifyShareToken(payload, signature)) {
+      return { valid: false, scope: [], allowedRole: 'viewer', fromShare: true };
+    }
+    if (decoded.expiresAt && new Date(decoded.expiresAt) < new Date()) {
+      return { valid: false, scope: [], allowedRole: 'viewer', fromShare: true };
+    }
+
+    return {
+      valid: true,
+      scope: (decoded.scope as string[]) || [],
+      allowedRole: decoded.allowedRole || 'viewer',
+      fromShare: true,
+    };
+  } catch (e) {
+    return { valid: false, scope: [], allowedRole: 'viewer', fromShare: true };
+  }
 }

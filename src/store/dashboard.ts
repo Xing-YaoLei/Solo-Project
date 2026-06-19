@@ -54,12 +54,12 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
 
     try {
       const { shareToken, shareSignature } = get();
-      const hasShare = shareToken && shareSignature;
-      const tokenParam = hasShare ? `shareToken=${encodeURIComponent(shareToken!)}` : '';
-      const sigParam = hasShare ? `sig=${encodeURIComponent(shareSignature!)}` : '';
-      const qs1 = hasShare ? `${tokenParam}&${sigParam}` : '';
-      const qs2 = hasShare ? `&${tokenParam}&${sigParam}` : '';
-      const dashQs = hasShare ? `?${tokenParam}&${sigParam}` : '';
+      const hasToken = !!shareToken;
+      const tokenParam = hasToken ? `shareToken=${encodeURIComponent(shareToken!)}` : '';
+      const sigParam = shareSignature ? `sig=${encodeURIComponent(shareSignature)}` : '';
+      const shareQs = hasToken ? (sigParam ? `${tokenParam}&${sigParam}` : tokenParam) : '';
+      const dashQs = shareQs ? `?${shareQs}` : '';
+      const qs2 = shareQs ? `&${shareQs}` : '';
 
       const [userRes, dashboardRes, trendRes, inventoryRes, quotesRes, inspectionsRes] =
         await Promise.all([
