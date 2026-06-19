@@ -1,0 +1,13 @@
+{
+  "name": "auto-repair-simulator",
+  "uuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "version": "1.0.0",
+  "description": "汽车维修预约进厂经营模拟游戏",
+  "creator": {
+    "version": "3.8.0"
+  },
+  "main": "",
+  "author": "",
+  "type": "3d",
+  "creator-version": "3.8.0"
+}

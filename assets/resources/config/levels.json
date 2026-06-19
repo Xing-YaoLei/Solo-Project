@@ -1,0 +1,44 @@
+{
+  "level_01": {
+    "id": "level_01",
+    "name": "新手引导",
+    "difficulty": 1,
+    "timeLimit": 300,
+    "diagnosisIds": ["diag_01", "diag_02"],
+    "eventIds": ["event_03"],
+    "scoringRule": {
+      "baseScore": 100,
+      "timeBonus": 50,
+      "accuracyWeight": 0.5
+    },
+    "requiredAccuracy": 0.6
+  },
+  "level_02": {
+    "id": "level_02",
+    "name": "进阶训练",
+    "difficulty": 2,
+    "timeLimit": 240,
+    "diagnosisIds": ["diag_03", "diag_04", "diag_05"],
+    "eventIds": ["event_01", "event_03"],
+    "scoringRule": {
+      "baseScore": 150,
+      "timeBonus": 75,
+      "accuracyWeight": 0.6
+    },
+    "requiredAccuracy": 0.7
+  },
+  "level_03": {
+    "id": "level_03",
+    "name": "专家挑战",
+    "difficulty": 3,
+    "timeLimit": 180,
+    "diagnosisIds": ["diag_02", "diag_03", "diag_05", "diag_06"],
+    "eventIds": ["event_01", "event_02", "event_03"],
+    "scoringRule": {
+      "baseScore": 200,
+      "timeBonus": 100,
+      "accuracyWeight": 0.7
+    },
+    "requiredAccuracy": 0.8
+  }
+}

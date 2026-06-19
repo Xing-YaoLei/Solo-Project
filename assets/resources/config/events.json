@@ -1,0 +1,44 @@
+{
+  "event_01": {
+    "id": "event_01",
+    "type": "parts_shortage",
+    "triggerCondition": {
+      "minElapsed": 60,
+      "probability": 0.3
+    },
+    "partsAffected": ["刹车片", "变速箱油"],
+    "resolutionOptions": [
+      { "id": "resolve_01_a", "description": "等待调货（耗时+60秒）", "cost": 0, "timePenalty": 60 },
+      { "id": "resolve_01_b", "description": "使用替代配件（返工风险增加）", "cost": 50, "timePenalty": 0 }
+    ],
+    "impactScore": 30
+  },
+  "event_02": {
+    "id": "event_02",
+    "type": "equipment_failure",
+    "triggerCondition": {
+      "minElapsed": 90,
+      "probability": 0.2
+    },
+    "partsAffected": [],
+    "resolutionOptions": [
+      { "id": "resolve_02_a", "description": "安排维修设备（耗时+90秒）", "cost": 0, "timePenalty": 90 },
+      { "id": "resolve_02_b", "description": "转移至其他工位（耗时+30秒，扣10分）", "cost": 10, "timePenalty": 30 }
+    ],
+    "impactScore": 25
+  },
+  "event_03": {
+    "id": "event_03",
+    "type": "customer_complaint",
+    "triggerCondition": {
+      "minElapsed": 30,
+      "probability": 0.4
+    },
+    "partsAffected": [],
+    "resolutionOptions": [
+      { "id": "resolve_03_a", "description": "安抚客户并按原计划进行（扣5分）", "cost": 5, "timePenalty": 0 },
+      { "id": "resolve_03_b", "description": "优先处理该车辆（其他任务暂停，耗时+45秒）", "cost": 0, "timePenalty": 45 }
+    ],
+    "impactScore": 15
+  }
+}

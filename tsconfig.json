@@ -1,0 +1,35 @@
+{
+  "compilerOptions": {
+    "target": "ES2015",
+    "module": "ES2015",
+    "lib": ["ES2015", "DOM"],
+    "strict": true,
+    "noImplicitAny": true,
+    "noImplicitThis": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "moduleResolution": "node",
+    "baseUrl": ".",
+    "paths": {
+      "db://*": ["assets/*"]
+    },
+    "types": ["@cocos/creator-types"],
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": [
+    "assets/**/*.ts",
+    "temp/declarations/**/*.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "library",
+    "local",
+    "temp",
+    "build"
+  ]
+}
