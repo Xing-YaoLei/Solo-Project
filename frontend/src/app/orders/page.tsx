@@ -219,10 +219,13 @@ export default function OrdersPage() {
     {
       title: '操作',
       key: 'action',
-      width: 200,
+      width: 260,
       render: (_: any, record: any) => (
         <Space size="small">
           <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => handleViewDetail(record)}>详情</Button>
+          {(record.status === 'PENDING' || record.status === 'PAID') && (
+            <Button type="link" size="small" icon={<EditOutlined />} onClick={() => handleEdit(record)}>编辑</Button>
+          )}
           {record.status === 'PENDING' && (
             <Button type="link" size="small" onClick={() => handleStatusChange(record, 'PAID', '确认收款')}>确认支付</Button>
           )}
