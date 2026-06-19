@@ -241,3 +241,29 @@ func _on_send_pressed() -> void:
 func _process(delta: float) -> void:
 	if current_quote:
 		_refresh_summary()
+
+func clear_quote() -> void:
+	current_quote = null
+	work_order = null
+
+	header_label.text = "报价单"
+	quote_id_label.text = ""
+	status_label.text = ""
+	customer_label.text = ""
+	order_id_label.text = ""
+	discount_slider.value = 0
+	if discount_value_label:
+		discount_value_label.text = "0%"
+
+	for child in items_list.get_children():
+		child.queue_free()
+
+	labor_cost_label.text = "¥0.00"
+	parts_cost_label.text = "¥0.00"
+	subtotal_label.text = "¥0.00"
+	discount_label.text = "¥0.00"
+	tax_label.text = "¥0.00"
+	total_label.text = "¥0.00"
+	time_remaining_label.text = "--:--"
+
+	_update_button_states()

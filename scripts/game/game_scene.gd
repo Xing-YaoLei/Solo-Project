@@ -169,11 +169,24 @@ func _create_quote_for_order(p_order: WorkOrder) -> void:
 		TutorialManager.check_step_completion("view_parts", {})
 
 func _refresh_quote_panel() -> void:
-	if current_quote and quote_panel:
+	if not quote_panel:
+		return
+
+	if current_quote:
+		quote_panel.quote_approved.disconnect(_on_quote_approved) if quote_panel.quote_approved.is_connected(_on_quote_approved) else null
+		quote_panel.quote_rejected.disconnect(_on_quote_rejected) if quote_panel.quote_rejected.is_connected(_on_quote_rejected) else null
+		quote_panel.quote_sent.disconnect(_on_quote_sent) if quote_panel.quote_sent.is_connected(_on_quote_sent) else null
+
 		quote_panel.set_quote(current_quote, selected_order)
-		quote_panel.quote_approved.connect(_on_quote_approved)
-		quote_panel.quote_rejected.connect(_on_quote_rejected)
-		quote_panel.quote_sent.connect(_on_quote_sent)
+
+		if not quote_panel.quote_approved.is_connected(_on_quote_approved):
+			quote_panel.quote_approved.connect(_on_quote_approved)
+		if not quote_panel.quote_rejected.is_connected(_on_quote_rejected):
+			quote_panel.quote_rejected.connect(_on_quote_rejected)
+		if not quote_panel.quote_sent.is_connected(_on_quote_sent):
+			quote_panel.quote_sent.connect(_on_quote_sent)
+	else:
+		quote_panel.clear_quote()
 
 func _show_missing_parts_warning(p_missing: Array[String]) -> void:
 	var warning_text = "以下配件缺货: %s\n请先补货或调整订单。" % ", ".join(p_missing)
@@ -255,15 +268,15 @@ func _show_game_over(p_result: Dictionary) -> void:
 		game_over_panel.visible = true
 
 		var stats_grid = game_over_panel.get_node_or_null("GameOverContainer/GameOverVBox/StatsGrid")
-	var time_label = game_over_panel.get_node_or_null("GameOverContainer/GameOverVBox/StatsGrid/TimeLabel")
-	var score_label = game_over_panel.get_node_or_null("GameOverContainer/GameOverVBox/StatsGrid/ScoreLabel")
-	var completed_label = game_over_panel.get_node_or_null("GameOverContainer/GameOverVBox/StatsGrid/CompletedLabel")
-	var failed_label = game_over_panel.get_node_or_null("GameOverContainer/GameOverVBox/StatsGrid/FailedLabel")
-	var repair_label = game_over_panel.get_node_or_null("GameOverContainer/GameOverVBox/StatsGrid/RepairLabel")
-	var repair_rate_label = game_over_panel.get_node_or_null("GameOverContainer/GameOverVBox/StatsGrid/RepairRateLabel")
-	var earnings_label = game_over_panel.get_node_or_null("GameOverContainer/GameOverVBox/StatsGrid/EarningsLabel")
-	var time_rank_label = game_over_panel.get_node_or_null("GameOverContainer/GameOverVBox/TimeRankLabel")
-	var repair_rank_label = game_over_panel.get_node_or_null("GameOverContainer/GameOverVBox/RepairRankLabel")
+		var time_label = game_over_panel.get_node_or_null("GameOverContainer/GameOverVBox/StatsGrid/TimeLabel")
+		var score_label = game_over_panel.get_node_or_null("GameOverContainer/GameOverVBox/StatsGrid/ScoreLabel")
+		var completed_label = game_over_panel.get_node_or_null("GameOverContainer/GameOverVBox/StatsGrid/CompletedLabel")
+		var failed_label = game_over_panel.get_node_or_null("GameOverContainer/GameOverVBox/StatsGrid/FailedLabel")
+		var repair_label = game_over_panel.get_node_or_null("GameOverContainer/GameOverVBox/StatsGrid/RepairLabel")
+		var repair_rate_label = game_over_panel.get_node_or_null("GameOverContainer/GameOverVBox/StatsGrid/RepairRateLabel")
+		var earnings_label = game_over_panel.get_node_or_null("GameOverContainer/GameOverVBox/StatsGrid/EarningsLabel")
+		var time_rank_label = game_over_panel.get_node_or_null("GameOverContainer/GameOverVBox/TimeRankLabel")
+		var repair_rank_label = game_over_panel.get_node_or_null("GameOverContainer/GameOverVBox/RepairRankLabel")
 
 		if time_label:
 			time_label.text = LeaderboardManager.format_time(p_result.get("total_time", 0.0))
