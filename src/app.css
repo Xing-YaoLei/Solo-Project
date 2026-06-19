@@ -1,0 +1,101 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+	:root {
+		--background: 15 23 42;
+		--foreground: 241 245 249;
+		--muted: 51 65 85;
+		--muted-foreground: 148 163 184;
+		--card: 30 41 59;
+		--card-foreground: 241 245 249;
+		--border: 51 65 85;
+		--input: 51 65 85;
+		--ring: 30 58 95;
+		--primary: 30 58 95;
+		--primary-foreground: 248 250 252;
+		--accent: 232 93 40;
+		--accent-foreground: 248 250 252;
+		--success: 20 184 166;
+		--success-foreground: 248 250 252;
+		--warning: 245 158 11;
+		--warning-foreground: 248 250 252;
+		--destructive: 239 68 68;
+		--destructive-foreground: 248 250 252;
+	}
+
+	* {
+		border-color: rgb(var(--border));
+	}
+
+	html {
+		font-family: 'Inter', system-ui, -apple-system, sans-serif;
+		scroll-behavior: smooth;
+	}
+
+	body {
+		background-color: rgb(15 23 42);
+		color: rgb(var(--foreground));
+		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
+	}
+
+	.font-numeric,
+	.numbers,
+	.currency,
+	.money,
+	.amount,
+	.price {
+		font-family: 'JetBrains Mono', ui-monospace, monospace;
+		font-variant-numeric: tabular-nums;
+	}
+
+	::selection {
+		background-color: rgb(var(--primary) / 0.5);
+		color: white;
+	}
+
+	::-webkit-scrollbar {
+		width: 8px;
+		height: 8px;
+	}
+
+	::-webkit-scrollbar-track {
+		background: rgb(15 23 42);
+	}
+
+	::-webkit-scrollbar-thumb {
+		background: rgb(51 65 85);
+		border-radius: 4px;
+	}
+
+	::-webkit-scrollbar-thumb:hover {
+		background: rgb(71 85 105);
+	}
+}
+
+@layer components {
+	.glass-panel {
+		@apply bg-industrial-800/80 backdrop-blur-md border border-industrial-700;
+	}
+
+	.industrial-border {
+		@apply border border-industrial-700;
+	}
+
+	.focus-ring {
+		@apply focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500;
+	}
+
+	.gradient-border {
+		background: linear-gradient(135deg, rgb(var(--primary)) 0%, rgb(var(--accent)) 100%);
+	}
+
+	.text-gradient {
+		@apply bg-clip-text text-transparent;
+		background-image: linear-gradient(135deg, #4a75ae 0%, #E85D28 100%);
+	}
+}
