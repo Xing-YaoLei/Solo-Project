@@ -161,6 +161,7 @@ export default function QuestionForm({ editingQuestion, onCancel }: QuestionForm
         nextCheckIn: now,
         priority: 2,
         requiredMinutes: 60,
+        assignedTo: '',
       },
     ])
   }

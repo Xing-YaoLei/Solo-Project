@@ -63,12 +63,13 @@ export interface TagOption {
 
 export interface CalendarTask {
   id: string;
-  questionId: string;
+  questionId?: string;
   roomId: string;
   checkOut: string;
   nextCheckIn: string;
   priority: number;
   requiredMinutes: number;
+  assignedTo: string;
 }
 
 export interface CleaningTask {

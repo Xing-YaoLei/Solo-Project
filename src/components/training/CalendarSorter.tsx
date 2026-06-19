@@ -20,21 +20,33 @@ const checkConflicts = (sorted: CalendarTask[]): ConflictInfo => {
   for (let i = 0; i < sorted.length; i++) {
     for (let j = i + 1; j < sorted.length; j++) {
       if (sorted[i].priority > sorted[j].priority) {
-        overlapping.push(sorted[j].roomId)
+        if (!overlapping.includes(sorted[j].roomId)) {
+          overlapping.push(sorted[j].roomId)
+        }
       }
     }
   }
 
-  for (let i = 0; i < sorted.length - 1; i++) {
-    const gapMinutes = Math.abs(
-      new Date(sorted[i + 1].checkOut).getTime() - new Date(sorted[i].checkOut).getTime()
-    ) / 60000
-    if (gapMinutes < sorted[i].requiredMinutes) {
-      if (!overlapping.includes(sorted[i + 1].roomId)) {
-        overlapping.push(sorted[i + 1].roomId)
+  const cleanerTasks: Record<string, CalendarTask[]> = {}
+  sorted.forEach((task) => {
+    if (!cleanerTasks[task.assignedTo]) {
+      cleanerTasks[task.assignedTo] = []
+    }
+    cleanerTasks[task.assignedTo].push(task)
+  })
+
+  Object.values(cleanerTasks).forEach((tasks) => {
+    for (let i = 0; i < tasks.length - 1; i++) {
+      const gapMinutes = Math.abs(
+        new Date(tasks[i + 1].checkOut).getTime() - new Date(tasks[i].checkOut).getTime()
+      ) / 60000
+      if (gapMinutes < tasks[i].requiredMinutes) {
+        if (!overlapping.includes(tasks[i + 1].roomId)) {
+          overlapping.push(tasks[i + 1].roomId)
+        }
       }
     }
-  }
+  })
 
   return {
     hasConflict: overlapping.length > 0,
@@ -42,8 +54,15 @@ const checkConflicts = (sorted: CalendarTask[]): ConflictInfo => {
   }
 }
 
+const sortByPriority = (tasks: CalendarTask[]): CalendarTask[] => {
+  return [...tasks].sort((a, b) => {
+    if (a.priority !== b.priority) return a.priority - b.priority
+    return new Date(a.checkOut).getTime() - new Date(b.checkOut).getTime()
+  })
+}
+
 export default function CalendarSorter({ question, tasks }: CalendarSorterProps) {
-  const [sortedTasks, setSortedTasks] = useState<CalendarTask[]>([...tasks])
+  const [sortedTasks, setSortedTasks] = useState<CalendarTask[]>(() => sortByPriority(tasks))
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
   const [submitted, setSubmitted] = useState(false)
   const submitAnswer = useTrainingStore((s) => s.submitAnswer)
@@ -71,14 +90,14 @@ export default function CalendarSorter({ question, tasks }: CalendarSorterProps)
   }
 
   const handleSubmit = () => {
-    const correctOrder = [...tasks].sort((a, b) => a.priority - b.priority)
+    const correctOrder = sortByPriority(tasks)
     const isCorrect = sortedTasks.every((task, idx) => task.id === correctOrder[idx].id) && !conflict.hasConflict
     setSubmitted(true)
     submitAnswer(question.id, { sortedIds: sortedTasks.map((t) => t.id), isCorrect })
   }
 
   const handleReset = () => {
-    setSortedTasks([...tasks])
+    setSortedTasks(sortByPriority(tasks))
     setSubmitted(false)
   }
 

@@ -56,6 +56,7 @@ const convertMockQuestion = (q: typeof mockQuestions[0]): Question => ({
     nextCheckIn: ct.nextCheckIn,
     priority: ct.priority,
     requiredMinutes: ct.requiredMinutes,
+    assignedTo: ct.assignedTo,
   })),
   cleaningTasks: q.cleaningTasks?.map((clt) => ({
     id: clt.id,
