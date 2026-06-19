@@ -54,7 +54,7 @@ export function ShareModal({ isOpen, onClose, currentRole }: ShareModalProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           role: selectedRole,
-          expiresIn: expiryDays * 24 * 60 * 60,
+          expiresIn: expiryDays,
         }),
       });
       const data = await response.json();

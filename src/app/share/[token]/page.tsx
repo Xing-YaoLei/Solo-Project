@@ -16,6 +16,7 @@ import { QuotationTrendChart } from "@/components/QuotationTrendChart";
 import { InspectionChart } from "@/components/InspectionChart";
 import { VehicleTable } from "@/components/VehicleTable";
 import { DiagnosisChart } from "@/components/DiagnosisChart";
+import { InsuranceChart } from "@/components/InsuranceChart";
 import { UserRole, roleNames } from "@/types";
 import { getRolePermissions } from "@/types";
 import {
@@ -24,6 +25,7 @@ import {
   InspectionResponse,
   VehicleResponse,
   DiagnosisResponse,
+  InsuranceResponse,
 } from "@/types";
 import { formatPercent, formatNumber } from "@/utils/format";
 
@@ -44,6 +46,8 @@ export default function SharePage() {
   const [vehicleData, setVehicleData] = useState<VehicleResponse | null>(null);
   const [diagnosisData, setDiagnosisData] =
     useState<DiagnosisResponse | null>(null);
+  const [insuranceData, setInsuranceData] =
+    useState<InsuranceResponse | null>(null);
 
   const permissions = getRolePermissions(role);
 
@@ -103,6 +107,10 @@ export default function SharePage() {
           requests.push(fetch(`/api/reports/diagnosis?role=${role}`).then((res) => res.json()));
           requestTypes.push("diagnosis");
         }
+        if (canAccess("insurance")) {
+          requests.push(fetch(`/api/reports/insurance?role=${role}`).then((res) => res.json()));
+          requestTypes.push("insurance");
+        }
 
         const results = await Promise.all(requests);
 
@@ -115,6 +123,7 @@ export default function SharePage() {
             case "inspection": setInspectionData(result); break;
             case "vehicles": setVehicleData(result); break;
             case "diagnosis": setDiagnosisData(result); break;
+            case "insurance": setInsuranceData(result); break;
           }
         });
       } catch (error) {
@@ -268,6 +277,15 @@ export default function SharePage() {
             abnormalItems={diagnosisData.abnormalItems}
             trend={diagnosisData.trend}
             lastUpdated={diagnosisData.lastUpdated}
+          />
+        )}
+
+        {permissions.canViewInsurance && canAccess("insurance") && insuranceData && (
+          <InsuranceChart
+            summary={insuranceData.summary}
+            claims={insuranceData.claims}
+            lastUpdated={insuranceData.lastUpdated}
+            canViewFull={permissions.canExportFull}
           />
         )}
 

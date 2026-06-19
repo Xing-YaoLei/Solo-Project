@@ -1,8 +1,40 @@
 import { prisma } from "./prisma";
 import { Decimal } from "@prisma/client/runtime/library";
+import { isSupabaseConfigured, supabase } from "./supabase";
 
 function formatDate(date: Date): string {
   return date.toISOString().split("T")[0];
+}
+
+export function getDataSource(): "supabase" | "prisma" {
+  return isSupabaseConfigured() ? "supabase" : "prisma";
+}
+
+async function getWorkOrdersFromSupabase(filters?: { from?: string; to?: string; status?: string }) {
+  let query = supabase.from("WorkOrder").select("*, vehicle:Vehicle(*), technician:Technician(*), station:WorkStation(*), parts:PartUsage(*), insuranceDoc:InsuranceDoc(*)", { count: "exact" });
+  if (filters?.from) query = query.gte("createdAt", filters.from);
+  if (filters?.to) query = query.lte("createdAt", filters.to);
+  if (filters?.status) query = query.eq("status", filters.status);
+  const { data, count, error } = await query;
+  if (error) throw error;
+  return { data: data || [], count: count || 0 };
+}
+
+async function getInsuranceDocsFromSupabase() {
+  const { data, error } = await supabase
+    .from("InsuranceDoc")
+    .select("*, workOrder:WorkOrder(*, vehicle:Vehicle(*))")
+    .order("filedAt", { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+
+async function getPartUsagesFromSupabase(orderId?: string) {
+  let query = supabase.from("PartUsage").select("*, workOrder:WorkOrder(*, vehicle:Vehicle(*))");
+  if (orderId) query = query.eq("orderId", orderId);
+  const { data, error } = await query;
+  if (error) throw error;
+  return data || [];
 }
 
 async function calculateReworkRate(startDate: Date, endDate: Date): Promise<number> {
@@ -113,6 +145,7 @@ export async function getOverviewDataFromDB() {
     reworkRate: Number(reworkRate.toFixed(3)),
     stationUtilization: Number(stationUtilization.toFixed(3)),
     lastUpdated: new Date().toISOString(),
+    dataSource: getDataSource(),
   };
 }
 
@@ -398,6 +431,7 @@ export async function createShareLinkInDB(
     "quotation",
     "inspection",
     "vehicles",
+    "insurance",
     "diagnosis",
   ];
 
@@ -450,6 +484,43 @@ export async function validateShareTokenInDB(token: string) {
 }
 
 export async function getInsuranceDataFromDB() {
+  if (isSupabaseConfigured()) {
+    const rawDocs = await getInsuranceDocsFromSupabase();
+    const insuranceDocs = rawDocs as any[];
+
+    const totalClaims = insuranceDocs.length;
+    const totalClaimAmount = insuranceDocs.reduce((sum, doc) => sum + Number(doc.claimAmount || 0), 0);
+    const pendingCount = insuranceDocs.filter((d) => d.claimStatus === "pending").length;
+    const approvedCount = insuranceDocs.filter((d) => d.claimStatus === "approved").length;
+    const settledCount = insuranceDocs.filter((d) => d.claimStatus === "settled").length;
+
+    const claims = insuranceDocs.map((doc) => ({
+      id: doc.id,
+      plateNumber: doc.workOrder?.vehicle?.plateNumber || "",
+      vehicleModel: doc.workOrder?.vehicle?.model || "",
+      company: doc.company,
+      policyNumber: doc.policyNumber,
+      claimAmount: Number(Number(doc.claimAmount || 0).toFixed(2)),
+      claimStatus: doc.claimStatus,
+      filedDate: doc.filedAt ? formatDate(new Date(doc.filedAt)) : "",
+      settledDate: doc.settledAt ? formatDate(new Date(doc.settledAt)) : undefined,
+    }));
+
+    return {
+      summary: {
+        totalClaims,
+        totalClaimAmount: Number(totalClaimAmount.toFixed(2)),
+        pendingCount,
+        approvedCount,
+        settledCount,
+        avgClaimAmount: totalClaims > 0 ? Number((totalClaimAmount / totalClaims).toFixed(2)) : 0,
+      },
+      claims,
+      lastUpdated: new Date().toISOString(),
+      dataSource: "supabase" as const,
+    };
+  }
+
   const insuranceDocs = await prisma.insuranceDoc.findMany({
     include: {
       workOrder: {
@@ -495,5 +566,6 @@ export async function getInsuranceDataFromDB() {
     },
     claims,
     lastUpdated: new Date().toISOString(),
+    dataSource: "prisma" as const,
   };
 }

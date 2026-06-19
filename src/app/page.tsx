@@ -16,6 +16,7 @@ import { QuotationTrendChart } from "@/components/QuotationTrendChart";
 import { InspectionChart } from "@/components/InspectionChart";
 import { VehicleTable } from "@/components/VehicleTable";
 import { DiagnosisChart } from "@/components/DiagnosisChart";
+import { InsuranceChart } from "@/components/InsuranceChart";
 import { ShareModal } from "@/components/ShareModal";
 import { RoleSelector } from "@/components/RoleSelector";
 import { useAppStore } from "@/store/useAppStore";
@@ -25,6 +26,7 @@ import {
   InspectionResponse,
   VehicleResponse,
   DiagnosisResponse,
+  InsuranceResponse,
 } from "@/types";
 import { formatPercent, formatNumber } from "@/utils/format";
 
@@ -40,12 +42,14 @@ export default function ReportPage() {
   const [vehicleData, setVehicleData] = useState<VehicleResponse | null>(null);
   const [diagnosisData, setDiagnosisData] =
     useState<DiagnosisResponse | null>(null);
+  const [insuranceData, setInsuranceData] =
+    useState<InsuranceResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchAllData = async () => {
     setLoading(true);
     try {
-      const [overview, quotation, inspection, vehicles, diagnosis] =
+      const [overview, quotation, inspection, vehicles, diagnosis, insurance] =
         await Promise.all([
           fetch(`/api/reports/overview?role=${currentRole}`).then((res) =>
             res.json()
@@ -62,6 +66,9 @@ export default function ReportPage() {
           fetch(`/api/reports/diagnosis?role=${currentRole}`).then((res) =>
             res.json()
           ),
+          fetch(`/api/reports/insurance?role=${currentRole}`).then((res) =>
+            res.json()
+          ),
         ]);
 
       if (!overview.error) setOverviewData(overview);
@@ -69,6 +76,7 @@ export default function ReportPage() {
       if (!inspection.error) setInspectionData(inspection);
       if (!vehicles.error) setVehicleData(vehicles);
       if (!diagnosis.error) setDiagnosisData(diagnosis);
+      if (!insurance.error) setInsuranceData(insurance);
     } catch (error) {
       console.error("Fetch data error:", error);
     } finally {
@@ -226,11 +234,23 @@ export default function ReportPage() {
           />
         )}
 
+        {/* Insurance Chart */}
+        {permissions.canViewInsurance && insuranceData && (
+          <InsuranceChart
+            summary={insuranceData.summary}
+            claims={insuranceData.claims}
+            lastUpdated={insuranceData.lastUpdated}
+            canViewFull={permissions.canExportFull}
+            onRefresh={fetchAllData}
+          />
+        )}
+
         {/* No Permission */}
         {!permissions.canViewOverview &&
           !permissions.canViewQuotation &&
           !permissions.canViewInspection &&
           !permissions.canViewVehicles &&
+          !permissions.canViewInsurance &&
           !permissions.canViewDiagnosis && (
             <div className="text-center py-24">
               <div className="w-16 h-16 rounded-2xl bg-slate-800/50 flex items-center justify-center mx-auto mb-4">
