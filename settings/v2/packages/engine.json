@@ -1,0 +1,27 @@
+{
+  "enabledModules": {
+    "animation": true,
+    "2d": true,
+    "audio": true,
+    "ui": true,
+    "spine": false,
+    "spine-wasm": false,
+    "dragonbones": false,
+    "particle": true,
+    "label": true,
+    "tiled": true,
+    "video": false,
+    "webview": false,
+    "physics": false,
+    "physics-2d": true,
+    "physics-3d": false,
+    "physics-ammo": false,
+    "physics-cannon": false,
+    "physics-box2d": true,
+    "primitive": true,
+    "profiler": true,
+    "gfx-webgl": true,
+    "gfx-webgl2": true
+  },
+  "renderPipeline": "builtin-forward"
+}

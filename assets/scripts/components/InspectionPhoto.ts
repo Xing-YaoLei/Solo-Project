@@ -5,10 +5,10 @@ const { ccclass, property } = _decorator;
 @ccclass('InspectionPhoto')
 export class InspectionPhoto extends Component {
 
-    @property({ type: CCFloat })
+    @property({ type: Number })
     transitionDuration: number = 0.5;
 
-    @property({ type: CCInteger })
+    @property({ type: Number })
     maxPhotos: number = 5;
 
     private photoPaths: string[] = [];

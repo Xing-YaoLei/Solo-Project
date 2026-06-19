@@ -94,6 +94,8 @@ export class GameController extends Component {
         );
 
         if (allDone) {
+            const player = this._playerState;
+            player.levelPassed = player.accuracy >= (this._currentLevelConfig?.requiredAccuracy ?? 0);
             this.enterSettlement();
             return true;
         }
@@ -109,10 +111,14 @@ export class GameController extends Component {
             ? this._playerState.timerRemaining / this._currentLevelConfig.timeLimit
             : 0;
 
-        const finalScore =
+        let finalScore =
             rule.baseScore +
             rule.timeBonus * timeRatio +
             rule.accuracyWeight * accuracy * rule.baseScore;
+
+        if (this._playerState.levelPassed !== undefined) {
+            finalScore *= this._playerState.levelPassed ? 1.2 : 0.8;
+        }
 
         return Math.round(finalScore);
     }

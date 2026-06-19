@@ -21,6 +21,7 @@ export class PlayerState {
     timerRemaining: number = 0;
     isTimerPaused: boolean = false;
     vehicleProfileData: Map<string, unknown> = new Map();
+    levelPassed?: boolean;
 
     private _totalDiagnoses: number = 0;
     private _correctDiagnoses: number = 0;

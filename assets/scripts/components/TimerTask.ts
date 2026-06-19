@@ -5,13 +5,13 @@ const { ccclass, property } = _decorator;
 @ccclass('TimerTask')
 export class TimerTask extends Component {
 
-    @property({ type: CCFloat })
+    @property({ type: Number })
     totalSeconds: number = 60;
 
-    @property({ type: CCBoolean })
+    @property({ type: Boolean })
     autoStart: boolean = false;
 
-    @property({ type: CCBoolean })
+    @property({ type: Boolean })
     countDown: boolean = true;
 
     private _elapsed: number = 0;
