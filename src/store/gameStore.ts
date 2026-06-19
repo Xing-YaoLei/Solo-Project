@@ -101,10 +101,22 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     const timeUsed = Math.floor((Date.now() - startTime) / 1000)
 
-    const wrongCount = decisions.filter((d) => !d.isCorrect).length
+    const completedDecisionIds = new Set(decisions.map((d) => d.decisionPointId))
+    const unansweredRecords: DecisionRecord[] = level.decisions
+      .filter((dp) => !completedDecisionIds.has(dp.id))
+      .map((dp) => ({
+        decisionPointId: dp.id,
+        selectedOptionId: null,
+        isCorrect: false,
+        timeToDecide: 0,
+        isUnanswered: true,
+      }))
+
+    const allDecisions = [...decisions, ...unansweredRecords]
+    const wrongCount = allDecisions.filter((d) => !d.isCorrect).length
     const score = Math.max(0, 100 - wrongCount * 25)
 
-    const allDecisionsCorrect = decisions.length > 0 && decisions.every((d) => d.isCorrect)
+    const allDecisionsCorrect = allDecisions.length > 0 && allDecisions.every((d) => d.isCorrect)
 
     const clueConversions: ClueConversion[] = level.clues.map((clue) => {
       const wasViewed = collectedClueIds.includes(clue.id)
@@ -114,7 +126,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         if (clue.isCritical) {
           ledToCorrectDecision = allDecisionsCorrect
         } else {
-          ledToCorrectDecision = decisions.some((d) => d.isCorrect)
+          ledToCorrectDecision = allDecisions.some((d) => d.isCorrect)
         }
       }
 
@@ -129,7 +141,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       levelId: currentLevelId,
       score,
       timeUsed,
-      decisions,
+      decisions: allDecisions,
       clueConversions,
       completedAt: Date.now(),
     }

@@ -46,9 +46,10 @@ export interface Level {
 
 export interface DecisionRecord {
   decisionPointId: string
-  selectedOptionId: string
+  selectedOptionId: string | null
   isCorrect: boolean
   timeToDecide: number
+  isUnanswered?: boolean
 }
 
 export interface ClueConversion {

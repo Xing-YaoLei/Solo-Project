@@ -90,35 +90,42 @@ export default function Result() {
         <div className="card-dark mb-6">
           <h2 className="font-serif text-lg text-amber mb-4">错因分析</h2>
           <div className="space-y-4">
-            {level.decisions.map((decision) => {
+            {level.decisions.map((decision, idx) => {
               const record = result.decisions.find(
                 (d) => d.decisionPointId === decision.id
               )
-              if (!record) return null
-              const selectedOption = decision.options.find(
-                (o) => o.id === record.selectedOptionId
-              )
+              const selectedOption = record?.selectedOptionId
+                ? decision.options.find((o) => o.id === record.selectedOptionId)
+                : null
               const correctOption = decision.options.find(
                 (o) => o.id === decision.correctOptionId
               )
+              const isUnanswered = record?.isUnanswered || !record
+              const isCorrect = record?.isCorrect ?? false
               return (
                 <div key={decision.id} className="border border-gray-700 rounded-lg p-4">
-                  <p className="text-sm text-gray-300 mb-3">{decision.question}</p>
+                  <p className="text-sm text-gray-300 mb-3">{idx + 1}. {decision.question}</p>
                   <div className="space-y-2">
                     <div className="flex items-start gap-2">
-                      {record.isCorrect ? (
+                      {isCorrect ? (
                         <Check size={16} className="text-jade flex-shrink-0 mt-0.5" />
                       ) : (
                         <X size={16} className="text-rust flex-shrink-0 mt-0.5" />
                       )}
                       <div>
-                        <span className="text-xs text-gray-500">你的选择</span>
-                        <p className={`text-sm ${record.isCorrect ? "text-jade" : "text-rust"}`}>
-                          {selectedOption?.label} - {selectedOption?.description}
-                        </p>
+                        <span className="text-xs text-gray-500">
+                          {isUnanswered ? "未作答" : "你的选择"}
+                        </span>
+                        {selectedOption ? (
+                          <p className={`text-sm ${isCorrect ? "text-jade" : "text-rust"}`}>
+                            {selectedOption.label} - {selectedOption.description}
+                          </p>
+                        ) : (
+                          <p className="text-sm text-rust">未在规定时间内作答</p>
+                        )}
                       </div>
                     </div>
-                    {!record.isCorrect && correctOption && (
+                    {!isCorrect && correctOption && (
                       <div className="flex items-start gap-2">
                         <Check size={16} className="text-jade flex-shrink-0 mt-0.5" />
                         <div>
@@ -130,7 +137,7 @@ export default function Result() {
                       </div>
                     )}
                   </div>
-                  {!record.isCorrect && (
+                  {!isCorrect && (
                     <div className="mt-3 bg-charcoal rounded-lg p-3">
                       <p className="text-xs text-amber/80">{decision.knowledgePoint}</p>
                     </div>
