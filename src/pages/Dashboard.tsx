@@ -45,7 +45,7 @@ const Dashboard: React.FC = () => {
       setEscalationTimeline(escalationRes);
       setResponsibilityData(respRes);
       setCategoryData(catRes);
-      setCallbackData(callbackRes.map(c => ({ name: c.result === 'satisfied' ? '满意' : c.result === 'unsatisfied' ? '不满意' : '待回访', value: c.count })));
+      setCallbackData(callbackRes.map(c => ({ name: c.result, value: c.count })));
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
     } finally {
@@ -67,6 +67,14 @@ const Dashboard: React.FC = () => {
 
   const handleOverdueClick = (id: string) => {
     navigate(`/complaints?id=${id}`);
+  };
+
+  const handleCallbackClick = (item: PieDataItem) => {
+    let callbackFilter = '';
+    if (item.name === '满意') callbackFilter = 'satisfied';
+    else if (item.name === '不满意') callbackFilter = 'unsatisfied';
+    else if (item.name === '待回访') callbackFilter = 'pending';
+    navigate(`/complaints?callback_result=${callbackFilter}`);
   };
 
   return (
@@ -228,9 +236,9 @@ const Dashboard: React.FC = () => {
           <PieChart data={categoryData} height={250} />
         </div>
 
-        <div className="glass-card p-6 rounded-xl">
-          <h3 className="text-lg font-semibold text-white mb-4">回访结果分布</h3>
-          <PieChart data={callbackData} height={250} />
+        <div className="glass-card p-6 rounded-xl cursor-pointer hover:bg-white/5 transition-all">
+          <h3 className="text-lg font-semibold text-white mb-4">回访结果分布 <span className="text-xs text-gray-400 font-normal">(点击筛选明细)</span></h3>
+          <PieChart data={callbackData} height={250} onClick={handleCallbackClick} />
         </div>
       </div>
     </div>

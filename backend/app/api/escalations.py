@@ -1,24 +1,40 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from typing import Optional
-from datetime import datetime, timedelta
 
 from app.db.database import get_db
-from app.schemas.complaint import EscalationSeriesData
-from app.services.complaint_service import get_escalation_series
+from app.schemas.complaint import EscalationTimelineData, ComplaintListResponse
+from app.services.complaint_service import get_escalation_timeline, get_complaints
 
 router = APIRouter(prefix="/escalations", tags=["escalations"])
 
 
-@router.get("/series", response_model=EscalationSeriesData)
-def read_escalation_series(
-    startDate: Optional[str] = None,
-    endDate: Optional[str] = None,
-    compare: str = Query("none", description="对比方式: none, yoy(同比), mom(环比)"),
+@router.get("/timeline", response_model=EscalationTimelineData)
+def read_escalation_timeline(
+    days: int = Query(30, ge=1, le=365),
+    region: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
-    if not startDate:
-        startDate = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
-    if not endDate:
-        endDate = datetime.now().strftime("%Y-%m-%d")
-    return get_escalation_series(db, startDate, endDate, compare)
+    return get_escalation_timeline(db, days, region)
+
+
+@router.get("/list", response_model=ComplaintListResponse)
+def read_escalation_list(
+    page: int = Query(1, ge=1),
+    pageSize: int = Query(20, ge=1, le=100),
+    region: Optional[str] = None,
+    level: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    skip = (page - 1) * pageSize
+    complaints, total = get_complaints(
+        db, skip=skip, limit=pageSize,
+        region=region
+    )
+    escalated = [c for c in complaints if c.escalated]
+    return ComplaintListResponse(
+        data=escalated,
+        total=total,
+        page=page,
+        pageSize=pageSize
+    )

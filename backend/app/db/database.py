@@ -6,11 +6,13 @@ import os
 
 from app.core.config import settings
 
-os.makedirs("./data", exist_ok=True)
+os.makedirs(os.path.dirname(settings.DUCKDB_PATH), exist_ok=True)
+if settings.USE_POSTGRES:
+    os.makedirs("./data", exist_ok=True)
 
 if settings.USE_POSTGRES:
     SQLALCHEMY_DATABASE_URL = f"postgresql://{settings.POSTGRES_USER}:{settings.POSTGRES_PASSWORD}@{settings.POSTGRES_SERVER}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}"
-    engine = create_engine(SQLALCHEMY_DATABASE_URL)
+    engine = create_engine(SQLALCHEMY_DATABASE_URL, pool_pre_ping=True)
 else:
     SQLALCHEMY_DATABASE_URL = settings.DATABASE_URL
     engine = create_engine(

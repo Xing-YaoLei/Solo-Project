@@ -25,6 +25,7 @@ const Complaints: React.FC = () => {
   const [region, setRegion] = useState('all');
   const [page, setPage] = useState(1);
   const [pageSize] = useState(20);
+  const [callbackResultFilter, setCallbackResultFilter] = useState<string>('all');
   const [editForm, setEditForm] = useState({
     status: '',
     handler: '',
@@ -39,17 +40,25 @@ const Complaints: React.FC = () => {
   const loadComplaints = useCallback(async () => {
     setLoading(true);
     try {
-      const params: any = { page, pageSize, status, severity, category, region };
+      const params: any = { page: 1, pageSize: 1000, status, severity, category, region };
       if (search) params.search = search;
+      if (callbackResultFilter && callbackResultFilter !== 'all') {
+        params.callback_result = callbackResultFilter;
+      }
       const res = await getComplaints(params);
-      setComplaints(res.data);
-      setTotal(res.total);
+      let filtered = res.data;
+      if (callbackResultFilter && callbackResultFilter !== 'all') {
+        filtered = filtered.filter((c: any) => c.callback_result === callbackResultFilter);
+      }
+      const start = (page - 1) * pageSize;
+      setComplaints(filtered.slice(start, start + pageSize));
+      setTotal(filtered.length);
     } catch (error) {
       console.error('Failed to load complaints:', error);
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, status, severity, category, region, search]);
+  }, [page, pageSize, status, severity, category, region, search, callbackResultFilter]);
 
   const loadDetail = useCallback(async (id: string) => {
     setDetailLoading(true);
@@ -80,10 +89,15 @@ const Complaints: React.FC = () => {
   }, [loadComplaints]);
 
   useEffect(() => {
-    const id = new URLSearchParams(location.search).get('id');
+    const params = new URLSearchParams(location.search);
+    const id = params.get('id');
+    const cb = params.get('callback_result');
     if (id) {
       loadDetail(id);
       navigate('/complaints', { replace: true });
+    }
+    if (cb) {
+      setCallbackResultFilter(cb);
     }
   }, [location.search, loadDetail, navigate]);
 
@@ -202,6 +216,19 @@ const Complaints: React.FC = () => {
                   {regions.map(r => (
                     <option key={r} value={r} className="bg-slate-800">{r}</option>
                   ))}
+                </select>
+              </div>
+              <div className="min-w-[120px]">
+                <label className="text-sm text-gray-400 mb-1 block">回访结果</label>
+                <select
+                  value={callbackResultFilter}
+                  onChange={e => { setCallbackResultFilter(e.target.value); setPage(1); }}
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-primary-500"
+                >
+                  <option value="all" className="bg-slate-800">全部</option>
+                  <option value="satisfied" className="bg-slate-800">满意</option>
+                  <option value="unsatisfied" className="bg-slate-800">不满意</option>
+                  <option value="pending" className="bg-slate-800">待回访</option>
                 </select>
               </div>
             </div>

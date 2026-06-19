@@ -3,172 +3,358 @@ from sqlalchemy import func, and_
 from typing import Optional, List
 from datetime import datetime, timedelta
 import duckdb
-import pandas as pd
 import os
+import pandas as pd
 
-from app.models.models import Complaint, Property
+from app.models.models import Complaint
+from app.schemas.report import (
+    DurationReport, DurationReportRaw, RegionReport,
+    DateReport, DateReportRaw, ComparisonReport, PeriodData,
+    PieDataItem, DuckDBAnalysis, DuckDBRegionSummary, DuckDBResponsibilitySummary,
+    ReportSeries
+)
 from app.core.config import settings
 
 
-def get_close_duration_report(db: Session, property_ids: Optional[List[str]] = None):
-    query = db.query(
-        Property.name,
-        func.avg(Complaint.processing_time)
-    ).join(Complaint, Property.id == Complaint.property_id).filter(
-        Complaint.status == "closed",
-        Complaint.processing_time > 0
+def _duration_bucket(minutes: int) -> str:
+    if minutes < 60:
+        return "less_than_1h"
+    elif minutes < 180:
+        return "between_1_3h"
+    elif minutes < 720:
+        return "between_3_12h"
+    elif minutes < 1440:
+        return "between_12_24h"
+    else:
+        return "more_than_24h"
+
+
+def get_close_duration_report(
+    db: Session,
+    region: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None
+) -> DurationReport:
+    query = db.query(Complaint).filter(Complaint.status.in_(["resolved", "closed"]))
+    if region:
+        query = query.filter(Complaint.region == region)
+    if start_date:
+        query = query.filter(Complaint.created_at >= datetime.fromisoformat(start_date))
+    if end_date:
+        query = query.filter(Complaint.created_at <= datetime.fromisoformat(end_date) + timedelta(days=1))
+
+    items = query.all()
+
+    region_data = {}
+    for c in items:
+        r = c.region
+        if r not in region_data:
+            region_data[r] = {
+                "total": 0, "less_than_1h": 0, "between_1_3h": 0,
+                "between_3_12h": 0, "between_12_24h": 0, "more_than_24h": 0,
+                "times": []
+            }
+        region_data[r]["total"] += 1
+        if c.processing_time > 0:
+            bucket = _duration_bucket(c.processing_time)
+            region_data[r][bucket] += 1
+            region_data[r]["times"].append(c.processing_time)
+
+    raw_data = []
+    regions = []
+    less_1h = []
+    bet_1_3h = []
+    bet_3_12h = []
+    bet_12_24h = []
+    more_24h = []
+    avg_times = []
+
+    for r, d in sorted(region_data.items()):
+        regions.append(r)
+        less_1h.append(d["less_than_1h"])
+        bet_1_3h.append(d["between_1_3h"])
+        bet_3_12h.append(d["between_3_12h"])
+        bet_12_24h.append(d["between_12_24h"])
+        more_24h.append(d["more_than_24h"])
+        avg = round(sum(d["times"]) / len(d["times"]), 1) if d["times"] else 0
+        avg_times.append(avg)
+        raw_data.append(DurationReportRaw(
+            region=r,
+            total=d["total"],
+            less_than_1h=d["less_than_1h"],
+            between_1_3h=d["between_1_3h"],
+            between_3_12h=d["between_3_12h"],
+            between_12_24h=d["between_12_24h"],
+            more_than_24h=d["more_than_24h"],
+            avg_time=avg
+        ))
+
+    return DurationReport(
+        regions=regions,
+        lessThan1h=less_1h,
+        between1_3h=bet_1_3h,
+        between3_12h=bet_3_12h,
+        between12_24h=bet_12_24h,
+        moreThan24h=more_24h,
+        avgTimes=avg_times,
+        rawData=raw_data
     )
-    
-    if property_ids:
-        query = query.filter(Property.id.in_(property_ids))
-    
-    result = query.group_by(Property.name).order_by(func.avg(Complaint.processing_time).desc()).limit(10).all()
-    
-    categories = [r[0] for r in result]
-    avg_times = [round(float(r[1] or 0), 1) for r in result]
-    
-    return {
-        "dimension": "closeDuration",
-        "categories": categories,
-        "series": [
-            {"name": "平均处理时长(分钟)", "data": avg_times}
-        ]
-    }
 
 
-def get_date_compare_report(db: Session, start_date1: str, end_date1: str, 
-                            start_date2: str, end_date2: str):
-    start1 = datetime.fromisoformat(start_date1)
-    end1 = datetime.fromisoformat(end_date1)
-    start2 = datetime.fromisoformat(start_date2)
-    end2 = datetime.fromisoformat(end_date2)
-    
-    categories = ["客诉总量", "待处理数", "已解决数", "已关闭数", "超单数", "升级率%", "满意度%"]
-    
-    def get_metrics(start, end):
-        complaints = db.query(Complaint).filter(
-            and_(Complaint.created_at >= start, Complaint.created_at < end)
-        ).all()
-        
-        total = len(complaints)
-        pending = len([c for c in complaints if c.status == "pending"])
-        resolved = len([c for c in complaints if c.status == "resolved"])
-        closed = len([c for c in complaints if c.status == "closed"])
-        overdue = len([c for c in complaints if c.is_overdue])
-        escalated = len([c for c in complaints if c.escalated])
-        escalation_rate = round((escalated / total * 100) if total > 0 else 0, 1)
-        satisfied = len([c for c in complaints if c.callback_result == "satisfied"])
-        total_callback = len([c for c in complaints if c.callback_result in ["satisfied", "unsatisfied"]])
-        satisfaction = round((satisfied / total_callback * 100) if total_callback > 0 else 0, 1)
-        
-        return [total, pending, resolved, closed, overdue, escalation_rate, satisfaction]
-    
-    metrics1 = get_metrics(start1, end1)
-    metrics2 = get_metrics(start2, end2)
-    
-    return {
-        "dimension": "date",
-        "categories": categories,
-        "series": [
-            {"name": f"{start_date1} ~ {end_date1}", "data": metrics1},
-            {"name": f"{start_date2} ~ {end_date2}", "data": metrics2}
-        ]
-    }
-
-
-def get_region_compare_report(db: Session, regions: Optional[List[str]] = None, 
-                              metrics: Optional[List[str]] = None):
-    default_metrics = ["客诉总量", "平均处理时长", "超单数", "升级率%", "满意度%"]
-    selected_metrics = metrics if metrics else default_metrics
-    
+def get_region_report(
+    db: Session,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None
+) -> List[RegionReport]:
     query = db.query(Complaint)
-    if regions:
-        query = query.filter(Complaint.region.in_(regions))
-    
-    all_complaints = query.all()
-    
-    region_list = list(set([c.region for c in all_complaints]))
-    
-    series_data = []
-    for metric in selected_metrics:
+    if start_date:
+        query = query.filter(Complaint.created_at >= datetime.fromisoformat(start_date))
+    if end_date:
+        query = query.filter(Complaint.created_at <= datetime.fromisoformat(end_date) + timedelta(days=1))
+
+    items = query.all()
+    region_map = {}
+
+    for c in items:
+        r = c.region
+        if r not in region_map:
+            region_map[r] = {
+                "total": 0, "closed": 0, "overdue": 0,
+                "escalated": 0, "satisfied": 0, "callback_total": 0,
+                "times": []
+            }
+        region_map[r]["total"] += 1
+        if c.status in ["resolved", "closed"]:
+            region_map[r]["closed"] += 1
+        if c.is_overdue:
+            region_map[r]["overdue"] += 1
+        if c.escalated:
+            region_map[r]["escalated"] += 1
+        if c.callback_result in ["satisfied", "unsatisfied"]:
+            region_map[r]["callback_total"] += 1
+            if c.callback_result == "satisfied":
+                region_map[r]["satisfied"] += 1
+        if c.processing_time > 0:
+            region_map[r]["times"].append(c.processing_time)
+
+    result = []
+    for r, d in region_map.items():
+        avg_time = round(sum(d["times"]) / len(d["times"]), 1) if d["times"] else 0
+        result.append(RegionReport(
+            region=r,
+            total=d["total"],
+            closed=d["closed"],
+            closedRate=round(d["closed"] / d["total"] * 100, 1) if d["total"] > 0 else 0,
+            overdue=d["overdue"],
+            overdueRate=round(d["overdue"] / d["total"] * 100, 1) if d["total"] > 0 else 0,
+            satisfactionRate=round(d["satisfied"] / d["callback_total"] * 100, 1) if d["callback_total"] > 0 else 0,
+            avgProcessingTime=avg_time
+        ))
+    return result
+
+
+def get_date_report(
+    db: Session,
+    days: int = 90,
+    region: Optional[str] = None
+) -> DateReport:
+    now = datetime.now()
+    start = now - timedelta(days=days - 1)
+    start = datetime(start.year, start.month, 1)
+
+    months = []
+    current = start
+    while current <= now:
+        months.append(current.strftime("%Y-%m"))
+        if current.month == 12:
+            current = datetime(current.year + 1, 1, 1)
+        else:
+            current = datetime(current.year, current.month + 1, 1)
+
+    query = db.query(Complaint)
+    if region:
+        query = query.filter(Complaint.region == region)
+    query = query.filter(Complaint.created_at >= start)
+    items = query.all()
+
+    month_region_data = {}
+    region_set = set()
+    for c in items:
+        m = c.created_at.strftime("%Y-%m")
+        r = c.region
+        region_set.add(r)
+        key = (m, r)
+        if key not in month_region_data:
+            month_region_data[key] = {
+                "total": 0, "overdue": 0, "escalated": 0, "times": []
+            }
+        month_region_data[key]["total"] += 1
+        if c.is_overdue:
+            month_region_data[key]["overdue"] += 1
+        if c.escalated:
+            month_region_data[key]["escalated"] += 1
+        if c.processing_time > 0:
+            month_region_data[key]["times"].append(c.processing_time)
+
+    regions = sorted(list(region_set))
+    series = []
+    for r in regions:
         data = []
-        for region in region_list:
-            region_complaints = [c for c in all_complaints if c.region == region]
-            total = len(region_complaints)
-            
-            if metric == "客诉总量":
-                data.append(total)
-            elif metric == "平均处理时长":
-                processing_times = [c.processing_time for c in region_complaints if c.processing_time > 0]
-                data.append(round(sum(processing_times) / len(processing_times) if processing_times else 0, 1))
-            elif metric == "超单数":
-                data.append(len([c for c in region_complaints if c.is_overdue]))
-            elif metric == "升级率%":
-                escalated = len([c for c in region_complaints if c.escalated])
-                data.append(round((escalated / total * 100) if total > 0 else 0, 1))
-            elif metric == "满意度%":
-                satisfied = len([c for c in region_complaints if c.callback_result == "satisfied"])
-                total_callback = len([c for c in region_complaints if c.callback_result in ["satisfied", "unsatisfied"]])
-                data.append(round((satisfied / total_callback * 100) if total_callback > 0 else 0, 1))
-        series_data.append({"name": metric, "data": data})
-    
+        for m in months:
+            d = month_region_data.get((m, r), {"total": 0})
+            data.append(d["total"])
+        series.append(ReportSeries(name=r, data=data))
+
+    raw_data = []
+    for (m, r), d in month_region_data.items():
+        avg = round(sum(d["times"]) / len(d["times"]), 1) if d["times"] else 0
+        raw_data.append(DateReportRaw(
+            month=m, region=r,
+            total=d["total"], overdue=d["overdue"],
+            escalated=d["escalated"], avg_time=avg
+        ))
+
+    return DateReport(months=months, series=series, rawData=raw_data)
+
+
+def _calc_period_stats(items: list) -> dict:
+    total = len(items)
+    closed = len([c for c in items if c.status in ["resolved", "closed"]])
+    overdue = len([c for c in items if c.is_overdue])
+    escalated = len([c for c in items if c.escalated])
+    times = [c.processing_time for c in items if c.processing_time > 0]
+    avg_time = round(sum(times) / len(times), 1) if times else 0
+    satisfied = len([c for c in items if c.callback_result == "satisfied"])
+    cb_total = len([c for c in items if c.callback_result in ["satisfied", "unsatisfied"]])
+    sat_rate = round(satisfied / cb_total * 100, 1) if cb_total > 0 else 0
     return {
-        "dimension": "region",
-        "categories": region_list,
-        "series": series_data
+        "total": total,
+        "closed": closed,
+        "closedRate": round(closed / total * 100, 1) if total > 0 else 0,
+        "overdue": overdue,
+        "overdueRate": round(overdue / total * 100, 1) if total > 0 else 0,
+        "escalated": escalated,
+        "avgProcessingTime": avg_time,
+        "satisfactionRate": sat_rate
     }
 
 
-def get_duckdb_analysis(db: Session):
+def get_comparison_report(
+    db: Session,
+    region: Optional[str] = None,
+    period1_start: Optional[str] = None,
+    period1_end: Optional[str] = None,
+    period2_start: Optional[str] = None,
+    period2_end: Optional[str] = None
+) -> ComparisonReport:
+    now = datetime.now()
+    if not period1_end:
+        p1_end = now
+    else:
+        p1_end = datetime.fromisoformat(period1_end)
+    if not period1_start:
+        p1_start = p1_end - timedelta(days=30)
+    else:
+        p1_start = datetime.fromisoformat(period1_start)
+
+    if not period2_end:
+        p2_end = p1_start
+    else:
+        p2_end = datetime.fromisoformat(period2_end)
+    if not period2_start:
+        delta = p1_end - p1_start
+        p2_start = p2_end - delta
+    else:
+        p2_start = datetime.fromisoformat(period2_start)
+
+    def get_period(s, e):
+        q = db.query(Complaint).filter(and_(Complaint.created_at >= s, Complaint.created_at < e))
+        if region:
+            q = q.filter(Complaint.region == region)
+        return q.all()
+
+    p1_items = get_period(p1_start, p1_end)
+    p2_items = get_period(p2_start, p2_end)
+
+    s1 = _calc_period_stats(p1_items)
+    s2 = _calc_period_stats(p2_items)
+
+    return ComparisonReport(
+        period1=PeriodData(
+            start=p1_start.strftime("%Y-%m-%d"),
+            end=p1_end.strftime("%Y-%m-%d"),
+            **s1
+        ),
+        period2=PeriodData(
+            start=p2_start.strftime("%Y-%m-%d"),
+            end=p2_end.strftime("%Y-%m-%d"),
+            **s2
+        )
+    )
+
+
+def get_duckdb_analysis(db: Session) -> DuckDBAnalysis:
     os.makedirs(os.path.dirname(settings.DUCKDB_PATH), exist_ok=True)
-    
-    complaints = db.query(Complaint).all()
-    data = [{
-        "id": c.id,
-        "region": c.region,
-        "category": c.category,
-        "severity": c.severity,
-        "status": c.status,
-        "created_at": c.created_at,
-        "processing_time": c.processing_time,
-        "is_overdue": c.is_overdue,
-        "escalated": c.escalated,
-        "escalation_level": c.escalation_level,
-        "callback_result": c.callback_result,
-        "responsibility_dept": c.responsibility_dept
-    } for c in complaints]
-    
+
+    items = db.query(Complaint).all()
+    data = []
+    for c in items:
+        data.append({
+            "id": c.id,
+            "region": c.region,
+            "category": c.category,
+            "severity": c.severity,
+            "status": c.status,
+            "processing_time": c.processing_time or 0,
+            "is_overdue": 1 if c.is_overdue else 0,
+            "escalated": 1 if c.escalated else 0,
+            "responsibility_dept": c.responsibility_dept or "未分类",
+            "callback_result": c.callback_result,
+            "created_at": c.created_at.isoformat() if c.created_at else None
+        })
+
     df = pd.DataFrame(data)
-    
+
     conn = duckdb.connect(settings.DUCKDB_PATH)
-    conn.register("complaints", df)
-    
-    result = conn.execute("""
-        SELECT 
+    conn.execute("DROP TABLE IF EXISTS complaints")
+    conn.execute("CREATE TABLE complaints AS SELECT * FROM df")
+
+    region_summary = conn.execute("""
+        SELECT
             region,
             COUNT(*) as total,
-            AVG(processing_time) as avg_time,
-            SUM(CASE WHEN is_overdue THEN 1 ELSE 0 END) as overdue_count,
-            SUM(CASE WHEN escalated THEN 1 ELSE 0 END) as escalated_count
+            AVG(CASE WHEN processing_time > 0 THEN processing_time END) as avg_time,
+            SUM(is_overdue) as overdue_count,
+            SUM(escalated) as escalated_count
         FROM complaints
         GROUP BY region
         ORDER BY total DESC
-    """).fetchdf()
-    
-    dept_result = conn.execute("""
-        SELECT 
+    """).fetchall()
+
+    resp_summary = conn.execute("""
+        SELECT
             responsibility_dept,
             COUNT(*) as count,
-            ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM complaints WHERE responsibility_dept IS NOT NULL), 1) as percentage
+            ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM complaints WHERE responsibility_dept IS NOT NULL AND responsibility_dept != '未分类'), 1) as percentage
         FROM complaints
-        WHERE responsibility_dept IS NOT NULL
+        WHERE responsibility_dept IS NOT NULL AND responsibility_dept != '未分类'
         GROUP BY responsibility_dept
         ORDER BY count DESC
-    """).fetchdf()
-    
+    """).fetchall()
+
     conn.close()
-    
-    return {
-        "region_summary": result.to_dict('records'),
-        "responsibility_summary": dept_result.to_dict('records')
-    }
+
+    region_list = [DuckDBRegionSummary(
+        region=r[0], total=int(r[1]),
+        avg_time=round(float(r[2] or 0), 1),
+        overdue_count=int(r[3] or 0),
+        escalated_count=int(r[4] or 0)
+    ) for r in region_summary]
+
+    resp_list = [DuckDBResponsibilitySummary(
+        responsibility_dept=r[0],
+        count=int(r[1]),
+        percentage=round(float(r[2] or 0), 1)
+    ) for r in resp_summary]
+
+    return DuckDBAnalysis(regionSummary=region_list, responsibilitySummary=resp_list)

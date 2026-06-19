@@ -3,17 +3,26 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from app.core.config import settings
-from app.db.database import Base, engine
+from app.db.database import Base, engine, SessionLocal
+from app.db.seed import seed_database
 from app.api.complaints import router as complaints_router
 from app.api.escalations import router as escalations_router
 from app.api.sync import router as sync_router
 from app.api.reports import router as reports_router
 
-Base.metadata.create_all(bind=engine)
+
+def init_db():
+    Base.metadata.create_all(bind=engine)
+    db = SessionLocal()
+    try:
+        seed_database(db)
+    finally:
+        db.close()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    init_db()
     yield
 
 

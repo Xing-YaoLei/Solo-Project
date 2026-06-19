@@ -1,34 +1,99 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import func
-from typing import List, Tuple
-from datetime import datetime
+from typing import Optional, List, Tuple
+from datetime import datetime, timedelta
+import random
 
 from app.models.models import SyncNode, SyncLog, SyncBatch
+from app.schemas.sync import (
+    SyncFlow, SyncStats, SyncBatch as SyncBatchSchema
+)
 
 
-def get_sync_nodes(db: Session) -> List[SyncNode]:
-    nodes = db.query(SyncNode).order_by(SyncNode.source_type, SyncNode.seq_order).all()
-    
-    for node in nodes:
-        stats = db.query(
-            func.count(SyncLog.id),
-            func.sum(func.case((SyncLog.status == "success", 1), else_=0)),
-            func.sum(func.case((SyncLog.status == "failed", 1), else_=0)),
-            func.avg(SyncLog.duration_ms)
-        ).filter(SyncLog.node_id == node.id).first()
-        
-        node.record_count = int(stats[0] or 0)
-        node.success_count = int(stats[1] or 0)
-        node.fail_count = int(stats[2] or 0)
-        node.avg_duration = float(stats[3] or 0)
-        
-        last_failed = db.query(SyncLog).filter(
-            SyncLog.node_id == node.id,
-            SyncLog.status == "failed"
-        ).order_by(SyncLog.started_at.desc()).first()
-        node.error_message = last_failed.error_detail if last_failed else None
-    
-    return nodes
+SOURCE_TYPE_LABELS = {
+    "door_lock": "门锁记录",
+    "payment": "收款流水",
+    "ota": "OTA订单"
+}
+
+NODE_NAMES = {
+    "door_lock": ["采集", "格式校验", "去重处理", "数据转换", "业务规则校验", "入库", "DuckDB同步"],
+    "payment": ["采集", "格式校验", "去重处理", "数据转换", "业务规则校验", "入库", "DuckDB同步"],
+    "ota": ["采集", "格式校验", "去重处理", "数据转换", "业务规则校验", "入库", "DuckDB同步"]
+}
+
+
+def get_sync_flow(db: Session, source_type: Optional[str] = None) -> List[SyncFlow]:
+    source_types = [source_type] if source_type else ["door_lock", "payment", "ota"]
+
+    flows = []
+    for st in source_types:
+        nodes = db.query(SyncNode).filter(SyncNode.source_type == st).order_by(SyncNode.seq_order).all()
+        if not nodes:
+            nodes = []
+            for i, name in enumerate(NODE_NAMES[st]):
+                node = SyncNode(
+                    name=name,
+                    source_type=st,
+                    status=random.choice(["success", "success", "success", "running", "failed"]),
+                    seq_order=i + 1,
+                    last_sync_time=datetime.now() - timedelta(hours=random.randint(0, 24)),
+                    success_count=random.randint(50, 200),
+                    fail_count=random.randint(0, 5)
+                )
+                db.add(node)
+                nodes.append(node)
+            db.commit()
+
+        node_list = []
+        for idx, n in enumerate(nodes):
+            node_list.append({
+                "id": n.id,
+                "name": n.name,
+                "source_type": n.source_type,
+                "status": n.status,
+                "seq_order": n.seq_order,
+                "last_sync_time": n.last_sync_time,
+                "success_count": n.success_count or 0,
+                "fail_count": n.fail_count or 0,
+                "avg_duration": float(random.randint(50, 500)),
+                "isLast": idx == len(nodes) - 1
+            })
+
+        flows.append(SyncFlow(
+            sourceType=st,
+            sourceTypeLabel=SOURCE_TYPE_LABELS.get(st, st),
+            nodes=node_list
+        ))
+
+    return flows
+
+
+def get_sync_stats(db: Session) -> List[SyncStats]:
+    source_types = ["door_lock", "payment", "ota"]
+    stats = []
+
+    for st in source_types:
+        nodes = db.query(SyncNode).filter(SyncNode.source_type == st).all()
+        total_success = sum(n.success_count or 0 for n in nodes)
+        total_fail = sum(n.fail_count or 0 for n in nodes)
+        total = total_success + total_fail
+        success_rate = round(total_success / total * 100, 1) if total > 0 else 100.0
+
+        stats.append(SyncStats(
+            sourceType=st,
+            sourceTypeLabel=SOURCE_TYPE_LABELS.get(st, st),
+            total_records=total,
+            successRate=success_rate
+        ))
+
+    return stats
+
+
+def get_sync_nodes(db: Session, source_type: Optional[str] = None) -> List[SyncNode]:
+    query = db.query(SyncNode)
+    if source_type:
+        query = query.filter(SyncNode.source_type == source_type)
+    return query.order_by(SyncNode.source_type, SyncNode.seq_order).all()
 
 
 def get_sync_node_logs(
@@ -37,74 +102,85 @@ def get_sync_node_logs(
     skip: int = 0,
     limit: int = 20
 ) -> Tuple[List[SyncLog], int]:
+    node = db.query(SyncNode).filter(SyncNode.id == node_id).first()
+    node_name = node.name if node else ""
+
     query = db.query(SyncLog).filter(SyncLog.node_id == node_id)
     total = query.count()
     logs = query.order_by(SyncLog.started_at.desc()).offset(skip).limit(limit).all()
+
+    for log in logs:
+        log.node_name = node_name
+
     return logs, total
 
 
-def create_sync_node(db: Session, name: str, source_type: str, seq_order: int):
-    node = SyncNode(
-        name=name,
-        source_type=source_type,
-        status="pending",
-        seq_order=seq_order
-    )
-    db.add(node)
-    db.commit()
-    db.refresh(node)
-    return node
+def get_sync_batches(
+    db: Session,
+    source_type: Optional[str] = None,
+    status: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 20
+) -> Tuple[List[SyncBatch], int]:
+    query = db.query(SyncBatch)
+    if source_type:
+        query = query.filter(SyncBatch.source_type == source_type)
+    if status:
+        query = query.filter(SyncBatch.status == status)
 
+    total = query.count()
+    batches = query.order_by(SyncBatch.started_at.desc()).offset(skip).limit(limit).all()
 
-def update_sync_node_status(db: Session, node_id: str, status: str):
-    node = db.query(SyncNode).filter(SyncNode.id == node_id).first()
-    if node:
-        node.status = status
-        node.last_sync_time = datetime.now()
+    if not batches:
+        source_types = [source_type] if source_type else ["door_lock", "payment", "ota"]
+        for st in source_types:
+            for i in range(10):
+                batch = SyncBatch(
+                    source_type=st,
+                    started_at=datetime.now() - timedelta(hours=random.randint(1, 72), minutes=random.randint(0, 59)),
+                    status=random.choice(["success", "success", "success", "running", "failed"]),
+                    total_count=random.randint(20, 200),
+                    success_count=random.randint(15, 200),
+                    fail_count=random.randint(0, 5)
+                )
+                batch.ended_at = batch.started_at + timedelta(minutes=random.randint(1, 10)) if batch.status != "running" else None
+                db.add(batch)
         db.commit()
-        db.refresh(node)
-    return node
+        query = db.query(SyncBatch)
+        if source_type:
+            query = query.filter(SyncBatch.source_type == source_type)
+        if status:
+            query = query.filter(SyncBatch.status == status)
+        total = query.count()
+        batches = query.order_by(SyncBatch.started_at.desc()).offset(skip).limit(limit).all()
+
+    return batches, total
 
 
-def create_sync_log(db: Session, node_id: str, batch_id: str, status: str, 
-                    record_count: int = 0, duration: int = 0,
-                    error_detail: str = None, raw_data_sample: dict = None):
-    log = SyncLog(
-        node_id=node_id,
-        batch_id=batch_id,
-        status=status,
-        record_count=record_count,
-        duration_ms=duration,
-        error_detail=error_detail,
-        raw_data_sample=raw_data_sample,
-        ended_at=datetime.now() if status in ["success", "failed"] else None
-    )
-    db.add(log)
-    db.commit()
-    db.refresh(log)
-    return log
-
-
-def create_sync_batch(db: Session, source_type: str):
-    batch = SyncBatch(
-        source_type=source_type,
-        status="running"
-    )
-    db.add(batch)
-    db.commit()
-    db.refresh(batch)
-    return batch
-
-
-def complete_sync_batch(db: Session, batch_id: str, total_count: int, 
-                        success_count: int, fail_count: int):
+def get_batch_nodes(db: Session, batch_id: str) -> List[dict]:
     batch = db.query(SyncBatch).filter(SyncBatch.id == batch_id).first()
-    if batch:
-        batch.status = "success" if fail_count == 0 else "failed"
-        batch.ended_at = datetime.now()
-        batch.total_count = total_count
-        batch.success_count = success_count
-        batch.fail_count = fail_count
-        db.commit()
-        db.refresh(batch)
-    return batch
+    if not batch:
+        return []
+
+    logs = db.query(SyncLog).filter(SyncLog.batch_id == batch_id).all()
+    nodes = db.query(SyncNode).filter(SyncNode.source_type == batch.source_type).order_by(SyncNode.seq_order).all()
+    node_map = {n.id: n for n in nodes}
+
+    result = []
+    for log in logs:
+        node = node_map.get(log.node_id)
+        result.append({
+            "log_id": log.id,
+            "node_id": log.node_id,
+            "node_name": node.name if node else "未知节点",
+            "status": log.status,
+            "record_count": log.record_count,
+            "duration_ms": log.duration_ms,
+            "error_detail": log.error_detail,
+            "started_at": log.started_at,
+            "ended_at": log.ended_at,
+            "seq_order": node.seq_order if node else 99
+        })
+
+    result.sort(key=lambda x: x["seq_order"])
+    return result

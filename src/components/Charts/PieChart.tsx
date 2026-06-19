@@ -9,9 +9,10 @@ interface PieChartDataItem {
 interface PieChartProps {
   data: PieChartDataItem[];
   height?: number;
+  onClick?: (item: PieChartDataItem) => void;
 }
 
-export function PieChart({ data, height = 250 }: PieChartProps) {
+export function PieChart({ data, height = 250, onClick }: PieChartProps) {
   const chartRef = useRef<HTMLDivElement>(null);
   const chartInstance = useRef<echarts.ECharts | null>(null);
 
@@ -80,7 +81,15 @@ export function PieChart({ data, height = 250 }: PieChartProps) {
     };
 
     chartInstance.current.setOption(option);
+if (onClick) {
+      chartInstance.current.on('click', (params: any) => {
+        if (params.data) {
+          onClick({ name: params.data.name, value: params.data.value });
+        }
+      });
+    }
 
+    
     const handleResize = () => chartInstance.current?.resize();
     window.addEventListener('resize', handleResize);
 
