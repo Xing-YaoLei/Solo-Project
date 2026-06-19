@@ -1,0 +1,177 @@
+<div class="px-4 sm:px-6 lg:px-8">
+  <div class="sm:flex sm:items-center sm:justify-between">
+    <div>
+      <h1 class="text-xl font-semibold text-gray-900">异常记录详情</h1>
+      <p class="mt-1 text-sm text-gray-500"><%= @exception_record.title %></p>
+    </div>
+    <div class="mt-4 flex gap-2 sm:ml-16 sm:mt-0">
+      <%= link_to "返回列表", exception_records_path, class: "inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50" %>
+    </div>
+  </div>
+
+  <div class="mt-6 grid grid-cols-1 gap-x-6 gap-y-8 lg:grid-cols-3">
+    <div class="lg:col-span-2 rounded-lg border border-gray-200 bg-white p-6">
+      <h2 class="text-base font-semibold text-gray-900 mb-4">异常信息</h2>
+      <dl class="divide-y divide-gray-200">
+        <div class="py-3 flex justify-between">
+          <dt class="text-sm font-medium text-gray-500">异常类型</dt>
+          <dd class="text-sm text-gray-900"><%= t("enums.exception_record.exception_type.#{@exception_record.exception_type}", default: @exception_record.exception_type) %></dd>
+        </div>
+        <div class="py-3 flex justify-between">
+          <dt class="text-sm font-medium text-gray-500">标题</dt>
+          <dd class="text-sm text-gray-900"><%= @exception_record.title %></dd>
+        </div>
+        <div class="py-3">
+          <dt class="text-sm font-medium text-gray-500">描述</dt>
+          <dd class="mt-1 text-sm text-gray-900"><%= @exception_record.description %></dd>
+        </div>
+        <div class="py-3">
+          <dt class="text-sm font-medium text-gray-500">影响范围</dt>
+          <dd class="mt-1 text-sm text-gray-900"><%= @exception_record.impact_scope %></dd>
+        </div>
+        <div class="py-3 flex justify-between">
+          <dt class="text-sm font-medium text-gray-500">责任人</dt>
+          <dd class="text-sm text-gray-900"><%= @exception_record.responsible_person || "-" %></dd>
+        </div>
+        <div class="py-3 flex justify-between">
+          <dt class="text-sm font-medium text-gray-500">指派给</dt>
+          <dd class="text-sm text-gray-900"><%= @exception_record.assignee || "-" %></dd>
+        </div>
+        <div class="py-3 flex justify-between">
+          <dt class="text-sm font-medium text-gray-500">状态</dt>
+          <dd class="text-sm">
+            <% status_colors = { open: "bg-red-100 text-red-800", assigned: "bg-yellow-100 text-yellow-800", resolving: "bg-blue-100 text-blue-800", closed: "bg-green-100 text-green-800" } %>
+            <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium <%= status_colors[@exception_record.status.to_sym] || "bg-gray-100 text-gray-800" %>"><%= t("enums.exception_record.status.#{@exception_record.status}", default: @exception_record.status) %></span>
+          </dd>
+        </div>
+        <div class="py-3 flex justify-between">
+          <dt class="text-sm font-medium text-gray-500">关联订单</dt>
+          <dd class="text-sm font-medium text-indigo-600"><%= link_to @exception_record.order&.order_no, order_path(@exception_record.order) %></dd>
+        </div>
+        <div class="py-3 flex justify-between">
+          <dt class="text-sm font-medium text-gray-500">关联票券</dt>
+          <dd class="text-sm font-medium text-indigo-600">
+            <% if @exception_record.ticket %>
+              <%= link_to @exception_record.ticket.ticket_no, ticket_path(@exception_record.ticket) %>
+            <% else %>
+              -
+            <% end %>
+          </dd>
+        </div>
+        <% if @exception_record.resolution.present? %>
+          <div class="py-3">
+            <dt class="text-sm font-medium text-gray-500">解决方案</dt>
+            <dd class="mt-1 text-sm text-gray-900"><%= @exception_record.resolution %></dd>
+          </div>
+        <% end %>
+        <% if @exception_record.conclusion.present? %>
+          <div class="py-3">
+            <dt class="text-sm font-medium text-gray-500">结论</dt>
+            <dd class="mt-1 text-sm text-gray-900"><%= @exception_record.conclusion %></dd>
+          </div>
+        <% end %>
+        <div class="py-3 flex justify-between">
+          <dt class="text-sm font-medium text-gray-500">关闭时间</dt>
+          <dd class="text-sm text-gray-900"><%= @exception_record.closed_at&.strftime("%Y-%m-%d %H:%M:%S") || "-" %></dd>
+        </div>
+        <div class="py-3 flex justify-between">
+          <dt class="text-sm font-medium text-gray-500">创建时间</dt>
+          <dd class="text-sm text-gray-900"><%= @exception_record.created_at.strftime("%Y-%m-%d %H:%M:%S") %></dd>
+        </div>
+      </dl>
+    </div>
+
+    <div class="space-y-6">
+      <div class="rounded-lg border border-gray-200 bg-white p-6">
+        <h2 class="text-base font-semibold text-gray-900 mb-4">操作</h2>
+        <div class="space-y-4">
+          <% if @exception_record.may_assign? %>
+            <div>
+              <h3 class="text-sm font-medium text-gray-700 mb-2">指派</h3>
+              <%= form_with url: assign_exception_record_path(@exception_record), method: :post, local: true do |f| %>
+                <%= f.text_field :assignee, placeholder: "输入指派人", class: "block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm mb-2" %>
+                <%= f.submit "指派", class: "inline-flex w-full justify-center items-center rounded-md bg-yellow-500 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-yellow-400" %>
+              <% end %>
+            </div>
+          <% end %>
+
+          <% if @exception_record.may_resolve? %>
+            <div>
+              <h3 class="text-sm font-medium text-gray-700 mb-2">解决</h3>
+              <%= form_with url: resolve_exception_record_path(@exception_record), method: :post, local: true do |f| %>
+                <%= f.text_area :resolution, placeholder: "输入解决方案", rows: 3, class: "block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm mb-2" %>
+                <%= f.text_area :conclusion, placeholder: "输入结论", rows: 2, class: "block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm mb-2" %>
+                <%= f.submit "解决", class: "inline-flex w-full justify-center items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500" %>
+              <% end %>
+            </div>
+          <% end %>
+
+          <% if @exception_record.may_close? %>
+            <div>
+              <h3 class="text-sm font-medium text-gray-700 mb-2">关闭</h3>
+              <%= form_with url: close_exception_record_path(@exception_record), method: :post, local: true do |f| %>
+                <%= f.text_area :conclusion, placeholder: "输入关闭结论", rows: 3, class: "block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm mb-2" %>
+                <%= f.submit "关闭", class: "inline-flex w-full justify-center items-center rounded-md bg-gray-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-500" %>
+              <% end %>
+            </div>
+          <% end %>
+
+          <% unless @exception_record.may_assign? || @exception_record.may_resolve? || @exception_record.may_close? %>
+            <p class="text-sm text-gray-500">当前状态无可用操作</p>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-6 rounded-lg border border-gray-200 bg-white p-6">
+    <h2 class="text-base font-semibold text-gray-900 mb-4">状态流转时间线</h2>
+    <% if @status_logs.any? %>
+      <div class="flow-root">
+        <ul class="-mb-8">
+          <% @status_logs.each_with_index do |log, idx| %>
+            <li>
+              <div class="relative pb-8">
+                <% unless idx == @status_logs.length - 1 %>
+                  <span class="absolute left-4 top-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true"></span>
+                <% end %>
+                <div class="relative flex space-x-3">
+                  <div>
+                    <% log_color = case log.to_state
+                       when "open" then "bg-red-50 text-red-600"
+                       when "assigned" then "bg-yellow-50 text-yellow-600"
+                       when "resolving" then "bg-blue-50 text-blue-600"
+                       when "closed" then "bg-green-50 text-green-600"
+                       else "bg-gray-50 text-gray-600"
+                       end %>
+                    <span class="flex h-8 w-8 items-center justify-center rounded-full <%= log_color %> ring-8 ring-white">
+                      <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
+                      </svg>
+                    </span>
+                  </div>
+                  <div class="flex min-w-0 flex-1 justify-between space-x-4 pt-1.5">
+                    <div>
+                      <p class="text-sm text-gray-700">
+                        <span class="font-medium"><%= log.event %></span>：<%= log.from_state %> → <%= log.to_state %>
+                      </p>
+                      <% if log.reason.present? %>
+                        <p class="mt-1 text-xs text-gray-500">原因：<%= log.reason %></p>
+                      <% end %>
+                    </div>
+                    <div class="whitespace-nowrap text-right text-xs text-gray-500">
+                      <p><%= log.operator %></p>
+                      <p><%= log.created_at.strftime("%m-%d %H:%M") %></p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    <% else %>
+      <p class="text-sm text-gray-500">暂无状态流转记录</p>
+    <% end %>
+  </div>
+</div>

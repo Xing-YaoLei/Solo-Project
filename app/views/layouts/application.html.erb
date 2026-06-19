@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title><%= content_for(:title) || "景区运营演出排期结算台" %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="景区运营演出排期结算台">
+    <meta name="mobile-web-app-capable" content="yes">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+
+    <%= yield :head %>
+
+    <link rel="icon" href="/icon.png" type="image/png">
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/icon.png">
+
+    <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
+    <%= javascript_include_tag "application", "data-turbo-track": "reload", type: "module" %>
+  </head>
+
+  <body class="bg-gray-50 min-h-screen">
+    <div class="flex min-h-screen">
+      <aside class="w-64 bg-indigo-900 text-white flex-shrink-0 flex flex-col">
+        <div class="p-6 border-b border-indigo-800">
+          <h1 class="text-xl font-bold tracking-wide">🎭 演出结算台</h1>
+          <p class="text-indigo-300 text-xs mt-1">景区运营排期结算</p>
+        </div>
+        <nav class="flex-1 py-4">
+          <ul class="space-y-1">
+            <li>
+              <%= link_to root_path, class: "flex items-center px-6 py-3 text-sm hover:bg-indigo-800 #{current_page?(controller: 'dashboard') ? 'bg-indigo-800 border-r-4 border-white' : ''}" do %>
+                <span class="mr-3">📊</span>仪表盘
+              <% end %>
+            </li>
+            <li>
+              <%= link_to performances_path, class: "flex items-center px-6 py-3 text-sm hover:bg-indigo-800 #{current_page?(controller: 'performances') ? 'bg-indigo-800 border-r-4 border-white' : ''}" do %>
+                <span class="mr-3">🗓️</span>演出排期
+              <% end %>
+            </li>
+            <li>
+              <%= link_to orders_path, class: "flex items-center px-6 py-3 text-sm hover:bg-indigo-800 #{current_page?(controller: 'orders') ? 'bg-indigo-800 border-r-4 border-white' : ''}" do %>
+                <span class="mr-3">📋</span>订单管理
+              <% end %>
+            </li>
+            <li>
+              <%= link_to tickets_path, class: "flex items-center px-6 py-3 text-sm hover:bg-indigo-800 #{current_page?(controller: 'tickets') ? 'bg-indigo-800 border-r-4 border-white' : ''}" do %>
+                <span class="mr-3">🎫</span>票券管理
+              <% end %>
+            </li>
+            <li>
+              <%= link_to checkin_codes_path, class: "flex items-center px-6 py-3 text-sm hover:bg-indigo-800 #{current_page?(controller: 'checkin_codes') ? 'bg-indigo-800 border-r-4 border-white' : ''}" do %>
+                <span class="mr-3">✅</span>签到码
+              <% end %>
+            </li>
+            <li>
+              <%= link_to sponsors_path, class: "flex items-center px-6 py-3 text-sm hover:bg-indigo-800 #{current_page?(controller: 'sponsors') ? 'bg-indigo-800 border-r-4 border-white' : ''}" do %>
+                <span class="mr-3">🤝</span>赞助商
+              <% end %>
+            </li>
+            <li>
+              <%= link_to exception_records_path, class: "flex items-center px-6 py-3 text-sm hover:bg-indigo-800 #{current_page?(controller: 'exception_records') ? 'bg-indigo-800 border-r-4 border-white' : ''}" do %>
+                <span class="mr-3">⚠️</span>异常单
+              <% end %>
+            </li>
+            <li>
+              <%= link_to status_logs_path, class: "flex items-center px-6 py-3 text-sm hover:bg-indigo-800 #{current_page?(controller: 'status_logs') ? 'bg-indigo-800 border-r-4 border-white' : ''}" do %>
+                <span class="mr-3">📝</span>状态日志
+              <% end %>
+            </li>
+            <li>
+              <%= link_to reports_verification_efficiency_path, class: "flex items-center px-6 py-3 text-sm hover:bg-indigo-800 #{request.path.start_with?('/reports') ? 'bg-indigo-800 border-r-4 border-white' : ''}" do %>
+                <span class="mr-3">📈</span>核销报表
+              <% end %>
+            </li>
+          </ul>
+        </nav>
+        <div class="p-4 border-t border-indigo-800 text-xs text-indigo-400">
+          © <%= Date.today.year %> 景区运营演出排期结算台
+        </div>
+      </aside>
+
+      <main class="flex-1 flex flex-col">
+        <% if notice %>
+          <div class="bg-green-50 border-l-4 border-green-400 p-4 m-4 rounded" role="alert">
+            <p class="text-sm text-green-700"><%= notice %></p>
+          </div>
+        <% end %>
+
+        <% if alert %>
+          <div class="bg-red-50 border-l-4 border-red-400 p-4 m-4 rounded" role="alert">
+            <p class="text-sm text-red-700"><%= alert %></p>
+          </div>
+        <% end %>
+
+        <div class="flex-1 p-6">
+          <%= yield %>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>

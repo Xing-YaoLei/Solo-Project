@@ -1,0 +1,84 @@
+<div class="px-4 sm:px-6 lg:px-8">
+  <div class="sm:flex sm:items-center sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">订单管理</h1>
+      <p class="mt-1 text-sm text-gray-500">查看和管理所有订单信息</p>
+    </div>
+    <div class="mt-4 sm:mt-0">
+      <%= link_to "导出订单", export_orders_path(status: params[:status], payment_method: params[:payment_method]), class: "inline-flex items-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500" %>
+    </div>
+  </div>
+
+  <div class="mt-6 bg-white shadow-sm ring-1 ring-gray-900/5 rounded-xl">
+    <div class="border-b border-gray-200 px-6 py-4">
+      <form class="flex flex-wrap gap-3 items-end" method="get">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">状态</label>
+          <select name="status" class="rounded-md border-gray-300 bg-white py-2 pl-3 pr-10 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+            <option value="">全部状态</option>
+            <option value="pending" <%= "selected" if params[:status] == "pending" %>>待支付</option>
+            <option value="paid" <%= "selected" if params[:status] == "paid" %>>已支付</option>
+            <option value="confirmed" <%= "selected" if params[:status] == "confirmed" %>>已确认</option>
+            <option value="cancelled" <%= "selected" if params[:status] == "cancelled" %>>已取消</option>
+            <option value="refunded" <%= "selected" if params[:status] == "refunded" %>>已退款</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">支付方式</label>
+          <select name="payment_method" class="rounded-md border-gray-300 bg-white py-2 pl-3 pr-10 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+            <option value="">全部方式</option>
+            <option value="cash" <%= "selected" if params[:payment_method] == "cash" %>>现金</option>
+            <option value="wechat" <%= "selected" if params[:payment_method] == "wechat" %>>微信</option>
+            <option value="alipay" <%= "selected" if params[:payment_method] == "alipay" %>>支付宝</option>
+            <option value="card" <%= "selected" if params[:payment_method] == "card" %>>银行卡</option>
+          </select>
+        </div>
+        <button type="submit" class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500">筛选</button>
+        <%= link_to "重置", orders_path, class: "rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50" %>
+      </form>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-gray-300">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="py-3.5 pl-6 pr-3 text-left text-sm font-semibold text-gray-900">订单号</th>
+            <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">客户姓名</th>
+            <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">金额</th>
+            <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">支付方式</th>
+            <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">状态</th>
+            <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">创建时间</th>
+            <th class="py-3.5 pl-3 pr-6 text-right text-sm font-semibold text-gray-900">操作</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200 bg-white">
+          <% @orders.each do |order| %>
+            <tr class="hover:bg-gray-50">
+              <td class="whitespace-nowrap py-4 pl-6 pr-3 text-sm font-medium text-indigo-600">
+                <%= link_to order.order_no, order_path(order) %>
+              </td>
+              <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-900"><%= order.customer_name %></td>
+              <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-900">¥<%= number_with_precision(order.total_amount, precision: 2) %></td>
+              <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                <% payment_labels = { "cash" => "现金", "wechat" => "微信", "alipay" => "支付宝", "card" => "银行卡" } %>
+                <%= payment_labels[order.payment_method] %>
+              </td>
+              <td class="whitespace-nowrap px-3 py-4 text-sm">
+                <% status_styles = { "pending" => "bg-yellow-100 text-yellow-800", "paid" => "bg-blue-100 text-blue-800", "confirmed" => "bg-green-100 text-green-800", "cancelled" => "bg-gray-100 text-gray-800", "refunded" => "bg-red-100 text-red-800" } %>
+                <% status_labels = { "pending" => "待支付", "paid" => "已支付", "confirmed" => "已确认", "cancelled" => "已取消", "refunded" => "已退款" } %>
+                <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium <%= status_styles[order.status] %>"><%= status_labels[order.status] %></span>
+              </td>
+              <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500"><%= l(order.created_at, format: :short) %></td>
+              <td class="whitespace-nowrap py-4 pl-3 pr-6 text-right text-sm">
+                <%= link_to "查看", order_path(order), class: "text-indigo-600 hover:text-indigo-900" %>
+                <%= link_to "编辑", edit_order_path(order), class: "ml-3 text-indigo-600 hover:text-indigo-900" %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+
+    <%= pagination_links(pagination_info) %>
+  </div>
+</div>

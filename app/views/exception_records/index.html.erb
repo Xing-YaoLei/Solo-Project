@@ -1,0 +1,61 @@
+<div class="px-4 sm:px-6 lg:px-8">
+  <div class="sm:flex sm:items-center sm:justify-between">
+    <div class="sm:flex-auto">
+      <h1 class="text-xl font-semibold text-gray-900">异常记录管理</h1>
+      <p class="mt-2 text-sm text-gray-700">查看和管理所有异常记录</p>
+    </div>
+    <div class="mt-4 sm:ml-16 sm:mt-0">
+      <%= link_to "导出", export_exception_records_path(request.query_parameters), class: "inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50" %>
+    </div>
+  </div>
+
+  <div class="mt-4 flex gap-3">
+    <%= form_with url: exception_records_path, method: :get, class: "flex gap-3", local: true do |f| %>
+      <%= f.select :status, ExceptionRecord.statuses.keys.map { |s| [t("enums.exception_record.status.#{s}", default: s), s] }, { include_blank: "全部状态", selected: params[:status] }, class: "rounded-md border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500" %>
+      <%= f.select :exception_type, ExceptionRecord.exception_types.keys.map { |s| [t("enums.exception_record.exception_type.#{s}", default: s), s] }, { include_blank: "全部类型", selected: params[:exception_type] }, class: "rounded-md border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500" %>
+      <%= f.submit "筛选", class: "inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500" %>
+    <% end %>
+  </div>
+
+  <div class="mt-6 flow-root">
+    <div class="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+      <div class="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
+        <table class="min-w-full divide-y divide-gray-300">
+          <thead>
+            <tr>
+              <th class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900">类型</th>
+              <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">标题</th>
+              <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">状态</th>
+              <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">影响范围</th>
+              <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">责任人</th>
+              <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">指派给</th>
+              <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">创建时间</th>
+              <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">操作</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200">
+            <% @exception_records.each do |er| %>
+              <tr class="hover:bg-gray-50">
+                <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-500"><%= t("enums.exception_record.exception_type.#{er.exception_type}", default: er.exception_type) %></td>
+                <td class="whitespace-nowrap px-3 py-4 text-sm font-medium text-indigo-600"><%= link_to er.title, exception_record_path(er) %></td>
+                <td class="whitespace-nowrap px-3 py-4 text-sm">
+                  <% status_colors = { open: "bg-red-100 text-red-800", assigned: "bg-yellow-100 text-yellow-800", resolving: "bg-blue-100 text-blue-800", closed: "bg-green-100 text-green-800" } %>
+                  <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium <%= status_colors[er.status.to_sym] || "bg-gray-100 text-gray-800" %>"><%= t("enums.exception_record.status.#{er.status}", default: er.status) %></span>
+                </td>
+                <td class="px-3 py-4 text-sm text-gray-500 max-w-xs truncate"><%= er.impact_scope %></td>
+                <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500"><%= er.responsible_person || "-" %></td>
+                <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500"><%= er.assignee || "-" %></td>
+                <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500"><%= er.created_at.strftime("%Y-%m-%d %H:%M") %></td>
+                <td class="whitespace-nowrap px-3 py-4 text-sm">
+                  <%= link_to "查看", exception_record_path(er), class: "text-indigo-600 hover:text-indigo-900" %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <%= pagination_links(pagination_info) %>
+</div>

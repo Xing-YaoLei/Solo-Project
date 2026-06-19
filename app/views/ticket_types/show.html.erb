@@ -1,0 +1,164 @@
+<div class="px-4 sm:px-6 lg:px-8">
+  <div class="sm:flex sm:items-center sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900"><%= @ticket_type.name %></h1>
+      <p class="mt-1 text-sm text-gray-500">票种详情 · <%= @performance.name %></p>
+    </div>
+    <div class="mt-4 sm:mt-0 flex gap-3">
+      <%= link_to "编辑", edit_performance_ticket_type_path(@performance, @ticket_type), class: "inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500" %>
+      <%= link_to "返回演出", performance_path(@performance), class: "inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50" %>
+    </div>
+  </div>
+
+  <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+    <div class="bg-white shadow-sm ring-1 ring-gray-900/5 rounded-xl">
+      <div class="border-b border-gray-200 px-6 py-4">
+        <h2 class="text-base font-semibold text-gray-900">基本信息</h2>
+      </div>
+      <dl class="divide-y divide-gray-100 px-6">
+        <div class="flex justify-between py-3">
+          <dt class="text-sm text-gray-500">名称</dt>
+          <dd class="text-sm font-medium text-gray-900"><%= @ticket_type.name %></dd>
+        </div>
+        <div class="flex justify-between py-3">
+          <dt class="text-sm text-gray-500">价格</dt>
+          <dd class="text-sm font-medium text-gray-900"><%= number_to_currency(@ticket_type.price, unit: "¥") %></dd>
+        </div>
+        <div class="flex justify-between py-3">
+          <dt class="text-sm text-gray-500">开售时间</dt>
+          <dd class="text-sm font-medium text-gray-900"><%= l(@ticket_type.sale_start_time, format: :long) if @ticket_type.sale_start_time %></dd>
+        </div>
+        <div class="flex justify-between py-3">
+          <dt class="text-sm text-gray-500">停售时间</dt>
+          <dd class="text-sm font-medium text-gray-900"><%= l(@ticket_type.sale_end_time, format: :long) if @ticket_type.sale_end_time %></dd>
+        </div>
+        <div class="flex justify-between py-3">
+          <dt class="text-sm text-gray-500">最大购买数量</dt>
+          <dd class="text-sm font-medium text-gray-900"><%= @ticket_type.max_quantity || "不限" %></dd>
+        </div>
+        <div class="flex justify-between py-3">
+          <dt class="text-sm text-gray-500">最小购买数量</dt>
+          <dd class="text-sm font-medium text-gray-900"><%= @ticket_type.min_quantity || "不限" %></dd>
+        </div>
+        <div class="flex justify-between py-3">
+          <dt class="text-sm text-gray-500">退票政策</dt>
+          <dd class="text-sm font-medium text-gray-900"><%= @ticket_type.refund_policy %></dd>
+        </div>
+        <div class="flex justify-between py-3">
+          <dt class="text-sm text-gray-500">状态</dt>
+          <dd>
+            <span class="<%= case @ticket_type.status
+                             when 'inactive' then 'bg-gray-100 text-gray-700'
+                             when 'active' then 'bg-green-100 text-green-700'
+                             when 'sold_out' then 'bg-yellow-100 text-yellow-700'
+                             when 'suspended' then 'bg-red-100 text-red-700'
+                             end %> inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium">
+              <%= @ticket_type.status %>
+            </span>
+          </dd>
+        </div>
+        <% if @ticket_type.description.present? %>
+          <div class="py-3">
+            <dt class="text-sm text-gray-500 mb-1">描述</dt>
+            <dd class="text-sm text-gray-900"><%= @ticket_type.description %></dd>
+          </div>
+        <% end %>
+      </dl>
+    </div>
+
+    <div class="bg-white shadow-sm ring-1 ring-gray-900/5 rounded-xl">
+      <div class="border-b border-gray-200 px-6 py-4">
+        <h2 class="text-base font-semibold text-gray-900">销售统计</h2>
+      </div>
+      <div class="px-6 py-4">
+        <div class="grid grid-cols-2 gap-4">
+          <div class="rounded-lg bg-indigo-50 p-4 text-center">
+            <p class="text-2xl font-bold text-indigo-700"><%= @ticket_type.sold_count %></p>
+            <p class="text-sm text-indigo-600">已售数量</p>
+          </div>
+          <div class="rounded-lg bg-gray-50 p-4 text-center">
+            <p class="text-2xl font-bold text-gray-700"><%= @ticket_type.remaining_count || "不限" %></p>
+            <p class="text-sm text-gray-600">剩余数量</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-6 bg-white shadow-sm ring-1 ring-gray-900/5 rounded-xl">
+    <div class="border-b border-gray-200 px-6 py-4">
+      <h2 class="text-base font-semibold text-gray-900">票券列表</h2>
+    </div>
+    <% if @tickets.any? %>
+      <table class="min-w-full divide-y divide-gray-300">
+        <thead class="bg-gray-50">
+          <tr>
+            <th scope="col" class="py-3.5 pl-6 pr-3 text-left text-sm font-semibold text-gray-900">票号</th>
+            <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">状态</th>
+            <th scope="col" class="relative py-3.5 pr-6 pl-3 text-right text-sm font-semibold text-gray-900">操作</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200 bg-white">
+          <% @tickets.each do |t| %>
+            <tr class="hover:bg-gray-50">
+              <td class="whitespace-nowrap py-4 pl-6 pr-3 text-sm font-medium text-gray-900">
+                <%= link_to t.ticket_no, ticket_path(t), class: "text-indigo-600 hover:text-indigo-500" %>
+              </td>
+              <td class="whitespace-nowrap px-3 py-4 text-sm">
+                <span class="<%= case t.status
+                                 when 'reserved' then 'bg-yellow-100 text-yellow-700'
+                                 when 'issued' then 'bg-blue-100 text-blue-700'
+                                 when 'checked_in' then 'bg-green-100 text-green-700'
+                                 when 'cancelled' then 'bg-red-100 text-red-700'
+                                 when 'expired' then 'bg-gray-100 text-gray-700'
+                                 end %> inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium">
+                  <%= t.status %>
+                </span>
+              </td>
+              <td class="whitespace-nowrap py-4 pr-6 pl-3 text-right text-sm">
+                <%= link_to "查看", ticket_path(t), class: "text-indigo-600 hover:text-indigo-500" %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% else %>
+      <div class="py-12 text-center">
+        <p class="text-sm text-gray-500">暂无票券数据</p>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="mt-6 bg-white shadow-sm ring-1 ring-gray-900/5 rounded-xl">
+    <div class="border-b border-gray-200 px-6 py-4">
+      <h2 class="text-base font-semibold text-gray-900">状态流转记录</h2>
+    </div>
+    <% if @status_logs.any? %>
+      <div class="px-6 py-4">
+        <ol class="relative border-l border-gray-200">
+          <% @status_logs.each do |log| %>
+            <li class="mb-6 ml-6">
+              <div class="absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full border-2 border-white bg-indigo-500"></div>
+              <time class="mb-1 text-xs font-normal text-gray-400"><%= l(log.created_at, format: :long) %></time>
+              <div class="mt-1">
+                <p class="text-sm font-medium text-gray-900">
+                  <span class="text-gray-600"><%= log.from_state %></span>
+                  <span class="mx-2 text-gray-400">→</span>
+                  <span class="text-indigo-600"><%= log.to_state %></span>
+                </p>
+                <p class="text-xs text-gray-500">操作：<%= log.event %> · 执行人：<%= log.operator %></p>
+                <% if log.reason.present? %>
+                  <p class="text-xs text-gray-500">原因：<%= log.reason %></p>
+                <% end %>
+              </div>
+            </li>
+          <% end %>
+        </ol>
+      </div>
+    <% else %>
+      <div class="py-12 text-center">
+        <p class="text-sm text-gray-500">暂无状态流转记录</p>
+      </div>
+    <% end %>
+  </div>
+</div>

@@ -1,0 +1,58 @@
+<div class="px-4 sm:px-6 lg:px-8">
+  <div class="sm:flex sm:items-center">
+    <div class="sm:flex-auto">
+      <h1 class="text-xl font-semibold text-gray-900">编辑赞助记录</h1>
+      <p class="mt-1 text-sm text-gray-500"><%= @sponsor.name %> - <%= @sponsorship.performance&.name %></p>
+    </div>
+    <div class="mt-4 sm:ml-16 sm:mt-0">
+      <%= link_to "返回详情", sponsor_sponsorship_path(@sponsor, @sponsorship), class: "inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50" %>
+    </div>
+  </div>
+
+  <div class="mt-6 max-w-2xl">
+    <%= render "shared/error_messages", object: @sponsorship %>
+
+    <%= form_with model: [@sponsor, @sponsorship], local: true, class: "space-y-6" do |f| %>
+      <div class="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
+        <div class="sm:col-span-2">
+          <%= f.label :performance_id, "演出", class: "block text-sm font-medium text-gray-900" %>
+          <%= f.select :performance_id, @performances.map { |p| [p.name, p.id] }, {}, class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" %>
+        </div>
+
+        <div>
+          <%= f.label :amount, "金额", class: "block text-sm font-medium text-gray-900" %>
+          <div class="mt-1 relative rounded-md shadow-sm">
+            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+              <span class="text-gray-500 sm:text-sm">¥</span>
+            </div>
+            <%= f.number_field :amount, step: "0.01", class: "block w-full rounded-md border-gray-300 pl-7 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" %>
+          </div>
+        </div>
+
+        <div>
+          <%= f.label :sponsorship_type, "赞助类型", class: "block text-sm font-medium text-gray-900" %>
+          <%= f.select :sponsorship_type, Sponsorship.sponsorship_types.keys.map { |s| [t("enums.sponsorship.sponsorship_type.#{s}", default: s), s] }, {}, class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" %>
+        </div>
+
+        <div class="sm:col-span-2">
+          <%= f.label :benefits, "权益说明", class: "block text-sm font-medium text-gray-900" %>
+          <%= f.text_area :benefits, rows: 3, class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" %>
+        </div>
+
+        <div>
+          <%= f.label :start_date, "开始日期", class: "block text-sm font-medium text-gray-900" %>
+          <%= f.date_field :start_date, class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" %>
+        </div>
+
+        <div>
+          <%= f.label :end_date, "结束日期", class: "block text-sm font-medium text-gray-900" %>
+          <%= f.date_field :end_date, class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" %>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-3 pt-4">
+        <%= f.submit "保存修改", class: "inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500" %>
+      </div>
+    <% end %>
+  </div>
+</div>

@@ -1,0 +1,201 @@
+<div class="px-4 sm:px-6 lg:px-8">
+  <div class="sm:flex sm:items-center sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">订单详情</h1>
+      <p class="mt-1 text-sm text-gray-500">订单号：<%= @order.order_no %></p>
+    </div>
+    <div class="mt-4 flex gap-3 sm:mt-0">
+      <% if @order.may_confirm? %>
+        <%= button_to "确认", confirm_order_path(@order), method: :post, class: "rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500" %>
+      <% end %>
+      <% if @order.may_cancel? %>
+        <%= button_to "取消", cancel_order_path(@order), method: :post, class: "rounded-md bg-gray-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-500" %>
+      <% end %>
+      <% if @order.may_refund? %>
+        <%= button_to "退款", refund_order_path(@order), method: :post, class: "rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500" %>
+      <% end %>
+      <%= button_to "创建异常单", create_exception_order_path(@order), method: :post, class: "rounded-md bg-orange-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-500" %>
+      <%= link_to "返回列表", orders_path, class: "rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50" %>
+    </div>
+  </div>
+
+  <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
+    <div class="lg:col-span-2 space-y-6">
+      <div class="bg-white shadow-sm ring-1 ring-gray-900/5 rounded-xl">
+        <div class="px-6 py-4 border-b border-gray-200">
+          <h2 class="text-base font-semibold text-gray-900">订单信息</h2>
+        </div>
+        <div class="px-6 py-5">
+          <dl class="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
+            <div>
+              <dt class="text-sm font-medium text-gray-500">订单号</dt>
+              <dd class="mt-1 text-sm text-gray-900"><%= @order.order_no %></dd>
+            </div>
+            <div>
+              <dt class="text-sm font-medium text-gray-500">客户姓名</dt>
+              <dd class="mt-1 text-sm text-gray-900"><%= @order.customer_name %></dd>
+            </div>
+            <div>
+              <dt class="text-sm font-medium text-gray-500">客户电话</dt>
+              <dd class="mt-1 text-sm text-gray-900"><%= @order.customer_phone %></dd>
+            </div>
+            <div>
+              <dt class="text-sm font-medium text-gray-500">客户邮箱</dt>
+              <dd class="mt-1 text-sm text-gray-900"><%= @order.customer_email %></dd>
+            </div>
+            <div>
+              <dt class="text-sm font-medium text-gray-500">金额</dt>
+              <dd class="mt-1 text-sm text-gray-900">¥<%= number_with_precision(@order.total_amount, precision: 2) %></dd>
+            </div>
+            <div>
+              <dt class="text-sm font-medium text-gray-500">支付方式</dt>
+              <dd class="mt-1 text-sm text-gray-900">
+                <% payment_labels = { "cash" => "现金", "wechat" => "微信", "alipay" => "支付宝", "card" => "银行卡" } %>
+                <%= payment_labels[@order.payment_method] %>
+              </dd>
+            </div>
+            <div>
+              <dt class="text-sm font-medium text-gray-500">状态</dt>
+              <dd class="mt-1">
+                <% status_styles = { "pending" => "bg-yellow-100 text-yellow-800", "paid" => "bg-blue-100 text-blue-800", "confirmed" => "bg-green-100 text-green-800", "cancelled" => "bg-gray-100 text-gray-800", "refunded" => "bg-red-100 text-red-800" } %>
+                <% status_labels = { "pending" => "待支付", "paid" => "已支付", "confirmed" => "已确认", "cancelled" => "已取消", "refunded" => "已退款" } %>
+                <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium <%= status_styles[@order.status] %>"><%= status_labels[@order.status] %></span>
+              </dd>
+            </div>
+            <div>
+              <dt class="text-sm font-medium text-gray-500">创建时间</dt>
+              <dd class="mt-1 text-sm text-gray-900"><%= l(@order.created_at) %></dd>
+            </div>
+            <% if @order.paid_at.present? %>
+              <div>
+                <dt class="text-sm font-medium text-gray-500">支付时间</dt>
+                <dd class="mt-1 text-sm text-gray-900"><%= l(@order.paid_at) %></dd>
+              </div>
+            <% end %>
+            <% if @order.refunded_at.present? %>
+              <div>
+                <dt class="text-sm font-medium text-gray-500">退款时间</dt>
+                <dd class="mt-1 text-sm text-gray-900"><%= l(@order.refunded_at) %></dd>
+              </div>
+            <% end %>
+            <% if @order.notes.present? %>
+              <div class="sm:col-span-2">
+                <dt class="text-sm font-medium text-gray-500">备注</dt>
+                <dd class="mt-1 text-sm text-gray-900"><%= @order.notes %></dd>
+              </div>
+            <% end %>
+          </dl>
+        </div>
+      </div>
+
+      <div class="bg-white shadow-sm ring-1 ring-gray-900/5 rounded-xl">
+        <div class="px-6 py-4 border-b border-gray-200">
+          <h2 class="text-base font-semibold text-gray-900">票务列表</h2>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-300">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="py-3.5 pl-6 pr-3 text-left text-sm font-semibold text-gray-900">票号</th>
+                <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">票种</th>
+                <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">座位</th>
+                <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">状态</th>
+                <th class="py-3.5 pl-3 pr-6 text-right text-sm font-semibold text-gray-900">操作</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200 bg-white">
+              <% @tickets.each do |ticket| %>
+                <tr class="hover:bg-gray-50">
+                  <td class="whitespace-nowrap py-4 pl-6 pr-3 text-sm font-medium text-indigo-600">
+                    <%= link_to ticket.ticket_no, order_ticket_path(@order, ticket) %>
+                  </td>
+                  <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-900"><%= ticket.ticket_type.name %></td>
+                  <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500"><%= ticket.seat&.display_name || "-" %></td>
+                  <td class="whitespace-nowrap px-3 py-4 text-sm">
+                    <% ticket_status_styles = { "reserved" => "bg-yellow-100 text-yellow-800", "issued" => "bg-blue-100 text-blue-800", "checked_in" => "bg-green-100 text-green-800", "cancelled" => "bg-gray-100 text-gray-800", "expired" => "bg-red-100 text-red-800" } %>
+                    <% ticket_status_labels = { "reserved" => "已预留", "issued" => "已出票", "checked_in" => "已签到", "cancelled" => "已取消", "expired" => "已过期" } %>
+                    <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium <%= ticket_status_styles[ticket.status] %>"><%= ticket_status_labels[ticket.status] %></span>
+                  </td>
+                  <td class="whitespace-nowrap py-4 pl-3 pr-6 text-right text-sm">
+                    <%= link_to "查看", ticket_path(ticket), class: "text-indigo-600 hover:text-indigo-900" %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <% if @exception_records.any? %>
+        <div class="bg-white shadow-sm ring-1 ring-gray-900/5 rounded-xl">
+          <div class="px-6 py-4 border-b border-gray-200">
+            <h2 class="text-base font-semibold text-gray-900">异常记录</h2>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-300">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="py-3.5 pl-6 pr-3 text-left text-sm font-semibold text-gray-900">标题</th>
+                  <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">类型</th>
+                  <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">状态</th>
+                  <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">创建时间</th>
+                  <th class="py-3.5 pl-3 pr-6 text-right text-sm font-semibold text-gray-900">操作</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-200 bg-white">
+                <% @exception_records.each do |er| %>
+                  <tr class="hover:bg-gray-50">
+                    <td class="whitespace-nowrap py-4 pl-6 pr-3 text-sm font-medium text-indigo-600">
+                      <%= link_to er.title, exception_record_path(er) %>
+                    </td>
+                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500"><%= er.exception_type %></td>
+                    <td class="whitespace-nowrap px-3 py-4 text-sm">
+                      <% er_status_styles = { "open" => "bg-red-100 text-red-800", "assigned" => "bg-yellow-100 text-yellow-800", "resolving" => "bg-blue-100 text-blue-800", "closed" => "bg-gray-100 text-gray-800" } %>
+                      <% er_status_labels = { "open" => "待处理", "assigned" => "已指派", "resolving" => "处理中", "closed" => "已关闭" } %>
+                      <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium <%= er_status_styles[er.status] %>"><%= er_status_labels[er.status] %></span>
+                    </td>
+                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500"><%= l(er.created_at, format: :short) %></td>
+                    <td class="whitespace-nowrap py-4 pl-3 pr-6 text-right text-sm">
+                      <%= link_to "查看", exception_record_path(er), class: "text-indigo-600 hover:text-indigo-900" %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="space-y-6">
+      <div class="bg-white shadow-sm ring-1 ring-gray-900/5 rounded-xl">
+        <div class="px-6 py-4 border-b border-gray-200">
+          <h2 class="text-base font-semibold text-gray-900">状态流转</h2>
+        </div>
+        <div class="px-6 py-5">
+          <% if @status_logs.any? %>
+            <ol class="relative border-l border-gray-200">
+              <% @status_logs.each do |log| %>
+                <li class="mb-6 ml-6">
+                  <div class="absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full border-2 border-white bg-indigo-600"></div>
+                  <div class="rounded-lg bg-gray-50 p-3">
+                    <p class="text-sm font-medium text-gray-900"><%= log.display_event %></p>
+                    <p class="mt-1 text-xs text-gray-500"><%= l(log.created_at) %></p>
+                    <% if log.operator.present? %>
+                      <p class="mt-1 text-xs text-gray-400">操作人：<%= log.operator %></p>
+                    <% end %>
+                    <% if log.reason.present? %>
+                      <p class="mt-1 text-xs text-gray-400">原因：<%= log.reason %></p>
+                    <% end %>
+                  </div>
+                </li>
+              <% end %>
+            </ol>
+          <% else %>
+            <p class="text-sm text-gray-500">暂无状态记录</p>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

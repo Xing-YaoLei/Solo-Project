@@ -1,0 +1,94 @@
+<div class="px-4 sm:px-6 lg:px-8">
+  <div class="sm:flex sm:items-center sm:justify-between">
+    <div class="sm:flex-auto">
+      <h1 class="text-xl font-semibold text-gray-900">核销效率报表</h1>
+      <p class="mt-2 text-sm text-gray-700">票券签到核销效率与异常统计</p>
+    </div>
+    <div class="mt-4 flex gap-2 sm:ml-16 sm:mt-0">
+      <%= link_to "导出报表", reports_export_verification_path(period: @period), class: "inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50" %>
+    </div>
+  </div>
+
+  <div class="mt-4">
+    <div class="inline-flex rounded-md shadow-sm" role="group">
+      <% ["7d", "30d", "90d"].each do |p| %>
+        <% active = @period == p %>
+        <%= link_to p == "7d" ? "近7天" : p == "30d" ? "近30天" : "近90天",
+            reports_verification_efficiency_path(period: p),
+            class: "inline-flex items-center px-4 py-2 text-sm font-medium #{active ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'} #{p == '7d' ? 'rounded-l-md' : ''} #{p == '90d' ? 'rounded-r-md' : ''} ring-1 ring-inset ring-gray-300 #{p != '7d' ? '-ml-px' : ''}" %>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-5">
+    <div class="overflow-hidden rounded-lg bg-white px-4 py-5 shadow sm:p-6">
+      <dt class="truncate text-sm font-medium text-gray-500">总票数</dt>
+      <dd class="mt-1 text-3xl font-semibold tracking-tight text-gray-900"><%= @summary[:total_tickets] %></dd>
+    </div>
+
+    <div class="overflow-hidden rounded-lg bg-white px-4 py-5 shadow sm:p-6">
+      <dt class="truncate text-sm font-medium text-gray-500">已签到</dt>
+      <dd class="mt-1 text-3xl font-semibold tracking-tight text-green-600"><%= @summary[:checked_in] %></dd>
+    </div>
+
+    <div class="overflow-hidden rounded-lg bg-white px-4 py-5 shadow sm:p-6">
+      <dt class="truncate text-sm font-medium text-gray-500">核销率</dt>
+      <dd class="mt-1 text-3xl font-semibold tracking-tight text-indigo-600"><%= @summary[:checkin_rate] %>%</dd>
+    </div>
+
+    <div class="overflow-hidden rounded-lg bg-white px-4 py-5 shadow sm:p-6">
+      <dt class="truncate text-sm font-medium text-gray-500">异常数</dt>
+      <dd class="mt-1 text-3xl font-semibold tracking-tight text-red-600"><%= @summary[:exception_count] %></dd>
+    </div>
+
+    <div class="overflow-hidden rounded-lg bg-white px-4 py-5 shadow sm:p-6">
+      <dt class="truncate text-sm font-medium text-gray-500">已解决异常</dt>
+      <dd class="mt-1 text-3xl font-semibold tracking-tight text-blue-600"><%= @summary[:resolved_exception_count] %></dd>
+    </div>
+  </div>
+
+  <div class="mt-6 rounded-lg border border-blue-200 bg-blue-50 p-4">
+    <div class="flex">
+      <div class="flex-shrink-0">
+        <svg class="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
+        </svg>
+      </div>
+      <div class="ml-3">
+        <h3 class="text-sm font-medium text-blue-800">取数口径</h3>
+        <div class="mt-2 text-sm text-blue-700">
+          <p><%= @scope_description %></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <% if @daily_stats.any? %>
+    <div class="mt-6 rounded-lg border border-gray-200 bg-white p-6">
+      <h2 class="text-base font-semibold text-gray-900 mb-4">每日统计</h2>
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-300">
+          <thead>
+            <tr>
+              <th class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900">日期</th>
+              <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">状态</th>
+              <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">数量</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200">
+            <% @daily_stats.sort_by { |k, _| k[0] }.reverse.each do |(date, status), count| %>
+              <tr class="hover:bg-gray-50">
+                <td class="whitespace-nowrap py-3 pl-4 pr-3 text-sm text-gray-900"><%= date %></td>
+                <td class="whitespace-nowrap px-3 py-3 text-sm">
+                  <% st_colors = { "reserved" => "bg-yellow-100 text-yellow-800", "issued" => "bg-blue-100 text-blue-800", "checked_in" => "bg-green-100 text-green-800", "cancelled" => "bg-red-100 text-red-800", "expired" => "bg-gray-100 text-gray-800" } %>
+                  <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium <%= st_colors[status] || "bg-gray-100 text-gray-800" %>"><%= status %></span>
+                </td>
+                <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-900"><%= count %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  <% end %>
+</div>

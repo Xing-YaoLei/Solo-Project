@@ -1,0 +1,108 @@
+<div class="px-4 sm:px-6 lg:px-8">
+  <div class="sm:flex sm:items-center sm:justify-between">
+    <div>
+      <h1 class="text-xl font-semibold text-gray-900">签到码详情</h1>
+      <p class="mt-1 text-sm text-gray-500">签到码：<%= @checkin_code.code %></p>
+    </div>
+    <div class="mt-4 flex gap-2 sm:ml-16 sm:mt-0">
+      <% if @checkin_code.may_verify? %>
+        <%= button_to "验证", verify_checkin_code_path(@checkin_code), method: :post, class: "inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500" %>
+      <% end %>
+      <% if @checkin_code.may_use? %>
+        <%= button_to "核销", use_checkin_code_path(@checkin_code), method: :post, class: "inline-flex items-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500" %>
+      <% end %>
+      <%= link_to "返回列表", checkin_codes_path, class: "inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50" %>
+    </div>
+  </div>
+
+  <div class="mt-6 grid grid-cols-1 gap-x-6 gap-y-8 lg:grid-cols-2">
+    <div class="rounded-lg border border-gray-200 bg-white p-6">
+      <h2 class="text-base font-semibold text-gray-900 mb-4">基本信息</h2>
+      <dl class="divide-y divide-gray-200">
+        <div class="py-3 flex justify-between">
+          <dt class="text-sm font-medium text-gray-500">签到码</dt>
+          <dd class="text-sm text-gray-900"><%= @checkin_code.code %></dd>
+        </div>
+        <div class="py-3 flex justify-between">
+          <dt class="text-sm font-medium text-gray-500">票号</dt>
+          <dd class="text-sm text-gray-900"><%= @checkin_code.ticket&.ticket_no %></dd>
+        </div>
+        <div class="py-3 flex justify-between">
+          <dt class="text-sm font-medium text-gray-500">订单号</dt>
+          <dd class="text-sm text-gray-900"><%= @checkin_code.ticket&.order&.order_no %></dd>
+        </div>
+        <div class="py-3 flex justify-between">
+          <dt class="text-sm font-medium text-gray-500">演出</dt>
+          <dd class="text-sm text-gray-900"><%= @checkin_code.performance&.name %></dd>
+        </div>
+        <div class="py-3 flex justify-between">
+          <dt class="text-sm font-medium text-gray-500">状态</dt>
+          <dd class="text-sm">
+            <% status_colors = { active: "bg-green-100 text-green-800", verified: "bg-blue-100 text-blue-800", used: "bg-gray-100 text-gray-800", expired: "bg-red-100 text-red-800" } %>
+            <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium <%= status_colors[@checkin_code.status.to_sym] || "bg-gray-100 text-gray-800" %>"><%= t("enums.checkin_code.status.#{@checkin_code.status}", default: @checkin_code.status) %></span>
+          </dd>
+        </div>
+        <div class="py-3 flex justify-between">
+          <dt class="text-sm font-medium text-gray-500">验证时间</dt>
+          <dd class="text-sm text-gray-900"><%= @checkin_code.verified_at&.strftime("%Y-%m-%d %H:%M:%S") || "-" %></dd>
+        </div>
+        <div class="py-3 flex justify-between">
+          <dt class="text-sm font-medium text-gray-500">核销时间</dt>
+          <dd class="text-sm text-gray-900"><%= @checkin_code.used_at&.strftime("%Y-%m-%d %H:%M:%S") || "-" %></dd>
+        </div>
+        <div class="py-3 flex justify-between">
+          <dt class="text-sm font-medium text-gray-500">过期时间</dt>
+          <dd class="text-sm text-gray-900"><%= @checkin_code.expires_at&.strftime("%Y-%m-%d %H:%M:%S") || "-" %></dd>
+        </div>
+        <div class="py-3 flex justify-between">
+          <dt class="text-sm font-medium text-gray-500">创建时间</dt>
+          <dd class="text-sm text-gray-900"><%= @checkin_code.created_at.strftime("%Y-%m-%d %H:%M:%S") %></dd>
+        </div>
+      </dl>
+    </div>
+
+    <div class="rounded-lg border border-gray-200 bg-white p-6">
+      <h2 class="text-base font-semibold text-gray-900 mb-4">状态流转日志</h2>
+      <% if @status_logs.any? %>
+        <div class="flow-root">
+          <ul class="-mb-8">
+            <% @status_logs.each_with_index do |log, idx| %>
+              <li>
+                <div class="relative pb-8">
+                  <% unless idx == @status_logs.length - 1 %>
+                    <span class="absolute left-4 top-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true"></span>
+                  <% end %>
+                  <div class="relative flex space-x-3">
+                    <div>
+                      <span class="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-50 ring-8 ring-white">
+                        <svg class="h-4 w-4 text-indigo-600" viewBox="0 0 20 20" fill="currentColor">
+                          <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
+                        </svg>
+                      </span>
+                    </div>
+                    <div class="flex min-w-0 flex-1 justify-between space-x-4 pt-1.5">
+                      <div>
+                        <p class="text-sm text-gray-700">
+                          <span class="font-medium"><%= log.event %></span>：<%= log.from_state %> → <%= log.to_state %>
+                        </p>
+                        <% if log.reason.present? %>
+                          <p class="mt-1 text-xs text-gray-500">原因：<%= log.reason %></p>
+                        <% end %>
+                      </div>
+                      <div class="whitespace-nowrap text-right text-xs text-gray-500">
+                        <p><%= log.operator %></p>
+                        <p><%= log.created_at.strftime("%m-%d %H:%M") %></p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </li>
+            <% end %>
+          </ul>
+        </div>
+      <% else %>
+        <p class="text-sm text-gray-500">暂无状态流转记录</p>
+      <% end %>
+    </div>
+  </div>
+</div>

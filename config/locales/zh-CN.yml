@@ -1,0 +1,179 @@
+zh-CN:
+  activerecord:
+    models:
+      performance: 演出排期
+      ticket_type: 票种规则
+      order: 订单
+      ticket: 票券
+      seat: 座位
+      checkin_code: 签到码
+      sponsor: 赞助商
+      sponsorship: 赞助记录
+      exception_record: 异常单
+      status_log: 状态日志
+    attributes:
+      performance:
+        name: 名称
+        description: 描述
+        start_time: 开始时间
+        end_time: 结束时间
+        venue: 场馆
+        status: 状态
+        total_seats: 总座位数
+      ticket_type:
+        name: 名称
+        price: 价格
+        description: 描述
+        sale_start_time: 开售时间
+        sale_end_time: 停售时间
+        max_quantity: 最大购买量
+        min_quantity: 最小购买量
+        refund_policy: 退票政策
+        status: 状态
+      order:
+        order_no: 订单号
+        customer_name: 客户姓名
+        customer_phone: 联系电话
+        customer_email: 邮箱
+        total_amount: 总金额
+        status: 状态
+        payment_method: 支付方式
+        paid_at: 支付时间
+        refunded_at: 退款时间
+        notes: 备注
+      ticket:
+        ticket_no: 票号
+        status: 状态
+        checked_in_at: 签到时间
+      seat:
+        row: 行号
+        seat_number: 座位号
+        section: 区域
+        price: 价格
+        status: 状态
+      checkin_code:
+        code: 签到码
+        qr_code_data: 二维码数据
+        status: 状态
+        verified_at: 验证时间
+        used_at: 核销时间
+        expires_at: 过期时间
+      sponsor:
+        name: 名称
+        contact_person: 联系人
+        contact_phone: 联系电话
+        contact_email: 邮箱
+        address: 地址
+        status: 状态
+      sponsorship:
+        amount: 金额
+        sponsorship_type: 赞助类型
+        benefits: 权益
+        start_date: 开始日期
+        end_date: 结束日期
+        status: 状态
+      exception_record:
+        exception_type: 异常类型
+        title: 标题
+        description: 描述
+        impact_scope: 影响范围
+        responsible_person: 责任人
+        assignee: 指派给
+        status: 状态
+        resolution: 处理方案
+        conclusion: 关闭结论
+        closed_at: 关闭时间
+      status_log:
+        event: 事件
+        from_state: 从状态
+        to_state: 到状态
+        operator: 操作人
+        reason: 原因
+  enums:
+    performance:
+      status:
+        draft: 草稿
+        published: 已发布
+        ongoing: 进行中
+        finished: 已结束
+        cancelled: 已取消
+    ticket_type:
+      status:
+        inactive: 未激活
+        active: 在售
+        sold_out: 售罄
+        suspended: 已暂停
+      refund_policy:
+        no_refund: 不可退
+        full_refund: 全额退款
+        partial_refund: 部分退款
+    order:
+      status:
+        pending: 待支付
+        paid: 已支付
+        confirmed: 已确认
+        cancelled: 已取消
+        refunded: 已退款
+      payment_method:
+        cash: 现金
+        wechat: 微信
+        alipay: 支付宝
+        card: 银行卡
+    ticket:
+      status:
+        reserved: 已预留
+        issued: 已出票
+        checked_in: 已签到
+        cancelled: 已取消
+        expired: 已过期
+    seat:
+      status:
+        available: 可用
+        occupied: 已占
+        disabled: 停用
+        reserved: 预留
+    checkin_code:
+      status:
+        active: 有效
+        verified: 已验证
+        used: 已核销
+        expired: 已过期
+    sponsor:
+      status:
+        prospective: 潜在客户
+        active: 活跃
+        inactive: 不活跃
+    sponsorship:
+      status:
+        pending: 待确认
+        active: 执行中
+        completed: 已完成
+        terminated: 已终止
+      sponsorship_type:
+        title_sponsor: 冠名赞助
+        co_sponsor: 联合赞助
+        venue_sponsor: 场地赞助
+        media_sponsor: 媒体赞助
+        other: 其他
+    exception_record:
+      status:
+        open: 待处理
+        assigned: 已指派
+        resolving: 处理中
+        closed: 已关闭
+      exception_type:
+        refund_dispute: 退票争议
+        duplicate_ticket: 重复出票
+        checkin_error: 签到异常
+        payment_mismatch: 金额不符
+        other: 其他
+  date:
+    formats:
+      default: "%Y年%m月%d日"
+      short: "%m月%d日"
+      long: "%Y年%m月%d日"
+  time:
+    formats:
+      default: "%Y年%m月%d日 %H:%M"
+      short: "%m月%d日 %H:%M"
+      long: "%Y年%m月%d日 %H:%M:%S"

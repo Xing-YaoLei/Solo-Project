@@ -1,0 +1,64 @@
+<div class="px-4 sm:px-6 lg:px-8">
+  <div class="sm:flex sm:items-center sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">座位图</h1>
+      <p class="mt-1 text-sm text-gray-500"><%= @performance.name %> · <%= @performance.venue %></p>
+    </div>
+    <div class="mt-4 sm:mt-0 flex items-center gap-4">
+      <div class="flex items-center gap-4 text-sm">
+        <span class="flex items-center gap-1.5"><span class="h-4 w-4 rounded-sm bg-green-400"></span>可用</span>
+        <span class="flex items-center gap-1.5"><span class="h-4 w-4 rounded-sm bg-red-400"></span>已售</span>
+        <span class="flex items-center gap-1.5"><span class="h-4 w-4 rounded-sm bg-yellow-400"></span>预留</span>
+        <span class="flex items-center gap-1.5"><span class="h-4 w-4 rounded-sm bg-gray-300"></span>停用</span>
+      </div>
+      <%= link_to "返回详情", performance_path(@performance), class: "inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50" %>
+    </div>
+  </div>
+
+  <% seat_map_data = @performance.seat_map_data %>
+
+  <% if seat_map_data.any? %>
+    <div class="mt-6 space-y-8">
+      <% seat_map_data.each do |section, rows| %>
+        <div class="bg-white shadow-sm ring-1 ring-gray-900/5 rounded-xl">
+          <div class="border-b border-gray-200 px-6 py-4">
+            <h2 class="text-base font-semibold text-gray-900"><%= section %></h2>
+          </div>
+          <div class="px-6 py-6 space-y-4">
+            <% rows.each do |row, row_seats| %>
+              <div class="flex items-center gap-2">
+                <span class="w-8 text-xs font-medium text-gray-500 text-right shrink-0"><%= row %>排</span>
+                <div class="flex flex-wrap gap-1.5">
+                  <% row_seats.each do |seat| %>
+                    <%
+                      color_class = case seat.status
+                                    when 'available' then 'bg-green-400 hover:bg-green-500 text-green-900'
+                                    when 'occupied' then 'bg-red-400 hover:bg-red-500 text-red-900'
+                                    when 'reserved' then 'bg-yellow-400 hover:bg-yellow-500 text-yellow-900'
+                                    when 'disabled' then 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                    else 'bg-gray-200 text-gray-500'
+                                    end
+                    %>
+                    <div class="<%= color_class %> h-8 w-8 rounded flex items-center justify-center text-xs font-medium transition-colors" title="<%= seat.display_name %> (<%= seat.status %>)">
+                      <%= seat.seat_number %>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="mt-6 bg-white shadow-sm ring-1 ring-gray-900/5 rounded-xl">
+      <div class="py-16 text-center">
+        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+        </svg>
+        <p class="mt-2 text-sm font-semibold text-gray-900">暂无座位数据</p>
+        <p class="mt-1 text-sm text-gray-500">请先为该演出添加座位</p>
+      </div>
+    </div>
+  <% end %>
+</div>

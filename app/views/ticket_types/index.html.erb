@@ -1,0 +1,89 @@
+<div class="px-4 sm:px-6 lg:px-8">
+  <div class="sm:flex sm:items-center sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">票种管理</h1>
+      <p class="mt-1 text-sm text-gray-500">管理所有票种信息</p>
+    </div>
+  </div>
+
+  <div class="mt-6 bg-white shadow-sm ring-1 ring-gray-900/5 rounded-xl">
+    <div class="border-b border-gray-200 px-6 py-4">
+      <%= form_with url: ticket_types_path, method: :get, class: "flex items-center gap-4", local: true do |f| %>
+        <div class="flex items-center gap-2">
+          <label class="text-sm font-medium text-gray-700">状态筛选</label>
+          <select name="status" onchange="this.form.submit()" class="rounded-md border-gray-300 py-1.5 pl-3 pr-10 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+            <option value="">全部状态</option>
+            <% TicketType.statuses.each do |key, value| %>
+              <option value="<%= value %>" <%= "selected" if params[:status] == value %>><%= key.humanize %></option>
+            <% end %>
+          </select>
+        </div>
+        <% if params[:status].present? %>
+          <%= link_to "清除筛选", ticket_types_path, class: "text-sm text-indigo-600 hover:text-indigo-500" %>
+        <% end %>
+      <% end %>
+    </div>
+
+    <table class="min-w-full divide-y divide-gray-300">
+      <thead class="bg-gray-50">
+        <tr>
+          <th scope="col" class="py-3.5 pl-6 pr-3 text-left text-sm font-semibold text-gray-900">名称</th>
+          <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">所属演出</th>
+          <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">价格</th>
+          <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">开售时间</th>
+          <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">停售时间</th>
+          <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">退票政策</th>
+          <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">状态</th>
+          <th scope="col" class="relative py-3.5 pr-6 pl-3 text-right text-sm font-semibold text-gray-900">操作</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-200 bg-white">
+        <% @ticket_types.each do |tt| %>
+          <tr class="hover:bg-gray-50">
+            <td class="whitespace-nowrap py-4 pl-6 pr-3 text-sm font-medium text-gray-900">
+              <% if tt.performance %>
+                <%= link_to tt.name, performance_ticket_type_path(tt.performance, tt), class: "text-indigo-600 hover:text-indigo-500" %>
+              <% else %>
+                <%= tt.name %>
+              <% end %>
+            </td>
+            <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+              <% if tt.performance %>
+                <%= link_to tt.performance.name, performance_path(tt.performance), class: "text-indigo-600 hover:text-indigo-500" %>
+              <% else %>
+                -
+              <% end %>
+            </td>
+            <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500"><%= number_to_currency(tt.price, unit: "¥") %></td>
+            <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500"><%= l(tt.sale_start_time, format: :short) if tt.sale_start_time %></td>
+            <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500"><%= l(tt.sale_end_time, format: :short) if tt.sale_end_time %></td>
+            <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500"><%= tt.refund_policy %></td>
+            <td class="whitespace-nowrap px-3 py-4 text-sm">
+              <span class="<%= case tt.status
+                               when 'inactive' then 'bg-gray-100 text-gray-700'
+                               when 'active' then 'bg-green-100 text-green-700'
+                               when 'sold_out' then 'bg-yellow-100 text-yellow-700'
+                               when 'suspended' then 'bg-red-100 text-red-700'
+                               end %> inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium">
+                <%= tt.status %>
+              </span>
+            </td>
+            <td class="whitespace-nowrap py-4 pr-6 pl-3 text-right text-sm">
+              <% if tt.performance %>
+                <%= link_to "查看", performance_ticket_type_path(tt.performance, tt), class: "text-indigo-600 hover:text-indigo-500" %>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+
+    <% if @ticket_types.empty? %>
+      <div class="py-12 text-center">
+        <p class="text-sm text-gray-500">暂无票种数据</p>
+      </div>
+    <% end %>
+
+    <%= pagination_links(pagination_info) %>
+  </div>
+</div>

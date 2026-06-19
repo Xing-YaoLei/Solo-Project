@@ -1,0 +1,155 @@
+<div class="px-4 sm:px-6 lg:px-8">
+  <div class="sm:flex sm:items-center sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">票据详情</h1>
+      <p class="mt-1 text-sm text-gray-500">票号：<%= @ticket.ticket_no %></p>
+    </div>
+    <div class="mt-4 flex gap-3 sm:mt-0">
+      <% if @ticket.may_checkin? %>
+        <%= button_to "签到", checkin_ticket_path(@ticket), method: :post, class: "rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500" %>
+      <% end %>
+      <%= link_to "返回列表", tickets_path, class: "rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50" %>
+    </div>
+  </div>
+
+  <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
+    <div class="lg:col-span-2 space-y-6">
+      <div class="bg-white shadow-sm ring-1 ring-gray-900/5 rounded-xl">
+        <div class="px-6 py-4 border-b border-gray-200">
+          <h2 class="text-base font-semibold text-gray-900">票据信息</h2>
+        </div>
+        <div class="px-6 py-5">
+          <dl class="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
+            <div>
+              <dt class="text-sm font-medium text-gray-500">票号</dt>
+              <dd class="mt-1 text-sm text-gray-900"><%= @ticket.ticket_no %></dd>
+            </div>
+            <div>
+              <dt class="text-sm font-medium text-gray-500">所属订单</dt>
+              <dd class="mt-1 text-sm text-indigo-600">
+                <%= link_to @ticket.order.order_no, order_path(@ticket.order) %>
+              </dd>
+            </div>
+            <div>
+              <dt class="text-sm font-medium text-gray-500">票种</dt>
+              <dd class="mt-1 text-sm text-gray-900"><%= @ticket.ticket_type.name %></dd>
+            </div>
+            <div>
+              <dt class="text-sm font-medium text-gray-500">票价</dt>
+              <dd class="mt-1 text-sm text-gray-900">¥<%= number_with_precision(@ticket.ticket_type.price, precision: 2) %></dd>
+            </div>
+            <div>
+              <dt class="text-sm font-medium text-gray-500">座位</dt>
+              <dd class="mt-1 text-sm text-gray-900"><%= @ticket.seat&.name || "-" %></dd>
+            </div>
+            <div>
+              <dt class="text-sm font-medium text-gray-500">状态</dt>
+              <dd class="mt-1">
+                <% status_styles = { "reserved" => "bg-yellow-100 text-yellow-800", "issued" => "bg-blue-100 text-blue-800", "checked_in" => "bg-green-100 text-green-800", "cancelled" => "bg-gray-100 text-gray-800", "expired" => "bg-red-100 text-red-800" } %>
+                <% status_labels = { "reserved" => "已预留", "issued" => "已出票", "checked_in" => "已签到", "cancelled" => "已取消", "expired" => "已过期" } %>
+                <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium <%= status_styles[@ticket.status] %>"><%= status_labels[@ticket.status] %></span>
+              </dd>
+            </div>
+            <div>
+              <dt class="text-sm font-medium text-gray-500">演出</dt>
+              <dd class="mt-1 text-sm text-gray-900"><%= @ticket.performance&.name || "-" %></dd>
+            </div>
+            <% if @ticket.checked_in_at.present? %>
+              <div>
+                <dt class="text-sm font-medium text-gray-500">签到时间</dt>
+                <dd class="mt-1 text-sm text-gray-900"><%= l(@ticket.checked_in_at) %></dd>
+              </div>
+            <% end %>
+            <div>
+              <dt class="text-sm font-medium text-gray-500">创建时间</dt>
+              <dd class="mt-1 text-sm text-gray-900"><%= l(@ticket.created_at) %></dd>
+            </div>
+          </dl>
+        </div>
+      </div>
+
+      <% if @checkin_code.present? %>
+        <div class="bg-white shadow-sm ring-1 ring-gray-900/5 rounded-xl">
+          <div class="px-6 py-4 border-b border-gray-200">
+            <h2 class="text-base font-semibold text-gray-900">签到码信息</h2>
+          </div>
+          <div class="px-6 py-5">
+            <dl class="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
+              <div>
+                <dt class="text-sm font-medium text-gray-500">签到码</dt>
+                <dd class="mt-1 text-sm font-mono text-gray-900"><%= @checkin_code.code %></dd>
+              </div>
+              <div>
+                <dt class="text-sm font-medium text-gray-500">签到码状态</dt>
+                <dd class="mt-1">
+                  <% cc_status_styles = { "active" => "bg-green-100 text-green-800", "verified" => "bg-blue-100 text-blue-800", "used" => "bg-gray-100 text-gray-800", "expired" => "bg-red-100 text-red-800" } %>
+                  <% cc_status_labels = { "active" => "有效", "verified" => "已验证", "used" => "已使用", "expired" => "已过期" } %>
+                  <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium <%= cc_status_styles[@checkin_code.status] %>"><%= cc_status_labels[@checkin_code.status] %></span>
+                </dd>
+              </div>
+              <% if @checkin_code.expires_at.present? %>
+                <div>
+                  <dt class="text-sm font-medium text-gray-500">过期时间</dt>
+                  <dd class="mt-1 text-sm text-gray-900"><%= l(@checkin_code.expires_at) %></dd>
+                </div>
+              <% end %>
+              <% if @checkin_code.verified_at.present? %>
+                <div>
+                  <dt class="text-sm font-medium text-gray-500">验证时间</dt>
+                  <dd class="mt-1 text-sm text-gray-900"><%= l(@checkin_code.verified_at) %></dd>
+                </div>
+              <% end %>
+              <% if @checkin_code.used_at.present? %>
+                <div>
+                  <dt class="text-sm font-medium text-gray-500">使用时间</dt>
+                  <dd class="mt-1 text-sm text-gray-900"><%= l(@checkin_code.used_at) %></dd>
+                </div>
+              <% end %>
+            </dl>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="space-y-6">
+      <div class="bg-white shadow-sm ring-1 ring-gray-900/5 rounded-xl">
+        <div class="px-6 py-4 border-b border-gray-200">
+          <h2 class="text-base font-semibold text-gray-900">二维码</h2>
+        </div>
+        <div class="px-6 py-5 flex flex-col items-center">
+          <%= image_tag qrcode_ticket_path(@ticket), alt: "票据二维码", class: "h-48 w-48" %>
+          <p class="mt-3 text-xs text-gray-400">扫描二维码进行签到验证</p>
+        </div>
+      </div>
+
+      <div class="bg-white shadow-sm ring-1 ring-gray-900/5 rounded-xl">
+        <div class="px-6 py-4 border-b border-gray-200">
+          <h2 class="text-base font-semibold text-gray-900">状态日志</h2>
+        </div>
+        <div class="px-6 py-5">
+          <% if @status_logs.any? %>
+            <ol class="relative border-l border-gray-200">
+              <% @status_logs.each do |log| %>
+                <li class="mb-6 ml-6">
+                  <div class="absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full border-2 border-white bg-indigo-600"></div>
+                  <div class="rounded-lg bg-gray-50 p-3">
+                    <p class="text-sm font-medium text-gray-900"><%= log.display_event %></p>
+                    <p class="mt-1 text-xs text-gray-500"><%= l(log.created_at) %></p>
+                    <% if log.operator.present? %>
+                      <p class="mt-1 text-xs text-gray-400">操作人：<%= log.operator %></p>
+                    <% end %>
+                    <% if log.reason.present? %>
+                      <p class="mt-1 text-xs text-gray-400">原因：<%= log.reason %></p>
+                    <% end %>
+                  </div>
+                </li>
+              <% end %>
+            </ol>
+          <% else %>
+            <p class="text-sm text-gray-500">暂无状态记录</p>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

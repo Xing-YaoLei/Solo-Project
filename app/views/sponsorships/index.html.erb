@@ -1,0 +1,52 @@
+<div class="px-4 sm:px-6 lg:px-8">
+  <div class="sm:flex sm:items-center sm:justify-between">
+    <div class="sm:flex-auto">
+      <h1 class="text-xl font-semibold text-gray-900">赞助记录管理</h1>
+      <p class="mt-2 text-sm text-gray-700">查看所有赞助记录</p>
+    </div>
+  </div>
+
+  <div class="mt-4 flex gap-3">
+    <%= form_with url: sponsorships_path, method: :get, class: "flex gap-3", local: true do |f| %>
+      <%= f.select :status, Sponsorship.statuses.keys.map { |s| [t("enums.sponsorship.status.#{s}", default: s), s] }, { include_blank: "全部状态", selected: params[:status] }, class: "rounded-md border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500" %>
+      <%= f.select :sponsorship_type, Sponsorship.sponsorship_types.keys.map { |s| [t("enums.sponsorship.sponsorship_type.#{s}", default: s), s] }, { include_blank: "全部类型", selected: params[:sponsorship_type] }, class: "rounded-md border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500" %>
+      <%= f.submit "筛选", class: "inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500" %>
+    <% end %>
+  </div>
+
+  <div class="mt-6 flow-root">
+    <div class="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+      <div class="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
+        <table class="min-w-full divide-y divide-gray-300">
+          <thead>
+            <tr>
+              <th class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900">赞助商</th>
+              <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">演出</th>
+              <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">赞助类型</th>
+              <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">金额</th>
+              <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">状态</th>
+              <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">有效期</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200">
+            <% @sponsorships.each do |sp| %>
+              <tr class="hover:bg-gray-50">
+                <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-indigo-600"><%= link_to sp.sponsor&.name, sponsor_path(sp.sponsor) %></td>
+                <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500"><%= sp.performance&.name %></td>
+                <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500"><%= t("enums.sponsorship.sponsorship_type.#{sp.sponsorship_type}", default: sp.sponsorship_type) %></td>
+                <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-900"><%= number_to_currency(sp.amount, unit: "¥") %></td>
+                <td class="whitespace-nowrap px-3 py-4 text-sm">
+                  <% status_colors = { pending: "bg-yellow-100 text-yellow-800", active: "bg-green-100 text-green-800", completed: "bg-blue-100 text-blue-800", terminated: "bg-red-100 text-red-800" } %>
+                  <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium <%= status_colors[sp.status.to_sym] || "bg-gray-100 text-gray-800" %>"><%= t("enums.sponsorship.status.#{sp.status}", default: sp.status) %></span>
+                </td>
+                <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500"><%= sp.start_date %> ~ <%= sp.end_date %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <%= pagination_links(pagination_info) %>
+</div>

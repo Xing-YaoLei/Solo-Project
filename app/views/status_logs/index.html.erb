@@ -1,0 +1,56 @@
+<div class="px-4 sm:px-6 lg:px-8">
+  <div class="sm:flex sm:items-center">
+    <div class="sm:flex-auto">
+      <h1 class="text-xl font-semibold text-gray-900">状态流转日志</h1>
+      <p class="mt-2 text-sm text-gray-700">查看所有对象的状态变更记录</p>
+    </div>
+  </div>
+
+  <div class="mt-4 flex gap-3">
+    <%= form_with url: status_logs_path, method: :get, class: "flex gap-3", local: true do |f| %>
+      <%= f.select :trackable_type, ["CheckinCode", "Sponsor", "Sponsorship", "ExceptionRecord", "Order", "Ticket", "Performance"], { include_blank: "全部对象类型", selected: params[:trackable_type] }, class: "rounded-md border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500" %>
+      <%= f.submit "筛选", class: "inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500" %>
+    <% end %>
+  </div>
+
+  <div class="mt-6 flow-root">
+    <div class="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+      <div class="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
+        <table class="min-w-full divide-y divide-gray-300">
+          <thead>
+            <tr>
+              <th class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900">对象类型</th>
+              <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">对象ID</th>
+              <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">事件</th>
+              <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">从状态</th>
+              <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">到状态</th>
+              <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">操作人</th>
+              <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">原因</th>
+              <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">时间</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200">
+            <% @status_logs.each do |log| %>
+              <tr class="hover:bg-gray-50">
+                <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-500"><%= log.trackable_type %></td>
+                <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500"><%= log.trackable_id %></td>
+                <td class="whitespace-nowrap px-3 py-4 text-sm font-medium text-gray-900"><%= log.event %></td>
+                <td class="whitespace-nowrap px-3 py-4 text-sm">
+                  <span class="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-800"><%= log.from_state %></span>
+                </td>
+                <td class="whitespace-nowrap px-3 py-4 text-sm">
+                  <span class="inline-flex items-center rounded-md bg-indigo-100 px-2 py-1 text-xs font-medium text-indigo-800"><%= log.to_state %></span>
+                </td>
+                <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500"><%= log.operator %></td>
+                <td class="px-3 py-4 text-sm text-gray-500 max-w-xs truncate"><%= log.reason || "-" %></td>
+                <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500"><%= log.created_at.strftime("%Y-%m-%d %H:%M") %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <%= pagination_links(pagination_info) %>
+</div>

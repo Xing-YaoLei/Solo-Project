@@ -1,0 +1,86 @@
+<div class="px-4 sm:px-6 lg:px-8">
+  <div class="sm:flex sm:items-center">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">新增票种</h1>
+      <p class="mt-1 text-sm text-gray-500">为「<%= @performance.name %>」添加票种</p>
+    </div>
+  </div>
+
+  <div class="mt-6 max-w-2xl">
+    <div class="bg-white shadow-sm ring-1 ring-gray-900/5 rounded-xl">
+      <%= render "shared/error_messages", object: @ticket_type %>
+
+      <%= form_with model: [@performance, @ticket_type], local: true, class: "px-6 py-6" do |f| %>
+        <div class="space-y-6">
+          <div>
+            <%= f.label :name, "名称", class: "block text-sm font-medium text-gray-900" %>
+            <div class="mt-2">
+              <%= f.text_field :name, class: "block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm", maxlength: 100 %>
+            </div>
+          </div>
+
+          <div>
+            <%= f.label :price, "价格", class: "block text-sm font-medium text-gray-900" %>
+            <div class="mt-2 relative">
+              <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                <span class="text-gray-500 sm:text-sm">¥</span>
+              </div>
+              <%= f.number_field :price, min: 0, step: 0.01, class: "block w-full rounded-md border-gray-300 pl-7 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" %>
+            </div>
+          </div>
+
+          <div>
+            <%= f.label :description, "描述", class: "block text-sm font-medium text-gray-900" %>
+            <div class="mt-2">
+              <%= f.text_area :description, rows: 3, class: "block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" %>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+            <div>
+              <%= f.label :sale_start_time, "开售时间", class: "block text-sm font-medium text-gray-900" %>
+              <div class="mt-2">
+                <%= f.datetime_local_field :sale_start_time, class: "block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" %>
+              </div>
+            </div>
+
+            <div>
+              <%= f.label :sale_end_time, "停售时间", class: "block text-sm font-medium text-gray-900" %>
+              <div class="mt-2">
+                <%= f.datetime_local_field :sale_end_time, class: "block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" %>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+            <div>
+              <%= f.label :max_quantity, "最大购买数量", class: "block text-sm font-medium text-gray-900" %>
+              <div class="mt-2">
+                <%= f.number_field :max_quantity, min: 1, class: "block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" %>
+              </div>
+            </div>
+
+            <div>
+              <%= f.label :min_quantity, "最小购买数量", class: "block text-sm font-medium text-gray-900" %>
+              <div class="mt-2">
+                <%= f.number_field :min_quantity, min: 0, class: "block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" %>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <%= f.label :refund_policy, "退票政策", class: "block text-sm font-medium text-gray-900" %>
+            <div class="mt-2">
+              <%= f.select :refund_policy, TicketType.refund_policies.keys.map { |k| [k.humanize, k] }, {}, class: "block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" %>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-8 flex items-center gap-3">
+          <%= f.submit "创建票种", class: "inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500" %>
+          <%= link_to "取消", performance_path(@performance), class: "inline-flex items-center rounded-md bg-white px-4 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50" %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,131 @@
+<div class="px-4 sm:px-6 lg:px-8">
+  <div class="sm:flex sm:items-center sm:justify-between">
+    <div>
+      <h1 class="text-xl font-semibold text-gray-900">赞助商详情</h1>
+      <p class="mt-1 text-sm text-gray-500"><%= @sponsor.name %></p>
+    </div>
+    <div class="mt-4 flex gap-2 sm:ml-16 sm:mt-0">
+      <%= link_to "编辑", edit_sponsor_path(@sponsor), class: "inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50" %>
+      <%= link_to "返回列表", sponsors_path, class: "inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50" %>
+    </div>
+  </div>
+
+  <div class="mt-6 grid grid-cols-1 gap-x-6 gap-y-8 lg:grid-cols-3">
+    <div class="lg:col-span-1 rounded-lg border border-gray-200 bg-white p-6">
+      <h2 class="text-base font-semibold text-gray-900 mb-4">基本信息</h2>
+      <dl class="divide-y divide-gray-200">
+        <div class="py-3 flex justify-between">
+          <dt class="text-sm font-medium text-gray-500">名称</dt>
+          <dd class="text-sm text-gray-900"><%= @sponsor.name %></dd>
+        </div>
+        <div class="py-3 flex justify-between">
+          <dt class="text-sm font-medium text-gray-500">联系人</dt>
+          <dd class="text-sm text-gray-900"><%= @sponsor.contact_person || "-" %></dd>
+        </div>
+        <div class="py-3 flex justify-between">
+          <dt class="text-sm font-medium text-gray-500">联系电话</dt>
+          <dd class="text-sm text-gray-900"><%= @sponsor.contact_phone || "-" %></dd>
+        </div>
+        <div class="py-3 flex justify-between">
+          <dt class="text-sm font-medium text-gray-500">联系邮箱</dt>
+          <dd class="text-sm text-gray-900"><%= @sponsor.contact_email || "-" %></dd>
+        </div>
+        <div class="py-3 flex justify-between">
+          <dt class="text-sm font-medium text-gray-500">地址</dt>
+          <dd class="text-sm text-gray-900"><%= @sponsor.address || "-" %></dd>
+        </div>
+        <div class="py-3 flex justify-between">
+          <dt class="text-sm font-medium text-gray-500">状态</dt>
+          <dd class="text-sm">
+            <% status_colors = { prospective: "bg-yellow-100 text-yellow-800", active: "bg-green-100 text-green-800", inactive: "bg-gray-100 text-gray-800" } %>
+            <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium <%= status_colors[@sponsor.status.to_sym] || "bg-gray-100 text-gray-800" %>"><%= t("enums.sponsor.status.#{@sponsor.status}", default: @sponsor.status) %></span>
+          </dd>
+        </div>
+        <div class="py-3 flex justify-between">
+          <dt class="text-sm font-medium text-gray-500">赞助总额</dt>
+          <dd class="text-sm font-semibold text-indigo-600"><%= number_to_currency(@sponsor.total_sponsorship_amount, unit: "¥") %></dd>
+        </div>
+      </dl>
+    </div>
+
+    <div class="lg:col-span-2 rounded-lg border border-gray-200 bg-white p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-base font-semibold text-gray-900">赞助记录</h2>
+        <%= link_to "新增赞助", new_sponsor_sponsorship_path(@sponsor), class: "inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500" %>
+      </div>
+      <% if @sponsorships.any? %>
+        <table class="min-w-full divide-y divide-gray-300">
+          <thead>
+            <tr>
+              <th class="py-3.5 pl-0 pr-3 text-left text-sm font-semibold text-gray-900">演出</th>
+              <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">赞助类型</th>
+              <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">金额</th>
+              <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">状态</th>
+              <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">有效期</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200">
+            <% @sponsorships.each do |sp| %>
+              <tr class="hover:bg-gray-50">
+                <td class="whitespace-nowrap py-3 pl-0 pr-3 text-sm font-medium text-indigo-600"><%= link_to sp.performance&.name, sponsor_sponsorship_path(@sponsor, sp) %></td>
+                <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500"><%= t("enums.sponsorship.sponsorship_type.#{sp.sponsorship_type}", default: sp.sponsorship_type) %></td>
+                <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-900"><%= number_to_currency(sp.amount, unit: "¥") %></td>
+                <td class="whitespace-nowrap px-3 py-3 text-sm">
+                  <% sp_status_colors = { pending: "bg-yellow-100 text-yellow-800", active: "bg-green-100 text-green-800", completed: "bg-blue-100 text-blue-800", terminated: "bg-red-100 text-red-800" } %>
+                  <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium <%= sp_status_colors[sp.status.to_sym] || "bg-gray-100 text-gray-800" %>"><%= t("enums.sponsorship.status.#{sp.status}", default: sp.status) %></span>
+                </td>
+                <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500"><%= sp.start_date %> ~ <%= sp.end_date %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      <% else %>
+        <p class="text-sm text-gray-500">暂无赞助记录</p>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="mt-6 rounded-lg border border-gray-200 bg-white p-6">
+    <h2 class="text-base font-semibold text-gray-900 mb-4">状态流转日志</h2>
+    <% if @status_logs.any? %>
+      <div class="flow-root">
+        <ul class="-mb-8">
+          <% @status_logs.each_with_index do |log, idx| %>
+            <li>
+              <div class="relative pb-8">
+                <% unless idx == @status_logs.length - 1 %>
+                  <span class="absolute left-4 top-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true"></span>
+                <% end %>
+                <div class="relative flex space-x-3">
+                  <div>
+                    <span class="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-50 ring-8 ring-white">
+                      <svg class="h-4 w-4 text-indigo-600" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
+                      </svg>
+                    </span>
+                  </div>
+                  <div class="flex min-w-0 flex-1 justify-between space-x-4 pt-1.5">
+                    <div>
+                      <p class="text-sm text-gray-700">
+                        <span class="font-medium"><%= log.event %></span>：<%= log.from_state %> → <%= log.to_state %>
+                      </p>
+                      <% if log.reason.present? %>
+                        <p class="mt-1 text-xs text-gray-500">原因：<%= log.reason %></p>
+                      <% end %>
+                    </div>
+                    <div class="whitespace-nowrap text-right text-xs text-gray-500">
+                      <p><%= log.operator %></p>
+                      <p><%= log.created_at.strftime("%m-%d %H:%M") %></p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    <% else %>
+      <p class="text-sm text-gray-500">暂无状态流转记录</p>
+    <% end %>
+  </div>
+</div>

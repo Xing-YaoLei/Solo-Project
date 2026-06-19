@@ -1,0 +1,57 @@
+<div class="px-4 sm:px-6 lg:px-8">
+  <div class="sm:flex sm:items-center sm:justify-between">
+    <div class="sm:flex-auto">
+      <h1 class="text-xl font-semibold text-gray-900">赞助商管理</h1>
+      <p class="mt-2 text-sm text-gray-700">管理所有赞助商信息</p>
+    </div>
+    <div class="mt-4 sm:ml-16 sm:mt-0">
+      <%= link_to "新增赞助商", new_sponsor_path, class: "inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500" %>
+    </div>
+  </div>
+
+  <div class="mt-4 flex gap-3">
+    <%= form_with url: sponsors_path, method: :get, class: "flex gap-3", local: true do |f| %>
+      <%= f.select :status, Sponsor.statuses.keys.map { |s| [t("enums.sponsor.status.#{s}", default: s), s] }, { include_blank: "全部状态", selected: params[:status] }, class: "rounded-md border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500" %>
+      <%= f.submit "筛选", class: "inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500" %>
+    <% end %>
+  </div>
+
+  <div class="mt-6 flow-root">
+    <div class="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+      <div class="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
+        <table class="min-w-full divide-y divide-gray-300">
+          <thead>
+            <tr>
+              <th class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900">名称</th>
+              <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">联系人</th>
+              <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">联系电话</th>
+              <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">状态</th>
+              <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">操作</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200">
+            <% @sponsors.each do |sponsor| %>
+              <tr class="hover:bg-gray-50">
+                <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-indigo-600"><%= link_to sponsor.name, sponsor_path(sponsor) %></td>
+                <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500"><%= sponsor.contact_person || "-" %></td>
+                <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500"><%= sponsor.contact_phone || "-" %></td>
+                <td class="whitespace-nowrap px-3 py-4 text-sm">
+                  <% status_colors = { prospective: "bg-yellow-100 text-yellow-800", active: "bg-green-100 text-green-800", inactive: "bg-gray-100 text-gray-800" } %>
+                  <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium <%= status_colors[sponsor.status.to_sym] || "bg-gray-100 text-gray-800" %>"><%= t("enums.sponsor.status.#{sponsor.status}", default: sponsor.status) %></span>
+                </td>
+                <td class="whitespace-nowrap px-3 py-4 text-sm">
+                  <div class="flex gap-2">
+                    <%= link_to "查看", sponsor_path(sponsor), class: "text-indigo-600 hover:text-indigo-900" %>
+                    <%= link_to "编辑", edit_sponsor_path(sponsor), class: "text-indigo-600 hover:text-indigo-900" %>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <%= pagination_links(pagination_info) %>
+</div>

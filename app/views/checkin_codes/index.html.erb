@@ -1,0 +1,62 @@
+<div class="px-4 sm:px-6 lg:px-8">
+  <div class="sm:flex sm:items-center">
+    <div class="sm:flex-auto">
+      <h1 class="text-xl font-semibold text-gray-900">签到码管理</h1>
+      <p class="mt-2 text-sm text-gray-700">查看和管理所有签到码，支持验证与核销操作</p>
+    </div>
+  </div>
+
+  <div class="mt-4 flex gap-3">
+    <%= form_with url: checkin_codes_path, method: :get, class: "flex gap-3", local: true do |f| %>
+      <%= f.select :status, CheckinCode.statuses.keys.map { |s| [t("enums.checkin_code.status.#{s}", default: s), s] }, { include_blank: "全部状态", selected: params[:status] }, class: "rounded-md border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500" %>
+      <%= f.submit "筛选", class: "inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500" %>
+    <% end %>
+  </div>
+
+  <div class="mt-6 flow-root">
+    <div class="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+      <div class="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
+        <table class="min-w-full divide-y divide-gray-300">
+          <thead>
+            <tr>
+              <th class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900">签到码</th>
+              <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">票号</th>
+              <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">订单号</th>
+              <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">状态</th>
+              <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">验证时间</th>
+              <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">核销时间</th>
+              <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">操作</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200">
+            <% @checkin_codes.each do |code| %>
+              <tr class="hover:bg-gray-50">
+                <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-indigo-600"><%= link_to code.code, checkin_code_path(code) %></td>
+                <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500"><%= code.ticket&.ticket_no %></td>
+                <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500"><%= code.ticket&.order&.order_no %></td>
+                <td class="whitespace-nowrap px-3 py-4 text-sm">
+                  <% status_colors = { active: "bg-green-100 text-green-800", verified: "bg-blue-100 text-blue-800", used: "bg-gray-100 text-gray-800", expired: "bg-red-100 text-red-800" } %>
+                  <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium <%= status_colors[code.status.to_sym] || "bg-gray-100 text-gray-800" %>"><%= t("enums.checkin_code.status.#{code.status}", default: code.status) %></span>
+                </td>
+                <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500"><%= code.verified_at&.strftime("%Y-%m-%d %H:%M") %></td>
+                <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500"><%= code.used_at&.strftime("%Y-%m-%d %H:%M") %></td>
+                <td class="whitespace-nowrap px-3 py-4 text-sm">
+                  <div class="flex gap-2">
+                    <% if code.may_verify? %>
+                      <%= button_to "验证", verify_checkin_code_path(code), method: :post, class: "inline-flex items-center rounded-md bg-blue-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-blue-500" %>
+                    <% end %>
+                    <% if code.may_use? %>
+                      <%= button_to "核销", use_checkin_code_path(code), method: :post, class: "inline-flex items-center rounded-md bg-green-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-green-500" %>
+                    <% end %>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <%= pagination_links(pagination_info) %>
+</div>

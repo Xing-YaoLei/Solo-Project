@@ -1,0 +1,67 @@
+<div class="px-4 sm:px-6 lg:px-8">
+  <div class="sm:flex sm:items-center">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">编辑订单</h1>
+      <p class="mt-1 text-sm text-gray-500">订单号：<%= @order.order_no %></p>
+    </div>
+  </div>
+
+  <div class="mt-6 max-w-3xl">
+    <div class="bg-white shadow-sm ring-1 ring-gray-900/5 rounded-xl">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h2 class="text-base font-semibold text-gray-900">订单信息</h2>
+      </div>
+      <div class="px-6 py-5">
+        <%= render "shared/error_messages", object: @order %>
+
+        <%= form_with model: @order, local: true do |f| %>
+          <div class="space-y-5">
+            <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <div>
+                <%= f.label :customer_name, "客户姓名", class: "block text-sm font-medium text-gray-700" %>
+                <%= f.text_field :customer_name, class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" %>
+              </div>
+              <div>
+                <%= f.label :customer_phone, "客户电话", class: "block text-sm font-medium text-gray-700" %>
+                <%= f.text_field :customer_phone, class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" %>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <div>
+                <%= f.label :customer_email, "客户邮箱", class: "block text-sm font-medium text-gray-700" %>
+                <%= f.email_field :customer_email, class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" %>
+              </div>
+              <div>
+                <%= f.label :total_amount, "金额", class: "block text-sm font-medium text-gray-700" %>
+                <div class="mt-1 relative rounded-md shadow-sm">
+                  <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                    <span class="text-gray-500 sm:text-sm">¥</span>
+                  </div>
+                  <%= f.number_field :total_amount, step: "0.01", class: "block w-full rounded-md border-gray-300 pl-7 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" %>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <div>
+                <%= f.label :payment_method, "支付方式", class: "block text-sm font-medium text-gray-700" %>
+                <%= f.select :payment_method, options_for_select([["现金", "cash"], ["微信", "wechat"], ["支付宝", "alipay"], ["银行卡", "card"]], @order.payment_method), {}, class: "mt-1 block w-full rounded-md border-gray-300 bg-white py-2 pl-3 pr-10 text-sm focus:border-indigo-500 focus:ring-indigo-500" %>
+              </div>
+            </div>
+
+            <div>
+              <%= f.label :notes, "备注", class: "block text-sm font-medium text-gray-700" %>
+              <%= f.text_area :notes, rows: 3, class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" %>
+            </div>
+
+            <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
+              <%= link_to "取消", order_path(@order), class: "rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50" %>
+              <%= f.submit "保存修改", class: "rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500" %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
