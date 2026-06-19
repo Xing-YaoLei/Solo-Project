@@ -49,13 +49,12 @@ export default function ViewSelector({
 
   const handleSave = () => {
     if (!newViewName.trim()) return;
-    const payload = {
+    const activeFilterValue = filters[activeTab.filterField] ?? '';
+    const payload: Record<string, unknown> = {
       viewType: activeViewType,
       dateRange,
-      revisitResult: filters.revisitResult,
-      responsibility: filters.responsibility,
-      problemTag: filters.problemTag,
     };
+    payload[activeTab.filterField] = activeFilterValue;
     onSaveView(newViewName.trim(), activeViewType, JSON.stringify(payload));
     setNewViewName('');
   };

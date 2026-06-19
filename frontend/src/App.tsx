@@ -9,6 +9,12 @@ import ExportPanel from './components/ExportPanel';
 import { fetchSavedViews, createSavedView, deleteSavedView } from './api';
 import type { SavedView, SavedViewCreateData, DateRange, FunnelFilters } from './types';
 
+const VIEW_FIELD_MAP: Record<SavedView['viewType'], keyof FunnelFilters> = {
+  revisit_result: 'revisitResult',
+  responsibility: 'responsibility',
+  problem_tag: 'problemTag',
+};
+
 export default function App() {
   const {
     data,
@@ -17,6 +23,7 @@ export default function App() {
     setDateRange,
     filters,
     applyFilters,
+    resetFilters,
     refresh: refreshFunnel,
   } = useFunnelData();
   const { anomalies, detecting, refresh: refreshAnomaly } = useAnomaly();
@@ -42,6 +49,22 @@ export default function App() {
     refreshFunnel();
     refreshAnomaly();
   };
+
+  const handleViewTypeChange = useCallback((viewType: SavedView['viewType']) => {
+    setActiveViewType(viewType);
+    resetFilters();
+  }, [resetFilters]);
+
+  const handleFiltersChange = useCallback((changes: Partial<FunnelFilters>) => {
+    const activeField = VIEW_FIELD_MAP[activeViewType];
+    const scoped: Partial<FunnelFilters> = {};
+    if (activeField in changes) {
+      scoped.revisitResult = activeField === 'revisitResult' ? changes[activeField] : '';
+      scoped.responsibility = activeField === 'responsibility' ? changes[activeField] : '';
+      scoped.problemTag = activeField === 'problemTag' ? changes[activeField] : '';
+    }
+    applyFilters(scoped);
+  }, [activeViewType, applyFilters]);
 
   const handleSaveView = async (viewName: string, viewType: SavedView['viewType'], filtersJson: string) => {
     const data: SavedViewCreateData = {
@@ -79,13 +102,16 @@ export default function App() {
       if (fs.viewType) {
         setActiveViewType(fs.viewType as SavedView['viewType']);
       }
-      const newFilters: Partial<FunnelFilters> = {};
-      if (fs.revisitResult !== undefined) newFilters.revisitResult = fs.revisitResult;
-      if (fs.responsibility !== undefined) newFilters.responsibility = fs.responsibility;
-      if (fs.problemTag !== undefined) newFilters.problemTag = fs.problemTag;
-      if (Object.keys(newFilters).length > 0) {
-        applyFilters(newFilters);
+      const targetField = VIEW_FIELD_MAP[view.viewType];
+      const scoped: Partial<FunnelFilters> = {
+        revisitResult: '',
+        responsibility: '',
+        problemTag: '',
+      };
+      if (fs[targetField] !== undefined) {
+        scoped[targetField] = fs[targetField];
       }
+      applyFilters(scoped);
     } catch {
       // ignore parse error
     }
@@ -123,8 +149,8 @@ export default function App() {
             activeViewType={activeViewType}
             dateRange={dateRange}
             filters={filters}
-            onViewTypeChange={setActiveViewType}
-            onFiltersChange={applyFilters}
+            onViewTypeChange={handleViewTypeChange}
+            onFiltersChange={handleFiltersChange}
             onSaveView={handleSaveView}
             onSelectView={handleSelectView}
             onDeleteView={handleDeleteView}
