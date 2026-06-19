@@ -59,6 +59,8 @@ export class GameScene extends Phaser.Scene {
   private physicsTools: PhysicsTool[] = [];
   private physicsLayer: Phaser.GameObjects.Container | null = null;
   private isDragging: boolean = false;
+  private draggingBody: Matter.Body | null = null;
+  private dragOffset: { x: number; y: number } = { x: 0, y: 0 };
 
   constructor() {
     super('Game');
@@ -115,12 +117,12 @@ export class GameScene extends Phaser.Scene {
       label: 'floor'
     });
 
-    const leftWall = this.matter.add.rectangle(-20, height / 2, 40, height, {
+    this.matter.add.rectangle(-20, height / 2, 40, height, {
       isStatic: true,
       friction: 0.5,
       label: 'leftWall'
     });
-    const rightWall = this.matter.add.rectangle(width + 20, height / 2, 40, height, {
+    this.matter.add.rectangle(width + 20, height / 2, 40, height, {
       isStatic: true,
       friction: 0.5,
       label: 'rightWall'
@@ -152,68 +154,60 @@ export class GameScene extends Phaser.Scene {
     }).setOrigin(0, 0.5).setAlpha(0.8);
 
     this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
-      if (this.isDragging && this.matter.world) {
-        const bodies = this.matter.intersectPoint(pointer.x, pointer.y);
-        if (bodies.length > 0) {
-          const body = bodies[0];
-          const matterBody = (body as any).body as Matter.Body;
-          if (matterBody.label && matterBody.label.startsWith('tool_')) {
-            Matter.Body.setPosition(matterBody, { x: pointer.x, y: pointer.y });
-            matterBody.velocity.x = 0;
-            matterBody.velocity.y = 0;
-          }
-        }
-      }
-    });
-
-    this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-      if (pointer.y < 180 || pointer.y > height - 100) {
-        const bodies = this.matter.intersectPoint(pointer.x, pointer.y);
-        const toolBody = bodies.find(b => {
-          const mb = (b as any).body as Matter.Body;
-          return mb.label && mb.label.startsWith('tool_');
+      if (this.isDragging && this.draggingBody) {
+        Matter.Body.setPosition(this.draggingBody, {
+          x: pointer.x + this.dragOffset.x,
+          y: pointer.y + this.dragOffset.y
         });
-        if (toolBody) {
-          this.isDragging = true;
-          const mb = (toolBody as any).body as Matter.Body;
-          Matter.Body.setVelocity(mb, { x: 0, y: 0 });
-          Matter.Body.setStatic(mb, false);
-        }
+        this.draggingBody.velocity.x = 0;
+        this.draggingBody.velocity.y = 0;
       }
     });
 
     this.input.on('pointerup', () => {
       this.isDragging = false;
+      this.draggingBody = null;
     });
 
     this.input.on('pointerupoutside', () => {
       this.isDragging = false;
+      this.draggingBody = null;
     });
   }
 
   private createPhysicsTool(emoji: string, type: string, size: number, x: number, y: number, index: number): void {
-    const tool = this.matter.add.image(x, y, '__EMPTY', undefined, {
-      shape: { type: 'circle', radius: size / 2 },
+    const label = this.add.text(x, y, emoji, {
+      fontSize: `${size}px`
+    }).setOrigin(0.5);
+
+    label.setDepth(10);
+    label.setInteractive({ useHandCursor: true });
+    label.setData('type', type);
+    label.setData('index', index);
+
+    const body = this.matter.add.circle(x, y, size / 2, {
       friction: 0.4,
       restitution: 0.3,
       density: 0.001,
       label: `tool_${type}_${index}`
     });
 
-    tool.setVisible(false);
+    const matterBody = (body as any).body as Matter.Body;
+    this.physicsTools.push({ body: body as any, type });
 
-    const label = this.add.text(x, y, emoji, {
-      fontSize: `${size}px`
-    }).setOrigin(0.5);
-
-    label.setDepth(10);
-
-    this.physicsTools.push({ body: tool, type });
+    label.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      this.isDragging = true;
+      this.draggingBody = matterBody;
+      this.dragOffset.x = matterBody.position.x - pointer.x;
+      this.dragOffset.y = matterBody.position.y - pointer.y;
+      Matter.Body.setStatic(matterBody, false);
+      Matter.Body.setVelocity(matterBody, { x: 0, y: 0 });
+    });
 
     this.matter.world.on('afterupdate', () => {
-      if (tool.body) {
-        label.setPosition(tool.x, tool.y);
-        label.setRotation(tool.rotation);
+      if (!this.isDragging || this.draggingBody !== matterBody) {
+        label.setPosition(matterBody.position.x, matterBody.position.y);
+        label.setRotation(matterBody.angle);
       }
     });
   }
