@@ -17,14 +17,14 @@ export const authRouter = router({
 			})
 		)
 		.mutation(async ({ ctx, input }) => {
-			const existing = await ctx.db.select().from(user).where(eq(user.email, input.email)).get();
+			const existing = await ctx.db.select().from(user).where(eq(user.email, input.email)).then(r => r[0]);
 			if (existing) {
 				throw new Error('邮箱已注册');
 			}
 			const hashed = await new Argon2id().hash(input.password);
 			const role = (await ctx.db.select().from(user)).length === 0 ? 'admin' : 'staff';
 
-			const newUser = await ctx.db
+			const newUser = (await ctx.db
 				.insert(user)
 				.values({
 					id: crypto.randomUUID(),
@@ -34,8 +34,7 @@ export const authRouter = router({
 					phone: input.phone,
 					role
 				})
-				.returning()
-				.get();
+				.returning())[0];
 
 			const session = await lucia.createSession(newUser.id, {});
 			const cookie = lucia.createSessionCookie(session.id);
@@ -58,7 +57,7 @@ export const authRouter = router({
 			})
 		)
 		.mutation(async ({ ctx, input }) => {
-			const existing = await ctx.db.select().from(user).where(eq(user.email, input.email)).get();
+			const existing = await ctx.db.select().from(user).where(eq(user.email, input.email)).then(r => r[0]);
 			if (!existing) throw new Error('用户不存在');
 
 			const valid = await new Argon2id().verify(existing.passwordHash, input.password);
@@ -102,8 +101,7 @@ export const authRouter = router({
 				createdAt: user.createdAt
 			})
 			.from(user)
-			.orderBy(desc(user.createdAt))
-			.all();
+			.orderBy(desc(user.createdAt));
 	}),
 
 	updateRole: roleProcedure(['admin'])
@@ -114,13 +112,12 @@ export const authRouter = router({
 			})
 		)
 		.mutation(async ({ ctx, input }) => {
-			const old = await ctx.db.select().from(user).where(eq(user.id, input.userId)).get();
-			const updated = await ctx.db
+			const old = await ctx.db.select().from(user).where(eq(user.id, input.userId)).then(r => r[0]);
+			const updated = (await ctx.db
 				.update(user)
 				.set({ role: input.role, updatedAt: new Date() })
 				.where(eq(user.id, input.userId))
-				.returning()
-				.get();
+				.returning())[0];
 
 			await createAuditLog(
 				{

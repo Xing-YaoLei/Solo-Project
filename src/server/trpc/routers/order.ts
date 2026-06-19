@@ -42,14 +42,13 @@ export const orderRouter = router({
 				.select()
 				.from(order)
 				.where(where.length > 0 ? and(...(where as any)) : undefined)
-				.orderBy(desc(order.createdAt))
-				.all();
+				.orderBy(desc(order.createdAt));
 		}),
 
 	get: protectedProcedure
 		.input(z.string())
 		.query(async ({ ctx, input }) => {
-			return ctx.db.select().from(order).where(eq(order.id, input)).get();
+			return ctx.db.select().from(order).where(eq(order.id, input)).then(r => r[0]);
 		}),
 
 	create: roleProcedure(['admin', 'manager', 'staff'])
@@ -87,7 +86,7 @@ export const orderRouter = router({
 			const id = crypto.randomUUID();
 			const orderNo = `ORD${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
 
-			const newOrder = await ctx.db
+			const newOrder = (await ctx.db
 				.insert(order)
 				.values({
 					id,
@@ -96,8 +95,7 @@ export const orderRouter = router({
 					createdBy: ctx.user.id,
 					...input
 				})
-				.returning()
-				.get();
+				.returning())[0];
 
 			const calendarStatus = input.status === 'cancelled' || input.status === 'no_show' ? 'available' : 'booked';
 			if (input.status !== 'cancelled' && input.status !== 'no_show') {
@@ -109,7 +107,13 @@ export const orderRouter = router({
 					input.checkOutDate,
 					calendarStatus,
 					pricePerNight,
-					input.remark
+					input.remark,
+					{
+						source: 'order_create',
+						orderId: id,
+						orderNo,
+						userId: ctx.user.id
+					}
 				);
 			}
 
@@ -152,15 +156,14 @@ export const orderRouter = router({
 			})
 		)
 		.mutation(async ({ ctx, input }) => {
-			const old = await ctx.db.select().from(order).where(eq(order.id, input.id)).get();
+			const old = await ctx.db.select().from(order).where(eq(order.id, input.id)).then(r => r[0]);
 			if (!old) throw new Error('订单不存在');
 
-			const updated = await ctx.db
+			const updated = (await ctx.db
 				.update(order)
 				.set({ status: input.status, updatedAt: new Date() })
 				.where(eq(order.id, input.id))
-				.returning()
-				.get();
+				.returning())[0];
 
 			const statusToCalendar: Record<string, string> = {
 				pending: 'booked',
@@ -173,8 +176,22 @@ export const orderRouter = router({
 
 			if (old.status !== input.status) {
 				const calStatus = statusToCalendar[input.status];
+				const calSource: Record<string, 'order_checkin' | 'order_checkout' | 'order_cancel' | 'order_no_show' | 'order_update'> = {
+					pending: 'order_update',
+					confirmed: 'order_update',
+					checked_in: 'order_checkin',
+					checked_out: 'order_checkout',
+					cancelled: 'order_cancel',
+					no_show: 'order_no_show'
+				};
+				const source = calSource[input.status];
 				if (input.status === 'cancelled' || input.status === 'no_show') {
-					await clearCalendarForOrder(ctx.db, old.propertyId, input.id, old.checkInDate, old.checkOutDate);
+					await clearCalendarForOrder(ctx.db, old.propertyId, input.id, old.checkInDate, old.checkOutDate, {
+						source,
+						orderId: input.id,
+						orderNo: old.orderNo,
+						userId: ctx.user.id
+					});
 				} else {
 					await updateCalendarForOrder(
 						ctx.db,
@@ -182,7 +199,15 @@ export const orderRouter = router({
 						input.id,
 						old.checkInDate,
 						old.checkOutDate,
-						calStatus as any
+						calStatus as any,
+						undefined,
+						undefined,
+						{
+							source,
+							orderId: input.id,
+							orderNo: old.orderNo,
+							userId: ctx.user.id
+						}
 					);
 				}
 			}
@@ -230,7 +255,7 @@ export const orderRouter = router({
 			})
 		)
 		.mutation(async ({ ctx, input }) => {
-			const old = await ctx.db.select().from(order).where(eq(order.id, input.id)).get();
+			const old = await ctx.db.select().from(order).where(eq(order.id, input.id)).then(r => r[0]);
 			if (!old) throw new Error('订单不存在');
 
 			const { id, ...data } = input;
@@ -242,16 +267,20 @@ export const orderRouter = router({
 				updateData.nightCount = Math.max(differenceInDays(newCheckOut, newCheckIn), 1);
 			}
 
-			const updated = await ctx.db
+			const updated = (await ctx.db
 				.update(order)
 				.set(updateData)
 				.where(eq(order.id, id))
-				.returning()
-				.get();
+				.returning())[0];
 
 			const dateOrPropChanged = input.checkInDate || input.checkOutDate || input.propertyId;
 			if (dateOrPropChanged && old.status !== 'cancelled' && old.status !== 'no_show') {
-				await clearCalendarForOrder(ctx.db, old.propertyId, id, old.checkInDate, old.checkOutDate);
+				await clearCalendarForOrder(ctx.db, old.propertyId, id, old.checkInDate, old.checkOutDate, {
+					source: 'order_update',
+					orderId: id,
+					orderNo: old.orderNo,
+					userId: ctx.user.id
+				});
 				const newCheckIn = input.checkInDate ?? old.checkInDate;
 				const newCheckOut = input.checkOutDate ?? old.checkOutDate;
 				const newPropId = input.propertyId ?? old.propertyId;
@@ -291,7 +320,14 @@ export const orderRouter = router({
 					newCheckIn,
 					newCheckOut,
 					statusToCalendar[old.status] as any,
-					pricePerNight
+					pricePerNight,
+					undefined,
+					{
+						source: 'order_update',
+						orderId: id,
+						orderNo: updated.orderNo,
+						userId: ctx.user.id
+					}
 				);
 			}
 
@@ -319,9 +355,14 @@ export const orderRouter = router({
 	delete: roleProcedure(['admin', 'manager'])
 		.input(z.string())
 		.mutation(async ({ ctx, input }) => {
-			const old = await ctx.db.select().from(order).where(eq(order.id, input)).get();
+			const old = await ctx.db.select().from(order).where(eq(order.id, input)).then(r => r[0]);
 			if (old && old.status !== 'cancelled' && old.status !== 'no_show') {
-				await clearCalendarForOrder(ctx.db, old.propertyId, input, old.checkInDate, old.checkOutDate);
+				await clearCalendarForOrder(ctx.db, old.propertyId, input, old.checkInDate, old.checkOutDate, {
+					source: 'order_cancel',
+					orderId: input,
+					orderNo: old.orderNo,
+					userId: ctx.user.id
+				});
 			}
 			await ctx.db.delete(order).where(eq(order.id, input));
 			await createAuditLog(
@@ -348,8 +389,7 @@ export const orderRouter = router({
 						sql`${order.status} IN ('pending','confirmed')`
 					)
 				)
-				.orderBy(order.checkInDate)
-				.all();
+				.orderBy(order.checkInDate);
 		}),
 
 	getTodayDepartures: protectedProcedure.query(async ({ ctx }) => {
@@ -365,7 +405,6 @@ export const orderRouter = router({
 					sql`${order.status} IN ('confirmed','checked_in')`
 				)
 			)
-			.orderBy(order.checkOutDate)
-			.all();
+			.orderBy(order.checkOutDate);
 	})
 });

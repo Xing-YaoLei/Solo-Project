@@ -1,15 +1,17 @@
 import {
-	sqliteTable,
+	pgTable,
 	text,
 	integer,
 	real,
 	primaryKey,
 	index,
-} from 'drizzle-orm/sqlite-core';
+	timestamp,
+	boolean,
+	jsonb
+} from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
 
-// ==================== 用户与认证 ====================
-export const user = sqliteTable('user', {
+export const user = pgTable('user', {
 	id: text('id').primaryKey(),
 	email: text('email').notNull().unique(),
 	username: text('username').notNull(),
@@ -17,14 +19,14 @@ export const user = sqliteTable('user', {
 	role: text('role', { enum: ['admin', 'manager', 'staff'] }).notNull().default('staff'),
 	avatar: text('avatar'),
 	phone: text('phone'),
-	createdAt: integer('created_at', { mode: 'timestamp' }).notNull().defaultNow(),
-	updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().defaultNow(),
+	createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const session = sqliteTable('session', {
+export const session = pgTable('session', {
 	id: text('id').primaryKey(),
 	userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
-	expiresAt: integer('expires_at').notNull(),
+	expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
 });
 
 export const userRelations = relations(user, ({ many }) => ({
@@ -40,10 +42,9 @@ export const sessionRelations = relations(session, ({ one }) => ({
 	user: one(user, { fields: [session.userId], references: [user.id] }),
 }));
 
-// ==================== 房源管理 ====================
 export type RoomStatus = 'available' | 'booked' | 'occupied' | 'cleaning' | 'maintenance' | 'blocked';
 
-export const property = sqliteTable('property', {
+export const property = pgTable('property', {
 	id: text('id').primaryKey(),
 	name: text('name').notNull(),
 	address: text('address').notNull(),
@@ -56,24 +57,24 @@ export const property = sqliteTable('property', {
 	basePrice: real('base_price').notNull().default(0),
 	cleaningFee: real('cleaning_fee').notNull().default(0),
 	depositAmount: real('deposit_amount').notNull().default(0),
-	amenities: text('amenities', { mode: 'json' }).$type<string[]>(),
-	images: text('images', { mode: 'json' }).$type<string[]>(),
+	amenities: jsonb('amenities').$type<string[]>(),
+	images: jsonb('images').$type<string[]>(),
 	description: text('description'),
 	status: text('status', { enum: ['active', 'inactive'] }).notNull().default('active'),
-	createdAt: integer('created_at', { mode: 'timestamp' }).notNull().defaultNow(),
-	updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().defaultNow(),
+	createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const roomCalendar = sqliteTable('room_calendar', {
+export const roomCalendar = pgTable('room_calendar', {
 	id: text('id').primaryKey(),
 	propertyId: text('property_id').notNull().references(() => property.id, { onDelete: 'cascade' }),
-	date: integer('date', { mode: 'timestamp' }).notNull(),
+	date: timestamp('date', { withTimezone: true }).notNull(),
 	status: text('status', { enum: ['available', 'booked', 'occupied', 'cleaning', 'maintenance', 'blocked'] }).notNull().default('available'),
 	orderId: text('order_id').references(() => order.id),
 	price: real('price'),
 	notes: text('notes'),
-	createdAt: integer('created_at', { mode: 'timestamp' }).notNull().defaultNow(),
-	updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().defaultNow(),
+	createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
 	propertyDateIdx: index('property_date_idx').on(table.propertyId, table.date),
 }));
@@ -91,11 +92,10 @@ export const roomCalendarRelations = relations(roomCalendar, ({ one }) => ({
 	order: one(order, { fields: [roomCalendar.orderId], references: [order.id] }),
 }));
 
-// ==================== 渠道订单 ====================
 export type ChannelType = 'airbnb' | 'booking' | 'tujia' | 'meituan' | 'xiaohongshu' | 'direct' | 'other';
 export type OrderStatus = 'pending' | 'confirmed' | 'checked_in' | 'checked_out' | 'cancelled' | 'no_show';
 
-export const order = sqliteTable('order', {
+export const order = pgTable('order', {
 	id: text('id').primaryKey(),
 	orderNo: text('order_no').notNull().unique(),
 	propertyId: text('property_id').notNull().references(() => property.id, { onDelete: 'cascade' }),
@@ -105,8 +105,8 @@ export const order = sqliteTable('order', {
 	guestPhone: text('guest_phone').notNull(),
 	guestEmail: text('guest_email'),
 	guestCount: integer('guest_count').notNull().default(1),
-	checkInDate: integer('check_in_date', { mode: 'timestamp' }).notNull(),
-	checkOutDate: integer('check_out_date', { mode: 'timestamp' }).notNull(),
+	checkInDate: timestamp('check_in_date', { withTimezone: true }).notNull(),
+	checkOutDate: timestamp('check_out_date', { withTimezone: true }).notNull(),
 	nightCount: integer('night_count').notNull().default(1),
 	totalPrice: real('total_price').notNull().default(0),
 	cleaningFee: real('cleaning_fee').notNull().default(0),
@@ -121,8 +121,8 @@ export const order = sqliteTable('order', {
 	remark: text('remark'),
 	internalNote: text('internal_note'),
 	createdBy: text('created_by').references(() => user.id),
-	createdAt: integer('created_at', { mode: 'timestamp' }).notNull().defaultNow(),
-	updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().defaultNow(),
+	createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const orderRelations = relations(order, ({ one, many }) => ({
@@ -135,11 +135,10 @@ export const orderRelations = relations(order, ({ one, many }) => ({
 	exceptions: many(exceptionOrder),
 }));
 
-// ==================== 保洁任务 ====================
 export type CleaningStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled' | 'rejected';
 export type CleaningPriority = 'low' | 'medium' | 'high' | 'urgent';
 
-export const cleaningTask = sqliteTable('cleaning_task', {
+export const cleaningTask = pgTable('cleaning_task', {
 	id: text('id').primaryKey(),
 	taskNo: text('task_no').notNull().unique(),
 	propertyId: text('property_id').notNull().references(() => property.id, { onDelete: 'cascade' }),
@@ -147,20 +146,20 @@ export const cleaningTask = sqliteTable('cleaning_task', {
 	type: text('type', { enum: ['checkout', 'periodic', 'deep', 'maintenance', 'other'] }).notNull().default('checkout'),
 	status: text('status', { enum: ['pending', 'in_progress', 'completed', 'cancelled', 'rejected'] }).notNull().default('pending'),
 	priority: text('priority', { enum: ['low', 'medium', 'high', 'urgent'] }).notNull().default('medium'),
-	scheduledDate: integer('scheduled_date', { mode: 'timestamp' }).notNull(),
+	scheduledDate: timestamp('scheduled_date', { withTimezone: true }).notNull(),
 	scheduledTime: text('scheduled_time'),
-	actualStart: integer('actual_start', { mode: 'timestamp' }),
-	actualEnd: integer('actual_end', { mode: 'timestamp' }),
+	actualStart: timestamp('actual_start', { withTimezone: true }),
+	actualEnd: timestamp('actual_end', { withTimezone: true }),
 	assignedTo: text('assigned_to').references(() => user.id),
 	fee: real('fee').notNull().default(0),
-	items: text('items', { mode: 'json' }).$type<{ name: string; done: boolean }[]>(),
-	beforePhotos: text('before_photos', { mode: 'json' }).$type<string[]>(),
-	afterPhotos: text('after_photos', { mode: 'json' }).$type<string[]>(),
-	checklist: text('checklist', { mode: 'json' }).$type<{ name: string; done: boolean; remark?: string }[]>(),
+	items: jsonb('items').$type<{ name: string; done: boolean }[]>(),
+	beforePhotos: jsonb('before_photos').$type<string[]>(),
+	afterPhotos: jsonb('after_photos').$type<string[]>(),
+	checklist: jsonb('checklist').$type<{ name: string; done: boolean; remark?: string }[]>(),
 	inspectorNote: text('inspector_note'),
 	cleanerNote: text('cleaner_note'),
-	createdAt: integer('created_at', { mode: 'timestamp' }).notNull().defaultNow(),
-	updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().defaultNow(),
+	createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const cleaningTaskRelations = relations(cleaningTask, ({ one }) => ({
@@ -169,10 +168,9 @@ export const cleaningTaskRelations = relations(cleaningTask, ({ one }) => ({
 	assignee: one(user, { fields: [cleaningTask.assignedTo], references: [user.id], relationName: 'assignedCleaner' }),
 }));
 
-// ==================== 入住证件登记 ====================
 export type IDType = 'id_card' | 'passport' | 'driver_license' | 'other';
 
-export const guestRegistration = sqliteTable('guest_registration', {
+export const guestRegistration = pgTable('guest_registration', {
 	id: text('id').primaryKey(),
 	propertyId: text('property_id').notNull().references(() => property.id, { onDelete: 'cascade' }),
 	orderId: text('order_id').references(() => order.id),
@@ -181,18 +179,18 @@ export const guestRegistration = sqliteTable('guest_registration', {
 	idNumber: text('id_number').notNull(),
 	nationality: text('nationality').default('CN'),
 	gender: text('gender', { enum: ['male', 'female', 'other'] }),
-	birthDate: integer('birth_date', { mode: 'timestamp' }),
+	birthDate: timestamp('birth_date', { withTimezone: true }),
 	address: text('address'),
 	phone: text('phone'),
 	idFrontPhoto: text('id_front_photo'),
 	idBackPhoto: text('id_back_photo'),
 	facePhoto: text('face_photo'),
-	isPrimary: integer('is_primary', { mode: 'boolean' }).notNull().default(false),
-	checkInAt: integer('check_in_at', { mode: 'timestamp' }),
-	checkOutAt: integer('check_out_at', { mode: 'timestamp' }),
+	isPrimary: boolean('is_primary').notNull().default(false),
+	checkInAt: timestamp('check_in_at', { withTimezone: true }),
+	checkOutAt: timestamp('check_out_at', { withTimezone: true }),
 	remark: text('remark'),
-	createdAt: integer('created_at', { mode: 'timestamp' }).notNull().defaultNow(),
-	updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().defaultNow(),
+	createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const guestRegistrationRelations = relations(guestRegistration, ({ one }) => ({
@@ -200,10 +198,9 @@ export const guestRegistrationRelations = relations(guestRegistration, ({ one })
 	order: one(order, { fields: [guestRegistration.orderId], references: [order.id] }),
 }));
 
-// ==================== 押金明细 ====================
 export type DepositStatus = 'collected' | 'frozen' | 'refunded' | 'partial_refunded' | 'deducted';
 
-export const deposit = sqliteTable('deposit', {
+export const deposit = pgTable('deposit', {
 	id: text('id').primaryKey(),
 	depositNo: text('deposit_no').notNull().unique(),
 	propertyId: text('property_id').notNull().references(() => property.id, { onDelete: 'cascade' }),
@@ -213,17 +210,17 @@ export const deposit = sqliteTable('deposit', {
 	status: text('status', { enum: ['collected', 'frozen', 'refunded', 'partial_refunded', 'deducted'] }).notNull().default('collected'),
 	paymentMethod: text('payment_method', { enum: ['cash', 'wechat', 'alipay', 'bank_transfer', 'card', 'platform'] }).notNull().default('wechat'),
 	transactionNo: text('transaction_no'),
-	collectedAt: integer('collected_at', { mode: 'timestamp' }),
+	collectedAt: timestamp('collected_at', { withTimezone: true }),
 	refundedAmount: real('refunded_amount').notNull().default(0),
 	deductedAmount: real('deducted_amount').notNull().default(0),
-	deductionItems: text('deduction_items', { mode: 'json' }).$type<{ name: string; amount: number; remark?: string }[]>(),
+	deductionItems: jsonb('deduction_items').$type<{ name: string; amount: number; remark?: string }[]>(),
 	refundMethod: text('refund_method', { enum: ['cash', 'wechat', 'alipay', 'bank_transfer', 'card', 'platform'] }),
 	refundTransactionNo: text('refund_transaction_no'),
-	refundedAt: integer('refunded_at', { mode: 'timestamp' }),
-	photos: text('photos', { mode: 'json' }).$type<string[]>(),
+	refundedAt: timestamp('refunded_at', { withTimezone: true }),
+	photos: jsonb('photos').$type<string[]>(),
 	remark: text('remark'),
-	createdAt: integer('created_at', { mode: 'timestamp' }).notNull().defaultNow(),
-	updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().defaultNow(),
+	createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const depositRelations = relations(deposit, ({ one }) => ({
@@ -231,11 +228,10 @@ export const depositRelations = relations(deposit, ({ one }) => ({
 	order: one(order, { fields: [deposit.orderId], references: [order.id] }),
 }));
 
-// ==================== 房态冲突异常单 ====================
 export type ExceptionType = 'status_conflict' | 'double_booking' | 'overbooking' | 'cleaning_delay' | 'amenity_issue' | 'guest_complaint' | 'other';
 export type ExceptionStatus = 'open' | 'investigating' | 'resolved' | 'closed';
 
-export const exceptionOrder = sqliteTable('exception_order', {
+export const exceptionOrder = pgTable('exception_order', {
 	id: text('id').primaryKey(),
 	exceptionNo: text('exception_no').notNull().unique(),
 	type: text('type', { enum: ['status_conflict', 'double_booking', 'overbooking', 'cleaning_delay', 'amenity_issue', 'guest_complaint', 'other'] }).notNull().default('status_conflict'),
@@ -246,8 +242,8 @@ export const exceptionOrder = sqliteTable('exception_order', {
 	propertyId: text('property_id').references(() => property.id),
 	orderId: text('order_id').references(() => order.id),
 	conflictingOrderId: text('conflicting_order_id').references(() => order.id),
-	affectedStartDate: integer('affected_start_date', { mode: 'timestamp' }),
-	affectedEndDate: integer('affected_end_date', { mode: 'timestamp' }),
+	affectedStartDate: timestamp('affected_start_date', { withTimezone: true }),
+	affectedEndDate: timestamp('affected_end_date', { withTimezone: true }),
 	affectedNights: integer('affected_nights').default(0),
 	impactScope: text('impact_scope'),
 	rootCause: text('root_cause'),
@@ -256,22 +252,22 @@ export const exceptionOrder = sqliteTable('exception_order', {
 	responderId: text('responder_id').references(() => user.id),
 	financialImpact: real('financial_impact').default(0),
 	compensationAmount: real('compensation_amount').default(0),
-	evidence: text('evidence', { mode: 'json' }).$type<string[]>(),
+	evidence: jsonb('evidence').$type<string[]>(),
 	conclusion: text('conclusion'),
 	createdBy: text('created_by').notNull().references(() => user.id),
-	createdAt: integer('created_at', { mode: 'timestamp' }).notNull().defaultNow(),
-	resolvedAt: integer('resolved_at', { mode: 'timestamp' }),
-	closedAt: integer('closed_at', { mode: 'timestamp' }),
-	updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().defaultNow(),
+	createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+	resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+	closedAt: timestamp('closed_at', { withTimezone: true }),
+	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const exceptionResponsible = sqliteTable('exception_responsible', {
+export const exceptionResponsible = pgTable('exception_responsible', {
 	id: text('id').primaryKey(),
 	exceptionId: text('exception_id').notNull().references(() => exceptionOrder.id, { onDelete: 'cascade' }),
 	userId: text('user_id').notNull().references(() => user.id),
 	role: text('role').notNull(),
 	responsibilityDescription: text('responsibility_description'),
-	createdAt: integer('created_at', { mode: 'timestamp' }).notNull().defaultNow(),
+	createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
 	pk: primaryKey({ columns: [table.exceptionId, table.userId] }),
 }));
@@ -291,20 +287,19 @@ export const exceptionResponsibleRelations = relations(exceptionResponsible, ({ 
 	user: one(user, { fields: [exceptionResponsible.userId], references: [user.id] }),
 }));
 
-// ==================== 审计日志（状态变更历史） ====================
-export const auditLog = sqliteTable('audit_log', {
+export const auditLog = pgTable('audit_log', {
 	id: text('id').primaryKey(),
 	userId: text('user_id').references(() => user.id),
 	action: text('action').notNull(),
 	entityType: text('entity_type').notNull(),
 	entityId: text('entity_id').notNull(),
 	field: text('field'),
-	oldValue: text('old_value', { mode: 'json' }),
-	newValue: text('new_value', { mode: 'json' }),
-	meta: text('meta', { mode: 'json' }).$type<Record<string, unknown>>(),
+	oldValue: jsonb('old_value'),
+	newValue: jsonb('new_value'),
+	meta: jsonb('meta').$type<Record<string, unknown>>(),
 	ip: text('ip'),
 	userAgent: text('user_agent'),
-	createdAt: integer('created_at', { mode: 'timestamp' }).notNull().defaultNow(),
+	createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
 	entityIdx: index('audit_entity_idx').on(table.entityType, table.entityId),
 	userIdx: index('audit_user_idx').on(table.userId),

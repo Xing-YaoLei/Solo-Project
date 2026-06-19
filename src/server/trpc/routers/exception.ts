@@ -28,8 +28,7 @@ export const exceptionRouter = router({
 				.select()
 				.from(exceptionOrder)
 				.where(where.length > 0 ? and(...where) : undefined)
-				.orderBy(desc(exceptionOrder.createdAt))
-				.all();
+				.orderBy(desc(exceptionOrder.createdAt));
 		}),
 
 	get: protectedProcedure
@@ -39,15 +38,14 @@ export const exceptionRouter = router({
 				.select()
 				.from(exceptionOrder)
 				.where(eq(exceptionOrder.id, input))
-				.get();
+				.then(r => r[0]);
 
 			if (!ex) return null;
 
 			const responsibles = await ctx.db
 				.select()
 				.from(exceptionResponsible)
-				.where(eq(exceptionResponsible.exceptionId, input))
-				.all();
+				.where(eq(exceptionResponsible.exceptionId, input));
 
 			return { ...ex, responsibles };
 		}),
@@ -72,7 +70,7 @@ export const exceptionRouter = router({
 			const id = crypto.randomUUID();
 			const exceptionNo = `EXC${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
 
-			const newEx = await ctx.db
+			const newEx = (await ctx.db
 				.insert(exceptionOrder)
 				.values({
 					id,
@@ -89,8 +87,7 @@ export const exceptionRouter = router({
 					affectedNights: input.affectedNights,
 					ownerId: input.ownerId
 				})
-				.returning()
-				.get();
+				.returning())[0];
 
 			for (const uid of input.responsibleUserIds) {
 				await ctx.db.insert(exceptionResponsible).values({
@@ -127,7 +124,7 @@ export const exceptionRouter = router({
 			})
 		)
 		.mutation(async ({ ctx, input }) => {
-			const old = await ctx.db.select().from(exceptionOrder).where(eq(exceptionOrder.id, input.id)).get();
+			const old = await ctx.db.select().from(exceptionOrder).where(eq(exceptionOrder.id, input.id)).then(r => r[0]);
 			if (!old) throw new Error('异常单不存在');
 
 			if (input.status === 'closed') {
@@ -136,8 +133,7 @@ export const exceptionRouter = router({
 				const responsibles = await ctx.db
 					.select()
 					.from(exceptionResponsible)
-					.where(eq(exceptionResponsible.exceptionId, input.id))
-					.all();
+					.where(eq(exceptionResponsible.exceptionId, input.id));
 				if (responsibles.length === 0) throw new Error('关闭前必须指定责任人');
 			}
 
@@ -154,12 +150,11 @@ export const exceptionRouter = router({
 			if (input.status === 'resolved') updateData.resolvedAt = new Date();
 			if (input.status === 'closed') updateData.closedAt = new Date();
 
-			const updated = await ctx.db
+			const updated = (await ctx.db
 				.update(exceptionOrder)
 				.set(updateData)
 				.where(eq(exceptionOrder.id, input.id))
-				.returning()
-				.get();
+				.returning())[0];
 
 			await createAuditLog(
 				{
@@ -251,11 +246,11 @@ export const exceptionRouter = router({
 							eq(exceptionOrder.type, 'double_booking')
 						)
 					)
-					.get();
+					.then(r => r[0]);
 
 				if (!existing) {
 					const id = crypto.randomUUID();
-					const ex = await ctx.db
+					const ex = (await ctx.db
 						.insert(exceptionOrder)
 						.values({
 							id,
@@ -267,8 +262,7 @@ export const exceptionRouter = router({
 							description: `系统自动检测到存在${conflict.conflicts.length}处房态日期冲突`,
 							createdBy: ctx.user.id
 						})
-						.returning()
-						.get();
+						.returning())[0];
 					created.push(ex);
 				}
 			}

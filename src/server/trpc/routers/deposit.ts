@@ -39,14 +39,13 @@ export const depositRouter = router({
 				.select()
 				.from(deposit)
 				.where(where.length > 0 ? and(...where) : undefined)
-				.orderBy(desc(deposit.createdAt))
-				.all();
+				.orderBy(desc(deposit.createdAt));
 		}),
 
 	get: protectedProcedure
 		.input(z.string())
 		.query(async ({ ctx, input }) => {
-			return ctx.db.select().from(deposit).where(eq(deposit.id, input)).get();
+			return ctx.db.select().from(deposit).where(eq(deposit.id, input)).then(r => r[0]);
 		}),
 
 	create: roleProcedure(['admin', 'manager', 'staff'])
@@ -68,7 +67,7 @@ export const depositRouter = router({
 			const id = crypto.randomUUID();
 			const depositNo = `DEP${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
 
-			const newDeposit = await ctx.db
+			const newDeposit = (await ctx.db
 				.insert(deposit)
 				.values({
 					id,
@@ -76,8 +75,7 @@ export const depositRouter = router({
 					collectedAt: input.collectedAt ?? new Date(),
 					...input
 				})
-				.returning()
-				.get();
+				.returning())[0];
 
 			await createAuditLog(
 				{ action: 'create', entityType: 'deposit', entityId: id },
@@ -102,7 +100,7 @@ export const depositRouter = router({
 			})
 		)
 		.mutation(async ({ ctx, input }) => {
-			const old = await ctx.db.select().from(deposit).where(eq(deposit.id, input.id)).get();
+			const old = await ctx.db.select().from(deposit).where(eq(deposit.id, input.id)).then(r => r[0]);
 			if (!old) throw new Error('押金记录不存在');
 
 			const totalRefund = input.refundedAmount + input.deductedAmount;
@@ -115,7 +113,7 @@ export const depositRouter = router({
 				status = 'deducted';
 			}
 
-			const updated = await ctx.db
+			const updated = (await ctx.db
 				.update(deposit)
 				.set({
 					status: status as any,
@@ -130,8 +128,7 @@ export const depositRouter = router({
 					updatedAt: new Date()
 				})
 				.where(eq(deposit.id, input.id))
-				.returning()
-				.get();
+				.returning())[0];
 
 			await createAuditLog(
 				{
@@ -161,14 +158,13 @@ export const depositRouter = router({
 			})
 		)
 		.mutation(async ({ ctx, input }) => {
-			const old = await ctx.db.select().from(deposit).where(eq(deposit.id, input.id)).get();
+			const old = await ctx.db.select().from(deposit).where(eq(deposit.id, input.id)).then(r => r[0]);
 			const { id, ...data } = input;
-			const updated = await ctx.db
+			const updated = (await ctx.db
 				.update(deposit)
 				.set({ ...data, updatedAt: new Date() })
 				.where(eq(deposit.id, id))
-				.returning()
-				.get();
+				.returning())[0];
 
 			if (old && updated) {
 				const changes = diffObject(old as any, updated as any);

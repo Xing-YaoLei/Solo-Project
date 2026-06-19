@@ -23,22 +23,22 @@ export const reportsRouter = router({
 			monthRevenue,
 			monthOccupancy
 		] = await Promise.all([
-			await ctx.db.select({ count: count() }).from(property).where(eq(property.status, 'active')).get(),
+			await ctx.db.select({ count: count() }).from(property).where(eq(property.status, 'active')).then(r => r[0]),
 			await ctx.db
 				.select({ count: count() })
 				.from(order)
 				.where(sql`${order.status} IN ('pending','confirmed','checked_in')`)
-				.get(),
+				.then(r => r[0]),
 			await ctx.db
 				.select({ count: count() })
 				.from(cleaningTask)
 				.where(sql`${cleaningTask.status} IN ('pending','in_progress')`)
-				.get(),
+				.then(r => r[0]),
 			await ctx.db
 				.select({ count: count() })
 				.from(exceptionOrder)
 				.where(sql`${exceptionOrder.status} IN ('open','investigating')`)
-				.get(),
+				.then(r => r[0]),
 			await ctx.db
 				.select({ count: count() })
 				.from(order)
@@ -49,7 +49,7 @@ export const reportsRouter = router({
 						sql`${order.status} IN ('pending','confirmed')`
 					)
 				)
-				.get(),
+				.then(r => r[0]),
 			await ctx.db
 				.select({ count: count() })
 				.from(order)
@@ -60,7 +60,7 @@ export const reportsRouter = router({
 						sql`${order.status} IN ('confirmed','checked_in')`
 					)
 				)
-				.get(),
+				.then(r => r[0]),
 			await ctx.db
 				.select({ sum: sum(order.totalPrice) })
 				.from(order)
@@ -71,7 +71,7 @@ export const reportsRouter = router({
 						sql`${order.status} IN ('confirmed','checked_in','checked_out')`
 					)
 				)
-				.get(),
+				.then(r => r[0]),
 			calculateOccupancyRate(ctx.db, monthStart, monthEnd)
 		]);
 
@@ -155,8 +155,7 @@ export const reportsRouter = router({
 						sql`${order.status} IN ('confirmed','checked_in','checked_out')`
 					)
 				)
-				.groupBy(order.channel)
-				.all();
+				.groupBy(order.channel);
 
 			return rows.map((r) => ({
 				channel: r.channel,
@@ -180,7 +179,7 @@ export const reportsRouter = router({
 			const generatedAt = new Date();
 
 			const props = input.propertyIds && input.propertyIds.length > 0
-				? await ctx.db.select().from(property).where(sql`${property.id} IN (${input.propertyIds.join(',')})`).all()
+				? await ctx.db.select().from(property).where(sql`${property.id} IN (${input.propertyIds.join(',')})`)
 				: [];
 
 			const meta: DownloadMeta = {

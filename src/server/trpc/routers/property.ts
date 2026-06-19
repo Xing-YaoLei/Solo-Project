@@ -18,14 +18,13 @@ export const propertyRouter = router({
 				.select()
 				.from(property)
 				.where(where as any)
-				.orderBy(desc(property.createdAt))
-				.all();
+				.orderBy(desc(property.createdAt));
 		}),
 
 	get: protectedProcedure
 		.input(z.string())
 		.query(async ({ ctx, input }) => {
-			return ctx.db.select().from(property).where(eq(property.id, input)).get();
+			return ctx.db.select().from(property).where(eq(property.id, input)).then(r => r[0]);
 		}),
 
 	create: roleProcedure(['admin', 'manager'])
@@ -49,11 +48,10 @@ export const propertyRouter = router({
 		)
 		.mutation(async ({ ctx, input }) => {
 			const id = crypto.randomUUID();
-			const newProp = await ctx.db
+			const newProp = (await ctx.db
 				.insert(property)
 				.values({ id, ...input })
-				.returning()
-				.get();
+				.returning())[0];
 
 			await createAuditLog(
 				{ action: 'create', entityType: 'property', entityId: id },
@@ -86,14 +84,13 @@ export const propertyRouter = router({
 			})
 		)
 		.mutation(async ({ ctx, input }) => {
-			const old = await ctx.db.select().from(property).where(eq(property.id, input.id)).get();
+			const old = await ctx.db.select().from(property).where(eq(property.id, input.id)).then(r => r[0]);
 			const { id, ...data } = input;
-			const updated = await ctx.db
+			const updated = (await ctx.db
 				.update(property)
 				.set({ ...data, updatedAt: new Date() })
 				.where(eq(property.id, id))
-				.returning()
-				.get();
+				.returning())[0];
 
 			if (old && updated) {
 				const changes = diffObject(old as any, updated as any);
@@ -149,8 +146,7 @@ export const propertyRouter = router({
 				.select()
 				.from(roomCalendar)
 				.where(and(...(where as any)))
-				.orderBy(roomCalendar.propertyId, roomCalendar.date)
-				.all();
+				.orderBy(roomCalendar.propertyId, roomCalendar.date);
 		}),
 
 	updateCalendarStatus: roleProcedure(['admin', 'manager', 'staff'])
@@ -174,12 +170,21 @@ export const propertyRouter = router({
 						sql`date(${roomCalendar.date}) = date(${day.toISOString()})`
 					)
 				)
-				.get();
+				.then(r => r[0]);
 
-			const oldStatus = existing?.status;
+			const auditMeta: Record<string, unknown> = {
+				propertyId: input.propertyId,
+				date: day.toISOString().split('T')[0],
+				source: 'manual'
+			};
 
 			if (existing) {
-				const updated = await ctx.db
+				const old = {
+					status: existing.status,
+					notes: existing.notes,
+					price: existing.price
+				};
+				const updated = (await ctx.db
 					.update(roomCalendar)
 					.set({
 						status: input.status,
@@ -188,27 +193,33 @@ export const propertyRouter = router({
 						updatedAt: new Date()
 					})
 					.where(eq(roomCalendar.id, existing.id))
-					.returning()
-					.get();
+					.returning())[0];
 
-				await createAuditLog(
-					{
-						action: 'status_change',
-						entityType: 'calendar',
-						entityId: existing.id,
-						field: 'status',
-						oldValue: oldStatus,
-						newValue: input.status,
-						meta: { propertyId: input.propertyId, date: day.toISOString() }
-					},
-					ctx.user.id,
-					ctx.db
-				);
+				const changes = diffObject(old, {
+					status: updated.status,
+					notes: updated.notes,
+					price: updated.price
+				});
+				for (const ch of changes) {
+					await createAuditLog(
+						{
+							action: ch.field === 'status' ? 'status_change' : 'update',
+							entityType: 'calendar',
+							entityId: existing.id,
+							field: ch.field,
+							oldValue: ch.old,
+							newValue: ch.new,
+							meta: auditMeta
+						},
+						ctx.user.id,
+						ctx.db
+					);
+				}
 
 				return updated;
 			} else {
 				const id = crypto.randomUUID();
-				const created = await ctx.db
+				const created = (await ctx.db
 					.insert(roomCalendar)
 					.values({
 						id,
@@ -218,8 +229,7 @@ export const propertyRouter = router({
 						notes: input.notes,
 						price: input.price
 					})
-					.returning()
-					.get();
+					.returning())[0];
 
 				await createAuditLog(
 					{
@@ -229,11 +239,41 @@ export const propertyRouter = router({
 						field: 'status',
 						oldValue: null,
 						newValue: input.status,
-						meta: { propertyId: input.propertyId, date: day.toISOString() }
+						meta: auditMeta
 					},
 					ctx.user.id,
 					ctx.db
 				);
+				if (input.price !== undefined) {
+					await createAuditLog(
+						{
+							action: 'update',
+							entityType: 'calendar',
+							entityId: id,
+							field: 'price',
+							oldValue: null,
+							newValue: input.price,
+							meta: auditMeta
+						},
+						ctx.user.id,
+						ctx.db
+					);
+				}
+				if (input.notes) {
+					await createAuditLog(
+						{
+							action: 'update',
+							entityType: 'calendar',
+							entityId: id,
+							field: 'notes',
+							oldValue: null,
+							newValue: input.notes,
+							meta: auditMeta
+						},
+						ctx.user.id,
+						ctx.db
+					);
+				}
 
 				return created;
 			}

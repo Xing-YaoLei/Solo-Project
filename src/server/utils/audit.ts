@@ -24,8 +24,8 @@ export async function createAuditLog(
 		entityType: options.entityType,
 		entityId: options.entityId,
 		field: options.field,
-		oldValue: options.oldValue ? JSON.stringify(options.oldValue) : undefined,
-		newValue: options.newValue ? JSON.stringify(options.newValue) : undefined,
+		oldValue: options.oldValue ?? undefined,
+		newValue: options.newValue ?? undefined,
 		meta: options.meta
 	});
 }

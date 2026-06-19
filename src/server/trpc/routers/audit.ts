@@ -33,8 +33,7 @@ export const auditRouter = router({
 				.where(where.length > 0 ? and(...where) : undefined)
 				.orderBy(desc(auditLog.createdAt))
 				.limit(input?.limit ?? 200)
-				.offset(input?.offset ?? 0)
-				.all();
+				.offset(input?.offset ?? 0);
 		}),
 
 	getByEntity: protectedProcedure
@@ -54,8 +53,7 @@ export const auditRouter = router({
 						eq(auditLog.entityId, input.entityId)
 					)
 				)
-				.orderBy(desc(auditLog.createdAt))
-				.all();
+				.orderBy(desc(auditLog.createdAt));
 		}),
 
 	getByUser: protectedProcedure
@@ -66,7 +64,6 @@ export const auditRouter = router({
 				.from(auditLog)
 				.where(eq(auditLog.userId, input))
 				.orderBy(desc(auditLog.createdAt))
-				.limit(100)
-				.all();
+				.limit(100);
 		})
 });

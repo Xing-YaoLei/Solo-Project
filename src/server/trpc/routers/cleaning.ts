@@ -28,14 +28,13 @@ export const cleaningRouter = router({
 				.select()
 				.from(cleaningTask)
 				.where(where.length > 0 ? and(...where) : undefined)
-				.orderBy(desc(cleaningTask.scheduledDate))
-				.all();
+				.orderBy(desc(cleaningTask.scheduledDate));
 		}),
 
 	get: protectedProcedure
 		.input(z.string())
 		.query(async ({ ctx, input }) => {
-			return ctx.db.select().from(cleaningTask).where(eq(cleaningTask.id, input)).get();
+			return ctx.db.select().from(cleaningTask).where(eq(cleaningTask.id, input)).then(r => r[0]);
 		}),
 
 	create: roleProcedure(['admin', 'manager', 'staff'])
@@ -58,11 +57,10 @@ export const cleaningRouter = router({
 			const id = crypto.randomUUID();
 			const taskNo = `CLN${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
 
-			const newTask = await ctx.db
+			const newTask = (await ctx.db
 				.insert(cleaningTask)
 				.values({ id, taskNo, ...input })
-				.returning()
-				.get();
+				.returning())[0];
 
 			await createAuditLog(
 				{ action: 'create', entityType: 'cleaning_task', entityId: id },
@@ -85,7 +83,7 @@ export const cleaningRouter = router({
 			})
 		)
 		.mutation(async ({ ctx, input }) => {
-			const old = await ctx.db.select().from(cleaningTask).where(eq(cleaningTask.id, input.id)).get();
+			const old = await ctx.db.select().from(cleaningTask).where(eq(cleaningTask.id, input.id)).then(r => r[0]);
 			if (!old) throw new Error('任务不存在');
 
 			const updateData: any = { status: input.status, updatedAt: new Date() };
@@ -98,12 +96,11 @@ export const cleaningRouter = router({
 			if (input.afterPhotos) updateData.afterPhotos = input.afterPhotos;
 			if (input.checklist) updateData.checklist = input.checklist;
 
-			const updated = await ctx.db
+			const updated = (await ctx.db
 				.update(cleaningTask)
 				.set(updateData)
 				.where(eq(cleaningTask.id, input.id))
-				.returning()
-				.get();
+				.returning())[0];
 
 			await createAuditLog(
 				{
@@ -139,14 +136,13 @@ export const cleaningRouter = router({
 			})
 		)
 		.mutation(async ({ ctx, input }) => {
-			const old = await ctx.db.select().from(cleaningTask).where(eq(cleaningTask.id, input.id)).get();
+			const old = await ctx.db.select().from(cleaningTask).where(eq(cleaningTask.id, input.id)).then(r => r[0]);
 			const { id, ...data } = input;
-			const updated = await ctx.db
+			const updated = (await ctx.db
 				.update(cleaningTask)
 				.set({ ...data, updatedAt: new Date() })
 				.where(eq(cleaningTask.id, id))
-				.returning()
-				.get();
+				.returning())[0];
 
 			if (old && updated) {
 				const changes = diffObject(old as any, updated as any);
@@ -196,8 +192,7 @@ export const cleaningRouter = router({
 						lte(order.checkOutDate, nextDay),
 						sql`${order.status} = 'checked_in' OR ${order.status} = 'checked_out'`
 					)
-				)
-				.all();
+				);
 
 			const created: typeof cleaningTask.$inferSelect[] = [];
 			for (const ord of checkoutOrders) {
@@ -210,11 +205,11 @@ export const cleaningRouter = router({
 							eq(cleaningTask.type, 'checkout')
 						)
 					)
-					.get();
+					.then(r => r[0]);
 				if (!existing) {
 					const id = crypto.randomUUID();
 					const taskNo = `CLN${Date.now()}${created.length}`;
-					const t = await ctx.db
+					const t = (await ctx.db
 						.insert(cleaningTask)
 						.values({
 							id,
@@ -226,8 +221,7 @@ export const cleaningRouter = router({
 							scheduledDate: ord.checkOutDate,
 							status: 'pending'
 						})
-						.returning()
-						.get();
+						.returning())[0];
 					created.push(t);
 
 					await createAuditLog(
@@ -250,7 +244,6 @@ export const cleaningRouter = router({
 				.select()
 				.from(cleaningTask)
 				.where(and(...(where as any)))
-				.orderBy(desc(cleaningTask.scheduledDate))
-				.all();
+				.orderBy(desc(cleaningTask.scheduledDate));
 		})
 });

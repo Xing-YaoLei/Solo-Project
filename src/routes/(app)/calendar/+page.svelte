@@ -3,63 +3,43 @@
 	import { onMount } from 'svelte';
 	import {
 		startOfMonth, endOfMonth, eachDayOfInterval, format, addMonths, subMonths,
-		isSameMonth, isToday, startOfDay, differenceInDays
+		isToday, startOfDay
 	} from 'date-fns';
 	import { ROOM_STATUS_LABELS, type RoomStatusType } from '$lib/types';
 
+	// ===== 状态（State）=====
 	let properties: any[] = [];
 	let calendars: any[] = [];
 	let loading = true;
 	let currentMonth = startOfMonth(new Date());
 	let selectedPropertyIds: string[] = [];
+	let propertiesLoaded = false;
 
 	let editingCell: any = null;
 	let editStatus: RoomStatusType = 'available';
 	let editNotes = '';
 	let editPrice: number | null = null;
 
-	async function loadData() {
-		loading = true;
-		try {
-			properties = await trpcClient.property.list.query({ status: 'active' });
-			if (properties.length > 0 && selectedPropertyIds.length === 0) {
-				selectedPropertyIds = properties.map((p) => p.id);
-			}
-			const propsToQuery = selectedPropertyIds.length > 0 ? selectedPropertyIds : properties.map((p) => p.id);
-			calendars = await trpcClient.property.getCalendar.query({
-				propertyIds: propsToQuery,
-				startDate: startOfDay(new Date(currentMonth.getTime() - 7 * 86400000)),
-				endDate: startOfDay(new Date(endOfMonth(currentMonth).getTime() + 7 * 86400000))
-			});
-		} finally {
-			loading = false;
-		}
-	}
+	// ===== 派生（Derived）=====
+	let visibleProps: any[];
+	$: visibleProps = properties.filter((p) => selectedPropertyIds.includes(p.id));
 
-	onMount(loadData);
+	let daysInMonth: Date[];
+	$: daysInMonth = eachDayOfInterval({ start: startOfMonth(currentMonth), end: endOfMonth(currentMonth) });
 
-	$: loadData();
-
-	function toggleProperty(id: string) {
-		if (selectedPropertyIds.includes(id)) {
-			selectedPropertyIds = selectedPropertyIds.filter((x) => x !== id);
-		} else {
-			selectedPropertyIds.push(id);
-		}
-	}
-
-	function prevMonth() { currentMonth = subMonths(currentMonth, 1); }
-	function nextMonth() { currentMonth = addMonths(currentMonth, 1); }
-	function today() { currentMonth = startOfMonth(new Date()); }
-
-	const visibleProps = properties.filter((p) => selectedPropertyIds.includes(p.id));
-	const daysInMonth = eachDayOfInterval({ start: startOfMonth(currentMonth), end: endOfMonth(currentMonth) });
 	const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
 
-	function getStatus(propId: string, day: Date) {
-		return calendars.find(
-			(c) => c.propertyId === propId && startOfDay(new Date(c.date)).getTime() === startOfDay(day).getTime()
-		);
+	let calendarMap: Map<string, any>;
+	$: {
+		calendarMap = new Map();
+		for (const cal of calendars) {
+			const key = `${cal.propertyId}_${startOfDay(new Date(cal.date)).getTime()}`;
+			calendarMap.set(key, cal);
+		}
+	}
+
+	function getCal(propId: string, day: Date) {
+		return calendarMap.get(`${propId}_${startOfDay(day).getTime()}`);
 	}
 
 	const statusColors: Record<string, string> = {
@@ -70,6 +50,65 @@
 		maintenance: 'bg-gray-100 text-gray-700 border-gray-300',
 		blocked: 'bg-slate-700 text-white border-slate-800'
 	};
+
+	// ===== 响应式副作用（Reactive Effects）=====
+	$: if (propertiesLoaded && properties.length > 0 && selectedPropertyIds.length === 0) {
+		selectedPropertyIds = properties.map((p) => p.id);
+	}
+
+	$: if (propertiesLoaded) {
+		loadCalendar();
+	}
+
+	// ===== 动作（Actions）=====
+	function prevMonth() { currentMonth = subMonths(currentMonth, 1); }
+	function nextMonth() { currentMonth = addMonths(currentMonth, 1); }
+	function today() { currentMonth = startOfMonth(new Date()); }
+
+	function toggleProperty(id: string) {
+		if (selectedPropertyIds.includes(id)) {
+			selectedPropertyIds = selectedPropertyIds.filter((x) => x !== id);
+		} else {
+			selectedPropertyIds = [...selectedPropertyIds, id];
+		}
+	}
+
+	async function loadProperties() {
+		properties = await trpcClient.property.list.query({ status: 'active' });
+		propertiesLoaded = true;
+	}
+
+	async function loadCalendar() {
+		loading = true;
+		try {
+			const propsToQuery = selectedPropertyIds.length > 0
+				? selectedPropertyIds
+				: properties.map((p) => p.id);
+			if (propsToQuery.length === 0) {
+				calendars = [];
+				return;
+			}
+			calendars = await trpcClient.property.getCalendar.query({
+				propertyIds: propsToQuery,
+				startDate: startOfDay(new Date(startOfMonth(currentMonth).getTime() - 7 * 86400000)),
+				endDate: startOfDay(new Date(endOfMonth(currentMonth).getTime() + 7 * 86400000))
+			});
+		} finally {
+			loading = false;
+		}
+	}
+
+	async function loadAll() {
+		loading = true;
+		try {
+			await loadProperties();
+			await loadCalendar();
+		} finally {
+			loading = false;
+		}
+	}
+
+	onMount(loadAll);
 
 	function openEdit(propId: string, day: Date, existing: any) {
 		editingCell = { propId, day };
@@ -88,7 +127,7 @@
 			price: editPrice ?? undefined
 		});
 		editingCell = null;
-		loadData();
+		loadCalendar();
 	}
 
 	function cancelEdit() { editingCell = null; }
@@ -168,7 +207,7 @@
 									<div class="text-xs text-gray-500 mt-0.5">{p.bedrooms}室 · {p.maxGuests}人 · ¥{p.basePrice}</div>
 								</td>
 								{#each daysInMonth as day}
-									{@const cell = { cal: getStatus(p.id, day), isEditing: editingCell?.propId === p.id && editingCell?.day && startOfDay(editingCell.day).getTime() === startOfDay(day).getTime() }}
+									{@const cell = { cal: getCal(p.id, day), isEditing: editingCell?.propId === p.id && editingCell?.day && startOfDay(editingCell.day).getTime() === startOfDay(day).getTime() }}
 									<td class="border-b border-gray-100 px-1 py-1 align-top min-w-[70px]">
 										{#if cell.isEditing}
 											<div class="p-1.5 rounded-md border-2 border-primary-400 bg-white shadow-lg z-20">

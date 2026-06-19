@@ -1,10 +1,10 @@
 import { Lucia, TimeSpan } from 'lucia';
-import { DrizzleSQLiteAdapter } from '@lucia-auth/adapter-drizzle';
+import { DrizzlePostgreSQLAdapter } from '@lucia-auth/adapter-drizzle';
 import { db } from './db';
 import { session, user } from './db/schema';
 import type { UserRole } from '$lib/types';
 
-const adapter = new DrizzleSQLiteAdapter(db as any, session as any, user as any);
+const adapter = new DrizzlePostgreSQLAdapter(db as any, session as any, user as any);
 
 export const lucia = new Lucia(adapter, {
 	sessionCookie: {

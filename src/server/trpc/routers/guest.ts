@@ -32,14 +32,13 @@ export const guestRouter = router({
 				.select()
 				.from(guestRegistration)
 				.where(where.length > 0 ? and(...where) : undefined)
-				.orderBy(desc(guestRegistration.createdAt))
-				.all();
+				.orderBy(desc(guestRegistration.createdAt));
 		}),
 
 	get: protectedProcedure
 		.input(z.string())
 		.query(async ({ ctx, input }) => {
-			return ctx.db.select().from(guestRegistration).where(eq(guestRegistration.id, input)).get();
+			return ctx.db.select().from(guestRegistration).where(eq(guestRegistration.id, input)).then(r => r[0]);
 		}),
 
 	create: roleProcedure(['admin', 'manager', 'staff'])
@@ -65,11 +64,10 @@ export const guestRouter = router({
 		)
 		.mutation(async ({ ctx, input }) => {
 			const id = crypto.randomUUID();
-			const reg = await ctx.db
+			const reg = (await ctx.db
 				.insert(guestRegistration)
 				.values({ id, ...input })
-				.returning()
-				.get();
+				.returning())[0];
 
 			await createAuditLog(
 				{ action: 'create', entityType: 'guest_registration', entityId: id },
@@ -102,14 +100,13 @@ export const guestRouter = router({
 			})
 		)
 		.mutation(async ({ ctx, input }) => {
-			const old = await ctx.db.select().from(guestRegistration).where(eq(guestRegistration.id, input.id)).get();
+			const old = await ctx.db.select().from(guestRegistration).where(eq(guestRegistration.id, input.id)).then(r => r[0]);
 			const { id, ...data } = input;
-			const updated = await ctx.db
+			const updated = (await ctx.db
 				.update(guestRegistration)
 				.set({ ...data, updatedAt: new Date() })
 				.where(eq(guestRegistration.id, id))
-				.returning()
-				.get();
+				.returning())[0];
 
 			if (old && updated) {
 				const changes = diffObject(old as any, updated as any);
