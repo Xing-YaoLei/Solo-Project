@@ -1,4 +1,4 @@
-import { _decorator, Component, Label, tween } from 'cc';
+import { _decorator, Component, Label, Node, tween } from 'cc';
 import { VehicleProfile } from './VehicleProfile';
 
 const { ccclass, property } = _decorator;
@@ -6,22 +6,46 @@ const { ccclass, property } = _decorator;
 @ccclass('SettlementComponent')
 export class SettlementComponent extends Component {
 
-    @property({ type: Label })
+    @property({ type: Label, tooltip: '分数显示标签' })
     scoreLabel: Label | null = null;
 
-    @property({ type: Label })
+    @property({ type: Label, tooltip: '准确率显示标签' })
     accuracyLabel: Label | null = null;
 
-    @property({ type: Label })
+    @property({ type: Label, tooltip: '成本显示标签' })
     costLabel: Label | null = null;
 
-    @property({ type: Label })
+    @property({ type: Label, tooltip: '返修次数显示标签' })
     reworkLabel: Label | null = null;
 
-    @property({ type: Label })
+    @property({ type: Label, tooltip: '用时显示标签' })
     timeLabel: Label | null = null;
 
+    @property({ type: Node, tooltip: '继续按钮节点' })
+    continueBtn: Node | null = null;
+
+    @property({ type: Node, tooltip: '重试按钮节点' })
+    retryBtn: Node | null = null;
+
     private _displayScore: number = 0;
+
+    onLoad(): void {
+        if (this.continueBtn) {
+            this.continueBtn.on(Node.EventType.TOUCH_END, this.onContinuePressed, this);
+        }
+        if (this.retryBtn) {
+            this.retryBtn.on(Node.EventType.TOUCH_END, this.onRetryPressed, this);
+        }
+    }
+
+    onDestroy(): void {
+        if (this.continueBtn) {
+            this.continueBtn.off(Node.EventType.TOUCH_END, this.onContinuePressed, this);
+        }
+        if (this.retryBtn) {
+            this.retryBtn.off(Node.EventType.TOUCH_END, this.onRetryPressed, this);
+        }
+    }
 
     showSettlement(profile: VehicleProfile, score: number, timeUsed: number): void {
         const accuracy = profile.getReworkRate() !== undefined

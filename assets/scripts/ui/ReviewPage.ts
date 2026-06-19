@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, Label, find } from 'cc';
+import { _decorator, Component, Node, Label } from 'cc';
 
 export interface BottleneckData {
     diagId: string;
@@ -27,20 +27,44 @@ const { ccclass, property } = _decorator;
 
 @ccclass('ReviewPageComponent')
 export class ReviewPageComponent extends Component {
-    @property(Label)
+    @property({ type: Label, tooltip: '返修率显示标签' })
     reworkRateLabel: Label | null = null;
 
-    @property(Label)
+    @property({ type: Label, tooltip: '总用时显示标签' })
     totalTimeLabel: Label | null = null;
 
-    @property(Label)
+    @property({ type: Label, tooltip: '平均诊断时间显示标签' })
     avgTimeLabel: Label | null = null;
 
-    @property(Node)
+    @property({ type: Node, tooltip: '玩家卡点容器节点' })
     bottleneckContainer: Node | null = null;
 
-    @property(Node)
+    @property({ type: Node, tooltip: '诊断详情拆解容器节点' })
     breakdownContainer: Node | null = null;
+
+    @property({ type: Node, tooltip: '重玩按钮节点' })
+    retryBtn: Node | null = null;
+
+    @property({ type: Node, tooltip: '下一关按钮节点' })
+    nextLevelBtn: Node | null = null;
+
+    onLoad(): void {
+        if (this.retryBtn) {
+            this.retryBtn.on(Node.EventType.TOUCH_END, this.onRetryPressed, this);
+        }
+        if (this.nextLevelBtn) {
+            this.nextLevelBtn.on(Node.EventType.TOUCH_END, this.onNextLevelPressed, this);
+        }
+    }
+
+    onDestroy(): void {
+        if (this.retryBtn) {
+            this.retryBtn.off(Node.EventType.TOUCH_END, this.onRetryPressed, this);
+        }
+        if (this.nextLevelBtn) {
+            this.nextLevelBtn.off(Node.EventType.TOUCH_END, this.onNextLevelPressed, this);
+        }
+    }
 
     showReview(stats: ReviewStats): void {
         if (this.reworkRateLabel) {
