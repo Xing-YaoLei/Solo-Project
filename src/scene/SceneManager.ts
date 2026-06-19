@@ -38,13 +38,13 @@ export class SceneManager {
   async initialize(): Promise<void> {
     if (this.initialized) return;
 
-    const graphicsDevice = new pc.GraphicsDevice(this.canvas, {
-      antialias: true,
-      depth: true,
-      alpha: false
+    this.app = new pc.Application(this.canvas, {
+      graphicsDeviceOptions: {
+        antialias: true,
+        depth: true,
+        alpha: false
+      }
     });
-
-    this.app = new pc.Application(this.canvas, { graphicsDevice });
     this.app.start();
 
     this.setupScene();
@@ -65,7 +65,6 @@ export class SceneManager {
   private setupScene(): void {
     if (!this.app) return;
     this.app.scene.ambientLight = new pc.Color(0.4, 0.4, 0.4);
-    this.app.scene.skybox = null;
     this.sceneRoot = new pc.Entity('SceneRoot');
     this.app.root.addChild(this.sceneRoot);
   }
@@ -77,11 +76,7 @@ export class SceneManager {
     directionalLight.addComponent('light', {
       type: pc.LIGHTTYPE_DIRECTIONAL,
       color: new pc.Color(1, 0.95, 0.85),
-      intensity: 1.0,
-      castShadows: true,
-      shadowBias: 0.2,
-      normalOffsetBias: 0.05,
-      shadowResolution: 2048
+      intensity: 1.0
     });
     directionalLight.setLocalEulerAngles(45, 30, 0);
     directionalLight.setLocalPosition(5, 10, 5);
@@ -132,7 +127,7 @@ export class SceneManager {
     legPositions.forEach((pos, index) => {
       const leg = this.createBox(`DeskLeg_${index}`, 0.1, 1, 0.1, [0.25, 0.15, 0.08]);
       leg.setLocalPosition(pos[0], pos[1], pos[2]);
-      this.sceneRoot.addChild(leg);
+      this.sceneRoot!.addChild(leg);
     });
 
     const floor = this.createBox('Floor', 20, 0.1, 20, [0.18, 0.18, 0.2]);
@@ -166,7 +161,7 @@ export class SceneManager {
       const wheel = this.createCylinder(`Wheel_${index}`, 0.05, 0.15, 0.15, [0.1, 0.1, 0.1]);
       wheel.setLocalPosition(pos[0], pos[1], pos[2]);
       wheel.setLocalEulerAngles(0, 0, 90);
-      this.sceneRoot.addChild(wheel);
+      this.sceneRoot!.addChild(wheel);
     });
   }
 
@@ -314,7 +309,7 @@ export class SceneManager {
   }
 
   private setupInput(): void {
-    if (!this.app) return;
+    if (!this.app || !this.app.mouse) return;
 
     this.app.mouse.on(pc.EVENT_MOUSEDOWN, (event: pc.MouseEvent) => {
       this.handleClick(event);
@@ -353,15 +348,16 @@ export class SceneManager {
       }
     });
 
-    this.app.mouse.on(pc.EVENT_MOUSEWHEEL, (event: pc.MouseWheelEvent) => {
+    this.app.mouse.on(pc.EVENT_MOUSEWHEEL, (event: pc.MouseEvent) => {
       if (this.camera && this.app) {
         event.event.preventDefault();
-        const wheel = event.wheel;
+        const wheelEvent = event.event as WheelEvent;
+        const wheel = wheelEvent.deltaY;
         const currentPos = this.camera.getLocalPosition();
         this.camera.setLocalPosition(
           currentPos.x,
           currentPos.y,
-          Math.max(2, Math.min(8, currentPos.z - wheel * 0.3))
+          Math.max(2, Math.min(8, currentPos.z - wheel * 0.01))
         );
       }
     }, this);
@@ -413,10 +409,6 @@ export class SceneManager {
     if (!this.app) return;
     const width = window.innerWidth;
     const height = window.innerHeight;
-    this.app.canvas.width = width;
-    this.app.canvas.height = height;
-    this.app.graphicsDevice.width = width;
-    this.app.graphicsDevice.height = height;
     this.app.resizeCanvas(width, height);
   }
 

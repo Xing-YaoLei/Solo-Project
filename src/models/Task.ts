@@ -56,7 +56,7 @@ export interface TaskStep {
   availableActions: ActionOption[];
   correctActionId: string;
   hint?: string;
-  difficulty: 1 | 2 | 3;
+  difficulty: 1 | 2 | 3 | 4 | 5;
 }
 
 export interface Task {

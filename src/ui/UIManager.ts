@@ -1,4 +1,4 @@
-import { GameState, GameResult, Level, LevelGroup, TaskStep, Position } from '../models';
+import { GameState, GameResult, Level, LevelGroup, TaskStep, Position, ActionOption, ReplaySession, ReplayFrame } from '../models';
 import { gameCore } from '../core/GameCore';
 
 type ViewType = 'menu' | 'level_select' | 'briefing' | 'playing' | 'result' | 'replay';
@@ -48,6 +48,10 @@ export class UIManager {
         this.renderReplay();
         break;
     }
+  }
+
+  getSelectedMode(): 'training' | 'free_practice' {
+    return this.selectedMode;
   }
 
   private clearRoot(): void {
@@ -199,7 +203,8 @@ export class UIManager {
     this.enablePointer();
     this.currentView = 'level_select';
 
-    const levelGroups = gameCore.levelManager.getLevelGroups();
+    const isTraining = this.selectedMode === 'training';
+    const levelGroups = gameCore.levelManager.getLevelGroupsByMode(this.selectedMode);
 
     const container = this.createContainer('level-select');
     this.styleElement(container, {
@@ -218,18 +223,59 @@ export class UIManager {
       display: 'flex',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: '40px',
+      marginBottom: '30px',
       maxWidth: '1200px',
-      margin: '0 auto 40px'
+      margin: '0 auto 30px'
+    });
+
+    const titleArea = this.createContainer('title-area');
+    this.styleElement(titleArea, {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '8px'
     });
 
     const title = document.createElement('h2');
-    title.textContent = '选择关卡';
+    title.textContent = isTraining ? '训练关卡' : '自由练习';
     this.styleElement(title, {
       color: '#fff',
       fontSize: '32px',
       fontWeight: '600',
       margin: '0'
+    });
+
+    const subtitle = document.createElement('p');
+    subtitle.textContent = isTraining
+      ? '按岗位系统学习过户流程，循序渐进提升能力'
+      : '自由选择任意关卡挑战，适合有一定基础的学员';
+    this.styleElement(subtitle, {
+      color: 'rgba(255,255,255,0.5)',
+      fontSize: '14px',
+      margin: '0'
+    });
+
+    const modeBadge = document.createElement('div');
+    modeBadge.textContent = isTraining ? '🎓 训练模式' : '🎮 自由模式';
+    this.styleElement(modeBadge, {
+      display: 'inline-block',
+      padding: '6px 16px',
+      background: isTraining
+        ? 'linear-gradient(135deg, #667eea, #764ba2)'
+        : 'linear-gradient(135deg, #f093fb, #f5576c)',
+      color: '#fff',
+      borderRadius: '20px',
+      fontSize: '13px',
+      fontWeight: '600'
+    });
+
+    titleArea.appendChild(title);
+    titleArea.appendChild(subtitle);
+
+    const headerRight = this.createContainer('header-right');
+    this.styleElement(headerRight, {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '16px'
     });
 
     const backBtn = document.createElement('button');
@@ -245,8 +291,11 @@ export class UIManager {
     });
     backBtn.addEventListener('click', () => this.callbacks.onBackToMenu());
 
-    header.appendChild(title);
-    header.appendChild(backBtn);
+    headerRight.appendChild(modeBadge);
+    headerRight.appendChild(backBtn);
+
+    header.appendChild(titleArea);
+    header.appendChild(headerRight);
 
     const groupsContainer = this.createContainer('groups');
     this.styleElement(groupsContainer, {
@@ -254,11 +303,11 @@ export class UIManager {
       margin: '0 auto',
       display: 'flex',
       flexDirection: 'column',
-      gap: '30px'
+      gap: '24px'
     });
 
-    levelGroups.forEach((group) => {
-      groupsContainer.appendChild(this.createLevelGroupCard(group));
+    levelGroups.forEach((group: LevelGroup) => {
+      groupsContainer.appendChild(this.createLevelGroupCard(group, isTraining));
     });
 
     container.appendChild(header);
@@ -266,7 +315,7 @@ export class UIManager {
     this.root.appendChild(container);
   }
 
-  private createLevelGroupCard(group: LevelGroup): HTMLElement {
+  private createLevelGroupCard(group: LevelGroup, isTraining: boolean = true): HTMLElement {
     const card = this.createContainer('level-group');
     this.styleElement(card, {
       background: 'rgba(255,255,255,0.05)',
@@ -280,14 +329,17 @@ export class UIManager {
       display: 'flex',
       alignItems: 'center',
       gap: '12px',
-      marginBottom: '20px'
+      marginBottom: '12px',
+      flexWrap: 'wrap'
     });
 
     const positionBadge = document.createElement('div');
-    positionBadge.textContent = group.position;
+    positionBadge.textContent = isTraining ? group.position : '🎯 难度分类';
     this.styleElement(positionBadge, {
       padding: '6px 16px',
-      background: 'linear-gradient(135deg, #667eea, #764ba2)',
+      background: isTraining
+        ? 'linear-gradient(135deg, #667eea, #764ba2)'
+        : 'linear-gradient(135deg, #f093fb, #f5576c)',
       color: '#fff',
       borderRadius: '20px',
       fontSize: '14px',
@@ -302,26 +354,35 @@ export class UIManager {
       margin: '0'
     });
 
+    const levelCount = document.createElement('span');
+    levelCount.textContent = `${group.levels.length} 个关卡`;
+    this.styleElement(levelCount, {
+      color: 'rgba(255,255,255,0.5)',
+      fontSize: '13px',
+      marginLeft: 'auto'
+    });
+
+    groupHeader.appendChild(positionBadge);
+    groupHeader.appendChild(groupName);
+    groupHeader.appendChild(levelCount);
+
     const groupDesc = document.createElement('p');
     groupDesc.textContent = group.description;
     this.styleElement(groupDesc, {
       color: 'rgba(255,255,255,0.6)',
       fontSize: '14px',
-      margin: '0'
+      margin: '0 0 20px'
     });
-
-    groupHeader.appendChild(positionBadge);
-    groupHeader.appendChild(groupName);
 
     const levelsGrid = this.createContainer('levels-grid');
     this.styleElement(levelsGrid, {
       display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-      gap: '16px'
+      gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+      gap: '14px'
     });
 
     group.levels.forEach((level) => {
-      levelsGrid.appendChild(this.createLevelCard(level));
+      levelsGrid.appendChild(this.createLevelCard(level, isTraining));
     });
 
     card.appendChild(groupHeader);
@@ -331,7 +392,7 @@ export class UIManager {
     return card;
   }
 
-  private createLevelCard(level: Level): HTMLElement {
+  private createLevelCard(level: Level, isTraining: boolean = true): HTMLElement {
     const card = this.createContainer('level-card');
     this.styleElement(card, {
       background: 'rgba(255,255,255,0.08)',
@@ -339,18 +400,18 @@ export class UIManager {
       padding: '20px',
       cursor: 'pointer',
       transition: 'all 0.3s ease',
-      border: '1px solid transparent'
+      border: `2px solid ${isTraining ? 'rgba(102, 126, 234, 0.2)' : 'rgba(240, 147, 251, 0.2)'}`
     });
 
     card.addEventListener('mouseenter', () => {
       card.style.background = 'rgba(255,255,255,0.12)';
-      card.style.borderColor = 'rgba(102, 126, 234, 0.5)';
+      card.style.borderColor = isTraining ? 'rgba(102, 126, 234, 0.6)' : 'rgba(240, 147, 251, 0.6)';
       card.style.transform = 'translateY(-2px)';
     });
 
     card.addEventListener('mouseleave', () => {
       card.style.background = 'rgba(255,255,255,0.08)';
-      card.style.borderColor = 'transparent';
+      card.style.borderColor = isTraining ? 'rgba(102, 126, 234, 0.2)' : 'rgba(240, 147, 251, 0.2)';
       card.style.transform = 'translateY(0)';
     });
 
@@ -600,7 +661,7 @@ export class UIManager {
       display: 'flex',
       justifyContent: 'space-between',
       alignItems: 'center',
-      padding: '20px 30px',
+      padding: '16px 24px',
       background: 'linear-gradient(180deg, rgba(0,0,0,0.7) 0%, transparent 100%)',
       pointerEvents: 'auto'
     });
@@ -609,25 +670,25 @@ export class UIManager {
     this.styleElement(progressInfo, {
       display: 'flex',
       alignItems: 'center',
-      gap: '20px'
+      gap: '16px'
     });
 
     const stepIndicator = document.createElement('div');
     stepIndicator.textContent = `步骤 ${state.currentStepIndex + 1}/${gameCore.gameManager.getTotalSteps()}`;
     this.styleElement(stepIndicator, {
       color: '#fff',
-      fontSize: '16px',
+      fontSize: '15px',
       fontWeight: '600',
-      padding: '8px 16px',
+      padding: '7px 14px',
       background: 'linear-gradient(135deg, #667eea, #764ba2)',
-      borderRadius: '20px'
+      borderRadius: '18px'
     });
 
     const scoreEl = document.createElement('div');
     scoreEl.textContent = `得分: ${state.totalScore}`;
     this.styleElement(scoreEl, {
       color: '#ffd700',
-      fontSize: '16px',
+      fontSize: '15px',
       fontWeight: '600'
     });
 
@@ -635,7 +696,7 @@ export class UIManager {
     errorEl.textContent = `错误: ${state.errorCount}`;
     this.styleElement(errorEl, {
       color: state.errorCount > 0 ? '#ff6b6b' : '#51cf66',
-      fontSize: '16px',
+      fontSize: '15px',
       fontWeight: '600'
     });
 
@@ -648,15 +709,22 @@ export class UIManager {
     timeEl.textContent = this.formatTime(gameCore.gameManager.getElapsedTimeMs());
     this.styleElement(timeEl, {
       color: '#fff',
-      fontSize: '24px',
+      fontSize: '22px',
       fontWeight: '700',
       fontFamily: 'monospace'
+    });
+
+    const topRight = this.createContainer('top-right');
+    this.styleElement(topRight, {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '16px'
     });
 
     const exitBtn = document.createElement('button');
     exitBtn.textContent = '退出';
     this.styleElement(exitBtn, {
-      padding: '10px 20px',
+      padding: '8px 18px',
       fontSize: '14px',
       color: '#fff',
       background: 'rgba(255,107,107,0.3)',
@@ -666,9 +734,93 @@ export class UIManager {
     });
     exitBtn.addEventListener('click', () => this.callbacks.onBackToMenu());
 
+    topRight.appendChild(timeEl);
+    topRight.appendChild(exitBtn);
+
     topBar.appendChild(progressInfo);
-    topBar.appendChild(timeEl);
-    topBar.appendChild(exitBtn);
+    topBar.appendChild(topRight);
+
+    const docTabs = this.createContainer('doc-tabs');
+    this.styleElement(docTabs, {
+      position: 'absolute',
+      left: '20px',
+      top: '70px',
+      bottom: '300px',
+      width: '320px',
+      background: 'rgba(20, 25, 40, 0.95)',
+      borderRadius: '12px',
+      border: '1px solid rgba(255,255,255,0.1)',
+      pointerEvents: 'auto',
+      overflow: 'hidden',
+      display: 'flex',
+      flexDirection: 'column'
+    });
+
+    const tabHeader = this.createContainer('tab-header');
+    this.styleElement(tabHeader, {
+      display: 'flex',
+      borderBottom: '1px solid rgba(255,255,255,0.1)'
+    });
+
+    const tabs = [
+      { id: 'vehicle', label: '📋 车辆档案', color: '#667eea' },
+      { id: 'quote', label: '💰 报价历史', color: '#51cf66' },
+      { id: 'finance', label: '💳 金融资料', color: '#ffa94d' }
+    ];
+
+    let activeTab = 'vehicle';
+
+    const tabContent = this.createContainer('tab-content');
+    this.styleElement(tabContent, {
+      flex: '1',
+      overflowY: 'auto',
+      padding: '16px'
+    });
+
+    const renderTabContent = (tabId: string) => {
+      tabContent.innerHTML = '';
+      if (tabId === 'vehicle') {
+        this.renderVehicleTab(tabContent, level);
+      } else if (tabId === 'quote') {
+        this.renderQuoteTab(tabContent, level);
+      } else {
+        this.renderFinanceTab(tabContent, level);
+      }
+    };
+
+    tabs.forEach((tab) => {
+      const tabBtn = document.createElement('button');
+      tabBtn.textContent = tab.label;
+      this.styleElement(tabBtn, {
+        flex: '1',
+        padding: '12px 8px',
+        fontSize: '12px',
+        color: tab.id === activeTab ? '#fff' : 'rgba(255,255,255,0.5)',
+        background: tab.id === activeTab ? 'rgba(255,255,255,0.1)' : 'transparent',
+        border: 'none',
+        cursor: 'pointer',
+        fontWeight: tab.id === activeTab ? '600' : '400',
+        transition: 'all 0.2s'
+      });
+
+      tabBtn.addEventListener('click', () => {
+        activeTab = tab.id;
+        Array.from(tabHeader.children).forEach((child, idx) => {
+          const btn = child as HTMLButtonElement;
+          const t = tabs[idx];
+          btn.style.color = t.id === activeTab ? '#fff' : 'rgba(255,255,255,0.5)';
+          btn.style.background = t.id === activeTab ? 'rgba(255,255,255,0.1)' : 'transparent';
+          btn.style.fontWeight = t.id === activeTab ? '600' : '400';
+        });
+        renderTabContent(activeTab);
+      });
+
+      tabHeader.appendChild(tabBtn);
+    });
+
+    docTabs.appendChild(tabHeader);
+    docTabs.appendChild(tabContent);
+    renderTabContent(activeTab);
 
     const bottomPanel = this.createContainer('bottom-panel');
     this.styleElement(bottomPanel, {
@@ -676,7 +828,7 @@ export class UIManager {
       bottom: '0', left: '0',
       right: '0',
       background: 'linear-gradient(0deg, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.7) 70%, transparent 100%)',
-      padding: '30px 30px 40px',
+      padding: '24px 30px 32px',
       pointerEvents: 'auto'
     });
 
@@ -684,27 +836,27 @@ export class UIManager {
     promptEl.textContent = step.prompt;
     this.styleElement(promptEl, {
       color: '#fff',
-      fontSize: '22px',
+      fontSize: '20px',
       fontWeight: '600',
-      margin: '0 0 8px'
+      margin: '0 0 6px'
     });
 
     const descEl = document.createElement('p');
     descEl.textContent = step.description;
     this.styleElement(descEl, {
       color: 'rgba(255,255,255,0.6)',
-      fontSize: '14px',
-      margin: '0 0 24px'
+      fontSize: '13px',
+      margin: '0 0 20px'
     });
 
     const actionsContainer = this.createContainer('actions');
     this.styleElement(actionsContainer, {
       display: 'grid',
       gridTemplateColumns: step.availableActions.length <= 3 ? `repeat(${step.availableActions.length}, 1fr)` : 'repeat(2, 1fr)',
-      gap: '12px'
+      gap: '10px'
     });
 
-    step.availableActions.forEach((action) => {
+    step.availableActions.forEach((action: ActionOption) => {
       const actionBtn = this.createActionButton(action.label, action.description);
       actionBtn.addEventListener('click', () => this.handleActionClick(action.id, step));
       actionsContainer.appendChild(actionBtn);
@@ -713,9 +865,9 @@ export class UIManager {
     const hintBtn = document.createElement('button');
     hintBtn.textContent = '💡 查看提示';
     this.styleElement(hintBtn, {
-      marginTop: '20px',
-      padding: '10px 24px',
-      fontSize: '14px',
+      marginTop: '16px',
+      padding: '9px 20px',
+      fontSize: '13px',
       color: 'rgba(255,255,255,0.7)',
       background: 'transparent',
       border: '1px dashed rgba(255,255,255,0.3)',
@@ -730,11 +882,11 @@ export class UIManager {
     const feedbackEl = document.createElement('div');
     feedbackEl.id = 'action-feedback';
     this.styleElement(feedbackEl, {
-      marginTop: '20px',
-      padding: '16px',
-      borderRadius: '12px',
+      marginTop: '16px',
+      padding: '14px',
+      borderRadius: '10px',
       display: 'none',
-      fontSize: '15px',
+      fontSize: '14px',
       fontWeight: '500'
     });
 
@@ -745,6 +897,7 @@ export class UIManager {
     bottomPanel.appendChild(feedbackEl);
 
     container.appendChild(topBar);
+    container.appendChild(docTabs);
     container.appendChild(bottomPanel);
     this.root.appendChild(container);
 
@@ -828,7 +981,7 @@ export class UIManager {
     const updateTimer = () => {
       const timerEl = document.getElementById('game-timer');
       if (timerEl && gameCore.gameManager.getState().phase === 'playing') {
-        timerEl.textContent = this.formatTime(gameCore.gameManager.getElapsedTime());
+        timerEl.textContent = this.formatTime(gameCore.gameManager.getElapsedTimeMs());
         requestAnimationFrame(updateTimer);
       }
     };
@@ -950,7 +1103,7 @@ export class UIManager {
 
       errorsSection.appendChild(errorsTitle);
 
-      result.errors.forEach((err, idx) => {
+      result.errors.forEach((err: GameResult['errors'][0], idx: number) => {
         const errorItem = this.createContainer('error-item');
         this.styleElement(errorItem, {
           background: 'rgba(255,255,255,0.05)',
@@ -1028,7 +1181,7 @@ export class UIManager {
 
       stallSection.appendChild(stallTitle);
 
-      result.stallPoints.forEach((stall, idx) => {
+      result.stallPoints.forEach((stall: GameResult['stallPoints'][0], idx: number) => {
         const stallItem = this.createContainer('stall-item');
         this.styleElement(stallItem, {
           background: 'rgba(255,255,255,0.05)',
@@ -1082,7 +1235,7 @@ export class UIManager {
 
       replaySection.appendChild(replayTitle);
 
-      replays.forEach((replay, idx) => {
+      replays.forEach((replay: ReplaySession, idx: number) => {
         const replayItem = this.createContainer('replay-item');
         this.styleElement(replayItem, {
           display: 'flex',
@@ -1306,7 +1459,7 @@ export class UIManager {
       return;
     }
 
-    replays.forEach((replay, idx) => {
+    replays.forEach((replay: ReplaySession, idx: number) => {
       const card = this.createContainer('replay-card');
       this.styleElement(card, {
         background: 'rgba(255,255,255,0.05)',
@@ -1375,7 +1528,7 @@ export class UIManager {
           marginTop: '16px'
         });
 
-        replay.frames.forEach((frame, fIdx) => {
+        replay.frames.forEach((frame: ReplayFrame, fIdx: number) => {
           if (!frame.action) return;
 
           const step = frame.stepIndex + 1;
@@ -1462,6 +1615,226 @@ export class UIManager {
     container.appendChild(header);
     container.appendChild(content);
     this.root.appendChild(container);
+  }
+
+  private renderVehicleTab(container: HTMLElement, level: Level): void {
+    const archive = level.vehicleArchive;
+
+    const section = this.createDocSection('基本信息', '#667eea');
+    section.appendChild(this.createDocRow('品牌车型', `${archive.basicInfo.brand} ${archive.basicInfo.model}`));
+    section.appendChild(this.createDocRow('年款', `${archive.basicInfo.year}款`));
+    section.appendChild(this.createDocRow('车牌号', archive.basicInfo.plateNumber));
+    section.appendChild(this.createDocRow('VIN码', archive.basicInfo.vin));
+    section.appendChild(this.createDocRow('颜色', archive.basicInfo.color));
+    section.appendChild(this.createDocRow('里程', `${archive.basicInfo.mileage.toLocaleString()} 公里`));
+    section.appendChild(this.createDocRow('发动机号', archive.basicInfo.engineNumber));
+    section.appendChild(this.createDocRow('排量', archive.basicInfo.displacement));
+    section.appendChild(this.createDocRow('燃料类型', archive.basicInfo.fuelType));
+    container.appendChild(section);
+
+    const conditionSection = this.createDocSection('车辆状况', '#51cf66');
+    conditionSection.appendChild(this.createDocRow(
+      '事故历史',
+      archive.condition.accidentHistory ? `是 - ${archive.condition.accidentDescription || '有记录'}` : '否',
+      archive.condition.accidentHistory ? '#ff6b6b' : '#51cf66'
+    ));
+    conditionSection.appendChild(this.createDocRow('水泡车', archive.condition.waterDamage ? '是' : '否', archive.condition.waterDamage ? '#ff6b6b' : '#51cf66'));
+    conditionSection.appendChild(this.createDocRow('火烧车', archive.condition.fireDamage ? '是' : '否', archive.condition.fireDamage ? '#ff6b6b' : '#51cf66'));
+    conditionSection.appendChild(this.createDocRow('改装情况', archive.condition.modificationStatus));
+    conditionSection.appendChild(this.createDocRow('轮胎磨损', archive.condition.tireWear));
+    conditionSection.appendChild(this.createDocRow('刹车状况', archive.condition.brakeStatus));
+    conditionSection.appendChild(this.createDocRow('综合评定', archive.condition.overallAssessment));
+    container.appendChild(conditionSection);
+
+    const ownerSection = this.createDocSection('产权信息', '#ffa94d');
+    ownerSection.appendChild(this.createDocRow('车主姓名', archive.ownership.ownerName));
+    ownerSection.appendChild(this.createDocRow('证件类型', archive.ownership.ownerIdType));
+    ownerSection.appendChild(this.createDocRow('过户次数', `${archive.ownership.ownershipTransferCount}次`));
+    ownerSection.appendChild(this.createDocRow('注册日期', archive.ownership.registrationDate));
+    ownerSection.appendChild(this.createDocRow('年检有效期', archive.ownership.annualInspectionValid ? '有效' : '已过期', archive.ownership.annualInspectionValid ? '#51cf66' : '#ff6b6b'));
+    container.appendChild(ownerSection);
+
+    const statusSection = this.createDocSection('车辆状态', '#ff6b6b');
+    statusSection.appendChild(this.createDocRow('抵押状态', archive.hasEncumbrance ? '有抵押' : '无抵押', archive.hasEncumbrance ? '#ff6b6b' : '#51cf66'));
+    if (archive.hasEncumbrance && archive.encumbranceDescription) {
+      statusSection.appendChild(this.createDocRow('抵押说明', archive.encumbranceDescription));
+    }
+    statusSection.appendChild(this.createDocRow('查封状态', archive.isSeized ? '已查封' : '正常', archive.isSeized ? '#ff6b6b' : '#51cf66'));
+    container.appendChild(statusSection);
+  }
+
+  private renderQuoteTab(container: HTMLElement, level: Level): void {
+    const quote = level.quoteHistory;
+
+    const summarySection = this.createDocSection('报价概况', '#51cf66');
+    summarySection.appendChild(this.createDocRow('最终成交价', `¥${quote.finalNegotiatedPrice.toLocaleString()}`, '#ffd700'));
+    summarySection.appendChild(this.createDocRow('平均报价', `¥${quote.averageQuote.toLocaleString()}`));
+    summarySection.appendChild(this.createDocRow('最高报价', `¥${quote.highestQuote.toLocaleString()}`));
+    summarySection.appendChild(this.createDocRow('最低报价', `¥${quote.lowestQuote.toLocaleString()}`));
+    summarySection.appendChild(this.createDocRow('价格趋势', quote.priceTrend, quote.priceTrend === '上涨' ? '#ff6b6b' : quote.priceTrend === '下跌' ? '#51cf66' : '#ffa94d'));
+    summarySection.appendChild(this.createDocRow('首次报价日期', quote.initialQuoteDate));
+    container.appendChild(summarySection);
+
+    const recordSection = this.createDocSection('报价记录', '#667eea');
+    quote.quoteRecords.forEach((record, idx) => {
+      const recordCard = this.createContainer('quote-record');
+      this.styleElement(recordCard, {
+        background: 'rgba(255,255,255,0.05)',
+        borderRadius: '8px',
+        padding: '12px',
+        marginBottom: idx < quote.quoteRecords.length - 1 ? '10px' : '0'
+      });
+
+      const header = this.createContainer('record-header');
+      this.styleElement(header, {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '8px'
+      });
+
+      const appraiserEl = document.createElement('div');
+      appraiserEl.textContent = record.appraiser;
+      this.styleElement(appraiserEl, {
+        color: '#fff',
+        fontSize: '13px',
+        fontWeight: '600'
+      });
+
+      const timeEl = document.createElement('div');
+      timeEl.textContent = record.timestamp.split(' ')[0];
+      this.styleElement(timeEl, {
+        color: 'rgba(255,255,255,0.5)',
+        fontSize: '11px'
+      });
+
+      header.appendChild(appraiserEl);
+      header.appendChild(timeEl);
+
+      const priceEl = document.createElement('div');
+      priceEl.textContent = `报价: ¥${record.finalQuote.toLocaleString()}`;
+      this.styleElement(priceEl, {
+        color: '#ffd700',
+        fontSize: '14px',
+        fontWeight: '700',
+        marginBottom: '6px'
+      });
+
+      const methodEl = document.createElement('div');
+      methodEl.textContent = `评估方法: ${record.valuationMethod}`;
+      this.styleElement(methodEl, {
+        color: 'rgba(255,255,255,0.5)',
+        fontSize: '11px'
+      });
+
+      recordCard.appendChild(header);
+      recordCard.appendChild(priceEl);
+      recordCard.appendChild(methodEl);
+      recordSection.appendChild(recordCard);
+    });
+    container.appendChild(recordSection);
+
+    const historySection = this.createDocSection('议价过程', '#ffa94d');
+    const buyerOffers = quote.buyerOfferHistory.join(' → ');
+    const sellerAsks = quote.sellerAskHistory.join(' → ');
+    historySection.appendChild(this.createDocRow('买方出价', `¥${buyerOffers.split(' → ').map(v => Number(v).toLocaleString()).join(' → ')}`));
+    historySection.appendChild(this.createDocRow('卖方要价', `¥${sellerAsks.split(' → ').map(v => Number(v).toLocaleString()).join(' → ')}`));
+    container.appendChild(historySection);
+  }
+
+  private renderFinanceTab(container: HTMLElement, level: Level): void {
+    const finance = level.financeDocuments;
+
+    const financeSection = this.createDocSection('贷款信息', '#ffa94d');
+    financeSection.appendChild(this.createDocRow('支付方式', finance.paymentMethod));
+    financeSection.appendChild(this.createDocRow('贷款状态', finance.finance.hasLoan ? '有贷款' : '无贷款', finance.finance.hasLoan ? '#ff6b6b' : '#51cf66'));
+    if (finance.finance.hasLoan) {
+      financeSection.appendChild(this.createDocRow('贷款银行', finance.finance.loanBank || '未知'));
+      financeSection.appendChild(this.createDocRow('贷款余额', `¥${(finance.finance.loanOutstandingBalance || 0).toLocaleString()}`));
+      financeSection.appendChild(this.createDocRow('月供金额', `¥${(finance.finance.loanMonthlyPayment || 0).toLocaleString()}`));
+      financeSection.appendChild(this.createDocRow('贷款期限', `${finance.finance.loanTermMonths || 0}个月`));
+    }
+    financeSection.appendChild(this.createDocRow('贷款已结清', finance.finance.loanPaidOff ? '是' : '否', finance.finance.loanPaidOff ? '#51cf66' : '#ff6b6b'));
+    financeSection.appendChild(this.createDocRow('解除抵押证明', finance.finance.releaseOfMortgageAvailable ? '有' : '无', finance.finance.releaseOfMortgageAvailable ? '#51cf66' : '#ff6b6b'));
+    financeSection.appendChild(this.createDocRow('贷款审批状态', finance.financingApprovalStatus, finance.financingApprovalStatus === '已通过' ? '#51cf66' : finance.financingApprovalStatus === '已拒绝' ? '#ff6b6b' : '#ffa94d'));
+    container.appendChild(financeSection);
+
+    const insuranceSection = this.createDocSection('保险信息', '#667eea');
+    insuranceSection.appendChild(this.createDocRow('保险状态', finance.insurance.hasInsurance ? '有保险' : '无保险', finance.insurance.hasInsurance ? '#51cf66' : '#ff6b6b'));
+    if (finance.insurance.hasInsurance) {
+      insuranceSection.appendChild(this.createDocRow('保险类型', finance.insurance.insuranceType || '-'));
+      insuranceSection.appendChild(this.createDocRow('保险公司', finance.insurance.insuranceCompany || '-'));
+      insuranceSection.appendChild(this.createDocRow('保单号', finance.insurance.policyNumber || '-'));
+      insuranceSection.appendChild(this.createDocRow('保险起期', finance.insurance.policyStartDate || '-'));
+      insuranceSection.appendChild(this.createDocRow('保险到期', finance.insurance.policyEndDate || '-'));
+      insuranceSection.appendChild(this.createDocRow('保额', `¥${(finance.insurance.coverageAmount || 0).toLocaleString()}`));
+      insuranceSection.appendChild(this.createDocRow('出险次数', `${finance.insurance.claimHistory.length}次`));
+    }
+    container.appendChild(insuranceSection);
+
+    const taxSection = this.createDocSection('税务信息', '#51cf66');
+    taxSection.appendChild(this.createDocRow('购置税已缴', finance.tax.vehiclePurchaseTaxPaid ? '是' : '否', finance.tax.vehiclePurchaseTaxPaid ? '#51cf66' : '#ff6b6b'));
+    if (finance.tax.vehiclePurchaseTaxPaid) {
+      taxSection.appendChild(this.createDocRow('购置税金额', `¥${(finance.tax.vehiclePurchaseTaxAmount || 0).toLocaleString()}`));
+    }
+    taxSection.appendChild(this.createDocRow('车船税已缴', finance.tax.annualVehicleTaxPaid ? '是' : '否', finance.tax.annualVehicleTaxPaid ? '#51cf66' : '#ff6b6b'));
+    taxSection.appendChild(this.createDocRow('税务欠费', finance.tax.taxArrears ? '有' : '无', finance.tax.taxArrears ? '#ff6b6b' : '#51cf66'));
+    container.appendChild(taxSection);
+  }
+
+  private createDocSection(title: string, color: string): HTMLElement {
+    const section = this.createContainer('doc-section');
+    this.styleElement(section, {
+      marginBottom: '16px'
+    });
+
+    const titleEl = document.createElement('h4');
+    titleEl.textContent = title;
+    this.styleElement(titleEl, {
+      color: color,
+      fontSize: '13px',
+      fontWeight: '700',
+      margin: '0 0 10px',
+      paddingBottom: '6px',
+      borderBottom: `2px solid ${color}30`
+    });
+
+    section.appendChild(titleEl);
+    return section;
+  }
+
+  private createDocRow(label: string, value: string, valueColor?: string): HTMLElement {
+    const row = this.createContainer('doc-row');
+    this.styleElement(row, {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      padding: '6px 0',
+      borderBottom: '1px solid rgba(255,255,255,0.05)',
+      gap: '12px'
+    });
+
+    const labelEl = document.createElement('span');
+    labelEl.textContent = label;
+    this.styleElement(labelEl, {
+      color: 'rgba(255,255,255,0.5)',
+      fontSize: '12px',
+      flexShrink: '0'
+    });
+
+    const valueEl = document.createElement('span');
+    valueEl.textContent = value;
+    this.styleElement(valueEl, {
+      color: valueColor || '#fff',
+      fontSize: '12px',
+      fontWeight: '500',
+      textAlign: 'right',
+      wordBreak: 'break-all'
+    });
+
+    row.appendChild(labelEl);
+    row.appendChild(valueEl);
+    return row;
   }
 
   private formatTime(ms: number): string {

@@ -1,6 +1,6 @@
-import { GameManager } from './GameManager';
-import { LevelManager } from './LevelManager';
-import { ReplayManager } from './ReplayManager';
+import { GameManager } from '../managers/GameManager';
+import { LevelManager } from '../managers/LevelManager';
+import { ReplayManager } from '../managers/ReplayManager';
 
 class GameCore {
   private static instance: GameCore;

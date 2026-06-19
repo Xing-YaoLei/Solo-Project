@@ -4,6 +4,7 @@ import { sampleLevels } from '../data/sampleLevels';
 export class LevelManager {
   private levels: Level[] = [];
   private levelGroups: LevelGroup[] = [];
+  private trainingPositions: Position[] = ['过户专员', '金融专员', '评估师', '综合岗位'];
 
   constructor() {
     this.initializeLevels();
@@ -16,9 +17,8 @@ export class LevelManager {
 
   private buildLevelGroups(): LevelGroup[] {
     const groups: LevelGroup[] = [];
-    const positions: Position[] = ['过户专员', '金融专员', '评估师', '综合岗位'];
 
-    positions.forEach((position) => {
+    this.trainingPositions.forEach((position) => {
       const positionLevels = this.levels.filter((l) => l.position === position);
       if (positionLevels.length > 0) {
         groups.push({
@@ -32,6 +32,43 @@ export class LevelManager {
     });
 
     return groups;
+  }
+
+  getLevelGroupsByMode(mode: GameMode): LevelGroup[] {
+    if (mode === 'training') {
+      return this.levelGroups;
+    } else {
+      return [
+        {
+          id: 'group_free_all',
+          position: '综合岗位',
+          name: '全部关卡',
+          description: '自由练习模式 - 所有关卡可任意挑战',
+          levels: [...this.levels]
+        },
+        {
+          id: 'group_free_easy',
+          position: '综合岗位',
+          name: '入门关卡 (1-2星)',
+          description: '适合新手入门的简单关卡',
+          levels: this.levels.filter((l) => l.difficulty <= 2)
+        },
+        {
+          id: 'group_free_medium',
+          position: '综合岗位',
+          name: '进阶关卡 (3星)',
+          description: '有一定难度的中等关卡',
+          levels: this.levels.filter((l) => l.difficulty === 3)
+        },
+        {
+          id: 'group_free_hard',
+          position: '综合岗位',
+          name: '挑战关卡 (4-5星)',
+          description: '高难度挑战关卡，包含材料缺失',
+          levels: this.levels.filter((l) => l.difficulty >= 4)
+        }
+      ];
+    }
   }
 
   getAllLevels(): Level[] {
