@@ -1,5 +1,6 @@
 class ConflictDetectionJob < ApplicationJob
   queue_as :default
+  sidekiq_options retry: 3
 
   def perform(order_id)
     order = ChannelOrder.find_by(id: order_id)

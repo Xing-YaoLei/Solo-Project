@@ -7,6 +7,6 @@ class RecordsController < ApplicationController
     @calendar_dates = (@start_date..@end_date).to_a
     @channel_orders = ChannelOrder.for_date_range(@start_date, @end_date).for_property(@selected_property&.id)
     @cleaning_tasks = CleaningTask.for_property(@selected_property&.id).where(task_date: @start_date..@end_date)
-    @room_conflicts = RoomConflict.for_property(@selected_property&.id).open
+    @room_conflicts = RoomConflict.visible_to(current_user).for_property(@selected_property&.id).open
   end
 end

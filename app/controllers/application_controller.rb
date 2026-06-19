@@ -16,7 +16,7 @@ class ApplicationController < ActionController::Base
   end
 
   def open_conflicts_count
-    @open_conflicts_count ||= RoomConflict.open.count
+    @open_conflicts_count ||= RoomConflict.visible_to(current_user).open.count
   end
   helper_method :open_conflicts_count
 end

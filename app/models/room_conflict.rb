@@ -13,6 +13,12 @@ class RoomConflict < ApplicationRecord
   scope :resolved, -> { where(status: %w[resolved closed]) }
   scope :for_date, ->(date) { where(conflict_date: date) }
   scope :for_property, ->(property_id) { where(property_id: property_id) }
+  scope :for_handler, ->(user_id) { where(handler_id: user_id) }
+  scope :visible_to, ->(user) {
+    return all if user.nil?
+    return all if user.role == "admin"
+    where(handler_id: user.id).or(where(handler_id: nil))
+  }
 
   after_create :notify_handler
 

@@ -2,7 +2,7 @@ class RoomConflictsController < ApplicationController
   before_action :set_conflict, only: %i[show acknowledge resolve close]
 
   def index
-    @conflicts = RoomConflict.all
+    @conflicts = RoomConflict.visible_to(current_user)
     @conflicts = @conflicts.where(status: params[:status]) if params[:status].present?
     @conflicts = @conflicts.order(created_at: :desc)
   end
