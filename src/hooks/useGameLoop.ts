@@ -11,7 +11,6 @@ function useGameLoop() {
   const navigate = useNavigate();
   const hasFinishedRef = useRef(false);
   const workOrderProgressRef = useRef<Map<string, number>>(new Map());
-  const shortageCheckedRef = useRef<Set<string>>(new Set());
 
   const {
     isPaused,
@@ -108,7 +107,6 @@ function useGameLoop() {
 
     hasFinishedRef.current = false;
     workOrderProgressRef.current.clear();
-    shortageCheckedRef.current.clear();
 
     const intervalId = setInterval(() => {
       const state = useGameStore.getState();

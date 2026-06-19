@@ -17,6 +17,11 @@ import {
   AlertTriangle,
   Clock,
   Trophy,
+  Package,
+  Clock3,
+  RefreshCw,
+  Ban,
+  Wrench,
 } from 'lucide-react';
 import { useGameStore } from '@/store/useGameStore';
 import { formatNumber, formatPercent, formatRelativeTime } from '@/utils/format';
@@ -675,6 +680,161 @@ function AchievementBadge({
   );
 }
 
+function ShortageComparisonSection() {
+  const gameRecords = useGameStore((s) => s.gameRecords);
+
+  const stats = useMemo(() => {
+    const totalWait = gameRecords.reduce((a, r) => a + r.shortageWaitCount, 0);
+    const totalAlt = gameRecords.reduce((a, r) => a + r.shortageAlternativeCount, 0);
+    const totalSkip = gameRecords.reduce((a, r) => a + r.shortageSkipCount, 0);
+    const totalShortage = totalWait + totalAlt + totalSkip;
+
+    const skipReworkRecords = gameRecords.filter((r) => r.shortageSkipCount > 0);
+    const noSkipReworkRecords = gameRecords.filter((r) => r.shortageSkipCount === 0);
+
+    const avgReworkWithSkip =
+      skipReworkRecords.length > 0
+        ? skipReworkRecords.reduce((a, r) => a + r.repairRate, 0) / skipReworkRecords.length
+        : 0;
+    const avgReworkWithoutSkip =
+      noSkipReworkRecords.length > 0
+        ? noSkipReworkRecords.reduce((a, r) => a + r.repairRate, 0) / noSkipReworkRecords.length
+        : 0;
+
+    const avgCompletionWithSkip =
+      skipReworkRecords.length > 0
+        ? skipReworkRecords.reduce((a, r) => a + r.completionRate, 0) / skipReworkRecords.length
+        : 0;
+    const avgCompletionWithoutSkip =
+      noSkipReworkRecords.length > 0
+        ? noSkipReworkRecords.reduce((a, r) => a + r.completionRate, 0) / noSkipReworkRecords.length
+        : 0;
+
+    return {
+      totalWait, totalAlt, totalSkip, totalShortage,
+      avgReworkWithSkip, avgReworkWithoutSkip,
+      avgCompletionWithSkip, avgCompletionWithoutSkip,
+      hasSkipData: skipReworkRecords.length > 0,
+      hasNoSkipData: noSkipReworkRecords.length > 0,
+    };
+  }, [gameRecords]);
+
+  if (stats.totalShortage === 0) {
+    return (
+      <div className="text-center py-8">
+        <Package className="h-10 w-10 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+        <p className="text-sm text-gray-500 dark:text-gray-400">尚未触发过配件缺货，完成更多关卡以积累数据</p>
+      </div>
+    );
+  }
+
+  const cards = [
+    {
+      key: 'wait',
+      title: '等待配送',
+      Icon: Clock3,
+      iconClass: 'text-sky-500 bg-sky-50 dark:bg-sky-500/10',
+      count: stats.totalWait,
+      label: '扣时-30s / 扣分-20',
+    },
+    {
+      key: 'alt',
+      title: '使用替代件',
+      Icon: RefreshCw,
+      iconClass: 'text-violet-500 bg-violet-50 dark:bg-violet-500/10',
+      count: stats.totalAlt,
+      label: '扣分-10 / +15%返修',
+    },
+    {
+      key: 'skip',
+      title: '跳过工序',
+      Icon: Ban,
+      iconClass: 'text-orange-500 bg-orange-50 dark:bg-orange-500/10',
+      count: stats.totalSkip,
+      label: '不得分 / +40%返修',
+    },
+  ];
+
+  return (
+    <div>
+      <div className="grid grid-cols-3 gap-3 mb-6">
+        {cards.map((c) => (
+          <div key={c.key} className="rounded-xl bg-gray-50 dark:bg-gray-700/30 border border-gray-100 dark:border-gray-700/50 p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <div className={cn('flex h-8 w-8 items-center justify-center rounded-lg', c.iconClass)}>
+                <c.Icon className="h-4 w-4" />
+              </div>
+              <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">{c.title}</span>
+            </div>
+            <div className="flex items-baseline gap-1">
+              <span className="text-2xl font-black text-gray-900 dark:text-white tabular-nums">{c.count}</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">次</span>
+            </div>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">{c.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {stats.hasSkipData && (
+        <div className="rounded-xl border border-orange-200 dark:border-orange-500/20 bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-500/5 dark:to-amber-500/5 p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Wrench className="h-4 w-4 text-orange-500" />
+            <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">跳过工序对返修率的影响</span>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">使用了跳过工序</div>
+              <div className="flex items-baseline gap-1">
+                <span className="text-xl font-black tabular-nums text-orange-600 dark:text-orange-400">
+                  {formatPercent(stats.avgReworkWithSkip, { decimals: 1 })}
+                </span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">平均返修率</span>
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                完成率 {formatPercent(stats.avgCompletionWithSkip, { decimals: 0 })}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                未跳过工序{stats.hasNoSkipData ? '' : '（暂无数据）'}
+              </div>
+              <div className="flex items-baseline gap-1">
+                <span className={cn(
+                  'text-xl font-black tabular-nums',
+                  stats.hasNoSkipData ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400'
+                )}>
+                  {stats.hasNoSkipData
+                    ? formatPercent(stats.avgReworkWithoutSkip, { decimals: 1 })
+                    : '—'}
+                </span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">平均返修率</span>
+              </div>
+              {stats.hasNoSkipData && (
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  完成率 {formatPercent(stats.avgCompletionWithoutSkip, { decimals: 0 })}
+                </div>
+              )}
+            </div>
+          </div>
+          {stats.hasNoSkipData && (
+            <div className="mt-3 pt-3 border-t border-orange-200/50 dark:border-orange-500/10">
+              <div className="flex items-center gap-1.5 text-xs">
+                <AlertTriangle className="h-3.5 w-3.5 text-orange-500" />
+                <span className="text-gray-600 dark:text-gray-300">
+                  跳过工序使平均返修率升高
+                  <span className="font-bold text-orange-600 dark:text-orange-400 ml-1">
+                    +{formatPercent(stats.avgReworkWithSkip - stats.avgReworkWithoutSkip, { decimals: 1 })}
+                  </span>
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AchievementsSection() {
   const gameRecords = useGameStore((s) => s.gameRecords);
   const levels = useGameStore((s) => s.levels);
@@ -848,6 +1008,28 @@ export default function StatsCenter() {
                 </div>
               </div>
               <TrendLineChart />
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.4 }}
+              className="rounded-3xl bg-white/80 dark:bg-gray-800/50 backdrop-blur-xl shadow-xl border border-white/50 dark:border-gray-700/30 p-6 md:p-8 mb-6"
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-50 dark:bg-orange-500/10">
+                  <Package className="h-4.5 w-4.5 text-orange-500" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+                    缺货处理方案对比
+                  </h2>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    比较不同处理方式对返修率的影响
+                  </p>
+                </div>
+              </div>
+              <ShortageComparisonSection />
             </motion.div>
 
             <motion.div
