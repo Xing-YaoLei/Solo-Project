@@ -15,11 +15,15 @@ export interface DashboardData {
     inventoryGaps: number;
     qualityAnomalies: number;
     reworkRateAlert: boolean;
+    insuranceRejectRate?: number;
+    cashierAnomalyCount?: number;
   };
   reworkRate: {
     value: number;
     threshold: number;
     calculation: string;
+    insuranceReworkShare?: number;
+    insuranceReworkedCount?: number;
   };
 }
 
@@ -29,6 +33,18 @@ export interface WorkorderTrendPoint {
   completed: number;
   reworked: number;
   reworkRate: number;
+  revenue?: number;
+  revenueBreakdown?: {
+    cash: number;
+    card: number;
+    insurance: number;
+  };
+  insurance?: {
+    filed: number;
+    settled: number;
+    rejected: number;
+  };
+  partsFromInsurance?: number;
 }
 
 export interface InventoryItem {
@@ -58,15 +74,61 @@ export interface QuoteItem {
   partSku?: string;
 }
 
+export interface PartTraceItem {
+  quoteItemId: string;
+  description: string;
+  partId: string;
+  partSku: string;
+  partName: string;
+  category?: string;
+  unitValue: number;
+  quoteUnitPrice: number;
+  markup: number;
+  inStock: number;
+  minThreshold: number;
+  isGap: boolean;
+}
+
+export interface CashierTxn {
+  id: string;
+  amount: number;
+  type: string;
+  reference?: string;
+  createdAt: string;
+}
+
+export interface InsuranceClaimData {
+  id: string;
+  policyNo: string;
+  claimAmount: number;
+  approvedAmount: number;
+  status: string;
+  materials?: any[];
+}
+
 export interface Quote {
   id: string;
   quoteNo: string;
   customerName: string;
   vehiclePlate: string;
+  workorderId?: string;
   totalAmount: number;
+  totalPaid?: number;
+  balance?: number;
   createdAt: string;
   status: 'draft' | 'approved' | 'completed';
   items: QuoteItem[];
+  cashier?: {
+    transactions: CashierTxn[];
+    totalPaid: number;
+  };
+  insurance?: {
+    claims: InsuranceClaimData[];
+    totalClaim: number;
+    settledAmount: number;
+  };
+  partTraceability?: PartTraceItem[];
+  insuranceMaterialsUsed?: any[];
 }
 
 export type AnnotationType = 'scratch' | 'dent' | 'missing_part' | 'other';
@@ -81,15 +143,39 @@ export interface Annotation {
   remark: string;
 }
 
+export interface InspectionPartUsed {
+  partId: string;
+  sku: string;
+  name: string;
+  quantity: number;
+  unitPrice: number;
+  inStock: number;
+  minThreshold: number;
+  isStockGap: boolean;
+}
+
 export interface Inspection {
   id: string;
   workorderId: string;
   vehiclePlate: string;
   photoUrl: string;
   hasAnomaly: boolean;
+  anomalySources?: string[];
   annotations: Annotation[];
   createdAt: string;
   inspectorId: string;
+  isReworked?: boolean;
+  insurance?: {
+    claims: InsuranceClaimData[];
+    rejectedMaterials?: any[];
+    hasRejection: boolean;
+  };
+  partsUsed?: InspectionPartUsed[];
+  hasStockGapParts?: boolean;
+  cashier?: {
+    totalPaid: number;
+    txCount: number;
+  };
 }
 
 export const REWORK_RATE_CALCULATION = `返修率计算口径说明：

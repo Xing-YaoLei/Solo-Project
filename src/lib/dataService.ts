@@ -1,6 +1,7 @@
 import { prisma } from './prisma';
 import { REWORK_RATE_CALCULATION } from '@/types';
-import { WorkorderStatus, InsuranceStatus, TransactionType } from '@prisma/client';
+import { WorkorderStatus, InsuranceStatus, TransactionType, UserRole } from '@prisma/client';
+import { verifyShareToken } from './shareToken';
 
 const REWORK_RATE_THRESHOLD = Number(process.env.REWORK_RATE_THRESHOLD || 5);
 
@@ -586,4 +587,91 @@ export async function getCurrentUser() {
     role: user.role.toLowerCase() as 'admin' | 'dispatcher' | 'inspector' | 'viewer',
     avatarUrl: user.avatarUrl || undefined,
   };
+}
+
+export interface ShareAuthResult {
+  valid: boolean;
+  scope: string[];
+  allowedRole: string;
+  fromShare: boolean;
+}
+
+export async function getShareScopeByToken(
+  shareToken?: string | null,
+  signature?: string | null
+): Promise<ShareAuthResult> {
+  if (!shareToken) {
+    return { valid: true, scope: [], allowedRole: 'admin', fromShare: false };
+  }
+
+  let shareLink: any = null;
+  let fromDb = false;
+
+  try {
+    shareLink = await prisma.shareLink.findUnique({
+      where: { token: shareToken },
+    });
+    fromDb = true;
+  } catch (e) {
+    // 数据库不可用，尝试签名模式
+  }
+
+  if (fromDb && shareLink) {
+    if (shareLink.expiresAt && new Date(shareLink.expiresAt) < new Date()) {
+      return { valid: false, scope: [], allowedRole: 'viewer', fromShare: true };
+    }
+    if (shareLink.signature) {
+      const payload = {
+        token: shareLink.token,
+        allowedRole: shareLink.allowedRole.toLowerCase(),
+        scope: shareLink.scope,
+        expiresAt: shareLink.expiresAt?.toISOString(),
+        createdAt: shareLink.createdAt.toISOString(),
+      };
+      if (!verifyShareToken(payload, shareLink.signature)) {
+        return { valid: false, scope: [], allowedRole: 'viewer', fromShare: true };
+      }
+    }
+    return {
+      valid: true,
+      scope: (shareLink.scope as string[]) || [],
+      allowedRole: shareLink.allowedRole.toLowerCase(),
+      fromShare: true,
+    };
+  }
+
+  if (signature) {
+    try {
+      let base64 = shareToken.replace(/-/g, '+').replace(/_/g, '/');
+      const pad = 4 - (base64.length % 4);
+      if (pad !== 4) base64 += '='.repeat(pad);
+      const decoded = JSON.parse(Buffer.from(base64, 'base64').toString());
+
+      const payload = {
+        token: decoded.token,
+        allowedRole: decoded.allowedRole,
+        scope: decoded.scope,
+        expiresAt: decoded.expiresAt,
+        createdAt: decoded.createdAt,
+      };
+
+      if (!verifyShareToken(payload, signature)) {
+        return { valid: false, scope: [], allowedRole: 'viewer', fromShare: true };
+      }
+      if (decoded.expiresAt && new Date(decoded.expiresAt) < new Date()) {
+        return { valid: false, scope: [], allowedRole: 'viewer', fromShare: true };
+      }
+
+      return {
+        valid: true,
+        scope: (decoded.scope as string[]) || [],
+        allowedRole: decoded.allowedRole || 'viewer',
+        fromShare: true,
+      };
+    } catch (e) {
+      return { valid: false, scope: [], allowedRole: 'viewer', fromShare: true };
+    }
+  }
+
+  return { valid: false, scope: [], allowedRole: 'viewer', fromShare: true };
 }

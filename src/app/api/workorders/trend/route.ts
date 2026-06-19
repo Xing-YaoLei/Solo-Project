@@ -1,16 +1,17 @@
 import { NextResponse } from 'next/server';
-import { getWorkorderTrend } from '@/lib/dataService';
+import { getWorkorderTrend, getShareScopeByToken } from '@/lib/dataService';
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const days = Number(searchParams.get('days')) || 30;
-    const scopeStr = searchParams.get('scope');
+    const shareToken = searchParams.get('shareToken');
+    const signature = searchParams.get('sig') || searchParams.get('signature');
 
-    if (scopeStr) {
-      const scope = decodeURIComponent(scopeStr).split(',');
-      if (!scope.includes('dashboard:view')) {
-        return NextResponse.json([], { status: 200 });
+    const auth = await getShareScopeByToken(shareToken, signature);
+    if (auth.fromShare) {
+      if (!auth.valid || !auth.scope.includes('dashboard:view')) {
+        return NextResponse.json([]);
       }
     }
 

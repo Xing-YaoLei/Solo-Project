@@ -21,13 +21,15 @@ interface DashboardState {
   expandedQuoteId: string | null;
   shareScope: string[] | null;
   shareRole: string | null;
+  shareToken: string | null;
+  shareSignature: string | null;
 
-  loadAllData: (scope?: string[]) => Promise<void>;
+  loadAllData: () => Promise<void>;
   refreshData: () => Promise<void>;
   toggleQuoteExpand: (id: string) => void;
   setExportModalOpen: (open: boolean) => void;
   setShareModalOpen: (open: boolean) => void;
-  setShareContext: (role: string, scope: string[]) => void;
+  setShareContext: (role: string, scope: string[], token?: string, signature?: string) => void;
   hasPermission: (permission: string) => boolean;
 }
 
@@ -44,22 +46,26 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
   expandedQuoteId: null,
   shareScope: null,
   shareRole: null,
+  shareToken: null,
+  shareSignature: null,
 
-  loadAllData: async (scope) => {
+  loadAllData: async () => {
     set({ isLoading: true });
 
     try {
-      const scopeQuery = scope && scope.length > 0
-        ? `scope=${encodeURIComponent(scope.join(','))}`
-        : '';
-      const qs = scopeQuery ? `&${scopeQuery}` : '';
-      const dashQs = scopeQuery ? `?${scopeQuery}` : '';
+      const { shareToken, shareSignature } = get();
+      const hasShare = shareToken && shareSignature;
+      const tokenParam = hasShare ? `shareToken=${encodeURIComponent(shareToken!)}` : '';
+      const sigParam = hasShare ? `sig=${encodeURIComponent(shareSignature!)}` : '';
+      const qs1 = hasShare ? `${tokenParam}&${sigParam}` : '';
+      const qs2 = hasShare ? `&${tokenParam}&${sigParam}` : '';
+      const dashQs = hasShare ? `?${tokenParam}&${sigParam}` : '';
 
       const [userRes, dashboardRes, trendRes, inventoryRes, quotesRes, inspectionsRes] =
         await Promise.all([
           fetch('/api/auth/me'),
           fetch(`/api/dashboard${dashQs}`),
-          fetch(`/api/workorders/trend?days=30${qs}`),
+          fetch(`/api/workorders/trend?days=30${qs2}`),
           fetch(`/api/inventory${dashQs}`),
           fetch(`/api/quotes${dashQs}`),
           fetch(`/api/inspections${dashQs}`),
@@ -88,8 +94,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
   },
 
   refreshData: async () => {
-    const { shareScope } = get();
-    await get().loadAllData(shareScope || undefined);
+    await get().loadAllData();
   },
 
   toggleQuoteExpand: (id: string) => {
@@ -100,8 +105,8 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
   setExportModalOpen: (open: boolean) => set({ isExportModalOpen: open }),
   setShareModalOpen: (open: boolean) => set({ isShareModalOpen: open }),
 
-  setShareContext: (role, scope) => {
-    set({ shareRole: role, shareScope: scope });
+  setShareContext: (role, scope, token, signature) => {
+    set({ shareRole: role, shareScope: scope, shareToken: token || null, shareSignature: signature || null });
   },
 
   hasPermission: (permission) => {

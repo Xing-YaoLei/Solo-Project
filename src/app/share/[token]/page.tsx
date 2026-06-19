@@ -30,8 +30,8 @@ export default function ShareViewPage() {
           setError(data.error || '无效的分享链接');
         } else {
           setShareInfo(data);
-          setShareContext(data.allowedRole, data.scope);
-          loadAllData(data.scope);
+          setShareContext(data.allowedRole, data.scope, params.token as string, sig || undefined);
+          loadAllData();
         }
       } catch {
         setError('验证分享链接失败');
