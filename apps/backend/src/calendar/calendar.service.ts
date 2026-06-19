@@ -84,7 +84,7 @@ export class CalendarService {
       for (let day = 1; day <= daysInMonth; day++) {
         const dateObj = new Date(year, month - 1, day);
         const dateStr = dateObj.toISOString().split('T')[0];
-        let aggregatedStatus = RoomStatus.AVAILABLE;
+        let aggregatedStatus: RoomStatus = RoomStatus.AVAILABLE;
         const dayRecords = calendarData.filter(c => this.isSameDay(c.date, dateObj));
         if (dayRecords.length > 0) {
           const statuses = dayRecords.map(r => r.status);

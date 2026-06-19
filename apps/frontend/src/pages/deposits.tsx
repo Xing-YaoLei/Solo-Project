@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Search, Plus, Eye, DollarSign, RefundCcw, Minus } from 'lucide-react';
+import { Search, Plus, Eye, DollarSign, RotateCcw, Minus } from 'lucide-react';
 import api from '@/lib/api';
 import { cn, formatDate, formatDateTime, getStatusText, getStatusClass } from '@/lib/utils';
 
@@ -359,7 +359,7 @@ export default function DepositsPage() {
                     }}
                     className="btn btn-secondary flex items-center gap-1 flex-1"
                   >
-                    <RefundCcw className="w-4 h-4" />
+                    <RotateCcw className="w-4 h-4" />
                     退还押金
                   </button>
                   <button

@@ -128,7 +128,7 @@ async function main() {
     
     for (let r = 1; r <= 10; r++) {
       const statusSeed = (d + r) % 7;
-      let status = RoomStatus.AVAILABLE;
+      let status: RoomStatus = RoomStatus.AVAILABLE;
       if (statusSeed === 0 || statusSeed === 1) status = RoomStatus.OCCUPIED;
       else if (statusSeed === 2) status = RoomStatus.CLEANING;
 

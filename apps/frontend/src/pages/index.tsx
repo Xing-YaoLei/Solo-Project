@@ -351,7 +351,7 @@ export default function DashboardPage() {
                 </div>
                 <h3 className="font-medium text-gray-800">{step.title}</h3>
                 <p className="text-xs text-gray-500 mt-1">{step.description}</p>
-                {step.count > 0 && (
+                {(step.count ?? 0) > 0 && (
                   <span
                     className={cn(
                       'absolute top-2 right-2 px-2 py-0.5 text-xs font-medium rounded-full',

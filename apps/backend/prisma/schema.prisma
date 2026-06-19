@@ -197,6 +197,7 @@ model ChannelOrder {
   documents   CheckinDocument[]
   deposits    Deposit[]
   conflicts   RoomConflict[]
+  cleaningTasks CleaningTask[]
 
   @@index([propertyId, checkInDate, checkOutDate])
   @@map("channel_orders")

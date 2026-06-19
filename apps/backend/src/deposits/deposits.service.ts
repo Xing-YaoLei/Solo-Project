@@ -104,7 +104,7 @@ export class DepositsService {
       throw new NotFoundException('押金记录不存在');
     }
 
-    const isFullRefund = refundAmount >= deposit.paidAmount;
+    const isFullRefund = refundAmount >= deposit.paidAmount.toNumber();
 
     return this.prisma.deposit.update({
       where: { id },
@@ -124,7 +124,7 @@ export class DepositsService {
     }
 
     const refundAmount = deductionAmount 
-      ? deposit.paidAmount - deductionAmount 
+      ? deposit.paidAmount.toNumber() - deductionAmount 
       : 0;
 
     return this.prisma.deposit.update({
