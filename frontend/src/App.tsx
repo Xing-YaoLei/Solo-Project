@@ -7,10 +7,18 @@ import ViewSelector from './components/ViewSelector';
 import NoteEditor from './components/NoteEditor';
 import ExportPanel from './components/ExportPanel';
 import { fetchSavedViews, createSavedView, deleteSavedView } from './api';
-import type { SavedView, SavedViewCreateData, DateRange } from './types';
+import type { SavedView, SavedViewCreateData, DateRange, FunnelFilters } from './types';
 
 export default function App() {
-  const { data, loading, dateRange, setDateRange, refresh: refreshFunnel } = useFunnelData();
+  const {
+    data,
+    loading,
+    dateRange,
+    setDateRange,
+    filters,
+    applyFilters,
+    refresh: refreshFunnel,
+  } = useFunnelData();
   const { anomalies, detecting, refresh: refreshAnomaly } = useAnomaly();
   const [savedViews, setSavedViews] = useState<SavedView[]>([]);
   const [activeViewType, setActiveViewType] = useState<SavedView['viewType']>('revisit_result');
@@ -61,15 +69,22 @@ export default function App() {
 
   const handleSelectView = (view: SavedView) => {
     try {
-      const filters = JSON.parse(view.filtersJson);
-      if (filters.dateRange) {
-        const dr = filters.dateRange as DateRange;
+      const fs = JSON.parse(view.filtersJson);
+      if (fs.dateRange) {
+        const dr = fs.dateRange as DateRange;
         if (dr.start && dr.end) {
           setDateRange(dr);
         }
       }
-      if (filters.viewType) {
-        setActiveViewType(filters.viewType as SavedView['viewType']);
+      if (fs.viewType) {
+        setActiveViewType(fs.viewType as SavedView['viewType']);
+      }
+      const newFilters: Partial<FunnelFilters> = {};
+      if (fs.revisitResult !== undefined) newFilters.revisitResult = fs.revisitResult;
+      if (fs.responsibility !== undefined) newFilters.responsibility = fs.responsibility;
+      if (fs.problemTag !== undefined) newFilters.problemTag = fs.problemTag;
+      if (Object.keys(newFilters).length > 0) {
+        applyFilters(newFilters);
       }
     } catch {
       // ignore parse error
@@ -107,7 +122,9 @@ export default function App() {
             views={savedViews}
             activeViewType={activeViewType}
             dateRange={dateRange}
+            filters={filters}
             onViewTypeChange={setActiveViewType}
+            onFiltersChange={applyFilters}
             onSaveView={handleSaveView}
             onSelectView={handleSelectView}
             onDeleteView={handleDeleteView}

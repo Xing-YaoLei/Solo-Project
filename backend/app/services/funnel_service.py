@@ -47,12 +47,21 @@ async def get_funnel_data(
     session: AsyncSession,
     date_start: Optional[datetime] = None,
     date_end: Optional[datetime] = None,
+    revisit_result: Optional[str] = None,
+    responsibility: Optional[str] = None,
+    problem_tag: Optional[str] = None,
 ) -> dict:
     query = select(Complaint)
     if date_start:
         query = query.where(Complaint.created_at >= date_start)
     if date_end:
         query = query.where(Complaint.created_at <= date_end)
+    if revisit_result:
+        query = query.where(Complaint.revisit_result == revisit_result)
+    if responsibility:
+        query = query.where(Complaint.responsibility == responsibility)
+    if problem_tag:
+        query = query.where(Complaint.problem_tag == problem_tag)
 
     result = await session.execute(query)
     complaints = list(result.scalars().all())
@@ -108,6 +117,13 @@ async def get_funnel_data(
         "total": total,
         "avg_closure_work_hours": avg_closure,
         "closure_rule": CLOSURE_RULE,
+        "applied_filters": {
+            "revisit_result": revisit_result,
+            "responsibility": responsibility,
+            "problem_tag": problem_tag,
+            "date_start": date_start.isoformat() if date_start else None,
+            "date_end": date_end.isoformat() if date_end else None,
+        },
     }
 
 

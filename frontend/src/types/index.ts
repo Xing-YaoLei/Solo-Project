@@ -40,6 +40,14 @@ export interface SavedView {
   createdAt: string;
 }
 
+export interface ViewFilters {
+  viewType: SavedView['viewType'];
+  dateRange: DateRange;
+  revisitResult: string;
+  responsibility: string;
+  problemTag: string;
+}
+
 export interface SavedViewCreateData {
   viewName: string;
   viewType: SavedView['viewType'];
@@ -50,6 +58,12 @@ export interface SavedViewCreateData {
 export interface FunnelData {
   stages: FunnelStage[];
   timeoutIntervals: TimeoutInterval[];
+}
+
+export interface FunnelFilters {
+  revisitResult?: string;
+  responsibility?: string;
+  problemTag?: string;
 }
 
 export interface ClosureRule {

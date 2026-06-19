@@ -11,6 +11,7 @@ import type {
   AnomalyFetchParams,
   NoteCreateData,
   NoteUpdateData,
+  FunnelFilters,
 } from '../types';
 
 const api = axios.create({
@@ -41,10 +42,19 @@ function mapFunnelResponse(raw: Record<string, unknown>): FunnelData {
   return { stages, timeoutIntervals };
 }
 
-export async function fetchFunnelData(dateRange: DateRange): Promise<FunnelData> {
-  const res = await api.get('/funnel', {
-    params: { date_start: dateRange.start, date_end: dateRange.end },
-  });
+export async function fetchFunnelData(
+  dateRange: DateRange,
+  filters?: FunnelFilters,
+): Promise<FunnelData> {
+  const params: Record<string, unknown> = {
+    date_start: dateRange.start,
+    date_end: dateRange.end,
+  };
+  if (filters?.revisitResult) params.revisit_result = filters.revisitResult;
+  if (filters?.responsibility) params.responsibility = filters.responsibility;
+  if (filters?.problemTag) params.problem_tag = filters.problemTag;
+
+  const res = await api.get('/funnel', { params });
   return mapFunnelResponse(res.data);
 }
 

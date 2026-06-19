@@ -12,15 +12,22 @@ router = APIRouter(prefix="/api/funnel", tags=["funnel"])
 async def read_funnel(
     date_start: Optional[datetime] = Query(None),
     date_end: Optional[datetime] = Query(None),
+    revisit_result: Optional[str] = Query(None),
+    responsibility: Optional[str] = Query(None),
+    problem_tag: Optional[str] = Query(None),
     session: AsyncSession = Depends(get_pg_session),
 ):
-    data = await get_funnel_data(session, date_start, date_end)
+    data = await get_funnel_data(
+        session, date_start, date_end,
+        revisit_result, responsibility, problem_tag
+    )
     timeout_intervals = get_funnel_timeout_intervals()
     return {
         "funnel": data["funnel"],
         "total": data["total"],
         "avg_closure_work_hours": data["avg_closure_work_hours"],
         "closure_rule": data["closure_rule"],
+        "applied_filters": data["applied_filters"],
         "timeout_intervals": timeout_intervals,
     }
 

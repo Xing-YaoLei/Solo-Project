@@ -1,27 +1,37 @@
 import { useState } from 'react';
-import type { SavedView, DateRange } from '../types';
+import type { SavedView, DateRange, FunnelFilters } from '../types';
 
 interface ViewSelectorProps {
   views: SavedView[];
   activeViewType: SavedView['viewType'];
   dateRange: DateRange;
+  filters: FunnelFilters;
   onViewTypeChange: (viewType: SavedView['viewType']) => void;
+  onFiltersChange: (filters: Partial<FunnelFilters>) => void;
   onSaveView: (viewName: string, viewType: SavedView['viewType'], filtersJson: string) => void;
   onSelectView: (view: SavedView) => void;
   onDeleteView?: (viewId: string) => void;
 }
 
-const VIEW_TABS: { key: SavedView['viewType']; label: string }[] = [
-  { key: 'revisit_result', label: '回访结果' },
-  { key: 'responsibility', label: '责任归属' },
-  { key: 'problem_tag', label: '问题标签' },
+const VIEW_TABS: { key: SavedView['viewType']; label: string; filterField: keyof FunnelFilters }[] = [
+  { key: 'revisit_result', label: '回访结果', filterField: 'revisitResult' },
+  { key: 'responsibility', label: '责任归属', filterField: 'responsibility' },
+  { key: 'problem_tag', label: '问题标签', filterField: 'problemTag' },
 ];
+
+const FILTER_OPTIONS: Record<SavedView['viewType'], string[]> = {
+  revisit_result: ['', '满意', '一般', '不满意'],
+  responsibility: ['', '硬件', '软件', '服务', '安全', '卫生', '管理'],
+  problem_tag: ['', '硬件', '软件', '服务', '安全', '卫生', '管理'],
+};
 
 export default function ViewSelector({
   views,
   activeViewType,
   dateRange,
+  filters,
   onViewTypeChange,
+  onFiltersChange,
   onSaveView,
   onSelectView,
   onDeleteView,
@@ -29,14 +39,24 @@ export default function ViewSelector({
   const [newViewName, setNewViewName] = useState('');
 
   const filteredViews = views.filter((v) => v.viewType === activeViewType);
+  const activeTab = VIEW_TABS.find((t) => t.key === activeViewType)!;
+  const currentFilterValue = filters[activeTab.filterField] ?? '';
+  const options = FILTER_OPTIONS[activeViewType];
+
+  const handleFilterChange = (value: string) => {
+    onFiltersChange({ [activeTab.filterField]: value });
+  };
 
   const handleSave = () => {
     if (!newViewName.trim()) return;
-    const filters = {
+    const payload = {
       viewType: activeViewType,
       dateRange,
+      revisitResult: filters.revisitResult,
+      responsibility: filters.responsibility,
+      problemTag: filters.problemTag,
     };
-    onSaveView(newViewName.trim(), activeViewType, JSON.stringify(filters));
+    onSaveView(newViewName.trim(), activeViewType, JSON.stringify(payload));
     setNewViewName('');
   };
 
@@ -53,6 +73,21 @@ export default function ViewSelector({
             {tab.label}
           </button>
         ))}
+      </div>
+      <div className="view-filter-row">
+        <label className="filter-label">{activeTab.label}筛选：</label>
+        <select
+          className="view-filter-select"
+          value={currentFilterValue}
+          onChange={(e) => handleFilterChange(e.target.value)}
+        >
+          <option value="">全部</option>
+          {options.filter((o) => o !== '').map((opt) => (
+            <option key={opt} value={opt}>
+              {opt}
+            </option>
+          ))}
+        </select>
       </div>
       <div className="view-list">
         {filteredViews.length === 0 && (

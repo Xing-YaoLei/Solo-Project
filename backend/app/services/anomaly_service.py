@@ -47,7 +47,7 @@ async def detect_anomalies(session: AsyncSession) -> List[AnomalyFlag]:
                 session.add(flag)
                 new_flags.append(flag)
 
-        if c.assigned_to and "口径" in (c.complaint_content or ""):
+        if c.assigned_to and c.complaint_type and "口径" in c.complaint_type:
             existing = await session.execute(
                 select(AnomalyFlag).where(
                     AnomalyFlag.complaint_id == c.id,
