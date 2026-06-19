@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getQuotationTrend } from "@/lib/mockData";
+import { getQuotationTrendFromDB } from "@/lib/dbService";
 
 export async function GET(request: Request) {
   try {
@@ -7,7 +7,7 @@ export async function GET(request: Request) {
     const period = (searchParams.get("period") as "day" | "week" | "month") || "day";
     const role = searchParams.get("role") || "director";
 
-    const data = await getQuotationTrend(period);
+    const data = await getQuotationTrendFromDB(period);
 
     if (role === "external" || role === "parts") {
       return NextResponse.json(

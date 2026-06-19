@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getVehicleRecords } from "@/lib/mockData";
+import { getVehicleRecordsFromDB } from "@/lib/dbService";
 import { maskSensitiveData } from "@/utils/format";
 
 export async function GET(request: Request) {
@@ -9,7 +9,7 @@ export async function GET(request: Request) {
     const pageSize = parseInt(searchParams.get("pageSize") || "10");
     const role = searchParams.get("role") || "director";
 
-    const data = await getVehicleRecords(page, pageSize);
+    const data = await getVehicleRecordsFromDB(page, pageSize);
 
     if (role === "external") {
       return NextResponse.json(

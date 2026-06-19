@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { generateShareLink } from "@/lib/mockData";
+import { createShareLinkInDB } from "@/lib/dbService";
 import { z } from "zod";
 
 const shareSchema = z.object({
@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const validated = shareSchema.parse(body);
 
-    const result = await generateShareLink(
+    const result = await createShareLinkInDB(
       validated.role,
       validated.expiresIn,
       validated.scope

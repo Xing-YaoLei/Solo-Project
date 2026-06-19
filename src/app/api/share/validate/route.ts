@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { validateShareToken } from "@/lib/mockData";
+import { validateShareTokenInDB } from "@/lib/dbService";
 
 export async function GET(request: Request) {
   try {
@@ -13,7 +13,7 @@ export async function GET(request: Request) {
       );
     }
 
-    const result = await validateShareToken(token);
+    const result = await validateShareTokenInDB(token);
 
     if (!result.valid) {
       return NextResponse.json(

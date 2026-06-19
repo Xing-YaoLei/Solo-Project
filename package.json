@@ -12,6 +12,9 @@
     "prisma:seed": "tsx prisma/seed.ts",
     "postinstall": "prisma generate"
   },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
   "dependencies": {
     "@prisma/client": "^5.10.0",
     "clsx": "^2.1.0",

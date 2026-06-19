@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDiagnosisData } from "@/lib/mockData";
+import { getDiagnosisDataFromDB } from "@/lib/dbService";
 import { maskSensitiveData } from "@/utils/format";
 
 export async function GET(request: Request) {
@@ -7,7 +7,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const role = searchParams.get("role") || "director";
 
-    const data = await getDiagnosisData();
+    const data = await getDiagnosisDataFromDB();
 
     if (role === "external" || role === "parts") {
       return NextResponse.json(

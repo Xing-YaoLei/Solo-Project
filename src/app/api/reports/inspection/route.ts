@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { getInspectionData } from "@/lib/mockData";
+import { getInspectionDataFromDB } from "@/lib/dbService";
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const role = searchParams.get("role") || "director";
 
-    const data = await getInspectionData();
+    const data = await getInspectionDataFromDB();
 
     if (role === "external" || role === "parts") {
       return NextResponse.json(

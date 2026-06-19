@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import * as XLSX from "xlsx";
 import {
-  getOverviewData,
-  getQuotationTrend,
-  getInspectionData,
-  getVehicleRecords,
-  getDiagnosisData,
-} from "@/lib/mockData";
+  getOverviewDataFromDB,
+  getQuotationTrendFromDB,
+  getInspectionDataFromDB,
+  getVehicleRecordsFromDB,
+  getDiagnosisDataFromDB,
+} from "@/lib/dbService";
 
 const reworkRateNote = `返修率口径说明：
 1. 定义：返修率 = 返修工单数 / 总工单数量 × 100%
@@ -29,11 +29,11 @@ export async function GET(request: Request) {
     }
 
     const [overview, quotation, inspection, vehicles, diagnosis] = await Promise.all([
-      getOverviewData(),
-      getQuotationTrend("day"),
-      getInspectionData(),
-      getVehicleRecords(1, 50),
-      getDiagnosisData(),
+      getOverviewDataFromDB(),
+      getQuotationTrendFromDB("day"),
+      getInspectionDataFromDB(),
+      getVehicleRecordsFromDB(1, 50),
+      getDiagnosisDataFromDB(),
     ]);
 
     const wb = XLSX.utils.book_new();
