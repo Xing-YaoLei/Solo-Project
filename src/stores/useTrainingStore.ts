@@ -29,7 +29,9 @@ interface TrainingState {
   startTraining: (levelId: string) => void
   submitAnswer: (questionId: string, answer: unknown, isCorrect?: boolean) => void
   nextQuestion: () => void
-  finishTraining: () => { recordId: string; isSuccess: boolean }
+  getAnswerByQuestionId: (questionId: string) => Answer | undefined
+  hasAnswer: (questionId: string) => boolean
+  finishTraining: () => { recordId: string; isSuccess: boolean; allSubmitted: boolean }
   clearLastRecord: () => void
 }
 
@@ -88,27 +90,48 @@ const logActionMiddleware = (config: (set: (fn: (state: TrainingState) => Partia
         const timeSpent = Date.now() - questionStartTime
         const question = useConfigStore.getState().questions.find((q) => q.id === questionId)
         const recommendedTime = (question?.recommendedTime ?? 60) * 1000
+        const questionScore = question?.score ?? 25
         
         let actualIsCorrect = isCorrect
         if (actualIsCorrect === undefined && typeof answer === 'object' && answer !== null && 'isCorrect' in answer) {
           actualIsCorrect = (answer as { isCorrect: boolean }).isCorrect
         }
         
+        const newAnswer: Answer = {
+          questionId,
+          answer,
+          timestamp: Date.now(),
+          isCorrect: actualIsCorrect ?? false,
+          timeSpent,
+          recommendedTime,
+        }
+        
         wrappedSet(
-          (state) => ({
-            answers: [
-              ...state.answers,
-              {
-                questionId,
-                answer,
-                timestamp: Date.now(),
-                isCorrect: actualIsCorrect ?? false,
-                timeSpent,
-                recommendedTime,
-              },
-            ],
-            score: actualIsCorrect ? state.score + (question?.score ?? 25) : state.score,
-          }),
+          (state) => {
+            const existingIndex = state.answers.findIndex((a) => a.questionId === questionId)
+            let newAnswers: Answer[]
+            let newScore = state.score
+            
+            if (existingIndex >= 0) {
+              const oldAnswer = state.answers[existingIndex]
+              if (oldAnswer.isCorrect) {
+                newScore -= questionScore
+              }
+              newAnswers = [...state.answers]
+              newAnswers[existingIndex] = newAnswer
+            } else {
+              newAnswers = [...state.answers, newAnswer]
+            }
+            
+            if (newAnswer.isCorrect) {
+              newScore += questionScore
+            }
+            
+            return {
+              answers: newAnswers,
+              score: Math.max(0, newScore),
+            }
+          },
           'submitAnswer',
           { questionId, answer, isCorrect: actualIsCorrect }
         )
@@ -124,12 +147,28 @@ const logActionMiddleware = (config: (set: (fn: (state: TrainingState) => Partia
           { nextIndex: get().currentQuestionIndex + 1 }
         )
       },
+      getAnswerByQuestionId: (questionId: string) => {
+        return get().answers.find((a) => a.questionId === questionId)
+      },
+      hasAnswer: (questionId: string) => {
+        return get().answers.some((a) => a.questionId === questionId)
+      },
       finishTraining: () => {
         const state = get()
         const levelId = state.levelId ?? 'unknown'
         const endTime = Date.now()
         
         const configQuestions = useConfigStore.getState().questions
+        const levelQuestions = configQuestions.filter((q) => q.levelId === levelId)
+        
+        const allSubmitted = levelQuestions.every((q) => 
+          state.answers.some((a) => a.questionId === q.id)
+        )
+        
+        if (!allSubmitted) {
+          return { recordId: '', isSuccess: false, allSubmitted: false }
+        }
+        
         const questionResults: QuestionResult[] = state.answers.map((a) => ({
           id: `qr-${a.questionId}`,
           recordId: '',
@@ -192,7 +231,7 @@ const logActionMiddleware = (config: (set: (fn: (state: TrainingState) => Partia
           { finalScore: state.score, onTimeRate, status: isSuccess ? 'completed' : 'failed' }
         )
         
-        return { recordId, isSuccess }
+        return { recordId, isSuccess, allSubmitted: true }
       },
       clearLastRecord: () => {
         wrappedSet(() => ({ lastRecordId: null }), 'clearLastRecord', {})
@@ -201,7 +240,7 @@ const logActionMiddleware = (config: (set: (fn: (state: TrainingState) => Partia
   }
 
 export const useTrainingStore = create<TrainingState>()(
-  logActionMiddleware((set) => ({
+  logActionMiddleware((set, get) => ({
     levelId: null,
     currentQuestionIndex: 0,
     answers: [],
@@ -215,7 +254,9 @@ export const useTrainingStore = create<TrainingState>()(
     startTraining: () => set(() => ({})),
     submitAnswer: () => set(() => ({})),
     nextQuestion: () => set(() => ({})),
-    finishTraining: () => ({ recordId: '', isSuccess: false }),
+    getAnswerByQuestionId: (questionId) => get().answers.find((a) => a.questionId === questionId),
+    hasAnswer: (questionId) => get().answers.some((a) => a.questionId === questionId),
+    finishTraining: () => ({ recordId: '', isSuccess: false, allSubmitted: false }),
     clearLastRecord: () => set(() => ({})),
   }))
 )

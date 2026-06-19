@@ -46,6 +46,8 @@ export default function TrainingPage() {
   const submitAnswer = useTrainingStore((s) => s.submitAnswer)
   const finishTraining = useTrainingStore((s) => s.finishTraining)
   const nextQuestion = useTrainingStore((s) => s.nextQuestion)
+  const hasAnswer = useTrainingStore((s) => s.hasAnswer)
+  const getAnswerByQuestionId = useTrainingStore((s) => s.getAnswerByQuestionId)
   const configQuestions = useConfigStore((s) => s.questions)
   const loadConfig = useConfigStore((s) => s.loadConfig)
 
@@ -112,8 +114,10 @@ export default function TrainingPage() {
     return `${m}:${s.toString().padStart(2, '0')}`
   }
 
-  const currentAnswer = answers.find((a) => a.questionId === currentQuestion?.id)
-  const currentQuestionSubmitted = !!currentAnswer
+  const currentAnswer = currentQuestion ? getAnswerByQuestionId(currentQuestion.id) : undefined
+  const currentQuestionSubmitted = currentQuestion ? hasAnswer(currentQuestion.id) : false
+
+  const allQuestionsSubmitted = questions.length > 0 && questions.every((q) => hasAnswer(q.id))
 
   const handleSubmit = () => {
     if (currentAnswer) {
@@ -124,21 +128,15 @@ export default function TrainingPage() {
     }
   }
 
-  const handleNextFromFeedback = () => {
-    setShowFeedback(false)
-    if (isLastQuestion) {
-      const { recordId, isSuccess } = finishTraining()
-      navigate(`/records?recordId=${recordId}&isSuccess=${isSuccess}`)
-    } else {
-      nextQuestion()
-    }
-  }
-
   const handleFeedbackContinue = () => {
     setShowFeedback(false)
     if (isLastQuestion) {
-      const { recordId, isSuccess } = finishTraining()
-      navigate(`/records?recordId=${recordId}&isSuccess=${isSuccess}`)
+      const result = finishTraining()
+      if (!result.allSubmitted) {
+        alert('请完成所有题目后再提交训练！')
+        return
+      }
+      navigate(`/records?recordId=${result.recordId}&isSuccess=${result.isSuccess}`)
     } else {
       nextQuestion()
     }
@@ -146,17 +144,18 @@ export default function TrainingPage() {
 
   const handlePrevQuestion = () => {
     if (currentQuestionIndex > 0) {
-      useTrainingStore.setState((s) => ({ currentQuestionIndex: s.currentQuestionIndex - 1 }))
+      useTrainingStore.setState((s) => ({
+        currentQuestionIndex: s.currentQuestionIndex - 1,
+        questionStartTime: Date.now(),
+      }))
     }
   }
 
   const handleNextQuestion = () => {
     if (!isLastQuestion) {
-      useTrainingStore.setState((s) => ({ currentQuestionIndex: s.currentQuestionIndex + 1 }))
+      nextQuestion()
     }
   }
-
-  const allQuestionsSubmitted = questions.length > 0 && answers.length >= questions.length
 
   const currentLevel = levels.find((l) => l.id === levelId)
 
@@ -313,11 +312,11 @@ export default function TrainingPage() {
               ) : (
                 <Button
                   onClick={handleSubmit}
-                  disabled={!currentQuestionSubmitted}
+                  disabled={!allQuestionsSubmitted}
                   className="flex-1"
                 >
                   <Send className="h-4 w-4" />
-                  {currentQuestionSubmitted ? '完成训练' : '请先提交答案'}
+                  {allQuestionsSubmitted ? '完成训练' : '请先完成所有题目'}
                 </Button>
               )}
             </div>
