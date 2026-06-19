@@ -16,8 +16,8 @@ class RoomConflict < ApplicationRecord
   scope :for_handler, ->(user_id) { where(handler_id: user_id) }
   scope :visible_to, ->(user) {
     return all if user.nil?
-    return all if user.role == "admin"
-    where(handler_id: user.id).or(where(handler_id: nil))
+    return all if user.admin?
+    for_handler(user.id)
   }
 
   after_create :notify_handler

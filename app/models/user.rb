@@ -18,4 +18,10 @@ class User < ApplicationRecord
   def role_i18n
     I18n.t("roles.#{role}", default: role)
   end
+
+  ROLES.each do |role_name|
+    define_method "#{role_name}?" do
+      self.role == role_name
+    end
+  end
 end

@@ -1,4 +1,5 @@
 class ConflictDetectionJob < ApplicationJob
+  self.queue_adapter = :sidekiq
   queue_as :default
   sidekiq_options retry: 3
 

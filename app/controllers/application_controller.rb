@@ -5,7 +5,11 @@ class ApplicationController < ActionController::Base
   before_action :set_current_user
 
   def current_user
-    Current.user ||= User.first
+    return @current_user if defined?(@current_user)
+    @current_user = User.find_by(id: session[:user_id])
+    @current_user ||= User.first if Rails.env.development?
+    Current.user = @current_user
+    @current_user
   end
   helper_method :current_user
 
