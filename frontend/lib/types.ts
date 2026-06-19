@@ -1,4 +1,4 @@
-export type UserRole = 'advisor' | 'technician' | 'partsClerk' | 'manager';
+export type UserRole = 'ADVISOR' | 'TECHNICIAN' | 'PARTS_CLERK' | 'MANAGER';
 
 export interface User {
   id: string;
@@ -6,10 +6,13 @@ export interface User {
   name: string;
   email: string;
   phone?: string;
-  role: UserRole;
   avatar?: string;
-  createdAt: string;
-  updatedAt: string;
+  role: {
+    id: string;
+    name: string;
+    code: UserRole;
+  };
+  permissions: string[];
 }
 
 export interface LoginRequest {
@@ -18,50 +21,81 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-  token: string;
+  accessToken: string;
   user: User;
 }
 
-export type WorkOrderStatus = 'pending' | 'inProgress' | 'completed' | 'cancelled';
+export type WorkOrderStatus = 'PENDING' | 'IN_PROGRESS' | 'WAITING_PARTS' | 'QUALITY_CHECK' | 'COMPLETED' | 'CANCELLED';
 
 export interface WorkOrder {
   id: string;
   orderNumber: string;
   vehicleId: string;
   vehicle?: Vehicle;
-  customerId: string;
-  customerName: string;
-  customerPhone: string;
   advisorId: string;
-  advisor?: User;
+  advisor?: { id: string; name: string; username?: string; phone?: string };
   technicianId?: string;
-  technician?: User;
+  technician?: { id: string; name: string; username?: string; phone?: string };
   status: WorkOrderStatus;
-  description: string;
-  serviceType: string;
-  estimatedHours?: number;
-  actualHours?: number;
-  partsCost?: number;
-  laborCost?: number;
-  totalCost?: number;
+  mileageIn?: number;
+  mileageOut?: number;
+  complaint?: string;
+  diagnosis?: string;
+  quoteAmount: number;
+  actualAmount: number;
+  startTime?: string;
+  endTime?: string;
+  remarks?: string;
+  items?: WorkOrderItem[];
+  partRequests?: PartRequest[];
+  qualityChecks?: QualityCheck[];
+  logs?: WorkOrderLog[];
   createdAt: string;
   updatedAt: string;
-  completedAt?: string;
+}
+
+export interface WorkOrderItem {
+  id: string;
+  workOrderId: string;
+  itemName: string;
+  itemType: string;
+  laborHours: number;
+  laborAmount: number;
+  partAmount: number;
+  totalAmount: number;
+  remarks?: string;
+  sortOrder: number;
+  parts?: WorkOrderItemPart[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WorkOrderItemPart {
+  id: string;
+  workOrderItemId: string;
+  partId: string;
+  part?: Part;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  createdAt: string;
 }
 
 export interface Vehicle {
   id: string;
-  licensePlate: string;
-  vin?: string;
+  plateNumber: string;
   brand: string;
   model: string;
-  year: number;
+  vin?: string;
+  year?: number;
   color?: string;
-  mileage?: number;
-  customerId: string;
-  customerName: string;
-  customerPhone: string;
-  lastServiceDate?: string;
+  mileage: number;
+  engineNumber?: string;
+  ownerName: string;
+  ownerPhone: string;
+  ownerEmail?: string;
+  ownerAddress?: string;
+  remarks?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -70,104 +104,114 @@ export interface Part {
   id: string;
   partNumber: string;
   name: string;
-  description?: string;
-  category: string;
-  brand?: string;
-  price: number;
-  cost?: number;
-  stockQuantity: number;
-  minStockLevel: number;
+  category?: string;
+  specification?: string;
   unit: string;
+  stock: number;
+  minStock: number;
+  unitPrice: number;
+  supplier?: string;
+  supplierPhone?: string;
   location?: string;
+  remarks?: string;
   createdAt: string;
   updatedAt: string;
 }
 
-export type PartRequestStatus = 'pending' | 'approved' | 'rejected' | 'fulfilled' | 'cancelled';
+export type PartRequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'PROCURING' | 'COMPLETED';
+export type PartRequestSource = 'INVENTORY' | 'PROCUREMENT' | 'TRANSFER';
 
 export interface PartRequest {
   id: string;
   requestNumber: string;
   workOrderId: string;
-  workOrder?: WorkOrder;
+  workOrder?: { id: string; orderNumber: string; vehicle?: Vehicle };
   partId: string;
   part?: Part;
-  requestedBy: string;
-  requestedByUser?: User;
-  approvedBy?: string;
-  approvedByUser?: User;
   quantity: number;
   status: PartRequestStatus;
-  notes?: string;
+  source?: PartRequestSource;
+  beforeMaterial?: string;
+  afterMaterial?: string;
+  handlerId?: string;
+  handledAt?: string;
+  handlingNotes?: string;
+  requesterId?: string;
+  histories?: PartRequestHistory[];
   createdAt: string;
   updatedAt: string;
-  fulfilledAt?: string;
 }
 
-export type QualityCheckStatus = 'passed' | 'failed' | 'pending';
+export interface PartRequestHistory {
+  id: string;
+  partRequestId: string;
+  oldStatus: string;
+  newStatus: string;
+  beforeMaterial?: string;
+  afterMaterial?: string;
+  source?: string;
+  conclusion?: string;
+  handlerId?: string;
+  handlingNotes?: string;
+  changedAt: string;
+}
+
+export type QualityCheckResult = 'PASSED' | 'FAILED' | 'NEEDS_REWORK';
 
 export interface QualityCheck {
   id: string;
   workOrderId: string;
   workOrder?: WorkOrder;
-  checkedBy: string;
-  checkedByUser?: User;
-  inspectorId?: string;
-  inspector?: User;
-  status: QualityCheckStatus;
-  result?: 'PASSED' | 'FAILED' | 'NEEDS_REWORK';
-  items: QualityCheckItem[];
-  overallRating?: number;
-  notes?: string;
-  photos?: string[];
+  inspectorId: string;
+  inspector?: { id: string; name: string };
+  result: QualityCheckResult;
+  photos: string[];
   remarks?: string;
-  checkDate?: string;
+  checkDate: string;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface QualityCheckItem {
-  id: string;
-  name: string;
-  description?: string;
-  status: QualityCheckStatus;
-  notes?: string;
-}
-
-export type ReminderType = 'maintenance' | 'service' | 'inspection' | 'custom';
-
-export type ReminderStatus = 'active' | 'completed' | 'cancelled';
+export type MaintenanceType = 'OIL_CHANGE' | 'TIRE_ROTATION' | 'BRAKE_SERVICE' | 'TRANSMISSION_SERVICE' | 'COOLANT_SERVICE' | 'BATTERY_CHECK' | 'TIMING_BELT' | 'GENERAL_INSPECTION' | 'CUSTOM';
 
 export interface MaintenanceReminder {
   id: string;
   vehicleId: string;
   vehicle?: Vehicle;
-  customerId: string;
-  customerName: string;
-  type: ReminderType;
-  title: string;
+  type: MaintenanceType;
   description?: string;
-  reminderDate: string;
-  mileageThreshold?: number;
-  currentMileage?: number;
-  status: ReminderStatus;
-  workOrderId?: string;
-  createdBy: string;
+  lastMileage?: number;
+  lastDate?: string;
+  nextMileage?: number;
+  nextDate?: string;
+  isCompleted: boolean;
+  responsibleId?: string;
+  responsible?: { id: string; name: string };
+  remarks?: string;
   createdAt: string;
   updatedAt: string;
-  completedAt?: string;
+}
+
+export type WorkOrderLogType = 'CREATED' | 'STATUS_CHANGED' | 'ASSIGNED' | 'UPDATED' | 'PART_REQUESTED' | 'QUALITY_CHECK' | 'COMPLETED' | 'CANCELLED';
+
+export interface WorkOrderLog {
+  id: string;
+  workOrderId: string;
+  operatorId: string;
+  operator?: { id: string; name: string };
+  type: WorkOrderLogType;
+  content: string;
+  oldValue?: string;
+  newValue?: string;
+  timestamp: string;
 }
 
 export interface DashboardStats {
-  totalWorkOrders: number;
-  pendingWorkOrders: number;
-  inProgressWorkOrders: number;
-  completedWorkOrders: number;
-  totalRevenue: number;
-  totalVehicles: number;
-  lowStockParts: number;
-  pendingPartRequests: number;
-  upcomingReminders: number;
+  total: number;
+  inProgress: number;
+  waitingParts: number;
+  completed: number;
+  todayRevenue: number;
 }
 
 export interface PaginatedResponse<T> {
@@ -184,104 +228,11 @@ export interface ApiError {
   details?: Record<string, string[]>;
 }
 
-export interface ServiceItem {
-  id: string;
-  workOrderId: string;
-  name: string;
-  description?: string;
-  hours: number;
-  rate: number;
-  amount: number;
+export interface BatchUpdateRequest {
+  ids: string[];
+  status?: string;
   technicianId?: string;
-  technician?: User;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface PartUsage {
-  id: string;
-  workOrderId: string;
-  partId: string;
-  part?: Part;
-  quantity: number;
-  unitPrice: number;
-  amount: number;
-  partRequestId?: string;
-  createdAt: string;
-}
-
-export type OperationType =
-  | 'created'
-  | 'statusChanged'
-  | 'technicianAssigned'
-  | 'partRequested'
-  | 'partApproved'
-  | 'partRejected'
-  | 'partFulfilled'
-  | 'qualityCheckAdded'
-  | 'updated'
-  | 'deleted';
-
-export interface OperationLog {
-  id: string;
-  workOrderId?: string;
-  partRequestId?: string;
-  operatorId: string;
-  operator?: User;
-  operationType: OperationType;
-  description: string;
-  oldValue?: string;
-  newValue?: string;
-  createdAt: string;
-}
-
-export interface RejectReason {
-  reason: string;
-  rejectedBy: string;
-  rejectedAt: string;
-}
-
-export interface PartRequestWithDetails extends PartRequest {
-  part?: Part;
-  workOrder?: WorkOrder;
-  requestedByUser?: User;
-  approvedByUser?: User;
-  rejectReason?: RejectReason;
-  isOverdue?: boolean;
-  source?: 'inventory' | 'purchase' | 'transfer';
-}
-
-export interface QualityCheckWithDetails extends QualityCheck {
-  checkedByUser?: User;
-  photos?: string[];
-  workOrder?: WorkOrder;
-}
-
-export interface TechnicianWorkload {
-  technicianId: string;
-  technicianName: string;
-  completedOrders: number;
-  totalHours: number;
-  totalRevenue: number;
-}
-
-export interface ServiceTypeStat {
-  type: string;
-  count: number;
-  revenue: number;
-}
-
-export interface RevenueTrendItem {
-  date: string;
-  revenue: number;
-  orders: number;
-}
-
-export interface ReworkTrendItem {
-  date: string;
-  reworkRate: number;
-  totalOrders: number;
-  reworkOrders: number;
+  operatorId?: string;
 }
 
 export interface StatisticsOverview {
@@ -293,19 +244,54 @@ export interface StatisticsOverview {
   averageOrderValue: number;
 }
 
-export interface ReworkOrder {
-  id: string;
-  orderNumber: string;
-  vehicleLicensePlate: string;
-  customerName: string;
-  originalOrderNumber: string;
-  reworkReason: string;
-  status: WorkOrderStatus;
-  createdAt: string;
+export interface RevenueTrendItem {
+  date: string;
+  revenue: number;
+  orderCount: number;
 }
 
-export interface BatchUpdateRequest {
-  ids: string[];
-  status?: string;
-  technicianId?: string;
+export interface ReworkRateData {
+  totalCompletedVehicles: number;
+  reworkVehicleCount: number;
+  reworkRate: number;
+  reworkVehicles: string[];
+}
+
+export interface TechnicianWorkload {
+  technicianId: string;
+  technicianName: string;
+  totalOrders: number;
+  completedOrders: number;
+  totalLaborHours: number;
+}
+
+export interface ServiceItemStat {
+  itemName: string;
+  itemType: string;
+  count: number;
+  totalLaborHours: number;
+  totalLaborAmount: number;
+  totalPartAmount: number;
+  totalAmount: number;
+}
+
+export interface PartUsageStat {
+  partId: string;
+  partName: string;
+  partNumber: string;
+  category?: string;
+  unit?: string;
+  totalQuantity: number;
+  totalAmount: number;
+  usageCount: number;
+}
+
+export interface KanbanStats {
+  pending: number;
+  approved: number;
+  rejected: number;
+  procuring: number;
+  completed: number;
+  timeout: number;
+  total: number;
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Search, AlertTriangle } from 'lucide-react';
 import Card, { CardHeader, CardTitle, CardContent } from '@/components/Card';
 import Button from '@/components/Button';
@@ -12,101 +12,8 @@ import { formatCurrency } from '@/lib/utils';
 import { useProtectedRoute } from '@/hooks/useProtectedRoute';
 import { useDataTable } from '@/hooks/useDataTable';
 import type { Part } from '@/lib/types';
+import { partApi } from '@/lib/api-endpoints';
 import { cn } from '@/lib/utils';
-
-const mockParts: Part[] = [
-  {
-    id: '1',
-    partNumber: 'P001',
-    name: '机油滤清器',
-    description: '原厂机油滤清器',
-    category: '滤清器',
-    brand: '原厂',
-    price: 85,
-    cost: 45,
-    stockQuantity: 120,
-    minStockLevel: 50,
-    unit: '个',
-    location: 'A-01-01',
-    createdAt: '2023-01-01T00:00:00Z',
-    updatedAt: '2024-01-10T00:00:00Z',
-  },
-  {
-    id: '2',
-    partNumber: 'P002',
-    name: '空气滤清器',
-    category: '滤清器',
-    brand: '原厂',
-    price: 120,
-    cost: 60,
-    stockQuantity: 85,
-    minStockLevel: 30,
-    unit: '个',
-    location: 'A-01-02',
-    createdAt: '2023-01-01T00:00:00Z',
-    updatedAt: '2024-01-08T00:00:00Z',
-  },
-  {
-    id: '3',
-    partNumber: 'P003',
-    name: '前刹车片',
-    category: '刹车系统',
-    brand: '博世',
-    price: 380,
-    cost: 220,
-    stockQuantity: 25,
-    minStockLevel: 20,
-    unit: '套',
-    location: 'B-02-01',
-    createdAt: '2023-02-15T00:00:00Z',
-    updatedAt: '2024-01-05T00:00:00Z',
-  },
-  {
-    id: '4',
-    partNumber: 'P004',
-    name: '全合成机油 5W-30',
-    category: '油品',
-    brand: '美孚',
-    price: 450,
-    cost: 280,
-    stockQuantity: 12,
-    minStockLevel: 30,
-    unit: '桶',
-    location: 'C-01-01',
-    createdAt: '2023-03-01T00:00:00Z',
-    updatedAt: '2024-01-12T00:00:00Z',
-  },
-  {
-    id: '5',
-    partNumber: 'P005',
-    name: '火花塞',
-    category: '点火系统',
-    brand: 'NGK',
-    price: 95,
-    cost: 50,
-    stockQuantity: 200,
-    minStockLevel: 80,
-    unit: '支',
-    location: 'D-03-02',
-    createdAt: '2023-04-10T00:00:00Z',
-    updatedAt: '2024-01-03T00:00:00Z',
-  },
-  {
-    id: '6',
-    partNumber: 'P006',
-    name: '变速箱油',
-    category: '油品',
-    brand: '原厂',
-    price: 520,
-    cost: 300,
-    stockQuantity: 8,
-    minStockLevel: 15,
-    unit: '桶',
-    location: 'C-01-02',
-    createdAt: '2023-05-20T00:00:00Z',
-    updatedAt: '2024-01-10T00:00:00Z',
-  },
-];
 
 const categoryOptions = [
   { value: '', label: '全部分类' },
@@ -118,31 +25,39 @@ const categoryOptions = [
 
 export default function PartsPage() {
   const { isAuthorized } = useProtectedRoute({
-    allowedRoles: ['partsClerk', 'manager'],
+    allowedRoles: ['PARTS_CLERK', 'MANAGER'],
   });
+  const [parts, setParts] = useState<Part[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [lowStockOnly, setLowStockOnly] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const pageSize = 10;
 
-  const filteredData = mockParts.filter((part) => {
+  useEffect(() => {
+    if (!isAuthorized) return;
+    setLoading(true);
+    partApi
+      .getAll({ page: currentPage, pageSize, category: categoryFilter || undefined })
+      .then((res) => {
+        setParts(res.data);
+        setTotalPages(res.totalPages);
+      })
+      .finally(() => setLoading(false));
+  }, [isAuthorized, currentPage, categoryFilter]);
+
+  const filteredData = parts.filter((part) => {
     const matchesSearch =
       !searchQuery ||
       part.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       part.partNumber.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = !categoryFilter || part.category === categoryFilter;
-    const matchesLowStock = !lowStockOnly || part.stockQuantity < part.minStockLevel;
-    return matchesSearch && matchesCategory && matchesLowStock;
+    const matchesLowStock = !lowStockOnly || part.stock < part.minStock;
+    return matchesSearch && matchesLowStock;
   });
 
-  const {
-    data: paginatedData,
-    currentPage,
-    totalPages,
-    goToPage,
-  } = useDataTable({
-    data: filteredData,
-    pageSize: 10,
-  });
+  const paginatedData = filteredData;
 
   if (!isAuthorized) {
     return null;
@@ -152,28 +67,27 @@ export default function PartsPage() {
     { key: 'partNumber', title: '配件编号' },
     { key: 'name', title: '配件名称' },
     { key: 'category', title: '分类' },
-    { key: 'brand', title: '品牌' },
     {
-      key: 'price',
+      key: 'unitPrice',
       title: '售价',
-      render: (row: Part) => formatCurrency(row.price),
+      render: (row: Part) => formatCurrency(row.unitPrice),
     },
     {
-      key: 'stockQuantity',
+      key: 'stock',
       title: '库存',
       render: (row: Part) => (
         <div className="flex items-center gap-2">
           <span
             className={cn(
               'font-medium',
-              row.stockQuantity < row.minStockLevel
+              row.stock < row.minStock
                 ? 'text-red-600'
                 : 'text-slate-900'
             )}
           >
-            {row.stockQuantity} {row.unit}
+            {row.stock} {row.unit}
           </span>
-          {row.stockQuantity < row.minStockLevel && (
+          {row.stock < row.minStock && (
             <AlertTriangle className="h-4 w-4 text-red-500" />
           )}
         </div>
@@ -207,7 +121,10 @@ export default function PartsPage() {
               <div className="sm:w-40">
                 <Select
                   value={categoryFilter}
-                  onChange={(e) => setCategoryFilter(e.target.value)}
+                  onChange={(e) => {
+                    setCategoryFilter(e.target.value);
+                    setCurrentPage(1);
+                  }}
                   options={categoryOptions}
                 />
               </div>
@@ -223,12 +140,16 @@ export default function PartsPage() {
             </div>
           </div>
 
-          <DataTable columns={columns} data={paginatedData} />
+          {loading ? (
+            <div className="py-8 text-center text-sm text-slate-500">加载中...</div>
+          ) : (
+            <DataTable columns={columns} data={paginatedData} />
+          )}
 
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages}
-            onPageChange={goToPage}
+            onPageChange={setCurrentPage}
           />
         </CardContent>
       </Card>

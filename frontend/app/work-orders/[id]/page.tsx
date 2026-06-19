@@ -1,452 +1,201 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import {
   ArrowLeft,
   RefreshCw,
   User,
   Package,
   Shield,
-  Clock,
   FileText,
   Car,
   DollarSign,
-  Plus,
   Camera,
   ChevronDown,
   ChevronUp,
+  Clock,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Card, { CardHeader, CardTitle, CardContent } from '@/components/Card';
 import Button from '@/components/Button';
-import StatusBadge from '@/components/StatusBadge';
-import DataTable from '@/components/DataTable';
 import Modal from '@/components/Modal';
-import Timeline from '@/components/Timeline';
 import ConfirmModal from '@/components/ConfirmModal';
 import { formatDate, formatCurrency, formatDateTime } from '@/lib/utils';
-import { useProtectedRoute } from '@/hooks/useProtectedRoute';
+import { workOrderStatusLabels, workOrderStatusColors, partRequestStatusLabels } from '@/lib/auth';
 import { useAuth } from '@/components/auth/AuthProvider';
+import { workOrderApi } from '@/lib/api-endpoints';
 import type {
   WorkOrder,
-  Vehicle,
-  User as UserType,
-  PartRequest,
+  WorkOrderStatus,
+  WorkOrderLog,
+  WorkOrderLogType,
   QualityCheck,
-  ServiceItem,
-  PartUsage,
-  OperationLog,
-  Part,
+  QualityCheckResult,
 } from '@/lib/types';
-
-const mockWorkOrder: WorkOrder = {
-  id: '1',
-  orderNumber: 'WO202401001',
-  vehicleId: '1',
-  customerId: '1',
-  customerName: '张三',
-  customerPhone: '13800138001',
-  advisorId: '1',
-  technicianId: '2',
-  status: 'inProgress',
-  description: '发动机异响检修，车主反馈怠速时有明显异响，加速时声音加重。',
-  serviceType: '维修',
-  estimatedHours: 4,
-  actualHours: 2.5,
-  partsCost: 850,
-  laborCost: 600,
-  totalCost: 1450,
-  createdAt: '2024-01-15T09:00:00Z',
-  updatedAt: '2024-01-15T10:30:00Z',
-};
-
-const mockVehicle: Vehicle = {
-  id: '1',
-  licensePlate: '京A12345',
-  vin: 'LFV2A21K5D4000001',
-  brand: '丰田',
-  model: '凯美瑞',
-  year: 2020,
-  color: '白色',
-  mileage: 45000,
-  customerId: '1',
-  customerName: '张三',
-  customerPhone: '13800138001',
-  lastServiceDate: '2023-12-01T00:00:00Z',
-  createdAt: '2024-01-01T00:00:00Z',
-  updatedAt: '2024-01-01T00:00:00Z',
-};
-
-const mockAdvisor: UserType = {
-  id: '1',
-  username: 'advisor1',
-  name: '李顾问',
-  email: 'advisor1@example.com',
-  role: 'advisor',
-  createdAt: '2024-01-01T00:00:00Z',
-  updatedAt: '2024-01-01T00:00:00Z',
-};
-
-const mockTechnician: UserType = {
-  id: '2',
-  username: 'tech2',
-  name: '李技师',
-  email: 'tech2@example.com',
-  role: 'technician',
-  createdAt: '2024-01-01T00:00:00Z',
-  updatedAt: '2024-01-01T00:00:00Z',
-};
-
-const mockServiceItems: ServiceItem[] = [
-  {
-    id: 'si1',
-    workOrderId: '1',
-    name: '发动机故障诊断',
-    description: '使用专业诊断设备检测发动机异响原因',
-    hours: 1.5,
-    rate: 150,
-    amount: 225,
-    technicianId: '2',
-    createdAt: '2024-01-15T09:30:00Z',
-    updatedAt: '2024-01-15T09:30:00Z',
-  },
-  {
-    id: 'si2',
-    workOrderId: '1',
-    name: '发动机皮带更换',
-    description: '更换正时皮带及张紧轮',
-    hours: 2.5,
-    rate: 150,
-    amount: 375,
-    technicianId: '2',
-    createdAt: '2024-01-15T10:00:00Z',
-    updatedAt: '2024-01-15T10:00:00Z',
-  },
-];
-
-const mockParts: Record<string, Part> = {
-  'p1': { id: 'p1', partNumber: 'P001', name: '正时皮带套装', category: '发动机', price: 450, cost: 320, stockQuantity: 5, minStockLevel: 3, unit: '套', createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z' },
-  'p2': { id: 'p2', partNumber: 'P002', name: '机油滤清器', category: '保养', price: 45, cost: 28, stockQuantity: 50, minStockLevel: 20, unit: '个', createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z' },
-  'p3': { id: 'p3', partNumber: 'P003', name: '空气滤清器', category: '保养', price: 65, cost: 42, stockQuantity: 30, minStockLevel: 15, unit: '个', createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z' },
-};
-
-const mockPartUsage: PartUsage[] = [
-  {
-    id: 'pu1',
-    workOrderId: '1',
-    partId: 'p1',
-    quantity: 1,
-    unitPrice: 450,
-    amount: 450,
-    partRequestId: 'pr1',
-    createdAt: '2024-01-15T10:00:00Z',
-  },
-  {
-    id: 'pu2',
-    workOrderId: '1',
-    partId: 'p2',
-    quantity: 1,
-    unitPrice: 45,
-    amount: 45,
-    createdAt: '2024-01-15T09:45:00Z',
-  },
-];
-
-const mockPartRequests: PartRequest[] = [
-  {
-    id: 'pr1',
-    requestNumber: 'PR202401001',
-    workOrderId: '1',
-    partId: 'p1',
-    requestedBy: '2',
-    approvedBy: '3',
-    quantity: 1,
-    status: 'fulfilled',
-    notes: '发动机维修需要',
-    createdAt: '2024-01-15T09:30:00Z',
-    updatedAt: '2024-01-15T09:45:00Z',
-    fulfilledAt: '2024-01-15T10:00:00Z',
-  },
-  {
-    id: 'pr2',
-    requestNumber: 'PR202401002',
-    workOrderId: '1',
-    partId: 'p3',
-    requestedBy: '2',
-    quantity: 1,
-    status: 'pending',
-    notes: '建议更换',
-    createdAt: '2024-01-15T10:00:00Z',
-    updatedAt: '2024-01-15T10:00:00Z',
-  },
-];
-
-const mockQualityChecks: QualityCheck[] = [
-  {
-    id: 'qc1',
-    workOrderId: '1',
-    checkedBy: '3',
-    status: 'passed',
-    items: [
-      { id: 'qci1', name: '发动机运转平稳', status: 'passed', notes: '怠速稳定，无异响' },
-      { id: 'qci2', name: '皮带张紧度', status: 'passed', notes: '张紧度适中' },
-      { id: 'qci3', name: '外观检查', status: 'passed' },
-    ],
-    overallRating: 5,
-    notes: '维修质量良好，客户已确认',
-    createdAt: '2024-01-15T14:00:00Z',
-    updatedAt: '2024-01-15T14:00:00Z',
-  },
-];
-
-const mockOperationLogs: OperationLog[] = [
-  {
-    id: 'log1',
-    workOrderId: '1',
-    operatorId: '1',
-    operationType: 'created',
-    description: '创建工单',
-    createdAt: '2024-01-15T09:00:00Z',
-  },
-  {
-    id: 'log2',
-    workOrderId: '1',
-    operatorId: '1',
-    operationType: 'statusChanged',
-    description: '工单状态变更',
-    oldValue: '待处理',
-    newValue: '进行中',
-    createdAt: '2024-01-15T09:15:00Z',
-  },
-  {
-    id: 'log3',
-    workOrderId: '1',
-    operatorId: '1',
-    operationType: 'technicianAssigned',
-    description: '分派技师',
-    newValue: '李技师',
-    createdAt: '2024-01-15T09:20:00Z',
-  },
-  {
-    id: 'log4',
-    workOrderId: '1',
-    operatorId: '2',
-    operationType: 'partRequested',
-    description: '申请配件：正时皮带套装 x1',
-    createdAt: '2024-01-15T09:30:00Z',
-  },
-  {
-    id: 'log5',
-    workOrderId: '1',
-    operatorId: '3',
-    operationType: 'partApproved',
-    description: '批准配件申请：PR202401001',
-    createdAt: '2024-01-15T09:45:00Z',
-  },
-  {
-    id: 'log6',
-    workOrderId: '1',
-    operatorId: '3',
-    operationType: 'qualityCheckAdded',
-    description: '添加质检记录，结果：通过',
-    createdAt: '2024-01-15T14:00:00Z',
-  },
-];
 
 const tabs = [
   { key: 'info', label: '基本信息', icon: FileText },
-  { key: 'service', label: '服务项目', icon: Clock },
-  { key: 'parts', label: '配件使用', icon: Package },
+  { key: 'items', label: '服务项目', icon: Clock },
   { key: 'partRequests', label: '配件申请', icon: Package },
   { key: 'quality', label: '质检记录', icon: Shield },
   { key: 'logs', label: '操作日志', icon: RefreshCw },
 ];
 
-const technicians = [
-  { value: '1', label: '张技师' },
-  { value: '2', label: '李技师' },
-  { value: '3', label: '王技师' },
+const statusOptions: { value: WorkOrderStatus; label: string }[] = [
+  { value: 'PENDING', label: '待处理' },
+  { value: 'IN_PROGRESS', label: '进行中' },
+  { value: 'WAITING_PARTS', label: '待配件' },
+  { value: 'QUALITY_CHECK', label: '质检中' },
+  { value: 'COMPLETED', label: '已完成' },
+  { value: 'CANCELLED', label: '已取消' },
 ];
 
-const statusOptions = [
-  { value: 'pending', label: '待处理' },
-  { value: 'inProgress', label: '进行中' },
-  { value: 'completed', label: '已完成' },
-  { value: 'cancelled', label: '已取消' },
-];
+const logTypeMapping: Record<WorkOrderLogType, string> = {
+  CREATED: 'created',
+  STATUS_CHANGED: 'statusChanged',
+  ASSIGNED: 'technicianAssigned',
+  UPDATED: 'updated',
+  PART_REQUESTED: 'partRequested',
+  QUALITY_CHECK: 'qualityCheckAdded',
+  COMPLETED: 'completed',
+  CANCELLED: 'deleted',
+};
+
+const logTypeConfig: Record<string, { color: string; label: string }> = {
+  created: { color: 'bg-green-500', label: '创建' },
+  statusChanged: { color: 'bg-blue-500', label: '状态变更' },
+  technicianAssigned: { color: 'bg-purple-500', label: '分派技师' },
+  partRequested: { color: 'bg-amber-500', label: '配件申请' },
+  qualityCheckAdded: { color: 'bg-cyan-500', label: '质检记录' },
+  updated: { color: 'bg-blue-500', label: '更新' },
+  completed: { color: 'bg-green-500', label: '完成' },
+  deleted: { color: 'bg-red-500', label: '取消' },
+};
+
+const qcResultLabels: Record<QualityCheckResult, { label: string; className: string }> = {
+  PASSED: { label: '通过', className: 'bg-green-100 text-green-800' },
+  FAILED: { label: '未通过', className: 'bg-red-100 text-red-800' },
+  NEEDS_REWORK: { label: '需返修', className: 'bg-amber-100 text-amber-800' },
+};
 
 export default function WorkOrderDetailPage() {
   const params = useParams();
-  const router = useRouter();
-  const { isAuthorized } = useProtectedRoute();
-  const { hasRole } = useAuth();
+  const id = params.id as string;
+  const { user, hasRole } = useAuth();
+
+  const [workOrder, setWorkOrder] = useState<WorkOrder | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('info');
-  const [showStatusModal, setShowStatusModal] = useState(false);
-  const [showTechnicianModal, setShowTechnicianModal] = useState(false);
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [selectedStatus, setSelectedStatus] = useState('');
-  const [selectedTechnician, setSelectedTechnician] = useState('');
-  const [confirmType, setConfirmType] = useState<'status' | 'technician'>('status');
   const [expandedQc, setExpandedQc] = useState<string | null>(null);
 
-  if (!isAuthorized) {
-    return null;
-  }
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [showTechnicianModal, setShowTechnicianModal] = useState(false);
+  const [technicians, setTechnicians] = useState<{ id: string; name: string }[]>([]);
+  const [pendingAction, setPendingAction] = useState<{ type: 'status' | 'technician'; value: string } | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
-  const timelineItems = useMemo(() => {
-    return mockOperationLogs.map((log) => ({
-      id: log.id,
-      type: log.operationType,
-      title: log.description,
-      operatorName: log.operatorId === '1' ? '李顾问' : log.operatorId === '2' ? '李技师' : '王管理员',
-      timestamp: log.createdAt,
-      oldValue: log.oldValue,
-      newValue: log.newValue,
-    }));
-  }, []);
+  const fetchWorkOrder = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await workOrderApi.getById(id);
+      setWorkOrder(data);
+    } catch (err: any) {
+      setError(err?.message || '加载工单详情失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (id) fetchWorkOrder();
+  }, [id]);
+
+  useEffect(() => {
+    if (hasRole(['MANAGER', 'ADVISOR'])) {
+      workOrderApi.getTechnicians().then((techs) => {
+        setTechnicians((techs as any[]).map((t: any) => ({ id: t.id, name: t.name || t.username })));
+      }).catch(() => {});
+    }
+  }, [hasRole]);
 
   const handleStatusClick = (status: string) => {
-    setSelectedStatus(status);
-    setConfirmType('status');
-    setShowConfirmModal(true);
+    setPendingAction({ type: 'status', value: status });
+    setShowStatusModal(false);
   };
 
   const handleTechnicianClick = (techId: string) => {
-    setSelectedTechnician(techId);
-    setConfirmType('technician');
-    setShowConfirmModal(true);
-  };
-
-  const handleConfirm = () => {
-    console.log('确认操作:', confirmType, confirmType === 'status' ? selectedStatus : selectedTechnician);
-    setShowConfirmModal(false);
-    setShowStatusModal(false);
+    setPendingAction({ type: 'technician', value: techId });
     setShowTechnicianModal(false);
   };
 
-  const serviceItemColumns = [
-    { key: 'name', title: '服务项目' },
-    { key: 'description', title: '描述' },
-    {
-      key: 'hours',
-      title: '工时',
-      render: (row: ServiceItem) => `${row.hours} 小时`,
-    },
-    {
-      key: 'rate',
-      title: '工时单价',
-      render: (row: ServiceItem) => formatCurrency(row.rate),
-    },
-    {
-      key: 'amount',
-      title: '金额',
-      render: (row: ServiceItem) => (
-        <span className="font-medium text-slate-900">{formatCurrency(row.amount)}</span>
-      ),
-    },
-  ];
+  const handleConfirmAction = async () => {
+    if (!pendingAction || !user || !workOrder) return;
+    try {
+      setActionLoading(true);
+      if (pendingAction.type === 'status') {
+        await workOrderApi.updateStatus(workOrder.id, pendingAction.value);
+      } else {
+        await workOrderApi.assignTechnician(workOrder.id, pendingAction.value, user.id);
+      }
+      setPendingAction(null);
+      fetchWorkOrder();
+    } catch (err: any) {
+      alert(err?.message || '操作失败');
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
-  const partUsageColumns = [
-    {
-      key: 'partName',
-      title: '配件名称',
-      render: (row: PartUsage) => mockParts[row.partId]?.name || row.partId,
-    },
-    {
-      key: 'partNumber',
-      title: '配件编号',
-      render: (row: PartUsage) => mockParts[row.partId]?.partNumber || '-',
-    },
-    { key: 'quantity', title: '数量' },
-    {
-      key: 'unitPrice',
-      title: '单价',
-      render: (row: PartUsage) => formatCurrency(row.unitPrice),
-    },
-    {
-      key: 'amount',
-      title: '金额',
-      render: (row: PartUsage) => (
-        <span className="font-medium text-slate-900">{formatCurrency(row.amount)}</span>
-      ),
-    },
-  ];
+  if (loading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-200 border-t-primary-600"></div>
+      </div>
+    );
+  }
 
-  const partRequestColumns = [
-    { key: 'requestNumber', title: '申请单号' },
-    {
-      key: 'partName',
-      title: '配件名称',
-      render: (row: PartRequest) => mockParts[row.partId]?.name || row.partId,
-    },
-    { key: 'quantity', title: '数量' },
-    {
-      key: 'status',
-      title: '状态',
-      render: (row: PartRequest) => <StatusBadge status={row.status} />,
-    },
-    {
-      key: 'source',
-      title: '来源',
-      render: () => <span className="text-slate-600">库存</span>,
-    },
-    {
-      key: 'createdAt',
-      title: '申请时间',
-      render: (row: PartRequest) => formatDateTime(row.createdAt),
-    },
-  ];
+  if (error || !workOrder) {
+    return (
+      <div className="flex h-64 flex-col items-center justify-center text-red-500">
+        <p>{error || '工单不存在'}</p>
+        <Link href="/work-orders" className="mt-2 text-primary-600 hover:underline">返回列表</Link>
+      </div>
+    );
+  }
 
-  const totalLaborAmount = mockServiceItems.reduce((sum, item) => sum + item.amount, 0);
-  const totalPartsAmount = mockPartUsage.reduce((sum, item) => sum + item.amount, 0);
+  const vehicle = workOrder.vehicle;
+  const totalItemAmount = (workOrder.items || []).reduce((sum, item) => sum + item.totalAmount, 0);
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
-          <Link
-            href="/work-orders"
-            className="text-slate-600 hover:text-slate-900"
-          >
+          <Link href="/work-orders" className="text-slate-600 hover:text-slate-900">
             <ArrowLeft className="h-5 w-5" />
           </Link>
           <div>
-            <h2 className="text-xl font-bold text-slate-900">
-              工单详情 - {mockWorkOrder.orderNumber}
-            </h2>
+            <h2 className="text-xl font-bold text-slate-900">工单详情 - {workOrder.orderNumber}</h2>
             <div className="mt-1 flex items-center gap-2">
-              <StatusBadge status={mockWorkOrder.status} />
-              <span className="text-sm text-slate-500">
-                创建于 {formatDate(mockWorkOrder.createdAt)}
+              <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${workOrderStatusColors[workOrder.status] || 'bg-slate-100 text-slate-800'}`}>
+                {workOrderStatusLabels[workOrder.status] || workOrder.status}
               </span>
+              <span className="text-sm text-slate-500">创建于 {formatDate(workOrder.createdAt)}</span>
             </div>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {hasRole(['manager', 'advisor']) && (
+          {hasRole(['MANAGER', 'ADVISOR']) && (
             <>
               <Button variant="outline" onClick={() => setShowStatusModal(true)}>
-                <RefreshCw className="mr-2 h-4 w-4" />
-                改状态
+                <RefreshCw className="mr-2 h-4 w-4" />改状态
               </Button>
               <Button variant="outline" onClick={() => setShowTechnicianModal(true)}>
-                <User className="mr-2 h-4 w-4" />
-                分派技师
+                <User className="mr-2 h-4 w-4" />分派技师
               </Button>
             </>
-          )}
-          {hasRole(['technician', 'manager']) && (
-            <Button variant="outline">
-              <Package className="mr-2 h-4 w-4" />
-              添加配件申请
-            </Button>
-          )}
-          {hasRole(['manager', 'partsClerk']) && (
-            <Button>
-              <Shield className="mr-2 h-4 w-4" />
-              添加质检记录
-            </Button>
           )}
         </div>
       </div>
@@ -486,35 +235,51 @@ export default function WorkOrderDetailPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-slate-500">工单号</p>
-                  <p className="mt-1 font-medium">{mockWorkOrder.orderNumber}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-slate-500">服务类型</p>
-                  <p className="mt-1 font-medium">{mockWorkOrder.serviceType}</p>
+                  <p className="mt-1 font-medium">{workOrder.orderNumber}</p>
                 </div>
                 <div>
                   <p className="text-sm text-slate-500">状态</p>
                   <div className="mt-1">
-                    <StatusBadge status={mockWorkOrder.status} />
+                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${workOrderStatusColors[workOrder.status] || 'bg-slate-100 text-slate-800'}`}>
+                      {workOrderStatusLabels[workOrder.status] || workOrder.status}
+                    </span>
                   </div>
                 </div>
                 <div>
-                  <p className="text-sm text-slate-500">创建时间</p>
-                  <p className="mt-1 font-medium">{formatDateTime(mockWorkOrder.createdAt)}</p>
-                </div>
-                <div>
                   <p className="text-sm text-slate-500">服务顾问</p>
-                  <p className="mt-1 font-medium">{mockAdvisor.name}</p>
+                  <p className="mt-1 font-medium">{workOrder.advisor?.name || '-'}</p>
                 </div>
                 <div>
                   <p className="text-sm text-slate-500">负责技师</p>
-                  <p className="mt-1 font-medium">{mockTechnician?.name || '未分派'}</p>
+                  <p className="mt-1 font-medium">{workOrder.technician?.name || '未分派'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-slate-500">创建时间</p>
+                  <p className="mt-1 font-medium">{formatDateTime(workOrder.createdAt)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-slate-500">更新时间</p>
+                  <p className="mt-1 font-medium">{formatDateTime(workOrder.updatedAt)}</p>
                 </div>
               </div>
-              <div>
-                <p className="text-sm text-slate-500">问题描述</p>
-                <p className="mt-1 text-slate-700">{mockWorkOrder.description}</p>
-              </div>
+              {workOrder.complaint && (
+                <div>
+                  <p className="text-sm text-slate-500">客户诉求</p>
+                  <p className="mt-1 text-slate-700">{workOrder.complaint}</p>
+                </div>
+              )}
+              {workOrder.diagnosis && (
+                <div>
+                  <p className="text-sm text-slate-500">诊断描述</p>
+                  <p className="mt-1 text-slate-700">{workOrder.diagnosis}</p>
+                </div>
+              )}
+              {workOrder.remarks && (
+                <div>
+                  <p className="text-sm text-slate-500">备注</p>
+                  <p className="mt-1 text-slate-700">{workOrder.remarks}</p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -528,69 +293,48 @@ export default function WorkOrderDetailPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-slate-500">车牌号</p>
-                  <p className="mt-1 font-mono font-medium">{mockVehicle.licensePlate}</p>
+              {vehicle ? (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-slate-500">车牌号</p>
+                    <p className="mt-1 font-mono font-medium">{vehicle.plateNumber}</p>
+                  </div>
+                  {vehicle.vin && (
+                    <div>
+                      <p className="text-sm text-slate-500">车辆识别码</p>
+                      <p className="mt-1 font-mono text-sm">{vehicle.vin}</p>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-sm text-slate-500">品牌型号</p>
+                    <p className="mt-1 font-medium">{vehicle.brand} {vehicle.model}</p>
+                  </div>
+                  {vehicle.year && (
+                    <div>
+                      <p className="text-sm text-slate-500">年份</p>
+                      <p className="mt-1 font-medium">{vehicle.year}款</p>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-sm text-slate-500">里程数</p>
+                    <p className="mt-1 font-medium">{vehicle.mileage?.toLocaleString()} km</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-slate-500">车主</p>
+                    <p className="mt-1 font-medium">{vehicle.ownerName}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-slate-500">联系电话</p>
+                    <p className="mt-1 font-medium">{vehicle.ownerPhone}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm text-slate-500">车辆识别码</p>
-                  <p className="mt-1 font-mono text-sm">{mockVehicle.vin}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-slate-500">品牌</p>
-                  <p className="mt-1 font-medium">{mockVehicle.brand}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-slate-500">型号</p>
-                  <p className="mt-1 font-medium">{mockVehicle.model}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-slate-500">年份</p>
-                  <p className="mt-1 font-medium">{mockVehicle.year}款</p>
-                </div>
-                <div>
-                  <p className="text-sm text-slate-500">颜色</p>
-                  <p className="mt-1 font-medium">{mockVehicle.color}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-slate-500">里程数</p>
-                  <p className="mt-1 font-medium">{mockVehicle.mileage?.toLocaleString()} km</p>
-                </div>
-                <div>
-                  <p className="text-sm text-slate-500">上次保养</p>
-                  <p className="mt-1 font-medium">
-                    {mockVehicle.lastServiceDate ? formatDate(mockVehicle.lastServiceDate) : '-'}
-                  </p>
-                </div>
-              </div>
+              ) : (
+                <p className="text-sm text-slate-500">暂无车辆信息</p>
+              )}
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>
-                <span className="flex items-center gap-2">
-                  <User className="h-5 w-5 text-primary-600" />
-                  客户信息
-                </span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-slate-500">客户姓名</p>
-                  <p className="mt-1 font-medium">{mockWorkOrder.customerName}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-slate-500">联系电话</p>
-                  <p className="mt-1 font-medium">{mockWorkOrder.customerPhone}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
+          <Card className="lg:col-span-2">
             <CardHeader>
               <CardTitle>
                 <span className="flex items-center gap-2">
@@ -599,60 +343,68 @@ export default function WorkOrderDetailPage() {
                 </span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <CardContent>
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
                 <div>
-                  <p className="text-sm text-slate-500">工时费用</p>
-                  <p className="mt-1 font-medium">{formatCurrency(totalLaborAmount)}</p>
+                  <p className="text-sm text-slate-500">报价金额</p>
+                  <p className="mt-1 text-lg font-medium">{formatCurrency(workOrder.quoteAmount)}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-slate-500">配件费用</p>
-                  <p className="mt-1 font-medium">{formatCurrency(totalPartsAmount)}</p>
+                  <p className="text-sm text-slate-500">实际金额</p>
+                  <p className="mt-1 text-lg font-medium">{formatCurrency(workOrder.actualAmount)}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-slate-500">预计工时</p>
-                  <p className="mt-1 font-medium">{mockWorkOrder.estimatedHours} 小时</p>
+                  <p className="text-sm text-slate-500">进厂里程</p>
+                  <p className="mt-1 font-medium">{workOrder.mileageIn ? `${workOrder.mileageIn.toLocaleString()} km` : '-'}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-slate-500">实际工时</p>
-                  <p className="mt-1 font-medium">{mockWorkOrder.actualHours || '-'} 小时</p>
+                  <p className="text-sm text-slate-500">出厂里程</p>
+                  <p className="mt-1 font-medium">{workOrder.mileageOut ? `${workOrder.mileageOut.toLocaleString()} km` : '-'}</p>
                 </div>
               </div>
-              <div className="rounded-lg bg-primary-50 p-4">
-                <p className="text-sm text-primary-700">总费用</p>
-                <p className="text-2xl font-bold text-primary-600">
-                  {formatCurrency(totalLaborAmount + totalPartsAmount)}
-                </p>
+              <div className="mt-4 rounded-lg bg-primary-50 p-4">
+                <p className="text-sm text-primary-700">项目合计</p>
+                <p className="text-2xl font-bold text-primary-600">{formatCurrency(totalItemAmount)}</p>
               </div>
             </CardContent>
           </Card>
         </div>
       )}
 
-      {activeTab === 'service' && (
+      {activeTab === 'items' && (
         <Card>
           <CardHeader>
             <CardTitle>服务项目 / 工时</CardTitle>
-            {hasRole(['manager', 'advisor']) && (
-              <Button size="sm">
-                <Plus className="mr-2 h-4 w-4" />
-                添加服务项目
-              </Button>
-            )}
           </CardHeader>
           <CardContent className="p-0">
-            <DataTable columns={serviceItemColumns} data={mockServiceItems} />
-          </CardContent>
-        </Card>
-      )}
-
-      {activeTab === 'parts' && (
-        <Card>
-          <CardHeader>
-            <CardTitle>配件使用明细</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <DataTable columns={partUsageColumns} data={mockPartUsage} />
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-slate-200">
+                <thead className="bg-slate-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">项目名称</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">类型</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">工时</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">工时费</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">配件费</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">合计</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 bg-white">
+                  {(!workOrder.items || workOrder.items.length === 0) ? (
+                    <tr><td colSpan={6} className="px-6 py-8 text-center text-sm text-slate-500">暂无服务项目</td></tr>
+                  ) : workOrder.items.map((item) => (
+                    <tr key={item.id} className="hover:bg-slate-50">
+                      <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-slate-900">{item.itemName}</td>
+                      <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-500">{item.itemType}</td>
+                      <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-900">{item.laborHours} 小时</td>
+                      <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-900">{formatCurrency(item.laborAmount)}</td>
+                      <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-900">{formatCurrency(item.partAmount)}</td>
+                      <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-primary-600">{formatCurrency(item.totalAmount)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -661,23 +413,53 @@ export default function WorkOrderDetailPage() {
         <Card>
           <CardHeader>
             <CardTitle>配件申请记录</CardTitle>
-            {hasRole(['technician', 'manager']) && (
-              <Button size="sm">
-                <Plus className="mr-2 h-4 w-4" />
-                添加配件申请
-              </Button>
-            )}
           </CardHeader>
           <CardContent className="p-0">
-            <DataTable columns={partRequestColumns} data={mockPartRequests} />
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-slate-200">
+                <thead className="bg-slate-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">申请单号</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">配件名称</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">数量</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">状态</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">申请时间</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 bg-white">
+                  {(!workOrder.partRequests || workOrder.partRequests.length === 0) ? (
+                    <tr><td colSpan={5} className="px-6 py-8 text-center text-sm text-slate-500">暂无配件申请</td></tr>
+                  ) : workOrder.partRequests.map((pr) => (
+                    <tr key={pr.id} className="hover:bg-slate-50">
+                      <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-slate-900">{pr.requestNumber}</td>
+                      <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-900">{pr.part?.name || pr.partId}</td>
+                      <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-900">{pr.quantity} {pr.part?.unit || '件'}</td>
+                      <td className="whitespace-nowrap px-6 py-4 text-sm">
+                        <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-slate-100 text-slate-800">
+                          {partRequestStatusLabels[pr.status] || pr.status}
+                        </span>
+                      </td>
+                      <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-500">{formatDateTime(pr.createdAt)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </CardContent>
         </Card>
       )}
 
       {activeTab === 'quality' && (
         <div className="space-y-4">
-          {mockQualityChecks.map((qc) => {
+          {(!workOrder.qualityChecks || workOrder.qualityChecks.length === 0) ? (
+            <Card>
+              <CardContent>
+                <p className="py-8 text-center text-sm text-slate-500">暂无质检记录</p>
+              </CardContent>
+            </Card>
+          ) : workOrder.qualityChecks.map((qc) => {
             const isExpanded = expandedQc === qc.id;
+            const resultInfo = qcResultLabels[qc.result] || qcResultLabels.PASSED;
             return (
               <Card key={qc.id}>
                 <CardHeader>
@@ -689,12 +471,14 @@ export default function WorkOrderDetailPage() {
                       <div>
                         <CardTitle>质检记录</CardTitle>
                         <p className="text-sm text-slate-500">
-                          {formatDateTime(qc.createdAt)} · 质检员：王管理员
+                          {formatDateTime(qc.checkDate)} · 质检员：{qc.inspector?.name || '-'}
                         </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <StatusBadge status={qc.status} />
+                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${resultInfo.className}`}>
+                        {resultInfo.label}
+                      </span>
                       {qc.photos && qc.photos.length > 0 && (
                         <span className="flex items-center gap-1 text-sm text-slate-500">
                           <Camera className="h-4 w-4" />
@@ -712,38 +496,22 @@ export default function WorkOrderDetailPage() {
                 </CardHeader>
                 {isExpanded && (
                   <CardContent className="space-y-4 border-t border-slate-100">
-                    <div className="space-y-2">
-                      <h4 className="font-medium text-slate-900">质检项目</h4>
-                      <div className="space-y-2">
-                        {qc.items.map((item) => (
-                          <div
-                            key={item.id}
-                            className="flex items-center justify-between rounded-lg bg-slate-50 px-4 py-3"
-                          >
-                            <div>
-                              <p className="font-medium text-slate-900">{item.name}</p>
-                              {item.notes && (
-                                <p className="text-sm text-slate-500">{item.notes}</p>
-                              )}
-                            </div>
-                            <StatusBadge status={item.status} />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    {qc.notes && (
+                    {qc.remarks && (
                       <div>
                         <h4 className="font-medium text-slate-900">质检备注</h4>
-                        <p className="mt-1 text-slate-600">{qc.notes}</p>
+                        <p className="mt-1 text-slate-600">{qc.remarks}</p>
                       </div>
                     )}
-                    {qc.overallRating && (
+                    {qc.photos && qc.photos.length > 0 && (
                       <div>
-                        <h4 className="font-medium text-slate-900">综合评分</h4>
-                        <p className="mt-1 text-lg font-bold text-amber-500">
-                          {'★'.repeat(qc.overallRating)}
-                          <span className="text-slate-300">{'★'.repeat(5 - qc.overallRating)}</span>
-                        </p>
+                        <h4 className="font-medium text-slate-900">质检照片</h4>
+                        <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+                          {qc.photos.map((photo, idx) => (
+                            <div key={idx} className="aspect-square overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+                              <img src={photo} alt={`质检照片 ${idx + 1}`} className="h-full w-full object-cover" />
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </CardContent>
@@ -760,17 +528,58 @@ export default function WorkOrderDetailPage() {
             <CardTitle>操作日志</CardTitle>
           </CardHeader>
           <CardContent>
-            <Timeline items={timelineItems} />
+            {(!workOrder.logs || workOrder.logs.length === 0) ? (
+              <p className="py-8 text-center text-sm text-slate-500">暂无操作日志</p>
+            ) : (
+              <div className="space-y-1">
+                {workOrder.logs.map((log, index) => {
+                  const mappedType = logTypeMapping[log.type] || 'updated';
+                  const config = logTypeConfig[mappedType] || logTypeConfig.updated;
+                  const isLast = index === workOrder.logs!.length - 1;
+
+                  return (
+                    <div key={log.id} className="relative flex gap-4">
+                      <div className="relative flex flex-col items-center">
+                        <div className={`flex h-10 w-10 items-center justify-center rounded-full text-white shadow-sm ${config.color}`}>
+                          <FileText className="h-5 w-5" />
+                        </div>
+                        {!isLast && <div className="w-0.5 flex-1 bg-slate-200" />}
+                      </div>
+                      <div className={`flex-1 ${isLast ? 'pb-0' : 'pb-6'}`}>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-medium text-slate-900">{log.content}</span>
+                          <span className="text-xs text-slate-500">{formatDateTime(log.timestamp)}</span>
+                        </div>
+                        {log.operator && (
+                          <p className="mt-0.5 text-sm text-slate-500">操作人：{log.operator.name}</p>
+                        )}
+                        {(log.oldValue || log.newValue) && (
+                          <div className="mt-2 rounded-lg bg-slate-50 p-3 text-sm">
+                            {log.oldValue && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-slate-500">变更前：</span>
+                                <span className="text-slate-700">{log.oldValue}</span>
+                              </div>
+                            )}
+                            {log.newValue && (
+                              <div className="mt-1 flex items-center gap-2">
+                                <span className="text-slate-500">变更后：</span>
+                                <span className="font-medium text-slate-900">{log.newValue}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
 
-      <Modal
-        isOpen={showStatusModal}
-        onClose={() => setShowStatusModal(false)}
-        title="更新工单状态"
-        size="sm"
-      >
+      <Modal isOpen={showStatusModal} onClose={() => setShowStatusModal(false)} title="更新工单状态" size="sm">
         <div className="space-y-2">
           {statusOptions.map((option) => (
             <button
@@ -778,45 +587,45 @@ export default function WorkOrderDetailPage() {
               onClick={() => handleStatusClick(option.value)}
               className="flex w-full items-center justify-between rounded-lg border border-slate-200 p-3 text-left transition-colors hover:bg-slate-50"
             >
-              <StatusBadge status={option.value as any} />
+              <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${workOrderStatusColors[option.value] || 'bg-slate-100 text-slate-800'}`}>
+                {option.label}
+              </span>
             </button>
           ))}
         </div>
       </Modal>
 
-      <Modal
-        isOpen={showTechnicianModal}
-        onClose={() => setShowTechnicianModal(false)}
-        title="分派技师"
-        size="sm"
-      >
+      <Modal isOpen={showTechnicianModal} onClose={() => setShowTechnicianModal(false)} title="分派技师" size="sm">
         <div className="space-y-2">
-          {technicians.map((tech) => (
+          {technicians.length === 0 ? (
+            <p className="py-4 text-center text-sm text-slate-500">暂无可用技师</p>
+          ) : technicians.map((tech) => (
             <button
-              key={tech.value}
-              onClick={() => handleTechnicianClick(tech.value)}
+              key={tech.id}
+              onClick={() => handleTechnicianClick(tech.id)}
               className="flex w-full items-center gap-3 rounded-lg border border-slate-200 p-3 text-left transition-colors hover:bg-slate-50"
             >
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-100 text-primary-600">
                 <User className="h-5 w-5" />
               </div>
-              <span className="font-medium">{tech.label}</span>
+              <span className="font-medium">{tech.name}</span>
             </button>
           ))}
         </div>
       </Modal>
 
       <ConfirmModal
-        isOpen={showConfirmModal}
-        onClose={() => setShowConfirmModal(false)}
-        onConfirm={handleConfirm}
-        title={confirmType === 'status' ? '确认更改状态' : '确认分派技师'}
+        isOpen={!!pendingAction}
+        onClose={() => setPendingAction(null)}
+        onConfirm={handleConfirmAction}
+        title={pendingAction?.type === 'status' ? '确认更改状态' : '确认分派技师'}
         message={
-          confirmType === 'status'
-            ? `确定要将工单状态更改为"${statusOptions.find(s => s.value === selectedStatus)?.label}"吗？`
-            : `确定要将工单分派给"${technicians.find(t => t.value === selectedTechnician)?.label}"吗？`
+          pendingAction?.type === 'status'
+            ? `确定要将工单状态更改为"${workOrderStatusLabels[pendingAction.value]}"吗？`
+            : `确定要将工单分派给"${technicians.find((t) => t.id === pendingAction?.value)?.name}"吗？`
         }
         type="warning"
+        isLoading={actionLoading}
       />
     </div>
   );

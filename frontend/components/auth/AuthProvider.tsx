@@ -11,8 +11,9 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (data: LoginRequest) => Promise<void>;
-  logout: () => Promise<void>;
+  logout: () => void;
   hasRole: (roles: UserRole[]) => boolean;
+  hasPermission: (permission: string) => boolean;
   refreshUser: () => Promise<void>;
 }
 
@@ -37,37 +38,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     try {
       const response = await authApi.login(data);
-      authStorage.setToken(response.token);
-      authStorage.setUser(response.user);
-      setToken(response.token);
-      setUser(response.user);
+      const accessToken = response.accessToken;
+      const userData = response.user;
+
+      authStorage.setToken(accessToken);
+      authStorage.setUser(userData);
+      document.cookie = `token=${accessToken}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
+      setToken(accessToken);
+      setUser(userData);
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  const logout = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      await authApi.logout().catch(() => {});
-    } finally {
-      authStorage.clearAuth();
-      setToken(null);
-      setUser(null);
-      setIsLoading(false);
-    }
+  const logout = useCallback(() => {
+    authStorage.clearAuth();
+    document.cookie = 'token=; path=/; max-age=0';
+    setToken(null);
+    setUser(null);
   }, []);
 
   const checkRole = useCallback(
-    (roles: UserRole[]) => hasRole(user?.role || null, roles),
+    (roles: UserRole[]) => hasRole(user?.role?.code || null, roles),
+    [user]
+  );
+
+  const checkPermission = useCallback(
+    (permission: string) => {
+      if (!user || !user.permissions) return false;
+      return user.permissions.includes(permission);
+    },
     [user]
   );
 
   const refreshUser = useCallback(async () => {
     try {
-      const updatedUser = await authApi.getProfile();
-      authStorage.setUser(updatedUser);
-      setUser(updatedUser);
+      const profileData = await authApi.getProfile();
+      const userData: User = {
+        id: profileData.id,
+        username: profileData.username,
+        name: profileData.name,
+        email: profileData.email,
+        phone: profileData.phone,
+        avatar: profileData.avatar,
+        role: profileData.role,
+        permissions: profileData.permissions,
+      };
+      authStorage.setUser(userData);
+      setUser(userData);
     } catch (error) {
       console.error('Failed to refresh user:', error);
     }
@@ -81,6 +99,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     login,
     logout,
     hasRole: checkRole,
+    hasPermission: checkPermission,
     refreshUser,
   };
 

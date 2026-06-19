@@ -26,7 +26,7 @@ const settingSections = [
 
 export default function SettingsPage() {
   const { isAuthorized } = useProtectedRoute({
-    allowedRoles: ['manager'],
+    allowedRoles: ['MANAGER'],
   });
   const { user } = useAuth();
   const [activeSection, setActiveSection] = useState('profile');

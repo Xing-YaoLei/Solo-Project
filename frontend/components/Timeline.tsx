@@ -8,14 +8,13 @@ import {
   XCircle,
   Shield,
   Edit,
-  Trash2,
   Plus,
 } from 'lucide-react';
-import type { OperationType } from '@/lib/types';
+import type { WorkOrderLogType } from '@/lib/types';
 
 interface TimelineItem {
   id: string;
-  type: OperationType;
+  type: WorkOrderLogType;
   title: string;
   description?: string;
   operatorName?: string;
@@ -30,17 +29,15 @@ interface TimelineProps {
   emptyText?: string;
 }
 
-const typeConfig: Record<OperationType, { icon: React.ComponentType<{ className?: string }>; color: string; label: string }> = {
-  created: { icon: Plus, color: 'bg-green-500', label: '创建' },
-  statusChanged: { icon: RefreshCw, color: 'bg-blue-500', label: '状态变更' },
-  technicianAssigned: { icon: User, color: 'bg-purple-500', label: '分派技师' },
-  partRequested: { icon: Package, color: 'bg-amber-500', label: '配件申请' },
-  partApproved: { icon: CheckCircle, color: 'bg-green-500', label: '配件批准' },
-  partRejected: { icon: XCircle, color: 'bg-red-500', label: '配件拒绝' },
-  partFulfilled: { icon: Package, color: 'bg-green-500', label: '配件完成' },
-  qualityCheckAdded: { icon: Shield, color: 'bg-cyan-500', label: '质检记录' },
-  updated: { icon: Edit, color: 'bg-blue-500', label: '更新' },
-  deleted: { icon: Trash2, color: 'bg-red-500', label: '删除' },
+const typeConfig: Record<WorkOrderLogType, { icon: React.ComponentType<{ className?: string }>; color: string; label: string }> = {
+  CREATED: { icon: Plus, color: 'bg-green-500', label: '创建' },
+  STATUS_CHANGED: { icon: RefreshCw, color: 'bg-blue-500', label: '状态变更' },
+  ASSIGNED: { icon: User, color: 'bg-purple-500', label: '分派技师' },
+  UPDATED: { icon: Edit, color: 'bg-blue-500', label: '更新' },
+  PART_REQUESTED: { icon: Package, color: 'bg-amber-500', label: '配件申请' },
+  QUALITY_CHECK: { icon: Shield, color: 'bg-cyan-500', label: '质检记录' },
+  COMPLETED: { icon: CheckCircle, color: 'bg-green-500', label: '完成' },
+  CANCELLED: { icon: XCircle, color: 'bg-red-500', label: '取消' },
 };
 
 export function Timeline({ items, className, emptyText = '暂无记录' }: TimelineProps) {
@@ -55,7 +52,7 @@ export function Timeline({ items, className, emptyText = '暂无记录' }: Timel
   return (
     <div className={cn('space-y-1', className)}>
       {items.map((item, index) => {
-        const config = typeConfig[item.type] || typeConfig.updated;
+        const config = typeConfig[item.type] || typeConfig.UPDATED;
         const Icon = config.icon;
         const isLast = index === items.length - 1;
 

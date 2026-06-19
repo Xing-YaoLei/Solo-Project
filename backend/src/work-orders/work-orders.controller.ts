@@ -46,6 +46,34 @@ export class WorkOrdersController {
     return this.workOrdersService.findAll(+page, +pageSize, status, vehicleId);
   }
 
+  @Post('batch-status')
+  @Roles(RoleEnum.MANAGER, RoleEnum.ADVISOR, RoleEnum.TECHNICIAN)
+  @Permissions('workorder:update')
+  batchUpdateStatus(@Body() batchUpdateStatusDto: BatchUpdateStatusDto) {
+    return this.workOrdersService.batchUpdateStatus(batchUpdateStatusDto);
+  }
+
+  @Post('batch-assign')
+  @Roles(RoleEnum.MANAGER, RoleEnum.ADVISOR)
+  @Permissions('workorder:update')
+  batchAssign(@Body() batchAssignDto: BatchAssignDto) {
+    return this.workOrdersService.batchAssign(batchAssignDto);
+  }
+
+  @Get('technicians/list')
+  @Roles(RoleEnum.MANAGER, RoleEnum.ADVISOR)
+  @Permissions('workorder:read')
+  getTechnicians() {
+    return this.workOrdersService.getTechnicians();
+  }
+
+  @Get('cache/stats')
+  @Roles(RoleEnum.MANAGER, RoleEnum.ADVISOR)
+  @Permissions('workorder:read')
+  getCacheStats() {
+    return this.workOrdersService.getCacheStats();
+  }
+
   @Get(':id')
   @Roles(RoleEnum.MANAGER, RoleEnum.ADVISOR, RoleEnum.TECHNICIAN, RoleEnum.PARTS_CLERK)
   @Permissions('workorder:read')
@@ -80,20 +108,6 @@ export class WorkOrdersController {
     return this.workOrdersService.getLogs(id);
   }
 
-  @Post('batch-status')
-  @Roles(RoleEnum.MANAGER, RoleEnum.ADVISOR, RoleEnum.TECHNICIAN)
-  @Permissions('workorder:update')
-  batchUpdateStatus(@Body() batchUpdateStatusDto: BatchUpdateStatusDto) {
-    return this.workOrdersService.batchUpdateStatus(batchUpdateStatusDto);
-  }
-
-  @Post('batch-assign')
-  @Roles(RoleEnum.MANAGER, RoleEnum.ADVISOR)
-  @Permissions('workorder:update')
-  batchAssign(@Body() batchAssignDto: BatchAssignDto) {
-    return this.workOrdersService.batchAssign(batchAssignDto);
-  }
-
   @Patch(':id/assign')
   @Roles(RoleEnum.MANAGER, RoleEnum.ADVISOR)
   @Permissions('workorder:update')
@@ -102,19 +116,5 @@ export class WorkOrdersController {
     @Body() assignTechnicianDto: AssignTechnicianDto,
   ) {
     return this.workOrdersService.assignTechnician(id, assignTechnicianDto);
-  }
-
-  @Get('technicians/list')
-  @Roles(RoleEnum.MANAGER, RoleEnum.ADVISOR)
-  @Permissions('workorder:read')
-  getTechnicians() {
-    return this.workOrdersService.getTechnicians();
-  }
-
-  @Get('cache/stats')
-  @Roles(RoleEnum.MANAGER, RoleEnum.ADVISOR)
-  @Permissions('workorder:read')
-  getCacheStats() {
-    return this.workOrdersService.getCacheStats();
   }
 }

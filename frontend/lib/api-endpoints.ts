@@ -11,148 +11,135 @@ import type {
   QualityCheck,
   MaintenanceReminder,
   DashboardStats,
-  StatisticsOverview,
+  ReworkRateData,
   RevenueTrendItem,
-  ReworkTrendItem,
   TechnicianWorkload,
-  ServiceTypeStat,
-  ReworkOrder,
-  OperationLog,
-  ServiceItem,
-  PartUsage,
+  ServiceItemStat,
+  PartUsageStat,
+  KanbanStats,
   BatchUpdateRequest,
+  WorkOrderLog,
+  PartRequestHistory,
 } from './types';
 
 export const authApi = {
   login: (data: LoginRequest): Promise<LoginResponse> =>
-    apiClient.post('/auth/login', data),
-  logout: (): Promise<void> => apiClient.post('/auth/logout'),
-  getProfile: (): Promise<User> => apiClient.get('/auth/profile'),
+    apiClient.post('/api/auth/login', data),
+  getProfile: (): Promise<any> =>
+    apiClient.get('/api/auth/profile'),
 };
 
 export const workOrderApi = {
-  getAll: (params?: { page?: number; pageSize?: number; status?: string; search?: string; advisorId?: string; technicianId?: string }): Promise<PaginatedResponse<WorkOrder>> =>
-    apiClient.get('/work-orders', { params }),
-  getById: (id: string): Promise<WorkOrder> => apiClient.get(`/work-orders/${id}`),
-  create: (data: Partial<WorkOrder>): Promise<WorkOrder> =>
-    apiClient.post('/work-orders', data),
-  update: (id: string, data: Partial<WorkOrder>): Promise<WorkOrder> =>
-    apiClient.put(`/work-orders/${id}`, data),
-  delete: (id: string): Promise<void> => apiClient.delete(`/work-orders/${id}`),
+  getAll: (params?: { page?: number; pageSize?: number; status?: string; vehicleId?: string }): Promise<PaginatedResponse<WorkOrder>> =>
+    apiClient.get('/api/work-orders', { params }),
+  getById: (id: string): Promise<WorkOrder> =>
+    apiClient.get(`/api/work-orders/${id}`),
+  create: (data: any): Promise<WorkOrder> =>
+    apiClient.post('/api/work-orders', data),
+  update: (id: string, data: any): Promise<WorkOrder> =>
+    apiClient.patch(`/api/work-orders/${id}`, data),
   updateStatus: (id: string, status: string): Promise<WorkOrder> =>
-    apiClient.patch(`/work-orders/${id}/status`, { status }),
-  assignTechnician: (id: string, technicianId: string): Promise<WorkOrder> =>
-    apiClient.patch(`/work-orders/${id}/assign-technician`, { technicianId }),
-  batchUpdateStatus: (data: BatchUpdateRequest): Promise<void> =>
-    apiClient.patch('/work-orders/batch/status', data),
-  batchAssignTechnician: (data: BatchUpdateRequest): Promise<void> =>
-    apiClient.patch('/work-orders/batch/assign-technician', data),
+    apiClient.patch(`/api/work-orders/${id}/status`, { status }),
+  assignTechnician: (id: string, technicianId: string, operatorId: string): Promise<WorkOrder> =>
+    apiClient.patch(`/api/work-orders/${id}/assign`, { technicianId, operatorId }),
+  batchUpdateStatus: (data: BatchUpdateRequest): Promise<any> =>
+    apiClient.post('/api/work-orders/batch-status', data),
+  batchAssign: (data: BatchUpdateRequest): Promise<any> =>
+    apiClient.post('/api/work-orders/batch-assign', data),
+  getTechnicians: (): Promise<any[]> =>
+    apiClient.get('/api/work-orders/technicians/list'),
+  getLogs: (id: string): Promise<WorkOrderLog[]> =>
+    apiClient.get(`/api/work-orders/${id}/logs`),
+  delete: (id: string): Promise<void> =>
+    apiClient.delete(`/api/work-orders/${id}`),
 };
 
 export const vehicleApi = {
-  getAll: (params?: { page?: number; pageSize?: number; search?: string }): Promise<PaginatedResponse<Vehicle>> =>
-    apiClient.get('/vehicles', { params }),
-  getById: (id: string): Promise<Vehicle> => apiClient.get(`/vehicles/${id}`),
-  create: (data: Partial<Vehicle>): Promise<Vehicle> =>
-    apiClient.post('/vehicles', data),
-  update: (id: string, data: Partial<Vehicle>): Promise<Vehicle> =>
-    apiClient.put(`/vehicles/${id}`, data),
-  delete: (id: string): Promise<void> => apiClient.delete(`/vehicles/${id}`),
+  getAll: (params?: { page?: number; pageSize?: number }): Promise<PaginatedResponse<Vehicle>> =>
+    apiClient.get('/api/vehicles', { params }),
+  getById: (id: string): Promise<Vehicle> =>
+    apiClient.get(`/api/vehicles/${id}`),
+  create: (data: any): Promise<Vehicle> =>
+    apiClient.post('/api/vehicles', data),
+  update: (id: string, data: any): Promise<Vehicle> =>
+    apiClient.patch(`/api/vehicles/${id}`, data),
+  delete: (id: string): Promise<void> =>
+    apiClient.delete(`/api/vehicles/${id}`),
 };
 
 export const partApi = {
-  getAll: (params?: { page?: number; pageSize?: number; category?: string; lowStock?: boolean }): Promise<PaginatedResponse<Part>> =>
-    apiClient.get('/parts', { params }),
-  getById: (id: string): Promise<Part> => apiClient.get(`/parts/${id}`),
-  create: (data: Partial<Part>): Promise<Part> =>
-    apiClient.post('/parts', data),
-  update: (id: string, data: Partial<Part>): Promise<Part> =>
-    apiClient.put(`/parts/${id}`, data),
-  delete: (id: string): Promise<void> => apiClient.delete(`/parts/${id}`),
-  updateStock: (id: string, quantity: number): Promise<Part> =>
-    apiClient.patch(`/parts/${id}/stock`, { quantity }),
+  getAll: (params?: { page?: number; pageSize?: number; category?: string }): Promise<PaginatedResponse<Part>> =>
+    apiClient.get('/api/parts', { params }),
+  getById: (id: string): Promise<Part> =>
+    apiClient.get(`/api/parts/${id}`),
+  create: (data: any): Promise<Part> =>
+    apiClient.post('/api/parts', data),
+  update: (id: string, data: any): Promise<Part> =>
+    apiClient.patch(`/api/parts/${id}`, data),
+  delete: (id: string): Promise<void> =>
+    apiClient.delete(`/api/parts/${id}`),
 };
 
 export const partRequestApi = {
-  getAll: (params?: { page?: number; pageSize?: number; status?: string }): Promise<PaginatedResponse<PartRequest>> =>
-    apiClient.get('/part-requests', { params }),
-  getById: (id: string): Promise<PartRequest> => apiClient.get(`/part-requests/${id}`),
-  create: (data: Partial<PartRequest>): Promise<PartRequest> =>
-    apiClient.post('/part-requests', data),
-  update: (id: string, data: Partial<PartRequest>): Promise<PartRequest> =>
-    apiClient.put(`/part-requests/${id}`, data),
-  delete: (id: string): Promise<void> => apiClient.delete(`/part-requests/${id}`),
-  approve: (id: string): Promise<PartRequest> =>
-    apiClient.patch(`/part-requests/${id}/approve`),
-  reject: (id: string, reason?: string): Promise<PartRequest> =>
-    apiClient.patch(`/part-requests/${id}/reject`, { reason }),
-  fulfill: (id: string): Promise<PartRequest> =>
-    apiClient.patch(`/part-requests/${id}/fulfill`),
+  getAll: (params?: { page?: number; pageSize?: number; status?: string; workOrderId?: string }): Promise<PaginatedResponse<PartRequest>> =>
+    apiClient.get('/api/part-requests', { params }),
+  getById: (id: string): Promise<PartRequest> =>
+    apiClient.get(`/api/part-requests/${id}`),
+  create: (data: any): Promise<PartRequest> =>
+    apiClient.post('/api/part-requests', data),
+  updateStatus: (id: string, data: { status: string; handlerId: string; handlingNotes?: string; source?: string; beforeMaterial?: string; afterMaterial?: string; conclusion?: string }): Promise<PartRequest> =>
+    apiClient.patch(`/api/part-requests/${id}/status`, data),
+  getHistories: (id: string): Promise<PartRequestHistory[]> =>
+    apiClient.get(`/api/part-requests/${id}/histories`),
+  getKanbanStats: (): Promise<KanbanStats> =>
+    apiClient.get('/api/part-requests/kanban/stats'),
+  getTimeoutRequests: (params?: { page?: number; pageSize?: number }): Promise<PaginatedResponse<PartRequest>> =>
+    apiClient.get('/api/part-requests/kanban/timeout', { params }),
+  getLowStockParts: (): Promise<any[]> =>
+    apiClient.get('/api/part-requests/low-stock/warning'),
+  delete: (id: string): Promise<void> =>
+    apiClient.delete(`/api/part-requests/${id}`),
 };
 
 export const qualityCheckApi = {
   getAll: (params?: { page?: number; pageSize?: number }): Promise<PaginatedResponse<QualityCheck>> =>
-    apiClient.get('/quality-checks', { params }),
-  getById: (id: string): Promise<QualityCheck> => apiClient.get(`/quality-checks/${id}`),
-  create: (data: Partial<QualityCheck>): Promise<QualityCheck> =>
-    apiClient.post('/quality-checks', data),
-  getByWorkOrderId: (workOrderId: string): Promise<QualityCheck[]> =>
-    apiClient.get(`/work-orders/${workOrderId}/quality-checks`),
+    apiClient.get('/api/quality-checks', { params }),
+  getById: (id: string): Promise<QualityCheck> =>
+    apiClient.get(`/api/quality-checks/${id}`),
+  create: (data: any): Promise<QualityCheck> =>
+    apiClient.post('/api/quality-checks', data),
 };
 
 export const reminderApi = {
-  getAll: (params?: { page?: number; pageSize?: number; status?: string }): Promise<PaginatedResponse<MaintenanceReminder>> =>
-    apiClient.get('/reminders', { params }),
-  getById: (id: string): Promise<MaintenanceReminder> => apiClient.get(`/reminders/${id}`),
-  create: (data: Partial<MaintenanceReminder>): Promise<MaintenanceReminder> =>
-    apiClient.post('/reminders', data),
-  update: (id: string, data: Partial<MaintenanceReminder>): Promise<MaintenanceReminder> =>
-    apiClient.put(`/reminders/${id}`, data),
-  delete: (id: string): Promise<void> => apiClient.delete(`/reminders/${id}`),
+  getAll: (params?: { page?: number; pageSize?: number; vehicleId?: string; isCompleted?: boolean }): Promise<PaginatedResponse<MaintenanceReminder>> =>
+    apiClient.get('/api/maintenance-reminders', { params }),
+  getById: (id: string): Promise<MaintenanceReminder> =>
+    apiClient.get(`/api/maintenance-reminders/${id}`),
+  create: (data: any): Promise<MaintenanceReminder> =>
+    apiClient.post('/api/maintenance-reminders', data),
+  update: (id: string, data: any): Promise<MaintenanceReminder> =>
+    apiClient.patch(`/api/maintenance-reminders/${id}`, data),
   complete: (id: string): Promise<MaintenanceReminder> =>
-    apiClient.patch(`/reminders/${id}/complete`),
+    apiClient.patch(`/api/maintenance-reminders/${id}/complete`),
+  delete: (id: string): Promise<void> =>
+    apiClient.delete(`/api/maintenance-reminders/${id}`),
 };
 
 export const statsApi = {
   getDashboardStats: (): Promise<DashboardStats> =>
-    apiClient.get('/stats/dashboard'),
-  getOverview: (params?: { startDate?: string; endDate?: string }): Promise<StatisticsOverview> =>
-    apiClient.get('/stats/overview', { params }),
-  getRevenueTrend: (params?: { period?: string; startDate?: string; endDate?: string }): Promise<RevenueTrendItem[]> =>
-    apiClient.get('/stats/revenue-trend', { params }),
-  getReworkTrend: (params?: { period?: string; startDate?: string; endDate?: string }): Promise<ReworkTrendItem[]> =>
-    apiClient.get('/stats/rework-trend', { params }),
+    apiClient.get('/api/statistics/dashboard'),
+  getWorkOrderStatusDistribution: (): Promise<any[]> =>
+    apiClient.get('/api/statistics/work-order-status-distribution'),
+  getReworkRate: (params?: { startDate?: string; endDate?: string }): Promise<ReworkRateData> =>
+    apiClient.get('/api/statistics/rework-rate', { params }),
+  getReworkOrders: (params?: { page?: number; pageSize?: number; startDate?: string; endDate?: string }): Promise<PaginatedResponse<WorkOrder>> =>
+    apiClient.get('/api/statistics/rework-orders', { params }),
   getTechnicianWorkload: (params?: { startDate?: string; endDate?: string }): Promise<TechnicianWorkload[]> =>
-    apiClient.get('/stats/technician-workload', { params }),
-  getServiceTypeStats: (params?: { startDate?: string; endDate?: string }): Promise<ServiceTypeStat[]> =>
-    apiClient.get('/stats/service-types', { params }),
-  getReworkOrders: (params?: { page?: number; pageSize?: number }): Promise<PaginatedResponse<ReworkOrder>> =>
-    apiClient.get('/stats/rework-orders', { params }),
-};
-
-export const operationLogApi = {
-  getByWorkOrderId: (workOrderId: string): Promise<OperationLog[]> =>
-    apiClient.get(`/work-orders/${workOrderId}/logs`),
-  getByPartRequestId: (partRequestId: string): Promise<OperationLog[]> =>
-    apiClient.get(`/part-requests/${partRequestId}/logs`),
-};
-
-export const serviceItemApi = {
-  getByWorkOrderId: (workOrderId: string): Promise<ServiceItem[]> =>
-    apiClient.get(`/work-orders/${workOrderId}/service-items`),
-  create: (workOrderId: string, data: Partial<ServiceItem>): Promise<ServiceItem> =>
-    apiClient.post(`/work-orders/${workOrderId}/service-items`, data),
-  update: (id: string, data: Partial<ServiceItem>): Promise<ServiceItem> =>
-    apiClient.put(`/service-items/${id}`, data),
-  delete: (id: string): Promise<void> =>
-    apiClient.delete(`/service-items/${id}`),
-};
-
-export const partUsageApi = {
-  getByWorkOrderId: (workOrderId: string): Promise<PartUsage[]> =>
-    apiClient.get(`/work-orders/${workOrderId}/part-usage`),
-  create: (workOrderId: string, data: Partial<PartUsage>): Promise<PartUsage> =>
-    apiClient.post(`/work-orders/${workOrderId}/part-usage`, data),
-  delete: (id: string): Promise<void> =>
-    apiClient.delete(`/part-usage/${id}`),
+    apiClient.get('/api/statistics/technician-workload', { params }),
+  getServiceItemStats: (params?: { startDate?: string; endDate?: string }): Promise<ServiceItemStat[]> =>
+    apiClient.get('/api/statistics/service-items', { params }),
+  getRevenueTrend: (params?: { type?: string; startDate?: string; endDate?: string }): Promise<RevenueTrendItem[]> =>
+    apiClient.get('/api/statistics/revenue-trend', { params }),
+  getPartUsageStats: (params?: { startDate?: string; endDate?: string }): Promise<PartUsageStat[]> =>
+    apiClient.get('/api/statistics/part-usage', { params }),
 };

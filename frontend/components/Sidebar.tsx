@@ -31,49 +31,49 @@ const menuItems: MenuItem[] = [
     href: '/dashboard',
     label: '仪表盘',
     icon: LayoutDashboard,
-    roles: ['advisor', 'technician', 'partsClerk', 'manager'],
+    roles: ['ADVISOR', 'TECHNICIAN', 'PARTS_CLERK', 'MANAGER'],
   },
   {
     href: '/work-orders',
     label: '工单管理',
     icon: Wrench,
-    roles: ['advisor', 'technician', 'manager'],
+    roles: ['ADVISOR', 'TECHNICIAN', 'MANAGER'],
   },
   {
     href: '/vehicles',
     label: '车辆管理',
     icon: Car,
-    roles: ['advisor', 'manager'],
+    roles: ['ADVISOR', 'MANAGER'],
   },
   {
     href: '/parts',
     label: '配件库存',
     icon: Package,
-    roles: ['partsClerk', 'manager'],
+    roles: ['PARTS_CLERK', 'MANAGER'],
   },
   {
     href: '/part-requests',
     label: '配件申领',
     icon: ClipboardList,
-    roles: ['technician', 'partsClerk', 'manager'],
+    roles: ['TECHNICIAN', 'PARTS_CLERK', 'MANAGER'],
   },
   {
     href: '/reminders',
     label: '保养提醒',
     icon: Bell,
-    roles: ['advisor', 'manager'],
+    roles: ['ADVISOR', 'MANAGER'],
   },
   {
     href: '/statistics',
     label: '统计报表',
     icon: BarChart3,
-    roles: ['manager'],
+    roles: ['MANAGER'],
   },
   {
     href: '/settings',
     label: '系统设置',
     icon: Settings,
-    roles: ['manager'],
+    roles: ['MANAGER'],
   },
 ];
 
@@ -82,7 +82,7 @@ export function Sidebar() {
   const { user, logout } = useAuth();
 
   const filteredMenuItems = menuItems.filter((item) =>
-    user ? item.roles.includes(user.role) : false
+    user ? item.roles.includes(user.role?.code as UserRole) : false
   );
 
   return (
@@ -100,7 +100,7 @@ export function Sidebar() {
             <div className="min-w-0">
               <p className="truncate text-sm font-medium">{user.name}</p>
               <p className="truncate text-xs text-slate-400">
-                {roleLabels[user.role as keyof typeof roleLabels]}
+                {roleLabels[user.role?.code as UserRole] || user.role?.name}
               </p>
             </div>
           </div>

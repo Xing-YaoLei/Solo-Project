@@ -27,6 +27,7 @@ async function main() {
     { name: '查看保养提醒', code: 'reminder:read', description: '查看保养提醒' },
     { name: '管理保养提醒', code: 'reminder:manage', description: '管理保养提醒' },
     { name: '查看报表', code: 'report:read', description: '查看统计报表' },
+    { name: '查看统计', code: 'statistics:read', description: '查看统计分析' },
   ];
 
   for (const perm of permissions) {
@@ -56,6 +57,7 @@ async function main() {
         'quality:read',
         'reminder:read',
         'reminder:manage',
+        'statistics:read',
       ],
     },
     {
@@ -72,6 +74,7 @@ async function main() {
         'partrequest:create',
         'quality:read',
         'reminder:read',
+        'statistics:read',
       ],
     },
     {
@@ -87,6 +90,7 @@ async function main() {
         'partrequest:read',
         'partrequest:approve',
         'reminder:read',
+        'statistics:read',
       ],
     },
     {

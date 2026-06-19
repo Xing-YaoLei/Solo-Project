@@ -43,11 +43,42 @@ export class PartRequestsController {
     return this.partRequestsService.findAll(+page, +pageSize, status, workOrderId);
   }
 
+  @Get('kanban/stats')
+  @Roles(RoleEnum.MANAGER, RoleEnum.PARTS_CLERK, RoleEnum.ADVISOR)
+  @Permissions('partrequest:read')
+  getKanbanStats() {
+    return this.partRequestsService.getKanbanStats();
+  }
+
+  @Get('kanban/timeout')
+  @Roles(RoleEnum.MANAGER, RoleEnum.PARTS_CLERK)
+  @Permissions('partrequest:read')
+  getTimeoutRequests(
+    @Query('page') page = 1,
+    @Query('pageSize') pageSize = 10,
+  ) {
+    return this.partRequestsService.getTimeoutRequests(+page, +pageSize);
+  }
+
+  @Get('low-stock/warning')
+  @Roles(RoleEnum.MANAGER, RoleEnum.PARTS_CLERK)
+  @Permissions('partrequest:read')
+  getLowStockParts() {
+    return this.partRequestsService.getLowStockParts();
+  }
+
   @Get(':id')
   @Roles(RoleEnum.MANAGER, RoleEnum.PARTS_CLERK, RoleEnum.ADVISOR, RoleEnum.TECHNICIAN)
   @Permissions('partrequest:read')
   findOne(@Param('id') id: string) {
     return this.partRequestsService.findOne(id);
+  }
+
+  @Get(':id/histories')
+  @Roles(RoleEnum.MANAGER, RoleEnum.PARTS_CLERK, RoleEnum.ADVISOR, RoleEnum.TECHNICIAN)
+  @Permissions('partrequest:read')
+  getHistories(@Param('id') id: string) {
+    return this.partRequestsService.getHistories(id);
   }
 
   @Patch(':id')
@@ -86,36 +117,5 @@ export class PartRequestsController {
   @Roles(RoleEnum.MANAGER)
   remove(@Param('id') id: string) {
     return this.partRequestsService.remove(id);
-  }
-
-  @Get(':id/histories')
-  @Roles(RoleEnum.MANAGER, RoleEnum.PARTS_CLERK, RoleEnum.ADVISOR, RoleEnum.TECHNICIAN)
-  @Permissions('partrequest:read')
-  getHistories(@Param('id') id: string) {
-    return this.partRequestsService.getHistories(id);
-  }
-
-  @Get('kanban/stats')
-  @Roles(RoleEnum.MANAGER, RoleEnum.PARTS_CLERK, RoleEnum.ADVISOR)
-  @Permissions('partrequest:read')
-  getKanbanStats() {
-    return this.partRequestsService.getKanbanStats();
-  }
-
-  @Get('kanban/timeout')
-  @Roles(RoleEnum.MANAGER, RoleEnum.PARTS_CLERK)
-  @Permissions('partrequest:read')
-  getTimeoutRequests(
-    @Query('page') page = 1,
-    @Query('pageSize') pageSize = 10,
-  ) {
-    return this.partRequestsService.getTimeoutRequests(+page, +pageSize);
-  }
-
-  @Get('low-stock/warning')
-  @Roles(RoleEnum.MANAGER, RoleEnum.PARTS_CLERK)
-  @Permissions('partrequest:read')
-  getLowStockParts() {
-    return this.partRequestsService.getLowStockParts();
   }
 }

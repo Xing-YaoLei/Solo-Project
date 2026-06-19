@@ -1,14 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Lock, User as UserIcon } from 'lucide-react';
 import { useAuth } from '@/components/auth/AuthProvider';
 import Button from '@/components/Button';
 import Input from '@/components/Input';
 import Card from '@/components/Card';
 
-export default function LoginPage() {
+function LoginForm() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -77,14 +76,26 @@ export default function LoginPage() {
 
             <div className="text-center text-sm text-slate-500">
               <p>测试账号：</p>
-              <p className="mt-1">顾问: advisor / 123456</p>
-              <p>技师: technician / 123456</p>
-              <p>配件员: partsClerk / 123456</p>
-              <p>厂长: manager / 123456</p>
+              <p className="mt-1">顾问: advisor / admin123</p>
+              <p>技师: technician / admin123</p>
+              <p>配件员: partsclerk / admin123</p>
+              <p>厂长: admin / admin123</p>
             </div>
           </form>
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center bg-slate-100">
+        <div className="text-slate-500">加载中...</div>
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   );
 }
