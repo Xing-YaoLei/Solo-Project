@@ -47,7 +47,7 @@
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm">
               <% if export.completed? && export.file.attached? %>
-                <%= link_to "下载", download_desktop_export_path(export), class: "text-indigo-600 hover:text-indigo-900" %>
+                <%= link_to "下载", desktop_export_download_path(export), class: "text-indigo-600 hover:text-indigo-900" %>
               <% else %>
                 <span class="text-gray-400">处理中...</span>
               <% end %>

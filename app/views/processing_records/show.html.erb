@@ -52,20 +52,18 @@
               <dt class="text-sm text-gray-500">更新时间</dt>
               <dd class="mt-1 text-gray-900 font-medium"><%= format_datetime(@processing_record.updated_at) %></dd>
             </div>
-            <% if @processing_record.previous_status.present? || @processing_record.next_status.present? %>
+            <% if @processing_record.status_change? %>
               <div class="col-span-2 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                <dt class="text-sm font-medium text-amber-800 mb-2">📋 状态变化记录（复盘）</dt>
+                <dt class="text-sm font-medium text-amber-800 mb-2">状态变化记录（复盘）</dt>
                 <dd class="flex items-center gap-3 text-sm">
                   <% if @processing_record.previous_status.present? %>
                     <span class="px-2 py-1 rounded-full bg-white border border-gray-200 text-gray-700">
                       变更前：<%= status_text(@processing_record.previous_status) %>
                     </span>
                   <% end %>
-                  <% if @processing_record.status_change? %>
-                    <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
-                    </svg>
-                  <% end %>
+                  <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
+                  </svg>
                   <% if @processing_record.next_status.present? %>
                     <span class="px-2 py-1 rounded-full bg-white border border-indigo-300 text-indigo-700 font-medium">
                       变更后：<%= status_text(@processing_record.next_status) %>

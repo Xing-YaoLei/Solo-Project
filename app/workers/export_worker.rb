@@ -47,6 +47,7 @@ class ExportWorker
   end
 
   def create_excel_file(export, data)
+    require 'axlsx'
     p = Axlsx::Package.new
     wb = p.workbook
 
