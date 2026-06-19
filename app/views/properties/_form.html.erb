@@ -1,0 +1,48 @@
+<%= form_with(model: property, local: true) do |form| %>
+  <% if property.errors.any? %>
+    <div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+      <h2 class="text-red-800 font-medium mb-2"><%= pluralize(property.errors.count, "error") %> 禁止保存该房源:</h2>
+      <ul class="list-disc list-inside text-sm text-red-700 space-y-1">
+        <% property.errors.each do |error| %>
+          <li><%= error.full_message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="space-y-6">
+    <div>
+      <%= form.label :name, "名称", class: "block text-sm font-medium text-gray-700 mb-1" %>
+      <%= form.text_field :name, class: "block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors duration-150", placeholder: "请输入房源名称" %>
+    </div>
+
+    <div>
+      <%= form.label :address, "地址", class: "block text-sm font-medium text-gray-700 mb-1" %>
+      <%= form.text_field :address, class: "block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors duration-150", placeholder: "请输入房源地址" %>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div>
+        <%= form.label :room_count, "房间数", class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= form.number_field :room_count, class: "block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors duration-150", min: 1 %>
+      </div>
+
+      <div>
+        <%= form.label :status, "状态", class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= form.select :status, Property::STATUSES.map { |s| [I18n.t("property_statuses.#{s}", default: s), s] }, {}, class: "block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors duration-150" %>
+      </div>
+    </div>
+
+    <div>
+      <%= form.label :manager_id, "管理员", class: "block text-sm font-medium text-gray-700 mb-1" %>
+      <%= form.collection_select :manager_id, User.all, :id, :display_name, { prompt: "请选择管理员" }, class: "block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors duration-150" %>
+    </div>
+
+    <div class="flex justify-end pt-4 border-t border-gray-100">
+      <div class="space-x-3">
+        <%= link_to "取消", property.persisted? ? property_path(property) : properties_path, class: "inline-flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors duration-150" %>
+        <%= form.submit class: "inline-flex items-center px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-150 shadow-sm" %>
+      </div>
+    </div>
+  </div>
+<% end %>

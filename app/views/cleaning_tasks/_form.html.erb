@@ -1,0 +1,57 @@
+<%= form_with(model: cleaning_task, local: true) do |form| %>
+  <% if cleaning_task.errors.any? %>
+    <div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+      <h2 class="text-red-800 font-medium mb-2"><%= pluralize(cleaning_task.errors.count, "error") %> 禁止保存该任务:</h2>
+      <ul class="list-disc list-inside text-sm text-red-700 space-y-1">
+        <% cleaning_task.errors.each do |error| %>
+          <li><%= error.full_message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="space-y-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div>
+        <%= form.label :property_id, "房源", class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= form.collection_select :property_id, Property.all, :id, :name, { prompt: "请选择房源" }, class: "block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors duration-150" %>
+      </div>
+
+      <div>
+        <%= form.label :task_date, "任务日期", class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= form.date_field :task_date, class: "block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors duration-150" %>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div>
+        <%= form.label :status, "状态", class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <% status_options = CleaningTask::STATUSES.map { |s| [I18n.t("cleaning_statuses.#{s}", default: s), s] } %>
+        <%= form.select :status, status_options, {}, class: "block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors duration-150" %>
+      </div>
+
+      <div>
+        <%= form.label :priority, "优先级", class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <% priority_options = CleaningTask::PRIORITIES.map { |p| [I18n.t("priorities.#{p}", default: p), p] } %>
+        <%= form.select :priority, priority_options, { include_blank: "请选择优先级" }, class: "block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors duration-150" %>
+      </div>
+    </div>
+
+    <div>
+      <%= form.label :assignee_id, "负责人", class: "block text-sm font-medium text-gray-700 mb-1" %>
+      <%= form.collection_select :assignee_id, User.all, :id, :display_name, { include_blank: "请选择负责人（可选）" }, class: "block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors duration-150" %>
+    </div>
+
+    <div>
+      <%= form.label :note, "备注", class: "block text-sm font-medium text-gray-700 mb-1" %>
+      <%= form.text_area :note, class: "block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors duration-150", rows: 4, placeholder: "请输入任务备注..." %>
+    </div>
+
+    <div class="flex justify-end pt-4 border-t border-gray-100">
+      <div class="space-x-3">
+        <%= link_to "取消", cleaning_task.persisted? ? cleaning_task_path(cleaning_task) : cleaning_tasks_path, class: "inline-flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors duration-150" %>
+        <%= form.submit class: "inline-flex items-center px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-150 shadow-sm" %>
+      </div>
+    </div>
+  </div>
+<% end %>

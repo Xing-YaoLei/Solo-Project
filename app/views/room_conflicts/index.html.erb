@@ -1,0 +1,71 @@
+<% content_for :title, "房态冲突列表" %>
+
+<div class="w-full">
+  <div class="mb-6">
+    <h1 class="text-2xl font-bold text-gray-800 mb-4">房态冲突列表</h1>
+
+    <div class="flex flex-wrap gap-2">
+      <%= link_to "全部", room_conflicts_path, class: "px-4 py-2 rounded-md text-sm font-medium transition #{params[:status].blank? ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}" %>
+      <%= link_to "打开中", room_conflicts_path(status: %w[open acknowledged]), class: "px-4 py-2 rounded-md text-sm font-medium transition #{params[:status] == %w[open acknowledged] ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}" %>
+      <%= link_to "已解决", room_conflicts_path(status: %w[resolved closed]), class: "px-4 py-2 rounded-md text-sm font-medium transition #{params[:status] == %w[resolved closed] ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}" %>
+    </div>
+  </div>
+
+  <div class="bg-white shadow-md rounded-lg overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">冲突日期</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">房源</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">原因</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">处理人</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">创建时间</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">关闭时间</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+          <% @conflicts.each do |conflict| %>
+            <tr class="hover:bg-gray-50">
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <%= conflict.conflict_date.strftime("%Y-%m-%d") %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <%= conflict.property.name %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full <%= conflict.status_color %>">
+                  <%= conflict.status_i18n %>
+                </span>
+              </td>
+              <td class="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">
+                <%= truncate(conflict.reason, length: 50) %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <%= conflict.handler&.name || "未分配" %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <%= conflict.created_at.strftime("%Y-%m-%d %H:%M") %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <%= conflict.closed_at&.strftime("%Y-%m-%d %H:%M") || "-" %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                <%= link_to "查看", room_conflict_path(conflict), class: "text-indigo-600 hover:text-indigo-900" %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+
+    <% if @conflicts.empty? %>
+      <div class="px-6 py-12 text-center text-gray-500">
+        暂无房态冲突数据
+      </div>
+    <% end %>
+  </div>
+
+</div>

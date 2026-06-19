@@ -1,0 +1,72 @@
+<% content_for :title, "下载记录详情" %>
+
+<div class="w-full">
+  <div class="mb-6 flex items-center justify-between">
+    <h1 class="text-2xl font-bold text-gray-800">下载记录详情</h1>
+    <%= link_to "返回列表", report_downloads_path, class: "px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-sm font-medium" %>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="lg:col-span-2 space-y-6">
+      <div class="bg-white shadow-md rounded-lg p-6">
+        <div class="flex items-center gap-3 mb-6 pb-4 border-b border-gray-200">
+          <div class="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
+            <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+          </div>
+          <div>
+            <h2 class="text-lg font-semibold text-gray-800"><%= @report_download.file_name %></h2>
+            <span class="inline-flex mt-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-indigo-100 text-indigo-800">
+              <%= @report_download.report_type_i18n %>
+            </span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <p class="text-sm text-gray-500">报告类型</p>
+            <p class="mt-1 text-sm font-medium text-gray-900"><%= @report_download.report_type_i18n %></p>
+          </div>
+          <div>
+            <p class="text-sm text-gray-500">操作人</p>
+            <p class="mt-1 text-sm font-medium text-gray-900"><%= @report_download.reporter&.name %></p>
+          </div>
+          <div>
+            <p class="text-sm text-gray-500">生成时间</p>
+            <p class="mt-1 text-sm font-medium text-gray-900"><%= @report_download.generated_at.strftime("%Y-%m-%d %H:%M:%S") %></p>
+          </div>
+          <div>
+            <p class="text-sm text-gray-500">创建时间</p>
+            <p class="mt-1 text-sm font-medium text-gray-900"><%= @report_download.created_at.strftime("%Y-%m-%d %H:%M:%S") %></p>
+          </div>
+          <div class="md:col-span-2">
+            <p class="text-sm text-gray-500 mb-2">筛选条件</p>
+            <% if @report_download.filters.present? && @report_download.filters.any? %>
+              <div class="bg-gray-50 rounded-md p-4">
+                <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+                  <% @report_download.filters.each do |key, value| %>
+                    <div>
+                      <dt class="text-xs text-gray-500"><%= I18n.t("filter_fields.#{key}", default: key.to_s.humanize) %></dt>
+                      <dd class="text-sm font-medium text-gray-900"><%= value %></dd>
+                    </div>
+                  <% end %>
+                </dl>
+              </div>
+            <% else %>
+              <p class="text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded-md">无筛选条件</p>
+            <% end %>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white shadow-md rounded-lg p-6">
+        <h2 class="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-200">操作</h2>
+        <div class="flex flex-wrap gap-3">
+          <%= link_to "删除记录", report_download_path(@report_download), method: :delete, data: { confirm: "确定要删除该下载记录吗？" }, class: "px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm font-medium transition" %>
+          <%= link_to "返回列表", report_downloads_path, class: "px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-sm font-medium" %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,128 @@
+zh-CN:
+  hello: "你好世界"
+  date:
+    formats:
+      default: "%Y-%m-%d"
+      short: "%m月%d日"
+      long: "%Y年%m月%d日"
+    day_names:
+      - 星期日
+      - 星期一
+      - 星期二
+      - 星期三
+      - 星期四
+      - 星期五
+      - 星期六
+    abbr_day_names:
+      - 日
+      - 一
+      - 二
+      - 三
+      - 四
+      - 五
+      - 六
+    month_names:
+      -
+      - 一月
+      - 二月
+      - 三月
+      - 四月
+      - 五月
+      - 六月
+      - 七月
+      - 八月
+      - 九月
+      - 十月
+      - 十一月
+      - 十二月
+    abbr_month_names:
+      -
+      - 1月
+      - 2月
+      - 3月
+      - 4月
+      - 5月
+      - 6月
+      - 7月
+      - 8月
+      - 9月
+      - 10月
+      - 11月
+      - 12月
+  time:
+    formats:
+      default: "%Y年%m月%d日 %H:%M"
+      short: "%m月%d日 %H:%M"
+      long: "%Y年%m月%d日 %H:%M:%S"
+    am: "上午"
+    pm: "下午"
+
+  property_statuses:
+    active: "营业中"
+    inactive: "停用"
+    maintenance: "维护中"
+
+  channels:
+    airbnb: "Airbnb"
+    booking: "Booking"
+    meituan: "美团"
+    xiaohongshu: "小红书"
+    direct: "直订"
+    other: "其他"
+
+  order_statuses:
+    pending: "待确认"
+    confirmed: "已确认"
+    checked_in: "已入住"
+    checked_out: "已退房"
+    cancelled: "已取消"
+    no_show: "未到店"
+
+  cleaning_statuses:
+    pending: "待处理"
+    in_progress: "进行中"
+    completed: "已完成"
+    cancelled: "已取消"
+
+  priorities:
+    low: "低"
+    medium: "中"
+    high: "高"
+    urgent: "紧急"
+
+  conflict_statuses:
+    open: "待处理"
+    acknowledged: "已受理"
+    resolved: "已解决"
+    closed: "已关闭"
+
+  room_statuses:
+    available: "可预订"
+    occupied: "已占用"
+    reserved: "已预留"
+    blocked: "已锁定"
+    maintenance: "维护中"
+    cleaning: "清洁中"
+
+  roles:
+    admin: "管理员"
+    manager: "经理"
+    cleaner: "保洁员"
+    staff: "员工"
+
+  number:
+    format:
+      separator: "."
+      delimiter: ","
+      precision: 2
+      significant: false
+      strip_insignificant_zeros: false
+    currency:
+      format:
+        format: "%u%n"
+        unit: "¥"
+        separator: "."
+        delimiter: ","
+        precision: 2
+        significant: false
+        strip_insignificant_zeros: false

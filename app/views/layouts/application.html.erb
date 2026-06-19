@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title><%= content_for(:title) || "民宿房态管理系统" %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="民宿房态管理系统">
+    <meta name="mobile-web-app-capable" content="yes">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+
+    <%= yield :head %>
+
+    <%# Enable PWA manifest for installable apps (make sure to enable in config/routes.rb too!) %>
+    <%#= tag.link rel: "manifest", href: pwa_manifest_path(format: :json) %>
+
+    <link rel="icon" href="/icon.png" type="image/png">
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/icon.png">
+
+    <%= stylesheet_link_tag "tailwind", "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+  </head>
+
+  <body class="bg-gray-50">
+    <nav class="fixed top-0 left-0 right-0 z-50 bg-gray-900 shadow-lg">
+      <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-16">
+          <div class="flex items-center">
+            <%= link_to root_path, class: "flex-shrink-0 flex items-center" do %>
+              <svg class="h-8 w-8 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+              </svg>
+              <span class="ml-2 text-xl font-bold text-white">民宿房态管理系统</span>
+            <% end %>
+          </div>
+
+          <div class="hidden md:block">
+            <div class="ml-10 flex items-center space-x-1">
+              <%= link_to "记录台", records_path, class: nav_link_class(records_path) %>
+              <%= link_to "房源", properties_path, class: nav_link_class(properties_path) %>
+              <%= link_to "订单", channel_orders_path, class: nav_link_class(channel_orders_path) %>
+              <%= link_to "保洁任务", cleaning_tasks_path, class: nav_link_class(cleaning_tasks_path) %>
+              <%= link_to "房态冲突", room_conflicts_path, class: nav_link_class(room_conflicts_path) %>
+              <%= link_to "入住证件", check_in_documents_path, class: nav_link_class(check_in_documents_path) %>
+              <%= link_to "月底复盘", monthly_reports_path, class: nav_link_class(monthly_reports_path) %>
+              <%= link_to "下载记录", report_downloads_path, class: nav_link_class(report_downloads_path) %>
+            </div>
+          </div>
+
+          <div class="md:hidden">
+            <button type="button" id="mobile-menu-button" class="text-gray-300 hover:text-white hover:bg-gray-700 p-2 rounded-md">
+              <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div id="mobile-menu" class="hidden md:hidden bg-gray-800 border-t border-gray-700">
+        <div class="px-2 pt-2 pb-3 space-y-1">
+          <%= link_to "记录台", records_path, class: mobile_nav_link_class(records_path) %>
+          <%= link_to "房源", properties_path, class: mobile_nav_link_class(properties_path) %>
+          <%= link_to "订单", channel_orders_path, class: mobile_nav_link_class(channel_orders_path) %>
+          <%= link_to "保洁任务", cleaning_tasks_path, class: mobile_nav_link_class(cleaning_tasks_path) %>
+          <%= link_to "房态冲突", room_conflicts_path, class: mobile_nav_link_class(room_conflicts_path) %>
+          <%= link_to "入住证件", check_in_documents_path, class: mobile_nav_link_class(check_in_documents_path) %>
+          <%= link_to "月底复盘", monthly_reports_path, class: mobile_nav_link_class(monthly_reports_path) %>
+          <%= link_to "下载记录", report_downloads_path, class: mobile_nav_link_class(report_downloads_path) %>
+        </div>
+      </div>
+    </nav>
+
+    <main class="pt-20 min-h-screen">
+      <%= yield %>
+    </main>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        const button = document.getElementById('mobile-menu-button');
+        const menu = document.getElementById('mobile-menu');
+        if (button && menu) {
+          button.addEventListener('click', function() {
+            menu.classList.toggle('hidden');
+          });
+        }
+      });
+    </script>
+  </body>
+</html>
