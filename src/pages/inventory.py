@@ -387,13 +387,13 @@ def _render_shortage_tab():
                     source_ref = sample_shortage["source_record_ref"][0]
                     if source_ref:
                         hist = repository.parts_inventory_history.filter(
-                            pl.col("history_id") == source_ref
+                            pl.col("original_record_ref") == source_ref
                         )
                         if not hist.is_empty():
-                            st.markdown(f"**关联出入库记录（history_id: {source_ref}）**")
+                            st.markdown(f"**关联出入库记录（原始记录号: {source_ref}）**")
                             render_dataframe(hist, height=250)
                         elif hist_by_sample is None or hist_by_sample.is_empty():
-                            st.info(f"未找到 history_id={source_ref} 的原始出入库记录")
+                            st.info(f"未找到 original_record_ref={source_ref} 的原始出入库记录")
 
                 wo_id = sample_shortage["requested_work_order"][0]
                 if wo_id and repository.work_order_items is not None:

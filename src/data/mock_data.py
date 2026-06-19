@@ -430,14 +430,14 @@ def generate_parts_shortage(n: int = 80, inventory_history: Optional[pl.DataFram
     data: List[Dict[str, Any]] = []
     today = date.today()
 
-    valid_history_ids = []
+    valid_original_refs = []
     valid_sample_ids = {}
     if inventory_history is not None and not inventory_history.is_empty():
         history_with_sample = inventory_history.filter(pl.col("sample_record_id").is_not_null())
-        valid_history_ids = inventory_history["history_id"].to_list()
+        valid_original_refs = inventory_history["original_record_ref"].to_list()
         if not history_with_sample.is_empty():
             for row in history_with_sample.to_dicts():
-                valid_sample_ids[row["sample_record_id"]] = row["history_id"]
+                valid_sample_ids[row["sample_record_id"]] = row["original_record_ref"]
 
     for i in range(1, n + 1):
         part_id = f"P{random.randint(1, 150):05d}"
@@ -448,13 +448,13 @@ def generate_parts_shortage(n: int = 80, inventory_history: Optional[pl.DataFram
         sample_id = None
 
         if valid_sample_ids and random.random() < 0.8:
-            sample_id, hist_id = random.choice(list(valid_sample_ids.items()))
-            source_ref = hist_id
-        elif valid_history_ids and random.random() < 0.5:
-            source_ref = random.choice(valid_history_ids)
+            sample_id, orig_ref = random.choice(list(valid_sample_ids.items()))
+            source_ref = orig_ref
+        elif valid_original_refs and random.random() < 0.5:
+            source_ref = random.choice(valid_original_refs)
             sample_id = f"SMP{random.randint(1000, 9999)}"
         else:
-            source_ref = f"HIST{random.randint(1, 2000):07d}"
+            source_ref = f"REF{random.randint(1, 2000):06d}"
             sample_id = f"SMP{random.randint(1000, 9999)}"
 
         data.append({
