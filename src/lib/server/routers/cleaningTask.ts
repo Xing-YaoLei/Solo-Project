@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { router, protectedProcedure, managerProcedure } from '../trpc';
 import { cleaningTaskTable, taskStatusHistoryTable, userTable, propertyTable, bookingTable } from '../db/schema';
-import { eq, and, desc, gte, lte, isNull, or } from 'drizzle-orm';
+import { eq, and, desc, gte, lte, isNull, or, aliasedTable } from 'drizzle-orm';
 import { generateIdFromEntropySize } from 'lucia';
 import { TRPCError } from '@trpc/server';
 
@@ -82,18 +82,20 @@ export const cleaningTaskRouter = router({
 	get: protectedProcedure
 		.input(z.object({ id: z.string() }))
 		.query(async ({ ctx, input }) => {
+			const verifierUser = aliasedTable(userTable, 'verifier');
+
 			const task = await ctx.db
 				.select({
 					task: cleaningTaskTable,
 					property: propertyTable,
 					cleaner: userTable,
-					verifier: userTable,
+					verifier: verifierUser,
 					booking: bookingTable
 				})
 				.from(cleaningTaskTable)
 				.leftJoin(propertyTable, eq(cleaningTaskTable.propertyId, propertyTable.id))
 				.leftJoin(userTable, eq(cleaningTaskTable.assignedCleanerId, userTable.id))
-				.leftJoin(userTable.as('verifier'), eq(cleaningTaskTable.verifiedById, userTable.as('verifier').id))
+				.leftJoin(verifierUser, eq(cleaningTaskTable.verifiedById, verifierUser.id))
 				.leftJoin(bookingTable, eq(cleaningTaskTable.bookingId, bookingTable.id))
 				.where(eq(cleaningTaskTable.id, input.id))
 				.get();

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { router, protectedProcedure, managerProcedure } from '../trpc';
 import { complaintTable, userTable, propertyTable, bookingTable, cleaningTaskTable } from '../db/schema';
-import { eq, and, desc, gte, lte } from 'drizzle-orm';
+import { eq, and, desc, gte, lte, aliasedTable } from 'drizzle-orm';
 import { generateIdFromEntropySize } from 'lucia';
 import { TRPCError } from '@trpc/server';
 
@@ -39,17 +39,19 @@ export const complaintRouter = router({
 
 			const where = conditions.length > 0 ? and(...conditions) : undefined;
 
+			const handlerUser = aliasedTable(userTable, 'handler');
+
 			const items = await ctx.db
 				.select({
 					complaint: complaintTable,
 					property: propertyTable,
 					responsible: userTable,
-					handler: userTable
+					handler: handlerUser
 				})
 				.from(complaintTable)
 				.leftJoin(propertyTable, eq(complaintTable.propertyId, propertyTable.id))
 				.leftJoin(userTable, eq(complaintTable.responsibleCleanerId, userTable.id))
-				.leftJoin(userTable.as('handler'), eq(complaintTable.handlerId, userTable.as('handler').id))
+				.leftJoin(handlerUser, eq(complaintTable.handlerId, handlerUser.id))
 				.where(where)
 				.orderBy(desc(complaintTable.filedAt))
 				.limit(input.pageSize)
@@ -75,6 +77,8 @@ export const complaintRouter = router({
 	get: protectedProcedure
 		.input(z.object({ id: z.string() }))
 		.query(async ({ ctx, input }) => {
+			const handlerUser = aliasedTable(userTable, 'handler');
+
 			const complaint = await ctx.db
 				.select({
 					complaint: complaintTable,
@@ -82,14 +86,14 @@ export const complaintRouter = router({
 					booking: bookingTable,
 					task: cleaningTaskTable,
 					responsible: userTable,
-					handler: userTable
+					handler: handlerUser
 				})
 				.from(complaintTable)
 				.leftJoin(propertyTable, eq(complaintTable.propertyId, propertyTable.id))
 				.leftJoin(bookingTable, eq(complaintTable.bookingId, bookingTable.id))
 				.leftJoin(cleaningTaskTable, eq(complaintTable.taskId, cleaningTaskTable.id))
 				.leftJoin(userTable, eq(complaintTable.responsibleCleanerId, userTable.id))
-				.leftJoin(userTable.as('handler'), eq(complaintTable.handlerId, userTable.as('handler').id))
+				.leftJoin(handlerUser, eq(complaintTable.handlerId, handlerUser.id))
 				.where(eq(complaintTable.id, input.id))
 				.get();
 

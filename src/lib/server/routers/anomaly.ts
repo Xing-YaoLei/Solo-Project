@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { router, protectedProcedure, managerProcedure } from '../trpc';
 import { anomalyTable, userTable, propertyTable, cleaningTaskTable, bookingTable } from '../db/schema';
-import { eq, and, desc, gte, lte } from 'drizzle-orm';
+import { eq, and, desc, gte, lte, aliasedTable } from 'drizzle-orm';
 import { generateIdFromEntropySize } from 'lucia';
 import { TRPCError } from '@trpc/server';
 
@@ -40,21 +40,24 @@ export const anomalyRouter = router({
 
 			const where = conditions.length > 0 ? and(...conditions) : undefined;
 
+			const discovererUser = aliasedTable(userTable, 'discoverer');
+			const handlerUser = aliasedTable(userTable, 'handler');
+
 			const items = await ctx.db
 				.select({
 					anomaly: anomalyTable,
 					property: propertyTable,
 					task: cleaningTaskTable,
 					responsible: userTable,
-					discoverer: userTable,
-					handler: userTable
+					discoverer: discovererUser,
+					handler: handlerUser
 				})
 				.from(anomalyTable)
 				.leftJoin(propertyTable, eq(anomalyTable.propertyId, propertyTable.id))
 				.leftJoin(cleaningTaskTable, eq(anomalyTable.taskId, cleaningTaskTable.id))
 				.leftJoin(userTable, eq(anomalyTable.responsiblePersonId, userTable.id))
-				.leftJoin(userTable.as('discoverer'), eq(anomalyTable.discoveredById, userTable.as('discoverer').id))
-				.leftJoin(userTable.as('handler'), eq(anomalyTable.handledById, userTable.as('handler').id))
+				.leftJoin(discovererUser, eq(anomalyTable.discoveredById, discovererUser.id))
+				.leftJoin(handlerUser, eq(anomalyTable.handledById, handlerUser.id))
 				.where(where)
 				.orderBy(desc(anomalyTable.discoveredAt))
 				.limit(input.pageSize)
@@ -80,21 +83,24 @@ export const anomalyRouter = router({
 	get: protectedProcedure
 		.input(z.object({ id: z.string() }))
 		.query(async ({ ctx, input }) => {
+			const discovererUser = aliasedTable(userTable, 'discoverer');
+			const handlerUser = aliasedTable(userTable, 'handler');
+
 			const anomaly = await ctx.db
 				.select({
 					anomaly: anomalyTable,
 					property: propertyTable,
 					task: cleaningTaskTable,
 					responsible: userTable,
-					discoverer: userTable,
-					handler: userTable
+					discoverer: discovererUser,
+					handler: handlerUser
 				})
 				.from(anomalyTable)
 				.leftJoin(propertyTable, eq(anomalyTable.propertyId, propertyTable.id))
 				.leftJoin(cleaningTaskTable, eq(anomalyTable.taskId, cleaningTaskTable.id))
 				.leftJoin(userTable, eq(anomalyTable.responsiblePersonId, userTable.id))
-				.leftJoin(userTable.as('discoverer'), eq(anomalyTable.discoveredById, userTable.as('discoverer').id))
-				.leftJoin(userTable.as('handler'), eq(anomalyTable.handledById, userTable.as('handler').id))
+				.leftJoin(discovererUser, eq(anomalyTable.discoveredById, discovererUser.id))
+				.leftJoin(handlerUser, eq(anomalyTable.handledById, handlerUser.id))
 				.where(eq(anomalyTable.id, input.id))
 				.get();
 
