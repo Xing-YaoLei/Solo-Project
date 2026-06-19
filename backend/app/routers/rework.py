@@ -1,9 +1,8 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func, and_, case, cast, Date, extract
+from sqlalchemy import func, and_, case
 from typing import Optional
 from datetime import datetime, timedelta
-import calendar
 
 from ..database import get_db
 from ..models import RepairOrder, Vehicle, RepairOrderStatus
@@ -67,39 +66,36 @@ def get_rework_stats(
             "rework_rate": rate_val,
         })
 
-    reason_category = case(
-        (RepairOrder.rework_reason.like("%配件质量%"), "配件质量问题"),
-        (RepairOrder.rework_reason.like("%安装工艺%"), "安装工艺问题"),
-        (RepairOrder.rework_reason.like("%故障诊断%"), "故障诊断错误"),
-        (RepairOrder.rework_reason.like("%客户使用%"), "客户使用不当"),
-        (RepairOrder.rework_reason.like("%配件不匹配%"), "配件不匹配"),
-        else_="其他原因"
-    ).label("reason_category")
-
     by_reason_result = db.query(
-        reason_category,
+        RepairOrder.rework_reason,
         func.count(RepairOrder.id).label("count"),
     ).filter(
         date_filter,
         RepairOrder.is_rework == True,
         RepairOrder.rework_reason.isnot(None),
-    ).group_by(reason_category).order_by(func.count(RepairOrder.id).desc()).all()
+        RepairOrder.rework_reason != "",
+    ).group_by(RepairOrder.rework_reason).order_by(func.count(RepairOrder.id).desc()).all()
 
     reasons_data = []
     for row in by_reason_result:
         cnt = row.count or 0
         pct = round(cnt / rework_orders * 100, 1) if rework_orders > 0 else 0.0
         reasons_data.append({
-            "reason": row.reason_category,
+            "reason": row.rework_reason,
             "count": cnt,
             "percentage": pct,
         })
 
-    if not reasons_data and rework_orders > 0:
+    no_reason_count = db.query(func.count(RepairOrder.id)).filter(
+        date_filter,
+        RepairOrder.is_rework == True,
+        (RepairOrder.rework_reason.is_(None) | (RepairOrder.rework_reason == "")),
+    ).scalar() or 0
+    if no_reason_count > 0:
         reasons_data.append({
             "reason": "原因未记录",
-            "count": rework_orders,
-            "percentage": 100.0,
+            "count": no_reason_count,
+            "percentage": round(no_reason_count / rework_orders * 100, 1) if rework_orders > 0 else 0.0,
         })
 
     by_month_data = []
