@@ -22,6 +22,11 @@ public class QuotationServiceImpl implements QuotationService {
     private final QuotationHistoryRepository quotationHistoryRepository;
 
     @Override
+    public Page<QuotationHistory> findAll(Pageable pageable) {
+        return quotationHistoryRepository.findAll(pageable);
+    }
+
+    @Override
     public List<QuotationHistory> findByVehicleId(Long vehicleId) {
         return quotationHistoryRepository.findByVehicleIdOrderByCreatedAtDesc(vehicleId);
     }
@@ -53,6 +58,7 @@ public class QuotationServiceImpl implements QuotationService {
         dto.setId(quotation.getId());
         dto.setVehicleId(quotation.getVehicle().getId());
         dto.setVehicleVin(quotation.getVehicle().getVin());
+        dto.setVehicleInfo(quotation.getVehicle().getVin() + " - " + quotation.getVehicle().getBrand() + " " + quotation.getVehicle().getModel());
         dto.setQuotationPrice(quotation.getQuotationPrice());
         dto.setQuotationType(quotation.getQuotationType().name());
         dto.setOperatorName(quotation.getOperator() != null ? quotation.getOperator().getRealName() : null);

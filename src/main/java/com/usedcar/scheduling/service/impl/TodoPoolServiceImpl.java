@@ -48,7 +48,10 @@ public class TodoPoolServiceImpl implements TodoPoolService {
     }
 
     @Override
-    public Page<TodoItem> findAllTodos(TodoStatus status, Pageable pageable) {
+    public Page<TodoItem> findAllTodos(TodoStatus status, TodoType type, Pageable pageable) {
+        if (type != null) {
+            return todoItemRepository.findByStatusAndTodoType(status, type, pageable);
+        }
         return todoItemRepository.findByStatus(status, pageable);
     }
 
@@ -206,6 +209,7 @@ public class TodoPoolServiceImpl implements TodoPoolService {
         dto.setId(item.getId());
         dto.setVehicleId(item.getVehicle().getId());
         dto.setVehicleVin(item.getVehicle().getVin());
+        dto.setVehicleInfo(item.getVehicle().getVin() + " - " + item.getVehicle().getBrand() + " " + item.getVehicle().getModel());
         dto.setVehicleBrand(item.getVehicle().getBrand());
         dto.setVehicleModel(item.getVehicle().getModel());
         dto.setTodoType(item.getTodoType().name());

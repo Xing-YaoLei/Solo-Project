@@ -10,6 +10,8 @@ import java.util.List;
 
 public interface TestDriveService {
 
+    Page<TestDriveRecord> findAll(Pageable pageable);
+
     List<TestDriveRecord> findByVehicleId(Long vehicleId);
 
     TestDriveRecord create(TestDriveRecord record);

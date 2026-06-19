@@ -13,6 +13,9 @@
     <h1 class="page-header__title">待办池</h1>
   </div>
 
+  <div class="alert alert--danger" th:if="${error}" th:text="${error}"></div>
+  <div class="alert alert--success" th:if="${success}" th:text="${success}"></div>
+
   <div class="card">
     <div class="card__header">
       <h2 class="card__title">筛选条件</h2>
@@ -44,7 +47,7 @@
             <option value="">全部</option>
             <option th:each="user : ${assignees}"
                     th:value="${user.id}"
-                    th:text="${user.name}">负责人</option>
+                    th:text="${user.realName}">负责人</option>
           </select>
         </div>
         <div class="form-group">
@@ -90,24 +93,28 @@
               <div class="btn-group">
                 <form th:action="@{/todos/{id}/process(id=${todo.id})}" method="post"
                       th:if="${todo.status == 'PENDING'}" style="display:inline">
+                  <input type="hidden" name="operatorId" th:value="${currentUserId}">
                   <button type="submit" class="btn btn--sm btn--primary">处理</button>
                 </form>
                 <form th:action="@{/todos/{id}/complete(id=${todo.id})}" method="post"
                       th:if="${todo.status == 'PROCESSING'}" style="display:inline">
+                  <input type="hidden" name="operatorId" th:value="${currentUserId}">
                   <button type="submit" class="btn btn--sm btn--success">完成</button>
                 </form>
                 <form th:action="@{/todos/{id}/reject(id=${todo.id})}" method="post"
                       th:if="${todo.status == 'PROCESSING'}" style="display:inline">
+                  <input type="hidden" name="operatorId" th:value="${currentUserId}">
                   <input class="form-group__input" type="text" name="remark" placeholder="退回原因" style="display:inline;width:auto">
                   <button type="submit" class="btn btn--sm btn--danger">退回</button>
                 </form>
                 <form th:action="@{/todos/{id}/reassign(id=${todo.id})}" method="post"
                       th:if="${currentRole == 'MANAGER'}" style="display:inline">
+                  <input type="hidden" name="operatorId" th:value="${currentUserId}">
                   <select class="form-group__input" name="newAssigneeId" style="display:inline;width:auto">
                     <option value="">选择负责人</option>
                     <option th:each="user : ${assignees}"
                             th:value="${user.id}"
-                            th:text="${user.name}">负责人</option>
+                            th:text="${user.realName}">负责人</option>
                   </select>
                   <button type="submit" class="btn btn--sm btn--secondary">改负责人</button>
                 </form>

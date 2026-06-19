@@ -21,6 +21,11 @@ public class TestDriveServiceImpl implements TestDriveService {
     private final TestDriveRecordRepository testDriveRecordRepository;
 
     @Override
+    public Page<TestDriveRecord> findAll(Pageable pageable) {
+        return testDriveRecordRepository.findAll(pageable);
+    }
+
+    @Override
     public List<TestDriveRecord> findByVehicleId(Long vehicleId) {
         return testDriveRecordRepository.findByVehicleId(vehicleId);
     }
@@ -42,6 +47,7 @@ public class TestDriveServiceImpl implements TestDriveService {
         dto.setId(record.getId());
         dto.setVehicleId(record.getVehicle().getId());
         dto.setVehicleVin(record.getVehicle().getVin());
+        dto.setVehicleInfo(record.getVehicle().getVin() + " - " + record.getVehicle().getBrand() + " " + record.getVehicle().getModel());
         dto.setCustomerName(record.getCustomerName());
         dto.setCustomerPhone(record.getCustomerPhone());
         dto.setDriveDate(record.getDriveDate());

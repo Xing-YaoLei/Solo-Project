@@ -13,15 +13,21 @@
     <h1 class="page-header__title">报表分析</h1>
   </div>
 
+  <div class="alert alert--danger" th:if="${error}" th:text="${error}"></div>
+  <div class="alert alert--success" th:if="${success}" th:text="${success}"></div>
+
   <div class="card">
     <div class="card__header">
       <div class="tab-bar" role="tablist">
-        <button type="button" class="tab-bar__item tab-bar__item--active" role="tab"
+        <button type="button" class="tab-bar__item" role="tab"
+                th:classappend="${currentType == 'inventory'} ? 'tab-bar__item--active' : ''"
                 data-tab="inventory" onclick="switchTab('inventory')">库存周转</button>
         <button type="button" class="tab-bar__item" role="tab"
+                th:classappend="${currentType == 'date'} ? 'tab-bar__item--active' : ''"
                 data-tab="date" onclick="switchTab('date')"
                 th:if="${currentRole == 'MANAGER'}">日期下钻</button>
         <button type="button" class="tab-bar__item" role="tab"
+                th:classappend="${currentType == 'person'} ? 'tab-bar__item--active' : ''"
                 data-tab="person" onclick="switchTab('person')"
                 th:if="${currentRole == 'MANAGER'}">负责人下钻</button>
       </div>
@@ -53,7 +59,7 @@
             <option value="">全部</option>
             <option th:each="person : ${persons}"
                     th:value="${person.id}"
-                    th:text="${person.name}">负责人</option>
+                    th:text="${person.realName}">负责人</option>
           </select>
         </div>
         <input type="hidden" name="type" id="reportType" value="inventory">
@@ -113,7 +119,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr th:each="store : ${report.storeBreakdown}">
+            <tr th:each="store : ${report.storeBreakdown.values()}">
               <td th:text="${store.storeName}">门店</td>
               <td th:text="${store.vehicleCount}">0</td>
               <td th:text="${store.soldCount}">0</td>
@@ -140,7 +146,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr th:each="person : ${report.personBreakdown}">
+            <tr th:each="person : ${report.personBreakdown.values()}">
               <td th:text="${person.personName}">姓名</td>
               <td th:text="${person.roleName}">角色</td>
               <td th:text="${person.vehicleCount}">0</td>

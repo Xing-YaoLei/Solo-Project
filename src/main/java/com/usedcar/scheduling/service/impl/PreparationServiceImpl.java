@@ -11,6 +11,8 @@ import com.usedcar.scheduling.repository.UserRepository;
 import com.usedcar.scheduling.repository.VehicleRepository;
 import com.usedcar.scheduling.service.PreparationService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +28,11 @@ public class PreparationServiceImpl implements PreparationService {
     private final PreparationChecklistRepository preparationChecklistRepository;
     private final VehicleRepository vehicleRepository;
     private final UserRepository userRepository;
+
+    @Override
+    public Page<PreparationChecklist> findAll(Pageable pageable) {
+        return preparationChecklistRepository.findAll(pageable);
+    }
 
     @Override
     public List<PreparationChecklist> findByVehicleId(Long vehicleId) {
@@ -85,6 +92,7 @@ public class PreparationServiceImpl implements PreparationService {
         dto.setId(item.getId());
         dto.setVehicleId(item.getVehicle().getId());
         dto.setVehicleVin(item.getVehicle().getVin());
+        dto.setVehicleInfo(item.getVehicle().getVin() + " - " + item.getVehicle().getBrand() + " " + item.getVehicle().getModel());
         dto.setItemName(item.getItemName().name());
         dto.setStatus(item.getStatus().name());
         dto.setOperatorName(item.getOperator() != null ? item.getOperator().getRealName() : null);

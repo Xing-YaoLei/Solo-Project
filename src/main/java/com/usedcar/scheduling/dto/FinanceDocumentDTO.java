@@ -10,6 +10,7 @@ public class FinanceDocumentDTO {
     private Long id;
     private Long vehicleId;
     private String vehicleVin;
+    private String vehicleInfo;
     private String documentType;
     private String documentUrl;
     private String status;

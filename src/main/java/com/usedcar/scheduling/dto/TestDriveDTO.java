@@ -10,6 +10,7 @@ public class TestDriveDTO {
     private Long id;
     private Long vehicleId;
     private String vehicleVin;
+    private String vehicleInfo;
     private String customerName;
     private String customerPhone;
     private LocalDate driveDate;

@@ -23,49 +23,52 @@ public class TodoPoolController {
 
     @GetMapping("/todos")
     public String pool(@RequestParam(required = false) TodoStatus status,
+                       @RequestParam(required = false) TodoType todoType,
                        @RequestParam(defaultValue = "0") int page,
                        @RequestParam(defaultValue = "20") int size,
                        Model model, HttpServletRequest request) {
         addCommonAttributes(model, request);
-        Page<TodoItemDTO> todos = todoPoolService.findAllTodos(status, PageRequest.of(page, size))
+        Long currentUserId = request.getHeader("X-User-Id") != null ? Long.parseLong(request.getHeader("X-User-Id")) : 1L;
+        Page<TodoItemDTO> todos = todoPoolService.findAllTodos(status, todoType, PageRequest.of(page, size))
                 .map(todoPoolService::toDTO);
         model.addAttribute("todos", todos);
         model.addAttribute("todoTypes", TodoType.values());
         model.addAttribute("todoStatuses", TodoStatus.values());
         model.addAttribute("assignees", userRepository.findAll());
+        model.addAttribute("currentUserId", currentUserId);
         return "todo/pool";
     }
 
     @PostMapping("/todos/{id}/process")
     public String process(@PathVariable Long id,
-                          @RequestParam Long currentUserId,
+                          @RequestParam(defaultValue = "1") Long operatorId,
                           @RequestParam(required = false) String remark) {
-        todoPoolService.processTodo(id, currentUserId, remark);
+        todoPoolService.processTodo(id, operatorId, remark);
         return "redirect:/todos";
     }
 
     @PostMapping("/todos/{id}/complete")
     public String complete(@PathVariable Long id,
-                           @RequestParam Long currentUserId,
+                           @RequestParam(defaultValue = "1") Long operatorId,
                            @RequestParam(required = false) String remark) {
-        todoPoolService.completeTodo(id, currentUserId, remark);
+        todoPoolService.completeTodo(id, operatorId, remark);
         return "redirect:/todos";
     }
 
     @PostMapping("/todos/{id}/reject")
     public String reject(@PathVariable Long id,
-                         @RequestParam Long currentUserId,
+                         @RequestParam(defaultValue = "1") Long operatorId,
                          @RequestParam(required = false) String remark) {
-        todoPoolService.rejectTodo(id, currentUserId, remark);
+        todoPoolService.rejectTodo(id, operatorId, remark);
         return "redirect:/todos";
     }
 
     @PostMapping("/todos/{id}/reassign")
     public String reassign(@PathVariable Long id,
                            @RequestParam Long newAssigneeId,
-                           @RequestParam Long currentUserId,
+                           @RequestParam(defaultValue = "1") Long operatorId,
                            @RequestParam(required = false) String remark) {
-        todoPoolService.reassignTodo(id, newAssigneeId, currentUserId, remark);
+        todoPoolService.reassignTodo(id, newAssigneeId, operatorId, remark);
         return "redirect:/todos";
     }
 

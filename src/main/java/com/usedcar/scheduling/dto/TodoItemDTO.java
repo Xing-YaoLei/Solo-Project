@@ -11,6 +11,7 @@ public class TodoItemDTO {
     private Long id;
     private Long vehicleId;
     private String vehicleVin;
+    private String vehicleInfo;
     private String vehicleBrand;
     private String vehicleModel;
     private String todoType;
@@ -22,5 +23,5 @@ public class TodoItemDTO {
     private LocalDate dueDate;
     private LocalDateTime completedAt;
     private String remark;
-    private boolean isOverdue;
+    private boolean overdue;
 }

@@ -135,7 +135,7 @@ public class ReportServiceImpl implements ReportService {
                     : BigDecimal.ZERO);
             byStore.put(storeName, sr);
         }
-        dto.setByStore(byStore);
+        dto.setStoreBreakdown(byStore);
 
         return dto;
     }
@@ -183,7 +183,7 @@ public class ReportServiceImpl implements ReportService {
 
             byPerson.put(user.getRealName(), pr);
         }
-        dto.setByPerson(byPerson);
+        dto.setPersonBreakdown(byPerson);
 
         return dto;
     }

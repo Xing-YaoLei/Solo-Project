@@ -10,6 +10,7 @@ public class PreparationDTO {
     private Long id;
     private Long vehicleId;
     private String vehicleVin;
+    private String vehicleInfo;
     private String itemName;
     private String status;
     private String operatorName;

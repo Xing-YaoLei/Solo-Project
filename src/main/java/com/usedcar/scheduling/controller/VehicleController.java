@@ -64,9 +64,25 @@ public class VehicleController {
                 financeDocumentService.findByVehicleId(id).stream().map(financeDocumentService::toDTO).toList());
         viewModel.addAttribute("archives", vehicleArchiveService.findByVehicleId(id));
         viewModel.addAttribute("todos",
-                todoPoolService.findAllTodos(null, PageRequest.of(0, 20))
-                        .stream().map(todoPoolService::toDTO).toList());
+                todoPoolService.findAllTodos(null, null, PageRequest.of(0, 20))
+                                .stream().map(todoPoolService::toDTO).toList());
+        viewModel.addAttribute("assessors", userRepository.findByRole(UserRole.ASSESSOR));
+        viewModel.addAttribute("salesList", userRepository.findByRole(UserRole.SALES));
         return "vehicle/detail";
+    }
+
+    @GetMapping("/vehicles/archive")
+    public String archiveList(@RequestParam(defaultValue = "0") int page,
+                              @RequestParam(defaultValue = "20") int size,
+                              Model model, HttpServletRequest request) {
+        addCommonAttributes(model, request);
+        String role = request.getHeader("X-User-Role") != null ? request.getHeader("X-User-Role") : "MANAGER";
+        if (!"MANAGER".equals(role)) {
+            return "redirect:/vehicles";
+        }
+        Page<?> archives = vehicleArchiveService.findAll(PageRequest.of(page, size));
+        model.addAttribute("archives", archives);
+        return "vehicle/archive-list";
     }
 
     @GetMapping("/vehicles/create")
@@ -87,7 +103,7 @@ public class VehicleController {
     @PostMapping("/vehicles/{id}/status")
     public String updateStatus(@PathVariable Long id,
                                @RequestParam VehicleStatus newStatus,
-                               @RequestParam Long operatorId,
+                               @RequestParam(defaultValue = "1") Long operatorId,
                                @RequestParam(required = false) String remark) {
         vehicleService.updateStatus(id, newStatus, operatorId, remark);
         return "redirect:/vehicles/" + id;
@@ -96,7 +112,7 @@ public class VehicleController {
     @PostMapping("/vehicles/{id}/price")
     public String updatePrice(@PathVariable Long id,
                               @RequestParam BigDecimal newPrice,
-                              @RequestParam Long operatorId,
+                              @RequestParam(defaultValue = "1") Long operatorId,
                               @RequestParam(required = false) String remark) {
         vehicleService.updateListingPrice(id, newPrice, operatorId, remark);
         return "redirect:/vehicles/" + id;
@@ -105,7 +121,7 @@ public class VehicleController {
     @PostMapping("/vehicles/{id}/assign-assessor")
     public String assignAssessor(@PathVariable Long id,
                                  @RequestParam Long assessorId,
-                                 @RequestParam Long operatorId) {
+                                 @RequestParam(defaultValue = "1") Long operatorId) {
         vehicleService.assignAssessor(id, assessorId, operatorId);
         return "redirect:/vehicles/" + id;
     }
@@ -113,7 +129,7 @@ public class VehicleController {
     @PostMapping("/vehicles/{id}/assign-sales")
     public String assignSales(@PathVariable Long id,
                               @RequestParam Long salesId,
-                              @RequestParam Long operatorId) {
+                              @RequestParam(defaultValue = "1") Long operatorId) {
         vehicleService.assignSales(id, salesId, operatorId);
         return "redirect:/vehicles/" + id;
     }

@@ -13,16 +13,25 @@
     <h1 class="page-header__title">试驾记录</h1>
   </div>
 
+  <div class="alert alert--danger" th:if="${error}" th:text="${error}"></div>
+
   <div class="card">
     <div class="card__header">
       <h2 class="card__title">筛选条件</h2>
     </div>
     <div class="card__body">
       <form class="form form--inline" th:action="@{/test-drives}" method="get">
-        <div class="form-group">
+        <div class="form-group" th:if="${vehicles != null}">
+          <label class="form-group__label" for="vehicleId">选择车辆</label>
+          <select class="form-group__input" id="vehicleId" name="vehicleId">
+            <option value="">全部车辆</option>
+            <option th:each="v : ${vehicles}" th:value="${v.id}" th:selected="${selectedVehicleId != null and selectedVehicleId == v.id}" th:text="${v.vin + ' - ' + v.brand + ' ' + v.model}">车辆</option>
+          </select>
+        </div>
+        <div class="form-group" th:unless="${vehicles != null}">
           <label class="form-group__label" for="vehicleId">车辆ID</label>
           <input class="form-group__input" type="text" id="vehicleId" name="vehicleId"
-                 th:value="${param.vehicleId != null ? param.vehicleId[0] : ''}" placeholder="车辆ID">
+                 th:value="${selectedVehicleId != null ? selectedVehicleId : ''}" placeholder="车辆ID">
         </div>
         <div class="form-group">
           <button type="submit" class="btn btn--primary">搜索</button>
@@ -65,8 +74,14 @@
           <label class="form-group__label" for="feedback">客户反馈</label>
           <textarea class="form-group__input" id="feedback" name="feedback" rows="3"></textarea>
         </div>
-        <input type="hidden" name="vehicleId" th:value="${param.vehicleId != null ? param.vehicleId[0] : ''}">
-        <input type="hidden" name="salesId" th:value="${currentUserId}">
+        <div class="form-group" th:if="${selectedVehicleId == null}">
+          <label class="form-group__label" for="vehicleId">选择车辆</label>
+          <select class="form-group__input" id="vehicleId" name="vehicleId" required>
+            <option value="">请选择</option>
+            <option th:each="v : ${vehicles}" th:value="${v.id}" th:text="${v.vin + ' - ' + v.brand + ' ' + v.model}">车辆</option>
+          </select>
+        </div>
+        <input type="hidden" name="operatorId" th:value="${currentUserId}">
         <button type="submit" class="btn btn--primary">提交</button>
       </form>
     </div>

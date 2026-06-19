@@ -29,10 +29,7 @@
         <h3 class="sidebar__section-title">配置区</h3>
         <ul class="sidebar__list">
           <li class="sidebar__item" th:if="${currentRole == 'FINANCE'} or ${currentRole == 'MANAGER'}">
-            <a href="/finance/config" class="sidebar__link">金融资料配置</a>
-          </li>
-          <li class="sidebar__item" th:if="${currentRole == 'MANAGER'}">
-            <a href="/vehicles/archive" class="sidebar__link">车辆档案留痕</a>
+            <a href="/finance" class="sidebar__link">金融资料配置</a>
           </li>
         </ul>
       </section>

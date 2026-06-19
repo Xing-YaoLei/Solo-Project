@@ -14,8 +14,8 @@ public class ReportDTO {
     private BigDecimal avgDaysToSell;
     private BigDecimal inventoryTurnoverRate;
     private BigDecimal revenue;
-    private Map<String, StoreReport> byStore;
-    private Map<String, PersonReport> byPerson;
+    private Map<String, StoreReport> storeBreakdown;
+    private Map<String, PersonReport> personBreakdown;
 
     @Data
     public static class StoreReport {

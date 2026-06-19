@@ -142,8 +142,9 @@
                 <td>
                   <form th:action="@{/preparations/{id}/status(id=${p.id})}" method="post"
                         th:if="${currentRole == 'ASSESSOR' or currentRole == 'MANAGER'}">
-                    <input type="hidden" name="status" th:value="${p.status == 'PENDING' ? 'DONE' : 'PENDING'}">
+                    <input type="hidden" name="vehicleId" th:value="${vehicle.id}">
                     <input type="hidden" name="operatorId" th:value="${currentUserId}">
+                    <input type="hidden" name="status" th:value="${p.status == 'PENDING' ? 'DONE' : 'PENDING'}">
                     <button type="submit" class="btn btn--sm btn--primary"
                             th:text="${p.status == 'PENDING' ? '完成' : '撤销'}">切换</button>
                   </form>
@@ -228,10 +229,11 @@
       <div class="card">
         <div class="card__header">
           <h2 class="card__title">金融资料</h2>
-          <form th:action="@{/finance/documents/upload}" method="post" enctype="multipart/form-data"
+          <form th:action="@{/finance}" method="post" enctype="multipart/form-data"
                 th:if="${currentRole == 'FINANCE' or currentRole == 'MANAGER'}"
                 class="form form--inline">
             <input type="hidden" name="vehicleId" th:value="${vehicle.id}">
+            <input type="hidden" name="uploaderId" th:value="${currentUserId}">
             <input type="hidden" name="operatorId" th:value="${currentUserId}">
             <select class="form-group__input" name="documentType" required>
               <option value="">资料类型</option>
@@ -260,13 +262,15 @@
                 <td><span th:replace="~{fragments/common :: statusBadge(${doc.status})}">状态</span></td>
                 <td th:text="${doc.uploaderName}">上传人</td>
                 <td>
-                  <form th:action="@{/finance/documents/{id}/status(id=${doc.id})}" method="post"
+                  <form th:action="@{/finance/{id}/status(id=${doc.id})}" method="post"
                         th:if="${currentRole == 'FINANCE' or currentRole == 'MANAGER'}"
                         class="form form--inline">
+                    <input type="hidden" name="vehicleId" th:value="${vehicle.id}">
                     <input type="hidden" name="operatorId" th:value="${currentUserId}">
-                    <select class="form-group__input" name="status">
-                      <option value="APPROVED" th:selected="${doc.status == 'PENDING'}">审核通过</option>
-                      <option value="REJECTED" th:selected="${doc.status == 'PENDING'}">退回</option>
+                    <select class="form-group__input" name="status" required>
+                      <option value="">选择操作</option>
+                      <option value="APPROVED">通过</option>
+                      <option value="REJECTED">退回</option>
                     </select>
                     <button type="submit" class="btn btn--sm btn--primary">更新</button>
                   </form>
@@ -321,7 +325,7 @@
               <div class="todo-list__info">
                 <span class="todo-list__title" th:text="${todo.title}">标题</span>
                 <span th:replace="~{fragments/common :: statusBadge(${todo.status})}">状态</span>
-                <span class="badge badge--danger" th:if="${todo.isOverdue}">逾期</span>
+                <span class="badge badge--danger" th:if="${todo.overdue}">逾期</span>
                 <span class="todo-list__meta" th:text="${todo.dueDate}">截止日期</span>
               </div>
               <div class="todo-list__actions">
@@ -405,6 +409,7 @@
             <label class="form-group__label">评估师</label>
             <select class="form-group__input" name="assessorId" required>
               <option value="">选择评估师</option>
+              <option th:each="assessor : ${assessors}" th:value="${assessor.id}" th:text="${assessor.realName}">评估师</option>
             </select>
           </div>
           <input type="hidden" name="operatorId" th:value="${currentUserId}">
@@ -417,6 +422,7 @@
             <label class="form-group__label">销售</label>
             <select class="form-group__input" name="salesId" required>
               <option value="">选择销售</option>
+              <option th:each="sales : ${salesList}" th:value="${sales.id}" th:text="${sales.realName}">销售</option>
             </select>
           </div>
           <input type="hidden" name="operatorId" th:value="${currentUserId}">

@@ -19,7 +19,14 @@
     </div>
     <div class="card__body">
       <form class="form form--inline" th:action="@{/preparations}" method="get">
-        <div class="form-group">
+        <div class="form-group" th:if="${vehicles != null}">
+          <label class="form-group__label" for="vehicleId">选择车辆</label>
+          <select class="form-group__input" id="vehicleId" name="vehicleId">
+            <option value="">全部车辆</option>
+            <option th:each="v : ${vehicles}" th:value="${v.id}" th:selected="${selectedVehicleId != null and selectedVehicleId == v.id}" th:text="${v.vin + ' - ' + v.brand + ' ' + v.model}">车辆</option>
+          </select>
+        </div>
+        <div class="form-group" th:unless="${vehicles != null}">
           <label class="form-group__label" for="vehicleId">车辆ID</label>
           <input class="form-group__input" type="text" id="vehicleId" name="vehicleId"
                  th:value="${param.vehicleId != null ? param.vehicleId[0] : ''}" placeholder="车辆ID">
@@ -64,7 +71,7 @@
     <div class="card__header">
       <h2 class="card__title">整备项目</h2>
       <form th:action="@{/preparations/init}" method="post"
-            th:if="${items == null or items.isEmpty()} and ${vehicle != null}"
+            th:if="${preparations == null or preparations.isEmpty()} and ${vehicle != null}"
             class="form form--inline">
         <input type="hidden" name="vehicleId" th:value="${vehicle.id}">
         <input type="hidden" name="operatorId" th:value="${currentUserId}">
@@ -72,7 +79,7 @@
       </form>
     </div>
     <div class="card__body">
-      <table class="table" th:if="${items != null and !items.isEmpty()}">
+      <table class="table" th:if="${preparations != null and !preparations.isEmpty()}">
         <thead>
           <tr>
             <th>车辆信息</th>
@@ -85,7 +92,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr th:each="item : ${items}">
+          <tr th:each="item : ${preparations}">
             <td>
               <a th:href="@{/vehicles/{id}(id=${item.vehicleId})}" th:text="${item.vehicleInfo}">车辆</a>
             </td>
@@ -98,6 +105,7 @@
               <div class="btn-group">
                 <form th:action="@{/preparations/{id}/status(id=${item.id})}" method="post"
                       th:if="${currentRole == 'ASSESSOR' or currentRole == 'MANAGER'}">
+                  <input type="hidden" name="vehicleId" th:value="${selectedVehicleId}">
                   <input type="hidden" name="operatorId" th:value="${currentUserId}">
                   <input type="hidden" name="status" th:value="${item.status == 'PENDING' ? 'IN_PROGRESS' : (item.status == 'IN_PROGRESS' ? 'DONE' : 'PENDING')}">
                   <button type="submit" class="btn btn--sm btn--primary"
@@ -109,13 +117,13 @@
         </tbody>
       </table>
 
-      <div th:if="${items == null or items.isEmpty()}">
+      <div th:if="${preparations == null or preparations.isEmpty()}">
         <div th:replace="~{fragments/common :: emptyState('暂无整备项目')}"></div>
       </div>
     </div>
   </div>
 
-  <div th:replace="~{fragments/common :: pagination(${items})}"></div>
+  <div th:replace="~{fragments/common :: pagination(${preparations})}"></div>
 
 </div>
 </body>

@@ -6,6 +6,8 @@ import com.usedcar.scheduling.enums.DocumentStatus;
 import com.usedcar.scheduling.repository.FinanceDocumentRepository;
 import com.usedcar.scheduling.service.FinanceDocumentService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,6 +20,11 @@ import java.util.List;
 public class FinanceDocumentServiceImpl implements FinanceDocumentService {
 
     private final FinanceDocumentRepository financeDocumentRepository;
+
+    @Override
+    public Page<FinanceDocument> findAll(Pageable pageable) {
+        return financeDocumentRepository.findAll(pageable);
+    }
 
     @Override
     public List<FinanceDocument> findByVehicleId(Long vehicleId) {
@@ -54,6 +61,7 @@ public class FinanceDocumentServiceImpl implements FinanceDocumentService {
         dto.setId(doc.getId());
         dto.setVehicleId(doc.getVehicle().getId());
         dto.setVehicleVin(doc.getVehicle().getVin());
+        dto.setVehicleInfo(doc.getVehicle().getVin() + " - " + doc.getVehicle().getBrand() + " " + doc.getVehicle().getModel());
         dto.setDocumentType(doc.getDocumentType().name());
         dto.setDocumentUrl(doc.getDocumentUrl());
         dto.setStatus(doc.getStatus().name());

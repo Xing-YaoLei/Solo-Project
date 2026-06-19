@@ -10,6 +10,8 @@ import java.util.List;
 
 public interface QuotationService {
 
+    Page<QuotationHistory> findAll(Pageable pageable);
+
     List<QuotationHistory> findByVehicleId(Long vehicleId);
 
     QuotationHistory create(QuotationHistory quotation);

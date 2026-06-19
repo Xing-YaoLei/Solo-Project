@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout}"
+      lang="zh-CN">
+<head>
+  <title>车辆档案留痕</title>
+</head>
+<body>
+<div layout:fragment="content">
+
+  <div class="page-header">
+    <h1 class="page-header__title">车辆档案留痕</h1>
+    <a class="btn btn--secondary" th:href="@{/vehicles}">&larr; 返回车源</a>
+  </div>
+
+  <div class="card">
+    <div class="card__header">
+      <h2 class="card__title">所有档案记录</h2>
+    </div>
+    <div class="card__body">
+      <table class="table" th:if="${archives != null and !archives.isEmpty()}">
+        <thead>
+          <tr>
+            <th>车辆信息</th>
+            <th>档案类型</th>
+            <th>旧值</th>
+            <th>新值</th>
+            <th>操作人</th>
+            <th>备注</th>
+            <th>创建时间</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr th:each="archive : ${archives}">
+            <td>
+              <a th:href="@{/vehicles/{id}(id=${archive.vehicle.id})}"
+                 th:text="${archive.vehicle.vin + ' - ' + archive.vehicle.brand + ' ' + archive.vehicle.model}">车辆</a>
+            </td>
+            <td><span th:replace="~{fragments/common :: statusBadge(${archive.archiveType.name()})}">类型</span></td>
+            <td th:text="${archive.oldValue}">旧值</td>
+            <td th:text="${archive.newValue}">新值</td>
+            <td th:text="${archive.operator != null ? archive.operator.realName : '系统'}">操作人</td>
+            <td th:text="${archive.remark}">备注</td>
+            <td th:text="${#temporals.format(archive.createdAt, 'yyyy-MM-dd HH:mm')}">时间</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div th:if="${archives == null or archives.isEmpty()}">
+        <div th:replace="~{fragments/common :: emptyState('暂无档案记录')}"></div>
+      </div>
+    </div>
+  </div>
+
+  <div th:replace="~{fragments/common :: pagination(${archives})}"></div>
+
+</div>
+</body>
+</html>
