@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../utils/api';
 import { formatDateTime, formatCurrency, depositStatusMap } from '../utils/helpers';
+import { useCurrentUser } from '../utils/useCurrentUser';
 
 interface Deposit {
   id: string;
@@ -39,6 +40,7 @@ export default function DepositsPage() {
     deductReason: '',
     changeReason: '',
   });
+  const currentUser = useCurrentUser();
 
   useEffect(() => {
     fetchDeposits();
@@ -79,7 +81,7 @@ export default function DepositsPage() {
         deductAmount: editData.deductAmount,
         deductReason: editData.deductReason,
         changeReason: editData.changeReason,
-        changedById: 'demo-user-id',
+        changedById: currentUser?.id,
       });
       setShowEditModal(false);
       fetchDeposits();

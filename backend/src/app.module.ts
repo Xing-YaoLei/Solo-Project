@@ -12,10 +12,12 @@ import { ReportsModule } from './reports/reports.module';
 import { MissedOrdersModule } from './missed-orders/missed-orders.module';
 import { UsersModule } from './users/users.module';
 import { RecordsModule } from './records/records.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
     ScheduleModule.forRoot(),
+    AuthModule,
     PropertiesModule,
     CleaningTasksModule,
     DepositsModule,

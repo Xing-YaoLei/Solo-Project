@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../utils/api';
 import { formatDate, formatDateTime, statusMap } from '../utils/helpers';
+import { useCurrentUser } from '../utils/useCurrentUser';
 
 interface Property {
   id: string;
@@ -101,6 +102,7 @@ export default function RecordsPage() {
   const [housekeepers, setHousekeepers] = useState<User[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const currentUser = useCurrentUser();
 
   useEffect(() => {
     fetchData();
@@ -178,7 +180,7 @@ export default function RecordsPage() {
         scheduledEnd,
         priority: createForm.priority,
         notes: createForm.notes || undefined,
-        createdById: 'demo-user-id',
+        createdById: currentUser?.id,
       });
 
       setShowCreateModal(false);

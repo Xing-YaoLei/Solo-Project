@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../utils/api';
 import { formatDateTime } from '../utils/helpers';
+import { useCurrentUser } from '../utils/useCurrentUser';
 
 interface MissedOrder {
   id: string;
@@ -27,6 +28,7 @@ export default function MissedOrdersPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<MissedOrder | null>(null);
   const [resolveReason, setResolveReason] = useState('');
+  const currentUser = useCurrentUser();
 
   useEffect(() => {
     fetchOrders();
@@ -52,7 +54,7 @@ export default function MissedOrdersPage() {
     
     try {
       await api.put(`/missed-orders/${selectedOrder.id}/resolve`, {
-        resolvedById: 'demo-user-id',
+        resolvedById: currentUser?.id,
         reason: resolveReason,
       });
       setSelectedOrder(null);

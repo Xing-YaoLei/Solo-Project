@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../utils/api';
 import { formatDateTime } from '../utils/helpers';
+import { useCurrentUser } from '../utils/useCurrentUser';
 
 interface SystemLog {
   id: string;
@@ -42,6 +43,7 @@ export default function LogsPage() {
   const [action, setAction] = useState('');
   const [selectedLog, setSelectedLog] = useState<SystemLog | null>(null);
   const [closeReason, setCloseReason] = useState('');
+  const currentUser = useCurrentUser();
 
   useEffect(() => {
     fetchLogs();
@@ -74,7 +76,7 @@ export default function LogsPage() {
     try {
       await api.put(`/system-logs/${selectedLog.id}/close`, {
         closeReason,
-        closedById: 'demo-user-id',
+        closedById: currentUser?.id,
       });
       setSelectedLog(null);
       setCloseReason('');

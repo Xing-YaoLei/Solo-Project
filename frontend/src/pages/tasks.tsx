@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../utils/api';
 import { formatDateTime, statusMap } from '../utils/helpers';
+import { useCurrentUser } from '../utils/useCurrentUser';
 
 interface CleaningTask {
   id: string;
@@ -21,6 +22,7 @@ export default function TasksPage() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const currentUser = useCurrentUser();
 
   useEffect(() => {
     fetchTasks();
@@ -45,7 +47,7 @@ export default function TasksPage() {
     try {
       await api.put(`/cleaning-tasks/${id}/status`, {
         status,
-        updatedById: 'demo-user-id',
+        updatedById: currentUser?.id,
       });
       fetchTasks();
     } catch (error) {

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../utils/api';
 import { formatDate, formatCurrency } from '../utils/helpers';
+import { useCurrentUser } from '../utils/useCurrentUser';
 
 interface MonthlyReport {
   year: number;
@@ -22,6 +23,7 @@ export default function ReportsPage() {
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [exporting, setExporting] = useState(false);
+  const currentUser = useCurrentUser();
 
   useEffect(() => {
     fetchReport();
@@ -51,8 +53,8 @@ export default function ReportsPage() {
           year,
           month,
           filters: {},
-          operatorId: 'demo-user-id',
-          operatorName: '管理员',
+          operatorId: currentUser?.id || '',
+          operatorName: currentUser?.name || '未知',
         }),
       });
       

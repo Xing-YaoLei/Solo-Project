@@ -1,6 +1,7 @@
 import { ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
+import { useCurrentUser } from '../utils/useCurrentUser';
 
 interface LayoutProps {
   children: ReactNode;
@@ -8,6 +9,7 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   const router = useRouter();
+  const currentUser = useCurrentUser();
 
   const navItems = [
     { href: '/', label: '记录台', icon: '📋' },
@@ -18,6 +20,13 @@ export default function Layout({ children }: LayoutProps) {
     { href: '/logs', label: '操作日志', icon: '📝' },
     { href: '/missed-orders', label: '漏单处理', icon: '⚠️' },
   ];
+
+  const roleLabels: Record<string, string> = {
+    ADMIN: '管理员',
+    MANAGER: '经理',
+    HOUSEKEEPER: '保洁员',
+    RECEPTIONIST: '前台',
+  };
 
   return (
     <div className="min-h-screen flex">
@@ -48,11 +57,15 @@ export default function Layout({ children }: LayoutProps) {
         <div className="p-4 border-t border-gray-200">
           <div className="flex items-center">
             <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 font-medium text-sm">
-              管
+              {currentUser?.name?.[0] || '?'}
             </div>
             <div className="ml-3">
-              <p className="text-sm font-medium text-gray-900">管理员</p>
-              <p className="text-xs text-gray-500">admin@example.com</p>
+              <p className="text-sm font-medium text-gray-900">
+                {currentUser?.name || '加载中...'}
+              </p>
+              <p className="text-xs text-gray-500">
+                {currentUser?.email || ''}
+              </p>
             </div>
           </div>
         </div>
@@ -66,6 +79,9 @@ export default function Layout({ children }: LayoutProps) {
             )?.label || '首页'}
           </h2>
           <div className="flex items-center space-x-4">
+            <span className="text-xs text-gray-400">
+              {currentUser ? `${roleLabels[currentUser.role] || currentUser.role} · ${currentUser.name}` : ''}
+            </span>
             <button className="relative p-2 text-gray-400 hover:text-gray-600">
               <span className="text-xl">🔔</span>
               <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
