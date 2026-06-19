@@ -1,0 +1,170 @@
+// Prisma schema for Auto Repair Station Scheduling Funnel Report
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Vehicle {
+  id           String       @id @default(cuid())
+  plateNumber  String       @unique
+  model        String
+  ownerName    String
+  ownerPhone   String
+  vin          String?
+  mileage      Int?
+  color        String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  workOrders   WorkOrder[]
+
+  @@index([plateNumber])
+}
+
+model WorkStation {
+  id         String      @id @default(cuid())
+  name       String
+  type       String
+  isActive   Boolean     @default(true)
+  sortOrder  Int         @default(0)
+  createdAt  DateTime    @default(now())
+  workOrders WorkOrder[]
+
+  @@index([isActive])
+}
+
+model Technician {
+  id         String      @id @default(cuid())
+  name       String
+  role       String
+  phone      String?
+  isActive   Boolean     @default(true)
+  createdAt  DateTime    @default(now())
+  workOrders WorkOrder[]
+
+  @@index([isActive])
+}
+
+model WorkOrder {
+  id              String            @id @default(cuid())
+  orderNumber     String            @unique
+  vehicleId       String
+  stationId       String?
+  technicianId    String?
+  status          String            @default("pending")
+  totalAmount     Decimal           @default(0) @db.Decimal(12, 2)
+  isRework        Boolean           @default(false)
+  diagnosisResult String?
+  createdAt       DateTime          @default(now())
+  startedAt       DateTime?
+  completedAt     DateTime?
+  updatedAt       DateTime          @updatedAt
+  vehicle         Vehicle           @relation(fields: [vehicleId], references: [id])
+  station         WorkStation?      @relation(fields: [stationId], references: [id])
+  technician      Technician?       @relation(fields: [technicianId], references: [id])
+  items           WorkOrderItem[]
+  inspections     InspectionPhoto[]
+  diagnosisItems  DiagnosisResult[]
+  parts           PartUsage[]
+  insuranceDoc    InsuranceDoc?
+
+  @@index([vehicleId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([isRework])
+}
+
+model WorkOrderItem {
+  id         String   @id @default(cuid())
+  orderId    String
+  itemName   String
+  itemType   String   @default("service")
+  price      Decimal  @db.Decimal(12, 2)
+  quantity   Int      @default(1)
+  subtotal   Decimal  @db.Decimal(12, 2)
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  workOrder  WorkOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+}
+
+model InspectionPhoto {
+  id              String    @id @default(cuid())
+  orderId         String
+  photoUrl        String
+  inspectionType  String
+  isPassed        Boolean
+  remark          String?
+  createdAt       DateTime  @default(now())
+  workOrder       WorkOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([isPassed])
+  @@index([inspectionType])
+}
+
+model DiagnosisResult {
+  id         String    @id @default(cuid())
+  orderId    String
+  itemName   String
+  result     String
+  severity   String    @default("low")
+  isAbnormal Boolean   @default(false)
+  sortOrder  Int       @default(0)
+  createdAt  DateTime  @default(now())
+  workOrder  WorkOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([isAbnormal])
+  @@index([severity])
+}
+
+model PartUsage {
+  id         String    @id @default(cuid())
+  orderId    String
+  partId     String
+  partName   String
+  partCode   String?
+  quantity   Int       @default(1)
+  unitPrice  Decimal   @db.Decimal(12, 2)
+  subtotal   Decimal   @db.Decimal(12, 2)
+  usedAt     DateTime  @default(now())
+  workOrder  WorkOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([partId])
+}
+
+model InsuranceDoc {
+  id            String    @id @default(cuid())
+  orderId       String    @unique
+  company       String
+  policyNumber  String
+  claimAmount   Decimal   @default(0) @db.Decimal(12, 2)
+  claimStatus   String    @default("pending")
+  filedAt       DateTime?
+  settledAt     DateTime?
+  createdAt     DateTime  @default(now())
+  workOrder     WorkOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([claimStatus])
+}
+
+model ShareLink {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  role      String
+  scope     String[]
+  expiresAt DateTime?
+  createdAt DateTime @default(now())
+  createdBy String?
+
+  @@index([token])
+  @@index([expiresAt])
+}
