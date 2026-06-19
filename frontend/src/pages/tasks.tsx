@@ -17,16 +17,57 @@ interface CleaningTask {
   booking?: { id: string; guestName: string };
 }
 
+interface Property {
+  id: string;
+  name: string;
+  roomNumber: string;
+}
+
+interface Housekeeper {
+  id: string;
+  name: string;
+}
+
+interface CreateForm {
+  propertyId: string;
+  assignedToId: string;
+  taskDate: string;
+  scheduledStartTime: string;
+  scheduledEndTime: string;
+  priority: string;
+  notes: string;
+}
+
+const emptyForm: CreateForm = {
+  propertyId: '',
+  assignedToId: '',
+  taskDate: new Date().toISOString().split('T')[0],
+  scheduledStartTime: '09:00',
+  scheduledEndTime: '11:00',
+  priority: 'normal',
+  notes: '',
+};
+
 export default function TasksPage() {
   const [tasks, setTasks] = useState<CleaningTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createForm, setCreateForm] = useState<CreateForm>({ ...emptyForm });
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [housekeepers, setHousekeepers] = useState<Housekeeper[]>([]);
+  const [submitting, setSubmitting] = useState(false);
   const currentUser = useCurrentUser();
 
   useEffect(() => {
     fetchTasks();
   }, [statusFilter]);
+
+  useEffect(() => {
+    if (showCreateModal) {
+      fetchFormData();
+    }
+  }, [showCreateModal]);
 
   const fetchTasks = async () => {
     setLoading(true);
@@ -40,6 +81,49 @@ export default function TasksPage() {
       setTasks([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchFormData = async () => {
+    try {
+      const [propsResult, usersResult] = await Promise.all([
+        api.get('/properties') as unknown as Property[],
+        api.get('/users', { params: { role: 'HOUSEKEEPER' } }) as unknown as Housekeeper[],
+      ]);
+      setProperties(propsResult);
+      setHousekeepers(usersResult);
+    } catch {
+      setProperties([]);
+      setHousekeepers([]);
+    }
+  };
+
+  const handleCreate = async () => {
+    if (!createForm.propertyId || !createForm.taskDate) return;
+
+    setSubmitting(true);
+    try {
+      const scheduledStart = new Date(`${createForm.taskDate}T${createForm.scheduledStartTime}:00`);
+      const scheduledEnd = new Date(`${createForm.taskDate}T${createForm.scheduledEndTime}:00`);
+
+      await api.post('/cleaning-tasks', {
+        propertyId: createForm.propertyId,
+        assignedToId: createForm.assignedToId || undefined,
+        taskDate: new Date(createForm.taskDate),
+        scheduledStart,
+        scheduledEnd,
+        priority: createForm.priority,
+        notes: createForm.notes || undefined,
+        createdById: currentUser?.id,
+      });
+
+      setShowCreateModal(false);
+      setCreateForm({ ...emptyForm });
+      fetchTasks();
+    } catch (error) {
+      console.error('创建任务失败:', error);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -177,19 +261,163 @@ export default function TasksPage() {
 
       {showCreateModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4">新建保洁任务</h3>
-            <p className="text-gray-500 text-sm mb-4">
-              请选择房源和时间创建保洁任务
+          <div className="bg-white rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg font-semibold mb-1">新建保洁任务</h3>
+            <p className="text-sm text-gray-500 mb-5">
+              创建任务并指派保洁员，提交后立即生效
             </p>
-            <div className="flex justify-end space-x-3">
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  房源 <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={createForm.propertyId}
+                  onChange={(e) =>
+                    setCreateForm({ ...createForm, propertyId: e.target.value })
+                  }
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                >
+                  <option value="">请选择房源</option>
+                  {properties.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} - {p.roomNumber}
+                    </option>
+                  ))}
+                </select>
+                {properties.length === 0 && (
+                  <p className="text-xs text-gray-400 mt-1">
+                    暂无房源，请先在房源管理中添加
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  指派保洁员
+                </label>
+                <select
+                  value={createForm.assignedToId}
+                  onChange={(e) =>
+                    setCreateForm({ ...createForm, assignedToId: e.target.value })
+                  }
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                >
+                  <option value="">暂不指派</option>
+                  {housekeepers.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name}
+                    </option>
+                  ))}
+                </select>
+                {housekeepers.length === 0 && (
+                  <p className="text-xs text-gray-400 mt-1">
+                    暂无保洁员，请先在用户管理中添加
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  任务日期 <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="date"
+                  value={createForm.taskDate}
+                  onChange={(e) =>
+                    setCreateForm({ ...createForm, taskDate: e.target.value })
+                  }
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    计划开始 <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="time"
+                    value={createForm.scheduledStartTime}
+                    onChange={(e) =>
+                      setCreateForm({
+                        ...createForm,
+                        scheduledStartTime: e.target.value,
+                      })
+                    }
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    计划结束 <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="time"
+                    value={createForm.scheduledEndTime}
+                    onChange={(e) =>
+                      setCreateForm({
+                        ...createForm,
+                        scheduledEndTime: e.target.value,
+                      })
+                    }
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  优先级
+                </label>
+                <select
+                  value={createForm.priority}
+                  onChange={(e) =>
+                    setCreateForm({ ...createForm, priority: e.target.value })
+                  }
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                >
+                  <option value="low">低</option>
+                  <option value="normal">普通</option>
+                  <option value="high">高</option>
+                  <option value="urgent">紧急</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  备注
+                </label>
+                <textarea
+                  value={createForm.notes}
+                  onChange={(e) =>
+                    setCreateForm({ ...createForm, notes: e.target.value })
+                  }
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                  rows={3}
+                  placeholder="可选，填写任务相关备注"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3 mt-6">
               <button
-                onClick={() => setShowCreateModal(false)}
+                onClick={() => {
+                  setShowCreateModal(false);
+                  setCreateForm({ ...emptyForm });
+                }}
                 className="btn-secondary"
               >
                 取消
               </button>
-              <button className="btn">创建</button>
+              <button
+                onClick={handleCreate}
+                disabled={submitting || !createForm.propertyId || !createForm.taskDate}
+                className="btn"
+              >
+                {submitting ? '提交中...' : '创建并指派'}
+              </button>
             </div>
           </div>
         </div>
