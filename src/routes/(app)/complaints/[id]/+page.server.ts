@@ -11,23 +11,11 @@ export const load: PageServerLoad = async (event) => {
 		caller.tag.list({})
 	]);
 
-	const user = event.locals.user;
-	const userPerms: string[] = [];
-	let userRoleName = 'unknown';
-	if (user) {
-		const ctx = await import('$server/trpc/context');
-		const c = await ctx.createContext(event);
-		if (c.user) {
-			userRoleName = c.user.roleName;
-			for (const p of c.user.permissions) userPerms.push(p);
-		}
-	}
-
 	return {
 		complaint,
 		staff,
 		tags,
-		userPermissions: userPerms,
-		userRoleName
+		userPermissions: event.locals.user?.permissions ?? [],
+		userRoleName: event.locals.user?.roleName ?? 'unknown'
 	};
 };

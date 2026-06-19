@@ -14,8 +14,8 @@ export const load: PageServerLoad = async (event) => {
 		caller.report.byAssignee()
 	]);
 
-	const canExport = (event.locals.user as any)?.permissions?.includes('report:export')
-		|| (event.locals.user as any)?.permissions?.includes('complaint:export');
+	const perms = event.locals.user?.permissions ?? [];
+	const canExport = perms.includes('report:export') || perms.includes('complaint:export');
 
 	return {
 		closureDurationReport,

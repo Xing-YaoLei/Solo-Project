@@ -377,14 +377,34 @@ export const complaintRouter = router({
 	supplement: complaintGuard('complaint:supplement')
 		.input(z.object({
 			complaintId: z.string(),
-			note: z.string()
+			note: z.string(),
+			attachments: z.array(z.object({
+				fileName: z.string(),
+				fileUrl: z.string(),
+				fileType: z.string()
+			})).optional()
 		}))
 		.mutation(async ({ ctx, input }) => {
+			if (input.attachments && input.attachments.length > 0) {
+				await db.insert(attachments).values(
+					input.attachments.map((att) => ({
+						complaintId: input.complaintId,
+						fileName: att.fileName,
+						fileUrl: att.fileUrl,
+						fileType: att.fileType,
+						uploadedBy: ctx.user.id
+					}))
+				);
+			}
+
 			await db.insert(processingLogs).values({
 				complaintId: input.complaintId,
 				action: 'supplemented',
 				operatorId: ctx.user.id,
-				detail: { note: input.note }
+				detail: {
+					note: input.note,
+					attachmentCount: input.attachments?.length ?? 0
+				}
 			});
 
 			return { success: true };

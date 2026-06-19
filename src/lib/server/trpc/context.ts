@@ -2,8 +2,6 @@ import { initTRPC, TRPCError } from '@trpc/server';
 import type { RequestEvent } from '@sveltejs/kit';
 import superjson from 'superjson';
 import { db } from '$server/db';
-import { roles, permissions, rolePermissions } from '$server/db/schema';
-import { eq } from 'drizzle-orm';
 
 interface UserContext {
   id: string;
@@ -28,26 +26,6 @@ export async function createContext(event: RequestEvent): Promise<Context> {
     return { event, user: null, db };
   }
 
-  let userPerms: string[] = [];
-  try {
-    const rows = await db
-      .select({ code: permissions.code })
-      .from(rolePermissions)
-      .innerJoin(permissions, eq(rolePermissions.permissionId, permissions.id))
-      .where(eq(rolePermissions.roleId, user.roleId));
-    userPerms = rows.map((r) => r.code);
-  } catch {
-    userPerms = [];
-  }
-
-  let roleName = 'unknown';
-  try {
-    const [role] = await db.select({ name: roles.name }).from(roles).where(eq(roles.id, user.roleId));
-    if (role) roleName = role.name;
-  } catch {
-    roleName = 'unknown';
-  }
-
   return {
     event,
     user: {
@@ -55,9 +33,9 @@ export async function createContext(event: RequestEvent): Promise<Context> {
       username: user.username,
       displayName: user.displayName,
       roleId: user.roleId,
-      roleName,
+      roleName: user.roleName,
       phone: user.phone ?? null,
-      permissions: userPerms
+      permissions: user.permissions
     },
     db
   };

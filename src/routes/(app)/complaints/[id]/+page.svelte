@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { trpc } from '$lib/client/trpc';
-	import { STATUS_LABELS, STATUS_COLORS, canExport, canProcess } from '$lib/utils/permissions';
+	import { STATUS_LABELS, STATUS_COLORS } from '$lib/utils/permissions';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -25,6 +25,10 @@
 	let callbackSatisfied = $state(true);
 	let callbackComment = $state('');
 	let submitting = $state(false);
+
+	let supplementFiles = $state<File[]>([]);
+	let supplementAttachments = $state<Array<{ fileName: string; fileUrl: string; fileType: string }>>([]);
+	let supplementUploading = $state(false);
 
 	const tabs = [
 		{ key: 'detail', label: '详情' },
@@ -175,19 +179,46 @@
 		}
 	}
 
+	async function handleSupplementFileChange(files: FileList | null) {
+		if (!files || files.length === 0) return;
+		supplementFiles = [...supplementFiles, ...Array.from(files)];
+	}
+
+	function removeSupplementFile(index: number) {
+		supplementFiles = supplementFiles.filter((_, i) => i !== index);
+	}
+
 	async function handleSupplement() {
-		if (!supplementNote) return;
+		if (!supplementNote && supplementFiles.length === 0) return;
 		submitting = true;
+		supplementUploading = true;
 		try {
+			for (const file of supplementFiles) {
+				const formData = new FormData();
+				formData.append('file', file);
+				const resp = await fetch('/api/upload', { method: 'POST', body: formData });
+				if (!resp.ok) continue;
+				const result = await resp.json();
+				supplementAttachments.push({
+					fileName: result.fileName,
+					fileUrl: result.url,
+					fileType: result.fileType
+				});
+			}
+
 			await trpc.complaint.supplement.mutate({
 				complaintId: data.complaint.id,
-				note: supplementNote
+				note: supplementNote || '补充材料',
+				attachments: supplementAttachments.length > 0 ? supplementAttachments : undefined
 			});
 			showSupplementModal = false;
 			supplementNote = '';
+			supplementFiles = [];
+			supplementAttachments = [];
 			await goto(`/complaints/${data.complaint.id}`, { invalidateAll: true });
 		} finally {
 			submitting = false;
+			supplementUploading = false;
 		}
 	}
 
@@ -208,9 +239,26 @@
 		}
 	}
 
+	function isImage(file: File) {
+		return file.type.startsWith('image/');
+	}
+
 	const overdue = $derived(getOverdueStatus());
-	const isVisitor = $derived(data.userRoleName === 'visitor');
 	const hasPerm = (code: string) => (data as any).userPermissions?.includes(code) ?? false;
+
+	const availableActions = $derived([
+		data.complaint.status === 'pending' && hasPerm('complaint:assign'),
+		data.complaint.status === 'assigned' && hasPerm('complaint:assign'),
+		data.complaint.status === 'in_progress' && hasPerm('complaint:close'),
+		data.complaint.status === 'resolved' && hasPerm('complaint:close'),
+		data.complaint.status !== 'closed' && data.complaint.status !== 'rejected' && hasPerm('complaint:escalate'),
+		data.complaint.status !== 'closed' && data.complaint.status !== 'rejected' && hasPerm('complaint:supplement'),
+		data.complaint.status !== 'closed' && data.complaint.status !== 'rejected' && hasPerm('complaint:reject'),
+		data.complaint.status === 'rejected' && hasPerm('complaint:resubmit'),
+		!!data.complaint.assigneeId && data.complaint.status !== 'closed' && hasPerm('complaint:reassign'),
+		(data.complaint.status === 'resolved' || data.complaint.status === 'closed') && hasPerm('complaint:callback')
+	]);
+	const hasAnyAction = $derived(availableActions.some(Boolean));
 </script>
 
 <svelte:head>
@@ -396,6 +444,9 @@
 												{#if log.detail && typeof log.detail === 'object' && 'note' in log.detail}
 													<p class="text-sm text-slate-600">{(log.detail as { note: string }).note}</p>
 												{/if}
+												{#if log.detail && typeof log.detail === 'object' && 'attachmentCount' in log.detail && (log.detail as { attachmentCount: number }).attachmentCount > 0}
+													<p class="text-xs text-slate-500">附件 { (log.detail as { attachmentCount: number }).attachmentCount } 个</p>
+												{/if}
 											</div>
 										</div>
 									{/each}
@@ -422,7 +473,7 @@
 						</button>
 					{/if}
 
-					{#if data.complaint.status === 'assigned' && (hasPerm('complaint:assign') || hasPerm('complaint:create'))}
+					{#if data.complaint.status === 'assigned' && hasPerm('complaint:assign')}
 						<button
 							onclick={handleStartProgress}
 							disabled={submitting}
@@ -432,7 +483,7 @@
 						</button>
 					{/if}
 
-					{#if data.complaint.status === 'in_progress' && (hasPerm('complaint:assign') || hasPerm('complaint:close'))}
+					{#if data.complaint.status === 'in_progress' && hasPerm('complaint:close')}
 						<button
 							onclick={handleResolve}
 							disabled={submitting}
@@ -461,7 +512,7 @@
 						</button>
 					{/if}
 
-					{#if data.complaint.status !== 'closed' && data.complaint.status !== 'rejected' && (hasPerm('complaint:supplement') || hasPerm('complaint:create'))}
+					{#if data.complaint.status !== 'closed' && data.complaint.status !== 'rejected' && hasPerm('complaint:supplement')}
 						<button
 							onclick={() => showSupplementModal = true}
 							class="w-full py-2 px-4 border border-slate-300 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition"
@@ -479,7 +530,7 @@
 						</button>
 					{/if}
 
-					{#if data.complaint.status === 'rejected' && (hasPerm('complaint:resubmit') || isVisitor)}
+					{#if data.complaint.status === 'rejected' && hasPerm('complaint:resubmit')}
 						<button
 							onclick={() => showResubmitModal = true}
 							class="w-full py-2 px-4 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition"
@@ -506,18 +557,7 @@
 						</button>
 					{/if}
 
-					{#if ![
-						data.complaint.status === 'pending' && hasPerm('complaint:assign'),
-						data.complaint.status === 'assigned' && (hasPerm('complaint:assign') || hasPerm('complaint:create')),
-						data.complaint.status === 'in_progress' && (hasPerm('complaint:assign') || hasPerm('complaint:close')),
-						data.complaint.status === 'resolved' && hasPerm('complaint:close'),
-						data.complaint.status !== 'closed' && data.complaint.status !== 'rejected' && hasPerm('complaint:escalate'),
-						data.complaint.status !== 'closed' && data.complaint.status !== 'rejected' && (hasPerm('complaint:supplement') || hasPerm('complaint:create')),
-						data.complaint.status !== 'closed' && data.complaint.status !== 'rejected' && hasPerm('complaint:reject'),
-						data.complaint.status === 'rejected' && (hasPerm('complaint:resubmit') || isVisitor),
-						data.complaint.assigneeId && data.complaint.status !== 'closed' && hasPerm('complaint:reassign'),
-						(data.complaint.status === 'resolved' || data.complaint.status === 'closed') && hasPerm('complaint:callback')
-					].some(Boolean)}
+					{#if !hasAnyAction}
 						<p class="text-xs text-slate-400 text-center py-2">暂无可用操作</p>
 					{/if}
 				</div>
@@ -728,28 +768,67 @@
 
 {#if showSupplementModal}
 	<div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onclick={() => showSupplementModal = false}>
-		<div class="bg-white rounded-xl p-6 w-full max-w-md mx-4 animate-fade-in" onclick={(e) => e.stopPropagation()}>
+		<div class="bg-white rounded-xl p-6 w-full max-w-lg mx-4 animate-fade-in" onclick={(e) => e.stopPropagation()}>
 			<h3 class="text-lg font-semibold text-slate-800 mb-4">补充材料</h3>
 			<div class="space-y-4">
 				<div>
 					<label class="block text-sm font-medium text-slate-700 mb-1">补充说明</label>
 					<textarea
 						bind:value={supplementNote}
-						rows={4}
+						rows={3}
 						class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none"
 						placeholder="请输入补充材料说明..."
 					></textarea>
 				</div>
+				<div>
+					<label class="block text-sm font-medium text-slate-700 mb-1">证据附件</label>
+					<label class="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer bg-slate-50 hover:bg-slate-100 transition">
+						<div class="flex flex-col items-center justify-center pt-5 pb-6">
+							<svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-slate-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+								<path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+							</svg>
+							<p class="mb-1 text-sm text-slate-500">点击或拖拽文件到此处上传</p>
+							<p class="text-xs text-slate-400">支持图片、视频、PDF、Word，单个文件 10MB</p>
+						</div>
+						<input type="file" multiple class="hidden" onchange={(e) => handleSupplementFileChange((e.target as HTMLInputElement).files)} />
+					</label>
+					{#if supplementFiles.length > 0}
+						<div class="mt-3 space-y-2">
+							{#each supplementFiles as file, index}
+								<div class="flex items-center gap-3 p-2 bg-slate-50 rounded-lg">
+									{#if isImage(file)}
+										<img src={URL.createObjectURL(file)} alt="" class="w-10 h-10 rounded object-cover" />
+									{:else}
+										<div class="w-10 h-10 bg-slate-200 rounded-lg flex items-center justify-center">
+											<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+												<path stroke-linecap="round" stroke-linejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+											</svg>
+										</div>
+									{/if}
+									<div class="flex-1 min-w-0">
+										<p class="text-sm text-slate-700 truncate">{file.name}</p>
+										<p class="text-xs text-slate-400">{(file.size / 1024).toFixed(1)} KB</p>
+									</div>
+									<button onclick={() => removeSupplementFile(index)} class="text-slate-400 hover:text-red-500 transition" disabled={supplementUploading}>
+										<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+											<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+										</svg>
+									</button>
+								</div>
+							{/each}
+						</div>
+					{/if}
+				</div>
 				<div class="flex justify-end gap-3 pt-2">
-					<button onclick={() => showSupplementModal = false} class="px-4 py-2 text-sm text-slate-600 hover:text-slate-800 transition">
+					<button onclick={() => showSupplementModal = false} class="px-4 py-2 text-sm text-slate-600 hover:text-slate-800 transition" disabled={supplementUploading}>
 						取消
 					</button>
 					<button
 						onclick={handleSupplement}
-						disabled={submitting || !supplementNote}
+						disabled={submitting || (!supplementNote && supplementFiles.length === 0)}
 						class="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition disabled:opacity-50"
 					>
-						确认补充
+						{supplementUploading ? '上传中...' : '确认补充'}
 					</button>
 				</div>
 			</div>
