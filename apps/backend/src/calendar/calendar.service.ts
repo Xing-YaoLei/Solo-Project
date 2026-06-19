@@ -9,14 +9,30 @@ export class CalendarService {
   async getCalendar(propertyId: number, params: {
     startDate?: string;
     endDate?: string;
+    year?: number;
+    month?: number;
     roomId?: number;
   }) {
-    const { startDate, endDate, roomId } = params;
+    const { startDate, endDate, year, month, roomId } = params;
 
     const where: any = { propertyId };
     if (roomId) where.roomId = roomId;
-    if (startDate) where.date = { ...where.date, gte: new Date(startDate) };
-    if (endDate) where.date = { ...where.date, lte: new Date(endDate) };
+
+    let start: Date;
+    let end: Date;
+
+    if (year && month) {
+      start = new Date(year, month - 1, 1);
+      end = new Date(year, month, 0);
+    } else if (startDate && endDate) {
+      start = new Date(startDate);
+      end = new Date(endDate);
+    } else {
+      start = new Date();
+      end = new Date(start.getTime() + 30 * 24 * 60 * 60 * 1000);
+    }
+
+    where.date = { gte: start, lte: end };
 
     const calendarData = await this.prisma.roomCalendar.findMany({
       where,
@@ -35,9 +51,6 @@ export class CalendarService {
     });
 
     const dates: Date[] = [];
-    const start = startDate ? new Date(startDate) : new Date();
-    const end = endDate ? new Date(endDate) : new Date(start.getTime() + 30 * 24 * 60 * 60 * 1000);
-    
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
       dates.push(new Date(d));
     }
@@ -59,6 +72,44 @@ export class CalendarService {
         calendar: roomCalendar,
       };
     });
+
+    if (year && month) {
+      const monthStartDay = start.getDay();
+      const daysInMonth = end.getDate();
+      const matrix: any[][] = [];
+      let currentWeek: any[] = [];
+      for (let i = 0; i < monthStartDay; i++) {
+        currentWeek.push(null);
+      }
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dateObj = new Date(year, month - 1, day);
+        const dateStr = dateObj.toISOString().split('T')[0];
+        let aggregatedStatus = RoomStatus.AVAILABLE;
+        const dayRecords = calendarData.filter(c => this.isSameDay(c.date, dateObj));
+        if (dayRecords.length > 0) {
+          const statuses = dayRecords.map(r => r.status);
+          if (statuses.includes(RoomStatus.OCCUPIED)) aggregatedStatus = RoomStatus.OCCUPIED;
+          else if (statuses.includes(RoomStatus.MAINTENANCE)) aggregatedStatus = RoomStatus.MAINTENANCE;
+          else if (statuses.includes(RoomStatus.CLEANING)) aggregatedStatus = RoomStatus.CLEANING;
+        }
+        currentWeek.push({ date: dateStr, status: aggregatedStatus });
+        if (currentWeek.length === 7) {
+          matrix.push(currentWeek);
+          currentWeek = [];
+        }
+      }
+      if (currentWeek.length > 0) {
+        while (currentWeek.length < 7) currentWeek.push(null);
+        matrix.push(currentWeek);
+      }
+      return {
+        dates: dates.map(d => d.toISOString().split('T')[0]),
+        rooms: calendarMatrix,
+        matrix,
+        year,
+        month,
+      };
+    }
 
     return {
       dates: dates.map(d => d.toISOString().split('T')[0]),

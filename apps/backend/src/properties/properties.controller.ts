@@ -15,17 +15,21 @@ export class PropertiesController {
 
   @Get()
   @ApiOperation({ summary: '获取房源列表' })
-  findAll(
+  async findAll(
     @Req() req: any,
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
     @Query('keyword') keyword?: string,
   ) {
-    return this.propertiesService.findAll(req.user, {
+    const result = await this.propertiesService.findAll(req.user, {
       page: page ? parseInt(page) : undefined,
       pageSize: pageSize ? parseInt(pageSize) : undefined,
       keyword,
     });
+    if (!page && !pageSize) {
+      return result.list;
+    }
+    return result;
   }
 
   @Get(':id')

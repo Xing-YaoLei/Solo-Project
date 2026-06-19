@@ -6,16 +6,21 @@ import { cn } from '@/lib/utils';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, token, isLoading } = useAuthStore();
+  const { login, token, user, isLoading } = useAuthStore();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
-    if (token) {
-      router.push('/');
+    setIsHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (isHydrated && token && user) {
+      router.replace('/');
     }
-  }, [token, router]);
+  }, [isHydrated, token, user, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,7 +33,7 @@ export default function LoginPage() {
 
     try {
       await login(username, password);
-      router.push('/');
+      router.replace('/');
     } catch (err: any) {
       setError(err.toString() || '登录失败，请检查用户名和密码');
     }
@@ -38,6 +43,14 @@ export default function LoginPage() {
     setUsername(user);
     setPassword('password123');
   };
+
+  if (!isHydrated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-gray-500">加载中...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-blue-50 flex items-center justify-center p-4">
@@ -67,6 +80,7 @@ export default function LoginPage() {
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="请输入用户名"
                   className="input pl-10"
+                  autoComplete="username"
                 />
               </div>
             </div>
@@ -83,6 +97,7 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="请输入密码"
                   className="input pl-10"
+                  autoComplete="current-password"
                 />
               </div>
             </div>
@@ -109,26 +124,30 @@ export default function LoginPage() {
             <p className="text-sm text-gray-500 mb-3 text-center">快速登录（测试账号）</p>
             <div className="grid grid-cols-2 gap-2">
               <button
+                type="button"
                 onClick={() => quickLogin('admin')}
-                className="text-sm px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700"
+                className="text-sm px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700 transition-colors"
               >
                 管理员
               </button>
               <button
+                type="button"
                 onClick={() => quickLogin('manager')}
-                className="text-sm px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700"
+                className="text-sm px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700 transition-colors"
               >
                 经理
               </button>
               <button
+                type="button"
                 onClick={() => quickLogin('frontline1')}
-                className="text-sm px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700"
+                className="text-sm px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700 transition-colors"
               >
                 前台
               </button>
               <button
+                type="button"
                 onClick={() => quickLogin('frontline2')}
-                className="text-sm px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700"
+                className="text-sm px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700 transition-colors"
               >
                 保洁
               </button>

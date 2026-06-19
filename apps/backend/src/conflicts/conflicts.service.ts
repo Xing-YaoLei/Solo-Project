@@ -194,8 +194,15 @@ export class ConflictsService {
       ],
       include: {
         property: { select: { name: true } },
-        room: { select: { roomNumber: true } },
+        room: {
+          select: {
+            roomNumber: true,
+            property: { select: { name: true } },
+          },
+        },
         order: { select: { orderNo: true, guestName: true } },
+        reportedBy: { select: { fullName: true } },
+        communications: { select: { id: true } },
       },
       take: 10,
     });

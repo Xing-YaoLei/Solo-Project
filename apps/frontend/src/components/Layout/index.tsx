@@ -1,36 +1,14 @@
 import { ReactNode } from 'react';
-import { useRouter } from 'next/router';
-import { useEffect, useState } from 'react';
-import { useAuthStore } from '@/store/auth';
 import Sidebar from './Sidebar';
 import Header from './Header';
+import { useAuthStore } from '@/store/auth';
 
 interface LayoutProps {
-  children: ReactNode;
+  children?: ReactNode;
 }
 
 export default function Layout({ children }: LayoutProps) {
-  const router = useRouter();
-  const { token, user } = useAuthStore();
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (isMounted && !token && router.pathname !== '/login') {
-      router.push('/login');
-    }
-  }, [token, router, isMounted]);
-
-  if (!isMounted || !token) {
-    return <div className="min-h-screen bg-gray-50" />;
-  }
-
-  if (router.pathname === '/login') {
-    return <>{children}</>;
-  }
+  const { user } = useAuthStore();
 
   return (
     <div className="flex h-screen bg-gray-50">

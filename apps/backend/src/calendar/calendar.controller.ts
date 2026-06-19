@@ -17,11 +17,15 @@ export class CalendarController {
     @Param('propertyId') propertyId: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
+    @Query('year') year?: string,
+    @Query('month') month?: string,
     @Query('roomId') roomId?: string,
   ) {
     return this.calendarService.getCalendar(parseInt(propertyId), {
       startDate,
       endDate,
+      year: year ? parseInt(year) : undefined,
+      month: month ? parseInt(month) : undefined,
       roomId: roomId ? parseInt(roomId) : undefined,
     });
   }
