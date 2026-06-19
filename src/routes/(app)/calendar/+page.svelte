@@ -14,6 +14,7 @@
 	let currentMonth = startOfMonth(new Date());
 	let selectedPropertyIds: string[] = [];
 	let propertiesLoaded = false;
+	let autoSelectedDone = false;
 
 	let editingCell: any = null;
 	let editStatus: RoomStatusType = 'available';
@@ -52,12 +53,13 @@
 	};
 
 	// ===== 响应式副作用（Reactive Effects）=====
-	$: if (propertiesLoaded && properties.length > 0 && selectedPropertyIds.length === 0) {
+	$: if (propertiesLoaded && properties.length > 0 && !autoSelectedDone) {
+		autoSelectedDone = true;
 		selectedPropertyIds = properties.map((p) => p.id);
 	}
 
-	$: if (propertiesLoaded) {
-		loadCalendar();
+	$: if (propertiesLoaded && selectedPropertyIds.length > 0 && autoSelectedDone) {
+		loadCalendar(currentMonth, selectedPropertyIds);
 	}
 
 	// ===== 动作（Actions）=====
@@ -73,36 +75,44 @@
 		}
 	}
 
+	function selectAll() {
+		selectedPropertyIds = properties.map((p) => p.id);
+	}
+
+	function clearSelection() {
+		selectedPropertyIds = [];
+	}
+
 	async function loadProperties() {
 		properties = await trpcClient.property.list.query({ status: 'active' });
 		propertiesLoaded = true;
 	}
 
-	async function loadCalendar() {
+	async function loadCalendar(month: Date, propIds: string[]) {
+		if (propIds.length === 0) {
+			calendars = [];
+			return;
+		}
 		loading = true;
 		try {
-			const propsToQuery = selectedPropertyIds.length > 0
-				? selectedPropertyIds
-				: properties.map((p) => p.id);
-			if (propsToQuery.length === 0) {
-				calendars = [];
-				return;
-			}
 			calendars = await trpcClient.property.getCalendar.query({
-				propertyIds: propsToQuery,
-				startDate: startOfDay(new Date(startOfMonth(currentMonth).getTime() - 7 * 86400000)),
-				endDate: startOfDay(new Date(endOfMonth(currentMonth).getTime() + 7 * 86400000))
+				propertyIds: propIds,
+				startDate: startOfDay(new Date(startOfMonth(month).getTime() - 7 * 86400000)),
+				endDate: startOfDay(new Date(endOfMonth(month).getTime() + 7 * 86400000))
 			});
 		} finally {
 			loading = false;
 		}
 	}
 
+	function refreshCalendar() {
+		loadCalendar(currentMonth, selectedPropertyIds);
+	}
+
 	async function loadAll() {
 		loading = true;
 		try {
 			await loadProperties();
-			await loadCalendar();
 		} finally {
 			loading = false;
 		}
@@ -127,7 +137,7 @@
 			price: editPrice ?? undefined
 		});
 		editingCell = null;
-		loadCalendar();
+		refreshCalendar();
 	}
 
 	function cancelEdit() { editingCell = null; }
@@ -166,7 +176,15 @@
 
 	<!-- 房源筛选 -->
 	<div class="card card-body">
-		<div class="text-sm font-medium text-gray-700 mb-2">选择房源显示</div>
+		<div class="flex items-center justify-between mb-2">
+			<div class="text-sm font-medium text-gray-700">选择房源显示</div>
+			<div class="flex items-center gap-2 text-xs">
+				<button on:click={selectAll} class="text-primary-600 hover:text-primary-700">全选</button>
+				<span class="text-gray-300">|</span>
+				<button on:click={clearSelection} class="text-gray-500 hover:text-gray-700">清空</button>
+				<span class="text-gray-400 ml-1">({selectedPropertyIds.length}/{properties.length})</span>
+			</div>
+		</div>
 		<div class="flex flex-wrap gap-2">
 			{#each properties as p}
 				<label class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border cursor-pointer text-sm transition-colors {selectedPropertyIds.includes(p.id) ? 'bg-primary-50 border-primary-200 text-primary-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}">
