@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timedelta, date
 from typing import Optional, List, Tuple
 from decimal import Decimal
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 from sqlalchemy import func, and_, or_, between, cast, Date as SqlaDate
 
 from ..models import (
@@ -355,11 +355,21 @@ class OrderService:
 
     @staticmethod
     def get(db: Session, id: int) -> Optional[Order]:
-        return db.query(Order).filter(Order.id == id).first()
+        return db.query(Order).options(
+            joinedload(Order.package),
+            joinedload(Order.verification),
+            joinedload(Order.deposit),
+            selectinload(Order.status_logs)
+        ).filter(Order.id == id).first()
 
     @staticmethod
     def get_by_no(db: Session, order_no: str) -> Optional[Order]:
-        return db.query(Order).filter(Order.order_no == order_no).first()
+        return db.query(Order).options(
+            joinedload(Order.package),
+            joinedload(Order.verification),
+            joinedload(Order.deposit),
+            selectinload(Order.status_logs)
+        ).filter(Order.order_no == order_no).first()
 
     @staticmethod
     def list(db: Session, skip: int = 0, limit: int = 20,
@@ -370,17 +380,13 @@ class OrderService:
              keyword: Optional[str] = None,
              start_date: Optional[date] = None,
              end_date: Optional[date] = None) -> Tuple[List[Order], int]:
-        query = db.query(Order).options(
-            joinedload(Order.package),
-            joinedload(Order.verification),
-            joinedload(Order.deposit)
-        )
+        base_query = db.query(Order)
         if status:
-            query = query.filter(Order.status == status)
+            base_query = base_query.filter(Order.status == status)
         if verification_status:
             try:
                 vs = VerificationStatus(verification_status)
-                query = query.join(Verification, Verification.order_id == Order.id).filter(
+                base_query = base_query.join(Verification, Verification.order_id == Order.id).filter(
                     Verification.status == vs
                 )
             except ValueError:
@@ -388,25 +394,41 @@ class OrderService:
         if deposit_status:
             try:
                 ds = DepositStatus(deposit_status)
-                query = query.join(Deposit, Deposit.order_id == Order.id).filter(
+                base_query = base_query.join(Deposit, Deposit.order_id == Order.id).filter(
                     Deposit.status == ds
                 )
             except ValueError:
                 pass
         if package_id:
-            query = query.filter(Order.package_id == package_id)
+            base_query = base_query.filter(Order.package_id == package_id)
         if keyword:
-            query = query.filter(or_(
+            base_query = base_query.filter(or_(
                 Order.order_no.ilike(f"%{keyword}%"),
                 Order.customer_name.ilike(f"%{keyword}%"),
                 Order.customer_phone.ilike(f"%{keyword}%")
             ))
         if start_date:
-            query = query.filter(Order.check_in_date >= start_date)
+            base_query = base_query.filter(Order.check_in_date >= start_date)
         if end_date:
-            query = query.filter(Order.check_in_date <= end_date)
-        total = query.count()
-        items = query.order_by(Order.created_at.desc()).offset(skip).limit(limit).all()
+            base_query = base_query.filter(Order.check_in_date <= end_date)
+
+        total = base_query.with_entities(func.count(func.distinct(Order.id))).scalar() or 0
+
+        order_ids = [
+            r[0] for r in base_query.with_entities(Order.id)
+            .order_by(Order.created_at.desc())
+            .offset(skip).limit(limit).all()
+        ]
+
+        items = []
+        if order_ids:
+            items = db.query(Order).options(
+                joinedload(Order.package),
+                joinedload(Order.verification),
+                joinedload(Order.deposit)
+            ).filter(Order.id.in_(order_ids)).all()
+            items.sort(key=lambda o: -o.created_at.timestamp() if o.created_at else 0)
+
         return items, total
 
     @staticmethod

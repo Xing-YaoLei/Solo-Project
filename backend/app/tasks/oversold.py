@@ -10,7 +10,10 @@ logger = logging.getLogger(__name__)
              max_retries=3, default_retry_delay=60)
 def detect_oversold_globally(self):
     from ..core.database import SessionLocal
-    from ..models import PackageInventory, Package, Order, OrderStatus, AnomalyOrder, AnomalyType
+    from ..models import (
+        PackageInventory, Package, Order, OrderStatus,
+        AnomalyOrder, AnomalyType, AnomalyStatus
+    )
     from ..services import generate_anomaly_no
 
     db = SessionLocal()
@@ -53,7 +56,7 @@ def detect_oversold_globally(self):
                     package_id=inv.package_id,
                     order_id=affected_orders[0].id if affected_orders else None,
                     anomaly_type=AnomalyType.OVERSOLD,
-                    status="open",
+                    status=AnomalyStatus.OPEN,
                     title=f"自动超卖检测 - {pkg_name} @{inv.inventory_date.isoformat()}",
                     description=(f"Celery任务检测到套餐【{pkg_name}】在{inv.inventory_date.isoformat()} "
                                  f"超卖{oversold_count}间：总库存{inv.total_quantity}, "
