@@ -1,0 +1,149 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum UserRole {
+  ADMIN
+  DISPATCHER
+  INSPECTOR
+  VIEWER
+}
+
+enum QuoteStatus {
+  DRAFT
+  APPROVED
+  COMPLETED
+}
+
+enum WorkorderStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum AnnotationType {
+  SCRATCH
+  DENT
+  MISSING_PART
+  OTHER
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  role      UserRole
+  avatarUrl String?
+  createdAt DateTime @default(now())
+
+  workorders  Workorder[]
+  inspections Inspection[]
+  shareLinks ShareLink[]
+}
+
+model Station {
+  id     String  @id @default(uuid())
+  name   String
+  type   String
+  isActive Boolean @default(true)
+
+  workorders Workorder[]
+}
+
+model Workorder {
+  id          String   @id @default(uuid())
+  woNo        String   @unique
+  vehiclePlate String
+  stationId   String
+  userId      String
+  status      WorkorderStatus @default(PENDING)
+  isReworked  Boolean  @default(false)
+  totalAmount Decimal  @default(0)
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+
+  station     Station  @relation(fields: [stationId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+  quote     Quote?
+  inspections Inspection[]
+}
+
+model Quote {
+  id           String   @id @default(uuid())
+  quoteNo      String   @unique
+  workorderId  String   @unique
+  customerName String
+  totalAmount  Decimal  @default(0)
+  status       QuoteStatus @default(DRAFT)
+  createdAt    DateTime @default(now())
+
+  workorder    Workorder @relation(fields: [workorderId], references: [id])
+  items        QuoteItem[]
+}
+
+model QuoteItem {
+  id          String  @id @default(uuid())
+  quoteId     String
+  description String
+  quantity    Int
+  unitPrice   Decimal @default(0)
+  partId      String?
+
+  quote       Quote          @relation(fields: [quoteId], references: [id])
+  part        InventoryItem? @relation(fields: [partId], references: [id])
+}
+
+model InventoryCategory {
+  id   String @id @default(uuid())
+  name String @unique
+
+  items InventoryItem[]
+}
+
+model InventoryItem {
+  id           String   @id @default(uuid())
+  sku          String   @unique
+  name         String
+  categoryId   String
+  quantity     Int      @default(0)
+  minThreshold Int      @default(0)
+  unitValue    Decimal  @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  category     InventoryCategory @relation(fields: [categoryId], references: [id])
+  quoteItems   QuoteItem[]
+}
+
+model Inspection {
+  id           String   @id @default(uuid())
+  workorderId  String
+  inspectorId  String
+  vehiclePlate String
+  photoUrl     String
+  hasAnomaly   Boolean  @default(false)
+  annotations  Json[]
+  createdAt    DateTime @default(now())
+
+  workorder    Workorder @relation(fields: [workorderId], references: [id])
+  inspector    User     @relation(fields: [inspectorId], references: [id])
+}
+
+model ShareLink {
+  id          String   @id @default(uuid())
+  token       String   @unique
+  creatorId   String
+  allowedRole UserRole
+  scope       Json
+  expiresAt   DateTime?
+  createdAt   DateTime @default(now())
+
+  creator     User     @relation(fields: [creatorId], references: [id])
+}

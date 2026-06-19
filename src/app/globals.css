@@ -1,0 +1,58 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-space-grotesk: 'Space Grotesk', system-ui, sans-serif;
+  --font-jetbrains-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+html,
+body {
+  background-color: #020617;
+  color: #F1F5F9;
+  min-height: 100vh;
+  font-family: var(--font-jetbrains-mono);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1E293B;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #475569;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #64748B;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .card-gradient {
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%);
+    backdrop-filter: blur(10px);
+  }
+
+  .gap-glow {
+    animation: gap-glow 2s ease-in-out infinite;
+  }
+}
+
+@keyframes gap-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 4px rgba(220, 38, 38, 0.6));
+  }
+  50% {
+    filter: drop-shadow(0 0 12px rgba(220, 38, 38, 0.9));
+  }
+}
