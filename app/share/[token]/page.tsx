@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Header } from '@/components/Header';
 import { MetricCard } from '@/components/MetricCard';
 import { CheckinTrendChart } from '@/components/charts/CheckinTrendChart';
 import { DepositPieChart } from '@/components/charts/DepositPieChart';
@@ -40,13 +39,15 @@ export default function SharePage() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [punctualityRate, setPunctualityRate] = useState(0);
 
+  const shareHeaders = () => new Headers({ 'X-Share-Token': token });
+
   useEffect(() => {
     const validateToken = async () => {
       const result = await validateShareToken(token);
       if (result.valid && result.authContext) {
         setAuth(result.authContext);
         setIsValid(true);
-        await loadDashboardData(result.authContext);
+        await loadDashboardData();
       } else {
         setIsValid(false);
         setError(result.error || '链接无效');
@@ -55,9 +56,9 @@ export default function SharePage() {
     validateToken();
   }, [token]);
 
-  const loadDashboardData = async (authContext: AuthContext) => {
+  const loadDashboardData = async () => {
     try {
-      const res = await fetch('/api/dashboard?days=30');
+      const res = await fetch('/api/dashboard?days=30', { headers: shareHeaders() });
       const data: ApiResponse<DashboardSummary> = await res.json();
       if (data.success && data.data) {
         setSummary(data.data);
@@ -70,15 +71,11 @@ export default function SharePage() {
   };
 
   const handleRefresh = async () => {
-    if (!auth) return;
     setIsRefreshing(true);
     try {
-      const res = await fetch('/api/refresh', { method: 'POST' });
-      const result = await res.json();
-      if (result.success) {
-        setLastRefreshedAt(result.data.refreshedAt);
-        await loadDashboardData(auth);
-      }
+      await fetch('/api/refresh', { method: 'POST', headers: shareHeaders() });
+      setLastRefreshedAt(new Date().toISOString());
+      await loadDashboardData();
     } catch (err) {
       console.error('Refresh failed:', err);
     } finally {
@@ -136,6 +133,11 @@ export default function SharePage() {
                     分享视图 · {auth?.user ? ROLE_LABELS[auth.user.role] : ''}
                   </span>
                 </div>
+                {auth?.dataScope?.hotelIds && auth.dataScope.hotelIds.length > 0 && (
+                  <span className="text-xs text-slate-400">
+                    数据范围: {auth.dataScope.hotelIds.length} 家门店
+                  </span>
+                )}
                 <span className="text-sm text-slate-400">
                   最近刷新: {formatDateTime(lastRefreshedAt)}
                 </span>
@@ -225,7 +227,7 @@ export default function SharePage() {
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-white">入住证件趋势</h3>
-                    <p className="text-sm text-slate-400">近30天入住证件办理数量与异常率趋势</p>
+                    <p className="text-sm text-slate-400">近30天入住证件办理数量与异常率趋势（{auth?.dataScope.role === 'admin' ? '全部门店' : `指定门店`}）</p>
                   </div>
                 </div>
                 <CheckinTrendChart data={summary?.checkinTrend ?? []} height={350} />
@@ -305,6 +307,24 @@ export default function SharePage() {
             />
           </div>
         )}
+
+        <div className="glass-card p-6 mt-8">
+          <h3 className="text-lg font-semibold text-white mb-4">数据来源说明</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div className="p-4 rounded-lg bg-slate-800/50 border border-white/5">
+              <p className="font-medium text-blue-400 mb-1">门锁记录</p>
+              <p className="text-slate-400">实时同步各门店门锁系统的开锁记录，用于验证保洁人员到岗时间，驱动保洁准时率计算</p>
+            </div>
+            <div className="p-4 rounded-lg bg-slate-800/50 border border-white/5">
+              <p className="font-medium text-green-400 mb-1">OTA订单</p>
+              <p className="text-slate-400">对接携程、美团、飞猪等平台订单数据，获取入住信息、押金状态、订单金额用于押金明细构成</p>
+            </div>
+            <div className="p-4 rounded-lg bg-slate-800/50 border border-white/5">
+              <p className="font-medium text-orange-400 mb-1">客服消息</p>
+              <p className="text-slate-400">整合客服对话记录，作为客诉处理的明细追溯来源，证据链可视化</p>
+            </div>
+          </div>
+        </div>
       </main>
 
       {showExportModal && (
@@ -312,6 +332,7 @@ export default function SharePage() {
           isOpen={showExportModal}
           onClose={() => setShowExportModal(false)}
           punctualityRate={punctualityRate}
+          shareToken={token}
         />
       )}
     </div>

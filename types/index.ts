@@ -41,7 +41,7 @@ export interface CustomerMessage {
   sender: 'guest' | 'staff' | 'system';
   content: string;
   timestamp: string;
-  attachments?: string;
+  attachments?: string | string[];
 }
 
 export interface ComplaintEvidence {

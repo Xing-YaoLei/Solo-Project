@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -48,8 +48,8 @@ model OtaOrder {
   guestName       String
   checkinDate     DateTime
   checkoutDate    DateTime
-  totalAmount     Float
-  depositAmount   Float
+  totalAmount     Decimal            @db.Decimal(10, 2)
+  depositAmount   Decimal            @db.Decimal(10, 2)
   status          String
   createdAt       DateTime           @default(now())
   hotel           Hotel              @relation(fields: [hotelId], references: [id])
@@ -74,10 +74,10 @@ model CheckinRecord {
 model DepositRecord {
   id               String     @id @default(uuid())
   orderId          String
-  totalAmount      Float
+  totalAmount      Decimal    @db.Decimal(10, 2)
   status           String
-  refundedAmount   Float      @default(0)
-  deductedAmount   Float      @default(0)
+  refundedAmount   Decimal    @default(0) @db.Decimal(10, 2)
+  deductedAmount   Decimal    @default(0) @db.Decimal(10, 2)
   deductionReason  String?
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
@@ -92,6 +92,7 @@ model Complaint {
   status     String
   description String?
   createdAt  DateTime          @default(now())
+  resolvedAt DateTime?
   order      OtaOrder          @relation(fields: [orderId], references: [id])
   messages   CustomerMessage[]
 }
@@ -102,7 +103,7 @@ model CustomerMessage {
   sender      String
   content     String
   timestamp   DateTime
-  attachments String
+  attachments String[]
   complaint   Complaint  @relation(fields: [complaintId], references: [id])
 }
 
@@ -135,7 +136,7 @@ model CleaningSchedule {
   actualStartTime   DateTime?
   actualEndTime     DateTime?
   status            String
-  punctualityScore  Float?
+  punctualityScore  Decimal?            @db.Decimal(5, 2)
   order             OtaOrder?           @relation(fields: [orderId], references: [id])
   room              Room                @relation(fields: [roomId], references: [id])
   staff             Staff?              @relation(fields: [staffId], references: [id])
@@ -170,7 +171,7 @@ model ShareLink {
   role         String
   expiresAt    DateTime?
   passwordHash String?
-  dataScope    String
+  dataScope    Json
   accessCount  Int      @default(0)
   createdAt    DateTime @default(now())
   lastAccessed DateTime?
@@ -180,6 +181,6 @@ model ShareLink {
 model RolePermission {
   id           String @id @default(uuid())
   roleName     String @unique
-  permissions  String
-  dataFilters  String
+  permissions  Json
+  dataFilters  Json
 }

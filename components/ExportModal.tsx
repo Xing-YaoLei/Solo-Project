@@ -9,6 +9,7 @@ interface ExportModalProps {
   isOpen: boolean;
   onClose: () => void;
   punctualityRate: number;
+  shareToken?: string;
 }
 
 type ExportType = 'checkin' | 'deposit' | 'complaint' | 'review' | 'dashboard';
@@ -52,7 +53,7 @@ const EXPORT_OPTIONS: Array<{
   },
 ];
 
-export function ExportModal({ isOpen, onClose, punctualityRate }: ExportModalProps) {
+export function ExportModal({ isOpen, onClose, punctualityRate, shareToken }: ExportModalProps) {
   const [selectedType, setSelectedType] = useState<ExportType | null>(null);
   const [selectedFormat, setSelectedFormat] = useState<ExportFormat>('xlsx');
   const [isExporting, setIsExporting] = useState(false);
@@ -66,10 +67,12 @@ export function ExportModal({ isOpen, onClose, punctualityRate }: ExportModalPro
     setIsExporting(true);
 
     try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (shareToken) headers['X-Share-Token'] = shareToken;
       const res = await fetch('/api/export', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: selectedType, format: selectedFormat }),
+        headers,
+        body: JSON.stringify({ type: selectedType, format: selectedFormat, shareToken }),
       });
 
       const result = await res.json();

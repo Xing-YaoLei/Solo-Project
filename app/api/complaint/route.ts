@@ -1,33 +1,39 @@
 import { NextResponse } from 'next/server';
-import { getAuthContext } from '@/lib/auth';
 import type { ApiResponse, ComplaintEvidence } from '@/types';
 import { CLEANING_PUNCTUALITY_RULE } from '@/lib/utils';
-import { generateComplaints, filterByDataScope, generateCleaningPunctuality } from '@/lib/mockData';
+import { getComplaints, getCleaningPunctuality } from '@/lib/dbService';
+import { validateShareToken, getAuthContext } from '@/lib/auth';
+
+async function resolveScope(request: Request) {
+  const shareToken = request.headers.get('X-Share-Token') || undefined;
+  const sharePassword = request.headers.get('X-Share-Password') || undefined;
+  let auth = await getAuthContext();
+  let dataScope = auth.dataScope;
+  if (shareToken) {
+    const v = await validateShareToken(shareToken, sharePassword);
+    if (v.valid && v.authContext) {
+      auth = v.authContext;
+      dataScope = auth.dataScope;
+    }
+  }
+  return { auth, dataScope };
+}
 
 export async function GET(request: Request) {
-  const auth = await getAuthContext();
+  const { dataScope } = await resolveScope(request);
   const { searchParams } = new URL(request.url);
-  const severity = searchParams.get('severity') as 'low' | 'medium' | 'high' | undefined;
-  const status = searchParams.get('status') as 'open' | 'processing' | 'resolved' | undefined;
+  const severity = (searchParams.get('severity') as 'low' | 'medium' | 'high') || undefined;
+  const status = (searchParams.get('status') as 'open' | 'processing' | 'resolved') || undefined;
 
-  let records = generateComplaints(30);
-  records = filterByDataScope(records, auth.dataScope);
-
-  if (severity) {
-    records = records.filter(r => r.severity === severity);
-  }
-  if (status) {
-    records = records.filter(r => r.status === status);
-  }
-
-  const punctuality = generateCleaningPunctuality();
+  const records = await getComplaints(dataScope, { severity, status });
+  const punctuality = await getCleaningPunctuality(dataScope);
 
   const response: ApiResponse<ComplaintEvidence[]> = {
     success: true,
     data: records,
     metadata: {
       lastRefreshedAt: new Date().toISOString(),
-      dataScope: auth.dataScope,
+      dataScope,
       punctualityRate: punctuality.punctualityRate,
       calculationRule: CLEANING_PUNCTUALITY_RULE,
     },

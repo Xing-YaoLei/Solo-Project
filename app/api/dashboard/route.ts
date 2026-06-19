@@ -1,29 +1,45 @@
 import { NextResponse } from 'next/server';
-import { getAuthContext } from '@/lib/auth';
-import type { ApiResponse, DashboardSummary } from '@/types';
+import { getAuthContext, validateShareToken } from '@/lib/auth';
+import type { ApiResponse, DashboardSummary, DataScope } from '@/types';
 import { CLEANING_PUNCTUALITY_RULE } from '@/lib/utils';
-import { generateDashboardSummary, filterByDataScope } from '@/lib/mockData';
+import { getDashboardSummary, getCleaningPunctuality } from '@/lib/dbService';
+
+async function resolveDataScope(request: Request) {
+  const headers = new Headers(request.headers);
+  const shareToken = headers.get('X-Share-Token') || undefined;
+  const sharePassword = headers.get('X-Share-Password') || undefined;
+  const { searchParams } = new URL(request.url);
+  const roleParam = searchParams.get('role') as any;
+
+  let baseAuth = await getAuthContext();
+  let dataScope: DataScope = baseAuth.dataScope;
+
+  if (shareToken) {
+    const validation = await validateShareToken(shareToken, sharePassword);
+    if (validation.valid && validation.authContext) {
+      baseAuth = validation.authContext;
+      dataScope = baseAuth.dataScope;
+    }
+  } else if (roleParam) {
+    dataScope = { ...baseAuth.dataScope, role: roleParam };
+  }
+
+  return { auth: baseAuth, dataScope };
+}
 
 export async function GET(request: Request) {
-  const auth = await getAuthContext();
-  const { searchParams } = new URL(request.url);
-  const days = parseInt(searchParams.get('days') || '30', 10);
+  const { dataScope } = await resolveDataScope(request);
 
-  let summary = generateDashboardSummary(auth.dataScope.role);
-
-  summary = {
-    ...summary,
-    checkinTrend: filterByDataScope(summary.checkinTrend, auth.dataScope),
-    recentComplaints: filterByDataScope(summary.recentComplaints, auth.dataScope),
-  };
+  const summary = await getDashboardSummary(dataScope);
+  const punctuality = await getCleaningPunctuality(dataScope);
 
   const response: ApiResponse<DashboardSummary> = {
     success: true,
     data: summary,
     metadata: {
       lastRefreshedAt: new Date().toISOString(),
-      dataScope: auth.dataScope,
-      punctualityRate: summary.punctuality.punctualityRate,
+      dataScope,
+      punctualityRate: punctuality.punctualityRate,
       calculationRule: CLEANING_PUNCTUALITY_RULE,
     },
   };

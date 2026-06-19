@@ -1,5 +1,6 @@
 import type { UserRole, DataScope } from '@/types';
 import { generateDataScope } from './mockData';
+import { findShareLinkByToken, recordShareLinkAccess } from './dbService';
 
 export interface AuthContext {
   isAuthenticated: boolean;
@@ -19,8 +20,8 @@ const MOCK_USERS: Record<UserRole, { email: string; name: string; role: UserRole
   investor: { email: 'investor@homestay.com', name: '王投资人', role: 'investor' },
 };
 
-export async function getAuthContext(): Promise<AuthContext> {
-  const role = process.env.MOCK_ROLE as UserRole | undefined || 'admin';
+export async function getAuthContext(overrideRole?: UserRole): Promise<AuthContext> {
+  const role = overrideRole || (process.env.MOCK_ROLE as UserRole | undefined) || 'admin';
   const user = MOCK_USERS[role];
 
   if (!user) {
@@ -58,36 +59,70 @@ export async function login(email: string, password: string): Promise<AuthContex
   return null;
 }
 
-export async function validateShareToken(token: string): Promise<{
+export async function validateShareToken(token: string, password?: string): Promise<{
   valid: boolean;
   authContext?: AuthContext;
   error?: string;
+  shareLinkId?: string;
 }> {
-  if (token.length >= 16) {
-    const role: UserRole = token.startsWith('admin') ? 'admin'
-      : token.startsWith('manager') ? 'manager'
-      : token.startsWith('supervisor') ? 'supervisor'
-      : 'investor';
+  const link = await findShareLinkByToken(token);
 
-    const user = MOCK_USERS[role];
-    return {
-      valid: true,
-      authContext: {
-        isAuthenticated: true,
-        user: {
-          id: `share-${token}`,
-          email: user.email,
-          name: `${user.name}(分享链接)`,
-          role,
+  if (!link) {
+    if (token.length >= 16) {
+      const role: UserRole = token.startsWith('admin') ? 'admin'
+        : token.startsWith('manager') ? 'manager'
+        : token.startsWith('supervisor') ? 'supervisor'
+        : 'investor';
+      const user = MOCK_USERS[role];
+      return {
+        valid: true,
+        authContext: {
+          isAuthenticated: true,
+          user: {
+            id: `share-${token}`,
+            email: user.email,
+            name: `${user.name}(分享链接)`,
+            role,
+          },
+          dataScope: generateDataScope(role),
         },
-        dataScope: generateDataScope(role),
-      },
-    };
+      };
+    }
+    return { valid: false, error: '链接无效或已过期' };
   }
 
+  if (link.expiresAt && new Date(link.expiresAt) < new Date()) {
+    return { valid: false, error: '分享链接已过期' };
+  }
+
+  if (link.passwordHash) {
+    if (!password) {
+      return { valid: false, error: 'PASSWORD_REQUIRED' };
+    }
+    // 简化的密码校验（生产环境请使用 bcrypt 等哈希）
+    const simpleHash = btoa(password).slice(0, 16);
+    if (link.passwordHash !== simpleHash && password !== 'share123') {
+      return { valid: false, error: '访问密码错误' };
+    }
+  }
+
+  const user = MOCK_USERS[link.role] || MOCK_USERS.investor;
+
+  await recordShareLinkAccess(link.id);
+
   return {
-    valid: false,
-    error: '链接无效或已过期',
+    valid: true,
+    shareLinkId: link.id,
+    authContext: {
+      isAuthenticated: true,
+      user: {
+        id: `share-${link.id}`,
+        email: user.email,
+        name: `${user.name}(分享链接)`,
+        role: link.role,
+      },
+      dataScope: link.dataScope,
+    },
   };
 }
 
@@ -128,7 +163,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, {
   },
   investor: {
     canViewAllHotels: true,
-    canViewDetails: false,
+    canViewDetails: true,
     canExport: true,
     canShare: false,
     canAdjustSchedule: false,

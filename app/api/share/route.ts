@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getAuthContext } from '@/lib/auth';
-import type { ApiResponse, ShareLink, UserRole } from '@/types';
+import type { ApiResponse, UserRole, DataScope } from '@/types';
 import { CLEANING_PUNCTUALITY_RULE, generateToken } from '@/lib/utils';
-import { generateCleaningPunctuality } from '@/lib/mockData';
-
-const shareLinks: ShareLink[] = [];
+import { saveShareLink, findShareLinkByToken, getCleaningPunctuality } from '@/lib/dbService';
+import { prisma } from '@/lib/prisma';
 
 export async function GET(request: Request) {
   const auth = await getAuthContext();
@@ -12,11 +11,18 @@ export async function GET(request: Request) {
   const token = searchParams.get('token');
 
   if (token) {
-    const link = shareLinks.find(l => l.token === token);
+    const link = await findShareLinkByToken(token);
     if (link) {
-      link.accessCount++;
-      link.lastAccessedAt = new Date().toISOString();
-      return NextResponse.json({ success: true, data: link } as ApiResponse<ShareLink>);
+      return NextResponse.json({
+        success: true,
+        data: {
+          id: link.id,
+          token,
+          role: link.role,
+          dataScope: link.dataScope,
+          accessCount: link.accessCount,
+        },
+      } as ApiResponse<any>);
     }
     return NextResponse.json({
       success: false,
@@ -24,37 +30,67 @@ export async function GET(request: Request) {
     } as ApiResponse<null>, { status: 404 });
   }
 
-  const userLinks = shareLinks.filter(l => l.createdBy === auth.user?.id);
-  return NextResponse.json({ success: true, data: userLinks } as ApiResponse<ShareLink[]>);
+  let userLinks: any[] = [];
+  try {
+    if (auth.user?.id) {
+      userLinks = await prisma.shareLink.findMany({
+        where: { userId: auth.user.id },
+        orderBy: { createdAt: 'desc' },
+        take: 20,
+      });
+    }
+  } catch (e) {
+    console.warn('share GET prisma error, skip:', (e as Error).message);
+  }
+
+  const punctuality = await getCleaningPunctuality(auth.dataScope);
+  return NextResponse.json({
+    success: true,
+    data: userLinks,
+    metadata: {
+      lastRefreshedAt: new Date().toISOString(),
+      dataScope: auth.dataScope,
+      punctualityRate: punctuality.punctualityRate,
+      calculationRule: CLEANING_PUNCTUALITY_RULE,
+    },
+  } as ApiResponse<any>);
 }
 
 export async function POST(request: Request) {
   const auth = await getAuthContext();
   const body = await request.json();
-  const { role, expiresAt, password, dataScope } = body;
+  const { role, expiresAt, password, dataScope: customDataScope } = body;
 
-  const token = `${role}_${generateToken().slice(0, 16)}`;
-  const newLink: ShareLink = {
-    id: `share_${Date.now()}`,
-    token,
-    role: role as UserRole,
-    createdBy: auth.user?.id || '',
-    expiresAt,
-    password,
-    dataScope: dataScope || auth.dataScope,
-    createdAt: new Date().toISOString(),
-    accessCount: 0,
+  const selectedRole = (role || auth.dataScope.role) as UserRole;
+  const dataScope: DataScope = customDataScope || {
+    ...auth.dataScope,
+    role: selectedRole,
   };
 
-  shareLinks.push(newLink);
+  const token = `${selectedRole}_${generateToken().slice(0, 20)}`;
 
-  const punctuality = generateCleaningPunctuality();
+  let passwordHash: string | undefined = undefined;
+  if (password) {
+    passwordHash = btoa(password).slice(0, 16);
+  }
 
-  const response: ApiResponse<{ shareLink: ShareLink; shareUrl: string }> = {
+  const saved = await saveShareLink({
+    token,
+    userId: auth.user?.id || `user-${auth.dataScope.role}`,
+    role: selectedRole,
+    expiresAt: expiresAt ? new Date(expiresAt) : undefined,
+    passwordHash,
+    dataScope,
+  });
+
+  const punctuality = await getCleaningPunctuality(auth.dataScope);
+  const shareUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/share/${token}`;
+
+  const response: ApiResponse<{ shareLink: any; shareUrl: string }> = {
     success: true,
     data: {
-      shareLink: newLink,
-      shareUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/share/${token}`,
+      shareLink: { id: saved.id, token, role: selectedRole, dataScope },
+      shareUrl,
     },
     metadata: {
       lastRefreshedAt: new Date().toISOString(),
@@ -71,14 +107,13 @@ export async function DELETE(request: Request) {
   const { searchParams } = new URL(request.url);
   const id = searchParams.get('id');
 
-  const index = shareLinks.findIndex(l => l.id === id);
-  if (index > -1) {
-    shareLinks.splice(index, 1);
-    return NextResponse.json({ success: true } as ApiResponse<null>);
+  try {
+    if (id) {
+      await prisma.shareLink.delete({ where: { id } });
+    }
+  } catch (e) {
+    console.warn('share DELETE prisma error, skip:', (e as Error).message);
   }
 
-  return NextResponse.json({
-    success: false,
-    error: { code: 'NOT_FOUND', message: '分享链接不存在' },
-  } as ApiResponse<null>, { status: 404 });
+  return NextResponse.json({ success: true } as ApiResponse<null>);
 }
