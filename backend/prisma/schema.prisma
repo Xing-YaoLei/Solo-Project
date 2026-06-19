@@ -1,0 +1,320 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RoleEnum {
+  ADVISOR
+  TECHNICIAN
+  PARTS_CLERK
+  MANAGER
+}
+
+enum WorkOrderStatus {
+  PENDING
+  IN_PROGRESS
+  WAITING_PARTS
+  QUALITY_CHECK
+  COMPLETED
+  CANCELLED
+}
+
+enum PartRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PROCURING
+  COMPLETED
+}
+
+enum PartRequestSource {
+  INVENTORY
+  PROCUREMENT
+  TRANSFER
+}
+
+enum MaintenanceType {
+  OIL_CHANGE
+  TIRE_ROTATION
+  BRAKE_SERVICE
+  TRANSMISSION_SERVICE
+  COOLANT_SERVICE
+  BATTERY_CHECK
+  TIMING_BELT
+  GENERAL_INSPECTION
+  CUSTOM
+}
+
+enum QualityCheckResult {
+  PASSED
+  FAILED
+  NEEDS_REWORK
+}
+
+enum WorkOrderLogType {
+  CREATED
+  STATUS_CHANGED
+  ASSIGNED
+  UPDATED
+  PART_REQUESTED
+  QUALITY_CHECK
+  COMPLETED
+  CANCELLED
+}
+
+model User {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  email     String   @unique
+  password  String
+  name      String
+  phone     String?
+  avatar    String?
+  roleId    String
+  role      Role     @relation(fields: [roleId], references: [id])
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  advisorWorkOrders   WorkOrder[] @relation("AdvisorWorkOrders")
+  technicianWorkOrders WorkOrder[] @relation("TechnicianWorkOrders")
+  qualityChecks       QualityCheck[]
+  workOrderLogs       WorkOrderLog[]
+  maintenanceReminders MaintenanceReminder[]
+  partRequestHistories PartRequestHistory[]
+
+  @@map("users")
+}
+
+model Role {
+  id          String       @id @default(uuid())
+  name        String       @unique
+  code        RoleEnum     @unique
+  description String?
+  permissions Permission[]
+  users       User[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String @id @default(uuid())
+  name        String @unique
+  code        String @unique
+  description String?
+  roles       Role[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("permissions")
+}
+
+model Vehicle {
+  id           String   @id @default(uuid())
+  plateNumber  String   @unique
+  brand        String
+  model        String
+  vin          String?  @unique
+  mileage      Int      @default(0)
+  color        String?
+  year         Int?
+  engineNumber String?
+  ownerName    String
+  ownerPhone   String
+  ownerEmail   String?
+  ownerAddress String?
+  remarks      String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  workOrders          WorkOrder[]
+  maintenanceReminders MaintenanceReminder[]
+
+  @@map("vehicles")
+}
+
+model WorkOrder {
+  id             String           @id @default(uuid())
+  orderNumber    String           @unique
+  vehicleId      String
+  vehicle        Vehicle          @relation(fields: [vehicleId], references: [id])
+  advisorId      String
+  advisor        User             @relation("AdvisorWorkOrders", fields: [advisorId], references: [id])
+  technicianId   String?
+  technician     User?            @relation("TechnicianWorkOrders", fields: [technicianId], references: [id])
+  status         WorkOrderStatus  @default(PENDING)
+  mileageIn      Int?
+  mileageOut     Int?
+  complaint      String?
+  diagnosis      String?
+  quoteAmount    Decimal          @default(0) @db.Decimal(10, 2)
+  actualAmount   Decimal          @default(0) @db.Decimal(10, 2)
+  startTime      DateTime?
+  endTime        DateTime?
+  remarks        String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  items       WorkOrderItem[]
+  partRequests PartRequest[]
+  qualityChecks QualityCheck[]
+  logs        WorkOrderLog[]
+
+  @@map("work_orders")
+}
+
+model WorkOrderItem {
+  id           String  @id @default(uuid())
+  workOrderId  String
+  workOrder    WorkOrder @relation(fields: [workOrderId], references: [id])
+  itemName     String
+  itemType     String
+  laborHours   Decimal @default(0) @db.Decimal(5, 2)
+  laborAmount  Decimal @default(0) @db.Decimal(10, 2)
+  partAmount   Decimal @default(0) @db.Decimal(10, 2)
+  totalAmount  Decimal @default(0) @db.Decimal(10, 2)
+  remarks      String?
+  sortOrder    Int     @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  parts WorkOrderItemPart[]
+
+  @@map("work_order_items")
+}
+
+model WorkOrderItemPart {
+  id              String         @id @default(uuid())
+  workOrderItemId String
+  workOrderItem   WorkOrderItem  @relation(fields: [workOrderItemId], references: [id])
+  partId          String
+  part            Part           @relation(fields: [partId], references: [id])
+  quantity        Int            @default(1)
+  unitPrice       Decimal        @db.Decimal(10, 2)
+  totalPrice      Decimal        @db.Decimal(10, 2)
+  createdAt       DateTime       @default(now())
+
+  @@map("work_order_item_parts")
+}
+
+model Part {
+  id          String  @id @default(uuid())
+  partNumber  String  @unique
+  name        String
+  category    String?
+  specification String?
+  unit        String  @default("个")
+  stock       Int     @default(0)
+  minStock    Int     @default(0)
+  unitPrice   Decimal @default(0) @db.Decimal(10, 2)
+  supplier    String?
+  supplierPhone String?
+  location    String?
+  remarks     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workOrderItemParts WorkOrderItemPart[]
+  partRequests       PartRequest[]
+
+  @@map("parts")
+}
+
+model PartRequest {
+  id               String            @id @default(uuid())
+  requestNumber    String            @unique
+  workOrderId      String
+  workOrder        WorkOrder         @relation(fields: [workOrderId], references: [id])
+  partId           String
+  part             Part              @relation(fields: [partId], references: [id])
+  quantity         Int               @default(1)
+  status           PartRequestStatus @default(PENDING)
+  source           PartRequestSource?
+  beforeMaterial   String?
+  afterMaterial    String?
+  handlerId        String?
+  handledAt        DateTime?
+  handlingNotes    String?
+  requesterId      String?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  histories PartRequestHistory[]
+
+  @@map("part_requests")
+}
+
+model QualityCheck {
+  id         String              @id @default(uuid())
+  workOrderId String
+  workOrder  WorkOrder           @relation(fields: [workOrderId], references: [id])
+  inspectorId String
+  inspector  User                @relation(fields: [inspectorId], references: [id])
+  result     QualityCheckResult  @default(NEEDS_REWORK)
+  photos     String[]
+  remarks    String?
+  checkDate  DateTime
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+
+  @@map("quality_checks")
+}
+
+model MaintenanceReminder {
+  id               String          @id @default(uuid())
+  vehicleId        String
+  vehicle          Vehicle         @relation(fields: [vehicleId], references: [id])
+  type             MaintenanceType
+  description      String?
+  lastMileage      Int?
+  lastDate         DateTime?
+  nextMileage      Int?
+  nextDate         DateTime?
+  isCompleted      Boolean         @default(false)
+  responsibleId    String?
+  responsible      User?           @relation(fields: [responsibleId], references: [id])
+  remarks          String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@map("maintenance_reminders")
+}
+
+model WorkOrderLog {
+  id          String          @id @default(uuid())
+  workOrderId String
+  workOrder   WorkOrder       @relation(fields: [workOrderId], references: [id])
+  operatorId  String
+  operator    User            @relation(fields: [operatorId], references: [id])
+  type        WorkOrderLogType
+  content     String
+  oldValue    String?
+  newValue    String?
+  timestamp   DateTime        @default(now())
+
+  @@map("work_order_logs")
+}
+
+model PartRequestHistory {
+  id              String            @id @default(uuid())
+  partRequestId   String
+  partRequest     PartRequest       @relation(fields: [partRequestId], references: [id])
+  oldStatus       PartRequestStatus?
+  newStatus       PartRequestStatus
+  beforeMaterial  String?
+  afterMaterial   String?
+  source          PartRequestSource?
+  conclusion      String?
+  handlerId       String?
+  handler         User?             @relation(fields: [handlerId], references: [id])
+  handlingNotes   String?
+  changedAt       DateTime          @default(now())
+
+  @@map("part_request_histories")
+}

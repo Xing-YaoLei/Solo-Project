@@ -1,0 +1,25 @@
+'use client';
+
+import { useState, useCallback } from 'react';
+
+interface UseModalOptions {
+  initialOpen?: boolean;
+}
+
+export function useModal(options: UseModalOptions = {}) {
+  const { initialOpen = false } = options;
+  const [isOpen, setIsOpen] = useState(initialOpen);
+
+  const open = useCallback(() => setIsOpen(true), []);
+  const close = useCallback(() => setIsOpen(false), []);
+  const toggle = useCallback(() => setIsOpen((prev) => !prev), []);
+
+  return {
+    isOpen,
+    open,
+    close,
+    toggle,
+  };
+}
+
+export default useModal;
