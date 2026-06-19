@@ -49,14 +49,20 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
     set({ isLoading: true });
 
     try {
+      const scopeQuery = scope && scope.length > 0
+        ? `scope=${encodeURIComponent(scope.join(','))}`
+        : '';
+      const qs = scopeQuery ? `&${scopeQuery}` : '';
+      const dashQs = scopeQuery ? `?${scopeQuery}` : '';
+
       const [userRes, dashboardRes, trendRes, inventoryRes, quotesRes, inspectionsRes] =
         await Promise.all([
           fetch('/api/auth/me'),
-          fetch('/api/dashboard'),
-          fetch('/api/workorders/trend?days=30'),
-          fetch('/api/inventory'),
-          fetch('/api/quotes'),
-          fetch('/api/inspections'),
+          fetch(`/api/dashboard${dashQs}`),
+          fetch(`/api/workorders/trend?days=30${qs}`),
+          fetch(`/api/inventory${dashQs}`),
+          fetch(`/api/quotes${dashQs}`),
+          fetch(`/api/inspections${dashQs}`),
         ]);
 
       const user = userRes.ok ? await userRes.json() : null;
@@ -66,33 +72,15 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
       const quotes = quotesRes.ok ? await quotesRes.json() : [];
       const inspections = inspectionsRes.ok ? await inspectionsRes.json() : [];
 
-      if (scope && scope.length > 0) {
-        const filteredQuotes = scope.includes('quotes:view') ? quotes : [];
-        const filteredInspections = scope.includes('inspection:view') ? inspections : [];
-        const filteredInventory = scope.includes('inventory:view') ? inventoryData : [];
-        const filteredTrend = scope.includes('dashboard:view') ? workorderTrend : [];
-        const filteredDashboard = scope.includes('dashboard:view') ? dashboardData : null;
-
-        set({
-          user,
-          dashboardData: filteredDashboard,
-          workorderTrend: filteredTrend,
-          inventoryData: filteredInventory,
-          quotes: filteredQuotes,
-          inspections: filteredInspections,
-          isLoading: false,
-        });
-      } else {
-        set({
-          user,
-          dashboardData,
-          workorderTrend,
-          inventoryData,
-          quotes,
-          inspections,
-          isLoading: false,
-        });
-      }
+      set({
+        user,
+        dashboardData,
+        workorderTrend,
+        inventoryData,
+        quotes,
+        inspections,
+        isLoading: false,
+      });
     } catch (error) {
       console.error('[dashboard store] 加载数据失败:', error);
       set({ isLoading: false });

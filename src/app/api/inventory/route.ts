@@ -1,8 +1,18 @@
 import { NextResponse } from 'next/server';
 import { getInventoryData } from '@/lib/dataService';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const scopeStr = searchParams.get('scope');
+
+    if (scopeStr) {
+      const scope = decodeURIComponent(scopeStr).split(',');
+      if (!scope.includes('inventory:view')) {
+        return NextResponse.json([], { status: 200 });
+      }
+    }
+
     const data = await getInventoryData();
     return NextResponse.json(data);
   } catch (error) {
