@@ -191,6 +191,14 @@ public static class SeedDataInitializer
 
         Guid SlotGuid(Guid spotId, DateOnly d, int i)
             => Guid.Parse($"{spotId.ToString("N").Substring(0, 7)}{i:D2}{d.Day:D2}{d.Month:D2}{d.Year:D4}".PadRight(32, '0'));
+        Guid BookingGuid(Guid ticketTypeId, int bookingIdx, DateOnly d)
+            => Guid.Parse($"{ticketTypeId.ToString("N").Substring(0, 6)}{bookingIdx:D6}{d.Day:D2}{d.Month:D2}{(d.Year % 100):D2}".PadRight(32, '0'));
+        Guid RescheduleGuid(Guid bookingId, int idx)
+            => Guid.Parse($"a{bookingId.ToString("N").Substring(1, 7)}{idx:D2}".PadRight(32, '0'));
+        Guid ConflictGuid(int seq)
+            => Guid.Parse($"c0000000-0000-0000-0000-{seq:D12}");
+        Guid NotificationGuid(Guid conflictId, int seq)
+            => Guid.Parse($"b{conflictId.ToString("N").Substring(1, 6)}{seq:D2}".PadRight(32, '0'));
 
         var june = 6;
         var year = 2026;
@@ -309,7 +317,7 @@ public static class SeedDataInitializer
 
         for (int i = 0; i < 220; i++)
         {
-            var visitor = visitors[rng.Next(visitors.Count - 1)];
+            var visitor = visitors[rng.Next(visitors.Count)];
             var tk = spotTicketMap[rng.Next(spotTicketMap.Length)];
             var d = RandomDate();
             var slot = RandomSlot(tk.SpotId, d);
@@ -318,7 +326,7 @@ public static class SeedDataInitializer
             bookingId++;
             var b = new TicketBooking
             {
-                Id = Guid.Parse($"{tk.TType.Id.ToString("N").Substring(0, 8)}{bookingId:D8}{d.Day:D2}{d.Month:D2}".PadRight(32, '0')),
+                Id = BookingGuid(tk.TType.Id, bookingId, d),
                 BookingNo = BookingNo(bookingId),
                 ScenicSpotId = tk.SpotId,
                 TimeSlotId = slot.Id,
@@ -344,6 +352,31 @@ public static class SeedDataInitializer
                 b.ArrivalOperator = new[] { "前台-周婷", "前台-黄磊", "检票口-吴波", "移动终端-自动闸机" }[rng.Next(4)];
             }
             slot.BookedCount += qty;
+            bookings.Add(b);
+        }
+
+        var blackVisitor = visitors[7];
+        for (int i = 0; i < 5; i++)
+        {
+            bookingId++;
+            var blackDate = new DateOnly(year, june, 17 + i);
+            if (blackDate.Month != june) blackDate = new DateOnly(year, june, 20 - i);
+            var blackSlot = RandomSlot(spot2.Id, blackDate);
+            var b = new TicketBooking
+            {
+                Id = BookingGuid(ticketType3.Id, bookingId, blackDate),
+                BookingNo = BookingNo(bookingId),
+                ScenicSpotId = spot2.Id,
+                TimeSlotId = blackSlot.Id,
+                TicketTypeId = ticketType3.Id,
+                VisitorId = blackVisitor.Id,
+                Status = i == 0 ? BookingStatus.Confirmed : BookingStatus.NoShow,
+                Quantity = 1,
+                TotalAmount = ticketType3.Price,
+                CreatedBy = "线上预约",
+                CreatedAt = blackDate.ToDateTime(TimeOnly.Parse("10:00"), DateTimeKind.Utc).AddHours(-2 + i)
+            };
+            blackSlot.BookedCount += 1;
             bookings.Add(b);
         }
 
@@ -386,8 +419,10 @@ public static class SeedDataInitializer
 
         var reschedules = new List<RescheduleRecord>();
         var rescheduledBookings = bookings.Where(b => b.Status == BookingStatus.Rescheduled).Take(8).ToList();
+        var rescheduleIdx = 0;
         foreach (var b in rescheduledBookings)
         {
+            rescheduleIdx++;
             var originalSlot = timeSlots.First(s => s.Id == b.TimeSlotId);
             var newD = b.TimeSlot.Date.AddDays(rng.Next(1, 4));
             if (newD.Month != june) newD = b.TimeSlot.Date.AddDays(-2);
@@ -395,7 +430,7 @@ public static class SeedDataInitializer
 
             reschedules.Add(new RescheduleRecord
             {
-                Id = Guid.Parse($"{b.Id.ToString("N").Substring(0, 28)}01"),
+                Id = RescheduleGuid(b.Id, rescheduleIdx),
                 BookingId = b.Id,
                 OriginalTimeSlotId = originalSlot.Id,
                 NewTimeSlotId = newSlot.Id,
@@ -427,7 +462,7 @@ public static class SeedDataInitializer
             var last = grp.Skip(1).First();
             var log = new ConflictLog
             {
-                Id = Guid.Parse($"C0000000-0000-0000-0000-00000000000{cid}"),
+                Id = ConflictGuid(cid),
                 ConflictType = ConflictType.TimeSlotOverlap,
                 Status = cid < 3 ? ConflictStatus.Resolved : cid < 5 ? ConflictStatus.Processing : ConflictStatus.Detected,
                 BookingId = first.Id,
@@ -460,7 +495,7 @@ public static class SeedDataInitializer
                 nid++;
                 notifications.Add(new Notification
                 {
-                    Id = Guid.Parse($"{log.Id.ToString("N").Substring(0, 26)}{nid}"),
+                    Id = NotificationGuid(log.Id, nid),
                     ConflictLogId = log.Id,
                     Channel = string.IsNullOrEmpty(ri.Email) ? NotificationChannel.SMS : NotificationChannel.Email,
                     Title = $"【冲突预警】{grp.Key.Date:MM-dd} {grp.Key.StartTime:hh\\:mm} 时段",
@@ -483,7 +518,7 @@ public static class SeedDataInitializer
             cid++;
             var log = new ConflictLog
             {
-                Id = Guid.Parse($"C0000000-0000-0000-0000-00000000001{i}"),
+                Id = ConflictGuid(cid),
                 ConflictType = ConflictType.CapacityExceeded,
                 Status = i == 1 ? ConflictStatus.Resolved : ConflictStatus.Detected,
                 BookingId = capConflictBooking.Id,
@@ -508,7 +543,7 @@ public static class SeedDataInitializer
                 nid++;
                 notifications.Add(new Notification
                 {
-                    Id = Guid.Parse($"{log.Id.ToString("N").Substring(0, 26)}{nid}"),
+                    Id = NotificationGuid(log.Id, nid),
                     ConflictLogId = log.Id,
                     Channel = NotificationChannel.SMS,
                     Title = $"【容量预警】{capConflictBooking.TimeSlot.Date:MM-dd} {capConflictBooking.TimeSlot.StartTime:hh\\:mm}",
@@ -523,18 +558,19 @@ public static class SeedDataInitializer
             }
         }
 
-        var blackVisitor = visitors[7];
-        DateOnly blackDate = new DateOnly(year, june, 18);
-        TimeSpan blackStart = slotTemplatesSpot2[0].Start;
-        var blackSlotId = slotMap[(spot2.Id, blackDate, blackStart)].Id;
+        var blackBooking = bookings.First(b => b.VisitorId == visitors[7].Id && b.Status == BookingStatus.Confirmed);
+        DateOnly blackDate2 = new DateOnly(year, june, 18);
+        TimeSpan blackStart2 = slotTemplatesSpot2[0].Start;
+        var blackSlotId = slotMap[(spot2.Id, blackDate2, blackStart2)].Id;
         cid++;
         var blacklog = new ConflictLog
         {
-            Id = Guid.Parse($"C0000000-0000-0000-0000-000000000020"),
+            Id = ConflictGuid(cid),
             ConflictType = ConflictType.BlacklistVisitor,
             Status = ConflictStatus.Processing,
+            BookingId = blackBooking.Id,
             TimeSlotId = blackSlotId,
-            Reason = $"黑名单游客【{blackVisitor.Name}，身份证 {blackVisitor.IdCardNumber}，原因：{blackVisitor.BlacklistReason}】提交了新的预约订单",
+            Reason = $"黑名单游客【{visitors[7].Name}，身份证 {visitors[7].IdCardNumber}，原因：{visitors[7].BlacklistReason}】提交了新的预约订单",
             ResponsiblePerson = "运营经理-黄磊",
             CreatedBy = "冲突检测器",
             CreatedAt = now.AddDays(-1),
@@ -547,7 +583,7 @@ public static class SeedDataInitializer
             idn++;
             notifications.Add(new Notification
             {
-                Id = Guid.Parse($"{blacklog.Id.ToString("N").Substring(0, 26)}{idn}"),
+                Id = NotificationGuid(blacklog.Id, idn),
                 ConflictLogId = blacklog.Id,
                 Channel = NotificationChannel.Email,
                 Title = "【黑名单预警】有前科游客预约",
