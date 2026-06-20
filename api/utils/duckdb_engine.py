@@ -89,9 +89,17 @@ def init_duckdb():
     conn = get_duckdb_conn()
 
     for table_name, columns in TABLE_COLUMNS.items():
+        pk_col = None
+        if "id" in columns:
+            pk_col = "id"
+        elif "version" in columns:
+            pk_col = "version"
+        elif columns:
+            pk_col = columns[0]
+
         col_defs = []
         for col in columns:
-            if col in ["id", "order_no", "version"]:
+            if col == pk_col:
                 col_defs.append(f"{col} VARCHAR PRIMARY KEY")
             elif col in ["amount", "price", "verification_rate", "avg_verify_time", "total_amount", "avg_order_value", "usage_rate", "conversion_rate"]:
                 col_defs.append(f"{col} DOUBLE")
@@ -183,7 +191,10 @@ async def sync_postgres_to_duckdb(table_name: str, sync_batch_id: Optional[str] 
             "sync_batch_id": sync_batch_id
         }
     except Exception as e:
-        conn.rollback()
+        try:
+            conn.rollback()
+        except Exception:
+            pass
         return {"table": table_name, "status": "error", "message": str(e)}
 
 

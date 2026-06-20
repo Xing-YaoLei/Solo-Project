@@ -110,10 +110,12 @@ async def seed_mock_data():
                 VALUES ('{ver}', '{name}', '{formula}', '{desc}', '{reason}', '{eff_date}')
             """))
 
+        base_date = datetime(2024, 6, 1)
+
         tasks = [
             ("task-001", "票务数据同步", "ticket_platform", "0 */30 * * *"),
-            ("task-002", "闸机记录同步", "gate_record", "0 */15 * * *"),
-            ("task-003", "支付流水同步", "payment_flow", "0 * * * *"),
+            ("task-002", "闸机记录同步", "gate_system", "0 */15 * * *"),
+            ("task-003", "支付流水同步", "payment_system", "0 * * * *"),
         ]
         now = datetime.now()
         for tid, name, source, cron in tasks:
@@ -124,13 +126,32 @@ async def seed_mock_data():
                 VALUES ('{tid}', '{name}', '{source}', '{cron}', 'active', '{last_run}', '{next_run}')
             """))
 
-        base_date = datetime(2024, 6, 1)
+        ticket_batch_id = "batch-ticket-platform-001"
+        gate_batch_id = "batch-gate-system-001"
+        payment_batch_id = "batch-payment-system-001"
+        sync_date_str = base_date.isoformat()
+        now_str = now.isoformat()
+        end_str = (now + timedelta(minutes=5)).isoformat()
+
+        await session.execute(text(f"""
+            INSERT INTO sync_batches (id, task_id, source, status, total_records, processed_records, start_time, end_time, error_message, sync_date)
+            VALUES ('{ticket_batch_id}', 'task-001', 'ticket_platform', 'success', 200, 200, '{now_str}', '{end_str}', NULL, '{sync_date_str}')
+        """))
+        await session.execute(text(f"""
+            INSERT INTO sync_batches (id, task_id, source, status, total_records, processed_records, start_time, end_time, error_message, sync_date)
+            VALUES ('{gate_batch_id}', 'task-002', 'gate_system', 'success', 40, 40, '{now_str}', '{end_str}', NULL, '{sync_date_str}')
+        """))
+        await session.execute(text(f"""
+            INSERT INTO sync_batches (id, task_id, source, status, total_records, processed_records, start_time, end_time, error_message, sync_date)
+            VALUES ('{payment_batch_id}', 'task-003', 'payment_system', 'success', 200, 200, '{now_str}', '{end_str}', NULL, '{sync_date_str}')
+        """))
+
         for i in range(15):
-            for source in ["ticket_platform", "gate_record", "payment_flow"]:
+            for source in ["ticket_platform", "gate_system", "payment_system"]:
                 bid = f"batch-{source}-{i}"
                 if source == "ticket_platform":
                     tid = "task-001"
-                elif source == "gate_record":
+                elif source == "gate_system":
                     tid = "task-002"
                 else:
                     tid = "task-003"
@@ -169,15 +190,15 @@ async def seed_mock_data():
             verified_sql = "NULL" if verified is None else f"'{verified}'"
             check_in_sql = "NULL" if check_in is None else f"'{check_in}'"
             await session.execute(text(f"""
-                INSERT INTO orders (id, ticket_type_id, order_no, buyer_name, buyer_phone, amount, status, created_at, paid_at, verified_at, check_in_code)
-                VALUES ('{oid}', '{tt_id}', '{oid.upper()}', '{name}', '{phone}', {amount}, '{status}', '{created}', {paid_sql}, {verified_sql}, {check_in_sql})
+                INSERT INTO orders (id, ticket_type_id, order_no, buyer_name, buyer_phone, amount, status, created_at, paid_at, verified_at, sync_batch_id, check_in_code)
+                VALUES ('{oid}', '{tt_id}', '{oid.upper()}', '{name}', '{phone}', {amount}, '{status}', '{created}', {paid_sql}, {verified_sql}, '{ticket_batch_id}', {check_in_sql})
             """))
 
             if paid:
                 pid = f"pay-{i:05d}"
                 await session.execute(text(f"""
-                    INSERT INTO payment_records (id, order_id, transaction_id, amount, pay_method, status, pay_time)
-                    VALUES ('{pid}', '{oid}', 'TXN{i:08d}', {amount}, 'alipay', 'success', '{paid}')
+                    INSERT INTO payment_records (id, order_id, transaction_id, amount, pay_method, status, pay_time, sync_batch_id)
+                    VALUES ('{pid}', '{oid}', 'TXN{i:08d}', {amount}, 'alipay', 'success', '{paid}', '{payment_batch_id}')
                 """))
 
             if check_in and status == "used":
@@ -191,8 +212,8 @@ async def seed_mock_data():
                 if random.random() > 0.8:
                     gid = f"gate-{i:05d}"
                     await session.execute(text(f"""
-                        INSERT INTO gate_records (id, order_id, gate_code, device_id, direction, pass_time)
-                        VALUES ('{gid}', '{oid}', 'GATE-{random.choice(["01", "02", "03"])}', 'DEV{random.randint(100, 999)}', 'in', '{scan_time}')
+                        INSERT INTO gate_records (id, order_id, gate_code, device_id, direction, pass_time, sync_batch_id)
+                        VALUES ('{gid}', '{oid}', 'GATE-{random.choice(["01", "02", "03"])}', 'DEV{random.randint(100, 999)}', 'in', '{scan_time}', '{gate_batch_id}')
                     """))
 
             if status == "disputed":

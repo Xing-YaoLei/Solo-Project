@@ -1,5 +1,5 @@
 from datetime import datetime
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Path
 from sqlalchemy import text
 
 from api.utils.database import async_session
@@ -10,16 +10,15 @@ from api.utils.duckdb_engine import (
 )
 from api.schemas.common import ApiResponse
 from api.schemas.sync import SyncBatch, SyncTask
+from api.services.sync_pipeline import sync_pipeline
 
 router = APIRouter()
 
 
-@router.get("/batches", response_model=ApiResponse[dict])
+@router.get("/batches", response_model=ApiResponse[list])
 async def list_sync_batches(
     source: str = Query(default=None),
     status: str = Query(default=None),
-    page: int = Query(default=1, ge=1),
-    pageSize: int = Query(default=10, ge=1, le=100),
 ):
     async with async_session() as session:
         where = "WHERE 1=1"
@@ -32,13 +31,6 @@ async def list_sync_batches(
             where += " AND sb.status = :status"
             params["status"] = status
 
-        count_result = await session.execute(
-            text(f"SELECT COUNT(*) FROM sync_batches sb {where}"),
-            params,
-        )
-        total = count_result.scalar() or 0
-
-        offset = (page - 1) * pageSize
         result = await session.execute(
             text(f"""
                 SELECT sb.id, sb.source, sb.status, sb.total_records,
@@ -47,9 +39,8 @@ async def list_sync_batches(
                 FROM sync_batches sb
                 {where}
                 ORDER BY sb.start_time DESC
-                LIMIT :limit OFFSET :offset
             """),
-            {**params, "limit": pageSize, "offset": offset},
+            params,
         )
         rows = result.fetchall()
 
@@ -67,7 +58,7 @@ async def list_sync_batches(
             )
             for row in rows
         ]
-        return ApiResponse(data={"list": batches, "total": total})
+        return ApiResponse(data=batches)
 
 
 @router.post("/batches/{batchId}/rerun", response_model=ApiResponse[SyncBatch])
@@ -222,3 +213,39 @@ async def get_topology():
         {"source": "duckdb", "target": "dashboard", "label": "查询分析"},
     ]
     return ApiResponse(data={"nodes": nodes, "edges": edges})
+
+
+@router.post("/pipeline/run", response_model=ApiResponse[dict])
+async def run_pipeline():
+    results = await sync_pipeline.run_full_sync()
+    return ApiResponse(data=results)
+
+
+@router.post("/pipeline/sync/{source}", response_model=ApiResponse[dict])
+async def sync_source_pipeline(source: str = Path(..., description="数据源key")):
+    result = await sync_pipeline.sync_source(source)
+    if result.get("status") == "error":
+        return ApiResponse(code=400, message=result.get("message", "同步失败"), data=None)
+    return ApiResponse(data=result)
+
+
+@router.post("/pipeline/batch/{batch_id}/rerun", response_model=ApiResponse[dict])
+async def rerun_batch_pipeline(batch_id: str = Path(..., description="批次ID")):
+    result = await sync_pipeline.rerun_batch(batch_id)
+    if result.get("status") == "error":
+        return ApiResponse(code=404, message=result.get("message", "批次不存在"), data=None)
+    return ApiResponse(data=result)
+
+
+@router.get("/pipeline/batch/{batch_id}/progress", response_model=ApiResponse[dict])
+async def get_batch_progress(batch_id: str = Path(..., description="批次ID")):
+    result = await sync_pipeline.get_sync_progress(batch_id)
+    if result.get("status") == "error":
+        return ApiResponse(code=404, message=result.get("message", "批次不存在"), data=None)
+    return ApiResponse(data=result)
+
+
+@router.get("/pipeline/sources", response_model=ApiResponse[dict])
+async def get_pipeline_sources():
+    sources = sync_pipeline.get_sources()
+    return ApiResponse(data=sources)

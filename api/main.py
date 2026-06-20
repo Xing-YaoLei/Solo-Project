@@ -22,8 +22,14 @@ from api.utils.duckdb_engine import init_duckdb, sync_all_tables_to_duckdb
 async def lifespan(app: FastAPI):
     await init_db()
     await seed_mock_data()
-    init_duckdb()
-    await sync_all_tables_to_duckdb()
+    try:
+        init_duckdb()
+    except Exception as e:
+        print(f"DuckDB init failed: {e}")
+    try:
+        await sync_all_tables_to_duckdb()
+    except Exception as e:
+        print(f"DuckDB sync failed: {e}")
     yield
 
 
