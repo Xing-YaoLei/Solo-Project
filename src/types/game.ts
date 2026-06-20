@@ -22,6 +22,13 @@ export interface LevelState {
   efficiencyHistory: EfficiencyPoint[];
   isDisputeActive: boolean;
   disputeRecordIndex: number;
+  disputeSnapshot?: {
+    score: number;
+    correctCount: number;
+    wrongCount: number;
+    disputeCount: number;
+    efficiencyHistoryLength: number;
+  };
 }
 
 export interface VerificationRecord {
@@ -76,6 +83,10 @@ export interface ScoringRule {
   condition: string;
   points: number;
   type: 'bonus' | 'penalty';
+  sponsorCondition?: {
+    sponsorIds: string[];
+    matchType: 'any' | 'all';
+  };
 }
 
 export interface LevelConfig {

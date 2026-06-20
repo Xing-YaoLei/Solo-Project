@@ -91,27 +91,36 @@ export class GameManager {
     return ticket?.scoringRules || [];
   }
 
+  private checkSponsorCondition(rule: ScoringRule, record: VerificationRecord): boolean {
+    if (!rule.sponsorCondition) return true;
+    if (!record.sponsorId) return false;
+
+    const { sponsorIds, matchType } = rule.sponsorCondition;
+    if (matchType === 'any') {
+      return sponsorIds.includes(record.sponsorId);
+    } else {
+      return sponsorIds.every(id => id === record.sponsorId);
+    }
+  }
+
   private calculatePoints(record: VerificationRecord, isCorrect: boolean): number {
     const rules = this.getScoringRulesForRecord(record);
     let points = 0;
 
     if (isCorrect) {
       const bonusRules = rules.filter(r => r.type === 'bonus');
-      points = bonusRules.reduce((sum, r) => sum + r.points, 0);
-
-      if (record.sponsorId) {
-        const sponsor = sponsors.find(s => s.id === record.sponsorId);
-        const ticket = ticketTypes.find(t => t.id === record.ticketType);
-        if (sponsor && ticket) {
-          const sponsorMatchRule = rules.find(r => r.condition.includes('赞助商'));
-          if (sponsorMatchRule) {
-            // already counted above
-          }
+      bonusRules.forEach(rule => {
+        if (this.checkSponsorCondition(rule, record)) {
+          points += rule.points;
         }
-      }
+      });
     } else {
       const penaltyRules = rules.filter(r => r.type === 'penalty');
-      points = penaltyRules.reduce((sum, r) => sum + r.points, 0);
+      penaltyRules.forEach(rule => {
+        if (this.checkSponsorCondition(rule, record)) {
+          points += rule.points;
+        }
+      });
     }
 
     return points;
@@ -147,6 +156,13 @@ export class GameManager {
       this.levelState.isDisputeActive = true;
       this.levelState.disputeRecordIndex = this.levelState.currentRecordIndex;
       this.levelState.disputeCount++;
+      this.levelState.disputeSnapshot = {
+        score: this.levelState.score - points,
+        correctCount: isCorrect ? this.levelState.correctCount - 1 : this.levelState.correctCount,
+        wrongCount: !isCorrect ? this.levelState.wrongCount - 1 : this.levelState.wrongCount,
+        disputeCount: this.levelState.disputeCount - 1,
+        efficiencyHistoryLength: this.levelState.efficiencyHistory.length - 1,
+      };
     }
 
     return { correct: isCorrect, points, hasDispute, appliedRules };
@@ -172,15 +188,26 @@ export class GameManager {
 
     if (decision === 'uphold') {
       const rules = this.getScoringRulesForRecord(record).filter(r => r.type === 'bonus');
-      const sponsorBonus = rules.find(r => r.condition.includes('赞助商'));
+      const sponsorBonus = rules.find(r => r.condition.includes('赞助商') && this.checkSponsorCondition(r, record));
       const points = sponsorBonus ? sponsorBonus.points : 20;
       this.levelState.score += points;
       this.levelState.correctCount++;
       this.levelState.isDisputeActive = false;
+      this.levelState.disputeSnapshot = undefined;
       this.updateEfficiencyHistory();
       return { points };
     } else {
+      if (this.levelState.disputeSnapshot) {
+        const snap = this.levelState.disputeSnapshot;
+        this.levelState.score = snap.score;
+        this.levelState.correctCount = snap.correctCount;
+        this.levelState.wrongCount = snap.wrongCount;
+        this.levelState.disputeCount = snap.disputeCount;
+        this.levelState.efficiencyHistory = this.levelState.efficiencyHistory.slice(0, snap.efficiencyHistoryLength);
+      }
+
       this.levelState.isDisputeActive = false;
+      this.levelState.disputeSnapshot = undefined;
       this.levelState.records[this.levelState.disputeRecordIndex].isChecked = false;
       this.levelState.records[this.levelState.disputeRecordIndex].playerResult = undefined;
       this.levelState.currentRecordIndex = this.levelState.disputeRecordIndex;

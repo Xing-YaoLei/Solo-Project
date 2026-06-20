@@ -53,7 +53,16 @@ export const ticketTypes: TicketType[] = [
     benefits: ['ben_vip', 'ben_lounge', 'ben_gift', 'ben_food', 'ben_drink', 'ben_tech', 'ben_media', 'ben_photo'],
     scoringRules: [
       { id: 'rule_vvip_correct', condition: '正确核销', points: 50, type: 'bonus' },
-      { id: 'rule_vvip_sponsor_match', condition: '匹配首席赞助商', points: 30, type: 'bonus' },
+      {
+        id: 'rule_vvip_sponsor_match',
+        condition: '匹配首席赞助商',
+        points: 30,
+        type: 'bonus',
+        sponsorCondition: {
+          sponsorIds: ['sponsor_gold'],
+          matchType: 'any',
+        },
+      },
       { id: 'rule_vvip_wrong', condition: '核销错误', points: -25, type: 'penalty' },
     ],
   },
@@ -65,7 +74,16 @@ export const ticketTypes: TicketType[] = [
     benefits: ['ben_vip', 'ben_lounge', 'ben_food', 'ben_drink'],
     scoringRules: [
       { id: 'rule_vip_correct', condition: '正确核销', points: 30, type: 'bonus' },
-      { id: 'rule_vip_sponsor_match', condition: '匹配科技赞助商', points: 20, type: 'bonus' },
+      {
+        id: 'rule_vip_sponsor_match',
+        condition: '匹配科技赞助商',
+        points: 20,
+        type: 'bonus',
+        sponsorCondition: {
+          sponsorIds: ['sponsor_tech'],
+          matchType: 'any',
+        },
+      },
       { id: 'rule_vip_wrong', condition: '核销错误', points: -15, type: 'penalty' },
     ],
   },

@@ -6,7 +6,7 @@ import { InputManager } from '../managers/InputManager';
 import { PhysicsManager } from '../managers/PhysicsManager';
 import { COLORS, GAME_WIDTH, GAME_HEIGHT, ANIMATION_DURATIONS } from '../utils/constants';
 import { ticketTypes } from '../config/gameConfig';
-import type { ScoringRule } from '../types/game';
+import type { ScoringRule, VerificationRecord } from '../types/game';
 
 export class ScoringScene extends Scene {
   private gameManager!: GameManager;
@@ -277,6 +277,18 @@ export class ScoringScene extends Scene {
     }
   }
 
+  private checkSponsorCondition(rule: ScoringRule, record: VerificationRecord): boolean {
+    if (!rule.sponsorCondition) return true;
+    if (!record.sponsorId) return false;
+
+    const { sponsorIds, matchType } = rule.sponsorCondition;
+    if (matchType === 'any') {
+      return sponsorIds.includes(record.sponsorId);
+    } else {
+      return sponsorIds.every(id => id === record.sponsorId);
+    }
+  }
+
   private createScoringDetails(): void {
     const container = this.add.container(GAME_WIDTH / 2, 500);
     const width = 500;
@@ -308,8 +320,8 @@ export class ScoringScene extends Scene {
         const isCorrect = (record.playerResult === 'pass' && record.isValid) ||
                           (record.playerResult === 'reject' && !record.isValid);
         const applicableRules = isCorrect
-          ? ticket.scoringRules.filter(r => r.type === 'bonus')
-          : ticket.scoringRules.filter(r => r.type === 'penalty');
+          ? ticket.scoringRules.filter(r => r.type === 'bonus' && this.checkSponsorCondition(r, record))
+          : ticket.scoringRules.filter(r => r.type === 'penalty' && this.checkSponsorCondition(r, record));
 
         applicableRules.forEach(rule => {
           const key = `${rule.condition}_${rule.type}_${rule.points}`;
