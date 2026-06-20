@@ -3,7 +3,13 @@
   "compilerOptions": {
     "outDir": "./dist",
     "declaration": true,
-    "noEmit": false
+    "noEmit": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "strictNullChecks": false,
+    "noImplicitAny": false,
+    "moduleResolution": "node",
+    "resolveJsonModule": true
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts", "src/generated/**/*.d.ts"]
 }

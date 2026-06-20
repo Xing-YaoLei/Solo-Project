@@ -12,7 +12,7 @@ export class TicketTypeService {
   ) {}
 
   async list(activityId?: string) {
-    const cacheKey = `tickettypes:${activityId || 'all'};
+    const cacheKey = `tickettypes:${activityId || 'all'}`;
     const cached = await this.redis.getJson<any[]>(cacheKey);
     if (cached) return cached;
 

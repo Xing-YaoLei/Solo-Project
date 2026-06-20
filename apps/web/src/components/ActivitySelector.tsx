@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Activity } from '@prisma/client';
+import type { Activity } from '@ticket/prisma';
 import { ChevronDown, Plus, Building2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { fmtDate } from '@/lib/utils';

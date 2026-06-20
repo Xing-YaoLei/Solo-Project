@@ -1,6 +1,9 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import * as XLSX from 'xlsx';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
 
 const EXPORT_CALIBER_NOTES = {
   checkin_efficiency: [
@@ -304,11 +307,8 @@ export class ExportService {
     return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
   }
 
-  private async saveBuffer(buffer: Buffer, taskId: string, exportType: string): Promise<string> {
+  private saveBuffer(buffer: Buffer, taskId: string, exportType: string): string {
     try {
-      const fs = await import('fs');
-      const path = await import('path');
-      const os = await import('os');
       const dir = path.join(os.tmpdir(), 'ticket-exports');
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
       const file = path.join(dir, `${exportType}-${taskId}.xlsx`);
