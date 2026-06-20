@@ -3,8 +3,10 @@ import prisma from "@/lib/prisma";
 import {
   getCleanedOrdersForRoute,
   getCleanedTransactions,
-  getCaliberMatchedData,
+  getCleanedCameraStatsForRoute,
   getCleanedTransactionsForStop,
+  matchCaliber,
+  type CaliberMatchedRecord,
 } from "@/lib/cleaned-data";
 import type { MiniProgramOrder } from "@/lib/types";
 
@@ -51,9 +53,7 @@ export async function POST(request: Request) {
     const performance = await prisma.performance.findUnique({
       where: { id: performanceId },
       include: {
-        stop: {
-          include: { route: true },
-        },
+        stop: { include: { route: true } },
         scenicArea: { select: { id: true, name: true } },
       },
     });
@@ -93,23 +93,22 @@ export async function POST(request: Request) {
     const perfDayEnd = new Date(perfDayStart.getTime() + 86400000);
     const perfHour = perfDate.getHours();
 
-    const routeStopIds = (
-      await prisma.routeStop.findMany({
-        where: { routeId },
-        select: { id: true, name: true },
-      })
-    );
-    const routeStopIdSet = new Set(routeStopIds.map((s) => s.id));
+    const routeStops = await prisma.routeStop.findMany({
+      where: { routeId },
+      select: { id: true, name: true },
+    });
+    const routeStopIds = routeStops.map((s) => s.id);
+    const routeStopIdSet = new Set(routeStopIds);
 
     const [
       cleanedOrdersRoute,
       cleanedTransactionsAll,
-      caliberMatchedAll,
+      cleanedCameraStatsRoute,
       cleanedTransactionsPerfStop,
     ] = await Promise.all([
       getCleanedOrdersForRoute(scenicAreaId, routeId),
       getCleanedTransactions(scenicAreaId),
-      getCaliberMatchedData(scenicAreaId),
+      getCleanedCameraStatsForRoute(routeStopIds),
       getCleanedTransactionsForStop(perfStopId),
     ]);
 
@@ -160,11 +159,17 @@ export async function POST(request: Request) {
         ? perfDayRouteRevenue / perfDayTotalVisitors
         : 0;
 
-    const caliberRouteStops = caliberMatchedAll.filter((r) =>
-      routeStopIdSet.has(r.cameraStatistic.stopId)
+    const cameraStatsOnPerfDay = cleanedCameraStatsRoute.filter((cs) => {
+      const rt = new Date(cs.recordedAt);
+      return rt >= perfDayStart && rt < perfDayEnd;
+    });
+
+    const caliberRouteDay: CaliberMatchedRecord[] = matchCaliber(
+      cameraStatsOnPerfDay,
+      ordersOnPerfDay
     );
 
-    const caliberPerfStop = caliberRouteStops.filter(
+    const caliberPerfStop = caliberRouteDay.filter(
       (r) => r.cameraStatistic.stopId === perfStopId
     );
 
@@ -184,7 +189,7 @@ export async function POST(request: Request) {
       ? perfHourCaliber.reduce((m, r) => Math.max(m, r.orderVisitorCount - r.visitorCount), 0)
       : 0;
 
-    const routeVisitorImpact = caliberRouteStops.reduce(
+    const routeVisitorImpact = caliberRouteDay.reduce(
       (sum, r) => sum + Math.max(0, r.orderVisitorCount - r.visitorCount),
       0
     );
@@ -208,7 +213,7 @@ export async function POST(request: Request) {
     });
 
     const perfDayStr = perfDate.toLocaleDateString("zh-CN");
-    const caliberRouteRecordCount = caliberRouteStops.length;
+    const caliberRecordCount = caliberRouteDay.length;
     const orderRecordCount = ordersOnPerfDay.length;
     const txRouteRecordCount = transactionsOnPerfDayRoute.length;
 
@@ -218,9 +223,9 @@ export async function POST(request: Request) {
         alertId: linkedAlert?.id ?? null,
         performanceId: performance.id,
         title: `${performance.title}取消复盘报告`,
-        content: `${perfDayStr}路线"${routeName}"演出"${performance.title}"因${performance.cancelReason ?? "未知原因"}取消。复盘口径限定到演出当日 + 所属导览路线；数据基于${orderRecordCount}条清洗后去重订单、${txRouteRecordCount}条去重后同路线商户流水、${caliberRouteRecordCount}条同路线摄像头口径匹配记录综合分析。演出取消对路线二消链路产生级联影响：${perfDayStr}路线订单取消率${orderCancellationRate.toFixed(1)}%，演出站点( ${performance.stop.name} )峰值客流${perfStopCameraVisitorMax}人，平均停留${perfStopCameraStayAvg.toFixed(1)}分钟。`,
+        content: `${perfDayStr}路线"${routeName}"演出"${performance.title}"因${performance.cancelReason ?? "未知原因"}取消。复盘口径限定到演出当日 + 所属导览路线；摄像头记录按${perfDayStr} + 路线${routeStops.length}个站点双重裁剪后，用路线当天清洗订单重新匹配口径；数据基于${orderRecordCount}条清洗后去重订单、${txRouteRecordCount}条去重后同路线商户流水、${caliberRecordCount}条同路线当日摄像头口径匹配记录综合分析。演出取消对路线二消链路产生级联影响：${perfDayStr}路线订单取消率${orderCancellationRate.toFixed(1)}%，演出站点( ${performance.stop.name} )峰值客流${perfStopCameraVisitorMax}人，平均停留${perfStopCameraStayAvg.toFixed(1)}分钟。`,
         secondaryConsumptionRate,
-        visitorImpact: `${totalImpactedVisitors}名游客受影响（演出已售${performance.soldSeats}座/${performance.totalSeats}总座；路线当日取消订单${perfDayCancelledOrders.length}单共${perfDayCancelledVisitors}人；同路线${routeStopIds.length}个站点客流累计下降${routeVisitorImpact}人；演出前后3小时站点客流缺口${perfHourVisitorDrop}人）`,
+        visitorImpact: `${totalImpactedVisitors}名游客受影响（演出已售${performance.soldSeats}座/${performance.totalSeats}总座；路线当日取消订单${perfDayCancelledOrders.length}单共${perfDayCancelledVisitors}人；同路线${routeStops.length}个站点当日客流累计下降${routeVisitorImpact}人；演出前后3小时站点客流缺口${perfHourVisitorDrop}人）`,
         revenueImpact: `路线二消转化率¥${secondaryConsumptionRate.toFixed(2)}/人（${perfDayStr}路线营收¥${perfDayRouteRevenue.toLocaleString()} / ${perfDayTotalVisitors}人）；演出站点当日营收¥${perfStopRevenue.toLocaleString()}（${cleanedTransactionsPerfStop.length}条流水）；综合预计关联损失¥${estimatedRevenueLoss.toLocaleString()}`,
         recommendations:
           totalImpactedVisitors > 100

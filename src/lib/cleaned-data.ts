@@ -5,6 +5,8 @@ import {
   matchCaliber,
   type CaliberMatchedRecord,
 } from "@/lib/data-cleaning"
+
+export { matchCaliber, type CaliberMatchedRecord } from "@/lib/data-cleaning"
 import type {
   MiniProgramOrder,
   MerchantTransaction,
@@ -60,6 +62,16 @@ export async function getCleanedOrdersForRoute(
     where: { scenicAreaId, routeId },
   })
   return deduplicateOrders(orders as MiniProgramOrder[])
+}
+
+export async function getCleanedCameraStatsForRoute(
+  routeStopIds: string[]
+): Promise<CameraStatistic[]> {
+  if (routeStopIds.length === 0) return []
+  const stats = await prisma.cameraStatistic.findMany({
+    where: { stopId: { in: routeStopIds } },
+  })
+  return stats as CameraStatistic[]
 }
 
 export async function getCleanedTransactionsForStop(
