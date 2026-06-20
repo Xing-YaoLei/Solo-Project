@@ -11,6 +11,7 @@ import polars as pl
 
 from src.data.database import db
 from src.data.minio_client import minio_client
+from src.data.analytics import TicketAnalytics
 from src.auth.permissions import permission_manager, UserRole
 from src.ui.charts import metric_card, style_dataframe, safe_drop_columns
 
@@ -378,12 +379,29 @@ def _import_tickets_data(df: pl.DataFrame, event_id: Optional[str], source_file:
 
 
 def _import_payments_data(df: pl.DataFrame, event_id: Optional[str], source_file: str) -> Dict[str, Any]:
-    stats: Dict[str, Any] = {"payments": 0, "errors": []}
+    stats: Dict[str, Any] = {"payments": 0, "tickets_updated": 0, "errors": []}
     try:
         payments_df = _normalize_payments_df(df, event_id, source_file)
         if payments_df.height > 0:
             inserted = db.write_df(payments_df, "payments", if_exists="append")
             stats["payments"] = inserted
+
+            if event_id and inserted > 0:
+                order_ids = payments_df.filter(pl.col("payment_status").is_in(["success", "paid"]))["order_id"].unique().to_list()
+                if order_ids:
+                    placeholders = ",".join([f"'{o}'" for o in order_ids])
+                    update_sql = f"""
+                    UPDATE tickets
+                    SET payment_status = 'paid'
+                    WHERE event_id = '{event_id}'
+                      AND order_id IN ({placeholders})
+                      AND (payment_status IS NULL OR payment_status != 'paid')
+                    """
+                    try:
+                        result = db.conn.execute(update_sql)
+                        stats["tickets_updated"] = result.fetchone()[0] if result.description else 0
+                    except Exception as e:
+                        stats["errors"].append(f"更新票务支付状态失败: {str(e)}")
     except Exception as e:
         stats["errors"].append(f"支付流水写入失败: {str(e)}")
     return stats
@@ -396,14 +414,11 @@ def _archive_to_minio(file_bytes: bytes, filename: str, import_type: str, event_
         object_name = f"imports/{event_prefix}/{import_type}/{timestamp}_{filename}"
         fmt = _detect_format(filename)
         content_type = "application/json" if fmt == "json" else "text/csv"
-        minio_client.client.put_object(
-            bucket_name=minio_client.bucket,
-            object_name=object_name,
-            data=io.BytesIO(file_bytes),
-            length=len(file_bytes),
-            content_type=content_type,
-        )
-        return True, object_name
+        ok, info = minio_client.upload_bytes(file_bytes, object_name, content_type)
+        if ok:
+            return True, object_name
+        else:
+            return False, info
     except Exception as e:
         return False, str(e)
 
@@ -448,6 +463,12 @@ def render_import_data_page(event_id: Optional[str] = None) -> None:
     tab_import, tab_history, tab_guide = st.tabs(["📤 数据导入", "📋 导入历史", "📖 导入指南"])
 
     with tab_import:
+        minio_status = minio_client.get_status_info()
+        if minio_status["available"]:
+            st.success(f"✅ 对象存储就绪: {minio_status['endpoint']} / bucket: {minio_status['bucket']}")
+        else:
+            st.warning(f"⚠️ 对象存储不可用: {minio_status['endpoint']}（仅写入 DuckDB，无法归档原始文件）")
+
         st.markdown("### 选择导入类型")
 
         import_type_key = st.selectbox(
@@ -534,9 +555,12 @@ def render_import_data_page(event_id: Optional[str] = None) -> None:
 
                     archive_minio = st.checkbox(
                         "✅ 同时归档原始文件到 MinIO（推荐，便于审计追溯）",
-                        value=True,
+                        value=minio_status["available"],
+                        disabled=not minio_status["available"],
                         key="archive_minio_check",
                     )
+                    if not minio_status["available"]:
+                        st.caption("ℹ️ MinIO 未连接，可先配置环境变量 `MINIO_ENDPOINT` / `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY` 启用归档")
 
                     st.divider()
 
@@ -594,13 +618,25 @@ def render_import_data_page(event_id: Optional[str] = None) -> None:
                                         mc1.metric("导入订单数", stats.get("orders", 0))
                                         mc2.metric("导入门票数", stats.get("tickets", 0))
                                     else:
-                                        st.metric("导入支付流水", stats.get("payments", 0))
+                                        mc1, mc2, mc3 = st.columns(3)
+                                        mc1.metric("导入支付流水", stats.get("payments", 0))
+                                        tickets_updated = stats.get("tickets_updated", 0)
+                                        delta_color = "normal" if tickets_updated > 0 else "off"
+                                        mc2.metric("联动更新票务已支付", tickets_updated,
+                                                  delta=f"{tickets_updated} 张门票支付状态已更新",
+                                                  delta_color=delta_color)
+                                        if target_event:
+                                            analytics = TicketAnalytics(target_event)
+                                            recon = analytics.get_payment_reconciliation()
+                                            if recon:
+                                                mc3.metric("对账状态", recon.get("对账状态", "-"),
+                                                          help_text=recon.get("对账详情", ""))
 
                                     st.caption(f"源文件标签: `{source_tag}`")
                                     if archived_path:
                                         st.caption(f"📦 MinIO 归档路径: `{archived_path}`")
 
-                                    st.info("💡 前往 🎯 总览看板 即可查看更新后的核销漏斗数据")
+                                    st.info("💡 前往 🎯 总览看板 即可查看更新后的核销漏斗和支付对账数据")
 
         if df_std is None:
             st.info("👆 请先上传 CSV 或 JSON 文件开始导入")

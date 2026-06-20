@@ -60,6 +60,31 @@ def render_overview_page(event_id: Optional[str] = None) -> None:
             last = last.strftime("%m-%d %H:%M")
         metric_card("🕚 末检时间", last)
 
+    recon = analytics.get_payment_reconciliation()
+    if recon:
+        st.markdown("### 💳 支付对账复盘")
+        col_p1, col_p2, col_p3, col_p4 = st.columns(4)
+        with col_p1:
+            metric_card("🧾 支付流水总数", recon.get("支付流水总数", 0),
+                       help_text="导入的支付流水总条数")
+        with col_p2:
+            paid_amount = recon.get("支付流水成功金额", 0)
+            metric_card("💰 支付流水金额", f"¥{paid_amount:,.2f}",
+                       help_text="支付流水成功交易总金额")
+        with col_p3:
+            refund_amount = recon.get("支付已退款金额", 0)
+            metric_card("↩️ 支付已退款", f"¥{refund_amount:,.2f}",
+                       help_text="支付流水退款金额", delta_color="inverse")
+        with col_p4:
+            recon_status = recon.get("对账状态", "-")
+            status_color = "normal"
+            if "✅" in recon_status:
+                status_color = "normal"
+            elif "⚠️" in recon_status:
+                status_color = "off"
+            metric_card("📊 对账状态", recon_status,
+                       help_text=recon.get("对账详情", ""), delta_color=status_color)
+
     st.divider()
 
     col_funnel, col_conclusion = st.columns([2, 1])

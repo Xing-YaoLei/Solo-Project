@@ -44,6 +44,67 @@ class TicketAnalytics:
         ]
         return pl.DataFrame(data)
 
+    def get_payment_reconciliation(self) -> Dict[str, Any]:
+        recon_sql = f"""
+        WITH
+        ticket_payments AS (
+            SELECT
+                COUNT(*) as ticket_paid_count,
+                COALESCE(SUM(final_price), 0) as ticket_paid_amount
+            FROM tickets
+            {self._event_filter()}
+              AND payment_status = 'paid'
+        ),
+        payment_records AS (
+            SELECT
+                COUNT(*) as payment_count,
+                COUNT(CASE WHEN payment_status IN ('success', 'paid') THEN 1 END) as payment_success_count,
+                COALESCE(SUM(CASE WHEN payment_status IN ('success', 'paid') THEN amount ELSE 0 END), 0) as payment_success_amount,
+                COALESCE(SUM(CASE WHEN payment_status = 'refunded' THEN refund_amount ELSE 0 END), 0) as payment_refund_amount
+            FROM payments
+            {self._event_filter()}
+        )
+        SELECT
+            tp.*,
+            pr.*,
+            pr.payment_success_count - tp.ticket_paid_count as count_diff,
+            pr.payment_success_amount - tp.ticket_paid_amount as amount_diff
+        FROM ticket_payments tp, payment_records pr
+        """
+        result = db.query_to_df(recon_sql)
+        if result.height == 0:
+            return {}
+        row = result.row(0, named=True)
+
+        recon_status = "✅ 一致"
+        recon_detail = ""
+        count_diff = row.get("count_diff", 0) or 0
+        amount_diff = row.get("amount_diff", 0) or 0
+
+        if count_diff == 0 and amount_diff == 0:
+            recon_status = "✅ 对账一致"
+            recon_detail = "票务已支付与支付流水完全匹配"
+        elif count_diff > 0 or amount_diff > 0:
+            recon_status = "⚠️ 支付多于票务"
+            recon_detail = f"支付流水多 {count_diff} 张 / 金额多 ¥{amount_diff:.2f}"
+        else:
+            recon_status = "⚠️ 票务多于支付"
+            recon_detail = f"票务已支付多 {abs(count_diff)} 张 / 金额多 ¥{abs(amount_diff):.2f}"
+
+        return {
+            "票务已支付票数": row.get("ticket_paid_count", 0),
+            "票务已支付金额": row.get("ticket_paid_amount", 0),
+            "支付流水总数": row.get("payment_count", 0),
+            "支付流水成功数": row.get("payment_success_count", 0),
+            "支付流水成功金额": row.get("payment_success_amount", 0),
+            "支付已退款金额": row.get("payment_refund_amount", 0),
+            "对账状态": recon_status,
+            "对账详情": recon_detail,
+            "数量差异": count_diff,
+            "金额差异": float(amount_diff),
+        }
+
+
     def get_efficiency_metrics(self) -> Dict[str, Any]:
         metrics_sql = f"""
         WITH
