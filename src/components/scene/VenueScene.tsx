@@ -16,6 +16,7 @@ interface VenueSceneProps {
   stagePosition?: [number, number, number];
   interactive?: boolean;
   cameraResetKey?: number;
+  onSeatLongPress?: (seatId: string) => void;
 }
 
 const DEFAULT_CAMERA_POS = new THREE.Vector3(0, 12, 14);
@@ -124,6 +125,7 @@ function SceneContent({
   onSeatHover,
   stagePosition,
   interactive,
+  onSeatLongPress,
 }: VenueSceneProps) {
   const maxZ = useMemo(() => {
     if (seats.length === 0) return 8;
@@ -143,6 +145,7 @@ function SceneContent({
         hoveredSeatId={hoveredSeatId}
         onSeatClick={interactive ? onSeatClick : () => {}}
         onSeatHover={interactive ? onSeatHover : () => {}}
+        onSeatLongPress={interactive ? onSeatLongPress : undefined}
       />
       <EffectComposer multisampling={8}>
         <Bloom

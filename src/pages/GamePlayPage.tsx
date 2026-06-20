@@ -303,22 +303,24 @@ export function GamePlayPage() {
       onDoubleTap: () => {
         handleResetCamera();
       },
-      onLongPress: () => {
-        if (hoveredSeatId) {
-          const seat = seats.find((s) => s.id === hoveredSeatId);
-          if (seat) {
-            setLongPressSeat(seat);
-            if (longPressTimerRef.current) {
-              clearTimeout(longPressTimerRef.current);
-            }
-            longPressTimerRef.current = window.setTimeout(() => {
-              setLongPressSeat(null);
-            }, 4000);
-          }
-        }
-      },
     },
     !isLoading
+  );
+
+  const handleSeatLongPress = useCallback(
+    (seatId: string) => {
+      const seat = seats.find((s) => s.id === seatId);
+      if (seat) {
+        setLongPressSeat(seat);
+        if (longPressTimerRef.current) {
+          clearTimeout(longPressTimerRef.current);
+        }
+        longPressTimerRef.current = window.setTimeout(() => {
+          setLongPressSeat(null);
+        }, 6000);
+      }
+    },
+    [seats]
   );
 
   if (!level) {
@@ -406,6 +408,7 @@ export function GamePlayPage() {
           hoveredSeatId={hoveredSeatId}
           onSeatClick={handleSeatClick}
           onSeatHover={setHoveredSeat}
+          onSeatLongPress={handleSeatLongPress}
           stagePosition={[
             level.venueConfig.stagePosition.x,
             level.venueConfig.stagePosition.y,

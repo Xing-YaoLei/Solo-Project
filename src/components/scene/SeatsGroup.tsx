@@ -10,15 +10,40 @@ interface SeatsGroupProps {
   hoveredSeatId: string | null;
   onSeatClick: (seatId: string) => void;
   onSeatHover: (seatId: string | null) => void;
+  onSeatLongPress?: (seatId: string) => void;
 }
 
-export function SeatsGroup({ seats, selectedSeatIds, hoveredSeatId, onSeatClick, onSeatHover }: SeatsGroupProps) {
+const LONG_PRESS_MS = 500;
+
+export function SeatsGroup({ seats, selectedSeatIds, hoveredSeatId, onSeatClick, onSeatHover, onSeatLongPress }: SeatsGroupProps) {
   const backRef = useRef<THREE.InstancedMesh>(null);
   const bottomRef = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const tmpColor = useMemo(() => new THREE.Color(), []);
+  const longPressTimerRef = useRef<number | null>(null);
+  const longPressInstanceIdRef = useRef<number | null>(null);
 
   const seatCount = seats.length;
+
+  const clearLongPressTimer = () => {
+    if (longPressTimerRef.current !== null) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    longPressInstanceIdRef.current = null;
+  };
+
+  const startLongPressTimer = (instanceId: number) => {
+    clearLongPressTimer();
+    longPressInstanceIdRef.current = instanceId;
+    longPressTimerRef.current = window.setTimeout(() => {
+      const inst = longPressInstanceIdRef.current;
+      if (inst !== null && inst < seats.length && onSeatLongPress) {
+        onSeatLongPress(seats[inst].id);
+      }
+      clearLongPressTimer();
+    }, LONG_PRESS_MS);
+  };
 
   const { backGeo, bottomGeo } = useMemo(() => ({
     backGeo: new THREE.BoxGeometry(0.45, 0.55, 0.08),
@@ -32,6 +57,13 @@ export function SeatsGroup({ seats, selectedSeatIds, hoveredSeatId, onSeatClick,
     });
     return colors;
   }, [seats]);
+
+  useEffect(() => {
+    return () => {
+      clearLongPressTimer();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!backRef.current || !bottomRef.current) return;
@@ -121,10 +153,29 @@ export function SeatsGroup({ seats, selectedSeatIds, hoveredSeatId, onSeatClick,
 
   const handleClick = (e: ThreeEvent<PointerEvent>) => {
     e.stopPropagation();
+    clearLongPressTimer();
     const instanceId = (e as any).instanceId;
     if (instanceId !== undefined && instanceId < seats.length) {
       onSeatClick(seats[instanceId].id);
     }
+  };
+
+  const handlePointerDown = (e: ThreeEvent<PointerEvent>) => {
+    e.stopPropagation();
+    const instanceId = (e as any).instanceId;
+    if (instanceId !== undefined && instanceId < seats.length) {
+      startLongPressTimer(instanceId);
+    }
+  };
+
+  const handlePointerUp = (e: ThreeEvent<PointerEvent>) => {
+    e.stopPropagation();
+    clearLongPressTimer();
+  };
+
+  const handlePointerCancel = (e: ThreeEvent<PointerEvent>) => {
+    e.stopPropagation();
+    clearLongPressTimer();
   };
 
   const handlePointerOver = (e: ThreeEvent<PointerEvent>) => {
@@ -138,6 +189,7 @@ export function SeatsGroup({ seats, selectedSeatIds, hoveredSeatId, onSeatClick,
 
   const handlePointerOut = (e: ThreeEvent<PointerEvent>) => {
     e.stopPropagation();
+    clearLongPressTimer();
     onSeatHover(null);
     document.body.style.cursor = 'default';
   };
@@ -150,6 +202,9 @@ export function SeatsGroup({ seats, selectedSeatIds, hoveredSeatId, onSeatClick,
         castShadow
         receiveShadow
         onClick={handleClick}
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
         onPointerOver={handlePointerOver}
         onPointerOut={handlePointerOut}
       >
@@ -161,6 +216,9 @@ export function SeatsGroup({ seats, selectedSeatIds, hoveredSeatId, onSeatClick,
         castShadow
         receiveShadow
         onClick={handleClick}
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
         onPointerOver={handlePointerOver}
         onPointerOut={handlePointerOut}
       >

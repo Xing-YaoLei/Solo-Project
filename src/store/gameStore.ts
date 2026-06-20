@@ -274,6 +274,18 @@ export const useGameStore = create<GameStore>((set, get) => ({
       ? state.lockRecords.find((l) => l.orderId === relatedCheckIn.orderId)
       : null;
 
+    const level = state.currentLevelId ? getLevelById(state.currentLevelId) : null;
+    const difficulty = level?.difficulty || 1;
+    let oldLockScore = 0;
+    let oldCheckInBonus = 0;
+    if (relatedLock && relatedLock.processed) {
+      const { baseScore, penalties } = calculateLockRecordScore(relatedLock, state.seats, difficulty);
+      oldLockScore = baseScore - penalties;
+    }
+    if (relatedCheckIn && relatedCheckIn.processed) {
+      oldCheckInBonus = calculateCheckInScore(relatedCheckIn, state.lockRecords).bonus;
+    }
+
     let newSeats = state.seats.map((s) => {
       if (relatedLock && relatedLock.assignedSeats.includes(s.id)) {
         return { ...s, status: 'AVAILABLE' as const, orderId: undefined };
@@ -325,7 +337,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       lockRecords: newLockRecords,
       checkInRecords: newCheckInRecords,
       currentDispute: null,
-      score: s.score + option.scoreDelta,
+      score: s.score + option.scoreDelta - oldLockScore - oldCheckInBonus,
       decisionHistory: [...s.decisionHistory, log],
       phase: 'LOCKING',
       activeLockRecordId: relatedLock?.id || null,
@@ -425,7 +437,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       .map((r) => calculateCheckInScore(r, state.lockRecords).bonus);
 
     const disputeScores = state.decisionHistory
-      .filter((d) => d.action === 'RESOLVE_DISPUTE')
+      .filter((d) => d.action === 'RESOLVE_DISPUTE' || d.action === 'RESOLVE_DISPUTE_RESELECT')
       .map((d) => d.scoreDelta);
 
     const { checkedIn, total } = getCurrentOccupancy(state.seats);
