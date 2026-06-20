@@ -1,5 +1,5 @@
-import { useMemo, useEffect } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { useMemo, useEffect, useRef } from 'react';
+import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls, Environment } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
@@ -15,6 +15,50 @@ interface VenueSceneProps {
   onSeatHover: (seatId: string | null) => void;
   stagePosition?: [number, number, number];
   interactive?: boolean;
+  cameraResetKey?: number;
+}
+
+const DEFAULT_CAMERA_POS = new THREE.Vector3(0, 12, 14);
+const DEFAULT_CAMERA_TARGET = new THREE.Vector3(0, 0, 0);
+
+function CameraResetController({ resetKey }: { resetKey: number }) {
+  const { camera } = useThree();
+  const controlsRef = useRef<any>(null);
+  const animating = useRef(false);
+  const animStart = useRef(0);
+  const startPos = useRef(new THREE.Vector3());
+  const startTarget = useRef(new THREE.Vector3());
+  const prevKey = useRef(0);
+
+  useEffect(() => {
+    if (resetKey !== prevKey.current) {
+      prevKey.current = resetKey;
+      startPos.current.copy(camera.position);
+      startTarget.current.copy(controlsRef.current?.target || DEFAULT_CAMERA_TARGET);
+      animStart.current = performance.now();
+      animating.current = true;
+    }
+  }, [resetKey, camera]);
+
+  useFrame(() => {
+    if (!animating.current) return;
+    const elapsed = performance.now() - animStart.current;
+    const duration = 800;
+    const t = Math.min(elapsed / duration, 1);
+    const eased = 1 - Math.pow(1 - t, 3);
+
+    camera.position.lerpVectors(startPos.current, DEFAULT_CAMERA_POS, eased);
+    if (controlsRef.current) {
+      controlsRef.current.target.lerpVectors(startTarget.current, DEFAULT_CAMERA_TARGET, eased);
+      controlsRef.current.update();
+    }
+
+    if (t >= 1) {
+      animating.current = false;
+    }
+  });
+
+  return <OrbitControls ref={controlsRef} enableDamping dampingFactor={0.08} minDistance={6} maxDistance={35} minPolarAngle={0.2} maxPolarAngle={Math.PI / 2.1} enablePan panSpeed={0.8} rotateSpeed={0.6} zoomSpeed={0.9} />;
 }
 
 function SceneLights() {
@@ -130,18 +174,7 @@ export function VenueScene(props: VenueSceneProps) {
       camera={{ position: cameraPosition, fov: 50, near: 0.1, far: 200 }}
     >
       <SceneContent {...props} />
-      <OrbitControls
-        enableDamping
-        dampingFactor={0.08}
-        minDistance={6}
-        maxDistance={35}
-        minPolarAngle={0.2}
-        maxPolarAngle={Math.PI / 2.1}
-        enablePan
-        panSpeed={0.8}
-        rotateSpeed={0.6}
-        zoomSpeed={0.9}
-      />
+      <CameraResetController resetKey={props.cameraResetKey || 0} />
     </Canvas>
   );
 }

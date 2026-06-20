@@ -32,7 +32,7 @@ interface GameStore extends GameState {
   assignSeatsToLockRecord: () => { success: boolean; scoreDelta: number; message?: string };
   unassignLockRecord: (recordId: string) => void;
   processCheckIn: (recordId: string, seatIds: string[]) => { success: boolean; scoreDelta: number; dispute?: RefundDispute | null };
-  resolveDispute: (optionId: string) => { scoreDelta: number; occupancyDelta: number };
+  resolveDispute: (optionId: string) => { scoreDelta: number; occupancyDelta: number; needsReselect: boolean };
   addDecisionLog: (log: DecisionLog) => void;
   rollbackToDecision: (decisionId: string) => void;
   computeFinalScore: () => { totalScore: number; occupancyPercent: number; breakdown: { label: string; value: number }[] };
@@ -261,42 +261,79 @@ export const useGameStore = create<GameStore>((set, get) => ({
   resolveDispute: (optionId) => {
     const state = get();
     const dispute = state.currentDispute;
-    if (!dispute) return { scoreDelta: 0, occupancyDelta: 0 };
+    if (!dispute) return { scoreDelta: 0, occupancyDelta: 0, needsReselect: false };
 
     const option = dispute.options.find((o) => o.id === optionId);
-    if (!option) return { scoreDelta: 0, occupancyDelta: 0 };
+    if (!option) return { scoreDelta: 0, occupancyDelta: 0, needsReselect: false };
 
-    let newSeats = [...state.seats];
+    const beforeSnapshot = `争议前(订单${dispute.orderId.slice(-4)})`;
+    get().snapshotOccupancy(beforeSnapshot);
+
+    const relatedCheckIn = state.checkInRecords.find((c) => c.id === dispute.checkInId);
+    const relatedLock = relatedCheckIn
+      ? state.lockRecords.find((l) => l.orderId === relatedCheckIn.orderId)
+      : null;
+
+    let newSeats = state.seats.map((s) => {
+      if (relatedLock && relatedLock.assignedSeats.includes(s.id)) {
+        return { ...s, status: 'AVAILABLE' as const, orderId: undefined };
+      }
+      if (relatedCheckIn && relatedCheckIn.checkedSeats.includes(s.id)) {
+        return { ...s, status: 'AVAILABLE' as const, orderId: undefined };
+      }
+      return s;
+    });
+
     if (option.occupancyImpact < 0) {
       const affectedCount = Math.abs(Math.round(option.occupancyImpact));
       const toRefund = dispute.affectedSeats.slice(0, affectedCount);
-      newSeats = state.seats.map((s) => {
+      newSeats = newSeats.map((s) => {
         if (toRefund.includes(s.id)) {
-          return { ...s, status: 'REFUNDED' as const };
+          return { ...s, status: 'AVAILABLE' as const, orderId: undefined };
         }
         return s;
       });
     }
 
+    const newLockRecords = state.lockRecords.map((r) => {
+      if (relatedLock && r.id === relatedLock.id) {
+        return { ...r, assignedSeats: [], isConflict: false, conflictReason: undefined, processed: false };
+      }
+      return r;
+    });
+
+    const newCheckInRecords = state.checkInRecords.map((r) => {
+      if (relatedCheckIn && r.id === relatedCheckIn.id) {
+        return { ...r, checkedSeats: [], processed: false, hasDispute: false, disputeReason: undefined };
+      }
+      return r;
+    });
+
     const log = generateDecisionLog(
       'CHECKING',
-      'RESOLVE_DISPUTE',
+      'RESOLVE_DISPUTE_RESELECT',
       dispute.id,
       dispute.affectedSeats,
       option.scoreDelta,
       option.occupancyImpact,
-      `处理争议：${option.label}，${option.description}，得分 ${option.scoreDelta}`,
-      false
+      `处理争议：${option.label} → 恢复订单 ${dispute.orderId} 的锁座/核销，回到场景重新选座，得分 ${option.scoreDelta}`,
+      true
     );
 
     set((s) => ({
       seats: newSeats,
+      lockRecords: newLockRecords,
+      checkInRecords: newCheckInRecords,
       currentDispute: null,
       score: s.score + option.scoreDelta,
       decisionHistory: [...s.decisionHistory, log],
+      phase: 'LOCKING',
+      activeLockRecordId: relatedLock?.id || null,
+      activeCheckInId: null,
+      selectedSeatIds: [],
     }));
 
-    return { scoreDelta: option.scoreDelta, occupancyDelta: option.occupancyImpact };
+    return { scoreDelta: option.scoreDelta, occupancyDelta: option.occupancyImpact, needsReselect: true };
   },
 
   addDecisionLog: (log) => {

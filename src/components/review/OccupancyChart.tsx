@@ -26,17 +26,41 @@ const PHASE_LABELS: Record<string, string> = {
   REVIEW: '复盘阶段',
 };
 
+const DISPUTE_KEYWORDS = ['争议前', '退票重选'];
+
+function isDisputePoint(label: string) {
+  return DISPUTE_KEYWORDS.some((k) => label.includes(k));
+}
+
 export function OccupancyChart({ data, targetOccupancy }: OccupancyChartProps) {
   const chartData = useMemo(() => {
     const enriched = data.map((d, idx) => ({
       ...d,
       index: idx,
       phaseLabel: PHASE_LABELS[d.phase] || d.phase,
+      isDispute: isDisputePoint(d.timeLabel),
     }));
     return enriched.length > 0 ? enriched : [
-      { timeLabel: '初始', currentOccupancy: 0, optimalOccupancy: 0, phase: 'RULES' as const, phaseLabel: '规则阶段', index: 0, timestamp: Date.now() },
+      { timeLabel: '初始', currentOccupancy: 0, optimalOccupancy: 0, phase: 'RULES' as const, phaseLabel: '规则阶段', index: 0, timestamp: Date.now(), isDispute: false },
     ];
   }, [data]);
+
+  const disputeRanges = useMemo(() => {
+    const ranges: { start: number; end: number }[] = [];
+    let start = -1;
+    for (let i = 0; i < chartData.length; i++) {
+      if (chartData[i].isDispute) {
+        if (start === -1) start = i;
+      } else {
+        if (start !== -1) {
+          ranges.push({ start, end: i - 1 });
+          start = -1;
+        }
+      }
+    }
+    if (start !== -1) ranges.push({ start, end: chartData.length - 1 });
+    return ranges;
+  }, [chartData]);
 
   return (
     <div className="w-full rounded-2xl bg-slate-800/50 border border-slate-700/60 p-5">
@@ -54,6 +78,12 @@ export function OccupancyChart({ data, targetOccupancy }: OccupancyChartProps) {
             <div className="w-3 h-3 rounded-full bg-amber-500" />
             <span className="text-slate-400">理论最优</span>
           </div>
+          {disputeRanges.length > 0 && (
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-1.5 rounded-full bg-rose-500" />
+              <span className="text-slate-400">退票争议重选</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -120,7 +150,18 @@ export function OccupancyChart({ data, targetOccupancy }: OccupancyChartProps) {
               dataKey="currentOccupancy"
               stroke="#10B981"
               strokeWidth={3}
-              dot={{ fill: '#10B981', strokeWidth: 2, r: 5, stroke: '#0F172A' }}
+              dot={(props: any) => {
+                const { cx, cy, payload } = props;
+                if (payload?.isDispute) {
+                  return (
+                    <g key={`dot-${payload.index}`}>
+                      <circle cx={cx} cy={cy} r={8} fill="#F43F5E" fillOpacity={0.15} />
+                      <circle cx={cx} cy={cy} r={5} fill="#F43F5E" stroke="#0F172A" strokeWidth={2} />
+                    </g>
+                  );
+                }
+                return <circle key={`dot-${payload?.index ?? 0}`} cx={cx} cy={cy} r={5} fill="#10B981" stroke="#0F172A" strokeWidth={2} />;
+              }}
               activeDot={{ r: 7, stroke: '#10B981', strokeWidth: 2, fill: '#0F172A' }}
             />
             <Line

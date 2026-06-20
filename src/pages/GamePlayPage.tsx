@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useCallback, useState } from 'react';
+import { useEffect, useMemo, useCallback, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, HelpCircle, RotateCcw, Play, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, HelpCircle, RotateCcw, Play, CheckCircle2, Maximize } from 'lucide-react';
 import { VenueScene } from '../components/scene/VenueScene';
 import { PhaseStepper } from '../components/game/PhaseStepper';
 import { ScoreHUD } from '../components/game/ScoreHUD';
@@ -14,8 +14,9 @@ import { useGameStore } from '../store/gameStore';
 import { useProgressStore } from '../store/progressStore';
 import { useSceneLoader } from '../hooks/useSceneLoader';
 import { useKeyboardControls } from '../hooks/useKeyboardControls';
+import { useTouchControls } from '../hooks/useTouchControls';
 import { getLevelById } from '../data/levels';
-import type { GamePhase, TicketType, RefundDispute } from '../types';
+import type { GamePhase, TicketType, RefundDispute, Seat } from '../types';
 import { getCurrentOccupancy } from '../utils/occupancyTracker';
 
 interface ToastMessage {
@@ -31,6 +32,10 @@ export function GamePlayPage() {
   const [rulesOpen, setRulesOpen] = useState(true);
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
   const [showHelp, setShowHelp] = useState(false);
+  const [longPressSeat, setLongPressSeat] = useState<Seat | null>(null);
+  const [cameraResetKey, setCameraResetKey] = useState(0);
+  const longPressTimerRef = useRef<number | null>(null);
+  const disputeReselectRef = useRef(false);
 
   const level = useMemo(() => (levelId ? getLevelById(levelId) : undefined), [levelId]);
 
@@ -142,7 +147,12 @@ export function GamePlayPage() {
     const result = assignSeatsToLockRecord();
     if (result.success) {
       addToast('success', `分配成功！得分 +${result.scoreDelta}`);
-      snapshotOccupancy(`分配 #${activeLockRecordId?.slice(-4) || ''}`);
+      if (disputeReselectRef.current) {
+        snapshotOccupancy('退票重选-重新分配');
+        disputeReselectRef.current = false;
+      } else {
+        snapshotOccupancy(`分配 #${activeLockRecordId?.slice(-4) || ''}`);
+      }
     } else {
       addToast('error', result.message || '分配失败');
     }
@@ -167,15 +177,22 @@ export function GamePlayPage() {
   const handleResolveDispute = useCallback(
     (optionId: string) => {
       const result = resolveDispute(optionId);
-      if (result.scoreDelta > 0) {
-        addToast('success', `争议处理完成 +${result.scoreDelta} 分`);
-      } else if (result.scoreDelta < 0) {
-        addToast('warning', `争议处理完成 ${result.scoreDelta} 分`);
+      if (result.needsReselect) {
+        disputeReselectRef.current = true;
+        addToast('warning', '争议处理完成 → 已恢复订单座位，请重新分配');
+        snapshotOccupancy('退票重选后');
+        setRightPanelOpen(true);
       } else {
-        addToast('info', '争议已处理');
+        if (result.scoreDelta > 0) {
+          addToast('success', `争议处理完成 +${result.scoreDelta} 分`);
+        } else if (result.scoreDelta < 0) {
+          addToast('warning', `争议处理完成 ${result.scoreDelta} 分`);
+        } else {
+          addToast('info', '争议已处理');
+        }
       }
     },
-    [resolveDispute, addToast]
+    [resolveDispute, addToast, snapshotOccupancy]
   );
 
   const canAdvancePhase = useCallback((): boolean => {
@@ -248,6 +265,11 @@ export function GamePlayPage() {
     ]
   );
 
+  const handleResetCamera = useCallback(() => {
+    setCameraResetKey((k) => k + 1);
+    addToast('info', '视角已重置');
+  }, [addToast]);
+
   useKeyboardControls(
     {
       onPhaseJump: (p) => {
@@ -264,13 +286,37 @@ export function GamePlayPage() {
         clearSelectedSeats();
         setActiveLockRecord(null);
         setActiveCheckIn(null);
+        setLongPressSeat(null);
       },
       onTabPanel: () => {
         if (phase === 'LOCKING' || phase === 'CHECKING') {
           setRightPanelOpen((o) => !o);
         }
       },
-      onResetView: () => {},
+      onResetView: handleResetCamera,
+    },
+    !isLoading
+  );
+
+  useTouchControls(
+    {
+      onDoubleTap: () => {
+        handleResetCamera();
+      },
+      onLongPress: () => {
+        if (hoveredSeatId) {
+          const seat = seats.find((s) => s.id === hoveredSeatId);
+          if (seat) {
+            setLongPressSeat(seat);
+            if (longPressTimerRef.current) {
+              clearTimeout(longPressTimerRef.current);
+            }
+            longPressTimerRef.current = window.setTimeout(() => {
+              setLongPressSeat(null);
+            }, 4000);
+          }
+        }
+      },
     },
     !isLoading
   );
@@ -366,6 +412,7 @@ export function GamePlayPage() {
             level.venueConfig.stagePosition.z,
           ]}
           interactive={phase === 'LOCKING' || phase === 'CHECKING'}
+          cameraResetKey={cameraResetKey}
         />
       </div>
 
@@ -583,6 +630,82 @@ export function GamePlayPage() {
       </div>
 
       <div className="hidden">{decisionHistory.length}</div>
+
+      <button
+        onClick={handleResetCamera}
+        className="absolute bottom-20 right-6 z-20 p-2.5 rounded-xl backdrop-blur-xl bg-slate-900/70 border border-slate-700/50 text-slate-400 hover:text-amber-400 hover:border-amber-500/40 transition-all pointer-events-auto"
+        title="重置视角 (R)"
+      >
+        <Maximize className="w-5 h-5" />
+      </button>
+
+      <AnimatePresence>
+        {longPressSeat && (() => {
+          const seat = longPressSeat;
+          const statusLabels: Record<string, string> = {
+            AVAILABLE: '空闲可选',
+            LOCKED: '已锁定',
+            SOLD: '已售出',
+            CHECKED_IN: '已核销入场',
+            REFUNDED: '已退票',
+            CONFLICT: '冲突',
+          };
+          const typeLabels: Record<string, string> = {
+            VIP: 'VIP贵宾票',
+            PREMIUM: '高级票',
+            STANDARD: '标准票',
+            ECONOMY: '经济票',
+          };
+          return (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              className="fixed left-1/2 -translate-x-1/2 bottom-24 z-50 pointer-events-auto"
+            >
+              <div className="px-6 py-4 rounded-2xl backdrop-blur-2xl bg-slate-900/95 border-2 border-amber-500/40 shadow-2xl shadow-amber-500/20 max-w-sm w-80">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-base font-bold text-white">座位详情</h4>
+                  <button
+                    onClick={() => setLongPressSeat(null)}
+                    className="p-1 rounded-lg hover:bg-slate-700/60 text-slate-400 hover:text-white transition-colors"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="p-2.5 rounded-xl bg-slate-800/60 border border-slate-700/40">
+                    <div className="text-[10px] text-slate-500 mb-0.5">座位编号</div>
+                    <div className="text-white font-bold font-mono">{seat.row}排 {seat.number}座</div>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-slate-800/60 border border-slate-700/40">
+                    <div className="text-[10px] text-slate-500 mb-0.5">票种类型</div>
+                    <div className="text-amber-400 font-bold">{typeLabels[seat.ticketType] || seat.ticketType}</div>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-slate-800/60 border border-slate-700/40">
+                    <div className="text-[10px] text-slate-500 mb-0.5">票价</div>
+                    <div className="text-emerald-400 font-bold font-mono">¥{seat.price.toLocaleString()}</div>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-slate-800/60 border border-slate-700/40">
+                    <div className="text-[10px] text-slate-500 mb-0.5">当前状态</div>
+                    <div className={`font-bold ${seat.status === 'AVAILABLE' ? 'text-slate-300' : seat.status === 'LOCKED' ? 'text-blue-400' : seat.status === 'CHECKED_IN' ? 'text-emerald-400' : 'text-rose-400'}`}>
+                      {statusLabels[seat.status] || seat.status}
+                    </div>
+                  </div>
+                </div>
+                {seat.orderId && (
+                  <div className="mt-3 pt-3 border-t border-slate-700/40">
+                    <div className="text-[10px] text-slate-500 mb-0.5">关联订单</div>
+                    <div className="text-xs font-mono text-sky-400">{seat.orderId}</div>
+                  </div>
+                )}
+                <div className="mt-2 text-[10px] text-slate-600 text-center">长按座位查看 · 点击空白关闭</div>
+              </div>
+            </motion.div>
+          );
+        })()}
+      </AnimatePresence>
     </div>
   );
 }
