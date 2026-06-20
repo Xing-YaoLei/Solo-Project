@@ -19,10 +19,11 @@ class MonthlyReportJob < ApplicationJob
 
     report_service = CheckInEfficiencyReportService.new(event, start_date, end_date)
     stats = report_service.stats
-    records = report_service.scoped_records
+    orders = report_service.scoped_orders
 
-    return if records.none?
+    return if orders.none?
 
+    records = report_service.check_in_records
     generate_xlsx(event, stats, records, report_service.filter_description, start_date, end_date)
   end
 

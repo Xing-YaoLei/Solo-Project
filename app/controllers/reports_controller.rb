@@ -13,7 +13,7 @@ class ReportsController < ApplicationController
 
     @report_service = CheckInEfficiencyReportService.new(@event, @start_date, @end_date)
     @stats = @report_service.stats
-    @check_in_records = @report_service.scoped_records
+    @check_in_records = @report_service.check_in_records
     @ticket_types = @event.ticket_types.includes(:check_in_records, :ticket_orders)
     @filter_description = @report_service.filter_description
 

@@ -10,49 +10,48 @@ class CheckInEfficiencyReportService
   end
 
   def stats
-    orders_in_range = scoped_orders
-    records_in_range = scoped_records
-
+    orders = scoped_orders.load
     {
-      total_orders: orders_in_range.count,
-      checked_in: records_in_range.distinct.count(:ticket_order_id),
-      rate: calculate_rate(orders_in_range, records_in_range),
-      by_method: records_in_range.group(:check_in_method).count,
-      by_ticket_type: calculate_by_ticket_type(orders_in_range, records_in_range),
-      daily_trend: calculate_daily_trend(records_in_range)
+      total_orders: orders.count,
+      checked_in: orders.count { |o| o.status == "checked_in" },
+      rate: calculate_rate(orders),
+      by_ticket_type: calculate_by_ticket_type(orders),
+      by_method: calculate_by_method(orders),
+      daily_trend: calculate_daily_trend(orders)
     }
   end
 
   def scoped_orders
     event.ticket_orders
+         .includes(:ticket_type, :check_in_record)
          .where(status: %w[paid checked_in])
          .where(created_at: start_datetime..end_datetime)
   end
 
-  def scoped_records
-    event.check_in_records
-         .includes(:ticket_order, :ticket_type, :operator)
-         .where(check_in_time: start_datetime..end_datetime)
+  def check_in_records
+    CheckInRecord.joins(:ticket_order)
+                 .where(ticket_order_id: scoped_orders.select(:id))
+                 .includes(:ticket_order, :ticket_type, :operator)
+                 .order(check_in_time: :desc)
   end
 
   def filter_description
-    "活动: #{event.name}, 时间范围: #{start_date} ~ #{end_date}（覆盖全天 #{start_datetime.strftime('%H:%M:%S')} ~ #{end_datetime.strftime('%H:%M:%S')}）"
+    "活动: #{event.name}, 统计口径: 以订单创建时间为准（#{start_date} ~ #{end_date}，覆盖全天 00:00:00 ~ 23:59:59），统计该时间段内创建订单的核销转化情况"
   end
 
   private
 
-  def calculate_rate(orders, records)
+  def calculate_rate(orders)
     total = orders.count
     return 0 if total.zero?
-    records.distinct.count(:ticket_order_id).to_f / total * 100
+    orders.count { |o| o.status == "checked_in" }.to_f / total * 100
   end
 
-  def calculate_by_ticket_type(orders, records)
+  def calculate_by_ticket_type(orders)
     event.ticket_types.map do |tt|
-      tt_orders = orders.where(ticket_type: tt)
-      tt_records = records.where(ticket_type: tt)
+      tt_orders = orders.select { |o| o.ticket_type_id == tt.id }
       total = tt_orders.count
-      checked = tt_records.distinct.count(:ticket_order_id)
+      checked = tt_orders.count { |o| o.status == "checked_in" }
       {
         name: tt.name,
         total: total,
@@ -62,7 +61,17 @@ class CheckInEfficiencyReportService
     end
   end
 
-  def calculate_daily_trend(records)
-    records.group_by_day(:check_in_time, range: start_datetime..end_datetime).count
+  def calculate_by_method(orders)
+    records = orders.select { |o| o.status == "checked_in" }.map(&:check_in_record).compact
+    records.group_by { |r| r.check_in_method }.transform_values(&:count)
+  end
+
+  def calculate_daily_trend(orders)
+    records = orders.select { |o| o.status == "checked_in" }.map(&:check_in_record).compact
+    return {} if records.empty?
+
+    start_datetime.upto(end_datetime).each_with_object({}) do |date, hash|
+      hash[date.to_date] = records.count { |r| r.check_in_time.to_date == date.to_date }
+    end
   end
 end

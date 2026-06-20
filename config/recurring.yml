@@ -1,32 +1,37 @@
 development:
   refund_dispute_reminder:
-    class: RefundDisputeReminderJob
+    cron: "0 10 * * *"
+    class: "RefundDisputeReminderJob"
     queue: default
     args: []
-    schedule: at 10:00 every day
+    description: "每日上午10点催办超过24小时未处理的退票争议"
 
   monthly_check_in_report:
-    class: MonthlyReportJob
+    cron: "0 2 1 * *"
+    class: "MonthlyReportJob"
     queue: low_priority
     args: []
-    schedule: at 2am on the 1st of every month
+    description: "每月1日凌晨2点生成上月核销效率报表"
 
 test:
   monthly_check_in_report:
-    class: MonthlyReportJob
+    cron: "0 2 1 * *"
+    class: "MonthlyReportJob"
     queue: low_priority
     args: []
-    schedule: at 2am on the 1st of every month
+    description: "每月1日凌晨2点生成上月核销效率报表"
 
 production:
   refund_dispute_reminder:
-    class: RefundDisputeReminderJob
+    cron: "0 10 * * *"
+    class: "RefundDisputeReminderJob"
     queue: default
     args: []
-    schedule: at 10:00 every day
+    description: "每日上午10点催办超过24小时未处理的退票争议"
 
   monthly_check_in_report:
-    class: MonthlyReportJob
+    cron: "0 2 1 * *"
+    class: "MonthlyReportJob"
     queue: low_priority
     args: []
-    schedule: at 2am on the 1st of every month
+    description: "每月1日凌晨2点生成上月核销效率报表"
