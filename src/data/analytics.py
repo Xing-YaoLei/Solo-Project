@@ -21,13 +21,13 @@ class TicketAnalytics:
         funnel_sql = f"""
         WITH stats AS (
             SELECT
-                (SELECT COUNT(*) FROM tickets {self._event_filter('t')}) as total_issued,
-                (SELECT COUNT(*) FROM tickets {self._event_filter('t')} AND payment_status = 'paid') as paid_tickets,
-                (SELECT COUNT(*) FROM tickets {self._event_filter('t')} AND ticket_status = 'refunded') as refunded_tickets,
-                (SELECT COUNT(DISTINCT ticket_id) FROM gate_records {self._event_filter('g')} AND check_status = 'success') as checked_in,
-                (SELECT COUNT(DISTINCT ticket_id) FROM gate_records {self._event_filter('g')}
+                (SELECT COUNT(*) FROM tickets t {self._event_filter('t')}) as total_issued,
+                (SELECT COUNT(*) FROM tickets t {self._event_filter('t')} AND payment_status = 'paid') as paid_tickets,
+                (SELECT COUNT(*) FROM tickets t {self._event_filter('t')} AND ticket_status = 'refunded') as refunded_tickets,
+                (SELECT COUNT(DISTINCT ticket_id) FROM gate_records g {self._event_filter('g')} AND check_status = 'success') as checked_in,
+                (SELECT COUNT(DISTINCT ticket_id) FROM gate_records g {self._event_filter('g')}
                     AND check_status = 'success' AND check_out_time IS NOT NULL) as checked_out,
-                (SELECT COUNT(DISTINCT ticket_id) FROM gate_records {self._event_filter('g')} AND check_status != 'success') as failed_checkins
+                (SELECT COUNT(DISTINCT ticket_id) FROM gate_records g {self._event_filter('g')} AND check_status != 'success') as failed_checkins
         )
         SELECT * FROM stats
         """

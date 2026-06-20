@@ -265,14 +265,73 @@ class DatabaseManager:
             result = self.conn.execute(sql).fetch_arrow_table()
         return pl.from_arrow(result)
 
-    def write_df(self, df: pl.DataFrame, table_name: str, if_exists: str = "append"):
-        self.conn.register("tmp_df_view", df)
+    def write_df(self, df: pl.DataFrame, table_name: str, if_exists: str = "append") -> int:
+        if df.height == 0:
+            return 0
+        schema_sql = f"DESCRIBE {table_name}"
+        try:
+            table_schema = self.query_to_df(schema_sql)
+        except Exception:
+            raise ValueError(f"Table {table_name} does not exist")
+
+        schema_map = {}
+        for row in table_schema.iter_rows(named=True):
+            col_name = row["column_name"] if "column_name" in table_schema.columns else row.get("Field", row.get("name", ""))
+            col_type = row["column_type"] if "column_type" in table_schema.columns else row.get("Type", row.get("type", ""))
+            schema_map[col_name] = col_type
+
+        common_cols = [c for c in df.columns if c in schema_map]
+        if not common_cols:
+            raise ValueError(
+                f"No matching columns between DataFrame {df.columns} and table {table_name} {list(schema_map.keys())}"
+            )
+
+        aligned_df = df.select(common_cols)
+
+        cast_exprs = []
+        for col in common_cols:
+            target_type = schema_map[col].upper()
+            expr = pl.col(col)
+            try:
+                if "DECIMAL" in target_type or "NUMERIC" in target_type or "FLOAT" in target_type or "DOUBLE" in target_type:
+                    expr = expr.cast(pl.Float64, strict=False)
+                elif "INT" in target_type or "BIGINT" in target_type or "SMALLINT" in target_type:
+                    expr = expr.cast(pl.Int64, strict=False)
+                elif "BOOLEAN" in target_type or "BOOL" in target_type:
+                    expr = expr.cast(pl.Boolean, strict=False)
+                elif "TIMESTAMP" in target_type or "DATETIME" in target_type:
+                    expr = pl.col(col).cast(pl.Utf8, strict=False).str.to_datetime(strict=False)
+                elif "DATE" in target_type:
+                    expr = pl.col(col).cast(pl.Utf8, strict=False).str.to_date(strict=False)
+                elif "JSON" in target_type:
+                    expr = pl.col(col).cast(pl.Utf8, strict=False)
+                else:
+                    expr = expr.cast(pl.Utf8, strict=False)
+            except Exception:
+                expr = pl.col(col).cast(pl.Utf8, strict=False)
+            cast_exprs.append(expr.alias(col))
+
+        if cast_exprs:
+            aligned_df = aligned_df.with_columns(cast_exprs)
+
+        tmp_name = f"tmp_import_{table_name}_{abs(hash(table_name)) % 10000}"
+        self.conn.register(tmp_name, aligned_df)
+        inserted = 0
         try:
             if if_exists == "replace":
                 self.conn.execute(f"DELETE FROM {table_name}")
-            self.conn.execute(f"INSERT INTO {table_name} SELECT * FROM tmp_df_view")
+            col_sql = ", ".join(common_cols)
+            insert_sql = f"INSERT INTO {table_name} ({col_sql}) SELECT {col_sql} FROM {tmp_name}"
+            result = self.conn.execute(insert_sql)
+            inserted = aligned_df.height
+        except Exception as e:
+            raise RuntimeError(f"Failed to insert into {table_name}: {str(e)}")
         finally:
-            self.conn.unregister("tmp_df_view")
+            try:
+                self.conn.unregister(tmp_name)
+            except Exception:
+                pass
+        return inserted
 
     def write_dfs(self, dfs: Dict[str, pl.DataFrame], if_exists: str = "append"):
         for table_name, df in dfs.items():
