@@ -1,45 +1,39 @@
 import { PrismaClient } from "@prisma/client";
-import { addDays, subDays, startOfDay } from "date-fns";
+import { addDays, subDays, startOfDay, setHours } from "date-fns";
 
 const prisma = new PrismaClient();
 
-async function main() {
-  console.log("开始播种数据...");
-
-  const areas = await createAreas();
-  console.log(`创建了 ${areas.length} 个区域`);
-
-  const merchants = await createMerchants(areas);
-  console.log(`创建了 ${merchants.length} 个商户`);
-
-  const contracts = await createContracts(merchants);
-  console.log(`创建了 ${contracts.length} 份合同`);
-
-  const routes = await createTourRoutes(areas);
-  console.log(`创建了 ${routes.length} 条导览路线`);
-
-  const performances = await createPerformances();
-  console.log(`创建了 ${performances.length} 场演出`);
-
-  await createSeats(performances);
-  console.log("创建了演出座位");
-
-  await createPerformanceCancels(performances);
-  console.log("创建了演出取消记录");
-
-  await createDailyRouteStats(routes);
-  console.log("创建了路线日统计");
-
-  await createDailyAreaStats(areas);
-  console.log("创建了区域日统计");
-
-  await createSyncLogs();
-  console.log("创建了同步日志");
-
-  console.log("数据播种完成!");
+function rand(min: number, max: number) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-async function createAreas() {
+function randFloat(min: number, max: number, decimals = 2) {
+  return Number((Math.random() * (max - min) + min).toFixed(decimals));
+}
+
+async function main() {
+  console.log("🌱 开始播种数据...");
+
+  await prisma.syncDetail.deleteMany();
+  await prisma.syncLog.deleteMany();
+  await prisma.seat.deleteMany();
+  await prisma.performanceCancel.deleteMany();
+  await prisma.performance.deleteMany();
+  await prisma.dailyRouteStat.deleteMany();
+  await prisma.dailyAreaStat.deleteMany();
+  await prisma.routePoint.deleteMany();
+  await prisma.cameraStat.deleteMany();
+  await prisma.merchantOrder.deleteMany();
+  await prisma.miniappOrder.deleteMany();
+  await prisma.contract.deleteMany();
+  await prisma.merchant.deleteMany();
+  await prisma.miniappUser.deleteMany();
+  await prisma.tourRoute.deleteMany();
+  await prisma.area.deleteMany();
+
+  console.log("✅ 旧数据清理完成");
+
+  // 1. 创建区域
   const areaData = [
     { name: "主入口广场", lng: 120.1, lat: 30.2 },
     { name: "湖心岛", lng: 120.12, lat: 30.22 },
@@ -51,13 +45,12 @@ async function createAreas() {
     { name: "儿童乐园", lng: 120.14, lat: 30.17 },
   ];
 
-  const areas = [];
-  for (const data of areaData) {
-    const area = await prisma.area.upsert({
-      where: { id: `area-${data.name}` },
-      update: {},
-      create: {
-        id: `area-${data.name}`,
+  const areas: any[] = [];
+  for (let i = 0; i < areaData.length; i++) {
+    const data = areaData[i];
+    const area = await prisma.area.create({
+      data: {
+        id: `area-${i + 1}`,
         name: data.name,
         lng: data.lng,
         lat: data.lat,
@@ -65,10 +58,9 @@ async function createAreas() {
     });
     areas.push(area);
   }
-  return areas;
-}
+  console.log(`✅ 创建了 ${areas.length} 个区域`);
 
-async function createMerchants(areas: any[]) {
+  // 2. 创建商户和合同
   const merchantData = [
     { name: "西湖餐饮管理有限公司", type: "餐饮", areaIndex: 4, amount: 500000 },
     { name: "宋记食品有限公司", type: "餐饮", areaIndex: 2, amount: 300000 },
@@ -78,13 +70,11 @@ async function createMerchants(areas: any[]) {
     { name: "文化体验馆", type: "体验", areaIndex: 5, amount: 400000 },
   ];
 
-  const merchants = [];
+  const merchants: any[] = [];
   for (let i = 0; i < merchantData.length; i++) {
     const data = merchantData[i];
-    const merchant = await prisma.merchant.upsert({
-      where: { id: `merchant-${i + 1}` },
-      update: {},
-      create: {
+    const merchant = await prisma.merchant.create({
+      data: {
         id: `merchant-${i + 1}`,
         name: data.name,
         type: data.type,
@@ -93,33 +83,22 @@ async function createMerchants(areas: any[]) {
       },
     });
     merchants.push(merchant);
-  }
-  return merchants;
-}
 
-async function createContracts(merchants: any[]) {
-  const contracts = [];
-  for (let i = 0; i < merchants.length; i++) {
-    const merchant = merchants[i];
-    const contract = await prisma.contract.upsert({
-      where: { merchantId: merchant.id },
-      update: {},
-      create: {
+    await prisma.contract.create({
+      data: {
         id: `contract-${i + 1}`,
         merchantId: merchant.id,
-        title: `${merchant.name.split("有")[0]}合作协议`,
-        content: `甲乙双方本着互惠互利、共同发展的原则，经友好协商，就乙方在甲方景区内经营${merchant.type}业务事宜达成如下协议...`,
+        title: `${data.name.split("有")[0] || data.name}合作协议`,
+        content: `甲乙双方本着互惠互利、共同发展的原则，经友好协商，就乙方在甲方景区内经营${data.type}业务事宜达成如下协议...`,
         startDate: new Date(),
         endDate: addDays(new Date(), 365),
         caliberNote: `本合同项下二消金额统计口径为：乙方在景区内所有门店通过POS系统、小程序、线下现金等渠道产生的全部营业收入，不含税费。`,
       },
     });
-    contracts.push(contract);
   }
-  return contracts;
-}
+  console.log(`✅ 创建了 ${merchants.length} 个商户和合同`);
 
-async function createTourRoutes(areas: any[]) {
+  // 3. 创建导览路线和路线点
   const routeData = [
     { name: "经典游览线", color: "#06b6d4", description: "景区最受欢迎的经典游览路线", points: [0, 1, 2, 6] },
     { name: "深度体验线", color: "#f97316", description: "深度体验景区文化与美景", points: [0, 5, 1, 3, 6] },
@@ -127,13 +106,11 @@ async function createTourRoutes(areas: any[]) {
     { name: "文化探秘线", color: "#8b5cf6", description: "探索景区深厚文化底蕴", points: [5, 2, 0, 3] },
   ];
 
-  const routes = [];
+  const routes: any[] = [];
   for (let i = 0; i < routeData.length; i++) {
     const data = routeData[i];
-    const route = await prisma.tourRoute.upsert({
-      where: { id: `route-${i + 1}` },
-      update: {},
-      create: {
+    const route = await prisma.tourRoute.create({
+      data: {
         id: `route-${i + 1}`,
         name: data.name,
         color: data.color,
@@ -141,137 +118,117 @@ async function createTourRoutes(areas: any[]) {
         sortOrder: i + 1,
       },
     });
+    routes.push(route);
 
     for (let j = 0; j < data.points.length; j++) {
-      await prisma.routePoint.upsert({
-        where: { id: `routepoint-${i + 1}-${j}` },
-        update: {},
-        create: {
-          id: `routepoint-${i + 1}-${j}`,
+      await prisma.routePoint.create({
+        data: {
+          id: `rp-${i + 1}-${j + 1}`,
           routeId: route.id,
           areaId: areas[data.points[j]].id,
           sequence: j + 1,
         },
       });
     }
-
-    routes.push(route);
   }
-  return routes;
-}
+  console.log(`✅ 创建了 ${routes.length} 条导览路线`);
 
-async function createPerformances() {
+  // 4. 创建小程序用户
+  const users: any[] = [];
+  for (let i = 0; i < 50; i++) {
+    const user = await prisma.miniappUser.create({
+      data: {
+        id: `user-${i + 1}`,
+        nickname: `游客${i + 1}`,
+      },
+    });
+    users.push(user);
+  }
+  console.log(`✅ 创建了 ${users.length} 个小程序用户`);
+
+  // 5. 创建演出和座位（历史日期，落入14天统计窗口内）
   const perfData = [
-    { name: "印象西湖", venue: "西湖水上剧场", totalSeats: 1500, daysOffset: 0 },
-    { name: "宋城千古情", venue: "宋城大剧院", totalSeats: 800, daysOffset: 1 },
-    { name: "山海经奇幻秀", venue: "奇幻剧场", totalSeats: 600, daysOffset: 2 },
-    { name: "山水实景演出", venue: "山水剧场", totalSeats: 2000, daysOffset: 3 },
-    { name: "民俗文化表演", venue: "民俗广场", totalSeats: 400, daysOffset: 4 },
+    { id: "perf-1", name: "印象西湖", venue: "西湖水上剧场", totalSeats: 400, daysOffset: -7, cancelled: true },
+    { id: "perf-2", name: "宋城千古情", venue: "宋城大剧院", totalSeats: 300, daysOffset: -2, cancelled: true },
+    { id: "perf-3", name: "山海经奇幻秀", venue: "奇幻剧场", totalSeats: 200, daysOffset: -10, cancelled: false },
+    { id: "perf-4", name: "山水实景演出", venue: "山水剧场", totalSeats: 500, daysOffset: -5, cancelled: false },
+    { id: "perf-5", name: "民俗文化表演", venue: "民俗广场", totalSeats: 120, daysOffset: -1, cancelled: false },
   ];
 
-  const performances = [];
-  for (let i = 0; i < perfData.length; i++) {
-    const data = perfData[i];
-    const startTime = addDays(new Date(), data.daysOffset);
-    startTime.setHours(19, 30, 0, 0);
-    const endTime = new Date(startTime);
-    endTime.setHours(20, 40, 0, 0);
+  const performances: any[] = [];
+  for (const data of perfData) {
+    const startTime = setHours(addDays(startOfDay(new Date()), data.daysOffset), 19);
+    const endTime = new Date(startTime.getTime() + 70 * 60 * 1000);
 
-    const perf = await prisma.performance.upsert({
-      where: { id: `perf-${i + 1}` },
-      update: {},
-      create: {
-        id: `perf-${i + 1}`,
+    const perf = await prisma.performance.create({
+      data: {
+        id: data.id,
         name: data.name,
         venue: data.venue,
         startTime,
         endTime,
         totalSeats: data.totalSeats,
-        status: i === 0 ? "cancelled" : "selling",
+        status: data.cancelled ? "cancelled" : "selling",
       },
     });
     performances.push(perf);
-  }
-  return performances;
-}
 
-async function createSeats(performances: any[]) {
-  const rows = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"];
-
-  for (const perf of performances) {
-    const seatsPerRow = Math.floor(perf.totalSeats / rows.length);
-    let seatIndex = 0;
+    // 创建座位
+    const rows = ["A", "B", "C", "D", "E", "F", "G", "H"];
+    const perRow = Math.ceil(data.totalSeats / rows.length);
+    let created = 0;
 
     for (const row of rows) {
-      for (let i = 1; i <= seatsPerRow; i++) {
-        seatIndex++;
-        if (seatIndex > perf.totalSeats) break;
-
-        const random = Math.random();
-        let status = "available";
-        if (random < 0.6) status = "sold";
-        else if (random < 0.75) status = "reserved";
-
+      for (let n = 1; n <= perRow && created < data.totalSeats; n++) {
+        const r = Math.random();
+        const status = r < 0.55 ? "sold" : r < 0.7 ? "reserved" : "available";
         const price = row <= "C" ? 388 : row <= "F" ? 288 : 188;
 
-        await prisma.seat.upsert({
-          where: { id: `seat-${perf.id}-${row}-${i}` },
-          update: {},
-          create: {
-            id: `seat-${perf.id}-${row}-${i}`,
+        await prisma.seat.create({
+          data: {
+            id: `seat-${perf.id}-${row}-${n}`,
             performanceId: perf.id,
             row,
-            number: String(i),
+            number: String(n),
             status,
             price,
             orderId:
               status === "sold"
-                ? `ORD-${perf.id}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`
+                ? `ORD-${perf.id.slice(-1)}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`
                 : undefined,
           },
         });
+        created++;
       }
     }
-  }
-}
 
-async function createPerformanceCancels(performances: any[]) {
-  const cancelledPerf = performances[0];
-  const cancelTime = subDays(new Date(cancelledPerf.startTime), 1);
-
-  await prisma.performanceCancel.upsert({
-    where: { id: "cancel-1" },
-    update: {},
-    create: {
-      id: "cancel-1",
-      performanceId: cancelledPerf.id,
-      cancelTime,
-      reason: "受台风天气影响，为确保观众安全，演出取消",
-      affectedCount: 1200,
-    },
-  });
-}
-
-async function createDailyRouteStats(routes: any[]) {
-  const days = 14;
-
-  for (const route of routes) {
-    for (let i = 0; i < days; i++) {
-      const date = subDays(startOfDay(new Date()), days - 1 - i);
-      const baseVisitors = 2000 + Math.floor(Math.random() * 3000);
-      const visitors = Math.floor(baseVisitors * (0.8 + Math.random() * 0.4));
-      const orders = Math.floor(visitors * (0.1 + Math.random() * 0.1));
-      const spend = orders * (50 + Math.floor(Math.random() * 100));
-
-      await prisma.dailyRouteStat.upsert({
-        where: {
-          routeId_statDate: {
-            routeId: route.id,
-            statDate: date,
-          },
+    // 如果取消，创建取消记录
+    if (data.cancelled) {
+      await prisma.performanceCancel.create({
+        data: {
+          id: `cancel-${perf.id}`,
+          performanceId: perf.id,
+          cancelTime: new Date(startTime.getTime() - 24 * 60 * 60 * 1000),
+          reason: data.id === "perf-1" ? "受台风天气影响，为确保观众安全，演出取消" : "设备临时检修，演出取消",
+          affectedCount: Math.floor(data.totalSeats * 0.75),
         },
-        update: {},
-        create: {
+      });
+    }
+  }
+  console.log(`✅ 创建了 ${performances.length} 场演出及座位`);
+
+  // 6. 创建日统计（导览路线）
+  const statsDays = 14;
+  for (const route of routes) {
+    for (let i = 0; i < statsDays; i++) {
+      const date = subDays(startOfDay(new Date()), statsDays - 1 - i);
+      const base = 1500 + rand(0, 1500);
+      const visitors = Math.floor(base * (0.7 + Math.random() * 0.6));
+      const orders = Math.floor(visitors * (0.05 + Math.random() * 0.08));
+      const spend = orders * (30 + rand(0, 80));
+
+      await prisma.dailyRouteStat.create({
+        data: {
           routeId: route.id,
           statDate: date,
           visitorCount: visitors,
@@ -281,28 +238,19 @@ async function createDailyRouteStats(routes: any[]) {
       });
     }
   }
-}
+  console.log(`✅ 创建了路线日统计`);
 
-async function createDailyAreaStats(areas: any[]) {
-  const days = 14;
-
+  // 7. 创建日统计（区域）
   for (const area of areas) {
-    for (let i = 0; i < days; i++) {
-      const date = subDays(startOfDay(new Date()), days - 1 - i);
-      const baseVisitors = 1000 + Math.floor(Math.random() * 5000);
-      const visitors = Math.floor(baseVisitors * (0.8 + Math.random() * 0.4));
-      const orders = Math.floor(visitors * (0.05 + Math.random() * 0.1));
-      const amount = orders * (30 + Math.floor(Math.random() * 80));
+    for (let i = 0; i < statsDays; i++) {
+      const date = subDays(startOfDay(new Date()), statsDays - 1 - i);
+      const base = 800 + rand(0, 3000);
+      const visitors = Math.floor(base * (0.7 + Math.random() * 0.6));
+      const orders = Math.floor(visitors * (0.03 + Math.random() * 0.06));
+      const amount = orders * (20 + rand(0, 70));
 
-      await prisma.dailyAreaStat.upsert({
-        where: {
-          areaId_statDate: {
-            areaId: area.id,
-            statDate: date,
-          },
-        },
-        update: {},
-        create: {
+      await prisma.dailyAreaStat.create({
+        data: {
           areaId: area.id,
           statDate: date,
           visitorCount: visitors,
@@ -312,51 +260,112 @@ async function createDailyAreaStats(areas: any[]) {
       });
     }
   }
-}
+  console.log(`✅ 创建了区域日统计`);
 
-async function createSyncLogs() {
+  // 8. 创建商户流水（真实可同步展示）
+  let merchantOrderCount = 0;
+  for (const merchant of merchants) {
+    for (let i = 0; i < 40; i++) {
+      const orderTime = new Date(Date.now() - rand(1, statsDays * 24) * 60 * 60 * 1000);
+      await prisma.merchantOrder.create({
+        data: {
+          id: `mo-${merchant.id}-${i}`,
+          merchantId: merchant.id,
+          amount: randFloat(20, 600),
+          orderTime,
+          source: Math.random() > 0.5 ? "offline" : "miniapp",
+          status: Math.random() > 0.08 ? "paid" : "refunded",
+        },
+      });
+      merchantOrderCount++;
+    }
+  }
+  console.log(`✅ 创建了 ${merchantOrderCount} 条商户流水`);
+
+  // 9. 创建小程序订单
+  let miniappOrderCount = 0;
+  for (let i = 0; i < 120; i++) {
+    const orderTime = new Date(Date.now() - rand(1, statsDays * 24) * 60 * 60 * 1000);
+    const user = users[rand(0, users.length - 1)];
+    const route = routes[rand(0, routes.length - 1)];
+    await prisma.miniappOrder.create({
+      data: {
+        id: `mio-${i + 1}`,
+        userId: user.id,
+        routeId: route.id,
+        amount: randFloat(30, 280),
+        orderTime,
+        status: Math.random() > 0.12 ? "paid" : "cancelled",
+      },
+    });
+    miniappOrderCount++;
+  }
+  console.log(`✅ 创建了 ${miniappOrderCount} 条小程序订单`);
+
+  // 10. 创建摄像头统计
+  let cameraCount = 0;
+  for (const area of areas) {
+    for (let day = 0; day < 3; day++) {
+      for (let hour = 9; hour < 19; hour++) {
+        await prisma.cameraStat.create({
+          data: {
+            id: `cam-${area.id}-${day}-${hour}`,
+            cameraId: `cam-${area.id}`,
+            areaId: area.id,
+            visitorCount: rand(50, 350),
+            statDate: subDays(startOfDay(new Date()), day),
+            statHour: hour,
+          },
+        });
+        cameraCount++;
+      }
+    }
+  }
+  console.log(`✅ 创建了 ${cameraCount} 条摄像头统计`);
+
+  // 11. 创建同步日志（真实的历史日志）
   const sourceTypes = ["merchant", "miniapp", "camera"];
-
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < 25; i++) {
     const sourceType = sourceTypes[i % 3];
-    const startTime = subDays(new Date(), Math.floor(i / 3));
-    startTime.setHours(10 + (i % 5), (i * 7) % 60, 0, 0);
-
-    const success = Math.random() > 0.15;
-    const duration = 30 + Math.floor(Math.random() * 120);
-    const endTime = new Date(startTime.getTime() + duration * 1000);
+    const startTime = new Date(Date.now() - rand(30, 24 * 60 * 60) * 1000);
+    const fail = Math.random() < 0.1;
+    const duration = rand(20, 180);
+    const endTime = fail ? null : new Date(startTime.getTime() + duration * 1000);
+    const count = fail ? 0 : rand(30, 300);
 
     const log = await prisma.syncLog.create({
       data: {
+        id: `log-${i + 1}`,
         sourceType,
         startTime,
-        endTime: success ? endTime : null,
-        status: success ? "success" : "failed",
-        recordCount: success ? Math.floor(Math.random() * 500) : 0,
-        errorMessage: success
-          ? undefined
-          : "API连接超时，请检查网络连接",
+        endTime,
+        status: fail ? "failed" : "success",
+        recordCount: count,
+        errorMessage: fail ? "API连接超时，请检查网络连接后重试" : undefined,
       },
     });
 
-    if (success) {
-      for (let j = 0; j < 3; j++) {
+    if (!fail) {
+      for (let j = 0; j < Math.min(3, count); j++) {
         await prisma.syncDetail.create({
           data: {
             syncLogId: log.id,
-            recordId: `record-${log.id}-${j}`,
+            recordId: `rec-${log.id}-${j + 1}`,
             action: "INSERT",
-            detail: `同步记录 ${j} 成功`,
+            detail: `同步记录 #${j + 1} 成功写入`,
           },
         });
       }
     }
   }
+  console.log(`✅ 创建了历史同步日志`);
+
+  console.log("\n🎉 所有数据播种完成！数据库已就绪。");
 }
 
 main()
   .catch((e) => {
-    console.error(e);
+    console.error("❌ 播种失败:", e);
     process.exit(1);
   })
   .finally(async () => {

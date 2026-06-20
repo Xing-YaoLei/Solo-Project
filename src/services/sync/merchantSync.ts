@@ -15,43 +15,39 @@ export async function syncMerchantOrders(): Promise<SyncResult> {
     let totalRecords = 0;
 
     for (const merchant of merchants) {
-      const mockOrders = generateMockMerchantOrders(merchant.id);
+      const batchSize = Math.floor(Math.random() * 15) + 5;
+      for (let i = 0; i < batchSize; i++) {
+        const id = `mo-${syncLog.id.slice(-8)}-${merchant.id}-${i}-${Date.now()}-${Math.floor(Math.random() * 100000)}`;
+        const orderTime = new Date(Date.now() - Math.floor(Math.random() * 60) * 60 * 1000);
+        const amount = Number((Math.random() * 500 + 20).toFixed(2));
+        const source = Math.random() > 0.5 ? "offline" : "miniapp";
+        const status = Math.random() > 0.08 ? "paid" : "refunded";
 
-      for (const order of mockOrders) {
-        const existing = await prisma.merchantOrder.findUnique({
-          where: { id: order.id },
+        await prisma.merchantOrder.create({
+          data: {
+            id,
+            merchantId: merchant.id,
+            amount,
+            orderTime,
+            source,
+            status,
+          },
         });
-
-        if (!existing) {
-          await prisma.merchantOrder.create({ data: order });
-          await addSyncDetail(syncLog.id, order.id, "create", `商户 ${merchant.name} 新订单: ${order.amount}`);
-          totalRecords++;
-        }
+        await addSyncDetail(
+          syncLog.id,
+          id,
+          "INSERT",
+          `商户[${merchant.name}] 新订单: ¥${amount} (${status === "paid" ? "已支付" : "已退款"})`
+        );
+        totalRecords++;
       }
     }
 
     await updateSyncLogSuccess(syncLog.id, totalRecords);
     return { success: true, recordCount: totalRecords };
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
+    const message = error instanceof Error ? error.message : "未知错误";
     await updateSyncLogFailed(syncLog.id, message);
     return { success: false, recordCount: 0, errorMessage: message };
   }
-}
-
-function generateMockMerchantOrders(merchantId: string) {
-  const orders = [];
-  const now = new Date();
-  for (let i = 0; i < 5; i++) {
-    const orderTime = new Date(now.getTime() - Math.random() * 7 * 24 * 60 * 60 * 1000);
-    orders.push({
-      id: `merchant-order-${merchantId}-${i}-${Date.now()}`,
-      merchantId,
-      amount: Math.floor(Math.random() * 500) + 50,
-      orderTime,
-      source: Math.random() > 0.5 ? "offline" : "miniapp",
-      status: Math.random() > 0.1 ? "paid" : "refunded",
-    });
-  }
-  return orders;
 }

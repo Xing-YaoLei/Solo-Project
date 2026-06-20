@@ -20,6 +20,7 @@ interface SyncStatus {
   lastSync: string;
   recordCount: number;
   color: string;
+  syncing?: boolean;
 }
 
 interface SyncPipelineProps {
@@ -133,8 +134,12 @@ export default function SyncPipeline({
 
               <button
                 onClick={() => onSyncClick?.(status.sourceType)}
-                className="ml-4 px-3 py-1.5 text-xs bg-white/5 hover:bg-white/10 text-slate-300 rounded-lg transition-colors border border-white/10"
+                disabled={status.syncing}
+                className="ml-4 px-3 py-1.5 text-xs bg-white/5 hover:bg-white/10 text-slate-300 rounded-lg transition-colors border border-white/10 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
               >
+                {status.syncing ? (
+                  <Loader2 size={12} className="animate-spin" />
+                ) : null}
                 立即同步
               </button>
             </div>

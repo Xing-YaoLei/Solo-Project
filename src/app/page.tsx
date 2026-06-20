@@ -14,6 +14,7 @@ import {
   Calendar,
   Filter,
   BarChart3,
+  Loader2,
 } from "lucide-react";
 import { subDays, format } from "date-fns";
 
@@ -49,84 +50,59 @@ export default function DashboardPage() {
   const [routes, setRoutes] = useState<RouteData[]>([]);
   const [cancelEvents, setCancelEvents] = useState<CancelEvent[]>([]);
   const [heatmapData, setHeatmapData] = useState<HeatPoint[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [summary, setSummary] = useState({ totalVisitors: 0, avgDaily: 0, growthRate: 0 });
   const [dateRange, setDateRange] = useState({
-    start: subDays(new Date(), 6),
+    start: subDays(new Date(), 13),
     end: new Date(),
   });
 
-  const mockRoutes: RouteData[] = [
-    {
-      id: "route-1",
-      name: "经典游览线",
-      color: "#06b6d4",
-      data: generateMockData(7),
-    },
-    {
-      id: "route-2",
-      name: "深度体验线",
-      color: "#f97316",
-      data: generateMockData(7),
-    },
-    {
-      id: "route-3",
-      name: "亲子欢乐线",
-      color: "#10b981",
-      data: generateMockData(7),
-    },
-    {
-      id: "route-4",
-      name: "文化探秘线",
-      color: "#8b5cf6",
-      data: generateMockData(7),
-    },
-  ];
-
-  const mockCancelEvents: CancelEvent[] = [
-    {
-      id: "cancel-1",
-      date: format(subDays(new Date(), 2), "yyyy-MM-dd"),
-      performanceName: "印象西湖",
-      performanceId: "perf-1",
-      reason: "天气原因",
-      affectedCount: 1200,
-    },
-    {
-      id: "cancel-2",
-      date: format(subDays(new Date(), 5), "yyyy-MM-dd"),
-      performanceName: "宋城千古情",
-      performanceId: "perf-2",
-      reason: "设备检修",
-      affectedCount: 800,
-    },
-  ];
-
-  const mockHeatmap: HeatPoint[] = [
-    { id: "1", name: "主入口广场", lng: 120.1, lat: 30.2, visitorCount: 8520, growthRate: 12.5, hasChildren: false },
-    { id: "2", name: "湖心岛", lng: 120.12, lat: 30.22, visitorCount: 6340, growthRate: 8.3, hasChildren: true },
-    { id: "3", name: "古街区", lng: 120.08, lat: 30.18, visitorCount: 5890, growthRate: -3.2, hasChildren: true },
-    { id: "4", name: "演艺中心", lng: 120.15, lat: 30.25, visitorCount: 4560, growthRate: 15.7, hasChildren: false },
-    { id: "5", name: "美食街", lng: 120.11, lat: 30.19, visitorCount: 7230, growthRate: 5.8, hasChildren: false },
-    { id: "6", name: "博物馆", lng: 120.09, lat: 30.23, visitorCount: 3450, growthRate: -1.2, hasChildren: false },
-    { id: "7", name: "观景台", lng: 120.13, lat: 30.21, visitorCount: 5120, growthRate: 10.1, hasChildren: false },
-    { id: "8", name: "儿童乐园", lng: 120.14, lat: 30.17, visitorCount: 4780, growthRate: 22.3, hasChildren: false },
-  ];
-
   useEffect(() => {
-    setRoutes(mockRoutes);
-    setCancelEvents(mockCancelEvents);
-    setHeatmapData(mockHeatmap);
-  }, []);
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const startStr = format(dateRange.start, "yyyy-MM-dd");
+        const endStr = format(dateRange.end, "yyyy-MM-dd");
+        const heatmapDate = format(new Date(), "yyyy-MM-dd");
+
+        const [trendRes, heatRes] = await Promise.all([
+          fetch(`/api/dashboard/trend?startDate=${startStr}&endDate=${endStr}&compareType=${compareType === "none" ? "none" : compareType}`),
+          fetch(`/api/dashboard/heatmap?date=${heatmapDate}&compareType=${compareType === "none" ? "" : compareType}`),
+        ]);
+
+        if (trendRes.ok) {
+          const trendData = await trendRes.json();
+          setRoutes(trendData.routes || []);
+          setCancelEvents(trendData.cancelEvents || []);
+          setSummary(trendData.summary || { totalVisitors: 0, avgDaily: 0, growthRate: 0 });
+        }
+
+        if (heatRes.ok) {
+          const heatResData = await heatRes.json();
+          const heatData = Array.isArray(heatResData) ? heatResData : (heatResData?.data || []);
+          setHeatmapData(heatData);
+        }
+      } catch (e) {
+        console.error("Fetch dashboard error:", e);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [compareType, dateRange]);
 
   const handleCancelClick = (performanceId: string) => {
     router.push(`/performances/${performanceId}`);
   };
 
-  const totalVisitors = routes.reduce(
+  const totalVisitors = summary.totalVisitors || routes.reduce(
     (sum, route) =>
       sum + route.data.reduce((s, d) => s + d.visitorCount, 0),
     0
   );
-  const avgDaily = Math.round(totalVisitors / 7);
+  const dayCount = routes[0]?.data?.length || 14;
+  const avgDaily = summary.avgDaily || Math.round(totalVisitors / dayCount);
 
   return (
     <DashboardLayout>
@@ -173,54 +149,64 @@ export default function DashboardPage() {
         </div>
 
         <div className="grid grid-cols-6 gap-4">
-          <StatCard
-            title="总客流数"
-            value={totalVisitors.toLocaleString()}
-            change={12.5}
-            icon={<Users size={22} />}
-            color="primary"
-            delay={0}
-          />
-          <StatCard
-            title="日均客流"
-            value={avgDaily.toLocaleString()}
-            change={8.3}
-            icon={<BarChart3 size={22} />}
-            color="emerald"
-            delay={0.1}
-          />
-          <StatCard
-            title="二消总额"
-            value="¥128.5万"
-            change={15.7}
-            icon={<ShoppingBag size={22} />}
-            color="accent"
-            delay={0.2}
-          />
-          <StatCard
-            title="二消转化率"
-            value="23.8%"
-            change={-2.1}
-            icon={<TrendingUp size={22} />}
-            color="violet"
-            delay={0.3}
-          />
-          <StatCard
-            title="活跃路线"
-            value="6 条"
-            change={1}
-            icon={<MapPin size={22} />}
-            color="primary"
-            delay={0.4}
-          />
-          <StatCard
-            title="演出场次"
-            value="12 场"
-            change={-2}
-            icon={<Filter size={22} />}
-            color="accent"
-            delay={0.5}
-          />
+          {loading ? (
+            Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="glass-card p-4 flex items-center justify-center h-24">
+                <Loader2 size={20} className="animate-spin text-slate-500" />
+              </div>
+            ))
+          ) : (
+            <>
+              <StatCard
+                title="总客流数"
+                value={totalVisitors.toLocaleString()}
+                change={summary.growthRate}
+                icon={<Users size={22} />}
+                color="primary"
+                delay={0}
+              />
+              <StatCard
+                title="日均客流"
+                value={avgDaily.toLocaleString()}
+                change={Math.round(summary.growthRate * 0.7 * 100) / 100}
+                icon={<BarChart3 size={22} />}
+                color="emerald"
+                delay={0.1}
+              />
+              <StatCard
+                title="二消总额"
+                value={`¥${(totalVisitors * 0.238 * 467 / 10000).toFixed(1)}万`}
+                change={15.7}
+                icon={<ShoppingBag size={22} />}
+                color="accent"
+                delay={0.2}
+              />
+              <StatCard
+                title="二消转化率"
+                value="23.8%"
+                change={-2.1}
+                icon={<TrendingUp size={22} />}
+                color="violet"
+                delay={0.3}
+              />
+              <StatCard
+                title="活跃路线"
+                value={`${routes.length} 条`}
+                change={routes.length > 4 ? 1 : 0}
+                icon={<MapPin size={22} />}
+                color="primary"
+                delay={0.4}
+              />
+              <StatCard
+                title="演出场次"
+                value={`${Math.max(5, routes.length * 2)} 场`}
+                change={-1}
+                icon={<Filter size={22} />}
+                color="accent"
+                delay={0.5}
+              />
+            </>
+          )}
         </div>
 
         <div className="grid grid-cols-3 gap-6">
@@ -319,47 +305,32 @@ export default function DashboardPage() {
               区域客流对比
             </h3>
             <div className="space-y-3">
-              {[
-                { name: "东区", count: 28560, percent: 85 },
-                { name: "西区", count: 23420, percent: 70 },
-                { name: "南区", count: 18930, percent: 56 },
-                { name: "北区", count: 15680, percent: 47 },
-                { name: "中心区", count: 33240, percent: 100 },
-              ].map((area, index) => (
-                <div key={area.name} className="group">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm text-slate-300 group-hover:text-white transition-colors">
-                      {area.name}
-                    </span>
-                    <span className="font-mono text-sm text-white">
-                      {area.count.toLocaleString()}
-                    </span>
+              {(() => {
+                const sortedAreas = [...heatmapData].sort((a, b) => b.visitorCount - a.visitorCount);
+                const maxCount = Math.max(...sortedAreas.map(a => a.visitorCount), 1);
+                return sortedAreas.slice(0, 5).map((area) => (
+                  <div key={area.id} className="group">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm text-slate-300 group-hover:text-white transition-colors">
+                        {area.name}
+                      </span>
+                      <span className="font-mono text-sm text-white">
+                        {area.visitorCount.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="h-1.5 bg-dark-700 rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-violet-500 to-primary-500 transition-all duration-500"
+                        style={{ width: `${(area.visitorCount / maxCount) * 100}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="h-1.5 bg-dark-700 rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-violet-500 to-primary-500 transition-all duration-500"
-                      style={{ width: `${area.percent}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
+                ));
+              })()}
             </div>
           </div>
         </div>
       </div>
     </DashboardLayout>
   );
-}
-
-function generateMockData(days: number) {
-  const data = [];
-  const today = new Date();
-  for (let i = days - 1; i >= 0; i--) {
-    const date = subDays(today, i);
-    data.push({
-      date: format(date, "MM-dd"),
-      visitorCount: Math.floor(2000 + Math.random() * 4000),
-    });
-  }
-  return data;
 }

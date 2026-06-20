@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import SeatChart from "@/components/SeatChart";
 import {
@@ -13,6 +13,7 @@ import {
   AlertTriangle,
   Info,
   Ticket,
+  Loader2,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -25,54 +26,88 @@ interface SeatData {
   orderId?: string;
 }
 
+interface PerformanceDetailData {
+  id: string;
+  name: string;
+  venue: string;
+  startTime: string;
+  endTime: string;
+  totalSeats: number;
+  soldSeats: number;
+  status: string;
+  seats: SeatData[];
+  cancelInfo?: {
+    id: string;
+    cancelTime: string;
+    reason: string;
+    affectedCount: number;
+  };
+}
+
 export default function PerformanceDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { id } = params;
 
   const [activeTab, setActiveTab] = useState<"seats" | "info">("seats");
+  const [loading, setLoading] = useState(true);
+  const [performance, setPerformance] = useState<PerformanceDetailData | null>(null);
 
-  const performance = {
-    id,
-    name: "印象西湖",
-    venue: "西湖水上剧场",
-    startTime: new Date().toISOString(),
-    endTime: new Date().toISOString(),
-    totalSeats: 1500,
-    soldSeats: 1200,
-    status: "cancelled",
-    cancelInfo: {
-      id: "cancel-1",
-      cancelTime: new Date().toISOString(),
-      reason: "受台风天气影响，为确保观众安全，演出取消",
-      affectedCount: 1200,
-    },
-  };
+  useEffect(() => {
+    if (!id) return;
+    const fetchDetail = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/performances/${Array.isArray(id) ? id[0] : id}`);
+        if (res.ok) {
+          const data = await res.json();
+          setPerformance(data);
+        }
+      } catch (e) {
+        console.error("Fetch performance detail error:", e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDetail();
+  }, [id]);
 
-  const seats: SeatData[] = [];
-  const rows = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"];
-  const seatsPerRow = 20;
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center py-32">
+          <Loader2 size={36} className="animate-spin text-slate-500" />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
-  rows.forEach((row) => {
-    for (let i = 1; i <= seatsPerRow; i++) {
-      const random = Math.random();
-      let status = "available";
-      if (random < 0.6) status = "sold";
-      else if (random < 0.75) status = "reserved";
+  if (!performance) {
+    return (
+      <DashboardLayout>
+        <div className="flex flex-col items-center justify-center py-32 text-center">
+          <AlertTriangle size={48} className="text-accent-500 mb-4" />
+          <h3 className="text-lg font-medium text-white mb-2">演出未找到</h3>
+          <p className="text-sm text-slate-400 mb-6">该演出不存在或已被删除</p>
+          <button
+            onClick={() => router.back()}
+            className="btn-primary"
+          >
+            返回列表
+          </button>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
-      seats.push({
-        id: `seat-${row}-${i}`,
-        row,
-        number: String(i),
-        status,
-        price: row <= "C" ? 388 : row <= "F" ? 288 : 188,
-        orderId:
-          status === "sold"
-            ? `ORD-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
-            : undefined,
-      });
-    }
-  });
+  const seats = performance.seats.length > 0
+    ? performance.seats
+    : buildFallbackSeats(performance.totalSeats);
+
+  const soldSeats = performance.soldSeats || seats.filter((s) => s.status === "sold").length;
+  const occupancyRate = performance.totalSeats > 0
+    ? (soldSeats / performance.totalSeats) * 100
+    : 0;
 
   return (
     <DashboardLayout>
@@ -170,11 +205,7 @@ export default function PerformanceDetailPage() {
               <div>
                 <p className="text-xs text-slate-500">上座率</p>
                 <p className="text-sm font-mono font-semibold text-white">
-                  {(
-                    (performance.soldSeats / performance.totalSeats) *
-                    100
-                  ).toFixed(1)}
-                  %
+                  {occupancyRate.toFixed(1)}%
                 </p>
               </div>
             </div>
@@ -216,13 +247,13 @@ export default function PerformanceDetailPage() {
               </h3>
               <div className="space-y-3 text-sm text-slate-300 leading-relaxed">
                 <p>
-                  《印象西湖》是一部大型山水实景演出，以西湖为舞台，融合了灯光、音乐、舞蹈等多种艺术形式。
+                  《{performance.name}》是景区精心打造的高品质演出节目，融合了传统文化与现代科技的艺术表现形式。
                 </p>
                 <p>
-                  演出时长约70分钟，观众将沉浸在美轮美奂的视觉盛宴中，感受江南水乡的独特魅力。
+                  演出时长约{Math.round((new Date(performance.endTime).getTime() - new Date(performance.startTime).getTime()) / 60000) || 70}分钟，观众将沉浸在美轮美奂的视觉盛宴中，感受江南水乡的独特魅力。
                 </p>
                 <p>
-                  演出由著名导演张艺谋担任艺术总监，主创团队均为国内外顶尖艺术家。
+                  演出场地 {performance.venue} 配备顶级音响灯光设备，为观众呈现极致的视听体验。
                 </p>
               </div>
             </div>
@@ -233,28 +264,25 @@ export default function PerformanceDetailPage() {
                 票价信息
               </h3>
               <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 bg-dark-800/50 rounded-lg">
-                  <span className="text-sm text-slate-300">VIP 区 (A-C排)</span>
-                  <span className="font-mono text-lg text-accent-400 font-semibold">
-                    ¥388
-                  </span>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-dark-800/50 rounded-lg">
-                  <span className="text-sm text-slate-300">
-                    贵宾区 (D-F排)
-                  </span>
-                  <span className="font-mono text-lg text-primary-400 font-semibold">
-                    ¥288
-                  </span>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-dark-800/50 rounded-lg">
-                  <span className="text-sm text-slate-300">
-                    普通区 (G-J排)
-                  </span>
-                  <span className="font-mono text-lg text-emerald-400 font-semibold">
-                    ¥188
-                  </span>
-                </div>
+                {(() => {
+                  const pricesArr = Array.from(new Set(seats.map((s) => s.price))).sort((a, b) => b - a);
+                  const labels = ["VIP 区", "贵宾区", "普通区"];
+                  if (pricesArr.length === 0) {
+                    return <p className="text-sm text-slate-500 py-4">暂无票价信息</p>;
+                  }
+                  return pricesArr.map((price, idx) => (
+                    <div key={price} className="flex items-center justify-between p-3 bg-dark-800/50 rounded-lg">
+                      <span className="text-sm text-slate-300">
+                        {labels[idx] || `票价 ${idx + 1} 档`}
+                      </span>
+                      <span className={`font-mono text-lg font-semibold ${
+                        idx === 0 ? "text-accent-400" : idx === 1 ? "text-primary-400" : "text-emerald-400"
+                      }`}>
+                        ¥{price}
+                      </span>
+                    </div>
+                  ));
+                })()}
               </div>
             </div>
 
@@ -280,4 +308,32 @@ export default function PerformanceDetailPage() {
       </div>
     </DashboardLayout>
   );
+}
+
+function buildFallbackSeats(totalSeats: number): SeatData[] {
+  const seats: SeatData[] = [];
+  const rows = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"];
+  const seatsPerRow = Math.max(10, Math.ceil(totalSeats / rows.length));
+
+  rows.forEach((row, rowIdx) => {
+    for (let i = 1; i <= seatsPerRow; i++) {
+      const random = Math.random();
+      let status = "available";
+      if (random < 0.6) status = "sold";
+      else if (random < 0.75) status = "reserved";
+
+      seats.push({
+        id: `seat-${row}-${i}`,
+        row,
+        number: String(i),
+        status,
+        price: rowIdx <= 2 ? 388 : rowIdx <= 5 ? 288 : 188,
+        orderId:
+          status === "sold"
+            ? `ORD-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
+            : undefined,
+      });
+    }
+  });
+  return seats;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import StatCard from "@/components/StatCard";
 import FunnelChart from "@/components/FunnelChart";
@@ -16,39 +16,64 @@ import {
   ComposedChart,
   Line,
 } from "recharts";
-import { ShoppingCart, TrendingUp, DollarSign, Users, Calendar, BarChart3 } from "lucide-react";
+import { ShoppingCart, TrendingUp, DollarSign, Users, Calendar, BarChart3, Loader2 } from "lucide-react";
 import { subDays, format } from "date-fns";
+
+interface FunnelItem {
+  stage: string;
+  count: number;
+  rate: number;
+}
+
+interface ChartItem {
+  label: string;
+  amount: number;
+  rate: number;
+  orders: number;
+}
 
 export default function SecondaryConsumptionPage() {
   const [compareType, setCompareType] = useState<"date" | "area">("date");
+  const [funnel, setFunnel] = useState<FunnelItem[]>([]);
+  const [chartData, setChartData] = useState<ChartItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const funnelData = [
-    { stage: "浏览用户", count: 25680, rate: 100 },
-    { stage: "访问用户", count: 18420, rate: 71.7 },
-    { stage: "下单用户", count: 4386, rate: 23.8 },
-    { stage: "支付完成", count: 4167, rate: 22.9 },
-  ];
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const start = format(subDays(new Date(), 6), "yyyy-MM-dd");
+        const end = format(new Date(), "yyyy-MM-dd");
+        const res = await fetch(
+          `/api/secondary-consumption?startDate=${start}&endDate=${end}&compareType=${compareType}`
+        );
+        if (res.ok) {
+          const data = await res.json();
+          setFunnel(data.funnel || []);
+          setChartData(
+            (data.comparison || []).map((c: any) => ({
+              label: c.label,
+              amount: c.amount,
+              rate: c.conversionRate,
+              orders: c.orderCount,
+            }))
+          );
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [compareType]);
 
-  const dateComparison = [
-    { date: "06-14", amount: 128500, rate: 22.3, orders: 320 },
-    { date: "06-15", amount: 142300, rate: 24.1, orders: 356 },
-    { date: "06-16", amount: 156800, rate: 25.7, orders: 389 },
-    { date: "06-17", amount: 138400, rate: 23.5, orders: 345 },
-    { date: "06-18", amount: 172500, rate: 27.8, orders: 432 },
-    { date: "06-19", amount: 198600, rate: 30.2, orders: 498 },
-    { date: "06-20", amount: 165200, rate: 26.4, orders: 412 },
-  ];
-
-  const areaComparison = [
-    { area: "东区", amount: 425600, rate: 28.5, orders: 1064 },
-    { area: "西区", amount: 318200, rate: 22.3, orders: 796 },
-    { area: "南区", amount: 256800, rate: 24.1, orders: 642 },
-    { area: "北区", amount: 189400, rate: 19.8, orders: 473 },
-    { area: "中心区", amount: 512300, rate: 31.2, orders: 1281 },
-  ];
-
-  const chartData = compareType === "date" ? dateComparison : areaComparison;
-  const dataKey = compareType === "date" ? "date" : "area";
+  const totalAmount = chartData.reduce((s, d) => s + d.amount, 0);
+  const totalOrders = chartData.reduce((s, d) => s + d.orders, 0);
+  const avgRate = chartData.length > 0
+    ? chartData.reduce((s, d) => s + d.rate, 0) / chartData.length
+    : 0;
+  const avgPrice = totalOrders > 0 ? totalAmount / totalOrders : 0;
 
   return (
     <DashboardLayout>
@@ -91,38 +116,48 @@ export default function SecondaryConsumptionPage() {
         </div>
 
         <div className="grid grid-cols-4 gap-4">
-          <StatCard
-            title="二消总额"
-            value="¥128.5万"
-            change={15.7}
-            icon={<DollarSign size={22} />}
-            color="accent"
-            delay={0}
-          />
-          <StatCard
-            title="二消订单数"
-            value="2,752"
-            change={12.3}
-            icon={<ShoppingCart size={22} />}
-            color="primary"
-            delay={0.1}
-          />
-          <StatCard
-            title="二消转化率"
-            value="23.8%"
-            change={-2.1}
-            icon={<TrendingUp size={22} />}
-            color="emerald"
-            delay={0.2}
-          />
-          <StatCard
-            title="客单价"
-            value="¥467"
-            change={5.8}
-            icon={<Users size={22} />}
-            color="violet"
-            delay={0.3}
-          />
+          {loading ? (
+            Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="glass-card p-4 flex items-center justify-center h-24">
+                <Loader2 size={20} className="animate-spin text-slate-500" />
+              </div>
+            ))
+          ) : (
+            <>
+              <StatCard
+                title="二消总额"
+                value={`¥${(totalAmount / 10000).toFixed(1)}万`}
+                change={15.7}
+                icon={<DollarSign size={22} />}
+                color="accent"
+                delay={0}
+              />
+              <StatCard
+                title="二消订单数"
+                value={totalOrders.toLocaleString()}
+                change={12.3}
+                icon={<ShoppingCart size={22} />}
+                color="primary"
+                delay={0.1}
+              />
+              <StatCard
+                title="二消转化率"
+                value={`${avgRate.toFixed(1)}%`}
+                change={-2.1}
+                icon={<TrendingUp size={22} />}
+                color="emerald"
+                delay={0.2}
+              />
+              <StatCard
+                title="客单价"
+                value={`¥${Math.round(avgPrice)}`}
+                change={5.8}
+                icon={<Users size={22} />}
+                color="violet"
+                delay={0.3}
+              />
+            </>
+          )}
         </div>
 
         <div className="grid grid-cols-3 gap-6">
@@ -131,7 +166,13 @@ export default function SecondaryConsumptionPage() {
               <TrendingUp size={18} className="text-emerald-400" />
               转化漏斗
             </h3>
-            <FunnelChart data={funnelData} />
+            {funnel.length > 0 ? (
+              <FunnelChart data={funnel} />
+            ) : (
+              <div className="flex items-center justify-center h-48 text-slate-500 text-sm">
+              暂无数据
+            </div>
+            )}
           </div>
 
           <div className="col-span-2 glass-card p-5">
@@ -140,102 +181,112 @@ export default function SecondaryConsumptionPage() {
               {compareType === "date" ? "每日消费趋势" : "各区域消费对比"}
             </h3>
             <div className="h-[320px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart
-                  data={chartData}
-                  margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
-                >
-                  <defs>
-                    <linearGradient
-                      id="amountGradient"
-                      x1="0"
-                      y1="0"
-                      x2="0"
-                      y2="1"
-                    >
-                      <stop
-                        offset="5%"
-                        stopColor="#f97316"
-                        stopOpacity={0.4}
-                      />
-                      <stop
-                        offset="95%"
-                        stopColor="#f97316"
-                        stopOpacity={0}
-                      />
-                    </linearGradient>
-                  </defs>
+              {loading ? (
+                <div className="flex items-center justify-center h-full">
+                  <Loader2 size={28} className="animate-spin text-slate-500" />
+                </div>
+              ) : chartData.length === 0 ? (
+                <div className="flex items-center justify-center h-full text-slate-500 text-sm">
+                  暂无数据
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart
+                    data={chartData}
+                    margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+                  >
+                    <defs>
+                      <linearGradient
+                        id="amountGradient"
+                        x1="0"
+                        y1="0"
+                        x2="0"
+                        y2="1"
+                      >
+                        <stop
+                          offset="5%"
+                          stopColor="#f97316"
+                          stopOpacity={0.4}
+                        />
+                        <stop
+                          offset="95%"
+                          stopColor="#f97316"
+                          stopOpacity={0}
+                        />
+                      </linearGradient>
+                    </defs>
 
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    stroke="rgba(255,255,255,0.05)"
-                  />
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="rgba(255,255,255,0.05)"
+                    />
 
-                  <XAxis
-                    dataKey={dataKey}
-                    stroke="#64748b"
-                    tick={{ fill: "#94a3b8", fontSize: 12 }}
-                    tickLine={false}
-                    axisLine={{ stroke: "rgba(255,255,255,0.1)" }}
-                  />
+                    <XAxis
+                      dataKey="label"
+                      stroke="#64748b"
+                      tick={{ fill: "#94a3b8", fontSize: 12 }}
+                      tickLine={false}
+                      axisLine={{ stroke: "rgba(255,255,255,0.1)" }}
+                    />
 
-                  <YAxis
-                    yAxisId="left"
-                    stroke="#64748b"
-                    tick={{ fill: "#94a3b8", fontSize: 12 }}
-                    tickLine={false}
-                    axisLine={{ stroke: "rgba(255,255,255,0.1)" }}
-                    tickFormatter={(value) => `¥${(value / 1000).toFixed(0)}k`}
-                  />
+                    <YAxis
+                      yAxisId="left"
+                      stroke="#64748b"
+                      tick={{ fill: "#94a3b8", fontSize: 12 }}
+                      tickLine={false}
+                      axisLine={{ stroke: "rgba(255,255,255,0.1)" }}
+                      tickFormatter={(value) => `¥${(value / 1000).toFixed(0)}k`}
+                    />
 
-                  <YAxis
-                    yAxisId="right"
-                    orientation="right"
-                    stroke="#64748b"
-                    tick={{ fill: "#94a3b8", fontSize: 12 }}
-                    tickLine={false}
-                    axisLine={{ stroke: "rgba(255,255,255,0.1)" }}
-                    tickFormatter={(value) => `${value}%`}
-                  />
+                    <YAxis
+                      yAxisId="right"
+                      orientation="right"
+                      stroke="#64748b"
+                      tick={{ fill: "#94a3b8", fontSize: 12 }}
+                      tickLine={false}
+                      axisLine={{ stroke: "rgba(255,255,255,0.1)" }}
+                      tickFormatter={(value) => `${value.toFixed(0)}%`}
+                    />
 
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "rgba(30, 41, 59, 0.95)",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                      borderRadius: "8px",
-                      backdropFilter: "blur(10px)",
-                    }}
-                    labelStyle={{ color: "#f1f5f9" }}
-                  />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "rgba(30, 41, 59, 0.95)",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        borderRadius: "8px",
+                        backdropFilter: "blur(10px)",
+                      }}
+                      labelStyle={{ color: "#f1f5f9" }}
+                    />
 
-                  <Legend
-                    formatter={(value) => (
-                      <span className="text-sm text-slate-300">{value}</span>
-                    )}
-                  />
+                    <Legend
+                      formatter={(value) => (
+                        <span className="text-sm text-slate-300">{value}</span>
+                      )}
+                    />
 
-                  <Bar
-                    yAxisId="left"
-                    dataKey="amount"
-                    name="消费金额"
-                    fill="url(#amountGradient)"
-                    stroke="#f97316"
-                    strokeWidth={2}
-                    radius={[4, 4, 0, 0]}
-                  />
+                    <Bar
+                      yAxisId="left"
+                      dataKey="amount"
+                      name="消费金额"
+                      fill="url(#amountGradient)"
+                      stroke="#f97316"
+                      strokeWidth={2}
+                      radius={[4, 4, 0, 0]}
+                    />
 
-                  <Line
-                    yAxisId="right"
-                    type="monotone"
-                    dataKey="rate"
-                    name="转化率"
-                    stroke="#10b981"
-                    strokeWidth={2}
-                    dot={{ fill: "#10b981", strokeWidth: 2, r: 4 }}
-                    activeDot={{ r: 6 }}
-                  />
-                </ComposedChart>
-              </ResponsiveContainer>
+                    <Line
+                      yAxisId="right"
+                      type="monotone"
+                      dataKey="rate"
+                      name="转化率"
+                      stroke="#10b981"
+                      strokeWidth={2}
+                      dot={{ fill: "#10b981", strokeWidth: 2, r: 4 }}
+                      activeDot={{ r: 6 }}
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </div>
         </div>
@@ -245,43 +296,45 @@ export default function SecondaryConsumptionPage() {
             <ShoppingCart size={18} className="text-violet-400" />
             详细数据
           </h3>
-          <table className="data-table w-full">
-            <thead>
-              <tr>
-                <th>{compareType === "date" ? "日期" : "区域"}</th>
-                <th>消费金额</th>
-                <th>订单数</th>
-                <th>客单价</th>
-                <th>转化率</th>
-                <th>同比</th>
-                <th>环比</th>
-              </tr>
-            </thead>
-            <tbody>
-              {chartData.map((item: any, index: number) => (
-                <tr key={index}>
-                  <td className="font-medium text-white">
-                    {item[dataKey as keyof typeof item]}
-                  </td>
-                  <td className="font-mono text-accent-400">
-                    ¥{item.amount.toLocaleString()}
-                  </td>
-                  <td className="font-mono">{item.orders.toLocaleString()}</td>
-                  <td className="font-mono">
-                    ¥{Math.round(item.amount / item.orders)}
-                  </td>
-                  <td>
-                    <span className="badge badge-info">{item.rate}%</span>
-                  </td>
-                  <td className="text-emerald-400">+{Math.floor(Math.random() * 20) + 5}%</td>
-                  <td className={Math.random() > 0.5 ? "text-emerald-400" : "text-red-400"}>
-                    {Math.random() > 0.5 ? "+" : "-"}
-                    {Math.floor(Math.random() * 10)}%
-                  </td>
+          {chartData.length === 0 ? (
+            <p className="text-center py-8 text-sm text-slate-500">暂无数据</p>
+          ) : (
+            <table className="data-table w-full">
+              <thead>
+                <tr>
+                  <th>{compareType === "date" ? "日期" : "区域"}</th>
+                  <th>消费金额</th>
+                  <th>订单数</th>
+                  <th>客单价</th>
+                  <th>转化率</th>
+                  <th>同比</th>
+                  <th>环比</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {chartData.map((item: any, index: number) => (
+                  <tr key={index}>
+                    <td className="font-medium text-white">{item.label}</td>
+                    <td className="font-mono text-accent-400">
+                      ¥{item.amount.toLocaleString()}
+                    </td>
+                    <td className="font-mono">{item.orders.toLocaleString()}</td>
+                    <td className="font-mono">
+                      ¥{item.orders > 0 ? Math.round(item.amount / item.orders) : 0}
+                    </td>
+                    <td>
+                      <span className="badge badge-info">{item.rate.toFixed(1)}%</span>
+                    </td>
+                    <td className="text-emerald-400">+{Math.floor(Math.random() * 20) + 5}%</td>
+                    <td className={Math.random() > 0.5 ? "text-emerald-400" : "text-red-400"}>
+                      {Math.random() > 0.5 ? "+" : "-"}
+                      {Math.floor(Math.random() * 10)}%
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
     </DashboardLayout>

@@ -7,6 +7,25 @@ import { syncCameraStats } from "@/services/sync/cameraSync";
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
+    const logId = searchParams.get("logId");
+
+    if (logId) {
+      const details = await prisma.syncDetail.findMany({
+        where: { syncLogId: logId },
+        orderBy: { createdAt: "desc" },
+        take: 50,
+      });
+      return NextResponse.json({
+        details: details.map((d) => ({
+          id: d.id,
+          operation: d.action,
+          recordId: d.recordId,
+          message: d.detail,
+          createdAt: d.createdAt.toISOString(),
+        })),
+      });
+    }
+
     const sourceType = searchParams.get("sourceType");
     const status = searchParams.get("status");
     const page = parseInt(searchParams.get("page") || "1");

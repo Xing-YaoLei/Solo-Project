@@ -63,14 +63,18 @@ export async function getPerformanceList(query: PerformanceListQuery) {
       orderBy: { startTime: "asc" },
       include: {
         _count: { select: { seats: true, cancels: true } },
-        seats: {
-          where: { status: "sold" },
-          take: 0,
-          select: {},
-        },
       },
     }),
   ]);
+
+  const perfIds = performances.map((p) => p.id);
+  const soldCountsRaw = await prisma.seat.groupBy({
+    by: ["performanceId"],
+    where: { performanceId: { in: perfIds }, status: "sold" },
+    _count: { performanceId: true },
+  });
+  const soldMap = new Map<string, number>();
+  soldCountsRaw.forEach((r) => soldMap.set(r.performanceId, r._count.performanceId));
 
   const list = performances.map((p) => ({
     id: p.id,
@@ -79,6 +83,7 @@ export async function getPerformanceList(query: PerformanceListQuery) {
     startTime: p.startTime.toISOString(),
     endTime: p.endTime.toISOString(),
     totalSeats: p.totalSeats,
+    soldSeats: soldMap.get(p.id) ?? 0,
     status: p.status,
     hasCancel: p._count.cancels > 0,
   }));
