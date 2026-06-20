@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import logging
 
+from .api import auth, analytics, data_ingestion, export, share
+
 logger = logging.getLogger(__name__)
 
 db_available = False
@@ -12,9 +14,10 @@ db_available = False
 async def lifespan(app: FastAPI):
     global db_available
     try:
-        from .db.session import engine, Base
-        from .models import models
-        Base.metadata.create_all(bind=engine)
+        from .db.session import get_engine
+        from .models.models import Base as ModelBase
+        engine = get_engine()
+        ModelBase.metadata.create_all(bind=engine)
         db_available = True
         logger.info("数据库连接与表初始化成功")
     except Exception as e:
@@ -23,8 +26,8 @@ async def lifespan(app: FastAPI):
     yield
     if db_available:
         try:
-            from .db.session import engine
-            engine.dispose()
+            from .db.session import get_engine
+            get_engine().dispose()
         except Exception:
             pass
 
