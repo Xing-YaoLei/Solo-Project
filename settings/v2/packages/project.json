@@ -1,0 +1,123 @@
+{
+  "title": "景区门票预约训练系统",
+  "engine": "cocos-creator-js",
+  "packages": "packages",
+  "name": "scenic-ticket-training",
+  "id": "5c8a7c8e-1a2b-3c4d-5e6f-7a8b9c0d1e2f",
+  "version": "1.0.0",
+  "type": "2d",
+  "creator": {
+    "version": "3.8.0"
+  },
+  "mainScene": "db://assets/scenes/MainMenu.scene",
+  "renderPipeline": "builtin-forward",
+  "startScene": 0,
+  "orientation": {
+    "landscapeLeft": true,
+    "landscapeRight": true,
+    "portrait": false,
+    "portraitUpsideDown": false
+  },
+  "webOrientation": "auto",
+  "designResolution": {
+    "width": 1280,
+    "height": 720,
+    "fitWidth": true,
+    "fitHeight": false
+  },
+  "clearFlags": {
+    "depth": true,
+    "stencil": true
+  },
+  "debug": {
+    "showFPS": true,
+    "showDrawCalls": false,
+    "showMemory": false,
+    "showState": false,
+    "showProfits": false
+  },
+  "physics": {
+    "useBuiltIn": false,
+    "gravity": {
+      "x": 0,
+      "y": -10,
+      "z": 0
+    },
+    "allowSleep": true,
+    "fixedTimeStep": 0.02,
+    "maxSubSteps": 2,
+    "sleepThreshold": 0.1,
+    "autoSimulation": true,
+    "defaultMaterial": ""
+  },
+  "defaultSortingLayers": [
+    {
+      "name": "default",
+      "value": 0
+    },
+    {
+      "name": "scene",
+      "value": 10
+    },
+    {
+      "name": "ui",
+      "value": 20
+    },
+    {
+      "name": "popup",
+      "value": 30
+    },
+    {
+      "name": "top",
+      "value": 100
+    }
+  ],
+  "splashScreen": {
+    "totalTime": 3,
+    "logo": {
+      "path": "splash/logo",
+      "width": 0,
+      "height": 0,
+      "angle": 0,
+      "magnifier": 1,
+      "duration": 2,
+      "anim": "fade",
+      "delay": 0,
+      "opacity": 1
+    },
+    "title": {
+      "title": "",
+      "fontSize": 20,
+      "color": {
+        "r": 200,
+        "g": 200,
+        "b": 200,
+        "a": 255
+      },
+      "verticalAlign": "center",
+      "horizontalAlign": "center",
+      "enable": false
+    },
+    "background": {
+      "width": 0,
+      "height": 0,
+      "color": {
+        "r": 51,
+        "g": 128,
+        "b": 204,
+        "a": 255
+      }
+    },
+    "debugInfo": {
+      "node": null,
+      "node3d": null
+    },
+    "scale": 1.2,
+    "isWedge": false,
+    "totalTimeFromMinToMax": 2,
+    "rotateSpeed": 0.3,
+    "logoGlow": true,
+    "rotateBy90": false,
+    "enableLogo": true
+  }
+}

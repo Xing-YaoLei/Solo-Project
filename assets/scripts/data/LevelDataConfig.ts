@@ -1,0 +1,641 @@
+import { GameMode, PostType, DifficultyLevel, ActionType, ConflictType } from '../models/GameEnums';
+import type { LevelData } from '../models';
+
+export const LevelDataConfig: LevelData[] = [
+    {
+        id: 'formal_ticket_checker_01',
+        name: '检票员入门-预约审核',
+        description: '学习基本的预约审核流程，识别简单的冲突类型',
+        mode: GameMode.FORMAL_TRAINING,
+        postType: PostType.TICKET_CHECKER,
+        difficulty: DifficultyLevel.EASY,
+        timeLimit: 180,
+        targetScore: 200,
+        maxMistakes: 3,
+        hasTutorial: true,
+        tutorialSteps: [
+            {
+                id: 'tutorial_1',
+                title: '欢迎来到景区预约训练系统',
+                content: '你将扮演景区检票员，需要根据预约信息判断是否允许游客入园。点击"下一步"开始学习。',
+                highlightNode: '',
+                position: 'bottom',
+                autoNext: false
+            },
+            {
+                id: 'tutorial_2',
+                title: '查看预约列表',
+                content: '左侧是待处理的预约任务列表，每个预约包含游客信息、预约时段等。点击预约可查看详情。',
+                highlightNode: 'ReservationList',
+                position: 'right',
+                autoNext: false
+            },
+            {
+                id: 'tutorial_3',
+                title: '冲突检测很重要',
+                content: '注意查看预约是否有冲突：黑名单、容量超限、时段重叠等。有冲突的预约会标红提示。',
+                highlightNode: 'ConflictIndicator',
+                position: 'top',
+                autoNext: false
+            },
+            {
+                id: 'tutorial_4',
+                title: '选择正确操作',
+                content: '根据预约情况，选择批准、拒绝或改约。正确操作得分，错误会扣分。现在试试处理第一个预约吧！',
+                highlightNode: 'ActionPanel',
+                position: 'left',
+                autoNext: false,
+                waitForAction: ActionType.APPROVE_RESERVATION
+            }
+        ],
+        scenicSpots: [
+            {
+                id: 'spot_main',
+                name: '主景区入口',
+                description: '景区主要检票入口',
+                icon: 'icon_gate',
+                mapPosX: 400,
+                mapPosY: 300,
+                dailyCapacity: 500,
+                color: '#4A90D9',
+                timeSlots: [
+                    { startTime: 480, endTime: 540, capacity: 50 },
+                    { startTime: 540, endTime: 600, capacity: 50 },
+                    { startTime: 600, endTime: 660, capacity: 50 },
+                    { startTime: 660, endTime: 720, capacity: 50 },
+                    { startTime: 720, endTime: 780, capacity: 50 },
+                    { startTime: 780, endTime: 840, capacity: 50 }
+                ]
+            }
+        ],
+        tasks: [
+            {
+                visitorId: 'v001',
+                visitorName: '张三',
+                idCard: '110101199001011234',
+                phone: '13800138001',
+                ticketCount: 2,
+                hasBlacklist: false,
+                scenicSpotId: 'spot_main',
+                timeSlotIndex: 0,
+                arrivalTime: null,
+                isTask: true,
+                correctAction: ActionType.APPROVE_RESERVATION,
+                correctRescheduleSlotIndex: null,
+                conflictTypes: [ConflictType.NONE],
+                rescheduleCount: 0,
+                notes: '正常预约'
+            },
+            {
+                visitorId: 'v002',
+                visitorName: '李四',
+                idCard: '110101198505055678',
+                phone: '13900139002',
+                ticketCount: 1,
+                hasBlacklist: true,
+                scenicSpotId: 'spot_main',
+                timeSlotIndex: 1,
+                arrivalTime: null,
+                isTask: true,
+                correctAction: ActionType.REJECT_RESERVATION,
+                correctRescheduleSlotIndex: null,
+                conflictTypes: [ConflictType.BLACKLIST],
+                rescheduleCount: 0,
+                notes: '注意：该游客在黑名单中'
+            },
+            {
+                visitorId: 'v003',
+                visitorName: '王五',
+                idCard: '310101199203039012',
+                phone: '13700137003',
+                ticketCount: 3,
+                hasBlacklist: false,
+                scenicSpotId: 'spot_main',
+                timeSlotIndex: 2,
+                arrivalTime: null,
+                isTask: true,
+                correctAction: ActionType.APPROVE_RESERVATION,
+                correctRescheduleSlotIndex: null,
+                conflictTypes: [ConflictType.NONE],
+                rescheduleCount: 1,
+                notes: '曾改约一次'
+            },
+            {
+                visitorId: 'v004',
+                visitorName: '赵六',
+                idCard: '440101198808083456',
+                phone: '13600136004',
+                ticketCount: 2,
+                hasBlacklist: false,
+                scenicSpotId: 'spot_main',
+                timeSlotIndex: 0,
+                arrivalTime: null,
+                isTask: true,
+                correctAction: ActionType.APPROVE_RESERVATION,
+                correctRescheduleSlotIndex: null,
+                conflictTypes: [ConflictType.NONE],
+                rescheduleCount: 0,
+                notes: '团体预约'
+            }
+        ]
+    },
+    {
+        id: 'formal_ticket_checker_02',
+        name: '检票员进阶-冲突处理',
+        description: '学习识别和处理多种冲突类型',
+        mode: GameMode.FORMAL_TRAINING,
+        postType: PostType.TICKET_CHECKER,
+        difficulty: DifficultyLevel.MEDIUM,
+        timeLimit: 240,
+        targetScore: 400,
+        maxMistakes: 3,
+        hasTutorial: false,
+        scenicSpots: [
+            {
+                id: 'spot_main',
+                name: '主景区入口',
+                description: '景区主要检票入口',
+                icon: 'icon_gate',
+                mapPosX: 400,
+                mapPosY: 300,
+                dailyCapacity: 500,
+                color: '#4A90D9',
+                timeSlots: [
+                    { startTime: 480, endTime: 540, capacity: 3 },
+                    { startTime: 540, endTime: 600, capacity: 50 },
+                    { startTime: 600, endTime: 660, capacity: 50 },
+                    { startTime: 660, endTime: 720, capacity: 50 }
+                ]
+            }
+        ],
+        tasks: [
+            {
+                visitorId: 'v101',
+                visitorName: '陈一',
+                idCard: '110101199001012222',
+                phone: '13800138101',
+                ticketCount: 2,
+                hasBlacklist: false,
+                scenicSpotId: 'spot_main',
+                timeSlotIndex: 0,
+                arrivalTime: null,
+                isTask: true,
+                correctAction: ActionType.RESCHEDULE,
+                correctRescheduleSlotIndex: 1,
+                conflictTypes: [ConflictType.CAPACITY_EXCEEDED],
+                rescheduleCount: 0,
+                notes: '该时段容量不足'
+            },
+            {
+                visitorId: 'v102',
+                visitorName: '林二',
+                idCard: '310101199202023333',
+                phone: '13900139102',
+                ticketCount: 1,
+                hasBlacklist: true,
+                scenicSpotId: 'spot_main',
+                timeSlotIndex: 1,
+                arrivalTime: null,
+                isTask: true,
+                correctAction: ActionType.REJECT_RESERVATION,
+                correctRescheduleSlotIndex: null,
+                conflictTypes: [ConflictType.BLACKLIST],
+                rescheduleCount: 2,
+                notes: '黑名单且多次改约'
+            },
+            {
+                visitorId: 'v103',
+                visitorName: '黄三',
+                idCard: '440101198503034444',
+                phone: '13700137103',
+                ticketCount: 4,
+                hasBlacklist: false,
+                scenicSpotId: 'spot_main',
+                timeSlotIndex: 2,
+                arrivalTime: null,
+                isTask: true,
+                correctAction: ActionType.APPROVE_RESERVATION,
+                correctRescheduleSlotIndex: null,
+                conflictTypes: [ConflictType.NONE],
+                rescheduleCount: 0,
+                notes: '家庭出游'
+            },
+            {
+                visitorId: 'v104',
+                visitorName: '吴四',
+                idCard: '510101198804045555',
+                phone: '13600136104',
+                ticketCount: 2,
+                hasBlacklist: false,
+                scenicSpotId: 'spot_main',
+                timeSlotIndex: 3,
+                arrivalTime: null,
+                isTask: true,
+                correctAction: ActionType.APPROVE_RESERVATION,
+                correctRescheduleSlotIndex: null,
+                conflictTypes: [ConflictType.NONE],
+                rescheduleCount: 0,
+                notes: '正常预约'
+            },
+            {
+                visitorId: 'v105',
+                visitorName: '郑五',
+                idCard: '330101199505056666',
+                phone: '13500135105',
+                ticketCount: 1,
+                hasBlacklist: false,
+                scenicSpotId: 'spot_main',
+                timeSlotIndex: 0,
+                arrivalTime: null,
+                isTask: true,
+                correctAction: ActionType.RESCHEDULE,
+                correctRescheduleSlotIndex: 1,
+                conflictTypes: [ConflictType.CAPACITY_EXCEEDED],
+                rescheduleCount: 1,
+                notes: '容量已满，建议改约'
+            },
+            {
+                visitorId: 'v106',
+                visitorName: '冯六',
+                idCard: '320101199106067777',
+                phone: '13400134106',
+                ticketCount: 2,
+                hasBlacklist: false,
+                scenicSpotId: 'spot_main',
+                timeSlotIndex: 2,
+                arrivalTime: null,
+                isTask: true,
+                correctAction: ActionType.APPROVE_RESERVATION,
+                correctRescheduleSlotIndex: null,
+                conflictTypes: [ConflictType.NONE],
+                rescheduleCount: 0,
+                notes: '正常预约'
+            }
+        ]
+    },
+    {
+        id: 'formal_reservation_01',
+        name: '预约专员入门',
+        description: '学习处理预约改约和多时段管理',
+        mode: GameMode.FORMAL_TRAINING,
+        postType: PostType.RESERVATION_CLERK,
+        difficulty: DifficultyLevel.EASY,
+        timeLimit: 300,
+        targetScore: 300,
+        maxMistakes: 2,
+        hasTutorial: false,
+        scenicSpots: [
+            {
+                id: 'spot_a',
+                name: 'A景点',
+                description: '热门景点A',
+                icon: 'icon_spot_a',
+                mapPosX: 200,
+                mapPosY: 200,
+                dailyCapacity: 200,
+                color: '#E74C3C',
+                timeSlots: [
+                    { startTime: 480, endTime: 540, capacity: 20 },
+                    { startTime: 540, endTime: 600, capacity: 20 },
+                    { startTime: 600, endTime: 660, capacity: 20 }
+                ]
+            },
+            {
+                id: 'spot_b',
+                name: 'B景点',
+                description: '热门景点B',
+                icon: 'icon_spot_b',
+                mapPosX: 600,
+                mapPosY: 400,
+                dailyCapacity: 150,
+                color: '#27AE60',
+                timeSlots: [
+                    { startTime: 540, endTime: 600, capacity: 15 },
+                    { startTime: 600, endTime: 660, capacity: 15 },
+                    { startTime: 660, endTime: 720, capacity: 15 }
+                ]
+            }
+        ],
+        tasks: [
+            {
+                visitorId: 'v201',
+                visitorName: '孙甲',
+                idCard: '110101199001018888',
+                phone: '13800138201',
+                ticketCount: 2,
+                hasBlacklist: false,
+                scenicSpotId: 'spot_a',
+                timeSlotIndex: 0,
+                arrivalTime: null,
+                isTask: true,
+                correctAction: ActionType.APPROVE_RESERVATION,
+                correctRescheduleSlotIndex: null,
+                conflictTypes: [ConflictType.NONE],
+                rescheduleCount: 0,
+                notes: 'A景点预约'
+            },
+            {
+                visitorId: 'v202',
+                visitorName: '钱乙',
+                idCard: '310101199202029999',
+                phone: '13900139202',
+                ticketCount: 1,
+                hasBlacklist: false,
+                scenicSpotId: 'spot_b',
+                timeSlotIndex: 0,
+                arrivalTime: null,
+                isTask: true,
+                correctAction: ActionType.APPROVE_RESERVATION,
+                correctRescheduleSlotIndex: null,
+                conflictTypes: [ConflictType.NONE],
+                rescheduleCount: 0,
+                notes: 'B景点预约'
+            },
+            {
+                visitorId: 'v203',
+                visitorName: '周丙',
+                idCard: '440101198503030000',
+                phone: '13700137203',
+                ticketCount: 3,
+                hasBlacklist: false,
+                scenicSpotId: 'spot_a',
+                timeSlotIndex: 1,
+                arrivalTime: null,
+                isTask: true,
+                correctAction: ActionType.APPROVE_RESERVATION,
+                correctRescheduleSlotIndex: null,
+                conflictTypes: [ConflictType.NONE],
+                rescheduleCount: 1,
+                notes: '改约过一次'
+            }
+        ]
+    },
+    {
+        id: 'challenge_time_conflict_01',
+        name: '时段冲突挑战',
+        description: '高难度时段冲突处理，考验你的判断力和速度',
+        mode: GameMode.CHALLENGE,
+        postType: PostType.SITE_MANAGER,
+        difficulty: DifficultyLevel.HARD,
+        timeLimit: 120,
+        targetScore: 600,
+        maxMistakes: 1,
+        hasTutorial: false,
+        scenicSpots: [
+            {
+                id: 'spot_main',
+                name: '主景区',
+                description: '综合景区入口',
+                icon: 'icon_main',
+                mapPosX: 400,
+                mapPosY: 300,
+                dailyCapacity: 1000,
+                color: '#9B59B6',
+                timeSlots: [
+                    { startTime: 480, endTime: 510, capacity: 10 },
+                    { startTime: 510, endTime: 540, capacity: 10 },
+                    { startTime: 540, endTime: 570, capacity: 10 },
+                    { startTime: 570, endTime: 600, capacity: 10 },
+                    { startTime: 600, endTime: 630, capacity: 10 },
+                    { startTime: 630, endTime: 660, capacity: 10 }
+                ]
+            }
+        ],
+        tasks: [
+            {
+                visitorId: 'vc01',
+                visitorName: '快客1',
+                idCard: '110101199001010001',
+                phone: '13800138001',
+                ticketCount: 1,
+                hasBlacklist: false,
+                scenicSpotId: 'spot_main',
+                timeSlotIndex: 0,
+                arrivalTime: null,
+                isTask: true,
+                correctAction: ActionType.APPROVE_RESERVATION,
+                correctRescheduleSlotIndex: null,
+                conflictTypes: [ConflictType.NONE],
+                rescheduleCount: 0,
+                notes: '正常'
+            },
+            {
+                visitorId: 'vc02',
+                visitorName: '快客2',
+                idCard: '110101199001010002',
+                phone: '13800138002',
+                ticketCount: 2,
+                hasBlacklist: true,
+                scenicSpotId: 'spot_main',
+                timeSlotIndex: 1,
+                arrivalTime: null,
+                isTask: true,
+                correctAction: ActionType.REJECT_RESERVATION,
+                correctRescheduleSlotIndex: null,
+                conflictTypes: [ConflictType.BLACKLIST],
+                rescheduleCount: 0,
+                notes: '黑名单'
+            },
+            {
+                visitorId: 'vc03',
+                visitorName: '快客3',
+                idCard: '110101199001010003',
+                phone: '13800138003',
+                ticketCount: 3,
+                hasBlacklist: false,
+                scenicSpotId: 'spot_main',
+                timeSlotIndex: 0,
+                arrivalTime: null,
+                isTask: true,
+                correctAction: ActionType.RESCHEDULE,
+                correctRescheduleSlotIndex: 2,
+                conflictTypes: [ConflictType.CAPACITY_EXCEEDED],
+                rescheduleCount: 0,
+                notes: '容量不足'
+            },
+            {
+                visitorId: 'vc04',
+                visitorName: '快客4',
+                idCard: '110101199001010004',
+                phone: '13800138004',
+                ticketCount: 1,
+                hasBlacklist: false,
+                scenicSpotId: 'spot_main',
+                timeSlotIndex: 3,
+                arrivalTime: null,
+                isTask: true,
+                correctAction: ActionType.APPROVE_RESERVATION,
+                correctRescheduleSlotIndex: null,
+                conflictTypes: [ConflictType.NONE],
+                rescheduleCount: 1,
+                notes: '改约过'
+            },
+            {
+                visitorId: 'vc05',
+                visitorName: '快客5',
+                idCard: '110101199001010005',
+                phone: '13800138005',
+                ticketCount: 2,
+                hasBlacklist: false,
+                scenicSpotId: 'spot_main',
+                timeSlotIndex: 2,
+                arrivalTime: null,
+                isTask: true,
+                correctAction: ActionType.APPROVE_RESERVATION,
+                correctRescheduleSlotIndex: null,
+                conflictTypes: [ConflictType.NONE],
+                rescheduleCount: 0,
+                notes: '正常'
+            },
+            {
+                visitorId: 'vc06',
+                visitorName: '快客6',
+                idCard: '110101199001010006',
+                phone: '13800138006',
+                ticketCount: 1,
+                hasBlacklist: true,
+                scenicSpotId: 'spot_main',
+                timeSlotIndex: 4,
+                arrivalTime: null,
+                isTask: true,
+                correctAction: ActionType.REJECT_RESERVATION,
+                correctRescheduleSlotIndex: null,
+                conflictTypes: [ConflictType.BLACKLIST],
+                rescheduleCount: 2,
+                notes: '黑名单+多次改约'
+            },
+            {
+                visitorId: 'vc07',
+                visitorName: '快客7',
+                idCard: '110101199001010007',
+                phone: '13800138007',
+                ticketCount: 5,
+                hasBlacklist: false,
+                scenicSpotId: 'spot_main',
+                timeSlotIndex: 5,
+                arrivalTime: null,
+                isTask: true,
+                correctAction: ActionType.APPROVE_RESERVATION,
+                correctRescheduleSlotIndex: null,
+                conflictTypes: [ConflictType.NONE],
+                rescheduleCount: 0,
+                notes: '团体'
+            },
+            {
+                visitorId: 'vc08',
+                visitorName: '快客8',
+                idCard: '110101199001010008',
+                phone: '13800138008',
+                ticketCount: 2,
+                hasBlacklist: false,
+                scenicSpotId: 'spot_main',
+                timeSlotIndex: 3,
+                arrivalTime: null,
+                isTask: true,
+                correctAction: ActionType.RESCHEDULE,
+                correctRescheduleSlotIndex: 5,
+                conflictTypes: [ConflictType.CAPACITY_EXCEEDED],
+                rescheduleCount: 1,
+                notes: '容量不足'
+            }
+        ]
+    },
+    {
+        id: 'free_practice_01',
+        name: '自由练习-基础',
+        description: '无压力练习，熟悉基本操作流程',
+        mode: GameMode.FREE_PRACTICE,
+        postType: PostType.TICKET_CHECKER,
+        difficulty: DifficultyLevel.EASY,
+        timeLimit: 600,
+        targetScore: 0,
+        maxMistakes: 999,
+        hasTutorial: false,
+        scenicSpots: [
+            {
+                id: 'spot_practice',
+                name: '练习景区',
+                description: '用于自由练习的景区',
+                icon: 'icon_practice',
+                mapPosX: 400,
+                mapPosY: 300,
+                dailyCapacity: 999,
+                color: '#F39C12',
+                timeSlots: [
+                    { startTime: 480, endTime: 540, capacity: 100 },
+                    { startTime: 540, endTime: 600, capacity: 100 },
+                    { startTime: 600, endTime: 660, capacity: 100 }
+                ]
+            }
+        ],
+        tasks: [
+            {
+                visitorId: 'vp01',
+                visitorName: '练习游客1',
+                idCard: '110101199001011111',
+                phone: '13800138111',
+                ticketCount: 2,
+                hasBlacklist: false,
+                scenicSpotId: 'spot_practice',
+                timeSlotIndex: 0,
+                arrivalTime: null,
+                isTask: true,
+                correctAction: ActionType.APPROVE_RESERVATION,
+                correctRescheduleSlotIndex: null,
+                conflictTypes: [ConflictType.NONE],
+                rescheduleCount: 0,
+                notes: '正常预约，可批准'
+            },
+            {
+                visitorId: 'vp02',
+                visitorName: '练习游客2',
+                idCard: '110101199001012222',
+                phone: '13800138222',
+                ticketCount: 1,
+                hasBlacklist: true,
+                scenicSpotId: 'spot_practice',
+                timeSlotIndex: 1,
+                arrivalTime: null,
+                isTask: true,
+                correctAction: ActionType.REJECT_RESERVATION,
+                correctRescheduleSlotIndex: null,
+                conflictTypes: [ConflictType.BLACKLIST],
+                rescheduleCount: 0,
+                notes: '黑名单游客，应拒绝'
+            },
+            {
+                visitorId: 'vp03',
+                visitorName: '练习游客3',
+                idCard: '110101199001013333',
+                phone: '13800138333',
+                ticketCount: 3,
+                hasBlacklist: false,
+                scenicSpotId: 'spot_practice',
+                timeSlotIndex: 2,
+                arrivalTime: null,
+                isTask: true,
+                correctAction: ActionType.APPROVE_RESERVATION,
+                correctRescheduleSlotIndex: null,
+                conflictTypes: [ConflictType.NONE],
+                rescheduleCount: 2,
+                notes: '多次改约但无冲突'
+            }
+        ]
+    }
+];
+
+export function getLevelsByMode(mode: GameMode): LevelData[] {
+    return LevelDataConfig.filter(level => level.mode === mode);
+}
+
+export function getLevelsByPost(post: PostType): LevelData[] {
+    return LevelDataConfig.filter(level => level.postType === post);
+}
+
+export function getLevelsByModeAndPost(mode: GameMode, post: PostType): LevelData[] {
+    return LevelDataConfig.filter(level => level.mode === mode && level.postType === post);
+}
+
+export function getLevelById(id: string): LevelData | undefined {
+    return LevelDataConfig.find(level => level.id === id);
+}

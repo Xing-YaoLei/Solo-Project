@@ -1,0 +1,11 @@
+{
+  "engine": "cocos-creator-js",
+  "packages": "packages",
+  "name": "scenic-ticket-training",
+  "id": "5c8a7c8e-1a2b-3c4d-5e6f-7a8b9c0d1e2f",
+  "version": "3.8.0",
+  "type": "2d",
+  "creator": {
+    "version": "3.8.0"
+  }
+}

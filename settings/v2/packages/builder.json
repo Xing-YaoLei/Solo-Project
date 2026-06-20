@@ -1,0 +1,33 @@
+{
+  "cocos-play": {
+    "useRemoteServer": false,
+    "remoteIp": "",
+    "designResolution": {
+      "width": 1280,
+      "height": 720
+    }
+  },
+  "engine": {
+    "modules": {
+      "base": true,
+      "gfx-webgl": true,
+      "render-pipeline": true,
+      "2d": true,
+      "ui": true,
+      "particle": true,
+      "animation": true,
+      "audio": true,
+      "webview": true,
+      "tiled-map": true,
+      "spine": true,
+      "physics-2d": false,
+      "physics": false,
+      "terrain": false,
+      "video": true,
+      "websocket": true,
+      "tween": true,
+      "dragonbones": false,
+      "text": true
+    }
+  }
+}
