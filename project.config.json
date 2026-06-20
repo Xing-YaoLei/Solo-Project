@@ -1,5 +1,5 @@
 {
-  "launchScene": "main-menu",
+  "launchScene": "assets/scenes/main-menu.scene",
   "designWidth": 1280,
   "designHeight": 720,
   "fitWidth": true,
@@ -30,8 +30,7 @@
     {
       "name": "resources",
       "src": [
-        "i18n",
-        "internal"
+        "resources"
       ],
       "compressionType": {},
       "isRemote": false
@@ -54,6 +53,11 @@
     "assets/scripts/scenes/ResultScene.ts",
     "assets/scripts/scenes/SettingsScene.ts",
     "assets/scripts/scenes/ReviewScene.ts",
+    "assets/scripts/scenes/MainMenuBuilder.ts",
+    "assets/scripts/scenes/GameSceneBuilder.ts",
+    "assets/scripts/scenes/ResultSceneBuilder.ts",
+    "assets/scripts/scenes/SettingsSceneBuilder.ts",
+    "assets/scripts/scenes/ReviewSceneBuilder.ts",
     "assets/scripts/scenes/GameFallback.ts",
     "assets/scripts/scenes/ResultFallback.ts",
     "assets/scripts/scenes/SettingsFallback.ts",
@@ -62,5 +66,15 @@
   "userNode": {
     "Bootstrap": "Canvas"
   },
-  "platform": "web-mobile"
+  "platform": "web-mobile",
+  "textureFormat": {
+    "android": {},
+    "ios": {},
+    "web": {}
+  },
+  "compressTexture": {
+    "android": {},
+    "ios": {},
+    "web": {}
+  }
 }

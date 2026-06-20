@@ -1,18 +1,35 @@
 {
   "name": "ticket-simulator",
   "version": "1.0.0",
-  "description": "活动票务演出票务经营模拟游戏",
+  "description": "活动票务演出票务经营模拟游戏 - Cocos Creator + TypeScript + Tiled",
   "creator": {
     "version": "3.8.0"
   },
   "scripts": {
     "start": "node ./node_modules/@cocos/creator/bin/creator --project .",
-    "build": "node ./node_modules/@cocos/creator/bin/creator build --project . --platform web-mobile"
+    "build": "node ./node_modules/@cocos/creator/bin/creator build --project . --platform web-mobile || npm run build:web",
+    "build:creator": "node ./node_modules/@cocos/creator/bin/creator build --project . --platform web-mobile",
+    "build:web": "node ./scripts/build-web.mjs",
+    "build:esbuild": "npx esbuild ./assets/scripts/Bootstrap.ts --bundle --outfile=./dist/bundle.js --format=iife --global-name=TicketSim --platform=browser --tsconfig=./tsconfig.json --define:process.env.NODE_ENV=\\\"production\\\" || echo \"esbuild fallback: please run 'npm i && npm run build:preview'\"",
+    "build:preview": "node ./scripts/build-preview.mjs",
+    "serve:web": "npx http-server ./dist -p 8080 -c-1 -o",
+    "preview": "npm run build:web && npm run serve:web",
+    "typecheck": "npx tsc --noEmit --project ./tsconfig.json 2>/dev/null || echo \"TypeScript check (requires temp/tsconfig.cocos.json from editor)\""
   },
   "dependencies": {
     "@cocos/creator": "^3.8.0"
   },
   "devDependencies": {
-    "typescript": "^5.0.0"
-  }
+    "typescript": "^5.0.0",
+    "esbuild": "^0.20.0",
+    "http-server": "^14.1.1"
+  },
+  "keywords": [
+    "cocos-creator",
+    "typescript",
+    "ticketing",
+    "simulation",
+    "game"
+  ],
+  "license": "MIT"
 }

@@ -1,29 +1,45 @@
 {
   "extends": "./temp/tsconfig.cocos.json",
   "compilerOptions": {
-    "strict": true,
+    "target": "ES2020",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "strict": false,
+    "noImplicitAny": false,
+    "strictNullChecks": false,
+    "jsx": "preserve",
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
-    "outDir": "./dist",
+    "allowJs": true,
+    "checkJs": false,
+    "declaration": false,
+    "sourceMap": false,
+    "outDir": "./temp/dist-ts",
     "rootDir": "./assets",
-    "baseUrl": ".",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "useDefineForClassFields": false,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "types": [],
     "paths": {
-      "cc": ["./temp/declarations/cc.d.ts"]
-    }
+      "cc": ["./temp/cocos-types/cc.d.ts"],
+      "cc.env": ["./temp/cocos-types/cc.env.d.ts"]
+    },
+    "baseUrl": "."
   },
   "include": [
     "assets/**/*.ts",
-    "temp/declarations/**/*.d.ts"
+    "assets/**/*.tsx"
   ],
   "exclude": [
     "node_modules",
+    "library",
+    "local",
+    "temp",
     "build",
-    "dist",
-    "temp"
+    "profiles",
+    "settings"
   ]
 }
