@@ -321,6 +321,8 @@ class MerchantContractCreate(MerchantContractBase):
 
 
 class MerchantContractUpdate(BaseModel):
+    merchant_id: Optional[int] = None
+    contract_no: Optional[str] = Field(None, max_length=100)
     title: Optional[str] = Field(None, max_length=300)
     start_date: Optional[date] = None
     end_date: Optional[date] = None

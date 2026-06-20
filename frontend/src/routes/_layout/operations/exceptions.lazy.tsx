@@ -466,8 +466,14 @@ function ExceptionsPage() {
               <Col span={12}>
                 <Form.Item label="原始记录类型" name="original_record_type">
                   <Select allowClear placeholder="用于溯源">
-                    <Option value="performance_session">演出场次</Option>
                     <Option value="guide_route">导览路线</Option>
+                    <Option value="heat_point">热力点位</Option>
+                    <Option value="guide_content">导览内容</Option>
+                    <Option value="performance">演出</Option>
+                    <Option value="performance_session">演出场次</Option>
+                    <Option value="seat">座位</Option>
+                    <Option value="merchant">商户</Option>
+                    <Option value="merchant_contract">商户合同</Option>
                     <Option value="ticket">票务</Option>
                   </Select>
                 </Form.Item>

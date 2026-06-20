@@ -323,8 +323,14 @@ def update_contract(
     contract = db.query(MerchantContract).filter(MerchantContract.id == cid).first()
     if not contract:
         raise HTTPException(status_code=404, detail="合同不存在")
-    old_data = {col.name: getattr(contract, col.name) for col in contract.__table__.columns}
     update_data = c_in.model_dump(exclude_unset=True)
+    if "contract_no" in update_data and update_data["contract_no"] != contract.contract_no:
+        if db.query(MerchantContract).filter(
+            MerchantContract.contract_no == update_data["contract_no"],
+            MerchantContract.id != cid,
+        ).first():
+            raise HTTPException(status_code=400, detail="合同编号已存在")
+    old_data = {col.name: getattr(contract, col.name) for col in contract.__table__.columns}
     for k, v in update_data.items():
         setattr(contract, k, v)
     log_update_fields(db, current_user, "merchant_contract", cid, old_data, update_data)
@@ -435,19 +441,28 @@ def get_exception_original(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles(RoleEnum.PATROL, RoleEnum.OPERATION, RoleEnum.TICKET_CLERK)),
 ):
+    from ...models import GuideRoute, HeatPoint, GuideContent, Ticket
+
     e = db.query(ExceptionRecord).filter(ExceptionRecord.id == eid).first()
     if not e:
         raise HTTPException(status_code=404, detail="异常记录不存在")
     if not e.original_record_type or not e.original_record_id:
         return {"has_original": False, "data": None}
     model_map = {
+        "guide_route": GuideRoute,
+        "heat_point": HeatPoint,
+        "guide_content": GuideContent,
+        "performance": Performance,
         "performance_session": PerformanceSession,
-        "guide_route": Performance,
+        "seat": Seat,
+        "merchant": Merchant,
+        "merchant_contract": MerchantContract,
+        "ticket": Ticket,
     }
     model = model_map.get(e.original_record_type)
     data = None
     if model:
         obj = db.query(model).filter(model.id == e.original_record_id).first()
         if obj:
-            data = {c.name: str(getattr(obj, c.name)) for c in obj.__table__.columns}
+            data = {c.name: str(getattr(obj, c.name)) if getattr(obj, c.name) is not None else None for c in obj.__table__.columns}
     return {"has_original": True, "record_type": e.original_record_type, "record_id": e.original_record_id, "data": data}
