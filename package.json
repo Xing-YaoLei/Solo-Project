@@ -12,7 +12,10 @@
     "build": "npm run build --workspace=@ticket/prisma && npm run build --workspace=@ticket/api && npm run build --workspace=@ticket/web",
     "db:generate": "npm run db:generate --workspace=@ticket/prisma",
     "db:push": "npm run db:push --workspace=@ticket/prisma",
-    "db:seed": "npm run db:seed --workspace=@ticket/prisma"
+    "db:seed": "npm run db:seed --workspace=@ticket/prisma",
+    "setup": "./scripts/start-dev.sh",
+    "verify:api": "node scripts/verify-api.js",
+    "postinstall": "npm run db:generate"
   },
   "devDependencies": {
     "typescript": "^5.4.0",

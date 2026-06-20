@@ -3,11 +3,26 @@
   "version": "1.0.0",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "*": ["./src/*"]
+    }
+  },
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "development": "./src/index.js",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
   "scripts": {
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
     "build": "prisma generate && tsc && node scripts/postbuild.js",
+    "build:dist": "prisma generate && tsc && node scripts/postbuild.js",
     "postbuild": "node scripts/postbuild.js"
   },
   "dependencies": {

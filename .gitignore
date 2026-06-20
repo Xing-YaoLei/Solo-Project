@@ -7,3 +7,14 @@ build
 *.log
 .DS_Store
 coverage
+
+# Prisma 生成的 Client
+packages/prisma/src/generated
+
+# 临时导出文件
+/tmp
+*.tmp
+
+# IDE
+.idea
+.vscode

@@ -83,7 +83,7 @@ export class ExportService {
     const data = await this.buildDataset(exportType, activityId, dateRangeFrom, dateRangeTo);
 
     const buffer = await this.buildWorkbook(exportType, data);
-    const fileUrl = await this.saveBuffer(buffer, task.id, exportType);
+    const fileUrl = this.saveBuffer(buffer, task.id, exportType);
 
     await this.prisma.exportTask.update({
       where: { id: task.id },
