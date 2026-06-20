@@ -14,6 +14,8 @@ from src.ui.charts import (
     style_dataframe,
     metric_card,
     status_badge,
+    safe_drop_columns,
+    safe_select_columns,
 )
 from src.data.database import db
 
@@ -138,6 +140,7 @@ def render_checkin_page(event_id: Optional[str] = None) -> None:
         return
 
     masked = permission_manager.mask_sensitive_data(records, "gate_records", role)
+    masked = permission_manager.mask_sensitive_data(masked, "tickets", role)
     display = masked.with_columns(
         pl.col("状态").map_elements(
             lambda x: status_badge(x, "success" if x == "success" else "error"),
@@ -152,11 +155,10 @@ def render_checkin_page(event_id: Optional[str] = None) -> None:
     cols_keep = ["检票时间", "检票口", "检票员", "票种", "持票人", "赞助商", "检票结果", "失败原因", "已出场", "出场时间", "record_id", "ticket_id"]
     if show_code and "ticket_code" in display.columns:
         cols_keep.insert(1, "ticket_code")
-    existing_cols = [c for c in cols_keep if c in display.columns]
-    final_df = display.select(existing_cols)
+    final_df = safe_select_columns(display, cols_keep)
 
     st.dataframe(
-        final_df.drop(["record_id", "ticket_id"], errors="ignore").to_pandas(),
+        safe_drop_columns(final_df, ["record_id", "ticket_id"]).to_pandas(),
         use_container_width=True,
         height=450,
         hide_index=True,

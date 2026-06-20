@@ -7,7 +7,7 @@ from typing import Optional
 
 from src.data.analytics import TicketAnalytics
 from src.auth.permissions import permission_manager, UserRole
-from src.ui.charts import make_ticket_type_chart, style_dataframe, metric_card, status_badge
+from src.ui.charts import make_ticket_type_chart, style_dataframe, metric_card, status_badge, safe_drop_columns, safe_select_columns
 from src.data.database import db
 
 
@@ -47,9 +47,7 @@ def render_ticket_types_page(event_id: Optional[str] = None) -> None:
 
     display_tt = tt_df.clone()
     if not permission_manager.can_view_sensitive(role, "ticket_types", "price"):
-        for col in ["price", "total_revenue"]:
-            if col in display_tt.columns:
-                display_tt = display_tt.drop([col])
+        display_tt = safe_drop_columns(display_tt, ["price", "total_revenue"])
 
     display_tt = display_tt.with_columns(
         pl.concat_str([pl.col("redemption_rate").cast(str), pl.lit("%")]).alias("核销率%"),
@@ -71,7 +69,7 @@ def render_ticket_types_page(event_id: Optional[str] = None) -> None:
             display_tt = display_tt.rename({old: new})
 
     cols_to_show = [c for c in ["票种名称", "关联赞助商", "单价(元)", "发行量", "出票数", "已支付", "退票数", "已核销", "核销率%", "实际收入(元)", "ticket_type_id"] if c in display_tt.columns]
-    style_dataframe(display_tt.select(cols_to_show).drop(["ticket_type_id"] if "ticket_type_id" in cols_to_show else []), height=300)
+    style_dataframe(safe_drop_columns(display_tt.select(cols_to_show), ["ticket_type_id"]), height=300)
 
     st.divider()
     st.markdown("### 🔍 票种下钻：销售与核销明细")
@@ -160,6 +158,7 @@ def render_ticket_types_page(event_id: Optional[str] = None) -> None:
     """
     tt_tickets = db.query_to_df(tickets_sql)
     masked = permission_manager.mask_sensitive_data(tt_tickets, "tickets", role)
+    masked = permission_manager.mask_sensitive_data(masked, "orders", role)
 
     status_filter = st.multiselect(
         "按核销状态筛选",
@@ -176,10 +175,9 @@ def render_ticket_types_page(event_id: Optional[str] = None) -> None:
         show_raw = False
 
     display = filtered
-    if not show_raw and "ticket_code" in display.columns:
-        display = display.drop(["ticket_code"])
-    if "ticket_id" in display.columns:
-        display = display.drop(["ticket_id"])
+    if not show_raw:
+        display = safe_drop_columns(display, ["ticket_code"])
+    display = safe_drop_columns(display, ["ticket_id"])
     style_dataframe(display, height=380)
 
     if filtered.height > 0:

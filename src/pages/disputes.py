@@ -10,7 +10,7 @@ import polars as pl
 
 from src.data.analytics import TicketAnalytics
 from src.auth.permissions import permission_manager, UserRole, ROLE_LABELS
-from src.ui.charts import style_dataframe, metric_card, status_badge
+from src.ui.charts import style_dataframe, metric_card, status_badge, safe_drop_columns, safe_select_columns
 from src.data.database import db
 
 
@@ -128,16 +128,19 @@ def render_disputes_page(event_id: Optional[str] = None) -> None:
             "assigned_to", "filed_time", "deadline", "related_tasks",
             "conclusion", "dispute_id", "ticket_id",
         ] if c in masked.columns]
-        display_final = masked.select(show_cols).rename({
-            "dispute_type": "争议类型",
-            "dispute_reason": "争议原因",
-            "applicant_name": "申请人",
-            "assigned_to": "处理人",
-            "filed_time": "申请时间",
-            "deadline": "截止时间",
-            "related_tasks": "关联任务数",
-            "conclusion": "处理结论",
-        }).drop(["dispute_id", "ticket_id"], errors="ignore")
+        display_final = safe_drop_columns(
+            masked.select(show_cols).rename({
+                "dispute_type": "争议类型",
+                "dispute_reason": "争议原因",
+                "applicant_name": "申请人",
+                "assigned_to": "处理人",
+                "filed_time": "申请时间",
+                "deadline": "截止时间",
+                "related_tasks": "关联任务数",
+                "conclusion": "处理结论",
+            }),
+            ["dispute_id", "ticket_id"],
+        )
 
         style_dataframe(display_final, height=380)
 
@@ -278,7 +281,7 @@ def _render_dispute_detail(dispute_id: str, role: UserRole, event_id: Optional[s
                 ).alias("结果")
             )
             style_dataframe(
-                gate_display.drop(["device_info", "raw_payload"], errors="ignore"),
+                safe_drop_columns(gate_display, ["device_info", "raw_payload"]),
                 height=220,
             )
 
@@ -504,7 +507,10 @@ def _render_tasks_board(
             "created_at": "创建时间",
             "dispute_id": "关联争议",
         }
-        final_df = tasks_display.select(keep_cols).rename(rename_map).drop(["task_id"], errors="ignore")
+        final_df = safe_drop_columns(
+            tasks_display.select(keep_cols).rename(rename_map),
+            ["task_id"],
+        )
         style_dataframe(final_df)
 
 

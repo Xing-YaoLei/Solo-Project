@@ -1,11 +1,25 @@
 from __future__ import annotations
 
-from typing import Optional, Any, Dict, List
+from typing import Optional, Any, Dict, List, Sequence
 
 import streamlit as st
 import polars as pl
 import plotly.graph_objects as go
 import plotly.express as px
+
+
+def safe_drop_columns(df: pl.DataFrame, columns: Sequence[str]) -> pl.DataFrame:
+    existing = [c for c in columns if c in df.columns]
+    if not existing:
+        return df
+    return df.drop(existing, strict=True)
+
+
+def safe_select_columns(df: pl.DataFrame, columns: Sequence[str]) -> pl.DataFrame:
+    existing = [c for c in columns if c in df.columns]
+    if not existing:
+        return df.select([])
+    return df.select(existing)
 
 
 def style_dataframe(df: pl.DataFrame, height: int = 400, use_container_width: bool = True) -> None:

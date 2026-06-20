@@ -15,6 +15,7 @@ from src.ui.charts import (
     make_staff_chart,
     metric_card,
     style_dataframe,
+    safe_drop_columns,
 )
 
 
@@ -113,7 +114,7 @@ def render_overview_page(event_id: Optional[str] = None) -> None:
             if permission_manager.can_view_sensitive(role, "ticket_types", "price"):
                 style_dataframe(tt_df)
             else:
-                masked = tt_df.drop(["price", "total_revenue"]) if "price" in tt_df.columns else tt_df
+                masked = safe_drop_columns(tt_df, ["price", "total_revenue"])
                 style_dataframe(masked)
 
     st.divider()

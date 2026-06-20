@@ -102,6 +102,7 @@ CREATE TABLE IF NOT EXISTS tickets (
     purchase_time TIMESTAMP,
     payment_status VARCHAR DEFAULT 'unpaid',
     refund_status VARCHAR DEFAULT 'none',
+    source_file VARCHAR,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -118,6 +119,7 @@ CREATE TABLE IF NOT EXISTS payments (
     refund_time TIMESTAMP,
     refund_reason TEXT,
     gateway_response JSON,
+    source_file VARCHAR,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -231,6 +233,18 @@ class DatabaseManager:
     def _init_tables(self):
         statements = [s.strip() for s in CREATE_TABLES_SQL.split(";") if s.strip()]
         for sql in statements:
+            try:
+                self.conn.execute(sql)
+            except Exception:
+                pass
+        self._run_migrations()
+
+    def _run_migrations(self):
+        migrations = [
+            "ALTER TABLE tickets ADD COLUMN source_file VARCHAR",
+            "ALTER TABLE payments ADD COLUMN source_file VARCHAR",
+        ]
+        for sql in migrations:
             try:
                 self.conn.execute(sql)
             except Exception:

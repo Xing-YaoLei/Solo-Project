@@ -39,7 +39,7 @@ ROLE_HIERARCHY = {
 
 
 SENSITIVE_COLUMNS: Dict[str, Set[str]] = {
-    "tickets": {"buyer_phone", "buyer_email", "attendee_name", "seat_info", "ticket_code"},
+    "tickets": {"buyer_phone", "buyer_email", "attendee_name", "seat_info", "ticket_code", "buyer_name"},
     "orders": {"buyer_phone", "buyer_email", "buyer_name"},
     "payments": {"transaction_id", "gateway_response"},
     "gate_records": {"ticket_code", "raw_payload"},
@@ -48,6 +48,103 @@ SENSITIVE_COLUMNS: Dict[str, Set[str]] = {
     "staff": {"phone", "email"},
     "users": {"email", "phone", "event_access"},
 }
+
+SENSITIVE_COLUMN_ALIASES: Dict[str, Dict[str, str]] = {
+    "tickets": {
+        "持票人": "attendee_name",
+        "购票人": "buyer_name",
+        "座位": "seat_info",
+        "票码": "ticket_code",
+        "票代码": "ticket_code",
+        "购票人手机": "buyer_phone",
+        "购票人邮箱": "buyer_email",
+        "持票人姓名": "attendee_name",
+        "购票人姓名": "buyer_name",
+        "座位信息": "seat_info",
+        "实付金额": "final_price",
+    },
+    "orders": {
+        "购票人": "buyer_name",
+        "购票人姓名": "buyer_name",
+        "购买人": "buyer_name",
+        "购票手机": "buyer_phone",
+        "联系手机": "buyer_phone",
+        "购票邮箱": "buyer_email",
+    },
+    "gate_records": {
+        "票码": "ticket_code",
+        "票代码": "ticket_code",
+        "门票编码": "ticket_code",
+    },
+    "refund_disputes": {
+        "申请人": "applicant_name",
+        "申请人姓名": "applicant_name",
+        "联系方式": "applicant_contact",
+        "联系电话": "applicant_contact",
+    },
+    "sponsors": {
+        "联系人": "contact_person",
+        "联系电话": "contact_phone",
+        "联系人姓名": "contact_person",
+    },
+}
+
+
+def _is_sensitive_col(table_name: str, col_name: str) -> bool:
+    if table_name in SENSITIVE_COLUMNS and col_name in SENSITIVE_COLUMNS[table_name]:
+        return True
+    aliases = SENSITIVE_COLUMN_ALIASES.get(table_name, {})
+    if col_name in aliases and aliases[col_name] in SENSITIVE_COLUMNS.get(table_name, set()):
+        return True
+    lower_col = col_name.lower()
+    for sens in SENSITIVE_COLUMNS.get(table_name, set()):
+        if sens in lower_col:
+            return True
+    return False
+
+
+def _get_mask_expression(col_name: str, col_expr: pl.Expr) -> pl.Expr:
+    lower = col_name.lower()
+    if "phone" in lower or "手机" in col_name or "电话" in col_name or "contact" in lower:
+        return pl.when(col_expr.is_not_null()).then(
+            pl.concat_str([
+                col_expr.str.slice(0, 3),
+                pl.lit("****"),
+                col_expr.str.slice(-4),
+            ])
+        ).otherwise(col_expr)
+    elif "email" in lower or "邮箱" in col_name:
+        return pl.when(col_expr.is_not_null()).then(
+            pl.concat_str([
+                col_expr.str.extract(r"^(.{1,2})"),
+                pl.lit("***"),
+                col_expr.str.extract(r"(@.*)$"),
+            ])
+        ).otherwise(col_expr)
+    elif "name" in lower or "姓名" in col_name or "人" in col_name:
+        return pl.when(col_expr.is_not_null()).then(
+            pl.concat_str([
+                col_expr.str.slice(0, 1),
+                pl.lit("**"),
+            ])
+        ).otherwise(col_expr)
+    elif "seat" in lower or "座位" in col_name:
+        return pl.when(col_expr.is_not_null()).then(
+            pl.concat_str([
+                col_expr.str.slice(0, 2),
+                pl.lit("***"),
+            ])
+        ).otherwise(col_expr)
+    elif "code" in lower or "码" in col_name or "id" in lower or "流水" in col_name:
+        return pl.when(col_expr.is_not_null()).then(
+            pl.concat_str([
+                col_expr.str.slice(0, 4),
+                pl.lit("****"),
+                col_expr.str.slice(-4),
+            ])
+        ).otherwise(col_expr)
+    else:
+        return pl.lit("***")
 
 
 VIEW_SCOPES = {
@@ -98,40 +195,30 @@ class PermissionManager:
         if self.role_has_access(UserRole.TICKET_STAFF, role):
             return df
 
-        sensitive = SENSITIVE_COLUMNS.get(table_name, set())
         mask_map: Dict[str, pl.Expr] = {}
-
         for col in df.columns:
-            if col in sensitive:
-                if "phone" in col.lower():
-                    mask_map[col] = pl.when(pl.col(col).is_not_null())
-                    mask_map[col] = mask_map[col].then(
-                        pl.col(col).str.extract(r"^(\d{3})\d*(\d{4})$").alias(col)
-                        + pl.lit("")
-                    )
-                    mask_map[col] = mask_map[col].otherwise(pl.col(col))
-                elif "email" in col.lower():
-                    mask_map[col] = pl.when(pl.col(col).is_not_null())
-                    mask_map[col] = mask_map[col].then(
-                        pl.col(col).str.extract(r"^(.{1,2})[^@]*(@.*)$").alias(col)
-                    )
-                    mask_map[col] = mask_map[col].otherwise(pl.col(col))
-                elif "name" in col.lower():
-                    mask_map[col] = pl.when(pl.col(col).is_not_null())
-                    mask_map[col] = mask_map[col].then(
-                        pl.concat_str([
-                            pl.col(col).str.slice(0, 1),
-                            pl.lit("**"),
-                        ])
-                    )
-                    mask_map[col] = mask_map[col].otherwise(pl.col(col))
-                else:
-                    mask_map[col] = pl.lit("***").alias(col)
+            if _is_sensitive_col(table_name, col):
+                mask_map[col] = _get_mask_expression(col, pl.col(col))
 
         if not mask_map:
             return df
 
         return df.with_columns(**mask_map)
+
+    def mask_display_columns(
+        self,
+        df: pl.DataFrame,
+        table_name: str,
+        role: UserRole,
+        display_columns: Optional[List[str]] = None,
+    ) -> pl.DataFrame:
+        masked = self.mask_sensitive_data(df, table_name, role)
+        if display_columns is None:
+            return masked
+        existing = [c for c in display_columns if c in masked.columns]
+        if not existing:
+            return masked
+        return masked.select(existing)
 
     def set_current_user(self, username: Optional[str] = None, user_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
         conditions = []

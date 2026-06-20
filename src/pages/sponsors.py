@@ -7,7 +7,7 @@ from typing import Optional
 
 from src.data.analytics import TicketAnalytics
 from src.auth.permissions import permission_manager, UserRole, ROLE_LABELS
-from src.ui.charts import make_sponsor_chart, style_dataframe, status_badge, metric_card
+from src.ui.charts import make_sponsor_chart, style_dataframe, status_badge, metric_card, safe_drop_columns, safe_select_columns
 from src.data.database import db
 
 
@@ -53,9 +53,7 @@ def render_sponsors_page(event_id: Optional[str] = None) -> None:
         display_df = display_df.filter(pl.col("sponsor_level").is_in(level_filter))
 
     if not permission_manager.can_view_sensitive(role, "sponsors", "contact_person"):
-        for col in ["contact_person", "contact_phone"]:
-            if col in display_df.columns:
-                display_df = display_df.drop(col)
+        display_df = safe_drop_columns(display_df, ["contact_person", "contact_phone"])
 
     event_display_df = display_df.with_columns(
         pl.col("sponsor_level").map_elements(
@@ -84,7 +82,7 @@ def render_sponsors_page(event_id: Optional[str] = None) -> None:
     event_display_df = event_display_df.select(existing)
 
     st.dataframe(
-        event_display_df.drop(["sponsor_id"] if "sponsor_id" in event_display_df.columns else []).to_pandas(),
+        safe_drop_columns(event_display_df, ["sponsor_id"]).to_pandas(),
         use_container_width=True,
         height=350,
         hide_index=True,
@@ -164,10 +162,10 @@ def render_sponsors_page(event_id: Optional[str] = None) -> None:
         show_raw = False
 
     display_tickets = masked_tickets
-    if not show_raw and "ticket_code" in display_tickets.columns:
-        display_tickets = display_tickets.drop(["ticket_code"])
+    if not show_raw:
+        display_tickets = safe_drop_columns(display_tickets, ["ticket_code"])
 
-    style_dataframe(display_tickets.drop(["ticket_id"] if "ticket_id" in display_tickets.columns else []), height=400)
+    style_dataframe(safe_drop_columns(display_tickets, ["ticket_id"]), height=400)
 
     if display_tickets.height > 0:
         st.markdown("---")

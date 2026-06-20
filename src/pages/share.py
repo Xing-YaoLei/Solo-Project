@@ -15,7 +15,7 @@ from src.auth.permissions import (
     ROLE_HIERARCHY,
     VIEW_SCOPES,
 )
-from src.ui.charts import style_dataframe, status_badge, metric_card
+from src.ui.charts import style_dataframe, status_badge, metric_card, safe_drop_columns, safe_select_columns
 
 
 def render_share_page(event_id: Optional[str] = None) -> None:
@@ -154,7 +154,10 @@ def _render_manage_links(event_id: Optional[str], role: UserRole) -> None:
         "created_by": "创建人",
         "created_at": "创建时间",
     }
-    display = display_links.select(show_cols).rename(rename).drop(["link_id"], errors="ignore")
+    display = safe_drop_columns(
+        display_links.select(show_cols).rename(rename),
+        ["link_id"],
+    )
     style_dataframe(display, height=400)
 
     st.markdown("---")
@@ -269,4 +272,4 @@ def _render_permission_docs() -> None:
     demo_df = demo_df.with_columns(
         pl.col("角色").map_elements(lambda r: status_badge(ROLE_LABELS.get(r, r.value), "info"), return_dtype=str).alias("角色标识")
     )
-    st.dataframe(demo_df.drop(["角色"]).to_pandas(), use_container_width=True, hide_index=True)
+    st.dataframe(safe_drop_columns(demo_df, ["角色"]).to_pandas(), use_container_width=True, hide_index=True)

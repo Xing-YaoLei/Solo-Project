@@ -30,6 +30,7 @@ from src.pages.checkin import render_checkin_page
 from src.pages.raw_records import render_raw_records_page
 from src.pages.disputes import render_disputes_page
 from src.pages.share import render_share_page
+from src.pages.import_data import render_import_data_page
 
 
 PAGE_ROUTES = {
@@ -40,6 +41,7 @@ PAGE_ROUTES = {
     "📦 闸机原始记录": ("raw_records", "raw_records", UserRole.TICKET_STAFF),
     "⚖️ 退票争议管理": ("disputes", "disputes", UserRole.TICKET_STAFF),
     "🔗 分享链接管理": ("share", "share", UserRole.TICKET_STAFF),
+    "📥 数据导入": ("import", "数据导入", UserRole.TICKET_STAFF),
 }
 
 
@@ -324,6 +326,7 @@ def _dispatch_page(page_key: str, event_id: Optional[str]):
         "raw_records": render_raw_records_page,
         "disputes": render_disputes_page,
         "share": render_share_page,
+        "import": render_import_data_page,
     }
     renderer = page_renderers.get(page_key)
     if renderer:

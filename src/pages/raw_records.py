@@ -8,7 +8,7 @@ from typing import Optional
 
 from src.data.analytics import TicketAnalytics
 from src.auth.permissions import permission_manager, UserRole
-from src.ui.charts import style_dataframe, status_badge, metric_card
+from src.ui.charts import style_dataframe, status_badge, metric_card, safe_drop_columns, safe_select_columns
 from src.data.database import db
 
 
@@ -154,7 +154,8 @@ def render_raw_records_page(event_id: Optional[str] = None) -> None:
     main_cols = [c for c in ["check_in_time", "gate_name", "staff_id", "ticket_id",
                               "ticket_code", "结果标识", "check_status", "fail_reason",
                               "check_out_time", "record_id"] if c in display.columns]
-    style_dataframe(display.select(main_cols).drop(["check_status", "record_id"], errors="ignore"), height=480)
+    main_display = safe_select_columns(display, main_cols)
+    style_dataframe(safe_drop_columns(main_display, ["check_status", "record_id"]), height=480)
 
     st.divider()
     st.markdown("### 🧾 记录详情")
@@ -231,4 +232,4 @@ def render_raw_records_page(event_id: Optional[str] = None) -> None:
                         return_dtype=str,
                     ).alias("检票结果")
                 )
-                style_dataframe(same_display.drop(["device_info", "raw_payload"], errors="ignore"), height=250)
+                style_dataframe(safe_drop_columns(same_display, ["device_info", "raw_payload"]), height=250)
