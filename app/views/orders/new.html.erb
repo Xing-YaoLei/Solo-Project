@@ -63,20 +63,41 @@
                 <div class="space-y-3">
                   <% @ticket_types.each do |tt| %>
                     <label class="flex items-center gap-3 rounded-lg border border-gray-200 p-4 hover:bg-gray-50 cursor-pointer">
-                      <%= check_box_tag "ticket_type_ids[]", tt.id, false, class: "h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" %>
-                      <div class="flex-1">
-                        <span class="text-sm font-medium text-gray-900"><%= tt.name %></span>
-                        <span class="ml-2 text-sm text-gray-500">¥<%= number_with_precision(tt.price, precision: 2) %></span>
+                      <div class="flex-1 flex items-center gap-3">
+                        <%= check_box_tag "ticket_types[#{tt.id}][selected]", "1", false, class: "h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 ticket-type-checkbox", data: { ticket_type_id: tt.id } %>
+                        <div>
+                          <span class="text-sm font-medium text-gray-900"><%= tt.name %></span>
+                          <span class="ml-2 text-sm text-gray-500">¥<%= number_with_precision(tt.price, precision: 2) %></span>
+                        </div>
                       </div>
-                      <div class="text-xs text-gray-400">
+                      <div class="flex items-center gap-2">
+                        <span class="text-xs text-gray-400">数量</span>
+                        <%= number_field_tag "ticket_types[#{tt.id}][quantity]", 1, min: 1, max: (tt.remaining_count || 10), class: "ticket-type-quantity w-20 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm", disabled: true, data: { ticket_type_id: tt.id } %>
                         <% if tt.remaining_count %>
-                          剩余 <%= tt.remaining_count %> 张
+                          <span class="text-xs text-gray-400">剩余 <%= tt.remaining_count %> 张</span>
                         <% end %>
                       </div>
                     </label>
                   <% end %>
                 </div>
               </div>
+
+              <script>
+                document.addEventListener("DOMContentLoaded", function() {
+                  document.querySelectorAll(".ticket-type-checkbox").forEach(function(checkbox) {
+                    checkbox.addEventListener("change", function() {
+                      var ticketTypeId = this.dataset.ticketTypeId;
+                      var quantityField = document.querySelector(".ticket-type-quantity[data-ticket-type-id='" + ticketTypeId + "']");
+                      if (quantityField) {
+                        quantityField.disabled = !this.checked;
+                        if (this.checked) {
+                          quantityField.focus();
+                        }
+                      }
+                    });
+                  });
+                });
+              </script>
             <% end %>
 
             <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">

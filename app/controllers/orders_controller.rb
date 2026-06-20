@@ -21,14 +21,47 @@ class OrdersController < ApplicationController
   end
 
   def create
+    @performance = Performance.find(params[:performance_id]) if params[:performance_id]
     @order = Order.new(order_params)
-    if @order.save
-      redirect_to @order, notice: "订单创建成功"
-    else
-      @performance = Performance.find(params[:performance_id]) if params[:performance_id]
-      @ticket_types = @performance&.ticket_types&.active || []
-      render :new, status: :unprocessable_entity
+    ticket_types_params = params[:ticket_types] || {}
+
+    selected_tickets = []
+    ticket_types_params.each do |tt_id, tt_data|
+      next if tt_data[:selected] != "1"
+      quantity = tt_data[:quantity].to_i
+      next if quantity <= 0
+      ticket_type = TicketType.find_by(id: tt_id)
+      next unless ticket_type
+      quantity.times { selected_tickets << ticket_type }
     end
+
+    ActiveRecord::Base.transaction do
+      if @order.save
+        performance = @performance || selected_tickets.first&.performance
+        raise ActiveRecord::Rollback, "请选择演出或票种" unless performance
+
+        selected_tickets.each do |ticket_type|
+          seat = performance.seats.available.order(:section, :row, :seat_number).lock.first
+          raise ActiveRecord::Rollback, "#{ticket_type.name}没有可用座位" unless seat
+
+          @order.tickets.create!(
+            ticket_type: ticket_type,
+            seat: seat
+          )
+          seat.update!(status: :occupied)
+        end
+
+        redirect_to @order, notice: "订单创建成功"
+      else
+        @ticket_types = @performance&.ticket_types&.active || []
+        render :new, status: :unprocessable_entity
+        raise ActiveRecord::Rollback
+      end
+    end
+  rescue ActiveRecord::Rollback => e
+    @ticket_types = @performance&.ticket_types&.active || []
+    flash.now[:alert] = e.message if e.message.present?
+    render :new, status: :unprocessable_entity
   end
 
   def edit

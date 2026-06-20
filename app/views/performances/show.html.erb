@@ -5,8 +5,9 @@
       <p class="mt-1 text-sm text-gray-500">演出排期详情</p>
     </div>
     <div class="mt-4 sm:mt-0 flex gap-3">
+      <%= link_to "新建订单", new_performance_order_path(@performance), class: "inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500" %>
       <%= button_to "生成签到码", generate_checkin_codes_performance_path(@performance), method: :post, class: "inline-flex items-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500" %>
-      <%= link_to "查看座位图", seat_map_performance_path(@performance), class: "inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500" %>
+      <%= link_to "查看座位图", seat_map_performance_path(@performance), class: "inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500" %>
       <%= link_to "编辑", edit_performance_path(@performance), class: "inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50" %>
       <%= link_to "返回列表", performances_path, class: "inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50" %>
     </div>

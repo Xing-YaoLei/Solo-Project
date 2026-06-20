@@ -1,4 +1,4 @@
-<% if model.errors.any? %>
+<% if object.errors.any? %>
   <div class="bg-red-50 border-l-4 border-red-400 p-4 rounded-md mb-6" data-turbo-cache="false">
     <div class="flex">
       <div class="flex-shrink-0">
@@ -8,11 +8,11 @@
       </div>
       <div class="ml-3">
         <h3 class="text-sm font-medium text-red-800">
-          提交失败，共有 <%= model.errors.count %> 个错误
+          提交失败，共有 <%= object.errors.count %> 个错误
         </h3>
         <div class="mt-2 text-sm text-red-700">
           <ul class="list-disc list-inside space-y-1">
-            <% model.errors.full_messages.each do |message| %>
+            <% object.errors.full_messages.each do |message| %>
               <li><%= message %></li>
             <% end %>
           </ul>
