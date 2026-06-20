@@ -467,7 +467,8 @@ def render_import_data_page(event_id: Optional[str] = None) -> None:
         if minio_status["available"]:
             st.success(f"✅ 对象存储就绪: {minio_status['endpoint']} / bucket: {minio_status['bucket']}")
         else:
-            st.warning(f"⚠️ 对象存储不可用: {minio_status['endpoint']}（仅写入 DuckDB，无法归档原始文件）")
+            fallback_dir = minio_status.get("fallback_dir") or "./data/archive"
+            st.info(f"📦 对象存储离线，使用本地归档目录: `{fallback_dir}`（文件仍会按 imports/{{event_id}}/{{type}} 路径保存）")
 
         st.markdown("### 选择导入类型")
 
@@ -554,13 +555,12 @@ def render_import_data_page(event_id: Optional[str] = None) -> None:
                             target_event = None
 
                     archive_minio = st.checkbox(
-                        "✅ 同时归档原始文件到 MinIO（推荐，便于审计追溯）",
-                        value=minio_status["available"],
-                        disabled=not minio_status["available"],
+                        "✅ 同时归档原始文件（推荐，便于审计追溯）",
+                        value=True,
                         key="archive_minio_check",
                     )
                     if not minio_status["available"]:
-                        st.caption("ℹ️ MinIO 未连接，可先配置环境变量 `MINIO_ENDPOINT` / `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY` 启用归档")
+                        st.caption("ℹ️ 当前使用本地文件系统归档（MinIO 离线时自动 fallback）")
 
                     st.divider()
 
@@ -615,26 +615,39 @@ def render_import_data_page(event_id: Optional[str] = None) -> None:
 
                                     if import_type_key == "tickets":
                                         mc1, mc2 = st.columns(2)
-                                        mc1.metric("导入订单数", stats.get("orders", 0))
-                                        mc2.metric("导入门票数", stats.get("tickets", 0))
+                                        with mc1:
+                                            metric_card("导入订单数", stats.get("orders", 0))
+                                        with mc2:
+                                            metric_card("导入门票数", stats.get("tickets", 0))
                                     else:
                                         mc1, mc2, mc3 = st.columns(3)
-                                        mc1.metric("导入支付流水", stats.get("payments", 0))
+                                        with mc1:
+                                            metric_card("🧾 导入支付流水", stats.get("payments", 0))
                                         tickets_updated = stats.get("tickets_updated", 0)
-                                        delta_color = "normal" if tickets_updated > 0 else "off"
-                                        mc2.metric("联动更新票务已支付", tickets_updated,
-                                                  delta=f"{tickets_updated} 张门票支付状态已更新",
-                                                  delta_color=delta_color)
+                                        with mc2:
+                                            delta_text = f"{tickets_updated} 张已支付" if tickets_updated > 0 else None
+                                            delta_color = "normal" if tickets_updated > 0 else "off"
+                                            metric_card(
+                                                "🔄 联动更新票务已支付",
+                                                tickets_updated,
+                                                delta=delta_text,
+                                                delta_color=delta_color,
+                                                help_text="按 order_id 将未支付门票的 payment_status 更新为 paid",
+                                            )
                                         if target_event:
                                             analytics = TicketAnalytics(target_event)
                                             recon = analytics.get_payment_reconciliation()
                                             if recon:
-                                                mc3.metric("对账状态", recon.get("对账状态", "-"),
-                                                          help_text=recon.get("对账详情", ""))
+                                                with mc3:
+                                                    metric_card(
+                                                        "📊 对账状态",
+                                                        recon.get("对账状态", "-"),
+                                                        help_text=recon.get("对账详情", ""),
+                                                    )
 
                                     st.caption(f"源文件标签: `{source_tag}`")
                                     if archived_path:
-                                        st.caption(f"📦 MinIO 归档路径: `{archived_path}`")
+                                        st.caption(f"📦 归档路径: `{archived_path}`")
 
                                     st.info("💡 前往 🎯 总览看板 即可查看更新后的核销漏斗和支付对账数据")
 

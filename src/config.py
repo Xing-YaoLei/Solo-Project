@@ -7,11 +7,11 @@ load_dotenv()
 
 @dataclass
 class MinIOConfig:
-    endpoint: str = os.getenv("MINIO_ENDPOINT", "localhost:9000")
-    access_key: str = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
-    secret_key: str = os.getenv("MINIO_SECRET_KEY", "minioadmin")
-    secure: bool = os.getenv("MINIO_SECURE", "false").lower() == "true"
-    bucket: str = os.getenv("MINIO_BUCKET", "ticket-data")
+    endpoint: str = os.getenv("MINIO_ENDPOINT", "play.min.io")
+    access_key: str = os.getenv("MINIO_ACCESS_KEY", "Q3AM3UQ867SPQQA43P2F")
+    secret_key: str = os.getenv("MINIO_SECRET_KEY", "zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG")
+    secure: bool = os.getenv("MINIO_SECURE", "true").lower() == "true"
+    bucket: str = os.getenv("MINIO_BUCKET", "ticket-archive")
 
 
 @dataclass
