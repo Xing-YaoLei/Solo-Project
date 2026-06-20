@@ -5,7 +5,13 @@ from datetime import date, timedelta
 from config import Config
 
 
-def build_filter_bar(show_zone_filter: bool = True, is_management: bool = True):
+def _prefixed(prefix: str, id_name: str) -> str:
+    if not prefix:
+        return id_name
+    return f"{prefix}-{id_name}"
+
+
+def build_filter_bar(prefix: str = "", show_zone_filter: bool = True, is_management: bool = True):
     today = date.today()
     week_ago = today - timedelta(days=7)
 
@@ -17,7 +23,7 @@ def build_filter_bar(show_zone_filter: bool = True, is_management: bool = True):
         ),
         dbc.Col(
             dcc.DatePickerRange(
-                id="date-range",
+                id=_prefixed(prefix, "date-range"),
                 start_date=week_ago,
                 end_date=today,
                 display_format="YYYY-MM-DD",
@@ -39,7 +45,7 @@ def build_filter_bar(show_zone_filter: bool = True, is_management: bool = True):
             ),
             dbc.Col(
                 dcc.Dropdown(
-                    id="zone-filter",
+                    id=_prefixed(prefix, "zone-filter"),
                     options=[{"label": z, "value": z} for z in Config.ZONES],
                     value=None,
                     multi=True,
@@ -55,7 +61,7 @@ def build_filter_bar(show_zone_filter: bool = True, is_management: bool = True):
     controls.extend([
         dbc.Col(
             dcc.Dropdown(
-                id="slot-filter",
+                id=_prefixed(prefix, "slot-filter"),
                 options=[{"label": s, "value": s} for s in Config.TIME_SLOTS],
                 value=None,
                 multi=True,
@@ -68,7 +74,7 @@ def build_filter_bar(show_zone_filter: bool = True, is_management: bool = True):
         dbc.Col(
             dbc.Button(
                 [html.I(className="bi bi-arrow-clockwise me-2"), "刷新数据"],
-                id="refresh-btn",
+                id=_prefixed(prefix, "refresh-btn"),
                 color="primary",
                 outline=True,
                 className="ms-auto",
@@ -82,7 +88,7 @@ def build_filter_bar(show_zone_filter: bool = True, is_management: bool = True):
     return dbc.Row(controls, className="g-2 align-items-center mb-3 p-3 bg-light rounded-3 border")
 
 
-def build_kpi_row(include_consumed: bool = True):
+def build_kpi_row(prefix: str = "", include_consumed: bool = True):
     cols = [
         dbc.Col(
             dbc.Card(
@@ -91,7 +97,7 @@ def build_kpi_row(include_consumed: bool = True):
                         html.I(className="bi bi-calendar-check fs-4 text-primary"),
                         html.Span("预约总数", className="ms-2 text-muted small fw-bold"),
                     ]),
-                    html.H2(id="kpi-reservation", className="mt-2 mb-0 text-primary fw-bold", children="—"),
+                    html.H2(id=_prefixed(prefix, "kpi-reservation"), className="mt-2 mb-0 text-primary fw-bold", children="—"),
                 ]),
                 className="shadow-sm border-0 h-100",
             ),
@@ -104,7 +110,7 @@ def build_kpi_row(include_consumed: bool = True):
                         html.I(className="bi bi-door-open fs-4 text-success"),
                         html.Span("到场总数", className="ms-2 text-muted small fw-bold"),
                     ]),
-                    html.H2(id="kpi-checkin", className="mt-2 mb-0 text-success fw-bold", children="—"),
+                    html.H2(id=_prefixed(prefix, "kpi-checkin"), className="mt-2 mb-0 text-success fw-bold", children="—"),
                 ]),
                 className="shadow-sm border-0 h-100",
             ),
@@ -120,7 +126,7 @@ def build_kpi_row(include_consumed: bool = True):
                             html.I(className="bi bi-bag-check fs-4 text-warning"),
                             html.Span("消费人数", className="ms-2 text-muted small fw-bold"),
                         ]),
-                        html.H2(id="kpi-consumed", className="mt-2 mb-0 text-warning fw-bold", children="—"),
+                        html.H2(id=_prefixed(prefix, "kpi-consumed"), className="mt-2 mb-0 text-warning fw-bold", children="—"),
                     ]),
                     className="shadow-sm border-0 h-100",
                 ),
@@ -135,7 +141,7 @@ def build_kpi_row(include_consumed: bool = True):
                         html.I(className="bi bi-percent fs-4 text-info"),
                         html.Span("平均到场率", className="ms-2 text-muted small fw-bold"),
                     ]),
-                    html.H2(id="kpi-rate", className="mt-2 mb-0 text-info fw-bold", children="—"),
+                    html.H2(id=_prefixed(prefix, "kpi-rate"), className="mt-2 mb-0 text-info fw-bold", children="—"),
                 ]),
                 className="shadow-sm border-0 h-100",
             ),
@@ -145,14 +151,30 @@ def build_kpi_row(include_consumed: bool = True):
     return dbc.Row(cols, className="mb-4")
 
 
-def build_user_banner(user_info: dict):
+def build_user_banner(prefix: str = "", user_info: dict = None, show_logout_btn: bool = True):
+    user_info = user_info or {}
     role_badge = dbc.Badge(
-        "管理层" if user_info["is_management"] else "一线人员",
-        color="danger" if user_info["is_management"] else "primary",
+        "管理层" if user_info.get("is_management") else "一线人员",
+        color="danger" if user_info.get("is_management") else "primary",
         pill=True,
         className="ms-2",
     )
-    zone_text = "全局权限" if user_info["is_management"] else f"负责区域: {user_info.get('assigned_zone') or '未分配'}"
+    zone_text = "全局权限" if user_info.get("is_management") else f"负责区域: {user_info.get('assigned_zone') or '未分配'}"
+
+    right_col_children = []
+    if show_logout_btn:
+        right_col_children.append(
+            dbc.Button(
+                [html.I(className="bi bi-box-arrow-right me-2"), "退出登录"],
+                id=_prefixed(prefix, "logout-btn"),
+                color="secondary",
+                outline=True,
+                size="sm",
+                className="float-end mt-3",
+                n_clicks=0,
+            )
+        )
+
     return dbc.Row(
         [
             dbc.Col([
@@ -161,20 +183,13 @@ def build_user_banner(user_info: dict):
                     "景区门票预约漏斗报表",
                 ], className="mb-1 fw-bold"),
                 html.Div([
-                    html.Span([html.I(className="bi bi-person-circle me-1"), user_info.get("full_name") or user_info.get("username")]),
+                    html.Span([html.I(className="bi bi-person-circle me-1"), user_info.get("full_name") or user_info.get("username") or ""]),
                     role_badge,
                     html.Span(f" · {zone_text}", className="text-muted ms-2"),
                 ], className="text-muted"),
             ], md=8),
             dbc.Col(
-                dbc.Button(
-                    [html.I(className="bi bi-box-arrow-right me-2"), "退出登录"],
-                    id="logout-btn",
-                    color="secondary",
-                    outline=True,
-                    size="sm",
-                    className="float-end mt-3",
-                ),
+                right_col_children,
                 md=4,
             ),
         ],

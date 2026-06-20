@@ -5,8 +5,7 @@ from config import Config
 
 engine = create_engine(
     Config.SQLALCHEMY_DATABASE_URI,
-    pool_pre_ping=True,
-    pool_recycle=3600,
+    **Config.SQLALCHEMY_ENGINE_OPTIONS,
     echo=False,
 )
 

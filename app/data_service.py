@@ -74,7 +74,9 @@ class DataService:
             "warning": "预警",
             "critical": "严重",
         }
-        status_counts["arrival_status"] = status_counts["arrival_status"].map(status_map).fillna(status_counts["arrival_status"])
+        status_counts = status_counts.assign(
+            arrival_status=status_counts["arrival_status"].map(status_map).fillna(status_counts["arrival_status"])
+        )
         return status_counts
 
     @staticmethod
@@ -146,7 +148,7 @@ class DataService:
         if df.empty:
             return pd.DataFrame(columns=["date", "zone", "time_slot", "pending_reminder", "checkin_rate"])
         df = df.copy()
-        df["pending_reminder"] = df["reminder_sent"] - df["checked_in"]
+        df = df.assign(pending_reminder=df["reminder_sent"] - df["checked_in"])
         filtered = df[df["pending_reminder"] > 10].copy()
         filtered = filtered.sort_values("pending_reminder", ascending=False)
         return filtered[["date", "zone", "time_slot", "pending_reminder", "checkin_rate", "reservation_count", "checked_in"]]

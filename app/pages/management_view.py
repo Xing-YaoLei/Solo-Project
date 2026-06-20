@@ -6,15 +6,15 @@ from app.pages.common import build_filter_bar, build_kpi_row, build_user_banner
 
 def build_management_layout(user_info: dict):
     return dbc.Container(fluid=True, className="px-4 py-4", children=[
-        build_user_banner(user_info),
-        build_filter_bar(show_zone_filter=True, is_management=True),
-        build_kpi_row(include_consumed=True),
+        build_user_banner(prefix="mgmt", user_info=user_info, show_logout_btn=True),
+        build_filter_bar(prefix="mgmt", show_zone_filter=True, is_management=True),
+        build_kpi_row(prefix="mgmt", include_consumed=True),
 
         dbc.Row([
             dbc.Col([
                 dbc.Card(
                     dbc.CardBody([
-                        dcc.Graph(id="chart-status-dist", config={"displayModeBar": False}),
+                        dcc.Graph(id="mgmt-chart-status-dist", config={"displayModeBar": False}),
                     ]),
                     className="shadow-sm h-100",
                 ),
@@ -23,7 +23,7 @@ def build_management_layout(user_info: dict):
             dbc.Col([
                 dbc.Card(
                     dbc.CardBody([
-                        dcc.Graph(id="chart-funnel", config={"displayModeBar": False}),
+                        dcc.Graph(id="mgmt-chart-funnel", config={"displayModeBar": False}),
                     ]),
                     className="shadow-sm h-100",
                 ),
@@ -35,7 +35,7 @@ def build_management_layout(user_info: dict):
                 dbc.Card(
                     dbc.CardBody([
                         html.H5([html.I(className="bi bi-calendar-heatmap text-info me-2"), "日历时段排行"], className="mb-3 fw-bold"),
-                        dcc.Graph(id="chart-timeslot-heatmap", config={"displayModeBar": False}),
+                        dcc.Graph(id="mgmt-chart-timeslot-heatmap", config={"displayModeBar": False}),
                     ]),
                     className="shadow-sm",
                 ),
@@ -47,7 +47,7 @@ def build_management_layout(user_info: dict):
                 dbc.Card(
                     dbc.CardBody([
                         html.H5([html.I(className="bi bi-shield-slash text-danger me-2"), "容量规则变化趋势"], className="mb-3 fw-bold"),
-                        dcc.Graph(id="chart-capacity-change", config={"displayModeBar": False}),
+                        dcc.Graph(id="mgmt-chart-capacity-change", config={"displayModeBar": False}),
                     ]),
                     className="shadow-sm h-100",
                 ),
@@ -57,7 +57,7 @@ def build_management_layout(user_info: dict):
                 dbc.Card(
                     dbc.CardBody([
                         html.H5([html.I(className="bi bi-bar-chart-steps text-secondary me-2"), "区域指标对比"], className="mb-3 fw-bold"),
-                        dcc.Graph(id="chart-zone-rate", config={"displayModeBar": False}),
+                        dcc.Graph(id="mgmt-chart-zone-rate", config={"displayModeBar": False}),
                     ]),
                     className="shadow-sm h-100",
                 ),
@@ -70,7 +70,7 @@ def build_management_layout(user_info: dict):
                     dbc.CardBody([
                         html.H5([html.I(className="bi bi-clock-history text-dark me-2"), "数据处理批次记录"], className="mb-3 fw-bold"),
                         dash_table.DataTable(
-                            id="table-batches",
+                            id="mgmt-table-batches",
                             page_size=8,
                             style_table={"overflowX": "auto"},
                             style_header={

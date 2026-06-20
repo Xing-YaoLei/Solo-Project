@@ -5,7 +5,7 @@ from datetime import date
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pandas as pd
-from dash import Dash, dcc, html, Input, Output, State, callback, ctx, no_update, clientside_callback
+from dash import Dash, dcc, html, Input, Output, State, callback, ctx, no_update
 import dash_bootstrap_components as dbc
 
 from config import Config
@@ -37,57 +37,86 @@ app = Dash(
 app.server.secret_key = Config.DASH_SECRET_KEY
 
 
+_dummy_user = {"username": "", "full_name": "", "role": "", "assigned_zone": "", "is_authenticated": False, "is_management": False}
+
+
 app.layout = html.Div([
     dcc.Location(id="url", refresh=False),
-    dcc.Store(id="user-store", data=None),
+    dcc.Store(id="user-store", data=_dummy_user),
     dcc.Store(id="filter-zone-store", data=None),
-    html.Div(id="page-content"),
+    dcc.Store(id="login-error-msg", data=None),
+    html.Div(id="login-page", style={"display": "block"}, children=build_login_layout()),
+    html.Div(id="management-page", style={"display": "none"}, children=build_management_layout(_dummy_user)),
+    html.Div(id="frontline-page", style={"display": "none"}, children=build_frontline_layout(_dummy_user)),
 ])
 
 
 @callback(
-    Output("page-content", "children"),
+    Output("login-page", "style"),
+    Output("management-page", "style"),
+    Output("frontline-page", "style"),
     Output("user-store", "data"),
+    Output("management-page", "children"),
+    Output("frontline-page", "children"),
+    Output("login-page", "children"),
+    Output("login-error-msg", "data"),
     Input("url", "pathname"),
+    Input("login-submit", "n_clicks"),
+    Input("mgmt-logout-btn", "n_clicks"),
+    Input("fl-logout-btn", "n_clicks"),
     State("login-username", "value"),
     State("login-password", "value"),
-    Input("login-submit", "n_clicks"),
-    Input("logout-btn", "n_clicks"),
+    State("login-error-msg", "data"),
+    State("user-store", "data"),
     prevent_initial_call=False,
 )
-def render_page(pathname, username, password, login_clicks, logout_clicks):
+def render_page(pathname, login_clicks, mgmt_logout_clicks, fl_logout_clicks, username, password, error_msg, current_user):
     triggered = ctx.triggered_id
+    show = {"display": "block"}
+    hide = {"display": "none"}
 
-    if triggered == "logout-btn":
+    logout_clicks = (mgmt_logout_clicks or 0) + (fl_logout_clicks or 0)
+
+    if (triggered == "mgmt-logout-btn" and mgmt_logout_clicks and mgmt_logout_clicks > 0) or \
+       (triggered == "fl-logout-btn" and fl_logout_clicks and fl_logout_clicks > 0):
         AuthContext.clear_session()
-        return build_login_layout(), None
+        return show, hide, hide, _dummy_user, no_update, no_update, build_login_layout(), None
 
     if triggered == "login-submit" and login_clicks and login_clicks > 0:
         if not username or not password:
-            return build_login_layout("请输入用户名和密码"), None
+            return show, hide, hide, _dummy_user, no_update, no_update, build_login_layout("请输入用户名和密码"), "请输入用户名和密码"
         user = AuthContext.login(username, password)
         if not user:
-            return build_login_layout("用户名或密码错误"), None
+            return show, hide, hide, _dummy_user, no_update, no_update, build_login_layout("用户名或密码错误"), "用户名或密码错误"
         AuthContext.set_session_user(user)
         user_info = AuthContext.get_current_user()
         if user_info["is_management"]:
-            return build_management_layout(user_info), user_info
+            return hide, show, hide, user_info, build_management_layout(user_info), no_update, no_update, None
         else:
-            return build_frontline_layout(user_info), user_info
+            return hide, hide, show, user_info, no_update, build_frontline_layout(user_info), no_update, None
+
+    if triggered is None or triggered == "url":
+        user_info = AuthContext.get_current_user()
+        if not user_info["is_authenticated"]:
+            return show, hide, hide, _dummy_user, no_update, no_update, build_login_layout(error_msg), None
+        if user_info["is_management"]:
+            return hide, show, hide, user_info, build_management_layout(user_info), no_update, no_update, None
+        else:
+            return hide, hide, show, user_info, no_update, build_frontline_layout(user_info), no_update, None
 
     user_info = AuthContext.get_current_user()
     if not user_info["is_authenticated"]:
-        return build_login_layout(), None
+        return show, hide, hide, _dummy_user, no_update, no_update, build_login_layout(), None
 
     if user_info["is_management"]:
-        return build_management_layout(user_info), user_info
+        return hide, show, hide, user_info, build_management_layout(user_info), no_update, no_update, None
     else:
-        return build_frontline_layout(user_info), user_info
+        return hide, hide, show, user_info, no_update, build_frontline_layout(user_info), no_update, None
 
 
 def _load_filtered_data(user_info, start_date_str, end_date_str, zones_selected, slots_selected):
     if not start_date_str or not end_date_str:
-        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
     start_date = date.fromisoformat(start_date_str)
     end_date = date.fromisoformat(end_date_str)
@@ -109,26 +138,26 @@ def _load_filtered_data(user_info, start_date_str, end_date_str, zones_selected,
     return df, df_status, df_funnel, df_rank, df_cap, df_zone, df_pending, df_batches
 
 
-@app.callback(
+@callback(
     [
-        Output("kpi-reservation", "children"),
-        Output("kpi-checkin", "children"),
-        Output("kpi-consumed", "children"),
-        Output("kpi-rate", "children"),
-        Output("chart-status-dist", "figure"),
-        Output("chart-funnel", "figure"),
-        Output("chart-timeslot-heatmap", "figure"),
-        Output("chart-capacity-change", "figure"),
-        Output("chart-zone-rate", "figure"),
-        Output("table-batches", "data"),
-        Output("table-batches", "columns"),
+        Output("mgmt-kpi-reservation", "children"),
+        Output("mgmt-kpi-checkin", "children"),
+        Output("mgmt-kpi-consumed", "children"),
+        Output("mgmt-kpi-rate", "children"),
+        Output("mgmt-chart-status-dist", "figure"),
+        Output("mgmt-chart-funnel", "figure"),
+        Output("mgmt-chart-timeslot-heatmap", "figure"),
+        Output("mgmt-chart-capacity-change", "figure"),
+        Output("mgmt-chart-zone-rate", "figure"),
+        Output("mgmt-table-batches", "data"),
+        Output("mgmt-table-batches", "columns"),
     ],
     [
-        Input("date-range", "start_date"),
-        Input("date-range", "end_date"),
-        Input("zone-filter", "value"),
-        Input("slot-filter", "value"),
-        Input("refresh-btn", "n_clicks"),
+        Input("mgmt-date-range", "start_date"),
+        Input("mgmt-date-range", "end_date"),
+        Input("mgmt-zone-filter", "value"),
+        Input("mgmt-slot-filter", "value"),
+        Input("mgmt-refresh-btn", "n_clicks"),
     ],
     State("user-store", "data"),
     prevent_initial_call=False,
@@ -169,26 +198,26 @@ def update_management_dashboard(start_date, end_date, zones, slots, refresh_clic
     ]
 
 
-@app.callback(
+@callback(
     [
-        Output("kpi-reservation", "children", allow_duplicate=True),
-        Output("kpi-checkin", "children", allow_duplicate=True),
-        Output("kpi-rate", "children", allow_duplicate=True),
-        Output("kpi-pending", "children"),
-        Output("chart-zone-rate", "figure", allow_duplicate=True),
-        Output("chart-pending-reminder", "figure"),
-        Output("chart-timeslot-heatmap", "figure", allow_duplicate=True),
-        Output("table-funnel-detail", "data"),
-        Output("table-funnel-detail", "columns"),
+        Output("fl-kpi-reservation", "children"),
+        Output("fl-kpi-checkin", "children"),
+        Output("fl-kpi-rate", "children"),
+        Output("fl-kpi-pending", "children"),
+        Output("fl-chart-zone-rate", "figure"),
+        Output("fl-chart-pending-reminder", "figure"),
+        Output("fl-chart-timeslot-heatmap", "figure"),
+        Output("fl-table-funnel-detail", "data"),
+        Output("fl-table-funnel-detail", "columns"),
     ],
     [
-        Input("date-range", "start_date"),
-        Input("date-range", "end_date"),
-        Input("slot-filter", "value"),
-        Input("refresh-btn", "n_clicks"),
+        Input("fl-date-range", "start_date"),
+        Input("fl-date-range", "end_date"),
+        Input("fl-slot-filter", "value"),
+        Input("fl-refresh-btn", "n_clicks"),
     ],
     State("user-store", "data"),
-    prevent_initial_call="initial_duplicate",
+    prevent_initial_call=False,
 )
 def update_frontline_dashboard(start_date, end_date, slots, refresh_clicks, user_info):
     if not user_info or user_info.get("is_management"):
@@ -259,4 +288,6 @@ if __name__ == "__main__":
     print("  管理层  -> admin  / admin123")
     print("  一线人员 -> staff  / staff123  (主入口区,核心景区A)")
     print()
-    app.run_server(debug=True, host="0.0.0.0", port=8050)
+    import sys
+    debug_mode = sys.version_info < (3, 12)
+    app.run_server(debug=debug_mode, host="0.0.0.0", port=8050)

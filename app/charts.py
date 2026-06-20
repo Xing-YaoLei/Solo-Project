@@ -101,8 +101,12 @@ def create_capacity_change_chart(df_capacity: pd.DataFrame) -> go.Figure:
         return fig
 
     df = df_capacity.copy()
-    df["date_str"] = pd.to_datetime(df["date"]).dt.strftime("%m-%d")
-    df["label"] = df["date_str"] + " " + df["time_slot"]
+    df = df.assign(
+        date_str=pd.to_datetime(df["date"]).dt.strftime("%m-%d"),
+    )
+    df = df.assign(
+        label=df["date_str"] + " " + df["time_slot"],
+    )
 
     rule_type_colors = {
         "normal": "#3498DB",
@@ -110,7 +114,9 @@ def create_capacity_change_chart(df_capacity: pd.DataFrame) -> go.Figure:
         "weather": "#9B59B6",
         "emergency": "#E74C3C",
     }
-    df["color"] = df["rule_type"].map(rule_type_colors).fillna("#95A5A6")
+    df = df.assign(
+        color=df["rule_type"].map(rule_type_colors).fillna("#95A5A6")
+    )
 
     fig = go.Figure()
     for zone in df["zone"].unique():
@@ -199,7 +205,7 @@ def create_pending_reminder_bar(df_pending: pd.DataFrame) -> go.Figure:
         return fig
 
     top = df_pending.head(15).copy()
-    top["label"] = top["zone"] + " " + top["time_slot"]
+    top = top.assign(label=top["zone"] + " " + top["time_slot"])
 
     fig = go.Figure(go.Bar(
         x=top["pending_reminder"],

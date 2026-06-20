@@ -18,6 +18,8 @@ class AuthContext:
             if user and user.check_password(password):
                 user.last_login = datetime.now()
                 db.commit()
+                _ = user.id, user.username, user.full_name, user.role, user.assigned_zone
+                db.expunge(user)
                 return user
             return None
         finally:

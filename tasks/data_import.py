@@ -24,6 +24,7 @@ from config import Config
 def import_camera_data(self, records: List[Dict[str, Any]], operator: str = "system") -> Dict[str, Any]:
     batch_no = generate_batch_no("camera")
     db = SessionLocal()
+    batch = None
     try:
         batch = DataBatch(
             batch_no=batch_no,
@@ -83,6 +84,7 @@ def import_camera_data(self, records: List[Dict[str, Any]], operator: str = "sys
 def import_gate_data(self, records: List[Dict[str, Any]], operator: str = "system") -> Dict[str, Any]:
     batch_no = generate_batch_no("gate")
     db = SessionLocal()
+    batch = None
     try:
         batch = DataBatch(
             batch_no=batch_no,
@@ -136,6 +138,7 @@ def import_gate_data(self, records: List[Dict[str, Any]], operator: str = "syste
 def import_merchant_data(self, records: List[Dict[str, Any]], operator: str = "system") -> Dict[str, Any]:
     batch_no = generate_batch_no("merchant")
     db = SessionLocal()
+    batch = None
     try:
         batch = DataBatch(
             batch_no=batch_no,
@@ -192,13 +195,14 @@ def merge_to_funnel(self, target_date: Optional[str] = None, operator: str = "sy
         target_date = date.today().isoformat()
     batch_no = generate_batch_no("merge")
     db = SessionLocal()
+    batch = None
     try:
         batch = DataBatch(
             batch_no=batch_no,
             source="merge",
             status="processing",
             started_at=datetime.now(),
-            created_by=datetime.now(),
+            created_by=operator,
         )
         db.add(batch)
         db.flush()
@@ -365,7 +369,7 @@ def merge_to_funnel(self, target_date: Optional[str] = None, operator: str = "sy
         batch.completed_at = datetime.now()
         batch.remark = (
             f"预约:{total_reservation} 提醒:{total_reminder_sent} "
-            f"检票:{total_checked_in} 到区域:{total_in_zone} 消费:{total_consumed"
+            f"检票:{total_checked_in} 到区域:{total_in_zone} 消费:{total_consumed}"
         )
         db.commit()
 
@@ -410,3 +414,27 @@ def run_full_pipeline(
 
     result = workflow.apply_async()
     return {"workflow_id": result.id, "status": "submitted"}
+
+
+def run_full_pipeline_sync(
+    camera_records: List[Dict[str, Any]],
+    gate_records: List[Dict[str, Any]],
+    merchant_records: List[Dict[str, Any]],
+    target_date: Optional[str] = None,
+    operator: str = "system",
+) -> Dict[str, Any]:
+    r1 = import_camera_data.apply(args=[camera_records, operator], throw=True).get()
+    r2 = import_gate_data.apply(args=[gate_records, operator], throw=True).get()
+    r3 = import_merchant_data.apply(args=[merchant_records, operator], throw=True).get()
+    r4 = merge_to_funnel.apply(args=[target_date, operator], throw=True).get()
+    return {
+        "camera": r1,
+        "gate": r2,
+        "merchant": r3,
+        "merge": r4,
+        "status": "success",
+    }
+
+
+def merge_to_funnel_sync(target_date: Optional[str] = None, operator: str = "system") -> Dict[str, Any]:
+    return merge_to_funnel.apply(args=[target_date, operator], throw=True).get()

@@ -216,6 +216,7 @@ def generate_merchant_data(target_date: date):
 
         count = 0
         merchant_index = 1
+        order_seq = 0
         for zone in ZONES:
             n_merchants = random.randint(4, 10) if zone == "商业街" else random.randint(1, 4)
             for _ in range(n_merchants):
@@ -236,6 +237,7 @@ def generate_merchant_data(target_date: date):
                         cat_amounts = {"餐饮": (15, 120), "零售": (10, 300), "游乐": (50, 250), "住宿": (200, 1200)}
                         low, high = cat_amounts[cat]
                         amount = round(random.uniform(low, high), 2)
+                        order_seq += 1
 
                         txn = MerchantTransaction(
                             batch_id=batch.id,
@@ -245,7 +247,7 @@ def generate_merchant_data(target_date: date):
                             merchant_id=mid,
                             merchant_name=f"{zone}{cat}商户{mid}",
                             category=cat,
-                            order_no=f"ORD{target_date.strftime('%Y%m%d')}{random.randint(1000000,9999999)}",
+                            order_no=f"ORD{target_date.strftime('%Y%m%d')}{order_seq:07d}{random.randint(100,999)}",
                             amount=Decimal(str(amount)),
                             passenger_count=random.randint(1, 5),
                             pay_method=random.choices(pay_methods, weights=pay_weights, k=1)[0],
@@ -273,9 +275,9 @@ def generate_merchant_data(target_date: date):
 
 
 def merge_data_to_funnel(target_date: date):
-    from tasks.data_import import merge_to_funnel
-    merge_to_funnel.apply(args=[target_date.isoformat(), "mock"]).get()
-    print(f"[漏斗合并  ] {target_date} 完成")
+    from tasks.data_import import merge_to_funnel_sync
+    result = merge_to_funnel_sync(target_date.isoformat(), "mock")
+    print(f"[漏斗合并  ] {target_date} 完成: {result.get('count', 0)} 条记录")
 
 
 def main():
