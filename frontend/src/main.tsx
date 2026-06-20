@@ -5,6 +5,7 @@ import { ConfigProvider } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
 import App from './App'
 import './index.css'
+import './utils/dayjs'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

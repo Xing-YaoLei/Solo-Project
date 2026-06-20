@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Table, Spin, Tag, Button, Tooltip, Space, Badge, Select } from 'antd'
+import type { TableProps, ColumnsType } from 'antd/es/table'
 import { WarningOutlined, DownloadOutlined, InfoCircleOutlined, CameraOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { analyticsApi, CheckinRecord, PerformanceSchedule } from '../api/analytics'
@@ -50,7 +51,7 @@ const AnomalyCheckinTable = ({ schedules, loading, onOpenMetric }: Props) => {
     loadData()
   }, [selectedSchedule])
 
-  const columns = [
+  const columns: ColumnsType<CheckinRecord> = [
     {
       title: '核销时间',
       dataIndex: 'checkin_time',
@@ -59,7 +60,7 @@ const AnomalyCheckinTable = ({ schedules, loading, onOpenMetric }: Props) => {
       render: (t: string) => dayjs(t).format('YYYY-MM-DD HH:mm:ss'),
       sorter: (a: CheckinRecord, b: CheckinRecord) =>
         dayjs(a.checkin_time).valueOf() - dayjs(b.checkin_time).valueOf(),
-      defaultSortOrder: 'descend' as const,
+      defaultSortOrder: 'descend',
     },
     {
       title: '异常类型',
@@ -72,7 +73,7 @@ const AnomalyCheckinTable = ({ schedules, loading, onOpenMetric }: Props) => {
         </Tag>
       ),
       filters: Object.keys(ANOMALY_TYPES).map((k) => ({ text: k, value: k })),
-      onFilter: (value: string, record: CheckinRecord) => record.anomaly_type === value,
+      onFilter: (value, record) => record.anomaly_type === value,
     },
     {
       title: '异常描述',
