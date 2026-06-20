@@ -2,6 +2,7 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "module": "commonjs",
+    "moduleResolution": "node",
     "declaration": false,
     "removeComments": true,
     "emitDecoratorMetadata": true,
@@ -19,8 +20,12 @@
     "strictBindCallApply": false,
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false,
+    "resolveJsonModule": true,
+    "isolatedModules": false,
+    "noEmit": false,
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@ticket/prisma": ["../../packages/prisma/src/index.ts"]
     }
   },
   "include": ["src/**/*.ts"],
