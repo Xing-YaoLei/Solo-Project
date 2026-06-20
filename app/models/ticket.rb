@@ -45,7 +45,7 @@ class Ticket < ApplicationRecord
   end
 
   def generate_checkin_code!
-    return if checkin_code.present? && checkin_code.active?
+    return if checkin_code.present?
 
     code = SecureRandom.hex(8).upcase
     create_checkin_code!(

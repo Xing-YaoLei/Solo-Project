@@ -181,6 +181,51 @@
   </div>
 
   <div class="mt-6 bg-white shadow-sm ring-1 ring-gray-900/5 rounded-xl">
+    <div class="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+      <h2 class="text-base font-semibold text-gray-900">签到码</h2>
+      <span class="text-sm text-gray-500">共 <%= @checkin_codes_count %> 个</span>
+    </div>
+    <% if @checkin_codes.any? %>
+      <table class="min-w-full divide-y divide-gray-300">
+        <thead class="bg-gray-50">
+          <tr>
+            <th scope="col" class="py-3.5 pl-6 pr-3 text-left text-sm font-semibold text-gray-900">签到码</th>
+            <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">票号</th>
+            <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">订单号</th>
+            <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">状态</th>
+            <th scope="col" class="relative py-3.5 pr-6 pl-3 text-right text-sm font-semibold text-gray-900">操作</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200 bg-white">
+          <% @checkin_codes.each do |cc| %>
+            <tr class="hover:bg-gray-50">
+              <td class="whitespace-nowrap py-4 pl-6 pr-3 text-sm font-mono font-medium text-indigo-600">
+                <%= link_to cc.code, checkin_code_path(cc) %>
+              </td>
+              <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                <%= link_to cc.ticket.ticket_no, ticket_path(cc.ticket), class: "text-indigo-600 hover:text-indigo-500" %>
+              </td>
+              <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                <%= link_to cc.ticket.order.order_no, order_path(cc.ticket.order), class: "text-indigo-600 hover:text-indigo-500" %>
+              </td>
+              <td class="whitespace-nowrap px-3 py-4 text-sm">
+                <%= status_badge(cc) %>
+              </td>
+              <td class="whitespace-nowrap py-4 pr-6 pl-3 text-right text-sm">
+                <%= link_to "查看", checkin_code_path(cc), class: "text-indigo-600 hover:text-indigo-500" %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% else %>
+      <div class="py-12 text-center">
+        <p class="text-sm text-gray-500">暂无签到码，请先创建订单并生成签到码</p>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="mt-6 bg-white shadow-sm ring-1 ring-gray-900/5 rounded-xl">
     <div class="border-b border-gray-200 px-6 py-4">
       <h2 class="text-base font-semibold text-gray-900">状态流转记录</h2>
     </div>

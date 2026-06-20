@@ -147,6 +147,7 @@
                 <th class="py-3.5 pl-6 pr-3 text-left text-sm font-semibold text-gray-900">票号</th>
                 <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">票种</th>
                 <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">座位</th>
+                <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">签到码</th>
                 <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">状态</th>
                 <th class="py-3.5 pl-3 pr-6 text-right text-sm font-semibold text-gray-900">操作</th>
               </tr>
@@ -159,6 +160,13 @@
                   </td>
                   <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-900"><%= ticket.ticket_type.name %></td>
                   <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500"><%= ticket.seat&.display_name || "-" %></td>
+                  <td class="whitespace-nowrap px-3 py-4 text-sm">
+                    <% if ticket.checkin_code.present? %>
+                      <%= link_to ticket.checkin_code.code, checkin_code_path(ticket.checkin_code), class: "font-mono text-indigo-600 hover:text-indigo-500" %>
+                    <% else %>
+                      <span class="text-gray-400">未生成</span>
+                    <% end %>
+                  </td>
                   <td class="whitespace-nowrap px-3 py-4 text-sm">
                     <% ticket_status_styles = { "reserved" => "bg-yellow-100 text-yellow-800", "issued" => "bg-blue-100 text-blue-800", "checked_in" => "bg-green-100 text-green-800", "cancelled" => "bg-gray-100 text-gray-800", "expired" => "bg-red-100 text-red-800" } %>
                     <% ticket_status_labels = { "reserved" => "已预留", "issued" => "已出票", "checked_in" => "已签到", "cancelled" => "已取消", "expired" => "已过期" } %>

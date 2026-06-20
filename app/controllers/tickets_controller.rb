@@ -32,4 +32,10 @@ class TicketsController < ApplicationController
     svg = qr.as_svg(offset: 0, color: "000", shape_rendering: "crispEdges", module_size: 6)
     send_data svg, type: "image/svg+xml", disposition: "inline"
   end
+
+  private
+
+  def set_ticket
+    @ticket = Ticket.includes(:order, :ticket_type, :seat, :checkin_code).find(params[:id])
+  end
 end

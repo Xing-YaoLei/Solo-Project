@@ -2,7 +2,7 @@ class CheckinCodesController < ApplicationController
   before_action :set_checkin_code, only: %i[show verify use]
 
   def index
-    @checkin_codes = CheckinCode.includes(ticket: [:order, :ticket_type]).order(created_at: :desc)
+    @checkin_codes = CheckinCode.includes(ticket: [:order, :ticket_type, { ticket_type: :performance }]).order(created_at: :desc)
     @checkin_codes = @checkin_codes.where(status: params[:status]) if params[:status].present?
     @checkin_codes = paginate(@checkin_codes, per_page: 20)
   end
@@ -32,6 +32,6 @@ class CheckinCodesController < ApplicationController
   private
 
   def set_checkin_code
-    @checkin_code = CheckinCode.find(params[:id])
+    @checkin_code = CheckinCode.includes(ticket: [:order, :ticket_type]).find(params[:id])
   end
 end

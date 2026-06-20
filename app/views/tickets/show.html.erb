@@ -40,7 +40,7 @@
             </div>
             <div>
               <dt class="text-sm font-medium text-gray-500">座位</dt>
-              <dd class="mt-1 text-sm text-gray-900"><%= @ticket.seat&.name || "-" %></dd>
+              <dd class="mt-1 text-sm text-gray-900"><%= @ticket.seat&.display_name || "-" %></dd>
             </div>
             <div>
               <dt class="text-sm font-medium text-gray-500">状态</dt>
@@ -70,8 +70,9 @@
 
       <% if @checkin_code.present? %>
         <div class="bg-white shadow-sm ring-1 ring-gray-900/5 rounded-xl">
-          <div class="px-6 py-4 border-b border-gray-200">
+          <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
             <h2 class="text-base font-semibold text-gray-900">签到码信息</h2>
+            <%= link_to "查看详情", checkin_code_path(@checkin_code), class: "text-sm text-indigo-600 hover:text-indigo-500" %>
           </div>
           <div class="px-6 py-5">
             <dl class="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
@@ -82,9 +83,7 @@
               <div>
                 <dt class="text-sm font-medium text-gray-500">签到码状态</dt>
                 <dd class="mt-1">
-                  <% cc_status_styles = { "active" => "bg-green-100 text-green-800", "verified" => "bg-blue-100 text-blue-800", "used" => "bg-gray-100 text-gray-800", "expired" => "bg-red-100 text-red-800" } %>
-                  <% cc_status_labels = { "active" => "有效", "verified" => "已验证", "used" => "已使用", "expired" => "已过期" } %>
-                  <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium <%= cc_status_styles[@checkin_code.status] %>"><%= cc_status_labels[@checkin_code.status] %></span>
+                  <%= status_badge(@checkin_code) %>
                 </dd>
               </div>
               <% if @checkin_code.expires_at.present? %>
@@ -106,6 +105,16 @@
                 </div>
               <% end %>
             </dl>
+          </div>
+        </div>
+      <% else %>
+        <div class="bg-white shadow-sm ring-1 ring-gray-900/5 rounded-xl">
+          <div class="px-6 py-4 border-b border-gray-200">
+            <h2 class="text-base font-semibold text-gray-900">签到码</h2>
+          </div>
+          <div class="px-6 py-5 text-center">
+            <p class="text-sm text-gray-500">尚未生成签到码</p>
+            <p class="mt-1 text-xs text-gray-400">请在演出详情页点击"生成签到码"</p>
           </div>
         </div>
       <% end %>

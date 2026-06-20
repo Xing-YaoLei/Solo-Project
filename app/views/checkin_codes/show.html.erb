@@ -25,15 +25,15 @@
         </div>
         <div class="py-3 flex justify-between">
           <dt class="text-sm font-medium text-gray-500">票号</dt>
-          <dd class="text-sm text-gray-900"><%= @checkin_code.ticket&.ticket_no %></dd>
+          <dd class="text-sm text-indigo-600"><%= link_to @checkin_code.ticket&.ticket_no, ticket_path(@checkin_code.ticket) if @checkin_code.ticket %></dd>
         </div>
         <div class="py-3 flex justify-between">
           <dt class="text-sm font-medium text-gray-500">订单号</dt>
-          <dd class="text-sm text-gray-900"><%= @checkin_code.ticket&.order&.order_no %></dd>
+          <dd class="text-sm text-indigo-600"><%= link_to @checkin_code.ticket&.order&.order_no, order_path(@checkin_code.ticket&.order) if @checkin_code.ticket&.order %></dd>
         </div>
         <div class="py-3 flex justify-between">
           <dt class="text-sm font-medium text-gray-500">演出</dt>
-          <dd class="text-sm text-gray-900"><%= @checkin_code.performance&.name %></dd>
+          <dd class="text-sm text-indigo-600"><%= link_to @checkin_code.performance&.name, performance_path(@checkin_code.performance) if @checkin_code.performance %></dd>
         </div>
         <div class="py-3 flex justify-between">
           <dt class="text-sm font-medium text-gray-500">状态</dt>

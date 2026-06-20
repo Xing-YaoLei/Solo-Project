@@ -12,6 +12,8 @@ class PerformancesController < ApplicationController
     @seats = @performance.seats.order(:section, :row, :seat_number)
     @sponsorships = @performance.sponsorships.includes(:sponsor)
     @status_logs = StatusLog.for_trackable(@performance).recent.limit(20)
+    @checkin_codes = CheckinCode.joins(ticket: :ticket_type).where(ticket_types: { performance_id: @performance.id }).includes(ticket: [:order]).order(created_at: :desc).limit(20)
+    @checkin_codes_count = CheckinCode.joins(ticket: :ticket_type).where(ticket_types: { performance_id: @performance.id }).count
   end
 
   def new
@@ -48,8 +50,8 @@ class PerformancesController < ApplicationController
   end
 
   def generate_checkin_codes
-    GenerateCheckinCodesJob.perform_later(@performance.id)
-    redirect_to @performance, notice: "签到码生成任务已提交，请稍后查看"
+    GenerateCheckinCodesJob.perform_now(@performance.id)
+    redirect_to @performance, notice: "签到码已生成"
   end
 
   private

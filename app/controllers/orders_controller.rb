@@ -9,7 +9,7 @@ class OrdersController < ApplicationController
   end
 
   def show
-    @tickets = @order.tickets.includes(:ticket_type, :seat)
+    @tickets = @order.tickets.includes(:ticket_type, :seat, :checkin_code)
     @exception_records = @order.exception_records.order(created_at: :desc)
     @status_logs = StatusLog.for_trackable(@order).recent.limit(20)
   end
