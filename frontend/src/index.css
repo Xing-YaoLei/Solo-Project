@@ -1,0 +1,132 @@
+@import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  width: 100%;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  color: #e2e8f0;
+  background: linear-gradient(135deg, #061229 0%, #0B1E3F 40%, #0a1937 60%, #061229 100%);
+  background-attachment: fixed;
+  position: relative;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image:
+    linear-gradient(rgba(0, 212, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 212, 255, 0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50vh;
+  background: radial-gradient(ellipse at 50% 0%, rgba(0, 212, 255, 0.10), transparent 65%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+#root {
+  position: relative;
+  z-index: 1;
+}
+
+h1, h2, h3 {
+  font-family: 'Chakra Petch', system-ui, sans-serif;
+  letter-spacing: 0.02em;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(6, 18, 41, 0.6);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(0, 212, 255, 0.4), rgba(0, 212, 255, 0.2));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(0, 212, 255, 0.6), rgba(0, 212, 255, 0.35));
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 212, 255, 0.4) rgba(6, 18, 41, 0.6);
+}
+
+@layer components {
+  .panel {
+    @apply bg-panel-bg border border-panel-border rounded-xl shadow-card backdrop-blur-sm;
+  }
+
+  .panel-header {
+    @apply px-5 py-4 border-b border-panel-border/60 flex items-center justify-between;
+  }
+
+  .panel-title {
+    @apply font-display font-semibold text-lg text-white tracking-wide;
+  }
+
+  .panel-body {
+    @apply p-5;
+  }
+
+  .chip {
+    @apply px-3 py-1 rounded-full text-xs font-medium border transition-all duration-200;
+  }
+
+  .chip-active {
+    @apply bg-cyan-primary/20 border-cyan-primary/60 text-cyan-glow shadow-glow-cyan;
+  }
+
+  .chip-inactive {
+    @apply bg-transparent border-white/15 text-white/60 hover:border-white/30 hover:text-white/80;
+  }
+
+  .stat-label {
+    @apply text-xs text-white/50 uppercase tracking-wider font-medium;
+  }
+
+  .stat-value {
+    @apply font-display font-bold text-white;
+  }
+
+  .glow-text {
+    text-shadow: 0 0 12px rgba(0, 212, 255, 0.6), 0 0 24px rgba(0, 212, 255, 0.25);
+  }
+}
