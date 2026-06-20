@@ -1,2 +1,34 @@
 #!/usr/bin/env ruby
-exec "./bin/rails", "server", *ARGV
+require "fileutils"
+
+APP_ROOT = File.expand_path("..", __dir__)
+
+def redis_running?
+  require "socket"
+  TCPSocket.new("localhost", 6379).close
+  true
+rescue Errno::ECONNREFUSED, Errno::ENOENT
+  false
+end
+
+unless redis_running?
+  puts "Starting Redis..."
+  system("redis-server --daemonize yes")
+  sleep 1
+end
+
+Dir.chdir(APP_ROOT)
+
+if system("which overmind > /dev/null 2>&1")
+  puts "Starting with overmind..."
+  exec "overmind start -f Procfile.dev"
+elsif system("which hivemind > /dev/null 2>&1")
+  puts "Starting with hivemind..."
+  exec "hivemind Procfile.dev"
+elsif system("which foreman > /dev/null 2>&1")
+  puts "Starting with foreman..."
+  exec "foreman start -f Procfile.dev"
+else
+  puts "Starting web server only (install overmind/hivemind/foreman for full process management)..."
+  exec "./bin/rails", "server", *ARGV
+end

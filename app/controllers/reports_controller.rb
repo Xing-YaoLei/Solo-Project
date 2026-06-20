@@ -74,6 +74,13 @@ class ReportsController < ApplicationController
       end
     end
 
+    workbook.add_worksheet(name: "每日汇总") do |sheet|
+      sheet.add_row ["日期", "总订单数", "已核销数", "核销率"], style: header_style
+      @stats[:daily_summary].each do |date, data|
+        sheet.add_row [date.to_s, data[:total_orders], data[:checked_in], "#{data[:rate].round(2)}%"]
+      end
+    end
+
     workbook.add_worksheet(name: "核销记录明细") do |sheet|
       sheet.add_row ["订单号", "购票人", "票种", "核销方式", "核销时间", "操作人", "备注"], style: header_style
       @check_in_records.each do |r|

@@ -66,6 +66,13 @@ class MonthlyReportJob < ApplicationJob
       end
     end
 
+    workbook.add_worksheet(name: "每日汇总") do |sheet|
+      sheet.add_row ["日期", "总订单数", "已核销数", "核销率"], style: header_style
+      stats[:daily_summary].each do |date, data|
+        sheet.add_row [date.to_s, data[:total_orders], data[:checked_in], "#{data[:rate].round(2)}%"]
+      end
+    end
+
     filepath = Rails.root.join("tmp", filename)
     axlsx_package.serialize(filepath)
     filepath

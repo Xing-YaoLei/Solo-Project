@@ -108,3 +108,27 @@
     </table>
   </div>
 </div>
+
+<div class="card">
+  <h3>每日汇总（按订单创建时间）</h3>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>日期</th>
+        <th>总订单数</th>
+        <th>已核销数</th>
+        <th>核销率</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @stats[:daily_summary].each do |date, data| %>
+        <tr>
+          <td><%= date %></td>
+          <td><%= data[:total_orders] %></td>
+          <td><%= data[:checked_in] %></td>
+          <td><%= data[:rate].round(1) %>%</td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>

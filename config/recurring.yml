@@ -5,7 +5,6 @@ development:
     queue: default
     args: []
     description: "每日上午10点催办超过24小时未处理的退票争议"
-
   monthly_check_in_report:
     cron: "0 2 1 * *"
     class: "MonthlyReportJob"
@@ -14,6 +13,12 @@ development:
     description: "每月1日凌晨2点生成上月核销效率报表"
 
 test:
+  refund_dispute_reminder:
+    cron: "0 10 * * *"
+    class: "RefundDisputeReminderJob"
+    queue: default
+    args: []
+    description: "每日上午10点催办超过24小时未处理的退票争议"
   monthly_check_in_report:
     cron: "0 2 1 * *"
     class: "MonthlyReportJob"
@@ -28,7 +33,6 @@ production:
     queue: default
     args: []
     description: "每日上午10点催办超过24小时未处理的退票争议"
-
   monthly_check_in_report:
     cron: "0 2 1 * *"
     class: "MonthlyReportJob"
