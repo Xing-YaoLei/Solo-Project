@@ -1,7 +1,5 @@
 import { Module } from '@nestjs/common';
-import { PrismaService } from './common/prisma/prisma.service';
-import { RedisService } from './common/redis/redis.service';
-import { StatusHistoryService } from './common/status-history/status-history.service';
+import { CommonModule } from './common/common.module';
 
 import { ActivityModule } from './modules/activity/activity.module';
 import { TicketTypeModule } from './modules/ticket-type/ticket-type.module';
@@ -15,6 +13,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
 
 @Module({
   imports: [
+    CommonModule,
     ActivityModule,
     TicketTypeModule,
     OrderModule,
@@ -25,7 +24,5 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
     ExportModule,
     DashboardModule,
   ],
-  providers: [PrismaService, RedisService, StatusHistoryService],
-  exports: [PrismaService, RedisService, StatusHistoryService],
 })
 export class AppModule {}
