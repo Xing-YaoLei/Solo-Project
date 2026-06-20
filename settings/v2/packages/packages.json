@@ -1,0 +1,55 @@
+{
+  "game": {
+    "orientation": {
+      "landscape_right": true,
+      "landscape_left": true,
+      "portrait": false,
+      "portrait_upside_down": false
+    },
+    "resolution": {
+      "width": 1280,
+      "height": 720
+    },
+    "frame_rate": 60
+  },
+  "physics": {
+    "physics_engine": "cannon",
+    "gravity": {
+      "x": 0,
+      "y": -9.8,
+      "z": 0
+    },
+    "allow_sleep": true,
+    "fixed_time_step": 0.01666,
+    "max_sub_steps": 2
+  },
+  "script": {
+    "component_classes_skip_validation": []
+  },
+  "render-pipeline": {
+    "pipeline": "builtin-builtin-forward",
+    "shaders": {
+      "shaders": []
+    }
+  },
+  "assets": {
+    "preloadBundles": ["resources"]
+  },
+  "features": {
+    "cache": {
+      "enable": true,
+      "capacity": 256,
+      "releaseInterval": 10
+    },
+    "fast_download": {
+      "enable": false
+    },
+    "native_engine": {
+      "enable": false
+    },
+    "use_v8": false
+  },
+  "tiled-map": {
+    "enable": true
+  }
+}

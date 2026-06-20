@@ -1,0 +1,29 @@
+{
+  "extends": "./temp/tsconfig.cocos.json",
+  "compilerOptions": {
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "outDir": "./dist",
+    "rootDir": "./assets",
+    "baseUrl": ".",
+    "paths": {
+      "cc": ["./temp/declarations/cc.d.ts"]
+    }
+  },
+  "include": [
+    "assets/**/*.ts",
+    "temp/declarations/**/*.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "build",
+    "dist",
+    "temp"
+  ]
+}

@@ -1,0 +1,95 @@
+{
+  "orientation": "orthogonal",
+  "width": 50,
+  "height": 30,
+  "tilewidth": 32,
+  "tileheight": 32,
+  "infinite": false,
+  "properties": [],
+  "tilesets": [
+    {
+      "firstgid": 1,
+      "source": "seats.tsx"
+    }
+  ],
+  "layers": [
+    {
+      "id": 1,
+      "name": "VIP_A",
+      "type": "tilelayer",
+      "visible": true,
+      "x": 0,
+      "y": 0,
+      "width": 50,
+      "height": 30,
+      "opacity": 1,
+      "encoding": "csv",
+      "data": []
+    },
+    {
+      "id": 2,
+      "name": "VIP_B",
+      "type": "tilelayer",
+      "visible": true,
+      "x": 0,
+      "y": 0,
+      "width": 50,
+      "height": 30,
+      "opacity": 1,
+      "encoding": "csv",
+      "data": []
+    },
+    {
+      "id": 3,
+      "name": "PREMIUM_A",
+      "type": "tilelayer",
+      "visible": true,
+      "x": 0,
+      "y": 0,
+      "width": 50,
+      "height": 30,
+      "opacity": 1,
+      "encoding": "csv",
+      "data": []
+    },
+    {
+      "id": 4,
+      "name": "PREMIUM_B",
+      "type": "tilelayer",
+      "visible": true,
+      "x": 0,
+      "y": 0,
+      "width": 50,
+      "height": 30,
+      "opacity": 1,
+      "encoding": "csv",
+      "data": []
+    },
+    {
+      "id": 5,
+      "name": "STANDARD_A",
+      "type": "tilelayer",
+      "visible": true,
+      "x": 0,
+      "y": 0,
+      "width": 50,
+      "height": 30,
+      "opacity": 1,
+      "encoding": "csv",
+      "data": []
+    },
+    {
+      "id": 6,
+      "name": "STANDARD_B",
+      "type": "tilelayer",
+      "visible": true,
+      "x": 0,
+      "y": 0,
+      "width": 50,
+      "height": 30,
+      "opacity": 1,
+      "encoding": "csv",
+      "data": []
+    }
+  ]
+}

@@ -1,0 +1,66 @@
+{
+  "launchScene": "main-menu",
+  "designWidth": 1280,
+  "designHeight": 720,
+  "fitWidth": true,
+  "fitHeight": true,
+  "scenes": [
+    {
+      "name": "main-menu",
+      "path": "assets/scenes/main-menu.scene"
+    },
+    {
+      "name": "game-scene",
+      "path": "assets/scenes/game-scene.scene"
+    },
+    {
+      "name": "result-scene",
+      "path": "assets/scenes/result-scene.scene"
+    },
+    {
+      "name": "settings-scene",
+      "path": "assets/scenes/settings-scene.scene"
+    },
+    {
+      "name": "review-scene",
+      "path": "assets/scenes/review-scene.scene"
+    }
+  ],
+  "bundles": [
+    {
+      "name": "resources",
+      "src": [
+        "i18n",
+        "internal"
+      ],
+      "compressionType": {},
+      "isRemote": false
+    }
+  ],
+  "scripts": [
+    "assets/scripts/Bootstrap.ts",
+    "assets/scripts/core/GameTypes.ts",
+    "assets/scripts/core/GameManager.ts",
+    "assets/scripts/core/AudioManager.ts",
+    "assets/scripts/core/FeedbackManager.ts",
+    "assets/scripts/core/TicketRules.ts",
+    "assets/scripts/core/LevelData.ts",
+    "assets/scripts/managers/SeatMapManager.ts",
+    "assets/scripts/managers/OrderProcessor.ts",
+    "assets/scripts/managers/GameEngine.ts",
+    "assets/scripts/ui/HUDController.ts",
+    "assets/scripts/scenes/MainMenuScene.ts",
+    "assets/scripts/scenes/GameScene.ts",
+    "assets/scripts/scenes/ResultScene.ts",
+    "assets/scripts/scenes/SettingsScene.ts",
+    "assets/scripts/scenes/ReviewScene.ts",
+    "assets/scripts/scenes/GameFallback.ts",
+    "assets/scripts/scenes/ResultFallback.ts",
+    "assets/scripts/scenes/SettingsFallback.ts",
+    "assets/scripts/scenes/ReviewFallback.ts"
+  ],
+  "userNode": {
+    "Bootstrap": "Canvas"
+  },
+  "platform": "web-mobile"
+}
