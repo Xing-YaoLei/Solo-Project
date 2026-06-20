@@ -201,13 +201,17 @@ async def get_duckdb_status():
 async def get_topology():
     nodes = [
         {"id": "ticket_platform", "label": "票务平台", "type": "source"},
+        {"id": "gate_system", "label": "闸机系统", "type": "source"},
+        {"id": "payment_system", "label": "支付系统", "type": "source"},
         {"id": "clean", "label": "数据清洗", "type": "process"},
         {"id": "pg", "label": "PostgreSQL", "type": "storage"},
         {"id": "duckdb", "label": "DuckDB", "type": "analytics"},
         {"id": "dashboard", "label": "看板", "type": "output"},
     ]
     edges = [
-        {"source": "ticket_platform", "target": "clean", "label": "原始数据"},
+        {"source": "ticket_platform", "target": "clean", "label": "订单数据"},
+        {"source": "gate_system", "target": "clean", "label": "通行记录"},
+        {"source": "payment_system", "target": "clean", "label": "支付流水"},
         {"source": "clean", "target": "pg", "label": "清洗后数据"},
         {"source": "pg", "target": "duckdb", "label": "同步到分析库"},
         {"source": "duckdb", "target": "dashboard", "label": "查询分析"},

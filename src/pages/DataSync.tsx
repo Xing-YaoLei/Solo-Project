@@ -12,9 +12,15 @@ const NODE_TYPE_STYLE: Record<string, { bg: string; border: string; text: string
 const SOURCE_TABS = [
   { key: '', label: '全部' },
   { key: 'ticket_platform', label: '票务' },
-  { key: 'gate_record', label: '闸机' },
-  { key: 'payment_flow', label: '支付' },
+  { key: 'gate_system', label: '闸机' },
+  { key: 'payment_system', label: '支付' },
 ];
+
+const SOURCE_LABEL: Record<string, string> = {
+  ticket_platform: '票务平台',
+  gate_system: '闸机系统',
+  payment_system: '支付系统',
+};
 
 const BATCH_STATUS_BADGE: Record<string, string> = {
   pending: 'bg-slate-400/15 text-slate-400',
@@ -43,7 +49,7 @@ const TASK_STATUS_LABEL: Record<string, string> = {
 };
 
 export default function DataSync() {
-  const [nodes, setNodes] = useState<{ id: string; name: string; type: string }[]>([]);
+  const [nodes, setNodes] = useState<{ id: string; name?: string; label?: string; type: string }[]>([]);
   const [edges, setEdges] = useState<{ source: string; target: string }[]>([]);
   const [topologyLoading, setTopologyLoading] = useState(true);
   const [tasks, setTasks] = useState<SyncTask[]>([]);
@@ -106,16 +112,31 @@ export default function DataSync() {
     }
   };
 
-  const getEdgeChain = () => {
-    if (nodes.length === 0) return [];
-    const inDegree = new Map<string, number>();
-    nodes.forEach((n) => inDegree.set(n.id, 0));
-    edges.forEach((e) => inDegree.set(e.target, (inDegree.get(e.target) ?? 0) + 1));
-    const sorted = [...nodes].sort((a, b) => (inDegree.get(a.id) ?? 0) - (inDegree.get(b.id) ?? 0));
-    return sorted;
-  };
+  const LAYER_ORDER = ['source', 'process', 'storage', 'analytics', 'output'];
+  const nodeMap = new Map(nodes.map((n) => [n.id, n]));
+  const layers = LAYER_ORDER.map((type) => nodes.filter((n) => n.type === type));
+  const edgeLabels = new Map(edges.map((e) => [`${e.source}->${e.target}`, (e as { source: string; target: string; label?: string }).label]));
 
-  const sortedNodes = getEdgeChain();
+  const renderArrow = (delay: number) => (
+    <div className="relative mx-3 flex items-center">
+      <div className="h-0.5 w-10 bg-gradient-to-r from-white/20 to-white/10" />
+      <div
+        className="absolute left-0 top-1/2 h-0.5 w-10 -translate-y-1/2 bg-gradient-to-r from-cyan-400/60 to-transparent"
+        style={{
+          animation: 'pulse-arrow 2s ease-in-out infinite',
+          animationDelay: `${delay * 0.3}s`,
+        }}
+      />
+      <svg
+        className="absolute -right-1 top-1/2 -translate-y-1/2 text-white/30"
+        width="8"
+        height="12"
+        viewBox="0 0 8 12"
+      >
+        <path d="M0 0L8 6L0 12Z" fill="currentColor" />
+      </svg>
+    </div>
+  );
   const totalBatchPages = Math.ceil(batches.length / batchSize);
   const paginatedBatches = batches.slice(
     (batchPage - 1) * batchSize,
@@ -135,42 +156,28 @@ export default function DataSync() {
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-cyan-400 border-t-transparent" />
           </div>
         ) : (
-          <div className="flex items-center justify-center gap-0 overflow-x-auto py-4">
-            {sortedNodes.map((node, i) => {
-              const style = NODE_TYPE_STYLE[node.type] ?? NODE_TYPE_STYLE.process;
-              return (
-                <div key={node.id} className="flex items-center">
-                  <div
-                    className={`flex min-w-[120px] flex-col items-center gap-2 rounded-xl border px-5 py-4 ${style.bg} ${style.border} transition-all hover:scale-105`}
-                  >
-                    <span className="text-2xl">{style.icon}</span>
-                    <span className={`text-center text-sm font-medium ${style.text}`}>
-                      {node.name}
-                    </span>
-                  </div>
-                  {i < sortedNodes.length - 1 && (
-                    <div className="relative mx-2 flex items-center">
-                      <div className="h-0.5 w-10 bg-gradient-to-r from-white/20 to-white/10" />
+          <div className="flex items-center justify-center overflow-x-auto py-4">
+            {layers.map((layer, li) => (
+              <div key={li} className="flex items-center">
+                <div className="flex flex-col items-center gap-3">
+                  {layer.map((node) => {
+                    const style = NODE_TYPE_STYLE[node.type] ?? NODE_TYPE_STYLE.process;
+                    return (
                       <div
-                        className="absolute left-0 top-1/2 h-0.5 w-10 -translate-y-1/2 bg-gradient-to-r from-cyan-400/60 to-transparent"
-                        style={{
-                          animation: 'pulse-arrow 2s ease-in-out infinite',
-                          animationDelay: `${i * 0.3}s`,
-                        }}
-                      />
-                      <svg
-                        className="absolute -right-1 top-1/2 -translate-y-1/2 text-white/30"
-                        width="8"
-                        height="12"
-                        viewBox="0 0 8 12"
+                        key={node.id}
+                        className={`flex min-w-[120px] flex-col items-center gap-1.5 rounded-xl border px-5 py-3 ${style.bg} ${style.border} transition-all hover:scale-105`}
                       >
-                        <path d="M0 0L8 6L0 12Z" fill="currentColor" />
-                      </svg>
-                    </div>
-                  )}
+                        <span className="text-xl">{style.icon}</span>
+                        <span className={`text-center text-xs font-medium ${style.text}`}>
+                          {node.name ?? node.label}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
+                {li < layers.length - 1 && renderArrow(li)}
+              </div>
+            ))}
           </div>
         )}
       </div>
@@ -270,7 +277,7 @@ export default function DataSync() {
                         className="border-b border-white/5 text-slate-300"
                       >
                         <td className="px-3 py-2.5 font-mono text-xs">{b.batchId}</td>
-                        <td className="px-3 py-2.5 text-xs">{b.source}</td>
+                        <td className="px-3 py-2.5 text-xs">{SOURCE_LABEL[b.source] ?? b.source}</td>
                         <td className="px-3 py-2.5">
                           <span
                             className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${BATCH_STATUS_BADGE[b.status]}`}

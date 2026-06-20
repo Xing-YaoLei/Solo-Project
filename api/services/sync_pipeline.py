@@ -200,8 +200,7 @@ class SyncPipelineService:
         now = datetime.now().isoformat()
         sync_date = datetime.now().date().isoformat()
 
-        session = pg_async_session if is_postgresql() else async_session
-        async with session() as sess:
+        async with self._get_session()() as sess:
             await sess.execute(text("""
                 INSERT INTO sync_batches (id, task_id, source, status, total_records, processed_records, start_time, sync_date)
                 VALUES (:bid, :tid, :source, 'pending', :total, 0, :start, :sync_date)
@@ -232,8 +231,7 @@ class SyncPipelineService:
         processed: Optional[int] = None,
         error: Optional[str] = None,
     ):
-        session = pg_async_session if is_postgresql() else async_session
-        async with session() as sess:
+        async with self._get_session()() as sess:
             updates = []
             params = {"bid": batch_id}
 
@@ -257,6 +255,9 @@ class SyncPipelineService:
                 await sess.execute(text(sql), params)
                 await sess.commit()
 
+    def _get_session(self):
+        return pg_async_session if is_postgresql() else async_session
+
     async def _insert_records(self, table_name: str, records: List[Dict[str, Any]], batch_id: str) -> int:
         if not records:
             return 0
@@ -266,9 +267,9 @@ class SyncPipelineService:
             return 0
 
         has_sync_batch_id = "sync_batch_id" in columns
+        pg = is_postgresql()
 
-        session = pg_async_session if is_postgresql() else async_session
-        async with session() as sess:
+        async with self._get_session()() as sess:
             processed = 0
             for record in records:
                 if has_sync_batch_id:
@@ -281,10 +282,13 @@ class SyncPipelineService:
                 col_str = ", ".join(cols)
                 ph_str = ", ".join(placeholders)
 
-                await sess.execute(text(f"""
-                    INSERT OR REPLACE INTO {table_name} ({col_str})
-                    VALUES ({ph_str})
-                """), values)
+                if pg:
+                    update_sets = ", ".join([f"{c} = EXCLUDED.{c}" for c in cols if c != "id"])
+                    sql = f"INSERT INTO {table_name} ({col_str}) VALUES ({ph_str}) ON CONFLICT (id) DO UPDATE SET {update_sets}"
+                else:
+                    sql = f"INSERT OR REPLACE INTO {table_name} ({col_str}) VALUES ({ph_str})"
+
+                await sess.execute(text(sql), values)
                 processed += 1
 
             await sess.commit()
@@ -292,8 +296,7 @@ class SyncPipelineService:
         return processed
 
     async def sync_batch_to_duckdb(self, batch_id: str) -> Dict[str, Any]:
-        session = pg_async_session if is_postgresql() else async_session
-        async with session() as sess:
+        async with self._get_session()() as sess:
             result = await sess.execute(text("""
                 SELECT source FROM sync_batches WHERE id = :bid
             """), {"bid": batch_id})
@@ -320,8 +323,7 @@ class SyncPipelineService:
         }
 
     async def rerun_batch(self, batch_id: str) -> Dict[str, Any]:
-        session = pg_async_session if is_postgresql() else async_session
-        async with session() as sess:
+        async with self._get_session()() as sess:
             result = await sess.execute(text("""
                 SELECT id, source, status, total_records FROM sync_batches WHERE id = :bid
             """), {"bid": batch_id})
@@ -333,7 +335,7 @@ class SyncPipelineService:
             total_records = row[3]
 
         now = datetime.now().isoformat()
-        async with session() as sess:
+        async with self._get_session()() as sess:
             await sess.execute(text("""
                 UPDATE sync_batches
                 SET status = 'running', start_time = :now, end_time = NULL, error_message = NULL, processed_records = 0
@@ -347,7 +349,7 @@ class SyncPipelineService:
 
             for table_name in tables:
                 if table_name in ["orders", "payment_records", "gate_records"]:
-                    async with session() as sess:
+                    async with self._get_session()() as sess:
                         await sess.execute(text(f"""
                             DELETE FROM {table_name} WHERE sync_batch_id = :bid
                         """), {"bid": batch_id})
@@ -377,8 +379,7 @@ class SyncPipelineService:
             }
 
     async def get_sync_progress(self, batch_id: str) -> Dict[str, Any]:
-        session = pg_async_session if is_postgresql() else async_session
-        async with session() as sess:
+        async with self._get_session()() as sess:
             result = await sess.execute(text("""
                 SELECT id, source, status, total_records, processed_records, start_time, end_time, error_message, sync_date
                 FROM sync_batches WHERE id = :bid
