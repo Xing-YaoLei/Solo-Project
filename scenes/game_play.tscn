@@ -81,7 +81,13 @@ theme_override_constants/separation = 16
 
 [node name="HeaderContainer" type="HBoxContainer" parent="CenterPanel/VBox"]
 layout_mode = 2
-theme_override_constants/separation = 20
+theme_override_constants/separation = 12
+
+[node name="TicketIcon" type="TextureRect" parent="CenterPanel/VBox/HeaderContainer"]
+visible = false
+layout_mode = 2
+custom_minimum_size = Vector2(36, 36)
+stretch_mode = 5
 
 [node name="TicketImage" type="TextureRect" parent="CenterPanel/VBox/HeaderContainer"]
 visible = false

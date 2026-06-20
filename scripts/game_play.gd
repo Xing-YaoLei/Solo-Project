@@ -23,6 +23,7 @@ signal decision_made(result: Dictionary)
 @onready var rules_popup: PanelContainer = $RulesPopup
 @onready var rules_text: RichTextLabel = $RulesPopup/VBoxContainer/RulesText
 @onready var close_rules_btn: Button = $RulesPopup/VBoxContainer/CloseRulesBtn
+@onready var ticket_icon: TextureRect = $CenterPanel/VBox/HeaderContainer/TicketIcon
 @onready var ticket_image: TextureRect = $CenterPanel/VBox/HeaderContainer/TicketImage
 @onready var bg_texture: TextureRect = $BackgroundAsset
 @onready var bgm_player: AudioStreamPlayer = $BgmPlayer
@@ -133,6 +134,17 @@ func _show_current_order() -> void:
 
 	ticket_type_label.text = "🎟 %s" % ticket_type.get("name", "未知票种")
 	order_id_label.text = "订单号: %s" % current_order.get("order_id", "")
+
+	var ticket_icon_path: String = DataLoader.get_ticket_type_asset(ticket_type, "icon")
+	if ticket_icon_path != "":
+		var tex: Texture2D = DataLoader.load_texture(ticket_icon_path)
+		if tex:
+			ticket_icon.texture = tex
+			ticket_icon.visible = true
+		else:
+			ticket_icon.visible = false
+	else:
+		ticket_icon.visible = false
 
 	var ticket_img_path: String = DataLoader.get_ticket_type_asset(ticket_type, "ticket_image")
 	if ticket_img_path != "":

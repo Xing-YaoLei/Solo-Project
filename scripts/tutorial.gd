@@ -1,6 +1,7 @@
 extends Control
 
-@onready var title_label: Label = $CenterContainer/VBox/TitleLabel
+@onready var title_label: Label = $CenterContainer/VBox/TitleRow/TitleLabel
+@onready var tutorial_icon: TextureRect = $CenterContainer/VBox/TitleRow/TutorialIcon
 @onready var slide_title: Label = $CenterContainer/VBox/SlidePanel/SlideVBox/SlideTitle
 @onready var slide_content: RichTextLabel = $CenterContainer/VBox/SlidePanel/SlideVBox/SlideContent
 @onready var highlight_label: Label = $CenterContainer/VBox/SlidePanel/SlideVBox/HighlightLabel
@@ -14,6 +15,7 @@ extends Control
 
 var current_tutorial: Dictionary = {}
 var current_slide_index: int = 0
+var tutorial_id_to_icon: Dictionary = {}
 
 func _ready() -> void:
 	prev_btn.pressed.connect(_on_prev)
@@ -23,8 +25,15 @@ func _ready() -> void:
 
 	for t in DataLoader.tutorials:
 		var idx: int = tutorial_selector.get_item_count()
+		var tut_id: String = t.get("id", "")
 		tutorial_selector.add_item(t.get("title", "教程"))
-		tutorial_selector.set_item_metadata(idx, t.get("id", ""))
+		tutorial_selector.set_item_metadata(idx, tut_id)
+		var icon_path: String = DataLoader.get_tutorial_asset(t, "icon")
+		if icon_path != "":
+			var tex: Texture2D = DataLoader.load_texture(icon_path)
+			if tex:
+				tutorial_id_to_icon[tut_id] = tex
+				tutorial_selector.set_item_icon(idx, tex)
 
 	var start_id: String = ScoreManager.current_tutorial_id
 	var found_idx: int = -1
@@ -61,7 +70,24 @@ func _load_tutorial_bgm() -> void:
 		bgm_player.stop()
 
 func _show_current_slide() -> void:
-	title_label.text = "📖 %s" % current_tutorial.get("title", "")
+	title_label.text = "%s" % current_tutorial.get("title", "")
+	var tut_id: String = current_tutorial.get("id", "")
+	if tutorial_id_to_icon.has(tut_id):
+		tutorial_icon.texture = tutorial_id_to_icon[tut_id]
+		tutorial_icon.visible = true
+	else:
+		var icon_path: String = DataLoader.get_tutorial_asset(current_tutorial, "icon")
+		if icon_path != "":
+			var tex: Texture2D = DataLoader.load_texture(icon_path)
+			if tex:
+				tutorial_icon.texture = tex
+				tutorial_icon.visible = true
+				tutorial_id_to_icon[tut_id] = tex
+			else:
+				tutorial_icon.visible = false
+		else:
+			tutorial_icon.visible = false
+
 	var slides: Array = current_tutorial.get("slides", [])
 	if current_slide_index < 0 or current_slide_index >= slides.size():
 		return
