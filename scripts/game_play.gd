@@ -16,12 +16,14 @@ signal decision_made(result: Dictionary)
 @onready var feedback_label: Label = $CenterPanel/VBox/FeedbackLabel
 @onready var intro_panel: PanelContainer = $IntroPanel
 @onready var intro_text: RichTextLabel = $IntroPanel/VBoxContainer/IntroText
+@onready var intro_image: TextureRect = $IntroPanel/VBoxContainer/IntroImage
 @onready var start_btn: Button = $IntroPanel/VBoxContainer/StartButton
 @onready var hint_buttons: HBoxContainer = $CenterPanel/VBox/HintButtons
 @onready var show_rules_btn: Button = $CenterPanel/VBox/HintButtons/ShowRulesBtn
 @onready var rules_popup: PanelContainer = $RulesPopup
 @onready var rules_text: RichTextLabel = $RulesPopup/VBoxContainer/RulesText
 @onready var close_rules_btn: Button = $RulesPopup/VBoxContainer/CloseRulesBtn
+@onready var ticket_image: TextureRect = $CenterPanel/VBox/HeaderContainer/TicketImage
 @onready var bg_texture: TextureRect = $BackgroundAsset
 @onready var bgm_player: AudioStreamPlayer = $BgmPlayer
 @onready var sfx_correct_player: AudioStreamPlayer = $SfxCorrectPlayer
@@ -63,6 +65,17 @@ func _setup_level() -> void:
 		intro_text.text += "\n\n[color=#90caf9]💡 提示要点：[/color]\n"
 		for h in hints:
 			intro_text.text += "  • %s\n" % h
+
+	var intro_img_path: String = DataLoader.get_level_asset(level_data, "intro_image")
+	if intro_img_path != "":
+		var tex: Texture2D = DataLoader.load_texture(intro_img_path)
+		if tex:
+			intro_image.texture = tex
+			intro_image.visible = true
+		else:
+			intro_image.visible = false
+	else:
+		intro_image.visible = false
 
 	intro_panel.visible = true
 	showing_intro = true
@@ -120,6 +133,17 @@ func _show_current_order() -> void:
 
 	ticket_type_label.text = "🎟 %s" % ticket_type.get("name", "未知票种")
 	order_id_label.text = "订单号: %s" % current_order.get("order_id", "")
+
+	var ticket_img_path: String = DataLoader.get_ticket_type_asset(ticket_type, "ticket_image")
+	if ticket_img_path != "":
+		var tex: Texture2D = DataLoader.load_texture(ticket_img_path)
+		if tex:
+			ticket_image.texture = tex
+			ticket_image.visible = true
+		else:
+			ticket_image.visible = false
+	else:
+		ticket_image.visible = false
 
 	clue_text.text = "[b]🎤 现场线索：[/b]\n%s" % current_order.get("clue_description", "")
 

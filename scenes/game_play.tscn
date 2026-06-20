@@ -83,6 +83,12 @@ theme_override_constants/separation = 16
 layout_mode = 2
 theme_override_constants/separation = 20
 
+[node name="TicketImage" type="TextureRect" parent="CenterPanel/VBox/HeaderContainer"]
+visible = false
+layout_mode = 2
+custom_minimum_size = Vector2(60, 60)
+stretch_mode = 5
+
 [node name="TicketTypeLabel" type="Label" parent="CenterPanel/VBox/HeaderContainer"]
 layout_mode = 2
 text = "🎟 票种名称"
@@ -172,9 +178,9 @@ anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
 offset_left = -350.0
-offset_top = -200.0
+offset_top = -280.0
 offset_right = 350.0
-offset_bottom = 200.0
+offset_bottom = 280.0
 grow_horizontal = 2
 grow_vertical = 2
 
@@ -184,10 +190,16 @@ theme_override_constants/separation = 20
 
 [node name="IntroText" type="RichTextLabel" parent="IntroPanel/VBoxContainer"]
 layout_mode = 2
-custom_minimum_size = Vector2(600, 280)
+custom_minimum_size = Vector2(600, 220)
 bbcode_enabled = true
 text = "关卡介绍"
 theme_override_font_sizes/normal_font_size = 18
+
+[node name="IntroImage" type="TextureRect" parent="IntroPanel/VBoxContainer"]
+visible = false
+layout_mode = 2
+custom_minimum_size = Vector2(0, 140)
+stretch_mode = 5
 
 [node name="StartButton" type="Button" parent="IntroPanel/VBoxContainer"]
 layout_mode = 2

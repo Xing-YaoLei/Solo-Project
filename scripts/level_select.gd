@@ -27,6 +27,17 @@ func _create_level_card(level: Dictionary) -> PanelContainer:
 	hbox.add_theme_constant_override("separation", 20)
 	card.add_child(hbox)
 
+	var icon_path: String = DataLoader.get_level_asset(level, "icon")
+	if icon_path != "":
+		var tex: Texture2D = DataLoader.load_texture(icon_path)
+		if tex:
+			var icon_rect: TextureRect = TextureRect.new()
+			icon_rect.texture = tex
+			icon_rect.custom_minimum_size = Vector2(80, 80)
+			icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			icon_rect.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			hbox.add_child(icon_rect)
+
 	var left_vbox: VBoxContainer = VBoxContainer.new()
 	left_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hbox.add_child(left_vbox)
