@@ -44,7 +44,6 @@ export class GameScene extends Phaser.Scene {
   private phaseLabel!: Phaser.GameObjects.Text;
 
   private matterEngine!: Matter.Engine;
-  private matterRender!: boolean;
   private draggableSponsors: Map<string, Phaser.GameObjects.Container> = new Map();
   private slotZones: Map<string, Phaser.GameObjects.Container> = new Map();
   private draggedItem: Phaser.GameObjects.Container | null = null;
@@ -297,6 +296,7 @@ export class GameScene extends Phaser.Scene {
       container.setSize(slotW, slotH);
       container.setDepth(5);
       this.slotZones.set(slot.id, container);
+      this.phaseContainer.add(container);
     }
 
     const sponsorAreaTop = h - 170;
@@ -382,6 +382,7 @@ export class GameScene extends Phaser.Scene {
       });
 
       this.draggableSponsors.set(sp.id, container);
+      this.phaseContainer.add(container);
     }
 
     const skipBtn = this.add.text(w / 2, h - 25, '跳过排期 →', {
@@ -499,14 +500,13 @@ export class GameScene extends Phaser.Scene {
 
   private transitionToVerification(): void {
     this.phase = 'verification';
+    this.draggedItem = null;
 
-    this.draggableSponsors.forEach((container) => {
-      container.destroy();
-    });
     this.draggableSponsors.clear();
     this.slotZones.clear();
     this.sponsorStartPositions.clear();
 
+    Matter.Composite.clear(this.matterEngine.world, false);
     Matter.Engine.clear(this.matterEngine);
 
     this.phaseContainer.destroy(true);
@@ -536,99 +536,93 @@ export class GameScene extends Phaser.Scene {
     this.verifyTaskDisplay = this.add.container(0, 0);
 
     const cardX = w / 2;
-    const cardY = h / 2 - 30;
-    const cardW = 420;
-    const cardH = 280;
+    const cardY = h / 2 - 20;
+    const cardW = 440;
+    const cardH = 300;
 
     const cardBg = this.add.rectangle(cardX, cardY, cardW, cardH, COLORS.PANEL, 0.95)
       .setStrokeStyle(2, COLORS.PRIMARY, 0.6);
     this.verifyTaskDisplay.add(cardBg);
 
-    const title = this.add.text(cardX, cardY - cardH / 2 + 20, '核销验证', {
-      fontSize: '18px', color: '#4fc3f7', fontStyle: 'bold',
-    }).setOrigin(0.5);
-    this.verifyTaskDisplay.add(title);
-
-    const progressText = this.add.text(cardX, cardY - cardH / 2 + 42, `${this.verification.progress + 1} / ${this.verification.total}`, {
+    const progressText = this.add.text(cardX, cardY - cardH / 2 + 18, `${this.verification.progress + 1} / ${this.verification.total}`, {
       fontSize: '12px', color: '#888888',
     }).setOrigin(0.5);
     this.verifyTaskDisplay.add(progressText);
 
+    const leftX = cardX - cardW / 2 + 28;
+    const rightX = cardX + cardW / 2 - 28;
+    const topY = cardY - cardH / 2 + 48;
+
     const ruleColor = '#' + task.rule.color.toString(16).padStart(6, '0');
-    const ticketName = this.add.text(cardX - cardW / 2 + 25, cardY - cardH / 2 + 65, `票种: ${task.rule.name}`, {
-      fontSize: '18px', color: ruleColor, fontStyle: 'bold',
-    }).setOrigin(0, 0.5);
-    this.verifyTaskDisplay.add(ticketName);
+    this.verifyTaskDisplay.add(this.add.text(leftX, topY, `票种: ${task.rule.name}`, {
+      fontSize: '20px', color: ruleColor, fontStyle: 'bold',
+    }).setOrigin(0, 0.5));
+    this.verifyTaskDisplay.add(this.add.text(rightX, topY, `数量: ${task.order.quantity}张`, {
+      fontSize: '17px', color: '#ffffff',
+    }).setOrigin(1, 0.5));
 
-    const quantityText = this.add.text(cardX + cardW / 2 - 25, cardY - cardH / 2 + 65, `数量: ${task.order.quantity}张`, {
-      fontSize: '16px', color: '#ffffff',
-    }).setOrigin(1, 0.5);
-    this.verifyTaskDisplay.add(quantityText);
-
-    const slotName = this.add.text(cardX - cardW / 2 + 25, cardY - cardH / 2 + 95, `演出: ${task.slot.name} (${task.slot.time})`, {
+    const row2Y = topY + 34;
+    this.verifyTaskDisplay.add(this.add.text(leftX, row2Y, `演出: ${task.slot.name} (${task.slot.time})`, {
       fontSize: '15px', color: '#ffffff',
-    }).setOrigin(0, 0.5);
-    this.verifyTaskDisplay.add(slotName);
+    }).setOrigin(0, 0.5));
 
-    const discount = this.add.text(cardX - cardW / 2 + 25, cardY - cardH / 2 + 120, `折扣率: ${(task.rule.discountRate * 100).toFixed(0)}% | 单价: ¥${task.slot.basePrice}`, {
+    const dividerY = row2Y + 22;
+    this.verifyTaskDisplay.add(this.add.rectangle(cardX, dividerY, cardW - 56, 1, 0x333355, 0.6));
+
+    const ruleY = dividerY + 18;
+    const validSlotNames = task.rule.validSlots.map(sid => {
+      const s = this.levelConfig.performanceSlots.find(ps => ps.id === sid);
+      return s ? s.name : sid;
+    }).join('、');
+    this.verifyTaskDisplay.add(this.add.text(leftX, ruleY, `适用: ${validSlotNames}`, {
       fontSize: '13px', color: '#aaaaaa',
-    }).setOrigin(0, 0.5);
-    this.verifyTaskDisplay.add(discount);
+      wordWrap: { width: cardW - 56 },
+    }).setOrigin(0, 0));
 
-    const maxPerOrder = this.add.text(cardX - cardW / 2 + 25, cardY - cardH / 2 + 142, `限购: ${task.rule.maxPerOrder}张/单`, {
-      fontSize: '12px', color: '#ffb74d',
-    }).setOrigin(0, 0.5);
-    this.verifyTaskDisplay.add(maxPerOrder);
+    const limitY = ruleY + 24;
+    this.verifyTaskDisplay.add(this.add.text(leftX, limitY, `限购: ${task.rule.maxPerOrder}张/单`, {
+      fontSize: '13px', color: '#ffb74d',
+    }).setOrigin(0, 0.5));
+    this.verifyTaskDisplay.add(this.add.text(rightX, limitY, `折扣: ${(task.rule.discountRate * 100).toFixed(0)}%`, {
+      fontSize: '13px', color: '#4fc3f7',
+    }).setOrigin(1, 0.5));
 
-    const divisorY = cardY - 10;
-    this.verifyTaskDisplay.add(this.add.line(cardX, divisorY, cardW - 40, 0, 0x333355, 0.5));
-
-    const hasSponsorInfo = task.rule.requiresSponsor || task.sponsor;
-    if (hasSponsorInfo) {
-      const sponsorLabel = this.add.text(cardX - cardW / 2 + 25, divisorY + 18, '赞助商:', {
-        fontSize: '13px', color: '#aaaaaa',
-      }).setOrigin(0, 0.5);
-      this.verifyTaskDisplay.add(sponsorLabel);
-
-      const sponsorValue = task.sponsor ? task.sponsor.name : '无';
+    const sponsorY = limitY + 26;
+    if (task.rule.requiresSponsor) {
+      this.verifyTaskDisplay.add(this.add.text(leftX, sponsorY, '需赞助商关联', {
+        fontSize: '13px', color: '#f06292',
+      }).setOrigin(0, 0.5));
+      const sponsorName = task.sponsor ? task.sponsor.name : '无';
       const sponsorColor = task.sponsor ? '#ffffff' : '#ef5350';
-      const sponsorValText = this.add.text(cardX - cardW / 2 + 95, divisorY + 18, sponsorValue, {
+      this.verifyTaskDisplay.add(this.add.text(rightX, sponsorY, sponsorName, {
         fontSize: '13px', color: sponsorColor, fontStyle: 'bold',
-      }).setOrigin(0, 0.5);
-      this.verifyTaskDisplay.add(sponsorValText);
-
-      const requiresText = this.add.text(cardX + cardW / 2 - 25, divisorY + 18,
-        task.rule.requiresSponsor ? '需关联' : '无需关联', {
-          fontSize: '12px', color: task.rule.requiresSponsor ? '#f06292' : '#888888',
-        }).setOrigin(1, 0.5);
-      this.verifyTaskDisplay.add(requiresText);
+      }).setOrigin(1, 0.5));
     } else {
-      const noSponsor = this.add.text(cardX, divisorY + 18, '无赞助商关联要求', {
-        fontSize: '12px', color: '#666688',
-      }).setOrigin(0.5);
-      this.verifyTaskDisplay.add(noSponsor);
+      this.verifyTaskDisplay.add(this.add.text(leftX, sponsorY, '无需赞助商关联', {
+        fontSize: '13px', color: '#666688',
+      }).setOrigin(0, 0.5));
     }
 
-    const btnY = cardY + cardH / 2 - 40;
+    const btnY = cardY + cardH / 2 - 45;
 
     const validBtn = this.add.container(cardX - 80, btnY);
-    const validBg = this.add.rectangle(0, 0, 120, 44, COLORS.SUCCESS, 0.9);
+    const validBg = this.add.rectangle(0, 0, 130, 48, COLORS.SUCCESS, 0.9);
     const validLabel = this.add.text(0, 0, '✓ 有效', {
-      fontSize: '16px', color: '#1a1a2e', fontStyle: 'bold',
+      fontSize: '18px', color: '#1a1a2e', fontStyle: 'bold',
     }).setOrigin(0.5);
     validBtn.add([validBg, validLabel]);
-    validBtn.setSize(120, 44);
+    validBtn.setSize(130, 48);
     validBg.setInteractive({ useHandCursor: true });
     validBg.on('pointerdown', () => this.handleVerifyAnswer(true));
     this.verifyTaskDisplay.add(validBtn);
 
     const invalidBtn = this.add.container(cardX + 80, btnY);
-    const invalidBg = this.add.rectangle(0, 0, 120, 44, COLORS.DANGER, 0.9);
+    const invalidBg = this.add.rectangle(0, 0, 130, 48, COLORS.DANGER, 0.9);
     const invalidLabel = this.add.text(0, 0, '✗ 无效', {
-      fontSize: '16px', color: '#ffffff', fontStyle: 'bold',
+      fontSize: '18px', color: '#ffffff', fontStyle: 'bold',
     }).setOrigin(0.5);
     invalidBtn.add([invalidBg, invalidLabel]);
-    invalidBtn.setSize(120, 44);
+    invalidBtn.setSize(130, 48);
     invalidBg.setInteractive({ useHandCursor: true });
     invalidBg.on('pointerdown', () => this.handleVerifyAnswer(false));
     this.verifyTaskDisplay.add(invalidBtn);
