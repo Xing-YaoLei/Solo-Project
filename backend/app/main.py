@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .database import get_duckdb
 from .repositories import duckdb_repository
+from .repositories.pg_repository import is_pg_enabled, create_tables_if_not_exists
 from .utils.logger import logger
 
 from .api.kpi import router as kpi_router
@@ -21,6 +22,16 @@ def _init_data() -> None:
     with get_duckdb() as conn:
         duckdb_repository._ensure_mock_data(conn)
     logger.info("DuckDB initialization complete.")
+
+    if is_pg_enabled():
+        logger.info("DATABASE_URL detected, initializing PostgreSQL...")
+        pg_ok = create_tables_if_not_exists()
+        if pg_ok:
+            logger.info("✅ PostgreSQL tables initialized successfully.")
+        else:
+            logger.warning("⚠️  PostgreSQL tables initialization skipped or failed.")
+    else:
+        logger.info("ℹ️  DATABASE_URL not configured, PostgreSQL support disabled.")
 
 
 @asynccontextmanager

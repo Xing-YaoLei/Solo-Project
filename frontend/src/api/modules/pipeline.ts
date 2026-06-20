@@ -15,8 +15,8 @@ export const pipelineApi = {
     return client.get<PageResponse<SyncLog>>('/pipeline/logs', { params });
   },
 
-  triggerSync(source: string) {
-    return client.post<SyncLog>('/pipeline/sync', { source });
+  triggerSync(task: string) {
+    return client.post<SyncLog[]>(`/pipeline/sync/${task}`);
   },
 };
 

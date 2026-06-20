@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Play,
   RefreshCw,
@@ -43,37 +43,37 @@ interface PipelineTask {
 
 const defaultTasks: PipelineTask[] = [
   {
-    id: 'ticket-sync',
-    name: '票务数据同步',
-    source: 'ticket',
-    icon: Ticket,
+    id: 'REG_SYNC',
+    name: '报名表数据同步',
+    source: 'REG_SYNC',
+    icon: Users,
     status: 'success',
     lastSync: dayjs().subtract(3, 'minute').toISOString(),
-    records: 12847,
+    records: 2847,
     delay: 2.4,
-    description: '从票务主系统拉取订单、核销、退款记录',
+    description: '从报名主系统拉取报名表、订单、人员信息',
   },
   {
-    id: 'verification-sync',
-    name: '核验终端同步',
-    source: 'verification',
-    icon: Users,
+    id: 'PAY_SYNC',
+    name: '支付流水同步',
+    source: 'PAY_SYNC',
+    icon: Ticket,
     status: 'running',
     lastSync: dayjs().subtract(45, 'second').toISOString(),
     records: 624,
     delay: 0.8,
-    description: '闸机核验设备实时上报入场记录',
+    description: '支付网关订单、退款流水实时同步',
   },
   {
-    id: 'sponsorship-sync',
-    name: '赞助权益同步',
-    source: 'sponsorship',
+    id: 'GATE_SYNC',
+    name: '闸机记录同步',
+    source: 'GATE_SYNC',
     icon: Sparkles,
     status: 'error',
     lastSync: dayjs().subtract(1, 'hour').toISOString(),
     records: 86,
     delay: 45.2,
-    description: 'CRM 赞助合同与权益兑现进度同步',
+    description: '闸机核验设备实时上报入场核销记录',
   },
 ];
 
@@ -361,9 +361,9 @@ function PipelineCard({
 }
 
 const sourceLabels: Record<string, string> = {
-  ticket: '票务系统',
-  verification: '核验终端',
-  sponsorship: '赞助平台',
+  REG_SYNC: '报名表',
+  PAY_SYNC: '支付流水',
+  GATE_SYNC: '闸机记录',
   all: '全部任务',
 };
 
@@ -455,32 +455,34 @@ export default function PipelinePage() {
     fetchStatus();
   }, []);
 
-  const handleTrigger = useCallback(async (source: string) => {
-    setTriggeringId(source);
+  const handleTrigger = useCallback(async (task: string) => {
+    setTriggeringId(task);
     try {
-      const res = (await pipelineApi.triggerSync(source)) as unknown as Record<string, unknown>;
+      const res = (await pipelineApi.triggerSync(task)) as unknown as Record<string, unknown>[];
       setTasks((prev) =>
         prev.map((t) =>
-          t.source === source
+          t.source === task
             ? {
                 ...t,
                 status: 'running' as const,
-                lastSync:
-                  (res.syncTime as string) ||
-                  (res.createdAt as string) ||
-                  new Date().toISOString(),
+                lastSync: new Date().toISOString(),
               }
             : t,
         ),
       );
       setTimeout(() => {
+        const firstLog = Array.isArray(res) && res.length > 0 ? res[0] : {};
+        const recordsSynced =
+          (firstLog.recordsSynced as number) ??
+          (firstLog.lastSyncCount as number) ??
+          100 + Math.floor(Math.random() * 200);
         setTasks((prev) =>
           prev.map((t) =>
-            t.source === source
+            t.source === task
               ? {
                   ...t,
                   status: 'success' as const,
-                  records: t.records + ((res.recordsSynced as number) ?? 42),
+                  records: t.records + recordsSynced,
                   lastSync: new Date().toISOString(),
                   delay: 1.0 + Math.random() * 2,
                 }
@@ -490,7 +492,7 @@ export default function PipelinePage() {
       }, 2500);
     } catch {
       setTasks((prev) =>
-        prev.map((t) => (t.source === source ? { ...t, status: 'error' as const } : t)),
+        prev.map((t) => (t.source === task ? { ...t, status: 'error' as const } : t)),
       );
     } finally {
       setTimeout(() => setTriggeringId(null), 2600);
@@ -609,7 +611,7 @@ export default function PipelinePage() {
             <Filter size={13} className="text-white/40" />
             <span className="text-xs text-white/50">任务：</span>
             <div className="flex gap-1.5 flex-wrap">
-              {['all', 'ticket', 'verification', 'sponsorship'].map((s) => (
+              {['all', 'REG_SYNC', 'PAY_SYNC', 'GATE_SYNC'].map((s) => (
                 <button
                   key={s}
                   onClick={() => {
@@ -682,7 +684,7 @@ export default function PipelinePage() {
                 const ls = levelStyle[log.level];
                 const ss = statusStyle[log.status];
                 return (
-                  <>
+                  <Fragment key={log.id}>
                     <tr
                       key={log.id}
                       onClick={() => setExpandedId(isExpanded ? null : log.id)}
@@ -788,7 +790,7 @@ export default function PipelinePage() {
                         </td>
                       </tr>
                     )}
-                  </>
+                  </Fragment>
                 );
               })}
             </tbody>
