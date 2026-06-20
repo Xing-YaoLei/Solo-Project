@@ -1,0 +1,406 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "./generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TicketTypeStatus {
+  DRAFT
+  ACTIVE
+  SUSPENDED
+  CLOSED
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  REFUNDING
+  REFUNDED
+  DISPUTED
+}
+
+enum SeatStatus {
+  AVAILABLE
+  LOCKED
+  OCCUPIED
+  RESERVED
+  MAINTAINED
+}
+
+enum CheckInStatus {
+  PENDING
+  CHECKED_IN
+  CHECKED_OUT
+  EXPIRED
+  INVALID
+}
+
+enum SponsorType {
+  TITLE_SPONSOR
+  PLATINUM
+  GOLD
+  SILVER
+  BRONZE
+  OFFICIAL_PARTNER
+}
+
+enum ExceptionType {
+  REFUND_DISPUTE
+  DOUBLE_PAYMENT
+  SEAT_CONFLICT
+  CHECKIN_ABNORMAL
+  SYSTEM_ERROR
+  OTHER
+}
+
+enum ExceptionStatus {
+  OPEN
+  INVESTIGATING
+  PENDING_RESPONSE
+  RESOLVED
+  CLOSED
+  ESCALATED
+}
+
+enum LiabilityParty {
+  CUSTOMER
+  PLATFORM
+  VENUE
+  ORGANIZER
+  THIRD_PARTY
+  UNCLEAR
+}
+
+enum ExportFormat {
+  CSV
+  XLSX
+  PDF
+}
+
+model Activity {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  startTime   DateTime
+  endTime     DateTime
+  venue       String
+  address     String?
+  posterUrl   String?
+  coverUrl    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  ticketTypes   TicketType[]
+  orders        Order[]
+  seatMaps      SeatMap[]
+  sponsors      Sponsor[]
+  checkInCodes  CheckInCode[]
+  statusHistory StatusHistory[]
+  exceptions    ExceptionRecord[]
+
+  @@map("activities")
+}
+
+model TicketType {
+  id          String           @id @default(uuid())
+  activityId  String
+  name        String
+  description String?
+  price       Decimal          @db.Decimal(10, 2)
+  originalPrice Decimal?       @db.Decimal(10, 2)
+  totalStock  Int
+  soldCount   Int              @default(0)
+  perLimit    Int              @default(10)
+  startTime   DateTime?
+  endTime     DateTime?
+  status      TicketTypeStatus @default(DRAFT)
+  hasSeat     Boolean          @default(false)
+  benefits    Json?
+  sortOrder   Int              @default(0)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  activity      Activity         @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  orderItems    OrderItem[]
+  seatTickets   SeatTicket[]
+  statusHistory StatusHistory[]
+
+  @@index([activityId, status])
+  @@map("ticket_types")
+}
+
+model Order {
+  id              String      @id @default(uuid())
+  activityId      String
+  orderNo         String      @unique
+  customerName    String
+  customerPhone   String
+  customerEmail   String?
+  userId          String?
+  totalAmount     Decimal     @db.Decimal(12, 2)
+  paidAmount      Decimal     @db.Decimal(12, 2) @default(0)
+  discountAmount  Decimal     @db.Decimal(12, 2) @default(0)
+  status          OrderStatus @default(PENDING)
+  paymentMethod   String?
+  paidAt          DateTime?
+  confirmedAt     DateTime?
+  completedAt     DateTime?
+  cancelledAt     DateTime?
+  remark          String?
+  sourceChannel   String?     @default("ONLINE")
+  operatorId      String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  activity      Activity         @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  orderItems    OrderItem[]
+  checkInCodes  CheckInCode[]
+  statusHistory StatusHistory[]
+  refunds       RefundRecord[]
+  exceptions    ExceptionRecord[]
+
+  @@index([activityId, status])
+  @@index([customerPhone])
+  @@index([orderNo])
+  @@map("orders")
+}
+
+model OrderItem {
+  id            String  @id @default(uuid())
+  orderId       String
+  ticketTypeId  String
+  seatId        String?
+  quantity      Int
+  unitPrice     Decimal @db.Decimal(10, 2)
+  subtotal      Decimal @db.Decimal(12, 2)
+  benefitSnapshot Json?
+  createdAt     DateTime @default(now())
+
+  order        Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  ticketType   TicketType   @relation(fields: [ticketTypeId], references: [id])
+  seat         Seat?        @relation(fields: [seatId], references: [id])
+  checkInCodes CheckInCode[]
+
+  @@index([orderId, ticketTypeId])
+  @@map("order_items")
+}
+
+model SeatMap {
+  id          String   @id @default(uuid())
+  activityId  String
+  name        String
+  description String?
+  layoutConfig Json
+  totalSeats  Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  seats    Seat[]
+
+  @@map("seat_maps")
+}
+
+model Seat {
+  id        String     @id @default(uuid())
+  seatMapId String
+  row       String
+  col       String
+  label     String
+  section   String?
+  status    SeatStatus @default(AVAILABLE)
+  priceTier String?
+  sortX     Int
+  sortY     Int
+  lockedBy  String?
+  lockedAt  DateTime?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  seatMap     SeatMap      @relation(fields: [seatMapId], references: [id], onDelete: Cascade)
+  seatTickets SeatTicket[]
+  orderItems  OrderItem[]
+
+  @@index([seatMapId, status])
+  @@unique([seatMapId, row, col])
+  @@map("seats")
+}
+
+model SeatTicket {
+  id           String  @id @default(uuid())
+  seatId       String
+  ticketTypeId String
+  activityId   String
+  price        Decimal @db.Decimal(10, 2)
+  isSold       Boolean @default(false)
+  soldAt       DateTime?
+  orderId      String?
+  createdAt    DateTime @default(now())
+
+  seat       Seat       @relation(fields: [seatId], references: [id], onDelete: Cascade)
+  ticketType TicketType @relation(fields: [ticketTypeId], references: [id])
+
+  @@index([seatId, ticketTypeId])
+  @@map("seat_tickets")
+}
+
+model CheckInCode {
+  id           String         @id @default(uuid())
+  orderId      String
+  orderItemId  String
+  activityId   String
+  code         String         @unique
+  qrUrl        String?
+  status       CheckInStatus  @default(PENDING)
+  ticketName   String
+  seatLabel    String?
+  customerName String
+  checkInAt    DateTime?
+  checkInBy    String?
+  checkOutAt   DateTime?
+  expireAt     DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  order      Order       @relation(fields: [orderId], references: [id])
+  orderItem  OrderItem   @relation(fields: [orderItemId], references: [id])
+  activity   Activity    @relation(fields: [activityId], references: [id])
+
+  @@index([activityId, status])
+  @@index([orderId])
+  @@map("check_in_codes")
+}
+
+model Sponsor {
+  id             String      @id @default(uuid())
+  activityId     String
+  name           String
+  logoUrl        String?
+  websiteUrl     String?
+  type           SponsorType
+  amount         Decimal?    @db.Decimal(14, 2)
+  benefitDetails Json?
+  contactName    String?
+  contactPhone   String?
+  contractNo     String?
+  sortOrder      Int         @default(0)
+  status         String      @default("ACTIVE")
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@index([activityId, type])
+  @@map("sponsors")
+}
+
+model StatusHistory {
+  id          String   @id @default(uuid())
+  activityId  String?
+  orderId     String?
+  ticketTypeId String?
+  entityType  String
+  entityId    String
+  fromStatus  String?
+  toStatus    String
+  changedBy   String?
+  changeReason String?
+  changeNote  String?
+  metadata    Json?
+  changedAt   DateTime @default(now())
+
+  activity   Activity?  @relation(fields: [activityId], references: [id])
+  order      Order?     @relation(fields: [orderId], references: [id])
+  ticketType TicketType? @relation(fields: [ticketTypeId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([activityId])
+  @@map("status_histories")
+}
+
+model RefundRecord {
+  id             String   @id @default(uuid())
+  orderId        String
+  refundNo       String   @unique
+  refundAmount   Decimal  @db.Decimal(12, 2)
+  refundReason   String?
+  refundMethod   String?
+  status         String   @default("PENDING")
+  appliedAt      DateTime @default(now())
+  approvedAt     DateTime?
+  processedAt    DateTime?
+  completedAt    DateTime?
+  approvedBy     String?
+  processedBy    String?
+  rejectReason   String?
+  remark         String?
+
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@index([orderId, status])
+  @@map("refund_records")
+}
+
+model ExceptionRecord {
+  id              String          @id @default(uuid())
+  activityId      String?
+  orderId         String?
+  exceptionNo     String          @unique
+  type            ExceptionType
+  title           String
+  description     String
+  status          ExceptionStatus @default(OPEN)
+  severity        String          @default("MEDIUM")
+  impactScope     String
+  affectedOrders  Json?
+  affectedSeats   Json?
+  liabilityParty  LiabilityParty  @default(UNCLEAR)
+  liabilityDetail String?
+  handlerId       String?
+  handlerName     String?
+  resolution      String?
+  resolutionDetail Json?
+  handlingResult  String?
+  deadline        DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  closedAt        DateTime?
+
+  activity Activity? @relation(fields: [activityId], references: [id])
+  order    Order?    @relation(fields: [orderId], references: [id])
+
+  @@index([activityId, status])
+  @@index([type, status])
+  @@map("exception_records")
+}
+
+model ExportTask {
+  id             String       @id @default(uuid())
+  taskName       String
+  exportType     String
+  format         ExportFormat @default(XLSX)
+  activityId     String?
+  dateRangeFrom  DateTime?
+  dateRangeTo    DateTime?
+  criteria       Json?
+  status         String       @default("PENDING")
+  fileUrl        String?
+  definition     Json?
+  caliberNotes   String
+  createdBy      String?
+  createdAt      DateTime     @default(now())
+  startedAt      DateTime?
+  completedAt    DateTime?
+  failedReason   String?
+
+  @@index([activityId])
+  @@index([status])
+  @@map("export_tasks")
+}

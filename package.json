@@ -1,0 +1,21 @@
+{
+  "name": "ticket-dispatch-platform",
+  "private": true,
+  "version": "1.0.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev --workspace=@ticket/web",
+    "dev:api": "npm run start:dev --workspace=@ticket/api",
+    "build": "npm run build --workspace=@ticket/prisma && npm run build --workspace=@ticket/api && npm run build --workspace=@ticket/web",
+    "db:generate": "npm run db:generate --workspace=@ticket/prisma",
+    "db:push": "npm run db:push --workspace=@ticket/prisma",
+    "db:seed": "npm run db:seed --workspace=@ticket/prisma"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "@types/node": "^20.11.0"
+  }
+}
