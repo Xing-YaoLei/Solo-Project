@@ -1,0 +1,112 @@
+[gd_scene load_steps=2 format=3 uid="uid://results_scene"]
+
+[ext_resource type="Script" path="res://scripts/results.gd" id="1_script"]
+
+[node name="Results" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.094118, 0.129412, 0.176471, 1)
+
+[node name="CenterContainer" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="CenterContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(900, 0)
+theme_override_constants/separation = 16
+
+[node name="ResultTitle" type="Label" parent="CenterContainer/VBox"]
+layout_mode = 2
+text = "训练结果"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.960784, 0.972549, 1, 1)
+theme_override_font_sizes/font_size = 36
+
+[node name="ScoreLabel" type="Label" parent="CenterContainer/VBox"]
+layout_mode = 2
+text = "0 分"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(1, 0.843137, 0, 1)
+theme_override_font_sizes/font_size = 64
+
+[node name="ScoreBreakdown" type="Label" parent="CenterContainer/VBox"]
+layout_mode = 2
+text = ""
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.6, 0.8, 1, 1)
+theme_override_font_sizes/font_size = 16
+
+[node name="StatsGrid" type="GridContainer" parent="CenterContainer/VBox"]
+layout_mode = 2
+columns = 4
+theme_override_constants/h_separation = 30
+theme_override_constants/v_separation = 8
+
+[node name="WrongReasonsPanel" type="PanelContainer" parent="CenterContainer/VBox"]
+layout_mode = 2
+
+[node name="WrongReasonsVBox" type="VBoxContainer" parent="CenterContainer/VBox/WrongReasonsPanel"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 100)
+theme_override_constants/separation = 6
+
+[node name="WRHeader" type="Label" parent="CenterContainer/VBox/WrongReasonsPanel/WrongReasonsVBox"]
+layout_mode = 2
+text = "📝 错因统计（复盘用）"
+theme_override_colors/font_color = Color(1, 0.7, 0.7, 1)
+theme_override_font_sizes/font_size = 18
+
+[node name="DisputesPanel" type="PanelContainer" parent="CenterContainer/VBox"]
+layout_mode = 2
+
+[node name="DisputesVBox" type="VBoxContainer" parent="CenterContainer/VBox/DisputesPanel"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 60)
+theme_override_constants/separation = 6
+
+[node name="DispHeader" type="Label" parent="CenterContainer/VBox/DisputesPanel/DisputesVBox"]
+layout_mode = 2
+text = "⚖️ 退票争议记录"
+theme_override_colors/font_color = Color(1, 0.7, 0.3, 1)
+theme_override_font_sizes/font_size = 18
+
+[node name="ButtonRow" type="HBoxContainer" parent="CenterContainer/VBox"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 20
+
+[node name="RetryButton" type="Button" parent="CenterContainer/VBox/ButtonRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(160, 50)
+text = "🔄 重新训练"
+theme_override_font_sizes/font_size = 18
+
+[node name="LevelSelectButton" type="Button" parent="CenterContainer/VBox/ButtonRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(160, 50)
+text = "📋 选关卡"
+theme_override_font_sizes/font_size = 18
+
+[node name="MenuButton" type="Button" parent="CenterContainer/VBox/ButtonRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(160, 50)
+text = "🏠 主菜单"
+theme_override_font_sizes/font_size = 18

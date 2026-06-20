@@ -1,0 +1,136 @@
+[gd_scene load_steps=2 format=3 uid="uid://stats_scene"]
+
+[ext_resource type="Script" path="res://scripts/stats.gd" id="1_script"]
+
+[node name="Stats" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.094118, 0.129412, 0.176471, 1)
+
+[node name="TopBar" type="HBoxContainer" parent="."]
+layout_mode = 0
+offset_left = 20.0
+offset_top = 15.0
+offset_right = 1260.0
+offset_bottom = 65.0
+theme_override_constants/separation = 20
+
+[node name="BackButton" type="Button" parent="TopBar"]
+layout_mode = 2
+custom_minimum_size = Vector2(100, 45)
+text = "← 返回"
+theme_override_font_sizes/font_size = 16
+
+[node name="TitleLabel" type="Label" parent="TopBar"]
+layout_mode = 2
+text = "📊 训练统计中心"
+theme_override_colors/font_color = Color(0.960784, 0.972549, 1, 1)
+theme_override_font_sizes/font_size = 28
+
+[node name="MainScroll" type="ScrollContainer" parent="."]
+layout_mode = 0
+offset_left = 20.0
+offset_top = 80.0
+offset_right = 1260.0
+offset_bottom = 700.0
+horizontal_scroll_mode = 0
+
+[node name="MainVBox" type="VBoxContainer" parent="MainScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 16
+
+[node name="OverallPanel" type="PanelContainer" parent="MainScroll/MainVBox"]
+layout_mode = 2
+
+[node name="OverallVBox" type="VBoxContainer" parent="MainScroll/MainVBox/OverallPanel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="OverallHeader" type="Label" parent="MainScroll/MainVBox/OverallPanel/OverallVBox"]
+layout_mode = 2
+text = "📈 总体训练数据"
+theme_override_colors/font_color = Color(0.6, 0.9, 1, 1)
+theme_override_font_sizes/font_size = 20
+
+[node name="OverallGrid" type="GridContainer" parent="MainScroll/MainVBox/OverallPanel/OverallVBox"]
+layout_mode = 2
+columns = 4
+theme_override_constants/h_separation = 40
+theme_override_constants/v_separation = 8
+
+[node name="LevelEffectivenessPanel" type="PanelContainer" parent="MainScroll/MainVBox"]
+layout_mode = 2
+
+[node name="LevelStatsVBox" type="VBoxContainer" parent="MainScroll/MainVBox/LevelEffectivenessPanel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Header" type="Label" parent="MainScroll/MainVBox/LevelEffectivenessPanel/LevelStatsVBox"]
+layout_mode = 2
+text = "🎯 各关卡训练效果分析（得分越高说明训练效果越好）"
+theme_override_colors/font_color = Color(0.6, 0.9, 1, 1)
+theme_override_font_sizes/font_size = 20
+
+[node name="LeaderboardPanel" type="PanelContainer" parent="MainScroll/MainVBox"]
+layout_mode = 2
+
+[node name="LeaderboardVBox" type="VBoxContainer" parent="MainScroll/MainVBox/LeaderboardPanel"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="TopRow" type="HBoxContainer" parent="MainScroll/MainVBox/LeaderboardPanel/LeaderboardVBox"]
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="LBHeader" type="Label" parent="MainScroll/MainVBox/LeaderboardPanel/LeaderboardVBox/TopRow"]
+layout_mode = 2
+text = "🏆 排行榜"
+theme_override_colors/font_color = Color(1, 0.843137, 0, 1)
+theme_override_font_sizes/font_size = 20
+
+[node name="Spacer" type="Control" parent="MainScroll/MainVBox/LeaderboardPanel/LeaderboardVBox/TopRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="FilterOption" type="OptionButton" parent="MainScroll/MainVBox/LeaderboardPanel/LeaderboardVBox/TopRow"]
+layout_mode = 2
+
+[node name="WrongReasonsPanel" type="PanelContainer" parent="MainScroll/MainVBox"]
+layout_mode = 2
+
+[node name="WrongReasonsVBox" type="VBoxContainer" parent="MainScroll/MainVBox/WrongReasonsPanel"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Header" type="Label" parent="MainScroll/MainVBox/WrongReasonsPanel/WrongReasonsVBox"]
+layout_mode = 2
+text = "❌ 常见错因排行（用于针对性训练）"
+theme_override_colors/font_color = Color(1, 0.6, 0.6, 1)
+theme_override_font_sizes/font_size = 20
+
+[node name="HistoryPanel" type="PanelContainer" parent="MainScroll/MainVBox"]
+layout_mode = 2
+
+[node name="HistoryVBox" type="VBoxContainer" parent="MainScroll/MainVBox/HistoryPanel"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Header" type="Label" parent="MainScroll/MainVBox/HistoryPanel/HistoryVBox"]
+layout_mode = 2
+text = "📜 最近训练记录"
+theme_override_colors/font_color = Color(0.6, 0.9, 1, 1)
+theme_override_font_sizes/font_size = 20

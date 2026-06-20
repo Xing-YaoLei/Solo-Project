@@ -1,0 +1,92 @@
+[
+  {
+    "id": "level_01",
+    "name": "入门训练：普通票核销基础",
+    "description": "熟悉基本核销流程，处理简单的成人票验证。",
+    "difficulty": 1,
+    "ticket_types": ["normal_adult"],
+    "time_limit_seconds": 180,
+    "order_count": 5,
+    "refund_risk": 0.1,
+    "unlocked": true,
+    "min_score_to_pass": 60,
+    "intro_text": "欢迎来到核销训练中心！今天您将处理普通成人票的核销工作。请仔细核对每位观众的身份证件和购票信息。",
+    "tutorial_hints": [
+      "每张普通成人票都需要核验身份证件",
+      "注意核对购票人姓名与证件姓名是否一致",
+      "检查票面日期是否在有效期内"
+    ]
+  },
+  {
+    "id": "level_02",
+    "name": "混合票种：学生与老人",
+    "description": "处理学生票和老年票的特殊验证要求。",
+    "difficulty": 2,
+    "ticket_types": ["normal_adult", "student_ticket", "senior_ticket"],
+    "time_limit_seconds": 240,
+    "order_count": 8,
+    "refund_risk": 0.15,
+    "unlocked": false,
+    "min_score_to_pass": 70,
+    "intro_text": "进阶关卡！学生票需要验证学生证，老年票需要检查年龄。",
+    "tutorial_hints": [
+      "学生票：年龄6-28岁，必须出示学生证",
+      "老年票：年龄60岁以上，检查身份证出生日期",
+      "学生证过期或照片不符都可能是伪造凭证"
+    ]
+  },
+  {
+    "id": "level_03",
+    "name": "VIP与团体",
+    "description": "处理VIP快速通道和团体票的复杂场景。",
+    "difficulty": 3,
+    "ticket_types": ["normal_adult", "vip_ticket", "group_ticket"],
+    "time_limit_seconds": 300,
+    "order_count": 10,
+    "refund_risk": 0.2,
+    "unlocked": false,
+    "min_score_to_pass": 75,
+    "intro_text": "VIP客户走快速通道，团体票需要领队确认人数。",
+    "tutorial_hints": [
+      "VIP票赠送纪念礼品，记得发放",
+      "团体票必须由领队统一核销",
+      "团体票人数要与实际到场人数一致"
+    ]
+  },
+  {
+    "id": "level_04",
+    "name": "时间限制关卡",
+    "description": "平日票和夜场票的时间与日期校验。",
+    "difficulty": 4,
+    "ticket_types": ["normal_adult", "weekday_ticket", "evening_ticket"],
+    "time_limit_seconds": 300,
+    "order_count": 12,
+    "refund_risk": 0.25,
+    "unlocked": false,
+    "min_score_to_pass": 80,
+    "intro_text": "考验您对时间规则的敏感度！平日票仅限工作日，夜场票有入场时间限制。",
+    "tutorial_hints": [
+      "平日票（周一至周五有效），周末不可使用",
+      "夜场票仅周五至周日18:00后入场",
+      "注意当前时间，不要在错误时间放行"
+    ]
+  },
+  {
+    "id": "level_05",
+    "name": "综合挑战：混乱现场",
+    "description": "所有票种混合出现，处理高峰客流，快速准确核销。",
+    "difficulty": 5,
+    "ticket_types": ["normal_adult", "student_ticket", "senior_ticket", "vip_ticket", "group_ticket", "weekday_ticket", "evening_ticket"],
+    "time_limit_seconds": 360,
+    "order_count": 15,
+    "refund_risk": 0.35,
+    "unlocked": false,
+    "min_score_to_pass": 85,
+    "intro_text": "终极挑战！所有票种混合，客流高峰，退票争议频发。考验您的综合核销能力！",
+    "tutorial_hints": [
+      "保持冷静，逐项核对",
+      "遇到争议保持专业态度",
+      "速度与准确度同样重要"
+    ]
+  }
+]

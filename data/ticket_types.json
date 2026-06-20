@@ -1,0 +1,125 @@
+[
+  {
+    "id": "normal_adult",
+    "name": "普通成人票",
+    "description": "标准入场票种，适用于所有年龄段，使用时间灵活。",
+    "rules": {
+      "age_min": 18,
+      "age_max": 99,
+      "identity_required": true,
+      "transferable": true,
+      "valid_days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+      "time_start": "09:00",
+      "time_end": "22:00",
+      "refundable": true,
+      "max_entries": 1
+    },
+    "difficulty": 1
+  },
+  {
+    "id": "student_ticket",
+    "name": "学生优惠票",
+    "description": "全日制在校学生专享优惠价，需持有效学生证入场。",
+    "rules": {
+      "age_min": 6,
+      "age_max": 28,
+      "identity_required": true,
+      "student_id_required": true,
+      "transferable": false,
+      "valid_days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+      "time_start": "09:00",
+      "time_end": "22:00",
+      "refundable": true,
+      "max_entries": 1
+    },
+    "difficulty": 2
+  },
+  {
+    "id": "senior_ticket",
+    "name": "老年票",
+    "description": "60岁以上老年人专属票，凭身份证核验入场。",
+    "rules": {
+      "age_min": 60,
+      "age_max": 99,
+      "identity_required": true,
+      "transferable": false,
+      "valid_days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+      "time_start": "09:00",
+      "time_end": "22:00",
+      "refundable": true,
+      "max_entries": 1
+    },
+    "difficulty": 2
+  },
+  {
+    "id": "vip_ticket",
+    "name": "VIP贵宾票",
+    "description": "VIP专享，可快速通道入场，赠送纪念礼品。",
+    "rules": {
+      "age_min": 0,
+      "age_max": 99,
+      "identity_required": false,
+      "transferable": true,
+      "valid_days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+      "time_start": "08:30",
+      "time_end": "23:00",
+      "fast_track": true,
+      "refundable": true,
+      "gift_included": true,
+      "max_entries": 1
+    },
+    "difficulty": 3
+  },
+  {
+    "id": "group_ticket",
+    "name": "团体票",
+    "description": "10人以上团体优惠，团体统一核销。",
+    "rules": {
+      "age_min": 0,
+      "age_max": 99,
+      "identity_required": false,
+      "transferable": false,
+      "valid_days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+      "time_start": "10:00",
+      "time_end": "20:00",
+      "group_leader_required": true,
+      "refundable": true,
+      "max_entries": 20
+    },
+    "difficulty": 3
+  },
+  {
+    "id": "weekday_ticket",
+    "name": "平日票",
+    "description": "仅限工作日（周一至周五使用的工作日使用，周末不可使用。",
+    "rules": {
+      "age_min": 0,
+      "age_max": 99,
+      "identity_required": true,
+      "transferable": true,
+      "valid_days": ["mon", "tue", "wed", "thu", "fri"],
+      "time_start": "09:00",
+      "time_end": "22:00",
+      "refundable": true,
+      "max_entries": 1
+    },
+    "difficulty": 4
+  },
+  {
+    "id": "evening_ticket",
+    "name": "夜场票",
+    "description": "限定入场。",
+    "rules": {
+      "age_min": 0,
+      "age_max": 99,
+      "identity_required": true,
+      "transferable": true,
+      "valid_days": ["fri", "sat", "sun"],
+      "time_start": "18:00",
+      "time_end": "23:00",
+      "refundable": true,
+      "max_entries": 1
+    },
+    "difficulty": 4
+  }
+]

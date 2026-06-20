@@ -1,0 +1,109 @@
+[gd_scene load_steps=2 format=3 uid="uid://tutorial_scene"]
+
+[ext_resource type="Script" path="res://scripts/tutorial.gd" id="1_script"]
+
+[node name="Tutorial" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.094118, 0.129412, 0.176471, 1)
+
+[node name="CenterContainer" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="CenterContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(800, 500)
+theme_override_constants/separation = 20
+
+[node name="TopRow" type="HBoxContainer" parent="CenterContainer/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="TutorialSelector" type="OptionButton" parent="CenterContainer/VBox/TopRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(250, 40)
+
+[node name="Spacer" type="Control" parent="CenterContainer/VBox/TopRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="TitleLabel" type="Label" parent="CenterContainer/VBox"]
+layout_mode = 2
+text = "📖 教程标题"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.960784, 0.972549, 1, 1)
+theme_override_font_sizes/font_size = 32
+
+[node name="SlidePanel" type="PanelContainer" parent="CenterContainer/VBox"]
+layout_mode = 2
+
+[node name="SlideVBox" type="VBoxContainer" parent="CenterContainer/VBox/SlidePanel"]
+layout_mode = 2
+theme_override_constants/separation = 15
+
+[node name="SlideTitle" type="Label" parent="CenterContainer/VBox/SlidePanel/SlideVBox"]
+layout_mode = 2
+text = "幻灯片标题"
+theme_override_colors/font_color = Color(0.6, 0.9, 1, 1)
+theme_override_font_sizes/font_size = 24
+
+[node name="SlideContent" type="RichTextLabel" parent="CenterContainer/VBox/SlidePanel/SlideVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 200)
+bbcode_enabled = true
+text = "内容"
+theme_override_font_sizes/normal_font_size = 18
+
+[node name="HighlightLabel" type="Label" parent="CenterContainer/VBox/SlidePanel/SlideVBox"]
+layout_mode = 2
+text = "要点提示"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(1, 0.843137, 0, 1)
+theme_override_font_sizes/font_size = 20
+
+[node name="SlideIndicator" type="Label" parent="CenterContainer/VBox"]
+layout_mode = 2
+text = "- 1 / 3 -"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.6, 0.7, 0.8, 1)
+
+[node name="ButtonRow" type="HBoxContainer" parent="CenterContainer/VBox"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 20
+
+[node name="BackButton" type="Button" parent="CenterContainer/VBox/ButtonRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(140, 50)
+text = "← 返回菜单"
+theme_override_font_sizes/font_size = 18
+
+[node name="PrevButton" type="Button" parent="CenterContainer/VBox/ButtonRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(140, 50)
+text = "← 上一页"
+theme_override_font_sizes/font_size = 18
+
+[node name="NextButton" type="Button" parent="CenterContainer/VBox/ButtonRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(140, 50)
+text = "下一页 →"
+theme_override_font_sizes/font_size = 18
