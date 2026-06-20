@@ -1,0 +1,269 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  phone     String?
+  role      String   @default("staff")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  managedEvents     Event[]          @relation("EventManager")
+  assignedOrders    Order[]          @relation("OrderAssignee")
+  checkInRecords    CheckInRecord[]
+  disputeNotifs     DisputeNotification[]
+  disputeAssignees  RefundDispute[]  @relation("DisputeAssignee")
+  operationLogs     OperationLog[]
+}
+
+model Event {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  venue       String
+  eventDate   DateTime
+  status      String   @default("draft")
+  managerId   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  manager      User          @relation("EventManager", fields: [managerId], references: [id])
+  seatMaps     SeatMap[]
+  ticketTypes  TicketType[]
+  orders       Order[]
+
+  @@index([status])
+  @@index([eventDate])
+  @@index([managerId])
+}
+
+model SeatMap {
+  id              String   @id @default(uuid())
+  eventId         String
+  name            String
+  totalSeats      Int
+  thresholdWarn   Int      @default(80)
+  thresholdFull   Int      @default(95)
+  layoutData      Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  event    Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  zones    SeatZone[]
+
+  @@index([eventId])
+}
+
+model SeatZone {
+  id        String   @id @default(uuid())
+  seatMapId String
+  name      String
+  area      String
+  rowCount  Int
+  colCount  Int
+  price     Decimal @default(0) @db.Decimal(10, 2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  seatMap SeatMap @relation(fields: [seatMapId], references: [id], onDelete: Cascade)
+  seats   Seat[]
+
+  @@index([seatMapId])
+  @@index([area])
+}
+
+model Seat {
+  id        String   @id @default(uuid())
+  zoneId    String
+  rowLabel  String
+  colLabel  String
+  seatNo    String
+  status    String   @default("available")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  zone      SeatZone   @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  orderItem OrderItem?
+
+  @@unique([zoneId, seatNo])
+  @@index([zoneId])
+  @@index([status])
+}
+
+model TicketType {
+  id           String   @id @default(uuid())
+  eventId      String
+  name         String
+  price        Decimal  @db.Decimal(10, 2)
+  quota        Int
+  soldCount    Int      @default(0)
+  rules        Json?
+  refundable   Boolean  @default(true)
+  transferable Boolean @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  event      Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  orderItems OrderItem[]
+
+  @@index([eventId])
+}
+
+model Order {
+  id           String   @id @default(uuid())
+  eventId      String
+  orderNo      String   @unique
+  buyerName    String
+  buyerPhone   String
+  buyerEmail   String?
+  totalAmount  Decimal  @db.Decimal(10, 2)
+  status       String   @default("pending")
+  assigneeId   String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  event     Event        @relation(fields: [eventId], references: [id])
+  assignee  User?        @relation("OrderAssignee", fields: [assigneeId], references: [id])
+  items     OrderItem[]
+  disputes  RefundDispute[]
+
+  @@index([eventId])
+  @@index([status])
+  @@index([assigneeId])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id           String  @id @default(uuid())
+  orderId      String
+  ticketTypeId String
+  seatId       String? @unique
+  unitPrice    Decimal @db.Decimal(10, 2)
+  status       String  @default("valid")
+
+  order       Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  ticketType  TicketType  @relation(fields: [ticketTypeId], references: [id])
+  seat        Seat?       @relation(fields: [seatId], references: [id])
+  checkIn     CheckInRecord?
+
+  @@index([orderId])
+  @@index([ticketTypeId])
+  @@index([status])
+}
+
+model CheckInDict {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  label       String
+  category    String?
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  records CheckInRecord[]
+
+  @@index([category])
+  @@index([isActive])
+}
+
+model CheckInRecord {
+  id              String   @id @default(uuid())
+  orderItemId     String   @unique
+  dictCode        String
+  checkedBy       String
+  checkedAt       DateTime @default(now())
+  note            String?
+  createdAt       DateTime @default(now())
+
+  orderItem  OrderItem    @relation(fields: [orderItemId], references: [id])
+  dict       CheckInDict  @relation(fields: [dictCode], references: [code])
+  checker    User         @relation(fields: [checkedBy], references: [id])
+
+  @@index([dictCode])
+  @@index([checkedBy])
+  @@index([checkedAt])
+}
+
+model RefundRule {
+  id              String   @id @default(uuid())
+  name            String
+  ticketTypeId    String?
+  beforeDays      Int?
+  refundPercent   Decimal  @db.Decimal(5, 2)
+  materials       Json?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  disputes RefundDispute[]
+
+  @@index([isActive])
+  @@index([ticketTypeId])
+}
+
+model RefundDispute {
+  id            String   @id @default(uuid())
+  orderId       String
+  orderItemId   String
+  refundRuleId  String?
+  reason        String
+  evidence      Json?
+  status        String   @default("pending")
+  assigneeId    String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  order       Order       @relation(fields: [orderId], references: [id])
+  refundRule  RefundRule? @relation(fields: [refundRuleId], references: [id])
+  assignee    User?       @relation("DisputeAssignee", fields: [assigneeId], references: [id])
+  notifications DisputeNotification[]
+
+  @@index([orderId])
+  @@index([status])
+  @@index([assigneeId])
+  @@index([createdAt])
+}
+
+model DisputeNotification {
+  id         String   @id @default(uuid())
+  disputeId  String
+  userId     String
+  type       String
+  message    String
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  dispute RefundDispute @relation(fields: [disputeId], references: [id], onDelete: Cascade)
+  user    User                       @relation(fields: [userId], references: [id])
+
+  @@index([disputeId])
+  @@index([userId])
+  @@index([isRead])
+}
+
+model OperationLog {
+  id         String   @id @default(uuid())
+  entityType String
+  entityId   String
+  action     String
+  detail     Json?
+  operatorId String
+  createdAt  DateTime @default(now())
+
+  operator User @relation(fields: [operatorId], references: [id])
+
+  @@index([entityType])
+  @@index([entityId])
+  @@index([action])
+  @@index([createdAt])
+  @@index([operatorId])
+}
