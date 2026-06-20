@@ -26,12 +26,12 @@ export interface PerformanceSlot {
   category: string;
 }
 
-export interface VerificationRecord {
+export interface TicketOrder {
   id: string;
   ticketRuleId: string;
   slotId: string;
-  isValid: boolean;
-  reason?: string;
+  quantity: number;
+  sponsorId?: string;
 }
 
 export interface LevelConfig {
@@ -42,7 +42,7 @@ export interface LevelConfig {
   performanceSlots: PerformanceSlot[];
   ticketRules: TicketRule[];
   sponsors: SponsorItem[];
-  verificationRecords: VerificationRecord[];
+  ticketOrders: TicketOrder[];
   targetScore: number;
   difficulty: 1 | 2 | 3 | 4 | 5;
 }

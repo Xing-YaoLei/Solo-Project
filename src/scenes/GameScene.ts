@@ -49,6 +49,7 @@ export class GameScene extends Phaser.Scene {
   private slotZones: Map<string, Phaser.GameObjects.Container> = new Map();
   private draggedItem: Phaser.GameObjects.Container | null = null;
   private dragOffset = { x: 0, y: 0 };
+  private sponsorStartPositions: Map<string, { x: number; y: number }> = new Map();
 
   private verifyButtons: { valid: Phaser.GameObjects.Container; invalid: Phaser.GameObjects.Container } | null = null;
   private verifyTaskDisplay: Phaser.GameObjects.Container | null = null;
@@ -76,6 +77,7 @@ export class GameScene extends Phaser.Scene {
     this.draggableSponsors.clear();
     this.slotZones.clear();
     this.draggedItem = null;
+    this.sponsorStartPositions.clear();
     this.verifyButtons = null;
     this.verifyTaskDisplay = null;
     this.comboParticles = null;
@@ -91,7 +93,7 @@ export class GameScene extends Phaser.Scene {
 
     this.scoring.reset();
     this.sponsorSys.load(this.levelConfig.sponsors, this.levelConfig.performanceSlots);
-    this.verification.load(this.levelConfig.ticketRules, this.levelConfig.performanceSlots, this.levelConfig.verificationRecords);
+    this.verification.load(this.levelConfig.ticketRules, this.levelConfig.performanceSlots, this.levelConfig.ticketOrders, this.levelConfig.sponsors);
 
     this.createHUD(width, height);
     this.createFeedback(width, height);
@@ -235,88 +237,116 @@ export class GameScene extends Phaser.Scene {
     const slots = this.levelConfig.performanceSlots;
     const sponsors = this.levelConfig.sponsors;
 
-    const slotStartX = 60;
-    const slotY = 180;
+    const padding = 30;
+    const usableW = w - padding * 2;
+    const slotAreaTop = 80;
+    const slotAreaBottom = h - 200;
+    const slotAreaH = slotAreaBottom - slotAreaTop;
+
+    const { cols: slotCols, rows: slotRows, width: slotW, height: slotH } = this.calcGridLayout(slots.length, usableW, slotAreaH, 110, 140, 12);
+    const slotTotalW = slotCols * slotW + (slotCols - 1) * 12;
+    const slotStartX = (w - slotTotalW) / 2 + slotW / 2;
+    const slotTotalH = slotRows * slotH + (slotRows - 1) * 12;
+    const slotStartY = slotAreaTop + (slotAreaH - slotTotalH) / 2 + slotH / 2;
 
     for (let i = 0; i < slots.length; i++) {
       const slot = slots[i];
-      const x = slotStartX + i * 155;
-      const container = this.add.container(x, slotY);
+      const col = i % slotCols;
+      const row = Math.floor(i / slotCols);
+      const x = slotStartX + col * (slotW + 12);
+      const y = slotStartY + row * (slotH + 12);
+      const container = this.add.container(x, y);
 
-      const bg = this.add.rectangle(0, 0, 140, 180, COLORS.PANEL, 0.9)
+      const bg = this.add.rectangle(0, 0, slotW, slotH, COLORS.PANEL, 0.9)
         .setStrokeStyle(2, COLORS.PRIMARY, 0.5);
       container.add(bg);
 
-      const name = this.add.text(0, -60, slot.name, {
-        fontSize: '14px', color: '#ffffff', fontStyle: 'bold', align: 'center',
+      const nameFontSize = Math.min(13, slotW / 7);
+      const name = this.add.text(0, -slotH / 2 + 18, slot.name, {
+        fontSize: `${nameFontSize}px`, color: '#ffffff', fontStyle: 'bold', align: 'center',
+        wordWrap: { width: slotW - 10 },
       }).setOrigin(0.5);
       container.add(name);
 
-      const time = this.add.text(0, -40, slot.time, {
-        fontSize: '12px', color: '#ffd54f',
+      const time = this.add.text(0, -slotH / 2 + 36, slot.time, {
+        fontSize: '11px', color: '#ffd54f',
       }).setOrigin(0.5);
       container.add(time);
 
-      const cap = this.add.text(0, -20, `容量: ${slot.capacity}`, {
-        fontSize: '11px', color: '#aaaaaa',
+      const cap = this.add.text(0, -slotH / 2 + 52, `容量: ${slot.capacity}`, {
+        fontSize: '10px', color: '#aaaaaa',
       }).setOrigin(0.5);
       container.add(cap);
 
-      const price = this.add.text(0, 0, `¥${slot.basePrice}`, {
-        fontSize: '13px', color: '#4fc3f7',
+      const price = this.add.text(0, -slotH / 2 + 68, `¥${slot.basePrice}`, {
+        fontSize: '12px', color: '#4fc3f7',
       }).setOrigin(0.5);
       container.add(price);
 
-      const dropZone = this.add.rectangle(0, 40, 120, 60, 0x2a2a4a, 0.5)
+      const dropZoneH = Math.min(50, slotH - 90);
+      const dropZone = this.add.rectangle(0, slotH / 2 - 30 - dropZoneH / 2, slotW - 16, dropZoneH, 0x2a2a4a, 0.5)
         .setStrokeStyle(1, 0x4fc3f7, 0.3);
       dropZone.setName('dropZone');
       container.add(dropZone);
 
-      const dropLabel = this.add.text(0, 40, '拖入', {
-        fontSize: '11px', color: '#666688',
+      const dropLabel = this.add.text(0, slotH / 2 - 30 - dropZoneH / 2, '拖入', {
+        fontSize: '10px', color: '#666688',
       }).setOrigin(0.5);
       container.add(dropLabel);
 
-      container.setSize(140, 180);
+      container.setSize(slotW, slotH);
       container.setDepth(5);
       this.slotZones.set(slot.id, container);
     }
 
-    const sponsorStartX = 60;
-    const sponsorY = h - 140;
+    const sponsorAreaTop = h - 170;
+    const sponsorAreaH = 140;
+    const { cols: spCols, rows: spRows, width: spW, height: spH } = this.calcGridLayout(sponsors.length, usableW, sponsorAreaH, 140, 60, 10);
+    const spTotalW = spCols * spW + (spCols - 1) * 10;
+    const spStartX = (w - spTotalW) / 2 + spW / 2;
+    const spTotalH = spRows * spH + (spRows - 1) * 10;
+    const spStartY = sponsorAreaTop + (sponsorAreaH - spTotalH) / 2 + spH / 2;
 
     for (let i = 0; i < sponsors.length; i++) {
       const sp = sponsors[i];
-      const x = sponsorStartX + i * 200;
-      const container = this.add.container(x, sponsorY);
+      const col = i % spCols;
+      const row = Math.floor(i / spCols);
+      const x = spStartX + col * (spW + 10);
+      const y = spStartY + row * (spH + 10);
+      const container = this.add.container(x, y);
       container.setName(sp.id);
 
-      const bg = this.add.rectangle(0, 0, 180, 80, 0x2a3a5e, 0.9)
+      this.sponsorStartPositions.set(sp.id, { x, y });
+
+      const bg = this.add.rectangle(0, 0, spW, spH, 0x2a3a5e, 0.9)
         .setStrokeStyle(2, this.getTierColor(sp.tier));
       container.add(bg);
 
-      const tierIcon = this.add.image(-70, -20, this.getTierKey(sp.tier)).setDisplaySize(20, 20);
+      const iconSize = Math.min(18, spH / 3);
+      const tierIcon = this.add.image(-spW / 2 + 15 + iconSize / 2, -8, this.getTierKey(sp.tier))
+        .setDisplaySize(iconSize, iconSize);
       container.add(tierIcon);
 
-      const name = this.add.text(0, -20, sp.name, {
-        fontSize: '14px', color: '#ffffff', fontStyle: 'bold',
+      const nameFontSize = Math.min(13, spW / 10);
+      const name = this.add.text(0, -8, sp.name, {
+        fontSize: `${nameFontSize}px`, color: '#ffffff', fontStyle: 'bold',
       }).setOrigin(0.5);
       container.add(name);
 
-      const budget = this.add.text(0, 5, `预算: ¥${sp.budget}`, {
-        fontSize: '12px', color: '#ffd54f',
+      const budget = this.add.text(0, 10, `预算: ¥${sp.budget}`, {
+        fontSize: '10px', color: '#ffd54f',
       }).setOrigin(0.5);
       container.add(budget);
 
-      const verify = this.add.text(0, 22, sp.requiresVerification ? '需核销' : '', {
-        fontSize: '10px', color: '#ef5350',
+      const verify = this.add.text(0, 24, sp.requiresVerification ? '需核销' : '', {
+        fontSize: '9px', color: '#ef5350',
       }).setOrigin(0.5);
       container.add(verify);
 
-      container.setSize(180, 80);
+      container.setSize(spW, spH);
       container.setDepth(10);
 
-      const matterBody = Matter.Bodies.rectangle(x, sponsorY, 180, 80, {
+      const matterBody = Matter.Bodies.rectangle(x, y, spW, spH, {
         isStatic: false, friction: 0.8, restitution: 0.2,
         label: sp.id,
       });
@@ -354,11 +384,49 @@ export class GameScene extends Phaser.Scene {
       this.draggableSponsors.set(sp.id, container);
     }
 
-    const skipBtn = this.add.text(w / 2, h - 40, '跳过排期 →', {
-      fontSize: '16px', color: '#aaaaaa',
+    const skipBtn = this.add.text(w / 2, h - 25, '跳过排期 →', {
+      fontSize: '14px', color: '#aaaaaa',
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     skipBtn.on('pointerdown', () => this.transitionToVerification());
     this.phaseContainer.add(skipBtn);
+  }
+
+  private calcGridLayout(
+    count: number,
+    maxW: number,
+    maxH: number,
+    minW: number,
+    minH: number,
+    gap: number
+  ): { cols: number; rows: number; width: number; height: number } {
+    let bestCols = 1;
+    let bestRows = count;
+    let bestItemW = minW;
+    let bestItemH = minH;
+    let bestUtilization = 0;
+
+    for (let cols = 1; cols <= count; cols++) {
+      const rows = Math.ceil(count / cols);
+      const itemW = (maxW - (cols - 1) * gap) / cols;
+      const itemH = (maxH - (rows - 1) * gap) / rows;
+      const clampedW = Math.max(minW, itemW);
+      const clampedH = Math.max(minH, itemH);
+      const totalW = cols * clampedW + (cols - 1) * gap;
+      const totalH = rows * clampedH + (rows - 1) * gap;
+
+      if (totalW <= maxW && totalH <= maxH) {
+        const utilization = (totalW * totalH) / (maxW * maxH);
+        if (utilization > bestUtilization) {
+          bestUtilization = utilization;
+          bestCols = cols;
+          bestRows = rows;
+          bestItemW = clampedW;
+          bestItemH = clampedH;
+        }
+      }
+    }
+
+    return { cols: bestCols, rows: bestRows, width: bestItemW, height: bestItemH };
   }
 
   private handleSponsorDrop(container: Phaser.GameObjects.Container): void {
@@ -367,11 +435,14 @@ export class GameScene extends Phaser.Scene {
     let bestDist = Infinity;
 
     this.slotZones.forEach((slotCont, slotId) => {
+      const dropZone = slotCont.getByName('dropZone') as Phaser.GameObjects.Rectangle;
+      const dropY = slotCont.y + (dropZone ? dropZone.y : 40);
       const dist = Phaser.Math.Distance.Between(
         container.x, container.y,
-        slotCont.x, slotCont.y + 40
+        slotCont.x, dropY
       );
-      if (dist < 100 && dist < bestDist) {
+      const threshold = Math.max(80, slotCont.width / 2 + container.width / 2 + 20);
+      if (dist < threshold && dist < bestDist) {
         bestDist = dist;
         bestSlot = slotId;
       }
@@ -390,7 +461,9 @@ export class GameScene extends Phaser.Scene {
         }
 
         const slotCont = this.slotZones.get(bestSlot)!;
-        container.setPosition(slotCont.x, slotCont.y + 40);
+        const dropZone = slotCont.getByName('dropZone') as Phaser.GameObjects.Rectangle;
+        const targetY = slotCont.y + (dropZone ? dropZone.y : 40);
+        container.setPosition(slotCont.x, targetY);
 
         const body = container.getData('matterBody') as Matter.Body;
         if (body) {
@@ -406,33 +479,39 @@ export class GameScene extends Phaser.Scene {
         }
       }
     } else {
-      const sp = this.levelConfig.sponsors.find(s => s.id === sponsorId);
-      if (sp) {
-        const idx = this.levelConfig.sponsors.indexOf(sp);
-        const startX = 60 + idx * 200;
-        const { height } = this.scale;
+      const startPos = this.sponsorStartPositions.get(sponsorId);
+      if (startPos) {
         if (this.settings.shouldAnimate()) {
           this.tweens.add({
             targets: container,
-            x: startX, y: height - 140,
+            x: startPos.x, y: startPos.y,
             duration: 300 * this.settings.getAnimDurationMultiplier(),
             ease: 'Back.easeOut',
           });
         } else {
-          container.setPosition(startX, height - 140);
+          container.setPosition(startPos.x, startPos.y);
         }
         const body = container.getData('matterBody') as Matter.Body;
-        if (body) Matter.Body.setPosition(body, { x: startX, y: height - 140 });
+        if (body) Matter.Body.setPosition(body, { x: startPos.x, y: startPos.y });
       }
     }
   }
 
   private transitionToVerification(): void {
     this.phase = 'verification';
-    this.phaseContainer.destroy(true);
+
+    this.draggableSponsors.forEach((container) => {
+      container.destroy();
+    });
     this.draggableSponsors.clear();
     this.slotZones.clear();
+    this.sponsorStartPositions.clear();
+
     Matter.Engine.clear(this.matterEngine);
+
+    this.phaseContainer.destroy(true);
+    this.verifyTaskDisplay = null;
+    this.verifyButtons = null;
 
     this.buildVerificationPhase(this.scale.width, this.scale.height);
   }
@@ -457,45 +536,80 @@ export class GameScene extends Phaser.Scene {
     this.verifyTaskDisplay = this.add.container(0, 0);
 
     const cardX = w / 2;
-    const cardY = h / 2 - 40;
+    const cardY = h / 2 - 30;
+    const cardW = 420;
+    const cardH = 280;
 
-    const cardBg = this.add.rectangle(cardX, cardY, 400, 220, COLORS.PANEL, 0.95)
+    const cardBg = this.add.rectangle(cardX, cardY, cardW, cardH, COLORS.PANEL, 0.95)
       .setStrokeStyle(2, COLORS.PRIMARY, 0.6);
     this.verifyTaskDisplay.add(cardBg);
 
-    const title = this.add.text(cardX, cardY - 80, '核销验证', {
+    const title = this.add.text(cardX, cardY - cardH / 2 + 20, '核销验证', {
       fontSize: '18px', color: '#4fc3f7', fontStyle: 'bold',
     }).setOrigin(0.5);
     this.verifyTaskDisplay.add(title);
 
-    const progressText = this.add.text(cardX, cardY - 60, `${this.verification.progress + 1} / ${this.verification.total}`, {
+    const progressText = this.add.text(cardX, cardY - cardH / 2 + 42, `${this.verification.progress + 1} / ${this.verification.total}`, {
       fontSize: '12px', color: '#888888',
     }).setOrigin(0.5);
     this.verifyTaskDisplay.add(progressText);
 
     const ruleColor = '#' + task.rule.color.toString(16).padStart(6, '0');
-    const ticketName = this.add.text(cardX, cardY - 30, `票种: ${task.rule.name}`, {
-      fontSize: '20px', color: ruleColor, fontStyle: 'bold',
-    }).setOrigin(0.5);
+    const ticketName = this.add.text(cardX - cardW / 2 + 25, cardY - cardH / 2 + 65, `票种: ${task.rule.name}`, {
+      fontSize: '18px', color: ruleColor, fontStyle: 'bold',
+    }).setOrigin(0, 0.5);
     this.verifyTaskDisplay.add(ticketName);
 
-    const slotName = this.add.text(cardX, cardY, `演出: ${task.slot.name} (${task.slot.time})`, {
+    const quantityText = this.add.text(cardX + cardW / 2 - 25, cardY - cardH / 2 + 65, `数量: ${task.order.quantity}张`, {
       fontSize: '16px', color: '#ffffff',
-    }).setOrigin(0.5);
+    }).setOrigin(1, 0.5);
+    this.verifyTaskDisplay.add(quantityText);
+
+    const slotName = this.add.text(cardX - cardW / 2 + 25, cardY - cardH / 2 + 95, `演出: ${task.slot.name} (${task.slot.time})`, {
+      fontSize: '15px', color: '#ffffff',
+    }).setOrigin(0, 0.5);
     this.verifyTaskDisplay.add(slotName);
 
-    const discount = this.add.text(cardX, cardY + 25, `折扣率: ${(task.rule.discountRate * 100).toFixed(0)}% | 单价: ¥${task.slot.basePrice}`, {
+    const discount = this.add.text(cardX - cardW / 2 + 25, cardY - cardH / 2 + 120, `折扣率: ${(task.rule.discountRate * 100).toFixed(0)}% | 单价: ¥${task.slot.basePrice}`, {
       fontSize: '13px', color: '#aaaaaa',
-    }).setOrigin(0.5);
+    }).setOrigin(0, 0.5);
     this.verifyTaskDisplay.add(discount);
 
-    const sponsorNote = this.add.text(cardX, cardY + 48,
-      task.rule.requiresSponsor ? '⚠ 此票种需赞助商关联' : '',
-      { fontSize: '12px', color: '#ef5350' }
-    ).setOrigin(0.5);
-    this.verifyTaskDisplay.add(sponsorNote);
+    const maxPerOrder = this.add.text(cardX - cardW / 2 + 25, cardY - cardH / 2 + 142, `限购: ${task.rule.maxPerOrder}张/单`, {
+      fontSize: '12px', color: '#ffb74d',
+    }).setOrigin(0, 0.5);
+    this.verifyTaskDisplay.add(maxPerOrder);
 
-    const btnY = cardY + 90;
+    const divisorY = cardY - 10;
+    this.verifyTaskDisplay.add(this.add.line(cardX, divisorY, cardW - 40, 0, 0x333355, 0.5));
+
+    const hasSponsorInfo = task.rule.requiresSponsor || task.sponsor;
+    if (hasSponsorInfo) {
+      const sponsorLabel = this.add.text(cardX - cardW / 2 + 25, divisorY + 18, '赞助商:', {
+        fontSize: '13px', color: '#aaaaaa',
+      }).setOrigin(0, 0.5);
+      this.verifyTaskDisplay.add(sponsorLabel);
+
+      const sponsorValue = task.sponsor ? task.sponsor.name : '无';
+      const sponsorColor = task.sponsor ? '#ffffff' : '#ef5350';
+      const sponsorValText = this.add.text(cardX - cardW / 2 + 95, divisorY + 18, sponsorValue, {
+        fontSize: '13px', color: sponsorColor, fontStyle: 'bold',
+      }).setOrigin(0, 0.5);
+      this.verifyTaskDisplay.add(sponsorValText);
+
+      const requiresText = this.add.text(cardX + cardW / 2 - 25, divisorY + 18,
+        task.rule.requiresSponsor ? '需关联' : '无需关联', {
+          fontSize: '12px', color: task.rule.requiresSponsor ? '#f06292' : '#888888',
+        }).setOrigin(1, 0.5);
+      this.verifyTaskDisplay.add(requiresText);
+    } else {
+      const noSponsor = this.add.text(cardX, divisorY + 18, '无赞助商关联要求', {
+        fontSize: '12px', color: '#666688',
+      }).setOrigin(0.5);
+      this.verifyTaskDisplay.add(noSponsor);
+    }
+
+    const btnY = cardY + cardH / 2 - 40;
 
     const validBtn = this.add.container(cardX - 80, btnY);
     const validBg = this.add.rectangle(0, 0, 120, 44, COLORS.SUCCESS, 0.9);
@@ -544,7 +658,7 @@ export class GameScene extends Phaser.Scene {
       this.spawnComboParticles(this.scale.width / 2, this.scale.height / 2);
     } else {
       this.scoring.recordError();
-      const reason = result.record.reason || '规则不符';
+      const reason = result.failReasons.length > 0 ? result.failReasons[0] : '规则不符';
       this.showFeedback(`✗ ${reason}`, '#ef5350');
     }
 
