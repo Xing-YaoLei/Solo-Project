@@ -14,7 +14,11 @@
       "refundable": true,
       "max_entries": 1
     },
-    "difficulty": 1
+    "difficulty": 1,
+    "assets": {
+      "icon": "",
+      "ticket_image": ""
+    }
   },
   {
     "id": "student_ticket",
@@ -32,7 +36,11 @@
       "refundable": true,
       "max_entries": 1
     },
-    "difficulty": 2
+    "difficulty": 2,
+    "assets": {
+      "icon": "",
+      "ticket_image": ""
+    }
   },
   {
     "id": "senior_ticket",
@@ -49,7 +57,11 @@
       "refundable": true,
       "max_entries": 1
     },
-    "difficulty": 2
+    "difficulty": 2,
+    "assets": {
+      "icon": "",
+      "ticket_image": ""
+    }
   },
   {
     "id": "vip_ticket",
@@ -68,7 +80,11 @@
       "gift_included": true,
       "max_entries": 1
     },
-    "difficulty": 3
+    "difficulty": 3,
+    "assets": {
+      "icon": "",
+      "ticket_image": ""
+    }
   },
   {
     "id": "group_ticket",
@@ -86,12 +102,16 @@
       "refundable": true,
       "max_entries": 20
     },
-    "difficulty": 3
+    "difficulty": 3,
+    "assets": {
+      "icon": "",
+      "ticket_image": ""
+    }
   },
   {
     "id": "weekday_ticket",
     "name": "平日票",
-    "description": "仅限工作日（周一至周五使用的工作日使用，周末不可使用。",
+    "description": "仅限工作日（周一至周五）使用，周末不可使用。",
     "rules": {
       "age_min": 0,
       "age_max": 99,
@@ -103,12 +123,16 @@
       "refundable": true,
       "max_entries": 1
     },
-    "difficulty": 4
+    "difficulty": 4,
+    "assets": {
+      "icon": "",
+      "ticket_image": ""
+    }
   },
   {
     "id": "evening_ticket",
     "name": "夜场票",
-    "description": "限定入场。",
+    "description": "限定时段入场，仅周五至周日18:00后。",
     "rules": {
       "age_min": 0,
       "age_max": 99,
@@ -120,6 +144,10 @@
       "refundable": true,
       "max_entries": 1
     },
-    "difficulty": 4
+    "difficulty": 4,
+    "assets": {
+      "icon": "",
+      "ticket_image": ""
+    }
   }
 ]

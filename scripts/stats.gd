@@ -12,9 +12,12 @@ var overall_stats: Dictionary = {}
 
 func _ready() -> void:
 	back_btn.pressed.connect(_on_back)
-	lb_filter.add_item("全部关卡", "all")
+	lb_filter.add_item("全部关卡")
+	lb_filter.set_item_metadata(0, "all")
 	for level in DataLoader.levels:
-		lb_filter.add_item(level.get("name", level["id"]), level["id"])
+		var idx: int = lb_filter.get_item_count()
+		lb_filter.add_item(level.get("name", level["id"]))
+		lb_filter.set_item_metadata(idx, level["id"])
 	lb_filter.item_selected.connect(_on_lb_filter)
 	_refresh_all()
 
@@ -265,8 +268,10 @@ func _fill_history() -> void:
 		hbox.add_child(score_lbl)
 
 func _on_lb_filter(index: int) -> void:
-	var level_id: String = lb_filter.get_item_metadata(index)
-	_fill_leaderboard(level_id)
+	var level_id = lb_filter.get_item_metadata(index)
+	if level_id == null:
+		level_id = "all"
+	_fill_leaderboard(str(level_id))
 
 func _on_back() -> void:
 	GameManager.go_to_main_menu()

@@ -73,3 +73,38 @@ func generate_random_orders(level_data: Dictionary) -> Array:
 		result.append(order)
 	result.shuffle()
 	return result
+
+func load_texture(asset_path: String) -> Texture2D:
+	if asset_path == "":
+		return null
+	if not ResourceLoader.exists(asset_path):
+		push_warning("Asset not found: " + asset_path)
+		return null
+	return load(asset_path) as Texture2D
+
+func load_audio_stream(asset_path: String) -> AudioStream:
+	if asset_path == "":
+		return null
+	if not ResourceLoader.exists(asset_path):
+		push_warning("Asset not found: " + asset_path)
+		return null
+	return load(asset_path) as AudioStream
+
+func get_asset_path(data: Dictionary, key: String, default: String = "") -> String:
+	var assets: Dictionary = data.get("assets", {})
+	return assets.get(key, default)
+
+func get_level_asset(level_data: Dictionary, key: String) -> String:
+	return get_asset_path(level_data, key)
+
+func get_ticket_type_asset(ticket_type_data: Dictionary, key: String) -> String:
+	return get_asset_path(ticket_type_data, key)
+
+func get_tutorial_asset(tutorial_data: Dictionary, key: String) -> String:
+	return get_asset_path(tutorial_data, key)
+
+func get_slide_image_path(tutorial_data: Dictionary, slide_index: int) -> String:
+	var slides: Array = tutorial_data.get("slides", [])
+	if slide_index < 0 or slide_index >= slides.size():
+		return ""
+	return slides[slide_index].get("image", "")

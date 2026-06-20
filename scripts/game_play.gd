@@ -22,6 +22,11 @@ signal decision_made(result: Dictionary)
 @onready var rules_popup: PanelContainer = $RulesPopup
 @onready var rules_text: RichTextLabel = $RulesPopup/VBoxContainer/RulesText
 @onready var close_rules_btn: Button = $RulesPopup/VBoxContainer/CloseRulesBtn
+@onready var bg_texture: TextureRect = $BackgroundAsset
+@onready var bgm_player: AudioStreamPlayer = $BgmPlayer
+@onready var sfx_correct_player: AudioStreamPlayer = $SfxCorrectPlayer
+@onready var sfx_wrong_player: AudioStreamPlayer = $SfxWrongPlayer
+@onready var sfx_dispute_player: AudioStreamPlayer = $SfxDisputePlayer
 
 var level_data: Dictionary = {}
 var orders: Array = []
@@ -50,6 +55,8 @@ func _setup_level() -> void:
 	current_order_index = 0
 	ScoreManager.reset_session()
 
+	_load_level_assets()
+
 	intro_text.text = "[b]%s[/b]\n\n%s" % [level_data.get("name", ""), level_data.get("intro_text", "")]
 	var hints: Array = level_data.get("tutorial_hints", [])
 	if hints.size() > 0:
@@ -59,6 +66,21 @@ func _setup_level() -> void:
 
 	intro_panel.visible = true
 	showing_intro = true
+
+func _load_level_assets() -> void:
+	var bg_path: String = DataLoader.get_level_asset(level_data, "background")
+	if bg_path != "":
+		var tex: Texture2D = DataLoader.load_texture(bg_path)
+		if tex:
+			bg_texture.texture = tex
+			bg_texture.visible = true
+
+	var bgm_path: String = DataLoader.get_level_asset(level_data, "bgm")
+	if bgm_path != "":
+		var stream: AudioStream = DataLoader.load_audio_stream(bgm_path)
+		if stream:
+			bgm_player.stream = stream
+			bgm_player.play()
 
 func _start_game() -> void:
 	intro_panel.visible = false
@@ -165,12 +187,16 @@ func _make_decision(decision: String) -> void:
 	if result["score_change"] > 0:
 		feedback_label.text = "✅ 正确！  +%d 分" % result["score_change"]
 		feedback_label.add_theme_color_override("font_color", Color(0.4, 1, 0.4, 1))
+		_play_sfx("sfx_correct")
 	else:
 		var msg: String = "❌ 错误！ %d 分" % result["score_change"]
 		if result.get("wrong_reason", "") != "":
 			msg += "\n原因: %s" % result["wrong_reason"]
 		if result.get("dispute_triggered", false):
 			msg += "\n⚠️  触发退票争议！额外 -25 分"
+			_play_sfx("sfx_dispute")
+		else:
+			_play_sfx("sfx_wrong")
 		feedback_label.text = msg
 		feedback_label.add_theme_color_override("font_color", Color(1, 0.4, 0.4, 1))
 
@@ -181,6 +207,21 @@ func _make_decision(decision: String) -> void:
 	reject_btn.visible = false
 	upgrade_btn.visible = false
 	pass_btn.disabled = false
+
+func _play_sfx(key: String) -> void:
+	var sfx_path: String = DataLoader.get_level_asset(level_data, key)
+	if sfx_path == "":
+		return
+	var stream: AudioStream = DataLoader.load_audio_stream(sfx_path)
+	if stream:
+		var player: AudioStreamPlayer = sfx_correct_player
+		match key:
+			"sfx_wrong":
+				player = sfx_wrong_player
+			"sfx_dispute":
+				player = sfx_dispute_player
+		player.stream = stream
+		player.play()
 
 func _next_order() -> void:
 	pass_btn.text = "✅ 放行通过"

@@ -15,7 +15,16 @@
       "每张普通成人票都需要核验身份证件",
       "注意核对购票人姓名与证件姓名是否一致",
       "检查票面日期是否在有效期内"
-    ]
+    ],
+    "assets": {
+      "icon": "",
+      "background": "",
+      "intro_image": "",
+      "bgm": "",
+      "sfx_correct": "",
+      "sfx_wrong": "",
+      "sfx_dispute": ""
+    }
   },
   {
     "id": "level_02",
@@ -33,7 +42,16 @@
       "学生票：年龄6-28岁，必须出示学生证",
       "老年票：年龄60岁以上，检查身份证出生日期",
       "学生证过期或照片不符都可能是伪造凭证"
-    ]
+    ],
+    "assets": {
+      "icon": "",
+      "background": "",
+      "intro_image": "",
+      "bgm": "",
+      "sfx_correct": "",
+      "sfx_wrong": "",
+      "sfx_dispute": ""
+    }
   },
   {
     "id": "level_03",
@@ -51,7 +69,16 @@
       "VIP票赠送纪念礼品，记得发放",
       "团体票必须由领队统一核销",
       "团体票人数要与实际到场人数一致"
-    ]
+    ],
+    "assets": {
+      "icon": "",
+      "background": "",
+      "intro_image": "",
+      "bgm": "",
+      "sfx_correct": "",
+      "sfx_wrong": "",
+      "sfx_dispute": ""
+    }
   },
   {
     "id": "level_04",
@@ -69,7 +96,16 @@
       "平日票（周一至周五有效），周末不可使用",
       "夜场票仅周五至周日18:00后入场",
       "注意当前时间，不要在错误时间放行"
-    ]
+    ],
+    "assets": {
+      "icon": "",
+      "background": "",
+      "intro_image": "",
+      "bgm": "",
+      "sfx_correct": "",
+      "sfx_wrong": "",
+      "sfx_dispute": ""
+    }
   },
   {
     "id": "level_05",
@@ -87,6 +123,15 @@
       "保持冷静，逐项核对",
       "遇到争议保持专业态度",
       "速度与准确度同样重要"
-    ]
+    ],
+    "assets": {
+      "icon": "",
+      "background": "",
+      "intro_image": "",
+      "bgm": "",
+      "sfx_correct": "",
+      "sfx_wrong": "",
+      "sfx_dispute": ""
+    }
   }
 ]
