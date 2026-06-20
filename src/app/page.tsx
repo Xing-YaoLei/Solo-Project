@@ -51,7 +51,18 @@ export default function DashboardPage() {
   const [cancelEvents, setCancelEvents] = useState<CancelEvent[]>([]);
   const [heatmapData, setHeatmapData] = useState<HeatPoint[]>([]);
   const [loading, setLoading] = useState(true);
-  const [summary, setSummary] = useState({ totalVisitors: 0, avgDaily: 0, growthRate: 0 });
+  const [summary, setSummary] = useState({
+    totalVisitors: 0,
+    avgDaily: 0,
+    growthRate: 0,
+    secondaryConsumptionTotal: 0,
+    secondaryConversionRate: 0,
+    secondaryConsumptionGrowth: 0,
+    secondaryConversionGrowth: 0,
+    activeRoutes: 0,
+    performanceCount: 0,
+    performanceGrowth: 0,
+  });
   const [dateRange, setDateRange] = useState({
     start: subDays(new Date(), 13),
     end: new Date(),
@@ -74,7 +85,12 @@ export default function DashboardPage() {
           const trendData = await trendRes.json();
           setRoutes(trendData.routes || []);
           setCancelEvents(trendData.cancelEvents || []);
-          setSummary(trendData.summary || { totalVisitors: 0, avgDaily: 0, growthRate: 0 });
+          setSummary(trendData.summary || {
+            totalVisitors: 0, avgDaily: 0, growthRate: 0,
+            secondaryConsumptionTotal: 0, secondaryConversionRate: 0,
+            secondaryConsumptionGrowth: 0, secondaryConversionGrowth: 0,
+            activeRoutes: 0, performanceCount: 0, performanceGrowth: 0,
+          });
         }
 
         if (heatRes.ok) {
@@ -168,39 +184,39 @@ export default function DashboardPage() {
               <StatCard
                 title="日均客流"
                 value={avgDaily.toLocaleString()}
-                change={Math.round(summary.growthRate * 0.7 * 100) / 100}
+                change={summary.growthRate}
                 icon={<BarChart3 size={22} />}
                 color="emerald"
                 delay={0.1}
               />
               <StatCard
                 title="二消总额"
-                value={`¥${(totalVisitors * 0.238 * 467 / 10000).toFixed(1)}万`}
-                change={15.7}
+                value={`¥${(summary.secondaryConsumptionTotal / 10000).toFixed(1)}万`}
+                change={summary.secondaryConsumptionGrowth}
                 icon={<ShoppingBag size={22} />}
                 color="accent"
                 delay={0.2}
               />
               <StatCard
                 title="二消转化率"
-                value="23.8%"
-                change={-2.1}
+                value={`${summary.secondaryConversionRate.toFixed(1)}%`}
+                change={summary.secondaryConversionGrowth}
                 icon={<TrendingUp size={22} />}
                 color="violet"
                 delay={0.3}
               />
               <StatCard
                 title="活跃路线"
-                value={`${routes.length} 条`}
-                change={routes.length > 4 ? 1 : 0}
+                value={`${summary.activeRoutes} 条`}
+                change={0}
                 icon={<MapPin size={22} />}
                 color="primary"
                 delay={0.4}
               />
               <StatCard
                 title="演出场次"
-                value={`${Math.max(5, routes.length * 2)} 场`}
-                change={-1}
+                value={`${summary.performanceCount} 场`}
+                change={summary.performanceGrowth}
                 icon={<Filter size={22} />}
                 color="accent"
                 delay={0.5}

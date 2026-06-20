@@ -33,6 +33,13 @@ export interface TrendResponse {
     totalVisitors: number;
     avgDaily: number;
     growthRate: number;
+    secondaryConsumptionTotal: number;
+    secondaryConversionRate: number;
+    secondaryConsumptionGrowth: number;
+    secondaryConversionGrowth: number;
+    activeRoutes: number;
+    performanceCount: number;
+    performanceGrowth: number;
   };
 }
 
@@ -111,6 +118,60 @@ export async function getRouteTrend(query: TrendQuery): Promise<TrendResponse> {
     }
   }
 
+  const perfStart = startOfDay(startDate);
+  const perfEnd = endOfDay(endDate);
+  const performanceCount = await prisma.performance.count({
+    where: { startTime: { gte: perfStart, lte: perfEnd } },
+  });
+
+  const orderFilter = { orderTime: { gte: startOfDay(startDate), lte: endOfDay(endDate) }, status: "paid" };
+  const [merchantOrders, miniappOrders] = await Promise.all([
+    prisma.merchantOrder.findMany({ where: orderFilter, select: { amount: true } }),
+    prisma.miniappOrder.findMany({ where: orderFilter, select: { amount: true } }),
+  ]);
+
+  const merchantTotal = merchantOrders.reduce((sum, o) => sum + o.amount, 0);
+  const miniappTotal = miniappOrders.reduce((sum, o) => sum + o.amount, 0);
+  const secondaryConsumptionTotal = merchantTotal + miniappTotal;
+  const secondaryConversionRate = totalVisitors > 0
+    ? ((merchantOrders.length + miniappOrders.length) / totalVisitors) * 100
+    : 0;
+
+  let secondaryConsumptionGrowth = 0;
+  let secondaryConversionGrowth = 0;
+  let performanceGrowth = 0;
+
+  if (compareType !== "none") {
+    const compareDays = days;
+    const compareStart = subDays(startDate, compareDays);
+    const compareEnd = subDays(endDate, compareDays);
+    const compareOrderFilter = { orderTime: { gte: startOfDay(compareStart), lte: endOfDay(compareEnd) }, status: "paid" };
+
+    const [prevMerchant, prevMiniapp, prevPerfCount] = await Promise.all([
+      prisma.merchantOrder.findMany({ where: compareOrderFilter, select: { amount: true } }),
+      prisma.miniappOrder.findMany({ where: compareOrderFilter, select: { amount: true } }),
+      prisma.performance.count({ where: { startTime: { gte: startOfDay(compareStart), lte: endOfDay(compareEnd) } } }),
+    ]);
+
+    const prevTotal = prevMerchant.reduce((s, o) => s + o.amount, 0) + prevMiniapp.reduce((s, o) => s + o.amount, 0);
+    const prevOrderCount = prevMerchant.length + prevMiniapp.length;
+    const prevStats = await prisma.dailyRouteStat.findMany({
+      where: { statDate: { gte: startOfDay(compareStart), lte: endOfDay(compareEnd) } },
+    });
+    const prevVisitors = prevStats.reduce((s, st) => s + st.visitorCount, 0);
+
+    if (prevTotal > 0) {
+      secondaryConsumptionGrowth = ((secondaryConsumptionTotal - prevTotal) / prevTotal) * 100;
+    }
+    if (prevVisitors > 0 && prevOrderCount > 0) {
+      const prevRate = (prevOrderCount / prevVisitors) * 100;
+      secondaryConversionGrowth = prevRate > 0 ? ((secondaryConversionRate - prevRate) / prevRate) * 100 : 0;
+    }
+    if (prevPerfCount > 0) {
+      performanceGrowth = ((performanceCount - prevPerfCount) / prevPerfCount) * 100;
+    }
+  }
+
   return {
     dateRange: {
       start: startDate.toISOString().split("T")[0],
@@ -129,6 +190,13 @@ export async function getRouteTrend(query: TrendQuery): Promise<TrendResponse> {
       totalVisitors,
       avgDaily,
       growthRate: Math.round(growthRate * 100) / 100,
+      secondaryConsumptionTotal: Math.round(secondaryConsumptionTotal * 100) / 100,
+      secondaryConversionRate: Math.round(secondaryConversionRate * 10) / 10,
+      secondaryConsumptionGrowth: Math.round(secondaryConsumptionGrowth * 10) / 10,
+      secondaryConversionGrowth: Math.round(secondaryConversionGrowth * 10) / 10,
+      activeRoutes: routeData.length,
+      performanceCount,
+      performanceGrowth: Math.round(performanceGrowth * 10) / 10,
     },
   };
 }

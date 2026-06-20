@@ -30,12 +30,26 @@ interface ChartItem {
   amount: number;
   rate: number;
   orders: number;
+  yoyGrowth: number;
+  momGrowth: number;
+}
+
+interface KpiData {
+  totalAmount: number;
+  orderCount: number;
+  conversionRate: number;
+  avgPrice: number;
+  totalAmountGrowth: number;
+  orderCountGrowth: number;
+  conversionRateGrowth: number;
+  avgPriceGrowth: number;
 }
 
 export default function SecondaryConsumptionPage() {
   const [compareType, setCompareType] = useState<"date" | "area">("date");
   const [funnel, setFunnel] = useState<FunnelItem[]>([]);
   const [chartData, setChartData] = useState<ChartItem[]>([]);
+  const [kpi, setKpi] = useState<KpiData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -56,8 +70,11 @@ export default function SecondaryConsumptionPage() {
               amount: c.amount,
               rate: c.conversionRate,
               orders: c.orderCount,
+              yoyGrowth: c.yoyGrowth ?? 0,
+              momGrowth: c.momGrowth ?? 0,
             }))
           );
+          setKpi(data.kpi || null);
         }
       } catch (e) {
         console.error(e);
@@ -68,12 +85,12 @@ export default function SecondaryConsumptionPage() {
     fetchData();
   }, [compareType]);
 
-  const totalAmount = chartData.reduce((s, d) => s + d.amount, 0);
-  const totalOrders = chartData.reduce((s, d) => s + d.orders, 0);
-  const avgRate = chartData.length > 0
+  const totalAmount = kpi?.totalAmount ?? chartData.reduce((s, d) => s + d.amount, 0);
+  const totalOrders = kpi?.orderCount ?? chartData.reduce((s, d) => s + d.orders, 0);
+  const avgRate = kpi?.conversionRate ?? (chartData.length > 0
     ? chartData.reduce((s, d) => s + d.rate, 0) / chartData.length
-    : 0;
-  const avgPrice = totalOrders > 0 ? totalAmount / totalOrders : 0;
+    : 0);
+  const avgPrice = kpi?.avgPrice ?? (totalOrders > 0 ? totalAmount / totalOrders : 0);
 
   return (
     <DashboardLayout>
@@ -127,7 +144,7 @@ export default function SecondaryConsumptionPage() {
               <StatCard
                 title="二消总额"
                 value={`¥${(totalAmount / 10000).toFixed(1)}万`}
-                change={15.7}
+                change={kpi?.totalAmountGrowth ?? 0}
                 icon={<DollarSign size={22} />}
                 color="accent"
                 delay={0}
@@ -135,7 +152,7 @@ export default function SecondaryConsumptionPage() {
               <StatCard
                 title="二消订单数"
                 value={totalOrders.toLocaleString()}
-                change={12.3}
+                change={kpi?.orderCountGrowth ?? 0}
                 icon={<ShoppingCart size={22} />}
                 color="primary"
                 delay={0.1}
@@ -143,7 +160,7 @@ export default function SecondaryConsumptionPage() {
               <StatCard
                 title="二消转化率"
                 value={`${avgRate.toFixed(1)}%`}
-                change={-2.1}
+                change={kpi?.conversionRateGrowth ?? 0}
                 icon={<TrendingUp size={22} />}
                 color="emerald"
                 delay={0.2}
@@ -151,7 +168,7 @@ export default function SecondaryConsumptionPage() {
               <StatCard
                 title="客单价"
                 value={`¥${Math.round(avgPrice)}`}
-                change={5.8}
+                change={kpi?.avgPriceGrowth ?? 0}
                 icon={<Users size={22} />}
                 color="violet"
                 delay={0.3}
@@ -325,10 +342,11 @@ export default function SecondaryConsumptionPage() {
                     <td>
                       <span className="badge badge-info">{item.rate.toFixed(1)}%</span>
                     </td>
-                    <td className="text-emerald-400">+{Math.floor(Math.random() * 20) + 5}%</td>
-                    <td className={Math.random() > 0.5 ? "text-emerald-400" : "text-red-400"}>
-                      {Math.random() > 0.5 ? "+" : "-"}
-                      {Math.floor(Math.random() * 10)}%
+                    <td className={item.yoyGrowth >= 0 ? "text-emerald-400" : "text-red-400"}>
+                      {item.yoyGrowth >= 0 ? "+" : ""}{item.yoyGrowth.toFixed(1)}%
+                    </td>
+                    <td className={item.momGrowth >= 0 ? "text-emerald-400" : "text-red-400"}>
+                      {item.momGrowth >= 0 ? "+" : ""}{item.momGrowth.toFixed(1)}%
                     </td>
                   </tr>
                 ))}

@@ -63,6 +63,7 @@ export async function getPerformanceList(query: PerformanceListQuery) {
       orderBy: { startTime: "asc" },
       include: {
         _count: { select: { seats: true, cancels: true } },
+        cancels: { take: 1 },
       },
     }),
   ]);
@@ -86,6 +87,14 @@ export async function getPerformanceList(query: PerformanceListQuery) {
     soldSeats: soldMap.get(p.id) ?? 0,
     status: p.status,
     hasCancel: p._count.cancels > 0,
+    cancelInfo: p.cancels.length > 0
+      ? {
+          id: p.cancels[0].id,
+          cancelTime: p.cancels[0].cancelTime.toISOString(),
+          reason: p.cancels[0].reason,
+          affectedCount: p.cancels[0].affectedCount,
+        }
+      : null,
   }));
 
   return { total, list, page, pageSize };

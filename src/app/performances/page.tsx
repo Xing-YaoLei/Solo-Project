@@ -57,24 +57,21 @@ export default function PerformancesPage() {
 
         if (perfRes.ok) {
           const data = await perfRes.json();
-          setPerformances((data.list || []).map((p: any) => ({
-            ...p,
-            soldSeats: p.soldSeats ?? Math.round(p.totalSeats * (0.5 + Math.random() * 0.4)),
-          })));
+          setPerformances(data.list || []);
         }
 
         if (cancelRes.ok) {
           const data = await cancelRes.json();
           const events: CancelEvent[] = [];
           (data.list || []).forEach((p: any) => {
-            if (p.hasCancel) {
+            if (p.hasCancel && p.cancelInfo) {
               events.push({
-                id: `cancel-${p.id}`,
+                id: p.cancelInfo.id,
                 performanceId: p.id,
                 performanceName: p.name,
-                cancelTime: p.startTime,
-                reason: "演出调整",
-                affectedCount: Math.round(p.totalSeats * 0.8),
+                cancelTime: p.cancelInfo.cancelTime,
+                reason: p.cancelInfo.reason,
+                affectedCount: p.cancelInfo.affectedCount,
               });
             }
           });
