@@ -14,3 +14,4 @@ passlib[bcrypt]==1.7.4
 pyjwt==2.8.0
 pandas==2.2.0
 numpy==1.26.4
+duckdb-engine==0.13.0

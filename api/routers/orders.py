@@ -3,6 +3,7 @@ from fastapi import APIRouter, Query
 from sqlalchemy import text
 
 from api.utils.database import async_session
+from api.services.report_engine import compute_sales_funnel
 from api.schemas.common import ApiResponse, TrendDataPoint
 
 router = APIRouter()
@@ -55,29 +56,5 @@ async def get_order_trend(
 
 @router.get("/funnel", response_model=ApiResponse[dict])
 async def get_sales_funnel():
-    async with async_session() as session:
-        browse_result = await session.execute(text("SELECT COUNT(*) FROM orders"))
-        browse_count = browse_result.scalar() or 0
-
-        order_result = await session.execute(
-            text("SELECT COUNT(*) FROM orders WHERE status != 'pending'")
-        )
-        order_count = order_result.scalar() or 0
-
-        pay_result = await session.execute(
-            text("SELECT COUNT(*) FROM orders WHERE status IN ('paid', 'used')")
-        )
-        pay_count = pay_result.scalar() or 0
-
-        verify_result = await session.execute(
-            text("SELECT COUNT(*) FROM orders WHERE status = 'used'")
-        )
-        verify_count = verify_result.scalar() or 0
-
-        funnel = [
-            {"stage": "browse", "label": "浏览", "count": browse_count},
-            {"stage": "order", "label": "下单", "count": order_count},
-            {"stage": "pay", "label": "支付", "count": pay_count},
-            {"stage": "verify", "label": "核销", "count": verify_count},
-        ]
-        return ApiResponse(data=funnel)
+    funnel = compute_sales_funnel()
+    return ApiResponse(data=funnel)

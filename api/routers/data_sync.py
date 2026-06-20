@@ -3,6 +3,11 @@ from fastapi import APIRouter, Query
 from sqlalchemy import text
 
 from api.utils.database import async_session
+from api.utils.duckdb_engine import (
+    sync_postgres_to_duckdb,
+    sync_all_tables_to_duckdb,
+    get_duckdb_sync_status,
+)
 from api.schemas.common import ApiResponse
 from api.schemas.sync import SyncBatch, SyncTask
 
@@ -180,6 +185,25 @@ async def trigger_task(taskId: str):
             status=row[6],
         )
         return ApiResponse(data=data)
+
+
+@router.post("/duckdb/sync", response_model=ApiResponse[dict])
+async def sync_to_duckdb(
+    tableName: str = Query(default=None),
+    syncBatchId: str = Query(default=None),
+):
+    if tableName:
+        result = await sync_postgres_to_duckdb(tableName, syncBatchId)
+        return ApiResponse(data=result)
+    else:
+        results = await sync_all_tables_to_duckdb(syncBatchId)
+        return ApiResponse(data={"results": results})
+
+
+@router.get("/duckdb/status", response_model=ApiResponse[list])
+async def get_duckdb_status():
+    status = get_duckdb_sync_status()
+    return ApiResponse(data=status)
 
 
 @router.get("/topology", response_model=ApiResponse[dict])

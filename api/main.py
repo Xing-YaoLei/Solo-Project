@@ -15,12 +15,15 @@ from api.routers import (
 )
 from api.utils.database import init_db
 from api.utils.mock_data import seed_mock_data
+from api.utils.duckdb_engine import init_duckdb, sync_all_tables_to_duckdb
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
     await seed_mock_data()
+    init_duckdb()
+    await sync_all_tables_to_duckdb()
     yield
 
 

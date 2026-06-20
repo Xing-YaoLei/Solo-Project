@@ -12,6 +12,18 @@ def generate_id():
     return str(uuid.uuid4())
 
 
+def get_row_label(index):
+    label = ''
+    n = index
+    while n >= 0:
+        remainder = n % 26
+        label = chr(65 + remainder) + label
+        n = n // 26 - 1
+        if n < 0:
+            break
+    return label
+
+
 async def seed_mock_data():
     async with async_session() as session:
         result = await session.execute(text("SELECT COUNT(*) FROM events"))
@@ -71,7 +83,6 @@ async def seed_mock_data():
                 VALUES ('{aid}', '{eid}', '{name}', {seats})
             """))
 
-        seat_rows = [chr(i) for i in range(65, 91)]
         for aid, area_name, row_count, col_count in [
             ("area-001", "VIP区", 10, 50),
             ("area-002", "A区", 20, 100),
@@ -85,7 +96,7 @@ async def seed_mock_data():
                     price = price_map[area_name]
                     await session.execute(text(f"""
                         INSERT INTO seats (id, event_id, area_id, seat_code, row_label, col_number, price, status)
-                        VALUES ('{seat_id}', '{event_id}', '{aid}', '{seat_rows[ri]}{ci}', '{seat_rows[ri]}', {ci}, {price}, '{status}')
+                        VALUES ('{seat_id}', '{event_id}', '{aid}', '{get_row_label(ri)}{ci}', '{get_row_label(ri)}', {ci}, {price}, '{status}')
                     """))
 
         calibers = [

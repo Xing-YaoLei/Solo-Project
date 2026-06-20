@@ -76,7 +76,7 @@ async def list_disputes(
                 )
             )
 
-        return ApiResponse(data={"list": disputes, "total": total})
+        return ApiResponse(data={"items": disputes, "total": total})
 
 
 @router.get("/{disputeId}", response_model=ApiResponse[RefundDispute])
