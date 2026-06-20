@@ -11,4 +11,9 @@ class DisputeLog < ApplicationRecord
   def action_label
     I18n.t("dispute_log.actions.#{action_type}", default: action_type.humanize)
   end
+
+  def handler_action_label
+    return nil if handler_action.blank?
+    I18n.t("dispute_log.handler_actions.#{handler_action}", default: handler_action.humanize)
+  end
 end

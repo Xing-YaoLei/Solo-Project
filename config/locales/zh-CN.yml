@@ -24,6 +24,12 @@ zh-CN:
       resolved: "已解决"
       rejected: "已驳回"
       cancelled: "已取消"
+    handler_actions:
+      refund: "退款"
+      exchange: "换票"
+      other: "其他"
+      insufficient_evidence: "证据不足"
+      expired: "超出期限"
   sponsor:
     levels:
       platinum: "铂金"

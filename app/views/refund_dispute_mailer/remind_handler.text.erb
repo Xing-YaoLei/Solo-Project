@@ -1,0 +1,15 @@
+退票争议催办
+
+您好 <%= @handler.email %>，
+
+以下退票争议已 <%= @hours_since %> 小时未处理，请尽快处理：
+
+活动: <%= @event.name %>
+订单号: <%= @ticket_order.order_no %>
+购票人: <%= @ticket_order.buyer_name %>
+当前状态: <%= @dispute.status %>
+报告人: <%= @dispute.reporter_name %>
+退票原因: <%= @dispute.reason %>
+创建时间: <%= @dispute.created_at.strftime("%Y-%m-%d %H:%M:%S") %>
+
+请立即登录系统处理该争议，避免影响客户体验。

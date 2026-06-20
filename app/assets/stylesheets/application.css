@@ -237,6 +237,10 @@ input:focus, textarea:focus, select:focus {
   align-items: center;
 }
 .filter-bar form { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.filter-description { font-size: 13px; color: var(--color-text-muted); margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--color-border); }
+
+.log-handler-action { margin: 4px 0; }
+.log-handler-action .badge { font-size: 12px; }
 
 .detail-grid {
   display: grid;

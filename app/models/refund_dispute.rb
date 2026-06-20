@@ -17,13 +17,27 @@ class RefundDispute < ApplicationRecord
   after_create :log_creation
 
   def resolve!(handler_action, handler_remark, operator)
-    update!(status: "resolved", handler_action: handler_action, handler_remark: handler_remark, closed_at: Time.current)
-    dispute_logs.create!(operator: operator, action_type: "resolved", reason: handler_remark, closed_at: Time.current)
+    closed_at = Time.current
+    update!(status: "resolved", handler_action: handler_action, handler_remark: handler_remark, closed_at: closed_at)
+    dispute_logs.create!(
+      operator: operator,
+      action_type: "resolved",
+      handler_action: handler_action,
+      reason: handler_remark,
+      closed_at: closed_at
+    )
   end
 
   def reject!(handler_action, handler_remark, operator)
-    update!(status: "rejected", handler_action: handler_action, handler_remark: handler_remark, closed_at: Time.current)
-    dispute_logs.create!(operator: operator, action_type: "rejected", reason: handler_remark, closed_at: Time.current)
+    closed_at = Time.current
+    update!(status: "rejected", handler_action: handler_action, handler_remark: handler_remark, closed_at: closed_at)
+    dispute_logs.create!(
+      operator: operator,
+      action_type: "rejected",
+      handler_action: handler_action,
+      reason: handler_remark,
+      closed_at: closed_at
+    )
   end
 
   def start_processing!(operator)

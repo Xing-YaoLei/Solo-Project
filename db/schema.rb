@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_21_000007) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_21_100001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -35,11 +35,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_21_000007) do
     t.datetime "closed_at"
     t.datetime "created_at", null: false
     t.text "detail"
+    t.string "handler_action"
     t.bigint "operator_id", null: false
     t.text "reason"
     t.bigint "refund_dispute_id", null: false
     t.datetime "updated_at", null: false
     t.index ["action_type"], name: "index_dispute_logs_on_action_type"
+    t.index ["handler_action"], name: "index_dispute_logs_on_handler_action"
     t.index ["operator_id"], name: "index_dispute_logs_on_operator_id"
     t.index ["refund_dispute_id"], name: "index_dispute_logs_on_refund_dispute_id"
   end

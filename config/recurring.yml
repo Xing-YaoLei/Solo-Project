@@ -1,4 +1,17 @@
 development:
+  refund_dispute_reminder:
+    class: RefundDisputeReminderJob
+    queue: default
+    args: []
+    schedule: at 10:00 every day
+
+  monthly_check_in_report:
+    class: MonthlyReportJob
+    queue: low_priority
+    args: []
+    schedule: at 2am on the 1st of every month
+
+test:
   monthly_check_in_report:
     class: MonthlyReportJob
     queue: low_priority
@@ -6,6 +19,12 @@ development:
     schedule: at 2am on the 1st of every month
 
 production:
+  refund_dispute_reminder:
+    class: RefundDisputeReminderJob
+    queue: default
+    args: []
+    schedule: at 10:00 every day
+
   monthly_check_in_report:
     class: MonthlyReportJob
     queue: low_priority

@@ -113,6 +113,9 @@
               <span class="timeline-time"><%= log.created_at.strftime("%Y-%m-%d %H:%M:%S") %></span>
               <span class="timeline-operator">操作人: <%= log.operator.email %></span>
             </div>
+            <% if log.handler_action.present? %>
+              <p class="log-handler-action"><strong>处理动作：</strong><span class="badge badge-<%= log.action_type %>"><%= log.handler_action_label %></span></p>
+            <% end %>
             <p><%= log.reason %></p>
             <% if log.closed_at %>
               <span class="badge">关闭时间: <%= log.closed_at.strftime("%Y-%m-%d %H:%M:%S") %></span>
