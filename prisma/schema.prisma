@@ -1,0 +1,267 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RouteStopType {
+  POINT_OF_INTEREST
+  REST_AREA
+  PERFORMANCE_VENUE
+  MERCHANT
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum OrderSource {
+  WECHAT
+  ALIPAY
+  OFFLINE
+}
+
+enum TransactionCategory {
+  FOOD
+  SOUVENIR
+  EXPERIENCE
+  OTHER
+}
+
+enum CongestionLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum PerformanceStatus {
+  SCHEDULED
+  CANCELLED
+  COMPLETED
+}
+
+enum MetricType {
+  CONGESTION
+  SALES
+  CANCELLATION
+  STAY_DURATION
+}
+
+enum AlertType {
+  CONGESTION
+  CANCELLATION
+  REVENUE_DROP
+  ANOMALY
+}
+
+enum AlertSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+model ScenicArea {
+  id        String   @id @default(cuid())
+  name      String
+  location  String
+  createdAt DateTime @default(now())
+
+  routes               GuideRoute[]
+  orders               MiniProgramOrder[]
+  merchantTransactions MerchantTransaction[]
+  cameraStatistics     CameraStatistic[]
+  performances         Performance[]
+  thresholdConfigs     ThresholdConfig[]
+  riskAlerts           RiskAlert[]
+  reviewMaterials      ReviewMaterial[]
+}
+
+model GuideRoute {
+  id                String   @id @default(cuid())
+  scenicAreaId      String
+  name              String
+  description       String
+  totalStops        Int
+  estimatedDuration Int
+  createdAt         DateTime @default(now())
+
+  scenicArea ScenicArea  @relation(fields: [scenicAreaId], references: [id])
+  stops      RouteStop[]
+  orders     MiniProgramOrder[]
+  riskAlerts RiskAlert[]
+
+  @@index([scenicAreaId])
+}
+
+model RouteStop {
+  id        String        @id @default(cuid())
+  routeId   String
+  stopOrder Int
+  name      String
+  type      RouteStopType
+  longitude Float
+  latitude  Float
+  capacity  Int
+
+  route                GuideRoute           @relation(fields: [routeId], references: [id])
+  merchantTransactions MerchantTransaction[]
+  cameraStatistics     CameraStatistic[]
+  performances        Performance[]
+
+  @@index([routeId])
+  @@unique([routeId, stopOrder])
+}
+
+model MiniProgramOrder {
+  id           String      @id @default(cuid())
+  scenicAreaId String
+  routeId      String
+  orderNo      String      @unique
+  visitorCount Int
+  totalAmount  Float
+  orderTime    DateTime
+  visitDate    DateTime
+  status       OrderStatus
+  source       OrderSource
+
+  scenicArea ScenicArea @relation(fields: [scenicAreaId], references: [id])
+  route      GuideRoute @relation(fields: [routeId], references: [id])
+
+  @@index([scenicAreaId])
+  @@index([routeId])
+  @@index([status])
+  @@index([visitDate])
+  @@index([source])
+}
+
+model MerchantTransaction {
+  id              String             @id @default(cuid())
+  scenicAreaId    String
+  merchantName    String
+  stopId          String?
+  transactionNo   String             @unique
+  amount          Float
+  transactionTime DateTime
+  category        TransactionCategory
+
+  scenicArea ScenicArea @relation(fields: [scenicAreaId], references: [id])
+  stop       RouteStop? @relation(fields: [stopId], references: [id])
+
+  @@index([scenicAreaId])
+  @@index([stopId])
+  @@index([category])
+  @@index([transactionTime])
+}
+
+model CameraStatistic {
+  id              String          @id @default(cuid())
+  scenicAreaId    String
+  stopId          String
+  cameraId        String
+  recordedAt      DateTime
+  visitorCount    Int
+  congestionLevel CongestionLevel
+  avgStayMinutes  Float
+
+  scenicArea ScenicArea @relation(fields: [scenicAreaId], references: [id])
+  stop       RouteStop  @relation(fields: [stopId], references: [id])
+
+  @@index([scenicAreaId])
+  @@index([stopId])
+  @@index([congestionLevel])
+  @@index([recordedAt])
+}
+
+model Performance {
+  id            String            @id @default(cuid())
+  scenicAreaId  String
+  stopId        String
+  title         String
+  scheduledTime DateTime
+  duration      Int
+  totalSeats    Int
+  soldSeats     Int
+  status        PerformanceStatus
+  cancelReason  String?
+
+  scenicArea     ScenicArea       @relation(fields: [scenicAreaId], references: [id])
+  stop           RouteStop        @relation(fields: [stopId], references: [id])
+  reviewMaterials ReviewMaterial[]
+
+  @@index([scenicAreaId])
+  @@index([stopId])
+  @@index([status])
+  @@index([scheduledTime])
+}
+
+model ThresholdConfig {
+  id            String     @id @default(cuid())
+  scenicAreaId  String
+  metricType    MetricType
+  metricName    String
+  warnValue     Float
+  criticalValue Float
+  unit          String
+  updatedBy     String
+  updatedAt     DateTime   @updatedAt
+
+  scenicArea ScenicArea @relation(fields: [scenicAreaId], references: [id])
+
+  @@index([scenicAreaId])
+  @@index([metricType])
+}
+
+model RiskAlert {
+  id           String        @id @default(cuid())
+  scenicAreaId String
+  routeId      String?
+  alertType    AlertType
+  severity     AlertSeverity
+  title        String
+  description  String
+  isResolved   Boolean       @default(false)
+  detectedAt   DateTime
+  resolvedAt   DateTime?
+
+  scenicArea      ScenicArea       @relation(fields: [scenicAreaId], references: [id])
+  route           GuideRoute?      @relation(fields: [routeId], references: [id])
+  reviewMaterials ReviewMaterial[]
+
+  @@index([scenicAreaId])
+  @@index([routeId])
+  @@index([alertType])
+  @@index([severity])
+  @@index([isResolved])
+  @@index([detectedAt])
+}
+
+model ReviewMaterial {
+  id                       String    @id @default(cuid())
+  scenicAreaId             String
+  alertId                  String?
+  performanceId            String?
+  title                    String
+  content                  String
+  secondaryConsumptionRate Float?
+  visitorImpact            String?
+  revenueImpact            String?
+  recommendations          String?
+  generatedAt              DateTime
+
+  scenicArea  ScenicArea   @relation(fields: [scenicAreaId], references: [id])
+  alert       RiskAlert?   @relation(fields: [alertId], references: [id])
+  performance Performance? @relation(fields: [performanceId], references: [id])
+
+  @@index([scenicAreaId])
+  @@index([alertId])
+  @@index([performanceId])
+  @@index([generatedAt])
+}
