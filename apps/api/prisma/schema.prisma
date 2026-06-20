@@ -157,12 +157,12 @@ model VisitResult {
 model OperationLog {
   id           String    @id @default(uuid())
   complaintId  String
-  operatorId   String
+  operatorId   String?
   operatorName String
   action       String
   detail       String?
   complaint    Complaint @relation(fields: [complaintId], references: [id])
-  operator     User      @relation(fields: [operatorId], references: [id])
+  operator     User?     @relation(fields: [operatorId], references: [id])
   createdAt    DateTime  @default(now())
 }
 

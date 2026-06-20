@@ -91,10 +91,10 @@ export interface VisitResult {
 export interface OperationLog {
   id: string;
   complaintId: string;
-  operatorId: string;
+  operatorId?: string;
   operatorName: string;
   action: string;
-  detail: string;
+  detail?: string;
   createdAt: Date;
 }
 

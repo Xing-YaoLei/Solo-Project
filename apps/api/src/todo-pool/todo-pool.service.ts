@@ -7,10 +7,8 @@ export class TodoPoolService {
   constructor(private prisma: PrismaService) {}
 
   async getOverdue(user: any) {
-    const now = new Date();
     const where: any = {
-      deadlineAt: { lt: now },
-      status: { notIn: [ComplaintStatus.CLOSED, ComplaintStatus.OVERDUE] },
+      status: ComplaintStatus.OVERDUE,
     };
 
     if (user.role === 'PATROL_STAFF' || user.role === 'TICKET_STAFF') {

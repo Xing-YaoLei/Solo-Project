@@ -6,7 +6,7 @@ export async function getOverdueTasks(): Promise<Complaint[]> {
 }
 
 export async function getSupplementingTasks(): Promise<Complaint[]> {
-  return axiosInstance.get('/api/todo-pool/supplementing');
+  return axiosInstance.get('/api/todo-pool/supplement');
 }
 
 export async function getRejectedTasks(): Promise<Complaint[]> {

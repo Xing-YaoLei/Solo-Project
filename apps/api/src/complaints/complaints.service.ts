@@ -39,7 +39,7 @@ export class ComplaintsService {
   }
 
   async findAll(query: QueryComplaintDto, _user: any) {
-    const { keyword, status, priority, source, departmentId, ownerId, tagId, page = 1, pageSize = 20 } = query;
+    const { keyword, status, priority, source, departmentId, ownerId, tagId, dateFrom, dateTo, sortBy = 'createdAt', sortOrder = 'desc', page = 1, pageSize = 20 } = query;
     const skip = (page - 1) * pageSize;
 
     const where: any = {};
@@ -60,6 +60,11 @@ export class ComplaintsService {
     if (tagId) {
       where.tags = { some: { id: tagId } };
     }
+    if (dateFrom) where.createdAt = { ...(where.createdAt || {}), gte: new Date(dateFrom) };
+    if (dateTo) where.createdAt = { ...(where.createdAt || {}), lte: new Date(dateTo) };
+
+    const orderBy: any = {};
+    orderBy[sortBy] = sortOrder;
 
     const [total, items] = await Promise.all([
       this.prisma.complaint.count({ where }),
@@ -73,7 +78,7 @@ export class ComplaintsService {
           tags: true,
           assignments: { include: { toUser: { select: { id: true, name: true } }, fromUser: { select: { id: true, name: true } } } },
         },
-        orderBy: [{ createdAt: 'desc' }],
+        orderBy: [orderBy],
       }),
     ]);
 

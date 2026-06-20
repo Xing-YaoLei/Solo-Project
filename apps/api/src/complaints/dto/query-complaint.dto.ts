@@ -39,6 +39,26 @@ export class QueryComplaintDto {
   @IsString()
   tagId?: string;
 
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  dateFrom?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  dateTo?: string;
+
+  @ApiProperty({ enum: ['createdAt', 'deadlineAt', 'priority'], required: false })
+  @IsOptional()
+  @IsEnum(['createdAt', 'deadlineAt', 'priority'])
+  sortBy?: 'createdAt' | 'deadlineAt' | 'priority';
+
+  @ApiProperty({ enum: ['asc', 'desc'], required: false })
+  @IsOptional()
+  @IsEnum(['asc', 'desc'])
+  sortOrder?: 'asc' | 'desc';
+
   @ApiProperty({ required: false, default: 1 })
   @IsOptional()
   @Type(() => Number)
