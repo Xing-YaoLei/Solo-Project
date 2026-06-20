@@ -46,14 +46,36 @@ def render_data_import():
         _render_mock_data()
 
 
-def _sync_after_import(loader: DataLoader, table_name: str):
-    if table_name in ("registrations", "payments"):
-        with st.spinner("正在同步平台原始记录关联..."):
-            try:
+def _sync_after_import(loader: DataLoader, table_name: str, if_exists: str = "append"):
+    if table_name not in ("registrations", "payments"):
+        return
+
+    force_refresh = (if_exists == "replace")
+    with st.spinner("正在同步平台原始记录关联..."):
+        try:
+            refresh_count = None
+            if force_refresh:
+                if loader.ddb.table_exists("platform_raw_records"):
+                    source_type = "registration" if table_name == "registrations" else "payment"
+                    refresh_count = loader.ddb.query(
+                        f"SELECT COUNT(*) as cnt FROM platform_raw_records WHERE source_type = '{source_type}'"
+                    ).row(0, named=True)["cnt"]
+                    loader.sync_platform_raw_records(force_refresh=table_name)
+                    after_count = loader.ddb.query(
+                        f"SELECT COUNT(*) as cnt FROM platform_raw_records WHERE source_type = '{source_type}'"
+                    ).row(0, named=True)["cnt"]
+                    st.success(
+                        f"✅ platform_raw_records 已刷新 | "
+                        f"旧记录 {refresh_count:,} → 新记录 {after_count:,}"
+                    )
+                else:
+                    loader.sync_platform_raw_records(force_refresh=table_name)
+                    st.success("✅ platform_raw_records 已同步")
+            else:
                 loader.sync_platform_raw_records()
                 st.success("✅ platform_raw_records 已同步")
-            except Exception as e:
-                st.warning(f"⚠️ 平台原始记录同步异常：{str(e)}")
+        except Exception as e:
+            st.warning(f"⚠️ 平台原始记录同步异常：{str(e)}")
 
 
 def _render_local_import(loader: DataLoader, ddb: DuckDBManager):
@@ -130,7 +152,7 @@ def _render_local_import(loader: DataLoader, ddb: DuckDBManager):
 
                     count = ddb.get_row_count(target_table)
                     st.success(f"✅ 导入成功！{target_table} 共 {count:,} 行")
-                    _sync_after_import(loader, target_table)
+                    _sync_after_import(loader, target_table, if_exists)
                     st.balloons()
                 except Exception as e:
                     st.error(f"❌ 导入失败：{str(e)}")
@@ -218,7 +240,7 @@ def _render_minio_import(loader: DataLoader, minio: MinIOClient, ddb: DuckDBMana
 
                     count = ddb.get_row_count(target_table)
                     st.success(f"✅ 导入成功！{target_table} 共 {count:,} 行")
-                    _sync_after_import(loader, target_table)
+                    _sync_after_import(loader, target_table, if_exists)
                     st.balloons()
                 except Exception as e:
                     st.error(f"❌ 导入失败：{str(e)}")

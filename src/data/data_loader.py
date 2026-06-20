@@ -101,7 +101,12 @@ class DataLoader:
         }
         return mapping.get(source, "self")
 
-    def sync_platform_raw_records(self):
+    def sync_platform_raw_records(self, force_refresh=None):
+        if force_refresh is None:
+            force_refresh = []
+        elif isinstance(force_refresh, str):
+            force_refresh = [force_refresh]
+
         self._ensure_platforms_table()
 
         if not self.ddb.table_exists("platform_raw_records"):
@@ -120,12 +125,32 @@ class DataLoader:
             """)
 
         if self.ddb.table_exists("registrations"):
-            self._sync_registration_records()
+            self._cleanup_orphan_records("registrations", "registration")
+            self._sync_registration_records(force=("registrations" in force_refresh))
 
         if self.ddb.table_exists("payments"):
-            self._sync_payment_records()
+            self._cleanup_orphan_records("payments", "payment")
+            self._sync_payment_records(force=("payments" in force_refresh))
 
-    def _sync_registration_records(self):
+    def _cleanup_orphan_records(self, source_table: str, source_type: str):
+        id_col = "registration_id" if source_type == "registration" else "payment_id"
+        delete_sql = f"""
+            DELETE FROM platform_raw_records
+            WHERE source_type = '{source_type}'
+              AND source_id NOT IN (SELECT {id_col} FROM {source_table})
+        """
+        try:
+            self.ddb.execute(delete_sql)
+        except Exception:
+            pass
+
+    def _sync_registration_records(self, force: bool = False):
+        if force:
+            try:
+                self.ddb.execute("DELETE FROM platform_raw_records WHERE source_type = 'registration'")
+            except Exception:
+                pass
+
         uncovered_sql = """
             SELECT r.*
             FROM registrations r
@@ -188,7 +213,13 @@ class DataLoader:
                 )
             """)
 
-    def _sync_payment_records(self):
+    def _sync_payment_records(self, force: bool = False):
+        if force:
+            try:
+                self.ddb.execute("DELETE FROM platform_raw_records WHERE source_type = 'payment'")
+            except Exception:
+                pass
+
         uncovered_sql = """
             SELECT p.*
             FROM payments p
