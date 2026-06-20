@@ -1,0 +1,33 @@
+zh-CN:
+  common:
+    unauthorized: "您没有权限执行此操作"
+  event:
+    successfully_updated: "活动已更新"
+  check_in_record:
+    already_checked_in: "该订单已核销"
+    order_not_found: "未找到该订单"
+    cannot_check_in: "该订单无法核销"
+    successfully_checked_in: "核销成功"
+    successfully_revoked: "核销已撤销"
+  ticket_order:
+    successfully_updated: "订单已更新"
+  refund_dispute:
+    cannot_refund: "该订单无法退票"
+    successfully_created: "退票争议已创建"
+    started_processing: "已开始处理退票争议"
+    successfully_resolved: "争议已解决"
+    successfully_rejected: "争议已驳回"
+  dispute_log:
+    actions:
+      created: "创建争议"
+      processing: "开始处理"
+      resolved: "已解决"
+      rejected: "已驳回"
+      cancelled: "已取消"
+  sponsor:
+    levels:
+      platinum: "铂金"
+      gold: "黄金"
+      silver: "白银"
+      bronze: "青铜"
+      partner: "合作伙伴"

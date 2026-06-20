@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title><%= content_for(:title) || "活动票务核销结算台" %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="票务核销">
+    <meta name="mobile-web-app-capable" content="yes">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+
+    <%= yield :head %>
+
+    <link rel="icon" href="/icon.png" type="image/png">
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/icon.png">
+
+    <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+  </head>
+
+  <body>
+    <nav class="navbar">
+      <div class="navbar-brand">
+        <%= link_to "票务核销结算台", root_path, class: "brand-link" %>
+      </div>
+      <div class="navbar-menu">
+        <% if user_signed_in? %>
+          <span class="navbar-user"><%= current_user.email %></span>
+          <%= button_to "退出", destroy_user_session_path, method: :delete, class: "btn btn-sm" %>
+        <% else %>
+          <%= link_to "登录", new_user_session_path, class: "btn btn-sm" %>
+        <% end %>
+      </div>
+    </nav>
+
+    <% if notice %>
+      <div class="flash flash-notice"><%= notice %></div>
+    <% end %>
+    <% if alert %>
+      <div class="flash flash-alert"><%= alert %></div>
+    <% end %>
+
+    <main class="container">
+      <%= yield %>
+    </main>
+  </body>
+</html>

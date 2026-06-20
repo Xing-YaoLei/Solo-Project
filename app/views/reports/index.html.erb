@@ -1,0 +1,17 @@
+<div class="page-header">
+  <h1>效率报表</h1>
+</div>
+
+<div class="card-list">
+  <% @events.each do |event| %>
+    <div class="card">
+      <div class="card-body">
+        <h3 class="card-title"><%= event.name %></h3>
+        <p class="card-text"><%= event.start_time&.strftime("%Y-%m-%d") %> ~ <%= event.end_time&.strftime("%Y-%m-%d") %></p>
+        <div class="card-actions">
+          <%= link_to "查看核销效率", check_in_efficiency_reports_path(event_id: event.id), class: "btn btn-primary" %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>

@@ -1,0 +1,59 @@
+<div class="page-header">
+  <h1>编辑订单</h1>
+  <div class="page-actions">
+    <%= link_to "返回详情", event_ticket_order_path(@event, @ticket_order), class: "btn" %>
+  </div>
+</div>
+
+<div class="card">
+  <%= form_with model: @ticket_order, url: event_ticket_order_path(@event, @ticket_order), local: true do |f| %>
+    <% if @ticket_order.errors.any? %>
+      <div class="error-messages">
+        <ul>
+          <% @ticket_order.errors.full_messages.each do |msg| %>
+            <li><%= msg %></li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
+    <div class="form-grid">
+      <div class="form-group">
+        <%= f.label :status, "状态" %>
+        <%= f.select :status, [["待支付", "pending"], ["已支付", "paid"], ["已核销", "checked_in"], ["已退票", "refunded"], ["已取消", "cancelled"]] %>
+      </div>
+      <div class="form-group">
+        <%= f.label :ticket_type_id, "票种" %>
+        <%= f.select :ticket_type_id, @event.ticket_types.map { |tt| [tt.name, tt.id] } %>
+      </div>
+      <div class="form-group">
+        <%= f.label :quantity, "数量" %>
+        <%= f.number_field :quantity, min: 1 %>
+      </div>
+      <div class="form-group">
+        <%= f.label :total_amount, "总金额" %>
+        <%= f.number_field :total_amount, step: 0.01, min: 0 %>
+      </div>
+      <div class="form-group">
+        <%= f.label :buyer_name, "购票人" %>
+        <%= f.text_field :buyer_name %>
+      </div>
+      <div class="form-group">
+        <%= f.label :buyer_email, "邮箱" %>
+        <%= f.email_field :buyer_email %>
+      </div>
+      <div class="form-group">
+        <%= f.label :buyer_phone, "电话" %>
+        <%= f.text_field :buyer_phone %>
+      </div>
+      <div class="form-group full-width">
+        <%= f.label :remark, "备注" %>
+        <%= f.text_area :remark, rows: 3 %>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <%= f.submit "保存变更", class: "btn btn-primary" %>
+    </div>
+  <% end %>
+</div>

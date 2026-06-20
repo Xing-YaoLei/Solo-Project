@@ -1,0 +1,16 @@
+<h1>退票争议通知</h1>
+
+<p>您好 <%= @handler.email %>，</p>
+
+<p>有一笔退票争议需要您处理：</p>
+
+<table>
+  <tr><td><strong>活动</strong></td><td><%= @event.name %></td></tr>
+  <tr><td><strong>订单号</strong></td><td><%= @ticket_order.order_no %></td></tr>
+  <tr><td><strong>购票人</strong></td><td><%= @ticket_order.buyer_name %></td></tr>
+  <tr><td><strong>报告人</strong></td><td><%= @dispute.reporter_name %></td></tr>
+  <tr><td><strong>退票原因</strong></td><td><%= @dispute.reason %></td></tr>
+  <tr><td><strong>创建时间</strong></td><td><%= @dispute.created_at.strftime("%Y-%m-%d %H:%M:%S") %></td></tr>
+</table>
+
+<p>请尽快登录系统处理该争议。</p>

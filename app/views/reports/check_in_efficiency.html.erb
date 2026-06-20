@@ -1,0 +1,109 @@
+<div class="page-header">
+  <h1>核销效率报表 — <%= @event.name %></h1>
+  <div class="page-actions">
+    <%= link_to "返回列表", reports_path, class: "btn" %>
+    <%= link_to "导出 Excel", check_in_efficiency_reports_path(event_id: @event.id, start_date: @start_date, end_date: @end_date, format: :xlsx), class: "btn btn-primary" %>
+  </div>
+</div>
+
+<div class="card">
+  <div class="filter-bar">
+    <%= form_with url: check_in_efficiency_reports_path, method: :get, local: true do |f| %>
+      <%= f.hidden_field :event_id, value: @event.id %>
+      <div class="form-row">
+        <div class="form-group">
+          <%= f.label :start_date, "开始日期" %>
+          <%= f.date_field :start_date, value: @start_date %>
+        </div>
+        <div class="form-group">
+          <%= f.label :end_date, "结束日期" %>
+          <%= f.date_field :end_date, value: @end_date %>
+        </div>
+        <div class="form-group form-group-btn">
+          <%= f.submit "查询", class: "btn" %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<div class="stats-bar">
+  <div class="stat-item">
+    <span class="stat-value"><%= @stats[:total_orders] %></span>
+    <span class="stat-label">总订单数</span>
+  </div>
+  <div class="stat-item">
+    <span class="stat-value"><%= @stats[:checked_in] %></span>
+    <span class="stat-label">已核销</span>
+  </div>
+  <div class="stat-item">
+    <span class="stat-value"><%= @stats[:rate].round(1) %>%</span>
+    <span class="stat-label">核销率</span>
+  </div>
+</div>
+
+<div class="card">
+  <h3>票种核销明细</h3>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>票种</th>
+        <th>总订单数</th>
+        <th>已核销</th>
+        <th>核销率</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @stats[:by_ticket_type].each do |tt| %>
+        <tr>
+          <td><%= tt[:name] %></td>
+          <td><%= tt[:total] %></td>
+          <td><%= tt[:checked_in] %></td>
+          <td><%= tt[:rate] %>%</td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>
+
+<div class="two-panel">
+  <div class="card">
+    <h3>核销方式分布</h3>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>方式</th>
+          <th>数量</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @stats[:by_method].each do |method, count| %>
+          <tr>
+            <td><%= method %></td>
+            <td><%= count %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>每日核销趋势</h3>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>日期</th>
+          <th>核销数量</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @stats[:daily_trend].each do |date, count| %>
+          <tr>
+            <td><%= date %></td>
+            <td><%= count %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>

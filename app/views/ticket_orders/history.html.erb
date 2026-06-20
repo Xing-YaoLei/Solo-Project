@@ -1,0 +1,52 @@
+<div class="page-header">
+  <h1>变更记录 — <%= @ticket_order.order_no %></h1>
+  <div class="page-actions">
+    <%= link_to "返回详情", event_ticket_order_path(@event, @ticket_order), class: "btn" %>
+  </div>
+</div>
+
+<% if @versions.empty? %>
+  <div class="card">
+    <p class="empty-text">暂无变更记录</p>
+  </div>
+<% else %>
+  <div class="timeline">
+    <% @versions.each do |version| %>
+      <div class="timeline-item">
+        <div class="timeline-marker"></div>
+        <div class="timeline-content card">
+          <div class="timeline-header">
+            <strong><%= version.event == "update" ? "修改" : version.event == "create" ? "创建" : version.event.humanize %></strong>
+            <span class="timeline-time"><%= version.created_at.strftime("%Y-%m-%d %H:%M:%S") %></span>
+            <% if version.whodunnit.present? %>
+              <% operator = User.find_by(id: version.whodunnit) %>
+              <% if operator %>
+                <span class="timeline-operator">操作人: <%= operator.email %></span>
+              <% end %>
+            <% end %>
+          </div>
+          <% if version.event == "update" && version.object_changes.present? %>
+            <table class="table table-changes">
+              <thead>
+                <tr>
+                  <th>字段</th>
+                  <th>变更前</th>
+                  <th>变更后</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% version.changeset.each do |field, changes| %>
+                  <tr>
+                    <td><strong><%= field %></strong></td>
+                    <td class="value-old"><%= changes[0].present? ? changes[0] : "—" %></td>
+                    <td class="value-new"><%= changes[1].present? ? changes[1] : "—" %></td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+<% end %>

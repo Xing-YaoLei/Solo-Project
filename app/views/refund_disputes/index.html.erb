@@ -1,0 +1,44 @@
+<div class="page-header">
+  <h1>退票争议 — <%= @event.name %></h1>
+  <div class="page-actions">
+    <%= link_to "核销结算台", event_check_in_desk_path(@event), class: "btn" %>
+  </div>
+</div>
+
+<div class="card">
+  <div class="filter-bar">
+    <%= search_form_for @q, url: event_refund_disputes_path(@event) do |f| %>
+      <%= f.select :status_eq, [["全部状态", nil], ["待处理", "pending"], ["处理中", "processing"], ["已解决", "resolved"], ["已驳回", "rejected"]], {}, class: "form-select" %>
+      <%= f.submit "筛选", class: "btn" %>
+    <% end %>
+  </div>
+
+  <table class="table">
+    <thead>
+      <tr>
+        <th>订单号</th>
+        <th>报告人</th>
+        <th>原因</th>
+        <th>状态</th>
+        <th>处理人</th>
+        <th>创建时间</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @refund_disputes.each do |dispute| %>
+        <tr>
+          <td><%= dispute.ticket_order.order_no %></td>
+          <td><%= dispute.reporter_name %></td>
+          <td><%= truncate(dispute.reason, length: 30) %></td>
+          <td><span class="badge badge-<%= dispute.status %>"><%= dispute.status %></span></td>
+          <td><%= dispute.handler.email %></td>
+          <td><%= dispute.created_at.strftime("%Y-%m-%d %H:%M") %></td>
+          <td><%= link_to "查看", event_refund_dispute_path(@event, dispute), class: "btn btn-sm" %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>
+
+<%= paginate @refund_disputes %>

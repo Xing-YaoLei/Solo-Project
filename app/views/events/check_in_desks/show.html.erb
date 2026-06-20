@@ -1,0 +1,173 @@
+<div class="page-header">
+  <h1>核销结算台 — <%= @event.name %></h1>
+  <div class="page-actions">
+    <%= link_to "返回活动", @event, class: "btn" %>
+    <%= link_to "核销记录", event_check_in_records_path(@event), class: "btn" %>
+    <%= link_to "订单管理", event_ticket_orders_path(@event), class: "btn" %>
+    <% if current_user.admin? || current_user.manager? %>
+      <%= link_to "效率报表", check_in_efficiency_reports_path(event_id: @event.id), class: "btn btn-primary" %>
+    <% end %>
+  </div>
+</div>
+
+<div id="check_in_stats" class="stats-bar">
+  <div class="stat-item">
+    <span class="stat-value"><%= @check_in_stats[:total_paid] %></span>
+    <span class="stat-label">待核销订单</span>
+  </div>
+  <div class="stat-item">
+    <span class="stat-value"><%= @check_in_stats[:checked_in] %></span>
+    <span class="stat-label">已核销</span>
+  </div>
+  <div class="stat-item">
+    <span class="stat-value"><%= @check_in_stats[:rate].round(1) %>%</span>
+    <span class="stat-label">核销率</span>
+  </div>
+  <% if @pending_disputes > 0 %>
+    <div class="stat-item stat-warning">
+      <span class="stat-value"><%= @pending_disputes %></span>
+      <span class="stat-label">待处理争议</span>
+    </div>
+  <% end %>
+</div>
+
+<div class="check-in-form card">
+  <h3>现场核销</h3>
+  <%= form_with model: CheckInRecord.new, url: event_check_in_records_path(@event), local: true do |f| %>
+    <div class="form-row">
+      <div class="form-group form-group-grow">
+        <%= f.label :order_no, "订单号" %>
+        <%= f.text_field :order_no, placeholder: "输入或扫描订单号", autofocus: true, required: true, data: { controller: "check-in", action: "keydown->check-in#submitOnEnter" } %>
+      </div>
+      <div class="form-group">
+        <%= f.label :check_in_method, "核销方式" %>
+        <%= f.select :check_in_method, [["扫码", "qr_code"], ["手动", "manual"], ["NFC", "nfc"]], selected: "manual" %>
+      </div>
+      <div class="form-group">
+        <%= f.label :note, "备注" %>
+        <%= f.text_field :note, placeholder: "可选备注" %>
+      </div>
+      <div class="form-group form-group-btn">
+        <%= f.submit "核销", class: "btn btn-primary btn-lg" %>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<div class="three-panel">
+  <section class="panel panel-sponsors">
+    <div class="panel-header">
+      <h3>赞助清单</h3>
+    </div>
+    <div class="panel-body">
+      <% if @sponsors.any? %>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>赞助商</th>
+              <th>等级</th>
+              <th>联系人</th>
+              <th>电话</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @sponsors.each do |sponsor| %>
+              <tr>
+                <td><strong><%= sponsor.name %></strong></td>
+                <td><span class="badge badge-<%= sponsor.level %>"><%= sponsor.level.humanize %></span></td>
+                <td><%= sponsor.contact_name %></td>
+                <td><%= sponsor.contact_phone %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      <% else %>
+        <p class="empty-text">暂无赞助商</p>
+      <% end %>
+    </div>
+  </section>
+
+  <section class="panel panel-check-ins">
+    <div class="panel-header">
+      <h3>核销记录</h3>
+      <span class="badge"><%= @check_in_records.total_count %> 条</span>
+    </div>
+    <div class="panel-body">
+      <% if @check_in_records.any? %>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>订单号</th>
+              <th>购票人</th>
+              <th>票种</th>
+              <th>方式</th>
+              <th>时间</th>
+              <th>操作人</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @check_in_records.each do |record| %>
+              <tr>
+                <td><%= record.ticket_order.order_no %></td>
+                <td><%= record.ticket_order.buyer_name %></td>
+                <td><%= record.ticket_type.name %></td>
+                <td><span class="badge"><%= record.check_in_method %></span></td>
+                <td><%= record.check_in_time.strftime("%H:%M:%S") %></td>
+                <td><%= record.operator.email %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+        <%= paginate @check_in_records, param_name: :check_in_page %>
+      <% else %>
+        <p class="empty-text">暂无核销记录</p>
+      <% end %>
+    </div>
+  </section>
+
+  <section class="panel panel-rules">
+    <div class="panel-header">
+      <h3>票种规则</h3>
+    </div>
+    <div class="panel-body">
+      <% if @ticket_types.any? %>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>票种</th>
+              <th>价格</th>
+              <th>总量</th>
+              <th>已售</th>
+              <th>核销率</th>
+              <th>规则</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @ticket_types.each do |tt| %>
+              <tr>
+                <td><strong><%= tt.name %></strong></td>
+                <td>¥<%= tt.price %></td>
+                <td><%= tt.quantity %></td>
+                <td><%= tt.sold_count %></td>
+                <td><%= tt.check_in_rate.round(1) %>%</td>
+                <td>
+                  <% if tt.rules.present? %>
+                    <div class="rules-detail">
+                      <% tt.rules.each do |key, value| %>
+                        <span class="rule-tag"><%= key %>: <%= value %></span>
+                      <% end %>
+                    </div>
+                  <% else %>
+                    <span class="empty-text">无特殊规则</span>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      <% else %>
+        <p class="empty-text">暂无票种</p>
+      <% end %>
+    </div>
+  </section>
+</div>

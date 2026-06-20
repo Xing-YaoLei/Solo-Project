@@ -1,0 +1,25 @@
+<div class="page-header">
+  <h1>活动列表</h1>
+</div>
+
+<div class="card-list">
+  <% @events.each do |event| %>
+    <div class="card">
+      <div class="card-body">
+        <h3 class="card-title"><%= link_to event.name, event %></h3>
+        <div class="card-meta">
+          <span><%= event.start_time&.strftime("%Y-%m-%d %H:%M") %> ~ <%= event.end_time&.strftime("%Y-%m-%d %H:%M") %></span>
+          <span class="badge badge-<%= event.status %>"><%= event.status %></span>
+        </div>
+        <p class="card-text"><%= event.location %></p>
+        <div class="card-actions">
+          <%= link_to "核销结算台", event_check_in_desk_path(event), class: "btn btn-primary" %>
+          <%= link_to "订单管理", event_ticket_orders_path(event), class: "btn" %>
+          <%= link_to "退票争议", event_refund_disputes_path(event), class: "btn" %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<%= paginate @events %>

@@ -1,0 +1,14 @@
+<div class="stats-bar">
+  <div class="stat-item">
+    <span class="stat-value"><%= event.paid_order_count + event.check_in_count %></span>
+    <span class="stat-label">总订单</span>
+  </div>
+  <div class="stat-item">
+    <span class="stat-value"><%= event.check_in_count %></span>
+    <span class="stat-label">已核销</span>
+  </div>
+  <div class="stat-item">
+    <span class="stat-value"><%= event.check_in_rate.round(1) %>%</span>
+    <span class="stat-label">核销率</span>
+  </div>
+</div>

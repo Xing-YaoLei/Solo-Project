@@ -1,0 +1,52 @@
+<div class="page-header">
+  <h1>订单管理 — <%= @event.name %></h1>
+  <div class="page-actions">
+    <%= link_to "核销结算台", event_check_in_desk_path(@event), class: "btn" %>
+  </div>
+</div>
+
+<div class="card">
+  <div class="filter-bar">
+    <%= search_form_for @q, url: event_ticket_orders_path(@event) do |f| %>
+      <%= f.search_field :order_no_cont, placeholder: "订单号" %>
+      <%= f.search_field :buyer_name_cont, placeholder: "购票人" %>
+      <%= f.select :status_eq, [["全部状态", nil], ["待支付", "pending"], ["已支付", "paid"], ["已核销", "checked_in"], ["已退票", "refunded"], ["已取消", "cancelled"]], {}, class: "form-select" %>
+      <%= f.submit "筛选", class: "btn" %>
+    <% end %>
+  </div>
+
+  <table class="table">
+    <thead>
+      <tr>
+        <th>订单号</th>
+        <th>购票人</th>
+        <th>票种</th>
+        <th>数量</th>
+        <th>金额</th>
+        <th>状态</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @ticket_orders.each do |order| %>
+        <tr>
+          <td><%= link_to order.order_no, event_ticket_order_path(@event, order) %></td>
+          <td><%= order.buyer_name %></td>
+          <td><%= order.ticket_type.name %></td>
+          <td><%= order.quantity %></td>
+          <td>¥<%= order.total_amount %></td>
+          <td><span class="badge badge-<%= order.status %>"><%= order.status %></span></td>
+          <td>
+            <%= link_to "详情", event_ticket_order_path(@event, order), class: "btn btn-sm" %>
+            <%= link_to "变更记录", history_event_ticket_order_path(@event, order), class: "btn btn-sm" %>
+            <% if order.can_refund? %>
+              <%= link_to "发起退票争议", new_event_refund_dispute_path(@event, ticket_order_id: order.id), class: "btn btn-warning btn-sm" %>
+            <% end %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>
+
+<%= paginate @ticket_orders %>

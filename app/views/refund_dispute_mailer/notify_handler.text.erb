@@ -1,0 +1,14 @@
+退票争议通知
+
+您好 <%= @handler.email %>，
+
+有一笔退票争议需要您处理：
+
+活动: <%= @event.name %>
+订单号: <%= @ticket_order.order_no %>
+购票人: <%= @ticket_order.buyer_name %>
+报告人: <%= @dispute.reporter_name %>
+退票原因: <%= @dispute.reason %>
+创建时间: <%= @dispute.created_at.strftime("%Y-%m-%d %H:%M:%S") %>
+
+请尽快登录系统处理该争议。

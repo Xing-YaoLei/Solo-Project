@@ -1,0 +1,52 @@
+<div class="page-header">
+  <h1>核销记录 — <%= @event.name %></h1>
+  <div class="page-actions">
+    <%= link_to "核销结算台", event_check_in_desk_path(@event), class: "btn btn-primary" %>
+  </div>
+</div>
+
+<div class="card">
+  <div class="filter-bar">
+    <%= search_form_for @q, url: event_check_in_records_path(@event) do |f| %>
+      <%= f.search_field :ticket_order_order_no_cont, placeholder: "订单号" %>
+      <%= f.search_field :ticket_order_buyer_name_cont, placeholder: "购票人" %>
+      <%= f.select :check_in_method_eq, [["全部方式", nil], ["扫码", "qr_code"], ["手动", "manual"], ["NFC", "nfc"]], {}, class: "form-select" %>
+      <%= f.submit "筛选", class: "btn" %>
+    <% end %>
+  </div>
+
+  <table class="table">
+    <thead>
+      <tr>
+        <th>订单号</th>
+        <th>购票人</th>
+        <th>票种</th>
+        <th>核销方式</th>
+        <th>核销时间</th>
+        <th>操作人</th>
+        <th>备注</th>
+        <% if current_user.admin? %>
+          <th>操作</th>
+        <% end %>
+      </tr>
+    </thead>
+    <tbody>
+      <% @check_in_records.each do |record| %>
+        <tr>
+          <td><%= link_to record.ticket_order.order_no, event_ticket_order_path(@event, record.ticket_order) %></td>
+          <td><%= record.ticket_order.buyer_name %></td>
+          <td><%= record.ticket_type.name %></td>
+          <td><span class="badge"><%= record.check_in_method %></span></td>
+          <td><%= record.check_in_time.strftime("%Y-%m-%d %H:%M:%S") %></td>
+          <td><%= record.operator.email %></td>
+          <td><%= record.note %></td>
+          <% if current_user.admin? %>
+            <td><%= button_to "撤销", event_check_in_record_path(@event, record), method: :delete, class: "btn btn-danger btn-sm", data: { turbo_confirm: "确定撤销此核销记录？" } %></td>
+          <% end %>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>
+
+<%= paginate @check_in_records %>

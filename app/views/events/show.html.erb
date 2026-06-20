@@ -1,0 +1,28 @@
+<div class="page-header">
+  <h1><%= @event.name %></h1>
+  <div class="page-actions">
+    <%= link_to "核销结算台", event_check_in_desk_path(@event), class: "btn btn-primary" %>
+    <%= link_to "订单管理", event_ticket_orders_path(@event), class: "btn" %>
+    <%= link_to "退票争议", event_refund_disputes_path(@event), class: "btn" %>
+    <%= link_to "核销记录", event_check_in_records_path(@event), class: "btn" %>
+  </div>
+</div>
+
+<div class="detail-grid">
+  <div class="detail-item">
+    <label>活动时间</label>
+    <span><%= @event.start_time&.strftime("%Y-%m-%d %H:%M") %> ~ <%= @event.end_time&.strftime("%Y-%m-%d %H:%M") %></span>
+  </div>
+  <div class="detail-item">
+    <label>地点</label>
+    <span><%= @event.location %></span>
+  </div>
+  <div class="detail-item">
+    <label>状态</label>
+    <span class="badge badge-<%= @event.status %>"><%= @event.status %></span>
+  </div>
+  <div class="detail-item">
+    <label>描述</label>
+    <span><%= @event.description %></span>
+  </div>
+</div>
