@@ -1,0 +1,23 @@
+{
+  "name": "scenic-complaint-platform",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "pnpm@9.15.9",
+  "scripts": {
+    "dev": "pnpm run --parallel dev",
+    "build": "pnpm run --filter \"./packages/*\" build && pnpm run --filter \"./apps/*\" build",
+    "dev:web": "pnpm --filter web dev",
+    "dev:api": "pnpm --filter api dev",
+    "build:web": "pnpm --filter web build",
+    "build:api": "pnpm --filter api build",
+    "prisma:generate": "pnpm --filter api prisma generate",
+    "prisma:migrate": "pnpm --filter api prisma migrate dev",
+    "prisma:seed": "pnpm --filter api prisma db seed",
+    "typecheck": "pnpm run --parallel typecheck",
+    "lint": "pnpm run --parallel lint"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5",
+    "@types/node": "^20.12.7"
+  }
+}

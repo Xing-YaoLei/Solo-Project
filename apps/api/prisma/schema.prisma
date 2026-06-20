@@ -1,0 +1,193 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  VISITOR
+  TICKET_STAFF
+  PATROL_STAFF
+  OPERATOR
+  SUPERVISOR
+}
+
+enum ComplaintStatus {
+  PENDING
+  ASSIGNED
+  PROCESSING
+  SUPPLEMENTING
+  REJECTED
+  OVERDUE
+  VISITING
+  CLOSED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum ComplaintSource {
+  ONLINE
+  TICKET
+  ON_SITE
+  PHONE
+}
+
+enum DepartmentType {
+  DEPARTMENT
+  POSITION
+  STAFF
+}
+
+enum FileType {
+  IMAGE
+  VIDEO
+  DOCUMENT
+}
+
+model User {
+  id           String     @id @default(uuid())
+  name         String
+  phone        String     @unique
+  email        String?    @unique
+  passwordHash String
+  role         UserRole
+  departmentId String?
+  avatar       String?
+  department   Department? @relation(fields: [departmentId], references: [id])
+  assignments  Assignment[] @relation("assignments_to_user")
+  fromAssignments Assignment[] @relation("assignments_from_user")
+  upgradeRecords UpgradeRecord[]
+  visitResults VisitResult[]
+  operationLogs OperationLog[]
+  ownedComplaints Complaint[] @relation("complaint_owner")
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+model Department {
+  id         String     @id @default(uuid())
+  name       String
+  code       String     @unique
+  type       DepartmentType
+  parentId   String?
+  sortOrder  Int        @default(0)
+  parent     Department? @relation("DepartmentHierarchy", fields: [parentId], references: [id])
+  children   Department[] @relation("DepartmentHierarchy")
+  users      User[]
+  complaints Complaint[]
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+}
+
+model Complaint {
+  id                    String            @id @default(uuid())
+  code                  String            @unique
+  title                 String
+  content               String
+  source                ComplaintSource
+  status                ComplaintStatus   @default(PENDING)
+  priority              Priority          @default(MEDIUM)
+  visitorName           String
+  visitorPhone          String
+  visitorIdCard         String?
+  ticketNo              String?
+  location              String?
+  deadlineAt            DateTime
+  closedAt              DateTime?
+  closeDurationMinutes  Int?
+  ownerId               String?
+  departmentId          String?
+  owner                 User?             @relation("complaint_owner", fields: [ownerId], references: [id])
+  department            Department?       @relation(fields: [departmentId], references: [id])
+  tags                  Tag[]             @relation("ComplaintTags")
+  assignments           Assignment[]
+  upgradeRecords        UpgradeRecord[]
+  visitResult           VisitResult?
+  operationLogs         OperationLog[]
+  attachments           Attachment[]
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+}
+
+model Assignment {
+  id           String    @id @default(uuid())
+  complaintId  String
+  fromUserId   String?
+  toUserId     String
+  reason       String?
+  complaint    Complaint @relation(fields: [complaintId], references: [id])
+  fromUser     User?     @relation("assignments_from_user", fields: [fromUserId], references: [id])
+  toUser       User      @relation("assignments_to_user", fields: [toUserId], references: [id])
+  createdAt    DateTime  @default(now())
+}
+
+model UpgradeRecord {
+  id           String    @id @default(uuid())
+  complaintId  String
+  fromLevel    Priority
+  toLevel      Priority
+  operatorId   String
+  reason       String
+  complaint    Complaint @relation(fields: [complaintId], references: [id])
+  operator     User      @relation(fields: [operatorId], references: [id])
+  createdAt    DateTime  @default(now())
+}
+
+model VisitResult {
+  id           String    @id @default(uuid())
+  complaintId  String    @unique
+  operatorId   String
+  satisfaction Int       @db.SmallInt
+  feedback     String
+  needFollowUp Boolean   @default(false)
+  visitedAt    DateTime
+  complaint    Complaint @relation(fields: [complaintId], references: [id])
+  operator     User      @relation(fields: [operatorId], references: [id])
+  createdAt    DateTime  @default(now())
+}
+
+model OperationLog {
+  id           String    @id @default(uuid())
+  complaintId  String
+  operatorId   String
+  operatorName String
+  action       String
+  detail       String?
+  complaint    Complaint @relation(fields: [complaintId], references: [id])
+  operator     User      @relation(fields: [operatorId], references: [id])
+  createdAt    DateTime  @default(now())
+}
+
+model Tag {
+  id         String      @id @default(uuid())
+  name       String
+  code       String      @unique
+  color      String
+  parentId   String?
+  sortOrder  Int         @default(0)
+  parent     Tag?        @relation("TagHierarchy", fields: [parentId], references: [id])
+  children   Tag[]       @relation("TagHierarchy")
+  complaints Complaint[] @relation("ComplaintTags")
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+}
+
+model Attachment {
+  id         String    @id @default(uuid())
+  complaintId String
+  fileName   String
+  fileUrl    String
+  fileType   FileType
+  fileSize   Int
+  uploadedBy String
+  complaint  Complaint @relation(fields: [complaintId], references: [id])
+  createdAt  DateTime  @default(now())
+}
