@@ -18,12 +18,14 @@ from src.pages.checkin_codes import render_checkin_codes
 from src.pages.sponsors import render_sponsors
 from src.pages.refunds import render_refunds
 from src.pages.detail_trace import render_detail_trace
+from src.pages.data_import import render_data_import
 from src.data.mock_data import load_data_into_duckdb, generate_all_data, save_data_to_csv
 from src.data.data_loader import DataLoader
 from src.utils.config import Config
 
 
 def init_data():
+    Config.ensure_data_dir()
     loader = DataLoader()
     tables = loader.list_tables()
 
@@ -52,7 +54,8 @@ def main():
             "🎫 签到码追踪",
             "🏢 赞助清单",
             "💸 退票争议",
-            "🔍 明细追溯"
+            "🔍 明细追溯",
+            "📥 数据导入中心"
         ],
         index=0
     )
@@ -63,10 +66,13 @@ def main():
     tables = loader.list_tables()
     st.sidebar.caption(f"已加载 {len(tables)} 张数据表")
     for t in tables:
-        count = loader.ddb.get_row_count(t)
-        st.sidebar.caption(f"- {t}: {count:,} 条")
+        try:
+            count = loader.ddb.get_row_count(t)
+            st.sidebar.caption(f"- {t}: {count:,} 条")
+        except Exception:
+            pass
 
-    if st.sidebar.button("🔄 重新生成数据", use_container_width=True):
+    if st.sidebar.button("🔄 重新生成模拟数据", use_container_width=True):
         with st.spinner("正在重新生成数据..."):
             data = generate_all_data()
             save_data_to_csv(data)
@@ -89,6 +95,8 @@ def main():
         render_refunds()
     elif page == "🔍 明细追溯":
         render_detail_trace()
+    elif page == "📥 数据导入中心":
+        render_data_import()
 
 
 if __name__ == "__main__":

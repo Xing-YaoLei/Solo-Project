@@ -111,8 +111,10 @@ def render_overview():
 
             if len(eff_data) > 0:
                 peak_hour = eff_data.loc[eff_data["checkin_count"].idxmax()]
+                peak_time = peak_hour["checkin_hour"]
+                peak_str = peak_time.strftime('%H:%M') if hasattr(peak_time, 'strftime') else str(peak_time)
                 st.info(
-                    f"⏰ 核销高峰：{peak_hour['checkin_hour'].strftime('%H:%M')} 时段，"
+                    f"⏰ 核销高峰：{peak_str} 时段，"
                     f"单小时核销 {peak_hour['checkin_count']} 人。"
                 )
 

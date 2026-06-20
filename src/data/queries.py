@@ -23,11 +23,12 @@ class Queries:
     def get_checkin_efficiency_hourly(self) -> pl.DataFrame:
         sql = """
         SELECT
-            DATE_TRUNC('hour', checkin_time) AS checkin_hour,
+            DATE_TRUNC('hour', CAST(checkin_time AS TIMESTAMP)) AS checkin_hour,
             COUNT(*) AS checkin_count,
             COUNT(DISTINCT registration_id) AS unique_registrations
         FROM checkin_codes
         WHERE checked_in = true
+          AND checkin_time IS NOT NULL
         GROUP BY checkin_hour
         ORDER BY checkin_hour
         """
@@ -37,10 +38,11 @@ class Queries:
         sql = """
         WITH hourly AS (
             SELECT
-                DATE_TRUNC('hour', checkin_time) AS checkin_hour,
+                DATE_TRUNC('hour', CAST(checkin_time AS TIMESTAMP)) AS checkin_hour,
                 COUNT(*) AS checkin_count
             FROM checkin_codes
             WHERE checked_in = true
+              AND checkin_time IS NOT NULL
             GROUP BY checkin_hour
             ORDER BY checkin_hour
         )
@@ -49,7 +51,7 @@ class Queries:
             checkin_count,
             SUM(checkin_count) OVER (ORDER BY checkin_hour) AS cumulative_count,
             SUM(checkin_count) OVER (ORDER BY checkin_hour) * 100.0 /
-                (SELECT COUNT(*) FROM checkin_codes) AS cumulative_pct
+                (SELECT COUNT(*) FROM checkin_codes WHERE checked_in = true) AS cumulative_pct
         FROM hourly
         ORDER BY checkin_hour
         """
@@ -174,17 +176,20 @@ class Queries:
             rf.refund_amount,
             rf.refund_reason,
             rf.status AS refund_status,
-            rf.request_time,
-            rf.resolved_time,
-            COUNT(rn.note_id) AS note_count
+            CAST(rf.request_time AS TIMESTAMP) AS request_time,
+            CAST(rf.resolved_time AS TIMESTAMP) AS resolved_time,
+            COUNT(rn.note_id) AS note_count,
+            rf.platform_code,
+            rf.platform_refund_id
         FROM refunds rf
         LEFT JOIN registrations r ON rf.registration_id = r.registration_id
         LEFT JOIN refund_notes rn ON rf.refund_id = rn.refund_id
         GROUP BY
             rf.refund_id, rf.registration_id, r.attendee_name,
             r.ticket_type, rf.refund_amount, rf.refund_reason,
-            rf.status, rf.request_time, rf.resolved_time
-        ORDER BY rf.request_time DESC
+            rf.status, rf.request_time, rf.resolved_time,
+            rf.platform_code, rf.platform_refund_id
+        ORDER BY request_time DESC
         """
         return self.ddb.query(sql)
 
@@ -195,7 +200,7 @@ class Queries:
             refund_id,
             note_content,
             created_by,
-            created_at,
+            CAST(created_at AS TIMESTAMP) AS created_at,
             is_resolution
         FROM refund_notes
         WHERE refund_id = '{refund_id}'
@@ -217,15 +222,19 @@ class Queries:
             p.amount AS payment_amount,
             p.status AS payment_status,
             p.payment_method,
-            p.payment_time,
+            CAST(p.payment_time AS TIMESTAMP) AS payment_time,
+            p.transaction_id,
+            p.platform_code AS payment_platform_code,
+            p.platform_payment_id,
             cc.checkin_code,
             cc.generated AS code_generated,
             cc.sent AS code_sent,
             cc.checked_in,
-            cc.checkin_time,
+            CAST(cc.checkin_time AS TIMESTAMP) AS checkin_time,
             rf.refund_id,
             rf.refund_amount,
-            rf.status AS refund_status
+            rf.status AS refund_status,
+            rf.platform_refund_id
         FROM registrations r
         LEFT JOIN seats s ON r.seat_id = s.seat_id
         LEFT JOIN sponsors sp ON r.sponsor_id = sp.sponsor_id
@@ -236,6 +245,53 @@ class Queries:
         """
         return self.ddb.query(sql)
 
+    def get_platform_raw_records(self, source_type: str = None, source_id: str = None) -> pl.DataFrame:
+        conditions = []
+        if source_type:
+            conditions.append(f"source_type = '{source_type}'")
+        if source_id:
+            conditions.append(f"source_id = '{source_id}'")
+
+        where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
+
+        sql = f"""
+        SELECT
+            record_id,
+            source_type,
+            source_id,
+            platform_code,
+            platform_name,
+            platform_record_id,
+            platform_url,
+            raw_payload,
+            CAST(synced_at AS TIMESTAMP) AS synced_at
+        FROM platform_raw_records
+        {where_clause}
+        ORDER BY synced_at DESC
+        """
+        return self.ddb.query(sql)
+
+    def get_checkin_minute_distribution(self) -> pl.DataFrame:
+        sql = """
+        SELECT
+            DATE_TRUNC('minute', CAST(checkin_time AS TIMESTAMP)) AS checkin_minute,
+            COUNT(*) AS count
+        FROM checkin_codes
+        WHERE checked_in = true
+          AND checkin_time IS NOT NULL
+        GROUP BY checkin_minute
+        ORDER BY checkin_minute
+        """
+        return self.ddb.query(sql)
+
+    def get_platforms(self) -> pl.DataFrame:
+        if self.ddb.table_exists("platforms"):
+            return self.ddb.query("SELECT * FROM platforms ORDER BY code")
+        return pl.DataFrame(
+            {"code": [], "name": [], "base_url": [], "api_prefix": []},
+            schema={"code": pl.Utf8, "name": pl.Utf8, "base_url": pl.Utf8, "api_prefix": pl.Utf8}
+        )
+
     def add_refund_note(self, refund_id: str, note_content: str, created_by: str, is_resolution: bool = False):
         import uuid
         from datetime import datetime
@@ -243,7 +299,7 @@ class Queries:
         created_at = datetime.now().isoformat()
         sql = f"""
         INSERT INTO refund_notes (note_id, refund_id, note_content, created_by, created_at, is_resolution)
-        VALUES ('{note_id}', '{refund_id}', '{note_content}', '{created_by}', '{created_at}', {str(is_resolution).lower()})
+        VALUES ('{note_id}', '{refund_id}', '{note_content.replace("'", "''")}', '{created_by}', '{created_at}', {str(is_resolution).lower()})
         """
         self.ddb.execute(sql)
 

@@ -47,12 +47,27 @@ class DuckDBManager:
         self.conn.execute(f"CREATE TABLE {table_name} AS SELECT * FROM df")
         return table_name
 
-    def create_table_from_csv(self, table_name: str, csv_path: str, if_exists="replace"):
+    def create_table_from_csv(self, table_name: str, csv_path: str, if_exists="replace", timestamp_cols=None):
+        if timestamp_cols is None:
+            timestamp_cols = [
+                "registration_time", "payment_time", "checkin_time",
+                "generated_at", "sent_at", "request_time", "resolved_time",
+                "created_at", "synced_at"
+            ]
+
         if if_exists == "replace":
             self.conn.execute(f"DROP TABLE IF EXISTS {table_name}")
+
         self.conn.execute(
             f"CREATE TABLE {table_name} AS SELECT * FROM read_csv_auto('{csv_path}')"
         )
+
+        for col in timestamp_cols:
+            try:
+                self.conn.execute(f"ALTER TABLE {table_name} ALTER COLUMN {col} TYPE TIMESTAMP USING CAST({col} AS TIMESTAMP)")
+            except Exception:
+                pass
+
         return table_name
 
     def table_exists(self, table_name: str) -> bool:

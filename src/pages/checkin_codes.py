@@ -97,16 +97,7 @@ def render_checkin_codes():
     st.markdown("---")
     st.markdown("### 📈 核销时段分布")
 
-    time_dist_sql = """
-    SELECT
-        DATE_TRUNC('minute', checkin_time) AS checkin_minute,
-        COUNT(*) AS count
-    FROM checkin_codes
-    WHERE checked_in = true
-    GROUP BY checkin_minute
-    ORDER BY checkin_minute
-    """
-    time_dist = queries.ddb.query(time_dist_sql).to_pandas()
+    time_dist = queries.get_checkin_minute_distribution().to_pandas()
 
     if len(time_dist) > 0:
         fig_time = px.area(
@@ -126,14 +117,18 @@ def render_checkin_codes():
 
         with st.expander("📌 核销时段结论", expanded=True):
             peak_minute = time_dist.loc[time_dist["count"].idxmax()]
+            peak_time = peak_minute["checkin_minute"]
+            peak_str = peak_time.strftime('%H:%M') if hasattr(peak_time, 'strftime') else str(peak_time)
             st.success(
-                f"高峰时段：{peak_minute['checkin_minute'].strftime('%H:%M')}，"
+                f"高峰时段：{peak_str}，"
                 f"单分钟核销 {peak_minute['count']} 人"
             )
             st.info(
-                f"建议：在 {peak_minute['checkin_minute'].strftime('%H:%M')} 前后"
+                f"建议：在 {peak_str} 前后"
                 f"15分钟增加临时通道，缓解入场压力。"
             )
+    else:
+        st.info("暂无核销时段数据")
 
 
 def _render_by_ticket_type(all_codes_df: pd.DataFrame, queries: Queries):
