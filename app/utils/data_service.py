@@ -8,6 +8,21 @@ from app.models import (
 )
 
 
+def _parse_date_str(date_str):
+    if not date_str:
+        return None
+    if isinstance(date_str, datetime):
+        return date_str
+    try:
+        if isinstance(date_str, str):
+            if len(date_str) == 10:
+                return datetime.strptime(date_str, "%Y-%m-%d")
+            return datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+    except Exception:
+        pass
+    return None
+
+
 class DataService:
     def __init__(self):
         self.db = SessionLocal()
@@ -15,50 +30,141 @@ class DataService:
     def close(self):
         self.db.close()
 
+    def _build_registration_filters(
+        self,
+        activity_id=None,
+        start_date=None,
+        end_date=None,
+        ticket_type_ids=None,
+        sponsor_levels=None,
+    ):
+        filters = []
+        if activity_id:
+            filters.append(Registration.activity_id == activity_id)
+
+        start_dt = _parse_date_str(start_date)
+        if start_dt:
+            filters.append(Registration.register_time >= start_dt)
+
+        end_dt = _parse_date_str(end_date)
+        if end_dt:
+            filters.append(Registration.register_time <= end_dt)
+
+        if ticket_type_ids:
+            filters.append(Registration.ticket_type_id.in_(ticket_type_ids))
+
+        if sponsor_levels:
+            filters.append(
+                Registration.sponsor_id.in_(
+                    self.db.query(Sponsor.id).filter(
+                        Sponsor.sponsor_level.in_(sponsor_levels)
+                    )
+                )
+            )
+
+        return filters
+
+    def _build_gate_filters(
+        self,
+        activity_id=None,
+        start_date=None,
+        end_date=None,
+        ticket_type_ids=None,
+        sponsor_levels=None,
+    ):
+        filters = [GateRecord.is_valid == True]
+        join_conds = [GateRecord.registration_id == Registration.id]
+
+        if activity_id:
+            filters.append(Registration.activity_id == activity_id)
+
+        start_dt = _parse_date_str(start_date)
+        if start_dt:
+            filters.append(Registration.register_time >= start_dt)
+
+        end_dt = _parse_date_str(end_date)
+        if end_dt:
+            filters.append(Registration.register_time <= end_dt)
+
+        if ticket_type_ids:
+            filters.append(Registration.ticket_type_id.in_(ticket_type_ids))
+
+        if sponsor_levels:
+            filters.append(
+                Registration.sponsor_id.in_(
+                    self.db.query(Sponsor.id).filter(
+                        Sponsor.sponsor_level.in_(sponsor_levels)
+                    )
+                )
+            )
+
+        return filters, join_conds
+
     def get_activities(self):
         activities = self.db.query(Activity).all()
         return [{"id": a.id, "name": a.name, "type": a.activity_type} for a in activities]
 
-    def get_funnel_data(self, activity_id=None, start_date=None, end_date=None):
-        query = self.db.query(Registration)
-        if activity_id:
-            query = query.filter(Registration.activity_id == activity_id)
-        if start_date:
-            query = query.filter(Registration.register_time >= start_date)
-        if end_date:
-            query = query.filter(Registration.register_time <= end_date)
+    def get_funnel_data(
+        self,
+        activity_id=None,
+        start_date=None,
+        end_date=None,
+        ticket_type_ids=None,
+        sponsor_levels=None,
+    ):
+        reg_filters = self._build_registration_filters(
+            activity_id, start_date, end_date, ticket_type_ids, sponsor_levels
+        )
 
-        registrations = query.all()
-        reg_df = pd.DataFrame([{
-            "id": r.id,
-            "activity_id": r.activity_id,
-            "sponsor_id": r.sponsor_id,
-            "ticket_type_id": r.ticket_type_id,
-            "order_no": r.order_no,
-            "quantity": r.quantity,
-            "total_amount": r.total_amount,
-            "status": r.status,
-            "is_disputed": r.is_disputed,
-            "register_time": r.register_time,
-        } for r in registrations])
+        reg_query = self.db.query(Registration)
+        if reg_filters:
+            reg_query = reg_query.filter(and_(*reg_filters))
+        registrations = reg_query.all()
+
+        reg_columns = [
+            "id", "activity_id", "sponsor_id", "ticket_type_id",
+            "order_no", "quantity", "total_amount", "status",
+            "is_disputed", "register_time",
+        ]
+        reg_rows = [
+            {
+                "id": r.id,
+                "activity_id": r.activity_id,
+                "sponsor_id": r.sponsor_id,
+                "ticket_type_id": r.ticket_type_id,
+                "order_no": r.order_no,
+                "quantity": r.quantity,
+                "total_amount": r.total_amount,
+                "status": r.status,
+                "is_disputed": r.is_disputed,
+                "register_time": r.register_time,
+            }
+            for r in registrations
+        ]
+        reg_df = pd.DataFrame(reg_rows, columns=reg_columns)
+
+        sponsor_query = self.db.query(func.sum(Sponsor.allocated_tickets))
+        if activity_id:
+            sponsor_query = sponsor_query.filter(Sponsor.activity_id == activity_id)
+        if sponsor_levels:
+            sponsor_query = sponsor_query.filter(Sponsor.sponsor_level.in_(sponsor_levels))
+        sponsor_count = sponsor_query.scalar() or 0
 
         if reg_df.empty:
-            return pd.DataFrame()
+            gate_count = 0
+        else:
+            gate_filters, gate_join = self._build_gate_filters(
+                activity_id, start_date, end_date, ticket_type_ids, sponsor_levels
+            )
+            gate_query = self.db.query(GateRecord).join(
+                Registration, and_(*gate_join)
+            ).filter(and_(*gate_filters))
+            gate_count = gate_query.count()
 
-        sponsor_count = self.db.query(func.sum(Sponsor.allocated_tickets))
-        if activity_id:
-            sponsor_count = sponsor_count.filter(Sponsor.activity_id == activity_id)
-        sponsor_count = sponsor_count.scalar() or 0
-
-        registration_count = int(reg_df["quantity"].sum())
+        registration_count = int(reg_df["quantity"].sum()) if not reg_df.empty else 0
 
         paid_df = reg_df[reg_df["status"].isin(["paid", "refunded", "disputed"])]
         paid_count = int(paid_df["quantity"].sum()) if not paid_df.empty else 0
-
-        gate_query = self.db.query(GateRecord).filter(GateRecord.is_valid == True)
-        if activity_id:
-            gate_query = gate_query.join(Registration).filter(Registration.activity_id == activity_id)
-        gate_count = gate_query.count()
 
         funnel_data = pd.DataFrame({
             "stage": ["赞助分配", "报名", "支付完成", "核销入场"],
@@ -66,29 +172,63 @@ class DataService:
             "color": ["#636EFA", "#00CC96", "#AB63FA", "#FFA15A"],
         })
 
-        funnel_data["conversion_rate"] = funnel_data["count"].pct_change() + 1
-        funnel_data.loc[0, "conversion_rate"] = 1.0
+        conversion = funnel_data["count"].pct_change() + 1
+        conversion.iloc[0] = 1.0
+        funnel_data.loc[:, "conversion_rate"] = conversion
 
         return funnel_data
 
-    def get_sponsor_list(self, activity_id=None):
+    def get_sponsor_list(
+        self,
+        activity_id=None,
+        start_date=None,
+        end_date=None,
+        ticket_type_ids=None,
+        sponsor_levels=None,
+    ):
         query = self.db.query(Sponsor)
         if activity_id:
             query = query.filter(Sponsor.activity_id == activity_id)
+        if sponsor_levels:
+            query = query.filter(Sponsor.sponsor_level.in_(sponsor_levels))
 
         sponsors = query.all()
         data = []
         for s in sponsors:
+            used_filters = [Registration.sponsor_id == s.id]
+            if activity_id:
+                used_filters.append(Registration.activity_id == activity_id)
+            start_dt = _parse_date_str(start_date)
+            if start_dt:
+                used_filters.append(Registration.register_time >= start_dt)
+            end_dt = _parse_date_str(end_date)
+            if end_dt:
+                used_filters.append(Registration.register_time <= end_dt)
+            if ticket_type_ids:
+                used_filters.append(Registration.ticket_type_id.in_(ticket_type_ids))
+
             used_count = self.db.query(func.sum(Registration.quantity)).filter(
-                Registration.sponsor_id == s.id
+                and_(*used_filters)
             ).scalar() or 0
+
+            checked_filters = [
+                Registration.sponsor_id == s.id,
+                GateRecord.is_valid == True,
+            ]
+            if activity_id:
+                checked_filters.append(Registration.activity_id == activity_id)
+            start_dt2 = _parse_date_str(start_date)
+            if start_dt2:
+                checked_filters.append(Registration.register_time >= start_dt2)
+            end_dt2 = _parse_date_str(end_date)
+            if end_dt2:
+                checked_filters.append(Registration.register_time <= end_dt2)
+            if ticket_type_ids:
+                checked_filters.append(Registration.ticket_type_id.in_(ticket_type_ids))
 
             checked_count = self.db.query(GateRecord).join(
                 Registration, GateRecord.registration_id == Registration.id
-            ).filter(
-                Registration.sponsor_id == s.id,
-                GateRecord.is_valid == True,
-            ).count()
+            ).filter(and_(*checked_filters)).count()
 
             data.append({
                 "id": s.id,
@@ -103,13 +243,29 @@ class DataService:
 
         return pd.DataFrame(data)
 
-    def get_gate_records_by_sponsor(self, sponsor_id):
-        gate_records = self.db.query(GateRecord).join(
-            Registration, GateRecord.registration_id == Registration.id
-        ).filter(
+    def get_gate_records_by_sponsor(
+        self,
+        sponsor_id,
+        start_date=None,
+        end_date=None,
+        ticket_type_ids=None,
+    ):
+        filters = [
             Registration.sponsor_id == sponsor_id,
             GateRecord.is_valid == True,
-        ).all()
+        ]
+        start_dt = _parse_date_str(start_date)
+        if start_dt:
+            filters.append(Registration.register_time >= start_dt)
+        end_dt = _parse_date_str(end_date)
+        if end_dt:
+            filters.append(Registration.register_time <= end_dt)
+        if ticket_type_ids:
+            filters.append(Registration.ticket_type_id.in_(ticket_type_ids))
+
+        gate_records = self.db.query(GateRecord).join(
+            Registration, GateRecord.registration_id == Registration.id
+        ).filter(and_(*filters)).all()
 
         data = []
         for g in gate_records:
@@ -127,7 +283,13 @@ class DataService:
 
         return pd.DataFrame(data)
 
-    def get_ticket_types(self, activity_id=None):
+    def get_ticket_types(
+        self,
+        activity_id=None,
+        start_date=None,
+        end_date=None,
+        sponsor_levels=None,
+    ):
         query = self.db.query(TicketType)
         if activity_id:
             query = query.filter(TicketType.activity_id == activity_id)
@@ -135,17 +297,55 @@ class DataService:
         ticket_types = query.all()
         data = []
         for t in ticket_types:
-            sold_count = self.db.query(func.sum(Registration.quantity)).filter(
+            sold_filters = [
                 Registration.ticket_type_id == t.id,
                 Registration.status.in_(["paid", "refunded", "disputed"]),
+            ]
+            if activity_id:
+                sold_filters.append(Registration.activity_id == activity_id)
+            start_dt = _parse_date_str(start_date)
+            if start_dt:
+                sold_filters.append(Registration.register_time >= start_dt)
+            end_dt = _parse_date_str(end_date)
+            if end_dt:
+                sold_filters.append(Registration.register_time <= end_dt)
+            if sponsor_levels:
+                sold_filters.append(
+                    Registration.sponsor_id.in_(
+                        self.db.query(Sponsor.id).filter(
+                            Sponsor.sponsor_level.in_(sponsor_levels)
+                        )
+                    )
+                )
+
+            sold_count = self.db.query(func.sum(Registration.quantity)).filter(
+                and_(*sold_filters)
             ).scalar() or 0
+
+            checked_filters = [
+                Registration.ticket_type_id == t.id,
+                GateRecord.is_valid == True,
+            ]
+            if activity_id:
+                checked_filters.append(Registration.activity_id == activity_id)
+            start_dt2 = _parse_date_str(start_date)
+            if start_dt2:
+                checked_filters.append(Registration.register_time >= start_dt2)
+            end_dt2 = _parse_date_str(end_date)
+            if end_dt2:
+                checked_filters.append(Registration.register_time <= end_dt2)
+            if sponsor_levels:
+                checked_filters.append(
+                    Registration.sponsor_id.in_(
+                        self.db.query(Sponsor.id).filter(
+                            Sponsor.sponsor_level.in_(sponsor_levels)
+                        )
+                    )
+                )
 
             checked_count = self.db.query(GateRecord).join(
                 Registration, GateRecord.registration_id == Registration.id
-            ).filter(
-                Registration.ticket_type_id == t.id,
-                GateRecord.is_valid == True,
-            ).count()
+            ).filter(and_(*checked_filters)).count()
 
             data.append({
                 "id": t.id,
@@ -163,14 +363,43 @@ class DataService:
 
         return pd.DataFrame(data)
 
-    def get_raw_samples(self, activity_id=None, sponsor_id=None, ticket_type_id=None, limit=100):
+    def get_raw_samples(
+        self,
+        activity_id=None,
+        sponsor_id=None,
+        ticket_type_id=None,
+        start_date=None,
+        end_date=None,
+        ticket_type_ids=None,
+        sponsor_levels=None,
+        limit=100,
+    ):
         query = self.db.query(Registration)
+        filters = []
         if activity_id:
-            query = query.filter(Registration.activity_id == activity_id)
+            filters.append(Registration.activity_id == activity_id)
         if sponsor_id:
-            query = query.filter(Registration.sponsor_id == sponsor_id)
+            filters.append(Registration.sponsor_id == sponsor_id)
         if ticket_type_id:
-            query = query.filter(Registration.ticket_type_id == ticket_type_id)
+            filters.append(Registration.ticket_type_id == ticket_type_id)
+        start_dt = _parse_date_str(start_date)
+        if start_dt:
+            filters.append(Registration.register_time >= start_dt)
+        end_dt = _parse_date_str(end_date)
+        if end_dt:
+            filters.append(Registration.register_time <= end_dt)
+        if ticket_type_ids:
+            filters.append(Registration.ticket_type_id.in_(ticket_type_ids))
+        if sponsor_levels:
+            filters.append(
+                Registration.sponsor_id.in_(
+                    self.db.query(Sponsor.id).filter(
+                        Sponsor.sponsor_level.in_(sponsor_levels)
+                    )
+                )
+            )
+        if filters:
+            query = query.filter(and_(*filters))
 
         registrations = query.limit(limit).all()
         data = []
@@ -240,26 +469,40 @@ class DataService:
         self.db.refresh(remark)
         return remark
 
-    def get_checkin_efficiency(self, activity_id=None):
-        gate_query = self.db.query(GateRecord).filter(GateRecord.is_valid == True)
-        if activity_id:
-            gate_query = gate_query.join(Registration).filter(
-                Registration.activity_id == activity_id
-            )
+    def get_checkin_efficiency(
+        self,
+        activity_id=None,
+        start_date=None,
+        end_date=None,
+        ticket_type_ids=None,
+        sponsor_levels=None,
+    ):
+        gate_filters, gate_join = self._build_gate_filters(
+            activity_id, start_date, end_date, ticket_type_ids, sponsor_levels
+        )
+        gate_query = self.db.query(GateRecord).join(
+            Registration, and_(*gate_join)
+        ).filter(and_(*gate_filters))
 
         gate_records = gate_query.all()
 
         if not gate_records:
             return pd.DataFrame()
 
-        df = pd.DataFrame([{
-            "id": g.id,
-            "check_in_time": g.check_in_time,
-            "gate_no": g.gate_no,
-            "registration_id": g.registration_id,
-        } for g in gate_records])
+        gate_cols = ["id", "check_in_time", "gate_no", "registration_id"]
+        gate_rows = [
+            {
+                "id": g.id,
+                "check_in_time": g.check_in_time,
+                "gate_no": g.gate_no,
+                "registration_id": g.registration_id,
+            }
+            for g in gate_records
+        ]
+        df = pd.DataFrame(gate_rows, columns=gate_cols)
 
-        df["check_in_hour"] = pd.to_datetime(df["check_in_time"]).dt.hour
+        check_in_hour = pd.to_datetime(df["check_in_time"]).dt.hour
+        df = df.assign(check_in_hour=check_in_hour)
         hourly_stats = df.groupby("check_in_hour").size().reset_index(name="count")
 
         return hourly_stats

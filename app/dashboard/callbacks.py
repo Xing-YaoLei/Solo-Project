@@ -22,6 +22,14 @@ def _format_number(num):
     return str(num)
 
 
+def _normalise_list(val):
+    if val is None:
+        return None
+    if isinstance(val, list):
+        return val if len(val) > 0 else None
+    return [val]
+
+
 def register_callbacks(app):
 
     @app.callback(
@@ -60,6 +68,7 @@ def register_callbacks(app):
         [
             Input("activity-selector", "value"),
             Input("apply-filter-btn", "n_clicks"),
+            Input("reset-filter-btn", "n_clicks"),
         ],
         [
             State("date-range", "start_date"),
@@ -70,17 +79,55 @@ def register_callbacks(app):
         prevent_initial_call=False,
     )
     def update_dashboard(
-        activity_id, apply_clicks,
+        activity_id, apply_clicks, reset_clicks,
         start_date, end_date,
         ticket_types, sponsor_levels,
     ):
+        triggered = ctx.triggered_id
+        tt_ids = None
+        sl_lvls = None
+        sd = start_date
+        ed = end_date
+
+        if triggered == "reset-filter-btn":
+            sd = None
+            ed = None
+            tt_ids = None
+            sl_lvls = None
+        else:
+            tt_ids = _normalise_list(ticket_types)
+            sl_lvls = _normalise_list(sponsor_levels)
+
         service = DataService()
         try:
-            funnel_data = service.get_funnel_data(activity_id=activity_id)
-            sponsor_df = service.get_sponsor_list(activity_id=activity_id)
+            funnel_data = service.get_funnel_data(
+                activity_id=activity_id,
+                start_date=sd,
+                end_date=ed,
+                ticket_type_ids=tt_ids,
+                sponsor_levels=sl_lvls,
+            )
+            sponsor_df = service.get_sponsor_list(
+                activity_id=activity_id,
+                start_date=sd,
+                end_date=ed,
+                ticket_type_ids=tt_ids,
+                sponsor_levels=sl_lvls,
+            )
             anomaly_df = service.get_anomaly_records(activity_id=activity_id, is_resolved=False)
-            ticket_type_df = service.get_ticket_types(activity_id=activity_id)
-            efficiency_df = service.get_checkin_efficiency(activity_id=activity_id)
+            ticket_type_df = service.get_ticket_types(
+                activity_id=activity_id,
+                start_date=sd,
+                end_date=ed,
+                sponsor_levels=sl_lvls,
+            )
+            efficiency_df = service.get_checkin_efficiency(
+                activity_id=activity_id,
+                start_date=sd,
+                end_date=ed,
+                ticket_type_ids=tt_ids,
+                sponsor_levels=sl_lvls,
+            )
 
             if not funnel_data.empty:
                 sponsor_count = int(funnel_data.iloc[0]["count"])
@@ -99,8 +146,9 @@ def register_callbacks(app):
 
             if not sponsor_df.empty:
                 sponsor_display = sponsor_df.copy()
-                sponsor_display["使用率"] = (sponsor_display["usage_rate"] * 100).round(1).astype(str) + "%"
-                sponsor_display["核销率"] = (sponsor_display["checkin_rate"] * 100).round(1).astype(str) + "%"
+                usage_pct = (sponsor_display["usage_rate"] * 100).round(1).astype(str) + "%"
+                checkin_pct = (sponsor_display["checkin_rate"] * 100).round(1).astype(str) + "%"
+                sponsor_display = sponsor_display.assign(使用率=usage_pct, 核销率=checkin_pct)
                 sponsor_data = sponsor_display.to_dict("records")
             else:
                 sponsor_data = []
@@ -111,7 +159,13 @@ def register_callbacks(app):
 
             update_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-            tt_options = [{"label": t["name"], "value": t["id"]} for _, t in ticket_type_df.iterrows()] if not ticket_type_df.empty else []
+            tt_options = []
+            if not ticket_type_df.empty:
+                for _, t in ticket_type_df.iterrows():
+                    label = t["name"]
+                    if t.get("sold_quantity"):
+                        label += f" (销量:{t['sold_quantity']})"
+                    tt_options.append({"label": label, "value": t["id"]})
 
             sponsor_levels_list = sponsor_df["sponsor_level"].unique().tolist() if not sponsor_df.empty else []
             sl_options = [{"label": lvl, "value": lvl} for lvl in sponsor_levels_list]
@@ -166,30 +220,109 @@ def register_callbacks(app):
 
     @app.callback(
         Output("gate-records-content", "children"),
-        Input("selected-sponsor-id", "data"),
+        [
+            Input("selected-sponsor-id", "data"),
+            Input("apply-filter-btn", "n_clicks"),
+            Input("reset-filter-btn", "n_clicks"),
+        ],
+        [
+            State("date-range", "start_date"),
+            State("date-range", "end_date"),
+            State("ticket-type-filter", "value"),
+        ],
         prevent_initial_call=True,
     )
-    def update_gate_records(sponsor_id):
+    def update_gate_records(sponsor_id, apply_clicks, reset_clicks,
+                            start_date, end_date, ticket_types):
         if not sponsor_id:
             return html.Div("请选择赞助商", className="text-center text-muted py-4")
 
+        triggered = ctx.triggered_id
+        tt_ids = None
+        sd = start_date
+        ed = end_date
+        if triggered == "reset-filter-btn":
+            sd = None
+            ed = None
+            tt_ids = None
+        else:
+            tt_ids = _normalise_list(ticket_types)
+
         service = DataService()
         try:
-            gate_records = service.get_gate_records_by_sponsor(sponsor_id)
+            gate_records = service.get_gate_records_by_sponsor(
+                sponsor_id,
+                start_date=sd,
+                end_date=ed,
+                ticket_type_ids=tt_ids,
+            )
+            if gate_records.empty:
+                return html.Div(
+                    [
+                        html.I(className="fas fa-inbox fa-3x text-muted mb-3"),
+                        html.H6("暂无核销记录", className="text-muted"),
+                        html.P(
+                            "该赞助商当前筛选条件下没有核销入场数据",
+                            className="small text-muted mb-0",
+                        ),
+                    ],
+                    className="text-center py-5",
+                )
             return create_gate_records_table(gate_records)
         finally:
             service.close()
 
     @app.callback(
         Output("ticket-rules-content", "children"),
-        Input("selected-sponsor-id", "data"),
-        State("activity-selector", "value"),
+        [
+            Input("selected-sponsor-id", "data"),
+            Input("apply-filter-btn", "n_clicks"),
+            Input("reset-filter-btn", "n_clicks"),
+        ],
+        [
+            State("activity-selector", "value"),
+            State("date-range", "start_date"),
+            State("date-range", "end_date"),
+            State("sponsor-level-filter", "value"),
+        ],
         prevent_initial_call=True,
     )
-    def update_ticket_rules(sponsor_id, activity_id):
+    def update_ticket_rules(sponsor_id, apply_clicks, reset_clicks,
+                            activity_id, start_date, end_date, sponsor_levels):
+        if not sponsor_id:
+            return html.Div("请选择赞助商", className="text-center text-muted py-4")
+
+        triggered = ctx.triggered_id
+        sl_lvls = None
+        sd = start_date
+        ed = end_date
+        if triggered == "reset-filter-btn":
+            sd = None
+            ed = None
+            sl_lvls = None
+        else:
+            sl_lvls = _normalise_list(sponsor_levels)
+
         service = DataService()
         try:
-            ticket_types = service.get_ticket_types(activity_id=activity_id)
+            ticket_types = service.get_ticket_types(
+                activity_id=activity_id,
+                start_date=sd,
+                end_date=ed,
+                sponsor_levels=sl_lvls,
+            )
+            if ticket_types.empty:
+                return html.Div(
+                    [
+                        html.I(className="fas fa-inbox fa-3x text-muted mb-3"),
+                        html.H6("暂无票种数据", className="text-muted"),
+                        html.P(
+                            "当前筛选条件下没有匹配的票种规则",
+                            className="small text-muted mb-0",
+                        ),
+                    ],
+                    className="text-center py-5",
+                )
             return create_ticket_rules_table(ticket_types)
         finally:
             service.close()
@@ -198,18 +331,61 @@ def register_callbacks(app):
         Output("raw-samples-content", "children"),
         [
             Input("selected-sponsor-id", "data"),
-            Input("activity-selector", "value"),
+            Input("apply-filter-btn", "n_clicks"),
+            Input("reset-filter-btn", "n_clicks"),
+        ],
+        [
+            State("activity-selector", "value"),
+            State("date-range", "start_date"),
+            State("date-range", "end_date"),
+            State("ticket-type-filter", "value"),
+            State("sponsor-level-filter", "value"),
         ],
         prevent_initial_call=True,
     )
-    def update_raw_samples(sponsor_id, activity_id):
+    def update_raw_samples(sponsor_id, apply_clicks, reset_clicks,
+                           activity_id, start_date, end_date,
+                           ticket_types, sponsor_levels):
+        if not sponsor_id:
+            return html.Div("请选择赞助商", className="text-center text-muted py-4")
+
+        triggered = ctx.triggered_id
+        tt_ids = None
+        sl_lvls = None
+        sd = start_date
+        ed = end_date
+        if triggered == "reset-filter-btn":
+            sd = None
+            ed = None
+            tt_ids = None
+            sl_lvls = None
+        else:
+            tt_ids = _normalise_list(ticket_types)
+            sl_lvls = _normalise_list(sponsor_levels)
+
         service = DataService()
         try:
             samples = service.get_raw_samples(
                 activity_id=activity_id,
                 sponsor_id=sponsor_id,
+                start_date=sd,
+                end_date=ed,
+                ticket_type_ids=tt_ids,
+                sponsor_levels=sl_lvls,
                 limit=100,
             )
+            if samples.empty:
+                return html.Div(
+                    [
+                        html.I(className="fas fa-inbox fa-3x text-muted mb-3"),
+                        html.H6("暂无原始样本", className="text-muted"),
+                        html.P(
+                            "该赞助商当前筛选条件下没有匹配的订单样本",
+                            className="small text-muted mb-0",
+                        ),
+                    ],
+                    className="text-center py-5",
+                )
             return create_raw_samples_table(samples)
         finally:
             service.close()
@@ -313,12 +489,15 @@ def register_callbacks(app):
             State("activity-selector", "value"),
             State("date-range", "start_date"),
             State("date-range", "end_date"),
+            State("ticket-type-filter", "value"),
+            State("sponsor-level-filter", "value"),
         ],
         prevent_initial_call=True,
     )
     def toggle_export_modal(
         export_clicks, close_clicks, confirm_clicks,
         is_open, activity_id, start_date, end_date,
+        ticket_types, sponsor_levels,
     ):
         triggered = ctx.triggered_id
 
@@ -336,20 +515,39 @@ def register_callbacks(app):
                     (a["name"] for a in activities if a["id"] == activity_id),
                     "全部活动",
                 )
+
+                tt_ids = _normalise_list(ticket_types)
+                sl_lvls = _normalise_list(sponsor_levels)
+
+                tt_names = []
+                if tt_ids:
+                    tt_df = service.get_ticket_types(activity_id=activity_id)
+                    for tt_id in tt_ids:
+                        match = tt_df[tt_df["id"] == tt_id]
+                        if not match.empty:
+                            tt_names.append(match.iloc[0]["name"])
+
             finally:
                 service.close()
+
+            items = [
+                html.Li(f"活动：{activity_name}"),
+                html.Li(f"日期范围：{start_date or '不限'} 至 {end_date or '不限'}"),
+            ]
+            if tt_names:
+                items.append(html.Li(f"票种：{'、'.join(tt_names)}"))
+            else:
+                items.append(html.Li("票种：全部"))
+            if sl_lvls:
+                items.append(html.Li(f"赞助级别：{'、'.join(sl_lvls)}"))
+            else:
+                items.append(html.Li("赞助级别：全部"))
+            items.append(html.Li(f"生成时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"))
 
             filter_info = html.Div(
                 [
                     html.H6("当前筛选口径：", className="text-primary mb-2"),
-                    html.Ul(
-                        [
-                            html.Li(f"活动：{activity_name}"),
-                            html.Li(f"日期范围：{start_date} 至 {end_date}"),
-                            html.Li(f"生成时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"),
-                        ],
-                        className="mb-0 small",
-                    ),
+                    html.Ul(items, className="mb-0 small"),
                 ]
             )
             return True, filter_info
@@ -363,6 +561,8 @@ def register_callbacks(app):
             State("activity-selector", "value"),
             State("date-range", "start_date"),
             State("date-range", "end_date"),
+            State("ticket-type-filter", "value"),
+            State("sponsor-level-filter", "value"),
             State("export-format", "value"),
             State("export-content", "value"),
         ],
@@ -370,43 +570,87 @@ def register_callbacks(app):
     )
     def export_report(
         n_clicks, activity_id, start_date, end_date,
+        ticket_types, sponsor_levels,
         export_format, export_content,
     ):
+        tt_ids = _normalise_list(ticket_types)
+        sl_lvls = _normalise_list(sponsor_levels)
+
         service = DataService()
         try:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"票务漏斗报表_{timestamp}"
 
+            activities = service.get_activities()
+            activity_name = next(
+                (a["name"] for a in activities if a["id"] == activity_id),
+                "全部活动",
+            )
+
+            tt_names = []
+            if tt_ids:
+                tt_all = service.get_ticket_types(activity_id=activity_id)
+                for tt_id in tt_ids:
+                    match = tt_all[tt_all["id"] == tt_id]
+                    if not match.empty:
+                        tt_names.append(match.iloc[0]["name"])
+
             data_frames = {}
 
+            filter_lines = [
+                f"生成时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+                f"活动：{activity_name}（ID: {activity_id or '全部'}）",
+                f"日期范围：{start_date or '不限'} 至 {end_date or '不限'}",
+                f"票种：{'、'.join(tt_names) if tt_names else '全部'}",
+                f"赞助级别：{'、'.join(sl_lvls) if sl_lvls else '全部'}",
+                "统计口径：团队例会专用口径 · 赞助 → 报名 → 支付 → 核销",
+            ]
             summary_data = {
-                "项目": ["生成时间", "活动ID", "日期范围", "筛选口径"],
-                "内容": [
-                    datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    str(activity_id or "全部"),
-                    f"{start_date} 至 {end_date}",
-                    "团队例会口径",
-                ],
+                "项目": ["筛选口径与说明"],
+                "内容": ["\n".join(filter_lines)],
             }
             data_frames["报表信息"] = pd.DataFrame(summary_data)
 
             if "funnel" in export_content:
-                funnel_data = service.get_funnel_data(activity_id=activity_id)
+                funnel_data = service.get_funnel_data(
+                    activity_id=activity_id,
+                    start_date=start_date,
+                    end_date=end_date,
+                    ticket_type_ids=tt_ids,
+                    sponsor_levels=sl_lvls,
+                )
                 if not funnel_data.empty:
                     data_frames["漏斗转化"] = funnel_data
 
             if "efficiency" in export_content:
-                efficiency_data = service.get_checkin_efficiency(activity_id=activity_id)
+                efficiency_data = service.get_checkin_efficiency(
+                    activity_id=activity_id,
+                    start_date=start_date,
+                    end_date=end_date,
+                    ticket_type_ids=tt_ids,
+                    sponsor_levels=sl_lvls,
+                )
                 if not efficiency_data.empty:
                     data_frames["核销效率"] = efficiency_data
 
             if "sponsors" in export_content:
-                sponsor_data = service.get_sponsor_list(activity_id=activity_id)
+                sponsor_data = service.get_sponsor_list(
+                    activity_id=activity_id,
+                    start_date=start_date,
+                    end_date=end_date,
+                    ticket_type_ids=tt_ids,
+                    sponsor_levels=sl_lvls,
+                )
                 if not sponsor_data.empty:
                     data_frames["赞助清单"] = sponsor_data
 
             if "ticket_types" in export_content:
-                ticket_type_data = service.get_ticket_types(activity_id=activity_id)
+                ticket_type_data = service.get_ticket_types(
+                    activity_id=activity_id,
+                    start_date=start_date,
+                    end_date=end_date,
+                    sponsor_levels=sl_lvls,
+                )
                 if not ticket_type_data.empty:
                     data_frames["票种分析"] = ticket_type_data
 
