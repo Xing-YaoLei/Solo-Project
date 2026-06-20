@@ -68,4 +68,28 @@ class GatePipeline(BasePipeline):
             )
             count = len(data)
             self.log_info("load", "写入 DuckDB gate_records 表", f"追加模式, 目标条数: {count}")
+
+        if getattr(self, '_pg_available', False):
+            try:
+                from ..repositories.pg_repository import GateRecord as PgGateRecord
+                from ..repositories.pg_repository import get_pg_session
+                with get_pg_session() as session:
+                    if session:
+                        pg_records = []
+                        for row in data:
+                            gid, tid, gate, cc, pass_time, status = row
+                            pg_records.append(PgGateRecord(
+                                id=str(gid),
+                                ticket_id=str(tid),
+                                gate_no=gate,
+                                checkin_code=cc,
+                                pass_time=pass_time,
+                                status=status
+                            ))
+                        session.bulk_save_objects(pg_records)
+                        session.commit()
+                        self.log_info("load", "写入 PostgreSQL gate_records 表", f"双写完成, 条数: {count}")
+            except Exception as e:
+                self.log_warn("load", "写入 PostgreSQL gate_records 失败", str(e))
+
         return count

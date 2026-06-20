@@ -1,5 +1,6 @@
 import time
 import random
+import uuid
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any, List, Optional
@@ -8,6 +9,7 @@ import duckdb
 
 from ..database import get_duckdb
 from ..utils.logger import logger
+from ..repositories.pg_repository import is_pg_enabled, get_pg_session, create_tables_if_not_exists
 
 
 TASK_NAMES = {
@@ -33,6 +35,10 @@ class BasePipeline(ABC):
         self.task_name = TASK_NAMES.get(self.task_code, self.task_code)
         self.source_type = SOURCE_TYPES.get(self.task_code, "unknown")
         self._log_id_counter: int = 0
+        self._pg_available = is_pg_enabled()
+        if self._pg_available:
+            create_tables_if_not_exists()
+            logger.info(f"[{self.task_name}] PostgreSQL 双写已启用")
 
     def run(self) -> List[dict]:
         all_logs: List[dict] = []
@@ -65,7 +71,8 @@ class BasePipeline(ABC):
             all_logs.append({"step": "transform", "data": transformed_data, "cost": transform_cost})
 
             load_start = time.time()
-            self.log_info("load", "开始数据加载", "写入目标表 (DuckDB)")
+            target = "DuckDB" + (" + PostgreSQL" if self._pg_available else "")
+            self.log_info("load", "开始数据加载", f"写入目标表 ({target})")
             loaded_count = self.load(transformed_data)
             load_cost = round(time.time() - load_start, 3)
             self.log_info("load", "数据加载完成", f"写入记录数: {loaded_count}, 耗时: {load_cost}s")
@@ -107,14 +114,32 @@ class BasePipeline(ABC):
         self._write_log("ERROR", f"[{step.upper()}] {message}", detail)
 
     def _write_log(self, level: str, message: str, detail: Optional[str] = None) -> None:
+        log_id = str(uuid.uuid4())
+        now = datetime.now()
         with get_duckdb() as conn:
-            log_id = conn.execute("SELECT COALESCE(MAX(id), 0) + 1 FROM sync_logs").fetchone()[0]
-            now = datetime.now()
             conn.execute(
                 "INSERT INTO sync_logs (id, task_code, level, message, detail, created_at) VALUES (?, ?, ?, ?, ?, ?)",
                 [log_id, self.task_code, level, message, detail, now]
             )
-            self._log_id_counter = log_id
+            self._log_id_counter += 1
+
+        if self._pg_available:
+            try:
+                from ..repositories.pg_repository import SyncLog as PgSyncLog
+                with get_pg_session() as session:
+                    if session:
+                        pg_log = PgSyncLog(
+                            id=log_id,
+                            task_code=self.task_code,
+                            level=level,
+                            message=message,
+                            detail=detail,
+                            created_at=now
+                        )
+                        session.add(pg_log)
+                        session.commit()
+            except Exception as e:
+                logger.warning(f"[{self.task_name}] 写入 PostgreSQL sync_logs 失败: {e}")
 
     def _ensure_task_exists(self) -> None:
         with get_duckdb() as conn:
@@ -129,6 +154,27 @@ class BasePipeline(ABC):
                     [self.task_code, self.task_name, self.source_type, now, 0, "idle"]
                 )
 
+        if self._pg_available:
+            try:
+                from ..repositories.pg_repository import SyncTask as PgSyncTask
+                with get_pg_session() as session:
+                    if session:
+                        pg_task = session.query(PgSyncTask).filter_by(task_code=self.task_code).first()
+                        if not pg_task:
+                            now = datetime.now()
+                            pg_task = PgSyncTask(
+                                task_code=self.task_code,
+                                task_name=self.task_name,
+                                source_type=self.source_type,
+                                last_sync_time=now,
+                                last_sync_count=0,
+                                status="idle"
+                            )
+                            session.add(pg_task)
+                            session.commit()
+            except Exception as e:
+                logger.warning(f"[{self.task_name}] 写入 PostgreSQL sync_tasks 失败: {e}")
+
     def _update_task_status(self, status: str, last_count: Optional[int]) -> None:
         with get_duckdb() as conn:
             now = datetime.now()
@@ -142,3 +188,19 @@ class BasePipeline(ABC):
                     "UPDATE sync_tasks SET status = ?, last_sync_time = ? WHERE task_code = ?",
                     [status, now, self.task_code]
                 )
+
+        if self._pg_available:
+            try:
+                from ..repositories.pg_repository import SyncTask as PgSyncTask
+                with get_pg_session() as session:
+                    if session:
+                        now = datetime.now()
+                        pg_task = session.query(PgSyncTask).filter_by(task_code=self.task_code).first()
+                        if pg_task:
+                            pg_task.status = status
+                            pg_task.last_sync_time = now
+                            if last_count is not None:
+                                pg_task.last_sync_count = last_count
+                            session.commit()
+            except Exception as e:
+                logger.warning(f"[{self.task_name}] 更新 PostgreSQL sync_tasks 失败: {e}")

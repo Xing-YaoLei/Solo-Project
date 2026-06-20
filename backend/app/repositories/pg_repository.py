@@ -1,10 +1,13 @@
 import uuid
 from datetime import datetime, date
-from typing import Optional, List, Generator
+from typing import Optional, List, Generator, TYPE_CHECKING
 from contextlib import contextmanager
 
 from ..config import settings
 from ..utils.logger import logger
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
 
 _sqlalchemy_available = False
 try:
@@ -50,7 +53,7 @@ def is_pg_enabled() -> bool:
 
 
 @contextmanager
-def get_pg_session() -> Generator[Optional[Session], None, None]:
+def get_pg_session() -> Generator[Optional["Session"], None, None]:
     if not is_pg_enabled():
         yield None
         return

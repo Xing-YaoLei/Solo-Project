@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import ReactECharts from 'echarts-for-react';
 import type { EChartsOption } from 'echarts';
 import {
@@ -98,60 +98,6 @@ function getRiskVariant(tag: string | undefined): 'success' | 'warning' | 'dange
   return 'muted';
 }
 
-const BENEFIT_TYPES = ['品牌曝光', '展位资源', '媒体传播', '嘉宾权益', '冠名赞助', '现场互动', 'VIP礼遇', '定制权益'];
-const SPONSOR_LEVELS = ['钻石', '铂金', '黄金', '白银', '合作伙伴', '官方供应商'];
-const STATUSES = ['进行中', '已完成', '待启动', '逾期风险', '已暂停'];
-const RISK_TAGS = ['高风险', '中风险', '低风险', undefined, undefined, undefined];
-
-function generateMockList(): SponsorshipItem[] {
-  const names = [
-    '腾讯科技', '阿里巴巴集团', '字节跳动', '华为技术', '小米科技',
-    '京东集团', '美团点评', '百度在线', '网易公司', '滴滴出行',
-    '蚂蚁集团', '拼多多', '哔哩哔哩', '快手科技', '携程集团',
-  ];
-  return names.map((name, i) => {
-    const contractQty = 8 + Math.floor(Math.random() * 48);
-    const fulfilledRatio = 0.35 + Math.random() * 0.62;
-    const fulfilledQty = Math.floor(contractQty * fulfilledRatio);
-    return {
-      id: `S${String(i + 1).padStart(4, '0')}`,
-      sponsorId: `SP${1000 + i}`,
-      sponsorName: name,
-      sponsorLevel: SPONSOR_LEVELS[i % SPONSOR_LEVELS.length],
-      benefitType: BENEFIT_TYPES[i % BENEFIT_TYPES.length],
-      contractQty,
-      fulfilledQty,
-      completionRate: Number((fulfilledQty / contractQty).toFixed(4)),
-      status: STATUSES[i % STATUSES.length],
-      deadline: `2026-${String(7 + (i % 5)).padStart(2, '0')}-${String(10 + (i % 18)).padStart(2, '0')}`,
-      riskTag: RISK_TAGS[i % RISK_TAGS.length],
-    };
-  });
-}
-
-function generateMockDetail(item: SponsorshipItem): SponsorshipDetail {
-  const records: FulfillmentRecord[] = [];
-  let remaining = item.fulfilledQty;
-  const recipients = ['张伟', '李娜', '王芳', '刘洋', '陈静', '杨帆', '赵磊', '孙悦'];
-  for (let i = 0; i < 6 + Math.floor(Math.random() * 6); i++) {
-    const qty = remaining > 0 ? Math.min(remaining, 3 + Math.floor(Math.random() * 8)) : 0;
-    remaining -= qty;
-    const d = new Date(2026, 4 + Math.floor(Math.random() * 3), 1 + Math.floor(Math.random() * 27), 9 + Math.floor(Math.random() * 9), Math.floor(Math.random() * 60));
-    records.push({
-      id: `R${item.id}-${i + 1}`,
-      fulfilledAt: d.toISOString().replace('T', ' ').slice(0, 16),
-      quantity: qty,
-      recipient: recipients[Math.floor(Math.random() * recipients.length)],
-      remark: Math.random() > 0.4 ? `第${i + 1}次兑现${item.benefitType}相关权益` : undefined,
-    });
-  }
-  return {
-    ...item,
-    sponsorContact: `联系人${item.sponsorId} · 138${String(Math.floor(Math.random() * 90000000) + 10000000)}`,
-    fulfillmentRecords: records,
-  };
-}
-
 function ProgressBar({ rate, height = 8 }: { rate: number; height?: number }) {
   const percent = Math.round(rate * 100);
   const color = rate >= 0.9 ? '#00E396' : rate >= 0.7 ? '#00D4FF' : rate >= 0.5 ? '#FF8A00' : '#FF3D57';
@@ -175,7 +121,10 @@ function ProgressBar({ rate, height = 8 }: { rate: number; height?: number }) {
 }
 
 export default function SponsorshipPage() {
-  const [list] = useState<SponsorshipItem[]>(generateMockList);
+  const [list, setList] = useState<SponsorshipItem[]>([]);
+  const [allItems, setAllItems] = useState<SponsorshipItem[]>([]);
+  const [loadingList, setLoadingList] = useState(false);
+  const [total, setTotal] = useState(0);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [page, setPage] = useState(1);
   const [pageSize] = useState(8);
@@ -183,25 +132,47 @@ export default function SponsorshipPage() {
   const [selectedDetail, setSelectedDetail] = useState<SponsorshipDetail | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
 
+  const fetchList = useCallback(async () => {
+    setLoadingList(true);
+    try {
+      const res = await sponsorshipApi.getList({ page, pageSize });
+      if (res) {
+        setList(res.items);
+        setTotal(res.pageInfo.total);
+        if (page === 1) {
+          setAllItems(res.items);
+        }
+      }
+    } catch (e) {
+      console.error('Failed to fetch sponsorship list:', e);
+    } finally {
+      setLoadingList(false);
+    }
+  }, [page, pageSize]);
+
+  useEffect(() => {
+    fetchList();
+  }, [fetchList]);
+
   const statusOptions = useMemo(() => {
-    const set = new Set(list.map((s) => s.status));
+    const set = new Set(allItems.map((s) => s.status));
     return ['all', ...Array.from(set)];
-  }, [list]);
+  }, [allItems]);
 
   const filteredList = useMemo(() => {
     if (statusFilter === 'all') return list;
     return list.filter((s) => s.status === statusFilter);
   }, [list, statusFilter]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredList.length / pageSize));
-  const pagedList = filteredList.slice((page - 1) * pageSize, page * pageSize);
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const pagedList = filteredList;
 
   const kpiSummary = useMemo(() => {
-    const totalSponsors = new Set(list.map((s) => s.sponsorId)).size;
-    const totalBenefits = list.reduce((s, i) => s + i.contractQty, 0);
-    const totalFulfilled = list.reduce((s, i) => s + i.fulfilledQty, 0);
+    const totalSponsors = new Set(allItems.map((s) => s.sponsorId)).size;
+    const totalBenefits = allItems.reduce((s, i) => s + i.contractQty, 0);
+    const totalFulfilled = allItems.reduce((s, i) => s + i.fulfilledQty, 0);
     const completionRate = totalBenefits > 0 ? totalFulfilled / totalBenefits : 0;
-    const riskCount = list.filter((s) => s.riskTag && (s.riskTag.includes('高') || s.riskTag.includes('中'))).length;
+    const riskCount = allItems.filter((s) => s.riskTag && (s.riskTag.includes('高') || s.riskTag.includes('中'))).length;
     return {
       totalSponsors,
       totalBenefits,
@@ -210,7 +181,7 @@ export default function SponsorshipPage() {
       completionChange: 2.8,
       riskChange: -12.5,
     };
-  }, [list]);
+  }, [allItems]);
 
   const handleViewDetail = useCallback(async (item: SponsorshipItem) => {
     setDrawerOpen(true);
@@ -220,11 +191,9 @@ export default function SponsorshipPage() {
       const res = await sponsorshipApi.getDetail(item.id);
       if (res) {
         setSelectedDetail(res);
-      } else {
-        setSelectedDetail(generateMockDetail(item));
       }
-    } catch {
-      setSelectedDetail(generateMockDetail(item));
+    } catch (e) {
+      console.error('Failed to fetch sponsorship detail:', e);
     } finally {
       setLoadingDetail(false);
     }
@@ -373,7 +342,8 @@ export default function SponsorshipPage() {
           </div>
 
           <div className="text-xs text-white/50">
-            共 <span className="text-cyan-glow font-semibold">{filteredList.length}</span> 条记录
+            共 <span className="text-cyan-glow font-semibold">{total}</span> 条记录
+            {loadingList && <span className="ml-2 text-cyan-primary/70">加载中...</span>}
           </div>
         </div>
 
@@ -392,7 +362,14 @@ export default function SponsorshipPage() {
               </tr>
             </thead>
             <tbody>
-              {pagedList.map((item) => (
+              {loadingList && (
+                <tr>
+                  <td colSpan={8} className="py-16 text-center text-white/50 text-sm">
+                    加载中...
+                  </td>
+                </tr>
+              )}
+              {!loadingList && pagedList.map((item) => (
                 <tr
                   key={item.id}
                   className="border-b border-panel-border/25 hover:bg-cyan-primary/5 transition-colors"
@@ -444,7 +421,7 @@ export default function SponsorshipPage() {
                   </td>
                 </tr>
               ))}
-              {pagedList.length === 0 && (
+              {!loadingList && pagedList.length === 0 && (
                 <tr>
                   <td colSpan={8} className="py-16 text-center text-white/40 text-sm">
                     暂无匹配的赞助记录

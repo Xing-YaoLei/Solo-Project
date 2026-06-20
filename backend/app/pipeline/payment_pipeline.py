@@ -69,4 +69,29 @@ class PaymentPipeline(BasePipeline):
             )
             count = len(data)
             self.log_info("load", "写入 DuckDB payments 表", f"批次提交, 目标条数: {count}")
+
+        if getattr(self, '_pg_available', False):
+            try:
+                from ..repositories.pg_repository import Payment as PgPayment
+                from ..repositories.pg_repository import get_pg_session
+                with get_pg_session() as session:
+                    if session:
+                        pg_records = []
+                        for row in data:
+                            pid, reg_id, order_no, amount, channel, status, paid_at = row
+                            pg_records.append(PgPayment(
+                                id=str(pid),
+                                registration_id=str(reg_id),
+                                order_no=order_no,
+                                amount=amount,
+                                channel=channel,
+                                status=status,
+                                paid_at=paid_at
+                            ))
+                        session.bulk_save_objects(pg_records)
+                        session.commit()
+                        self.log_info("load", "写入 PostgreSQL payments 表", f"双写完成, 条数: {count}")
+            except Exception as e:
+                self.log_warn("load", "写入 PostgreSQL payments 失败", str(e))
+
         return count
