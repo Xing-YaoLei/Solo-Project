@@ -88,3 +88,19 @@ export class FilterSeatAvailabilityDto {
   @IsEnum(['available', 'sold', 'locked', 'disabled'])
   status?: string;
 }
+
+export class FilterSeatMapDto {
+  @IsOptional()
+  @IsUUID()
+  eventId?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  page?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  limit?: number;
+}

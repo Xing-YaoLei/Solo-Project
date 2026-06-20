@@ -10,8 +10,8 @@ interface Event {
   venue: string;
   eventDate: string;
   status: string;
-  managerId?: string;
-  managerName?: string;
+  managerId: string;
+  manager?: { id: string; name: string; email?: string };
   createdAt?: string;
   updatedAt?: string;
 }
@@ -194,7 +194,7 @@ export default function EventsPage() {
                       {statusLabel(item.status)}
                     </span>
                   </td>
-                  <td className="px-4 py-3">{item.managerName || item.managerId || '-'}</td>
+                  <td className="px-4 py-3">{item.manager?.name || item.managerId || '-'}</td>
                   <td className="px-4 py-3 space-x-2">
                     <button onClick={() => openEdit(item)} className="text-blue-600 hover:underline text-xs">编辑</button>
                     <button onClick={() => handleDelete(item.id)} className="text-red-600 hover:underline text-xs">删除</button>

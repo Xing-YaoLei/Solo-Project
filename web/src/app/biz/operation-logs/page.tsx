@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { fetchApi, buildQuery } from '@/lib/api';
 
 interface OperationLog {
@@ -8,9 +8,9 @@ interface OperationLog {
   entityType: string;
   entityId: string;
   action: string;
-  operatorId?: string;
-  operatorName?: string;
-  detail?: string;
+  operatorId: string;
+  operator?: { id: string; name: string };
+  detail?: any;
   createdAt: string;
 }
 
@@ -98,14 +98,10 @@ export default function OperationLogsPage() {
   const entityTypeLabel = (t: string) => ENTITY_TYPE_OPTIONS.find((o) => o.value === t)?.label || t;
   const actionLabel = (a: string) => ACTION_OPTIONS.find((o) => o.value === a)?.label || a;
 
-  const formatDetail = (detail?: string) => {
-    if (!detail) return null;
-    try {
-      const parsed = JSON.parse(detail);
-      return JSON.stringify(parsed, null, 2);
-    } catch {
-      return detail;
-    }
+  const formatDetail = (detail?: any) => {
+    if (!detail) return '-';
+    if (typeof detail === 'string') return detail;
+    return JSON.stringify(detail, null, 2);
   };
 
   return (
@@ -158,33 +154,29 @@ export default function OperationLogsPage() {
             </thead>
             <tbody className="divide-y">
               {items.map((item) => (
-                <>
-                  <tr key={item.id} className="hover:bg-gray-50">
+                <React.Fragment key={item.id}>
+                  <tr className="hover:bg-gray-50">
                     <td className="px-4 py-3">
                       <span className="px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-700">
                         {entityTypeLabel(item.entityType)}
                       </span>
                     </td>
-                    <td className="px-4 py-3 font-medium">{item.entityId}</td>
+                    <td className="px-4 py-3 font-medium text-xs text-gray-500">{item.entityId}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded text-xs ${ACTION_COLORS[item.action] || 'bg-gray-100 text-gray-700'}`}>
                         {actionLabel(item.action)}
                       </span>
                     </td>
-                    <td className="px-4 py-3">{item.operatorName || item.operatorId || '-'}</td>
+                    <td className="px-4 py-3">{item.operator?.name || item.operatorId || '-'}</td>
                     <td className="px-4 py-3 text-xs text-gray-500">{new Date(item.createdAt).toLocaleString('zh-CN')}</td>
                     <td className="px-4 py-3">
-                      {item.detail ? (
-                        <button onClick={() => setExpandedId(expandedId === item.id ? null : item.id)} className="text-blue-600 hover:underline text-xs">
-                          {expandedId === item.id ? '收起' : '查看'}
-                        </button>
-                      ) : (
-                        <span className="text-gray-400 text-xs">-</span>
-                      )}
+                      <button onClick={() => setExpandedId(expandedId === item.id ? null : item.id)} className="text-blue-600 hover:underline text-xs">
+                        {expandedId === item.id ? '收起' : '查看'}
+                      </button>
                     </td>
                   </tr>
-                  {expandedId === item.id && item.detail && (
-                    <tr key={`${item.id}-detail`}>
+                  {expandedId === item.id && (
+                    <tr>
                       <td colSpan={6} className="px-6 py-4 bg-gray-50">
                         <pre className="text-xs text-gray-700 bg-white rounded border p-3 overflow-x-auto whitespace-pre-wrap break-words">
                           {formatDetail(item.detail)}
@@ -192,7 +184,7 @@ export default function OperationLogsPage() {
                       </td>
                     </tr>
                   )}
-                </>
+                </React.Fragment>
               ))}
               {items.length === 0 && (
                 <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400">暂无数据</td></tr>

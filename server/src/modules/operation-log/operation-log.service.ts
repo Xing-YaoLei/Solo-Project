@@ -48,7 +48,7 @@ export class OperationLogService {
       prisma.operationLog.count({ where }),
     ]);
 
-    return { items, total, page, limit };
+    return { data: items, total, page, limit };
   }
 
   async findByEntity(entityType: string, entityId: string) {

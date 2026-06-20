@@ -126,7 +126,7 @@ export class OrderService {
       prisma.order.count({ where }),
     ]);
 
-    return { items, total, page, limit };
+    return { data: items, total, page, limit };
   }
 
   async findOne(id: string) {

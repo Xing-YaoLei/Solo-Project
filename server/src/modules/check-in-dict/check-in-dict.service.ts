@@ -30,7 +30,7 @@ export class CheckInDictService {
       prisma.checkInDict.count({ where }),
     ]);
 
-    return { items, total, page, limit };
+    return { data: items, total, page, limit };
   }
 
   async updateDict(id: string, dto: UpdateCheckInDictDto) {
@@ -97,6 +97,6 @@ export class CheckInDictService {
       prisma.checkInRecord.count({ where }),
     ]);
 
-    return { items, total, page, limit };
+    return { data: items, total, page, limit };
   }
 }

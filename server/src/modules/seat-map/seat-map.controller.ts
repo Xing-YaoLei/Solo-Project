@@ -14,6 +14,7 @@ import {
   UpdateSeatMapDto,
   UpdateThresholdDto,
   FilterSeatAvailabilityDto,
+  FilterSeatMapDto,
 } from './seat-map.dto';
 
 @Controller('seat-maps')
@@ -26,8 +27,8 @@ export class SeatMapController {
   }
 
   @Get()
-  findAll(@Query('eventId') eventId?: string) {
-    return this.service.findAll(eventId);
+  findAll(@Query() filter: FilterSeatMapDto) {
+    return this.service.findAll(filter);
   }
 
   @Get(':id')

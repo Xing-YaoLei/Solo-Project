@@ -1,25 +1,22 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { fetchApi, buildQuery } from '@/lib/api';
-
-interface Evidence {
-  id: string;
-  type: string;
-  url: string;
-  description?: string;
-}
 
 interface Dispute {
   id: string;
   orderId: string;
-  orderNo?: string;
+  order?: { id: string; orderNo: string };
   reason: string;
   status: string;
   assigneeId?: string;
-  assigneeName?: string;
-  evidence?: Evidence[];
+  assignee?: { id: string; name: string };
+  refundRuleId?: string;
+  refundRule?: { id: string; name: string };
+  evidence?: any;
+  notifications?: any[];
   createdAt: string;
+  updatedAt?: string;
 }
 
 interface ListResponse {
@@ -60,6 +57,7 @@ export default function DisputesPage() {
   const [assignId, setAssignId] = useState<string | null>(null);
   const [assignValue, setAssignValue] = useState('');
   const [unreadCount, setUnreadCount] = useState(0);
+  const [operatorId] = useState('demo-operator-id');
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -126,7 +124,7 @@ export default function DisputesPage() {
     try {
       await fetchApi(`/disputes/${disputeId}/status`, {
         method: 'PUT',
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({ status: newStatus, operatorId }),
       });
       loadData();
       loadUnread();
@@ -139,7 +137,7 @@ export default function DisputesPage() {
     try {
       await fetchApi(`/disputes/${disputeId}/assign`, {
         method: 'PUT',
-        body: JSON.stringify({ assigneeId: assignValue }),
+        body: JSON.stringify({ assigneeId: assignValue, operatorId }),
       });
       setAssignId(null);
       setAssignValue('');
@@ -200,16 +198,16 @@ export default function DisputesPage() {
             </thead>
             <tbody className="divide-y">
               {items.map((item) => (
-                <>
-                  <tr key={item.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium">{item.orderNo || item.orderId}</td>
+                <React.Fragment key={item.id}>
+                  <tr className="hover:bg-gray-50">
+                    <td className="px-4 py-3 font-medium">{item.order?.orderNo || item.orderId}</td>
                     <td className="px-4 py-3 max-w-[200px] truncate">{item.reason}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded text-xs ${STATUS_COLORS[item.status] || 'bg-gray-100 text-gray-700'}`}>
                         {statusLabel(item.status)}
                       </span>
                     </td>
-                    <td className="px-4 py-3">{item.assigneeName || item.assigneeId || '-'}</td>
+                    <td className="px-4 py-3">{item.assignee?.name || item.assigneeId || '-'}</td>
                     <td className="px-4 py-3 text-xs text-gray-500">{new Date(item.createdAt).toLocaleString('zh-CN')}</td>
                     <td className="px-4 py-3 space-x-1">
                       <button onClick={() => handleExpand(item)} className="text-blue-600 hover:underline text-xs">
@@ -228,7 +226,7 @@ export default function DisputesPage() {
                     </td>
                   </tr>
                   {expandedId === item.id && (
-                    <tr key={`${item.id}-detail`}>
+                    <tr>
                       <td colSpan={6} className="px-6 py-4 bg-gray-50">
                         {detailLoading ? (
                           <div className="text-gray-400 text-xs">加载详情...</div>
@@ -236,18 +234,14 @@ export default function DisputesPage() {
                           <div>
                             <div className="text-xs font-medium mb-2 text-gray-600">争议详情</div>
                             <div className="text-xs text-gray-700 mb-3">{detailData.reason}</div>
-                            {detailData.evidence && detailData.evidence.length > 0 ? (
+                            {detailData.evidence ? (
                               <div>
                                 <div className="text-xs font-medium mb-2 text-gray-600">凭证</div>
-                                <div className="grid grid-cols-2 gap-2">
-                                  {detailData.evidence.map((ev) => (
-                                    <div key={ev.id} className="bg-white rounded border p-2 text-xs">
-                                      <div className="font-medium text-gray-600">{ev.type}</div>
-                                      {ev.description && <div className="text-gray-500 mt-1">{ev.description}</div>}
-                                      <a href={ev.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline mt-1 block">查看文件</a>
-                                    </div>
-                                  ))}
-                                </div>
+                                <pre className="text-xs bg-white rounded border p-3 whitespace-pre-wrap break-words">
+                                  {typeof detailData.evidence === 'string'
+                                    ? detailData.evidence
+                                    : JSON.stringify(detailData.evidence, null, 2)}
+                                </pre>
                               </div>
                             ) : (
                               <div className="text-gray-400 text-xs">暂无凭证</div>
@@ -259,7 +253,7 @@ export default function DisputesPage() {
                       </td>
                     </tr>
                   )}
-                </>
+                </React.Fragment>
               ))}
               {items.length === 0 && (
                 <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400">暂无数据</td></tr>

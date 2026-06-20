@@ -50,7 +50,7 @@ export class EventService {
       prisma.event.count({ where }),
     ]);
 
-    return { items, total, page, limit };
+    return { data: items, total, page, limit };
   }
 
   async findOne(id: string) {

@@ -22,7 +22,7 @@ export class RefundRuleService {
       prisma.refundRule.count({ where }),
     ]);
 
-    return { items, total, page, limit };
+    return { data: items, total, page, limit };
   }
 
   async findOne(id: string) {

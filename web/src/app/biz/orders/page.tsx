@@ -1,15 +1,16 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { fetchApi, buildQuery } from '@/lib/api';
 
 interface OrderItem {
   id: string;
   ticketTypeId: string;
-  ticketTypeName: string;
-  quantity: number;
+  ticketType?: { id: string; name: string };
+  seatId?: string;
+  seat?: { id: string; seatNo: string };
   unitPrice: number;
-  subtotal: number;
+  status: string;
 }
 
 interface Order {
@@ -20,9 +21,9 @@ interface Order {
   totalAmount: number;
   status: string;
   assigneeId?: string;
-  assigneeName?: string;
+  assignee?: { id: string; name: string };
   eventId?: string;
-  eventName?: string;
+  event?: { id: string; name: string };
   items?: OrderItem[];
   createdAt: string;
 }
@@ -199,8 +200,8 @@ export default function OrdersPage() {
             </thead>
             <tbody className="divide-y">
               {items.map((item) => (
-                <>
-                  <tr key={item.id} className="hover:bg-gray-50">
+                <React.Fragment key={item.id}>
+                  <tr className="hover:bg-gray-50">
                     <td className="px-4 py-3 font-medium">{item.orderNo}</td>
                     <td className="px-4 py-3">{item.buyerName}</td>
                     <td className="px-4 py-3 text-gray-600">{item.buyerPhone}</td>
@@ -210,7 +211,7 @@ export default function OrdersPage() {
                         {statusLabel(item.status)}
                       </span>
                     </td>
-                    <td className="px-4 py-3">{item.assigneeName || item.assigneeId || '-'}</td>
+                    <td className="px-4 py-3">{item.assignee?.name || item.assigneeId || '-'}</td>
                     <td className="px-4 py-3 text-xs text-gray-500">{new Date(item.createdAt).toLocaleString('zh-CN')}</td>
                     <td className="px-4 py-3 space-x-1">
                       <button onClick={() => handleExpand(item)} className="text-blue-600 hover:underline text-xs">
@@ -221,7 +222,7 @@ export default function OrdersPage() {
                     </td>
                   </tr>
                   {expandedId === item.id && (
-                    <tr key={`${item.id}-detail`}>
+                    <tr>
                       <td colSpan={8} className="px-6 py-4 bg-gray-50">
                         {detailLoading ? (
                           <div className="text-gray-400 text-xs">加载明细...</div>
@@ -232,18 +233,18 @@ export default function OrdersPage() {
                               <thead>
                                 <tr className="text-gray-500">
                                   <th className="text-left py-1 px-2">票种</th>
+                                  <th className="text-left py-1 px-2">座位</th>
                                   <th className="text-left py-1 px-2">单价</th>
-                                  <th className="text-left py-1 px-2">数量</th>
-                                  <th className="text-left py-1 px-2">小计</th>
+                                  <th className="text-left py-1 px-2">状态</th>
                                 </tr>
                               </thead>
                               <tbody>
                                 {detailItems.map((di) => (
                                   <tr key={di.id} className="border-t border-gray-200">
-                                    <td className="py-1 px-2">{di.ticketTypeName || di.ticketTypeId}</td>
+                                    <td className="py-1 px-2">{di.ticketType?.name || di.ticketTypeId}</td>
+                                    <td className="py-1 px-2">{di.seat?.seatNo || '-'}</td>
                                     <td className="py-1 px-2">¥{Number(di.unitPrice).toFixed(2)}</td>
-                                    <td className="py-1 px-2">{di.quantity}</td>
-                                    <td className="py-1 px-2">¥{Number(di.subtotal).toFixed(2)}</td>
+                                    <td className="py-1 px-2">{di.status}</td>
                                   </tr>
                                 ))}
                               </tbody>
@@ -255,7 +256,7 @@ export default function OrdersPage() {
                       </td>
                     </tr>
                   )}
-                </>
+                </React.Fragment>
               ))}
               {items.length === 0 && (
                 <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400">暂无数据</td></tr>

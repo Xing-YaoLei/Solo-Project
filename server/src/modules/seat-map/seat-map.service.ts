@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { prisma } from '../../prisma';
-import { CreateSeatMapDto, UpdateSeatMapDto, UpdateThresholdDto, FilterSeatAvailabilityDto } from './seat-map.dto';
+import { CreateSeatMapDto, UpdateSeatMapDto, UpdateThresholdDto, FilterSeatAvailabilityDto, FilterSeatMapDto } from './seat-map.dto';
 import { Prisma } from '../../../generated/prisma/client.js';
 
 @Injectable()
@@ -58,15 +58,26 @@ export class SeatMapService {
     });
   }
 
-  async findAll(eventId?: string) {
+  async findAll(filter: FilterSeatMapDto) {
     const where: Record<string, unknown> = {};
-    if (eventId) where.eventId = eventId;
+    if (filter.eventId) where.eventId = filter.eventId;
 
-    return prisma.seatMap.findMany({
-      where,
-      include: { event: { select: { id: true, name: true } }, zones: true },
-      orderBy: { createdAt: 'desc' },
-    });
+    const page = filter.page ?? 1;
+    const limit = filter.limit ?? 20;
+    const skip = (page - 1) * limit;
+
+    const [data, total] = await Promise.all([
+      prisma.seatMap.findMany({
+        where,
+        skip,
+        take: limit,
+        include: { event: { select: { id: true, name: true } }, zones: true },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.seatMap.count({ where }),
+    ]);
+
+    return { data, total, page, limit };
   }
 
   async findOne(id: string) {

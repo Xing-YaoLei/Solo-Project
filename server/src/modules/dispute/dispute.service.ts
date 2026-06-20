@@ -95,7 +95,7 @@ export class DisputeService {
       prisma.refundDispute.count({ where }),
     ]);
 
-    return { items, total, page, limit };
+    return { data: items, total, page, limit };
   }
 
   async findOne(id: string) {
@@ -195,7 +195,7 @@ export class DisputeService {
       prisma.disputeNotification.count({ where }),
     ]);
 
-    return { items, total, page, limit };
+    return { data: items, total, page, limit };
   }
 
   async markAsRead(notificationId: string) {
