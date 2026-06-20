@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Plus, Pencil, Trash2, Save, X, Check } from "lucide-react";
+import { Plus, Pencil, Trash2, Save, X, Check, ChevronDown } from "lucide-react";
 import clsx from "clsx";
 import LoadingSkeleton from "@/components/loading-skeleton";
 import type { ThresholdConfig, MetricType } from "@/lib/types";
@@ -37,7 +37,15 @@ interface Toast {
   message: string;
 }
 
+interface ScenicArea {
+  id: string;
+  name: string;
+}
+
 export default function ThresholdsPage() {
+  const [scenicAreas, setScenicAreas] = useState<ScenicArea[]>([]);
+  const [selectedAreaId, setSelectedAreaId] = useState<string>("");
+  const [areaDropdownOpen, setAreaDropdownOpen] = useState(false);
   const [thresholds, setThresholds] = useState<ThresholdConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -62,10 +70,29 @@ export default function ThresholdsPage() {
     }, 3000);
   }, []);
 
+  useEffect(() => {
+    async function loadAreas() {
+      try {
+        const res = await fetch("/api/scenic-areas");
+        if (!res.ok) throw new Error();
+        const areas: ScenicArea[] = await res.json();
+        setScenicAreas(areas);
+        if (areas.length > 0) {
+          setSelectedAreaId(areas[0].id);
+        }
+      } catch {
+        setError("获取景区列表失败");
+        setLoading(false);
+      }
+    }
+    loadAreas();
+  }, []);
+
   const fetchThresholds = useCallback(async () => {
+    if (!selectedAreaId) return;
     try {
       setLoading(true);
-      const res = await fetch("/api/thresholds?scenicAreaId=default");
+      const res = await fetch(`/api/thresholds?scenicAreaId=${selectedAreaId}`);
       if (!res.ok) throw new Error("获取阈值配置失败");
       const data = await res.json();
       setThresholds(data);
@@ -75,7 +102,7 @@ export default function ThresholdsPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedAreaId]);
 
   useEffect(() => {
     fetchThresholds();
@@ -129,7 +156,7 @@ export default function ThresholdsPage() {
         const res = await fetch("/api/thresholds", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...formData, scenicAreaId: "default" }),
+          body: JSON.stringify({ ...formData, scenicAreaId: selectedAreaId }),
         });
         if (!res.ok) throw new Error();
         showToast("success", "阈值配置新增成功");
@@ -167,7 +194,9 @@ export default function ThresholdsPage() {
     }
   };
 
-  if (loading) {
+  const selectedAreaName = scenicAreas.find((a) => a.id === selectedAreaId)?.name ?? "请选择景区";
+
+  if (loading && thresholds.length === 0) {
     return (
       <div className="p-6">
         <LoadingSkeleton variant="table" />
@@ -175,13 +204,13 @@ export default function ThresholdsPage() {
     );
   }
 
-  if (error) {
+  if (error && scenicAreas.length === 0) {
     return (
       <div className="flex h-[50vh] items-center justify-center">
         <div className="card text-center">
           <p className="text-red-400 mb-2">{error}</p>
           <button
-            onClick={fetchThresholds}
+            onClick={() => window.location.reload()}
             className="rounded bg-[hsl(var(--primary))] px-4 py-2 text-sm text-white hover:opacity-90"
           >
             重试
@@ -215,13 +244,48 @@ export default function ThresholdsPage() {
           <h1 className="text-2xl font-bold text-[hsl(var(--foreground))]">阈值配置</h1>
           <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">管理景区各项指标的预警和临界阈值</p>
         </div>
-        <button
-          onClick={startNew}
-          className="flex items-center gap-2 rounded-lg bg-[hsl(var(--primary))] px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition-opacity"
-        >
-          <Plus className="h-4 w-4" />
-          新增阈值
-        </button>
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <button
+              onClick={() => setAreaDropdownOpen(!areaDropdownOpen)}
+              className="flex items-center gap-2 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--muted))] px-4 py-2 text-sm text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))]/80 transition-colors"
+            >
+              <span>{selectedAreaName}</span>
+              <ChevronDown className={clsx("h-4 w-4 transition-transform", areaDropdownOpen && "rotate-180")} />
+            </button>
+            {areaDropdownOpen && (
+              <div className="absolute right-0 top-full z-10 mt-1 w-48 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] py-1 shadow-lg">
+                {scenicAreas.map((area) => (
+                  <button
+                    key={area.id}
+                    onClick={() => {
+                      setSelectedAreaId(area.id);
+                      setAreaDropdownOpen(false);
+                      setEditingId(null);
+                      setIsNew(false);
+                    }}
+                    className={clsx(
+                      "w-full px-4 py-2 text-left text-sm transition-colors hover:bg-[hsl(var(--muted))]",
+                      area.id === selectedAreaId
+                        ? "text-[hsl(var(--primary))] font-medium"
+                        : "text-[hsl(var(--foreground))]"
+                    )}
+                  >
+                    {area.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <button
+            onClick={startNew}
+            disabled={!selectedAreaId}
+            className="flex items-center gap-2 rounded-lg bg-[hsl(var(--primary))] px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+          >
+            <Plus className="h-4 w-4" />
+            新增阈值
+          </button>
+        </div>
       </div>
 
       <div className="overflow-hidden rounded-lg border border-[hsl(var(--border))]">
@@ -442,10 +506,17 @@ export default function ThresholdsPage() {
                 </tr>
               )
             ))}
-            {thresholds.length === 0 && !isNew && (
+            {thresholds.length === 0 && !isNew && selectedAreaId && (
               <tr>
                 <td colSpan={8} className="px-4 py-12 text-center text-[hsl(var(--muted-foreground))]">
                   暂无阈值配置，点击&ldquo;新增阈值&rdquo;添加
+                </td>
+              </tr>
+            )}
+            {!selectedAreaId && (
+              <tr>
+                <td colSpan={8} className="px-4 py-12 text-center text-[hsl(var(--muted-foreground))]">
+                  请先选择景区
                 </td>
               </tr>
             )}

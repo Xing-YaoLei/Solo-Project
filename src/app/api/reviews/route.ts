@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { getCleanedTransactionsForStop } from "@/lib/cleaned-data";
 
 export async function GET(request: Request) {
   try {
@@ -44,14 +45,7 @@ export async function POST(request: Request) {
     const performance = await prisma.performance.findUnique({
       where: { id: performanceId },
       include: {
-        stop: {
-          include: {
-            merchantTransactions: {
-              orderBy: { transactionTime: "desc" },
-              take: 100,
-            },
-          },
-        },
+        stop: true,
         scenicArea: { select: { id: true, name: true } },
       },
     });
@@ -81,9 +75,10 @@ export async function POST(request: Request) {
       );
     }
 
-    const transactions = performance.stop.merchantTransactions;
-    const totalTransactionAmount = transactions.reduce(
-      (sum: number, tx: typeof transactions[number]) => sum + tx.amount,
+    const cleanedTransactions = await getCleanedTransactionsForStop(performance.stopId);
+
+    const totalTransactionAmount = cleanedTransactions.reduce(
+      (sum, tx) => sum + tx.amount,
       0
     );
 
@@ -111,15 +106,15 @@ export async function POST(request: Request) {
         scenicAreaId: performance.scenicAreaId,
         alertId: linkedAlert?.id ?? null,
         performanceId: performance.id,
-        title: `Cancellation Review: ${performance.title}`,
-        content: `Performance "${performance.title}" was cancelled. Reason: ${performance.cancelReason ?? "N/A"}. This review analyses the impact on secondary consumption and visitor experience.`,
+        title: `${performance.title}取消复盘报告`,
+        content: `演出"${performance.title}"因${performance.cancelReason ?? "未知原因"}取消。该演出对周边二消商户产生级联影响，以下为基于清洗去重后的商户流水数据分析。`,
         secondaryConsumptionRate,
-        visitorImpact: `${cancelledVisitorImpact} visitors affected by cancellation (unsold: ${unsoldSeats}/${performance.totalSeats} seats)`,
-        revenueImpact: `Estimated secondary consumption loss: ¥${revenueImpactAmount.toFixed(2)} based on ¥${secondaryConsumptionRate.toFixed(2)}/visitor from ${transactions.length} transactions at stop "${performance.stop.name}"`,
+        visitorImpact: `${cancelledVisitorImpact}名已购票游客受影响（未入座：${unsoldSeats}/${performance.totalSeats}座）`,
+        revenueImpact: `基于${cleanedTransactions.length}条清洗后流水记录，站点"${performance.stop.name}"周边二消人均¥${secondaryConsumptionRate.toFixed(2)}，预计关联损失¥${revenueImpactAmount.toFixed(2)}`,
         recommendations:
           cancelledVisitorImpact > 50
-            ? "High impact cancellation. Consider offering alternative performances, issuing visitor vouchers, and deploying staff for crowd management at affected stops."
-            : "Low impact cancellation. Monitor visitor flow at the affected stop and prepare contingency entertainment options.",
+            ? "1. 立即推送周边替代活动及餐饮优惠券；2. 增设备用演出方案或移动舞台；3. 建立演出取消5分钟应急响应流程；4. 对受影响游客发放下次免费观演券"
+            : "1. 监控受影响站点客流变化；2. 准备备用娱乐方案；3. 跟踪游客离园率",
         generatedAt: new Date(),
       },
     });

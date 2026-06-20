@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { getCleanedOrders, getCaliberMatchedData } from "@/lib/cleaned-data";
 import type { AlertSeverity } from "@prisma/client";
 
 export async function GET(request: Request) {
@@ -11,18 +12,10 @@ export async function GET(request: Request) {
     todayStart.setHours(0, 0, 0, 0);
 
     const [
-      todayOrders,
       cancelledPerformances,
       activeAlerts,
       routes,
     ] = await Promise.all([
-      prisma.miniProgramOrder.findMany({
-        where: {
-          ...(scenicAreaId ? { scenicAreaId } : {}),
-          visitDate: { gte: todayStart },
-          status: { not: "CANCELLED" },
-        },
-      }),
       prisma.performance.count({
         where: {
           ...(scenicAreaId ? { scenicAreaId } : {}),
@@ -40,14 +33,7 @@ export async function GET(request: Request) {
         where: scenicAreaId ? { scenicAreaId } : undefined,
         include: {
           scenicArea: { select: { id: true, name: true } },
-          stops: {
-            include: {
-              cameraStatistics: {
-                orderBy: { recordedAt: "desc" },
-                take: 1,
-              },
-            },
-          },
+          stops: true,
           riskAlerts: {
             where: { isResolved: false },
           },
@@ -55,17 +41,44 @@ export async function GET(request: Request) {
       }),
     ]);
 
-    const totalVisitors = todayOrders.reduce(
-      (sum: number, order: typeof todayOrders[number]) => sum + order.visitorCount,
+    const effectiveAreaId = scenicAreaId ?? (routes[0]?.scenicAreaId);
+
+    let cleanedOrders = [] as Awaited<ReturnType<typeof getCleanedOrders>>;
+    let caliberData: Awaited<ReturnType<typeof getCaliberMatchedData>> = [];
+
+    if (effectiveAreaId) {
+      [cleanedOrders, caliberData] = await Promise.all([
+        getCleanedOrders(effectiveAreaId),
+        getCaliberMatchedData(effectiveAreaId),
+      ]);
+    }
+
+    const todayCleanedOrders = cleanedOrders.filter(
+      (o) => new Date(o.visitDate) >= todayStart && o.status !== "CANCELLED"
+    );
+
+    const totalVisitors = todayCleanedOrders.reduce(
+      (sum, order) => sum + order.visitorCount,
       0
     );
-    const totalRevenue = todayOrders.reduce(
-      (sum: number, order: typeof todayOrders[number]) => sum + order.totalAmount,
+    const totalRevenue = todayCleanedOrders.reduce(
+      (sum, order) => sum + order.totalAmount,
       0
     );
 
+    const cameraVisitorByStop = new Map<string, number>();
+    const cameraCongestionByStop = new Map<string, string>();
+    for (const record of caliberData) {
+      const stopId = record.cameraStatistic.stopId;
+      const existing = cameraVisitorByStop.get(stopId) ?? 0;
+      if (record.visitorCount > existing) {
+        cameraVisitorByStop.set(stopId, record.visitorCount);
+        cameraCongestionByStop.set(stopId, record.cameraStatistic.congestionLevel);
+      }
+    }
+
     const alertsBySeverity = activeAlerts.reduce(
-      (acc: Record<string, number>, alert: typeof activeAlerts[number]) => {
+      (acc: Record<string, number>, alert: { severity: string }) => {
         acc[alert.severity] = (acc[alert.severity] || 0) + 1;
         return acc;
       },
@@ -74,15 +87,14 @@ export async function GET(request: Request) {
 
     const routeRiskSummaries = routes.map((route) => {
       const currentVisitors = route.stops.reduce(
-        (sum: number, stop: typeof route.stops[number]) => {
-          const latestStat = stop.cameraStatistics[0];
-          return sum + (latestStat?.visitorCount ?? 0);
+        (sum: number, stop: { id: string }) => {
+          return sum + (cameraVisitorByStop.get(stop.id) ?? 0);
         },
         0
       );
 
       const totalCapacity = route.stops.reduce(
-        (sum: number, stop: typeof route.stops[number]) => sum + stop.capacity,
+        (sum: number, stop: { capacity: number }) => sum + stop.capacity,
         0
       );
 
