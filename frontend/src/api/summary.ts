@@ -1,4 +1,4 @@
-import client from './client'
+import client, { isBackendUnavailable } from './client'
 import type {
   EfficiencyStats,
   SourceGroupStats,
@@ -6,31 +6,57 @@ import type {
   ConclusionGroupStats,
   SummaryFilterParams,
 } from '../types'
+import {
+  mockEfficiency,
+  mockSourceStats,
+  mockAssigneeStats,
+  mockConclusionStats,
+} from './mockData'
 
 export async function getEfficiencyStats(
-  filters: SummaryFilterParams = {},
+  _filters: SummaryFilterParams = {},
 ): Promise<EfficiencyStats> {
-  const { data } = await client.get('/summary/efficiency', { params: filters })
-  return data
+  try {
+    const { data } = await client.get('/summary/efficiency', { params: _filters })
+    return data
+  } catch (err) {
+    if (isBackendUnavailable(err)) return mockEfficiency
+    throw err
+  }
 }
 
 export async function getSourceStats(
-  filters: SummaryFilterParams = {},
+  _filters: SummaryFilterParams = {},
 ): Promise<SourceGroupStats[]> {
-  const { data } = await client.get('/summary/by-source', { params: filters })
-  return data
+  try {
+    const { data } = await client.get('/summary/by-source', { params: _filters })
+    return data
+  } catch (err) {
+    if (isBackendUnavailable(err)) return mockSourceStats
+    throw err
+  }
 }
 
 export async function getAssigneeStats(
-  filters: SummaryFilterParams = {},
+  _filters: SummaryFilterParams = {},
 ): Promise<AssigneeGroupStats[]> {
-  const { data } = await client.get('/summary/by-assignee', { params: filters })
-  return data
+  try {
+    const { data } = await client.get('/summary/by-assignee', { params: _filters })
+    return data
+  } catch (err) {
+    if (isBackendUnavailable(err)) return mockAssigneeStats
+    throw err
+  }
 }
 
 export async function getConclusionStats(
-  filters: SummaryFilterParams = {},
+  _filters: SummaryFilterParams = {},
 ): Promise<ConclusionGroupStats[]> {
-  const { data } = await client.get('/summary/by-conclusion', { params: filters })
-  return data
+  try {
+    const { data } = await client.get('/summary/by-conclusion', { params: _filters })
+    return data
+  } catch (err) {
+    if (isBackendUnavailable(err)) return mockConclusionStats
+    throw err
+  }
 }
