@@ -1,0 +1,225 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Area {
+  id            String         @id @default(cuid())
+  name          String
+  parentId      String?
+  parent        Area?          @relation("AreaHierarchy", fields: [parentId], references: [id])
+  children      Area[]         @relation("AreaHierarchy")
+  lng           Decimal?       @db.Decimal(10, 7)
+  lat           Decimal?       @db.Decimal(10, 7)
+  merchants     Merchant[]
+  cameraStats   CameraStat[]
+  routePoints   RoutePoint[]
+  dailyStats    DailyAreaStat[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model Merchant {
+  id              String          @id @default(cuid())
+  name            String
+  areaId          String
+  area            Area            @relation(fields: [areaId], references: [id])
+  type            String
+  contractAmount  Decimal         @db.Decimal(12, 2)
+  contract        Contract?
+  orders          MerchantOrder[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+}
+
+model Contract {
+  id           String   @id @default(cuid())
+  merchantId   String   @unique
+  merchant     Merchant @relation(fields: [merchantId], references: [id])
+  title        String
+  content      String   @db.Text
+  startDate    DateTime
+  endDate      DateTime
+  caliberNote  String   @db.Text
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model MerchantOrder {
+  id         String   @id @default(cuid())
+  merchantId String
+  merchant   Merchant @relation(fields: [merchantId], references: [id])
+  amount     Decimal  @db.Decimal(12, 2)
+  orderTime  DateTime
+  source     String
+  status     String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([merchantId])
+  @@index([orderTime])
+}
+
+model MiniappOrder {
+  id        String   @id @default(cuid())
+  userId    String
+  routeId   String?
+  route     TourRoute? @relation(fields: [routeId], references: [id])
+  amount    Decimal  @db.Decimal(12, 2)
+  orderTime DateTime
+  status    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([orderTime])
+  @@index([routeId])
+}
+
+model CameraStat {
+  id           String   @id @default(cuid())
+  cameraId     String
+  areaId       String
+  area         Area     @relation(fields: [areaId], references: [id])
+  visitorCount Int
+  statDate     DateTime
+  statHour     Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([cameraId])
+  @@index([areaId])
+  @@index([statDate])
+}
+
+model TourRoute {
+  id          String        @id @default(cuid())
+  name        String
+  description String        @db.Text
+  color       String
+  sortOrder   Int           @default(0)
+  points      RoutePoint[]
+  orders      MiniappOrder[]
+  dailyStats  DailyRouteStat[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model RoutePoint {
+  id        String    @id @default(cuid())
+  routeId   String
+  route     TourRoute @relation(fields: [routeId], references: [id])
+  areaId    String
+  area      Area      @relation(fields: [areaId], references: [id])
+  sequence  Int
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Performance {
+  id         String   @id @default(cuid())
+  name       String
+  venue      String
+  startTime  DateTime
+  endTime    DateTime
+  totalSeats Int
+  status     String
+  seats      Seat[]
+  cancels    PerformanceCancel[]
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([startTime])
+  @@index([status])
+}
+
+model Seat {
+  id            String      @id @default(cuid())
+  performanceId String
+  performance   Performance @relation(fields: [performanceId], references: [id])
+  row           String
+  number        String
+  status        String
+  orderId       String?
+  price         Decimal     @db.Decimal(10, 2)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([performanceId])
+  @@index([status])
+}
+
+model PerformanceCancel {
+  id             String      @id @default(cuid())
+  performanceId  String
+  performance    Performance @relation(fields: [performanceId], references: [id])
+  cancelTime     DateTime
+  reason         String      @db.Text
+  affectedCount  Int
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@index([performanceId])
+  @@index([cancelTime])
+}
+
+model SyncLog {
+  id         String       @id @default(cuid())
+  sourceType String
+  startTime  DateTime
+  endTime    DateTime?
+  status     String
+  recordCount Int         @default(0)
+  errorMessage String?    @db.Text
+  details    SyncDetail[]
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@index([sourceType])
+  @@index([status])
+  @@index([startTime])
+}
+
+model SyncDetail {
+  id        String   @id @default(cuid())
+  syncLogId String
+  syncLog   SyncLog  @relation(fields: [syncLogId], references: [id])
+  recordId  String
+  action    String
+  detail    String   @db.Text
+  createdAt DateTime @default(now())
+}
+
+model DailyRouteStat {
+  id             String   @id @default(cuid())
+  routeId        String
+  route          TourRoute @relation(fields: [routeId], references: [id])
+  statDate       DateTime
+  visitorCount   Int
+  miniappOrders  Int
+  secondSpend    Decimal  @db.Decimal(12, 2)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([routeId, statDate])
+  @@index([statDate])
+}
+
+model DailyAreaStat {
+  id             String   @id @default(cuid())
+  areaId         String
+  area           Area     @relation(fields: [areaId], references: [id])
+  statDate       DateTime
+  visitorCount   Int
+  merchantOrders Int
+  totalAmount    Decimal  @db.Decimal(12, 2)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([areaId, statDate])
+  @@index([statDate])
+}
