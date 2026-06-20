@@ -1,6 +1,7 @@
 import streamlit as st
 import plotly.graph_objects as go
 import pandas as pd
+import json
 from src.data.queries import Queries
 
 
@@ -134,7 +135,52 @@ def render_sponsors():
             )
 
             st.markdown("#### 🔗 追溯到票务平台原始记录")
-            st.caption(
-                f"点击报名ID可在票务平台查看原始记录："
-                f"https://ticket-platform.example.com/registration/{sponsor['sponsor_id']}"
-            )
+
+            reg_ids = attendees["registration_id"].tolist()
+            _render_sponsor_platform_links(queries, reg_ids)
+
+
+def _render_sponsor_platform_links(queries: Queries, registration_ids: list):
+    if not registration_ids:
+        st.caption("暂无关联的平台原始记录")
+        return
+
+    all_links = []
+    for reg_id in registration_ids:
+        try:
+            links = queries.get_platform_links_for_registration(reg_id).to_pandas()
+            if len(links) > 0:
+                all_links.append(links)
+        except Exception:
+            continue
+
+    if not all_links:
+        st.caption("暂无关联的平台原始记录（导入数据后自动生成）")
+        return
+
+    combined = pd.concat(all_links, ignore_index=True)
+    combined = combined.drop_duplicates(subset=["record_id"])
+
+    grouped = combined.groupby("platform_name")
+
+    for platform_name, group in grouped:
+        with st.expander(f"📊 {platform_name} — {len(group)} 条记录", expanded=False):
+            for _, link in group.iterrows():
+                source_label = "报名" if link["source_type"] == "registration" else "支付"
+                url = link["platform_url"]
+                record_id = link["platform_record_id"]
+
+                if url and url.strip():
+                    st.markdown(f"- [{source_label}记录: {link['source_id']}]({url})  `{record_id}`")
+                else:
+                    st.markdown(f"- **{source_label}记录**: {link['source_id']} — `{record_id}`")
+
+            with st.expander("🔬 查看 JSON Payload", expanded=False):
+                for _, link in group.iterrows():
+                    st.markdown(f"**{link['source_type']} / {link['source_id']}**")
+                    try:
+                        payload = json.loads(link["raw_payload"])
+                        st.json(payload)
+                    except Exception:
+                        st.code(str(link["raw_payload"]), language="json")
+                    st.markdown("---")

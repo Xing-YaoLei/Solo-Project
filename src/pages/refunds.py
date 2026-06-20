@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import json
 from datetime import datetime
 from src.data.queries import Queries
 
@@ -86,15 +87,11 @@ def render_refunds():
                 st.markdown(f"- **退票金额**: ¥{refund['refund_amount']:.2f}")
                 st.markdown(f"- **退票原因**: {refund['refund_reason']}")
                 st.markdown(f"- **申请时间**: {refund['request_time']}")
-                if refund["resolved_time"]:
+                if pd.notna(refund.get("resolved_time")) and refund["resolved_time"] is not None:
                     st.markdown(f"- **解决时间**: {refund['resolved_time']}")
                 st.markdown(f"- **备注数**: {refund['note_count']} 条")
 
-                st.markdown("#### 🔗 追溯到票务平台原始记录")
-                st.caption(
-                    f"支付流水: https://ticket-platform.example.com/payment/{refund['registration_id']}\n\n"
-                    f"退票记录: https://ticket-platform.example.com/refund/{refund['refund_id']}"
-                )
+                _render_platform_links(queries, refund["registration_id"], refund.get("refund_id"))
 
             with col_notes:
                 st.markdown("#### 📝 处理备注")
@@ -184,3 +181,33 @@ def render_refunds():
             f"📌 主要退票原因：{top_reason}。"
             f"建议在下一次活动中针对该原因优化购票规则或活动说明。"
         )
+
+
+def _render_platform_links(queries: Queries, registration_id: str, refund_id: str = None):
+    st.markdown("#### 🔗 追溯到票务平台原始记录")
+
+    platform_links = queries.get_platform_links_for_registration(registration_id).to_pandas()
+
+    if len(platform_links) == 0:
+        st.caption("暂无关联的平台原始记录（导入数据后自动生成）")
+        return
+
+    for _, link in platform_links.iterrows():
+        label = f"{link['platform_name']} - {'报名' if link['source_type'] == 'registration' else '支付'}记录"
+        url = link["platform_url"]
+        record_id = link["platform_record_id"]
+
+        if url and url.strip():
+            st.markdown(f"- [{label}]({url})  `{record_id}`")
+        else:
+            st.markdown(f"- **{label}** — 平台记录ID: `{record_id}`")
+
+    with st.expander("🔬 查看 JSON Payload", expanded=False):
+        for _, link in platform_links.iterrows():
+            st.markdown(f"**{link['platform_name']} / {link['source_type']}**")
+            try:
+                payload = json.loads(link["raw_payload"])
+                st.json(payload)
+            except Exception:
+                st.code(str(link["raw_payload"]), language="json")
+            st.markdown("---")

@@ -12,7 +12,7 @@ def render_data_import():
     st.markdown("## 📥 数据导入中心")
     st.info(
         "支持从本地 CSV 文件或 MinIO 对象存储导入报名表和支付流水。"
-        "导入后数据自动进入 DuckDB 供分析。"
+        "导入后数据自动进入 DuckDB，同时自动生成 platform_raw_records 可追溯原始记录关联。"
     )
 
     loader = DataLoader()
@@ -26,8 +26,11 @@ def render_data_import():
     status_cols = st.columns(len(tables)) if tables else [st.container()]
     for i, table in enumerate(tables):
         with status_cols[i]:
-            count = ddb.get_row_count(table)
-            st.metric(table, f"{count:,} 行")
+            try:
+                count = ddb.get_row_count(table)
+                st.metric(table, f"{count:,} 行")
+            except Exception:
+                st.metric(table, "—")
 
     st.markdown("---")
 
@@ -41,6 +44,16 @@ def render_data_import():
 
     with tab_mock:
         _render_mock_data()
+
+
+def _sync_after_import(loader: DataLoader, table_name: str):
+    if table_name in ("registrations", "payments"):
+        with st.spinner("正在同步平台原始记录关联..."):
+            try:
+                loader.sync_platform_raw_records()
+                st.success("✅ platform_raw_records 已同步")
+            except Exception as e:
+                st.warning(f"⚠️ 平台原始记录同步异常：{str(e)}")
 
 
 def _render_local_import(loader: DataLoader, ddb: DuckDBManager):
@@ -117,6 +130,7 @@ def _render_local_import(loader: DataLoader, ddb: DuckDBManager):
 
                     count = ddb.get_row_count(target_table)
                     st.success(f"✅ 导入成功！{target_table} 共 {count:,} 行")
+                    _sync_after_import(loader, target_table)
                     st.balloons()
                 except Exception as e:
                     st.error(f"❌ 导入失败：{str(e)}")
@@ -204,6 +218,7 @@ def _render_minio_import(loader: DataLoader, minio: MinIOClient, ddb: DuckDBMana
 
                     count = ddb.get_row_count(target_table)
                     st.success(f"✅ 导入成功！{target_table} 共 {count:,} 行")
+                    _sync_after_import(loader, target_table)
                     st.balloons()
                 except Exception as e:
                     st.error(f"❌ 导入失败：{str(e)}")

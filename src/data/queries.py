@@ -292,6 +292,47 @@ class Queries:
             schema={"code": pl.Utf8, "name": pl.Utf8, "base_url": pl.Utf8, "api_prefix": pl.Utf8}
         )
 
+    def get_platform_links_for_registration(self, registration_id: str) -> pl.DataFrame:
+        if not self.ddb.table_exists("platform_raw_records"):
+            return pl.DataFrame(
+                {"record_id": [], "source_type": [], "source_id": [],
+                 "platform_code": [], "platform_name": [],
+                 "platform_record_id": [], "platform_url": [], "raw_payload": []},
+                schema={"record_id": pl.Utf8, "source_type": pl.Utf8, "source_id": pl.Utf8,
+                        "platform_code": pl.Utf8, "platform_name": pl.Utf8,
+                        "platform_record_id": pl.Utf8, "platform_url": pl.Utf8, "raw_payload": pl.Utf8}
+            )
+
+        payment_id_sql = f"SELECT payment_id FROM payments WHERE registration_id = '{registration_id}' LIMIT 1"
+        try:
+            pay_result = self.ddb.query(payment_id_sql).to_pandas()
+            payment_id = pay_result.iloc[0]["payment_id"] if len(pay_result) > 0 else None
+        except Exception:
+            payment_id = None
+
+        conditions = [f"(source_type = 'registration' AND source_id = '{registration_id}')"]
+        if payment_id:
+            conditions.append(f"(source_type = 'payment' AND source_id = '{payment_id}')")
+
+        where_clause = "WHERE (" + " OR ".join(conditions) + ")"
+
+        sql = f"""
+        SELECT
+            record_id,
+            source_type,
+            source_id,
+            platform_code,
+            platform_name,
+            platform_record_id,
+            platform_url,
+            raw_payload,
+            CAST(synced_at AS TIMESTAMP) AS synced_at
+        FROM platform_raw_records
+        {where_clause}
+        ORDER BY source_type, synced_at DESC
+        """
+        return self.ddb.query(sql)
+
     def add_refund_note(self, refund_id: str, note_content: str, created_by: str, is_resolution: bool = False):
         import uuid
         from datetime import datetime
