@@ -104,7 +104,15 @@ export class VerificationScene extends Scene {
     backBtn.on('pointerdown', () => this.pauseGame());
     topBar.add(backBtn);
 
-    this.scoreText = this.add.text(GAME_WIDTH / 2, 30, '得分: 0', {
+    const levelState = this.gameManager.getLevelState();
+    const totalRecords = levelState?.records.length || 0;
+    const currentIndex = levelState?.currentRecordIndex || 0;
+    const currentScore = levelState?.score || 0;
+    const correctCount = levelState?.correctCount || 0;
+    const wrongCount = levelState?.wrongCount || 0;
+    const disputeCount = levelState?.disputeCount || 0;
+
+    this.scoreText = this.add.text(GAME_WIDTH / 2, 30, `得分: ${currentScore}`, {
       fontSize: '24px',
       color: COLORS.secondary,
       fontFamily: '"Segoe UI", Roboto, sans-serif',
@@ -112,10 +120,6 @@ export class VerificationScene extends Scene {
     });
     this.scoreText.setOrigin(0.5, 0);
     topBar.add(this.scoreText);
-
-    const levelState = this.gameManager.getLevelState();
-    const totalRecords = levelState?.records.length || 0;
-    const currentIndex = levelState?.currentRecordIndex || 0;
 
     this.progressText = this.add.text(GAME_WIDTH - 30, 35, `${currentIndex + 1} / ${totalRecords}`, {
       fontSize: '18px',
@@ -139,7 +143,7 @@ export class VerificationScene extends Scene {
 
     const statsContainer = this.add.container(GAME_WIDTH - 30, 75);
     
-    this.counterText = this.add.text(0, 0, '✓ 0  ✗ 0  ⚠ 0', {
+    this.counterText = this.add.text(0, 0, `✓ ${correctCount}  ✗ ${wrongCount}  ⚠ ${disputeCount}`, {
       fontSize: '14px',
       color: '#666',
       fontFamily: '"Segoe UI", Roboto, sans-serif',
