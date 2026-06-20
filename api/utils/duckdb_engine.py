@@ -140,8 +140,10 @@ async def _fetch_source_data(table_name: str, sync_batch_id: Optional[str] = Non
     params = {}
 
     if sync_batch_id and table_name in ["orders", "payment_records", "gate_records"]:
-        query += " WHERE sync_batch_id = :batch_id"
-        params["batch_id"] = sync_batch_id
+        columns = TABLE_COLUMNS.get(table_name, [])
+        if "sync_batch_id" in columns:
+            query += " WHERE sync_batch_id = :batch_id"
+            params["batch_id"] = sync_batch_id
 
     session = pg_async_session if is_postgresql() else async_session
 
@@ -167,7 +169,7 @@ async def sync_postgres_to_duckdb(table_name: str, sync_batch_id: Optional[str] 
         col_str = ", ".join(columns)
         placeholders = ", ".join(["?" for _ in columns])
 
-        if sync_batch_id:
+        if sync_batch_id and "sync_batch_id" in columns:
             conn.execute(f"DELETE FROM {table_name} WHERE sync_batch_id = ?", (sync_batch_id,))
 
         conn.executemany(

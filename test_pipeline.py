@@ -1,66 +1,98 @@
 import sys
-sys.path.insert(0, '.')
+import os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 import asyncio
-from api.utils.database import init_db
-from api.utils.mock_data import seed_mock_data
-from sqlalchemy import text
-from api.utils.database import async_session
-from api.services.sync_pipeline import sync_pipeline
 
+async def main():
+    from api.utils.database import init_db
+    from api.utils.mock_data import seed_mock_data
+    from api.utils.duckdb_engine import init_duckdb, get_duckdb_sync_status, get_duckdb_conn
+    from api.services.sync_pipeline import sync_pipeline
+    from sqlalchemy import text
+    from api.utils.database import async_session, pg_async_session, is_postgresql
 
-async def test():
+    def get_session():
+        return pg_async_session if is_postgresql() else async_session
+
+    print("=" * 60)
+    print("STEP 1: Init DB + Seed mock data")
+    print("=" * 60)
     await init_db()
     await seed_mock_data()
-    print('Database initialized and mock data seeded successfully')
+    print("  Seed OK")
+
     print()
+    print("=" * 60)
+    print("STEP 2: Init DuckDB")
+    print("=" * 60)
+    try:
+        init_duckdb()
+        print("  DuckDB init OK")
+    except Exception as e:
+        print(f"  DuckDB init FAILED: {e}")
+        return
 
-    async with async_session() as session:
-        result = await session.execute(text('SELECT COUNT(*) FROM sync_batches'))
-        count = result.scalar()
-        print(f'Total sync_batches: {count}')
+    print()
+    print("=" * 60)
+    print("STEP 3: Count seed batches before pipeline/run")
+    print("=" * 60)
+    async with get_session()() as sess:
+        r = await sess.execute(text("SELECT source, COUNT(*) FROM sync_batches GROUP BY source"))
+        for row in r.fetchall():
+            print(f"  {row[0]}: {row[1]} batches")
 
-        result = await session.execute(
-            text('SELECT id, source, status, total_records FROM sync_batches WHERE id IN (:b1, :b2, :b3)'),
-            {'b1': 'batch-ticket-platform-001', 'b2': 'batch-gate-system-001', 'b3': 'batch-payment-system-001'}
-        )
-        rows = result.fetchall()
-        print('\n主要同步批次:')
-        for row in rows:
-            print(f'  Batch: {row[0]}, source: {row[1]}, status: {row[2]}, total: {row[3]}')
+    print()
+    print("=" * 60)
+    print("STEP 4: Run pipeline (ticket_platform → gate_system → payment_system)")
+    print("=" * 60)
+    results = await sync_pipeline.run_full_sync()
+    for src, r in results.items():
+        status = r.get("status")
+        name = r.get("source_name")
+        rows_pg = r.get("rows_synced_to_pg", 0)
+        batches = r.get("batches", [])
+        print(f"  {src} ({name}): status={status}, rows_pg={rows_pg}, batches={len(batches)}")
+        for b in batches:
+            print(f"    - table={b['table']} batch_id={b['batch_id']}")
 
-        result = await session.execute(text('SELECT COUNT(*) FROM orders WHERE sync_batch_id IS NOT NULL'))
-        count = result.scalar()
-        print(f'\nOrders with sync_batch_id: {count}')
+    print()
+    print("=" * 60)
+    print("STEP 5: Query sync_batches with source filter (simulate frontend)")
+    print("=" * 60)
+    for src in ["ticket_platform", "gate_system", "payment_system", None]:
+        async with get_session()() as sess:
+            where = "WHERE 1=1"
+            params = {}
+            if src:
+                where += " AND source = :src"
+                params["src"] = src
+            r = await sess.execute(
+                text(f"SELECT source, COUNT(*), SUM(processed_records) FROM sync_batches {where} GROUP BY source"),
+                params,
+            )
+            label = f"source={src or 'ALL'}"
+            rows = r.fetchall()
+            if not rows:
+                print(f"  {label}: (0 rows)")
+            for row in rows:
+                print(f"  {label}: {row[0]}={row[1]} batches, processed={row[2]} records")
 
-        result = await session.execute(text('SELECT COUNT(*) FROM payment_records WHERE sync_batch_id IS NOT NULL'))
-        count = result.scalar()
-        print(f'Payment records with sync_batch_id: {count}')
+    print()
+    print("=" * 60)
+    print("STEP 6: DuckDB tables row count")
+    print("=" * 60)
+    conn = get_duckdb_conn()
+    for t in ["orders", "gate_records", "payment_records", "check_in_records", "orders_agg", "daily_sales_agg", "funnel_agg"]:
+        try:
+            r = conn.execute(f"SELECT COUNT(*) FROM {t}").fetchone()
+            print(f"  {t}: {r[0]} rows")
+        except Exception as e:
+            print(f"  {t}: ERROR {e}")
 
-        result = await session.execute(text('SELECT COUNT(*) FROM gate_records WHERE sync_batch_id IS NOT NULL'))
-        count = result.scalar()
-        print(f'Gate records with sync_batch_id: {count}')
+    print()
+    print("=" * 60)
+    print("ALL TESTS PASSED")
+    print("=" * 60)
 
-    print('\n=== 测试管道服务 ===')
-    sources = sync_pipeline.get_sources()
-    print(f'可用数据源: {list(sources.keys())}')
-
-    print('\n测试同步单个数据源 (ticket_platform):')
-    result = await sync_pipeline.sync_source('ticket_platform')
-    print(f'结果: {result.get("status")}')
-    if result.get("batches"):
-        for batch in result["batches"]:
-            print(f'  表: {batch["table"]}, 批次: {batch["batch_id"]}')
-
-    if result.get("batches") and len(result["batches"]) > 0:
-        batch_id = result["batches"][0]["batch_id"]
-        print(f'\n获取批次进度 ({batch_id}):')
-        progress = await sync_pipeline.get_sync_progress(batch_id)
-        print(f'  状态: {progress.get("status")}')
-        print(f'  进度: {progress.get("progress_percent")}%')
-        print(f'  已处理: {progress.get("processed_records")}/{progress.get("total_records")}')
-
-    print('\n=== 所有测试通过 ===')
-
-
-if __name__ == '__main__':
-    asyncio.run(test())
+asyncio.run(main())

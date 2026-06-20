@@ -2,7 +2,7 @@ from datetime import datetime
 from fastapi import APIRouter, Query, Path
 from sqlalchemy import text
 
-from api.utils.database import async_session
+from api.utils.database import async_session, pg_async_session, is_postgresql
 from api.utils.duckdb_engine import (
     sync_postgres_to_duckdb,
     sync_all_tables_to_duckdb,
@@ -15,12 +15,16 @@ from api.services.sync_pipeline import sync_pipeline
 router = APIRouter()
 
 
+def _get_session():
+    return pg_async_session if is_postgresql() else async_session
+
+
 @router.get("/batches", response_model=ApiResponse[list])
 async def list_sync_batches(
     source: str = Query(default=None),
     status: str = Query(default=None),
 ):
-    async with async_session() as session:
+    async with _get_session()() as session:
         where = "WHERE 1=1"
         params: dict = {}
 
@@ -63,7 +67,7 @@ async def list_sync_batches(
 
 @router.post("/batches/{batchId}/rerun", response_model=ApiResponse[SyncBatch])
 async def rerun_batch(batchId: str):
-    async with async_session() as session:
+    async with _get_session()() as session:
         result = await session.execute(
             text("SELECT id FROM sync_batches WHERE id = :bid"),
             {"bid": batchId},
@@ -108,7 +112,7 @@ async def rerun_batch(batchId: str):
 
 @router.get("/tasks", response_model=ApiResponse[list[SyncTask]])
 async def list_sync_tasks():
-    async with async_session() as session:
+    async with _get_session()() as session:
         result = await session.execute(
             text("""
                 SELECT id, name, source, cron_expression, last_run_time, next_run_time, status
@@ -135,7 +139,7 @@ async def list_sync_tasks():
 
 @router.post("/tasks/{taskId}/trigger", response_model=ApiResponse[SyncTask])
 async def trigger_task(taskId: str):
-    async with async_session() as session:
+    async with _get_session()() as session:
         result = await session.execute(
             text("SELECT id FROM sync_tasks WHERE id = :tid"),
             {"tid": taskId},

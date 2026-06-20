@@ -45,10 +45,17 @@ class SyncPipelineService:
         source_info = self.SOURCES[source]
         tables = source_info["tables"]
         batch_results = []
+        duckdb_rows = 0
 
         for table_name in tables:
             batch_id = await self._sync_table(source, table_name)
             batch_results.append({"table": table_name, "batch_id": batch_id})
+
+        async with self._get_session()() as sess:
+            for table in tables:
+                if table in ["orders", "payment_records", "gate_records", "check_in_records"]:
+                    r = await sess.execute(text(f"SELECT COUNT(*) FROM {table}"))
+                    duckdb_rows += (r.fetchone() or [0])[0] or 0
 
         return {
             "status": "success",
@@ -56,6 +63,7 @@ class SyncPipelineService:
             "source_name": source_info["name"],
             "tables": tables,
             "batches": batch_results,
+            "rows_synced_to_pg": duckdb_rows,
         }
 
     async def _sync_table(self, source: str, table_name: str) -> str:
@@ -311,9 +319,8 @@ class SyncPipelineService:
         results = []
 
         for table in tables:
-            if table in ["orders", "payment_records", "gate_records"]:
-                result = await sync_postgres_to_duckdb(table, batch_id)
-                results.append(result)
+            result = await sync_postgres_to_duckdb(table, batch_id)
+            results.append(result)
 
         return {
             "batch_id": batch_id,
