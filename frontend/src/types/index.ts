@@ -1,8 +1,7 @@
 export interface ApiResponse<T = unknown> {
   code: number;
   message: string;
-  data: T;
-  success: boolean;
+  data?: T;
   timestamp?: number;
 }
 
@@ -62,7 +61,7 @@ export interface PipelineStatus {
 }
 
 export interface SyncLog {
-  id: string;
+  id: number;
   taskCode: string;
   level: string;
   message: string;
@@ -149,7 +148,8 @@ export interface VerificationAreaItem {
   checkinRate: number;
 }
 
-export interface VerificationDefinitionRule {
+export interface VerificationDefinition {
+  id: string;
   title: string;
   formula: string;
   dataSource: string;

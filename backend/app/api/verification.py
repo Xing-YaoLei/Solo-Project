@@ -8,7 +8,7 @@ from ..models.schemas import (
     VerificationEfficiency,
     VerificationDatePoint,
     VerificationAreaItem,
-    VerificationDefinition,
+    VerificationDefinitionRule,
 )
 from ..services import verification_service
 
@@ -40,7 +40,7 @@ async def get_area_compare() -> ApiResponse[List[VerificationAreaItem]]:
     return ApiResponse(data=data)
 
 
-@router.get("/definition", response_model=ApiResponse[VerificationDefinition])
-async def get_definition() -> ApiResponse[VerificationDefinition]:
+@router.get("/definition", response_model=ApiResponse[List[VerificationDefinitionRule]])
+async def get_definition() -> ApiResponse[List[VerificationDefinitionRule]]:
     data = verification_service.get_verification_definition()
     return ApiResponse(data=data)

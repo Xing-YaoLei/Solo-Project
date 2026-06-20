@@ -6,7 +6,7 @@ from ..models.schemas import (
     VerificationEfficiency,
     VerificationDatePoint,
     VerificationAreaItem,
-    VerificationDefinition,
+    VerificationDefinitionRule,
 )
 from ..utils.logger import logger
 
@@ -44,8 +44,8 @@ def get_verification_area_compare() -> List[VerificationAreaItem]:
     return result
 
 
-def get_verification_definition() -> VerificationDefinition:
-    logger.info("Fetching verification definition")
+def get_verification_definition() -> List[VerificationDefinitionRule]:
+    logger.info("Fetching verification definition rules")
     result = duckdb_repository.verification_definition()
-    logger.info(f"Verification definition fetched: formula={result.formula[:30]}...")
+    logger.info(f"Verification definition fetched: {len(result)} rules")
     return result

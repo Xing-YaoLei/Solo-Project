@@ -10,12 +10,15 @@ from ..models.schemas import (
     KPIOverview, KPITrendPoint, PipelineStatus, SyncLog,
     SeatHeatmapItem, CheckinTrendPoint, SponsorshipItem,
     SponsorshipDetail, VerificationEfficiency, VerificationDatePoint,
-    VerificationAreaItem, VerificationDefinition, TicketRankItem,
-    RefundDistributionPoint, RefundSample, PageInfo, PageResponse,
-    FulfillmentRecord
+    VerificationAreaItem, VerificationDefinition, VerificationDefinitionRule,
+    TicketRankItem, RefundDistributionPoint, RefundSample,
+    PageInfo, PageResponse, FulfillmentRecord, DisputedPoint
 )
 
-_data_initialized = False
+
+def _is_data_initialized(conn) -> bool:
+    result = conn.execute("SELECT COUNT(*) FROM registrations").fetchone()
+    return result and result[0] > 0
 
 AREA_CODES = ["A01", "A02", "B01", "B02", "C01", "C02", "D01", "D02", "VIP1", "VIP2"]
 AREA_NAMES = {
@@ -56,13 +59,7 @@ def _rand_name() -> str:
 
 
 def _ensure_mock_data(conn: duckdb.DuckDBPyConnection) -> None:
-    global _data_initialized
-    if _data_initialized:
-        return
-
-    result = conn.execute("SELECT COUNT(*) FROM registrations").fetchone()
-    if result and result[0] > 0:
-        _data_initialized = True
+    if _is_data_initialized(conn):
         return
 
     now = datetime.now()
@@ -252,7 +249,6 @@ def _ensure_mock_data(conn: duckdb.DuckDBPyConnection) -> None:
             ]
         )
 
-    log_id = 1
     levels = ["INFO", "INFO", "INFO", "INFO", "WARN", "ERROR"]
     for tc in TASK_CODES:
         num_logs = random.randint(20, 50)
@@ -277,11 +273,8 @@ def _ensure_mock_data(conn: duckdb.DuckDBPyConnection) -> None:
             created = now - timedelta(minutes=random.randint(0, 180))
             conn.execute(
                 "INSERT INTO sync_logs (id, task_code, level, message, detail, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-                [log_id, tc, level, msg, detail, created]
+                [_rand_uuid(), tc, level, msg, detail, created]
             )
-            log_id += 1
-
-    _data_initialized = True
 
 
 def kpi_overview() -> KPIOverview:
@@ -615,18 +608,69 @@ def verification_area_compare() -> List[VerificationAreaItem]:
         return items
 
 
-def verification_definition() -> VerificationDefinition:
-    return VerificationDefinition(
-        formula="核销率 = 通过闸机核销的票数 / 已支付完成的总票数 × 100%",
-        data_source="主数据源：闸机实时接口（gate_records表pass_time字段）；对比数据源：报名系统已核销标记（tickets表is_checked字段）。两源交叉校验，取并集去重后作为最终核销数。",
-        exception_rules=[
-            "同一ticket_id多次通过闸机：取最早pass_time作为核销时间，其余记为重复记录（状态=重复）不重复计数",
-            "核销时间早于支付时间：标记为异常，待人工核实，暂不计入通过数",
-            "pass_time不在活动当日(8:00-22:00)：标记为时间异常，不计入核销总数",
-            "checkin_code格式不匹配正则^CK\\d{6}$：判定为伪造码，记录预警，不计入核销",
-            "单用户单票多通道同时识别(30秒内多闸机)：取通道号最小者，其余标记为疑似尾随"
-        ]
-    )
+def verification_definition() -> List[VerificationDefinitionRule]:
+    return [
+        VerificationDefinitionRule(
+            id="VDR-001",
+            title="入场核销",
+            formula="入场核销率 = 首次通过主入口闸机的票数 / 已支付总票数 × 100%",
+            data_source="闸机接口 gate_records 表，筛选 gate_no 以 G 开头的主入口通道，取每个 ticket_id 最早的 pass_time",
+            exception_rules=[
+                "同一ticket_id多次通过同闸机：取最早pass_time作为核销时间",
+                "核销时间早于支付时间30分钟以上：标记为异常，暂不计入",
+                "pass_time不在活动当日(8:00-22:00)：标记为时间异常"
+            ],
+            example="例如：1000张已售票中，850张在活动当日8:00-22:00首次通过G01-G06闸机，入场核销率为85%"
+        ),
+        VerificationDefinitionRule(
+            id="VDR-002",
+            title="VIP通道核验",
+            formula="VIP核验率 = VIP通道成功核验数 / VIP票总销量 × 100%",
+            data_source="闸机接口 gate_records 表，筛选 gate_no 为 VIP1/VIP2 的通道，关联 tickets 表的 VIP 票种",
+            exception_rules=[
+                "VIP票走普通通道：计入入场核销，但不计入VIP通道核验率",
+                "非VIP票尝试走VIP通道：状态=拒绝，记录预警",
+                "同一VIP票多次进出VIP通道：仅首次计入核验数"
+            ],
+            example="例如：200张VIP票售出，180张通过VIP1/VIP2通道核验入场，VIP通道核验率为90%"
+        ),
+        VerificationDefinitionRule(
+            id="VDR-003",
+            title="停车权益核销",
+            formula="停车核销率 = 使用停车权益的车辆数 / 享有停车权益的票数 × 100%",
+            data_source="停车管理系统接口（外部API），关联 tickets 表中含停车权益的票种",
+            exception_rules=[
+                "停车时长超出免费时长：记录超额费用，权益仍标记为已使用",
+                "一票据多车：仅首辆车计入权益核销",
+                "未关联有效票号的车辆：不计入权益核销统计"
+            ],
+            example="例如：500张票含停车权益，320辆车实际使用了免费停车服务，停车权益核销率为64%"
+        ),
+        VerificationDefinitionRule(
+            id="VDR-004",
+            title="商品兑换核销",
+            formula="兑换核销率 = 已兑换商品数 / 可兑换商品总配额 × 100%",
+            data_source="商品兑换系统（sponsorship_benefits 关联兑换记录），凭票号或核销码兑换",
+            exception_rules=[
+                "兑换商品已售罄：标记为缺货，待补兑，不计入已核销",
+                "兑换码已使用但商品未领取：按已核销计算",
+                "超兑换截止日期：标记为已过期，不计入已核销"
+            ],
+            example="例如：赞助商提供1000份伴手礼，活动期间兑换了780份，商品兑换核销率为78%"
+        ),
+        VerificationDefinitionRule(
+            id="VDR-005",
+            title="二次入场核验",
+            formula="二次入场率 = 二次及以上入场次数 / 首次入场总人数 × 100%",
+            data_source="闸机 gate_records 表，按 ticket_id 统计入场次数，大于等于2次的为二次入场",
+            exception_rules=[
+                "同一通道30秒内重复刷卡：判定为误刷，不计入多次入场",
+                "入场后5分钟内又出场：判定为临时取物，计入二次入场",
+                "非当日首次入场的记录：不计入二次入场统计基数"
+            ],
+            example="例如：首次入场1000人，其中150人当天再次入场（如中途吃饭后返回），二次入场率为15%"
+        )
+    ]
 
 
 def ticket_rank(metric: str = "absolute", top: int = 10) -> List[TicketRankItem]:
@@ -679,9 +723,27 @@ def refund_distribution(start_date: Optional[date] = None, end_date: Optional[da
                 d = d.date()
             refund_map[d] = (r[1], float(r[2] or 0), r[3] or 0)
 
+        disputed_all = conn.execute("""
+            SELECT id, id, refund_amount, reason, is_disputed, refunded_at
+            FROM refunds
+            WHERE is_disputed = true
+        """).fetchall()
+        disputed_by_date = {}
+        for row in disputed_all:
+            rid, refund_id, amount, reason, is_disputed, refunded_at = row
+            d = refunded_at.date() if hasattr(refunded_at, 'date') else refunded_at
+            if d not in disputed_by_date:
+                disputed_by_date[d] = []
+            disputed_by_date[d].append(DisputedPoint(
+                id=str(rid),
+                refund_id=str(refund_id),
+                amount=float(amount or 0),
+                reason=reason or '',
+                is_disputed=bool(is_disputed)
+            ))
+
         points = []
         d = start_date
-        disputed_ids_all = [str(row[0]) for row in conn.execute("SELECT id FROM refunds WHERE is_disputed = true").fetchall()]
         while d <= end_date:
             if d in refund_map:
                 cnt, amt, disputed = refund_map[d]
@@ -689,7 +751,11 @@ def refund_distribution(start_date: Optional[date] = None, end_date: Optional[da
                 cnt = random.choices([0, 1, 2, 3, 5], weights=[30, 25, 20, 15, 10])[0]
                 amt = cnt * random.uniform(180, 600)
                 disputed = random.choices([0, 0, 0, 1], weights=[70, 15, 10, 5])[0]
-            disputed_points = random.sample(disputed_ids_all, min(disputed, len(disputed_ids_all))) if disputed else []
+            disputed_points = disputed_by_date.get(d, [])
+            if len(disputed_points) < disputed:
+                pass
+            else:
+                disputed_points = disputed_points[:disputed]
             points.append(RefundDistributionPoint(
                 date=d, refund_count=cnt,
                 refund_amount=round(amt, 2),
@@ -787,20 +853,23 @@ def run_pipeline_sync(task_code: str) -> List[SyncLog]:
         _ensure_mock_data(conn)
         now = datetime.now()
         logs = []
-        log_id = conn.execute("SELECT COALESCE(MAX(id), 0) + 1 FROM sync_logs").fetchone()[0]
 
-        start_log = SyncLog(
-            id=log_id, task_code=task_code, level="INFO",
-            message=f"[{TASK_NAMES.get(task_code, task_code)}] 手动触发同步任务启动",
-            detail=f"触发方式: API手动触发, 任务ID: SYNC{now.strftime('%Y%m%d%H%M%S')}",
-            created_at=now
-        )
-        conn.execute(
-            "INSERT INTO sync_logs (id, task_code, level, message, detail, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-            [log_id, task_code, "INFO", start_log.message, start_log.detail, now]
+        def _new_log(lvl, msg, det, created_at):
+            log_uuid = _rand_uuid()
+            log = SyncLog(id=log_uuid, task_code=task_code, level=lvl, message=msg, detail=det, created_at=created_at)
+            conn.execute(
+                "INSERT INTO sync_logs (id, task_code, level, message, detail, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+                [log_uuid, task_code, lvl, msg, det, created_at]
+            )
+            return log
+
+        start_log = _new_log(
+            "INFO",
+            f"[{TASK_NAMES.get(task_code, task_code)}] 手动触发同步任务启动",
+            f"触发方式: API手动触发, 任务ID: SYNC{now.strftime('%Y%m%d%H%M%S')}",
+            now
         )
         logs.append(start_log)
-        log_id += 1
 
         steps = [
             ("INFO", "建立数据源连接成功", f"数据源类型: {SOURCE_TYPES.get(task_code, 'unknown')}"),
@@ -816,13 +885,8 @@ def run_pipeline_sync(task_code: str) -> List[SyncLog]:
 
         for lvl, msg, det in steps:
             created = now + timedelta(seconds=random.randint(2, 15))
-            log = SyncLog(id=log_id, task_code=task_code, level=lvl, message=msg, detail=det, created_at=created)
-            conn.execute(
-                "INSERT INTO sync_logs (id, task_code, level, message, detail, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-                [log_id, task_code, lvl, msg, det, created]
-            )
+            log = _new_log(lvl, msg, det, created)
             logs.append(log)
-            log_id += 1
 
         if has_error and random.random() < 0.3:
             final_lvl = "ERROR"
@@ -836,11 +900,7 @@ def run_pipeline_sync(task_code: str) -> List[SyncLog]:
             final_status = "success"
 
         created = now + timedelta(seconds=random.randint(20, 40))
-        final_log = SyncLog(id=log_id, task_code=task_code, level=final_lvl, message=final_msg, detail=final_det, created_at=created)
-        conn.execute(
-            "INSERT INTO sync_logs (id, task_code, level, message, detail, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-            [log_id, task_code, final_lvl, final_msg, final_det, created]
-        )
+        final_log = _new_log(final_lvl, final_msg, final_det, created)
         logs.append(final_log)
 
         sync_count = random.randint(800, 3500)
@@ -850,3 +910,30 @@ def run_pipeline_sync(task_code: str) -> List[SyncLog]:
         )
 
         return logs
+
+
+def mark_refund_processed(refund_id: str, note: Optional[str] = None) -> Optional[RefundSample]:
+    with get_duckdb() as conn:
+        _ensure_mock_data(conn)
+
+        existing = conn.execute(
+            "SELECT id, is_disputed, dispute_note FROM refunds WHERE id = ?",
+            [refund_id]
+        ).fetchone()
+        if not existing:
+            return None
+
+        current_note = existing[2] or ''
+        new_note_parts = []
+        if current_note:
+            new_note_parts.append(current_note)
+        if note:
+            new_note_parts.append(f"[处理备注] {note}")
+        new_note = " | ".join(new_note_parts) if new_note_parts else None
+
+        conn.execute(
+            "UPDATE refunds SET is_disputed = false, dispute_note = ? WHERE id = ?",
+            [new_note, refund_id]
+        )
+
+        return refund_sample(refund_id=refund_id)

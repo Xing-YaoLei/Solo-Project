@@ -100,10 +100,10 @@ async function request<T = unknown>(
       throw new ApiError('响应解析失败', -1);
     }
 
-    if (!response.ok || !data.success) {
+    if (!response.ok || (data.code !== 0 && data.code !== undefined)) {
       throw new ApiError(
         data.message || `请求失败 (${response.status})`,
-        data.code || response.status,
+        data.code !== undefined ? data.code : response.status,
         data.data
       );
     }

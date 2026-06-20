@@ -7,7 +7,7 @@ import type {
   VerificationEfficiency,
   VerificationDatePoint,
   VerificationAreaItem,
-  VerificationDefinitionRule,
+  VerificationDefinition,
 } from '@/types';
 import { cn } from '@/lib/utils';
 
@@ -43,8 +43,9 @@ const MOCK_AREAS: VerificationAreaItem[] = [
   { areaCode: 'E1', areaName: 'E区-停车场', checkinCount: 11234, checkinRate: 94.5 },
 ];
 
-const MOCK_DEFINITIONS: VerificationDefinitionRule[] = [
+const MOCK_DEFINITIONS: VerificationDefinition[] = [
   {
+    id: 'rule-001',
     title: '入场核销规则',
     formula: `SUCCESS = (ticket_valid = true)
   AND (status = 'paid')
@@ -61,6 +62,7 @@ const MOCK_DEFINITIONS: VerificationDefinitionRule[] = [
     example: '票号 T20260621001234：已支付、未使用、日期匹配 → 核销成功，闸机开启，耗时 0.82s',
   },
   {
+    id: 'rule-002',
     title: 'VIP通道核销规则',
     formula: `VIP_SUCCESS = (vip_level >= required_level)
   AND (ticket_valid = true)
@@ -75,6 +77,7 @@ const MOCK_DEFINITIONS: VerificationDefinitionRule[] = [
     example: 'VIP会员张某某：钻石卡、人脸识别通过、在白名单 → VIP通道进入，耗时 0.56s',
   },
   {
+    id: 'rule-003',
     title: '停车核销规则',
     formula: `PARKING_SUCCESS = (parking_ticket_valid)
   AND (exit_time - entry_time <= max_duration_hours)
@@ -89,6 +92,7 @@ const MOCK_DEFINITIONS: VerificationDefinitionRule[] = [
     example: '车牌沪A12345：入场3小时20分、关联票据已支付 → 抬杆放行，补缴 ¥0',
   },
   {
+    id: 'rule-004',
     title: '周边商品核销规则',
     formula: `MERCH_SUCCESS = (redemption_ticket_valid)
   AND (sku_in_exchange_list)
@@ -104,6 +108,7 @@ const MOCK_DEFINITIONS: VerificationDefinitionRule[] = [
     example: '兑换券 MR001：限定款T恤 M码、库存剩余12件、首次兑换 → 核销成功，打印取货单',
   },
   {
+    id: 'rule-005',
     title: '二次入场核销规则',
     formula: `REENTRY_SUCCESS = (initial_checkin_exists)
   AND (reentry_count < max_reentries)
@@ -132,7 +137,7 @@ export default function VerificationPage() {
   const [activeTab, setActiveTab] = useState<TabKey>('efficiency');
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [definitions, setDefinitions] = useState<VerificationDefinitionRule[]>([]);
+  const [definitions, setDefinitions] = useState<VerificationDefinition[]>([]);
   const [efficiencyData, setEfficiencyData] = useState<VerificationEfficiency[]>([]);
   const [trendData, setTrendData] = useState<VerificationDatePoint[]>([]);
   const [areaData, setAreaData] = useState<VerificationAreaItem[]>([]);
@@ -144,8 +149,8 @@ export default function VerificationPage() {
         const [eff, trend, area, defs] = await Promise.all([
           verificationApi.getEfficiency().catch(() => MOCK_EFFICIENCY),
           verificationApi.getDateTrend().catch(() => MOCK_DATE_TREND),
-          verificationApi.getAreas().catch(() => MOCK_AREAS),
-          verificationApi.getDefinitions().catch(() => MOCK_DEFINITIONS),
+          verificationApi.getAreaCompare().catch(() => MOCK_AREAS),
+          verificationApi.getDefinition().catch(() => MOCK_DEFINITIONS),
         ]);
         setEfficiencyData(eff);
         setTrendData(trend);

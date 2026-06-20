@@ -3,13 +3,13 @@ import type {
   VerificationEfficiency,
   VerificationDatePoint,
   VerificationAreaItem,
-  VerificationDefinitionRule,
+  VerificationDefinition,
   DateRange,
 } from '@/types';
 
 export interface VerificationParams extends Partial<DateRange> {
+  group?: string;
   areaCode?: string;
-  definitionId?: string;
 }
 
 export const verificationApi = {
@@ -17,16 +17,16 @@ export const verificationApi = {
     return client.get<VerificationEfficiency[]>('/verification/efficiency', { params });
   },
 
-  getDateTrend(params?: VerificationParams) {
+  getDateTrend(params?: VerificationParams & { startDate?: string; endDate?: string }) {
     return client.get<VerificationDatePoint[]>('/verification/date-trend', { params });
   },
 
-  getAreas(params?: VerificationParams) {
-    return client.get<VerificationAreaItem[]>('/verification/areas', { params });
+  getAreaCompare() {
+    return client.get<VerificationAreaItem[]>('/verification/area-compare');
   },
 
-  getDefinitions() {
-    return client.get<VerificationDefinitionRule[]>('/verification/definitions');
+  getDefinition() {
+    return client.get<VerificationDefinition[]>('/verification/definition');
   },
 };
 

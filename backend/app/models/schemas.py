@@ -55,7 +55,7 @@ class PipelineStatus(BaseModel):
 
 
 class SyncLog(BaseModel):
-    id: int = Field(description="日志ID")
+    id: str = Field(description="日志ID")
     task_code: str = Field(description="任务编码")
     level: str = Field(description="日志级别")
     message: str = Field(description="日志消息")
@@ -142,6 +142,15 @@ class VerificationAreaItem(BaseModel):
     checkin_rate: float = Field(description="核销率")
 
 
+class VerificationDefinitionRule(BaseModel):
+    id: str = Field(description="规则ID")
+    title: str = Field(description="规则标题")
+    formula: str = Field(description="核销计算公式")
+    data_source: str = Field(description="数据来源说明")
+    exception_rules: List[str] = Field(description="异常处理规则列表")
+    example: str = Field(description="示例说明")
+
+
 class VerificationDefinition(BaseModel):
     formula: str = Field(description="核销计算公式")
     data_source: str = Field(description="数据来源说明")
@@ -158,12 +167,20 @@ class TicketRankItem(BaseModel):
     rank: int = Field(description="排名")
 
 
+class DisputedPoint(BaseModel):
+    id: str = Field(description="争议记录ID")
+    refund_id: str = Field(description="退票ID")
+    amount: float = Field(description="退票金额")
+    reason: str = Field(description="退票原因")
+    is_disputed: bool = Field(description="是否争议")
+
+
 class RefundDistributionPoint(BaseModel):
     date: DateType = Field(description="日期")
     refund_count: int = Field(description="退票数量")
     refund_amount: float = Field(description="退票金额")
     disputed_count: int = Field(description="争议数量")
-    disputed_points: List[str] = Field(default_factory=list, description="争议点退票ID列表")
+    disputed_points: List[DisputedPoint] = Field(default_factory=list, description="争议点详情列表")
 
 
 class RefundSample(BaseModel):

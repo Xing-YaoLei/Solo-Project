@@ -1,6 +1,11 @@
+import os
+import uuid
 import duckdb
 from contextlib import contextmanager
 from typing import Generator
+from pathlib import Path
+
+from .config import settings
 
 _duckdb_conn: duckdb.DuckDBPyConnection | None = None
 
@@ -92,7 +97,7 @@ CREATE TABLE IF NOT EXISTS sync_tasks (
 );
 
 CREATE TABLE IF NOT EXISTS sync_logs (
-    id BIGINT PRIMARY KEY,
+    id VARCHAR PRIMARY KEY,
     task_code VARCHAR REFERENCES sync_tasks(task_code),
     level VARCHAR,
     message VARCHAR,
@@ -112,7 +117,9 @@ CREATE TABLE IF NOT EXISTS seat_areas (
 def get_duckdb_connection() -> duckdb.DuckDBPyConnection:
     global _duckdb_conn
     if _duckdb_conn is None:
-        _duckdb_conn = duckdb.connect(database=":memory:")
+        db_path = settings.DUCKDB_PATH
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+        _duckdb_conn = duckdb.connect(database=str(db_path))
         _duckdb_conn.execute(DDL_SQL)
     return _duckdb_conn
 
