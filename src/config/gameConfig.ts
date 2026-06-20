@@ -52,8 +52,9 @@ export const ticketTypes: TicketType[] = [
     price: 2999,
     benefits: ['ben_vip', 'ben_lounge', 'ben_gift', 'ben_food', 'ben_drink', 'ben_tech', 'ben_media', 'ben_photo'],
     scoringRules: [
-      { id: 'rule_vvip_sponsor', condition: '匹配首席赞助商', points: 50, type: 'bonus' },
-      { id: 'rule_vvip_all', condition: '全部权益正确核销', points: 100, type: 'bonus' },
+      { id: 'rule_vvip_correct', condition: '正确核销', points: 50, type: 'bonus' },
+      { id: 'rule_vvip_sponsor_match', condition: '匹配首席赞助商', points: 30, type: 'bonus' },
+      { id: 'rule_vvip_wrong', condition: '核销错误', points: -25, type: 'penalty' },
     ],
   },
   {
@@ -63,8 +64,9 @@ export const ticketTypes: TicketType[] = [
     price: 1299,
     benefits: ['ben_vip', 'ben_lounge', 'ben_food', 'ben_drink'],
     scoringRules: [
-      { id: 'rule_vip_sponsor', condition: '匹配黄金赞助商', points: 30, type: 'bonus' },
-      { id: 'rule_vip_fast', condition: '快速通过', points: 20, type: 'bonus' },
+      { id: 'rule_vip_correct', condition: '正确核销', points: 30, type: 'bonus' },
+      { id: 'rule_vip_sponsor_match', condition: '匹配科技赞助商', points: 20, type: 'bonus' },
+      { id: 'rule_vip_wrong', condition: '核销错误', points: -15, type: 'penalty' },
     ],
   },
   {
@@ -74,7 +76,8 @@ export const ticketTypes: TicketType[] = [
     price: 399,
     benefits: ['ben_food'],
     scoringRules: [
-      { id: 'rule_std_normal', condition: '正常核销', points: 10, type: 'bonus' },
+      { id: 'rule_std_correct', condition: '正确核销', points: 15, type: 'bonus' },
+      { id: 'rule_std_wrong', condition: '核销错误', points: -10, type: 'penalty' },
     ],
   },
   {
@@ -84,7 +87,8 @@ export const ticketTypes: TicketType[] = [
     price: 199,
     benefits: ['ben_drink'],
     scoringRules: [
-      { id: 'rule_stu_id', condition: '学生证验证', points: 10, type: 'bonus' },
+      { id: 'rule_stu_correct', condition: '正确核销', points: 15, type: 'bonus' },
+      { id: 'rule_stu_wrong', condition: '核销错误', points: -10, type: 'penalty' },
     ],
   },
 ];
@@ -143,37 +147,97 @@ function formatTime(hour: number, minute: number): string {
   return `${h}:${m}`;
 }
 
+function getAllowedBenefits(ticket: TicketType, sponsor: Sponsor | null): string[] {
+  const allowed = [...ticket.benefits];
+  if (sponsor) {
+    allowed.push(...sponsor.benefits.map(b => b.id));
+  }
+  return [...new Set(allowed)];
+}
+
+function computeValidity(
+  claimedBenefits: string[],
+  allowedBenefits: string[]
+): { isValid: boolean; invalidReason?: string } {
+  const extra = claimedBenefits.filter(b => !allowedBenefits.includes(b));
+  if (extra.length > 0) {
+    const allSponsorBenefits = sponsors.flatMap(s => s.benefits);
+    const extraNames = extra.map(id => {
+      const b = allSponsorBenefits.find(sb => sb.id === id);
+      return b ? b.name : id;
+    });
+    return {
+      isValid: false,
+      invalidReason: `权益越权: ${extraNames.join('、')} 不在持票人可享范围内`,
+    };
+  }
+  return { isValid: true };
+}
+
 export function generateRecords(levelConfig: LevelConfig): VerificationRecord[] {
   const records: VerificationRecord[] = [];
   const { recordCount, ticketTypeIds, sponsorIds, disputeChance } = levelConfig;
 
   const availableTickets = ticketTypes.filter(t => ticketTypeIds.includes(t.id));
   const availableSponsors = sponsors.filter(s => sponsorIds.includes(s.id));
+  const allSponsorBenefitIds = availableSponsors.flatMap(s => s.benefits.map(b => b.id));
 
   for (let i = 0; i < recordCount; i++) {
     const ticket = availableTickets[Math.floor(Math.random() * availableTickets.length)];
-    const sponsor = availableSponsors.length > 0 
+    const sponsor = availableSponsors.length > 0
       ? availableSponsors[Math.floor(Math.random() * availableSponsors.length)]
       : null;
 
     const baseHour = 9 + Math.floor(Math.random() * 6);
     const baseMinute = Math.floor(Math.random() * 60);
 
-    const hasDispute = Math.random() < disputeChance;
-    const isValid = hasDispute ? Math.random() > 0.5 : true;
+    const allowedBenefits = getAllowedBenefits(ticket, sponsor);
 
-    const benefitCount = Math.min(ticket.benefits.length, 1 + Math.floor(Math.random() * 3));
-    const shuffledBenefits = [...ticket.benefits].sort(() => Math.random() - 0.5);
-    const recordBenefits = shuffledBenefits.slice(0, benefitCount);
+    const hasDispute = Math.random() < disputeChance;
+
+    const shouldInvalidate = hasDispute || Math.random() < 0.35;
+
+    let claimedBenefits: string[];
+    let invalidReason: string | undefined;
+
+    if (shouldInvalidate) {
+      const validClaimCount = 1 + Math.floor(Math.random() * Math.min(ticket.benefits.length, 3));
+      const validClaims = [...ticket.benefits].sort(() => Math.random() - 0.5).slice(0, validClaimCount);
+
+      const extraPool = allSponsorBenefitIds.filter(b => !allowedBenefits.includes(b));
+      if (extraPool.length > 0) {
+        const extraCount = 1 + Math.floor(Math.random() * Math.min(extraPool.length, 2));
+        const extras = extraPool.sort(() => Math.random() - 0.5).slice(0, extraCount);
+        claimedBenefits = [...new Set([...validClaims, ...extras])];
+      } else {
+        const nonTicketBenefitIds = sponsors
+          .filter(s => !sponsorIds.includes(s.id))
+          .flatMap(s => s.benefits.map(b => b.id));
+        if (nonTicketBenefitIds.length > 0) {
+          const fakeBenefit = nonTicketBenefitIds[Math.floor(Math.random() * nonTicketBenefitIds.length)];
+          claimedBenefits = [...new Set([...validClaims, fakeBenefit])];
+        } else {
+          claimedBenefits = validClaims;
+        }
+      }
+    } else {
+      const claimCount = 1 + Math.floor(Math.random() * Math.min(allowedBenefits.length, 4));
+      claimedBenefits = [...allowedBenefits].sort(() => Math.random() - 0.5).slice(0, claimCount);
+    }
+
+    const { isValid, invalidReason: reason } = computeValidity(claimedBenefits, allowedBenefits);
+    invalidReason = reason;
+
+    const displayBenefits = [...claimedBenefits].sort(() => Math.random() - 0.5);
 
     let disputeReason: string | undefined;
     if (hasDispute) {
       const reasons = [
         '票券二维码损坏',
         '身份证件与购票信息不符',
-        '票种权益不匹配',
-        '已超过入场时间',
-        '票券已被使用',
+        '票种权益与实际不符',
+        '已超过入场时间限制',
+        '票券已被核销使用',
         '赞助商权益未激活',
       ];
       disputeReason = reasons[Math.floor(Math.random() * reasons.length)];
@@ -185,8 +249,10 @@ export function generateRecords(levelConfig: LevelConfig): VerificationRecord[] 
       attendeeName: attendeeNames[i % attendeeNames.length],
       time: formatTime(baseHour, baseMinute),
       sponsorId: sponsor?.id,
-      benefits: recordBenefits,
+      benefits: displayBenefits,
+      claimedBenefits,
       isValid,
+      invalidReason,
       hasDispute,
       disputeReason,
       isChecked: false,

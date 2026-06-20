@@ -31,7 +31,9 @@ export interface VerificationRecord {
   time: string;
   sponsorId?: string;
   benefits: string[];
+  claimedBenefits: string[];
   isValid: boolean;
+  invalidReason?: string;
   hasDispute: boolean;
   disputeReason?: string;
   playerResult?: 'pass' | 'reject';

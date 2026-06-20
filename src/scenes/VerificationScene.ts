@@ -325,7 +325,31 @@ export class VerificationScene extends Scene {
     recordId.setOrigin(0.5);
     this.recordCard.add(recordId);
 
-    if (this.currentRecord.hasDispute) {
+    if (this.currentRecord.hasDispute && this.currentRecord.invalidReason) {
+      const disputeBadge = this.add.graphics();
+      disputeBadge.fillStyle(Phaser.Display.Color.HexStringToColor(COLORS.danger).color, 0.9);
+      disputeBadge.fillRoundedRect(-200 + 20, -210 + 90, 80, 24, 12);
+      this.recordCard.add(disputeBadge);
+
+      const disputeText = this.add.text(-200 + 60, -210 + 102, '⚠ 待核实', {
+        fontSize: '12px',
+        color: COLORS.white,
+        fontFamily: '"Segoe UI", Roboto, sans-serif',
+        fontStyle: 'bold',
+      });
+      disputeText.setOrigin(0.5);
+      this.recordCard.add(disputeText);
+
+      const reasonText = this.add.text(0, 155, this.currentRecord.invalidReason, {
+        fontSize: '12px',
+        color: COLORS.warning,
+        fontFamily: '"Segoe UI", Roboto, sans-serif',
+        wordWrap: { width: 340 },
+        align: 'center',
+      });
+      reasonText.setOrigin(0.5);
+      this.recordCard.add(reasonText);
+    } else if (this.currentRecord.hasDispute) {
       const disputeBadge = this.add.graphics();
       disputeBadge.fillStyle(Phaser.Display.Color.HexStringToColor(COLORS.danger).color, 0.9);
       disputeBadge.fillRoundedRect(-200 + 20, -210 + 90, 80, 24, 12);
@@ -579,7 +603,6 @@ export class VerificationScene extends Scene {
       }
     });
   }
-
   private showFeedback(correct: boolean, points: number, _action: 'pass' | 'reject'): void {
     const color = correct ? COLORS.success : COLORS.danger;
     const text = correct ? `+${points}` : `${points}`;

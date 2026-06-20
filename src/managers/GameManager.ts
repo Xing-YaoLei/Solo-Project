@@ -1,4 +1,4 @@
-import type { GameState, LevelState, LevelConfig, VerificationRecord, EfficiencyPoint } from '../types/game';
+import type { GameState, LevelState, LevelConfig, VerificationRecord, EfficiencyPoint, ScoringRule } from '../types/game';
 import { levels, sponsors, ticketTypes, generateRecords } from '../config/gameConfig';
 
 export class GameManager {
@@ -86,18 +86,51 @@ export class GameManager {
     return records[currentRecordIndex];
   }
 
-  verifyRecord(result: 'pass' | 'reject'): { correct: boolean; points: number; hasDispute: boolean } {
-    if (!this.levelState) return { correct: false, points: 0, hasDispute: false };
+  private getScoringRulesForRecord(record: VerificationRecord): ScoringRule[] {
+    const ticket = ticketTypes.find(t => t.id === record.ticketType);
+    return ticket?.scoringRules || [];
+  }
+
+  private calculatePoints(record: VerificationRecord, isCorrect: boolean): number {
+    const rules = this.getScoringRulesForRecord(record);
+    let points = 0;
+
+    if (isCorrect) {
+      const bonusRules = rules.filter(r => r.type === 'bonus');
+      points = bonusRules.reduce((sum, r) => sum + r.points, 0);
+
+      if (record.sponsorId) {
+        const sponsor = sponsors.find(s => s.id === record.sponsorId);
+        const ticket = ticketTypes.find(t => t.id === record.ticketType);
+        if (sponsor && ticket) {
+          const sponsorMatchRule = rules.find(r => r.condition.includes('赞助商'));
+          if (sponsorMatchRule) {
+            // already counted above
+          }
+        }
+      }
+    } else {
+      const penaltyRules = rules.filter(r => r.type === 'penalty');
+      points = penaltyRules.reduce((sum, r) => sum + r.points, 0);
+    }
+
+    return points;
+  }
+
+  verifyRecord(result: 'pass' | 'reject'): { correct: boolean; points: number; hasDispute: boolean; appliedRules: ScoringRule[] } {
+    if (!this.levelState) return { correct: false, points: 0, hasDispute: false, appliedRules: [] };
 
     const record = this.getCurrentRecord();
-    if (!record) return { correct: false, points: 0, hasDispute: false };
+    if (!record) return { correct: false, points: 0, hasDispute: false, appliedRules: [] };
 
     record.playerResult = result;
     record.isChecked = true;
 
     const isCorrect = (result === 'pass' && record.isValid) || (result === 'reject' && !record.isValid);
-    const basePoints = isCorrect ? 20 : -10;
-    let points = basePoints;
+    const points = this.calculatePoints(record, isCorrect);
+    const appliedRules = isCorrect
+      ? this.getScoringRulesForRecord(record).filter(r => r.type === 'bonus')
+      : this.getScoringRulesForRecord(record).filter(r => r.type === 'penalty');
 
     if (isCorrect) {
       this.levelState.correctCount++;
@@ -116,7 +149,7 @@ export class GameManager {
       this.levelState.disputeCount++;
     }
 
-    return { correct: isCorrect, points, hasDispute };
+    return { correct: isCorrect, points, hasDispute, appliedRules };
   }
 
   nextRecord(): boolean {
@@ -137,21 +170,22 @@ export class GameManager {
     const record = this.levelState.records[this.levelState.disputeRecordIndex];
     if (!record) return { points: 0 };
 
-    let points = 0;
     if (decision === 'uphold') {
-      points = 30;
+      const rules = this.getScoringRulesForRecord(record).filter(r => r.type === 'bonus');
+      const sponsorBonus = rules.find(r => r.condition.includes('赞助商'));
+      const points = sponsorBonus ? sponsorBonus.points : 20;
       this.levelState.score += points;
       this.levelState.correctCount++;
+      this.levelState.isDisputeActive = false;
+      this.updateEfficiencyHistory();
+      return { points };
     } else {
-      points = -20;
-      this.levelState.score = Math.max(0, this.levelState.score + points);
-      this.levelState.wrongCount++;
+      this.levelState.isDisputeActive = false;
+      this.levelState.records[this.levelState.disputeRecordIndex].isChecked = false;
+      this.levelState.records[this.levelState.disputeRecordIndex].playerResult = undefined;
+      this.levelState.currentRecordIndex = this.levelState.disputeRecordIndex;
+      return { points: 0 };
     }
-
-    this.levelState.isDisputeActive = false;
-    this.updateEfficiencyHistory();
-
-    return { points };
   }
 
   private updateEfficiencyHistory(): void {

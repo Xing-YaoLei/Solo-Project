@@ -133,14 +133,23 @@ export class DisputeScene extends Scene {
     });
     container.add(reasonLabel);
 
-    const reasonText = this.add.text(-width / 2 + 20, -height / 2 + 45, this.disputeRecord.disputeReason || '未知原因', {
+    const reasonText = this.add.text(-width / 2 + 20, -height / 2 + 45, this.disputeRecord.disputeReason || this.disputeRecord.invalidReason || '未知原因', {
       fontSize: '18px',
       color: COLORS.white,
       fontFamily: '"Segoe UI", Roboto, sans-serif',
     });
     container.add(reasonText);
 
-    const hintText = this.add.text(0, height / 2 - 18, '选择「推翻」将返回核销场景重新选择', {
+    if (this.disputeRecord.invalidReason && this.disputeRecord.disputeReason !== this.disputeRecord.invalidReason) {
+      const detailText = this.add.text(-width / 2 + 20, -height / 2 + 70, this.disputeRecord.invalidReason, {
+        fontSize: '13px',
+        color: COLORS.warning,
+        fontFamily: '"Segoe UI", Roboto, sans-serif',
+      });
+      container.add(detailText);
+    }
+
+    const hintText = this.add.text(0, height / 2 - 18, '选择「推翻」将返回核销场景重新选择，不扣分不改效率', {
       fontSize: '12px',
       color: '#666',
       fontFamily: '"Segoe UI", Roboto, sans-serif',
@@ -310,17 +319,9 @@ export class DisputeScene extends Scene {
   }
 
   private handleReverse(): void {
-    const result = this.gameManager.resolveDispute('reverse');
-    this.showFeedback(false, result.points);
+    this.gameManager.resolveDispute('reverse');
 
-    this.time.delayedCall(600, () => {
-      const levelState = this.gameManager.getLevelState();
-      if (levelState) {
-        levelState.currentRecordIndex = levelState.disputeRecordIndex;
-        levelState.records[levelState.disputeRecordIndex].isChecked = false;
-        levelState.records[levelState.disputeRecordIndex].playerResult = undefined;
-      }
-
+    this.time.delayedCall(300, () => {
       this.cameras.main.fadeOut(ANIMATION_DURATIONS.normal, 0, 0, 0);
       this.time.delayedCall(ANIMATION_DURATIONS.normal, () => {
         this.scene.start('VerificationScene');

@@ -5,6 +5,8 @@ import { GameManager } from '../managers/GameManager';
 import { InputManager } from '../managers/InputManager';
 import { PhysicsManager } from '../managers/PhysicsManager';
 import { COLORS, GAME_WIDTH, GAME_HEIGHT, ANIMATION_DURATIONS } from '../utils/constants';
+import { ticketTypes } from '../config/gameConfig';
+import type { ScoringRule } from '../types/game';
 
 export class ScoringScene extends Scene {
   private gameManager!: GameManager;
@@ -278,7 +280,7 @@ export class ScoringScene extends Scene {
   private createScoringDetails(): void {
     const container = this.add.container(GAME_WIDTH / 2, 500);
     const width = 500;
-    const height = 140;
+    const height = 180;
 
     const bg = this.add.graphics();
     bg.fillStyle(Phaser.Display.Color.HexStringToColor('#16213E').color, 0.8);
@@ -296,57 +298,53 @@ export class ScoringScene extends Scene {
     const levelState = this.gameManager.getLevelState();
     if (levelState) {
       let y = -height / 2 + 50;
-      
-      const baseScoreText = this.add.text(-width / 2 + 20, y, `基础分 (${levelState.correctCount}次正确 × 20分)`, {
-        fontSize: '14px',
-        color: '#8892b0',
-        fontFamily: '"Segoe UI", Roboto, sans-serif',
+
+      const ruleSummary = new Map<string, { rule: ScoringRule; count: number }>();
+      levelState.records.forEach(record => {
+        if (!record.isChecked) return;
+        const ticket = ticketTypes.find(t => t.id === record.ticketType);
+        if (!ticket) return;
+
+        const isCorrect = (record.playerResult === 'pass' && record.isValid) ||
+                          (record.playerResult === 'reject' && !record.isValid);
+        const applicableRules = isCorrect
+          ? ticket.scoringRules.filter(r => r.type === 'bonus')
+          : ticket.scoringRules.filter(r => r.type === 'penalty');
+
+        applicableRules.forEach(rule => {
+          const key = `${rule.condition}_${rule.type}_${rule.points}`;
+          const existing = ruleSummary.get(key);
+          if (existing) {
+            existing.count++;
+          } else {
+            ruleSummary.set(key, { rule, count: 1 });
+          }
+        });
       });
-      container.add(baseScoreText);
 
-      const baseScore = this.add.text(width / 2 - 20, y, `+${levelState.correctCount * 20}`, {
-        fontSize: '14px',
-        color: COLORS.success,
-        fontFamily: '"Segoe UI", Roboto, sans-serif',
-      });
-      baseScore.setOrigin(1, 0);
-      container.add(baseScore);
+      ruleSummary.forEach(({ rule, count }) => {
+        if (y > height / 2 - 30) return;
 
-      y += 30;
-
-      if (levelState.disputeCount > 0) {
-        const disputeText = this.add.text(-width / 2 + 20, y, `争议处理 (${levelState.disputeCount}次 × 30分)`, {
+        const label = `${rule.condition} × ${count}次`;
+        const rowText = this.add.text(-width / 2 + 20, y, label, {
           fontSize: '14px',
           color: '#8892b0',
           fontFamily: '"Segoe UI", Roboto, sans-serif',
         });
-        container.add(disputeText);
+        container.add(rowText);
 
-        const disputeScore = this.add.text(width / 2 - 20, y, `+${levelState.disputeCount * 30}`, {
+        const totalPoints = rule.points * count;
+        const pointsText = this.add.text(width / 2 - 20, y,
+          totalPoints > 0 ? `+${totalPoints}` : `${totalPoints}`, {
           fontSize: '14px',
-          color: COLORS.success,
+          color: rule.type === 'bonus' ? COLORS.success : COLORS.danger,
           fontFamily: '"Segoe UI", Roboto, sans-serif',
         });
-        disputeScore.setOrigin(1, 0);
-        container.add(disputeScore);
+        pointsText.setOrigin(1, 0);
+        container.add(pointsText);
 
-        y += 30;
-      }
-
-      const wrongText = this.add.text(-width / 2 + 20, y, `错误扣除 (${levelState.wrongCount}次 × 10分)`, {
-        fontSize: '14px',
-        color: '#8892b0',
-        fontFamily: '"Segoe UI", Roboto, sans-serif',
+        y += 26;
       });
-      container.add(wrongText);
-
-      const wrongScore = this.add.text(width / 2 - 20, y, `-${levelState.wrongCount * 10}`, {
-        fontSize: '14px',
-        color: COLORS.danger,
-        fontFamily: '"Segoe UI", Roboto, sans-serif',
-      });
-      wrongScore.setOrigin(1, 0);
-      container.add(wrongScore);
     }
 
     container.setAlpha(0);
