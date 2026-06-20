@@ -120,6 +120,7 @@ def register_callbacks(app):
                 start_date=sd,
                 end_date=ed,
                 sponsor_levels=sl_lvls,
+                ticket_type_ids=tt_ids,
             )
             efficiency_df = service.get_checkin_efficiency(
                 activity_id=activity_id,
@@ -283,24 +284,29 @@ def register_callbacks(app):
             State("activity-selector", "value"),
             State("date-range", "start_date"),
             State("date-range", "end_date"),
+            State("ticket-type-filter", "value"),
             State("sponsor-level-filter", "value"),
         ],
         prevent_initial_call=True,
     )
     def update_ticket_rules(sponsor_id, apply_clicks, reset_clicks,
-                            activity_id, start_date, end_date, sponsor_levels):
+                            activity_id, start_date, end_date,
+                            ticket_types, sponsor_levels):
         if not sponsor_id:
             return html.Div("请选择赞助商", className="text-center text-muted py-4")
 
         triggered = ctx.triggered_id
         sl_lvls = None
+        tt_ids = None
         sd = start_date
         ed = end_date
         if triggered == "reset-filter-btn":
             sd = None
             ed = None
+            tt_ids = None
             sl_lvls = None
         else:
+            tt_ids = _normalise_list(ticket_types)
             sl_lvls = _normalise_list(sponsor_levels)
 
         service = DataService()
@@ -310,6 +316,7 @@ def register_callbacks(app):
                 start_date=sd,
                 end_date=ed,
                 sponsor_levels=sl_lvls,
+                ticket_type_ids=tt_ids,
             )
             if ticket_types.empty:
                 return html.Div(
@@ -650,6 +657,7 @@ def register_callbacks(app):
                     start_date=start_date,
                     end_date=end_date,
                     sponsor_levels=sl_lvls,
+                    ticket_type_ids=tt_ids,
                 )
                 if not ticket_type_data.empty:
                     data_frames["票种分析"] = ticket_type_data

@@ -289,10 +289,13 @@ class DataService:
         start_date=None,
         end_date=None,
         sponsor_levels=None,
+        ticket_type_ids=None,
     ):
         query = self.db.query(TicketType)
         if activity_id:
             query = query.filter(TicketType.activity_id == activity_id)
+        if ticket_type_ids:
+            query = query.filter(TicketType.id.in_(ticket_type_ids))
 
         ticket_types = query.all()
         data = []
