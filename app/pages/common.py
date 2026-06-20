@@ -124,7 +124,7 @@ def build_kpi_row(prefix: str = "", include_consumed: bool = True):
                     dbc.CardBody([
                         html.Div([
                             html.I(className="bi bi-bag-check fs-4 text-warning"),
-                            html.Span("消费人数", className="ms-2 text-muted small fw-bold"),
+                            html.Span("关联预约消费人数", className="ms-2 text-muted small fw-bold"),
                         ]),
                         html.H2(id=_prefixed(prefix, "kpi-consumed"), className="mt-2 mb-0 text-warning fw-bold", children="—"),
                     ]),
@@ -149,6 +149,51 @@ def build_kpi_row(prefix: str = "", include_consumed: bool = True):
         )
     )
     return dbc.Row(cols, className="mb-4")
+
+
+def build_operation_kpi_row(prefix: str = ""):
+    cols = [
+        dbc.Col(
+            dbc.Card(
+                dbc.CardBody([
+                    html.Div([
+                        html.I(className="bi bi-camera-video fs-4 text-secondary"),
+                        html.Span("摄像头总客流", className="ms-2 text-muted small fw-bold"),
+                    ]),
+                    html.H2(id=_prefixed(prefix, "kpi-camera-flow"), className="mt-2 mb-0 text-secondary fw-bold", children="—"),
+                ]),
+                className="shadow-sm border-0 h-100",
+            ),
+            md=4, sm=6, className="mb-3",
+        ),
+        dbc.Col(
+            dbc.Card(
+                dbc.CardBody([
+                    html.Div([
+                        html.I(className="bi bi-shop-window fs-4 text-purple"),
+                        html.Span("商户总客流(含散客)", className="ms-2 text-muted small fw-bold"),
+                    ]),
+                    html.H2(id=_prefixed(prefix, "kpi-merchant-visitors"), className="mt-2 mb-0 fw-bold", style={"color": "#6f42c1"}, children="—"),
+                ]),
+                className="shadow-sm border-0 h-100",
+            ),
+            md=4, sm=6, className="mb-3",
+        ),
+        dbc.Col(
+            dbc.Card(
+                dbc.CardBody([
+                    html.Div([
+                        html.I(className="bi bi-cash-stack fs-4 text-success"),
+                        html.Span("商户总营业额(含散客)", className="ms-2 text-muted small fw-bold"),
+                    ]),
+                    html.H2(id=_prefixed(prefix, "kpi-merchant-amount"), className="mt-2 mb-0 text-success fw-bold", children="—"),
+                ]),
+                className="shadow-sm border-0 h-100",
+            ),
+            md=4, sm=6, className="mb-3",
+        ),
+    ]
+    return dbc.Row(cols, className="mb-2")
 
 
 def build_user_banner(prefix: str = "", user_info: dict = None, show_logout_btn: bool = True):

@@ -1,7 +1,7 @@
 from dash import dcc, html, dash_table
 import dash_bootstrap_components as dbc
 
-from app.pages.common import build_filter_bar, build_user_banner
+from app.pages.common import build_filter_bar, build_user_banner, build_operation_kpi_row
 
 
 def build_frontline_layout(user_info: dict):
@@ -21,6 +21,7 @@ def build_frontline_layout(user_info: dict):
             dismissable=True,
         ),
 
+        html.H5([html.I(className="bi bi-funnel-fill text-primary me-2"), "预约追踪漏斗指标"], className="mb-2 fw-bold text-primary"),
         dbc.Row([
             dbc.Col([
                 dbc.Card(
@@ -71,6 +72,9 @@ def build_frontline_layout(user_info: dict):
                 ),
             ], md=3, sm=6, className="mb-3"),
         ], className="mb-4"),
+
+        html.H5([html.I(className="bi bi-graph-up text-success me-2"), "独立运营指标（含散客）"], className="mb-2 fw-bold text-success mt-3"),
+        build_operation_kpi_row(prefix="fl"),
 
         dbc.Row([
             dbc.Col([

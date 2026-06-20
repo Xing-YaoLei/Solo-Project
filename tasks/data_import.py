@@ -162,10 +162,13 @@ def import_merchant_data(self, records: List[Dict[str, Any]], operator: str = "s
                 merchant_name=rec.get("merchant_name"),
                 category=rec.get("category"),
                 order_no=str(rec["order_no"]),
+                reservation_id=rec.get("reservation_id"),
+                id_card_hash=rec.get("id_card_hash"),
                 amount=Decimal(str(rec.get("amount", 0))),
                 passenger_count=int(rec.get("passenger_count", 1)),
                 pay_method=rec.get("pay_method"),
                 trans_status=rec.get("trans_status", "paid"),
+                is_linked=int(rec.get("is_linked", 1 if rec.get("reservation_id") else 0)),
                 trans_at=datetime.now(),
             )
             db.add(txn)
@@ -209,7 +212,7 @@ def merge_to_funnel(self, target_date: Optional[str] = None, operator: str = "sy
 
         the_date = datetime.strptime(target_date, "%Y-%m-%d").date()
 
-        from sqlalchemy import func, and_
+        from sqlalchemy import func, and_, distinct
 
         camera_agg = dict()
         camera_results = db.query(
@@ -244,19 +247,33 @@ def merge_to_funnel(self, target_date: Optional[str] = None, operator: str = "sy
                 gate_checked[key] = gate_checked.get(key, 0) + int(row.cnt or 0)
             gate_reservations[key] = gate_reservations.get(key, 0) + int(row.cnt or 0)
 
-        merchant_agg = dict()
+        merchant_linked = dict()
+        merchant_all_visitors = dict()
+        merchant_all_amount = dict()
         merchant_results = db.query(
             MerchantTransaction.zone,
             MerchantTransaction.time_slot,
-            func.sum(MerchantTransaction.passenger_count).label("consumed_cnt")
+            MerchantTransaction.is_linked,
+            func.sum(MerchantTransaction.passenger_count).label("pcnt"),
+            func.sum(MerchantTransaction.amount).label("amt"),
+            func.count(func.distinct(MerchantTransaction.reservation_id)).label("resv_cnt"),
         ).filter(
             and_(
                 MerchantTransaction.trans_date == the_date,
                 MerchantTransaction.trans_status == "paid"
             )
-        ).group_by(MerchantTransaction.zone, MerchantTransaction.time_slot).all()
+        ).group_by(
+            MerchantTransaction.zone,
+            MerchantTransaction.time_slot,
+            MerchantTransaction.is_linked,
+        ).all()
         for row in merchant_results:
-            merchant_agg[(row.zone, row.time_slot)] = int(row.consumed_cnt or 0)
+            key = (row.zone, row.time_slot)
+            if int(row.is_linked or 0) == 1:
+                cnt = int(row.resv_cnt or 0)
+                merchant_linked[key] = merchant_linked.get(key, 0) + cnt
+            merchant_all_visitors[key] = merchant_all_visitors.get(key, 0) + int(row.pcnt or 0)
+            merchant_all_amount[key] = merchant_all_amount.get(key, 0) + float(row.amt or 0)
 
         capacity_map = dict()
         capacity_results = db.query(CapacityRule).filter(
@@ -272,7 +289,7 @@ def merge_to_funnel(self, target_date: Optional[str] = None, operator: str = "sy
         all_zones = set()
         all_zones.update(k[0] for k in camera_agg.keys())
         all_zones.update(k[0] for k in gate_checked.keys())
-        all_zones.update(k[0] for k in merchant_agg.keys())
+        all_zones.update(k[0] for k in merchant_linked.keys())
         all_zones.update(k[0] for k in capacity_map.keys())
         all_slots = Config.TIME_SLOTS
 
@@ -282,18 +299,31 @@ def merge_to_funnel(self, target_date: Optional[str] = None, operator: str = "sy
         total_checked_in = 0
         total_in_zone = 0
         total_consumed = 0
+        total_camera_flow = 0
+        total_merchant_visitors = 0
+        total_merchant_amount = 0.0
 
         for zone in all_zones:
             for slot in all_slots:
                 key = (zone, slot)
-                reservations = max(gate_reservations.get(key, 0), gate_checked.get(key, 0))
-                if reservations == 0 and camera_agg.get(key, 0) == 0 and merchant_agg.get(key, 0) == 0:
-                    if key not in capacity_map:
-                        continue
 
-                in_zone = camera_agg.get(key, 0)
+                reservations = max(gate_reservations.get(key, 0), gate_checked.get(key, 0))
+                if reservations == 0 and key not in capacity_map:
+                    continue
+
                 checked_in = gate_checked.get(key, 0)
-                consumed = merchant_agg.get(key, 0)
+                camera_total = camera_agg.get(key, 0)
+
+                in_zone_ratio = 0.90 if zone in ["主入口区", "东门区", "西门区"] else 0.78
+                in_zone = int(min(checked_in, max(0, int(checked_in * in_zone_ratio))))
+
+                consumed_linked = min(
+                    int(merchant_linked.get(key, 0)),
+                    in_zone,
+                    checked_in,
+                )
+                merchant_total_v = merchant_all_visitors.get(key, 0)
+                merchant_total_a = merchant_all_amount.get(key, 0)
 
                 reminder_sent = int(reservations * 0.95)
                 reminder_confirmed = int(reminder_sent * 0.85)
@@ -302,7 +332,7 @@ def merge_to_funnel(self, target_date: Optional[str] = None, operator: str = "sy
 
                 checkin_rate = Decimal(str(checked_in / reservations)) if reservations > 0 else Decimal("0")
                 in_zone_rate = Decimal(str(in_zone / reservations)) if reservations > 0 else Decimal("0")
-                conversion_rate = Decimal(str(consumed / checked_in)) if checked_in > 0 else Decimal("0")
+                conversion_rate = Decimal(str(consumed_linked / checked_in)) if checked_in > 0 else Decimal("0")
 
                 arrival_status = "normal"
                 remark_parts = []
@@ -326,9 +356,14 @@ def merge_to_funnel(self, target_date: Optional[str] = None, operator: str = "sy
                 slot_idx = all_slots.index(slot)
                 if slot_idx > 0:
                     prev_key = (zone, all_slots[slot_idx - 1])
-                    prev_in = camera_agg.get(prev_key, 0)
-                    if prev_in > 0 and in_zone > prev_in * 1.8:
-                        remark_parts.append("人数突增,需关注")
+                    prev_in = gate_checked.get(prev_key, 0)
+                    if prev_in > 0 and checked_in > prev_in * 1.8:
+                        remark_parts.append("检票人数突增,需关注")
+
+                if merchant_total_v > consumed_linked * 2 and merchant_total_v > 10:
+                    remark_parts.append(
+                        f"商户客流含散客:{merchant_total_v}(关联预约仅{consumed_linked})"
+                    )
 
                 reminder_list_data = []
                 if reminder_sent - checked_in > 20:
@@ -344,7 +379,7 @@ def merge_to_funnel(self, target_date: Optional[str] = None, operator: str = "sy
                     reminder_confirmed=reminder_confirmed,
                     checked_in=checked_in,
                     in_zone=in_zone,
-                    consumed=consumed,
+                    consumed=consumed_linked,
                     cancelled=cancelled,
                     no_show=no_show,
                     checkin_rate=checkin_rate,
@@ -353,6 +388,9 @@ def merge_to_funnel(self, target_date: Optional[str] = None, operator: str = "sy
                     arrival_status=arrival_status,
                     reminder_list=json.dumps(reminder_list_data, ensure_ascii=False),
                     remark="; ".join(remark_parts) if remark_parts else None,
+                    camera_total_flow=camera_total,
+                    merchant_total_visitors=merchant_total_v,
+                    merchant_total_amount=Decimal(str(round(merchant_total_a, 2))),
                     created_at=datetime.now(),
                     updated_at=datetime.now(),
                 )
@@ -362,14 +400,18 @@ def merge_to_funnel(self, target_date: Optional[str] = None, operator: str = "sy
                 total_reminder_sent += reminder_sent
                 total_checked_in += checked_in
                 total_in_zone += in_zone
-                total_consumed += consumed
+                total_consumed += consumed_linked
+                total_camera_flow += camera_total
+                total_merchant_visitors += merchant_total_v
+                total_merchant_amount += merchant_total_a
 
         batch.record_count = processed_count
         batch.status = "completed"
         batch.completed_at = datetime.now()
         batch.remark = (
             f"预约:{total_reservation} 提醒:{total_reminder_sent} "
-            f"检票:{total_checked_in} 到区域:{total_in_zone} 消费:{total_consumed}"
+            f"检票:{total_checked_in} 到区域:{total_in_zone} 关联消费:{total_consumed} | "
+            f"独立指标-摄像头总客流:{total_camera_flow} 商户总客流:{total_merchant_visitors} 商户总营业额:{round(total_merchant_amount,2)}"
         )
         db.commit()
 
@@ -382,7 +424,10 @@ def merge_to_funnel(self, target_date: Optional[str] = None, operator: str = "sy
                 "reservation": total_reservation,
                 "checked_in": total_checked_in,
                 "in_zone": total_in_zone,
-                "consumed": total_consumed,
+                "consumed_linked": total_consumed,
+                "camera_total_flow": total_camera_flow,
+                "merchant_total_visitors": total_merchant_visitors,
+                "merchant_total_amount": round(total_merchant_amount, 2),
             },
             "status": "success",
         }

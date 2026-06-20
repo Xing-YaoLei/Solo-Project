@@ -147,6 +147,8 @@ def generate_gate_data(target_date: date):
         ticket_types = ["adult", "child", "student", "senior"]
         tickets_weights = [55, 15, 18, 12]
 
+        reservation_pool = []
+
         for zone in ZONES:
             n_gates = random.randint(2, 4) if zone != "商业街" else random.randint(1, 2)
             for gate in range(n_gates):
@@ -162,13 +164,17 @@ def generate_gate_data(target_date: date):
                         ttype = random.choices(ticket_types, weights=tickets_weights, k=1)[0]
                         status = "success" if random.random() < 0.97 else random.choice(["fail", "refund"])
 
+                        reservation_id = f"RES{target_date.strftime('%Y%m%d')}{random.randint(100000,999999)}"
+                        if pass_type == "in" and status == "success":
+                            reservation_pool.append(reservation_id)
+
                         gate_rec = GateRecord(
                             batch_id=batch.id,
                             record_date=target_date,
                             time_slot=slot,
                             zone=zone,
                             gate_id=f"GATE-{zone[:2]}-{gate+1:02d}",
-                            reservation_id=f"RES{target_date.strftime('%Y%m%d')}{random.randint(100000,999999)}",
+                            reservation_id=reservation_id,
                             ticket_type=ttype,
                             pass_type=pass_type,
                             passenger_name=f"游客{random.randint(1000,9999)}",
@@ -187,15 +193,22 @@ def generate_gate_data(target_date: date):
 
         batch.record_count = count
         db.commit()
-        print(f"[闸机数据  ] {target_date} 导入 {count} 条")
+
+        with open(f"/tmp/reservations_{target_date.strftime('%Y%m%d')}.txt", "w") as f:
+            for rid in reservation_pool:
+                f.write(rid + "\n")
+
+        print(f"[闸机数据  ] {target_date} 导入 {count} 条 (有效预约池: {len(reservation_pool)})")
+        return reservation_pool
     except Exception as e:
         db.rollback()
         print(f"[闸机数据  ] 出错: {e}")
+        return []
     finally:
         db.close()
 
 
-def generate_merchant_data(target_date: date):
+def generate_merchant_data(target_date: date, reservation_pool: list = None):
     db = SessionLocal()
     try:
         batch = DataBatch(
@@ -209,14 +222,20 @@ def generate_merchant_data(target_date: date):
         db.add(batch)
         db.flush()
 
+        if reservation_pool is None:
+            reservation_pool = []
+
         categories = ["餐饮", "零售", "游乐", "住宿"]
         cat_weights = [40, 30, 20, 10]
         pay_methods = ["wechat", "alipay", "cash", "card"]
         pay_weights = [45, 40, 10, 5]
 
+        linked_rate = 0.65 if reservation_pool else 0.0
+
         count = 0
         merchant_index = 1
         order_seq = 0
+        linked_count = 0
         for zone in ZONES:
             n_merchants = random.randint(4, 10) if zone == "商业街" else random.randint(1, 4)
             for _ in range(n_merchants):
@@ -239,6 +258,14 @@ def generate_merchant_data(target_date: date):
                         amount = round(random.uniform(low, high), 2)
                         order_seq += 1
 
+                        is_linked = 1 if (reservation_pool and random.random() < linked_rate) else 0
+                        reservation_id = None
+                        id_card_hash = None
+                        if is_linked:
+                            reservation_id = random.choice(reservation_pool)
+                            id_card_hash = f"ID{hash(reservation_id) % 1000000:06d}"
+                            linked_count += 1
+
                         txn = MerchantTransaction(
                             batch_id=batch.id,
                             trans_date=target_date,
@@ -248,10 +275,13 @@ def generate_merchant_data(target_date: date):
                             merchant_name=f"{zone}{cat}商户{mid}",
                             category=cat,
                             order_no=f"ORD{target_date.strftime('%Y%m%d')}{order_seq:07d}{random.randint(100,999)}",
+                            reservation_id=reservation_id,
+                            id_card_hash=id_card_hash,
                             amount=Decimal(str(amount)),
                             passenger_count=random.randint(1, 5),
                             pay_method=random.choices(pay_methods, weights=pay_weights, k=1)[0],
                             trans_status="paid" if random.random() < 0.95 else "refunded",
+                            is_linked=is_linked,
                         )
                         db.add(txn)
                         count += 1
@@ -266,7 +296,7 @@ def generate_merchant_data(target_date: date):
 
         batch.record_count = count
         db.commit()
-        print(f"[商户流水  ] {target_date} 导入 {count} 条")
+        print(f"[商户流水  ] {target_date} 导入 {count} 条 (关联预约: {linked_count}, 关联率: {linked_count/max(count,1)*100:.1f}%)")
     except Exception as e:
         db.rollback()
         print(f"[商户流水  ] 出错: {e}")
@@ -290,8 +320,8 @@ def main():
         d = today - timedelta(days=i)
         generate_capacity_rules(d)
         generate_camera_data(d)
-        generate_gate_data(d)
-        generate_merchant_data(d)
+        reservation_pool = generate_gate_data(d)
+        generate_merchant_data(d, reservation_pool)
         try:
             merge_data_to_funnel(d)
         except Exception as e:

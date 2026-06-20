@@ -57,7 +57,10 @@ def create_reminder_funnel_chart(df_funnel: pd.DataFrame) -> go.Figure:
         connector={"line": {"color": "#BDC3C7", "dash": "solid", "width": 2}},
     ))
     fig.update_layout(
-        title="预约漏斗转化",
+        title=dict(
+            text="预约漏斗转化（围绕预约人群追踪，消费仅统计关联预约订单）",
+            font=dict(size=14),
+        ),
         margin=dict(l=20, r=20, t=60, b=20),
         height=380,
     )
@@ -150,16 +153,24 @@ def create_capacity_change_chart(df_capacity: pd.DataFrame) -> go.Figure:
 
 def create_kpi_cards(df: pd.DataFrame) -> list:
     if df.empty:
-        return ["—", "—", "—", "—"]
+        return ["—", "—", "—", "—", "—", "—", "—", "—"]
     total_resv = int(df["reservation_count"].sum())
     total_checkin = int(df["checked_in"].sum())
-    total_consume = int(df["consumed"].sum())
+    total_consume_linked = int(df["consumed"].sum())
     avg_rate = df["checkin_rate"].mean() if "checkin_rate" in df.columns else 0
+
+    camera_flow = int(df["camera_total_flow"].sum()) if "camera_total_flow" in df.columns else 0
+    merchant_visitors = int(df["merchant_total_visitors"].sum()) if "merchant_total_visitors" in df.columns else 0
+    merchant_amount = float(df["merchant_total_amount"].sum()) if "merchant_total_amount" in df.columns else 0.0
+
     return [
         f"{total_resv:,}",
         f"{total_checkin:,}",
-        f"{total_consume:,}",
+        f"{total_consume_linked:,}",
         f"{avg_rate * 100:.1f}%" if avg_rate else "0.0%",
+        f"{camera_flow:,}",
+        f"{merchant_visitors:,}",
+        f"¥{merchant_amount:,.0f}",
     ]
 
 

@@ -144,6 +144,9 @@ def _load_filtered_data(user_info, start_date_str, end_date_str, zones_selected,
         Output("mgmt-kpi-checkin", "children"),
         Output("mgmt-kpi-consumed", "children"),
         Output("mgmt-kpi-rate", "children"),
+        Output("mgmt-kpi-camera-flow", "children"),
+        Output("mgmt-kpi-merchant-visitors", "children"),
+        Output("mgmt-kpi-merchant-amount", "children"),
         Output("mgmt-chart-status-dist", "figure"),
         Output("mgmt-chart-funnel", "figure"),
         Output("mgmt-chart-timeslot-heatmap", "figure"),
@@ -164,7 +167,7 @@ def _load_filtered_data(user_info, start_date_str, end_date_str, zones_selected,
 )
 def update_management_dashboard(start_date, end_date, zones, slots, refresh_clicks, user_info):
     if not user_info or not user_info.get("is_management"):
-        return [no_update] * 11
+        return [no_update] * 14
 
     try:
         df, df_status, df_funnel, df_rank, df_cap, df_zone, df_pending, df_batches = _load_filtered_data(
@@ -188,6 +191,9 @@ def update_management_dashboard(start_date, end_date, zones, slots, refresh_clic
         kpi_vals[1],
         kpi_vals[2],
         kpi_vals[3],
+        kpi_vals[4],
+        kpi_vals[5],
+        kpi_vals[6],
         fig_status,
         fig_funnel,
         fig_heatmap,
@@ -204,6 +210,9 @@ def update_management_dashboard(start_date, end_date, zones, slots, refresh_clic
         Output("fl-kpi-checkin", "children"),
         Output("fl-kpi-rate", "children"),
         Output("fl-kpi-pending", "children"),
+        Output("fl-kpi-camera-flow", "children"),
+        Output("fl-kpi-merchant-visitors", "children"),
+        Output("fl-kpi-merchant-amount", "children"),
         Output("fl-chart-zone-rate", "figure"),
         Output("fl-chart-pending-reminder", "figure"),
         Output("fl-chart-timeslot-heatmap", "figure"),
@@ -221,7 +230,7 @@ def update_management_dashboard(start_date, end_date, zones, slots, refresh_clic
 )
 def update_frontline_dashboard(start_date, end_date, slots, refresh_clicks, user_info):
     if not user_info or user_info.get("is_management"):
-        return [no_update] * 9
+        return [no_update] * 12
 
     try:
         df, df_status, df_funnel, df_rank, df_cap, df_zone, df_pending, df_batches = _load_filtered_data(
@@ -234,6 +243,10 @@ def update_frontline_dashboard(start_date, end_date, slots, refresh_clicks, user
     total_checkin = int(df["checked_in"].sum()) if not df.empty else 0
     avg_rate = df["checkin_rate"].mean() if not df.empty and "checkin_rate" in df.columns else 0
     pending_total = int(df_pending["pending_reminder"].sum()) if not df_pending.empty else 0
+
+    camera_flow = int(df["camera_total_flow"].sum()) if (not df.empty and "camera_total_flow" in df.columns) else 0
+    merchant_visitors = int(df["merchant_total_visitors"].sum()) if (not df.empty and "merchant_total_visitors" in df.columns) else 0
+    merchant_amount = float(df["merchant_total_amount"].sum()) if (not df.empty and "merchant_total_amount" in df.columns) else 0.0
 
     fig_zone = create_zone_rate_bar(df_zone)
     fig_pending = create_pending_reminder_bar(df_pending)
@@ -250,7 +263,7 @@ def update_frontline_dashboard(start_date, end_date, slots, refresh_clicks, user
             "reminder_sent": "已提醒",
             "checked_in": "已到场",
             "in_zone": "已到区域",
-            "consumed": "已消费",
+            "consumed": "关联预约消费",
             "cancelled": "已取消",
             "no_show": "未到场",
             "checkin_rate": "到场率",
@@ -270,6 +283,9 @@ def update_frontline_dashboard(start_date, end_date, slots, refresh_clicks, user
         f"{total_checkin:,}",
         f"{avg_rate * 100:.1f}%" if avg_rate else "0.0%",
         f"{pending_total:,}",
+        f"{camera_flow:,}",
+        f"{merchant_visitors:,}",
+        f"¥{merchant_amount:,.0f}",
         fig_zone,
         fig_pending,
         fig_heatmap,

@@ -57,6 +57,9 @@ class DataService:
                     "conversion_rate": float(r.conversion_rate or 0),
                     "arrival_status": r.arrival_status or "normal",
                     "remark": r.remark or "",
+                    "camera_total_flow": int(r.camera_total_flow or 0),
+                    "merchant_total_visitors": int(r.merchant_total_visitors or 0),
+                    "merchant_total_amount": float(r.merchant_total_amount or 0),
                 })
             return pd.DataFrame(data)
         finally:

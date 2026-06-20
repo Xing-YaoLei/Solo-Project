@@ -1,14 +1,26 @@
 from dash import dcc, html, dash_table
 import dash_bootstrap_components as dbc
 
-from app.pages.common import build_filter_bar, build_kpi_row, build_user_banner
+from app.pages.common import build_filter_bar, build_kpi_row, build_user_banner, build_operation_kpi_row
 
 
 def build_management_layout(user_info: dict):
     return dbc.Container(fluid=True, className="px-4 py-4", children=[
         build_user_banner(prefix="mgmt", user_info=user_info, show_logout_btn=True),
         build_filter_bar(prefix="mgmt", show_zone_filter=True, is_management=True),
+
+        html.H5([html.I(className="bi bi-funnel-fill text-primary me-2"), "预约追踪漏斗指标"], className="mb-2 fw-bold text-primary"),
         build_kpi_row(prefix="mgmt", include_consumed=True),
+
+        html.H5([html.I(className="bi bi-graph-up text-success me-2"), "独立运营指标（含散客）"], className="mb-2 fw-bold text-success mt-3"),
+        dbc.Alert(
+            [html.I(className="bi bi-info-circle-fill me-2"),
+             "说明：消费人数仅统计关联预约订单的商户客流，摄像头总客流、商户总客流与营业额包含无法追踪预约身份的散客数据，不计入预约漏斗转化率。"],
+            color="info",
+            className="mb-3",
+            dismissable=True,
+        ),
+        build_operation_kpi_row(prefix="mgmt"),
 
         dbc.Row([
             dbc.Col([
