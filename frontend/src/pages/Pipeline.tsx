@@ -41,41 +41,26 @@ interface PipelineTask {
   description: string;
 }
 
-const defaultTasks: PipelineTask[] = [
-  {
-    id: 'REG_SYNC',
-    name: '报名表数据同步',
-    source: 'REG_SYNC',
-    icon: Users,
-    status: 'success',
-    lastSync: dayjs().subtract(3, 'minute').toISOString(),
-    records: 2847,
-    delay: 2.4,
-    description: '从报名主系统拉取报名表、订单、人员信息',
-  },
-  {
-    id: 'PAY_SYNC',
-    name: '支付流水同步',
-    source: 'PAY_SYNC',
-    icon: Ticket,
-    status: 'running',
-    lastSync: dayjs().subtract(45, 'second').toISOString(),
-    records: 624,
-    delay: 0.8,
-    description: '支付网关订单、退款流水实时同步',
-  },
-  {
-    id: 'GATE_SYNC',
-    name: '闸机记录同步',
-    source: 'GATE_SYNC',
-    icon: Sparkles,
-    status: 'error',
-    lastSync: dayjs().subtract(1, 'hour').toISOString(),
-    records: 86,
-    delay: 45.2,
-    description: '闸机核验设备实时上报入场核销记录',
-  },
-];
+const defaultTasks: PipelineTask[] = [];
+
+const taskIconMap: Record<string, typeof Ticket> = {
+  REG_SYNC: Users,
+  PAY_SYNC: Ticket,
+  GATE_SYNC: Sparkles,
+};
+
+const taskDescMap: Record<string, string> = {
+  REG_SYNC: '从报名主系统拉取报名表、订单、人员信息',
+  PAY_SYNC: '支付网关订单、退款流水实时同步',
+  GATE_SYNC: '闸机核验设备实时上报入场核销记录',
+};
+
+function backendStatusToFrontend(status: string): PipelineTaskStatus {
+  if (status === '同步中' || status === 'running') return 'running';
+  if (status === '失败' || status === 'failed' || status === 'error') return 'error';
+  if (status === '正常' || status === 'success' || status === 'completed') return 'success';
+  return 'idle';
+}
 
 const statusMap: Record<
   PipelineTaskStatus,
@@ -389,13 +374,30 @@ export default function PipelinePage() {
         if (Array.isArray(raw)) {
           setOverview({
             pending: raw.length,
-            synced: raw.filter((x) => (x.status as string) === 'synced').length,
-            verified: raw.filter((x) => (x.status as string) === 'verified').length,
-            completed: raw.filter((x) => (x.status as string) === 'completed').length,
+            synced: raw.filter((x) => (x.status as string) === 'synced' || (x.status as string) === '同步中').length,
+            verified: raw.filter((x) => (x.status as string) === 'verified' || (x.status as string) === '正常').length,
+            completed: raw.filter((x) => (x.status as string) === 'completed' || (x.status as string) === '正常').length,
             failed: raw.filter(
-              (x) => (x.status as string) === 'failed' || (x.status as string) === 'error',
+              (x) => (x.status as string) === 'failed' || (x.status as string) === 'error' || (x.status as string) === '失败',
             ).length,
           });
+
+          const mappedTasks: PipelineTask[] = raw
+            .filter((x) => ['REG_SYNC', 'PAY_SYNC', 'GATE_SYNC'].includes((x.taskCode as string) || ''))
+            .map((x) => ({
+              id: x.taskCode as string,
+              name: (x.taskName as string) || `同步任务 ${x.taskCode}`,
+              source: x.taskCode as string,
+              icon: taskIconMap[x.taskCode as string] ?? Ticket,
+              status: backendStatusToFrontend((x.status as string) || 'success'),
+              lastSync: (x.lastSyncTime as string) || new Date().toISOString(),
+              records: (x.lastSyncCount as number) ?? 0,
+              delay: (x.delaySeconds as number) ?? 0,
+              description: taskDescMap[x.taskCode as string] || x.sourceType as string || '数据同步任务',
+            }));
+          if (mappedTasks.length > 0) {
+            setTasks(mappedTasks);
+          }
         } else if (raw && typeof raw === 'object') {
           setOverview({
             pending: (raw.pending as number) ?? defaultOverview.pending,
@@ -406,7 +408,7 @@ export default function PipelinePage() {
           });
         }
       } catch {
-        /* use default overview */
+        /* use default overview and tasks */
       }
 
       try {
@@ -435,7 +437,7 @@ export default function PipelinePage() {
               st === 'success' || st === 'pending' || st === 'failed' ? st : 'success';
             return {
               id: (r.id as string) ?? `log-api-${idx}`,
-              source: (r.source as string) ?? (r.taskCode as string) ?? 'ticket',
+              source: (r.source as string) ?? (r.taskCode as string) ?? 'REG_SYNC',
               status: validStatus,
               recordsSynced: (r.recordsSynced as number) ?? (r.lastSyncCount as number) ?? 0,
               syncTime:

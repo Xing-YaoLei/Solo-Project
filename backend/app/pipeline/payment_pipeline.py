@@ -62,15 +62,16 @@ class PaymentPipeline(BasePipeline):
         return transformed
 
     def load(self, data: List[Tuple]) -> int:
-        with get_duckdb() as conn:
-            conn.executemany(
-                "INSERT OR IGNORE INTO payments (id, registration_id, order_no, amount, channel, status, paid_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                data
-            )
-            count = len(data)
-            self.log_info("load", "写入 DuckDB payments 表", f"批次提交, 目标条数: {count}")
+        count = len(data)
+        if count > 0:
+            with get_duckdb() as conn:
+                conn.executemany(
+                    "INSERT OR IGNORE INTO payments (id, registration_id, order_no, amount, channel, status, paid_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    data
+                )
+        self.log_info("load", "写入 DuckDB payments 表", f"批次提交, 目标条数: {count}")
 
-        if getattr(self, '_pg_available', False):
+        if getattr(self, '_pg_available', False) and count > 0:
             try:
                 from ..repositories.pg_repository import Payment as PgPayment
                 from ..repositories.pg_repository import get_pg_session

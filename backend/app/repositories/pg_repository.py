@@ -90,7 +90,7 @@ def _register_models(base):
         __tablename__ = "gate_records"
 
         id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-        ticket_id = Column(String, ForeignKey("tickets.id"))
+        ticket_id = Column(String)
         gate_no = Column(String)
         checkin_code = Column(String)
         pass_time = Column(DateTime)

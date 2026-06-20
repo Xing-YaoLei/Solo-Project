@@ -61,15 +61,16 @@ class GatePipeline(BasePipeline):
         return transformed
 
     def load(self, data: List[Tuple]) -> int:
-        with get_duckdb() as conn:
-            conn.executemany(
-                "INSERT OR IGNORE INTO gate_records (id, ticket_id, gate_no, checkin_code, pass_time, status) VALUES (?, ?, ?, ?, ?, ?)",
-                data
-            )
-            count = len(data)
-            self.log_info("load", "写入 DuckDB gate_records 表", f"追加模式, 目标条数: {count}")
+        count = len(data)
+        if count > 0:
+            with get_duckdb() as conn:
+                conn.executemany(
+                    "INSERT OR IGNORE INTO gate_records (id, ticket_id, gate_no, checkin_code, pass_time, status) VALUES (?, ?, ?, ?, ?, ?)",
+                    data
+                )
+        self.log_info("load", "写入 DuckDB gate_records 表", f"追加模式, 目标条数: {count}")
 
-        if getattr(self, '_pg_available', False):
+        if getattr(self, '_pg_available', False) and count > 0:
             try:
                 from ..repositories.pg_repository import GateRecord as PgGateRecord
                 from ..repositories.pg_repository import get_pg_session
