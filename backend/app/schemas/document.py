@@ -1,6 +1,6 @@
 from datetime import datetime
-from typing import Optional, List, Any
-from pydantic import BaseModel, Field
+from typing import Optional, List
+from pydantic import BaseModel
 
 
 class DocumentVersionBase(BaseModel):
@@ -75,5 +75,13 @@ class Document(DocumentBase):
 
 class DocumentDetail(Document):
     versions: List[DocumentVersion] = []
-    interactions: List[Any] = []
-    audit_records: List[Any] = []
+    interactions: List["Interaction"] = []
+    audit_records: List["AuditRecord"] = []
+
+    class Config:
+        from_attributes = True
+
+
+from app.schemas.audit import Interaction, AuditRecord
+
+DocumentDetail.model_rebuild()

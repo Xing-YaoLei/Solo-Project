@@ -2,11 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import User, Document, Interaction, RiskHit, DocumentStatus
+from app.models import User, Document, Interaction, RiskHit, DocumentStatus, AuditRecord
 from app.schemas import (
     InteractionCreate, Interaction as InteractionSchema,
     RiskHit as RiskHitSchema, AuditRecordCreate, AuditRecord as AuditSchema,
-    AuditAction, Document as DocumentSchema,
+    AuditAction,
 )
 from app.api.deps import get_current_user, require_roles
 from app.tasks.document_tasks import verify_document_versions
