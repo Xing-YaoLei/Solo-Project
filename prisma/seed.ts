@@ -151,7 +151,7 @@ async function main() {
         const orderedAt = new Date(batchDate);
         orderedAt.setHours(randomInt(8, 20), randomInt(0, 59));
 
-        const statuses = [OrderStatus.DELIVERED, OrderStatus.DELIVERED, OrderStatus.DELIVERED, OrderStatus.PICKED_UP, OrderStatus.ASSIGNED];
+        const statuses = [OrderStatus.DELIVERED, OrderStatus.DELIVERED, OrderStatus.DELIVERED, OrderStatus.PICKED_UP, OrderStatus.ASSIGNED, OrderStatus.PENDING];
         const status = randomFromArray(statuses);
 
         const dispatchDuration = randomInt(5, 30);
