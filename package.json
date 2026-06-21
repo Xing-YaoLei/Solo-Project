@@ -1,0 +1,22 @@
+{
+  "name": "errand-verification-platform",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm -r --parallel run dev",
+    "build": "pnpm -r run build",
+    "dev:api": "pnpm --filter api run start:dev",
+    "dev:web": "pnpm --filter web run dev",
+    "build:api": "pnpm --filter api run build",
+    "build:web": "pnpm --filter web run build",
+    "prisma:generate": "pnpm --filter api run prisma:generate",
+    "prisma:migrate": "pnpm --filter api run prisma:migrate",
+    "prisma:seed": "pnpm --filter api run prisma:seed"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  },
+  "engines": {
+    "node": ">=18.17.0"
+  }
+}
