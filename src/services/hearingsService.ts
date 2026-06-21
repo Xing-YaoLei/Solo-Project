@@ -1,5 +1,5 @@
-import type { Hearing, FilterParams, AttendanceStatus, ReminderStatus } from '@/types';
-import { mockHearings } from '@/data/mockData';
+import type { Hearing, FilterParams, AttendanceStatus, ReminderStatus, Reminder } from '@/types';
+import { mockHearings, mockReminders } from '@/data/mockData';
 import { getTimeSlot } from '@/lib/utils';
 
 export function getFilteredHearings(filters: FilterParams): Hearing[] {
@@ -85,4 +85,17 @@ export function getCaseTypeDistribution(hearings: Hearing[]) {
   });
 
   return Array.from(typeMap.entries()).map(([name, value]) => ({ name, value }));
+}
+
+export function getRemindersByHearings(hearings: Hearing[], filters?: FilterParams): Reminder[] {
+  const hearingIds = new Set(hearings.map((h) => h.id));
+  let reminders = mockReminders.filter((r) => hearingIds.has(r.hearingId));
+
+  if (filters?.reminderStatuses && filters.reminderStatuses.length > 0) {
+    reminders = reminders.filter((r) =>
+      (filters.reminderStatuses as ReminderStatus[]).includes(r.status)
+    );
+  }
+
+  return reminders.sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime());
 }

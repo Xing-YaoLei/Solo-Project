@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { cn } from '@/lib/utils';
-import { getAttendanceStatusLabel, getConflictStatusLabel } from '@/lib/utils';
+import { getAttendanceStatusLabel, getConflictStatusLabel, getReminderStatusLabel, getReminderTypeLabel } from '@/lib/utils';
 
 interface BadgeProps extends React.HTMLAttributes<HTMLDivElement> {
   variant?: 'default' | 'success' | 'warning' | 'danger' | 'info' | 'secondary';
@@ -61,4 +61,32 @@ function ConflictBadge({ status }: { status: string }) {
   );
 }
 
-export { Badge, AttendanceBadge, ConflictBadge };
+function ReminderStatusBadge({ status }: { status: string }) {
+  const variantMap: Record<string, BadgeProps['variant']> = {
+    SENT: 'info',
+    OPENED: 'success',
+    FAILED: 'danger',
+  };
+
+  return (
+    <Badge variant={variantMap[status] || 'default'}>
+      {getReminderStatusLabel(status)}
+    </Badge>
+  );
+}
+
+function ReminderTypeBadge({ type }: { type: string }) {
+  const variantMap: Record<string, BadgeProps['variant']> = {
+    EMAIL: 'default',
+    SMS: 'secondary',
+    CALENDAR: 'info',
+  };
+
+  return (
+    <Badge variant={variantMap[type] || 'default'}>
+      {getReminderTypeLabel(type)}
+    </Badge>
+  );
+}
+
+export { Badge, AttendanceBadge, ConflictBadge, ReminderStatusBadge, ReminderTypeBadge };

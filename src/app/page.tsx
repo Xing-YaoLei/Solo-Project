@@ -8,6 +8,7 @@ import {
   Smile,
   Clock,
   Calendar,
+  Bell,
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { KpiCard } from '@/components/KpiCard';
@@ -17,12 +18,14 @@ import { BarChart } from '@/components/charts/BarChart';
 import { FilterBar } from '@/components/filters/FilterBar';
 import { ExportButtons } from '@/components/ExportButtons';
 import { HearingTable } from '@/components/HearingTable';
+import { ReminderList } from '@/components/ReminderList';
 import { useFilterStore } from '@/store/useFilterStore';
 import {
   getFilteredHearings,
   getAttendanceStats,
   getDailyHearingsCount,
   getCaseTypeDistribution,
+  getRemindersByHearings,
 } from '@/services/hearingsService';
 import { getFunnelDataByHearings, getKpiDataByHearings } from '@/data/mockData';
 import { formatDate } from '@/lib/utils';
@@ -59,6 +62,11 @@ export default function DashboardPage() {
   const funnelData = useMemo(
     () => getFunnelDataByHearings(filteredHearings),
     [filteredHearings]
+  );
+
+  const filteredReminders = useMemo(
+    () => getRemindersByHearings(filteredHearings, filters),
+    [filteredHearings, filters]
   );
 
   return (
@@ -188,6 +196,21 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Bell className="h-5 w-5 text-primary-500" />
+              提醒名单
+              <span className="ml-2 text-sm font-normal text-slate-500">
+                共 {filteredReminders.length} 条提醒
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ReminderList reminders={filteredReminders} />
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>

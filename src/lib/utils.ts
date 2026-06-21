@@ -100,3 +100,21 @@ export function calculateTrend(current: number, previous: number): number {
   if (previous === 0) return current > 0 ? 100 : 0;
   return ((current - previous) / previous) * 100;
 }
+
+export function getReminderStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    SENT: '已发送',
+    OPENED: '已打开',
+    FAILED: '发送失败',
+  };
+  return labels[status] || status;
+}
+
+export function getReminderTypeLabel(type: string): string {
+  const labels: Record<string, string> = {
+    EMAIL: '邮件',
+    SMS: '短信',
+    CALENDAR: '日历',
+  };
+  return labels[type] || type;
+}
