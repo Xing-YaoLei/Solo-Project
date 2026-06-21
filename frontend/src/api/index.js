@@ -1,0 +1,30 @@
+import { get, post } from '../utils/request'
+
+export const createTask = (data) => post('/task/create', data)
+export const queryTaskPage = (data) => post('/task/page', data)
+export const getTaskDetail = (id) => get(`/task/detail/${id}`)
+export const startAssess = (params) => post('/task/start-assess', null, { params })
+export const addQuote = (data) => post('/task/add-quote', data)
+export const flagMissing = (data) => post('/task/flag-missing', data)
+export const submitSupplement = (params) => post('/task/submit-supplement', null, { params })
+export const escalate = (data) => post('/task/escalate', data)
+export const confirmDeal = (params) => post('/task/confirm-deal', null, { params })
+export const closeTask = (data) => post('/task/close', data)
+export const cancelTask = (params) => post('/task/cancel', null, { params })
+export const uploadMaterial = (data) => post('/task/upload-material', data)
+export const verifyMaterial = (params) => post('/task/verify-material', null, { params })
+export const getTaskStatistics = (params) => get('/task/statistics', params)
+export const getSourceStats = (params) => get('/task/stats/source', params)
+export const getSalesStats = (params) => get('/task/stats/sales', params)
+export const getCloseTypeStats = (params) => get('/task/stats/close-type', params)
+
+export const listUsers = () => get('/user/list')
+export const listUsersByRole = (role) => get('/user/list-by-role', { role })
+export const getUser = (id) => get(`/user/${id}`)
+
+export const getInventoryTurnoverStats = () => get('/inventory/turnover-stats')
+export const getInventoryList = (params) => get('/inventory/list', params)
+
+export const getAllDict = () => get('/dict/all')
+export const getTaskStatusDict = () => get('/dict/task-status')
+export const getSourceTypeDict = () => get('/dict/source-type')
