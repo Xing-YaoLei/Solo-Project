@@ -88,6 +88,7 @@ def get_compensate_overview(
 def get_compensate_by_area(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
+    area: Optional[str] = None,
     handler: Optional[str] = None,
     status: Optional[str] = None,
     db: Session = Depends(get_db)
@@ -107,6 +108,10 @@ def get_compensate_by_area(
         query = query.filter(models.Appeal.created_at >= datetime.fromisoformat(start_date))
     if end_date:
         query = query.filter(models.Appeal.created_at <= datetime.fromisoformat(end_date) + timedelta(days=1))
+    if area:
+        query = query.filter(
+            (models.Order.pickup_area == area) | (models.Order.delivery_area == area)
+        )
     if handler:
         query = query.filter(models.Appeal.handler == handler)
 
@@ -131,6 +136,7 @@ def get_compensate_by_handler(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     area: Optional[str] = None,
+    handler: Optional[str] = None,
     status: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
@@ -146,13 +152,15 @@ def get_compensate_by_handler(
         query = query.filter(models.Appeal.status == "resolved")
 
     if start_date:
-        query = query.filter(models.Appeal.handle_time >= datetime.fromisoformat(start_date))
+        query = query.filter(models.Appeal.created_at >= datetime.fromisoformat(start_date))
     if end_date:
-        query = query.filter(models.Appeal.handle_time <= datetime.fromisoformat(end_date) + timedelta(days=1))
+        query = query.filter(models.Appeal.created_at <= datetime.fromisoformat(end_date) + timedelta(days=1))
     if area:
         query = query.filter(
             (models.Order.pickup_area == area) | (models.Order.delivery_area == area)
         )
+    if handler:
+        query = query.filter(models.Appeal.handler == handler)
 
     results = query.group_by(models.Appeal.handler).all()
 
@@ -173,19 +181,25 @@ def get_compensate_by_handler(
 
 @router.get("/compensate/trend")
 def get_compensate_trend(
-    days: int = 7,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    days: Optional[int] = 7,
     area: Optional[str] = None,
     handler: Optional[str] = None,
     status: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
-    end_date = datetime.utcnow()
-    start_date = end_date - timedelta(days=days - 1)
+    if start_date and end_date:
+        trend_start = datetime.fromisoformat(start_date).replace(hour=0, minute=0, second=0, microsecond=0)
+        trend_end = datetime.fromisoformat(end_date).replace(hour=0, minute=0, second=0, microsecond=0)
+    else:
+        trend_end = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        trend_start = trend_end - timedelta(days=days - 1)
 
     trend_data = []
-    current = start_date
+    current = trend_start
 
-    while current <= end_date:
+    while current <= trend_end:
         day_start = current.replace(hour=0, minute=0, second=0, microsecond=0)
         day_end = day_start + timedelta(days=1)
 

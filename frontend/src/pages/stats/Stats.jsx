@@ -76,10 +76,14 @@ export default function Stats() {
         params.end_date = values.dateRange[1].format('YYYY-MM-DD')
       }
 
-      const trendParams = { days: 7 }
+      const trendParams = {}
       if (values.area) trendParams.area = values.area
       if (values.handler) trendParams.handler = values.handler
       if (values.status) trendParams.status = values.status
+      if (values.dateRange && values.dateRange.length === 2) {
+        trendParams.start_date = values.dateRange[0].format('YYYY-MM-DD')
+        trendParams.end_date = values.dateRange[1].format('YYYY-MM-DD')
+      }
 
       const [overviewRes, areaRes, handlerRes, trendRes] = await Promise.all([
         statsAPI.getCompensateOverview(params),
