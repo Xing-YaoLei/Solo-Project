@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getOrderComposition } from '@/services/dashboardService';
+import { getDashboardSnapshot } from '@/services/dashboardService';
 
 export async function GET(request: Request) {
   try {
@@ -7,14 +7,20 @@ export async function GET(request: Request) {
     const activityIdsParam = searchParams.get('activityIds');
     const activityIds = activityIdsParam ? activityIdsParam.split(',') : undefined;
 
-    const orderData = await getOrderComposition(activityIds);
+    const snapshot = await getDashboardSnapshot(activityIds);
 
     return NextResponse.json({
       success: true,
       data: {
-        ...orderData,
+        bySource: snapshot.orderComposition.bySource,
+        byPaymentMethod: snapshot.orderComposition.byPaymentMethod,
+        byTicketType: snapshot.orderComposition.byTicketType,
+        byDate: snapshot.orderComposition.byDate,
+        totalAmount: snapshot.orderComposition.totalAmount,
+        totalOrders: snapshot.orderComposition.totalOrders,
         activityIds,
-        lastRefreshedAt: new Date().toISOString(),
+        lastRefreshedAt: snapshot.lastRefreshedAt,
+        occupancyRateSpec: snapshot.occupancyRateSpec,
       },
     });
   } catch (error) {

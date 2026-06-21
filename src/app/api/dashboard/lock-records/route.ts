@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getLockRecords } from '@/services/dashboardService';
+import { getDashboardSnapshot } from '@/services/dashboardService';
 
 export async function GET(request: Request) {
   try {
@@ -10,23 +10,33 @@ export async function GET(request: Request) {
     const page = parseInt(searchParams.get('page') || '1');
     const pageSize = parseInt(searchParams.get('pageSize') || '20');
 
-    const result = await getLockRecords({
-      activityIds,
-      anomalyOnly,
-      page,
-      pageSize,
-    });
+    const snapshot = await getDashboardSnapshot(activityIds);
+    const allRecords = snapshot.lockRecords;
+
+    let filteredRecords = allRecords.records;
+    let filteredTotal = allRecords.total;
+    let filteredAnomalyCount = allRecords.anomalyCount;
+
+    if (anomalyOnly) {
+      filteredRecords = allRecords.records.filter(r => r.isAnomaly);
+      filteredTotal = filteredRecords.length;
+      filteredAnomalyCount = filteredRecords.length;
+    }
+
+    const startIdx = (page - 1) * pageSize;
+    const paginatedRecords = filteredRecords.slice(startIdx, startIdx + pageSize);
 
     return NextResponse.json({
       success: true,
       data: {
-        records: result.records,
-        total: result.total,
+        records: paginatedRecords,
+        total: filteredTotal,
         page,
         pageSize,
-        anomalyCount: result.anomalyCount,
+        anomalyCount: filteredAnomalyCount,
         activityIds,
-        lastRefreshedAt: new Date().toISOString(),
+        lastRefreshedAt: snapshot.lastRefreshedAt,
+        occupancyRateSpec: snapshot.occupancyRateSpec,
       },
     });
   } catch (error) {

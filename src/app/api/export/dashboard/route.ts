@@ -1,13 +1,6 @@
 import { NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
-import {
-  getDashboardOverview,
-  getSeatTrendData,
-  getOrderComposition,
-  getTicketTypes,
-  getLockRecords,
-  getOccupancyRateSpec,
-} from '@/services/dashboardService';
+import { getDashboardSnapshot } from '@/services/dashboardService';
 import { formatCurrency, formatPercent, formatDate } from '@/lib/utils';
 import type { ExportOptions } from '@/types';
 
@@ -17,15 +10,9 @@ export async function POST(request: Request) {
     const { format, includeOccupancySpec, sections, activityIds } = body;
 
     const ids = activityIds && activityIds.length > 0 ? activityIds : undefined;
+    const snapshot = await getDashboardSnapshot(ids);
 
-    const [overview, seatTrend, orderComp, ticketTypes, lockRecordsResult, occupancySpec] = await Promise.all([
-      getDashboardOverview(ids),
-      sections.includes('seatTrend') || sections.length === 0 ? getSeatTrendData(ids) : Promise.resolve([]),
-      getOrderComposition(ids),
-      getTicketTypes(ids),
-      getLockRecords({ activityIds: ids, pageSize: 1000 }),
-      getOccupancyRateSpec(),
-    ]);
+    const { overview, seatTrend, orderComposition, ticketTypes, lockRecords, lastRefreshedAt, occupancyRateSpec } = snapshot;
 
     const wb = XLSX.utils.book_new();
 
@@ -33,7 +20,7 @@ export async function POST(request: Request) {
       const overviewData = [
         ['活动票务座位分配看板 - 概览数据'],
         ['导出时间', formatDate(new Date())],
-        ['数据更新时间', formatDate(overview.lastRefreshedAt)],
+        ['数据更新时间', formatDate(lastRefreshedAt)],
         [],
         ['核心指标'],
         ['总座位数', overview.totalSeats],
@@ -47,11 +34,11 @@ export async function POST(request: Request) {
         overviewData.push(
           [],
           ['上座率计算口径说明'],
-          ['计算方法', occupancySpec.calculationMethod],
-          ['计算公式', occupancySpec.formula],
-          ['排除座位', occupancySpec.excludedSeats.join('; ')],
-          ['数据来源', occupancySpec.dataSources.join(', ')],
-          ['口径更新时间', formatDate(occupancySpec.updateTime)]
+          ['计算方法', occupancyRateSpec.calculationMethod],
+          ['计算公式', occupancyRateSpec.formula],
+          ['排除座位', occupancyRateSpec.excludedSeats.join('; ')],
+          ['数据来源', occupancyRateSpec.dataSources.join(', ')],
+          ['口径更新时间', formatDate(occupancyRateSpec.updateTime)]
         );
       }
 
@@ -62,14 +49,7 @@ export async function POST(request: Request) {
     if (sections.includes('seatTrend') || sections.length === 0) {
       const trendData = [
         ['日期', '当日售出', '当日锁座', '可售座位', '预留座位', '累计售出'],
-        ...seatTrend.map(d => [
-          d.date,
-          d.sold,
-          d.locked,
-          d.available,
-          d.reserved,
-          d.cumulativeSold,
-        ]),
+        ...seatTrend.map(d => [d.date, d.sold, d.locked, d.available, d.reserved, d.cumulativeSold]),
       ];
       const wsTrend = XLSX.utils.aoa_to_sheet(trendData);
       XLSX.utils.book_append_sheet(wb, wsTrend, '座位销售趋势');
@@ -78,31 +58,25 @@ export async function POST(request: Request) {
     if (sections.includes('orders') || sections.length === 0) {
       const orderData = [
         ['订单构成分析'],
-        ['总订单数', orderComp.totalOrders],
-        ['总金额', formatCurrency(orderComp.totalAmount)],
+        ['总订单数', orderComposition.totalOrders],
+        ['总金额', formatCurrency(orderComposition.totalAmount)],
         [],
         ['按来源分布'],
         ['来源', '数量', '占比'],
-        ...orderComp.bySource.map(s => [
-          s.label,
-          s.value,
-          formatPercent(orderComp.totalOrders > 0 ? s.value / orderComp.totalOrders : 0),
+        ...orderComposition.bySource.map(s => [
+          s.label, s.value, formatPercent(orderComposition.totalOrders > 0 ? s.value / orderComposition.totalOrders : 0),
         ]),
         [],
         ['按支付方式分布'],
         ['支付方式', '数量', '占比'],
-        ...orderComp.byPaymentMethod.map(p => [
-          p.label,
-          p.value,
-          formatPercent(orderComp.totalOrders > 0 ? p.value / orderComp.totalOrders : 0),
+        ...orderComposition.byPaymentMethod.map(p => [
+          p.label, p.value, formatPercent(orderComposition.totalOrders > 0 ? p.value / orderComposition.totalOrders : 0),
         ]),
         [],
         ['按票种分布'],
         ['票种', '数量', '占比'],
-        ...orderComp.byTicketType.map(t => [
-          t.label,
-          t.value,
-          formatPercent(orderComp.totalOrders > 0 ? t.value / orderComp.totalOrders : 0),
+        ...orderComposition.byTicketType.map(t => [
+          t.label, t.value, formatPercent(orderComposition.totalOrders > 0 ? t.value / orderComposition.totalOrders : 0),
         ]),
       ];
       const wsOrders = XLSX.utils.aoa_to_sheet(orderData);
@@ -113,19 +87,10 @@ export async function POST(request: Request) {
       const ticketData = [
         ['票种名称', '售价', '原价', '折扣', '总库存', '已售', '锁座', '剩余', '上座率', '限购', '销售开始', '销售结束', '限制规则'],
         ...ticketTypes.map(t => [
-          t.name,
-          t.price,
-          t.originalPrice,
-          formatPercent(t.discount),
-          t.totalStock,
-          t.soldCount,
-          t.lockedCount,
-          t.remainingCount,
-          formatPercent(t.occupancyRate),
-          `每人限购${t.maxPerOrder}张`,
-          formatDate(t.saleStartTime),
-          formatDate(t.saleEndTime),
-          t.restrictions.join('; '),
+          t.name, t.price, t.originalPrice, formatPercent(t.discount),
+          t.totalStock, t.soldCount, t.lockedCount, t.remainingCount,
+          formatPercent(t.occupancyRate), `每人限购${t.maxPerOrder}张`,
+          formatDate(t.saleStartTime), formatDate(t.saleEndTime), t.restrictions.join('; '),
         ]),
       ];
       const wsTickets = XLSX.utils.aoa_to_sheet(ticketData);
@@ -135,17 +100,11 @@ export async function POST(request: Request) {
     if (sections.includes('lockRecords') || sections.length === 0) {
       const lockData = [
         ['座位信息', '操作人', '锁座原因', '锁座时长', '锁座时间', '过期时间', '状态', '是否异常', '异常类型', '异常说明'],
-        ...lockRecordsResult.records.map(r => [
-          r.seatInfo,
-          r.operatorName,
-          r.lockReason,
-          `${r.lockDuration}分钟`,
-          formatDate(r.lockedAt),
-          formatDate(r.expiredAt),
+        ...lockRecords.records.map(r => [
+          r.seatInfo, r.operatorName, r.lockReason, `${r.lockDuration}分钟`,
+          formatDate(r.lockedAt), formatDate(r.expiredAt),
           r.status === 'active' ? '有效' : r.status === 'expired' ? '已过期' : '已释放',
-          r.isAnomaly ? '是' : '否',
-          r.anomalyType || '-',
-          r.anomalyDescription || '-',
+          r.isAnomaly ? '是' : '否', r.anomalyType || '-', r.anomalyDescription || '-',
         ]),
       ];
       const wsLocks = XLSX.utils.aoa_to_sheet(lockData);

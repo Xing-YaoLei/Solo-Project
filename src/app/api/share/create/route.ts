@@ -21,9 +21,7 @@ export async function POST(request: Request) {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const shareUrl = `${baseUrl}/share/${token}`;
 
-    const defaultUserId = 'system';
-    let createdBy = defaultUserId;
-
+    let createdBy = 'system';
     try {
       const existingUser = await prisma.user.findFirst();
       if (existingUser) {
@@ -38,8 +36,12 @@ export async function POST(request: Request) {
         });
         createdBy = newUser.id;
       }
-    } catch {
-      // 如果数据库操作失败，继续使用默认值
+    } catch (dbError) {
+      console.error('Failed to prepare user for share link:', dbError);
+      return NextResponse.json(
+        { success: false, error: 'Failed to create share link' },
+        { status: 500 }
+      );
     }
 
     try {
@@ -54,6 +56,10 @@ export async function POST(request: Request) {
       });
     } catch (dbError) {
       console.error('Failed to save share link to database:', dbError);
+      return NextResponse.json(
+        { success: false, error: 'Failed to create share link' },
+        { status: 500 }
+      );
     }
 
     const response: ShareLinkResponse = {

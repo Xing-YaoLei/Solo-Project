@@ -203,3 +203,20 @@ model ShareLink {
   @@index([token])
   @@map("share_links")
 }
+
+model DashboardSnapshot {
+  id                    String   @id @default(uuid())
+  activityIds           String[] @default([])
+  lastRefreshedAt       DateTime
+  occupancyRateSpec     Json
+  overviewData          Json
+  seatTrendData         Json
+  areaHeatmapData       Json
+  orderCompositionData  Json
+  ticketTypesData       Json
+  lockRecordsData       Json
+  createdAt             DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("dashboard_snapshots")
+}

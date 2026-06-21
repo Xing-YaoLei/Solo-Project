@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getTicketTypes } from '@/services/dashboardService';
+import { getDashboardSnapshot } from '@/services/dashboardService';
 
 export async function GET(request: Request) {
   try {
@@ -7,14 +7,15 @@ export async function GET(request: Request) {
     const activityIdsParam = searchParams.get('activityIds');
     const activityIds = activityIdsParam ? activityIdsParam.split(',') : undefined;
 
-    const ticketTypes = await getTicketTypes(activityIds);
+    const snapshot = await getDashboardSnapshot(activityIds);
 
     return NextResponse.json({
       success: true,
       data: {
-        ticketTypes,
+        ticketTypes: snapshot.ticketTypes,
         activityIds,
-        lastRefreshedAt: new Date().toISOString(),
+        lastRefreshedAt: snapshot.lastRefreshedAt,
+        occupancyRateSpec: snapshot.occupancyRateSpec,
       },
     });
   } catch (error) {

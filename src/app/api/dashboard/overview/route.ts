@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDashboardOverview, getOccupancyRateSpec } from '@/services/dashboardService';
+import { getDashboardSnapshot } from '@/services/dashboardService';
 
 export async function GET(request: Request) {
   try {
@@ -7,14 +7,18 @@ export async function GET(request: Request) {
     const activityIdsParam = searchParams.get('activityIds');
     const activityIds = activityIdsParam ? activityIdsParam.split(',') : undefined;
 
-    const overview = await getDashboardOverview(activityIds);
-    const occupancyRateSpec = await getOccupancyRateSpec();
+    const snapshot = await getDashboardSnapshot(activityIds);
 
     return NextResponse.json({
       success: true,
       data: {
-        ...overview,
-        occupancyRateSpec,
+        totalSeats: snapshot.overview.totalSeats,
+        soldSeats: snapshot.overview.soldSeats,
+        occupancyRate: snapshot.overview.occupancyRate,
+        lockedSeats: snapshot.overview.lockedSeats,
+        anomalyCount: snapshot.overview.anomalyCount,
+        lastRefreshedAt: snapshot.lastRefreshedAt,
+        occupancyRateSpec: snapshot.occupancyRateSpec,
       },
     });
   } catch (error) {

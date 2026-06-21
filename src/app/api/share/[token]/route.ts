@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import {
   validateShareToken,
-  getDashboardOverview,
-  getSeatTrendData,
-  getOrderComposition,
+  getDashboardSnapshot,
+  filterOverviewByRole,
+  filterOrderCompositionByRole,
+  filterLockRecordsByRole,
 } from '@/services/dashboardService';
 import { UserRole } from '@prisma/client';
 
@@ -25,15 +26,39 @@ export async function GET(
 
     const { role, activityIds, expiresAt } = validation;
 
+    if (!role) {
+      return NextResponse.json(
+        { success: false, error: '分享链接角色配置无效' },
+        { status: 500 }
+      );
+    }
+
     const filteredActivityIds = activityIds && activityIds.length > 0
       ? activityIds
       : undefined;
 
-    const [overview, seatTrend, orderComposition] = await Promise.all([
-      getDashboardOverview(filteredActivityIds),
-      getSeatTrendData(filteredActivityIds),
-      getOrderComposition(filteredActivityIds),
-    ]);
+    const snapshot = await getDashboardSnapshot(filteredActivityIds);
+
+    const filteredOverview = filterOverviewByRole(snapshot.overview, role);
+    const filteredOrderComposition = filterOrderCompositionByRole(snapshot.orderComposition, role);
+    const filteredLockRecords = filterLockRecordsByRole(snapshot.lockRecords, role);
+
+    let filteredTicketTypes = snapshot.ticketTypes;
+    if (role === UserRole.finance) {
+      filteredTicketTypes = snapshot.ticketTypes.map(tt => ({
+        ...tt,
+        restrictions: [],
+        description: null,
+      }));
+    }
+
+    let filteredSeatTrend = snapshot.seatTrend;
+    if (role === UserRole.finance) {
+      filteredSeatTrend = snapshot.seatTrend.map(d => ({
+        ...d,
+        locked: 0,
+      }));
+    }
 
     return NextResponse.json({
       success: true,
@@ -43,9 +68,14 @@ export async function GET(
           expiresAt,
           activityIds: filteredActivityIds || [],
         },
-        overview,
-        seatTrend,
-        orderComposition,
+        lastRefreshedAt: snapshot.lastRefreshedAt,
+        occupancyRateSpec: snapshot.occupancyRateSpec,
+        overview: filteredOverview,
+        seatTrend: filteredSeatTrend,
+        orderComposition: filteredOrderComposition,
+        ticketTypes: filteredTicketTypes,
+        lockRecords: filteredLockRecords,
+        areaHeatmap: snapshot.areaHeatmap,
       },
     });
   } catch (error) {

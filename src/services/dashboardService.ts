@@ -12,9 +12,36 @@ import {
   PaymentMethodLabels,
 } from '@/types';
 import { calculateOccupancyRate } from '@/lib/utils';
-import { SeatStatus, OrderStatus, UserRole } from '@prisma/client';
+import { SeatStatus, OrderStatus, UserRole, AnomalyType } from '@prisma/client';
 
-const OCCUPANCY_CONFIG_KEY = 'occupancy_rate_spec';
+const SNAPSHOT_CACHE_TTL_MS = 5 * 60 * 1000;
+
+interface DashboardSnapshotData {
+  lastRefreshedAt: Date;
+  occupancyRateSpec: OccupancyRateSpec;
+  overview: DashboardOverview;
+  seatTrend: SeatTrendDataPoint[];
+  areaHeatmap: AreaHeatmapData[];
+  orderComposition: OrderComposition;
+  ticketTypes: TicketTypeDetail[];
+  lockRecords: {
+    records: LockRecordDetail[];
+    total: number;
+    anomalyCount: number;
+  };
+}
+
+function arraysEqual(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  const sortedA = [...a].sort();
+  const sortedB = [...b].sort();
+  return sortedA.every((val, idx) => val === sortedB[idx]);
+}
+
+function normalizeActivityIds(activityIds?: string[]): string[] {
+  if (!activityIds || activityIds.length === 0) return [];
+  return [...new Set(activityIds)].sort();
+}
 
 async function getLastDataUpdateTime(activityIds?: string[]): Promise<Date> {
   try {
@@ -51,14 +78,14 @@ async function getLastDataUpdateTime(activityIds?: string[]): Promise<Date> {
   }
 }
 
-export async function getOccupancyRateSpec(): Promise<OccupancyRateSpec> {
+async function getOccupancyRateSpec(): Promise<OccupancyRateSpec> {
   return {
     ...OCCUPANCY_RATE_SPEC,
     updateTime: new Date(),
   };
 }
 
-export async function getDashboardOverview(activityIds?: string[]): Promise<DashboardOverview> {
+async function computeOverview(activityIds?: string[]): Promise<DashboardOverview> {
   const where = activityIds && activityIds.length > 0
     ? { activityId: { in: activityIds } }
     : {};
@@ -76,8 +103,8 @@ export async function getDashboardOverview(activityIds?: string[]): Promise<Dash
   const lockedSeats = lockedSeatsRecord || 0;
   const reservedSeats = reservedSeatsRecord || 0;
   const anomalyCount = anomalyCountRecord || 0;
-
   const occupancyRate = calculateOccupancyRate(soldSeats, totalSeats, reservedSeats);
+
   const lastRefreshedAt = await getLastDataUpdateTime(activityIds);
   const occupancyRateSpec = await getOccupancyRateSpec();
 
@@ -92,7 +119,7 @@ export async function getDashboardOverview(activityIds?: string[]): Promise<Dash
   };
 }
 
-export async function getSeatTrendData(activityIds?: string[], days: number = 30): Promise<SeatTrendDataPoint[]> {
+async function computeSeatTrend(activityIds?: string[], days: number = 30): Promise<SeatTrendDataPoint[]> {
   const where = activityIds && activityIds.length > 0
     ? { activityId: { in: activityIds } }
     : {};
@@ -114,11 +141,7 @@ export async function getSeatTrendData(activityIds?: string[], days: number = 30
     ]);
 
     const soldRecords = await prisma.seatAllocation.findMany({
-      where: {
-        ...where,
-        status: SeatStatus.sold,
-        soldAt: { not: null },
-      },
+      where: { ...where, status: SeatStatus.sold, soldAt: { not: null } },
       select: { soldAt: true },
     });
 
@@ -139,20 +162,17 @@ export async function getSeatTrendData(activityIds?: string[], days: number = 30
       lockedSeatsByDate.set(dateStr, (lockedSeatsByDate.get(dateStr) || 0) + 1);
     }
   } catch {
-    // 如果数据库查询失败，使用空数据
+    // empty
   }
 
   for (let i = days; i >= 0; i--) {
     const date = new Date(now);
     date.setDate(date.getDate() - i);
     const dateStr = date.toISOString().split('T')[0];
-
     const sold = soldSeatsByDate.get(dateStr) || 0;
     const locked = lockedSeatsByDate.get(dateStr) || 0;
-
     const available = Math.max(0, totalSeats - cumulativeSold - locked - reservedSeats);
     const reserved = reservedSeats;
-
     cumulativeSold += sold;
 
     data.push({
@@ -169,7 +189,7 @@ export async function getSeatTrendData(activityIds?: string[], days: number = 30
   return data;
 }
 
-export async function getAreaHeatmapData(activityIds?: string[]): Promise<AreaHeatmapData[]> {
+async function computeAreaHeatmap(activityIds?: string[]): Promise<AreaHeatmapData[]> {
   const where = activityIds && activityIds.length > 0
     ? { activityId: { in: activityIds } }
     : {};
@@ -177,17 +197,8 @@ export async function getAreaHeatmapData(activityIds?: string[]): Promise<AreaHe
   try {
     const seatAllocations = await prisma.seatAllocation.findMany({
       where,
-      select: {
-        area: true,
-        row: true,
-        seatNumber: true,
-        status: true,
-      },
-      orderBy: [
-        { area: 'asc' },
-        { row: 'asc' },
-        { seatNumber: 'asc' },
-      ],
+      select: { area: true, row: true, seatNumber: true, status: true },
+      orderBy: [{ area: 'asc' }, { row: 'asc' }, { seatNumber: 'asc' }],
     });
 
     const areaMap = new Map<string, Map<string, { total: number; sold: number }>>();
@@ -202,9 +213,7 @@ export async function getAreaHeatmapData(activityIds?: string[]): Promise<AreaHe
       }
       const rowData = rowMap.get(seat.row)!;
       rowData.total += 1;
-      if (seat.status === SeatStatus.sold) {
-        rowData.sold += 1;
-      }
+      if (seat.status === SeatStatus.sold) rowData.sold += 1;
     }
 
     const result: AreaHeatmapData[] = [];
@@ -213,15 +222,10 @@ export async function getAreaHeatmapData(activityIds?: string[]): Promise<AreaHe
       let soldSeats = 0;
       const rows: AreaHeatmapData['rows'] = [];
 
-      for (const [row, data] of rowMap) {
-        totalSeats += data.total;
-        soldSeats += data.sold;
-        rows.push({
-          row,
-          total: data.total,
-          sold: data.sold,
-          rate: data.total > 0 ? data.sold / data.total : 0,
-        });
+      for (const [row, d] of rowMap) {
+        totalSeats += d.total;
+        soldSeats += d.sold;
+        rows.push({ row, total: d.total, sold: d.sold, rate: d.total > 0 ? d.sold / d.total : 0 });
       }
 
       result.push({
@@ -239,20 +243,15 @@ export async function getAreaHeatmapData(activityIds?: string[]): Promise<AreaHe
   }
 }
 
-export async function getOrderComposition(activityIds?: string[]): Promise<OrderComposition> {
+async function computeOrderComposition(activityIds?: string[]): Promise<OrderComposition> {
   const where = activityIds && activityIds.length > 0
     ? { activityId: { in: activityIds } }
     : {};
 
   try {
     const orders = await prisma.order.findMany({
-      where: {
-        ...where,
-        status: { in: [OrderStatus.paid, OrderStatus.pending] },
-      },
-      include: {
-        ticketType: true,
-      },
+      where: { ...where, status: { in: [OrderStatus.paid, OrderStatus.pending] } },
+      include: { ticketType: true },
     });
 
     const bySourceMap = new Map<string, number>();
@@ -285,61 +284,34 @@ export async function getOrderComposition(activityIds?: string[]): Promise<Order
     }
 
     const bySource = Array.from(bySourceMap.entries()).map(([name, value]) => ({
-      name,
-      value,
-      label: OrderSourceLabels[name as keyof typeof OrderSourceLabels] || name,
+      name, value, label: OrderSourceLabels[name as keyof typeof OrderSourceLabels] || name,
     }));
 
     const byPaymentMethod = Array.from(byPaymentMap.entries()).map(([name, value]) => ({
-      name,
-      value,
-      label: PaymentMethodLabels[name as keyof typeof PaymentMethodLabels] || name,
+      name, value, label: PaymentMethodLabels[name as keyof typeof PaymentMethodLabels] || name,
     }));
 
     const byTicketType = Array.from(byTicketTypeMap.values()).map(item => ({
-      name: item.name,
-      value: item.value,
-      label: item.name,
+      name: item.name, value: item.value, label: item.name,
     }));
 
     const byDate = Array.from(byDateMap.entries())
       .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([date, data]) => ({
-        date,
-        count: data.count,
-        amount: Math.round(data.amount),
-      }));
+      .map(([date, d]) => ({ date, count: d.count, amount: Math.round(d.amount) }));
 
-    return {
-      bySource,
-      byPaymentMethod,
-      byTicketType,
-      byDate,
-      totalAmount: Math.round(totalAmount),
-      totalOrders,
-    };
+    return { bySource, byPaymentMethod, byTicketType, byDate, totalAmount: Math.round(totalAmount), totalOrders };
   } catch {
-    return {
-      bySource: [],
-      byPaymentMethod: [],
-      byTicketType: [],
-      byDate: [],
-      totalAmount: 0,
-      totalOrders: 0,
-    };
+    return { bySource: [], byPaymentMethod: [], byTicketType: [], byDate: [], totalAmount: 0, totalOrders: 0 };
   }
 }
 
-export async function getTicketTypes(activityIds?: string[]): Promise<TicketTypeDetail[]> {
+async function computeTicketTypes(activityIds?: string[]): Promise<TicketTypeDetail[]> {
   const where = activityIds && activityIds.length > 0
     ? { activityId: { in: activityIds } }
     : {};
 
   try {
-    const ticketTypes = await prisma.ticketType.findMany({
-      where,
-      orderBy: { price: 'desc' },
-    });
+    const ticketTypes = await prisma.ticketType.findMany({ where, orderBy: { price: 'desc' } });
 
     return ticketTypes.map(tt => {
       const price = Number(tt.price);
@@ -376,7 +348,7 @@ interface LockRecordsQuery {
   pageSize?: number;
 }
 
-export async function getLockRecords({
+async function computeLockRecords({
   activityIds,
   anomalyOnly = false,
   page = 1,
@@ -387,14 +359,8 @@ export async function getLockRecords({
   anomalyCount: number;
 }> {
   const where: any = {};
-
-  if (activityIds && activityIds.length > 0) {
-    where.activityId = { in: activityIds };
-  }
-
-  if (anomalyOnly) {
-    where.isAnomaly = true;
-  }
+  if (activityIds && activityIds.length > 0) where.activityId = { in: activityIds };
+  if (anomalyOnly) where.isAnomaly = true;
 
   try {
     const [total, anomalyCount, records] = await Promise.all([
@@ -404,14 +370,8 @@ export async function getLockRecords({
         where,
         skip: (page - 1) * pageSize,
         take: pageSize,
-        orderBy: [
-          { isAnomaly: 'desc' },
-          { lockedAt: 'desc' },
-        ],
-        include: {
-          seatAllocation: true,
-          order: true,
-        },
+        orderBy: [{ isAnomaly: 'desc' }, { lockedAt: 'desc' }],
+        include: { seatAllocation: true, order: true },
       }),
     ]);
 
@@ -421,11 +381,8 @@ export async function getLockRecords({
       const seatInfo = seat ? `${seat.area}区${seat.row}排${seat.seatNumber}号` : '未知座位';
 
       let status: 'active' | 'expired' | 'released' = 'active';
-      if (record.releasedAt) {
-        status = 'released';
-      } else if (record.expiredAt < now) {
-        status = 'expired';
-      }
+      if (record.releasedAt) status = 'released';
+      else if (record.expiredAt < now) status = 'expired';
 
       return {
         id: record.id,
@@ -448,18 +405,167 @@ export async function getLockRecords({
       };
     });
 
-    return {
-      records: detailRecords,
-      total,
-      anomalyCount,
-    };
+    return { records: detailRecords, total, anomalyCount };
   } catch {
+    return { records: [], total: 0, anomalyCount: 0 };
+  }
+}
+
+async function computeFullSnapshot(activityIds?: string[]): Promise<DashboardSnapshotData> {
+  const normIds = normalizeActivityIds(activityIds);
+
+  const [
+    overview,
+    seatTrend,
+    areaHeatmap,
+    orderComposition,
+    ticketTypes,
+    lockRecordsResult,
+  ] = await Promise.all([
+    computeOverview(normIds.length > 0 ? normIds : undefined),
+    computeSeatTrend(normIds.length > 0 ? normIds : undefined),
+    computeAreaHeatmap(normIds.length > 0 ? normIds : undefined),
+    computeOrderComposition(normIds.length > 0 ? normIds : undefined),
+    computeTicketTypes(normIds.length > 0 ? normIds : undefined),
+    computeLockRecords({ activityIds: normIds.length > 0 ? normIds : undefined, pageSize: 1000 }),
+  ]);
+
+  return {
+    lastRefreshedAt: overview.lastRefreshedAt,
+    occupancyRateSpec: overview.occupancyRateSpec,
+    overview,
+    seatTrend,
+    areaHeatmap,
+    orderComposition,
+    ticketTypes,
+    lockRecords: lockRecordsResult,
+  };
+}
+
+async function findLatestValidSnapshot(activityIds?: string[]): Promise<DashboardSnapshotData | null> {
+  const normIds = normalizeActivityIds(activityIds);
+
+  try {
+    const snapshots = await prisma.dashboardSnapshot.findMany({
+      where: {
+        createdAt: { gte: new Date(Date.now() - SNAPSHOT_CACHE_TTL_MS) },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+
+    for (const snap of snapshots) {
+      const snapIds = normalizeActivityIds(snap.activityIds as string[]);
+      if (arraysEqual(normIds, snapIds)) {
+        return {
+          lastRefreshedAt: snap.lastRefreshedAt,
+          occupancyRateSpec: JSON.parse(JSON.stringify(snap.occupancyRateSpec)) as OccupancyRateSpec,
+          overview: JSON.parse(JSON.stringify(snap.overviewData)) as DashboardOverview,
+          seatTrend: JSON.parse(JSON.stringify(snap.seatTrendData)) as SeatTrendDataPoint[],
+          areaHeatmap: JSON.parse(JSON.stringify(snap.areaHeatmapData)) as AreaHeatmapData[],
+          orderComposition: JSON.parse(JSON.stringify(snap.orderCompositionData)) as OrderComposition,
+          ticketTypes: JSON.parse(JSON.stringify(snap.ticketTypesData)) as TicketTypeDetail[],
+          lockRecords: JSON.parse(JSON.stringify(snap.lockRecordsData)) as { records: LockRecordDetail[]; total: number; anomalyCount: number },
+        };
+      }
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function persistSnapshot(activityIds: string[], data: DashboardSnapshotData): Promise<void> {
+  try {
+    await prisma.dashboardSnapshot.create({
+      data: {
+        activityIds,
+        lastRefreshedAt: data.lastRefreshedAt,
+        occupancyRateSpec: JSON.parse(JSON.stringify(data.occupancyRateSpec)),
+        overviewData: JSON.parse(JSON.stringify(data.overview)),
+        seatTrendData: JSON.parse(JSON.stringify(data.seatTrend)),
+        areaHeatmapData: JSON.parse(JSON.stringify(data.areaHeatmap)),
+        orderCompositionData: JSON.parse(JSON.stringify(data.orderComposition)),
+        ticketTypesData: JSON.parse(JSON.stringify(data.ticketTypes)),
+        lockRecordsData: JSON.parse(JSON.stringify(data.lockRecords)),
+      },
+    });
+  } catch {
+    // ignore persist error
+  }
+}
+
+export async function getDashboardSnapshot(activityIds?: string[]): Promise<DashboardSnapshotData> {
+  const normIds = normalizeActivityIds(activityIds);
+
+  const cached = await findLatestValidSnapshot(normIds.length > 0 ? normIds : undefined);
+  if (cached) return cached;
+
+  const fresh = await computeFullSnapshot(normIds.length > 0 ? normIds : undefined);
+  await persistSnapshot(normIds, fresh);
+  return fresh;
+}
+
+export function filterOverviewByRole(overview: DashboardOverview, role: UserRole): DashboardOverview {
+  if (role === UserRole.admin || role === UserRole.manager) {
+    return overview;
+  }
+
+  if (role === UserRole.finance) {
     return {
-      records: [],
-      total: 0,
+      ...overview,
+      lockedSeats: 0,
       anomalyCount: 0,
     };
   }
+
+  return overview;
+}
+
+export function filterOrderCompositionByRole(comp: OrderComposition, role: UserRole): OrderComposition {
+  if (role === UserRole.admin || role === UserRole.manager) {
+    return comp;
+  }
+
+  if (role === UserRole.finance) {
+    return comp;
+  }
+
+  if (role === UserRole.operator) {
+    return {
+      ...comp,
+      byPaymentMethod: [],
+    };
+  }
+
+  return comp;
+}
+
+export function filterLockRecordsByRole(
+  data: { records: LockRecordDetail[]; total: number; anomalyCount: number },
+  role: UserRole
+): { records: LockRecordDetail[]; total: number; anomalyCount: number } {
+  if (role === UserRole.admin || role === UserRole.manager) {
+    return data;
+  }
+
+  if (role === UserRole.finance) {
+    return { records: [], total: 0, anomalyCount: 0 };
+  }
+
+  if (role === UserRole.operator) {
+    const filteredRecords = data.records.map(r => ({
+      ...r,
+      originalRecordUrl: null,
+    }));
+    return {
+      ...data,
+      records: filteredRecords,
+    };
+  }
+
+  return data;
 }
 
 export async function validateShareToken(token: string): Promise<{
@@ -470,9 +576,7 @@ export async function validateShareToken(token: string): Promise<{
   error?: string;
 }> {
   try {
-    const shareLink = await prisma.shareLink.findUnique({
-      where: { token },
-    });
+    const shareLink = await prisma.shareLink.findUnique({ where: { token } });
 
     if (!shareLink) {
       return { valid: false, error: '链接不存在' };
@@ -493,10 +597,4 @@ export async function validateShareToken(token: string): Promise<{
   }
 }
 
-export function filterDataByRole<T>(
-  data: T,
-  role: UserRole,
-  dataType: 'overview' | 'seatTrend' | 'orders' | 'ticketTypes' | 'lockRecords'
-): T {
-  return data;
-}
+export { computeLockRecords as computeLockRecordsRaw };
