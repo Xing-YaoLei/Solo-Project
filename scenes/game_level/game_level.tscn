@@ -1,0 +1,224 @@
+[gd_scene load_steps=2 format=3 uid="uid://bgamelevel001"]
+
+[ext_resource type="Script" path="res://scripts/ui/game_level.gd" id="1"]
+
+[node name="GameLevel" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.06, 0.1, 0.08, 1)
+
+[node name="TopBar" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 48.0
+grow_horizontal = 2
+
+[node name="LevelTitle" type="Label" parent="TopBar"]
+layout_mode = 2
+text = "关卡"
+
+[node name="PhaseContainer" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 52.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ObservPhase" type="PanelContainer" parent="PhaseContainer"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="PhaseContainer/ObservPhase"]
+layout_mode = 2
+alignment = 1
+
+[node name="PhaseTitle" type="Label" parent="PhaseContainer/ObservPhase/VBox"]
+layout_mode = 2
+text = "第一阶段：观察问题标签"
+
+[node name="DescLabel" type="Label" parent="PhaseContainer/ObservPhase/VBox"]
+layout_mode = 2
+autowrap_mode = 2
+
+[node name="TagContainer" type="Control" parent="PhaseContainer/ObservPhase/VBox"]
+custom_minimum_size = Vector2(0, 80)
+layout_mode = 2
+
+[node name="NextButton" type="Button" parent="PhaseContainer/ObservPhase/VBox"]
+custom_minimum_size = Vector2(200, 50)
+layout_mode = 2
+text = "下一步：查看证据"
+
+[node name="EvidencePhase" type="Control" parent="PhaseContainer"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="EvidenceSlot" type="Control" parent="PhaseContainer/EvidencePhase"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_bottom = -70.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="NextButton" type="Button" parent="PhaseContainer/EvidencePhase"]
+custom_minimum_size = Vector2(200, 50)
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -100.0
+offset_top = -60.0
+offset_right = 100.0
+offset_bottom = -10.0
+grow_horizontal = 2
+grow_vertical = 0
+text = "下一步：选择处理方式"
+
+[node name="DispatchPhase" type="Control" parent="PhaseContainer"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="TimerLabel" type="Label" parent="PhaseContainer/DispatchPhase"]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -100.0
+offset_top = 10.0
+offset_right = 100.0
+offset_bottom = 40.0
+grow_horizontal = 2
+text = "剩余: 60.0秒"
+horizontal_alignment = 1
+
+[node name="TimerBar" type="ProgressBar" parent="PhaseContainer/DispatchPhase"]
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 40.0
+offset_top = 44.0
+offset_right = -40.0
+offset_bottom = 64.0
+grow_horizontal = 2
+value = 100.0
+show_percentage = false
+
+[node name="MethodSlot" type="Control" parent="PhaseContainer/DispatchPhase"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 70.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ScorePhase" type="PanelContainer" parent="PhaseContainer"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="PhaseContainer/ScorePhase"]
+layout_mode = 2
+alignment = 1
+
+[node name="ResultTitle" type="Label" parent="PhaseContainer/ScorePhase/VBox"]
+layout_mode = 2
+text = "处理完成"
+
+[node name="ScoreLabel" type="Label" parent="PhaseContainer/ScorePhase/VBox"]
+layout_mode = 2
+text = "评分: --"
+
+[node name="ClosureLabel" type="Label" parent="PhaseContainer/ScorePhase/VBox"]
+layout_mode = 2
+text = "关闭时长: --"
+
+[node name="MethodLabel" type="Label" parent="PhaseContainer/ScorePhase/VBox"]
+layout_mode = 2
+text = "处理方式: --"
+
+[node name="ReviewButton" type="Button" parent="PhaseContainer/ScorePhase/VBox"]
+custom_minimum_size = Vector2(200, 50)
+layout_mode = 2
+text = "复盘详情"
+
+[node name="HomeButton" type="Button" parent="PhaseContainer/ScorePhase/VBox"]
+custom_minimum_size = Vector2(200, 50)
+layout_mode = 2
+text = "返回主页"
+
+[node name="TimeoutPhase" type="PanelContainer" parent="PhaseContainer"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="PhaseContainer/TimeoutPhase"]
+layout_mode = 2
+alignment = 1
+
+[node name="TimeoutTitle" type="Label" parent="PhaseContainer/TimeoutPhase/VBox"]
+layout_mode = 2
+text = "处理超时！"
+
+[node name="TimeoutInfo" type="Label" parent="PhaseContainer/TimeoutPhase/VBox"]
+layout_mode = 2
+autowrap_mode = 2
+
+[node name="RetryMethodSlot" type="Control" parent="PhaseContainer/TimeoutPhase/VBox"]
+custom_minimum_size = Vector2(0, 150)
+layout_mode = 2
+
+[node name="RetryConfirm" type="Button" parent="PhaseContainer/TimeoutPhase/VBox"]
+custom_minimum_size = Vector2(200, 50)
+layout_mode = 2
+disabled = true
+text = "换方式重试"
+
+[connection signal="pressed" from="PhaseContainer/ObservPhase/VBox/NextButton" to="." method="_on_observe_next_pressed"]
+[connection signal="pressed" from="PhaseContainer/EvidencePhase/NextButton" to="." method="_on_evidence_next_pressed"]
+[connection signal="pressed" from="PhaseContainer/ScorePhase/VBox/ReviewButton" to="." method="_on_review_button_pressed"]
+[connection signal="pressed" from="PhaseContainer/ScorePhase/VBox/HomeButton" to="." method="_on_home_button_pressed"]

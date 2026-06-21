@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3 uid="uid://btagpanel001"]
+
+[ext_resource type="Script" path="res://scripts/ui/tag_panel.gd" id="1"]
+
+[node name="TagPanel" type="HFlowContainer"]
+layout_mode = 2
+script = ExtResource("1")
