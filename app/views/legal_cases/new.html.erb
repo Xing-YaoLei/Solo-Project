@@ -4,7 +4,7 @@
   <div class="bg-white rounded-lg shadow p-6">
     <h1 class="text-2xl font-bold text-gray-900 mb-6">新建案件</h1>
 
-    <%= form_with model: @legal_case, local: true do |f| %>
+    <%= form_with model: @legal_case, local: true, url: cases_path do |f| %>
       <% if @legal_case.errors.any? %>
         <div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
           <div class="text-red-700 font-medium mb-2">请修正以下错误：</div>
