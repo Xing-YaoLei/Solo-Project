@@ -25,11 +25,15 @@ export default function Audit() {
   const fetchAll = async () => {
     try {
       setLoading(true)
-      const [pendingRes, usersRes] = await Promise.all([
-        documentApi.list({ status: 'pending_review' }),
-        authApi.getUsers(),
+      const pendingPromise = documentApi.list({ status: 'pending_review' })
+      const rejectedPromise = documentApi.list({ status: 'rejected' })
+      const usersPromise = authApi.getUsers().catch(() => ({ data: [] as User[] }))
+
+      const [pendingRes, rejectedRes, usersRes] = await Promise.all([
+        pendingPromise,
+        rejectedPromise,
+        usersPromise,
       ])
-      const rejectedRes = await documentApi.list({ status: 'rejected' })
 
       const merged = [...pendingRes.data, ...rejectedRes.data].sort(
         (a, b) =>
@@ -37,7 +41,7 @@ export default function Audit() {
           new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
       )
       setPendingList(merged)
-      setUsers(usersRes.data)
+      setUsers(usersRes.data || [])
 
       let allHistory: AuditType[] = []
       for (const d of merged.slice(0, 10)) {
@@ -51,6 +55,8 @@ export default function Audit() {
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
       )
       setRecentAudits(allHistory.slice(0, 20))
+    } catch (err: any) {
+      console.error('审核台加载失败:', err)
     } finally {
       setLoading(false)
     }

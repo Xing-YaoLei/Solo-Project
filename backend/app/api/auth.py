@@ -66,7 +66,7 @@ def get_me(current_user: User = Depends(get_current_user)):
 @router.get("/users", response_model=list[User])
 def list_users(
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles("admin", "manager")),
+    current_user: User = Depends(require_roles("admin", "manager", "auditor")),
 ):
-    """获取用户列表（仅管理员和经理）"""
+    """获取用户列表（管理员、经理、审核员）"""
     return db.query(User).all()
