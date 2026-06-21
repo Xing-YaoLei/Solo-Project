@@ -241,8 +241,8 @@ export default function OrderDetail() {
       title: '时间',
       dataIndex: 'created_at',
       key: 'created_at',
-      width: 180,
-      render: (val) => dayjs(val).format('YYYY-MM-DD HH:mm:ss'),
+      width: 160,
+      render: (val) => dayjs(val).format('YYYY-MM-DD HH:mm'),
     },
     {
       title: '骑手',
@@ -265,20 +265,33 @@ export default function OrderDetail() {
       dataIndex: 'responsibility',
       key: 'responsibility',
       width: 100,
-      render: (val) => responsibilityLabels[val] || val,
+      render: (val) => {
+        const colorMap = { rider: 'orange', platform: 'geekblue', merchant: 'purple', customer: 'cyan' }
+        return <Tag color={colorMap[val]}>{responsibilityLabels[val] || val}</Tag>
+      },
+    },
+    {
+      title: '处理组',
+      dataIndex: 'handler',
+      key: 'handler',
+      width: 120,
+      render: (val) => val ? <Tag color="blue">{val}</Tag> : '-',
     },
     {
       title: '是否已提醒',
       dataIndex: 'is_reminded',
       key: 'is_reminded',
       width: 100,
-      render: (val) => (val ? <Tag color="green">已提醒</Tag> : <Tag color="orange">待提醒</Tag>),
-    },
-    {
-      title: '处理人',
-      dataIndex: 'handler',
-      key: 'handler',
-      width: 120,
+      render: (val, record) => val ? (
+        <Space>
+          <Tag color="green">已提醒</Tag>
+          {record.reminded_at && (
+            <span style={{ color: '#999', fontSize: 12 }}>
+              {dayjs(record.reminded_at).format('MM-DD HH:mm')}
+            </span>
+          )}
+        </Space>
+      ) : <Tag color="orange">待提醒</Tag>,
     },
     {
       title: '详情',
@@ -434,6 +447,19 @@ export default function OrderDetail() {
           </TabPane>
 
           <TabPane tab="拒单记录" key="rejects">
+            {order.reject_summary && order.reject_summary.total > 0 && (
+              <div style={{ marginBottom: 16, padding: 12, background: '#f5f5f5', borderRadius: 6 }}>
+                <Space>
+                  <Tag color="red">拒单次数：{order.reject_summary.total} 次</Tag>
+                  <Tag color={order.reject_summary.reminded_count > 0 ? 'green' : 'orange'}>
+                    已提醒：{order.reject_summary.reminded_count} 次
+                  </Tag>
+                  {order.reject_summary.handlers && order.reject_summary.handlers.length > 0 && (
+                    <Tag color="blue">处理组：{order.reject_summary.handlers.join('、')}</Tag>
+                  )}
+                </Space>
+              </div>
+            )}
             <Button
               type="primary"
               icon={<PlusOutlined />}

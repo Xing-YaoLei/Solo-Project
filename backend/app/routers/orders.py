@@ -107,6 +107,13 @@ def list_orders(
         )
     if rider_id:
         query = query.filter(models.Order.rider_id == rider_id)
+    if handler:
+        query = query.join(
+            models.OrderRejectRecord,
+            models.OrderRejectRecord.order_id == models.Order.id
+        ).filter(
+            models.OrderRejectRecord.handler == handler
+        )
     if start_date:
         query = query.filter(models.Order.created_at >= datetime.fromisoformat(start_date))
     if end_date:
@@ -125,6 +132,11 @@ def list_orders(
         order_dict = orm_to_dict(order)
         if order.rider:
             order_dict["rider_name"] = order.rider.name
+        reject_handlers = db.query(models.OrderRejectRecord.handler).filter(
+            models.OrderRejectRecord.order_id == order.id,
+            models.OrderRejectRecord.handler.isnot(None)
+        ).distinct().all()
+        order_dict["handlers"] = [h[0] for h in reject_handlers]
         result.append(order_dict)
     
     return paginated_response(result, total, page, page_size)
@@ -151,15 +163,37 @@ def get_order_detail(order_id: int, db: Session = Depends(get_db)):
     ).order_by(models.OrderRejectRecord.id.desc()).all()
     
     reject_list = []
+    handler_names = set()
+    reminded_count = 0
     for record in reject_records:
         r_dict = orm_to_dict(record)
         if record.rider:
             r_dict["rider_name"] = record.rider.name
         reject_list.append(r_dict)
+        if record.handler:
+            handler_names.add(record.handler)
+        if record.is_reminded:
+            reminded_count += 1
     
     order_dict["reject_records"] = reject_list
+    order_dict["reject_summary"] = {
+        "total": len(reject_records),
+        "reminded_count": reminded_count,
+        "handlers": list(handler_names),
+    }
     
     return success_response(order_dict)
+
+
+@router.get("/meta/handlers", response_model=schemas.ResponseModel)
+def get_handler_options(db: Session = Depends(get_db)):
+    records = db.query(models.OrderRejectRecord.handler).filter(
+        models.OrderRejectRecord.handler.isnot(None)
+    ).distinct().all()
+    default_handlers = ["骑手管理组", "运营组", "商家运营", "客服组", "综合处理组"]
+    existing = [r[0] for r in records if r[0]]
+    merged = list(dict.fromkeys(default_handlers + existing))
+    return success_response(merged)
 
 
 @router.post("", response_model=schemas.ResponseModel)
@@ -267,12 +301,24 @@ def reject_order(reject_req: schemas.OrderRejectRequest, db: Session = Depends(g
     elif reject_req.reject_reason == models.RejectReason.CUSTOMER_FAULT:
         responsibility = "customer"
     
+    handler_map = {
+        "rider": "骑手管理组",
+        "platform": "运营组",
+        "merchant": "商家运营",
+        "customer": "客服组",
+        "other": "综合处理组",
+    }
+    handler = handler_map.get(responsibility, "综合处理组")
+    
     reject_record = models.OrderRejectRecord(
         order_id=reject_req.order_id,
         rider_id=reject_req.rider_id,
         reject_reason=reject_req.reject_reason,
         reject_detail=reject_req.reject_detail,
-        responsibility=responsibility
+        responsibility=responsibility,
+        is_reminded=True,
+        reminded_at=datetime.utcnow(),
+        handler=handler
     )
     db.add(reject_record)
     
@@ -289,14 +335,26 @@ def reject_order(reject_req: schemas.OrderRejectRequest, db: Session = Depends(g
         operator_type="rider", operator_id=rider.id, operator_name=rider.name,
         reason=f"拒单: {reject_req.reject_reason.value}",
         remark=reject_req.reject_detail,
-        extra_data={"responsibility": responsibility}
+        extra_data={"responsibility": responsibility, "handler": handler, "reminded": True}
     )
     
     rider.reject_count += 1
     order.updated_at = datetime.utcnow()
     db.commit()
     
-    return success_response({"message": "拒单成功", "responsibility": responsibility})
+    try:
+        from ..celery.tasks import handle_order_reject
+        handle_order_reject.delay(order.id, responsibility)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"Celery任务发送失败，已同步处理: {e}")
+    
+    return success_response({
+        "message": "拒单成功",
+        "responsibility": responsibility,
+        "handler": handler,
+        "is_reminded": True
+    })
 
 
 @router.post("/supplement", response_model=schemas.ResponseModel)

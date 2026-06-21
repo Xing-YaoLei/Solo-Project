@@ -56,6 +56,7 @@ export default function OrderList() {
   const [pageSize, setPageSize] = useState(20)
   const [areas, setAreas] = useState([])
   const [riders, setRiders] = useState([])
+  const [handlers, setHandlers] = useState([])
   const [form] = Form.useForm()
   const [createVisible, setCreateVisible] = useState(false)
   const [createForm] = Form.useForm()
@@ -63,6 +64,7 @@ export default function OrderList() {
   useEffect(() => {
     loadAreas()
     loadRiders()
+    loadHandlers()
     loadOrders()
   }, [page, pageSize])
 
@@ -84,6 +86,15 @@ export default function OrderList() {
     }
   }
 
+  const loadHandlers = async () => {
+    try {
+      const res = await ordersAPI.getHandlers()
+      setHandlers(res.data || [])
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
   const loadOrders = async () => {
     setLoading(true)
     try {
@@ -94,6 +105,7 @@ export default function OrderList() {
         keyword: values.keyword,
         status: values.status,
         area: values.area,
+        handler: values.handler,
       }
       if (values.dateRange && values.dateRange.length === 2) {
         params.start_date = values.dateRange[0].format('YYYY-MM-DD')
@@ -170,6 +182,25 @@ export default function OrderList() {
       render: (val) => val || '-',
     },
     {
+      title: '处理组',
+      dataIndex: 'handlers',
+      key: 'handlers',
+      width: 140,
+      render: (val) => {
+        if (!val || val.length === 0) return '-'
+        return (
+          <Space wrap size={[4, 4]}>
+            {val.slice(0, 2).map((h) => (
+              <Tag key={h} color="blue" style={{ fontSize: 12 }}>
+                {h}
+              </Tag>
+            ))}
+            {val.length > 2 && <Tag color="default">+{val.length - 2}</Tag>}
+          </Space>
+        )
+      },
+    },
+    {
       title: '状态',
       dataIndex: 'status',
       key: 'status',
@@ -242,6 +273,17 @@ export default function OrderList() {
                   {areas.map((area) => (
                     <Option key={area} value={area}>
                       {area}
+                    </Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col>
+              <Form.Item name="handler" label="负责人">
+                <Select placeholder="全部处理组" style={{ width: 160 }} allowClear>
+                  {handlers.map((h) => (
+                    <Option key={h} value={h}>
+                      {h}
                     </Option>
                   ))}
                 </Select>

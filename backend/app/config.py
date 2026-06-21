@@ -4,7 +4,7 @@ import os
 
 
 class Settings(BaseSettings):
-    database_url: str = "sqlite:///./errand.db"
+    database_url: str = "postgresql+psycopg://postgres:postgres@localhost:5432/errand_db"
     redis_url: str = "redis://localhost:6379/0"
     secret_key: str = "your-secret-key-change-in-production"
     algorithm: str = "HS256"

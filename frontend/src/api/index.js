@@ -39,6 +39,7 @@ export const ordersAPI = {
     params: { reason, operator_name: operatorName } 
   }),
   getStatusCount: () => request.get('/orders/status/count'),
+  getHandlers: () => request.get('/orders/meta/handlers'),
 }
 
 export const appealsAPI = {
