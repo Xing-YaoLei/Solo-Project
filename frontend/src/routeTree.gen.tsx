@@ -1,12 +1,12 @@
 import { Suspense } from 'react'
 import { createRootRoute, createRoute, redirect, Outlet, ScrollRestoration } from '@tanstack/react-router'
-import AppLayout from '../components/layout/AppLayout'
-import Login from '../pages/Login'
-import Dashboard from '../pages/Dashboard'
-import Documents from '../pages/Documents'
-import DocumentDetail from '../pages/DocumentDetail'
-import Audit from '../pages/Audit'
-import Stats from '../pages/Stats'
+import AppLayout from './components/layout/AppLayout'
+import Login from './pages/Login'
+import Dashboard from './pages/Dashboard'
+import Documents from './pages/Documents'
+import DocumentDetail from './pages/DocumentDetail'
+import Audit from './pages/Audit'
+import Stats from './pages/Stats'
 
 function LoadFallback() {
   return <div className="empty-state">加载中...</div>

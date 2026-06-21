@@ -1,5 +1,5 @@
-import type { DocumentStatus } from '../types'
-import { STATUS_LABELS, STATUS_COLORS } from '../types'
+import type { DocumentStatus } from '../../types'
+import { STATUS_LABELS, STATUS_COLORS } from '../../types'
 
 interface Props {
   status: DocumentStatus

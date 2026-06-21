@@ -36,7 +36,10 @@ export interface LoginData {
 
 export const authApi = {
   login: (data: LoginData) =>
-    api.post('/auth/login', new URLSearchParams(data).toString(), {
+    api.post('/auth/login', new URLSearchParams({
+      username: data.username,
+      password: data.password,
+    }).toString(), {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     }),
   register: (data: any) => api.post('/auth/register', data),
