@@ -44,6 +44,8 @@ export class GameScene extends Phaser.Scene {
   private totalResponseTime: number = 0;
   private gameOver: boolean = false;
   private paused: boolean = false;
+  private answering: boolean = false;
+  private keyboardHandlerRegistered: boolean = false;
 
   private scoreText?: Phaser.GameObjects.Text;
   private comboText?: Phaser.GameObjects.Text;
@@ -57,6 +59,7 @@ export class GameScene extends Phaser.Scene {
   private coinGraphics: Phaser.GameObjects.Graphics[] = [];
 
   private rootContainer: Phaser.GameObjects.Container | null = null;
+  private activeBillIndex: number = -1;
 
   constructor() {
     super('GameScene');
@@ -73,8 +76,29 @@ export class GameScene extends Phaser.Scene {
 
     this.initGame();
     this.createUI();
+    this.registerKeyboardHandler();
     this.createBillCard();
     this.startTimer();
+  }
+
+  private registerKeyboardHandler(): void {
+    if (this.keyboardHandlerRegistered) return;
+    this.keyboardHandlerRegistered = true;
+
+    const categories: DiscrepancyCategory[] = [
+      'correct', 'refund_missing', 'coupon_missing',
+      'platform_fee_wrong', 'subsidy_missing', 'delivery_fee_wrong', 'order_missing'
+    ];
+
+    categories.forEach((cat, i) => {
+      const keyNum = (i + 1).toString();
+      this.input.keyboard?.on(`keydown-${keyNum}`, () => {
+        if (this.gameOver || this.paused || this.answering) return;
+        const bill = this.bills[this.activeBillIndex];
+        if (!bill || this.activeBillIndex !== this.currentBillIndex) return;
+        this.handleAnswer(cat, bill);
+      });
+    });
   }
 
   private initGame(): void {
@@ -191,6 +215,8 @@ export class GameScene extends Phaser.Scene {
 
     const bill = this.bills[this.currentBillIndex];
     this.billStartTime = Date.now();
+    this.activeBillIndex = this.currentBillIndex;
+    this.answering = false;
 
     const width = this.cameras.main.width;
     const height = this.cameras.main.height;
@@ -214,7 +240,6 @@ export class GameScene extends Phaser.Scene {
 
     this.createLeftPanel(bill, leftX, topY);
     this.createRightPanel(bill, rightX, topY);
-    this.createAnswerButtons(bill, 0, 230);
   }
 
   private createLeftPanel(bill: BillData, x: number, y: number): void {
@@ -456,24 +481,13 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  private createAnswerButtons(bill: BillData, x: number, y: number): void {
-    const categories: DiscrepancyCategory[] = [
-      'correct', 'refund_missing', 'coupon_missing',
-      'platform_fee_wrong', 'subsidy_missing', 'delivery_fee_wrong', 'order_missing'
-    ];
-
-    categories.forEach((cat, i) => {
-      const keyNum = (i + 1).toString();
-      this.input.keyboard?.on(`keydown-${keyNum}`, () => {
-        if (!this.gameOver && !this.paused && this.rootContainer) {
-          this.handleAnswer(cat, bill);
-        }
-      });
-    });
-  }
-
   private handleAnswer(selected: DiscrepancyCategory, bill: BillData): void {
-    if (this.gameOver || this.paused) return;
+    if (this.gameOver || this.paused || this.answering) return;
+
+    if (this.activeBillIndex !== this.currentBillIndex) return;
+    if (bill.id !== this.bills[this.currentBillIndex]?.id) return;
+
+    this.answering = true;
 
     const responseTime = Date.now() - this.billStartTime;
     this.totalResponseTime += responseTime;

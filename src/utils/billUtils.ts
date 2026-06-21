@@ -21,21 +21,26 @@ function formatTimestamp(hourOffset: number): string {
   return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
 }
 
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
 function generateTransactions(orderCount: number, category: DiscrepancyCategory): {
   transactions: PaymentTransaction[];
-  calculatedExpected: number;
-  correctActual: number;
+  expectedSettlement: number;
+  actualSettlement: number;
 } {
   const transactions: PaymentTransaction[] = [];
-  let calculatedExpected = 0;
-  let correctActual = 0;
+  let totalOrder = 0;
+  let totalRefund = 0;
+  let totalCoupon = 0;
+  let totalSubsidy = 0;
 
   for (let i = 0; i < orderCount; i++) {
-    const orderAmount = Math.round((15 + Math.random() * 35) * 100) / 100;
-    calculatedExpected += orderAmount;
-
+    const orderAmount = round2(15 + Math.random() * 35);
+    totalOrder = round2(totalOrder + orderAmount);
     transactions.push({
-      id: `tx_${i}_${Date.now()}`,
+      id: `tx_${i}_${Date.now()}_${Math.random()}`,
       orderNo: generateOrderNo(),
       amount: orderAmount,
       type: 'order',
@@ -46,10 +51,10 @@ function generateTransactions(orderCount: number, category: DiscrepancyCategory)
   }
 
   const platformFeeRate = 0.1 + Math.random() * 0.05;
-  const platformFee = Math.round(calculatedExpected * platformFeeRate * 100) / 100;
+  const platformFee = round2(totalOrder * platformFeeRate);
   transactions.push({
-    id: `tx_fee_${Date.now()}`,
-    orderNo: 'PLATFORM_' + Date.now(),
+    id: `tx_fee_${Date.now()}_${Math.random()}`,
+    orderNo: 'PLATFORM_' + Date.now().toString().slice(-6),
     amount: platformFee,
     type: 'platform_fee',
     status: 'success',
@@ -58,12 +63,11 @@ function generateTransactions(orderCount: number, category: DiscrepancyCategory)
   });
 
   const refundCount = Math.floor(Math.random() * Math.min(3, Math.max(1, orderCount / 5)));
-  let totalRefund = 0;
   for (let i = 0; i < refundCount; i++) {
-    const refundAmount = Math.round((8 + Math.random() * 20) * 100) / 100;
-    totalRefund += refundAmount;
+    const refundAmount = round2(8 + Math.random() * 20);
+    totalRefund = round2(totalRefund + refundAmount);
     transactions.push({
-      id: `tx_refund_${i}_${Date.now()}`,
+      id: `tx_refund_${i}_${Date.now()}_${Math.random()}`,
       orderNo: generateOrderNo(),
       amount: refundAmount,
       type: 'refund',
@@ -74,12 +78,11 @@ function generateTransactions(orderCount: number, category: DiscrepancyCategory)
   }
 
   const couponCount = Math.floor(Math.random() * Math.min(4, Math.max(1, orderCount / 4)));
-  let totalCoupon = 0;
   for (let i = 0; i < couponCount; i++) {
-    const couponAmount = Math.round((2 + Math.random() * 8) * 100) / 100;
-    totalCoupon += couponAmount;
+    const couponAmount = round2(2 + Math.random() * 8);
+    totalCoupon = round2(totalCoupon + couponAmount);
     transactions.push({
-      id: `tx_coupon_${i}_${Date.now()}`,
+      id: `tx_coupon_${i}_${Date.now()}_${Math.random()}`,
       orderNo: generateOrderNo(),
       amount: couponAmount,
       type: 'coupon',
@@ -90,12 +93,11 @@ function generateTransactions(orderCount: number, category: DiscrepancyCategory)
   }
 
   const hasSubsidy = Math.random() < 0.5;
-  let totalSubsidy = 0;
   if (hasSubsidy) {
-    totalSubsidy = Math.round((10 + Math.random() * 30) * 100) / 100;
+    totalSubsidy = round2(10 + Math.random() * 30);
     transactions.push({
-      id: `tx_subsidy_${Date.now()}`,
-      orderNo: 'SUBSIDY_' + Date.now(),
+      id: `tx_subsidy_${Date.now()}_${Math.random()}`,
+      orderNo: 'SUBSIDY_' + Date.now().toString().slice(-6),
       amount: totalSubsidy,
       type: 'subsidy',
       status: 'success',
@@ -104,10 +106,10 @@ function generateTransactions(orderCount: number, category: DiscrepancyCategory)
     });
   }
 
-  const deliveryFee = Math.round((orderCount * (2 + Math.random() * 1.5)) * 100) / 100;
+  const deliveryFee = round2(orderCount * (2 + Math.random() * 1.5));
   transactions.push({
-    id: `tx_delivery_${Date.now()}`,
-    orderNo: 'DELIVERY_' + Date.now(),
+    id: `tx_delivery_${Date.now()}_${Math.random()}`,
+    orderNo: 'DELIVERY_' + Date.now().toString().slice(-6),
     amount: deliveryFee,
     type: 'delivery',
     status: 'success',
@@ -115,39 +117,40 @@ function generateTransactions(orderCount: number, category: DiscrepancyCategory)
     description: TRANSACTION_TYPES[5].desc
   });
 
-  calculatedExpected = Math.round(calculatedExpected * 100) / 100;
-  correctActual = Math.round((calculatedExpected - platformFee - totalRefund - totalCoupon + totalSubsidy + deliveryFee) * 100) / 100;
+  const expectedSettlement = round2(
+    totalOrder - platformFee - totalRefund - totalCoupon + totalSubsidy + deliveryFee
+  );
 
-  let actualAmount = correctActual;
+  let actualSettlement = expectedSettlement;
 
   switch (category) {
     case 'refund_missing':
-      actualAmount = Math.round((correctActual + totalRefund) * 100) / 100;
+      actualSettlement = round2(expectedSettlement + totalRefund);
       break;
     case 'coupon_missing':
-      actualAmount = Math.round((correctActual + totalCoupon) * 100) / 100;
+      actualSettlement = round2(expectedSettlement + totalCoupon);
       break;
     case 'platform_fee_wrong':
-      actualAmount = Math.round((correctActual + platformFee * 0.5) * 100) / 100;
+      actualSettlement = round2(expectedSettlement + platformFee * 0.5);
       break;
     case 'subsidy_missing':
-      actualAmount = Math.round((correctActual - totalSubsidy) * 100) / 100;
+      actualSettlement = round2(expectedSettlement - totalSubsidy);
       break;
     case 'delivery_fee_wrong':
-      actualAmount = Math.round((correctActual - deliveryFee * 0.3) * 100) / 100;
+      actualSettlement = round2(expectedSettlement - deliveryFee * 0.3);
       break;
     case 'order_missing': {
-      const missingOrder = Math.round((20 + Math.random() * 30) * 100) / 100;
-      actualAmount = Math.round((correctActual - missingOrder) * 100) / 100;
-      const tx = transactions.find(t => t.type === 'order');
-      if (tx) {
-        tx.amount = Math.round((tx.amount + missingOrder / 2) * 100) / 100;
+      const missingOrder = round2(20 + Math.random() * 30);
+      actualSettlement = round2(expectedSettlement - missingOrder);
+      const orderTx = transactions.find(t => t.type === 'order');
+      if (orderTx) {
+        orderTx.amount = round2(orderTx.amount + missingOrder);
       }
       break;
     }
     case 'correct':
     default:
-      actualAmount = correctActual;
+      actualSettlement = expectedSettlement;
       break;
   }
 
@@ -155,8 +158,8 @@ function generateTransactions(orderCount: number, category: DiscrepancyCategory)
 
   return {
     transactions,
-    calculatedExpected,
-    correctActual: actualAmount
+    expectedSettlement,
+    actualSettlement
   };
 }
 
@@ -182,14 +185,21 @@ export function generateBill(levelId: number, errorRate: number, index: number, 
     }
   }
 
-  const { transactions, calculatedExpected, correctActual } = generateTransactions(orderCount, category);
+  const { transactions, expectedSettlement, actualSettlement } = generateTransactions(orderCount, category);
+
+  if (category === 'correct') {
+    const diff = Math.abs(expectedSettlement - actualSettlement);
+    if (diff > 0.001) {
+      console.warn(`[billUtils] correct 账单差额不为 0: ${diff}，强制修正`);
+    }
+  }
 
   return {
-    id: `bill_${levelId}_${index}_${Date.now()}`,
+    id: `bill_${levelId}_${index}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
     merchantName,
     orderCount,
-    expectedAmount: calculatedExpected,
-    actualAmount: correctActual,
+    expectedAmount: expectedSettlement,
+    actualAmount: actualSettlement,
     transactions,
     discrepancyCategory: category,
     timestamp: Date.now()
@@ -206,6 +216,25 @@ export function generateBills(levelId: number, count: number, errorRate: number)
 
 export function formatAmount(amount: number): string {
   return `¥${amount.toFixed(2)}`;
+}
+
+export function sumTransactions(transactions: PaymentTransaction[]): number {
+  let sum = 0;
+  for (const tx of transactions) {
+    switch (tx.type) {
+      case 'order':
+      case 'subsidy':
+      case 'delivery':
+        sum += tx.amount;
+        break;
+      case 'refund':
+      case 'coupon':
+      case 'platform_fee':
+        sum -= tx.amount;
+        break;
+    }
+  }
+  return round2(sum);
 }
 
 export function getDiscrepancyLabel(category: DiscrepancyCategory): string {

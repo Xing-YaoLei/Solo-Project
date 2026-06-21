@@ -14,6 +14,8 @@ export class TutorialScene extends Phaser.Scene {
   private billContainer?: Phaser.GameObjects.Container;
   private currentBill?: BillData;
   private canInteract: boolean = false;
+  private keyboardRegistered: boolean = false;
+  private activeBillId: string = '';
 
   constructor() {
     super('TutorialScene');
@@ -26,6 +28,8 @@ export class TutorialScene extends Phaser.Scene {
     const height = this.cameras.main.height;
 
     this.add.rectangle(width / 2, height / 2, width, height, COLORS.background);
+
+    this.registerKeyboardHandler();
 
     this.add.text(width / 2, 50, '新手引导', {
       fontSize: '28px',
@@ -55,6 +59,25 @@ export class TutorialScene extends Phaser.Scene {
 
     this.initTutorialSteps();
     this.showStep(0);
+  }
+
+  private registerKeyboardHandler(): void {
+    if (this.keyboardRegistered) return;
+    this.keyboardRegistered = true;
+
+    const categories: DiscrepancyCategory[] = [
+      'correct', 'refund_missing', 'coupon_missing',
+      'platform_fee_wrong', 'subsidy_missing', 'delivery_fee_wrong', 'order_missing'
+    ];
+
+    categories.forEach((cat, i) => {
+      const keyNum = (i + 1).toString();
+      this.input.keyboard?.on(`keydown-${keyNum}`, () => {
+        if (!this.canInteract) return;
+        if (!this.currentBill || this.currentBill.id !== this.activeBillId) return;
+        this.handleAnswer(cat);
+      });
+    });
   }
 
   private initTutorialSteps(): void {
@@ -464,10 +487,10 @@ export class TutorialScene extends Phaser.Scene {
       btn.on('pointerout', () => btn.setScale(1));
       btn.on('pointerdown', () => this.handleAnswer(cat));
 
-      this.input.keyboard?.on(`keydown-${i + 1}`, () => this.handleAnswer(cat));
-
       this.billContainer!.add([btn, dot, numLabel, txt]);
     });
+
+    this.activeBillId = this.currentBill!.id;
 
     this.billContainer.setScale(0.85);
     this.billContainer.setAlpha(0);
