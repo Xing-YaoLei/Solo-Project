@@ -51,6 +51,7 @@ export const Building = ({
     tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
     tex.magFilter = THREE.NearestFilter;
     return tex;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [color, windowColor, size[1]]);
 
   useFrame((state) => {

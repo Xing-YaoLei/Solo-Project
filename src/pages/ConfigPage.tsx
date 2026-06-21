@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useConfigStore, useRecordStore } from '@/stores';
-import type { QuestionType } from '@/types/game';
-import type { QuestionBankItem, AssetItem, OpenSchedule, TrainingMode, Badge } from '@/types/config';
+import { useConfigStore } from '@/stores';
+import type { QuestionType, Level } from '@/types/game';
+import type { QuestionBankItem, AssetItem, OpenSchedule, TrainingMode, Badge, AssetType, QuestionStatus, RewardConfig } from '@/types/config';
+import type { LucideIcon } from 'lucide-react';
 import {
-  Home as HomeIcon, Settings, Layers, Gift, Calendar, Sliders,
+  Home as HomeIcon, Settings, Gift, Calendar, Sliders,
   Plus, Trash2, Edit3, Save, X, Check, Star, Eye, EyeOff, UploadCloud,
-  Database, Zap, Award, ChevronRight, ToggleLeft, ToggleRight
+  Database, ToggleLeft, ToggleRight
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -79,8 +80,6 @@ export default function ConfigPage() {
     toggleLevelUnlock,
   } = useConfigStore();
 
-  const { records } = useRecordStore();
-
   const [editingQuestion, setEditingQuestion] = useState<Partial<QuestionBankItem> | null>(null);
   const [editingSchedule, setEditingSchedule] = useState<Partial<OpenSchedule> | null>(null);
   const [editingMode, setEditingMode] = useState<Partial<TrainingMode> | null>(null);
@@ -120,9 +119,15 @@ export default function ConfigPage() {
 
   const handleSaveBadge = () => {
     if (!editingBadge || !editingBadge.name) return;
-    addBadge(editingBadge as Badge);
+    if (editingBadge.id) {
+      updateBadge(editingBadge.id, editingBadge as Partial<Badge>);
+      showToast('徽章已更新');
+    } else {
+      const bid = `badge-${Date.now()}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+      addBadge({ ...editingBadge, id: bid, unlocked: false } as Badge);
+      showToast('徽章已添加');
+    }
     setEditingBadge(null);
-    showToast('徽章已添加');
   };
 
   const handleSaveAsset = () => {
@@ -146,7 +151,7 @@ export default function ConfigPage() {
     showToast('奖励配置已更新');
   };
 
-  const tabs: { k: TabType; n: string; i: any; c: string }[] = [
+  const tabs: { k: TabType; n: string; i: LucideIcon; c: string }[] = [
     { k: 'questions', n: '题目题库', i: Database, c: 'from-indigo-500/20 to-indigo-500/5' },
     { k: 'materials', n: '素材管理', i: UploadCloud, c: 'from-cyan-500/20 to-cyan-500/5' },
     { k: 'rewards', n: '奖励徽章', i: Gift, c: 'from-amber-500/20 to-amber-500/5' },
@@ -250,7 +255,7 @@ export default function ConfigPage() {
 
                 <Card title="关卡解锁管理" desc="控制学员可访问的关卡范围">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    {levels.map((l: any) => (
+                    {levels.map((l: Level) => (
                       <div key={l.id} className="rounded-xl border border-white/10 bg-slate-800/40 p-4">
                         <div className="flex items-center gap-3 mb-2.5">
                           <div className="flex h-10 w-10 items-center justify-center rounded-xl text-xl border border-white/10" style={{ background: `linear-gradient(135deg, ${l.color}40, ${l.color}15)` }}>{l.icon}</div>
@@ -323,7 +328,7 @@ export default function ConfigPage() {
                         { key: 'pointsPerCorrectAnswer', label: '每道正确题目', unit: '分/题' },
                         { key: 'bonusForPerfectScore', label: '满分达成奖励', unit: '分' },
                         { key: 'bonusForFastCompletion', label: '快速完成奖励', unit: '分' },
-                      ] as const).map(x => (
+                      ] as const satisfies ReadonlyArray<{ key: keyof Pick<RewardConfig, 'pointsPerCorrectAnswer' | 'bonusForPerfectScore' | 'bonusForFastCompletion'>; label: string; unit: string }>).map(x => (
                         <div key={x.key} className="flex items-center justify-between rounded-xl border border-white/10 bg-slate-800/40 px-4 py-3">
                           <span className="text-xs font-bold text-slate-200">{x.label}</span>
                           <div className="flex items-center gap-2">
@@ -342,8 +347,8 @@ export default function ConfigPage() {
                               </div>
                             ) : (
                               <>
-                                <span className="text-sm font-black text-amber-300">{(rewards as any)[x.key]} {x.unit}</span>
-                                <Edit3 className="h-3.5 w-3.5 text-slate-500 hover:text-white cursor-pointer" onClick={() => handleRewardEdit(x.key, (rewards as any)[x.key])} />
+                                <span className="text-sm font-black text-amber-300">{rewards[x.key]} {x.unit}</span>
+                                <Edit3 className="h-3.5 w-3.5 text-slate-500 hover:text-white cursor-pointer" onClick={() => handleRewardEdit(x.key, rewards[x.key])} />
                               </>
                             )}
                           </div>
@@ -401,8 +406,9 @@ export default function ConfigPage() {
                         </div>
                         <div className="mt-3 flex items-center justify-between pt-2 border-t border-white/5">
                           <span className="text-[10px] text-slate-500">奖励</span>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1.5">
                             <span className="text-xs font-black text-amber-300">+{b.points} pt</span>
+                            <button onClick={() => setEditingBadge({ ...b })} className="rounded-md p-1 text-slate-400 hover:bg-white/5 hover:text-white"><Edit3 className="h-3 w-3" /></button>
                             <button onClick={() => { removeBadge(b.id); showToast('徽章已删除'); }} className="rounded-md p-1 text-rose-400 hover:bg-rose-500/10"><Trash2 className="h-3 w-3" /></button>
                           </div>
                         </div>
@@ -531,7 +537,7 @@ export default function ConfigPage() {
                 <input type="number" value={editingQuestion.score || ''} onChange={e => setEditingQuestion({ ...editingQuestion, score: Number(e.target.value) })} className="w-full rounded-lg border border-white/10 bg-slate-900/60 px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-400/50" />
               </FieldRow>
               <FieldRow label="状态">
-                <select value={editingQuestion.status} onChange={e => setEditingQuestion({ ...editingQuestion, status: e.target.value as any })} className="w-full rounded-lg border border-white/10 bg-slate-900/60 px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-400/50">
+                <select value={editingQuestion.status} onChange={e => setEditingQuestion({ ...editingQuestion, status: e.target.value as QuestionStatus })} className="w-full rounded-lg border border-white/10 bg-slate-900/60 px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-400/50">
                   <option value="draft">草稿</option>
                   <option value="published">已发布</option>
                   <option value="archived">已归档</option>
@@ -672,7 +678,7 @@ export default function ConfigPage() {
             </FieldRow>
             <div className="grid grid-cols-2 gap-3">
               <FieldRow label="类型">
-                <select value={editingAsset.type || 'image'} onChange={e => setEditingAsset({ ...editingAsset, type: e.target.value as any })} className="w-full rounded-lg border border-white/10 bg-slate-900/60 px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-400/50">
+                <select value={editingAsset.type || 'image'} onChange={e => setEditingAsset({ ...editingAsset, type: e.target.value as AssetType })} className="w-full rounded-lg border border-white/10 bg-slate-900/60 px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-400/50">
                   <option value="image">🖼️ 图片</option>
                   <option value="audio">🔊 音频</option>
                   <option value="model">📦 模型</option>
@@ -693,7 +699,7 @@ export default function ConfigPage() {
 }
 
 function Card({ title, desc, btn, onBtn, btnLabel, BtnIcon, children }: {
-  title: string; desc?: string; btn?: { label: string; i: any }; onBtn?: () => void; btnLabel?: string; BtnIcon?: any; children: React.ReactNode;
+  title: string; desc?: string; btn?: { label: string; i: LucideIcon }; onBtn?: () => void; btnLabel?: string; BtnIcon?: LucideIcon; children: React.ReactNode;
 }) {
   const Ic = BtnIcon || btn?.i;
   return (

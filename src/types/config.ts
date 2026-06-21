@@ -1,6 +1,8 @@
+export type AssetType = 'image' | 'model' | 'audio';
+
 export interface AssetItem {
   id: string;
-  type: 'image' | 'model' | 'audio';
+  type: AssetType;
   name: string;
   url: string;
   tag: string;
@@ -47,13 +49,15 @@ export interface TrainingMode {
   scoreMultiplier: number;
 }
 
+export type QuestionStatus = 'draft' | 'published' | 'archived';
+
 export interface QuestionBankItem {
   id: string;
   type: 'rule' | 'evidence' | 'settlement' | 'compensation';
   title: string;
   difficulty: 1 | 2 | 3 | 4 | 5;
   score: number;
-  status: 'draft' | 'published' | 'archived';
+  status: QuestionStatus;
   updatedAt: number;
   usageCount: number;
   correctRate: number;

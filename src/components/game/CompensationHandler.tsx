@@ -46,7 +46,6 @@ export const CompensationHandler = ({ question, onSubmit, disabled, preCauseId, 
   }, [caseData]);
 
   const selectedCauseData = caseData.possibleCauses.find(c => c.id === selectedCause);
-  const amountNumeric = parseFloat(selectedAmount || '0') || 0;
   const expectedCompensation = Math.round(caseData.productValue * (systemAnalyzedCause?.compensationRatio || 0));
 
   const canSubmit = selectedCause && selectedAmount;

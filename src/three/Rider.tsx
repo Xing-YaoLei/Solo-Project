@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { Billboard, Text } from '@react-three/drei';
 import { RigidBody } from '@react-three/rapier';
+import type { RapierRigidBody } from '@react-three/rapier';
 
 interface RiderProps {
   path: Array<[number, number, number]>;
@@ -23,7 +24,7 @@ export const Rider = ({
   onComplete,
   color = '#f97316',
 }: RiderProps) => {
-  const bodyRef = useRef<any>(null);
+  const bodyRef = useRef<RapierRigidBody>(null);
   const wheelRef = useRef<THREE.Group>(null);
   const progressRef = useRef(0);
   const completedRef = useRef(false);

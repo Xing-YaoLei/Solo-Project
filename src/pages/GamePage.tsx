@@ -60,7 +60,7 @@ export default function GamePage() {
   const levelId = params.levelId;
 
   const {
-    phase, currentLevel, score, questions, currentQuestionIndex, answers, mode: storeMode,
+    phase, currentLevel, questions, currentQuestionIndex, answers, mode: storeMode,
     startLevel, startPractice, submitAnswer, nextPhase, finishGame, resetGame,
   } = useGameStore();
 

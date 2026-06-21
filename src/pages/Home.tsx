@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useGameStore } from '@/stores/gameStore';
 import { useRecordStore } from '@/stores/recordStore';
 import { LEVELS } from '@/mock/levels';
-import { RecordStorage, ConfigStorage, UserStorage } from '@/utils/storage';
+import { ConfigStorage, UserStorage } from '@/utils/storage';
 import type { Level, TrainingRecord } from '@/types';
 import {
   Play, Trophy, Star, Map as MapIcon, Award, BookOpen, Layers, Users,

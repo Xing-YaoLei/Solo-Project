@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import type { EvidenceQuestion, EvidenceItem } from '@/types/game';
-import { useGameStore } from '@/stores/gameStore';
 import { Image, FileText, Radio as FileAudio, CheckCircle2, XCircle, Send, AlertTriangle, Lightbulb } from 'lucide-react';
 import { clsx } from 'clsx';
 

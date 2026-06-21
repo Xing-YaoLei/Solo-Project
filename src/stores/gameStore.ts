@@ -46,8 +46,6 @@ interface GameState {
 
 const currentUser = UserStorage.CURRENT_USER;
 
-const phaseOrder: GamePhase[] = ['intro', 'rule', 'evidence', 'settlement', 'compensation', 'result'];
-
 const getNextPhaseForType = (questions: Question[], currentIndex: number): GamePhase => {
   if (currentIndex >= questions.length) return 'result';
   return questions[currentIndex].type as GamePhase;

@@ -40,9 +40,6 @@ export const SettlementSorter = ({ question, onSubmit, disabled, preOrdered }: S
   }, [question.id, preOrdered, question.items]);
 
   const currentOrder = orderedItems.map(i => i.id);
-  const correctOrder = useMemo(() => {
-    return [...question.items].sort((a, b) => a.correctOrder - b.correctOrder).map(i => i.id);
-  }, [question.items]);
 
   const moveItem = (from: number, to: number) => {
     if (disabled) return;

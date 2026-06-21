@@ -24,7 +24,7 @@ export const useDragDrop = <T = unknown>(options: UseDragDropOptions<T> = {}) =>
   const draggedElementRef = useRef<HTMLElement | null>(null);
   const ghostRef = useRef<HTMLDivElement | null>(null);
 
-  const { onDragStart, onDragEnd, onDrop, onReorder } = options;
+  const { onDragStart, onDragEnd, onDrop } = options;
 
   const createGhost = useCallback((e: React.PointerEvent, element: HTMLElement) => {
     const rect = element.getBoundingClientRect();
@@ -60,6 +60,7 @@ export const useDragDrop = <T = unknown>(options: UseDragDropOptions<T> = {}) =>
   }, []);
 
   const handlePointerUp = useCallback((_e: PointerEvent) => {
+    void _e;
     document.removeEventListener('pointermove', handlePointerMove);
     document.removeEventListener('pointerup', handlePointerUp);
     if (draggingItem && activeZone && onDrop) {

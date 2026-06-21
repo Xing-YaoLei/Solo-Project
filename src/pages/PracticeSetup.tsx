@@ -4,10 +4,17 @@ import { useGameStore } from '@/stores/gameStore';
 import type { QuestionType } from '@/types/game';
 import { QUESTIONS } from '@/mock/levels';
 import {
-  Home as HomeIcon, Play, Shuffle, Target, Clock, Layers, Zap, ChevronRight,
+  Home as HomeIcon, Shuffle, Target, Clock, Layers, Zap, ChevronRight,
   BookOpen, SlidersHorizontal, RotateCcw
 } from 'lucide-react';
 import { clsx } from 'clsx';
+
+const TYPE_INFO: ReadonlyArray<{ k: QuestionType; n: string; i: string; c: string; desc: string }> = [
+  { k: 'rule', n: '补贴规则识别', i: '📜', c: 'from-indigo-500 to-purple-500', desc: '根据订单属性匹配适用的补贴规则' },
+  { k: 'evidence', n: '申诉证据选择', i: '🔍', c: 'from-cyan-500 to-blue-500', desc: '从证据池中甄别有效的申诉材料' },
+  { k: 'settlement', n: '结算明细排序', i: '📊', c: 'from-emerald-500 to-teal-500', desc: '按时间或逻辑顺序排列结算流水' },
+  { k: 'compensation', n: '赔付记录处理', i: '💥', c: 'from-rose-500 to-orange-500', desc: '判定损坏原因并计算赔付金额' },
+];
 
 export default function PracticeSetup() {
   const navigate = useNavigate();
@@ -16,13 +23,6 @@ export default function PracticeSetup() {
   const [types, setTypes] = useState<QuestionType[]>(['rule', 'evidence', 'settlement', 'compensation']);
   const [difficulty, setDifficulty] = useState<[number, number]>([1, 5]);
   const [maxQuestions, setMaxQuestions] = useState(6);
-
-  const typeInfo: { k: QuestionType; n: string; i: string; c: string; desc: string }[] = [
-    { k: 'rule', n: '补贴规则识别', i: '📜', c: 'from-indigo-500 to-purple-500', desc: '根据订单属性匹配适用的补贴规则' },
-    { k: 'evidence', n: '申诉证据选择', i: '🔍', c: 'from-cyan-500 to-blue-500', desc: '从证据池中甄别有效的申诉材料' },
-    { k: 'settlement', n: '结算明细排序', i: '📊', c: 'from-emerald-500 to-teal-500', desc: '按时间或逻辑顺序排列结算流水' },
-    { k: 'compensation', n: '赔付记录处理', i: '💥', c: 'from-rose-500 to-orange-500', desc: '判定损坏原因并计算赔付金额' },
-  ];
 
   const filtered = useMemo(() => {
     return QUESTIONS.filter(q =>
@@ -36,7 +36,7 @@ export default function PracticeSetup() {
     return types.map(t => ({
       type: t,
       count: filtered.filter(q => q.type === t).length,
-      info: typeInfo.find(x => x.k === t)!,
+      info: TYPE_INFO.find(x => x.k === t)!,
     }));
   }, [types, filtered]);
 
@@ -99,7 +99,7 @@ export default function PracticeSetup() {
                 <h2 className="text-base font-black text-white">选择题型模块 <span className="text-xs text-slate-500 font-normal ml-1">（至少选一项）</span></h2>
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {typeInfo.map(t => {
+                {TYPE_INFO.map(t => {
                   const active = types.includes(t.k);
                   const n = QUESTIONS.filter(q => q.type === t.k).length;
                   return (

@@ -1,11 +1,11 @@
-import { Suspense, useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
-import { OrbitControls, Stars, Html, ContactShadows } from '@react-three/drei';
+import { OrbitControls, Stars, ContactShadows } from '@react-three/drei';
 import { Physics } from '@react-three/rapier';
 import * as THREE from 'three';
 import { RoadNetwork } from './RoadNetwork';
 import { BuildingCluster } from './Building';
-import { OrderNode, OrderNodeType } from './OrderNode';
+import { OrderNode } from './OrderNode';
 import { RouteLine } from './RouteLine';
 import { Rider } from './Rider';
 
@@ -76,9 +76,13 @@ function SceneLighting({ children }: { children: React.ReactNode }) {
   );
 }
 
+interface CameraControlsHandle {
+  target: THREE.Vector3;
+}
+
 function CameraController({ targetOrder }: { targetOrder?: SceneOrder | null }) {
   const { camera } = useThree();
-  const controlsRef = useRef<any>(null);
+  const controlsRef = useRef<CameraControlsHandle | null>(null);
   const targetPos = useRef(new THREE.Vector3(0, 14, 18));
   const lookAt = useRef(new THREE.Vector3(0, 0, 0));
 
@@ -103,7 +107,8 @@ function CameraController({ targetOrder }: { targetOrder?: SceneOrder | null }) 
 
   return (
     <OrbitControls
-      ref={controlsRef}
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ref={controlsRef as unknown as any}
       enablePan
       enableZoom
       enableRotate

@@ -3,10 +3,11 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useRecordStore, useConfigStore } from '@/stores';
 import type { TrainingRecord } from '@/types/record';
 import {
-  Home as HomeIcon, Trophy, Star, Clock, Target, TrendingUp, Search, Filter, ChevronRight,
+  Home as HomeIcon, Trophy, Star, Clock, Target, TrendingUp, Search, ChevronRight,
   Calendar, BarChart3, Eye, Award, Zap, Users, AlertCircle
 } from 'lucide-react';
 import { clsx } from 'clsx';
+import type { LucideIcon } from 'lucide-react';
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell
 } from 'recharts';
@@ -459,7 +460,7 @@ function EmptyHint({ title = '暂无数据', desc = '完成训练后将显示数
   );
 }
 
-function Stat({ label, value, icon: Ic, c }: { label: string; value: string; icon: any; c: string }) {
+function Stat({ label, value, icon: Ic, c }: { label: string; value: string; icon: LucideIcon; c: string }) {
   return (
     <div className="rounded-xl border border-white/10 bg-slate-800/30 p-3">
       <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-slate-500">

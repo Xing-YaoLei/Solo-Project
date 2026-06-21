@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { RuleQuestion, SubsidyRule, OrderScene } from '@/types/game';
-import { useGameStore } from '@/stores/gameStore';
-import { MapPin, Clock, Thermometer, Truck, Map, Tag, Send } from 'lucide-react';
+import { MapPin, Clock, Truck, Map, Tag, Send } from 'lucide-react';
 import { clsx } from 'clsx';
 
 interface RuleMatcherProps {
