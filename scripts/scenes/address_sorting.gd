@@ -4,12 +4,13 @@ var _address_questions: Array = []
 var _current_index: int = 0
 var _current_order: Array = []
 var _address_items: Dictionary = {}
-var _dragging_item: PanelContainer = null
+var _dragging: bool = false
+var _drag_addr_id: String = ""
+var _drag_start_y: float = 0.0
 var _drag_from_index: int = -1
 var _time_remaining: float = 0.0
 var _time_limit: float = 0.0
-var _is_answered: bool = false
-var _attempt_count: int = 0
+var _state: String = "idle"
 var _session_id: String = ""
 var _start_time: int = 0
 
@@ -37,9 +38,8 @@ func _ready() -> void:
 	if _address_questions.is_empty():
 		_show_no_questions()
 		return
-	_attempt_count = TrainingRecordManager.get_address_retry_count(_session_id)
-	_submit_button.pressed.connect(_on_submit)
-	_retry_button.pressed.connect(_on_retry)
+	_submit_button.pressed.connect(_on_submit_pressed)
+	_retry_button.pressed.connect(_on_retry_pressed)
 	_setup_question()
 
 func _load_address_questions() -> void:
@@ -47,10 +47,12 @@ func _load_address_questions() -> void:
 	_address_questions = all_questions.filter(func(q): return q.get("type", "") == "address")
 
 func _setup_question() -> void:
-	_is_answered = false
+	_state = "idle"
 	_result_label.text = ""
 	_correct_order_label.text = ""
 	_submit_button.disabled = false
+	_submit_button.visible = true
+	_submit_button.text = "提交排序"
 	_retry_button.visible = false
 	_start_time = Time.get_ticks_msec()
 
@@ -58,7 +60,9 @@ func _setup_question() -> void:
 	_order_name_label.text = question.get("order_name", "地址排序")
 	_question_label.text = "第 %d / %d 题" % [_current_index + 1, _address_questions.size()]
 	_score_label.text = "得分: %d" % GameManager.total_score
-	_attempt_label.text = "尝试次数: %d / %d" % [_attempt_count + 1, ConfigManager.get_max_address_retries()]
+
+	var attempt_count: int = TrainingRecordManager.get_address_retry_count(_session_id)
+	_attempt_label.text = "尝试次数: %d / %d" % [attempt_count + 1, ConfigManager.get_max_address_retries()]
 
 	var addresses: Array = question.get("addresses", []).duplicate()
 	addresses.shuffle()
@@ -101,16 +105,19 @@ func _create_address_item(addr: Dictionary, index: int) -> PanelContainer:
 
 	var hbox := HBoxContainer.new()
 	hbox.add_theme_constant_override("separation", 16)
+	hbox.size_flags_vertical = 4
 
 	var num_label := Label.new()
 	num_label.text = "%d." % (index + 1)
 	num_label.custom_minimum_size = Vector2(32, 0)
 	num_label.add_theme_font_size_override("font_size", 20)
 	num_label.add_theme_color_override("font_color", _color_accent)
+	num_label.size_flags_vertical = 4
 	hbox.add_child(num_label)
 
 	var info_vbox := VBoxContainer.new()
 	info_vbox.size_flags_horizontal = 3
+	info_vbox.size_flags_vertical = 4
 
 	var name_label := Label.new()
 	name_label.text = addr.get("name", "未知地址")
@@ -132,67 +139,86 @@ func _create_address_item(addr: Dictionary, index: int) -> PanelContainer:
 	hbox.add_child(info_vbox)
 
 	var drag_handle := Label.new()
-	drag_handle.text = "⋮⋮"
-	drag_handle.add_theme_font_size_override("font_size", 20)
+	drag_handle.text = "☰"
+	drag_handle.add_theme_font_size_override("font_size", 24)
 	drag_handle.add_theme_color_override("font_color", _color_accent)
 	drag_handle.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	drag_handle.size_flags_vertical = 4
 	hbox.add_child(drag_handle)
 
 	panel.add_child(hbox)
 
-	panel.gui_input.connect(_on_item_gui_input.bind(panel, addr.id))
 	panel.set_meta("addr_id", addr.id)
-	panel.set_meta("index", index)
+	panel.gui_input.connect(_on_item_gui_input.bind(panel))
 
 	return panel
 
-func _on_item_gui_input(event: InputEvent, panel: PanelContainer, addr_id: String) -> void:
-	if _is_answered:
+func _on_item_gui_input(event: InputEvent, panel: PanelContainer) -> void:
+	if _state != "idle":
 		return
 	if event is InputEventMouseButton:
 		var mb: InputEventMouseButton = event
 		if mb.button_index == MOUSE_BUTTON_LEFT:
 			if mb.pressed:
-				_start_drag(panel, addr_id)
+				_start_drag(panel, mb.position.y)
 			else:
-				_end_drag(mb.position)
+				if _dragging:
+					_end_drag()
+	elif event is InputEventMouseMotion and _dragging:
+		_on_drag_move(event.position.y)
 
-func _get_local_mouse_position() -> Vector2:
-	var viewport := get_viewport()
-	if viewport:
-		return _address_list.get_global_transform().affine_inverse() * viewport.get_mouse_position()
-	return Vector2.ZERO
-
-func _start_drag(panel: PanelContainer, addr_id: String) -> void:
-	_dragging_item = panel
+func _start_drag(panel: PanelContainer, mouse_y: float) -> void:
+	var addr_id: String = panel.get_meta("addr_id", "")
+	_drag_addr_id = addr_id
 	_drag_from_index = _current_order.find(addr_id)
-	if _drag_from_index != -1:
-		var style: StyleBoxFlat = panel.get_theme_stylebox("panel").duplicate()
-		style.border_color = _color_success
-		panel.add_theme_stylebox_override("panel", style)
-
-func _end_drag(mouse_pos: Vector2) -> void:
-	if not _dragging_item:
+	if _drag_from_index == -1:
 		return
-	var drop_index: int = _find_drop_index()
-	if drop_index != -1 and drop_index != _drag_from_index:
-		_move_item(_drag_from_index, drop_index)
-	_reset_item_style(_dragging_item)
-	_dragging_item = null
-	_drag_from_index = -1
+	_dragging = true
+	_drag_start_y = mouse_y
+	var style: StyleBoxFlat = panel.get_theme_stylebox("panel").duplicate()
+	style.border_color = _color_success
+	style.bg_color = Color(_color_success.r, _color_success.g, _color_success.b, 0.15)
+	panel.add_theme_stylebox_override("panel", style)
 
-func _find_drop_index() -> int:
-	var mouse_pos: Vector2 = _get_local_mouse_position()
+func _on_drag_move(mouse_y: float) -> void:
+	if not _dragging:
+		return
 	var children: Array = _address_list.get_children()
+	var current_idx: int = _drag_from_index
+	var target_idx: int = -1
+
 	for i in range(children.size()):
 		var child: Control = children[i]
-		var rect: Rect2 = Rect2(Vector2.ZERO, child.size)
+		var child_rect: Rect2 = Rect2(Vector2.ZERO, child.size)
 		var local_pos: Vector2 = child.get_global_transform().affine_inverse() * get_viewport().get_mouse_position()
-		if rect.has_point(local_pos):
-			return i
-	return -1
+		if child_rect.has_point(local_pos):
+			target_idx = i
+			break
+
+	if target_idx != -1 and target_idx != current_idx and target_idx >= 0 and target_idx < children.size():
+		_move_item(current_idx, target_idx)
+		_drag_from_index = target_idx
+
+func _end_drag() -> void:
+	if not _dragging:
+		return
+	_dragging = false
+	var panel: PanelContainer = _address_items.get(_drag_addr_id, null)
+	if panel:
+		var style: StyleBoxFlat = panel.get_theme_stylebox("panel").duplicate()
+		style.bg_color = _color_secondary
+		style.border_color = _color_accent
+		panel.add_theme_stylebox_override("panel", style)
+	_drag_addr_id = ""
+	_drag_from_index = -1
 
 func _move_item(from_idx: int, to_idx: int) -> void:
+	if from_idx < 0 or from_idx >= _current_order.size():
+		return
+	if to_idx < 0 or to_idx >= _current_order.size():
+		return
+	if from_idx == to_idx:
+		return
 	var addr_id: String = _current_order[from_idx]
 	_current_order.remove_at(from_idx)
 	_current_order.insert(to_idx, addr_id)
@@ -209,33 +235,23 @@ func _refresh_order_display() -> void:
 				break
 	_build_address_list(ordered_addresses)
 
-func _reset_item_style(panel: PanelContainer) -> void:
-	var style := StyleBoxFlat.new()
-	style.bg_color = _color_secondary
-	style.border_color = _color_accent
-	style.set_border_width_all(2)
-	style.set_corner_radius_all(8)
-	style.content_margin_left = 16
-	style.content_margin_right = 16
-	style.content_margin_top = 12
-	style.content_margin_bottom = 12
-	panel.add_theme_stylebox_override("panel", style)
+func _on_submit_pressed() -> void:
+	match _state:
+		"idle":
+			_submit_answer()
+		"answered":
+			_go_next()
 
-func _on_submit() -> void:
-	if _is_answered:
-		return
-	_submit_answer()
-
-func _on_retry() -> void:
+func _on_retry_pressed() -> void:
 	if not TrainingRecordManager.can_retry_address(_session_id):
-		_advance()
+		_go_next()
 		return
-	_attempt_count += 1
 	_setup_question()
 
 func _submit_answer() -> void:
-	_is_answered = true
-	_submit_button.disabled = true
+	_state = "answered"
+	_dragging = false
+	_submit_button.disabled = false
 
 	var question: Dictionary = _address_questions[_current_index]
 	var correct_order: Array = question.get("correct_order", [])
@@ -261,6 +277,7 @@ func _submit_answer() -> void:
 		"score": score,
 		"time_msec": duration,
 		"is_correct": is_correct,
+		"question_id": question.get("id", ""),
 		"timestamp": Time.get_datetime_string_from_system()
 	}
 	TrainingRecordManager.save_address_replay(_session_id, attempt)
@@ -282,24 +299,26 @@ func _show_feedback(correct_order: Array, is_correct: bool, score: int) -> void:
 		_result_label.text = "✅ 排序正确! 得分: +%d" % score
 		_result_label.add_theme_color_override("font_color", _color_success)
 		_retry_button.visible = false
+		_submit_button.text = "下一题"
 	else:
 		_result_label.text = "❌ 排序有误! 得分: %+d" % score
 		_result_label.add_theme_color_override("font_color", _color_accent)
 		_correct_order_label.text = "正确顺序: %s" % " → ".join(correct_names)
 		_correct_order_label.add_theme_color_override("font_color", _color_warning)
+
+		var attempt_count: int = TrainingRecordManager.get_address_retry_count(_session_id)
+		var max_retries: int = ConfigManager.get_max_address_retries()
+		_attempt_label.text = "尝试次数: %d / %d" % [attempt_count, max_retries]
+
 		if TrainingRecordManager.can_retry_address(_session_id):
 			_retry_button.visible = true
-			_retry_button.text = "重试 (%d/%d)" % [_attempt_count + 1, ConfigManager.get_max_address_retries()]
+			_retry_button.text = "再试一次 (%d/%d)" % [attempt_count, max_retries]
+			_submit_button.text = "跳过下一题"
 		else:
-			_retry_button.visible = true
-			_retry_button.text = "已达最大重试次数，下一题"
+			_retry_button.visible = false
+			_submit_button.text = "下一题"
 
 	_highlight_correct_positions(correct_order)
-
-	_submit_button.disabled = true
-	_submit_button.text = "下一题"
-	_submit_button.pressed.disconnect(_on_submit)
-	_submit_button.pressed.connect(_advance)
 
 func _highlight_correct_positions(correct_order: Array) -> void:
 	for i in range(_current_order.size()):
@@ -316,18 +335,16 @@ func _highlight_correct_positions(correct_order: Array) -> void:
 			style.border_color = _color_accent
 		panel.add_theme_stylebox_override("panel", style)
 
-func _advance() -> void:
+func _go_next() -> void:
 	_current_index += 1
-	_submit_button.pressed.disconnect_all()
-	_submit_button.pressed.connect(_on_submit)
-	_submit_button.text = "提交"
 	if _current_index < _address_questions.size():
+		_session_id = TrainingRecordManager.generate_session_id()
 		_setup_question()
 	else:
 		GameManager.advance_phase()
 
 func _process(delta: float) -> void:
-	if _is_answered or _address_questions.is_empty():
+	if _state != "idle" or _address_questions.is_empty():
 		return
 	_time_remaining -= delta
 	_timer_bar.value = max(0.0, _time_remaining)
@@ -335,7 +352,7 @@ func _process(delta: float) -> void:
 		_on_timeout()
 
 func _on_timeout() -> void:
-	if _is_answered:
+	if _state != "idle":
 		return
 	_submit_answer()
 	_result_label.text = "⏱ 时间到！\n" + _result_label.text
@@ -344,4 +361,5 @@ func _show_no_questions() -> void:
 	_order_name_label.text = "无地址排序题目"
 	_result_label.text = "当前没有地址排序题目，将跳过此阶段"
 	_submit_button.text = "跳过"
+	_submit_button.pressed.disconnect_all()
 	_submit_button.pressed.connect(func(): GameManager.advance_phase())

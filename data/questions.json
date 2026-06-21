@@ -3,7 +3,7 @@
     "id": "pv_001",
     "type": "photo",
     "description": "奶茶一杯，包装完好",
-    "image_path": "",
+    "image_path": "res://assets/photos/photo_01_intact.png",
     "correct_answer": "intact",
     "damage_reason": ""
   },
@@ -11,7 +11,7 @@
     "id": "pv_002",
     "type": "photo",
     "description": "玻璃瓶装饮料，瓶身有裂痕",
-    "image_path": "",
+    "image_path": "res://assets/photos/photo_02_damaged.png",
     "correct_answer": "damaged",
     "damage_reason": "运输过程中颠簸导致瓶身出现裂纹，可能存在液体渗漏风险。"
   },
@@ -19,7 +19,7 @@
     "id": "pv_003",
     "type": "photo",
     "description": "蛋糕盒完好无损，封条完整",
-    "image_path": "",
+    "image_path": "res://assets/photos/photo_03_intact.png",
     "correct_answer": "intact",
     "damage_reason": ""
   },
@@ -27,17 +27,17 @@
     "id": "pv_004",
     "type": "photo",
     "description": "生鲜水果，外包装有明显压痕，部分水果外露",
-    "image_path": "",
+    "image_path": "res://assets/photos/photo_04_damaged.png",
     "correct_answer": "damaged",
     "damage_reason": "外包装受挤压变形，可能造成内部水果损坏，影响品质。"
   },
   {
     "id": "pv_005",
     "type": "photo",
-    "description": "文件快递，信封角部略有折痕",
-    "image_path": "",
-    "correct_answer": "damaged",
-    "damage_reason": "文件信封有折痕，内部文件可能受损，需检查文件完整性。"
+    "description": "文件快递，信封完好无损",
+    "image_path": "res://assets/photos/photo_05_intact.png",
+    "correct_answer": "intact",
+    "damage_reason": ""
   },
   {
     "id": "lbl_001",

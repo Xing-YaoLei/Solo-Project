@@ -348,16 +348,45 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="ScrollQuestions" type="ScrollContainer" parent="MarginContainer/MainVBox/TabContent/PanelQuestions"]
+[node name="QuestionsVBox" type="VBoxContainer" parent="MarginContainer/MainVBox/TabContent/PanelQuestions"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme_override_constants/separation = 10
+
+[node name="QuestionsToolbar" type="HBoxContainer" parent="MarginContainer/MainVBox/TabContent/PanelQuestions/QuestionsVBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="AddQuestionBtn" type="Button" parent="MarginContainer/MainVBox/TabContent/PanelQuestions/QuestionsVBox/QuestionsToolbar"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(120, 36)
+theme_override_colors/font_color = Color(0.93333, 0.93333, 0.93333, 1)
+theme_override_font_sizes/font_size = 14
+text = "+ 新增题目"
+
+[node name="SpacerQT" type="Control" parent="MarginContainer/MainVBox/TabContent/PanelQuestions/QuestionsVBox/QuestionsToolbar"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ResetQuestionsBtn" type="Button" parent="MarginContainer/MainVBox/TabContent/PanelQuestions/QuestionsVBox/QuestionsToolbar"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(120, 36)
+theme_override_colors/font_color = Color(0.93333, 0.93333, 0.93333, 1)
+theme_override_font_sizes/font_size = 14
+text = "重置默认"
+
+[node name="ScrollQuestions" type="ScrollContainer" parent="MarginContainer/MainVBox/TabContent/PanelQuestions/QuestionsVBox"]
+layout_mode = 2
+size_flags_vertical = 3
 horizontal_scroll_mode = 0
 
-[node name="QuestionsList" type="VBoxContainer" parent="MarginContainer/MainVBox/TabContent/PanelQuestions/ScrollQuestions"]
+[node name="QuestionsList" type="VBoxContainer" parent="MarginContainer/MainVBox/TabContent/PanelQuestions/QuestionsVBox/ScrollQuestions"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -373,16 +402,45 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="ScrollMaterials" type="ScrollContainer" parent="MarginContainer/MainVBox/TabContent/PanelMaterials"]
+[node name="MaterialsVBox" type="VBoxContainer" parent="MarginContainer/MainVBox/TabContent/PanelMaterials"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme_override_constants/separation = 10
+
+[node name="MaterialsToolbar" type="HBoxContainer" parent="MarginContainer/MainVBox/TabContent/PanelMaterials/MaterialsVBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="AddMaterialBtn" type="Button" parent="MarginContainer/MainVBox/TabContent/PanelMaterials/MaterialsVBox/MaterialsToolbar"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(120, 36)
+theme_override_colors/font_color = Color(0.93333, 0.93333, 0.93333, 1)
+theme_override_font_sizes/font_size = 14
+text = "+ 新增素材"
+
+[node name="SpacerMT" type="Control" parent="MarginContainer/MainVBox/TabContent/PanelMaterials/MaterialsVBox/MaterialsToolbar"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ResetMaterialsBtn" type="Button" parent="MarginContainer/MainVBox/TabContent/PanelMaterials/MaterialsVBox/MaterialsToolbar"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(120, 36)
+theme_override_colors/font_color = Color(0.93333, 0.93333, 0.93333, 1)
+theme_override_font_sizes/font_size = 14
+text = "重置默认"
+
+[node name="ScrollMaterials" type="ScrollContainer" parent="MarginContainer/MainVBox/TabContent/PanelMaterials/MaterialsVBox"]
+layout_mode = 2
+size_flags_vertical = 3
 horizontal_scroll_mode = 0
 
-[node name="MaterialsList" type="VBoxContainer" parent="MarginContainer/MainVBox/TabContent/PanelMaterials/ScrollMaterials"]
+[node name="MaterialsList" type="VBoxContainer" parent="MarginContainer/MainVBox/TabContent/PanelMaterials/MaterialsVBox/ScrollMaterials"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -398,16 +456,45 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="ScrollRewards" type="ScrollContainer" parent="MarginContainer/MainVBox/TabContent/PanelRewards"]
+[node name="RewardsVBox" type="VBoxContainer" parent="MarginContainer/MainVBox/TabContent/PanelRewards"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme_override_constants/separation = 10
+
+[node name="RewardsToolbar" type="HBoxContainer" parent="MarginContainer/MainVBox/TabContent/PanelRewards/RewardsVBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="AddRewardBtn" type="Button" parent="MarginContainer/MainVBox/TabContent/PanelRewards/RewardsVBox/RewardsToolbar"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(120, 36)
+theme_override_colors/font_color = Color(0.93333, 0.93333, 0.93333, 1)
+theme_override_font_sizes/font_size = 14
+text = "+ 新增奖励"
+
+[node name="SpacerRT" type="Control" parent="MarginContainer/MainVBox/TabContent/PanelRewards/RewardsVBox/RewardsToolbar"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ResetRewardsBtn" type="Button" parent="MarginContainer/MainVBox/TabContent/PanelRewards/RewardsVBox/RewardsToolbar"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(120, 36)
+theme_override_colors/font_color = Color(0.93333, 0.93333, 0.93333, 1)
+theme_override_font_sizes/font_size = 14
+text = "重置默认"
+
+[node name="ScrollRewards" type="ScrollContainer" parent="MarginContainer/MainVBox/TabContent/PanelRewards/RewardsVBox"]
+layout_mode = 2
+size_flags_vertical = 3
 horizontal_scroll_mode = 0
 
-[node name="RewardsList" type="VBoxContainer" parent="MarginContainer/MainVBox/TabContent/PanelRewards/ScrollRewards"]
+[node name="RewardsList" type="VBoxContainer" parent="MarginContainer/MainVBox/TabContent/PanelRewards/RewardsVBox/ScrollRewards"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3

@@ -1,15 +1,23 @@
 extends Node
 
 signal config_changed
+signal questions_changed
+signal materials_changed
+signal rewards_changed
 
 var _config: Dictionary = {}
-var _questions: Array = []
-var _materials: Array = []
-var _rewards: Array = []
+var _default_questions: Array = []
+var _default_materials: Array = []
+var _default_rewards: Array = []
+var _user_questions: Array = []
+var _user_materials: Array = []
+var _user_rewards: Array = []
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_load_config()
+	_load_default_data()
+	_load_user_data()
 
 func _load_config() -> void:
 	var config_path: String = "user://config.json"
@@ -23,15 +31,6 @@ func _load_config() -> void:
 			file.close()
 	else:
 		_config = _default_config()
-
-	var questions_path: String = "res://data/questions.json"
-	_load_json_file(questions_path, func(data): _questions = data)
-
-	var materials_path: String = "res://data/materials.json"
-	_load_json_file(materials_path, func(data): _materials = data)
-
-	var rewards_path: String = "res://data/rewards.json"
-	_load_json_file(rewards_path, func(data): _rewards = data)
 
 func _default_config() -> Dictionary:
 	return {
@@ -47,7 +46,30 @@ func _default_config() -> Dictionary:
 		"pass_threshold": 60
 	}
 
-func _load_json_file(path: String, callback: Callable) -> void:
+func _load_default_data() -> void:
+	var questions_path: String = "res://data/questions.json"
+	_load_json_array(questions_path, func(data): _default_questions = data)
+
+	var materials_path: String = "res://data/materials.json"
+	_load_json_array(materials_path, func(data): _default_materials = data)
+
+	var rewards_path: String = "res://data/rewards.json"
+	_load_json_array(rewards_path, func(data): _default_rewards = data)
+
+func _load_user_data() -> void:
+	var user_questions_path: String = "user://user_questions.json"
+	if FileAccess.file_exists(user_questions_path):
+		_load_json_array(user_questions_path, func(data): _user_questions = data)
+
+	var user_materials_path: String = "user://user_materials.json"
+	if FileAccess.file_exists(user_materials_path):
+		_load_json_array(user_materials_path, func(data): _user_materials = data)
+
+	var user_rewards_path: String = "user://user_rewards.json"
+	if FileAccess.file_exists(user_rewards_path):
+		_load_json_array(user_rewards_path, func(data): _user_rewards = data)
+
+func _load_json_array(path: String, callback: Callable) -> void:
 	if not FileAccess.file_exists(path):
 		return
 	var file: FileAccess = FileAccess.open(path, FileAccess.READ)
@@ -76,22 +98,145 @@ func set_value(key: String, value: Variant) -> void:
 	_config[key] = value
 
 func get_questions() -> Array:
-	return _questions
+	if not _user_questions.is_empty():
+		return _user_questions
+	return _default_questions
 
 func set_questions(new_questions: Array) -> void:
-	_questions = new_questions
+	_user_questions = new_questions.duplicate()
+	_save_user_questions()
+	questions_changed.emit()
+
+func save_questions(new_questions: Array) -> void:
+	set_questions(new_questions)
+
+func _save_user_questions() -> void:
+	var file: FileAccess = FileAccess.open("user://user_questions.json", FileAccess.WRITE)
+	if file:
+		file.store_string(JSON.stringify(_user_questions, "\t"))
+		file.close()
+
+func add_question(question: Dictionary) -> void:
+	var questions: Array = get_questions().duplicate()
+	questions.append(question)
+	set_questions(questions)
+
+func update_question(index: int, question: Dictionary) -> bool:
+	if index < 0 or index >= get_questions().size():
+		return false
+	var questions: Array = get_questions().duplicate()
+	questions[index] = question
+	set_questions(questions)
+	return true
+
+func delete_question(index: int) -> bool:
+	if index < 0 or index >= get_questions().size():
+		return false
+	var questions: Array = get_questions().duplicate()
+	questions.remove_at(index)
+	set_questions(questions)
+	return true
+
+func reset_questions_to_default() -> void:
+	_user_questions.clear()
+	var path: String = "user://user_questions.json"
+	if FileAccess.file_exists(path):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+	questions_changed.emit()
 
 func get_materials() -> Array:
-	return _materials
+	if not _user_materials.is_empty():
+		return _user_materials
+	return _default_materials
 
 func set_materials(new_materials: Array) -> void:
-	_materials = new_materials
+	_user_materials = new_materials.duplicate()
+	_save_user_materials()
+	materials_changed.emit()
+
+func save_materials(new_materials: Array) -> void:
+	set_materials(new_materials)
+
+func _save_user_materials() -> void:
+	var file: FileAccess = FileAccess.open("user://user_materials.json", FileAccess.WRITE)
+	if file:
+		file.store_string(JSON.stringify(_user_materials, "\t"))
+		file.close()
+
+func add_material(material: Dictionary) -> void:
+	var materials: Array = get_materials().duplicate()
+	materials.append(material)
+	set_materials(materials)
+
+func update_material(index: int, material: Dictionary) -> bool:
+	if index < 0 or index >= get_materials().size():
+		return false
+	var materials: Array = get_materials().duplicate()
+	materials[index] = material
+	set_materials(materials)
+	return true
+
+func delete_material(index: int) -> bool:
+	if index < 0 or index >= get_materials().size():
+		return false
+	var materials: Array = get_materials().duplicate()
+	materials.remove_at(index)
+	set_materials(materials)
+	return true
+
+func reset_materials_to_default() -> void:
+	_user_materials.clear()
+	var path: String = "user://user_materials.json"
+	if FileAccess.file_exists(path):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+	materials_changed.emit()
 
 func get_rewards() -> Array:
-	return _rewards
+	if not _user_rewards.is_empty():
+		return _user_rewards
+	return _default_rewards
 
 func set_rewards(new_rewards: Array) -> void:
-	_rewards = new_rewards
+	_user_rewards = new_rewards.duplicate()
+	_save_user_rewards()
+	rewards_changed.emit()
+
+func save_rewards(new_rewards: Array) -> void:
+	set_rewards(new_rewards)
+
+func _save_user_rewards() -> void:
+	var file: FileAccess = FileAccess.open("user://user_rewards.json", FileAccess.WRITE)
+	if file:
+		file.store_string(JSON.stringify(_user_rewards, "\t"))
+		file.close()
+
+func add_reward(reward: Dictionary) -> void:
+	var rewards: Array = get_rewards().duplicate()
+	rewards.append(reward)
+	set_rewards(rewards)
+
+func update_reward(index: int, reward: Dictionary) -> bool:
+	if index < 0 or index >= get_rewards().size():
+		return false
+	var rewards: Array = get_rewards().duplicate()
+	rewards[index] = reward
+	set_rewards(rewards)
+	return true
+
+func delete_reward(index: int) -> bool:
+	if index < 0 or index >= get_rewards().size():
+		return false
+	var rewards: Array = get_rewards().duplicate()
+	rewards.remove_at(index)
+	set_rewards(rewards)
+	return true
+
+func reset_rewards_to_default() -> void:
+	_user_rewards.clear()
+	var path: String = "user://user_rewards.json"
+	if FileAccess.file_exists(path):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+	rewards_changed.emit()
 
 func is_within_open_time() -> bool:
 	var open_time: Dictionary = _config.get("open_time", {"start": "06:00", "end": "23:00"})

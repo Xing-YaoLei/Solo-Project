@@ -5,7 +5,7 @@
     "category": "photo",
     "type": "intact",
     "description": "标准完好奶茶外包装参考图",
-    "path": ""
+    "path": "res://assets/photos/photo_01_intact.png"
   },
   {
     "id": "mat_002",
@@ -13,7 +13,7 @@
     "category": "photo",
     "type": "damaged",
     "description": "玻璃瓶裂纹损坏参考图",
-    "path": ""
+    "path": "res://assets/photos/photo_02_damaged.png"
   },
   {
     "id": "mat_003",
@@ -21,7 +21,7 @@
     "category": "photo",
     "type": "intact",
     "description": "完好蛋糕盒封条完整参考图",
-    "path": ""
+    "path": "res://assets/photos/photo_03_intact.png"
   },
   {
     "id": "mat_004",
@@ -29,7 +29,7 @@
     "category": "photo",
     "type": "damaged",
     "description": "水果外包装压痕参考图",
-    "path": ""
+    "path": "res://assets/photos/photo_04_damaged.png"
   },
   {
     "id": "mat_005",
@@ -37,7 +37,7 @@
     "category": "trajectory",
     "type": "normal",
     "description": "正常配送轨迹示意图",
-    "path": ""
+    "path": "res://assets/trajectories/traj_normal_01.png"
   },
   {
     "id": "mat_006",
@@ -45,6 +45,6 @@
     "category": "trajectory",
     "type": "abnormal",
     "description": "偏离路线轨迹示意图",
-    "path": ""
+    "path": "res://assets/trajectories/traj_abnormal_01.png"
   }
 ]
