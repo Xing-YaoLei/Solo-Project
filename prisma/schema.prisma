@@ -1,0 +1,93 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Case {
+  id            String         @id @default(uuid())
+  caseNumber    String         @unique
+  caseName      String
+  caseType      String
+  clientId      String
+  clientName    String
+  createdAt     DateTime       @default(now())
+  hearings      Hearing[]
+  satisfactions Satisfaction[]
+  conflicts     Conflict[]
+}
+
+model Hearing {
+  id                     String     @id @default(uuid())
+  caseId                 String
+  hearingDate            DateTime
+  hearingTime            String
+  court                  String
+  judge                  String?
+  attendanceStatus       String
+  caseSystemVersion      String
+  calendarToolVersion    String
+  emailAttachmentVersion String
+  hasConflict            Boolean    @default(false)
+  conflictId             String?
+  capacityRule           String?
+  anomalyExplanation     String?
+  createdAt              DateTime   @default(now())
+  updatedAt              DateTime   @updatedAt
+  case                   Case       @relation(fields: [caseId], references: [id])
+  conflict               Conflict?  @relation(fields: [conflictId], references: [id])
+  reminders              Reminder[]
+}
+
+model Conflict {
+  id           String     @id @default(uuid())
+  caseId       String
+  hearingId    String?
+  conflictType String
+  description  String
+  status       String
+  dataGapStart DateTime?
+  dataGapEnd   DateTime?
+  resolvedAt   DateTime?
+  createdAt    DateTime   @default(now())
+  case         Case       @relation(fields: [caseId], references: [id])
+  hearings     Hearing[]
+}
+
+model DataVersion {
+  id           String   @id @default(uuid())
+  source       String
+  version      String
+  snapshotData Json
+  importDate   DateTime @default(now())
+  importedBy   String
+}
+
+model Satisfaction {
+  id                  String   @id @default(uuid())
+  caseId              String
+  clientId            String
+  clientName          String
+  rating              Int
+  feedback            String?
+  surveyDate          DateTime
+  improvementMeasures String?
+  followUpRating      Int?
+  followUpDate        DateTime?
+  case                Case     @relation(fields: [caseId], references: [id])
+}
+
+model Reminder {
+  id           String   @id @default(uuid())
+  hearingId    String
+  recipient    String
+  recipientType String
+  reminderType String
+  sentAt       DateTime @default(now())
+  status       String
+  hearing      Hearing  @relation(fields: [hearingId], references: [id])
+}
