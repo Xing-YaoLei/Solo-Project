@@ -1,0 +1,12 @@
+{
+  "Version": 1,
+  "Hash": "0+Z8Mlmw6+Q/5CVFfNW/HlWT/XfatihQ6CEZ8MPgJTI=",
+  "Source": "HearingCalendar.API",
+  "BasePath": "_content/HearingCalendar.API",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": [],
+  "Endpoints": []
+}

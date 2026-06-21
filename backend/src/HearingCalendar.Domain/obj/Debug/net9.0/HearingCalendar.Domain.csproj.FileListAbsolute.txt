@@ -1,0 +1,12 @@
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0442/backend/src/HearingCalendar.Domain/bin/Debug/net9.0/HearingCalendar.Domain.deps.json
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0442/backend/src/HearingCalendar.Domain/bin/Debug/net9.0/HearingCalendar.Domain.dll
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0442/backend/src/HearingCalendar.Domain/bin/Debug/net9.0/HearingCalendar.Domain.pdb
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0442/backend/src/HearingCalendar.Domain/obj/Debug/net9.0/HearingCalendar.Domain.GeneratedMSBuildEditorConfig.editorconfig
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0442/backend/src/HearingCalendar.Domain/obj/Debug/net9.0/HearingCalendar.Domain.AssemblyInfoInputs.cache
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0442/backend/src/HearingCalendar.Domain/obj/Debug/net9.0/HearingCalendar.Domain.AssemblyInfo.cs
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0442/backend/src/HearingCalendar.Domain/obj/Debug/net9.0/HearingCalendar.Domain.csproj.CoreCompileInputs.cache
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0442/backend/src/HearingCalendar.Domain/obj/Debug/net9.0/HearingCalendar.Domain.sourcelink.json
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0442/backend/src/HearingCalendar.Domain/obj/Debug/net9.0/HearingCalendar.Domain.dll
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0442/backend/src/HearingCalendar.Domain/obj/Debug/net9.0/refint/HearingCalendar.Domain.dll
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0442/backend/src/HearingCalendar.Domain/obj/Debug/net9.0/HearingCalendar.Domain.pdb
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0442/backend/src/HearingCalendar.Domain/obj/Debug/net9.0/ref/HearingCalendar.Domain.dll

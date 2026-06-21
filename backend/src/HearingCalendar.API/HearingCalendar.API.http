@@ -1,0 +1,6 @@
+@HearingCalendar.API_HostAddress = http://localhost:5227
+
+GET {{HearingCalendar.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

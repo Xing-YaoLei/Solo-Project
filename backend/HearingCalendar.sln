@@ -1,0 +1,48 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{8A53A341-7DB3-4A36-9DBA-2A874DCAA552}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HearingCalendar.API", "src\HearingCalendar.API\HearingCalendar.API.csproj", "{F28917DF-BFD1-45B8-8A95-5986904F93BC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HearingCalendar.Application", "src\HearingCalendar.Application\HearingCalendar.Application.csproj", "{C18B0D80-DBE4-4981-AF0E-B38C9ABBF96C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HearingCalendar.Domain", "src\HearingCalendar.Domain\HearingCalendar.Domain.csproj", "{854CC3B7-2F46-464C-9808-E7B9E6912DCB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HearingCalendar.Infrastructure", "src\HearingCalendar.Infrastructure\HearingCalendar.Infrastructure.csproj", "{15C3D6C7-C91C-4D50-B993-7762FB71C4D0}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F28917DF-BFD1-45B8-8A95-5986904F93BC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F28917DF-BFD1-45B8-8A95-5986904F93BC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F28917DF-BFD1-45B8-8A95-5986904F93BC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F28917DF-BFD1-45B8-8A95-5986904F93BC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C18B0D80-DBE4-4981-AF0E-B38C9ABBF96C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C18B0D80-DBE4-4981-AF0E-B38C9ABBF96C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C18B0D80-DBE4-4981-AF0E-B38C9ABBF96C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C18B0D80-DBE4-4981-AF0E-B38C9ABBF96C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{854CC3B7-2F46-464C-9808-E7B9E6912DCB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{854CC3B7-2F46-464C-9808-E7B9E6912DCB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{854CC3B7-2F46-464C-9808-E7B9E6912DCB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{854CC3B7-2F46-464C-9808-E7B9E6912DCB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{15C3D6C7-C91C-4D50-B993-7762FB71C4D0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{15C3D6C7-C91C-4D50-B993-7762FB71C4D0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{15C3D6C7-C91C-4D50-B993-7762FB71C4D0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{15C3D6C7-C91C-4D50-B993-7762FB71C4D0}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{F28917DF-BFD1-45B8-8A95-5986904F93BC} = {8A53A341-7DB3-4A36-9DBA-2A874DCAA552}
+		{C18B0D80-DBE4-4981-AF0E-B38C9ABBF96C} = {8A53A341-7DB3-4A36-9DBA-2A874DCAA552}
+		{854CC3B7-2F46-464C-9808-E7B9E6912DCB} = {8A53A341-7DB3-4A36-9DBA-2A874DCAA552}
+		{15C3D6C7-C91C-4D50-B993-7762FB71C4D0} = {8A53A341-7DB3-4A36-9DBA-2A874DCAA552}
+	EndGlobalSection
+EndGlobal
