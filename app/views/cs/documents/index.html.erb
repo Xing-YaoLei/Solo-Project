@@ -1,0 +1,74 @@
+<% content_for :page_title, '文档管理' %>
+
+<div class="p-6 space-y-6">
+  <div class="flex items-center justify-between">
+    <div class="flex items-center gap-4">
+      <div class="flex items-center gap-2 bg-white rounded-lg p-1 shadow-sm">
+        <button class="px-4 py-2 rounded-md bg-[#1e3a5f] text-white text-sm font-medium flex items-center gap-2">
+          <i data-lucide="grid" class="w-4 h-4"></i>
+          网格
+        </button>
+        <button class="px-4 py-2 rounded-md text-gray-600 hover:bg-gray-100 text-sm font-medium flex items-center gap-2">
+          <i data-lucide="list" class="w-4 h-4"></i>
+          列表
+        </button>
+      </div>
+      <input type="text" placeholder="搜索文档..." class="px-4 py-2 border border-gray-200 rounded-lg text-sm focus:border-[#1e3a5f] focus:ring-2 focus:ring-[#1e3a5f]/10 outline-none w-64">
+      <select class="px-4 py-2 border border-gray-200 rounded-lg text-sm focus:border-[#1e3a5f] focus:ring-2 focus:ring-[#1e3a5f]/10 outline-none">
+        <option>全部类型</option>
+        <option>PDF</option>
+        <option>Excel</option>
+        <option>图片</option>
+      </select>
+    </div>
+    <div class="flex items-center gap-3">
+      <button class="px-4 py-2.5 border border-gray-200 rounded-lg text-gray-600 hover:border-[#1e3a5f] hover:text-[#1e3a5f] transition-colors flex items-center gap-2">
+        <i data-lucide="folder-plus" class="w-4 h-4"></i>
+        新建文件夹
+      </button>
+      <button class="px-5 py-2.5 bg-[#1e3a5f] text-white rounded-lg hover:bg-[#2d4a6f] transition-colors flex items-center gap-2 font-medium">
+        <i data-lucide="upload" class="w-4 h-4"></i>
+        上传文档
+      </button>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+    <% 6.times do |i| %>
+      <div class="bg-white rounded-2xl p-5 shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1 cursor-pointer group animate-fade-in" style="animation-delay: <%= i * 50 %>ms">
+        <div class="aspect-square rounded-xl bg-gradient-to-br from-[#1e3a5f]/10 to-[#1e3a5f]/5 flex items-center justify-center mb-4 group-hover:from-[#1e3a5f]/20 group-hover:to-[#1e3a5f]/10 transition-colors">
+          <i data-lucide="folder" class="w-12 h-12 text-[#1e3a5f]"></i>
+        </div>
+        <h4 class="font-semibold text-gray-900 truncate"><%= ['结算文档', '合同档案', '财务报表', '商户资料', '审批记录', '差异处理'][i] %></h4>
+        <p class="text-xs text-gray-400 mt-1"><%= 12 + i %> 个文件</p>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="bg-white rounded-2xl p-6 shadow-card animate-fade-in" style="animation-delay: 300ms">
+    <h3 class="text-lg font-bold text-[#1e3a5f] mb-6 font-serif">最近文件</h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <% 6.times do |i| %>
+        <div class="flex items-center gap-4 p-4 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer group">
+          <div class="w-12 h-12 rounded-xl <%= ['bg-red-100', 'bg-green-100', 'bg-blue-100', 'bg-yellow-100', 'bg-purple-100', 'bg-orange-100'][i] %> flex items-center justify-center">
+            <i data-lucide="<%= ['file-text', 'file-spreadsheet', 'file-image', 'file-text', 'file-spreadsheet', 'file-image'][i] %>"
+               class="w-6 h-6 <%= ['text-red-600', 'text-green-600', 'text-blue-600', 'text-yellow-600', 'text-purple-600', 'text-orange-600'][i] %>"></i>
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="font-medium text-gray-900 truncate">结算单_2024第<%= 24 - i %>周.pdf</p>
+            <div class="flex items-center gap-3 mt-1 text-xs text-gray-400">
+              <span><%= (i + 1) * 256 %> KB</span>
+              <span>·</span>
+              <span><%= (i + 1) * 2 %>小时前</span>
+            </div>
+          </div>
+          <div class="opacity-0 group-hover:opacity-100 transition-opacity">
+            <button class="p-2 rounded-lg hover:bg-gray-100">
+              <i data-lucide="more-vertical" class="w-4 h-4 text-gray-500"></i>
+            </button>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

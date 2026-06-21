@@ -1,0 +1,133 @@
+<% content_for :page_title, '骑手首页' %>
+
+<div class="p-6 space-y-6">
+  <div class="bg-gradient-to-r from-[#1e3a5f] to-[#2d4a6f] rounded-2xl p-8 text-white animate-fade-in">
+    <div class="flex items-center gap-6">
+      <div class="w-20 h-20 rounded-full bg-white/10 backdrop-blur flex items-center justify-center">
+        <span class="text-3xl font-bold">李</span>
+      </div>
+      <div>
+        <h1 class="text-3xl font-bold font-serif">李四</h1>
+        <p class="text-white/70 mt-1">骑手编号: RD20240001</p>
+        <div class="flex items-center gap-4 mt-3">
+          <span class="px-3 py-1 bg-white/10 rounded-full text-sm">金牌骑手</span>
+          <span class="flex items-center gap-1 text-sm text-white/70">
+            <i data-lucide="star" class="w-4 h-4 text-yellow-400 fill-yellow-400"></i>
+            4.9 分
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <%= render StatCardComponent.new(
+      title: '今日配送',
+      value: '28',
+      icon: 'truck',
+      trend: 'up',
+      trend_value: '+5',
+      color: 'blue'
+    ) %>
+    <%= render StatCardComponent.new(
+      title: '今日收入',
+      value: '¥356',
+      icon: 'wallet',
+      trend: 'up',
+      trend_value: '+12%',
+      color: 'green'
+    ) %>
+    <%= render StatCardComponent.new(
+      title: '待提现',
+      value: '¥2,458',
+      icon: 'credit-card',
+      trend: 'up',
+      trend_value: '+¥356',
+      color: 'orange'
+    ) %>
+    <%= render StatCardComponent.new(
+      title: '本月收入',
+      value: '¥8,560',
+      icon: 'trending-up',
+      trend: 'up',
+      trend_value: '+18%',
+      color: 'purple'
+    ) %>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="lg:col-span-2 bg-white rounded-2xl p-6 shadow-card animate-fade-in" style="animation-delay: 100ms">
+      <div class="flex items-center justify-between mb-6">
+        <h3 class="text-lg font-bold text-[#1e3a5f] font-serif">配送趋势</h3>
+        <div class="flex items-center gap-2">
+          <button class="px-3 py-1.5 text-sm rounded-lg bg-[#1e3a5f] text-white">周</button>
+          <button class="px-3 py-1.5 text-sm rounded-lg text-gray-500 hover:bg-gray-100">月</button>
+        </div>
+      </div>
+      <div data-controller="chart"
+           data-chart-type-value="bar"
+           data-chart-data-value="<%= {
+             labels: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
+             series: [
+               { name: '配送单量', data: [25, 30, 28, 35, 32, 40, 28] }
+             ]
+           }.to_json %>"
+           style="height: 300px;">
+      </div>
+    </div>
+
+    <div class="bg-white rounded-2xl p-6 shadow-card animate-fade-in" style="animation-delay: 200ms">
+      <h3 class="text-lg font-bold text-[#1e3a5f] mb-6 font-serif">快捷操作</h3>
+      <div class="grid grid-cols-2 gap-4">
+        <button class="flex flex-col items-center gap-3 p-5 rounded-xl bg-[#1e3a5f] text-white hover:bg-[#2d4a6f] transition-colors">
+          <i data-lucide="map-pin" class="w-8 h-8"></i>
+          <span class="font-medium">开始接单</span>
+        </button>
+        <button class="flex flex-col items-center gap-3 p-5 rounded-xl bg-[#10b981] text-white hover:bg-[#059669] transition-colors">
+          <i data-lucide="wallet" class="w-8 h-8"></i>
+          <span class="font-medium">申请提现</span>
+        </button>
+        <button class="flex flex-col items-center gap-3 p-5 rounded-xl bg-[#f59e0b] text-white hover:bg-[#d97706] transition-colors">
+          <i data-lucide="history" class="w-8 h-8"></i>
+          <span class="font-medium">配送记录</span>
+        </button>
+        <button class="flex flex-col items-center gap-3 p-5 rounded-xl bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors">
+          <i data-lucide="headphones" class="w-8 h-8"></i>
+          <span class="font-medium">联系客服</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-2xl shadow-card overflow-hidden animate-fade-in" style="animation-delay: 300ms">
+    <div class="p-6 border-b border-gray-100">
+      <div class="flex items-center justify-between">
+        <h3 class="text-lg font-bold text-[#1e3a5f] font-serif">最近配送</h3>
+        <a href="/rider/delivery_orders" class="text-sm text-[#1e3a5f] hover:underline flex items-center gap-1">
+          查看全部 <i data-lucide="arrow-right" class="w-4 h-4"></i>
+        </a>
+      </div>
+    </div>
+    <div class="divide-y divide-gray-50">
+      <% 5.times do |i| %>
+        <div class="p-4 hover:bg-gray-50 transition-colors">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-4">
+              <div class="w-12 h-12 rounded-xl <%= i == 0 ? 'bg-green-100' : 'bg-gray-100' %> flex items-center justify-center">
+                <i data-lucide="<%= i == 0 ? 'clock' : 'check-circle' %>" class="w-6 h-6 <%= i == 0 ? 'text-green-600' : 'text-gray-400' %>"></i>
+              </div>
+              <div>
+                <p class="font-medium text-gray-900">配送订单 #<%= sprintf('%08d', 12345678 + i) %></p>
+                <p class="text-sm text-gray-500">美味餐饮 · 配送至 北京市朝阳区xxx街道</p>
+              </div>
+            </div>
+            <div class="text-right">
+              <p class="font-bold text-[#1e3a5f] font-serif">¥<%= sprintf('%.2f', 8 + i * 1.5) %></p>
+              <p class="text-xs text-gray-400"><%= i == 0 ? '配送中' : '已完成' %></p>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

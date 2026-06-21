@@ -1,0 +1,147 @@
+<% content_for :page_title, '经理首页' %>
+
+<div class="p-6 space-y-6">
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <%= render StatCardComponent.new(
+      title: '本月总交易额',
+      value: '¥5,286,420',
+      icon: 'dollar-sign',
+      trend: 'up',
+      trend_value: '+15.3%',
+      color: 'blue'
+    ) %>
+    <%= render StatCardComponent.new(
+      title: '活跃商户',
+      value: '156',
+      icon: 'store',
+      trend: 'up',
+      trend_value: '+8',
+      color: 'green'
+    ) %>
+    <%= render StatCardComponent.new(
+      title: '待审批',
+      value: '23',
+      icon: 'check-square',
+      trend: 'down',
+      trend_value: '-5',
+      color: 'orange'
+    ) %>
+    <%= render StatCardComponent.new(
+      title: '异常订单',
+      value: '7',
+      icon: 'alert-triangle',
+      trend: 'up',
+      trend_value: '+2',
+      color: 'red'
+    ) %>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="lg:col-span-2 bg-white rounded-2xl p-6 shadow-card animate-fade-in">
+      <div class="flex items-center justify-between mb-6">
+        <h3 class="text-lg font-bold text-[#1e3a5f] font-serif">交易趋势</h3>
+        <div class="flex items-center gap-2">
+          <button class="px-3 py-1.5 text-sm rounded-lg text-gray-500 hover:bg-gray-100">周</button>
+          <button class="px-3 py-1.5 text-sm rounded-lg bg-[#1e3a5f] text-white">月</button>
+          <button class="px-3 py-1.5 text-sm rounded-lg text-gray-500 hover:bg-gray-100">季</button>
+          <button class="px-3 py-1.5 text-sm rounded-lg text-gray-500 hover:bg-gray-100">年</button>
+        </div>
+      </div>
+      <div data-controller="chart"
+           data-chart-type-value="area"
+           data-chart-data-value="<%= {
+             labels: ['1月', '2月', '3月', '4月', '5月', '6月'],
+             series: [
+               { name: '交易额', data: [4200000, 4500000, 4800000, 5100000, 4900000, 5286420] }
+             ]
+           }.to_json %>"
+           style="height: 320px;">
+      </div>
+    </div>
+
+    <div class="bg-white rounded-2xl p-6 shadow-card animate-fade-in" style="animation-delay: 100ms">
+      <div class="flex items-center justify-between mb-6">
+        <h3 class="text-lg font-bold text-[#1e3a5f] font-serif">商户分布</h3>
+        <button class="text-sm text-[#1e3a5f] hover:underline">详情</button>
+      </div>
+      <div data-controller="chart"
+           data-chart-type-value="pie"
+           data-chart-data-value="<%= {
+             data: [
+               { value: 45, name: '餐饮美食' },
+               { value: 30, name: '超市便利' },
+               { value: 25, name: '水果生鲜' },
+               { value: 20, name: '甜品饮品' },
+               { value: 15, name: '其他' }
+             ]
+           }.to_json %>"
+           style="height: 280px;">
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="bg-white rounded-2xl shadow-card overflow-hidden animate-fade-in" style="animation-delay: 200ms">
+      <div class="p-6 border-b border-gray-100">
+        <div class="flex items-center justify-between">
+          <h3 class="text-lg font-bold text-[#1e3a5f] font-serif">待审批</h3>
+          <a href="/manager/approvals" class="text-sm text-[#1e3a5f] hover:underline flex items-center gap-1">
+            查看全部 <i data-lucide="arrow-right" class="w-4 h-4"></i>
+          </a>
+        </div>
+      </div>
+      <div class="divide-y divide-gray-50">
+        <% 5.times do |i| %>
+          <div class="p-4 hover:bg-gray-50 transition-colors">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl <%= i < 2 ? 'bg-red-100' : 'bg-orange-100' %> flex items-center justify-center">
+                  <i data-lucide="<%= i < 2 ? 'alert-triangle' : 'file-text' %>" class="w-5 h-5 <%= i < 2 ? 'text-red-600' : 'text-orange-600' %>"></i>
+                </div>
+                <div>
+                  <p class="font-medium text-gray-900"><%= ['大额结算审批', '差异处理审批', '结算单 #10023', '商户合同续签', '特殊退款申请'][i] %></p>
+                  <p class="text-xs text-gray-500">申请人：<%= ['张三', '李四', '王五', '赵六', '孙七'][i] %></p>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-gray-400"><%= (i + 1).hours.ago.strftime('%H:%M') %></span>
+                <button class="px-3 py-1.5 text-sm text-[#1e3a5f] border border-[#1e3a5f] rounded-lg hover:bg-[#1e3a5f] hover:text-white transition-colors">
+                  审批
+                </button>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-card overflow-hidden animate-fade-in" style="animation-delay: 300ms">
+      <div class="p-6 border-b border-gray-100">
+        <div class="flex items-center justify-between">
+          <h3 class="text-lg font-bold text-[#1e3a5f] font-serif">商户排行</h3>
+          <a href="/manager/reports/overview" class="text-sm text-[#1e3a5f] hover:underline flex items-center gap-1">
+            查看更多 <i data-lucide="arrow-right" class="w-4 h-4"></i>
+          </a>
+        </div>
+      </div>
+      <div class="divide-y divide-gray-50">
+        <% 5.times do |i| %>
+          <div class="p-4 hover:bg-gray-50 transition-colors">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-lg <%= i < 3 ? 'bg-gradient-to-br from-[#f59e0b] to-[#f97316]' : 'bg-gray-100' %> flex items-center justify-center text-white font-bold text-sm">
+                  <%= i + 1 %>
+                </span>
+                <div>
+                  <p class="font-medium text-gray-900">商户<%= i + 1 %></p>
+                  <p class="text-xs text-gray-500"><%= 120 + i * 15 %> 笔订单</p>
+                </div>
+              </div>
+              <p class="font-bold text-[#1e3a5f] font-serif">¥<%= number_with_delimiter(sprintf('%.0f', 85000 + i * 12345)) %></p>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

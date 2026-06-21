@@ -1,0 +1,21 @@
+<div class="bg-white rounded-2xl p-6 shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1 animate-fade-in">
+  <div class="flex items-start justify-between">
+    <div>
+      <p class="text-sm text-gray-500 font-medium"><%= @title %></p>
+      <p class="text-3xl font-bold text-[#1e3a5f] mt-2 font-serif"><%= @value %></p>
+      <% if @trend && @trend_value %>
+        <div class="flex items-center gap-1 mt-2">
+          <i data-lucide="<%= trend_icon %>" class="w-4 h-4 <%= trend_color_class %>"></i>
+          <span class="text-sm font-medium <%= trend_color_class %>"><%= @trend_value %></span>
+          <span class="text-xs text-gray-400">较上月</span>
+        </div>
+      <% end %>
+    </div>
+    <div class="w-14 h-14 rounded-xl <%= icon_color_classes %> flex items-center justify-center">
+      <i data-lucide="<%= @icon %>" class="w-7 h-7"></i>
+    </div>
+  </div>
+  <div class="mt-4 h-1 bg-gray-100 rounded-full overflow-hidden">
+    <div class="h-full bg-gradient-to-r <%= color_classes %> rounded-full animate-progress" style="width: 75%"></div>
+  </div>
+</div>

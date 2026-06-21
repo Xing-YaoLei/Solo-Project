@@ -1,0 +1,41 @@
+<aside class="w-60 bg-[#1e3a5f] min-h-screen flex flex-col shadow-xl">
+  <div class="p-6 border-b border-white/10">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-[#f59e0b] to-[#f97316] flex items-center justify-center">
+        <i data-lucide="wallet" class="w-6 h-6 text-white"></i>
+      </div>
+      <div>
+        <h1 class="text-white font-bold text-lg font-serif">结算管理</h1>
+        <p class="text-white/60 text-xs">Solo Platform</p>
+      </div>
+    </div>
+  </div>
+
+  <nav class="flex-1 p-4 space-y-1">
+    <% menu_items.each do |item| %>
+      <a href="<%= item[:path] %>"
+         class="flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-300 group
+                <%= item[:active] ? 'bg-white/20 text-white shadow-lg' : 'text-white/70 hover:bg-white/10 hover:text-white' %>">
+        <i data-lucide="<%= item[:icon] %>" class="w-5 h-5 flex-shrink-0"></i>
+        <span class="font-medium"><%= item[:name] %></span>
+        <% if item[:active] %>
+          <div class="ml-auto w-1.5 h-1.5 rounded-full bg-[#f59e0b] animate-pulse"></div>
+        <% end %>
+      </a>
+    <% end %>
+  </nav>
+
+  <div class="p-4 border-t border-white/10">
+    <div class="bg-white/5 rounded-lg p-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#10b981] to-[#059669] flex items-center justify-center text-white font-bold">
+          <%= @current_user.name.first %>
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="text-white font-medium truncate"><%= @current_user.name %></p>
+          <p class="text-white/60 text-xs"><%= role_label(@current_user.role) %></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</aside>

@@ -1,0 +1,141 @@
+<% content_for :page_title, '结算台' %>
+
+<div class="p-6 space-y-6">
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <%= render StatCardComponent.new(
+      title: '本月结算金额',
+      value: '¥2,458,620',
+      icon: 'wallet',
+      trend: 'up',
+      trend_value: '+12.5%',
+      color: 'blue'
+    ) %>
+    <%= render StatCardComponent.new(
+      title: '待处理结算单',
+      value: '28',
+      icon: 'file-text',
+      trend: 'up',
+      trend_value: '+8',
+      color: 'orange'
+    ) %>
+    <%= render StatCardComponent.new(
+      title: '待处理差异',
+      value: '15',
+      icon: 'alert-triangle',
+      trend: 'down',
+      trend_value: '-3',
+      color: 'red'
+    ) %>
+    <%= render StatCardComponent.new(
+      title: '今日完成',
+      value: '12',
+      icon: 'check-circle-2',
+      trend: 'up',
+      trend_value: '+25%',
+      color: 'green'
+    ) %>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="lg:col-span-2 bg-white rounded-2xl p-6 shadow-card animate-fade-in">
+      <div class="flex items-center justify-between mb-6">
+        <h3 class="text-lg font-bold text-[#1e3a5f] font-serif">结算趋势</h3>
+        <div class="flex items-center gap-2">
+          <button class="px-3 py-1.5 text-sm rounded-lg bg-[#1e3a5f] text-white">周</button>
+          <button class="px-3 py-1.5 text-sm rounded-lg text-gray-500 hover:bg-gray-100">月</button>
+          <button class="px-3 py-1.5 text-sm rounded-lg text-gray-500 hover:bg-gray-100">年</button>
+        </div>
+      </div>
+      <div data-controller="chart"
+           data-chart-type-value="area"
+           data-chart-data-value="<%= {
+             labels: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
+             series: [
+               { name: '系统金额', data: [450000, 520000, 480000, 610000, 550000, 420000, 380000] },
+               { name: '商户金额', data: [440000, 510000, 475000, 600000, 545000, 415000, 375000] }
+             ]
+           }.to_json %>"
+           style="height: 320px;">
+      </div>
+    </div>
+
+    <div class="bg-white rounded-2xl p-6 shadow-card animate-fade-in" style="animation-delay: 100ms">
+      <div class="flex items-center justify-between mb-6">
+        <h3 class="text-lg font-bold text-[#1e3a5f] font-serif">状态分布</h3>
+        <button class="text-sm text-[#1e3a5f] hover:underline">详情</button>
+      </div>
+      <div data-controller="chart"
+           data-chart-type-value="pie"
+           data-chart-data-value="<%= {
+             data: [
+               { value: 45, name: '已完成' },
+               { value: 28, name: '待处理' },
+               { value: 15, name: '有差异' },
+               { value: 8, name: '审批中' },
+               { value: 4, name: '已拒绝' }
+             ]
+           }.to_json %>"
+           style="height: 280px;">
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="bg-white rounded-2xl shadow-card overflow-hidden animate-fade-in" style="animation-delay: 200ms">
+      <div class="p-6 border-b border-gray-100">
+        <div class="flex items-center justify-between">
+          <h3 class="text-lg font-bold text-[#1e3a5f] font-serif">待处理结算单</h3>
+          <a href="/cs/settlements" class="text-sm text-[#1e3a5f] hover:underline flex items-center gap-1">
+            查看全部 <i data-lucide="arrow-right" class="w-4 h-4"></i>
+          </a>
+        </div>
+      </div>
+      <div class="divide-y divide-gray-50">
+        <% 5.times do |i| %>
+          <div class="p-4 hover:bg-gray-50 transition-colors cursor-pointer">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-[#1e3a5f] to-[#2d4a6f] flex items-center justify-center text-white font-bold text-sm">
+                  #<%= 10023 + i %>
+                </div>
+                <div>
+                  <p class="font-medium text-gray-900">商户名称 #<%= i + 1 %></p>
+                  <p class="text-xs text-gray-500">2024年第<%= 24 - i %>周</p>
+                </div>
+              </div>
+              <div class="text-right">
+                <p class="font-bold text-[#1e3a5f] font-serif">¥<%= number_with_delimiter((25000 + i * 12345).to_s) %></p>
+                <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-600">待处理</span>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-card overflow-hidden animate-fade-in" style="animation-delay: 300ms">
+      <div class="p-6 border-b border-gray-100">
+        <div class="flex items-center justify-between">
+          <h3 class="text-lg font-bold text-[#1e3a5f] font-serif">待办事项</h3>
+          <a href="/cs/todo_items" class="text-sm text-[#1e3a5f] hover:underline flex items-center gap-1">
+            查看全部 <i data-lucide="arrow-right" class="w-4 h-4"></i>
+          </a>
+        </div>
+      </div>
+      <div class="p-4 space-y-3">
+        <% 4.times do |i| %>
+          <div class="flex items-start gap-3 p-3 rounded-xl bg-gray-50 hover:bg-[#1e3a5f]/5 transition-colors">
+            <div class="w-2 h-2 rounded-full mt-2 <%= i < 2 ? 'bg-[#ef4444] animate-pulse' : 'bg-[#f59e0b]' %>"></div>
+            <div class="flex-1 min-w-0">
+              <p class="font-medium text-gray-900 text-sm">核对结算单 #<%= 10023 + i %> 的金额差异</p>
+              <p class="text-xs text-gray-500 mt-1">截止时间: <%= (Date.today + i).strftime('%Y-%m-%d') %></p>
+            </div>
+            <span class="px-2 py-0.5 rounded-full text-xs font-medium <%= i < 2 ? 'bg-red-100 text-red-600' : 'bg-orange-100 text-orange-600' %>">
+              <%= i < 2 ? '紧急' : '高' %>
+            </span>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

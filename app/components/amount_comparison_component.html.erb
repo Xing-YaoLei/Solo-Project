@@ -1,0 +1,70 @@
+<div class="bg-white rounded-2xl p-6 shadow-card animate-fade-in">
+  <h3 class="text-lg font-bold text-[#1e3a5f] mb-6 font-serif">金额对比分析</h3>
+
+  <div class="space-y-6">
+    <div>
+      <div class="flex items-center justify-between mb-2">
+        <div class="flex items-center gap-2">
+          <div class="w-3 h-3 rounded-full bg-[#1e3a5f]"></div>
+          <span class="text-sm font-medium text-gray-700">系统金额</span>
+        </div>
+        <span class="text-lg font-bold text-[#1e3a5f] font-serif">¥<%= number_with_delimiter(sprintf('%.2f', @settlement.system_amount)) %></span>
+      </div>
+      <div class="h-4 bg-gray-100 rounded-full overflow-hidden">
+        <div class="h-full bg-gradient-to-r from-[#1e3a5f] to-[#2d4a6f] rounded-full transition-all duration-1000"
+             style="width: <%= system_bar_width %>%"></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="flex items-center justify-between mb-2">
+        <div class="flex items-center gap-2">
+          <div class="w-3 h-3 rounded-full bg-[#f59e0b]"></div>
+          <span class="text-sm font-medium text-gray-700">商户金额</span>
+        </div>
+        <span class="text-lg font-bold text-[#f59e0b] font-serif">¥<%= number_with_delimiter(sprintf('%.2f', @settlement.merchant_amount)) %></span>
+      </div>
+      <div class="h-4 bg-gray-100 rounded-full overflow-hidden">
+        <div class="h-full bg-gradient-to-r from-[#f59e0b] to-[#f97316] rounded-full transition-all duration-1000"
+             style="width: <%= merchant_bar_width %>%"></div>
+      </div>
+    </div>
+
+    <div class="pt-4 border-t border-gray-100">
+      <div class="flex items-center justify-between">
+        <span class="text-sm font-medium text-gray-500">差异金额</span>
+        <div class="flex items-center gap-2">
+          <span class="text-2xl font-bold <%= difference_color %> font-serif">
+            <%= @settlement.difference_amount > 0 ? '+' : '' %>¥<%= number_with_delimiter(sprintf('%.2f', @settlement.difference_amount)) %>
+          </span>
+          <span class="px-2 py-1 rounded-full text-xs font-medium <%= difference_bg_color %> <%= difference_color %>">
+            <%= difference_percentage %>%
+          </span>
+        </div>
+      </div>
+
+      <% if @settlement.difference_amount != 0 %>
+        <div class="mt-4 p-4 rounded-xl <%= difference_bg_color %>">
+          <div class="flex items-start gap-3">
+            <i data-lucide="alert-triangle" class="w-5 h-5 <%= difference_color %> flex-shrink-0 mt-0.5"></i>
+            <div>
+              <p class="text-sm font-medium <%= difference_color %>">存在金额差异</p>
+              <p class="text-xs text-gray-500 mt-1">需要进行差异核对，确认差异原因后再进行结算</p>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4 pt-4 border-t border-gray-100">
+      <div class="text-center p-3 bg-gray-50 rounded-xl">
+        <p class="text-xs text-gray-500 mb-1">结算周期</p>
+        <p class="font-bold text-gray-900"><%= @settlement.period %></p>
+      </div>
+      <div class="text-center p-3 bg-gray-50 rounded-xl">
+        <p class="text-xs text-gray-500 mb-1">付款日期</p>
+        <p class="font-bold text-gray-900"><%= @settlement.payment_date&.strftime('%Y-%m-%d') || '待确认' %></p>
+      </div>
+    </div>
+  </div>
+</div>

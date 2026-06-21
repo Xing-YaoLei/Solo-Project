@@ -1,0 +1,109 @@
+.btn {
+  @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2;
+}
+
+.btn-primary {
+  @apply bg-[#1e3a5f] text-white hover:bg-[#2d4a6f] focus:ring-[#1e3a5f]/50;
+  box-shadow: 0 4px 12px rgba(30, 58, 95, 0.25);
+}
+
+.btn-primary:hover {
+  box-shadow: 0 6px 20px rgba(30, 58, 95, 0.35);
+  transform: translateY(-1px);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.btn-secondary {
+  @apply bg-white text-[#1e3a5f] border border-[#1e3a5f]/20 hover:bg-[#1e3a5f]/5 focus:ring-[#1e3a5f]/30;
+}
+
+.btn-success {
+  @apply bg-[#10b981] text-white hover:bg-[#059669] focus:ring-[#10b981]/50;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+}
+
+.btn-success:hover {
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.35);
+  transform: translateY(-1px);
+}
+
+.btn-warning {
+  @apply bg-[#f59e0b] text-white hover:bg-[#d97706] focus:ring-[#f59e0b]/50;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.25);
+}
+
+.btn-warning:hover {
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.35);
+  transform: translateY(-1px);
+}
+
+.btn-danger {
+  @apply bg-[#ef4444] text-white hover:bg-[#dc2626] focus:ring-[#ef4444]/50;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+}
+
+.btn-danger:hover {
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.35);
+  transform: translateY(-1px);
+}
+
+.btn-ghost {
+  @apply bg-transparent text-gray-600 hover:bg-gray-100 focus:ring-gray-300;
+}
+
+.btn-sm {
+  @apply px-3 py-1.5 text-xs rounded-lg;
+}
+
+.btn-lg {
+  @apply px-7 py-3.5 text-base rounded-2xl;
+}
+
+.btn-icon {
+  @apply w-10 h-10 p-0 rounded-xl;
+}
+
+.btn-icon-sm {
+  @apply w-8 h-8 p-0 rounded-lg;
+}
+
+.filter-btn {
+  @apply px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 border;
+}
+
+.filter-btn.active {
+  @apply bg-[#1e3a5f] text-white border-[#1e3a5f];
+  box-shadow: 0 4px 12px rgba(30, 58, 95, 0.25);
+}
+
+.filter-btn:not(.active) {
+  @apply bg-white text-gray-600 border-gray-200 hover:border-[#1e3a5f]/30 hover:text-[#1e3a5f];
+}
+
+.toggle-switch {
+  @apply relative w-12 h-6 rounded-full transition-colors duration-200 cursor-pointer;
+}
+
+.toggle-switch.active {
+  @apply bg-[#1e3a5f];
+}
+
+.toggle-switch:not(.active) {
+  @apply bg-gray-300;
+}
+
+.toggle-switch::after {
+  content: '';
+  @apply absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all duration-200;
+}
+
+.toggle-switch.active::after {
+  @apply left-7;
+}
+
+.toggle-switch:not(.active)::after {
+  @apply left-1;
+}

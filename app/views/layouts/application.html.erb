@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title><%= content_for(:title) || "Mp0429" %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="Mp0429">
+    <meta name="mobile-web-app-capable" content="yes">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+
+    <%= yield :head %>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&family=Noto+Serif+SC:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+
+    <link rel="icon" href="/icon.png" type="image/png">
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/icon.png">
+
+    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <%= javascript_include_tag "application", "data-turbo-track": "reload", type: "module" %>
+  </head>
+
+  <body class="bg-gray-50 font-sans antialiased" style="font-family: 'Noto Sans SC', sans-serif;">
+    <% if user_signed_in? %>
+      <div class="flex min-h-screen">
+        <%= render SidebarComponent.new(current_user: current_user, current_path: request.path) %>
+
+        <div class="flex-1 flex flex-col min-w-0">
+          <%= render HeaderComponent.new(current_user: current_user, breadcrumbs: [content_for(:page_title) || '首页']) %>
+
+          <div class="flex flex-1 overflow-hidden">
+            <main class="flex-1 overflow-y-auto bg-gray-50">
+              <%= yield %>
+            </main>
+
+            <% unless content_for?(:hide_filter_sidebar) %>
+            <%= render FilterSidebarComponent.new(current_user: current_user) %>
+          <% end %>
+          </div>
+        </div>
+      </div>
+
+      <%= render ToastComponent.new %>
+    <% else %>
+      <main class="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1e3a5f] to-[#2d4a6f]">
+        <%= yield %>
+      </main>
+    <% end %>
+  </body>
+</html>

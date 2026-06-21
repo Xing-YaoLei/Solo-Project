@@ -1,0 +1,159 @@
+<% content_for :page_title, '付款周期' %>
+<% content_for :breadcrumb do %>
+  <span class="text-gray-500">数据报表</span>
+  <span class="mx-2">/</span>
+  <span class="text-[#1e3a5f] font-medium">付款周期</span>
+<% end %>
+
+<div class="p-6 space-y-6">
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+    <div class="bg-white rounded-2xl p-6 shadow-card">
+      <p class="text-sm text-gray-500">本周待付款</p>
+      <p class="text-3xl font-bold text-[#f59e0b] mt-2 font-serif">¥2,458,620</p>
+      <p class="text-xs text-gray-400 mt-2">共 28 笔</p>
+    </div>
+    <div class="bg-white rounded-2xl p-6 shadow-card">
+      <p class="text-sm text-gray-500">已付款</p>
+      <p class="text-3xl font-bold text-[#10b981] mt-2 font-serif">¥8,562,140</p>
+      <p class="text-xs text-gray-400 mt-2">共 156 笔</p>
+    </div>
+    <div class="bg-white rounded-2xl p-6 shadow-card">
+      <p class="text-sm text-gray-500">逾期未付</p>
+      <p class="text-3xl font-bold text-[#ef4444] mt-2 font-serif">¥125,680</p>
+      <p class="text-xs text-gray-400 mt-2">共 3 笔</p>
+    </div>
+    <div class="bg-white rounded-2xl p-6 shadow-card">
+      <p class="text-sm text-gray-500">平均付款周期</p>
+      <p class="text-3xl font-bold text-[#1e3a5f] mt-2 font-serif">3.2 天</p>
+      <p class="text-xs text-gray-400 mt-2">目标: ≤3 天</p>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="lg:col-span-2 bg-white rounded-2xl p-6 shadow-card animate-fade-in">
+      <div class="flex items-center justify-between mb-6">
+        <h3 class="text-lg font-bold text-[#1e3a5f] font-serif">付款周期分析</h3>
+        <select class="px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:border-[#1e3a5f] focus:ring-2 focus:ring-[#1e3a5f]/10 outline-none">
+          <option>最近6个月</option>
+          <option>最近12个月</option>
+        </select>
+      </div>
+      <div data-controller="chart"
+           data-chart-type-value="line"
+           data-chart-data-value="<%= {
+             labels: ['1月', '2月', '3月', '4月', '5月', '6月'],
+             series: [
+               { name: '平均周期(天)', data: [3.5, 3.8, 3.2, 3.0, 3.5, 3.2] }
+             ]
+           }.to_json %>"
+           style="height: 300px;">
+      </div>
+    </div>
+
+    <div class="bg-white rounded-2xl p-6 shadow-card animate-fade-in" style="animation-delay: 100ms">
+      <h3 class="text-lg font-bold text-[#1e3a5f] mb-6 font-serif">付款状态分布</h3>
+      <div data-controller="chart"
+           data-chart-type-value="pie"
+           data-chart-data-value="<%= {
+             data: [
+               { value: 65, name: '按时付款' },
+               { value: 25, name: '提前付款' },
+               { value: 8, name: '延迟付款' },
+               { value: 2, name: '逾期未付' }
+             ]
+           }.to_json %>"
+           style="height: 280px;">
+      </div>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-2xl shadow-card overflow-hidden animate-fade-in" style="animation-delay: 200ms">
+    <div class="p-6 border-b border-gray-100">
+      <div class="flex items-center justify-between">
+        <h3 class="text-lg font-bold text-[#1e3a5f] font-serif">付款计划</h3>
+        <div class="flex items-center gap-2">
+          <select class="px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:border-[#1e3a5f] focus:ring-2 focus:ring-[#1e3a5f]/10 outline-none">
+            <option>本周</option>
+            <option>本月</option>
+            <option>下月</option>
+          </select>
+          <button class="text-sm text-[#1e3a5f] hover:underline flex items-center gap-1">
+            <i data-lucide="download" class="w-4 h-4"></i>
+            导出计划
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">结算单号</th>
+            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">商户名称</th>
+            <th class="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase">应付金额</th>
+            <th class="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase">计划付款日</th>
+            <th class="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase">付款周期</th>
+            <th class="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase">状态</th>
+            <th class="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase">操作</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          <% 12.times do |i| %>
+            <tr class="hover:bg-gray-50 transition-colors">
+              <td class="px-6 py-4">
+                <span class="font-semibold text-[#1e3a5f]">#<%= 10001 + i %></span>
+              </td>
+              <td class="px-6 py-4">
+                <div class="flex items-center gap-2">
+                  <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#1e3a5f] to-[#2d4a6f] flex items-center justify-center text-white text-xs font-bold">
+                    商<%= i + 1 %>
+                  </div>
+                  <span class="text-gray-900">商户<%= i + 1 %></span>
+                </div>
+              </td>
+              <td class="px-6 py-4 text-right">
+                <span class="font-bold text-gray-900 font-serif">¥<%= number_with_delimiter(sprintf('%.2f', 25000 + i * 12345)) %></span>
+              </td>
+              <td class="px-6 py-4 text-center text-gray-600">2024-06-<%= 20 + (i % 10) %></td>
+              <td class="px-6 py-4 text-center">
+                <% days = 2 + (i % 4) %>
+                <span class="px-2 py-1 rounded-full text-xs font-medium
+                             <%= days <= 3 ? 'bg-green-100 text-green-600' : days <= 5 ? 'bg-yellow-100 text-yellow-600' : 'bg-red-100 text-red-600' %>">
+                  <%= days %> 天
+                </span>
+              </td>
+              <td class="px-6 py-4 text-center">
+                <% status = i < 3 ? 'overdue' : i < 8 ? 'pending' : 'paid' %>
+                <span class="px-3 py-1 rounded-full text-xs font-medium
+                             <%= status == 'pending' ? 'bg-orange-100 text-orange-600' : '' %>
+                             <%= status == 'paid' ? 'bg-green-100 text-green-600' : '' %>
+                             <%= status == 'overdue' ? 'bg-red-100 text-red-600' : '' %>">
+                  <%= { pending: '待付款', paid: '已付款', overdue: '已逾期' }[status.to_sym] %>
+                </span>
+              </td>
+              <td class="px-6 py-4 text-center">
+                <div class="flex items-center justify-center gap-2">
+                  <% if status == 'pending' || status == 'overdue' %>
+                    <button class="px-3 py-1.5 text-sm bg-[#1e3a5f] text-white rounded-lg hover:bg-[#2d4a6f] transition-colors">
+                      安排付款
+                    </button>
+                  <% end %>
+                  <button class="p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                    <i data-lucide="eye" class="w-4 h-4 text-gray-500"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+    <%= render PaginationComponent.new(collection: OpenStruct.new(
+      total_pages: 3,
+      current_page: 1,
+      offset_value: 0,
+      limit_value: 10,
+      total_count: 28
+    )) %>
+  </div>
+</div>

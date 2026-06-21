@@ -1,0 +1,88 @@
+<% content_for :page_title, '差异处理' %>
+
+<div class="p-6 space-y-6">
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div class="bg-white rounded-xl p-5 shadow-card">
+      <p class="text-sm text-gray-500">待处理</p>
+      <p class="text-2xl font-bold text-orange-600 mt-2 font-serif">15</p>
+      <div class="w-full h-1 bg-orange-100 rounded-full mt-3">
+        <div class="h-full w-3/4 bg-orange-500 rounded-full"></div>
+      </div>
+    </div>
+    <div class="bg-white rounded-xl p-5 shadow-card">
+      <p class="text-sm text-gray-500">调查中</p>
+      <p class="text-2xl font-bold text-blue-600 mt-2 font-serif">8</p>
+      <div class="w-full h-1 bg-blue-100 rounded-full mt-3">
+        <div class="h-full w-1/2 bg-blue-500 rounded-full"></div>
+      </div>
+    </div>
+    <div class="bg-white rounded-xl p-5 shadow-card">
+      <p class="text-sm text-gray-500">已解决</p>
+      <p class="text-2xl font-bold text-green-600 mt-2 font-serif">42</p>
+      <div class="w-full h-1 bg-green-100 rounded-full mt-3">
+        <div class="h-full w-full bg-green-500 rounded-full"></div>
+      </div>
+    </div>
+    <div class="bg-white rounded-xl p-5 shadow-card">
+      <p class="text-sm text-gray-500">已拒绝</p>
+      <p class="text-2xl font-bold text-red-600 mt-2 font-serif">5</p>
+      <div class="w-full h-1 bg-red-100 rounded-full mt-3">
+        <div class="h-full w-1/6 bg-red-500 rounded-full"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="flex items-center justify-between">
+    <div class="flex items-center gap-2 bg-white rounded-lg p-1 shadow-sm">
+      <button class="px-4 py-2 rounded-md bg-[#1e3a5f] text-white text-sm font-medium">全部</button>
+      <button class="px-4 py-2 rounded-md text-gray-600 hover:bg-gray-100 text-sm font-medium">待处理</button>
+      <button class="px-4 py-2 rounded-md text-gray-600 hover:bg-gray-100 text-sm font-medium">调查中</button>
+      <button class="px-4 py-2 rounded-md text-gray-600 hover:bg-gray-100 text-sm font-medium">已解决</button>
+      <button class="px-4 py-2 rounded-md text-gray-600 hover:bg-gray-100 text-sm font-medium">已拒绝</button>
+    </div>
+    <div class="flex items-center gap-3">
+      <input type="text" placeholder="搜索商户、结算单号..." class="px-4 py-2 border border-gray-200 rounded-lg text-sm focus:border-[#1e3a5f] focus:ring-2 focus:ring-[#1e3a5f]/10 outline-none w-64">
+      <select class="px-4 py-2 border border-gray-200 rounded-lg text-sm focus:border-[#1e3a5f] focus:ring-2 focus:ring-[#1e3a5f]/10 outline-none">
+        <option>差异金额</option>
+        <option>大于1000</option>
+        <option>大于5000</option>
+        <option>大于10000</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <% 6.times do |i| %>
+      <%= render DiscrepancyComponent.new(discrepancy: OpenStruct.new(
+        id: 1001 + i,
+        status: %w[pending investigating resolved rejected].sample,
+        reason: ['订单金额统计差异', '配送费计算错误', '优惠活动抵扣差异', '退款金额不一致'][i % 4],
+        difference_amount: (i + 1) * 1234.56,
+        created_at: (i + 1).days.ago,
+        settlement: OpenStruct.new(
+          period: "2024年第#{24 - i}周",
+          merchant: OpenStruct.new(name: "商户#{i + 1}"),
+          system_amount: 528642.50,
+          merchant_amount: 512345.00
+        ),
+        supplement_materials: []
+      )) %>
+    <% end %>
+  </div>
+
+  <div class="flex justify-center">
+    <nav class="flex items-center gap-1">
+      <button class="px-3 py-2 rounded-lg text-gray-400 cursor-not-allowed">
+        <i data-lucide="chevron-left" class="w-4 h-4"></i>
+      </button>
+      <span class="px-4 py-2 rounded-lg bg-[#1e3a5f] text-white font-medium">1</span>
+      <button class="px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 font-medium">2</button>
+      <button class="px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 font-medium">3</button>
+      <span class="px-3 py-2 text-gray-400">...</span>
+      <button class="px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 font-medium">10</button>
+      <button class="px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100">
+        <i data-lucide="chevron-right" class="w-4 h-4"></i>
+      </button>
+    </nav>
+  </div>
+</div>

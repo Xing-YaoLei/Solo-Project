@@ -1,0 +1,164 @@
+<% content_for :page_title, '数据总览' %>
+<% content_for :breadcrumb do %>
+  <span class="text-gray-500">数据报表</span>
+  <span class="mx-2">/</span>
+  <span class="text-[#1e3a5f] font-medium">数据总览</span>
+<% end %>
+
+<div class="p-6 space-y-6">
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div class="bg-white rounded-2xl p-6 shadow-card">
+      <p class="text-sm text-gray-500">总交易额</p>
+      <p class="text-3xl font-bold text-[#1e3a5f] mt-2 font-serif">¥12,586,420</p>
+      <div class="flex items-center gap-1 mt-2 text-sm">
+        <i data-lucide="trending-up" class="w-4 h-4 text-green-600"></i>
+        <span class="text-green-600 font-medium">+18.5%</span>
+        <span class="text-gray-400">同比上月</span>
+      </div>
+    </div>
+    <div class="bg-white rounded-2xl p-6 shadow-card">
+      <p class="text-sm text-gray-500">订单总量</p>
+      <p class="text-3xl font-bold text-[#1e3a5f] mt-2 font-serif">28,456</p>
+      <div class="flex items-center gap-1 mt-2 text-sm">
+        <i data-lucide="trending-up" class="w-4 h-4 text-green-600"></i>
+        <span class="text-green-600 font-medium">+12.3%</span>
+        <span class="text-gray-400">同比上月</span>
+      </div>
+    </div>
+    <div class="bg-white rounded-2xl p-6 shadow-card">
+      <p class="text-sm text-gray-500">活跃商户</p>
+      <p class="text-3xl font-bold text-[#1e3a5f] mt-2 font-serif">156</p>
+      <div class="flex items-center gap-1 mt-2 text-sm">
+        <i data-lucide="trending-up" class="w-4 h-4 text-green-600"></i>
+        <span class="text-green-600 font-medium">+8</span>
+        <span class="text-gray-400">较上月</span>
+      </div>
+    </div>
+    <div class="bg-white rounded-2xl p-6 shadow-card">
+      <p class="text-sm text-gray-500">客单价</p>
+      <p class="text-3xl font-bold text-[#1e3a5f] mt-2 font-serif">¥442</p>
+      <div class="flex items-center gap-1 mt-2 text-sm">
+        <i data-lucide="trending-up" class="w-4 h-4 text-green-600"></i>
+        <span class="text-green-600 font-medium">+5.2%</span>
+        <span class="text-gray-400">同比上月</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="bg-white rounded-2xl p-6 shadow-card animate-fade-in">
+      <div class="flex items-center justify-between mb-6">
+        <h3 class="text-lg font-bold text-[#1e3a5f] font-serif">月度交易趋势</h3>
+        <select class="px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:border-[#1e3a5f] focus:ring-2 focus:ring-[#1e3a5f]/10 outline-none">
+          <option>2024年</option>
+          <option>2023年</option>
+        </select>
+      </div>
+      <div data-controller="chart"
+           data-chart-type-value="bar"
+           data-chart-data-value="<%= {
+             labels: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'],
+             series: [
+               { name: '交易额', data: [8500000, 9200000, 8800000, 10500000, 11200000, 12586420, 0, 0, 0, 0, 0, 0] }
+             ]
+           }.to_json %>"
+           style="height: 350px;">
+      </div>
+    </div>
+
+    <div class="bg-white rounded-2xl p-6 shadow-card animate-fade-in" style="animation-delay: 100ms">
+      <div class="flex items-center justify-between mb-6">
+        <h3 class="text-lg font-bold text-[#1e3a5f] font-serif">商户类型分布</h3>
+      </div>
+      <div data-controller="chart"
+           data-chart-type-value="pie"
+           data-chart-data-value="<%= {
+             data: [
+               { value: 45, name: '餐饮美食' },
+               { value: 30, name: '超市便利' },
+               { value: 25, name: '水果生鲜' },
+               { value: 20, name: '甜品饮品' },
+               { value: 15, name: '医药健康' },
+               { value: 21, name: '其他' }
+             ]
+           }.to_json %>"
+           style="height: 350px;">
+      </div>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-2xl shadow-card overflow-hidden animate-fade-in" style="animation-delay: 200ms">
+    <div class="p-6 border-b border-gray-100">
+      <div class="flex items-center justify-between">
+        <h3 class="text-lg font-bold text-[#1e3a5f] font-serif">商户交易额排行</h3>
+        <div class="flex items-center gap-2">
+          <select class="px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:border-[#1e3a5f] focus:ring-2 focus:ring-[#1e3a5f]/10 outline-none">
+            <option>本月</option>
+            <option>上月</option>
+            <option>本季度</option>
+            <option>本年</option>
+          </select>
+          <button class="text-sm text-[#1e3a5f] hover:underline">导出报表</button>
+        </div>
+      </div>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">排名</th>
+            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">商户名称</th>
+            <th class="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase">订单量</th>
+            <th class="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase">交易额</th>
+            <th class="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase">占比</th>
+            <th class="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase">趋势</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          <% 10.times do |i| %>
+            <tr class="hover:bg-gray-50 transition-colors">
+              <td class="px-6 py-4">
+                <span class="w-8 h-8 rounded-lg <%= i < 3 ? 'bg-gradient-to-br from-[#f59e0b] to-[#f97316]' : 'bg-gray-100' %> flex items-center justify-center text-white font-bold text-sm inline-flex">
+                  <%= i + 1 %>
+                </span>
+              </td>
+              <td class="px-6 py-4">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-[#1e3a5f] to-[#2d4a6f] flex items-center justify-center text-white text-xs font-bold">
+                    商<%= i + 1 %>
+                  </div>
+                  <span class="font-medium text-gray-900">商户<%= i + 1 %></span>
+                </div>
+              </td>
+              <td class="px-6 py-4 text-center text-gray-600"><%= 1200 - i * 85 %></td>
+              <td class="px-6 py-4 text-right">
+                <span class="font-bold text-gray-900 font-serif">¥<%= number_with_delimiter(sprintf('%.0f', 580000 - i * 45678)) %></span>
+              </td>
+              <td class="px-6 py-4">
+                <div class="flex items-center gap-2">
+                  <div class="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div class="h-full bg-gradient-to-r from-[#1e3a5f] to-[#2d4a6f] rounded-full" style="width: <%= 100 - i * 8 %>%"></div>
+                  </div>
+                  <span class="text-sm text-gray-500 w-12 text-right"><%= sprintf('%.1f', 100 - i * 8) %>%</span>
+                </div>
+              </td>
+              <td class="px-6 py-4 text-center">
+                <% if i < 3 %>
+                  <span class="flex items-center justify-center gap-1 text-green-600">
+                    <i data-lucide="trending-up" class="w-4 h-4"></i>
+                    <span class="text-sm"><%= 15 - i * 2 %></span>
+                  </span>
+                <% else %>
+                  <span class="flex items-center justify-center gap-1 text-red-600">
+                    <i data-lucide="trending-down" class="w-4 h-4"></i>
+                    <span class="text-sm"><%= i - 2 %></span>
+                  </span>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,61 @@
+<div class="bg-white rounded-xl p-6 shadow-card hover:shadow-card-hover transition-all duration-300 border-l-4
+            <%= @discrepancy.pending? ? 'border-[#f59e0b]' : '' %>
+            <%= @discrepancy.investigating? ? 'border-[#3b82f6]' : '' %>
+            <%= @discrepancy.resolved? ? 'border-[#10b981]' : '' %>
+            <%= @discrepancy.rejected? ? 'border-[#ef4444]' : '' %>
+            animate-fade-in">
+  <div class="flex items-start justify-between">
+    <div class="flex-1">
+      <div class="flex items-center gap-3 mb-2">
+        <span class="px-3 py-1 rounded-full text-xs font-medium border <%= status_classes %>">
+          <%= status_label %>
+        </span>
+        <span class="text-xs text-gray-400">#<%= @discrepancy.id %></span>
+      </div>
+      <h4 class="font-semibold text-gray-900 mb-1">
+        <%= @discrepancy.reason || '差异原因待确认' %>
+      </h4>
+      <p class="text-sm text-gray-500">
+        结算单: <%= @discrepancy.settlement.period %> · <%= @discrepancy.settlement.merchant.name %>
+      </p>
+    </div>
+    <div class="text-right">
+      <p class="text-2xl font-bold <%= amount_color %> font-serif">
+        <%= amount_prefix %>¥<%= number_with_delimiter(sprintf('%.2f', @discrepancy.difference_amount)) %>
+      </p>
+      <p class="text-xs text-gray-400 mt-1">差异金额</p>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-gray-100">
+    <div>
+      <p class="text-xs text-gray-400 mb-1">系统金额</p>
+      <p class="font-semibold text-gray-900">¥<%= number_with_delimiter(sprintf('%.2f', @discrepancy.settlement.system_amount)) %></p>
+    </div>
+    <div>
+      <p class="text-xs text-gray-400 mb-1">商户金额</p>
+      <p class="font-semibold text-gray-900">¥<%= number_with_delimiter(sprintf('%.2f', @discrepancy.settlement.merchant_amount)) %></p>
+    </div>
+    <div>
+      <p class="text-xs text-gray-400 mb-1">补充材料</p>
+      <p class="font-semibold text-gray-900"><%= @discrepancy.supplement_materials.count %> 份</p>
+    </div>
+  </div>
+
+  <div class="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
+    <div class="flex items-center gap-2 text-xs text-gray-400">
+      <i data-lucide="clock" class="w-3.5 h-3.5"></i>
+      <span><%= time_ago_in_words(@discrepancy.created_at) %>前创建</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <% if @discrepancy.pending? || @discrepancy.investigating? %>
+        <button class="px-4 py-2 text-sm font-medium text-[#1e3a5f] border border-[#1e3a5f] rounded-lg hover:bg-[#1e3a5f] hover:text-white transition-colors">
+          处理
+        </button>
+      <% end %>
+      <button class="px-4 py-2 text-sm font-medium text-gray-600 hover:text-[#1e3a5f] transition-colors">
+        查看详情
+      </button>
+    </div>
+  </div>
+</div>

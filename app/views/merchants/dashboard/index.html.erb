@@ -1,0 +1,147 @@
+<% content_for :page_title, '商户首页' %>
+
+<div class="p-6 space-y-6">
+  <div class="bg-gradient-to-r from-[#1e3a5f] to-[#2d4a6f] rounded-2xl p-8 text-white animate-fade-in">
+    <div class="flex items-start justify-between">
+      <div>
+        <p class="text-white/70 text-sm">欢迎回来</p>
+        <h1 class="text-3xl font-bold mt-2 font-serif">美味餐饮有限公司</h1>
+        <p class="text-white/70 mt-2">商户编号: MC20240001</p>
+      </div>
+      <div class="w-20 h-20 rounded-2xl bg-white/10 backdrop-blur flex items-center justify-center">
+        <i data-lucide="store" class="w-10 h-10 text-white"></i>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <%= render StatCardComponent.new(
+      title: '本月结算金额',
+      value: '¥156,890',
+      icon: 'wallet',
+      trend: 'up',
+      trend_value: '+8.2%',
+      color: 'blue'
+    ) %>
+    <%= render StatCardComponent.new(
+      title: '待确认结算单',
+      value: '3',
+      icon: 'file-text',
+      trend: 'down',
+      trend_value: '-1',
+      color: 'orange'
+    ) %>
+    <%= render StatCardComponent.new(
+      title: '待处理差异',
+      value: '2',
+      icon: 'alert-triangle',
+      trend: 'up',
+      trend_value: '+1',
+      color: 'red'
+    ) %>
+    <%= render StatCardComponent.new(
+      title: '已完成结算',
+      value: '¥428,560',
+      icon: 'check-circle-2',
+      trend: 'up',
+      trend_value: '+15.3%',
+      color: 'green'
+    ) %>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="lg:col-span-2 bg-white rounded-2xl p-6 shadow-card animate-fade-in" style="animation-delay: 100ms">
+      <div class="flex items-center justify-between mb-6">
+        <h3 class="text-lg font-bold text-[#1e3a5f] font-serif">结算趋势</h3>
+        <div class="flex items-center gap-2">
+          <button class="px-3 py-1.5 text-sm rounded-lg bg-[#1e3a5f] text-white">月</button>
+          <button class="px-3 py-1.5 text-sm rounded-lg text-gray-500 hover:bg-gray-100">季</button>
+          <button class="px-3 py-1.5 text-sm rounded-lg text-gray-500 hover:bg-gray-100">年</button>
+        </div>
+      </div>
+      <div data-controller="chart"
+           data-chart-type-value="area"
+           data-chart-data-value="<%= {
+             labels: ['1月', '2月', '3月', '4月', '5月', '6月'],
+             series: [
+               { name: '结算金额', data: [120000, 135000, 142000, 158000, 148000, 156890] }
+             ]
+           }.to_json %>"
+           style="height: 300px;">
+      </div>
+    </div>
+
+    <div class="bg-white rounded-2xl p-6 shadow-card animate-fade-in" style="animation-delay: 200ms">
+      <h3 class="text-lg font-bold text-[#1e3a5f] mb-6 font-serif">结算状态</h3>
+      <div data-controller="chart"
+           data-chart-type-value="pie"
+           data-chart-data-value="<%= {
+             data: [
+               { value: 65, name: '已完成' },
+               { value: 20, name: '待确认' },
+               { value: 10, name: '有差异' },
+               { value: 5, name: '处理中' }
+             ]
+           }.to_json %>"
+           style="height: 280px;">
+      </div>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-2xl shadow-card overflow-hidden animate-fade-in" style="animation-delay: 300ms">
+    <div class="p-6 border-b border-gray-100">
+      <div class="flex items-center justify-between">
+        <h3 class="text-lg font-bold text-[#1e3a5f] font-serif">最近结算单</h3>
+        <a href="/merchants/settlements" class="text-sm text-[#1e3a5f] hover:underline flex items-center gap-1">
+          查看全部 <i data-lucide="arrow-right" class="w-4 h-4"></i>
+        </a>
+      </div>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">结算单号</th>
+            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">周期</th>
+            <th class="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase">系统金额</th>
+            <th class="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase">商户金额</th>
+            <th class="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase">差异</th>
+            <th class="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase">状态</th>
+            <th class="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase">操作</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          <% 5.times do |i| %>
+            <tr class="hover:bg-gray-50 transition-colors">
+              <td class="px-6 py-4 font-semibold text-[#1e3a5f]">#<%= 10020 + i %></td>
+              <td class="px-6 py-4 text-gray-600">2024年第<%= 24 - i %>周</td>
+              <td class="px-6 py-4 font-medium text-right font-serif">¥<%= number_with_delimiter(sprintf('%.2f', 25000 + i * 12345)) %></td>
+              <td class="px-6 py-4 font-medium text-right font-serif">¥<%= number_with_delimiter(sprintf('%.2f', 25000 + i * 12345 - (i % 3 == 0 ? 550 : 0))) %></td>
+              <td class="px-6 py-4 text-right">
+                <% if i % 3 == 0 %>
+                  <span class="font-bold text-red-600 font-serif">+¥550.00</span>
+                <% else %>
+                  <span class="text-gray-400">-</span>
+                <% end %>
+              </td>
+              <td class="px-6 py-4 text-center">
+                <% status = i < 2 ? 'pending' : i == 2 ? 'completed' : 'processing' %>
+                <span class="px-3 py-1 rounded-full text-xs font-medium
+                             <%= status == 'pending' ? 'bg-orange-100 text-orange-600' : '' %>
+                             <%= status == 'completed' ? 'bg-green-100 text-green-600' : '' %>
+                             <%= status == 'processing' ? 'bg-blue-100 text-blue-600' : '' %>">
+                  <%= { pending: '待确认', completed: '已完成', processing: '处理中' }[status.to_sym] %>
+                </span>
+              </td>
+              <td class="px-6 py-4 text-center">
+                <a href="/merchants/settlements/<%= 10020 + i %>" class="text-sm text-[#1e3a5f] hover:underline">
+                  查看
+                </a>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,13 @@
+<div class="fixed top-4 right-4 z-50 animate-slide-in" data-controller="toast" data-toast-duration-value="<%= @duration %>">
+  <div class="flex items-center gap-3 px-5 py-4 rounded-xl <%= type_classes %> text-white shadow-2xl min-w-[320px]">
+    <div class="flex-shrink-0">
+      <i data-lucide="<%= icon %>" class="w-6 h-6"></i>
+    </div>
+    <div class="flex-1">
+      <p class="font-medium"><%= @message %></p>
+    </div>
+    <button class="flex-shrink-0 p-1 rounded-lg hover:bg-white/20 transition-colors" data-action="click->toast#close">
+      <i data-lucide="x" class="w-5 h-5"></i>
+    </button>
+  </div>
+</div>

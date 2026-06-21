@@ -1,0 +1,52 @@
+<header class="h-16 bg-white border-b border-gray-100 flex items-center justify-between px-6 sticky top-0 z-30">
+  <div class="flex items-center gap-4">
+    <h2 class="text-xl font-bold text-[#1e3a5f] font-serif">
+      <%= @title || content_for(:page_title) || '控制台' %>
+    </h2>
+    <% if @breadcrumbs&.any? %>
+      <nav class="flex items-center gap-2 text-sm text-gray-400">
+        <% @breadcrumbs.each_with_index do |crumb, index| %>
+          <% if index > 0 %>
+            <i data-lucide="chevron-right" class="w-4 h-4"></i>
+          <% end %>
+          <span class="<%= index == @breadcrumbs.length - 1 ? 'text-gray-600 font-medium' : '' %>"><%= crumb %></span>
+        <% end %>
+      </nav>
+    <% end %>
+  </div>
+
+  <div class="flex items-center gap-4">
+    <div class="relative">
+      <input type="text"
+             placeholder="搜索结算单、商户、差异..."
+             class="w-72 h-10 pl-10 pr-4 rounded-lg border border-gray-200 focus:border-[#1e3a5f] focus:ring-2 focus:ring-[#1e3a5f]/10 transition-all text-sm outline-none">
+      <i data-lucide="search" class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+    </div>
+
+    <div class="relative" data-controller="modal">
+      <button class="relative p-2 rounded-lg hover:bg-gray-100 transition-colors" data-action="click->modal#toggle">
+        <i data-lucide="bell" class="w-5 h-5 text-gray-600"></i>
+        <% if unread_count > 0 %>
+          <span class="absolute top-1 right-1 w-4 h-4 bg-[#ef4444] text-white text-xs rounded-full flex items-center justify-center">
+            <%= unread_count %>
+          </span>
+        <% end %>
+      </button>
+    </div>
+
+    <div class="h-8 w-px bg-gray-200"></div>
+
+    <div class="flex items-center gap-3">
+      <div class="text-right hidden sm:block">
+        <p class="text-sm font-medium text-gray-900"><%= @current_user.name %></p>
+        <p class="text-xs text-gray-500"><%= role_label(@current_user.role) %></p>
+      </div>
+      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#1e3a5f] to-[#2d4a6f] flex items-center justify-center text-white font-bold cursor-pointer hover:shadow-lg transition-shadow">
+        <%= @current_user.name.first %>
+      </div>
+      <button class="p-2 rounded-lg hover:bg-gray-100 transition-colors">
+        <i data-lucide="settings" class="w-5 h-5 text-gray-600"></i>
+      </button>
+    </div>
+  </div>
+</header>

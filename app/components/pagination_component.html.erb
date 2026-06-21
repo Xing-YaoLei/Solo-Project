@@ -1,0 +1,44 @@
+<div class="flex items-center justify-between px-4 py-3 bg-white border-t border-gray-100">
+  <div class="text-sm text-gray-500">
+    显示第 <span class="font-medium text-gray-900"><%= @collection.offset_value + 1 %></span> -
+    <span class="font-medium text-gray-900"><%= [@collection.offset_value + @collection.limit_value, @collection.total_count].min %></span> 条，
+    共 <span class="font-medium text-gray-900"><%= @collection.total_count %></span> 条记录
+  </div>
+
+  <div class="flex items-center gap-1">
+    <% if previous_page %>
+      <%= link_to url_for(params.permit!.merge(@param_name => previous_page)),
+                  class: 'px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors' do %>
+        <i data-lucide="chevron-left" class="w-4 h-4"></i>
+      <% end %>
+    <% else %>
+      <span class="px-3 py-2 rounded-lg text-gray-300 cursor-not-allowed">
+        <i data-lucide="chevron-left" class="w-4 h-4"></i>
+      </span>
+    <% end %>
+
+    <% visible_pages.each do |page| %>
+      <% if page.nil? %>
+        <span class="px-3 py-2 text-gray-400">...</span>
+      <% else %>
+        <% if page == current_page %>
+          <span class="px-4 py-2 rounded-lg bg-[#1e3a5f] text-white font-medium"><%= page %></span>
+        <% else %>
+          <%= link_to page, url_for(params.permit!.merge(@param_name => page)),
+                      class: 'px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors font-medium' %>
+        <% end %>
+      <% end %>
+    <% end %>
+
+    <% if next_page %>
+      <%= link_to url_for(params.permit!.merge(@param_name => next_page)),
+                  class: 'px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors' do %>
+        <i data-lucide="chevron-right" class="w-4 h-4"></i>
+      <% end %>
+    <% else %>
+      <span class="px-3 py-2 rounded-lg text-gray-300 cursor-not-allowed">
+        <i data-lucide="chevron-right" class="w-4 h-4"></i>
+      </span>
+    <% end %>
+  </div>
+</div>

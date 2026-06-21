@@ -1,0 +1,85 @@
+<aside class="w-80 bg-white border-l border-gray-100 min-h-screen overflow-y-auto" data-controller="filter">
+  <div class="p-6 space-y-6">
+    <div class="animate-fade-in">
+      <h3 class="text-sm font-semibold text-[#1e3a5f] uppercase tracking-wider mb-4 flex items-center gap-2">
+        <i data-lucide="git-merge" class="w-4 h-4"></i>
+        审批节点
+      </h3>
+      <div class="space-y-2">
+        <% approval_nodes.each_with_index do |node, index| %>
+          <div class="flex items-center gap-3 p-3 rounded-lg bg-gray-50 hover:bg-[#1e3a5f]/5 transition-colors cursor-pointer group"
+               style="animation-delay: <%= index * 50 %>ms">
+            <div class="w-8 h-8 rounded-full <%= node.enabled? ? 'bg-[#10b981]' : 'bg-gray-300' %> flex items-center justify-center text-white text-xs font-bold">
+              <%= index + 1 %>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium text-gray-900 truncate"><%= node.name %></p>
+              <p class="text-xs text-gray-500"><%= node.role_name %></p>
+            </div>
+            <div class="w-2 h-2 rounded-full <%= node.enabled? ? 'bg-[#10b981]' : 'bg-gray-300' %>"></div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="animate-fade-in" style="animation-delay: 150ms">
+      <h3 class="text-sm font-semibold text-[#1e3a5f] uppercase tracking-wider mb-4 flex items-center gap-2">
+        <i data-lucide="scale" class="w-4 h-4"></i>
+        金额校验
+      </h3>
+      <div class="space-y-2">
+        <% amount_validation_rules.each do |rule| %>
+          <label class="flex items-center gap-3 p-3 rounded-lg bg-gray-50 hover:bg-[#1e3a5f]/5 transition-colors cursor-pointer">
+            <div class="relative">
+              <input type="checkbox" class="sr-only peer" <%= rule[:enabled] ? 'checked' : '' %> data-filter-target="rule">
+              <div class="w-10 h-6 bg-gray-200 peer-checked:bg-[#1e3a5f] rounded-full transition-colors"></div>
+              <div class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full shadow transition-transform peer-checked:translate-x-4"></div>
+            </div>
+            <div class="flex-1">
+              <p class="text-sm font-medium text-gray-900"><%= rule[:name] %></p>
+              <p class="text-xs text-gray-500">阈值: ¥<%= number_with_delimiter(rule[:threshold]) %></p>
+            </div>
+          </label>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="animate-fade-in" style="animation-delay: 300ms">
+      <h3 class="text-sm font-semibold text-[#1e3a5f] uppercase tracking-wider mb-4 flex items-center gap-2">
+        <i data-lucide="filter" class="w-4 h-4"></i>
+        常用筛选
+      </h3>
+      <div class="grid grid-cols-2 gap-2">
+        <% frequent_filters.each do |filter| %>
+          <button class="flex flex-col items-center gap-2 p-4 rounded-lg bg-gray-50 hover:bg-[#1e3a5f] hover:text-white transition-all duration-300 group"
+                  data-action="filter#apply" data-filter-id="<%= filter[:id] %>">
+            <i data-lucide="<%= filter[:icon] %>" class="w-5 h-5 text-[#1e3a5f] group-hover:text-white transition-colors"></i>
+            <span class="text-xs font-medium"><%= filter[:name] %></span>
+            <span class="text-xs font-bold text-[#f59e0b] group-hover:text-[#fcd34d]"><%= filter[:count] %></span>
+          </button>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="animate-fade-in" style="animation-delay: 450ms">
+      <h3 class="text-sm font-semibold text-[#1e3a5f] uppercase tracking-wider mb-4 flex items-center gap-2">
+        <i data-lucide="activity" class="w-4 h-4"></i>
+        快捷操作
+      </h3>
+      <div class="space-y-2">
+        <button class="w-full flex items-center gap-3 p-3 rounded-lg bg-[#1e3a5f] text-white hover:bg-[#2d4a6f] transition-colors">
+          <i data-lucide="plus" class="w-4 h-4"></i>
+          <span class="text-sm font-medium">新建结算单</span>
+        </button>
+        <button class="w-full flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-[#1e3a5f] hover:text-[#1e3a5f] transition-colors">
+          <i data-lucide="download" class="w-4 h-4"></i>
+          <span class="text-sm font-medium">导出报表</span>
+        </button>
+        <button class="w-full flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-[#1e3a5f] hover:text-[#1e3a5f] transition-colors">
+          <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+          <span class="text-sm font-medium">同步数据</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</aside>

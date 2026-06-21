@@ -1,0 +1,75 @@
+<% content_for :page_title, '待办事项' %>
+
+<div class="p-6 space-y-6">
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div class="bg-white rounded-xl p-5 shadow-card border-l-4 border-[#1e3a5f]">
+      <p class="text-sm text-gray-500">全部待办</p>
+      <p class="text-2xl font-bold text-[#1e3a5f] mt-2 font-serif">32</p>
+    </div>
+    <div class="bg-white rounded-xl p-5 shadow-card border-l-4 border-[#ef4444]">
+      <p class="text-sm text-gray-500">紧急</p>
+      <p class="text-2xl font-bold text-[#ef4444] mt-2 font-serif">5</p>
+    </div>
+    <div class="bg-white rounded-xl p-5 shadow-card border-l-4 border-[#f59e0b]">
+      <p class="text-sm text-gray-500">处理中</p>
+      <p class="text-2xl font-bold text-[#f59e0b] mt-2 font-serif">12</p>
+    </div>
+    <div class="bg-white rounded-xl p-5 shadow-card border-l-4 border-[#10b981]">
+      <p class="text-sm text-gray-500">今日完成</p>
+      <p class="text-2xl font-bold text-[#10b981] mt-2 font-serif">8</p>
+    </div>
+  </div>
+
+  <div class="flex items-center justify-between">
+    <div class="flex items-center gap-2 bg-white rounded-lg p-1 shadow-sm">
+      <button class="px-4 py-2 rounded-md bg-[#1e3a5f] text-white text-sm font-medium">全部</button>
+      <button class="px-4 py-2 rounded-md text-gray-600 hover:bg-gray-100 text-sm font-medium">待处理</button>
+      <button class="px-4 py-2 rounded-md text-gray-600 hover:bg-gray-100 text-sm font-medium">处理中</button>
+      <button class="px-4 py-2 rounded-md text-gray-600 hover:bg-gray-100 text-sm font-medium">已完成</button>
+    </div>
+    <div class="flex items-center gap-3">
+      <select class="px-4 py-2 border border-gray-200 rounded-lg text-sm focus:border-[#1e3a5f] focus:ring-2 focus:ring-[#1e3a5f]/10 outline-none">
+        <option>全部优先级</option>
+        <option>紧急</option>
+        <option>高</option>
+        <option>中</option>
+        <option>低</option>
+      </select>
+      <button class="px-5 py-2.5 bg-[#1e3a5f] text-white rounded-lg hover:bg-[#2d4a6f] transition-colors flex items-center gap-2 font-medium">
+        <i data-lucide="plus" class="w-4 h-4"></i>
+        新建待办
+      </button>
+    </div>
+  </div>
+
+  <div class="space-y-4">
+    <% 8.times do |i| %>
+      <%= render TodoItemComponent.new(todo_item: OpenStruct.new(
+        id: 1001 + i,
+        title: ['核对结算单金额差异', '联系商户确认结算信息', '上传结算凭证', '处理退款申请', '生成周结算报表', '审核商户合同', '更新系统配置', '培训新客服人员'][i],
+        description: '需要仔细核对系统与商户之间的金额差异，确保数据准确性。如有问题及时与相关人员沟通。',
+        priority: %w[urgent high medium low].sample,
+        status: %w[pending in_progress completed].sample,
+        due_date: Date.today + (i - 2).days,
+        assignee: OpenStruct.new(name: '李四'),
+        settlement: i < 4 ? OpenStruct.new(id: 10023 + i) : nil,
+        completed?: i > 5
+      )) %>
+    <% end %>
+  </div>
+
+  <div class="flex justify-center">
+    <nav class="flex items-center gap-1">
+      <button class="px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100">
+        <i data-lucide="chevron-left" class="w-4 h-4"></i>
+      </button>
+      <span class="px-4 py-2 rounded-lg bg-[#1e3a5f] text-white font-medium">1</span>
+      <button class="px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 font-medium">2</button>
+      <button class="px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 font-medium">3</button>
+      <button class="px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 font-medium">4</button>
+      <button class="px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100">
+        <i data-lucide="chevron-right" class="w-4 h-4"></i>
+      </button>
+    </nav>
+  </div>
+</div>

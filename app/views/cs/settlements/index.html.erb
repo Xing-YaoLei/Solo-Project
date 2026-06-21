@@ -1,0 +1,146 @@
+<% content_for :page_title, '结算单管理' %>
+
+<div class="p-6 space-y-6">
+  <div class="flex items-center justify-between">
+    <div class="flex items-center gap-4">
+      <div class="flex items-center gap-2 bg-white rounded-lg p-1 shadow-sm">
+        <button class="px-4 py-2 rounded-md bg-[#1e3a5f] text-white text-sm font-medium">全部</button>
+        <button class="px-4 py-2 rounded-md text-gray-600 hover:bg-gray-100 text-sm font-medium">待处理</button>
+        <button class="px-4 py-2 rounded-md text-gray-600 hover:bg-gray-100 text-sm font-medium">处理中</button>
+        <button class="px-4 py-2 rounded-md text-gray-600 hover:bg-gray-100 text-sm font-medium">已完成</button>
+        <button class="px-4 py-2 rounded-md text-gray-600 hover:bg-gray-100 text-sm font-medium">有差异</button>
+      </div>
+      <div class="flex items-center gap-2">
+        <input type="date" class="px-4 py-2 border border-gray-200 rounded-lg text-sm focus:border-[#1e3a5f] focus:ring-2 focus:ring-[#1e3a5f]/10 outline-none">
+        <span class="text-gray-400">至</span>
+        <input type="date" class="px-4 py-2 border border-gray-200 rounded-lg text-sm focus:border-[#1e3a5f] focus:ring-2 focus:ring-[#1e3a5f]/10 outline-none">
+      </div>
+    </div>
+    <button class="px-5 py-2.5 bg-[#1e3a5f] text-white rounded-lg hover:bg-[#2d4a6f] transition-colors flex items-center gap-2 font-medium">
+      <i data-lucide="plus" class="w-4 h-4"></i>
+      新建结算单
+    </button>
+  </div>
+
+  <div class="bg-white rounded-2xl shadow-card overflow-hidden animate-fade-in"
+       data-controller="datatable"
+       data-datatable-per-page-value="10">
+    <div data-datatable-target="table" class="overflow-x-auto">
+      <table class="w-full">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer group"
+                data-action="click->datatable#sort"
+                data-column="id">
+              <div class="flex items-center gap-2">
+                结算单号
+                <span class="sort-icon"><i data-lucide="chevrons-up-down" class="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity"></i></span>
+              </div>
+            </th>
+            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer group"
+                data-action="click->datatable#sort"
+                data-column="merchant">
+              <div class="flex items-center gap-2">
+                商户名称
+                <span class="sort-icon"><i data-lucide="chevrons-up-down" class="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity"></i></span>
+              </div>
+            </th>
+            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer group"
+                data-action="click->datatable#sort"
+                data-column="period">
+              <div class="flex items-center gap-2">
+                结算周期
+                <span class="sort-icon"><i data-lucide="chevrons-up-down" class="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity"></i></span>
+              </div>
+            </th>
+            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer group"
+                data-action="click->datatable#sort"
+                data-column="amount">
+              <div class="flex items-center gap-2">
+                结算金额
+                <span class="sort-icon"><i data-lucide="chevrons-up-down" class="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity"></i></span>
+              </div>
+            </th>
+            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer group"
+                data-action="click->datatable#sort"
+                data-column="difference">
+              <div class="flex items-center gap-2">
+                差异金额
+                <span class="sort-icon"><i data-lucide="chevrons-up-down" class="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity"></i></span>
+              </div>
+            </th>
+            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer group"
+                data-action="click->datatable#sort"
+                data-column="status">
+              <div class="flex items-center gap-2">
+                状态
+                <span class="sort-icon"><i data-lucide="chevrons-up-down" class="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity"></i></span>
+              </div>
+            </th>
+            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              操作
+            </th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          <% 15.times do |i| %>
+            <tr data-datatable-target="row"
+                data-id="<%= 10001 + i %>"
+                data-merchant="商户<%= i + 1 %>"
+                data-period="2024-<%= sprintf('%02d', 1 + (i % 12)) %>"
+                data-amount="<%= 25000 + i * 12345 %>"
+                data-difference="<%= (i % 3 == 0) ? (i * 123) : 0 %>"
+                data-status="<%= %w[pending processing completed].sample %>"
+                class="hover:bg-gray-50 transition-colors">
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="font-semibold text-[#1e3a5f]">#<%= 10001 + i %></span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="flex items-center gap-3">
+                  <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-[#1e3a5f] to-[#2d4a6f] flex items-center justify-center text-white text-xs font-bold">
+                    商<%= i + 1 %>
+                  </div>
+                  <span class="font-medium text-gray-900">商户<%= i + 1 %></span>
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-gray-600">2024年第<%= 24 - (i % 24) %>周</td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="font-bold text-gray-900 font-serif">¥<%= number_with_delimiter(sprintf('%.2f', 25000 + i * 12345)) %></span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <% if i % 3 == 0 %>
+                  <span class="font-bold text-red-600 font-serif">+¥<%= number_with_delimiter(sprintf('%.2f', i * 123)) %></span>
+                <% else %>
+                  <span class="text-gray-400">-</span>
+                <% end %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <% status = %w[pending processing completed].sample %>
+                <span class="px-3 py-1 rounded-full text-xs font-medium
+                             <%= status == 'pending' ? 'bg-orange-100 text-orange-600' : '' %>
+                             <%= status == 'processing' ? 'bg-blue-100 text-blue-600' : '' %>
+                             <%= status == 'completed' ? 'bg-green-100 text-green-600' : '' %>">
+                  <%= { pending: '待处理', processing: '处理中', completed: '已完成' }[status.to_sym] %>
+                </span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="flex items-center gap-1">
+                  <a href="/cs/settlements/<%= 10001 + i %>" class="p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                    <i data-lucide="eye" class="w-4 h-4 text-gray-500"></i>
+                  </a>
+                  <button class="p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                    <i data-lucide="edit-2" class="w-4 h-4 text-gray-500"></i>
+                  </button>
+                  <button class="p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                    <i data-lucide="more-vertical" class="w-4 h-4 text-gray-500"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+    <div data-datatable-target="pagination"></div>
+  </div>
+</div>

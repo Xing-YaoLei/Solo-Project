@@ -1,0 +1,102 @@
+<% content_for :page_title, '审批管理' %>
+
+<div class="p-6 space-y-6">
+  <div class="flex items-center justify-between">
+    <div class="flex items-center gap-4">
+      <div class="flex items-center gap-2 bg-white rounded-lg p-1 shadow-sm">
+        <button class="px-4 py-2 rounded-md bg-[#1e3a5f] text-white text-sm font-medium">全部</button>
+        <button class="px-4 py-2 rounded-md text-gray-600 hover:bg-gray-100 text-sm font-medium">待审批</button>
+        <button class="px-4 py-2 rounded-md text-gray-600 hover:bg-gray-100 text-sm font-medium">已通过</button>
+        <button class="px-4 py-2 rounded-md text-gray-600 hover:bg-gray-100 text-sm font-medium">已拒绝</button>
+      </div>
+      <select class="px-4 py-2 border border-gray-200 rounded-lg text-sm focus:border-[#1e3a5f] focus:ring-2 focus:ring-[#1e3a5f]/10 outline-none">
+        <option>全部类型</option>
+        <option>结算单审批</option>
+        <option>差异处理</option>
+        <option>合同续签</option>
+        <option>特殊退款</option>
+      </select>
+    </div>
+    <button class="px-4 py-2.5 border border-gray-200 rounded-lg text-gray-600 hover:border-[#1e3a5f] hover:text-[#1e3a5f] transition-colors flex items-center gap-2">
+      <i data-lucide="download" class="w-4 h-4"></i>
+      导出审批记录
+    </button>
+  </div>
+
+  <div class="bg-white rounded-2xl shadow-card overflow-hidden animate-fade-in">
+    <div class="overflow-x-auto">
+      <table class="w-full">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">审批单号</th>
+            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">类型</th>
+            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">申请人</th>
+            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">申请时间</th>
+            <th class="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">涉及金额</th>
+            <th class="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">状态</th>
+            <th class="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">操作</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          <% 15.times do |i| %>
+            <tr class="hover:bg-gray-50 transition-colors">
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="font-semibold text-[#1e3a5f]">AP<%= sprintf('%06d', 202401 + i) %></span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-600">
+                  <%= ['结算单审批', '差异处理', '合同续签', '特殊退款'][i % 4] %>
+                </span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="flex items-center gap-2">
+                  <div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#1e3a5f] to-[#2d4a6f] flex items-center justify-center text-white text-xs font-bold">
+                    <%= ['张', '李', '王', '赵', '孙'][i % 5] %>
+                  </div>
+                  <span class="text-gray-900"><%= ['张三', '李四', '王五', '赵六', '孙七'][i % 5] %></span>
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-gray-600">
+                2024-06-<%= 18 - (i % 10) %> <%= sprintf('%02d', 9 + (i % 8)) %>:<%= sprintf('%02d', i * 5 % 60) %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-right">
+                <span class="font-bold text-gray-900 font-serif">¥<%= number_with_delimiter(sprintf('%.2f', 5000 + i * 12345)) %></span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-center">
+                <% status = i < 5 ? 'pending' : i < 10 ? 'approved' : 'rejected' %>
+                <span class="px-3 py-1 rounded-full text-xs font-medium
+                             <%= status == 'pending' ? 'bg-orange-100 text-orange-600' : '' %>
+                             <%= status == 'approved' ? 'bg-green-100 text-green-600' : '' %>
+                             <%= status == 'rejected' ? 'bg-red-100 text-red-600' : '' %>">
+                  <%= { pending: '待审批', approved: '已通过', rejected: '已拒绝' }[status.to_sym] %>
+                </span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-center">
+                <div class="flex items-center justify-center gap-2">
+                  <button class="p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                    <i data-lucide="eye" class="w-4 h-4 text-gray-500"></i>
+                  </button>
+                  <% if status == 'pending' %>
+                    <button class="p-2 rounded-lg hover:bg-green-50 transition-colors">
+                      <i data-lucide="check" class="w-4 h-4 text-green-500"></i>
+                    </button>
+                    <button class="p-2 rounded-lg hover:bg-red-50 transition-colors">
+                      <i data-lucide="x" class="w-4 h-4 text-red-500"></i>
+                    </button>
+                  <% end %>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+    <%= render PaginationComponent.new(collection: OpenStruct.new(
+      total_pages: 4,
+      current_page: 1,
+      offset_value: 0,
+      limit_value: 10,
+      total_count: 35
+    )) %>
+  </div>
+</div>
