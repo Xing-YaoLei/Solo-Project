@@ -161,4 +161,4 @@ export class Bootstrap extends Component {
     }
 }
 
-export const bootstrap: { instance: Bootstrap | null } = { instance: null };
+export const bootstrap = { instance: (null) };

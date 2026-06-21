@@ -30,11 +30,11 @@ export class FeedbackManager extends Component {
         return this._instance;
     }
 
-    private settings = GameManager.instance.settings;
+    private settings: any = null;
 
     onLoad() {
-        GameManager.instance.on(GameEvent.SETTINGS_CHANGED, this.onSettingsChanged, this);
         this.settings = GameManager.instance.settings;
+        GameManager.instance.on(GameEvent.SETTINGS_CHANGED, this.onSettingsChanged, this);
     }
 
     onDestroy() {
