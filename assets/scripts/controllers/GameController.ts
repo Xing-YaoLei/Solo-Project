@@ -80,10 +80,23 @@ export class GameController extends Component {
         if (!this.mapController) {
             const ctrlNode = this.node.getChildByName('SubControllers') || this.makeChild('SubControllers');
             this.mapController = ctrlNode.addComponent(MapController);
-            this.addressInputController = ctrlNode.addComponent(AddressInputController);
-            this.riderWarningSystem = ctrlNode.addComponent(RiderWarningSystem);
-            this.trajectoryRenderer = ctrlNode.addComponent(TrajectoryRenderer);
         }
+    }
+
+    setAddressInputController(ctrl: AddressInputController) {
+        this.addressInputController = ctrl;
+    }
+
+    setRiderWarningSystem(sys: RiderWarningSystem) {
+        this.riderWarningSystem = sys;
+    }
+
+    setTrajectoryRenderer(r: TrajectoryRenderer) {
+        this.trajectoryRenderer = r;
+    }
+
+    setMapController(c: MapController) {
+        this.mapController = c;
     }
 
     private makeChild(name: string): Node {

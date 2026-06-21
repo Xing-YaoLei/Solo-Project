@@ -1,10 +1,14 @@
-import { _decorator, Component, Node, Label, Button, Color, UITransform, Widget, Graphics, ScrollView, Layout, Vec3, Size, view, game, Game } from 'cc';
+import { _decorator, Component, Node, Label, Button, Color, UITransform, Graphics, Size, game, Game } from 'cc';
 import { GameController } from './GameController';
 import { SettlementPanel } from './SettlementPanel';
 import { StatisticsPanel } from './StatisticsPanel';
 import { ReplaySystem } from './ReplaySystem';
+import { AddressInputController } from './AddressInputController';
+import { TrajectoryRenderer } from './TrajectoryRenderer';
+import { RiderWarningSystem } from './RiderWarningSystem';
 import { EventDispatcher } from '../utils/EventDispatcher';
 import { LEVELS } from '../config/GameConfig';
+import { Position, Order, WrongStep } from '../types/GameTypes';
 
 const { ccclass, property } = _decorator;
 
@@ -17,7 +21,15 @@ export class MainSceneController extends Component {
     private root: Node | null = null;
     private levelSelectPanel: Node | null = null;
     private gameUIPanel: Node | null = null;
+    private mapArea: Node | null = null;
+    private addressListNode: Node | null = null;
+    private pickupModeLabel: Label | null = null;
+    private deliveryModeLabel: Label | null = null;
+
     private gameController: GameController | null = null;
+    private addressInputController: AddressInputController | null = null;
+    private trajectoryRenderer: TrajectoryRenderer | null = null;
+    private riderWarningSystem: RiderWarningSystem | null = null;
     private settlementPanel: SettlementPanel | null = null;
     private statisticsPanel: StatisticsPanel | null = null;
     private replaySystem: ReplaySystem | null = null;
@@ -101,7 +113,6 @@ export class MainSceneController extends Component {
 
     private buildEntireUI() {
         this.root = this.makeNode('Root', this.node);
-
         this.gameController = this.makeNode('GameController', this.root).addComponent(GameController);
 
         this.buildLevelSelectPanel();
@@ -109,6 +120,50 @@ export class MainSceneController extends Component {
         this.buildSettlementPanel();
         this.buildStatisticsPanel();
         this.buildReplayPanel();
+
+        this.setupAddressInput();
+        this.setupTrajectoryRenderer();
+        this.setupRiderWarning();
+    }
+
+    private setupAddressInput() {
+        const ctrl = this.gameController?.node.getComponentInChildren(AddressInputController);
+        if (ctrl) this.addressInputController = ctrl;
+        if (!this.addressInputController) {
+            this.addressInputController = this.makeNode('AddressInputCtrl', this.root!).addComponent(AddressInputController);
+        }
+        this.gameController?.setAddressInputController(this.addressInputController);
+
+        if (this.mapArea) this.addressInputController.setMapContainer(this.mapArea);
+        if (this.addressListNode) this.addressInputController.setAddressList(this.addressListNode);
+        if (this.pickupModeLabel) this.addressInputController.setPickupLabel(this.pickupModeLabel);
+        if (this.deliveryModeLabel) this.addressInputController.setDeliveryLabel(this.deliveryModeLabel);
+
+        this.addressInputController.setCallbacks(
+            (address: Position, type: 'pickup' | 'delivery') => this.onAddressSelected(address, type),
+            (ws: Omit<WrongStep, 'time'>) => this.onWrongStep(ws)
+        );
+    }
+
+    private setupTrajectoryRenderer() {
+        const ctrl = this.gameController?.node.getComponentInChildren(TrajectoryRenderer);
+        if (ctrl) this.trajectoryRenderer = ctrl;
+        if (!this.trajectoryRenderer) {
+            this.trajectoryRenderer = this.makeNode('TrajectoryRender', this.root!).addComponent(TrajectoryRenderer);
+        }
+        this.gameController?.setTrajectoryRenderer(this.trajectoryRenderer);
+        if (this.trajectoryGraphics) {
+            this.trajectoryRenderer.setGraphics(this.trajectoryGraphics);
+        }
+    }
+
+    private setupRiderWarning() {
+        const ctrl = this.gameController?.node.getComponentInChildren(RiderWarningSystem);
+        if (ctrl) this.riderWarningSystem = ctrl;
+        if (!this.riderWarningSystem) {
+            this.riderWarningSystem = this.makeNode('RiderWarningSys', this.root!).addComponent(RiderWarningSystem);
+        }
+        this.gameController?.setRiderWarningSystem(this.riderWarningSystem);
     }
 
     private buildLevelSelectPanel() {
@@ -122,7 +177,7 @@ export class MainSceneController extends Component {
             const yPos = 120 - idx * 100;
             const btn = this.makeButton(`Level_${level.id}`, this.levelSelectPanel!, `${level.id}. ${level.name}  (${level.difficulty})`, 24, 0, yPos, 400, 60);
             btn.label.color = new Color(255, 255, 255);
-            const subLabel = this.makeLabel(`LevelDesc_${level.id}`, this.levelSelectPanel!, `${level.description} | 目标${level.targetScore}分 | 赔付≤${level.maxCompensation} | ${level.weather === 'sunny' ? '晴天' : level.weather === 'rainy' ? '雨天' : level.weather}`, 14, new Color(160, 160, 180), 0, yPos - 40);
+            this.makeLabel(`LevelDesc_${level.id}`, this.levelSelectPanel!, `${level.description} | 目标${level.targetScore}分 | 赔付≤${level.maxCompensation} | ${level.weather === 'sunny' ? '晴天' : level.weather === 'rainy' ? '雨天' : level.weather}`, 14, new Color(160, 160, 180), 0, yPos - 40);
 
             btn.node.on(Button.EventType.CLICK, () => {
                 this.startLevel(level.id);
@@ -146,17 +201,28 @@ export class MainSceneController extends Component {
         this.weatherLabel = this.makeLabel('Weather', this.gameUIPanel, '天气: 晴天', 20, new Color(255, 255, 200), -550, 230);
         this.compensationLabel = this.makeLabel('Compensation', this.gameUIPanel, '赔付: 0/100', 20, new Color(255, 120, 120), -550, 200);
 
-        const mapArea = this.makeNode('MapArea', this.gameUIPanel!, -80, 40);
-        const mapBg = mapArea.addComponent(Graphics);
+        this.mapArea = this.makeNode('MapArea', this.gameUIPanel!, -80, 40);
+        const mapTransform = this.mapArea.getComponent(UITransform)!;
+        mapTransform.setContentSize(800, 500);
+        const mapBg = this.mapArea.addComponent(Graphics);
         mapBg.fillColor = new Color(40, 50, 70, 200);
         mapBg.roundRect(-400, -250, 800, 500, 8);
         mapBg.fill();
 
-        this.trajectoryGraphics = this.makeNode('TrajectoryGfx', mapArea).addComponent(Graphics);
+        this.trajectoryGraphics = this.makeNode('TrajectoryGfx', this.mapArea).addComponent(Graphics);
 
-        this.addressInfoLabel = this.makeLabel('AddressInfo', this.gameUIPanel!, '[地址处理] 点击地图标记/键盘↑↓选择地址，Tab切换取货/送货', 14, new Color(150, 220, 150), 0, -230);
-        this.riderInfoLabel = this.makeLabel('RiderInfo', this.gameUIPanel!, '[骑手调度] 数字键1-5分配骑手，注意⚠预警标识', 14, new Color(255, 200, 100), 0, -255);
-        this.subsidyInfoLabel = this.makeLabel('SubsidyInfo', this.gameUIPanel!, '[补贴规则] Q/W/E/R切换补贴开关', 14, new Color(100, 200, 255), 0, -280);
+        this.addressListNode = this.makeNode('AddressList', this.gameUIPanel!, 350, -150);
+        const listTransform = this.addressListNode.getComponent(UITransform)!;
+        listTransform.setContentSize(380, 280);
+        this.makeLabel('AddressListTitle', this.addressListNode, '地址列表 (1-9/↑↓/输入搜索/Enter确认/Tab切换)', 13, new Color(150, 220, 150), 0, 140);
+
+        this.pickupModeLabel = this.makeLabel('PickupMode', this.gameUIPanel, '[取货地址]', 16, new Color(0, 255, 180), 0, -310);
+        this.deliveryModeLabel = this.makeLabel('DeliveryMode', this.gameUIPanel, '[送货地址]', 16, new Color(255, 180, 80), 0, -310);
+        this.deliveryModeLabel.node.active = false;
+
+        this.addressInfoLabel = this.makeLabel('AddressInfo', this.gameUIPanel!, '[地址处理] 点击地图标记/键盘↑↓选择地址，Tab切换取货/送货', 14, new Color(150, 220, 150), 0, -340);
+        this.riderInfoLabel = this.makeLabel('RiderInfo', this.gameUIPanel!, '[骑手调度] 数字键1-5分配骑手，注意⚠预警标识', 14, new Color(255, 200, 100), 0, -365);
+        this.subsidyInfoLabel = this.makeLabel('SubsidyInfo', this.gameUIPanel!, '[补贴规则] Q/W/E/R切换补贴开关', 14, new Color(100, 200, 255), 0, -390);
         this.warningLabel = this.makeLabel('Warning', this.gameUIPanel!, '', 22, new Color(255, 80, 80), 0, 310);
 
         this.orderInfoLabel = this.makeLabel('OrderInfo', this.gameUIPanel!, '', 16, new Color(220, 220, 240), 350, 100);
@@ -257,11 +323,21 @@ export class MainSceneController extends Component {
     }
 
     private onOrderGenerated(event: any) {
+        const order: Order = event.order;
+        if (this.addressInputController && !this.addressInputController.isWaitingForInput()) {
+            this.addressInputController.startAddressInput(order, 'pickup');
+            if (this.addressInfoLabel) {
+                this.addressInfoLabel.string = `[地址处理] 请选择取货地址: ${order.pickup.name} (${order.pickup.address})`;
+            }
+        }
         this.updateOrderInfo();
         this.updateHUD();
     }
 
     private onOrderAssigned(event: any) {
+        if (this.addressInputController?.isWaitingForInput()) {
+            return;
+        }
         this.updateOrderInfo();
         this.updateRiderInfo();
         this.updateHUD();
@@ -271,6 +347,17 @@ export class MainSceneController extends Component {
         this.updateOrderInfo();
         this.updateRiderInfo();
         this.updateHUD();
+
+        const gs = this.gameController?.getGameState();
+        if (gs) {
+            const pending = gs.orders.filter(o => o.status === 'pending');
+            if (pending.length > 0 && this.addressInputController && !this.addressInputController.isWaitingForInput()) {
+                this.addressInputController.startAddressInput(pending[0], 'pickup');
+                if (this.addressInfoLabel) {
+                    this.addressInfoLabel.string = `[地址处理] 请选择取货地址: ${pending[0].pickup.name}`;
+                }
+            }
+        }
     }
 
     private onRiderRejection(event: any) {
@@ -280,6 +367,37 @@ export class MainSceneController extends Component {
         }
         this.updateRiderInfo();
         this.updateHUD();
+    }
+
+    private onAddressSelected(address: Position, type: 'pickup' | 'delivery') {
+        if (this.addressInfoLabel) {
+            if (type === 'pickup') {
+                this.addressInfoLabel.string = `[地址处理] 取货地址已选: ${address.name} → 请选择送货地址 (Tab切换)`;
+            } else {
+                this.addressInfoLabel.string = `[地址处理] 送货地址已选: ${address.name} → 用数字键1-5分配骑手`;
+                setTimeout(() => {
+                    const gs = this.gameController?.getGameState();
+                    if (gs) {
+                        const pending = gs.orders.filter(o => o.status === 'pending');
+                        if (pending.length > 0 && this.addressInputController && !this.addressInputController.isWaitingForInput()) {
+                            this.addressInputController.startAddressInput(pending[0], 'pickup');
+                        }
+                    }
+                }, 500);
+            }
+        }
+    }
+
+    private onWrongStep(ws: Omit<WrongStep, 'time'>) {
+        const gs = this.gameController?.getGameState();
+        if (gs) {
+            gs.wrongSteps.push({ ...ws, time: Date.now() });
+            if (this.warningLabel) {
+                this.warningLabel.string = `⚠ 操作错误: ${ws.description}`;
+                this.warningLabel.color = new Color(255, 120, 120);
+            }
+        }
+        this.eventDispatcher.emit('wrong-step', { ...ws, time: Date.now() });
     }
 
     private updateHUD() {
@@ -346,6 +464,16 @@ export class MainSceneController extends Component {
 
         if (success) {
             this.showGameUI();
+
+            if (this.trajectoryGraphics && this.trajectoryRenderer) {
+                this.trajectoryRenderer.setGraphics(this.trajectoryGraphics);
+                this.trajectoryRenderer.clearAllTrajectories();
+            }
+
+            if (this.warningLabel) {
+                this.warningLabel.string = '';
+            }
+
             this.updateOrderInfo();
             this.updateRiderInfo();
             this.updateHUD();
@@ -357,12 +485,33 @@ export class MainSceneController extends Component {
     }
 
     private onGameOver(event: any): void {
-        if (this.settlementPanel) {
-            this.settlementPanel.show(
-                event.isVictory,
-                event.reason,
-                event.score,
-                event.totalCompensation
+        if (this.addressInputController) {
+            const ctrl = this.addressInputController as any;
+            if (ctrl.currentOrder) ctrl.currentOrder = null;
+        }
+        if (this.settlementPanel && this.gameController) {
+            const gs = this.gameController.getGameState();
+            const lv = this.gameController.getCurrentLevel();
+            const snapshots = this.gameController.getStateSnapshots();
+
+            const wrongSteps = gs?.wrongSteps || event.wrongSteps || [];
+            const score = gs?.score ?? event.score ?? 0;
+            const totalComp = gs?.totalCompensation ?? event.totalCompensation ?? 0;
+            const revenue = gs?.totalRevenue ?? 0;
+            const cost = gs?.totalCost ?? 0;
+            const isVictory = event.isVictory ?? gs?.isVictory ?? false;
+            const reason = event.reason || (isVictory ? '训练完成' : '训练失败');
+
+            this.settlementPanel.showWithData(
+                isVictory,
+                reason,
+                score,
+                totalComp,
+                revenue,
+                cost,
+                wrongSteps,
+                snapshots,
+                lv?.name || ''
             );
         }
     }
@@ -444,6 +593,10 @@ export class MainSceneController extends Component {
     onDestroy(): void {
         this.eventDispatcher.off('game-over', this.onGameOver.bind(this), this);
         this.eventDispatcher.off('level-started', this.onLevelStarted.bind(this), this);
+        this.eventDispatcher.off('order-generated', this.onOrderGenerated.bind(this), this);
+        this.eventDispatcher.off('rider-rejection', this.onRiderRejection.bind(this), this);
+        this.eventDispatcher.off('order-assigned', this.onOrderAssigned.bind(this), this);
+        this.eventDispatcher.off('order-completed', this.onOrderCompleted.bind(this), this);
         game.off(Game.EVENT_HIDE, this.onGameHide.bind(this));
         game.off(Game.EVENT_SHOW, this.onGameShow.bind(this));
     }

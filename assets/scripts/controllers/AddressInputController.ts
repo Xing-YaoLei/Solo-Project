@@ -1,6 +1,6 @@
-import { _decorator, Component, Node, Label, Input, EventKeyboard, KeyCode, EventTouch, Vec3, UITransform, Color } from 'cc';
+import { _decorator, Component, Node, Label, Input, EventKeyboard, KeyCode, EventTouch, Vec3, UITransform, Color, input, Graphics } from 'cc';
 import { Position, Order, WrongStep } from '../types/GameTypes';
-import { MAP_LOCATIONS, KEYBOARD_SHORTCUTS } from '../config/GameConfig';
+import { MAP_LOCATIONS } from '../config/GameConfig';
 
 const { ccclass, property } = _decorator;
 
@@ -29,22 +29,112 @@ export class AddressInputController extends Component {
     private touchStartPos: Vec3 = new Vec3();
     private onAddressSelectedCallback: ((address: Position, type: 'pickup' | 'delivery') => void) | null = null;
     private onWrongStepCallback: ((wrongStep: Omit<WrongStep, 'time'>) => void) | null = null;
+    private isBound: boolean = false;
+    private locationMarkers: Node[] = [];
 
     onLoad() {
-        this.node.on(Input.EventType.KEY_DOWN, this.onKeyDown, this);
-        if (this.mapContainer) {
-            this.mapContainer.on(Node.EventType.TOUCH_START, this.onTouchStart, this);
-            this.mapContainer.on(Node.EventType.TOUCH_END, this.onTouchEnd, this);
-        }
         this.filteredLocations = [...MAP_LOCATIONS];
+        this.bindIfReady();
+    }
+
+    onEnable() {
+        this.bindIfReady();
+    }
+
+    onDisable() {
+        this.unbind();
     }
 
     onDestroy() {
-        this.node.off(Input.EventType.KEY_DOWN, this.onKeyDown, this);
+        this.unbind();
+    }
+
+    private bindIfReady() {
+        if (this.isBound) return;
+        if (input) {
+            input.on(Input.EventType.KEY_DOWN, this.onKeyDown, this);
+        }
+        if (this.mapContainer) {
+            this.mapContainer.on(Node.EventType.TOUCH_START, this.onTouchStart, this);
+            this.mapContainer.on(Node.EventType.TOUCH_END, this.onTouchEnd, this);
+            this.renderLocationMarkers();
+        }
+        this.isBound = true;
+    }
+
+    private unbind() {
+        if (input) {
+            input.off(Input.EventType.KEY_DOWN, this.onKeyDown, this);
+        }
         if (this.mapContainer) {
             this.mapContainer.off(Node.EventType.TOUCH_START, this.onTouchStart, this);
             this.mapContainer.off(Node.EventType.TOUCH_END, this.onTouchEnd, this);
         }
+        this.clearLocationMarkers();
+        this.isBound = false;
+    }
+
+    setMapContainer(container: Node) {
+        if (this.mapContainer && this.mapContainer !== container) {
+            this.mapContainer.off(Node.EventType.TOUCH_START, this.onTouchStart, this);
+            this.mapContainer.off(Node.EventType.TOUCH_END, this.onTouchEnd, this);
+        }
+        this.mapContainer = container;
+        if (this.isBound) {
+            container.on(Node.EventType.TOUCH_START, this.onTouchStart, this);
+            container.on(Node.EventType.TOUCH_END, this.onTouchEnd, this);
+            this.clearLocationMarkers();
+            this.renderLocationMarkers();
+        }
+    }
+
+    setAddressList(list: Node) {
+        this.addressList = list;
+        this.updateAddressList();
+        this.highlightSelectedLocation();
+    }
+
+    setPickupLabel(label: Label) {
+        this.pickupAddressLabel = label;
+        this.updateModeDisplay();
+    }
+
+    setDeliveryLabel(label: Label) {
+        this.deliveryAddressLabel = label;
+        this.updateModeDisplay();
+    }
+
+    private renderLocationMarkers() {
+        if (!this.mapContainer) return;
+        this.clearLocationMarkers();
+        MAP_LOCATIONS.forEach((loc, idx) => {
+            const marker = new Node(`Marker_${idx}`);
+            const t = marker.addComponent(UITransform);
+            t.setContentSize(20, 20);
+            const g = marker.addComponent(Graphics);
+            g.fillColor = new Color(80, 160, 255, 200);
+            g.circle(0, 0, 8);
+            g.fill();
+            g.strokeColor = new Color(255, 255, 255, 180);
+            g.lineWidth = 2;
+            g.circle(0, 0, 8);
+            g.stroke();
+            const labelNode = new Node(`Lbl_${idx}`);
+            const lbl = labelNode.addComponent(Label);
+            lbl.string = `${idx + 1}.${loc.name}`;
+            lbl.fontSize = 11;
+            lbl.color = new Color(220, 220, 255);
+            labelNode.setPosition(0, -18, 0);
+            marker.addChild(labelNode);
+            marker.setPosition(loc.x, loc.y, 0);
+            this.mapContainer.addChild(marker);
+            this.locationMarkers.push(marker);
+        });
+    }
+
+    private clearLocationMarkers() {
+        this.locationMarkers.forEach(m => m.destroy());
+        this.locationMarkers = [];
     }
 
     setCallbacks(
@@ -63,6 +153,8 @@ export class AddressInputController extends Component {
         this.filteredLocations = [...MAP_LOCATIONS];
         this.updateAddressList();
         this.highlightSelectedLocation();
+        this.updateModeDisplay();
+        this.bindIfReady();
     }
 
     private onKeyDown(event: EventKeyboard) {
@@ -70,10 +162,10 @@ export class AddressInputController extends Component {
 
         const key = event.keyCode;
 
-        if (key === KeyCode.ARROW_UP || key === KeyCode.KEY_W) {
+        if (key === KeyCode.ARROW_UP) {
             event.propagationStopped = true;
             this.moveSelection(-1);
-        } else if (key === KeyCode.ARROW_DOWN || key === KeyCode.KEY_S) {
+        } else if (key === KeyCode.ARROW_DOWN) {
             event.propagationStopped = true;
             this.moveSelection(1);
         } else if (key === KeyCode.ENTER || key === KeyCode.SPACE) {
@@ -247,10 +339,14 @@ export class AddressInputController extends Component {
 
         this.filteredLocations.forEach((loc, index) => {
             const node = new Node(`Address_${index}`);
+            const t = node.addComponent(UITransform);
+            t.setContentSize(380, 28);
             const label = node.addComponent(Label);
             label.string = `${index + 1}. ${loc.name} - ${loc.address}`;
-            label.fontSize = 20;
-            label.lineHeight = 28;
+            label.fontSize = 14;
+            label.lineHeight = 20;
+            label.horizontalAlign = Label.HorizontalAlign.LEFT;
+            label.overflow = Label.Overflow.CLAMP;
             this.addressList!.addChild(node);
         });
     }
@@ -262,6 +358,10 @@ export class AddressInputController extends Component {
         if (this.deliveryAddressLabel) {
             this.deliveryAddressLabel.node.active = this.inputMode === 'delivery';
         }
+    }
+
+    isWaitingForInput(): boolean {
+        return this.currentOrder !== null;
     }
 
     getInputMode(): 'pickup' | 'delivery' {

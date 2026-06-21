@@ -115,50 +115,63 @@ export class SettlementPanel extends Component {
         const cost = gameState?.totalCost ?? 0;
         const wrongSteps = gameState?.wrongSteps ?? [];
 
-        if (this.resultTitleLabel) {
-            if (isVictory) {
-                this.resultTitleLabel.string = '🎉 训练通过！';
-                this.resultTitleLabel.color = new Color(0, 255, 100);
-            } else {
-                this.resultTitleLabel.string = reason === 'compensation_exceeded' ?
-                    '💔 赔付超标，训练失败' : '⏱️ 时间到，未达标';
-                this.resultTitleLabel.color = new Color(255, 100, 100);
-            }
-        }
+        this.renderToPanel(
+            isVictory, reason || (isVictory ? '训练通过' : '训练失败'),
+            score, compensation, revenue, cost, wrongSteps, snapshots,
+            level?.name || '', level?.targetScore ?? 0, level?.maxCompensation ?? 0,
+            riderStats, subsidyStats
+        );
+    }
 
-        if (this.scoreLabel) {
-            this.scoreLabel.string = `最终得分: ${score}`;
-        }
-        if (this.targetScoreLabel) {
-            this.targetScoreLabel.string = `目标分数: ${level?.targetScore ?? 0}`;
-            this.targetScoreLabel.color = score >= (level?.targetScore ?? 0) ?
-                new Color(0, 255, 100) : new Color(255, 100, 100);
-        }
-        if (this.compensationLabel) {
-            this.compensationLabel.string = `赔付总额: ${compensation}`;
-        }
-        if (this.maxCompensationLabel) {
-            this.maxCompensationLabel.string = `赔付上限: ${level?.maxCompensation ?? 0}`;
-            this.maxCompensationLabel.color = compensation <= (level?.maxCompensation ?? 0) ?
-                new Color(0, 255, 100) : new Color(255, 100, 100);
-        }
-        if (this.revenueLabel) {
-            this.revenueLabel.string = `总收入: ${revenue}`;
-        }
-        if (this.costLabel) {
-            this.costLabel.string = `总成本: ${cost}`;
-        }
-        if (this.profitLabel) {
-            const profit = revenue - cost;
-            this.profitLabel.string = `净利润: ${profit}`;
-            this.profitLabel.color = profit >= 0 ? new Color(0, 255, 100) : new Color(255, 100, 100);
-        }
+    showWithData(
+        isVictory: boolean,
+        reason: string,
+        score: number,
+        compensation: number,
+        revenue: number,
+        cost: number,
+        wrongSteps: WrongStep[],
+        snapshots: GameStateSnapshot[],
+        levelName: string,
+        targetScore = 0,
+        maxCompensation = 0
+    ) {
+        const riderStats = this.collectRiderStats();
+        const subsidyStats = this.collectSubsidyStats();
+
+        this.renderToPanel(
+            isVictory, reason,
+            score, compensation, revenue, cost, wrongSteps, snapshots,
+            levelName, targetScore, maxCompensation,
+            riderStats, subsidyStats
+        );
+    }
+
+    private renderToPanel(
+        isVictory: boolean,
+        reason: string,
+        score: number,
+        compensation: number,
+        revenue: number,
+        cost: number,
+        wrongSteps: WrongStep[],
+        snapshots: GameStateSnapshot[],
+        levelName: string,
+        targetScore: number,
+        maxCompensation: number,
+        riderStats: Record<string, { orders: number; rejections: number }>,
+        subsidyStats: Record<string, { used: number; saved: number }>
+    ) {
+        this.setLabel('ResultTitle', isVictory ? `🏆 ${reason}` : `💔 ${reason}`, isVictory ? new Color(100, 255, 180) : new Color(255, 120, 120), 26);
+        this.setLabel('ScoreInfo', `关卡: ${levelName} | 最终得分: ${score} / 目标 ${targetScore}`, score >= targetScore ? new Color(100, 255, 150) : new Color(255, 150, 150), 18);
+        this.setLabel('CompInfo', `赔付总额: ¥${compensation} / 上限 ¥${maxCompensation}`, compensation <= maxCompensation ? new Color(100, 255, 150) : new Color(255, 150, 150), 18);
+        this.setLabel('RevenueInfo', `总收入: ¥${revenue}`, new Color(150, 220, 255), 18);
+        this.setLabel('ProfitInfo', `净利润: ¥${Math.max(0, revenue - cost)}  (成本 ¥${cost})`, revenue - cost >= 0 ? new Color(100, 255, 150) : new Color(255, 150, 150), 18);
 
         this.renderWrongSteps(wrongSteps);
         this.generateAppealEvidences(wrongSteps, snapshots);
         this.renderAppealEvidences();
 
-        this.updateNextLevelButton(isVictory);
         this.saveReplayRecord(isVictory, score, compensation, snapshots, wrongSteps);
         this.updateStatistics(isVictory, score, wrongSteps.length, compensation, subsidyStats, riderStats);
 
@@ -166,6 +179,16 @@ export class SettlementPanel extends Component {
         if (this.panelRoot) {
             this.panelRoot.active = true;
         }
+    }
+
+    private setLabel(name: string, text: string, color: Color, fontSize: number) {
+        const child = this.node.getChildByName(name);
+        if (!child) return;
+        const label = child.getComponent(Label);
+        if (!label) return;
+        label.string = text;
+        label.color = color;
+        label.fontSize = fontSize;
     }
 
     private updateNextLevelButton(isVictory: boolean) {

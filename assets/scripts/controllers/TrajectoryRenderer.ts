@@ -29,6 +29,23 @@ export class TrajectoryRenderer extends Component {
         }
     }
 
+    setGraphics(graphics: Graphics) {
+        if (this.trajectoryGraphics) {
+            this.trajectoryGraphics.clear();
+        }
+        this.trajectoryGraphics = graphics;
+        this.renderTrajectories();
+    }
+
+    setContainer(container: Node) {
+        this.trajectoryContainer = container;
+        if (!this.trajectoryGraphics) {
+            const graphicsNode = new Node('TrajectoryGraphics');
+            this.trajectoryGraphics = graphicsNode.addComponent(Graphics);
+            container.addChild(graphicsNode);
+        }
+    }
+
     addTrajectory(riderId: string, points: TrajectoryPoint[]) {
         if (!this.trajectoryColors.has(riderId)) {
             const colorIndex = this.trajectoryColors.size % this.colorPool.length;
