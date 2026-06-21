@@ -77,7 +77,7 @@ export const ConfigStorage = {
   LEVELS_KEY: 'levels',
 
   getQuestions<T>(): T[] {
-    return storage.get<T[]>('config', this.QUESTIONS_KEY, []);
+    return storage.get<T[]>('config', this.QUESTIONS_KEY, [] as T[]);
   },
 
   saveQuestions<T>(questions: T[]): void {
@@ -98,6 +98,30 @@ export const ConfigStorage = {
 
   saveLevels<T>(levels: T): void {
     storage.set('config', this.LEVELS_KEY, levels);
+  },
+
+  getSchedules<T>(defaultValue: T): T {
+    return storage.get<T>('config', this.SCHEDULE_KEY, defaultValue);
+  },
+
+  saveSchedules<T>(schedules: T): void {
+    storage.set('config', this.SCHEDULE_KEY, schedules);
+  },
+
+  getModes<T>(defaultValue: T): T {
+    return storage.get<T>('config', this.MODES_KEY, defaultValue);
+  },
+
+  saveModes<T>(modes: T): void {
+    storage.set('config', this.MODES_KEY, modes);
+  },
+
+  getAssets<T>(defaultValue: T): T {
+    return storage.get<T>('config', this.ASSETS_KEY, defaultValue);
+  },
+
+  saveAssets<T>(assets: T): void {
+    storage.set('config', this.ASSETS_KEY, assets);
   },
 };
 

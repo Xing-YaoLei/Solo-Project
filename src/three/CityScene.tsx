@@ -1,5 +1,5 @@
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import { Canvas, useThree, useFrame } from '@react-three/fiber';
+import { Suspense, useEffect, useMemo, useRef } from 'react';
+import { useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls, Stars, Html, ContactShadows } from '@react-three/drei';
 import { Physics } from '@react-three/rapier';
 import * as THREE from 'three';
@@ -9,7 +9,7 @@ import { OrderNode, OrderNodeType } from './OrderNode';
 import { RouteLine } from './RouteLine';
 import { Rider } from './Rider';
 
-interface SceneOrder {
+export interface SceneOrder {
   id: string;
   orderNo: string;
   fromPoint: [number, number, number];
@@ -19,11 +19,37 @@ interface SceneOrder {
   highlighted?: boolean;
 }
 
-interface SceneLightingProps {
-  children: React.ReactNode;
+export interface CitySceneContentProps {
+  orders?: SceneOrder[];
+  activeOrderId?: string;
+  riderPath?: Array<[number, number, number]>;
+  riderName?: string;
+  riderAnimate?: boolean;
+  onRiderProgress?: (orderId: string, progress: number) => void;
+  onRiderComplete?: (orderId: string) => void;
 }
 
-function SceneLighting({ children }: SceneLightingProps) {
+export const DEFAULT_ORDERS: SceneOrder[] = [
+  {
+    id: 'demo-001',
+    orderNo: 'PT20240115234501',
+    fromPoint: [-8, 0, -6],
+    toPoint: [10, 0, 8],
+    fromLabel: 'SOHO现代城',
+    toLabel: '百子湾小区',
+    highlighted: true,
+  },
+  {
+    id: 'demo-002',
+    orderNo: 'PT20240115081502',
+    fromPoint: [-12, 0, 4],
+    toPoint: [-5, 0, -3],
+    fromLabel: '中关村',
+    toLabel: '银科大厦',
+  },
+];
+
+function SceneLighting({ children }: { children: React.ReactNode }) {
   return (
     <>
       <ambientLight intensity={0.35} color="#93c5fd" />
@@ -50,25 +76,55 @@ function SceneLighting({ children }: SceneLightingProps) {
   );
 }
 
-interface SceneContentProps {
-  orders: SceneOrder[];
-  riderPath?: Array<[number, number, number]>;
-  activeOrderId?: string;
-  onRiderProgress?: (orderId: string, progress: number) => void;
-  onRiderComplete?: (orderId: string) => void;
-  riderName?: string;
-  riderAnimate?: boolean;
+function CameraController({ targetOrder }: { targetOrder?: SceneOrder | null }) {
+  const { camera } = useThree();
+  const controlsRef = useRef<any>(null);
+  const targetPos = useRef(new THREE.Vector3(0, 14, 18));
+  const lookAt = useRef(new THREE.Vector3(0, 0, 0));
+
+  useEffect(() => {
+    if (targetOrder) {
+      const cx = (targetOrder.fromPoint[0] + targetOrder.toPoint[0]) / 2;
+      const cz = (targetOrder.fromPoint[2] + targetOrder.toPoint[2]) / 2;
+      lookAt.current.set(cx, 0, cz);
+      targetPos.current.set(cx + 10, 14, cz + 14);
+    } else {
+      lookAt.current.set(0, 0, 0);
+      targetPos.current.set(0, 14, 18);
+    }
+  }, [targetOrder]);
+
+  useFrame((_, delta) => {
+    camera.position.lerp(targetPos.current, delta * 1.5);
+    if (controlsRef.current) {
+      controlsRef.current.target.lerp(lookAt.current, delta * 1.5);
+    }
+  });
+
+  return (
+    <OrbitControls
+      ref={controlsRef}
+      enablePan
+      enableZoom
+      enableRotate
+      maxPolarAngle={Math.PI / 2.1}
+      minDistance={6}
+      maxDistance={35}
+      target={[0, 0, 0]}
+      makeDefault
+    />
+  );
 }
 
-function SceneContent({
-  orders,
-  riderPath,
+export function CitySceneContent({
+  orders = DEFAULT_ORDERS,
   activeOrderId,
-  onRiderProgress,
-  onRiderComplete,
+  riderPath,
   riderName = '骑手小李',
   riderAnimate = true,
-}: SceneContentProps) {
+  onRiderProgress,
+  onRiderComplete,
+}: CitySceneContentProps) {
   const activeOrder = orders.find(o => o.id === activeOrderId) || orders[0];
   const defaultPath = useMemo<Array<[number, number, number]>>(() => {
     if (!activeOrder) return [[0, 0, 0]];
@@ -87,6 +143,7 @@ function SceneContent({
 
   return (
     <SceneLighting>
+      <CameraController targetOrder={activeOrder} />
       <RoadNetwork />
       <BuildingCluster count={28} seed={88} />
       <BuildingCluster count={14} seed={156} bounds={{ minX: -30, maxX: -20, minZ: -10, maxZ: 10 }} />
@@ -142,117 +199,4 @@ function SceneContent({
   );
 }
 
-interface CameraControllerProps {
-  targetOrder?: SceneOrder | null;
-}
-
-function CameraController({ targetOrder }: CameraControllerProps) {
-  const { camera } = useThree();
-  const controlsRef = useRef<any>(null);
-  const targetPos = useRef(new THREE.Vector3(0, 14, 18));
-  const lookAt = useRef(new THREE.Vector3(0, 0, 0));
-
-  useEffect(() => {
-    if (targetOrder) {
-      const cx = (targetOrder.fromPoint[0] + targetOrder.toPoint[0]) / 2;
-      const cz = (targetOrder.fromPoint[2] + targetOrder.toPoint[2]) / 2;
-      lookAt.current.set(cx, 0, cz);
-      targetPos.current.set(cx + 10, 14, cz + 14);
-    } else {
-      lookAt.current.set(0, 0, 0);
-      targetPos.current.set(0, 14, 18);
-    }
-  }, [targetOrder]);
-
-  useFrame((_, delta) => {
-    camera.position.lerp(targetPos.current, delta * 1.5);
-    if (controlsRef.current) {
-      controlsRef.current.target.lerp(lookAt.current, delta * 1.5);
-    }
-  });
-
-  return (
-    <OrbitControls
-      ref={controlsRef}
-      enablePan
-      enableZoom
-      enableRotate
-      maxPolarAngle={Math.PI / 2.1}
-      minDistance={6}
-      maxDistance={35}
-      target={[0, 0, 0]}
-      makeDefault
-    />
-  );
-}
-
-export interface CitySceneProps {
-  orders?: SceneOrder[];
-  activeOrderId?: string;
-  riderPath?: Array<[number, number, number]>;
-  riderName?: string;
-  riderAnimate?: boolean;
-  onRiderProgress?: (orderId: string, progress: number) => void;
-  onRiderComplete?: (orderId: string) => void;
-  className?: string;
-  height?: string;
-}
-
-const DEFAULT_ORDERS: SceneOrder[] = [
-  {
-    id: 'demo-001',
-    orderNo: 'PT20240115234501',
-    fromPoint: [-8, 0, -6],
-    toPoint: [10, 0, 8],
-    fromLabel: 'SOHO现代城',
-    toLabel: '百子湾小区',
-    highlighted: true,
-  },
-  {
-    id: 'demo-002',
-    orderNo: 'PT20240115081502',
-    fromPoint: [-12, 0, 4],
-    toPoint: [-5, 0, -3],
-    fromLabel: '中关村',
-    toLabel: '银科大厦',
-  },
-];
-
-export const CityScene = ({
-  orders = DEFAULT_ORDERS,
-  activeOrderId,
-  riderPath,
-  riderName,
-  riderAnimate = true,
-  onRiderProgress,
-  onRiderComplete,
-  className = '',
-  height = '100%',
-}: CitySceneProps) => {
-  const targetOrder = orders.find(o => o.id === activeOrderId) || orders[0];
-
-  return (
-    <div className={`w-full relative ${className}`} style={{ height }}>
-      <Canvas
-        shadows
-        camera={{ position: [0, 14, 18], fov: 50, near: 0.1, far: 200 }}
-        dpr={[1, 2]}
-        gl={{ antialias: true, alpha: false, powerPreference: 'high-performance' }}
-      >
-        <color attach="background" args={['#0f172a']} />
-        <Suspense fallback={<Html center><div className="text-slate-300 text-sm">场景加载中...</div></Html>}>
-          <CameraController targetOrder={targetOrder} />
-          <SceneContent
-            orders={orders}
-            activeOrderId={activeOrderId}
-            riderPath={riderPath}
-            riderName={riderName}
-            riderAnimate={riderAnimate}
-            onRiderProgress={onRiderProgress}
-            onRiderComplete={onRiderComplete}
-          />
-        </Suspense>
-      </Canvas>
-    </div>
-  );
-};
+export { CitySceneContent as CityScene };

@@ -1,16 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Canvas } from '@react-three/fiber';
-import { Physics } from '@react-three/rapier';
-import { OrbitControls, Stars, Sparkles } from '@react-three/drei';
+import { Suspense } from 'react';
+import { Html, Sparkles } from '@react-three/drei';
 import { HudPanel } from '@/components/game/HudPanel';
 import { RuleMatcher } from '@/components/game/RuleMatcher';
 import { EvidenceSelector } from '@/components/game/EvidenceSelector';
 import { SettlementSorter } from '@/components/game/SettlementSorter';
 import { CompensationHandler } from '@/components/game/CompensationHandler';
-import { CityScene } from '@/three/CityScene';
+import { CitySceneContent, DEFAULT_ORDERS } from '@/three/CityScene';
+import type { SceneOrder } from '@/three/CityScene';
 import { useGameStore } from '@/stores/gameStore';
-import { RecordStorage } from '@/utils/storage';
 import type { TrainingRecord } from '@/types/record';
 import type { Question, RuleQuestion, EvidenceQuestion, SettlementQuestion, CompensationQuestion, GamePhase, UserAnswer } from '@/types/game';
 import {
@@ -20,6 +20,38 @@ import {
 import { clsx } from 'clsx';
 
 type GamePageMode = 'level' | 'practice';
+
+function questionToOrders(questions: Question[]): SceneOrder[] {
+  const orders: SceneOrder[] = [];
+  questions.forEach((q, idx) => {
+    if (q.type === 'rule') {
+      const s = (q as RuleQuestion).orderScene;
+      orders.push({
+        id: s.id,
+        orderNo: s.orderNo,
+        fromPoint: s.fromPoint,
+        toPoint: s.toPoint,
+        fromLabel: s.startAddress,
+        toLabel: s.endAddress,
+        highlighted: false,
+      });
+    } else {
+      const angle = (idx / questions.length) * Math.PI * 2;
+      const r = 8 + idx * 3;
+      orders.push({
+        id: `q-order-${q.id}`,
+        orderNo: `PT${String(idx + 1).padStart(4, '0')}`,
+        fromPoint: [Math.cos(angle) * r, 0, Math.sin(angle) * r],
+        toPoint: [Math.cos(angle + 0.8) * (r + 4), 0, Math.sin(angle + 0.8) * (r + 4)],
+        fromLabel: '取货点',
+        toLabel: '收货点',
+        highlighted: false,
+      });
+    }
+  });
+  if (orders.length > 0) orders[0].highlighted = true;
+  return orders;
+}
 
 export default function GamePage() {
   const navigate = useNavigate();
@@ -50,6 +82,15 @@ export default function GamePage() {
   const totalScore = useMemo(() => questions.reduce((s, q) => s + q.score, 0), [questions]);
   const answeredKeys = Object.keys(answers);
   const correctCount = answeredKeys.filter(k => answers[k]?.isCorrect).length;
+
+  const sceneOrders = useMemo(() => {
+    if (questions.length === 0) return DEFAULT_ORDERS;
+    return questionToOrders(questions);
+  }, [questions]);
+
+  const activeOrderId = currentQuestion
+    ? sceneOrders[currentQuestionIndex]?.id || sceneOrders[0]?.id
+    : sceneOrders[0]?.id;
 
   const handleSubmit = (payload: string[] | string | { causeId: string; amount: string }) => {
     if (!currentQuestion) return;
@@ -92,38 +133,15 @@ export default function GamePage() {
         <color attach="background" args={['#0b1120']} />
         <fog attach="fog" args={['#0b1120', 40, 110]} />
 
-        <ambientLight intensity={0.35} />
-        <directionalLight
-          position={[20, 30, 10]}
-          intensity={1.2}
-          castShadow
-          shadow-mapSize-width={2048}
-          shadow-mapSize-height={2048}
-          shadow-camera-left={-40}
-          shadow-camera-right={40}
-          shadow-camera-top={40}
-          shadow-camera-bottom={-40}
-        />
-        <pointLight position={[-15, 15, -10]} intensity={0.6} color="#6366f1" distance={60} />
-        <pointLight position={[15, 12, 15]} intensity={0.5} color="#f97316" distance={50} />
-
-        <Stars radius={150} depth={60} count={2500} factor={3.5} saturation={0.3} fade speed={0.5} />
-
-        <Physics gravity={[0, -9.81, 0]} paused debug={false}>
-          <CityScene />
-        </Physics>
+        <Suspense fallback={<Html center><div className="text-slate-300 text-sm">场景加载中...</div></Html>}>
+          <CitySceneContent
+            orders={sceneOrders}
+            activeOrderId={activeOrderId}
+            riderAnimate={phase !== 'intro' && phase !== 'result'}
+          />
+        </Suspense>
 
         <Sparkles count={40} scale={[80, 30, 80]} size={2} speed={0.3} opacity={0.4} color="#818cf8" />
-
-        <OrbitControls
-          enablePan={false}
-          enableDamping
-          dampingFactor={0.08}
-          minDistance={18}
-          maxDistance={70}
-          maxPolarAngle={Math.PI / 2.2}
-          minPolarAngle={Math.PI / 6}
-        />
       </Canvas>
 
       <HudPanel

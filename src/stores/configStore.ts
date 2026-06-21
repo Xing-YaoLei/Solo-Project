@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { AssetItem, RewardConfig, OpenSchedule, TrainingMode, QuestionBankItem } from '@/types/config';
+import type { AssetItem, RewardConfig, OpenSchedule, TrainingMode, QuestionBankItem, Badge } from '@/types/config';
 import type { Level } from '@/types/game';
 import { ConfigStorage } from '@/utils/storage';
 import { LEVELS, QUESTIONS } from '@/mock/levels';
@@ -62,10 +62,16 @@ interface ConfigState {
   saveQuestion: (q: QuestionBankItem) => void;
   deleteQuestion: (id: string) => void;
   updateRewards: (r: RewardConfig) => void;
+  updateBadge: (badgeId: string, updates: Partial<Badge>) => void;
+  addBadge: (badge: Badge) => void;
+  removeBadge: (badgeId: string) => void;
   saveSchedule: (s: OpenSchedule) => void;
   deleteSchedule: (id: string) => void;
+  toggleScheduleActive: (id: string) => void;
   saveAsset: (a: AssetItem) => void;
   deleteAsset: (id: string) => void;
+  saveTrainingMode: (m: TrainingMode) => void;
+  deleteTrainingMode: (id: string) => void;
   saveLevel: (l: Level) => void;
   toggleLevelUnlock: (id: string) => void;
 }
@@ -81,10 +87,16 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
   loadAll: () => {
     const savedRewards = ConfigStorage.getRewards<RewardConfig | null>(null);
     const savedLevels = ConfigStorage.getLevels<Level[] | null>(null);
+    const savedSchedules = ConfigStorage.getSchedules<OpenSchedule[] | null>(null);
+    const savedModes = ConfigStorage.getModes<TrainingMode[] | null>(null);
+    const savedAssets = ConfigStorage.getAssets<AssetItem[] | null>(null);
+    const savedQuestions = ConfigStorage.getQuestions<QuestionBankItem>();
     set({
-      questionBank: buildQuestionBank(),
-      assets: DEFAULT_ASSETS,
+      questionBank: savedQuestions.length > 0 ? savedQuestions : buildQuestionBank(),
+      assets: savedAssets && savedAssets.length > 0 ? savedAssets : DEFAULT_ASSETS,
       rewards: savedRewards || DEFAULT_REWARDS,
+      openSchedules: savedSchedules && savedSchedules.length > 0 ? savedSchedules : DEFAULT_SCHEDULES,
+      trainingModes: savedModes && savedModes.length > 0 ? savedModes : DEFAULT_MODES,
       levels: savedLevels && savedLevels.length > 0 ? savedLevels : LEVELS,
     });
   },
@@ -94,6 +106,9 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
     ConfigStorage.saveQuestions(questionBank);
     ConfigStorage.saveRewards(rewards);
     ConfigStorage.saveLevels(levels);
+    ConfigStorage.saveSchedules(openSchedules);
+    ConfigStorage.saveModes(trainingModes);
+    ConfigStorage.saveAssets(assets);
   },
 
   saveQuestion: (q) => {
@@ -117,17 +132,49 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
     set({ rewards: r });
   },
 
+  updateBadge: (badgeId, updates) => {
+    const { rewards } = get();
+    const newBadges = rewards.badges.map(b => b.id === badgeId ? { ...b, ...updates } : b);
+    const newRewards = { ...rewards, badges: newBadges };
+    ConfigStorage.saveRewards(newRewards);
+    set({ rewards: newRewards });
+  },
+
+  addBadge: (badge) => {
+    const { rewards } = get();
+    const newRewards = { ...rewards, badges: [...rewards.badges, badge] };
+    ConfigStorage.saveRewards(newRewards);
+    set({ rewards: newRewards });
+  },
+
+  removeBadge: (badgeId) => {
+    const { rewards } = get();
+    const newRewards = { ...rewards, badges: rewards.badges.filter(b => b.id !== badgeId) };
+    ConfigStorage.saveRewards(newRewards);
+    set({ rewards: newRewards });
+  },
+
   saveSchedule: (s) => {
     const { openSchedules } = get();
     const idx = openSchedules.findIndex(i => i.id === s.id);
     const newSchedules = idx >= 0
       ? openSchedules.map(i => i.id === s.id ? s : i)
       : [...openSchedules, { ...s, id: `sched-${Date.now()}` }];
+    ConfigStorage.saveSchedules(newSchedules);
     set({ openSchedules: newSchedules });
   },
 
   deleteSchedule: (id) => {
-    set({ openSchedules: get().openSchedules.filter(s => s.id !== id) });
+    const newSchedules = get().openSchedules.filter(s => s.id !== id);
+    ConfigStorage.saveSchedules(newSchedules);
+    set({ openSchedules: newSchedules });
+  },
+
+  toggleScheduleActive: (id) => {
+    const { openSchedules } = get();
+    const newSchedules = openSchedules.map(s => s.id === id ? { ...s, active: !s.active } : s);
+    ConfigStorage.saveSchedules(newSchedules);
+    set({ openSchedules: newSchedules });
   },
 
   saveAsset: (a) => {
@@ -136,11 +183,30 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
     const newAssets = idx >= 0
       ? assets.map(i => i.id === a.id ? a : i)
       : [...assets, { ...a, id: `asset-${Date.now()}`, uploadedAt: Date.now() }];
+    ConfigStorage.saveAssets(newAssets);
     set({ assets: newAssets });
   },
 
   deleteAsset: (id) => {
-    set({ assets: get().assets.filter(a => a.id !== id) });
+    const newAssets = get().assets.filter(a => a.id !== id);
+    ConfigStorage.saveAssets(newAssets);
+    set({ assets: newAssets });
+  },
+
+  saveTrainingMode: (m) => {
+    const { trainingModes } = get();
+    const idx = trainingModes.findIndex(i => i.id === m.id);
+    const newModes = idx >= 0
+      ? trainingModes.map(i => i.id === m.id ? m : i)
+      : [...trainingModes, { ...m, id: `mode-${Date.now()}` }];
+    ConfigStorage.saveModes(newModes);
+    set({ trainingModes: newModes });
+  },
+
+  deleteTrainingMode: (id) => {
+    const newModes = get().trainingModes.filter(m => m.id !== id);
+    ConfigStorage.saveModes(newModes);
+    set({ trainingModes: newModes });
   },
 
   saveLevel: (l) => {
