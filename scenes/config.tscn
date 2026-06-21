@@ -1,0 +1,151 @@
+[gd_scene load_steps=2 format=3 uid="uid://f3g4h5i6j7k8l9"]
+
+[ext_resource type="Script" path="res://scripts/config.gd" id="1_config"]
+
+[node name="Config" type="Control"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_config")
+
+[node name="Background" type="ColorRect" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.92, 0.94, 0.98, 1)
+
+[node name="TopBar" type="PanelContainer" parent="."]
+anchor_right = 1.0
+custom_minimum_size = Vector2(0, 60)
+
+[node name="HBoxContainer" type="HBoxContainer" parent="TopBar"]
+theme_override_constants/separation = 20
+
+[node name="BackButton" type="Button" parent="TopBar/HBoxContainer"]
+text = "← 返回"
+custom_minimum_size = Vector2(100, 40)
+theme_override_font_sizes/font_size = 14
+
+[node name="TitleLabel" type="Label" parent="TopBar/HBoxContainer"]
+text = "系统配置"
+theme_override_font_sizes/font_size = 24
+theme_override_colors/font_color = Color(0.2, 0.35, 0.6, 1)
+
+[node name="MainContainer" type="PanelContainer" parent="."]
+offset_top = 70
+offset_bottom = -10
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="TabContainer" type="TabContainer" parent="MainContainer"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_font_sizes/font_size = 14
+
+[node name="LevelTab" type="VBoxContainer" parent="MainContainer/TabContainer"]
+name = "题目配置"
+theme_override_constants/separation = 10
+
+[node name="LevelScroll" type="ScrollContainer" parent="MainContainer/TabContainer/LevelTab"]
+size_flags_vertical = 3
+
+[node name="LevelList" type="VBoxContainer" parent="MainContainer/TabContainer/LevelTab/LevelScroll"]
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+custom_minimum_size = Vector2(600, 0)
+
+[node name="AddLevelButton" type="Button" parent="MainContainer/TabContainer/LevelTab"]
+text = "+ 添加关卡"
+custom_minimum_size = Vector2(0, 40)
+theme_override_font_sizes/font_size = 14
+
+[node name="MaterialTab" type="VBoxContainer" parent="MainContainer/TabContainer"]
+name = "素材配置"
+theme_override_constants/separation = 10
+
+[node name="MaterialScroll" type="ScrollContainer" parent="MainContainer/TabContainer/MaterialTab"]
+size_flags_vertical = 3
+
+[node name="MaterialList" type="VBoxContainer" parent="MainContainer/TabContainer/MaterialTab/MaterialScroll"]
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+custom_minimum_size = Vector2(600, 0)
+
+[node name="AddMaterialButton" type="Button" parent="MainContainer/TabContainer/MaterialTab"]
+text = "+ 添加素材"
+custom_minimum_size = Vector2(0, 40)
+theme_override_font_sizes/font_size = 14
+
+[node name="RewardTab" type="VBoxContainer" parent="MainContainer/TabContainer"]
+name = "奖励配置"
+theme_override_constants/separation = 10
+
+[node name="RewardScroll" type="ScrollContainer" parent="MainContainer/TabContainer/RewardTab"]
+size_flags_vertical = 3
+
+[node name="RewardList" type="VBoxContainer" parent="MainContainer/TabContainer/RewardTab/RewardScroll"]
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+custom_minimum_size = Vector2(600, 0)
+
+[node name="AddRewardButton" type="Button" parent="MainContainer/TabContainer/RewardTab"]
+text = "+ 添加奖励"
+custom_minimum_size = Vector2(0, 40)
+theme_override_font_sizes/font_size = 14
+
+[node name="TimeTab" type="VBoxContainer" parent="MainContainer/TabContainer"]
+name = "开放时间"
+theme_override_constants/separation = 15
+
+[node name="VBox" type="VBoxContainer" parent="MainContainer/TabContainer/TimeTab"]
+theme_override_constants/separation = 20
+
+[node name="OpenTimeRow" type="HBoxContainer" parent="MainContainer/TabContainer/TimeTab/VBox"]
+size_flags_horizontal = 3
+theme_override_constants/separation = 30
+alignment = 1
+
+[node name="StartLabel" type="Label" parent="MainContainer/TabContainer/TimeTab/VBox/OpenTimeRow"]
+text = "开始时间:"
+theme_override_font_sizes/font_size = 14
+custom_minimum_size = Vector2(80, 0)
+
+[node name="StartTime" type="SpinBox" parent="MainContainer/TabContainer/TimeTab/VBox/OpenTimeRow"]
+min_value = 0.0
+max_value = 23.0
+step = 1.0
+custom_minimum_size = Vector2(100, 40)
+theme_override_font_sizes/font_size = 16
+
+[node name="EndLabel" type="Label" parent="MainContainer/TabContainer/TimeTab/VBox/OpenTimeRow"]
+text = "结束时间:"
+theme_override_font_sizes/font_size = 14
+custom_minimum_size = Vector2(80, 0)
+
+[node name="EndTime" type="SpinBox" parent="MainContainer/TabContainer/TimeTab/VBox/OpenTimeRow"]
+min_value = 0.0
+max_value = 24.0
+step = 1.0
+custom_minimum_size = Vector2(100, 40)
+theme_override_font_sizes/font_size = 16
+
+[node name="WorkDaysLabel" type="Label" parent="MainContainer/TabContainer/TimeTab/VBox"]
+text = "工作日设置:"
+theme_override_font_sizes/font_size = 14
+
+[node name="WorkDaysGrid" type="GridContainer" parent="MainContainer/TabContainer/TimeTab/VBox"]
+columns = 7
+theme_override_constants/h_separation = 15
+theme_override_constants/v_separation = 10
+
+[node name="SaveButton" type="Button" parent="MainContainer/TabContainer/TimeTab/VBox"]
+text = "保存设置"
+custom_minimum_size = Vector2(200, 45)
+theme_override_font_sizes/font_size = 16
+size_flags_horizontal = 4
+
+[node name="ModeTab" type="VBoxContainer" parent="MainContainer/TabContainer"]
+name = "训练模式"
+theme_override_constants/separation = 10
+
+[node name="ModeList" type="VBoxContainer" parent="MainContainer/TabContainer/ModeTab"]
+size_flags_vertical = 3
+theme_override_constants/separation = 10

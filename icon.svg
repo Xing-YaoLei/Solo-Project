@@ -1,0 +1,24 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <rect width="128" height="128" rx="16" fill="#4A90D9"/>
+  <g transform="translate(24, 20)">
+    <rect x="0" y="16" width="80" height="68" rx="4" fill="#FFFFFF"/>
+    <rect x="0" y="0" width="80" height="20" rx="4" fill="#2E5B8A"/>
+    <line x1="20" y1="0" x2="20" y2="20" stroke="#1A3A5C" stroke-width="2"/>
+    <line x1="60" y1="0" x2="60" y2="20" stroke="#1A3A5C" stroke-width="2"/>
+    <g fill="#2E5B8A">
+      <rect x="6" y="30" width="18" height="12" rx="2"/>
+      <rect x="30" y="30" width="18" height="12" rx="2"/>
+      <rect x="54" y="30" width="18" height="12" rx="2"/>
+      <rect x="6" y="48" width="18" height="12" rx="2"/>
+      <rect x="30" y="48" width="18" height="12" rx="2"/>
+      <rect x="54" y="48" width="18" height="12" rx="2" fill="#4CAF50"/>
+      <rect x="6" y="66" width="18" height="12" rx="2"/>
+      <rect x="30" y="66" width="18" height="12" rx="2" fill="#F44336"/>
+      <rect x="54" y="66" width="18" height="12" rx="2"/>
+    </g>
+  </g>
+  <g transform="translate(70, 70)">
+    <circle cx="24" cy="24" r="20" fill="#FFC107"/>
+    <path d="M24 12 L24 24 L32 32" stroke="#FFFFFF" stroke-width="3" fill="none" stroke-linecap="round"/>
+  </g>
+</svg>

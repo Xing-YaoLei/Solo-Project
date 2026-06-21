@@ -1,0 +1,80 @@
+[gd_scene load_steps=2 format=3 uid="uid://d1x2y3z4w5v6u7"]
+
+[ext_resource type="Script" path="res://scripts/result.gd" id="1_result"]
+
+[node name="Result" type="Control"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_result")
+
+[node name="Background" type="ColorRect" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.92, 0.94, 0.98, 1)
+
+[node name="Panel" type="PanelContainer" parent="."]
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -350
+offset_top = -300
+offset_right = 350
+offset_bottom = 300
+
+[node name="VBox" type="VBoxContainer" parent="Panel"]
+theme_override_constants/separation = 20
+custom_minimum_size = Vector2(700, 600)
+
+[node name="ResultTitle" type="Label" parent="Panel/VBox"]
+text = "训练结果"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 28
+theme_override_colors/font_color = Color(0.2, 0.35, 0.6, 1)
+custom_minimum_size = Vector2(0, 50)
+
+[node name="ScoreLabel" type="Label" parent="Panel/VBox"]
+text = "95.0"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 72
+theme_override_colors/font_color = Color(0.3, 0.6, 0.85, 1)
+custom_minimum_size = Vector2(0, 100)
+
+[node name="PassLabel" type="Label" parent="Panel/VBox"]
+text = "✓ 训练通过！"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 20
+theme_override_colors/font_color = Color(0.2, 0.7, 0.3, 1)
+custom_minimum_size = Vector2(0, 35)
+
+[node name="StatsGrid" type="GridContainer" parent="Panel/VBox"]
+size_flags_horizontal = 3
+columns = 2
+theme_override_constants/h_separation = 20
+theme_override_constants/v_separation = 12
+custom_minimum_size = Vector2(0, 200)
+
+[node name="ButtonRow" type="HBoxContainer" parent="Panel/VBox"]
+size_flags_horizontal = 3
+theme_override_constants/separation = 15
+alignment = 1
+
+[node name="ReviewButton" type="Button" parent="Panel/VBox/ButtonRow"]
+text = "查看复盘"
+custom_minimum_size = Vector2(130, 45)
+theme_override_font_sizes/font_size = 15
+
+[node name="RetryButton" type="Button" parent="Panel/VBox/ButtonRow"]
+text = "再试一次"
+custom_minimum_size = Vector2(130, 45)
+theme_override_font_sizes/font_size = 15
+
+[node name="NextButton" type="Button" parent="Panel/VBox/ButtonRow"]
+text = "下一关"
+custom_minimum_size = Vector2(130, 45)
+theme_override_font_sizes/font_size = 15
+
+[node name="MenuButton" type="Button" parent="Panel/VBox/ButtonRow"]
+text = "返回菜单"
+custom_minimum_size = Vector2(130, 45)
+theme_override_font_sizes/font_size = 15

@@ -1,0 +1,203 @@
+[gd_scene load_steps=2 format=3 uid="uid://c9x8p3q4r5s6t7"]
+
+[ext_resource type="Script" path="res://scripts/game_play.gd" id="1_game"]
+
+[node name="GamePlay" type="Control"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_game")
+
+[node name="Background" type="ColorRect" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.94, 0.95, 0.97, 1)
+
+[node name="TopBar" type="PanelContainer" parent="."]
+anchor_right = 1.0
+custom_minimum_size = Vector2(0, 60)
+
+[node name="HBoxContainer" type="HBoxContainer" parent="TopBar"]
+theme_override_constants/separation = 20
+
+[node name="BackButton" type="Button" parent="TopBar/HBoxContainer"]
+text = "← 返回"
+custom_minimum_size = Vector2(80, 40)
+theme_override_font_sizes/font_size = 14
+
+[node name="LevelLabel" type="Label" parent="TopBar/HBoxContainer"]
+text = "关卡名称"
+theme_override_font_sizes/font_size = 20
+theme_override_colors/font_color = Color(0.2, 0.35, 0.6, 1)
+custom_minimum_size = Vector2(200, 0)
+
+[node name="TimerLabel" type="Label" parent="TopBar/HBoxContainer"]
+text = "05:00"
+theme_override_font_sizes/font_size = 24
+theme_override_colors/font_color = Color(0.2, 0.6, 0.3, 1)
+custom_minimum_size = Vector2(100, 0)
+
+[node name="ScoreLabel" type="Label" parent="TopBar/HBoxContainer"]
+text = "当前分: 0"
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.5, 0.5, 0.5, 1)
+size_flags_horizontal = 3
+
+[node name="PauseButton" type="Button" parent="TopBar/HBoxContainer"]
+text = "暂停"
+custom_minimum_size = Vector2(80, 40)
+theme_override_font_sizes/font_size = 14
+
+[node name="SubmitButton" type="Button" parent="TopBar/HBoxContainer"]
+text = "提交答卷"
+custom_minimum_size = Vector2(120, 40)
+theme_override_font_sizes/font_size = 14
+
+[node name="MainSplit" type="HSplitContainer" parent="."]
+offset_top = 65
+offset_bottom = -200
+anchor_right = 1.0
+anchor_bottom = 1.0
+split_offset = 320
+
+[node name="LeftPanel" type="PanelContainer" parent="MainSplit"]
+size_flags_vertical = 3
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MainSplit/LeftPanel"]
+theme_override_constants/separation = 8
+custom_minimum_size = Vector2(300, 400)
+
+[node name="OrderTitle" type="Label" parent="MainSplit/LeftPanel/VBoxContainer"]
+text = "待办订单"
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.2, 0.3, 0.5, 1)
+custom_minimum_size = Vector2(0, 30)
+
+[node name="OrderScroll" type="ScrollContainer" parent="MainSplit/LeftPanel/VBoxContainer"]
+size_flags_vertical = 3
+
+[node name="OrderList" type="VBoxContainer" parent="MainSplit/LeftPanel/VBoxContainer/OrderScroll"]
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+custom_minimum_size = Vector2(280, 0)
+
+[node name="RightPanel" type="VBoxContainer" parent="MainSplit"]
+size_flags_vertical = 3
+theme_override_constants/separation = 10
+
+[node name="CalendarContainer" type="PanelContainer" parent="MainSplit/RightPanel"]
+size_flags_vertical = 3
+
+[node name="VBoxContainer2" type="VBoxContainer" parent="MainSplit/RightPanel/CalendarContainer"]
+theme_override_constants/separation = 5
+
+[node name="WeekLabel" type="Label" parent="MainSplit/RightPanel/CalendarContainer/VBoxContainer2"]
+text = "本周排班表"
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.2, 0.3, 0.5, 1)
+custom_minimum_size = Vector2(0, 30)
+
+[node name="CalendarScroll" type="ScrollContainer" parent="MainSplit/RightPanel/CalendarContainer/VBoxContainer2"]
+size_flags_vertical = 3
+
+[node name="CalendarGrid" type="GridContainer" parent="MainSplit/RightPanel/CalendarContainer/VBoxContainer2/CalendarScroll"]
+size_flags_horizontal = 3
+columns = 8
+theme_override_constants/h_separation = 2
+theme_override_constants/v_separation = 2
+custom_minimum_size = Vector2(800, 400)
+
+[node name="CleanerInfo" type="VBoxContainer" parent="MainSplit/RightPanel"]
+custom_minimum_size = Vector2(0, 180)
+theme_override_constants/separation = 5
+
+[node name="BottomPanel" type="PanelContainer" parent="."]
+offset_bottom = -5
+anchor_right = 1.0
+anchor_top = 1.0
+offset_top = -195
+
+[node name="VBoxContainer3" type="VBoxContainer" parent="BottomPanel"]
+theme_override_constants/separation = 5
+
+[node name="ConflictLabel" type="Label" parent="BottomPanel/VBoxContainer3"]
+text = "冲突检测 (0 个问题)"
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.7, 0.3, 0.2, 1)
+custom_minimum_size = Vector2(0, 25)
+
+[node name="ConflictScroll" type="ScrollContainer" parent="BottomPanel/VBoxContainer3"]
+size_flags_vertical = 3
+custom_minimum_size = Vector2(0, 140)
+
+[node name="ConflictList" type="VBoxContainer" parent="BottomPanel/VBoxContainer3/ConflictScroll"]
+size_flags_horizontal = 3
+theme_override_constants/separation = 5
+custom_minimum_size = Vector2(0, 0)
+
+[node name="OrderDetailPanel" type="Panel" parent="."]
+visible = false
+offset_left = 900
+offset_top = 100
+offset_right = 1250
+offset_bottom = 450
+
+[node name="VBox" type="VBoxContainer" parent="OrderDetailPanel"]
+offset_left = 15
+offset_top = 15
+offset_right = -15
+offset_bottom = -15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/separation = 8
+
+[node name="DetailApartment" type="Label" parent="OrderDetailPanel/VBox"]
+text = "A栋-101"
+theme_override_font_sizes/font_size = 20
+theme_override_colors/font_color = Color(0.2, 0.35, 0.6, 1)
+custom_minimum_size = Vector2(0, 30)
+
+[node name="DetailType" type="Label" parent="OrderDetailPanel/VBox"]
+text = "类型: 日常保洁"
+theme_override_font_sizes/font_size = 13
+
+[node name="DetailDuration" type="Label" parent="OrderDetailPanel/VBox"]
+text = "时长: 60分钟"
+theme_override_font_sizes/font_size = 13
+
+[node name="DetailPreferred" type="Label" parent="OrderDetailPanel/VBox"]
+text = "期望: 周一 09:00"
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.6, 0.5, 0.4, 1)
+
+[node name="DetailStatus" type="Label" parent="OrderDetailPanel/VBox"]
+text = "状态: 待分配"
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.8, 0.5, 0.2, 1)
+
+[node name="DetailConflict" type="Label" parent="OrderDetailPanel/VBox"]
+text = "冲突: 原因说明"
+visible = false
+theme_override_font_sizes/font_size = 12
+theme_override_colors/font_color = Color(0.9, 0.2, 0.2, 1)
+
+[node name="AssignButton" type="Button" parent="OrderDetailPanel/VBox"]
+text = "分配订单"
+custom_minimum_size = Vector2(0, 35)
+theme_override_font_sizes/font_size = 13
+
+[node name="UnassignButton" type="Button" parent="OrderDetailPanel/VBox"]
+text = "取消分配"
+visible = false
+custom_minimum_size = Vector2(0, 35)
+theme_override_font_sizes/font_size = 13
+
+[node name="RescheduleButton" type="Button" parent="OrderDetailPanel/VBox"]
+text = "改约"
+visible = false
+custom_minimum_size = Vector2(0, 35)
+theme_override_font_sizes/font_size = 13
+
+[node name="CloseDetailButton" type="Button" parent="OrderDetailPanel/VBox"]
+text = "关闭"
+custom_minimum_size = Vector2(0, 30)
+theme_override_font_sizes/font_size = 12

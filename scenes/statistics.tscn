@@ -1,0 +1,108 @@
+[gd_scene load_steps=2 format=3 uid="uid://e2f3g4h5i6j7k8"]
+
+[ext_resource type="Script" path="res://scripts/statistics.gd" id="1_stat"]
+
+[node name="Statistics" type="Control"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_stat")
+
+[node name="Background" type="ColorRect" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.92, 0.94, 0.98, 1)
+
+[node name="TopBar" type="PanelContainer" parent="."]
+anchor_right = 1.0
+custom_minimum_size = Vector2(0, 60)
+
+[node name="HBoxContainer" type="HBoxContainer" parent="TopBar"]
+theme_override_constants/separation = 20
+
+[node name="BackButton" type="Button" parent="TopBar/HBoxContainer"]
+text = "← 返回"
+custom_minimum_size = Vector2(100, 40)
+theme_override_font_sizes/font_size = 14
+
+[node name="TitleLabel" type="Label" parent="TopBar/HBoxContainer"]
+text = "训练统计"
+theme_override_font_sizes/font_size = 24
+theme_override_colors/font_color = Color(0.2, 0.35, 0.6, 1)
+
+[node name="MainVBox" type="VBoxContainer" parent="."]
+offset_top = 70
+offset_bottom = -10
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/separation = 15
+
+[node name="SummaryPanel" type="PanelContainer" parent="MainVBox"]
+custom_minimum_size = Vector2(0, 150)
+
+[node name="VBox" type="VBoxContainer" parent="SummaryPanel"]
+theme_override_constants/separation = 10
+
+[node name="SummaryTitle" type="Label" parent="SummaryPanel/VBox"]
+text = "总体概览"
+theme_override_font_sizes/font_size = 18
+theme_override_colors/font_color = Color(0.2, 0.3, 0.5, 1)
+custom_minimum_size = Vector2(0, 30)
+
+[node name="SummaryGrid" type="GridContainer" parent="SummaryPanel/VBox"]
+size_flags_horizontal = 3
+columns = 5
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 5
+
+[node name="HSplit" type="HSplitContainer" parent="MainVBox"]
+size_flags_vertical = 3
+split_offset = 500
+
+[node name="LevelPanel" type="PanelContainer" parent="HSplit"]
+size_flags_vertical = 3
+
+[node name="VBox" type="VBoxContainer" parent="LevelPanel"]
+theme_override_constants/separation = 8
+
+[node name="LevelTitle" type="Label" parent="LevelPanel/VBox"]
+text = "各关卡表现"
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.2, 0.3, 0.5, 1)
+custom_minimum_size = Vector2(0, 30)
+
+[node name="LevelScroll" type="ScrollContainer" parent="LevelPanel/VBox"]
+size_flags_vertical = 3
+
+[node name="LevelList" type="VBoxContainer" parent="LevelPanel/VBox/LevelScroll"]
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+custom_minimum_size = Vector2(450, 0)
+
+[node name="RecentPanel" type="PanelContainer" parent="HSplit"]
+size_flags_vertical = 3
+
+[node name="VBox" type="VBoxContainer" parent="RecentPanel"]
+theme_override_constants/separation = 8
+
+[node name="HBox" type="HBoxContainer" parent="RecentPanel/VBox"]
+size_flags_horizontal = 3
+
+[node name="RecentTitle" type="Label" parent="RecentPanel/VBox/HBox"]
+text = "最近训练记录"
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.2, 0.3, 0.5, 1)
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 30)
+
+[node name="ClearButton" type="Button" parent="RecentPanel/VBox/HBox"]
+text = "清除记录"
+custom_minimum_size = Vector2(100, 30)
+theme_override_font_sizes/font_size = 12
+
+[node name="RecentScroll" type="ScrollContainer" parent="RecentPanel/VBox"]
+size_flags_vertical = 3
+
+[node name="RecentList" type="VBoxContainer" parent="RecentPanel/VBox/RecentScroll"]
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+custom_minimum_size = Vector2(300, 0)
