@@ -71,7 +71,12 @@ class ExceptionHistory(BaseModel):
     from_status: Mapped[str | None] = mapped_column(String(50), nullable=True)
     to_status: Mapped[str | None] = mapped_column(String(50), nullable=True)
     comment: Mapped[str | None] = mapped_column(Text, nullable=True)
-    operator_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    operator_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     source_record: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     exception = relationship("ExceptionRecord", back_populates="history")
+    operator = relationship("User", primaryjoin="ExceptionHistory.operator_id == User.id", foreign_keys="ExceptionHistory.operator_id")

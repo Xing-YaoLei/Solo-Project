@@ -24,6 +24,7 @@ class InvoiceItemCreate(InvoiceItemBase):
 
 
 class InvoiceItemUpdate(BaseModel):
+    id: Optional[str] = None
     item_name: Optional[str] = None
     fee_type: Optional[str] = None
     description: Optional[str] = None
@@ -33,6 +34,7 @@ class InvoiceItemUpdate(BaseModel):
     amount: Optional[float] = None
     actual_amount: Optional[float] = None
     sort_order: Optional[int] = None
+    _destroy: Optional[bool] = None
 
 
 class InvoiceItemResponse(BaseSchema, InvoiceItemBase):
@@ -76,6 +78,7 @@ class QuoteUpdate(BaseModel):
     payment_deadline: Optional[date] = None
     remarks: Optional[str] = None
     status: Optional[QuoteStatus] = None
+    invoice_items: Optional[List[InvoiceItemUpdate]] = None
 
 
 class QuoteStatusUpdate(BaseModel):

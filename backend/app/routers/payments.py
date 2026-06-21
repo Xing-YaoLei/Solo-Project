@@ -11,6 +11,7 @@ from ..dependencies.auth import get_current_user, require_roles
 from ..models.payment import Payment, PaymentStatus
 from ..models.quote import Quote, QuoteStatus
 from ..models.user import User, UserRole
+from ..models.exception import ExceptionRecord, ExceptionHistory, ExceptionType, ExceptionStatus
 from ..schemas.payment import (
     PaymentConfirm,
     PaymentCreate,
@@ -191,6 +192,9 @@ async def confirm_payment(
     if not payment:
         raise HTTPException(status_code=404, detail="支付流水不存在")
 
+    if payment.status == PaymentStatus.CONFIRMED:
+        raise HTTPException(status_code=400, detail="该支付流水已确认，请勿重复操作")
+
     payment.status = PaymentStatus.CONFIRMED
     payment.confirmed_at = datetime.utcnow()
     payment.updated_by = current_user.id
@@ -199,18 +203,48 @@ async def confirm_payment(
     quote = await db.get(Quote, payment.quote_id)
     if quote:
         quote.paid_amount = float(quote.paid_amount) + float(payment.amount)
-        if quote.paid_amount >= float(quote.discounted_amount) - 0.01:
+        if abs(float(quote.paid_amount) - float(quote.discounted_amount)) <= 0.01:
             quote.status = QuoteStatus.PAID
             quote.actual_payment_date = datetime.utcnow().date()
+        elif float(quote.paid_amount) > float(quote.discounted_amount) + 0.01:
+            quote.status = QuoteStatus.PARTIALLY_PAID
         else:
             quote.status = QuoteStatus.PARTIALLY_PAID
         quote.updated_by = current_user.id
         quote.updated_at = datetime.utcnow()
 
-        if float(quote.paid_amount) != float(quote.discounted_amount) and abs(
-            float(quote.paid_amount) - float(quote.discounted_amount)
-        ) > 0.01:
+        diff = float(quote.paid_amount) - float(quote.discounted_amount)
+        if abs(diff) > 0.01:
             quote.status = QuoteStatus.EXCEPTION
+
+            exc_record = ExceptionRecord(
+                quote_id=quote.id,
+                title=f"支付金额不一致 - {quote.quote_no}",
+                exception_type=ExceptionType.AMOUNT_MISMATCH,
+                status=ExceptionStatus.OPEN,
+                description=f"付款确认后金额不一致。应收金额: {quote.discounted_amount}，实际已付: {quote.paid_amount}，差异: {diff:.2f}",
+                source_ref=f"payment:{payment.id}",
+                expected_amount=float(quote.discounted_amount),
+                actual_amount=float(quote.paid_amount),
+                difference_amount=abs(diff),
+                created_by=current_user.id,
+                updated_by=current_user.id,
+            )
+            db.add(exc_record)
+            await db.flush()
+
+            exc_history = ExceptionHistory(
+                exception_id=exc_record.id,
+                action="create",
+                from_status=None,
+                to_status=ExceptionStatus.OPEN.value,
+                comment=f"支付确认自动触发。来源: 支付流水 {payment.payment_no}",
+                operator_id=current_user.id,
+                source_record=f"payment:{payment.id}",
+                created_by=current_user.id,
+                updated_by=current_user.id,
+            )
+            db.add(exc_history)
 
     await db.commit()
     await db.refresh(payment)

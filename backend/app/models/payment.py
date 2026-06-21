@@ -56,4 +56,9 @@ class Payment(BaseModel):
     confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     quote = relationship("Quote", back_populates="payments")
-    operator = relationship("User", back_populates="payments")
+    operator = relationship(
+        "User",
+        primaryjoin="Payment.operator_id == User.id",
+        foreign_keys="Payment.operator_id",
+        back_populates="payments",
+    )

@@ -171,14 +171,59 @@ async def update_quote(
     if not quote:
         raise HTTPException(status_code=404, detail="报价单不存在")
 
-    update_data = req.model_dump(exclude_unset=True)
+    update_data = req.model_dump(exclude_unset=True, exclude={"invoice_items"})
     for field, value in update_data.items():
         setattr(quote, field, value)
     quote.updated_by = current_user.id
     quote.updated_at = datetime.utcnow()
 
+    if req.invoice_items is not None:
+        existing_items = {item.id: item for item in quote.invoice_items}
+        seen_ids = set()
+
+        for idx, item_data in enumerate(req.invoice_items):
+            item_dict = item_data.model_dump(exclude_unset=True)
+            destroy = item_dict.pop("_destroy", False)
+            item_id = item_dict.pop("id", None)
+
+            if item_id and item_id in existing_items:
+                item = existing_items[item_id]
+                if destroy:
+                    await db.delete(item)
+                else:
+                    for field, value in item_dict.items():
+                        if value is not None:
+                            setattr(item, field, value)
+                    item.sort_order = idx
+                    item.updated_by = current_user.id
+                    item.updated_at = datetime.utcnow()
+                seen_ids.add(item_id)
+            elif not destroy:
+                new_item = InvoiceItem(
+                    quote_id=quote.id,
+                    item_name=item_dict.get("item_name", ""),
+                    fee_type=item_dict.get("fee_type", "other"),
+                    description=item_dict.get("description"),
+                    quantity=item_dict.get("quantity", 1.0),
+                    unit_price=item_dict.get("unit_price", 0.0),
+                    discount_rate=item_dict.get("discount_rate", 100.0),
+                    amount=item_dict.get("amount", 0.0),
+                    actual_amount=item_dict.get("actual_amount", 0.0),
+                    sort_order=idx,
+                    created_by=current_user.id,
+                    updated_by=current_user.id,
+                )
+                db.add(new_item)
+
     await db.commit()
     await db.refresh(quote)
+
+    result = await db.execute(
+        select(Quote)
+        .options(selectinload(Quote.invoice_items))
+        .where(Quote.id == quote_id)
+    )
+    quote = result.scalar_one()
     return _enrich_quote_detail(quote)
 
 

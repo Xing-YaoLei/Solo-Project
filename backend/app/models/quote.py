@@ -63,8 +63,18 @@ class Quote(BaseModel):
 
     remarks: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    creator = relationship("User", foreign_keys=[BaseModel.created_by], back_populates="created_quotes")
-    assignee = relationship("User", foreign_keys=[assigned_to], back_populates="assigned_quotes")
+    creator = relationship(
+        "User",
+        primaryjoin="Quote.created_by == User.id",
+        back_populates="created_quotes",
+        foreign_keys="Quote.created_by",
+    )
+    assignee = relationship(
+        "User",
+        primaryjoin="Quote.assigned_to == User.id",
+        back_populates="assigned_quotes",
+        foreign_keys="Quote.assigned_to",
+    )
     invoice_items = relationship("InvoiceItem", back_populates="quote", cascade="all, delete-orphan")
     approval_nodes = relationship("ApprovalNode", back_populates="quote", cascade="all, delete-orphan")
     payments = relationship("Payment", back_populates="quote", cascade="all, delete-orphan")

@@ -1,7 +1,13 @@
 import logging
 from datetime import datetime
+import sys
+from pathlib import Path
 
-from ..celery_app import celery_app
+_project_root = Path(__file__).resolve().parent.parent.parent
+if str(_project_root) not in sys.path:
+    sys.path.insert(0, str(_project_root))
+
+from app.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
 

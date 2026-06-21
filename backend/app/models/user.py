@@ -1,6 +1,6 @@
 import enum
 
-from sqlalchemy import Boolean, Column, Enum, String
+from sqlalchemy import Boolean, Column, Enum, String, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import BaseModel
@@ -25,8 +25,27 @@ class User(BaseModel):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     department: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
-    created_quotes = relationship("Quote", foreign_keys="Quote.created_by", back_populates="creator")
-    assigned_quotes = relationship("Quote", foreign_keys="Quote.assigned_to", back_populates="assignee")
-    approvals = relationship("ApprovalNode", foreign_keys="ApprovalNode.approver_id", back_populates="approver")
-    payments = relationship("Payment", back_populates="operator")
-    handled_exceptions = relationship("ExceptionRecord", foreign_keys="ExceptionRecord.handled_by", back_populates="handler")
+    created_quotes = relationship(
+        "Quote",
+        primaryjoin="User.id == Quote.created_by",
+        back_populates="creator",
+        foreign_keys="Quote.created_by",
+    )
+    assigned_quotes = relationship(
+        "Quote",
+        primaryjoin="User.id == Quote.assigned_to",
+        back_populates="assignee",
+        foreign_keys="Quote.assigned_to",
+    )
+    approvals = relationship(
+        "ApprovalNode",
+        primaryjoin="User.id == ApprovalNode.approver_id",
+        back_populates="approver",
+        foreign_keys="ApprovalNode.approver_id",
+    )
+    handled_exceptions = relationship(
+        "ExceptionRecord",
+        primaryjoin="User.id == ExceptionRecord.handled_by",
+        back_populates="handler",
+        foreign_keys="ExceptionRecord.handled_by",
+    )

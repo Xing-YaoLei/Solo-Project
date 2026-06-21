@@ -1,6 +1,14 @@
+import os
+import sys
+from pathlib import Path
+
 from celery import Celery
 
-from ..config import settings
+_project_root = Path(__file__).resolve().parent.parent
+if str(_project_root) not in sys.path:
+    sys.path.insert(0, str(_project_root))
+
+from app.config import settings
 
 celery_app = Celery(
     "legal_fee_tasks",
@@ -18,6 +26,7 @@ celery_app.conf.update(
     task_time_limit=3600,
     task_soft_time_limit=3000,
     worker_prefetch_multiplier=1,
+    imports=(
+        "app.tasks.tasks",
+    ),
 )
-
-celery_app.autodiscover_tasks(["app.tasks"], force=True)
