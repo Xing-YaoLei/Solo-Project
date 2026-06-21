@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import {
   LayoutDashboard,
   Users,
@@ -24,11 +24,12 @@ import {
   getDailyHearingsCount,
   getCaseTypeDistribution,
 } from '@/services/hearingsService';
-import { getFunnelData, getKpiData } from '@/data/mockData';
+import { getFunnelDataByHearings, getKpiDataByHearings } from '@/data/mockData';
 import { formatDate } from '@/lib/utils';
 
 export default function DashboardPage() {
   const { filters } = useFilterStore();
+  const reportRef = useRef<HTMLDivElement>(null);
 
   const filteredHearings = useMemo(
     () => getFilteredHearings(filters),
@@ -50,8 +51,15 @@ export default function DashboardPage() {
     [filteredHearings]
   );
 
-  const kpiData = getKpiData();
-  const funnelData = getFunnelData();
+  const kpiData = useMemo(
+    () => getKpiDataByHearings(filteredHearings),
+    [filteredHearings]
+  );
+
+  const funnelData = useMemo(
+    () => getFunnelDataByHearings(filteredHearings),
+    [filteredHearings]
+  );
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -64,136 +72,138 @@ export default function DashboardPage() {
             实时分析开庭数据，追踪流程转化，识别异常问题
           </p>
         </div>
-        <ExportButtons data={filteredHearings} title="开庭日历报表" />
+        <ExportButtons data={filteredHearings} title="开庭日历报表" targetRef={reportRef as React.RefObject<HTMLElement>} />
       </div>
 
       <FilterBar />
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        <KpiCard
-          title="总开庭数"
-          value={filteredHearings.length}
-          icon={<Calendar className="h-5 w-5" />}
-          trend={5.2}
-          color="primary"
-        />
-        <KpiCard
-          title="到场率"
-          value={kpiData.attendanceRate}
-          icon={<Users className="h-5 w-5" />}
-          trend={2.1}
-          isPercentage
-          color="success"
-        />
-        <KpiCard
-          title="冲突率"
-          value={kpiData.conflictRate}
-          icon={<AlertTriangle className="h-5 w-5" />}
-          trend={-1.5}
-          isPercentage
-          color="warning"
-        />
-        <KpiCard
-          title="平均满意度"
-          value={kpiData.avgSatisfaction.toFixed(1)}
-          icon={<Smile className="h-5 w-5" />}
-          trend={0.8}
-          suffix="/5"
-          color="primary"
-        />
-        <KpiCard
-          title="待处理冲突"
-          value={kpiData.pendingConflicts}
-          icon={<AlertTriangle className="h-5 w-5" />}
-          trend={-2.0}
-          color="danger"
-        />
-        <KpiCard
-          title="延期开庭"
-          value={kpiData.postponedCount}
-          icon={<Clock className="h-5 w-5" />}
-          trend={3.5}
-          color="warning"
-        />
-      </div>
+      <div ref={reportRef} className="space-y-6 bg-slate-50 p-6 rounded-xl">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          <KpiCard
+            title="总开庭数"
+            value={filteredHearings.length}
+            icon={<Calendar className="h-5 w-5" />}
+            trend={5.2}
+            color="primary"
+          />
+          <KpiCard
+            title="到场率"
+            value={kpiData.attendanceRate}
+            icon={<Users className="h-5 w-5" />}
+            trend={2.1}
+            isPercentage
+            color="success"
+          />
+          <KpiCard
+            title="冲突率"
+            value={kpiData.conflictRate}
+            icon={<AlertTriangle className="h-5 w-5" />}
+            trend={-1.5}
+            isPercentage
+            color="warning"
+          />
+          <KpiCard
+            title="平均满意度"
+            value={kpiData.avgSatisfaction.toFixed(1)}
+            icon={<Smile className="h-5 w-5" />}
+            trend={0.8}
+            suffix="/5"
+            color="primary"
+          />
+          <KpiCard
+            title="待处理冲突"
+            value={kpiData.pendingConflicts}
+            icon={<AlertTriangle className="h-5 w-5" />}
+            trend={-2.0}
+            color="danger"
+          />
+          <KpiCard
+            title="延期开庭"
+            value={kpiData.postponedCount}
+            icon={<Clock className="h-5 w-5" />}
+            trend={3.5}
+            color="warning"
+          />
+        </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <LayoutDashboard className="h-5 w-5 text-primary-500" />
-              流程转化漏斗
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <FunnelChart data={funnelData} />
-          </CardContent>
-        </Card>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <LayoutDashboard className="h-5 w-5 text-primary-500" />
+                流程转化漏斗
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <FunnelChart data={funnelData} />
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5 text-primary-500" />
-              到场状态分布
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <AttendancePieChart data={attendanceStats} />
-          </CardContent>
-        </Card>
-      </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-primary-500" />
+                到场状态分布
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <AttendancePieChart data={attendanceStats} />
+            </CardContent>
+          </Card>
+        </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-primary-500" />
+                每日开庭数趋势
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <BarChart
+                data={dailyCounts.map((d) => ({
+                  name: formatDate(d.date),
+                  value: d.count,
+                }))}
+                color="#1e3a5f"
+                height={300}
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <LayoutDashboard className="h-5 w-5 text-primary-500" />
+                案件类型分布
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <BarChart
+                data={caseTypeDistribution}
+                color="#0d9488"
+                height={300}
+              />
+            </CardContent>
+          </Card>
+        </div>
+
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5 text-primary-500" />
-              每日开庭数趋势
+              开庭记录明细
+              <span className="ml-2 text-sm font-normal text-slate-500">
+                共 {filteredHearings.length} 条记录
+              </span>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <BarChart
-              data={dailyCounts.map((d) => ({
-                name: formatDate(d.date),
-                value: d.count,
-              }))}
-              color="#1e3a5f"
-              height={300}
-            />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <LayoutDashboard className="h-5 w-5 text-primary-500" />
-              案件类型分布
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <BarChart
-              data={caseTypeDistribution}
-              color="#0d9488"
-              height={300}
-            />
+            <HearingTable hearings={filteredHearings} />
           </CardContent>
         </Card>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5 text-primary-500" />
-            开庭记录明细
-            <span className="ml-2 text-sm font-normal text-slate-500">
-              共 {filteredHearings.length} 条记录
-            </span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <HearingTable hearings={filteredHearings} />
-        </CardContent>
-      </Card>
     </div>
   );
 }

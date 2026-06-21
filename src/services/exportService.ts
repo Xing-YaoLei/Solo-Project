@@ -1,5 +1,11 @@
-import type { FilterParams, Hearing } from '@/types';
+import type { FilterParams, Hearing, ReminderStatus } from '@/types';
 import { formatDate, generateFilterHash, getAttendanceStatusLabel } from '@/lib/utils';
+
+const reminderStatusLabels: Record<ReminderStatus, string> = {
+  SENT: '已发送',
+  OPENED: '已打开',
+  FAILED: '发送失败',
+};
 
 export function getFilterDescription(filters: FilterParams): string {
   const parts: string[] = [];
@@ -22,6 +28,11 @@ export function getFilterDescription(filters: FilterParams): string {
   }
   if (filters.timeSlots && filters.timeSlots.length > 0) {
     parts.push(`时段: ${filters.timeSlots.join(', ')}`);
+  }
+  if (filters.reminderStatuses && filters.reminderStatuses.length > 0) {
+    parts.push(
+      `提醒状态: ${filters.reminderStatuses.map((s) => reminderStatusLabels[s] || s).join(', ')}`
+    );
   }
 
   return parts.length > 0 ? parts.join(' | ') : '全部数据';

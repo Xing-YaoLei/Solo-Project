@@ -284,15 +284,30 @@ export const mockSatisfactions: Satisfaction[] = [
   },
 ];
 
-export const mockReminders: Reminder[] = mockHearings.slice(0, 30).map((hearing, i) => ({
-  id: `reminder-${i + 1}`,
-  hearingId: hearing.id,
-  recipient: hearing.case?.clientName || '当事人',
-  recipientType: 'CLIENT',
-  reminderType: (['EMAIL', 'SMS', 'CALENDAR'] as const)[Math.floor(random() * 3)],
-  sentAt: new Date(hearing.hearingDate.getTime() - 24 * 60 * 60 * 1000),
-  status: (['SENT', 'OPENED', 'FAILED'] as const)[Math.floor(random() * 3)],
-}));
+export const mockReminders: Reminder[] = mockHearings.map((hearing, i) => {
+  const hasReminder = i < 40;
+  if (!hasReminder) return null as unknown as Reminder;
+  
+  const reminderCount = Math.floor(random() * 3) + 1;
+  const reminders: Reminder[] = [];
+  
+  for (let j = 0; j < reminderCount; j++) {
+    reminders.push({
+      id: `reminder-${i + 1}-${j + 1}`,
+      hearingId: hearing.id,
+      recipient: hearing.case?.clientName || '当事人',
+      recipientType: 'CLIENT',
+      reminderType: (['EMAIL', 'SMS', 'CALENDAR'] as const)[Math.floor(random() * 3)],
+      sentAt: new Date(hearing.hearingDate.getTime() - (j + 1) * 24 * 60 * 60 * 1000),
+      status: (['SENT', 'OPENED', 'FAILED'] as const)[Math.floor(random() * 3)],
+    });
+  }
+  return reminders;
+}).flat().filter(Boolean);
+
+mockHearings.forEach((hearing) => {
+  hearing.reminders = mockReminders.filter((r) => r.hearingId === hearing.id);
+});
 
 export const mockDataVersions: DataVersion[] = [
   {
@@ -362,6 +377,32 @@ export function getFunnelData(): FunnelDataPoint[] {
   ];
 }
 
+export function getFunnelDataByHearings(hearings: Hearing[]): FunnelDataPoint[] {
+  const total = hearings.length;
+  const scheduled = total;
+  
+  const uniqueHearingIds = new Set(hearings.map((h) => h.id));
+  const filteredReminders = mockReminders.filter((r) => uniqueHearingIds.has(r.hearingId));
+  const reminded = filteredReminders.filter((r) => r.status !== 'FAILED').length;
+  
+  const attended = hearings.filter((h) => h.attendanceStatus === 'ATTENDED').length;
+  const completed = hearings.filter(
+    (h) => h.attendanceStatus === 'ATTENDED' || h.attendanceStatus === 'POSTPONED'
+  ).length;
+  
+  const caseIds = new Set(hearings.map((h) => h.caseId));
+  const satisfied = mockSatisfactions.filter((s) => caseIds.has(s.caseId) && s.rating >= 4).length;
+
+  return [
+    { name: '案件登记', value: total, fill: '#1e3a5f' },
+    { name: '开庭排期', value: scheduled, fill: '#2d4a6f' },
+    { name: '提醒送达', value: Math.min(reminded, total), fill: '#3d5a7f' },
+    { name: '实际到场', value: attended, fill: '#0d9488' },
+    { name: '庭审完成', value: completed, fill: '#4d6a8f' },
+    { name: '客户满意', value: Math.min(satisfied, completed), fill: '#10b981' },
+  ];
+}
+
 export function getKpiData(): KpiData {
   return {
     totalHearings: 50,
@@ -370,5 +411,32 @@ export function getKpiData(): KpiData {
     avgSatisfaction: 3.8,
     pendingConflicts: 2,
     postponedCount: 10,
+  };
+}
+
+export function getKpiDataByHearings(hearings: Hearing[]): KpiData {
+  const totalHearings = hearings.length;
+  const attended = hearings.filter((h) => h.attendanceStatus === 'ATTENDED').length;
+  const attendanceRate = totalHearings > 0 ? attended / totalHearings : 0;
+  
+  const conflictCount = hearings.filter((h) => h.hasConflict).length;
+  const conflictRate = totalHearings > 0 ? conflictCount / totalHearings : 0;
+  
+  const caseIds = new Set(hearings.map((h) => h.caseId));
+  const relatedSatisfactions = mockSatisfactions.filter((s) => caseIds.has(s.caseId));
+  const avgSatisfaction = relatedSatisfactions.length > 0
+    ? relatedSatisfactions.reduce((sum, s) => sum + s.rating, 0) / relatedSatisfactions.length
+    : 0;
+  
+  const pendingConflicts = hearings.filter((h) => h.hasConflict && h.conflict?.status === 'PENDING').length;
+  const postponedCount = hearings.filter((h) => h.attendanceStatus === 'POSTPONED').length;
+
+  return {
+    totalHearings,
+    attendanceRate,
+    conflictRate,
+    avgSatisfaction,
+    pendingConflicts,
+    postponedCount,
   };
 }

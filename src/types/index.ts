@@ -29,6 +29,7 @@ export interface Hearing {
   updatedAt: Date;
   case?: Case;
   conflict?: Conflict;
+  reminders?: Reminder[];
 }
 
 export type DataSource = 'CASE_SYSTEM' | 'CALENDAR_TOOL' | 'EMAIL_ATTACHMENT';

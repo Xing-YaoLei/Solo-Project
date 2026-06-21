@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, forwardRef, useImperativeHandle } from 'react';
 import { Button } from '@/components/ui/Button';
 import {
   Download, FileText, FileSpreadsheet, Image as ImageIcon, Share2, Check, Copy } from 'lucide-react';
@@ -14,6 +14,7 @@ interface ExportButtonsProps {
   title?: string;
   showShare?: boolean;
   className?: string;
+  targetRef?: React.RefObject<HTMLElement>;
 }
 
 export function ExportButtons({
@@ -21,17 +22,26 @@ export function ExportButtons({
   title = '开庭日历报表',
   showShare = true,
   className,
+  targetRef,
 }: ExportButtonsProps) {
   const { filters } = useFilterStore();
   const [isExporting, setIsExporting] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const contentRef = useRef<HTMLDivElement>(null);
+  const internalRef = useRef<HTMLDivElement>(null);
+
+  const getExportElement = (): HTMLElement | null => {
+    if (targetRef?.current) {
+      return targetRef.current;
+    }
+    return internalRef.current;
+  };
 
   const handleExportPDF = async () => {
-    if (!contentRef.current) return;
+    const element = getExportElement();
+    if (!element) return;
     setIsExporting('pdf');
     try {
-      await exportToPDF(contentRef.current, filters, title);
+      await exportToPDF(element, filters, title);
     } catch (error) {
       console.error('PDF export failed:', error);
     } finally {
@@ -51,11 +61,12 @@ export function ExportButtons({
   };
 
   const handleExportImage = async () => {
-    if (!contentRef.current) return;
+    const element = getExportElement();
+    if (!element) return;
     setIsExporting('image');
     try {
       const { captureScreenshot } = await import('@/services/exportService');
-      const dataUrl = await captureScreenshot(contentRef.current, filters, title);
+      const dataUrl = await captureScreenshot(element, filters, title);
       const link = document.createElement('a');
       link.download = `${title}_${new Date().toISOString().split('T')[0]}.png`;
       link.href = dataUrl;
@@ -80,7 +91,7 @@ export function ExportButtons({
 
   return (
     <div className={cn('flex flex-col gap-4', className)}>
-      <div ref={contentRef} className="hidden" />
+      <div ref={internalRef} className="hidden" />
       <div className="flex items-center gap-2">
         <Button
           variant="outline"

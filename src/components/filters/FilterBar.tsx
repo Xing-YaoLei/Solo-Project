@@ -1,11 +1,13 @@
 'use client';
 
+import { useEffect, useState, useRef } from 'react';
 import { useFilterStore } from '@/store/useFilterStore';
 import { MultiSelect, SingleSelect } from '@/components/ui/Select';
 import { Button } from '@/components/ui/Button';
-import { X, RotateCcw } from 'lucide-react';
+import { RotateCcw, CheckCircle } from 'lucide-react';
 import { getFilterDescription } from '@/services/exportService';
-import type { AttendanceStatus, ReminderStatus } from '@/types';
+import { parseFilterHash, generateFilterHash } from '@/lib/utils';
+import type { AttendanceStatus, ReminderStatus, FilterParams } from '@/types';
 
 const caseTypeOptions = [
   { value: '民事', label: '民事' },
@@ -42,6 +44,42 @@ const hasConflictOptions = [
   { value: 'false', label: '无冲突' },
 ];
 
+function convertToFilterParams(obj: Record<string, unknown>): FilterParams {
+  const result: FilterParams = {};
+
+  if (obj.dateRange && typeof obj.dateRange === 'object') {
+    const dr = obj.dateRange as Record<string, unknown>;
+    if (dr.start && dr.end) {
+      result.dateRange = {
+        start: new Date(dr.start as string),
+        end: new Date(dr.end as string),
+      };
+    }
+  }
+
+  if (Array.isArray(obj.caseTypes)) {
+    result.caseTypes = obj.caseTypes as string[];
+  }
+
+  if (Array.isArray(obj.attendanceStatuses)) {
+    result.attendanceStatuses = obj.attendanceStatuses as AttendanceStatus[];
+  }
+
+  if (obj.hasConflicts !== undefined && obj.hasConflicts !== null) {
+    result.hasConflicts = Boolean(obj.hasConflicts);
+  }
+
+  if (Array.isArray(obj.timeSlots)) {
+    result.timeSlots = obj.timeSlots as string[];
+  }
+
+  if (Array.isArray(obj.reminderStatuses)) {
+    result.reminderStatuses = obj.reminderStatuses as ReminderStatus[];
+  }
+
+  return result;
+}
+
 export function FilterBar() {
   const {
     filters,
@@ -52,7 +90,65 @@ export function FilterBar() {
     setReminderStatuses,
     setDateRange,
     clearFilters,
+    setFilters,
   } = useFilterStore();
+
+  const [showRestoreNotice, setShowRestoreNotice] = useState(false);
+  const isFirstRender = useRef(true);
+  const initialized = useRef(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (initialized.current) return;
+
+    initialized.current = true;
+
+    const params = new URLSearchParams(window.location.search);
+    const filterHash = params.get('filters');
+
+    if (filterHash) {
+      try {
+        const parsed = parseFilterHash(filterHash);
+        if (parsed && typeof parsed === 'object') {
+          const restoredFilters = convertToFilterParams(parsed as Record<string, unknown>);
+          setFilters(restoredFilters);
+          setShowRestoreNotice(true);
+          setTimeout(() => setShowRestoreNotice(false), 5000);
+        }
+      } catch (e) {
+        console.error('Failed to restore filters from URL:', e);
+      }
+    }
+
+    const handlePopState = () => {
+      const newParams = new URLSearchParams(window.location.search);
+      const newFilterHash = newParams.get('filters');
+      initialized.current = false;
+      
+      if (newFilterHash) {
+        try {
+          const parsed = parseFilterHash(newFilterHash);
+          if (parsed && typeof parsed === 'object') {
+            const restoredFilters = convertToFilterParams(parsed as Record<string, unknown>);
+            isFirstRender.current = true;
+            setFilters(restoredFilters);
+            setShowRestoreNotice(true);
+            setTimeout(() => setShowRestoreNotice(false), 5000);
+          }
+        } catch (e) {
+          console.error('Failed to restore filters from popstate:', e);
+        }
+      } else {
+        isFirstRender.current = true;
+        clearFilters();
+      }
+      
+      initialized.current = true;
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [setFilters, clearFilters]);
 
   const hasActiveFilters = Object.keys(filters).some(
     (key) =>
@@ -62,8 +158,36 @@ export function FilterBar() {
         : true)
   );
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+
+    const url = new URL(window.location.href);
+    
+    if (hasActiveFilters) {
+      const filterHash = generateFilterHash(filters as unknown as Record<string, unknown>);
+      url.searchParams.set('filters', filterHash);
+    } else {
+      url.searchParams.delete('filters');
+    }
+
+    window.history.replaceState({}, '', url.toString());
+  }, [filters, hasActiveFilters]);
+
   return (
     <div className="mb-6 space-y-4">
+      {showRestoreNotice && (
+        <div className="flex items-center gap-2 rounded-lg bg-green-50 px-4 py-3 text-sm text-green-800 border border-green-200 animate-fade-in">
+          <CheckCircle className="h-5 w-5 text-green-600" />
+          <span>
+            已从分享链接恢复筛选条件：{getFilterDescription(filters)}
+          </span>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
         <div className="space-y-1">
           <label className="text-xs font-medium text-slate-600">案件类型</label>

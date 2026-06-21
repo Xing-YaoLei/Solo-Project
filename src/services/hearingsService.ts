@@ -1,4 +1,4 @@
-import type { Hearing, FilterParams, AttendanceStatus } from '@/types';
+import type { Hearing, FilterParams, AttendanceStatus, ReminderStatus } from '@/types';
 import { mockHearings } from '@/data/mockData';
 import { getTimeSlot } from '@/lib/utils';
 
@@ -26,6 +26,14 @@ export function getFilteredHearings(filters: FilterParams): Hearing[] {
     if (filters.timeSlots && filters.timeSlots.length > 0) {
       const slot = getTimeSlot(hearing.hearingTime);
       if (!filters.timeSlots.includes(slot)) return false;
+    }
+
+    if (filters.reminderStatuses && filters.reminderStatuses.length > 0) {
+      if (!hearing.reminders || hearing.reminders.length === 0) return false;
+      const hasMatchingReminder = hearing.reminders.some((r) =>
+        (filters.reminderStatuses as ReminderStatus[]).includes(r.status)
+      );
+      if (!hasMatchingReminder) return false;
     }
 
     return true;
