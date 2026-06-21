@@ -8,38 +8,63 @@ logger = logging.getLogger(__name__)
 
 
 @celery_app.task(name="handle_order_reject")
-def handle_order_reject(order_id: int, responsibility: str):
-    """处理拒单，按责任范围分派提醒"""
+def handle_order_reject(reject_record_id: int, order_id: int, responsibility: str):
+    """
+    拒单提醒 Celery 任务：
+    - 幂等写入 handler 和 is_reminded（兜底：接口同步已写，这里再次校验）
+    - 扩展操作：写审计事件、推送内部通知（后续可接 IM 机器人）
+    """
     db = SessionLocal()
     try:
-        order = db.query(models.Order).filter(models.Order.id == order_id).first()
-        if not order:
-            return
-        
-        reject_records = db.query(models.OrderRejectRecord).filter(
-            models.OrderRejectRecord.order_id == order_id,
-            models.OrderRejectRecord.is_reminded == False
-        ).all()
-        
-        for record in reject_records:
+        record = db.query(models.OrderRejectRecord).filter(
+            models.OrderRejectRecord.id == reject_record_id,
+            models.OrderRejectRecord.order_id == order_id
+        ).first()
+        if not record:
+            logger.warning(f"拒单记录不存在: reject_record_id={reject_record_id}, order_id={order_id}")
+            return {"status": "skipped", "reason": "record_not_found"}
+
+        handler_map = {
+            "rider": "骑手管理组",
+            "platform": "运营组",
+            "merchant": "商家运营",
+            "customer": "客服组",
+            "other": "综合处理组",
+        }
+        expected_handler = handler_map.get(responsibility, "综合处理组")
+
+        changed = False
+        if not record.handler or record.handler != expected_handler:
+            record.handler = expected_handler
+            changed = True
+        if not record.is_reminded:
             record.is_reminded = True
+            changed = True
+        if not record.reminded_at:
             record.reminded_at = datetime.utcnow()
-            
-            if responsibility == "rider":
-                record.handler = "骑手管理组"
-            elif responsibility == "platform":
-                record.handler = "运营组"
-            elif responsibility == "merchant":
-                record.handler = "商家运营"
-            elif responsibility == "customer":
-                record.handler = "客服组"
-            else:
-                record.handler = "综合处理组"
-            
-            logger.info(f"拒单提醒: 订单 {order.order_no}, 责任方 {responsibility}, 处理人 {record.handler}")
-        
-        db.commit()
-        return {"status": "success", "order_id": order_id, "responsibility": responsibility}
+            changed = True
+
+        if changed:
+            db.commit()
+
+        order = db.query(models.Order).filter(models.Order.id == order_id).first()
+        order_no = order.order_no if order else "?"
+
+        logger.info(
+            f"[Celery] 拒单提醒完成: 订单={order_no}, 拒单ID={reject_record_id}, "
+            f"责任方={responsibility}, 处理组={record.handler}, "
+            f"是否已提醒={record.is_reminded}"
+        )
+
+        return {
+            "status": "success",
+            "reject_record_id": reject_record_id,
+            "order_id": order_id,
+            "order_no": order_no,
+            "responsibility": responsibility,
+            "handler": record.handler,
+            "changed": changed,
+        }
     except Exception as e:
         logger.error(f"处理拒单失败: {e}")
         db.rollback()

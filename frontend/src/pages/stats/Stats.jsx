@@ -18,7 +18,7 @@ import {
   DollarOutlined,
 } from '@ant-design/icons'
 import ReactECharts from 'echarts-for-react'
-import { statsAPI, addressDictAPI } from '../../api'
+import { statsAPI, addressDictAPI, ordersAPI } from '../../api'
 
 const { RangePicker } = DatePicker
 const { Option } = Select
@@ -29,11 +29,13 @@ export default function Stats() {
   const [handlerStats, setHandlerStats] = useState([])
   const [trendData, setTrendData] = useState([])
   const [areas, setAreas] = useState([])
+  const [handlers, setHandlers] = useState([])
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     loadAreas()
+    loadHandlers()
     loadData()
   }, [])
 
@@ -41,6 +43,15 @@ export default function Stats() {
     try {
       const res = await addressDictAPI.getAreas()
       setAreas(res.data || [])
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  const loadHandlers = async () => {
+    try {
+      const res = await ordersAPI.getHandlers()
+      setHandlers(res.data || [])
     } catch (e) {
       console.error(e)
     }
@@ -54,16 +65,23 @@ export default function Stats() {
       if (values.area) {
         params.area = values.area
       }
+      if (values.handler) {
+        params.handler = values.handler
+      }
       if (values.dateRange && values.dateRange.length === 2) {
         params.start_date = values.dateRange[0].format('YYYY-MM-DD')
         params.end_date = values.dateRange[1].format('YYYY-MM-DD')
       }
 
+      const trendParams = { days: 7 }
+      if (values.area) trendParams.area = values.area
+      if (values.handler) trendParams.handler = values.handler
+
       const [overviewRes, areaRes, handlerRes, trendRes] = await Promise.all([
         statsAPI.getCompensateOverview(params),
         statsAPI.getCompensateByArea(params),
         statsAPI.getCompensateByHandler(params),
-        statsAPI.getCompensateTrend({ days: 7, area: values.area }),
+        statsAPI.getCompensateTrend(trendParams),
       ])
 
       setOverview(overviewRes.data || {})
@@ -244,6 +262,15 @@ export default function Stats() {
                 {areas.map((area) => (
                   <Option key={area} value={area}>
                     {area}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+            <Form.Item name="handler" label="负责人">
+              <Select placeholder="全部处理组" style={{ width: 160 }} allowClear>
+                {handlers.map((h) => (
+                  <Option key={h} value={h}>
+                    {h}
                   </Option>
                 ))}
               </Select>

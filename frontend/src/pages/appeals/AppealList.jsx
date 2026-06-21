@@ -15,7 +15,7 @@ import {
 } from 'antd'
 import { PlusOutlined, SearchOutlined, ReloadOutlined } from '@ant-design/icons'
 import { useNavigate } from '@tanstack/react-router'
-import { appealsAPI, addressDictAPI } from '../../api'
+import { appealsAPI, addressDictAPI, ordersAPI } from '../../api'
 import dayjs from 'dayjs'
 
 const { RangePicker } = DatePicker
@@ -49,12 +49,14 @@ export default function AppealList() {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(20)
   const [areas, setAreas] = useState([])
+  const [handlers, setHandlers] = useState([])
   const [form] = Form.useForm()
   const [createVisible, setCreateVisible] = useState(false)
   const [createForm] = Form.useForm()
 
   useEffect(() => {
     loadAreas()
+    loadHandlers()
     loadAppeals()
   }, [page, pageSize])
 
@@ -62,6 +64,15 @@ export default function AppealList() {
     try {
       const res = await addressDictAPI.getAreas()
       setAreas(res.data || [])
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  const loadHandlers = async () => {
+    try {
+      const res = await ordersAPI.getHandlers()
+      setHandlers(res.data || [])
     } catch (e) {
       console.error(e)
     }
@@ -79,6 +90,7 @@ export default function AppealList() {
         appellant: values.appellant,
         keyword: values.keyword,
         area: values.area,
+        handler: values.handler,
       }
       if (values.dateRange && values.dateRange.length === 2) {
         params.start_date = values.dateRange[0].format('YYYY-MM-DD')
@@ -202,8 +214,8 @@ export default function AppealList() {
       title: '处理人',
       dataIndex: 'handler',
       key: 'handler',
-      width: 100,
-      render: (val) => val || '-',
+      width: 120,
+      render: (val) => val ? <Tag color="blue">{val}</Tag> : '-',
     },
     {
       title: '创建时间',
@@ -276,6 +288,17 @@ export default function AppealList() {
                   {areas.map((area) => (
                     <Option key={area} value={area}>
                       {area}
+                    </Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col>
+              <Form.Item name="handler" label="负责人">
+                <Select placeholder="全部处理组" style={{ width: 160 }} allowClear>
+                  {handlers.map((h) => (
+                    <Option key={h} value={h}>
+                      {h}
                     </Option>
                   ))}
                 </Select>

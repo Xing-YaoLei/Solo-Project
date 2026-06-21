@@ -19,7 +19,7 @@ import {
 } from 'antd'
 import { SearchOutlined, ReloadOutlined, EyeOutlined, CheckOutlined } from '@ant-design/icons'
 import { useNavigate } from '@tanstack/react-router'
-import { settlementsAPI, addressDictAPI } from '../../api'
+import { settlementsAPI, addressDictAPI, ordersAPI } from '../../api'
 import dayjs from 'dayjs'
 
 const { RangePicker } = DatePicker
@@ -39,6 +39,7 @@ export default function SettlementList() {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(20)
   const [areas, setAreas] = useState([])
+  const [handlers, setHandlers] = useState([])
   const [form] = Form.useForm()
   const [summary, setSummary] = useState({})
   const [detailVisible, setDetailVisible] = useState(false)
@@ -46,6 +47,7 @@ export default function SettlementList() {
 
   useEffect(() => {
     loadAreas()
+    loadHandlers()
     loadSettlements()
     loadSummary()
   }, [page, pageSize])
@@ -54,6 +56,15 @@ export default function SettlementList() {
     try {
       const res = await addressDictAPI.getAreas()
       setAreas(res.data || [])
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  const loadHandlers = async () => {
+    try {
+      const res = await ordersAPI.getHandlers()
+      setHandlers(res.data || [])
     } catch (e) {
       console.error(e)
     }
@@ -69,6 +80,7 @@ export default function SettlementList() {
         status: values.status,
         keyword: values.keyword,
         area: values.area,
+        handler: values.handler,
       }
       if (values.dateRange && values.dateRange.length === 2) {
         params.start_date = values.dateRange[0].format('YYYY-MM-DD')
@@ -94,6 +106,9 @@ export default function SettlementList() {
       }
       if (values.area) {
         params.area = values.area
+      }
+      if (values.handler) {
+        params.handler = values.handler
       }
       const res = await settlementsAPI.getSummary(params)
       setSummary(res.data || {})
@@ -153,6 +168,25 @@ export default function SettlementList() {
       dataIndex: 'order_no',
       key: 'order_no',
       width: 160,
+    },
+    {
+      title: '处理组',
+      dataIndex: 'handlers',
+      key: 'handlers',
+      width: 140,
+      render: (val) => {
+        if (!val || val.length === 0) return '-'
+        return (
+          <Space wrap size={[4, 4]}>
+            {val.slice(0, 2).map((h) => (
+              <Tag key={h} color="blue" style={{ fontSize: 12 }}>
+                {h}
+              </Tag>
+            ))}
+            {val.length > 2 && <Tag color="default">+{val.length - 2}</Tag>}
+          </Space>
+        )
+      },
     },
     {
       title: '订单总收入',
@@ -301,6 +335,17 @@ export default function SettlementList() {
                   {areas.map((area) => (
                     <Option key={area} value={area}>
                       {area}
+                    </Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col>
+              <Form.Item name="handler" label="负责人">
+                <Select placeholder="全部处理组" style={{ width: 160 }} allowClear>
+                  {handlers.map((h) => (
+                    <Option key={h} value={h}>
+                      {h}
                     </Option>
                   ))}
                 </Select>

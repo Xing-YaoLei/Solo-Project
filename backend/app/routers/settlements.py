@@ -22,12 +22,13 @@ def list_settlements(
     status: Optional[str] = None,
     keyword: Optional[str] = None,
     area: Optional[str] = None,
+    handler: Optional[str] = None,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
     query = db.query(models.Settlement).join(models.Order, models.Settlement.order_id == models.Order.id)
-    
+
     if status:
         query = query.filter(models.Settlement.status == status)
     if keyword:
@@ -39,26 +40,33 @@ def list_settlements(
         query = query.filter(
             (models.Order.pickup_area == area) | (models.Order.delivery_area == area)
         )
+    if handler:
+        query = query.join(
+            models.OrderRejectRecord,
+            models.OrderRejectRecord.order_id == models.Order.id
+        ).filter(models.OrderRejectRecord.handler == handler)
     if start_date:
         query = query.filter(models.Settlement.created_at >= datetime.fromisoformat(start_date))
     if end_date:
         query = query.filter(models.Settlement.created_at <= datetime.fromisoformat(end_date) + timedelta(days=1))
-    
+
     from ..utils.response import orm_to_dict
-    
+
     total = query.count()
     settlements = query.order_by(models.Settlement.id.desc())\
         .offset((page - 1) * page_size)\
         .limit(page_size)\
         .all()
-    
+
     result = []
     for st in settlements:
         st_dict = orm_to_dict(st)
         if st.order:
             st_dict["order_no"] = st.order.order_no
+            reject_handlers = list({r.handler for r in (st.order.reject_records or []) if r.handler})
+            st_dict["handlers"] = reject_handlers
         result.append(st_dict)
-    
+
     return paginated_response(result, total, page, page_size)
 
 
@@ -191,10 +199,11 @@ def get_settlement_summary(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     area: Optional[str] = None,
+    handler: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
     query = db.query(models.Settlement).join(models.Order, models.Settlement.order_id == models.Order.id)
-    
+
     if start_date:
         query = query.filter(models.Settlement.created_at >= datetime.fromisoformat(start_date))
     if end_date:
@@ -203,15 +212,20 @@ def get_settlement_summary(
         query = query.filter(
             (models.Order.pickup_area == area) | (models.Order.delivery_area == area)
         )
-    
+    if handler:
+        query = query.join(
+            models.OrderRejectRecord,
+            models.OrderRejectRecord.order_id == models.Order.id
+        ).filter(models.OrderRejectRecord.handler == handler)
+
     settlements = query.all()
-    
+
     total_income = sum(s.total_income for s in settlements)
     total_rider_income = sum(s.rider_income for s in settlements)
     total_platform_income = sum(s.platform_income for s in settlements)
     total_compensation = sum(s.appeal_compensation for s in settlements)
     total_count = len(settlements)
-    
+
     return success_response({
         "total_count": total_count,
         "total_income": round(total_income, 2),

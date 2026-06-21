@@ -308,8 +308,8 @@ def reject_order(reject_req: schemas.OrderRejectRequest, db: Session = Depends(g
         "customer": "客服组",
         "other": "综合处理组",
     }
-    handler = handler_map.get(responsibility, "综合处理组")
-    
+    expected_handler = handler_map.get(responsibility, "综合处理组")
+
     reject_record = models.OrderRejectRecord(
         order_id=reject_req.order_id,
         rider_id=reject_req.rider_id,
@@ -318,10 +318,11 @@ def reject_order(reject_req: schemas.OrderRejectRequest, db: Session = Depends(g
         responsibility=responsibility,
         is_reminded=True,
         reminded_at=datetime.utcnow(),
-        handler=handler
+        handler=expected_handler
     )
     db.add(reject_record)
-    
+    db.flush()
+
     old_status = order.status
     order.reject_count += 1
     order.last_reject_reason = reject_req.reject_detail
@@ -329,31 +330,33 @@ def reject_order(reject_req: schemas.OrderRejectRequest, db: Session = Depends(g
     order.status = models.OrderStatus.REJECTED
     order.rider_id = None
     order.assign_time = None
-    
+
     add_status_log(
         db, order.id, old_status.value, models.OrderStatus.REJECTED.value,
         operator_type="rider", operator_id=rider.id, operator_name=rider.name,
         reason=f"拒单: {reject_req.reject_reason.value}",
         remark=reject_req.reject_detail,
-        extra_data={"responsibility": responsibility, "handler": handler, "reminded": True}
+        extra_data={"responsibility": responsibility, "handler": expected_handler, "reminded": True}
     )
-    
+
     rider.reject_count += 1
     order.updated_at = datetime.utcnow()
     db.commit()
-    
+    db.refresh(reject_record)
+
     try:
         from ..celery.tasks import handle_order_reject
-        handle_order_reject.delay(order.id, responsibility)
+        handle_order_reject.delay(reject_record.id, order.id, responsibility)
     except Exception as e:
         import logging
-        logging.getLogger(__name__).warning(f"Celery任务发送失败，已同步处理: {e}")
-    
+        logging.getLogger(__name__).warning(f"Celery拒单提醒任务发送失败(已同步写入): {e}")
+
     return success_response({
         "message": "拒单成功",
         "responsibility": responsibility,
-        "handler": handler,
-        "is_reminded": True
+        "handler": expected_handler,
+        "is_reminded": True,
+        "reject_record_id": reject_record.id
     })
 
 
