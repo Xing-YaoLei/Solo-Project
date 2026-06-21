@@ -6,7 +6,7 @@ public interface IConflictService
 {
     Task<ConflictResponse> CreateAsync(CreateConflictRequest request, Guid userId);
     Task<ConflictResponse> ResolveAsync(Guid conflictId, ResolveConflictRequest request, Guid userId);
-    Task<ConflictResponse> GetByIdAsync(Guid id);
-    Task<IEnumerable<ConflictResponse>> GetByHearingAsync(Guid hearingId);
-    Task<IEnumerable<ConflictResponse>> GetActiveConflictsAsync();
+    Task<ConflictResponse> GetByIdAsync(Guid id, Guid? callerUserId = null);
+    Task<IEnumerable<ConflictResponse>> GetByHearingAsync(Guid hearingId, Guid? callerUserId = null);
+    Task<IEnumerable<ConflictResponse>> GetActiveConflictsAsync(Guid? callerUserId = null);
 }

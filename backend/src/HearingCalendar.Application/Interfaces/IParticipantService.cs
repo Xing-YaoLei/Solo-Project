@@ -8,5 +8,5 @@ public interface IParticipantService
     Task<ParticipantResponse> UpdateAttendanceAsync(Guid participantId, UpdateAttendanceRequest request, Guid userId);
     Task BatchUpdateAttendanceAsync(BatchAttendanceRequest request, Guid userId);
     Task RemoveAsync(Guid participantId, Guid userId);
-    Task<IEnumerable<ParticipantResponse>> GetByHearingAsync(Guid hearingId);
+    Task<IEnumerable<ParticipantResponse>> GetByHearingAsync(Guid hearingId, Guid? callerUserId = null);
 }

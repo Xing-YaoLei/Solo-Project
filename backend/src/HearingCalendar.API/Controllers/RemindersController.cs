@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using HearingCalendar.Application.Dtos;
 using HearingCalendar.Application.Interfaces;
 using HearingCalendar.Domain.Enums;
@@ -30,15 +31,19 @@ public class RemindersController : ControllerBase
     [HttpGet("hearing/{hearingId}")]
     public async Task<ActionResult<IEnumerable<ReminderResponse>>> GetByHearing(Guid hearingId)
     {
-        var result = await _reminderService.GetByHearingAsync(hearingId);
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        Guid? callerUserId = userIdClaim is not null ? Guid.Parse(userIdClaim) : null;
+        var result = await _reminderService.GetByHearingAsync(hearingId, callerUserId);
         return Ok(result);
     }
 
     [HttpGet("pending")]
-    [RoleAuthorize(UserRole.Lawyer, UserRole.Assistant, UserRole.Partner)]
+    [RoleAuthorize(UserRole.Lawyer, UserRole.Assistant, UserRole.Partner, UserRole.Client)]
     public async Task<ActionResult<IEnumerable<ReminderResponse>>> GetPending()
     {
-        var result = await _reminderService.GetPendingRemindersAsync();
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        Guid? callerUserId = userIdClaim is not null ? Guid.Parse(userIdClaim) : null;
+        var result = await _reminderService.GetPendingRemindersAsync(callerUserId);
         return Ok(result);
     }
 }

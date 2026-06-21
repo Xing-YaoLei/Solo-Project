@@ -21,7 +21,7 @@ public class StatisticsController : ControllerBase
     }
 
     [HttpGet("overview")]
-    [RoleAuthorize(UserRole.Partner, UserRole.Lawyer, UserRole.Client)]
+    [RoleAuthorize(UserRole.Partner, UserRole.Lawyer, UserRole.Assistant, UserRole.Client)]
     public async Task<ActionResult<StatisticsOverviewResponse>> GetOverview(
         [FromQuery] DateOnly? from = null,
         [FromQuery] DateOnly? to = null)
@@ -33,7 +33,7 @@ public class StatisticsController : ControllerBase
     }
 
     [HttpGet("client-satisfaction")]
-    [RoleAuthorize(UserRole.Partner, UserRole.Lawyer, UserRole.Client)]
+    [RoleAuthorize(UserRole.Partner, UserRole.Lawyer, UserRole.Assistant, UserRole.Client)]
     public async Task<ActionResult<IEnumerable<ClientSatisfactionReport>>> GetClientSatisfaction(
         [FromQuery] DateOnly? from = null,
         [FromQuery] DateOnly? to = null)
@@ -45,7 +45,7 @@ public class StatisticsController : ControllerBase
     }
 
     [HttpGet("hearing-stats")]
-    [RoleAuthorize(UserRole.Partner, UserRole.Lawyer)]
+    [RoleAuthorize(UserRole.Partner, UserRole.Lawyer, UserRole.Assistant, UserRole.Client)]
     public async Task<ActionResult<IEnumerable<HearingStatistics>>> GetHearingStatistics(
         [FromQuery] DateOnly from,
         [FromQuery] DateOnly to)
@@ -57,7 +57,7 @@ public class StatisticsController : ControllerBase
     }
 
     [HttpGet("client-satisfaction/{clientId}")]
-    [RoleAuthorize(UserRole.Partner, UserRole.Lawyer, UserRole.Client)]
+    [RoleAuthorize(UserRole.Partner, UserRole.Lawyer, UserRole.Assistant, UserRole.Client)]
     public async Task<ActionResult<ClientSatisfactionReport>> GetClientSatisfactionDetail(Guid clientId)
     {
         var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);

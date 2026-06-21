@@ -100,8 +100,21 @@ public class ParticipantService : IParticipantService
         await _auditTrailRepo.LogAsync(nameof(HearingParticipant), participantId, "Remove", userId);
     }
 
-    public async Task<IEnumerable<ParticipantResponse>> GetByHearingAsync(Guid hearingId)
+    public async Task<IEnumerable<ParticipantResponse>> GetByHearingAsync(Guid hearingId, Guid? callerUserId = null)
     {
+        if (callerUserId.HasValue)
+        {
+            var caller = await _dbContext.Users.FindAsync(callerUserId.Value);
+            if (caller?.Role == UserRole.Client)
+            {
+                var canAccess = await _dbContext.HearingSchedules
+                    .AnyAsync(h => h.Id == hearingId &&
+                                   h.Participants.Any(p => p.UserId == callerUserId.Value));
+                if (!canAccess)
+                    throw new UnauthorizedAccessException("You do not have permission to view participants of this hearing");
+            }
+        }
+
         var participants = await _dbContext.HearingParticipants
             .Include(p => p.User)
             .Where(p => p.HearingId == hearingId)

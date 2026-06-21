@@ -23,21 +23,27 @@ public class ConflictsController : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult<ConflictResponse>> GetById(Guid id)
     {
-        var result = await _conflictService.GetByIdAsync(id);
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        Guid? callerUserId = userIdClaim is not null ? Guid.Parse(userIdClaim) : null;
+        var result = await _conflictService.GetByIdAsync(id, callerUserId);
         return Ok(result);
     }
 
     [HttpGet("hearing/{hearingId}")]
     public async Task<ActionResult<IEnumerable<ConflictResponse>>> GetByHearing(Guid hearingId)
     {
-        var result = await _conflictService.GetByHearingAsync(hearingId);
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        Guid? callerUserId = userIdClaim is not null ? Guid.Parse(userIdClaim) : null;
+        var result = await _conflictService.GetByHearingAsync(hearingId, callerUserId);
         return Ok(result);
     }
 
     [HttpGet("active")]
     public async Task<ActionResult<IEnumerable<ConflictResponse>>> GetActive()
     {
-        var result = await _conflictService.GetActiveConflictsAsync();
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        Guid? callerUserId = userIdClaim is not null ? Guid.Parse(userIdClaim) : null;
+        var result = await _conflictService.GetActiveConflictsAsync(callerUserId);
         return Ok(result);
     }
 

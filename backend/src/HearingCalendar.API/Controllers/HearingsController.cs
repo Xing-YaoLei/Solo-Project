@@ -120,7 +120,7 @@ public class HearingsController : ControllerBase
     }
 
     [HttpPut("participants/{participantId}/attendance")]
-    [RoleAuthorize(UserRole.Lawyer, UserRole.Assistant)]
+    [RoleAuthorize(UserRole.Lawyer, UserRole.Assistant, UserRole.Partner)]
     public async Task<ActionResult<ParticipantResponse>> UpdateAttendance(
         Guid participantId,
         [FromBody] UpdateAttendanceRequest request)
@@ -151,7 +151,9 @@ public class HearingsController : ControllerBase
     [HttpGet("{id}/participants")]
     public async Task<ActionResult<IEnumerable<ParticipantResponse>>> GetParticipants(Guid id)
     {
-        var result = await _participantService.GetByHearingAsync(id);
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        Guid? callerUserId = userIdClaim is not null ? Guid.Parse(userIdClaim) : null;
+        var result = await _participantService.GetByHearingAsync(id, callerUserId);
         return Ok(result);
     }
 
@@ -173,7 +175,9 @@ public class HearingsController : ControllerBase
     [HttpGet("attachments/{attachmentId}/download")]
     public async Task<IActionResult> DownloadAttachment(Guid attachmentId)
     {
-        var (stream, fileName, contentType) = await _attachmentService.DownloadAsync(attachmentId);
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        Guid? callerUserId = userIdClaim is not null ? Guid.Parse(userIdClaim) : null;
+        var (stream, fileName, contentType) = await _attachmentService.DownloadAsync(attachmentId, callerUserId);
         return File(stream, contentType, fileName);
     }
 
@@ -189,7 +193,9 @@ public class HearingsController : ControllerBase
     [HttpGet("{id}/attachments")]
     public async Task<ActionResult<IEnumerable<AttachmentResponse>>> GetAttachments(Guid id)
     {
-        var result = await _attachmentService.GetByHearingAsync(id);
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        Guid? callerUserId = userIdClaim is not null ? Guid.Parse(userIdClaim) : null;
+        var result = await _attachmentService.GetByHearingAsync(id, callerUserId);
         return Ok(result);
     }
 }
