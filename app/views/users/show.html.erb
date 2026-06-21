@@ -1,0 +1,33 @@
+<% provide :title, "#{@user.name} - 用户详情" %>
+
+<div class="mb-6">
+  <%= link_to '← 返回列表', users_path, class: "text-blue-600 hover:text-blue-800 text-sm" %>
+</div>
+
+<div class="bg-white rounded-lg shadow border border-gray-200">
+  <div class="px-6 py-4 border-b border-gray-200">
+    <h1 class="text-2xl font-bold text-gray-900"><%= @user.name %></h1>
+    <span class="inline-block mt-1 px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-700">
+      <%= @user.role_name %>
+    </span>
+  </div>
+
+  <div class="p-6 space-y-4">
+    <div class="flex">
+      <div class="w-24 text-sm text-gray-500">邮箱</div>
+      <div class="flex-1 text-gray-900"><%= @user.email %></div>
+    </div>
+    <div class="flex">
+      <div class="w-24 text-sm text-gray-500">创建时间</div>
+      <div class="flex-1 text-gray-900"><%= @user.created_at.strftime('%Y-%m-%d %H:%M:%S') %></div>
+    </div>
+    <div class="flex">
+      <div class="w-24 text-sm text-gray-500">创建文书</div>
+      <div class="flex-1 text-gray-900"><%= @user.created_documents.count %> 篇</div>
+    </div>
+    <div class="flex">
+      <div class="w-24 text-sm text-gray-500">审核文书</div>
+      <div class="flex-1 text-gray-900"><%= @user.reviewed_documents.count %> 篇</div>
+    </div>
+  </div>
+</div>

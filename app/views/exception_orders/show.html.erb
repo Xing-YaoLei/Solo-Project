@@ -1,0 +1,76 @@
+<% provide :title, "#{@exception_order.order_no} - 异常单详情" %>
+
+<div class="mb-6">
+  <%= link_to '← 返回列表', exception_orders_path, class: "text-blue-600 hover:text-blue-800 text-sm" %>
+</div>
+
+<div class="bg-white rounded-lg shadow border border-gray-200 mb-6">
+  <div class="px-6 py-4 border-b border-gray-200">
+    <div class="flex justify-between items-start">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900"><%= @exception_order.order_no %></h1>
+        <p class="text-gray-600 mt-1">创建时间：<%= @exception_order.created_at.strftime('%Y-%m-%d %H:%M:%S') %></p>
+      </div>
+      <span class="px-3 py-1 text-sm rounded-full
+        <%= case @exception_order.status
+            when 'pending' then 'bg-red-100 text-red-700'
+            when 'processing' then 'bg-yellow-100 text-yellow-700'
+            when 'resolved' then 'bg-green-100 text-green-700'
+            when 'closed' then 'bg-gray-100 text-gray-700'
+            end %>">
+        <%= @exception_order.status_name %>
+      </span>
+    </div>
+  </div>
+
+  <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
+    <div class="flex flex-wrap gap-2">
+      <% if @exception_order.may_start_processing? %>
+        <%= button_to '开始处理', start_processing_exception_order_path(@exception_order), method: :post, class: "bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg text-sm font-medium" %>
+      <% end %>
+      <% if @exception_order.may_resolve? %>
+        <%= button_to '标记已解决', resolve_exception_order_path(@exception_order), method: :post, class: "bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium" %>
+      <% end %>
+      <% if @exception_order.may_close? %>
+        <%= button_to '关闭', close_exception_order_path(@exception_order), method: :post, class: "bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm font-medium" %>
+      <% end %>
+      <% if @exception_order.may_reopen? %>
+        <%= button_to '重新打开', reopen_exception_order_path(@exception_order), method: :post, class: "bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg text-sm font-medium" %>
+      <% end %>
+      <%= link_to '编辑', edit_exception_order_path(@exception_order), class: "bg-white hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium border border-gray-300" %>
+    </div>
+  </div>
+
+  <div class="p-6 space-y-4">
+    <div>
+      <h3 class="text-sm font-medium text-gray-500">关联文书</h3>
+      <p class="mt-1">
+        <% if @exception_order.document %>
+          <%= link_to @exception_order.document.title, document_path(@exception_order.document), class: "text-blue-600 hover:text-blue-800" %>
+        <% else %>
+          <span class="text-gray-400">无</span>
+        <% end %>
+      </p>
+    </div>
+
+    <div>
+      <h3 class="text-sm font-medium text-gray-500">处理人</h3>
+      <p class="mt-1 text-gray-900"><%= @exception_order.handler&.name || '未分配' %></p>
+    </div>
+
+    <div>
+      <h3 class="text-sm font-medium text-gray-500">影响范围</h3>
+      <p class="mt-1 text-gray-900 whitespace-pre-wrap"><%= @exception_order.impact_scope || '未填写' %></p>
+    </div>
+
+    <div>
+      <h3 class="text-sm font-medium text-gray-500">责任归属</h3>
+      <p class="mt-1 text-gray-900 whitespace-pre-wrap"><%= @exception_order.responsibility || '未填写' %></p>
+    </div>
+
+    <div>
+      <h3 class="text-sm font-medium text-gray-500">处理结果</h3>
+      <p class="mt-1 text-gray-900 whitespace-pre-wrap"><%= @exception_order.handling_result || '未填写' %></p>
+    </div>
+  </div>
+</div>

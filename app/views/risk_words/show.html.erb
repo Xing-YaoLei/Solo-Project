@@ -1,0 +1,41 @@
+<% provide :title, "#{@risk_word.word} - 风险词详情" %>
+
+<div class="mb-6">
+  <%= link_to '← 返回列表', risk_words_path, class: "text-blue-600 hover:text-blue-800 text-sm" %>
+</div>
+
+<div class="bg-white rounded-lg shadow border border-gray-200">
+  <div class="px-6 py-4 border-b border-gray-200">
+    <div class="flex justify-between items-center">
+      <h1 class="text-2xl font-bold text-gray-900"><%= @risk_word.word %></h1>
+      <span class="px-3 py-1 text-sm rounded-full
+        <%= case @risk_word.risk_level
+            when 'high' then 'bg-red-100 text-red-700'
+            when 'medium' then 'bg-yellow-100 text-yellow-700'
+            else 'bg-orange-100 text-orange-700'
+            end %>">
+        <%= @risk_word.risk_level_name %>级风险
+      </span>
+    </div>
+  </div>
+
+  <div class="p-6 space-y-4">
+    <div class="flex">
+      <div class="w-24 text-sm text-gray-500">分类</div>
+      <div class="flex-1 text-gray-900"><%= @risk_word.category_name %></div>
+    </div>
+    <div class="flex">
+      <div class="w-24 text-sm text-gray-500">描述</div>
+      <div class="flex-1 text-gray-900"><%= @risk_word.description || '无' %></div>
+    </div>
+    <div class="flex">
+      <div class="w-24 text-sm text-gray-500">创建时间</div>
+      <div class="flex-1 text-gray-900"><%= @risk_word.created_at.strftime('%Y-%m-%d %H:%M:%S') %></div>
+    </div>
+  </div>
+
+  <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex gap-3">
+    <%= link_to '编辑', edit_risk_word_path(@risk_word), class: "bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium" %>
+    <%= link_to '删除', risk_word_path(@risk_word), method: :delete, data: { confirm: '确定删除？' }, class: "bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium" %>
+  </div>
+</div>

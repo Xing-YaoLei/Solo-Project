@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title><%= content_for(:title) || "法律文书归档结算台" %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="法律文书归档结算台">
+    <meta name="mobile-web-app-capable" content="yes">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+
+    <%= yield :head %>
+
+    <link rel="icon" href="/icon.png" type="image/png">
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/icon.png">
+
+    <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
+    <%= javascript_include_tag "application", "data-turbo-track": "reload", type: "module" %>
+  </head>
+
+  <body class="bg-gray-50 min-h-screen">
+    <nav class="bg-white shadow-sm border-b border-gray-200">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between h-16">
+          <div class="flex items-center">
+            <%= link_to root_path, class: "flex items-center text-xl font-bold text-blue-600" do %>
+              <span class="mr-2">📄</span>
+              法律文书归档结算台
+            <% end %>
+            <div class="hidden md:ml-10 md:flex md:space-x-4">
+              <%= link_to '首页', root_path, class: "text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium" %>
+              <%= link_to '文书管理', documents_path, class: "text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium" %>
+              <%= link_to '异常单', exception_orders_path, class: "text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium" %>
+              <%= link_to '风险词库', risk_words_path, class: "text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium" %>
+              <%= link_to '用户', users_path, class: "text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium" %>
+            </div>
+          </div>
+          <div class="flex items-center">
+            <% if current_user %>
+              <span class="text-gray-600 text-sm mr-4">
+                <span class="font-medium"><%= current_user.name %></span>
+                <span class="text-gray-400">(<%= current_user.role_name %>)</span>
+              </span>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <% if notice %>
+        <div class="mb-4 p-4 bg-green-50 border border-green-200 text-green-700 rounded-lg">
+          <%= notice %>
+        </div>
+      <% end %>
+      <% if alert %>
+        <div class="mb-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
+          <%= alert %>
+        </div>
+      <% end %>
+
+      <%= yield %>
+    </main>
+  </body>
+</html>

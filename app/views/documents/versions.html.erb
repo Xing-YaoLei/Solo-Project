@@ -1,0 +1,37 @@
+<% provide :title, "#{@document.title} - 内容版本" %>
+
+<div class="mb-6">
+  <%= link_to '← 返回', document_path(@document), class: "text-blue-600 hover:text-blue-800 text-sm" %>
+</div>
+
+<div class="bg-white rounded-lg shadow border border-gray-200">
+  <div class="px-6 py-4 border-b border-gray-200">
+    <h1 class="text-xl font-bold text-gray-900">内容版本</h1>
+    <p class="text-gray-600 mt-1"><%= @document.title %></p>
+  </div>
+  <div class="p-6">
+    <% if @content_versions.any? %>
+      <div class="space-y-4">
+        <% @content_versions.each do |version| %>
+          <div class="border border-gray-200 rounded-lg overflow-hidden">
+            <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
+              <div class="flex items-center gap-3">
+                <span class="font-bold text-blue-600">v<%= version.version %></span>
+                <span class="text-sm text-gray-500"><%= version.editor&.name %></span>
+                <span class="text-sm text-gray-400"><%= version.created_at.strftime('%Y-%m-%d %H:%M') %></span>
+              </div>
+              <% if version.change_summary.present? %>
+                <span class="text-sm text-gray-600"><%= version.change_summary %></span>
+              <% end %>
+            </div>
+            <div class="p-4 max-h-60 overflow-y-auto">
+              <pre class="text-sm text-gray-700 whitespace-pre-wrap font-mono"><%= version.content %></pre>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <p class="text-gray-500 text-center py-12">暂无版本记录</p>
+    <% end %>
+  </div>
+</div>

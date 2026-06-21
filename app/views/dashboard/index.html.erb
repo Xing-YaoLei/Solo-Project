@@ -1,0 +1,150 @@
+<% provide :title, '首页 - 法律文书归档结算台' %>
+
+<div class="mb-6">
+  <h1 class="text-2xl font-bold text-gray-900">工作台</h1>
+  <p class="text-gray-600 mt-1">法律文书归档结算台概览</p>
+</div>
+
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+  <div class="bg-white rounded-lg shadow p-4 border border-gray-200">
+    <div class="text-gray-500 text-sm">文书总数</div>
+    <div class="text-3xl font-bold text-gray-900 mt-1"><%= @stats[:total] %></div>
+  </div>
+  <div class="bg-white rounded-lg shadow p-4 border border-gray-200">
+    <div class="text-gray-500 text-sm">待审核</div>
+    <div class="text-3xl font-bold text-yellow-600 mt-1"><%= @stats[:pending_review] + @stats[:reviewing] %></div>
+  </div>
+  <div class="bg-white rounded-lg shadow p-4 border border-gray-200">
+    <div class="text-gray-500 text-sm">已发布</div>
+    <div class="text-3xl font-bold text-green-600 mt-1"><%= @stats[:published] %></div>
+  </div>
+  <div class="bg-white rounded-lg shadow p-4 border border-gray-200">
+    <div class="text-gray-500 text-sm">已归档</div>
+    <div class="text-3xl font-bold text-blue-600 mt-1"><%= @stats[:archived] %></div>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+  <div class="bg-white rounded-lg shadow border border-gray-200">
+    <div class="px-4 py-3 border-b border-gray-200">
+      <h2 class="text-lg font-semibold text-gray-900">文书状态分布</h2>
+    </div>
+    <div class="p-4 space-y-3">
+      <div class="flex items-center justify-between">
+        <span class="text-gray-600">草稿</span>
+        <span class="font-medium"><%= @stats[:draft] %></span>
+      </div>
+      <div class="flex items-center justify-between">
+        <span class="text-yellow-600">待审核</span>
+        <span class="font-medium"><%= @stats[:pending_review] %></span>
+      </div>
+      <div class="flex items-center justify-between">
+        <span class="text-orange-600">审核中</span>
+        <span class="font-medium"><%= @stats[:reviewing] %></span>
+      </div>
+      <div class="flex items-center justify-between">
+        <span class="text-green-600">审核通过</span>
+        <span class="font-medium"><%= @stats[:approved] %></span>
+      </div>
+      <div class="flex items-center justify-between">
+        <span class="text-red-600">审核退回</span>
+        <span class="font-medium"><%= @stats[:rejected] %></span>
+      </div>
+      <div class="flex items-center justify-between">
+        <span class="text-blue-600">待发布</span>
+        <span class="font-medium"><%= @stats[:scheduled] || 0 %></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-lg shadow border border-gray-200">
+    <div class="px-4 py-3 border-b border-gray-200">
+      <h2 class="text-lg font-semibold text-gray-900">异常单概览</h2>
+    </div>
+    <div class="p-4">
+      <div class="grid grid-cols-2 gap-4 mb-4">
+        <div class="text-center p-3 bg-red-50 rounded-lg">
+          <div class="text-2xl font-bold text-red-600"><%= @stats[:pending_exceptions] %></div>
+          <div class="text-sm text-gray-600">待处理</div>
+        </div>
+        <div class="text-center p-3 bg-yellow-50 rounded-lg">
+          <div class="text-2xl font-bold text-yellow-600"><%= @stats[:processing_exceptions] %></div>
+          <div class="text-sm text-gray-600">处理中</div>
+        </div>
+      </div>
+      <%= link_to '查看全部异常单', exception_orders_path, class: "block text-center text-blue-600 hover:text-blue-800 text-sm" %>
+    </div>
+  </div>
+</div>
+
+<div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+  <div class="bg-white rounded-lg shadow border border-gray-200">
+    <div class="px-4 py-3 border-b border-gray-200 flex justify-between items-center">
+      <h2 class="text-lg font-semibold text-gray-900">最近文书</h2>
+      <%= link_to '全部', documents_path, class: "text-sm text-blue-600 hover:text-blue-800" %>
+    </div>
+    <div class="divide-y divide-gray-100">
+      <% @recent_documents.each do |doc| %>
+        <div class="p-4 hover:bg-gray-50">
+          <%= link_to document_path(doc), class: "block" do %>
+            <div class="flex justify-between items-start">
+              <div>
+                <h3 class="font-medium text-gray-900"><%= doc.title %></h3>
+                <p class="text-sm text-gray-500 mt-1"><%= doc.doc_type_name %></p>
+              </div>
+              <span class="px-2 py-1 text-xs rounded-full
+                <%= case doc.status
+                    when 'draft' then 'bg-gray-100 text-gray-700'
+                    when 'pending_review', 'reviewing' then 'bg-yellow-100 text-yellow-700'
+                    when 'approved' then 'bg-green-100 text-green-700'
+                    when 'rejected' then 'bg-red-100 text-red-700'
+                    when 'scheduled' then 'bg-blue-100 text-blue-700'
+                    when 'published' then 'bg-green-100 text-green-700'
+                    when 'archived' then 'bg-blue-100 text-blue-700'
+                    end %>">
+                <%= doc.status_name %>
+              </span>
+            </div>
+            <div class="text-xs text-gray-400 mt-2"><%= doc.created_at.strftime('%Y-%m-%d %H:%M') %></div>
+          <% end %>
+        </div>
+      <% end %>
+      <% if @recent_documents.empty? %>
+        <div class="p-8 text-center text-gray-500">暂无文书</div>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-lg shadow border border-gray-200">
+    <div class="px-4 py-3 border-b border-gray-200 flex justify-between items-center">
+      <h2 class="text-lg font-semibold text-gray-900">最近异常单</h2>
+      <%= link_to '全部', exception_orders_path, class: "text-sm text-blue-600 hover:text-blue-800" %>
+    </div>
+    <div class="divide-y divide-gray-100">
+      <% @recent_exceptions.each do |exc| %>
+        <div class="p-4 hover:bg-gray-50">
+          <%= link_to exception_order_path(exc), class: "block" do %>
+            <div class="flex justify-between items-start">
+              <div>
+                <h3 class="font-medium text-gray-900"><%= exc.order_no %></h3>
+                <p class="text-sm text-gray-500 mt-1"><%= exc.document&.title %></p>
+              </div>
+              <span class="px-2 py-1 text-xs rounded-full
+                <%= case exc.status
+                    when 'pending' then 'bg-red-100 text-red-700'
+                    when 'processing' then 'bg-yellow-100 text-yellow-700'
+                    when 'resolved' then 'bg-green-100 text-green-700'
+                    when 'closed' then 'bg-gray-100 text-gray-700'
+                    end %>">
+                <%= exc.status_name %>
+              </span>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+      <% if @recent_exceptions.empty? %>
+        <div class="p-8 text-center text-gray-500">暂无异常单</div>
+      <% end %>
+    </div>
+  </div>
+</div>

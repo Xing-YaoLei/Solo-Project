@@ -1,0 +1,72 @@
+<% provide :title, "#{@document.title} - 状态历史" %>
+
+<div class="mb-6">
+  <%= link_to '← 返回', document_path(@document), class: "text-blue-600 hover:text-blue-800 text-sm" %>
+</div>
+
+<div class="bg-white rounded-lg shadow border border-gray-200">
+  <div class="px-6 py-4 border-b border-gray-200">
+    <h1 class="text-xl font-bold text-gray-900">状态历史记录</h1>
+    <p class="text-gray-600 mt-1"><%= @document.title %></p>
+  </div>
+  <div class="p-6">
+    <% if @status_histories.any? %>
+      <div class="relative">
+        <% @status_histories.each do |history| %>
+          <div class="flex gap-4 pb-8 last:pb-0">
+            <div class="flex flex-col items-center">
+              <div class="w-4 h-4 bg-blue-500 rounded-full ring-4 ring-blue-100"></div>
+              <div class="w-0.5 flex-1 bg-gray-200"></div>
+            </div>
+            <div class="flex-1 pb-8">
+              <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <div class="flex items-center justify-between mb-2">
+                  <div class="flex items-center gap-2">
+                    <span class="px-2 py-1 text-sm rounded bg-blue-100 text-blue-700 font-medium">
+                      <%= history.from_status_name %> → <%= history.to_status_name %>
+                    </span>
+                  </div>
+                  <span class="text-sm text-gray-500"><%= history.operator&.name %></span>
+                </div>
+                <% if history.remark.present? %>
+                  <p class="text-gray-700"><%= history.remark %></p>
+                <% end %>
+                <p class="text-xs text-gray-400 mt-2"><%= history.created_at.strftime('%Y-%m-%d %H:%M:%S') %></p>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <p class="text-gray-500 text-center py-12">暂无状态历史记录</p>
+    <% end %>
+  </div>
+</div>
+
+<div class="mt-6 bg-white rounded-lg shadow border border-gray-200">
+  <div class="px-6 py-4 border-b border-gray-200">
+    <h2 class="text-lg font-semibold text-gray-900">互动记录</h2>
+  </div>
+  <div class="p-6">
+    <% if @interaction_records.any? %>
+      <div class="space-y-3">
+        <% @interaction_records.each do |record| %>
+          <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+            <div class="flex-1">
+              <div class="flex items-center gap-2">
+                <span class="font-medium text-gray-900"><%= record.operator&.name %></span>
+                <span class="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded"><%= record.action_type_name %></span>
+              </div>
+              <% if record.content.present? %>
+                <p class="text-sm text-gray-600 mt-1"><%= record.content %></p>
+              <% end %>
+              <p class="text-xs text-gray-400 mt-2"><%= record.created_at.strftime('%Y-%m-%d %H:%M:%S') %></p>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <p class="text-gray-500 text-center py-8">暂无互动记录</p>
+    <% end %>
+  </div>
+</div>
