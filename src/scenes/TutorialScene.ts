@@ -124,21 +124,21 @@ export class TutorialScene extends Phaser.Scene {
       },
       {
         title: '练习：退款未扣除',
-        description: '当前账单：有退款流水，但实际到账没有减去退款金额。请选择「✗ 退款未扣除」。',
+        description: '当前账单：有退款流水（显示为 − 扣减），但实际到账没有减去退款金额，导致差额为正。请选择「✗ 退款未扣除」，或按键盘数字键 2。',
         hasBill: true,
         action: 'select',
-        highlight: 'refundBtn',
+        highlight: 'refund_missingBtn',
         billCategory: 'refund_missing',
         expectAnswer: 'refund_missing'
       },
       {
-        title: '练习：补贴未到账',
-        description: '当前账单：有补贴流水但实际到账没有包含补贴。请选择「✗ 补贴未到账」。',
+        title: '练习：优惠未抵扣',
+        description: '当前账单：有优惠券流水（显示为 − 扣减），但实际到账没有抵扣优惠金额，导致差额为正。请选择「✗ 优惠未抵扣」，或按键盘数字键 3。',
         hasBill: true,
         action: 'select',
-        highlight: 'subsidyBtn',
-        billCategory: 'subsidy_missing',
-        expectAnswer: 'subsidy_missing'
+        highlight: 'coupon_missingBtn',
+        billCategory: 'coupon_missing',
+        expectAnswer: 'coupon_missing'
       },
       {
         title: '得分规则',
@@ -390,7 +390,7 @@ export class TutorialScene extends Phaser.Scene {
     const visibleTransactions = bill.transactions.slice(0, 5);
     visibleTransactions.forEach((tx, i) => {
       const ty = -panelH / 2 + 235 + i * 24;
-      const isPositive = tx.amount >= 0;
+      const isPositive = tx.type === 'order' || tx.type === 'subsidy' || tx.type === 'delivery';
       const tagColor = TYPE_COLORS[tx.type] || 0x888888;
 
       const tag = this.add.rectangle(leftX - panelW / 2 + 30, ty, 42, 18, tagColor, 0.25)
@@ -407,7 +407,7 @@ export class TutorialScene extends Phaser.Scene {
       }).setOrigin(0, 0.5);
 
       const amtText = this.add.text(leftX + panelW / 2 - 20, ty,
-        `${isPositive ? '+' : '-'}${formatAmount(Math.abs(tx.amount))}`, {
+        `${isPositive ? '+' : '-'}${formatAmount(tx.amount)}`, {
           fontSize: '12px',
           fontWeight: 'bold',
           color: isPositive ? '#' + COLORS.success.toString(16).padStart(6, '0') : '#' + COLORS.danger.toString(16).padStart(6, '0')
@@ -542,8 +542,8 @@ export class TutorialScene extends Phaser.Scene {
     if (type === 'bill') {
       const card = this.billContainer.getAt(0);
       if (card) pulse(card);
-    } else if (type === 'correctBtn' || type === 'refundBtn' || type === 'subsidyBtn') {
-      const btn = this.billContainer.getByName(type as string);
+    } else if (type.endsWith('Btn')) {
+      const btn = this.billContainer.getByName(type);
       if (btn) pulse(btn);
     }
   }
