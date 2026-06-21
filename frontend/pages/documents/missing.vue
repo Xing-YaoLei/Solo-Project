@@ -537,13 +537,13 @@ const columns = [
   {
     title: '操作', key: 'actions', width: 220, fixed: 'right' as const,
     render: (row: MissingVehicleItem) => h(NSpace, { size: 4, wrap: true }, () => [
-      h(NButton, { size: 'tiny', type: 'primary', ghost, onClick: () => router.push(`/vehicles/${row.id}`) }, () => [
+      h(NButton, { size: 'tiny', type: 'primary', ghost: true, onClick: () => router.push(`/vehicles/${row.id}`) }, () => [
         h(NIcon, { component: EyeOutlined, size: 12, class: 'mr-0.5' }), '详情',
       ]),
-      h(NButton, { size: 'tiny', type: 'success', ghost, onClick: () => openUploadModal(row) }, () => [
+      h(NButton, { size: 'tiny', type: 'success', ghost: true, onClick: () => openUploadModal(row) }, () => [
         h(NIcon, { component: UploadOutlined, size: 12, class: 'mr-0.5' }), '上传补件',
       ]),
-      h(NButton, { size: 'tiny', type: 'warning', ghost, onClick: () => openSupplementModal(row) }, () => [
+      h(NButton, { size: 'tiny', type: 'warning', ghost: true, onClick: () => openSupplementModal(row) }, () => [
         h(NIcon, { component: CheckOutlined, size: 12, class: 'mr-0.5' }), '标记补充',
       ]),
     ]),
