@@ -96,45 +96,26 @@ class RiskAnalyzer:
         result = date_df.join(daily, on="date", how="left").fill_null(0)
         return result
 
-    def get_yoy_mom(self, metric: str, current_start: datetime, current_end: datetime) -> YoYMoMResult:
-        case_docs = self.loader.get_table("case_docs")
-        if case_docs is None:
-            return YoYMoMResult(0, 0, 0, True)
+    def _get_metric_value(self, df: pl.DataFrame, m: str) -> float:
+        if m == "total":
+            return len(df)
+        elif m == "return_count":
+            return df.filter(pl.col("status") == "已退回").height
+        elif m == "return_rate":
+            total = len(df)
+            returned = df.filter(pl.col("status") == "已退回").height
+            return returned / total * 100 if total > 0 else 0
+        elif m == "publish_count":
+            return df.filter(pl.col("status") == "已发布").height
+        elif m == "publish_rate":
+            total = len(df)
+            published = df.filter(pl.col("status") == "已发布").height
+            return published / total * 100 if total > 0 else 0
+        elif m == "high_risk":
+            return df.filter(pl.col("risk_word_count") >= RISK_WORD_THRESHOLD).height
+        return 0
 
-        current_df = case_docs.filter(
-            (pl.col("submit_date") >= current_start) & (pl.col("submit_date") <= current_end)
-        )
-
-        period_days = (current_end - current_start).days
-        mom_start = current_start - timedelta(days=period_days)
-        mom_end = current_start - timedelta(days=1)
-
-        prev_df = case_docs.filter(
-            (pl.col("submit_date") >= mom_start) & (pl.col("submit_date") <= mom_end)
-        )
-
-        def _get_metric_value(df: pl.DataFrame, m: str) -> float:
-            if m == "total":
-                return len(df)
-            elif m == "return_count":
-                return df.filter(pl.col("status") == "已退回").height
-            elif m == "return_rate":
-                total = len(df)
-                returned = df.filter(pl.col("status") == "已退回").height
-                return returned / total * 100 if total > 0 else 0
-            elif m == "publish_count":
-                return df.filter(pl.col("status") == "已发布").height
-            elif m == "publish_rate":
-                total = len(df)
-                published = df.filter(pl.col("status") == "已发布").height
-                return published / total * 100 if total > 0 else 0
-            elif m == "high_risk":
-                return df.filter(pl.col("risk_word_count") >= RISK_WORD_THRESHOLD).height
-            return 0
-
-        current_val = _get_metric_value(current_df, metric)
-        prev_val = _get_metric_value(prev_df, metric)
-
+    def _calc_change_result(self, metric: str, current_val: float, prev_val: float) -> YoYMoMResult:
         if prev_val > 0:
             change_rate = (current_val - prev_val) / prev_val * 100
         else:
@@ -150,6 +131,34 @@ class RiskAnalyzer:
             change_rate=round(change_rate, 2),
             is_positive=is_positive,
         )
+
+    def get_yoy_mom(self, metric: str, current_start: datetime, current_end: datetime,
+                    compare_type: str = "mom") -> YoYMoMResult:
+        case_docs = self.loader.get_table("case_docs")
+        if case_docs is None:
+            return YoYMoMResult(0, 0, 0, True)
+
+        current_df = case_docs.filter(
+            (pl.col("submit_date") >= current_start) & (pl.col("submit_date") <= current_end)
+        )
+
+        period_days = (current_end - current_start).days
+
+        if compare_type == "yoy":
+            prev_start = current_start - timedelta(days=365)
+            prev_end = current_end - timedelta(days=365)
+        else:
+            prev_start = current_start - timedelta(days=period_days)
+            prev_end = current_start - timedelta(days=1)
+
+        prev_df = case_docs.filter(
+            (pl.col("submit_date") >= prev_start) & (pl.col("submit_date") <= prev_end)
+        )
+
+        current_val = self._get_metric_value(current_df, metric)
+        prev_val = self._get_metric_value(prev_df, metric)
+
+        return self._calc_change_result(metric, current_val, prev_val)
 
     def get_region_comparison(self, date_range: Optional[Tuple[datetime, datetime]] = None) -> pl.DataFrame:
         case_docs = self.loader.get_table("case_docs")
@@ -322,11 +331,12 @@ class RiskAnalyzer:
     def get_sync_delay_info(self) -> List[Dict[str, Any]]:
         return self.pipeline.get_pipeline_status()
 
-    def get_review_yoy_mom(self, current_start: datetime, current_end: datetime) -> Dict[str, YoYMoMResult]:
+    def get_review_yoy_mom(self, current_start: datetime, current_end: datetime,
+                           compare_type: str = "mom") -> Dict[str, YoYMoMResult]:
         metrics = ["total", "return_count", "return_rate", "publish_count", "publish_rate", "high_risk"]
         results = {}
         for m in metrics:
-            results[m] = self.get_yoy_mom(m, current_start, current_end)
+            results[m] = self.get_yoy_mom(m, current_start, current_end, compare_type=compare_type)
         return results
 
     def get_publish_schedule_comparison(self, days: int = 30) -> pl.DataFrame:
@@ -351,6 +361,51 @@ class RiskAnalyzer:
         ).sort("date")
 
         return daily
+
+    def get_publish_yoy_mom(self, current_start: datetime, current_end: datetime,
+                           compare_type: str = "mom") -> Dict[str, YoYMoMResult]:
+        calendar = self.loader.get_table("calendar_events")
+        if calendar is None:
+            return {}
+
+        publish_events = calendar.filter(pl.col("event_type") == "发布排期")
+
+        period_days = (current_end - current_start).days
+        if compare_type == "yoy":
+            prev_start = current_start - timedelta(days=365)
+            prev_end = current_end - timedelta(days=365)
+        else:
+            prev_start = current_start - timedelta(days=period_days)
+            prev_end = current_start - timedelta(days=1)
+
+        def _calc_metrics(df: pl.DataFrame) -> Dict[str, float]:
+            scheduled = len(df)
+            published = df.filter(pl.col("status") == "已发布").height
+            result = {
+                "scheduled_count": scheduled,
+                "published_count": published,
+                "publish_rate": (published / scheduled * 100) if scheduled > 0 else 0,
+            }
+            return result
+
+        current_df = publish_events.filter(
+            (pl.col("event_date") >= current_start) & (pl.col("event_date") <= current_end)
+        )
+        prev_df = publish_events.filter(
+            (pl.col("event_date") >= prev_start) & (pl.col("event_date") <= prev_end)
+        )
+
+        current_metrics = _calc_metrics(current_df)
+        prev_metrics = _calc_metrics(prev_df)
+
+        result = {}
+        for metric in ["scheduled_count", "published_count", "publish_rate"]:
+            result[metric] = self._calc_change_result(
+                "publish_count" if metric == "publish_rate" else metric,
+                current_metrics.get(metric, 0),
+                prev_metrics.get(metric, 0),
+            )
+        return result
 
 
 risk_analyzer = RiskAnalyzer()

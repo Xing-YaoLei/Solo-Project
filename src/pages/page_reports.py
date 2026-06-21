@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 import plotly.graph_objects as go
 import plotly.express as px
 
-from src.utils.analyzer import risk_analyzer
+from src.utils.analyzer import risk_analyzer, YoYMoMResult
 from src.utils.ui_components import (
     render_delay_banner,
     plot_line_chart,
@@ -152,9 +152,7 @@ def render_reports():
             x_col = "date"
         elif period == "周":
             trend_df = daily_trend.with_columns(
-                pl.col("date").str.strptime(pl.Date, format="%Y-%m-%d")
-                .dt.truncate("1w")
-                .alias("week")
+                pl.col("date").dt.truncate("1w").alias("week")
             ).group_by("week").agg(
                 pl.sum("submit_count").alias("submit_count"),
                 pl.sum("return_count").alias("return_count"),
@@ -164,9 +162,7 @@ def render_reports():
             x_col = "week"
         else:
             trend_df = daily_trend.with_columns(
-                pl.col("date").str.strptime(pl.Date, format="%Y-%m-%d")
-                .dt.truncate("1mo")
-                .alias("month")
+                pl.col("date").dt.truncate("1mo").alias("month")
             ).group_by("month").agg(
                 pl.sum("submit_count").alias("submit_count"),
                 pl.sum("return_count").alias("return_count"),
@@ -198,13 +194,18 @@ def render_reports():
             delay_annotations=risk_analyzer.get_delay_annotations() or None,
         )
 
-        st.markdown("#### 环比指标汇总")
-        yoy_mom = risk_analyzer.get_review_yoy_mom(date_range[0], date_range[1])
+        compare_label = "同比" if compare_type == "同比" else "环比"
+        compare_param = "yoy" if compare_type == "同比" else "mom"
+
+        st.markdown(f"#### {compare_label}指标汇总")
+        yoy_mom = risk_analyzer.get_review_yoy_mom(
+            date_range[0], date_range[1], compare_type=compare_param
+        )
 
         col1, col2, col3, col4 = st.columns(4)
         with col1:
             _render_yoy_mom_card(
-                "提交数环比",
+                f"提交数{compare_label}",
                 yoy_mom["total"].current_value,
                 yoy_mom["total"].previous_value,
                 " 份",
@@ -212,7 +213,7 @@ def render_reports():
             )
         with col2:
             _render_yoy_mom_card(
-                "退回数环比",
+                f"退回数{compare_label}",
                 yoy_mom["return_count"].current_value,
                 yoy_mom["return_count"].previous_value,
                 " 份",
@@ -220,7 +221,7 @@ def render_reports():
             )
         with col3:
             _render_yoy_mom_card(
-                "发布数环比",
+                f"发布数{compare_label}",
                 yoy_mom["publish_count"].current_value,
                 yoy_mom["publish_count"].previous_value,
                 " 份",
@@ -228,7 +229,7 @@ def render_reports():
             )
         with col4:
             _render_yoy_mom_card(
-                "高风险文书环比",
+                f"高风险文书{compare_label}",
                 yoy_mom["high_risk"].current_value,
                 yoy_mom["high_risk"].previous_value,
                 " 份",
@@ -290,6 +291,15 @@ def render_reports():
         st.markdown("### 发布排期同环比")
         st.caption("审核意见与发布排期的同环比分析")
 
+        publish_compare_type = st.selectbox(
+            "对比方式",
+            ["环比", "同比"],
+            index=0,
+            key="publish_compare",
+        )
+        publish_compare_param = "yoy" if publish_compare_type == "同比" else "mom"
+        publish_compare_label = publish_compare_type
+
         schedule_df = risk_analyzer.get_publish_schedule_comparison(30)
 
         if not schedule_df.is_empty():
@@ -316,23 +326,58 @@ def render_reports():
                 st.metric("发布完成率", f"{publish_rate}%")
 
             st.markdown("---")
-            st.markdown("#### 审核意见同环比")
+            st.markdown(f"#### 发布排期{publish_compare_label}")
 
-            review_yoy = risk_analyzer.get_review_yoy_mom(date_range[0], date_range[1])
+            publish_yoy = risk_analyzer.get_publish_yoy_mom(
+                date_range[0], date_range[1], compare_type=publish_compare_param
+            )
+
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                _render_yoy_mom_card(
+                    f"排期数{publish_compare_label}",
+                    publish_yoy.get("scheduled_count", YoYMoMResult(0, 0, 0, True)).current_value,
+                    publish_yoy.get("scheduled_count", YoYMoMResult(0, 0, 0, True)).previous_value,
+                    " 份",
+                    is_good_when_up=True,
+                )
+            with col2:
+                _render_yoy_mom_card(
+                    f"已发布数{publish_compare_label}",
+                    publish_yoy.get("published_count", YoYMoMResult(0, 0, 0, True)).current_value,
+                    publish_yoy.get("published_count", YoYMoMResult(0, 0, 0, True)).previous_value,
+                    " 份",
+                    is_good_when_up=True,
+                )
+            with col3:
+                _render_yoy_mom_card(
+                    f"发布完成率{publish_compare_label}",
+                    publish_yoy.get("publish_rate", YoYMoMResult(0, 0, 0, True)).current_value,
+                    publish_yoy.get("publish_rate", YoYMoMResult(0, 0, 0, True)).previous_value,
+                    "%",
+                    is_good_when_up=True,
+                )
+
+            st.markdown("---")
+            st.markdown(f"#### 审核意见{publish_compare_label}")
+
+            review_yoy = risk_analyzer.get_review_yoy_mom(
+                date_range[0], date_range[1], compare_type=publish_compare_param
+            )
 
             col1, col2, col3 = st.columns(3)
 
             with col1:
                 st.markdown("**审核通过情况**")
                 _render_yoy_mom_card(
-                    "通过数",
+                    f"通过数{publish_compare_label}",
                     review_yoy["publish_count"].current_value,
                     review_yoy["publish_count"].previous_value,
                     " 份",
                     is_good_when_up=True,
                 )
                 _render_yoy_mom_card(
-                    "通过率",
+                    f"通过率{publish_compare_label}",
                     review_yoy["publish_rate"].current_value,
                     review_yoy["publish_rate"].previous_value,
                     "%",
@@ -342,14 +387,14 @@ def render_reports():
             with col2:
                 st.markdown("**审核退回情况**")
                 _render_yoy_mom_card(
-                    "退回数",
+                    f"退回数{publish_compare_label}",
                     review_yoy["return_count"].current_value,
                     review_yoy["return_count"].previous_value,
                     " 份",
                     is_good_when_up=False,
                 )
                 _render_yoy_mom_card(
-                    "退回率",
+                    f"退回率{publish_compare_label}",
                     review_yoy["return_rate"].current_value,
                     review_yoy["return_rate"].previous_value,
                     "%",
@@ -359,23 +404,29 @@ def render_reports():
             with col3:
                 st.markdown("**风险指标**")
                 _render_yoy_mom_card(
-                    "高风险文书",
+                    f"高风险文书{publish_compare_label}",
                     review_yoy["high_risk"].current_value,
                     review_yoy["high_risk"].previous_value,
                     " 份",
                     is_good_when_up=False,
                 )
                 _render_yoy_mom_card(
-                    "总提交量",
+                    f"总提交量{publish_compare_label}",
                     review_yoy["total"].current_value,
                     review_yoy["total"].previous_value,
                     " 份",
                     is_good_when_up=True,
                 )
 
-            st.info(
-                "💡 **说明：** 环比数据基于上一相同长度周期计算。"
-                "收款流水数据存在延迟时，近期发布相关指标可能不完整，请注意甄别。"
-            )
+            if publish_compare_type == "同比":
+                st.info(
+                    f"💡 **说明：** 同比数据基于去年同期（365天前）相同长度周期计算。"
+                    "收款流水数据存在延迟时，近期发布相关指标可能不完整，请注意甄别。"
+                )
+            else:
+                st.info(
+                    "💡 **说明：** 环比数据基于上一相同长度周期计算。"
+                    "收款流水数据存在延迟时，近期发布相关指标可能不完整，请注意甄别。"
+                )
         else:
             st.info("暂无发布排期数据")

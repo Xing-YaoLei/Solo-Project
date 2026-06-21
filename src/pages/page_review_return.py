@@ -134,15 +134,37 @@ def render_review_return():
     st.markdown("---")
 
     st.markdown("### 📊 退回分布分析")
+    st.caption("💡 点击图表中的条形区域可自动筛选下方的退回样本记录")
 
     if view_mode == "按区域":
         region_df = risk_analyzer.get_region_comparison(date_range)
-        plot_bar_chart(
-            region_df,
-            "region",
-            "return_rate",
-            title="各区域退回率",
+
+        fig_region = px.bar(
+            region_df.to_pandas(),
+            x="region",
+            y="return_rate",
+            title="各区域退回率（点击条形筛选样本）",
+            color="return_rate",
+            color_continuous_scale="RdYlGn_r",
         )
+        fig_region.update_layout(
+            height=350,
+            margin=dict(l=0, r=0, t=40, b=0),
+            clickmode="event+select",
+        )
+        event_region = st.plotly_chart(
+            fig_region,
+            use_container_width=True,
+            on_select="rerun",
+            selection_mode="points",
+            key="region_chart",
+        )
+        selected_region_from_chart = None
+        if event_region.selection and event_region.selection.get("points"):
+            selected_region_from_chart = event_region.selection["points"][0].get("x")
+            if selected_region_from_chart:
+                st.success(f"✅ 已从图表选中区域：**{selected_region_from_chart}**，下方样本已自动筛选")
+                selected_region = selected_region_from_chart
 
         st.markdown("#### 📋 区域详细数据")
 
@@ -162,12 +184,33 @@ def render_review_return():
 
     elif view_mode == "按文书类型":
         doc_type_df = risk_analyzer.get_doc_type_comparison(date_range)
-        plot_bar_chart(
-            doc_type_df,
-            "doc_type",
-            "return_rate",
-            title="各文书类型退回率",
+
+        fig_doctype = px.bar(
+            doc_type_df.to_pandas(),
+            x="doc_type",
+            y="return_rate",
+            title="各文书类型退回率（点击条形筛选样本）",
+            color="return_rate",
+            color_continuous_scale="RdYlGn_r",
         )
+        fig_doctype.update_layout(
+            height=350,
+            margin=dict(l=0, r=0, t=40, b=0),
+            clickmode="event+select",
+        )
+        event_doctype = st.plotly_chart(
+            fig_doctype,
+            use_container_width=True,
+            on_select="rerun",
+            selection_mode="points",
+            key="doctype_chart",
+        )
+        selected_doctype_from_chart = None
+        if event_doctype.selection and event_doctype.selection.get("points"):
+            selected_doctype_from_chart = event_doctype.selection["points"][0].get("x")
+            if selected_doctype_from_chart:
+                st.success(f"✅ 已从图表选中文书类型：**{selected_doctype_from_chart}**，下方样本已自动筛选")
+                selected_doc_type = selected_doctype_from_chart
 
         st.markdown("#### 📋 文书类型详细数据")
         type_display = doc_type_df.select([
@@ -194,12 +237,32 @@ def render_review_return():
                 (pl.col("return_count") / pl.col("total_docs") * 100).round(2).alias("return_rate")
             ).sort("return_count", descending=True).head(20)
 
-            plot_bar_chart(
-                lawyer_df,
-                "lawyer",
-                "return_count",
-                title="律师退回文书数 Top 20",
+            fig_lawyer = px.bar(
+                lawyer_df.to_pandas(),
+                x="lawyer",
+                y="return_count",
+                title="律师退回文书数 Top 20（点击条形筛选样本）",
+                color="return_count",
+                color_continuous_scale="Reds",
             )
+            fig_lawyer.update_layout(
+                height=350,
+                margin=dict(l=0, r=0, t=40, b=0),
+                clickmode="event+select",
+            )
+            event_lawyer = st.plotly_chart(
+                fig_lawyer,
+                use_container_width=True,
+                on_select="rerun",
+                selection_mode="points",
+                key="lawyer_chart",
+            )
+            selected_lawyer_from_chart = None
+            if event_lawyer.selection and event_lawyer.selection.get("points"):
+                selected_lawyer_from_chart = event_lawyer.selection["points"][0].get("x")
+                if selected_lawyer_from_chart:
+                    st.success(f"✅ 已从图表选中律师：**{selected_lawyer_from_chart}**，下方样本已自动筛选")
+                    st.session_state["selected_lawyer"] = selected_lawyer_from_chart
 
             st.markdown("#### 📋 律师详细数据")
             lawyer_display = lawyer_df.select([
@@ -220,12 +283,34 @@ def render_review_return():
 
     region_param = None if selected_region == "全部" else selected_region
     doctype_param = None if selected_doc_type == "全部" else selected_doc_type
+    lawyer_param = st.session_state.get("selected_lawyer", None)
+
+    filter_active = any([region_param, doctype_param, lawyer_param])
+    filter_desc = []
+    if region_param: filter_desc.append(f"区域={region_param}")
+    if doctype_param: filter_desc.append(f"文书类型={doctype_param}")
+    if lawyer_param: filter_desc.append(f"律师={lawyer_param}")
+
+    col_filter, col_clear = st.columns([4, 1])
+    with col_filter:
+        if filter_active:
+            st.info(f"🔍 当前筛选条件：{'、'.join(filter_desc)}，已自动联动到下方样本")
+        else:
+            st.info("💡 当前无筛选条件，可点击上方图表自动联动筛选")
+    with col_clear:
+        if st.button("🧹 清除筛选", use_container_width=True, key="clear_filters"):
+            if "selected_lawyer" in st.session_state:
+                del st.session_state["selected_lawyer"]
+            st.rerun()
 
     samples = risk_analyzer.get_returned_samples(
         region=region_param,
         doc_type=doctype_param,
         limit=50,
     )
+
+    if lawyer_param:
+        samples = samples.filter(pl.col("lawyer") == lawyer_param)
 
     if not samples.is_empty():
         display_cols = [
