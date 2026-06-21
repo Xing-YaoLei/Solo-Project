@@ -94,6 +94,7 @@ def _ensure_default_user(cfg):
             ('admin', 'admin@lawfirm.com', '系统管理员', 'admin', '管理部', 'admin123'),
             ('partner', 'partner@lawfirm.com', '李合伙人', 'partner', '诉讼一部', 'partner123'),
             ('lawyer', 'lawyer@lawfirm.com', '张律师', 'lawyer', '诉讼一部', 'lawyer123'),
+            ('paralegal', 'paralegal@lawfirm.com', '刘助理', 'paralegal', '诉讼一部', 'paralegal123'),
             ('auditor', 'auditor@lawfirm.com', '王审计', 'auditor', '风控部', 'auditor123'),
         ]
         for uname, email, fname, role, dept, pwd in users:
@@ -142,12 +143,13 @@ def _ensure_demo_data():
 
         lawyer_id = User.query.filter_by(username='lawyer').first().id
         partner_id = User.query.filter_by(username='partner').first().id
+        paralegal_id = User.query.filter_by(username='paralegal').first().id
 
         demo_cases = [
             Case(case_number='L2026-民-001', case_name='东方科技与某供应商合同纠纷案',
                  case_type='民事诉讼', case_category='合同纠纷',
                  client_id=demo_clients[0].id, opposing_party='杭州XX供应链有限公司',
-                 responsible_lawyer_id=lawyer_id,
+                 responsible_lawyer_id=lawyer_id, assistant_lawyer_ids=[paralegal_id],
                  entrusted_at=datetime(2026, 1, 15), accepted_at=datetime(2026, 1, 18),
                  filed_at=datetime(2026, 2, 10), current_stage='举证',
                  stage_updated_at=datetime(2026, 2, 28),
@@ -158,7 +160,7 @@ def _ensure_demo_data():
             Case(case_number='L2026-民-002', case_name='恒信贸易信用证欺诈纠纷案',
                  case_type='民事诉讼', case_category='信用证纠纷',
                  client_id=demo_clients[1].id, opposing_party='香港XX国际贸易有限公司',
-                 responsible_lawyer_id=partner_id, assistant_lawyer_ids=[lawyer_id],
+                 responsible_lawyer_id=partner_id, assistant_lawyer_ids=[lawyer_id, paralegal_id],
                  entrusted_at=datetime(2026, 2, 1), accepted_at=datetime(2026, 2, 3),
                  filed_at=datetime(2026, 2, 20), current_stage='开庭',
                  stage_updated_at=datetime(2026, 3, 15),
@@ -169,7 +171,7 @@ def _ensure_demo_data():
             Case(case_number='L2026-民-003', case_name='陈明离婚财产分割案',
                  case_type='民事诉讼', case_category='婚姻家庭纠纷',
                  client_id=demo_clients[2].id, opposing_party='王XX',
-                 responsible_lawyer_id=lawyer_id,
+                 responsible_lawyer_id=lawyer_id, assistant_lawyer_ids=[paralegal_id],
                  entrusted_at=datetime(2026, 3, 1), accepted_at=datetime(2026, 3, 2),
                  filed_at=datetime(2026, 3, 10), current_stage='调解',
                  stage_updated_at=datetime(2026, 4, 20),
@@ -180,7 +182,7 @@ def _ensure_demo_data():
             Case(case_number='L2026-民-004', case_name='海纳创新专利侵权纠纷案',
                  case_type='民事诉讼', case_category='知识产权纠纷',
                  client_id=demo_clients[3].id, opposing_party='北京某AI科技公司',
-                 responsible_lawyer_id=partner_id, assistant_lawyer_ids=[lawyer_id],
+                 responsible_lawyer_id=partner_id, assistant_lawyer_ids=[lawyer_id, paralegal_id],
                  entrusted_at=datetime(2026, 1, 5), accepted_at=datetime(2026, 1, 8),
                  filed_at=datetime(2026, 1, 25), current_stage='上诉',
                  stage_updated_at=datetime(2026, 5, 1),
@@ -191,7 +193,7 @@ def _ensure_demo_data():
             Case(case_number='L2026-民-005', case_name='刘洋房屋买卖合同纠纷案',
                  case_type='民事诉讼', case_category='房屋买卖',
                  client_id=demo_clients[4].id, opposing_party='北京某房地产经纪公司',
-                 responsible_lawyer_id=lawyer_id,
+                 responsible_lawyer_id=lawyer_id, assistant_lawyer_ids=[paralegal_id],
                  entrusted_at=datetime(2026, 4, 5), accepted_at=datetime(2026, 4, 6),
                  filed_at=datetime(2026, 4, 18), current_stage='立案',
                  stage_updated_at=datetime(2026, 4, 18),
@@ -202,7 +204,7 @@ def _ensure_demo_data():
             Case(case_number='L2026-民-006', case_name='粤华地产建设工程施工合同纠纷',
                  case_type='民事诉讼', case_category='建设工程',
                  client_id=demo_clients[5].id, opposing_party='某建筑工程有限公司',
-                 responsible_lawyer_id=partner_id, assistant_lawyer_ids=[lawyer_id],
+                 responsible_lawyer_id=partner_id, assistant_lawyer_ids=[lawyer_id, paralegal_id],
                  entrusted_at=datetime(2026, 2, 10), accepted_at=datetime(2026, 2, 12),
                  filed_at=datetime(2026, 3, 1), current_stage='判决',
                  stage_updated_at=datetime(2026, 6, 1),

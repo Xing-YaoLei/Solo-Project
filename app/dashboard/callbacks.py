@@ -44,6 +44,41 @@ def _empty_figure(text: str = '暂无数据') -> go.Figure:
     return fig
 
 
+def _apply_share_filters(
+    user_info: Dict[str, Any],
+    cases_df: pd.DataFrame,
+    clients_df: pd.DataFrame,
+    hearings_df: pd.DataFrame,
+    evidences_df: pd.DataFrame,
+    payments_df: pd.DataFrame,
+    filtered_case_ids=None,
+    filtered_client_ids=None,
+):
+    share_filter = user_info.get('share_context', {}).get('filters', {})
+    if filtered_case_ids is None:
+        filtered_case_ids = share_filter.get('case_id') if share_filter else None
+    if filtered_client_ids is None:
+        filtered_client_ids = share_filter.get('client_id') if share_filter else None
+
+    if filtered_case_ids:
+        if not cases_df.empty and 'id' in cases_df.columns:
+            cases_df = cases_df[cases_df['id'].isin(filtered_case_ids)]
+        if not hearings_df.empty and 'case_id' in hearings_df.columns:
+            hearings_df = hearings_df[hearings_df['case_id'].isin(filtered_case_ids)]
+        if not evidences_df.empty and 'case_id' in evidences_df.columns:
+            evidences_df = evidences_df[evidences_df['case_id'].isin(filtered_case_ids)]
+        if not payments_df.empty and 'case_id' in payments_df.columns:
+            payments_df = payments_df[payments_df['case_id'].isin(filtered_case_ids)]
+        if not clients_df.empty and 'id' in clients_df.columns:
+            if filtered_client_ids:
+                clients_df = clients_df[clients_df['id'].isin(filtered_client_ids)]
+            elif not cases_df.empty and 'client_id' in cases_df.columns:
+                derived_client_ids = cases_df['client_id'].dropna().unique().tolist()
+                clients_df = clients_df[clients_df['id'].isin(derived_client_ids)]
+
+    return cases_df, clients_df, hearings_df, evidences_df, payments_df, filtered_case_ids, filtered_client_ids
+
+
 def register_callbacks(app, cfg):
     config_dict = {
         'ROLE_PERMISSIONS': cfg.ROLE_PERMISSIONS,
@@ -136,21 +171,9 @@ def register_callbacks(app, cfg):
             hearings_df = QueryService.get_hearings_df(user, config_dict)
             payments_df = QueryService.get_payments_df(user, config_dict, include_finance=include_finance)
 
-            share_filter = user_info.get('share_context', {}).get('filters', {})
-            filtered_case_ids = share_filter.get('case_id') if share_filter else None
-            filtered_client_ids = share_filter.get('client_id') if share_filter else None
-
-            if filtered_case_ids:
-                if not cases_df.empty and 'id' in cases_df.columns:
-                    cases_df = cases_df[cases_df['id'].isin(filtered_case_ids)]
-                if not hearings_df.empty and 'case_id' in hearings_df.columns:
-                    hearings_df = hearings_df[hearings_df['case_id'].isin(filtered_case_ids)]
-                if not evidences_df.empty and 'case_id' in evidences_df.columns:
-                    evidences_df = evidences_df[evidences_df['case_id'].isin(filtered_case_ids)]
-                if not payments_df.empty and 'case_id' in payments_df.columns:
-                    payments_df = payments_df[payments_df['case_id'].isin(filtered_case_ids)]
-                if not clients_df.empty and filtered_client_ids and 'id' in clients_df.columns:
-                    clients_df = clients_df[clients_df['id'].isin(filtered_client_ids)]
+            cases_df, clients_df, hearings_df, evidences_df, payments_df, filtered_case_ids, filtered_client_ids = _apply_share_filters(
+                user_info, cases_df, clients_df, hearings_df, evidences_df, payments_df
+            )
 
             client_trend_df = TrendService.get_client_trend_df(clients_df)
             case_stage_df = TrendService.get_case_stage_distribution(cases_df)

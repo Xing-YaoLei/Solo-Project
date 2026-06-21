@@ -14,6 +14,17 @@ from app.models import (
 
 class QueryService:
     @staticmethod
+    def _get_team_case_ids(user: User) -> List[str]:
+        all_cases = Case.query.all()
+        team_case_ids = []
+        for case in all_cases:
+            if case.responsible_lawyer_id == user.id:
+                team_case_ids.append(case.id)
+            elif case.assistant_lawyer_ids and user.id in case.assistant_lawyer_ids:
+                team_case_ids.append(case.id)
+        return team_case_ids
+
+    @staticmethod
     def apply_role_scope(query, user: User, model, config):
         role = user.role
         perms = config['ROLE_PERMISSIONS'].get(role, {})
@@ -53,36 +64,22 @@ class QueryService:
                 return query
 
         elif scope == 'team':
+            team_case_ids = QueryService._get_team_case_ids(user)
             if model == Case:
-                return query.filter(
-                    or_(
-                        Case.responsible_lawyer_id == user.id,
-                        Case.assistant_lawyer_ids.any(user.id)
-                    )
-                )
+                return query.filter(Case.id.in_(team_case_ids))
             elif model == Client:
                 case_client_ids = Case.query.filter(
-                    or_(
-                        Case.responsible_lawyer_id == user.id,
-                        Case.assistant_lawyer_ids.any(user.id)
-                    )
+                    Case.id.in_(team_case_ids)
                 ).with_entities(Case.client_id).all()
                 cids = [c[0] for c in case_client_ids]
                 return query.filter(Client.id.in_(cids))
             elif model in (Evidence, Hearing, PaymentTransaction):
-                case_q = Case.query.filter(
-                    or_(
-                        Case.responsible_lawyer_id == user.id,
-                        Case.assistant_lawyer_ids.any(user.id)
-                    )
-                ).with_entities(Case.id)
-                case_ids = [c[0] for c in case_q.all()]
                 if model == Evidence:
-                    return query.filter(Evidence.case_id.in_(case_ids))
+                    return query.filter(Evidence.case_id.in_(team_case_ids))
                 elif model == Hearing:
-                    return query.filter(Hearing.case_id.in_(case_ids))
+                    return query.filter(Hearing.case_id.in_(team_case_ids))
                 elif model == PaymentTransaction:
-                    return query.filter(PaymentTransaction.case_id.in_(case_ids))
+                    return query.filter(PaymentTransaction.case_id.in_(team_case_ids))
             else:
                 return query
 
@@ -127,6 +124,12 @@ class QueryService:
                 elif model == Client:
                     if v_client_ids:
                         return query.filter(Client.id.in_(v_client_ids))
+                    elif v_case_ids:
+                        case_clients = Case.query.filter(
+                            Case.id.in_(v_case_ids)
+                        ).with_entities(Case.client_id).distinct().all()
+                        derived_client_ids = [c[0] for c in case_clients]
+                        return query.filter(Client.id.in_(derived_client_ids))
                     else:
                         return query.filter(False)
                 elif model == Evidence:
