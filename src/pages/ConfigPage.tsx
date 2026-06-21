@@ -46,7 +46,7 @@ interface EditableQuestion {
   type: QuestionType
   title: string
   description: string
-  reward: number
+  rewardScore: number
   timeLimit: number
   dataJson: string
 }
@@ -57,7 +57,7 @@ function questionToEditable(q: QuestionItem): EditableQuestion {
     type: q.type,
     title: q.title,
     description: q.description,
-    reward: q.reward,
+    rewardScore: q.rewardScore,
     timeLimit: q.timeLimit ?? 120,
     dataJson: JSON.stringify(q.data, null, 2),
   }
@@ -71,7 +71,7 @@ function editableToQuestion(e: EditableQuestion): QuestionItem | null {
       type: e.type,
       title: e.title,
       description: e.description,
-      reward: e.reward,
+      rewardScore: e.rewardScore,
       timeLimit: e.timeLimit,
       data,
     }
@@ -145,7 +145,7 @@ function QuestionsPanel({ config, updateConfig }: { config: GameConfig; updateCo
     type: 'amount_verify',
     title: '',
     description: '',
-    reward: 100,
+    rewardScore: 100,
     timeLimit: 120,
     dataJson: '{}',
   })
@@ -169,7 +169,7 @@ function QuestionsPanel({ config, updateConfig }: { config: GameConfig; updateCo
     }
     updateConfig({ ...config, questions: [...config.questions, q] })
     setIsAdding(false)
-    setNewQ({ id: '', type: 'amount_verify', title: '', description: '', reward: 100, timeLimit: 120, dataJson: '{}' })
+    setNewQ({ id: '', type: 'amount_verify', title: '', description: '', rewardScore: 100, timeLimit: 120, dataJson: '{}' })
   }
 
   const handleSave = () => {
@@ -279,7 +279,7 @@ function QuestionsPanel({ config, updateConfig }: { config: GameConfig; updateCo
                           </span>
                         </div>
                         <p className="text-xs text-[#64748B] mt-0.5">
-                          ID: {q.id} · 奖励: {q.reward}分 · 时限: {q.timeLimit ?? 120}s
+                          ID: {q.id} · 奖励: {q.rewardScore}分 · 时限: {q.timeLimit ?? 120}s
                         </p>
                       </div>
                     </div>
@@ -368,8 +368,8 @@ function QuestionForm({
           <Field label="奖励分值">
             <input
               type="number"
-              value={data.reward}
-              onChange={(e) => onChange({ ...data, reward: Number(e.target.value) })}
+              value={data.rewardScore}
+              onChange={(e) => onChange({ ...data, rewardScore: Number(e.target.value) })}
               className="w-full px-3 py-2 bg-[#1B2A4A] border border-[#D4A843]/20 rounded-lg text-white text-sm focus:outline-none focus:border-[#D4A843]/60"
             />
           </Field>

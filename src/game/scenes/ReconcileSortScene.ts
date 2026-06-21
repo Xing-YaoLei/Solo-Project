@@ -1,8 +1,9 @@
 import Phaser from 'phaser'
 import Matter from 'matter-js'
-import { ReconcileSortData, DiffEntry, TrainingRecord, MistakeEntry, LEVEL_LABELS } from '@/types'
+import { ReconcileSortData, DiffEntry, TrainingRecord, MistakeEntry, LEVEL_LABELS, TrainingMode } from '@/types'
 import { useGameStore } from '@/store/gameStore'
 import { GAME_WIDTH, GAME_HEIGHT } from '@/game/config'
+import { calculatePaymentCycleDays, formatTime } from '@/lib/gameUtils'
 
 const COLORS = {
   deepIndigo: 0x1B2A4A,
@@ -49,11 +50,15 @@ export class ReconcileSortScene extends Phaser.Scene {
   private questionData!: ReconcileSortData
   private questionId!: string
   private maxScore!: number
+  private timeLimit = 120
+  private remainingTime = 120
   private cards: CardData[] = []
   private slotCards: (CardData | null)[] = [null, null, null, null, null]
   private dragging: CardData | null = null
   private dragTarget = { x: 0, y: 0 }
   private elapsed = 0
+  private elapsedTime = 0
+  private trainingMode: TrainingMode = 'timed'
   private timerText!: Phaser.GameObjects.Text
   private timerEvent!: Phaser.Time.TimerEvent
   private submitted = false
@@ -65,16 +70,19 @@ export class ReconcileSortScene extends Phaser.Scene {
 
   create() {
     const store = useGameStore.getState()
-    const questions = store.getQuestionsByType('reconcile_sort')
-    if (!questions.length) {
+    const question = store.getCurrentQuestion()
+    if (!question || question.type !== 'reconcile_sort') {
       this.scene.start('MenuScene')
       return
     }
 
-    const question = questions[0]
     this.questionId = question.id
-    this.maxScore = question.reward
+    this.maxScore = question.rewardScore
+    this.timeLimit = question.timeLimit ?? 120
+    this.remainingTime = this.timeLimit
     this.questionData = question.data as ReconcileSortData
+    this.trainingMode = store.config.trainingMode
+    this.elapsedTime = 0
 
     this.drawBackground()
     this.drawTitle()
@@ -113,20 +121,30 @@ export class ReconcileSortScene extends Phaser.Scene {
   }
 
   private drawTitle() {
-    this.add.text(GAME_WIDTH / 2, 18, LEVEL_LABELS.reconcile_sort, {
+    this.add.text(GAME_WIDTH / 2, 14, LEVEL_LABELS.reconcile_sort, {
       fontSize: '28px',
       fontFamily: 'Arial',
       color: '#D4A843',
       fontStyle: 'bold',
     }).setOrigin(0.5, 0)
 
-    this.timerText = this.add.text(GAME_WIDTH - 30, 22, '00:00', {
+    const modeLabel = this.trainingMode === 'practice' ? '练习模式' : this.trainingMode === 'exam' ? '考试模式' : '限时模式'
+    this.add.text(GAME_WIDTH / 2, 44, modeLabel, {
+      fontSize: '12px',
+      fontFamily: 'Arial',
+      color: '#10B981',
+    }).setOrigin(0.5, 0)
+
+    const timerInitial = this.trainingMode === 'practice'
+      ? formatTime(this.elapsedTime)
+      : `${this.remainingTime}s`
+    this.timerText = this.add.text(GAME_WIDTH - 30, 22, timerInitial, {
       fontSize: '20px',
       fontFamily: 'Arial',
-      color: '#64748B',
+      color: this.trainingMode === 'practice' ? '#64748B' : '#FFFFFF',
     }).setOrigin(1, 0)
 
-    this.add.text(GAME_WIDTH / 2, 55, '请将差异卡片按严重程度从高到低排列', {
+    this.add.text(GAME_WIDTH / 2, 65, '请将差异卡片按严重程度从高到低排列', {
       fontSize: '16px',
       fontFamily: 'Arial',
       color: '#94A3B8',
@@ -377,10 +395,20 @@ export class ReconcileSortScene extends Phaser.Scene {
       delay: 1000,
       loop: true,
       callback: () => {
-        this.elapsed++
-        const m = Math.floor(this.elapsed / 60).toString().padStart(2, '0')
-        const s = (this.elapsed % 60).toString().padStart(2, '0')
-        this.timerText.setText(`${m}:${s}`)
+        this.elapsedTime++
+        if (this.trainingMode === 'practice') {
+          this.timerText.setText(formatTime(this.elapsedTime))
+        } else {
+          this.remainingTime--
+          this.timerText.setText(`${Math.max(0, this.remainingTime)}s`)
+          if (this.remainingTime <= 10) {
+            this.timerText.setColor('#EF4444')
+          }
+          if (this.remainingTime <= 0) {
+            this.timerEvent.remove()
+            this.onSubmit()
+          }
+        }
       },
     })
   }
@@ -395,6 +423,8 @@ export class ReconcileSortScene extends Phaser.Scene {
 
     this.submitted = true
     this.timerEvent.remove()
+
+    const timeSpent = this.elapsedTime > 0 ? this.elapsedTime : this.elapsed
 
     const playerOrder = this.slotCards.map((c) => c!.diffEntry.id)
     const correctOrder = this.questionData.correctOrder
@@ -416,22 +446,32 @@ export class ReconcileSortScene extends Phaser.Scene {
       }
     }
 
-    const score = Math.round((correct / total) * this.maxScore)
+    const totalScore = Math.round((correct / total) * this.maxScore)
 
+    const paymentCycleDays = calculatePaymentCycleDays(
+      totalScore,
+      this.maxScore,
+      timeSpent,
+      this.timeLimit,
+      this.trainingMode,
+    )
+
+    const store = useGameStore.getState()
     const record: TrainingRecord = {
       id: `record_${Date.now()}`,
-      userId: 'player_1',
+      userId: store.progress.userId,
       questionId: this.questionId,
       questionType: 'reconcile_sort',
-      score,
+      score: totalScore,
       maxScore: this.maxScore,
-      timeSpent: this.elapsed,
+      timeSpent,
+      paymentCycleDays,
       mistakes,
       completedAt: new Date().toISOString(),
     }
 
-    useGameStore.getState().completeLevel(record)
-    this.showResult(score, this.maxScore, correct, total, mistakes)
+    store.completeLevel(record)
+    this.showResult(totalScore, this.maxScore, correct, total, mistakes, paymentCycleDays)
   }
 
   private showWarning(msg: string) {
@@ -455,13 +495,14 @@ export class ReconcileSortScene extends Phaser.Scene {
     correct: number,
     total: number,
     mistakes: MistakeEntry[],
+    paymentCycleDays: number,
   ) {
     const overlay = this.add.graphics().setDepth(50)
     overlay.fillStyle(0x000000, 0.7)
     overlay.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT)
 
     const pw = 480
-    const ph = 360
+    const ph = 400
     const px = GAME_WIDTH / 2 - pw / 2
     const py = GAME_HEIGHT / 2 - ph / 2
 
@@ -495,7 +536,16 @@ export class ReconcileSortScene extends Phaser.Scene {
       .setDepth(61)
 
     this.add
-      .text(GAME_WIDTH / 2, py + 110, `正确位置: ${correct} / ${total}`, {
+      .text(GAME_WIDTH / 2, py + 105, `预计回款周期：${paymentCycleDays} 天`, {
+        fontSize: '15px',
+        fontFamily: 'Arial',
+        color: '#D4A843',
+      })
+      .setOrigin(0.5, 0)
+      .setDepth(61)
+
+    this.add
+      .text(GAME_WIDTH / 2, py + 135, `正确位置: ${correct} / ${total}`, {
         fontSize: '18px',
         fontFamily: 'Arial',
         color: '#94A3B8',
@@ -505,7 +555,7 @@ export class ReconcileSortScene extends Phaser.Scene {
 
     if (mistakes.length > 0) {
       this.add
-        .text(GAME_WIDTH / 2, py + 145, '错误详情:', {
+        .text(GAME_WIDTH / 2, py + 170, '错误详情:', {
           fontSize: '16px',
           fontFamily: 'Arial',
           color: '#EF4444',
@@ -516,7 +566,7 @@ export class ReconcileSortScene extends Phaser.Scene {
 
       mistakes.slice(0, 3).forEach((m, i) => {
         this.add
-          .text(GAME_WIDTH / 2, py + 170 + i * 22, m.description, {
+          .text(GAME_WIDTH / 2, py + 195 + i * 22, m.description, {
             fontSize: '12px',
             fontFamily: 'Arial',
             color: '#CBD5E1',

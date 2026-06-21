@@ -1,7 +1,8 @@
 import Phaser from 'phaser'
-import { QuestionType, LEVEL_LABELS, LEVEL_ORDER } from '@/types'
+import { QuestionType, LEVEL_LABELS, LEVEL_ORDER, TrainingMode, QuestionItem } from '@/types'
 import { useGameStore } from '@/store/gameStore'
 import { GAME_WIDTH, GAME_HEIGHT } from '@/game/config'
+import { QUESTION_TYPE_LABELS } from '@/lib/gameUtils'
 
 const COLORS = {
   background: 0x1b2a4a,
@@ -58,6 +59,7 @@ export class MenuScene extends Phaser.Scene {
   private NODE_Y = 0
   private PATH_START_X = 180
   private PATH_END_X = 0
+  private questionModal: Phaser.GameObjects.Container | null = null
 
   constructor() {
     super({ key: 'MenuScene' })
@@ -177,15 +179,18 @@ export class MenuScene extends Phaser.Scene {
       const type = LEVEL_ORDER[i]
       const cx = this.PATH_START_X + step * i
       const unlocked = store.isLevelUnlocked(type)
+      const openNow = store.isLevelOpenNow(type)
+      const available = unlocked && openNow
       const starCount = store.progress.stars[type] || 0
+      const questionCount = store.getQuestionsByType(type).length
 
       const container = this.add.container(cx, this.NODE_Y).setDepth(5)
 
       const glow = this.add.circle(0, 0, NODE_RADIUS + 8, COLORS.accent, 0)
       container.add(glow)
 
-      const fillColor = unlocked ? COLORS.nodeFill : COLORS.lockedFill
-      const strokeColor = unlocked ? COLORS.nodeStroke : COLORS.lockedStroke
+      const fillColor = available ? COLORS.nodeFill : COLORS.lockedFill
+      const strokeColor = available ? COLORS.nodeStroke : COLORS.lockedStroke
       const circle = this.add.circle(0, 0, NODE_RADIUS, fillColor, 1)
       circle.setStrokeStyle(3, strokeColor)
       container.add(circle)
@@ -194,25 +199,35 @@ export class MenuScene extends Phaser.Scene {
         fontFamily: 'Arial, sans-serif',
         fontSize: '30px',
       }).setOrigin(0.5)
-      icon.setAlpha(unlocked ? 1 : 0.35)
+      icon.setAlpha(available ? 1 : 0.35)
       container.add(icon)
 
       const label = this.add.text(0, 22, LEVEL_LABELS[type], {
         fontFamily: 'Arial, sans-serif',
         fontSize: '13px',
-        color: unlocked ? COLORS.white : COLORS.secondaryStr,
+        color: available ? COLORS.white : COLORS.secondaryStr,
       }).setOrigin(0.5)
       container.add(label)
 
-      const starStr = this.buildStarText(starCount, unlocked)
+      const starStr = this.buildStarText(starCount, available)
       const stars = this.add.text(0, 44, starStr, {
         fontFamily: 'Arial, sans-serif',
         fontSize: '14px',
       }).setOrigin(0.5)
       container.add(stars)
 
-      if (!unlocked) {
-        const lock = this.add.text(0, -10, '🔒', {
+      const countText = this.add.text(0, 62, `${questionCount} 题`, {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '11px',
+        color: available ? COLORS.accentStr : COLORS.secondaryStr,
+      }).setOrigin(0.5)
+      container.add(countText)
+
+      if (!available) {
+        let lockText = '🔒'
+        if (!unlocked) lockText = '🔒'
+        else if (!openNow) lockText = '⏳'
+        const lock = this.add.text(0, -10, lockText, {
           fontFamily: 'Arial, sans-serif',
           fontSize: '18px',
         }).setOrigin(0.5)
@@ -227,7 +242,7 @@ export class MenuScene extends Phaser.Scene {
       )
 
       container.on('pointerover', () => {
-        if (!unlocked) return
+        if (!available) return
         this.tweens.add({
           targets: container,
           scaleX: 1.12,
@@ -258,14 +273,24 @@ export class MenuScene extends Phaser.Scene {
       })
 
       container.on('pointerdown', () => {
-        if (unlocked) {
-          this.scene.start(LEVEL_SCENES[type], { questionType: type })
-        } else {
+        if (!unlocked) {
           this.showToast('请先完成前一关卡')
+        } else if (!openNow) {
+          this.showToast('当前关卡未在开放时间内')
+        } else {
+          const questions = store.getQuestionsByType(type)
+          if (questions.length === 0) {
+            this.showToast('该关卡暂无题目，请先配置')
+          } else if (questions.length === 1) {
+            store.setCurrentQuestionId(questions[0].id)
+            this.scene.start(LEVEL_SCENES[type], { questionType: type })
+          } else {
+            this.showQuestionModal(type, questions)
+          }
         }
       })
 
-      this.nodes.push({ container, circle, icon, label, stars, glow, type, unlocked })
+      this.nodes.push({ container, circle, icon, label, stars, glow, type, unlocked: available })
     }
   }
 
@@ -342,6 +367,109 @@ export class MenuScene extends Phaser.Scene {
     })
     bg.on('pointerdown', () => {
       this.scene.start('TutorialScene')
+    })
+  }
+
+  private showQuestionModal(type: QuestionType, questions: QuestionItem[]) {
+    if (this.questionModal) return
+
+    const modal = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2).setDepth(200)
+
+    const bg = this.add.rectangle(0, 0, 520, 420, 0x0f172a, 0.96)
+      .setStrokeStyle(2, COLORS.accent, 0.6)
+    modal.add(bg)
+
+    const title = this.add.text(0, -170, `选择题目 - ${LEVEL_LABELS[type]}`, {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '20px',
+      fontStyle: 'bold',
+      color: COLORS.accentStr,
+    }).setOrigin(0.5)
+    modal.add(title)
+
+    const closeBtn = this.add.text(230, -170, '✕', {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '18px',
+      color: COLORS.secondaryStr,
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true })
+    closeBtn.on('pointerdown', () => this.hideQuestionModal())
+    closeBtn.on('pointerover', () => closeBtn.setColor(COLORS.white))
+    closeBtn.on('pointerout', () => closeBtn.setColor(COLORS.secondaryStr))
+    modal.add(closeBtn)
+
+    const itemHeight = 52
+    const itemWidth = 440
+    const startY = -120
+
+    questions.forEach((q, idx) => {
+      const y = startY + idx * (itemHeight + 8)
+
+      const itemBg = this.add.rectangle(0, y, itemWidth, itemHeight, COLORS.nodeFill, 1)
+        .setStrokeStyle(1, COLORS.accent, 0.3)
+        .setInteractive({ useHandCursor: true })
+      itemBg.on('pointerover', () => itemBg.setFillStyle(COLORS.accent, 0.15))
+      itemBg.on('pointerout', () => itemBg.setFillStyle(COLORS.nodeFill, 1))
+      itemBg.on('pointerdown', () => {
+        const store = useGameStore.getState()
+        store.setCurrentQuestionId(q.id)
+        this.hideQuestionModal()
+        this.scene.start(LEVEL_SCENES[type], { questionType: type })
+      })
+      modal.add(itemBg)
+
+      const idText = this.add.text(-itemWidth / 2 + 16, y - 8, q.id, {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '14px',
+        fontStyle: 'bold',
+        color: COLORS.white,
+      }).setOrigin(0, 0.5)
+      modal.add(idText)
+
+      const scoreText = this.add.text(itemWidth / 2 - 16, y - 8, `奖励 ${q.rewardScore} 分`, {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '12px',
+        color: COLORS.accentStr,
+      }).setOrigin(1, 0.5)
+      modal.add(scoreText)
+
+      const infoText = this.add.text(-itemWidth / 2 + 16, y + 12, `时限 ${q.timeLimit}s · 类型: ${QUESTION_TYPE_LABELS[q.type]}`, {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '11px',
+        color: COLORS.secondaryStr,
+      }).setOrigin(0, 0.5)
+      modal.add(infoText)
+    })
+
+    const mode = useGameStore.getState().config.trainingMode
+    const modeLabel = mode === 'practice' ? '练习模式（不限时）' : mode === 'timed' ? '限时模式' : '考试模式'
+    const modeText = this.add.text(0, 170, `当前: ${modeLabel}`, {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '13px',
+      color: COLORS.successStr,
+    }).setOrigin(0.5)
+    modal.add(modeText)
+
+    this.questionModal = modal
+
+    modal.setAlpha(0)
+    this.tweens.add({
+      targets: modal,
+      alpha: 1,
+      duration: 200,
+      ease: 'Power2',
+    })
+  }
+
+  private hideQuestionModal() {
+    if (!this.questionModal) return
+    this.tweens.add({
+      targets: this.questionModal,
+      alpha: 0,
+      duration: 150,
+      onComplete: () => {
+        this.questionModal?.destroy()
+        this.questionModal = null
+      },
     })
   }
 

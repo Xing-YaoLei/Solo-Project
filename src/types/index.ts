@@ -76,7 +76,7 @@ export interface QuestionItem {
   title: string
   description: string
   data: QuestionData
-  reward: number
+  rewardScore: number
   timeLimit?: number
 }
 

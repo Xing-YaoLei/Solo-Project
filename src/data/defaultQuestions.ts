@@ -7,7 +7,7 @@ export const defaultConfig: GameConfig = {
       type: 'amount_verify',
       title: '合同审查-基础校验',
       description: '请对比报价单与合同金额，找出所有不一致项并选择原因。',
-      reward: 100,
+      rewardScore: 100,
       timeLimit: 120,
       data: {
         quoteItems: [
@@ -35,7 +35,7 @@ export const defaultConfig: GameConfig = {
       type: 'payment_flow',
       title: '支付匹配-初级训练',
       description: '从以下支付流水中选出与报价总额匹配的流水组合。',
-      reward: 100,
+      rewardScore: 100,
       timeLimit: 90,
       data: {
         targetAmount: 62000,
@@ -56,7 +56,7 @@ export const defaultConfig: GameConfig = {
       type: 'reconcile_sort',
       title: '对账排序-差异优先级',
       description: '将以下对账差异按严重程度从高到低排列。',
-      reward: 100,
+      rewardScore: 100,
       timeLimit: 90,
       data: {
         differences: [
@@ -74,7 +74,7 @@ export const defaultConfig: GameConfig = {
       type: 'contract_attach',
       title: '合同附件-完整性检查',
       description: '为合同条款匹配正确的附件文件。',
-      reward: 100,
+      rewardScore: 100,
       timeLimit: 120,
       data: {
         contractClauses: [
@@ -99,7 +99,7 @@ export const defaultConfig: GameConfig = {
       type: 'amount_verify',
       title: '合同审查-进阶校验',
       description: '更复杂的金额校验，包含多项不一致，需仔细核查。',
-      reward: 150,
+      rewardScore: 150,
       timeLimit: 150,
       data: {
         quoteItems: [
@@ -129,7 +129,7 @@ export const defaultConfig: GameConfig = {
       type: 'payment_flow',
       title: '支付匹配-高级训练',
       description: '更多流水条目，包含干扰项，需精准筛选。',
-      reward: 150,
+      rewardScore: 150,
       timeLimit: 120,
       data: {
         targetAmount: 119000,

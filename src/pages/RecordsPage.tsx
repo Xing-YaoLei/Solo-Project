@@ -37,8 +37,9 @@ export default function RecordsPage() {
     const total = records.length
     const avgScore = records.reduce((sum, r) => sum + r.score, 0) / total
     const avgTime = records.reduce((sum, r) => sum + r.timeSpent, 0) / total
-    const cycles = records.map((r) => r.paymentCycleDays ?? Math.floor(Math.random() * 30 + 10))
-    const avgCycle = cycles.reduce((a, b) => a + b, 0) / cycles.length
+    const cycles = records.map((r) => r.paymentCycleDays ?? 0)
+    const validCycles = cycles.filter((c) => c > 0)
+    const avgCycle = validCycles.length > 0 ? validCycles.reduce((a, b) => a + b, 0) / validCycles.length : 0
     return { total, avgScore, avgTime, avgCycle }
   }, [records])
 
@@ -47,7 +48,7 @@ export default function RecordsPage() {
       (a, b) => new Date(a.completedAt).getTime() - new Date(b.completedAt).getTime()
     )
     const labels = sorted.map((r, i) => `第${i + 1}次`)
-    const data = sorted.map((r) => r.paymentCycleDays ?? Math.floor(Math.random() * 30 + 15))
+    const data = sorted.map((r) => r.paymentCycleDays ?? 0)
     return {
       labels,
       datasets: [
@@ -76,8 +77,8 @@ export default function RecordsPage() {
     const types = Object.keys(typeRecords)
     const avgCycles = types.map((t) => {
       const rs = typeRecords[t]
-      const cycles = rs.map((r) => r.paymentCycleDays ?? Math.floor(Math.random() * 30 + 10))
-      return Math.round(cycles.reduce((a, b) => a + b, 0) / cycles.length)
+      const cycles = rs.map((r) => r.paymentCycleDays ?? 0).filter((c) => c > 0)
+      return cycles.length > 0 ? Math.round(cycles.reduce((a, b) => a + b, 0) / cycles.length) : 0
     })
     const avgScores = types.map((t) => {
       const rs = typeRecords[t]
@@ -205,7 +206,7 @@ export default function RecordsPage() {
                 const pct = Math.round((r.score / r.maxScore) * 100)
                 const isExpanded = expandedId === r.id
                 const scoreColor = pct >= 90 ? '#10B981' : pct >= 60 ? '#D4A843' : '#EF4444'
-                const cycleDays = r.paymentCycleDays ?? Math.floor(Math.random() * 30 + 15)
+                const cycleDays = r.paymentCycleDays ?? 0
                 return (
                   <div key={r.id}>
                     <div

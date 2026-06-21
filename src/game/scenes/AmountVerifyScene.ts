@@ -8,9 +8,11 @@ import {
   LEVEL_LABELS,
   TrainingRecord,
   MistakeEntry,
+  TrainingMode,
 } from '@/types'
 import { useGameStore } from '@/store/gameStore'
 import { GAME_WIDTH, GAME_HEIGHT } from '@/game/config'
+import { calculatePaymentCycleDays, formatTime } from '@/lib/gameUtils'
 
 const COLORS = {
   deepIndigo: 0x1b2a4a,
@@ -36,8 +38,10 @@ export class AmountVerifyScene extends Phaser.Scene {
   private timeLimit = 120
   private startTime = 0
   private remainingTime = 120
+  private elapsedTime = 0
   private timerText!: Phaser.GameObjects.Text
   private timerEvent!: Phaser.Time.TimerEvent
+  private trainingMode: TrainingMode = 'timed'
 
   private flaggedRows: Map<number, string> = new Map()
   private selectedRowIndex: number | null = null
@@ -66,18 +70,19 @@ export class AmountVerifyScene extends Phaser.Scene {
 
   create() {
     const store = useGameStore.getState()
-    const questions = store.getQuestionsByType('amount_verify')
-    if (questions.length === 0) {
+    const question = store.getCurrentQuestion()
+    if (!question || question.type !== 'amount_verify') {
       this.scene.start('MenuScene')
       return
     }
-    const question = questions[0]
     const data = question.data as AmountVerifyData
     this.questionData = data
     this.questionId = question.id
-    this.maxScore = question.reward
+    this.maxScore = question.rewardScore
     this.timeLimit = question.timeLimit ?? 120
+    this.trainingMode = store.config.trainingMode
     this.remainingTime = this.timeLimit
+    this.elapsedTime = 0
     this.startTime = Date.now()
 
     this.drawBackground()
@@ -110,7 +115,19 @@ export class AmountVerifyScene extends Phaser.Scene {
       })
       .setOrigin(0)
 
-    this.timerText = this.add.text(GAME_WIDTH - 24, 16, `⏱ ${this.remainingTime}s`, {
+    const modeLabel = this.trainingMode === 'practice' ? '练习模式' : this.trainingMode === 'exam' ? '考试模式' : '限时模式'
+    this.add
+      .text(24, 38, modeLabel, {
+        fontSize: '12px',
+        fontFamily: 'Arial',
+        color: '#10B981',
+      })
+      .setOrigin(0)
+
+    const timeStr = this.trainingMode === 'practice'
+      ? `⏱ ${formatTime(this.elapsedTime)}`
+      : `⏱ ${this.remainingTime}s`
+    this.timerText = this.add.text(GAME_WIDTH - 24, 16, timeStr, {
       fontSize: '20px',
       fontFamily: 'Arial',
       color: '#FFFFFF',
@@ -122,14 +139,19 @@ export class AmountVerifyScene extends Phaser.Scene {
     this.timerEvent = this.time.addEvent({
       delay: 1000,
       callback: () => {
-        this.remainingTime--
-        this.timerText.setText(`⏱ ${this.remainingTime}s`)
-        if (this.remainingTime <= 10) {
-          this.timerText.setColor('#EF4444')
-        }
-        if (this.remainingTime <= 0) {
-          this.timerEvent.remove()
-          this.submitResult()
+        this.elapsedTime++
+        if (this.trainingMode === 'practice') {
+          this.timerText.setText(`⏱ ${formatTime(this.elapsedTime)}`)
+        } else {
+          this.remainingTime--
+          this.timerText.setText(`⏱ ${this.remainingTime}s`)
+          if (this.remainingTime <= 10) {
+            this.timerText.setColor('#EF4444')
+          }
+          if (this.remainingTime <= 0) {
+            this.timerEvent.remove()
+            this.submitResult()
+          }
         }
       },
       loop: true,
@@ -488,7 +510,7 @@ export class AmountVerifyScene extends Phaser.Scene {
   }
 
   private submitResult() {
-    const timeSpent = Math.floor((Date.now() - this.startTime) / 1000)
+    const timeSpent = this.elapsedTime > 0 ? this.elapsedTime : Math.floor((Date.now() - this.startTime) / 1000)
     const inconsistencies = this.questionData.inconsistencies
     const totalInconsistencies = inconsistencies.length
     if (totalInconsistencies === 0) return
@@ -531,6 +553,14 @@ export class AmountVerifyScene extends Phaser.Scene {
     const reasonScore = (correctReasons / totalInconsistencies) * this.maxScore * 0.5
     const totalScore = Math.round(flagScore + reasonScore)
 
+    const paymentCycleDays = calculatePaymentCycleDays(
+      totalScore,
+      this.maxScore,
+      timeSpent,
+      this.timeLimit,
+      this.trainingMode,
+    )
+
     const store = useGameStore.getState()
     const record: TrainingRecord = {
       id: `record_${Date.now()}`,
@@ -540,18 +570,20 @@ export class AmountVerifyScene extends Phaser.Scene {
       score: totalScore,
       maxScore: this.maxScore,
       timeSpent,
+      paymentCycleDays,
       mistakes,
       completedAt: new Date().toISOString(),
     }
     store.completeLevel(record)
 
-    this.showResult(totalScore, inconsistencies, mistakes)
+    this.showResult(totalScore, inconsistencies, mistakes, paymentCycleDays)
   }
 
   private showResult(
     score: number,
     inconsistencies: Inconsistency[],
     mistakes: MistakeEntry[],
+    paymentCycleDays: number,
   ) {
     this.add.rectangle(
       GAME_WIDTH / 2,
@@ -563,7 +595,7 @@ export class AmountVerifyScene extends Phaser.Scene {
     )
 
     const popupW = 560
-    const popupH = 420
+    const popupH = 460
     const popupX = (GAME_WIDTH - popupW) / 2
     const popupY = (GAME_HEIGHT - popupH) / 2
 
@@ -581,7 +613,15 @@ export class AmountVerifyScene extends Phaser.Scene {
       })
       .setOrigin(0.5)
 
-    const detailY = popupY + 72
+    this.add
+      .text(GAME_WIDTH / 2, popupY + 64, `预计回款周期：${paymentCycleDays} 天`, {
+        fontSize: '15px',
+        fontFamily: 'Arial',
+        color: '#1B2A4A',
+      })
+      .setOrigin(0.5)
+
+    const detailY = popupY + 96
     this.add
       .text(popupX + 20, detailY, '正确答案：', {
         fontSize: '15px',

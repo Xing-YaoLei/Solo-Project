@@ -1,7 +1,8 @@
 import Phaser from 'phaser'
-import { PaymentFlowData, TrainingRecord, MistakeEntry, LEVEL_LABELS } from '@/types'
+import { PaymentFlowData, TrainingRecord, MistakeEntry, LEVEL_LABELS, TrainingMode } from '@/types'
 import { useGameStore } from '@/store/gameStore'
 import { GAME_WIDTH, GAME_HEIGHT } from '@/game/config'
+import { calculatePaymentCycleDays, formatTime } from '@/lib/gameUtils'
 
 const COLOR = {
   bg: 0x1b2a4a,
@@ -28,6 +29,8 @@ export class PaymentFlowScene extends Phaser.Scene {
   private startTime = 0
   private submitted = false
   private cardContainers: Phaser.GameObjects.Container[] = []
+  private elapsedTime = 0
+  private trainingMode: TrainingMode = 'timed'
 
   constructor() {
     super({ key: 'PaymentFlowScene' })
@@ -35,20 +38,21 @@ export class PaymentFlowScene extends Phaser.Scene {
 
   create() {
     const store = useGameStore.getState()
-    const questions = store.getQuestionsByType('payment_flow')
-    if (!questions.length) {
+    const question = store.getCurrentQuestion()
+    if (!question || question.type !== 'payment_flow') {
       this.scene.start('MenuScene')
       return
     }
-    const question = questions[0]
     this.questionData = question.data as PaymentFlowData
     this.questionId = question.id
-    this.questionReward = question.reward
+    this.questionReward = question.rewardScore
     this.timeLimit = question.timeLimit ?? 90
     this.timeLeft = this.timeLimit
     this.startTime = Date.now()
     this.selectedFlowIds = new Set()
     this.submitted = false
+    this.trainingMode = store.config.trainingMode
+    this.elapsedTime = 0
 
     this.cameras.main.setBackgroundColor(COLOR.bg)
 
@@ -62,20 +66,30 @@ export class PaymentFlowScene extends Phaser.Scene {
     const bg = this.add.rectangle(GAME_WIDTH / 2, 40, GAME_WIDTH, 80, COLOR.bg).setOrigin(0.5)
     bg.setStrokeStyle(0)
 
-    this.add.text(40, 18, LEVEL_LABELS.payment_flow, {
+    this.add.text(40, 14, LEVEL_LABELS.payment_flow, {
       fontSize: '26px',
       fontFamily: 'Arial',
       color: '#D4A843',
       fontStyle: 'bold',
     })
 
-    this.add.text(40, 50, `目标金额: ¥${this.questionData.targetAmount.toLocaleString()}`, {
-      fontSize: '16px',
+    const modeLabel = this.trainingMode === 'practice' ? '练习模式' : this.trainingMode === 'exam' ? '考试模式' : '限时模式'
+    this.add.text(40, 42, modeLabel, {
+      fontSize: '12px',
+      fontFamily: 'Arial',
+      color: '#10B981',
+    })
+
+    this.add.text(40, 58, `目标金额: ¥${this.questionData.targetAmount.toLocaleString()}`, {
+      fontSize: '14px',
       fontFamily: 'Arial',
       color: '#64748B',
     })
 
-    this.timerText = this.add.text(GAME_WIDTH - 40, 30, `${this.timeLeft}s`, {
+    const timerInitial = this.trainingMode === 'practice'
+      ? formatTime(this.elapsedTime)
+      : `${this.timeLeft}s`
+    this.timerText = this.add.text(GAME_WIDTH - 40, 30, timerInitial, {
       fontSize: '22px',
       fontFamily: 'Arial',
       color: '#FFFFFF',
@@ -256,11 +270,16 @@ export class PaymentFlowScene extends Phaser.Scene {
       delay: 1000,
       callback: () => {
         if (this.submitted) return
-        this.timeLeft--
-        this.timerText.setText(`${Math.max(0, this.timeLeft)}s`)
-        if (this.timeLeft <= 10) this.timerText.setColor('#EF4444')
-        if (this.timeLeft <= 0) this.handleSubmit()
-        else this.startTimer()
+        this.elapsedTime++
+        if (this.trainingMode === 'practice') {
+          this.timerText.setText(formatTime(this.elapsedTime))
+        } else {
+          this.timeLeft--
+          this.timerText.setText(`${Math.max(0, this.timeLeft)}s`)
+          if (this.timeLeft <= 10) this.timerText.setColor('#EF4444')
+          if (this.timeLeft <= 0) this.handleSubmit()
+          else this.startTimer()
+        }
       },
     })
   }
@@ -269,7 +288,7 @@ export class PaymentFlowScene extends Phaser.Scene {
     if (this.submitted) return
     this.submitted = true
 
-    const timeSpent = Math.round((Date.now() - this.startTime) / 1000)
+    const timeSpent = this.elapsedTime > 0 ? this.elapsedTime : Math.round((Date.now() - this.startTime) / 1000)
     const correctIds = new Set(this.questionData.correctFlowIds)
 
     const correctSelections = [...this.selectedFlowIds].filter((id) => correctIds.has(id)).length
@@ -281,7 +300,7 @@ export class PaymentFlowScene extends Phaser.Scene {
 
     const correctRatio = totalCorrect > 0 ? correctSelections / totalCorrect : 0
     const wrongPenalty = wrongSelections / Math.max(1, this.questionData.flows.length)
-    const score = Math.round(Math.max(0, correctRatio * 0.7 + (1 - wrongPenalty) * 0.3) * maxScore)
+    const totalScore = Math.round(Math.max(0, correctRatio * 0.7 + (1 - wrongPenalty) * 0.3) * maxScore)
 
     const mistakes: MistakeEntry[] = []
 
@@ -305,23 +324,31 @@ export class PaymentFlowScene extends Phaser.Scene {
       })
     }
 
-    const record: TrainingRecord = {
-      id: `rec_${Date.now()}`,
-      userId: 'player_1',
-      questionId: this.questionId,
-      questionType: 'payment_flow',
-      score,
+    const paymentCycleDays = calculatePaymentCycleDays(
+      totalScore,
       maxScore,
       timeSpent,
+      this.timeLimit,
+      this.trainingMode,
+    )
+
+    const store = useGameStore.getState()
+    const record: TrainingRecord = {
+      id: `rec_${Date.now()}`,
+      userId: store.progress.userId,
+      questionId: this.questionId,
+      questionType: 'payment_flow',
+      score: totalScore,
+      maxScore,
+      timeSpent,
+      paymentCycleDays,
       mistakes,
       completedAt: new Date().toISOString(),
     }
-
-    const store = useGameStore.getState()
     store.completeLevel(record)
 
     this.highlightResults(correctIds)
-    this.showResultPopup(score, maxScore, correctSelections, totalCorrect, wrongSelections, missedSelections)
+    this.showResultPopup(totalScore, maxScore, correctSelections, totalCorrect, wrongSelections, missedSelections, paymentCycleDays)
   }
 
   private highlightResults(correctIds: Set<string>) {
@@ -346,11 +373,11 @@ export class PaymentFlowScene extends Phaser.Scene {
     }
   }
 
-  private showResultPopup(score: number, maxScore: number, correctSel: number, totalCorrect: number, wrongSel: number, missed: number) {
+  private showResultPopup(score: number, maxScore: number, correctSel: number, totalCorrect: number, wrongSel: number, missed: number, paymentCycleDays: number) {
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, COLOR.overlay, 0.8)
 
     const popupW = 480
-    const popupH = 380
+    const popupH = 420
     const popupY = (GAME_HEIGHT - popupH) / 2
 
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, popupW, popupH, COLOR.bg)
@@ -373,7 +400,13 @@ export class PaymentFlowScene extends Phaser.Scene {
       fontStyle: 'bold',
     }).setOrigin(0.5)
 
-    const statsY = popupY + 140
+    this.add.text(GAME_WIDTH / 2, popupY + 120, `预计回款周期：${paymentCycleDays} 天`, {
+      fontSize: '15px',
+      fontFamily: 'Arial',
+      color: '#D4A843',
+    }).setOrigin(0.5)
+
+    const statsY = popupY + 160
     this.add.text(GAME_WIDTH / 2, statsY, `正确选中: ${correctSel} / ${totalCorrect}`, {
       fontSize: '16px',
       fontFamily: 'Arial',

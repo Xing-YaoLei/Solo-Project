@@ -1,23 +1,30 @@
 import { create } from 'zustand'
-import { GameConfig, TrainingRecord, UserProgress, QuestionType, LEVEL_ORDER } from '@/types'
+import { GameConfig, TrainingRecord, UserProgress, QuestionType, LEVEL_ORDER, QuestionItem } from '@/types'
 import { loadConfig, saveConfig, loadRecords, addRecord, loadProgress, saveProgress } from '@/utils/storage'
 import { defaultConfig } from '@/data/defaultQuestions'
+import { isLevelOpenNow } from '@/lib/gameUtils'
 
 interface GameState {
   config: GameConfig
   records: TrainingRecord[]
   progress: UserProgress
   currentLevel: QuestionType | null
+  currentQuestionId: string | null
   isPlaying: boolean
 
   initGame: () => void
   setCurrentLevel: (level: QuestionType | null) => void
+  setCurrentQuestionId: (id: string | null) => void
   setIsPlaying: (playing: boolean) => void
   completeLevel: (record: TrainingRecord) => void
   completeTutorial: () => void
   updateConfig: (config: GameConfig) => void
   isLevelUnlocked: (level: QuestionType) => boolean
-  getQuestionsByType: (type: QuestionType) => GameConfig['questions']
+  isLevelOpenNow: (level: QuestionType) => boolean
+  isLevelAvailable: (level: QuestionType) => boolean
+  getQuestionsByType: (type: QuestionType) => QuestionItem[]
+  getCurrentQuestion: () => QuestionItem | null
+  getNextQuestion: (type: QuestionType) => QuestionItem | null
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
@@ -31,6 +38,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     stars: {},
   },
   currentLevel: null,
+  currentQuestionId: null,
   isPlaying: false,
 
   initGame: () => {
@@ -45,6 +53,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   setCurrentLevel: (level) => set({ currentLevel: level }),
+  setCurrentQuestionId: (id) => set({ currentQuestionId: id }),
   setIsPlaying: (playing) => set({ isPlaying: playing }),
 
   completeLevel: (record) => {
@@ -81,7 +90,42 @@ export const useGameStore = create<GameState>((set, get) => ({
     return progress.completedLevels.includes(prevLevel)
   },
 
+  isLevelOpenNow: (level) => {
+    const config = get().config
+    return isLevelOpenNow(level, config.openSchedule)
+  },
+
+  isLevelAvailable: (level) => {
+    return get().isLevelUnlocked(level) && get().isLevelOpenNow(level)
+  },
+
   getQuestionsByType: (type) => {
     return get().config.questions.filter((q) => q.type === type)
+  },
+
+  getCurrentQuestion: () => {
+    const { currentQuestionId, currentLevel, config } = get()
+    if (currentQuestionId) {
+      return config.questions.find((q) => q.id === currentQuestionId) || null
+    }
+    if (currentLevel) {
+      const questions = config.questions.filter((q) => q.type === currentLevel)
+      return questions[0] || null
+    }
+    return null
+  },
+
+  getNextQuestion: (type) => {
+    const questions = get().config.questions.filter((q) => q.type === type)
+    if (questions.length === 0) return null
+
+    const { currentQuestionId } = get()
+    if (!currentQuestionId) return questions[0]
+
+    const currentIdx = questions.findIndex((q) => q.id === currentQuestionId)
+    if (currentIdx === -1 || currentIdx >= questions.length - 1) {
+      return questions[0]
+    }
+    return questions[currentIdx + 1]
   },
 }))
