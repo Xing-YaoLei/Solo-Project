@@ -1,0 +1,145 @@
+<% content_for :title, "结算台首页" %>
+
+<div class="space-y-6">
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+    <%= link_to dashboard_path, class: "bg-white rounded-lg shadow p-5 hover:shadow-md transition-shadow border-l-4 border-slate-500" do %>
+      <div class="text-sm font-medium text-gray-500">全部案件</div>
+      <div class="mt-2 text-3xl font-bold text-gray-900"><%= @stats[:total] %></div>
+    <% end %>
+    <%= link_to dashboard_path(status: "active"), class: "bg-white rounded-lg shadow p-5 hover:shadow-md transition-shadow border-l-4 border-blue-500" do %>
+      <div class="text-sm font-medium text-gray-500">进行中</div>
+      <div class="mt-2 text-3xl font-bold text-blue-600"><%= @stats[:active] %></div>
+    <% end %>
+    <%= link_to dashboard_path(status: "material_missing"), class: "bg-white rounded-lg shadow p-5 hover:shadow-md transition-shadow border-l-4 border-red-500" do %>
+      <div class="text-sm font-medium text-gray-500">待补资料</div>
+      <div class="mt-2 text-3xl font-bold text-red-600"><%= @stats[:need_materials] %></div>
+    <% end %>
+    <%= link_to dashboard_path(status: "review_required"), class: "bg-white rounded-lg shadow p-5 hover:shadow-md transition-shadow border-l-4 border-purple-500" do %>
+      <div class="text-sm font-medium text-gray-500">升级复核</div>
+      <div class="mt-2 text-3xl font-bold text-purple-600"><%= @stats[:under_review] %></div>
+    <% end %>
+    <%= link_to dashboard_path(status: "finished"), class: "bg-white rounded-lg shadow p-5 hover:shadow-md transition-shadow border-l-4 border-green-500" do %>
+      <div class="text-sm font-medium text-gray-500">已完成/关闭</div>
+      <div class="mt-2 text-3xl font-bold text-green-600"><%= @stats[:completed] %></div>
+    <% end %>
+  </div>
+
+  <div class="bg-white rounded-lg shadow p-5">
+    <form method="get" action="<%= dashboard_path %>" class="space-y-4">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">搜索</label>
+          <input type="text" name="keyword" value="<%= params[:keyword] %>" placeholder="案件名称/案号/客户姓名/电话" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">状态</label>
+          <select name="status" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">全部状态</option>
+            <option value="active" <%= 'selected' if params[:status] == 'active' %>>进行中</option>
+            <option value="draft" <%= 'selected' if params[:status] == 'draft' %>>草稿</option>
+            <option value="pending" <%= 'selected' if params[:status] == 'pending' %>>待处理</option>
+            <option value="in_progress" <%= 'selected' if params[:status] == 'in_progress' %>>处理中</option>
+            <option value="material_missing" <%= 'selected' if params[:status] == 'material_missing' %>>补资料</option>
+            <option value="review_required" <%= 'selected' if params[:status] == 'review_required' %>>升级复核</option>
+            <option value="completed" <%= 'selected' if params[:status] == 'completed' %>>已完成</option>
+            <option value="closed" <%= 'selected' if params[:status] == 'closed' %>>已关闭</option>
+            <option value="finished" <%= 'selected' if params[:status] == 'finished' %>>已完成/关闭</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">来源渠道</label>
+          <select name="channel" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">全部渠道</option>
+            <% @channels.each do |ch| %>
+              <option value="<%= ch %>" <%= 'selected' if params[:channel] == ch %>><%= ch %></option>
+            <% end %>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">责任人</label>
+          <select name="responsible" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">全部责任人</option>
+            <% @responsible_persons.each do |p| %>
+              <option value="<%= p %>" <%= 'selected' if params[:responsible] == p %>><%= p %></option>
+            <% end %>
+          </select>
+        </div>
+      </div>
+      <div class="flex justify-end space-x-3">
+        <%= link_to "重置", dashboard_path, class: "px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50" %>
+        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">筛选</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="bg-white rounded-lg shadow overflow-hidden">
+    <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+      <h2 class="text-lg font-semibold text-gray-900">案件列表</h2>
+      <div class="text-sm text-gray-500">共 <%= @pagy.count %> 条</div>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">案件名称</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">客户</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">类别</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">责任人</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">渠道</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">更新时间</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+          <% @cases.each do |c| %>
+            <tr class="hover:bg-gray-50">
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="font-medium text-gray-900"><%= link_to c.title, case_path(c), class: "text-blue-600 hover:text-blue-900" %></div>
+                <div class="text-sm text-gray-500"><%= c.case_number.presence || "暂无案号" %></div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <% if c.client %>
+                  <div class="text-sm font-medium text-gray-900"><%= c.client.name %></div>
+                  <div class="text-sm text-gray-500"><%= c.client.phone %></div>
+                <% else %>
+                  <span class="text-gray-400">未关联客户</span>
+                <% end %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><%= c.category.presence || "-" %></td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="inline-flex px-2.5 py-1 text-xs font-semibold rounded-full <%= c.status_label %>">
+                  <%= c.status_text %>
+                </span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><%= c.responsible_person.presence || "-" %></td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><%= c.source_channel.presence || "-" %></td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><%= c.updated_at.strftime("%Y-%m-%d %H:%M") %></td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                <%= link_to "查看", case_path(c), class: "text-blue-600 hover:text-blue-900" %>
+                <%= link_to "编辑", edit_case_path(c), class: "text-gray-600 hover:text-gray-900" %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+    <% if @pagy.pages > 1 %>
+      <div class="px-5 py-4 border-t border-gray-200">
+        <nav class="flex items-center justify-between">
+          <div class="text-sm text-gray-500">
+            第 <%= @pagy.page %> / <%= @pagy.pages %> 页
+          </div>
+          <div class="flex space-x-2">
+            <% if @pagy.prev %>
+              <%= link_to "上一页", request.params.merge(page: @pagy.prev), class: "px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50" %>
+            <% end %>
+            <% if @pagy.next %>
+              <%= link_to "下一页", request.params.merge(page: @pagy.next), class: "px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50" %>
+            <% end %>
+          </div>
+        </nav>
+      </div>
+    <% end %>
+  </div>
+</div>

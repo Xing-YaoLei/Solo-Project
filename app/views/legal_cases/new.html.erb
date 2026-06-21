@@ -1,0 +1,98 @@
+<% content_for :title, "新建案件" %>
+
+<div class="max-w-4xl mx-auto">
+  <div class="bg-white rounded-lg shadow p-6">
+    <h1 class="text-2xl font-bold text-gray-900 mb-6">新建案件</h1>
+
+    <%= form_with model: @legal_case, local: true do |f| %>
+      <% if @legal_case.errors.any? %>
+        <div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <div class="text-red-700 font-medium mb-2">请修正以下错误：</div>
+          <ul class="text-red-600 text-sm list-disc list-inside">
+            <% @legal_case.errors.full_messages.each do |msg| %>
+              <li><%= msg %></li>
+            <% end %>
+          </ul>
+        </div>
+      <% end %>
+
+      <div class="space-y-6">
+        <div class="border-b border-gray-200 pb-4">
+          <h2 class="text-lg font-semibold text-gray-800 mb-4">客户信息</h2>
+          <% if params[:client_id].present? %>
+            <% client = Client.find_by(id: params[:client_id]) %>
+            <% if client %>
+              <div class="p-3 bg-blue-50 rounded-md">
+                <span class="text-sm">已关联客户：<strong><%= client.name %> (<%= client.phone %>)</strong></span>
+                <%= f.hidden_field :client_id, value: client.id %>
+              </div>
+            <% end %>
+          <% else %>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <%= f.label "客户姓名", class: "block text-sm font-medium text-gray-700 mb-1" %>
+                <%= f.text_field :client_name, value: f.object.client&.name, name: "legal_case[client_attributes][name]", class: "w-full px-3 py-2 border border-gray-300 rounded-md", placeholder: "请输入客户姓名", required: true %>
+              </div>
+              <div>
+                <%= f.label "联系电话", class: "block text-sm font-medium text-gray-700 mb-1" %>
+                <%= f.text_field :client_phone, value: f.object.client&.phone, name: "legal_case[client_attributes][phone]", class: "w-full px-3 py-2 border border-gray-300 rounded-md", placeholder: "请输入电话（用于自动关联已有客户）", required: true %>
+              </div>
+              <div>
+                <%= f.label "身份证号", class: "block text-sm font-medium text-gray-700 mb-1" %>
+                <%= f.text_field :client_id_number, value: f.object.client&.id_number, name: "legal_case[client_attributes][id_number]", class: "w-full px-3 py-2 border border-gray-300 rounded-md", placeholder: "可选" %>
+              </div>
+              <div>
+                <%= f.label "邮箱", class: "block text-sm font-medium text-gray-700 mb-1" %>
+                <%= f.email_field :client_email, value: f.object.client&.email, name: "legal_case[client_attributes][email]", class: "w-full px-3 py-2 border border-gray-300 rounded-md", placeholder: "可选" %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+
+        <div>
+          <h2 class="text-lg font-semibold text-gray-800 mb-4">案件信息</h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="md:col-span-2">
+              <%= f.label :title, "案件名称", class: "block text-sm font-medium text-gray-700 mb-1" %>
+              <%= f.text_field :title, required: true, class: "w-full px-3 py-2 border border-gray-300 rounded-md", placeholder: "请输入案件名称" %>
+            </div>
+            <div>
+              <%= f.label :case_number, "案号", class: "block text-sm font-medium text-gray-700 mb-1" %>
+              <%= f.text_field :case_number, class: "w-full px-3 py-2 border border-gray-300 rounded-md", placeholder: "可选" %>
+            </div>
+            <div>
+              <%= f.label :category, "案件类别", class: "block text-sm font-medium text-gray-700 mb-1" %>
+              <%= f.select :category, LegalCase::CATEGORIES, { include_blank: "请选择" }, class: "w-full px-3 py-2 border border-gray-300 rounded-md" %>
+            </div>
+            <div>
+              <%= f.label :responsible_person, "责任人", class: "block text-sm font-medium text-gray-700 mb-1" %>
+              <%= f.text_field :responsible_person, class: "w-full px-3 py-2 border border-gray-300 rounded-md", placeholder: "请输入" %>
+            </div>
+            <div>
+              <%= f.label :source_channel, "来源渠道", class: "block text-sm font-medium text-gray-700 mb-1" %>
+              <%= f.select :source_channel, LegalCase::SOURCE_CHANNELS, { include_blank: "请选择" }, class: "w-full px-3 py-2 border border-gray-300 rounded-md" %>
+            </div>
+            <div>
+              <%= f.label :accept_date, "立案日期", class: "block text-sm font-medium text-gray-700 mb-1" %>
+              <%= f.date_field :accept_date, class: "w-full px-3 py-2 border border-gray-300 rounded-md" %>
+            </div>
+            <div>
+              <%= f.label :amount, "涉案金额", class: "block text-sm font-medium text-gray-700 mb-1" %>
+              <%= f.number_field :amount, step: "0.01", class: "w-full px-3 py-2 border border-gray-300 rounded-md", placeholder: "元" %>
+            </div>
+            <div class="md:col-span-2">
+              <%= f.label :description, "案件描述", class: "block text-sm font-medium text-gray-700 mb-1" %>
+              <%= f.text_area :description, rows: 4, class: "w-full px-3 py-2 border border-gray-300 rounded-md", placeholder: "请输入案件描述" %>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-8 flex justify-end space-x-3">
+        <%= link_to "取消", dashboard_path, class: "px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50" %>
+        <%= f.submit "保存草稿", name: "commit", value: "保存草稿", class: "px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50" %>
+        <%= f.submit "提交", name: "commit", value: "提交", class: "px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700" %>
+      </div>
+    <% end %>
+  </div>
+</div>

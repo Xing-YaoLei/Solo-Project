@@ -1,0 +1,516 @@
+<% content_for :title, "#{@legal_case.title} - 案件详情" %>
+
+<div class="space-y-6">
+  <div class="bg-white rounded-lg shadow p-5">
+    <div class="flex items-start justify-between">
+      <div>
+        <div class="flex items-center space-x-3">
+          <h1 class="text-2xl font-bold text-gray-900"><%= @legal_case.title %></h1>
+          <span class="inline-flex px-3 py-1 text-sm font-semibold rounded-full <%= @legal_case.status_label %>">
+            <%= @legal_case.status_text %>
+          </span>
+        </div>
+        <div class="mt-2 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-gray-500">
+          <span>案号：<%= @legal_case.case_number.presence || "暂无" %></span>
+          <span>类别：<%= @legal_case.category.presence || "-" %></span>
+          <span>责任人：<%= @legal_case.responsible_person.presence || "-" %></span>
+          <span>渠道：<%= @legal_case.source_channel.presence || "-" %></span>
+          <span>立案：<%= @legal_case.accept_date&.strftime("%Y-%m-%d") || "-" %></span>
+          <% if @legal_case.amount %>
+            <span>金额：¥<%= number_with_precision @legal_case.amount, precision: 2 %></span>
+          <% end %>
+        </div>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <%= link_to "返回列表", dashboard_path, class: "px-3 py-1.5 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 text-sm" %>
+        <%= link_to "编辑", edit_case_path(@legal_case), class: "px-3 py-1.5 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 text-sm" %>
+
+        <% if @legal_case.may_submit? %>
+          <%= button_to "提交", submit_case_path(@legal_case), method: :post, class: "px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm" %>
+        <% end %>
+        <% if @legal_case.may_start_processing? %>
+          <%= button_to "开始处理", start_processing_case_path(@legal_case), method: :post, class: "px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm" %>
+        <% end %>
+        <% if @legal_case.may_request_materials? %>
+          <button onclick="document.getElementById('request-materials-modal').classList.remove('hidden')" class="px-3 py-1.5 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm">要求补资料</button>
+        <% end %>
+        <% if @legal_case.may_materials_received? %>
+          <%= button_to "资料已补", materials_received_case_path(@legal_case), method: :post, class: "px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm" %>
+        <% end %>
+        <% if @legal_case.may_escalate_review? %>
+          <button onclick="document.getElementById('escalate-modal').classList.remove('hidden')" class="px-3 py-1.5 bg-purple-600 text-white rounded-md hover:bg-purple-700 text-sm">升级复核</button>
+        <% end %>
+        <% if @legal_case.may_review_approved? %>
+          <%= button_to "复核通过", review_approved_case_path(@legal_case), method: :post, class: "px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm" %>
+        <% end %>
+        <% if @legal_case.may_complete? %>
+          <%= button_to "完成案件", complete_case_path(@legal_case), method: :post, class: "px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm" %>
+        <% end %>
+        <% if @legal_case.may_close? %>
+          <%= button_to "关闭案件", close_case_path(@legal_case), method: :post, class: "px-3 py-1.5 bg-gray-600 text-white rounded-md hover:bg-gray-700 text-sm" %>
+        <% end %>
+        <% if @legal_case.may_reopen? %>
+          <%= button_to "重新打开", reopen_case_path(@legal_case), method: :post, class: "px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm" %>
+        <% end %>
+      </div>
+    </div>
+
+    <% if @legal_case.description.present? %>
+      <div class="mt-4 p-4 bg-gray-50 rounded-md">
+        <div class="text-sm font-medium text-gray-700 mb-1">案件描述</div>
+        <div class="text-gray-600 whitespace-pre-wrap"><%= @legal_case.description %></div>
+      </div>
+    <% end %>
+
+    <% if @legal_case.material_missing? || @legal_case.missing_details.present? %>
+      <div class="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
+        <div class="text-sm font-medium text-red-700 mb-1">材料缺页/异常情况</div>
+        <div class="text-red-600"><%= @legal_case.missing_details.presence || "存在材料缺失" %></div>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+    <div class="lg:col-span-3 space-y-6">
+      <div class="bg-white rounded-lg shadow p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-semibold text-gray-900">客户档案</h3>
+          <% if @legal_case.client %>
+            <%= link_to "编辑", edit_client_path(@legal_case.client), class: "text-sm text-blue-600 hover:text-blue-900" %>
+          <% end %>
+        </div>
+        <% if @legal_case.client %>
+          <div class="space-y-3">
+            <div>
+              <div class="text-xs text-gray-500">姓名</div>
+              <div class="text-sm font-medium text-gray-900"><%= @legal_case.client.name %></div>
+            </div>
+            <div>
+              <div class="text-xs text-gray-500">电话</div>
+              <div class="text-sm text-gray-900"><%= @legal_case.client.phone %></div>
+            </div>
+            <% if @legal_case.client.id_number.present? %>
+              <div>
+                <div class="text-xs text-gray-500">身份证号</div>
+                <div class="text-sm text-gray-900"><%= @legal_case.client.id_number %></div>
+              </div>
+            <% end %>
+            <% if @legal_case.client.email.present? %>
+              <div>
+                <div class="text-xs text-gray-500">邮箱</div>
+                <div class="text-sm text-gray-900"><%= @legal_case.client.email %></div>
+              </div>
+            <% end %>
+            <% if @legal_case.client.address.present? %>
+              <div>
+                <div class="text-xs text-gray-500">地址</div>
+                <div class="text-sm text-gray-900"><%= @legal_case.client.address %></div>
+              </div>
+            <% end %>
+            <% if @legal_case.client.contact_person.present? %>
+              <div>
+                <div class="text-xs text-gray-500">联系人</div>
+                <div class="text-sm text-gray-900"><%= @legal_case.client.contact_person %></div>
+              </div>
+            <% end %>
+            <% if @legal_case.client.notes.present? %>
+              <div>
+                <div class="text-xs text-gray-500">备注</div>
+                <div class="text-sm text-gray-600 whitespace-pre-wrap"><%= @legal_case.client.notes %></div>
+              </div>
+            <% end %>
+            <div class="pt-2 border-t">
+              <%= link_to "查看该客户全部案件", client_path(@legal_case.client), class: "text-sm text-blue-600 hover:text-blue-900" %>
+            </div>
+          </div>
+        <% else %>
+          <div class="text-center py-4">
+            <p class="text-gray-500 mb-3">尚未关联客户</p>
+            <%= link_to "选择/添加客户", edit_case_path(@legal_case), class: "text-sm text-blue-600 hover:text-blue-900" %>
+          </div>
+        <% end %>
+      </div>
+
+      <div class="bg-white rounded-lg shadow p-5">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">状态流转记录</h3>
+        <% if @status_transitions.any? %>
+          <div class="space-y-4">
+            <% @status_transitions.each do |st| %>
+              <div class="relative pl-6 border-l-2 border-gray-200 pb-4 last:pb-0">
+                <div class="absolute left-0 top-0 -translate-x-1/2 w-3 h-3 rounded-full bg-gray-300"></div>
+                <div class="flex items-center space-x-2 mb-1">
+                  <span class="inline-flex px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-600"><%= st.from_status.to_s %></span>
+                  <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
+                  <span class="inline-flex px-2 py-0.5 text-xs rounded-full <%= st.status_label(to: true) %>"><%= st.to_status.to_s %></span>
+                </div>
+                <div class="text-xs text-gray-500"><%= st.created_at.strftime("%Y-%m-%d %H:%M") %> · <%= st.operator %></div>
+                <% if st.reason.present? %>
+                  <div class="text-sm text-gray-600 mt-1"><%= st.reason %></div>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        <% else %>
+          <p class="text-sm text-gray-500">暂无流转记录</p>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="lg:col-span-9 space-y-6">
+      <div class="bg-white rounded-lg shadow p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-semibold text-gray-900">案件阶段</h3>
+          <button onclick="document.getElementById('new-stage-form').classList.toggle('hidden')" class="text-sm text-blue-600 hover:text-blue-900">+ 添加阶段</button>
+        </div>
+
+        <div id="new-stage-form" class="hidden mb-4 p-4 bg-gray-50 rounded-md">
+          <%= form_with model: [@legal_case, @new_stage], local: true do |f| %>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <div>
+                <%= f.label :name, "阶段名称", class: "block text-xs font-medium text-gray-700 mb-1" %>
+                <%= f.text_field :name, required: true, class: "w-full px-3 py-2 border border-gray-300 rounded-md text-sm", placeholder: "如：立案阶段" %>
+              </div>
+              <div>
+                <%= f.label :status, "状态", class: "block text-xs font-medium text-gray-700 mb-1" %>
+                <%= f.select :status, CaseStage::STATUSES.map { |s| [CaseStage.new(status: s).status_text, s] }, {}, class: "w-full px-3 py-2 border border-gray-300 rounded-md text-sm" %>
+              </div>
+              <div>
+                <%= f.label :start_date, "开始日期", class: "block text-xs font-medium text-gray-700 mb-1" %>
+                <%= f.date_field :start_date, class: "w-full px-3 py-2 border border-gray-300 rounded-md text-sm" %>
+              </div>
+              <div>
+                <%= f.label :end_date, "结束日期", class: "block text-xs font-medium text-gray-700 mb-1" %>
+                <%= f.date_field :end_date, class: "w-full px-3 py-2 border border-gray-300 rounded-md text-sm" %>
+              </div>
+            </div>
+            <div class="mt-3">
+              <%= f.label :notes, "备注", class: "block text-xs font-medium text-gray-700 mb-1" %>
+              <%= f.text_area :notes, rows: 2, class: "w-full px-3 py-2 border border-gray-300 rounded-md text-sm" %>
+            </div>
+            <div class="mt-3 flex justify-end space-x-2">
+              <button type="button" onclick="document.getElementById('new-stage-form').classList.add('hidden')" class="px-3 py-1.5 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50">取消</button>
+              <%= f.submit "添加", class: "px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm" %>
+            </div>
+          <% end %>
+        </div>
+
+        <% if @case_stages.any? %>
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead>
+                <tr>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">顺序</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">阶段名称</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">状态</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">时间</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">备注</th>
+                  <th class="px-4 py-3 text-right text-xs font-medium text-gray-500">操作</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100">
+                <% @case_stages.each do |stage| %>
+                  <tr>
+                    <td class="px-4 py-3 text-sm text-gray-500"><%= stage.order %></td>
+                    <td class="px-4 py-3 text-sm font-medium text-gray-900"><%= stage.name %></td>
+                    <td class="px-4 py-3">
+                      <span class="inline-flex px-2 py-0.5 text-xs font-semibold rounded-full <%= stage.status_label %>">
+                        <%= stage.status_text %>
+                      </span>
+                    </td>
+                    <td class="px-4 py-3 text-sm text-gray-500">
+                      <% if stage.start_date.present? || stage.end_date.present? %>
+                        <%= stage.start_date&.strftime("%m-%d") %> - <%= stage.end_date&.strftime("%m-%d") %>
+                      <% else %>
+                        -
+                      <% end %>
+                    </td>
+                    <td class="px-4 py-3 text-sm text-gray-500"><%= stage.notes.presence || "-" %></td>
+                    <td class="px-4 py-3 text-right text-sm space-x-2">
+                      <%= button_to "删除", case_case_stage_path(@legal_case, stage), method: :delete, class: "text-red-600 hover:text-red-900", data: { confirm: "确认删除该阶段？" } %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        <% else %>
+          <p class="text-sm text-gray-500 text-center py-4">暂无阶段记录，点击上方添加</p>
+        <% end %>
+      </div>
+
+      <div class="bg-white rounded-lg shadow p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-semibold text-gray-900">证据附件 <span class="text-sm font-normal text-gray-500 ml-2">(<%= @evidence_attachments.count %>份)</span></h3>
+          <button onclick="document.getElementById('new-evidence-form').classList.toggle('hidden')" class="text-sm text-blue-600 hover:text-blue-900">+ 添加证据</button>
+        </div>
+
+        <div id="new-evidence-form" class="hidden mb-4 p-4 bg-gray-50 rounded-md">
+          <%= form_with model: [@legal_case, @new_evidence], local: true, html: { multipart: true } do |f| %>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div>
+                <%= f.label :name, "材料名称", class: "block text-xs font-medium text-gray-700 mb-1" %>
+                <%= f.text_field :name, required: true, class: "w-full px-3 py-2 border border-gray-300 rounded-md text-sm", placeholder: "如：起诉状" %>
+              </div>
+              <div>
+                <%= f.label :category, "类别", class: "block text-xs font-medium text-gray-700 mb-1" %>
+                <%= f.select :category, EvidenceAttachment::CATEGORIES, {}, class: "w-full px-3 py-2 border border-gray-300 rounded-md text-sm" %>
+              </div>
+              <div>
+                <%= f.label :page_count, "页数", class: "block text-xs font-medium text-gray-700 mb-1" %>
+                <%= f.number_field :page_count, class: "w-full px-3 py-2 border border-gray-300 rounded-md text-sm" %>
+              </div>
+            </div>
+            <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <%= f.label :file, "上传文件", class: "block text-xs font-medium text-gray-700 mb-1" %>
+                <%= f.file_field :file, class: "w-full px-3 py-2 border border-gray-300 rounded-md text-sm" %>
+              </div>
+              <div class="flex items-end">
+                <label class="flex items-center space-x-2">
+                  <%= f.check_box :is_missing, class: "rounded border-gray-300" %>
+                  <span class="text-sm text-gray-700">标记为缺页</span>
+                </label>
+              </div>
+            </div>
+            <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <%= f.label :uploaded_by, "上传人", class: "block text-xs font-medium text-gray-700 mb-1" %>
+                <%= f.text_field :uploaded_by, class: "w-full px-3 py-2 border border-gray-300 rounded-md text-sm" %>
+              </div>
+              <div>
+                <%= f.label :missing_notes, "缺页说明", class: "block text-xs font-medium text-gray-700 mb-1" %>
+                <%= f.text_field :missing_notes, class: "w-full px-3 py-2 border border-gray-300 rounded-md text-sm" %>
+              </div>
+            </div>
+            <div class="mt-3">
+              <%= f.label :description, "描述", class: "block text-xs font-medium text-gray-700 mb-1" %>
+              <%= f.text_area :description, rows: 2, class: "w-full px-3 py-2 border border-gray-300 rounded-md text-sm" %>
+            </div>
+            <div class="mt-3 flex justify-end space-x-2">
+              <button type="button" onclick="document.getElementById('new-evidence-form').classList.add('hidden')" class="px-3 py-1.5 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50">取消</button>
+              <%= f.submit "添加", class: "px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm" %>
+            </div>
+          <% end %>
+        </div>
+
+        <% if @evidence_attachments.any? %>
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead>
+                <tr>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">名称</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">类别</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">页数</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">状态</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">上传人/时间</th>
+                  <th class="px-4 py-3 text-right text-xs font-medium text-gray-500">操作</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100">
+                <% @evidence_attachments.each do |ev| %>
+                  <tr class="<%= 'bg-red-50' if ev.is_missing? %>">
+                    <td class="px-4 py-3 text-sm font-medium text-gray-900">
+                      <% if ev.file.attached? %>
+                        <%= link_to ev.name, rails_blob_path(ev.file, disposition: "attachment"), class: "text-blue-600 hover:text-blue-900" %>
+                      <% else %>
+                        <%= ev.name %>
+                      <% end %>
+                      <% if ev.description.present? %>
+                        <div class="text-xs text-gray-500"><%= ev.description %></div>
+                      <% end %>
+                      <% if ev.missing_notes.present? %>
+                        <div class="text-xs text-red-600">缺页说明：<%= ev.missing_notes %></div>
+                      <% end %>
+                    </td>
+                    <td class="px-4 py-3 text-sm text-gray-500"><%= ev.category %></td>
+                    <td class="px-4 py-3 text-sm text-gray-500"><%= ev.page_count.presence || "-" %></td>
+                    <td class="px-4 py-3">
+                      <span class="inline-flex px-2 py-0.5 text-xs font-semibold rounded-full <%= ev.status_label %>">
+                        <%= ev.status_text %>
+                      </span>
+                    </td>
+                    <td class="px-4 py-3 text-sm text-gray-500">
+                      <%= ev.uploaded_by.presence || "-" %>
+                      <div class="text-xs"><%= ev.created_at.strftime("%Y-%m-%d %H:%M") %></div>
+                    </td>
+                    <td class="px-4 py-3 text-right text-sm space-x-2">
+                      <% if ev.is_missing? && !ev.file.attached? %>
+                        <label class="inline-block text-green-600 hover:text-green-900 cursor-pointer">
+                          上传补件
+                          <form action="<%= upload_case_evidence_attachment_path(@legal_case, ev) %>" method="post" enctype="multipart/form-data" class="hidden">
+                            <input type="hidden" name="authenticity_token" value="<%= form_authenticity_token %>">
+                            <input type="file" name="file" onchange="this.form.submit()">
+                          </form>
+                        </label>
+                      <% end %>
+                      <%= button_to "删除", case_evidence_attachment_path(@legal_case, ev), method: :delete, class: "text-red-600 hover:text-red-900", data: { confirm: "确认删除该证据？" } %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        <% else %>
+          <p class="text-sm text-gray-500 text-center py-4">暂无证据附件</p>
+        <% end %>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-white rounded-lg shadow p-5">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-gray-900">跟进记录</h3>
+            <button onclick="document.getElementById('new-followup-form').classList.toggle('hidden')" class="text-sm text-blue-600 hover:text-blue-900">+ 添加跟进</button>
+          </div>
+
+          <div id="new-followup-form" class="hidden mb-4 p-4 bg-gray-50 rounded-md">
+            <%= form_with model: [@legal_case, @new_follow_up], local: true do |f| %>
+              <div>
+                <%= f.label :follow_date, "跟进时间", class: "block text-xs font-medium text-gray-700 mb-1" %>
+                <%= f.datetime_field :follow_date, required: true, class: "w-full px-3 py-2 border border-gray-300 rounded-md text-sm" %>
+              </div>
+              <div class="mt-3">
+                <%= f.label :content, "跟进内容", class: "block text-xs font-medium text-gray-700 mb-1" %>
+                <%= f.text_area :content, rows: 3, required: true, class: "w-full px-3 py-2 border border-gray-300 rounded-md text-sm" %>
+              </div>
+              <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <%= f.label :operator, "操作人", class: "block text-xs font-medium text-gray-700 mb-1" %>
+                  <%= f.text_field :operator, class: "w-full px-3 py-2 border border-gray-300 rounded-md text-sm" %>
+                </div>
+                <div>
+                  <%= f.label :next_step, "下一步", class: "block text-xs font-medium text-gray-700 mb-1" %>
+                  <%= f.text_field :next_step, class: "w-full px-3 py-2 border border-gray-300 rounded-md text-sm" %>
+                </div>
+              </div>
+              <div class="mt-3 flex justify-end space-x-2">
+                <button type="button" onclick="document.getElementById('new-followup-form').classList.add('hidden')" class="px-3 py-1.5 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50">取消</button>
+                <%= f.submit "添加", class: "px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm" %>
+              </div>
+            <% end %>
+          </div>
+
+          <% if @follow_ups.any? %>
+            <div class="space-y-3 max-h-96 overflow-y-auto">
+              <% @follow_ups.each do |fu| %>
+                <div class="p-3 bg-gray-50 rounded-md">
+                  <div class="flex justify-between items-start mb-2">
+                    <span class="text-xs text-gray-500"><%= fu.follow_date.strftime("%Y-%m-%d %H:%M") %></span>
+                    <span class="text-xs text-gray-600"><%= fu.operator.presence || "未填写" %></span>
+                  </div>
+                  <div class="text-sm text-gray-800 whitespace-pre-wrap"><%= fu.content %></div>
+                  <% if fu.next_step.present? %>
+                    <div class="mt-2 text-xs text-blue-600">→ 下一步：<%= fu.next_step %></div>
+                  <% end %>
+                  <div class="mt-2 text-right">
+                    <%= button_to "删除", case_follow_up_path(@legal_case, fu), method: :delete, class: "text-xs text-red-600 hover:text-red-900", data: { confirm: "确认删除？" } %>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <p class="text-sm text-gray-500 text-center py-4">暂无跟进记录</p>
+          <% end %>
+        </div>
+
+        <div class="bg-white rounded-lg shadow p-5">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-gray-900">复盘记录</h3>
+            <button onclick="document.getElementById('new-review-form').classList.toggle('hidden')" class="text-sm text-blue-600 hover:text-blue-900">+ 添加复盘</button>
+          </div>
+
+          <div id="new-review-form" class="hidden mb-4 p-4 bg-gray-50 rounded-md">
+            <%= form_with model: [@legal_case, @new_review], local: true do |f| %>
+              <div>
+                <%= f.label :review_date, "复盘时间", class: "block text-xs font-medium text-gray-700 mb-1" %>
+                <%= f.datetime_field :review_date, required: true, class: "w-full px-3 py-2 border border-gray-300 rounded-md text-sm" %>
+              </div>
+              <div class="mt-3">
+                <%= f.label :content, "复盘内容", class: "block text-xs font-medium text-gray-700 mb-1" %>
+                <%= f.text_area :content, rows: 3, required: true, class: "w-full px-3 py-2 border border-gray-300 rounded-md text-sm" %>
+              </div>
+              <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <%= f.label :result, "处理结果", class: "block text-xs font-medium text-gray-700 mb-1" %>
+                  <%= f.text_field :result, class: "w-full px-3 py-2 border border-gray-300 rounded-md text-sm" %>
+                </div>
+                <div>
+                  <%= f.label :operator, "复盘人", class: "block text-xs font-medium text-gray-700 mb-1" %>
+                  <%= f.text_field :operator, class: "w-full px-3 py-2 border border-gray-300 rounded-md text-sm" %>
+                </div>
+              </div>
+              <div class="mt-3">
+                <%= f.label :lessons, "经验教训", class: "block text-xs font-medium text-gray-700 mb-1" %>
+                <%= f.text_area :lessons, rows: 2, class: "w-full px-3 py-2 border border-gray-300 rounded-md text-sm" %>
+              </div>
+              <div class="mt-3 flex justify-end space-x-2">
+                <button type="button" onclick="document.getElementById('new-review-form').classList.add('hidden')" class="px-3 py-1.5 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50">取消</button>
+                <%= f.submit "添加", class: "px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm" %>
+              </div>
+            <% end %>
+          </div>
+
+          <% if @review_records.any? %>
+            <div class="space-y-3 max-h-96 overflow-y-auto">
+              <% @review_records.each do |rr| %>
+                <div class="p-3 bg-gray-50 rounded-md">
+                  <div class="flex justify-between items-start mb-2">
+                    <span class="text-xs text-gray-500"><%= rr.review_date.strftime("%Y-%m-%d %H:%M") %></span>
+                    <span class="text-xs text-gray-600"><%= rr.operator.presence || "未填写" %></span>
+                  </div>
+                  <% if rr.result.present? %>
+                    <div class="text-sm font-medium text-gray-700 mb-1">结果：<%= rr.result %></div>
+                  <% end %>
+                  <div class="text-sm text-gray-800 whitespace-pre-wrap"><%= rr.content %></div>
+                  <% if rr.lessons.present? %>
+                    <div class="mt-2 p-2 bg-yellow-50 text-xs text-yellow-700 rounded">经验教训：<%= rr.lessons %></div>
+                  <% end %>
+                  <div class="mt-2 text-right">
+                    <%= button_to "删除", case_review_record_path(@legal_case, rr), method: :delete, class: "text-xs text-red-600 hover:text-red-900", data: { confirm: "确认删除？" } %>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <p class="text-sm text-gray-500 text-center py-4">暂无复盘记录</p>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="request-materials-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+  <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+    <div class="p-5 border-b">
+      <h3 class="text-lg font-semibold">要求补资料</h3>
+    </div>
+    <%= form_tag request_materials_case_path(@legal_case), method: :post do %>
+      <div class="p-5">
+        <label class="block text-sm font-medium text-gray-700 mb-1">缺件说明</label>
+        <textarea name="reason" rows="4" required class="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="请描述需要补充哪些材料..."></textarea>
+      </div>
+      <div class="px-5 py-3 bg-gray-50 flex justify-end space-x-2 rounded-b-lg">
+        <button type="button" onclick="document.getElementById('request-materials-modal').classList.add('hidden')" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">取消</button>
+        <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">确认要求补资料</button>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<div id="escalate-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+  <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+    <div class="p-5 border-b">
+      <h3 class="text-lg font-semibold">升级复核</h3>
+    </div>
+    <%= form_tag escalate_review_case_path(@legal_case), method: :post do %>
+      <div class="p-5">
+        <label class="block text-sm font-medium text-gray-700 mb-1">升级原因</label>
+        <textarea name="reason" rows="4" required class="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="请描述升级复核的原因..."></textarea>
+      </div>
+      <div class="px-5 py-3 bg-gray-50 flex justify-end space-x-2 rounded-b-lg">
+        <button type="button" onclick="document.getElementById('escalate-modal').classList.add('hidden')" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">取消</button>
+        <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700">确认升级复核</button>
+      </div>
+    <% end %>
+  </div>
+</div>

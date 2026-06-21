@@ -1,0 +1,74 @@
+<% content_for :title, "客户档案" %>
+
+<div class="space-y-6">
+  <div class="bg-white rounded-lg shadow p-5">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-semibold text-gray-900">客户档案</h2>
+      <%= link_to "新建客户", new_client_path, class: "px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm" %>
+    </div>
+
+    <form method="get" action="<%= clients_path %>" class="mb-4">
+      <div class="flex space-x-3">
+        <input type="text" name="keyword" value="<%= params[:keyword] %>" placeholder="搜索姓名/电话/身份证号" class="flex-1 max-w-md px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm">搜索</button>
+        <% if params[:keyword].present? %>
+          <%= link_to "重置", clients_path, class: "px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 text-sm" %>
+        <% end %>
+      </div>
+    </form>
+  </div>
+
+  <div class="bg-white rounded-lg shadow overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">姓名</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">电话</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">身份证号</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">来源渠道</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">关联案件数</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+          <% @clients.each do |client| %>
+            <tr class="hover:bg-gray-50">
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm font-medium text-gray-900">
+                  <%= link_to client.name, client_path(client), class: "text-blue-600 hover:text-blue-900" %>
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><%= client.phone %></td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><%= client.id_number.presence || "-" %></td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><%= client.source_channel.presence || "-" %></td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><%= client.legal_cases.count %></td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                <%= link_to "查看", client_path(client), class: "text-blue-600 hover:text-blue-900" %>
+                <%= link_to "编辑", edit_client_path(client), class: "text-gray-600 hover:text-gray-900" %>
+                <%= link_to "新建案件", new_case_path(client_id: client.id), class: "text-green-600 hover:text-green-900" %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+    <% if @pagy.pages > 1 %>
+      <div class="px-5 py-4 border-t border-gray-200">
+        <nav class="flex items-center justify-between">
+          <div class="text-sm text-gray-500">
+            第 <%= @pagy.page %> / <%= @pagy.pages %> 页，共 <%= @pagy.count %> 条
+          </div>
+          <div class="flex space-x-2">
+            <% if @pagy.prev %>
+              <%= link_to "上一页", clients_path(page: @pagy.prev, keyword: params[:keyword]), class: "px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50" %>
+            <% end %>
+            <% if @pagy.next %>
+              <%= link_to "下一页", clients_path(page: @pagy.next, keyword: params[:keyword]), class: "px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50" %>
+            <% end %>
+          </div>
+        </nav>
+      </div>
+    <% end %>
+  </div>
+</div>

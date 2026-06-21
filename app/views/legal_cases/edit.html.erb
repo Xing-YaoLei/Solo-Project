@@ -1,0 +1,84 @@
+<% content_for :title, "编辑案件 - #{@legal_case.title}" %>
+
+<div class="max-w-4xl mx-auto">
+  <div class="bg-white rounded-lg shadow p-6">
+    <h1 class="text-2xl font-bold text-gray-900 mb-6">编辑案件</h1>
+
+    <%= form_with model: @legal_case, local: true do |f| %>
+      <% if @legal_case.errors.any? %>
+        <div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <div class="text-red-700 font-medium mb-2">请修正以下错误：</div>
+          <ul class="text-red-600 text-sm list-disc list-inside">
+            <% @legal_case.errors.full_messages.each do |msg| %>
+              <li><%= msg %></li>
+            <% end %>
+          </ul>
+        </div>
+      <% end %>
+
+      <div class="space-y-6">
+        <div class="border-b border-gray-200 pb-4">
+          <h2 class="text-lg font-semibold text-gray-800 mb-4">案件信息</h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="md:col-span-2">
+              <%= f.label :title, "案件名称", class: "block text-sm font-medium text-gray-700 mb-1" %>
+              <%= f.text_field :title, required: true, class: "w-full px-3 py-2 border border-gray-300 rounded-md" %>
+            </div>
+            <div>
+              <%= f.label :case_number, "案号", class: "block text-sm font-medium text-gray-700 mb-1" %>
+              <%= f.text_field :case_number, class: "w-full px-3 py-2 border border-gray-300 rounded-md" %>
+            </div>
+            <div>
+              <%= f.label :category, "案件类别", class: "block text-sm font-medium text-gray-700 mb-1" %>
+              <%= f.select :category, LegalCase::CATEGORIES, { include_blank: "请选择" }, class: "w-full px-3 py-2 border border-gray-300 rounded-md" %>
+            </div>
+            <div>
+              <%= f.label :responsible_person, "责任人", class: "block text-sm font-medium text-gray-700 mb-1" %>
+              <%= f.text_field :responsible_person, class: "w-full px-3 py-2 border border-gray-300 rounded-md" %>
+            </div>
+            <div>
+              <%= f.label :source_channel, "来源渠道", class: "block text-sm font-medium text-gray-700 mb-1" %>
+              <%= f.select :source_channel, LegalCase::SOURCE_CHANNELS, { include_blank: "请选择" }, class: "w-full px-3 py-2 border border-gray-300 rounded-md" %>
+            </div>
+            <div>
+              <%= f.label :accept_date, "立案日期", class: "block text-sm font-medium text-gray-700 mb-1" %>
+              <%= f.date_field :accept_date, class: "w-full px-3 py-2 border border-gray-300 rounded-md" %>
+            </div>
+            <div>
+              <%= f.label :amount, "涉案金额", class: "block text-sm font-medium text-gray-700 mb-1" %>
+              <%= f.number_field :amount, step: "0.01", class: "w-full px-3 py-2 border border-gray-300 rounded-md" %>
+            </div>
+            <div>
+              <%= f.label :status, "当前状态", class: "block text-sm font-medium text-gray-700 mb-1" %>
+              <div class="px-3 py-2 border border-gray-200 rounded-md bg-gray-50">
+                <span class="inline-flex px-2.5 py-0.5 text-xs font-semibold rounded-full <%= @legal_case.status_label %>">
+                  <%= @legal_case.status_text %>
+                </span>
+              </div>
+            </div>
+            <div class="md:col-span-2">
+              <%= f.label :client_id, "关联客户", class: "block text-sm font-medium text-gray-700 mb-1" %>
+              <%= f.collection_select :client_id, @clients, :id, :display_name, { include_blank: "选择客户" }, class: "w-full px-3 py-2 border border-gray-300 rounded-md" %>
+            </div>
+            <div class="md:col-span-2">
+              <%= f.label :description, "案件描述", class: "block text-sm font-medium text-gray-700 mb-1" %>
+              <%= f.text_area :description, rows: 4, class: "w-full px-3 py-2 border border-gray-300 rounded-md" %>
+            </div>
+            <div class="md:col-span-2 flex items-start space-x-3 pt-2">
+              <%= f.check_box :material_missing, class: "mt-1" %>
+              <div>
+                <%= f.label :material_missing, "标记为材料缺失", class: "text-sm font-medium text-gray-700" %>
+                <%= f.text_area :missing_details, rows: 2, class: "mt-1 w-full px-3 py-2 border border-gray-300 rounded-md text-sm", placeholder: "说明缺失的材料" %>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-8 flex justify-end space-x-3">
+        <%= link_to "取消", case_path(@legal_case), class: "px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50" %>
+        <%= f.submit "保存", class: "px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700" %>
+      </div>
+    <% end %>
+  </div>
+</div>
