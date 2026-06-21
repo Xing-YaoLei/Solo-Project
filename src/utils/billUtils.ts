@@ -29,6 +29,7 @@ function generateTransactions(orderCount: number, category: DiscrepancyCategory)
   transactions: PaymentTransaction[];
   expectedSettlement: number;
   actualSettlement: number;
+  finalCategory: DiscrepancyCategory;
 } {
   const transactions: PaymentTransaction[] = [];
   let totalOrder = 0;
@@ -62,7 +63,10 @@ function generateTransactions(orderCount: number, category: DiscrepancyCategory)
     description: `平台抽成 ${Math.round(platformFeeRate * 100)}%`
   });
 
-  const refundCount = Math.floor(Math.random() * Math.min(3, Math.max(1, orderCount / 5)));
+  const minRefunds = category === 'refund_missing' ? 1 : 0;
+  const refundCount = minRefunds + Math.floor(
+    Math.random() * Math.max(0, Math.min(3, Math.max(1, orderCount / 5)) - minRefunds)
+  );
   for (let i = 0; i < refundCount; i++) {
     const refundAmount = round2(8 + Math.random() * 20);
     totalRefund = round2(totalRefund + refundAmount);
@@ -77,7 +81,10 @@ function generateTransactions(orderCount: number, category: DiscrepancyCategory)
     });
   }
 
-  const couponCount = Math.floor(Math.random() * Math.min(4, Math.max(1, orderCount / 4)));
+  const minCoupons = category === 'coupon_missing' ? 1 : 0;
+  const couponCount = minCoupons + Math.floor(
+    Math.random() * Math.max(0, Math.min(4, Math.max(1, orderCount / 4)) - minCoupons)
+  );
   for (let i = 0; i < couponCount; i++) {
     const couponAmount = round2(2 + Math.random() * 8);
     totalCoupon = round2(totalCoupon + couponAmount);
@@ -92,7 +99,8 @@ function generateTransactions(orderCount: number, category: DiscrepancyCategory)
     });
   }
 
-  const hasSubsidy = Math.random() < 0.5;
+  const forceSubsidy = category === 'subsidy_missing';
+  const hasSubsidy = forceSubsidy || Math.random() < 0.5;
   if (hasSubsidy) {
     totalSubsidy = round2(10 + Math.random() * 30);
     transactions.push({
@@ -117,49 +125,94 @@ function generateTransactions(orderCount: number, category: DiscrepancyCategory)
     description: TRANSACTION_TYPES[5].desc
   });
 
-  const expectedSettlement = round2(
-    totalOrder - platformFee - totalRefund - totalCoupon + totalSubsidy + deliveryFee
-  );
-
-  let actualSettlement = expectedSettlement;
+  let actualSettlement = 0;
+  let finalCategory: DiscrepancyCategory = category;
 
   switch (category) {
     case 'refund_missing':
-      actualSettlement = round2(expectedSettlement + totalRefund);
+      if (totalRefund < 0.01) {
+        finalCategory = 'correct';
+        actualSettlement = round2(
+          totalOrder - platformFee - totalRefund - totalCoupon + totalSubsidy + deliveryFee
+        );
+      } else {
+        actualSettlement = round2(
+          totalOrder - platformFee - totalCoupon + totalSubsidy + deliveryFee
+        );
+      }
       break;
+
     case 'coupon_missing':
-      actualSettlement = round2(expectedSettlement + totalCoupon);
+      if (totalCoupon < 0.01) {
+        finalCategory = 'correct';
+        actualSettlement = round2(
+          totalOrder - platformFee - totalRefund - totalCoupon + totalSubsidy + deliveryFee
+        );
+      } else {
+        actualSettlement = round2(
+          totalOrder - platformFee - totalRefund + totalSubsidy + deliveryFee
+        );
+      }
       break;
+
     case 'platform_fee_wrong':
-      actualSettlement = round2(expectedSettlement + platformFee * 0.5);
+      actualSettlement = round2(
+        totalOrder - platformFee * 0.5 - totalRefund - totalCoupon + totalSubsidy + deliveryFee
+      );
       break;
+
     case 'subsidy_missing':
-      actualSettlement = round2(expectedSettlement - totalSubsidy);
+      if (totalSubsidy < 0.01) {
+        finalCategory = 'correct';
+        actualSettlement = round2(
+          totalOrder - platformFee - totalRefund - totalCoupon + totalSubsidy + deliveryFee
+        );
+      } else {
+        actualSettlement = round2(
+          totalOrder - platformFee - totalRefund - totalCoupon + deliveryFee
+        );
+      }
       break;
+
     case 'delivery_fee_wrong':
-      actualSettlement = round2(expectedSettlement - deliveryFee * 0.3);
+      actualSettlement = round2(
+        totalOrder - platformFee - totalRefund - totalCoupon + totalSubsidy + deliveryFee * 0.7
+      );
       break;
+
     case 'order_missing': {
       const missingOrder = round2(20 + Math.random() * 30);
-      actualSettlement = round2(expectedSettlement - missingOrder);
       const orderTx = transactions.find(t => t.type === 'order');
       if (orderTx) {
         orderTx.amount = round2(orderTx.amount + missingOrder);
+        totalOrder = round2(totalOrder + missingOrder);
       }
+      actualSettlement = round2(
+        totalOrder - missingOrder - platformFee - totalRefund - totalCoupon + totalSubsidy + deliveryFee
+      );
       break;
     }
+
     case 'correct':
     default:
-      actualSettlement = expectedSettlement;
+      finalCategory = 'correct';
+      actualSettlement = round2(
+        totalOrder - platformFee - totalRefund - totalCoupon + totalSubsidy + deliveryFee
+      );
       break;
   }
+
+  const expectedSettlement = round2(
+    totalOrder - platformFee - totalRefund - totalCoupon + totalSubsidy + deliveryFee
+  );
 
   transactions.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
 
   return {
     transactions,
     expectedSettlement,
-    actualSettlement
+    actualSettlement,
+    finalCategory
   };
 }
 
@@ -185,12 +238,17 @@ export function generateBill(levelId: number, errorRate: number, index: number, 
     }
   }
 
-  const { transactions, expectedSettlement, actualSettlement } = generateTransactions(orderCount, category);
+  const { transactions, expectedSettlement, actualSettlement, finalCategory } = generateTransactions(orderCount, category);
 
-  if (category === 'correct') {
+  if (finalCategory === 'correct') {
     const diff = Math.abs(expectedSettlement - actualSettlement);
-    if (diff > 0.001) {
-      console.warn(`[billUtils] correct 账单差额不为 0: ${diff}，强制修正`);
+    if (diff > 0.005) {
+      console.warn(`[billUtils] correct 账单差额不为 0: ${diff}, expected=${expectedSettlement}, actual=${actualSettlement}`);
+    }
+  } else {
+    const diff = Math.abs(expectedSettlement - actualSettlement);
+    if (diff < 0.005) {
+      console.warn(`[billUtils] ${finalCategory} 账单差额为 0，会误导玩家`);
     }
   }
 
@@ -201,7 +259,7 @@ export function generateBill(levelId: number, errorRate: number, index: number, 
     expectedAmount: expectedSettlement,
     actualAmount: actualSettlement,
     transactions,
-    discrepancyCategory: category,
+    discrepancyCategory: finalCategory,
     timestamp: Date.now()
   };
 }
