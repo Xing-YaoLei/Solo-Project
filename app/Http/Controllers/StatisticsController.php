@@ -14,7 +14,9 @@ class StatisticsController extends Controller
 {
     public function index(Request $request): Response
     {
-        $this->authorize('view', StatisticsController::class);
+        if (!auth()->user()->isManager() && !auth()->user()->isFinance() && !auth()->user()->hasPermission('statistics.view')) {
+            abort(403);
+        }
 
         $period = $request->input('period', 'month');
         $dateFrom = $request->input('date_from');
@@ -46,7 +48,9 @@ class StatisticsController extends Controller
 
     public function inventoryDetail(Request $request): Response
     {
-        $this->authorize('view', StatisticsController::class);
+        if (!auth()->user()->isManager() && !auth()->user()->isFinance() && !auth()->user()->hasPermission('statistics.view')) {
+            abort(403);
+        }
 
         $query = Vehicle::inStock()
             ->with(['appraiser:id,name', 'sales:id,name'])
@@ -270,6 +274,7 @@ class StatisticsController extends Controller
                     'sold_count' => $row->sold_count,
                     'avg_turnover_days' => round($row->avg_turnover_days, 1),
                 ];
-            });
+            })
+            ->toArray();
     }
 }

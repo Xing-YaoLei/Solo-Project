@@ -52,6 +52,11 @@ class Vehicle extends Model
         return self::STATUS_LABELS[$this->status] ?? $this->status;
     }
 
+    public function getStatusLabelAttribute(): string
+    {
+        return $this->statusLabel();
+    }
+
     public function appraiser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'appraiser_id');

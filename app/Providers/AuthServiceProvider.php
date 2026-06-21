@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Http\Controllers\StatisticsController;
 use App\Models\Anomaly;
 use App\Models\Attachment;
 use App\Models\FinanceDocument;
@@ -29,7 +30,7 @@ class AuthServiceProvider extends ServiceProvider
         FinanceDocument::class => FinanceDocumentPolicy::class,
         Anomaly::class => AnomalyPolicy::class,
         Attachment::class => AttachmentPolicy::class,
-        StatisticsPolicy::class => StatisticsPolicy::class,
+        StatisticsController::class => StatisticsPolicy::class,
     ];
 
     public function boot(): void
