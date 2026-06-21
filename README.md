@@ -4,101 +4,198 @@
 
 ## 技术栈
 
-- **前端**: React + ECharts + Ant Design + Vite
-- **后端**: FastAPI + SQLAlchemy
-- **数据库**: PostgreSQL + DuckDB
+- **前端**: React 18 + ECharts 5 + Ant Design 5 + Vite 5
+- **后端**: FastAPI 0.109 + SQLAlchemy 2.0 + Pydantic 2
+- **数据库**: PostgreSQL + DuckDB（嵌入式，开箱即用）
 - **数据分析**: Pandas
 
 ## 项目结构
 
 ```
 MP0433/
-├── backend/                 # 后端服务
+├── backend/                          # 后端服务
 │   ├── app/
-│   │   ├── api/           # API 路由
-│   │   ├── core/            # 核心配置
-│   │   ├── models/         # 数据模型
-│   │   ├── schemas/         # Pydantic 模式
-│   │   ├── services/      # 业务逻辑
-│   │   └── main.py         # 应用入口
-│   ├── data/               # DuckDB 数据目录
-│   └── requirements.txt   # Python 依赖
+│   │   ├── main.py                   # FastAPI 应用入口
+│   │   ├── core/                     # 核心配置
+│   │   │   ├── config.py             # 配置管理
+│   │   │   └── database.py           # PostgreSQL + DuckDB 连接
+│   │   ├── models/                   # SQLAlchemy 数据模型
+│   │   ├── schemas/                  # Pydantic 数据模式
+│   │   ├── services/                 # 业务逻辑层
+│   │   │   ├── data_service.py       # 统一数据服务入口（DuckDB优先，PG兜底，mock保底）
+│   │   │   ├── duckdb_init.py        # DuckDB 建表+种子数据初始化
+│   │   │   ├── duckdb_service.py     # DuckDB 查询实现
+│   │   │   ├── postgres_service.py   # PostgreSQL 查询实现
+│   │   │   └── mock_service.py       # Mock 数据（保底用）
+│   │   └── api/v1/
+│   │       ├── __init__.py           # 路由注册
+│   │       └── endpoints.py          # API 端点定义
+│   ├── data/                         # DuckDB 数据文件目录（自动生成）
+│   ├── requirements.txt              # Python 依赖
+│   └── venv/                         # Python 虚拟环境（自动创建）
 │
-└── frontend/               # 前端应用
-    ├── src/
-    │   ├── components/     # 组件
-    │   ├── pages/         # 页面
-    │   ├── utils/         # 工具
-    │   └── main.jsx       # 入口
-    └── package.json       # Node 依赖
+├── frontend/                         # 前端应用
+│   ├── src/
+│   │   ├── main.jsx                  # 入口文件
+│   │   ├── App.jsx                   # 根组件
+│   │   ├── index.css                 # 全局样式
+│   │   ├── pages/
+│   │   │   └── SettlementDashboard.jsx  # 看板主页面
+│   │   ├── components/               # 组件
+│   │   │   ├── DashboardSummary.jsx     # 统计概览卡片
+│   │   │   ├── SettlementTrendChart.jsx # 结算趋势图（含异常点/受影响区间）
+│   │   │   ├── OrderDetailTable.jsx     # 单据明细表
+│   │   │   ├── ApprovalTimeline.jsx     # 审批节点时间线
+│   │   │   ├── AmountCheckTable.jsx     # 金额校验表
+│   │   │   ├── CaliberDiffTable.jsx     # 口径差异表
+│   │   │   └── DownloadPanel.jsx        # 下载面板
+│   │   └── utils/api.js              # API 请求封装
+│   ├── public/vite.svg               # 静态资源
+│   ├── package.json
+│   └── vite.config.js
+│
+├── start-backend.sh                  # 后端一键启动脚本
+├── start-frontend.sh                 # 前端一键启动脚本
+└── README.md
 ```
 
 ## 核心功能
 
 ### 1. 结算趋势看板
-- 结算金额趋势图（双Y轴：金额 + 订单数
-- 异常点标注：
-  - 🟡 订单系统延迟
-  - 🔴 客服记录缺失
-  - 🔵 支付流水口径变化
-- 受影响区间高亮显示
+- 结算金额趋势图（双Y轴：金额折线 + 订单数柱状图）
+- 异常点标注三种类型：
+  - 🟡 **订单系统延迟**（橙色）
+  - 🔴 **客服记录缺失**（红色）
+  - 🔵 **支付流水口径变化**（蓝色）
+- 受影响区间高亮：金额不一致改变趋势时，自动标出受影响区间及影响金额
+- 复盘说明与异常点不分离，点击即可查看详情
 
-### 2. 常用视图（Tab 切换
-- **单据明细**：订单列表、状态、延迟标记
-- **审批节点**：审批流程时间线
-- **金额校验**：预期结算 vs 实际结算对比
-- **口径差异表**：客服记录与支付流水差异保留完整差异表，不直接覆盖
+### 2. 常用视图（Tab 切换）
+- **单据明细**：订单列表、状态、系统延迟标记、客服记录数、支付流水数
+- **审批节点**：审批流程时间线，含审批人、审批时间、审批意见
+- **金额校验**：预期结算 vs 实际结算对比，差额、一致性标记
+- **口径差异表**：客服记录与支付流水口径冲突时，保留完整差异表，不直接覆盖任何一方数据
 
 ### 3. 下载功能
 - 支持自定义日期范围
-- 附带回款周期计算规则
-- 包含完整结算数据
+- 可选是否附带回款周期计算规则
+- 下载内容包含：趋势数据、单据明细、金额校验、口径差异、规则说明
 
 ### 4. 数据异常处理原则
-- 复盘说明与异常点不分离
-- 金额不一致时标出受影响区间
-- 客服记录与支付流水口径冲突时保留差异表
+- ✅ 复盘说明与异常点不分离（Tooltip 中同时展示）
+- ✅ 金额不一致时自动标出受影响区间（ECharts markArea 高亮）
+- ✅ 客服记录与支付流水口径冲突时保留完整差异表
 
-## 快速开始
+## 快速开始（按顺序执行）
 
-### 后端启动
+### 第一步：启动后端服务
 
 ```bash
+# 方式一：使用一键启动脚本
+./start-backend.sh
+
+# 方式二：手动执行
 cd backend
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### 前端启动
+后端启动后访问：
+- API 服务: http://localhost:8000
+- 接口文档: http://localhost:8000/docs
+- 健康检查: http://localhost:8000/health
+
+> **DuckDB 说明**: 后端首次启动会自动创建 `backend/data/settlement.duckdb` 数据库文件，并初始化完整的演示数据（3个商户、30天结算数据、240+订单、87条差异记录等）。无需手动配置数据库。
+
+### 第二步：启动前端服务
 
 ```bash
+# 方式一：使用一键启动脚本
+./start-frontend.sh
+
+# 方式二：手动执行
 cd frontend
 npm install
 npm run dev
 ```
 
-## API 接口
+前端启动后访问：http://localhost:3000
 
-- `GET /api/v1/settlement/trend - 结算趋势数据
-- `GET /api/v1/settlement/orders - 单据明细
-- `GET /api/v1/settlement/approval-nodes - 审批节点
-- `GET /api/v1/settlement/amount-checks - 金额校验
-- `GET /api/v1/settlement/caliber-diffs - 口径差异表
-- `GET /api/v1/settlement/dashboard/summary - 看板概览
-- `GET /api/v1/settlement/settlement/rules - 回款周期规则
-- `GET /api/v1/settlement/download - 下载数据
+## API 接口列表
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/v1/settlement/trend` | 结算趋势数据（含异常点和受影响区间） |
+| GET | `/api/v1/settlement/orders` | 单据明细列表（分页） |
+| GET | `/api/v1/settlement/approval-nodes` | 审批节点列表 |
+| GET | `/api/v1/settlement/amount-checks` | 金额校验记录 |
+| GET | `/api/v1/settlement/caliber-diffs` | 口径差异表（分页） |
+| GET | `/api/v1/settlement/dashboard/summary` | 看板概览统计 |
+| GET | `/api/v1/settlement/rules` | 回款周期计算规则 |
+| GET | `/api/v1/settlement/download` | 下载完整结算数据 |
 
 ## 回款周期计算规则
 
+```
+一、基础规则
 1. 结算周期：T+7 自然日
 2. 结算日：每周一进行上周结算
 3. 到账时效：结算审批完成后3个工作日内到账
-4. 金额计算：结算金额 = 订单总额 - 退款金额 - 服务费 - 其他扣除
 
-## 数据口径说明
+二、金额计算规则
+结算金额 = 订单总额 - 退款金额 - 服务费 - 其他扣除
 
-- 订单口径：以订单完成时间为准
-- 退款口径：以客服记录的退款时间为准
-- 支付口径：以支付渠道实际到账时间为准
+三、口径说明
+1. 订单口径：以订单完成时间为准
+2. 退款口径：以客服记录的退款时间为准
+3. 支付口径：以支付渠道实际到账时间为准
+
+四、异常处理
+1. 订单延迟：延迟超过24小时的订单顺延至下一结算周期
+2. 记录缺失：客服记录缺失时暂按支付流水计算，待补录后调整
+3. 口径变化：口径变更前按旧口径，变更后按新口径，过渡期保留差异表
+```
+
+## 数据层架构
+
+系统采用三层数据服务架构，确保高可用性：
+
+```
+API 请求
+    ↓
+data_service.py (统一入口)
+    ↓
+┌─────────────┬──────────────┬──────────────┐
+│  DuckDB     │  PostgreSQL  │  Mock Data   │
+│  (优先)     │  (可选配置)  │  (保底)      │
+└─────────────┴──────────────┴──────────────┘
+```
+
+- **DuckDB**（默认）: 嵌入式分析数据库，零配置，开箱即用，适合看板查询场景
+- **PostgreSQL**（可选）: 配置环境变量后自动启用，适合生产环境
+- **Mock Data**: 前两者均不可用时的兜底方案
+
+### PostgreSQL 配置（可选）
+
+如需使用 PostgreSQL，设置以下环境变量或修改 `backend/app/core/config.py`：
+
+```bash
+export POSTGRES_SERVER=localhost
+export POSTGRES_USER=postgres
+export POSTGRES_PASSWORD=your_password
+export POSTGRES_DB=merchant_settlement
+export POSTGRES_PORT=5432
+```
+
+## 核心模型
+
+- **Merchant** - 商户信息
+- **Settlement** - 结算单（含异常标记 `has_anomaly`、`anomaly_type`、`anomaly_desc`）
+- **Order** - 订单（含延迟标记 `has_delay`、`delay_hours`）
+- **CustomerServiceRecord** - 客服记录
+- **PaymentFlow** - 支付流水（含口径版本 `caliber_version`）
+- **ApprovalNode** - 审批节点
+- **AmountCheck** - 金额校验记录
+- **CaliberDiff** - 口径差异记录

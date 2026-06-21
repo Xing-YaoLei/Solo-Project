@@ -2,14 +2,14 @@ from fastapi import APIRouter, Query
 from datetime import date
 from typing import Optional
 
-from app.services.mock_service import (
+from app.services.data_service import (
     get_settlement_trend,
     get_order_details,
     get_approval_nodes,
     get_amount_checks,
     get_caliber_diffs,
     get_dashboard_summary,
-    get_settlement_rules,
+    get_settlement_rules_text,
     generate_download_data,
 )
 from app.schemas import (
@@ -20,7 +20,7 @@ from app.schemas import (
 router = APIRouter()
 
 
-@router.get("/settlement/trend", response_model=SettlementTrendResponse)
+@router.get("/trend", response_model=SettlementTrendResponse)
 def settlement_trend(
     merchant_id: int = Query(1, description="商户ID"),
     start_date: Optional[date] = Query(None, description="开始日期"),
@@ -68,10 +68,10 @@ def dashboard_summary():
     return get_dashboard_summary()
 
 
-@router.get("/settlement/rules")
+@router.get("/rules")
 def settlement_rules():
     """获取回款周期计算规则"""
-    return {"rules": get_settlement_rules()}
+    return {"rules": get_settlement_rules_text()}
 
 
 @router.get("/download")

@@ -270,13 +270,13 @@ def get_caliber_diffs(page: int = 1, page_size: int = 20) -> dict:
 
 def get_dashboard_summary() -> DashboardSummary:
     return DashboardSummary(
-        total_settlement=Decimal("1,256,890.50"),
+        total_settlement=Decimal("1256890.50"),
         total_orders=3456,
         anomaly_count=23,
         delay_orders=156,
         missing_cs_records=42,
         caliber_changes=3,
-        affected_amount=Decimal("256,800.00"),
+        affected_amount=Decimal("256800.00"),
     )
 
 

@@ -84,12 +84,33 @@ const SettlementDashboard = () => {
     fetchApprovalNodes(1)
   }, [])
 
-  const handleOrderPageChange = (pagination) => {
-    setOrderPagination({ current: pagination.current, pageSize: pagination.pageSize })
+  const handleOrderPageChange = async (pagination) => {
+    const newPagination = { current: pagination.current, pageSize: pagination.pageSize }
+    setOrderPagination(newPagination)
+    try {
+      const ordersData = await settlementApi.getOrders({
+        merchant_id: selectedMerchant,
+        page: newPagination.current,
+        page_size: newPagination.pageSize,
+      })
+      setOrders(ordersData)
+    } catch (error) {
+      console.error('Failed to fetch orders:', error)
+    }
   }
 
-  const handleDiffPageChange = (pagination) => {
-    setDiffPagination({ current: pagination.current, pageSize: pagination.pageSize })
+  const handleDiffPageChange = async (pagination) => {
+    const newPagination = { current: pagination.current, pageSize: pagination.pageSize }
+    setDiffPagination(newPagination)
+    try {
+      const diffs = await settlementApi.getCaliberDiffs({
+        page: newPagination.current,
+        page_size: newPagination.pageSize,
+      })
+      setCaliberDiffs(diffs)
+    } catch (error) {
+      console.error('Failed to fetch diffs:', error)
+    }
   }
 
   const handleRefresh = () => {
