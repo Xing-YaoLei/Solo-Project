@@ -1,0 +1,205 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum SeatStatus {
+  available
+  locked
+  sold
+  reserved
+}
+
+enum OrderSource {
+  online
+  offline
+  partner
+  staff
+}
+
+enum PaymentMethod {
+  alipay
+  wechat
+  card
+  cash
+  free
+}
+
+enum OrderStatus {
+  pending
+  paid
+  refunded
+  cancelled
+}
+
+enum UserRole {
+  admin
+  manager
+  operator
+  finance
+}
+
+enum AnomalyType {
+  timeout
+  duplicate
+  amount_mismatch
+  manual_override
+}
+
+model Activity {
+  id         String   @id @default(uuid())
+  name       String
+  startTime  DateTime
+  endTime    DateTime
+  venue      String
+  totalSeats Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  seatAllocations SeatAllocation[]
+  ticketTypes     TicketType[]
+  orders          Order[]
+  lockRecords     LockRecord[]
+
+  @@map("activities")
+}
+
+model SeatAllocation {
+  id            String      @id @default(uuid())
+  activityId    String
+  area          String
+  row           String
+  seatNumber    String
+  status        SeatStatus  @default(available)
+  ticketTypeId  String?
+  orderId       String?
+  lockedAt      DateTime?
+  soldAt        DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  activity   Activity    @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  ticketType TicketType? @relation(fields: [ticketTypeId], references: [id])
+  order      Order?      @relation(fields: [orderId], references: [id])
+  lockRecords LockRecord[]
+
+  @@unique([activityId, area, row, seatNumber])
+  @@index([activityId])
+  @@index([status])
+  @@map("seat_allocations")
+}
+
+model TicketType {
+  id             String   @id @default(uuid())
+  activityId     String
+  name           String
+  price          Decimal  @db.Decimal(10, 2)
+  originalPrice  Decimal  @db.Decimal(10, 2)
+  totalStock     Int      @default(0)
+  soldCount      Int      @default(0)
+  lockedCount    Int      @default(0)
+  maxPerOrder    Int      @default(10)
+  saleStartTime  DateTime
+  saleEndTime    DateTime
+  description    String?
+  restrictions   String[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  activity        Activity         @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  seatAllocations SeatAllocation[]
+  orders          Order[]
+
+  @@map("ticket_types")
+}
+
+model Order {
+  id             String        @id @default(uuid())
+  activityId     String
+  orderNo        String        @unique
+  source         OrderSource
+  paymentMethod  PaymentMethod
+  amount         Decimal       @db.Decimal(10, 2) @default(0)
+  status         OrderStatus   @default(pending)
+  ticketTypeId   String
+  quantity       Int           @default(1)
+  buyerName      String?
+  buyerPhone     String?
+  paidAt         DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  activity        Activity         @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  ticketType      TicketType       @relation(fields: [ticketTypeId], references: [id])
+  seatAllocations SeatAllocation[]
+  lockRecords     LockRecord[]
+
+  @@index([activityId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("orders")
+}
+
+model LockRecord {
+  id                 String       @id @default(uuid())
+  activityId         String
+  seatAllocationId   String
+  orderId            String?
+  operatorId         String?
+  operatorName       String
+  lockReason         String
+  lockDuration       Int
+  lockedAt           DateTime     @default(now())
+  expiredAt          DateTime
+  releasedAt         DateTime?
+  releaseReason      String?
+  isAnomaly          Boolean      @default(false)
+  anomalyType        AnomalyType?
+  anomalyDescription String?
+  originalRecordUrl  String?
+  createdAt          DateTime     @default(now())
+
+  activity       Activity       @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  seatAllocation SeatAllocation @relation(fields: [seatAllocationId], references: [id], onDelete: Cascade)
+  order          Order?         @relation(fields: [orderId], references: [id])
+
+  @@index([activityId])
+  @@index([isAnomaly])
+  @@index([expiredAt])
+  @@map("lock_records")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  role      UserRole @default(operator)
+  name      String
+  createdAt DateTime @default(now())
+
+  shareLinks ShareLink[]
+
+  @@map("users")
+}
+
+model ShareLink {
+  id         String     @id @default(uuid())
+  token      String     @unique
+  createdBy  String
+  role       UserRole
+  activityIds String[]   @default([])
+  expiresAt  DateTime
+  createdAt  DateTime   @default(now())
+
+  user User @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@map("share_links")
+}
