@@ -1,0 +1,623 @@
+// 法律服务开庭日历任务分派台 - Prisma 数据模型
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== 基础枚举 ====================
+
+enum UserRole {
+  ADMIN       // 系统管理员
+  LAWYER      // 律师
+  PARALEGAL   // 律师助理
+  CLERK       // 书记员/行政
+  CLIENT      // 客户
+}
+
+enum CaseStatus {
+  PENDING       // 待处理
+  ACTIVE        // 进行中
+  CLOSED        // 已结案
+  SUSPENDED     // 暂停
+}
+
+enum HearingStatus {
+  SCHEDULED     // 已排期
+  CONFIRMED     // 已确认
+  IN_PROGRESS   // 进行中
+  COMPLETED     // 已完成
+  RESCHEDULED   // 已改期
+  CANCELLED     // 已取消
+  POSTPONED     // 延期
+}
+
+enum AttendanceStatus {
+  NOT_ARRIVED   // 未到场
+  ARRIVED       // 已到场
+  LATE          // 迟到
+  ABSENT        // 缺席
+  EXCUSED       // 请假
+  LEAVE_EARLY   // 早退
+}
+
+enum ReminderType {
+  EMAIL         // 邮件
+  SMS           // 短信
+  APP           // APP推送
+  WECHAT        // 微信
+  PHONE         // 电话
+}
+
+enum ReminderStatus {
+  PENDING       // 待发送
+  SENT          // 已发送
+  FAILED        // 发送失败
+  READ          // 已读
+  CONFIRMED     // 已确认
+}
+
+enum ConflictType {
+  LAWYER_TIME   // 律师时间冲突
+  COURT_ROOM    // 法庭冲突
+  CLIENT_CONFLICT // 客户利益冲突
+  JUDGE_TIME    // 法官时间冲突
+  CASE_CONFLICT // 案件对立冲突
+  OTHER         // 其他
+}
+
+enum ConflictSeverity {
+  LOW           // 低
+  MEDIUM        // 中
+  HIGH          // 高
+  CRITICAL      // 严重
+}
+
+enum RescheduleReason {
+  PARTY_REQUEST   // 当事人申请
+  COURT_CHANGE    // 法院变更
+  LAWYER_CONFLICT // 律师冲突
+  EMERGENCY       // 紧急情况
+  JUDGE_UNAVAILABLE // 法官无法出庭
+  OTHER           // 其他
+}
+
+enum ExceptionStatus {
+  OPEN          // 待处理
+  INVESTIGATING // 调查中
+  RESOLVED      // 已解决
+  CLOSED        // 已关闭
+  ESCALATED     // 已升级
+}
+
+enum ExceptionType {
+  CONFLICT_OF_INTEREST // 利益冲突
+  PROCEDURAL_ERROR     // 程序错误
+  MISSED_DEADLINE      // 错过期限
+  ATTENDANCE_ISSUE     // 出勤问题
+  COMMUNICATION_ERROR  // 沟通失误
+  OTHER                // 其他
+}
+
+// ==================== 基础数据表 ====================
+
+model User {
+  id            String   @id @default(uuid())
+  username      String   @unique
+  email         String   @unique
+  passwordHash  String
+  realName      String
+  phone         String?
+  role          UserRole @default(LAWYER)
+  avatarUrl     String?
+  department    String?
+  title         String?  // 职称
+  barNumber     String?  // 律师执业证号
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // 关联
+  assignedHearings    HearingAssignment[]  @relation("Assignee")
+  createdHearings     Hearing[]            @relation("Creator")
+  createdTimelines    StatusTimeline[]     @relation("TimelineOperator")
+  createdExceptions   ExceptionRecord[]    @relation("ExceptionCreator")
+  resolvedExceptions  ExceptionRecord[]    @relation("ExceptionResolver")
+  sentReminders       Reminder[]           @relation("ReminderSender")
+  attendanceRecords   AttendanceRecord[]
+  reminderRecipients  ReminderRecipient[]
+  lawyerInCharges     Case[]               @relation("LawyerInCharge")
+  assistantInCharges  Case[]               @relation("AssistantInCharge")
+
+  @@index([role])
+  @@index([isActive])
+  @@index([department])
+}
+
+model Client {
+  id           String     @id @default(uuid())
+  clientNo     String     @unique
+  name         String
+  clientType   String     // 个人/企业
+  idCardNo     String?    // 身份证号
+  taxNo        String?    // 税号/统一社会信用代码
+  contactName  String
+  contactPhone String
+  contactEmail String?
+  address      String?
+  industry     String?
+  notes        String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  // 关联
+  cases               Case[]
+  caseClients         CaseClient[]
+  conflictChecks1     ConflictCheck[]     @relation("PartyA")
+  conflictChecks2     ConflictCheck[]     @relation("PartyB")
+  attendance          AttendanceRecord[]
+  reminderRecipients  ReminderRecipient[]
+
+  @@index([clientType])
+  @@index([name])
+}
+
+model Case {
+  id                   String      @id @default(uuid())
+  caseNo               String      @unique  // 所内案号
+  courtCaseNo          String?     // 法院案号
+  title                String
+  caseType             String      // 案件类型：民事/刑事/行政等
+  caseCategory         String?     // 案件分类：合同纠纷/劳动争议等
+  status               CaseStatus  @default(PENDING)
+  courtLevel           String?     // 法院层级：一审/二审/再审等
+  jurisdiction         String?     // 管辖法院
+  acceptanceDate       DateTime?   // 受理日期
+  deadlineDate         DateTime?   // 截止日期
+  description          String?
+  lawInvolved          String?     // 涉及法条
+  amountInvolved       Decimal?    @db.Decimal(15, 2) // 涉案金额
+  retentionFee         Decimal?    @db.Decimal(15, 2) // 律师费
+  paymentStatus        String?
+  lawyerInChargeId     String?
+  assistantInChargeId  String?
+  ownerClientId        String
+  notes                String?
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
+
+  // 关联
+  lawyerInCharge     User?           @relation("LawyerInCharge", fields: [lawyerInChargeId], references: [id])
+  assistantInCharge  User?           @relation("AssistantInCharge", fields: [assistantInChargeId], references: [id])
+  ownerClient        Client          @relation(fields: [ownerClientId], references: [id])
+  caseClients        CaseClient[]
+  hearings           Hearing[]
+  conflictChecks     ConflictCheck[]
+  exceptions         ExceptionRecord[]
+
+  @@index([status])
+  @@index([caseType])
+  @@index([lawyerInChargeId])
+  @@index([ownerClientId])
+  @@index([acceptanceDate])
+}
+
+model CaseClient {
+  id           String @id @default(uuid())
+  caseId       String
+  clientId     String
+  roleInCase   String // 原告/被告/第三人/上诉人/被上诉人等
+  isPrimary    Boolean @default(false)
+  createdAt    DateTime @default(now())
+
+  case    Case   @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  client  Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([caseId, clientId, roleInCase])
+}
+
+model Court {
+  id           String @id @default(uuid())
+  name         String // 法院名称
+  level        String // 法院级别：最高院/高院/中院/基层法院
+  province     String
+  city         String
+  district     String
+  address      String
+  phone        String?
+  contactName  String?
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  courtRooms   CourtRoom[]
+  judges       Judge[]
+  hearings     Hearing[]
+
+  @@unique([name, city])
+  @@index([level])
+  @@index([province])
+}
+
+model CourtRoom {
+  id           String @id @default(uuid())
+  courtId      String
+  roomNo       String  // 法庭编号
+  roomName     String? // 法庭名称
+  capacity     Int?    // 容纳人数
+  floor        String?
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  court     Court     @relation(fields: [courtId], references: [id], onDelete: Cascade)
+  hearings  Hearing[]
+
+  @@unique([courtId, roomNo])
+}
+
+model Judge {
+  id           String @id @default(uuid())
+  courtId      String
+  name         String
+  title        String? // 法官职级
+  department   String? // 所属庭室
+  phone        String?
+  email        String?
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  court        Court              @relation(fields: [courtId], references: [id], onDelete: Cascade)
+  hearings     JudgeAssignment[]
+  presidingIn  Hearing[]
+
+  @@index([courtId])
+  @@index([name])
+}
+
+// ==================== 核心：开庭日历 ====================
+
+model Hearing {
+  id               String        @id @default(uuid())
+  hearingNo        String        @unique  // 开庭编号
+  caseId           String
+  courtId          String
+  courtRoomId      String
+  presidingJudgeId String?
+  startTime        DateTime
+  endTime          DateTime
+  hearingType      String        // 开庭/听证/调解/宣判/谈话/质证等
+  judgeSummary     String?       // 法官安排要点
+  preparationItems String?       // 准备事项
+  materials        String?       // 需携带材料
+  status           HearingStatus @default(SCHEDULED)
+  isImportant      Boolean       @default(false) // 重要开庭标记
+  priority         Int           @default(5)     // 优先级 1-10
+  creatorId        String
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  // 关联
+  caseInfo          Case                @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  court             Court               @relation(fields: [courtId], references: [id])
+  courtRoom         CourtRoom           @relation(fields: [courtRoomId], references: [id])
+  presidingJudge    Judge?              @relation(fields: [presidingJudgeId], references: [id])
+  creator           User                @relation("Creator", fields: [creatorId], references: [id])
+  assignments       HearingAssignment[]
+  judges            JudgeAssignment[]
+  attendance        AttendanceRecord[]
+  timelines         StatusTimeline[]
+  reschedules       RescheduleRecord[]  @relation("OriginalHearing")
+  rescheduleFrom    RescheduleRecord?   @relation("RescheduledHearing")
+  conflictChecks    ConflictCheck[]
+  reminders         Reminder[]
+  exceptions        ExceptionRecord[]
+
+  @@index([caseId])
+  @@index([courtId, courtRoomId])
+  @@index([startTime, endTime])
+  @@index([status])
+  @@index([isImportant])
+}
+
+model HearingAssignment {
+  id           String @id @default(uuid())
+  hearingId    String
+  assigneeId   String
+  role         String  // 主办律师/协办律师/出庭律师/记录员/代理人等
+  isLead       Boolean @default(false)
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  hearing   Hearing @relation(fields: [hearingId], references: [id], onDelete: Cascade)
+  assignee  User    @relation("Assignee", fields: [assigneeId], references: [id])
+
+  @@unique([hearingId, assigneeId, role])
+  @@index([assigneeId])
+}
+
+model JudgeAssignment {
+  id           String @id @default(uuid())
+  hearingId    String
+  judgeId      String
+  role         String // 审判长/审判员/人民陪审员/书记员
+  createdAt    DateTime @default(now())
+
+  hearing  Hearing @relation(fields: [hearingId], references: [id], onDelete: Cascade)
+  judge    Judge   @relation(fields: [judgeId], references: [id])
+
+  @@unique([hearingId, judgeId, role])
+}
+
+// ==================== 核心：冲突检测与改约 ====================
+
+model ConflictCheck {
+  id             String          @id @default(uuid())
+  hearingId      String
+  conflictType   ConflictType
+  severity       ConflictSeverity
+  description    String          // 冲突描述
+  involvedPartyA String?         // 涉及方A ID
+  involvedPartyB String?         // 涉及方B ID
+  partyAType     String?         // 涉及方A类型
+  partyBType     String?         // 涉及方B类型
+  partyAName     String?         // 涉及方A名称（冗余，方便查询）
+  partyBName     String?         // 涉及方B名称
+  caseId         String?         // 关联案件（若为案件利益冲突）
+  partyAClientId String?
+  partyBClientId String?
+  isResolved     Boolean         @default(false)
+  resolvedAt     DateTime?
+  resolvedBy     String?
+  resolution     String?
+  createdAt      DateTime        @default(now())
+
+  hearing        Hearing         @relation(fields: [hearingId], references: [id], onDelete: Cascade)
+  case           Case?           @relation(fields: [caseId], references: [id])
+  partyAClient   Client?         @relation("PartyA", fields: [partyAClientId], references: [id])
+  partyBClient   Client?         @relation("PartyB", fields: [partyBClientId], references: [id])
+
+  @@index([hearingId])
+  @@index([conflictType])
+  @@index([isResolved])
+  @@index([severity])
+}
+
+model RescheduleRecord {
+  id                    String           @id @default(uuid())
+  originalHearingId     String
+  rescheduledHearingId  String?          @unique // 改期后的新开庭ID
+  oldStartTime          DateTime
+  oldEndTime            DateTime
+  newStartTime          DateTime?
+  newEndTime            DateTime?
+  reason                RescheduleReason
+  reasonDetail          String?          // 具体原因说明
+  initiatedBy           String?          // 发起人
+  approverId            String?          // 审批人
+  approvedAt            DateTime?
+  isApproved            Boolean          @default(false)
+  affectedParties       Json?            // 受影响人员清单
+  notificationStatus    String?          // 通知状态
+  notes                 String?
+  createdAt             DateTime         @default(now())
+
+  originalHearing    Hearing   @relation("OriginalHearing", fields: [originalHearingId], references: [id])
+  rescheduledHearing Hearing?  @relation("RescheduledHearing", fields: [rescheduledHearingId], references: [id])
+
+  @@index([originalHearingId])
+  @@index([reason])
+  @@index([isApproved])
+  @@index([createdAt])
+}
+
+// ==================== 核心：到场状态与时间线 ====================
+
+model AttendanceRecord {
+  id                 String           @id @default(uuid())
+  hearingId          String
+  attendeeType       String           // 律师/客户/法官/其他工作人员
+  userId             String?
+  clientId           String?
+  personName         String           // 到场人姓名
+  plannedRole        String?          // 计划角色
+  status             AttendanceStatus @default(NOT_ARRIVED)
+  checkInTime        DateTime?
+  checkOutTime       DateTime?
+  seatLocation       String?
+  signType           String?          // 签到方式：现场/远程/请假
+  remark             String?
+  recordedBy         String?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  hearing  Hearing  @relation(fields: [hearingId], references: [id], onDelete: Cascade)
+  user     User?    @relation(fields: [userId], references: [id])
+  client   Client?  @relation(fields: [clientId], references: [id])
+
+  @@index([hearingId])
+  @@index([userId])
+  @@index([clientId])
+  @@index([status])
+}
+
+model StatusTimeline {
+  id            String        @id @default(uuid())
+  hearingId     String
+  previousStatus String?       // 变更前状态
+  newStatus     String        // 变更后状态
+  changeType    String        // 状态变更类型：排期/确认/改约/完成/到场/异常等
+  description   String?       // 变更说明
+  operatorId    String
+  operatorName  String        // 冗余：操作人姓名
+  changeReason  String?       // 变更原因
+  metadata      Json?         // 其他变更相关数据
+  createdAt     DateTime      @default(now())
+
+  hearing   Hearing @relation(fields: [hearingId], references: [id], onDelete: Cascade)
+  operator  User    @relation("TimelineOperator", fields: [operatorId], references: [id])
+
+  @@index([hearingId])
+  @@index([changeType])
+  @@index([createdAt])
+  @@index([operatorId])
+}
+
+// ==================== 核心：提醒名单 ====================
+
+model Reminder {
+  id              String          @id @default(uuid())
+  hearingId       String
+  reminderType    ReminderType
+  title           String
+  content         String
+  scheduledTime   DateTime        // 计划发送时间
+  sentAt          DateTime?
+  status          ReminderStatus  @default(PENDING)
+  senderId        String?
+  templateCode    String?
+  retryCount      Int             @default(0)
+  errorMessage    String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  hearing     Hearing             @relation(fields: [hearingId], references: [id], onDelete: Cascade)
+  sender      User?               @relation("ReminderSender", fields: [senderId], references: [id])
+  recipients  ReminderRecipient[]
+
+  @@index([hearingId])
+  @@index([status])
+  @@index([scheduledTime])
+  @@index([reminderType])
+}
+
+model ReminderRecipient {
+  id            String          @id @default(uuid())
+  reminderId    String
+  userId        String?
+  clientId      String?
+  recipientName String
+  recipientContact String        // 联系方式：邮箱/手机号等
+  contactType   String          // 联系方式类型
+  status        ReminderStatus  @default(PENDING)
+  readAt        DateTime?
+  confirmedAt   DateTime?
+  deliveredAt   DateTime?
+  failReason    String?
+
+  reminder  Reminder @relation(fields: [reminderId], references: [id], onDelete: Cascade)
+  user      User?    @relation(fields: [userId], references: [id])
+  client    Client?  @relation(fields: [clientId], references: [id])
+
+  @@index([reminderId])
+  @@index([userId])
+  @@index([clientId])
+  @@index([status])
+}
+
+// ==================== 核心：利益冲突异常单 ====================
+
+model ExceptionRecord {
+  id                 String          @id @default(uuid())
+  exceptionNo        String          @unique  // 异常单编号
+  hearingId          String?
+  caseId             String?
+  exceptionType      ExceptionType
+  title              String
+  description        String          // 问题描述
+  severity           ConflictSeverity @default(HIGH)
+  status             ExceptionStatus @default(OPEN)
+  impactScope        Json?           // 影响范围：涉及案件、开庭、人员、客户等
+  responsibility     Json?           // 责任归属：责任人、责任部门、责任原因分析
+  investigationResult String?        // 调查结果
+  handlingResult     String?         // 处理结果
+  correctiveAction   String?         // 纠正措施
+  preventiveMeasure  String?         // 预防措施
+  relatedConflictIds String[]        // 关联的冲突检测ID
+  relatedHearingIds  String[]        // 关联的其他开庭ID
+  estimatedLoss      Decimal?        @db.Decimal(15, 2) // 预估损失
+  actualLoss         Decimal?        @db.Decimal(15, 2) // 实际损失
+  customerSatisfaction String?       // 客户满意度反馈
+  creatorId          String
+  resolverId         String?
+  createdAt          DateTime        @default(now())
+  resolvedAt         DateTime?
+  closedAt           DateTime?
+  updatedAt          DateTime        @updatedAt
+
+  hearing    Hearing? @relation(fields: [hearingId], references: [id])
+  case       Case?    @relation(fields: [caseId], references: [id])
+  creator    User     @relation("ExceptionCreator", fields: [creatorId], references: [id])
+  resolver   User?    @relation("ExceptionResolver", fields: [resolverId], references: [id])
+  attachments ExceptionAttachment[]
+  timeline    ExceptionTimeline[]
+
+  @@index([status])
+  @@index([exceptionType])
+  @@index([severity])
+  @@index([caseId])
+  @@index([hearingId])
+  @@index([creatorId])
+}
+
+model ExceptionAttachment {
+  id            String   @id @default(uuid())
+  exceptionId   String
+  fileName      String
+  fileUrl       String
+  fileSize      Int
+  fileType      String
+  uploadedBy    String
+  uploadedAt    DateTime @default(now())
+  description   String?
+
+  exception  ExceptionRecord @relation(fields: [exceptionId], references: [id], onDelete: Cascade)
+
+  @@index([exceptionId])
+}
+
+model ExceptionTimeline {
+  id            String   @id @default(uuid())
+  exceptionId   String
+  action        String   // 创建/调查/处理/升级/关闭等动作
+  description   String?
+  operatorName  String
+  operatorId    String?
+  statusChange  String?  // 状态变更记录
+  metadata      Json?
+  createdAt     DateTime @default(now())
+
+  exception  ExceptionRecord @relation(fields: [exceptionId], references: [id], onDelete: Cascade)
+
+  @@index([exceptionId])
+  @@index([createdAt])
+}
+
+// ==================== 导出记录 ====================
+
+model ExportRecord {
+  id              String   @id @default(uuid())
+  exportType      String   // 日历汇总/到场统计/异常统计/冲突统计等
+  fileName        String
+  fileUrl         String?
+  startTimeRange  DateTime
+  endTimeRange    DateTime
+  filterCriteria  Json?    // 筛选条件
+  includedFields  String[] // 包含字段
+  caliberNote     String   // 口径说明
+  summaryData     Json?    // 汇总数据
+  recordCount     Int      @default(0)
+  exportedById    String
+  exportedByName  String
+  createdAt       DateTime @default(now())
+
+  @@index([exportType])
+  @@index([createdAt])
+  @@index([exportedById])
+}
