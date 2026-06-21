@@ -1,0 +1,168 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    'Noto Sans', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f0f2f5;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.dashboard-container {
+  padding: 24px;
+}
+
+.dashboard-header {
+  margin-bottom: 24px;
+}
+
+.dashboard-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 8px;
+}
+
+.dashboard-subtitle {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.stat-card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.stat-card .stat-value {
+  font-size: 28px;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 4px;
+}
+
+.stat-card .stat-label {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.stat-card .stat-trend {
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.chart-card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  margin-bottom: 24px;
+}
+
+.chart-card .chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.chart-card .chart-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.anomaly-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.anomaly-delay {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.anomaly-missing {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.anomaly-caliber {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.tab-section {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.affected-range {
+  background: #fef3c7;
+  border-left: 4px solid #d97706;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  border-radius: 4px;
+}
+
+.affected-range .range-title {
+  font-weight: 600;
+  color: #92400e;
+  margin-bottom: 4px;
+}
+
+.affected-range .range-desc {
+  font-size: 13px;
+  color: #78350f;
+}
+
+.diff-table {
+  font-size: 13px;
+}
+
+.diff-table .diff-amount {
+  color: #dc2626;
+  font-weight: 500;
+}
+
+.approval-timeline {
+  padding: 16px 0;
+}
+
+.check-consistent {
+  color: #16a34a;
+}
+
+.check-inconsistent {
+  color: #dc2626;
+}
+
+.download-section {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.rules-modal .rules-content {
+  font-family: monospace;
+  font-size: 12px;
+  white-space: pre-wrap;
+  line-height: 1.6;
+  background: #f5f5f5;
+  padding: 16px;
+  border-radius: 4px;
+}
