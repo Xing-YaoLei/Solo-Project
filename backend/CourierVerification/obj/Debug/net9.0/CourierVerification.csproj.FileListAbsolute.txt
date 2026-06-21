@@ -1,0 +1,8 @@
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0422/backend/CourierVerification/obj/Debug/net9.0/CourierVerification.csproj.AssemblyReference.cache
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0422/backend/CourierVerification/obj/Debug/net9.0/CourierVerification.GeneratedMSBuildEditorConfig.editorconfig
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0422/backend/CourierVerification/obj/Debug/net9.0/CourierVerification.AssemblyInfoInputs.cache
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0422/backend/CourierVerification/obj/Debug/net9.0/CourierVerification.AssemblyInfo.cs
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0422/backend/CourierVerification/obj/Debug/net9.0/CourierVerification.csproj.CoreCompileInputs.cache
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0422/backend/CourierVerification/obj/Debug/net9.0/CourierVerification.MvcApplicationPartsAssemblyInfo.cs
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0422/backend/CourierVerification/obj/Debug/net9.0/CourierVerification.MvcApplicationPartsAssemblyInfo.cache
+/Users/yaoleyxing/Developer/solo-mange-pro/MP0422/backend/CourierVerification/obj/Debug/net9.0/CourierVerification.sourcelink.json
