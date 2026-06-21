@@ -31,7 +31,8 @@ public class LeadController {
     public String list(@ModelAttribute LeadQueryDTO query, Model model) {
         List<CustomerLead> leads;
         boolean hasQuery = query.getStatus() != null || query.getSource() != null ||
-                (query.getKeyword() != null && !query.getKeyword().isEmpty()) ||
+                (query.getCustomerName() != null && !query.getCustomerName().isEmpty()) ||
+                (query.getPhone() != null && !query.getPhone().isEmpty()) ||
                 query.getOwnerId() != null || query.getStartDate() != null || query.getEndDate() != null;
         if (hasQuery) {
             leads = leadService.search(query);

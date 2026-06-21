@@ -132,6 +132,14 @@ public class SchedulerController {
     @GetMapping("/search")
     public String search(@ModelAttribute AppointmentQueryDTO query, Model model) {
         List<TestDriveAppointment> appointments = testDriveService.searchAppointments(query);
+        for (TestDriveAppointment appt : appointments) {
+            if (appt.getSalesConsultant() != null) {
+                appt.getSalesConsultant().getRealName();
+            }
+            if (appt.getLead() != null) {
+                appt.getLead().getCustomerName();
+            }
+        }
         model.addAttribute("appointments", appointments);
         model.addAttribute("query", query);
         model.addAttribute("salesList", userRepository.findAll());

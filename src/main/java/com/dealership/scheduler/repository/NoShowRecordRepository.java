@@ -13,13 +13,13 @@ import java.util.Optional;
 @Repository
 public interface NoShowRecordRepository extends JpaRepository<NoShowRecord, Long> {
 
-    @Query("SELECT n FROM NoShowRecord n LEFT JOIN FETCH n.appointment LEFT JOIN FETCH n.lead LEFT JOIN FETCH n.handler WHERE n.id = :id")
+    @Query("SELECT n FROM NoShowRecord n LEFT JOIN FETCH n.appointment a LEFT JOIN FETCH a.salesConsultant LEFT JOIN FETCH n.lead LEFT JOIN FETCH n.handler WHERE n.id = :id")
     Optional<NoShowRecord> findByIdWithDetails(@Param("id") Long id);
 
-    @Query("SELECT DISTINCT n FROM NoShowRecord n LEFT JOIN FETCH n.appointment LEFT JOIN FETCH n.lead LEFT JOIN FETCH n.handler ORDER BY n.createTime DESC")
+    @Query("SELECT DISTINCT n FROM NoShowRecord n LEFT JOIN FETCH n.appointment a LEFT JOIN FETCH a.salesConsultant LEFT JOIN FETCH n.lead LEFT JOIN FETCH n.handler ORDER BY n.createTime DESC")
     List<NoShowRecord> findAllWithDetails();
 
-    @Query("SELECT DISTINCT n FROM NoShowRecord n LEFT JOIN FETCH n.appointment LEFT JOIN FETCH n.lead LEFT JOIN FETCH n.handler WHERE n.status = :status ORDER BY n.createTime DESC")
+    @Query("SELECT DISTINCT n FROM NoShowRecord n LEFT JOIN FETCH n.appointment a LEFT JOIN FETCH a.salesConsultant LEFT JOIN FETCH n.lead LEFT JOIN FETCH n.handler WHERE n.status = :status ORDER BY n.createTime DESC")
     List<NoShowRecord> findByStatusWithDetails(@Param("status") NoShowRecord.NoShowStatus status);
 
     Optional<NoShowRecord> findByAppointmentId(Long appointmentId);
