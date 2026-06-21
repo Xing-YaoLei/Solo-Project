@@ -8,5 +8,5 @@ export { ScenicMap } from './ScenicMap';
 export { TutorialSystem } from './TutorialSystem';
 export { ScorePopup } from './ScorePopup';
 export { MainMenuScene } from './MainMenuScene';
-export { LevelSelectScene, LevelItem } from './LevelSelectScene';
+export { LevelSelectScene } from './LevelSelectScene';
 export { GamePlayScene } from './GamePlayScene';

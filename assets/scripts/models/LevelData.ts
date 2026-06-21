@@ -10,6 +10,7 @@ export interface LevelTask {
     scenicSpotId: string;
     timeSlotIndex: number;
     arrivalTime: number | null;
+    arrivalStatus: string;
     isTask: boolean;
     correctAction: ActionType;
     correctRescheduleSlotIndex: number | null;

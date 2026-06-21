@@ -32,7 +32,10 @@ export enum ConflictType {
     CAPACITY_EXCEEDED = 'capacity_exceeded',
     SAME_PERSON_MULTI_BOOKING = 'same_person_multi_booking',
     BLACKLIST = 'blacklist',
-    INVALID_TIME = 'invalid_time'
+    INVALID_TIME = 'invalid_time',
+    ARRIVAL_LATE = 'arrival_late',
+    ARRIVAL_NO_SHOW = 'arrival_no_show',
+    ARRIVAL_EARLY = 'arrival_early'
 }
 
 export enum ActionType {

@@ -1,5 +1,5 @@
 import { _decorator, Component, Node, Label, Sprite, Color } from 'cc';
-import { Reservation } from '../models';
+import { Reservation, ArrivalStatus } from '../models';
 import { ConflictType } from '../models/GameEnums';
 import { ConflictDetector } from '../core/ConflictDetector';
 import { GameManager } from '../core/GameManager';
@@ -31,11 +31,14 @@ export class ReservationDetail extends Component {
     @property(Node)
     conflictListNode: Node | null = null;
 
-    @property(Prefab)
-    conflictItemPrefab: any = null;
-
     @property(Label)
     notesLabel: Label | null = null;
+
+    @property(Label)
+    arrivalStatusLabel: Label | null = null;
+
+    @property(Label)
+    arrivalTimeLabel: Label | null = null;
 
     @property(Node)
     noSelectionHint: Node | null = null;
@@ -107,6 +110,39 @@ export class ReservationDetail extends Component {
         }
         if (this.notesLabel) {
             this.notesLabel.string = visitor.notes || '无';
+        }
+
+        if (visitor.isArrived()) {
+            if (this.arrivalStatusLabel) {
+                const statusMap: Record<string, { text: string; color: Color }> = {
+                    [ArrivalStatus.ARRIVED_ON_TIME]: { text: '已到场', color: new Color(76, 175, 80) },
+                    [ArrivalStatus.ARRIVED_LATE]: { text: '迟到到场', color: new Color(255, 152, 0) },
+                    [ArrivalStatus.ARRIVED_EARLY]: { text: '提前到场', color: new Color(76, 175, 80) },
+                };
+                const info = statusMap[visitor.arrivalStatus];
+                if (info) {
+                    this.arrivalStatusLabel.string = info.text;
+                    this.arrivalStatusLabel.color = info.color;
+                }
+                this.arrivalStatusLabel.node.active = true;
+            }
+            if (this.arrivalTimeLabel) {
+                if (visitor.arrivalTime !== null) {
+                    const hours = Math.floor(visitor.arrivalTime / 60);
+                    const minutes = visitor.arrivalTime % 60;
+                    this.arrivalTimeLabel.string = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+                }
+                this.arrivalTimeLabel.node.active = true;
+            }
+        } else {
+            if (this.arrivalStatusLabel) {
+                this.arrivalStatusLabel.string = '未到场';
+                this.arrivalStatusLabel.color = Color.GRAY;
+                this.arrivalStatusLabel.node.active = true;
+            }
+            if (this.arrivalTimeLabel) {
+                this.arrivalTimeLabel.node.active = false;
+            }
         }
 
         this.updateConflictList();

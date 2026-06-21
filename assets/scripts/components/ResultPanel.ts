@@ -2,7 +2,7 @@ import { _decorator, Component, Node, Label, Button, Sprite, Color, tween, Vec3 
 import { GameManager } from '../core/GameManager';
 import { GameResult, MistakeRecord } from '../models';
 import { ActionType } from '../models/GameEnums';
-import { SceneManager } from '../utils/SceneManager';
+import { director } from 'cc';
 import { GameSaveManager } from '../data/GameSaveManager';
 const { ccclass, property } = _decorator;
 
@@ -223,11 +223,11 @@ export class ResultPanel extends Component {
     }
 
     private onNextLevel(): void {
-        SceneManager.instance?.goToLevelSelect();
+        director.loadScene('LevelSelect');
     }
 
     private onBack(): void {
-        SceneManager.instance?.goToLevelSelect();
+        director.loadScene('LevelSelect');
     }
 
     public hide(): void {

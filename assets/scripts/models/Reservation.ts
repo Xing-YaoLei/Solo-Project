@@ -1,4 +1,4 @@
-import { ReservationStatus, ConflictType, ActionType } from './GameEnums';
+import { ReservationStatus, ConflictType, ActionType, ArrivalStatus } from './GameEnums';
 import { Visitor } from './Visitor';
 import { TimeSlot } from './TimeSlot';
 
@@ -34,7 +34,7 @@ export class Reservation {
     public feedback: string;
     public priority: number;
     public correctAction: ActionType;
-    public correctRescheduleSlotId: string | null;
+    public correctRescheduleSlotIndex: number | null;
     public isTask: boolean;
 
     constructor(visitor: Visitor, timeSlot: TimeSlot, scenicSpotId: string) {
@@ -51,7 +51,7 @@ export class Reservation {
         this.feedback = '';
         this.priority = 0;
         this.correctAction = ActionType.APPROVE_RESERVATION;
-        this.correctRescheduleSlotId = null;
+        this.correctRescheduleSlotIndex = null;
         this.isTask = false;
     }
 
@@ -87,5 +87,13 @@ export class Reservation {
 
     public isProcessed(): boolean {
         return this.status !== ReservationStatus.PENDING;
+    }
+
+    public isArrivalTask(): boolean {
+        return this.visitor.isArrived() && this.status === ReservationStatus.CONFIRMED;
+    }
+
+    public isPendingOrArrival(): boolean {
+        return this.isNew() || this.isArrivalTask();
     }
 }

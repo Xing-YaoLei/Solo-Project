@@ -1,6 +1,6 @@
-import { _decorator, Component, Node, Button, Label, Color, Sprite } from 'cc';
-import { ActionType } from '../models/GameEnums';
-import { GameManager } from '../core/GameManager';
+import { _decorator, Component, Node, Button, Label, Color, Sprite, UITransform, Layout, Widget } from 'cc';
+import { ActionType, ConflictType, ArrivalStatus } from '../models/GameEnums';
+import { GameManager, ActionFeedback } from '../core/GameManager';
 import { ToastManager } from '../utils/ToastManager';
 const { ccclass, property } = _decorator;
 
@@ -15,6 +15,12 @@ export class ActionPanel extends Component {
     @property(Button)
     rescheduleBtn: Button | null = null;
 
+    @property(Button)
+    checkInBtn: Button | null = null;
+
+    @property(Button)
+    denyEntryBtn: Button | null = null;
+
     @property(Node)
     reschedulePanel: Node | null = null;
 
@@ -27,55 +33,65 @@ export class ActionPanel extends Component {
     @property(Button)
     cancelRescheduleBtn: Button | null = null;
 
+    @property(Label)
+    feedbackLabel: Label | null = null;
+
     private selectedSlotIndex: number = -1;
     private isRescheduleMode: boolean = false;
+    private onFeedbackCallback: ((fb: ActionFeedback) => void) | null = null;
 
     onLoad() {
         this.registerEvents();
         this.updateButtonStates();
+        if (this.reschedulePanel) this.reschedulePanel.active = false;
+        if (this.feedbackLabel) {
+            this.feedbackLabel.string = '';
+            this.feedbackLabel.node.active = false;
+        }
+    }
+
+    public setOnFeedbackCallback(cb: (fb: ActionFeedback) => void): void {
+        this.onFeedbackCallback = cb;
     }
 
     private registerEvents(): void {
-        if (this.approveBtn) {
-            this.approveBtn.node.on(Button.EventType.CLICK, this.onApproveClick, this);
-        }
-        if (this.rejectBtn) {
-            this.rejectBtn.node.on(Button.EventType.CLICK, this.onRejectClick, this);
-        }
-        if (this.rescheduleBtn) {
-            this.rescheduleBtn.node.on(Button.EventType.CLICK, this.onRescheduleClick, this);
-        }
-        if (this.confirmRescheduleBtn) {
-            this.confirmRescheduleBtn.node.on(Button.EventType.CLICK, this.onConfirmReschedule, this);
-        }
-        if (this.cancelRescheduleBtn) {
-            this.cancelRescheduleBtn.node.on(Button.EventType.CLICK, this.onCancelReschedule, this);
-        }
+        if (this.approveBtn) this.approveBtn.node.on(Button.EventType.CLICK, () => this.executeAction(ActionType.APPROVE_RESERVATION), this);
+        if (this.rejectBtn) this.rejectBtn.node.on(Button.EventType.CLICK, () => this.executeAction(ActionType.REJECT_RESERVATION), this);
+        if (this.rescheduleBtn) this.rescheduleBtn.node.on(Button.EventType.CLICK, this.onRescheduleClick, this);
+        if (this.checkInBtn) this.checkInBtn.node.on(Button.EventType.CLICK, () => this.executeAction(ActionType.CHECK_IN), this);
+        if (this.denyEntryBtn) this.denyEntryBtn.node.on(Button.EventType.CLICK, () => this.executeAction(ActionType.DENY_ENTRY), this);
+        if (this.confirmRescheduleBtn) this.confirmRescheduleBtn.node.on(Button.EventType.CLICK, this.onConfirmReschedule, this);
+        if (this.cancelRescheduleBtn) this.cancelRescheduleBtn.node.on(Button.EventType.CLICK, this.onCancelReschedule, this);
     }
 
-    private onApproveClick(): void {
-        const gameManager = GameManager.instance;
-        if (!gameManager || !gameManager.getSelectedReservation()) {
+    private executeAction(action: ActionType): void {
+        const gm = GameManager.instance;
+        if (!gm || !gm.getSelectedReservation()) {
             ToastManager.instance?.showError('请先选择一个预约');
             return;
         }
-        gameManager.processAction(ActionType.APPROVE_RESERVATION);
-        this.onActionComplete();
+
+        const fb = gm.processAction(action);
+        this.showFeedback(fb);
+        if (this.onFeedbackCallback) this.onFeedbackCallback(fb);
     }
 
-    private onRejectClick(): void {
-        const gameManager = GameManager.instance;
-        if (!gameManager || !gameManager.getSelectedReservation()) {
-            ToastManager.instance?.showError('请先选择一个预约');
-            return;
+    private showFeedback(fb: ActionFeedback): void {
+        if (this.feedbackLabel) {
+            this.feedbackLabel.string = fb.message;
+            this.feedbackLabel.node.active = true;
+            this.feedbackLabel.color = fb.correct ? new Color(76, 175, 80) : new Color(244, 67, 54);
         }
-        gameManager.processAction(ActionType.REJECT_RESERVATION);
-        this.onActionComplete();
+        if (fb.correct) {
+            ToastManager.instance?.showSuccess(fb.message);
+        } else {
+            ToastManager.instance?.showError(fb.message);
+        }
     }
 
     private onRescheduleClick(): void {
-        const gameManager = GameManager.instance;
-        if (!gameManager || !gameManager.getSelectedReservation()) {
+        const gm = GameManager.instance;
+        if (!gm || !gm.getSelectedReservation()) {
             ToastManager.instance?.showError('请先选择一个预约');
             return;
         }
@@ -85,66 +101,62 @@ export class ActionPanel extends Component {
     private showReschedulePanel(): void {
         this.isRescheduleMode = true;
         this.selectedSlotIndex = -1;
-
-        if (this.reschedulePanel) {
-            this.reschedulePanel.active = true;
-        }
-
+        if (this.reschedulePanel) this.reschedulePanel.active = true;
         this.populateRescheduleSlots();
     }
 
     private hideReschedulePanel(): void {
         this.isRescheduleMode = false;
-        if (this.reschedulePanel) {
-            this.reschedulePanel.active = false;
-        }
+        if (this.reschedulePanel) this.reschedulePanel.active = false;
     }
 
     private populateRescheduleSlots(): void {
         if (!this.rescheduleSlotList) return;
-
         this.rescheduleSlotList.removeAllChildren();
 
-        const gameManager = GameManager.instance;
-        const reservation = gameManager?.getSelectedReservation();
+        const gm = GameManager.instance;
+        const reservation = gm?.getSelectedReservation();
         if (!reservation) return;
 
-        const spot = gameManager?.getScenicSpot(reservation.scenicSpotId);
+        const spot = gm?.getScenicSpot(reservation.scenicSpotId);
         if (!spot) return;
 
-        const availableSlots = spot.getAvailableTimeSlots(reservation.visitor.ticketCount);
+        const currentSlotIdx = spot.timeSlots.findIndex(s =>
+            s.startTime === reservation.timeSlot.startTime && s.endTime === reservation.timeSlot.endTime
+        );
 
         for (let i = 0; i < spot.timeSlots.length; i++) {
             const slot = spot.timeSlots[i];
-            const isAvailable = slot.hasCapacity(reservation.visitor.ticketCount);
+            const isCurrent = (i === currentSlotIdx);
+            const isAvailable = slot.hasCapacity(reservation.visitor.ticketCount) && !isCurrent;
 
             const node = new Node('SlotItem');
-            node.setContentSize(200, 40);
+            const uiTransform = node.addComponent(UITransform);
+            uiTransform.setContentSize(360, 40);
 
             const bg = node.addComponent(Sprite);
             bg.type = Sprite.Type.SIMPLE;
-            bg.color = isAvailable ? new Color(232, 245, 233) : new Color(245, 245, 245);
+            bg.sizeMode = Sprite.SizeMode.CUSTOM;
+            bg.color = isCurrent ? new Color(255, 235, 238) : (isAvailable ? new Color(232, 245, 233) : new Color(245, 245, 245));
 
             const label = node.addComponent(Label);
-            label.string = `${slot.formatTime()} (剩余${slot.getAvailableSlots()})`;
+            const suffix = isCurrent ? ' [当前时段]' : ` (剩余${slot.getAvailableSlots()})`;
+            label.string = slot.formatTime() + suffix;
             label.fontSize = 14;
-            label.color = isAvailable ? new Color(76, 175, 80) : Color.GRAY;
+            label.color = isCurrent ? new Color(244, 67, 54) : (isAvailable ? new Color(76, 175, 80) : Color.GRAY);
+            label.horizontalAlign = Label.HorizontalAlign.LEFT;
 
-            const button = node.addComponent(Button);
-            button.interactable = isAvailable;
-
-            const slotIndex = i;
-            node.on(Button.EventType.CLICK, () => {
-                if (isAvailable) {
-                    this.selectSlot(slotIndex, node);
-                }
-            }, this);
+            if (isAvailable) {
+                const btn = node.addComponent(Button);
+                const idx = i;
+                node.on(Button.EventType.CLICK, () => this.selectSlot(idx), this);
+            }
 
             this.rescheduleSlotList.addChild(node);
         }
     }
 
-    private selectSlot(index: number, node: Node): void {
+    private selectSlot(index: number): void {
         this.selectedSlotIndex = index;
 
         if (this.rescheduleSlotList) {
@@ -168,35 +180,44 @@ export class ActionPanel extends Component {
             return;
         }
 
-        const gameManager = GameManager.instance;
-        if (!gameManager) return;
+        const gm = GameManager.instance;
+        if (!gm) return;
 
-        gameManager.processAction(ActionType.RESCHEDULE, this.selectedSlotIndex);
+        const fb = gm.processAction(ActionType.RESCHEDULE, this.selectedSlotIndex);
         this.hideReschedulePanel();
-        this.onActionComplete();
+        this.showFeedback(fb);
+        if (this.onFeedbackCallback) this.onFeedbackCallback(fb);
     }
 
     private onCancelReschedule(): void {
         this.hideReschedulePanel();
     }
 
-    private onActionComplete(): void {
-        this.updateButtonStates();
-        this.hideReschedulePanel();
-    }
-
     public updateButtonStates(): void {
-        const gameManager = GameManager.instance;
-        const hasSelection = gameManager?.getSelectedReservation() !== null;
+        const gm = GameManager.instance;
+        const reservation = gm?.getSelectedReservation();
+        const hasSelection = reservation !== null;
+        const isArrival = reservation?.isArrivalTask() ?? false;
 
         if (this.approveBtn) {
-            this.approveBtn.interactable = hasSelection;
+            this.approveBtn.node.active = !isArrival;
+            this.approveBtn.interactable = hasSelection && !isArrival;
         }
         if (this.rejectBtn) {
-            this.rejectBtn.interactable = hasSelection;
+            this.rejectBtn.node.active = !isArrival;
+            this.rejectBtn.interactable = hasSelection && !isArrival;
         }
         if (this.rescheduleBtn) {
-            this.rescheduleBtn.interactable = hasSelection;
+            this.rescheduleBtn.node.active = !isArrival;
+            this.rescheduleBtn.interactable = hasSelection && !isArrival;
+        }
+        if (this.checkInBtn) {
+            this.checkInBtn.node.active = isArrival;
+            this.checkInBtn.interactable = hasSelection && isArrival;
+        }
+        if (this.denyEntryBtn) {
+            this.denyEntryBtn.node.active = isArrival;
+            this.denyEntryBtn.interactable = hasSelection && isArrival;
         }
     }
 

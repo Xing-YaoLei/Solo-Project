@@ -29,6 +29,9 @@ export class ReservationItem extends Component {
     @property(Node)
     selectedBorder: Node | null = null;
 
+    @property(Label)
+    arrivalBadge: Label | null = null;
+
     private reservation: Reservation | null = null;
     private isSelected: boolean = false;
 
@@ -50,6 +53,7 @@ export class ReservationItem extends Component {
 
         this.updateStatus();
         this.updateConflictFlag();
+        this.updateArrivalBadge();
         this.setSelected(false);
     }
 
@@ -87,6 +91,29 @@ export class ReservationItem extends Component {
             this.background.color = new Color(255, 235, 238);
         } else if (this.background) {
             this.background.color = Color.WHITE;
+        }
+    }
+
+    private updateArrivalBadge(): void {
+        if (!this.reservation || !this.arrivalBadge) return;
+
+        if (this.reservation.isArrivalTask()) {
+            this.arrivalBadge.active = true;
+            const conflicts = this.reservation.conflicts;
+            if (conflicts.includes(ConflictType.ARRIVAL_LATE)) {
+                this.arrivalBadge.string = "迟到到场";
+            } else if (conflicts.includes(ConflictType.ARRIVAL_NO_SHOW)) {
+                this.arrivalBadge.string = "未到场";
+            } else if (conflicts.includes(ConflictType.ARRIVAL_EARLY)) {
+                this.arrivalBadge.string = "提前到场";
+            } else if (conflicts.includes(ConflictType.BLACKLIST)) {
+                this.arrivalBadge.string = "黑名单到场";
+            } else {
+                this.arrivalBadge.string = "到场处理";
+            }
+            this.arrivalBadge.color = new Color(255, 152, 0);
+        } else {
+            this.arrivalBadge.active = false;
         }
     }
 

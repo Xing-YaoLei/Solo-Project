@@ -88,7 +88,10 @@ export class ConflictDetector {
             [ConflictType.CAPACITY_EXCEEDED]: '容量超限：该时段预约人数已达上限',
             [ConflictType.SAME_PERSON_MULTI_BOOKING]: '重复预约：同一身份证多次预约同一景区',
             [ConflictType.BLACKLIST]: '黑名单游客：该游客在景区黑名单中',
-            [ConflictType.INVALID_TIME]: '无效时段：预约时段不在开放时间内'
+            [ConflictType.INVALID_TIME]: '无效时段：预约时段不在开放时间内',
+            [ConflictType.ARRIVAL_LATE]: '迟到到场：游客超过预约时段到达',
+            [ConflictType.ARRIVAL_NO_SHOW]: '未到场：游客未在预约时段到场',
+            [ConflictType.ARRIVAL_EARLY]: '提前到场：游客早于预约时段到达'
         };
         return descriptions[type] || '未知冲突';
     }
@@ -98,11 +101,19 @@ export class ConflictDetector {
             return ActionType.APPROVE_RESERVATION;
         }
 
+        if (conflicts.includes(ConflictType.ARRIVAL_LATE) || conflicts.includes(ConflictType.ARRIVAL_NO_SHOW)) {
+            return ActionType.DENY_ENTRY;
+        }
+
+        if (conflicts.includes(ConflictType.ARRIVAL_EARLY)) {
+            return ActionType.CHECK_IN;
+        }
+
         if (conflicts.includes(ConflictType.BLACKLIST)) {
             return ActionType.REJECT_RESERVATION;
         }
 
-        if (conflicts.includes(ConflictType.CAPACITY_EXCEEDED) || 
+        if (conflicts.includes(ConflictType.CAPACITY_EXCEEDED) ||
             conflicts.includes(ConflictType.TIME_SLOT_OVERLAP)) {
             return ActionType.RESCHEDULE;
         }
