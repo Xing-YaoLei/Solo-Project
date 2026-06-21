@@ -1,18 +1,18 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   TrendingUp,
   Users,
   BarChart3,
   PieChart,
-  Calendar,
   Clock,
   Activity,
   Loader2,
   ChevronDown,
   Map,
+  Trophy,
 } from 'lucide-react';
 import {
   LineChart,
@@ -32,14 +32,15 @@ import {
   Cell,
 } from 'recharts';
 import { dashboardApi, riderApi } from '@/lib/api';
-import { TASK_STATUS_MAP, formatMoney, cn } from '@/lib/utils';
+import { TASK_STATUS_MAP, cn } from '@/lib/utils';
 import AuthGuard from '@/components/AuthGuard';
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#64748b'];
+const DAY_OPTIONS = [7, 14, 30, 90];
 
 function DashboardContent() {
   const [days, setDays] = useState(30);
-  const [selectedRider, setSelectedRider] = useState('');
+  const [selectedRiderId, setSelectedRiderId] = useState('');
   const [showRiderDropdown, setShowRiderDropdown] = useState(false);
   const [overview, setOverview] = useState<any>(null);
   const [trendData, setTrendData] = useState<any>(null);
@@ -52,7 +53,7 @@ function DashboardContent() {
       setLoading(true);
       const [ov, td, dist, rs] = await Promise.all([
         dashboardApi.overview(),
-        dashboardApi.riderTrend({ days, riderId: selectedRider || undefined }),
+        dashboardApi.riderTrend({ days, riderId: selectedRiderId || undefined }),
         dashboardApi.taskDistribution(),
         riderApi.list(),
       ]);
@@ -67,7 +68,63 @@ function DashboardContent() {
 
   useEffect(() => {
     loadData();
-  }, [days, selectedRider]);
+  }, [days, selectedRiderId]);
+
+  const trendList = trendData?.trendData || [];
+  const riderSeries = trendData?.riderSeries || [];
+
+  const totalOrders = useMemo(
+    () => trendList.reduce((s: number, d: any) => s + (d.totalOrders || 0), 0),
+    [trendList],
+  );
+
+  const avgOrdersPerDay = useMemo(
+    () => trendList.length ? Math.round(totalOrders / trendList.length) : 0,
+    [totalOrders, trendList.length],
+  );
+
+  const totalAvgDuration = useMemo(
+    () => trendList.reduce((s: number, d: any) => s + (d.avgDuration || 0), 0),
+    [trendList],
+  );
+
+  const avgWorkHours = useMemo(
+    () => trendList.length ? Math.round(totalAvgDuration / trendList.length / 60) : 0,
+    [totalAvgDuration, trendList.length],
+  );
+
+  const selectedRider = riders.find((r) => r.id === selectedRiderId);
+
+  const riderLineChartData = useMemo(() => {
+    if (!trendList.length || !riderSeries.length) return [];
+    return trendList.map((d: any) => {
+      const row: any = { date: d.date };
+      riderSeries.slice(0, 5).forEach((r: any) => {
+        const match = r.data.find((rd: any) => rd.date === d.date);
+        row[r.name] = match?.orders || 0;
+      });
+      return row;
+    });
+  }, [trendList, riderSeries]);
+
+  const rankingList = useMemo(() => {
+    return riderSeries
+      .map((r: any) => {
+        const totalOrders = r.data.reduce((s: number, d: any) => s + d.orders, 0);
+        const totalDuration = r.data.reduce((s: number, d: any) => s + d.workDuration, 0);
+        const avgPerDay = days > 0 ? Math.round((totalOrders / days) * 10) / 10 : 0;
+        const efficiency = totalDuration > 0 ? Math.round((totalOrders / (totalDuration / 60)) * 10) / 10 : 0;
+        return {
+          name: r.name,
+          totalOrders,
+          totalDuration,
+          avgPerDay,
+          efficiency,
+        };
+      })
+      .sort((a: any, b: any) => b.totalOrders - a.totalOrders)
+      .slice(0, 10);
+  }, [riderSeries, days]);
 
   if (loading) {
     return (
@@ -76,18 +133,6 @@ function DashboardContent() {
       </div>
     );
   }
-
-  const avgOrdersPerDay = trendData?.trendData?.length
-    ? Math.round(
-        trendData.trendData.reduce((s: number, d: any) => s + d.totalOrders, 0) / trendData.trendData.length,
-      )
-    : 0;
-
-  const totalWorkDuration = trendData?.trendData?.length
-    ? trendData.trendData.reduce((s: number, d: any) => s + d.avgDuration, 0)
-    : 0;
-
-  const selectedRiderInfo = riders.find((r) => r.userId === selectedRider);
 
   return (
     <div className="space-y-6">
@@ -98,13 +143,14 @@ function DashboardContent() {
             骑手活跃趋势看板
           </h2>
           <p className="text-sm text-gray-500 mt-1">
-            管理层视角 · 近 {days} 天运营数据分析 {selectedRiderInfo ? `· ${selectedRiderInfo.user?.name}` : ''}
+            管理层视角 · 近 {days} 天运营数据分析
+            {selectedRider ? ` · ${selectedRider.user?.name}（${selectedRider.riderCode}）` : ' · 全部骑手'}
           </p>
         </div>
 
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-1 p-1 rounded-xl bg-gray-100">
-            {[7, 14, 30, 90].map((d) => (
+            {DAY_OPTIONS.map((d) => (
               <button
                 key={d}
                 onClick={() => setDays(d)}
@@ -125,27 +171,33 @@ function DashboardContent() {
               onClick={() => setShowRiderDropdown(!showRiderDropdown)}
               className="btn-outline min-w-[160px] justify-between"
             >
-              <span>{selectedRiderInfo ? selectedRiderInfo.user?.name : '全部骑手'}</span>
+              <span>{selectedRider ? selectedRider.user?.name : '全部骑手'}</span>
               <ChevronDown size={16} />
             </button>
             {showRiderDropdown && (
               <div className="absolute top-full mt-2 right-0 w-64 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-30 max-h-80 overflow-y-auto animate-slide-up">
                 <button
-                  onClick={() => { setSelectedRider(''); setShowRiderDropdown(false); }}
+                  onClick={() => {
+                    setSelectedRiderId('');
+                    setShowRiderDropdown(false);
+                  }}
                   className={cn(
                     'w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition-colors',
-                    !selectedRider && 'bg-primary-50 text-primary-700',
+                    !selectedRiderId && 'bg-primary-50 text-primary-700',
                   )}
                 >
                   全部骑手
                 </button>
                 {riders.map((r) => (
                   <button
-                    key={r.userId}
-                    onClick={() => { setSelectedRider(r.userId); setShowRiderDropdown(false); }}
+                    key={r.id}
+                    onClick={() => {
+                      setSelectedRiderId(r.id);
+                      setShowRiderDropdown(false);
+                    }}
                     className={cn(
                       'w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition-colors',
-                      selectedRider === r.userId && 'bg-primary-50 text-primary-700',
+                      selectedRiderId === r.id && 'bg-primary-50 text-primary-700',
                     )}
                   >
                     <div className="font-medium">{r.user?.name}</div>
@@ -185,9 +237,7 @@ function DashboardContent() {
               期间总订单
             </div>
             <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-4xl font-bold text-gray-900">
-                {trendData?.trendData?.reduce((s: number, d: any) => s + d.totalOrders, 0) || 0}
-              </span>
+              <span className="text-4xl font-bold text-gray-900">{totalOrders}</span>
               <span className="text-sm text-gray-500">单</span>
             </div>
             <div className="mt-2 text-xs text-gray-400">
@@ -204,9 +254,7 @@ function DashboardContent() {
               人均工作时长
             </div>
             <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-4xl font-bold text-gray-900">
-                {trendData?.trendData?.length ? Math.round(totalWorkDuration / trendData.trendData.length / 60) : 0}
-              </span>
+              <span className="text-4xl font-bold text-gray-900">{avgWorkHours}</span>
               <span className="text-sm text-gray-500">小时/天</span>
             </div>
             <div className="mt-2 text-xs text-gray-400">
@@ -247,7 +295,7 @@ function DashboardContent() {
         </div>
         <div className="h-80">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={trendData?.trendData || []} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+            <AreaChart data={trendList} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="colorOrders" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
@@ -294,7 +342,7 @@ function DashboardContent() {
           </div>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+              <LineChart data={riderLineChartData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                 <XAxis
                   dataKey="date"
@@ -312,39 +360,17 @@ function DashboardContent() {
                   }}
                 />
                 <Legend />
-                {trendData?.riderSeries?.slice(0, 5).map((r: any, idx: number) => {
-                  const combinedData = (trendData?.trendData || []).map((d: any) => {
-                    const riderData = r.data.find((rd: any) => rd.date === d.date);
-                    return {
-                      date: d.date,
-                      [r.name]: riderData?.orders || 0,
-                    };
-                  });
-                  return null;
-                })}
-                {Object.assign({}, ...(trendData?.riderSeries?.slice(0, 5).map((r: any, idx: number) => ({
-                  data: (trendData?.trendData || []).map((d: any) => {
-                    const riderData = r.data.find((rd: any) => rd.date === d.date);
-                    return {
-                      date: d.date,
-                      [r.name]: riderData?.orders || 0,
-                    };
-                  }),
-                  color: COLORS[idx % COLORS.length],
-                  name: r.name,
-                })) || [{}]))}
-                {trendData?.riderSeries?.slice(0, 5).map((r: any, idx: number) => {
-                  const color = COLORS[idx % COLORS.length];
-                  const dataWithRider = (trendData?.trendData || []).map((d: any) => {
-                    const riderData = r.data.find((rd: any) => rd.date === d.date);
-                    return {
-                      date: d.date,
-                      value: riderData?.orders || 0,
-                    };
-                  });
-                  return null;
-                })}
-                <LineChartData trendData={trendData} />
+                {riderSeries.slice(0, 5).map((r: any, idx: number) => (
+                  <Line
+                    key={r.name}
+                    type="monotone"
+                    dataKey={r.name}
+                    stroke={COLORS[idx % COLORS.length]}
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                    activeDot={{ r: 5 }}
+                  />
+                ))}
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -406,15 +432,15 @@ function DashboardContent() {
         <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
           <div>
             <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-              <BarChart3 size={20} className="text-primary-600" />
+              <Clock size={20} className="text-primary-600" />
               骑手每日工作时长分布
             </h3>
-            <p className="text-sm text-gray-500 mt-1">分钟/天</p>
+            <p className="text-sm text-gray-500 mt-1">分钟/天（人均）</p>
           </div>
         </div>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={trendData?.trendData || []} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+            <BarChart data={trendList} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
               <XAxis
                 dataKey="date"
@@ -429,7 +455,7 @@ function DashboardContent() {
                   border: '1px solid #e2e8f0',
                   borderRadius: '12px',
                 }}
-                formatter={(value: number) => [`${Math.round(value / 60)}小时${value % 60}分`, '平均工作时长']}
+                formatter={(value: number) => [`${Math.floor(value / 60)}小时${value % 60}分`, '平均工作时长']}
               />
               <Bar dataKey="avgDuration" fill="#10b981" radius={[6, 6, 0, 0]} name="平均时长(分)" />
             </BarChart>
@@ -439,7 +465,10 @@ function DashboardContent() {
 
       <div className="card">
         <div className="flex items-center justify-between mb-5">
-          <h3 className="text-lg font-semibold text-gray-900">骑手排行榜（近{days}天）</h3>
+          <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+            <Trophy size={20} className="text-warning-500" />
+            骑手排行榜（近 {days} 天）
+          </h3>
           <Link href="/riders" className="text-sm text-primary-600 hover:text-primary-700 font-medium">
             查看全部骑手 →
           </Link>
@@ -457,76 +486,39 @@ function DashboardContent() {
               </tr>
             </thead>
             <tbody>
-              {(trendData?.riderSeries || [])
-                .map((r: any) => {
-                  const totalOrders = r.data.reduce((s: number, d: any) => s + d.orders, 0);
-                  const totalDuration = r.data.reduce((s: number, d: any) => s + d.workDuration, 0);
-                  const avgPerDay = Math.round((totalOrders / days) * 10) / 10;
-                  const efficiency = totalDuration > 0 ? Math.round((totalOrders / (totalDuration / 60)) * 10) / 10 : 0;
-                  return { name: r.name, totalOrders, totalDuration, avgPerDay, efficiency };
-                })
-                .sort((a: any, b: any) => b.totalOrders - a.totalOrders)
-                .slice(0, 10)
-                .map((r: any, idx: number) => (
-                  <tr key={idx} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4">
-                      <span
-                        className={cn(
-                          'inline-flex items-center justify-center w-7 h-7 rounded-full text-sm font-bold',
-                          idx === 0 && 'bg-gradient-to-br from-warning-400 to-warning-600 text-white',
-                          idx === 1 && 'bg-gradient-to-br from-gray-300 to-gray-500 text-white',
-                          idx === 2 && 'bg-gradient-to-br from-orange-300 to-orange-500 text-white',
-                          idx > 2 && 'bg-gray-100 text-gray-600',
-                        )}
-                      >
-                        {idx + 1}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 font-medium text-gray-900">{r.name}</td>
-                    <td className="px-6 py-4 text-right font-semibold text-primary-600">{r.totalOrders}</td>
-                    <td className="px-6 py-4 text-right text-gray-700">
-                      {Math.round(r.totalDuration / 60)}h {r.totalDuration % 60}m
-                    </td>
-                    <td className="px-6 py-4 text-right text-gray-700">{r.avgPerDay}</td>
-                    <td className="px-6 py-4 text-right">
-                      <span className="inline-flex items-center gap-1 text-warning-600 font-medium">
-                        ★ {Math.min(r.efficiency * 2, 5).toFixed(1)}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+              {rankingList.map((r: any, idx: number) => (
+                <tr key={idx} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                  <td className="px-6 py-4">
+                    <span
+                      className={cn(
+                        'inline-flex items-center justify-center w-7 h-7 rounded-full text-sm font-bold',
+                        idx === 0 && 'bg-gradient-to-br from-warning-400 to-warning-600 text-white',
+                        idx === 1 && 'bg-gradient-to-br from-gray-300 to-gray-500 text-white',
+                        idx === 2 && 'bg-gradient-to-br from-orange-300 to-orange-500 text-white',
+                        idx > 2 && 'bg-gray-100 text-gray-600',
+                      )}
+                    >
+                      {idx + 1}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 font-medium text-gray-900">{r.name}</td>
+                  <td className="px-6 py-4 text-right font-semibold text-primary-600">{r.totalOrders}</td>
+                  <td className="px-6 py-4 text-right text-gray-700">
+                    {Math.floor(r.totalDuration / 60)}h {r.totalDuration % 60}m
+                  </td>
+                  <td className="px-6 py-4 text-right text-gray-700">{r.avgPerDay}</td>
+                  <td className="px-6 py-4 text-right">
+                    <span className="inline-flex items-center gap-1 text-warning-600 font-medium">
+                      ★ {Math.min(r.efficiency * 2, 5).toFixed(1)}
+                    </span>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
       </div>
     </div>
-  );
-}
-
-function LineChartData({ trendData }: { trendData: any }) {
-  const combined = (trendData?.trendData || []).map((d: any) => {
-    const row: any = { date: d.date };
-    (trendData?.riderSeries || []).slice(0, 5).forEach((r: any) => {
-      const riderData = r.data.find((rd: any) => rd.date === d.date);
-      row[r.name] = riderData?.orders || 0;
-    });
-    return row;
-  });
-
-  return (
-    <>
-      {Object.keys(combined[0] || {}).filter((k) => k !== 'date').map((key, idx) => (
-        <Line
-          key={key}
-          type="monotone"
-          dataKey={key}
-          stroke={COLORS[idx % COLORS.length]}
-          strokeWidth={2}
-          dot={{ r: 3 }}
-          activeDot={{ r: 5 }}
-        />
-      ))}
-    </>
   );
 }
 
