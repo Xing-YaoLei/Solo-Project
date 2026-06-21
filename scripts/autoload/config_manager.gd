@@ -103,7 +103,7 @@ func get_questions() -> Array:
 	return _default_questions
 
 func set_questions(new_questions: Array) -> void:
-	_user_questions = new_questions.duplicate()
+	_user_questions = new_questions.duplicate(true)
 	_save_user_questions()
 	questions_changed.emit()
 
@@ -117,14 +117,14 @@ func _save_user_questions() -> void:
 		file.close()
 
 func add_question(question: Dictionary) -> void:
-	var questions: Array = get_questions().duplicate()
+	var questions: Array = get_questions().duplicate(true)
 	questions.append(question)
 	set_questions(questions)
 
 func update_question(index: int, question: Dictionary) -> bool:
 	if index < 0 or index >= get_questions().size():
 		return false
-	var questions: Array = get_questions().duplicate()
+	var questions: Array = get_questions().duplicate(true)
 	questions[index] = question
 	set_questions(questions)
 	return true
@@ -132,7 +132,7 @@ func update_question(index: int, question: Dictionary) -> bool:
 func delete_question(index: int) -> bool:
 	if index < 0 or index >= get_questions().size():
 		return false
-	var questions: Array = get_questions().duplicate()
+	var questions: Array = get_questions().duplicate(true)
 	questions.remove_at(index)
 	set_questions(questions)
 	return true
@@ -151,7 +151,7 @@ func get_materials() -> Array:
 	return _default_materials
 
 func set_materials(new_materials: Array) -> void:
-	_user_materials = new_materials.duplicate()
+	_user_materials = new_materials.duplicate(true)
 	_save_user_materials()
 	materials_changed.emit()
 
@@ -165,14 +165,14 @@ func _save_user_materials() -> void:
 		file.close()
 
 func add_material(material: Dictionary) -> void:
-	var materials: Array = get_materials().duplicate()
+	var materials: Array = get_materials().duplicate(true)
 	materials.append(material)
 	set_materials(materials)
 
 func update_material(index: int, material: Dictionary) -> bool:
 	if index < 0 or index >= get_materials().size():
 		return false
-	var materials: Array = get_materials().duplicate()
+	var materials: Array = get_materials().duplicate(true)
 	materials[index] = material
 	set_materials(materials)
 	return true
@@ -180,7 +180,7 @@ func update_material(index: int, material: Dictionary) -> bool:
 func delete_material(index: int) -> bool:
 	if index < 0 or index >= get_materials().size():
 		return false
-	var materials: Array = get_materials().duplicate()
+	var materials: Array = get_materials().duplicate(true)
 	materials.remove_at(index)
 	set_materials(materials)
 	return true
@@ -199,7 +199,7 @@ func get_rewards() -> Array:
 	return _default_rewards
 
 func set_rewards(new_rewards: Array) -> void:
-	_user_rewards = new_rewards.duplicate()
+	_user_rewards = new_rewards.duplicate(true)
 	_save_user_rewards()
 	rewards_changed.emit()
 
@@ -213,14 +213,14 @@ func _save_user_rewards() -> void:
 		file.close()
 
 func add_reward(reward: Dictionary) -> void:
-	var rewards: Array = get_rewards().duplicate()
+	var rewards: Array = get_rewards().duplicate(true)
 	rewards.append(reward)
 	set_rewards(rewards)
 
 func update_reward(index: int, reward: Dictionary) -> bool:
 	if index < 0 or index >= get_rewards().size():
 		return false
-	var rewards: Array = get_rewards().duplicate()
+	var rewards: Array = get_rewards().duplicate(true)
 	rewards[index] = reward
 	set_rewards(rewards)
 	return true
@@ -228,7 +228,7 @@ func update_reward(index: int, reward: Dictionary) -> bool:
 func delete_reward(index: int) -> bool:
 	if index < 0 or index >= get_rewards().size():
 		return false
-	var rewards: Array = get_rewards().duplicate()
+	var rewards: Array = get_rewards().duplicate(true)
 	rewards.remove_at(index)
 	set_rewards(rewards)
 	return true

@@ -361,5 +361,6 @@ func _show_no_questions() -> void:
 	_order_name_label.text = "无地址排序题目"
 	_result_label.text = "当前没有地址排序题目，将跳过此阶段"
 	_submit_button.text = "跳过"
-	_submit_button.pressed.disconnect_all()
+	if _submit_button.pressed.is_connected(_on_submit_pressed):
+		_submit_button.pressed.disconnect(_on_submit_pressed)
 	_submit_button.pressed.connect(func(): GameManager.advance_phase())

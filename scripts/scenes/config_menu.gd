@@ -541,7 +541,7 @@ func _form_multiline(form: VBoxContainer, label: String, value: String) -> TextE
 	edit.text = value
 	edit.add_theme_font_size_override("font_size", 13)
 	edit.custom_minimum_size = Vector2(0, 80)
-	edit.wrap_mode = TextEdit.LINE_WRAP_WORD
+	edit.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	edit.add_theme_color_override("font_color", _color_text)
 	form.add_child(_form_row(label, edit))
 	return edit
@@ -560,6 +560,15 @@ func _form_hint(form: VBoxContainer, text: String) -> void:
 	lbl.add_theme_color_override("font_color", Color(0.6, 0.6, 0.7, 1))
 	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	form.add_child(lbl)
+
+func _split_and_strip(text: String, delim: String = ",") -> Array:
+	var result: Array = []
+	var parts: PackedStringArray = text.split(delim, false)
+	for s in parts:
+		var stripped: String = s.strip_edges()
+		if not stripped.is_empty():
+			result.append(stripped)
+	return result
 
 func _show_edit_dialog(title: String, content: VBoxContainer, on_confirmed: Callable) -> void:
 	if _edit_dialog and is_instance_valid(_edit_dialog):
@@ -678,11 +687,11 @@ func _build_label_fields(container: VBoxContainer, q: Dictionary) -> void:
 	desc_edit.text_changed.connect(func(t): q["description"] = t)
 	var avail_str: String = ", ".join(q.get("available_labels", []))
 	var avail_edit: LineEdit = _form_field(container, "可选标签", avail_str)
-	avail_edit.text_changed.connect(func(t): q["available_labels"] = t.split(",", false).map(func(s): return s.strip_edges()))
+	avail_edit.text_changed.connect(func(t): q["available_labels"] = _split_and_strip(t))
 	_form_hint(container, "可选标签用英文逗号分隔，如: 包装完好,温度正确,配料错误")
 	var correct_str: String = ", ".join(q.get("correct_labels", []))
 	var correct_edit: LineEdit = _form_field(container, "正确标签", correct_str)
-	correct_edit.text_changed.connect(func(t): q["correct_labels"] = t.split(",", false).map(func(s): return s.strip_edges()))
+	correct_edit.text_changed.connect(func(t): q["correct_labels"] = _split_and_strip(t))
 	_form_hint(container, "正确标签必须是可选标签的子集")
 
 func _build_address_fields(container: VBoxContainer, q: Dictionary) -> void:
@@ -710,7 +719,7 @@ func _build_address_fields(container: VBoxContainer, q: Dictionary) -> void:
 
 	var order_str: String = ", ".join(q.get("correct_order", []))
 	var order_edit: LineEdit = _form_field(container, "正确顺序(逗号分隔)", order_str)
-	order_edit.text_changed.connect(func(t): q["correct_order"] = t.split(",", false).map(func(s): return s.strip_edges()))
+	order_edit.text_changed.connect(func(t): q["correct_order"] = _split_and_strip(t))
 	_form_hint(container, "正确顺序用地址ID逗号分隔，如: D,A,B,C")
 
 func _build_trajectory_fields(container: VBoxContainer, q: Dictionary) -> void:
