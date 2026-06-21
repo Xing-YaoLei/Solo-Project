@@ -135,17 +135,17 @@ export default function TaskDetailPage() {
     if (!resolution.trim()) return
     setSubmitting(true)
     try {
-      const response = await fetch(`/api/tasks/${taskId}`, {
+      const response = await fetch(`/api/tasks/${taskId}/resolve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           resolution,
-          action: 'resolve',
+          conclusion: resolution,
         }),
       })
       if (response.ok) {
         const data = await response.json()
-        setTask(data)
+        setTask(data.task)
         setResolution('')
       }
     } catch (error) {

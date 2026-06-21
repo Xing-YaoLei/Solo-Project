@@ -15,7 +15,6 @@ export async function GET() {
       const result: RouteResult[] = await prisma.order.findMany({
         distinct: ['routeId', 'routeName'],
         select: { routeId: true, routeName: true },
-        where: { routeId: { not: null }, routeName: { not: null } },
       })
       routes = result
         .map((r: RouteResult) => ({ id: r.routeId!, name: r.routeName! }))

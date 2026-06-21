@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
+import { Prisma } from '@prisma/client'
 import prisma from '@/lib/prisma'
 import { getMockOrders, getMockOrderDetail } from '@/lib/mockData'
-import type { Order, OrderDetail } from '@/types'
+import type { Order, OrderDetail, OrderStatus } from '@/types'
 
 const querySchema = z.object({
   page: z.string().optional(),
@@ -49,24 +50,18 @@ export async function GET(request: Request) {
     let total: number
 
     try {
-      const where: {
-        status?: string
-        routeId?: string
-        hasItemDamage?: boolean
-        dispatchDuration?: { gt: number }
-        createdAt?: { gte?: Date; lte?: Date }
-      } = {}
-      if (status) where.status = status
+      const where: Prisma.OrderWhereInput = {}
+      if (status) where.status = status as OrderStatus
       if (routeId) where.routeId = routeId
       if (hasItemDamage !== undefined) where.hasItemDamage = hasItemDamage
       if (hasDispatchTimeout) {
         where.dispatchDuration = { gt: 1800 }
       }
       if (startDate) {
-        where.createdAt = { ...where.createdAt, gte: new Date(startDate) }
+        where.createdAt = { ...(where.createdAt as Prisma.DateTimeFilter || {}), gte: new Date(startDate) }
       }
       if (endDate) {
-        where.createdAt = { ...where.createdAt, lte: new Date(endDate + 'T23:59:59') }
+        where.createdAt = { ...(where.createdAt as Prisma.DateTimeFilter || {}), lte: new Date(endDate + 'T23:59:59') }
       }
 
       const [result, count] = await Promise.all([

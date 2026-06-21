@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client'
 import prisma from '@/lib/prisma'
 import {
   generateMockFunnelData,
@@ -13,13 +14,13 @@ import type {
   SystemConfig,
 } from '@/types'
 
-interface OrderWhereClause {
+interface OrderWhereClause extends Prisma.OrderWhereInput {
   createdAt: {
     gte: Date
     lte: Date
   }
   routeId?: string
-  dispatchDuration?: { not: null | undefined }
+  dispatchDuration?: Prisma.IntFilter | number | null
 }
 
 function toNumber(value: unknown): number {
@@ -154,7 +155,7 @@ export class FunnelService {
           gte: new Date(startDate),
           lte: new Date(endDate + 'T23:59:59'),
         },
-        dispatchDuration: { not: null },
+        dispatchDuration: { not: 0 },
       }
       if (routeId) where.routeId = routeId
 
@@ -267,10 +268,6 @@ export class FunnelService {
         select: {
           routeId: true,
           routeName: true,
-        },
-        where: {
-          routeId: { not: null },
-          routeName: { not: null },
         },
       })
 

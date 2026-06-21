@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient, DamageLevel, OrderStatus, TaskType, TaskPriority, TaskStatus, AppealType, AppealStatus, CsType, CsStatus } from '@prisma/client'
 import { subDays, addMinutes } from 'date-fns'
 
 const prisma = new PrismaClient()
@@ -68,8 +68,8 @@ async function main() {
     const pickedAt = addMinutes(acceptedAt, Math.floor(dispatchDuration / 60))
     const deliveredAt = addMinutes(pickedAt, randomBetween(15, 45))
     const hasItemDamage = Math.random() < 0.15
-    const damageLevel = hasItemDamage
-      ? randomElement(['minor', 'moderate', 'severe'])
+    const damageLevel: DamageLevel | null = hasItemDamage
+      ? randomElement([DamageLevel.minor, DamageLevel.moderate, DamageLevel.severe])
       : null
 
     const orderId = generateId()
@@ -87,7 +87,7 @@ async function main() {
         itemDescription: randomElement(ITEMS),
         hasItemDamage,
         itemDamageLevel: damageLevel,
-        status: 'delivered',
+        status: OrderStatus.delivered,
         createdAt,
         acceptedAt,
         pickedAt,
@@ -116,7 +116,7 @@ async function main() {
           create: {
             id: generateId(),
             ticketNo: `CS${Date.now().toString(36).toUpperCase()}`,
-            type: hasItemDamage ? 'damage_report' : randomElement(['complaint', 'appeal', 'inquiry']),
+            type: hasItemDamage ? CsType.damage_report : randomElement([CsType.complaint, CsType.appeal, CsType.inquiry]),
             content: hasItemDamage ? '客户反馈物品损坏，要求赔偿' : '客户咨询订单状态',
             chatHistory: {
               messages: [
@@ -127,7 +127,7 @@ async function main() {
             },
             operatorId: 'op-001',
             operatorName: '客服小王',
-            status: 'closed',
+            status: CsStatus.closed,
             closedAt: addMinutes(createdAt, 30),
           },
         },
@@ -135,10 +135,10 @@ async function main() {
           appeal: {
             create: {
               id: appealId,
-              type: hasItemDamage ? 'damage' : 'late_dispatch',
+              type: hasItemDamage ? AppealType.damage : AppealType.late_dispatch,
               reason: hasItemDamage ? '物品损坏，申请赔偿' : '配送超时，申请补贴',
               evidenceUrls: ['https://example.com/evidence1.jpg', 'https://example.com/evidence2.jpg'],
-              status: randomElement(['pending', 'approved', 'rejected']),
+              status: randomElement([AppealStatus.pending, AppealStatus.approved, AppealStatus.rejected]),
               reviewerId: 'reviewer-001',
               reviewComment: '情况属实，同意申请',
               reviewedAt: addMinutes(createdAt, 60),
@@ -153,11 +153,11 @@ async function main() {
         data: {
           id: generateId(),
           orderId,
-          type: hasItemDamage ? 'item_damage' : 'dispatch_timeout',
-          priority: damageLevel === 'severe' || dispatchDuration > 3000 ? 'high' : 'medium',
-          status: randomElement(['pending', 'processing', 'resolved']),
+          type: hasItemDamage ? TaskType.item_damage : TaskType.dispatch_timeout,
+          priority: damageLevel === DamageLevel.severe || dispatchDuration > 3000 ? TaskPriority.high : TaskPriority.medium,
+          status: randomElement([TaskStatus.pending, TaskStatus.processing, TaskStatus.resolved]),
           title: hasItemDamage
-            ? `物品损坏 - ${damageLevel === 'severe' ? '严重' : damageLevel === 'moderate' ? '中度' : '轻微'}`
+            ? `物品损坏 - ${damageLevel === DamageLevel.severe ? '严重' : damageLevel === DamageLevel.moderate ? '中度' : '轻微'}`
             : `派单超时 - 超出${Math.floor((dispatchDuration - 1800) / 60)}分钟`,
           description: hasItemDamage ? '订单报告物品损坏，需要审核处理' : '派单时长超出阈值，需要核实原因',
           dispatchDuration: dispatchDuration > 1800 ? dispatchDuration : null,
