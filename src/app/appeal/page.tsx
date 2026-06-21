@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import DateRangePicker from "@/components/DateRangePicker";
-import { generateAppealList, generateYoYComparison } from "@/lib/mockData";
+import { generateAppealList, generateYoYComparison, generateMoMComparison } from "@/lib/mockData";
 import { formatCurrency } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
@@ -12,10 +12,12 @@ export default function AppealPage() {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [selectedAppeal, setSelectedAppeal] = useState<any>(null);
   const [yoyData, setYoyData] = useState<any>(null);
+  const [momData, setMomData] = useState<any>(null);
 
   useEffect(() => {
     setAppeals(generateAppealList(20));
     setYoyData(generateYoYComparison());
+    setMomData(generateMoMComparison());
   }, [dateRange]);
 
   const filteredAppeals = statusFilter === "ALL"
@@ -61,24 +63,82 @@ export default function AppealPage() {
         </div>
       </div>
 
-      <div className="bg-blue-50 rounded-xl p-6">
-        <h3 className="font-semibold text-blue-900 mb-3">申诉同比分析</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <p className="text-sm text-blue-600">本期申诉数</p>
-            <p className="text-xl font-bold text-blue-800 mt-1">{appeals.length}</p>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">申诉同比分析</h2>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">本期申诉数</span>
+              <span className="font-bold text-gray-900">{appeals.length}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">去年同期</span>
+              <span className="text-gray-500">
+                {Math.round(appeals.length * 0.8)}
+              </span>
+            </div>
+            <div className="pt-3 border-t border-gray-100">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">同比增长率</span>
+                <span className={cn(
+                  "text-xl font-bold",
+                  yoyData?.yoyRate >= 0 ? "text-green-600" : "text-red-600"
+                )}>
+                  {yoyData?.yoyRate >= 0 ? "+" : ""}{(yoyData?.yoyRate || 0).toFixed(1)}%
+                </span>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4 pt-2">
+              <div className="bg-blue-50 p-3 rounded-lg">
+                <p className="text-xs text-blue-600">待审核</p>
+                <p className="text-lg font-bold text-blue-700">{pendingCount}</p>
+              </div>
+              <div className="bg-green-50 p-3 rounded-lg">
+                <p className="text-xs text-green-600">已通过</p>
+                <p className="text-lg font-bold text-green-700">{approvedCount}</p>
+              </div>
+            </div>
           </div>
-          <div>
-            <p className="text-sm text-blue-600">去年同期</p>
-            <p className="text-xl font-bold text-blue-800 mt-1">
-              {Math.round(appeals.length * 0.8)}
-            </p>
-          </div>
-          <div>
-            <p className="text-sm text-blue-600">同比变化</p>
-            <p className="text-xl font-bold text-blue-800 mt-1">
-              {yoyData?.yoyRate > 0 ? "+" : ""}{(yoyData?.yoyRate || 0).toFixed(1)}%
-            </p>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">申诉环比分析</h2>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">本期申诉数</span>
+              <span className="font-bold text-gray-900">{appeals.length}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">上月同期</span>
+              <span className="text-gray-500">
+                {Math.round(appeals.length * 0.92)}
+              </span>
+            </div>
+            <div className="pt-3 border-t border-gray-100">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">环比增长率</span>
+                <span className={cn(
+                  "text-xl font-bold",
+                  momData?.momRate >= 0 ? "text-green-600" : "text-red-600"
+                )}>
+                  {momData?.momRate >= 0 ? "+" : ""}{(momData?.momRate || 0).toFixed(1)}%
+                </span>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4 pt-2">
+              <div className="bg-yellow-50 p-3 rounded-lg">
+                <p className="text-xs text-yellow-600">上月待审核</p>
+                <p className="text-lg font-bold text-yellow-700">
+                  {Math.round(pendingCount * 0.9)}
+                </p>
+              </div>
+              <div className="bg-red-50 p-3 rounded-lg">
+                <p className="text-xs text-red-600">上月已驳回</p>
+                <p className="text-lg font-bold text-red-700">
+                  {Math.round(rejectedCount * 0.95)}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>

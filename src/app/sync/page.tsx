@@ -1,21 +1,59 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { generateSyncBatches } from "@/lib/mockData";
 import { cn } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
+
+interface SyncBatch {
+  id: string;
+  batchNumber: string;
+  source: string;
+  status: string;
+  totalCount: number;
+  successCount: number;
+  failedCount: number;
+  errorMessage: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  createdAt: string;
+}
+
+interface BatchStats {
+  payment: { count: number; latest: SyncBatch | null };
+  order: { count: number; latest: SyncBatch | null };
+  map: { count: number; latest: SyncBatch | null };
+}
 
 export default function SyncPage() {
-  const [batches, setBatches] = useState<any[]>([]);
+  const [batches, setBatches] = useState<SyncBatch[]>([]);
+  const [stats, setStats] = useState<BatchStats | null>(null);
   const [sourceFilter, setSourceFilter] = useState("ALL");
-  const [selectedBatch, setSelectedBatch] = useState<any>(null);
+  const [selectedBatch, setSelectedBatch] = useState<SyncBatch | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchBatches = async () => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams();
+      if (sourceFilter !== "ALL") {
+        params.set("source", sourceFilter);
+      }
+      const response = await fetch(`/api/sync/batches?${params.toString()}`);
+      const result = await response.json();
+      if (result.success) {
+        setBatches(result.data.batches);
+        setStats(result.data.stats);
+      }
+    } catch (error) {
+      console.error("Failed to fetch sync batches:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    setBatches(generateSyncBatches(20));
-  }, []);
-
-  const filteredBatches = sourceFilter === "ALL"
-    ? batches
-    : batches.filter((b) => b.source === sourceFilter);
+    fetchBatches();
+  }, [sourceFilter]);
 
   const statusColors: Record<string, string> = {
     SUCCESS: "bg-green-100 text-green-700",
@@ -25,10 +63,33 @@ export default function SyncPage() {
     PENDING: "bg-gray-100 text-gray-700",
   };
 
+  const statusLabels: Record<string, string> = {
+    SUCCESS: "成功",
+    FAILED: "失败",
+    PARTIAL: "部分成功",
+    RUNNING: "运行中",
+    PENDING: "等待中",
+  };
+
+  const sourceLabels: Record<string, string> = {
+    PAYMENT_SYSTEM: "支付系统",
+    ORDER_SYSTEM: "订单系统",
+    MAP_API: "地图接口",
+  };
+
   const sourceIcons: Record<string, string> = {
     PAYMENT_SYSTEM: "💳",
     ORDER_SYSTEM: "📦",
     MAP_API: "🗺️",
+  };
+
+  const paymentCount = stats?.payment.count || 0;
+  const orderCount = stats?.order.count || 0;
+  const mapCount = stats?.map.count || 0;
+
+  const getLatestStatus = (latest: SyncBatch | null) => {
+    if (!latest) return "-";
+    return statusLabels[latest.status] || "-";
   };
 
   return (
@@ -47,7 +108,7 @@ export default function SyncPage() {
             <div>
               <p className="text-sm text-gray-500 font-medium">支付系统同步</p>
               <p className="text-lg font-bold text-gray-900 mt-1">
-                {batches.filter((b) => b.source === "PAYMENT_SYSTEM").length} 批次
+                {paymentCount} 批次
               </p>
             </div>
           </div>
@@ -55,7 +116,7 @@ export default function SyncPage() {
             <p className="text-xs text-gray-500">
               最新状态：
               <span className="text-green-600 font-medium ml-1">
-                {batches.find((b) => b.source === "PAYMENT_SYSTEM")?.statusLabel || "-"}
+                {getLatestStatus(stats?.payment.latest || null)}
               </span>
             </p>
           </div>
@@ -67,7 +128,7 @@ export default function SyncPage() {
             <div>
               <p className="text-sm text-gray-500 font-medium">订单系统同步</p>
               <p className="text-lg font-bold text-gray-900 mt-1">
-                {batches.filter((b) => b.source === "ORDER_SYSTEM").length} 批次
+                {orderCount} 批次
               </p>
             </div>
           </div>
@@ -75,7 +136,7 @@ export default function SyncPage() {
             <p className="text-xs text-gray-500">
               最新状态：
               <span className="text-green-600 font-medium ml-1">
-                {batches.find((b) => b.source === "ORDER_SYSTEM")?.statusLabel || "-"}
+                {getLatestStatus(stats?.order.latest || null)}
               </span>
             </p>
           </div>
@@ -87,7 +148,7 @@ export default function SyncPage() {
             <div>
               <p className="text-sm text-gray-500 font-medium">地图接口同步</p>
               <p className="text-lg font-bold text-gray-900 mt-1">
-                {batches.filter((b) => b.source === "MAP_API").length} 批次
+                {mapCount} 批次
               </p>
             </div>
           </div>
@@ -95,7 +156,7 @@ export default function SyncPage() {
             <p className="text-xs text-gray-500">
               最新状态：
               <span className="text-green-600 font-medium ml-1">
-                {batches.find((b) => b.source === "MAP_API")?.statusLabel || "-"}
+                {getLatestStatus(stats?.map.latest || null)}
               </span>
             </p>
           </div>
@@ -182,44 +243,62 @@ export default function SyncPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filteredBatches.map((batch) => (
-                <tr key={batch.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 text-gray-900 font-mono text-xs">
-                    {batch.batchNumber}
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <span>{sourceIcons[batch.source]}</span>
-                      <span className="text-gray-900">{batch.sourceLabel}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={cn(
-                      "px-2 py-1 text-xs font-medium rounded-full",
-                      statusColors[batch.status]
-                    )}>
-                      {batch.statusLabel}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right text-gray-900">{batch.totalCount}</td>
-                  <td className="px-6 py-4 text-right text-green-600 font-medium">
-                    {batch.successCount}
-                  </td>
-                  <td className="px-6 py-4 text-right text-red-600 font-medium">
-                    {batch.failedCount}
-                  </td>
-                  <td className="px-6 py-4 text-gray-600">{batch.startedAt}</td>
-                  <td className="px-6 py-4 text-gray-600">{batch.completedAt || "-"}</td>
-                  <td className="px-6 py-4 text-center">
-                    <button
-                      onClick={() => setSelectedBatch(batch)}
-                      className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                    >
-                      查看详情
-                    </button>
+              {loading ? (
+                <tr>
+                  <td colSpan={9} className="px-6 py-8 text-center text-gray-500">
+                    加载中...
                   </td>
                 </tr>
-              ))}
+              ) : batches.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="px-6 py-8 text-center text-gray-500">
+                    暂无同步批次记录
+                  </td>
+                </tr>
+              ) : (
+                batches.map((batch) => (
+                  <tr key={batch.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 text-gray-900 font-mono text-xs">
+                      {batch.batchNumber}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <span>{sourceIcons[batch.source]}</span>
+                        <span className="text-gray-900">{sourceLabels[batch.source]}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={cn(
+                        "px-2 py-1 text-xs font-medium rounded-full",
+                        statusColors[batch.status]
+                      )}>
+                        {statusLabels[batch.status]}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right text-gray-900">{batch.totalCount}</td>
+                    <td className="px-6 py-4 text-right text-green-600 font-medium">
+                      {batch.successCount}
+                    </td>
+                    <td className="px-6 py-4 text-right text-red-600 font-medium">
+                      {batch.failedCount}
+                    </td>
+                    <td className="px-6 py-4 text-gray-600">
+                      {batch.startedAt ? formatDate(new Date(batch.startedAt)) : "-"}
+                    </td>
+                    <td className="px-6 py-4 text-gray-600">
+                      {batch.completedAt ? formatDate(new Date(batch.completedAt)) : "-"}
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <button
+                        onClick={() => setSelectedBatch(batch)}
+                        className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                      >
+                        查看详情
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -248,7 +327,7 @@ export default function SyncPage() {
                 <div>
                   <p className="text-sm text-gray-500">数据来源</p>
                   <p className="text-gray-900 font-medium mt-1">
-                    {selectedBatch.sourceLabel}
+                    {sourceLabels[selectedBatch.source]}
                   </p>
                 </div>
                 <div>
@@ -257,13 +336,13 @@ export default function SyncPage() {
                     "px-2 py-1 text-xs font-medium rounded-full inline-block mt-1",
                     statusColors[selectedBatch.status]
                   )}>
-                    {selectedBatch.statusLabel}
+                    {statusLabels[selectedBatch.status]}
                   </span>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">同步时间</p>
+                  <p className="text-sm text-gray-500">创建时间</p>
                   <p className="text-gray-900 font-medium mt-1">
-                    {selectedBatch.startedAt}
+                    {formatDate(new Date(selectedBatch.createdAt))}
                   </p>
                 </div>
               </div>

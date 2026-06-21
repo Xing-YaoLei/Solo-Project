@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
-import { SyncSource, SyncStatus } from "@prisma/client";
+import { SyncSource, SyncStatus, OrderStatus } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 
 export class SyncService {
   static async createBatch(source: SyncSource, totalCount: number = 0) {
@@ -61,7 +62,7 @@ export class SyncService {
     itemType: string;
     itemValue: number;
     distance: number;
-    status: string;
+    status: OrderStatus;
     dispatchDuration?: number;
     deliveryDuration?: number;
     totalDuration?: number;
@@ -79,16 +80,31 @@ export class SyncService {
 
     for (const item of data) {
       try {
+        const orderData: Prisma.OrderUncheckedCreateInput = {
+          orderNo: item.orderNo,
+          regionId: item.regionId,
+          riderId: item.riderId,
+          riderName: item.riderName,
+          pickupAddress: item.pickupAddress,
+          deliveryAddress: item.deliveryAddress,
+          itemType: item.itemType,
+          itemValue: new Prisma.Decimal(item.itemValue),
+          distance: new Prisma.Decimal(item.distance),
+          status: item.status,
+          dispatchDuration: item.dispatchDuration,
+          deliveryDuration: item.deliveryDuration,
+          totalDuration: item.totalDuration,
+          orderedAt: item.orderedAt,
+          assignedAt: item.assignedAt,
+          pickedUpAt: item.pickedUpAt,
+          deliveredAt: item.deliveredAt,
+          syncBatchId: batch.id,
+        };
+
         await prisma.order.upsert({
           where: { orderNo: item.orderNo },
-          update: {
-            ...item,
-            syncBatchId: batch.id,
-          },
-          create: {
-            ...item,
-            syncBatchId: batch.id,
-          },
+          update: orderData,
+          create: orderData,
         });
         successCount++;
       } catch (error) {
@@ -121,16 +137,21 @@ export class SyncService {
 
     for (const item of data) {
       try {
+        const paymentData: Prisma.PaymentTransactionUncheckedCreateInput = {
+          transactionNo: item.transactionNo,
+          orderId: item.orderId,
+          amount: new Prisma.Decimal(item.amount),
+          subsidyAmount: new Prisma.Decimal(item.subsidyAmount),
+          baseFee: new Prisma.Decimal(item.baseFee),
+          paymentMethod: item.paymentMethod,
+          paidAt: item.paidAt,
+          syncBatchId: batch.id,
+        };
+
         await prisma.paymentTransaction.upsert({
           where: { transactionNo: item.transactionNo },
-          update: {
-            ...item,
-            syncBatchId: batch.id,
-          },
-          create: {
-            ...item,
-            syncBatchId: batch.id,
-          },
+          update: paymentData,
+          create: paymentData,
         });
         successCount++;
       } catch (error) {
@@ -164,16 +185,22 @@ export class SyncService {
 
     for (const item of data) {
       try {
+        const mapData: Prisma.MapRecordUncheckedCreateInput = {
+          orderId: item.orderId,
+          routeDistance: new Prisma.Decimal(item.routeDistance),
+          estimatedDuration: item.estimatedDuration,
+          actualDuration: item.actualDuration,
+          trafficLevel: item.trafficLevel,
+          weatherCondition: item.weatherCondition,
+          mapProvider: item.mapProvider,
+          syncedAt: item.syncedAt,
+          syncBatchId: batch.id,
+        };
+
         await prisma.mapRecord.upsert({
           where: { orderId: item.orderId },
-          update: {
-            ...item,
-            syncBatchId: batch.id,
-          },
-          create: {
-            ...item,
-            syncBatchId: batch.id,
-          },
+          update: mapData,
+          create: mapData,
         });
         successCount++;
       } catch (error) {
@@ -208,5 +235,40 @@ export class SyncService {
         mapRecords: { take: 10 },
       },
     });
+  }
+
+  static async getBatchStats() {
+    const [paymentBatches, orderBatches, mapBatches] = await Promise.all([
+      prisma.syncBatch.findMany({
+        where: { source: SyncSource.PAYMENT_SYSTEM },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+      }),
+      prisma.syncBatch.findMany({
+        where: { source: SyncSource.ORDER_SYSTEM },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+      }),
+      prisma.syncBatch.findMany({
+        where: { source: SyncSource.MAP_API },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+      }),
+    ]);
+
+    return {
+      payment: {
+        count: await prisma.syncBatch.count({ where: { source: SyncSource.PAYMENT_SYSTEM } }),
+        latest: paymentBatches[0] || null,
+      },
+      order: {
+        count: await prisma.syncBatch.count({ where: { source: SyncSource.ORDER_SYSTEM } }),
+        latest: orderBatches[0] || null,
+      },
+      map: {
+        count: await prisma.syncBatch.count({ where: { source: SyncSource.MAP_API } }),
+        latest: mapBatches[0] || null,
+      },
+    };
   }
 }
