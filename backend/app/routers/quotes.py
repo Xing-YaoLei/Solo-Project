@@ -198,7 +198,7 @@ async def update_quote(
                     item.updated_by = current_user.id
                     item.updated_at = datetime.utcnow()
                 seen_ids.add(item_id)
-            elif not destroy:
+            elif not destroy and item_id is None:
                 new_item = InvoiceItem(
                     quote_id=quote.id,
                     item_name=item_dict.get("item_name", ""),
@@ -214,6 +214,10 @@ async def update_quote(
                     updated_by=current_user.id,
                 )
                 db.add(new_item)
+
+        for old_id, old_item in existing_items.items():
+            if old_id not in seen_ids:
+                await db.delete(old_item)
 
     await db.commit()
     await db.refresh(quote)
