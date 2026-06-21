@@ -271,6 +271,7 @@ class RiskAnalyzer:
 
     def get_returned_samples(self, region: Optional[str] = None,
                              doc_type: Optional[str] = None,
+                             lawyer: Optional[str] = None,
                              limit: int = 20) -> pl.DataFrame:
         case_docs = self.loader.get_table("case_docs")
         review_records = self.loader.get_table("review_records")
@@ -283,6 +284,8 @@ class RiskAnalyzer:
             df = df.filter(pl.col("region") == region)
         if doc_type:
             df = df.filter(pl.col("doc_type") == doc_type)
+        if lawyer:
+            df = df.filter(pl.col("lawyer") == lawyer)
 
         df = df.head(limit)
 

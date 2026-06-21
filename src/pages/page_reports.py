@@ -18,14 +18,15 @@ from config.settings import REGIONS, DOC_TYPES
 
 
 def _render_yoy_mom_card(title: str, current: float, previous: float,
-                         suffix: str = "", is_good_when_up: bool = True):
+                         suffix: str = "", is_good_when_up: bool = True,
+                         compare_label: str = "环比"):
     if previous > 0:
         change_rate = (current - previous) / previous * 100
     else:
         change_rate = 100 if current > 0 else 0
 
     sign = "+" if change_rate >= 0 else ""
-    delta = f"{sign}{round(change_rate, 2)}% 环比"
+    delta = f"{sign}{round(change_rate, 2)}% {compare_label}"
     delta_color = "normal" if (is_good_when_up and change_rate >= 0) or (not is_good_when_up and change_rate <= 0) else "inverse"
 
     st.metric(
@@ -210,6 +211,7 @@ def render_reports():
                 yoy_mom["total"].previous_value,
                 " 份",
                 is_good_when_up=True,
+                compare_label=compare_label,
             )
         with col2:
             _render_yoy_mom_card(
@@ -218,6 +220,7 @@ def render_reports():
                 yoy_mom["return_count"].previous_value,
                 " 份",
                 is_good_when_up=False,
+                compare_label=compare_label,
             )
         with col3:
             _render_yoy_mom_card(
@@ -226,6 +229,7 @@ def render_reports():
                 yoy_mom["publish_count"].previous_value,
                 " 份",
                 is_good_when_up=True,
+                compare_label=compare_label,
             )
         with col4:
             _render_yoy_mom_card(
@@ -234,6 +238,7 @@ def render_reports():
                 yoy_mom["high_risk"].previous_value,
                 " 份",
                 is_good_when_up=False,
+                compare_label=compare_label,
             )
 
     with tab3:
@@ -340,6 +345,7 @@ def render_reports():
                     publish_yoy.get("scheduled_count", YoYMoMResult(0, 0, 0, True)).previous_value,
                     " 份",
                     is_good_when_up=True,
+                    compare_label=publish_compare_label,
                 )
             with col2:
                 _render_yoy_mom_card(
@@ -348,6 +354,7 @@ def render_reports():
                     publish_yoy.get("published_count", YoYMoMResult(0, 0, 0, True)).previous_value,
                     " 份",
                     is_good_when_up=True,
+                    compare_label=publish_compare_label,
                 )
             with col3:
                 _render_yoy_mom_card(
@@ -356,6 +363,7 @@ def render_reports():
                     publish_yoy.get("publish_rate", YoYMoMResult(0, 0, 0, True)).previous_value,
                     "%",
                     is_good_when_up=True,
+                    compare_label=publish_compare_label,
                 )
 
             st.markdown("---")
@@ -375,6 +383,7 @@ def render_reports():
                     review_yoy["publish_count"].previous_value,
                     " 份",
                     is_good_when_up=True,
+                    compare_label=publish_compare_label,
                 )
                 _render_yoy_mom_card(
                     f"通过率{publish_compare_label}",
@@ -382,6 +391,7 @@ def render_reports():
                     review_yoy["publish_rate"].previous_value,
                     "%",
                     is_good_when_up=True,
+                    compare_label=publish_compare_label,
                 )
 
             with col2:
@@ -392,6 +402,7 @@ def render_reports():
                     review_yoy["return_count"].previous_value,
                     " 份",
                     is_good_when_up=False,
+                    compare_label=publish_compare_label,
                 )
                 _render_yoy_mom_card(
                     f"退回率{publish_compare_label}",
@@ -399,6 +410,7 @@ def render_reports():
                     review_yoy["return_rate"].previous_value,
                     "%",
                     is_good_when_up=False,
+                    compare_label=publish_compare_label,
                 )
 
             with col3:
@@ -409,6 +421,7 @@ def render_reports():
                     review_yoy["high_risk"].previous_value,
                     " 份",
                     is_good_when_up=False,
+                    compare_label=publish_compare_label,
                 )
                 _render_yoy_mom_card(
                     f"总提交量{publish_compare_label}",
@@ -416,6 +429,7 @@ def render_reports():
                     review_yoy["total"].previous_value,
                     " 份",
                     is_good_when_up=True,
+                    compare_label=publish_compare_label,
                 )
 
             if publish_compare_type == "同比":

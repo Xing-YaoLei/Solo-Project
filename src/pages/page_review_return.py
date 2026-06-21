@@ -306,11 +306,9 @@ def render_review_return():
     samples = risk_analyzer.get_returned_samples(
         region=region_param,
         doc_type=doctype_param,
+        lawyer=lawyer_param,
         limit=50,
     )
-
-    if lawyer_param:
-        samples = samples.filter(pl.col("lawyer") == lawyer_param)
 
     if not samples.is_empty():
         display_cols = [
