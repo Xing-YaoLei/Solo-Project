@@ -60,6 +60,15 @@ public class StatisticsService : IStatisticsService
         var feedbacks = await feedbackQuery.ToListAsync();
 
         var conflictQuery = _dbContext.ConflictsOfInterest.AsQueryable();
+        if (callerUserId.HasValue)
+        {
+            var caller = await _dbContext.Users.FindAsync(callerUserId.Value);
+            if (caller?.Role == UserRole.Client)
+            {
+                conflictQuery = conflictQuery.Where(c =>
+                    c.Hearing.Participants.Any(p => p.UserId == callerUserId.Value));
+            }
+        }
         if (from.HasValue) conflictQuery = conflictQuery.Where(c => c.DetectedAt >= from.Value.ToDateTime(TimeOnly.MinValue));
         if (to.HasValue) conflictQuery = conflictQuery.Where(c => c.DetectedAt <= to.Value.ToDateTime(TimeOnly.MaxValue));
 
@@ -147,10 +156,22 @@ public class StatisticsService : IStatisticsService
         }
 
         var hearings = await query.ToListAsync();
+        var hearingIds = hearings.Select(h => h.Id).ToList();
 
-        var conflicts = await _dbContext.ConflictsOfInterest
-            .Where(c => c.DetectedAt >= from.ToDateTime(TimeOnly.MinValue) && c.DetectedAt <= to.ToDateTime(TimeOnly.MaxValue))
-            .ToListAsync();
+        var conflictQuery = _dbContext.ConflictsOfInterest
+            .Where(c => c.DetectedAt >= from.ToDateTime(TimeOnly.MinValue)
+                     && c.DetectedAt <= to.ToDateTime(TimeOnly.MaxValue));
+
+        if (callerUserId.HasValue)
+        {
+            var caller = await _dbContext.Users.FindAsync(callerUserId.Value);
+            if (caller?.Role == UserRole.Client)
+            {
+                conflictQuery = conflictQuery.Where(c => hearingIds.Contains(c.HearingId));
+            }
+        }
+
+        var conflicts = await conflictQuery.ToListAsync();
 
         return hearings
             .GroupBy(h => h.HearingDate)
