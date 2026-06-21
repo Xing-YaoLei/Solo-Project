@@ -79,6 +79,12 @@ export class ConfirmationTaskService {
       );
     }
 
+    await this.reminderQueue.add(
+      'check-missing-documents',
+      { taskId: task.id },
+      { delay: 5000 },
+    );
+
     return task;
   }
 
@@ -204,6 +210,14 @@ export class ConfirmationTaskService {
             images: true,
           },
         },
+        quoteVersions: {
+          orderBy: { version: 'desc' },
+          include: {
+            createdBy: {
+              select: { id: true, name: true, avatar: true, role: true },
+            },
+          },
+        },
         images: {
           orderBy: { order: 'asc' },
         },
@@ -306,6 +320,12 @@ export class ConfirmationTaskService {
         createdById: currentUser.id,
       },
     });
+
+    await this.reminderQueue.add(
+      'check-missing-documents',
+      { taskId: id },
+      { delay: 3000 },
+    );
 
     return updatedTask;
   }
@@ -480,6 +500,10 @@ export class ConfirmationTaskService {
       return;
     }
 
+    if (currentUser.role === UserRole.SUPERVISOR) {
+      return;
+    }
+
     if (currentUser.role === UserRole.OWNER) {
       if (task.project?.ownerId !== currentUser.id) {
         throw new ForbiddenException('无权访问此任务');
@@ -487,10 +511,7 @@ export class ConfirmationTaskService {
       return;
     }
 
-    if (
-      currentUser.role === UserRole.PROJECT_MANAGER ||
-      currentUser.role === UserRole.SUPERVISOR
-    ) {
+    if (currentUser.role === UserRole.PROJECT_MANAGER) {
       if (task.project?.projectManagerId === currentUser.id) {
         return;
       }
@@ -505,6 +526,10 @@ export class ConfirmationTaskService {
 
   private async checkTaskModifyPermission(task: any, currentUser: any) {
     if (currentUser.role === UserRole.ADMIN) {
+      return;
+    }
+
+    if (currentUser.role === UserRole.SUPERVISOR) {
       return;
     }
 

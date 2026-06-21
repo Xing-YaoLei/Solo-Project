@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Delete, UseGuards, Query, HttpCode, HttpStatus, Put } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, UseGuards, Query, HttpCode, HttpStatus, Put, Patch } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { ReminderService } from './reminder.service';
 import { QueryRemindersDto } from './dto/reminder.dto';
@@ -43,6 +43,7 @@ export class ReminderController {
   }
 
   @Put(':id/read')
+  @Patch(':id/read')
   @ApiOperation({ summary: '标记提醒为已读' })
   @ApiResponse({ status: 200, description: '操作成功' })
   async markAsRead(
@@ -53,6 +54,8 @@ export class ReminderController {
   }
 
   @Post('mark-all-read')
+  @Post('read-all')
+  @Patch('read-all')
   @ApiOperation({ summary: '标记所有提醒为已读' })
   @ApiResponse({ status: 200, description: '操作成功' })
   async markAllAsRead(@GetUser() currentUser: UserWithoutPassword) {

@@ -10,6 +10,7 @@ import { UserModule } from './modules/user/user.module';
 import { ProjectModule } from './modules/project/project.module';
 import { ConfirmationTaskModule } from './modules/confirmation-task/confirmation-task.module';
 import { ConfirmationVersionModule } from './modules/confirmation-version/confirmation-version.module';
+import { QuoteVersionModule } from './modules/quote-version/quote-version.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { DisputeModule } from './modules/dispute/dispute.module';
 import { ReminderModule } from './modules/reminder/reminder.module';
@@ -29,6 +30,7 @@ import { ReportModule } from './modules/report/report.module';
     ProjectModule,
     ConfirmationTaskModule,
     ConfirmationVersionModule,
+    QuoteVersionModule,
     ChatModule,
     DisputeModule,
     ReminderModule,

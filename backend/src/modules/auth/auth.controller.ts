@@ -45,4 +45,13 @@ export class AuthController {
   async getCurrentUser(@GetUser() user: UserWithoutPassword): Promise<UserWithoutPassword> {
     return user;
   }
+
+  @Get('profile')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '获取当前用户信息' })
+  @ApiResponse({ status: 200, description: '获取成功' })
+  async getProfile(@GetUser() user: UserWithoutPassword): Promise<UserWithoutPassword> {
+    return user;
+  }
 }

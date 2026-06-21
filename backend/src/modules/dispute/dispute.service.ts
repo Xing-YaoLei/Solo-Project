@@ -223,8 +223,16 @@ export class DisputeService {
     }
 
     if (currentUser.role === UserRole.SUPERVISOR) {
-      if (dispute.task.project?.projectManagerId !== currentUser.id) {
-        throw new ForbiddenException('无权处理此争议');
+      const project = dispute.task.project;
+      if (
+        project?.projectManagerId !== currentUser.id &&
+        dispute.task.createdById !== currentUser.id &&
+        dispute.task.assignedToId !== currentUser.id
+      ) {
+        const isInvolved = await this.checkSupervisorInvolvement(dispute.taskId, currentUser.id);
+        if (!isInvolved) {
+          throw new ForbiddenException('无权处理此争议');
+        }
       }
     }
 
@@ -279,8 +287,16 @@ export class DisputeService {
     }
 
     if (currentUser.role === UserRole.SUPERVISOR) {
-      if (dispute.task.project?.projectManagerId !== currentUser.id) {
-        throw new ForbiddenException('无权关闭此争议');
+      const project = dispute.task.project;
+      if (
+        project?.projectManagerId !== currentUser.id &&
+        dispute.task.createdById !== currentUser.id &&
+        dispute.task.assignedToId !== currentUser.id
+      ) {
+        const isInvolved = await this.checkSupervisorInvolvement(dispute.taskId, currentUser.id);
+        if (!isInvolved) {
+          throw new ForbiddenException('无权关闭此争议');
+        }
       }
     }
 
@@ -351,11 +367,14 @@ export class DisputeService {
       return;
     }
 
-    if (
-      currentUser.role === UserRole.SUPERVISOR &&
-      task.project?.projectManagerId === currentUser.id
-    ) {
-      return;
+    if (currentUser.role === UserRole.SUPERVISOR) {
+      if (task.project?.projectManagerId === currentUser.id) {
+        return;
+      }
+      const isInvolved = await this.checkSupervisorInvolvement(task.id, currentUser.id);
+      if (isInvolved) {
+        return;
+      }
     }
 
     if (task.createdById === currentUser.id || task.assignedToId === currentUser.id) {
@@ -363,5 +382,58 @@ export class DisputeService {
     }
 
     throw new ForbiddenException('无权访问此争议');
+  }
+
+  private async checkSupervisorInvolvement(taskId: string, supervisorId: string): Promise<boolean> {
+    const chatMessages = await this.prisma.chatMessage.findMany({
+      where: {
+        taskId,
+        userId: supervisorId,
+      },
+      take: 1,
+    });
+
+    if (chatMessages.length > 0) {
+      return true;
+    }
+
+    const task = await this.prisma.confirmationTask.findUnique({
+      where: { id: taskId },
+      include: {
+        chatMessages: {
+          where: {
+            type: 'SYSTEM',
+            content: {
+              contains: String(supervisorId),
+            },
+          },
+          take: 1,
+        },
+      },
+    });
+
+    if (task?.chatMessages && task.chatMessages.length > 0) {
+      return true;
+    }
+
+    const projects = await this.prisma.project.findMany({
+      where: {
+        OR: [
+          { projectManagerId: supervisorId },
+        ],
+      },
+      select: { id: true },
+    });
+
+    const projectIds = projects.map(p => p.id);
+    const relatedTask = await this.prisma.confirmationTask.findFirst({
+      where: {
+        id: taskId,
+        projectId: { in: projectIds },
+      },
+      select: { id: true },
+    });
+
+    return relatedTask !== null;
   }
 }

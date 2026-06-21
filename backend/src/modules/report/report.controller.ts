@@ -17,6 +17,7 @@ export class ReportController {
   constructor(private readonly reportService: ReportService) {}
 
   @Get('dashboard')
+  @Get('dashboard-stats')
   @ApiOperation({ summary: '获取首页统计数据' })
   @ApiResponse({ status: 200, description: '获取成功' })
   async getDashboardStats(@GetUser() currentUser: UserWithoutPassword) {

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query, UseGuards, HttpCode, HttpStatus, Inject } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { ConfirmationTaskService } from './confirmation-task.service';
 import {
@@ -15,13 +15,19 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { GetUser } from '../../common/decorators/get-user.decorator';
 import { UserRole } from '@prisma/client';
 import { UserWithoutPassword } from '../auth/entities/auth.entity';
+import { InjectQueue } from '@nestjs/bull';
+import { Queue } from 'bull';
+import { BULL_QUEUES } from '../../common/bull/queue.constants';
 
 @ApiTags('确认任务')
 @Controller('confirmation-tasks')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
 export class ConfirmationTaskController {
-  constructor(private readonly confirmationTaskService: ConfirmationTaskService) {}
+  constructor(
+    private readonly confirmationTaskService: ConfirmationTaskService,
+    @InjectQueue(BULL_QUEUES.REMINDER) private reminderQueue: Queue,
+  ) {}
 
   @Post()
   @Roles(UserRole.ADMIN, UserRole.PROJECT_MANAGER, UserRole.FOREMAN, UserRole.DESIGNER)
@@ -94,6 +100,7 @@ export class ConfirmationTaskController {
   }
 
   @Post(':id/status')
+  @Patch(':id/status')
   @ApiOperation({ summary: '更新任务状态' })
   @ApiResponse({ status: 200, description: '更新成功' })
   async updateStatus(
@@ -127,5 +134,23 @@ export class ConfirmationTaskController {
     @GetUser() currentUser: UserWithoutPassword,
   ) {
     return this.confirmationTaskService.removeImage(id, imageId, currentUser);
+  }
+
+  @Post('check-overdue')
+  @Roles(UserRole.ADMIN, UserRole.PROJECT_MANAGER)
+  @ApiOperation({ summary: '手动触发逾期检查' })
+  @ApiResponse({ status: 200, description: '触发成功' })
+  async triggerOverdueCheck() {
+    await this.reminderQueue.add('check-all-overdue', {});
+    return { message: '逾期检查已触发' };
+  }
+
+  @Post('check-missing-documents')
+  @Roles(UserRole.ADMIN, UserRole.PROJECT_MANAGER)
+  @ApiOperation({ summary: '手动触发资料缺失检查' })
+  @ApiResponse({ status: 200, description: '触发成功' })
+  async triggerMissingDocumentsCheck() {
+    await this.reminderQueue.add('check-all-missing-documents', {});
+    return { message: '资料缺失检查已触发' };
   }
 }
