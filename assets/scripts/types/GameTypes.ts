@@ -71,6 +71,7 @@ export interface WrongStep {
     delay: number;
     satisfaction: number;
   };
+  orderId?: string;
 }
 
 export interface GameState {

@@ -284,6 +284,7 @@ export class AddressInputController extends Component {
                 description: `选错了${this.inputMode === 'pickup' ? '取货' : '送货'}地址: 选了${location.name}，应为${expectedLocation.name}`,
                 correctAction: `选择正确的${this.inputMode === 'pickup' ? '取货' : '送货'}地址: ${expectedLocation.name}`,
                 impact: { cost: 5, delay: 30, satisfaction: -10 },
+                orderId: this.currentOrder.id,
             });
         }
 

@@ -319,6 +319,7 @@ export class MainSceneController extends Component {
         this.eventDispatcher.on('rider-rejection', this.onRiderRejection.bind(this), this);
         this.eventDispatcher.on('order-assigned', this.onOrderAssigned.bind(this), this);
         this.eventDispatcher.on('order-completed', this.onOrderCompleted.bind(this), this);
+        this.eventDispatcher.on('wrong-step-recorded', this.onWrongStepRecorded.bind(this), this);
         this.eventDispatcher.on('replay-jump-snapshot', this.onReplayJumpSnapshot.bind(this), this);
     }
 
@@ -393,11 +394,20 @@ export class MainSceneController extends Component {
     }
 
     private onWrongStep(ws: Omit<WrongStep, 'time'>) {
-        this.eventDispatcher.emit('wrong-step', { ...ws, time: Date.now() });
+        this.eventDispatcher.emit('wrong-step', ws);
         if (this.warningLabel) {
             this.warningLabel.string = `⚠ 操作错误: ${ws.description}`;
             this.warningLabel.color = new Color(255, 120, 120);
         }
+    }
+
+    private onWrongStepRecorded(event: any) {
+        const ws: WrongStep = event.wrongStep;
+        if (this.warningLabel) {
+            this.warningLabel.string = `⚠ [${(ws.time).toFixed(1)}s] ${ws.description} (赔付 ¥${ws.impact.cost})`;
+            this.warningLabel.color = new Color(255, 120, 120);
+        }
+        this.updateHUD();
     }
 
     private onReplayJumpSnapshot(event: any) {

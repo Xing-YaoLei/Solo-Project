@@ -552,9 +552,24 @@ export class GameController extends Component {
     }
 
     private onWrongStep(wrongStep: WrongStep) {
-        if (this.gameState) {
-            this.gameState.wrongSteps.push(wrongStep);
+        if (!this.gameState) return;
+
+        const wsWithGameTime: WrongStep = {
+            ...wrongStep,
+            time: this.gameTime,
+        };
+
+        this.gameState.wrongSteps.push(wsWithGameTime);
+        this.gameState.totalCompensation += wsWithGameTime.impact.cost;
+
+        if (wsWithGameTime.orderId) {
+            const order = this.gameState.orders.find(o => o.id === wsWithGameTime.orderId);
+            if (order) {
+                order.wrongSteps.push(wsWithGameTime);
+            }
         }
+
+        this.eventDispatcher.emit('wrong-step-recorded', { wrongStep: wsWithGameTime });
     }
 
     private updateUI() {
