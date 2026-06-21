@@ -49,3 +49,15 @@ class User(BaseModel):
         back_populates="handler",
         foreign_keys="ExceptionRecord.handled_by",
     )
+    payments = relationship(
+        "Payment",
+        primaryjoin="User.id == Payment.operator_id",
+        back_populates="operator",
+        foreign_keys="Payment.operator_id",
+    )
+    exception_history_operations = relationship(
+        "ExceptionHistory",
+        primaryjoin="User.id == ExceptionHistory.operator_id",
+        back_populates="operator",
+        foreign_keys="ExceptionHistory.operator_id",
+    )

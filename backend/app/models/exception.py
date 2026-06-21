@@ -54,7 +54,12 @@ class ExceptionRecord(BaseModel):
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     quote = relationship("Quote", back_populates="exceptions")
-    handler = relationship("User", back_populates="handled_exceptions")
+    handler = relationship(
+        "User",
+        primaryjoin="ExceptionRecord.handled_by == User.id",
+        back_populates="handled_exceptions",
+        foreign_keys="ExceptionRecord.handled_by",
+    )
     history = relationship("ExceptionHistory", back_populates="exception", cascade="all, delete-orphan")
 
 
@@ -79,4 +84,9 @@ class ExceptionHistory(BaseModel):
     source_record: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     exception = relationship("ExceptionRecord", back_populates="history")
-    operator = relationship("User", primaryjoin="ExceptionHistory.operator_id == User.id", foreign_keys="ExceptionHistory.operator_id")
+    operator = relationship(
+        "User",
+        primaryjoin="ExceptionHistory.operator_id == User.id",
+        foreign_keys="ExceptionHistory.operator_id",
+        back_populates="exception_history_operations",
+    )

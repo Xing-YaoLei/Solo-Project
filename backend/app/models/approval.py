@@ -40,4 +40,9 @@ class ApprovalNode(BaseModel):
     is_active: Mapped[bool] = mapped_column(default=True)
 
     quote = relationship("Quote", back_populates="approval_nodes")
-    approver = relationship("User", back_populates="approvals")
+    approver = relationship(
+        "User",
+        primaryjoin="ApprovalNode.approver_id == User.id",
+        back_populates="approvals",
+        foreign_keys="ApprovalNode.approver_id",
+    )
