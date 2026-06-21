@@ -31,18 +31,13 @@ export class CasesService {
 
   private toListItem(caseData: any) {
     const invoices: any[] = caseData.invoices || [];
-    const totalPaid = invoices
-      .filter((inv: any) => inv.paymentStatus === PaymentStatus.PAID)
-      .reduce((sum: number, inv: any) => sum + Number(inv.amount), 0);
+    const latestInvoice = invoices.length > 0 ? invoices[0] : null;
+    const paymentStatus = latestInvoice?.paymentStatus || PaymentStatus.UNPAID;
+    const feeAmount = caseData.feeAmount ? Number(caseData.feeAmount) : undefined;
     const totalAmount = invoices.reduce(
       (sum: number, inv: any) => sum + Number(inv.amount),
       0,
     );
-    let paymentStatus = PaymentStatus.UNPAID;
-    if (invoices.length === 0) paymentStatus = PaymentStatus.UNPAID;
-    else if (totalPaid >= totalAmount && totalAmount > 0)
-      paymentStatus = PaymentStatus.PAID;
-    else if (totalPaid > 0) paymentStatus = PaymentStatus.PARTIAL;
 
     return {
       id: caseData.id,
@@ -65,13 +60,15 @@ export class CasesService {
         ? caseData.trialDate.toISOString()
         : undefined,
       trialLocation: caseData.trialLocation,
-      feeAmount: caseData.feeAmount ? Number(caseData.feeAmount) : undefined,
+      feeAmount,
       feeType: caseData.feeType,
       feeNote: caseData.feeNote,
       caseStage: caseData.caseStage,
       description: caseData.description,
       riskWarnings: caseData.riskWarnings || [],
       paymentStatus,
+      totalInvoiceAmount: totalAmount || undefined,
+      invoiceCount: invoices.length,
     };
   }
 

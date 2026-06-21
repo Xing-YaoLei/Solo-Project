@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { MaterialType } from '@legal/shared';
 import type { MaterialUploadDTO } from '@legal/shared';
+import api from '@/lib/api';
 
 const materialTypeLabels: Record<MaterialType, string> = {
   [MaterialType.ID_CARD]: '身份证件',
@@ -21,20 +22,63 @@ const materialTypeLabels: Record<MaterialType, string> = {
 interface MaterialUploadProps {
   materials: MaterialUploadDTO[];
   onChange: (materials: MaterialUploadDTO[]) => void;
+  uploading?: boolean;
+  onUploadingChange?: (uploading: boolean) => void;
 }
 
-export default function MaterialUpload({ materials, onChange }: MaterialUploadProps) {
+export default function MaterialUpload({
+  materials,
+  onChange,
+  uploading = false,
+  onUploadingChange,
+}: MaterialUploadProps) {
   const [dragOver, setDragOver] = useState(false);
   const [newMaterial, setNewMaterial] = useState<{
-    name: string;
     type: MaterialType;
     pageTotal: string;
   }>({
-    name: '',
     type: MaterialType.ID_CARD,
     pageTotal: '',
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const uploadFile = useCallback(
+    async (file: File): Promise<{ fileUrl: string; fileSize: number; fileName: string }> => {
+      const formData = new FormData();
+      formData.append('file', file);
+      const { data } = await api.post('/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return data;
+    },
+    [],
+  );
+
+  const handleFiles = useCallback(
+    async (files: File[]) => {
+      onUploadingChange?.(true);
+      try {
+        const newMaterials: MaterialUploadDTO[] = [];
+        for (const file of files) {
+          const result = await uploadFile(file);
+          newMaterials.push({
+            name: result.fileName,
+            type: newMaterial.type,
+            fileUrl: result.fileUrl,
+            fileSize: result.fileSize,
+            mimeType: '',
+            pageTotal: newMaterial.pageTotal
+              ? parseInt(newMaterial.pageTotal)
+              : undefined,
+          });
+        }
+        onChange([...materials, ...newMaterials]);
+      } finally {
+        onUploadingChange?.(false);
+      }
+    },
+    [materials, newMaterial, onChange, onUploadingChange, uploadFile],
+  );
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -51,38 +95,22 @@ export default function MaterialUpload({ materials, onChange }: MaterialUploadPr
       e.preventDefault();
       setDragOver(false);
       const files = Array.from(e.dataTransfer.files);
-      files.forEach((file) => {
-        const material: MaterialUploadDTO = {
-          name: file.name,
-          type: newMaterial.type,
-          fileUrl: URL.createObjectURL(file),
-          fileSize: file.size,
-          mimeType: file.type,
-          pageTotal: newMaterial.pageTotal ? parseInt(newMaterial.pageTotal) : undefined,
-        };
-        onChange([...materials, material]);
-      });
+      if (files.length > 0) {
+        handleFiles(files);
+      }
     },
-    [materials, newMaterial, onChange],
+    [handleFiles],
   );
 
   const handleFileSelect = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const files = Array.from(e.target.files || []);
-      files.forEach((file) => {
-        const material: MaterialUploadDTO = {
-          name: file.name,
-          type: newMaterial.type,
-          fileUrl: URL.createObjectURL(file),
-          fileSize: file.size,
-          mimeType: file.type,
-          pageTotal: newMaterial.pageTotal ? parseInt(newMaterial.pageTotal) : undefined,
-        };
-        onChange([...materials, material]);
-      });
+      if (files.length > 0) {
+        handleFiles(files);
+      }
       if (fileInputRef.current) fileInputRef.current.value = '';
     },
-    [materials, newMaterial, onChange],
+    [handleFiles],
   );
 
   const handleRemove = useCallback(
@@ -102,16 +130,29 @@ export default function MaterialUpload({ materials, onChange }: MaterialUploadPr
           dragOver
             ? 'border-blue-400 bg-blue-50'
             : 'border-slate-300 bg-slate-50 hover:border-slate-400'
-        }`}
+        } ${uploading ? 'opacity-60 pointer-events-none' : ''}`}
       >
-        <svg className="mx-auto w-10 h-10 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+        <svg
+          className="mx-auto w-10 h-10 text-slate-400"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={1.5}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"
+          />
         </svg>
-        <p className="mt-2 text-sm text-slate-600">拖拽文件到此处，或</p>
+        <p className="mt-2 text-sm text-slate-600">
+          {uploading ? '上传中...' : '拖拽文件到此处，或'}
+        </p>
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="mt-2 text-sm font-medium text-blue-600 hover:text-blue-700"
+          disabled={uploading}
+          className="mt-2 text-sm font-medium text-blue-600 hover:text-blue-700 disabled:opacity-50"
         >
           点击选择文件
         </button>
@@ -124,12 +165,16 @@ export default function MaterialUpload({ materials, onChange }: MaterialUploadPr
         />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs font-medium text-slate-600 mb-1">材料类型</label>
+          <label className="block text-xs font-medium text-slate-600 mb-1">
+            材料类型
+          </label>
           <select
             value={newMaterial.type}
-            onChange={(e) => setNewMaterial({ ...newMaterial, type: e.target.value as MaterialType })}
+            onChange={(e) =>
+              setNewMaterial({ ...newMaterial, type: e.target.value as MaterialType })
+            }
             className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
             {Object.entries(materialTypeLabels).map(([value, label]) => (
@@ -140,19 +185,15 @@ export default function MaterialUpload({ materials, onChange }: MaterialUploadPr
           </select>
         </div>
         <div>
-          <label className="block text-xs font-medium text-slate-600 mb-1">页数</label>
+          <label className="block text-xs font-medium text-slate-600 mb-1">
+            页数
+          </label>
           <input
             type="number"
             value={newMaterial.pageTotal}
-            onChange={(e) => setNewMaterial({ ...newMaterial, pageTotal: e.target.value })}
-            placeholder="选填"
-            className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-slate-600 mb-1">备注</label>
-          <input
-            type="text"
+            onChange={(e) =>
+              setNewMaterial({ ...newMaterial, pageTotal: e.target.value })
+            }
             placeholder="选填"
             className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
@@ -164,11 +205,21 @@ export default function MaterialUpload({ materials, onChange }: MaterialUploadPr
           <table className="w-full text-sm">
             <thead className="bg-slate-50">
               <tr>
-                <th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500">文件名</th>
-                <th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500">类型</th>
-                <th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500">大小</th>
-                <th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500">页数</th>
-                <th className="text-right px-4 py-2.5 text-xs font-medium text-slate-500">操作</th>
+                <th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500">
+                  文件名
+                </th>
+                <th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500">
+                  类型
+                </th>
+                <th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500">
+                  大小
+                </th>
+                <th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500">
+                  页数
+                </th>
+                <th className="text-right px-4 py-2.5 text-xs font-medium text-slate-500">
+                  操作
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">

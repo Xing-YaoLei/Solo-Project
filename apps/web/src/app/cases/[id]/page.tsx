@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -78,6 +78,15 @@ const materialStatusConfig: Record<MaterialStatus, { label: string; className: s
   [MaterialStatus.MISSING]: { label: '缺失', className: 'bg-orange-100 text-orange-700' },
   [MaterialStatus.RESUBMITTED]: { label: '已重新提交', className: 'bg-purple-100 text-purple-700' },
 };
+
+function getFileUrl(fileUrl: string): string {
+  if (!fileUrl) return '#';
+  if (fileUrl.startsWith('http://') || fileUrl.startsWith('https://') || fileUrl.startsWith('blob:')) {
+    return fileUrl;
+  }
+  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+  return `${base}${fileUrl}`;
+}
 
 const paymentStatusConfig: Record<PaymentStatus, { label: string; className: string }> = {
   [PaymentStatus.UNPAID]: { label: '未付款', className: 'bg-slate-100 text-slate-700' },
@@ -344,6 +353,20 @@ function OverviewTab({ detail, onNotify, onRefetch }: { detail: CaseDetailDTO; o
 }
 
 function MaterialsTab({ detail, onNotify, onRefetch }: { detail: CaseDetailDTO; onNotify: (m: string) => void; onRefetch: () => void }) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [resubmitMaterialId, setResubmitMaterialId] = useState<string | null>(null);
+  const [showAddMissing, setShowAddMissing] = useState(false);
+  const [showMarkMissingPages, setShowMarkMissingPages] = useState<string | null>(null);
+  const [missingPagesInput, setMissingPagesInput] = useState('');
+  const [missingNote, setMissingNote] = useState('');
+  const [newMissingMaterial, setNewMissingMaterial] = useState({
+    name: '',
+    materialType: MaterialType.EVIDENCE_DOC,
+    note: '',
+  });
+  const [uploading, setUploading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
   const handleApprove = async (materialId: string) => {
     try {
       await api.post(`/cases/${detail.id}/materials/${materialId}/approve`);
@@ -366,119 +389,343 @@ function MaterialsTab({ detail, onNotify, onRefetch }: { detail: CaseDetailDTO; 
     }
   };
 
-  const handleResubmit = async (materialId: string) => {
-    const fileUrl = prompt('请输入重新提交的文件地址：');
-    if (!fileUrl) return;
+  const handleResubmitClick = (materialId: string) => {
+    setResubmitMaterialId(materialId);
+    fileInputRef.current?.click();
+  };
+
+  const handleResubmitFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !resubmitMaterialId) return;
+
+    setUploading(true);
     try {
-      await api.post(`/cases/${detail.id}/materials/${materialId}/resubmit`, {
-        fileUrl,
-        fileSize: 0,
+      const formData = new FormData();
+      formData.append('file', file);
+      const { data } = await api.post('/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      await api.post(`/cases/${detail.id}/materials/${resubmitMaterialId}/resubmit`, {
+        fileUrl: data.fileUrl,
+        fileSize: data.fileSize,
       });
       onNotify('材料已重新提交');
       onRefetch();
     } catch (e: any) {
       onNotify(e.response?.data?.message || '操作失败');
+    } finally {
+      setUploading(false);
+      setResubmitMaterialId(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleMarkMissingPages = async (materialId: string) => {
+    const pages = missingPagesInput
+      .split(/[,，\s]+/)
+      .map((s) => parseInt(s.trim()))
+      .filter((n) => !isNaN(n) && n > 0);
+
+    if (pages.length === 0) {
+      onNotify('请输入有效的页码');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await api.post(`/cases/${detail.id}/materials/${materialId}/mark-missing-pages`, {
+        missingPages: pages,
+        note: missingNote,
+      });
+      onNotify('缺页已标记，补传提醒已发送');
+      onRefetch();
+      setShowMarkMissingPages(null);
+      setMissingPagesInput('');
+      setMissingNote('');
+    } catch (e: any) {
+      onNotify(e.response?.data?.message || '操作失败');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleAddMissingMaterial = async () => {
+    if (!newMissingMaterial.name.trim()) {
+      onNotify('请输入材料名称');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await api.post(`/cases/${detail.id}/materials/add-missing`, {
+        name: newMissingMaterial.name,
+        materialType: newMissingMaterial.materialType,
+        note: newMissingMaterial.note,
+      });
+      onNotify('缺失材料已添加，补传提醒已发送');
+      onRefetch();
+      setShowAddMissing(false);
+      setNewMissingMaterial({ name: '', materialType: MaterialType.EVIDENCE_DOC, note: '' });
+    } catch (e: any) {
+      onNotify(e.response?.data?.message || '操作失败');
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="bg-slate-50 border-b border-slate-200">
-              <th className="text-left px-5 py-3 font-medium text-slate-500">材料名称</th>
-              <th className="text-left px-5 py-3 font-medium text-slate-500">类型</th>
-              <th className="text-left px-5 py-3 font-medium text-slate-500">状态</th>
-              <th className="text-left px-5 py-3 font-medium text-slate-500">版本</th>
-              <th className="text-left px-5 py-3 font-medium text-slate-500">页数</th>
-              <th className="text-left px-5 py-3 font-medium text-slate-500">上传时间</th>
-              <th className="text-left px-5 py-3 font-medium text-slate-500">审核备注</th>
-              <th className="text-right px-5 py-3 font-medium text-slate-500">操作</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {detail.materials.length === 0 && (
-              <tr>
-                <td colSpan={8} className="px-5 py-12 text-center text-slate-400">
-                  暂无材料
-                </td>
-              </tr>
-            )}
-            {detail.materials.map((material) => {
-              const statusConfig = materialStatusConfig[material.status] || {
-                label: material.status,
-                className: 'bg-gray-100 text-gray-600',
-              };
+    <div className="space-y-4">
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        onChange={handleResubmitFile}
+      />
 
-              return (
-                <tr key={material.id} className="hover:bg-slate-50">
-                  <td className="px-5 py-3 text-slate-800 font-medium">
-                    <a href={material.fileUrl || '#'} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-700">
-                      {material.name}
-                    </a>
-                  </td>
-                  <td className="px-5 py-3 text-slate-600">
-                    {materialTypeLabels[material.type] || material.type}
-                  </td>
-                  <td className="px-5 py-3">
-                    <span
-                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${statusConfig.className}`}
-                    >
-                      {statusConfig.label}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3 text-slate-600">v{material.version}</td>
-                  <td className="px-5 py-3 text-slate-600">
-                    {material.pageTotal || '-'}
-                    {material.missingPages && material.missingPages.length > 0 && (
-                      <span className="text-orange-500 text-xs ml-1">
-                        (缺{material.missingPages.join(',')}页)
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-5 py-3 text-slate-600">
-                    {new Date(material.uploadedAt).toLocaleDateString('zh-CN')}
-                  </td>
-                  <td className="px-5 py-3 text-slate-600 max-w-[150px] truncate">
-                    {material.reviewNote || '-'}
-                  </td>
-                  <td className="px-5 py-3 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      {(material.status === MaterialStatus.PENDING ||
-                        material.status === MaterialStatus.RESUBMITTED ||
-                        material.status === MaterialStatus.MISSING) && (
-                        <>
-                          <button
-                            onClick={() => handleApprove(material.id)}
-                            className="text-green-600 hover:text-green-700 text-xs font-medium px-2 py-1 rounded hover:bg-green-50"
-                          >
-                            通过
-                          </button>
-                          <button
-                            onClick={() => handleReject(material.id)}
-                            className="text-red-600 hover:text-red-700 text-xs font-medium px-2 py-1 rounded hover:bg-red-50"
-                          >
-                            驳回
-                          </button>
-                        </>
-                      )}
-                      {(material.status === MaterialStatus.REJECTED || material.status === MaterialStatus.MISSING) && (
-                        <button
-                          onClick={() => handleResubmit(material.id)}
-                          className="text-blue-600 hover:text-blue-700 text-xs font-medium px-2 py-1 rounded hover:bg-blue-50"
-                        >
-                          重新提交
-                        </button>
-                      )}
-                    </div>
+      <div className="flex justify-between items-center">
+        <h3 className="text-sm font-medium text-slate-700">材料清单</h3>
+        <button
+          onClick={() => setShowAddMissing(true)}
+          className="text-sm text-orange-600 hover:text-orange-700 font-medium flex items-center gap-1"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+          添加缺失材料
+        </button>
+      </div>
+
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="text-left px-5 py-3 font-medium text-slate-500">材料名称</th>
+                <th className="text-left px-5 py-3 font-medium text-slate-500">类型</th>
+                <th className="text-left px-5 py-3 font-medium text-slate-500">状态</th>
+                <th className="text-left px-5 py-3 font-medium text-slate-500">版本</th>
+                <th className="text-left px-5 py-3 font-medium text-slate-500">页数</th>
+                <th className="text-left px-5 py-3 font-medium text-slate-500">上传时间</th>
+                <th className="text-left px-5 py-3 font-medium text-slate-500">审核备注</th>
+                <th className="text-right px-5 py-3 font-medium text-slate-500">操作</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {detail.materials.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="px-5 py-12 text-center text-slate-400">
+                    暂无材料
                   </td>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
+              )}
+              {detail.materials.map((material) => {
+                const statusConfig = materialStatusConfig[material.status] || {
+                  label: material.status,
+                  className: 'bg-gray-100 text-gray-600',
+                };
+
+                return (
+                  <tr key={material.id} className="hover:bg-slate-50">
+                    <td className="px-5 py-3 text-slate-800 font-medium">
+                      {material.fileUrl ? (
+                        <a
+                          href={getFileUrl(material.fileUrl)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-700"
+                        >
+                          {material.name}
+                        </a>
+                      ) : (
+                        <span className="text-slate-600">{material.name}</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3 text-slate-600">
+                      {materialTypeLabels[material.type] || material.type}
+                    </td>
+                    <td className="px-5 py-3">
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${statusConfig.className}`}
+                      >
+                        {statusConfig.label}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3 text-slate-600">v{material.version}</td>
+                    <td className="px-5 py-3 text-slate-600">
+                      {material.pageTotal || '-'}
+                      {material.missingPages && material.missingPages.length > 0 && (
+                        <span className="text-orange-500 text-xs ml-1">
+                          (缺{material.missingPages.join(',')}页)
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3 text-slate-600">
+                      {new Date(material.uploadedAt).toLocaleDateString('zh-CN')}
+                    </td>
+                    <td className="px-5 py-3 text-slate-600 max-w-[150px] truncate">
+                      {material.reviewNote || '-'}
+                    </td>
+                    <td className="px-5 py-3 text-right">
+                      <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                        <button
+                          onClick={() => {
+                            setShowMarkMissingPages(material.id);
+                            setMissingPagesInput(material.missingPages?.join(', ') || '');
+                          }}
+                          className="text-orange-600 hover:text-orange-700 text-xs font-medium px-2 py-1 rounded hover:bg-orange-50"
+                          title="标记缺页"
+                        >
+                          标记缺页
+                        </button>
+                        {(material.status === MaterialStatus.PENDING ||
+                          material.status === MaterialStatus.RESUBMITTED ||
+                          material.status === MaterialStatus.MISSING) && (
+                          <>
+                            <button
+                              onClick={() => handleApprove(material.id)}
+                              className="text-green-600 hover:text-green-700 text-xs font-medium px-2 py-1 rounded hover:bg-green-50"
+                            >
+                              通过
+                            </button>
+                            <button
+                              onClick={() => handleReject(material.id)}
+                              className="text-red-600 hover:text-red-700 text-xs font-medium px-2 py-1 rounded hover:bg-red-50"
+                            >
+                              驳回
+                            </button>
+                          </>
+                        )}
+                        {(material.status === MaterialStatus.REJECTED || material.status === MaterialStatus.MISSING) && (
+                          <button
+                            onClick={() => handleResubmitClick(material.id)}
+                            disabled={uploading && resubmitMaterialId === material.id}
+                            className="text-blue-600 hover:text-blue-700 text-xs font-medium px-2 py-1 rounded hover:bg-blue-50 disabled:opacity-50"
+                          >
+                            {uploading && resubmitMaterialId === material.id ? '上传中...' : '重新提交'}
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
+
+      {showAddMissing && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-xl">
+            <h3 className="text-lg font-semibold text-slate-800 mb-4">添加缺失材料</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">材料名称</label>
+                <input
+                  type="text"
+                  value={newMissingMaterial.name}
+                  onChange={(e) => setNewMissingMaterial({ ...newMissingMaterial, name: e.target.value })}
+                  placeholder="如：身份证复印件、授权委托书..."
+                  className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">材料类型</label>
+                <select
+                  value={newMissingMaterial.materialType}
+                  onChange={(e) => setNewMissingMaterial({ ...newMissingMaterial, materialType: e.target.value as MaterialType })}
+                  className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                >
+                  {Object.entries(materialTypeLabels).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">备注（选填）</label>
+                <textarea
+                  value={newMissingMaterial.note}
+                  onChange={(e) => setNewMissingMaterial({ ...newMissingMaterial, note: e.target.value })}
+                  rows={2}
+                  placeholder="补充说明..."
+                  className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 resize-none"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowAddMissing(false);
+                  setNewMissingMaterial({ name: '', materialType: MaterialType.EVIDENCE_DOC, note: '' });
+                }}
+                className="px-4 py-2 text-sm text-slate-600 hover:text-slate-800"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleAddMissingMaterial}
+                disabled={submitting}
+                className="bg-orange-600 hover:bg-orange-700 disabled:bg-orange-400 text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors"
+              >
+                {submitting ? '提交中...' : '添加并通知'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showMarkMissingPages && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-xl">
+            <h3 className="text-lg font-semibold text-slate-800 mb-4">标记缺页</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">缺失页码</label>
+                <input
+                  type="text"
+                  value={missingPagesInput}
+                  onChange={(e) => setMissingPagesInput(e.target.value)}
+                  placeholder="如：3, 5, 7-9 或 3 5 7"
+                  className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                />
+                <p className="text-xs text-slate-500 mt-1">用逗号、空格或顿号分隔多个页码</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">备注（选填）</label>
+                <textarea
+                  value={missingNote}
+                  onChange={(e) => setMissingNote(e.target.value)}
+                  rows={2}
+                  placeholder="缺页原因或说明..."
+                  className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 resize-none"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowMarkMissingPages(null);
+                  setMissingPagesInput('');
+                  setMissingNote('');
+                }}
+                className="px-4 py-2 text-sm text-slate-600 hover:text-slate-800"
+              >
+                取消
+              </button>
+              <button
+                onClick={() => handleMarkMissingPages(showMarkMissingPages)}
+                disabled={submitting}
+                className="bg-orange-600 hover:bg-orange-700 disabled:bg-orange-400 text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors"
+              >
+                {submitting ? '提交中...' : '标记并通知'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

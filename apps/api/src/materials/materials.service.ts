@@ -5,6 +5,8 @@ import {
   CreateMaterialDto,
   UpdateMaterialDto,
   ResubmitMaterialDto,
+  MarkMissingPagesDto,
+  AddMissingMaterialDto,
 } from './dto/materials.dto';
 import {
   TimelineEventType,
@@ -207,5 +209,85 @@ export class MaterialsService {
     });
 
     return this.toDTO(resubmitted);
+  }
+
+  async markMissingPages(
+    id: string,
+    userId: string,
+    dto: MarkMissingPagesDto,
+  ) {
+    const material = await this.prisma.caseMaterial.findUnique({
+      where: { id },
+    });
+    if (!material) {
+      throw new NotFoundException(`Material ${id} not found`);
+    }
+
+    const updated = await this.prisma.caseMaterial.update({
+      where: { id },
+      data: {
+        missingPages: dto.missingPages,
+        status: MaterialStatus.MISSING,
+      },
+    });
+
+    const operator = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    await this.timelineService.addEvent({
+      caseId: material.caseId,
+      eventType: TimelineEventType.MATERIAL_INCOMPLETE_NOTICE,
+      title: '材料缺页提醒',
+      content: `材料「${material.name}」第 ${dto.missingPages.join(', ')} 页缺失${dto.note ? `，${dto.note}` : ''}，请尽快补传`,
+      operatorId: userId,
+      operatorName: operator?.name || '',
+      metadata: { missingPages: dto.missingPages, materialId: id },
+    });
+
+    return this.toDTO(updated);
+  }
+
+  async addMissingMaterial(
+    caseId: string,
+    userId: string,
+    dto: AddMissingMaterialDto,
+  ) {
+    const caseData = await this.prisma.case.findUnique({
+      where: { id: caseId },
+    });
+    if (!caseData) {
+      throw new NotFoundException(`Case ${caseId} not found`);
+    }
+
+    const material = await this.prisma.caseMaterial.create({
+      data: {
+        caseId,
+        name: dto.name,
+        materialType: dto.materialType,
+        status: MaterialStatus.MISSING,
+        fileUrl: '',
+        fileSize: 0,
+        pageTotal: 0,
+        missingPages: [],
+        uploadedBy: userId,
+      },
+    });
+
+    const operator = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    await this.timelineService.addEvent({
+      caseId,
+      eventType: TimelineEventType.MATERIAL_INCOMPLETE_NOTICE,
+      title: '新增待补材料',
+      content: `需补充材料：${dto.name}${dto.note ? `（${dto.note}）` : ''}`,
+      operatorId: userId,
+      operatorName: operator?.name || '',
+      metadata: { materialId: material.id, note: dto.note },
+    });
+
+    return this.toDTO(material);
   }
 }

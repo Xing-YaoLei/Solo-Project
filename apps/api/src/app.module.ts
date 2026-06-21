@@ -9,6 +9,7 @@ import { ConflictCheckModule } from './conflict-check/conflict-check.module';
 import { TimelineModule } from './timeline/timeline.module';
 import { ReportsModule } from './reports/reports.module';
 import { InvoicesModule } from './invoices/invoices.module';
+import { UploadController } from './upload/upload.controller';
 
 @Module({
   imports: [
@@ -23,5 +24,6 @@ import { InvoicesModule } from './invoices/invoices.module';
     ReportsModule,
     InvoicesModule,
   ],
+  controllers: [UploadController],
 })
 export class AppModule {}

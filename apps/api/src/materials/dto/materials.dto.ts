@@ -57,3 +57,27 @@ export class ResubmitMaterialDto {
   @IsOptional()
   reviewNote?: string;
 }
+
+export class MarkMissingPagesDto {
+  @IsNumber({}, { each: true })
+  @IsNotEmpty()
+  missingPages: number[];
+
+  @IsString()
+  @IsOptional()
+  note?: string;
+}
+
+export class AddMissingMaterialDto {
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+
+  @IsEnum(MaterialType)
+  @IsNotEmpty()
+  materialType: MaterialType;
+
+  @IsString()
+  @IsOptional()
+  note?: string;
+}
