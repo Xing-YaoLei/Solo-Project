@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Timer, Route, Send } from 'lucide-react'
+import { Timer, Route, Send, ArrowRight } from 'lucide-react'
 import { useGameStore } from '@/store/gameStore'
 import { guideRoutes } from '@/data/gameData'
 import type { GamePhase } from '@/types'
@@ -18,6 +18,7 @@ export default function GameHUD() {
   const selectedRouteId = useGameStore((s) => s.selectedRouteId)
   const roundStartTime = useGameStore((s) => s.roundStartTime)
   const submitDecision = useGameStore((s) => s.submitDecision)
+  const setPhase = useGameStore((s) => s.setPhase)
 
   const [elapsed, setElapsed] = useState(0)
 
@@ -32,7 +33,12 @@ export default function GameHUD() {
   const minutes = Math.floor(elapsed / 60)
   const seconds = elapsed % 60
   const selectedRoute = guideRoutes.find((r) => r.id === selectedRouteId)
-  const canSubmit = phase === 'route-select' || phase === 'seat-assign'
+
+  const handleProceedToSeat = () => {
+    if (selectedRouteId) {
+      setPhase('seat-assign')
+    }
+  }
 
   return (
     <>
@@ -60,7 +66,20 @@ export default function GameHUD() {
         </div>
       </div>
 
-      {canSubmit && (
+      {phase === 'route-select' && (
+        <div className="glass-panel fixed bottom-0 left-0 right-0 z-30 flex items-center justify-center px-6 py-3">
+          <button
+            onClick={handleProceedToSeat}
+            disabled={!selectedRouteId}
+            className="flex items-center gap-2 px-8 py-2.5 rounded-xl font-display font-semibold text-sm transition disabled:opacity-40 disabled:cursor-not-allowed bg-gradient-to-r from-vivid-orange to-golden text-white hover:shadow-lg hover:shadow-vivid-orange/30 active:scale-[0.98]"
+          >
+            <ArrowRight size={14} />
+            {selectedRouteId ? '确认路线，前往分配座位' : '请先选择一条路线'}
+          </button>
+        </div>
+      )}
+
+      {phase === 'seat-assign' && (
         <div className="glass-panel fixed bottom-0 left-0 right-0 z-30 flex items-center justify-center px-6 py-3">
           <button
             onClick={submitDecision}

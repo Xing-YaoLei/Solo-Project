@@ -25,9 +25,6 @@ export default function App() {
 
   const [activeHeatPoint, setActiveHeatPoint] = useState<HeatPoint | null>(null)
   const [cardPosition, setCardPosition] = useState({ x: 0, y: 0 })
-  const [showLeaderboard, setShowLeaderboard] = useState(false)
-  const [showReplay, setShowReplay] = useState(false)
-  const [leaderboardTab, setLeaderboardTab] = useState<'spend' | 'time'>('spend')
 
   const handleHeatPointClick = useCallback((heatPoint: HeatPoint, screenPos: { x: number; y: number }) => {
     setActiveHeatPoint(heatPoint)
@@ -106,42 +103,11 @@ export default function App() {
       />
 
       <FeedbackModal />
+      <Leaderboard />
+      <ReplayViewer />
 
       {showTutorial && (
         <TutorialOverlay onClose={() => setShowTutorial(false)} />
-      )}
-
-      {showLeaderboard && (
-        <Leaderboard
-          activeTab={leaderboardTab}
-          onTabChange={setLeaderboardTab}
-          onClose={() => setShowLeaderboard(false)}
-        />
-      )}
-
-      {showReplay && (
-        <ReplayViewer onClose={() => setShowReplay(false)} />
-      )}
-
-      {(phase === 'feedback' || phase === 'idle') && playerName && (
-        <div className="fixed top-14 right-4 z-30 flex flex-col gap-2">
-          <button
-            onClick={() => setShowLeaderboard(true)}
-            className="glass-card px-4 py-2 rounded-xl text-xs font-display text-white hover:bg-white/10 transition flex items-center gap-2"
-          >
-            <span className="text-golden">🏆</span>
-            排行榜
-          </button>
-          {phase === 'feedback' && (
-            <button
-              onClick={() => setShowReplay(true)}
-              className="glass-card px-4 py-2 rounded-xl text-xs font-display text-white hover:bg-white/10 transition flex items-center gap-2"
-            >
-              <span className="text-vivid-orange">📼</span>
-              失败回放
-            </button>
-          )}
-        </div>
       )}
     </div>
   )

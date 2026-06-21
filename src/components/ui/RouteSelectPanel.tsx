@@ -1,8 +1,8 @@
 import { motion, AnimatePresence } from 'motion/react'
-import { Clock, MapPin, Shield } from 'lucide-react'
+import { Clock, MapPin, Shield, Check } from 'lucide-react'
 import { guideRoutes } from '@/data/gameData'
 import { useGameStore } from '@/store/gameStore'
-import type { GuideRoute } from '@/types'
+import type { GuideRoute, GamePhase } from '@/types'
 
 const RISK_CONFIG: Record<GuideRoute['riskLevel'], { label: string; color: string; bg: string }> = {
   safe: { label: '安全', color: '#22c55e', bg: 'rgba(34,197,94,0.15)' },
@@ -10,11 +10,20 @@ const RISK_CONFIG: Record<GuideRoute['riskLevel'], { label: string; color: strin
   high: { label: '高风险', color: '#ef4444', bg: 'rgba(239,68,68,0.15)' },
 }
 
+const PANEL_PHASES: GamePhase[] = ['route-select', 'seat-assign', 'observing']
+
 export default function RouteSelectPanel() {
   const phase = useGameStore((s) => s.phase)
   const selectedRouteId = useGameStore((s) => s.selectedRouteId)
   const selectRoute = useGameStore((s) => s.selectRoute)
-  const visible = phase === 'route-select'
+  const setPhase = useGameStore((s) => s.setPhase)
+  const visible = PANEL_PHASES.includes(phase)
+
+  const handleConfirmRoute = () => {
+    if (selectedRouteId) {
+      setPhase('seat-assign')
+    }
+  }
 
   return (
     <AnimatePresence>
@@ -24,13 +33,13 @@ export default function RouteSelectPanel() {
           animate={{ x: 0, opacity: 1 }}
           exit={{ x: -320, opacity: 0 }}
           transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-          className="glass-panel fixed left-0 top-0 bottom-0 z-40 w-80 overflow-y-auto p-5"
+          className="glass-panel fixed left-0 top-0 bottom-0 z-40 w-80 overflow-y-auto p-5 flex flex-col"
         >
           <h2 className="text-lg font-display font-bold text-white mb-4">
             选择导览路线
           </h2>
 
-          <div className="flex flex-col gap-3">
+          <div className="flex-1 flex flex-col gap-3 overflow-y-auto pr-1 mb-4">
             {guideRoutes.map((route) => {
               const isSelected = selectedRouteId === route.id
               const risk = RISK_CONFIG[route.riskLevel]
@@ -40,7 +49,7 @@ export default function RouteSelectPanel() {
                 <button
                   key={route.id}
                   onClick={() => selectRoute(route.id)}
-                  className={`glass-card rounded-xl p-4 text-left transition-all ${
+                  className={`glass-card rounded-xl p-4 text-left transition-all flex-shrink-0 ${
                     isSelected
                       ? 'ring-2 ring-vivid-orange shadow-[0_0_20px_rgba(255,107,53,0.3)]'
                       : 'hover:bg-white/5'
@@ -50,12 +59,19 @@ export default function RouteSelectPanel() {
                     <span className="font-display font-semibold text-white text-sm">
                       {route.name}
                     </span>
-                    <span
-                      className="text-[10px] font-mono px-2 py-0.5 rounded-full"
-                      style={{ backgroundColor: risk.bg, color: risk.color }}
-                    >
-                      {risk.label}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      {isSelected && (
+                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-vivid-orange/20 text-vivid-orange">
+                          已选
+                        </span>
+                      )}
+                      <span
+                        className="text-[10px] font-mono px-2 py-0.5 rounded-full"
+                        style={{ backgroundColor: risk.bg, color: risk.color }}
+                      >
+                        {risk.label}
+                      </span>
+                    </div>
                   </div>
 
                   <div className="flex items-center gap-3 text-xs text-slate-400 mb-2">
@@ -90,6 +106,17 @@ export default function RouteSelectPanel() {
               )
             })}
           </div>
+
+          {phase === 'route-select' && (
+            <button
+              onClick={handleConfirmRoute}
+              disabled={!selectedRouteId}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-display font-semibold text-sm transition disabled:opacity-40 disabled:cursor-not-allowed bg-gradient-to-r from-vivid-orange to-golden text-white hover:shadow-lg hover:shadow-vivid-orange/30 active:scale-[0.98]"
+            >
+              <Check size={16} />
+              确认路线，分配座位
+            </button>
+          )}
         </motion.div>
       )}
     </AnimatePresence>

@@ -301,13 +301,6 @@ export default function Scene3D({ onHeatPointClick }: Scene3DProps) {
     }
   }, [gl, onHeatPointClick, phase, setPhase])
 
-  useEffect(() => {
-    if (phase === 'route-select') {
-      const timer = setTimeout(() => setPhase('seat-assign'), 800)
-      return () => clearTimeout(timer)
-    }
-  }, [phase, setPhase])
-
   return (
     <group>
       <Terrain />

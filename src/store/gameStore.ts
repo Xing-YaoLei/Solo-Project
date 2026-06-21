@@ -13,6 +13,9 @@ interface GameState {
   tutorialStep: number
   showTutorial: boolean
   playerName: string
+  showLeaderboard: boolean
+  showReplay: boolean
+  leaderboardTab: 'spend' | 'time'
 
   setPhase: (phase: GamePhase) => void
   selectRoute: (routeId: string) => void
@@ -27,6 +30,9 @@ interface GameState {
   setShowTutorial: (show: boolean) => void
   setPlayerName: (name: string) => void
   resetGame: () => void
+  setShowLeaderboard: (show: boolean) => void
+  setShowReplay: (show: boolean) => void
+  setLeaderboardTab: (tab: 'spend' | 'time') => void
 }
 
 const MAX_REPLAYS = 3
@@ -81,6 +87,9 @@ export const useGameStore = create<GameState>((set, get) => ({
   tutorialStep: 0,
   showTutorial: false,
   playerName: localStorage.getItem('player_name') || '',
+  showLeaderboard: false,
+  showReplay: false,
+  leaderboardTab: 'spend',
 
   setPhase: (phase) => set({ phase }),
 
@@ -154,4 +163,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     seats: performanceTask.seats.map(s => ({ ...s })),
     feedback: null,
   }),
+
+  setShowLeaderboard: (show) => set({ showLeaderboard: show }),
+  setShowReplay: (show) => set({ showReplay: show }),
+  setLeaderboardTab: (tab) => set({ leaderboardTab: tab }),
 }))

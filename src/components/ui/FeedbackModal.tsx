@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'motion/react'
-import { AlertTriangle, RotateCcw, Trophy } from 'lucide-react'
+import { AlertTriangle, RotateCcw, Trophy, TrendingUp, Clock, Play } from 'lucide-react'
 import { useGameStore } from '@/store/gameStore'
 import type { FeedbackResult } from '@/types'
 
@@ -47,6 +47,10 @@ export default function FeedbackModal() {
   const phase = useGameStore((s) => s.phase)
   const feedback = useGameStore((s) => s.feedback)
   const startRound = useGameStore((s) => s.startRound)
+  const setShowLeaderboard = useGameStore((s) => s.setShowLeaderboard)
+  const setShowReplay = useGameStore((s) => s.setShowReplay)
+  const setLeaderboardTab = useGameStore((s) => s.setLeaderboardTab)
+  const replays = useGameStore((s) => s.replays)
   const visible = phase === 'feedback' && feedback !== null
 
   if (!feedback) return null
@@ -68,7 +72,7 @@ export default function FeedbackModal() {
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.8, opacity: 0, y: 20 }}
             transition={{ type: 'spring', damping: 20, stiffness: 180 }}
-            className="glass-panel rounded-2xl p-8 w-[380px]"
+            className="glass-panel rounded-2xl p-7 w-[440px] max-h-[90vh] overflow-y-auto"
           >
             <ScoreRing score={feedback.score} grade={feedback.overallGrade} />
 
@@ -85,8 +89,54 @@ export default function FeedbackModal() {
               </div>
             </div>
 
+            <div className="grid grid-cols-2 gap-2 mb-4">
+              <button
+                onClick={() => {
+                  setLeaderboardTab('spend')
+                  setShowLeaderboard(true)
+                }}
+                className="glass-card rounded-xl p-3 text-center hover:bg-golden/10 hover:border-golden/30 transition-all group"
+              >
+                <div className="flex items-center justify-center gap-1 mb-1">
+                  <TrendingUp size={14} className="text-golden" />
+                  <span className="text-[11px] font-display font-semibold text-golden">二消榜</span>
+                </div>
+                <div className="text-[10px] text-slate-400">查看转化排名</div>
+              </button>
+              <button
+                onClick={() => {
+                  setLeaderboardTab('time')
+                  setShowLeaderboard(true)
+                }}
+                className="glass-card rounded-xl p-3 text-center hover:bg-emerald-500/10 hover:border-emerald-500/30 transition-all group"
+              >
+                <div className="flex items-center justify-center gap-1 mb-1">
+                  <Clock size={14} className="text-emerald-400" />
+                  <span className="text-[11px] font-display font-semibold text-emerald-400">时间榜</span>
+                </div>
+                <div className="text-[10px] text-slate-400">查看速度排名</div>
+              </button>
+            </div>
+
+            {replays.length > 0 && (
+              <button
+                onClick={() => setShowReplay(true)}
+                className="w-full glass-card rounded-xl p-3 mb-4 text-center hover:bg-vivid-orange/10 hover:border-vivid-orange/30 transition-all flex items-center justify-center gap-2"
+              >
+                <Play size={14} className="text-vivid-orange" />
+                <div className="text-left">
+                  <div className="text-[11px] font-display font-semibold text-vivid-orange">
+                    失败回放对比 ({replays.length}/3 条记录)
+                  </div>
+                  <div className="text-[10px] text-slate-400">
+                    查看三次座位失败分配，对比选择差异
+                  </div>
+                </div>
+              </button>
+            )}
+
             {feedback.riskWarnings.length > 0 && (
-              <div className="mb-4">
+              <div className="mb-5">
                 <div className="flex items-center gap-1 text-xs text-red-400 mb-2">
                   <AlertTriangle size={12} />
                   风险警告
@@ -103,7 +153,7 @@ export default function FeedbackModal() {
 
             <button
               onClick={startRound}
-              className="w-full py-2.5 rounded-xl bg-vivid-orange text-white font-display font-semibold text-sm hover:bg-vivid-orange/80 transition"
+              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-vivid-orange to-golden text-white font-display font-semibold text-sm hover:shadow-lg hover:shadow-vivid-orange/30 transition active:scale-[0.98]"
             >
               再来一局
             </button>

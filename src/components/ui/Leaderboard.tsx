@@ -1,13 +1,8 @@
 import { motion, AnimatePresence } from 'motion/react'
 import { X, Trophy, Clock, TrendingUp, Medal } from 'lucide-react'
 import { leaderboardData } from '@/data/gameData'
+import { useGameStore } from '@/store/gameStore'
 import type { LeaderboardEntry } from '@/types'
-
-interface LeaderboardProps {
-  activeTab: 'spend' | 'time'
-  onTabChange: (tab: 'spend' | 'time') => void
-  onClose: () => void
-}
 
 function RankBadge({ rank }: { rank: number }) {
   if (rank === 1) {
@@ -105,7 +100,12 @@ function LeaderboardRow({ entry, metric }: { entry: LeaderboardEntry; metric: 's
   )
 }
 
-export default function Leaderboard({ activeTab, onTabChange, onClose }: LeaderboardProps) {
+export default function Leaderboard() {
+  const showLeaderboard = useGameStore((s) => s.showLeaderboard)
+  const setShowLeaderboard = useGameStore((s) => s.setShowLeaderboard)
+  const activeTab = useGameStore((s) => s.leaderboardTab)
+  const setLeaderboardTab = useGameStore((s) => s.setLeaderboardTab)
+
   const sortedData =
     activeTab === 'spend'
       ? [...leaderboardData].sort((a, b) => b.secondarySpendRate - a.secondarySpendRate)
@@ -115,101 +115,103 @@ export default function Leaderboard({ activeTab, onTabChange, onClose }: Leaderb
 
   return (
     <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
-      >
+      {showLeaderboard && (
         <motion.div
-          initial={{ scale: 0.9, opacity: 0, y: 20 }}
-          animate={{ scale: 1, opacity: 1, y: 0 }}
-          exit={{ scale: 0.9, opacity: 0, y: 20 }}
-          transition={{ type: 'spring', damping: 22, stiffness: 200 }}
-          className="glass-panel rounded-2xl p-6 w-[440px] max-h-[85vh] overflow-hidden flex flex-col"
-          onClick={(e) => e.stopPropagation()}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          onClick={() => setShowLeaderboard(false)}
         >
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Trophy size={20} className="text-golden" />
-              <h2 className="text-lg font-display font-bold text-white">排行榜</h2>
-            </div>
-            <button
-              onClick={onClose}
-              className="w-8 h-8 rounded-lg bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition flex items-center justify-center"
-            >
-              <X size={16} />
-            </button>
-          </div>
-
-          {bestEntry && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="glass-card rounded-xl p-4 mb-4 bg-gradient-to-r from-vivid-orange/10 to-golden/10 border-golden/20"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-golden to-vivid-orange flex items-center justify-center shadow-lg shadow-golden/30">
-                  <Trophy size={26} className="text-white" />
-                </div>
-                <div className="flex-1">
-                  <div className="text-[10px] text-golden font-display mb-0.5">🏆 当前榜首</div>
-                  <div className="text-base font-display font-bold text-white">
-                    {bestEntry.playerName}
-                  </div>
-                  <div className="flex items-center gap-3 mt-1">
-                    <span className="text-xs font-mono text-golden">
-                      二消 {Math.round(bestEntry.secondarySpendRate * 100)}%
-                    </span>
-                    <span className="text-xs font-mono text-emerald-400">
-                      {Math.floor(bestEntry.completionTime / 60)}:
-                      {String(bestEntry.completionTime % 60).padStart(2, '0')}
-                    </span>
-                  </div>
-                </div>
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+            transition={{ type: 'spring', damping: 22, stiffness: 200 }}
+            className="glass-panel rounded-2xl p-6 w-[440px] max-h-[85vh] overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Trophy size={20} className="text-golden" />
+                <h2 className="text-lg font-display font-bold text-white">排行榜</h2>
               </div>
-            </motion.div>
-          )}
+              <button
+                onClick={() => setShowLeaderboard(false)}
+                className="w-8 h-8 rounded-lg bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition flex items-center justify-center"
+              >
+                <X size={16} />
+              </button>
+            </div>
 
-          <div className="flex gap-2 mb-4 p-1 bg-white/5 rounded-xl">
-            <button
-              onClick={() => onTabChange('spend')}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-display transition ${
-                activeTab === 'spend'
-                  ? 'bg-vivid-orange text-white shadow-lg shadow-vivid-orange/20'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <TrendingUp size={13} />
-              二消转化榜
-            </button>
-            <button
-              onClick={() => onTabChange('time')}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-display transition ${
-                activeTab === 'time'
-                  ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <Clock size={13} />
-              完成时间榜
-            </button>
-          </div>
+            {bestEntry && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="glass-card rounded-xl p-4 mb-4 bg-gradient-to-r from-vivid-orange/10 to-golden/10 border-golden/20"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-14 h-14 rounded-full bg-gradient-to-br from-golden to-vivid-orange flex items-center justify-center shadow-lg shadow-golden/30">
+                    <Trophy size={26} className="text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-[10px] text-golden font-display mb-0.5">🏆 当前榜首</div>
+                    <div className="text-base font-display font-bold text-white">
+                      {bestEntry.playerName}
+                    </div>
+                    <div className="flex items-center gap-3 mt-1">
+                      <span className="text-xs font-mono text-golden">
+                        二消 {Math.round(bestEntry.secondarySpendRate * 100)}%
+                      </span>
+                      <span className="text-xs font-mono text-emerald-400">
+                        {Math.floor(bestEntry.completionTime / 60)}:
+                        {String(bestEntry.completionTime % 60).padStart(2, '0')}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
 
-          <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-            {sortedData.map((entry) => (
-              <LeaderboardRow key={entry.rank} entry={entry} metric={activeTab} />
-            ))}
-          </div>
+            <div className="flex gap-2 mb-4 p-1 bg-white/5 rounded-xl">
+              <button
+                onClick={() => setLeaderboardTab('spend')}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-display transition ${
+                  activeTab === 'spend'
+                    ? 'bg-vivid-orange text-white shadow-lg shadow-vivid-orange/20'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <TrendingUp size={13} />
+                二消转化榜
+              </button>
+              <button
+                onClick={() => setLeaderboardTab('time')}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-display transition ${
+                  activeTab === 'time'
+                    ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Clock size={13} />
+                完成时间榜
+              </button>
+            </div>
 
-          <div className="mt-4 pt-4 border-t border-white/5">
-            <p className="text-[10px] text-center text-slate-500">
-              💡 不只奖励速度，平衡二消转化与时间才能取得最高分
-            </p>
-          </div>
+            <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+              {sortedData.map((entry) => (
+                <LeaderboardRow key={entry.rank} entry={entry} metric={activeTab} />
+              ))}
+            </div>
+
+            <div className="mt-4 pt-4 border-t border-white/5">
+              <p className="text-[10px] text-center text-slate-500">
+                💡 不只奖励速度，平衡二消转化与时间才能取得最高分
+              </p>
+            </div>
+          </motion.div>
         </motion.div>
-      </motion.div>
+      )}
     </AnimatePresence>
   )
 }
