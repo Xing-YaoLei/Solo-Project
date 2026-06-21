@@ -27,15 +27,33 @@ public class StatisticsService : IStatisticsService
         _dbContext = dbContext;
     }
 
-    public async Task<StatisticsOverviewResponse> GetOverviewAsync(DateOnly? from = null, DateOnly? to = null)
+    public async Task<StatisticsOverviewResponse> GetOverviewAsync(DateOnly? from = null, DateOnly? to = null, Guid? callerUserId = null)
     {
         var query = _dbContext.HearingSchedules.AsQueryable();
+
+        if (callerUserId.HasValue)
+        {
+            var caller = await _dbContext.Users.FindAsync(callerUserId.Value);
+            if (caller?.Role == UserRole.Client)
+            {
+                query = query.Where(h => h.Participants.Any(p => p.UserId == callerUserId.Value));
+            }
+        }
+
         if (from.HasValue) query = query.Where(h => h.HearingDate >= from.Value);
         if (to.HasValue) query = query.Where(h => h.HearingDate <= to.Value);
 
         var hearings = await query.ToListAsync();
 
         var feedbackQuery = _dbContext.ClientFeedbacks.AsQueryable();
+        if (callerUserId.HasValue)
+        {
+            var caller = await _dbContext.Users.FindAsync(callerUserId.Value);
+            if (caller?.Role == UserRole.Client)
+            {
+                feedbackQuery = feedbackQuery.Where(f => f.ClientId == callerUserId.Value);
+            }
+        }
         if (from.HasValue) feedbackQuery = feedbackQuery.Where(f => f.SubmittedAt >= from.Value.ToDateTime(TimeOnly.MinValue));
         if (to.HasValue) feedbackQuery = feedbackQuery.Where(f => f.SubmittedAt <= to.Value.ToDateTime(TimeOnly.MaxValue));
 
@@ -51,7 +69,16 @@ public class StatisticsService : IStatisticsService
         var thisMonthStart = new DateOnly(now.Year, now.Month, 1);
         var thisWeekStart = DateOnly.FromDateTime(now.AddDays(-(int)now.DayOfWeek));
 
-        var allHearings = await _dbContext.HearingSchedules.ToListAsync();
+        var allQuery = _dbContext.HearingSchedules.AsQueryable();
+        if (callerUserId.HasValue)
+        {
+            var caller = await _dbContext.Users.FindAsync(callerUserId.Value);
+            if (caller?.Role == UserRole.Client)
+            {
+                allQuery = allQuery.Where(h => h.Participants.Any(p => p.UserId == callerUserId.Value));
+            }
+        }
+        var allHearings = await allQuery.ToListAsync();
         var hearingsThisMonth = allHearings.Count(h => h.HearingDate >= thisMonthStart);
         var hearingsThisWeek = allHearings.Count(h => h.HearingDate >= thisWeekStart);
 
@@ -65,12 +92,21 @@ public class StatisticsService : IStatisticsService
             hearingsThisWeek);
     }
 
-    public async Task<IEnumerable<ClientSatisfactionReport>> GetClientSatisfactionAsync(DateOnly? from = null, DateOnly? to = null)
+    public async Task<IEnumerable<ClientSatisfactionReport>> GetClientSatisfactionAsync(DateOnly? from = null, DateOnly? to = null, Guid? callerUserId = null)
     {
         var query = _dbContext.ClientFeedbacks
             .Include(f => f.Client)
             .Include(f => f.Hearing)
             .AsQueryable();
+
+        if (callerUserId.HasValue)
+        {
+            var caller = await _dbContext.Users.FindAsync(callerUserId.Value);
+            if (caller?.Role == UserRole.Client)
+            {
+                query = query.Where(f => f.ClientId == callerUserId.Value);
+            }
+        }
 
         if (from.HasValue) query = query.Where(f => f.SubmittedAt >= from.Value.ToDateTime(TimeOnly.MinValue));
         if (to.HasValue) query = query.Where(f => f.SubmittedAt <= to.Value.ToDateTime(TimeOnly.MaxValue));
@@ -96,11 +132,21 @@ public class StatisticsService : IStatisticsService
             });
     }
 
-    public async Task<IEnumerable<HearingStatistics>> GetHearingStatisticsAsync(DateOnly from, DateOnly to)
+    public async Task<IEnumerable<HearingStatistics>> GetHearingStatisticsAsync(DateOnly from, DateOnly to, Guid? callerUserId = null)
     {
-        var hearings = await _dbContext.HearingSchedules
-            .Where(h => h.HearingDate >= from && h.HearingDate <= to)
-            .ToListAsync();
+        var query = _dbContext.HearingSchedules
+            .Where(h => h.HearingDate >= from && h.HearingDate <= to);
+
+        if (callerUserId.HasValue)
+        {
+            var caller = await _dbContext.Users.FindAsync(callerUserId.Value);
+            if (caller?.Role == UserRole.Client)
+            {
+                query = query.Where(h => h.Participants.Any(p => p.UserId == callerUserId.Value));
+            }
+        }
+
+        var hearings = await query.ToListAsync();
 
         var conflicts = await _dbContext.ConflictsOfInterest
             .Where(c => c.DetectedAt >= from.ToDateTime(TimeOnly.MinValue) && c.DetectedAt <= to.ToDateTime(TimeOnly.MaxValue))
@@ -121,13 +167,23 @@ public class StatisticsService : IStatisticsService
             });
     }
 
-    public async Task<ClientSatisfactionReport> GetClientSatisfactionDetailAsync(Guid clientId)
+    public async Task<ClientSatisfactionReport> GetClientSatisfactionDetailAsync(Guid clientId, Guid? callerUserId = null)
     {
-        var feedbacks = await _dbContext.ClientFeedbacks
+        var query = _dbContext.ClientFeedbacks
             .Include(f => f.Client)
             .Include(f => f.Hearing)
-            .Where(f => f.ClientId == clientId)
-            .ToListAsync();
+            .Where(f => f.ClientId == clientId);
+
+        if (callerUserId.HasValue)
+        {
+            var caller = await _dbContext.Users.FindAsync(callerUserId.Value);
+            if (caller?.Role == UserRole.Client && callerUserId.Value != clientId)
+            {
+                throw new UnauthorizedAccessException("You can only view your own satisfaction data");
+            }
+        }
+
+        var feedbacks = await query.ToListAsync();
 
         if (feedbacks.Count == 0)
             throw new KeyNotFoundException($"No feedbacks found for client {clientId}");

@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using HearingCalendar.Application.Dtos;
 using HearingCalendar.Application.Interfaces;
 using HearingCalendar.Domain.Enums;
@@ -20,44 +21,48 @@ public class StatisticsController : ControllerBase
     }
 
     [HttpGet("overview")]
-    [RoleAuthorize(UserRole.Partner)]
-    [RoleAuthorize(UserRole.Lawyer)]
+    [RoleAuthorize(UserRole.Partner, UserRole.Lawyer, UserRole.Client)]
     public async Task<ActionResult<StatisticsOverviewResponse>> GetOverview(
         [FromQuery] DateOnly? from = null,
         [FromQuery] DateOnly? to = null)
     {
-        var result = await _statisticsService.GetOverviewAsync(from, to);
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        Guid? callerUserId = userIdClaim is not null ? Guid.Parse(userIdClaim) : null;
+        var result = await _statisticsService.GetOverviewAsync(from, to, callerUserId);
         return Ok(result);
     }
 
     [HttpGet("client-satisfaction")]
-    [RoleAuthorize(UserRole.Partner)]
-    [RoleAuthorize(UserRole.Lawyer)]
+    [RoleAuthorize(UserRole.Partner, UserRole.Lawyer, UserRole.Client)]
     public async Task<ActionResult<IEnumerable<ClientSatisfactionReport>>> GetClientSatisfaction(
         [FromQuery] DateOnly? from = null,
         [FromQuery] DateOnly? to = null)
     {
-        var result = await _statisticsService.GetClientSatisfactionAsync(from, to);
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        Guid? callerUserId = userIdClaim is not null ? Guid.Parse(userIdClaim) : null;
+        var result = await _statisticsService.GetClientSatisfactionAsync(from, to, callerUserId);
         return Ok(result);
     }
 
     [HttpGet("hearing-stats")]
-    [RoleAuthorize(UserRole.Partner)]
-    [RoleAuthorize(UserRole.Lawyer)]
+    [RoleAuthorize(UserRole.Partner, UserRole.Lawyer)]
     public async Task<ActionResult<IEnumerable<HearingStatistics>>> GetHearingStatistics(
         [FromQuery] DateOnly from,
         [FromQuery] DateOnly to)
     {
-        var result = await _statisticsService.GetHearingStatisticsAsync(from, to);
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        Guid? callerUserId = userIdClaim is not null ? Guid.Parse(userIdClaim) : null;
+        var result = await _statisticsService.GetHearingStatisticsAsync(from, to, callerUserId);
         return Ok(result);
     }
 
     [HttpGet("client-satisfaction/{clientId}")]
-    [RoleAuthorize(UserRole.Partner)]
-    [RoleAuthorize(UserRole.Lawyer)]
+    [RoleAuthorize(UserRole.Partner, UserRole.Lawyer, UserRole.Client)]
     public async Task<ActionResult<ClientSatisfactionReport>> GetClientSatisfactionDetail(Guid clientId)
     {
-        var result = await _statisticsService.GetClientSatisfactionDetailAsync(clientId);
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        Guid? callerUserId = userIdClaim is not null ? Guid.Parse(userIdClaim) : null;
+        var result = await _statisticsService.GetClientSatisfactionDetailAsync(clientId, callerUserId);
         return Ok(result);
     }
 }

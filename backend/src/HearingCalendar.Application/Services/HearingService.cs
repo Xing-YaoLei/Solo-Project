@@ -34,7 +34,7 @@ public class HearingService : IHearingService
         _dbContext = dbContext;
     }
 
-    public async Task<HearingDetailResponse> GetByIdAsync(Guid id)
+    public async Task<HearingDetailResponse> GetByIdAsync(Guid id, Guid? callerUserId = null)
     {
         var hearing = await _dbContext.HearingSchedules
             .Include(h => h.Participants)
@@ -47,12 +47,30 @@ public class HearingService : IHearingService
         if (hearing is null)
             throw new KeyNotFoundException($"Hearing {id} not found");
 
+        if (callerUserId.HasValue)
+        {
+            var caller = await _dbContext.Users.FindAsync(callerUserId.Value);
+            if (caller?.Role == UserRole.Client && !hearing.Participants.Any(p => p.UserId == callerUserId.Value))
+            {
+                throw new UnauthorizedAccessException("You do not have permission to view this hearing");
+            }
+        }
+
         return MapToDetailResponse(hearing);
     }
 
-    public async Task<PagedResult<HearingListResponse>> GetListAsync(int page, int pageSize, HearingStatus? status = null, DateOnly? fromDate = null, DateOnly? toDate = null, string? courtRoom = null, bool? conflictFlagged = null)
+    public async Task<PagedResult<HearingListResponse>> GetListAsync(int page, int pageSize, HearingStatus? status = null, DateOnly? fromDate = null, DateOnly? toDate = null, string? courtRoom = null, bool? conflictFlagged = null, Guid? callerUserId = null)
     {
         var query = _dbContext.HearingSchedules.AsQueryable();
+
+        if (callerUserId.HasValue)
+        {
+            var caller = await _dbContext.Users.FindAsync(callerUserId.Value);
+            if (caller?.Role == UserRole.Client)
+            {
+                query = query.Where(h => h.Participants.Any(p => p.UserId == callerUserId.Value));
+            }
+        }
 
         if (status.HasValue)
             query = query.Where(h => h.Status == status.Value);

@@ -1,6 +1,7 @@
 using HearingCalendar.API.Configuration;
 using HearingCalendar.API.Middleware;
 using Hangfire;
+using HearingCalendar.Infrastructure.Data;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -55,6 +56,12 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<HearingCalendarDbContext>();
+    await DatabaseInitializer.InitializeAsync(dbContext);
+}
 
 if (app.Environment.IsDevelopment())
 {

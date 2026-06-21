@@ -20,9 +20,7 @@ public class RemindersController : ControllerBase
     }
 
     [HttpPost]
-    [RoleAuthorize(UserRole.Lawyer)]
-    [RoleAuthorize(UserRole.Assistant)]
-    [RoleAuthorize(UserRole.Partner)]
+    [RoleAuthorize(UserRole.Lawyer, UserRole.Assistant, UserRole.Partner)]
     public async Task<ActionResult<ReminderResponse>> Create([FromBody] CreateReminderRequest request)
     {
         var result = await _reminderService.CreateAsync(request);
@@ -37,9 +35,7 @@ public class RemindersController : ControllerBase
     }
 
     [HttpGet("pending")]
-    [RoleAuthorize(UserRole.Lawyer)]
-    [RoleAuthorize(UserRole.Assistant)]
-    [RoleAuthorize(UserRole.Partner)]
+    [RoleAuthorize(UserRole.Lawyer, UserRole.Assistant, UserRole.Partner)]
     public async Task<ActionResult<IEnumerable<ReminderResponse>>> GetPending()
     {
         var result = await _reminderService.GetPendingRemindersAsync();

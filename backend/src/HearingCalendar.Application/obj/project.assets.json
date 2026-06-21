@@ -989,6 +989,7 @@
         "type": "project",
         "framework": ".NETCoreApp,Version=v9.0",
         "dependencies": {
+          "BCrypt.Net-Next": "4.0.3",
           "HearingCalendar.Domain": "1.0.0",
           "Microsoft.EntityFrameworkCore.SqlServer": "9.0.6"
         },

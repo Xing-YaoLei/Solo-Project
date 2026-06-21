@@ -42,8 +42,7 @@ public class ConflictsController : ControllerBase
     }
 
     [HttpPost]
-    [RoleAuthorize(UserRole.Partner)]
-    [RoleAuthorize(UserRole.Lawyer)]
+    [RoleAuthorize(UserRole.Partner, UserRole.Lawyer)]
     public async Task<ActionResult<ConflictResponse>> Create([FromBody] CreateConflictRequest request)
     {
         var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);

@@ -20,8 +20,7 @@ public class CalendarController : ControllerBase
     }
 
     [HttpPost("slots")]
-    [RoleAuthorize(UserRole.Partner)]
-    [RoleAuthorize(UserRole.Assistant)]
+    [RoleAuthorize(UserRole.Partner, UserRole.Assistant)]
     public async Task<ActionResult<CalendarSlotResponse>> CreateSlot([FromBody] CreateCalendarSlotRequest request)
     {
         var result = await _calendarService.CreateSlotAsync(request);
