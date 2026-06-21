@@ -1,0 +1,261 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum OrderStatus {
+  pending
+  accepted
+  picked
+  delivered
+  cancelled
+}
+
+enum TaskType {
+  item_damage
+  dispatch_timeout
+}
+
+enum TaskPriority {
+  low
+  medium
+  high
+}
+
+enum TaskStatus {
+  pending
+  processing
+  resolved
+  closed
+}
+
+enum DamageLevel {
+  minor
+  moderate
+  severe
+}
+
+enum AppealStatus {
+  pending
+  approved
+  rejected
+}
+
+enum AppealType {
+  subsidy
+  damage
+  late_dispatch
+}
+
+enum CsType {
+  complaint
+  appeal
+  inquiry
+  damage_report
+}
+
+enum CsStatus {
+  open
+  processing
+  closed
+}
+
+enum UserRole {
+  analyst
+  auditor
+  supervisor
+}
+
+enum ChartType {
+  funnel
+  dispatch_trend
+  payment_trend
+}
+
+model SubsidyRule {
+  id                 String   @id @default(uuid())
+  routeId            String
+  routeName          String
+  baseSubsidy        Decimal  @default(0) @db.Decimal(10, 2)
+  distanceMultiplier Decimal  @default(0) @db.Decimal(10, 2)
+  timeMultiplier     Decimal  @default(0) @db.Decimal(10, 2)
+  peakHourBonus      Decimal  @default(0) @db.Decimal(10, 2)
+  minSubsidy         Decimal  @default(0) @db.Decimal(10, 2)
+  maxSubsidy         Decimal  @default(100) @db.Decimal(10, 2)
+  effectiveFrom      DateTime
+  effectiveTo        DateTime?
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @default(now())
+
+  orders Order[]
+
+  @@index([routeId, isActive])
+}
+
+model Order {
+  id               String        @id @default(uuid())
+  orderNo          String        @unique
+  routeId          String
+  routeName        String
+  amount           Decimal       @db.Decimal(10, 2)
+  subsidyAmount    Decimal       @default(0) @db.Decimal(10, 2)
+  itemDescription  String?
+  hasItemDamage    Boolean       @default(false)
+  itemDamageLevel  DamageLevel?
+  status           OrderStatus   @default(pending)
+  createdAt        DateTime      @default(now())
+  acceptedAt       DateTime?
+  pickedAt         DateTime?
+  deliveredAt      DateTime?
+  dispatchDuration Int?
+  riderId          String
+  riderName        String
+  customerId       String
+  customerName     String
+  paymentId        String?
+  appealId         String?
+
+  payment             Payment?                  @relation(fields: [paymentId], references: [id])
+  appeal              Appeal?                   @relation(fields: [appealId], references: [id])
+  customerServiceRecs CustomerServiceRecord[]
+  tasks               Task[]
+  conclusions         Conclusion[]
+  subsidyRule         SubsidyRule?              @relation(fields: [routeId], references: [routeId])
+
+  @@index([routeId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([hasItemDamage])
+  @@index([dispatchDuration])
+}
+
+model Payment {
+  id                 String   @id @default(uuid())
+  orderId            String
+  transactionNo      String
+  amount             Decimal  @db.Decimal(10, 2)
+  subsidyAmount      Decimal  @default(0) @db.Decimal(10, 2)
+  settlementAmount   Decimal  @default(0) @db.Decimal(10, 2)
+  paymentMethod      String
+  status             String   @default("pending")
+  paidAt             DateTime?
+  settlementDate     DateTime?
+  abnormalDeduction  Decimal? @db.Decimal(10, 2)
+  deductionReason    String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @default(now())
+
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@index([orderId])
+  @@index([status])
+}
+
+model CustomerServiceRecord {
+  id           String   @id @default(uuid())
+  orderId      String
+  ticketNo     String   @unique
+  type         CsType
+  content      String
+  chatHistory  Json?
+  operatorId   String
+  operatorName String
+  createdAt    DateTime @default(now())
+  closedAt     DateTime?
+  status       CsStatus @default(open)
+
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@index([orderId])
+  @@index([type])
+  @@index([status])
+}
+
+model Appeal {
+  id            String        @id @default(uuid())
+  orderId       String
+  type          AppealType
+  reason        String
+  evidenceUrls  String[]      @default([])
+  status        AppealStatus  @default(pending)
+  reviewerId    String?
+  reviewComment String?
+  reviewedAt    DateTime?
+  createdAt     DateTime      @default(now())
+
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@index([orderId])
+  @@index([status])
+}
+
+model Task {
+  id               String        @id @default(uuid())
+  orderId          String
+  type             TaskType
+  priority         TaskPriority  @default(medium)
+  status           TaskStatus    @default(pending)
+  title            String
+  description      String?
+  assigneeId       String?
+  assigneeName     String?
+  dispatchDuration Int?
+  damageLevel      DamageLevel?
+  createdAt        DateTime      @default(now())
+  resolvedAt       DateTime?
+  resolution       String?
+
+  order       Order        @relation(fields: [orderId], references: [id])
+  conclusion  Conclusion?
+  assignee    User?        @relation(fields: [assigneeId], references: [id])
+
+  @@index([orderId])
+  @@index([type])
+  @@index([status])
+  @@index([priority])
+  @@index([assigneeId])
+}
+
+model Conclusion {
+  id          String    @id @default(uuid())
+  orderId     String
+  taskId      String?
+  chartPointId String
+  chartType   ChartType
+  content     String
+  authorId    String
+  authorName  String
+  createdAt   DateTime  @default(now())
+  attachments String[]  @default([])
+
+  order Order @relation(fields: [orderId], references: [id])
+  task  Task? @relation(fields: [taskId], references: [id])
+  author User  @relation(fields: [authorId], references: [id])
+
+  @@index([orderId])
+  @@index([chartPointId, chartType])
+}
+
+model User {
+    id    String   @id @default(uuid())
+    email String   @unique
+    name  String
+    role  UserRole @default(auditor)
+    createdAt DateTime @default(now())
+
+    tasks       Task[]
+    conclusions Conclusion[]
+}
+
+model SystemConfig {
+  id                          String  @id @default(uuid())
+  dispatchDurationThreshold   Int     @default(1800)
+  autoCreateTaskOnTimeout     Boolean @default(true)
+  autoCreateTaskOnDamage      Boolean @default(true)
+  updatedAt                   DateTime @default(now())
+}
