@@ -91,6 +91,7 @@ export interface Task {
   dispatchDuration?: number | null
   damageLevel?: DamageLevel | null
   createdAt: Date
+  updatedAt?: Date
   resolvedAt?: Date | null
   resolution?: string | null
 }

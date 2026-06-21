@@ -397,6 +397,36 @@ export function resolveMockTask(id: string, resolution: string): Task | null {
   return mockTasks[index]
 }
 
+export function createMockTask(data: {
+  orderId: string
+  type: TaskType
+  priority?: TaskPriority
+  title: string
+  description?: string
+  dispatchDuration?: number
+  damageLevel?: DamageLevel
+}): Task {
+  const task: Task = {
+    id: generateId(),
+    orderId: data.orderId,
+    type: data.type,
+    priority: data.priority || 'medium',
+    status: 'pending',
+    title: data.title,
+    description: data.description || null,
+    dispatchDuration: data.dispatchDuration || null,
+    damageLevel: data.damageLevel || null,
+    assigneeId: null,
+    assigneeName: null,
+    resolution: null,
+    resolvedAt: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  }
+  mockTasks.unshift(task)
+  return task
+}
+
 const mockConclusions: Conclusion[] = Array.from({ length: 15 }, (_, i) => {
   const order = mockOrders[i % mockOrders.length]
   return {

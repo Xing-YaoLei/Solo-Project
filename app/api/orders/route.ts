@@ -49,7 +49,13 @@ export async function GET(request: Request) {
     let total: number
 
     try {
-      const where: any = {}
+      const where: {
+        status?: string
+        routeId?: string
+        hasItemDamage?: boolean
+        dispatchDuration?: { gt: number }
+        createdAt?: { gte?: Date; lte?: Date }
+      } = {}
       if (status) where.status = status
       if (routeId) where.routeId = routeId
       if (hasItemDamage !== undefined) where.hasItemDamage = hasItemDamage

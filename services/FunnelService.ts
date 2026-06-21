@@ -5,7 +5,13 @@ import {
   getRouteList as generateMockRoutes,
   getMockSystemConfig as generateMockSystemConfig,
 } from '@/lib/mockData'
-import type { FunnelResponse, FunnelDataPoint, DispatchDurationResponse, DispatchDurationPoint, SystemConfig } from '@/types'
+import type {
+  FunnelResponse,
+  FunnelDataPoint,
+  DispatchDurationResponse,
+  DispatchDurationPoint,
+  SystemConfig,
+} from '@/types'
 
 interface OrderWhereClause {
   createdAt: {
@@ -16,6 +22,26 @@ interface OrderWhereClause {
   dispatchDuration?: { not: null | undefined }
 }
 
+function toNumber(value: unknown): number {
+  if (value === null || value === undefined) return 0
+  if (typeof value === 'number') return value
+  if (typeof value === 'string') {
+    const parsed = parseFloat(value)
+    return isNaN(parsed) ? 0 : parsed
+  }
+  if (typeof value === 'object' && value !== null) {
+    const v = value as { toNumber?: () => number }
+    if (typeof v.toNumber === 'function') {
+      try {
+        return v.toNumber()
+      } catch {
+        return 0
+      }
+    }
+  }
+  return 0
+}
+
 export class FunnelService {
   static async getFunnelData(params: {
     startDate: string
@@ -23,7 +49,7 @@ export class FunnelService {
     routeId?: string
   }): Promise<FunnelResponse> {
     const { startDate, endDate, routeId } = params
-    
+
     try {
       const where: OrderWhereClause = {
         createdAt: {
@@ -43,32 +69,25 @@ export class FunnelService {
       })
 
       const totalBudget = orders.reduce((sum: number, o: {
-        subsidyRule?: { baseSubsidy?: number } | null
+        subsidyRule?: { baseSubsidy?: unknown } | null
       }) => {
-        const baseSubsidy = typeof o.subsidyRule?.baseSubsidy === 'number'
-          ? o.subsidyRule.baseSubsidy
-          : 0
-        return sum + baseSubsidy
+        return sum + toNumber(o.subsidyRule?.baseSubsidy)
       }, 0)
 
       const appealedOrders = orders.filter((o: { appeal?: unknown | null }) => !!o.appeal)
       const appealedAmount = appealedOrders.reduce((sum: number, o: {
-        subsidyAmount?: number
+        subsidyAmount?: unknown
       }) => {
-        const subsidy = typeof o.subsidyAmount === 'number' ? o.subsidyAmount : 0
-        return sum + subsidy
+        return sum + toNumber(o.subsidyAmount)
       }, 0)
 
       const settledPayments = orders.filter((o: {
         payment?: { status?: string } | null
       }) => o.payment?.status === 'success')
       const settledAmount = settledPayments.reduce((sum: number, o: {
-        payment?: { settlementAmount?: number } | null
+        payment?: { settlementAmount?: unknown } | null
       }) => {
-        const settlement = typeof o.payment?.settlementAmount === 'number'
-          ? o.payment.settlementAmount
-          : 0
-        return sum + settlement
+        return sum + toNumber(o.payment?.settlementAmount)
       }, 0)
 
       const overallConversion = totalBudget > 0 ? settledAmount / totalBudget : 0
@@ -97,7 +116,10 @@ export class FunnelService {
           stageLabel: '结算明细',
           count: settledPayments.length,
           amount: settledAmount,
-          conversionRate: appealedOrders.length > 0 ? settledPayments.length / appealedOrders.length : 0,
+          conversionRate:
+            appealedOrders.length > 0
+              ? settledPayments.length / appealedOrders.length
+              : 0,
           date: startDate,
           routeId,
         },
@@ -146,21 +168,30 @@ export class FunnelService {
         orderBy: { createdAt: 'asc' },
       })
 
-      const config = await prisma.systemConfig.findFirst()
-      const threshold = config?.dispatchDurationThreshold || 1800
+      let threshold = 1800
+      try {
+        const config = await prisma.systemConfig.findFirst()
+        threshold = config?.dispatchDurationThreshold ?? 1800
+      } catch {
+        threshold = 1800
+      }
 
-      const groupedData = new Map<string, {
-        durations: number[]
-        count: number
-        timeoutCount: number
-      }>()
+      const groupedData = new Map<
+        string,
+        {
+          durations: number[]
+          count: number
+          timeoutCount: number
+        }
+      >()
 
       for (const order of orders) {
-        if (!order.dispatchDuration) continue
-        
-        const date = new Date(order.createdAt)
+        const duration = toNumber(order.dispatchDuration)
+        if (!duration) continue
+
+        const date = new Date(order.createdAt as string | Date)
         let key: string
-        
+
         if (granularity === 'hour') {
           key = date.toISOString().substring(0, 13) + ':00:00'
         } else if (granularity === 'week') {
@@ -174,11 +205,11 @@ export class FunnelService {
         if (!groupedData.has(key)) {
           groupedData.set(key, { durations: [], count: 0, timeoutCount: 0 })
         }
-        
+
         const group = groupedData.get(key)!
-        group.durations.push(order.dispatchDuration)
+        group.durations.push(duration)
         group.count++
-        if (order.dispatchDuration > threshold) {
+        if (duration > threshold) {
           group.timeoutCount++
         }
       }
@@ -187,7 +218,9 @@ export class FunnelService {
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([date, group]) => ({
           date,
-          avgDuration: Math.round(group.durations.reduce((a: number, b: number) => a + b, 0) / group.count),
+          avgDuration: Math.round(
+            group.durations.reduce((a: number, b: number) => a + b, 0) / group.count
+          ),
           maxDuration: Math.max(...group.durations),
           minDuration: Math.min(...group.durations),
           orderCount: group.count,
@@ -196,16 +229,20 @@ export class FunnelService {
         }))
 
       const allDurations = orders
-        .map((o: { dispatchDuration?: number | null }) => o.dispatchDuration)
-        .filter((d: number | null | undefined): d is number => 
-          typeof d === 'number' && d !== null
-        )
-      const avgOverall = allDurations.length > 0
-        ? Math.round(allDurations.reduce((a: number, b: number) => a + b, 0) / allDurations.length)
-        : 0
-      const timeoutRate = allDurations.length > 0
-        ? allDurations.filter((d: number) => d > threshold).length / allDurations.length
-        : 0
+        .map((o: { dispatchDuration?: unknown }) => toNumber(o.dispatchDuration))
+        .filter((d: number): d is number => d > 0)
+      const avgOverall =
+        allDurations.length > 0
+          ? Math.round(
+              allDurations.reduce((a: number, b: number) => a + b, 0) /
+                allDurations.length
+            )
+          : 0
+      const timeoutRate =
+        allDurations.length > 0
+          ? allDurations.filter((d: number) => d > threshold).length /
+            allDurations.length
+          : 0
 
       return {
         data,
@@ -214,7 +251,12 @@ export class FunnelService {
         timeoutRate,
       }
     } catch (error) {
-      return generateMockDispatchDurationData({ startDate, endDate, routeId, granularity })
+      return generateMockDispatchDurationData({
+        startDate,
+        endDate,
+        routeId,
+        granularity,
+      })
     }
   }
 
@@ -231,7 +273,7 @@ export class FunnelService {
           routeName: { not: null },
         },
       })
-      
+
       const routeMap = new Map<string, string>()
       for (const r of routes) {
         if (r.routeId && r.routeName && !routeMap.has(r.routeId)) {
